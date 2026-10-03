@@ -1,0 +1,2737 @@
+{
+  "schema": "spaceface.expansion.planning.v1",
+  "status": "DESIGN_NOT_IMPLEMENTED",
+  "repo_commit": "1e0cf9499613b7c3acad10f34739278136d3d469",
+  "concepts": [
+    {
+      "category": "Harbor character / navigation",
+      "wave": 1,
+      "gap": "Docking has a corridor system, but a repeatable, recognizable harbor relationship can turn a permission prompt into a place you understand.",
+      "overlap": "Extend dockingCorridor and stationBroadcast; do not replace their authority. BRACKET already occupies the funny yard-robot role, so Latch is a working harbor instrument, never a ball-game host. The earlier exploratory gantry image is not a shipping model.",
+      "evidence": [
+        "R02",
+        "R03",
+        "R07",
+        "R10"
+      ],
+      "pitch": "An orbital signal gantry whose three semaphore arms teach docking by physically showing where it is safe to go. Its affection is expressed as extremely precise traffic control.",
+      "encounter": "On the first voluntary approach to a staffed Tethys dock, a squat signal tender translates into a holding position beside\u2014not inside\u2014the corridor. One arm points toward the open throat. A second closes across a conflicting lane. The third rotates to acknowledge your alignment. The player still flies every metre.",
+      "placement": "Attach to one existing staffed station in sector_tethys_junction. Resolve its anchor from sectorAnchors; place the tender outside the swept volume of the shipped docking corridor. No new station or sector. Hail becomes available inside 360 WU; guidance presentation inside 600 WU. Only one Latch instance per station.",
+      "loop": "Approach \u2192 see clearance \u2192 align under your own thrust \u2192 dock or leave. Later approaches acknowledge a clean arrival, an earlier collision, or an unpaid tow, using verified local records. No repetitive first-arrival tutorial. Optional assistance can be dismissed for the session.",
+      "silhouette": "Low offset goalpost in plan view; one thick crossbar, three paddles projecting from its starboard side, a single rectangular optical shutter. No face or humanoid legs. Amber bands, dark machinery and restrained ivory armor.",
+      "size": [
+        18,
+        12,
+        5
+      ],
+      "radius": 14,
+      "mass": 140,
+      "triangles": [
+        14000,
+        5600,
+        2500
+      ],
+      "draws": 10,
+      "residents": 1,
+      "parts": [
+        [
+          "ROOT_LATCH",
+          "Forge loft: sections at X=-8,-3,6,9; half-widths 3,4,3,1.5; top heights 1.2,2,1.5,0.5. Keep its center mass below the crossbar.",
+          "Origin at center of hull.",
+          "One convex hull; no collision on lamps."
+        ],
+        [
+          "CROSSBAR",
+          "Chamfered plate from (-5,-6) to (5,6), thickness 0.8; recess a dark central channel.",
+          "Fixed to ROOT at Z=2.",
+          "One box only if materially outside hull proxy."
+        ],
+        [
+          "PADDLE_A/B/C",
+          "Three rectangular plates, each 4.0 by 1.2 by 0.22 m; each has one amber inset at its tip. Offset pivots along X=-4,0,4.",
+          "Hinge axes +Z at Y=-4.5; travel -60 to +75 degrees.",
+          "Render-only; clearance never depends on a cosmetic paddle."
+        ],
+        [
+          "SENSOR_SHUTTER",
+          "One dark 1.5 m rectangular aperture with sliding ceramic shutter, no eye dots.",
+          "X=6,Y=0,Z=1.8; slide 0.5 m along Y.",
+          "None."
+        ],
+        [
+          "DRIVES",
+          "Two supported nozzles at X=-7,Y=\u00b12.8; broad dark throats and small luminous cores.",
+          "Fixed sockets HOOK_DRIVE_PORT/STBD.",
+          "Included in hull proxy."
+        ]
+      ],
+      "animation": [
+        [
+          "Idle duty",
+          6.0,
+          "Sensor sweeps \u00b112 degrees; paddles remain in the exact clearance state. Cosmetic beacon breathes, never strobes."
+        ],
+        [
+          "Clearance",
+          0.65,
+          "Open paddle turns from transverse to longitudinal using smoothstep. Start from last pose when interrupted."
+        ],
+        [
+          "Hold",
+          0.35,
+          "Close the relevant paddle; establish HOLD text immediately, before visual interpolation."
+        ],
+        [
+          "Acknowledgment",
+          0.8,
+          "One spare paddle dips once after confirmed docking. Never repeat while the event receipt is duplicated."
+        ]
+      ],
+      "ai": "Deterministic service state machine: OFF_DUTY \u2192 HOLD \u2192 GUIDE \u2192 ACKNOWLEDGE. Read the existing corridor owner\u2019s clearance and target identity. A request is not a clearance. HOLD wins whenever the actual service refuses. Reevaluate at 10 Hz; urgent corridor revocation is event-driven on the next sim tick. A kinematic tender follows a bounded service path with a swept clearance test; it never steers the player, teleports a vessel, or invents traffic permissions.",
+      "physics": "The body is a slow service vehicle, not an immovable barrier. Do not use a giant invisible collider around the crossbar. If pushed outside its service box, enter RECOVER and let the existing traffic/physics owners return it by forces; guidance can continue through the ordinary HUD. A destroyed tender removes its model and personal barks, but never disables ordinary docking.",
+      "choice": "Follow the visual lane, request ordinary text guidance, or ignore the character and dock normally. Clean approaches earn recognition only; no precision penalty, unavoidable tutorial, or new currency.",
+      "failure": "Collision produces a factual harbor warning through the normal law/incident owner. If the player causes damage, a repair/restitution job can appear; an unrelated NPC collision must not be attributed to the player. Save during GUIDE restores the authoritative clearance rather than replaying the acknowledgment.",
+      "voice": "Dry, unhurried, lightly resonant machine speech with a soft electromechanical click before sentences. Keep consonants clear; no vocoder on critical instructions. This character is courteous, not another wisecracking mascot.",
+      "lines": [
+        [
+          "first_clearance",
+          "Latch Nine. Follow the open arm. The closed one is not a suggestion."
+        ],
+        [
+          "hold",
+          "Hold outside the throat. Something larger has right of way."
+        ],
+        [
+          "clean_repeat",
+          "Same ship. Better angle. Welcome back."
+        ],
+        [
+          "player_collision",
+          "That was the station. It has filed no intention to move."
+        ],
+        [
+          "repair_paid",
+          "Repairs recorded. Your next approach begins without a grudge."
+        ]
+      ],
+      "integration": [
+        "src/systems/dockingCorridor.js",
+        "src/systems/stationBroadcast.js",
+        "src/ui/voiceArbiter.js",
+        "src/data/sectorAnchors.js"
+      ],
+      "state": "met:boolean, cleanArrivals:uint<=100000, incidentIds:last 16, destroyed:boolean. Do not persist transient clearance, Three objects, or animation handles.",
+      "tests": [
+        "Deny docking while an animation is opening: the UI and corridor still deny it.",
+        "Disable the character: every original docking route remains usable.",
+        "Ram from three bearings: the visible body and collision proxy agree.",
+        "Load after a completed arrival: no duplicate bark or reward.",
+        "Recognize HOLD and CLEAR with grayscale, sound muted, and reduced motion enabled."
+      ],
+      "metrics": "In a five-person formative test, ask players to locate the valid approach within five seconds without reading a help page; target four of five. Compare wrong-throat approaches against a baseline. This is a proposed acceptance threshold, not measured evidence.",
+      "reward": "No credits for routine docking. Any restitution payment uses the existing economy/law path and an incident idempotency key.",
+      "special": "At the 60-degree gameplay camera, the three paddles must be distinguishable at 100 px body width. Put no meaningful cue solely beneath the hull.",
+      "deps": [],
+      "id": "SF20-01",
+      "number": 1,
+      "name": "Latch Nine",
+      "slug": "latch_nine"
+    },
+    {
+      "category": "Shipwright / mobile workshop",
+      "wave": 2,
+      "gap": "Ship fitting can have meaningful numbers without making the new capability perceptually obvious. A visible demonstration bridges loadout selection and field behavior.",
+      "overlap": "Reuse ships, buildIdentity, crafting and ORRERY. Sable offers diagnoses and demonstrations, not another fitting database or independent stat writer. Her workshop is not MORROW\u2019s rescue automaton.",
+      "evidence": [
+        "R02",
+        "R03",
+        "R04",
+        "R07"
+      ],
+      "pitch": "A human shipwright flying a three-hulled workshop. She demonstrates the behavior of a proposed module on a captive test sled, then lets the player fit the real item through the existing service.",
+      "encounter": "After the first purchased module, a contract introduces Sable in a Ceres service pocket. The Patchwork unfolds one work arm and pushes a low-mass test sled against a visible damper. Selecting an impulse module changes the next demonstration; selecting a shield module exposes a supported shield projector. The receipt names exactly what changed.",
+      "placement": "One workshop traffic slot in sector_ceres_belt, near a service anchor but outside mining paths. Station service opens the familiar existing fit screen; a small adjacent preview pane is optional and pausable. Do not require in-flight UI manipulation.",
+      "loop": "Inspect an actual installed item \u2192 see one specific effect \u2192 compare a compatible alternative \u2192 confirm through the shipped transaction \u2192 test in flight. The demo is a truthful read-only forecast, never an extra source of stats.",
+      "silhouette": "Three parallel hulls joined by two visible crossbeams. Central office has warm windows, port pontoon stores dark tool wells, starboard pontoon carries a folded orange arm. One cobalt identity stripe; workshop orange appears only as standardized hazard paint.",
+      "size": [
+        34,
+        25,
+        9
+      ],
+      "radius": 27,
+      "mass": 260,
+      "triangles": [
+        32000,
+        12800,
+        5800
+      ],
+      "draws": 12,
+      "residents": 1,
+      "parts": [
+        [
+          "ROOT_PATCHWORK",
+          "Three lofts along X, center length 32 m and outboard lengths 23 m at Y=\u00b19.5. Cut obvious 3 m negative spaces between bodies.",
+          "Center of central hull; +X nose.",
+          "Three convex lobes, not one box spanning all gaps."
+        ],
+        [
+          "BRIDGES",
+          "Two 2.2 m wide plate crossbeams at X=-7,+6 with dark undersides and supported cable trunks.",
+          "Fixed.",
+          "Two simple beams only where collidable."
+        ],
+        [
+          "ARM_BASE/ELBOW/CLAMP",
+          "Upper link 5 m, forearm 4 m, jaws 1.3 m. Build pivots before connecting panels; all links remain visibly attached.",
+          "Base at (-2,-11,2), elbow local (5,0,0), Z-axis hinges.",
+          "Preview arm non-colliding; field-service arm only via existing interaction owner."
+        ],
+        [
+          "TEST_SLED",
+          "A 4\u00d73\u00d71 m replaceable test plate with two orange end caps and a recessed socket.",
+          "Independent root for lab scene.",
+          "One box, mass 12 in isolated demo only."
+        ],
+        [
+          "WINDOWS/TOOLS",
+          "Instance window boxes; 6 unique large tool shapes, not hundreds of micro-greebles.",
+          "All fixed outside the arm articulation.",
+          "None."
+        ]
+      ],
+      "animation": [
+        [
+          "Unfold",
+          1.8,
+          "Upper arm swings 60 degrees and forearm opens 85 degrees in sequence; arm final location clears the selected item."
+        ],
+        [
+          "Demo impulse",
+          2.4,
+          "Use the actual preview simulation\u2019s force result; do not animate an invented trajectory."
+        ],
+        [
+          "Fit receipt",
+          0.6,
+          "Clamp closes around the display item after the real transaction succeeds; on denial remain open."
+        ],
+        [
+          "Park",
+          1.6,
+          "Return from current pose, not from a presumed fully extended state."
+        ]
+      ],
+      "ai": "Service FSM: TRANSIT, AVAILABLE, PREVIEW, AWAIT_COMMIT, DEMONSTRATE, DEPART. The human personality is expressed through authored conditional lines, not online model inference. Itinerary belongs to traffic; quotes are immutable snapshots of the current catalog revision and inventory. Recheck price, compatibility and stock on commit. Preview data is derived from a temporary isolated fit copy, never the live player state.",
+      "physics": "The workshop moves only while no service is active. The demonstration should use a separate small scene or existing lab state with its own entity namespace, never live world entities hidden off camera. Close/reopen must destroy that state. A replay should not advance campaign RNG. In the world the hull is heavy but pushable; docking assistance is owned by dockingCorridor.",
+      "choice": "Buy, retain current equipment, request a demo, or leave. Show one benefit and one cost, such as impulse versus cargo mass. Never imply every purchase is an upgrade.",
+      "failure": "No funds or incompatible slots leave the current fit unchanged and explain the exact denial at the action. Workshop destruction cannot delete player-owned gear or a pending paid purchase. A service interrupted before commit costs nothing.",
+      "voice": "Warm contralto or low mezzo, close-mic conversational delivery; practical and exact, with amusement reserved for preventable mistakes. No celebrity imitation. Human portrait may be a later separately scoped asset; the shipped character can live through her ship, comms and hands-on demonstrations.",
+      "lines": [
+        [
+          "intro",
+          "Sable Venn. I fix the part between what a ship promises and what it does."
+        ],
+        [
+          "impulse_demo",
+          "More shove. More mass. Nothing in that sentence was free."
+        ],
+        [
+          "incompatible",
+          "That mount cannot carry it. The catalog does not get a vote."
+        ],
+        [
+          "keep_old",
+          "Then keep the old one. Knowing your tools is also an upgrade."
+        ],
+        [
+          "return_after_test",
+          "Tell me what it did. Not what the label said."
+        ]
+      ],
+      "integration": [
+        "src/systems/ships.js",
+        "src/systems/buildIdentity.js",
+        "src/systems/crafting.js",
+        "src/ui/orrery/"
+      ],
+      "state": "met:boolean, demonstratedItemIds:bounded set of catalog ids, lastReceiptId:string|null. Actual inventory, fit and money remain under their existing owners.",
+      "tests": [
+        "Preview ten modules and cancel: live fit, credits and RNG state remain byte-equivalent.",
+        "Commit after inventory changes: revalidation refuses the stale quote.",
+        "Compare displayed impulse and heat with measured values in the same preview configuration.",
+        "Open/close preview fifty times: no retained meshes, listeners or physics worlds.",
+        "Keyboard and controller can select, compare, confirm and return without a hover-only action."
+      ],
+      "metrics": "Ask players to explain one tradeoff of the chosen module and then demonstrate it in flight. Target correct explanation by four of five first-time testers; record rather than infer improvement.",
+      "reward": "Normal catalog prices; no free upgrades from repeat demonstrations. The first tutorial can use an already-budgeted mission coupon, never a new unconditional grant.",
+      "special": "A single item model receives focus. Background workshop motion stops during reading under reduced motion. Do not duplicate the full shipworks frontend.",
+      "deps": [
+        19
+      ],
+      "id": "SF20-02",
+      "number": 2,
+      "name": "Sable Venn & the Patchwork",
+      "slug": "sable_venn"
+    },
+    {
+      "category": "Salvage character / ownership",
+      "wave": 1,
+      "gap": "Physical salvage needs legible ownership and provenance at the instant a player is deciding to tow it. Existing consequence systems should be understandable before a theft, not only afterward.",
+      "overlap": "Extend salvage, claims and provenanceLedger. BRACKET sorts scrap into a sport; Tally examines legal claim evidence. Its weighing gesture is presentation, not a second economy algorithm.",
+      "evidence": [
+        "R03",
+        "R07",
+        "R10"
+      ],
+      "pitch": "A narrow tug with two folding balance arms and a large circular stamp mechanism. It is obsessed with evidence, but willing to correct the ledger\u2014including in the player\u2019s favor.",
+      "encounter": "At the first qualifying wreck in Ceres, Tally extends a scanner arm toward a crate. Its projector displays three plain states: owned, disputed, unclaimed. A selected object reveals the cited incident that produced the status. A player can recover the owner\u2019s crate, dispute a stale claim with real evidence, or openly steal.",
+      "placement": "Use an existing derelict-field or salvage-yard anchor in sector_ceres_belt. One assessor may be assigned to a site, not one per wreck. Approach disclosure inside 420 WU; no ambient UI for every shard.",
+      "loop": "Select wreck \u2192 inspect claim and value basis \u2192 tow to matching receiver \u2192 obtain a causal receipt. Subsequent visits acknowledge recoveries or unresolved incidents. No requirement to sit through paperwork for ordinary unclaimed scrap.",
+      "silhouette": "Long dark spine and two unequal perpendicular balance beams; amber circular stamp at the stern. Distinct T shape seen overhead. Pale slate panels with a single ochre band, unlike Latch\u2019s three-paddle signal gantry.",
+      "size": [
+        22,
+        18,
+        6
+      ],
+      "radius": 20,
+      "mass": 180,
+      "triangles": [
+        18000,
+        7200,
+        3200
+      ],
+      "draws": 10,
+      "residents": 1,
+      "parts": [
+        [
+          "ROOT_TALLY",
+          "Loft 22 m long, half-width 2.6 m; taper nose to 1.1 m and thicken rear to carry stamp.",
+          "Center.",
+          "One convex spine."
+        ],
+        [
+          "ARM_LEFT/RIGHT",
+          "Two 7 m trusses, right 1.5 m shorter; attached scan heads 1.3 m diameter.",
+          "Z hinges at X=0,Y=\u00b12.5.",
+          "Non-colliding peripheral instruments."
+        ],
+        [
+          "STAMP",
+          "Annulus outer radius 2.6 m, inner 1.6 m, carried on solid U bracket; face has three large raised bars, no tiny text.",
+          "Rear at X=-7,Z=2.5; spindle +Z.",
+          "No extra collider."
+        ],
+        [
+          "CLAIM_CRADLE",
+          "Two gold triangular pads in a V, 3.5 m apart, with clearly open middle.",
+          "X=5; fixed.",
+          "Sensor volume only; no invisible suction."
+        ],
+        [
+          "SCAN_SOCKET",
+          "Dark aperture inset beneath forward plate.",
+          "HOOK_SCAN at X=8,Z=1.5.",
+          "None."
+        ]
+      ],
+      "animation": [
+        [
+          "Assess",
+          1.4,
+          "Arms unfold from 20 to 75 degrees; one slow scan passes over selected object."
+        ],
+        [
+          "Disputed",
+          2.0,
+          "Stamp remains suspended; arms hold asymmetrically. Pair the pose with a textual status."
+        ],
+        [
+          "Receipt",
+          0.45,
+          "Stamp travels 0.35 m once, after the owner emits the accepted transaction receipt."
+        ],
+        [
+          "Withdraw",
+          1.1,
+          "Fold arms before itinerary resumes; incomplete claims remain incomplete."
+        ]
+      ],
+      "ai": "PATROL_SITE \u2192 INSPECT_SELECTED \u2192 OFFER \u2192 WAIT_DELIVERY \u2192 RECEIPT. Selection and hail are player intents. The assessor reads the existing owner/provenance records and returns reason codes, not a generated legal opinion. Recalculate on relevant ledger revision, not every frame. Do not classify every object by scanning the whole entity map; use the site/selection indices. No automatic confiscation from proximity.",
+      "physics": "A claim cradle requires the real cargo body to enter the receiver with relative speed below a proposed 8 WU/s and an explicit delivery intent. This does not transfer ownership until cargo/economy validates it. Keep tether joints intact until that accepted transfer. Duplicate collision events never pay twice.",
+      "choice": "Deliver honestly, contest a claim using already-discovered evidence, or steal with the consequence visible beforehand. A disputed object stays physically manipulable; the UI must not confuse disputed with untouchable.",
+      "failure": "If Tally is damaged, use the ordinary station receiver for delivery. Missing evidence can be found later; no fabricated witness appears to force the preferred ending. Save a receipt-id set bounded to the active site plus the existing durable ownership ledger.",
+      "voice": "An almost musical monotone that pauses before important nouns. Its humor comes from literal classification. Warmth appears when somebody returns an object that nobody expected to see again.",
+      "lines": [
+        [
+          "unclaimed",
+          "No living claim. That is a status, not a blessing."
+        ],
+        [
+          "owned",
+          "Owner identified. You may still move it. Moving is not owning."
+        ],
+        [
+          "evidence",
+          "The record is wrong. How inconvenient for the record."
+        ],
+        [
+          "return",
+          "Returned intact. I will round nothing down."
+        ],
+        [
+          "theft",
+          "Transfer observed. Consent remains conspicuously absent."
+        ]
+      ],
+      "integration": [
+        "src/systems/salvage.js",
+        "src/systems/claims.js",
+        "src/systems/provenanceLedger.js",
+        "src/data/contactHail.js"
+      ],
+      "state": "met:boolean, activeWreckId:string|null, lastEvidenceRevision:uint, localReceiptIds:last 32. Ownership and claims are references, not duplicated snapshots.",
+      "tests": [
+        "Tow an owned crate without confirming: no sale occurs.",
+        "Replay the delivery collision ten times: one transfer and one payment.",
+        "Change claimant before confirming: the old offer invalidates.",
+        "Load with a tethered crate: body, owner and receiver still agree.",
+        "Destroy assessor: station fallback still resolves the contract."
+      ],
+      "metrics": "Before confirming a haul, testers correctly predict whether the action is recovery, salvage or theft. Log prediction versus actual consequence.",
+      "reward": "Standard salvage value, with any contract premium applied once through the normal owner; no passive income or repeated appraisal reward.",
+      "special": "The three claim states need distinct icons and words; never rely on green/yellow/red alone. Do not place a giant status banner over the wreck.",
+      "deps": [],
+      "id": "SF20-03",
+      "number": 3,
+      "name": "Tally-3, Claim Assessor",
+      "slug": "tally_3"
+    },
+    {
+      "category": "Civilian convoy / fragile cargo story",
+      "wave": 2,
+      "gap": "An escort target can feel like a health bar on rails. Visible, separable cargo gives protecting a ship several recoverable outcomes instead of one binary failure.",
+      "overlap": "Reuse escort missions, fragileCargo, traffic and cargo ownership. This is cultivated human seed stock, not a second alien infection, and not an extension of the Vethari mythology.",
+      "evidence": [
+        "R01",
+        "R03",
+        "R07"
+      ],
+      "pitch": "A slow seed-bank ship carrying six detachable botanical vaults. Each vault is physically recoverable, so losing the hull does not erase every meaningful objective.",
+      "encounter": "A convoy crosses Tethys with six green glasshouse lobes supported around a blunt central hull. A pirate attack damages the rear coupling. The captain asks the player to choose: cover the remaining convoy, tow the drifting vault, or call a responder while following the main ship.",
+      "placement": "Add one authored mission convoy to an existing Tethys-to-Ceres route after one successful delivery. Use actual route nodes; no invented adjacent sector. The first incident happens in a broad pocket with at least two escape lines, never while docking.",
+      "loop": "Accept a contract with explicit cargo stakes \u2192 read attack or coupling damage \u2192 choose which objects to protect \u2192 deliver remaining vaults \u2192 see a local greenhouse react later. Repeat variants change which vault fails and where pirates approach, not the rules.",
+      "silhouette": "Six oval conservatory pods around a blunt seed-shaped central hull, in two rows of three. Broad dark connecting struts and lime identity bands. Warm speckled windows suggest cultivation without rendering thousands of plants.",
+      "size": [
+        46,
+        30,
+        12
+      ],
+      "radius": 34,
+      "mass": 420,
+      "triangles": [
+        36000,
+        14400,
+        6500
+      ],
+      "draws": 12,
+      "residents": 1,
+      "parts": [
+        [
+          "ROOT_ILEX",
+          "Central loft 42 m long, width 8 m, stepped dorsal greenhouse spine.",
+          "Center.",
+          "One central convex proxy."
+        ],
+        [
+          "VAULT_01..06",
+          "Six identical 9\u00d75\u00d74 m rounded capsules; green glazing is opaque tinted geometry with plant silhouettes inside a shallow recess.",
+          "At X=-12,0,12; Y=\u00b110; independent release roots.",
+          "One convex per pod while attached; independent dynamic body only on actual severance."
+        ],
+        [
+          "COUPLINGS",
+          "Two supported beams per pod with large break collars; each collar is targetable as an authored subsystem.",
+          "Root-local socket at each pod center.",
+          "At most one enabled damage trigger per coupling."
+        ],
+        [
+          "CANOPY_PANELS",
+          "Baked dark foliage shapes beneath 12 broad roof ribs. No real transparent inner jungle.",
+          "Fixed to pod.",
+          "None."
+        ],
+        [
+          "DRIVE_BANK",
+          "Four recessed rear engines on the central hull; pod utility thrusters remain small.",
+          "Named nozzle sockets.",
+          "Central proxy only."
+        ]
+      ],
+      "animation": [
+        [
+          "Cruise",
+          5.0,
+          "Very slow ventilation louver movement; pods are rigidly attached, not jelly."
+        ],
+        [
+          "Coupling fail",
+          0.7,
+          "Crack collar, vent two short puffs, then release only after authoritative subsystem loss."
+        ],
+        [
+          "Vault safe",
+          1.1,
+          "Warm window band returns steadily when a delivered vault has power."
+        ],
+        [
+          "Damaged",
+          2.0,
+          "One louver jams, window segment dims; no full-body strobe."
+        ]
+      ],
+      "ai": "Convoy phases: ASSEMBLE, DEPART, TRANSIT, INCIDENT, SPLIT_RESPONSE, ARRIVE. Traffic owns navigation. Mission owner tracks six stable vault ids and distinguishes attached, drifting, delivered, destroyed and lost. A captain chooses the safe gate based on observed threats; it never waits forever for one remote pod. Reinforcements, responders and pirates all request spawn budget. Narrative lines use actual vault status.",
+      "physics": "Start each pod as part of the parent compound body; on severance calculate its initial linear velocity as parent linear velocity plus angular velocity cross socket offset. Remove the matching parent collider before enabling the pod body, preserving total mass and avoiding double collisions. A pod supports Massline towing and fragileCargo shock/heat receipts. Never fake breakage by hiding a mesh while keeping its collision.",
+      "choice": "Protect the ship, recover a pod, or delegate a rescue when a legitimate responder is present. No secret best route: the consequences and timing are visible. The captain can refuse a dangerous shortcut without blocking all alternatives.",
+      "failure": "Losing some pods reduces deliveries, not the whole campaign. If all are destroyed, retain an investigation and restitution branch. Offscreen simulation resolves the same ownership outcomes conservatively; it does not quietly regenerate missing pods.",
+      "voice": "Captain Ilex speaks gently and clinically under pressure. The cargo is precious, but she never berates the player for choosing a rescue over a bonus. Use short counting phrases during the incident.",
+      "lines": [
+        [
+          "depart",
+          "Six vaults. Most of what they carry has never seen a sky."
+        ],
+        [
+          "severed",
+          "Vault four is free. The ship can continue. The choice is yours."
+        ],
+        [
+          "tow",
+          "Slowly. The roots will forgive distance before they forgive shock."
+        ],
+        [
+          "partial",
+          "Four arrived. Four is a future."
+        ],
+        [
+          "total_loss",
+          "Bring back the recorder. We still owe them an explanation."
+        ]
+      ],
+      "integration": [
+        "src/systems/missions.js",
+        "src/systems/traffic.js",
+        "src/systems/fragileCargo.js",
+        "src/systems/cargo.js"
+      ],
+      "state": "missionId, vaultIds[6], per-vault outcome enum, captainAlive, deliveryReceiptIds. Use mission and cargo owners for persistence; no parallel inventory.",
+      "tests": [
+        "Sever a rotating pod: velocity matches the rigid-body point velocity.",
+        "Save during severance and reload: no duplicate capsule or lost mass.",
+        "Deliver 0,1,5,6 pods: all outcomes lead somewhere coherent.",
+        "Escort exits sector while player tows: route and destination remain resolvable.",
+        "One NPC damages a pod: provenance does not blame the player."
+      ],
+      "metrics": "Measure how often partial loss leads to continued play rather than reload. Interview players about the choice they believed they made; do not equate any particular choice with success.",
+      "reward": "Base escort pay plus per-vault accepted delivery value. Total offered compensation stays within the comparable existing escort budget; no reward for repeatedly detaching and reattaching pods.",
+      "special": "Six pods read as six large shapes at gameplay zoom. A selected pod has one integrity readout; avoid six competing bars over the ship.",
+      "deps": [
+        3
+      ],
+      "id": "SF20-04",
+      "number": 4,
+      "name": "Ilex Seed Ark",
+      "slug": "ilex_seed_ark"
+    },
+    {
+      "category": "Courier / noncombat rival",
+      "wave": 1,
+      "gap": "Physics mastery deserves a recurring social witness outside combat. A courier who respects a clean run creates motivation without becoming another adaptive boss.",
+      "overlap": "The repo already has nemesis, aceMemory and Orra. Red Kite does not learn a counter-build or occupy that arc. Reuse route following and stunt evidence; no new racing control scheme.",
+      "evidence": [
+        "R02",
+        "R03",
+        "R07",
+        "R11"
+      ],
+      "pitch": "A red asymmetrical courier whose deliveries become optional head-to-head relay challenges. It will race your ship, not your statistics, and will never cheat by teleporting ahead.",
+      "encounter": "A narrow red courier makes a clean slingshot around a Ceres work anchor, then offers a short delivery relay. Three buoys mark the ordered handoff points. The player can win by choosing a better physical route, not by entering a menu minigame.",
+      "placement": "One optional contact on a surveyed Ceres route outside dense traffic. Challenges unlock after the player has voluntarily used the Massline. Course gates are ordinary map-visible anchors and never obstruct essential transport.",
+      "loop": "Hail \u2192 inspect the 60\u201390 second course and collision policy \u2192 accept \u2192 cross ordered gates with the real ship \u2192 receive a grounded reaction. Alternate cargo-mass classes use the same course. Ghost records are optional presentation, never targetable enemies.",
+      "silhouette": "Thin red dart with one large triangular sail-fin to port and a short counterbalancing engine pod to starboard. A sharply visible dark fork at the stern distinguishes it from ordinary wasps. No feather motif.",
+      "size": [
+        23,
+        17,
+        5
+      ],
+      "radius": 17,
+      "mass": 32,
+      "triangles": [
+        18000,
+        7200,
+        3200
+      ],
+      "draws": 9,
+      "residents": 1,
+      "parts": [
+        [
+          "ROOT_KITE",
+          "Loft from X=-10 to +12, width 2.4 m at cockpit, 1 m at nose; split the stern into two prongs.",
+          "Center; +X forward.",
+          "One narrow convex hull."
+        ],
+        [
+          "SAIL",
+          "CCW plate with points (-7,3),(0,10),(8,3),(3,2), thickness 0.28 m and dark raised leading edge.",
+          "Supported at port spar.",
+          "One slim convex prism only where reachable."
+        ],
+        [
+          "OUTRIGGER",
+          "5 m engine pod at Y=-5, carried by a 1.2 m thick spar.",
+          "Root socket X=-4.",
+          "One small hull proxy merged where possible."
+        ],
+        [
+          "CONTROL_FLAP",
+          "Separate 4\u00d71.2 m panel cut from trailing sail edge.",
+          "Hinge parallel X.",
+          "Render-only."
+        ],
+        [
+          "COURIER_CANISTER",
+          "One 2\u00d71 m canister under a visible dorsal clamp.",
+          "X=2,Z=1.6.",
+          "No separate body except authored handoff."
+        ]
+      ],
+      "animation": [
+        [
+          "Coast",
+          3.0,
+          "Flap settles to 4 degrees; engine intensity follows true throttle."
+        ],
+        [
+          "Hard turn",
+          0.3,
+          "Flap deflects up to 18 degrees proportional to actual angular acceleration, clamped."
+        ],
+        [
+          "Challenge",
+          0.8,
+          "Two alternated navigation-light pulses with modest contrast; text carries the offer."
+        ],
+        [
+          "Handoff",
+          0.7,
+          "Clamp opens after gate/receiver confirmation, never at a guessed distance."
+        ]
+      ],
+      "ai": "AWAIT, COUNTDOWN, RACE, ABORT, FINISH. Courier uses the shipped force/steering stack with a preauthored route corridor and known thrust limits. Do not directly set position or introduce rubber-banding. Start consumes a mission-local deterministic seed for optional course variants only. Gate crossing uses swept segment tests, ordered indices and a minimum forward crossing; circles around the same gate do not score. Abort on combat escalation or course obstruction that invalidates safe play.",
+      "physics": "Use the same mass, thrust and collision rules as other ships. A demonstration may be a recorded verified trajectory, clearly labeled replay, but a live opponent must physically fly it. Challenge gates are sensors, not solid hoops placed as accidental traps. Gate radius is set from a safe multiple of the selected hull radius, then locked for that challenge class.",
+      "choice": "Take the direct turn, use an anchor to conserve momentum, accept a heavier cargo class, or decline. A novice can lose without losing inventory; expert prestige comes from a clean, faster route.",
+      "failure": "Collision remains ordinary physics; no artificial crash penalty layered over damage. A third-party attack cancels the clock and returns any escrow through the owner. A courier destroyed in the campaign stays gone; a public timing buoy can keep courses accessible without pretending the person survived.",
+      "voice": "Fast but intelligible, playful rather than taunting; a pilot who loves the shape of a good trajectory. Avoid constant chatter during turns.",
+      "lines": [
+        [
+          "offer",
+          "Three handoffs. One clean run. I will try not to look impressed."
+        ],
+        [
+          "sling",
+          "That was not the short route. It was the clever one."
+        ],
+        [
+          "loss",
+          "I got there first. You got there interestingly."
+        ],
+        [
+          "win",
+          "Fine. I am stealing that corner."
+        ],
+        [
+          "attack_abort",
+          "Clock is dead. People first. Get clear."
+        ]
+      ],
+      "integration": [
+        "src/systems/routeFollower.js",
+        "src/systems/stuntGrammar.js",
+        "src/systems/missions.js",
+        "src/systems/traffic.js"
+      ],
+      "state": "met, courierDestroyed, bestTimesByCourseAndHullClass:bounded 12, cleanCompletions, courseVersion. Store times in sim ticks; reject replay records with a different course version.",
+      "tests": [
+        "Run identical inputs at 30/60/144 render FPS: finish tick is equal.",
+        "Cross gate backward or twice: no illegitimate advancement.",
+        "Block a course with a heavy wreck: race aborts cleanly rather than teleporting.",
+        "Trigger combat on the last gate: no simultaneous win and refund.",
+        "Inspect a losing opponent: its thrust and speed stay within the same authored definition."
+      ],
+      "metrics": "Players can describe how their chosen route affected the time. Repeat participation without cash grinding is the retention signal; target one voluntary retry in a formative session.",
+      "reward": "One first-completion mission reward, then best-time recognition and cosmetic courier decals only. No repeatable high-yield cash race that replaces the economy.",
+      "special": "Ghosts must be thin, labeled and non-colliding, and can be disabled. Use real gate order on the map; do not draw an autopilot ribbon that claims to know the optimal physics path.",
+      "deps": [],
+      "id": "SF20-05",
+      "number": 5,
+      "name": "Red Kite",
+      "slug": "red_kite"
+    },
+    {
+      "category": "Mutual-aid crew / social faction identity",
+      "wave": 2,
+      "gap": "Faction numbers and rescue traffic do not by themselves create a community that feels accountable to individual people. A small recurring work crew can connect help, collateral and repayment.",
+      "overlap": "A named occupational circle inside faction_free, not a new ninth political faction or separate reputation scale. Existing Morrow handles a singular rescue encounter; this crew coordinates several ordinary working ships and records reciprocal obligations.",
+      "evidence": [
+        "R02",
+        "R03",
+        "R07",
+        "R09"
+      ],
+      "pitch": "Three mismatched civilian tugs share a common white diagonal stripe and a habit: nobody finishes a shift with a colleague still drifting. Membership is enacted through work, not purchased through a menu.",
+      "encounter": "After the player resolves a real stuck-tow or salvage recovery, one tug returns to thank them while the others complete the route. At the next shared service stop, the crew offers a bounded cleanup job: help clear a lane that the player or another witnessed incident obstructed.",
+      "placement": "Use existing rescue/tug traffic roles at Ceres and Tethys. At most three named hull identities in persistent records, with only nearby authorized work slots instantiated. Their rendezvous is an existing yard, not a new station.",
+      "loop": "Observe actual trouble \u2192 help or decline \u2192 retain a named receipt \u2192 see a later tangible return such as an available escort or waived service labor. Favor can be exhausted; it is not a magical rescue button or currency farm.",
+      "silhouette": "Three compact work-hull variations: a broad clamp tug, a narrow winch tug, and a flat rescue skiff. Shared white slash cut into orange/teal working paint; otherwise deliberately different silhouettes. The crew\u2019s emblem is a three-ended knot, not a human organization\u2019s logo.",
+      "size": [
+        25,
+        19,
+        7
+      ],
+      "radius": 21,
+      "mass": 180,
+      "triangles": [
+        22000,
+        8800,
+        4000
+      ],
+      "draws": 10,
+      "residents": 3,
+      "parts": [
+        [
+          "TUG_BASE",
+          "Use Forge work-fleet finishes; center loft length 24 m, width 8 m, blunt nose. Build one source kit with three distinct outlines, not three recolors.",
+          "Hull center.",
+          "Two to three convex hulls per variant."
+        ],
+        [
+          "CLAMP_VARIANT",
+          "Two 8 m forward jaws at Y=\u00b15 with open throat 8 m wide.",
+          "Z hinges at X=4,Y=\u00b15.",
+          "Jaws cosmetic when not in a sanctioned tow interaction."
+        ],
+        [
+          "WINCH_VARIANT",
+          "Vertical cable drum diameter 5 m on stern; two supported fairlead rollers at nose.",
+          "Drum axis +Y.",
+          "Hull proxy only; actual cable is Massline."
+        ],
+        [
+          "SKIFF_VARIANT",
+          "Broad stern deck 10\u00d78 m with two patient-pod mounts, no visible humans required.",
+          "Fixed.",
+          "One deck box."
+        ],
+        [
+          "COMMON_MARK",
+          "One diagonal stripe geometry per upper hull; three small lit windows and a beacon.",
+          "Conformal to skin using the shared finish.",
+          "None."
+        ]
+      ],
+      "animation": [
+        [
+          "Working",
+          4.0,
+          "Drum rotation is proportional to actual line payout. Idle rotation is forbidden."
+        ],
+        [
+          "Acknowledge",
+          0.6,
+          "Each vessel dips an existing crane or lamp once; avoid synchronized robot dancing."
+        ],
+        [
+          "Tow prepared",
+          1.2,
+          "Clamp opens before a real attach; receiver waits for actual proximity and consent."
+        ],
+        [
+          "Memorial",
+          8.0,
+          "If a member died, an empty berth stays empty and a single beacon holds steady."
+        ]
+      ],
+      "ai": "Dispatch is event-driven: IDLE, CLAIM_JOB, APPROACH, ASSIST, DELIVER, RETURN. Claim a job with a stable id so two tugs do not both decide they own the same casualty. Use traffic/navigation owners for movement and the existing helper for tether intent. The named-person layer stores obligations and known incidents; it does not scan unseen sectors for convenient suffering or spawn a friend inside a dangerous collision.",
+      "physics": "Assistance uses an actual tow joint or existing recovery path with validated range and relative speed. The player can help by moving the obstruction first, changing the job state. When out of sector, reconcile job completion from the existing offscreen model; never simulate three full physics ships across the galaxy.",
+      "choice": "Join a cleanup, ask for bounded help, repay a recorded favor, or decline without losing the campaign. The crew can remember deliberate harm, but a failed rescue is not automatically betrayal.",
+      "failure": "If a tug dies, remaining crew adapt their available roles and dialogue. A missing member is not silently respawned with a different name. A corrupted favor record falls back to no extra benefit, not a negative credit balance.",
+      "voice": "Three identifiable voices: Mara is concise and matter-of-fact; Odo narrates the practical next step; Kit uses humor after danger has passed. One speaker at a time, routed through the same arbiter. No overlapping radio sitcom during combat.",
+      "lines": [
+        [
+          "help_offered",
+          "Mara: We have a line free. Tell us what you need moved."
+        ],
+        [
+          "help_declined",
+          "Odo: Understood. We will keep the approach clear."
+        ],
+        [
+          "favor_return",
+          "Kit: Your terrible afternoon has qualified for our terrible-afternoon program."
+        ],
+        [
+          "cleanup",
+          "Mara: The lane is blocked. The cause can wait until the ships are safe."
+        ],
+        [
+          "member_lost",
+          "Odo: That berth stays empty tonight."
+        ]
+      ],
+      "integration": [
+        "src/systems/traffic.js",
+        "src/systems/npcJobsRuntime.js",
+        "src/systems/provenanceLedger.js",
+        "src/ui/stuckTowPrompt.js"
+      ],
+      "state": "memberIds[3], memberOutcomes, activeJobIds<=3, favorReceipts<=16. Persist durable incidents through the current ledger rather than an independent crew economy.",
+      "tests": [
+        "Two helpers claim one job in the same tick: exactly one tow owner.",
+        "A job resolves before approach: tug releases the reservation and returns.",
+        "Kill a crew member and reload: identity remains absent and dialogue changes.",
+        "Request help without a free slot: explanation is truthful, with no phantom ship.",
+        "Repeat the same favor receipt: no accumulating free service."
+      ],
+      "metrics": "On a later visit, players identify at least one member by role or silhouette and can explain a concrete consequence of their earlier action. This measures recognition, not sentiment mining.",
+      "reward": "One bounded service waiver or mission escort supported by current resource availability. Expenses still flow through existing economy and service owners.",
+      "special": "Never instantiate all three merely for scenic busyness. A visible ship must have a real job, route or berth.",
+      "deps": [
+        1,
+        3
+      ],
+      "id": "SF20-06",
+      "number": 6,
+      "name": "The Towline Table",
+      "slug": "towline_table"
+    },
+    {
+      "category": "Enemy / deliberate Massline counterplay",
+      "wave": 1,
+      "gap": "Existing tether specialists contest attachment and field control. A visibly committed, interruptible line-cutter can make cable awareness tactical without restoring frustrating ambient breakage.",
+      "overlap": "Not a replacement for tether_control_raider. The GDD explicitly protects ordinary Massline strength: a cut is a named engineered attack, never a silent tension nerf. First reuse any shipped cutter attack discovered during rebase; add its distinctive model and encounter before inventing a second kernel.",
+      "evidence": [
+        "R02",
+        "R03",
+        "R05",
+        "R06",
+        "R07"
+      ],
+      "pitch": "A lean raider with two long forward ceramic blades. It turns toward the visible cable, spreads its jaws, paints a short crossing corridor, then commits to a cut that the player can dodge, interrupt or exploit.",
+      "encounter": "Introduce a single cutter with two familiar light enemies in a spacious early Crucible room. It waits until the player is attached, exposes the blades for 54 ticks, then takes a fixed-bearing pass through the cable. A missed pass leaves its side open. The first cut is instructional pressure, not a lethal combo.",
+      "placement": "Crucible after a Massline tutorial or equivalent observed use. Campaign deployment only on a later pirate encounter through spawnBudget. Maximum one cutter per introductory encounter and two in advanced mixes; never spawn a fresh cutter already in attack range.",
+      "loop": "See the jaw opening \u2192 decide to cut/reposition/throw the cutter \u2192 survive the committed pass \u2192 punish the recovery. Mastery can turn the specialist into ammunition before its own attack resolves.",
+      "silhouette": "Long open V from two cream ceramic cutting spars, small dark fuselage behind them, a single sodium-orange dorsal spool. The V must remain identifiable when the unit is 40\u201360 px wide.",
+      "size": [
+        24,
+        19,
+        5
+      ],
+      "radius": 17,
+      "mass": 28,
+      "triangles": [
+        20000,
+        8000,
+        3600
+      ],
+      "draws": 10,
+      "residents": 2,
+      "parts": [
+        [
+          "ROOT_SCISSOR",
+          "Compact aft loft from X=-10 to +2, width 5 m; leave the forward 12 m mostly negative space.",
+          "Center aft of the blade pivots.",
+          "One main convex hull."
+        ],
+        [
+          "BLADE_L/R",
+          "Two tapered 13\u00d72\u00d70.8 m chamfered plates with visible dark hinges and no unsupported floating edge.",
+          "Z hinges at X=0,Y=\u00b12.5; \u00b18 degrees idle to \u00b132 degrees armed.",
+          "Damage hit proxies on blades; cutting sweep computed from attack phase, never render mesh raycast."
+        ],
+        [
+          "SPOOL",
+          "A 2 m diameter copper drum at X=-3,Z=2.5; supported on two ribs.",
+          "Axis +Y.",
+          "None."
+        ],
+        [
+          "DRIVES",
+          "Two recessed engines at X=-9,Y=\u00b12.",
+          "Named drive hooks.",
+          "Included in hull."
+        ],
+        [
+          "CUT_APERTURE",
+          "Thin solid emissive strips on inner blade edges; bloom limited to the blade area.",
+          "Child of each blade.",
+          "None."
+        ]
+      ],
+      "animation": [
+        [
+          "Acquire",
+          0.3,
+          "Sensor points toward an observed cable; no damage."
+        ],
+        [
+          "Windup",
+          0.9,
+          "Jaws open over 54 sim ticks. Cutting corridor is visible from the first tick."
+        ],
+        [
+          "Commit",
+          0.45,
+          "Blade pose locks; unit attempts a fixed-bearing force-driven pass. No mid-pass homing."
+        ],
+        [
+          "Recover",
+          1.5,
+          "Jaws fold slowly; attack unavailable for 90 ticks."
+        ]
+      ],
+      "ai": "States: PATROL, ACQUIRE_LINE, WINDUP, COMMIT, RECOVER, FLEE. Sensors must have current visibility of both relevant cable segment and target neighborhood. Choose the closest reachable segment within 300 WU and a feasible approach cone. Lock the attack bearing on entry to COMMIT. At most one cut receipt per attackId. Losing the line during WINDUP cancels without damage and still consumes a short cooldown. A stunned or displaced cutter cannot complete the cut merely because the animation timer expired.",
+      "physics": "The cutter is mass 28, intentionally throwable compared with heavier specialists. Attack resolution uses a swept segment/capsule against the actual attachment segment in the sim plane; separate visual height has no effect. Only the attachment owner can remove a joint. Emit a documented proposed cut intent with source id, target attachment id, attack id and observed tick, then accept or reject in that owner. Cutting deals no extra automatic hull damage.",
+      "choice": "Release your line before the pass, change its geometry, displace the attacker, use another object as cover, or kill it. These are independent answers; do not require a particular purchased module.",
+      "failure": "A cut releases momentum exactly as a manual cut does. No reset-to-zero velocity, punitive explosion, or temporary inability to reattach. A simultaneous player manual release and enemy cut produces one removal with deterministic ordering.",
+      "voice": "Enemy has no conversational personality. A sharp ratcheting spool announces arming; one rising ceramic scrape ends when the attack commits. Optional hostile barks are short and subordinate to warning audio.",
+      "lines": [
+        [
+          "first_scan",
+          "Scissorwake \u2014 cuts exposed lines on a committed pass."
+        ],
+        [
+          "windup",
+          "Cutter opening. Move the line or move the ship."
+        ],
+        [
+          "miss",
+          "Cut missed. Jaws resetting."
+        ],
+        [
+          "disable",
+          "Blade drive disabled."
+        ],
+        [
+          "salvage",
+          "A cutter without a cutting edge. Finally, an honest ship."
+        ]
+      ],
+      "integration": [
+        "src/data/enemies.js",
+        "src/systems/tacticalAI.js",
+        "src/systems/masslineThreats.js",
+        "src/combat/attachments.js"
+      ],
+      "state": "attackPhase, phaseStartTick, lockedBearing, targetAttachmentId, attackId, lastResolvedAttackId. Store through existing entity AI state; no render-owned attack clock.",
+      "tests": [
+        "Move the line outside the swept corridor during windup: no cut.",
+        "Render at 15 FPS: damage/cut still occurs on the identical fixed tick.",
+        "Throw the cutter backward: it cannot cut a line it never intersects.",
+        "Release manually on the impact tick: exactly one detach, no exception.",
+        "Turn off effects/audio: shape and textual threat still expose the counterplay."
+      ],
+      "metrics": "After one demonstration, four of five testers can name an available counter and detect the next windup before contact. Track cheap-feeling unavoidable cut complaints as a failure, not a difficulty achievement.",
+      "reward": "Use the existing specialist payout band after campaign tuning. Crucible copy has zero campaign bounty and no campaign loot.",
+      "special": "Do not weaken global breakTension. The blades communicate attack intent; they do not need complex skinned animation.",
+      "deps": [],
+      "id": "SF20-07",
+      "number": 7,
+      "name": "Scissorwake",
+      "slug": "scissorwake"
+    },
+    {
+      "category": "Enemy / mobile environmental hazard",
+      "wave": 2,
+      "gap": "The arsenal can feel abstract when heat and area damage are only meters. A venting industrial hull turns a readable thermal state into a manipulable physical opportunity.",
+      "overlap": "Not the Mirrorjaw Foreman or Forge Regent: no reflective prow, no enlarged boss health bar. Reuse volatileExposure, fields and damage owners for a coolant/heat interaction, with a data-defined new recipe only where existing primitives cannot express it.",
+      "evidence": [
+        "R03",
+        "R05",
+        "R06",
+        "R07"
+      ],
+      "pitch": "A stolen furnace tug carries two vulnerable coolant casks and a broad dorsal radiator. Its powerful burn commits it to a hot interval; the casks can be shot or displaced to change where the danger occurs.",
+      "encounter": "A Kilnback warms up behind ordinary cover. Its radiator shutters open, the casks visibly frost, and a short forward thermal jet paints a narrow lane. A broken cask leaves a cooling patch that suppresses the next jet locally, letting the player reposition rather than simply out-DPS the ship.",
+      "placement": "First in a small Ceres industrial encounter or middle Crucible room after basic area hazards are understood. Cap one near the player until the counter is learned; avoid pairing with Scissorwake during its first introduction.",
+      "loop": "Read shutters and frost \u2192 bait a burn \u2192 displace a cask or move around the jet \u2192 use the brief cool interval. Environmental placement is more important than total health.",
+      "silhouette": "Short, wide furnace body with a rectangular dorsal radiator comb and two pale cylindrical casks on external brackets. Dark red lacquer identity stripe; hot machinery remains localized amber-white.",
+      "size": [
+        29,
+        24,
+        9
+      ],
+      "radius": 23,
+      "mass": 180,
+      "triangles": [
+        26000,
+        10400,
+        4700
+      ],
+      "draws": 11,
+      "residents": 2,
+      "parts": [
+        [
+          "ROOT_KILN",
+          "Chunky loft 28\u00d714\u00d77 m with blunt insulated front and a deep rear engine well.",
+          "Central root.",
+          "One compound hull, mass 150 plus two 15-unit casks."
+        ],
+        [
+          "RADIATOR_SLATS",
+          "Six large parallel plates, 8\u00d70.8\u00d70.25 m, spaced 0.8 m apart; slats form a comb overhead.",
+          "Each local X hinge, travel 0\u201355 degrees.",
+          "Render-only."
+        ],
+        [
+          "CASK_L/R",
+          "Two 7\u00d73 m cylinders with protective end rings and break collars.",
+          "X=-1,Y=\u00b110; child roots until severed.",
+          "One capsule each; dynamic mass 15 after release."
+        ],
+        [
+          "JET_MOUTH",
+          "Deep rectangular 5\u00d71.8 m opening in prow with thick ceramic lip.",
+          "HOOK_JET at X=14.",
+          "Damage originates in sim field, not glowing plane."
+        ],
+        [
+          "COOLANT_LINES",
+          "Four thick supported pipes modeled as low-segment sweeps.",
+          "Between casks and radiator.",
+          "None."
+        ]
+      ],
+      "animation": [
+        [
+          "Preheat",
+          1.2,
+          "Slats rise, jet aperture brightens with no damage until 72 ticks complete."
+        ],
+        [
+          "Burn",
+          1.8,
+          "Forward jet follows a bounded cone fixed to current hull heading, with deliberately slow turning."
+        ],
+        [
+          "Vent",
+          2.5,
+          "Shutters stay open; brightness falls; casks visibly shed condensation."
+        ],
+        [
+          "Cask rupture",
+          0.45,
+          "Detach ring and emit a brief radial puff; no full-screen white flash."
+        ]
+      ],
+      "ai": "APPROACH_COVER, PREHEAT, BURN, VENT, RETREAT. Choose a lane only from observed target motion and line of sight. At PREHEAT entry record an aim heading; turning authority during BURN is capped so strafing is real counterplay. Coolant cancellation is a fact from the field/volatile owner, not a cosmetic particle overlap. The unit will prefer safety when both casks are gone rather than becoming mysteriously stronger.",
+      "physics": "A released cask inherits the parent point velocity and can be towed. Cooling patch is a bounded field with radius 90 WU and proposed lifetime 4 s; it reduces this attack\u2019s thermal output, not arbitrary global weapon heat. The jet uses a 160 WU range, 25-degree half-angle proposal, with occlusion through the existing damage-query owner. Do not perform per-particle collision or create infinite coolant from fragments.",
+      "choice": "Break a cask early for a safe but less dramatic window; tow it to shape the upcoming fight; bait the jet into cover; or circle to the exposed rear. Hull destruction is valid but not the only satisfying answer.",
+      "failure": "Destroying a cask while next to civilians can create an ordinary hazard incident only if the implemented effect actually harms them. Avoid showing harmless vapor as a damaging cloud. Save during BURN resumes the remaining phase once, not a fresh full-duration jet.",
+      "voice": "Mostly industrial sound: a compressor inhalation, radiator clacks and a pressured roar. Pilot is impatient, self-preserving and more interested in keeping the stolen machine intact than dying theatrically.",
+      "lines": [
+        [
+          "preheat",
+          "Stand clear. This rig does not turn cold quickly."
+        ],
+        [
+          "cask_lost",
+          "Coolant gone. Pulling back."
+        ],
+        [
+          "scan",
+          "Kilnback \u2014 external coolant casks; slow turn during a burn."
+        ],
+        [
+          "vent",
+          "Burn exhausted. Radiator exposed."
+        ],
+        [
+          "flee",
+          "Keep the scrap. I am keeping the engine."
+        ]
+      ],
+      "integration": [
+        "src/data/enemies.js",
+        "src/systems/tacticalAI.js",
+        "src/systems/volatileExposure.js",
+        "src/systems/fields.js"
+      ],
+      "state": "phase, phaseStartTick, caskIds[2], caskReleased[2], currentAttackId. Cooling fields persist only through their existing field owner.",
+      "tests": [
+        "Disable VFX: the same field tests produce the same damage and cancellation.",
+        "Break cask during save/load boundary: only one field appears.",
+        "Hide behind authored cover: the jet respects the chosen occlusion contract.",
+        "Move cask after detachment: no remaining parent collider blocks it.",
+        "Provoke the first burn from every approach: warning always precedes damage."
+      ],
+      "metrics": "Players discover at least two counters in open testing. Record whether casks are perceived as interactive before explaining them.",
+      "reward": "Normal medium-specialist budget; one salvageable coolant component at most, attributed to the actual cask. No stacked drop from parent plus detached item.",
+      "special": "Cooling vapor is an authored thin ribbon cluster near the ground plane, not a camera-facing opaque square or a screen-filling fog wall.",
+      "deps": [
+        7
+      ],
+      "id": "SF20-08",
+      "number": 8,
+      "name": "Kilnback",
+      "slug": "kilnback"
+    },
+    {
+      "category": "Enemy / cargo-first thief",
+      "wave": 2,
+      "gap": "A hostile encounter can threaten something other than the player\u2019s life. A visibly cargo-motivated thief lets a player win by recovering a thing, not exterminating every enemy.",
+      "overlap": "Mine-Layer Jackal already prefers cargo/wreck claims. Pallet Jack must add the actual staged lift-and-escape interaction and broad physical fork silhouette; do not merely duplicate that preference in a new stats row.",
+      "evidence": [
+        "R03",
+        "R05",
+        "R06",
+        "R07",
+        "R09"
+      ],
+      "pitch": "A pirate forklift in space: two broad tines, a crosswise cargo clamp and an exposed reverse-thrust bank. It grabs a valuable loose pallet and flees awkwardly with the mass visible on its nose.",
+      "encounter": "After a fight near a real cargo transfer, the thief approaches a loose valuable pallet with its clamp open. The victim hails. The player can interrupt before clamping, pull the pallet away, disable the clamp, or let the theft happen and follow the marked load to a fence.",
+      "placement": "Ceres or Tethys cargo activity pocket. Only spawn when an eligible real cargo body exists and spawnBudget permits. One active thief per incident. Never create free cargo simply to give the thief something to do.",
+      "loop": "See the target pallet \u2192 contest the physical approach \u2192 recover or pursue \u2192 deliver or steal for yourself. A lost immediate fight can become an investigation using the cargo provenance trail.",
+      "silhouette": "Squat forklift H-shape with two thick forward tines separated by a large rectangular gap; cargo clamp bridges them. The silhouette visibly changes when loaded. Mustard stripe with dark steel and a small asymmetric cockpit.",
+      "size": [
+        25,
+        22,
+        6
+      ],
+      "radius": 20,
+      "mass": 100,
+      "triangles": [
+        22000,
+        8800,
+        4000
+      ],
+      "draws": 10,
+      "residents": 1,
+      "parts": [
+        [
+          "ROOT_JACK",
+          "Rear block loft 14\u00d710\u00d75 m; two 12\u00d72 m forward plate tines starting at X=0,Y=\u00b17.",
+          "Center at X=-3.",
+          "Three convex pieces preserving the open fork gap."
+        ],
+        [
+          "CLAMP",
+          "Crossbeam 14\u00d71.4\u00d71.2 m with two downward padded jaw shapes.",
+          "Slides along +X from 2 to 10 m.",
+          "Sensor trigger during grab; physical load constraint owned by sim."
+        ],
+        [
+          "LIFT_CARRIAGE",
+          "Two visible telescoping rails connecting clamp to body.",
+          "Fixed to hull and clamp.",
+          "No moving concave collision."
+        ],
+        [
+          "REVERSE_BANK",
+          "Four supported side nozzles pointing forward, visibly larger than aft thrusters.",
+          "HOOK_REVERSE_1..4.",
+          "Hull proxy only."
+        ],
+        [
+          "CARGO_SOCKET",
+          "Open receiving center between tines, visibly sized for one pallet class.",
+          "X=7,Y=0,Z=0.",
+          "No invented item mesh: draw the actual captured object."
+        ]
+      ],
+      "animation": [
+        [
+          "Target",
+          0.6,
+          "Clamp lifts slightly and points to the selected pallet, accompanied by a target bracket only on inspection."
+        ],
+        [
+          "Grab",
+          0.8,
+          "Clamp closes over 48 ticks; acquisition can fail until the owner accepts actual proximity."
+        ],
+        [
+          "Loaded",
+          1.0,
+          "Nose pitches cosmetically up to 3 degrees while real acceleration changes from actual mass."
+        ],
+        [
+          "Drop",
+          0.35,
+          "Open clamp only after joint release; emit one mechanical clunk."
+        ]
+      ],
+      "ai": "SEARCH_CARGO, CLAIM_APPROACH, GRAB, ESCAPE, NEGOTIATE, DISABLED. Search uses nearby cargo index and visible value classes, not the player\u2019s hidden inventory. Reserve the target locally; if another actor moves it, recompute the approach. Escape direction is a real exit route. On low hull, offer to release the item through a simple existing parley choice, never force a cinematic. The clamp cannot steal an item from an open UI inventory slot.",
+      "physics": "Capture only a body within 12 WU of the cradle and below 15 WU/s relative speed after the windup. Cargo mass adds through the actual attachment/compound mechanism; never lower the cargo\u2019s mass invisibly. A player Massline can contest the object under the existing attachment rules; do not silently delete the player\u2019s line. Release transfers neither legal ownership nor credits.",
+      "choice": "Save the cargo, save the trader, chase the thief, negotiate a drop, or exploit the situation. The fence trail is optional; it must not let theft create an unlimited sequence of loot and new enemies.",
+      "failure": "If the thief crosses the sector boundary with the object, persist its cargo id and route endpoint. A later recovery returns that same provenance, not a cloned replacement. When no safe escape path exists, choose DROP_AND_FLEE rather than clipping through a station.",
+      "voice": "A hustler who believes every crime is a logistics problem. Short, evasive, amusing without glamorizing a random massacre. Cargo loss\u2014not damage\u2014is the primary trigger for panic.",
+      "lines": [
+        [
+          "approach",
+          "Unsecured freight. Tragic oversight."
+        ],
+        [
+          "grab",
+          "I have a delivery to make. It has recently changed owners."
+        ],
+        [
+          "contested",
+          "That is not a handle for two ships."
+        ],
+        [
+          "surrender",
+          "Clamp is open. We can all become less involved."
+        ],
+        [
+          "escape",
+          "Follow the paperwork. I will follow the exit."
+        ]
+      ],
+      "integration": [
+        "src/data/enemies.js",
+        "src/systems/tacticalAI.js",
+        "src/systems/cargo.js",
+        "src/systems/pirateParley.js"
+      ],
+      "state": "targetCargoId, grabbedCargoId, grabAttackId, routeEndpointId, incidentId. Cargo owner persists ownership and the body; do not copy cargo data into enemy loot.",
+      "tests": [
+        "Move the pallet during grab: clamp misses honestly.",
+        "Destroy thief carrying cargo: one surviving pallet, no duplicate loot item.",
+        "Contest with Massline: established attachment arbitration stays deterministic.",
+        "Cross-sector escape and reload: exactly the same cargo provenance returns.",
+        "No eligible cargo: no useless thief spawn."
+      ],
+      "metrics": "At least one test encounter ends with recovered cargo and a living thief. Verify players understand that this counts as an effective intervention.",
+      "reward": "Recovery contract reward keyed to the victim\u2019s cargo id; thief bounty follows normal law only. Do not award both a salvage sale and a recovery payment for the same transfer.",
+      "special": "Actual cargo must remain visible between the forks. This loaded-versus-empty silhouette is the design\u2019s central communication channel.",
+      "deps": [
+        3
+      ],
+      "id": "SF20-09",
+      "number": 9,
+      "name": "Pallet Jack",
+      "slug": "pallet_jack"
+    },
+    {
+      "category": "Enemy / bounded deception",
+      "wave": 3,
+      "gap": "A target-priority puzzle can create combat variety without more damage types. It must reward observation rather than hide the true enemy behind arbitrary invisibility.",
+      "overlap": "Quiet Ghost already supplies stealthy ranged repositioning. Mothlight is a visible decoy-deploying tender, never cloaked and never an omniscient sniper. Its decoys are real destructible entities with cheap behavior.",
+      "evidence": [
+        "R03",
+        "R05",
+        "R07"
+      ],
+      "pitch": "A triangular tender releases two small lamp drones that imitate a firing charge. The real weapon has a unique physical shutter opening, while decoys lack engines and drift. Reading motion defeats the illusion.",
+      "encounter": "Introduce one tender at medium distance with only one decoy on its first encounter. A lamp imitates the weapon glow but not the real shutter silhouette. A scan labels verified decoys, and a single hit extinguishes one. The tender\u2019s eventual shot is always separately telegraphed.",
+      "placement": "Later Crucible mixed-role rooms or a surveyed hostile frontier pocket after ranged enemies are familiar. Maximum one tender and two decoys nearby. No decoy may occlude objective markers or imitate accessibility-critical UI.",
+      "loop": "Compare shutter/motion \u2192 identify or scan \u2192 disable a decoy or close on the tender \u2192 use its resupply interval. Novices can brute-force two cheap decoys; experts read the real threat immediately.",
+      "silhouette": "A shallow triangular black-copper hull with two large dish-wing recesses and a clearly visible central iris. Lamp drones are small four-fin needles without engine bells. The real hull is always physically larger.",
+      "size": [
+        24,
+        26,
+        5
+      ],
+      "radius": 21,
+      "mass": 60,
+      "triangles": [
+        24000,
+        9600,
+        4300
+      ],
+      "draws": 11,
+      "residents": 1,
+      "parts": [
+        [
+          "ROOT_MOTH",
+          "Triangular plate outline (-10,-12),(-10,12),(13,0), thickness 2.2 m, with raised center ridge.",
+          "Center.",
+          "One convex triangular hull."
+        ],
+        [
+          "DISH_L/R",
+          "Two shallow concave visual bowls radius 4.5 m inset into supported wings, with dark rims.",
+          "X=-2,Y=\u00b17,Z=1.2.",
+          "No concave physics; hull is enough."
+        ],
+        [
+          "REAL_IRIS",
+          "Six wedge plates forming a 3 m aperture at the nose; open by rotating each petal 24 degrees.",
+          "Pivots around X=8,Y=0,Z=1.5.",
+          "Targetable subsystem proxy if existing system supports it."
+        ],
+        [
+          "LAMP_A/B",
+          "2.8 m needles with four 0.6 m fins and a luminous cap; no thruster geometry.",
+          "Independent roots on release sockets.",
+          "One small spherical collider each, one hit to extinguish."
+        ],
+        [
+          "SUPPLY_HATCHES",
+          "Two dorsal sliding doors exposing drone sockets.",
+          "Slide along Y.",
+          "None."
+        ]
+      ],
+      "animation": [
+        [
+          "Release",
+          0.8,
+          "One hatch opens and one lamp physically leaves its socket. No sudden duplicate glows."
+        ],
+        [
+          "False charge",
+          1.1,
+          "Lamp cap brightens with the same envelope but has no shutter motion or recoil."
+        ],
+        [
+          "True charge",
+          1.1,
+          "Central iris visibly opens; small recoil linkage braces. Damage follows a fixed tick gate."
+        ],
+        [
+          "Reload",
+          3.0,
+          "Iris closes and hatches remain dark; resupply cannot create more than the cap."
+        ]
+      ],
+      "ai": "DEPLOY, OBSERVE, TRUE_CHARGE, FIRE, REPOSITION, RELOAD. Decoys follow ballistic drift plus tiny bounded damping, not the tactical AI stack. Real shots use normal visibility and aim constraints. Choose which lamp flashes using a local seeded sequence; never key deception to the player\u2019s unobserved cursor. Destroyed decoys consume stock for that encounter: maximum four launches total, two concurrent.",
+      "physics": "Decoys have real positions, mass 2 and hull 1. A pulse hit produces an ordinary collision and extinguishes the source. They can be shoved, revealing passive drift; they must not teleport to remain in formation. Cap the false glow\u2019s screen coverage. No fake projectile ever deals damage; real weapon shots come only from the tender\u2019s weapon owner.",
+      "choice": "Scan, inspect physical shutter motion, shove a suspected lamp, clear the decoys cheaply, or close under cover. Provide an accessibility option to add a learned decoy badge after the first confirmed identification without removing normal challenge for everyone.",
+      "failure": "An occluded real shutter must not permit an unseen unavoidable shot; retain directional warning when a live attack can reach the player. Saving after a lamp is destroyed cannot restore its stock. If scan tools are unavailable, silhouettes and motion are sufficient.",
+      "voice": "Sparse synthetic radio mimicry restricted to authored combat tones, never copies named allies or critical navigation messages. The pilot is a cautious showman who retreats when its apparatus is stripped.",
+      "lines": [
+        [
+          "scan",
+          "Mothlight \u2014 two lamps, one weapon. Watch the shutter."
+        ],
+        [
+          "identified",
+          "Decoy confirmed. No drive signature."
+        ],
+        [
+          "true_charge",
+          "Central shutter opening."
+        ],
+        [
+          "stripped",
+          "The performance appears to be over."
+        ],
+        [
+          "retreat",
+          "No audience worth dying for."
+        ]
+      ],
+      "integration": [
+        "src/data/enemies.js",
+        "src/systems/tacticalAI.js",
+        "src/systems/scanner.js",
+        "src/systems/weapons.js"
+      ],
+      "state": "phase, stockRemaining<=4, activeDecoyIds<=2, localRngState, nextAttackTick. Decoy entities persist through the normal entity owner.",
+      "tests": [
+        "No scanner or audio: player can still distinguish real shutter geometry.",
+        "Kill all lamps and reload: stock does not replenish.",
+        "Change render FPS: local sequence and attack tick stay equal.",
+        "Push a lamp: it drifts physically rather than snapping back.",
+        "Hide the actual weapon behind cover: its shot respects occlusion."
+      ],
+      "metrics": "Measure identification accuracy after one successful observation; do not demand first-sighting clairvoyance. Reject a design where players call it random even after the rule is explained.",
+      "reward": "Tender pays one normal specialist bounty. Lamps pay nothing and drop nothing; otherwise deception becomes a farming exploit.",
+      "special": "No full-screen postprocessing, fake damage indicators, copied player reticles, or misleading screen-reader labels. Deception happens in the fiction, not in the interface contract.",
+      "deps": [
+        7
+      ],
+      "id": "SF20-10",
+      "number": 10,
+      "name": "Mothlight",
+      "slug": "mothlight"
+    },
+    {
+      "category": "Industrial place / causal traffic puzzle",
+      "wave": 2,
+      "gap": "The living economy is richest when its cargo chain is visible and physically interruptible. A small authored transfer junction makes causality readable without adding a whole new economy.",
+      "overlap": "Reuse npcJobsRuntime, environmentalMachinery and actual cargo transfers. No decorative orbiting traffic, no substitute route engine, and no new magnetic force law when the existing field machinery suffices.",
+      "evidence": [
+        "R02",
+        "R03",
+        "R07",
+        "R08",
+        "R09"
+      ],
+      "pitch": "Three freight lanes meet at a rotating service fork. The player can clear a jam, redirect a floating pallet into the correct receiving berth, or deliberately cause a diversion\u2014and see the downstream shipment change.",
+      "encounter": "On an existing Tethys freight route, one pallet is wedged between a stopped transfer sled and a bent guide. A hauler waits outside the throat rather than phasing through it. The player can tow the pallet clear, push the sled back, or accept a job to route the displaced cargo to the right berth.",
+      "placement": "Author a candidate zone in sector_tethys_junction, then choose coordinates only after checking existing zones, anchors and worldRadius. Use a nonzero sector origin for all atlas tests. Keep the yard optional and preserve an open bypass route.",
+      "loop": "Observe the jam \u2192 identify whose load is waiting \u2192 manipulate real bodies \u2192 allow the shipment to continue \u2192 inspect one factual price/supply consequence later. Repeat incidents draw from actual traffic tasks, not arbitrary continuous chaos.",
+      "silhouette": "A Y-shaped lattice yard with three blunt receiving mouths, a central triangular transfer platform and a single off-axis rotating gantry. Clear negative space between arms; amber lane lights mark direction.",
+      "size": [
+        120,
+        110,
+        18
+      ],
+      "radius": 90,
+      "mass": 0,
+      "triangles": [
+        38000,
+        15000,
+        6800
+      ],
+      "draws": 14,
+      "residents": 1,
+      "parts": [
+        [
+          "YARD_ROOT",
+          "Three Forge truss arms at 0,120,240 degrees, length 45 m from a central 18 m annulus. Use repeated beam geometry.",
+          "Sector-local anchor.",
+          "Fixed compound boxes per arm; never one encompassing convex collider."
+        ],
+        [
+          "TRANSFER_FORK",
+          "Two 12 m tines on a 9 m rotating base plate, with all gears under a dark cover.",
+          "Z pivot at yard center.",
+          "Kinematic proxy only if motion is physically enabled."
+        ],
+        [
+          "RECEIVERS_A/B/C",
+          "Three 14\u00d710 m open berths with contrasting solid floor ribs.",
+          "At each arm end.",
+          "Separate sensor volumes with stable receiver ids."
+        ],
+        [
+          "SLED",
+          "One 7\u00d75\u00d72 m cartlike cargo base; oversized guide bumpers.",
+          "Independent dynamic root.",
+          "One box, proposed mass 40."
+        ],
+        [
+          "GUIDE_BENT",
+          "A visibly deformed 9 m guide rail and a large handgrip/tow lug.",
+          "Bolted at incident berth.",
+          "Two convex segments that match the bend."
+        ]
+      ],
+      "animation": [
+        [
+          "Normal cycle",
+          8.0,
+          "Gantry rotates only after the task owner reserves a receiver and clearance is valid."
+        ],
+        [
+          "Jam",
+          0.4,
+          "Drive stops; one work lamp holds amber. No seizure-like pulsing."
+        ],
+        [
+          "Freed",
+          1.0,
+          "Actual clearance receipt starts a slow restart before normal speed."
+        ],
+        [
+          "Transfer",
+          2.0,
+          "Cradle lowers the real cargo object into a receiving volume; visual pose follows owner progress."
+        ]
+      ],
+      "ai": "The place has a job FSM, not an enemy brain: WAIT_TASK, RESERVE_BERTH, VERIFY_CLEAR, TRANSFER, RELEASE, JAM. Each job references a real cargo id, hauler id and destination. Scan or broadphase the small work volume at 5 Hz, with immediate invalidation on object changes. A traffic ship with a reserved berth holds outside until clearance. A watchdog changes deadlocked jobs into a visible repair request, never deletes the obstruction silently.",
+      "physics": "Use static collision for the structure and only one active kinematic gantry. For moving solid parts, advance through the authoritative physics owner with swept clearance; a cosmetic rotation must never shove ships. Pallets retain their real masses. Clamp impulses and transfer speeds to existing industrial handling limits; do not weld the player to machinery because a sensor overlapped.",
+      "choice": "Clear the cargo, move the sled, tow the bent guide if the authored joint allows it, take an alternate delivery, or leave. Smuggling can use an actual vacant berth, but cannot become a UI exploit that teleports inventory.",
+      "failure": "Wrong receiver refuses before destroying cargo and names the mismatch. Player-caused obstruction can create a restitution job. If the entire mechanism is destroyed, routes use the visible bypass and the yard becomes salvage, not a global economic deadlock.",
+      "voice": "Human dispatcher with clipped logistics phrases, noticeably relieved when a jam clears. Machinery itself communicates through clutches and relay clicks, not a sentient station personality.",
+      "lines": [
+        [
+          "jam",
+          "Berth two is waiting on that pallet. The rest of the shift is waiting on berth two."
+        ],
+        [
+          "wrong_berth",
+          "Wrong receiver. Keep the load; take the outside lane."
+        ],
+        [
+          "restart",
+          "Clearance confirmed. Gantry moving in three."
+        ],
+        [
+          "diversion",
+          "That shipment is no longer on its original route."
+        ],
+        [
+          "complete",
+          "Line moving. Everyone downstream just got their afternoon back."
+        ]
+      ],
+      "integration": [
+        "src/data/authoredPlaces.js",
+        "src/systems/environmentalMachinery.js",
+        "src/systems/npcJobsRuntime.js",
+        "src/systems/cargo.js"
+      ],
+      "state": "yardId, mechanismHealth, activeJobId, jamCauseIds<=4, receiverReservations[3]. Actual goods, prices and routes remain in existing owners.",
+      "tests": [
+        "Add zone in nonzero-origin sector: atlas position round-trips exactly.",
+        "Jam gantry with a player ship: machinery stops, never tunnels.",
+        "Resolve cargo by another route: waiting job updates instead of hanging.",
+        "Save a reserved berth: one reservation and one cargo survive.",
+        "Destroy yard: bypass is usable and no credits/stock are fabricated."
+      ],
+      "metrics": "A tester can trace one pallet from origin to receiver and explain why a hauler is waiting. Reward visible causal comprehension, not a high decorative ship count.",
+      "reward": "Repair or delivery contract pay only. World stock changes solely from a validated delivered shipment; no price buff attached to a decorative completion animation.",
+      "special": "The transfer mouths need to read at the default camera. Limit moving geometry to one mechanism and reuse meshes across all three arms.",
+      "deps": [
+        3,
+        9
+      ],
+      "id": "SF20-11",
+      "number": 11,
+      "name": "Tethys Switchyard",
+      "slug": "tethys_switchyard"
+    },
+    {
+      "category": "Traveling market / memorable hub",
+      "wave": 3,
+      "gap": "A market screen can be useful yet placeless. A periodically visiting physical market creates anticipation and a recognizable social destination without requiring another permanent star system.",
+      "overlap": "Use existing market, traffic, station services and ORRERY. Not a replacement station shell or a new pricing algorithm. Visit schedule is simulated and inspectable, never real-world FOMO or a daily-login timer.",
+      "evidence": [
+        "R01",
+        "R02",
+        "R03",
+        "R04",
+        "R07",
+        "R08"
+      ],
+      "pitch": "A dark merchant carrier unfolds six gold reflector petals around a warm central service spine. From a distance it looks like a small borrowed sunrise; up close it is a fleet of people trading in its reflected light.",
+      "encounter": "A chart notice announces the carrier\u2019s next visit in sim-time terms and allows routing to its current berth. On arrival, it unfolds away from traffic and offers existing services with a small curated inventory tied to real stock. Leaving it does not punish the player or force a countdown purchase.",
+      "placement": "Alternate between existing safe Tethys and Ceres berths. First deploy only one fixed visit while proving services and geometry; add travel after that slice passes. Never jump the entire moving market while the player is docked.",
+      "loop": "Notice arrival \u2192 visit \u2192 inspect distinctive stock and a short local story \u2192 trade normally \u2192 see the carrier later with believable inventory changes. An expired visit leaves a next-destination record, not a vanished quest giver.",
+      "silhouette": "Six broad gold reflector petals attached around a dark hexagonal hub, one long warm-lit service spine crossing the center. Asymmetric cargo pods beneath one quadrant keep it from resembling a magic flower.",
+      "size": [
+        160,
+        150,
+        30
+      ],
+      "radius": 110,
+      "mass": 0,
+      "triangles": [
+        40000,
+        16000,
+        7200
+      ],
+      "draws": 14,
+      "residents": 1,
+      "parts": [
+        [
+          "HUB",
+          "Forge annulus outer radius 24 m and inner radius 14 m; six structural spokes.",
+          "Center at berth anchor.",
+          "Six convex wedges preserve central void."
+        ],
+        [
+          "PETAL_01..06",
+          "Each petal a chamfered quadrilateral 45 m long, broadening to 22 m. Gold stripe/bare-metal material with structural ribs beneath.",
+          "Z hinges at radius 22; hinges visibly supported.",
+          "Non-colliding while decorative; docking approach avoids their swept bounds."
+        ],
+        [
+          "SPINE",
+          "90\u00d712\u00d712 m central loft with warm windows and two distinct service mouths.",
+          "Fixed along X.",
+          "Two to four convex proxies; explicit docking corridor openings."
+        ],
+        [
+          "CARGO_BANK",
+          "Eight repeated 12 m containers on supported brackets in one quadrant.",
+          "Fixed roots, shared geometry.",
+          "Combine into two conservative proxies."
+        ],
+        [
+          "BEACON",
+          "A broad amber lens at the hub, not a point light illuminating the entire sector.",
+          "Central light socket.",
+          "None."
+        ]
+      ],
+      "animation": [
+        [
+          "Unfold",
+          12.0,
+          "Petals open one opposing pair at a time; block dock clearance until the physical access path is safe."
+        ],
+        [
+          "Market open",
+          8.0,
+          "Very slow reflected-light travel; windows stay stable and readable."
+        ],
+        [
+          "Departure prepare",
+          10.0,
+          "Close service only after all legitimate transfers finish; route docked players to an ordinary undock choice."
+        ],
+        [
+          "Transit",
+          0.0,
+          "Folded pose, same carrier identity; do not stream full distant detail."
+        ]
+      ],
+      "ai": "Itinerary FSM: ARRIVE, DEPLOY, OPEN, CLOSE_PENDING, FOLD, DEPART. Service availability is a truth from this state and the existing station-service owner. All transactions revalidate stock and credits. Arrival notices are deduped by visit id. Do not advance the schedule off wall clock or penalize an inactive save. A visit can extend safely when the player is docked.",
+      "physics": "Initial production version is a fixed-berth carrier with noninteractive reflectors outside the corridor. Its collision model is only the solid hub/spine. A later mobile version must demonstrate swept docking clearance and transfer authority before enabling movement. No per-petal rigid bodies are necessary; do not spend physics budget to animate a lamp shade.",
+      "choice": "Trade, browse, listen to a local rumor grounded in actual events, or leave. Curated stock highlights tradeoffs rather than presenting \u201cbuy now or miss forever.\u201d All necessary progression items remain obtainable elsewhere.",
+      "failure": "Departure cannot strand an active purchase. Interrupted deployment leaves the ordinary market screen unavailable with a clear reason. A missing asset presents a chart glyph and service fallback; it must not freeze boot at 90 percent.",
+      "voice": "Market operator Nemi speaks like a host who remembers the work of feeding a crowd. Background chatter is abstract and low-volume; only the selected speaker has semantic lines.",
+      "lines": [
+        [
+          "arrival",
+          "Borrowed Sun taking berth. Bring something worth a conversation."
+        ],
+        [
+          "open",
+          "The light is free. The spare parts are regrettably not."
+        ],
+        [
+          "repeat",
+          "Same ship, different cargo. That is usually a good story."
+        ],
+        [
+          "closing",
+          "We are packing slowly. Finish your business; no one is racing the door."
+        ],
+        [
+          "next_stop",
+          "Next berth is on the chart. We prefer being found."
+        ]
+      ],
+      "integration": [
+        "src/data/sectorAnchors.js",
+        "src/systems/traffic.js",
+        "src/systems/economy.js",
+        "src/ui/orrery/"
+      ],
+      "state": "carrierId, visitId, itineraryLeg, phase, phaseStartTick, serviceAnchorId. Store market stock only under the existing economy owner.",
+      "tests": [
+        "Buy on closing tick: exactly one accepted transaction or one clear denial.",
+        "Remain docked past planned departure: no forced teleport or lost ship.",
+        "Restart app after a long wall-clock gap: visit changes only under intended sim/offline rules.",
+        "Remove GLB from test server: chart and fallback service remain usable.",
+        "Inspect folded and open colliders: no invisible petal walls."
+      ],
+      "metrics": "Players recognize the hub from a 2-second silhouette exposure and can find one service without searching all tabs. Confirm anticipation comes from content, not countdown pressure.",
+      "reward": "Existing trade margins and authored mission offers. No artificial sale timer, premium currency, or new passive income source.",
+      "special": "A warm visual landmark must not saturate bloom or wash out combat threats. Petal glints are material response, not six huge dynamic spotlights.",
+      "deps": [
+        1,
+        2
+      ],
+      "id": "SF20-12",
+      "number": 12,
+      "name": "The Borrowed Sun",
+      "slug": "borrowed_sun"
+    },
+    {
+      "category": "Derelict shortcut / spatial reasoning",
+      "wave": 3,
+      "gap": "Ship size and attached cargo should sometimes matter spatially, not just numerically. A readable optional passage makes clearance, towing and momentum meaningful while exposing camera quality as a shipping gate.",
+      "overlap": "Existing places and physics already support obstacles. This is a deliberately authored alternate route, not a new traversal system. Do not release it until camera clipping and corridor collision tests pass.",
+      "evidence": [
+        "R02",
+        "R03",
+        "R04",
+        "R08"
+      ],
+      "pitch": "A broken freighter forms a giant sewing-eye silhouette. Small ships can thread a broad side opening; a towed load may need to be reoriented or taken around the outside. Nothing important is locked behind a ship-size purchase.",
+      "encounter": "A survey contract points out a lost recorder beyond a wreck. The long route is plainly visible. The short route passes through a tapered, lit opening with a charted clearance envelope. A cargo pallet behind the player changes the answer to \u201cwill this fit?\u201d",
+      "placement": "A new optional derelict-field subsite in sector_ceres_belt, outside existing critical lanes. Candidate position must be chosen after map collision/zone checks. An outside bypass must remain valid for the largest supported player hull and tow.",
+      "loop": "Inspect opening \u2192 compare body/load \u2192 align and coast through, reposition the load, or take the bypass \u2192 collect a record or complete a delivery. Repeat value comes from movement experimentation, not a hidden precision requirement.",
+      "silhouette": "An enormous oblong broken hull around a clear oval hole. Two missing panels expose ribs; a single cyan survey lamp illuminates the opening rim. The void is the central shape, not a dark tunnel with invisible hazards.",
+      "size": [
+        120,
+        80,
+        28
+      ],
+      "radius": 85,
+      "mass": 0,
+      "triangles": [
+        34000,
+        13600,
+        6100
+      ],
+      "draws": 11,
+      "residents": 1,
+      "parts": [
+        [
+          "RIM_SEGMENTS",
+          "Build twelve separate chamfered rib wedges around an ellipse 60\u00d734 m; exterior expands to 115\u00d776 m.",
+          "Shared root.",
+          "Compound convex wedges preserving the open hole exactly."
+        ],
+        [
+          "HULL_SKIN",
+          "Raised plates span only adjacent ribs; omit two large damaged panels. Deep darkmetal recesses.",
+          "Fixed to ribs.",
+          "Reuse rib proxies; no giant convex hull."
+        ],
+        [
+          "SHEARED_EDGE",
+          "Three visibly bent plate strips at one end, with a generous safe interior margin.",
+          "Fixed.",
+          "Only large protrusions get proxies."
+        ],
+        [
+          "SURVEY_LIGHTS",
+          "Six short solid cyan edge markers, with a directional arrow shape modeled near the broad entrance.",
+          "Rim surface.",
+          "None."
+        ],
+        [
+          "RECORDER",
+          "2 m dark box with a visible tow eye on a small platform beyond the opening.",
+          "Independent stable site object.",
+          "One small dynamic box if recovery uses towing."
+        ]
+      ],
+      "animation": [
+        [
+          "Derelict idle",
+          18.0,
+          "One loose outer cable sways minimally; passage geometry never changes cosmetically."
+        ],
+        [
+          "Survey",
+          1.0,
+          "A rim light sweep confirms observed clearance once; text gives units or \u201ctoo wide\u201d based on actual bounds."
+        ],
+        [
+          "Contact",
+          0.25,
+          "Local spark at contact point, not whole-wreck flash."
+        ],
+        [
+          "Recovered",
+          0.7,
+          "Recorder status light dims on accepted pickup; no duplicate prop remains."
+        ]
+      ],
+      "ai": "No creature AI. An encounter state machine tracks DISCOVERED, SURVEYED, ENTERED, RECOVERED and ABANDONED. Clearance guidance is a conservative geometric query against current player and attached-body swept bounds; present UNKNOWN when a reliable answer is unavailable. Never advertise a guaranteed trajectory through dynamic collisions. Existing pathfinding chooses the bypass unless a route is valid for the current convoy envelope.",
+      "physics": "Use a genuine compound collider, not a concave moving mesh. Static wreck collision must agree with the hole. Tow length and object orientation are real constraints. Do not auto-shrink the player or disable collision to help the shortcut. At design time give the intended small-hull route at least 1.5 times that hull\u2019s measured envelope; the final number follows actual asset bounds.",
+      "choice": "Thread the opening, shorten/reorient a load under existing Massline controls, detach and retrieve separately, or go around. Each option remains reversible; the recorder cannot be permanently wedged behind an unreachable collider.",
+      "failure": "If a player gets stuck, a visible reverse path and ordinary recovery service remain possible. No lethal crush trap on the only objective path. A camera behind geometry must use the established occlusion response; adding bespoke transparent skins per object is not a substitute for fixing the owner.",
+      "voice": "Mostly quiet. A recorded surveyor voice is concise and slightly amused, never a mystical whisper. The structure itself has no personhood.",
+      "lines": [
+        [
+          "discover",
+          "The Thimble Door. An optimistic name for a hole in a ship."
+        ],
+        [
+          "clearance",
+          "Hull clear. Attached load still needs room."
+        ],
+        [
+          "uncertain",
+          "Clearance uncertain. The outside route is open."
+        ],
+        [
+          "recorder",
+          "Recorder recovered. Survey complete."
+        ],
+        [
+          "bypass",
+          "Long way around. Still a perfectly good way around."
+        ]
+      ],
+      "integration": [
+        "src/data/authoredPlaces.js",
+        "src/data/collisionProxyManifests.js",
+        "src/render/camera.js",
+        "src/systems/salvage.js"
+      ],
+      "state": "siteDiscovered, surveyed, recorderOutcome, collisionRevision. Keep current clearance transient; recompute after ship or tow changes.",
+      "tests": [
+        "Sweep smallest and largest hulls across all rim directions: contacts match visible ribs.",
+        "Tow a wide crate through and around: no false CLEAR result.",
+        "Place camera inside every rim quadrant: player and exit remain legible.",
+        "Save while partly inside: reload never ejects or duplicates bodies.",
+        "Recover recorder after an interrupted attempt: objective remains reachable."
+      ],
+      "metrics": "Ask players to predict fit before entry; compare with actual outcome. Any confident false-clearance prediction caused by the UI blocks release.",
+      "reward": "Ordinary survey/recovery pay, regardless of shortcut or bypass. Faster traversal is its own benefit; no punishment for accessibility-minded route choice.",
+      "special": "Camera and collision reliability are dependencies, not aesthetic polish to do afterward. This concept stays unshipped until both pass.",
+      "deps": [
+        1,
+        3
+      ],
+      "id": "SF20-13",
+      "number": 13,
+      "name": "The Thimble Door",
+      "slug": "thimble_door"
+    },
+    {
+      "category": "Planetary site / harvest under changing conditions",
+      "wave": 3,
+      "gap": "The Anvil already exists as a physical planet. It needs a memorable, repeatable local livelihood that teaches its hazards and makes returning worthwhile, rather than another decorative planet.",
+      "overlap": "Extend zone_tethys_anvil, planets and planetRuntime. Do not add a second planet with identical sling/skim behavior, and never change the canonical planet field just to fit this content.",
+      "evidence": [
+        "R02",
+        "R03",
+        "R07",
+        "R08"
+      ],
+      "pitch": "A crescent chain of atmospheric harvest kites hangs above Anvil\u2019s storm band. Each kite collects a volatile condensate pod that can be retrieved between visibly forecast gust intervals.",
+      "encounter": "A skimmer foreman calls from a safe service platform outside the hot band. Three huge fins lean with the current; one harvest pod is ready. The player can wait for a calm interval or attempt a skilled timed tow while watching both cargo shock and planetary heat.",
+      "placement": "Within the existing Anvil site in sector_tethys_junction, at a validated band-relative offset derived from planetRuntime. Do not hardcode a second global center. Keep a safe holding pocket beyond the dangerous band and an unconditional escape direction.",
+      "loop": "Observe forecast \u2192 choose one harvest pod \u2192 skim/tow under real forces \u2192 exit before accumulated heat becomes critical \u2192 deliver to an existing receiver. Later storms vary timing and available harvest, not hidden force magnitude.",
+      "silhouette": "Three enormous crescent fins on sparse dark trusses, each with a bright amber condensate pod at its base. The planet fills part of the background but never becomes a second solid shell clipping through the camera.",
+      "size": [
+        150,
+        100,
+        35
+      ],
+      "radius": 100,
+      "mass": 0,
+      "triangles": [
+        36000,
+        14400,
+        6500
+      ],
+      "draws": 13,
+      "residents": 1,
+      "parts": [
+        [
+          "ANCHOR_TRUSS",
+          "Three fixed service posts on a shallow arc, 40 m apart; built from shared truss sections.",
+          "Local relative to planet site anchor.",
+          "Three small static proxy clusters, not one solid arc."
+        ],
+        [
+          "HARVEST_FIN_1..3",
+          "Each 30\u00d714 m curved plate approximated by five low-curvature segments, with a thick leading rib.",
+          "Pitch hinge along Y; \u00b118 degrees cosmetic flex within fixed safe envelope.",
+          "No collider on cosmetic flex; solid frame uses simple segments."
+        ],
+        [
+          "POD_1..3",
+          "4 m capsule with dark collar and amber core indicator.",
+          "Independent release roots at each service post.",
+          "Mass 10, dynamic capsule after accepted release."
+        ],
+        [
+          "SAFE_PLATFORM",
+          "20\u00d714 m service slab with unmistakable open holding mouth.",
+          "Outside heat band.",
+          "Simple convex deck boundaries."
+        ],
+        [
+          "WINDSOCK_MARKERS",
+          "Three articulated solid fins, not cloth simulation.",
+          "Frame-mounted Z hinges.",
+          "None."
+        ]
+      ],
+      "animation": [
+        [
+          "Calm",
+          10.0,
+          "Fins align toward the current; pod readiness indicator steady."
+        ],
+        [
+          "Forecast gust",
+          2.0,
+          "Windsock vanes deflect before actual gust onset; warning is shared with text."
+        ],
+        [
+          "Gust",
+          5.0,
+          "Fin lean follows actual field strength and direction, clamped to designed range."
+        ],
+        [
+          "Harvest release",
+          0.5,
+          "Collar opens after accepted interaction, leaving the pod\u2019s real body available to tow."
+        ]
+      ],
+      "ai": "Site scheduler uses sim ticks and the existing environmental machinery owner: CALM, FORECAST, GUST, RECOVERY. Planet forces remain authoritative. Harvest readiness accumulates only at the intended cadence and consumes a finite local resource budget. NPC skimmers read the same forecast and wait or retreat accordingly. New weather data may modulate an authored local effect only through the current field owner; no competing gravitational acceleration.",
+      "physics": "A harvested pod is fragileCargo with explicit shock/heat rules. Wind direction and strength must be disclosed by the same state that applies forces. Set proposed gust lead time to 120 ticks; after tests, tune with real stopping distances. A long tether does not extend heat immunity. Coupling release inherits point velocity and does not spawn a new copy on every hail.",
+      "choice": "Wait, make a single conservative harvest, combine a skilled slingshot with collection, or accept an NPC-assisted retrieval at a lower net return. Time pressure is voluntary; no main story item requires dangerous skimming.",
+      "failure": "Overheated or shattered pods reduce that run\u2019s yield. Losing a ship follows normal recovery; do not permanently lock the planet. A forecast after reload must preserve its remaining lead time, not jump directly to a damaging gust.",
+      "voice": "Foreman Alin sounds relaxed because they have learned not to argue with weather. Critical lines are clear, short and directional; ambient poetry waits until the player is safe.",
+      "lines": [
+        [
+          "intro",
+          "The orchard is ready. The weather has not agreed to help."
+        ],
+        [
+          "forecast",
+          "Gust in two. Hold outside the band."
+        ],
+        [
+          "safe",
+          "You are clear. Let the pod settle before the next burn."
+        ],
+        [
+          "loss",
+          "Lost the harvest, not the lesson. Come back cold."
+        ],
+        [
+          "repeat",
+          "Same sky. Different bad idea. Show me."
+        ]
+      ],
+      "integration": [
+        "src/data/authoredPlaces.js",
+        "src/systems/planetRuntime.js",
+        "src/systems/environmentalMachinery.js",
+        "src/systems/fragileCargo.js"
+      ],
+      "state": "sitePhase, phaseStartTick, podCycleIds[3], harvestOutcomes, localYieldBudget. Planet state and fields remain with existing owners.",
+      "tests": [
+        "Compare forecast direction with applied force at multiple points.",
+        "Load one tick before gust: full remaining warning is truthful.",
+        "Harvest the same pod twice: second request refuses.",
+        "Leave and return midcycle: resource and phase do not reset for profit.",
+        "Maximal tow length and large hull: safe pocket actually remains safe."
+      ],
+      "metrics": "Players can predict a gust and choose to wait without feeling punished. Measure failed exits against visible warnings and real stopping distance.",
+      "reward": "Finite harvested commodity through current cargo/economy; tune expected earnings near comparable active mining, not an infinite premium loop.",
+      "special": "Use existing planetary rendering. No new full-screen storm shader, extra atmosphere sphere, or heavy transparent layers in the first version.",
+      "deps": [
+        4,
+        11
+      ],
+      "id": "SF20-14",
+      "number": 14,
+      "name": "Anvil Storm Orchard",
+      "slug": "anvil_storm_orchard"
+    },
+    {
+      "category": "Ecological place / quiet observation",
+      "wave": 2,
+      "gap": "An ecology catalog can be extensive yet emotionally flat. An authored nursery lets a known nonhostile species demonstrate behavior that rewards restraint and observation.",
+      "overlap": "Use existing veil_ray species and its sensitivity to scans/weapons. Do not invent another parasite, retcon Vethari canon, or turn these fauna into tactical enemies. Cinder Nursery already exists; this is a small satellite encounter, not a replacement biome.",
+      "evidence": [
+        "R03",
+        "R08",
+        "R12"
+      ],
+      "pitch": "A sheltered arc of mineral ribs contains a few adult veil-rays and tiny juvenile silhouettes. Their motion opens a passage only when the player stops disturbing the waterless dark.",
+      "encounter": "Near an existing ecology site in Charon, a scan briefly scatters the rays. Passive observation reveals their preferred quiet corridor; cutting thrust and waiting allows them to re-form around a mineral arch. A survey can complete from a respectful distance without touching or capturing anything.",
+      "placement": "An additive, optional subsite near an existing Charon ecology anchor, after the scanner has identified veil_ray. Maintain the established revelation gates and at least-half-nonhostile sighting rule. Do not add a dense new spawn table.",
+      "loop": "Notice motion \u2192 observe how thrust/scan changes behavior \u2192 choose a quieter approach \u2192 document a route or return later. The reward is knowledge and a changed relationship to space, not biological loot grinding.",
+      "silhouette": "A pale mineral crescent cradling three translucent-looking but mostly opaque kite-shaped rays. Broad membrane wings, dark center keels and small warm filaments. Juveniles read as sparse smaller silhouettes rather than particle fog.",
+      "size": [
+        80,
+        60,
+        14
+      ],
+      "radius": 60,
+      "mass": 0,
+      "triangles": [
+        20000,
+        8000,
+        3600
+      ],
+      "draws": 10,
+      "residents": 1,
+      "parts": [
+        [
+          "NURSERY_RIBS",
+          "Seven static irregular rock ribs on a 60 m crescent; use deterministic rock seeds and broad fractured facets.",
+          "Site root.",
+          "At most seven simple convex proxies; preserve the passage."
+        ],
+        [
+          "RAY_ADULT",
+          "Reuse/remaster existing veil-ray asset: central keel plus two broad membrane surfaces, no humanoid face.",
+          "Root along +X.",
+          "Keep existing fauna collision contract; do not add lethal solid wings."
+        ],
+        [
+          "MEMBRANE_L/R",
+          "Each wing uses three broad strips with a small rig or vertex deformation; total adult mesh target 1800 triangles.",
+          "Root/wingtip controls, no more than 8 bones if skinned.",
+          "Render-only deformation."
+        ],
+        [
+          "JUVENILES",
+          "6\u20139 small instanced copies represented by one aggregate visual group.",
+          "Seeded offsets from site root.",
+          "No individual physics bodies."
+        ],
+        [
+          "FILAMENTS",
+          "Two short curved solid ribbons per adult, tapering to a point.",
+          "Keel sockets.",
+          "None."
+        ]
+      ],
+      "animation": [
+        [
+          "Forage",
+          4.5,
+          "Wing tips travel a slow phase-shifted wave; forward speed comes from fauna simulation, not root motion."
+        ],
+        [
+          "Notice",
+          0.8,
+          "Wings narrow and keel turns toward stimulus without charging."
+        ],
+        [
+          "Scatter",
+          1.2,
+          "Fold silhouette and accelerate using existing flee drive; animation follows actual drive."
+        ],
+        [
+          "Settle",
+          6.0,
+          "Adults return to formation gradually after stimulus decay, with no instant synchronized reset."
+        ]
+      ],
+      "ai": "Read FAUNA_SPECIES.veil_ray and extend site-specific goals rather than adding a second drive engine. Nursery state: QUIET, DISTURBED, RECOVERING. Weapon and scan stimuli use existing weights; sustained close thrust may map to the existing heat/vibration stimulus only if its semantics match. At most three adult simulation entities; juveniles are an aggregate. No omniscient detection of the player opening a menu.",
+      "physics": "The observed species uses collision-free semantic radius in current data. Preserve that. Rocks are the actual collision geometry; rays do not suddenly become high-mass blockers. A nursery route is behavioral guidance, not a locked physical gate. The player can always leave through the open outer arc.",
+      "choice": "Passively observe, take a quick disruptive scan, return after settling, or leave. A short scientific survey does not require perfect behavior or an unadvertised sequence. Violence remains possible under existing fauna rules but is not an efficient farming path.",
+      "failure": "Disturbance changes the encounter without permanent softlock. Settle timer freezes or advances according to the existing offscreen ecology model, not local render time. A killed adult stays represented in the site\u2019s persistent population outcome; juveniles are not endlessly reissued as loot.",
+      "voice": "No speaking animals and no sentimental child voices. Use gentle resonant membrane tones and distant radio from a surveyor, only after the observation window. Captions identify the stimulus/response for players unable to hear it.",
+      "lines": [
+        [
+          "survey",
+          "Veil-rays. They noticed the scanner before we noticed them."
+        ],
+        [
+          "disturbance",
+          "The formation broke when the drive flared."
+        ],
+        [
+          "settle",
+          "Engines quiet. Give them room."
+        ],
+        [
+          "observed",
+          "The route is there. They are using it, not guarding it."
+        ],
+        [
+          "return",
+          "Same shelter. Fewer disturbances in the log."
+        ]
+      ],
+      "integration": [
+        "src/data/alienFauna.js",
+        "src/data/alienEcology.js",
+        "src/data/authoredPlaces.js",
+        "src/systems/scanner.js"
+      ],
+      "state": "siteId, nurseryObservationFlags, populationOutcome, disturbanceTimestamp or tick through existing ecology owner. Do not create an independent fauna population registry.",
+      "tests": [
+        "Active scan disperses formation through existing stimulus rules.",
+        "Passive observation succeeds without hidden input sequence.",
+        "Mute sound and reduce motion: behavior and survey cues still understandable.",
+        "Exit/reenter repeatedly: no population or survey-reward duplication.",
+        "Use maximum graphics quality: juvenile aggregation does not create dozens of AI updates."
+      ],
+      "metrics": "Observe whether players voluntarily reduce thrust after seeing a response. Ask what caused the change; a correct causal explanation matters more than whether they chose to comply.",
+      "reward": "One survey reward and a codex observation. No loot from juvenile visuals and no repeatable money for disturbing then calming the group.",
+      "special": "Alien softness must be carried by broad membranes and motion, not multiple transparent shell layers or dense CPU particles.",
+      "deps": [],
+      "id": "SF20-15",
+      "number": 15,
+      "name": "Veil-Ray Nursery",
+      "slug": "veil_ray_nursery"
+    },
+    {
+      "category": "Fungal memory artifact / investigation",
+      "wave": 3,
+      "gap": "Alien lore becomes stronger when evidence can be manipulated and its uncertainty stays visible. A physical signal-recovery encounter can reveal memory without replacing mystery with a talking exposition machine.",
+      "overlap": "Keep the Vethari \u2192 fungus \u2192 host/ecology \u2192 shared-memory chain. Understory remains the technical namespace. This is damaged retained signal, not proof the hive has a human personality, not a new species and not the off-frame creators appearing as an NPC.",
+      "evidence": [
+        "R03",
+        "R08",
+        "R12",
+        "R13"
+      ],
+      "pitch": "Three colonized recorder housings repeat fragments of a lost work shift. Moving the housings into a clean relay geometry improves intelligibility, but never turns inference into certainty.",
+      "encounter": "After the existing second-stage ecology revelation, the player discovers a derelict with a corrupted maintenance phrase. A scanner shows three signal sources. Towing one clear of shielding debris exposes a date fragment; orienting another reveals a warning. The reconstructed record still has a missing segment clearly marked unknown.",
+      "placement": "At a verified existing Vethari-linked Charon site, not a new parasitic biome. Use the current revelation level as the gate; no readable story subtitles leak the secret before that gate.",
+      "loop": "Locate physical sources \u2192 reduce interference through towing/positioning \u2192 inspect recovered fragments \u2192 choose whether to quarantine, archive or leave the artifact. The interpretation remains a journal hypothesis tied to evidence ids.",
+      "silhouette": "A broken industrial recorder ring stitched by pale fungal fans. Three hard-edged memory boxes sit at unequal points around it, each with a distinct damaged antenna shape. Cyan device traces contrast with muted ivory growth; no giant glowing face.",
+      "size": [
+        46,
+        38,
+        10
+      ],
+      "radius": 34,
+      "mass": 0,
+      "triangles": [
+        24000,
+        9600,
+        4300
+      ],
+      "draws": 11,
+      "residents": 1,
+      "parts": [
+        [
+          "BROKEN_RING",
+          "Five of eight ring segments, 18 m outer radius and 13 m inner radius, with exposed dark cable raceway.",
+          "Site root.",
+          "Five convex static segments."
+        ],
+        [
+          "RECORDER_A/B/C",
+          "Three distinct 4\u00d73\u00d72 m boxes: one dish antenna, one fork antenna, one missing mast. Large physical handles.",
+          "Independent roots at unequal ring positions.",
+          "Mass 8 each; box colliders."
+        ],
+        [
+          "FUNGAL_FANS",
+          "Six broad scalloped plates anchored to damaged metal, 2\u20135 m wide, with modeled connection necks.",
+          "Child of host segment; never float.",
+          "Use existing ecology collision policy; usually none."
+        ],
+        [
+          "RELAY_ORGAN",
+          "One folded fan surrounding a recorder socket, with a dark central seam.",
+          "No humanoid facial arrangement.",
+          "Existing scan anatomy only."
+        ],
+        [
+          "SIGNAL_POINTS",
+          "One small stable emissive notch per recorder; intensity shows real signal quality.",
+          "Fixed to each recorder.",
+          "None."
+        ]
+      ],
+      "animation": [
+        [
+          "Dormant",
+          9.0,
+          "Very slight fan flex; signal notch holds low brightness."
+        ],
+        [
+          "Signal improves",
+          1.2,
+          "Physical indicator brightens proportionally to the real quality score; do not pulse words into existence randomly."
+        ],
+        [
+          "Memory fragment",
+          3.0,
+          "No speaker-mouth motion. A faint sequential illumination traverses the host wiring once."
+        ],
+        [
+          "Quarantine",
+          1.5,
+          "Existing containment state suppresses growth motion and signal presentation only after its confirmed transition."
+        ]
+      ],
+      "ai": "No tactical AI. A deterministic evidence FSM tracks UNREADABLE, SOURCE_LOCATED, FRAGMENT_RECOVERED, INTERPRETED, DISPOSITION. Signal quality is an explicit function of receiver distance, observed occlusion and recorder orientation, sampled at 5 Hz. Each recovered fragment has a fixed evidence id and canonical text. Do not use runtime LLM generation or invent facts from a variable seed. Offer competing interpretations as authored hypotheses where evidence is incomplete.",
+      "physics": "Three recorder bodies are genuine low-mass objects. Their signal orientation derives from sim rotation, not decorative fan pose. Occlusion checks operate against the existing spatial query representation, with a bounded ray count. Solving does not require matching a sub-degree angle: use broad acceptance bands with hysteresis, so a jittering physics object does not chatter between clear and unclear.",
+      "choice": "Recover enough to understand the immediate incident, pursue optional details, archive the artifact, quarantine it, or leave it in place. Disposition affects an actual later record or ecology state; it never awards omniscient truth.",
+      "failure": "Destroying a source permanently marks that fragment missing, but alternative earlier logs can support a partial conclusion. The main story never requires a fragile object that can be lost forever without a fallback. Recovered text remains in the journal after the physical source is gone.",
+      "voice": "Fragmented maintenance radio from the fictional lost crew: dry, intimate, imperfectly stitched. No imitation of the player or a real person. Distortion sits around intelligible words, not on top of captions; unrecovered text remains literally unknown.",
+      "lines": [
+        [
+          "fragment_a",
+          "\u2014third shift. Receiver two is answering before we call\u2014"
+        ],
+        [
+          "fragment_b",
+          "\u2014not a second crew. Same words. Wrong order\u2014"
+        ],
+        [
+          "fragment_c",
+          "\u2014leave the recorder attached. We need to know what it remembers\u2014"
+        ],
+        [
+          "interpretation",
+          "Recovered record. Source continuity remains unconfirmed."
+        ],
+        [
+          "quarantine",
+          "Signal isolated. The missing segment is still missing."
+        ]
+      ],
+      "integration": [
+        "src/data/alienEcology.js",
+        "src/data/alienEcologyState.js",
+        "src/systems/scanner.js",
+        "src/systems/story.js"
+      ],
+      "state": "recoveredFragmentIds<=3, disposition enum, recorderOutcomeIds[3], evidenceRevision. Hypothesis references evidence; never duplicate global revelation progress.",
+      "tests": [
+        "Before revelation gate: no captions or journal titles spoil readable content.",
+        "Move recorder through the threshold repeatedly: one fragment and one reward.",
+        "Destroy one source: partial conclusion and journal remain valid.",
+        "Render-only animation changes: signal score is unchanged.",
+        "Reload after quarantine: no restored emission or new biology spawn."
+      ],
+      "metrics": "Players distinguish what the record demonstrates from what it merely suggests. Interview for causal clarity and sustained curiosity, not perfect lore recall.",
+      "reward": "One archive/recovery contract payout and evidence-based codex content. Do not price harvesting signal fragments as a renewable commodity.",
+      "special": "Maintain the off-frame catastrophe. This is a small piece of a broken civilization\u2019s residue, not the moment the game explains the entire universe.",
+      "deps": [
+        15,
+        18
+      ],
+      "id": "SF20-16",
+      "number": 16,
+      "name": "Borrowed Voice",
+      "slug": "borrowed_voice"
+    },
+    {
+      "category": "Precursor site / noncombat protocol puzzle",
+      "wave": 3,
+      "gap": "Precursor machines already have strong protocol identity. A physical negotiation with one local institution can let players learn those rules through action instead of reading an exposition panel.",
+      "overlap": "Use existing auditor, courier and conservator roles, and protocol states\u2014not faction reputation. No mystical riddle machine, no new precursor race, no revelation of the creators.",
+      "evidence": [
+        "R03",
+        "R08",
+        "R13"
+      ],
+      "pitch": "Three enormous dark stone fingers surround an open aperture. A retained courier token must be physically returned to a matching cradle before the lock grants a temporary transit interval. The machine is exact, not malevolent.",
+      "encounter": "A player encounters an existing courier frame carrying a damaged token. At the nearby lock, the auditor issues a plain instruction: present the token in the visible cradle. The token can be returned, inspected at the cost of delaying transit, or left alone while the player takes the outside route.",
+      "placement": "Attach to a surveyed Verge machine site that already supports auditor/courier presence. Final sector/anchor id must be resolved from precursorMachines at implementation; this packet intentionally does not invent a canonical site id. An outer bypass must exist.",
+      "loop": "Read directive \u2192 inspect physical affordance \u2192 move the token into the correct receiver \u2192 see protocol state change \u2192 use or ignore the opened route. Later visits can reflect the token\u2019s disposition without a new reputation meter.",
+      "silhouette": "Three tall but broad radial fingers, each built from dark stacked prismatic slabs, with a central empty passage. One clean cyan seam per finger. A small asymmetrical receiving cradle makes the action legible from above.",
+      "size": [
+        100,
+        100,
+        45
+      ],
+      "radius": 80,
+      "mass": 0,
+      "triangles": [
+        36000,
+        14400,
+        6500
+      ],
+      "draws": 10,
+      "residents": 1,
+      "parts": [
+        [
+          "FINGER_A/B/C",
+          "Three 35 m stacked prisms around a radius-28 m circle, each leaning outward by 12 degrees; large bevels, no runic wallpaper.",
+          "Fixed root; +Z author-up.",
+          "Three compound static proxies with a true open middle."
+        ],
+        [
+          "CRADLE",
+          "A 10\u00d78 m wedge platform outside the aperture with one unmistakable shaped recess.",
+          "Site-local asymmetric X/Y offset.",
+          "Sensor volume plus simple solid lip."
+        ],
+        [
+          "TOKEN",
+          "4\u00d73\u00d71 m hexagonal prism with one clipped corner matching the cradle.",
+          "Independent courier cargo root.",
+          "Mass 6, one convex prism."
+        ],
+        [
+          "IRIS_LEAVES",
+          "Three broad plates retract radially 12 m.",
+          "One linear pivot per finger.",
+          "Kinematic colliders only during a tested physical gate operation."
+        ],
+        [
+          "PROTOCOL_SEAMS",
+          "Three short cyan inset bands that change state together without flashing.",
+          "Finger surfaces.",
+          "None."
+        ]
+      ],
+      "animation": [
+        [
+          "Interrogate",
+          1.5,
+          "A narrow light line traverses each finger toward the cradle; pair with exact directive text."
+        ],
+        [
+          "Accept",
+          2.0,
+          "Token seats only after validated position/orientation, then iris retracts."
+        ],
+        [
+          "Transit open",
+          8.0,
+          "Steady seam light, no rotation that hides the aperture."
+        ],
+        [
+          "Close pending",
+          2.0,
+          "Mechanism signals closure but waits until swept passage is clear; no crush trap."
+        ]
+      ],
+      "ai": "Existing machine protocol adapters own standing and directives. Site states: IDLE, REQUEST_TOKEN, VERIFY, OPEN, CLOSE_PENDING, REJECT. Verify token identity, actual cradle occupancy, and permitted protocol state; do not accept an arbitrary item with similar geometry. The auditor does not chase or retaliate merely because the player declines. If revocation triggers existing enforcement, show the documented consequence before a player choice that can cause it.",
+      "physics": "The token must be moved with current cargo/tether verbs. Broad angular tolerance, proposed \u00b125 degrees, and relative speed under 6 WU/s make the cradle deliberate but not finicky. Gate motion is a kinematic physics action with swept clearance and a fail-open state while occupied. The gate cannot set a moving ship\u2019s position or crush an entity because a UI timer expired.",
+      "choice": "Return the token, inspect it first, retain it and forgo the shortcut, or take the outside route. The interesting choice is between access and custody, not a disguised binary good/evil score.",
+      "failure": "Damaged or missing token produces an explicit denial and preserves the bypass. A gate interrupted during closing remains physically safe and visibly unavailable until reconciled. Protocol state survives save/load independently of whether the giant model is streamed in.",
+      "voice": "Procedural, exact, almost ordinary. Short phrases with no theatrical omniscience or mystical riddles. Mechanical audio is sparse sub-bass with a dry upper click; captions repeat the exact directive.",
+      "lines": [
+        [
+          "request",
+          "RETURN TRANSIT TOKEN TO EXTERNAL CRADLE."
+        ],
+        [
+          "wrong_object",
+          "OBJECT IDENTITY DOES NOT SATISFY REQUEST."
+        ],
+        [
+          "accept",
+          "CUSTODY ACCEPTED. TRANSIT INTERVAL OPEN."
+        ],
+        [
+          "occupied",
+          "CLOSURE DEFERRED. PASSAGE OCCUPIED."
+        ],
+        [
+          "retain",
+          "CUSTODY UNRESOLVED. OUTER ROUTE AVAILABLE."
+        ]
+      ],
+      "integration": [
+        "src/data/precursorMachines.js",
+        "src/data/authoredPlaces.js",
+        "src/data/contactHail.js",
+        "src/systems/scanner.js"
+      ],
+      "state": "siteProtocolReference, tokenId, tokenCustodyOutcome, gatePhase, remainingOpenTicks. Never store machine standing in ordinary faction reputation.",
+      "tests": [
+        "Present wrong token-shaped object: no access.",
+        "Occupy gate at closure: collider waits safely.",
+        "Retain token: outside route and main story remain valid.",
+        "Load mid-open: same protocol and safe gate state return.",
+        "Before the applicable revelation: machine behavior stays within current canon gates."
+      ],
+      "metrics": "A player can state the rule, carry it out, and explain the consequence without interpreting lore metaphors. The machine should feel strange because it is consistent.",
+      "reward": "Access and optional evidence, with only an existing survey contract payout. Do not make returned tokens a renewable cash faucet.",
+      "special": "One institution, one procedure. The monumental silhouette carries age; arbitrary glowing runes do not.",
+      "deps": [
+        13,
+        16
+      ],
+      "id": "SF20-17",
+      "number": 17,
+      "name": "The Open-Hand Lock",
+      "slug": "open_hand_lock"
+    },
+    {
+      "category": "Wreck microstory / causal investigation",
+      "wave": 1,
+      "gap": "A wreck should be more than a loot pi\u00f1ata. A small recoverable chain of physical evidence can teach provenance, restraint and partial success while making the world feel inhabited.",
+      "overlap": "Reuse aftermathWrecks, uniqueWrecks, salvage and the chronicler/provenance ledger. This is authored evidence for those owners, not a new universal story engine or omniscient replay system.",
+      "evidence": [
+        "R02",
+        "R03",
+        "R07",
+        "R09"
+      ],
+      "pitch": "A damaged ore carrier contains a dead transmitter, a detached load and a surviving tug log. Their positions tell a story: the crew cut cargo loose to keep a towline from dragging two ships into a collision.",
+      "encounter": "The player enters a small wreck field where a long towline fairlead is visibly torn sideways. A cargo pallet sits beyond the impact scar, not conveniently inside the wreck. Recovering three objects in any order reveals a risky rescue attempt rather than the pirate attack assumed by the first rumor.",
+      "placement": "One authored Ceres wreck pocket along a normal mining route. First clue is visible on ordinary approach; no pixel hunting. Use an existing survey/salvage contract to introduce it, with a large marked search volume and broad scanner detection.",
+      "loop": "Observe damage \u2192 select and recover evidence \u2192 revise an initial hypothesis \u2192 decide what to salvage and what to return \u2192 see a later local report cite only recovered facts. The order of discovery changes the reveal, not the underlying truth.",
+      "silhouette": "A split industrial carrier with a missing stern drive and a dramatically bent lateral tow fairlead. A detached orange cargo rack and a small black recorder form two distinct nearby points. Composition is readable as a three-object problem.",
+      "size": [
+        66,
+        42,
+        17
+      ],
+      "radius": 50,
+      "mass": 0,
+      "triangles": [
+        30000,
+        12000,
+        5400
+      ],
+      "draws": 11,
+      "residents": 1,
+      "parts": [
+        [
+          "WRECK_FORE",
+          "Half of a 58 m work-carrier loft; jagged break modeled as 6 broad layered plates, not noise.",
+          "Site-root forward half.",
+          "Three static convex pieces."
+        ],
+        [
+          "WRECK_AFT",
+          "Separate 15 m stern section offset and rotated 23 degrees; engine bells clearly torn away.",
+          "Own stable site transform.",
+          "Two static convex pieces."
+        ],
+        [
+          "FAIRLEAD",
+          "9 m truss bent 35 degrees toward the impact side, with a large empty roller throat.",
+          "Attached to forebody.",
+          "Two simple beam proxies."
+        ],
+        [
+          "CARGO_RACK",
+          "12\u00d78 m orange frame holding two legitimate commodity pallets.",
+          "Dynamic root outside wreck bounds.",
+          "Compound frame plus cargo bodies only if the existing cargo owner supports them."
+        ],
+        [
+          "RECORDER",
+          "3 m rectangular box with severed antenna and one low-power lamp.",
+          "Independent root 30\u201350 WU from wreck.",
+          "Mass 5, one box."
+        ]
+      ],
+      "animation": [
+        [
+          "Quiet wreck",
+          14.0,
+          "One intermittent non-flashing vent and slow cosmetic cable relaxation. No unnecessary rotation of a static collider."
+        ],
+        [
+          "Clue scan",
+          1.2,
+          "Local highlight follows the selected object boundary and points to a specific damage feature."
+        ],
+        [
+          "Recovered",
+          0.5,
+          "Accepted object transfer removes that body/mesh once."
+        ],
+        [
+          "Evidence reconstruction",
+          4.0,
+          "Optional abstract path overlay made only from recovered timestamps, clearly labeled reconstruction; never a photoreal omniscient cutscene."
+        ]
+      ],
+      "ai": "Evidence controller has three independent clue flags and an interpretation state. Each clue unlocks a fixed fact and one explicitly provisional hypothesis. Journal summaries are deterministic templates. The initial rumor is attributed and corrected when contradictory evidence arrives. Chronicle publication is triggered only by an explicit archive/report action and references the delivered evidence ids.",
+      "physics": "The large wreck is static; small recoverable objects are dynamic. Clue locations are authored to support the story but not require precision jumping. A held/towed recorder can still be scanned. Do not rerun the historical accident with unstable physics and pretend the result is evidence; a reconstruction visualizes recorded positions only.",
+      "choice": "Return personal/log records, salvage unclaimed hardware, publish a partial report, investigate all clues, or leave. Recovering valuable cargo and preserving evidence can conflict locally, but one mistake never destroys every path to understanding.",
+      "failure": "A destroyed clue remains destroyed and its journal fact remains unknown. A previously read clue remains known. The report can truthfully say insufficient evidence; no hidden marker supplies the missing answer. No penalty simply for failing to solve the mystery.",
+      "voice": "Recorded crew dialogue, short and practical, with life implied by work rather than a long final speech. The survivor is not present to explain the whole plot. Keep silence around important discoveries.",
+      "lines": [
+        [
+          "rumor",
+          "Yard report: probable pirate strike. No witnesses interviewed."
+        ],
+        [
+          "record_a",
+          "We have the tug on the line. Do not burn yet."
+        ],
+        [
+          "record_b",
+          "Cut the load. Keep the ship. I said keep the ship."
+        ],
+        [
+          "evidence",
+          "The damage pattern supports a lateral tow failure, not incoming fire."
+        ],
+        [
+          "partial_report",
+          "Two records recovered. Final sequence remains incomplete."
+        ]
+      ],
+      "integration": [
+        "src/systems/aftermathWrecks.js",
+        "src/systems/uniqueWrecks.js",
+        "src/systems/salvage.js",
+        "src/systems/provenanceLedger.js"
+      ],
+      "state": "siteId, recoveredClueIds<=3, destroyedClueIds<=3, publishedEvidenceRevision, cargoOutcomeIds. Chronicle output cites this state rather than minting new facts.",
+      "tests": [
+        "Recover clues in all six orders: final evidence set agrees.",
+        "Destroy each clue separately: partial report remains truthful and accessible.",
+        "Publish twice: only one archive receipt per evidence revision.",
+        "Scan a towed recorder: no identity loss or duplicate object.",
+        "Turn off reconstruction: all essential information remains in accessible journal text."
+      ],
+      "metrics": "Before and after the second clue, ask players what they think happened and why. A changed, evidence-grounded interpretation is the success signal.",
+      "reward": "One salvage/survey budget split between actual cargo and returned evidence. Do not triple-pay the same object as salvage, recovery and story completion.",
+      "special": "No long cutscene. Three physical objects, one wrong first impression, one meaningful correction.",
+      "deps": [
+        3
+      ],
+      "id": "SF20-18",
+      "number": 18,
+      "name": "The Last Shift",
+      "slug": "last_shift"
+    },
+    {
+      "category": "Crucible pit crew / upgrade legibility",
+      "wave": 1,
+      "gap": "The user reports that pre-run purchases and milestone upgrades are difficult to read. Two object-handling crew machines can make the chosen item and its consequence visible without replacing the existing run economy.",
+      "overlap": "Compose the existing ORRERY UI, survivalDraft, swarmSupply and runSession. No second inventory, no campaign leakage, no independent frontend redesign. Crew choreography decorates a truthful transaction; it never decides the result.",
+      "evidence": [
+        "R02",
+        "R03",
+        "R07"
+      ],
+      "pitch": "A tiny precision drone and a broad clamp robot run the Crucible pit. Pip presents the selected module; Spanner holds its actual mounting location. Selecting a different item changes the object, not just a line of text.",
+      "encounter": "Before the first run, the player sees their actual ship silhouette and three distinct equipment objects. Focusing an option brings its model or authored SVG into one readable inspection position. Pip traces the benefit; Spanner points to the cost or replacement. Confirming makes the real run loadout change first, then the crew installs it.",
+      "placement": "Pre-run loadout and safe milestone intermission only. No new gameplay planet or station. Keep campaign and Crucible assets/state separate; use a small isolated preview scene or the established shipworks presentation seam.",
+      "loop": "Focus one option \u2192 see item and affected mount \u2192 read benefit/cost and current resources \u2192 confirm/cancel \u2192 see truthful receipt \u2192 launch. Between waves, the same grammar applies to repairs and upgrades. No mandatory animation before each run.",
+      "silhouette": "Pip is a small tetrahedral optic with one tiny stabilizer fan. Spanner is a wide two-claw service sled with a rectangular central worklight. Cream/dark machinery with one shared teal band; not humanoid mechanics or cartoon faces.",
+      "size": [
+        16,
+        18,
+        6
+      ],
+      "radius": 0,
+      "mass": 0,
+      "triangles": [
+        18000,
+        7200,
+        3200
+      ],
+      "draws": 10,
+      "residents": 1,
+      "parts": [
+        [
+          "SPANNER_ROOT",
+          "Low 14\u00d78\u00d73 m loft with two 6 m forward jaws and an open center.",
+          "Preview scene root.",
+          "None: preview-only asset."
+        ],
+        [
+          "CLAW_L/R",
+          "Thick 6\u00d71.5 m articulated plates on visibly supported Z hinges.",
+          "Root-local X=2,Y=\u00b14.",
+          "None."
+        ],
+        [
+          "PIP_ROOT",
+          "A 3 m beveled tetrahedral body with one square optic and short supported fan.",
+          "Independent preview root.",
+          "None."
+        ],
+        [
+          "PIP_POINTER",
+          "A thin solid articulated pointer arm, 2 m long; no long screen-space laser crossing text.",
+          "Local Z hinge.",
+          "None."
+        ],
+        [
+          "ITEM_CRADLE",
+          "Two small padded brackets framing the actual selected module or an explicitly labeled schematic.",
+          "Preview focus anchor.",
+          "None."
+        ]
+      ],
+      "animation": [
+        [
+          "Focus",
+          0.22,
+          "Pip glides at most 30 screen pixels and item settles; selection state updates immediately."
+        ],
+        [
+          "Compare",
+          0.3,
+          "Spanner indicates the affected socket; old/new item are clearly labeled, never indistinguishable overlapping ghosts."
+        ],
+        [
+          "Confirm",
+          0.65,
+          "After accepted purchase receipt, jaws close and the item seats. Skip/reduced-motion resolves instantly."
+        ],
+        [
+          "Denied",
+          0.15,
+          "Keep item uninstalled; show exact missing funds, incompatibility or run-state reason at the action."
+        ],
+        [
+          "Repair",
+          0.6,
+          "A localized worklight traces the repaired hull section only after health change is accepted."
+        ]
+      ],
+      "ai": "UI service controller: BROWSE, FOCUSED, QUOTED, PENDING, COMMITTED, DENIED. Read run-owned inventory/resources. Each purchase intent includes runId, offerId and expected offer revision; the existing owner validates and returns a receipt. While PENDING, disable repeat submission without blocking Back. Characters react to receipts, not button clicks. Do not call tacticalAI or create 60-Hz world entities for interface props.",
+      "physics": "No physics is needed for the crew. The ship and module preview are read-only. If an effect demo is shown, it uses an isolated deterministic preview state and a clear \u201cdemonstration\u201d label, with no route into campaign credits, kills or damage. Do not mount new high-resolution textures on every option card.",
+      "choice": "Repair, buy a module, retain the current build, compare, or launch. Every option states the actual cost and affected capability. Choosing nothing must look intentional, not like a missing selection.",
+      "failure": "Double click, controller repeat, networkless asset loading failure and closing the screen during pending work must not double-charge or leave half-installed UI. Missing 3D model falls back to an authored SVG silhouette with the same label and stats; not an empty square or an endless spinner.",
+      "voice": "Pip: short bright mechanical chirps with text labels. Spanner: one lower mechanical reply. They do not speak over the run announcer. Optional two-line radio banter appears only while idle, never on every focus change.",
+      "lines": [
+        [
+          "first_visit",
+          "Pip: Pick the part. Spanner: We will show you what it changes."
+        ],
+        [
+          "tradeoff",
+          "More impulse. Less room for supplies."
+        ],
+        [
+          "repair",
+          "Hull restored. Resources deducted. Both are on the receipt."
+        ],
+        [
+          "no_purchase",
+          "Keeping the build. Ready when you are."
+        ],
+        [
+          "denied",
+          "Not enough run supplies. Nothing has been charged."
+        ]
+      ],
+      "integration": [
+        "src/systems/survivalDraft.js",
+        "src/systems/swarmSupply.js",
+        "src/systems/runSession.js",
+        "src/ui/orrery/"
+      ],
+      "state": "Transient focusedOfferId and pendingIntentId only. Purchases, health, selected modes and supplies remain in existing run state. Persist no preview scene objects.",
+      "tests": [
+        "Double-confirm one offer: one debit and one item.",
+        "Close/reopen at every transaction state: displayed build equals authoritative run build.",
+        "Fail the GLB load: SVG and text allow full selection and launch.",
+        "Keyboard/gamepad-only walk reaches every option, compare, back and launch.",
+        "Finish or abort run: zero unintended change to campaign credits, inventory or kills."
+      ],
+      "metrics": "Give a player five seconds to identify the selected object, cost and changed ship capability. Then ask them to reverse the choice. Track errors and hesitation versus the original screen; no claimed UX improvement until compared.",
+      "reward": "Only existing run supplies and offer costs. These machines never create campaign rewards, even when a visual repair animation resembles a station service.",
+      "special": "This is the first recommended concept to build. It attacks a reported high-frequency UX weakness while adding a memorable pair at modest world-simulation cost.",
+      "deps": [],
+      "id": "SF20-19",
+      "number": 19,
+      "name": "Pip & Spanner",
+      "slug": "pip_and_spanner"
+    },
+    {
+      "category": "Linked story / persistent world consequence",
+      "wave": 4,
+      "gap": "Persistent numbers need visible consequences worth remembering. A small route-restoration story can connect earlier characters and physical actions into a place that genuinely changes.",
+      "overlap": "Compose existing mission/story/provenance/chronicler systems and concepts 3,4,6,11,18. This is not a second campaign spine or a universal procedural story generator. Keep the main story intact.",
+      "evidence": [
+        "R02",
+        "R03",
+        "R07",
+        "R08",
+        "R09"
+      ],
+      "pitch": "A damaged freight mile is rebuilt from things the player actually helped recover. Over five optional chapters, its silhouette grows from two dead pylons into a modest working chain of lights. Every installed piece has a history.",
+      "encounter": "After any two qualifying local interventions, the Towline Table asks for help restoring a bypass freight route. The first milestone needs one recovered power unit; the next needs an actual displaced guide; a later branch depends on whether Ilex\u2019s seed vaults survived. A final convoy uses the route the player made possible.",
+      "placement": "An optional Tethys route segment with a preserved original bypass. Choose one canonical zone and stable route id after the atlas survey. Do not create a new global navigation layer or silently reroute every faction.",
+      "loop": "Chapter 1: survey the break. Chapter 2: recover one power unit. Chapter 3: clear or replace a guide. Chapter 4: deliver a real cargo contribution. Chapter 5: witness one working convoy. Each can end partially, leading to a smaller but functional result. The player\u2019s role is one contributor, not the only person capable of acting.",
+      "silhouette": "Two dark freight pylons and a staggered chain of modular amber lamps. New sections use recognizable salvaged parts from earlier objects; a central small bridge has conspicuously mismatched but well-fitted panels. Not a triumphal statue of the player.",
+      "size": [
+        180,
+        90,
+        25
+      ],
+      "radius": 125,
+      "mass": 0,
+      "triangles": [
+        38000,
+        15200,
+        6800
+      ],
+      "draws": 14,
+      "residents": 1,
+      "parts": [
+        [
+          "PYLON_A/B",
+          "Two 30 m work-tower trusses with broad feet and broken upper lamp mounts.",
+          "Fixed at route ends.",
+          "Compound static boxes with generous lane clearance."
+        ],
+        [
+          "MODULE_SOCKET_01..05",
+          "Five clearly supported receiver brackets along an offset service spine.",
+          "Fixed transforms and stable ids.",
+          "Sensors while empty; conservative installed proxies only after accepted construction."
+        ],
+        [
+          "POWER_MODULE",
+          "Reuse the actual recovered industrial generator shape, remastered through Forge if needed.",
+          "Socket 1.",
+          "One static proxy after cargo owner transfers it."
+        ],
+        [
+          "GUIDE_MODULE",
+          "Reused bent/straight freight guide from the switchyard family.",
+          "Socket 2; construction state determines variant.",
+          "One to two simple proxies."
+        ],
+        [
+          "LAMP_CHAIN",
+          "Up to 12 instanced solid lamps, each with visible support.",
+          "Deterministic route positions.",
+          "No collider on lamps."
+        ],
+        [
+          "RECORD_PLAQUE",
+          "Three large abstract tally marks and a service terminal. Names/history are accessible text in inspector, not tiny 3D lettering.",
+          "Near safe service platform.",
+          "None."
+        ]
+      ],
+      "animation": [
+        [
+          "Unpowered",
+          0.0,
+          "No fake decorative motion; two lamps are visibly dead."
+        ],
+        [
+          "Install",
+          2.0,
+          "Module seats only after construction transfer, with a clear before/after state."
+        ],
+        [
+          "First current",
+          3.0,
+          "Lamps illuminate in actual connection order once; reduced-flash uses a steady fade."
+        ],
+        [
+          "Working mile",
+          10.0,
+          "Sparse service activity follows real jobs; no continuous celebration or confetti."
+        ]
+      ],
+      "ai": "Story graph consumes verified receipt ids and produces milestone intents through existing owners. It never checks \u201cplayer has visited concept X\u201d as a substitute for doing the work. Branches: FULL, PARTIAL, ABANDONED and RESTITUTION. A crew can complete a basic safe repair offscreen after an explicitly authored delay, but the ledger credits them, not the player. The final convoy is a real budgeted traffic job with a valid route.",
+      "physics": "Contributions are real cargo transfers to construction sockets. During installation, remove the cargo body only after accepted ownership transfer, then enable the installed static proxy on a safe physics tick. Reject construction while a ship occupies the new geometry\u2019s envelope. No spawning a solid wall through the player. Traffic may use the route only after its navigability proof succeeds.",
+      "choice": "Help with one chapter, pursue the full restoration, donate recovered goods, investigate why it failed, or leave. Partial contributions remain visible. Deliberate sabotage creates a repairable consequence, not an irreversible global softlock.",
+      "failure": "Lost seed vaults change chapter 4 to a smaller dry-goods delivery; missing forensic evidence changes the public account to uncertain. Destroyed modules can be repaired via real resources, but no destroy/rebuild credit loop. One milestone receipt cannot unlock multiple free payments.",
+      "voice": "The final scene uses the established crew voices, not a new narrator. Gratitude is small and specific: a working route, a clear arrival, a lamp someone fixed. Keep the big emotional beat in the physical change.",
+      "lines": [
+        [
+          "offer",
+          "Mara: We do not need a hero. We need a working power unit."
+        ],
+        [
+          "partial",
+          "Odo: Half a route is not a route. But it is a start we can use."
+        ],
+        [
+          "ilex_branch",
+          "Ilex: There is room for four vaults. Four will do."
+        ],
+        [
+          "first_convoy",
+          "Kit: Look at that. Ordinary traffic. Practically a miracle."
+        ],
+        [
+          "final",
+          "Mara: Your part is on the record. So is everyone else\u2019s."
+        ]
+      ],
+      "integration": [
+        "src/systems/missions.js",
+        "src/systems/story.js",
+        "src/systems/provenanceLedger.js",
+        "src/data/authoredPlaces.js"
+      ],
+      "state": "storyVersion, completedMilestoneIds<=5, contributionReceiptIds<=16, installedModuleIds, branch, finalConvoyOutcome. Existing cargo/economy/law owners keep material consequences.",
+      "tests": [
+        "Complete milestones in permitted alternate orders: graph reaches coherent branch.",
+        "Lose Ilex cargo or a Last Shift clue: partial branch still completes.",
+        "Install while another ship occupies the volume: action waits or denies safely.",
+        "Replay all receipts after save/load: no duplicate modules or payments.",
+        "Destroy and rebuild: costs/rewards conserve the intended resource budget."
+      ],
+      "metrics": "At the final visit, players can point to at least one physical change and connect it to an actual prior action. The story fails if it is remembered only as a completed checklist.",
+      "reward": "Five bounded contract slices within an explicitly reviewed total budget, plus a functioning optional route. Construction stock is deducted once; no passive royalty stream without an existing designed economy mechanism.",
+      "special": "Build last. Its emotional value depends on the earlier encounters being enjoyable and its causal receipts being trustworthy, not on writing a longer finale.",
+      "deps": [
+        3,
+        4,
+        6,
+        11,
+        18
+      ],
+      "id": "SF20-20",
+      "number": 20,
+      "name": "The Hundred-Hand Mile",
+      "slug": "hundred_hand_mile"
+    }
+  ]
+}

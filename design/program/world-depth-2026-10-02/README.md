@@ -74,3 +74,7 @@ A real Forge transfer-arm rebuild subsequently passed, retaining its canonical s
 Release/publication, live-game visual acceptance and target-GPU performance remain unproved. First
 asset production must complete that pipeline before multiplying output. Keep the source/provenance and validate actual exported binaries;
 a beautiful thumbnail with no gameplay consumer is not a completed expansion.
+
+## Twenty-concept production amendment
+
+The user-authorized [twenty-concept amendment](TWENTY_CONCEPT_AMENDMENT.md) adds all SF20-01–SF20-20 to these existing P00–P21 owners. It preserves the original source history, consolidates 125 proposed leaves into coherent delivery families, and strengthens visual acceptance without creating another queue or approving held decisions. Read it before commissioning overlapping characters, machinery or encounters.
