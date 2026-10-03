@@ -1,4 +1,5 @@
 import { createMorphLabel } from './morphLabel.js';
+import { prefersReducedMotion } from './effectRuntime.js';
 import { factionIcon } from '../station/icons.js';
 
 export const CUE = Object.freeze({
@@ -88,11 +89,21 @@ export function createCommsTrace(mountEl, opts = {}) {
     setFaction(state.factionId || opts.factionId || DEFAULT_FACTION);
     const amplitude = clamp01(state.amplitude);
     const density = clamp01(state.density);
-    phase += Math.max(0.12, finite(state.phaseStep, 0.42)) + density * 0.31;
-    const text = buildTraceText(amplitude, density, phase);
-    if (text !== lastText) {
-      morph.set(text, { dir: amplitude >= lastAmplitude ? 'up' : 'down' });
-      lastText = text;
+    if (prefersReducedMotion(opts)) {
+      // Static wave: keep whatever glyph row is already shown; set one when empty so a live
+      // transmission still reads. No phase advance, no per-frame rebuild.
+      if (!lastText) {
+        const text = buildTraceText(amplitude, density, phase);
+        morph.set(text);
+        lastText = text;
+      }
+    } else {
+      phase += Math.max(0.12, finite(state.phaseStep, 0.42)) + density * 0.31;
+      const text = buildTraceText(amplitude, density, phase);
+      if (text !== lastText) {
+        morph.set(text, { dir: amplitude >= lastAmplitude ? 'up' : 'down' });
+        lastText = text;
+      }
     }
     lastAmplitude = amplitude;
     root.style.setProperty('--sf-comms-amp', String(Math.round(amplitude * 1000) / 1000));
