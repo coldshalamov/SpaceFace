@@ -375,6 +375,7 @@ import {
 } from './resourceGovernor.js';
 import { shouldAwaitOpeningGpuCook } from './renderCapabilityProfile.js';
 import {
+  collectStartupTextures,
   collectUnresidentInstancedDrawables,
   hasUnresidentGeometry,
   prepareStartupGeometryResidency,
@@ -383,7 +384,11 @@ import {
   yieldToNextPresent,
 } from './startupGpuResidency.js';
 import { makeGpuQueuePacer } from './gpuQueuePace.js';
-import { rehydrateDetachedPackages } from './packageCpuDetach.js';
+import {
+  detachedTextureUploadPending,
+  rehydrateDetachedPackages,
+  rehydrateDetachedTextures,
+} from './packageCpuDetach.js';
 import { sharedImageSourceUsers } from './imageSourceDedupe.js';
 import {
   collectOpeningSubmissionLeaves,
@@ -8407,6 +8412,7 @@ export const render = {
         await admitOpeningUnitsAcrossSlices({
           deadlineMs: 8000,
           units: uniqueAdmissionUnits([...leaves, ...extraVfx]),
+          renderer,
           beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
           compileOne: async (subject) => {
             if (!lifecycle.isActive()) throw new Error('renderer lifecycle destroyed during opening admission');
@@ -8931,6 +8937,21 @@ export const render = {
       return touchSubjectOnExactTarget(renderer, null, list, cam.obj, scene);
     };
     const admissionPaceYield = () => yieldToNextPresent({ boundMs: FLIGHT_ADMISSION_PRESENT_BOUND_MS });
+    // A package texture whose CPU mirror was released after its proven upload still reaches
+    // three's uploader when the next bind re-enters it — a moved version, a different
+    // upload-cache key on the shared dedupe Source, or a properties record recreated after
+    // dispose — and uploadTexture reads mipmaps[0] on the emptied array (D150). Re-attach just
+    // those payloads before the draw: the forced upload then lands real bytes behind the
+    // admission's own latch instead of throwing mid-touch and pushing the residual links into
+    // a presented bloom frame. Still-stamped detached textures keep their release; the next
+    // residency pass re-detaches whatever this restored.
+    const detachedSubjectUploadsPending = (subjects) => collectStartupTextures(subjects)
+      .filter((texture) => detachedTextureUploadPending(texture, renderer.properties));
+    const reattachDetachedSubjectTextures = async (subjects) => {
+      const pending = detachedSubjectUploadsPending(subjects);
+      if (pending.length === 0) return null;
+      return rehydrateDetachedTextures(pending, { yieldToMain: admissionPaceYield });
+    };
     const compileForCurrentTarget = (subjects, compileOptions) => {
       const optionActive = compileOptions && compileOptions.isActive;
       const isRootActive = typeof optionActive === 'function'
@@ -9273,7 +9294,7 @@ export const render = {
             () => result,
           );
         })
-        .then((result) => {
+        .then(async (result) => {
           if (state.mode === 'loading' && state.render.liveSectorGpuAdmission !== true) {
             return result;
           }
@@ -9286,6 +9307,14 @@ export const render = {
           if (typeof admissionOptions.isActive === 'function'
               && admissionOptions.isActive(subject) !== true) {
             return result;
+          }
+          // A cpu-detached package texture this draw would force-upload reads an emptied mip
+          // chain inside uploadTexture and throws — the touch exists to keep exactly that work
+          // out of the presented pass, so re-attach those payloads first (D150).
+          try {
+            await reattachDetachedSubjectTextures(subject);
+          } catch (error) {
+            console.warn('[render] admission touch texture reattach failed', error);
           }
           // compile() resolves under the armed admission state; the presented pass can still
           // ask the driver for a different program key (shadow-gate drift, env binding, target
@@ -9419,6 +9448,30 @@ export const render = {
           || (recovery.pendingExactTargetTouches = new Set());
         queued.add(subject);
         return { skipped: true, reason: 'context-recovery-queued' };
+      }
+      // The seam is synchronous, but a cpu-detached package texture this draw would
+      // force-upload reads emptied mipmaps inside the draw and throws (D150) — for that
+      // subject only, re-attach the payloads first and run the identical reveal+touch in the
+      // continuation. Every other subject keeps the sync draw below.
+      const detachedPendingUpload = detachedSubjectUploadsPending(subject);
+      if (detachedPendingUpload.length > 0) {
+        return rehydrateDetachedTextures(detachedPendingUpload, { yieldToMain: admissionPaceYield })
+          .catch((error) => {
+            console.warn('[render] exact-target touch texture reattach failed', error);
+          })
+          .then(() => {
+            const restoreDetached = revealSubjectWithAncestors(subject);
+            try {
+              return touchExactTargetSubject(subject);
+            } catch (error) {
+              // Sync callers catch the same throw; the async branch logs it here so the
+              // returned promise never lands an unhandled rejection on a best-effort caller.
+              console.warn('[render] exact-target admission touch failed', error);
+              return { skipped: true, reason: 'touch-failed' };
+            } finally {
+              restoreDetached();
+            }
+          });
       }
       // The boundary itself can still be hidden ('authored-prepared' substrates are), so the
       // reveal must cover ancestors as well as the subject subtree — a hidden ancestor makes
@@ -9864,6 +9917,7 @@ export const render = {
       const result = allSubjects.length > 0
         ? await admitOpeningUnitsAcrossSlices({
           units,
+          renderer,
           beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
           compileOne: (subject) => whileRevealed(subject, () => compileSubjectColorAndDepth(subject, route)),
           touchOne: (subject) => whileRevealed(subject, () => touchExactTargetSubject(subject)),
@@ -10015,6 +10069,14 @@ export const render = {
         const recookRoute = typeof this._selectPostRoute === 'function' ? this._selectPostRoute() : null;
         const rehearsalStarted = recookNow();
         let rehearsalOutcome = 'resolved';
+        // The whole-scene rehearsal render can bind a cpu-detached package texture whose next
+        // upload re-enters three's uploader on the emptied mirror (D150) — re-attach just those
+        // payloads first so the warm draws real bytes instead of throwing mid-render.
+        try {
+          await reattachDetachedSubjectTextures(this.scene);
+        } catch (error) {
+          console.warn('[render] rehearsal texture reattach failed', error);
+        }
         try {
           if (recookStale()) {
             rehearsalOutcome = 'skipped';
@@ -10560,6 +10622,7 @@ export const render = {
             materialSettle = await admitOpeningUnitsAcrossSlices({
               deadlineMs: Math.min(6000, remainingMs()),
               units: uniqueAdmissionUnits(staleSubjects),
+              renderer,
               beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
               compileOne: (subject) => {
                 const restore = revealSubjectWithAncestors(subject);
@@ -10833,6 +10896,7 @@ export const render = {
               await admitOpeningUnitsAcrossSlices({
                 units: sealUnits,
                 issueKeyFor: openingCompileIssueKey,
+                renderer,
                 beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
                 compileOne: (subject) => whileRevealed(subject,
                   () => compileSubjectColorAndDepth(subject, sealRoute)),
@@ -11511,6 +11575,14 @@ export const render = {
               contextLost: cohortDrain && cohortDrain.contextLost === true ? true : undefined,
               yields: compileYield ? compileYield.yields : undefined,
             });
+          // This hand-rolled cohort bypasses the admit driver, so it runs the same detach
+          // census itself: a cpu-detached package texture a touch below would force-upload
+          // reads emptied mipmaps inside the draw (D150) — re-attach those payloads first.
+          try {
+            await reattachDetachedSubjectTextures(units.programSubjects);
+          } catch (error) {
+            console.warn('[render] cook touch texture reattach failed', error);
+          }
           // Loading shell: several touches share a frame until ~8 ms of touch work, then yield
           // (laneB-fixA: 89 touches drew for 1261 ms and spent ~1.3 s more yielding a whole frame after
           // every one). The jump shell keeps one touch per frame.
@@ -11915,6 +11987,7 @@ export const render = {
           try {
             rockPools = await admitOpeningUnitsAcrossSlices({
               units: cookUnits,
+              renderer,
               // Thousands of palette-cloned subjects share a program signature — issue one
               // compile per signature, not one per material object (~14 s of per-unit issue
               // JS on the owner's iGPU collapses to the distinct-program count).
@@ -12558,6 +12631,7 @@ export const render = {
               },
             ),
             issueKeyFor: openingCompileIssueKey,
+            renderer,
             beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
             compileOne: (subject) => whileRevealed(subject, () => compileSubjectColorAndDepth(subject, route)),
             touchOne: (subject) => whileRevealed(subject, () => touchExactTargetSubject(subject)),

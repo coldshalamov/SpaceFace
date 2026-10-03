@@ -16,10 +16,12 @@ import { createRenderPackageLoader } from '../src/render/renderPackageLoader.js'
 import {
   createPackageDetachManifest,
   detachPackageTexture,
+  detachedTextureUploadPending,
   dropPackageDetachManifest,
   isPackageTextureDetached,
   packageDetachDiagnostics,
   rehydrateDetachedPackages,
+  rehydrateDetachedTextures,
   resetPackageDetachManifestsForTests,
 } from '../src/render/packageCpuDetach.js';
 import {
@@ -32,10 +34,10 @@ import { prepareStartupGpuResidency } from '../src/render/startupGpuResidency.js
 
 const IDENTITY = Object.freeze([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
 
-function packageMetadata() {
+function packageMetadata(assetId = 'fixture.detach') {
   const metadata = {
     schema: RENDER_PACKAGE_SCHEMA,
-    assetId: 'fixture.detach',
+    assetId,
     kind: 'ship',
     compiler: { name: 'spaceface-render-package-compiler', version: '1.0.0' },
     contentHash: '0'.repeat(64),
@@ -397,5 +399,86 @@ test('manifest creation is idempotent and ordinal pairing is identity-checked', 
 
   assert.equal(dropPackageDetachManifest(manifest.contentHash), true);
   assert.equal(detachPackageTexture(decoded.compressed), false, 'evicted manifests stop detaching');
+  loader.dispose();
+});
+
+test('a detached texture only needs rehydrate when its next bind re-enters the uploader', async () => {
+  const decoded = decodedFixture();
+  const loader = freshLoader(async () => decoded);
+  const loaded = await loader.load(packageMetadata(), { baseUrl: 'https://fixtures.test/' });
+  const subject = loaded.createInstance().root;
+
+  const renderer = stubRenderer();
+  await prepareStartupGpuResidency(renderer, subject, { includeGeometry: false, yieldToMain: async () => {} });
+  assert.equal(isPackageTextureDetached(decoded.compressed), true);
+  decoded.compressed.needsUpdate = true; // decoded textures reach the uploader with version > 0
+
+  // three stamps textureProperties.__version = texture.version on upload — a stamp-matched
+  // detached texture binds its live GPU copy under the next bind and must stay released (the
+  // residency pass detaches it again on any re-upload anyway).
+  const propsByTexture = new Map([[decoded.compressed, { __version: decoded.compressed.version }]]);
+  const properties = { get: (texture) => propsByTexture.get(texture) };
+  assert.equal(detachedTextureUploadPending(decoded.compressed, properties), false,
+    'still-stamped detached texture binds its resident copy, no rehydrate needed');
+
+  // The D150 triggers: a properties record recreated after dispose (no __version) or a moved
+  // version both re-enter uploadTexture on the emptied payload.
+  propsByTexture.set(decoded.compressed, {});
+  assert.equal(detachedTextureUploadPending(decoded.compressed, properties), true,
+    'fresh properties record re-enters the uploader');
+  propsByTexture.delete(decoded.compressed);
+  assert.equal(detachedTextureUploadPending(decoded.compressed, properties), true,
+    'a missing record is a never-uploaded bind');
+  propsByTexture.set(decoded.compressed, { __version: decoded.compressed.version });
+  decoded.compressed.needsUpdate = true;
+  assert.equal(detachedTextureUploadPending(decoded.compressed, properties), true,
+    'a version bump on the emptied payload would re-upload');
+
+  // Never-detached and unmarked textures are never pending, whatever the properties say.
+  assert.equal(detachedTextureUploadPending(decoded.empty, properties), false);
+  assert.equal(detachedTextureUploadPending(new THREE.Texture(), properties), false);
+  loader.dispose();
+});
+
+test('rehydrateDetachedTextures refills only the manifests the named textures belong to', async () => {
+  // Every decode returns a FRESH fixture — the payload identity check then proves the live
+  // texture objects are refilled in place, never swapped.
+  const decodes = { 'fixture.detach-a': 0, 'fixture.detach-b': 0 };
+  const firsts = {};
+  const loader = freshLoader(async (url, metadata) => {
+    const key = metadata && metadata.assetId === 'fixture.detach-b'
+      ? 'fixture.detach-b' : 'fixture.detach-a';
+    decodes[key] += 1;
+    const decoded = decodedFixture();
+    if (!firsts[key]) firsts[key] = decoded;
+    return decoded;
+  });
+  const loadedA = await loader.load(packageMetadata('fixture.detach-a'), { baseUrl: 'https://fixtures.test/' });
+  const loadedB = await loader.load(packageMetadata('fixture.detach-b'), { baseUrl: 'https://fixtures.test/' });
+  assert.notEqual(loadedA.contentHash, loadedB.contentHash, 'two manifests, one per package');
+  const decodedA = firsts['fixture.detach-a'];
+  const decodedB = firsts['fixture.detach-b'];
+  const subjectA = loadedA.createInstance().root;
+  const subjectB = loadedB.createInstance().root;
+
+  const renderer = stubRenderer();
+  await prepareStartupGpuResidency(renderer, subjectA, { includeGeometry: false, yieldToMain: async () => {} });
+  await prepareStartupGpuResidency(renderer, subjectB, { includeGeometry: false, yieldToMain: async () => {} });
+  assert.equal(isPackageTextureDetached(decodedA.compressed), true);
+  assert.equal(isPackageTextureDetached(decodedB.compressed), true);
+
+  const receipt = await rehydrateDetachedTextures([decodedA.compressed], { yieldToMain: async () => {} });
+  assert.equal(receipt.packages, 1);
+  assert.equal(decodes['fixture.detach-a'], 2, 'package A re-decoded once to refill');
+  assert.equal(decodes['fixture.detach-b'], 1, 'package B never touched');
+  assert.equal(isPackageTextureDetached(decodedA.compressed), false, 'named texture refilled');
+  assert.ok(decodedA.compressed.mipmaps.length > 0, 'real mip bytes restored');
+  assert.equal(isPackageTextureDetached(decodedB.compressed), true,
+    'the untouched package stays released');
+
+  // An unmarked / still-attached list is a no-op — no decode, no errors.
+  const noop = await rehydrateDetachedTextures([decodedA.compressed, new THREE.Texture()], { yieldToMain: async () => {} });
+  assert.equal(noop.skipped, true);
+  assert.equal(noop.packages, 0);
   loader.dispose();
 });
