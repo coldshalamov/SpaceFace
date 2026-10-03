@@ -498,6 +498,10 @@ export const save = {
       // selection) is owned and serialized by the bombs system. Absent owner → {} →
       // deserialize applies the starter kit (additive default for pre-rack saves).
       ['bombs', () => this._callSerialize('bombs') || {}],
+      // FB-015: bounded system-owned deployable rows (snare anchors, charge plates, tether webs)
+      // — the entities themselves stay transient.
+      ['snares', () => this._callSerialize('masslineSnares')],
+      ['charges', () => this._callSerialize('impulseCharges')],
       ['stunts', () => this._callSerialize('stuntGrammar')],
       ['fields', () => this._callSerialize('fields')],
       ['missions', () => this._callSerialize('missions') || this._serializeMissions()],
@@ -575,6 +579,10 @@ export const save = {
     data.entities = this._serializeEntities();
     data.combat = serializeCombatState(state);
     data.bombs = this._callSerialize('bombs') || {};
+    // FB-015: deployed massline snares, impulse-charge networks, and live tether webs are a
+    // player investment — bounded system-owned rows, never persistent entity flags.
+    data.snares = this._callSerialize('masslineSnares');
+    data.charges = this._callSerialize('impulseCharges');
     data.stunts = this._callSerialize('stuntGrammar');
     data.fields = this._callSerialize('fields');
     data.missions = this._callSerialize('missions') || this._serializeMissions();
@@ -3885,6 +3893,13 @@ export const save = {
       // selection). No entity ids inside — live bomb actors are transient and never persist.
       // Missing key (pre-rack save) leaves the owner to apply its starter-kit default.
       this._callDeserialize('bombs', data.bombs);
+      // FB-015: deployables re-stage after entities + combat attachments — charge plates
+      // respawn with remapped owner/host refs, primed chains rebind to persistent hulls, the
+      // web timer ledger claims its restored attachment ids, and a saved snare holds its
+      // geometry until save:loaded re-stages the anchor line. Old saves without these keys
+      // leave both systems at their natural reset.
+      this._callDeserialize('charges', data.charges);
+      this._callDeserialize('snares', data.snares);
       this._reportRestoreProgress(0.21, 'Restoring combat memory');
       yield 'combat-restored';
 
