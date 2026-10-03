@@ -9,15 +9,14 @@ import { loadPlaywright } from '../../lib/load-playwright.mjs';
 import { acquireVisualProbeServer } from '../../lib/visualProbeServer.mjs';
 
 export const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
-const CHROME = 'C:/devin/chrome/chrome-win64/chrome.exe';
+const CHROME = process.env.SF_CHROMIUM || (existsSync('C:/devin/chrome/chrome-win64/chrome.exe') ? 'C:/devin/chrome/chrome-win64/chrome.exe' : undefined);
 
 export async function bootShowcase({ viewport = { width: 960, height: 540 }, headless = true } = {}) {
-  if (!existsSync(CHROME)) throw new Error(`system chrome missing at ${CHROME}`);
   const server = await acquireVisualProbeServer({ root: ROOT });
   const { chromium } = await loadPlaywright();
   const browser = await chromium.launch({
     headless,
-    executablePath: CHROME,
+    ...(CHROME ? { executablePath: CHROME } : {}),
     args: [
       '--ignore-gpu-blocklist', '--enable-webgl', '--mute-audio',
       '--disable-background-timer-throttling', '--disable-renderer-backgrounding',

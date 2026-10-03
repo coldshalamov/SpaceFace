@@ -16,8 +16,7 @@ ${D} .orr-prep-tab::after { content:''; position:absolute; left:0; bottom:-1px; 
 ${D} .orr-prep-tab[aria-selected=true] { color:var(--dp-ink); }
 ${D} .orr-prep-tab[aria-selected=true]::after { opacity:1; }
 ${D} .orr-prep-step { font-size:12px; font-variant-numeric:tabular-nums; color:var(--dp-ink-dim); }
-${D} .orr-prep-tab[aria-selected=true] .orr-prep-step { color:var(--dp-hand); }
-${D} .orr-prep-nextstep { color:var(--dp-ink-dim); font-size:13px; }
+${D} .orr-prep-nextstep { color:var(--dp-ink-dim); font:600 16px var(--dp-face-label); text-transform:uppercase; letter-spacing:0; padding:14px 0; opacity:.65; }
 ${D} .orr-prep-summary { margin-left:auto; color:var(--dp-ink-dim); font-size:13px; text-align:right; }
 ${D} > .k-stage { grid-column:1 !important; grid-row:3 !important; position:relative !important; inset:auto !important; width:100% !important; max-width:none !important; min-height:0 !important; height:100% !important; padding:0 12px 0 0 !important; margin:0 !important; overflow:auto !important; mask-image:none !important; }
 ${D} > .k-stage::before { display:none !important; }
@@ -114,10 +113,12 @@ ${A} .sf-cru-card .sf-cru-key, ${A} .orr-rail-scale, ${A} .orr-rail-wallet { dis
 ${A} .sf-cru-card.is-lit { background:linear-gradient(90deg,rgb(242 185 80 / .09),transparent) !important; }
 ${A} .sf-cru-card.is-lit::before { content:'' !important; display:block !important; position:absolute !important; left:0 !important; top:14px !important; bottom:14px !important; width:2px !important; background:var(--dp-hand) !important; }
 ${A} .orr-rail-divider { font:500 12px/1.4 var(--dp-face-label) !important; letter-spacing:.12em; color:var(--dp-ink-dim) !important; margin:14px 0 4px 12px !important; }
-${A} .orr-armory-reading.orr-armory-reading { pointer-events:auto !important; grid-column:2 !important; grid-row:2 !important; position:relative !important; inset:auto !important; width:100% !important; height:100% !important; min-width:0 !important; min-height:0 !important; display:flex !important; flex-direction:column !important; overflow:hidden !important; padding:14px 2px 14px 16px !important; border-left:1px solid var(--dp-line-faint); }
+${A} .orr-armory-reading.orr-armory-reading { pointer-events:auto !important; grid-column:2 !important; grid-row:2 !important; position:relative !important; inset:auto !important; width:100% !important; height:100% !important; min-width:0 !important; min-height:0 !important; display:flex !important; flex-direction:column !important; overflow:hidden !important; padding:14px 2px 14px 16px !important; border-left:1px solid var(--dp-line-faint); align-items:stretch !important; }
 ${A} .orr-armory-reading__main { display:grid; grid-template-columns:minmax(180px,.9fr) minmax(0,1.1fr); grid-template-rows:minmax(0,1fr); gap:24px; flex:1 1 auto; min-height:0; overflow:auto; }
-${A} .orr-armory-reading__foot { flex:none; margin-top:10px; padding-top:10px; border-top:1px solid var(--dp-line-faint); }
-${A} .orr-armory-reading__foot .orr-armory-reading__demo { margin:0 0 6px; }
+${A} .orr-armory-reading__foot { flex:none; margin-top:10px; padding-top:10px; border-top:1px solid var(--dp-line-faint); display:grid; grid-template-columns:minmax(180px,.9fr) minmax(0,1.1fr); gap:24px; align-items:center; width:100%; box-sizing:border-box; }
+${A} .orr-armory-reading__foot .orr-armory-reading__budget { grid-column:1; margin:0 !important; }
+${A} .orr-armory-reading__foot .orr-armory-reading__buy { grid-column:2; width:100%; margin:0 !important; }
+${A} .orr-armory-reading__foot .orr-armory-reading__demo { grid-column:2; margin:0 0 6px; }
 ${A} .orr-armory-reading__foot .orr-armory-reading__demo:empty { display:none; }
 ${A} .orr-armory-reading[hidden] { display:none !important; }
 /* bottom fade on the scrollable pane — the cue that dossier words continue below the fold */
@@ -301,6 +302,8 @@ ${D} .k-foot .orr-prep-continue:active, ${D} .k-foot .orr-key--hazard:active { t
  ${A} .orr-armory-reading__jig { width:calc(55% - 10px) !important; min-width:0; flex:none; height:180px !important; }
  ${A} .orr-armory-object-label { display:none; }
  ${A} .orr-slotjig__word, ${A} .orr-slotjig__sub { display:none; }
+ ${A} .orr-armory-reading__foot { grid-template-columns:minmax(0,1fr) !important; gap:8px !important; }
+ ${A} .orr-armory-reading__foot :is(.orr-armory-reading__budget, .orr-armory-reading__buy, .orr-armory-reading__demo) { grid-column:auto !important; }
 }
 /* narrow AND short: the dossier words lead and the transaction band compresses, so
    the name and the 'when it pays' line are the fold, not the clip. */

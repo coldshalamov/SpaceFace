@@ -351,7 +351,7 @@ html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .is-open .
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .is-open .orr-hp__spare::after { height:1px; background:repeating-linear-gradient(90deg, rgb(236 230 216 / .75) 0 4px, transparent 4px 7px); }
 /* one hardpoint unfolds at a time: the lit one shows every spare and the scales; the rest show their pick */
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .is-open:not(.is-lit) .orr-hp__spare:not([aria-checked="true"]) { display:none; }
-html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .sf-cru-row:not(.is-lit) :is(.orr-hp__scales, .orr-hp__contrast) { display:none; }
+html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .sf-cru-row:not(.is-lit) :is(.orr-hp__scales, .orr-hp__contrast, .orr-hp__spare-detail) { display:none !important; }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__contrast--drawn { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__scales { display:block; margin-top:6px; overflow:visible; }
 /* the lit open hardpoint stacks its choice: spares, their scales, then the verb, all on the ship's side */

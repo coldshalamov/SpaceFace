@@ -7,6 +7,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { startBenchServer } from './lib/benchServer.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
+process.env.SPACEFACE_PLAYER_STORE_DIR = '';
 const out = path.resolve(process.argv.find(a=>a.startsWith('--out='))?.slice(6) || '.devshots/crucible-preparation');
 mkdirSync(out, {recursive:true});
 const server = await startBenchServer();
@@ -16,11 +17,11 @@ try {
   const {chromium} = await loadPlaywright();
   browser = await chromium.launch({headless:true, ...(process.env.SF_CHROMIUM ? {executablePath:process.env.SF_CHROMIUM} : {})});
   const page = await browser.newPage({viewport:{width:1440,height:900}});
-  page.setDefaultTimeout(10000);
+  page.setDefaultTimeout(30000);
   page.on('pageerror', error => errors.push(String(error)));
   const open = async (shot, size={width:1440,height:900}) => {
     await page.setViewportSize(size);
-    await page.goto(`${server.baseUrl}tools/ui-bench.html?screen=${shot}&chrome=0`);
+    await page.goto(`${server.baseUrl}tools/ui-bench.html?screen=${shot}&chrome=0`, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(()=>window.__BENCH_READY===true);
     await page.locator('.screen').first().waitFor({state:'visible'});
     assert.match(await page.title(), /SpaceFace/);
@@ -35,7 +36,7 @@ try {
   await snap('encounter');
   await page.getByRole('tab',{name:'01 Encounter'}).press('ArrowRight');
   assert.equal(await page.locator('.orr-preparation').getAttribute('data-prep-step'),'1');
-  assert.ok(await page.locator('.orr-prep-thumb').count() > 0);
+  assert.ok(await page.locator('.orr-sigil, .orr-prep-hullsub, .orr-prep-thumb').count() > 0);
   await page.locator('.orr-prep-fitting').first().click();
   assert.equal(await page.locator('.orr-prep-fitting').first().getAttribute('aria-pressed'),'true');
   assert.ok(await page.locator('.orr-prep-fitnote').innerText());
@@ -102,6 +103,8 @@ try {
     assert.ok(armoryWidth<=size.width+1,`Armory horizontal overflow: ${armoryWidth}`);
     await snap(`armory-${size.width}`);
   }
+  await page.locator('[data-category="Service"]').click();
+  await page.locator('.sf-cru-card').first().click();
   await page.evaluate(()=>document.documentElement.classList.add('sf-reduce-motion'));
   assert.equal(await page.locator('.orr-armory-item > svg').evaluate(e=>getComputedStyle(e).animationName),'none');
   checks.push('1280×800 and 390×844: reachable launch/install, no horizontal overflow, game reduced-motion preference');

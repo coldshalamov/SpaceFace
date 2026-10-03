@@ -118,7 +118,7 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
     tab.addEventListener('click', () => show(i));
     tablist.appendChild(tab); return tab;
   });
-  const nextStep = make('span', 'orr-prep-nextstep', '03 / Armory');
+  const nextStep = make('span', 'orr-prep-nextstep', '03 Armory');
   nextStep.setAttribute('aria-label', 'Next, fit equipment in the armory');
   const summary = make('p', 'orr-prep-summary', '');
   nav.append(tablist, nextStep, summary); root.insertBefore(nav, stage);
@@ -205,7 +205,7 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
     if (!loadout) return;
     latest = loadout;
     summary.textContent = `${state.daily ? 'Daily · ' : ''}${modeName(state.ruleset)} / ${loadout.hull.name}`;
-    nextStep.textContent = isSwarm ? '03 / Armory' : '03 / Launch';
+    nextStep.textContent = isSwarm ? '03 Armory' : '03 Launch';
     nextStep.setAttribute('aria-label', isSwarm ? 'Next, fit equipment in the armory' : 'Next, enter the arena');
     if (isSwarm) enter.textContent = 'Open armory →';
     // The purse is a mechanical counter: it rolls to the new stake and settles. Non-swarm terms
@@ -251,7 +251,10 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
       // The weigh-in: the render rises and settles, the name snaps, the manifest staggers in.
       shipHero.classList.remove('is-arriving');
       if (typeof requestAnimationFrame === 'function') {
-        requestAnimationFrame(() => shipHero.classList.add('is-arriving'));
+        requestAnimationFrame(() => {
+          shipHero.classList.add('is-arriving');
+          setTimeout(() => shipHero.classList.remove('is-arriving'), 600);
+        });
       } else shipHero.classList.add('is-arriving');
     }
     if (placeHand) placeHand();
@@ -295,16 +298,38 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
     handSvg.appendChild(blade); hand.appendChild(handSvg);
     const rail = hullsList.parentElement;
     if (rail) rail.appendChild(hand);
-    const handSpring = createSpring({
+    let curX = 0, curY = 0;
+    const syncTransform = () => {
+      hand.style.transform = `translate(${Math.round(curX * 10) / 10}px, ${Math.round(curY * 10) / 10}px)`;
+    };
+    const handSpringX = createSpring({
       value: 0, preset: 'swing',
-      onUpdate: v => { hand.style.transform = `translateY(${Math.round(v * 10) / 10}px)`; },
+      onUpdate: v => { curX = v; syncTransform(); },
+    });
+    const handSpringY = createSpring({
+      value: 0, preset: 'swing',
+      onUpdate: v => { curY = v; syncTransform(); },
     });
     placeHand = () => {
       const on = hullsList.querySelector('.orr-tile[aria-pressed="true"]');
       if (!on) return;
-      // offsetTop is relative to the nearest positioned ancestor; keep the answer inside the rail.
-      const top = on.offsetTop + on.offsetHeight / 2 - 11;
-      handSpring.set(Math.max(0, top));
+      let x = 0, y = 0;
+      if (typeof on.getBoundingClientRect === 'function' && rail && typeof rail.getBoundingClientRect === 'function') {
+        const onRect = on.getBoundingClientRect();
+        const railRect = rail.getBoundingClientRect();
+        if (onRect.width > 0 && railRect.width > 0) {
+          x = Math.max(0, onRect.left - railRect.left - 20);
+          y = Math.max(0, onRect.top - railRect.top + onRect.height / 2 - 11);
+        } else {
+          x = on.offsetLeft > 50 ? on.offsetLeft - 20 : 0;
+          y = on.offsetTop + on.offsetHeight / 2 - 11;
+        }
+      } else {
+        x = on.offsetLeft > 50 ? on.offsetLeft - 20 : 0;
+        y = on.offsetTop + on.offsetHeight / 2 - 11;
+      }
+      handSpringX.set(Math.max(0, x));
+      handSpringY.set(Math.max(0, y));
     };
     placeHand();
     if (typeof ResizeObserver === 'function') {
