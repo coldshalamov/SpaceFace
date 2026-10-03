@@ -543,6 +543,16 @@ function extractionGeometryReady(breaker,section) {
   const well=C.assets.breaker.clearVolumes.open[0];
   return section.pos.z<C.sitePlacement.pos.z-210&&near>C.assets.breaker.bounds.max.x&&left>=well.z[0]&&right<=well.z[1];
 }
+/** Opening the carrier shoes can disturb cargo after receiver entry was accepted.
+ * Both existing lines retain custody until the measured assembly settles; this is
+ * a release gate only and never rewrites a body or changes the final retention bounds. */
+export function ceresWorkfleetReceiverTransferReady(breaker,section) {
+  return ceresWorkfleetRoleForEntity(breaker)==='breaker'&&exactSection(section)
+    &&ceresWorkfleetAtPose(section,ceresWorkfleetWorldPose(C.route.receiverPose),{position:1,angle:.003,speed:.05,spin:.0005})
+    // Nominal 193WU withdrawal at 3WU/s leaves less than 1WU of free lateral drift.
+    &&Math.abs(section.vel.x)<=.01
+    &&ceresWorkfleetAtPose(breaker,ceresWorkfleetWorldPose(C.route.loadedLegs.at(-1).to),{position:.5,angle:.003,speed:.05,spin:.0005});
+}
 export function ceresWorkfleetContactRetained(holder,section,state,role) {
   if(!exactSection(section)||!healthy(state,holder)||!admitted(section,state))return false;
   const target=role==='breaker'?sectionLoadPose(holder):{...holder.pos,rot:holder.rot||0};
@@ -738,9 +748,15 @@ export function stepCeresWorkfleet(owner,dt) {
         breaker.data.ceresWorkfleetSlideTarget=0;change(job,'unshoe',state);
       }
     } else if(job.phase==='unshoe'&&breaker.data.ceresWorkfleetSlide===0&&currentLine(service,job.receiverId,cradle,section)) {
-      service.cut(job.towId,breaker.id,'ceres_receiver_transfer');job.towId=null;change(job,'withdraw',state);
+      if(ceresWorkfleetReceiverTransferReady(breaker,section)) {
+        service.cut(job.towId,breaker.id,'ceres_receiver_transfer');job.towId=null;change(job,'withdraw',state);
+      } else job.blockedReason='receiver-transfer-settling';
     }
   } else if(['withdraw','pads','secured'].includes(job.phase)) {
+    // Request retention while the carrier withdraws. The native continuous sweep
+    // keeps each pad stopped against the actual carrier/section until it is clear;
+    // waiting for the distant parking point leaves the free section drifting.
+    cradle.data.ceresWorkfleetSlideTarget=1;
     target=ceresWorkfleetWorldPose(C.route.carrierWithdrawalTo);options={speed:job.phase==='withdraw'?3:1,accel:.5};
     if(job.phase==='withdraw'&&ceresWorkfleetAtPose(breaker,target,{position:.5,angle:.003,speed:.5,spin:.01})) {
       cradle.data.ceresWorkfleetSlideTarget=1;change(job,'pads',state);
