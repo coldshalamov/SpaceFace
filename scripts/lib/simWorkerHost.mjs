@@ -498,6 +498,13 @@ export function createSimHost() {
     modalActive: false,       // uiFold modal latch (production)
     screenStackLen: 0,        // uiFold screen-stack depth (production)
     restorePoint: null,       // save.restore envelope staged on the bus (load parity)
+    // Stage-9 remediation: the game:started receipt is generated worker-side,
+    // not forwarded — the newGameBoot rpc stages its payload here and the first
+    // post-boot 'flight' mode apply emits it once on the worker bus (the bridge
+    // then replays it to main-side subscribers exactly once). A main-side emit
+    // replayed into a restore window was the stage-9 double-seed crash class.
+    pendingGameStarted: null,
+    gameStartedEmits: 0,
   };
 
   function drainEvents() {
@@ -709,12 +716,24 @@ export function createSimHost() {
   function installBridgeCapture(bus, captureAll) {
     if (captureAll === true) {
       const origEmit = bus.emit.bind(bus);
+      const origQueue = typeof bus.queue === 'function' ? bus.queue.bind(bus) : null;
+      const capturable = (type) =>
+        host.suppressEventCapture <= 0 && (host.suppressedEmitTypes.get(type) | 0) <= 0 && typeof type === 'string';
       bus.emit = (type, payload) => {
-        if (host.suppressEventCapture <= 0 && (host.suppressedEmitTypes.get(type) | 0) <= 0 && typeof type === 'string') {
-          recordBridgeEvent(type, payload);
-        }
+        if (capturable(type)) recordBridgeEvent(type, payload);
         return origEmit(type, payload);
       };
+      // Same bypass class as the main→worker forwarder: bus.queue() defers to
+      // the internal deferred[] pool and flushes via emitAll, never re-entering
+      // the wrapped bus.emit — a queued worker-side emit (entity:destroyed is
+      // the known one) would never bridge. Capture at queue time; the deferred
+      // slot still delivers to worker-local subscribers at flush.
+      if (origQueue) {
+        bus.queue = (type, payload) => {
+          if (capturable(type)) recordBridgeEvent(type, payload);
+          return origQueue(type, payload);
+        };
+      }
       return;
     }
     for (const type of BRIDGE_EVENTS) {
@@ -816,15 +835,24 @@ export function createSimHost() {
       // system resets, starter pick, NG+, scene bootstrap) replays inside this directive
       // window. The ack resolves after the kicked physics-prep promise settles, so the
       // caller's physics gate still holds.
-      ['newGameBoot', async (args) => runNewGameSimBoot({
-        state,
-        helpers: sim.helpers,
-        bus: host.bus,
-        registry,
-        opts: (args && args.opts) || {},
-        newGamePlus: (args && args.newGamePlus) || null,
-        awaitPhysicsPrep: true,
-      })],
+      ['newGameBoot', async (args) => {
+        // A fresh boot supersedes any earlier pending receipt (aborted or
+        // never-consumed lifecycle) — stage only on a completed boot.
+        host.pendingGameStarted = null;
+        const result = await runNewGameSimBoot({
+          state,
+          helpers: sim.helpers,
+          bus: host.bus,
+          registry,
+          opts: (args && args.opts) || {},
+          newGamePlus: (args && args.newGamePlus) || null,
+          awaitPhysicsPrep: true,
+        });
+        if (result && result.ok === true) {
+          host.pendingGameStarted = { newGamePlus: (args && args.newGamePlus) || null };
+        }
+        return result;
+      }],
       // Presentation-side journal rebuild requests ride the rpc channel: the
       // real journal rebuilds worker-side and the range ships on this reply.
       ['journalRebuild', () => {
@@ -903,6 +931,8 @@ export function createSimHost() {
           lastRpcAck: host.lastRpcAck || null,
           lastBusEmit: host.lastBusEmit || null,
           lastStorageStage: host.lastStorageStage || null,
+          gameStartedEmits: host.gameStartedEmits,
+          pendingGameStarted: host.pendingGameStarted !== null,
           droppedEventTypes: host.droppedEventTypes,
           dropSamples: host.dropSamples,
           saveDiag: (() => {
@@ -1333,6 +1363,11 @@ export function createSimHost() {
           stageLaneStorage(payload.__laneStorage, pendingStorageOps);
           host.lastStorageStage = { type, keys: Object.keys(payload.__laneStorage).length };
         }
+        if (type === 'game:load') {
+          // A restore supersedes any still-staged new-game receipt — a pending
+          // game:started must not fire into a restored world.
+          host.pendingGameStarted = null;
+        }
         // Mirror of remapEventPayload on the main side: forwarded { entityRef }
         // tokens resolve back to live entities so sim listeners see the same
         // shape a local emit would carry.
@@ -1351,6 +1386,20 @@ export function createSimHost() {
         host.lastBusEmit = type;
         host.suppressedEmitTypes.set(type, (host.suppressedEmitTypes.get(type) | 0) + 1);
         try { host.bus.emit(type, payload); } finally { host.suppressedEmitTypes.set(type, host.suppressedEmitTypes.get(type) - 1); }
+      },
+      // Stage-9 remediation: consumes the staged new-game receipt at the
+      // first post-boot 'flight' transition and emits game:started once on the
+      // worker bus — mirroring enterFlight()'s ordering (mode:changed →
+      // game:started) with no forwarded main emit. The bridge ships the receipt
+      // back so main-side subscribers fire exactly once; sim-side subscribers
+      // fire here exactly once. Called from the MODE command apply.
+      emitPendingGameStarted: (mode) => {
+        if (mode !== 'flight' || !host.pendingGameStarted || !host.bus) return false;
+        const payload = host.pendingGameStarted;
+        host.pendingGameStarted = null;
+        host.gameStartedEmits += 1;
+        try { host.bus.emit('game:started', payload); } catch (_) {}
+        return true;
       },
     });
     // Async rpc ops (physicsPrep, newGame) resolve inside this directive window —

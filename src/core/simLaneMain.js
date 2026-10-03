@@ -39,7 +39,7 @@ import {
 import { createInputCommandSnapshotQueue } from './inputCommandSnapshot.js';
 import { createSimLaneJournal, createLaneSabJournalArena } from './simLaneJournal.js';
 import { flattenEventPayload } from '../../scripts/lib/simEventBridge.mjs';
-import { MAIN_TO_SIM_BUS_EVENTS } from './mainToSimEventSurface.js';
+import { MAIN_TO_SIM_BUS_EVENTS, KNOWN_UNFORWARDED_BUS_EVENTS } from './mainToSimEventSurface.js';
 import { PRESENTATION_JOURNAL_KINDS } from './presentationJournal.js';
 import {
   installSimCommandSink,
@@ -679,48 +679,71 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
 
   // ---- main→worker bus forward -------------------------------------------------------------------
   let suppressForward = 0;
-  // Census coverage check: emits whose type is not in the forward set die at
-  // the boundary. Counted per type so a missed census entry surfaces in
-  // getDiagnostics() instead of vanishing silently.
+  // Census coverage check: emits whose type is in NEITHER the forward set nor
+  // the generated KNOWN_UNFORWARDED set die at the boundary unrecorded —
+  // counted per type so a missed census entry surfaces in getDiagnostics()
+  // (and trips the LANE-FWD gate's unforwardedEmitCount === 0 assertion)
+  // instead of vanishing silently. Main-only emits ride KNOWN_UNFORWARDED and
+  // stay uncounted.
   let unforwardedEmitCount = 0;
   const unforwardedEmitTypes = new Map();
   const busForward = installBusForward(bus);
   function installBusForward(b) {
     if (!b || typeof b.emit !== 'function') return null;
     const origEmit = b.emit.bind(b);
-    b.emit = (type, payload) => {
-      const result = origEmit(type, payload);
-      if (suppressForward <= 0 && typeof type === 'string') {
-        if (MAIN_TO_SIM_BUS_EVENTS.has(type)) {
-          try {
-            let wirePayload = payload;
-            if (type === 'game:load' || type === 'game:save') {
-              // The worker realm has no localStorage of its own — stage this
-              // realm's sf.* keyspace so its save system resolves slots and
-              // recovery against real bytes.
-              wirePayload = Object.assign({}, payload, { __laneStorage: collectLaneSaveStorage() });
-            }
-            // Same projection the worker→main bridge applies: live sim objects
-            // flatten to { entityRef } tokens and unflattenable members reject
-            // the whole emit (counted, never shipped malformed).
-            const flat = flattenEventPayload(wirePayload);
-            if (typeof flat === 'symbol') {
-              droppedEnvelopes++;
-            } else {
-              laneBusEmit(type, flat);
-            }
-          } catch (_) { droppedEnvelopes++; }
-        } else {
-          unforwardedEmitCount++;
-          if (unforwardedEmitTypes.size < 256) {
-            unforwardedEmitTypes.set(type, (unforwardedEmitTypes.get(type) || 0) + 1);
+    const origQueue = typeof b.queue === 'function' ? b.queue.bind(b) : null;
+    // Shared forward gate for emit AND queue: eventBus.queue() defers through
+    // an internal deferred[] pool drained by flush()→emitAll — the wrapped
+    // b.emit is never re-entered, so without this wrap a queued emission of a
+    // forwarded type silently never reached the worker (stage-9 finding).
+    // Queued emits forward at queue time: the worker applies the envelope on
+    // its next directive drain while the local deferred slot still delivers to
+    // main subscribers on this realm's flush cadence.
+    const maybeForward = (type, payload) => {
+      if (suppressForward > 0 || typeof type !== 'string') return;
+      if (MAIN_TO_SIM_BUS_EVENTS.has(type)) {
+        try {
+          let wirePayload = payload;
+          if (type === 'game:load' || type === 'game:save') {
+            // The worker realm has no localStorage of its own — stage this
+            // realm's sf.* keyspace so its save system resolves slots and
+            // recovery against real bytes.
+            wirePayload = Object.assign({}, payload, { __laneStorage: collectLaneSaveStorage() });
           }
+          // Same projection the worker→main bridge applies: live sim objects
+          // flatten to { entityRef } tokens and unflattenable members reject
+          // the whole emit (counted, never shipped malformed).
+          const flat = flattenEventPayload(wirePayload);
+          if (typeof flat === 'symbol') {
+            droppedEnvelopes++;
+          } else {
+            laneBusEmit(type, flat);
+          }
+        } catch (_) { droppedEnvelopes++; }
+      } else if (!KNOWN_UNFORWARDED_BUS_EVENTS.has(type)) {
+        unforwardedEmitCount++;
+        if (unforwardedEmitTypes.size < 256) {
+          unforwardedEmitTypes.set(type, (unforwardedEmitTypes.get(type) || 0) + 1);
         }
       }
+    };
+    b.emit = (type, payload) => {
+      const result = origEmit(type, payload);
+      maybeForward(type, payload);
       return result;
     };
+    if (origQueue) {
+      b.queue = (type, payload) => {
+        const result = origQueue(type, payload);
+        maybeForward(type, payload);
+        return result;
+      };
+    }
     return {
-      restore() { b.emit = origEmit; },
+      restore() {
+        b.emit = origEmit;
+        if (origQueue) b.queue = origQueue;
+      },
     };
   }
 

@@ -356,6 +356,12 @@ try {
     try {
       await page.evaluate(() => {
         window.__playableStart = {};
+        // Stage-9 remediation proof: exactly-once game:started on the main bus.
+        // The worker lane generates the receipt inside the worker — a count>1
+        // means a duplicated replay/emit, 0 on a new game means the receipt
+        // never bridged back to main-side subscribers.
+        window.__gameStartedCount = 0;
+        window.SF.bus.on('game:started', () => { window.__gameStartedCount += 1; });
         window.SF.bus.on('game:loadingProgress', stage => { window.__playableStart.stage = stage; });
         window.SF.bus.on('game:startFailed', error => { window.__playableStart.error = error; });
       });
@@ -570,14 +576,24 @@ try {
           return { hasRoute: !!engaged && engaged === 'sent', engaged };
         });
         await page.waitForTimeout(900);
-        const fwd4 = await page.evaluate(() => {
+        const fwd4 = await page.evaluate(async () => {
           const st = window.SF.state;
           const diag = (window.SF.simLaneDiag && window.SF.simLaneDiag()) || {};
+          // Worker-side ground truth: how many times the worker emitted
+          // game:started (staged by newGameBoot, consumed at the post-boot
+          // 'flight' apply). 1 = receipt fired once; 0 = never; >1 = duplicate.
+          let workerGameStarted = null;
+          try {
+            const probe = window.SF.laneRpc && await window.SF.laneRpc('probeState', {});
+            workerGameStarted = probe && probe.result ? probe.result.gameStartedEmits : null;
+          } catch (_) { workerGameStarted = null; }
           return {
             executor: !!(st.nav && st.nav.executor && st.nav.executor.status === 'engaged'),
             denied: window.__laneFwdReceipts.denied,
             unforwarded: diag.unforwardedEmitCount ?? null,
             unforwardedTypes: diag.unforwardedEmitTypes || null,
+            gameStartedMain: window.__gameStartedCount,
+            gameStartedWorker: workerGameStarted,
           };
         });
         // ui:setCourse crossed the lane iff the worker's own nav:waypoint receipt
@@ -590,10 +606,23 @@ try {
         const unforwardedForProbe = fwd4.unforwardedTypes
           ? ['ui:setCourse', 'settings:changed', 'nav:engageRoute'].filter((t) => t in fwd4.unforwardedTypes)
           : [];
-        const ok = courseOk && settingsOk && routeOk && unforwardedForProbe.length === 0;
+        // Stage-9 remediation gates:
+        //  (a) unforwardedEmitCount === 0 — an emit whose type escapes BOTH the
+        //      forward set and KNOWN_UNFORWARDED fails loudly instead of
+        //      dead-ending at the lane boundary.
+        //  (b) game:started exactly once on BOTH lanes — the worker emits the
+        //      receipt once post-boot (gameStartedWorker === 1 after a new
+        //      game, === 0 after a save restore / ~LOAD pass) and its bridged
+        //      replay fires main-side subscribers exactly once (never duplicated).
+        const expectWorkerStarted = tag === '~LOAD' || REAL_SAVES ? 0 : 1;
+        const coverageOk = fwd4.unforwarded === 0;
+        const startedOk = fwd4.gameStartedWorker === expectWorkerStarted
+          && fwd4.gameStartedMain === expectWorkerStarted;
+        const ok = courseOk && settingsOk && routeOk && unforwardedForProbe.length === 0
+          && coverageOk && startedOk;
         record('LANE-FWD' + tag, ok, ok
-          ? `ui:setCourse -> nav.waypoint (${fwd.waypointReceipts} receipt), settings:changed -> profile write, engage=${fwd3.engaged}${fwd4.executor ? '/executor' : fwd4.denied ? '/denied' : ''}`
-          : `waypoint=${JSON.stringify(fwd.waypointLabel)} receipts=${fwd.waypointReceipts} probeReceipts=${fwd.probeReceipts} profile=${fwd2.profileWritten} route=${fwd3.engaged} exec=${fwd4.executor} denied=${fwd4.denied} unfwd=${JSON.stringify(unforwardedForProbe)}`);
+          ? `ui:setCourse -> nav.waypoint (${fwd.waypointReceipts} receipt), settings:changed -> profile write, engage=${fwd3.engaged}${fwd4.executor ? '/executor' : fwd4.denied ? '/denied' : ''}, unfwd=0, game:started=${fwd4.gameStartedWorker}/w+${fwd4.gameStartedMain}/m`
+          : `waypoint=${JSON.stringify(fwd.waypointLabel)} receipts=${fwd.waypointReceipts} probeReceipts=${fwd.probeReceipts} profile=${fwd2.profileWritten} route=${fwd3.engaged} exec=${fwd4.executor} denied=${fwd4.denied} unfwd=${fwd4.unforwarded}/${JSON.stringify(unforwardedForProbe)} types=${JSON.stringify(fwd4.unforwardedTypes)} started w=${fwd4.gameStartedWorker} m=${fwd4.gameStartedMain}`);
       } catch (err) {
         record('LANE-FWD' + tag, false, 'forwarded-surface exercise threw: ' + err.message);
       }
@@ -636,6 +665,13 @@ try {
           return el && getComputedStyle(el).display !== 'none';
         }, null, { timeout: 60000 });
         phase = 'menu';
+        // Stage-9 remediation: a stray game:started on the restore path is the
+        // crash class the worker-side receipt replaced — count any emit here
+        // (must stay 0) before pressing Continue.
+        await page.evaluate(() => {
+          window.__gameStartedCount = 0;
+          window.SF.bus.on('game:started', () => { window.__gameStartedCount += 1; });
+        });
         // Press the real Continue button. mainMenu.js:254 reads the save index and emits
         // game:load with the latest slot; firing the event directly would skip the index lookup,
         // which is itself a place this can break.

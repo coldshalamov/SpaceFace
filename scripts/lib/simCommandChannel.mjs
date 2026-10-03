@@ -183,7 +183,16 @@ export function applySimCommandEnvelope(env, ctx) {
     case SIM_COMMAND_TYPES.NAV:
       return { type: SIM_COMMAND_TYPES.NAV, ack: { ok: applyLaneNav(state, p) } };
     case SIM_COMMAND_TYPES.MODE:
-      return { type: SIM_COMMAND_TYPES.MODE, ack: { ok: applyLaneMode(state, ctx.bus, p && p.mode), mode: p && p.mode } };
+      {
+        const ok = applyLaneMode(state, ctx.bus, p && p.mode);
+        // Stage-9 remediation: the worker-side game:started receipt rides the
+        // post-boot 'flight' apply — emitted once inside emitPendingGameStarted
+        // (staged by the newGameBoot rpc, cleared on restore).
+        if (ok && p && p.mode === 'flight' && typeof ctx.emitPendingGameStarted === 'function') {
+          ctx.emitPendingGameStarted(p.mode);
+        }
+        return { type: SIM_COMMAND_TYPES.MODE, ack: { ok, mode: p && p.mode } };
+      }
     case SIM_COMMAND_TYPES.DOM:
       if (typeof ctx.ingestDomEvent === 'function') ctx.ingestDomEvent(p && p.d);
       return { type: SIM_COMMAND_TYPES.DOM };

@@ -74,30 +74,144 @@ function* walk(dir) {
 
 // call sites: receiver.bus.(on|once|emit|queue)('type' | `tpl` | expr)
 const CALL_RE = /([A-Za-z_$][\w$.[\]]*)\s*\.\s*(on|once|emit|queue)\s*\(\s*([^,)\n]+)/g;
+// per-system wrapper subscriptions: receiver._listen('type' | IDENT.PROP | expr).
+// Stage-9 remediation: systems subscribe through a `this._listen(event, fn)`
+// helper that delegates to this.bus.on — the literal scan above sees the
+// wrapper, never the subscription. A `._listen(` call counts as a subscription
+// only when the file either defines a `_listen` whose body window references
+// the bus, or does not define `_listen` at all (inherited helper — same bus
+// convention across the codebase).
+const LISTEN_RE = /([A-Za-z_$][\w$.[\]]*)\s*\.\s*_listen\s*\(\s*([^,)\n]+)/g;
+const LISTEN_DEF_RE = /_listen\s*\(\s*[^)]*\)\s*\{/;
 // bare alias calls: on('type' / emit('type' — counted only when the file
 // defines a local alias for that verb whose body touches a bus
 // (`const on = (e,f) => bus.on(e,f)` / `function on(e,f){ ...bus.on... }`).
 const ALIAS_RE = /(?:const|let|var)\s+(on|once|emit|queue)\s*=|function\s+(on|once|emit|queue)\s*\([^)]*\)\s*\{/g;
 const BARE_CALL_RE = /(^|[^\w$.])(on|once|emit|queue)\s*\(\s*([^,)\n]+)/g;
 
+// ---------------------------------------------------------------------------
+// Const-resolution prepass. Enum-argged call sites
+// (`_listen(CAREER_LADDER_EVENTS.ACCEPT, ...)`,
+// `emit(bus, SOME_EVENT, ...)`) carry `IDENT.PROP` or `IDENT` expressions whose
+// literal lives in a const declaration anywhere under src/. Two maps:
+//   const NAME = 'type'                       → constString(NAME)
+//   const NAME = { KEY: 'type', ... }         → constObject(NAME.KEY)
+//   const NAME = Object.freeze({ KEY: ... })  → same
+// Prepass runs over every src file before any call-site scan so import edges
+// are not needed (enum maps are resolved globally by name).
+// ---------------------------------------------------------------------------
+const CONST_STR_RE = /(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*['"]([^'"]+)['"]\s*;/g;
+const CONST_OBJ_RE = /(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:Object\.freeze\s*\(\s*)?\{/g;
+const OBJ_ENTRY_RE = /([A-Za-z_$][\w$]*)\s*:\s*['"]([^'"]+)['"]/g;
+
+const constStrings = new Map(); // NAME -> 'type'
+const constObjects = new Map(); // NAME -> Map(KEY -> 'type')
+
+function collectConsts(src) {
+  CONST_STR_RE.lastIndex = 0;
+  let m;
+  while ((m = CONST_STR_RE.exec(src))) {
+    if (!constStrings.has(m[1])) constStrings.set(m[1], m[2]);
+  }
+  CONST_OBJ_RE.lastIndex = 0;
+  while ((m = CONST_OBJ_RE.exec(src))) {
+    // The object body runs to the first closing brace at column-start-ish
+    // depth 0 — enum maps are flat KEY:'value' tables, so a nested '{' or '}'
+    // inside the slice marks a non-enum decl and the whole decl is skipped.
+    const open = CONST_OBJ_RE.lastIndex;
+    const close = src.indexOf('}', open);
+    if (close < 0) continue;
+    const body = src.slice(open, close);
+    if (/[{}]/.test(body)) continue;
+    let table = constObjects.get(m[1]);
+    if (!table) { table = new Map(); constObjects.set(m[1], table); }
+    OBJ_ENTRY_RE.lastIndex = 0;
+    let e;
+    while ((e = OBJ_ENTRY_RE.exec(body))) {
+      if (!table.has(e[1])) table.set(e[1], e[2]);
+    }
+  }
+}
+
+const fileSrcCache = new Map();
+function srcOf(file) {
+  let src = fileSrcCache.get(file);
+  if (src === undefined) { try { src = readFileSync(file, 'utf8'); } catch (_) { src = ''; } fileSrcCache.set(file, src); }
+  return src;
+}
+
+// Prepass: pull const declarations out of every src file BEFORE any call site
+// is classified (resolution is global — enum maps import across modules).
+const SRC_ALL = resolve(ROOT, 'src');
+for (const file of walk(SRC_ALL)) collectConsts(srcOf(file));
+
+function resolveExprArg(a) {
+  // IDENT.PROP — enum map member access.
+  let m = /^([A-Za-z_$][\w$]*)\.([A-Za-z_$][\w$]*)$/.exec(a);
+  if (m) {
+    const table = constObjects.get(m[1]);
+    const v = table && table.get(m[2]);
+    if (typeof v === 'string' && v.length) return { kind: 'literal', types: [v] };
+  }
+  // IDENT — whole-const string. Only counts when the resolved value is
+  // event-shaped (contains ':'): a bare identifier arg is usually a runtime
+  // variable, not an event-name const (`emit(name)` must not bind to
+  // `let name = 'UNKNOWN STRATA'`). Enum-member access above stays liberal —
+  // `IDENT.PROP` reads are deliberate enum lookups and may hold colon-less
+  // event names.
+  m = /^([A-Za-z_$][\w$]*)$/.exec(a);
+  if (m) {
+    const v = constStrings.get(m[1]);
+    if (typeof v === 'string' && v.includes(':')) return { kind: 'literal', types: [v] };
+  }
+  // Multi-literal expr — ternary/switch emits:
+  //   emit(act === 'x' ? 'a:b' : 'a:c')  →  both literals are emit candidates.
+  // Require >=2 event-shaped (colon-containing) literals so a lone string
+  // fragment inside an expression is never promoted to a type.
+  const lits = [];
+  const litRe = /'([^'\n]{2,})'|"([^"\n]{2,})"/g;
+  while ((m = litRe.exec(a))) {
+    const v = m[1] !== undefined ? m[1] : m[2];
+    if (v.includes(':')) lits.push(v);
+  }
+  if (lits.length >= 2) return { kind: 'literal', types: [...new Set(lits)] };
+  return { kind: 'expr', types: [a] };
+}
+
 function classifyArg(arg) {
   const a = arg.trim();
-  if (/^['"][A-Za-z0-9_:.*-]+['"]$/.test(a)) return { kind: 'literal', type: a.slice(1, -1) };
-  if (/^`[^`]*`$/.test(a)) return { kind: 'template', type: a };
-  return { kind: 'expr', type: a };
+  if (/^['"][A-Za-z0-9_:.*-]+['"]$/.test(a)) return { kind: 'literal', types: [a.slice(1, -1)] };
+  if (/^`[^`]*`$/.test(a)) return { kind: 'template', types: [a] };
+  return resolveExprArg(a);
 }
 
 function scanFile(file) {
-  const src = readFileSync(file, 'utf8');
+  const src = srcOf(file);
   const hits = [];
+  const pushArgHits = (recv, verb, argSrc, line) => {
+    const arg = classifyArg(argSrc);
+    for (const type of arg.types) {
+      hits.push({ recv, verb, kind: arg.kind === 'template' ? 'template' : (arg.kind === 'expr' ? 'expr' : 'literal'), type, line });
+    }
+  };
   CALL_RE.lastIndex = 0;
   let m;
   while ((m = CALL_RE.exec(src))) {
     const recv = m[1];
     const verb = m[2];
-    const arg = classifyArg(m[3]);
     const line = src.slice(0, m.index).split('\n').length;
-    hits.push({ recv, verb, ...arg, line });
+    pushArgHits(recv, verb, m[3], line);
+  }
+  // `X._listen('type' | IDENT.PROP, fn)` — the per-system bus.on wrapper.
+  LISTEN_DEF_RE.lastIndex = 0;
+  const defMatch = LISTEN_DEF_RE.exec(src);
+  const listenIsBus = !defMatch || /\bbus\b/.test(src.slice(defMatch.index, defMatch.index + 320));
+  if (listenIsBus) {
+    LISTEN_RE.lastIndex = 0;
+    while ((m = LISTEN_RE.exec(src))) {
+      const line = src.slice(0, m.index).split('\n').length;
+      pushArgHits(`${m[1]}._listen`, 'on', m[2], line);
+    }
   }
   // Bus-alias verbs defined in this file. An arrow assignment counts when its
   // rhs slice references `.bus` / `bus.`; a function declaration counts when a
@@ -114,9 +228,8 @@ function scanFile(file) {
     while ((m = BARE_CALL_RE.exec(src))) {
       const verb = m[2];
       if (!aliases.has(verb)) continue;
-      const arg = classifyArg(m[3]);
       const line = src.slice(0, m.index).split('\n').length;
-      hits.push({ recv: `alias:${verb}`, verb, ...arg, line });
+      pushArgHits(`alias:${verb}`, verb, m[3], line);
     }
   }
   return hits;
@@ -156,7 +269,10 @@ for (const file of walk(SRC)) {
   const inWorker = workerRel.has(rel) && !isPresentationPath(rel);
   for (const hit of scanFile(file)) {
     const busish = /(^|[._])bus$/i.test(hit.recv)
-      || /(^|\.)(eventBus|events)$/i.test(hit.recv);
+      || /(^|\.)(eventBus|events)$/i.test(hit.recv)
+      // `X._listen('type', fn)` hits carry recv '<X>._listen' — the per-system
+      // bus.on wrapper verified by scanFile's LISTEN_DEF_RE check.
+      || /\._listen$/.test(hit.recv);
     if (hit.kind === 'literal') {
       if (hit.verb === 'on' || hit.verb === 'once') {
         if (hit.recv.startsWith('alias:') || busish) {
@@ -223,6 +339,12 @@ const DYNAMIC_FORWARD = [
   { type: 'ui:endgameUnfiledJumpConfirm', emitters: ['src/systems/comms.js'], note: 'intentEvent emit' },
   { type: 'signal:track', emitters: ['src/ui/signalInvestigationPrompt.js'], note: 'resolved event const' },
   { type: 'signal:investigate', emitters: ['src/ui/signalInvestigationPrompt.js'], note: 'resolved event const' },
+  // shipworks.js emits through a local `emitFitIntent(eventName, payload)`
+  // helper (`ctx.bus.emit(eventName, ...)` inside a refusal-probe wrapper) —
+  // the verb is not a bus method name so no scan pattern binds the site.
+  // Sim subscribers: onboarding.js + ships.js (literal bus.on).
+  { type: 'ui:buyModule', emitters: ['src/ui/station/screens/shipworks.js'], note: 'emitFitIntent helper emit (shipworks fit intents)' },
+  { type: 'ui:fitModule', emitters: ['src/ui/station/screens/shipworks.js'], note: 'emitFitIntent helper emit (shipworks fit intents)' },
 ];
 
 // Stage-8's hand-maintained forward set carried these on purpose: replayed
@@ -250,8 +372,22 @@ const BESPOKE_ADAPTERS = {
 // post-restore presentation-journal rebuild rejects (rebuild-publication-
 // failed) → CONTINUE regression in check-game-playable. game:new is forwarded
 // and verified safe; only the receipt is excluded.
+// Stage-9 remediation: the receipt now reaches the sim through the worker's own
+// lifecycle — the newGameBoot rpc stages a pending payload and the first
+// post-boot 'flight' mode application emits game:started once on the worker
+// bus, whose bridge receipt fires main-side subscribers exactly once. Main's
+// emit is suppressed on the worker lane, so nothing needs forwarding here.
 const FORWARD_EXCLUDE = {
-  'game:started': 'lifecycle receipt — worker runs its own new-game lifecycle; forwarding double-seeds the worker world (duplicate entity ids on restore)',
+  'game:started': 'lifecycle receipt — worker emits its own once post-boot (pendingGameStarted consumed at the first flight-mode apply); forwarding a main emit would double-fire sim subscribers',
+  // Dead subscriptions verified stage-9 remediation: sim-side `bus.on` subs
+  // exist but NOTHING emits these types anywhere in src/. needsForward already
+  // fails (mainEmitters is empty), so these rows never forward — they are
+  // listed so the generated surface documents them as reviewed dead ends, not
+  // census gaps.
+  'ui:restockBombRack': 'dead subscription — sim-side subscriber exists but no emitters anywhere; nothing would ever ship',
+  'ui:endgameConfirm': 'dead subscription — sim-side subscriber exists but no emitters anywhere; nothing would ever ship',
+  'ui:endingArchiveOpen': 'dead subscription — sim-side subscriber exists but no emitters anywhere; nothing would ever ship',
+  'ui:heliosBay7Scan': 'dead subscription — sim-side subscriber exists but no emitters anywhere; nothing would ever ship',
 };
 
 function computeForwardSet() {
@@ -262,11 +398,27 @@ function computeForwardSet() {
   const excluded = new Set(Object.keys(FORWARD_EXCLUDE));
   const all = new Set([...censusTypes, ...dynamic, ...legacy]);
   for (const t of excluded) all.delete(t);
-  return { censusTypes, dynamic, legacy, excluded, all };
+  // KNOWN_UNFORWARDED — every type the census can prove does not need the lane:
+  // main-emitted types with zero sim-side subscribers (main-only by
+  // construction) plus everything FORWARD_EXCLUDE documents (excluded
+  // lifecycle receipts and verified dead subscriptions). The lane-forward shim
+  // counts emits absent from BOTH sets as genuinely uncovered — stage-9's
+  // `unforwardedEmitCount === 0` gate then fails loudly when a new emit type
+  // escapes the census instead of dead-ending silently.
+  const knownUnforwarded = new Set(excluded);
+  // game:started stays OUT: on the worker lane any main-side emit of it is the
+  // stage-9 double-fire bug class — the LANE-FWD gate must count it loudly,
+  // not file it under "known". Dead-subscription excludes (ui:restockBombRack
+  // et al.) stay in: an emit of those is reviewed dead-end traffic.
+  knownUnforwarded.delete('game:started');
+  for (const r of rows) {
+    if (r.mainEmitters.length > 0 && r.simSubscribers.length === 0 && !all.has(r.type)) knownUnforwarded.add(r.type);
+  }
+  return { censusTypes, dynamic, legacy, excluded, all, knownUnforwarded };
 }
 
 function emitForwardSetModule(path) {
-  const { censusTypes, dynamic, legacy, excluded, all } = computeForwardSet();
+  const { censusTypes, dynamic, legacy, excluded, all, knownUnforwarded } = computeForwardSet();
   const lines = [];
   lines.push('// GENERATED by scripts/lib/eventSurfaceCensus.mjs --forward-set.');
   lines.push('// Do not hand-edit: regenerate with `node scripts/lib/eventSurfaceCensus.mjs --forward-set`.');
@@ -292,7 +444,16 @@ function emitForwardSetModule(path) {
   for (const t of Object.keys(BESPOKE_ADAPTERS)) lines.push(`  '${t}',`);
   lines.push(']);');
   lines.push('');
-  lines.push(`// provenance: census=${censusTypes.size} dynamic=${dynamic.size} legacy=${legacy.size} excluded=${excluded.size} total=${all.size}`);
+  lines.push('// Every type the census proves does not cross the lane: main-emitted');
+  lines.push('// types with zero sim-side subscribers, plus the FORWARD_EXCLUDE rows');
+  lines.push('// above. installBusForward counts emits absent from BOTH sets — the');
+  lines.push('// LANE-FWD gate asserts unforwardedEmitCount === 0, so a main emit of');
+  lines.push('// a type on neither list fails the contract loudly instead of dead-ending.');
+  lines.push('export const KNOWN_UNFORWARDED_BUS_EVENTS = new Set([');
+  for (const t of [...knownUnforwarded].sort()) lines.push(`  '${t}',`);
+  lines.push(']);');
+  lines.push('');
+  lines.push(`// provenance: census=${censusTypes.size} dynamic=${dynamic.size} legacy=${legacy.size} excluded=${excluded.size} total=${all.size} knownUnforwarded=${knownUnforwarded.size}`);
   lines.push('');
   writeFileSync(path, lines.join('\n'), 'utf8');
   console.log(`wrote ${path}: ${all.size} forwarded types (census=${censusTypes.size} dynamic=${dynamic.size} legacy=${legacy.size} excluded=${excluded.size})`);

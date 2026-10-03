@@ -7,7 +7,16 @@
 // diagnostic instead of crossing the lane.
 
 export const MAIN_TO_SIM_BUS_EVENTS = new Set([
+  'band:cycle',
+  'career:ladder:abandon',
+  'career:ladder:accept',
   'career:ladder:choose',
+  'career:ladder:decline',
+  'career:ladder:recover',
+  'career:origin:accept',
+  'career:origin:choose',
+  'career:origin:decline',
+  'career:origin:reoffer',
   'claim:defenseIgnore',
   'contactHail:choice',
   'contactHail:request',
@@ -45,6 +54,8 @@ export const MAIN_TO_SIM_BUS_EVENTS = new Set([
   'pirateParley:choose',
   'player:recoveryRequested',
   'range:opened',
+  'recovery:choose',
+  'recovery:vent',
   'run:awardRequested',
   'run:beginRequested',
   'run:draftPickRequested',
@@ -54,6 +65,7 @@ export const MAIN_TO_SIM_BUS_EVENTS = new Set([
   'run:refitCloseRequested',
   'run:refitFitRequested',
   'run:refitStripRequested',
+  'salvage:reactorVented',
   'save:error',
   'save:loadSpeculationTarget',
   'save:loaded',
@@ -106,6 +118,7 @@ export const MAIN_TO_SIM_BUS_EVENTS = new Set([
   'ui:unlockTech',
   'ui:upgradeBombRack',
   'ui:wingOrder',
+  'uniqueWreck:choose',
   'vestaOreCache:choose',
   'voice:surface',
   'world:abortJumpCharge',
@@ -118,7 +131,11 @@ export const MAIN_TO_SIM_BUS_EVENTS = new Set([
 
 // Census hits deliberately NOT forwarded — see FORWARD_EXCLUDE in the
 // generator for the full reasons.
-//   game:started — lifecycle receipt — worker runs its own new-game lifecycle; forwarding double-seeds the worker world (duplicate entity ids on restore)
+//   game:started — lifecycle receipt — worker emits its own once post-boot (pendingGameStarted consumed at the first flight-mode apply); forwarding a main emit would double-fire sim subscribers
+//   ui:restockBombRack — dead subscription — sim-side subscriber exists but no emitters anywhere; nothing would ever ship
+//   ui:endgameConfirm — dead subscription — sim-side subscriber exists but no emitters anywhere; nothing would ever ship
+//   ui:endingArchiveOpen — dead subscription — sim-side subscriber exists but no emitters anywhere; nothing would ever ship
+//   ui:heliosBay7Scan — dead subscription — sim-side subscriber exists but no emitters anywhere; nothing would ever ship
 
 // Types covered by bespoke payload adapters rather than the generic
 // canonicalClone+entityRef-flatten pass.
@@ -127,4 +144,79 @@ export const BESPOKE_FORWARD_ADAPTERS = new Set([
   'game:save',
 ]);
 
-// provenance: census=91 dynamic=10 legacy=7 excluded=1 total=107
+// Every type the census proves does not cross the lane: main-emitted
+// types with zero sim-side subscribers, plus the FORWARD_EXCLUDE rows
+// above. installBusForward counts emits absent from BOTH sets — the
+// LANE-FWD gate asserts unforwardedEmitCount === 0, so a main emit of
+// a type on neither list fails the contract loudly instead of dead-ending.
+export const KNOWN_UNFORWARDED_BUS_EVENTS = new Set([
+  'achievement:unlocked',
+  'alert',
+  'ambient',
+  'audio:cue',
+  'camera:kill',
+  'camera:shake',
+  'camera:zoom',
+  'cargo:jettison',
+  'combustion',
+  'contactHail:deck:open',
+  'customs:breakScan',
+  'dock:attempt',
+  'dock:denied',
+  'drill:approachCompleted',
+  'drill:approachStarted',
+  'dust',
+  'game:loadingProgress',
+  'game:over:dismissed',
+  'game:startFailed',
+  'hud:recallObjective',
+  'hud:slotClaim',
+  'hud:slotRelease',
+  'nav:waypoint',
+  'news:headline',
+  'news:render',
+  'presentation:audioCue',
+  'presentation:caption',
+  'presentation:vfxCue',
+  'ship:deathFlash',
+  'ship:deathPop',
+  'ship:rcsPulse',
+  'sim:pause',
+  'sim:resume',
+  'station:exitRequest',
+  'station:navigate',
+  'toast',
+  'ui:bulkHaulTag',
+  'ui:bulkHaulTagCleared',
+  'ui:cancel',
+  'ui:clearTarget',
+  'ui:closeAll',
+  'ui:closeCargo',
+  'ui:closeComms',
+  'ui:confirm',
+  'ui:cycleComponent',
+  'ui:cycleTarget',
+  'ui:endgameConfirm',
+  'ui:endingArchiveOpen',
+  'ui:globalFind',
+  'ui:heliosBay7Scan',
+  'ui:navigate',
+  'ui:popScreen',
+  'ui:pushScreen',
+  'ui:replaceScreen',
+  'ui:restockBombRack',
+  'ui:screenTop',
+  'ui:ship:range',
+  'ui:toggleCargo',
+  'ui:toggleComms',
+  'ui:toggleOverview',
+  'ui:wingmanRadial',
+  'uniqueWreck:rumorHeard',
+  'vent',
+  'voice:clear',
+  'voice:dismiss',
+  'voice:say',
+  'watch:changed',
+]);
+
+// provenance: census=106 dynamic=12 legacy=7 excluded=5 total=120 knownUnforwarded=67

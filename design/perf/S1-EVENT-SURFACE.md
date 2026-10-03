@@ -7,20 +7,29 @@ presentation paths (`src/ui/`, `src/render/`, `src/audio/`, `src/presentation/`,
 `src/main.js`) and harness paths (`src/balance/**`, `src/testing/**`,
 `src/careers/origins/haulerOriginSystem.js`). Main side = everything else.
 
-**Forwarded main→sim types: 107** (census-resolved + hand-resolved dynamic + legacy).
+**Forwarded main→sim types: 120** (census-resolved + hand-resolved dynamic + legacy).
 
 ## Forwarded types (main-emitted, sim-subscribed)
 
 | event type | main emitters | sim subscribers | adapter |
 |---|---|---|---|
-| `career:ladder:choose` | `src/ui/screens/missionLog.js` | `src/systems/story.js` | generic (canonicalClone + entityRef flatten) |
+| `band:cycle` | `src/ui/bandHud.js`<br>`src/ui/input.js` | `src/systems/bandRadio.js` | generic (canonicalClone + entityRef flatten) |
+| `career:ladder:abandon` | `src/ui/screens/missionLog.js` | `src/careers/ladders/careerLadders.js`<br>`src/careers/ladders/haulerLadderFsm.js` | generic (canonicalClone + entityRef flatten) |
+| `career:ladder:accept` | `src/ui/screens/missionLog.js` | `src/careers/ladders/careerLadders.js`<br>`src/careers/ladders/haulerLadderFsm.js` | generic (canonicalClone + entityRef flatten) |
+| `career:ladder:choose` | `src/ui/screens/missionLog.js` | `src/careers/ladders/careerLadders.js`<br>`src/careers/ladders/haulerLadderFsm.js`<br>`src/careers/ladders/hunterLadderFsm.js`<br>`src/systems/story.js` | generic (canonicalClone + entityRef flatten) |
+| `career:ladder:decline` | `src/ui/screens/missionLog.js` | `src/careers/ladders/careerLadders.js`<br>`src/careers/ladders/haulerLadderFsm.js` | generic (canonicalClone + entityRef flatten) |
+| `career:ladder:recover` | `src/ui/screens/missionLog.js` | `src/careers/ladders/careerLadders.js` | generic (canonicalClone + entityRef flatten) |
+| `career:origin:accept` | `src/ui/screens/missionLog.js` | `src/careers/origins/careerOrigins.js` | generic (canonicalClone + entityRef flatten) |
+| `career:origin:choose` | `src/ui/screens/missionLog.js` | `src/careers/origins/careerOrigins.js` | generic (canonicalClone + entityRef flatten) |
+| `career:origin:decline` | `src/ui/screens/missionLog.js` | `src/careers/origins/careerOrigins.js` | generic (canonicalClone + entityRef flatten) |
+| `career:origin:reoffer` | `src/ui/screens/missionLog.js` | `src/careers/origins/careerOrigins.js` | generic (canonicalClone + entityRef flatten) |
 | `contactHail:choice` | `src/ui/commsRadial.js`<br>`src/ui/contactHailPrompt.js` | `src/systems/scanner.js` | generic (canonicalClone + entityRef flatten) |
 | `contactHail:request` | `src/ui/commsRadial.js`<br>`src/ui/contactHailPrompt.js` | `src/systems/scanner.js` | generic (canonicalClone + entityRef flatten) |
 | `contraband:bribe` | `src/ui/customsPrompt.js` | `src/systems/economy.js` | generic (canonicalClone + entityRef flatten) |
 | `customs:submit` | `src/ui/customsPrompt.js` | `src/systems/lawSecurity.js` | generic (canonicalClone + entityRef flatten) |
 | `debug:invulnerable` | `src/ui/screens/crucibleLabControls.js` | `src/systems/combat.js` | generic (canonicalClone + entityRef flatten) |
 | `debug:refillPlayer` | `src/ui/screens/crucibleLabControls.js` | `src/systems/combat.js`<br>`src/systems/weapons.js` | generic (canonicalClone + entityRef flatten) |
-| `dock:docked` | `src/ui/input.js` | `src/careers/origins/prospectorOrigin.js`<br>`src/save/saveSystem.js`<br>`src/systems/aftermathWrecks.js`<br>`src/systems/autoTargetAssist.js`<br>`src/systems/combat.js`<br>`src/systems/economy.js`<br>`src/systems/economyContracts.js`<br>`src/systems/factionPresence.js`<br>`src/systems/lawSecurity.js`<br>`src/systems/mining.js`<br>`src/systems/missions.js`<br>`src/systems/onboarding.js`<br>`src/systems/pirateDisguise.js`<br>`src/systems/scanner.js`<br>`src/systems/stationServices.js`<br>`src/systems/story.js`<br>`src/systems/world.js` | generic (canonicalClone + entityRef flatten) |
+| `dock:docked` | `src/ui/input.js` | `src/careers/ladders/haulerLadderFsm.js`<br>`src/careers/origins/careerOrigins.js`<br>`src/careers/origins/hunterOrigin.js`<br>`src/careers/origins/prospectorOrigin.js`<br>`src/save/saveSystem.js`<br>`src/systems/aftermathWrecks.js`<br>`src/systems/autoTargetAssist.js`<br>`src/systems/careerContracts.js`<br>`src/systems/combat.js`<br>`src/systems/economy.js`<br>`src/systems/economyContracts.js`<br>`src/systems/factionPresence.js`<br>`src/systems/lawSecurity.js`<br>`src/systems/livingPoiBehaviors.js`<br>`src/systems/mining.js`<br>`src/systems/missions.js`<br>`src/systems/onboarding.js`<br>`src/systems/pirateDisguise.js`<br>`src/systems/postEndingReplay.js`<br>`src/systems/scanner.js`<br>`src/systems/stationServices.js`<br>`src/systems/story.js`<br>`src/systems/uniqueWrecks.js`<br>`src/systems/world.js` | generic (canonicalClone + entityRef flatten) |
 | `dock:launder` | `src/ui/station/screens/market.js` | `src/systems/pirateDisguise.js` | generic (canonicalClone + entityRef flatten) |
 | `dock:range` | `src/ui/input.js` | `src/systems/onboarding.js` | generic (canonicalClone + entityRef flatten) |
 | `dock:undocked` | `src/ui/input.js`<br>`src/ui/station/stationApp.js` | `src/save/saveSystem.js`<br>`src/systems/combat.js`<br>`src/systems/economy.js`<br>`src/systems/missions.js`<br>`src/systems/moralTrap.js`<br>`src/systems/onboarding.js`<br>`src/systems/presentationAdapters.js`<br>`src/systems/stationServices.js`<br>`src/systems/world.js` | generic (canonicalClone + entityRef flatten) |
@@ -28,23 +37,25 @@ presentation paths (`src/ui/`, `src/render/`, `src/audio/`, `src/presentation/`,
 | `economy:marketOpened` | `src/ui/station/screens/market.js` | `src/systems/economy.js` | generic (canonicalClone + entityRef flatten) |
 | `economy:payBounty` | `src/ui/screens/footprint.js` | `src/systems/economy.js` | generic (canonicalClone + entityRef flatten) |
 | `encounter:choose` | `src/ui/encounterChoicePrompt.js` | `src/systems/encounterDirector.js` | generic (canonicalClone + entityRef flatten) |
-| `entity:destroyed` | `src/main.js` | `src/combat/kernel.js`<br>`src/nemesis/encounterHost.js`<br>`src/systems/aftermathWrecks.js`<br>`src/systems/ai.js`<br>`src/systems/aiEncounter.js`<br>`src/systems/cloak.js`<br>`src/systems/combatOutcome.js`<br>`src/systems/encounterDirector.js`<br>`src/systems/gateControlDirector.js`<br>`src/systems/heistFacilities.js`<br>`src/systems/lawSecurity.js`<br>`src/systems/missions.js`<br>`src/systems/npcJobsRuntime.js`<br>`src/systems/presentationOrchestrator.js`<br>`src/systems/spawnBudget.js`<br>`src/systems/stationSideEventDirector.js`<br>`src/systems/survivalWave.js`<br>`src/systems/swarmArena.js`<br>`src/systems/swarmSupply.js` | generic (canonicalClone + entityRef flatten) |
+| `entity:destroyed` | `src/main.js` | `src/combat/kernel.js`<br>`src/nemesis/encounterHost.js`<br>`src/systems/aceMemory.js`<br>`src/systems/aftermathWrecks.js`<br>`src/systems/ai.js`<br>`src/systems/aiEncounter.js`<br>`src/systems/cloak.js`<br>`src/systems/combatOutcome.js`<br>`src/systems/encounterDirector.js`<br>`src/systems/gateControlDirector.js`<br>`src/systems/heistFacilities.js`<br>`src/systems/lawSecurity.js`<br>`src/systems/missions.js`<br>`src/systems/npcJobsRuntime.js`<br>`src/systems/presentationOrchestrator.js`<br>`src/systems/recoveryEncounter.js`<br>`src/systems/spawnBudget.js`<br>`src/systems/stationSideEventDirector.js`<br>`src/systems/survivalWave.js`<br>`src/systems/swarmArena.js`<br>`src/systems/swarmSupply.js`<br>`src/systems/uniqueWrecks.js` | generic (canonicalClone + entityRef flatten) |
 | `faction:bribe` | `src/ui/screens/footprint.js` | `src/systems/factions.js` | generic (canonicalClone + entityRef flatten) |
 | `game:exitToMenu` | `src/ui/screens/crucible.js`<br>`src/ui/screens/demoEnd.js`<br>`src/ui/screens/pause.js` | `src/save/saveSystem.js`<br>`src/systems/runSession.js` | generic (canonicalClone + entityRef flatten) |
 | `game:load` | `src/ui/input.js`<br>`src/ui/screens/gameOver.js`<br>`src/ui/screens/mainMenu.js`<br>`src/ui/screens/saveLoad.js` | `src/save/saveSystem.js`<br>`src/systems/scanner.js` | __laneStorage: ships the whole sf.* keyspace into the worker storage shim |
-| `game:new` | `src/main.js`<br>`src/ui/sandbox/sandboxSetup.js`<br>`src/ui/screens/crucible.js`<br>`src/ui/screens/gameOver.js`<br>`src/ui/screens/newGame.js` | `src/core/coreSystem.js`<br>`src/save/saveSystem.js`<br>`src/systems/aftermathWrecks.js`<br>`src/systems/aiEncounter.js`<br>`src/systems/bombs.js`<br>`src/systems/cloak.js`<br>`src/systems/combatOutcome.js`<br>`src/systems/countermeasures.js`<br>`src/systems/difficultyDirector.js`<br>`src/systems/dockingCorridor.js`<br>`src/systems/encounterDirector.js`<br>`src/systems/environmentalMachinery.js`<br>`src/systems/fields.js`<br>`src/systems/impulseCharges.js`<br>`src/systems/massSeed.js`<br>`src/systems/masslineSnares.js`<br>`src/systems/mines.js`<br>`src/systems/mining.js`<br>`src/systems/planetRuntime.js`<br>`src/systems/presentationOrchestrator.js`<br>`src/systems/salvageActions.js`<br>`src/systems/scanner.js`<br>`src/systems/surrenderRecovery.js`<br>`src/systems/survivorPod.js`<br>`src/systems/tensionDirector.js`<br>`src/systems/tetherGameplay.js`<br>`src/systems/tumbleStates.js`<br>`src/systems/weapons.js` | generic (canonicalClone + entityRef flatten) |
+| `game:new` | `src/main.js`<br>`src/ui/sandbox/sandboxSetup.js`<br>`src/ui/screens/crucible.js`<br>`src/ui/screens/gameOver.js`<br>`src/ui/screens/newGame.js` | `src/careers/ladders/haulerLadderFsm.js`<br>`src/core/coreSystem.js`<br>`src/save/saveSystem.js`<br>`src/systems/aftermathWrecks.js`<br>`src/systems/aiEncounter.js`<br>`src/systems/bombs.js`<br>`src/systems/cloak.js`<br>`src/systems/combatOutcome.js`<br>`src/systems/countermeasures.js`<br>`src/systems/difficultyDirector.js`<br>`src/systems/dockingCorridor.js`<br>`src/systems/encounterDirector.js`<br>`src/systems/environmentalMachinery.js`<br>`src/systems/fields.js`<br>`src/systems/impulseCharges.js`<br>`src/systems/massSeed.js`<br>`src/systems/masslineSnares.js`<br>`src/systems/mines.js`<br>`src/systems/mining.js`<br>`src/systems/pirateDisengage.js`<br>`src/systems/pirateParley.js`<br>`src/systems/planetRuntime.js`<br>`src/systems/presentationOrchestrator.js`<br>`src/systems/provenanceLedger.js`<br>`src/systems/salvageActions.js`<br>`src/systems/scanner.js`<br>`src/systems/surrenderRecovery.js`<br>`src/systems/survivorPod.js`<br>`src/systems/tensionDirector.js`<br>`src/systems/tetherGameplay.js`<br>`src/systems/tumbleStates.js`<br>`src/systems/weapons.js` | generic (canonicalClone + entityRef flatten) |
 | `game:save` | `src/ui/input.js`<br>`src/ui/screens/saveLoad.js` | `src/save/saveSystem.js` | __laneStorage: ships the whole sf.* keyspace into the worker storage shim |
 | `hud:layoutChanged` | `src/ui/hudLayout.js` | `src/save/saveSystem.js` | generic (canonicalClone + entityRef flatten) |
 | `input:worldGestureCancelled` | `src/ui/worldObjectInteraction.js` | `src/systems/masslineThrow.js` | generic (canonicalClone + entityRef flatten) |
 | `law:impoundPay` | `src/ui/impoundPayPrompt.js` | `src/systems/lawSecurity.js` | generic (canonicalClone + entityRef flatten) |
 | `lawfulInspection:choose` | `src/ui/lawfulInspectionPrompt.js` | `src/systems/lawSecurity.js` | generic (canonicalClone + entityRef flatten) |
-| `mode:changed` | `src/main.js` | `src/systems/autoTargetAssist.js`<br>`src/systems/presentationAdapters.js`<br>`src/systems/scanner.js` | generic (canonicalClone + entityRef flatten) |
+| `mode:changed` | `src/main.js` | `src/careers/origins/careerOrigins.js`<br>`src/systems/autoTargetAssist.js`<br>`src/systems/presentationAdapters.js`<br>`src/systems/scanner.js` | generic (canonicalClone + entityRef flatten) |
 | `moralTrap:choose` | `src/ui/moralTrapPrompt.js` | `src/systems/moralTrap.js` | generic (canonicalClone + entityRef flatten) |
 | `nemesis:spare` | `src/ui/nemesisComms.js` | `src/systems/nemesis.js` | generic (canonicalClone + entityRef flatten) |
 | `pallasHiddenCache:choose` | `src/ui/recoveryEncounterPrompt.js` | `src/systems/world.js` | generic (canonicalClone + entityRef flatten) |
 | `pirateParley:choose` | `src/ui/pirateParleyPrompt.js` | `src/systems/pirateParley.js` | generic (canonicalClone + entityRef flatten) |
 | `player:recoveryRequested` | `src/ui/screens/gameOver.js` | `src/systems/combat.js` | generic (canonicalClone + entityRef flatten) |
 | `range:opened` | `src/ui/screens/range.js` | `src/systems/onboarding.js` | generic (canonicalClone + entityRef flatten) |
+| `recovery:choose` | `src/ui/recoveryEncounterPrompt.js` | `src/systems/recoveryEncounter.js` | generic (canonicalClone + entityRef flatten) |
+| `recovery:vent` | `src/ui/recoveryEncounterPrompt.js` | `src/systems/recoveryEncounter.js` | generic (canonicalClone + entityRef flatten) |
 | `run:awardRequested` | `src/ui/sandbox/sandboxSetup.js` | `src/systems/runSession.js` | generic (canonicalClone + entityRef flatten) |
 | `run:beginRequested` | `src/ui/sandbox/sandboxSetup.js` | `src/systems/runSession.js` | generic (canonicalClone + entityRef flatten) |
 | `run:draftPickRequested` | `src/ui/screens/crucibleDraft.js` | `src/systems/survivalDraft.js` | generic (canonicalClone + entityRef flatten) |
@@ -54,15 +65,18 @@ presentation paths (`src/ui/`, `src/render/`, `src/audio/`, `src/presentation/`,
 | `run:refitCloseRequested` | `src/ui/screens/crucibleDraft.js` | `src/systems/survivalDraft.js` | generic (canonicalClone + entityRef flatten) |
 | `run:refitFitRequested` | `src/ui/screens/crucibleDraft.js` | `src/systems/survivalDraft.js` | generic (canonicalClone + entityRef flatten) |
 | `run:refitStripRequested` | `src/ui/screens/crucibleDraft.js` | `src/systems/survivalDraft.js` | generic (canonicalClone + entityRef flatten) |
+| `salvage:reactorVented` | `src/render/vfx/damagedPortVfx.js` | `src/systems/recoveryEncounter.js` | generic (canonicalClone + entityRef flatten) |
 | `save:error` | `src/main.js`<br>`src/ui/screens/saveLoad.js` | `src/systems/aftermathWrecks.js`<br>`src/systems/asteroidSites.js`<br>`src/systems/automation.js`<br>`src/systems/encounterDirector.js`<br>`src/systems/tensionDirector.js`<br>`src/systems/traffic.js` | generic (canonicalClone + entityRef flatten) |
 | `save:loadSpeculationTarget` | `src/ui/screens/gameOver.js`<br>`src/ui/screens/pause.js`<br>`src/ui/screens/saveLoad.js` | `src/save/saveSystem.js` | generic (canonicalClone + entityRef flatten) |
 | `scenario:scavengerResponse` | `src/ui/comms.js` | `src/systems/scenarioRuntime.js` | generic (canonicalClone + entityRef flatten) |
 | `settings:changed` | `src/ui/screens/motionAsk.js`<br>`src/ui/screens/pause.js`<br>`src/ui/screens/settings.js` | `src/save/saveSystem.js` | generic (canonicalClone + entityRef flatten) |
+| `signal:investigate` | `src/ui/signalInvestigationPrompt.js` | `src/systems/scanner.js` | generic (canonicalClone + entityRef flatten) |
+| `signal:track` | `src/ui/signalInvestigationPrompt.js` | `src/systems/scanner.js` | generic (canonicalClone + entityRef flatten) |
 | `survivorPod:choose` | `src/ui/wreckChoicePrompt.js` | `src/systems/survivorPod.js` | generic (canonicalClone + entityRef flatten) |
 | `ui:abandonMission` | `src/ui/screens/missionLog.js` | `src/systems/missions.js` | generic (canonicalClone + entityRef flatten) |
 | `ui:acceptMission` | `src/ui/adventureDecisions.js`<br>`src/ui/station/screens/bar.js`<br>`src/ui/station/screens/contracts.js` | `src/systems/missions.js` | generic (canonicalClone + entityRef flatten) |
 | `ui:applyLoadoutPreset` | `src/ui/station/screens/shipworks.js` | `src/systems/ships.js` | generic (canonicalClone + entityRef flatten) |
-| `ui:buyModule` | `src/ui/station/screens/shipworks.js` | `src/systems/onboarding.js`<br>`src/systems/ships.js` | generic (canonicalClone + entityRef flatten) |
+| `ui:buy` | `src/ui/adventureDecisions.js`<br>`src/ui/station/screens/market.js` | `src/systems/economy.js` | generic (canonicalClone + entityRef flatten) |
 | `ui:buyPayload` | `src/ui/station/screens/shipworks.js` | `src/systems/bombs.js` | generic (canonicalClone + entityRef flatten) |
 | `ui:buyShip` | `src/ui/station/screens/shipworks.js` | `src/systems/ships.js` | generic (canonicalClone + entityRef flatten) |
 | `ui:deleteLoadoutPreset` | `src/ui/station/screens/shipworks.js` | `src/systems/ships.js` | generic (canonicalClone + entityRef flatten) |
@@ -76,7 +90,6 @@ presentation paths (`src/ui/`, `src/render/`, `src/audio/`, `src/presentation/`,
 | `ui:factionPresenceService` | `src/ui/station/serviceQuotes.js` | `src/systems/factionPresence.js` | generic (canonicalClone + entityRef flatten) |
 | `ui:firstRunSplash:active` | `src/ui/screens/newGame.js` | `src/systems/onboarding.js` | generic (canonicalClone + entityRef flatten) |
 | `ui:firstRunSplash:done` | `src/ui/screens/newGame.js` | `src/systems/onboarding.js` | generic (canonicalClone + entityRef flatten) |
-| `ui:fitModule` | `src/ui/station/screens/shipworks.js` | `src/systems/onboarding.js`<br>`src/systems/ships.js` | generic (canonicalClone + entityRef flatten) |
 | `ui:fitPayload` | `src/ui/station/screens/shipworks.js` | `src/systems/bombs.js` | generic (canonicalClone + entityRef flatten) |
 | `ui:fleetOrder` | `src/ui/screens/automationPanel.js` | `src/systems/automation.js`<br>`src/systems/wingmen.js` | generic (canonicalClone + entityRef flatten) |
 | `ui:kurtzInteract` | `src/ui/station/barContacts.js` | `src/systems/story.js` | generic (canonicalClone + entityRef flatten) |
@@ -85,6 +98,7 @@ presentation paths (`src/ui/`, `src/render/`, `src/audio/`, `src/presentation/`,
 | `ui:purchaseFrontierRumor` | `src/ui/station/screens/bar.js` | `src/systems/world.js` | generic (canonicalClone + entityRef flatten) |
 | `ui:purchaseSurveyData` | `src/ui/station/screens/bar.js` | `src/systems/world.js` | generic (canonicalClone + entityRef flatten) |
 | `ui:saveLoadoutPreset` | `src/ui/station/screens/shipworks.js` | `src/systems/ships.js` | generic (canonicalClone + entityRef flatten) |
+| `ui:sell` | `src/ui/adventureDecisions.js`<br>`src/ui/station/screens/market.js` | `src/systems/economy.js` | generic (canonicalClone + entityRef flatten) |
 | `ui:sellPayload` | `src/ui/station/screens/shipworks.js` | `src/systems/bombs.js` | generic (canonicalClone + entityRef flatten) |
 | `ui:service` | `src/ui/adventureDecisions.js`<br>`src/ui/station/stationApp.js` | `src/systems/economy.js` | generic (canonicalClone + entityRef flatten) |
 | `ui:setActiveShip` | `src/ui/station/screens/shipworks.js` | `src/systems/ships.js` | generic (canonicalClone + entityRef flatten) |
@@ -96,6 +110,7 @@ presentation paths (`src/ui/`, `src/render/`, `src/audio/`, `src/presentation/`,
 | `ui:unlockTech` | `src/ui/screens/techTree.js` | `src/systems/ships.js` | generic (canonicalClone + entityRef flatten) |
 | `ui:upgradeBombRack` | `src/ui/station/screens/shipworks.js` | `src/systems/bombs.js` | generic (canonicalClone + entityRef flatten) |
 | `ui:wingOrder` | `src/ui/wingmanRadial.js` | `src/systems/automation.js` | generic (canonicalClone + entityRef flatten) |
+| `uniqueWreck:choose` | `src/ui/recoveryEncounterPrompt.js` | `src/systems/uniqueWrecks.js` | generic (canonicalClone + entityRef flatten) |
 | `vestaOreCache:choose` | `src/ui/recoveryEncounterPrompt.js` | `src/systems/world.js` | generic (canonicalClone + entityRef flatten) |
 | `voice:surface` | `src/ui/voiceArbiter.js` | `src/systems/barkDirector.js` | generic (canonicalClone + entityRef flatten) |
 | `world:abortJumpCharge` | `src/ui/comms.js` | `src/systems/world.js` | generic (canonicalClone + entityRef flatten) |
@@ -108,7 +123,11 @@ presentation paths (`src/ui/`, `src/render/`, `src/audio/`, `src/presentation/`,
 
 | event type | reason |
 |---|---|
-| `game:started` | lifecycle receipt — worker runs its own new-game lifecycle; forwarding double-seeds the worker world (duplicate entity ids on restore) |
+| `game:started` | lifecycle receipt — worker emits its own once post-boot (pendingGameStarted consumed at the first flight-mode apply); forwarding a main emit would double-fire sim subscribers |
+| `ui:restockBombRack` | dead subscription — sim-side subscriber exists but no emitters anywhere; nothing would ever ship |
+| `ui:endgameConfirm` | dead subscription — sim-side subscriber exists but no emitters anywhere; nothing would ever ship |
+| `ui:endingArchiveOpen` | dead subscription — sim-side subscriber exists but no emitters anywhere; nothing would ever ship |
+| `ui:heliosBay7Scan` | dead subscription — sim-side subscriber exists but no emitters anywhere; nothing would ever ship |
 
 ## Forwarded types (dynamic-resolved)
 
@@ -126,6 +145,8 @@ Literal-arg scanning could not bind these sites; each was resolved by hand.
 | `ui:endgameUnfiledJumpConfirm` | `src/systems/comms.js` | intentEvent emit |
 | `signal:track` | `src/ui/signalInvestigationPrompt.js` | resolved event const |
 | `signal:investigate` | `src/ui/signalInvestigationPrompt.js` | resolved event const |
+| `ui:buyModule` | `src/ui/station/screens/shipworks.js` | emitFitIntent helper emit (shipworks fit intents) |
+| `ui:fitModule` | `src/ui/station/screens/shipworks.js` | emitFitIntent helper emit (shipworks fit intents) |
 
 ## Forwarded types (legacy, preserved from stage-8 set)
 
@@ -145,6 +166,7 @@ allowlist cannot regress them:
 | event type | main emitters | reason |
 |---|---|---|
 | `aceMemory:transition` |  | no sim-side subscribers |
+| `achievement:unlocked` | `src/systems/achievements.js` | no sim-side subscribers |
 | `aftermath:causeExhausted` |  | no sim-side subscribers |
 | `aftermath:causeRecorded` |  | no sim-side subscribers |
 | `aftermath:remedied` |  | no sim-side subscribers |
@@ -193,8 +215,9 @@ allowlist cannot regress them:
 | `band:bearingResolved` |  | no sim-side subscribers |
 | `band:bearingUnavailable` |  | no sim-side subscribers |
 | `band:bed` |  | no sim-side subscribers |
-| `band:cycle` | `src/ui/bandHud.js`<br>`src/ui/input.js` | no sim-side subscribers |
+| `band:sourceProximity` |  | no sim-side subscribers |
 | `band:status` |  | no sim-side subscribers |
+| `band:tune` |  | no sim-side subscribers |
 | `barkDirector:voice` |  | no sim-side subscribers |
 | `beacon:deploy` |  | no sim-side subscribers |
 | `beacon:deployed` |  | no sim-side subscribers |
@@ -225,21 +248,17 @@ allowlist cannot regress them:
 | `capitalBoss:start` |  | no sim-side subscribers |
 | `capitalBoss:telegraph` |  | no sim-side subscribers |
 | `capitalBoss:telegraphEnd` |  | no sim-side subscribers |
-| `career:ladder:abandon` | `src/ui/screens/missionLog.js` | no sim-side subscribers |
 | `career:ladder:choiceResolved` |  | no sim-side subscribers |
 | `career:ladder:completed` |  | no sim-side subscribers |
 | `career:ladder:progress` |  | no sim-side subscribers |
-| `career:ladder:recover` | `src/ui/screens/missionLog.js` | no sim-side subscribers |
 | `career:ladder:stepActive` |  | no sim-side subscribers |
 | `career:ladder:stepDone` |  | no sim-side subscribers |
 | `career:ladder:stepFailed` |  | no sim-side subscribers |
 | `career:ladder:stepRecovered` |  | no sim-side subscribers |
-| `career:origin:accept` | `src/ui/screens/missionLog.js` | no sim-side subscribers |
-| `career:origin:choose` | `src/ui/screens/missionLog.js` | no sim-side subscribers |
-| `career:origin:decline` | `src/ui/screens/missionLog.js` | no sim-side subscribers |
+| `career:origin:abandon` |  | no sim-side subscribers |
+| `career:origin:completed` |  | no sim-side subscribers |
 | `career:origin:declined` |  | no sim-side subscribers |
 | `career:origin:offered` |  | no sim-side subscribers |
-| `career:origin:reoffer` | `src/ui/screens/missionLog.js` | no sim-side subscribers |
 | `career:origins:accepted` |  | no sim-side subscribers |
 | `career:origins:declined` |  | no sim-side subscribers |
 | `career:origins:offered` |  | no sim-side subscribers |
@@ -270,6 +289,8 @@ allowlist cannot regress them:
 | `charge:thrown` |  | no sim-side subscribers |
 | `chronicler:radio` |  | no sim-side subscribers |
 | `chronicler:recall` |  | no sim-side subscribers |
+| `chronicler:voiceAccepted` |  | no sim-side subscribers |
+| `chronicler:voiceRejected` |  | no sim-side subscribers |
 | `claim:claimed` |  | no sim-side subscribers |
 | `claim:convoyAbandoned` |  | no sim-side subscribers |
 | `claim:convoyDocked` |  | no sim-side subscribers |
@@ -287,6 +308,7 @@ allowlist cannot regress them:
 | `claim:infrastructureConstructed` |  | no sim-side subscribers |
 | `claim:infrastructureStatus` |  | no sim-side subscribers |
 | `claim:moduleBuilt` |  | no sim-side subscribers |
+| `claim:raided` |  | no sim-side subscribers |
 | `claim:raidRepelled` |  | no sim-side subscribers |
 | `claim:raidWarning` |  | no sim-side subscribers |
 | `claim:receipt` |  | no sim-side subscribers |
@@ -300,6 +322,7 @@ allowlist cannot regress them:
 | `cloak:engaged` |  | no sim-side subscribers |
 | `cloak:faded` |  | no sim-side subscribers |
 | `collision:tearOff` |  | no sim-side subscribers |
+| `collisionConsequences:resolvePendingCraftContact` |  | no sim-side subscribers |
 | `combat:actionCancelled` |  | no sim-side subscribers |
 | `combat:actionCompleted` |  | no sim-side subscribers |
 | `combat:actionPhase` |  | no sim-side subscribers |
@@ -315,8 +338,10 @@ allowlist cannot regress them:
 | `combat:fire` |  | no sim-side subscribers |
 | `combat:hit` |  | no sim-side subscribers |
 | `combat:hitAsset` |  | no sim-side subscribers |
+| `combat:hitstunImpulse` |  | no sim-side subscribers |
 | `combat:kill` |  | no sim-side subscribers |
 | `combat:lockChanged` |  | no sim-side subscribers |
+| `combat:nonlethalResolution` |  | no sim-side subscribers |
 | `combat:outcome` |  | no sim-side subscribers |
 | `combat:outcomeConsequence` |  | no sim-side subscribers |
 | `combat:repairSubsystem` |  | no sim-side subscribers |
@@ -358,6 +383,7 @@ allowlist cannot regress them:
 | `cruise:engaged` |  | no sim-side subscribers |
 | `cruise:snared` |  | no sim-side subscribers |
 | `cruise:snareRequest` |  | no sim-side subscribers |
+| `custody:recorded` |  | no sim-side subscribers |
 | `customs:breakScan` | `src/ui/customsPrompt.js` | no sim-side subscribers |
 | `customs:weirBolt` |  | no sim-side subscribers |
 | `danger:miningNoise` |  | no sim-side subscribers |
@@ -406,6 +432,7 @@ allowlist cannot regress them:
 | `economy:resourceWork:reserve` |  | no sim-side subscribers |
 | `economy:resourceWork:settle` |  | no sim-side subscribers |
 | `economy:salvageIntakeApplied` |  | no sim-side subscribers |
+| `economy:shortageRelieved` |  | no sim-side subscribers |
 | `economy:sinkCharged` |  | no sim-side subscribers |
 | `economy:tick` |  | no sim-side subscribers |
 | `economy:tradeCompleted` |  | no sim-side subscribers |
@@ -574,6 +601,7 @@ allowlist cannot regress them:
 | `law:impoundReleased` |  | no sim-side subscribers |
 | `law:impoundWorked` |  | no sim-side subscribers |
 | `law:incidentOpened` |  | no sim-side subscribers |
+| `law:incidentReceipt` |  | no sim-side subscribers |
 | `law:killedAdjudicated` |  | no sim-side subscribers |
 | `law:playerSurrender` |  | no sim-side subscribers |
 | `law:reportIncidentReceipt` |  | no sim-side subscribers |
@@ -649,6 +677,7 @@ allowlist cannot regress them:
 | `mining:ventReady` |  | no sim-side subscribers |
 | `mining:yield` |  | no sim-side subscribers |
 | `mission:abandon` |  | no sim-side subscribers |
+| `mission:abandoned` |  | no sim-side subscribers |
 | `mission:accepted` |  | no sim-side subscribers |
 | `mission:completed` |  | no sim-side subscribers |
 | `mission:conditionBroken` |  | no sim-side subscribers |
@@ -666,16 +695,20 @@ allowlist cannot regress them:
 | `mission:targetsProjected` |  | no sim-side subscribers |
 | `mission:updated` |  | no sim-side subscribers |
 | `module:equipped` |  | no sim-side subscribers |
+| `module:fitRefused` |  | no sim-side subscribers |
 | `module:granted` |  | no sim-side subscribers |
 | `module:purchased` |  | no sim-side subscribers |
 | `module:unequipped` |  | no sim-side subscribers |
 | `moment:amended` |  | no sim-side subscribers |
+| `moment:clipMarked` |  | no sim-side subscribers |
+| `moment:clipMerged` |  | no sim-side subscribers |
 | `moment:holyShit` |  | no sim-side subscribers |
 | `moralMemory:remember` |  | no sim-side subscribers |
 | `moralMemory:vengefulReturn` |  | no sim-side subscribers |
 | `moralTrap:resolved` |  | no sim-side subscribers |
 | `moralTrap:revealed` |  | no sim-side subscribers |
 | `namedAce:appeared` |  | no sim-side subscribers |
+| `namedAce:defeated` |  | no sim-side subscribers |
 | `namedAce:fled` |  | no sim-side subscribers |
 | `nav:abortRoute` |  | no sim-side subscribers |
 | `nav:autopilot` |  | no sim-side subscribers |
@@ -699,6 +732,7 @@ allowlist cannot regress them:
 | `news:publish` |  | no sim-side subscribers |
 | `news:render` | `src/ui/hud.js` | no sim-side subscribers |
 | `npc:hailed` |  | no sim-side subscribers |
+| `npcjobs:complete` |  | no sim-side subscribers |
 | `npcjobs:crewResponse` |  | no sim-side subscribers |
 | `npcjobs:hold` |  | no sim-side subscribers |
 | `npcjobs:load` |  | no sim-side subscribers |
@@ -717,9 +751,11 @@ allowlist cannot regress them:
 | `optic:beamContact` |  | no sim-side subscribers |
 | `optic:contact` |  | no sim-side subscribers |
 | `optic:rekindled` |  | no sim-side subscribers |
+| `origin:prospector:completed` |  | no sim-side subscribers |
 | `orrinWitness:ensureEvidence` |  | no sim-side subscribers |
 | `orrinWitness:evidenceEnsured` |  | no sim-side subscribers |
 | `orrinWitness:evidenceRecovered` |  | no sim-side subscribers |
+| `orrinWitness:submitEvidence` |  | no sim-side subscribers |
 | `orrinWitness:submitted` |  | no sim-side subscribers |
 | `pallasHiddenCache:cargoChanged` |  | no sim-side subscribers |
 | `pallasHiddenCache:clueRecovered` |  | no sim-side subscribers |
@@ -734,6 +770,7 @@ allowlist cannot regress them:
 | `pirateParley:demand` |  | no sim-side subscribers |
 | `pirateParley:resolved` |  | no sim-side subscribers |
 | `pirateParley:started` |  | no sim-side subscribers |
+| `pirateRumor:counterIntel` |  | no sim-side subscribers |
 | `pirateRumor:headline` |  | no sim-side subscribers |
 | `planet:collector` |  | no sim-side subscribers |
 | `planet:harvest` |  | no sim-side subscribers |
@@ -746,8 +783,10 @@ allowlist cannot regress them:
 | `player:recoveryFailed` |  | no sim-side subscribers |
 | `player:respawn` |  | no sim-side subscribers |
 | `player:scannedByPatrol` |  | no sim-side subscribers |
+| `poi:behaviorOutcome` |  | no sim-side subscribers |
 | `poi:discovered` |  | no sim-side subscribers |
 | `poi:identified` |  | no sim-side subscribers |
+| `poi:interact` |  | no sim-side subscribers |
 | `postEndingReplay:cycleCompleted` |  | no sim-side subscribers |
 | `postEndingReplay:route` |  | no sim-side subscribers |
 | `presentation:audioCue` | `src/render/vfx.js` | no sim-side subscribers |
@@ -759,9 +798,7 @@ allowlist cannot regress them:
 | `presentation:vfxCue` | `src/render/vfx.js` | no sim-side subscribers |
 | `projectile:hit` |  | no sim-side subscribers |
 | `projectile:nearMiss` |  | no sim-side subscribers |
-| `recovery:choose` | `src/ui/recoveryEncounterPrompt.js` | no sim-side subscribers |
 | `recovery:completed` |  | no sim-side subscribers |
-| `recovery:vent` | `src/ui/recoveryEncounterPrompt.js` | no sim-side subscribers |
 | `regionalEcology:applied` |  | no sim-side subscribers |
 | `regionalEcology:changed` |  | no sim-side subscribers |
 | `rescue:beat` |  | no sim-side subscribers |
@@ -781,6 +818,7 @@ allowlist cannot regress them:
 | `run:levelUp` |  | no sim-side subscribers |
 | `run:modifierChosen` |  | no sim-side subscribers |
 | `run:modifierRecordRequested` |  | no sim-side subscribers |
+| `run:openingLessonReleased` |  | no sim-side subscribers |
 | `run:refitClosed` |  | no sim-side subscribers |
 | `run:resultsReady` |  | no sim-side subscribers |
 | `run:roleProblemStamped` |  | no sim-side subscribers |
@@ -814,7 +852,6 @@ allowlist cannot regress them:
 | `salvage:placed` |  | no sim-side subscribers |
 | `salvage:reactorBurst` |  | no sim-side subscribers |
 | `salvage:reactorTowedClear` |  | no sim-side subscribers |
-| `salvage:reactorVented` | `src/render/vfx/damagedPortVfx.js` | no sim-side subscribers |
 | `salvage:ventReactor` |  | no sim-side subscribers |
 | `save:backup` |  | no sim-side subscribers |
 | `save:completed` |  | no sim-side subscribers |
@@ -890,13 +927,11 @@ allowlist cannot regress them:
 | `ship:swingDash` |  | no sim-side subscribers |
 | `ship:thrust` |  | no sim-side subscribers |
 | `ships:grantModule` |  | no sim-side subscribers |
-| `signal:investigate` |  | no sim-side subscribers |
 | `signal:investigated` |  | no sim-side subscribers |
 | `signal:investigating` |  | no sim-side subscribers |
 | `signal:receipt` |  | no sim-side subscribers |
 | `signal:scanResults` |  | no sim-side subscribers |
 | `signal:surveyFiled` |  | no sim-side subscribers |
-| `signal:track` |  | no sim-side subscribers |
 | `signal:tracked` |  | no sim-side subscribers |
 | `sim:pause` | `src/ui/screenManager.js` | no sim-side subscribers |
 | `sim:resume` | `src/ui/screenManager.js` | no sim-side subscribers |
@@ -950,9 +985,11 @@ allowlist cannot regress them:
 | `stunt:trickAmended` |  | no sim-side subscribers |
 | `stunt:trickDetected` |  | no sim-side subscribers |
 | `surrender:escaped` |  | no sim-side subscribers |
+| `surrender:recoveryLost` |  | no sim-side subscribers |
 | `surrender:secured` |  | no sim-side subscribers |
 | `surrender:tethered` |  | no sim-side subscribers |
 | `survivalArena:rosterPrewarm` |  | no sim-side subscribers |
+| `survivalWave:cohortJoined` |  | no sim-side subscribers |
 | `survivorPod:delivered` |  | no sim-side subscribers |
 | `survivorPod:ejected` |  | no sim-side subscribers |
 | `survivorPod:promoted` |  | no sim-side subscribers |
@@ -967,7 +1004,16 @@ allowlist cannot regress them:
 | `swarm:event` |  | no sim-side subscribers |
 | `swarm:eventTelegraphed` |  | no sim-side subscribers |
 | `swarm:pressureSpend` |  | no sim-side subscribers |
+| `swarm:pressureTelegraph` |  | no sim-side subscribers |
 | `tech:researched` |  | no sim-side subscribers |
+| `tension:chapterChanged` |  | no sim-side subscribers |
+| `tension:decision` |  | no sim-side subscribers |
+| `tension:phaseChanged` |  | no sim-side subscribers |
+| `tension:policy` |  | no sim-side subscribers |
+| `tension:reset` |  | no sim-side subscribers |
+| `tension:restored` |  | no sim-side subscribers |
+| `tension:starved` |  | no sim-side subscribers |
+| `terrainAnchors:replenished` |  | no sim-side subscribers |
 | `tether:attached` |  | no sim-side subscribers |
 | `tether:broke` |  | no sim-side subscribers |
 | `tether:broken` |  | no sim-side subscribers |
@@ -990,8 +1036,11 @@ allowlist cannot regress them:
 | `tether:whipSnap` |  | no sim-side subscribers |
 | `title:holdResolved` |  | no sim-side subscribers |
 | `toast` | `src/main.js`<br>`src/render/renderer.js`<br>`src/ui/automationPayoff.js`<br>`src/ui/customsPrompt.js`<br>`src/ui/dockDenyBanner.js`<br>`src/ui/entityLinks.js`<br>`src/ui/floatingText.js`<br>`src/ui/galaxyMap.js`<br>`src/ui/hud.js`<br>`src/ui/impoundPayPrompt.js`<br>`src/ui/input.js`<br>`src/ui/lawfulInspectionPrompt.js`<br>`src/ui/market/tradeLogic.js`<br>`src/ui/marketNews.js`<br>`src/ui/pirateParleyPrompt.js`<br>`src/ui/quitGame.js`<br>`src/ui/recoveryEncounterPrompt.js`<br>`src/ui/sandbox/sandboxSetup.js`<br>`src/ui/screens/automationPanel.js`<br>`src/ui/screens/base.js`<br>`src/ui/screens/crucible.js`<br>`src/ui/screens/localmap.js`<br>`src/ui/screens/mainMenu.js`<br>`src/ui/screens/saveLoad.js`<br>`src/ui/screens/settings.js`<br>`src/ui/screens/starmap.js`<br>`src/ui/screens/techTree.js`<br>`src/ui/signalInvestigationPrompt.js`<br>`src/ui/station/screens/bar.js`<br>`src/ui/station/screens/market.js`<br>`src/ui/station/screens/shipworks.js`<br>`src/ui/station/serviceQuotes.js`<br>`src/ui/station/stationApp.js`<br>`src/ui/toasts.js`<br>`src/ui/uiRoot.js`<br>`src/ui/voiceArbiter.js`<br>`src/ui/wingmanRadial.js`<br>`src/ui/worldObjectInteraction.js` | no sim-side subscribers |
+| `touch:disabled` |  | no sim-side subscribers |
+| `touch:enabled` |  | no sim-side subscribers |
 | `touch:uiAction` |  | no sim-side subscribers |
 | `traffic:ceresCausalChain` |  | no sim-side subscribers |
+| `traffic:jobActionReceipt` |  | no sim-side subscribers |
 | `traffic:oreCollected` |  | no sim-side subscribers |
 | `traffic:passengerLinerReceipt` |  | no sim-side subscribers |
 | `traffic:passengerLinerSuspended` |  | no sim-side subscribers |
@@ -1001,7 +1050,7 @@ allowlist cannot regress them:
 | `tutorial:say` |  | no sim-side subscribers |
 | `ui:bulkHaulTag` | `src/ui/prompts/bulkHaulTag.js` | no sim-side subscribers |
 | `ui:bulkHaulTagCleared` | `src/ui/prompts/bulkHaulTag.js` | no sim-side subscribers |
-| `ui:buy` |  | no sim-side subscribers |
+| `ui:buyModule` |  | no sim-side subscribers |
 | `ui:cancel` | `src/ui/input.js` | no sim-side subscribers |
 | `ui:clearTarget` | `src/ui/input.js` | no sim-side subscribers |
 | `ui:closeAll` | `src/main.js`<br>`src/ui/screens/crucible.js` | no sim-side subscribers |
@@ -1014,6 +1063,7 @@ allowlist cannot regress them:
 | `ui:endgameConfirm` |  | no sim-side subscribers |
 | `ui:endgameUnfiledJumpConfirm` |  | no sim-side subscribers |
 | `ui:endingArchiveOpen` |  | no sim-side subscribers |
+| `ui:fitModule` |  | no sim-side subscribers |
 | `ui:globalFind` | `src/ui/input.js` | no sim-side subscribers |
 | `ui:heliosBay7Scan` |  | no sim-side subscribers |
 | `ui:navigate` | `src/ui/input.js` | no sim-side subscribers |
@@ -1022,7 +1072,6 @@ allowlist cannot regress them:
 | `ui:replaceScreen` | `src/ui/screens/crucible.js`<br>`src/ui/screens/demoEnd.js`<br>`src/ui/screens/motionAsk.js` | no sim-side subscribers |
 | `ui:restockBombRack` |  | no sim-side subscribers |
 | `ui:screenTop` | `src/ui/screenManager.js` | no sim-side subscribers |
-| `ui:sell` |  | no sim-side subscribers |
 | `ui:ship:range` | `src/ui/station/screens/shipworks.js` | no sim-side subscribers |
 | `ui:talkContact` |  | no sim-side subscribers |
 | `ui:targetNearestHostileToPlayer` |  | no sim-side subscribers |
@@ -1035,10 +1084,10 @@ allowlist cannot regress them:
 | `uniqueLoot:nestbreakerSplit` |  | no sim-side subscribers |
 | `uniqueLoot:paleCoilBlink` |  | no sim-side subscribers |
 | `uniqueWreck:bearingFixed` |  | no sim-side subscribers |
-| `uniqueWreck:choose` | `src/ui/recoveryEncounterPrompt.js` | no sim-side subscribers |
 | `uniqueWreck:complicationScheduled` |  | no sim-side subscribers |
 | `uniqueWreck:complicationTriggered` |  | no sim-side subscribers |
 | `uniqueWreck:decisionReady` |  | no sim-side subscribers |
+| `uniqueWreck:decisionRequest` |  | no sim-side subscribers |
 | `uniqueWreck:encounterActivated` |  | no sim-side subscribers |
 | `uniqueWreck:encounterCompleted` |  | no sim-side subscribers |
 | `uniqueWreck:encounterRequested` |  | no sim-side subscribers |
@@ -1107,6 +1156,7 @@ Worker→main projection types shipped by `scripts/lib/simEventBridge.mjs`
 adapters:
 
 - `aceMemory:transition`
+- `achievement:unlocked`
 - `aftermath:causeExhausted`
 - `aftermath:causeRecorded`
 - `aftermath:remedied`
@@ -1156,7 +1206,9 @@ adapters:
 - `band:bearingUnavailable`
 - `band:bed`
 - `band:cycle`
+- `band:sourceProximity`
 - `band:status`
+- `band:tune`
 - `barkDirector:voice`
 - `beacon:deploy`
 - `beacon:deployed`
@@ -1188,17 +1240,21 @@ adapters:
 - `capitalBoss:telegraph`
 - `capitalBoss:telegraphEnd`
 - `career:ladder:abandon`
+- `career:ladder:accept`
 - `career:ladder:choiceResolved`
 - `career:ladder:choose`
 - `career:ladder:completed`
+- `career:ladder:decline`
 - `career:ladder:progress`
 - `career:ladder:recover`
 - `career:ladder:stepActive`
 - `career:ladder:stepDone`
 - `career:ladder:stepFailed`
 - `career:ladder:stepRecovered`
+- `career:origin:abandon`
 - `career:origin:accept`
 - `career:origin:choose`
+- `career:origin:completed`
 - `career:origin:decline`
 - `career:origin:declined`
 - `career:origin:offered`
@@ -1233,6 +1289,8 @@ adapters:
 - `charge:thrown`
 - `chronicler:radio`
 - `chronicler:recall`
+- `chronicler:voiceAccepted`
+- `chronicler:voiceRejected`
 - `claim:claimed`
 - `claim:convoyAbandoned`
 - `claim:convoyDocked`
@@ -1250,6 +1308,7 @@ adapters:
 - `claim:infrastructureConstructed`
 - `claim:infrastructureStatus`
 - `claim:moduleBuilt`
+- `claim:raided`
 - `claim:raidRepelled`
 - `claim:raidWarning`
 - `claim:receipt`
@@ -1263,6 +1322,7 @@ adapters:
 - `cloak:engaged`
 - `cloak:faded`
 - `collision:tearOff`
+- `collisionConsequences:resolvePendingCraftContact`
 - `combat:actionCancelled`
 - `combat:actionCompleted`
 - `combat:actionPhase`
@@ -1278,8 +1338,10 @@ adapters:
 - `combat:fire`
 - `combat:hit`
 - `combat:hitAsset`
+- `combat:hitstunImpulse`
 - `combat:kill`
 - `combat:lockChanged`
+- `combat:nonlethalResolution`
 - `combat:outcome`
 - `combat:outcomeConsequence`
 - `combat:repairSubsystem`
@@ -1324,6 +1386,7 @@ adapters:
 - `cruise:engaged`
 - `cruise:snared`
 - `cruise:snareRequest`
+- `custody:recorded`
 - `customs:breakScan`
 - `customs:submit`
 - `customs:weirBolt`
@@ -1382,6 +1445,7 @@ adapters:
 - `economy:resourceWork:reserve`
 - `economy:resourceWork:settle`
 - `economy:salvageIntakeApplied`
+- `economy:shortageRelieved`
 - `economy:sinkCharged`
 - `economy:tick`
 - `economy:tradeCompleted`
@@ -1561,6 +1625,7 @@ adapters:
 - `law:impoundReleased`
 - `law:impoundWorked`
 - `law:incidentOpened`
+- `law:incidentReceipt`
 - `law:killedAdjudicated`
 - `law:playerSurrender`
 - `law:reportIncidentReceipt`
@@ -1637,6 +1702,7 @@ adapters:
 - `mining:ventReady`
 - `mining:yield`
 - `mission:abandon`
+- `mission:abandoned`
 - `mission:accepted`
 - `mission:completed`
 - `mission:conditionBroken`
@@ -1655,10 +1721,13 @@ adapters:
 - `mission:updated`
 - `mode:changed`
 - `module:equipped`
+- `module:fitRefused`
 - `module:granted`
 - `module:purchased`
 - `module:unequipped`
 - `moment:amended`
+- `moment:clipMarked`
+- `moment:clipMerged`
 - `moment:holyShit`
 - `moralMemory:remember`
 - `moralMemory:vengefulReturn`
@@ -1666,6 +1735,7 @@ adapters:
 - `moralTrap:resolved`
 - `moralTrap:revealed`
 - `namedAce:appeared`
+- `namedAce:defeated`
 - `namedAce:fled`
 - `nav:abortRoute`
 - `nav:autopilot`
@@ -1690,6 +1760,7 @@ adapters:
 - `news:publish`
 - `news:render`
 - `npc:hailed`
+- `npcjobs:complete`
 - `npcjobs:crewResponse`
 - `npcjobs:hold`
 - `npcjobs:load`
@@ -1708,9 +1779,11 @@ adapters:
 - `optic:beamContact`
 - `optic:contact`
 - `optic:rekindled`
+- `origin:prospector:completed`
 - `orrinWitness:ensureEvidence`
 - `orrinWitness:evidenceEnsured`
 - `orrinWitness:evidenceRecovered`
+- `orrinWitness:submitEvidence`
 - `orrinWitness:submitted`
 - `pallasHiddenCache:cargoChanged`
 - `pallasHiddenCache:choose`
@@ -1727,6 +1800,7 @@ adapters:
 - `pirateParley:demand`
 - `pirateParley:resolved`
 - `pirateParley:started`
+- `pirateRumor:counterIntel`
 - `pirateRumor:headline`
 - `planet:collector`
 - `planet:harvest`
@@ -1740,8 +1814,10 @@ adapters:
 - `player:recoveryRequested`
 - `player:respawn`
 - `player:scannedByPatrol`
+- `poi:behaviorOutcome`
 - `poi:discovered`
 - `poi:identified`
+- `poi:interact`
 - `postEndingReplay:cycleCompleted`
 - `postEndingReplay:route`
 - `presentation:audioCue`
@@ -1781,6 +1857,7 @@ adapters:
 - `run:loadoutReady`
 - `run:modifierChosen`
 - `run:modifierRecordRequested`
+- `run:openingLessonReleased`
 - `run:openingPrepareRequested`
 - `run:refitClosed`
 - `run:refitCloseRequested`
@@ -1958,9 +2035,11 @@ adapters:
 - `stunt:trickAmended`
 - `stunt:trickDetected`
 - `surrender:escaped`
+- `surrender:recoveryLost`
 - `surrender:secured`
 - `surrender:tethered`
 - `survivalArena:rosterPrewarm`
+- `survivalWave:cohortJoined`
 - `survivorPod:choose`
 - `survivorPod:delivered`
 - `survivorPod:ejected`
@@ -1976,7 +2055,16 @@ adapters:
 - `swarm:event`
 - `swarm:eventTelegraphed`
 - `swarm:pressureSpend`
+- `swarm:pressureTelegraph`
 - `tech:researched`
+- `tension:chapterChanged`
+- `tension:decision`
+- `tension:phaseChanged`
+- `tension:policy`
+- `tension:reset`
+- `tension:restored`
+- `tension:starved`
+- `terrainAnchors:replenished`
 - `tether:attached`
 - `tether:broke`
 - `tether:broken`
@@ -1999,8 +2087,11 @@ adapters:
 - `tether:whipSnap`
 - `title:holdResolved`
 - `toast`
+- `touch:disabled`
+- `touch:enabled`
 - `touch:uiAction`
 - `traffic:ceresCausalChain`
+- `traffic:jobActionReceipt`
 - `traffic:oreCollected`
 - `traffic:passengerLinerReceipt`
 - `traffic:passengerLinerSuspended`
@@ -2085,6 +2176,7 @@ adapters:
 - `uniqueWreck:complicationScheduled`
 - `uniqueWreck:complicationTriggered`
 - `uniqueWreck:decisionReady`
+- `uniqueWreck:decisionRequest`
 - `uniqueWreck:encounterActivated`
 - `uniqueWreck:encounterCompleted`
 - `uniqueWreck:encounterRequested`
@@ -2165,17 +2257,30 @@ adapters:
 | `src/ai/shipDecision.js:89` | `this.trace.emit` | `{` | sim |
 | `src/ai/shipDecision.js:288` | `this.trace.emit` | `{` | sim |
 | `src/ai/squad.js:207` | `this.trace.emit` | `{` | sim |
-| `src/audio/audioSystem.js:2090` | `bus.on` | `CERES_JOB_ACTION_RECEIPT_EVENT` | main |
-| `src/audio/audioSystem.js:2133` | `bus.on` | `eventName` | main |
-| `src/audio/audioSystem.js:2320` | `bus.on` | `VISUAL_EVENT_BUS` | main |
+| `src/audio/audioSystem.js:2135` | `bus.on` | `eventName` | main |
 | `src/audio/combatVerbCues.js:344` | `bus.on` | `id` | main |
 | `src/audio/minimalActionAudio.js:236` | `bus.on` | `spec.sourceEvent` | main |
 | `src/audio/minimalActionAudio.js:335` | `bus.on` | `sourceEvent` | main |
 | `src/careers/ladders/careerLadders.js:337` | `this.bus.on` | `event` | sim |
 | `src/careers/ladders/haulerLadderFsm.js:97` | `bus.emit` | `event` | sim |
 | `src/careers/ladders/haulerLadderFsm.js:571` | `this.bus.on` | `event` | sim |
+| `src/careers/ladders/hunterLadderFsm.js:276` | `this._listen.on` | `EV.HEAT_CHANGED` | sim |
+| `src/careers/ladders/hunterLadderFsm.js:277` | `this._listen.on` | `EV.COMBAT_DAMAGE` | sim |
+| `src/careers/ladders/hunterLadderFsm.js:278` | `this._listen.on` | `EV.ENTITY_KILLED` | sim |
+| `src/careers/ladders/hunterLadderFsm.js:279` | `this._listen.on` | `EV.AI_TELEGRAPH` | sim |
+| `src/careers/ladders/hunterLadderFsm.js:280` | `this._listen.on` | `EV.BOUNTY_TRICK_TELEGRAPH` | sim |
+| `src/careers/ladders/hunterLadderFsm.js:281` | `this._listen.on` | `EV.BOUNTY_TRICK_ACTIVATED` | sim |
+| `src/careers/ladders/hunterLadderFsm.js:282` | `this._listen.on` | `EV.BOUNTY_OUTCOME` | sim |
+| `src/careers/ladders/hunterLadderFsm.js:283` | `this._listen.on` | `EV.AI_FLEE` | sim |
+| `src/careers/ladders/hunterLadderFsm.js:284` | `this._listen.on` | `EV.COMBAT_SUBSYSTEM_DISABLED` | sim |
+| `src/careers/ladders/hunterLadderFsm.js:285` | `this._listen.on` | `EV.COMBAT_OUTCOME` | sim |
+| `src/careers/ladders/hunterLadderFsm.js:286` | `this._listen.on` | `EV.DOCK_DOCKED` | sim |
+| `src/careers/ladders/hunterLadderFsm.js:287` | `this._listen.on` | `EV.MISSION_ACCEPTED` | sim |
+| `src/careers/ladders/hunterLadderFsm.js:288` | `this._listen.on` | `EV.SHIP_PURCHASED` | sim |
+| `src/careers/ladders/hunterLadderFsm.js:291` | `this._listen.on` | `EV.SAVE_LOADED` | sim |
 | `src/careers/ladders/hunterLadderFsm.js:1070` | `this.bus.on` | `event` | sim |
 | `src/careers/ladders/ladderShared.js:144` | `bus.emit` | `event` | sim |
+| `src/careers/ladders/prospectorLadderFsm.js:900` | `this._listen.on` | `event` | sim |
 | `src/careers/ladders/prospectorLadderFsm.js:1015` | `this.bus.on` | `event` | sim |
 | `src/careers/origins/careerOrigins.js:113` | `alias:emit.emit` | `bus` | sim |
 | `src/careers/origins/careerOrigins.js:114` | `bus.emit` | `event` | sim |
@@ -2243,14 +2348,11 @@ adapters:
 | `src/careers/origins/prospectorOrigin.js:513` | `alias:emit.emit` | `bus` | sim |
 | `src/careers/origins/prospectorOrigin.js:593` | `alias:emit.emit` | `bus` | sim |
 | `src/careers/origins/prospectorOrigin.js:599` | `alias:emit.emit` | `bus` | sim |
-| `src/chronicler/voiceBridge.js:14` | `bus.emit` | `accepted ? 'chronicler:voiceAccepted' : 'chronicler:voiceRejected'` | sim |
-| `src/combat/impulseKernel.js:159` | `bus.emit` | `HITSTUN_IMPULSE_EVENT` | sim |
-| `src/combat/subsystems.js:163` | `context.bus.emit` | `subsystem.effectiveDisabled ? 'combat:subsystemDisabled' : 'combat:subsystemEnabled'` | sim |
 | `src/combat/tetherWebs.js:34` | `bus.on` | `event` | sim |
 | `src/core/catchupPolicy.js:130` | `bus.on` | `eventName` | sim |
 | `src/core/eventBus.js:11` | `bus.on` | `event` | sim |
 | `src/core/eventTrace.js:71` | `bus.on` | `type` | main |
-| `src/core/simLaneMain.js:478` | `bus.emit` | `ev.t` | main |
+| `src/core/simLaneMain.js:475` | `bus.emit` | `ev.t` | main |
 | `src/core/simSnapshot.js:524` | `bus.on` | `evt` | sim |
 | `src/nemesis/encounterHost.js:78` | `this.bus.on` | `name` | sim |
 | `src/presentation/capitalBossPresentation.js:46` | `bus.on` | `name` | main |
@@ -2258,63 +2360,62 @@ adapters:
 | `src/render/combat/gas/gasVolumeField.js:309` | `this.emit` | `family.id` | main |
 | `src/render/combat/gas/gasVolumeField.js:335` | `this.emit` | `family.id` | main |
 | `src/render/forceLanguage/emergentPrimitivePools.js:550` | `particles.emit` | `burst` | main |
-| `src/render/forceLanguage/fieldForcePresentation.js:210` | `this.particles.emit` | `p` | main |
-| `src/render/renderer.js:5709` | `bus.on` | `event` | main |
-| `src/render/vfx.js:2380` | `bus.on` | `name` | main |
-| `src/render/vfx.js:10121` | `this._bombDetonationVfx.emit` | `event` | main |
-| `src/render/vfx.js:10142` | `this._combatContactVfx.emit` | `kind` | main |
-| `src/render/vfx.js:11479` | `this._actionVfx.emit` | `name` | main |
+| `src/render/forceLanguage/fieldForcePresentation.js:260` | `this.particles.emit` | `p` | main |
+| `src/render/renderer.js:5710` | `bus.on` | `event` | main |
+| `src/render/vfx.js:2396` | `bus.on` | `name` | main |
+| `src/render/vfx.js:10368` | `this._bombDetonationVfx.emit` | `event` | main |
+| `src/render/vfx.js:10389` | `this._combatContactVfx.emit` | `kind` | main |
+| `src/render/vfx.js:11726` | `this._actionVfx.emit` | `name` | main |
 | `src/render/vfx/actionPrimitives.js:205` | `this.particles.emit` | `p` | main |
 | `src/render/vfx/bombDetonationVfx.js:112` | `this.particles.emit` | `p` | main |
 | `src/render/vfx/quarksSystem.js:701` | `this.flow.emit` | `event` | main |
 | `src/render/vfx/statusMatterVfx.js:190` | `this.particles.emit` | `b` | main |
-| `src/save/saveSystem.js:357` | `bus.on` | `eventName` | sim |
-| `src/systems/aceMemory.js:159` | `alias:emit.emit` | `this.bus` | sim |
-| `src/systems/aceMemory.js:193` | `this.bus.on` | `evt` | sim |
-| `src/systems/aceMemory.js:314` | `alias:emit.emit` | `this.bus` | sim |
-| `src/systems/aceMemory.js:330` | `alias:emit.emit` | `this.bus` | sim |
-| `src/systems/aceMemory.js:468` | `alias:emit.emit` | `this.bus` | sim |
-| `src/systems/aceMemory.js:512` | `alias:emit.emit` | `this.bus` | sim |
-| `src/systems/aceMemory.js:539` | `alias:emit.emit` | `this.bus` | sim |
-| `src/systems/aceMemory.js:752` | `alias:emit.emit` | `this.bus` | sim |
-| `src/systems/aceMemory.js:769` | `alias:emit.emit` | `this.bus` | sim |
-| `src/systems/aceMemory.js:900` | `alias:emit.emit` | `this.bus` | sim |
-| `src/systems/aceMemory.js:954` | `alias:emit.emit` | `this.bus` | sim |
-| `src/systems/aceMemory.js:1068` | `alias:emit.emit` | `this.bus` | sim |
-| `src/systems/aceMemory.js:1214` | `alias:emit.emit` | `this.bus` | sim |
-| `src/systems/aceMemory.js:1244` | `alias:emit.emit` | `this.bus` | sim |
-| `src/systems/aceMemory.js:1259` | `alias:emit.emit` | `this.bus` | sim |
-| `src/systems/aceMemory.js:1281` | `alias:emit.emit` | `this.bus` | sim |
-| `src/systems/aceMemory.js:1805` | `alias:emit.emit` | `bus` | sim |
-| `src/systems/aceMemory.js:1806` | `bus.emit` | `evt` | sim |
-| `src/systems/achievements.js:792` | `bus.emit` | `ACHIEVEMENT_UNLOCKED_EVENT` | main |
+| `src/save/saveSystem.js:359` | `bus.on` | `eventName` | sim |
+| `src/systems/aceMemory.js:163` | `alias:emit.emit` | `this.bus` | sim |
+| `src/systems/aceMemory.js:197` | `this.bus.on` | `evt` | sim |
+| `src/systems/aceMemory.js:318` | `alias:emit.emit` | `this.bus` | sim |
+| `src/systems/aceMemory.js:334` | `alias:emit.emit` | `this.bus` | sim |
+| `src/systems/aceMemory.js:472` | `alias:emit.emit` | `this.bus` | sim |
+| `src/systems/aceMemory.js:516` | `alias:emit.emit` | `this.bus` | sim |
+| `src/systems/aceMemory.js:543` | `alias:emit.emit` | `this.bus` | sim |
+| `src/systems/aceMemory.js:599` | `alias:emit.emit` | `this.bus` | sim |
+| `src/systems/aceMemory.js:799` | `alias:emit.emit` | `this.bus` | sim |
+| `src/systems/aceMemory.js:816` | `alias:emit.emit` | `this.bus` | sim |
+| `src/systems/aceMemory.js:947` | `alias:emit.emit` | `this.bus` | sim |
+| `src/systems/aceMemory.js:1001` | `alias:emit.emit` | `this.bus` | sim |
+| `src/systems/aceMemory.js:1115` | `alias:emit.emit` | `this.bus` | sim |
+| `src/systems/aceMemory.js:1261` | `alias:emit.emit` | `this.bus` | sim |
+| `src/systems/aceMemory.js:1291` | `alias:emit.emit` | `this.bus` | sim |
+| `src/systems/aceMemory.js:1306` | `alias:emit.emit` | `this.bus` | sim |
+| `src/systems/aceMemory.js:1328` | `alias:emit.emit` | `this.bus` | sim |
+| `src/systems/aceMemory.js:1852` | `alias:emit.emit` | `bus` | sim |
+| `src/systems/aceMemory.js:1853` | `bus.emit` | `evt` | sim |
 | `src/systems/achievements.js:864` | `bus.on` | `event` | main |
-| `src/systems/aiEncounter.js:337` | `alias:emit.emit` | `this.bus` | sim |
-| `src/systems/aiEncounter.js:338` | `alias:emit.emit` | `this.bus` | sim |
-| `src/systems/aiEncounter.js:342` | `alias:emit.emit` | `this.bus` | sim |
 | `src/systems/aiEncounter.js:343` | `alias:emit.emit` | `this.bus` | sim |
-| `src/systems/aiEncounter.js:352` | `alias:emit.emit` | `this.bus` | sim |
+| `src/systems/aiEncounter.js:344` | `alias:emit.emit` | `this.bus` | sim |
+| `src/systems/aiEncounter.js:348` | `alias:emit.emit` | `this.bus` | sim |
+| `src/systems/aiEncounter.js:349` | `alias:emit.emit` | `this.bus` | sim |
 | `src/systems/aiEncounter.js:358` | `alias:emit.emit` | `this.bus` | sim |
 | `src/systems/aiEncounter.js:364` | `alias:emit.emit` | `this.bus` | sim |
-| `src/systems/aiEncounter.js:433` | `alias:emit.emit` | `this.bus` | sim |
-| `src/systems/aiEncounter.js:448` | `alias:emit.emit` | `this.bus` | sim |
-| `src/systems/aiEncounter.js:452` | `alias:emit.emit` | `this.bus` | sim |
-| `src/systems/aiEncounter.js:592` | `alias:emit.emit` | `this.bus` | sim |
-| `src/systems/aiEncounter.js:594` | `alias:emit.emit` | `this.bus` | sim |
+| `src/systems/aiEncounter.js:370` | `alias:emit.emit` | `this.bus` | sim |
+| `src/systems/aiEncounter.js:439` | `alias:emit.emit` | `this.bus` | sim |
+| `src/systems/aiEncounter.js:454` | `alias:emit.emit` | `this.bus` | sim |
+| `src/systems/aiEncounter.js:458` | `alias:emit.emit` | `this.bus` | sim |
+| `src/systems/aiEncounter.js:598` | `alias:emit.emit` | `this.bus` | sim |
 | `src/systems/aiEncounter.js:600` | `alias:emit.emit` | `this.bus` | sim |
-| `src/systems/aiEncounter.js:783` | `alias:emit.emit` | `bus` | sim |
-| `src/systems/aiEncounter.js:814` | `alias:emit.emit` | `bus` | sim |
-| `src/systems/aiEncounter.js:815` | `bus.emit` | `event` | sim |
+| `src/systems/aiEncounter.js:606` | `alias:emit.emit` | `this.bus` | sim |
+| `src/systems/aiEncounter.js:789` | `alias:emit.emit` | `bus` | sim |
+| `src/systems/aiEncounter.js:820` | `alias:emit.emit` | `bus` | sim |
+| `src/systems/aiEncounter.js:821` | `bus.emit` | `event` | sim |
 | `src/systems/ambushSignatures.js:53` | `this.bus.on` | `evt` | sim |
 | `src/systems/ambushSignatures.js:81` | `alias:emit.emit` | `this.bus` | sim |
 | `src/systems/ambushSignatures.js:89` | `alias:emit.emit` | `this.bus` | sim |
 | `src/systems/ambushSignatures.js:231` | `alias:emit.emit` | `bus` | sim |
 | `src/systems/ambushSignatures.js:232` | `bus.emit` | `evt` | sim |
 | `src/systems/asteroidSites.js:606` | `this.bus.emit` | `intent.type` | sim |
-| `src/systems/automation.js:973` | `this.bus.emit` | `grinding ? 'drone:grindStart' : 'drone:grindStop'` | sim |
+| `src/systems/bandRadio.js:191` | `this._listen.on` | `event` | sim |
 | `src/systems/bandRadio.js:346` | `this.bus.on` | `event` | sim |
-| `src/systems/barkDirector.js:383` | `this.bus.on` | `HITSTUN_IMPULSE_EVENT` | sim |
-| `src/systems/barkDirector.js:1196` | `this.bus.emit` | `event` | sim |
+| `src/systems/barkDirector.js:1231` | `this.bus.emit` | `event` | sim |
 | `src/systems/bountyHunt.js:119` | `alias:emit.emit` | `this.bus` | sim |
 | `src/systems/bountyHunt.js:268` | `alias:emit.emit` | `this.bus` | sim |
 | `src/systems/bountyHunt.js:311` | `alias:emit.emit` | `this.bus` | sim |
@@ -2357,35 +2458,30 @@ adapters:
 | `src/systems/bountyHunt.js:1116` | `alias:emit.emit` | `bus` | sim |
 | `src/systems/bountyHunt.js:1117` | `bus.emit` | `evt` | sim |
 | `src/systems/bulletTime.js:128` | `this.bus.on` | `event` | sim |
-| `src/systems/bulletTime.js:284` | `this.bus.emit` | `clip.merged ? 'moment:clipMerged' : 'moment:clipMarked'` | sim |
-| `src/systems/bulletTime.js:295` | `this.bus.emit` | `MOMENT_EVENT` | sim |
 | `src/systems/capitalBossEncounters.js:56` | `ctx.bus.emit` | ``capitalBoss:${c.type}`` | sim |
 | `src/systems/capitalBossEncounters.js:65` | `ctx.bus.on` | `event` | sim |
 | `src/systems/careerContracts.js:240` | `this.bus.on` | `event` | sim |
 | `src/systems/cargo.js:290` | `binding.bus.on` | `event` | sim |
 | `src/systems/chronicler.js:85` | `this._bus.on` | `event` | sim |
-| `src/systems/claims.js:1546` | `this.bus.emit` | `outcome === 'defended' ? 'claim:raidRepelled' : 'claim:raided'` | sim |
 | `src/systems/cloak.js:81` | `this.bus.on` | `event` | sim |
-| `src/systems/collisionConsequences.js:74` | `this.bus.on` | `RESOLVE_PENDING_CRAFT_CONTACT_EVENT` | sim |
-| `src/systems/collisionConsequences.js:144` | `this.bus.queue` | `RESOLVE_PENDING_CRAFT_CONTACT_EVENT` | sim |
-| `src/systems/contractClauses.js:231` | `this._bus.on` | `eventName` | sim |
+| `src/systems/contractClauses.js:233` | `this._bus.on` | `eventName` | sim |
 | `src/systems/custodyConsequences.js:213` | `this.bus.emit` | `event` | sim |
-| `src/systems/economy.js:1285` | `bus.on` | ``economy:resourceWork:${action}`` | sim |
+| `src/systems/economy.js:1299` | `bus.on` | ``economy:resourceWork:${action}`` | sim |
 | `src/systems/emergentPrimitives.js:1149` | `this.bus.on` | `event` | sim |
 | `src/systems/encounterDirector.js:373` | `this.emit` | `name` | sim |
 | `src/systems/encounterDirector.js:1213` | `this.bus.emit` | `name` | sim |
-| `src/systems/flightV3.js:1436` | `bus.emit` | `event.type` | sim |
+| `src/systems/flightV3.js:1442` | `bus.emit` | `event.type` | sim |
 | `src/systems/flybyFocus.js:311` | `this.bus.on` | `event` | sim |
 | `src/systems/hullBurst.js:159` | `this.bus.on` | `event` | sim |
 | `src/systems/hullBurst.js:162` | `this.bus.on` | `event` | sim |
-| `src/systems/lawSecurity.js:3086` | `this.bus.emit` | `event` | sim |
+| `src/systems/lawSecurity.js:3165` | `this.bus.emit` | `event` | sim |
 | `src/systems/livingPoiBehaviors.js:142` | `this.bus.on` | `event` | sim |
 | `src/systems/livingPoiBehaviors.js:147` | `this.bus.emit` | `event` | sim |
 | `src/systems/lootShards.js:601` | `this.bus.on` | `evt` | sim |
 | `src/systems/masslineThrow.js:120` | `this.bus.on` | `name` | sim |
-| `src/systems/missions.js:1294` | `bus.on` | `grantEvent` | sim |
-| `src/systems/missions.js:1332` | `bus.on` | `releaseEvent` | sim |
-| `src/systems/missions.js:4645` | `this.bus.emit` | `eventName` | sim |
+| `src/systems/missions.js:1305` | `bus.on` | `grantEvent` | sim |
+| `src/systems/missions.js:1343` | `bus.on` | `releaseEvent` | sim |
+| `src/systems/missions.js:4659` | `this.bus.emit` | `eventName` | sim |
 | `src/systems/nemesis.js:26` | `this.bus.on` | `event` | sim |
 | `src/systems/nemesis.js:51` | `this.bus.emit` | `event` | sim |
 | `src/systems/nemesisSignals.js:10` | `ctx.bus.on` | `name` | sim |
@@ -2418,33 +2514,24 @@ adapters:
 | `src/systems/routeFollower.js:936` | `bus.emit` | `event` | sim |
 | `src/systems/runSession.js:307` | `this.bus.emit` | `event` | sim |
 | `src/systems/stationContacts.js:194` | `this.bus.on` | `event` | sim |
-| `src/systems/story.js:240` | `bus.on` | `ORRIN_WITNESS_SUBMISSION_EVENT` | sim |
 | `src/systems/story.js:762` | `this.bus.emit` | `item.event` | sim |
 | `src/systems/story.js:978` | `this.bus.emit` | `intent.event` | sim |
 | `src/systems/surrenderRecovery.js:733` | `this.bus.emit` | `event` | sim |
-| `src/systems/survivalArena.js:1497` | `this.bus.emit` | `event` | sim |
-| `src/systems/survivalDraft.js:1276` | `this.bus.emit` | `event` | sim |
-| `src/systems/survivalResults.js:1058` | `this.bus.emit` | `event` | sim |
+| `src/systems/survivalAnnounce.js:440` | `this.bus.emit` | `event` | sim |
+| `src/systems/survivalArena.js:1691` | `this.bus.emit` | `event` | sim |
+| `src/systems/survivalDraft.js:1306` | `this.bus.emit` | `event` | sim |
+| `src/systems/survivalResults.js:1068` | `this.bus.emit` | `event` | sim |
 | `src/systems/survivalRewards.js:44` | `this.bus.on` | `event` | sim |
-| `src/systems/survivalRun.js:117` | `this.bus.on` | `WAVE_CLEARED_SEAM` | sim |
-| `src/systems/survivalRun.js:521` | `this.bus.emit` | `event` | sim |
-| `src/systems/survivalWave.js:743` | `this.bus.emit` | `event` | sim |
+| `src/systems/survivalRun.js:524` | `this.bus.emit` | `event` | sim |
+| `src/systems/survivalWave.js:837` | `this.bus.emit` | `event` | sim |
 | `src/systems/survivorPod.js:959` | `this._bus.emit` | ``survivorPod:${outcome}`` | sim |
 | `src/systems/swarmArena.js:1199` | `this.bus.emit` | `event` | sim |
 | `src/systems/swarmChain.js:261` | `this.bus.emit` | `event` | sim |
 | `src/systems/swarmSupply.js:286` | `this.bus.emit` | `event` | sim |
-| `src/systems/tacticalAI.js:248` | `ctxRef.bus.emit` | `event` | sim |
-| `src/systems/tacticalAI.js:328` | `bus.on` | `event` | sim |
+| `src/systems/tacticalAI.js:249` | `ctxRef.bus.emit` | `event` | sim |
+| `src/systems/tacticalAI.js:329` | `bus.on` | `event` | sim |
 | `src/systems/telemetry.js:335` | `bus.on` | `event` | main |
 | `src/systems/tensionDirector.js:133` | `this.bus.on` | `name` | sim |
-| `src/systems/tensionDirector.js:197` | `this.bus.emit` | `TENSION_EVENTS.reset` | sim |
-| `src/systems/tensionDirector.js:235` | `this.bus.emit` | `TENSION_EVENTS.policy` | sim |
-| `src/systems/tensionDirector.js:236` | `this.bus.emit` | `TENSION_EVENTS.phase` | sim |
-| `src/systems/tensionDirector.js:237` | `this.bus.emit` | `TENSION_EVENTS.chapter` | sim |
-| `src/systems/tensionDirector.js:238` | `this.bus.emit` | `TENSION_EVENTS.starved` | sim |
-| `src/systems/tensionDirector.js:239` | `this.bus.emit` | `TENSION_EVENTS.decision` | sim |
-| `src/systems/tensionDirector.js:247` | `this.bus.emit` | `TENSION_EVENTS.restore` | sim |
-| `src/systems/tensionDirector.js:253` | `this.bus.emit` | `TENSION_EVENTS.reset` | sim |
 | `src/systems/titles.js:349` | `alias:emit.emit` | `bus` | sim |
 | `src/systems/titles.js:350` | `bus.emit` | `event` | sim |
 | `src/systems/titles.js:477` | `alias:emit.emit` | `this.bus` | sim |
@@ -2457,23 +2544,19 @@ adapters:
 | `src/systems/titles.js:769` | `alias:emit.emit` | `this.bus` | sim |
 | `src/systems/titles.js:779` | `alias:emit.emit` | `this.bus` | sim |
 | `src/systems/titles.js:854` | `alias:emit.emit` | `this.bus` | sim |
-| `src/systems/touch.js:407` | `bus.emit` | `on ? 'touch:enabled' : 'touch:disabled'` | sim |
-| `src/systems/traffic.js:7699` | `this.bus.emit` | `CERES_JOB_ACTION_RECEIPT_EVENT` | sim |
-| `src/systems/traffic.js:9651` | `this.bus.emit` | `CERES_CAUSAL_CHAIN_EVENT` | sim |
 | `src/systems/travelLanes.js:1315` | `bus.emit` | `event` | sim |
-| `src/systems/tumbleStates.js:113` | `this.bus.on` | `HITSTUN_IMPULSE_EVENT` | sim |
+| `src/systems/uniqueWrecks.js:390` | `this._listen.on` | `event` | sim |
 | `src/systems/uniqueWrecks.js:418` | `this.bus.on` | `event` | sim |
 | `src/systems/uniqueWrecks.js:874` | `this.bus.emit` | `eventName` | sim |
 | `src/systems/v2FlavorRuntime.js:119` | `this.bus.on` | `event` | sim |
 | `src/systems/weapons.js:296` | `ctx.bus.on` | `event` | sim |
-| `src/systems/weapons.js:2090` | `bus.emit` | `name` | sim |
-| `src/systems/weapons.js:2158` | `bus.emit` | `name` | sim |
-| `src/systems/weapons.js:2211` | `host.bus.emit` | `name` | sim |
+| `src/systems/weapons.js:2103` | `bus.emit` | `name` | sim |
+| `src/systems/weapons.js:2171` | `bus.emit` | `name` | sim |
+| `src/systems/weapons.js:2224` | `host.bus.emit` | `name` | sim |
 | `src/testing/lab/proofSixtySeconds.js:1646` | `bus.on` | `name` | main |
-| `src/ui/adventureDecisions.js:412` | `bus.emit` | `side === 'sell' ? 'ui:sell' : 'ui:buy'` | main |
 | `src/ui/asteroid/asteroidScreen.js:1624` | `ctx.bus.on` | `event` | main |
 | `src/ui/comms.js:79` | `bus.on` | `event` | main |
-| `src/ui/comms.js:441` | `bus.emit` | `intentEvent` | main |
+| `src/ui/comms.js:444` | `bus.emit` | `intentEvent` | main |
 | `src/ui/commsRadial.js:817` | `bus.on` | `event` | main |
 | `src/ui/contactHailPrompt.js:253` | `bus.on` | `event` | main |
 | `src/ui/effects/dockRail.js:311` | `flicker.on` | `btn` | main |
@@ -2492,24 +2575,21 @@ adapters:
 | `src/ui/marketNews.js:386` | `bus.on` | `evt` | main |
 | `src/ui/marketNews.js:386` | `alias:on.on` | `evt` | main |
 | `src/ui/nemesisComms.js:70` | `bus.on` | `event` | main |
-| `src/ui/radar.js:813` | `bus.on` | `event` | main |
+| `src/ui/radar.js:1231` | `bus.on` | `event` | main |
 | `src/ui/recoveryEncounterPrompt.js:470` | `bus.on` | `event` | main |
 | `src/ui/recoveryEncounterPrompt.js:481` | `bus.on` | `event` | main |
-| `src/ui/screens/achievements.js:241` | `ctx.bus.on` | `ACHIEVEMENT_UNLOCKED_EVENT` | main |
 | `src/ui/screens/codex.js:83` | `ctx.bus.emit` | `'ui:' + method` | main |
 | `src/ui/screens/crucibleLabControls.js:834` | `bus.on` | `event` | main |
 | `src/ui/screens/help.js:51` | `ctx.bus.emit` | `'ui:' + method` | main |
 | `src/ui/screens/mainMenu.js:75` | `ctx.bus.emit` | `'ui:' + method` | main |
 | `src/ui/screens/mainMenu.js:499` | `ctx.bus.on` | `evt` | main |
-| `src/ui/screens/missionLog.js:2189` | `ctx.bus.emit` | `act === 'ladderAccept' ? 'career:ladder:accept' : 'career:ladder:decline'` | main |
 | `src/ui/screens/newGame.js:282` | `ctx.bus.emit` | `'ui:' + method` | main |
 | `src/ui/screens/pause.js:125` | `ctx.bus.emit` | `'ui:' + method` | main |
-| `src/ui/screens/saveLoad.js:214` | `ctx.bus.emit` | `'ui:' + method` | main |
-| `src/ui/screens/settings.js:114` | `ctx.bus.emit` | `'ui:' + method` | main |
+| `src/ui/screens/saveLoad.js:215` | `ctx.bus.emit` | `'ui:' + method` | main |
+| `src/ui/screens/settings.js:132` | `ctx.bus.emit` | `'ui:' + method` | main |
 | `src/ui/sectorLawPresenter.js:295` | `bus.on` | `event` | main |
-| `src/ui/signalInvestigationPrompt.js:101` | `bus.emit` | `record.manualInvestigation ? 'signal:investigate' : 'signal:track'` | main |
 | `src/ui/station/barContacts.js:108` | `bus.emit` | `event` | main |
-| `src/ui/station/screens/market.js:1674` | `ctx.bus.emit` | `mode === 'buy' ? 'ui:buy' : 'ui:sell'` | main |
+| `src/ui/station/screens/shipworks.js:3871` | `ctx.bus.emit` | `eventName` | main |
 | `src/ui/station/stationApp.js:758` | `bus.on` | `event` | main |
-| `src/ui/worldObjectInteraction.js:331` | `bus.on` | `name` | main |
-| `src/ui/worldObjectInteraction.js:334` | `bus.on` | `name` | main |
+| `src/ui/worldObjectInteraction.js:371` | `bus.on` | `name` | main |
+| `src/ui/worldObjectInteraction.js:374` | `bus.on` | `name` | main |

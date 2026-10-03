@@ -695,7 +695,13 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
     enterFlight() {
       enterFlightMode(state, bus);
       if (!runTransitionGuard.isCurrent(transitionToken)) return;
-      bus.emit('game:started', { newGamePlus });
+      // Worker lane: the receipt is generated inside the worker — the newGameBoot
+      // rpc stages the payload and the post-boot 'flight' mode apply emits
+      // game:started once on the worker bus; the bridge replays it back so
+      // main-side subscribers fire exactly once. A local emit here would
+      // double-fire them. (Stage-9 remediation: forwarding the main emit used
+      // to replay the receipt into restore windows and double-seed the world.)
+      if (!laneCommandSink()) bus.emit('game:started', { newGamePlus });
       SF_DEBUG_ONLY: if (SF_DEBUG) console.log('[SpaceFace] new game started. entities=%d', state.entityList.length);
     },
   });

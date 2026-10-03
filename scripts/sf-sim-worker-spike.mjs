@@ -82,10 +82,10 @@ import {
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const WORKER_PATH = resolve(ROOT, 'scripts/lib/wholeSimWorker.mjs');
-// Post-flip baseline — upstream re-baselined the 47a golden at 9fac82f34; the
-// comparator was stale (stage-5 hash). This is the main-lane golden the flip
-// must still produce bit-identically.
-const GOLDEN_HASH = 'f589bdd53360693b76d89ea54db2dd5816f45feb00c5f203d882a9637d729cdb';
+// Post-flip baseline — the S1-sim merge re-baselined the 47a golden again
+// (upstream sim changes on the merged base). Verified c1d040da on both the
+// worker and main lanes at 720 ticks, reload-at-600, repeat 2 — bit-identical.
+const GOLDEN_HASH = 'c1d040da2035854e3dc4fc85c42e413f0ba6de44bd7eec1a2a69d5319fd12c1b';
 const COMPLETED_TICK_RING_DEPTH = 8;
 // Stage 7 item A: the completed-tick reply channel gets a hard bound — resolved
 // replies carrying a completedTick count as outstanding until the present side
