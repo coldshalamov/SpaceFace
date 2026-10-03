@@ -6811,7 +6811,17 @@ function admitNextUpgradeJob(state) {
     job.options.overlapAuthoredPipelineCompile = true;
     job.options.onAuthoredPipelineStaged = () => {
       const glassQueued = state.jobs.some((queued) => queued !== job
-        && entityIsOnReadableGlass(queued && queued.entity));
+        && (entityIsOnReadableGlass(queued && queued.entity)
+          // Same runway-inbound grade as rung 5: a hull due inside the promote horizon
+          // is nearly on the glass — holding the serial slot through the running job's
+          // whole upload drain would hand the pop it was staged to prevent.
+          || (queued.entity
+            && (queued.entity.type === 'ship' || queued.entity.type === 'wreck'
+              || queued.entity.type === 'drone' || queued.entity.type === 'station'
+              || queued.entity.type === 'payload')
+            && willEntityEnterAuthoredUpgradeRunway(queued.entity, authoredRuntimeState(), {
+              horizonSeconds: TABLE_PROMOTE_HORIZON_SECONDS,
+            }))));
       if (!glassQueued) return false;
       return releaseSerialSlotAfterPipelineStaging();
     };
@@ -7819,10 +7829,6 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
     // look up a hull that was never added to the library.
     const phaseTimings = beginAdmissionPhaseTimings(boundary);
     const decodeStartedAtMs = monotonicNow();
-    if (prefetchedLibrary) {
-      try { await waitForAuthoredAdmission(prefetchedLibrary, options); }
-      catch { assertQueuedAuthoredAdmissionActive(options, 'after-ship-prefetch'); }
-    }
     // Decode runs at deadline floor; admissionVisible must stay live — a mid-run promotion
     // stamped on the job bag by a join or an on-glass trigger has to reach the remaining
     // per-part posts, or the tail of a hull that just came on-stage keeps ranking deadline.
@@ -7831,7 +7837,16 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
       enumerable: true,
       get: () => options.admissionVisible === true,
     });
-    const library = await waitForAuthoredAdmission(preloadAuthoredAssetsForEntity(renderer, entity, decodeOptions), options);
+    // Post the deadline-floor decode BEFORE awaiting the ambient lookahead prefetch: the
+    // shared url::slot decode tasks join at this job's class (budget.promote + compile
+    // regrade), so sustained deadline traffic cannot stall the in-flight job behind its
+    // own ambient prefetch chain all the way to the stall bound.
+    const deadlineLibrary = waitForAuthoredAdmission(preloadAuthoredAssetsForEntity(renderer, entity, decodeOptions), options);
+    if (prefetchedLibrary) {
+      try { await waitForAuthoredAdmission(prefetchedLibrary, options); }
+      catch { assertQueuedAuthoredAdmissionActive(options, 'after-ship-prefetch'); }
+    }
+    const library = await deadlineLibrary;
     assertQueuedAuthoredAdmissionActive(options, 'before-ship-composition');
     endAdmissionPhase(phaseTimings, 'decode', decodeStartedAtMs);
     const compositionStartedAtMs = monotonicNow();
