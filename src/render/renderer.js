@@ -339,6 +339,7 @@ import {
 import { preloadRockSurfaceLibrary } from './rockSurfaceLibrary.js';
 import { preloadRockFamilyLibrary } from './rockFamilyLibrary.js';
 import { preloadCreatureSkinLibrary } from './creatureSkinLibrary.js';
+import { preloadPlanetDetailLibrary } from './planetDetailLibrary.js';
 import {
   beginOpeningCookLedger,
   createGpuResidencyAdmissionTracker,
@@ -7253,7 +7254,7 @@ const RENDER_STATE_REFERENCE_KEYS = Object.freeze([
   'drainOpeningPipelinePlan', 'captureOpeningGpuResidencyPlan', 'drainOpeningGpuResidencyPlan',
   'resumeDeferredPipelineAdmissions', 'compileCurrentPipelines', 'pendingPipelineAdmissions',
   'preparePostOpeningPipelines', 'prepareOpeningGpuResources', 'retryAuthoredPartLibrary',
-  'startupGpuResidency', 'rockSurfaceLibraryReady', 'rockFamilyLibraryReady', 'creatureSkinLibraryReady', 'authoredPartLibraryReady',
+  'startupGpuResidency', 'rockSurfaceLibraryReady', 'rockFamilyLibraryReady', 'creatureSkinLibraryReady', 'planetDetailLibraryReady', 'authoredPartLibraryReady',
   'dynamicBufferRanges', 'presentationWorld', 'presentationPublisher', 'presentationQueries',
   'presentationFrame', 'snapshotFence', 'activityFrame', 'entityFrame', 'hlod', 'entityViewSync',
   'asteroidInstancePool', 'renderGraph', 'bloom', 'contextRecovery', 'sectorBoundaryPrewarm',
@@ -7637,6 +7638,7 @@ export function disposeRendererOwnedResources(owner, options = {}) {
   owner._meshReconcileDirty = false;
   owner._initialMeshReconcileComplete = false;
   owner._renderResidencyPollS = 0;
+  owner.planetDetailLibraryReady = null;
   owner._sectorHandoffStreamHoldS = 0;
   owner._sectorHandoffSectorId = null;
   owner._sectorHandoffSector = null;
@@ -8487,6 +8489,8 @@ export const render = {
         } catch (_) { /* pool warm is best-effort */ }
         // Re-skin swapped material objects — the new PBR materials have never compiled. Behind
         // the shell this is a batch compile; in flight it is the same admission a cold draw
+    // Terrain / cloud relief tiles for the colossal planet-site bodies (never fatal; plain baked surface on failure).
+    this.planetDetailLibraryReady = preloadPlanetDetailLibrary(renderer);
         // would have paid, just earlier and deduped.
         if (count > 0
             && state && state.render && typeof state.render.compileObjectPipelines === 'function') {
@@ -13355,6 +13359,9 @@ export const render = {
         // by the concurrent warmup if present, otherwise self-build below.
         if (!plan && !shouldAwaitOpeningGpuCook({ gpu: state.render && state.render.gpu, renderer })) {
           const planWaitStarted = openingNow();
+      if (this.planetDetailLibraryReady) {
+        await Promise.race([this.planetDetailLibraryReady, new Promise((resolve) => setTimeout(resolve, 4000))]);
+      }
           recordOpeningCookStep(state.render, 'opening.planWait', planWaitStarted, 'skipped', {
             budgetMs: 0,
             reason: 'soft-gpu-self-build',
