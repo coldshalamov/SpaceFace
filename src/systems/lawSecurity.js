@@ -403,6 +403,7 @@ export const lawSecurity = {
     }
     // A surrender hold names live hulls. The owed bill, if accepted, is in `composed`.
     delete own.playerSurrender;
+    delete own.surrenderRearm;
     return own;
   },
 
@@ -4414,25 +4415,18 @@ export const lawSecurity = {
     if (existing && existing.phase === 'accepted') {
       return { started: true, phase: 'accepted', priceCr: existing.priceCr, causeId: existing.causeId, already: true };
     }
-    const tier = wantedTierFor(state.player && state.player.heat);
-    if (tier !== WANTED_TIER.NETS && tier !== WANTED_TIER.IMPOUND) {
-      this._emit('law:surrenderRefused', { reason: 'not_in_custody_tier', tier });
-      return { started: false, reason: 'not_in_custody_tier', tier };
+    const window = lawfulSurrenderWindow(state);
+    if (!window.ok) {
+      // The refusal voice: an explicit ask always says why. The auto-verb never reaches here —
+      // a physical hold either exists or it does not.
+      this._emit('law:surrenderRefused', { reason: window.reason, tier: window.tier });
+      this._emit('toast', {
+        text: surrenderRefusalLine(window.reason), kind: 'warn', ttl: 3,
+      });
+      return { started: false, reason: window.reason, tier: window.tier };
     }
-    const player = entityById(state, state.playerId);
-    if (!player || player.alive === false || !player.pos) {
-      this._emit('law:surrenderRefused', { reason: 'no_ship' });
-      return { started: false, reason: 'no_ship' };
-    }
-    if (entitySpeed(player) > LAW_SURRENDER_MAX_SPEED) {
-      this._emit('law:surrenderRefused', { reason: 'moving' });
-      return { started: false, reason: 'moving' };
-    }
-    const responder = lawfulResponderInCone(state, player);
-    if (!responder) {
-      this._emit('law:surrenderRefused', { reason: 'no_responder' });
-      return { started: false, reason: 'no_responder' };
-    }
+    const tier = window.tier;
+    const responder = window.responder;
     const priceCr = surrenderPriceCr(state.player);
     const causeId = `player-surrender:${state.meta && state.meta.seed || 1}`;
     own.playerSurrender = {
@@ -4444,6 +4438,10 @@ export const lawSecurity = {
       tier,
     };
     this._emit('law:surrenderHold', { priceCr, causeId, responderId: responder.id, holdS: LAW_SURRENDER_HOLD_S });
+    this._emit('toast', {
+      text: `HEAVE TO — engines cut. Custody accepts in ${LAW_SURRENDER_HOLD_S}s. Fire or move to break.`,
+      kind: 'warn', ttl: 3,
+    });
     this._lawResponse('surrender_hold', { priceCr, causeId, responderId: responder.id });
     return { started: true, phase: 'holding', priceCr, causeId, responderId: responder.id };
   },
@@ -4454,14 +4452,38 @@ export const lawSecurity = {
     if (!hold || hold.phase !== 'holding') return false;
     hold.phase = 'cancelled';
     hold.reason = reason;
+    // Suppress the auto-verb until the window actually breaks once — sitting still right after
+    // breaking the hold is the argument, not a new surrender.
+    own.surrenderRearm = true;
     this._emit('law:surrenderRefused', { reason, priceCr: hold.priceCr, causeId: hold.causeId });
+    this._emit('toast', { text: surrenderRefusalLine(reason), kind: 'warn', ttl: 3 });
     this._lawResponse('surrender_refused', { reason, priceCr: hold.priceCr });
     return true;
   },
 
   _updatePlayerSurrender(dt, state) {
     const own = state && state.lawSecurity;
-    const hold = own && own.playerSurrender;
+    let hold = own && own.playerSurrender;
+    // FB-119 — the surrender verb IS the act: engines cut inside a lawful responder's scan cone
+    // while wanted at a custody tier opens the hold. No deck prompt, no key — holding still for
+    // LAW_SURRENDER_HOLD_S under the cone is compliance. An explicit law:playerSurrender intent
+    // reaches the same door with refusal reasons voiced; the auto-verb speaks only in holds.
+    if (!hold || hold.phase === 'cancelled') {
+      if (!state || state.playerId == null) return;
+      if (state.mode && state.mode !== 'flight') return;
+      if (state.ui && state.ui.docked === true) return;
+      if (!lawfulSurrenderWindow(state).ok) {
+        // The window closed — the next deliberate hold is a fresh surrender, not a retry.
+        own.surrenderRearm = false;
+        return;
+      }
+      // A cancelled hold stays cancelled while the window never broke: firing and then simply
+      // sitting still is an argument, not compliance. Leave the cone or spool up once, then the
+      // next stillness counts. The explicit law:playerSurrender ask is always honored.
+      if (hold && own.surrenderRearm === true) return;
+      this._beginPlayerSurrender();
+      hold = own.playerSurrender;
+    }
     if (!hold || hold.phase !== 'holding') return;
     const player = entityById(state, state.playerId);
     if (!player || player.alive === false) {
@@ -4525,6 +4547,10 @@ export const lawSecurity = {
       causeId: hold.causeId,
       responderId: hold.responderId,
       obligation: noted && noted.obligation || null,
+    });
+    this._emit('toast', {
+      text: `CUSTODY ACCEPTED — the law holds the guns. Bill posted: ${priceCr} Cr.`,
+      kind: 'good', ttl: 4,
     });
     this._lawResponse('surrender_accepted', { priceCr, causeId: hold.causeId });
     return { accepted: true, priceCr, causeId: hold.causeId, obligation: noted && noted.obligation || null };
@@ -5776,6 +5802,37 @@ function publicObligation(row) {
 function surrenderPriceCr(player) {
   const quoted = quoteImpoundBill(player);
   return quoted > 0 ? quoted : IMPOUND_RESTITUTION_CR;
+}
+
+// FB-119 — the surrender window in one place. The explicit law:playerSurrender intent turns the
+// same checks into voiced refusals; the auto-verb in _updatePlayerSurrender reads `ok` silently
+// (a physical hold either exists or it does not, and nobody needs a toast for standing fast).
+function lawfulSurrenderWindow(state) {
+  const tier = wantedTierFor(state.player && state.player.heat);
+  if (tier !== WANTED_TIER.NETS && tier !== WANTED_TIER.IMPOUND) {
+    return { ok: false, reason: 'not_in_custody_tier', tier };
+  }
+  const player = entityById(state, state.playerId);
+  if (!player || player.alive === false || !player.pos) {
+    return { ok: false, reason: 'no_ship', tier };
+  }
+  if (entitySpeed(player) > LAW_SURRENDER_MAX_SPEED) {
+    return { ok: false, reason: 'moving', tier };
+  }
+  const responder = lawfulResponderInCone(state, player);
+  if (!responder) return { ok: false, reason: 'no_responder', tier };
+  return { ok: true, tier, player, responder };
+}
+
+function surrenderRefusalLine(reason) {
+  switch (reason) {
+    case 'not_in_custody_tier': return 'SURRENDER REFUSED — the sheet does not reach custody tier. A fine answers for it.';
+    case 'no_ship': return 'SURRENDER REFUSED — no live hull to take.';
+    case 'moving': return 'SURRENDER BROKEN — engines burning. Cut them to be taken.';
+    case 'no_responder': return 'SURRENDER REFUSED — no lawful cone holds you. Nobody to take the guns.';
+    case 'fired': return 'SURRENDER BROKEN — you fired through the hold.';
+    default: return `SURRENDER CLOSED — ${String(reason || 'window gone')}.`;
+  }
 }
 
 function playerInLawfulCone(responder, player) {
