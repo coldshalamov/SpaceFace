@@ -79,8 +79,11 @@ test('production init + update order lengths match the live browser baseline', (
   // cargo state; one system in both orders right after jettisonImpulse. Its update is a cheap
   // tick%15 gate on non-cadence ticks, so it runs on the table clock beside lootShards.
   // 168 -> 169 init / 127 -> 128 update: BRACKET adds one fixed-step character owner before physics.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 169);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 128);
+  // 169 -> 171 init / 128 -> 130 update: SWARM-02 juice pack — the arcade detector (swarmJuice,
+  // one slot after swarmChain so it reads the kills this tick settled) and its DOM-guarded
+  // presenter (swarmJuiceHud, after survivalHud); one in both orders each.
+  assert.equal(PRODUCTION_INIT_ORDER.length, 171);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 130);
   assert.equal(PRODUCTION_UPDATE_ORDER[PRODUCTION_UPDATE_ORDER.length - 1], 'save');
   assert.ok(PRODUCTION_UPDATE_ORDER.includes('save'));
   assert.equal(PRODUCTION_INIT_ORDER[0], 'core');
@@ -233,7 +236,9 @@ test('browser production system set is unchanged vs production manifest constant
   // posture — one system in both orders, between morrow and physics). 168 with
   // volatileExposure (NXB-008, beside jettisonImpulse in both orders).
   // 169 with bracket (PR #210 — a third fixed-step character owner before physics).
-  assert.equal(registry.systems.length, 169);
+  // 171 with SWARM-02 juice pack — swarmJuice (arcade detector, after swarmChain) and
+  // swarmJuiceHud (DOM-guarded presenter, after survivalHud), one system in both orders each.
+  assert.equal(registry.systems.length, 171);
   const names = registry.systems.map((s) => s.name);
   assert.ok(names.includes('render') || registry.runtimeManifest.authoritativeSystemIds.includes('render'));
   assert.ok(registry.runtimeManifest.authoritativeSystemIds.includes('ui'));

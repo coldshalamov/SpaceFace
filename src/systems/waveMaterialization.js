@@ -224,6 +224,10 @@ export function materializeWaveBatch(ctx, request) {
       }
       spec.data.runWave = Number.isInteger(req.wave) ? req.wave : 0;
       if (typeof req.role === 'string') spec.data.runRole = req.role;
+      // The champion mark travels with the body (SWARM-02): the arcade juice layer and any
+      // later boss surface find the round's boss bodies without re-deriving the wave owner's
+      // requireBoss ledger, exactly like runRole/runWave above.
+      if (req.champion === true) spec.data.swarmChampion = true;
       const bossDressing = lawArenaBossDressing(req.arenaId, req.enemyId, req.role);
       if (bossDressing) spec.data.bossDressing = bossDressing;
       const spawned = helpers.spawnEntity(spec);

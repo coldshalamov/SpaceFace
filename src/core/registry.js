@@ -12,8 +12,10 @@ import { survivalArena } from '../systems/survivalArena.js';
 import { swarmArena } from '../systems/swarmArena.js';
 import { swarmSupply } from '../systems/swarmSupply.js';
 import { swarmChain } from '../systems/swarmChain.js';
+import { swarmJuice } from '../systems/swarmJuice.js';
 import { survivalRewards } from '../systems/survivalRewards.js';
 import { survivalHud } from '../ui/survivalHud.js';                 // Crucible run readout (DOM-guarded)
+import { swarmJuiceHud } from '../ui/swarmJuiceHud.js';             // Swarm arcade juice layer (DOM-guarded)
 import { crucibleFocus } from '../ui/crucibleFocus.js';             // hides campaign chrome in a run (DOM-guarded)
 import { survivalWave } from '../systems/survivalWave.js';
 import { survivalRun } from '../systems/survivalRun.js';
@@ -397,6 +399,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['survivalWave', survivalWave],
     ['survivalRewards', survivalRewards],
     ['survivalHud', survivalHud],
+    ['swarmJuiceHud', swarmJuiceHud],
     ['crucibleFocus', crucibleFocus],
     ['survivalDraft', survivalDraft],
     ['survivalResults', survivalResults],
@@ -407,6 +410,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['swarmArena', swarmArena],
     ['swarmSupply', swarmSupply],
     ['swarmChain', swarmChain],
+    ['swarmJuice', swarmJuice],
     ['survivalRun', survivalRun],
     ['voiceArbiter', voiceArbiter],
     ['input', input],
