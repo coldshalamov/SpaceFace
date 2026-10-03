@@ -724,10 +724,16 @@ export const routeFollower = {
     this.interrupt(`gate-${reason}`, { detail: reason });
   },
 
-  _onSectorEnter({ sectorId }) {
+  _onSectorEnter({ sectorId, enterEpoch }) {
     const nav = this.state && this.state.nav;
     const executor = nav && nav.executor;
     if (!nav || !sectorId) return;
+
+    // A queued-tail delivery (cap-overflow force-drain) carries the departed enter's epoch —
+    // its sectorId-keyed mutations would retire live nav waypoints and slice legs for the
+    // sector the player already left. Epochless synthetic payloads always run.
+    if (enterEpoch != null && this.state.world
+        && this.state.world.enterSerial != null && enterEpoch !== this.state.world.enterSerial) return;
 
     this._retireArrivedGateWaypoint(sectorId);
 

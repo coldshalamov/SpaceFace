@@ -512,8 +512,10 @@ export const asteroidSites = {
       if (!this._worldRestoreActive && !staleEnter) this._syncWorldSites(sectorId);
       // The 1s accumulator deferral exists to amortize per-frame cost, but an anchored rock
       // that died since the last visit belongs inside the enter census window — the respawn
-      // is idempotent, so the accumulator's later pass is a no-op rescan.
-      if (!this._worldRestoreActive) this._repairAnchors();
+      // is idempotent, so the accumulator's later pass is a no-op rescan. A stale payload
+      // pays nothing: its sweep would only re-scan the live sector and emit inside the
+      // presented frame.
+      if (!this._worldRestoreActive && !staleEnter) this._repairAnchors();
     });
     this.bus.on('sector:exit', ({ sectorId } = {}) => {
       // SF-294: snapshot each anchored claim's consequence counters as the player leaves — the

@@ -964,11 +964,18 @@ function entitySectorId(entity) {
 // decode starts / boundary-upgrade picks until its radius evict retires it — and the
 // kick would stamp that work with the NEW sector's id, mis-scoping it to residency
 // rotation. Skip rows stamped for a different sector (same field choice as the
-// latch's homeSector skip); a row without a home stamp earns picks normally.
+// latch's homeSector skip) — but only while the shell latch is set: an unlatched
+// foreign-home row is legitimately live (cross-border far actor, followed convoy)
+// and must keep its decode-pick path; a row without a home stamp earns picks normally.
 function entityHomeSectorMismatch(entity, state) {
   const data = entity && entity.data || {};
   const homeSectorId = entity && entity.homeSectorId || data.homeSectorId;
-  return !!homeSectorId && homeSectorId !== (state && state.world && state.world.currentSectorId);
+  if (!homeSectorId || homeSectorId === (state && state.world && state.world.currentSectorId)) {
+    return false;
+  }
+  return !!(state && state.render && (
+    state.render.liveSectorGpuAdmission === true
+    || state.render.sectorShellAdmission === true));
 }
 
 export function sectorPrewarmPopulationNeedsSynchronousRefresh(record) {
@@ -16614,6 +16621,13 @@ export const render = {
     for (const [id, mesh] of this._meshes) {
       const entity = resolveWorldPresentationEntity(state, id);
       if (!entity || entity.alive === false) continue;
+      // Same latched home-sector skip as the residency poll: while the cook's teardown owns
+      // the departing sweep, upgrade classification on departed-home rows stamps requests
+      // scoped to the current sector — the mis-scope the pick-site guards already reject.
+      if (shellLatched) {
+        const homeSectorId = entity.homeSectorId || (entity.data && entity.data.homeSectorId);
+        if (homeSectorId && homeSectorId !== (state.world && state.world.currentSectorId)) continue;
+      }
       this._bindPresentationMesh(entity, mesh);
       queueOrRequestAuthoredUpgrade(this, entity, mesh, state);
     }
