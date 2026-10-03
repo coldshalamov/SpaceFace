@@ -852,3 +852,17 @@ W56 hitches lane (`saturated: false`, 4 findings) — landed `1b3bd559f`:
 - **hitches F4**: morrow `_say` voice-debounce → `deferredEnterNow`.
 
 Verify: golden `47a` bit-identical (`8d4492dc…`); focused suites 100/101 green — `f15-wrecks` double-wreck red verified identical on clean HEAD (canon).
+
+## W57 — 2026-10-03 (lod landed; popin/boot/hitches queued on SWE-2 cap)
+
+Audit HEAD `baccc574f` (PR #215 tip). lod lane `saturated: false`. Saturation count: 0/3.
+
+- **lod F1 salvage partial-plan seal**: `plannedSectorId` stamped at body start, so a census-splice kill after ≥1 point push sealed a partial scatter — the re-run early-returned and the tail never ran (no `salvage:placed` → survivorPod `_onPlaced` silenced, no wreckField sources, no aftermath bind). The stamp now lands after the zone loop; the re-run adopts existing rows by deterministic id (`${zone.id}:sal${idx}` / `record.salvagePointId`), rolling identical rng draws so the remaining slots roll the same stream (`null` spawnEntity short-circuits the wreck + sort-pocket mint inside `_makeSalvagePoint`).
+- **lod F2 missions live-array splice-skip**: the `needsTargets` pass iterated live `missions.active` across a yield — a mid-slice `_removeActive` splice skipped the next mission and the `passKey` latch sealed the miss for the whole visit. Now iterates `.slice()` (status check still self-filters).
+- **lod F3 survivorPod divergent promotion**: the point was mutated (`isCommunicator`/`survivorPod`) before `promotedBySector`/`promotedByPoint` committed — a kill in that window made the re-run exclude the mutated point and promote a DIFFERENT wreck. Stamps now precede the point mutation; the `existing` head's `_reconcilePointRecord` repairs point+entity on re-run.
+- **lod F4 morrow/vesper cross-driver double-mint**: post-scan `spawnEntity` never re-checked live state — a live `update()` sweep (2s/1s `_nextSync`) landing in the suspended window minted the same bodies → duplicate entities ~1-2s. morrow re-resolves via `_entity()`; vesper re-scans live per slot before spawning.
+- **lod F5 aftermathWrecks orphan spawn**: per-marker yield + `spawnEntity` never re-checked membership — a mid-slice completion/arena-cap retire still spawned → orphan wreck + `aftermathWreck:spawned` for a dead marker. `own.bySector[sectorId]` membership re-checked before spawning.
+- **lod F6 wingmen fleet splice-skip**: live `fleet` for-of across a yield skipped the next member on a row removal → missing escort for the visit. Now `fleet.slice()`.
+- **lod F7 recoveryEncounter snapshot residue**: a record deleted mid-slice still got `_claimSalvagePoint` + `_materialize` → orphan husk for a dead row. Membership re-checked (`own.records[record.id] === record`) before claiming. uniqueWrecks `_materialize` already re-reads `own.bearings[wreckId]` (self-guarding).
+
+Verify: golden `47a` trajectory **bit-identical** (`618d7f16…`, the upstream-drifted baseline merged at `5cf892ee2`); focused suites 143/143 + 111/112 green — `salvage-station-intake` `valueCr` red verified identical on clean HEAD (canon).
