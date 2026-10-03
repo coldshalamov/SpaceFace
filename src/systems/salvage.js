@@ -110,6 +110,13 @@ export const salvage = {
     // Live GPU + flight + hard enter: defer into the cook's FIFO — the census
     // drains the same plan under its slice clock in listener order.
     this.bus.on('sector:enter', (p) => {
+      // A tail-sliced emit's payload can outlive the enter that minted it: entering B
+      // while A's tail drains would replan A's sector on the live world and filter
+      // state.salvage.points to the dead sector. Synthetic payloads (tests, census)
+      // carry no epoch and always run.
+      if (p && p.enterEpoch != null && this.state && this.state.world
+          && this.state.world.enterSerial != null
+          && p.enterEpoch !== this.state.world.enterSerial) return;
       if (deferSectorEnterMaterialization(this.state, p, this._cookProvider)) return;
       this._planForSector(p && p.sectorId);
     });

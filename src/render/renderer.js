@@ -11879,9 +11879,15 @@ export const render = {
       // cook; the newest invocation owns the shared queues, flags, and its own finally tail.
       const cookGeneration = (this._liveSectorCookGeneration = (this._liveSectorCookGeneration || 0) + 1);
       const cookSectorId = String(sector && sector.id || '');
+      // enterSerial is the world's replacement epoch: a restore into the SAME sector keeps
+      // currentSectorId identical while reissuing every entity — without it a cook minted
+      // before the restore drives teardown/providers against reissued ids on a dead world.
+      const cookEnterSerial = state.world && state.world.enterSerial;
       const cookStale = () => cookGeneration !== this._liveSectorCookGeneration
         || (!!cookSectorId && !!state.world && !!state.world.currentSectorId
-          && state.world.currentSectorId !== cookSectorId);
+          && state.world.currentSectorId !== cookSectorId)
+        || (cookEnterSerial != null
+          && (!state.world || state.world.enterSerial !== cookEnterSerial));
       const cookSuperseded = { skipped: true, reason: 'sector-superseded', sectorId: cookSectorId || null };
       const jumpLedger = beginOpeningCookLedger(state.render, 'jump');
       try {
@@ -13613,6 +13619,10 @@ export const render = {
         if (this._assetResidency && exactSectorId) this._assetResidency.rotateSector(exactSectorId);
         clearDecodeRunwayDedupe(this);
         state.render.pipelinePrecompileReady = pipelinePrecompile;
+        // Nothing in flight awaits this stored promise — suppress the rejection the way
+        // the sibling assignment does, or a failed cook surfaces as an uncaught page
+        // error while ordinary residency keeps drawing the sector.
+        pipelinePrecompile.catch(() => {});
         this._publishAssetResidencyDiagnostics();
         return;
       }
@@ -13642,6 +13652,7 @@ export const render = {
         if (this._assetResidency && exactSectorId) this._assetResidency.rotateSector(exactSectorId);
         clearDecodeRunwayDedupe(this);
         state.render.pipelinePrecompileReady = pipelinePrecompile;
+        pipelinePrecompile.catch(() => {});
         this._publishAssetResidencyDiagnostics();
         return;
       }
@@ -16310,6 +16321,13 @@ export const render = {
     const reconcileScanOpts = { scan: makeHoldExemptScanContext(state) };
     // Remove dead ownership and evict distant reduced-sector views. Simulation residency remains
     // untouched; only the render-owned Object3D boundary and its authored residency are released.
+    // While a live-sector cook owns the departing sweep (its teardown is sliced), letting
+    // residency evict here would run the identical dispose storm UNSLICED inside the
+    // presented transition frame. Dead/destroyed/mismatched meshes still evict — only the
+    // residency decision defers to the cook (or to this same pass once the latch releases).
+    const shellLatched = !!(state && state.render && (
+      state.render.liveSectorGpuAdmission === true
+      || state.render.sectorShellAdmission === true));
     for (const [id, m] of this._meshes) {
       const e = resolveWorldPresentationEntity(state, id);
       // A recycled numeric id can resolve to a different logical entity after a save restore;
@@ -16319,7 +16337,8 @@ export const render = {
       const mismatched = !!(e && e.alive !== false && stampedKey != null && stableMeshKeyForEntity(e) !== stampedKey);
       // Residency eviction of an on-glass entity is the visible "pop out of
       // existence" defect — count it so probes can prove the class stays at 0.
-      const residencyEvict = !!(e && e.alive !== false && !mismatched)
+      const residencyEvict = !shellLatched
+        && !!(e && e.alive !== false && !mismatched)
         && !keepResidentSet
         && !isEntityRenderRelevant(e, state,
           e.type === 'ship' || e.type === 'wreck' ? reconcileEvictShipWreck : reconcileEvictBase,
@@ -16392,6 +16411,11 @@ export const render = {
     stats.evicted = 0;
     stats.built = 0;
 
+    // Same latch exemption as reconcileMeshes: the cook's sliced teardown owns the departing
+    // sweep — don't pay its dispose storm unsliced inside a presented transition frame.
+    const residencyShellLatched = !!(state && state.render && (
+      state.render.liveSectorGpuAdmission === true
+      || state.render.sectorShellAdmission === true));
     // The evict radius is fixed for the whole poll except for the authored ship/wreck cap —
     // compute both once instead of re-deriving camera terms and trig per mesh.
     const speed = tableTravelSpeed(state);
@@ -16408,7 +16432,8 @@ export const render = {
       const evictRadius = entity && (entity.type === 'ship' || entity.type === 'wreck')
         ? evictRadiusShipWreck
         : evictRadiusBase;
-      const residencyEvict = !!(entity && entity.alive !== false)
+      const residencyEvict = !residencyShellLatched
+        && !!(entity && entity.alive !== false)
         && !isEntityRenderRelevant(entity, state, evictRadius, residencyScanOpts);
       if (!entity || entity.alive === false || residencyEvict) {
         if (residencyEvict) noteOnGlassResidencyEviction(state, entity);
