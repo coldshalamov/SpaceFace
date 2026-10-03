@@ -27,6 +27,21 @@ export const HULL_NAME_BANK = Object.freeze([
 /** The registry code the Concord ping reads out for the starting hull. */
 export const STARTER_HULL_REGISTRATION = NARRATIVE_SHIP.registration;
 
+/** Longest owner-given hull name. The nameplate input enforces the same bound (FB-057). */
+export const SHIP_NAME_MAX = 32;
+
+/**
+ * The one normalization rule for an owner-given hull name (FB-057): drop control characters
+ * outright ('A\0B' cleans to 'AB', not 'A B'), collapse whitespace runs to single spaces, trim,
+ * and cap at SHIP_NAME_MAX. Anything unusable cleans to '' so callers can fall back to the
+ * canonical resolver rather than wedging the nameplate on a blank record. Profanity-agnostic.
+ */
+export function cleanShipName(value) {
+  if (typeof value !== 'string') return '';
+  const collapsed = value.replace(/[\x00-\x1f\x7f-\x9f]/g, '').replace(/\s+/g, ' ').trim();
+  return collapsed.length > SHIP_NAME_MAX ? collapsed.slice(0, SHIP_NAME_MAX) : collapsed;
+}
+
 function positiveIndex(value) {
   const number = Number(value);
   return Number.isFinite(number) && number > 0 ? Math.trunc(number) : 0;
@@ -49,8 +64,10 @@ export function isStarterHull(ownedShip, index) {
     && ownedShip.starterHull !== false;
 }
 
-/** The spoken name of one owned hull. Deterministic for a given seed + berth. */
+/** The spoken name of one owned hull. An owner-given name outranks canon and bank (FB-057). */
 export function hullNameForOwnedShip(ownedShip, index = 0, seed = 0) {
+  const given = ownedShip ? cleanShipName(ownedShip.name) : '';
+  if (given) return given;
   if (isStarterHull(ownedShip, index)) return NARRATIVE_SHIP.name;
   const defId = ownedShip && ownedShip.defId ? String(ownedShip.defId) : 'ship_unknown';
   const pick = hash32(seed >>> 0, 'hullName', defId, positiveIndex(index)) % HULL_NAME_BANK.length;
