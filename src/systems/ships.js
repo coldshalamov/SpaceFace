@@ -1110,9 +1110,6 @@ function computeDerivedStats(defId, fittings = [], player = null) {
   let hiddenCargoPct = Math.max(0, Math.min(1, Number(eff.hiddenCargoPct) || 0));
   let scannerCloak = Math.max(0, Math.min(1, Number(eff.scannerCloak) || 0));
   let damageReductionMult = 1; // multiplicative stacking of hardeners (§ formulas)
-  // Afterburner tuning: an ordinary stat modifier — only a compatible fitted slot contributes,
-  // and the strongest fitted unit wins rather than stacking burn/cooldown twice per slot.
-  let boostTopSpeedPct = 0, boostDurS = 0, boostCdS = 0;
   const miningSlotsTotal = slots.reduce((count, slot) => count + (slot.type === 'mining' ? 1 : 0), 0);
   let miningSlotsFilled = 0;
   for (let index = 0, length = equipped.length; index < length; index += 1) {
@@ -1178,16 +1175,6 @@ function computeDerivedStats(defId, fittings = [], player = null) {
       const countermeasureKind = mods && mods.countermeasure && mods.countermeasure.kind;
       if (countermeasureKind === 'chaff') chaffCount += 1;
       else if (countermeasureKind === 'ecm') ecmCount += 1;
-      // Afterburner drives: like the other capability rows, strongest fitted unit wins.
-      if (Number.isFinite(mods.boostTopSpeedPct) && mods.boostTopSpeedPct > 0) {
-        boostTopSpeedPct = Math.max(boostTopSpeedPct, mods.boostTopSpeedPct);
-      }
-      if (Number.isFinite(mods.boostDurS) && mods.boostDurS > 0) {
-        boostDurS = Math.max(boostDurS, mods.boostDurS);
-      }
-      if (Number.isFinite(mods.boostCdS) && mods.boostCdS > 0) {
-        boostCdS = Math.max(boostCdS, mods.boostCdS);
-      }
     }
     if (Number.isFinite(mods.tetherSpoolMult) && mods.tetherSpoolMult > 0) {
       tetherSpoolMult = Math.max(tetherSpoolMult, mods.tetherSpoolMult);
