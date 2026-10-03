@@ -575,6 +575,26 @@ export function ceresWorkfleetContactRetained(holder,section,state,role) {
 
 }
 
+/** Preserve the authored return corridor after a physical carrier displacement.
+ * An off-axis head first clears the live bow, then aligns outside it. Ordinary
+ * retraction keeps its original waypoints and native CCD owns every movement. */
+export function ceresWorkfleetHeadReturnTarget(breaker,head,index) {
+  const frame={...breaker.pos,rot:breaker.rot},authored=C.route.headPosesInBreaker[2-index];
+  if(!authored)return null;
+  const c=Math.cos(breaker.rot),sn=Math.sin(breaker.rot),dx=head.pos.x-breaker.pos.x,dz=head.pos.z-breaker.pos.z;
+  const local={x:dx*c+dz*sn,z:-dx*sn+dz*c};
+  if(index===0&&Math.abs(local.z)>.2) {
+    const radius=Math.max(...C.assets.cutterHead.boxes.map(b=>Math.hypot(Math.abs(b.center.x)+b.size.x/2,Math.abs(b.center.z)+b.size.z/2)));
+    const front=C.assets.breaker.bounds.max.x+radius,well=C.assets.breaker.clearVolumes.open[0];
+    const outside=local.z<well.z[0]+radius||local.z>well.z[1]-radius;
+    if(local.x>=front||outside) {
+      const point={...C.route.headPosesInBreaker.at(-1),z:local.x<front?local.z:0};
+      return {pose:ceresWorkfleetPose(frame,point),advance:false};
+    }
+  }
+  return {pose:ceresWorkfleetPose(frame,authored),advance:true};
+}
+
 /** Called by npcJobsRuntime only; one phase machine, one named job and three hardware records. */
 export function stepCeresWorkfleet(owner,dt) {
   const state=owner.state;if(state.mode!=='flight'||state.world?.currentSectorId!==C.sectorId||!(dt>0))return;
@@ -625,14 +645,24 @@ export function stepCeresWorkfleet(owner,dt) {
     }
   } else if(job.phase==='head_out'||job.phase==='head_retract') {
     const index=job.phase==='head_out'?job.index:2-job.index;
-    const point=ceresWorkfleetPose(work,C.route.headPosesInBreaker[index]);
+    const carrierReturning=job.phase==='head_retract'&&job.index===0&&!ceresWorkfleetAtPose(breaker,work);
+    // The cut pose is outside the bow and belongs to the stationary source. Do not
+    // drag the detached head across the released plate while its carrier recovers
+    // from an external impact. Existing thrusters return the carrier physically.
+    const returning=job.phase==='head_retract'?(carrierReturning
+      ?{pose:ceresWorkfleetPose(work,C.route.headPosesInBreaker.at(-1)),advance:false}
+      :ceresWorkfleetHeadReturnTarget(breaker,head,job.index)):null;
+    const point=returning?.pose||ceresWorkfleetPose(work,C.route.headPosesInBreaker[index]);
+    if(carrierReturning)job.blockedReason='head-return-carrier-realigning';
+    else if(job.blockedReason==='head-return-carrier-realigning')job.blockedReason=null;
     driveCeresWorkfleetBody(head,point,headOptions,state);
     const distance=Math.hypot(head.pos.x-point.x,head.pos.z-point.z),key=`${job.phase}:${job.index}`;
     let progress=APPROACH_PROGRESS.get(job);
     if(!progress||progress.key!==key||state.tick<progress.tick){progress={key,distance,tick:state.tick};APPROACH_PROGRESS.set(job,progress);}
-    if(distance<progress.distance-.05){progress.distance=distance;progress.tick=state.tick;job.blockedReason=null;}
-    if(state.tick-progress.tick>1200)job.blockedReason='head-approach-obstructed';
-    if(ceresWorkfleetAtPose(head,point)) {
+    if(distance<progress.distance-.05){progress.distance=distance;progress.tick=state.tick;if(!carrierReturning)job.blockedReason=null;}
+    if(!carrierReturning&&state.tick-progress.tick>1200)job.blockedReason='head-approach-obstructed';
+    const relativeReady=!returning||(Math.hypot(head.vel.x-breaker.vel.x,head.vel.z-breaker.vel.z)<=.12&&Math.abs((head.angVel||0)-(breaker.angVel||0))<=.003);
+    if(returning?.advance!==false&&relativeReady&&ceresWorkfleetAtPose(head,point)) {
       job.index++;
       if(job.phase==='head_out'&&job.index>=C.route.headPosesInBreaker.length){job.index=0;change(job,'head_cut',state);}
       else if(job.phase==='head_retract'&&job.index>=3){change(job,'tow_attach',state);}
