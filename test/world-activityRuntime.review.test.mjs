@@ -104,6 +104,11 @@ function rock(id, x) {
     vel: { x: 0, z: 0 },
     rot: 0,
     angVel: 0,
+    physicsBody: {
+      dynamic: false,
+      material: 'rock',
+      radius: 10,
+    },
     data: {
       oreHP: 40,
       oreHPMax: 80,
