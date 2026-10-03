@@ -20,6 +20,13 @@ export const FRESH_RUN_SYSTEMS = Object.freeze([
   'npcJobsRuntime',
   // Clear durable extraction records before world entry replans authored salvage sources.
   'salvage',
+  // Encounter-cover placement and spin use a private per-run stream. Reset it before
+  // world/encounter owners can rematerialize content on a retained New Game instance.
+  'terrainAnchors',
+  // Lane carriers are ephemeral exact-life bindings, not durable numeric entity IDs.
+  'travelLanes',
+  // Ambient contract scheduling is run-local even when no hunter currently exists.
+  'bountyHunt',
   'world',
   'regionalEcology',
   'factions',

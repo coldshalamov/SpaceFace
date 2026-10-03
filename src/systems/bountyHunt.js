@@ -200,6 +200,9 @@ export const bountyHunt = {
   // curated scenarios (47a goldens, authored scenes) never stage — the salvor gate.
   // One staged pair at a time, seeded geometry, no shared-rng draws.
   _stageChase(state) {
+    // Arena composition belongs to the Survival/Swarm wave owner. Existing contract
+    // hunters still update below; only ambient Adventure staging is excluded here.
+    if (state.run?.kind === 'survival' && state.run.phase !== 'inactive') return;
     const own = ensureState(state);
     const now = finite(state && state.simTime, 0);
     if (own.nextStageAt == null) own.nextStageAt = now + QT.firstStageDelayS;
