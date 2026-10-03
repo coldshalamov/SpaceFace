@@ -7,8 +7,23 @@ import { FACT_EVENTS, configFor, freshMemory, clone, finite, increment } from '.
 import { normalizeFact } from '../chronicler/normalize.js';
 import { ingestBatch, resolveLineage, pruneMemory } from '../chronicler/ledger.js';
 import { buildStoryView, semanticSignature, rankViews, recallText } from '../chronicler/narrative.js';
-import { restoreMemory } from '../chronicler/persistence.js';
+import { restoreMemory, restoreMemoryChunked } from '../chronicler/persistence.js';
 import { createChroniclerVoiceBridge } from '../chronicler/voiceBridge.js';
+
+// ── FB-090 owner-local quiet latch ─────────────────────────────────────────────
+// Bench A/B: production default ON. The chronicler's own wake schedule is the authority:
+// `m.pending` non-empty (a fact event landed) or `now >= _nextWake` (a publication came due)
+// are the only things that give update() real work. Otherwise the tick can only write
+// `m.clock = now` and run an empty splice, so we keep the clock write — it is persisted state
+// and must stay byte-identical — and skip the batch/publish/schedule tail. Wakes ride the
+// existing seams: capture() extends pending, _adopt()/deserialize() reset _nextWake to 0.
+let CHRONICLER_QUIET_LATCH = true;
+export function setChroniclerQuietLatchForBench(enabled) {
+  CHRONICLER_QUIET_LATCH = enabled !== false;
+}
+export function getChroniclerQuietLatchForBench() {
+  return CHRONICLER_QUIET_LATCH !== false;
+}
 
 function priority(f) {
   if (['recovered', 'sold', 'law', 'remedy'].includes(f.stage)) return 100;
@@ -41,6 +56,8 @@ export function createChronicler(options = {}) {
   const shouldObserve = typeof options.shouldObserve === 'function' ? options.shouldObserve : () => true;
   return {
     name: 'chronicler',
+    // serialize() returns clone(this._memory) — already fully owned.
+    saveSnapshotOwned: true,
     init(ctx) {
       if (!ctx?.state || !ctx.bus || typeof ctx.bus.on !== 'function' || typeof ctx.bus.emit !== 'function') {
         throw new TypeError('Chronicler.init requires { state, bus }');
@@ -147,15 +164,33 @@ export function createChronicler(options = {}) {
       try {
         const m = this._memory;
         m.clock = now;
+        // FB-090 quiet latch: pending empty AND no publication due ⇒ the tail below is a proven
+        // no-op except the (identical) empty splice and `return 0`. The clock write above is kept
+        // so persisted memory advances exactly as the unlatched path would leave it.
+        if (CHRONICLER_QUIET_LATCH !== false
+            && m.pending.length === 0
+            && now < this._nextWake) {
+          const rt = state.chroniclerRuntime || (state.chroniclerRuntime = {});
+          rt.quietLatched = true;
+          return 0;
+        }
+        const rt = state.chroniclerRuntime || (state.chroniclerRuntime = {});
+        rt.quietLatched = false;
         const batch = m.pending.splice(0, m.config.factsPerUpdate);
         if (batch.length) {
-          ingestBatch(m, batch);
-          this._refreshViews(true);
-          pruneMemory(m, this._views, now);
+          // ingestBatch returns the post-merge ids of stories whose (nodes, edges, statuses)
+          // actually changed — buildStoryView+semanticSignature are the O(archive) line in
+          // combat ticks, so only touched stories re-render. The link gauges are already
+          // published by resolveLineage when it runs, and statuses cannot move when it
+          // doesn't, so a second flatMap recount here was pure duplicate work.
+          const { touched, droppedDedupe } = ingestBatch(m, batch);
+          this._refreshViews(true, touched);
+          for (const k of pruneMemory(m, this._views, now)) this._retainedKeys.delete(k);
+          for (const k of droppedDedupe) this._retainedKeys.delete(k);
           const retained = new Set(m.stories.map(s => s.id));
           for (const key of this._views.keys()) if (!retained.has(key)) this._views.delete(key);
-          this._refreshLinkGauges();
-          this._retainedKeys = new Set([...m.pending, ...m.stories.flatMap(s => s.nodes)].map(f => f.dedupe));
+          // ingest/prune just mutated m.stories — the publisher's id map rebuilds lazily.
+          this._storyByIdMap = null;
           this._nextWake = now;
         }
         // Do not publish an intermediate proof while its later packets are still in the inbox.
@@ -166,15 +201,9 @@ export function createChronicler(options = {}) {
         return batch.length;
       } finally { this._updating = false; }
     },
-    _refreshLinkGauges() {
-      const m = this._memory;
-      const statuses = m.stories.flatMap(s => s.nodes.map(f => f.parentStatus));
-      m.metrics.unresolvedLinks = statuses.filter(s => s === 'pending' || s === 'capacity').length;
-      m.metrics.ambiguousLinks = statuses.filter(s => s === 'ambiguous').length;
-      m.metrics.invalidLinks = statuses.filter(s => ['commodity_mismatch', 'custody_mismatch', 'overdrawn_proof'].includes(s)).length;
-    },
-    _refreshViews(revise) {
+    _refreshViews(revise, only = null) {
       for (const story of this._memory.stories) {
+        if (only && !only.has(story.id)) continue;
         const view = buildStoryView(story);
         const signature = semanticSignature(view);
         if (revise && signature !== story.signature) {
@@ -186,12 +215,26 @@ export function createChronicler(options = {}) {
       }
     },
     _emit(event, payload) { this._bus?.emit(event, clone(payload)); },
+    // id→story lookup for the publisher/wake passes, which run post-ingest inside update —
+    // stories only mutate in that ingest block (or via a _memory swap, caught by identity),
+    // so one build covers every find below.
+    _storyById(m) {
+      if (this._storyByIdMemory !== m) {
+        this._storyByIdMemory = m;
+        this._storyByIdMap = null;
+      }
+      if (!this._storyByIdMap) {
+        this._storyByIdMap = new Map();
+        for (const s of m.stories) this._storyByIdMap.set(s.id, s);
+      }
+      return this._storyByIdMap;
+    },
     _publish(now) {
       const m = this._memory;
       const ranked = rankViews([...this._views.values()], { minScore: m.config.minNewsScore }, now);
       let announcements = 0;
       for (const view of ranked) {
-        const story = m.stories.find(s => s.id === view.id);
+        const story = this._storyById(m).get(view.id);
         if (now - story.updatedAt < m.config.settleSeconds || story.announcedRevision >= story.revision) continue;
         story.announcedRevision = story.revision; // reserve before synchronous callbacks/re-entry
         increment(m.metrics, 'storiesPublished');
@@ -225,12 +268,12 @@ export function createChronicler(options = {}) {
       }
       if (m.config.publishNews && due(m.cadence.newsAt, now, m.config.newsCooldown)) {
         const view = ranked.find(v => {
-          const s = m.stories.find(s => s.id === v.id);
+          const s = this._storyById(m).get(v.id);
           return now - s.updatedAt >= m.config.settleSeconds && s.newsRevision < s.revision
             && due(s.newsAt, now, m.config.storyCooldown);
         });
         if (view) {
-          const story = m.stories.find(s => s.id === view.id);
+          const story = this._storyById(m).get(view.id);
           story.newsRevision = story.revision; story.newsAt = now; m.cadence.newsAt = now;
           increment(m.metrics, 'newsPublished');
           this._emit('news:publish', publication(view, view.summary));
@@ -239,11 +282,11 @@ export function createChronicler(options = {}) {
       }
       if (m.config.offerRadio && due(m.cadence.radioAt, now, m.config.radioCooldown)) {
         const view = ranked.find(v => {
-          const s = m.stories.find(s => s.id === v.id);
+          const s = this._storyById(m).get(v.id);
           return now - s.updatedAt >= m.config.recallMinAge && s.radioRevision < s.revision;
         });
         if (view) {
-          m.stories.find(s => s.id === view.id).radioRevision = view.revision;
+          this._storyById(m).get(view.id).radioRevision = view.revision;
           m.cadence.radioAt = now;
           increment(m.metrics, 'radioOffered');
           this._emit('chronicler:radio', { ...publication(view, recallText(view, now)), channel: 'band' });
@@ -256,7 +299,7 @@ export function createChronicler(options = {}) {
       let next = Infinity;
       for (const v of this._views.values()) {
         if (v.visibility !== 'public' || v.score < m.config.minNewsScore) continue;
-        const s = m.stories.find(s => s.id === v.id);
+        const s = this._storyById(m).get(v.id);
         const settled = s.updatedAt + m.config.settleSeconds;
         if (s.announcedRevision < s.revision) next = Math.min(next, settled);
         if (m.config.publishNews && s.newsRevision < s.revision) {
@@ -329,10 +372,18 @@ export function createChronicler(options = {}) {
     },
     serialize() { return this._memory ? clone(this._memory) : null; },
     deserialize(data) {
-      if (!this._state) throw new Error('Initialize Chronicler before deserialize');
-      const candidate = restoreMemory(data, defaults, this._state.simTime);
-      this._adopt(candidate); this._clockBlocked = false;
+      for (const _ of this.deserializeChunked(data)) { /* sync lane: every batch inline */ }
       return true;
+    },
+
+    // Generator twin so the async restore lane can paint inside the archive validation —
+    // a long campaign's pending/stories/profiles/legends walk is one atomic span otherwise.
+    *deserializeChunked(data) {
+      if (!this._state) throw new Error('Initialize Chronicler before deserialize');
+      const inner = restoreMemoryChunked(data, defaults, this._state.simTime);
+      let candidate;
+      for (const r of inner) { candidate = r; yield 'chronicler-memory-section'; }
+      this._adopt(candidate); this._clockBlocked = false;
     },
     newGame() {
       if (!this._state) return;

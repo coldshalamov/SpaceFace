@@ -127,6 +127,8 @@ export function attachAuthoredMotionDriver(root, entity, controllers) {
       delete root.userData.authoredMotionControllers;
       delete root.userData.updateAuthoredMotion;
       delete root.userData.authoredMotionEvent;
+      delete root.userData.authoredMotionPadSpec;
+      delete root.userData.__authoredMotionPad;
     }
     if (root.userData.detachAuthoredMotion === detach) {
       delete root.userData.detachAuthoredMotion;
@@ -134,6 +136,17 @@ export function attachAuthoredMotionDriver(root, entity, controllers) {
   };
 
   root.userData.authoredMotionControllers = live;
+  // Max authored travel each bound pivot can impart, per binding — the cull envelope folds
+  // this in lazily (world-space subtree radius at first query, post-fit) so an animated arm
+  // can't draw beyond the committed bounds it was measured at rest.
+  const motionPadSpec = [];
+  for (const controller of live) {
+    const spec = controller.motionPadSpec;
+    if (Array.isArray(spec)) motionPadSpec.push(...spec);
+  }
+  if (motionPadSpec.length) root.userData.authoredMotionPadSpec = motionPadSpec;
+  else delete root.userData.authoredMotionPadSpec;
+  delete root.userData.__authoredMotionPad;
   // Ambient/attach clips arm on the first update so their anchor lands on the real clock.
   let attachFired = false;
   root.userData.updateAuthoredMotion = function updateAuthoredMotion(liveEntity, simNow, a11y) {
@@ -877,7 +890,7 @@ export function installAuthoredMotionBus(bus, { clock, simClock, playerEntityId,
     bus.on('service:started', onServiceStarted),
     bus.on('service:completed', onServiceDone),
     bus.on('service:aborted', onServiceAborted),
-    bus.on('combat:damage', onCombatDamage),
+    bus.on('combat:damage', onCombatDamage, { presentation: true }),
     bus.on('hullBurst:hit', onHullBurstHit),
     bus.on('service:completed', onRepairCompleted),
     bus.on('hull:fractured', onHullFractured),

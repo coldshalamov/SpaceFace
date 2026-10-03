@@ -559,6 +559,170 @@ const MINE = Object.freeze({
   }),
 });
 
+// Provenance pictures. Each tuple (flight, muzzle, contact) is a different silhouette from the
+// DPS guns and from the other rows here. A missing entry falls through to the autocannon.
+const FILAMENT = Object.freeze({
+  family: 'web',
+  variant: 'filament',
+  muzzle: Object.freeze({
+    surface: true, life: 0.16, width: 0.48, height: 3.6, bore: true, boreLife: 0.2,
+    haze: 0.08, lightPeak: 1.4, lightDistance: 9,
+    coreColor: '#d7fff4', accentColor: '#3d8f86', lightColor: '#b6ffe8',
+  }),
+  flight: Object.freeze({
+    mode: FLIGHT_MODE.ENERGY_CARD, boltVariant: BOLT_VARIANT.KINETIC,
+    dashLength: 14.2, width: 0.38, intensity: 1.4, pixelFloor: 8,
+    ribbon: true, ribbonWidth: 0.07, ribbonLinger: 0.22, ribbonProfile: RIBBON_PROFILE.FILAMENT,
+    coreColor: '#d7fff4', sheathColor: '#3d8f86',
+  }),
+  shield: Object.freeze({ contact: true, surface: false, life: 0.2, haze: 0.15 }),
+  hull: Object.freeze({ scorch: true, scorchLife: 1.15, surface: false, sparks: false, sparkScale: 0.3 }),
+});
+
+const FIELD_RING = Object.freeze({
+  family: 'gravitic',
+  variant: 'field-ring',
+  muzzle: Object.freeze({
+    surface: true, life: 0.2, width: 2.85, height: 0.62, bore: false, boreLife: 0.1,
+    haze: 0.2, lightPeak: 1.8, lightDistance: 11,
+    coreColor: '#7ee7ff', accentColor: '#2450aa', lightColor: '#9af0ff',
+  }),
+  flight: Object.freeze({
+    mode: FLIGHT_MODE.ENERGY_CARD, boltVariant: BOLT_VARIANT.EMP,
+    dashLength: 9.4, width: 4.6, intensity: 1.2, pixelFloor: 10,
+    ribbon: true, ribbonWidth: 0.71, ribbonLinger: 0.08, ribbonProfile: RIBBON_PROFILE.FORK,
+    coreColor: '#7ee7ff', sheathColor: '#2450aa',
+  }),
+  shield: Object.freeze({ contact: true, surface: true, life: 0.22, haze: 0.4 }),
+  hull: Object.freeze({ scorch: true, scorchLife: 0.82, surface: false, sparks: false, sparkScale: 0.2 }),
+});
+
+const FILAMENT_LATCH = Object.freeze({
+  family: 'latch',
+  variant: 'filament-latch',
+  muzzle: Object.freeze({
+    surface: true, life: 0.18, width: 1.08, height: 1.32, bore: true, boreLife: 0.16,
+    haze: 0.16, lightPeak: 2.1, lightDistance: 10,
+    coreColor: '#ffb15a', accentColor: '#6a3418', lightColor: '#ffc888',
+  }),
+  flight: Object.freeze({
+    mode: FLIGHT_MODE.ENERGY_CARD, boltVariant: BOLT_VARIANT.CONCUSSION,
+    dashLength: 6.15, width: 1.48, intensity: 1.5, pixelFloor: 9,
+    ribbon: true, ribbonWidth: 0.27, ribbonLinger: 0.34, ribbonProfile: RIBBON_PROFILE.SHEET,
+    coreColor: '#ffb15a', sheathColor: '#6a3418',
+  }),
+  shield: Object.freeze({ contact: true, surface: true, life: 0.18, haze: 0.25 }),
+  hull: Object.freeze({ scorch: true, scorchLife: 2.05, surface: true, sparks: false, sparkScale: 0.4 }),
+});
+
+const WELL_COLLAR = Object.freeze({
+  family: 'well',
+  variant: 'well-collar',
+  muzzle: Object.freeze({
+    surface: false, life: 0.4, width: 0.4, height: 0.2, bore: false, boreLife: 0,
+    haze: 0, lightPeak: 0.6, lightDistance: 8,
+    coreColor: '#9ecbff', accentColor: '#3a4d88', lightColor: '#c6dcff',
+  }),
+  flight: Object.freeze({
+    mode: FLIGHT_MODE.NONE, boltVariant: BOLT_VARIANT.KINETIC,
+    dashLength: 0, width: 0, intensity: 0, pixelFloor: 0,
+    ribbon: false, ribbonWidth: 0, ribbonLinger: 0, ribbonProfile: RIBBON_PROFILE.SHEET,
+    coreColor: '#9ecbff', sheathColor: '#3a4d88',
+  }),
+  shield: Object.freeze({ contact: true, surface: false, life: 0.4, haze: 0.2 }),
+  hull: Object.freeze({ scorch: false, scorchLife: 1.1, surface: false, sparks: false, sparkScale: 0 }),
+});
+
+const WEDGE = Object.freeze({
+  family: 'ram',
+  variant: 'wedge',
+  muzzle: Object.freeze({
+    surface: true, life: 0.1, width: 2.2, height: 0.78, bore: true, boreLife: 0.12,
+    haze: 0.1, lightPeak: 2.2, lightDistance: 12,
+    coreColor: '#e7eefc', accentColor: '#6d7ea8', lightColor: '#f4f7ff',
+  }),
+  flight: Object.freeze({
+    mode: FLIGHT_MODE.ENERGY_CARD, boltVariant: BOLT_VARIANT.KINETIC,
+    dashLength: 6.8, width: 3.35, intensity: 2.2, pixelFloor: 11,
+    ribbon: true, ribbonWidth: 1.05, ribbonLinger: 0.06, ribbonProfile: RIBBON_PROFILE.CORD,
+    coreColor: '#e7eefc', sheathColor: '#6d7ea8',
+  }),
+  shield: Object.freeze({ contact: true, surface: true, life: 0.1, haze: 0.18 }),
+  hull: Object.freeze({ scorch: true, scorchLife: 1.55, surface: true, sparks: true, sparkScale: 0.7 }),
+});
+
+const STICKY_CHARGE = Object.freeze({
+  family: 'sticky',
+  variant: 'sticky-charge',
+  muzzle: Object.freeze({
+    surface: true, life: 0.22, width: 1.72, height: 1.42, bore: true, boreLife: 0.2,
+    haze: 0.3, lightPeak: 2.6, lightDistance: 12,
+    coreColor: '#ffcf70', accentColor: '#a85a18', lightColor: '#ffe0a0',
+  }),
+  flight: Object.freeze({
+    mode: FLIGHT_MODE.ENERGY_CARD, boltVariant: BOLT_VARIANT.MOTOR,
+    dashLength: 5.35, width: 2.05, intensity: 1.7, pixelFloor: 10,
+    ribbon: true, ribbonWidth: 0.58, ribbonLinger: 0.2, ribbonProfile: RIBBON_PROFILE.SHEET,
+    coreColor: '#ffcf70', sheathColor: '#a85a18',
+  }),
+  shield: Object.freeze({ contact: true, surface: true, life: 0.24, haze: 0.35 }),
+  hull: Object.freeze({ scorch: true, scorchLife: 3.55, surface: true, sparks: true, sparkScale: 0.6 }),
+});
+
+const PRIMER_ARC = Object.freeze({
+  family: 'primer',
+  variant: 'primer-arc',
+  muzzle: Object.freeze({
+    surface: true, life: 0.12, width: 0.88, height: 2.9, bore: true, boreLife: 0.18,
+    haze: 0.22, lightPeak: 2.4, lightDistance: 13,
+    coreColor: '#d8f4ff', accentColor: '#1f8fd0', lightColor: '#e8fbff',
+  }),
+  flight: Object.freeze({
+    mode: FLIGHT_MODE.ENERGY_CARD, boltVariant: BOLT_VARIANT.EMP,
+    dashLength: 11.4, width: 1.12, intensity: 1.8, pixelFloor: 12,
+    ribbon: true, ribbonWidth: 0.21, ribbonLinger: 0.09, ribbonProfile: RIBBON_PROFILE.FORK,
+    coreColor: '#d8f4ff', sheathColor: '#1f8fd0',
+  }),
+  shield: Object.freeze({ contact: true, surface: false, life: 0.14, haze: 0.3 }),
+  hull: Object.freeze({ scorch: true, scorchLife: 0.48, surface: false, sparks: false, sparkScale: 0.25 }),
+});
+
+const COOKER_SEAM = Object.freeze({
+  family: 'cooker',
+  variant: 'cooker-seam',
+  muzzle: Object.freeze({
+    surface: true, life: 0.2, width: 1.92, height: 0.55, bore: true, boreLife: 0.3,
+    haze: 0.4, lightPeak: 2.8, lightDistance: 14,
+    coreColor: '#ff7a32', accentColor: '#ffd2a8', lightColor: '#ff9a55',
+  }),
+  flight: Object.freeze({
+    mode: FLIGHT_MODE.BEAM, boltVariant: BOLT_VARIANT.PLASMA,
+    dashLength: 2.2, width: 1.65, intensity: 1.9, pixelFloor: 8,
+    ribbon: true, ribbonWidth: 0.19, ribbonLinger: 0.16, ribbonProfile: RIBBON_PROFILE.FILAMENT,
+    coreColor: '#ff7a32', sheathColor: '#ffd2a8',
+  }),
+  shield: Object.freeze({ contact: true, surface: true, life: 0.2, haze: 0.25 }),
+  hull: Object.freeze({ scorch: true, scorchLife: 3.25, surface: true, sparks: false, sparkScale: 0.35 }),
+});
+
+const DRIVER_SLUG = Object.freeze({
+  family: 'driver',
+  variant: 'driver-slug',
+  muzzle: Object.freeze({
+    surface: true, life: 0.09, width: 0.66, height: 1.12, bore: true, boreLife: 0.14,
+    haze: 0.08, casings: true, lightPeak: 2.0, lightDistance: 11,
+    coreColor: '#f4f0e4', accentColor: '#8a8172', lightColor: '#fff6e4',
+  }),
+  flight: Object.freeze({
+    mode: FLIGHT_MODE.ENERGY_CARD, boltVariant: BOLT_VARIANT.RAIL,
+    dashLength: 10.8, width: 1.72, intensity: 2.4, pixelFloor: 12,
+    ribbon: true, ribbonWidth: 0.36, ribbonLinger: 0.04, ribbonProfile: RIBBON_PROFILE.CORD,
+    coreColor: '#f4f0e4', sheathColor: '#8a8172',
+  }),
+  shield: Object.freeze({ contact: true, surface: true, life: 0.11, haze: 0.16 }),
+  hull: Object.freeze({ scorch: true, scorchLife: 4.75, surface: true, sparks: true, sparkScale: 1.1 }),
+});
+
 const RECIPES_BY_VARIANT = Object.freeze({
   'pulse-bolt': PULSE,
   'thermal-bolt': THERMAL,
@@ -572,6 +736,15 @@ const RECIPES_BY_VARIANT = Object.freeze({
   torpedo: TORPEDO,
   'continuous-beam': BEAM,
   'vector-mine': MINE,
+  filament: FILAMENT,
+  'field-ring': FIELD_RING,
+  'filament-latch': FILAMENT_LATCH,
+  'well-collar': WELL_COLLAR,
+  wedge: WEDGE,
+  'sticky-charge': STICKY_CHARGE,
+  'primer-arc': PRIMER_ARC,
+  'cooker-seam': COOKER_SEAM,
+  'driver-slug': DRIVER_SLUG,
 });
 
 export function resolveWeaponRecipe(weaponId, weaponData = null) {

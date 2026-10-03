@@ -98,7 +98,11 @@ test('membership bump wakes optic quiet latch', () => {
   step(state, helpers);
   assert.equal(state.world.opticFieldRuntime.quietLatched, true);
   const armed = tickOpticFieldRocks._quiet.armedTick;
-  state.entityIndex.version++;
+  // The latch keys on the 'asteroids' lane (the optic interest census reads asteroid
+  // members only) — mirror appendEntityIndex by bumping that lane, not the whole version.
+  const laneVersions = state.entityIndex.laneVersions
+    || (state.entityIndex.laneVersions = Object.create(null));
+  laneVersions.asteroids = (laneVersions.asteroids || 0) + 1;
   step(state, helpers);
   assert.ok(tickOpticFieldRocks._quiet);
   assert.notEqual(tickOpticFieldRocks._quiet.armedTick, armed);

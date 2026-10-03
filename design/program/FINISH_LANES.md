@@ -210,6 +210,14 @@ to THE INSTRUMENT — coordinate by exact path).
 
 ## 7. Lane four — THE WORLD
 
+**Expansion design:** [Mature target, asset families and concrete place briefs](world-depth-2026-10-02/README.md).
+Select one bounded slice in this area; name the missing hulls, creatures, machinery and states
+needed to fulfill it. Existing models are not a creative ceiling. Stormshift at the Anvil is a
+worked first candidate; the whole-game target also includes movement landscapes, distinctive
+threats, inhabited institutions, alien ecology and ancient machinery. Continue the chosen slice
+across sessions through the existing context; do not replace it with unrelated catalog repairs.
+
+
 **The feeling.** You arrived in the middle of their day. A miner is on a seam, a hauler is coming
 or going, someone wants that cargo, a patrol has a route — and you did not press accept to make
 any of it true. You can interfere anywhere in the chain or watch it continue without you. Failure

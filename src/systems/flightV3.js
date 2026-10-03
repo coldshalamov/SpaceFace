@@ -11,6 +11,9 @@
 // intent.boost (no resource model), exactly as in the legacy controller — AI never used e.boost.
 
 import { measureThrusterAuthority, queuePhysicsImpulse, writePhysicsControl } from '../core/physicsAuthority.js';
+// FB-095: _diag.tickMs is diagnostics-only — it reads the classified instrumentation clock
+// (perfNow in perfRuntime) so this simulation owner never touches wall time itself.
+import { perfNow } from '../core/perfRuntime.js';
 import { composePlayerDriveAuthority } from '../core/flight/driveAuthority.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import {
@@ -21,9 +24,12 @@ import {
 import { DRIVE_FAMILIES, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { applyFeelEnvelope, hullIdFromEntity, pathFollowBlocksFeel } from '../data/flightFeelEnvelopes.js';
 import { createPropulsionRuntime, stepPropulsion } from '../core/flight/propulsionKernel.js';
-import { computeFlightTelemetry } from '../core/flight/flightTelemetry.js';
+import { computeFlightTelemetry, computeSweptHullAdvisory, SWEPT_HULL_DEFAULTS } from '../core/flight/flightTelemetry.js';
 import { stepAnchorRelativeOrbitAssist } from '../core/flight/orbitAssist.js';
 export { stepAnchorRelativeOrbitAssist } from '../core/flight/orbitAssist.js';
+// FB-001: the authored pursuit-slot chase assist. Pure module; flightV3 is its only caller and
+// gates it behind the opt-in gameplay.pursuitSlotAssist setting (default off).
+import { createPursuitSlot, stepPursuitSlotAssist } from '../core/flight/pursuitSlotAssist.js';
 import { massline2Flag, travelFlag } from '../data/featureFlags.js';
 import {
   corridorStateFor,
@@ -31,6 +37,7 @@ import {
   resolveBerthWorld,
   resolveCollisionProxyManifest,
   resolveCorridorAxisWorld,
+  resolveDockAnchor,
 } from '../data/collisionProxyManifests.js';
 import { entityNeedsFlightStep } from '../world/activityRuntime.js';
 
@@ -108,9 +115,23 @@ const DEFAULT_BOOST_RESOURCE = Object.freeze({
   dashCost: 28,
   dashCd: 3,
   dashCdT: 0,
+  // FB-054 afterburner envelope, derived in ships from mods.boostTopSpeedPct/boostDurS/boostCdS.
+  // burnDurS > 0 means a burner is fitted: one boost run lasts at most burnDurS, then burnCdS
+  // must elapse before the next; topSpeedPct scales the boost speed cap while the burn runs.
+  topSpeedPct: 0,
+  burnDurS: 0,
+  burnCdS: 0,
 });
 const NEUTRAL_INPUT = Object.freeze({ moveX: 0, moveZ: 0, turnIntent: 0, boost: false, brake: false });
 const SG02_INPUT_DT = 1 / 60;   // fixed-step fallback for normalizeCraftInput's slew
+
+// SF-012 swept-hull advisory (PB-HAND-A): publication policy for the hand-flown slide telemetry.
+// The geometry lives in flightTelemetry (computeSweptHullAdvisory, pure); this adapter only
+// decides when it reaches the bus. Face changes — activation, a different obstruction, the slide
+// flag flipping — emit immediately; a held face re-emits on a simTime cooldown so a subscriber
+// that missed the edge still sees the state. It is edge+latch driven, never a per-tick spam, and
+// it never reads the nav target or feeds an avoidance force: warn, never steer.
+const SWEPT_HULL_REEMIT_S = 0.75;
 
 export const flightV3 = {
   name: 'flight',
@@ -127,6 +148,9 @@ export const flightV3 = {
     // Dash-earned momentum window (simTime seconds). Instance state, not sim state: it is derived
     // presentation-free input tagging, so it must not enter the save or the sim snapshot.
     this._dashEarnedUntil = 0;
+    // Swept-hull advisory face latch (SF-012): which advisory state the bus last saw. Derived
+    // publication state only — never saved, never sim-authoritative.
+    this._sweptHull = { active: false, contactId: null, sliding: false, emittedAt: -Infinity };
     // Player-only. NPC steps overwrite _driveAuthority; the instrument must not
     // unscale the player's request by the last NPC's drive.
     this._playerDriveAuthority = null;
@@ -152,11 +176,12 @@ export const flightV3 = {
       this.bus.on('save:loaded', () => {
         this._masslineSlingUntil = 0;
         this._dashEarnedUntil = 0;
+        this._resetSweptHullLatch();
         this._sanitizeAllRuntime();
         this._cancelPlayerBoostOnRestore();
         this._setFlightMode('manual', 'load');
       });
-      this.bus.on('game:started', () => { this._masslineSlingUntil = 0; this._dashEarnedUntil = 0; this._sanitizeAllRuntime(); this._cancelPlayerBoostOnRestore(); this._setFlightMode('manual', 'new-game'); });
+      this.bus.on('game:started', () => { this._masslineSlingUntil = 0; this._dashEarnedUntil = 0; this._resetSweptHullLatch(); this._sanitizeAllRuntime(); this._cancelPlayerBoostOnRestore(); this._setFlightMode('manual', 'new-game'); });
       this.bus.on('tether:latched', () => this._setFlightMode('manual', 'tether'));
       this.bus.on('massline:selfSling', () => {
         if (!massline2Flag('throw')) return;
@@ -173,7 +198,7 @@ export const flightV3 = {
   },
 
   update(dt, state) {
-    const t0 = nowMs();
+    const t0 = perfNow();
     const backend = state.settings && state.settings.gameplay && state.settings.gameplay.physicsBackend;
     this._diag.physicsBackend = backend || 'custom';
 
@@ -185,7 +210,7 @@ export const flightV3 = {
         console.warn('[flight-v3] waiting for rapier-dynamic physics authority; no craft motion commands emitted');
       }
       this._settleAllBanks(dt, state);
-      this._diag.tickMs = Math.max(0, nowMs() - t0);
+      this._diag.tickMs = Math.max(0, perfNow() - t0);
       return;
     }
     this._warnedBackend = false;
@@ -219,7 +244,7 @@ export const flightV3 = {
       else this._stepCraft(entity, neutralInput(), dt, state, false);
     }
 
-    this._diag.tickMs = Math.max(0, nowMs() - t0);
+    this._diag.tickMs = Math.max(0, perfNow() - t0);
     if (player) this._publishPlayerDiagnostics(player, state);
   },
 
@@ -278,6 +303,11 @@ export const flightV3 = {
         // F6: boost onset overshoots its accel mult for ~0.2 s — the kick after the dash impulse.
         profile = { ...profile, boostAccelMult: positive(profile.boostAccelMult, 1) * BOOST_ACCEL_OVERSHOOT };
       }
+      // FB-054: a fitted burner's topSpeedPct lifts the boost speed cap while the run is live.
+      const burnerTopSpeedPct = finite(entity.boost && entity.boost.topSpeedPct, 0);
+      if (boosting && burnerTopSpeedPct > 0) {
+        profile = { ...profile, boostSpeedMult: positive(profile.boostSpeedMult, 1) * (1 + burnerTopSpeedPct) };
+      }
       applyMasslineFlightModifiers(input, state, this._masslineSlingUntil, this._dashEarnedUntil);
       // Velocity-vectoring assist (design/FEEL_CONTRACT.md §C; docs/TUNING_JOBS.md job 1). A
       // player-only shaping seam like the feel envelope: NPC intents never carry the key, so their
@@ -293,6 +323,11 @@ export const flightV3 = {
         && !(tether && tether.active === true)
         ? (vectoringSetting == null ? true : vectoringSetting)
         : false;
+      // The manual unvectored cruise governor still has to steer a held thrusting turn.
+      // Keep this player-only: a rope and the flight computer own their own turn contracts.
+      input.unvectoredCruiseSteering = vectoringSetting === false
+        && !(autopilot && autopilot.active)
+        && !(tether && tether.active === true);
       if (travelFlag('travelBurn') && input.travelDrive && input.travelDrive.state === 'engaged') {
         const energyBefore = finiteNonNeg(entity.boost && entity.boost.energy, 0);
         if (!(energyBefore > 0)) {
@@ -317,6 +352,7 @@ export const flightV3 = {
 
     const body = bodySnapshotInto(entity, profile, _stepBody);
     let orbitAssist = null;
+    let pursuitSlot = null;
     if (isPlayer) {
       const anchor = tether && tether.targetId != null && state.entities
         && typeof state.entities.get === 'function'
@@ -338,6 +374,21 @@ export const flightV3 = {
         controlsBlocked: !playerFlightControlsActive(state, entity) || !!input.drawFlight,
       });
       if (orbitAssist.active) input = orbitAssist.input;
+      // FB-001: the pursuit-slot assist, reachable as an opt-in assisted-flight option beside
+      // the orbit assist. Strict gate (setting must be exactly true; default off keeps every
+      // golden and the default feel untouched), a held lock on a moving target, and manual
+      // flight owns the tick (no rope, no autopilot, no blocked controls, no held brake).
+      // The module returns ONE bounded additive impulse from thrust the hull already has —
+      // it never writes velocity and never clamps earned speed.
+      const pursuitSlotStep = this._stepPursuitSlot(entity, body, input, profile, dt, state, {
+        controlsBlocked: !playerFlightControlsActive(state, entity) || !!input.drawFlight,
+        tetherLive: !!(tether && tether.active === true),
+        autopilotActive: !!(autopilot && autopilot.active),
+      });
+      pursuitSlot = pursuitSlotStep;
+      if (pursuitSlot.active && pursuitSlot.impulse) {
+        queuePhysicsImpulse(entity, pursuitSlot.impulse);
+      }
     }
     _stepArgs.dt = dt;
     _stepArgs.body = body;
@@ -382,9 +433,64 @@ export const flightV3 = {
       frame.orbitAssist = orbitAssist
         ? { active: orbitAssist.active, ...orbitAssist.telemetry }
         : { active: false, reason: 'unavailable' };
+      // FB-001: published-state telemetry for the opt-in pursuit-slot assist (instrument and
+      // tests read this; nothing consumes it to steer). Mirrors the orbitAssist row above.
+      frame.pursuitSlot = pursuitSlot
+        ? { active: pursuitSlot.active, ...(pursuitSlot.telemetry || {}) }
+        : { active: false, reason: 'unavailable' };
+      // SF-012: untargeted swept-hull advisory for the hand-flown slide. Published state only —
+      // the profile may carry boost shaping from earlier in this step, but nothing here writes
+      // back into input, profile, or the physics command.
+      frame.sweptHull = this._publishSweptHullAdvisory(entity, state, profile, {
+        handFlown: !(autopilot && autopilot.active),
+        controlsActive: playerFlightControlsActive(state, entity),
+      });
       emitThrustCue(this.bus, state, entity, input, result.telemetry);
     }
     emitPropulsionEvents(this.bus, entity, result.events);
+  },
+
+  // FB-001 pursuit-slot assist. Opt-in via gameplay.pursuitSlotAssist (strict === true, default
+  // off — goldens and default-route feel are untouched). While the pilot holds a lock on a moving
+  // ship and flies by hand, the slot forms once per lock at the pilot's current bearing/range from
+  // the target and the pure module then holds that slot with bounded thrust the hull already has.
+  // Returns { active, impulse, telemetry }; the caller queues the impulse through the same
+  // physics-authority membrane as the dash. The slot lives on entity._pursuitSlot, a runtime
+  // field like _flightFrame — never serialized, recreated on the next lock.
+  _stepPursuitSlot(entity, body, input, profile, dt, state, flags) {
+    const inactive = (reason) => ({ active: false, impulse: null, telemetry: { active: false, reason } });
+    const gameplay = state && state.settings && state.settings.gameplay;
+    if (!gameplay || gameplay.pursuitSlotAssist !== true) {
+      delete entity._pursuitSlot;
+      return inactive('assist-off');
+    }
+    if (flags.controlsBlocked || flags.tetherLive || flags.autopilotActive || input.brake) {
+      return inactive('manual-override');
+    }
+    const targetId = state.player && state.player.targetId;
+    const target = targetId != null && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(targetId)
+      : null;
+    const usableTarget = target && target !== entity
+      && target.alive !== false
+      && (target.type === 'ship' || target.type === 'drone')
+      && target.vel
+      && Math.hypot(finite(target.vel.x), finite(target.vel.z)) > 0.5
+      ? target
+      : null;
+    if (!usableTarget) {
+      delete entity._pursuitSlot;
+      return inactive('target-lost');
+    }
+    let slot = entity._pursuitSlot;
+    if (!slot || slot.targetId !== usableTarget.id) {
+      slot = createPursuitSlot({ host: body, target: usableTarget, source: 'g' });
+      if (slot.active) entity._pursuitSlot = slot;
+      else delete entity._pursuitSlot;
+    }
+    const result = stepPursuitSlotAssist({ dt, host: body, target: usableTarget, slot, profile });
+    if (!result.active) delete entity._pursuitSlot;
+    return result;
   },
 
   // Player boost/dash state machine. Returns the resource-gated boosting flag to feed back into
@@ -394,6 +500,15 @@ export const flightV3 = {
   _stepPlayerBoost(e, rawBoostHeld, dt, state, opts = {}) {
     const boost = normalizeBoostResource(e);
     if (boost.dashCdT > 0) boost.dashCdT = Math.max(0, boost.dashCdT - dt);
+    // FB-054 afterburner window (mods.boostDurS/boostCdS → derived.boost → e.boost): once a burn
+    // is lit it ticks down whether or not the key stays held — you lit it, it burns — and only
+    // after it dies does burnCdS start gating the next light. The energy capacitor below still
+    // applies inside the window.
+    if (boost._burnCdT > 0) boost._burnCdT = Math.max(0, boost._burnCdT - dt);
+    if (boost._burnT > 0) {
+      boost._burnT = Math.max(0, boost._burnT - dt);
+      if (boost._burnT <= 0) boost._burnCdT = boost.burnCdS;
+    }
 
     const controlsBlocked = !!(state.ui && state.ui.screenStack && state.ui.screenStack.length);
     const suppressBoost = !!this._suppressBoostUntilRelease;
@@ -417,16 +532,23 @@ export const flightV3 = {
 
     // Sustained boost with hysteresis gating (cut-out at 0, re-arm at 35%).
     if (!('_boostArmed' in boost)) boost._boostArmed = true;
+    const burnerFitted = boost.burnDurS > 0;
     let boosting = false;
     if (boostHeld && boost.max > 0) {
       if (boost._boostArmed && boost.energy > 1) {
-        boosting = true;
-        boost.energy = Math.max(0, boost.energy - boost.drainRate * dt);
-        if (boost.energy <= 0) boost._boostArmed = false;   // cut out; must regen to re-arm
+        // With a burner fitted, boost only exists inside a lit window; light it when the
+        // cooldown has elapsed. Without one the capacitor governs alone, exactly as before.
+        if (burnerFitted && boost._burnT <= 0 && boost._burnCdT <= 0) boost._burnT = boost.burnDurS;
+        if (!burnerFitted || boost._burnT > 0) {
+          boosting = true;
+          boost.energy = Math.max(0, boost.energy - boost.drainRate * dt);
+          if (boost.energy <= 0) boost._boostArmed = false;   // cut out; must regen to re-arm
+        }
       }
     } else if (boost.energy > boost.max * 0.35) {
       boost._boostArmed = true;
     }
+    boost._burnActive = boosting && burnerFitted && boost._burnT > 0;
     if (!boosting && !opts.suppressRegen) boost.energy = Math.min(boost.max, boost.energy + boost.regenRate * dt);
     return boosting;
   },
@@ -499,6 +621,7 @@ export const flightV3 = {
     this._prevBoost = false;
     boost._boostHoldT = 0;
     boost._dashCandidate = false;
+    boost._burnActive = false;
     if (!e.flags) e.flags = {};
     const wasBoosting = !!(e.flags.boosting || e._wasBoosting);
     e.flags.boosting = false;
@@ -508,11 +631,67 @@ export const flightV3 = {
     }
   },
 
+  // Save/load fidelity: the serialized boost state is the truth. A burn saved mid-window
+  // continues rather than dying silently on continue, a still-held key is not a new press edge
+  // (which would re-fire the dash impulse), and a fresh hold after load presses cleanly. Only
+  // the double-tap dash gesture resets — a tap pair may not span a save. The menu/docked
+  // cancel path (_cancelPlayerBoost) is unchanged; its stale-key suppression still applies
+  // where input was interrupted rather than re-seated.
   _cancelPlayerBoostOnRestore() {
     const state = this.state;
     const player = state && state.entities && state.playerId
       ? state.entities.get(state.playerId) : null;
-    this._cancelPlayerBoost(player);
+    this._restorePlayerBoost(player);
+  },
+
+  _restorePlayerBoost(e) {
+    if (!e || !e.boost) { this._prevBoost = false; return; }
+    const boost = e.boost;
+    boost._boostHoldT = 0;
+    boost._dashCandidate = false;
+    const boosting = !!(e.flags && e.flags.boosting);
+    e._wasBoosting = boosting;
+    this._prevBoost = boosting;
+    this._suppressBoostUntilRelease = false;
+  },
+
+  _resetSweptHullLatch() {
+    // Lazily rebuilt by _publishSweptHullAdvisory when the system instance skipped init()
+    // (probe harnesses build bare Object.create(flightV3) hosts).
+    this._sweptHull = { active: false, contactId: null, sliding: false, emittedAt: -Infinity };
+  },
+
+  /**
+   * SF-012 swept-hull advisory for hand-flown slides — publish untargeted telemetry.
+   *
+   * Returns the bounded advisory object the player's `_flightFrame.sweptHull` carries each tick,
+   * and emits `flight:sweptHull` on the existing event bus when the advisory face changes (or on
+   * the re-emit cooldown while held). The sweep only runs for the live player with active
+   * controls and no flight computer: autopilot has its own targeted avoidance telemetry, and a
+   * pilot behind a menu cannot act on a warning, so neither gets one. NPCs never publish —
+   * this is hand-flight instrumentation.
+   */
+  _publishSweptHullAdvisory(entity, state, profile, gate) {
+    const contacts = gate.handFlown && gate.controlsActive
+      ? sweptHullContacts(state, entity)
+      : null;
+    const advisory = computeSweptHullAdvisory(entity, profile, contacts);
+    const latch = this._sweptHull
+      || (this._sweptHull = { active: false, contactId: null, sliding: false, emittedAt: -Infinity });
+    if (advisory.active && this.bus && typeof this.bus.emit === 'function') {
+      const now = finite(state && state.simTime, 0);
+      const faceChanged = !latch.active
+        || latch.contactId !== advisory.contactId
+        || latch.sliding !== advisory.sliding;
+      if (faceChanged || now - latch.emittedAt >= SWEPT_HULL_REEMIT_S) {
+        this.bus.emit('flight:sweptHull', sweptHullEventPayload(entity.id, advisory));
+        latch.emittedAt = now;
+      }
+    }
+    latch.active = advisory.active;
+    latch.contactId = advisory.contactId;
+    latch.sliding = advisory.sliding;
+    return advisory;
   },
 
   _publishPlayerDiagnostics(player, state) {
@@ -553,7 +732,10 @@ export const flightV3 = {
       entity.data.propulsionRuntime = {
         ...createPropulsionRuntime(profile),
         ...(entity.data.propulsionRuntime || {}),
-        previousBoost: false,
+        // previousBoost rides the serialized packet on purpose: a craft saved mid-boost keeps
+        // its edge state through save:loaded instead of re-firing a phantom press (and the dash
+        // impulse that rides it) on the first tick after restore.
+        previousBoost: !!(entity.data.propulsionRuntime && entity.data.propulsionRuntime.previousBoost),
       };
     }
   },
@@ -671,6 +853,12 @@ function normalizeBoostResource(e) {
   boost.dashCost = finiteNonNeg(boost.dashCost, DEFAULT_BOOST_RESOURCE.dashCost);
   boost.dashCd = finiteNonNeg(boost.dashCd, DEFAULT_BOOST_RESOURCE.dashCd);
   boost.dashCdT = Math.min(boost.dashCd, finiteNonNeg(boost.dashCdT, DEFAULT_BOOST_RESOURCE.dashCdT));
+  boost.topSpeedPct = finiteNonNeg(boost.topSpeedPct, DEFAULT_BOOST_RESOURCE.topSpeedPct);
+  boost.burnDurS = finiteNonNeg(boost.burnDurS, DEFAULT_BOOST_RESOURCE.burnDurS);
+  boost.burnCdS = finiteNonNeg(boost.burnCdS, DEFAULT_BOOST_RESOURCE.burnCdS);
+  boost._burnT = Math.min(boost.burnDurS, finiteNonNeg(boost._burnT, 0));
+  boost._burnCdT = Math.min(boost.burnCdS > 0 ? boost.burnCdS : Infinity,
+    finiteNonNeg(boost._burnCdT, 0));
   if ('_boostHoldT' in boost && !Number.isFinite(boost._boostHoldT)) boost._boostHoldT = 0;
   if ('_dashCandidate' in boost && typeof boost._dashCandidate !== 'boolean') boost._dashCandidate = false;
   if ('_boostArmed' in boost && typeof boost._boostArmed !== 'boolean') boost._boostArmed = true;
@@ -759,6 +947,7 @@ function normalizeCraftInput(entity, raw = {}, runtime, state, isPlayer, dt = SG
   // the packet, so a reused scratch must drop them before they can leak into the next craft.
   o.travelDrive = undefined;
   o.velocityVectoring = undefined;
+  o.unvectoredCruiseSteering = undefined;
   o.physicsEarnedMomentum = undefined;
   o.earnedMomentumDecayTauS = undefined;
   o.earnedMomentumAssistScale = undefined;
@@ -1064,7 +1253,6 @@ export function resolveAutopilotTarget(state, autopilot) {
         manifest.docking.capture && manifest.docking.capture.halfWidth,
         0,
       ) * positive(scale, 1);
-      const dockingArrivalRadius = berthDockRadius;
       const player = state.playerId != null && state.entities && typeof state.entities.get === 'function'
         ? state.entities.get(state.playerId)
         : null;
@@ -1099,15 +1287,26 @@ export function resolveAutopilotTarget(state, autopilot) {
       const approachSwitchRadius = Math.max(AUTOPILOT_ARRIVAL_RADIUS + 7, captureHalfWidth);
       const berthStage = !player || !player.pos || inLane
         || (approachDistance <= approachSwitchRadius && alignedWithLane);
+      // SF-130: the terminal anchor is the hull's own dock anchor — the deck berth when its
+      // planar envelope clears the pocket, else the corridor-axis mooring standoff. Same
+      // anchor the physics dock:range gate uses, so the autopilot can never park the hull
+      // somewhere the dock prompt will not fire.
+      const dockAnchor = resolveDockAnchor(entity, manifest, player) || {
+        x: berth.x, z: berth.z,
+        dockRadius: berthDockRadius,
+        speedGate: positive(manifest.docking.berth && manifest.docking.berth.speedGate, 12),
+        kind: 'berth',
+      };
       return {
-        x: berthStage ? berth.x : approach.x,
-        z: berthStage ? berth.z : approach.z,
+        x: berthStage ? dockAnchor.x : approach.x,
+        z: berthStage ? dockAnchor.z : approach.z,
         radius: 0,
-        arrivalRadius: dockingArrivalRadius,
+        arrivalRadius: dockAnchor.dockRadius,
         dockingProxyId: manifest.id || null,
         dockingStage: berthStage ? 'berth' : 'corridor-mouth',
+        dockAnchorKind: dockAnchor.kind,
         corridorInLane: inLane,
-        dockSpeedGate: positive(manifest.docking.berth && manifest.docking.berth.speedGate, 12),
+        dockSpeedGate: dockAnchor.speedGate,
         approachPoint: approach,
         entity,
         label: autopilot.label || entity.name || (entity.data && entity.data.name) || 'Station berth',
@@ -1299,6 +1498,86 @@ function autopilotObstacles(state, player, target, baseX, baseZ, maxProjection) 
     out.push(e);
   }
   return out;
+}
+
+// Reused scratch for the player's swept-hull advisory (same discipline as the autopilot obstacle
+// scratch above: consumed synchronously inside the tick, nothing downstream retains the array).
+const SWEPT_HULL_OBSTACLE_SCRATCH = [];
+const SWEPT_HULL_QUERY_SCRATCH = [];
+const SWEPT_HULL_QUERY_POS = { x: 0, z: 0 };
+const SWEPT_HULL_NO_CONTACTS = [];
+
+// The sweep capsule runs along the CURRENT velocity out to the advisory horizon. One circle
+// covering that capsule returns every possible contributor — the hash buckets entities by their
+// full radius coverage, so a large-radius hull whose center sits off-axis is still captured (the
+// same reasoning as autopilotObstacles; the fallback path returns the entity list and the
+// per-entity predicate below stays the authority either way). The predicate is deliberately
+// identical to the autopilot's: what counts as a hull must not depend on who is asking.
+function sweptHullContacts(state, entity) {
+  const vx = finite(entity.vel && entity.vel.x);
+  const vz = finite(entity.vel && entity.vel.z);
+  const speed = Math.hypot(vx, vz);
+  if (!(speed > 0.001)) return SWEPT_HULL_NO_CONTACTS;
+  const hullRadius = positive(entity.radius, 0);
+  const halfProjection = (SWEPT_HULL_DEFAULTS.horizonS * speed) * 0.5;
+  const px = finite(entity.pos && entity.pos.x);
+  const pz = finite(entity.pos && entity.pos.z);
+  SWEPT_HULL_QUERY_POS.x = px + (vx / speed) * halfProjection;
+  SWEPT_HULL_QUERY_POS.z = pz + (vz / speed) * halfProjection;
+  const list = queryNearbyEntities(
+    state,
+    SWEPT_HULL_QUERY_POS,
+    halfProjection + hullRadius + SWEPT_HULL_DEFAULTS.grazeGapWU,
+    SWEPT_HULL_QUERY_SCRATCH,
+  );
+  const out = SWEPT_HULL_OBSTACLE_SCRATCH;
+  out.length = 0;
+  for (const e of list) {
+    if (!e || e === entity || e.alive === false || e.collides === false || !e.pos) continue;
+    if (e.type === 'projectile' || e.type === 'fx' || e.type === 'pickup') continue;
+    const radius = Number.isFinite(e.radius) ? e.radius : 0;
+    if (radius <= 0 && e.type !== 'station' && e.type !== 'asteroid' && e.type !== 'wreck' && e.type !== 'ship') continue;
+    out.push(e);
+  }
+  return out;
+}
+
+// Retained emit payload — `flight:sweptHull` subscribers read synchronously during emit, mirroring
+// the ship:thrust contract. No field aliases a per-tick advisory object.
+const _sweptHullPayload = {
+  shipId: null, active: true, sliding: false, speed: 0, forwardSpeed: 0, lateralSpeed: 0,
+  driftAngle: 0, contactId: null, contactType: null, contactRadius: 0, timeToContactS: null,
+  contactDistance: 0, closestGapWU: 0, closestTimeS: 0, contactPoint: null,
+  canStopBeforeContact: false, stopDistanceWU: 0,
+};
+const _sweptHullPoint = { x: 0, z: 0 };
+
+function sweptHullEventPayload(shipId, advisory) {
+  const P = _sweptHullPayload;
+  P.shipId = shipId;
+  P.active = advisory.active;
+  P.sliding = advisory.sliding;
+  P.speed = advisory.speed;
+  P.forwardSpeed = advisory.forwardSpeed;
+  P.lateralSpeed = advisory.lateralSpeed;
+  P.driftAngle = advisory.driftAngle;
+  P.contactId = advisory.contactId;
+  P.contactType = advisory.contactType;
+  P.contactRadius = advisory.contactRadius;
+  P.timeToContactS = advisory.timeToContactS;
+  P.contactDistance = advisory.contactDistance;
+  P.closestGapWU = advisory.closestGapWU;
+  P.closestTimeS = advisory.closestTimeS;
+  if (advisory.contactPoint) {
+    _sweptHullPoint.x = advisory.contactPoint.x;
+    _sweptHullPoint.z = advisory.contactPoint.z;
+    P.contactPoint = _sweptHullPoint;
+  } else {
+    P.contactPoint = null;
+  }
+  P.canStopBeforeContact = advisory.canStopBeforeContact;
+  P.stopDistanceWU = advisory.stopDistanceWU;
+  return P;
 }
 
 function counterVelocityInput(entity) {
@@ -1497,7 +1776,6 @@ function npcIntentIsLive(entity, intent) {
 function normalizeFlightComputerMode(mode) {
   return mode === 'cruise' || mode === 'lane' ? mode : 'manual';
 }
-function nowMs() { return typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now(); }
 function damp(cur, target, lambda, dt) { return cur + (target - cur) * (1 - Math.exp(-lambda * dt)); }
 function wrapAngle(v) { let x = finite(v) % (Math.PI * 2); if (x <= -Math.PI) x += Math.PI * 2; if (x > Math.PI) x -= Math.PI * 2; return x; }
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }

@@ -16,10 +16,10 @@ export function createCrucibleWarmPackageResidency({ residency = null, profile =
     // instantiates whatever record this returns. When the stale package cannot be retained,
     // loadPart — the normal authored loader bound to the renderer — re-acquires it (a cache hit
     // re-establishes the package owner, an eviction decodes fresh).
-    async retainForInstance({ record, url, slot }, { loadPart, sectorId = null } = {}) {
+    async retainForInstance({ record, url, slot }, { loadPart, sectorId = null, role = 'crucible-roster-warm' } = {}) {
       const pkg = record && record.renderPackage;
       if (!pkg || typeof pkg.retain !== 'function') return record;
-      if (pkg.retain(owner, { role: 'crucible-roster-warm', sectorId })) {
+      if (pkg.retain(owner, { role, sectorId })) {
         retained = true;
         return record;
       }
@@ -27,7 +27,7 @@ export function createCrucibleWarmPackageResidency({ residency = null, profile =
         ? await loadPart(url, {
           slot: slot === '*' ? null : slot,
           residencyOwner: owner,
-          residencyRole: 'crucible-roster-warm',
+          residencyRole: role,
           sectorId,
         })
         : null;

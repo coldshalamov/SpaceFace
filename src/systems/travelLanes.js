@@ -71,7 +71,7 @@ import { resolveTravelCeiling } from '../core/flight/propulsionKernel.js';
 import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { sectorLocalToGlobalForSector, sectorMembershipAtGlobal } from '../data/sectorCoordinates.js';
-import { LANE_HELIOS_TETHYS, buildLaneGeometry } from '../data/travelLaneRoutes.js';
+import { LANE_HELIOS_TETHYS, buildLaneGeometry, laneDisruptionHeadline } from '../data/travelLaneRoutes.js';
 import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 
 export const TRAVEL_LANE_SCHEMA = 'travel_lane_v1';
@@ -95,6 +95,15 @@ const TRAFFIC_SPEED_WU_S = 420;
 
 /** Traffic materializes a little further out than beacons so convoys are seen approaching. */
 const TRAFFIC_SPAWN_RANGE_WU = 4200;
+
+/**
+ * Arm radius for the ambush decode warm: the player's first tell that a segment is dead is
+ * the moment they enter it, so 'lane:ambushArmed' publishes while they close inside the
+ * corridor — boosted lane travel is fast, so the radius carries several seconds of runway.
+ */
+const LANE_AMBUSH_ARM_RADIUS_WU = 2400;
+/** Re-arm cadence: decode leases expire on the residency sweep, so a long approach re-arms. */
+const LANE_AMBUSH_REARM_S = 20;
 
 function finite(v, fallback = 0) {
   return Number.isFinite(v) ? v : fallback;
@@ -557,6 +566,7 @@ export const travelLanes = {
     this._applySlingRing(dt, state, player);
     this._applyClaimSlingRings(dt, state, player);
     this._applyDisruption(state, disrupted);
+    this._armAmbushApproach(state, player, authoredFix);
     if (disrupted) this._requestAmbush(state, authoredFix.segment);
     this._updateBeacons(state, player);
     this._updateTraffic(state, player);
@@ -915,6 +925,52 @@ export const travelLanes = {
   },
 
   /**
+   * Publish the ambush arm while the player approaches a disrupted segment inside the
+   * corridor — the squad's hulls only need the same deterministic plan the fire replays,
+   * and this is the only positional lead that exists ahead of the segment boundary.
+   * `_ambushArmAt` caps one emit per LANE_AMBUSH_REARM_S per (lane, segment).
+   */
+  _armAmbushApproach(state, player, fix) {
+    if (!fix || !fix.inLane || !player || !player.pos) return;
+    const geometry = this.geometry;
+    const lane = this.lane;
+    if (!geometry || !lane || !lane.ambushShapeId) return;
+    const now = Math.max(0, finite(state && state.simTime, 0));
+    const armedAt = this._ambushArmAt || (this._ambushArmAt = new Map());
+    const radiusSq = LANE_AMBUSH_ARM_RADIUS_WU * LANE_AMBUSH_ARM_RADIUS_WU;
+    for (let i = 0; i < geometry.segments.length; i++) {
+      const segment = geometry.segments[i];
+      if (!segment || !segment.disrupted) continue;
+      const key = `${lane.id}:${segment.index}`;
+      // Already fired (or requested) this runtime — the encounter is live or resolved.
+      if (this._ambushRequested.has(key)) continue;
+      const mid = segment.midpoint;
+      if (!mid) continue;
+      const dx = finite(player.pos.x) - finite(mid.x);
+      const dz = finite(player.pos.z) - finite(mid.z);
+      if (dx * dx + dz * dz > radiusSq) continue;
+      const last = armedAt.get(key);
+      if (last != null && now - last < LANE_AMBUSH_REARM_S) continue;
+      const sectorId = sectorMembershipAtGlobal(mid);
+      if (!sectorId) continue;
+      armedAt.set(key, now);
+      this._emit('lane:ambushArmed', {
+        laneId: lane.id,
+        segmentIndex: segment.index,
+        encounterId: `lane_ambush_${lane.id}_${segment.index}`,
+        sectorId,
+        shapeId: lane.ambushShapeId,
+        anchor: { x: mid.x, z: mid.z },
+        zoneId: `${lane.id}_seg${segment.index}`,
+        zoneName: `${lane.name} — dead segment ${segment.index}`,
+        zoneType: 'ambush_lane',
+        zoneRadius: geometry.radiusWU,
+        data: { laneId: lane.id, laneSegmentIndex: segment.index },
+      });
+    }
+  },
+
+  /**
    * Place the pirates at the dead beacon through the existing director.
    *
    * THE SECTOR IS THE TRAP HERE. `requestAuthoredEncounter` hard-returns `wrong_sector` unless the
@@ -957,13 +1013,17 @@ export const travelLanes = {
     // cell must be retried on a later tick, not silently swallowed forever.
     if (result && result.ok) {
       this._ambushRequested.add(key);
+      const headline = laneDisruptionHeadline({ id: this.lane.id, name: this.lane.name });
       this._emit('lane:disrupted', {
         laneId: this.lane.id,
+        laneName: this.lane.name,
         segmentIndex: segment.index,
         encounterId: result.encounterId || null,
         anchor: { x: anchor.x, z: anchor.z },
         sectorId,
+        sourceRef: headline.sourceRef,
       });
+      this._emit('news:publish', headline);
     }
   },
 

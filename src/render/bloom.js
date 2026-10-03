@@ -994,15 +994,70 @@ const COMPOSITE_FRAG = /* glsl */`
 // so all three bracket their presented draws with the same hide→render→restore pair.
 const UNREADY_SCENE_CAP = 512;
 
+// Three's material properties describe the last-bound program, not every linked variant.
+// WebGLPrograms places instancing/color/morph in bits 0–2 of its first boolean mask. Memoize
+// alternate keys per live program so alternating shared Mesh/InstancedMesh draws allocate
+// no strings or arrays once warm. All other cache-key fields remain byte-for-byte unchanged.
+const instancingVariantKeys = new WeakMap();
+
+function instancingFlags(object) {
+  if (!object || object.isInstancedMesh !== true) return 0;
+  return 1 | (object.instanceColor !== null ? 2 : 0) | (object.morphTexture !== null ? 4 : 0);
+}
+
+function linkedInstancingVariant(rec, material, object) {
+  const current = rec && rec.currentProgram;
+  if (!current || typeof rec.instancing !== 'boolean' || material.isRawShaderMaterial === true) return current;
+  const wanted = instancingFlags(object);
+  const bound = (rec.instancing ? 1 : 0) | (rec.instancingColor ? 2 : 0) | (rec.instancingMorph ? 4 : 0);
+  if (wanted === bound) return current;
+  const variants = rec.programs;
+  if (!variants || typeof variants.get !== 'function') return null;
+  if (rec.__version !== undefined && rec.__version !== material.version) return null;
+  let keys = instancingVariantKeys.get(current);
+  if (!keys) {
+    const key = current.cacheKey;
+    if (typeof key !== 'string' || typeof material.customProgramCacheKey !== 'function') return null;
+    let customKey;
+    try { customKey = material.customProgramCacheKey(); } catch (_) { return null; }
+    customKey = customKey == null ? '' : String(customKey);
+    // The custom suffix can contain commas (including a complete onBeforeCompile function).
+    // Remove its exact length before locating the two boolean masks and output color space.
+    const customDelimiter = key.length - customKey.length - 1;
+    if (customDelimiter < 0 || key[customDelimiter] !== ',' || !key.endsWith(customKey)) return null;
+    const colorDelimiter = key.lastIndexOf(',', customDelimiter - 1);
+    const secondMaskDelimiter = key.lastIndexOf(',', colorDelimiter - 1);
+    const firstMaskDelimiter = key.lastIndexOf(',', secondMaskDelimiter - 1);
+    if (firstMaskDelimiter < 0 || secondMaskDelimiter <= firstMaskDelimiter) return null;
+    const maskText = key.slice(firstMaskDelimiter + 1, secondMaskDelimiter);
+    if (!/^\d+$/.test(maskText)) return null;
+    const mask = Number(maskText);
+    if (!Number.isSafeInteger(mask) || (mask & 7) !== bound) return null;
+    keys = {
+      mask,
+      prefix: key.slice(0, firstMaskDelimiter + 1),
+      suffix: key.slice(secondMaskDelimiter),
+      variants: new Array(8),
+    };
+    instancingVariantKeys.set(current, keys);
+  }
+  let alternateKey = keys.variants[wanted];
+  if (alternateKey === undefined) {
+    alternateKey = keys.prefix + ((keys.mask & ~7) | wanted) + keys.suffix;
+    keys.variants[wanted] = alternateKey;
+  }
+  return variants.get(alternateKey) || null;
+}
+
 // Draw-time safety net for the hide→render→restore pair below. The scene walk exits
 // early once every known program reports ready, so a stamped authored/shared material
 // that has NEVER compiled (a shader-hook-dropping clone, a late variant) reaches the
 // draw with no currentProgram and would link synchronously inside the presented frame.
-// While a guarded pass is active, a stamped material with no currentProgram skips its
-// draw and queues pipeline admission for that mesh; everything else draws unchanged.
+// While a guarded pass is active, a stamped material with no currentProgram or any compiled
+// material missing its draw's instancing variant queues admission instead of linking on glass.
 // The wrapper is per-renderer — this guard exists twice per renderer (bloom's own and
 // the renderer's route-level instance) — and composes with the perf-counter drawObject
-// wrapper whichever installs first. No allocation on the draw path.
+// wrapper whichever installs first. Warm variants allocate nothing on the draw path.
 function installUnreadyDrawGuard(renderer) {
   if (!renderer || renderer.__sfUnreadyDrawGuardWrapped === true) return;
   if (typeof renderer.renderBufferDirect !== 'function') return;
@@ -1011,28 +1066,39 @@ function installUnreadyDrawGuard(renderer) {
   renderer.renderBufferDirect = function unreadyDrawGuard(camera, scene, geometry, material, object, group) {
     if (renderer.__sfUnreadyDrawGuardDepth > 0 && material) {
       const data = material.userData;
-      if (data && (data.spacefaceSharedMaterialRole != null || data.spacefaceProgramCanon != null)) {
-        const props = renderer.properties;
-        // Unknown properties state must behave exactly like today — draw.
-        let compiled = true;
-        try {
-          if (props && typeof props.get === 'function') {
-            const rec = props.get(material);
-            compiled = !!(rec && rec.currentProgram);
+      const stamped = data && (data.spacefaceSharedMaterialRole != null || data.spacefaceProgramCanon != null);
+      const props = renderer.properties;
+      // Unknown properties state and cold unstamped materials keep their existing behavior.
+      let compiled = true;
+      try {
+        if (props && typeof props.get === 'function') {
+          const rec = props.get(material);
+          const current = rec && rec.currentProgram;
+          if (current) {
+            const variant = linkedInstancingVariant(rec, material, object);
+            if (variant !== current) {
+              compiled = !!variant;
+              if (compiled && typeof variant.isReady === 'function') {
+                try { compiled = variant.isReady() === true; } catch (_) { compiled = false; }
+              }
+            }
+          } else if (stamped) {
+            compiled = false;
           }
-        } catch (_) { /* draw as today */ }
-        if (!compiled) {
-          // Same material stamp dedupe as hideIfProgramUnready: one admission
-          // in flight per material while the draw keeps being skipped.
-          const queueAdmission = renderer.userData && renderer.userData.spacefaceQueuePipelineAdmission;
-          if (data.__sfPipelineAdmission !== true && typeof queueAdmission === 'function') {
-            data.__sfPipelineAdmission = true;
-            Promise.resolve(queueAdmission(object))
-              .catch(() => null)
-              .finally(() => { data.__sfPipelineAdmission = false; });
-          }
-          return undefined;
         }
+      } catch (_) { /* draw as today */ }
+      if (!compiled) {
+        const admissionData = data || (material.userData = {});
+        // Same material stamp dedupe as hideIfProgramUnready: one admission
+        // in flight per material while the draw keeps being skipped.
+        const queueAdmission = renderer.userData && renderer.userData.spacefaceQueuePipelineAdmission;
+        if (admissionData.__sfPipelineAdmission !== true && typeof queueAdmission === 'function') {
+          admissionData.__sfPipelineAdmission = true;
+          Promise.resolve(queueAdmission(object))
+            .catch(() => null)
+            .finally(() => { admissionData.__sfPipelineAdmission = false; });
+        }
+        return undefined;
       }
     }
     return inner.call(this, camera, scene, geometry, material, object, group);
@@ -1074,6 +1140,12 @@ export function createUnreadyDrawableGuard(renderer) {
   // a changed set with an empty drain means an add path bypassed the hook → full traverse once.
   const unreadyMountedRoots = [];
   let mountWatchScene = null;
+  // Pending-only windows scope the unready scan to the pending subjects' subtrees and
+  // instrumented mounts; every Nth such frame still runs the full traverse as the
+  // failsafe for mounts that bypassed scene.add (bounded to N presented-frame draws
+  // for an interior never-compiled mount during a pending window).
+  const UNREADY_PENDING_SWEEP_FRAMES = 30;
+  let unreadyPendingSweep = 0;
   function ensureSceneMountWatch(scene) {
     if (!scene || typeof scene.add !== 'function' || mountWatchScene === scene) return;
     mountWatchScene = scene;
@@ -1100,6 +1172,18 @@ export function createUnreadyDrawableGuard(renderer) {
   const unreadyCheckedMaterials = new Set();
   const unreadyHiddenMaterials = new Set();
 
+  function scanPresentedDrawables(root) {
+    // Three skips an invisible object's whole subtree. The readiness walk
+    // should do the same instead of examining every resident off-camera hull.
+    // A mounted root can also sit beneath an invisible scene ancestor.
+    for (let node = root; node; node = node.parent) {
+      if (node.visible === false) return;
+    }
+    const traverse = typeof root.traverseVisible === 'function'
+      ? root.traverseVisible : root.traverse;
+    traverse.call(root, hideOneUnreadySceneDrawable);
+  }
+
   function hideUnreadySceneDrawables(scene) {
     if (renderer) renderer.__sfUnreadyDrawGuardDepth = (renderer.__sfUnreadyDrawGuardDepth || 0) + 1;
     unreadySceneCount = 0;
@@ -1107,13 +1191,18 @@ export function createUnreadyDrawableGuard(renderer) {
     // drivers, so the program-readiness scan below can never see them — drawing one would link
     // its variants synchronously inside this presented frame. Hide the root (subtree included)
     // until its admission resolves; restoreUnreadySceneDrawables re-shows it after the pass.
+    // An sfAdmittedOnce root already has linked content worth drawing — a re-admission on it
+    // (a late-mounted drawable discovered under it, a live-geometry re-link) must not blank
+    // the whole ship for the admission window: the per-material scan below and the
+    // renderBufferDirect guard still cover its never-compiled children.
     const pendingSubjects = renderer && renderer.userData
       ? renderer.userData.spacefacePendingPipelineSubjects
       : null;
     if (pendingSubjects && pendingSubjects.size > 0) {
       for (const subject of pendingSubjects) {
         if (unreadySceneCount >= UNREADY_SCENE_CAP) break;
-        if (subject && subject.visible === true) {
+        if (subject && subject.visible === true
+            && !(subject.userData && subject.userData.sfAdmittedOnce === true)) {
           unreadySceneScratch[unreadySceneCount] = subject;
           unreadySceneCount += 1;
           subject.visible = false;
@@ -1132,7 +1221,7 @@ export function createUnreadyDrawableGuard(renderer) {
     if (!Array.isArray(programs)) {
       admissionScene = scene;
       admissionPendingSubjects = pendingSubjects;
-      scene.traverse(hideOneUnreadySceneDrawable);
+      scanPresentedDrawables(scene);
       admissionScene = null;
       admissionPendingSubjects = null;
       admissionGl = null;
@@ -1183,15 +1272,37 @@ export function createUnreadyDrawableGuard(renderer) {
     // Anything still queued was detached before this pass or covered by the full traverse —
     // drop it so stale roots never accumulate.
     unreadyMountedRoots.length = 0;
-    if (unreadyProgramsPending || (pendingSubjects && pendingSubjects.size > 0)
-        || (sceneSetChanged && drainRoots === null) || !drainRoots) {
-      // Program-level trigger, pending-subject trigger, or the uninstrumented-mutation
-      // failsafe: any existing drawable could hold the unready program — full traverse.
-      scene.traverse(hideOneUnreadySceneDrawable);
+    const pendingOnlyWindow = unreadyProgramsPending !== true
+      && pendingSubjects && pendingSubjects.size > 0;
+    if (unreadyProgramsPending || (sceneSetChanged && drainRoots === null)
+        || (!pendingOnlyWindow && !drainRoots)) {
+      // Program-level trigger or the uninstrumented-mutation failsafe: any existing
+      // drawable could hold the unready program — full traverse.
+      unreadyPendingSweep = 0;
+      scanPresentedDrawables(scene);
+    } else if (pendingOnlyWindow) {
+      // The pending latch already hides those roots; the scoped scan still catches
+      // interior mounts inside them and inside the instrumented drain, and the
+      // periodic sweep below keeps the uninstrumented-mount failsafe bounded.
+      unreadyPendingSweep = (unreadyPendingSweep + 1) % UNREADY_PENDING_SWEEP_FRAMES;
+      if (unreadyPendingSweep === 0) {
+        scanPresentedDrawables(scene);
+      } else {
+        for (const subject of pendingSubjects) {
+          if (subject && typeof subject.traverse === 'function') {
+            scanPresentedDrawables(subject);
+          }
+        }
+        if (drainRoots) {
+          for (const root of drainRoots) {
+            if (root && typeof root.traverse === 'function') scanPresentedDrawables(root);
+          }
+        }
+      }
     } else {
       for (let i = 0; i < drainRoots.length; i++) {
         if (drainRoots[i] && typeof drainRoots[i].traverse === 'function') {
-          drainRoots[i].traverse(hideOneUnreadySceneDrawable);
+          scanPresentedDrawables(drainRoots[i]);
         }
       }
     }
@@ -1283,9 +1394,16 @@ export function createUnreadyDrawableGuard(renderer) {
 
   function restoreUnreadySceneDrawables() {
     if (renderer) renderer.__sfUnreadyDrawGuardDepth = Math.max(0, (renderer.__sfUnreadyDrawGuardDepth || 0) - 1);
+    // Dev instrumentation: remember what was hidden during the pass so the ?drawhist
+    // sampler (which runs after visibility is restored) can still skip it. Bounded —
+    // the sampler clears the set each frame; when it is unarmed the set saturates.
+    const hiddenLog = renderer
+      ? (renderer.__sfLastHiddenDrawables || (renderer.__sfLastHiddenDrawables = new Set()))
+      : null;
     for (let i = 0; i < unreadySceneCount; i++) {
       const object = unreadySceneScratch[i];
       if (object) object.visible = true;
+      if (object && hiddenLog && hiddenLog.size < 4096) hiddenLog.add(object);
       unreadySceneScratch[i] = null;
     }
     unreadySceneCount = 0;

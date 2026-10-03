@@ -6,7 +6,7 @@
 
 import { hash32 } from '../core/rng.js';
 import { localizeText } from '../localization/gameLocalization.js';
-import { entityIndexVersion } from '../world/livingWorldViews.js';
+import { entityIndexLaneVersion } from '../world/livingWorldViews.js';
 import { conflictPressureForSector } from '../data/conflictZones.js';
 import {
   BAND_BEARING_TEMPLATE,
@@ -76,6 +76,9 @@ const LIVE_LANDMARK_SOURCE_ENTRIES = Object.freeze(Object.entries(LIVE_LANDMARK_
 // set changes (or the sector changes) — between bumps it distance-checks the handful of
 // entities that can carry a live landmark source.
 const _landmarkCarrierCache = { version: -1, sectorId: null, carriers: [] };
+// Membership latch: only flavor-ref-stamped entities can sit in `carriers`, so the counter
+// lane survives projectile/pickup churn that used to wake the entityMap walk every sample.
+const LANDMARK_CARRIER_LANES = ['flavorCarriers'];
 const _landmarkStrengths = Object.fromEntries(LIVE_LANDMARK_SOURCE_ENTRIES.map(([sourceId]) => [sourceId, 0]));
 
 export function numbersBearingDue(programSeed, sequence) {
@@ -386,8 +389,8 @@ export const bandRadio = {
     }
 
     const sectorId = this.state.world && this.state.world.currentSectorId;
-    const carrierVersion = entityIndexVersion(this.state);
-    const carriers = (carrierVersion == null
+    const carrierVersion = entityIndexLaneVersion(this.state, LANDMARK_CARRIER_LANES);
+    const carriers = (carrierVersion < 0
       || _landmarkCarrierCache.version !== carrierVersion
       || _landmarkCarrierCache.sectorId !== sectorId)
       ? this._scanLandmarkCarriers(entities, sectorId, player)
@@ -437,8 +440,7 @@ export const bandRadio = {
         carriers.push({ entity, sourceId, source });
       }
     }
-    const version = entityIndexVersion(this.state);
-    _landmarkCarrierCache.version = version == null ? -1 : version;
+    _landmarkCarrierCache.version = entityIndexLaneVersion(this.state, LANDMARK_CARRIER_LANES);
     _landmarkCarrierCache.sectorId = sectorId;
     return carriers;
   },

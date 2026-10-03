@@ -33,6 +33,7 @@ import {
   entityIsDurableCandidate,
   upsertRecord,
 } from './worldRecords.js';
+import { registerEntityWorldRecordId } from './livingWorldViews.js';
 
 const RUNTIMES = new WeakMap();
 const RECENT_DAMAGE_TICKS = 120;
@@ -178,7 +179,9 @@ function ensureRuntime(state) {
       physicsStatics: [],
       physicsDynamics: [],
       physicsStaticVersion: 0,
+      physicsDynamicsVersion: 0,
       _staticEntities: [],
+      _dynamicEntities: [],
       _staticAuthorityVersion: entityIndexPhysicsStaticVersion(state),
       _staticMembershipDirty: false,
       exactIds: [],
@@ -296,6 +299,9 @@ function captureDematerialized(state, entity, simTime, abstractTier) {
   upsertRecord(bag, captured);
   if (!entity.data) entity.data = {};
   entity.data.worldRecordId = captured.recordId;
+  // Post-spawn stamp — register it so byWorldRecordId/count answer O(1) and the per-tick
+  // miss-memos see the new carrier instead of walking entities until some hit reseeds.
+  registerEntityWorldRecordId(state && state.entityIndex, entity);
   return captured;
 }
 
@@ -487,10 +493,22 @@ function applyStamp(entity, classified, simTime) {
   return rec;
 }
 
+function setMatchesList(set, list) {
+  if (set.size === 0 && list.length === 0) return true;
+  if (list.length === 0 && set.size > 0) return false;
+  if (set.size > list.length) return false;
+  for (let i = 0; i < list.length; i++) {
+    if (!set.has(list[i])) return false;
+  }
+  for (const item of set) {
+    if (!list.includes(item)) return false;
+  }
+  return true;
+}
+
 function rebuildPinFacts(state, player, facts, simTime) {
   const playerId = player && player.id;
   const cache = facts._cache || (facts._cache = {
-    membership: NaN,
     playerId: null,
     targetId: null,
     miningId: null,
@@ -529,40 +547,20 @@ function rebuildPinFacts(state, player, facts, simTime) {
     ? state.combat.trace.events
     : null;
   const eventsLen = events ? events.length : 0;
-  const membership = entityIndexVersion(state);
 
   facts.targetId = nextTargetId;
   facts.miningId = nextMiningId;
   facts.dockId = nextDockId;
   facts.hailId = nextHailId;
 
-  const damageStillValid = !(Number.isFinite(cache.damageExpiry) && simTime >= cache.damageExpiry);
-  if (
-    cache.membership === membership
-    && cache.playerId === playerId
-    && cache.targetId === nextTargetId
-    && cache.miningId === nextMiningId
-    && cache.dockId === nextDockId
-    && cache.hailId === nextHailId
-    && cache.trackedSignal === trackedSignal
-    && cache.attachments === attachments
-    && cache.events === events
-    && cache.eventsLen === eventsLen
-    && damageStillValid
-  ) {
-    // Sets/Maps from last rebuild still match this tick's pin inputs.
-    return;
-  }
-
-  facts.tether.clear();
-  facts.aggro.clear();
-  facts.projectileThreat.clear();
-  facts.tracked.clear();
-  facts.damagedByPlayerUntil.clear();
-  facts.damagedPlayerUntil.clear();
-  // Quiet rock-visit retain keys off this revision so a real pinFacts rebuild wakes
-  // mining/tether/tracked/damage observers without scanning set contents every tick.
-  facts._revision = (facts._revision | 0) + 1;
+  const aggroScratch = facts._aggroScratch || (facts._aggroScratch = []);
+  aggroScratch.length = 0;
+  const trackedScratch = facts._trackedScratch || (facts._trackedScratch = []);
+  trackedScratch.length = 0;
+  const tetherScratch = facts._tetherScratch || (facts._tetherScratch = []);
+  tetherScratch.length = 0;
+  const threatScratch = facts._threatScratch || (facts._threatScratch = []);
+  threatScratch.length = 0;
 
   // SG-06: player-intent pins arrive only through entity-carried state (see scalar
   // block above). Scanner owns the durable tracked contact — resolve its signal record
@@ -570,16 +568,16 @@ function rebuildPinFacts(state, player, facts, simTime) {
   const trackedId = trackedSignal;
   const trackedRecord = trackedId && signalState && signalState.records && signalState.records[trackedId];
   if (trackedRecord) {
-    if (trackedRecord.entityId != null) facts.tracked.add(trackedRecord.entityId);
-    if (trackedRecord.sourceId != null) facts.tracked.add(trackedRecord.sourceId);
+    if (trackedRecord.entityId != null) trackedScratch.push(trackedRecord.entityId);
+    if (trackedRecord.sourceId != null) trackedScratch.push(trackedRecord.sourceId);
   }
 
   if (attachments && typeof attachments === 'object') {
     for (const key of Object.keys(attachments)) {
       const att = attachments[key];
       if (!att || att.state === 'cut' || att.state === 'dead') continue;
-      if (att.ownerId != null) facts.tether.add(att.ownerId);
-      if (att.targetId != null) facts.tether.add(att.targetId);
+      if (att.ownerId != null) tetherScratch.push(att.ownerId);
+      if (att.targetId != null) tetherScratch.push(att.targetId);
     }
   }
 
@@ -592,7 +590,7 @@ function rebuildPinFacts(state, player, facts, simTime) {
     const data = e.data || {};
     if (data.tracked === true || data.scannerTracked === true
       || (data.scanStatus === 'tracked' && data.scanned === true)) {
-      facts.tracked.add(e.id);
+      trackedScratch.push(e.id);
     }
     const combat = data.combat || {};
     const ai = ownerAiRecord(e) || {};
@@ -604,10 +602,10 @@ function rebuildPinFacts(state, player, facts, simTime) {
       || ai.retaliationTargetId === playerId
       || ai.securityTargetId === playerId
     )) {
-      facts.aggro.add(e.id);
+      aggroScratch.push(e.id);
     }
   }
-  if (facts.targetId != null) facts.aggro.add(facts.targetId);
+  if (facts.targetId != null) aggroScratch.push(facts.targetId);
 
   const projectiles = index && Array.isArray(index.projectiles)
     ? index.projectiles
@@ -617,54 +615,87 @@ function rebuildPinFacts(state, player, facts, simTime) {
     if (!p || p.alive === false || p.type !== 'projectile') continue;
     const data = p.data || {};
     const tid = data.targetId;
-    if (tid != null) facts.projectileThreat.add(tid);
+    if (tid != null) threatScratch.push(tid);
     if (playerId != null && (data.ownerId === playerId || p.ownerId === playerId) && tid != null) {
-      facts.aggro.add(tid);
+      aggroScratch.push(tid);
     }
   }
 
-  if (events && playerId != null) {
-    const tick = state.tick | 0;
-    const untilT = simTime + DAMAGE_PIN_S;
-    const start = Math.max(0, events.length - 48);
-    for (let i = events.length - 1; i >= start; i--) {
-      const event = events[i];
-      if (!event) continue;
-      const eventTick = Number.isInteger(event.tick) ? event.tick : tick;
-      if (tick - eventTick > RECENT_DAMAGE_TICKS) break;
-      if (event.kind && event.kind !== 'damage.routed' && event.kind !== 'damage') continue;
-      if (event.attackerId === playerId && event.targetId != null) {
-        facts.damagedByPlayerUntil.set(event.targetId, untilT);
-        facts.aggro.add(event.targetId);
-      }
-      if (event.targetId === playerId && event.attackerId != null) {
-        facts.damagedPlayerUntil.set(event.attackerId, untilT);
-        facts.aggro.add(event.attackerId);
-      }
-    }
-  }
+  const damageStillValid = !(Number.isFinite(cache.damageExpiry) && simTime >= cache.damageExpiry);
+  const damageChanged = !damageStillValid || cache.events !== events || cache.eventsLen !== eventsLen;
 
-  cache.membership = membership;
-  cache.playerId = playerId;
-  cache.targetId = nextTargetId;
-  cache.miningId = nextMiningId;
-  cache.dockId = nextDockId;
-  cache.hailId = nextHailId;
-  cache.trackedSignal = trackedSignal;
-  cache.attachments = attachments;
-  cache.events = events;
-  cache.eventsLen = eventsLen;
-  let damageExpiry = Infinity;
-  if (facts.damagedByPlayerUntil.size || facts.damagedPlayerUntil.size) {
-    damageExpiry = simTime + DAMAGE_PIN_S;
-    for (const until of facts.damagedByPlayerUntil.values()) {
-      if (Number.isFinite(until) && until < damageExpiry) damageExpiry = until;
+  const changed = (
+    cache.playerId !== playerId
+    || cache.targetId !== nextTargetId
+    || cache.miningId !== nextMiningId
+    || cache.dockId !== nextDockId
+    || cache.hailId !== nextHailId
+    || cache.trackedSignal !== trackedSignal
+    || cache.attachments !== attachments
+    || damageChanged
+    || !setMatchesList(facts.aggro, aggroScratch)
+    || !setMatchesList(facts.tracked, trackedScratch)
+    || !setMatchesList(facts.tether, tetherScratch)
+    || !setMatchesList(facts.projectileThreat, threatScratch)
+  );
+
+  if (changed) {
+    facts.tether.clear();
+    for (let i = 0; i < tetherScratch.length; i++) facts.tether.add(tetherScratch[i]);
+    facts.aggro.clear();
+    for (let i = 0; i < aggroScratch.length; i++) facts.aggro.add(aggroScratch[i]);
+    facts.projectileThreat.clear();
+    for (let i = 0; i < threatScratch.length; i++) facts.projectileThreat.add(threatScratch[i]);
+    facts.tracked.clear();
+    for (let i = 0; i < trackedScratch.length; i++) facts.tracked.add(trackedScratch[i]);
+
+    if (damageChanged) {
+      facts.damagedByPlayerUntil.clear();
+      facts.damagedPlayerUntil.clear();
+      if (events && playerId != null) {
+        const tick = state.tick | 0;
+        const untilT = simTime + DAMAGE_PIN_S;
+        const start = Math.max(0, events.length - 48);
+        for (let i = events.length - 1; i >= start; i--) {
+          const event = events[i];
+          if (!event) continue;
+          const eventTick = Number.isInteger(event.tick) ? event.tick : tick;
+          if (tick - eventTick > RECENT_DAMAGE_TICKS) break;
+          if (event.kind && event.kind !== 'damage.routed' && event.kind !== 'damage') continue;
+          if (event.attackerId === playerId && event.targetId != null) {
+            facts.damagedByPlayerUntil.set(event.targetId, untilT);
+            facts.aggro.add(event.targetId);
+          }
+          if (event.targetId === playerId && event.attackerId != null) {
+            facts.damagedPlayerUntil.set(event.attackerId, untilT);
+            facts.aggro.add(event.attackerId);
+          }
+        }
+      }
+      let damageExpiry = Infinity;
+      if (facts.damagedByPlayerUntil.size || facts.damagedPlayerUntil.size) {
+        damageExpiry = simTime + DAMAGE_PIN_S;
+        for (const until of facts.damagedByPlayerUntil.values()) {
+          if (Number.isFinite(until) && until < damageExpiry) damageExpiry = until;
+        }
+        for (const until of facts.damagedPlayerUntil.values()) {
+          if (Number.isFinite(until) && until < damageExpiry) damageExpiry = until;
+        }
+      }
+      cache.damageExpiry = damageExpiry;
     }
-    for (const until of facts.damagedPlayerUntil.values()) {
-      if (Number.isFinite(until) && until < damageExpiry) damageExpiry = until;
-    }
+
+    facts._revision = (facts._revision | 0) + 1;
+    cache.playerId = playerId;
+    cache.targetId = nextTargetId;
+    cache.miningId = nextMiningId;
+    cache.dockId = nextDockId;
+    cache.hailId = nextHailId;
+    cache.trackedSignal = trackedSignal;
+    cache.attachments = attachments;
+    cache.events = events;
+    cache.eventsLen = eventsLen;
   }
-  cache.damageExpiry = damageExpiry;
 }
 
 function countTier(counts, tier) {
@@ -749,8 +780,11 @@ export function admitSameTickProjectiles(state, runtime, membership) {
     const entity = unseen[i];
     runtime.seenEntityIds.add(entity.id);
     runtime.currentEntityIds.add(entity.id);
+    const partitionBefore = entity._physicsPartition;
     entity._physicsPartition = 2;
+    if (partitionBefore !== 2) PHYSICS_PARTITION_EPOCH += 1;
     runtime.physicsDynamics.push(entity);
+    runtime.physicsDynamicsVersion++;
     runtime.exactIds.push(entity.id);
     runtime.counts.physics += 1;
   }
@@ -940,6 +974,18 @@ function pinBitsOf(pins) {
 /** Rescan while early-latched (0.5 s @ 60 Hz). */
 const CLASSIFY_EARLY_QUIET_RESCAN_TICKS = 30;
 
+function retainOnlyExactOwnerEntities(entities) {
+  if (!entities || entities.length === 0) return;
+  let write = 0;
+  for (let i = 0; i < entities.length; i++) {
+    const e = entities[i];
+    if (e && e.activity && isExactTier(e.activity.simTier)) {
+      entities[write++] = e;
+    }
+  }
+  entities.length = write;
+}
+
 function tryEarlyQuietClassifyLatch(state, runtime, player, origin) {
   if (CLASSIFY_EARLY_QUIET_LATCH === false) return false;
   const latch = runtime._earlyQuietLatch;
@@ -966,6 +1012,14 @@ function tryEarlyQuietClassifyLatch(state, runtime, player, origin) {
   if (latch.dockId !== (data.dockTargetId ?? null)) return false;
   if (latch.hailId !== (data.hailTargetId ?? null)) return false;
   if (latch.targetId !== (combat.targetId ?? data.targetId ?? null)) return false;
+  // Durable scheduled wake due: cannot stay asleep when an actor's timer expires.
+  const simTime = Number.isFinite(state.simTime) ? state.simTime : (tick / 60);
+  const bag = state && state.world && state.world.records && state.world.records.byId;
+  if (bag) {
+    for (const id in bag) {
+      if (durableWakeDue(bag[id], simTime)) return false;
+    }
+  }
   // Pose-key verify (same contract as frame-retain): any visit pose drift wakes so a
   // teleported rock cannot keep a stale glass/runway stamp under the early latch.
   const retain = runtime._rockVisitRetain;
@@ -990,11 +1044,17 @@ function tryEarlyQuietClassifyLatch(state, runtime, player, origin) {
   runtime.wakeTokensById.clear();
   runtime.wakeEventsById.clear();
   runtime.wakeBoundaryTick = -1;
+  retainOnlyExactOwnerEntities(runtime.activeAiEntities);
+  retainOnlyExactOwnerEntities(runtime.activeTrafficEntities);
   return true;
 }
 
 function armEarlyQuietClassifyLatch(state, runtime, player, origin) {
   if (CLASSIFY_EARLY_QUIET_LATCH === false) {
+    runtime._earlyQuietLatch = null;
+    return;
+  }
+  if (runtime.wakeCandidates && runtime.wakeCandidates.length > 0) {
     runtime._earlyQuietLatch = null;
     return;
   }
@@ -1113,8 +1173,15 @@ function publishRetainedRockVisit(runtime, entity, stamp, statics, dynamics, cou
  * lists and skip the clear+visit loop. Dirty-wake: same as rock-visit retain, plus
  * visit-set identity (count/ids) and any non-retainable entity in the disc.
  */
-function tryRetainClassifyFrame(runtime, visit, simTime) {
+function tryRetainClassifyFrame(runtime, visit, simTime, state) {
   if (CLASSIFY_FRAME_QUIET_RETAIN === false) return false;
+  if (runtime.wakeCandidates && runtime.wakeCandidates.length > 0) return false;
+  const bag = state && state.world && state.world.records && state.world.records.byId;
+  if (bag) {
+    for (const id in bag) {
+      if (durableWakeDue(bag[id], simTime)) return false;
+    }
+  }
   const retain = runtime._rockVisitRetain;
   if (!retain || retain.framePrimed !== true) return false;
   const n = visit.length;
@@ -1142,12 +1209,18 @@ function tryRetainClassifyFrame(runtime, visit, simTime) {
   runtime.wakeBoundaryTick = -1;
   runtime.classifyVisits = 0;
   runtime.classifyMode = 'frame-retain';
+  retainOnlyExactOwnerEntities(runtime.activeAiEntities);
+  retainOnlyExactOwnerEntities(runtime.activeTrafficEntities);
   return true;
 }
 
 function armClassifyFrameVisit(runtime, visit) {
   const retain = runtime._rockVisitRetain;
   if (!retain) return;
+  if (runtime.wakeCandidates && runtime.wakeCandidates.length > 0) {
+    retain.framePrimed = false;
+    return;
+  }
   const n = visit.length;
   let ids = retain.frameVisitIds;
   if (!Array.isArray(ids)) ids = retain.frameVisitIds = [];
@@ -1358,7 +1431,7 @@ function classifyWorld(state, runtime) {
   // Full-frame retain AFTER #127: when every visit entity is stamp+pose stable, keep
   // last tick's id lists / partitions / counts and skip clear+visit republish.
   let frameRetained = false;
-  if (rockRetainFrame && tryRetainClassifyFrame(runtime, visit, simTime)) {
+  if (rockRetainFrame && tryRetainClassifyFrame(runtime, visit, simTime, state)) {
     frameRetained = true;
     const pvx = finite(player && player.vel && player.vel.x);
     const pvz = finite(player && player.vel && player.vel.z);
@@ -1539,9 +1612,14 @@ function classifyWorld(state, runtime) {
     ctx.graceUntilT = entity.activity && entity.activity.graceUntilT;
     const authoredPresence = data.factionPresence
       && data.factionPresence.source === 'depth-program-k1';
+    // Combat-postured hull — carries an authored reason to fight: an explicit combatant flag,
+    // an escalation trigger, or an attack_run activity. Such ships are never "ordinary
+    // traffic": they keep the ordinary distance tiers (live to the physics rim, dormant past
+    // it) instead of aggregating into anonymous population.
+    const combatPostured = !!(ai && (ai.combatant === true || ai.engagementTrigger != null
+      || (ai.activity && ai.activity.kind === 'attack_run')));
     const authoredActiveCombat = authoredPresence && ai && ai.passive === false
-      && (ai.combatant === true || ai.engagementTrigger != null
-        || (ai.activity && ai.activity.kind === 'attack_run'));
+      && combatPostured;
     const namedAceActor = !!(
       data.namedAceId
       || (data.aceMemory && data.aceMemory.aceId)
@@ -1563,12 +1641,19 @@ function classifyWorld(state, runtime) {
       // the exact owner view; generic far passive traffic remains wake-gated below.
       || authoredActiveCombat);
     ctx.imminentCollision = imminentCollisionFor(state, player, entity, passCollisionIds);
+    // Distant-sleep gate: a generic ship off the submit (draw) runway is aggregate population.
+    // Test against `submitRunway` alone — `onRunway` also includes `prefetchKeep`, the mesh
+    // residency decode-ahead band (TABLE_RESIDENCY_PREFETCH_SECONDS past the glass). That band
+    // is a render-resource horizon, not a sim-liveness boundary: when the prefetch window grew
+    // 2.0 s → 3.5 s the keep rim reached ~1070 WU and ordinary traffic ~900 WU out re-entered
+    // S1_NEAR and the SG-06 roster instead of sleeping on the far ledger (D133). Combat-postured
+    // hulls are exempt: an inbound attacker lives to the physics rim regardless of the runway.
     ctx.aggregateOnly = entity.type === 'ship'
       && !onGlass
-      && !onRunway
+      && !submitRunway
       && !data.itinerary
       && !data.named
-      && !(ai && ai.combatant === true)
+      && !combatPostured
       && !ctx.missionCritical;
     ctx.dormant = false;
 
@@ -1694,6 +1779,20 @@ function classifyWorld(state, runtime) {
     runtime._staticAuthorityVersion = staticAuthorityVersion;
     runtime._staticMembershipDirty = false;
   }
+  // Dynamics get the same membership-version treatment: the classify pass rebuilds the lane
+  // each run, but the layered hash's stale-member sweep only needs to fire when the member
+  // set actually changed. Identity order can shuffle without membership changing — a reorder
+  // over-bumps, which only costs a sweep, never correctness.
+  const priorDynamics = runtime._dynamicEntities;
+  let dynamicMembershipChanged = priorDynamics.length !== dynamics.length;
+  for (let i = 0; !dynamicMembershipChanged && i < dynamics.length; i++) {
+    if (priorDynamics[i] !== dynamics[i]) dynamicMembershipChanged = true;
+  }
+  if (dynamicMembershipChanged) {
+    runtime.physicsDynamicsVersion++;
+    priorDynamics.length = dynamics.length;
+    for (let i = 0; i < dynamics.length; i++) priorDynamics[i] = dynamics[i];
+  }
 
 }
 
@@ -1713,8 +1812,10 @@ export function ensureActivityClassified(state) {
   // signal, so the frame is never cached and every caller classifies fresh.
   const membership = entityIndexVersion(state);
   const staticAuthority = entityIndexPhysicsStaticVersion(state);
-  if (membership != null && runtime.ready && runtime.classifiedTick === tick
-    && runtime.classifiedMembership === membership
+  const list = state.entityList || [];
+  const sameRawList = membership == null && runtime.lastEntityList === list && runtime.lastLiveCount === list.length;
+  if ((membership != null || sameRawList) && runtime.ready && runtime.classifiedTick === tick
+    && (membership == null || runtime.classifiedMembership === membership)
     && runtime.classifiedStaticAuthority === staticAuthority) {
     return runtime;
   }
@@ -1729,6 +1830,8 @@ export function ensureActivityClassified(state) {
   runtime.classifiedTick = tick;
   runtime.classifiedMembership = membership;
   runtime.classifiedStaticAuthority = staticAuthority;
+  runtime.lastEntityList = list;
+  runtime.lastLiveCount = list.length;
   runtime.ready = true;
   publishScalars(state, runtime);
   return runtime;
@@ -1761,6 +1864,7 @@ export function resetActivityRuntimeForRestore(state) {
   runtime.classifiedTick = -1;
   runtime.classifiedStaticAuthority = null;
   runtime._staticMembershipDirty = true;
+  if (runtime._dynamicEntities) runtime._dynamicEntities.length = 0;
   return true;
 }
 
@@ -1877,18 +1981,31 @@ export function entityNeedsPhysics(entity) {
  * Mirrors entityNeedsPhysics + shouldSyncPhysicsBodyEntity + isDynamicPhysicsBodyEntity
  * (projectile forced dynamic). Quiet revisits read the byte; applyStamp refreshes on
  * simTier / pinnedExact flips.
+ *
+ * Partition flips take an entity in or out of the spatial-hash physics layers — a
+ * consumer caching "members the hash cannot see" (the travel-infrastructure
+ * uncovered set) latches on this epoch rather than walking entityList every call.
  */
+let PHYSICS_PARTITION_EPOCH = 0;
+export function physicsPartitionEpoch() { return PHYSICS_PARTITION_EPOCH; }
+
 export function refreshPhysicsPartition(entity) {
+  const before = entity && entity._physicsPartition;
   if (!entity || entity.alive === false) {
-    if (entity) entity._physicsPartition = 0;
+    if (entity) {
+      entity._physicsPartition = 0;
+      if (before === 1 || before === 2) PHYSICS_PARTITION_EPOCH += 1;
+    }
     return 0;
   }
   if (!entityNeedsPhysics(entity) || !shouldSyncPhysicsBodyEntity(entity)) {
     entity._physicsPartition = 0;
+    if (before === 1 || before === 2) PHYSICS_PARTITION_EPOCH += 1;
     return 0;
   }
   const kind = (isDynamicPhysicsBodyEntity(entity) || entity.type === 'projectile') ? 2 : 1;
   entity._physicsPartition = kind;
+  if (kind !== before) PHYSICS_PARTITION_EPOCH += 1;
   return kind;
 }
 

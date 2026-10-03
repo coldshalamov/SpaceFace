@@ -475,7 +475,7 @@ export function marketReceiptRow(k, v, tone) {
 export function marketTradeHtml({ mode, qty, canAct, receiptHtml, totalLabel = '', totalText = '', note = '', limit = 0 }) {
   const word = side => {
     const live = side === mode;
-    return `<li><button type="button" class="k-word k-word--emph sx-seg__btn sx-trade__go sx-trade__go--${side}${live ? ' is-on k-word--primary' : ''}" data-mode="${side}" aria-pressed="${live}"${live ? ` data-go${canAct ? '' : ' disabled'}` : ''}>${live ? `${side === 'buy' ? 'Buy' : 'Sell'} ${fmt(qty)}` : side === 'buy' ? 'Buy' : 'Sell'}</button></li>`;
+    return `<li><button type="button" class="k-word k-word--emph sx-seg__btn sx-trade__go sx-trade__go--${side}${live ? ' is-on k-word--primary' : ''}" data-mode="${side}" aria-pressed="${live}"${live ? ` data-go${canAct ? '' : ' disabled'} aria-describedby="sx-trade-note"` : ''}>${live ? `${side === 'buy' ? 'Buy' : 'Sell'} ${fmt(qty)}` : side === 'buy' ? 'Buy' : 'Sell'}</button></li>`;
   };
   // ORRERY: the amount stands inside a dial of light (its arc against what can be moved; drag round it)
   return `<div class="sx-trade"><div class="sx-qty">${qtyDialSvg({ qty, limit })}
@@ -484,5 +484,5 @@ export function marketTradeHtml({ mode, qty, canAct, receiptHtml, totalLabel = '
     <div class="so-trade-total"><span data-trade-total-label>${escapeHtml(totalLabel)}</span><strong data-trade-total>${escapeHtml(totalText)}</strong></div>
     <details class="so-trade-breakdown"><summary>Quote breakdown <span>Live · includes price impact</span></summary><ul class="k-rows sx-trade__rows" data-market-intel>${receiptHtml}</ul></details>
     <ul class="k-words k-words--row sx-seg sx-trade__words" role="group" aria-label="Buy or sell">${word('buy')}${word('sell')}</ul>
-    <p class="k-t-fine k-38 sx-trade__note" ${note ? '' : 'hidden'}>${escapeHtml(note)}</p></div>`;
+    <p class="k-t-fine k-38 sx-trade__note" id="sx-trade-note" tabindex="0" ${note ? '' : 'hidden'}>${escapeHtml(note)}</p></div>`;
 }

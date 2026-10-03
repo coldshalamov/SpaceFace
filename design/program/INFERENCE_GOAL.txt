@@ -16,10 +16,16 @@ If the unit is flight/combat guts (the ship ignores you, shove does nothing,
 camera loses the fight), switch to design/program/FUN_CONVERGENCE_GOAL.txt
 and come back. Do not hide a handling bug inside new content.
 
-If design/program/INFERENCE_IDEAS.md has an OPEN catalog line, that line is
+If the owner explicitly asks you to take a section, develop an area, or fill
+out the game/world, use INFERENCE_LANES.md §0.2 before catalog selection.
+Work one bounded named slice under the existing FINISH_LANES.md area owner.
+This routing rule does not authorize runtime changes in a planning-only task.
+Bare INFERENCE and explicit catalog requests retain the directed repair loop.
+
+For the directed repair loop, if design/program/INFERENCE_IDEAS.md has an OPEN catalog line, that line is
 the job (law: INFERENCE_LANES.md §0.1). Do the line as written. Do not invent
-a different feature, a new system, or a build_map.md §23 campaign. N is how
-many catalog lines you finish. The next line is a different group when one
+a different feature, a new system, or a build_map.md §23 campaign. N counts new complete production changes from catalog lines, not already-true
+checks, duplicate reconciliation, or status-only edits. The next line is a different group when one
 is free. If the done check is already true, mark the line and take the next.
 
 Look-then-rotate (below) is only when the catalog has no OPEN line, or they

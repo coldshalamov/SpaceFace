@@ -151,6 +151,11 @@ export const asteroidFormations = {
   },
 
   deserialize(data) {
+    for (const _ of this.deserializeChunked(data)) { /* sync lane: every batch inline */ }
+  },
+
+  // Generator twin: each formation clone is record-atomic — yields sit only at record boundaries.
+  *deserializeChunked(data) {
     const next = makeDefaultFormations();
     if (data && typeof data === 'object' && !Array.isArray(data)) {
       const order = Array.isArray(data.order)
@@ -162,6 +167,7 @@ export const asteroidFormations = {
         if (next.discovered[id]) continue; // duplicate id in order: first wins, never doubled
         next.discovered[id] = JSON.parse(JSON.stringify(rec));
         next.order.push(id);
+        yield 'formations-record';
       }
     }
     this.state.formations = next;

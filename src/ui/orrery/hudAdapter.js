@@ -80,6 +80,10 @@ export function readOrdnanceModel(state, tracker, bindings) {
     const r = rail[slot.index] || {};
     const st = RAIL_STATE[r.state] || 'ready';
     const entry = { state: st };
+    // SWARM-03: the rail's tactical-live flag rides beside the state so the Cluster can
+    // breathe a key whose verb is real right now (latch in reach, ordnance armed, pack
+    // inside the well) — a cue, not a new surface.
+    if (r.live === true) entry.live = true;
     if (st === 'cooldown') entry.cooldown = tracker ? tracker(slot.index, r) ?? 0 : 0;
     const count = /×(\d+)/.exec(String(r.name || ''));
     if (count) entry.count = Number(count[1]);

@@ -1,6 +1,7 @@
 import { entityLocalPointToWorld, socketLocalPosition, socketWorldPosition, worldPointToEntityLocal } from './geometry.js';
 import { ensureCombatant, entityKey } from './runtime.js';
 import { appendCombatTrace } from './trace.js';
+import { occupantGenerationOf } from '../core/entity.js';
 import { createMasslineRuntime, stepMassline } from '../core/constraints/masslineController.js';
 import { SIM_DT } from '../core/sim.js';
 import { massline2Flag } from '../data/featureFlags.js';
@@ -334,6 +335,15 @@ export function createAttachmentService(context) {
       targetId: target.id,
       ...(controller ? { controllerId: controller.id } : {}),
       ...(typeof (spec && spec.controlMode) === 'string' ? { controlMode: spec.controlMode } : {}),
+      // Occupant-generation stamps pin each endpoint to the body that held the id at create
+      // time. Entity ids recycle through freeIds, so a bare numeric id can name a replacement
+      // one tick later; these tokens are what let the orphan sweep and deferred destruction
+      // receipts distinguish "the endpoint is gone" from "the id moved to a new occupant".
+      // Null means the body was never stamped (fixture-authored) — treated as unprovable, so
+      // pre-fixtures and legacy records keep their existing id-only behavior.
+      ownerGeneration: occupantGenerationOf(owner),
+      targetGeneration: occupantGenerationOf(target),
+      controllerGeneration: controller ? occupantGenerationOf(controller) : null,
       sourceSocketId: sourceSocket.id,
       targetSocketId: targetSocket.id,
       sourceAnchorLocal: requestedSourceWorld
@@ -526,10 +536,13 @@ export function createAttachmentService(context) {
       const controller = attachment.controllerId == null ? null : entity(attachment.controllerId);
       // Orphaned = the entity is GONE (despawned) or explicitly dead (alive === false). An entity
       // without an `alive` field (harness stubs, minimal records) is NOT an orphan — only a
-      // positive death signal or a missing record may break a line.
-      const ownerLost = !owner || owner.alive === false;
-      const targetLost = !target || target.alive === false;
-      const controllerLost = attachment.controllerId != null && (!controller || controller.alive === false);
+      // positive death signal or a missing record may break a line. A recorded generation that
+      // no longer matches the live occupant is the same kind of loss: the id was recycled and
+      // the body this record binds is gone even though a replacement sits in the map.
+      const ownerLost = !owner || owner.alive === false || occupantMismatch(owner, attachment.ownerGeneration);
+      const targetLost = !target || target.alive === false || occupantMismatch(target, attachment.targetGeneration);
+      const controllerLost = attachment.controllerId != null
+        && (!controller || controller.alive === false || occupantMismatch(controller, attachment.controllerGeneration));
       if (!ownerLost && !targetLost && !controllerLost) continue;
       // Owner death is an endpoint loss, not a target loss — keep the reason inside the
       // recognized endpoint vocabulary so cues/labels stay honest about which side died.
@@ -574,7 +587,18 @@ export function createAttachmentService(context) {
       const def = catalog.attachments.get(attachment.defId);
       if (!def) { pending++; continue; }
       const result = createPhysicsAttachment(attachment, def);
-      if (!result.ok) { pending++; continue; }
+      if (!result.ok) {
+        // endpoint_stale is terminal, not retryable: the id still maps to a live occupant but
+        // it is a different body than this record binds. Break it now — next tick's orphan
+        // sweep would catch it anyway, but leaving it active for a tick lets reconcile and
+        // telemetry treat the replacement as the line's endpoint in the meantime.
+        if (result.reason === 'endpoint_stale') {
+          breakAttachment(attachment, 'endpoint_lost', attachment.controllerId ?? attachment.ownerId);
+          continue;
+        }
+        pending++;
+        continue;
+      }
       attachment.physicsHandle = serializableHandle(result.physicsHandle);
       recreated++;
       appendCombatTrace(state.combat, state.tick, 'attachment.physicsReconciled', {
@@ -604,6 +628,7 @@ export function createAttachmentService(context) {
     }
     const previous = {
       ownerId: attachment.ownerId,
+      ownerGeneration: attachment.ownerGeneration,
       sourceSocketId: attachment.sourceSocketId,
       sourceAnchorLocal: attachment.sourceAnchorLocal && { ...attachment.sourceAnchorLocal },
     };
@@ -619,12 +644,14 @@ export function createAttachmentService(context) {
       return fail('physics_transfer_cut_failed', error);
     }
     attachment.ownerId = toOwnerId;
+    attachment.ownerGeneration = occupantGenerationOf(nextOwner);
     attachment.sourceSocketId = nextSocket.id;
     attachment.sourceAnchorLocal = socketLocalPosition(nextOwner, nextSocket);
     attachment.physicsHandle = null;
     const rebound = createPhysicsAttachment(attachment, def);
     if (!rebound.ok) {
       attachment.ownerId = previous.ownerId;
+      attachment.ownerGeneration = previous.ownerGeneration;
       attachment.sourceSocketId = previous.sourceSocketId;
       attachment.sourceAnchorLocal = previous.sourceAnchorLocal;
       const rollback = createPhysicsAttachment(attachment, def);
@@ -718,6 +745,9 @@ export function createAttachmentService(context) {
     attachment.defId = nextDef.id;
     attachment.ownerId = nextOwner.id;
     attachment.targetId = nextTarget.id;
+    attachment.ownerGeneration = occupantGenerationOf(nextOwner);
+    attachment.targetGeneration = occupantGenerationOf(nextTarget);
+    attachment.controllerGeneration = nextController ? occupantGenerationOf(nextController) : null;
     if (nextController) attachment.controllerId = nextController.id;
     else delete attachment.controllerId;
     if (typeof spec.controlMode === 'string') attachment.controlMode = spec.controlMode;
@@ -990,6 +1020,14 @@ export function createAttachmentService(context) {
     const target = entity(attachment.targetId);
     if (!owner || !owner.alive) return { ok: false, reason: 'owner_missing' };
     if (!target || !target.alive || target.id === owner.id) return { ok: false, reason: 'target_missing' };
+    // A recorded generation that no longer matches the live occupant means the endpoint id was
+    // recycled: the body this record binds is gone and a different occupant owns the number.
+    // Recreating physics for it would weld the line onto the replacement — fail closed so
+    // reconcilePhysics breaks the record instead of resurrecting it on the wrong body.
+    if (occupantMismatch(owner, attachment.ownerGeneration)
+        || occupantMismatch(target, attachment.targetGeneration)) {
+      return { ok: false, reason: 'endpoint_stale' };
+    }
     const ownerRuntime = ensureCombatant(state, owner, catalog);
     const targetRuntime = ensureCombatant(state, target, catalog);
     const sourceSocket = selectSocket(ownerRuntime, def.sourceSocketTags, attachment.sourceSocketId, owner.id, attachment.id);
@@ -1127,6 +1165,9 @@ function attachmentRebindSnapshot(attachment) {
     defId: attachment.defId,
     ownerId: attachment.ownerId,
     targetId: attachment.targetId,
+    ownerGeneration: attachment.ownerGeneration ?? null,
+    targetGeneration: attachment.targetGeneration ?? null,
+    controllerGeneration: attachment.controllerGeneration ?? null,
     controllerId: attachment.controllerId ?? null,
     controlMode: attachment.controlMode || null,
     sourceSocketId: attachment.sourceSocketId,
@@ -1201,6 +1242,29 @@ function pruneBrokenAttachmentHistory(byId) {
 
 function finiteOrZero(value) {
   return Number.isFinite(value) ? value : 0;
+}
+
+/**
+ * A recorded occupant generation proves which body an id named when the record was written.
+ * Mismatch = the id was recycled and a different occupant holds it now — the record is stale.
+ * A null recording (fixture-authored endpoints, legacy records) cannot prove identity, so it
+ * never mismatches: unprovable stays unprovable rather than guessing either way.
+ */
+function occupantMismatch(entity, recordedGeneration) {
+  return recordedGeneration != null && occupantGenerationOf(entity) !== recordedGeneration;
+}
+
+/**
+ * Does this record bind `generation` of `entityId`? Kernel-side destruction receipts are
+ * deferred and ids recycle, so when the id already belongs to a replacement occupant this is
+ * the check that separates the dead body's lines (break them) from the replacement's (keep).
+ * Returns false when either side cannot prove identity — never claim a binding on a guess.
+ */
+export function attachmentBindsOccupant(attachment, entityId, generation) {
+  if (!attachment || generation == null) return false;
+  return (attachment.ownerId === entityId && attachment.ownerGeneration === generation)
+    || (attachment.targetId === entityId && attachment.targetGeneration === generation)
+    || (attachment.controllerId === entityId && attachment.controllerGeneration === generation);
 }
 
 function entitySuppressesMasslineAutoBreak(value) {

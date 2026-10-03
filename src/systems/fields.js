@@ -20,22 +20,24 @@
 // Save policy: PQ-146 preserves deployed force geometry, emitter identity, expiry and cooldown.
 // Old saves without field data still normalize away; sector changes and new games clear fields.
 
-import { FIELD_DEFS, FIELD_KINDS, FIELD_MAX_ACTIVE, FIELD_END_REASONS, FIELD_PALETTE, FIELD_VOLUMES, WELL_CLUSTER, WELL_GRIND, fieldsFlag, fieldVolumeOf } from '../data/fields.js';
-import { createFieldKernel, fieldAffectsBody, fieldContainsPoint, fieldRawAcceleration, sampleFieldAcceleration, wellUsesVelocityTerm } from '../core/fields/fieldKernel.js';
+import { FIELD_DEFS, FIELD_KINDS, FIELD_MAX_ACTIVE, FIELD_END_REASONS, FIELD_PALETTE, FIELD_VOLUMES, FIELD_COUPLING, FIELD_FAMILY_READ, WELL_CLUSTER, WELL_GRIND, fieldsFlag, fieldVolumeOf } from '../data/fields.js';
+import { createFieldKernel, couplingScale, fieldAffectsBody, fieldContainsPoint, fieldRawAcceleration, sampleFieldAcceleration, wellUsesVelocityTerm } from '../core/fields/fieldKernel.js';
 import {
   classifyClusterReceipt,
   mergeClusterSecondaries,
   rateClusterMoment,
 } from '../core/fields/clusterDetonate.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
-import { indexedTypeScan } from '../world/livingWorldViews.js';
+import { indexedTypeScan, entityIndexLaneVersion } from '../world/livingWorldViews.js';
 import { journalFor } from '../combat/stuntEvidence.js';
 import { isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
 import { Masks } from '../core/entity.js';
 import { getCombatKernel } from '../combat/kernel.js';
 import { ensureCombatant } from '../combat/runtime.js';
 import { publishHitstunImpulse, signedHitSide } from '../combat/impulseKernel.js';
-import { PINNED_STATUS_ID, UNMOORED_STATUS_ID } from '../data/combatDefs.js';
+import { PINNED_STATUS_ID, STATUS_DEFS, UNMOORED_STATUS_ID } from '../data/combatDefs.js';
+import { bombDef } from '../data/bombs.js';
+import { bombFieldEnvelope, bombSurfaceFalloff, fillBombViscosityImpulse } from '../combat/bombDynamics.js';
 import { combatFlag } from '../data/featureFlags.js';
 import { queryCombatTableEntities, COMBAT_TABLE_FLAGS } from '../core/combatTable.js';
 import {
@@ -94,6 +96,15 @@ function entityIndexVersion(state) {
   return index && index.__spacefaceEntityIndexV1 && Number.isFinite(index.version)
     ? index.version
     : null;
+}
+
+/** Membership lanes for the idle quiet latch — the NPC-field-role census reads
+ * index.aiShips (⊆ shipLike) only, so asteroid/pickup churn no longer wakes it. */
+const FIELDS_IDLE_QUIET_LANES = ['shipLike'];
+
+function fieldsMembershipVersion(state) {
+  const lane = entityIndexLaneVersion(state, FIELDS_IDLE_QUIET_LANES);
+  return lane === -1 ? entityIndexVersion(state) : lane;
 }
 
 function fieldsIdleSnapshot(rt, kernel, state) {
@@ -368,6 +379,45 @@ export function fieldBodyProfile(entity, state, out = null) {
   return profile;
 }
 
+/**
+ * RELEASE-TRUTH C2 — the velocity-sampling gate production applies before
+ * sampleFieldAcceleration. The well's damping/velocity term only reads ship+drone bodies,
+ * and a primed light gets no convergence term at all (the inbound fall is the slam). Any
+ * predictor that samples field acceleration must hand the kernel velocity through this same
+ * gate or the preview damps bodies production never damps.
+ */
+export function fieldVelocityTermApplies(entity, profile) {
+  return !!(entity && FIELD_VELOCITY_TERM_TYPES.has(entity.type) && wellUsesVelocityTerm(profile));
+}
+
+/**
+ * RELEASE-TRUTH C2 — the shared "primed light" observation. Extracted from
+ * fields._isPrimedLight so a preview can ask the same question the force loop asks without
+ * owning the answer. Read-only: it observes impulseCharges (the single primed writer) plus
+ * the armed-charge scan; it never writes primed state.
+ */
+export function fieldEntityIsPrimed(registry, state, entity) {
+  if (!entity || entity.alive === false) return false;
+  if (entity.type !== 'ship' && entity.type !== 'drone') return false;
+  if (state && entity.id === state.playerId) return false;
+  const charges = registry && registry.get && registry.get('impulseCharges');
+  if (charges && typeof charges.isPrimed === 'function' && charges.isPrimed(entity, state)) {
+    return true;
+  }
+  if (charges && typeof charges._armedChargeOn === 'function') {
+    if (charges._armedChargeOn(state, entity.id)) return true;
+  }
+  const list = indexedTypeScan(state, 'charges');
+  if (!list.length) return false;
+  for (let i = 0; i < list.length; i++) {
+    const charge = list[i];
+    if (!charge || charge.alive === false || charge.type !== 'charge') continue;
+    const data = charge.data;
+    if (data && data.armed && data.hostId === entity.id) return true;
+  }
+  return false;
+}
+
 export const fields = {
   name: 'fields',
 
@@ -396,6 +446,12 @@ export const fields = {
     this._affected = new Map();
     this._massStateFields = new Map();
     this._massStateStrengths = new Map();
+    // PB-ORD-B pin watch: bodies already inside a pin-capable field this force pass.
+    this._pinWatch = [];
+    this._pinWatchSeen = new Set();
+    this._familyPrevPins = new Set();
+    this._familyPrevMines = new Set();
+    this._familyShell = null;
     this._accel = { ax: 0, az: 0 };
     this._massStateAccel = { ax: 0, az: 0 };
     this._wellScratch = { ax: 0, az: 0 };
@@ -465,6 +521,13 @@ export const fields = {
       deployed:rt.deployed,anchored:rt.anchored,npcFields:rt.npcFields,hitches:rt.hitches,cooldowns:rt.cooldowns};
   },
   deserialize(raw,remap=new Map()) {
+    for (const _ of this.deserializeChunked(raw, remap)) { /* sync lane: every batch inline */ }
+  },
+
+  // Generator twin so the async restore lane can paint between kernel/hitch/NPC sections —
+  // a mature deploy ledger is the heavy stretch on this path. Yields sit only at section
+  // boundaries; the register order is the sync lane's, so the run stays bit-identical.
+  *deserializeChunked(raw,remap=new Map()) {
     this._restoredOnLoad=false;
     if(raw?.revision!==1||!Array.isArray(raw.fields))return;
     const mapped=id=>id==null?id:remap.get(String(id))??id,rt=defaultRuntime();
@@ -475,6 +538,7 @@ export const fields = {
     if (this._orbitWorld) resetOrbitWorld(this._orbitWorld);
     this._orbitScanned = false;
     this._seedLockFieldId = null;
+    let restored = 0;
     for(const saved of raw.fields.slice(0,32)) {
       const f=structuredClone(saved);
       // Legacy saves may carry orbit_node entries — poses are recomputed from the
@@ -488,8 +552,11 @@ export const fields = {
       const d=raw.deployed?.[f.id];
       if(d&&this.state.entities.get(mapped(d.emitterId)))rt.deployed[f.id]={...d,emitterId:mapped(d.emitterId),expireAt:d.expireAt??Infinity};
       const a=raw.anchored?.[f.id];if(a)rt.anchored[f.id]={...a,sourceId:mapped(a.sourceId)};
+      if (++restored % 8 === 0) yield 'fields-kernel-batch';
     }
+    yield 'fields-kernel';
     for(const [id,h] of Object.entries(raw.hitches??{})){const eid=mapped(id);const ent=this.state.entities.get(eid)||this.state.entities.get(Number(eid));if(ent&&this._kernel.has(h.fieldId))rt.hitches[eid]={...h,sourceId:mapped(h.sourceId)};}
+    yield 'fields-hitches';
     // NPC cone recs are id-keyed mirror state for kernel fields already restored
     // above — without them the field lives on as an orphan nobody retires.
     for(const [sid,rec] of Object.entries(raw.npcFields??{})){if(rec&&this._kernel.has(rec.fieldId))rt.npcFields[mapped(sid)]={...rec,sourceId:mapped(rec.sourceId??sid)};}
@@ -800,8 +867,14 @@ export const fields = {
 
   update(dt, state) {
     const rt = ensureRuntime(state);
+    this._familyDt = dt;
     // Golden-safety gate (layer b): strict no-op unless enabled (OFF under node).
-    if (!fieldsFlag('enabled')) return;
+    if (!fieldsFlag('enabled')) {
+      if (this._familyPrevPins) this._familyPrevPins.clear();
+      if (this._familyPrevMines) this._familyPrevMines.clear();
+      rt.familyRead = EMPTY_FAMILY_READ;
+      return;
+    }
     if (state.mode !== 'flight') {
       // Not flying (docked / station): apply no forces, but still tick expiry + destruction so a
       // field never outlives its bounded lifetime while the player is away, and keep the cone off.
@@ -831,7 +904,7 @@ export const fields = {
     let idle = fieldsIdleSnapshot(rt, this._kernel, state);
     if (idle) {
       if (FIELDS_IDLE_QUIET_LATCH !== false) {
-        const membership = entityIndexVersion(state);
+        const membership = fieldsMembershipVersion(state);
         const tick = state.tick | 0;
         const quiet = this._fieldsIdleQuiet;
         if (quiet
@@ -841,6 +914,8 @@ export const fields = {
           && (!this._wellBodies || this._wellBodies.size === 0)) {
           state.fieldsRuntime = state.fieldsRuntime || {};
           state.fieldsRuntime.quietLatched = true;
+          // Kernel is empty, but a tar cloud or a mine on the rim still needs its read.
+          this._publishFamilyRead(state, rt, dt);
           return;
         }
         // Refuse latch while any awake scavenger/sweeper/salvor/anchor role exists — those
@@ -1482,6 +1557,10 @@ export const fields = {
     if (this._insideRingPrev) this._insideRingPrev.clear();
     this._wellAccum = new WeakMap();
     this._wellBodies = new Set();
+    if (this._pinWatch) this._pinWatch.length = 0;
+    if (this._pinWatchSeen) this._pinWatchSeen.clear();
+    if (this._familyPrevPins) this._familyPrevPins.clear();
+    if (this._familyPrevMines) this._familyPrevMines.clear();
     if (this._grindPairs) this._grindPairs.clear();
     if (this._flingPairs) this._flingPairs.clear();
     if (this._clusterCargo) this._clusterCargo.clear();
@@ -1673,9 +1752,17 @@ export const fields = {
     // INF-042: the lifecycle runs before sampling, so force, predictor, and records agree.
     applyFieldLifecycle(fieldsList, now);
     if (fieldsList.length === 0 || dt <= 0) {
+      if (fieldsList.length === 0) {
+        this._pinWatch.length = 0;
+        this._pinWatchSeen.clear();
+        this._massStateFields.clear();
+        this._massStateStrengths.clear();
+      }
       this._flushEndedWells(state);
       return { queries: 0, affected: 0, accelSum: 0 };
     }
+    this._pinWatch.length = 0;
+    this._pinWatchSeen.clear();
     const queryRadius = this.helpers && this.helpers.queryRadius;
     const affected = this._affected;
     affected.clear();
@@ -1693,6 +1780,7 @@ export const fields = {
       const maxAffected = Number.isFinite(field.maxAffected) ? field.maxAffected : Infinity;
       for (let j = 0; j < this._queryOut.length; j++) {
         const e = this._queryOut[j];
+        this._noteFamilyPin(field, e);
         if (this._forceableBody(e)) {
           const profile = this._profileFor(e, state);
           if (!fieldAffectsBody(field, profile)) continue;
@@ -1709,9 +1797,7 @@ export const fields = {
       const massStateField = this._massStateFields.get(e);
       if (massStateField) this._refreshMassState(state, e, massStateField);
       const profile = this._profileFor(e, state);
-      const velSample = (FIELD_VELOCITY_TERM_TYPES.has(e.type) && wellUsesVelocityTerm(profile))
-        ? e.vel
-        : null;
+      const velSample = fieldVelocityTermApplies(e, profile) ? e.vel : null;
       sampleFieldAcceleration(e.pos, velSample, fieldsList, now, profile, accel);
       if (accel.ax === 0 && accel.az === 0) continue;
       // p = a·m·dt, where m must be the mass the SOLVER will use this tick — not the authored one.
@@ -1935,25 +2021,9 @@ export const fields = {
   // ── PQ-147.03 cluster and detonate (observe the 137.09 primed-light seam) ────────────────────
 
   _isPrimedLight(entity, state) {
-    if (!entity || entity.alive === false) return false;
-    if (entity.type !== 'ship' && entity.type !== 'drone') return false;
-    if (state && entity.id === state.playerId) return false;
-    const charges = this.registry && this.registry.get && this.registry.get('impulseCharges');
-    if (charges && typeof charges.isPrimed === 'function' && charges.isPrimed(entity, state || this.state)) {
-      return true;
-    }
-    if (charges && typeof charges._armedChargeOn === 'function') {
-      if (charges._armedChargeOn(state || this.state, entity.id)) return true;
-    }
-    const list = indexedTypeScan(state, 'charges');
-    if (!list.length) return false;
-    for (let i = 0; i < list.length; i++) {
-      const charge = list[i];
-      if (!charge || charge.alive === false || charge.type !== 'charge') continue;
-      const data = charge.data;
-      if (data && data.armed && data.hostId === entity.id) return true;
-    }
-    return false;
+    // One implementation: the exported helper IS the observation; this method only supplies
+    // the system's own registry/state defaults.
+    return fieldEntityIsPrimed(this.registry, state || this.state, entity);
   },
 
   _onWellDeployed(payload) {
@@ -2172,6 +2242,7 @@ export const fields = {
     n = this._publishSeedVolume(state, active, n);
     active.length = n; // trim retired fields
     feedRailHooks(state, rt);
+    this._publishFamilyRead(state, rt, this._familyDt);
     const tel = rt.telemetry;
     tel.fields = fieldsList.length; tel.queries = queries; tel.affected = affected; tel.appliedAccelSum = accelSum;
     tel.orbitNodes = rt.orbit && Number.isInteger(rt.orbit.count) ? rt.orbit.count : 0;
@@ -2244,6 +2315,38 @@ export const fields = {
     });
   },
 
+  // Bodies already gathered for the force pass. Kinematic and other refusals stay in the
+  // watch so the pin read can say why they were not held. This does not write a force.
+  _noteFamilyPin(field, entity) {
+    if (!field || field.tag != null || field.ownerId == null) return;
+    if (field.kind !== FIELD_KINDS.WELL && field.kind !== FIELD_KINDS.REPULSOR) return;
+    if (!entity || entity.alive === false || !entity.pos) return;
+    if (!MASS_STATE_TYPES.has(entity.type) && entity.type !== 'station') return;
+    if (this._pinWatch.length >= FIELD_FAMILY_READ.maxPinWatch) return;
+    if (this._pinWatchSeen.has(entity)) return;
+    if (!fieldContainsPoint(field, entity.pos.x, entity.pos.z)) return;
+    this._pinWatchSeen.add(entity);
+    this._pinWatch.push(entity);
+  },
+
+  _publishFamilyRead(state, rt, dt) {
+    const shell = this._familyShell || (this._familyShell = createFamilyShell());
+    const list = this._kernel && typeof this._kernel.list === 'function' ? this._kernel.list() : EMPTY_SNAPSHOT;
+    const step = Number.isFinite(dt) ? dt : (Number.isFinite(this._familyDt) ? this._familyDt : 1 / 60);
+    readFieldFamily({
+      state,
+      fields: list,
+      now: nowOf(state),
+      dt: step,
+      pinWatch: this._pinWatch,
+      massFields: this._massStateFields,
+      prevPins: this._familyPrevPins,
+      prevMines: this._familyPrevMines,
+      isPrimed: (entity) => this._isPrimedLight(entity, state),
+    }, shell);
+    rt.familyRead = shell;
+  },
+
   _emitCollapseCue(kind, pos) {
     if (!pos) return;
     this.bus.emit('presentation:vfxCue', {
@@ -2264,3 +2367,632 @@ export function activeFieldSnapshot(state) {
   return (state && state.fields && Array.isArray(state.fields.snapshot)) ? state.fields.snapshot : EMPTY_SNAPSHOT;
 }
 const EMPTY_SNAPSHOT = Object.freeze([]);
+
+function statusById(id) {
+  for (let i = 0; i < STATUS_DEFS.length; i++) {
+    if (STATUS_DEFS[i] && STATUS_DEFS[i].id === id) return STATUS_DEFS[i];
+  }
+  return null;
+}
+const PIN_STATUS_DEF = statusById(PINNED_STATUS_ID);
+const PIN_MASS_SCALE = PIN_STATUS_DEF && PIN_STATUS_DEF.effects && PIN_STATUS_DEF.effects.physicsResponse
+  ? PIN_STATUS_DEF.effects.physicsResponse.massScale
+  : 6;
+const GOO_STATUS_DEF = statusById('status_goo');
+const GOO_MAX_STACKS = GOO_STATUS_DEF && GOO_STATUS_DEF.stacking ? GOO_STATUS_DEF.stacking.maxStacks : 3;
+const GOO_MOVEMENT = GOO_STATUS_DEF && GOO_STATUS_DEF.effects && GOO_STATUS_DEF.effects.multipliers
+  ? GOO_STATUS_DEF.effects.multipliers.movement
+  : 0.72;
+
+const EMPTY_FAMILY_READ = Object.freeze({
+  edge: Object.freeze({ active: false, law: 'viscosity', controlFrozen: false, clouds: Object.freeze([]) }),
+  pin: Object.freeze({
+    law: 'mass_response', massScale: PIN_MASS_SCALE, storedImpulse: 0, teleports: false, rows: Object.freeze([]),
+  }),
+  bend: Object.freeze({ active: false, samples: Object.freeze([]), projectiles: Object.freeze([]) }),
+  breakout: Object.freeze({ mines: Object.freeze([]) }),
+});
+
+const _famAccel = { ax: 0, az: 0 };
+const _famRaw = { ax: 0, az: 0 };
+const _famVisc = { x: 0, y: 0, z: 0 };
+const _famVel = { x: 0, z: 0 };
+const _famFrame = { x: 0, z: 0 };
+const _nextInside = [];
+const _famProfile = {
+  mass: 1, type: null, team: null, id: null, fieldResponseMult: 1,
+  physicsMassScale: 1, boosting: false, hitchedTo: null, primed: false, dynamic: true, kinematic: false,
+};
+const _bucket = [];
+const _goo = [];
+const _tools = [];
+const _held = [];
+const _heldSet = new Set();
+const _releasedIds = [];
+
+function cmpEntityId(a, b) {
+  const x = a && a.id != null ? String(a.id) : '';
+  const y = b && b.id != null ? String(b.id) : '';
+  return x < y ? -1 : x > y ? 1 : 0;
+}
+
+function createFamilyShell() {
+  return {
+    edge: { active: false, law: 'viscosity', controlFrozen: false, focusId: null, clouds: [] },
+    pin: { law: 'mass_response', massScale: PIN_MASS_SCALE, storedImpulse: 0, teleports: false, rows: [] },
+    bend: { active: false, samples: [], projectiles: [] },
+    breakout: { mines: [] },
+  };
+}
+
+function takeRow(pool, index, make) {
+  let row = pool[index];
+  if (!row) row = pool[index] = make();
+  return row;
+}
+
+function copyBucket(state, key, type) {
+  _bucket.length = 0;
+  const index = state && state.entityIndex;
+  const ready = !!(index && index.__spacefaceEntityIndexV1 && index.ready === true && Array.isArray(index[key]));
+  const source = ready ? index[key] : (state && state.entityList);
+  if (!source) return _bucket;
+  for (let i = 0; i < source.length; i++) {
+    const entity = source[i];
+    if (!entity || entity.alive === false) continue;
+    if (!ready && entity.type !== type) continue;
+    _bucket.push(entity);
+  }
+  _bucket.sort(cmpEntityId);
+  return _bucket;
+}
+
+function isLiveGoo(bomb, now) {
+  if (!bomb || bomb.alive === false || bomb.type !== 'bomb' || !bomb.pos || !bomb.data) return false;
+  const data = bomb.data;
+  if (data.retired === true || data.phase !== 'field') return false;
+  if (!(data.fieldStartedAt <= now)) return false;
+  const field = bombDef(data.bombId).field;
+  if (!field || field.kind !== 'goo') return false;
+  const envelope = bombFieldEnvelope(now, data.fieldStartedAt, field.durationS, field.endStrength ?? 1);
+  return envelope > 0;
+}
+
+function gooResidual(speed, mass, drag, frame, dt) {
+  _famVel.x = speed;
+  _famVel.z = 0;
+  if (!(dt > 0) || !fillBombViscosityImpulse(_famVisc, _famVel, frame, mass, dt, drag, 1)) return speed;
+  return speed + _famVisc.x / mass;
+}
+
+function playerEntity(state) {
+  if (!state || !state.entities || typeof state.entities.get !== 'function' || state.playerId == null) return null;
+  const player = state.entities.get(state.playerId);
+  return player && player.alive !== false && player.pos ? player : null;
+}
+
+function gooStatus(state, entity) {
+  if (!entity || !state || !state.combat || !state.combat.entities) return null;
+  const runtime = state.combat.entities[String(entity.id)];
+  const status = runtime && runtime.statuses && runtime.statuses.status_goo;
+  if (!status || !(status.stacks > 0)) return null;
+  if (status.expiresTick != null && status.expiresTick <= (state.tick | 0)) return null;
+  return status;
+}
+
+function isPinField(field) {
+  return !!(field && field.tag == null && field.ownerId != null
+    && (field.kind === FIELD_KINDS.WELL || field.kind === FIELD_KINDS.REPULSOR));
+}
+
+function fieldLive(fields, field) {
+  if (!field || !fields) return false;
+  for (let i = 0; i < fields.length; i++) if (fields[i] === field) return true;
+  return false;
+}
+
+function anchorOf(type, couple) {
+  if (type === 'pickup' || type === 'projectile') return 'full';
+  if (couple <= FIELD_COUPLING.minShipCouple + 1e-9) return 'shrug';
+  return 'full';
+}
+
+function blankPin(row) {
+  row.id = null;
+  row.phase = 'ineligible';
+  row.reason = 'unaffected';
+  row.fieldId = null;
+  row.fieldKind = null;
+  row.fieldX = 0;
+  row.fieldZ = 0;
+  row.x = 0;
+  row.z = 0;
+  row.couple = 0;
+  row.anchor = 'none';
+  row.storedImpulse = 0;
+  row.teleports = false;
+  row.massScale = PIN_MASS_SCALE;
+}
+
+function writeHeldPin(row, entity, field, state) {
+  const profile = fieldBodyProfile(entity, state, _famProfile);
+  const couple = couplingScale(profile);
+  blankPin(row);
+  row.id = entity.id;
+  row.phase = 'held';
+  row.reason = 'held';
+  row.fieldId = field.id;
+  row.fieldKind = field.kind;
+  row.fieldX = field.center.x;
+  row.fieldZ = field.center.z;
+  row.x = entity.pos.x;
+  row.z = entity.pos.z;
+  row.couple = couple;
+  row.anchor = anchorOf(profile.type, couple);
+}
+
+function containingPinField(fields, entity) {
+  let best = null;
+  for (let i = 0; i < fields.length; i++) {
+    const field = fields[i];
+    if (!isPinField(field) || !fieldContainsPoint(field, entity.pos.x, entity.pos.z)) continue;
+    if (!best || String(field.id) < String(best.id)) best = field;
+  }
+  return best;
+}
+
+function writeRefusedPin(row, entity, field, state, isPrimed) {
+  const profile = fieldBodyProfile(entity, state, _famProfile);
+  const couple = couplingScale(profile);
+  const primed = typeof isPrimed === 'function' && isPrimed(entity) === true;
+  blankPin(row);
+  row.id = entity.id;
+  row.x = entity.pos.x;
+  row.z = entity.pos.z;
+  row.couple = couple;
+  if (!field) {
+    row.reason = 'unaffected';
+    return;
+  }
+  row.fieldId = field.id;
+  row.fieldKind = field.kind;
+  row.fieldX = field.center.x;
+  row.fieldZ = field.center.z;
+  if (!MASS_STATE_TYPES.has(entity.type)) {
+    row.reason = 'ineligible_type';
+    return;
+  }
+  if (String(entity.id) === String(field.ownerId)
+    || (field.filters && field.filters.excludeId != null && profile.id === field.filters.excludeId)) {
+    row.reason = 'source_excluded';
+    return;
+  }
+  if (field.kind === FIELD_KINDS.WELL && primed) {
+    row.reason = 'primed';
+    return;
+  }
+  if (profile.dynamic === false || profile.kinematic === true) {
+    row.reason = 'kinematic';
+    return;
+  }
+  if (!fieldAffectsBody(field, profile)) {
+    row.reason = 'unaffected';
+    return;
+  }
+  fieldRawAcceleration(field, entity.pos.x, entity.pos.z, _famRaw, null);
+  if (!(Math.hypot(_famRaw.ax, _famRaw.az) > 0)) {
+    row.reason = 'unaffected';
+    return;
+  }
+  // The force pass did not keep this body. Same law, not a second pin.
+  row.reason = 'unaffected';
+}
+
+function pushTool(field) {
+  if (!field || !(field.radius > 0) || !(field.strength > 0) || field.tag === 'external') return;
+  _tools.push(field);
+}
+
+function overlapSample(a, b, out) {
+  let x = (a.center.x + b.center.x) * 0.5;
+  let z = (a.center.z + b.center.z) * 0.5;
+  if (Math.hypot(x - a.center.x, z - a.center.z) < 1 || Math.hypot(x - b.center.x, z - b.center.z) < 1) {
+    x = a.center.x + Math.min(a.radius, b.radius) * 0.35;
+    z = a.center.z;
+  }
+  out.x = x;
+  out.z = z;
+}
+
+function bestOverlap(out) {
+  let pair = null;
+  let bestDist = Infinity;
+  let bestKey = '';
+  const radial = [];
+  for (let i = 0; i < _tools.length; i++) {
+    const field = _tools[i];
+    if (field.kind === FIELD_KINDS.WELL || field.kind === FIELD_KINDS.REPULSOR) radial.push(field);
+  }
+  const pool = radial.length >= 2 ? radial : _tools;
+  for (let i = 0; i < pool.length; i++) {
+    for (let j = i + 1; j < pool.length; j++) {
+      const a = pool[i];
+      const b = pool[j];
+      const dist = Math.hypot(a.center.x - b.center.x, a.center.z - b.center.z);
+      if (dist >= a.radius + b.radius) continue;
+      const key = String(a.id) < String(b.id) ? `${a.id}|${b.id}` : `${b.id}|${a.id}`;
+      if (dist < bestDist - 1e-6 || (Math.abs(dist - bestDist) <= 1e-6 && (bestKey === '' || key < bestKey))) {
+        bestDist = dist;
+        bestKey = key;
+        pair = [a, b];
+      }
+    }
+  }
+  if (!pair) return false;
+  overlapSample(pair[0], pair[1], out);
+  return true;
+}
+
+function outsideSample(out) {
+  let x = 0;
+  let z = 0;
+  let reach = 0;
+  const source = _tools.length ? _tools : EMPTY_SNAPSHOT;
+  for (let i = 0; i < source.length; i++) {
+    const field = source[i];
+    const edge = Math.abs(field.center.x) + Math.abs(field.center.z) + field.radius;
+    if (edge >= reach) {
+      reach = edge;
+      x = field.center.x;
+      z = field.center.z;
+    }
+  }
+  out.x = x + reach + 80;
+  out.z = z;
+}
+
+function pointInsideAny(fields, x, z) {
+  for (let i = 0; i < fields.length; i++) {
+    if (fieldContainsPoint(fields[i], x, z)) return true;
+  }
+  return false;
+}
+
+function writeSample(row, fields, x, z, now) {
+  row.x = x;
+  row.z = z;
+  const profile = _famProfile;
+  profile.mass = FIELD_COUPLING.refMass;
+  profile.type = 'ship';
+  profile.team = null;
+  profile.id = null;
+  profile.fieldResponseMult = 1;
+  profile.physicsMassScale = 1;
+  profile.boosting = false;
+  profile.hitchedTo = null;
+  profile.primed = false;
+  profile.dynamic = true;
+  profile.kinematic = false;
+  sampleFieldAcceleration({ x, z }, null, fields, now, profile, _famAccel);
+  row.ax = _famAccel.ax;
+  row.az = _famAccel.az;
+  const contributors = row.contributors || (row.contributors = []);
+  let n = 0;
+  for (let i = 0; i < fields.length && n < FIELD_FAMILY_READ.maxContributors; i++) {
+    const field = fields[i];
+    if (!field || !fieldContainsPoint(field, x, z)) continue;
+    fieldRawAcceleration(field, x, z, _famRaw, null);
+    const contrib = takeRow(contributors, n, () => ({ id: null, kind: null, ax: 0, az: 0 }));
+    contrib.id = field.id;
+    contrib.kind = field.kind;
+    contrib.ax = _famRaw.ax;
+    contrib.az = _famRaw.az;
+    n++;
+  }
+  contributors.length = n;
+  const resultant = Math.hypot(row.ax, row.az);
+  if (n === 0) row.kind = 'inactive';
+  else if (resultant < FIELD_FAMILY_READ.equilibriumAccel && n >= 2) row.kind = 'equilibrium';
+  else row.kind = 'tendency';
+}
+
+function shotOwner(entity) {
+  if (!entity) return null;
+  if (entity.ownerId != null) return entity.ownerId;
+  if (entity.data && entity.data.ownerId != null) return entity.data.ownerId;
+  return null;
+}
+
+/**
+ * PB-ORD-B read of the live field state: tar edge and recovery, pin law, overlap
+ * tendency, projectile bend provenance, and mine breakout. Numbers come from the
+ * same falloff, viscosity, and acceleration the sim already applies. This function
+ * does not write velocity, ownership, or a force.
+ */
+export function readFieldFamily(input, shell) {
+  const out = shell || createFamilyShell();
+  const state = input && input.state;
+  const fields = input && Array.isArray(input.fields) ? input.fields : EMPTY_SNAPSHOT;
+  const now = input && Number.isFinite(input.now) ? input.now : 0;
+  const dt = input && Number.isFinite(input.dt) && input.dt > 0 ? input.dt : 1 / 60;
+  const isPrimed = input && input.isPrimed;
+
+  _goo.length = 0;
+  const bombs = copyBucket(state, 'bombs', 'bomb');
+  for (let i = 0; i < bombs.length; i++) if (isLiveGoo(bombs[i], now)) _goo.push(bombs[i]);
+  const player = playerEntity(state);
+  let focus = null;
+  const cloudCount = Math.min(_goo.length, FIELD_FAMILY_READ.maxClouds);
+  for (let i = 0; i < cloudCount; i++) {
+    const bomb = _goo[i];
+    const data = bomb.data;
+    const def = bombDef(data.bombId);
+    const field = def.field;
+    const envelope = bombFieldEnvelope(now, data.fieldStartedAt, field.durationS, field.endStrength ?? 1);
+    let overlap = 0;
+    for (let j = 0; j < _goo.length; j++) {
+      const other = _goo[j];
+      const otherRadius = bombDef(other.data.bombId).radius;
+      const dist = Math.hypot(other.pos.x - bomb.pos.x, other.pos.z - bomb.pos.z);
+      if (bombSurfaceFalloff(dist, 0, otherRadius) > 0) overlap++;
+    }
+    const share = 1 / Math.max(1, overlap);
+    const radius = def.radius;
+    const edgeDist = radius * (1 - FIELD_FAMILY_READ.gooEdgeFraction);
+    const centerFall = bombSurfaceFalloff(0, 0, radius);
+    const edgeFall = bombSurfaceFalloff(edgeDist, 0, radius);
+    const centerDrag = field.dragPerS * envelope * centerFall * share;
+    const edgeDrag = field.dragPerS * envelope * edgeFall * share;
+    let hx = 1;
+    let hz = 0;
+    let tracked = null;
+    if (player && bombSurfaceFalloff(Math.hypot(player.pos.x - bomb.pos.x, player.pos.z - bomb.pos.z), 0, radius) > 0) {
+      tracked = player;
+      const dx = player.pos.x - bomb.pos.x;
+      const dz = player.pos.z - bomb.pos.z;
+      const len = Math.hypot(dx, dz);
+      if (len > 1) { hx = dx / len; hz = dz / len; }
+    }
+    const status = gooStatus(state, tracked);
+    _famFrame.x = bomb.vel && Number.isFinite(bomb.vel.x) ? bomb.vel.x : 0;
+    _famFrame.z = bomb.vel && Number.isFinite(bomb.vel.z) ? bomb.vel.z : 0;
+    const cloud = takeRow(out.edge.clouds, i, () => ({}));
+    cloud.id = bomb.id;
+    cloud.ownerId = data.ownerId != null ? data.ownerId : null;
+    cloud.x = bomb.pos.x;
+    cloud.z = bomb.pos.z;
+    cloud.radius = radius;
+    cloud.envelope = envelope;
+    cloud.overlap = overlap;
+    cloud.share = share;
+    cloud.centerDrag = centerDrag;
+    cloud.edgeDrag = edgeDrag;
+    cloud.outsideDrag = 0;
+    cloud.recoveryX = hx;
+    cloud.recoveryZ = hz;
+    cloud.clearX = bomb.pos.x + hx * (radius + 8);
+    cloud.clearZ = bomb.pos.z + hz * (radius + 8);
+    cloud.trackedId = tracked ? tracked.id : null;
+    cloud.stacks = status ? status.stacks : 0;
+    cloud.maxStacks = GOO_MAX_STACKS;
+    cloud.movement = status ? GOO_MOVEMENT : 1;
+    cloud.shedding = !!(status && (status.expiresTick == null || status.expiresTick > (state.tick | 0)));
+    cloud.controlFrozen = false;
+    cloud.probeLight = gooResidual(FIELD_FAMILY_READ.gooProbeSpeed, FIELD_COUPLING.refMass, centerDrag, _famFrame, dt);
+    cloud.probeHeavy = gooResidual(FIELD_FAMILY_READ.gooProbeSpeed, 400, centerDrag, _famFrame, dt);
+    if (!focus && tracked) focus = cloud.id;
+  }
+  out.edge.clouds.length = cloudCount;
+  out.edge.active = cloudCount > 0;
+  out.edge.law = 'viscosity';
+  out.edge.controlFrozen = false;
+  out.edge.focusId = focus || (cloudCount ? out.edge.clouds[0].id : null);
+
+  _held.length = 0;
+  _heldSet.clear();
+  const massFields = input && input.massFields;
+  if (massFields && typeof massFields.keys === 'function') {
+    for (const entity of massFields.keys()) {
+      const field = massFields.get(entity);
+      if (!entity || entity.alive === false || !entity.pos || !fieldLive(fields, field)) continue;
+      _held.push(entity);
+    }
+  }
+  _held.sort(cmpEntityId);
+  let pinCount = 0;
+  for (let i = 0; i < _held.length && pinCount < FIELD_FAMILY_READ.maxPins; i++) {
+    const entity = _held[i];
+    const field = massFields.get(entity);
+    const row = takeRow(out.pin.rows, pinCount, () => ({}));
+    writeHeldPin(row, entity, field, state);
+    _heldSet.add(entity);
+    _heldSet.add(String(entity.id));
+    pinCount++;
+  }
+  const watch = input && input.pinWatch;
+  if (watch) {
+    const sortedWatch = watch.slice().sort(cmpEntityId);
+    for (let i = 0; i < sortedWatch.length && pinCount < FIELD_FAMILY_READ.maxPins; i++) {
+      const entity = sortedWatch[i];
+      if (!entity || _heldSet.has(entity) || _heldSet.has(String(entity.id))) continue;
+      const field = containingPinField(fields, entity);
+      const row = takeRow(out.pin.rows, pinCount, () => ({}));
+      writeRefusedPin(row, entity, field, state, isPrimed);
+      if (row.reason === 'unaffected') continue;
+      pinCount++;
+    }
+  }
+  const prevPins = input && input.prevPins;
+  _releasedIds.length = 0;
+  if (prevPins && typeof prevPins.forEach === 'function') {
+    prevPins.forEach((id) => {
+      if (!_heldSet.has(id) && !_heldSet.has(String(id))) _releasedIds.push(id);
+    });
+  }
+  _releasedIds.sort((a, b) => (String(a) < String(b) ? -1 : String(a) > String(b) ? 1 : 0));
+  for (let i = 0; i < _releasedIds.length && pinCount < FIELD_FAMILY_READ.maxPins; i++) {
+    const id = _releasedIds[i];
+    const entity = state && state.entities && typeof state.entities.get === 'function' ? state.entities.get(id) : null;
+    const row = takeRow(out.pin.rows, pinCount, () => ({}));
+    blankPin(row);
+    row.id = id;
+    row.phase = 'released';
+    row.reason = 'released';
+    row.storedImpulse = 0;
+    row.teleports = false;
+    if (entity && entity.pos) {
+      row.x = entity.pos.x;
+      row.z = entity.pos.z;
+    }
+    pinCount++;
+  }
+  out.pin.rows.length = pinCount;
+  out.pin.law = 'mass_response';
+  out.pin.massScale = PIN_MASS_SCALE;
+  out.pin.storedImpulse = 0;
+  out.pin.teleports = false;
+  if (prevPins && typeof prevPins.clear === 'function') {
+    prevPins.clear();
+    for (let i = 0; i < _held.length; i++) prevPins.add(_held[i].id);
+  }
+
+  _tools.length = 0;
+  for (let i = 0; i < fields.length; i++) pushTool(fields[i]);
+  const samplePoint = { x: 0, z: 0 };
+  let sampleCount = 0;
+  if (_tools.length) {
+    if (bestOverlap(samplePoint) && sampleCount < FIELD_FAMILY_READ.maxSamples) {
+      writeSample(takeRow(out.bend.samples, sampleCount, () => ({})), fields, samplePoint.x, samplePoint.z, now);
+      sampleCount++;
+    }
+    outsideSample(samplePoint);
+    if (!pointInsideAny(fields, samplePoint.x, samplePoint.z) && sampleCount < FIELD_FAMILY_READ.maxSamples) {
+      writeSample(takeRow(out.bend.samples, sampleCount, () => ({})), fields, samplePoint.x, samplePoint.z, now);
+      sampleCount++;
+    }
+    if (player && pointInsideAny(_tools, player.pos.x, player.pos.z) && sampleCount < FIELD_FAMILY_READ.maxSamples) {
+      writeSample(takeRow(out.bend.samples, sampleCount, () => ({})), fields, player.pos.x, player.pos.z, now);
+      sampleCount++;
+    }
+    if (sampleCount < FIELD_FAMILY_READ.maxSamples) {
+      const field = _tools[0];
+      const inset = Math.min(field.radius * 0.35, Math.max(0, field.radius - 1));
+      const ix = field.center.x + inset;
+      const iz = field.center.z;
+      let duplicate = false;
+      for (let s = 0; s < sampleCount; s++) {
+        const prev = out.bend.samples[s];
+        if (Math.hypot(prev.x - ix, prev.z - iz) < 2) duplicate = true;
+      }
+      if (!duplicate) {
+        writeSample(takeRow(out.bend.samples, sampleCount, () => ({})), fields, ix, iz, now);
+        sampleCount++;
+      }
+    }
+  }
+  out.bend.samples.length = sampleCount;
+
+  const projectiles = copyBucket(state, 'projectiles', 'projectile');
+  let shotCount = 0;
+  for (let i = 0; i < projectiles.length && shotCount < FIELD_FAMILY_READ.maxProjectiles; i++) {
+    const shot = projectiles[i];
+    if (!shot.pos) continue;
+    let hits = 0;
+    let match = null;
+    for (let f = 0; f < fields.length; f++) {
+      const field = fields[f];
+      if (!field || field.tag === 'external' || !fieldContainsPoint(field, shot.pos.x, shot.pos.z)) continue;
+      const profile = fieldBodyProfile(shot, state, _famProfile);
+      if (!fieldAffectsBody(field, profile)) continue;
+      hits++;
+      match = field;
+    }
+    if (hits === 0) continue;
+    const profile = fieldBodyProfile(shot, state, _famProfile);
+    const vel = shot.vel || null;
+    sampleFieldAcceleration(shot.pos, vel, fields, now, profile, _famAccel);
+    const row = takeRow(out.bend.projectiles, shotCount, () => ({}));
+    row.id = shot.id;
+    row.ownerId = shotOwner(shot);
+    row.team = shot.team != null ? shot.team : null;
+    row.reassigned = false;
+    row.ambiguous = hits > 1;
+    row.fieldId = hits === 1 && match ? match.id : null;
+    row.fieldOwnerId = hits === 1 && match ? match.ownerId : null;
+    row.ax = _famAccel.ax;
+    row.az = _famAccel.az;
+    row.bent = Math.hypot(row.ax, row.az) > FIELD_FAMILY_READ.equilibriumAccel;
+    row.x = shot.pos.x;
+    row.z = shot.pos.z;
+    shotCount++;
+  }
+  out.bend.projectiles.length = shotCount;
+  out.bend.active = shotCount > 0;
+  for (let i = 0; i < sampleCount; i++) {
+    if (out.bend.samples[i].kind !== 'inactive') out.bend.active = true;
+  }
+
+  const mines = copyBucket(state, 'mines', 'mine');
+  const prevMines = input && input.prevMines;
+  let mineCount = 0;
+  _nextInside.length = 0;
+  for (let i = 0; i < mines.length && mineCount < FIELD_FAMILY_READ.maxMines; i++) {
+    const mine = mines[i];
+    if (!mine.pos) continue;
+    let inside = null;
+    let insideDist = Infinity;
+    for (let f = 0; f < fields.length; f++) {
+      const field = fields[f];
+      if (!field || field.tag === 'external' || !(field.radius > 0)) continue;
+      if (!fieldContainsPoint(field, mine.pos.x, mine.pos.z)) continue;
+      const dist = Math.hypot(mine.pos.x - field.center.x, mine.pos.z - field.center.z);
+      if (!inside || dist < insideDist) {
+        inside = field;
+        insideDist = dist;
+      }
+    }
+    const was = !!(prevMines && prevMines.has(mine.id));
+    if (!inside && !was) continue;
+    const profile = fieldBodyProfile(mine, state, _famProfile);
+    sampleFieldAcceleration(mine.pos, mine.vel || null, fields, now, profile, _famAccel);
+    let exitX = 1;
+    let exitZ = 0;
+    let outward = false;
+    let nearRim = false;
+    const guide = inside;
+    if (guide) {
+      const dx = mine.pos.x - guide.center.x;
+      const dz = mine.pos.z - guide.center.z;
+      const len = Math.hypot(dx, dz);
+      if (len > 1e-4) { exitX = dx / len; exitZ = dz / len; }
+      outward = (_famAccel.ax * exitX + _famAccel.az * exitZ) > 0;
+      nearRim = len >= guide.radius * (1 - FIELD_FAMILY_READ.mineRimFraction);
+    }
+    const leaving = !!(inside && outward && nearRim);
+    const left = was && !inside;
+    const row = takeRow(out.breakout.mines, mineCount, () => ({}));
+    row.id = mine.id;
+    row.ownerId = shotOwner(mine);
+    row.armed = !!(mine.data && mine.data.armed);
+    row.triggered = !!(mine.data && mine.data.triggered);
+    row.inside = !!inside;
+    row.left = left;
+    row.held = !!(inside && !leaving);
+    row.breakout = leaving || left;
+    row.fieldId = inside ? inside.id : null;
+    row.x = mine.pos.x;
+    row.z = mine.pos.z;
+    row.exitX = exitX;
+    row.exitZ = exitZ;
+    row.ax = _famAccel.ax;
+    row.az = _famAccel.az;
+    mineCount++;
+    if (inside) _nextInside.push(mine.id);
+  }
+  out.breakout.mines.length = mineCount;
+  if (prevMines && typeof prevMines.clear === 'function') {
+    prevMines.clear();
+    for (let i = 0; i < _nextInside.length; i++) prevMines.add(_nextInside[i]);
+  }
+  return out;
+}

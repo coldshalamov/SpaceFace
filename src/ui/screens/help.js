@@ -122,12 +122,26 @@ export const GAMEPAD_ROW_ACTIONS = Object.freeze([
   ['Travel burn', 'travelBurn', (g) => g],
   ['Auto-target', 'autoTarget', (g) => g],
   ['Detonate charge', 'chargeDetonate', (g) => g],
+  // FB-003 chord layer — LB is the survey/deploy layer, RB the combat-state layer.
+  ['Scanner pulse', 'scanPulse', (g) => g],
+  ['Anchor Mass Seed', 'deployMassSeed', (g) => g],
+  ['Deploy attractive Well', 'deployWell', (g) => g],
+  ['Clearing Cone', 'toggleClearingCone', (g) => g],
+  ['Skim collector', 'toggleSkimCollector', (g) => g],
+  ['World Site beam', 'siteBeam', (g) => g],
+  ['Bullet time', 'bulletTime', (g) => g],
+  ['Cloak', 'cloak', (g) => g],
+  ['Throw impulse charge', 'chargeThrow', (g) => g],
+  ['Cruise drive', 'cruise', (g) => g],
+  ['Deploy nav beacon', 'deployBeacon', (g) => g],
+  ['Jettison cargo lot', 'jettisonLot', (g) => g],
 ]);
 
-// Rows with no pad action: analogue sticks, and two verbs a pad does not own. Keyed by LABEL, not
-// by index — an index set silently starts freezing the wrong row the first time one is inserted.
+// Rows with no pad action: the analogue sticks and the one verb a pad does not own. Keyed by
+// LABEL, not by index — an index set silently starts freezing the wrong row the first time one
+// is inserted.
 const GAMEPAD_STATIC_LABELS = Object.freeze(new Set([
-  'Fly (yaw + throttle)', 'Aim weapons', 'Anchor Mass Seed', 'Open mission log',
+  'Fly (yaw + throttle)', 'Aim weapons', 'Open mission log',
 ]));
 
 // Every entry of GAMEPAD_DEFAULT_BINDINGS gets a row, so the row list IS the sheet's order.
@@ -135,17 +149,18 @@ const GAMEPAD_STATIC_LABELS = Object.freeze(new Set([
 const GAMEPAD_ROW_ORDER = Object.freeze([
   'Fly (yaw + throttle)', 'Aim weapons',
   'Fire', 'Mine beam', 'Boost', 'Brake / reverse', 'Shove (repulsor)', 'Accept / confirm',
-  'Massline', 'Anchor Mass Seed', 'Countermeasure', 'Drop bomb', 'Cycle bomb-bay payload',
+  'Massline', 'Countermeasure', 'Drop bomb', 'Cycle bomb-bay payload',
   'Cycle target', 'Open star-map', 'Open codex', 'Open mission log', 'Pause', 'Dock / activate',
   'Cancel / back', 'Station tab: previous', 'Station tab: next', 'Travel burn', 'Auto-target',
-  'Detonate charge',
+  'Detonate charge', 'Throw impulse charge', 'Cloak', 'Bullet time', 'Cruise drive',
+  'Scanner pulse', 'Anchor Mass Seed', 'Deploy attractive Well', 'Clearing Cone',
+  'Skim collector', 'World Site beam', 'Deploy nav beacon', 'Jettison cargo lot',
 ]);
 
 // The static rows carry no action, so their text is authored here. Everything else is derived.
 const GAMEPAD_STATIC_TEXT = Object.freeze({
   'Fly (yaw + throttle)': 'Left stick',
   'Aim weapons': 'Right stick',
-  'Anchor Mass Seed': 'keyboard verb — rebind under Settings → Controls',
   'Open mission log': 'Start / Options → Pause → Mission Log',
 });
 

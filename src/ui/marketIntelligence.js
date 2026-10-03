@@ -293,6 +293,31 @@ export function tradeMarginReceipts(ledger, limit = 10) {
 }
 
 /**
+ * lifetimeMarginFor(margins, commodityId) → roll-up or null
+ *
+ * PURE. FB-047: the career bucket written by recordTradeLedger — count, units, total margin,
+ * best and worst unit margin — beside whatever the ten-receipt ledger still holds. A commodity
+ * never sold through has no bucket; null is the honest absence, not a zero row.
+ */
+export function lifetimeMarginFor(margins, commodityId) {
+  if (!margins || typeof margins !== 'object' || commodityId == null) return null;
+  const m = margins[String(commodityId)];
+  if (!m || typeof m !== 'object') return null;
+  const units = finiteNonNeg(m.units);
+  if (!(units > 0)) return null;
+  const profitCr = Math.round(Number(m.profitCr) || 0);
+  return {
+    commodityId: String(commodityId),
+    sales: finiteNonNeg(m.sales),
+    units,
+    profitCr,
+    avgMarginUnit: units > 0 ? Math.round(profitCr / units) : 0,
+    bestMarginUnit: Number.isFinite(m.bestMarginUnit) ? m.bestMarginUnit : null,
+    worstMarginUnit: Number.isFinite(m.worstMarginUnit) ? m.worstMarginUnit : null,
+  };
+}
+
+/**
  * marketIntelligence(state, commodityId) → IntelligenceView
  *
  * Composite pure view over state.player.marketMemory + tradeLedger at state.simTime.
@@ -311,6 +336,7 @@ export function marketIntelligence(state, commodityId) {
     bestBuy: null,
     lane: null,
     receipts: [],
+    lifetime: null,
     caveat: STALE_CAVEAT,
   };
   try {
@@ -336,6 +362,7 @@ export function marketIntelligence(state, commodityId) {
       bestBuy: pickBest(quotes, 'buy', false),
       lane: bestKnownMarginLane(memory, cid, nowS),
       receipts: tradeMarginReceipts(player.tradeLedger, 10),
+      lifetime: lifetimeMarginFor(player.tradeMargins, cid),
       caveat: STALE_CAVEAT,
     };
   } catch {
@@ -462,5 +489,6 @@ export default {
   bestKnownMarginLane,
   tradeMarginReceipt,
   tradeMarginReceipts,
+  lifetimeMarginFor,
   marketIntelligence,
 };

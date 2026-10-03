@@ -4764,6 +4764,20 @@
       "ktx2Textures": 6,
       "meshoptBufferViews": 126,
       "contractNodeCount": 42
+    },
+    {
+      "id": "wholeship_ship_stormshift_collector_v01",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/ship_stormshift_collector_v01.glb",
+      "release": "assets/ships/release/parts/wholeships/ship_stormshift_collector_v01.glb",
+      "sourceSha256": "2566c9b8d60115fd32cb3857c69da7c5183aa949dca9936a64e37e98eea4d422",
+      "releaseSha256": "70643df0e55e6f6c3ebb743840ad24097ad156d12ee6f8359d879ebeb2346e9a",
+      "sourceBytes": 2319116,
+      "releaseBytes": 1095968,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 494,
+      "contractNodeCount": 155
     }
   ]
 }

@@ -16,6 +16,7 @@
 // story" law. Never writes credits, cargo, or rep (single-writer §0.6); never rolls its own losses.
 
 import { drawSeeded, hash32 } from '../core/rng.js';
+import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 
 const MAX_ACTIVE = 4;        // cap concurrent interventions so a mass-loss event doesn't spam wrecks
@@ -68,7 +69,17 @@ export const intervention = {
     // The trigger: an automation asset was lost. Spawn salvage + raise the alert.
     this.bus.on('automation:assetLost', (p) => this._onAssetLost(p));
     // Cross-sector honesty: a logged site materializes when the player arrives.
-    this.bus.on('sector:enter', () => this._materializePendings());
+    // Live GPU + flight + hard enter: defer into the cook's FIFO — the census
+    // drains the same _materializePendings call under its slice clock in
+    // listener order instead of synchronously inside the emit.
+    this.bus.on('sector:enter', (p) => {
+      if (deferSectorEnterMaterialization(this.state, p, this._cookProvider)) return;
+      this._materializePendings();
+    });
+    // Census arm: logged sites materialize inside the sector cook deterministically.
+    this._cookProvider = () => this._materializePendings();
+    (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
+      .push(this._cookProvider);
   },
 
   _onAssetLost(p) {
@@ -160,7 +171,9 @@ export const intervention = {
     const wreck = this.helpers.spawnEntity({
       type: 'wreck', pos, radius: 8, mass: 1e6,
       hull: 1, hullMax: 1,
-      physicsBody: { shape: 'capsule' },
+      // SFQ-B025: the authored 1e6 dead-mass is the body's own mass — normalization must not
+      // substitute the ~51-mass wreck-density value for an intended immovable hulk.
+      physicsBody: { shape: 'capsule', mass: 1e6 },
       data: {
         parentType: job.kind || 'asset',
         proportions: WRECK_COLLIDER_PROPORTIONS,

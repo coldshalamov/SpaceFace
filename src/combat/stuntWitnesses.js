@@ -3,6 +3,7 @@ import { journalFor, bodyLife } from './stuntEvidence.js';
 import { witnessLineOfSight } from './lineOfSight.js';
 import { activeHullIdentity } from '../data/hullIdentity.js';
 import { isHostileForAI } from '../ai/engagementAuthority.js';
+import { entityIndexVersion, entityIndexLaneVersion } from '../world/livingWorldViews.js';
 export { witnessLineOfSight } from './lineOfSight.js';
 const LIMITS = { episodes: 32, witnesses: 8, terminals: 8, reportQueue: 8 };
 const finite = n => Number.isFinite(n) ? n : 0;
@@ -17,6 +18,42 @@ export function witnessState(state) {
 }
 export function observerIdentity(entity) {
   return entity?.data?.worldRecordId ?? entity?.data?.identityKey ?? entity?.data?.transponderId ?? (entity?.id != null ? `entity:${entity.id}` : null);
+}
+// Witness-eligible types are spawn-fixed — the subset is latched on the entity-index
+// version instead of paying observerProfile over every entity every tick while stunt
+// roots are open. Volatile gates (alive/sensors/owner/hostility) still run per call.
+const _witnessCandidates = { version: null, source: null, list: [] };
+// Members are ship|station|sensor|camera — sensor/camera never spawn as entity types,
+// so shipLike+stations lanes cover the real subset and projectile churn can't wake it.
+const WITNESS_CANDIDATE_LANES = ['shipLike', 'stations'];
+function witnessCandidatesFor(state) {
+  const laneVersion = entityIndexLaneVersion(state, WITNESS_CANDIDATE_LANES);
+  const version = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
+  const cache = _witnessCandidates;
+  if (version == null || cache.version !== version || cache.source !== state.entities) {
+    cache.version = version;
+    cache.source = state.entities;
+    cache.list.length = 0;
+    for (const e of state.entities.values()) {
+      if (e && ['ship','station','sensor','camera'].includes(e.type)) cache.list.push(e);
+    }
+  }
+  return cache.list;
+}
+// The root×observer target walk is spawn-stable eligibility — `alive`/`point(pos)` are
+// rechecked per target below, and Map order is load-bearing (the tracked<8 cap picks by
+// iteration order), so the array is version-latched rather than hash-queried.
+const _witnessTargets = { version: null, source: null, list: [] };
+function witnessTargetsFor(state) {
+  const version = entityIndexVersion(state);
+  const cache = _witnessTargets;
+  if (version == null || cache.version !== version || cache.source !== state.entities) {
+    cache.version = version;
+    cache.source = state.entities;
+    cache.list.length = 0;
+    for (const t of state.entities.values()) if (t && t.alive && point(t.pos)) cache.list.push(t);
+  }
+  return cache.list;
 }
 export function observerProfile(state, entity) {
   if (!entity || entity.alive !== true || entity.id === state.playerId || !point(entity.pos)) return null;
@@ -57,9 +94,12 @@ export function observeStuntWitnesses(state) {
   for(const [id,row] of Object.entries(own.episodes))if(tick>row.rootTick+480)delete own.episodes[id];
   const player=state.entities?.get?.(state.playerId);if(!player)return;
   const observers=[];
-  for(const entity of state.entities.values()) { const profile=observerProfile(state,entity);if(profile&&distance(entity.pos,player.pos)<=450)observers.push({entity,profile}); }
+  for(const entity of witnessCandidatesFor(state)) { const profile=observerProfile(state,entity);if(profile&&distance(entity.pos,player.pos)<=450)observers.push({entity,profile}); }
   observers.sort((a,b)=>distance(a.entity.pos,player.pos)-distance(b.entity.pos,player.pos)||String(a.entity.id).localeCompare(String(b.entity.id)));
   observers.length=Math.min(observers.length,LIMITS.witnesses);
+  // Per-tick target candidates for the root×observer nest — alive/point are rechecked
+  // per target below; this just avoids re-walking the whole entity map per (root,observer).
+  const witnessTargets=witnessTargetsFor(state);
   for(const root of j.roots.values()) {
     if(root.actorId!==state.playerId||tick<root.tick||tick>root.tick+480||root.truncated)continue;
     let episode=own.episodes[root.id];
@@ -78,9 +118,11 @@ export function observeStuntWitnesses(state) {
       sampleCounter(row,'transferTicks',tick,transferring&&seesSource);
       row.sourceTicks=Math.min(row.sourceTicks,6);row.transferTicks=Math.min(row.transferTicks,6);
       // Watch actual approaching bodies before their terminal event; no destroyed target is
-      // retroactively treated as visible for six later samples.
+      // retroactively treated as visible for six later samples. The candidate walk is
+      // hoisted out of the root×observer nest (spawn-stable eligibility only: every
+      // per-target gate below re-runs per observer, preserving order and results).
       let tracked=0;
-      for(const target of state.entities.values()) {
+      for(const target of witnessTargets) {
         if(tracked>=8)break;
         const relevantFlight=root.threatIds?.includes(target.id)||root.needle?.boundaryIds?.includes(target.id);
         if(!target.alive||(!target.collides&&!relevantFlight)||target.id===source.id||target.id===player.id||!point(target.pos))continue;
@@ -321,7 +363,10 @@ export function sendWitnessReports(state,incident,bus) {
     const coverageKey=JSON.stringify([witness.identity,witness.sourceTicks,witness.transferCoverage,witness.payoffTicks,witness.terminalLives]);
     if(incident.reportSources?.includes(coverageKey))continue;
     let receiver=null,range=Infinity;
-    for(const entity of state.entities.values()) {
+    const _swIndex=state.entityIndex;
+    const _swReceivers=_swIndex&&_swIndex.__spacefaceEntityIndexV1===true&&_swIndex.ready===true
+      &&Array.isArray(_swIndex.stations)?_swIndex.stations:state.entities.values();
+    for(const entity of _swReceivers) {
       if(entity.id===sender.id||entity.type!=='station')continue;
       const target=observerProfile(state,entity);
       if(!target?.comms||target.factionId!==profile.factionId)continue;

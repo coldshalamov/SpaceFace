@@ -6,6 +6,7 @@ import { clearEntityRuntime } from '../core/entity.js';
 import { authoredPrefetchRadius, farLedgerScanRadius, tableTravelSpeed } from '../render/tabletopPolicy.js';
 import { SIM_TIER, NEAR_ENTER_PAD_WU, NEAR_EXIT_PAD_WU } from './activityClassification.js';
 import { ensureActivityClassified, physicsReachWuFromState } from './activityRuntime.js';
+import { entityIndexLaneVersion } from './livingWorldViews.js';
 import { getAsteroidFieldRock } from './asteroidField.js';
 import { getDressingRow } from './dressingTable.js';
 import { advanceWorldRecordInto, itineraryPositionInto, normalizeIntent } from './worldCatchup.js';
@@ -33,6 +34,15 @@ function entityIndexVersion(state) {
   return index && index.__spacefaceEntityIndexV1 && Number.isFinite(index.version)
     ? index.version
     : null;
+}
+
+/** Membership lanes for the empty-quiet latch — far-row candidates virtualize from
+ * ships and wrecks only, so projectile/pickup/asteroid churn can't wake it. */
+const FAR_EMPTY_QUIET_LANES = ['shipLike', 'wrecks'];
+
+function farQuietMembershipVersion(state) {
+  const lane = entityIndexLaneVersion(state, FAR_EMPTY_QUIET_LANES);
+  return lane === -1 ? entityIndexVersion(state) : lane;
 }
 
 function farRowCount(state) {
@@ -241,6 +251,12 @@ export function shouldVirtualizeFarActor(entity, state) {
   // respawns the full hulk on sector entry. The lean far row drops markerId, so a shelved wreck
   // would promote as an unbindable shell duplicating the marker's own respawn (D89).
   if (data.markerId) return false;
+  // A physical world one-off's body belongs to the dressing materializer the same way:
+  // _spawnWorldOneOffs re-mints/re-decorates by recordId on every sector materialize. The lean
+  // row drops worldOneOff/oneOffId/name/masslineTetherable, so shelving both degrades the
+  // promoted shell and hides the shelved copy from the materializer's live-entity dedup —
+  // every load minted a twin anchored to the same permanent record (D141).
+  if (data.worldOneOff === true) return false;
   if (data.activityActorSlotId || data.wingman || data.role === 'wingman') return false;
   if (flags.tethered || data.tethered) return false;
   if (state.player && state.player.tether && state.player.tether.targetId === entity.id) return false;
@@ -278,6 +294,11 @@ function leanIdentityData(entity) {
   if (d.kind != null) out.kind = d.kind;
   if (d.role != null) out.role = d.role;
   if (d.persistenceOwner != null) out.persistenceOwner = d.persistenceOwner;
+  // The faction-presence marker is the hull's authored identity: activityRuntime's
+  // authoredPresence combat rule, traffic, lossLedger, barkDirector, hails, and the presence
+  // owner's own re-adoption all key on it. A shelved hull that drops it promotes stripped
+  // and unmatchable — its owner then mints a twin beside it (D141).
+  if (d.factionPresence != null) out.factionPresence = d.factionPresence;
   if (d.nextEventAtT != null) out.nextEventAtT = d.nextEventAtT;
   // The durable AI descriptor (archetype/doctrine) must survive shelve→promote: captureEntityRecord
   // reads it, and entitySpecFromRecord only default-fills when the record carries none — dropping it
@@ -339,6 +360,12 @@ export function catchUpFarRecord(rec, simTime, table = null) {
   // In-place advance: the per-tick sweep only needs the record's fields to land —
   // advanceWorldRecordInto skips the {...record} spread + pos/vel/drift literals the
   // allocating variant pays per row per tick. Field values are identical.
+  // The presentation collect memoizes its walk on table.version, which only a re-key
+  // bumps — a row advanced within one cell across the walked disc's rim would stay
+  // absent from the memoized scratch until its own next cell-cross. Capture the pre-step
+  // position so the disc-rim crossing below can stamp the bump the re-key path gives.
+  const prevX = rec.pos ? finite(rec.pos.x) : NaN;
+  const prevZ = rec.pos ? finite(rec.pos.z) : NaN;
   const advanced = advanceWorldRecordInto(rec, fromT, toT);
   if (!advanced) {
     rec.lastExactT = toT;
@@ -356,6 +383,18 @@ export function catchUpFarRecord(rec, simTime, table = null) {
       // The presentation collect memoizes its grid walk on table.version — a silent
       // re-key would let a memoized disc keep returning a row at its old cell.
       table.version++;
+    } else {
+      // Same cell: no re-key, so the memoized collect keeps its scratch — unless the
+      // advance just carried the row across the recorded disc's rim (outside → in).
+      const disc = table.collectDisc;
+      if (disc && disc.r > 0 && Number.isFinite(prevX)) {
+        const nx = finite(rec.pos.x) - disc.x;
+        const nz = finite(rec.pos.z) - disc.z;
+        if (nx * nx + nz * nz <= disc.r * disc.r
+          && (prevX - disc.x) * (prevX - disc.x) + (prevZ - disc.z) * (prevZ - disc.z) > disc.r * disc.r) {
+          table.version++;
+        }
+      }
     }
   }
   return rec;
@@ -364,6 +403,21 @@ export function catchUpFarRecord(rec, simTime, table = null) {
 export function insertFarActor(state, entity, simTime = 0, helpers = null) {
   const table = ensureFarActorTable(state);
   const rec = snapshotActor(entity, simTime);
+  if (!rec.intent) {
+    // The entity's live control intent ({moveX,moveZ,...}) carries no itinerary kind, so
+    // snapshotActor normalizes it to null — resume the durable record's canonical intent
+    // instead: the shelved row then advances along its route at cruise rather than
+    // drifting ballistically along its velocity tangent, and the row's promote position
+    // tracks the same window the parallel record advertises. Degenerate windows
+    // (endT <= startT — a parked or unspeeded body) stay ballistic: honoring one would
+    // park the row at `to` on its first advance.
+    const recordId = rec.data && rec.data.worldRecordId;
+    const record = recordId != null && state && state.world
+      && state.world.records && state.world.records.byId
+      ? state.world.records.byId[recordId] : null;
+    const seeded = record && normalizeIntent(record.intent);
+    if (seeded && seeded.endT > seeded.startT) rec.intent = seeded;
+  }
   // A shelved body's entity:destroyed releases its spawn-budget slot. Remember who owned it so
   // promotion re-acquires a slot instead of returning an uncounted live entity (D70).
   const budget = helpers && helpers.spawnBudget;
@@ -706,7 +760,7 @@ export function tickFarActors(state, helpers, bus) {
     tickFarActors._quiet = null;
     publishFarQuiet(state, false);
   } else if (FAR_EMPTY_QUIET_LATCH !== false) {
-    const membership = entityIndexVersion(state);
+    const membership = farQuietMembershipVersion(state);
     if (membership != null) {
       const tick = state.tick | 0;
       const quiet = tickFarActors._quiet;
@@ -816,7 +870,7 @@ export function tickFarActors(state, helpers, bus) {
   // Arm empty+no-virt latch only when far stayed empty and probe saw no virt candidates.
   const farAfter = farRowCount(state);
   if (FAR_EMPTY_QUIET_LATCH !== false && farAfter === 0 && virtSeen === 0) {
-    const membership = entityIndexVersion(state);
+    const membership = farQuietMembershipVersion(state);
     if (membership != null) {
       tickFarActors._quiet = { membership, armedTick: state.tick | 0 };
       publishFarQuiet(state, true);

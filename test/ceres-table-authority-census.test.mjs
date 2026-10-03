@@ -128,7 +128,12 @@ test('quiet Ceres refinery pocket keeps the combat list in the tens', async () =
   };
   console.log(JSON.stringify(report, null, 2));
 
-  assert.ok(gameplay.length < 70, `quiet Ceres entityList should be tens, got ${gameplay.length}`);
+  // Bound re-pinned 2026-10-03 (D138): the authored growth adjudicated under D137 —
+  // +12 closed_refinery fauna cast (af734e085), +3 Kettle Line live-actor POIs (7885a276d)
+  // and collider-manifest enrichment (954a0ab8c/eb1869826) — moved the quiet census 61 → 76.
+  // "Tens" semantics unchanged: bound at <80 to keep headroom while still catching real
+  // entityList ballooning.
+  assert.ok(gameplay.length < 80, `quiet Ceres entityList should be tens, got ${gameplay.length}`);
   assert.ok(after.length <= live.length + 8, 'warm list should not balloon during the sample');
   assert.ok(fieldRocks > 200, `rocks belong in asteroidField, got ${fieldRocks}`);
   assert.ok(liveRocks < 20, `live rocks should be the pinned geology/activity set, got ${liveRocks}`);

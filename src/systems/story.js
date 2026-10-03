@@ -170,8 +170,29 @@ export const story = {
     bus.on('career:origin:declined', (p) => this._recordCareer('declined', p || {}));
     bus.on('career:origins:declined', (p) => this._recordCareer('declined', p || {}));
     bus.on('career:origins:accepted', (p) => this._recordCareer('chosen', p || {}));
+    // The bundle emits one row per live offer; only offers the player can actually take are
+    // recorded as "offered" so the ledger never lists a door it never really opened.
+    bus.on('career:origins:offered', (p) => {
+      const offers = p && Array.isArray(p.offers) ? p.offers : [];
+      for (const offer of offers) {
+        if (offer && offer.canAccept === true) this._recordCareer('offered', offer);
+      }
+    });
+    bus.on('career:origins:abandoned', (p) => this._recordCareer('abandoned', p || {}));
+    bus.on('career:ladder:offered', (p) => this._recordCareer('offered', p || {}));
     bus.on('career:ladder:choose', (p) => this._recordCareer('chosen', p || {}));
+    bus.on('career:ladder:stepActive', (p) => {
+      // Committing a run's first step IS the career choice; the fact id dedupes later activations.
+      if (p && (p.stepIndex | 0) === 0) this._recordCareer('chosen', p);
+    });
+    bus.on('career:ladder:choiceResolved', (p) => this._recordCareer('choice', p || {}));
     bus.on('career:ladder:stepDone', (p) => this._recordCareer('ladder', p || {}));
+    bus.on('career:ladder:stepRecovered', (p) => this._recordCareer('recovered', p || {}));
+    bus.on('career:ladder:completed', (p) => this._recordCareer('completed', p || {}));
+    bus.on('career:ladder:progress', (p) => {
+      if (p && p.status === 'declined') this._recordCareer('declined', p);
+      else if (p && p.status === 'abandoned') this._recordCareer('abandoned', p);
+    });
     // While the tutorial owns the one-voice channel, suppress its tutorial-line windows so ambient
     // comms can't stomp a beat's verb. The tutorial system announces each line via tutorial:say.
     bus.on('tutorial:say', () => { this._lastTutorialSayS = (this.state.simTime || 0); });
@@ -997,6 +1018,9 @@ export const story = {
       // The finite accept line yields to the first transmission. Do not stack another toast here.
       if (!plan.writtenFinale) this._sayStoryLine(plan.resolution || plan.title, 8);
       this.bus.emit('endgame:finaleReady', this.getWrittenEndingArchive());
+      // The Codex Archive refreshes off this signal so the filed ending lands in the ship's
+      // own record at the moment it is written, not the next time the Archive is opened.
+      this.bus.emit('endgame:archive', this.getWrittenEndingArchive());
       this._announceFinaleReady();
     }
     this._schedulePostEndingObjective();
@@ -1881,7 +1905,12 @@ export const story = {
     const gameplay = this.state && this.state.settings && this.state.settings.gameplay;
     if (gameplay && gameplay.tutorialHints === false) return false;
     const ob = this.state && this.state.onboarding;
-    return !ob || (ob.active && !ob.finished) || ob.finished === false;
+    // NXB-046 — the tutorial owns the one-voice channel only while it is actually
+    // running. A torn-down rail (save:loaded mid-tutorial, abandon without B5) leaves
+    // {active:false, finished:false}; reading "never finished" as ownership strands the
+    // deferred cold start permanently, because tutorial:finished can never fire again.
+    // `!ob` stays conservative: before onboarding begins, a tutorial may still start.
+    return !ob || !!(ob.active && !ob.finished);
   },
 
   _onboardingActive() {
@@ -2201,7 +2230,13 @@ export const story = {
     const s = this.state.story;
     const entry = s.storyEntry;
     if (!entry.pending || entry.voiced) return false;
-    if (entry.deferred && !opts.released) return false;
+    if (entry.deferred && !opts.released) {
+      // NXB-046 — a persisted deferral only holds while a tutorial actually owns the
+      // opening; otherwise the flag self-heals instead of stranding the entry forever.
+      if (this._tutorialOwnsOpening()) return false;
+      entry.deferred = false;
+      this._coldStartDeferred = false;
+    }
     if (!opts.released && this._onboardingActive()) return false;
     const now = Number(this.state.simTime) || 0;
     if (now < (s.narrativeCalmUntilS || 0)) return false;

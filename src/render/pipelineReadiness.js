@@ -187,6 +187,9 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
   const onBlockingSlice = typeof options.onBlockingSlice === 'function'
     ? options.onBlockingSlice
     : null;
+  const onRejected = typeof options.onRejected === 'function'
+    ? options.onRejected
+    : (error) => console.warn('[render] pipeline admission failed', error);
   const now = typeof options.now === 'function'
     ? options.now
     : () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
@@ -200,7 +203,15 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
   const urgentRuns = new Map();
   let quietTimer = null;
   let maxTimer = null;
-  let compileTail = Promise.resolve();
+  // Compile batches stay strictly serial — render-target selection is global renderer
+  // state. The tail is a pull-queue rather than an eager .then chain: link specs wait
+  // in linkSpecs until the in-flight link settles, so an urgent spec splices ahead of
+  // still-queued ambient links (behind earlier urgents) instead of chaining behind
+  // every link that happened to be queued first. tailSettle shadows the old
+  // compileTail for callers that only want "everything started so far" drained.
+  const linkSpecs = [];
+  let linkActive = false;
+  let tailSettle = Promise.resolve();
   let nextAdmissionId = 0;
   let settledAdmissions = 0;
   let boundedResume = false;
@@ -221,8 +232,8 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
       return;
     }
     if (quietTimer != null) clearTimeout(quietTimer);
-    quietTimer = setTimeout(() => { void flushQueued(); }, quietMs);
-    if (maxTimer == null) maxTimer = setTimeout(() => { void flushQueued(); }, maxWaitMs);
+    quietTimer = setTimeout(() => { observePipelineAdmission(flushQueued()); }, quietMs);
+    if (maxTimer == null) maxTimer = setTimeout(() => { observePipelineAdmission(flushQueued()); }, maxWaitMs);
   }
 
   /** Time only the synchronous compileBatch call (until it returns a value/promise). */
@@ -288,6 +299,41 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
     };
   }
 
+  /** The old compileTail role: resolves once every link started so far has settled. */
+  function laneSettled() {
+    return tailSettle;
+  }
+
+  function enqueueLink(subjects, path, compileOptions, { urgent = false } = {}) {
+    let resolveRun;
+    const run = new Promise((resolve) => { resolveRun = resolve; });
+    const spec = { subjects, path, compileOptions, urgent, resolveRun };
+    if (urgent) {
+      let pos = linkSpecs.length;
+      while (pos > 0 && linkSpecs[pos - 1].urgent === true) pos -= 1;
+      linkSpecs.splice(pos, 0, spec);
+    } else {
+      linkSpecs.push(spec);
+    }
+    pumpLinks();
+    return run;
+  }
+
+  function pumpLinks() {
+    if (linkActive) return;
+    const spec = linkSpecs.shift();
+    if (!spec) return;
+    linkActive = true;
+    const run = Promise.resolve().then(() => invokeCompileBatch(
+      spec.subjects, spec.path, spec.compileOptions,
+    ));
+    observePipelineAdmission(run, onRejected);
+    spec.resolveRun(run);
+    tailSettle = tailSettle.then(() => run.catch(() => null));
+    const next = () => { linkActive = false; pumpLinks(); };
+    run.then(next, next);
+  }
+
   function flushQueuedThrough(
     watermark = Number.POSITIVE_INFINITY,
     path = 'queued',
@@ -308,15 +354,12 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
     if (batch.length === 0) {
       queued = remaining;
       if (scheduleRemaining && queued.length > 0) scheduleFlush();
-      return compileTail;
+      return laneSettled();
     }
     clearTimers();
     queued = remaining;
     const subjects = batch.map((entry) => entry.subject);
-    const run = compileTail.then(() => invokeCompileBatch(subjects, path, batchCompileOptions(batch)));
-    // Render-target selection is global renderer state. Keep batches serialized even if a second
-    // runway fills while the first one is still waiting on the graphics driver.
-    compileTail = run.catch(() => null);
+    const run = enqueueLink(subjects, path, batchCompileOptions(batch));
     run.then(
       (result) => {
         for (const entry of batch) {
@@ -361,13 +404,13 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
         return;
       }
       skippedResumeForLatePresent = false;
-      void flushResumedBatch();
+      observePipelineAdmission(flushResumedBatch());
     });
     ranSynchronously = false;
   }
 
   function flushResumedBatch() {
-    if (deferAutoFlush() || queued.length === 0) return compileTail;
+    if (deferAutoFlush() || queued.length === 0) return laneSettled();
     const run = flushQueuedThrough(
       Number.POSITIVE_INFINITY,
       'resumed',
@@ -447,12 +490,12 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
           break;
         }
         if (folded) queued.splice(queued.indexOf(folded), 1);
-        const run = compileTail.then(() => invokeCompileBatch(
+        const run = enqueueLink(
           [subject],
           'urgent',
           { ...compileOptions, skipSharedBatch: true },
-        ));
-        compileTail = run.catch(() => null);
+          { urgent: true },
+        );
         urgentRuns.set(subject, run);
         run.then(
           (result) => {
@@ -479,6 +522,9 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
         pending.delete(entry);
         settledAdmissions += 1;
       });
+      // A queued consumer may retire before its scheduled batch runs. Observe the cleanup child
+      // now without replacing it: an awaited owner must still receive the original rejection.
+      observePipelineAdmission(entry.completion);
       pending.add(entry);
       queued.push(entry);
       scheduleFlush();
@@ -505,8 +551,7 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
         ...(compileOptions || {}),
         ...batchCompileOptions([explicitEntry, ...ambient]),
       };
-      const run = compileTail.then(() => invokeCompileBatch(merged, 'explicit', mergedOptions));
-      compileTail = run.catch(() => null);
+      const run = enqueueLink(merged, 'explicit', mergedOptions, { urgent: true });
       run.then(
         (result) => {
           for (const entry of ambient) {
@@ -516,10 +561,10 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
         },
         (error) => { for (const entry of ambient) entry.reject(error); },
       );
-      return run.then((result) => {
+      return observePipelineAdmission(run.then((result) => {
         if (entryInactive(explicitEntry)) throw inactiveOwnerError();
         return result;
-      });
+      }));
     },
 
     resumeAutoFlush() {
@@ -529,14 +574,15 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
         // Resuming inside the hold must leave the lane alive: clearTimers() just removed the only
         // thing that would have re-entered it. Poll the hold instead of returning a dead queue.
         scheduleResumedBatch();
-        return compileTail;
+        return laneSettled();
       }
-      return flushResumedBatch();
+      return observePipelineAdmission(flushResumedBatch());
     },
     waitForPending,
     flushOneAfterPresent() {
-      if (queued.length === 0) return compileTail;
-      return flushQueuedThrough(Number.POSITIVE_INFINITY, 'after-present', 1, true);
+      // The empty lane reuses its already-observed tail without allocating on every present.
+      if (queued.length === 0) return laneSettled();
+      return observePipelineAdmission(flushQueuedThrough(Number.POSITIVE_INFINITY, 'after-present', 1, true));
     },
     get pendingCount() { return pending.size; },
     /** Admissions not yet handed to compileBatch (the rest of pendingCount is linking). */
@@ -988,6 +1034,11 @@ export function commitRequiredPackageAdmission(render, capturedGeneration, class
  * No new timer: a cook that has not settled stays pending, and a late result whose
  * generation changed writes nothing.
  */
+// This path fires exactly when the bounded gates already judged the cook too slow — awaiting
+// the same cook's real completion would park embark for minutes on a contended host with no
+// rejection route. The settle borrows the gate's own contract: bounded, then classify.
+const REQUIRED_PACKAGE_SETTLE_TIMEOUT_MS = 45000;
+
 export async function settleRequiredPackageAdmission(state) {
   const render = state && state.render;
   if (!render) return null;
@@ -997,19 +1048,11 @@ export async function settleRequiredPackageAdmission(state) {
   const livePromise = render.liveScenePresentReady;
   let prepareSettled = null;
   if (preparePromise && typeof preparePromise.then === 'function') {
-    try {
-      prepareSettled = { ok: true, value: await preparePromise };
-    } catch (error) {
-      prepareSettled = { ok: false, error };
-    }
+    prepareSettled = await settleWithin(preparePromise, REQUIRED_PACKAGE_SETTLE_TIMEOUT_MS);
   }
   let liveSettled = null;
   if (livePromise && typeof livePromise.then === 'function') {
-    try {
-      liveSettled = { ok: true, value: await livePromise };
-    } catch (error) {
-      liveSettled = { ok: false, error };
-    }
+    liveSettled = await settleWithin(livePromise, REQUIRED_PACKAGE_SETTLE_TIMEOUT_MS);
   }
   if (render.admissionRunGeneration !== generation) {
     return classifyRequiredPackageAdmission({

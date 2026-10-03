@@ -617,8 +617,15 @@ test('the selected raider receives doctrine only and escapes only after the same
   h.sim.runTicks(61);
   assert.equal(record.raiderEscaped, true);
   assert.equal(record.terminal, true);
-  assert.ok(raider.data.despawnAt <= h.state.simTime + 10,
-    'terminal encounter cleanup keeps the escaped raider on a bounded despawn');
+  // SF-157: the getaway leaves a trace — the thief stays a persistent free actor carrying the
+  // take on its durable stolenLoot bag instead of riding a bounded despawn.
+  assert.equal(raider.data.despawnAt == null, true, 'the escaped raider is not on a despawn timer');
+  assert.equal(raider.alive !== false && h.state.entities.get(raider.id) === raider, true,
+    'the thief remains a real body after the leash crossing');
+  assert.equal(raider.flags.persistent, true, 'the thief keeps actor persistence while it holds the take');
+  const trailLoot = raider.data.ai && raider.data.ai.stolenLoot;
+  assert.equal(trailLoot && trailLoot.lines.reduce((sum, line) => sum + line.qty, 0),
+    record.raiderSecuredQty, 'the escaped qty physically leaves with the thief');
   assert.equal(h.events['freight:raiderEscaped'].length, 1);
   assert.equal(h.events['freight:custodyReceipt'].length, 1);
   assertLossPresented(h);
@@ -659,7 +666,9 @@ test('tacticalAI plus physics makes the exact raider collect by contact and cros
   assert.ok(h.events['pickup:collected'].some((event) => (
     event.collectorId === raiderId && event.pickupId != null && event.acceptedAmount > 0
   )), 'ordinary physics contact publishes the exact raider collection');
-  assert.notEqual(raider.flags.persistent, true, 'physical escape releases temporary custody persistence');
+  assert.equal(raider.flags.persistent, true, 'physical escape keeps the thief durable while it holds the take');
+  assert.equal(raider.data.predationEncounterId, undefined, 'the custody raid binding releases at the leash');
+  assert.equal(live.ids.includes(raiderId), false, 'the thief leaves the roster so despawn sweeps cannot retire it');
   assert.equal(h.events['freight:raiderEscaped'].length, 1);
   assertConserved(record);
 });

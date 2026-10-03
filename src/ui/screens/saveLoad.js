@@ -218,8 +218,12 @@ function nav(ctx, method, arg) {
 /** Read the save index. Prefer the save system's API; fall back to localStorage scan. */
 function readSlots(ctx) {
   const sys = ctx.registry && ctx.registry.get && ctx.registry.get('save');
-  // Preferred: save system exposes a slot index.
+  // Preferred: save system exposes a slot index. Index cards first — the per-render read
+  // must not pay the authoritative blob scan on a stale generation; the validated merge
+  // repaints on 'save:slotsValidated' (listener below) and every load click re-validates
+  // real bytes through _prepareEnvelopeStringAsync anyway.
   if (sys) {
+    if (typeof sys.listSlotsIndexCards === 'function') { try { return normalize(sys.listSlotsIndexCards()); } catch (e) {} }
     if (typeof sys.listSlots === 'function') { try { return normalize(sys.listSlots()); } catch (e) {} }
     if (sys.index && typeof sys.index === 'object') { try { return normalize(sys.index); } catch (e) {} }
   }
@@ -439,12 +443,16 @@ export function shouldOfferNewGameShortcut(meta, saveAllowed) {
   return !isOccupied(meta) && !saveAllowed;
 }
 
-/** The save's hull id (the index stores the def id under shipName); the starter when a save has none. */
+/** The save's hull id (the index stores the def id under shipName); the starter when a save has
+ * none — or names a hull this build no longer ships: saves outlive the catalog, and the stage can
+ * only draw a def it can resolve (the readable label stays the save's own via shipLabel). */
 function slotShipId(meta, player) {
   const fromPlayer = activeOwnedShip(player) && activeOwnedShip(player).defId;
-  if (typeof fromPlayer === 'string' && /^ship_/.test(fromPlayer)) return fromPlayer;
+  if (typeof fromPlayer === 'string' && /^ship_/.test(fromPlayer) && SHIP_NAME_BY_ID.has(fromPlayer)) {
+    return fromPlayer;
+  }
   const id = meta && typeof meta.shipName === 'string' && /^ship_/.test(meta.shipName) ? meta.shipName : null;
-  return id || NEW_GAME.shipId;
+  return (id && SHIP_NAME_BY_ID.has(id)) ? id : NEW_GAME.shipId;
 }
 
 function unwrapSaveData(input) {
@@ -840,6 +848,7 @@ export const saveLoadScreen = {
     });
     // The slot list re-reads the store the moment it changes, not on the next periodic tick.
     const unsubSynced = ctx.bus.on('save:store-synced', () => { if (refs) this._render(ctx); });
+    const unsubValidated = ctx.bus.on('save:slotsValidated', () => { if (refs) this._render(ctx); });
     const unsubCompleted = ctx.bus.on('save:completed', () => { if (refs) this._render(ctx); });
 
     // Foot: Export, Import (the hidden file input stays), Back.
@@ -871,7 +880,7 @@ export const saveLoadScreen = {
       caption, shipName, portrait, scars, titles, rapSheet, grudge,
       objective, credits, fine, actions, facts,
       selected: null, shownShipId: null, ids: [], slots: {},
-      cancelHullRelease, unsubLoading, unsubStartFailed, unsubSynced, unsubCompleted,
+      cancelHullRelease, unsubLoading, unsubStartFailed, unsubSynced, unsubValidated, unsubCompleted,
       markLoadRequested: () => { loadRequested = true; },
       clearLoadRequest: () => { loadRequested = false; },
     };
@@ -1013,6 +1022,11 @@ export const saveLoadScreen = {
     }
     if (this._film) this._film.choose(id);
     if (!quiet) cue('move');
+    // The row under the cursor is the slot Enter is about to load — arm its envelope decode
+    // during the dwell (saveSystem self-gates to frozen/menu and to occupied slots).
+    if (ctx && ctx.bus && typeof ctx.bus.emit === 'function') {
+      ctx.bus.emit('save:loadSpeculationTarget', { slot: id });
+    }
     this._renderStage(ctx);
   },
 
@@ -1415,6 +1429,7 @@ export const saveLoadScreen = {
       try { refs.unsubLoading(); } catch (e) { /* bus already gone */ }
       try { refs.unsubStartFailed(); } catch (e) { /* bus already gone */ }
       try { refs.unsubSynced(); } catch (e) { /* bus already gone */ }
+      try { refs.unsubValidated(); } catch (e) { /* bus already gone */ }
       try { refs.unsubCompleted(); } catch (e) { /* bus already gone */ }
     }
     if (this.hull) { this.hull.dispose(); this.hull = null; }

@@ -8,6 +8,7 @@ import { leftoverNewRunLine } from '../../core/newGamePlus.js';
 import { MODULES } from '../../data/modules.js';
 import {
   DEFAULT_STARTER_ID,
+  NEW_GAME,
   NEW_GAME_STARTERS,
   starterById,
 } from '../../data/newGameDefaults.js';
@@ -247,21 +248,23 @@ export function parseUniverseSeed(value) {
   return Number.isSafeInteger(seed) && seed > 0 && seed <= 0xffffffff ? seed : null;
 }
 
-function randomSeedText(ctx) {
+function randomSeedText() {
   // A fresh seed for the "New seed" word. Cosmetic UI randomness (the run's seed is whatever the
   // field says when Launch is pressed), so Math.random is fine here; state.rng belongs to the sim.
-  const rng = ctx && ctx.state && typeof ctx.state.rng === 'function' ? ctx.state.rng : Math.random;
-  return String(1 + Math.floor(rng() * 0xfffffffe));
+  return String(1 + Math.floor(Math.random() * 0xfffffffe));
 }
 
-function readNewGamePlusCandidate(ctx) {
+function readNewGamePlusCandidateAsync(ctx) {
   try {
     const save = ctx && ctx.registry && ctx.registry.get && ctx.registry.get('save');
-    return save && typeof save.getNewGamePlusCandidate === 'function'
+    if (save && typeof save.getNewGamePlusCandidateAsync === 'function') {
+      return save.getNewGamePlusCandidateAsync();
+    }
+    return Promise.resolve(save && typeof save.getNewGamePlusCandidate === 'function'
       ? save.getNewGamePlusCandidate()
-      : null;
+      : null);
   } catch (error) {
-    return null;
+    return Promise.resolve(null);
   }
 }
 
@@ -558,7 +561,7 @@ export const newGameScreen = {
     const newSeed = el('button', 'k-word k-word--fine', 'New seed');
     newSeed.type = 'button'; newSeed.dataset.action = 'newSeed';
     paintKey(newSeed, 'small');
-    newSeed.addEventListener('click', () => { if (launching) return; seed.value = randomSeedText(ctx); cue('confirm'); });
+    newSeed.addEventListener('click', () => { if (launching) return; seed.value = randomSeedText(ctx); cue('confirm'); this._emitEmbarkSpec(); });
     seedRow.appendChild(seed); seedRow.appendChild(newSeed);
     seedField.wrap.appendChild(seedRow);
     const seedDesc = el('p', 'k-t-fine k-38', ORRERY
@@ -566,16 +569,21 @@ export const newGameScreen = {
       : 'Leave blank for a random universe. The same seed always produces the same contracts and markets.');
     seedDesc.id = 'sf-ng-seed-desc';
     seedField.wrap.appendChild(seedDesc);
+    // A typed seed decides the salted dressing rows — re-arm the embark warm when it changes.
+    seed.addEventListener('input', () => this._emitEmbarkSpec());
     body.appendChild(seedField.wrap);
     body.appendChild(hairline());
 
     // New Run+ is opt-in and read-only until Launch. The save owner revalidates this exact slot and
     // selection at the transition boundary; the UI never copies a whole prior run into the event.
-    const newGamePlusCandidate = readNewGamePlusCandidate(ctx);
     let legacyOn = false;
     let legacyWords = null;
     let legacySelect = null;
-    if (newGamePlusCandidate) {
+    let newGamePlusCandidate = null;
+    // The candidate resolves through the save worker — the multi-MB envelope walk used to gate
+    // this screen's first paint for an opt-in field. Mount the field in place (before the
+    // loadout section) when the candidate lands instead.
+    const mountLegacyField = (newGamePlusCandidate, beforeEl) => {
       const legacyField = field('New Run+');
       legacyField.label.id = 'sf-ng-legacy-label';
       legacyWords = words([
@@ -614,9 +622,9 @@ export const newGameScreen = {
         legacySelect.appendChild(option);
       }
       legacyField.wrap.appendChild(legacySelect);
-      body.appendChild(legacyField.wrap);
-      body.appendChild(hairline());
-    }
+      body.insertBefore(legacyField.wrap, beforeEl);
+      body.insertBefore(hairline(), beforeEl);
+    };
 
     // Loadout: the picked starter's fitted modules as quiet words. Not buttons — nothing here
     // is chosen; the starter row above is the picker and rewrites this list on every pick.
@@ -642,6 +650,11 @@ export const newGameScreen = {
     loadoutField.wrap.appendChild(loadout);
     body.appendChild(loadoutField.wrap);
     body.appendChild(hairline());
+    readNewGamePlusCandidateAsync(ctx).then((candidate) => {
+      if (!candidate) return;
+      newGamePlusCandidate = candidate;
+      mountLegacyField(candidate, loadoutField.wrap);
+    });
 
     // The first fifteen minutes: four static rows under the loadout.
     const route = el('div', 'sf-ng-route');
@@ -828,9 +841,38 @@ export const newGameScreen = {
       setLaunching, unsubStartFailed, unsubLoading, cancelHullRelease, ctx,
       isLaunching: () => launching,
       legacy: () => ({ on: legacyOn, select: legacySelect, candidate: newGamePlusCandidate }),
+      // The embark-speculation seed: typed seeds enumerate exactly; a blank field pre-rolls
+      // a candidate here so the salted dressing rows it warms are the ones the launch rolls.
+      // Drawn through the same rng seam as randomSeedText — the run's seed contract is
+      // unchanged (resetRunState treats a forwarded opts.seed identically to its internal roll).
+      specSeedRoll: parseUniverseSeed(randomSeedText(ctx)),
     };
     this._setStarter(DEFAULT_STARTER.id, { silent: true });
     this._setDifficulty(DEFAULT_DIFFICULTY, { silent: true });
+  },
+
+  // The newGame screen used to be the only embark path with no speculation emit — every
+  // authored decode for the start sector paid inside the loading window. During form dwell
+  // this re-arms the renderer's embark warm: sector recipe + opening cast + starter hull,
+  // with the salted dressing rows once a seed exists (typed or the pre-rolled candidate).
+  _emitEmbarkSpec() {
+    if (!refs || !refs.ctx || !refs.ctx.bus || typeof refs.ctx.bus.emit !== 'function') return;
+    // The arm enumerates the sector def + salted dressing streams and posts ~60–100 warm
+    // requests — running it inside the gesture task drops a menu frame per keystroke.
+    // Coalesce to one deferred emit that reads the field at fire time (not queueMicrotask,
+    // which drains pre-paint): a typed burst arms once, after the gesture.
+    if (this._embarkSpecQueued) return;
+    this._embarkSpecQueued = true;
+    setTimeout(() => {
+      this._embarkSpecQueued = false;
+      if (!refs || !refs.ctx || !refs.ctx.bus || typeof refs.ctx.bus.emit !== 'function') return;
+      const typed = refs.seed ? parseUniverseSeed(refs.seed.value) : null;
+      refs.ctx.bus.emit('game:embarkSpeculation', {
+        sectorId: NEW_GAME.startingSectorId || NEW_GAME.startSectorId || 'sector_helios_prime',
+        seed: typed == null ? refs.specSeedRoll : typed,
+        shipDefId: refs.starter && refs.starter.shipId,
+      });
+    }, 0);
   },
 
   _setStarter(id, { silent = false } = {}) {
@@ -853,6 +895,7 @@ export const newGameScreen = {
     if (this.hull) {
       this.hull.show(starter.shipId, { fittings: starterStageFittings(starter) });
     }
+    this._emitEmbarkSpec();
     syncKeys(refs.starterWords);
   },
 
@@ -886,7 +929,9 @@ export const newGameScreen = {
     // requires a finite positive number and otherwise randomises, so passing NaN or 0 through
     // would silently mean "random" while looking deliberate.
     const rawSeed = parseUniverseSeed(refs.seed.value);
-    const seedOpt = rawSeed == null ? {} : { seed: rawSeed };
+    // Blank forwards the pre-rolled candidate the embark arm already enumerated for — the
+    // salted dressing rows it warmed are the exact rows this run materializes.
+    const seedOpt = { seed: rawSeed == null ? refs.specSeedRoll : rawSeed };
     const legacy = refs.legacy();
     const newGamePlusOpt = legacy.on && legacy.select && legacy.select.value && legacy.candidate
       ? { newGamePlus: { slot: legacy.candidate.sourceSlot, keepsakeId: legacy.select.value } }
@@ -906,6 +951,7 @@ export const newGameScreen = {
   onShow(ctx) {
     if (!refs) return;
     cue('open');
+    this._emitEmbarkSpec();
     refs.setLaunching(false);
     refs.cancelHullRelease();
     if (this.hull) this.hull.restore();

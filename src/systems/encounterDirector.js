@@ -47,7 +47,8 @@ import {
   readTensionPolicy, tensionAccrualScale, tensionCandidateRank, tensionPacingBlockReason,
 } from '../ai/tensionPolicy.js';
 import { hash32, mulberry32 } from '../core/rng.js';
-import { indexedShipLikeOrEntitiesScan, indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
+import { bumpCollidesFlipEpoch, indexedShipLikeOrEntitiesScan, indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
+import { syncEntityCollisionIndexMembership } from '../core/coreSystem.js';
 import { zonesForSector, zoneAt, zoneThreat } from '../data/sectorZones.js';
 import { ZONE_CERES_THROUGHLINE } from '../data/authoredPlaces.js';
 import {
@@ -60,6 +61,7 @@ import {
   ENCOUNTER_SHAPE_BUDGET_PER_HOUR,
   ENCOUNTER_SHAPE_HOUR_SECONDS,
   encounterGrammarKey,
+  emitPredationStalkTelegraph,
 } from './encounterScripts.js';
 import { ENCOUNTERS, NAMED_CAPTAINS, barkText, receiptTextWithFallback } from '../data/encounters.js';
 import { ENCOUNTER_MODULES } from '../data/encounters/index.generated.js';
@@ -127,7 +129,7 @@ const SELF_REGISTERED_RUNTIME_BY_ID = new Map(
 );
 
 // ── hostile pursuit resolution (the touchable anti-pest valve) ──────────────────────────────────
-const PURSUIT_RESOLVE_S = 60;        // a hostile sitting on a non-fighting player resolves
+export const PURSUIT_RESOLVE_S = 60; // a hostile sitting on a non-fighting player resolves
 const PURSUIT_RADIUS = 1600;         // radar/engagement distance to track
 const PURSUIT_RADIUS_SQ = PURSUIT_RADIUS * PURSUIT_RADIUS;
 
@@ -298,6 +300,10 @@ export const encounterDirector = {
       this.bus.on('salvage:communicatorFound', (p) => this._routeToScript('salvageSignal', 'communicatorFound', p));
       // The deterministic choice bridge (UI/test harness both speak this).
       this.bus.on('encounter:choose', (p) => this._onChoose(p));
+      // A claim-defense warning is the whole decode lead for the squad it will fire: publish
+      // the deterministic roster at onset so presentation can warm the hulls during the
+      // countdown instead of decoding them at the glass on arrival.
+      this.bus.on('claim:defenseWarning', (p) => this._publishClaimDefenseRoster(p));
       // Mining noise attracts predators (decaying accumulator; player yields only).
       this.bus.on('mining:yield', (p) => this._onMiningYield(p));
       this.bus.on('resonance:scanCompleted', (p) => this._onResonanceScan(p));
@@ -366,7 +372,18 @@ export const encounterDirector = {
    */
   _ambientPredationCtx() {
     return {
-      emit: (name, payload) => this.emit(name, payload),
+      emit: (name, payload) => {
+        // Ambient stalks publish encounter:ambientPredationTelegraph. The telegraph
+        // path (authored motion and the rest of the convoy contract) listens for
+        // encounter:predationTelegraph. Forward once per raid, before the engage
+        // commit, without emitting that event again when the stalk commits.
+        if (name === 'encounter:ambientPredationTelegraph' && payload) {
+          emitPredationStalkTelegraph(this.state, payload, (eventName, eventPayload) => {
+            this.emit(eventName, eventPayload);
+          });
+        }
+        this.emit(name, payload);
+      },
       docked: isDocked(this.state),
       spawnCargoPod: (s, spec) => spawnJettisonedCargoPod(s, spec, this.helpers),
       removeEntity: (id, opts) => (
@@ -525,8 +542,11 @@ export const encounterDirector = {
       }
     }
     dir.live = {};
+    dir.squadMembership = {};
     dir.pending = [];
     dir.active = {};                                   // spawnBudget hard-resets on non-continuous exit
+    dir.activeMembership = {};
+    dir.scriptProbeRows = 0;
     dir.plannedKey = null;                             // same-day re-entry must replan
   },
 
@@ -555,6 +575,22 @@ export const encounterDirector = {
       const shape = ENCOUNTERS[k];
       const maxCd = now + (shape && shape.cooldownS ? shape.cooldownS : 900);
       if (!(fresh.cooldowns[k] <= maxCd)) fresh.cooldowns[k] = maxCd;
+    }
+    // Warnings restored mid-countdown never re-emit claim:defenseWarning — republish their
+    // rosters here so the resumed countdown still covers the squad's decode lead.
+    const bodies = (state.claims && state.claims.bodies) || [];
+    for (const body of bodies) {
+      const defense = body && body.spec && body.spec.defense;
+      if (!defense || defense.phase !== 'warning' || !defense.encounterId) continue;
+      this._publishClaimDefenseRoster({
+        encounterId: defense.encounterId,
+        bodyId: body.id,
+        sectorId: body.sectorId,
+        pos: { x: body.x, z: body.z },
+        attackerCount: defense.attackerCount,
+        attackerName: defense.attackerName,
+        motive: defense.motive,
+      });
     }
     // A load is a non-continuous sector enter: _onSectorEnter early-returns while _saveRestoring,
     // and this handler is where the authored entry breath and planner were promised ("jump /
@@ -592,10 +628,16 @@ export const encounterDirector = {
   },
 
   _rebindPersistedFreightCustodyCarriers() {
-    const entities = this.state && this.state.entities;
-    if (!entities || typeof entities.values !== 'function') return 0;
+    // No open custodies means nothing the rebind feeds into — skip the entity walk entirely
+    // (the overwhelmingly common case; this is the heaviest indivisible save:loaded listener).
+    const dir = this.state && this.state.encounterDirector;
+    const custodies = dir && dir.stats && dir.stats.openFreightCustodies;
+    if (!Array.isArray(custodies) || custodies.length === 0) return 0;
+    // Carriers are always type === 'ship' — ride the shipLike bucket when the index is live,
+    // falling back to the entity Map for load owners that publish before the index rebuild.
+    const scan = indexedShipLikeOrEntitiesScan(this.state);
     let rebound = 0;
-    for (const entity of entities.values()) {
+    for (const entity of scan) {
       const binding = persistedFreightCarrierBinding(entity);
       if (!binding || binding.custody.carrierId === entity.id) continue;
       const previousCarrierId = binding.custody.carrierId;
@@ -926,41 +968,13 @@ export const encounterDirector = {
     }
     if (!payload.force && !this._gatesPass(shape, state)) return { ok: false, reason: 'gated' };
 
-    const requestedZone = payload.zoneId
-      ? zonesForSector(payload.sectorId).find((candidate) => candidate.id === payload.zoneId)
-      : null;
-    const anchor = payload.anchor
-      || (requestedZone && sectorLocalToGlobalForSector(requestedZone.center, payload.sectorId))
-      || (this.player() && this.player().pos)
-      || { x: 0, z: 0 };
-    const local = globalToSectorLocalForSector(anchor, payload.sectorId);
-    const zone = {
-      ...(requestedZone || {}),
-      id: payload.zoneId || (requestedZone && requestedZone.id) || `authored:${shape.id}`,
-      name: payload.zoneName || (requestedZone && requestedZone.name) || shape.title || shape.id,
-      type: payload.zoneType || (requestedZone && requestedZone.type)
-        || (shape.zoneTypes && shape.zoneTypes[0]) || 'authored',
-      center: { x: local.x, z: local.z },
-      radius: Math.max(80, Number(payload.zoneRadius) || (requestedZone && requestedZone.radius) || 520),
-      threat: Number.isFinite(payload.threat)
-        ? payload.threat
-        : (Number.isFinite(requestedZone && requestedZone.threat) ? requestedZone.threat : 1),
-    };
-    const rng = mulberry32(hash32(
-      (state.meta && state.meta.seed) || 0,
-      payload.encounterId,
-      shape.id,
-      'authored-encounter',
-    ));
-    const item = resolveEncounter(
-      shape,
-      zone,
-      payload.sectorId,
-      Math.floor((state.simTime || 0) / DAY_SECONDS),
-      0,
-      rng,
-    );
-    if (!item) return { ok: false, reason: 'empty_plan' };
+    const planned = planAuthoredEncounterItem({
+      state,
+      payload,
+      playerPos: this.player() && this.player().pos,
+    });
+    if (!planned || !planned.item) return { ok: false, reason: 'empty_plan' };
+    const { item, zone, anchor } = planned;
     item.encounterId = payload.encounterId;
     item.squadId = payload.encounterId;
     item.sectorId = payload.sectorId;
@@ -972,6 +986,66 @@ export const encounterDirector = {
     return dir.live[payload.encounterId]
       ? { ok: true, encounterId: payload.encounterId }
       : { ok: false, reason: 'resolved_on_fire' };
+  },
+
+  /** The deterministic claim-defense plan: seeded entirely by (meta.seed, encounterId), so the
+   * same inputs reproduce the same roster at warning onset, at request time, and after restore.
+   * Pure — a dedicated mulberry32 stream, never state.rng. */
+  _resolveClaimDefensePlan(state, payload) {
+    const shape = ENCOUNTERS.claim_threat;
+    if (!shape) return null;
+    const body = ((state.claims && state.claims.bodies) || []).find((entry) => entry && entry.id === payload.claimId);
+    if (!body || body.sectorId !== payload.sectorId) return null;
+    const local = globalToSectorLocalForSector(payload.anchor, payload.sectorId);
+    const rng = mulberry32(hash32((state.meta && state.meta.seed) || 0, payload.encounterId, 'claim-defense'));
+    const zone = {
+      id: `claim-defense:${payload.claimId}`,
+      name: body.name || 'Player claim',
+      type: 'mining_belt',
+      center: { x: local.x, z: local.z },
+      radius: 760,
+      threat: 2,
+    };
+    const item = resolveEncounter(shape, zone, payload.sectorId, Math.floor((state.simTime || 0) / DAY_SECONDS), 0, rng);
+    if (!item || !item.ships.length) return null;
+    return { item, zone, shape, rng };
+  },
+
+  _publishClaimDefenseRoster(payload) {
+    if (!payload || !payload.encounterId) return;
+    const state = this.state;
+    const dir = ensureDirectorState(state);
+    if (dir.live[payload.encounterId]) return;
+    const plan = this._resolveClaimDefensePlan(state, {
+      encounterId: payload.encounterId,
+      claimId: payload.bodyId || payload.claimId,
+      anchor: payload.pos || payload.anchor,
+      sectorId: payload.sectorId,
+      attackerCount: payload.attackerCount,
+      motive: payload.motive,
+      attackerName: payload.attackerName,
+    });
+    if (!plan) return;
+    // Ship records, not bare archetype strings: kit squads resolve faction-specific hull
+    // and hulk files, so factionId/trafficRole ride the roster for the decode runway.
+    const seen = new Set();
+    const archetypes = [];
+    for (const ship of plan.item.ships) {
+      const archetype = ship && ship.archetype;
+      if (typeof archetype !== 'string' || !archetype) continue;
+      const factionId = ship.factionId || null;
+      const trafficRole = ship.trafficRole || null;
+      const token = `${archetype}|${factionId || ''}|${trafficRole || ''}`;
+      if (seen.has(token)) continue;
+      seen.add(token);
+      archetypes.push({ archetype, factionId, trafficRole });
+    }
+    if (!archetypes.length) return;
+    this.emit('encounter:claimDefenseRoster', {
+      encounterId: payload.encounterId,
+      sectorId: payload.sectorId || null,
+      archetypes,
+    });
   },
 
   /** Materialize a claim-owned defense contract at its exact physical anchor. This bypasses the
@@ -988,23 +1062,9 @@ export const encounterDirector = {
       return { ok: true, encounterId: payload.encounterId, reused: true };
     }
     if (this._currentSectorId() !== payload.sectorId) return { ok: false, reason: 'wrong_sector' };
-    const shape = ENCOUNTERS.claim_threat;
-    if (!shape) return { ok: false, reason: 'missing_shape' };
-    const body = ((state.claims && state.claims.bodies) || []).find((entry) => entry && entry.id === payload.claimId);
-    if (!body || body.sectorId !== payload.sectorId) return { ok: false, reason: 'missing_claim' };
-
-    const local = globalToSectorLocalForSector(payload.anchor, payload.sectorId);
-    const rng = mulberry32(hash32((state.meta && state.meta.seed) || 0, payload.encounterId, 'claim-defense'));
-    const zone = {
-      id: `claim-defense:${payload.claimId}`,
-      name: body.name || 'Player claim',
-      type: 'mining_belt',
-      center: { x: local.x, z: local.z },
-      radius: 760,
-      threat: 2,
-    };
-    const item = resolveEncounter(shape, zone, payload.sectorId, Math.floor((state.simTime || 0) / DAY_SECONDS), 0, rng);
-    if (!item || !item.ships.length) return { ok: false, reason: 'empty_plan' };
+    const plan = this._resolveClaimDefensePlan(state, payload);
+    if (!plan) return { ok: false, reason: 'empty_plan' };
+    const { item, zone, shape, rng } = plan;
     item.encounterId = payload.encounterId;
     item.squadId = payload.encounterId;
     item.sectorId = payload.sectorId;
@@ -1061,6 +1121,7 @@ export const encounterDirector = {
 
     const live = makeEncounterLiveRecord(state, item, shape, now);
     dir.live[live.id] = live;
+    noteScriptProbeRow(dir, live, +1);
     dir.stats.fired++;
     if (live.data.ceresActivityAmbush === true) {
       dir.stats.ceresActivityAmbush = { phase: 'revealed' };
@@ -1338,8 +1399,10 @@ export const encounterDirector = {
         if (ent && ent.id != null) {
           spawned.push(ent.id);
           rec.ids.push(ent.id);
+          indexActiveMember(dir, live, ent.id);
           live.ids.push(ent.id);
           live.roles[ent.id] = sh.role || 'squad';
+          indexSquadMember(dir, live, ent.id);
         }
       }
     } finally {
@@ -1362,7 +1425,8 @@ export const encounterDirector = {
       mass: 1e6,
       hull: 1,
       hullMax: 1,
-      physicsBody: { shape: 'capsule' },
+      // SFQ-B025: authored dead-mass stays the body's own mass through normalization.
+      physicsBody: { shape: 'capsule', mass: 1e6 },
       data: {
         parentType: 'debris',
         proportions: WRECK_COLLIDER_PROPORTIONS,
@@ -1436,6 +1500,7 @@ export const encounterDirector = {
     if (!entity || entity.id == null) return null;
     live.ids.push(entity.id);
     live.roles[entity.id] = 'freight_pod';
+    indexSquadMember(ensureDirectorState(this.state), live, entity.id);
     return entity;
   },
 
@@ -1520,7 +1585,11 @@ export const encounterDirector = {
     if (!pod || typeof pod !== 'object') return false;
     pod.status = reason || 'retired';
     data.despawnAt = this.now();
+    if (entity.collides !== false) bumpCollidesFlipEpoch();
     entity.collides = false;
+    // T→F flip: vacate the collidables/spatial rows before the despawnAt sweep
+    // carries them as stale members for the remaining dwell.
+    syncEntityCollisionIndexMembership(this.state && this.state.entityIndex, entity);
     if (entity.flags) delete entity.flags.persistent;
     return true;
   },
@@ -1755,6 +1824,8 @@ export const encounterDirector = {
       });
       if (dir.receipts.length > RECEIPT_CAP) dir.receipts.splice(0, dir.receipts.length - RECEIPT_CAP);
     }
+    dropLiveSquadMembership(dir, live);
+    noteScriptProbeRow(dir, live, -1);
     delete dir.live[live.id];
   },
 
@@ -1779,6 +1850,8 @@ export const encounterDirector = {
       sectorId: live.sectorId, zoneId: live.zoneId, tier: live.tier, deck: live.deck, t: now,
       causality: live.causality ? { ...live.causality } : null,
     });
+    dropLiveSquadMembership(dir, live);
+    noteScriptProbeRow(dir, live, -1);
     delete dir.live[live.id];
   },
 
@@ -1888,35 +1961,68 @@ export const encounterDirector = {
     }
     if (dir.patrolIntervened) delete dir.patrolIntervened[id];
     if (dir.playerDealtDamageAt) delete dir.playerDealtDamageAt[id];
-    for (const squadId of Object.keys(dir.active)) {
+    // The active-spawn index answers the squad question in O(1) — every rec.ids push
+    // indexes, every removal drops, so a miss is provably absent. A stale-looking row
+    // (map hit, rec missing or ids lacking the entity) falls back to the original walk.
+    const squadId = dir.activeMembership ? dir.activeMembership[id] : null;
+    if (squadId != null) {
       const rec = dir.active[squadId];
-      const idx = rec.ids.indexOf(id);
-      if (idx === -1) continue;
-      rec.ids.splice(idx, 1);
-      const budget = this.helpers && this.helpers.spawnBudget;
-      if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(squadId, 1);
-      if (!rec.ids.length) delete dir.active[squadId];
-      break;
-    }
-    // Cache wrecks resolve their salvage-signal encounter when stripped/destroyed.
-    for (const lid of Object.keys(dir.live)) {
-      const live = dir.live[lid];
-      const liveIndex = live.ids.indexOf(id);
-      if (!this._saveRestoring && live.script === 'convoy' && liveIndex !== -1) {
-        this._scriptEvent(live, 'entityGone', { ...(p || {}), id });
-      }
-      if (live.script === 'salvageSignal' && live.data && live.data.cacheId === id) {
-        this._scriptEvent(live, 'cacheGone', { id });
-      }
-      if (live.script === 'whisper' && live.data && live.data.sourceId === id) {
-        this._scriptEvent(live, 'sourceGone', { id });
-      }
-      if (liveIndex !== -1) {
-        for (let index = live.ids.length - 1; index >= 0; index--) {
-          if (live.ids[index] === id) live.ids.splice(index, 1);
+      const idx = rec ? rec.ids.indexOf(id) : -1;
+      if (rec && idx !== -1) {
+        delete dir.activeMembership[id];
+        rec.ids.splice(idx, 1);
+        const budget = this.helpers && this.helpers.spawnBudget;
+        if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(squadId, 1);
+        if (!rec.ids.length) delete dir.active[squadId];
+      } else {
+        for (const sid of Object.keys(dir.active)) {
+          const row = dir.active[sid];
+          const rowIdx = row.ids.indexOf(id);
+          if (rowIdx === -1) continue;
+          delete dir.activeMembership[id];
+          row.ids.splice(rowIdx, 1);
+          const budget = this.helpers && this.helpers.spawnBudget;
+          if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(sid, 1);
+          if (!row.ids.length) delete dir.active[sid];
+          break;
         }
-        if (live.roles && typeof live.roles === 'object') delete live.roles[id];
       }
+    }
+    // Cache wrecks resolve their salvage-signal encounter when stripped/destroyed. Rows
+    // whose script probes a data key (cacheId/sourceId) are not covered by the id
+    // membership map — when any such row exists (or the map answer looks stale), run
+    // the original full walk verbatim.
+    const probeRows = Number.isFinite(dir.scriptProbeRows) ? dir.scriptProbeRows : 0;
+    const memberLiveId = dir.squadMembership ? dir.squadMembership[id] : null;
+    const memberLive = memberLiveId != null ? dir.live[memberLiveId] : null;
+    const memberHit = !!(memberLive && memberLive.ids.indexOf(id) !== -1);
+    if (probeRows > 0 || (memberLiveId != null && !memberHit)) {
+      for (const lid of Object.keys(dir.live)) {
+        this._noteLiveGone(dir, dir.live[lid], id, p);
+      }
+    } else if (memberHit) {
+      this._noteLiveGone(dir, memberLive, id, p);
+    }
+  },
+
+  _noteLiveGone(dir, live, id, p) {
+    if (!live) return;
+    const liveIndex = live.ids.indexOf(id);
+    if (!this._saveRestoring && live.script === 'convoy' && liveIndex !== -1) {
+      this._scriptEvent(live, 'entityGone', { ...(p || {}), id });
+    }
+    if (live.script === 'salvageSignal' && live.data && live.data.cacheId === id) {
+      this._scriptEvent(live, 'cacheGone', { id });
+    }
+    if (live.script === 'whisper' && live.data && live.data.sourceId === id) {
+      this._scriptEvent(live, 'sourceGone', { id });
+    }
+    if (liveIndex !== -1) {
+      for (let index = live.ids.length - 1; index >= 0; index--) {
+        if (live.ids[index] === id) live.ids.splice(index, 1);
+      }
+      if (live.roles && typeof live.roles === 'object') delete live.roles[id];
+      dropSquadMember(dir, live, id);
     }
   },
 
@@ -1944,16 +2050,29 @@ export const encounterDirector = {
       this.emit('encounter:namedCaptainDefeated', { captainId: externalCaptainId, entityId: p.id, byPlayer });
     }
     let handled = null;
-    for (const lid of Object.keys(dir.live)) {
-      const live = dir.live[lid];
-      const role = live.roles[p.id];
-      if (role !== undefined && live.ids.includes(p.id)) {
-        handled = live;
-        this._scriptEvent(live, 'squadKill', {
-          id: p.id, role, byPlayer, killerId: p.killerId,
-          pos: p.pos ? { x: p.pos.x, z: p.pos.z } : null,
-        });
-        break;
+    // squadMembership answers the squad question in O(1); the walk below stays as the cold path
+    // for rows minted before the index (or lost to a stale save).
+    const memberLiveId = dir.squadMembership[p.id];
+    const memberLive = memberLiveId != null ? dir.live[memberLiveId] : null;
+    if (memberLive && memberLive.roles && memberLive.roles[p.id] !== undefined
+      && memberLive.ids.includes(p.id)) {
+      handled = memberLive;
+      this._scriptEvent(memberLive, 'squadKill', {
+        id: p.id, role: memberLive.roles[p.id], byPlayer, killerId: p.killerId,
+        pos: p.pos ? { x: p.pos.x, z: p.pos.z } : null,
+      });
+    } else {
+      for (const lid of Object.keys(dir.live)) {
+        const live = dir.live[lid];
+        const role = live.roles[p.id];
+        if (role !== undefined && live.ids.includes(p.id)) {
+          handled = live;
+          this._scriptEvent(live, 'squadKill', {
+            id: p.id, role, byPlayer, killerId: p.killerId,
+            pos: p.pos ? { x: p.pos.x, z: p.pos.z } : null,
+          });
+          break;
+        }
       }
     }
     if (handled || !byPlayer) return;
@@ -2595,16 +2714,19 @@ export const encounterDirector = {
   adoptCeresActivityAmbush(live, phase = 'offer') {
     if (!live || !(live.data && live.data.ceresActivityAmbush === true)) return [];
     const cohort = this._ceresActivityAmbushCohort();
-    const sampler = ensureDirectorState(this.state)._ceresActivityAmbush;
+    const dir = ensureDirectorState(this.state);
+    const sampler = dir._ceresActivityAmbush;
     live.data.adoptedWorldActors = true;
     live.data.restoreByRecordId = sampler && sampler.restoreByRecordId
       ? sampler.restoreByRecordId
       : Object.create(null);
+    dropLiveSquadMembership(dir, live);
     live.ids = [];
     live.roles = {};
     for (const entity of cohort) {
       live.ids.push(entity.id);
       live.roles[entity.id] = 'squad';
+      indexSquadMember(dir, live, entity.id);
       const ai = entity.data && entity.data.ai;
       if (ai) {
         const restore = ai[CERES_ACTIVITY_AMBUSH_RESTORE];
@@ -2635,12 +2757,15 @@ export const encounterDirector = {
     const live = makeEncounterLiveRecord(this.state, item, shape, this.now());
     live.data.restored = true;
     dir.live[live.id] = live;
+    noteScriptProbeRow(dir, live, +1);
     const marker = cohort.some((entity) => (
       entity.data && entity.data.ai
       && entity.data.ai[CERES_ACTIVITY_AMBUSH_MARKER] === 'conflict'
     )) ? 'conflict' : 'offer';
     const script = encounterScriptFor(live);
     if (!script || typeof script.resume !== 'function') {
+      dropLiveSquadMembership(dir, live);
+      noteScriptProbeRow(dir, live, -1);
       delete dir.live[live.id];
       return false;
     }
@@ -3145,6 +3270,54 @@ export function planEncounterShape(enc, zone, sectorId, dayIndex, seq, rng) {
   return resolveEncounter(enc, zone, sectorId, dayIndex, seq, rng);
 }
 
+/**
+ * The deterministic plan requestAuthoredEncounter fires: authored-zone lookup, anchor
+ * fallback chain, zone assembly, and the 'authored-encounter' rng stream — all keyed on the
+ * payload fields plus (meta.seed, simTime). Exported so the renderer's decode warm can replay
+ * the exact roster an announced request will spawn instead of re-implementing the assembly.
+ * Pure: reads state.meta/state.simTime only; returns {item, zone, anchor} or null.
+ */
+export function planAuthoredEncounterItem({ state, payload, playerPos }) {
+  const shape = ENCOUNTERS[payload && payload.shapeId];
+  if (!shape) return null;
+  const requestedZone = payload.zoneId
+    ? zonesForSector(payload.sectorId).find((candidate) => candidate.id === payload.zoneId)
+    : null;
+  const anchor = payload.anchor
+    || (requestedZone && sectorLocalToGlobalForSector(requestedZone.center, payload.sectorId))
+    || playerPos
+    || { x: 0, z: 0 };
+  const local = globalToSectorLocalForSector(anchor, payload.sectorId);
+  const zone = {
+    ...(requestedZone || {}),
+    id: payload.zoneId || (requestedZone && requestedZone.id) || `authored:${shape.id}`,
+    name: payload.zoneName || (requestedZone && requestedZone.name) || shape.title || shape.id,
+    type: payload.zoneType || (requestedZone && requestedZone.type)
+      || (shape.zoneTypes && shape.zoneTypes[0]) || 'authored',
+    center: { x: local.x, z: local.z },
+    radius: Math.max(80, Number(payload.zoneRadius) || (requestedZone && requestedZone.radius) || 520),
+    threat: Number.isFinite(payload.threat)
+      ? payload.threat
+      : (Number.isFinite(requestedZone && requestedZone.threat) ? requestedZone.threat : 1),
+  };
+  const rng = mulberry32(hash32(
+    (state.meta && state.meta.seed) || 0,
+    payload.encounterId,
+    shape.id,
+    'authored-encounter',
+  ));
+  const item = resolveEncounter(
+    shape,
+    zone,
+    payload.sectorId,
+    Math.floor((state.simTime || 0) / DAY_SECONDS),
+    0,
+    rng,
+  );
+  if (!item) return null;
+  return { item, zone, anchor };
+}
+
 // Resolve one encounter shape on a chosen zone into a schedule item (composition + anchor).
 function resolveEncounter(enc, zone, sectorId, dayIndex, seq, rng) {
   const squadId = `enc_${sectorId}_${dayIndex}_${enc.id}_${seq}`;
@@ -3237,6 +3410,28 @@ function resolveEncounter(enc, zone, sectorId, dayIndex, seq, rng) {
     levelBand,
     delay: 0,
     ships,
+    // Packaged bodies the fire path will spawn that share no hull archetype — scripted
+    // cargo-pod spills, authored props. Declared on the encounter body, carried on the
+    // pending item so the decode runway warms them before telegraph resolves.
+    warmAssets: Array.isArray(enc.warmAssets) && enc.warmAssets.length ? enc.warmAssets.slice() : null,
+    // Hull archetypes the fire path mounts outside plan.ships — the ambush claim victim
+    // spawns beside the fight and a player_in_range trigger can land engagement while it
+    // is still on-glass. Warm-only: never feeds the spawn list (spawnClaimVictim owns it).
+    warmShips: enc.script === 'namedHunter'
+      // The captain pool resolves at fire time from the live roster (grudges evolve),
+      // so plan.ships stays empty — but every hull it can pick is known now: the three
+      // seed archetypes plus each captain's escort pool. Warm the union so whichever
+      // pool entry fires is already decoded when the entrance lands on-glass.
+      ? NAMED_CAPTAINS.flatMap((cap) => [cap.archetype, ...((cap.escort && cap.escort.archetypes) || [])])
+          .filter((a, i, arr) => typeof a === 'string' && a && arr.indexOf(a) === i)
+          .map((archetype) => ({ archetype, factionId, role: 'captain' }))
+      : (enc.claimVictim && typeof enc.claimVictim.archetype === 'string' && enc.claimVictim.archetype
+        ? [{
+          archetype: enc.claimVictim.archetype,
+          factionId: enc.claimVictim.factionId || 'faction_dmc',
+          role: 'claim',
+        }]
+        : null),
     // WF-02 terrain lee: authored squads may declare `terrain: 'lee'` to spawn behind the best
     // rock near their anchor (applied at spawnShips time, once per encounter).
     terrain: enc.squad && enc.squad.terrain === 'lee' ? 'lee' : null,
@@ -3966,6 +4161,51 @@ function persistedFreightCarrierBinding(entity) {
   return { data, ai, manifest, custody, identityKey };
 }
 
+// entityId -> liveId, so a kill resolves its encounter row without walking every live encounter.
+// The map holds plain ids rather than live refs: it serializes like any other director row, and a
+// recycled entity id cannot claim a stale row because every drop compares before deleting.
+function indexSquadMember(dir, live, id) {
+  if (!dir.squadMembership || typeof dir.squadMembership !== 'object' || Array.isArray(dir.squadMembership)) {
+    dir.squadMembership = {};
+  }
+  dir.squadMembership[id] = live.id;
+}
+
+function dropSquadMember(dir, live, id) {
+  const membership = dir.squadMembership;
+  if (membership && membership[id] === (live && live.id)) delete membership[id];
+}
+
+function dropLiveSquadMembership(dir, live) {
+  const membership = dir.squadMembership;
+  if (!membership || !live || !Array.isArray(live.ids)) return;
+  for (const id of live.ids) {
+    if (membership[id] === live.id) delete membership[id];
+  }
+}
+
+// entityId -> squadId for the active-spawn ledger: the same coverage contract as
+// squadMembership, only for dir.active rec.ids (every push indexes, every removal drops).
+function indexActiveMember(dir, live, id) {
+  if (!dir.activeMembership || typeof dir.activeMembership !== 'object' || Array.isArray(dir.activeMembership)) {
+    dir.activeMembership = {};
+  }
+  dir.activeMembership[id] = live.squadId;
+}
+
+function dropActiveMemberId(dir, id, squadId) {
+  const membership = dir.activeMembership;
+  if (membership && membership[id] === squadId) delete membership[id];
+}
+
+// dir.live rows whose script probes data.cacheId / data.sourceId in _onEntityGone — those
+// lookups are outside squadMembership coverage, so any live probe row forces the full walk.
+function noteScriptProbeRow(dir, live, sign) {
+  if (!live || (live.script !== 'salvageSignal' && live.script !== 'whisper')) return;
+  if (!Number.isFinite(dir.scriptProbeRows)) dir.scriptProbeRows = 0;
+  dir.scriptProbeRows += sign;
+}
+
 function ensureDirectorState(state) {
   if (!state.encounterDirector || typeof state.encounterDirector !== 'object' || Array.isArray(state.encounterDirector)) {
     state.encounterDirector = freshState();
@@ -3974,6 +4214,22 @@ function ensureDirectorState(state) {
   if (!Array.isArray(d.pending)) d.pending = [];
   if (!d.active || typeof d.active !== 'object' || Array.isArray(d.active)) d.active = {};
   if (!d.live || typeof d.live !== 'object' || Array.isArray(d.live)) d.live = {};
+  if (!d.squadMembership || typeof d.squadMembership !== 'object' || Array.isArray(d.squadMembership)) d.squadMembership = {};
+  if (!d.activeMembership || typeof d.activeMembership !== 'object' || Array.isArray(d.activeMembership)) {
+    const map = {};
+    for (const squadId of Object.keys(d.active)) {
+      const rec = d.active[squadId];
+      if (!rec || !Array.isArray(rec.ids)) continue;
+      for (const id of rec.ids) map[id] = squadId;
+    }
+    d.activeMembership = map;
+  }
+  if (!Number.isFinite(d.scriptProbeRows)) {
+    d.scriptProbeRows = 0;
+    for (const live of Object.values(d.live)) {
+      if (live && (live.script === 'salvageSignal' || live.script === 'whisper')) d.scriptProbeRows += 1;
+    }
+  }
   if (!d.pressure || typeof d.pressure !== 'object') d.pressure = { combat: 0, civilian: 0, mystery: 0, patrol: 0 };
   if (!Number.isFinite(d.pressure.combat)) d.pressure.combat = 0;
   if (!Number.isFinite(d.pressure.civilian)) d.pressure.civilian = 0;
@@ -4277,7 +4533,9 @@ function isWanted(state) {
   return typeof h === 'number' ? h >= 0.15 : false;    // mirrors heat.WANTED_THRESHOLD (read-only)
 }
 
-function sectorSecurityOf(state) {
+// Exported so presentation-side warm gates can consult the exact baseline the resolver
+// applies — the static SECTORS def, not the drifted live sector record.
+export function sectorSecurityOf(state) {
   const sid = state.world && state.world.currentSectorId;
   if (!sid) return 0.5;
   const def = SECTORS.find((s) => s.id === sid);
@@ -4492,7 +4750,14 @@ export function seedEscalationFromAct(dir, state, cause, payload) {
   const beat = beatForCause(cause, act);
   if (!beat) return null;
   const causeId = escalationCauseId(cause, act);
-  if (host.escalationSeeds.some((row) => row && row.causeId === causeId)) return null;
+  const openNeed = host.escalationSeeds.find((row) => (
+    row && row.causeId === causeId && row.arrived !== true && row.resolved !== true
+  ));
+  if (openNeed) return openNeed;
+  const priorNeedCount = host.escalationSeeds.reduce(
+    (count, row) => count + (row && row.causeId === causeId ? 1 : 0),
+    0,
+  );
 
   const now = Number.isFinite(state && state.simTime) ? state.simTime : 0;
   const sectorId = escalationText(act.sectorId)
@@ -4511,7 +4776,7 @@ export function seedEscalationFromAct(dir, state, cause, payload) {
   }
 
   const seed = sanitizeEscalationSeed({
-    id: `esc:${cause}:${causeId}`,
+    id: priorNeedCount === 0 ? `esc:${cause}:${causeId}` : `esc:${cause}:${causeId}:g${priorNeedCount}`,
     cause,
     beat,
     causeId,

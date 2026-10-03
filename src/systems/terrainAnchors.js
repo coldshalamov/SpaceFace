@@ -18,7 +18,7 @@ import { massline2Flag } from '../data/featureFlags.js';
 import { withBankStone } from '../core/surfaceContact.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { Masks } from '../core/entity.js';
-import { indexedTypeScan } from '../world/livingWorldViews.js';
+import { bumpCollidesFlipEpoch, indexedTypeScan } from '../world/livingWorldViews.js';
 import {
   PALLAS_REEF_MINES,
   PALLAS_REEF_MINE_BODY,
@@ -407,6 +407,7 @@ export const terrainAnchors = {
     for (const entity of indexedTypeScan(this.state, 'asteroids')) {
       if (!entity || !entity.data || entity.data.aperturePlugId !== id) continue;
       entity.alive = false;
+      if (entity.collides !== false) bumpCollidesFlipEpoch();
       entity.collides = false;
       released = true;
     }

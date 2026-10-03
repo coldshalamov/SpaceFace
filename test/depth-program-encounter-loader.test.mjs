@@ -205,6 +205,9 @@ function migrationBaselinePlan(plan) {
     // WF-02 terrain-lee stamp: a post-migration spawn-time field, never a schedule identity
     // (it moves no shape, zone, delay, archetype or position) — strip it like predation.
     delete copy.terrain;
+    // warmAssets is a render-warm hint on the pending item — same post-migration class.
+    delete copy.warmAssets;
+    delete copy.warmShips;
     copy.ships = item.ships.map((ship) => {
       const next = { ...ship };
       const doctrine = MIGRATION_ERA_SHIP_DOCTRINE[ship.archetype];

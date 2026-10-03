@@ -1,4 +1,4 @@
-import { label, clone, compareId } from './schema.js';
+import { label, clone, compareId, text } from './schema.js';
 
 const COMPLETE_STAGES = ['kill', 'aftermath', 'salvage', 'recovered', 'sold', 'law'];
 const SURFACE_TEXT = { terrain: 'terrain', craft: 'another craft', structure: 'a structure' };
@@ -172,6 +172,18 @@ export function buildStoryView(story) {
     } else if (f.stage === 'delivery') {
       kind = 'depot_delivery'; score = 12; title = 'Depot freight moved';
       summary = `${quantity(f.details.qty)} units of depot freight ${f.details.inbound ? 'arrived at' : 'departed for'} ${f.subject ? f.subject.name : 'a claim body'}.`;
+    } else if (f.stage === 'story') {
+      // Authored campaign evidence — spoken choices, Verge filings, the revocation. The latest
+      // story fact names the file; every other citation stands behind it.
+      const storyFacts = ns.filter(n => n.stage === 'story');
+      const last = storyFacts[storyFacts.length - 1] || f;
+      const d = last.details || {};
+      kind = 'story_record'; score = Math.max(score, 40);
+      title = text(d.title, 'The campaign ledger');
+      summary = `${text(d.note, 'A recorded campaign decision stands')}.`;
+      if (storyFacts.length > 1) {
+        summary += ` ${storyFacts.length - 1} other citation${storyFacts.length > 2 ? 's' : ''} stand in the same file.`;
+      }
     } else { score = 4; summary = 'A simulation fact was retained for possible later connection.'; }
     radio = summary;
   }

@@ -60,6 +60,7 @@ let lastSetup = null;
 /** Build (and validate) a Crucible setup from a starter package id and a seed. */
 export function crucibleSetupFor({
   starterId, seed, arenaId = CRUCIBLE_ARENA_ID, ruleset = CRUCIBLE_DEFAULT_RULESET, swarmStake = null,
+  startWave = 1,
 } = {}) {
   const starter = COMBAT_LAB_STARTER_PACKAGES.find((entry) => entry.id === starterId)
     || COMBAT_LAB_STARTER_PACKAGES.find(entry => entry.id === CRUCIBLE_DEFAULT_STARTER_ID);
@@ -73,7 +74,9 @@ export function crucibleSetupFor({
     enemyPackageId: 'wasp_flight',
     arenaId,
     seed: normalizeSeed(seed),
-    wave: 1,
+    // SWARM-04: the checkpoint's entry wave. Only a swarm launch reads it; the arc, block
+    // and circuit always open at their authored first wave, so it is carried as schema.
+    wave: Number.isInteger(startWave) && startWave > 1 ? startWave : 1,
   });
   // The ruleset is not part of the closed setup schema, so it travels alongside the validated
   // value where the launch config can pick it up. The stake rides the same way — requestCrucibleRun
@@ -96,6 +99,7 @@ export function crucibleSetupFor({
  */
 export function crucibleHullSetupFor({
   hullId, seed, arenaId = CRUCIBLE_ARENA_ID, ruleset = CRUCIBLE_DEFAULT_RULESET, swarmStake = null,
+  startWave = 1,
 } = {}) {
   const shipDef = SHIPS.find((entry) => entry && entry.id === hullId);
   if (!shipDef) return { ok: false, issues: [{ path: 'hullId', message: 'Unknown hull' }] };
@@ -106,7 +110,7 @@ export function crucibleHullSetupFor({
     enemyPackageId: 'wasp_flight',
     arenaId,
     seed: normalizeSeed(seed),
-    wave: 1,
+    wave: Number.isInteger(startWave) && startWave > 1 ? startWave : 1,
   });
   if (result && result.ok && result.value) {
     result.ruleset = normalizeCrucibleRuleset(ruleset);

@@ -29,6 +29,115 @@ function bodyRadius(body) {
   return Number(body && body.radius) || 0;
 }
 
+const GAP_QUEUE_PAD = 4;
+
+/**
+ * Waiting points behind a narrow gap. Centers are separated by each hull's own
+ * clearance (body radius, not collisionRadius) in stable id order. Returns null
+ * when fewer than two hulls are waiting or the gap is wide enough to pass abreast.
+ * Does not write radius or collisionRadius.
+ */
+export function gapWaitingPositions(anchor, members, obstacles) {
+  const roster = [];
+  for (const member of members || []) {
+    if (!member || !member.pos) continue;
+    if (!Number.isFinite(member.pos.x) || !Number.isFinite(member.pos.z)) continue;
+    roster.push(member);
+  }
+  if (roster.length < 2 || !anchor || !Number.isFinite(anchor.x) || !Number.isFinite(anchor.z)) return null;
+  const gap = narrowWaitingGap(obstacles, roster);
+  if (!gap) return null;
+  const near = Math.hypot(anchor.x - gap.mouth.x, anchor.z - gap.mouth.z);
+  let largest = 0;
+  for (const member of roster) largest = Math.max(largest, bodyRadius(member));
+  if (near > largest * 2 + gap.width + 40) return null;
+  const ordered = roster.slice().sort((a, b) => {
+    const as = String(a.id);
+    const bs = String(b.id);
+    if (as < bs) return -1;
+    if (as > bs) return 1;
+    return 0;
+  });
+  let cx = 0;
+  let cz = 0;
+  for (const member of ordered) {
+    cx += member.pos.x;
+    cz += member.pos.z;
+  }
+  cx /= ordered.length;
+  cz /= ordered.length;
+  let bx = cx - gap.mouth.x;
+  let bz = cz - gap.mouth.z;
+  const bl = Math.hypot(bx, bz);
+  if (bl < 1e-4) {
+    bx = -gap.axis.x;
+    bz = -gap.axis.z;
+  } else {
+    bx /= bl;
+    bz /= bl;
+  }
+  const points = new Map();
+  let cursor = 0;
+  for (const member of ordered) {
+    const radius = bodyRadius(member);
+    cursor += radius;
+    points.set(member.id, {
+      x: gap.mouth.x + bx * cursor,
+      z: gap.mouth.z + bz * cursor,
+    });
+    cursor += radius + GAP_QUEUE_PAD;
+  }
+  return points;
+}
+
+function narrowWaitingGap(obstacles, members) {
+  const solids = [];
+  for (const contact of obstacles || []) {
+    if (!contact || !contact.pos) continue;
+    if (contact.kind === ContactKind.SHIP && contact.alive !== false) continue;
+    const tags = contact.tags;
+    const solid = contact.kind === ContactKind.HAZARD || (Array.isArray(tags) && tags.includes('solid'));
+    if (!solid) continue;
+    solids.push(contact);
+  }
+  if (solids.length < 2) return null;
+  const radii = members.map((member) => bodyRadius(member)).sort((a, b) => b - a);
+  const abreast = (radii[0] || 0) + (radii[1] || 0);
+  let best = null;
+  for (let i = 0; i < solids.length; i++) {
+    for (let j = i + 1; j < solids.length; j++) {
+      const a = solids[i];
+      const b = solids[j];
+      const dx = b.pos.x - a.pos.x;
+      const dz = b.pos.z - a.pos.z;
+      const dist = Math.hypot(dx, dz);
+      if (!(dist > 1e-4)) continue;
+      const width = dist - bodyRadius(a) - bodyRadius(b);
+      if (!(width > 0) || width >= abreast) continue;
+      const mouthT = (bodyRadius(a) + width * 0.5) / dist;
+      const mouth = { x: a.pos.x + dx * mouthT, z: a.pos.z + dz * mouthT };
+      const candidate = { width, mouth, axis: { x: dx / dist, z: dz / dist } };
+      if (!best || width < best.width) best = candidate;
+    }
+  }
+  return best;
+}
+
+function queuedGapSlot(self, anchor, ships, obstacles) {
+  const members = [];
+  if (self && self.pos) members.push(self);
+  for (const contact of ships || []) {
+    if (!contact || contact.kind !== ContactKind.SHIP || !contact.pos) continue;
+    if (self && contact.id === self.id) continue;
+    if (self && self.team != null && contact.team !== self.team) continue;
+    if (contact.alive === false) continue;
+    members.push(contact);
+  }
+  const points = gapWaitingPositions(anchor, members, obstacles);
+  if (!points || !self) return null;
+  return points.get(self.id) || null;
+}
+
 export const MANEUVER_SPEED_CAPS = Object.freeze({
   interceptSpeed: 72,
   approachSpeed: 62,
@@ -196,7 +305,7 @@ export class ManeuverPlanner {
       breakFormation: directive.formation.breakFormation,
       reason: 'no_behavior_intent',
     };
-    const intent = choreo ? applyChoreographyIntent(baseIntent, choreo, selfPose) : baseIntent;
+    let intent = choreo ? applyChoreographyIntent(baseIntent, choreo, selfPose) : baseIntent;
     const contacts = Array.isArray(perception.contacts) ? perception.contacts : [];
     const contactIndex = this.contactIndexing ? this._contactIndexFor(perception) : null;
     const target = intent.targetId == null
@@ -205,6 +314,18 @@ export class ManeuverPlanner {
         ? contactIndex.byId.get(intent.targetId) || null
         : findContactById(contacts, intent.targetId, this.workCounters);
     const contactSource = contactIndex || { ships: contacts, tethers: contacts, obstacles: contacts };
+    // Two unequal hulls holding one slot behind a narrow gap queue by hull clearance.
+    // A wide gap or a solo hull keeps the shared slot. collisionRadius is never written.
+    if (!choreo && intent.breakFormation !== true
+      && (intent.kind === ManeuverKind.HOLD || intent.kind === ManeuverKind.FORMATION)) {
+      const queued = queuedGapSlot(
+        selfPose,
+        intent.formationSlot || selfPose.pos,
+        contactSource.ships,
+        contactSource.obstacles,
+      );
+      if (queued) intent = { ...intent, formationSlot: { x: queued.x, z: queued.z } };
+    }
     // The sensor frame carries no angular-velocity channel, so differentiate the wrapped
     // heading between plan calls; the yaw request below closes on this measured rate
     // (see yawRateTorqueFor).

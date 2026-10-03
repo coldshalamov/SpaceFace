@@ -433,6 +433,23 @@ export const ATTACHMENT_DEFS = Object.freeze([
     limits: { maxPerOwner: 1 },
     cues: { created: 'combat.attachment.created', broken: 'combat.attachment.broken' },
   },
+  {
+    // SF-029 (PB-MASS-B): the salvage-sort clamp — a wreck's held core bolt, not a rope. The
+    // opposite contract from the transport clamp above: a DELIBERATE massline tow must tear the
+    // core free, so this clamp is the breakable end of the sort job. The envelope sits far below
+    // the player line's own budget, gives a 0.2 s sustained-load grace (a graze never shears it),
+    // and a near-rigid short spring keeps the core seated at its wreck until the pilot actually
+    // pulls. No massline block: like the snarl, this def keeps the kernel's automatic break
+    // enforcement — the tension telemetry, not a phase flag, is the physical truth of separation.
+    id: 'attachment_salvage_clamp', version: 1,
+    sourceSocketTags: ['tether'], targetSocketTags: ['tether'],
+    ownership: { policy: 'initiator', transferable: false },
+    maxLength: 40,
+    break: { maxTension: 3600, maxImpulse: 900, maxYank: 2600, graceTicks: 12 },
+    spring: { K: 220, zeta: 0.9, captureS: 0.2, maxStretchRatio: 0.6 },
+    limits: { maxPerOwner: 4 },
+    cues: { created: 'combat.attachment.created', broken: 'combat.attachment.broken' },
+  },
 ]);
 
 export const COMBAT_PROFILES = Object.freeze([

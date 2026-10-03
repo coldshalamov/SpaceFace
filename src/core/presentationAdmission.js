@@ -27,7 +27,11 @@ export function hasExplicitAuthoredGeologyPresentation(entity) {
   if (!entity || entity.alive === false || entity.type !== 'asteroid') return false;
   const data = entity.data || {};
   const radius = Number(entity.radius);
-  const targetRadius = Number(data.placeTargetRadius);
+  // Same union as declaredPlaceTargetRadius, inlined — this module must not pull the
+  // render layer (authoredAdmissionPolicy -> visualCullRadius -> three) into core.
+  const targetRadius = Number.isFinite(entity.placeTargetRadius) && entity.placeTargetRadius > 0
+    ? entity.placeTargetRadius
+    : Number(data.placeTargetRadius);
   return data.authoredGeologySkin === true
     && typeof data.placeId === 'string'
     && data.placeId.length > 0

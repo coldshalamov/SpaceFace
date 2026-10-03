@@ -8,6 +8,7 @@
 // salvage, or sectorSim edits.
 
 import { hash32 } from '../core/rng.js';
+import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 import { validateRunState } from '../core/runState.js';
 import { salvagePoolFromManifest } from './lootShards.js';
 import { peekPendingSlam } from './hullFracture.js';
@@ -900,6 +901,9 @@ function trimAndSort(markers) {
 
 export const aftermathWrecks = {
   name: 'aftermathWrecks',
+  // trimAndSort/trimCauses/serializeEcology rebuild every marker, cause and field fresh — the
+  // returned snapshot owns all of its branches.
+  saveSnapshotOwned: true,
 
   init(ctx) {
     this.state = ctx && ctx.state;
@@ -912,6 +916,10 @@ export const aftermathWrecks = {
     // only handle, and retiring a marker retires its shard with it (cap, eviction, completion).
     this._shards = new Map();
     this._ecologySpawned = new Map();
+    // liveId -> slotKey inversion of _ecologySpawned, kept at every bind/unbind site so
+    // the inhabitant-gone join is O(1) instead of an O(map) walk per corpse. Only
+    // singly-bound ids carry a reverse edge — a duplicated liveId falls back to the walk.
+    this._ecologyLiveToKey = new Map();
     this._pendingOffers = new Map();
     this._saveRestoring = false;
     ensureAftermathState(this.state);
@@ -923,7 +931,17 @@ export const aftermathWrecks = {
     this._onPlayerDeath = (payload) => this._recordPlayerDeath(payload || {});
     this._onDestroyed = (payload) => this._noteInhabitantGone(payload && payload.id);
     this._onFieldSource = (payload) => this.registerWreckFieldSource(payload || {});
-    this._onSectorEnter = (payload) => this._spawnForSector(payload && payload.sectorId);
+    this._onSectorEnter = (payload) => {
+      const sectorId = payload && payload.sectorId;
+      // A tail-drained emit carries the epoch of the enter that minted it: a replayed
+      // payload whose enterEpoch no longer matches the world's serial is stale — spawning
+      // its wreck field mints bodies the exit path never removes (_clearLiveRefs only
+      // unbinds tracking). Synthetic payloads carry no epoch and always run.
+      if (payload && payload.enterEpoch != null && this.state && this.state.world
+          && this.state.world.enterSerial != null
+          && payload.enterEpoch !== this.state.world.enterSerial) return;
+      this._spawnForSector(sectorId);
+    };
     this._onSectorExit = (payload) => this._clearLiveRefs(payload && payload.sectorId);
     this._onSalvageCompleted = (payload) => this._completeByEntity(payload || {});
     this._onEncounterResolved = (payload) => rememberCause(this.state, this.bus, payload || {});
@@ -947,8 +965,22 @@ export const aftermathWrecks = {
       this.bus.on('player:death', this._onPlayerDeath);
       this.bus.on('entity:destroyed', this._onDestroyed);
       this.bus.on('wreckField:source', this._onFieldSource);
-      this.bus.on('sector:enter', this._onSectorEnter);
+      // Live GPU + flight + hard enter: defer into the cook's FIFO — the census
+      // drains the same _onSectorEnter under its slice clock in listener order.
+      this.bus.on('sector:enter', (p) => {
+        if (deferSectorEnterMaterialization(this.state, p, this._cookProvider)) return;
+        this._onSectorEnter(p);
+      });
       this.bus.on('sector:exit', this._onSectorExit);
+      // Census arm: sector-dust wrecks materialize inside the cook, not on emit order.
+      this._cookProvider = (sector) => {
+        if (this._onSectorEnter) this._onSectorEnter({
+          sectorId: (sector && sector.id)
+            || (this.state && this.state.world && this.state.world.currentSectorId),
+        });
+      };
+      (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
+        .push(this._cookProvider);
       this.bus.on('salvage:completed', this._onSalvageCompleted);
       this.bus.on('encounter:resolved', this._onEncounterResolved);
       this.bus.on('dock:docked', this._onDocked);
@@ -975,6 +1007,7 @@ export const aftermathWrecks = {
     if (this._spawned) this._spawned.clear();
     if (this._shards) this._shards.clear();
     if (this._ecologySpawned) this._ecologySpawned.clear();
+    if (this._ecologyLiveToKey) this._ecologyLiveToKey.clear();
     if (this._pendingOffers) this._pendingOffers.clear();
   },
 
@@ -991,7 +1024,9 @@ export const aftermathWrecks = {
   _driveScavengers(state, sectorId) {
     const own = ensureAftermathState(state);
     if (!own) return;
-    for (const field of Object.values(own.ecology || {})) {
+    const ecology = own.ecology;
+    for (const fieldId in ecology) {
+      const field = ecology[fieldId];
       if (!field || field.sectorId !== sectorId) continue;
       for (const slot of field.roster || []) {
         if (!slot || slot.role !== 'scavenger' || slot.status !== 'live') continue;
@@ -1139,7 +1174,7 @@ export const aftermathWrecks = {
     const slot = (field.roster || []).find((row) => row && row.role === 'scavenger' && row.status === 'live');
     if (slot) {
       slot.status = 'gone';
-      if (this._ecologySpawned) this._ecologySpawned.delete(ecologySlotKey(field.fieldId, slot.id));
+      if (this._ecologySpawned) this._unbindEcologyKey(ecologySlotKey(field.fieldId, slot.id));
     }
     entity.alive = false;
     if (this.bus && typeof this.bus.emit === 'function') {
@@ -1418,6 +1453,7 @@ export const aftermathWrecks = {
       + (hash32(seed, marker.markerId, 'shardSpread') % (ARENA_SHARD_MAX_SEPARATION_SPEED - ARENA_SHARD_MIN_SEPARATION_SPEED + 1));
     const victimRadius = boundedVictimRadius(marker.victimRadius) || WRECK_RADIUS;
     const victimMass = boundedVictimMass(marker.victimMass);
+    const shardMass = victimMass != null ? victimMass * 0.35 : 1e6;
     return {
       type: 'wreck',
       pos: {
@@ -1431,10 +1467,13 @@ export const aftermathWrecks = {
       angVel: boundedKillTumble(((hash32(seed, marker.markerId, 'shardSpin') % 200) - 100) / 100),
       // At ≥ the victim's own on-screen size (the §25 Phase 3 bar), never below the floor.
       radius: Math.max(ARENA_SHARD_RADIUS_FLOOR, victimRadius),
-      mass: victimMass != null ? victimMass * 0.35 : 1e6,
+      mass: shardMass,
       hull: 1,
       hullMax: 1,
-      physicsBody: { shape: 'capsule' },
+      // SFQ-B025: the body's physics mass IS the named shard mass — an authored physicsBody.mass
+      // keeps normalization from silently replacing it with the generic wreck-density value
+      // (the same law hullFracture's wreckPhysicsBody already follows).
+      physicsBody: { shape: 'capsule', mass: shardMass },
       // Same ownership hole as the marker wreck: an adventure-sector shard is non-durable kill
       // dressing — sector teardown owns its removal, not the records bag or the far shelf.
       homeSectorId: marker.sectorId,
@@ -1809,7 +1848,7 @@ export const aftermathWrecks = {
     // record shell — IS that marker's wreck; spawning beside it was the D89 duplicate. Adopt the
     // first claimant (bindImmediateWreck upgrades it to the full spec) and retire the rest.
     const claimants = new Map();
-    for (const e of state.entityList || []) {
+    for (const e of indexedTypeScan(state, 'wrecks')) {
       if (e && e.alive !== false && e.type === 'wreck' && e.data && e.data.markerId != null) {
         const list = claimants.get(e.data.markerId) || [];
         list.push(e);
@@ -1887,7 +1926,11 @@ export const aftermathWrecks = {
       mass: mass != null ? mass : 1e6,
       hull: 1,
       hullMax: 1,
-      physicsBody: { shape: 'capsule' },
+      // SFQ-B025: the named operational mass rides the body spec itself — without an authored
+      // physicsBody.mass the normalizer re-derives a wreck-density mass (0.10·R³) that has
+      // nothing to do with the victim's real mass, and every rope/impact consumer that reads
+      // physicsBody.mass first would see the wrong number.
+      physicsBody: { shape: 'capsule', mass: mass != null ? mass : 1e6 },
       // The marker's sector owns this body: without homeSectorId the wreck survived sector
       // teardown live and unbound, and the marker's re-entry spawn doubled it (D89).
       homeSectorId: marker.sectorId,
@@ -1976,6 +2019,7 @@ export const aftermathWrecks = {
       }
       if (this._shards) this._shards.clear();
       if (this._ecologySpawned) this._ecologySpawned.clear();
+      if (this._ecologyLiveToKey) this._ecologyLiveToKey.clear();
       return;
     }
     const markers = aftermathForSector(this.state, sectorId);
@@ -2080,6 +2124,12 @@ export const aftermathWrecks = {
   },
 
   deserialize(data) {
+    for (const _ of this.deserializeChunked(data)) { /* sync lane: every batch inline */ }
+  },
+
+  // Generator twin: each sector's marker sort/cause join is record-atomic — yields sit only at
+  // sector boundaries so order and RNG consumption stay identical.
+  *deserializeChunked(data) {
     const own = ensureAftermathState(this.state);
     own.seed = data && typeof data.seed === 'number' ? data.seed >>> 0 : seedOf(this.state);
     own.bySector = {};
@@ -2098,10 +2148,12 @@ export const aftermathWrecks = {
         }
       }
       if (markers.length) own.bySector[sectorId] = markers;
+      yield 'wrecks-sector';
     }
     if (this._spawned) this._spawned.clear();
     if (this._shards) this._shards.clear();
     if (this._ecologySpawned) this._ecologySpawned.clear();
+    if (this._ecologyLiveToKey) this._ecologyLiveToKey.clear();
     if (this._pendingOffers) this._pendingOffers.clear();
   },
 
@@ -2417,10 +2469,25 @@ export const aftermathWrecks = {
     return this._stampEcologyData(entity, field, 'trap');
   },
 
+  _unbindEcologyKey(key) {
+    if (!this._ecologySpawned) return;
+    const liveId = this._ecologySpawned.get(key);
+    this._ecologySpawned.delete(key);
+    if (liveId != null && this._ecologyLiveToKey && this._ecologyLiveToKey.get(liveId) === key) {
+      this._ecologyLiveToKey.delete(liveId);
+    }
+  },
+
   _bindEcologySlot(field, slot, entity) {
     if (!field || !slot || !entity || !this._ecologySpawned) return false;
     slot.status = 'live';
-    this._ecologySpawned.set(ecologySlotKey(field.fieldId, slot.id), entity.id);
+    const key = ecologySlotKey(field.fieldId, slot.id);
+    // Reverse edge stays honest only while this id is singly bound: if a second slot
+    // claims the same live id, drop the reverse row so gone-lookups take the walk.
+    const priorKey = this._ecologyLiveToKey ? this._ecologyLiveToKey.get(entity.id) : null;
+    if (priorKey != null && priorKey !== key) this._ecologyLiveToKey.delete(entity.id);
+    this._ecologySpawned.set(key, entity.id);
+    if (this._ecologyLiveToKey && priorKey == null) this._ecologyLiveToKey.set(entity.id, key);
     if (this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit('wreckEcology:spawned', {
         fieldId: field.fieldId,
@@ -2440,7 +2507,7 @@ export const aftermathWrecks = {
     if (entityId == null) return null;
     const entity = entityFor(this.state, entityId);
     if (!isWreckEcologyInhabitant(entity, field.fieldId)) {
-      this._ecologySpawned.delete(ecologySlotKey(field.fieldId, slot.id));
+      this._unbindEcologyKey(ecologySlotKey(field.fieldId, slot.id));
       return null;
     }
     return entity;
@@ -2449,19 +2516,25 @@ export const aftermathWrecks = {
   _noteInhabitantGone(entityId) {
     if (entityId == null || !this._ecologySpawned) return false;
     const own = ensureAftermathState(this.state);
-    for (const [key, liveId] of this._ecologySpawned) {
-      if (liveId !== entityId) continue;
-      this._ecologySpawned.delete(key);
-      const sep = key.indexOf('::');
-      const fieldId = key.slice(0, sep);
-      const slotId = key.slice(sep + 2);
-      const field = own.ecology[fieldId];
-      if (!field) return true;
-      const slot = (field.roster || []).find((row) => row && row.id === slotId);
-      if (slot) slot.status = 'gone';
-      return true;
+    // O(1) via the reverse map; a miss or a verify failure (the unsplittable
+    // duplicate-liveId shape) falls back to the original full walk verbatim.
+    let key = this._ecologyLiveToKey ? this._ecologyLiveToKey.get(entityId) : null;
+    if (key != null && this._ecologySpawned.get(key) !== entityId) key = null;
+    if (key == null) {
+      for (const [k, liveId] of this._ecologySpawned) {
+        if (liveId === entityId) { key = k; break; }
+      }
+      if (key == null) return false;
     }
-    return false;
+    this._unbindEcologyKey(key);
+    const sep = key.indexOf('::');
+    const fieldId = key.slice(0, sep);
+    const slotId = key.slice(sep + 2);
+    const field = own.ecology[fieldId];
+    if (!field) return true;
+    const slot = (field.roster || []).find((row) => row && row.id === slotId);
+    if (slot) slot.status = 'gone';
+    return true;
   },
 
   _clearEcologyLiveRefs(sectorId) {
@@ -2470,7 +2543,7 @@ export const aftermathWrecks = {
     for (const field of Object.values(own.ecology || {})) {
       if (!field || (sectorId && field.sectorId !== sectorId)) continue;
       for (const slot of field.roster || []) {
-        this._ecologySpawned.delete(ecologySlotKey(field.fieldId, slot.id));
+        this._unbindEcologyKey(ecologySlotKey(field.fieldId, slot.id));
       }
     }
   },
@@ -2491,7 +2564,7 @@ export const aftermathWrecks = {
         entity.alive = false;
         removed += 1;
       }
-      this._ecologySpawned.delete(ecologySlotKey(field.fieldId, slot.id));
+      this._unbindEcologyKey(ecologySlotKey(field.fieldId, slot.id));
     }
     if (this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit('wreckEcology:decayed', {
@@ -2534,6 +2607,7 @@ export const aftermathWrecks = {
     if (this._spawned) this._spawned.clear();
     if (this._shards) this._shards.clear();
     if (this._ecologySpawned) this._ecologySpawned.clear();
+    if (this._ecologyLiveToKey) this._ecologyLiveToKey.clear();
     if (this._pendingOffers) this._pendingOffers.clear();
   },
 };

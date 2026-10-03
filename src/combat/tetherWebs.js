@@ -10,16 +10,28 @@ export function createTetherWebs({ state, bus, registry }) {
   const links = new Map();
   const authority = () => registry?.get('actions')?.kernel?.attachments
     || registry?.get('combat')?.kernel?.attachments;
-  const clear = () => {
+  const clear = (keepRestoredLinks) => {
     const service = authority();
     // Restored attachment records must not become permanent webs after their transient timer
-    // ledger is gone. Save/load releases this temporary weapon effect through its real owner.
+    // ledger is gone — this temporary weapon effect releases through its real owner. Only the
+    // save:loaded sweep keeps links the loaded save's own ledger just rebound; every other
+    // boundary cuts every web eagerly like before.
     for (const attachment of Object.values(state.combat?.attachments?.byId || {})) {
-      if (attachment.defId === WEB_DEF_ID && attachment.state === 'active') {
+      if (attachment.defId === WEB_DEF_ID && attachment.state === 'active'
+          && !(keepRestoredLinks && links.has(attachment.id))) {
         service?.cut(attachment.id, attachment.controllerId ?? attachment.ownerId, 'web_released');
       }
     }
-    links.clear();
+    // Timer entries whose attachment is gone die with the boundary (new run, sector exit);
+    // entries just rebound by a loaded save's own web ledger keep their remaining lifetime.
+    if (service) {
+      for (const id of links.keys()) {
+        const attachment = service.get(id);
+        if (!attachment || attachment.state !== 'active') links.delete(id);
+      }
+    } else {
+      links.clear();
+    }
     pending.length = 0;
   };
   const unsubs = [];
@@ -30,12 +42,48 @@ export function createTetherWebs({ state, bus, registry }) {
       const owner = state.entities.get(hit.ownerId);
       if (target && owner && !pending.some(p => p.target === target)) pending.push({ target, owner });
     }));
-    for (const event of ['game:new', 'sector:exit', 'run:ended', 'save:loaded']) {
-      unsubs.push(bus.on(event, clear));
+    for (const event of ['game:new', 'sector:exit', 'run:ended']) {
+      unsubs.push(bus.on(event, () => clear(false)));
     }
+    unsubs.push(bus.on('save:loaded', () => clear(true)));
   }
   return {
     clear,
+    // FB-015 — a web is a player investment: the timer ledger persists beside the attachment
+    // records combat already saves, so a mid-flight snarl keeps its remaining lifetime on load.
+    serializeLinks() {
+      const service = authority();
+      const now = state.simTime || 0;
+      const out = [];
+      for (const [id, record] of links) {
+        const attachment = service && service.get(id);
+        if (!attachment || attachment.state !== 'active') continue;
+        out.push({
+          id,
+          controllerId: record.controllerId,
+          remaining: Math.max(0, record.until - now),
+        });
+      }
+      return out;
+    },
+    restoreLinks(records) {
+      links.clear();
+      pending.length = 0;
+      const service = authority();
+      const now = state.simTime || 0;
+      for (const rec of records || []) {
+        if (!rec || typeof rec.id !== 'string') continue;
+        const attachment = service && service.get(rec.id);
+        if (!attachment || attachment.state !== 'active') continue;
+        // The restored attachment record already carries the resolved endpoint ids; the saved
+        // ledger's controllerId is a prior-session id and is never installed — the expiry cut
+        // must name a controller the live attachment record actually honors.
+        links.set(rec.id, {
+          controllerId: attachment.controllerId ?? attachment.ownerId,
+          until: now + Math.max(0, Number(rec.remaining) || 0),
+        });
+      }
+    },
     destroy() { clear(); for (const off of unsubs) off(); },
     update() {
       const service = authority();

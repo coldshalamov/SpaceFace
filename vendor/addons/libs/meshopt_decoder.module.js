@@ -80,20 +80,50 @@ var MeshoptDecoder = (function () {
 	var workers = [];
 	var requestId = 0;
 
-	function createWorker(url) {
+	function createWorker(url, blob) {
 		var worker = {
-			object: new Worker(url),
+			object: null,
 			pending: 0,
 			requests: {},
+			blob: blob || null,
 		};
 
-		worker.object.onmessage = function (event) {
-			var data = event.data;
+		var attachWorker = function (object) {
+			object.onmessage = function (event) {
+				var data = event.data;
 
-			worker.pending -= data.count;
-			worker.requests[data.id][data.action](data.value);
-			delete worker.requests[data.id];
+				// A dead worker's queued messages can still deliver after onerror cleared
+				// `requests` — drop stale deliveries so pending accounting stays exact.
+				if (!(data.id in worker.requests)) return;
+				worker.pending -= data.count;
+				worker.requests[data.id][data.action](data.value);
+				delete worker.requests[data.id];
+			};
+
+			object.onerror = function (event) {
+				// A crashed worker leaves every in-flight decode pending forever — the wedged
+				// decode the upgrade queue's stall abort exists to escape. Reject the pending
+				// requests, retire the corpse, and respawn from the retained blob so the pool
+				// keeps its slot count (the init object URL was already revoked).
+				var requests = worker.requests;
+				worker.requests = {};
+				worker.pending = 0;
+				var reason = new Error('meshopt decode worker failed');
+				if (event && event.message) reason.message += ': ' + event.message;
+				for (var id in requests) requests[id].reject(reason);
+				try { object.terminate(); } catch (e) { /* corpse may already be dead */ }
+				if (worker.objectUrl) URL.revokeObjectURL(worker.objectUrl);
+				worker.objectUrl = null;
+				if (worker.blob) {
+					worker.objectUrl = URL.createObjectURL(worker.blob);
+					worker.object = new Worker(worker.objectUrl);
+					attachWorker(worker.object);
+				}
+			};
 		};
+
+		worker.object = new Worker(url);
+		attachWorker(worker.object);
 
 		return worker;
 	}
@@ -114,7 +144,7 @@ var MeshoptDecoder = (function () {
 		var url = URL.createObjectURL(blob);
 
 		for (var i = workers.length; i < count; ++i) {
-			workers[i] = createWorker(url);
+			workers[i] = createWorker(url, blob);
 		}
 
 		for (var i = count; i < workers.length; ++i) {

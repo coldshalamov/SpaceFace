@@ -68,6 +68,8 @@ export const STATION_CONTROLS = Object.freeze({
   record: { label: 'Record' },
   fit: { label: 'Fit' },
   activate: { label: 'Make active' },
+  'load-hold': { label: 'Load hold' },
+  'stow-hold': { label: 'Stow hold' },
   scar: { label: 'Condition' },
   paint: { label: 'Paint' },
   hardpoint: { label: 'Hardpoint' },

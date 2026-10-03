@@ -802,7 +802,7 @@ export function resolveImpactPresentation(rec, options = {}) {
   return {
     eventClass,
     materialId,
-    duration: sheet.duration * (reduced ? 1.1 : 1),
+    duration: sheet.duration * (reduced ? IMPACT_REDUCED_FORM.holdScale : 1),
     exposesInterior: sheet.exposesInterior,
     audioCue: sheet.audioCue,
     materialAudioCue: material.audioCue,
@@ -814,6 +814,14 @@ export function resolveImpactPresentation(rec, options = {}) {
     beats,
   };
 }
+
+/** Reduced motion keeps the silhouette. Light stays, the hold is longer, nothing is deleted. */
+export const IMPACT_REDUCED_FORM = Object.freeze({
+  mode: 'static_shape',
+  lightFloor: 0.1,
+  holdScale: 1.8,
+  vanish: false,
+});
 
 /** Non-colour differences between two impact classes, for review and for the focused test. */
 export function impactClassDistinctions(classA, classB) {

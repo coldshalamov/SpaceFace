@@ -13,6 +13,7 @@ import {
   getAuthoritativeInitOrder,
   getAuthoritativeUpdateOrder,
   isNodeSafeSystemId,
+  validateSystemClockDeclarations,
 } from '../src/runtime/authoritativeSystemManifest.js';
 import {
   authoritativeIdentityEqual,
@@ -71,8 +72,18 @@ test('production init + update order lengths match the live browser baseline', (
   // 164 -> 165 init / 123 -> 124 update: hullBurst (hull-burst overhaul slice C) — the Gravity
   // Bumper's timed front wedge; one system in both orders, right after impulseCharges so both blast
   // verbs sit before physics. Absent from the frozen legacy47a list, so the 47-A golden cannot see it.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 165);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 124);
+  // Morrow adds one fixed-step character owner before physics.
+  // 166 -> 167 init / 125 -> 126 update: vesper joins as a second fixed-step character owner
+  // immediately after morrow and still before physics, so both orders grow by one.
+  // 167 -> 168 init / 126 -> 127 update: volatileExposure (NXB-008) — exposure-driven volatile
+  // cargo state; one system in both orders right after jettisonImpulse. Its update is a cheap
+  // tick%15 gate on non-cadence ticks, so it runs on the table clock beside lootShards.
+  // 168 -> 169 init / 127 -> 128 update: BRACKET adds one fixed-step character owner before physics.
+  // 169 -> 171 init / 128 -> 130 update: SWARM-02 juice pack — the arcade detector (swarmJuice,
+  // one slot after swarmChain so it reads the kills this tick settled) and its DOM-guarded
+  // presenter (swarmJuiceHud, after survivalHud); one in both orders each.
+  assert.equal(PRODUCTION_INIT_ORDER.length, 171);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 130);
   assert.equal(PRODUCTION_UPDATE_ORDER[PRODUCTION_UPDATE_ORDER.length - 1], 'save');
   assert.ok(PRODUCTION_UPDATE_ORDER.includes('save'));
   assert.equal(PRODUCTION_INIT_ORDER[0], 'core');
@@ -221,7 +232,13 @@ test('browser production system set is unchanged vs production manifest constant
   // 164 with miningHud (INF lane): the mining instrument joins both orders beside the
   // other DOM-guarded HUDs (massSeedHud/fieldHud/planetHud posture).
   // 165 with hullBurst (hull-burst overhaul slice C; one system in both orders).
-  assert.equal(registry.systems.length, 165);
+  // 166 with morrow (fixed-step character owner before physics); 167 with vesper (same
+  // posture — one system in both orders, between morrow and physics). 168 with
+  // volatileExposure (NXB-008, beside jettisonImpulse in both orders).
+  // 169 with bracket (PR #210 — a third fixed-step character owner before physics).
+  // 171 with SWARM-02 juice pack — swarmJuice (arcade detector, after swarmChain) and
+  // swarmJuiceHud (DOM-guarded presenter, after survivalHud), one system in both orders each.
+  assert.equal(registry.systems.length, 171);
   const names = registry.systems.map((s) => s.name);
   assert.ok(names.includes('render') || registry.runtimeManifest.authoritativeSystemIds.includes('render'));
   assert.ok(registry.runtimeManifest.authoritativeSystemIds.includes('ui'));
@@ -298,4 +315,12 @@ test('authoritativeIdentityEqual detects profile and order drift', () => {
   const c = resolveRuntimeManifest({ profileId: 'legacy47a' });
   assert.equal(authoritativeIdentityEqual(a, b), true);
   assert.equal(authoritativeIdentityEqual(a, c), false);
+});
+
+// FB-089: the table clock is declared, never defaulted. Every production update-order id
+// must appear in exactly one clock list (or hold a glass capability) — a new system with
+// no declaration fails here with its id named.
+test('every production update-order system has exactly one declared clock', () => {
+  const violations = validateSystemClockDeclarations();
+  assert.deepEqual(violations, [], `clock declaration violations: ${violations.join('; ')}`);
 });

@@ -11,6 +11,7 @@ import { runOwnsReward } from '../combat/rewardEligibility.js';
 import { attackerLabel, weaponLabel } from '../combat/playerDefeat.js';
 import { validateRunState } from '../core/runState.js';
 import { SWARM_RULESET } from '../data/swarmMode.js';
+import { swarmZoneIndexFor } from '../data/swarmLadder.js';
 import { SURVIVAL_ARC_LENGTH } from '../data/survivalActs.js';
 import { settleCrucibleRun } from './survivalRecords.js';
 import { challengeFromRun } from './survivalMutators.js';
@@ -506,6 +507,14 @@ export const survivalResults = {
           simTime: this._simNow(),
         };
       }
+      // SWARM-04: the ladder's third star asks for the chain INSIDE the zone, not the run's
+      // peak — a chain that carried across the boundary peaks wherever it stood highest.
+      const wave = p && Number.isInteger(p.wave) && p.wave > 0 ? p.wave : null;
+      const chain = p && Number.isFinite(p.chain) ? p.chain : 0;
+      if (wave && chain > 0) {
+        const key = String(swarmZoneIndexFor(wave));
+        if (chain > (this._zoneChains[key] || 0)) this._zoneChains[key] = chain;
+      }
     }));
     // swarmChain also publishes the peak as it drops state on run:ended. Latch it so a
     // race against that reset cannot zero the chain the results screen is about to name.
@@ -559,6 +568,8 @@ export const survivalResults = {
     this._kills = 0;
     this._bestChain = 0;
     this._chainPeak = null;
+    this._zoneChains = {};
+    this._zoneDeaths = {};
     this._wavesCleared = 0;
     this._deepestWave = 0;
     this._damageTrail = [];
@@ -848,6 +859,13 @@ export const survivalResults = {
     this._defeatReceipt = payload || null;
     this._deathMark = { tick: this._tickNow(), simTime: this._simNow() };
     this._stopReason = 'player_death';
+    // SWARM-04: where the defeat landed, in zone terms — the ladder's second star asks
+    // whether the hull ever went down INSIDE the zone it cleared. Today one death ends the
+    // run, so this records the attempted zone; the day a revive lets a run continue, the
+    // spent Second Wind already files against the right zone.
+    const deathWave = Number.isInteger(run.wave) && run.wave > 0 ? run.wave : 1;
+    const deathZone = String(swarmZoneIndexFor(deathWave));
+    this._zoneDeaths[deathZone] = (this._zoneDeaths[deathZone] || 0) + 1;
     // A Crucible death is the end of the run — there is no recovery berth in an arena.
     this._emit('run:endRequested', {
       outcome: 'defeat',
@@ -1026,6 +1044,12 @@ export const survivalResults = {
     result.unlocksEarned = [];
     result.highestRoundEntered=this._highestEntered;
     result.lastRoundCleared=this._deepestWave;
+    // SWARM-04: the facts the ladder settles from — where the run began (a checkpoint start
+    // begins mid-ladder), each zone's peak chain, and each zone's defeat count.
+    result.startWave = run.telemetry && Number.isInteger(run.telemetry.startWave)
+      ? run.telemetry.startWave : 1;
+    result.zoneChains = { ...this._zoneChains };
+    result.zoneDeaths = { ...this._zoneDeaths };
     result.roundThreatBudget=run.threatBudget;
     result.roundThreatResolved=run.resolvedThreat;
     result.remainingEnemies=Math.max(0,(run.threatBudget??0)-(run.resolvedThreat??0));
@@ -1050,6 +1074,18 @@ export const survivalResults = {
     try {
       const settled = settleCrucibleRun({ result, run });
       result.unlocksEarned = settled.unlocksEarned.slice();
+      const row = settled && settled.result;
+      if (row) {
+        result.bankedBounty = row.bankedBounty;
+        result.hangarBounty = row.hangarBounty;
+        result.cashOut = row.cashOut;
+        // SWARM-04: the stars/checkpoint the run just settled onto the ladder — the results
+        // surface reads this straight, never re-derives eligibility itself.
+        if (row.ladderDelta) result.ladderDelta = row.ladderDelta;
+        const banked = Number.isFinite(row.bankedBounty) ? row.bankedBounty : 0;
+        const chest = Number.isFinite(row.hangarBounty) ? row.hangarBounty : 0;
+        result.bankLine = `The hangar banked ${banked} from this run and the chest now holds ${chest}.`;
+      }
     } catch {
       // A local-record failure must not swallow the results the player is owed.
     }

@@ -80,6 +80,13 @@ export function collectPageIssues(page, options = {}) {
       ignoredIssues.push({ ...issue, cancelledMedia: true });
       return;
     }
+    // Store-less test servers deliberately leave this optional backend unmounted.
+    // Its client deadline falls back to localStorage; keep real-store failures visible.
+    if (options.playerStoreMounted === false && isNavigationCancelledRequest(failure)
+      && new URL(request.url()).pathname === '/__spaceface_player_store') {
+      ignoredIssues.push({ ...issue, absentPlayerStore: true });
+      return;
+    }
     issues.push(issue);
   });
   page.on('pageerror', (err) => {

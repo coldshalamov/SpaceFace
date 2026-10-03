@@ -2210,6 +2210,29 @@ export function escapeTauntBarkFor(factionId, rng) {
   return typeof line === 'string' && line.length ? line : '...';
 }
 
+// ── Law step receipts: CONTROL voices what the law just did ──────────────────────────────────
+//
+// FB-040 — event lines, not a BARK_SITUATION, and deliberately one line each: these are receipts
+// in the lawful register, not personality chatter. The speaker is the lawful channel itself — a
+// responder hull close enough to carry it, or the control desk when the receipt lands docked or
+// off-radio. barkDirector owns the subscriptions and the per-incident dedupe; nothing else
+// should speak these rows.
+
+export const LAW_STEP_BARKS = Object.freeze({
+  'law:fineAssessed': 'Assessment posted. The warrant prices itself — answer it before it answers for you.',
+  'law:sanctuaryWithdrawal': 'Contact broke at the station ring. Withdrawal logged; the lane holds.',
+  'law:responseDeferred': 'Response queued at capacity. Dispatch holds until the grid clears a slot.',
+  'law:incidentResolved': 'Incident closed at the cordon. The approach is secure — resume transit.',
+  'law:wantedWarrantReleased': 'The posted warrant is released. The ledger keeps what the hunt recorded.',
+  'law:distressRaised': 'Distress acknowledged on the guard channel. Patrol is burning for the marker.',
+});
+
+/** The lawful-register receipt line for a law event; null for anything outside the corpus. */
+export function lawStepBarkFor(eventName) {
+  const line = eventName && LAW_STEP_BARKS[eventName];
+  return typeof line === 'string' && line.length ? line : null;
+}
+
 // ── Passengers are people — the person a contract is about ───────────────────────────────────
 //
 // A passenger job used to be one sentence: a seat count with a fee. These corpora make the fare a
@@ -2291,6 +2314,36 @@ export function passengerBeatLine(kind, index) {
   return typeof line === 'string' && line.length ? line : pool[0];
 }
 
+// WORLD-35 / WORLD-42. Role registers, not faction patrol-greeting lines. A tourist liner
+// must not borrow the freighter hail, and an empty-lot hauler speaks this register only.
+export const TOURIST_HAIL_REGISTER = Object.freeze([
+  'Scenic liner. The window is the cargo. Mind the glass.',
+  'Tour pass. We are looking, not hauling. Hold your lane.',
+  'Liner on the view. Passengers at the ports. No freight aboard.',
+]);
+
+export const HAULER_REGISTER = Object.freeze([
+  'Empty lot. I burned the lane for nothing.',
+  'Berth is bare. Somebody posted a ghost.',
+  'No load on the pad. I am not waiting on a rumour.',
+]);
+
+export function touristHailFor(rng) {
+  return TOURIST_HAIL_REGISTER[pickIndex(rng, TOURIST_HAIL_REGISTER.length)];
+}
+
+export function haulerRegisterBarkFor(rng) {
+  return HAULER_REGISTER[pickIndex(rng, HAULER_REGISTER.length)];
+}
+
+/** Tourist and hauler lines. Freighter and every other role stay on the faction hail. */
+export function trafficRoleHail(role, rng) {
+  const key = String(role || '').toLowerCase();
+  if (key === 'tourist') return { register: 'tourist', text: touristHailFor(rng) };
+  if (key === 'hauler') return { register: 'hauler', text: haulerRegisterBarkFor(rng) };
+  return null;
+}
+
 export default {
   BARKS,
   BARK_FACTIONS,
@@ -2302,6 +2355,7 @@ export default {
   PURSUIT_BARKS,
   SURRENDER_BARKS,
   ESCAPE_TAUNT_BARKS,
+  LAW_STEP_BARKS,
   FRONTIER_FIRST_NAMES,
   FRONTIER_LAST_NAMES,
   PASSENGER_WHY_LINES,
@@ -2313,7 +2367,13 @@ export default {
   pursuitBarkFor,
   surrenderBarkFor,
   escapeTauntBarkFor,
+  lawStepBarkFor,
   passengerBeatLine,
   witnessSeamLineFor,
   syncWitnessSeamVoice,
+  TOURIST_HAIL_REGISTER,
+  HAULER_REGISTER,
+  touristHailFor,
+  haulerRegisterBarkFor,
+  trafficRoleHail,
 };

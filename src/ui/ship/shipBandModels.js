@@ -39,7 +39,7 @@ export const SHIP_ENGINEERING_GAUGE_DEFS = Object.freeze([
   { key: 'capMax', label: 'Energy', kind: 'energy', suffix: '' },
   { key: 'shieldMax', label: 'Shield', kind: 'shield', suffix: '' },
   { key: 'cargoCap', label: 'Cargo', kind: 'cargo', suffix: 'u' },
-  { key: 'maxSpeed', label: 'Thrust', kind: 'accent', suffix: '' },
+  { key: 'thrust', label: 'Thrust', kind: 'accent', suffix: '' },
   { key: 'continuousDrain', label: 'Heat', kind: 'heat', suffix: '' },
 ]);
 

@@ -647,6 +647,39 @@ export function bindAuthoredMotion(root, bank, options = {}) {
   const clips = new Map();
   for (const clip of checked.clips) clips.set(clip.name, clip);
 
+  // Max reach each bound group can displace a subtree vertex, per binding: rotation keys are
+  // rest-relative deltas, so the largest deviation is the key with the smallest |w|; chord
+  // factor 2·sin(θ/2) = 2·sqrt(1-|w|²). Translation keys add |t| directly. The consumer
+  // multiplies the chord factor by the node's measured subtree radius (world space, lazy)
+  // and sums across bindings — nested pivots compose linearly, same-named LOD twins are
+  // maxed not summed (only one level draws).
+  const padSpecs = [];
+  for (const [groupId, group] of groups) {
+    let chordFactor = 0;
+    let tMax = 0;
+    for (const clip of checked.clips) {
+      for (const channel of clip.channels) {
+        if (channel.group !== groupId) continue;
+        const values = channel.values;
+        if (channel.path === 'rotation') {
+          for (let i = 0; i < values.length; i += 4) {
+            const w = Math.abs(values[i + 3]);
+            const factor = 2 * Math.sqrt(Math.max(0, 1 - Math.min(1, w) ** 2));
+            if (factor > chordFactor) chordFactor = factor;
+          }
+        } else {
+          for (let i = 0; i < values.length; i += 3) {
+            const t = Math.hypot(values[i], values[i + 1], values[i + 2]);
+            if (t > tMax) tMax = t;
+          }
+        }
+      }
+    }
+    if (chordFactor > 0 || tMax > 0) {
+      padSpecs.push({ nodes: group.nodes, chordFactor, tMax });
+    }
+  }
+
   // A LOOPING 'authoredMotion:attach' clip is this rig's ambient idle — it is the clip the
   // resume block re-enters and the one reduced-motion parks.
   const attachClipName = (checked.events || {})['authoredMotion:attach'];
@@ -658,7 +691,6 @@ export function bindAuthoredMotion(root, bank, options = {}) {
   function lastClipName() {
     let last = null;
     for (const key of state.clips.keys()) last = key;
-    return last;
   }
 
   const state = {
@@ -819,6 +851,7 @@ export function bindAuthoredMotion(root, bank, options = {}) {
       return clip ? clip.durationS : null;
     },
     groups,
+    get motionPadSpec() { return padSpecs; },
 
     /**
      * Blend every currently-posed group back to rest over durationS — the early-disengage

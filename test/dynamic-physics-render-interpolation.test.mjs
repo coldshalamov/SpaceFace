@@ -38,7 +38,9 @@ function entity(type, x, z, data = {}) {
 test('Rapier-owned wrecks and fracture chunks snapshot their render interpolation pose', () => {
   const wreck = entity('wreck', 42, -17);
   const chunk = entity('asteroid', -12, 31, { isChunk: true });
-  const staticRock = entity('asteroid', 7, 9);
+  // Package E made non-landmark solids dynamic, so a plain colliding asteroid is a dynamic
+  // body now; pinning a static body needs an explicit authored override.
+  const staticRock = { ...entity('asteroid', 7, 9), physicsBody: { dynamic: false } };
   const state = {
     tick: 0,
     simTime: 0,

@@ -33,7 +33,7 @@
 import { MODULES } from '../data/modules.js';
 import { WEAPONS } from '../data/weapons.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
-import { entityIndexVersion } from '../world/livingWorldViews.js';
+import { entityIndexVersion, entityIndexLaneVersion } from '../world/livingWorldViews.js';
 import { suppressDefeatedLock, targetIdentityGeneration } from '../ai/perception.js';
 import {
   isPdScreenActor, ensurePdSaturation, pdSaturationAllows, beginPdIntercept,
@@ -161,6 +161,9 @@ export function getCountermeasuresQuietLatchForBench() {
 /** Membership / fittings rescan while latched (0.5 s @ 60 Hz). */
 const CM_QUIET_RESCAN_TICKS = 30;
 
+/** Membership lanes for the quiet latch — the CM/PDS interest census reads ships only. */
+const COUNTERMEASURES_QUIET_LANES = ['shipLike'];
+
 function publishCmQuiet(state, latched) {
   if (!state) return;
   const rt = state.countermeasureRuntime || (state.countermeasureRuntime = {});
@@ -245,7 +248,8 @@ export const countermeasures = {
     const inpEarly = state.input;
     const deployEdge = !!(inpEarly && inpEarly.deployCountermeasure);
     if (COUNTERMEASURES_QUIET_LATCH !== false) {
-      const membership = entityIndexVersion(state);
+      const laneVersion = entityIndexLaneVersion(state, COUNTERMEASURES_QUIET_LANES);
+      const membership = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
       const tick = state.tick | 0;
       let quiet = this._cmQuiet;
       const sinceArm = tick - (quiet ? (quiet.armedTick | 0) : tick);

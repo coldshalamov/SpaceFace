@@ -217,7 +217,7 @@ export function createPickupMotionTracker() {
 
   function bindEvents(bus) {
     if (!bus || typeof bus.on !== 'function') return;
-    busSubscribers.push(bus.on('entity:spawned', onSpawned));
+    busSubscribers.push(bus.on('entity:spawned', onSpawned, { presentation: true }));
   }
 
   function unbindEvents() {

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFileSync, statSync } from 'node:fs';
 import test from 'node:test';
 
@@ -10,18 +11,21 @@ const PARTS_MANIFEST = new URL(
   '../assets/ships/parts/parts_manifest.json',
   import.meta.url,
 );
+const RELEASE_MANIFEST = new URL('../assets/ships/release/release_manifest.json', import.meta.url);
 
 const REQUIRED_MATERIALS = [
-  'Material_Hull',
-  'Material_Structure',
-  'Material_Floor',
+  'Material_Armor',
+  'Material_Hull_aged',
+  'Material_Hull_deck',
+  'Material_Hull_line_white',
   'Material_Mechanical',
-  'Material_Radiator',
-  'Material_Safety',
-  'Material_Glass',
+  'Material_MechanicalDark',
+  'Material_Warning',
   'Material_Accent',
-  'Material_Decal',
-  'Material_Rubber',
+  'Material_Emissive_Amber',
+  'Material_Emissive_Cyan',
+  'Material_Emissive_NavRed',
+  'Material_Emissive_Warm',
 ];
 
 function parseGlbJson(filePath) {
@@ -70,51 +74,42 @@ function textureImage(gltf, textureInfo, label) {
   return image;
 }
 
-test('dock canonical source matches its manifest and source-checkpoint contract', () => {
+test('dock Forge source matches its identity, manifest, and published release source', () => {
   const gltf = parseGlbJson(SOURCE_GLB);
   const row = manifestRow();
   const extras = gltf.asset?.extras;
   const contract = extras?.spacefaceAsset;
 
   assert.ok(contract, 'missing asset-level SpaceFace contract');
-  assert.equal(extras.assetId, row.id);
-  assert.equal(extras.partId, row.id);
-  assert.equal(extras.category, row.category);
-  assert.equal(extras.priority, row.priority);
-  assert.equal(extras.triangleCount, row.tris);
-  assert.equal(extras.textureSize, row.textureSize);
-  assert.deepEqual(extras.boundsDimensionsM, row.bounds.dimensionsM);
   assert.equal(statSync(SOURCE_GLB).size, row.bytes, 'source byte count drifted from manifest');
   assert.equal(measuredTriangles(gltf), row.tris, 'measured triangles drifted from manifest');
-  assert.equal(extras.forwardAxis, '+X');
-  assert.equal(extras.upAxis, '+Y');
-  assert.equal(extras.starboardAxis, '+Z');
-  assert.equal(extras.unit, 'metre');
-  assert.deepEqual(extras.sourceProvenance, {
-    textureRoleContractVersion: 1,
-    textureRoleMode: 'bound-base-normal-orm',
-    sourceBlend: 'assets/ships/parts/blender/place_dock_interior_authored.blend',
-    geometryPipeline: 'tools/blender/remaster_opening_dock_interior_v2.py',
-    texturePipeline: 'tools/art/build_dock_interior_maps.py',
-    packedEditableTextures: true,
-  });
+  const release = JSON.parse(readFileSync(RELEASE_MANIFEST, 'utf8')).assets
+    .find((asset) => asset.id === row.id);
+  assert.ok(release, 'canonical dock source has no published release');
+  assert.equal(release.sourceBytes, row.bytes);
+  assert.equal(release.sourceSha256, createHash('sha256').update(readFileSync(SOURCE_GLB)).digest('hex'),
+    'release manifest no longer identifies the canonical source');
 
+  // Forge copies identity and preview placement, then stamps its own export/surface truth.
+  // Descriptive metadata from the superseded remaster checkpoint is deliberately omitted.
   assert.equal(contract.contractVersion, 1);
   assert.equal(contract.assetId, row.id);
   assert.equal(contract.partId, row.id);
   assert.equal(contract.liveId, row.id);
   assert.equal(contract.slot, 'place');
+  assert.equal(contract.category, row.category);
+  assert.equal(contract.forward, '+X');
+  assert.equal(contract.up, '+Y');
+  assert.equal(contract.starboard, '+Z');
+  assert.equal(contract.unit, 'metre');
   assert.equal(contract.sourceRole, 'shipworks_preview_backdrop');
   assert.equal(contract.role, 'neutral_reusable_shipworks_backdrop');
   assert.equal(contract.family, 'opening_route_neutral_shipworks_v1');
-  assert.equal(contract.registration, 'H-04 SHIPWORKS');
-  assert.equal(contract.triangleCount, row.tris);
-  assert.equal(contract.textureSize, row.textureSize);
-  assert.deepEqual(contract.boundsDimensionsM, row.bounds.dimensionsM);
-  assert.deepEqual(contract.sourceProvenance, extras.sourceProvenance);
-  assert.equal(contract.deliverableRole, 'production_single_lod_preview');
-  assert.equal(contract.wiringStatus, 'source_checkpoint_release_pending');
-  assert.equal(contract.mountAtOrigin, true);
+  assert.deepEqual(contract.forge, { version: 1, ship: row.id });
+  assert.equal(contract.identitySource, 'tools/blender/forge');
+  assert.equal(contract.surfaceGeometryRemaster, 'forge-v1');
+  assert.equal(contract.textureCompression, 'PNG-source');
+  assert.equal(row.mount, 'origin');
   assert.deepEqual(contract.previewMount, {
     floorLocalY: -3.44,
     referenceShipSpan: 24.08,
@@ -124,28 +119,19 @@ test('dock canonical source matches its manifest and source-checkpoint contract'
     maximumFloorClearance: 2,
     floorClearanceHeightRatio: 0.12,
   });
-  assert.deepEqual(contract.clearApertureMetres, {
-    width: 28,
-    depth: 28,
-    heightAboveFloor: 13,
-  });
-  assert.deepEqual(contract.authoringLods, ['lod0', 'lod1', 'lod2']);
-  assert.deepEqual(contract.exportedLods, ['lod0']);
-  assert.match(contract.exportSelectionReason, /has no place-asset LOD selection/);
+  assert.equal(contract.lod, 'lod0');
 
   assert.deepEqual(row.hooks, [], 'unsupported historical hooks remain in the manifest');
   assert.deepEqual(row.sockets, ['SOCKET_Structure_Core']);
 });
 
-test('dock canonical source exports one rooted LOD0 and its structure socket only', () => {
+test('dock Forge source exports rooted LOD0 meshes, motion pivots, and its structure socket', () => {
   const gltf = parseGlbJson(SOURCE_GLB);
   const nodes = gltf.nodes || [];
-  const rootIndex = nodes.findIndex((node) => node.name === 'place_dock_interior');
-  const lod0Index = nodes.findIndex((node) => node.name === 'LOD0_Dock_ROOT');
+  const rootIndex = nodes.findIndex((node) => node.name === 'SF_PLACE_DOCK_INTERIOR_ROOT');
   const socketIndex = nodes.findIndex((node) => node.name === 'SOCKET_Structure_Core');
 
-  assert.ok(rootIndex >= 0, 'missing canonical place_dock_interior root');
-  assert.ok(lod0Index >= 0, 'missing LOD0_Dock_ROOT');
+  assert.ok(rootIndex >= 0, 'missing canonical Forge dock root');
   assert.ok(socketIndex >= 0, 'missing SOCKET_Structure_Core');
   const root = nodes[rootIndex];
   const sceneRoots = gltf.scenes?.[gltf.scene || 0]?.nodes || [];
@@ -158,13 +144,20 @@ test('dock canonical source exports one rooted LOD0 and its structure socket onl
   for (const property of ['matrix', 'translation', 'rotation', 'scale']) {
     assert.equal(root[property], undefined, `canonical dock root has non-identity ${property}`);
   }
-  assert.ok(root.children?.includes(lod0Index), 'LOD0 root must be a direct dock-root child');
   assert.ok(root.children?.includes(socketIndex), 'structure socket must be a direct root child');
   assert.deepEqual(nodes[socketIndex].translation ?? [0, 0, 0], [0, 0, 0]);
   assert.equal(nodes[socketIndex].extras?.role, 'structure');
   assert.deepEqual(nodes[socketIndex].extras?.forward, [1, 0, 0]);
-  assert.equal(nodes[lod0Index].extras?.['spaceface.lod'], 'lod0');
-  assert.equal(nodes[lod0Index].extras?.['spaceface.lodLevel'], 0);
+  for (const name of ['MOTION_DOCK_CLAMP_L', 'MOTION_DOCK_CLAMP_R', 'MOTION_DOCK_UMBILICAL']) {
+    const index = nodes.findIndex((node) => node.name === name);
+    assert.ok(index >= 0 && root.children?.includes(index), `${name} is not rooted`);
+    assert.ok(nodes[index].extras?.spaceface?.motionGroup, `${name} has no motion binding`);
+    assert.ok(nodes[index].children?.length > 0, `${name} has no authored motion geometry`);
+    for (const child of nodes[index].children) {
+      assert.match(nodes[child].name, /^LOD0_/, `${name} owns a non-LOD0 child`);
+      assert.ok(nodes[child].mesh != null, `${name} owns an empty motion child`);
+    }
+  }
   assert.equal(
     nodes.some((node) => node.name === 'HOOK_Emissive'),
     false,
@@ -188,24 +181,35 @@ test('dock canonical source exports one rooted LOD0 and its structure socket onl
   );
 });
 
-test('dock canonical source binds complete semantic PBR maps with UVs and tangents', () => {
+test('dock Forge surfaces bind PBR maps, declared emissive factors, UVs, and tangents', () => {
   const gltf = parseGlbJson(SOURCE_GLB);
   const materialsByName = new Map(
     (gltf.materials || []).map((material, index) => [material.name, { material, index }]),
   );
   const boundImages = new Set();
+  const boundTextures = new Set();
+  const contract = gltf.asset.extras.spacefaceAsset;
+  const factorOnly = new Set(contract.factorOnlyMaterials);
 
-  assert.equal(materialsByName.size, REQUIRED_MATERIALS.length);
+  assert.deepEqual([...materialsByName.keys()].sort(), [...REQUIRED_MATERIALS].sort());
+  assert.deepEqual([...factorOnly].sort(), REQUIRED_MATERIALS.filter((name) => name.startsWith('Material_Emissive')).sort());
+  assert.equal(contract.ormChannels, 'R=AO,G=Roughness,B=Metallic');
+  assert.equal(contract.normalConvention, 'OpenGL');
   for (const name of REQUIRED_MATERIALS) {
     const entry = materialsByName.get(name);
     assert.ok(entry, `missing semantic material ${name}`);
     const { material } = entry;
-    assert.equal(material.extras?.['spaceface.semantic'], name);
-    assert.equal(material.extras?.['spaceface.ormChannels'], 'R=AO,G=Roughness,B=Metallic');
-    assert.equal(
-      material.extras?.['spaceface.normalConvention'],
-      'OpenGL tangent space',
-    );
+    assert.equal(material.extras?.spacefaceFinish, 'forge-v1');
+    assert.equal(material.extras?.forgeShip, 'place_dock_interior');
+    assert.ok(material.extras?.forgeKey, `${name} has no authored finish key`);
+    if (factorOnly.has(name)) {
+      assert.equal(material.extras.spacefaceMaterialRole, 'signal');
+      assert.match(material.extras.forgeFinish, /^glow_/);
+      assert.ok(material.emissiveFactor?.some((channel) => channel > 0), `${name} has no emissive factor`);
+      assert.ok(material.extensions?.KHR_materials_emissive_strength?.emissiveStrength > 0,
+        `${name} has no signal strength`);
+      continue;
+    }
     for (const [label, info] of [
       ['base color', material.pbrMetallicRoughness?.baseColorTexture],
       ['normal', material.normalTexture],
@@ -213,24 +217,23 @@ test('dock canonical source binds complete semantic PBR maps with UVs and tangen
       ['occlusion', material.occlusionTexture],
     ]) {
       const image = textureImage(gltf, info, `${name} ${label}`);
-      boundImages.add(image.name);
+      boundImages.add(image);
+      boundTextures.add(info.index);
       assert.equal(image.mimeType, 'image/png', `${image.name} is not editable PNG source`);
       assert.ok(Number.isInteger(image.bufferView), `${image.name} is not embedded`);
     }
+    assert.equal(material.occlusionTexture.index, material.pbrMetallicRoughness.metallicRoughnessTexture.index,
+      `${name} does not share its packed ORM between occlusion and metallic-roughness`);
   }
 
-  const accent = materialsByName.get('Material_Accent').material;
-  boundImages.add(textureImage(gltf, accent.emissiveTexture, 'Material_Accent emissive').name);
-  assert.equal((gltf.images || []).length, 31);
-  assert.equal((gltf.textures || []).length, 31);
-  assert.equal(boundImages.size, 31, 'not every embedded source image is bound');
+  assert.equal(boundImages.size, gltf.images.length, 'not every embedded source image is bound');
+  assert.equal(boundTextures.size, gltf.textures.length, 'not every source texture is bound');
 
   const lod0Meshes = (gltf.nodes || [])
-    .filter((node) => node.name?.startsWith('LOD0_Dock_Material_') && node.mesh != null);
-  assert.equal(lod0Meshes.length, REQUIRED_MATERIALS.length);
+    .filter((node) => node.mesh != null);
+  assert.ok(lod0Meshes.length > 0, 'dock source has no authored geometry');
   for (const node of lod0Meshes) {
-    assert.equal(node.extras?.['spaceface.lod'], 'lod0', `${node.name} LOD tag drifted`);
-    assert.equal(node.extras?.['spaceface.authoredConstruction'], true);
+    assert.match(node.name, /^LOD0_/, `${node.name} is not a LOD0 export`);
     for (const primitive of gltf.meshes?.[node.mesh]?.primitives || []) {
       assert.ok(primitive.attributes?.TEXCOORD_0 != null, `${node.name} lacks UV0`);
       assert.ok(primitive.attributes?.TANGENT != null, `${node.name} lacks tangents`);

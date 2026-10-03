@@ -150,6 +150,8 @@ try {
       error: reportError && reportError.message ? reportError.message : String(reportError),
     }));
     const startupTrace = await getStartupTrace(cdp).catch(() => []);
+    const liveReadiness = await evalJson(cdp, `(() => { try { return window.SF && window.SF.authoredVisualReadiness ? window.SF.authoredVisualReadiness() : null; } catch (e) { return { evalError: String(e && e.message || e) }; } })()`).catch((e) => ({ collectError: String(e && e.message || e) }));
+    startupReport.liveReadiness = liveReadiness;
     throw new Error(`seeded flight session did not become playable before authored asset proof: ${JSON.stringify(compactStartupFailure(startupReport, startupTrace, error, pageIssues), null, 2)}`);
   }
   const startTick = playable.tick;
@@ -2231,6 +2233,7 @@ function compactStartupFailure(report, startupTrace, cause, pageIssues) {
       error: loader.error,
     },
     startupTrace: Array.isArray(startupTrace) ? startupTrace.slice(-12) : [],
+    liveReadiness: report && report.liveReadiness,
     criticalStations: report && Array.isArray(report.criticalStations) ? report.criticalStations : [],
     authoredUpgradeDiagnostics: report && report.authoredUpgradeDiagnostics || null,
     pageIssues: {

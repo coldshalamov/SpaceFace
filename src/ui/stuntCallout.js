@@ -10,9 +10,11 @@
 // compact chain readout (the open line's named acts, the raw points, the chain-window scale with
 // its bridge notches, and the banked total).
 //
-// Scope law (PQ-146 non-goal): NO score popups in adventure flight. Every render path gates on a
-// LIVE survival run in flight mode — outside it the layer is hidden and its frame listener is
-// stopped, so adventure and menus pay nothing.
+// Scope law (PQ-146 non-goal, as amended by FB-012): NO score popups in adventure flight —
+// named acts are not score. The Crucible meter (multiplier, raw points, banked, window) gates
+// on a LIVE survival run; the named acts speak wherever the flight HUD is up, adventure
+// included. Outside flight the layer is hidden and its frame listener is stopped, so menus pay
+// nothing.
 //
 // ORRERY (design/frontend/ORRERY.md): light is the only material. Type carries the callouts (caps
 // labels, thin numerals, `--dp-*` tokens via injectOrrery), the chain window is a scale (a ruled
@@ -217,6 +219,14 @@ function mk(doc, tag, className, text) {
   return node;
 }
 
+// SWARM-03 — kill causes reach the stunt line (SWARM_EXPANSION §10): every physics kill
+// already carries its cause word on `swarm:killPopup` (swarmJuice reads the kill-
+// presentation receipt); the line quotes the word so SLAMMED/MINED/BANKED/SLUNG stop
+// being invisible payouts. Gun kills (SHREDDED/DOWN) stay quiet — guns never needed
+// teaching. Repeats inside the TTL roll the count like a pinball display, keyed so the
+// three-line budget is spent on kinds, not on spam.
+const SWARM_CAUSE_WORDS = new Set(['SLAMMED', 'BANKED', 'SLUNG', 'MINED']);
+
 function collectText(node, acc) {
   if (!node) return acc;
   if (typeof node.textContent === 'string' && node.textContent) acc.push(node.textContent);
@@ -284,13 +294,19 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
 
   const getState = () => state;
 
-  /** A live survival run in flight, nothing modal on top: the only state this layer speaks in. */
+  /**
+   * FB-012 — a live survival run keeps the full instrument; ADVENTURE now names the act too.
+   * The same flight/modal gates hold in both, and the Crucible's score fields (multiplier,
+   * points, banked, window — the meter and bank lines) stay Crucible-only: adventure has rep
+   * and salvage rights instead of style points. Idle cost is unchanged: with nothing to say the
+   * render step returns false and the frame listener drops until a bus event wakes it.
+   */
   function calloutScope(st) {
-    const run = st && st.run;
-    if (!run || run.kind !== 'survival' || run.phase === 'inactive') return null;
-    if (st.mode !== 'flight') return null;
+    if (!st || st.mode !== 'flight') return null;
     if (st.ui && ((st.ui.screenStack && st.ui.screenStack.length) || st.ui.docked)) return null;
-    return run;
+    const run = st && st.run;
+    if (run && run.kind === 'survival' && run.phase !== 'inactive') return { run, adventure: false };
+    return { run: null, adventure: true };
   }
 
   function motionReduced(st) {
@@ -356,11 +372,72 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
   function onBank(bank) {
     if (destroyed) return;
     const st = getState();
-    if (!calloutScope(st)) return;
+    const scope = calloutScope(st);
+    // FB-012 — the bank IS a score field: it stays Crucible-only. Adventure never says "+N BANKED".
+    if (!scope || scope.adventure) return;
     const text = bankCalloutText(bank);
     if (!text) return;
     addLine(`bank:${bank && bank.bankId}`, text, '', wallNow(), CALLOUT_TTL_MS + 600, true);
     spoken = text.replace(/×/g, ' at ').replace(/\+/g, '');
+    sr.textContent = spoken;
+    wake();
+  }
+
+  // ── FB-014 — the four stunt economy events find their consumers here. A minted right is
+  // money the player is owed; a claimed right is the confirm; a completed line contract is an
+  // earned name; a bridge is the combo tick. All ride the same quiet scope gate and the same
+  // three-line column as every other named act.
+
+  function onSalvageRights(p) {
+    if (destroyed) return;
+    const st = getState();
+    if (!calloutScope(st)) return;
+    const amount = Math.max(0, Math.floor(Number(p && p.salvageRights) || 0));
+    if (amount <= 0) return;
+    const name = trickCalloutName(p);
+    if (!name) return;
+    addLine(`rights:${p && p.episodeId}`, `SALVAGE RIGHT · ${name}`, `+${amount}`,
+      calloutNow(), CALLOUT_TTL_MS + 400, true);
+    spoken = `Salvage right, ${amount}. ${trickSpokenText(p)}`;
+    sr.textContent = spoken;
+    wake();
+  }
+
+  function onSalvageRightsClaimed(p) {
+    if (destroyed) return;
+    const st = getState();
+    if (!calloutScope(st)) return;
+    const amount = Math.max(0, Math.floor(Number(p && p.salvageRights) || 0));
+    if (amount <= 0) return;
+    addLine('rights-claimed', 'RIGHTS CLAIMED', `+${amount}`, calloutNow(), CALLOUT_TTL_MS, true);
+    spoken = `Rights claimed, ${amount}.`;
+    sr.textContent = spoken;
+    wake();
+  }
+
+  function onLineContract(card) {
+    if (destroyed) return;
+    const st = getState();
+    if (!calloutScope(st)) return;
+    const name = card && typeof card.name === 'string' ? card.name : '';
+    if (!name) return;
+    addLine(`contract:${card && card.contractId}`, `LINE CONTRACT · ${name}`, '',
+      calloutNow(), CALLOUT_TTL_MS, false);
+    spoken = `Line contract, ${name}.`;
+    sr.textContent = spoken;
+    wake();
+  }
+
+  function onBridgeTick(p) {
+    if (destroyed) return;
+    const st = getState();
+    const scope = calloutScope(st);
+    if (!scope) return;
+    // In a run the meter's notches already carry the bridge; the line is the adventure's read.
+    if (!scope.adventure) return;
+    const name = p && typeof p.name === 'string' && p.name ? p.name : 'Bridge';
+    addLine(`bridge:${p && p.tick}`, `BRIDGE · ${name}`, '', calloutNow(), CALLOUT_TTL_MS, false);
+    spoken = `Bridge, ${name}.`;
     sr.textContent = spoken;
     wake();
   }
@@ -397,12 +474,14 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
   function update(now) {
     if (destroyed) return false;
     const st = getState();
-    const run = calloutScope(st);
-    if (!run) {
+    const scope = calloutScope(st);
+    if (!scope) {
       root.hidden = true;
       return false;
     }
-    const combo = st.stunts && typeof st.stunts === 'object' ? st.stunts.combo : null;
+    // FB-012 — the chain meter is Crucible-only; adventure speaks through the callout lines.
+    const combo = !scope.adventure && st.stunts && typeof st.stunts === 'object'
+      ? st.stunts.combo : null;
     const readout = comboReadout(combo, st.tick);
     pruneLines(Number.isFinite(Number(now)) ? Number(now) : wallNow());
     const hasLines = lineNodes.size > 0;
@@ -424,6 +503,28 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
   }
 
   const unsubs = [];
+  // word -> { count, until } — the physics-cause counters that ride the same TTL the
+  // line does, so "SLAMMED ×4" is four kills inside one beat, not a lifetime total.
+  const causeRuns = new Map();
+  function onSwarmKill(p) {
+    if (destroyed) return;
+    const st = getState();
+    const scope = calloutScope(st);
+    // Runs only: the word stream is swarm-authored, and adventure has no swarm bus events.
+    if (!scope || scope.adventure) return;
+    const word = p && p.word;
+    if (!SWARM_CAUSE_WORDS.has(word)) return;
+    const now = calloutNow();
+    let rec = causeRuns.get(word);
+    if (!rec || rec.until <= now) rec = { count: 0 };
+    rec.count += 1;
+    rec.until = now + CALLOUT_TTL_MS;
+    causeRuns.set(word, rec);
+    addLine(`kc:${word}`, word, rec.count > 1 ? `×${rec.count}` : '', now, CALLOUT_TTL_MS, false);
+    spoken = rec.count > 1 ? `${word.toLowerCase()}, ${rec.count} in a row` : word.toLowerCase();
+    sr.textContent = spoken;
+    wake();
+  }
   if (bus && typeof bus.on === 'function') {
     unsubs.push(bus.on('stunt:trickDetected', (t) => onTrick(t)));
     unsubs.push(bus.on('stunt:trickAmended', (t) => onTrick(t)));
@@ -433,6 +534,15 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
       const whole = payload && payload.selfSlingBonusDv;
       addLine('self-sling', selfSlingCalloutText(whole), '', calloutNow(), CALLOUT_TTL_MS, false);
     }));
+    // FB-014 — the minted right, its claim, the completed line contract and the combo bridge
+    // tick were emit-only. The callout column is their eye; the ship ledger (FB-014's projector)
+    // is their record.
+    unsubs.push(bus.on('stunt:salvageRights', (p) => onSalvageRights(p)));
+    unsubs.push(bus.on('stunt:salvageRightsClaimed', (p) => onSalvageRightsClaimed(p)));
+    unsubs.push(bus.on('stunt:lineContractCompleted', (p) => onLineContract(p)));
+    unsubs.push(bus.on('stunt:bridge', (p) => onBridgeTick(p)));
+    // SWARM-03 — the physics cause tag, on the lane that already names tricks.
+    unsubs.push(bus.on('swarm:killPopup', (p) => onSwarmKill(p)));
   }
 
   return {

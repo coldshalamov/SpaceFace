@@ -37,6 +37,7 @@ import {
   promotedReturnLine,
 } from '../data/pilotCallsigns.js';
 import { ensureMoralMemory, rememberMoralDebt, revealMoralDebt } from './moralMemory.js';
+import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 import { barkFor } from '../data/barks.js';
 import { pirateDoctrineForEntity, reachCultureDoctrineById } from '../data/pirateDoctrines.js';
 import { planetStatesForSector } from '../data/planetStates.js';
@@ -83,6 +84,8 @@ const CULTURE_INTRO_ROUTE_BY_SECTOR = new Map(
 
 export const aceMemory = {
   name: 'aceMemory',
+  // serialize() returns clonePlain(memory) — already fully owned.
+  saveSnapshotOwned: true,
 
   init(ctx) {
     this.state = ctx.state;
@@ -106,9 +109,21 @@ export const aceMemory = {
       this._planetChallengeResolved(p);
     });
     this._listen('sector:enter', (p) => {
+      // Live GPU + flight + hard enter: defer into the cook's FIFO — the census
+      // drains the same two schedulers under its slice clock in listener order.
+      if (deferSectorEnterMaterialization(this.state, p, this._cookProvider)) return;
       this._scheduleCultureIntro(p);
       this._schedulePlanetChallenges(p);
     });
+    // Census arm: ace challenge scheduling lands inside the sector cook deterministically.
+    this._cookProvider = (sector) => {
+      if (!this._subs || !this._subs.length) return;
+      const p = { sectorId: (sector && sector.id) || sectorOf(this.state) };
+      this._scheduleCultureIntro(p);
+      this._schedulePlanetChallenges(p);
+    };
+    (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
+      .push(this._cookProvider);
     this._listen('save:loaded', () => {
       this._rearmCultureIntroAfterLoad();
       this._rearmPlanetChallengesAfterLoad();

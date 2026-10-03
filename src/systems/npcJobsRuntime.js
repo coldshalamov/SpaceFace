@@ -55,6 +55,7 @@ import {
   NPC_JOB_SCHEMA,
 } from './npcJobs.js';
 import { hash32 } from '../core/rng.js';
+import { syncEntityActivitySlotMembership } from '../core/coreSystem.js';
 import { takeNearWorkSlice, NEAR_WORK_TOKEN_BUDGET } from '../core/activityScheduler.js';
 import { createNearestEntityQueryService } from '../core/spatialQuery.js';
 import { normalizeRoe, RulesOfEngagement } from '../ai/doctrine.js';
@@ -73,7 +74,7 @@ import {
   berthServiceTier,
 } from '../data/heistFacilities.js';
 import { berthWorkerRecordId } from './heistFacilities.js';
-import { findLivingWorldActor, forEachFieldRock, forEachJobInteractable, forEachLivingWorldActor } from '../world/livingWorldViews.js';
+import { findLivingWorldActor, forEachFieldRock, forEachJobInteractable, forEachLivingWorldActor, indexedWorldRecordEntity, isLivingWorldActor, registerEntityWorldRecordId } from '../world/livingWorldViews.js';
 import { getAsteroidFieldRock, promoteAsteroidFieldRock } from '../world/asteroidField.js';
 import { requestActivityReclassify } from '../world/activityRuntime.js';
 import {
@@ -198,6 +199,20 @@ function forEachCeresRealTargetBody(state, fn) {
 /** Same-record uniqueness includes malformed fx/asteroid duplicates. Not a 60 Hz owner loop. */
 function forEachWorldRecordContender(state, worldRecordId, fn) {
   if (typeof fn !== 'function' || !worldRecordId) return;
+  const index = state && state.entityIndex;
+  // The index counts live worldRecordId carriers: a proven single contender resolves O(1);
+  // any ambiguity — a miss, a stale holder, or a second carrier — keeps the entityList walk
+  // so malformed duplicates still enumerate in order.
+  if (index && index.__spacefaceEntityIndexV1 === true && index.ready === true
+    && index.byWorldRecordId instanceof Map && index.byWorldRecordIdCount instanceof Map
+    && index.byWorldRecordIdCount.get(worldRecordId) === 1) {
+    const holder = index.byWorldRecordId.get(worldRecordId);
+    if (holder && holder.alive !== false && holder.data
+      && holder.data.worldRecordId === worldRecordId) {
+      fn(holder);
+      return;
+    }
+  }
   const list = (state && state.entityList) || [];
   for (let i = 0; i < list.length; i++) {
     const entity = list[i];
@@ -866,6 +881,13 @@ export const npcJobsRuntime = {
     this._jobIds = null;
     this._jobIdsById = null;
     this._jobIdsDirty = true;
+    // Lazily-rebuilt entity-join maps for the gone path: entityId -> first entry in
+    // byId key order (mirroring _entryForEntity's first-match scan) and towTargetId ->
+    // entry list. Dirtied by _invalidateJobIds (every create/delete) and by each
+    // entityId / towTargetId field write below — a rebuilt map is provably current, so
+    // a miss is authoritative and needs no scan fallback.
+    this._goneIndex = null;
+    this._goneIndexDirty = true;
 
     // Runtime bridge for intents: every kernel intent is surfaced on the bus under its own event
     // name (npcjobs:transit / :work / :cycle / :hold / :complete / …). Cargo/economy owners MAY
@@ -1021,6 +1043,7 @@ export const npcJobsRuntime = {
   _lots() { return this._ensureState().lots; },
   _invalidateJobIds() {
     this._jobIdsDirty = true;
+    this._goneIndexDirty = true;
     // Membership dirty wake for VFX quiet-empty latch (prepareFrame residual).
     // Soft-GPU fps not claimed.
     const bag = this.state && this.state.npcJobs;
@@ -1906,13 +1929,38 @@ export const npcJobsRuntime = {
       && this._hasExactCeresSectorAuthority(entity);
   },
 
+  _ensureGoneIndex() {
+    if (this._goneIndex && this._goneIndexDirty !== true) return this._goneIndex;
+    const byEntity = new Map();
+    const byTowTarget = new Map();
+    const byId = this._byId();
+    for (const jobId of Object.keys(byId)) {
+      const entry = byId[jobId];
+      if (!entry) continue;
+      if (entry.entityId != null && !byEntity.has(entry.entityId)) byEntity.set(entry.entityId, { jobId, entry });
+      if (entry.towTargetId != null) {
+        let bucket = byTowTarget.get(entry.towTargetId);
+        if (!bucket) { bucket = []; byTowTarget.set(entry.towTargetId, bucket); }
+        bucket.push({ jobId, entry });
+      }
+    }
+    this._goneIndex = { byEntity, byTowTarget };
+    this._goneIndexDirty = false;
+    return this._goneIndex;
+  },
+
   _entryForEntity(entityId) {
     if (entityId == null) return null;
-    const byId = this._byId();
-    for (const id of Object.keys(byId)) {
-      if (byId[id] && byId[id].entityId === entityId) return byId[id];
+    let index = this._ensureGoneIndex();
+    let rec = index.byEntity.get(entityId);
+    if (rec && this._byId()[rec.jobId] !== rec.entry) {
+      // A byId slot was swapped without a link site (wrapper replacement, ad-hoc restore) —
+      // other rows can be just as stale; rebuild rather than trust a healed slot.
+      this._goneIndexDirty = true;
+      index = this._ensureGoneIndex();
+      rec = index.byEntity.get(entityId);
     }
-    return null;
+    return rec && rec.entry.entityId === entityId ? rec.entry : null;
   },
 
   newGame() {
@@ -2362,6 +2410,9 @@ export const npcJobsRuntime = {
           RECORD_KIND.CONVOY,
           `ceres:occupation:scavenger:${Math.round(entity.pos.x)}:${Math.round(entity.pos.z)}`,
         );
+        // Post-append stamp on a live indexed entity — register it like every other stamp
+        // site so the map/count answer O(1) and the miss-memos see the carrier.
+        registerEntityWorldRecordId(this.state && this.state.entityIndex, entity);
       }
       if (data.sectorId == null) data.sectorId = CERES_ACTIVITY_SECTOR_ID;
       if (data.homeSectorId == null) data.homeSectorId = CERES_ACTIVITY_SECTOR_ID;
@@ -2603,6 +2654,7 @@ export const npcJobsRuntime = {
     entry.towOwnerRef = null;
     entry.towTargetRef = null;
     entry.towNextScanSimT = 0;
+    this._goneIndexDirty = true;
     return !!attachment || attachmentId != null;
   },
 
@@ -2664,6 +2716,7 @@ export const npcJobsRuntime = {
         stampNpcMasslineHead(entity, plan.headId);
         entry.towAttachmentId = restored.id;
         entry.towTargetId = restored.targetId;
+        this._goneIndexDirty = true;
         entry.towOwnerRef = entity;
         entry.towTargetRef = this.state.entities && this.state.entities.get(restored.targetId) || null;
         if (entity.data) {
@@ -2703,6 +2756,7 @@ export const npcJobsRuntime = {
     const attachment = created.attachment;
     entry.towAttachmentId = attachment.id;
     entry.towTargetId = target.id;
+    this._goneIndexDirty = true;
     entry.towOwnerRef = entity;
     entry.towTargetRef = target;
     if (data) {
@@ -3274,6 +3328,7 @@ export const npcJobsRuntime = {
     if (entry) entry.heliosShiftStopped = false;
     miner.data.minerShiftRockId = live.id;
     miner.data.activityActorSlotId = 'helios_starter_cutter';
+    syncEntityActivitySlotMembership(this.state && this.state.entityIndex, miner);
     requestActivityReclassify(this.state, miner);
     return true;
   },
@@ -3935,8 +3990,15 @@ export const npcJobsRuntime = {
     }
     const stationId = /^(?:home|origin|dest):(station_[a-z0-9_]+)$/.exec(waypoint.id || '')?.[1];
     if (stationId) {
-      const station = this.state.entityList.find((candidate) => candidate.alive
-        && candidate.type === 'station' && candidate.data?.stationId === stationId);
+      // First-holder map — same answer the entityList find returns (append is first-holder
+      // too, and corpse sweeps remap to the next live holder).
+      const index = this.state && this.state.entityIndex;
+      const indexed = index && index.__spacefaceEntityIndexV1 === true && index.ready === true
+        && index.byStationId instanceof Map ? index.byStationId.get(stationId) : null;
+      const station = (indexed && indexed.alive !== false && indexed.type === 'station')
+        ? indexed
+        : this.state.entityList.find((candidate) => candidate.alive
+          && candidate.type === 'station' && candidate.data?.stationId === stationId);
       if (station) {
         const reach = Math.max((station.radius || 0) + (entity.radius || 0) + 20,
           station.data?.dockRadius || 0);
@@ -4496,7 +4558,11 @@ export const npcJobsRuntime = {
    *  query uses (eligibleActiveHostile) decides what counts as danger. */
   _hotAt(pos) {
     if (!pos) return false;
-    const list = this.state.entityList || [];
+    const index = this.state && this.state.entityIndex;
+    const list = index && index.__spacefaceEntityIndexV1 === true && index.ready === true
+      && Array.isArray(index.ships)
+      ? index.ships
+      : this.state.entityList || [];
     for (const e of list) {
       if (!e || e.alive === false || e.type !== 'ship' || e.team !== 1) continue;
       if (!eligibleActiveHostile(e)) continue;
@@ -4843,6 +4909,7 @@ export const npcJobsRuntime = {
     virtualize(entry.job);
     entry.entityId = null;
     entry.threatId = null;
+    this._goneIndexDirty = true;
   },
 
   _onFarActorRestored(p) {
@@ -4882,6 +4949,7 @@ export const npcJobsRuntime = {
       virtualize(entry.job);
       entry.entityId = null;
       entry.threatId = null;
+      this._goneIndexDirty = true;
       this._clearViolenceStamp(entry);
     }
     if (sectorId === CERES_ACTIVITY_SECTOR_ID) {
@@ -4983,6 +5051,7 @@ export const npcJobsRuntime = {
     materialize(entry.job);
     entry.entityId = entity.id;
     entry.threatId = null;
+    this._goneIndexDirty = true;
     clearRouteBrake(entity);
     entity.data.jobId = 'job:' + entry.worldRecordId;
     entity.data.jobPhase = entry.job.phase;
@@ -5030,7 +5099,15 @@ export const npcJobsRuntime = {
       }
       return match;
     }
-    return findLivingWorldActor(this.state, (e) => !!(e.data && e.data.worldRecordId === worldRecordId));
+    const hit = indexedWorldRecordEntity(this.state, worldRecordId);
+    if (isLivingWorldActor(hit)) return hit;
+    if (hit) {
+      // The record-id map resolved to a non-actor carrier; a living actor could still
+      // carry the same record id past it (the old first-match scan would have found
+      // it) — keep the actor-only scan for exactly that duplicate case.
+      return findLivingWorldActor(this.state, (e) => !!(e.data && e.data.worldRecordId === worldRecordId));
+    }
+    return null;
   },
 
   _onEntityGone(p) {
@@ -5038,12 +5115,15 @@ export const npcJobsRuntime = {
     if (id == null) return;
     const entry = this._entryForEntity(id);
     if (entry) this.release('job:' + entry.worldRecordId);
-    const byId = this._byId();
-    for (const jobId of Object.keys(byId)) {
-      const candidate = byId[jobId];
-      if (!candidate || candidate.towTargetId !== id) continue;
-      this._clearTugAttachment(candidate, 'npc_tow_target_gone');
+    let towed = this._ensureGoneIndex().byTowTarget.get(id);
+    if (!towed) return;
+    if (towed.some((rec) => this._byId()[rec.jobId] !== rec.entry)) {
+      // Same stale-slot class as _entryForEntity — rebuild once, then read the fresh bucket.
+      this._goneIndexDirty = true;
+      towed = this._ensureGoneIndex().byTowTarget.get(id) || null;
     }
+    if (!towed) return;
+    for (const rec of towed) this._clearTugAttachment(rec.entry, 'npc_tow_target_gone');
   },
 
   // ── save / restore ────────────────────────────────────────────────────────────────────────────
@@ -5087,6 +5167,12 @@ export const npcJobsRuntime = {
   },
 
   deserialize(data) {
+    for (const _ of this.deserializeChunked(data)) { /* sync lane: every batch inline */ }
+  },
+
+  // Generator twin: the actor walk and each job record restore are atomic, so yields sit only
+  // between those record boundaries — order and RNG consumption stay identical.
+  *deserializeChunked(data) {
     // World re-entry happens before this restore step. An outgoing virtual job can therefore
     // briefly re-link to an incoming durable hull during the earlier sector:enter. The saved bag
     // below is authoritative; clear every live marker owned by this runtime before replacing it,
@@ -5111,6 +5197,7 @@ export const npcJobsRuntime = {
         delete entity.data.npcTowedByJobId;
       }
     });
+    yield 'npcjobs-actor-sweep';
     const byId = {};
     const src = data && data.byId && typeof data.byId === 'object' ? data.byId : {};
     for (const jobId of Object.keys(src)) {
@@ -5133,6 +5220,7 @@ export const npcJobsRuntime = {
         towTargetRef: null,
         towNextScanSimT: 0,
       };
+      yield 'npcjobs-job';
     }
     this.state.npcJobs = { byId, siteCouriers: {}, lots: {}, revision: 0 };
     this._invalidateJobIds();

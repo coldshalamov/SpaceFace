@@ -6,6 +6,7 @@
 //   WANTED heat, missions, patrols, or saves.
 
 import { Masks } from '../core/entity.js';
+import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 import { queuePhysicsImpulse, queuePhysicsTorqueImpulse } from '../core/physicsAuthority.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import {
@@ -242,7 +243,25 @@ export const heistFacilities = {
     }
     this._wiredBus = this.bus;
 
-    this.bus.on('sector:enter', ({ sectorId } = {}) => this.materializeForSector(sectorId));
+    this.bus.on('sector:enter', (p = {}) => {
+      const { sectorId, enterEpoch } = p;
+      // A tail-drained emit carries the epoch of the enter that minted it: a replayed
+      // payload whose enterEpoch no longer matches the world's serial is stale — do not
+      // materialize its facilities under the live world's id. Synthetic payloads carry
+      // no epoch and always run.
+      if (enterEpoch != null && this.state && this.state.world
+          && this.state.world.enterSerial != null
+          && enterEpoch !== this.state.world.enterSerial) return;
+      // Live GPU + flight + hard enter: defer into the cook's FIFO — the census drains
+      // the same materializeForSector call under its slice clock in listener order.
+      if (deferSectorEnterMaterialization(this.state, p, this._cookProvider)) return;
+      this.materializeForSector(sectorId);
+    });
+    // Census arm: facility materialization lands inside the sector cook deterministically.
+    this._cookProvider = (sector) => this.materializeForSector((sector && sector.id)
+      || (this.state && this.state.world && this.state.world.currentSectorId));
+    (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
+      .push(this._cookProvider);
     this.bus.on('sector:exit', ({ sectorId } = {}) => this._dematerializeSector(sectorId));
     this.bus.on('entity:destroyed', ({ id } = {}) => this._onEntityDestroyed(id));
     this.bus.on('physics:impact', (impact = {}) => this._onPhysicsImpact(impact));
@@ -426,6 +445,14 @@ export const heistFacilities = {
 
   /** The live berth worker hull, matched by its stable record id (never a recycled numeric id). */
   _findBerthWorker(worldRecordId) {
+    const index = this.state && this.state.entityIndex;
+    if (index && index.__spacefaceEntityIndexV1 === true && index.ready === true
+      && index.byWorldRecordId instanceof Map && index.byWorldRecordIdCount instanceof Map
+      && index.byWorldRecordIdCount.get(worldRecordId) === 1) {
+      const entity = index.byWorldRecordId.get(worldRecordId);
+      return (entity && entity.alive !== false && entity.data
+        && entity.data.berthWorkerId === BREAKAWAY_BERTH.id) ? entity : null;
+    }
     const list = (this.state && this.state.entityList) || [];
     for (let i = 0; i < list.length; i++) {
       const entity = list[i];

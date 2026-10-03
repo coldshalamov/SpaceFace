@@ -67,7 +67,7 @@
     "tether:attached": 1
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "f589bdd53360693b76d89ea54db2dd5816f45feb00c5f203d882a9637d729cdb",
+    "authoritativeHash": "8d4492dc0eca9f17bc3d00eb293cab5bcb0c4c19295b7826f3c0edc17cb068c8",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -205,6 +205,14 @@
     "2026-10-02 count re-derivation on this record: the LEGACY_47A_MASSLINE_BREAK envelope was",
     "re-bracketed to the solid-contact measured peak (attachments.js; warn fires at t234), which",
     "adds exactly one tether.near_break presentation cue fanout to each family above.",
-    "authoritativeHash unchanged (f589bdd5): a threshold move is presentation state only."
+    "authoritativeHash unchanged (f589bdd5): a threshold move is presentation state only.",
+    "2026-10-02 deliberate re-record over 03f78c2ed..1c295030a (396 commits of landed packet work). The prior authoritativeHash was f589bdd53360693b76d89ea54db2dd5816f45feb00c5f203d882a9637d729cdb.",
+    "sim-golden-diff --ref 03f78c2ed reproduces the prior hash exactly, so the previous envelope was correct and the harness is deterministic.",
+    "VERDICT CONTENT_ONLY: 15,133 snapshot fields moved — 15,114 $.economy, 18 $.entities[] (all additive data.derived.boost.* fields from the boost-catalogue work), 1 $.player (tradeMargins).",
+    "ZERO entity pos/vel/rot/angVel/prevPos fields changed after 720 ticks and no phase0ObservedTraceCounts moved. This re-record papers over no physics regression.",
+    "Companion physics change in the same commit: SG-02 now round-trips the complete Rapier world snapshot through saves",
+    "(cont.) (warm-start contact manifolds, pending forces, sleep verdicts, attachment/joint state) instead of rebuilding bodies from entity scalars.",
+    "Reload is now bit-exact at every probed point — reload@60/90/110/120/140/300/600 each reproduce the uninterrupted hash;",
+    "(cont.) previously a marginal player-spindle resting contact's lost warm-start plus stale pending force made every reload inside ticks 4-129 diverge."
   ]
 }

@@ -464,7 +464,7 @@ export function createAlerts(ctx) {
     if (!p || !p.isPlayer) return;
     if (p.brokeShield) announce({ key: 'shield-down', sev: 'danger', text: 'SHIELDS DOWN', ttl: 3 });
     else announce({ key: 'incoming', sev: 'warn', text: 'TAKING FIRE', ttl: 1.5 });
-  });
+  }, { presentation: true });
   // Missile lock is a condition-bound STATUS light (raised on lock, cleared on unlock) — it must
   // stay visible while the lock holds, so it stays a pill, not a one-shot voice.
   bus.on('combat:lockChanged', ({ locked }) => {

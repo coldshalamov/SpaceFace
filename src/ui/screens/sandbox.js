@@ -31,7 +31,7 @@ import {
 } from '../../contracts/combatLabSetupSchema.js';
 import {
   SCENARIO_PRESETS, SANDBOX_CAMERA_CANDIDATES, SANDBOX_PHYSICS_LOADOUTS,
-  buildSandboxLaunchConfig, requestSandboxGame,
+  buildSandboxLaunchConfig, requestSandboxGame, emitSandboxEmbarkSpeculation,
   giveAndEquipItem, spawnEnemyNow, spawnTargetsNow,
 } from '../sandbox/sandboxSetup.js';
 import { panel, chip, enhanceSelects } from '../uiPrimitives.js';
@@ -323,6 +323,11 @@ export const sandboxScreen = {
       tile.addEventListener('click', () => {
         requestSandboxGame(ctx.bus, buildSandboxLaunchConfig(preset.config, readOverrides()));
       });
+      // Picker dwell is real warm lead: arm the embark warm for the hovered/focused
+      // scenario's sector + hull so launch doesn't decode the scenario inside the window.
+      const armPreset = () => emitSandboxEmbarkSpeculation(ctx.bus, preset.config);
+      tile.addEventListener('pointerenter', armPreset);
+      tile.addEventListener('focusin', armPreset);
       cardGrid.appendChild(tile);
     }
 
@@ -549,6 +554,15 @@ export const sandboxScreen = {
     }
     sectorSel.value = 'sector_helios_prime';
     fine.appendChild(sectorLabel); fine.appendChild(sectorSel);
+
+    // Form edits are dwell time too: the ship/sector the launch button will use is knowable
+    // before the click, so arm the same embark warm the preset tiles get on hover.
+    const armFineTune = () => emitSandboxEmbarkSpeculation(ctx.bus, {
+      sectorId: sectorSel.value || undefined,
+      shipId: shipSel.value || undefined,
+    });
+    shipSel.addEventListener('change', armFineTune);
+    sectorSel.addEventListener('change', armFineTune);
 
     const cameraLabel = el('label', null, 'Camera candidate');
     cameraLabel.htmlFor = 'sf-sandbox-camera';

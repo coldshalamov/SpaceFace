@@ -49,6 +49,7 @@ function forkSystem(definition) {
  *   updateOrder?: object[],
  *   runtimeManifest?: object,
  *   runtimeConfig?: object,
+ *   presentationJournal?: object,
  * }} options
  *
  * Init vs step order:
@@ -143,7 +144,13 @@ export function createSimulation(options = {}) {
     });
   }
 
-  const ctx = { state, bus, helpers, registry: null };
+  const ctx = {
+    state,
+    bus,
+    helpers,
+    registry: null,
+    presentationJournal: options.presentationJournal || null,
+  };
   const registry = {
     runtime: 'sim',
     systems: Object.freeze(instances.slice()),

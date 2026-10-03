@@ -607,7 +607,10 @@ async function resumeLoadedEnvelope({
   state.settings.gameplay.aiBackend = tacticalAI ? 'sg06-tactical' : 'legacy';
   state.settings.gameplay.flightBackend = flightBackend;
   state.settings.gameplay.runtimeProfile = 'legacy47a';
-  await preparePhysicsBackend(registry, state, physicsBackend, { reset: true });
+  await preparePhysicsBackend(registry, state, physicsBackend, {
+    reset: true,
+    sg02Snapshot: envelope.data && envelope.data.physics,
+  });
   for (const key of Object.keys(metrics)) {
     metrics[key] = typeof metrics[key] === 'number' ? 0 : null;
   }
@@ -629,7 +632,10 @@ async function reloadThroughSave(registry, state, metrics, reloadAt, options = {
   const persistentAfter = state.entityList.filter((e) => e.alive && e.flags && e.flags.persistent).length;
   assert.equal(state.tick, reloadAt, '47-A reload should preserve sim tick');
   assert.equal(persistentAfter, persistentBefore, '47-A reload should preserve persistent live actors');
-  await preparePhysicsBackend(registry, state, options.physicsBackend || 'rapier-dynamic', { reset: true });
+  await preparePhysicsBackend(registry, state, options.physicsBackend || 'rapier-dynamic', {
+    reset: true,
+    sg02Snapshot: envelope.data && envelope.data.physics,
+  });
   metrics.saveReloads++;
 }
 

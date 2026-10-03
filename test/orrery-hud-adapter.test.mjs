@@ -106,10 +106,14 @@ test('every ordnance key explains itself: bank sentence, live keys and live stat
     `Charge — throw an impulse charge that sticks where it lands (1 · Y)\nNo impulse charges in cargo · up to ${capacity}`);
   assert.match(ord['3'].tip, /\(3 · Space · F\)\nReady$/);
   assert.match(ord['2'].tip, /Nothing armed to detonate$/);
-  // A collapsed node answers "what is in this band" without unfolding it.
+  // A collapsed node answers "what is in this band" without unfolding it. The DRIVE lamp
+  // group rides ahead of the hotbar (FB-002 slot 0); find the ordnance band by name.
   const groups = buildOrdnanceGroups(bindings);
-  assert.equal(groups[0].tip, 'Ordnance — Charge 1 · Blast 2 · Line 3');
-  assert.equal(groups[0].slots[0].key, '1', 'the shelf reads as the 1–9 hotbar the player reaches for');
+  const ordnance = groups.find((g) => g.name === 'Ordnance');
+  assert.equal(ordnance.tip, 'Ordnance — Charge 1 · Blast 2 · Line 3');
+  assert.equal(ordnance.slots[0].key, '1', 'the shelf reads as the 1–9 hotbar the player reaches for');
+  const drive = groups.find((g) => g.name === 'DRIVE');
+  assert.ok(drive && drive.slots.length === 1, 'the travel-drive lamp is its own group');
 });
 
 test('the Cluster writes each tip to a hoverable, focusable socket (the tier-2 seat)', () => {

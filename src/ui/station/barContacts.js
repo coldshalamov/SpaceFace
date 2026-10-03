@@ -61,18 +61,66 @@ function isKurtzDeskChoice(payload = {}) {
   return kurtz && KURTZ_DESK_CHOICES.has(payload.choiceId);
 }
 
-/** Route Orrin's physical-evidence control outside generic station-contact memory. */
-export function ghostConvoyBarRumor(payload) {
+function playerBarPos(state) {
+  const id = state && state.playerId;
+  const entities = state && state.entities;
+  const entity = id != null && entities && typeof entities.get === 'function' ? entities.get(id) : null;
+  if (entity && entity.pos && Number.isFinite(entity.pos.x) && Number.isFinite(entity.pos.z)) return entity.pos;
+  const player = state && state.player;
+  if (player && player.pos && Number.isFinite(player.pos.x) && Number.isFinite(player.pos.z)) return player.pos;
+  return null;
+}
+
+/** Nearest live station to the player. The convoy's own coordinates are never an input. */
+export function nearestBarStationId(state) {
+  const pos = playerBarPos(state);
+  let best = null;
+  let bestD = Infinity;
+  const entities = state && state.entities;
+  if (entities && typeof entities.values === 'function') {
+    for (const entity of entities.values()) {
+      if (!entity || entity.type !== 'station' || !entity.pos) continue;
+      if (!Number.isFinite(entity.pos.x) || !Number.isFinite(entity.pos.z)) continue;
+      const id = (entity.data && (entity.data.stationId || entity.data.id)) || null;
+      if (!id) continue;
+      if (!pos) {
+        if (!best) best = id;
+        continue;
+      }
+      const d = (entity.pos.x - pos.x) ** 2 + (entity.pos.z - pos.z) ** 2;
+      if (d < bestD) {
+        bestD = d;
+        best = id;
+      }
+    }
+  }
+  if (best) return best;
+  const sectorId = state && state.world && state.world.currentSectorId;
+  const sector = sectorId ? SECTOR_BY_ID.get(sectorId) : null;
+  const station = sector && Array.isArray(sector.stations) ? sector.stations[0] : null;
+  return station && station.id || null;
+}
+
+/** One rumour line for a station bar. Position fields on the payload are dropped. */
+export function ghostConvoyBarRumor(payload, stationId = null) {
   if (!payload || !payload.line) return null;
   return {
     id: `ghost-convoy:${payload.laneKey || payload.sectorId || 'lane'}`,
     text: String(payload.line),
     sectorId: payload.sectorId || null,
+    stationId: stationId || null,
   };
 }
 
+export function barGhostConvoyLines(state, stationId) {
+  const rows = state && state.ui && state.ui.barGhostConvoys;
+  if (!Array.isArray(rows)) return [];
+  return rows.filter((row) => row && row.text && (!stationId || row.stationId === stationId));
+}
+
 export function rememberGhostConvoyRumor(state, payload) {
-  const rumor = ghostConvoyBarRumor(payload);
+  const stationId = nearestBarStationId(state);
+  const rumor = ghostConvoyBarRumor(payload, stationId);
   if (!state || !rumor) return null;
   if (!state.ui || typeof state.ui !== 'object') state.ui = {};
   if (!Array.isArray(state.ui.barGhostConvoys)) state.ui.barGhostConvoys = [];
@@ -88,6 +136,76 @@ export function installGhostConvoyBarListener(bus, state) {
   if (!state.ui || typeof state.ui !== 'object') state.ui = {};
   state.ui._ghostConvoyBarBound = true;
   return bus.on('rumor:ghostConvoy', (payload) => rememberGhostConvoyRumor(state, payload));
+}
+
+/** WORLD-39 — one bar line for a posted ore lot. Not a mission, and lot rules stay with the job runtime. */
+export function oreLotBarLine(payload) {
+  if (!payload || payload.lotId == null || !payload.sectorId) return null;
+  const sector = SECTOR_BY_ID.get(payload.sectorId);
+  const sectorName = sector && sector.name ? sector.name : String(payload.sectorId);
+  return {
+    id: `ore-lot:${payload.lotId}`,
+    lotId: String(payload.lotId),
+    sectorId: payload.sectorId,
+    text: `A posted ore lot is waiting in ${sectorName}. A hauler can take it.`,
+  };
+}
+
+export function rememberOreLotRumor(state, payload) {
+  const rumor = oreLotBarLine(payload);
+  if (!state || !rumor) return null;
+  if (!state.ui || typeof state.ui !== 'object') state.ui = {};
+  if (!Array.isArray(state.ui.barOreLots)) state.ui.barOreLots = [];
+  state.ui.barOreLots = state.ui.barOreLots.filter((row) => (
+    row && row.sectorId !== rumor.sectorId && row.lotId !== rumor.lotId
+  ));
+  state.ui.barOreLots.push(rumor);
+  return rumor;
+}
+
+export function forgetOreLotRumor(state, payload) {
+  if (!state || !state.ui || !Array.isArray(state.ui.barOreLots)) return false;
+  const lotId = payload && payload.lotId != null ? String(payload.lotId) : '';
+  if (!lotId) return false;
+  const before = state.ui.barOreLots.length;
+  state.ui.barOreLots = state.ui.barOreLots.filter((row) => row && row.lotId !== lotId);
+  return state.ui.barOreLots.length !== before;
+}
+
+export function installOreLotBarListener(bus, state) {
+  if (!bus || typeof bus.on !== 'function' || !state) return () => {};
+  if (!state.ui || typeof state.ui !== 'object') state.ui = {};
+  if (state.ui._oreLotBarBound) return () => {};
+  state.ui._oreLotBarBound = true;
+  const offPosted = bus.on('npcjobs:lotPosted', (payload) => rememberOreLotRumor(state, payload));
+  const offClaimed = bus.on('npcjobs:lotClaimed', (payload) => forgetOreLotRumor(state, payload));
+  return () => {
+    if (typeof offPosted === 'function') offPosted();
+    if (typeof offClaimed === 'function') offClaimed();
+  };
+}
+
+/** Standing miner lots already in the world. A null slot is a claim. */
+export function standingOreLotRumors(state) {
+  const lots = state && state.npcJobs && state.npcJobs.lots;
+  if (!lots || typeof lots !== 'object' || Array.isArray(lots)) return null;
+  const rows = [];
+  for (const key of Object.keys(lots)) {
+    const lot = lots[key];
+    if (!lot || lot.lotId == null) continue;
+    if (lot.kind && lot.kind !== 'ore') continue;
+    const line = oreLotBarLine({ lotId: lot.lotId, sectorId: lot.sectorId || key });
+    if (line) rows.push(line);
+  }
+  return rows;
+}
+
+function oreLotRumorForReply(state) {
+  const live = standingOreLotRumors(state);
+  if (live) return live.filter((row) => row && row.text).pop() || null;
+  const lotRows = state && state.ui && state.ui.barOreLots;
+  if (!Array.isArray(lotRows)) return null;
+  return lotRows.filter((row) => row && row.text).pop() || null;
 }
 
 export function emitBarContactChoice(bus, payload = {}) {
@@ -865,10 +983,13 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
   // At Sker the canonical barkeep is also the authored Nestbreaker source. Let an unseen physical
   // wreck lead answer the explicit Rumors choice first; once its bearing exists this fails closed
   // and the contact's normal canonical dialogue resumes.
-  const ghostRows = state.ui && state.ui.barGhostConvoys;
-  const ghost = role === 'barkeep' && choiceId === 'rumors' && Array.isArray(ghostRows)
-    ? ghostRows.find((row) => row && row.text && (!row.sectorId || !state.world || state.world.currentSectorId === row.sectorId))
+  const ghostRows = barGhostConvoyLines(state, stationId);
+  const ghost = role === 'barkeep' && choiceId === 'rumors'
+    ? ghostRows.find((row) => row && row.text)
     : null;
+  const oreLot = role === 'barkeep' && choiceId === 'rumors' ? oreLotRumorForReply(state) : null;
+  if (oreLot && ghost) return { text: `${oreLot.text} ${ghost.text}` };
+  if (oreLot) return { text: oreLot.text };
   if (ghost) return { text: ghost.text };
 
   const wreckRumor = role === 'barkeep'

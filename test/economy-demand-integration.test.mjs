@@ -220,6 +220,12 @@ test('sector offline catch-up reconciles demand after the real save listener ord
     pricePressure: 'infrastructure_disruption',
   };
   restored.bus.emit('sectorsim:offlineSummary', { elapsedSec: 86_400, days: 1 });
+  // The receipt queues the sliced refresh — one slice per economy.update call, deterministic
+  // tick boundaries — so the drain completes in a handful of ticks, not the five-second
+  // econTick cadence and not a Market open.
+  for (let i = 0; i < 16 && restored.econ._offlineSummaryRefresh; i++) {
+    restored.econ.update(1 / 60, restored.state);
+  }
 
   assert.ok(Math.abs(entry.demandMult - 1.335757) < 1e-9,
     'war and blockade demand are both current immediately');
@@ -239,7 +245,7 @@ test('restore reseeds only omitted synthetic histories after authoritative deman
   const originalCycle = original.state.economy.cycles[stationId][commodityId];
   original.econ.seedPriceHistory(originalEntry, def, originalCycle, original.state.simTime);
   const savedWithoutHistory = structuredClone(original.econ.serialize());
-  assert.equal(savedWithoutHistory.markets[stationId][0].length, 6,
+  assert.equal(savedWithoutHistory.markets[stationId][0][6], null,
     'an unobserved market saves no derived chart cache');
 
   const restored = boot({ war: false });

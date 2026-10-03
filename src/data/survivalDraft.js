@@ -394,6 +394,10 @@ function offerDraftInner(input) {
   for (const offer of pool) {
     const def = FITTING_BY_ID.get(offer.defId);
     if (!def) continue;
+    // Authored cards can carry a debut wave (FB-021): a card is not on the shelf before its
+    // `fromWave`, the same gate the swarm enemy roster uses. Generated catalog rows are
+    // wave-agnostic and carry no gate.
+    if (Number.isInteger(offer.fromWave) && wave < offer.fromWave) continue;
     // Swarm can build a battery of a favourite gun. Gauntlet keeps its variety-focused draft;
     // support modules remain distinct choices instead of stacking the same passive repeatedly.
     const duplicateGun = src.ruleset === SWARM_RULESET && def.slotType === 'weapon';
@@ -413,6 +417,7 @@ function offerDraftInner(input) {
       // categories from defId prefixes, so a generated row files itself correctly.
       category: offer.category || swarmCategoryFor(def),
       catalog: offer.catalog === true,
+      fromWave: Number.isInteger(offer.fromWave) ? offer.fromWave : null,
       slotIndex: target.slotIndex,
       replaces: target.replaces,
     });

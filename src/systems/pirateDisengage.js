@@ -8,7 +8,7 @@ import { pirateDoctrineForEntity } from '../data/pirateDoctrines.js';
 import { hash32 } from '../core/rng.js';
 import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../ai/doctrine.js';
 import { massline2Flag } from '../data/featureFlags.js';
-import { entityIndexVersion, indexedShipLikeScan } from '../world/livingWorldViews.js';
+import { entityIndexVersion, entityIndexLaneVersion, indexedShipLikeScan } from '../world/livingWorldViews.js';
 
 /** Bench A/B: production default ON. Quiet latch skips pirateDisengage's dual
  * shipLike census (lawfulPatrols + combatantSquads) when no active combatants
@@ -24,6 +24,9 @@ export function getPirateDisengageEmptyQuietLatchForBench() {
 
 /** Membership rescan while latched (0.5 s @ 60 Hz). */
 const PIRATE_DISENGAGE_EMPTY_QUIET_RESCAN_TICKS = 30;
+
+/** Membership lanes for the quiet latch — patrols + combatant squads read shipLike only. */
+const PIRATE_DISENGAGE_QUIET_LANES = ['shipLike'];
 
 function publishPirateDisengageQuiet(state, latched) {
   if (!state) return;
@@ -102,7 +105,8 @@ export const pirateDisengage = {
     // spawn/tag, or 0.5 s rescan. Soft-GPU fps not claimed. Fresh combat residual
     // after #149 bountyHunt (not bounty/salvage/sanctuary/cones/catch-nets).
     if (PIRATE_DISENGAGE_EMPTY_QUIET_LATCH !== false) {
-      const membership = entityIndexVersion(state);
+      const laneVersion = entityIndexLaneVersion(state, PIRATE_DISENGAGE_QUIET_LANES);
+      const membership = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
       const tick = state.tick | 0;
       const wakeSeq = this._combatantWakeSeq | 0;
       const quiet = this._combatantsQuiet;
@@ -123,7 +127,8 @@ export const pirateDisengage = {
     const squads = combatantSquads(state);
     if (PIRATE_DISENGAGE_EMPTY_QUIET_LATCH !== false) {
       if (squads.size === 0) {
-        const membership = entityIndexVersion(state);
+        const laneVersion = entityIndexLaneVersion(state, PIRATE_DISENGAGE_QUIET_LANES);
+        const membership = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
         if (membership != null) {
           this._combatantsQuiet = {
             membership,

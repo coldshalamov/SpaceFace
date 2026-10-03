@@ -15,8 +15,8 @@ import {
   formatBindingCode,
 } from '../../systems/input.js';
 import {
-  GAMEPAD_BUTTON_LABELS,
   findGamepadBindConflict,
+  gamepadButtonLabels,
   resolveGamepadBindings,
 } from '../../systems/gamepad.js';
 import { massline2Flag } from '../../data/featureFlags.js';
@@ -272,10 +272,14 @@ export const REBIND_LABELS = {
 };
 
 // PQ-164.01 pad remap. Every gamepad action is rebindable; labels describe the verb, not the
-// default button (the live resolved map prints the button on the right of each row).
+// default button (the live resolved map prints the button on the right of each row). FB-003 adds
+// the chord layer: every keyboard flight verb has a pad route, and capture accepts a held
+// modifier + a tapped key as a 'mod+key' chord.
 export const GAMEPAD_REBINDABLE = [
   'accept', 'cancel', 'massline', 'dock', 'deployRepulsor', 'fire', 'mine', 'boost', 'brake', 'cycleTarget', 'autoTarget',
   'map', 'codex', 'pause', 'countermeasure', 'travelBurn', 'dropBomb', 'cycleBomb', 'chargeDetonate', 'tabPrev', 'tabNext',
+  'scanPulse', 'cruise', 'bulletTime', 'cloak', 'chargeThrow', 'siteBeam', 'deployMassSeed', 'deployWell',
+  'toggleClearingCone', 'toggleSkimCollector', 'deployBeacon', 'jettisonLot',
 ];
 export const GAMEPAD_REBIND_LABELS = {
   accept: 'Accept',
@@ -299,6 +303,19 @@ export const GAMEPAD_REBIND_LABELS = {
   tabNext: 'Station tab: next',
   dropBomb: 'Bomb bay: drop bomb',
   cycleBomb: 'Bomb bay: cycle payload',
+  // FB-003 chord layer — stock seats live on LB (survey/deploy) and RB (combat-state) chords.
+  scanPulse: 'Scanner pulse',
+  cruise: 'Cruise drive (charge/drop)',
+  bulletTime: 'Bullet time (hold)',
+  cloak: 'Cloak toggle',
+  chargeThrow: 'Impulse charge: throw',
+  siteBeam: 'World Site beam (selected target)',
+  deployMassSeed: 'Anchor Mass Seed: deploy',
+  deployWell: 'Field: deploy attractive Well',
+  toggleClearingCone: 'Field: toggle Clearing Cone',
+  toggleSkimCollector: 'Field: toggle skim collector',
+  deployBeacon: 'Nav beacon: deploy',
+  jettisonLot: 'Cargo: jettison lot',
 };
 
 function controlSchemeFor(settings) {
@@ -572,6 +589,12 @@ export const settingsScreen = {
       // Access row below. It is now a read-only mirror pointing at the home.
       motionEffectsRow(build, s, false);
       rowSlider('Screen Shake', () => vd.screenShake != null ? vd.screenShake : 100, 0, 100, 1, (x) => Math.round(x) + '%', (v, persist) => this._set(ctx, 'video', 'screenShake', v, persist));
+      // SWARM-02: the Swarm arcade layer's own volume. Reduced keeps the words (kills, chains,
+      // boss calls) and drops the motion and hit-stop; Off drops the layer. Reduced motion and
+      // reduced flash already read it down to Reduced for whoever set those.
+      rowSelect('Arcade effects (Swarm)', () => vd.arcadeEffects || 'full',
+        [['full', 'Full'], ['reduced', 'Reduced'], ['off', 'Off']],
+        (v) => this._set(ctx, 'video', 'arcadeEffects', v));
       // FB-100 parity rows — keys that already drive the picture/mix but had no control, plus
       // the HUD's own scale/opacity (consumed by #hud as --sf-hud-scale/--sf-hud-opacity,
       // applied on the root so they compose with UI scale and survive Continue).
@@ -622,6 +645,10 @@ export const settingsScreen = {
         ['light', 'Light'],
         ['off', 'Off'],
       ], (v) => this._set(ctx, 'gameplay', 'orbitAssistStrength', v));
+      // FB-001: the pursuit-slot chase assist. Off by default — an opt-in flight option that
+      // holds a bearing/range slot off a locked moving target; it composes with, and sits
+      // beside, the orbit-assist row above.
+      rowToggle('Pursuit slot assist', () => g.pursuitSlotAssist === true, (v) => this._set(ctx, 'gameplay', 'pursuitSlotAssist', v));
       rowSelect('Auto-target assist', () => g.targetAssistStrength || 'full', [
         ['full', 'Full'],
         ['standard', 'Standard'],
@@ -742,6 +769,27 @@ export const settingsScreen = {
       rowToggle('Reduce flashing', () => !!ac.flashReduce, (v) => this._set(ctx, 'accessibility', 'flashReduce', v));
       rowToggle('Readable font', () => !!ac.dyslexiaFont, (v) => this._set(ctx, 'accessibility', 'dyslexiaFont', v));
       motionEffectsRow(build, s, true);
+      // FB-005: rumble has its own axis — it is haptic substitution, not motion. A calmer screen
+      // often wants MORE rumble, so this never follows the reduce-motion choice.
+      rowSelect('Controller rumble', () => ac.haptics || 'full',
+        [['off', 'Off'], ['low', 'Low'], ['full', 'Full']],
+        (v) => this._set(ctx, 'accessibility', 'haptics', v));
+      // FB-113: press-to-toggle latches for the hold verbs — a hand that cannot hold a button
+      // still flies the whole ship. Defaults stay off; each verb opts in on its own row.
+      build.header('Hold-to-toggle (press once to hold)');
+      const HOLD_TOGGLE_ROWS = [
+        ['boost', 'Boost / dash'],
+        ['brake', 'Brake / reverse'],
+        ['bulletTime', 'Bullet time'],
+        ['massline', 'Massline hold'],
+        ['reelIn', 'Tether reel in'],
+        ['reelOut', 'Tether reel out'],
+      ];
+      if (!ac.holdToToggle || typeof ac.holdToToggle !== 'object') ac.holdToToggle = {};
+      for (const [verb, label] of HOLD_TOGGLE_ROWS) {
+        rowToggle(label, () => ac.holdToToggle[verb] === true,
+          (v) => this._set(ctx, 'accessibility', 'holdToToggle', { ...ac.holdToToggle, [verb]: v }));
+      }
       rowToggle('Gameplay captions', () => ac.captions !== false, (v) => this._set(ctx, 'accessibility', 'captions', v));
       rowToggle('Audio cues', () => ac.audioCues !== false, (v) => this._set(ctx, 'accessibility', 'audioCues', v));
       const statement = build.note('Accessibility statement: contrast, reduced motion, remap, text scale, assists, and captions are listed below. Every voiced bark is captioned when Gameplay captions is on.');
@@ -795,9 +843,45 @@ export const settingsScreen = {
     build.select('Flight scheme', () => gp().scheme === 'twinstick' ? 'twinstick' : 'drive',
       [['drive', 'Drive — left stick steers and throttles'], ['twinstick', 'Twin-stick — left stick drives, right stick aims']],
       (v) => this._set(ctx, 'controls', 'gamepad', { ...gp(), scheme: v }));
+    // FB-004: response tuning. The right stick's deadzone is its own axis — aim jitter should
+    // never force the fly hand wider. 'Expo' softens the stick's center while the edge still
+    // reaches full deflection; the sensitivities scale derived intent, never the raw axes.
+    build.slider('Aim deadzone (right stick)', () => gp().deadzoneRight ?? gp().deadzone,
+      0, 0.5, 0.01, (x) => Math.round(x * 100) + '%',
+      (v, persist) => this._set(ctx, 'controls', 'gamepad', { ...gp(), deadzoneRight: v }, persist));
+    build.select('Stick response curve', () => gp().curve === 'expo' ? 'expo' : 'linear',
+      [['linear', 'Linear — shipped feel'], ['expo', 'Expo — soft center, full edge']],
+      (v) => this._set(ctx, 'controls', 'gamepad', { ...gp(), curve: v }));
+    build.slider('Flight stick sensitivity', () => gp().sensitivityFly ?? 1,
+      0.25, 3, 0.05, (x) => `${Math.round(x * 100)}%`,
+      (v, persist) => this._set(ctx, 'controls', 'gamepad', { ...gp(), sensitivityFly: v }, persist));
+    build.slider('Aim stick sensitivity', () => gp().sensitivityAim ?? 1,
+      0.25, 3, 0.05, (x) => `${Math.round(x * 100)}%`,
+      (v, persist) => this._set(ctx, 'controls', 'gamepad', { ...gp(), sensitivityAim: v }, persist));
+    // FB-002/B117: the face-button register prompts and speech print — the same set the
+    // rebind rows below render, so a switch re-labels both at once.
+    build.select('Button glyphs', () => {
+      const v = gp().glyphSet;
+      return (v === 'ds' || v === 'fh') ? v : 'xb';
+    },
+      [['xb', 'Xbox — A B X Y'], ['ds', 'DualShock — ✕ ◯ □ △'], ['fh', 'Field Hardware — Ⓐ Ⓑ Ⓧ Ⓨ']],
+      (v) => this._set(ctx, 'controls', 'gamepad', { ...gp(), glyphSet: v }));
+    // FB-004: pointer aim gets the same two axes — a sensitivity multiplier on the derived
+    // cursor channel and a Y inversion, both independent of the sticks.
+    if (!s.controls.mouse || typeof s.controls.mouse !== 'object') {
+      s.controls.mouse = { sensitivity: 1, invertY: false };
+    }
+    const mo = () => s.controls.mouse;
+    build.slider('Mouse aim sensitivity', () => mo().sensitivity ?? 1,
+      0.25, 3, 0.05, (x) => `${Math.round(x * 100)}%`,
+      (v, persist) => this._set(ctx, 'controls', 'mouse', { ...mo(), sensitivity: v }, persist));
+    build.toggle('Invert mouse Y (aim)', () => !!mo().invertY,
+      (v) => this._set(ctx, 'controls', 'mouse', { ...mo(), invertY: v }));
     // Matches src/systems/gamepad.js ACTION_MAP + UI route: Start/menu → pause only;
     // Mission Log is chosen from the Pause menu (no direct gamepad missionLog action).
-    build.note('Default layout: left stick fly, right stick aim, RT fire, LT mine, RB boost, LB brake, Y shove, R3 countermeasure, D-pad right bomb, D-pad left cycle bombs, A/Cross Massline, B dock when prompted, X/Square target, D-pad up auto-target (right stick draw-to-fly), View star map, Guide or Pause for the codex, Start → Pause → Mission Log.');
+    // LB is the survey/deploy chord layer, RB the combat-state layer — every row below shows
+    // the live seat, including 'LB + D-Pad Up' style chords.
+    build.note('Default layout: left stick fly, right stick aim, RT fire, LT mine, RB boost, LB brake, Y shove, R3 countermeasure, D-pad right bomb, D-pad left cycle bombs, A/Cross Massline, B dock when prompted, X/Square target, D-pad up auto-target (right stick draw-to-fly), View star map, Guide or Pause for the codex, Start → Pause → Mission Log. Hold LB or RB and tap a second button for the survey/deploy and combat-state verbs (scanner ping, fields, cloak, cruise).');
 
     // PQ-164.01 pad remap: capture-on-press rows, same grammar as the flight keys above — press
     // a word, then press the pad button. Conflict detection honours the designed context shares
@@ -805,8 +889,9 @@ export const settingsScreen = {
     build.header('Gamepad Buttons');
     const padMap = resolveGamepadBindings(s);
     GAMEPAD_REBINDABLE.forEach((action) => {
-      const names = padMap[action] || [];
-      const keyText = names.map((n) => GAMEPAD_BUTTON_LABELS[n] || n).join(' / ') || '—';
+      // Chord names render both halves ('LB + D-Pad Up') through the same label vocabulary the
+      // Help sheet uses — the row must never print a raw 'l1+dUp' at a player.
+      const keyText = gamepadButtonLabels(action, padMap, { glyphSet: gp().glyphSet }).join(' / ') || '—';
       build.key(GAMEPAD_REBIND_LABELS[action] || action, keyText,
         (btn) => this._capturePad(ctx, btn, action, padMap));
     });

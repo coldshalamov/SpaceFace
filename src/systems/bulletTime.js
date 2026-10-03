@@ -322,8 +322,10 @@ export const bulletTime = {
     const player=this.state.entities.get(this.state.playerId);
     if(Math.hypot(player?.vel?.x??0,player?.vel?.z??0)>=1.25*(trick.metrics?.referenceCruise??0))return false;
     const w=window.innerWidth,h=window.innerHeight;
-    // collidables bucket is a superset of live colliders (collides only ever flips true→false
-    // post-spawn), so the same live flag test keeps membership identical to the map walk.
+    // The per-entity `collides !== false` re-check keeps membership identical to the map walk:
+    // post-spawn flips run both directions (spent/retire T→F; decorate/recollect F→T — the
+    // latter re-keyed via syncEntityCollisionIndexMembership) and T→F husks can linger in the
+    // bucket, so the live flag test here is load-bearing, not redundant.
     const index=this.state.entityIndex;
     const source=index&&index.__spacefaceEntityIndexV1&&index.ready===true&&Array.isArray(index.collidables)
       ?index.collidables:this.state.entities.values();

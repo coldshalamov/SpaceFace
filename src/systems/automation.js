@@ -23,11 +23,13 @@
 // Pure-data deps only (no 'three'). Reads economy via the registry (priceOf/quote/getMarket),
 // danger from the SECTORS catalog (dangerIndex), the player tier from player.droneTierCap.
 import { DRONES, TRADERS, OUTPOSTS, AUTO_BALANCE } from '../data/automation.js';
-import { TECH_NODES } from '../data/tech.js';
+import { TECH_NODES, techDisplayName } from '../data/tech.js';
 import { SECTORS, dangerIndex } from '../data/sectors.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
+import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 import { consumePeriodicClock, normalizePeriodicAccumulator } from '../core/periodicClock.js';
 import { queryNearbyEntities, hasActiveSpatialHash } from '../core/spatialQuery.js';
+import { fittedModuleDefs } from '../core/fittedModules.js';
 import { tickProgram, assignTemplate, clearTemplate, TEMPLATES } from './alphabet.js';
 import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { ASTEROIDS } from '../data/mining.js';
@@ -38,14 +40,18 @@ import {
   shipmentQty,
   shipmentUsed,
 } from './cargoCustody.js';
+import { indexedTypeScan } from '../world/livingWorldViews.js';
 import {
   applyFuelShortage,
   boundDemandQty,
+  cycleSnapshot,
   isFuelStranded,
   isThroughputSettledSource,
   migrateDroneOperation,
   operatingCostPerMin,
+  recordCycleInput,
   recordGrossUnits,
+  recordOperationWithdrawal,
   recordRealisedSale,
   resumeAfterFuel,
   stampOperation,
@@ -66,6 +72,7 @@ import {
   forEachDressingRow,
   getDressingRow,
   insertDressingRow,
+  markDressingRowPoseDirty,
 } from '../world/dressingTable.js';
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
@@ -581,8 +588,19 @@ export const automation = {
     bus.on('sector:enter', (p) => {
       this._onContinuousDroneMembership(p);
       if (this._saveRestoring) return;
+      // Live GPU + flight + hard enter: the presence sync defers into the cook's FIFO —
+      // the census drains the same call under its slice clock in listener order.
+      if (deferSectorEnterMaterialization(this.state, p, this._cookProvider)) return;
       this._syncOutpostPresence(this.state.automation);
     });
+    // Census arm: outpost presence materialization lands inside the sector cook
+    // deterministically (continuous-membership adoption stays on the bus payload).
+    this._cookProvider = () => {
+      if (this._saveRestoring) return;
+      this._syncOutpostPresence(this.state.automation);
+    };
+    (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
+      .push(this._cookProvider);
 
     // Tech can raise the drone tier cap → just affects gating/cap; nothing to do eagerly.
   },
@@ -641,9 +659,16 @@ export const automation = {
     for (let i = a.drones.length - 1; i >= 0; i--) {
       const g = a.drones[i];
       const def = DRONE_BY_ID.get(g.defId) || g;
-      if (g.status === 'distressed') { this._parkDroneEntities(g); continue; } // frozen until upkeep paid
+      if (g.status === 'distressed') {
+        this._parkDroneEntities(g, dt);
+        // A distressed drone is still billed upkeep — book it so the open cycle sees the charge.
+        if (g.operation) {
+          recordCycleInput(g, { upkeepCr: this._upkeepOf(DRONE_BY_ID, g) / 60 * dt });
+        }
+        continue;
+      } // frozen until upkeep paid
       if (isFuelStranded(g)) {
-        this._strandForFuel(g, def, { toast: false });
+        this._strandForFuel(g, def, { toast: false, dt });
         continue;
       }
 
@@ -739,14 +764,20 @@ export const automation = {
       const detour = resolveDroneDetour(this.state, e, target, beacon.entity, arriveR);
       const steeringTarget = detour || target;
       let braking = !detour && distance < arriveR;
-      if (!detour && beacon.entity?.type === 'station' && distance > 0) {
-        const closing = Math.max(0, ((target.x - e.pos.x) * (e.vel?.x || 0)
-          + (target.z - e.pos.z) * (e.vel?.z || 0)) / distance);
+      if (!detour && distance > 0) {
+        const speed = Math.hypot(Number(e.vel?.x) || 0, Number(e.vel?.z) || 0);
         const profile = resolvePropulsionProfile(e, this.state);
         const brakeAccel = Math.max(1, Number(profile.reverseAccel) || Number(profile.maxBrakeAccel) || 1);
-        // Begin the real counter-thrust before handoff. Arrival distance alone cannot stop a
-        // fast loaded hull; include the NPC actuator's 0.4s slew as well as kinetic stopping.
-        braking ||= closing > 4 && distance - arriveR <= closing * closing / (2 * brakeAccel) + closing * 0.4 + 8;
+        const stoppingDistance = (speed * speed) / (2 * brakeAccel);
+        // Kinetic stopping: total speed (not just radial) determines required braking distance
+        // (same contract as flightV3 autopilot). Also brake if momentum is misaligned after detour.
+        const stDx = steeringTarget.x - e.pos.x, stDz = steeringTarget.z - e.pos.z;
+        const stDist = Math.hypot(stDx, stDz);
+        const align = speed > 4 && stDist > 1e-4
+          ? (stDx * (e.vel?.x || 0) + stDz * (e.vel?.z || 0)) / (stDist * speed)
+          : 1;
+        const misaligned = align < 0.35 && speed > 25;
+        braking ||= (speed > 4 && distance - arriveR <= stoppingDistance + speed * 0.4 + 8) || misaligned;
       }
       this._driveDrone(e, steeringTarget, dt, braking);
     }
@@ -844,6 +875,8 @@ export const automation = {
         unitPrice: plan.unitPrice,
         credited: result.receipt && result.receipt.credited,
         operatingCostPerMin: operatingCostPerMin(def.upkeepPerMin, 'running'),
+        // Stock the depot refused stays aboard — held inventory, not income.
+        heldUnits: shipmentUsed(g),
       });
       if (plan.stationId) {
         this.bus.emit('economy:applyTradePressure', {
@@ -997,13 +1030,13 @@ export const automation = {
     const cf = Math.cos(e.rot), sf = Math.sin(e.rot);
     const forward = ux * cf + uz * sf;
     const right = -ux * sf + uz * cf;
-    const throttle = brake ? 0 : 1;
+    const throttle = brake ? 0 : (forward > 0 ? forward : 0);
     const data = e.data || (e.data = {});
     const intent = data.intent || (data.intent = {
       moveX: 0, moveZ: 0, boost: false, brake: false,
       fire: false, fireGroup: null, aimAngle: e.rot,
     });
-    intent.moveX = clamp(right * throttle, -1, 1);
+    intent.moveX = clamp(right * (brake ? 0 : 1), -1, 1);
     intent.moveZ = clamp(forward * throttle, -1, 1);
     intent.boost = false;
     intent.brake = !!brake;
@@ -1144,6 +1177,12 @@ export const automation = {
       // intact and park it until the logistics phase provides a program-aware averaged route model.
       if (g.program && TEMPLATES[g.program.templateId]) {
         g.status = 'program';
+        // Away-sector drones still pay upkeep for the settle window through the offline/upkeep
+        // charge — book it into the operation cycle so a parked-out-of-sector run reconciles the
+        // same as an in-sector one.
+        if (g.operation) {
+          recordCycleInput(g, { upkeepCr: this._upkeepOf(DRONE_BY_ID, g) / 60 * elapsed });
+        }
         continue;
       }
       const fuelRate = Math.max(0, Number(def.fuelRate) || 0);
@@ -1212,7 +1251,7 @@ export const automation = {
     push(this._getRuntimeEntity(o.entityId));
     forEachDressingRow(this.state, push);
     // Pre-dressing leftovers stay type fx on the table; skip ships/stations/shots.
-    const list = (this.state && this.state.entityList) || [];
+    const list = indexedTypeScan(this.state, 'fx');
     for (let i = 0; i < list.length; i++) {
       const entity = list[i];
       if (entity && entity.type === 'fx') push(entity);
@@ -1310,8 +1349,12 @@ export const automation = {
   _placeOutpostEntity(entity, o) {
     if (!entity || !o || !o.pos) return;
     entity.pos = entity.pos || { x: 0, z: 0 };
-    entity.pos.x = Number(o.pos.x) || 0;
-    entity.pos.z = Number(o.pos.z) || 0;
+    const nx = Number(o.pos.x) || 0;
+    const nz = Number(o.pos.z) || 0;
+    if (entity.pos.x === nx && entity.pos.z === nz) return;
+    entity.pos.x = nx;
+    entity.pos.z = nz;
+    markDressingRowPoseDirty(this.state, entity.id);
   },
 
   _ensureOutpostPosition(o) {
@@ -1360,9 +1403,19 @@ export const automation = {
   },
 
   // Distressed or fuel-stranded group: stop the drones in place (don't despawn — they resume
-  // when upkeep is paid or fuel returns).
-  _parkDroneEntities(g) {
-    if (!g || !g.entityIds || !g.entityIds.length) return;
+  // when upkeep is paid or fuel returns). Parked is also the docked state a repairDockedDrones
+  // bay knits (FB-054): the group's durability record is what repairs, so the restore runs even
+  // when the group has no live hulls loaded this tick.
+  _parkDroneEntities(g, dt = 0) {
+    if (!g) return;
+    const dtS = Math.max(0, Number(dt) || 0);
+    if (dtS > 0 && (g.durabilityMax || 0) > 0 && (g.durability || 0) < g.durabilityMax) {
+      const repairRate = dockedDroneRepairRate(this.state);
+      if (repairRate > 0) {
+        g.durability = Math.min(g.durabilityMax, g.durability + repairRate * dtS);
+      }
+    }
+    if (!g.entityIds || !g.entityIds.length) return;
     const getEnt = (this.helpers && this.helpers.getEntity) || ((id) => this.state.entities.get(id));
     for (const id of g.entityIds) {
       const e = getEnt(id);
@@ -1372,20 +1425,32 @@ export const automation = {
 
   _burnOperatingFuel(g, def, dt) {
     if (!g || isFuelStranded(g) || g.status === 'distressed') return isFuelStranded(g);
+    const rate = Math.max(0, Number(def && def.fuelRate) || 1);
+    const dtSec = Math.max(0, Number(dt) || 0);
+    // SF-115: upkeep accrues whenever this tick is charging it — _upkeepOf already scales to the
+    // operation state, so idle miners and non-miner templates book what _drainUpkeep bills.
+    if (g.operation && g.program && g.program.templateId) {
+      recordCycleInput(g, { upkeepCr: this._upkeepOf(DRONE_BY_ID, g) / 60 * dtSec });
+    }
     if (g.program?.templateId === 'mine_to_depot'
       && g.operation && g.operation.operatingState !== 'running') return false;
-    const rate = Math.max(0, Number(def && def.fuelRate) || 1);
-    g.fuel = Math.max(0, (Number(g.fuel) || 0) - rate * Math.max(0, Number(dt) || 0));
+    const fuelBefore = Number(g.fuel) || 0;
+    g.fuel = Math.max(0, fuelBefore - rate * dtSec);
+    // SF-115: the per-cycle ledger books actual inputs — fuel burned and upkeep accrued while the
+    // machine runs — so the closed breakdown reconciles credits and inventory, not a rate guess.
+    if (g.operation && g.program && g.program.templateId) {
+      recordCycleInput(g, { fuelUnits: fuelBefore - g.fuel });
+    }
     if (g.fuel > 0) {
       g._fuelStrandNotified = false;
       return false;
     }
-    this._strandForFuel(g, def, { toast: true });
+    this._strandForFuel(g, def, { toast: true, dt });
     return true;
   },
 
-  _strandForFuel(g, def, { toast = false } = {}) {
-    this._parkDroneEntities(g);
+  _strandForFuel(g, def, { toast = false, dt = 0 } = {}) {
+    this._parkDroneEntities(g, dt);
     applyFuelShortage(g);
     g.ratePerMin = 0;
     const stored = shipmentUsed(g);
@@ -1858,7 +1923,16 @@ export const automation = {
     const idx = pick.list.indexOf(pick.inst);
     if (pick.kind === 'outpost') this._releaseOutpostEntity(pick.inst);
     if (idx >= 0) pick.list.splice(idx, 1);
-    this.bus.emit('automation:assetRepossessed', { kind: pick.kind, id: pick.inst.id });
+    // SF-115: a repossessed machine's loaded shipment vanishes with it — close the cycle into the
+    // event payload so the ledger still reconciles what was mined, burned, paid and carried.
+    let breakdown = null;
+    if (pick.kind === 'drone' && pick.inst.operation) {
+      recordOperationWithdrawal(pick.inst, shipmentUsed(pick.inst));
+      breakdown = cycleSnapshot(pick.inst, 0);
+    }
+    this.bus.emit('automation:assetRepossessed', {
+      kind: pick.kind, id: pick.inst.id, ...(breakdown ? { breakdown } : {}),
+    });
     this.bus.emit('toast', { text: `Asset repossessed (unpaid upkeep): ${pick.kind}`, kind: 'error', ttl: 4 });
   },
 
@@ -2090,6 +2164,9 @@ export const automation = {
     const g = a.drones[idx];
     const value = this._droneBufferValue(g);
     if (value > 0) this.creditPassive(value, 'drone'); // bank the buffer through the cap funnel
+    // Recalled stock was banked at the recall price, not a depot receipt — the cycle ledger
+    // books it as withdrawn so the final tally still reconciles mined vs sold vs held.
+    if (g.operation) recordOperationWithdrawal(g, shipmentUsed(g));
     if (g.shipment) g.shipment.items = {};
     g.pendingSale = null;
     // refuel cost on recall (attention cost): (fuelMax - fuel)*0.5 cr
@@ -2124,9 +2201,21 @@ export const automation = {
   },
 
   // ---- TRADERS ----
+  // The tech gate is enforced at the transaction owner, not only in the panel: an intent on
+  // ui:fleetOrder must not bypass the research the shop UI shows. Same rule claims.buildModule
+  // applies for claim construction and ships applies at the fit boundary.
+  _researchedTech(nodeId) {
+    const researched = this.state.player && this.state.player.researchedNodes;
+    return Array.isArray(researched) && researched.includes(nodeId);
+  },
+
   hireTrader(defId) {
     const def = TRADER_BY_ID.get(defId);
     if (!def) return false;
+    if (!this._researchedTech('tech_autonomous_fleets')) {
+      this.toast('Research required: ' + techDisplayName('tech_autonomous_fleets'), 'error');
+      return false;
+    }
     if (!this._charge(def.hireCost, 'hire:' + defId)) return false;
     const good = this._currentOreId();
     const t = {
@@ -2213,6 +2302,10 @@ export const automation = {
   buildOutpost(defId) {
     const def = OUTPOST_BY_ID.get(defId);
     if (!def) return false;
+    if (!this._researchedTech('tech_outpost_charter')) {
+      this.toast('Research required: ' + techDisplayName('tech_outpost_charter'), 'error');
+      return false;
+    }
     if (!this._charge(def.buildCost, 'build:' + defId)) return false;
     const id = this._allocId();
     const o = {
@@ -2322,7 +2415,14 @@ export const automation = {
     const shipDefId = kind === 'fleet'
       ? (inst.shipDefId || inst.defId || null)
       : (kind === 'trader' ? (TRADER_SHIP_DEF[inst.defId] || null) : null);
-    this.meta().lostAssetsLog.push({ kind, id: inst.id, value: value || 0, t: this.state.simTime || 0 });
+    // A destroyed operation never reaches a depot: close its open cycle into the loss log so the
+    // wreck's ledger still reconciles what it mined, burned, paid and was carrying.
+    let breakdown = null;
+    if (kind === 'drone' && inst.operation) {
+      recordOperationWithdrawal(inst, shipmentUsed(inst));
+      breakdown = cycleSnapshot(inst, 0);
+    }
+    this.meta().lostAssetsLog.push({ kind, id: inst.id, value: value || 0, t: this.state.simTime || 0, ...(breakdown ? { breakdown } : {}) });
     this.bus.emit('automation:assetLost', {
       kind,
       id: inst.id,
@@ -2462,7 +2562,13 @@ export const automation = {
       const ownedSec = isLegacyWorker && fuelRate > 0
         ? Math.min(elapsed, Math.max(0, Number(g.fuel) || 0) / fuelRate)
         : elapsed;
-      offlineUpkeep += this._upkeepOf(DRONE_BY_ID, g) * (ownedSec / 60);
+      const share = this._upkeepOf(DRONE_BY_ID, g) * (ownedSec / 60);
+      offlineUpkeep += share;
+      // SF-115: the offline window charges real upkeep — book it so the cycle that closes on the
+      // next depot visit doesn't report a run that never paid to exist.
+      if (share > 0 && g.operation && g.program && g.program.templateId) {
+        recordCycleInput(g, { upkeepCr: share });
+      }
     }
     for (const t of a.traders) {
       offlineUpkeep += this._upkeepOf(TRADER_BY_ID, t) * (elapsed / 60);
@@ -3011,6 +3117,19 @@ function resetAutomationDiagnostics(diag) {
 function isGroupDrone(entity, group) {
   return !!entity && entity.alive !== false && entity.type === 'drone'
     && entity.data?.groupId === group.id;
+}
+
+// FB-054 — docked-drone repair rate: the strongest hullRepairOOC tempo authored on a fitted
+// module that declares repairDockedDrones. The flag alone carries no pace; the carrier's own
+// repair number does, so nothing is re-authored here.
+function dockedDroneRepairRate(state) {
+  let rate = 0;
+  for (const def of fittedModuleDefs(state)) {
+    if (!def || !def.mods || def.mods.repairDockedDrones !== true) continue;
+    const authored = Number.isFinite(def.mods.hullRepairOOC) ? def.mods.hullRepairOOC : 0;
+    if (authored > rate) rate = authored;
+  }
+  return rate;
 }
 
 const DRONE_DETOUR_BUCKETS = Object.freeze(['stations', 'asteroids', 'wrecks', 'ships']);

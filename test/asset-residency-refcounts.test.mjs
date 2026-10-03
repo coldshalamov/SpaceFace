@@ -136,6 +136,33 @@ test('release-before-first-retain is a durable owner tombstone', () => {
   assert.equal(registry.isOwnerReleased(departedBoundary), true);
 });
 
+// NXI-231: a final consumer release retires the parent generation exactly once — repeated
+// notifications are no-ops, never a double-dispose or refcount underflow — and a later
+// generation of the same key plus a fresh owner is a real, working reacquisition.
+test('repeated final releases retire the generation once and a fresh owner reacquires', () => {
+  const registry = createAssetResidencyRegistry();
+  const first = gpuResource('retired-generation', 32);
+  register(registry, 'asset:repeat', [first]);
+  const owner = {};
+  assert.equal(registry.retain('asset:repeat', owner, { role: 'preview' }), true);
+
+  assert.equal(registry.releaseOwner(owner, 'final-consumer-release'), 1);
+  assert.equal(first.disposals(), 1, 'the unowned generation disposes its resource once');
+  assert.equal(registry.releaseOwner(owner, 'duplicate-notification'), 0,
+    'a repeated release notification is a no-op, not a second dispose');
+  assert.equal(registry.release('asset:repeat', owner, 'late-keyed-release'), false,
+    'a keyed release of the same departed owner cannot underflow the refcount');
+  assert.equal(first.disposals(), 1);
+
+  const second = gpuResource('reacquired-generation', 32);
+  register(registry, 'asset:repeat', [second]);
+  const freshOwner = {};
+  assert.equal(registry.retain('asset:repeat', freshOwner, { role: 'preview' }), true,
+    'a real reacquisition retains the new generation under a new owner');
+  registry.releaseOwner(freshOwner, 'preview-closed');
+  assert.equal(second.disposals(), 1);
+});
+
 test('bootstrap ownership hands off atomically only after every boot asset has a live owner', () => {
   const registry = createAssetResidencyRegistry();
   const bootstrap = {};

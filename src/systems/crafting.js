@@ -16,6 +16,7 @@ import { COMMODITIES } from '../data/commodities.js';
 import { MODULES } from '../data/modules.js';
 import { techDisplayName } from '../data/tech.js';
 import { addCargo, removeCargo } from './cargo.js';
+import { instanceIdentityText } from './shipLedger.js';
 
 // Sensible build durations by category when a blueprint doesn't specify one (the data ships with
 // timeS:0 everywhere — these defaults make manufacturing feel like a real production loop without
@@ -337,17 +338,52 @@ export const crafting = {
     return n;
   },
 
-  /** Remove one instance of a module def: prefer loose inventory, else unfits it from a ship. */
-  consumeOneModule(p, defId) {
+  /** Remove one instance of a module def: prefer loose inventory, else unfits it from a ship.
+   *  NXI-128 — with `options.instanceId` the caller's selection is consumed exactly; two valid
+   *  duplicates sharing a catalog id never let an arbitrary record answer for the named one.
+   *  With no selection the plainest duplicate goes first: a pristine catalog copy is consumed
+   *  before a recovered or worn instance, so the recorded instance survives its anonymous
+   *  twin. Returns the consumed instance record, or null when nothing matched. */
+  consumeOneModule(p, defId, options = null) {
     const inv = p.moduleInventory || [];
-    const idx = inv.findIndex((m) => m.defId === defId);
-    if (idx >= 0) { inv.splice(idx, 1); return; }
-    // not in inventory — unfit from the first owned ship that has it fitted
+    const selectedId = options && options.instanceId != null ? options.instanceId : null;
+    let idx = -1;
+    if (selectedId != null) {
+      idx = inv.findIndex((m) => m && m.instanceId === selectedId);
+      if (idx < 0 || inv[idx].defId !== defId) return null; // the selection must name a live instance of this def
+    } else {
+      let firstMatch = -1;
+      for (let i = 0; i < inv.length; i++) {
+        const m = inv[i];
+        if (!m || m.defId !== defId) continue;
+        if (firstMatch < 0) firstMatch = i;
+        if (!instanceIdentityText(m)) { idx = i; break; }
+      }
+      if (idx < 0) idx = firstMatch;
+    }
+    if (idx >= 0) { const [consumed] = inv.splice(idx, 1); return consumed || null; }
+    // not in inventory — unfit from the first owned ship that has it fitted; an explicit
+    // selection only takes the slot whose fitted record is that instance.
     for (let si = 0; si < (p.ownedShips || []).length; si++) {
       const s = p.ownedShips[si];
-      const slot = (s.fittings || []).indexOf(defId);
-      if (slot >= 0) { s.fittings[slot] = null; this._ships.recomputeIfActive(si, s.fittings); return; }
+      const fittings = s && s.fittings;
+      if (!Array.isArray(fittings)) continue;
+      const fitted = s.fittedInstances || null;
+      const slot = selectedId != null
+        ? fittings.findIndex((fid, i) => fid === defId && fitted && fitted[i] && fitted[i].instanceId === selectedId)
+        : fittings.indexOf(defId);
+      if (slot < 0) continue;
+      // Consume through the fitted-instance record — the craft eats the same record the
+      // ships owner minted; a bare fittings write would orphan identity on a null slot.
+      if (this._ships && typeof this._ships.takeFittedModuleInstance === 'function') {
+        return this._ships.takeFittedModuleInstance(si, slot);
+      }
+      const inst = fitted && fitted[slot] ? { ...fitted[slot] } : null;
+      fittings[slot] = null;
+      this._ships.recomputeIfActive(si, fittings);
+      return inst || { instanceId: null, defId };
     }
+    return null;
   },
 
   serialize() {

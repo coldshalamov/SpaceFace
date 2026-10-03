@@ -40,7 +40,7 @@ function defaultSettings() {
     // affords, sun shadow-maps read as crawling miscolored clumps, not depth. The pooled contact
     // shadow carries grounding; the toggle/Quality preset still live-applies the opt-in pass.
     // shadowsDefaultVersion stamps the migration policy (graphicsProfileBootstrap owns it).
-    video: { renderScale: 1.0, bloom: true, bloomStrength: 0.52, bloomThreshold: 1.0, vsync: true, fov: 50, particleQuality: 'medium', engineTrails: true, pixelRatioCap: 2, motionReduce: false, shadows: false, shadowsDefaultVersion: SHADOWS_DEFAULT_VERSION, energyMaterials: true, renderGraph: false, dynamicResolution: false, chaseClose: false, qualityPreset: 'medium', frameCap: 0, bloomLevels: 2, postFx: true, sharpen: false, screenShake: 100, hudScale: 1, hudOpacity: 1 },
+    video: { renderScale: 1.0, bloom: true, bloomStrength: 0.52, bloomThreshold: 1.0, vsync: true, fov: 50, particleQuality: 'medium', engineTrails: true, pixelRatioCap: 2, motionReduce: false, shadows: false, shadowsDefaultVersion: SHADOWS_DEFAULT_VERSION, energyMaterials: true, renderGraph: false, dynamicResolution: false, chaseClose: false, qualityPreset: 'medium', frameCap: 0, bloomLevels: 2, postFx: true, sharpen: false, screenShake: 100, hudScale: 1, hudOpacity: 1, arcadeEffects: 'full' },
     gameplay: {
       autosaveIntervalS: 120,
       tutorialHints: true,
@@ -54,6 +54,10 @@ function defaultSettings() {
       controlScheme: 'pilot',
       controlSchemeV2: true,
       orbitAssistStrength: 'standard',
+      // FB-001: the pursuit-slot chase assist, re-surfaced as an opt-in assisted-flight option.
+      // Default off so the default route, its feel, and every golden stay exactly as shipped;
+      // flightV3 gates on strict `=== true` for the same reason.
+      pursuitSlotAssist: false,
       // VERB-17: auto-target aim correction. Full is the authored solution (the behaviour
       // everything shipped with); off is zero correction. Persisted like the orbit assist.
       targetAssistStrength: 'full',
@@ -71,7 +75,20 @@ function defaultSettings() {
       // scheme: 'drive' keeps the wheel-like pad map (left stick = yaw + throttle);
       // 'twinstick' makes the left stick a world-frame drive vector while the right stick
       // aims and steers the nose (PQ-164.04). schemeSuggested: the one-shot pad-connect toast.
-      gamepad: { enabled: true, deadzone: 0.12, invertY: false, scheme: 'drive', schemeSuggested: false },
+      // FB-004: curve/feel tuning. 'linear' + deadzoneRight = deadzone + sensitivity 1 reproduces
+      // the shipped numbers exactly; 'expo' softens the center without losing the edges, and the
+      // right stick's deadzone is its own axis so aim jitter never tunes out fly precision.
+      gamepad: {
+        enabled: true, deadzone: 0.12, invertY: false, scheme: 'drive', schemeSuggested: false,
+        curve: 'linear', deadzoneRight: 0.12, sensitivityAim: 1, sensitivityFly: 1,
+        // FB-002/B117: which face-button vocabulary prompts print — 'xb' A/B/X/Y, 'ds'
+        // DualShock shapes, 'fh' Field Hardware circled letters. Speech and prompt chips
+        // both read this one address.
+        glyphSet: 'xb',
+      },
+      // FB-004: pointer aim gets the same tuning maturity — a sensitivity multiplier on the
+      // normalized cursor axis and an invert for players who read screen-up as world-down.
+      mouse: { sensitivity: 1, invertY: false },
     },
     // Accessibility (V2 §9/§12). motionReduce lives under video (feel/vfx read it there); uiScale is the
     // root field above. These are the net-new a11y fields driven by src/ui/accessibility.js.
@@ -80,6 +97,13 @@ function defaultSettings() {
       // Full by default: the OS reduced-motion hint is an explicit opt-in (System), never a silent
       // one — Windows "Animation effects: off" is a desktop tweak, not a request to strip combat feel.
       motionPreference: 'full', motionAsked: false, motionPrompted: false, motionDefaultVersion: GAME_MOTION_DEFAULT_VERSION, captions: false, audioCues: true, captionSize: 'medium', captionBackground: true,
+      // FB-005: rumble is its own accessibility axis — 'off' | 'low' | 'full'. Reduce-motion is
+      // vestibular and deliberately does NOT silence it; a calmer screen often wants more haptic
+      // feedback, not less. Profile-scoped (never inside a save slot).
+      haptics: 'full',
+      // FB-113: per-verb set of hold verbs that toggle on press instead of requiring a sustained
+      // hold — boost, brake, bulletTime, tether (Massline hold), reelIn, reelOut. Empty = off.
+      holdToToggle: {},
     },
   };
 }
@@ -220,6 +244,17 @@ export function createGameState(seed) {
 
     // --- transient runtime (NEVER serialized) ---
     render: {}, vfx: {}, audioRuntime: {}, perfRuntime: null,
-    save: { lastAutosaveAt: 0, dirty: false, currentSlot: null },
+    save: {
+      lastAutosaveAt: 0, dirty: false, currentSlot: null,
+      // SF-281 — durable receipt of the last slot-write attempt. Toasts fade; this record
+      // lets any surface tell pending / durable / failed persistence apart without
+      // re-deriving it from transient events. Only real write outcomes land here — a
+      // superseded autosave is a cancellation, never a failure, and load errors belong
+      // to the save:error receipt instead.
+      pendingWrite: null,
+      lastWriteOk: null,
+      lastWriteFailure: null,
+      consecutiveWriteFailures: 0,
+    },
   };
 }

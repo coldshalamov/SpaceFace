@@ -312,6 +312,81 @@ export function normalizeFact(event, p, state) {
       f.dedupe = `delivery:${JSON.stringify([bid, p.inbound === true, tick])}`;
       break;
     }
+    case 'story:playerChoiceRecorded': {
+      // A dialogue choice is evidence in the speaker's own words. `externalId` mirrors the story
+      // owner's fact id (`choice:<encounter>:<choice>`) so the citation resolves to the same row.
+      const choiceId = id(p.choiceId);
+      if (choiceId === null) return { invalid: true };
+      const encounterId = id(p.encounterId) || 'choice';
+      // Cap the quoted line so the composed `note` stays inside the details-string bound.
+      const line = text(p.line, '', 120);
+      f.stage = 'story';
+      f.actor = identity(state, state.playerId);
+      f.group = `choice:${encounterId}`;
+      f.externalId = `choice:${encounterId}:${choiceId}`;
+      f.details = {
+        kind: 'choice', choiceId, encounterId, shapeId: id(p.shapeId),
+        title: 'A spoken choice',
+        note: line ? `The record holds the pilot's own words — "${line}"` : `Chose ${choiceId}`,
+      };
+      f.dedupe = `story:${f.externalId}`;
+      break;
+    }
+    case 'story:vergeEvidenceRecorded': {
+      const key = id(p.key);
+      if (key === null) return { invalid: true };
+      const keyName = key.replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase();
+      f.stage = 'story';
+      f.actor = identity(state, state.playerId);
+      f.group = 'story:campaign';
+      f.externalId = `verge:${key}`;
+      f.details = {
+        kind: 'verge_evidence', key, source: text(p.source, 'the ship', 96),
+        title: 'Verge evidence filed',
+        note: `The ${keyName} reached the Verge lattice`,
+      };
+      f.dedupe = `story:verge:${key}`;
+      break;
+    }
+    case 'story:kurtzLedger': {
+      // Emitted on every ledger read — revisit or not, it is one fact: the ledger was read.
+      if (!Array.isArray(p.rows) || p.rows.length === 0) return { invalid: true };
+      // Details are strict scalars — the roster rides as one bounded string.
+      const names = p.rows.map((row) => text(row && row.name, '', 48)).filter(Boolean);
+      const namesText = text(names.slice(0, 4).join('; '), '', 192);
+      f.stage = 'story';
+      f.actor = identity(state, state.playerId);
+      f.group = 'story:campaign';
+      f.externalId = 'kurtz:ledger';
+      f.details = {
+        kind: 'kurtz_ledger', rowCount: p.rows.length, names: namesText || null,
+        title: 'The Kurtz ledger',
+        note: namesText ? `The ledger was read — ${namesText}` : 'The ledger was read',
+      };
+      f.dedupe = 'story:kurtz:ledger';
+      break;
+    }
+    case 'story:vergeValeGatesRevoked': {
+      const gateId = id(p.id) || 'vale_gates';
+      const subjectId = id(p.subject);
+      f.stage = 'story';
+      f.actor = { id: null, key: 'verge', player: false, name: 'the Verge lattice' };
+      f.subject = {
+        id: subjectId, key: subjectId, player: false,
+        name: text(p.subject, 'director vale').replace(/_/g, ' ').replace(/\b\w/g, (ch) => ch.toUpperCase()),
+      };
+      f.group = 'story:campaign';
+      f.externalId = `verge:revocation:${gateId}`;
+      f.details = {
+        kind: 'verge_revocation', gateId,
+        source: text(p.source, 'verge', 96),
+        revocationCount: Math.max(0, finite(p.revocationCount)),
+        title: 'Gate access revoked',
+        note: `The Verge lattice sealed ${f.subject.name} out of the gates`,
+      };
+      f.dedupe = `story:verge:revocation:${gateId}`;
+      break;
+    }
     default: return null;
   }
   f.provides = f.provides.filter(Boolean);

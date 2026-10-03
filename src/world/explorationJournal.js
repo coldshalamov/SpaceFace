@@ -28,12 +28,32 @@ export function isExplorationPoiFound(record) {
   return !!(record && (record.investigated || record.identified || record.defeated));
 }
 
+// The per-sector census counts authored find-sites — rows a player can physically discover
+// once and keep. Three row classes deliberately stay out of the census:
+// - `runtimeOwner` rows are scanner/map identity for sites materialized by an owning runtime
+//   (alien-ecology waves, the machine layer, asteroid world-sites, heist facilities). The
+//   census keeps only curated single-site runtimes whose delegated row IS the authored find
+//   record — extend AUTHORED_SITE_DELEGATE_OWNERS for those, never for identity rows.
+// - gated route markers (`gatedBy` / `machineGate`) are navigation infrastructure, not finds.
+// - `repeatableScannerSignal` sources re-fire after every resolution, so they never complete
+//   as a one-time durable find.
+const AUTHORED_SITE_DELEGATE_OWNERS = new Set(['vesper', 'uniqueWrecks']);
+
+export function isAuthoredExplorationSite(poi) {
+  if (!poi || typeof poi !== 'object') return false;
+  if (typeof poi.runtimeOwner === 'string' && poi.runtimeOwner
+    && !AUTHORED_SITE_DELEGATE_OWNERS.has(poi.runtimeOwner)) return false;
+  if (poi.gatedBy || poi.machineGate) return false;
+  if (poi.repeatableScannerSignal === true) return false;
+  return true;
+}
+
 export function sectorExplorationProgress(state, sectorOrId) {
   const sector = sectorOf(sectorOrId);
   if (!sector) {
     return { sectorId: null, found: 0, total: 0, remaining: 0, value: null, percent: null };
   }
-  const pois = Array.isArray(sector.pois) ? sector.pois : [];
+  const pois = (Array.isArray(sector.pois) ? sector.pois : []).filter(isAuthoredExplorationSite);
   const records = discoveryFor(state, sector.id);
   const byId = records && records.pois || {};
   let found = 0;

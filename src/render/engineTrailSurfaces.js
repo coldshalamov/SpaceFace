@@ -914,8 +914,11 @@ export function createRibbonTrail(scene, color, nSeg, baseWidth) {
       // Compile latch (same userData.pipelinesPending contract entity meshes use): a
       // lazily-created trail queues its program link after-present, and the first thrust
       // draw before it settles links inside bloomScene (1.7 s Intel brick). Geometry is
-      // already built, so reveal on the first rebuild after the latch clears.
-      mesh.visible = mesh.userData.pipelinesPending === true ? false : true;
+      // already built, so reveal on the first rebuild after the latch clears. An
+      // sfAdmittedOnce trail already has a linked program — a re-admission latch on it
+      // must not blank the live trail mid-flight (same exemption the submit gate uses).
+      mesh.visible = mesh.userData.pipelinesPending === true
+        && mesh.userData.sfAdmittedOnce !== true ? false : true;
       fullRebuildCount++;
     },
     getMaterial() { return mat; },

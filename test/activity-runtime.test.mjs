@@ -572,18 +572,18 @@ test('incremental classify rediscovers a station and a rock the player flies bac
   let runtime = null;
   // The runtime arrays are reused scratch — membership must be sampled inside
   // the step, not from the returned object after later passes overwrite it.
-  let rockStaticAt3000 = false;
+  let rockInPhysicsAt3000 = false;
   let rockGlassAt3000 = false;
   for (const x of [0, 500, 1500, 3000, 3000, 1500, 500, 100, 0]) {
     runtime = step(x);
     if (x === 3000) {
-      rockStaticAt3000 = runtime.physicsStatics.includes(farRock);
+      rockInPhysicsAt3000 = runtime.physicsDynamics.includes(farRock);
       rockGlassAt3000 = runtime.glassIds.has(3);
     }
   }
   assert.equal(runtime.classifyMode, 'incremental');
-  assert.ok(rockStaticAt3000,
-    'the rock under the player at x=3000 must be a physics static');
+  assert.ok(rockInPhysicsAt3000,
+    'the rock under the player at x=3000 must be in physics');
   assert.ok(rockGlassAt3000, 'the rock under the player must be on the glass');
   assert.ok(
     station.activity.simTier === SIM_TIER.S0_EXACT || station.activity.simTier === SIM_TIER.S1_NEAR,

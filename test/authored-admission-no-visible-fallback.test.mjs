@@ -17,6 +17,7 @@ import {
   wrapShipWithAuthoredParts,
 } from '../src/render/partsLibrary.js';
 import { ILLUSTRATED_SURFACE_KEY } from '../src/render/illustratedSurface.js';
+import { modelTruthRow } from '../src/data/modelTruth.js';
 import { installVisualOverrides } from '../src/render/visualOverrides.js';
 import {
   asteroidInstanceMembership,
@@ -295,7 +296,7 @@ test('authored geology never leaks its hidden procedural body into the asteroid 
   assert.equal(leaf.visible, true, 'pool rejection must not mutate the hidden fallback leaf itself');
 });
 
-test('authored geology composes its GLB envelope to the simulation asteroid radius', async () => {
+test('authored geology keeps the measured census scale of its adopted collision skin', async () => {
   const entity = {
     id: 23,
     type: 'asteroid',
@@ -313,15 +314,20 @@ test('authored geology composes its GLB envelope to the simulation asteroid radi
   const fallbackRoot = boundary.children[0];
   const scene = new THREE.Scene();
   scene.add(boundary);
+  const measured = modelTruthRow('place_asteroid_rock_a');
+  assert.equal(measured.collider.kind, 'proxy');
+  assert.equal(measured.proposedSkin.adopted, true);
+  // Adopted geology draws with its measured collision skin. The entity radius remains the
+  // gameplay footprint; stretching this GLB to 2*radius would detach it from its proxy.
   const record = {
     url: 'assets/ships/release/parts/places/place_asteroid_rock_a.glb',
     assetId: 'place_asteroid_rock_a',
     slot: 'place',
-    bounds: { size: [10, 8, 6], center: [1, 0, -2] },
+    bounds: measured.bounds,
     primitives: [{
       key: 'rock:0',
       name: 'Rock',
-      geometry: new THREE.BoxGeometry(10, 8, 6),
+      geometry: new THREE.BoxGeometry(...measured.bounds.size),
       material: new THREE.MeshStandardMaterial(),
       matrix: new THREE.Matrix4(),
       tags: {},
@@ -345,9 +351,11 @@ test('authored geology composes its GLB envelope to the simulation asteroid radi
   assert.equal(entity.type, 'asteroid', 'presentation swap cannot rewrite simulation type');
   assert.equal(entity.collides, true, 'presentation swap cannot rewrite collision truth');
   assert.equal(authoredRoot.userData.placeTargetRadius, entity.radius);
-  assert.equal(authoredRoot.userData.authoredWorldScale, 3,
-    'a radius-15 asteroid uses diameter 30 over the authored 10-unit maximum envelope');
-  assert.deepEqual(authoredRoot.userData.visualBounds.size, [30, 24, 18]);
+  const measuredScale = measured.drawScale * (entity.radius / measured.gameplay.entityRadius);
+  assert.equal(authoredRoot.userData.authoredWorldScale, measuredScale,
+    'the adopted skin follows its census scale ahead of the broadphase radius target');
+  assert.deepEqual(authoredRoot.userData.visualBounds.size,
+    measured.bounds.size.map((size) => size * measuredScale));
 });
 
 test('visual overrides route only explicit geology asteroids through the authored place builder', () => {

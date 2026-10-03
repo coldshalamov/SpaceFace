@@ -253,6 +253,10 @@ export const runtime = Object.freeze({
 });
 
 export default defineEncounter(trigger, {
+  // Jettisoned cargo pods resolve pods/pod_cargo_container.glb at spawn — declare it so the
+  // pending-item decode runway warms the pod body before telegraph resolves (the menu
+  // crucible cohort only covers sessions that ran it).
+  warmAssets: ['pods/pod_cargo_container.glb'],
   shape: {
     situation: 'ambush',
     place: trigger.zoneTypes,

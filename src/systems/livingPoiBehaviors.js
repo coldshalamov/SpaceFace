@@ -9,7 +9,7 @@ import { hash32 } from '../core/rng.js';
 import { zonesForSector, zoneAt } from '../data/sectorZones.js';
 import { globalToSectorLocalForSector, sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { SECTORS } from '../data/sectors.js';
-import { POI_BEHAVIOR_FAMILIES, POI_FAMILY_IDS } from '../data/poiBehaviorFamilies.js';
+import { POI_BEHAVIOR_FAMILIES, POI_FAMILY_IDS, authoredPlacePlansForSector } from '../data/poiBehaviorFamilies.js';
 import { buildPoiCausalOffer } from '../missions/poiCausalOffers.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((sector) => [sector.id, sector]));
@@ -150,6 +150,7 @@ export const livingPoiBehaviors = {
   newGame() {
     this.state.livingPoiBehaviors = freshState();
     this._deferredAutomaticGuidance.clear();
+    this._syncWorldReadouts();
   },
 
   // Event-driven by design: no timers can silently turn ambience into combat.
@@ -221,6 +222,11 @@ export const livingPoiBehaviors = {
       this._emit('poi:behaviorPlanned', readoutOf(row));
     }
     if (priorZoneId && own.activeByZone[priorZoneId]) own.currentZoneId = priorZoneId;
+    own.authoredPlacePlans = authoredPlacePlansForSector(
+      sector,
+      this.state.meta && this.state.meta.seed,
+    );
+    this._syncWorldReadouts(own);
     return rows;
   },
 
@@ -239,6 +245,7 @@ export const livingPoiBehaviors = {
       return;
     }
     if (row.status === 'available') row.status = 'entered';
+    this._syncWorldReadouts(own);
     this._emit('poi:behaviorReadout', readoutOf(row));
     if (own.entered[row.behaviorId]) {
       const deferred = this._deferredAutomaticGuidance.get(row.behaviorId);
@@ -320,6 +327,7 @@ export const livingPoiBehaviors = {
     }
     row.progress = Math.min(row.contract.required, (row.progress || 0) + 1);
     row.status = 'engaged';
+    this._syncWorldReadouts(own);
     this._emit('poi:behaviorProgress', {
       behaviorId: row.behaviorId,
       familyId: row.familyId,
@@ -359,6 +367,7 @@ export const livingPoiBehaviors = {
     own.aftermath[row.behaviorId] = aftermath;
     row.status = 'resolved';
     row.outcome = outcome;
+    this._syncWorldReadouts(own);
     own.receipts.push({
       behaviorId: row.behaviorId,
       familyId: row.familyId,
@@ -645,6 +654,21 @@ export const livingPoiBehaviors = {
       entered: migrated.entered,
     };
     this._deferredAutomaticGuidance.clear();
+    this._syncWorldReadouts();
+  },
+
+  // FB-035 — one reader path for the instruments. Every live row publishes its readout on
+  // state.world.poiReadouts keyed by POI (zoneId); the bag is rebuilt at each mutation point so
+  // progress/status stay fresh for the local map and radar. Dormant or unplanned zones publish
+  // nothing, so an absent or empty bag is the quiet case — no subscriptions, no hidden state.
+  _syncWorldReadouts(own = ensureState(this.state)) {
+    const world = this.state && this.state.world;
+    if (!world || typeof world !== 'object') return;
+    const published = {};
+    for (const row of Object.values(own.activeByZone || {})) {
+      if (row && row.zoneId != null) published[row.zoneId] = readoutOf(row);
+    }
+    world.poiReadouts = published;
   },
 
   destroy() {
@@ -664,6 +688,7 @@ function readoutOf(row) {
     sectorId: row.sectorId,
     zoneId: row.zoneId,
     zoneName: row.zoneName,
+    anchorEntityId: row.anchorEntityId != null ? row.anchorEntityId : null,
     pos: { x: Number(pos.x) || 0, z: Number(pos.z) || 0 },
     mapLabel: row.mapLabel,
     radarKind: row.radarKind,

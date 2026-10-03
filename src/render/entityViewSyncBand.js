@@ -35,7 +35,10 @@ export function classifyEntityViewBand(options = {}) {
     if (!Number.isFinite(halfX)) halfX = view.halfX;
     if (!Number.isFinite(halfZ)) halfZ = view.halfZ;
   }
-  if (absDx <= halfX && absDz <= halfZ) return ENTITY_VIEW_BAND.INNER;
+  // The box test reads centre distance; a body whose drawn envelope reaches the glass counts
+  // as inner even when its root centre sits outside the band (station/hulk rims).
+  const reach = Math.max(0, Number(options.radius) || 0);
+  if (absDx <= halfX + reach && absDz <= halfZ + reach) return ENTITY_VIEW_BAND.INNER;
   return ENTITY_VIEW_BAND.MIDDLE;
 }
 

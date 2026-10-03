@@ -4,7 +4,9 @@
 // loss-ledger state are read-only.
 
 import { hash32 } from '../core/rng.js';
-import { indexedShipLikeScan, entityIndexVersion } from '../world/livingWorldViews.js';
+import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
+import { indexedShipLikeScan, entityIndexVersion, entityIndexLaneVersion, registerEntityWorldRecordId } from '../world/livingWorldViews.js';
+import { syncEntityActivitySlotMembership } from '../core/coreSystem.js';
 import { shouldRunOnTick } from '../core/activityScheduler.js';
 import { normalizeFactionBehaviorProfile } from '../ai/factionBehavior.js';
 import { buildSlotList, makeShipEntitySpec } from './ships.js';
@@ -42,6 +44,9 @@ export function getFactionPresenceQuietLatchForBench() {
 
 /** Membership rescan while latched (0.5 s @ 60 Hz). */
 const FACTION_PRESENCE_QUIET_RESCAN_TICKS = 30;
+
+/** Membership lanes for the quiet latch — the route/pitborn census reads shipLike only. */
+const PRESENCE_QUIET_LANES = ['shipLike'];
 
 // Entity ids sort numerically when both sides carry one (spawn counters reach two digits);
 // string compare alone would order '10' before '9' and bind first-fire targets to the wrong hull.
@@ -98,7 +103,10 @@ function factionReps(state) {
   return reps;
 }
 
-function currentStoryInputs(state) {
+// Exported so the live-sector warm can feed planFactionPresence the exact same story
+// inputs the enter listener does — the warm enumerates the plan hulls without running
+// the spawner.
+export function currentStoryInputs(state) {
   const story = (state && state.story) || {};
   const verge = story.verge && typeof story.verge === 'object' ? story.verge : {};
   const storyFlags = {
@@ -429,7 +437,13 @@ export const factionPresence = {
     this._presenceWakeSeq = 0;
     ensureOwnState(this.state);
     this._unsub = [
-      this.bus.on('sector:enter', (payload) => this._onSectorEnter(payload || {})),
+      // Live GPU + flight + hard enter: defer into the cook's FIFO — the census
+      // drains this same body under its slice clock in listener order.
+      this.bus.on('sector:enter', (payload) => {
+        if (deferSectorEnterMaterialization(this.state, payload, this._cookProvider)) return;
+        // Sync lane (emit listener): drain the chunked steps inline.
+        for (const _ of this._onSectorEnterSteps(payload || {})) { /* inline */ }
+      }),
       this.bus.on('sector:exit', (payload) => this._onSectorExit(payload || {})),
       this.bus.on('dock:docked', (payload) => this._onDocked(payload || {})),
       this.bus.on('lossLedger:recorded', (payload) => this._onLossRecorded(payload || {})),
@@ -441,6 +455,14 @@ export const factionPresence = {
       this.bus.on('save:loaded', () => this._onSaveLoaded()),
       this.bus.on('conflict:flip', (payload) => this._onConflictFlip(payload || {})),
     ];
+    // Census arm: faction-presence materialization lands inside the sector cook
+    // deterministically (the handler falls back to world.currentSectorId itself).
+    this._cookProvider = (sector) => {
+      if (!this._unsub || !this._unsub.length) return null;
+      return this._onSectorEnterSteps({ sectorId: (sector && sector.id) || undefined });
+    };
+    (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
+      .push(this._cookProvider);
   },
 
   newGame() {
@@ -465,7 +487,8 @@ export const factionPresence = {
     const state = this.state;
     const own = ensureOwnState(state);
     if (FACTION_PRESENCE_QUIET_LATCH !== false) {
-      const membership = entityIndexVersion(state);
+      const laneVersion = entityIndexLaneVersion(state, PRESENCE_QUIET_LANES);
+      const membership = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
       const tick = state.tick | 0;
       const wakeSeq = this._presenceWakeSeq | 0;
       const quiet = this._presenceQuiet;
@@ -492,7 +515,8 @@ export const factionPresence = {
     this._updateBoarding();
 
     if (FACTION_PRESENCE_QUIET_LATCH !== false) {
-      const membership = entityIndexVersion(state);
+      const laneVersion = entityIndexLaneVersion(state, PRESENCE_QUIET_LANES);
+      const membership = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
       const census = this._censusPresenceWork();
       if (membership != null && !own.boarding && !census.busy) {
         this._presenceQuiet = {
@@ -526,9 +550,77 @@ export const factionPresence = {
     return { fixedRoute, pitborn, busy: fixedRoute > 0 || pitborn > 0 };
   },
 
+  // Every presence plan key is re-derivable off an existing carrier — live or shelved — because
+  // the carrier retains the authored marker plus either its loiter anchor (= plan.pos) or the
+  // fixed-route frame + formation slot that produced plan.pos. deserialize() clears own.active,
+  // so without this census the first sector:enter after load mints a twin beside every shelved
+  // hull; the shelved rows then pile up one plan set per visit (D141).
+  _presenceCarrierIndex(sectorId) {
+    const carriers = new Map();
+    const collect = (carrier) => {
+      // A wreck carrier keeps the marker but is not the plan's live body — adopting it would
+      // suppress the hull the plan is owed. Dead or wrecked carriers leave the mint path alone.
+      if (!carrier || carrier.alive === false || carrier.type === 'wreck') return;
+      const data = carrier.data && typeof carrier.data === 'object' ? carrier.data : null;
+      const marker = data && data.factionPresence;
+      if (!marker || typeof marker !== 'object' || marker.source !== 'depth-program-k1') return;
+      let px = null;
+      let pz = null;
+      if (marker.fixedRoute && marker.routeStart && marker.routeEnd) {
+        // _updateFulfillmentRoutes rewrites activity.anchor to the moving route point each
+        // tick, so the plan key must be rebuilt from the stored frame the same way
+        // planFactionPresence built plan.pos.
+        const dx = marker.routeEnd.x - marker.routeStart.x;
+        const dz = marker.routeEnd.z - marker.routeStart.z;
+        const length = Math.hypot(dx, dz) || 1;
+        const offset = ((Number(marker.formationIndex) || 0)
+          - ((Number(marker.formationCount) || 1) - 1) / 2)
+          * (Number(marker.formationSpacing) || 52);
+        px = marker.routeStart.x + (-dz / length) * offset;
+        pz = marker.routeStart.z + (dx / length) * offset;
+      } else {
+        const ai = (carrier.ai && typeof carrier.ai === 'object' ? carrier.ai : null)
+          || (data.ai && typeof data.ai === 'object' ? data.ai : null);
+        const anchor = ai && ai.activity && ai.activity.anchor;
+        if (anchor && Number.isFinite(anchor.x) && Number.isFinite(anchor.z)) {
+          px = anchor.x;
+          pz = anchor.z;
+        }
+      }
+      if (px == null || pz == null) return;
+      const key = [
+        sectorId,
+        marker.factionId || carrier.factionId,
+        marker.lossId || marker.routeId || marker.vergePhase || 'presence',
+        px,
+        pz,
+      ].join(':');
+      if (!carriers.has(key)) carriers.set(key, carrier.id != null ? carrier.id : null);
+    };
+    for (const entity of indexedShipLikeScan(this.state)) collect(entity);
+    const rows = this.state && this.state.world && this.state.world.farActors
+      && this.state.world.farActors.rows;
+    if (Array.isArray(rows)) {
+      for (let i = 0; i < rows.length; i++) collect(rows[i]);
+    }
+    return carriers;
+  },
+
   _onSectorEnter(payload) {
+    for (const _ of this._onSectorEnterSteps(payload)) { /* inline */ }
+  },
+
+  // Chunked cook-provider twin: one presence per yield so the sliced census interleaves
+  // presentation between hulls; own.active dedupe makes a superseded cook's re-run safe.
+  *_onSectorEnterSteps(payload) {
     this._wakePresenceQuiet();
     const state = this.state;
+    // A tail-drained emit carries the epoch of the enter that minted it: a replayed
+    // payload whose enterEpoch no longer matches the world's serial is stale — presence
+    // must not mint for it under the live world's id. Synthetic payloads carry no epoch
+    // and always run.
+    if (payload.enterEpoch != null && state.world && state.world.enterSerial != null
+        && payload.enterEpoch !== state.world.enterSerial) return;
     const sectorId = payload.sectorId || (state.world && state.world.currentSectorId);
     if (!sectorId) return;
     const seed = ((state.meta && state.meta.seed) || 1) >>> 0;
@@ -550,6 +642,7 @@ export const factionPresence = {
       ownerFactionId: (sectors[sectorId] && sectors[sectorId].owner) || null,
     });
     const own = ensureOwnState(state);
+    const carriers = this._presenceCarrierIndex(sectorId);
     for (const presencePlan of plans) {
       const tenderContext = ceresTenderContext(presencePlan, seed, state.tick);
       if (tenderContext) {
@@ -558,6 +651,19 @@ export const factionPresence = {
       }
       const key = spawnKey(presencePlan);
       if (own.active[key]) continue;
+      const carrierId = carriers.get(key);
+      if (carrierId !== undefined) {
+        // Re-own the existing hull — live or a shelved far row — instead of minting a twin.
+        // The shelved copy promotes when the player crosses its bubble, so the presence set
+        // stays exactly-once across load/enter cycles (D141).
+        own.active[key] = {
+          entityId: carrierId,
+          sectorId,
+          factionId: presencePlan.factionId,
+          routeId: presencePlan.routeId || null,
+        };
+        continue;
+      }
       const spec = makePresenceSpec(presencePlan, state);
       const entity = typeof this.helpers.spawnEntity === 'function'
         ? this.helpers.spawnEntity(spec)
@@ -579,6 +685,8 @@ export const factionPresence = {
       };
       pushReceipt(state, { kind: 'spawned', ...receipt });
       this.bus.emit('factionPresence:spawned', receipt);
+      // Atomic unit complete: hull minted, active record stamped, receipt emitted.
+      yield;
     }
     this._bindPitbornConcordTargets();
     this._rehydrateBoardingConvoy();
@@ -629,10 +737,18 @@ export const factionPresence = {
       // World-record rematerialization intentionally builds a generic shell. Restore the canonical
       // Ironback presentation/loadout/AI fields, while never touching its saved pose or vitals.
       rehydrateCeresTender(entity, canonicalSpec, context);
+      // stampCeresTenderIdentity stamps data.worldRecordId post-append on this live indexed
+      // entity — register it or the new id stays a miss-memo'd negative / walk-only carrier.
+      registerEntityWorldRecordId(this.state && this.state.entityIndex, entity);
+      syncEntityActivitySlotMembership(this.state && this.state.entityIndex, entity);
     } else if (typeof this.helpers.spawnEntity === 'function') {
       entity = this.helpers.spawnEntity(canonicalSpec);
       spawned = !!entity;
-      if (entity) stampCeresTenderIdentity(entity, context);
+      if (entity) {
+        stampCeresTenderIdentity(entity, context);
+        registerEntityWorldRecordId(this.state && this.state.entityIndex, entity);
+        syncEntityActivitySlotMembership(this.state && this.state.entityIndex, entity);
+      }
     }
     if (!entity) return null;
     // World rematerializes every durable NPC through its generic FULL-extra bag. This tender is

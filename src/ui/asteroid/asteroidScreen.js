@@ -1675,6 +1675,14 @@ export const asteroidScreen = {
       inspElapsed = 10;
     }));
 
+    // The approach cam gives ~1.2 s between the commit and the push — spend it on the
+    // WebGLRenderer instead of paying context creation inside the approachCompleted frame.
+    // begin() still runs at onShow; a cancelled approach just leaves the context warm for the
+    // next one (one renderer per mounted screen either way).
+    unsubs.push(ctx.bus.on('drill:approachStarted', () => {
+      try { ensureRenderer3d(); } catch (e) { console.error(e); }
+    }));
+
     function syncLedgerFromSite() {
       const s = site();
       if (!s || !s.ledger.length) return;
@@ -1915,6 +1923,17 @@ export const asteroidScreen = {
     }
 
     // ---------- lifecycle ----------
+    const ensureRenderer3d = () => {
+      if (renderer3d) return;
+      renderer3d = createAsteroidRenderer3d({
+        canvas,
+        wrapEl: stage,
+        drillSys,
+        getDrill: () => state.drill,
+        getSite: site,
+        getProjection: () => projection,
+      });
+    };
     const startSession = () => {
       const pendingId = (state.ui && state.ui.pendingDrillAsteroidId) || null;
       if (state.ui) state.ui.pendingDrillAsteroidId = null;
@@ -1976,16 +1995,7 @@ export const asteroidScreen = {
 
       // One renderer (one WebGL context) per mounted screen; each session rebuilds its scene
       // from the live field.
-      if (!renderer3d) {
-        renderer3d = createAsteroidRenderer3d({
-          canvas,
-          wrapEl: stage,
-          drillSys,
-          getDrill: () => state.drill,
-          getSite: site,
-          getProjection: () => projection,
-        });
-      }
+      ensureRenderer3d();
       renderer3d.begin({ motionReduce });
       // Law §9, immediately after begin() (which resets the register to work): a site with
       // machines opens pulled back so the first second reads lit / flowing / dark.

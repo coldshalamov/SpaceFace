@@ -18,7 +18,7 @@ import {
   PD_SCREEN_DEFAULT_RADIUS,
 } from '../ai/pdScreen.js';
 import { isPlayerWanted } from './heat.js';
-import { indexedShipLikeScan } from '../world/livingWorldViews.js';
+import { collidesFlipEpoch, indexedShipLikeScan } from '../world/livingWorldViews.js';
 import { queryCombatTableRadius } from '../core/combatTable.js';
 import { solveLeadAngle } from './weapons.js';
 import { combatFlag } from '../data/featureFlags.js';
@@ -310,21 +310,45 @@ function shelvedOpticLaneRecords(state) {
 /**
  * The optic callsites' lane view: promoted collidables (index order) followed by shelved optic
  * records (record order), replayable and allocation-free — shelved records already carry the
- * {id, pos, radius, collides, data} shape the lane scans consume.
+ * {id, pos, radius, collides, data} shape the lane scans consume. The wrapper is pooled per
+ * state: fireDiscipline's flat-corpus scratch is WeakMap-keyed on the iterable's identity and
+ * two identical callsites fire per armed shooter per tick — a fresh wrapper would defeat that
+ * scratch and double the per-tick allocs the lane cache exists to kill.
  */
+const OPTIC_SHELVED_WRAPPER = new WeakMap();
+
 export function opticLaneBodiesWithShelved(state) {
   const live = opticLaneBodies(state);
   const shelved = shelvedOpticLaneRecords(state);
-  if (!shelved.length) return live;
-  return {
-    values() {
-      return (function* () {
-        if (Array.isArray(live)) yield* live;
-        else if (live && typeof live.values === 'function') yield* live.values();
-        yield* shelved;
-      })();
-    },
-  };
+  const keyable = state && typeof state === 'object';
+  if (!shelved.length && !keyable) return live;
+  let cached = keyable ? OPTIC_SHELVED_WRAPPER.get(state) : null;
+  if (!cached || cached.live !== live || cached.shelved !== shelved) {
+    cached = {
+      live,
+      shelved,
+      // Corpus-validity signature consumed by fireDiscipline's per-tick flat-corpus memo:
+      // identical while the tick and both membership versions hold — i.e., across the whole
+      // tactical pass. Reads the live handles rather than captured ones so a swapped index
+      // object still reports its own version.
+      sig: () => {
+        const index = state && state.entityIndex;
+        const field = state && state.world && state.world.asteroidField;
+        // collidesFlipEpoch folds in post-spawn collides flips — the corpus member predicate
+        // reads e.collides, and a flip bumps only the epoch, not index/field versions.
+        return `${(state && state.tick) | 0}:${(index && Number(index.version)) || 0}:${(field && Number(field.version)) || 0}:${collidesFlipEpoch()}`;
+      },
+      values() {
+        return (function* () {
+          if (Array.isArray(live)) yield* live;
+          else if (live && typeof live.values === 'function') yield* live.values();
+          yield* shelved;
+        })();
+      },
+    };
+    if (keyable) OPTIC_SHELVED_WRAPPER.set(state, cached);
+  }
+  return cached;
 }
 
 /**

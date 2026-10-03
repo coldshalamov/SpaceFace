@@ -404,10 +404,13 @@ test('two different payload mixes both solve the corridor physics (route solvabi
     const fence = mineCorridorLayout({ x: 0, z: 0 }, { x: 400, z: 0 })
       .map((pos, i) => mixA.minesSys.placeMine({ ownerId: jackal.id, pos, team: 1, armDelayS: 0, telegraph: i === 0 }));
     mixA.tick(1);
-    // Drum seeded at the fence centroid: all three hulls sit within one concussion radius
-    // (130 wu) — the single-blast displacement solution. At the old (0, 30) only the first
-    // hull was in reach, which is a placement error, not a law.
-    const drum = mixA.spawnBomb(10, 150, 102, { payloadId: 'bomb_concussion' });
+    // Drum seeded near the fence centroid: all three hulls sit within one concussion radius
+    // (130 wu) — the single-blast displacement solution. The exact centroid coincides with
+    // the middle hull, where a blast has no radial axis to shove along (bombRadialDirection's
+    // zero-vector convention, 0892081f7 — a centered field invents no axis), so the seed is
+    // nudged off that hull. At the old (0, 30) only the first hull was in reach, which is a
+    // placement error, not a law.
+    const drum = mixA.spawnBomb(10, 140, 90, { payloadId: 'bomb_concussion' });
     drum.data.armed = true;
     mixA.bombsSys.commandDetonate(mixA.player.id, mixA.state);
     mixA.tick(20);

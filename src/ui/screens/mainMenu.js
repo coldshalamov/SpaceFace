@@ -78,6 +78,11 @@ function nav(ctx, method, arg) {
 function readSaveIndex(ctx) {
   const sys = ctx.registry && ctx.registry.get && ctx.registry.get('save');
   if (sys) {
+    // Index cards only: the menu's per-render read must never touch blob bytes. The save
+    // system republishes the validated merged index under 'save:slotsValidated' (re-render
+    // below) — a stale card in that window costs the same click-time revalidation Continue
+    // always does.
+    if (typeof sys.listSlotsIndexCards === 'function') { try { return normalizeSlots(sys.listSlotsIndexCards()); } catch (e) {} }
     if (typeof sys.listSlots === 'function') { try { return normalizeSlots(sys.listSlots()); } catch (e) {} }
     if (sys.index && typeof sys.index === 'object') { try { return normalizeSlots(sys.index); } catch (e) {} }
   }
@@ -490,7 +495,7 @@ export const mainMenuScreen = {
     // shared-store sync and a completed save both re-read the index.
     this._offBus = [];
     if (ctx && ctx.bus && typeof ctx.bus.on === 'function') {
-      for (const evt of ['save:store-synced', 'save:completed']) {
+      for (const evt of ['save:store-synced', 'save:completed', 'save:slotsValidated']) {
         const off = ctx.bus.on(evt, () => { if (refs) this._render(ctx); });
         if (typeof off === 'function') this._offBus.push(off);
       }
@@ -563,17 +568,23 @@ export const mainMenuScreen = {
     if (refs.bSandbox) setScreenButtonReady(refs.bSandbox, ctx, 'sandbox', 'Sandbox');
     if (refs.bCrucible) setScreenButtonReady(refs.bCrucible, ctx, 'crucible', 'Crucible');
     const sys = ctx.registry && ctx.registry.get && ctx.registry.get('save');
-    if (sys && typeof sys.isSharedStoreSyncPending === 'function' && sys.isSharedStoreSyncPending()) {
+    const syncPending = !!(sys && typeof sys.isSharedStoreSyncPending === 'function' && sys.isSharedStoreSyncPending());
+    const latest = latestSave(readSaveIndex(ctx));
+    // Continue reads this cache instead of re-scanning localStorage on the click frame —
+    // save:store-synced/save:completed re-render refreshes it, same horizon the summary shows.
+    this._latestSave = latest;
+    if (syncPending && !latest) {
+      // Local saves are already authoritative — only a player with NO local slot waits on the
+      // remote mirror, since that's the only thing that could still enable Continue. With a
+      // local save the verb renders immediately below instead of dead-blocking up to the
+      // shared store's 10s timeout behind 'Checking saves'.
       setDisabled(refs.bContinue, true, 'Checking saves');
       refs.saveSummary.classList.remove('has-save');
       refs.saveSummary.textContent = 'Checking saves...';
       this._syncCurrent();
       return;
     }
-    const latest = latestSave(readSaveIndex(ctx));
-    // Continue reads this cache instead of re-scanning localStorage on the click frame —
-    // save:store-synced/save:completed re-render refreshes it, same horizon the summary shows.
-    this._latestSave = latest;
+    if (syncPending) this._syncCurrent();
     refs.saveSummary.classList.toggle('has-save', !!latest);
     if (latest) {
       const summary = saveSummaryText(latest.slot, latest.meta);
@@ -818,18 +829,86 @@ export const mainMenuScreen = {
       const frame = info && info.render && info.render.frame;
       return Number.isFinite(frame) ? frame : null;
     };
-    const frameAtClick = frameCount();
+    // Sample the counter when `live` first reads true, not at click: menu frames keep presenting
+    // through the whole load, so a click-time baseline is already stale when mode flips — the
+    // veil would lift on the same commit as the flag, before any flight frame exists. Post-flip
+    // increments can only be flight frames (the menu stops drawing at the mode change).
+    let frameAtLive = null;
     const start = Date.now();
+    // rAF-chain the readiness check: the presented-frame counter only advances at paint, so a
+    // timer poll can lag readiness by up to its period (~120ms of veil latency after the frame
+    // already exists). rAF wakes the same frame the counter moves; a timer stays as failsafe
+    // for hosts that throttle background rAF.
+    // The veil element is a singleton: a re-entry (a second Continue after a failed load)
+    // must retire the previous loop's arms and pending removal so they can't lift or delete
+    // the veil the new loop relies on mid-load.
+    const previous = fade._sfContinueFadeLoop;
+    if (previous) {
+      previous.stale = true;
+      if (previous.rafId != null && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(previous.rafId);
+      if (previous.timerId != null) clearTimeout(previous.timerId);
+      if (previous.removeTimerId != null) clearTimeout(previous.removeTimerId);
+      if (typeof previous.offModeChanged === 'function') previous.offModeChanged();
+    }
+    const loop = { stale: false, rafId: null, timerId: null, removeTimerId: null, offModeChanged: null };
+    fade._sfContinueFadeLoop = loop;
     const lift = () => {
+      if (loop.stale) return;
+      loop.stale = true;
+      if (loop.rafId != null && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(loop.rafId);
+      if (loop.timerId != null) clearTimeout(loop.timerId);
+      if (typeof loop.offModeChanged === 'function') loop.offModeChanged();
+      fade.classList.remove('open');
+      loop.removeTimerId = setTimeout(() => {
+        if (fade._sfContinueFadeLoop === loop && fade.parentNode) fade.remove();
+      }, 1100);
+    };
+    // A failed Continue bounces mode back to the menu (the stranded-mode hand-back or a
+    // bounced rollback) — no flight frame is coming, so lift immediately instead of holding
+    // the opaque veil over the menu for the rest of the 4s failsafe.
+    loop.offModeChanged = ctx && ctx.bus && typeof ctx.bus.on === 'function'
+      ? ctx.bus.on('mode:changed', ({ mode } = {}) => {
+          if (mode && mode !== 'flight' && mode !== 'loading') lift();
+        })
+      : null;
+    const check = () => {
+      if (loop.stale) return;
       const live = ctx && ctx.state && ctx.state.mode === 'flight';
-      const presented = frameAtClick == null || (frameCount() != null && frameCount() > frameAtClick);
+      let presented = false;
+      if (live) {
+        if (frameAtLive == null) {
+          frameAtLive = frameCount();
+          // Counter unavailable: the flag alone is the best signal left — lift on live.
+          presented = frameAtLive == null;
+        } else {
+          const now = frameCount();
+          presented = now != null && now > frameAtLive;
+        }
+      }
       if ((live && presented) || Date.now() - start > 4000) {
-        fade.classList.remove('open');
-        setTimeout(() => { if (fade.parentNode) fade.remove(); }, 1100);
+        lift();
         return;
       }
-      setTimeout(lift, 120);
+      // One pending callback per channel: arming unconditionally stacks a new rAF chain per
+      // timer fire and a new timeout per rAF wake inside the stall window this guards. Each
+      // channel self-clears before re-entering check(), which re-arms it if still pending.
+      if (typeof requestAnimationFrame === 'function' && loop.rafId == null) {
+        loop.rafId = requestAnimationFrame(() => { loop.rafId = null; check(); });
+      }
+      // The timer must re-arm on every wake, not just when rAF is missing: on a rAF-throttled
+      // host (background tab) the first timer fire is the last check unless it keeps itself
+      // armed — the 4s cap would never evaluate and the veil would hold indefinitely.
+      if (loop.timerId == null) {
+        loop.timerId = setTimeout(() => { loop.timerId = null; check(); }, 200);
+      }
     };
-    setTimeout(lift, 200);
+    if (typeof requestAnimationFrame === 'function') {
+      loop.rafId = requestAnimationFrame(() => { loop.rafId = null; check(); });
+      // failsafe only: rAF-throttled hosts still lift — and self-clears so check()'s guarded
+      // re-arm keeps exactly one pending per channel.
+      loop.timerId = setTimeout(() => { loop.timerId = null; check(); }, 200);
+    } else {
+      loop.timerId = setTimeout(() => { loop.timerId = null; check(); }, 200);
+    }
   },
 };

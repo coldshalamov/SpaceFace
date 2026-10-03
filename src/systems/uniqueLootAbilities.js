@@ -29,7 +29,6 @@ export const KNITBOTS_OOC_DELAY_S = 5;
 const PALE_COIL_ID = 'unique_pale_coil_warp_drive';
 const CHOIR_BELL_ID = 'unique_choir_bell_aegis';
 const NESTBREAKER_ID = 'unique_nestbreaker_rack';
-const TIDELINE_ID = 'unique_tideline_tractor';
 const BASE_PICKUP_MAGNET_RANGE = 800;
 const NESTBREAKER_SEPARATION = 1.4;
 const MAX_ENCOUNTER_RECORDS = 64;
@@ -105,6 +104,20 @@ export function fittedUniqueEnergyPremium(state) {
     if (premium > 0) total += premium;
   }
   return total;
+}
+
+/**
+ * FB-054 — the whole-wreck tractor verb belongs to the fitted `tractorWholeWrecks` flag, not to
+ * the Tideline's item id: any module declaring the flag in its mods lifts whole wrecks. The
+ * Tideline unique still carries the flag, so its own behaviour is unchanged.
+ */
+export function fittedWholeWreckTractor(state) {
+  for (const definition of fittedModuleDefs(state)) {
+    if (definition && definition.mods && definition.mods.tractorWholeWrecks === true) {
+      return definition;
+    }
+  }
+  return null;
 }
 
 export function isTidelineWholeWreckEligible(entity) {
@@ -344,7 +357,8 @@ export const uniqueLootAbilities = {
   },
 
   _updateTideline(dt, state, player) {
-    if (!hasFittedModule(state, TIDELINE_ID)) return;
+    // Capability gate, not item id (FB-054): anything declaring tractorWholeWrecks runs this.
+    if (!fittedWholeWreckTractor(state)) return;
     // Wreck-only unique: ordinary ore pickups are owned by mining.playerPickupMagnetRange once
     // the fitted tractor scoop outranges this unique's old pickup annulus.
     const nearby = queryNearbyEntities(
@@ -373,8 +387,8 @@ export const uniqueLootAbilities = {
     const sinceDamage = finite(state.simTime) - finite(player.lastDamageT, -1e9);
     if (sinceDamage < KNITBOTS_OOC_DELAY_S) return;
     player.hull = Math.min(player.hullMax, player.hull + repairRate * dt);
-    // No docked-drone mutation lives here. Automation groups are deployed records, and recall
-    // removes them; inventing a repairable docked hull would create false persistence semantics.
+    // Docked-drone repair (FB-054) lives in automation._parkDroneEntities — the group's
+    // durability record is the repairable thing, owned by that system, not by this hull path.
   },
 
   _drainUniqueEnergyPremium(dt, state, player) {

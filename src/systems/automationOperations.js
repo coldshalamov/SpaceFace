@@ -113,7 +113,104 @@ export function ensureOperation(group) {
   const op = group.operation;
   if (!Number.isFinite(op.grossUnits)) op.grossUnits = 0;
   if (op.throughputPrimary !== true) op.throughputPrimary = true;
+  ensureCycle(op);
   return op;
+}
+
+// SF-115 — the per-cycle ledger. Every field is accumulated from committed events (a cut unit, a
+// burned fuel point, an accrued upkeep credit, a signed sale receipt, a non-sale withdrawal), so
+// the closed breakdown reconciles: carryIn + mined === sold + withdrawn + held. Stock still in the
+// shipment at close is held, never booked as income.
+function ensureCycle(op) {
+  if (!op.cycle || typeof op.cycle !== 'object' || Array.isArray(op.cycle)) {
+    op.cycle = {
+      carryInUnits: 0,
+      minedUnits: 0,
+      soldUnits: 0,
+      withdrawnUnits: 0,
+      fuelUsed: 0,
+      upkeepAccrued: 0,
+      credited: 0,
+    };
+  }
+  const c = op.cycle;
+  for (const key of ['carryInUnits', 'minedUnits', 'soldUnits', 'withdrawnUnits']) {
+    c[key] = Math.max(0, Math.floor(Number(c[key]) || 0));
+  }
+  c.fuelUsed = Math.max(0, Number(c.fuelUsed) || 0);
+  c.upkeepAccrued = Math.max(0, Number(c.upkeepAccrued) || 0);
+  c.credited = Math.max(0, Math.round(Number(c.credited) || 0));
+  return c;
+}
+
+/** Operating inputs consumed since the last sale: fuel units burned and upkeep credits accrued. */
+export function recordCycleInput(group, { fuelUnits = 0, upkeepCr = 0 } = {}) {
+  const op = ensureOperation(group);
+  if (!op) return null;
+  const cycle = ensureCycle(op);
+  cycle.fuelUsed += Math.max(0, Number(fuelUnits) || 0);
+  cycle.upkeepAccrued += Math.max(0, Number(upkeepCr) || 0);
+  return cycle;
+}
+
+/** Shipment units that left without a depot sale (recall bank, destruction). */
+export function recordOperationWithdrawal(group, units) {
+  const op = ensureOperation(group);
+  if (!op) return 0;
+  const cycle = ensureCycle(op);
+  const removed = Math.max(0, Math.floor(Number(units) || 0));
+  cycle.withdrawnUnits += removed;
+  return removed;
+}
+
+/**
+ * A copy of the open cycle for terminal paths (the machine is being deleted, so no later sale
+ * will ever close it). The caller names `heldUnits` — stock still aboard — so the entry's
+ * inventory identity (`carryIn + mined === sold + withdrawn + held`) still reconciles.
+ */
+export function cycleSnapshot(group, heldUnits = 0) {
+  const op = ensureOperation(group);
+  if (!op) return null;
+  const cycle = ensureCycle(op);
+  const upkeep = Math.round(cycle.upkeepAccrued);
+  return {
+    carryInUnits: cycle.carryInUnits,
+    minedUnits: cycle.minedUnits,
+    soldUnits: cycle.soldUnits,
+    withdrawnUnits: cycle.withdrawnUnits,
+    fuelUsed: Math.round(cycle.fuelUsed * 10) / 10,
+    upkeepAccrued: upkeep,
+    credited: cycle.credited,
+    heldUnits: Math.max(0, Math.floor(Number(heldUnits) || 0)),
+    netCr: cycle.credited - upkeep,
+  };
+}
+
+function closeCycle(op, sale, heldUnits) {
+  const cycle = ensureCycle(op);
+  const upkeep = Math.round(cycle.upkeepAccrued);
+  op.lastCycle = {
+    stationId: sale.stationId || null,
+    quantity: cycle.soldUnits,
+    credited: cycle.credited,
+    carryInUnits: cycle.carryInUnits,
+    minedUnits: cycle.minedUnits,
+    withdrawnUnits: cycle.withdrawnUnits,
+    fuelUsed: Math.round(cycle.fuelUsed * 10) / 10,
+    upkeepAccrued: upkeep,
+    heldUnits: Math.max(0, Math.floor(Number(heldUnits) || 0)),
+    netCr: cycle.credited - upkeep,
+  };
+  op.cycle = {
+    carryInUnits: op.lastCycle.heldUnits,
+    minedUnits: 0,
+    soldUnits: 0,
+    withdrawnUnits: 0,
+    fuelUsed: 0,
+    upkeepAccrued: 0,
+    credited: 0,
+  };
+  return op.lastCycle;
 }
 
 export function applyFuelShortage(group) {
@@ -163,19 +260,29 @@ export function recordGrossUnits(group, units) {
   if (!op) return 0;
   const add = Math.max(0, Math.floor(Number(units) || 0));
   op.grossUnits = (Number(op.grossUnits) || 0) + add;
+  ensureCycle(op).minedUnits += add;
   return add;
 }
 
 export function recordRealisedSale(group, sale) {
   const op = ensureOperation(group);
   if (!op || !sale) return null;
+  const quantity = Math.max(0, Math.floor(Number(sale.quantity) || 0));
+  const credited = Math.max(0, Math.round(Number(sale.credited) || 0));
   op.lastSale = {
     stationId: sale.stationId || null,
-    quantity: Math.max(0, Math.floor(Number(sale.quantity) || 0)),
+    quantity,
     unitPrice: Math.max(0, Number(sale.unitPrice) || 0),
-    credited: Math.max(0, Math.round(Number(sale.credited) || 0)),
+    credited,
     operatingCostPerMin: Math.max(0, Number(sale.operatingCostPerMin) || 0),
   };
+  // Close the accounting cycle this sale ends: inputs mined/burned since the last sale roll into
+  // lastCycle, and whatever the depot refused or never received stays aboard as held stock —
+  // unresolved inventory, not income.
+  const cycle = ensureCycle(op);
+  cycle.soldUnits += quantity;
+  cycle.credited += credited;
+  closeCycle(op, sale, sale.heldUnits);
   return op.lastSale;
 }
 
@@ -312,6 +419,16 @@ export function describeProgrammedMinerOperation(group, def = {}) {
       : 'warn';
   const statusLabel = op.label || 'Running';
   const reason = op.reason || 'Waiting for the first cut.';
+  // SF-115 — the closed cycle in one line: inputs and the receipt, net of upkeep, with held stock
+  // named as stock rather than income. Nothing here is an estimate; every term was a committed event.
+  const lc = op.lastCycle && typeof op.lastCycle === 'object' ? op.lastCycle : null;
+  const cycleText = lc
+    ? `Last run: cut ${lc.minedUnits}u, sold ${lc.quantity}u for ${lc.credited} cr`
+      + ` · upkeep -${lc.upkeepAccrued} cr · fuel ${lc.fuelUsed}u`
+      + (lc.withdrawnUnits > 0 ? ` · lost ${lc.withdrawnUnits}u` : '')
+      + (lc.heldUnits > 0 ? ` · ${lc.heldUnits}u still held` : '')
+      + ` → net ${lc.netCr} cr`
+    : null;
   const accessibleSummary = [
     statusLabel,
     `Gross cut ${Math.max(0, Number(op.grossUnits) || 0)} units`,
@@ -319,6 +436,7 @@ export function describeProgrammedMinerOperation(group, def = {}) {
     `Last sale ${lastText}`,
     `Operating cost ${cost} credits per minute`,
     `Estimated net ${net} credits per minute`,
+    ...(cycleText ? [cycleText] : []),
     reason,
   ].join('. ');
   return {
@@ -333,6 +451,9 @@ export function describeProgrammedMinerOperation(group, def = {}) {
     operatingCostPerMin: cost,
     netThroughputPerMin: net,
     addingMachineHelps: op.addingMachineHelps !== false,
+    cycle: op.cycle || null,
+    lastCycle: lc,
+    cycleText,
     accessibleSummary,
   };
 }
