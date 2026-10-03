@@ -18,6 +18,7 @@
 
 import { RECIPES, MUSIC_STEMS } from '../data/audioRecipes.js';
 import { WEAPONS } from '../data/weapons.js';
+import { classifyWeaponFamily } from '../data/vfxProfiles.js';
 import { CUE_GAIN, engineIdleCue, stepCueGain } from '../presentation/throttleAnswer.js';
 import { combatVerbRecipe, installCombatVerbCueDispatch } from './combatVerbCues.js';
 import { bindMinimalActionAudio } from './minimalActionAudio.js';
@@ -1334,81 +1335,65 @@ export const BARK_PUNCT = Object.freeze({
 export const INSTRUCTOR_REPEAT_WINDOW_S = 8;
 
 // Weapon-id / kind -> SFX recipe id. Player & NPC weapon defIds are 'wpn_*'; the combat:fire
-// payload carries weaponId. CV-EAR: classify from the weapon DEF first (damageType, mount,
-// tracking, deployKind, mineArmS, statuses, emergentPrimitive — what the mount IS), with id
-// substrings only for ids outside the catalog. A mount whose id carries no known family must
-// NEVER borrow the starter pulse's voice: two different guns would become indistinguishable, and
-// an unknown weapon would masquerade as the player's first one. Those fall to the authored
-// generic combat discharge (`sfx_wpn_unclassified`) instead.
+// payload carries weaponId. FB-071: the classification is SHARED with the render layer —
+// `classifyWeaponFamily` (src/data/vfxProfiles.js) resolves the same presentation family the
+// picture uses, branching on impulseProvenance BEFORE damage type, so a mount can never look
+// like one family while sounding like another. This table is the one place a family becomes a
+// voice; id substrings survive only for ids outside the catalog. A mount whose id carries no
+// known family must NEVER borrow the starter pulse's voice: two different guns would become
+// indistinguishable, and an unknown weapon would masquerade as the player's first one. Those
+// fall to the authored generic combat discharge (`sfx_wpn_unclassified`) instead.
 const WEAPON_DEF_BY_ID = new Map(WEAPONS.map((d) => [d.id, d]));
-// Field-tool primitives (src/data/emergentPrimitives.js): standing-field emitters ride the
-// gravitic voice, crackle payloads the disruptor, placed bombs the charge.
-const GRAVITIC_PRIMITIVES = new Set(['grav', 'polarity', 'viscosity', 'quantum', 'prism']);
-const DISRUPTOR_PRIMITIVES = new Set(['primer', 'hijack']);
-const CHARGE_PRIMITIVES = new Set(['sticky']);
-const GRAVITIC_STATUS_IDS = new Set(['status_gravity_marked', 'status_momentum_sink']);
-// Kinetic projectile guns at or above this impulse read as shove weapons (concussion family),
-// not bullet streams — the concussion cannons (520/920) and the seismic gong (220).
-const CONCUSSION_IMPULSE_MIN = 200;
-// INST-34: a sustained hitscan beam whose per-hit momentum reaches this reads as a CAPITAL beam:
+// INST-34: a sustained beam whose per-hit momentum reaches this reads as a CAPITAL beam:
 // the heavy beam (30) and the lighthouse heavy beam (38) sit above it; the M beam laser (10), the
 // veil cutter (12) and the thermal cooker (8) sit below. Threshold, not a name match, so a future
 // L-slot emitter classifies by what it does to a hull rather than by what it is called.
-const HEAVY_BEAM_IMPULSE_MIN = 24;
+export const HEAVY_BEAM_IMPULSE_MIN = 24;
+
+// Variant voices — pins ABOVE the family map for variants that own a distinct recipe:
+// the starter pulse keeps its energy-bolt voice (never lent to a non-pulse mount), and the
+// flak/PD turret keeps its own muzzle (INST-33).
+export const WEAPON_VARIANT_RECIPE = Object.freeze({
+  'pulse-bolt': 'sfx_wpn_pulse_laser',
+  flak: 'sfx_wpn_flak',
+});
+
+// THE family -> recipe table — the single seam where a presentation family becomes a voice
+// (exported so a test can prove render and ear agree family-for-family).
+export const WEAPON_FAMILY_RECIPE = Object.freeze({
+  beam: 'sfx_wpn_beam_laser',
+  missile: 'sfx_wpn_missile',
+  emp: 'sfx_wpn_disruptor',
+  rail: 'sfx_wpn_railgun',
+  plasma: 'sfx_wpn_plasma',
+  kinetic: 'sfx_wpn_autocannon',
+  concussion: 'sfx_wpn_concussion',
+  mine: 'sfx_wpn_charge',
+  web: 'sfx_wpn_disruptor',
+  gravitic: 'sfx_wpn_gravitic',
+  latch: 'sfx_wpn_gravitic',
+  well: 'sfx_wpn_gravitic',
+  ram: 'sfx_wpn_gravitic',
+  sticky: 'sfx_wpn_charge',
+  primer: 'sfx_wpn_disruptor',
+  cooker: 'sfx_wpn_beam_laser',
+  driver: 'sfx_wpn_railgun',
+});
 
 export function recipeForWeapon(weaponId) {
   const id = (weaponId || '').toLowerCase();
   const def = WEAPON_DEF_BY_ID.get(weaponId);
   if (def) {
-    // Sustained hitscan emitters sound like beams whatever their damageType reads (beam lasers,
-    // and the thermal cooker — a cooking beam, not a placed charge). The capital L-slot beams
-    // get the lower-register heavy voice (INST-34) instead of borrowing the beam laser's.
-    if (def.continuous && def.tracking === 'hitscan') {
-      return (def.impulsePerHit || 0) >= HEAVY_BEAM_IMPULSE_MIN
-        ? 'sfx_wpn_heavy_beam'
-        : 'sfx_wpn_beam_laser';
+    // One classification for render and ear: the shared classifier resolves the family (and its
+    // variant), then the tables above turn it into a voice.
+    const presentation = classifyWeaponFamily(weaponId, def);
+    // INST-34: a sustained beam whose per-hit momentum is capital-scale reads the heavy register.
+    if (presentation.family === 'beam' && (def.impulsePerHit || 0) >= HEAVY_BEAM_IMPULSE_MIN) {
+      return 'sfx_wpn_heavy_beam';
     }
-    // Spinal barrels and named slug drivers are the rail family.
-    if (def.mount === 'spinal' || /(rail|lance|driver)/.test(id)) return 'sfx_wpn_railgun';
-    // Gravitic: gravity/inertia/field tools — deployed wellheads, mark/sink statuses, and the
-    // emergent field primitives (grav anchor, polarity, viscosity, quantum, hardlight prism).
-    if (def.deployKind === 'gravity_well'
-      || (def.statuses || []).some((s) => GRAVITIC_STATUS_IDS.has(s && s.id))
-      || GRAVITIC_PRIMITIVES.has(def.emergentPrimitive)
-      || /(gravity|grav|anchor|inertial|momentum)/.test(id)) {
-      return 'sfx_wpn_gravitic';
-    }
-    // Disruptor: EMP/ion-class payloads and the hijack/primer tools (thruster hijacker, primer,
-    // disruptors — and the snarl webcaster's ion entangle).
-    if (def.damageType === 'emp' || def.damageType === 'ion'
-      || DISRUPTOR_PRIMITIVES.has(def.emergentPrimitive)
-      || /(disruptor|emp|hijack|primer|snarl)/.test(id)) {
-      return 'sfx_wpn_disruptor';
-    }
-    // Charge: placed or delayed payloads — armed mines, deploy frames, sticky bombs.
-    if (def.mineArmS != null || def.deployKind
-      || CHARGE_PRIMITIVES.has(def.emergentPrimitive)
-      || /(mine|detonator|sticky|charge)/.test(id)) {
-      return 'sfx_wpn_charge';
-    }
-    // Missile: launched seekers.
-    if ((def.mount === 'launcher' && def.tracking === 'homing')
-      || /(missile|rocket|torp)/.test(id)) return 'sfx_wpn_missile';
-    // Concussion: the big kinetic shove guns — concussion cannons and the seismic gong.
-    if (def.damageType === 'kinetic' && (def.impulsePerHit || 0) >= CONCUSSION_IMPULSE_MIN) {
-      return 'sfx_wpn_concussion';
-    }
-    // Plasma: thermal bolt throwers.
-    if (def.damageType === 'thermal') return 'sfx_wpn_plasma';
-    // Flak / point defence (INST-33): a kinetic gun whose rounds INTERCEPT incoming fire is a
-    // flak turret, not a kinetic cannon — the flak/PD turret is the catalog's only interceptor.
-    // Checked above the generic kinetic branch so it does not borrow the autocannon's voice.
-    if (def.intercepts === true || /(flak|point.?defen[cs]e|\bpd_)/.test(id)) return 'sfx_wpn_flak';
-    // Autocannon: kinetic projectile guns.
-    if (def.damageType === 'kinetic') return 'sfx_wpn_autocannon';
-    // Pulse: energy projectile guns — the starter voice belongs to this family only.
-    if (def.damageType === 'energy') return 'sfx_wpn_pulse_laser';
-    return 'sfx_wpn_unclassified';
+    return WEAPON_VARIANT_RECIPE[presentation.variant]
+      || WEAPON_FAMILY_RECIPE[presentation.family]
+      || 'sfx_wpn_unclassified';
   }
   // Unknown id — substring families, then the authored generic combat discharge.
   // INST-33/34: flak and the capital heavy beam keep their own substrings, so an uncatalogued

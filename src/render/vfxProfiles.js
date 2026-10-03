@@ -2,7 +2,7 @@
 // Cosmetic only; sim never imports this module.
 import { WEAPONS } from '../data/weapons.js';
 import { SHIPS } from '../data/ships.js';
-import { pictureForWeapon } from '../data/vfxProfiles.js';
+import { classifyWeaponFamily } from '../data/vfxProfiles.js';
 
 const WEAPON_BY_ID = new Map(WEAPONS.map((w) => [w.id, w]));
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
@@ -348,70 +348,12 @@ export function resolveEngineProfile(meta, factionThruster) {
   };
 }
 
-const WEAPON_PRESENTATION = Object.freeze({
-  beam: Object.freeze({ family: 'beam', variant: 'continuous-beam' }),
-  missile: Object.freeze({ family: 'missile', variant: 'missile' }),
-  torpedo: Object.freeze({ family: 'missile', variant: 'torpedo' }),
-  emp: Object.freeze({ family: 'emp', variant: 'disruptor' }),
-  rail: Object.freeze({ family: 'rail', variant: 'railgun' }),
-  siegeRail: Object.freeze({ family: 'rail', variant: 'siege-lance' }),
-  thermal: Object.freeze({ family: 'plasma', variant: 'thermal-bolt' }),
-  pulse: Object.freeze({ family: 'plasma', variant: 'pulse-bolt' }),
-  flak: Object.freeze({ family: 'kinetic', variant: 'flak' }),
-  kinetic: Object.freeze({ family: 'kinetic', variant: 'autocannon' }),
-  // SF-10 physics-first families. Each is mechanically distinct from the DPS weapons AND from each
-  // other (STEP 9 forbidden shortcut #5 — the three must not share one VFX). The RCS disruptor
-  // deliberately keeps the emp family: it IS a disruption weapon, so concussion / mine / emp are
-  // three different families across the trio.
-  concussion: Object.freeze({ family: 'concussion', variant: 'concussion-slug' }),
-  mine: Object.freeze({ family: 'mine', variant: 'vector-mine' }),
-});
-
+// FB-071 — the weapon->family classification is owned by src/data/vfxProfiles.js so the audio
+// layer resolves the SAME family the picture does. The canonical family->presentation table
+// (WEAPON_FAMILY_PRESENTATION, incl. the gravitic / latch / ram / web provenance families) lives
+// there; this resolver is a thin alias kept for the render call sites.
 export function resolveWeaponPresentationFamily(weaponId, weaponData = null, fallbackData = null) {
-  const fallback = fallbackData || (weaponId ? WEAPON_BY_ID.get(weaponId) : null) || null;
-  const data = weaponData || fallback;
-  const id = String(weaponId || (data && data.id) || (fallback && fallback.id) || '').toLowerCase();
-  const tracking = String((data && data.tracking) ?? (fallback && fallback.tracking) ?? '').toLowerCase();
-  const damageType = String(
-    (data && (data.damageType ?? data.dmgType))
-      ?? (fallback && (fallback.damageType ?? fallback.dmgType))
-      ?? '',
-  ).toLowerCase();
-  const continuous = (data && data.continuous) ?? (fallback && fallback.continuous);
-  const projSpeed = (data && data.projSpeed) ?? (fallback && fallback.projSpeed);
-  const pictured = pictureForWeapon(id, data);
-  if (pictured) return pictured;
-
-  if (continuous || projSpeed === Infinity || tracking === 'hitscan') {
-    return WEAPON_PRESENTATION.beam;
-  }
-  // SF-10: a deployed vector mine is neither projectile nor beam — resolve it to its own family
-  // (this also fills the missing "mine" particle family the graphics checkpoint calls out).
-  if (tracking === 'deploy' || id.includes('vector_mine')) {
-    return WEAPON_PRESENTATION.mine;
-  }
-  if (tracking === 'homing' || id.includes('missile') || id.includes('torpedo') || id.includes('rack')) {
-    return id.includes('torpedo') ? WEAPON_PRESENTATION.torpedo : WEAPON_PRESENTATION.missile;
-  }
-  if (damageType === 'emp' || id.includes('emp') || id.includes('disruptor')) {
-    return WEAPON_PRESENTATION.emp;
-  }
-  if (id.includes('railgun') || id.includes('siege_lance') || id.includes('siege-lance')) {
-    return id.includes('siege') ? WEAPON_PRESENTATION.siegeRail : WEAPON_PRESENTATION.rail;
-  }
-  if (damageType === 'thermal' || damageType === 'plasma' || id.includes('plasma')) {
-    return WEAPON_PRESENTATION.thermal;
-  }
-  if (damageType === 'energy' || id.includes('pulse_laser')) {
-    return WEAPON_PRESENTATION.pulse;
-  }
-  // SF-10: the concussion slug is kinetic mechanically but must NOT read as an autocannon tracer —
-  // give it its own heavy-slam family before the generic kinetic fallback.
-  if (id.includes('concussion')) {
-    return WEAPON_PRESENTATION.concussion;
-  }
-  if (id.includes('flak')) return WEAPON_PRESENTATION.flak;
-  return WEAPON_PRESENTATION.kinetic;
+  return classifyWeaponFamily(weaponId, weaponData, fallbackData);
 }
 
 const IMPACT_PRESENTATION_PROFILES = Object.freeze({
