@@ -170,6 +170,68 @@ function segmentDistance(a, b, p) {
 }
 
 /**
+ * SF-027 (PB-MASS-B) — own-route swept-contact delta. The release tangent crossing the PILOT'S
+ * OWN route is the one victim class the body corridor cannot name: the pilot's hull is neither a
+ * law-protected spot nor stationary cargo, and the cut changes the line's topology, not the
+ * pilot's velocity — the honest own route is the current hull velocity extrapolated.
+ *
+ * Swept moving-vs-moving closest approach, in the pilot's advancing frame: the pilot sits at that
+ * frame's origin, so each payload path segment (payload step minus the pilot's same-interval
+ * advance) reduces to a segment-to-origin distance. That catches a contact BETWEEN samples a
+ * vertex-only read would fly straight past — the delta this helper exists for. Classification
+ * stays bounded to the solution's own projected horizon (the initial segment; nothing past it is
+ * promised), and the same advisory discipline as resolveThrowCollateral applies: stale, degraded,
+ * or unmeasurable inputs return null rather than a certainty, and nothing here suppresses the
+ * release or steers the body.
+ *
+ * @returns {{label:string, clearance:number, closestTime:number}|null}
+ */
+export function resolveThrowOwnRouteRisk(solution, payloadPos, payloadRadius, playerPos, playerVel, playerRadius) {
+  if (!solution || solution.valid !== true
+      || solution.degraded === true || solution.decisionStale === true) return null;
+  if (!validPoint(payloadPos) || !validPoint(playerPos)) return null;
+  const halfWidth = radius(payloadRadius) + Math.max(0, radius(playerRadius));
+  const vx = validPoint(playerVel) ? playerVel.x : 0;
+  const vz = validPoint(playerVel) ? playerVel.z : 0;
+  // Payload waypoints on a time axis: the field-aware path already samples its own integration;
+  // the constant-velocity model is the straight tangent to the predicted contact.
+  let waypoints = null;
+  let stepS = 0;
+  if (Array.isArray(solution.projectedPath) && solution.projectedPath.length >= 2) {
+    waypoints = solution.projectedPath;
+    // Path points sit one solver step apart; the recorded horizon reconstructs that step exactly.
+    // The 1 s cap bounds the pilot's own straight-line extrapolation per step on degenerate
+    // records (a horizon claiming seconds across two points would otherwise pre-tell a long
+    // pilot course the advisory never promised).
+    stepS = clamp(finite(solution.predictionHorizon, 0) / (waypoints.length - 1), 1e-6, 1);
+  } else {
+    if (!validPoint(solution.predicted)) return null;
+    waypoints = [payloadPos, solution.predicted];
+    stepS = Math.max(0, finite(solution.timeOfFlight, 0));
+  }
+  const playerAt = (t) => ({ x: playerPos.x + vx * t, z: playerPos.z + vz * t });
+  const origin = { x: 0, z: 0 };
+  let closest = Infinity;
+  let closestTime = 0;
+  for (let i = 1; i < waypoints.length; i++) {
+    const a = waypoints[i - 1];
+    const b = waypoints[i];
+    if (!validPoint(a) || !validPoint(b)) continue;
+    const t0 = (i - 1) * stepS;
+    const t1 = i * stepS;
+    const pa = playerAt(t0);
+    const pb = playerAt(t1);
+    // Relative segment in the pilot's advancing frame; the pilot is the frame origin.
+    const distance = segmentDistance({ x: a.x - pa.x, z: a.z - pa.z }, { x: b.x - pb.x, z: b.z - pb.z }, origin);
+    if (distance < closest) { closest = distance; closestTime = t0; }
+  }
+  if (!Number.isFinite(closest)) return null;
+  const clearance = closest - halfWidth;
+  if (clearance > 0) return null;
+  return { label: 'YOUR ROUTE', clearance, closestTime };
+}
+
+/**
  * First release aperture within 1.5 s, sampled at fixed ticks. The pair coasts about its measured
  * COM; the aim continues linearly. This forecast is only offered for a settled, near-taut swing.
  * It teaches WHEN to cut. The actual cut is ALWAYS checked against solveCadenceRelease NOW.
