@@ -70,6 +70,7 @@ import { travelFlag } from '../data/featureFlags.js';
 import { resolveTravelCeiling } from '../core/flight/propulsionKernel.js';
 import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
+import { occupantGenerationOf } from '../core/entity.js';
 import { sectorLocalToGlobalForSector, sectorMembershipAtGlobal } from '../data/sectorCoordinates.js';
 import { LANE_HELIOS_TETHYS, buildLaneGeometry, laneDisruptionHeadline } from '../data/travelLaneRoutes.js';
 import { indexedShipLikeScan } from '../world/livingWorldViews.js';
@@ -403,6 +404,23 @@ export function buildManufacturedLaneGeometry(infrastructure) {
   };
 }
 
+// Ephemeral ownership follows the exact object and its occupant life, never a recycled ID.
+function bindLaneEntity(entity) {
+  return { entity, life: occupantGenerationOf(entity) };
+}
+
+function currentLaneEntity(binding, entity) {
+  return !!entity && entity.alive !== false && binding?.entity === entity
+    && binding.life === occupantGenerationOf(entity);
+}
+
+function isLaneTraffic(entity, laneId, index) {
+  return entity?.alive !== false && entity?.type === 'freighter'
+    && entity.collides === false && entity.physicsBody === false
+    && entity.data?.parentType === 'lane_traffic' && entity.data.laneId === laneId
+    && entity.data.laneTrafficIndex === index;
+}
+
 export const travelLanes = {
   name: 'travelLanes',
 
@@ -419,7 +437,11 @@ export const travelLanes = {
     // ("never live encounters/squads/entity ids").
     this._beaconIds = new Map();   // beacon index -> entity id
     this._trafficIds = [];         // entity ids, index-aligned with the deterministic roster
+    this._trafficBindings = [];    // exact object/life custody for each roster slot
+    this._trafficNeedsRebind = false;
+    this._trafficAmbiguous = new Set();
     this._slingHaulerId = null;
+    this._slingHaulerBinding = null;
     this._slingPlayerActive = false;
     this._claimSlingPlayerActive = false;
     this._slingThrownIds = new Set();
@@ -508,27 +530,71 @@ export const travelLanes = {
     if (bus && typeof bus.on === 'function') {
       // A restored save re-publishes the readout so UI that missed the transition is not blank, and
       // drops entity bookkeeping whose ids no longer refer to anything.
-      bus.on('save:loaded', () => {
-        this._beaconIds.clear();
-        this._trafficIds.length = 0;
-        this._slingHaulerId = null;
-        this._slingPlayerActive = false;
-        this._claimSlingPlayerActive = false;
-        this._slingThrownIds.clear();
-        this._ambushRequested.clear();
-        this._lastPublishedStatus.laneId = null;
-        this._lastPublishedStatus.inLane = null;
-        this._lastPublishedStatus.segmentIndex = null;
-        this._lastPublishedStatus.segmentState = undefined;
-        this._lastPublishedStatus.boosted = null;
-        this._lastPublishedStatus.disrupted = null;
-        this._lastPublishedStatus.driveState = null;
-        this._driveProfileRef = null;
-        this._driveBaseCeiling = 0;
-        this._manufacturedRoutes.length = 0;
-        this._manufacturedCache.clear();
-        this._manufacturedEntityIds.clear();
-      });
+      bus.on('save:loaded', () => this._resetRunBindings(true));
+      bus.on('sector:enter', () => { this._trafficNeedsRebind = true; });
+    }
+  },
+
+  newGame() {
+    this._resetRunBindings(false);
+  },
+
+  _resetRunBindings(rebindOwned) {
+    this._beaconIds.clear();
+    this._trafficIds.length = 0;
+    this._trafficBindings.length = 0;
+    this._trafficNeedsRebind = rebindOwned;
+    this._trafficAmbiguous.clear();
+    this._slingHaulerId = null;
+    this._slingHaulerBinding = null;
+    this._slingPlayerActive = false;
+    this._claimSlingPlayerActive = false;
+    this._slingThrownIds.clear();
+    this._ambushRequested.clear();
+    this._lastPublishedStatus.laneId = null;
+    this._lastPublishedStatus.inLane = null;
+    this._lastPublishedStatus.segmentIndex = null;
+    this._lastPublishedStatus.segmentState = undefined;
+    this._lastPublishedStatus.boosted = null;
+    this._lastPublishedStatus.disrupted = null;
+    this._lastPublishedStatus.driveState = null;
+    this._driveProfileRef = null;
+    this._driveBaseCeiling = 0;
+    this._manufacturedRoutes.length = 0;
+    this._manufacturedCache.clear();
+    this._manufacturedEntityIds.clear();
+  },
+
+  // Save/sector rematerialization may replace owned carrier objects. Re-resolve only
+  // unambiguous authored lane identities at those boundaries; ordinary ID reuse cannot
+  // acquire custody merely by retaining a type or some copied metadata.
+  _rebindOwnedTraffic(state) {
+    this._trafficNeedsRebind = false;
+    this._trafficAmbiguous.clear();
+    const entities = state.entities;
+    if (!entities?.values) return;
+    const candidates = new Map();
+    let hauler = null, haulerCount = 0;
+    for (const entity of entities.values()) {
+      const index = entity?.data?.laneTrafficIndex;
+      if (Number.isInteger(index) && index >= 0 && index < TRAFFIC_COUNT
+        && isLaneTraffic(entity, this.lane.id, index)) {
+        candidates.set(index, candidates.has(index) ? null : entity);
+      }
+      if (entity?.alive !== false && entity?.type === 'ship'
+        && entity.data?.parentType === 'sling_ring_traffic' && entity.data.slingRingId === CERES_SLING_RING.id) {
+        hauler = entity; haulerCount++;
+      }
+    }
+    for (const [index, entity] of candidates) {
+      if (!entity) { this._trafficAmbiguous.add(index); continue; }
+      if (currentLaneEntity(this._trafficBindings[index], entities.get(this._trafficIds[index]))) continue;
+      this._trafficIds[index] = entity.id;
+      this._trafficBindings[index] = bindLaneEntity(entity);
+    }
+    if (haulerCount === 1 && !currentLaneEntity(this._slingHaulerBinding, entities.get(this._slingHaulerId))) {
+      this._slingHaulerId = hauler.id;
+      this._slingHaulerBinding = bindLaneEntity(hauler);
     }
   },
 
@@ -545,6 +611,7 @@ export const travelLanes = {
     const player = playerEntity(state);
     if (!player || !player.pos) return;
     // ── everything past this line runs only in live play, on a real player ──
+    if (this._trafficNeedsRebind) this._rebindOwnedTraffic(state);
 
     const authoredFix = resolveLaneSegmentInto(geometry, player.pos, this._authoredFixScratch);
     const disrupted = !!(authoredFix.inLane && authoredFix.segment && authoredFix.segment.disrupted);
@@ -889,10 +956,11 @@ export const travelLanes = {
 
     const existingId = this._slingHaulerId;
     const existing = existingId != null ? entities.get(existingId) : null;
-    if (existing && existing.alive !== false) {
+    if (currentLaneEntity(this._slingHaulerBinding, existing)) {
       if (ringAlong(existing.pos) > SLING_HAULER_RECYCLE_ALONG_WU) {
         existing.alive = false;
         this._slingHaulerId = null;
+        this._slingHaulerBinding = null;
       } else {
         const data = existing.data || (existing.data = {});
         const intent = data.intent || (data.intent = {});
@@ -903,6 +971,7 @@ export const travelLanes = {
       }
     } else if (existingId != null) {
       this._slingHaulerId = null;
+      this._slingHaulerBinding = null;
     }
 
     if (!near || this._slingHaulerId != null) return;
@@ -934,7 +1003,10 @@ export const travelLanes = {
         intent: { moveZ: 1, aimAngle: this._slingHaulerHeading },
       },
     });
-    if (entity && entity.id != null) this._slingHaulerId = entity.id;
+    if (entity && entity.id != null) {
+      this._slingHaulerId = entity.id;
+      this._slingHaulerBinding = bindLaneEntity(entity);
+    }
   },
 
   // ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -1167,6 +1239,7 @@ export const travelLanes = {
     const pz = finite(player.pos.z);
 
     for (let i = 0; i < TRAFFIC_COUNT; i++) {
+      if (this._trafficAmbiguous.has(i)) continue;
       // Deterministic stagger: evenly spaced phases, alternating direction so the lane reads as
       // two-way infrastructure rather than a conveyor.
       const outbound = i % 2 === 0;
@@ -1182,9 +1255,11 @@ export const travelLanes = {
 
       const existingId = this._trafficIds[i];
       const existing = existingId != null ? entities.get(existingId) : null;
-      if (existing) {
-        if (existing.alive === false) {
+      if (existingId != null) {
+        if (!currentLaneEntity(this._trafficBindings[i], existing)
+          || !isLaneTraffic(existing, this.lane.id, i)) {
           this._trafficIds[i] = null;
+          this._trafficBindings[i] = null;
         } else {
           // Reposition in place. Entities are never destroyed, so density is constant by construction.
           existing.pos.x = x;
@@ -1216,7 +1291,10 @@ export const travelLanes = {
           laneTrafficIndex: i,
         },
       });
-      if (ent && ent.id != null) this._trafficIds[i] = ent.id;
+      if (ent && ent.id != null) {
+        this._trafficIds[i] = ent.id;
+        this._trafficBindings[i] = bindLaneEntity(ent);
+      }
     }
   },
 

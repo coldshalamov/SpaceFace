@@ -624,3 +624,147 @@ test('identical inputs produce byte-identical output (replay determinism)', () =
   assert.deepEqual(b.spawns, a.spawns, 'spawn positions diverged between identical runs');
   assert.deepEqual(b.events, a.events, 'event sequence diverged between identical runs');
 });
+
+// Retained ownership regressions: cached route IDs must never confer pose authority.
+function stampLaneSpawns(host) {
+  const spawn = host.sys.helpers.spawnEntity;
+  host.sys.helpers.spawnEntity = spec => {
+    const entity = spawn(spec);
+    entity.occupantGeneration = entity.id;
+    return entity;
+  };
+}
+
+function firstLaneCarrier(host, state) {
+  host.sys.update(1 / 60, state);
+  const entity = host.spawned.find(e => e.data?.parentType === 'lane_traffic');
+  assert.ok(entity);
+  return entity;
+}
+
+test('canonical New Game clears lane custody before a recycled ID becomes an aftermath wreck', async () => {
+  const { resetFreshRunSystems, FRESH_RUN_SYSTEMS } = await import('../src/core/runReset.js');
+  withFlag(true, () => {
+    const state = makeState(onChord(4096));
+    const host = makeHost(state);
+    stampLaneSpawns(host);
+    const previous = firstLaneCarrier(host, state);
+    const wreck = { id: previous.id, occupantGeneration: previous.occupantGeneration + 1,
+      alive: true, type: 'wreck', pos: { x: -1957.46533203125, z: -2034.237548828125 },
+      vel: { x: -7.4, z: 5.9 }, rot: .14964677506018562,
+      data: { persistenceOwner: 'aftermathWrecks', arenaShardOf: 'aft_ot1jh' } };
+    state.entities.set(wreck.id, wreck);
+    const before = structuredClone(wreck);
+    resetFreshRunSystems({ get: name => name === 'travelLanes' ? host.sys : null });
+    assert.equal(host.sys._trafficIds.length, 0);
+    assert.equal(host.sys._beaconIds.size, 0);
+    state.simTime = 112 / 60;
+    host.sys.update(1 / 60, state);
+    assert.deepEqual(wreck, before, 'the captured aftermath-wreck teleport is prevented before any pose write');
+    assert.ok(FRESH_RUN_SYSTEMS.indexOf('travelLanes') < FRESH_RUN_SYSTEMS.indexOf('world'));
+  });
+});
+
+test('ordinary same-ID object or life replacement cannot inherit a lane carrier pose writer', () => {
+  for (const mode of ['same-life-new-object', 'new-life-new-object', 'same-object-new-life']) {
+    withFlag(true, () => {
+      const state = makeState(onChord(4096));
+      const host = makeHost(state);
+      stampLaneSpawns(host);
+      const old = firstLaneCarrier(host, state);
+      const replacement = mode === 'same-object-new-life' ? old : structuredClone(old);
+      if (mode !== 'same-life-new-object') replacement.occupantGeneration++;
+      replacement.pos = { x: -1957, z: -2034 };
+      replacement.rot = .15;
+      state.entities.set(old.id, replacement);
+      const before = structuredClone(replacement);
+      state.simTime += 1;
+      host.sys.update(1 / 60, state);
+      assert.deepEqual(replacement, before, mode);
+      assert.notEqual(host.sys._trafficIds[old.data.laneTrafficIndex], old.id, mode);
+    });
+  }
+});
+
+test('Continue and sector rematerialization explicitly rebind exact authored lane carriers', () => {
+  for (const boundary of ['save:loaded', 'sector:enter']) {
+    withFlag(true, () => {
+      const state = makeState(onChord(4096));
+      const host = makeHost(state);
+      stampLaneSpawns(host);
+      const old = firstLaneCarrier(host, state);
+      const restored = structuredClone(old);
+      restored.occupantGeneration++;
+      state.entities.set(restored.id, restored);
+      const previousPos = { ...restored.pos };
+      const count = host.spawned.filter(e => e.data?.parentType === 'lane_traffic').length;
+      host.bus.emit(boundary, {});
+      state.simTime += 1;
+      host.sys.update(1 / 60, state);
+      assert.equal(host.sys._trafficIds[restored.data.laneTrafficIndex], restored.id, boundary);
+      assert.notDeepEqual(restored.pos, previousPos, boundary);
+      assert.equal(host.spawned.filter(e => e.data?.parentType === 'lane_traffic').length, count, boundary);
+    });
+  }
+});
+
+test('Continue cannot adopt a same-type carrier belonging to another lane', () => {
+  withFlag(true, () => {
+    const state = makeState(onChord(4096));
+    const host = makeHost(state);
+    stampLaneSpawns(host);
+    const old = firstLaneCarrier(host, state);
+    const foreign = structuredClone(old);
+    foreign.occupantGeneration++;
+    foreign.data.laneId = 'foreign-lane';
+    state.entities.set(foreign.id, foreign);
+    const before = structuredClone(foreign);
+    host.bus.emit('save:loaded', {});
+    state.simTime += 1;
+    host.sys.update(1 / 60, state);
+    assert.deepEqual(foreign, before);
+    assert.notEqual(host.sys._trafficIds[foreign.data.laneTrafficIndex], foreign.id);
+  });
+});
+
+test('a recycled sling-hauler ID cannot acquire helm commands or be retired as lane traffic', async () => {
+  const { CERES_SLING_RING } = await import('../src/systems/travelLanes.js');
+  withFlag(true, () => {
+    const state = makeState(CERES_SLING_RING.globalPos);
+    const host = makeHost(state);
+    stampLaneSpawns(host);
+    host.sys._updateSlingHauler(1 / 60, state, state.entities.get(state.playerId));
+    const id = host.sys._slingHaulerId;
+    assert.ok(id);
+    const previous = state.entities.get(id);
+    const replacement = { id, occupantGeneration: previous.occupantGeneration + 1, alive: true,
+      type: 'wreck', pos: { x: -1957, z: -2034 }, vel: { x: 0, z: 0 },
+      data: { persistenceOwner: 'aftermathWrecks' } };
+    state.entities.set(id, replacement);
+    const before = structuredClone(replacement);
+    host.sys._updateSlingHauler(1 / 60, state, state.entities.get(state.playerId));
+    assert.deepEqual(replacement, before);
+    assert.notEqual(host.sys._slingHaulerId, id);
+  });
+});
+
+test('ambiguous restored traffic identity fails closed instead of moving either body or adding a duplicate', () => {
+  withFlag(true, () => {
+    const state = makeState(onChord(4096));
+    const host = makeHost(state);
+    stampLaneSpawns(host);
+    const old = firstLaneCarrier(host, state);
+    const duplicate = structuredClone(old);
+    duplicate.id = 9999;
+    duplicate.occupantGeneration++;
+    state.entities.set(duplicate.id, duplicate);
+    const before = [structuredClone(old), structuredClone(duplicate)];
+    host.bus.emit('save:loaded', {});
+    state.simTime += 1;
+    host.sys.update(1 / 60, state);
+    assert.deepEqual([old, duplicate], before);
+    assert.equal([...state.entities.values()].filter(e => e.data?.parentType === 'lane_traffic'
+      && e.data.laneTrafficIndex === old.data.laneTrafficIndex).length, 2);
+    assert.equal(host.sys._trafficIds[old.data.laneTrafficIndex], undefined);
+  });
+});
