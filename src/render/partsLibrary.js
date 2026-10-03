@@ -1068,8 +1068,9 @@ export function collectFirstFlightCookEntities(state) {
   asteroids.sort((left, right) => left.distanceSq - right.distanceSq);
   const seenKeys = new Set();
   for (const { entity } of asteroids) {
+    if (seenKeys.size >= FIRST_FLIGHT_ROCK_COOK_CAP) break;
     const key = asteroidFirstFlightCookKey(entity);
-    if (seenKeys.has(key) || seenKeys.size >= FIRST_FLIGHT_ROCK_COOK_CAP) continue;
+    if (seenKeys.has(key)) continue;
     seenKeys.add(key);
     selected.push(entity);
   }

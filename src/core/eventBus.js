@@ -284,7 +284,11 @@ export function createBus() {
     // a hard TypeError inside the frame).
     const slice = emitSlice;
     if (!slice) return 0;
-    const limit = Math.max(1, Math.floor(Number(budget) || SECTOR_ENTER_DRAIN_BUDGET));
+    const base = Math.max(1, Math.floor(Number(budget) || SECTOR_ENTER_DRAIN_BUDGET));
+    // Depth-scaled like the presentation drain: a fixed count makes a ~100-listener backlog
+    // take ~25 frames while the wall-clock deadline (not the count) is what actually bounds
+    // each frame's spend. ceil/4 keeps per-frame cost identical at small depths.
+    const limit = Math.max(base, Math.ceil(pendingEmitSliceCount() / 4));
     // Optional wall-clock budget alongside the listener count: a single heavyweight listener
     // can blow a count-only slice past the paint deadline. Checked after each listener so at
     // least one always runs per drain call (listener order is unchanged either way).

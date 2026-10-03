@@ -496,6 +496,11 @@ export const encounterDirector = {
     // Ignore that early event rather than applying the outgoing timeline's one-shot phase to the
     // incoming durable actors; save:loaded below seeds once the saved stats are authoritative.
     if (this._saveRestoring) return;
+    // payload whose enterEpoch no longer matches the world's serial is stale — a queued tail
+    // delivered inside a newer enter's window must not reseed pressure, wipe pending, or plan
+    // beats for the sector the player already departed.
+    if (p && p.enterEpoch != null && this.state && this.state.world
+        && this.state.world.enterSerial != null && p.enterEpoch !== this.state.world.enterSerial) return;
     // Continuous free-flight membership is a soft handoff (M2-C1). Soft exit preserves
     // live/pending/pressure/active; continuous enter must NOT reseed grace pressure, clear the
     // pacing window, or replan (which wipes pending for a new sector-day key). Intentional
@@ -752,6 +757,10 @@ export const encounterDirector = {
     for (let i = 0; i < dir.pending.length; i++) {
       const it = dir.pending[i];
       if (it.dueAt <= now) {
+        // Beats stamped for a departed sector (a stale enter tail can still write
+        // them — the listener guards reject the payload but pending rows written
+        // before the guard shipped persist) must never fire on the live world.
+        if (it.sectorId && it.sectorId !== this._currentSectorId()) continue;
         if (tutorialActive && !isAuthoredGuaranteeItem(it)) continue;
         const rank = tensionCandidateRank(state, it, ENCOUNTERS[it.shapeId], now);
         if (rank < dueBest) { dueBest = rank; dueIdx = i; }

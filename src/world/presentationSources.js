@@ -97,16 +97,23 @@ function pushAlive(out, row) {
   out.push(row);
 }
 
-export function collectJournalPresentationEntities(state, out = []) {
+// Chunked twin: yields per row so the sector cook can drive the journal walk across
+// its slice clock. Row order (therefore `out` contents) is identical to the sync drain.
+export function* collectJournalPresentationEntitiesChunked(state, out = []) {
   out.length = 0;
   const list = state && state.entityList;
   if (list) {
-    for (let i = 0; i < list.length; i++) pushAlive(out, list[i]);
+    for (let i = 0; i < list.length; i++) { pushAlive(out, list[i]); yield; }
   }
   const dressing = state && state.world && state.world.dressing;
   if (dressing && Array.isArray(dressing.rows)) {
-    for (let i = 0; i < dressing.rows.length; i++) pushAlive(out, dressing.rows[i]);
+    for (let i = 0; i < dressing.rows.length; i++) { pushAlive(out, dressing.rows[i]); yield; }
   }
+  return out;
+}
+export function collectJournalPresentationEntities(state, out = []) {
+  const it = collectJournalPresentationEntitiesChunked(state, out);
+  while (!it.next().done) { /* inline drain — identical order */ }
   return out;
 }
 
@@ -195,11 +202,14 @@ const _meshWalkOrigin = { x: 0, z: 0 };
 
 const _ledgerCollectOrigin = { x: 0, z: 0 };
 
-function appendNearbyLedgerRows(state, out) {
+// Shared prefix for the sync + chunked ledger collects: player/origin/disc resolution,
+// the (possibly memoized) grid-walk refill, and every loop constant. Returns null on the
+// early-outs so both drains short-circuit identically.
+function _nearbyLedgerRowsContext(state) {
   const player = state && state.entities && typeof state.entities.get === 'function'
     ? state.entities.get(state.playerId)
     : null;
-  if (!player || !player.pos) return;
+  if (!player || !player.pos) return null;
   // Collect and keep must share one origin. The keep radius (entityWithinPlayerRadius →
   // tableLookAtDelta) measures from the live look-at, which velocity-lead pushes ahead of
   // the hull; a player-centered collect disc then feeds rows the keep radius already
@@ -246,79 +256,114 @@ function appendNearbyLedgerRows(state, out) {
   }
   const pvx = finite(player.vel && player.vel.x);
   const pvz = finite(player.vel && player.vel.z);
-  const simTime = Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0) / 60;
-  const glassR = presentationGlassCorner(state);
-  const radius2 = radius * radius;
-  for (let i = 0; i < _meshRockScratch.length; i++) {
-    const rec = _meshRockScratch[i];
-    if (!rec || rec.alive === false || rec.liveEntityId != null || !rec.pos) continue;
-    // Shelf-time pos + "static row" relative velocity was wrong for drifting rocks: the record
-    // carries vel/lastExactT (asteroidField) but the test measured from the frozen pos and
-    // ignored the rock's own motion, so a rock already closing fast read as stationary and
-    // admitted late. Same ballistic extrapolation the far-actor branch uses; vel=0 rocks
-    // reduce to the old math exactly.
-    const eff = ledgerPredictedPos(rec, simTime, _ledgerPredictedScratch);
-    const relX = eff.x - origin.x;
-    const relZ = eff.z - origin.z;
-    const relPx = eff.x - playerX;
-    const relPz = eff.z - playerZ;
-    if (relX * relX + relZ * relZ <= radius2
-      || relPx * relPx + relPz * relPz <= radius2) {
-      out.push(rec);
-      continue;
-    }
-    const relVx = finite(rec.vel && rec.vel.x) - pvx;
-    const relVz = finite(rec.vel && rec.vel.z) - pvz;
-    const tEnter = Math.min(
-      timeToEnterRadiusSeconds(
-        relX, relZ, relVx, relVz,
-        glassR + finite(rec.radius),
-        TABLE_COLLECT_HORIZON_SECONDS,
-      ),
-      timeToEnterRadiusSeconds(
-        relPx, relPz, relVx, relVz,
-        glassR + finite(rec.radius),
-        TABLE_COLLECT_HORIZON_SECONDS,
-      ),
-    );
-    if (tEnter <= TABLE_COLLECT_HORIZON_SECONDS) out.push(rec);
+  // Snapshot every scalar the row loops read: a chunked drain resumes across yields,
+  // and a frame beat's own collect could rewrite the module scratches (`_ledgerCollectOrigin`,
+  // `_ledgerPredictedScratch` stays per-call) mid-walk — the context pins the verdict inputs.
+  return {
+    originX: origin.x,
+    originZ: origin.z,
+    playerX,
+    playerZ,
+    pvx,
+    pvz,
+    simTime: Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0) / 60,
+    glassR: presentationGlassCorner(state),
+    radius2: radius * radius,
+    live: state.entities,
+  };
+}
+
+// One field-rock row's collect verdict — shared by the sync and chunked drains.
+function _appendLedgerRockRow(rec, ctx, out) {
+  if (!rec || rec.alive === false || rec.liveEntityId != null || !rec.pos) return;
+  // Shelf-time pos + "static row" relative velocity was wrong for drifting rocks: the record
+  // carries vel/lastExactT (asteroidField) but the test measured from the frozen pos and
+  // ignored the rock's own motion, so a rock already closing fast read as stationary and
+  // admitted late. Same ballistic extrapolation the far-actor branch uses; vel=0 rocks
+  // reduce to the old math exactly.
+  const eff = ledgerPredictedPos(rec, ctx.simTime, _ledgerPredictedScratch);
+  const relX = eff.x - ctx.originX;
+  const relZ = eff.z - ctx.originZ;
+  const relPx = eff.x - ctx.playerX;
+  const relPz = eff.z - ctx.playerZ;
+  if (relX * relX + relZ * relZ <= ctx.radius2
+    || relPx * relPx + relPz * relPz <= ctx.radius2) {
+    out.push(rec);
+    return;
   }
-  const live = state.entities;
+  const relVx = finite(rec.vel && rec.vel.x) - ctx.pvx;
+  const relVz = finite(rec.vel && rec.vel.z) - ctx.pvz;
+  const tEnter = Math.min(
+    timeToEnterRadiusSeconds(
+      relX, relZ, relVx, relVz,
+      ctx.glassR + finite(rec.radius),
+      TABLE_COLLECT_HORIZON_SECONDS,
+    ),
+    timeToEnterRadiusSeconds(
+      relPx, relPz, relVx, relVz,
+      ctx.glassR + finite(rec.radius),
+      TABLE_COLLECT_HORIZON_SECONDS,
+    ),
+  );
+  if (tEnter <= TABLE_COLLECT_HORIZON_SECONDS) out.push(rec);
+}
+
+// One far-actor row's collect verdict — shared by the sync and chunked drains.
+function _appendLedgerFarRow(rec, ctx, out) {
+  if (!rec || rec.alive === false) return;
+  if (ctx.live && typeof ctx.live.has === 'function' && ctx.live.has(rec.id)) return;
+  const eff = ledgerPredictedPos(rec, ctx.simTime, _ledgerPredictedScratch);
+  const relX = eff.x - ctx.originX;
+  const relZ = eff.z - ctx.originZ;
+  const relPx = eff.x - ctx.playerX;
+  const relPz = eff.z - ctx.playerZ;
+  if (relX * relX + relZ * relZ <= ctx.radius2
+    || relPx * relPx + relPz * relPz <= ctx.radius2) {
+    out.push(rec);
+    return;
+  }
+  const relVx = finite(rec.vel && rec.vel.x) - ctx.pvx;
+  const relVz = finite(rec.vel && rec.vel.z) - ctx.pvz;
+  // Ship-like rows ride the decode runway: their authored GLB decode is the long
+  // pole, so the collect must surface them early enough for the prefetch kick to
+  // finish before contact. Boundary builds still gate on the tighter promote
+  // horizon inside isEntityRenderRelevant. The player leg mirrors the static disc:
+  // an inbound hull closing on the player during a focus lag would otherwise read
+  // as receding from the stale corner and stay off the runway.
+  const tEnter = Math.min(
+    timeToEnterRadiusSeconds(
+      relX, relZ, relVx, relVz,
+      ctx.glassR + finite(rec.radius, 8),
+      TABLE_DECODE_RUNWAY_SECONDS,
+    ),
+    timeToEnterRadiusSeconds(
+      relPx, relPz, relVx, relVz,
+      ctx.glassR + finite(rec.radius, 8),
+      TABLE_DECODE_RUNWAY_SECONDS,
+    ),
+  );
+  if (tEnter <= TABLE_DECODE_RUNWAY_SECONDS) out.push(rec);
+}
+
+function appendNearbyLedgerRows(state, out) {
+  const ctx = _nearbyLedgerRowsContext(state);
+  if (!ctx) return;
+  for (let i = 0; i < _meshRockScratch.length; i++) _appendLedgerRockRow(_meshRockScratch[i], ctx, out);
+  for (let i = 0; i < _meshFarScratch.length; i++) _appendLedgerFarRow(_meshFarScratch[i], ctx, out);
+}
+
+// Chunked twin: yields per row so the sector cook can drive the ledger walks across its
+// slice clock. Row order (therefore `out` contents) is identical to the sync drain.
+export function* appendNearbyLedgerRowsChunked(state, out) {
+  const ctx = _nearbyLedgerRowsContext(state);
+  if (!ctx) return;
+  for (let i = 0; i < _meshRockScratch.length; i++) {
+    _appendLedgerRockRow(_meshRockScratch[i], ctx, out);
+    yield;
+  }
   for (let i = 0; i < _meshFarScratch.length; i++) {
-    const rec = _meshFarScratch[i];
-    if (!rec || rec.alive === false) continue;
-    if (live && typeof live.has === 'function' && live.has(rec.id)) continue;
-    const eff = ledgerPredictedPos(rec, simTime, _ledgerPredictedScratch);
-    const relX = eff.x - origin.x;
-    const relZ = eff.z - origin.z;
-    const relPx = eff.x - playerX;
-    const relPz = eff.z - playerZ;
-    if (relX * relX + relZ * relZ <= radius2
-      || relPx * relPx + relPz * relPz <= radius2) {
-      out.push(rec);
-      continue;
-    }
-    const relVx = finite(rec.vel && rec.vel.x) - pvx;
-    const relVz = finite(rec.vel && rec.vel.z) - pvz;
-    // Ship-like rows ride the decode runway: their authored GLB decode is the long
-    // pole, so the collect must surface them early enough for the prefetch kick to
-    // finish before contact. Boundary builds still gate on the tighter promote
-    // horizon inside isEntityRenderRelevant. The player leg mirrors the static disc:
-    // an inbound hull closing on the player during a focus lag would otherwise read
-    // as receding from the stale corner and stay off the runway.
-    const tEnter = Math.min(
-      timeToEnterRadiusSeconds(
-        relX, relZ, relVx, relVz,
-        glassR + finite(rec.radius, 8),
-        TABLE_DECODE_RUNWAY_SECONDS,
-      ),
-      timeToEnterRadiusSeconds(
-        relPx, relPz, relVx, relVz,
-        glassR + finite(rec.radius, 8),
-        TABLE_DECODE_RUNWAY_SECONDS,
-      ),
-    );
-    if (tEnter <= TABLE_DECODE_RUNWAY_SECONDS) out.push(rec);
+    _appendLedgerFarRow(_meshFarScratch[i], ctx, out);
+    yield;
   }
 }
 
@@ -326,6 +371,13 @@ export function collectMeshPresentationEntities(state, out = []) {
   collectJournalPresentationEntities(state, out);
   appendNearbyLedgerRows(state, out);
   return out;
+}
+
+// Chunked twin of the pair — the sector cook's collect seam drives this under its slice
+// clock instead of paying the whole journal + ledger walk inside one task.
+export function* collectMeshPresentationEntitiesChunked(state, out = []) {
+  yield* collectJournalPresentationEntitiesChunked(state, out);
+  yield* appendNearbyLedgerRowsChunked(state, out);
 }
 
 /**

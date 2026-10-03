@@ -1070,6 +1070,10 @@ export const world = {
       && typeof state.render.sectorEnterCookWillRun === 'function'
       && state.render.sectorEnterCookWillRun(enterPayload) === true) {
       state.render.sectorShellAdmission = true;
+      // Epoch-stamp the arm so a listener that never takes the cook path (stale-tail
+      // delivery, keep-GPU flip, sync throw) can tell this emit's latch from a newer
+      // enter's and release only its own.
+      state.render.sectorShellAdmissionSerial = state.world.enterSerial;
     }
     this.bus.emit('sector:enter', enterPayload);
     return active;

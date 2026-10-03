@@ -156,6 +156,12 @@ export const livingPoiBehaviors = {
   update() {},
 
   _activateSector(payload = {}) {
+    // payload whose enterEpoch no longer matches the world's serial is stale — a queued tail
+    // must not flip activeSectorId/activeByZone to the departed sector.
+    if (payload.enterEpoch != null && this.state && this.state.world
+        && this.state.world.enterSerial != null && payload.enterEpoch !== this.state.world.enterSerial) {
+      return [];
+    }
     const sectorId = payload.sectorId || this.state.world && this.state.world.currentSectorId;
     if (!sectorId) return [];
     const own = ensureState(this.state);
