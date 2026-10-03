@@ -11,6 +11,9 @@
 // intent.boost (no resource model), exactly as in the legacy controller — AI never used e.boost.
 
 import { measureThrusterAuthority, queuePhysicsImpulse, writePhysicsControl } from '../core/physicsAuthority.js';
+// FB-095: _diag.tickMs is diagnostics-only — it reads the classified instrumentation clock
+// (perfNow in perfRuntime) so this simulation owner never touches wall time itself.
+import { perfNow } from '../core/perfRuntime.js';
 import { composePlayerDriveAuthority } from '../core/flight/driveAuthority.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import {
@@ -21,7 +24,7 @@ import {
 import { DRIVE_FAMILIES, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { applyFeelEnvelope, hullIdFromEntity, pathFollowBlocksFeel } from '../data/flightFeelEnvelopes.js';
 import { createPropulsionRuntime, stepPropulsion } from '../core/flight/propulsionKernel.js';
-import { computeFlightTelemetry } from '../core/flight/flightTelemetry.js';
+import { computeFlightTelemetry, computeSweptHullAdvisory, SWEPT_HULL_DEFAULTS } from '../core/flight/flightTelemetry.js';
 import { stepAnchorRelativeOrbitAssist } from '../core/flight/orbitAssist.js';
 export { stepAnchorRelativeOrbitAssist } from '../core/flight/orbitAssist.js';
 import { massline2Flag, travelFlag } from '../data/featureFlags.js';
@@ -112,6 +115,14 @@ const DEFAULT_BOOST_RESOURCE = Object.freeze({
 const NEUTRAL_INPUT = Object.freeze({ moveX: 0, moveZ: 0, turnIntent: 0, boost: false, brake: false });
 const SG02_INPUT_DT = 1 / 60;   // fixed-step fallback for normalizeCraftInput's slew
 
+// SF-012 swept-hull advisory (PB-HAND-A): publication policy for the hand-flown slide telemetry.
+// The geometry lives in flightTelemetry (computeSweptHullAdvisory, pure); this adapter only
+// decides when it reaches the bus. Face changes — activation, a different obstruction, the slide
+// flag flipping — emit immediately; a held face re-emits on a simTime cooldown so a subscriber
+// that missed the edge still sees the state. It is edge+latch driven, never a per-tick spam, and
+// it never reads the nav target or feeds an avoidance force: warn, never steer.
+const SWEPT_HULL_REEMIT_S = 0.75;
+
 export const flightV3 = {
   name: 'flight',
 
@@ -127,6 +138,9 @@ export const flightV3 = {
     // Dash-earned momentum window (simTime seconds). Instance state, not sim state: it is derived
     // presentation-free input tagging, so it must not enter the save or the sim snapshot.
     this._dashEarnedUntil = 0;
+    // Swept-hull advisory face latch (SF-012): which advisory state the bus last saw. Derived
+    // publication state only — never saved, never sim-authoritative.
+    this._sweptHull = { active: false, contactId: null, sliding: false, emittedAt: -Infinity };
     // Player-only. NPC steps overwrite _driveAuthority; the instrument must not
     // unscale the player's request by the last NPC's drive.
     this._playerDriveAuthority = null;
@@ -152,11 +166,12 @@ export const flightV3 = {
       this.bus.on('save:loaded', () => {
         this._masslineSlingUntil = 0;
         this._dashEarnedUntil = 0;
+        this._resetSweptHullLatch();
         this._sanitizeAllRuntime();
         this._cancelPlayerBoostOnRestore();
         this._setFlightMode('manual', 'load');
       });
-      this.bus.on('game:started', () => { this._masslineSlingUntil = 0; this._dashEarnedUntil = 0; this._sanitizeAllRuntime(); this._cancelPlayerBoostOnRestore(); this._setFlightMode('manual', 'new-game'); });
+      this.bus.on('game:started', () => { this._masslineSlingUntil = 0; this._dashEarnedUntil = 0; this._resetSweptHullLatch(); this._sanitizeAllRuntime(); this._cancelPlayerBoostOnRestore(); this._setFlightMode('manual', 'new-game'); });
       this.bus.on('tether:latched', () => this._setFlightMode('manual', 'tether'));
       this.bus.on('massline:selfSling', () => {
         if (!massline2Flag('throw')) return;
@@ -173,7 +188,7 @@ export const flightV3 = {
   },
 
   update(dt, state) {
-    const t0 = nowMs();
+    const t0 = perfNow();
     const backend = state.settings && state.settings.gameplay && state.settings.gameplay.physicsBackend;
     this._diag.physicsBackend = backend || 'custom';
 
@@ -185,7 +200,7 @@ export const flightV3 = {
         console.warn('[flight-v3] waiting for rapier-dynamic physics authority; no craft motion commands emitted');
       }
       this._settleAllBanks(dt, state);
-      this._diag.tickMs = Math.max(0, nowMs() - t0);
+      this._diag.tickMs = Math.max(0, perfNow() - t0);
       return;
     }
     this._warnedBackend = false;
@@ -219,7 +234,7 @@ export const flightV3 = {
       else this._stepCraft(entity, neutralInput(), dt, state, false);
     }
 
-    this._diag.tickMs = Math.max(0, nowMs() - t0);
+    this._diag.tickMs = Math.max(0, perfNow() - t0);
     if (player) this._publishPlayerDiagnostics(player, state);
   },
 
@@ -387,6 +402,13 @@ export const flightV3 = {
       frame.orbitAssist = orbitAssist
         ? { active: orbitAssist.active, ...orbitAssist.telemetry }
         : { active: false, reason: 'unavailable' };
+      // SF-012: untargeted swept-hull advisory for the hand-flown slide. Published state only —
+      // the profile may carry boost shaping from earlier in this step, but nothing here writes
+      // back into input, profile, or the physics command.
+      frame.sweptHull = this._publishSweptHullAdvisory(entity, state, profile, {
+        handFlown: !(autopilot && autopilot.active),
+        controlsActive: playerFlightControlsActive(state, entity),
+      });
       emitThrustCue(this.bus, state, entity, input, result.telemetry);
     }
     emitPropulsionEvents(this.bus, entity, result.events);
@@ -518,6 +540,45 @@ export const flightV3 = {
     const player = state && state.entities && state.playerId
       ? state.entities.get(state.playerId) : null;
     this._cancelPlayerBoost(player);
+  },
+
+  _resetSweptHullLatch() {
+    // Lazily rebuilt by _publishSweptHullAdvisory when the system instance skipped init()
+    // (probe harnesses build bare Object.create(flightV3) hosts).
+    this._sweptHull = { active: false, contactId: null, sliding: false, emittedAt: -Infinity };
+  },
+
+  /**
+   * SF-012 swept-hull advisory for hand-flown slides — publish untargeted telemetry.
+   *
+   * Returns the bounded advisory object the player's `_flightFrame.sweptHull` carries each tick,
+   * and emits `flight:sweptHull` on the existing event bus when the advisory face changes (or on
+   * the re-emit cooldown while held). The sweep only runs for the live player with active
+   * controls and no flight computer: autopilot has its own targeted avoidance telemetry, and a
+   * pilot behind a menu cannot act on a warning, so neither gets one. NPCs never publish —
+   * this is hand-flight instrumentation.
+   */
+  _publishSweptHullAdvisory(entity, state, profile, gate) {
+    const contacts = gate.handFlown && gate.controlsActive
+      ? sweptHullContacts(state, entity)
+      : null;
+    const advisory = computeSweptHullAdvisory(entity, profile, contacts);
+    const latch = this._sweptHull
+      || (this._sweptHull = { active: false, contactId: null, sliding: false, emittedAt: -Infinity });
+    if (advisory.active && this.bus && typeof this.bus.emit === 'function') {
+      const now = finite(state && state.simTime, 0);
+      const faceChanged = !latch.active
+        || latch.contactId !== advisory.contactId
+        || latch.sliding !== advisory.sliding;
+      if (faceChanged || now - latch.emittedAt >= SWEPT_HULL_REEMIT_S) {
+        this.bus.emit('flight:sweptHull', sweptHullEventPayload(entity.id, advisory));
+        latch.emittedAt = now;
+      }
+    }
+    latch.active = advisory.active;
+    latch.contactId = advisory.contactId;
+    latch.sliding = advisory.sliding;
+    return advisory;
   },
 
   _publishPlayerDiagnostics(player, state) {
@@ -1307,6 +1368,86 @@ function autopilotObstacles(state, player, target, baseX, baseZ, maxProjection) 
   return out;
 }
 
+// Reused scratch for the player's swept-hull advisory (same discipline as the autopilot obstacle
+// scratch above: consumed synchronously inside the tick, nothing downstream retains the array).
+const SWEPT_HULL_OBSTACLE_SCRATCH = [];
+const SWEPT_HULL_QUERY_SCRATCH = [];
+const SWEPT_HULL_QUERY_POS = { x: 0, z: 0 };
+const SWEPT_HULL_NO_CONTACTS = [];
+
+// The sweep capsule runs along the CURRENT velocity out to the advisory horizon. One circle
+// covering that capsule returns every possible contributor — the hash buckets entities by their
+// full radius coverage, so a large-radius hull whose center sits off-axis is still captured (the
+// same reasoning as autopilotObstacles; the fallback path returns the entity list and the
+// per-entity predicate below stays the authority either way). The predicate is deliberately
+// identical to the autopilot's: what counts as a hull must not depend on who is asking.
+function sweptHullContacts(state, entity) {
+  const vx = finite(entity.vel && entity.vel.x);
+  const vz = finite(entity.vel && entity.vel.z);
+  const speed = Math.hypot(vx, vz);
+  if (!(speed > 0.001)) return SWEPT_HULL_NO_CONTACTS;
+  const hullRadius = positive(entity.radius, 0);
+  const halfProjection = (SWEPT_HULL_DEFAULTS.horizonS * speed) * 0.5;
+  const px = finite(entity.pos && entity.pos.x);
+  const pz = finite(entity.pos && entity.pos.z);
+  SWEPT_HULL_QUERY_POS.x = px + (vx / speed) * halfProjection;
+  SWEPT_HULL_QUERY_POS.z = pz + (vz / speed) * halfProjection;
+  const list = queryNearbyEntities(
+    state,
+    SWEPT_HULL_QUERY_POS,
+    halfProjection + hullRadius + SWEPT_HULL_DEFAULTS.grazeGapWU,
+    SWEPT_HULL_QUERY_SCRATCH,
+  );
+  const out = SWEPT_HULL_OBSTACLE_SCRATCH;
+  out.length = 0;
+  for (const e of list) {
+    if (!e || e === entity || e.alive === false || e.collides === false || !e.pos) continue;
+    if (e.type === 'projectile' || e.type === 'fx' || e.type === 'pickup') continue;
+    const radius = Number.isFinite(e.radius) ? e.radius : 0;
+    if (radius <= 0 && e.type !== 'station' && e.type !== 'asteroid' && e.type !== 'wreck' && e.type !== 'ship') continue;
+    out.push(e);
+  }
+  return out;
+}
+
+// Retained emit payload — `flight:sweptHull` subscribers read synchronously during emit, mirroring
+// the ship:thrust contract. No field aliases a per-tick advisory object.
+const _sweptHullPayload = {
+  shipId: null, active: true, sliding: false, speed: 0, forwardSpeed: 0, lateralSpeed: 0,
+  driftAngle: 0, contactId: null, contactType: null, contactRadius: 0, timeToContactS: null,
+  contactDistance: 0, closestGapWU: 0, closestTimeS: 0, contactPoint: null,
+  canStopBeforeContact: false, stopDistanceWU: 0,
+};
+const _sweptHullPoint = { x: 0, z: 0 };
+
+function sweptHullEventPayload(shipId, advisory) {
+  const P = _sweptHullPayload;
+  P.shipId = shipId;
+  P.active = advisory.active;
+  P.sliding = advisory.sliding;
+  P.speed = advisory.speed;
+  P.forwardSpeed = advisory.forwardSpeed;
+  P.lateralSpeed = advisory.lateralSpeed;
+  P.driftAngle = advisory.driftAngle;
+  P.contactId = advisory.contactId;
+  P.contactType = advisory.contactType;
+  P.contactRadius = advisory.contactRadius;
+  P.timeToContactS = advisory.timeToContactS;
+  P.contactDistance = advisory.contactDistance;
+  P.closestGapWU = advisory.closestGapWU;
+  P.closestTimeS = advisory.closestTimeS;
+  if (advisory.contactPoint) {
+    _sweptHullPoint.x = advisory.contactPoint.x;
+    _sweptHullPoint.z = advisory.contactPoint.z;
+    P.contactPoint = _sweptHullPoint;
+  } else {
+    P.contactPoint = null;
+  }
+  P.canStopBeforeContact = advisory.canStopBeforeContact;
+  P.stopDistanceWU = advisory.stopDistanceWU;
+  return P;
+}
+
 function counterVelocityInput(entity) {
   const vx = finite(entity.vel && entity.vel.x);
   const vz = finite(entity.vel && entity.vel.z);
@@ -1503,7 +1644,6 @@ function npcIntentIsLive(entity, intent) {
 function normalizeFlightComputerMode(mode) {
   return mode === 'cruise' || mode === 'lane' ? mode : 'manual';
 }
-function nowMs() { return typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now(); }
 function damp(cur, target, lambda, dt) { return cur + (target - cur) * (1 - Math.exp(-lambda * dt)); }
 function wrapAngle(v) { let x = finite(v) % (Math.PI * 2); if (x <= -Math.PI) x += Math.PI * 2; if (x > Math.PI) x -= Math.PI * 2; return x; }
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
