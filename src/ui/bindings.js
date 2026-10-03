@@ -45,6 +45,10 @@ export const BINDINGS = Object.freeze({
   // (voiceDismissBindingMatches/emitVoiceDismissFromBinding) rather than the UI key router —
   // the router does not own function keys.
   voiceDismiss: { key: 'F6', code: 'F6', label: 'F6' },
+  // FB-085: photo mode is a sub-state of the pause screen, so the pause route owns P the same
+  // way the UI router owns dock/localmap only where the verb lives. No flight verb claims P
+  // (VERB_BINDINGS moved the deploy row to digits precisely because P is the pause key).
+  photo: { key: 'p', code: 'KeyP', label: 'P' },
 });
 
 /** True when this keydown is the floor-voice dismiss binding and not a chord. */

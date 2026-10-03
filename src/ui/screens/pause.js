@@ -36,6 +36,7 @@ import {
   PHOTO_FILTERS_DEFAULT,
   applyPhotoPresentation,
   createPhotoModeState,
+  cyclePhotoFilterLook,
   restorePhotoPresentation,
   isPhotoModeActive,
 } from '../../render/camera.js';
@@ -570,10 +571,20 @@ function renderFlightBrief(ctx) {
 /* ---------- photo mode (Task B §1.7, sheet moment 12, PQ-159.03) ---------- */
 
 let photo = null;
+// FB-085: the pause route owns P (BINDINGS.photo) — the handler lives while this screen is top.
+let pausePhotoKeyHandler = null;
+let pauseRootEl = null;
 
 function photoHintText() {
-  // No photo/pause binding is registered in bindings.js; Esc is the modal-close key uiInput owns.
+  // Esc is the modal-close key uiInput owns; inside photo it returns to this screen.
   return 'Esc to return · WASD pan · wheel zoom · Capture for the store page';
+}
+
+/** True when the keydown is the photo binding's key (the one binding the pause route owns). */
+function isPhotoBindingKey(ev) {
+  const binding = BINDINGS.photo;
+  if (!binding) return false;
+  return ev.key === binding.key || ev.key === binding.label || ev.code === binding.code;
 }
 
 export function photoCaptureFilename(kind = PHOTO_STORE_KIND, now = new Date()) {
@@ -689,6 +700,40 @@ function syncPhotoExposure(ctx, value) {
   }
 }
 
+// FB-085 — the photo overlay owns the authored looks' SELECTION (the grades themselves live in
+// spaceRenderGraph.js PHOTO_FILTER_LOOKS): picking a look flips the filter flag on, and the
+// camera's per-frame sync hands the pair to the render graph. Exported for the focused pin.
+export function setPhotoLook(ctx, lookId) {
+  const state = ctx && ctx.state;
+  const photoState = state && state.render && state.render.photoMode;
+  if (!photoState || !photoState.active || typeof lookId !== 'string') return null;
+  photoState.filters = true;
+  photoState.filterLook = lookId;
+  return photoState.filterLook;
+}
+
+/** Advance the photo look to the next authored one (the overlay's Look control). */
+export function cyclePhotoLook(ctx) {
+  const state = ctx && ctx.state;
+  const photoState = state && state.render && state.render.photoMode;
+  if (!photoState || !photoState.active) return null;
+  return setPhotoLook(ctx, cyclePhotoFilterLook(photoState.filterLook));
+}
+
+/** FB-085 — photo FOV reads/writes the one video.fov setting the chase camera already reads. */
+export function syncPhotoFov(ctx, value) {
+  const state = ctx && ctx.state;
+  if (!state || !state.settings) return null;
+  const next = Math.max(35, Math.min(90, Math.round(Number(value))));
+  if (!Number.isFinite(next)) return null;
+  if (!state.settings.video) state.settings.video = {};
+  state.settings.video.fov = next;
+  if (ctx.bus && typeof ctx.bus.emit === 'function') {
+    ctx.bus.emit('settings:changed', { section: 'video', key: 'fov', source: 'photo' });
+  }
+  return next;
+}
+
 function runPhotoCapture(ctx) {
   const capture = capturePhotoPng(resolvePhotoCanvas(ctx), { kind: PHOTO_STORE_KIND });
   return writePhotoCapture(capture, {
@@ -744,11 +789,34 @@ function enterPhoto(rootEl, ctx) {
   exposure.value = String(PHOTO_EXPOSURE_DEFAULT);
   exposure.setAttribute('aria-label', 'Exposure');
   exposure.addEventListener('input', () => syncPhotoExposure(ctx, exposure.value));
+  // FB-085: the filter flag finally does something — the Look control cycles the three authored
+  // grades (the grade stage itself lives on the render graph; selection lives here).
+  const lookBtn = el('button', 'k-word k-word--fine fh-key fh-key--small', 'Look');
+  lookBtn.type = 'button';
+  lookBtn.setAttribute('aria-label', 'Cycle photo filter look');
+  lookBtn.addEventListener('click', () => {
+    const next = cyclePhotoLook(ctx);
+    if (next) lookBtn.textContent = `Look · ${next}`;
+  });
+  // Photo FOV rides the one video.fov setting the chase camera already reads (settings slider
+  // bounds 35–90); nothing new to persist — the settings route owns it.
+  const fov = document.createElement('input');
+  fov.type = 'range';
+  fov.min = '35';
+  fov.max = '90';
+  fov.step = '1';
+  const currentFov = state && state.settings && state.settings.video && Number(state.settings.video.fov);
+  fov.value = String(Number.isFinite(currentFov) ? Math.round(currentFov) : 50);
+  fov.setAttribute('aria-label', 'Photo field of view');
+  fov.addEventListener('input', () => syncPhotoFov(ctx, fov.value));
   const captureBtn = el('button', 'k-word k-word--fine fh-key fh-key--small', PHOTO_CAPTURE_LABEL);
   captureBtn.type = 'button';
   captureBtn.addEventListener('click', () => runPhotoCapture(ctx));
   bar.appendChild(el('span', 'k-fine', 'Exposure'));
   bar.appendChild(exposure);
+  bar.appendChild(lookBtn);
+  bar.appendChild(el('span', 'k-fine', 'FOV'));
+  bar.appendChild(fov);
   bar.appendChild(captureBtn);
   host.appendChild(hint);
   host.appendChild(bar);
@@ -810,6 +878,7 @@ export const pauseScreen = {
     rootEl.classList.add('screen');
     rootEl.dataset.screen = 'pause';
     delete rootEl.dataset.stamp;
+    pauseRootEl = rootEl;
 
     const { title, briefKicker, briefObjective, briefNext, briefSave, column } = createPauseFrame(rootEl, {
       titleText: coreText('paused'),
@@ -958,6 +1027,7 @@ export const pauseScreen = {
       keysLine.appendChild(el('span', 'dp-etch sf-pause-key-verb', verb));
     };
     keyHint('Esc', 'Resume');
+    keyHint('P', 'Photo');
     keyHint('F5', 'Quick Save');
     keyHint('F9', 'Quick Load');
     // the dial is two levels deep, and the strip says so: up/down steps between the categories on
@@ -1016,6 +1086,22 @@ export const pauseScreen = {
     // The world behind the pause is the live flight picture, not a mount of its own: the frame is
     // ready as soon as the words are (KIT_SPEC §11.7 capture contract).
     if (els && els.title && els.title.parentElement) els.title.parentElement.dataset.kReady = '1';
+    // FB-085: P (BINDINGS.photo) opens photo mode over this screen — capture phase, ahead of the
+    // uiInput route that would read the same press as "open pause" again. The photo overlay's own
+    // Esc route returns here. Photo mode owns the keys while it is up, so a live session ignores it.
+    if (!pausePhotoKeyHandler && typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+      pausePhotoKeyHandler = (ev) => {
+        if (photo || !isPhotoBindingKey(ev)) return;
+        const target = ev.target;
+        const tag = target && typeof target.tagName === 'string' ? target.tagName.toLowerCase() : '';
+        if (tag === 'input' || tag === 'textarea' || (target && target.isContentEditable)) return;
+        ev.preventDefault();
+        if (typeof ev.stopImmediatePropagation === 'function') ev.stopImmediatePropagation();
+        else if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+        if (pauseRootEl) enterPhoto(pauseRootEl, ctx);
+      };
+      window.addEventListener('keydown', pausePhotoKeyHandler, true);
+    }
     this._loadVersion();
     cue('open');
   },
@@ -1029,6 +1115,11 @@ export const pauseScreen = {
   onHide(ctx) {
     // Leaving the stack while in photo mode (a bus-driven exit) must not strand body.k-photo.
     if (photo) exitPhoto(photo.rootEl, ctx);
+    // FB-085: the P route is live only while this screen is top.
+    if (pausePhotoKeyHandler) {
+      window.removeEventListener('keydown', pausePhotoKeyHandler, true);
+      pausePhotoKeyHandler = null;
+    }
     // Replay/Clips are sibling overlays, not stacked screens — they must close with pause.
     forceCloseReplay();
     forceCloseClips();

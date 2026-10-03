@@ -46,7 +46,8 @@ import {
   trickCountRows,
 } from '../../systems/survivalResults.js';
 import { ensureStuntCallout, releaseStuntCallout } from '../stuntCallout.js';
-import { killReplayActions, replaySampleAt, skipKillReplay } from '../../systems/killReplay.js';
+// FB-086: the killReplay ring import retired with the ring's results words — the killcam tape
+// is the one results replay.
 import {
   clearKillcamTape,
   killcamStageRequestFor,
@@ -2837,40 +2838,11 @@ export const crucibleResultsScreen = {
       });
     }
 
-    const replayLabels = killReplayActions(result);
-    if (replayLabels.length) {
-      const replayNote = el('p', 'k-t-fine sf-crres__replay', '');
-      let replayToken = 0;
-      const replay = addWord(word(replayLabels[0], 'k-word--emph'));
-      replay.addEventListener('click', () => {
-        const token = ++replayToken;
-        const started = typeof performance !== 'undefined' && performance.now ? performance.now() : 0;
-        const durationMs = (result.killReplay.durationS || 5) * 1000;
-        const frame = (now) => {
-          if (token !== replayToken) return;
-          const elapsed = Math.max(0, (now - started) / 1000);
-          const sample = replaySampleAt(result.killReplay, elapsed);
-          if (sample) {
-            replayNote.textContent = `The kill, played back — body at ${sample.bx.toFixed(0)}, ${sample.bz.toFixed(0)}.`;
-          }
-          if (elapsed < result.killReplay.durationS && typeof requestAnimationFrame === 'function') {
-            requestAnimationFrame(frame);
-          }
-        };
-        if (typeof requestAnimationFrame === 'function') requestAnimationFrame((now) => frame(now || started));
-        else frame(started + durationMs);
-      });
-      const skip = addWord(word(replayLabels[1]));
-      skip.addEventListener('click', () => {
-        replayToken += 1;
-        skipKillReplay(result);
-        if (replay.parentElement) replay.parentElement.hidden = true;
-        if (skip.parentElement) skip.parentElement.hidden = true;
-        replayNote.textContent = '';
-      });
-      foot.appendChild(replayNote);
-    }
-
+    // FB-086 — one kill recorder: the results replay IS the killcam tape (the staged film above
+    // and its visible Skip). The two-body ring's words retired — the ring flattened the fight to
+    // two dots while the tape played the same five seconds with every hull and round. The result
+    // model keeps `result.killReplay` (survivalResults still records it) until the ring system's
+    // registry retirement lands.
     // r2: the Lamp rule spans the verb's own words — the verb rides in a span of its own so
     // the key beside it never inherits the rule. The live text node moves into the span; a stub
     // DOM with no child text nodes keeps the button's own textContent either way.

@@ -16,6 +16,7 @@ import {
   VL_EXCEPTIONAL_SPEED_RATIO_MAX,
 } from './velocityLanguage.js';
 import { resolveGovernedCombatSpeed } from '../core/flight/propulsionCatalog.js';
+import { COLLISION_CUE } from '../audio/audioSystem.js';
 import { screenShakeScale, traumaFromContact } from './feel.js';
 import { entityWeaponBlocked } from '../combat/runtime.js';
 import {
@@ -170,6 +171,18 @@ export const PHOTO_EXPOSURE_DEFAULT = 1;
 export const PHOTO_EXPOSURE_MIN = 0.35;
 export const PHOTO_EXPOSURE_MAX = 2.2;
 export const PHOTO_FILTERS_DEFAULT = false;
+// FB-085 photo filters: the looks' authored parameters live in ONE place — PHOTO_FILTER_LOOKS in
+// src/render/post/spaceRenderGraph.js, whose first entry is the default — and only the selection
+// half (default id, cycle order) lives here beside the photo-mode state it feeds.
+export const PHOTO_FILTER_LOOK_DEFAULT = 'chrome';
+export const PHOTO_FILTER_LOOK_ORDER = Object.freeze(['chrome', 'warm', 'mono']);
+
+/** The next authored look id in cycle order (photo overlay's Look control). */
+export function cyclePhotoFilterLook(current) {
+  const order = PHOTO_FILTER_LOOK_ORDER;
+  const at = order.indexOf(current);
+  return order[(at + 1 + order.length) % order.length];
+}
 export const PHOTO_PAN_SPEED_WU_S = 90;
 export const PHOTO_MODE_SEED = 15903;
 /** Open the chase frame a little so a store still has air around the hull. */
@@ -210,6 +223,22 @@ export function isPhotoModeActive(state) {
   return !!(state && state.render && state.render.photoMode && state.render.photoMode.active);
 }
 
+/**
+ * FB-085 — push the photo-mode filter truth onto the render graph's grade stage (the stage
+ * itself: src/render/post/spaceRenderGraph.js setPhotoFilters). Reads only; safe when the graph
+ * route is not the live one (no renderGraph published, an older graph, or a probe harness).
+ * Exported for the focused pin (test/fb-photo-filters.test.mjs).
+ */
+export function syncPhotoFilterStage(state) {
+  const graph = state && state.render && state.render.renderGraph;
+  if (!graph || typeof graph.setPhotoFilters !== 'function') return;
+  const photo = state.render.photoMode;
+  graph.setPhotoFilters({
+    enabled: !!(photo && photo.active && photo.filters === true),
+    look: photo && typeof photo.filterLook === 'string' ? photo.filterLook : null,
+  });
+}
+
 export function createPhotoModeState(state, overrides = {}) {
   const cam = state && state.camera;
   const focus = cam && cam.focus;
@@ -221,6 +250,7 @@ export function createPhotoModeState(state, overrides = {}) {
     hideHud: true,
     freeCamera: overrides.freeCamera !== false,
     filters: overrides.filters === true,
+    filterLook: typeof overrides.filterLook === 'string' ? overrides.filterLook : PHOTO_FILTER_LOOK_DEFAULT,
     exposure,
     focusX: focus && Number.isFinite(focus.x) ? focus.x : finiteOr(overrides.focusX, 0),
     focusZ: focus && Number.isFinite(focus.z) ? focus.z : finiteOr(overrides.focusZ, 0),
@@ -371,6 +401,59 @@ export const CAMERA_TRAUMA_TUNING = Object.freeze({
     playerDeath: 1.0,
   }),
 });
+
+// FB-084 — the kill camera beat scales with victim weight and agrees with the ear. The tier
+// boundaries are the SAME acoustic-mass law the collision/kill audio resolves (COLLISION_CUE in
+// src/audio/audioSystem.js, imported below — one shared source, so a beat and its sound cannot
+// disagree about the victim). Light kills — the wasp and the throw-weight darts under the law's
+// unknown-mass nominal — get NO beat; medium keeps the authored 0.96x/250 ms kiss verbatim;
+// heavy and capital push deeper and hold longer, the capital hush already being the ear's side
+// of the same tier. The beat is push-zoom + hold only: no translational shake, no hit-stop change.
+export const KILL_BEAT_TUNING = Object.freeze({
+  tiers: Object.freeze({
+    light: Object.freeze({ factor: 0, durationS: 0, holdS: 0 }),
+    // The old one-size kill-cam kiss, kept verbatim as the medium tier.
+    medium: Object.freeze({ factor: -0.04, durationS: 0.25, holdS: 0 }),
+    heavy: Object.freeze({ factor: -0.07, durationS: 0.4, holdS: 0.2 }),
+    capital: Object.freeze({ factor: -0.1, durationS: 0.7, holdS: 0.35 }),
+  }),
+});
+
+/** Cap on the bounded kill-beat trail the camera exposes for probes and tests. */
+export const KILL_BEAT_LOG_CAP = 8;
+
+/** Tier from the victim's acoustic mass — the same boundaries COLLISION_CUE pitches by. */
+export function resolveKillBeatTier(victimMass, capital = false) {
+  if (capital === true) return 'capital';
+  const mass = Number.isFinite(victimMass) && victimMass > 0
+    ? victimMass
+    : COLLISION_CUE.ACOUSTIC_MASS_UNKNOWN;
+  if (mass >= COLLISION_CUE.MASS_HEAVY) return 'capital';
+  if (mass >= COLLISION_CUE.TIER_HEAVY_MASS) return 'heavy';
+  // The light swarm class (wasp 16 through the <=32 throw-weight darts) sits below the law's
+  // unknown-mass nominal; those deaths flicker, they do not beat.
+  if (mass >= COLLISION_CUE.ACOUSTIC_MASS_UNKNOWN) return 'medium';
+  return 'light';
+}
+
+/**
+ * Resolve one kill beat. `victimMass` is the acoustic mass the kill audio ladder keys on;
+ * `opts.capital` forces the capital tier (the feel layer's class/radius capital test). Reduced
+ * motion keeps the hold (a freeze is not vestibular motion) and drops the zoom.
+ */
+export function resolveKillBeat(victimMass, opts = {}) {
+  const tier = resolveKillBeatTier(victimMass, opts.capital === true);
+  const authored = KILL_BEAT_TUNING.tiers[tier];
+  const reducedMotion = opts.reducedMotion === true;
+  return {
+    tier,
+    factor: authored.factor,
+    durationS: authored.durationS,
+    holdS: authored.holdS,
+    reducedMotion,
+    zoom: !reducedMotion && authored.factor < 0,
+  };
+}
 
 /**
  * Distance falloff for a camera shake raised by a WORLD event (a ship dying somewhere) rather than
@@ -1197,6 +1280,8 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
   adoptFlybyHandoffDirector(cameraDirector);
   let _holdT = 0;
   let _deathCam = false;
+  // FB-084 bounded kill-beat trail (probe/test surface; never read by gameplay).
+  const _killBeatLog = [];
   let _directorFrame = cameraDirector.output;
   const _directorView = {
     followX: 0,
@@ -1363,10 +1448,31 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
       _pushZoomRise = 12.0 / d;
       _pushZoomDecay = 4.0 / d;
     },
-    killCam() {
-      // Kill-cam "kiss" (spec2/02 §2): tighten to 0.96x for 250 ms on player kill only.
-      this.pushZoom(-0.04, 0.25);
+    killCam(victimMass, opts = {}) {
+      // FB-084 weight-keyed kill beat: resolveKillBeat maps the victim's acoustic mass (the same
+      // number the kill audio ladder keys) onto the tier table beside CAMERA_TRAUMA_TUNING.
+      // Light kills beat nothing; reduced motion keeps the hold and drops the zoom. No payload
+      // resolves through the unknown-mass law (the conservative medium kiss).
+      const beat = resolveKillBeat(victimMass, {
+        capital: opts.capital === true,
+        reducedMotion: isMotionReduced(state),
+      });
+      if (beat.tier === 'light' || (!beat.zoom && beat.holdS <= 0)) return null;
+      // A hold is a frozen frame, not vestibular motion — deliberately NOT hold()'s reduce gate.
+      if (beat.holdS > 0 && beat.holdS > _holdT) _holdT = beat.holdS;
+      if (beat.zoom) this.pushZoom(beat.factor, beat.durationS);
+      _killBeatLog.push({
+        tier: beat.tier,
+        zoom: beat.zoom === true,
+        holdS: beat.holdS,
+        tick: Number.isFinite(state && state.tick) ? state.tick | 0 : 0,
+      });
+      if (_killBeatLog.length > KILL_BEAT_LOG_CAP) _killBeatLog.shift();
+      return beat;
     },
+    // The bounded kill-beat trail the probe and tests read ("the camera log shows three distinct
+    // kill beats"). Oldest first, at most KILL_BEAT_LOG_CAP entries.
+    killBeatLog() { return _killBeatLog.slice(); },
     // PQ-159.02: freeze chase composition for `durationS` so a rated moment reads. Reduce-motion
     // skips the hold (same vestibular gate as the kick).
     hold(durationS) {
@@ -1404,6 +1510,10 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
           ? Math.max(0, Math.min(1, state.render.interpolationAlpha))
           : 1);
       const photo = state.render && state.render.photoMode;
+      // FB-085: the photo filter stage lives on the render graph; the camera owns the photo-mode
+      // state, so every frame it hands the same truth over. Off (the default and the state after
+      // photo mode exits) is an idempotent no-op on the graph.
+      syncPhotoFilterStage(state);
       if (photo && photo.active && photo.freeCamera !== false) {
         stepPhotoFreeCamera(photo, state.input, frameDt);
         c.focus.x = finiteOr(photo.focusX, finiteOr(c.focus.x, 0));
