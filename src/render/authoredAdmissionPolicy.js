@@ -23,7 +23,7 @@ const _rowSchedVel = { x: 0, z: 0 };
 // Ledger rows carry their motion in the itinerary schedule — advanceWorldRecord zeroes the
 // stored vel — so the closing-speed clause must read the cruise velocity there, else inbound
 // traffic predicts as static and the runway fires ~2-4 s late.
-function closingVelocity(entity, state) {
+export function closingVelocity(entity, state) {
   if (isPresentationLedgerRow(entity) && entity.intent && Number.isFinite(entity.lastExactT)) {
     const simTime = Number.isFinite(state && state.simTime)
       ? state.simTime
@@ -38,6 +38,7 @@ export const AUTHORED_ASSET_PREFETCH_RADIUS = authoredPrefetchRadius();
 export const AUTHORED_ASSET_IMMEDIATE_RADIUS = authoredImmediateRadius();
 export const AUTHORED_ASSET_LOOKAHEAD_SECONDS = authoredLookaheadSeconds();
 export { isCriticalStartingHub };
+
 
 // One ladder for "how far out is inbound" — stations ride the longer decode runway while
 // hulls ride the promote horizon. The renderer's isInboundDecodeHull, the hold-exempt

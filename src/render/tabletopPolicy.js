@@ -56,11 +56,16 @@ export const TABLE_AUTHORED_IMMEDIATE_SECONDS = 1.25;
  * flight — torch_l's travelCeiling (1120) is the catalog's absolute bound. The
  * honest closing bound is the composite: powered axial (~1200) carried into an
  * off-axis sling fling adds the perpendicular throw (~960) — hypot(1200, 960) ≈
- * 1537, ceil to 1550. Anything faster is a projectile, which carries no authored
- * mesh. This sizes query discs only — per-candidate closing speed still decides
+ * 1537, ceil to 1550. Two retained states still exceed that: the tether
+ * slingshot grants speed >= maxSpeed x SLINGSHOT_SPEED_MULT (1.4 x 1200 = 1680
+ * at the torch ceiling), and the authority clamps only control-made speed, so
+ * an impact/sling already above the cap — or a shelved row that froze it — keeps
+ * it. The catalog's honest bound is the slingshot multiplier over the travel
+ * ceiling. Anything faster is a projectile, which carries no authored mesh.
+ * This sizes query discs only — per-candidate closing speed still decides
  * admission.
  */
-export const TABLE_INBOUND_APPROACH_WU = 1550;
+export const TABLE_INBOUND_APPROACH_WU = 1680;
 
 /**
  * Prediction horizon for promote -> decode -> build: the authored decode runway

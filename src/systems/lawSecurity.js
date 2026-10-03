@@ -8,6 +8,7 @@
 // shared. Credits/cargo/rep/heat remain with their canonical owners.
 
 import { hash32 } from '../core/rng.js';
+import { isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
 import { primitiveBlocksSegment, segmentHitsProxy } from '../combat/lineOfSight.js';
 import { proxyWorldPrimitives, proxyScaleFor, resolveCollisionProxyManifest } from '../data/collisionProxyManifests.js';
 import { takeNearWorkSlice } from '../core/activityScheduler.js';
@@ -5750,13 +5751,29 @@ const LAW_WITNESS_OCCLUDER_TYPES = new Set(['station', 'asteroid', 'planet', 'wr
 // index version + rock count: alive/collides flips are re-checked per candidate at eval,
 // spawns and removals change the key, and a new tick rebuilds with fresh poses.
 const LAW_WITNESS_PLAN_MEMO = new WeakMap();
+// A same-tick continuous enter can swap `world.asteroidField` for a field whose rocks array is
+// exactly the same length — count alone would serve the previous sector's prepared rows. The
+// key folds the rocks array's identity (per-instance stamp), not just its length.
+const LAW_WITNESS_ROCKS_ARRAY_IDS = new WeakMap();
+let lawWitnessRocksArrayNextId = 0;
+
+function lawWitnessRocksArrayId(field) {
+  const rocks = field && field.rocks;
+  if (!Array.isArray(rocks)) return -1;
+  let id = LAW_WITNESS_ROCKS_ARRAY_IDS.get(rocks);
+  if (id === undefined) {
+    id = ++lawWitnessRocksArrayNextId;
+    LAW_WITNESS_ROCKS_ARRAY_IDS.set(rocks, id);
+  }
+  return id;
+}
 
 function lawWitnessOccluderPlan(state) {
   const entities = state && state.entities;
   const size = entities && typeof entities.size === 'number' ? entities.size : -1;
-  const rocks = state && state.world && state.world.asteroidField
-    && Array.isArray(state.world.asteroidField.rocks) ? state.world.asteroidField.rocks.length : -1;
-  const key = `${(state && state.tick) | 0}|${size}|${entityIndexVersion(state) ?? 'nv'}|${rocks}`;
+  const field = state && state.world && state.world.asteroidField;
+  const rocks = field && Array.isArray(field.rocks) ? field.rocks.length : -1;
+  const key = `${(state && state.tick) | 0}|${size}|${entityIndexVersion(state) ?? 'nv'}|${rocks}:${lawWitnessRocksArrayId(field)}`;
   const hit = LAW_WITNESS_PLAN_MEMO.get(state);
   if (hit && hit.key === key) return hit.plan;
   const plan = buildLawWitnessOccluderPlan(state);
@@ -5764,19 +5781,65 @@ function lawWitnessOccluderPlan(state) {
   return plan;
 }
 
+// Plan rows partition at build, mirroring the lineOfSight twin: physics-fixed occluders
+// (stations, gates, landmarks and any body past the isFixedPhysicsEntity radius threshold)
+// cannot move inside a membership-stable memo, and parked field-resident rocks (vel ~0,
+// liveEntityId null — the only pose writer, the ballistic advance, needs a nonzero vel or an
+// itinerary) are still for the same span. Those bucket by pos±reach once; grid cells near
+// the segment are the only small-reach rows evaluated. Reach beyond the cell size and every
+// mobile row stays in the always-walked lane: a center that moved into the segment ball while
+// its bucket stayed outside is a miss direction nothing downstream re-verifies.
+const LAW_WITNESS_SPATIAL_CELL = 256;
+let lawWitnessPlanQueryStamp = 0;
+
+function lawWitnessPlanRowIsStill(occ) {
+  if (!occ || typeof occ !== 'object') return false;
+  if (occ.fieldResident === true) {
+    if (occ.liveEntityId != null) return false;
+    const vx = occ.vel ? Math.abs(Number(occ.vel.x) || 0) : 0;
+    const vz = occ.vel ? Math.abs(Number(occ.vel.z) || 0) : 0;
+    return vx <= 1e-6 && vz <= 1e-6 && !occ.intent;
+  }
+  return !isDynamicPhysicsBodyEntity(occ);
+}
+
+function lawWitnessPlanInsert(plan, rec) {
+  const occ = rec.occ;
+  const px = occ && occ.pos ? Number(occ.pos.x) : NaN;
+  const pz = occ && occ.pos ? Number(occ.pos.z) : NaN;
+  if (lawWitnessPlanRowIsStill(occ) && Number.isFinite(px) && Number.isFinite(pz)
+      && rec.reach <= LAW_WITNESS_SPATIAL_CELL) {
+    const x0 = Math.floor((px - rec.reach) / LAW_WITNESS_SPATIAL_CELL);
+    const x1 = Math.floor((px + rec.reach) / LAW_WITNESS_SPATIAL_CELL);
+    const z0 = Math.floor((pz - rec.reach) / LAW_WITNESS_SPATIAL_CELL);
+    const z1 = Math.floor((pz + rec.reach) / LAW_WITNESS_SPATIAL_CELL);
+    for (let cx = x0; cx <= x1; cx++) {
+      let row = plan.grid.get(cx);
+      if (!row) { row = new Map(); plan.grid.set(cx, row); }
+      for (let cz = z0; cz <= z1; cz++) {
+        let bucket = row.get(cz);
+        if (!bucket) { bucket = []; row.set(cz, bucket); }
+        bucket.push(rec);
+      }
+    }
+    return;
+  }
+  plan.dynamic.push(rec);
+}
+
 function buildLawWitnessOccluderPlan(state) {
-  const prepared = [];
+  const plan = { dynamic: [], grid: new Map() };
   const entities = state && state.entities;
   if (entities && typeof entities.values === 'function') {
     for (const occ of entities.values()) {
       if (!occ || occ.type === 'asteroid') continue; // every rock is walked by forEachFieldRock
       if (!LAW_WITNESS_OCCLUDER_TYPES.has(occ.type)
         && !(occ.data && occ.data.sensorBlocking === true)) continue;
-      prepared.push(lawWitnessOccluderView(occ));
+      lawWitnessPlanInsert(plan, lawWitnessOccluderView(occ));
     }
   }
-  forEachFieldRock(state, (rec) => { prepared.push(lawWitnessOccluderView(rec)); });
-  return prepared;
+  forEachFieldRock(state, (rec) => { lawWitnessPlanInsert(plan, lawWitnessOccluderView(rec)); });
+  return plan;
 }
 
 // World-space view memoized per body on the function's exact input space — manifest identity,
@@ -5835,8 +5898,52 @@ function buildLawWitnessOccluderView(occ, manifest) {
   return { occ, primitives, reach };
 }
 
+// One row's full accept chain, verbatim from the flat walk — shared by the dynamic lane and
+// the grid lane so the two-tier eval keeps an identical verdict.
+function lawWitnessRowBlocked(rec, observer, targetPos, ignoredIds, ax, az, bx, bz, mx, mz, halfLen) {
+  const occ = rec.occ;
+  if (!occ || occ.alive === false || occ.collides === false || !occ.pos) return false;
+  if (occ === observer || occ.id === observer.id) return false;
+  if (ignoredIds && ignoredIds.has(occ.id)) return false;
+  // Every surface point of this occluder sits within `reach` of its origin; a center outside
+  // the segment's enclosing ball cannot intersect — identical verdict, no segment math.
+  const dxm = occ.pos.x - mx;
+  const dzm = occ.pos.z - mz;
+  const bound = halfLen + rec.reach;
+  if (dxm * dxm + dzm * dzm > bound * bound) return false;
+  if (rec.primitives) {
+    // segmentHitsProxy's finite guards, preserved verbatim.
+    if (!Number.isFinite(occ.pos.x) || !Number.isFinite(occ.pos.z)
+      || !Number.isFinite(ax) || !Number.isFinite(az)
+      || !Number.isFinite(bx) || !Number.isFinite(bz)) return false;
+    for (const primitive of rec.primitives) {
+      if (primitiveBlocksSegment(observer.pos, targetPos, primitive)) return true;
+    }
+    return false;
+  }
+  // Disc fallback identical to scanLineOccluded's radius path.
+  const r = rec.reach;
+  if (!(r > 0)) return false;
+  const abx = bx - ax;
+  const abz = bz - az;
+  const acx = occ.pos.x - ax;
+  const acz = occ.pos.z - az;
+  const abLen2 = abx * abx + abz * abz;
+  if (!(abLen2 > 1e-8)) {
+    if (Math.hypot(acx, acz) <= r) return true;
+    return false;
+  }
+  let t = (acx * abx + acz * abz) / abLen2;
+  if (t < 0) t = 0;
+  else if (t > 1) t = 1;
+  const dx = ax + abx * t - occ.pos.x;
+  const dz = az + abz * t - occ.pos.z;
+  if (dx * dx + dz * dz <= r * r) return true;
+  return false;
+}
+
 function lawWitnessSightBlocked(state, observer, targetPos, ignoredIds, occluders) {
-  if (!observer || !observer.pos || !targetPos || !Array.isArray(occluders)) return false;
+  if (!observer || !observer.pos || !targetPos || !occluders) return false;
   const ax = observer.pos.x;
   const az = observer.pos.z;
   const bx = targetPos.x;
@@ -5844,45 +5951,36 @@ function lawWitnessSightBlocked(state, observer, targetPos, ignoredIds, occluder
   const mx = (ax + bx) * 0.5;
   const mz = (az + bz) * 0.5;
   const halfLen = Math.hypot(bx - ax, bz - az) * 0.5;
-  for (const rec of occluders) {
-    const occ = rec.occ;
-    if (!occ || occ.alive === false || occ.collides === false || !occ.pos) continue;
-    if (occ === observer || occ.id === observer.id) continue;
-    if (ignoredIds && ignoredIds.has(occ.id)) continue;
-    // Every surface point of this occluder sits within `reach` of its origin; a center outside
-    // the segment's enclosing ball cannot intersect — identical verdict, no segment math.
-    const dxm = occ.pos.x - mx;
-    const dzm = occ.pos.z - mz;
-    const bound = halfLen + rec.reach;
-    if (dxm * dxm + dzm * dzm > bound * bound) continue;
-    if (rec.primitives) {
-      // segmentHitsProxy's finite guards, preserved verbatim.
-      if (!Number.isFinite(occ.pos.x) || !Number.isFinite(occ.pos.z)
-        || !Number.isFinite(ax) || !Number.isFinite(az)
-        || !Number.isFinite(bx) || !Number.isFinite(bz)) continue;
-      for (const primitive of rec.primitives) {
-        if (primitiveBlocksSegment(observer.pos, targetPos, primitive)) return true;
+  // Flat arrays still serve callers that hand-roll their own occluder list (customs cones).
+  const lanes = Array.isArray(occluders) ? [occluders] : [occluders.dynamic || []];
+  for (const lane of lanes) {
+    for (const rec of lane) {
+      if (lawWitnessRowBlocked(rec, observer, targetPos, ignoredIds, ax, az, bx, bz, mx, mz, halfLen)) return true;
+    }
+  }
+  const grid = Array.isArray(occluders) ? null : occluders.grid;
+  if (!grid) return false;
+  // Cells overlapped by the segment ball dilated by the cell size — a grid row's bucket span
+  // covers pos±reach with reach <= cell, so any possible blocker's center sits inside this
+  // square and its own cell is visited. Superset of the bound test (lineOfSight twin).
+  const span = halfLen + LAW_WITNESS_SPATIAL_CELL;
+  const gx0 = Math.floor((mx - span) / LAW_WITNESS_SPATIAL_CELL);
+  const gx1 = Math.floor((mx + span) / LAW_WITNESS_SPATIAL_CELL);
+  const gz0 = Math.floor((mz - span) / LAW_WITNESS_SPATIAL_CELL);
+  const gz1 = Math.floor((mz + span) / LAW_WITNESS_SPATIAL_CELL);
+  const stamp = ++lawWitnessPlanQueryStamp;
+  for (let cx = gx0; cx <= gx1; cx++) {
+    const gridRow = grid.get(cx);
+    if (!gridRow) continue;
+    for (let cz = gz0; cz <= gz1; cz++) {
+      const bucket = gridRow.get(cz);
+      if (!bucket) continue;
+      for (const rec of bucket) {
+        if (rec._wq === stamp) continue;
+        rec._wq = stamp;
+        if (lawWitnessRowBlocked(rec, observer, targetPos, ignoredIds, ax, az, bx, bz, mx, mz, halfLen)) return true;
       }
-      continue;
     }
-    // Disc fallback identical to scanLineOccluded's radius path.
-    const r = rec.reach;
-    if (!(r > 0)) continue;
-    const abx = bx - ax;
-    const abz = bz - az;
-    const acx = occ.pos.x - ax;
-    const acz = occ.pos.z - az;
-    const abLen2 = abx * abx + abz * abz;
-    if (!(abLen2 > 1e-8)) {
-      if (Math.hypot(acx, acz) <= r) return true;
-      continue;
-    }
-    let t = (acx * abx + acz * abz) / abLen2;
-    if (t < 0) t = 0;
-    else if (t > 1) t = 1;
-    const dx = ax + abx * t - occ.pos.x;
-    const dz = az + abz * t - occ.pos.z;
-    if (dx * dx + dz * dz <= r * r) return true;
   }
   return false;
 }

@@ -157,6 +157,40 @@ function occluderScanDomain(state) {
 // (zero post-spawn writers — verified in the W44 audit) and hoists to build time.
 const WITNESS_OCCLUDER_PLAN_MEMO = new WeakMap();
 
+// Plan rows partition at build: physics-fixed occluders (stations, gates, landmarks and any
+// body past the isFixedPhysicsEntity radius threshold — the contract behind
+// isDynamicPhysicsBodyEntity) cannot move inside a membership-stable memo, so they bucket by
+// pos±reach once and only grid cells near the segment are walked. Reach beyond the cell size
+// stays always-evaluated like a mobile row — a fat station would otherwise own most of the
+// grid. Mobile rows never grid: a center that moved into the segment ball while its bucket
+// stayed outside is a miss direction nothing downstream re-verifies.
+const WITNESS_SPATIAL_CELL = 256;
+let witnessSpatialQueryStamp = 0;
+
+function witnessPlanInsert(plan, rec) {
+  const entity = rec.occ;
+  const px = entity && entity.pos ? Number(entity.pos.x) : NaN;
+  const pz = entity && entity.pos ? Number(entity.pos.z) : NaN;
+  if (!isDynamicPhysicsBodyEntity(entity) && Number.isFinite(px) && Number.isFinite(pz)
+      && rec.reach <= WITNESS_SPATIAL_CELL) {
+    const x0 = Math.floor((px - rec.reach) / WITNESS_SPATIAL_CELL);
+    const x1 = Math.floor((px + rec.reach) / WITNESS_SPATIAL_CELL);
+    const z0 = Math.floor((pz - rec.reach) / WITNESS_SPATIAL_CELL);
+    const z1 = Math.floor((pz + rec.reach) / WITNESS_SPATIAL_CELL);
+    for (let cx = x0; cx <= x1; cx++) {
+      let row = plan.grid.get(cx);
+      if (!row) { row = new Map(); plan.grid.set(cx, row); }
+      for (let cz = z0; cz <= z1; cz++) {
+        let bucket = row.get(cz);
+        if (!bucket) { bucket = []; row.set(cz, bucket); }
+        bucket.push(rec);
+      }
+    }
+    return;
+  }
+  plan.dynamic.push(rec);
+}
+
 function witnessOccluderPlan(state) {
   const index = state && state.entityIndex;
   const entities = state && state.entities;
@@ -171,15 +205,28 @@ function witnessOccluderPlan(state) {
     + `|${covered ? 1 : 0}`;
   const hit = WITNESS_OCCLUDER_PLAN_MEMO.get(state);
   if (hit && hit.key === key) return hit.plan;
-  const plan = [];
+  const plan = { dynamic: [], grid: new Map() };
   for (const entity of occluderScanDomain(state)) {
     if (!entity) continue;
     if (!['ship','station','asteroid','planet','wreck','debris'].includes(entity.type)
       && entity.data?.sensorBlocking !== true) continue;
-    plan.push({ occ: entity, reach: occluderBodyView(entity).reach });
+    witnessPlanInsert(plan, { occ: entity, reach: occluderBodyView(entity).reach });
   }
   WITNESS_OCCLUDER_PLAN_MEMO.set(state, { key, plan });
   return plan;
+}
+
+// One row's full accept chain — shared by both lanes so the verdict chain stays verbatim.
+// Every surface point sits within reach of its origin: a center outside the segment's
+// enclosing ball cannot intersect — identical verdict, no segment math (law twin).
+function witnessRowBlocks(rec, observer, ignored, observerPos, destination, mx, mz, halfLen) {
+  const entity = rec.occ;
+  if(!entity?.alive||!entity.collides||entity.id===observer.id||ignored.includes(entity.id)||!point(entity.pos))return false;
+  const dxm = entity.pos.x - mx, dzm = entity.pos.z - mz;
+  const bound = halfLen + rec.reach;
+  if (dxm * dxm + dzm * dzm > bound * bound) return false;
+  if (pointSegmentDistance(entity.pos, observerPos, destination) > rec.reach) return false;
+  return segmentHitsProxy(entity, observerPos, destination);
 }
 
 /** Uses the same station primitives as physics, preserving real gaps through compound geometry. */
@@ -188,16 +235,32 @@ export function witnessLineOfSight(state, observer, destination, ignored = []) {
   const ax = observer.pos.x, az = observer.pos.z, bx = destination.x, bz = destination.z;
   const mx = (ax + bx) * 0.5, mz = (az + bz) * 0.5;
   const halfLen = Math.hypot(bx - ax, bz - az) * 0.5;
-  for (const rec of witnessOccluderPlan(state)) {
-    const entity = rec.occ;
-    if(!entity?.alive||!entity.collides||entity.id===observer.id||ignored.includes(entity.id)||!point(entity.pos))continue;
-    // Every surface point sits within reach of its origin: a center outside the segment's
-    // enclosing ball cannot intersect — identical verdict, no segment math (law twin).
-    const dxm = entity.pos.x - mx, dzm = entity.pos.z - mz;
-    const bound = halfLen + rec.reach;
-    if (dxm * dxm + dzm * dzm > bound * bound) continue;
-    if (pointSegmentDistance(entity.pos, observer.pos, destination) > rec.reach) continue;
-    if (segmentHitsProxy(entity, observer.pos, destination)) return false;
+  const plan = witnessOccluderPlan(state);
+  for (const rec of plan.dynamic) {
+    if (witnessRowBlocks(rec, observer, ignored, observer.pos, destination, mx, mz, halfLen)) return false;
+  }
+  // Cells overlapped by the segment ball dilated by the cell size: a grid row's bucket span
+  // covers pos±reach with reach <= cell, so any possible blocker has its own center inside
+  // this square — the cell containing it is visited. Superset of the bound test, identical
+  // verdict once each returned row re-runs the full chain.
+  const span = halfLen + WITNESS_SPATIAL_CELL;
+  const gx0 = Math.floor((mx - span) / WITNESS_SPATIAL_CELL);
+  const gx1 = Math.floor((mx + span) / WITNESS_SPATIAL_CELL);
+  const gz0 = Math.floor((mz - span) / WITNESS_SPATIAL_CELL);
+  const gz1 = Math.floor((mz + span) / WITNESS_SPATIAL_CELL);
+  const stamp = ++witnessSpatialQueryStamp;
+  for (let cx = gx0; cx <= gx1; cx++) {
+    const gridRow = plan.grid.get(cx);
+    if (!gridRow) continue;
+    for (let cz = gz0; cz <= gz1; cz++) {
+      const bucket = gridRow.get(cz);
+      if (!bucket) continue;
+      for (const rec of bucket) {
+        if (rec._wq === stamp) continue;
+        rec._wq = stamp;
+        if (witnessRowBlocks(rec, observer, ignored, observer.pos, destination, mx, mz, halfLen)) return false;
+      }
+    }
   }
   return true;
 }

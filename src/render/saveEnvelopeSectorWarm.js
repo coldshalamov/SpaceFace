@@ -1072,6 +1072,13 @@ function liveAftermathOwnsMarker(state, markerId) {
  * Pure reads only — never touches world rng, records, or the dressing table.
  * @returns {{ sectorId: string|null, placeStubs: object[], roster: object[] }}
  */
+// The enter-spawner enumeration reads only pre-enter state (ledgers, plans, mixes), so a jump's
+// charge → unfiled → candidate → death chain for the same sector re-derives an identical set on
+// every call. Memoize it per (sectorId, enterSerial): the enter itself bumps the serial at
+// world.js emit, so the materialize call after it always re-enumerates fresh — only the
+// pre-enter callers dedupe against each other.
+const LIVE_ENTER_SPAWNER_STUBS_MEMO = new WeakMap();
+
 export function liveSectorFullExtrasStubs(state, sectorId, activeOverride) {
   const out = { sectorId: null, placeStubs: [], shipStubs: [], roster: [] };
   const world = state && state.world;
@@ -1084,10 +1091,25 @@ export function liveSectorFullExtrasStubs(state, sectorId, activeOverride) {
   // Same enumeration the envelope lane runs, reading the live ledgers, plus the cohorts
   // only live state can enumerate (traffic plans, faction presence, interventions,
   // authored unique wrecks, the morrow companion, the survivor pod).
-  const coverBareMissionWrecks = makeBareWreckCover(out);
-  collectEnterSpawnerPropStubs(state, sector, out, coverBareMissionWrecks);
-  collectEnterSpawnerRosterStubs(state, sector, state && state.simTime, out, coverBareMissionWrecks);
-  liveEnterSpawnerStubs(state, sector, out, coverBareMissionWrecks);
+  const enterSerial = (world && Number.isFinite(world.enterSerial)) ? world.enterSerial : -1;
+  const memo = LIVE_ENTER_SPAWNER_STUBS_MEMO.get(state);
+  if (memo && memo.sectorId === sector.id && memo.enterSerial === enterSerial) {
+    out.placeStubs.push(...memo.placeStubs);
+    out.shipStubs.push(...memo.shipStubs);
+    out.roster.push(...memo.roster);
+  } else {
+    const coverBareMissionWrecks = makeBareWreckCover(out);
+    collectEnterSpawnerPropStubs(state, sector, out, coverBareMissionWrecks);
+    collectEnterSpawnerRosterStubs(state, sector, state && state.simTime, out, coverBareMissionWrecks);
+    liveEnterSpawnerStubs(state, sector, out, coverBareMissionWrecks);
+    LIVE_ENTER_SPAWNER_STUBS_MEMO.set(state, {
+      sectorId: sector.id,
+      enterSerial,
+      placeStubs: out.placeStubs.slice(),
+      shipStubs: out.shipStubs.slice(),
+      roster: out.roster.slice(),
+    });
+  }
   // The materialize lane arms the warm with its in-flight bag — it is populated but not yet
   // published to sectorContents when the decode runway needs the cohort.
   const active = activeOverride || (world && world.sectorContents && world.sectorContents[sectorId]);

@@ -45,7 +45,7 @@ import {
   tableOpeningCompositionWu,
   tableTravelSpeed,
 } from './tabletopPolicy.js';
-import { authoredRunwayHorizonSeconds, declaredPlaceTargetRadius, willEntityEnterAuthoredUpgradeRunway } from './authoredAdmissionPolicy.js';
+import { authoredRunwayHorizonSeconds, closingVelocity, declaredPlaceTargetRadius, willEntityEnterAuthoredUpgradeRunway } from './authoredAdmissionPolicy.js';
 import { isReleaseAssetMode } from './releaseMode.js';
 import { entityVisualCullRadius } from './visualCullRadius.js';
 import { RENDER_PACKAGE_PILOTS } from './renderPackageManifest.js';
@@ -2518,6 +2518,29 @@ export function authoredReadmissionStatus(status) {
   return READMISSION_STATUSES.has(status == null ? 'missing' : status);
 }
 
+// Statuses enqueueBoundaryUpgrade returns synchronously before a job exists. A refusal leaves
+// the boundary stamped 'loading' with a settled promise — 'loading' is outside
+// READMISSION_STATUSES, so every later request would short-circuit on the dead promise forever
+// and the boundary renders its stand-in for the rest of its mounted life. Every wrap restores
+// on the full set so the ordinary re-request paths (approach trigger, post-run sector return,
+// markAuthoredBoundaryForReadmission) can try again.
+const PRE_JOB_REFUSAL_STATUSES = new Set([
+  'invalid-upgrade-request',
+  'cancelled-before-queue',
+  'deferred-arena-dressing',
+  'regrade-evict-cooloff',
+]);
+
+function restoreBoundaryAfterPreJobRefusal(boundary, status) {
+  delete boundary.userData.authoredUpgradePromise;
+  if (boundary.userData.authoredAssetState === 'loading') {
+    boundary.userData.authoredAssetState = 'awaiting-authored-admission';
+  }
+  boundary.userData.authoredReadmissionReason = status === 'cancelled-before-queue'
+    ? 'cancelled-before-queue-detached'
+    : status;
+}
+
 /**
  * The entity a kept boundary is currently bound to. `_bindPresentationMesh` stamps
  * `presentationEntityId` at every reattach, so after a save restore the boundary can resolve
@@ -2773,20 +2796,13 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
         }
       },
     })).then((result) => {
-      // 'deferred-arena-dressing' is the same armed-but-refused outcome the cancel
-      // path restores: enqueue declined before a job existed, leaving 'loading'
-      // + a settled promise that would pin every future request at the existing
-      // short-circuit. Restore the armed state so the approach trigger and the
-      // post-run sector return re-request it.
-      if (result && (result.status === 'cancelled-before-queue'
-          || result.status === 'deferred-arena-dressing')) {
-        delete boundary.userData.authoredUpgradePromise;
-        if (boundary.userData.authoredAssetState === 'loading') {
-          boundary.userData.authoredAssetState = 'awaiting-authored-admission';
-        }
-        boundary.userData.authoredReadmissionReason = result.status === 'cancelled-before-queue'
-          ? 'cancelled-before-queue-detached'
-          : 'deferred-arena-dressing';
+      // Any pre-job refusal is the same armed-but-refused outcome the cancel path
+      // restores: enqueue declined before a job existed, leaving 'loading' + a settled
+      // promise that would pin every future request at the existing short-circuit.
+      // Restore the armed state so the approach trigger and the post-run sector return
+      // re-request it.
+      if (result && PRE_JOB_REFUSAL_STATUSES.has(result.status)) {
+        restoreBoundaryAfterPreJobRefusal(boundary, result.status);
         armed = true;
         if (trigger) trigger.onBeforeRender = authoredAssetTrigger;
       }
@@ -2907,7 +2923,7 @@ export function buildAuthoredCargoCapsule(entity, options = {}) {
       ...requestOptions,
     };
     const partRoot = releaseMode ? PART_RELEASE_ROOT : PART_ROOT;
-    const completion = enqueueBoundaryUpgrade(scene, {
+    const completion = Promise.resolve(enqueueBoundaryUpgrade(scene, {
       key: `payload:${entity.data.payloadStableId || entity.id}`,
       boundary,
       entity: liveEntity,
@@ -2926,6 +2942,13 @@ export function buildAuthoredCargoCapsule(entity, options = {}) {
         admittedOptions,
         setActiveRoot,
       ),
+    })).then((result) => {
+      // A pre-job refusal left 'loading' + a settled promise — restore so the boundary can be
+      // re-requested instead of pinning its stand-in for the rest of its mounted life.
+      if (result && PRE_JOB_REFUSAL_STATUSES.has(result.status)) {
+        restoreBoundaryAfterPreJobRefusal(boundary, result.status);
+      }
+      return result;
     });
     boundary.userData.authoredUpgradePromise = completion;
     return completion;
@@ -3482,6 +3505,18 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
     if (typeof fn === 'function') fn(liveEntity, simNow, a11y);
   };
   const trigger = firstRenderable(fallbackRoot);
+  let armed = true;
+  const previousBeforeRender = trigger && trigger.onBeforeRender;
+  function authoredStationTrigger(renderer, scene, ...rest) {
+    if (typeof previousBeforeRender === 'function') previousBeforeRender.call(this, renderer, scene, ...rest);
+    if (!armed) return;
+    if (!shouldAutoTriggerAuthoredUpgrade(options.liveEntity || entity, scene)) return;
+    armed = false;
+    trigger.onBeforeRender = previousBeforeRender;
+    // onBeforeRender only fires with the fallback root inside the presented frustum — the most
+    // in-frame a pending boundary can be — so the upgrade posts at the visible decode class.
+    startAuthoredUpgrade(renderer, scene, { admissionVisible: true });
+  }
   const startAuthoredUpgrade = (renderer, scene, requestOptions = {}) => {
     const state = boundary.userData.authoredAssetState;
     const existing = boundary.userData.authoredUpgradePromise;
@@ -3505,7 +3540,7 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
       ...residency,
       ...requestOptions,
     };
-    const completion = enqueueBoundaryUpgrade(scene, {
+    const completion = Promise.resolve(enqueueBoundaryUpgrade(scene, {
       boundary,
       entity: liveEntity,
       run: ({ options: admittedOptions }) => upgradePlaceBoundary(
@@ -3515,6 +3550,15 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
       ),
       renderer,
       options: upgradeOptions,
+    })).then((result) => {
+      // A pre-job refusal left 'loading' + a settled promise — restore + re-arm the on-glass
+      // trigger so the boundary can be re-requested instead of pinning its stand-in.
+      if (result && PRE_JOB_REFUSAL_STATUSES.has(result.status)) {
+        restoreBoundaryAfterPreJobRefusal(boundary, result.status);
+        armed = true;
+        if (trigger) trigger.onBeforeRender = authoredStationTrigger;
+      }
+      return result;
     });
     boundary.userData.authoredUpgradePromise = completion;
     return completion;
@@ -3522,18 +3566,7 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
   boundary.userData.requestAuthoredUpgrade = startAuthoredUpgrade;
 
   if (trigger) {
-    let armed = true;
-    const previousBeforeRender = trigger.onBeforeRender;
-    trigger.onBeforeRender = function authoredStationTrigger(renderer, scene, ...rest) {
-      if (typeof previousBeforeRender === 'function') previousBeforeRender.call(this, renderer, scene, ...rest);
-      if (!armed) return;
-      if (!shouldAutoTriggerAuthoredUpgrade(options.liveEntity || entity, scene)) return;
-      armed = false;
-      trigger.onBeforeRender = previousBeforeRender;
-      // onBeforeRender only fires with the fallback root inside the presented frustum — the most
-      // in-frame a pending boundary can be — so the upgrade posts at the visible decode class.
-      startAuthoredUpgrade(renderer, scene, { admissionVisible: true });
-    };
+    trigger.onBeforeRender = authoredStationTrigger;
   }
 
   const stationed = attachStationHlod(boundary, entity);
@@ -3637,6 +3670,16 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
     if (controller && typeof controller.update === 'function') controller.update(liveEntity, simTime, a11y);
   };
   const trigger = firstRenderable(fallbackRoot);
+  let armed = true;
+  const previousBeforeRender = trigger && trigger.onBeforeRender;
+  function authoredPlaceTrigger(renderer, scene, ...rest) {
+    if (typeof previousBeforeRender === 'function') previousBeforeRender.call(this, renderer, scene, ...rest);
+    if (!armed) return;
+    if (!shouldAutoTriggerAuthoredUpgrade(entity, scene)) return;
+    armed = false;
+    trigger.onBeforeRender = previousBeforeRender;
+    startAuthoredUpgrade(renderer, scene, { admissionVisible: true });
+  }
   const startAuthoredUpgrade = (renderer, scene, requestOptions = {}) => {
     const state = boundary.userData.authoredAssetState;
     const existing = boundary.userData.authoredUpgradePromise;
@@ -3657,7 +3700,7 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
       ...residencyOptionsForBoundary(liveEntity, boundary, renderer),
       ...requestOptions,
     };
-    const completion = enqueueBoundaryUpgrade(scene, {
+    const completion = Promise.resolve(enqueueBoundaryUpgrade(scene, {
       boundary,
       entity: liveEntity,
       run: ({ options: admittedOptions }) => upgradePlaceBoundary(
@@ -3667,6 +3710,15 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
       ),
       renderer,
       options: upgradeOptions,
+    })).then((result) => {
+      // A pre-job refusal left 'loading' + a settled promise — restore + re-arm the on-glass
+      // trigger so the boundary can be re-requested instead of pinning its stand-in.
+      if (result && PRE_JOB_REFUSAL_STATUSES.has(result.status)) {
+        restoreBoundaryAfterPreJobRefusal(boundary, result.status);
+        armed = true;
+        if (trigger) trigger.onBeforeRender = authoredPlaceTrigger;
+      }
+      return result;
     });
     boundary.userData.authoredUpgradePromise = completion;
     return completion;
@@ -3674,16 +3726,7 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
   boundary.userData.requestAuthoredUpgrade = startAuthoredUpgrade;
 
   if (trigger) {
-    let armed = true;
-    const previousBeforeRender = trigger.onBeforeRender;
-    trigger.onBeforeRender = function authoredPlaceTrigger(renderer, scene, ...rest) {
-      if (typeof previousBeforeRender === 'function') previousBeforeRender.call(this, renderer, scene, ...rest);
-      if (!armed) return;
-      if (!shouldAutoTriggerAuthoredUpgrade(entity, scene)) return;
-      armed = false;
-      trigger.onBeforeRender = previousBeforeRender;
-      startAuthoredUpgrade(renderer, scene, { admissionVisible: true });
-    };
+    trigger.onBeforeRender = authoredPlaceTrigger;
   }
 
   const placed = attachPlaceHlod(boundary, entity);
@@ -5699,15 +5742,17 @@ function firstFlightReadableContactKind(entity) {
       || type === 'drone' || type === 'payload' || type === 'asteroid') return true;
   return type === 'place' && placeFileForEntity(entity) !== null;
 }
-function firstFlightClosingToward(entity, player) {
+function firstFlightClosingToward(entity, player, live) {
   const dx = Number(entity && entity.pos && entity.pos.x) - Number(player && player.pos && player.pos.x);
   const dz = Number(entity && entity.pos && entity.pos.z) - Number(player && player.pos && player.pos.z);
   const distance = Math.hypot(dx, dz);
   if (!Number.isFinite(distance) || distance <= 0) return false;
-  const relativeX = (Number(player && player.vel && player.vel.x) || 0)
-    - (Number(entity && entity.vel && entity.vel.x) || 0);
-  const relativeZ = (Number(player && player.vel && player.vel.z) || 0)
-    - (Number(entity && entity.vel && entity.vel.z) || 0);
+  // Ledger rows carry their motion in the itinerary schedule — stored vel is zeroed — so
+  // both reads go through the itinerary-aware lane; plain entities fall back to raw vel.
+  const playerVel = closingVelocity(player, live);
+  const entityVel = closingVelocity(entity, live);
+  const relativeX = playerVel.x - entityVel.x;
+  const relativeZ = playerVel.z - entityVel.z;
   return (dx * relativeX + dz * relativeZ) / distance > 0;
 }
 function firstFlightReadableShipJob(job) {
@@ -5727,7 +5772,7 @@ function firstFlightReadableShipJob(job) {
     && (entityIsOnReadableGlass(entity) || entity.mesh?.visible === true
       || (entity.activity?.presentationTier === PRESENTATION_TIER.R1_RUNWAY
         && ((runwayDistance !== null && runwayDistance <= FIRST_FLIGHT_SHIP_ADMISSION_RADIUS_WU)
-          || (firstFlightClosingToward(entity, player)
+          || (firstFlightClosingToward(entity, player, live)
             && willEntityEnterAuthoredUpgradeRunway(entity, live, {
               radius: FIRST_FLIGHT_SHIP_ADMISSION_RADIUS_WU,
               horizonSeconds: TABLE_DECODE_RUNWAY_SECONDS,
@@ -7075,12 +7120,15 @@ function primeNextAuthoredAssetPlan(state) {
   // as an ambient entry, so a deadline splice (admitted job, urgent LOD demotion) still passes.
   let shipLaneWarmed = 0;
   let otherLaneWarmed = 0;
-  for (const job of state.jobs) {
+  // Index walk, not for-of: the splices below would otherwise skip the element that slides
+  // into a removed job's slot — an evict's neighbor misses this pass's re-grade + prefetch.
+  for (let jobIndex = 0; jobIndex < state.jobs.length; jobIndex++) {
+    const job = state.jobs[jobIndex];
     if (shipLaneWarmed >= AUTHORED_JOB_PREFETCH_DEPTH
         && otherLaneWarmed >= AUTHORED_JOB_PREFETCH_DEPTH) break;
     if (!jobStillNeeded(state, job)) {
-      const index = state.jobs.indexOf(job);
-      if (index >= 0) state.jobs.splice(index, 1);
+      state.jobs.splice(jobIndex, 1);
+      jobIndex -= 1;
       cancelQueuedJob(state, job);
       continue;
     }
@@ -7088,8 +7136,8 @@ function primeNextAuthoredAssetPlan(state) {
     // pay the whole fetch+decode before admit ever sees it.
     if (!jobRunwayRegradeStillWanted(state, job)) {
       armRegradeEvictCooloff(job);
-      const index = state.jobs.indexOf(job);
-      if (index >= 0) state.jobs.splice(index, 1);
+      state.jobs.splice(jobIndex, 1);
+      jobIndex -= 1;
       cancelQueuedJob(state, job);
       continue;
     }
