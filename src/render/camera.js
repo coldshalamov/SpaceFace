@@ -1430,6 +1430,11 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
       let bankForLean = 0;
       let playerSpeed = 0;
       let directorOwnsComposition = false;
+      // SF-218: a RECOVER frame is the ended pair lease easing home, not an owning composition.
+      // The chase policy keeps running on top of the ease (see the branch below) so "release near
+      // another threat" hands the picture to the live attacker with the same damped containment a
+      // fight that opens gets, instead of a 0.35 s window at exactly zero containment.
+      let recoverEase = false;
       if (p && p.pos && Number.isFinite(p.pos.x) && Number.isFinite(p.pos.z)) {
         if (_snappedPlayerId !== p.id || !Number.isFinite(c.focus.x) || !Number.isFinite(c.focus.z)) {
           snapToEntity(p);
@@ -1543,14 +1548,50 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
           _directorFrame = cameraDirector.syncFollow(c.focus.x, c.focus.z, _dynamicZoom);
         }
         _directorFrame = cameraDirector.step(frameDt, state, p, _directorView);
+        recoverEase = _directorFrame.mode === CameraDirectorMode.RECOVER;
         directorOwnsComposition = _directorFrame.mode !== CameraDirectorMode.FOLLOW;
-        if (directorOwnsComposition) {
+        if (directorOwnsComposition && !recoverEase) {
           fx = _directorFrame.focusX;
           fz = _directorFrame.focusZ;
           _compositionBiasX = 0;
           _compositionBiasZ = 0;
           _contextZoomBias = 0;
           _contextMinZoom = 0;
+        } else if (recoverEase) {
+          // The director's eased focus stays the base of the frame; the ordinary composition runs
+          // on top of it, seeded AT that focus, so the handover to FOLLOW (whose seed is the same
+          // follow pose the ease lands on) is continuous in both bias and zoom. The bias is slewed
+          // and damped from its carried value — never a cut — and with no threat nearby every term
+          // relaxes to zero, which is bit-identical to the old dead-window behavior.
+          fx = _directorFrame.focusX;
+          fz = _directorFrame.focusZ;
+          _contextZoomCap = _directorView.maxZoom;
+          _compositionFocusScratch.x = fx + frameOrigin.x;
+          _compositionFocusScratch.z = fz + frameOrigin.z;
+          const composition = resolveChaseComposition(
+            state,
+            p,
+            _compositionFocusScratch,
+            _directorView,
+            _compositionScratch,
+            _tetherAnchorScratch,
+            _compositionSticky,
+          );
+          const motionScale = isMotionReduced(state) ? 0.35 : 1;
+          // Keeping an active attacker visible is functional combat framing, not decorative motion.
+          // Reduced motion may soften ambient/tether bias but must not move the actual threat out of
+          // the zoom geometry that was computed to contain it.
+          const compositionScale = composition.hasActiveAttacker ? 1 : motionScale;
+          const desiredBiasX = (composition.x - _compositionFocusScratch.x) * compositionScale;
+          const desiredBiasZ = (composition.z - _compositionFocusScratch.z) * compositionScale;
+          _compositionBiasX = dampSlewed(_compositionBiasX, desiredBiasX, COMPOSITION_BIAS_LERP, COMPOSITION_BIAS_SLEW, frameDt);
+          _compositionBiasZ = dampSlewed(_compositionBiasZ, desiredBiasZ, COMPOSITION_BIAS_LERP, COMPOSITION_BIAS_SLEW, frameDt);
+          _contextZoomBias = damp(_contextZoomBias, (composition.zoomBias || 0) * compositionScale, CONTEXT_ZOOM_LERP, frameDt);
+          // Fight distance eases in and eases out. A one-frame change of who is nearest
+          // must not retarget the zoom; the sticky hold above already keeps the anchor.
+          _contextMinZoom = damp(_contextMinZoom, Math.max(0, finiteOr(composition.minZoom, 0)), CONTEXT_ZOOM_LERP, frameDt);
+          fx += _compositionBiasX;
+          fz += _compositionBiasZ;
         } else {
           _contextZoomCap = _directorView.maxZoom;
           // Seed focus is frame-local; threat/tether biases are pure relative offsets (origin-invariant).
@@ -1744,6 +1785,11 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
         }
       }
       if (!directorOwnsComposition && _contextMinZoom > 0) {
+        // SF-225: a scripted tighten (dock fly-in, kill kiss) multiplies past the containment
+        // floor applied above and cuts the attacker it was holding — at the cap edge the fly-in
+        // pushed a 245 wu attacker from NDC 0.64 settled to 1.0 off-frame. The floor binds every
+        // tightening channel; with no attacker the floor is 0 and the tighten is untouched.
+        targetZoom = Math.max(targetZoom, Math.min(_contextMinZoom, _contextZoomCap));
         targetZoom = Math.min(targetZoom, _contextZoomCap);
       }
       if (holding && !_deathCam) {
@@ -1766,6 +1812,11 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
         // the picture uses. The rate clamp stays on the FOLLOW path, which is where targetZoom
         // can genuinely jump (player scroll, speed zoom).
         _dynamicZoom = finiteOr(_directorFrame.zoom, _dynamicZoom);
+        // RECOVER eases home over the containment floor it is already warming (SF-218), so the
+        // released-into fight's frame starts opening during the ease instead of after it. The
+        // FOLLOW adoption continues from this zoom under the ordinary rate caps — no second
+        // cadence, no governor retune.
+        if (recoverEase) _dynamicZoom = Math.max(_dynamicZoom, _contextMinZoom);
         if (_deathCam && Math.abs(_pushZoom) > 0.0001) _dynamicZoom *= (1 + _pushZoom);
       } else {
         let nextZoom = damp(_dynamicZoom, targetZoom, ZOOM_LERP, frameDt);
@@ -1779,7 +1830,9 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
       // The zoom the picture is opening toward, before damping arrives. Residency
       // prefetches this so the rim of a zoom-out is already built when it lands.
       c.composedZoom = directorOwnsComposition
-        ? finiteOr(_directorFrame && _directorFrame.zoom, _dynamicZoom)
+        ? (recoverEase
+          ? _dynamicZoom
+          : finiteOr(_directorFrame && _directorFrame.zoom, _dynamicZoom))
         : targetZoom;
       // Oversized authored gates can physically surround the chase camera even while the aperture
       // is correctly composed. The director derives a conservative near plane from the mounted

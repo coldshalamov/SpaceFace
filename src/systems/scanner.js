@@ -34,6 +34,11 @@ import {
   shipmentReadingFromReveal,
 } from '../data/scanClues.js';
 import {
+  anomalyRuleLesson,
+  discoveryPlaceCandidates,
+  normalizeDiscoveryMemory,
+} from './scanReveal.js';
+import {
   PLANET_STATE_DEFS,
   PLANET_SIGNAL_RANGE,
   planetSignalAnchor,
@@ -492,6 +497,7 @@ function freshSignalState() {
   return {
     schemaVersion: 2, records: {}, completed: {}, receipts: [], triangulations: {}, trackedId: null,
     clues: emptyClueBook(),
+    discoveryMemory: { subjects: {} },
   };
 }
 
@@ -506,6 +512,10 @@ function ensureSignalState(state) {
   if (!own.clues || typeof own.clues !== 'object' || Array.isArray(own.clues)) own.clues = emptyClueBook();
   else if (!own.clues.subjects || typeof own.clues.subjects !== 'object' || Array.isArray(own.clues.subjects)) {
     own.clues.subjects = {};
+  }
+  if (!own.discoveryMemory || typeof own.discoveryMemory !== 'object' || Array.isArray(own.discoveryMemory)
+    || !own.discoveryMemory.subjects || typeof own.discoveryMemory.subjects !== 'object') {
+    own.discoveryMemory = { subjects: {} };
   }
   return own;
 }
@@ -589,7 +599,9 @@ function collectSignalCandidates(state, sectorId, origin, nearby = [], profile =
     if (entity.data && entity.data.requiresTriangulation) continue;
     const kind = signalKindForEntity(entity);
     if (!kind) continue;
-    const shipment = kind === 'ship' ? shipmentReadingFromReveal(entity.data && entity.data.scanRevealed) : null;
+    const revealed = entity.data && entity.data.scanRevealed;
+    const discovery = revealed && revealed.discovery;
+    const shipment = kind === 'ship' ? shipmentReadingFromReveal(revealed) : null;
     // Trusted traffic keeps the ordinary signature. Only a declared or conflicting
     // hold reading becomes a clue, so a patrol flyby does not mint shipment memory.
     const fileShipment = shipment && shipment.observedReading !== 'trusted';
@@ -601,6 +613,8 @@ function collectSignalCandidates(state, sectorId, origin, nearby = [], profile =
       pos: entity.pos,
       range: profile.nearRadius,
       repeatableScannerSignal: entity.data && entity.data.repeatableScannerSignal === true,
+      ...(discovery ? { discovery } : {}),
+      ...(discovery && discovery.trackable === false ? { trackable: false } : {}),
       ...(fileShipment ? {
         observedClaim: shipment.observedClaim,
         observedReading: shipment.observedReading,
@@ -709,6 +723,8 @@ function collectSignalCandidates(state, sectorId, origin, nearby = [], profile =
     });
   }
 
+  for (const place of discoveryPlaceCandidates(state, origin, state.simTime || 0, nearby)) add(place);
+
   return [...byId.values()].sort(compareSignalRows);
 }
 
@@ -763,6 +779,14 @@ function cloneSignalRecord(record) {
       ? { ...record.triangulation }
       : null,
   };
+  if (clone.discovery && typeof clone.discovery === 'object') {
+    clone.discovery = {
+      ...clone.discovery,
+      actionPos: clone.discovery.actionPos ? { ...clone.discovery.actionPos } : null,
+      parts: clone.discovery.parts && typeof clone.discovery.parts === 'object'
+        ? { ...clone.discovery.parts } : null,
+    };
+  }
   if (record.clue && record.clue.subjectId) {
     const cloned = cloneClueBook({ subjects: { [record.clue.subjectId]: record.clue } });
     const subject = cloned.subjects[record.clue.subjectId];
@@ -824,6 +848,7 @@ function cloneSignalState(own) {
     triangulations,
     trackedId: own.trackedId && records[own.trackedId] && !completed[own.trackedId] ? own.trackedId : null,
     clues: cloneClueBook(own.clues),
+    discoveryMemory: normalizeDiscoveryMemory(own.discoveryMemory),
   };
 }
 
@@ -861,6 +886,7 @@ function normalizeSignalState(data) {
   normalized.trackedId = source.trackedId && normalized.records[source.trackedId]
     && !normalized.completed[source.trackedId] ? source.trackedId : null;
   normalized.clues = normalizeClueBook(source.clues);
+  normalized.discoveryMemory = normalizeDiscoveryMemory(source.discoveryMemory);
   pruneSignalRecords(normalized);
   return normalized;
 }
@@ -1301,6 +1327,26 @@ export const scanner = {
         record.trackable = false;
       }
       this._noteClue(own, candidate, record, now);
+      if (candidate.discovery && candidate.discovery.sentence) {
+        record.discovery = candidate.discovery;
+        if (candidate.discovery.lesson === true) record.discoveryLesson = true;
+        record.detail = candidate.discovery.sentence;
+        if (candidate.discovery.trackable === false) record.trackable = false;
+      } else if (candidate.kind === 'anomaly' && !resonanceSignal && !discoveryCopy) {
+        const player = state.entities && state.entities.get && state.entities.get(state.playerId);
+        const rule = anomalyRuleLesson(player, candidates, candidate.pos, candidate.entityId);
+        if (rule) {
+          record.discovery = {
+            sf: 'SF-171',
+            lesson: false,
+            sentence: rule.sentence,
+            actionPos: null,
+            trackable: true,
+            parts: { 'SF-171': rule },
+          };
+          if (record.detail === signalDetail(candidate.kind, stage)) record.detail = rule.sentence;
+        }
+      }
       own.records[record.id] = record;
       rows.push(record);
     }
@@ -1348,11 +1394,18 @@ export const scanner = {
       this.bus.emit('signal:tracked', { ...record, pos: { ...record.pos } });
       return this._retargetClue(record);
     }
+    const discovery = record.discovery;
+    const lessonPos = discovery && discovery.lesson === true && discovery.trackable !== false
+      && discovery.actionPos && Number.isFinite(discovery.actionPos.x) && Number.isFinite(discovery.actionPos.z)
+      ? discovery.actionPos : null;
+    const aim = lessonPos || record.pos;
     const course = {
-      pos: { x: record.pos.x, z: record.pos.z },
-      targetEntityId: record.entityId,
+      pos: { x: aim.x, z: aim.z },
+      targetEntityId: lessonPos ? null : record.entityId,
       label: record.classification,
-      reason: `Investigate ${record.classification.toLowerCase()}`,
+      reason: lessonPos && discovery.sentence
+        ? discovery.sentence
+        : `Investigate ${record.classification.toLowerCase()}`,
       waypointKind: 'signal',
       arrivalRadius: SIGNAL_INVESTIGATE_RADIUS,
       autopilot: true,
@@ -1619,6 +1672,7 @@ export const scanner = {
     const state = this.state;
     const own = state && ensureSignalState(state);
     if (!own || !record || own.completed[record.id]) return false;
+    if (record.discovery && record.discovery.lesson === true) return false;
     const receipt = {
       id: `signal-receipt:${record.id}`,
       signalId: record.id,

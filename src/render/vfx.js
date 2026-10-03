@@ -296,6 +296,24 @@ import {
   STRUCTURAL_FX_CUE_KIND,
 } from '../presentation/cueArbitration.js';
 import { resolveCausalVfxPresentation } from '../presentation/causalVfxGrammar.js';
+import { CauseMarkLayer } from './vfx/causeMarks.js';
+import {
+  plumeAchievedPicture,
+  collisionEventClass,
+  hullLocalHit,
+  createSpectacleBook,
+  spectacleFor,
+  createProjectileBodies,
+  stepProjectileBody,
+  stopProjectileBody,
+  releaseCuePicture,
+  releaseCutMark,
+  bindKillStreak,
+  ricochetSecondPath,
+  duplicateBombDropsFlash,
+  causeSilhouetteSegments,
+} from './vfx/effectsCause.js';
+import { resolveAdditionalActionVfxReceipt } from './vfx/actionEventRecipes.js';
 import { spawnCausalStructuralBurst } from './combat/causalStructuralBurst.js';
 import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
 
@@ -2396,7 +2414,7 @@ export const vfx = {
     const add = (name, fn, opts) => this._subs.push(bus.on(name, fn, opts));
     for (const name of ACTION_VFX_EVENTS) add(name, (p) => this._onActionVfx(name, p));
     for (const name of ['sector:exit', 'sector:enter', 'game:new', 'game:newGame', 'save:restoring', 'save:loaded']) {
-      add(name, () => { this._actionVfx?.clear(); this._stationOperationVfx?.clear(); this._bombDetonationVfx?.clear(); this._statusMatterVfx?.clear(); this._combatContactVfx?.clear(); });
+      add(name, () => { this._actionVfx?.clear(); this._stationOperationVfx?.clear(); this._bombDetonationVfx?.clear(); this._statusMatterVfx?.clear(); this._combatContactVfx?.clear(); this._releaseTransientEventLights(); });
       add(name, () => this._resetDamagedPortVfx());
     }
     const clearTumbleCadenceFor = (p) => {
@@ -2454,7 +2472,9 @@ export const vfx = {
       this._markEntityCacheDirtyIfTrailType(p);
       this._onDestroyed(p);
     }, { presentation: true });
-    add('entity:spawned', (p) => { this._markEntityCacheDirtyIfTrailType(p); this._onChainEntitySpawned(p); });
+    add('entity:spawned', (p) => { this._markEntityCacheDirtyIfTrailType(p); this._onChainEntitySpawned(p); this._offerWreckHandoff(p); });
+    add('weapons:mineDeployed', (p) => this._noteWellDeployed(p));
+    add('weapons:mineExpired', (p) => { if (this._causeMarks && p) this._causeMarks.forgetWell(p.mineId); });
     // NXB-050 chain readout — accepted ancestry of one thrown body. Whip/sweep contacts
     // carry the real contact point on the record; kills and wreck markers close the chain.
     add('tether:whipImpact', (p) => this._onChainContactPayload(p, 'victimId'));
@@ -3655,6 +3675,10 @@ export const vfx = {
   },
 
   _onProjectileHit(p) {
+    if (p && p.projectileId != null) {
+      if (!this._projectileBodies) this._projectileBodies = createProjectileBodies();
+      stopProjectileBody(this._projectileBodies, p.projectileId);
+    }
     if (!this._scene) return;
     const pos = this._posFrom(p, p.targetId);
     if (!pos) return;
@@ -4148,7 +4172,8 @@ export const vfx = {
     if (hitShield) return false;
     const variant = recipe && recipe.variant;
     if (variant !== 'autocannon' && variant !== 'flak'
-      && variant !== 'railgun' && variant !== 'siege-lance') return false;
+      && variant !== 'railgun' && variant !== 'siege-lance'
+      && variant !== 'wedge' && variant !== 'driver-slug') return false;
     const approach = (p && (p.approach || p.dir)) || null;
     const normal = (p && p.normal) || null;
     if (!approach || !normal) return false;
@@ -4169,15 +4194,20 @@ export const vfx = {
     const reflectAngle = Math.atan2(skip.rz, skip.rx);
     const heavy = variant === 'railgun' || variant === 'siege-lance';
     const speedScale = (reduced ? 0.7 : 1) * (heavy ? 1.25 : 1);
+    const proj = p && p.projectileId != null ? this._ent(p.projectileId) : null;
+    const terminated = !proj || proj.alive === false;
+    const second = ricochetSecondPath(skip.graze, terminated);
     this._impactParticleCone(sx, sz, reflectAngle, 0.42,
       55 * speedScale, 120 * speedScale,
       Math.max(4, Math.round(9 * burst * (reduced ? 0.5 : 1))),
       0.3, 0.9, '#ffffff', '#ff7a2a', 2.2);
-    this._spawnProjectileTrailStreak(sx, 0.22, sz, 0.3, 0.14 * scale, 7.5 * scale, 0.85,
-      '#fff6e8', skip.rx * 90 * speedScale, skip.rz * 90 * speedScale, skip.rx, skip.rz);
-    if (!reduced) {
-      this._spawnProjectileTrailStreak(sx, 0.18, sz, 0.24, 0.08 * scale, 4.5 * scale, 0.5,
-        '#ffb36a', skip.rx * 70, skip.rz * 70, skip.rx, skip.rz);
+    if (second && second.showOutgoing) {
+      this._spawnProjectileTrailStreak(sx, 0.22, sz, 0.3, 0.14 * scale, 7.5 * scale, 0.85,
+        '#fff6e8', skip.rx * 90 * speedScale, skip.rz * 90 * speedScale, skip.rx, skip.rz);
+      if (!reduced) {
+        this._spawnProjectileTrailStreak(sx, 0.18, sz, 0.24, 0.08 * scale, 4.5 * scale, 0.5,
+          '#ffb36a', skip.rx * 70, skip.rz * 70, skip.rx, skip.rz);
+      }
     }
     return true;
   },
@@ -5061,9 +5091,107 @@ export const vfx = {
     return hash | 0;
   },
 
+  _causeNow() {
+    return Number.isFinite(this.state && this.state.simTime) ? this.state.simTime : (this._t || 0);
+  },
+
+  _ensureCauseMarks() {
+    if (this._causeMarks || !this._scene) return this._causeMarks || null;
+    this._causeMarks = new CauseMarkLayer(this._scene, (x, z, out) => this._toLocalXZ(x, z, out));
+    this._causeSectorId = this.state && this.state.sectorId;
+    return this._causeMarks;
+  },
+
+  _spectacleGate(kind, x, z) {
+    if (!this._spectacle) this._spectacle = createSpectacleBook();
+    return spectacleFor(this._spectacle, kind, this._causeNow(), x, z, this._isReduced());
+  },
+
+  _updateCauseMarks() {
+    const layer = this._causeMarks || this._ensureCauseMarks();
+    if (!layer) return;
+    const sector = this.state && this.state.sectorId;
+    if (sector !== this._causeSectorId) {
+      this._causeSectorId = sector;
+      layer.clear();
+    }
+    const entities = this.state && this.state.entities;
+    const now = this._causeNow();
+    if (entities && typeof entities.get === 'function') bindKillStreak(layer.handoff, entities, now);
+    layer.update(now, (id) => this._ent(id), this._isReduced(), entities);
+  },
+
+  _noteHullScarFromContact(p, tx, tz, severity) {
+    const layer = this._ensureCauseMarks();
+    if (!layer || !p || !p.pos) return;
+    const ids = [p.aId, p.bId, p.targetId, p.otherId];
+    let hull = null;
+    for (let i = 0; i < ids.length; i++) {
+      const ent = this._ent(ids[i]);
+      if (!ent || !ent.pos || ent.alive === false) continue;
+      if (ent.type === 'ship' || ent.type === 'drone' || ent.type === 'wreck' || ent.type === 'station') {
+        hull = ent;
+        break;
+      }
+    }
+    if (!hull) return;
+    const local = hullLocalHit(hull, p.pos.x, p.pos.z, tx, tz);
+    layer.noteScar({
+      hullId: hull.id,
+      lx: local.lx,
+      lz: local.lz,
+      tx: local.tx,
+      tz: local.tz,
+      severity,
+      now: this._causeNow(),
+    });
+  },
+
+  _noteKillHandoff(p, pos) {
+    const layer = this._ensureCauseMarks();
+    if (!layer || !p || !pos) return;
+    const now = this._causeNow();
+    layer.noteKill({ ...p, pos: { x: pos.x, z: pos.z } }, now);
+    const entities = this.state && this.state.entities;
+    if (entities && typeof entities.get === 'function') bindKillStreak(layer.handoff, entities, now);
+  },
+
+  _offerWreckHandoff(p) {
+    if (!p) return;
+    const id = p.id != null ? p.id : (p.entity && p.entity.id);
+    if (id == null) return;
+    const entity = this._ent(id);
+    if (!entity || entity.type !== 'wreck') return;
+    const layer = this._ensureCauseMarks();
+    if (!layer) return;
+    layer.offerWreck(entity, this._causeNow());
+  },
+
+  _noteWellDeployed(p) {
+    if (!p || p.mineId == null) return;
+    const ent = this._ent(p.mineId);
+    const data = ent && ent.data;
+    const weaponId = String((p && p.weaponId) || (data && data.weaponId) || '');
+    if ((data && data.kind) !== 'gravity_well' && weaponId !== 'wpn_gravity_well_m') return;
+    const layer = this._ensureCauseMarks();
+    if (!layer) return;
+    layer.noteWell({
+      id: p.mineId,
+      radius: Number(data && data.blastRadius) || 0,
+      expireAt: Number(data && data.dieAt),
+      now: this._causeNow(),
+    });
+  },
+
+  _stepShotBody(entity, dt) {
+    if (!this._projectileBodies) this._projectileBodies = createProjectileBodies();
+    return stepProjectileBody(this._projectileBodies, entity, dt);
+  },
+
   _emitLowCollisionContact(p) {
     if (!this._scene || !p || !p.pos) return false;
-    if (this._emitCombatContact('contact', p)) return true;
+    // The contact seat can draw and still must not skip the slam class or the scar.
+    const seated = this._emitCombatContact('contact', p) === true;
     const accessibility = resolveVfxAccessibilityProfile(this.state && this.state.settings);
     const reduced = accessibility.flashOpacityScale < 1;
     const base = this._collisionContactAxis(p);
@@ -5079,6 +5207,7 @@ export const vfx = {
     const severity = Math.max(0.06, Math.min(0.95, 0.06 + impactDp / 14000));
     const mag = 0.7 + severity * 0.9;
     const pairCount = reduced ? 1 : 2;
+    if (!seated) {
     this._c0.set('#fff4dc');
     this._c1.set('#8b6b4b');
     for (let pair = 0; pair < pairCount; pair++) {
@@ -5093,8 +5222,12 @@ export const vfx = {
           this._c0, this._c1, 2.6, 0, 0, angle, (reduced ? 1.8 : 2.6) * mag);
       }
     }
+    }
     // Opposed tangent scars and dust tongues keep the contact axis readable without inventing an
     // outward half-space or escalating a routine solver contact into damage/control/destruction.
+    const gate = this._spectacleGate('impact', p.pos.x, p.pos.z);
+    this._noteHullScarFromContact(p, tx, tz, severity);
+    if (!seated) {
     for (const side of [-1, 1]) {
       this._spawnProjectileTrailStreak(
         p.pos.x + nx * side * 0.06, 0.16, p.pos.z + nz * side * 0.06,
@@ -5102,12 +5235,15 @@ export const vfx = {
         (reduced ? 0.24 : 0.46) * accessibility.flashOpacityScale,
         '#ead6b8', 0, 0, tx * side, tz * side,
       );
-      this._spawnSprite(SPR_PUFF,
-        p.pos.x + nx * side * 0.12, 0.04, p.pos.z + nz * side * 0.12,
-        reduced ? 0.36 : 0.52, 0.45 * mag, (reduced ? 1.1 : 1.8) * mag,
-        (reduced ? 0.12 : 0.22) * accessibility.flashOpacityScale, 0,
-        '#786a5b', nx * side * 1.2 * mag, nz * side * 1.2 * mag, 2.2, base,
-      );
+      if (gate.drawSprites) {
+        this._spawnSprite(SPR_PUFF,
+          p.pos.x + nx * side * 0.12, 0.04, p.pos.z + nz * side * 0.12,
+          reduced ? 0.36 : 0.52, 0.45 * mag, (reduced ? 1.1 : 1.8) * mag,
+          (reduced ? 0.12 : 0.22) * accessibility.flashOpacityScale * gate.peakScale, 0,
+          '#786a5b', nx * side * 1.2 * mag, nz * side * 1.2 * mag, 2.2, base,
+        );
+      }
+    }
     }
     // IMPACTS: the composed contact. axisSigned is FALSE — an SG-02 solver normal is an axis, and
     // its sign is an artifact of collider ordering. The recipe therefore draws a mirrored pair.
@@ -5116,13 +5252,13 @@ export const vfx = {
     _impactOpts.vx = 0; _impactOpts.vy = 0; _impactOpts.vz = 0;
     _impactOpts.serial = serial;
     _impactOpts.targetId = p.aId ?? p.targetId ?? null;
-    _impactOpts.eventClass = undefined;
+    _impactOpts.eventClass = collisionEventClass(severity);
     _impactOpts.priority = 0.3 + severity * 0.4;
     _impactOpts.hero = false;
     const composed = this._composeImpact(
       p.pos.x, 0.2, p.pos.z, nx, 0, nz, false, severity, 'hull', 1.6 * mag, _impactOpts,
     );
-    if (!composed && this._weaponPresenter && this._weaponPresenter.quarks) {
+    if (!seated && !composed && this._weaponPresenter && this._weaponPresenter.quarks) {
       const local = this._toLocalXZ(p.pos.x, p.pos.z, this._spawnLocalXZ);
       this._weaponPresenter.quarks.spawnCollisionSpall(local.x, 0.2, local.z, nx, 0.4, nz, reduced ? 6 : 12);
     }
@@ -5229,7 +5365,10 @@ export const vfx = {
     const now = Number.isFinite(this.state && this.state.simTime)
       ? this.state.simTime : (this._t || 0);
     const pos = this._posFrom(p, p && p.id);
-    if (pos && this._scene) this._emitOverloadFlare(pos, scaledRadius, p);
+    if (pos && this._scene) {
+      this._emitOverloadFlare(pos, scaledRadius, p);
+      this._noteKillHandoff(p, pos);
+    }
     // No juice cue here: the raw entity:killed audio route already owns the whine + delayed boom
     // (audioSystem._onKilled). Emitting a second semantic id would only double the voice.
     // Pool pressure: under a massacre the oldest queued tell detonates immediately rather than
@@ -10052,19 +10191,17 @@ export const vfx = {
 
     const ux = (endpoints.bx - endpoints.ax) / endpoints.chord;
     const uz = (endpoints.bz - endpoints.az) / endpoints.chord;
-    const roll = Math.atan2(uz, ux);
-    const priority = 0.88;
-    // Paired anisotropic flashes read as the line's ends springing apart, never as a radial blast.
-    this._spawnSprite(
-      SPR_FLASH, endpoints.ax, 1.15, endpoints.az,
-      0.16, 4.2, 8.6, 0.72, 0, '#d7f7ff',
-      -ux * 18, -uz * 18, 3.2, roll, priority,
+    const cue = releaseCuePicture(
+      ux, uz, target.vel && target.vel.x, target.vel && target.vel.z, this._isReduced(),
     );
-    this._spawnSprite(
-      SPR_FLASH, endpoints.bx, 1.15, endpoints.bz,
-      0.16, 4.2, 8.6, 0.72, 0, '#d7f7ff',
-      ux * 18, uz * 18, 3.2, roll, priority,
+    this._spectacleGate(
+      'release', (endpoints.ax + endpoints.bx) * 0.5, (endpoints.az + endpoints.bz) * 0.5,
     );
+    const layer = this._ensureCauseMarks();
+    const mark = releaseCutMark(cue, endpoints);
+    if (layer && mark && mark.sprite !== true && mark.vanish !== true) {
+      layer.noteCut(mark, this._causeNow());
+    }
 
     cable.fadeRate = TETHER_RELEASE_FADE_RATE;
     const last = this._lastMasslineReleaseVfx;
@@ -10369,7 +10506,23 @@ export const vfx = {
     return this._bombDetonationVfx.emit(event, p, this.state);
   },
 
-  _onBombDetonated(p) { return this._emitBombMaterial('bombs:detonated', p); },
+  _bombFlashDropped(p) {
+    if (!p || typeof p !== 'object') return false;
+    if (!this._bombSpectacleSeen) this._bombSpectacleSeen = new WeakMap();
+    if (this._bombSpectacleSeen.has(p)) return this._bombSpectacleSeen.get(p);
+    let drop = false;
+    const pos = p.pos;
+    if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.z)) {
+      drop = duplicateBombDropsFlash(this._spectacleGate('field', pos.x, pos.z));
+    }
+    this._bombSpectacleSeen.set(p, drop);
+    return drop;
+  },
+
+  _onBombDetonated(p) {
+    if (p && p.pos && Number.isFinite(p.pos.x) && Number.isFinite(p.pos.z)) this._bombFlashDropped(p);
+    return this._emitBombMaterial('bombs:detonated', p);
+  },
   _onBombFieldEnded(p) { return this._emitBombMaterial('bombs:fieldEnded', p); },
   _onBombDestroyed(p) { return this._emitBombMaterial('bombs:destroyed', p); },
 
@@ -10423,6 +10576,25 @@ export const vfx = {
     if (!realControl && !realDamage) return false;
     this._rememberMediumCollision(p);
     if (this._emitCombatContact('consequence', p)) {
+      // The seat drew. The class and the scar still have to land on the hull the player sees.
+      const seatAngle = this._collisionContactAxis(p);
+      const seatNx = Math.cos(seatAngle);
+      const seatNz = Math.sin(seatAngle);
+      const seatDp = Number(p && p.exchangedMomentum)
+        || Number(p && p.dp)
+        || Math.abs(Number(p && p.impulse))
+        || 0;
+      const seatSeverity = Math.max(0.06, Math.min(0.95, 0.06 + seatDp / 14000));
+      this._noteHullScarFromContact(p, -seatNz, seatNx, seatSeverity);
+      _impactOpts.vx = 0; _impactOpts.vy = 0; _impactOpts.vz = 0;
+      _impactOpts.serial = this._collisionPatternSerial(p);
+      _impactOpts.targetId = p.aId ?? p.targetId ?? null;
+      _impactOpts.eventClass = collisionEventClass(seatSeverity);
+      _impactOpts.priority = 0.3 + seatSeverity * 0.4;
+      _impactOpts.hero = false;
+      this._composeImpact(
+        p.pos.x, 0.2, p.pos.z, seatNx, 0, seatNz, false, seatSeverity, 'hull', 1.6, _impactOpts,
+      );
       // Keep receipt admission/audio and the separate physical debris event. Geometry
       // now maps body extent and closing speed, never dimensionless camera trauma.
       if (p.control === 'tumble') {
@@ -11722,9 +11894,22 @@ export const vfx = {
 
   _onActionVfx(name, payload) {
     if (!this._scene) return false;
+    if (name === 'bombs:detonated' && this._bombFlashDropped(payload)) return false;
+    this._noteCauseSilhouette(name, payload);
     if (!this._actionVfx) this._actionVfx = new ActionVfx(this._scene,
       this._combatBeamLocalizer || ((x, z, out) => this._toLocalXZ(x, z, out)));
     return this._actionVfx.emit(name, payload, this.state);
+  },
+
+  _noteCauseSilhouette(name, payload) {
+    const layer = this._ensureCauseMarks();
+    if (!layer || !payload || !this.state) return;
+    const receipt = resolveAdditionalActionVfxReceipt(name, payload, this.state);
+    if (!receipt || !receipt.pos || !Number.isFinite(receipt.pos.x) || !Number.isFinite(receipt.pos.z)) return;
+    const dir = receipt.direction;
+    const mark = causeSilhouetteSegments(name, receipt.pos.x, receipt.pos.z, dir && dir.x, dir && dir.z);
+    if (!mark || mark.sprite === true || mark.vanish === true) return;
+    layer.noteSilhouette(mark, this._causeNow());
   },
 
   _updateFieldGeometry(dt) {
@@ -11780,6 +11965,7 @@ export const vfx = {
     if (!(dt > 0)) return;
     if (dt > 0.1) dt = 0.1; // clamp pauses/tab-switches so particles don't teleport
     this._t += dt;
+    this._updateCauseMarks(dt);
     this._tableVfxDrawWu = tableVfxDrawWuFromState(this.state);
     if (this._weaponPresenter) {
       const render = this.state && this.state.render;
@@ -13457,7 +13643,7 @@ export const vfx = {
         energy.plasmaStream.update(
           dt,
           socketCount > 0 ? this._productionPlumeSocketView : null,
-          driveInfo,
+          plumeAchievedPicture(driveInfo, this._actuatorsFor(player)),
           a11y,
           player,
         );
@@ -13516,7 +13702,7 @@ export const vfx = {
           energy.plasmaStream.update(
             dt,
             this._productionPlumeSocketView,
-            driveInfo,
+            plumeAchievedPicture(driveInfo, this._actuatorsFor(player)),
             a11y,
             player,
           );
@@ -13577,7 +13763,7 @@ export const vfx = {
           energy.plasmaStream.update(
             dt,
             this._productionPlumeSocketView,
-            driveInfo,
+            plumeAchievedPicture(driveInfo, this._actuatorsFor(player)),
             this._productionThrusterA11y || {},
             player,
           );
@@ -14645,6 +14831,18 @@ export const vfx = {
     );
   },
 
+  // Session/sector boundary: a mid-decay flash is yesterday's spectacle — an explosion flash
+  // claimed before save:restoring must not light the restored scene at stale coordinates.
+  // Sustained slots (the player plume) are live-state presentation that re-derives from flight
+  // state every frame, so they ride through the boundary untouched.
+  _releaseTransientEventLights() {
+    const pool = this._lights;
+    if (!pool || this._activeLightCount <= 0) return;
+    for (const slot of pool) {
+      if (slot && slot.active && slot.sustainedKey == null) this._retireEventLightSlot(slot);
+    }
+  },
+
   _upsertPlayerPlumeEventLight(source) {
     const finiteSource = source && source.alive
       && Number.isFinite(source.x) && Number.isFinite(source.y) && Number.isFinite(source.z)
@@ -15078,6 +15276,8 @@ export const vfx = {
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
       if (!e || !e.alive || e.type !== 'projectile') continue;
+      const bodyRec = this._stepShotBody(e, dt);
+      if (bodyRec && (bodyRec.reset || bodyRec.stopped)) continue;
       const data = e.data || EMPTY_PROJECTILE_DATA;
       const recipe = resolveWeaponRecipe(data.weaponId, data);
       if (recipeUsesRibbonWake(recipe)) continue;

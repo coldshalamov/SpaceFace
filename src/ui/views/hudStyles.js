@@ -223,18 +223,28 @@ export function injectHudCss() {
   .sf-obj__t { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
   /* One spatial goal marker: an amber diamond on the world target, a directional chevron when it
-     leaves the camera. The attached plate repeats the same GOAL identity as the tracker/radar and
-     goes compact when the projected target passes behind a persistent HUD anchor. */
+     leaves the camera. The glyph is inline SVG (hud.js): the edge cue is the kit's objective
+     chevron (assets/ui/kit/assets/svg/plates/objective-chevron.svg — the icon family's notched
+     construction) riding --sf-arrow-angle; the on-screen mark is the GOAL diamond in the same
+     light. Shape carries the state, colour repeats it; the attached plate repeats the same GOAL
+     identity as the tracker/radar and goes compact when the projected target passes behind a
+     persistent HUD anchor. */
   .sf-objarrow { position:absolute; left:0; top:0; width:16px; height:16px; z-index:11;
     pointer-events:none; will-change:transform; }
-  .sf-objarrow__glyph { position:absolute; left:50%; top:50%; display:block; }
-  .sf-objarrow--onscreen .sf-objarrow__glyph { width:14px; height:14px;
-    transform:translate(-50%,-50%) rotate(45deg); border:2px solid var(--hud-paper);
-    background:var(--hud-amber); }
-  .sf-objarrow--edge .sf-objarrow__glyph { width:0; height:0;
-    transform:translate(-50%,-50%) rotate(var(--sf-arrow-angle, 0rad));
-    border-style:solid; border-width:7px 0 7px 12px;
-    border-color:transparent transparent transparent var(--hud-amber); }
+  .sf-objarrow__glyph { position:absolute; left:50%; top:50%; width:22px; height:22px; display:block;
+    transform:translate(-50%,-50%); overflow:visible; }
+  /* The edge cue rides larger than the diamond: at a screen edge the notch has to read from
+     across the frame (bench-shot ladder: the notch muddies below ~26 px). */
+  .sf-objarrow--edge .sf-objarrow__glyph { width:26px; height:26px; }
+  .sf-objarrow--edge .sf-objarrow__glyph { transform:translate(-50%,-50%) rotate(var(--sf-arrow-angle, 0rad)); }
+  .sf-objarrow__chev { fill:var(--k-signal); }
+  .sf-objarrow__mark { fill:var(--k-signal); stroke:var(--hud-paper); stroke-width:1.5; }
+  .sf-objarrow__mark-bloom { fill:none; stroke:var(--k-signal); stroke-width:5; opacity:.24; }
+  .sf-objarrow--onscreen .sf-objarrow__chev { display:none; }
+  .sf-objarrow--edge .sf-objarrow__mark,
+  .sf-objarrow--edge .sf-objarrow__mark-bloom { display:none; }
+  .sf-objarrow:not(.sf-objarrow--onscreen):not(.sf-objarrow--edge) :is(.sf-objarrow__chev,
+    .sf-objarrow__mark, .sf-objarrow__mark-bloom) { display:none; }
   .sf-objarrow__label { position:absolute; max-width:280px; padding:4px 7px;
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap; border-left:1px solid var(--k-hair);
     color:var(--hud-paper); font-size:var(--k-fs-data); font-weight:700;
@@ -456,6 +466,16 @@ export function injectHudCss() {
   .sf-leadpip:not(.on-solution) .sf-leadpip__full { opacity:0; }
   .sf-leadpip:not(.on-solution) .sf-leadpip__arc { opacity:1; }
   .sf-leadpip__tick { stroke:var(--hud-cyan); stroke-width:1.5; stroke-linecap:round; }
+
+  /* Prograde tick (FR-1) — the kit's twin-tick prograde bracket (assets/ui/kit/assets/svg/
+     reticle/reticle-pro-tick.svg) ported as light: a bloom stroke under a core stroke, token
+     ink. The 8x2 wrapper stays the placement anchor (pinned transform); the mark is centred on
+     its centre, so it rides the same heading rotation. */
+  .sf-protick__svg { position:absolute; left:50%; top:50%; width:24px; height:24px; display:block;
+    transform:translate(-50%,-50%); overflow:visible; }
+  .sf-protick__tick, .sf-protick__bloom { fill:none; stroke:var(--dp-phos, var(--hud-paper));
+    stroke-width:2; vector-effect:non-scaling-stroke; }
+  .sf-protick__bloom { opacity:.24; stroke-width:6; }
 
   .sf-threat-halo { display:none; position:absolute; inset:0; pointer-events:none; z-index:13; }
   .sf-threat-halo__slot { display:none; position:absolute; left:0; top:0; opacity:.55; }
@@ -1590,7 +1610,7 @@ export function injectHudCss() {
   .sf-gravity-mark__ring { border-color:var(--k-text-live); }
   .sf-gravity-mark__core { background:var(--k-text-live); }
   .sf-gravity-mark__label, .sf-momentum-sink__label { font-family:var(--k-text); font-size:var(--k-fs-data); }
-  .sf-objarrow--onscreen .sf-objarrow__glyph { border-color:var(--k-text-live); background:var(--k-signal); }
+  .sf-objarrow--onscreen .sf-objarrow__mark { stroke:var(--k-text-live); }
   .sf-objarrow__label { font-family:var(--k-text); font-size:var(--k-fs-data); font-weight:400; color:var(--k-text-live); border-left:0; padding:0 6px; }
   .sf-radar-objective-key { font-family:var(--k-text); font-size:var(--k-fs-data); font-weight:400; color:var(--k-signal); }
   .icon-box { border-color:var(--k-hair); }
@@ -2454,7 +2474,7 @@ export function injectHudCss() {
   #hud .sf-gravity-mark__ring { border-color:var(--hud-paper); }
   #hud .sf-gravity-mark__core { background:var(--hud-paper); }
   #hud .sf-gravity-mark__label, #hud .sf-momentum-sink__label { color:var(--hud-paper); }
-  #hud .sf-objarrow--onscreen .sf-objarrow__glyph { border-color:var(--hud-paper); background:var(--k-signal); }
+  #hud .sf-objarrow--onscreen .sf-objarrow__mark { stroke:var(--hud-paper); }
   #hud .sf-objarrow__label { padding:4px 9px; }
 
   /* --- alerts and receipts: one machined strip each (the annunciator's plate) --- */
@@ -2942,6 +2962,49 @@ export function injectHudCss() {
     animation:sf-toast-decay var(--sf-toast-ttl, 4s) linear forwards; }
   @keyframes sf-toast-decay { to { transform:scaleX(0); } }
   html.sf-reduce-motion .sf-toast__decay { display:none; }
+
+  /* ══ ORRERY §6 Flight — the vitals rows are compact Arc Gauges ════════════════════════════
+     Each row keeps its contract DOM: .sf-bar stays the meter (role, aria-valuenow) and
+     .sf-bar__fill keeps its pinned scaleX transform as the hidden scalar store; the kit plate,
+     its segment cells and the 2 px fill line stop painting, and the instrument is the library
+     element (src/ui/orrery/instruments.js arcGauge — the Cluster's own arcs) mounted inside.
+     Row state keeps speaking through the classes the frame path already toggles, so the arcs
+     answer the same signals the old fill colours did — including the WANTED register
+     (html[data-k-temp="wanted"], applied by uiRoot). No new motion: the arcs are fed settled
+     values, so reduced-motion play reads the identical picture. */
+  #hud .sf-bars .sf-bar.sf-kit-bar.sf-vital-gauge {
+    position:relative; width:30px; height:30px; min-width:30px; min-height:30px;
+    padding:0; justify-self:start; overflow:visible;
+    background:none; background-image:none; border:0; border-radius:0;
+    border-image:none; box-shadow:none;
+  }
+  #hud .sf-bar.sf-kit-bar.sf-vital-gauge > .sf-bar__fill { opacity:0; }
+  #hud .sf-bar.sf-vital-gauge > .sf-kit-seg { display:none; }
+  .sf-vital-arc { position:absolute; inset:0; width:100%; height:100%; display:block; overflow:visible; }
+  /* state over tone: threat red for low energy, drive burn and weapon overheat — the states the
+     old kit segs lit is-hot; dash-ready steps the head to bright bone (the number already carries
+     the ▸/⟫ word, so no state is colour-only). */
+  #hud .sf-bar.sf-vital-gauge.sf-bar--low .orr-phos,
+  #hud .sf-bar.sf-vital-gauge.sf-bar--burn .orr-phos,
+  #hud .sf-bar.sf-vital-gauge.sf-bar--overheated .orr-phos,
+  html[data-k-temp="wanted"] #hud .sf-bar.sf-vital-gauge .orr-phos {
+    stroke:var(--dp-danger);
+  }
+  #hud .sf-bar.sf-vital-gauge.sf-bar--ready .orr-gauge__head { fill:var(--dp-ink); }
+  #hud .sf-bar.sf-vital-gauge.sf-bar--low .orr-gauge__head,
+  #hud .sf-bar.sf-vital-gauge.sf-bar--burn .orr-gauge__head,
+  #hud .sf-bar.sf-vital-gauge.sf-bar--overheated .orr-gauge__head,
+  html[data-k-temp="wanted"] #hud .sf-bar.sf-vital-gauge .orr-gauge__head { fill:var(--dp-danger); }
+
+  /* --- forced colours across the new marks: the system palette owns them, structure survives --- */
+  @media (forced-colors: active) {
+    #hud .sf-bars .sf-bar.sf-kit-bar.sf-vital-gauge { background:Canvas; border:0; }
+    .sf-vital-arc .orr-core, .sf-vital-arc .orr-bloom { stroke:CanvasText; }
+    .sf-vital-arc .orr-gauge__head { fill:CanvasText; }
+    .sf-protick__tick, .sf-protick__bloom { stroke:CanvasText; }
+    .sf-objarrow__chev, .sf-objarrow__mark { fill:CanvasText; stroke:CanvasText; }
+    .sf-objarrow__mark-bloom { display:none; }
+  }
   `;
   document.head.appendChild(s);
 }

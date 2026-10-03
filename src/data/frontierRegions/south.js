@@ -93,6 +93,7 @@ export const SOUTH_SECTORS = Object.freeze([
   Object.freeze({
     id: 'sector_eunomia_gulf',
     name: 'Eunomia Gulf',
+    threat: 'vael',
     tier: 3,
     security: 0.10,
     charted: false,
@@ -170,6 +171,8 @@ export const SOUTH_SECTORS = Object.freeze([
   Object.freeze({
     id: 'sector_sedna_dark',
     name: 'Sedna Dark',
+    threat: 'vael',
+    industries: { research: true },
     tier: 4,
     security: 0.06,
     charted: false,

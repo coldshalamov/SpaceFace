@@ -19,7 +19,7 @@ function character(id, born) {
 }
 const COLORS=new Map();
 // Allocate colors once; recipes never parse CSS or allocate Color objects in the frame loop.
-for(const value of [0x54e5ed,0xffc36c,0x58bdff,0xb9a2ff,0xffb766,0xffe1a4,0xb7f5ff,0x79f0c8,0xd9ffe0])COLORS.set(value,new THREE.Color(value));
+for(const value of [0x54e5ed,0xffc36c,0x58bdff,0xb9a2ff,0xffb766,0xffe1a4,0xb7f5ff,0x79f0c8,0xd9ffe0,0x8ac043])COLORS.set(value,new THREE.Color(value));
 // Hull-burst wedges draw with the cone recipe in their own tints (forceLanguage/hullBurstField.js).
 for(const style of Object.values(BURST_STYLE)){COLORS.set(style.color,new THREE.Color(style.color));COLORS.set(style.accent,new THREE.Color(style.accent));}
 
@@ -79,6 +79,18 @@ export function clearFieldAnchorRings(rings, payload) {
   if (fieldId != null && typeof rings.delete === 'function') rings.delete(fieldId);
   else if (typeof rings.clear === 'function') rings.clear();
   return rings;
+}
+
+function familyReadAwake(state){
+  const read=state&&state.fields&&state.fields.familyRead;
+  if(!read)return false;
+  if(read.edge&&read.edge.active)return true;
+  if(read.bend&&read.bend.active)return true;
+  const mines=read.breakout&&read.breakout.mines;
+  if(mines)for(let i=0;i<mines.length;i++)if(mines[i]&&mines[i].breakout)return true;
+  const pins=read.pin&&read.pin.rows;
+  if(pins)for(let i=0;i<pins.length;i++)if(pins[i]&&pins[i].phase==='held')return true;
+  return false;
 }
 
 /** A read-only adapter over fields.active and massSeed. No event listeners, forces or RNG. */
@@ -158,7 +170,7 @@ export class FieldForcePresentation {
     if(state&&state.hullBurst&&state.hullBurst.phase==='active')return true;
     for(let i=0;i<this.slots.length;i++)if(this.slots[i].id!==null)return true;
     if(this.particles&&this.particles.live>0)return true;
-    return false;
+    return familyReadAwake(state);
   }
   update(dt,state={}){
     if(this.disposed)return this.stats;
@@ -260,6 +272,7 @@ export class FieldForcePresentation {
         this.particles.emit(p);
       }
     }
+    this._paintFamilyRead(state);
     this.batch.end();stats.surfaces=this.batch.count;stats.dropped+=this.batch.dropped;
     if(!stats.active&&!stats.releasing)this.particles.clear();
     this.mesh.visible=this.batch.count>0||this.particles.live>0;
@@ -271,6 +284,84 @@ export class FieldForcePresentation {
     for(let i=0;i<this.slots.length;i++){if(this.slots[i].id!==null){slotLive=true;break;}}
     this._quietEmpty=!hasActive&&!slotLive&&this.batch.count===0&&!(this.particles&&this.particles.live>0);
     return stats;
+  }
+  // Direction marks for the published family read. Fixed length: the picture shows
+  // where the live sample points, not a second force magnitude.
+  _paintFamilyRead(state){
+    const read=state&&state.fields&&state.fields.familyRead;
+    if(!familyReadAwake(state))return;
+    const slot=this._familySlot||(this._familySlot={
+      index:0,character:0.17,born:0,release:-1,kind:'well',x:0,z:0,
+      field:{halfAngleRad:0.56,halfWidth:52,engaged:false},
+    });
+    this.slot=slot;this.cycle=FIELD_LIFECYCLES.well;this.releasing=false;this.phaseOffset=0;
+    this.alpha=0.9;this.reveal=1;this.flow=1;this.style=0;this.engaged=false;this.moving=false;
+    this.presence=1;this.material=SURFACE_MATERIALS.plain;slot.born=this.time;slot.release=-1;
+    const clouds=read.edge&&read.edge.clouds;
+    if(clouds&&read.edge.active){
+      const tar=COLORS.get(0x8ac043);
+      const n=Math.min(clouds.length,4);
+      for(let i=0;i<n;i++){
+        const c=clouds[i];
+        if(!c||!(c.radius>0))continue;
+        slot.x=c.x;slot.z=c.z;slot.kind='well';
+        this._position(slot);this.radius=c.radius;this.tint=tar;
+        this.orientation=Math.atan2(finite(c.recoveryZ),finite(c.recoveryX,1));
+        this._rim(c.radius-Math.max(0.6,c.radius*0.012),Math.max(0.6,c.radius*0.012),4,0.72,true);
+        this.role=FIELD_ROLE.CREST;this._member('filament');
+        this._surface(0,-0.08,0.08,c.radius*0.72,c.radius+Math.min(16,c.radius*0.14),1.3,0,0,0,0,1,0.92);
+      }
+    }
+    const samples=read.bend&&read.bend.samples;
+    if(samples){
+      const ink=COLORS.get(0xb7f5ff);
+      const n=Math.min(samples.length,4);
+      for(let i=0;i<n;i++){
+        const s=samples[i];
+        if(!s||s.kind==='inactive')continue;
+        slot.x=s.x;slot.z=s.z;this._position(slot);this.radius=14;this.tint=ink;
+        this.role=FIELD_ROLE.CREST;this._member('filament');
+        if(s.kind==='equilibrium'){
+          this.orientation=0;
+          this._surface(0,-0.12,0.12,1.5,12,0.7,0,0,0,0,1,0.8);
+          this.orientation=Math.PI/2;
+          this._surface(0,-0.12,0.12,1.5,12,0.7,0,0,0,0,1,0.8);
+        }else{
+          this.orientation=Math.atan2(finite(s.az),finite(s.ax,1));
+          this._surface(0,-0.06,0.06,1.5,14,1,0,0,0,0,1,0.9);
+        }
+      }
+    }
+    const pins=read.pin&&read.pin.rows;
+    if(pins){
+      const ink=COLORS.get(0xffc36c);
+      const n=Math.min(pins.length,8);
+      for(let i=0;i<n;i++){
+        const p=pins[i];
+        if(!p||p.phase!=='held')continue;
+        const dx=finite(p.x)-finite(p.fieldX),dz=finite(p.z)-finite(p.fieldZ);
+        const dist=Math.hypot(dx,dz);
+        if(!(dist>1))continue;
+        slot.x=p.fieldX;slot.z=p.fieldZ;this._position(slot);
+        const reach=Math.min(18,dist);
+        this.radius=reach;this.tint=ink;this.orientation=Math.atan2(dz,dx);
+        this.role=FIELD_ROLE.CREST;this._member('spar');
+        this._surface(0,-0.04,0.04,1,reach,0.65,0,0,0,0,1,p.anchor==='shrug'?0.45:0.85);
+      }
+    }
+    const mines=read.breakout&&read.breakout.mines;
+    if(mines){
+      const ink=COLORS.get(0xffb766);
+      const n=Math.min(mines.length,8);
+      for(let i=0;i<n;i++){
+        const m=mines[i];
+        if(!m||!m.breakout)continue;
+        slot.x=m.x;slot.z=m.z;this._position(slot);
+        this.radius=12;this.tint=ink;this.orientation=Math.atan2(finite(m.exitZ),finite(m.exitX,1));
+        this.role=FIELD_ROLE.CREST;this._member('filament');
+        this._surface(0,-0.07,0.07,1,12,0.9,0,0,0,0,1,0.9);
+      }
+    }
   }
   _environment(slot,state){
     const env=slot.environment.update(state,this.local.x,this.local.z,slot.radius,slot.ownerId,

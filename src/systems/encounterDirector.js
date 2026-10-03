@@ -61,6 +61,7 @@ import {
   ENCOUNTER_SHAPE_BUDGET_PER_HOUR,
   ENCOUNTER_SHAPE_HOUR_SECONDS,
   encounterGrammarKey,
+  emitPredationStalkTelegraph,
 } from './encounterScripts.js';
 import { ENCOUNTERS, NAMED_CAPTAINS, barkText, receiptTextWithFallback } from '../data/encounters.js';
 import { ENCOUNTER_MODULES } from '../data/encounters/index.generated.js';
@@ -371,7 +372,18 @@ export const encounterDirector = {
    */
   _ambientPredationCtx() {
     return {
-      emit: (name, payload) => this.emit(name, payload),
+      emit: (name, payload) => {
+        // Ambient stalks publish encounter:ambientPredationTelegraph. The telegraph
+        // path (authored motion and the rest of the convoy contract) listens for
+        // encounter:predationTelegraph. Forward once per raid, before the engage
+        // commit, without emitting that event again when the stalk commits.
+        if (name === 'encounter:ambientPredationTelegraph' && payload) {
+          emitPredationStalkTelegraph(this.state, payload, (eventName, eventPayload) => {
+            this.emit(eventName, eventPayload);
+          });
+        }
+        this.emit(name, payload);
+      },
       docked: isDocked(this.state),
       spawnCargoPod: (s, spec) => spawnJettisonedCargoPod(s, spec, this.helpers),
       removeEntity: (id, opts) => (

@@ -109,6 +109,7 @@ import {
 import { spawnJettisonedCargoPod } from './lootShards.js';
 import { isMasslineLatchedPickup } from './mining.js';
 import { DRIVE_FAMILIES, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
+import { admitRichSeamGlint, endRichSeamGlint } from '../render/vfx/worldCueRecipes.js';
 
 const FREIGHTER_SHIP = 'ship_mule'; // a freighter hull from data/ships.js (cargo-capable, slow)
 // Core pocket density (spec2/04 §4: core 6–9 concurrent). Cap keeps perf predictable.
@@ -1146,6 +1147,95 @@ function embodimentDensityPayload(state, sectorId) {
   return null;
 }
 
+function sectorServiceSet(sector) {
+  const set = new Set();
+  const stations = sector && sector.stations;
+  if (!Array.isArray(stations)) return set;
+  for (const station of stations) {
+    const services = station && station.services;
+    if (!Array.isArray(services)) continue;
+    for (const service of services) {
+      if (typeof service === 'string' && service) set.add(service);
+    }
+  }
+  return set;
+}
+
+function hazardTypeSet(sector) {
+  const set = new Set();
+  const hazards = sector && sector.hazards;
+  if (!Array.isArray(hazards)) return set;
+  for (const hazard of hazards) {
+    if (hazard && typeof hazard.type === 'string' && hazard.type) set.add(hazard.type);
+  }
+  return set;
+}
+
+/**
+ * FB-029 / FB-133 — flags the mixer already knows how to read, plus the service gates
+ * that field the volatiles tanker and the inspection cutter. Synthetic pockets that
+ * set none of these flags keep the prior weights. Ambient count is not touched.
+ */
+function applySectorPopulationFlags(weights, sector) {
+  const sec = sector || {};
+  const out = weights;
+  const ind = sec.industries && typeof sec.industries === 'object' ? sec.industries : null;
+  const mining = !!(ind && ind.mining);
+  const refinery = !!(ind && ind.refinery);
+  const research = !!(ind && ind.research);
+  if (research && !mining && !refinery) {
+    out.surveyor *= 2.2;
+    out.courier *= 1.25;
+  } else if (research) {
+    out.surveyor *= 1.45;
+  }
+  if (refinery && !mining) {
+    out.hauler *= 1.35;
+    out.ore_carrier *= 1.2;
+  }
+  if (mining && !refinery) out.prospector *= 1.35;
+  if (sec.threat === 'vael') {
+    out.surveyor *= 1.55;
+    out.escort *= 1.18;
+  } else if (sec.threat === 'quiet') {
+    out.smuggler *= 1.9;
+    out.courier *= 0.75;
+  }
+  const hazards = hazardTypeSet(sec);
+  if (hazards.has('nebula')) out.surveyor *= 1.12;
+  if (hazards.has('radiation')) out.tender *= 1.18;
+  if (hazards.has('debris')) out.sweeper *= 1.22;
+  if (hazards.has('dense_asteroid')) out.prospector *= 1.08;
+  const numericSecurity = Number.isFinite(sec.security) ? sec.security : null;
+  const tier = Number.isFinite(sec.tier) ? sec.tier : 0;
+  const threat = sec.threat || sec.danger;
+  const lowBand = threat === 'high' || sec.security === 'lawless'
+    || (numericSecurity != null && numericSecurity <= 0.35) || tier >= 3;
+  if (lowBand && numericSecurity != null) out.patrol *= (0.85 + numericSecurity);
+  const services = sectorServiceSet(sec);
+  const highCore = numericSecurity != null && numericSecurity >= 0.9;
+  const escorted = (out.escort || 0) > 0 || (out.patrol || 0) > 0;
+  if (!highCore && services.has('refuel') && ((out.pirate || 0) <= 0 || escorted)) out.tanker = 6;
+  if (!highCore && (services.has('scan') || services.has('toll'))) out.customs = 6;
+  return out;
+}
+
+function ensureServiceCraftRoles(roles, weights) {
+  if (!Array.isArray(roles) || !roles.length || !weights) return roles;
+  const out = roles.slice();
+  const place = (role) => {
+    if (!(weights[role] > 0) || out.includes(role)) return;
+    for (let i = out.length - 1; i >= 0; i--) {
+      if (out[i] === 'patrol' || out[i] === 'escort') continue;
+      out[i] = role;
+      return;
+    }
+  };
+  place('tanker');
+  place('customs');
+  return out;
+}
+
 // Causal role mix for a sector (spec §12.2). Hostile/pirate sectors tilt toward raiders; industrial
 // sectors toward miners/haulers; secure faction sectors toward patrols/escorts.
 export function trafficRoleMixForSector(sector, state = null) {
@@ -1228,7 +1318,7 @@ export function trafficRoleMixForSector(sector, state = null) {
     }
     weights = adjusted;
   }
-  return weights;
+  return applySectorPopulationFlags(weights, sec);
 }
 function pickRole(roleWeights, rng) {
   let total = 0; for (const w of Object.values(roleWeights)) total += Math.max(0, w);
@@ -1377,6 +1467,13 @@ export const traffic = {
     }
 
     this.bus.on('sector:enter', (p) => this._onSectorEnter(p));
+    // PIC-21: one glint record for the open seam, cleared when the seam is worked.
+    // The listeners fire on the events; nothing here emits per tick.
+    if (!this._richSeamGlintBound && this.bus && typeof this.bus.on === 'function') {
+      this._richSeamGlintBound = true;
+      this.bus.on('field:richSeamOpened', (payload) => admitRichSeamGlint(this.state, payload || {}));
+      this.bus.on('field:richSeamWorked', (payload) => endRichSeamGlint(this.state, payload || {}));
+    }
     // Canonical seam is sector:exit (world never emits sector:leave). Continuous handoffs prune
     // dead tracking only; hard exits fully clean up freighters.
     this.bus.on('sector:exit', (p) => this._onSectorExit(p));
@@ -1598,7 +1695,13 @@ export const traffic = {
     // Density from trafficPerMin; high-sec cores floor at CORE_MIN_TRAFFIC (spec2/04 core pocket).
     // Explicit trafficPerMin:0 still means "hollow" (frontier silence).
     const count = ambientCountForSector(sector, this.state);
-    if (count <= 0) return;
+    if (count <= 0) {
+      // Hollow rims keep a zero ambient count. A named face, when one is authored, still
+      // stamps onto one hull so the sector is not anonymous.
+      const faceStations = this._sectorStations();
+      if (faceStations.length >= 1) this._ensureNamedLaneContact(sectorId, sector, faceStations);
+      return;
+    }
 
     const stations = this._sectorStations();
     if (stations.length < 1) return; // nowhere to haul to
@@ -1622,7 +1725,7 @@ export const traffic = {
     const roleWeights = trafficRoleMixForSector(sector, this.state);
     const roles = [];
     for (let i = 0; i < need; i++) roles.push(pickRole(roleWeights, () => this._rng()));
-    const pocketRoles = ensurePocketRoleMix(roles, sector);
+    const pocketRoles = ensureServiceCraftRoles(ensurePocketRoleMix(roles, sector), roleWeights);
     const priorityService = priorityCourierServiceForSector(sectorId);
     const priorityCourierSlot = reservePriorityCourierRole(pocketRoles, sectorId);
 
@@ -3973,6 +4076,8 @@ export const traffic = {
     ent.data.gimmick = contact.gimmick;
     ent.data.trafficLabel = contact.callsign;
     ent.data.scanLabel = contact.callsign;
+    if (contact.hail) ent.data.hail = contact.hail;
+    if (contact.memoryHook) ent.data.memoryHook = contact.memoryHook;
     if (ent.data.ai) {
       ent.data.ai.name = contact.name;
       // Named patrol keeps lawful; named freighter stays passive civilian.
@@ -7234,6 +7339,16 @@ export const traffic = {
       market: market || FREIGHT_MARKET_KEYS_FALLBACK,
       ...((role === 'ore_carrier' || role === 'miner') && sectorId === 'sector_helios_prime' ? { capacity: 0 } : {}),
     });
+    if (role === 'tanker' && manifest && Array.isArray(manifest.lines)) {
+      const cryoId = 'cmdty_ice_water';
+      if (!manifest.lines.some((line) => line && (line.commodityId === cryoId || line.commodityId === 'cmdty_gas_helium3'))) {
+        const qty = Math.max(1, Math.floor((manifest.totalQty || 8) / 2) || 1);
+        manifest.lines = [{ commodityId: cryoId, qty }, ...manifest.lines];
+        let totalQty = 0;
+        for (const line of manifest.lines) totalQty += Math.max(0, line && line.qty || 0);
+        manifest.totalQty = totalQty;
+      }
+    }
     if (ent) {
       if (!ent.data) ent.data = {};
       ent.data.cargoManifest = manifest;

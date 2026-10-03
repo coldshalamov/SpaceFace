@@ -1,7 +1,8 @@
 import { createActionService } from './actions.js';
-import { createAttachmentService } from './attachments.js';
+import { attachmentBindsOccupant, createAttachmentService } from './attachments.js';
 import { createDamageRouter } from './damage.js';
 import { createCombatCatalog, ensureCombatant, ensureCombatState, entityKey, removeCombatantRuntime, resolveCombatProfile, syncCombatantBounds } from './runtime.js';
+import { occupantGenerationOf } from '../core/entity.js';
 import { createStatusService } from './statuses.js';
 import { applyMomentumSink } from './momentumSink.js';
 import { MOMENTUM_SINK_STATUS_ID } from '../data/combatDefs.js';
@@ -362,14 +363,18 @@ export function createCombatKernel(ctx, options = {}) {
     const entityId = payload && payload.id;
     if (entityId == null) return;
     if (payload && payload.reason === 'save_restore') return;
-    // entity:destroyed is queue-flushed after removal and ids recycle immediately: if a new
-    // occupant already holds the id, this receipt is stale — breakOrphans owns the dead side,
-    // and breaking here would sever the new entity's lines and wipe its combat runtime.
+    // entity:destroyed is queue-flushed after removal and ids recycle immediately: when a new
+    // occupant already holds the id the receipt is stale *for the id*, but the dead body's own
+    // lines still have to break — an early return would leave them welded to the replacement.
+    // Generation stamps separate records bound to the corpse from lines the replacement
+    // legitimately created after taking the id; only the runtime wipe stays skipped.
     const occupant = state.entities && typeof state.entities.get === 'function'
       ? state.entities.get(entityId) : null;
-    if (payload && payload.entity && occupant && occupant !== payload.entity) return;
+    const identityTaken = !!(payload && payload.entity && occupant && occupant !== payload.entity);
+    const deadGeneration = payload && payload.entity ? occupantGenerationOf(payload.entity) : null;
     const brokenIds = new Set();
     for (const attachment of attachments.listForEntity(entityId, true)) {
+      if (identityTaken && !attachmentBindsOccupant(attachment, entityId, deadGeneration)) continue;
       attachments.breakAttachment(attachment, 'entity_destroyed', entityId);
       brokenIds.add(attachment.id);
     }
@@ -378,9 +383,13 @@ export function createCombatKernel(ctx, options = {}) {
     if (typeof attachments.listControlledBy === 'function') {
       for (const attachment of attachments.listControlledBy(entityId, true)) {
         if (brokenIds.has(attachment.id)) continue;
+        if (identityTaken && !attachmentBindsOccupant(attachment, entityId, deadGeneration)) continue;
         attachments.breakAttachment(attachment, 'entity_destroyed', entityId);
       }
     }
+    // The replacement owns this id's combat runtime and trace slot now — they were never the
+    // dead occupant's to wipe.
+    if (identityTaken) return;
     removeCombatantRuntime(state, entityId);
     appendCombatTrace(state.combat, state.tick, 'combat.entityRemoved', { targetId: entityId });
   }

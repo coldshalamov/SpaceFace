@@ -14,7 +14,7 @@ import { Masks } from '../core/entity.js';
 import { FIELD_COUPLING } from '../data/fields.js';
 import {
   integrateBombDrift, sweptBombContact, compareBombEntityIds, bombSurfaceFalloff,
-  bombRadialDirection, bombFieldEnvelope, fillBombViscosityImpulse,
+  bombRadialDirection, bombFieldEnvelope, fillBombViscosityImpulse, bombInteractionState,
 } from '../combat/bombDynamics.js';
 import { bumpCollidesFlipEpoch, indexedTypeScan, entityIndexLaneVersion } from '../world/livingWorldViews.js';
 
@@ -496,6 +496,28 @@ export function redirectLiveBomb(bomb, impulse, contributorId, tick = 0) {
     detonateAt,
     phase,
   };
+}
+
+/**
+ * Target metadata for the live arming/expiry state. `available` is the interaction
+ * a panel may offer; a spent remnant is not that offer. Fuze and field clocks are
+ * not read or written here.
+ */
+export function syncBombTargetInteraction(bomb) {
+  if (!bomb || bomb.type !== BOMB_TYPE || !bomb.data) return null;
+  const described = bombInteractionState(bomb);
+  if (!described) {
+    bomb.data.interaction = null;
+    return null;
+  }
+  const available = described.interactable === true ? described.state : null;
+  bomb.data.lockable = described.lockable === true;
+  bomb.data.interaction = {
+    state: described.state,
+    available,
+    label: described.label,
+  };
+  return bomb.data.interaction;
 }
 
 /** A destroyed casing is not a lock or a selected target. Dissipating effects are left alone. */
@@ -992,6 +1014,7 @@ export const bombs = {
       }
       this.bus.emit('bombs:stockChanged', { payloadId, loaded: cell.count, delta: -1 });
     }
+    syncBombTargetInteraction(bomb);
     this.bus.emit('bombs:dropped', { bombId: bomb.id, payloadId, ownerId: owner.id, pos, vel: { x: vx, z: vz }, radius: def.radius });
     this.bus.emit('audio:cue', { id: 'massline.bombDrop', position: pos, gain: 0.5 });
     return bomb;
@@ -1046,6 +1069,7 @@ export const bombs = {
       adaptBombProjectileProxy(bomb);
       if (d.phase === 'field') {
         if (now >= d.fieldEndsAt) this._endField(bomb, state, 'expired');
+        syncBombTargetInteraction(bomb);
         continue;
       }
       if (!d.armed && now >= d.armedAt) {
@@ -1058,6 +1082,7 @@ export const bombs = {
         } else if (now >= d.detonateAt - BOMB_DRIFT.warningS) this._prime(bomb, 'fuze', now);
       }
       if (d.phase === 'warning' && now + 1e-9 >= d.resolveAt) this._detonate(bomb, d, state, d.trigger);
+      syncBombTargetInteraction(bomb);
     }
     // Resolve ALL lifecycle transitions before fields sample one another. New fields get no
     // retroactive force for time before opening; expired ones contribute no final ghost impulse.
@@ -1103,6 +1128,7 @@ export const bombs = {
       d.nextFieldTick = state.tick + def.field.tickEveryTicks;
     } else { d.phase = 'spent'; d.retired = true; bomb.alive = false; }
     this._emitDetonated(bomb, d, def, state, pos, trigger, result);
+    syncBombTargetInteraction(bomb);
     return true;
   },
   _emitDetonated(bomb, d, def, state, pos, trigger, result) {
@@ -1266,6 +1292,7 @@ export const bombs = {
       schemaVersion: 2, bombId: bomb.id, payloadId: def.id, ownerId: d.ownerId, pos,
       trigger: reason === 'expired' && def.field?.kind === 'singularity' ? 'collapse' : reason,
     });
+    syncBombTargetInteraction(bomb);
   },
   _applyImpulse(ent, x, z, state, reason) {
     const physics = this.helpers?.combatPhysics;
@@ -1313,9 +1340,8 @@ export const bombs = {
       d.phase = 'spent';
     }
     adaptBombProjectileProxy(bomb);
-    d.lockable = false;
-    d.interaction = null;
     clearDestroyedBombLocks(state, bomb);
+    syncBombTargetInteraction(bomb);
     this.bus?.emit('bombs:destroyed', {
       bombId, payloadId, ownerId, shotBy, pos, reason, trigger: reason,
     });
@@ -1331,6 +1357,7 @@ export const bombs = {
       if (e.data?.phase === 'field') this._endField(e, this.state, reason);
       e.alive = false;
       if (e.data) { e.data.phase = 'spent'; e.data.retired = true; }
+      syncBombTargetInteraction(e);
       count++;
     }
     this._ownerCooldowns?.clear();

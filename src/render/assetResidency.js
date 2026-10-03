@@ -6,6 +6,8 @@
 
 import {
   createResourceGovernor,
+  GOVERNOR_PINNED_ROLES,
+  GOVERNOR_RESIDENCY_BYTE_CEILING,
   governorEntryBlockReasons,
   isGovernorEntryEvictable,
   isGovernorOwnerEvictable,
@@ -23,6 +25,7 @@ const MAX_EVENT_HISTORY = 512;
 // soft working set can never ride unbounded between sweeps. Matches the 64 MiB residual budget in
 // test/asset-residency-refcounts.test.mjs.
 const DEFAULT_PACKAGE_CACHE_ONLY_MAX_BYTES = 64 * 1024 * 1024;
+const VISIBILITY_OFF_GLASS_PRESENTS = 8;
 
 export function protectSharedGpuResource(resource) {
   if (!resource || typeof resource !== 'object') return resource;
@@ -82,18 +85,20 @@ export function createAssetResidencyRegistry(options = {}) {
   let diagnosticsEpoch = 0;
   let canonicalDiagnosticsCache = null;
   let canonicalDiagnosticsEpoch = -1;
-  // `null` disables each inline soft cap (decode adapters/tests that want explicit sweep control
-  // can pass `maxPackageCacheOnlyBytes: null` / `maxSoftResidentBytes: null`).
+  // An omitted cap keeps the 64 MiB package-cache default. An explicit null is not
+  // "uncapped" — it resolves to the governor residency ceiling so eviction cannot run unbounded.
   const packageCacheOnlyMaxBytes = options.maxPackageCacheOnlyBytes === null
-    ? null
+    ? GOVERNOR_RESIDENCY_BYTE_CEILING
     : (Number.isFinite(Number(options.maxPackageCacheOnlyBytes))
       ? Math.max(0, Number(options.maxPackageCacheOnlyBytes))
       : DEFAULT_PACKAGE_CACHE_ONLY_MAX_BYTES);
   const softResidentMaxBytes = options.maxSoftResidentBytes === null
-    ? null
+    ? GOVERNOR_RESIDENCY_BYTE_CEILING
     : (Number.isFinite(Number(options.maxSoftResidentBytes))
       ? Math.max(0, Number(options.maxSoftResidentBytes))
       : DEFAULT_PACKAGE_CACHE_ONLY_MAX_BYTES);
+  const visibilityHolds = new Map();
+  let visibilityPresent = 0;
   // >0 while a sweep/budget pass is already walking the registry; release paths inside it must not
   // re-enter the inline cap or every per-owner release would rescan the whole asset table.
   let packageCacheBudgetDepth = 0;
@@ -585,13 +590,100 @@ export function createAssetResidencyRegistry(options = {}) {
     }
   }
 
+  function visibilityHeld(entry) {
+    const row = entry && visibilityHolds.get(entry.key);
+    return !!(row && row.held);
+  }
+
+  function visibilityKeysForOwners(ownerList) {
+    const keys = [];
+    const seen = new Set();
+    const list = ownerList || [];
+    for (let i = 0; i < list.length; i++) {
+      const state = owners.get(list[i]);
+      if (!state || state.released) continue;
+      for (const entry of state.assets) {
+        if (!entry || seen.has(entry.key)) continue;
+        seen.add(entry.key);
+        keys.push(entry.key);
+      }
+    }
+    return keys;
+  }
+
+  function entryHasPinnedRole(entry) {
+    if (!entry) return false;
+    for (const metadata of entry.owners.values()) {
+      const role = String(metadata && metadata.role || '').trim().toLowerCase();
+      if (GOVERNOR_PINNED_ROLES.has(role)) return true;
+    }
+    return false;
+  }
+
+  function beginVisibilityPresent() {
+    visibilityPresent += 1;
+    return visibilityPresent;
+  }
+
+  // On-glass pins immediately. Off-glass holds for 8 presents, then the pin drops.
+  // The key is the asset registry key the glass owner already retains
+  // (`render-package:<hash>` or `url::slot`), never an entity id.
+  function noteVisibility(key, visible) {
+    if (key == null) return false;
+    const id = String(key);
+    let row = visibilityHolds.get(id);
+    if (!row) {
+      row = { held: false, offGlass: 0, present: -1 };
+      visibilityHolds.set(id, row);
+    }
+    const seenThisPresent = row.present === visibilityPresent;
+    row.present = visibilityPresent;
+    if (visible) {
+      row.held = true;
+      row.offGlass = 0;
+    } else if (!seenThisPresent && row.held) {
+      row.offGlass += 1;
+      if (row.offGlass >= VISIBILITY_OFF_GLASS_PRESENTS) row.held = false;
+    }
+    return row.held;
+  }
+
+  // Pin every asset key this glass owner already retains. Eviction looks up
+  // entry.key, so the pin has to be that same key.
+  function noteOwnerVisibility(owner, visible) {
+    if (owner == null) return false;
+    const state = owners.get(owner);
+    if (!state || state.released || state.assets.size === 0) return false;
+    let held = false;
+    for (const entry of state.assets) {
+      if (noteVisibility(entry.key, visible)) held = true;
+    }
+    return held;
+  }
+
+  function advanceVisibilityHysteresis() {
+    for (const [key, row] of visibilityHolds) {
+      if (row.present === visibilityPresent) continue;
+      if (!row.held) {
+        visibilityHolds.delete(key);
+        continue;
+      }
+      row.offGlass += 1;
+      if (row.offGlass >= VISIBILITY_OFF_GLASS_PRESENTS) {
+        row.held = false;
+        visibilityHolds.delete(key);
+      }
+    }
+  }
+
   function evictOldestSoftEntries(candidates, maxBytes, totalBytes, matches) {
-    if (maxBytes == null) return 0;
+    const ceiling = maxBytes == null ? GOVERNOR_RESIDENCY_BYTE_CEILING : maxBytes;
     sortSoftEvictionCandidates(candidates);
     let evicted = 0;
     for (const entry of candidates) {
-      if (totalBytes <= maxBytes) break;
+      if (totalBytes <= ceiling) break;
       if (!assets.has(entry.key) || !matches(entry) || hasActiveRequestForEntry(entry)) continue;
+      if (visibilityHeld(entry) || entryHasPinnedRole(entry)) continue;
       const entryBytes = assetResidentBytes(entry);
       for (const owner of [...entry.owners.keys()]) {
         release(entry.key, owner, 'soft-residency-budget');
@@ -695,6 +787,7 @@ export function createAssetResidencyRegistry(options = {}) {
           const ownerRecords = [...entry.owners.entries()];
           if (ownerRecords.length === 0
               || !ownerRecords.every(([, metadata]) => isSoftResidencyOwner(metadata))) continue;
+          if (visibilityHeld(entry) || entryHasPinnedRole(entry)) continue;
           const entryBytes = assetResidentBytes(entry);
           for (const [owner] of ownerRecords) {
             if (release(entry.key, owner, reason)) releasedOwners++;
@@ -855,11 +948,23 @@ export function createAssetResidencyRegistry(options = {}) {
     return true;
   }
 
-  function handleContextRestored() {
-    if (!contextLost) return false;
+  function handleContextRestored(options = {}) {
+    const roster = options && Array.isArray(options.roster) ? options.roster : null;
+    const sectorId = options && options.sectorId != null ? String(options.sectorId) : null;
+    const repin = () => {
+      if (sectorId) currentSectorId = sectorId;
+      if (!roster) return;
+      beginVisibilityPresent();
+      for (let i = 0; i < roster.length; i++) noteVisibility(roster[i], true);
+    };
+    if (!contextLost) {
+      repin();
+      return false;
+    }
     contextLost = false;
     contextGeneration++;
-    emit('context-restored', { contextGeneration });
+    repin();
+    emit('context-restored', { contextGeneration, sectorId });
     return true;
   }
 
@@ -1103,6 +1208,7 @@ export function createAssetResidencyRegistry(options = {}) {
         }
       }
       if (!everyOwnerEvictable) continue;
+      if (visibilityHeld(entry)) continue;
       for (const owner of [...entry.owners.keys()]) release(entry.key, owner, 'governor-budget');
       evictIfUnowned(entry, 'governor-budget');
       if (!assets.has(String(key))) evicted.push(key);
@@ -1155,6 +1261,11 @@ export function createAssetResidencyRegistry(options = {}) {
     setEvictionCorridor,
     handleContextLost,
     handleContextRestored,
+    beginVisibilityPresent,
+    noteVisibility,
+    noteOwnerVisibility,
+    visibilityKeysForOwners,
+    advanceVisibilityHysteresis,
     // Cache-held entries (decoded package templates, warm-sector holds) are not reachable from
     // the live scene, so the context-loss detach pass cannot find them there. Hand the registry's
     // tracked resources to that pass directly: without it, a post-restore eviction dispatches the

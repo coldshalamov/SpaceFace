@@ -331,7 +331,32 @@ import {
   observePipelineAdmission,
   recordOpeningCookStep,
 } from './pipelineReadiness.js';
-import { FIRST_FLIGHT_PIPELINE_HOLD_S, shouldDeferPipelineAutoFlush } from './pipelineAutoFlushPolicy.js';
+import {
+  FIRST_FLIGHT_PIPELINE_HOLD_S,
+  CRUCIBLE_POLE_SPECIMEN_CAP,
+  attributePoseJump,
+  beltTailDecodeConcurrency,
+  buildArrivalRoster,
+  consumePresentInputEdge,
+  createAmbientAdmissionYield,
+  createHitchRing,
+  cruciblePoleSpecimenKey,
+  cruciblePoleVariants,
+  livingMachineScore,
+  livingMachineStaysInMotion,
+  noteArrivalRosterMiss,
+  noteHitchRing,
+  POSE_JUMP_WU,
+  presentPublicationsForFrameDebt,
+  publishGeometryPending,
+  redundantDirectSpecimen,
+  shouldDeferPipelineAutoFlush,
+} from './pipelineAutoFlushPolicy.js';
+import { resolveDecodeTaskBudgetLimit } from './decodeTaskBudget.js';
+import {
+  GOVERNOR_CPU_RESIDENCY_BYTE_CEILING,
+  GOVERNOR_RESIDENCY_BYTE_CEILING,
+} from './resourceGovernor.js';
 import { shouldAwaitOpeningGpuCook } from './renderCapabilityProfile.js';
 import {
   collectUnresidentInstancedDrawables,
@@ -2800,10 +2825,9 @@ function kickDecodeRunwayAssets(owner, entities) {
         entity, envPlayer, state, TABLE_DECODE_RUNWAY_SECONDS, decodePad)
     : null;
   // Prefer planned wave hulls so spawn-cohort decode finishes before a rim pop, then
-  // the earliest glass deadline: the plan decode lane is serial, so the hull closest
-  // to contact always claims it first. Only the first two in that order can ever
-  // start, so a single linear pass keeps the two best instead of fully sorting the
-  // whole list (the comparator used to re-evaluate both keys on every pair).
+  // the earliest glass deadline. Starts are capped by the shared decode budget
+  // (floor 2) so a busy host can decode several belt-tail GLBs at once without
+  // outrunning the present thread. A single linear pass keeps that prefix.
   const resolvedFiles = new Map();
   const ordered = pickDecodeRunwayCandidates(list, (entity, key) => {
     if (!entity || entity.alive === false) return false;
@@ -2852,7 +2876,11 @@ function kickDecodeRunwayAssets(owner, entities) {
   const kickBoundaryUpgrade = (entity, wave) => kickAuthoredBoundaryUpgrade(owner, entity,
     wave ? 'wave-hull-decode-runway' : 'decode-runway-prepare');
   let started = 0;
-  for (let i = 0; i < ordered.length && started < 2; i++) {
+  const decodeCores = typeof navigator !== 'undefined' && Number.isFinite(navigator.hardwareConcurrency)
+    ? navigator.hardwareConcurrency
+    : 4;
+  const decodeCap = beltTailDecodeConcurrency(decodeCores, resolveDecodeTaskBudgetLimit(decodeCores));
+  for (let i = 0; i < ordered.length && started < decodeCap; i++) {
     const entity = ordered[i];
     if (entity.type === 'ship') {
       pending.add(entity.id);
@@ -2889,7 +2917,7 @@ function kickDecodeRunwayAssets(owner, entities) {
       // of the file dedupe covers picks whose decode is already in flight.
       kickBoundaryUpgrade(entity, entityMatchesWaveHullRunway(entity, state));
       // A file already in flight decodes for the whole same-file cohort — claiming a start
-      // slot for it would burn one of the two per-poll slots on a no-op.
+      // slot for it would burn one of this poll's budgeted slots on a no-op.
       if (!fkey || (inFlight && inFlight.has(fkey))) continue;
       pending.add(entity.id);
       started += 1;
@@ -7653,7 +7681,35 @@ export const render = {
             // the full-quality background graph and let THREE re-upload it like every other root.
             this._invalidatePostOptionsCache();
             this._syncPostOptions(true);
-            if (this._assetResidency) this._assetResidency.handleContextRestored();
+            if (this._assetResidency) {
+              const rosterKeys = [];
+              const seenKeys = new Set();
+              const ids = this._arrivalRosterIds;
+              const meshes = this._meshes;
+              const entities = state.entities;
+              const listKeys = typeof this._assetResidency.visibilityKeysForOwners === 'function'
+                ? this._assetResidency.visibilityKeysForOwners.bind(this._assetResidency)
+                : null;
+              if (ids && listKeys) {
+                for (const id of ids) {
+                  const owners = [];
+                  const mesh = meshes && typeof meshes.get === 'function' ? meshes.get(id) : null;
+                  if (mesh) owners.push(mesh);
+                  const entity = entities && typeof entities.get === 'function' ? entities.get(id) : null;
+                  if (entity && entity !== mesh) owners.push(entity);
+                  const keys = listKeys(owners);
+                  for (let i = 0; i < keys.length; i++) {
+                    if (seenKeys.has(keys[i])) continue;
+                    seenKeys.add(keys[i]);
+                    rosterKeys.push(keys[i]);
+                  }
+                }
+              }
+              this._assetResidency.handleContextRestored({
+                roster: rosterKeys,
+                sectorId: state.world && state.world.currentSectorId,
+              });
+            }
             // Refill detached render-package CPU payloads BEFORE any restored-context render
             // (env bake, link-force warm pass, residency re-upload) can re-upload them empty.
             // Re-fetch is a force-cache disk hit on the content-hash-immutable render.glb; the
@@ -7773,7 +7829,10 @@ export const render = {
     // count 8→9 mid-flight and relinked every lit material inside bloomScene (~10.7 s brick).
     // Mount now — before the opening compile — so every program is keyed on the settled count.
     if (!this._overheadCues) this._overheadCues = createFlightOverheadPresentation(this.scene);
-    this._assetResidency = getAssetResidency(renderer);
+    this._assetResidency = getAssetResidency(renderer, {
+      maxGpuBytes: GOVERNOR_RESIDENCY_BYTE_CEILING,
+      maxCpuBytes: GOVERNOR_CPU_RESIDENCY_BYTE_CEILING,
+    });
     if (this._assetResidency) {
       const initialSectorId = state.world && state.world.currentSectorId;
       if (initialSectorId) this._assetResidency.rotateSector(initialSectorId);
@@ -9187,7 +9246,7 @@ export const render = {
       // The deadline burst pays ONE merged residency pass: a single work list
       // and chain link instead of N serialized per-root uploads.
       prepareBatch: (roots, options) => state.render.prepareAuthoredGpuResidency(roots, options),
-      yieldToMain: yieldToNextPresent,
+      yieldToMain: createAmbientAdmissionYield(yieldToNextPresent),
       // Urgency must match the on-glass pending gauge below: same live camera
       // focus origin, same glass extents, same root position. A root that reads
       // pending-on-glass but fails this lane's test would serialize through the
@@ -11409,7 +11468,10 @@ export const render = {
           if (!entity || entity.type !== 'asteroid' || fieldIds.has(entity.id)) continue;
           countRock(entity);
         }
-        reserveAsteroidInstanceCapacity(this._asteroidInstancePool, requiredByVariant);
+        reserveAsteroidInstanceCapacity(this._asteroidInstancePool, requiredByVariant, {
+          rosterCount: requiredByVariant.reduce((sum, count) => sum + count, 0),
+          byteCeiling: GOVERNOR_RESIDENCY_BYTE_CEILING,
+        });
       }
       for (const root of firstFlightBufferRoots) {
         if (!root) continue;
@@ -13174,6 +13236,7 @@ export const render = {
       if (state.mode === 'loading' && sector) this._pendingPostOpeningSector = sector;
       if (state.mode !== 'loading' && continuous !== true && exactSectorId) {
         state.render.sectorShellAdmission = true;
+        this._publishArrivalRoster(exactSectorId);
       }
       const pipelinePrecompile = state.mode === 'loading'
         ? Promise.resolve({
@@ -14633,8 +14696,38 @@ export const render = {
     // (geometry, material) dedupe IS global — records sharing cached materials produce the
     // same subject, and uniqueAdmissionUnits would only collapse them later anyway.
     const seenWarmPairs = new Set();
+    const seenPoleKeys = new Set();
+    const poleBudget = { used: 0 };
+    const mountCruciblePoleSpecimens = (target, geometry, material) => {
+      if (!target || !geometry || !material || poleBudget.used >= CRUCIBLE_POLE_SPECIMEN_CAP) return;
+      if (typeof material.clone !== 'function') return;
+      const poles = cruciblePoleVariants(material);
+      for (let i = 0; i < poles.length; i++) {
+        if (poleBudget.used >= CRUCIBLE_POLE_SPECIMEN_CAP) break;
+        const pole = poles[i];
+        const poleKey = cruciblePoleSpecimenKey(material, pole);
+        if (seenPoleKeys.has(poleKey)) continue;
+        seenPoleKeys.add(poleKey);
+        const specimen = material.clone();
+        specimen.side = pole.side;
+        specimen.clearcoat = pole.clearcoat;
+        specimen.alphaTest = pole.alphaTest;
+        const poleMesh = new THREE.InstancedMesh(geometry, specimen, 1);
+        poleMesh.count = 0;
+        poleMesh.visible = true;
+        poleMesh.frustumCulled = false;
+        poleMesh.castShadow = true;
+        poleMesh.name = `SF_CrucibleWarm_Pole_${pole.tag}`;
+        target.add(poleMesh);
+        poleBudget.used += 1;
+      }
+    };
     const normalizeFile = (url) => String(url || '')
       .replace(/\\/g, '/').split(/[?#]/, 1)[0].replace(/^.*\/parts\//, '');
+    // The player's hull still draws as its own mesh. A plain opaque material is
+    // otherwise warmed only as an instanced chunk, which is the enemy path.
+    const playerSpec = state ? cruciblePlayerShipExemplarSpec(state) : null;
+    const playerHullFiles = playerSpec ? warmHullFilesForSpecs([playerSpec]) : new Set();
     const packageInstances = [];
     let instantiated = 0;
     let paletteSubjects = 0;
@@ -14655,6 +14748,7 @@ export const render = {
       const parts = String(cacheKey || '').split('::');
       const url = parts[0];
       const slot = parts[1];
+      const playerHullFile = playerHullFiles.has(normalizeFile(url));
       // Wave-1-scoped launch (see catalogHullFiles above): skip catalog hull records nobody can
       // field yet — non-catalog hulls and every kept file still instantiate normally. An empty
       // keep set means selection resolution failed (or no cohort exists); fall back to the
@@ -14733,15 +14827,21 @@ export const render = {
                 const key = `${subject.geometry.uuid}:${subject.material.uuid}`;
                 if (seenWarmPairs.has(key)) continue;
                 seenWarmPairs.add(key);
-                const direct = new THREE.Mesh(subject.geometry, subject.material);
-                direct.visible = true;
-                direct.frustumCulled = false;
-                // castShadow on both forms: the scene-wide depth pass only compiles casters,
-                // and a live hull mesh draws this palette share's depth variant as a caster.
-                // Without it the share's color warms but its depth links in-flight.
-                direct.castShadow = true;
-                direct.name = 'SF_CrucibleWarm_PaletteMesh';
-                holder.add(direct);
+                // A plain opaque enemy family draws through the instanced chunk. Warming a
+                // direct mesh of that material links a second program the glass never shows.
+                // The player's own hull file still draws direct, so it keeps the specimen.
+                // Transparent, hooked, and player-stamped materials keep it too.
+                if (playerHullFile || !redundantDirectSpecimen(subject.material)) {
+                  const direct = new THREE.Mesh(subject.geometry, subject.material);
+                  direct.visible = true;
+                  direct.frustumCulled = false;
+                  // castShadow on both forms: the scene-wide depth pass only compiles casters,
+                  // and a live hull mesh draws this palette share's depth variant as a caster.
+                  // Without it the share's color warms but its depth links in-flight.
+                  direct.castShadow = true;
+                  direct.name = 'SF_CrucibleWarm_PaletteMesh';
+                  holder.add(direct);
+                }
                 const twin = new THREE.InstancedMesh(subject.geometry, subject.material, 1);
                 twin.count = 0;
                 twin.visible = true;
@@ -14749,6 +14849,10 @@ export const render = {
                 twin.castShadow = true;
                 twin.name = 'SF_CrucibleWarm_PaletteTwin';
                 holder.add(twin);
+                if (warm.profile === 'crucible' && warm.swarmScoped === true
+                    && launchHullKeepSet && launchHullKeepSet.has(normalizeFile(url))) {
+                  mountCruciblePoleSpecimens(holder, subject.geometry, subject.material);
+                }
                 paletteSubjects += 1;
               }
             }
@@ -15006,6 +15110,8 @@ export const render = {
     if (rosterFilePalettes.size === 0) return;
     const normalizeFile = (url) => String(url || '')
       .replace(/\\/g, '/').split(/[?#]/, 1)[0].replace(/^.*\/parts\//, '');
+    const playerSpec = state ? cruciblePlayerShipExemplarSpec(state) : null;
+    const playerHullFiles = playerSpec ? warmHullFilesForSpecs([playerSpec]) : new Set();
     const seenPairs = new Set();
     let minted = 0;
     for (const { cacheKey, record } of records) {
@@ -15025,14 +15131,19 @@ export const render = {
           const key = `${subject.geometry.uuid}:${subject.material.uuid}`;
           if (seenPairs.has(key)) continue;
           seenPairs.add(key);
-          const direct = new THREE.Mesh(subject.geometry, subject.material);
-          direct.visible = true;
-          direct.frustumCulled = false;
-          // Caster flags on both forms: the shadow pass only compiles casters — a live hull
-          // draws this palette share's depth variant as a caster.
-          direct.castShadow = true;
-          direct.name = 'SF_DeferredWarm_PaletteMesh';
-          root.add(direct);
+          const playerHullFile = playerHullFiles.has(normalizeFile(parts[0]));
+          // Later waves are enemy hulls. A plain opaque family is already drawn instanced,
+          // so the extra direct mesh is the program row 31 refused. The player's file keeps it.
+          if (playerHullFile || !redundantDirectSpecimen(subject.material)) {
+            const direct = new THREE.Mesh(subject.geometry, subject.material);
+            direct.visible = true;
+            direct.frustumCulled = false;
+            // Caster flags on both forms: the shadow pass only compiles casters — a live hull
+            // draws this palette share's depth variant as a caster.
+            direct.castShadow = true;
+            direct.name = 'SF_DeferredWarm_PaletteMesh';
+            root.add(direct);
+          }
           const twin = new THREE.InstancedMesh(subject.geometry, subject.material, 1);
           twin.count = 0;
           twin.visible = true;
@@ -15344,12 +15455,144 @@ export const render = {
     }
   },
 
+  _notePicturePresent(presentationFrame) {
+    const renderState = this.state && this.state.render;
+    if (!renderState) return;
+    const present = (renderState.presentCount | 0) + 1;
+    renderState.presentCount = present;
+    renderState.presentPublications = presentPublicationsForFrameDebt(
+      presentationFrame && presentationFrame.frameDebt,
+    );
+    if (!this._hitchRing) this._hitchRing = createHitchRing();
+    noteHitchRing(this._hitchRing, present, Number(renderState.lastPresentDtMs));
+    renderState.hitchRing = this._hitchRing;
+    this._notePresentInputEdges(renderState, present);
+  },
+
+  _notePresentInputEdges(renderState, present) {
+    const actions = this.state && this.state.input && this.state.input.actions;
+    if (!actions) {
+      renderState.presentInputEdges = 0;
+      return;
+    }
+    const latch = this._presentInputLatch || (this._presentInputLatch = Object.create(null));
+    let edges = 0;
+    let seen = 0;
+    for (const action in actions) {
+      if (seen >= 32) break;
+      seen += 1;
+      const value = actions[action];
+      const down = value === true || !!(value && value.down === true);
+      if (consumePresentInputEdge(latch, action, down, present)) edges += 1;
+    }
+    renderState.presentInputEdges = edges;
+  },
+
+  _publishArrivalRoster(exactSectorId) {
+    const state = this.state;
+    if (!state || state.mode !== 'flight' || !exactSectorId) return null;
+    const entities = Array.isArray(state.entityList) ? state.entityList : [];
+    const roster = buildArrivalRoster(entities, {
+      sectorId: exactSectorId,
+      seed: state.seed,
+      byteCeiling: GOVERNOR_RESIDENCY_BYTE_CEILING,
+      presentOrigin: (state.render && state.render.presentCount) || 0,
+    });
+    const programKeys = roster.programKeys.slice();
+    const seen = new Set(programKeys);
+    const meshes = this._meshes;
+    let censused = 0;
+    if (meshes && typeof meshes.get === 'function') {
+      for (let i = 0; i < roster.ids.length && censused < 24; i++) {
+        const mesh = meshes.get(roster.ids[i]);
+        if (!mesh) continue;
+        try {
+          const census = createOpeningProducerCensus(mesh, { includeOffscreen: true });
+          const keys = census && census.programKeys;
+          if (!keys) continue;
+          for (let k = 0; k < keys.length; k++) {
+            const entry = keys[k];
+            if (!entry || !entry.key || seen.has(entry.key)) continue;
+            seen.add(entry.key);
+            programKeys.push(entry.key);
+          }
+          censused += 1;
+        } catch (_) { /* a root without leaves keeps its type key */ }
+      }
+    }
+    this._arrivalRosterIds = new Set(roster.ids);
+    this._arrivalRosterPresentOrigin = roster.presentOrigin;
+    if (state.render) {
+      state.render.arrivalRoster = {
+        sectorId: roster.sectorId,
+        seed: roster.seed,
+        count: roster.count,
+        ids: roster.idSample,
+        programKeys,
+        presentOrigin: roster.presentOrigin,
+      };
+      if (!Number.isFinite(Number(state.render.arrivalRosterMiss))) state.render.arrivalRosterMiss = 0;
+    }
+    this._reserveArrivalAsteroidCapacity(entities);
+    return roster;
+  },
+
+  _reserveArrivalAsteroidCapacity(entities) {
+    const pool = this._asteroidInstancePool;
+    if (!pool) return;
+    const requiredByVariant = [0, 0, 0, 0, 0];
+    const field = this.state && this.state.world && this.state.world.asteroidField;
+    const fieldRecords = field && Array.isArray(field.rocks) ? field.rocks : null;
+    const countRock = (rock) => {
+      if (!rock || rock.alive === false) return;
+      const data = rock.data || {};
+      if (data.typeId && data.typeId !== 'ast_common_rock') return;
+      if (data.tint != null) return;
+      let variant = Number(data.variant);
+      if (!Number.isInteger(variant) && typeof asteroidFirstFlightCookKey === 'function') {
+        try {
+          const key = asteroidFirstFlightCookKey(rock);
+          variant = Number(String(key).slice(String(key).lastIndexOf('|') + 1)) | 0;
+        } catch (_) { variant = 0; }
+      }
+      if (!Number.isInteger(variant) || variant < 0 || variant >= requiredByVariant.length) variant = 0;
+      requiredByVariant[variant] += 1;
+    };
+    if (fieldRecords) {
+      for (let i = 0; i < fieldRecords.length; i++) countRock(fieldRecords[i]);
+    }
+    let rosterCount = 0;
+    for (let i = 0; i < entities.length; i++) {
+      const entity = entities[i];
+      if (!entity || entity.type !== 'asteroid' || entity.alive === false) continue;
+      rosterCount += 1;
+      if (!fieldRecords) countRock(entity);
+    }
+    reserveAsteroidInstanceCapacity(pool, requiredByVariant, {
+      rosterCount,
+      byteCeiling: GOVERNOR_RESIDENCY_BYTE_CEILING,
+    });
+  },
+
+  _noteArrivalRosterMiss(entity) {
+    const renderState = this.state && this.state.render;
+    if (!renderState || !entity) return;
+    noteArrivalRosterMiss(
+      renderState,
+      this._arrivalRosterIds,
+      entity.id,
+      renderState.presentCount,
+      this._arrivalRosterPresentOrigin,
+    );
+  },
+
   _publishAssetResidencyDiagnostics() {
     if (!this.state || !this.state.render || !this._assetResidency) return null;
     // The renderer publishes this snapshot at high-frequency lifecycle seams. Keep the bounded
     // forensic ring inside the registry; the player-facing state needs only the canonical summary,
     // avoiding a fresh copy of hundreds of event objects on every mesh reconciliation.
     const diagnostics = this._assetResidency.canonicalDiagnostics();
+    if (this.state.render.assetResidency === diagnostics) return diagnostics;
     this.state.render.assetResidency = diagnostics;
     return diagnostics;
   },
@@ -16486,6 +16729,8 @@ export const render = {
     const snapshot = fence && fence.latestSnapshot();
     const previous = !currentOnly && fence ? fence.previousSnapshot() : null;
     if (!snapshot) return false;
+    const poseBeforeX = mesh.position.x;
+    const poseBeforeZ = mesh.position.z;
     const applied = applySnapshotPoseToMesh(
       mesh,
       snapshot,
@@ -16503,6 +16748,11 @@ export const render = {
         ),
     );
     if (!applied) return false;
+    const poseDx = mesh.position.x - poseBeforeX;
+    const poseDz = mesh.position.z - poseBeforeZ;
+    if (poseDx * poseDx + poseDz * poseDz >= POSE_JUMP_WU * POSE_JUMP_WU && this.state && this.state.render) {
+      this.state.render.poseJump = attributePoseJump({ dx: poseDx, dz: poseDz });
+    }
     const hull = mesh.userData && mesh.userData.hull;
     if (hull && !(snapshot.columns && snapshot.columns.bank && snapshot.columns.pitch)) {
       hull.rotation.x = world.bank[slot];
@@ -16546,6 +16796,16 @@ export const render = {
 
     const world = this._presentationWorld;
     const bounds = this._entityViewCullBounds();
+    const living = this.state && this.state.render
+      ? (this.state.render.livingMachine || (this.state.render.livingMachine = { awake: 0, asleep: 0 }))
+      : null;
+    if (living) {
+      living.awake = 0;
+      living.asleep = 0;
+    }
+    if (this._assetResidency && typeof this._assetResidency.beginVisibilityPresent === 'function') {
+      this._assetResidency.beginVisibilityPresent();
+    }
     this._frameShadowCastRadius = liveShadowCastRadius(this.state);
     // Player frame-local XZ once per pass — _shadowPolicyOptions used to re-resolve and re-run
     // toLocal for every ship/station root.
@@ -16784,6 +17044,7 @@ export const render = {
 
       if (entity && mesh.userData?.geometryPending && this.state.mode === 'flight'
         && Number.isFinite(this.state.render?.firstPlayableFrameAt)) {
+        this._noteArrivalRosterMiss(entity);
         void this._liveGeometryAdmissions?.enqueue(entity, mesh);
       }
       // The sim-side activity frame classifies glass/runway at the requested zoom and a fixed
@@ -16791,6 +17052,35 @@ export const render = {
       // real screen. The presented pose inside the live glass extents wins over the runway deny.
       const glassRadius = Math.max(lodRadius, world.radii[slot] || 0);
       const onLiveGlass = rootOnLiveGlass(bounds, liveViewFrustum, mesh.position, glassRadius);
+      const glassSpan = Math.max(bounds.glassHalfX || 0, bounds.glassHalfZ || 0, 1);
+      let planarSpeed = 0;
+      if (entity) {
+        if (Number.isFinite(entity.speed)) planarSpeed = entity.speed;
+        else if (entity.vel) planarSpeed = Math.hypot(Number(entity.vel.x) || 0, Number(entity.vel.z) || 0);
+      }
+      const machineScore = livingMachineScore({
+        isPlayer,
+        onGlass: onLiveGlass,
+        distanceWu: Math.hypot(
+          (mesh.position ? mesh.position.x : 0) - (bounds.x || 0),
+          (mesh.position ? mesh.position.z : 0) - (bounds.z || 0),
+        ),
+        speedWu: planarSpeed,
+        role: typeName,
+        glassRadiusWu: glassSpan,
+      });
+      userData.livingMachineScore = machineScore;
+      userData.livingMachineAwake = livingMachineStaysInMotion(machineScore);
+      if (living) {
+        if (userData.livingMachineAwake) living.awake += 1;
+        else living.asleep += 1;
+      }
+      // Pin the asset key the glass boundary already retains. An entity id is
+      // not that key, so eviction (which looks up entry.key) would ignore it.
+      if (this._assetResidency && typeof this._assetResidency.noteOwnerVisibility === 'function') {
+        if (mesh) this._assetResidency.noteOwnerVisibility(mesh, onLiveGlass);
+        if (entity && entity !== mesh) this._assetResidency.noteOwnerVisibility(entity, onLiveGlass);
+      }
       // The live-glass deadline only exists once the live screen does: a root
       // pending behind the loading shell is not on glass yet — its clock starts
       // at the first playable frame, same gate the admission lane serves.
@@ -16869,7 +17159,8 @@ export const render = {
       if (isPlayer && entity && this._crucibleGhostPresentation) {
         this._crucibleGhostPresentation.sync(this.state, mesh);
       }
-      if (entity && runClosures && !farSpeck && userData.updateWorldSitePresentation) {
+      if (entity && runClosures && !farSpeck && userData.livingMachineAwake !== false
+          && userData.updateWorldSitePresentation) {
         userData.updateWorldSitePresentation(entity, this.state.simTime, _worldSiteA11y);
       }
       if (entity && runClosures && userData.updateDamageState) {
@@ -16882,31 +17173,38 @@ export const render = {
         }
       }
       if (entity && runClosures && userData.updateDriveState) userData.updateDriveState(entity, simNow);
-      if (entity && runClosures && !farSpeck && userData.updateAuthoredMotion) {
+      if (entity && runClosures && !farSpeck && userData.livingMachineAwake !== false
+          && userData.updateAuthoredMotion) {
         userData.updateAuthoredMotion(entity, authoredNow, _worldSiteA11y);
       }
 
       // A-List dynamic mechanical micro-motion & environmental reactions. Under a zero-scale
       // freeze presFrameDt is exactly 0 — skipping here also skips the spring CPU, and every
       // consumer floors its dt so passing 0 would still creep.
+      // The living-machine score decides decorative motion. The player always scores awake.
+      // A ship or station on the glass stays awake. Off-glass bodies sleep their bob, arms,
+      // and tumble. Shots, pickups, ordnance, and a fresh wreck keep moving: those are readable.
       if (entity && !farSpeck && presFrameDt > 0) {
         const frameDt = presFrameDt;
         const simTime = simNow;
+        const machineAwake = userData.livingMachineAwake !== false;
         if (typeName === 'ship' || typeName === 'drone' || typeName === 'freighter') {
-          _craftMicroMotionOptions.motionReduce = _worldSiteA11y.reducedMotion;
-          _craftMicroMotionOptions.playerMiningActive = !!(this.state && this.state.player && this.state.player.miningBeam && this.state.player.miningBeam.active);
-          _craftMicroMotionOptions.playerId = this.state && this.state.playerId;
-          _craftMicroMotionOptions.playerTargetId = this.state && this.state.player && this.state.player.targetId;
-          _craftMicroMotionOptions.entities = this.state && this.state.entities;
-          const tetherView = this.state && this.state.player && this.state.player.tether;
-          _craftMicroMotionOptions.tetherActive = !!(tetherView && tetherView.active);
-          _craftMicroMotionOptions.tetherTargetId = tetherView ? tetherView.targetId : null;
-          _craftMicroMotionOptions.tetherLoad = tetherView && Number.isFinite(tetherView.load) ? tetherView.load : 0;
-          _craftMicroMotionOptions.tetherPhase = tetherView && tetherView.phase ? tetherView.phase : '';
-          _craftMicroMotionOptions.flashReduce = _worldSiteA11y.reducedFlash;
-          globalShipMicroMotion.updateCraftMicroMotion(entity, mesh, simTime, frameDt, _craftMicroMotionOptions);
-          globalForgeCrown.updateForgeCrown(entity, mesh, simTime, frameDt, _craftMicroMotionOptions);
-          globalLawArenaDressing.updateBossDressing(entity, mesh, simTime, frameDt, _craftMicroMotionOptions);
+          if (machineAwake) {
+            _craftMicroMotionOptions.motionReduce = _worldSiteA11y.reducedMotion;
+            _craftMicroMotionOptions.playerMiningActive = !!(this.state && this.state.player && this.state.player.miningBeam && this.state.player.miningBeam.active);
+            _craftMicroMotionOptions.playerId = this.state && this.state.playerId;
+            _craftMicroMotionOptions.playerTargetId = this.state && this.state.player && this.state.player.targetId;
+            _craftMicroMotionOptions.entities = this.state && this.state.entities;
+            const tetherView = this.state && this.state.player && this.state.player.tether;
+            _craftMicroMotionOptions.tetherActive = !!(tetherView && tetherView.active);
+            _craftMicroMotionOptions.tetherTargetId = tetherView ? tetherView.targetId : null;
+            _craftMicroMotionOptions.tetherLoad = tetherView && Number.isFinite(tetherView.load) ? tetherView.load : 0;
+            _craftMicroMotionOptions.tetherPhase = tetherView && tetherView.phase ? tetherView.phase : '';
+            _craftMicroMotionOptions.flashReduce = _worldSiteA11y.reducedFlash;
+            globalShipMicroMotion.updateCraftMicroMotion(entity, mesh, simTime, frameDt, _craftMicroMotionOptions);
+            globalForgeCrown.updateForgeCrown(entity, mesh, simTime, frameDt, _craftMicroMotionOptions);
+            globalLawArenaDressing.updateBossDressing(entity, mesh, simTime, frameDt, _craftMicroMotionOptions);
+          }
           if (isPlayer && this.scene) {
             slipstreamSeen = true;
             if (!this._overheadCues) this._overheadCues = createFlightOverheadPresentation(this.scene);
@@ -16920,8 +17218,10 @@ export const render = {
         } else if (typeName === 'asteroid') {
           // instancePool lets adopted InstancedMesh leaves dirty the pool when the tumble
           // writes their transforms — otherwise a still camera keeps serving the stale matrix.
-          _worldSiteA11y.instancePool = this._asteroidInstancePool;
-          globalAsteroidMotion.updateAsteroidMotion(entity, mesh, simTime, frameDt, _worldSiteA11y);
+          if (machineAwake) {
+            _worldSiteA11y.instancePool = this._asteroidInstancePool;
+            globalAsteroidMotion.updateAsteroidMotion(entity, mesh, simTime, frameDt, _worldSiteA11y);
+          }
         } else if (typeName === 'pickup') {
           const playerEntity = this.state && this.state.entities && this.state.entities.get(this.state.playerId);
           globalPickupMotion.updatePickupMotion(entity, mesh, simTime, frameDt, playerEntity, _worldSiteA11y);
@@ -16929,7 +17229,7 @@ export const render = {
             || typeName === 'charge' || typeName === 'payload' || typeName === 'beacon') {
           const playerEntity = this.state && this.state.entities && this.state.entities.get(this.state.playerId);
           globalOrdnanceMotion.updateOrdnanceMotion(entity, mesh, simTime, frameDt, playerEntity, _worldSiteA11y);
-        } else if (typeName === 'station') {
+        } else if (typeName === 'station' && machineAwake) {
           const isGate = entity.data && (entity.data.isGate || entity.data.isWormhole);
           const playerEntity = this.state && this.state.entities && this.state.entities.get(this.state.playerId);
           if (isGate) {
@@ -16937,7 +17237,7 @@ export const render = {
           } else {
             globalInfrastructureMotion.updateStationMotion(entity, mesh, simTime, frameDt, playerEntity, _worldSiteA11y);
           }
-        } else if (typeName === 'place') {
+        } else if (typeName === 'place' && machineAwake) {
           // Landmarks/props carry authored ANIM_ parts (beacons, dishes, drills); gates
           // filed as places still get the full gate treatment.
           const isGate = entity.data && (entity.data.isGate || entity.data.isWormhole);
@@ -16983,6 +17283,10 @@ export const render = {
 
     if (!slipstreamSeen) writeSlipstreamState(this.state, false, 0);
 
+    if (this._assetResidency && typeof this._assetResidency.advanceVisibilityHysteresis === 'function') {
+      this._assetResidency.advanceVisibilityHysteresis();
+    }
+
     endRenderEntityFrame(this._entityFrame);
     const diagnostics = this._entityViewDiagnostics;
     diagnostics.totalMeshes = world.boundCount;
@@ -17016,6 +17320,7 @@ export const render = {
       : EMPTY_ON_GLASS_PENDING_IDS;
     const geoQueue = this._liveGeometryAdmissions;
     const geoStats = geoQueue && typeof geoQueue.stats === 'function' ? geoQueue.stats() : null;
+    if (this.state && this.state.render) publishGeometryPending(this.state.render, geoStats);
     diagnostics.liveGeometryQueued = geoStats ? geoStats.queued : 0;
     diagnostics.liveGeometryUrgentQueued = geoStats ? geoStats.urgentQueued : 0;
     diagnostics.liveGeometryDraining = !!(geoStats && geoStats.draining);
@@ -17625,6 +17930,7 @@ export const render = {
   },
 
   prepareFrame(alpha, frameDt, presentationFrame = null) {
+    this._notePicturePresent(presentationFrame);
     this._presentationFrame = presentationFrame;
     this._lastFrameDt = Number.isFinite(frameDt) ? frameDt : 0.016667;
     // World-anchored presentation integrates by the wall frame scaled by the live time-effects
@@ -17937,6 +18243,8 @@ export const render = {
           + (typeof this.state.render.pendingPipelineAdmissions === 'function'
             ? Number(this.state.render.pendingPipelineAdmissions()) || 0
             : 0);
+        // Unsettled admission handles refuse this draw. Nothing already
+        // on screen is removed.
         if (pendingAdmission > 0) {
           const nowMs = typeof performance !== 'undefined' && typeof performance.now === 'function'
             ? performance.now()

@@ -113,7 +113,10 @@ export function resolveTetherTone(input = {}) {
   const raw = playing
     ? (Number.isFinite(tether.load) ? tether.load : Number(tether.strain) || 0)
     : 0;
-  const load = clamp(raw, 0, 1.25);
+  const tow = Number.isFinite(input.towMass) ? input.towMass
+    : Number(tether && (tether.towMass != null ? tether.towMass : tether.towedMass));
+  const towLift = playing && Number.isFinite(tow) && tow > 0 ? clamp(tow / 200, 0.2, 1) : 0;
+  const load = Math.max(clamp(raw, 0, 1.25), towLift);
   const motionScale = input.motionReduce ? TETHER_TONE_MOTION_REDUCE : 1;
   const duck = Number.isFinite(input.duck) ? clamp(input.duck, 0, 1) : 1;
   return Object.freeze({

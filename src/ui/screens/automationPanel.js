@@ -1057,7 +1057,9 @@ export const automationScreen = {
           d.operation && d.operation.limitStage || '', d.operation && d.operation.operatingState || '',
           d.operation?.grossUnits, d.operation?.storedUnits, d.operation?.storedCap,
           d.operation?.lastSale?.credited, d.operation?.lastSale?.quantity,
-          d.operation?.operatingCostPerMin, d.operation?.netThroughputPerMin);
+          d.operation?.operatingCostPerMin, d.operation?.netThroughputPerMin,
+          d.operation?.cycle?.minedUnits, d.operation?.cycle?.fuelUsed,
+          d.operation?.lastCycle?.credited, d.operation?.lastCycle?.netCr);
       }
     } else if (this._tab === 'traders') {
       const hireUnlocked = (player.researchedNodes || []).includes('tech_autonomous_fleets');
@@ -1206,7 +1208,8 @@ export const automationScreen = {
               <div><span class="au-flow-k">Limit</span><strong class="au-operation-status ${escapeHtml(readout.tone)}">${escapeHtml(readout.statusLabel)}</strong></div>
               <div><span class="au-flow-k">Last sale</span><strong>${escapeHtml(readout.lastText)}</strong></div>
             </div>
-            <div class="au-note">Operating cost ${escapeHtml(String(readout.operatingCostPerMin))} cr/min · estimated net ${fmtCr(readout.netThroughputPerMin)}/min. ${escapeHtml(readout.reason)}</div>`
+            <div class="au-note">Operating cost ${escapeHtml(String(readout.operatingCostPerMin))} cr/min · estimated net ${fmtCr(readout.netThroughputPerMin)}/min. ${escapeHtml(readout.reason)}</div>
+            ${readout.cycleText ? `<div class="au-note">${escapeHtml(readout.cycleText)}</div>` : ''}`
           : `<div class="au-note">${escapeHtml(programMeta)}</div>`;
         const stranded = d.status === 'stranded';
         const refuelBtn = stranded

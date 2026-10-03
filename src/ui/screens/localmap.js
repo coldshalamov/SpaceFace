@@ -23,7 +23,7 @@ import { isHostileToPlayer } from '../../systems/scanner.js';
 import { sectorSignalFor, effectiveDangerTierFor } from '../../systems/sectorSim.js';
 import { resolveWaypointPresentationPosition } from '../navigationWaypoint.js';
 import { canvasFont, canvasFonts, invalidateCanvasFonts } from '../canvasFonts.js';
-import { drawGlyph } from '../glyphs.js';
+import { drawGlyph, glyphSvg } from '../glyphs.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../../world/livingWorldViews.js';
 import { objectiveText } from './missionLog.js';
 
@@ -244,6 +244,9 @@ const LOCALMAP_STYLE = `
   padding: var(--sp-1) var(--sp-2); line-height: 1.5;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
+#sf-localmap .lm-legend .lm-mark { width: 14px; height: 14px; vertical-align: -2px; }
+#sf-localmap .lm-legend .lm-mark--foe { color: var(--sf-foe); }
+#sf-localmap .lm-legend .lm-mark--goal { color: var(--sf-goal); }
 #sf-localmap .lm-routes {
   position: absolute; right: var(--sp-3); top: var(--sp-3); width: 230px; max-height: 60%; overflow-y: auto;
   background: var(--dp-field, color-mix(in srgb, var(--sf-surface) 88%, transparent));
@@ -377,6 +380,22 @@ function intel() {
   return _intel;
 }
 
+// Legend marks quote the exact shapes the chart above draws — station = filled berth circle,
+// gate = open diamond, contacts = heading triangles (hue is the only hostile/friendly channel,
+// same as the canvas), asteroid = micro dot, scan ping = the shared dashed unknown glyph. Same
+// 24-grid / 1.6-stroke / currentColor grammar as glyphs.js; static strings, safe for innerHTML.
+function lmMarkSvg(inner, cls = 'lm-mark') {
+  return `<svg class="${cls}" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false">${inner}</svg>`;
+}
+const LM_LEGEND_MARKS = {
+  station: lmMarkSvg('<circle cx="12" cy="12" r="7.5" fill="currentColor"/>'),
+  gate: lmMarkSvg('<path d="M12 4 20 12 12 20 4 12Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>'),
+  hostile: glyphSvg('iff_hostile', 14, 'lm-mark lm-mark--foe'),
+  friendly: glyphSvg('iff_hostile', 14, 'lm-mark'),
+  asteroid: lmMarkSvg('<circle cx="12" cy="12" r="4" fill="currentColor"/>'),
+  ping: glyphSvg('unknown', 14, 'lm-mark lm-mark--goal'),
+};
+
 export const localmapScreen = {
   id: 'localmap',
   _ctx: null,
@@ -428,7 +447,7 @@ export const localmapScreen = {
       '<div class="lm-body sf-stage"><canvas></canvas>' +
       '<div class="lm-objective" id="sf-localmap-objective" hidden></div>' +
       '<div class="lm-legend">' +
-        `◆ STATION · ◇ GATE · ▲ HOSTILE · ▲ FRIENDLY · ● ASTEROID · ? SCAN PING · Zoom: [Scroll Wheel]` +
+        `${LM_LEGEND_MARKS.station} STATION · ${LM_LEGEND_MARKS.gate} GATE · ${LM_LEGEND_MARKS.hostile} HOSTILE · ${LM_LEGEND_MARKS.friendly} FRIENDLY · ${LM_LEGEND_MARKS.asteroid} ASTEROID · ${LM_LEGEND_MARKS.ping} SCAN PING · Zoom: [Scroll Wheel]` +
       '</div>' +
       '<div class="lm-routes sf-apron" id="sf-localmap-routes"><h4>Trade Routes</h4><div class="lm-routes-empty">Scan markets at stations to rank routes</div></div>' +
       '</div>';

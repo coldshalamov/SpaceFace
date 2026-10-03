@@ -146,10 +146,7 @@ export const NAMED_LANE_CONTACTS = Object.freeze([
     sectorIds: Object.freeze(['sector_nyx_march']),
   }),
   // ── The frontier's faces (2026-09-28): every traffic-bearing frontier sector gets one
-  // standing identity, on the same terms the core sectors already had. The four silent rim
-  // sectors (triton_wake, sedna_dark, orcus_shadow, phoebe_echo run trafficPerMin 0 — "hollow"
-  // is their character) stay anonymous on purpose; a named contact in empty dark would be a
-  // lie the traffic count refutes on arrival.
+  // standing identity, on the same terms the core sectors already had.
   Object.freeze({
     // Dione Lane is the south's lawful freight floor: the Exchange's convoys leave only
     // after Dione Customs reads the lane, and the one hull Customs never reads twice is
@@ -245,6 +242,61 @@ export const NAMED_LANE_CONTACTS = Object.freeze([
     gimmick: 'margin-cross',
     ship: 'ship_kestrel',
     sectorIds: Object.freeze(['sector_eris_margin']),
+  }),
+  Object.freeze({
+    id: 'lane_ashfall_cache_voice',
+    name: 'Sile of the Half-Lit Cache',
+    callsign: 'CACHE-VOICE',
+    role: 'courier',
+    gimmick: 'cache-voice',
+    ship: 'ship_kestrel',
+    hail: 'Cache is open. Do not ask what the crate was.',
+    memoryHook: 'ashfall-cache-voice',
+    sectorIds: Object.freeze(['sector_ashfall_reach']),
+  }),
+  Object.freeze({
+    id: 'lane_orcus_shadow_courier',
+    name: 'Isk of the Shadow Reading',
+    callsign: 'SHADOW-READ',
+    role: 'courier',
+    gimmick: 'vael-research-courier',
+    ship: 'ship_kestrel',
+    hail: 'The reading is sealed. The shadow is not a chart.',
+    memoryHook: 'orcus-shadow-reading',
+    sectorIds: Object.freeze(['sector_orcus_shadow']),
+  }),
+  Object.freeze({
+    id: 'lane_phoebe_echo_courier',
+    name: 'Nim of the Broken Song',
+    callsign: 'ECHO-SONG',
+    role: 'courier',
+    gimmick: 'vael-research-courier',
+    ship: 'ship_kestrel',
+    hail: 'Scan if you want the song. I only carry what it left.',
+    memoryHook: 'phoebe-echo-song',
+    sectorIds: Object.freeze(['sector_phoebe_echo']),
+  }),
+  Object.freeze({
+    id: 'lane_triton_wake_courier',
+    name: 'Pell Voss of the Wake',
+    callsign: 'WAKE-RUN',
+    role: 'courier',
+    gimmick: 'vael-research-courier',
+    ship: 'ship_kestrel',
+    hail: 'Wake mail. I do not loiter and I do not point.',
+    memoryHook: 'triton-wake-run',
+    sectorIds: Object.freeze(['sector_triton_wake']),
+  }),
+  Object.freeze({
+    id: 'lane_sedna_dark_tanker',
+    name: 'Hale of the Dry Rim',
+    callsign: 'DRY-RIM',
+    role: 'tanker',
+    gimmick: 'quiet-tanker',
+    ship: 'ship_mule',
+    hail: 'No pump on this post. I am the rumour of fuel, not the hose.',
+    memoryHook: 'sedna-dry-rim',
+    sectorIds: Object.freeze(['sector_sedna_dark']),
   }),
 ]);
 
@@ -408,4 +460,10 @@ export const LANE_GIMMICK_LABELS = Object.freeze({
   license_salvage: 'LICENSE SALVAGE',
   'margin-cross': 'MARGIN CROSS',
   margin_cross: 'MARGIN CROSS',
+  'cache-voice': 'CACHE VOICE',
+  cache_voice: 'CACHE VOICE',
+  'vael-research-courier': 'VAEL COURIER',
+  vael_research_courier: 'VAEL COURIER',
+  'quiet-tanker': 'QUIET TANKER',
+  quiet_tanker: 'QUIET TANKER',
 });

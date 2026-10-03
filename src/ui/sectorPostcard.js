@@ -24,6 +24,7 @@
 import { SECTORS, dangerTier } from '../data/sectors.js';
 import { zonesForSector } from '../data/sectorZones.js';
 import { FACTION_META } from '../data/factions.js';
+import { getSectorWayOfLife } from '../data/sectorWayOfLife.js';
 
 // dangerTier 0..5 → one-word security read (0 = safest). Pure display language.
 export const SECURITY_TIER_LABELS = ['secure', 'patrolled', 'contested', 'dangerous', 'lawless', 'lethal'];
@@ -112,6 +113,7 @@ export function buildPostcard(state, sectorId, ecologyReadout = null) {
   }
   const dominantZone = dominant ? { id: dominant.id, name: dominant.name, type: dominant.type } : null;
 
+  const life = getSectorWayOfLife(sectorId);
   const ecology = ecologyReadout && ecologyReadout.sectorId === sectorId
     && typeof ecologyReadout.familyLabel === 'string' && ecologyReadout.familyLabel.trim()
     ? {
@@ -132,6 +134,8 @@ export function buildPostcard(state, sectorId, ecologyReadout = null) {
     ecology,
     dominantZone,
     rumor,
+    wayOfLife: life && life.sentence ? life.sentence : null,
+    signatureToy: life && life.signatureToy ? life.signatureToy : null,
   };
 }
 
@@ -215,6 +219,10 @@ export const sectorPostcard = {
       el.appendChild(d);
     };
     line(card.name, 'font-size:17px;font-weight:600;letter-spacing:0.06em');
+    line(card.wayOfLife, 'opacity:0.92');
+    if (card.signatureToy && card.signatureToy !== 'explicitly none') {
+      line(card.signatureToy.replace(/_/g, ' '), 'opacity:0.8');
+    }
     line([card.faction, card.securityTier && card.securityTier.toUpperCase()].filter(Boolean).join(' · '));
     if (card.hazards && card.hazards.length) {
       line(card.hazards.map((h) => `${h.glyph} ${h.label}`).join('   '), 'opacity:0.9');

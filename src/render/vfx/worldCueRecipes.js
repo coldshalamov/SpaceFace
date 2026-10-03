@@ -142,3 +142,71 @@ export function resolveWorldCueReceipt(payload,state={}){
     sourcePos:point(source?.pos)?copy(source.pos):undefined,
     attachToTarget:!!liveTarget&&!DETACHED_CUES.has(kind)};
 }
+
+const seamKey = (payload) => `${payload && payload.fieldId || ''}:${payload && payload.activityObjectSlotId || ''}`;
+
+function seamRock(state, payload) {
+  const entities = state && state.entities;
+  if (!entities || typeof entities.values !== 'function') return null;
+  const fieldId = payload && payload.fieldId;
+  const slot = payload && payload.activityObjectSlotId;
+  const asteroidId = payload && payload.asteroidId;
+  let fallback = null;
+  for (const entity of entities.values()) {
+    if (!entity || entity.alive === false || entity.type !== 'asteroid') continue;
+    if (asteroidId != null && entity.id === asteroidId) return entity;
+    const data = entity.data || {};
+    if (fieldId && slot && data.fieldId === fieldId && data.activityObjectSlotId === slot) return entity;
+    if (fieldId && data.fieldId === fieldId && data.activityObjectSlotId) fallback = fallback || entity;
+  }
+  return fallback;
+}
+
+/** One glint on the open seam rock. A second open for the same seam returns that record. */
+export function admitRichSeamGlint(state, payload = {}) {
+  if (!state) return null;
+  const presentation = state.presentation && typeof state.presentation === 'object'
+    ? state.presentation
+    : (state.presentation = {});
+  const key = seamKey(payload);
+  const prev = presentation.richSeamGlint;
+  if (prev && prev.ended !== true && prev.key === key) return prev;
+  const rock = seamRock(state, payload);
+  const record = {
+    id: 'rich-seam-glint',
+    kind: 'glint',
+    key,
+    targetId: rock ? rock.id : null,
+    fieldId: payload.fieldId || null,
+    activityObjectSlotId: payload.activityObjectSlotId || null,
+    pos: rock && rock.pos && Number.isFinite(rock.pos.x) && Number.isFinite(rock.pos.z)
+      ? { x: rock.pos.x, y: Number.isFinite(rock.pos.y) ? rock.pos.y : 0, z: rock.pos.z }
+      : null,
+    ended: false,
+    mapMarker: false,
+  };
+  presentation.richSeamGlint = record;
+  if (rock) {
+    if (!rock.data) rock.data = {};
+    rock.data.richSeamGlint = record.id;
+  }
+  return record;
+}
+
+/** field:richSeamWorked ends the one live glint. */
+export function endRichSeamGlint(state, payload = {}) {
+  const presentation = state && state.presentation;
+  const rec = presentation && presentation.richSeamGlint;
+  if (!rec || rec.ended === true) return null;
+  rec.ended = true;
+  const rock = seamRock(state, { ...payload, asteroidId: rec.targetId })
+    || (rec.targetId != null && state.entities && state.entities.get && state.entities.get(rec.targetId));
+  if (rock && rock.data && rock.data.richSeamGlint === rec.id) delete rock.data.richSeamGlint;
+  presentation.richSeamGlint = null;
+  return rec;
+}
+
+export function richSeamGlintRecord(state) {
+  const rec = state && state.presentation && state.presentation.richSeamGlint;
+  return rec && rec.ended !== true ? rec : null;
+}

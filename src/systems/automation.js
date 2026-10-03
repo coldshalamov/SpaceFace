@@ -42,11 +42,14 @@ import { indexedTypeScan } from '../world/livingWorldViews.js';
 import {
   applyFuelShortage,
   boundDemandQty,
+  cycleSnapshot,
   isFuelStranded,
   isThroughputSettledSource,
   migrateDroneOperation,
   operatingCostPerMin,
+  recordCycleInput,
   recordGrossUnits,
+  recordOperationWithdrawal,
   recordRealisedSale,
   resumeAfterFuel,
   stampOperation,
@@ -846,6 +849,8 @@ export const automation = {
         unitPrice: plan.unitPrice,
         credited: result.receipt && result.receipt.credited,
         operatingCostPerMin: operatingCostPerMin(def.upkeepPerMin, 'running'),
+        // Stock the depot refused stays aboard — held inventory, not income.
+        heldUnits: shipmentUsed(g),
       });
       if (plan.stationId) {
         this.bus.emit('economy:applyTradePressure', {
@@ -1381,7 +1386,17 @@ export const automation = {
     if (g.program?.templateId === 'mine_to_depot'
       && g.operation && g.operation.operatingState !== 'running') return false;
     const rate = Math.max(0, Number(def && def.fuelRate) || 1);
-    g.fuel = Math.max(0, (Number(g.fuel) || 0) - rate * Math.max(0, Number(dt) || 0));
+    const dtSec = Math.max(0, Number(dt) || 0);
+    const fuelBefore = Number(g.fuel) || 0;
+    g.fuel = Math.max(0, fuelBefore - rate * dtSec);
+    // SF-115: the per-cycle ledger books actual inputs — fuel burned and upkeep accrued while the
+    // machine runs — so the closed breakdown reconciles credits and inventory, not a rate guess.
+    if (g.operation && g.program && g.program.templateId) {
+      recordCycleInput(g, {
+        fuelUnits: fuelBefore - g.fuel,
+        upkeepCr: (Number(g.operation.operatingCostPerMin) || 0) / 60 * dtSec,
+      });
+    }
     if (g.fuel > 0) {
       g._fuelStrandNotified = false;
       return false;
@@ -2096,6 +2111,9 @@ export const automation = {
     const g = a.drones[idx];
     const value = this._droneBufferValue(g);
     if (value > 0) this.creditPassive(value, 'drone'); // bank the buffer through the cap funnel
+    // Recalled stock was banked at the recall price, not a depot receipt — the cycle ledger
+    // books it as withdrawn so the final tally still reconciles mined vs sold vs held.
+    if (g.operation) recordOperationWithdrawal(g, shipmentUsed(g));
     if (g.shipment) g.shipment.items = {};
     g.pendingSale = null;
     // refuel cost on recall (attention cost): (fuelMax - fuel)*0.5 cr
@@ -2344,7 +2362,14 @@ export const automation = {
     const shipDefId = kind === 'fleet'
       ? (inst.shipDefId || inst.defId || null)
       : (kind === 'trader' ? (TRADER_SHIP_DEF[inst.defId] || null) : null);
-    this.meta().lostAssetsLog.push({ kind, id: inst.id, value: value || 0, t: this.state.simTime || 0 });
+    // A destroyed operation never reaches a depot: close its open cycle into the loss log so the
+    // wreck's ledger still reconciles what it mined, burned, paid and was carrying.
+    let breakdown = null;
+    if (kind === 'drone' && inst.operation) {
+      recordOperationWithdrawal(inst, shipmentUsed(inst));
+      breakdown = cycleSnapshot(inst, 0);
+    }
+    this.meta().lostAssetsLog.push({ kind, id: inst.id, value: value || 0, t: this.state.simTime || 0, ...(breakdown ? { breakdown } : {}) });
     this.bus.emit('automation:assetLost', {
       kind,
       id: inst.id,

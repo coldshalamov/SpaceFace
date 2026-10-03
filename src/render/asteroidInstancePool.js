@@ -22,6 +22,7 @@ import {
 export const ASTEROID_INSTANCE_TYPE_ID = 'ast_common_rock';
 export const ASTEROID_INSTANCE_VARIANT_COUNT = 5;
 const INITIAL_CAPACITY = 64;
+const INSTANCE_MATRIX_BYTES = 64;
 const _viewProjection = new THREE.Matrix4();
 const _shadowProjection = new THREE.Matrix4();
 const _viewFrustum = new THREE.Frustum();
@@ -45,6 +46,7 @@ export function createAsteroidInstancePool(scene, options = {}) {
       dynamicBufferOwner: null,
       retiring: null,
       capacity: 0,
+      reservedCapacity: 0,
       records: [],
       entityIds: [],
     };
@@ -76,6 +78,9 @@ export function createAsteroidInstancePool(scene, options = {}) {
       matrixReuses: 0,
       matrixEvaluations: 0,
       shadowMatrixUploads: 0,
+      powerOfTwoRebuilds: 0,
+      reservedRosterCount: 0,
+      reservedCapacityCount: 0,
       variants: variantStats,
       keyed: [],
     },
@@ -123,6 +128,7 @@ function createKeyedBucket(key, geometry, material, castShadow, receiveShadow, l
     // Outgoing batch kept drawing while a grown replacement clears the admission latch.
     retiring: null,
     capacity: 0,
+    reservedCapacity: 0,
     records: [],
     entityIds: [],
     retiredOwnerCount: 0,
@@ -307,24 +313,37 @@ export function invalidateAsteroidInstancePool(pool) {
 /**
  * Pre-size variant buckets so later registrations never trigger a capacity rebuild — a rebuild
  * allocates a fresh instanceMatrix buffer (a bufferData a fight would otherwise pay mid-round).
- * Buckets with no registered leaf keep no mesh and are untouched: a variant with zero live rocks
- * still lazily creates its chunk on the first registration, which is the only legal path to one.
+ * The reserve is remembered even when the bucket has no mesh yet, so the first create is born
+ * at the roster size. Instance-matrix bytes (64 per slot) stay inside the residency ceiling.
  * @param {object} pool
  * @param {Array<number>} requiredByVariant - total records each variant may ever hold
+ * @param {{rosterCount?: number, byteCeiling?: number}} [options]
  */
-export function reserveAsteroidInstanceCapacity(pool, requiredByVariant) {
+export function reserveAsteroidInstanceCapacity(pool, requiredByVariant, options = {}) {
   if (!pool || pool.disposed || !Array.isArray(requiredByVariant)) return false;
+  const ceiling = Number(options.byteCeiling) > 0 ? Number(options.byteCeiling) : Number.POSITIVE_INFINITY;
+  let byteBudget = ceiling;
+  const rosterCount = Math.max(0, Math.trunc(Number(options.rosterCount) || 0));
+  if (pool.stats) pool.stats.reservedRosterCount = rosterCount;
+  let reservedCapacity = 0;
   let reserved = false;
   for (let variant = 0; variant < pool.variants.length; variant++) {
     const required = Math.max(0, Math.trunc(Number(requiredByVariant[variant]) || 0));
     if (required <= 0) continue;
     const bucket = pool.variants[variant];
-    if (!bucket || !bucket.mesh) continue;
-    if (bucket.capacity < required) {
-      ensureCapacity(pool, bucket, required);
-      reserved = true;
+    if (!bucket) continue;
+    const affordable = Math.floor(byteBudget / INSTANCE_MATRIX_BYTES);
+    const capped = Math.min(required, Math.max(0, affordable));
+    if (capped <= 0) continue;
+    bucket.reservedCapacity = Math.max(bucket.reservedCapacity | 0, capped);
+    reservedCapacity += bucket.reservedCapacity;
+    byteBudget -= capped * INSTANCE_MATRIX_BYTES;
+    if (bucket.mesh && bucket.capacity < bucket.reservedCapacity) {
+      ensureCapacity(pool, bucket, bucket.reservedCapacity);
     }
+    reserved = true;
   }
+  if (pool.stats) pool.stats.reservedCapacityCount = reservedCapacity;
   return reserved;
 }
 
@@ -767,9 +786,11 @@ function drawBucketLeavesDirectly(bucket) {
 }
 
 function ensureCapacity(pool, bucket, required, rebuild = false) {
-  if (!rebuild && bucket.mesh && bucket.capacity >= required) return;
-  const capacity = Math.max(INITIAL_CAPACITY, nextPowerOfTwo(required));
+  const need = Math.max(required | 0, bucket.reservedCapacity | 0);
+  if (!rebuild && bucket.mesh && bucket.capacity >= need) return;
+  const capacity = Math.max(INITIAL_CAPACITY, nextPowerOfTwo(Math.max(need, 1)));
   const previous = bucket.mesh;
+  const previousCapacity = bucket.capacity | 0;
   const previousOwner = bucket.dynamicBufferOwner;
   const mesh = new THREE.InstancedMesh(bucket.geometry, bucket.material, capacity);
   const isVariantBucket = bucket.variant >= 0;
@@ -841,6 +862,9 @@ function ensureCapacity(pool, bucket, required, rebuild = false) {
     } else {
       disposeOwnedInstanceMesh(previous, previousOwner, pool.scene);
     }
+  }
+  if (previous && capacity > previousCapacity && pool.stats) {
+    pool.stats.powerOfTwoRebuilds = (pool.stats.powerOfTwoRebuilds | 0) + 1;
   }
   bucket.mesh = mesh;
   bucket.capacity = capacity;

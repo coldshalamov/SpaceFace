@@ -15,6 +15,7 @@ import {
 import { automaticMasslineBreakAllowed } from '../combat/attachments.js';
 import { stepLatchRepair } from '../combat/latchRepair.js';
 import { entityLocalPointToWorld } from '../combat/geometry.js';
+import { occupantGenerationOf } from '../core/entity.js';
 import { modelTruthRopeEnd } from '../data/modelTruth.js';
 import { publishHitstunImpulse, signedHitSide } from '../combat/impulseKernel.js';
 import { createMasslineRuntime } from '../core/constraints/masslineController.js';
@@ -358,7 +359,14 @@ export const tetherGameplay = {
       // Liveness belt-and-braces on the gameplay side: if the target vanished this tick and the
       // service sweep hasn't caught it yet, force the cut ourselves rather than orbit a ghost.
       const target = state.entities.get(this._active.targetId);
-      if (!target || target.alive === false || !target.pos
+      // Id-recycle guard on top of the alive checks: the bound attachment's recorded target
+      // generation proves which body this line named; a live occupant with a different token
+      // is a replacement, so the line is target_lost even though the id still resolves.
+      const boundAttachment = attachments && typeof attachments.get === 'function'
+        ? attachments.get(this._active.attachmentId) : null;
+      const targetRecycled = !!(boundAttachment && boundAttachment.targetGeneration != null
+        && occupantGenerationOf(target) !== boundAttachment.targetGeneration);
+      if (!target || target.alive === false || !target.pos || targetRecycled
           || !Number.isFinite(target.pos.x) || !Number.isFinite(target.pos.z)) {
         this._cancelDrillApproach('target_lost');
         attachments.cut(this._active.attachmentId, player.id, 'target_lost');
@@ -1075,7 +1083,11 @@ export const tetherGameplay = {
     }
 
     const target = state.entities && state.entities.get ? state.entities.get(selected.targetId) : null;
-    const denial = validateAcquisitionTarget(this, player, target, def, state);
+    // A published pick whose occupant token no longer matches means the id recycled between
+    // preview and press — the latch must name the dead pick as lost, not weld onto its heir.
+    const denial = (selected.occupantGeneration != null && occupantGenerationOf(target) !== selected.occupantGeneration)
+      ? 'target-lost'
+      : validateAcquisitionTarget(this, player, target, def, state);
     if (denial) {
       this._lastLatchDenial = { reason: denial, targetId: selected.targetId };
       invalidateAcquisitionReceipt(state, denial);
@@ -1178,6 +1190,10 @@ export const tetherGameplay = {
         : null;
       if (!target || target.alive === false || !target.pos
           || !Number.isFinite(target.pos.x) || !Number.isFinite(target.pos.z)) continue;
+      // A record whose stored target generation no longer matches the occupant binds the dead
+      // body, not the replacement holding the id — never adopt it as the live line.
+      if (attachment.targetGeneration != null
+          && occupantGenerationOf(target) !== attachment.targetGeneration) continue;
       this._active = {
         attachmentId: attachment.id,
         targetId: attachment.targetId,
@@ -2761,6 +2777,9 @@ function acquisitionReceiptEntry(snapshot, record, overrideReason) {
   const seedPreview = target && target.type === 'massSeed' ? massSeedLatchPreview(target) : null;
   const entry = {
     targetId: record.id,
+    // The receipt is consumed after publication; if the id recycled in between, this token is
+    // the proof the picked body is still the one the preview named.
+    occupantGeneration: occupantGenerationOf(target),
     targetType: target && target.type || 'unknown',
     targetLabel: masslineTargetLabel(target),
     context: snapshot.context.id,

@@ -95,6 +95,27 @@ export const FIELD_MAX_ACCEL = 820; // wu/s^2
 // queryRadius per active field per tick) and keeps the tactical read legible.
 export const FIELD_MAX_ACTIVE = 6;
 
+// PB-ORD-B — published reads only. These budgets classify the live sample. They never
+// scale a force, clamp a velocity, or invent a second field.
+export const FIELD_FAMILY_READ = Object.freeze({
+  // Summed acceleration below this, with live opposing contributors, is an equilibrium
+  // rather than an inactive volume. wu/s^2.
+  equilibriumAccel: 1,
+  // Outer fraction of a tar radius that reads as the edge band.
+  gooEdgeFraction: 0.12,
+  // A mine this close to the rim (remaining fraction) with an outward sample is breaking out.
+  mineRimFraction: 0.15,
+  maxClouds: 4,
+  maxSamples: 4,
+  maxContributors: 4,
+  maxProjectiles: 8,
+  maxMines: 8,
+  maxPins: 8,
+  maxPinWatch: 24,
+  // Probe speed for the tar recovery read (WU/s). Not a force.
+  gooProbeSpeed: 40,
+});
+
 // Shared VFX palette — locked anchors from design/vfx/FIELD_TOOL_READABILITY_BIBLE.md §3.2. The
 // gradient DIRECTION is the palette-level discriminator (Well: cool rim → hot sink; Repulsor: hot
 // core → cool rim; Cone: utility-teal lane). Boundary elements are non-blooming by construction.

@@ -16,6 +16,7 @@ import { enhanceSelects } from '../uiPrimitives.js';
 import { entitySpanHtml } from '../entityResolver.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
 import { canvasFont, canvasFontScaled, invalidateCanvasFonts } from '../canvasFonts.js';
+import { drawGlyph, glyphSvg } from '../glyphs.js';
 
 const FACTION_NAME = Object.create(null);
 const FACTION_COLOR = Object.create(null);
@@ -285,7 +286,12 @@ const CSS = `
 }
 #sf-starmap .sm-risk-head { display: flex; justify-content: space-between; font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm); }
 #sf-starmap .sm-risk-note { font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm); line-height: 1.35; margin-top: var(--sp-1); }
-#sf-starmap .sm-pips { letter-spacing: 0; }
+#sf-starmap .sm-pips { display: inline-flex; gap: 3px; align-items: center; }
+#sf-starmap .sm-pip {
+  width: 7px; height: 7px; border-radius: 50%; display: inline-block;
+  border: 1.2px solid currentColor; box-sizing: border-box;
+}
+#sf-starmap .sm-pip--on { background: currentColor; }
 #sf-starmap .sm-pips--you { color: var(--sf-you); }
 #sf-starmap .sm-pips--calm { color: var(--sf-calm); }
 #sf-starmap .sm-pips--goal { color: var(--sf-goal); }
@@ -333,6 +339,7 @@ const CSS = `
 #sf-starmap .sm-dot--you { background: var(--sf-you); }
 #sf-starmap .sm-dot--goal { background: var(--sf-goal); }
 #sf-starmap .sm-dot--foe { background: var(--sf-foe); }
+#sf-starmap .sm-legend .sm-legend-glyph { width: 12px; height: 12px; color: var(--sf-foe); flex: none; }
 @media (max-width: 820px) {
   #sf-starmap .sm-side { width: 270px; }
   #sf-starmap .sm-stats { gap: var(--sp-2); }
@@ -401,12 +408,45 @@ export function trendColor(v, goodWhenPositive = false) { return token(trendRole
 function driverLabel(id) { return DRIVER_LABEL[id] || String(id || '').replace(/_/g, ' '); }
 function securityLabel(sec) { return sec >= 0.7 ? 'High' : sec >= 0.4 ? 'Mid' : sec >= 0.15 ? 'Low' : 'Null'; }
 function securityPips(sec) {
-  if (sec >= 0.7) return '<span class="sm-pips sm-pips--you" aria-hidden="true">●●●</span> <span class="sm-pips-word">HIGH</span>';
-  if (sec >= 0.4) return '<span class="sm-pips sm-pips--calm" aria-hidden="true">●●○</span> <span class="sm-pips-word">MID</span>';
-  if (sec >= 0.15) return '<span class="sm-pips sm-pips--goal" aria-hidden="true">●○○</span> <span class="sm-pips-word">LOW</span>';
-  return '<span class="sm-pips sm-pips--foe" aria-hidden="true">○○○</span> <span class="sm-pips-word">NULL</span>';
+  // CSS-drawn pips, not unicode ●/○: three marks, filled vs hollow carries the band beside the
+  // word, so the read survives colorblind viewing (count + fill state, hue is reinforcement).
+  const pip = (on) => `<i class="sm-pip${on ? ' sm-pip--on' : ''}"></i>`;
+  if (sec >= 0.7) return `<span class="sm-pips sm-pips--you" aria-hidden="true">${pip(true)}${pip(true)}${pip(true)}</span> <span class="sm-pips-word">HIGH</span>`;
+  if (sec >= 0.4) return `<span class="sm-pips sm-pips--calm" aria-hidden="true">${pip(true)}${pip(true)}${pip(false)}</span> <span class="sm-pips-word">MID</span>`;
+  if (sec >= 0.15) return `<span class="sm-pips sm-pips--goal" aria-hidden="true">${pip(true)}${pip(false)}${pip(false)}</span> <span class="sm-pips-word">LOW</span>`;
+  return `<span class="sm-pips sm-pips--foe" aria-hidden="true">${pip(false)}${pip(false)}${pip(false)}</span> <span class="sm-pips-word">NULL</span>`;
 }
 function enemyDensityLabel(d) { return d <= 0.15 ? 'Low' : d <= 0.35 ? 'Medium' : d <= 0.55 ? 'High' : 'Extreme'; }
+
+// Local stroke marks for the two node features no shared glyphs.js glyph carries — same language
+// (24 grid, 1.6 stroke, round caps/joins, Path2D cached per mark, stroked at px/24 scale). The
+// blackmarket mark is the no-entry circle + slash; the wormhole mark is the portal double-ring,
+// the same two-ring geometry the tactical grammar gives gates. Path2Ds are built lazily so the
+// module keeps importing clean under Node probes.
+const SM_MARK_DEFS = {
+  blackmarket: [['M12 3.5A8.5 8.5 0 1 0 12 20.5A8.5 8.5 0 1 0 12 3.5Z'], ['M6.2 6.2 17.8 17.8']],
+  wormhole: [['M12 3.5A8.5 8.5 0 1 0 12 20.5A8.5 8.5 0 1 0 12 3.5Z'], ['M12 8.4A3.6 3.6 0 1 0 12 15.6A3.6 3.6 0 1 0 12 8.4Z']],
+};
+const smMarkPathCache = new Map();
+function smMarkStrokes(mark) {
+  let strokes = smMarkPathCache.get(mark);
+  if (!strokes) {
+    strokes = SM_MARK_DEFS[mark].map(([d]) => ({ p: new Path2D(d) }));
+    smMarkPathCache.set(mark, strokes);
+  }
+  return strokes;
+}
+function strokeMark(g, mark, x, y, px) {
+  const scale = px / 24;
+  g.save();
+  g.translate(x - px / 2, y - px / 2);
+  g.scale(scale, scale);
+  g.lineWidth = 1.6;
+  g.lineCap = 'round';
+  g.lineJoin = 'round';
+  for (const { p } of smMarkStrokes(mark)) g.stroke(p);
+  g.restore();
+}
 function sectorName(id) { return SECTOR_NAME.get(id) || id || 'target sector'; }
 function appendSentence(base, sentence) {
   const head = String(base || '').trim();
@@ -734,7 +774,7 @@ export const starmapScreen = {
           <span><i class="sm-dot sm-dot--foe"></i>danger field</span>
           <span><i class="sm-dot sm-dot--goal"></i>scarcity</span>
           <span><i class="sm-dot sm-dot--you"></i>surplus</span>
-          <span>× contested</span>
+          <span>${glyphSvg('err', 12, 'sm-legend-glyph')} contested</span>
         </div>
         <div>${BINDINGS.starmap.label} close · scroll zoom · drag pan · moving beads show commodity flow</div>
       </div>`;
@@ -1182,8 +1222,8 @@ export const starmapScreen = {
       if (!known) {
         g.beginPath(); g.arc(n.x, n.y, 8, 0, Math.PI * 2); g.fillStyle = paint(roles.edge, 0.55); g.fill();
         g.strokeStyle = paint(roles.calm, 0.4); g.lineWidth = 1 / z; g.stroke();
-        g.fillStyle = paint(roles.calm, 0.7); g.font = canvasFontScaled('600', 12, z, 'subhead');
-        g.textAlign = 'center'; g.textBaseline = 'top'; g.fillText('???', n.x, n.y + 10 / z);
+        // Uncharted mark: the shared dashed unknown glyph, not a '???' font stand-in.
+        drawGlyph(g, 'unknown', n.x, n.y + 17 / z, 12 / z, { color: paint(roles.calm, 0.7) });
         continue;
       }
       const signal = this._signal(s.id);
@@ -1224,8 +1264,9 @@ export const starmapScreen = {
       if (current) {
         g.beginPath(); g.arc(n.x, n.y, n.r + 11 / z, 0, Math.PI * 2);
         g.strokeStyle = roles.you; g.lineWidth = 2 / z; g.stroke();
-        g.fillStyle = roles.paper; g.font = canvasFontScaled('700', 12, z, 'data');
-        g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('●', n.x, n.y);
+        // Centre pip drawn as a filled arc, not a '●' font glyph — a drawn mark, zoom-stable.
+        g.beginPath(); g.arc(n.x, n.y, 3.4 / z, 0, Math.PI * 2);
+        g.fillStyle = roles.paper; g.fill();
       }
 
       const labelY = n.y + n.r + 5 / z;
@@ -1258,22 +1299,22 @@ export const starmapScreen = {
   },
 
   _drawFeatureIcons(g, n, s, z, roles) {
+    // Node feature marks are drawn paths, never font text (markPaths.js law: a glyph where a mark
+    // exists is a defect). Shared shapes come from glyphs.js; the two marks it does not carry use
+    // the local cached Path2Ds above. Colors and slots match the pre-drawn-mark layout exactly.
     const icons = [];
-    if (s.hazards && s.hazards.length) icons.push('!');
-    if (s.fields && s.fields.some((f) => f.type === 'ast_rare_exotic' || f.type === 'ast_crystalline')) icons.push('◆');
-    if (s.stations && s.stations.some((st) => st.type === 'blackmarket')) icons.push('⊘');
-    if (s.stations && s.stations.some((st) => st.contested)) icons.push('×');
-    if (s.wormholeTo) icons.push('◌');
+    if (s.hazards && s.hazards.length) icons.push({ glyph: 'warn', color: roles.goal });
+    if (s.fields && s.fields.some((f) => f.type === 'ast_rare_exotic' || f.type === 'ast_crystalline')) icons.push({ glyph: 'dense_asteroid', color: roles.you });
+    if (s.stations && s.stations.some((st) => st.type === 'blackmarket')) icons.push({ mark: 'blackmarket', color: roles.foe });
+    if (s.stations && s.stations.some((st) => st.contested)) icons.push({ glyph: 'err', color: roles.foe });
+    if (s.wormholeTo) icons.push({ mark: 'wormhole', color: roles.goal });
     if (!icons.length) return;
     const spacing = 12 / z, start = n.x - (icons.length - 1) * spacing / 2;
-    g.font = canvasFontScaled('700', 12, z, 'data'); g.textAlign = 'center'; g.textBaseline = 'middle';
+    const px = 12 / z, cy = n.y - n.r - 8 / z;
     for (let i = 0; i < icons.length; i++) {
       const icon = icons[i];
-      g.fillStyle = icon === '!' ? roles.goal
-        : icon === '◆' ? roles.you
-          : icon === '◌' ? roles.goal
-            : roles.foe;
-      g.fillText(icon, start + i * spacing, n.y - n.r - 8 / z);
+      if (icon.mark) strokeMark(g, icon.mark, start + i * spacing, cy, px);
+      else drawGlyph(g, icon.glyph, start + i * spacing, cy, px, { color: icon.color });
     }
   },
 
