@@ -1,6 +1,9 @@
 // Stormshift's first normal shift, mixed into the existing traffic owner. The itinerary and
 // cargoManifest are existing world-record fields. No private inventory or offscreen production.
-// Both Mule bodies are interim released art; the commissioned collector/cradle are not bound yet.
+// Mule gameplay stats remain canonical; the collector role selects its authored body.
+// The receiving Mule is interim service hardware until the separate cradle integration.
+import { ensurePhysicsBodySpec } from '../core/physicsAuthority.js';
+import { STORMSHIFT_COLLECTOR_COLLISION } from '../data/stormshiftCollectorCollision.js';
 import { PLANET_SITE } from '../data/planets.js';
 import { makeShipEntitySpec } from './ships.js';
 import { stableRecordId, RECORD_KIND } from '../world/worldRecords.js';
@@ -40,6 +43,12 @@ function actor(owner, role) {
   if (owner.state.entityList?.some(other => other !== e && other?.alive !== false
     && other?.data?.worldRecordId === id)) return null;
   return e;
+}
+function bindCollectorCollision(e) {
+  if (e.physicsBody?.collisionProxyManifest?.id === STORMSHIFT_COLLECTOR_COLLISION.id) return;
+  const body = ensurePhysicsBodySpec(e);
+  e.physicsBody = { ...body, collisionProxyManifest: STORMSHIFT_COLLECTOR_COLLISION,
+    revision: Math.max(0, finite(e.physicsBody?.revision)) + 1 };
 }
 function persist(owner, e) { owner._registry?.get?.('world')?.upsertWorldRecord?.(e); }
 function recFor(owner, e) { return owner.state.traffic?.freighters?.find(r => r.id === e.id) || null; }
@@ -103,6 +112,7 @@ export const anvilTrafficMethods = {
         persist(this, e);
       }
       e.data.anvilSlingWitness = role === 'collector';
+      if (role === 'collector') bindCollectorCollision(e);
       if (!recFor(this, e)) {
         state.traffic.freighters.push({ id: e.id, role: e.data.trafficRole, manifest: e.data.cargoManifest, dockSeq: 0 });
         this._active.push(e.id);
@@ -153,6 +163,7 @@ export const anvilTrafficMethods = {
     if (receiver && !receiver.data.jobId) hold(receiver);
     if (!e || e.data.jobId) return; // another existing movement owner wins
     e.data.anvilSlingWitness = true;
+    bindCollectorCollision(e);
     if (state.planet?.active) state.planet.witnessId = e.id;
     const route = itinerary(e), center = route.center;
     if (!center || !Number.isFinite(center.x) || !Number.isFinite(center.z)) { hold(e); return; }

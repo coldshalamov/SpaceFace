@@ -43,9 +43,13 @@ function harvest(t, dt = 1) { t.planet._tickWorkerHarvest(dt, t.state, t.state.p
 test('Anvil normal work: real flight/field/physics fly one finite load into a real receiver', async () => {
   const t = boot();
   assert.ok(t.collector && t.receiver);
-  assert.equal(t.collector.data.defId, 'ship_mule', 'interim released body is explicit');
+  assert.equal(t.collector.physicsBody.collisionProxyManifest.id, 'stormshift-collector:fixed-cheeks:v1');
+  assert.equal(t.receiver.physicsBody?.collisionProxyManifest, undefined);
+  assert.equal(t.collector.data.defId, 'ship_mule', 'authored collector retains the canonical Mule gameplay def');
   assert.equal(await t.sim.registry.get('physics').prepareBackend(t.state), true);
-  const observer = t.sim.spawn({ type: 'ship', isPlayer: true, team: 0, pos: { x: t.state.planet.center.x + 1400, z: t.state.planet.center.z + 700 }, collides: false, hull: 100, physicsBody: { dynamic: false } });
+  // Non-physical observation point keeps local activity awake without injecting participant
+  // poses or introducing a moving static collider into the worker's flight test.
+  const observer = t.sim.spawn({ type: 'ship', isPlayer: true, team: 0, pos: { x: t.state.planet.center.x + 1400, z: t.state.planet.center.z + 700 }, collides: false, hull: 100, physicsBody: false });
   t.state.playerId = observer.id;
   const start = { ...t.collector.pos };
   const phases = new Set(); let minRadius = Infinity; let maxTravel = 0;
@@ -138,6 +142,10 @@ test('real save/load preserves a loaded return through world records and never t
     const restored = state.entityList.find(e => e.alive !== false && e.data?.worldRecordId === recordId);
     const receiver = state.entityList.find(e => e.alive !== false && e.data?.worldRecordId === anvilWorkerRecordId(state, 'receiver'));
     assert.ok(restored && receiver); assert.equal(qty(restored), 12);
+    assert.equal(restored.physicsBody.collisionProxyManifest.id, 'stormshift-collector:fixed-cheeks:v1');
+    const revision = restored.physicsBody.revision;
+    owner._stepAnvilWork(SIM_DT, state);
+    assert.equal(restored.physicsBody.revision, revision, 'repeat binding cannot churn physics geometry');
     assert.equal(restored.data.itinerary.phase, 'return');
     assert.equal(state.entityList.filter(e => e.alive !== false && e.data?.worldRecordId === recordId).length, 1);
     restored.pos.x = receiver.pos.x - 60; restored.pos.z = receiver.pos.z;
