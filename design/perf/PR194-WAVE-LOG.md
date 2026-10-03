@@ -434,3 +434,8 @@ Verify: golden `47a` trajectory bit-identical post-merge (`c1d040da…` via `ins
 **W39 boot** (lane `ac862b8f`) — `saturated: true`. All prompt-listed mechanisms verified mechanically clean (preReleaseLaneOptions narrowing, pending-set early-out, traverseVisible unready guard, admission chain throw guard, post-opening drain).
 
 Verify: golden `47a` trajectory bit-identical post-merge + post-fix (`c1d040da…` via `inspect`); `node --check` clean ×2; upstream's authored-native-character-startup 2/2; title-attract 11/11 (tape unchanged — upstream sim commits didn't drift it); sync-modulepreload in sync.
+
+**CI canon note** — `check-bundle` had TWO stacked upstream regressions, neither ours:
+
+1. `src/core/registry.js:84` imports `../systems/volatileExposure.js` — added by upstream `ef0f3cd99` (SV-3, "carried foreign hunks") without the file; absent at `origin/master` tip (`533688189`), so esbuild fails identically on clean master and every browser boot 404s (`/src/main.js` dead). This branch lands an **inert compatible stub** at `src/systems/volatileExposure.js` (sibling-shaped `{id,name,init,update,destroy}`, marked replace-on-merge) — deleting the import instead would silently stay deleted once upstream's real file lands.
+2. Unmasked by the stub: `place_conveyor_barge` render-package provenance is stale — package `provenance.sourceGlb.sha256` (`b64f6e65…`) ≠ the committed source GLB (`777b899e…`, matching `sourceSha256` on both branches); release GLB bytes and package JSON identical on this branch and master (`git diff` empty), so it reproduces on clean master behind the import brick. Left for upstream's republish — the forge pipeline owns that content.
