@@ -28,6 +28,9 @@ const lethalBlowByVictimId = new Map();
 export const PENDING_SLAM_MAX_AGE_TICKS = 12;
 export const LETHAL_BLOW_MAX_AGE_TICKS = 2;
 const LETHAL_BLOW_KEY_CAP = 512;
+// Same leak guard as the lethal-blow map below: a slammed ship that despawns never consumes
+// its note, so victim keys would otherwise accumulate without bound across a long session.
+export const PENDING_SLAM_KEY_CAP = 512;
 const FRACTURE_SPLIT_SPEED = 12;
 
 function finite(value, fallback = 0) {
@@ -44,13 +47,29 @@ export function isSlamFractureCandidate(target, closingSpeed) {
   return Number.isFinite(closingSpeed) && closingSpeed >= fractureThresholdWU;
 }
 
+// Stale notes past the freshness window can never satisfy consumePendingSlamIfFresh again, and
+// while they linger they only suppress the arena shard they were supposed to yield — so insert
+// time prunes them, keyed off the incoming note's own tick (deterministic, no wall clock).
+function pruneStalePendingSlams(nowTick) {
+  // Deleting during Map iteration is spec-safe: a deleted entry is simply not visited again.
+  for (const [victimId, note] of pendingByVictimId) {
+    if (Math.abs(nowTick - note.tick) > PENDING_SLAM_MAX_AGE_TICKS) pendingByVictimId.delete(victimId);
+  }
+}
+
 export function notePendingSlam(target, slam = {}) {
   const closingSpeed = Number(slam.closingSpeed);
   if (!isSlamFractureCandidate(target, closingSpeed)) return false;
+  const tick = Math.max(0, Math.trunc(finite(slam.tick)));
+  pruneStalePendingSlams(tick);
+  if (pendingByVictimId.size >= PENDING_SLAM_KEY_CAP) {
+    const oldest = pendingByVictimId.keys().next();
+    if (oldest && !oldest.done) pendingByVictimId.delete(oldest.value);
+  }
   pendingByVictimId.set(target.id, {
     victimId: target.id,
     closingSpeed,
-    tick: Math.max(0, Math.trunc(finite(slam.tick))),
+    tick,
     pos: {
       x: finite(target.pos && target.pos.x),
       z: finite(target.pos && target.pos.z),
