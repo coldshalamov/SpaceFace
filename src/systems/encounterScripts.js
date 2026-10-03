@@ -899,6 +899,31 @@ function attachConvoyCargoManifests(d, live, commodityId, perHauler) {
   }
 }
 
+const predationStalkTelegraphs = new WeakMap();
+
+/**
+ * Publish encounter:predationTelegraph once per stalk, before the commit.
+ * A second call for the same raid or encounter id does not telegraph again.
+ * Pairing odds stay with the caller; this only gates the telegraph event.
+ */
+export function emitPredationStalkTelegraph(state, payload, emit) {
+  if (!state || !payload || typeof emit !== 'function') return false;
+  const key = payload.raidId != null && payload.raidId !== ''
+    ? payload.raidId
+    : payload.encounterId;
+  if (key == null || key === '') return false;
+  let seen = predationStalkTelegraphs.get(state);
+  if (!seen) {
+    seen = new Set();
+    predationStalkTelegraphs.set(state, seen);
+  }
+  const id = String(key);
+  if (seen.has(id)) return false;
+  seen.add(id);
+  emit('encounter:predationTelegraph', payload);
+  return true;
+}
+
 function initializeConvoyPredation(d, live, state) {
   const config = live.plan.predation;
   const carriers = d.entsOf(live, config.carrierRole || 'hauler').slice().sort(compareEntityIds);
@@ -1027,7 +1052,7 @@ function initializeConvoyPredation(d, live, state) {
   live.data.predationDeadlineAt = Math.min(live.deadlineAt, d.now() + objectiveS);
   live.data.predationAwaySince = null;
   live.data.predationEndReason = null;
-  d.emit('encounter:predationTelegraph', {
+  emitPredationStalkTelegraph(state, {
     encounterId: live.id,
     raiderId: raider.id,
     raiderIdentityKey: raider.data.predationIdentityKey,
@@ -1041,7 +1066,7 @@ function initializeConvoyPredation(d, live, state) {
     deadlineAt: live.data.predationDeadlineAt,
     sectorId: live.sectorId,
     zoneId: live.zoneId,
-  });
+  }, (name, body) => d.emit(name, body));
   d.emit('ai:telegraph', {
     entityId: raider.id,
     targetId: target.id,
@@ -1356,6 +1381,72 @@ function releaseFreightCustodyActors(live, state, record) {
   releaseFreightCustodyPersistence(raider, record, record.raiderPersistenceOwned);
   record.carrierPersistenceOwned = false;
   record.raiderPersistenceOwned = false;
+}
+
+/**
+ * SF-157 — a clean getaway is a trail, not a reset. The escaped raider hands its take to the
+ * durable ai.stolenLoot bag — the same shape a cleared ambient raid writes
+ * (clearAmbientPredationBinding), so the generic kill/pressure paths in ambientPredation.js
+ * respill it later with victim/manifest provenance — and keeps the flags.persistent mark the
+ * custody stack already gave it while it held the cargo. The thief stays a real body on its
+ * finite escape leg: findable again by returning to the scene, shedding freight under pursuit
+ * fire, spilling the take on a later kill. No marker or ledger tracks it — the trail is
+ * physical, and a save/shelf boundary keeps the loot on the thief's own ai bag.
+ *
+ * This replaces the older release-and-despawn exit, under which the secured cargo ceased to
+ * exist the moment the leash crossed. Custody accounting is unchanged: the record still books
+ * the escaped qty once via accountFreightDiversion at finish.
+ */
+function releaseEscapedFreightRaider(live, record, raider) {
+  if (!raider || raider.alive === false || !raider.data) return false;
+  const data = raider.data;
+  const ai = data.ai || (data.ai = {});
+  const secured = record.pods
+    .filter((pod) => pod.status === 'raider_secured')
+    .map((pod) => ({ commodityId: record.commodityId, qty: Math.floor(Number(pod.qty) || 0) }))
+    .filter((line) => line.qty > 0);
+  if (secured.length) {
+    const loot = ai.stolenLoot && typeof ai.stolenLoot === 'object' ? ai.stolenLoot : null;
+    const lines = loot && Array.isArray(loot.lines) ? loot.lines : [];
+    for (const line of secured) {
+      const existing = lines.find((row) => row.commodityId === line.commodityId);
+      if (existing) existing.qty += line.qty;
+      else lines.push(line);
+    }
+    ai.stolenLoot = {
+      lines,
+      // Ambient shape: victimId is the carrier's entity id when known; the stable custody
+      // identity key is the fallback so provenance still names the victim it came off.
+      victimId: record.carrierId != null ? record.carrierId
+        : (record.carrierIdentityKey != null ? record.carrierIdentityKey
+          : (loot && loot.victimId != null ? loot.victimId : null)),
+      manifestId: record.manifestId || (loot && loot.manifestId) || null,
+    };
+  }
+  // Custody's claim is settled; the body's own persistence stays on. Only the custody marker
+  // and the escape despawn timer leave — the thief now rides the ordinary actor lifecycle.
+  if (data.freightCustodyPersistence && data.freightCustodyPersistence.custodyId === record.custodyId) {
+    delete data.freightCustodyPersistence;
+  }
+  if (data.despawnAt != null) delete data.despawnAt;
+  // The raid binding is over. Strip encounter/roster membership so resolve/abort/despawnAll and
+  // the save/sector lifecycle sweeps treat the thief as a free actor again, and so the terminal
+  // record can never rebind it. The FLEE doctrine already stamped still runs its finite leg;
+  // when it lapses, ordinary AI resumes — exactly like a released ambient raider.
+  delete data.predationEncounterId;
+  delete data.predationRole;
+  delete data.predationIdentityKey;
+  delete data.freightCustodyRaiderIdentityKey;
+  ai.predationStatus = 'cleared';
+  ai.predationEndReason = 'escaped';
+  delete ai.predationTargetId;
+  delete ai.predationTargetIdentityKey;
+  delete ai.predationObjective;
+  delete ai.predationLeashRadius;
+  const rosterIndex = live.ids.indexOf(raider.id);
+  if (rosterIndex !== -1) live.ids.splice(rosterIndex, 1);
+  if (live.roles) delete live.roles[raider.id];
+  return true;
 }
 
 function liveFreightPodQty(record) {
@@ -1897,15 +1988,27 @@ function tickFreightCargoCustody(d, live, state, now) {
     ) >= escapeRadius * escapeRadius;
     if (!record.raiderEscaped && escapedLeash) {
       record.raiderEscaped = true;
-      releaseFreightCustodyPersistence(operationalRaider, record, record.raiderPersistenceOwned);
+      releaseEscapedFreightRaider(live, record, operationalRaider);
       record.raiderPersistenceOwned = false;
-      operationalRaider.data.despawnAt = now + 0.5;
       d.emit('freight:raiderEscaped', {
         encounterId: live.id,
         custodyId: record.custodyId,
         raiderId: operationalRaider.id,
         qty: record.raiderSecuredQty,
         reason: 'leash',
+        // SF-157 — the bounded clue, not a tracker: what was taken, who took it, and where the
+        // thief was last seen headed. A listener can name the theft without ever being handed
+        // a live position; the thief's own body is the only trail.
+        manifestId: record.manifestId,
+        freighterKey: record.freighterKey,
+        commodityId: record.commodityId,
+        raiderIdentityKey: record.raiderIdentityKey,
+        raiderFactionId: operationalRaider.factionId || null,
+        sectorId: live.sectorId || null,
+        zoneId: live.zoneId || null,
+        lastObservedPos: record.raiderLastPos ? { ...record.raiderLastPos } : null,
+        lastObservedVel: record.raiderLastVel ? { ...record.raiderLastVel } : null,
+        escapeTarget: record.escapeTarget ? { ...record.escapeTarget } : null,
         t: now,
       });
       if (record.carrierDead || record.carrierRecovered || record.carrierQty <= 0) {

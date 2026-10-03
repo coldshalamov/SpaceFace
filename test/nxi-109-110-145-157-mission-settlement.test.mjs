@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 
 import * as missionData from '../src/data/missions.js';
 import { missions } from '../src/systems/missions.js';
+import { sellableCargoQuantity } from '../src/systems/cargo.js';
 
 class Bus {
   constructor() { this.handlers = new Map(); this.log = []; }
@@ -144,6 +145,71 @@ test('NXI-145: cancelling one of two subject-sharing contracts keeps the other r
   // And when the last claimant lets go, the body still sweeps (no forever pinning).
   bus.emit('ui:abandonMission', { missionId: second.id });
   assert.equal(mark.alive, false, 'sole claim swept normally');
+});
+
+// NXB-037 — two active jobs may reference one physical subject: observed evidence informs both
+// contracts, each distinct promised payment settles once, and the body is swept only when the
+// last live claim releases.
+test('NXB-037: one kill settles both contracts that own the mark — each pays once', () => {
+  const state = baseState();
+  const { bus } = boot(state);
+  const mark = { id: 77, type: 'ship', alive: true, data: { physicalRole: 'demolition_tower' }, pos: { x: 0, z: 0 } };
+  state.entities.set(77, mark);
+  state.entityList.push(mark);
+  const first = deliveryMission({ id: 'mA', type: 'demolition', targetEntityIds: [77], reward_cr: 700 });
+  const second = deliveryMission({ id: 'mB', type: 'demolition', targetEntityIds: [77], reward_cr: 900 });
+  state.missions.active.push(first, second);
+
+  const grants = [];
+  bus.on('economy:grantCredits', (p) => grants.push(p));
+
+  bus.emit('entity:killed', { id: 77, killerId: 1, pos: { x: 0, z: 0 } });
+
+  assert.equal(first.status, 'completed', 'first contract settles on the shared evidence');
+  assert.equal(second.status, 'completed', 'second contract settles on the same evidence');
+  const paidA = grants.filter((g) => g.reason === 'mission:mA');
+  const paidB = grants.filter((g) => g.reason === 'mission:mB');
+  assert.equal(paidA.length, 1, 'contract A pays its recorded terms exactly once');
+  assert.equal(paidA[0].amount, 700);
+  assert.equal(paidB.length, 1, 'contract B pays its recorded terms exactly once');
+  assert.equal(paidB[0].amount, 900);
+  assert.equal(mark.alive, false, 'the body sweeps once the last claimant settles');
+});
+
+// NXB-037 — a cancelled contract releases only its own sealed reservation (its freight is
+// physically pulled from the hold); the surviving contract's reserved cargo stays aboard,
+// still sealed and unsellable.
+test('NXB-037: cancelling one sealed contract leaves the sibling reservation intact', () => {
+  const state = baseState();
+  const { bus } = boot(state);
+  const a = deliveryMission({
+    id: 'mA', preloadedCargo: true,
+    params: { cmdtyId: 'cmdty_ore_iron', qty: 6, sealedRemaining: 6, sealedDelivered: 0, sealAccounted: true },
+  });
+  const b = deliveryMission({
+    id: 'mB', preloadedCargo: true,
+    params: { cmdtyId: 'cmdty_ore_iron', qty: 6, sealedRemaining: 6, sealedDelivered: 0, sealAccounted: true },
+  });
+  state.missions.active.push(a, b);
+  state.player.cargo.items.cmdty_ore_iron = 12;
+  state.player.cargo.usedVolume = 12;
+
+  assert.equal(sellableCargoQuantity(state, 'cmdty_ore_iron'), 0, 'both reservations lock the hold');
+  bus.emit('ui:abandonMission', { missionId: 'mA' });
+
+  assert.equal(a.status, 'failed', 'the cancelled contract settles');
+  assert.equal(b.status, 'active', 'the sibling contract is untouched');
+  assert.equal(b.params.sealedRemaining, 6, 'the sibling reservation is not released');
+  assert.equal(
+    state.player.cargo.items.cmdty_ore_iron,
+    6,
+    'only the cancelled contract\'s freight leaves the hold',
+  );
+  assert.equal(
+    sellableCargoQuantity(state, 'cmdty_ore_iron'),
+    0,
+    'everything still aboard belongs to the surviving sealed claim',
+  );
 });
 
 test('NXI-157: a refused turn-in leaves cargo aboard, fires no delivery, and keeps the term owed', () => {

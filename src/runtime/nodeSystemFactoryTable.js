@@ -132,6 +132,7 @@ import { pirateRumor } from '../systems/pirateRumor.js';
 import { ambushSignatures } from '../systems/ambushSignatures.js';
 import { bountyHunt } from '../systems/bountyHunt.js';
 import { morrow } from '../systems/morrow.js';
+import { vesper } from '../systems/vesper.js';
 import { salvage } from '../systems/salvage.js';
 import { voiceArbiter } from '../ui/voiceArbiter.js';
 import { sectorPostcard } from '../ui/sectorPostcard.js';
@@ -297,6 +298,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['stationContactLoadBoundary', stationContactLoadBoundary],
     ['gateControlDirector', gateControlDirector],
     ['morrow', morrow],
+    ['vesper', vesper],
     ['salvage', salvage],
     ['lossInvestigation', lossInvestigation],
     ['salvageActions', salvageActions],

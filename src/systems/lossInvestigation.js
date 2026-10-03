@@ -8,13 +8,17 @@
 import { hash32 } from '../core/rng.js';
 import { latestLossFor } from './lossLedger.js';
 import { wreckMissionById } from '../data/wreckMissions.js';
+import { MISSION_TUNING } from '../data/missions.js';
+import { buildSetPieceMissionOffers } from './setPieceMissionOffers.js';
 
 const INVESTIGATION_TEMPLATES = ['wm_manifest_run', 'wm_blackbox_attacker'];
 
 const FACTION_LABEL = {
   faction_concord: 'Concord',
+  faction_scn: 'Concord',
   faction_reach: 'Reach',
   faction_drift: 'Drift',
+  faction_dmc: 'DMC',
   faction_quiet: 'the Quiet',
   faction_mts: 'MTS',
 };
@@ -22,11 +26,14 @@ const FACTION_LABEL = {
 function ensureState(state) {
   if (!state) return null;
   if (!state.lossInvestigation || typeof state.lossInvestigation !== 'object') {
-    state.lossInvestigation = { promotedBySector: {}, promotedByPoint: {} };
+    state.lossInvestigation = { promotedBySector: {}, promotedByPoint: {}, hearingByLoss: {} };
   }
   const own = state.lossInvestigation;
   if (!own.promotedBySector || typeof own.promotedBySector !== 'object') own.promotedBySector = {};
   if (!own.promotedByPoint || typeof own.promotedByPoint !== 'object') own.promotedByPoint = {};
+  // FB-041: lossId → the hearing offer this case minted. Durable binding so a promotion can
+  // only ever offer one hearing, and the chain's terminal transition can close the entry.
+  if (!own.hearingByLoss || typeof own.hearingByLoss !== 'object') own.hearingByLoss = {};
   return own;
 }
 
@@ -65,6 +72,7 @@ function overlayFor(state, loss, templateId) {
   const asset = loss.assetId || loss.kind || 'unknown contact';
   const noun = lossNoun(loss);
   const headline = `${faction} ${noun} ${asset} went dark near ${sName}`;
+  const caseLabel = `the ${faction} ${noun} ${asset} lost near ${sName}`;
   return {
     template,
     title: template ? template.title : 'Investigate the Lost Convoy',
@@ -79,8 +87,17 @@ function overlayFor(state, loss, templateId) {
       kind: loss.kind || 'trader',
       simDay: loss.simDay,
       wreckMissionId: template ? template.id : templateId,
+      caseLabel,
     },
   };
+}
+
+// The case-file phrase the hearing's verdict names: "the MTS hauler X lost near Vesta Forge".
+function lossCaseLabel(state, rec) {
+  const sName = sectorName(state, rec.sectorId);
+  const faction = factionLabel(rec.factionId);
+  const asset = rec.assetId || rec.kind || 'unknown contact';
+  return `the ${faction} ${lossNoun(rec)} ${asset} lost near ${sName}`;
 }
 
 function entityForPoint(state, point) {
@@ -99,18 +116,24 @@ export const lossInvestigation = {
     this._onPlaced = (p) => this._promoteSector(p && p.sectorId);
     this._onSectorEnter = (p) => this._promoteSector(p && p.sectorId);
     this._onMissionOffered = (offer) => this._stampOffer(offer);
+    this._onPromoted = (rec) => this._offerHearing(rec);
+    this._onSetPieceTransition = (p) => this._closeHearing(p);
     this._onNewGame = () => this.newGame();
     if (this._bus && this._bus.on) {
       this._bus.on('salvage:placed', this._onPlaced);
       this._bus.on('sector:enter', this._onSectorEnter);
       this._bus.on('mission:offered', this._onMissionOffered);
+      this._bus.on('lossInvestigation:promoted', this._onPromoted);
+      this._bus.on('mission:setPieceTransition', this._onSetPieceTransition);
       this._bus.on('game:newGame', this._onNewGame);
       this._bus.on('save:loaded', this._onNewGame);
     }
   },
 
   newGame() {
-    if (this._state) this._state.lossInvestigation = { promotedBySector: {}, promotedByPoint: {} };
+    if (this._state) {
+      this._state.lossInvestigation = { promotedBySector: {}, promotedByPoint: {}, hearingByLoss: {} };
+    }
   },
 
   _promoteSector(sectorId) {
@@ -157,8 +180,153 @@ export const lossInvestigation = {
     };
     own.promotedBySector[sectorId] = rec;
     own.promotedByPoint[point.id] = rec;
+    // The promoted event is the court-path seam: the listener below answers it with exactly one
+    // loss-bound `hearing` set-piece offer through the ordinary mission:offered contract.
     if (this._bus && this._bus.emit) this._bus.emit('lossInvestigation:promoted', { ...rec });
     return rec;
+  },
+
+  /**
+   * FB-041 — a promoted loss investigation offers the authored `hearing` set piece bound to that
+   * loss id, exactly once. The offer goes through the ordinary `mission:offered` adoption seam —
+   * the same contract lossLedger's ghost-convoy bounty already uses — so missions stays the only
+   * mission writer and owns boarding, dedupe, acceptance, and settlement. The loss rides the
+   * chain as `cause.lossId`/`cause.lossLabel`, so the terminal verdict receipt names the real
+   * case; a loss that never promoted (never investigated) never reaches this code path.
+   */
+  _offerHearing(rec) {
+    const state = this._state;
+    if (!state || !rec || !rec.lossId || !rec.sectorId) return null;
+    const own = ensureState(state);
+    const existing = own.hearingByLoss[rec.lossId];
+    if (existing) return existing;
+
+    // Same epoch math as missions._epoch — the loss-bound chain lands in the epoch that
+    // actually heard the promotion, not a synthetic one.
+    const cfg = (state.missions && state.missions.config) || MISSION_TUNING;
+    const refreshSec = Number(cfg && cfg.refreshSec) || 600;
+    const startEpoch = Math.max(0, Math.floor((state.simTime || 0) / refreshSec));
+    const lossLabel = rec.caseLabel || lossCaseLabel(state, rec);
+    const offer = (buildSetPieceMissionOffers(state, {
+      archetypeId: 'hearing',
+      startEpoch,
+      stageIndex: 0,
+      branchId: null,
+      attempt: 0,
+      lossId: rec.lossId,
+      lossLabel,
+    }) || [])[0] || null;
+    if (!offer) return null;
+
+    const row = {
+      lossId: rec.lossId,
+      sectorId: rec.sectorId,
+      offerId: offer.id,
+      stationId: offer.stationId || null,
+      chainId: offer.cause && offer.cause.chainId || null,
+      fingerprint: offer.cause && offer.cause.fingerprint || null,
+      lossLabel,
+      offeredAt: state.simTime || 0,
+      closed: false,
+      outcome: null,
+      missionId: null,
+      closedAt: null,
+    };
+
+    // This system's slice is session state; the loss ledger and mission receipts are the durable
+    // record. On a re-promotion (Continue, replay, duplicate promoted event) the chain may already
+    // be live, posted, or settled — record the binding but do not emit a row the owner refuses.
+    const hasLossId = (value) => !!(value && value.cause && value.cause.lossId === rec.lossId);
+    const liveOrPosted = (state.missions && state.missions.active || []).some(hasLossId)
+      || Object.values(state.missions && state.missions.boards || {}).some((board) => (
+        (board && board.slots || []).some(hasLossId)
+      ));
+    const settled = !!row.fingerprint
+      && (state.missions && state.missions.receipts || []).some((receipt) => (
+        receipt && receipt.causeFingerprint === row.fingerprint
+      ));
+    // The ledger's durable verdict annotation survives saves where this slice does not.
+    const ledgerEntries = state.lossLedger && Array.isArray(state.lossLedger.entries)
+      ? state.lossLedger.entries : [];
+    const priorVerdict = ledgerEntries.find((entry) => (
+      entry && entry.lossId === rec.lossId && entry.hearingResolution
+    ));
+    if (priorVerdict && priorVerdict.hearingResolution) {
+      row.closed = true;
+      row.outcome = priorVerdict.hearingResolution.outcome || 'completed';
+      row.missionId = priorVerdict.hearingResolution.missionId || null;
+      row.closedAt = priorVerdict.hearingResolution.closedAt != null
+        ? priorVerdict.hearingResolution.closedAt : null;
+    }
+    own.hearingByLoss[rec.lossId] = row;
+    if (liveOrPosted || settled || row.closed) {
+      row.reused = true;
+      return row;
+    }
+
+    offer.lossInvestigation = {
+      lossId: rec.lossId,
+      sectorId: rec.sectorId,
+      assetId: rec.assetId || null,
+      factionId: rec.factionId || null,
+      kind: rec.kind || null,
+      simDay: rec.simDay != null ? rec.simDay : null,
+    };
+    if (this._bus && this._bus.emit) this._bus.emit('mission:offered', offer);
+    return row;
+  },
+
+  /**
+   * FB-041 closure — the chain's public receipt channel is `mission:setPieceTransition`. Only a
+   * TERMINAL transition (status 'completed' — the route finished or terminally failed) closes
+   * the loss entry; 'advanced'/'branch_available'/'retry' beats leave it open. The verdict is
+   * written back onto the promoted record and annotated additively on the ledger entry (the same
+   * read-then-enrich discipline the ledger applies to wreck entities), so the loss entry itself
+   * carries the hearing's outcome across saves.
+   */
+  _closeHearing(p) {
+    const state = this._state;
+    if (!state || !p || p.archetypeId !== 'hearing' || !p.chainId || p.status !== 'completed') return;
+    const own = ensureState(state);
+    const row = Object.values(own.hearingByLoss || {}).find((entry) => (
+      entry && entry.chainId === p.chainId
+    ));
+    if (!row || row.closed) return;
+    row.closed = true;
+    row.outcome = p.outcome || 'completed';
+    row.missionId = p.missionId || null;
+    row.closedAt = state.simTime || 0;
+
+    const rec = own.promotedBySector[row.sectorId]
+      || Object.values(own.promotedByPoint || {}).find((entry) => entry && entry.lossId === row.lossId)
+      || null;
+    if (rec) {
+      rec.hearingChainId = row.chainId;
+      rec.hearingOutcome = row.outcome;
+      rec.hearingClosedAt = row.closedAt;
+      rec.closed = true;
+    }
+
+    const entries = state.lossLedger && Array.isArray(state.lossLedger.entries)
+      ? state.lossLedger.entries : [];
+    const loss = entries.find((entry) => entry && entry.lossId === row.lossId);
+    if (loss && !loss.hearingResolution) {
+      loss.hearingResolution = {
+        chainId: row.chainId,
+        missionId: row.missionId,
+        outcome: row.outcome,
+        closedAt: row.closedAt,
+      };
+    }
+    if (this._bus && this._bus.emit) {
+      this._bus.emit('lossInvestigation:closed', {
+        lossId: row.lossId,
+        sectorId: row.sectorId,
+        chainId: row.chainId,
+        missionId: row.missionId,
+        outcome: row.outcome,
+      });
+    }
   },
 
   _stampOffer(offer) {
@@ -192,12 +360,16 @@ export const lossInvestigation = {
       if (this._onPlaced) this._bus.off('salvage:placed', this._onPlaced);
       if (this._onSectorEnter) this._bus.off('sector:enter', this._onSectorEnter);
       if (this._onMissionOffered) this._bus.off('mission:offered', this._onMissionOffered);
+      if (this._onPromoted) this._bus.off('lossInvestigation:promoted', this._onPromoted);
+      if (this._onSetPieceTransition) this._bus.off('mission:setPieceTransition', this._onSetPieceTransition);
       if (this._onNewGame) this._bus.off('game:newGame', this._onNewGame);
       if (this._onNewGame) this._bus.off('save:loaded', this._onNewGame);
     }
     this._onPlaced = null;
     this._onSectorEnter = null;
     this._onMissionOffered = null;
+    this._onPromoted = null;
+    this._onSetPieceTransition = null;
     this._onNewGame = null;
   },
 };

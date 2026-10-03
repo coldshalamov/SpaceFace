@@ -150,6 +150,7 @@ import { zonesForSector } from '../data/sectorZones.js';
 import { rollBountyMark, bountyMarkHail, markArchetypePoolFor, MARK_HAIL_RANGE_WU } from '../data/bountyMarks.js';
 import { promotedPilotIdentity } from '../data/pilotCallsigns.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
+import { customsWeirForSector } from '../world/customsWeir.js';
 import { hash32 } from '../core/rng.js';
 import { Masks } from '../core/entity.js';
 import { maxFittedModuleMod } from '../core/fittedModules.js';
@@ -754,6 +755,36 @@ export function mutationPartialSettlement(have, need, rewardCr) {
     payCr: Math.max(0, Math.round((Number(rewardCr) || 0) * deliverQty / needQty)),
   };
 }
+
+/**
+ * NXB-028: a damaged/short freight delivery settles on the contract's recorded terms — the
+ * accepted reward divided by the contracted units — never a live market price. Only units that
+ * are actually deliverable count: loose cargo is limited by `sellableCargoQuantity` (sealed
+ * siblings are not spendable), a sealed manifest by `releasableContractUnits` (only this
+ * contract's own reservation). Returns null when nothing aboard can settle, so the caller keeps
+ * the ordinary "not carrying" path.
+ */
+export function partialDeliverySettlement(m, state) {
+  if (!m || m.status !== 'active' || m.type !== 'cargo_delivery' || !m.params || !m.params.cmdtyId) return null;
+  if (m.storyTag === CONTRACT_47A_B0_TAG || m.storyTag === CONTRACT_47A_B1_TAG) return null;
+  const tracked = m.preloadedCargo === true;
+  const need = tracked
+    ? Math.max(0, Math.floor(Number(m.params.sealedRemaining != null ? m.params.sealedRemaining : m.params.qty) || 0))
+    : Math.max(1, Math.floor(Number(m.params.qty) || 1));
+  if (need <= 0) return null;
+  const have = tracked
+    ? Math.max(0, Math.floor(Number(releasableContractUnits(state, m)) || 0))
+    : Math.max(0, Math.floor(Number(sellableCargoQuantity(state, m.params.cmdtyId)) || 0));
+  const deliverQty = Math.min(have, need);
+  if (deliverQty <= 0 || deliverQty >= need) return null;
+  return {
+    needQty: need,
+    deliverQty,
+    shortfallUnits: need - deliverQty,
+    payCr: Math.max(0, Math.round((Number(m.reward_cr) || 0) * deliverQty / need)),
+    tracked,
+  };
+}
 const LONG_READ_RUMOR_EVENT = Object.freeze({
   news: 'news:headline',
   comms_intercept: 'comms:popup',
@@ -1302,6 +1333,9 @@ export const missions = {
     // durable discovery record via the bounded researchFirsts dedup. Missions stays the sole
     // positive researchPoints writer; this loop only widens which events feed it.
     for (const grantEvent of Object.keys(RESEARCH_GRANTS)) {
+      // Repeatable rows are settlement faucets, not discovery firsts. Subscribing
+      // them here would let a bus emit enter the dedupe ledger.
+      if (RESEARCH_GRANTS[grantEvent] && RESEARCH_GRANTS[grantEvent].repeatable === true) continue;
       bus.on(grantEvent, (p) => this._grantResearchFirst(grantEvent, p || {}));
     }
     bus.on('tether:reel', (p) => {
@@ -2648,6 +2682,10 @@ export const missions = {
       id, type: typeId, stationId: info.id, factionId: info.factionId,
       reward_cr, time_limit_s, duration_s:time_limit_s, collateral_cr, riskTier,
       economyTerms,
+      // SF-112/113: bind the premium to its named cause — a customs weir monitoring the lane in,
+      // or the destination sector's own thin patrol cover. Pure derived-from-inputs text, so a
+      // re-rolled offer reproduces the same note; the dossier prints it beside the risk band.
+      riskNote: this._riskNoteFor(typeId, destSectorId, sectorRisk),
       destStationId, destSectorId, distance,
       params,
       title: this._titleFor(typeId, params, dest),
@@ -2901,6 +2939,29 @@ export const missions = {
       default:
         return { fValue: 1, taskTime: 30 };
     }
+  },
+
+  /**
+   * SF-112/113 — name the complication the price is actually paying for. `sectorRisk` here is the
+   * destination sector's authored/live danger already fed into the quote — not a fresh signal — so
+   * the note and the premium can never disagree. A smuggling lane into a weir sector names the
+   * customs line (that jurisdiction scan is the priced threat); other elevated-risk destinations
+   * name the sector's own thin cover. Quiet destinations get no note rather than a label.
+   */
+  _riskNoteFor(typeId, destSectorId, sectorRisk) {
+    if (typeId === 'smuggling_run') {
+      const weir = customsWeirForSector(destSectorId);
+      if (weir) {
+        const weirSector = SECTOR_BY_ID.get(weir.sectorId);
+        return `the ${weirSector && weirSector.name || 'border'} customs weir scans this lane`;
+      }
+    }
+    const tier = Math.max(0, Math.round(Number(sectorRisk) || 0));
+    if (tier < 2) return null;
+    const destSector = SECTOR_BY_ID.get(destSectorId);
+    const name = destSector && destSector.name ? destSector.name : 'the destination sector';
+    const word = tier >= 4 ? 'lawless' : tier >= 3 ? 'contested' : 'patrol-thin';
+    return `${name} is ${word} — the premium pays for the crossing`;
   },
 
   _titleFor(typeId, p, dest) {
@@ -4516,6 +4577,8 @@ export const missions = {
     const spec = RESEARCH_GRANTS[eventName];
     const state = this.state;
     if (!spec || !state || !state.player) return 0;
+    // A repeatable contract row must not become a first, even if something emits it.
+    if (spec.repeatable === true) return 0;
     const rawId = payload ? payload[spec.field] : null;
     if (rawId == null || rawId === '') return 0;
     const firsts = this._ensureResearchFirsts(state);
@@ -4541,6 +4604,43 @@ export const missions = {
       source: `first:${eventName}`,
       scope: spec.scope,
       granted: rp,
+    });
+    return rp;
+  },
+
+  /**
+   * After the one-time firsts ledger is full, a completed research contract still
+   * pays the RESEARCH_GRANTS `research:contract` row, at most dailyCap times per
+   * sim-day. The day count is not a researchFirsts key, so dedupe and the 256 cap
+   * stay intact. Kills and bounty settlements are not this row.
+   */
+  _grantCappedResearchContract(mission) {
+    const spec = RESEARCH_GRANTS['research:contract'];
+    const state = this.state;
+    if (!spec || spec.repeatable !== true || !state || !state.player || !mission) return 0;
+    const types = spec.types;
+    if (!Array.isArray(types) || types.includes(mission.type) !== true) return 0;
+    const firsts = state.player.researchFirsts;
+    const filled = firsts && typeof firsts === 'object' ? Object.keys(firsts).length : 0;
+    if (filled < RESEARCH_FIRSTS_CAP) return 0;
+    const cap = Math.max(0, Math.round(Number(spec.dailyCap)) || 0);
+    if (!(cap > 0)) return 0;
+    const rp = Math.max(0, Math.round(Number(spec.rp)) || 0);
+    if (!(rp > 0)) return 0;
+    const dayKey = this._dayKey();
+    const ledger = state.player.researchContractDay;
+    const count = ledger && ledger.dayKey === dayKey ? (Number(ledger.count) || 0) : 0;
+    if (count >= cap) return 0;
+    state.player.researchContractDay = { dayKey, count: count + 1 };
+    state.player.researchPoints = (state.player.researchPoints || 0) + rp;
+    this.bus.emit('research:pointsChanged', {
+      researchPoints: state.player.researchPoints,
+      source: 'research:contract',
+      scope: spec.scope,
+      granted: rp,
+      dayKey,
+      dailyCount: count + 1,
+      dailyCap: cap,
     });
     return rp;
   },
@@ -6421,6 +6521,42 @@ export const missions = {
             this.bus.emit('toast', { text: 'Sealed cargo missing. Return to Helios.', kind: 'warn', ttl: 4 });
             continue;
           }
+          // NXB-028: a freight contract that arrives short settles the delivered fraction on its
+          // recorded terms instead of reporting a binary "not carrying". Sealed-manifest
+          // deliveries release only this contract's own remaining units; loose cargo draws only
+          // unsealed stock, so ineligible units are never paid as delivered. The mission still
+          // terminates once — _completeMission removes it, so reload/retry cannot recollect.
+          const partial = t === 'cargo_delivery' ? partialDeliverySettlement(m, this.state) : null;
+          if (partial) {
+            const removed = partial.tracked
+              ? this._drawSealedUnits(m, partial.deliverQty)
+              : removeCargo(this.state, m.params.cmdtyId, partial.deliverQty);
+            if (removed > 0) {
+              const paid = removed === partial.deliverQty
+                ? partial
+                : {
+                  ...partial,
+                  deliverQty: removed,
+                  shortfallUnits: Math.max(0, partial.needQty - removed),
+                  payCr: Math.max(0, Math.round((Number(m.reward_cr) || 0) * removed / partial.needQty)),
+                };
+              m.reward_cr = paid.payCr;
+              m.params.completionMethod = 'partial_delivery';
+              m.params.deliveredUnits = removed;
+              m.params.shortfallUnits = paid.shortfallUnits;
+              this.bus.emit('cargo:delivered', {
+                commodityId: m.params.cmdtyId, qty: removed,
+                missionId: m.id, stationId: m.destStationId,
+              });
+              this.bus.emit('toast', {
+                text: `Short delivery: ${removed}/${partial.needQty}u signed for — ${paid.shortfallUnits}u written off. Paid ${paid.payCr.toLocaleString('en-US')} cr on delivered units.`,
+                kind: 'warn',
+                ttl: 4,
+              });
+              this._completeMission(m, i);
+              continue;
+            }
+          }
           const need = m.params && m.params.cmdtyId ? this._cmdtyName(m.params.cmdtyId) : 'the cargo';
           this.bus.emit('toast', { text: `Delivery: you are not carrying ${need}`, kind: 'warn', ttl: 3 });
           continue;
@@ -6607,7 +6743,9 @@ export const missions = {
     }
     switch (m && m.type) {
       case 'cargo_delivery':
-        return 'Manifest sealed at ' + dest + '. ' + cargo + ' cleared the dock and the client released payment.';
+        return p.completionMethod === 'partial_delivery'
+          ? `Short manifest signed at ${dest} — ${p.deliveredUnits || 0}u accepted, ${p.shortfallUnits || 0}u written off the bill. The client paid on what arrived.`
+          : 'Manifest sealed at ' + dest + '. ' + cargo + ' cleared the dock and the client released payment.';
       case 'bulk_trade':
         return 'The shortage at ' + dest + ' is covered for now. Your sale moved the board and the client noticed.';
       case BULK_HAUL_TYPE:
@@ -6893,6 +7031,8 @@ export const missions = {
         granted: rp,
       });
     }
+    const contractRp = this._grantCappedResearchContract(m);
+    if (contractRp > 0) researchPoints += contractRp;
     // Honored contract terms pay fieldwork RP — a settlement-time grant, not a researchFirsts
     // entry, because a mission's clauses can honor exactly once when it completes.
     if (clauseSettlement.honored.length) {

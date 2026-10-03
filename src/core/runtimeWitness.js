@@ -204,6 +204,8 @@ function copySample(dst, src) {
   dst.topPhase = src.topPhase;
   dst.topPhaseP95 = src.topPhaseP95;
   dst.fenceBytesPacked = src.fenceBytesPacked;
+  dst.worldSpawnLimited = src.worldSpawnLimited;
+  dst.worldSpawnCriticalDeferred = src.worldSpawnCriticalDeferred;
   dst.hitch = src.hitch;
   return dst;
 }
@@ -241,6 +243,8 @@ function emptySample() {
     topPhase: null,
     topPhaseP95: 0,
     fenceBytesPacked: 0,
+    worldSpawnLimited: 0,
+    worldSpawnCriticalDeferred: 0,
     hitch: false,
   };
 }
@@ -298,6 +302,12 @@ export function collectRuntimeWitnessSample(state, extras = {}, wallMs = Date.no
   // MACH-09: bytes the presentation fence packed on its last commit. The renderer publishes it on
   // state.render.snapshotFence; the report reduces it to p50/p95 across the sample window.
   sample.fenceBytesPacked = finite(state?.render?.snapshotFence?.bytes);
+  // MACH-06: world.js counts its own spawn-authority outcomes at emit time on
+  // state.world.spawnWitness; the witness reports cumulative totals plus the window delta so a
+  // dense scene's clamping is visible without a per-event log.
+  const spawnWitness = state?.world?.spawnWitness;
+  sample.worldSpawnLimited = finite(spawnWitness?.limited);
+  sample.worldSpawnCriticalDeferred = finite(spawnWitness?.criticalDeferred);
   sample.hitch = callbackMs >= 33.4;
   sample.costs = costs;
   return sample;
@@ -518,6 +528,22 @@ function formatFenceBytesLine(samples) {
   return `- packed snapshot bytes/frame: p50 ${pick(0.5)} / p95 ${pick(0.95)} / last ${lastValue} (n ${values.length})`;
 }
 
+/**
+ * One line: cumulative spawn-authority counters (limited clamps vs critical deferrals) plus the
+ * delta accumulated across the sample window — a dense scene reads non-zero limited while the
+ * critical line stays at zero, exactly the asymmetry MACH-06 wants agents to see.
+ */
+function formatSpawnWitnessLine(samples) {
+  const rows = Array.isArray(samples) ? samples : [];
+  const first = rows[0] || null;
+  const last = rows[rows.length - 1] || null;
+  const limited = finite(last?.worldSpawnLimited);
+  const critical = finite(last?.worldSpawnCriticalDeferred);
+  const limitedDelta = limited - finite(first?.worldSpawnLimited);
+  const criticalDelta = critical - finite(first?.worldSpawnCriticalDeferred);
+  return `- world spawn limited ${limited} (+${limitedDelta}) / critical deferred ${critical} (+${criticalDelta})`;
+}
+
 export function formatRuntimeWitnessReport({
   verdict,
   samples = [],
@@ -551,6 +577,7 @@ export function formatRuntimeWitnessReport({
     `- lastFrameError: ${last?.lastFrameError || 'none'}`,
     `- gpu: ${gpu ? `${gpu.renderer || '?'} (tier ${gpu.tier ?? '?'})` : 'n/a'}`,
     formatFenceBytesLine(samples),
+    formatSpawnWitnessLine(samples),
     '',
     '## Where the last frames went (ms)',
   ];

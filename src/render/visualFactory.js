@@ -17,6 +17,7 @@
 //   rather than a unique geometry per rock.
 import * as THREE from 'three';
 import { buildMorrowVisual } from './characters/morrowModel.js';
+import { buildVesperVisual } from './characters/vesperModel.js';
 import { modelTruthMountFractions } from '../data/modelTruth.js';
 import { mergeGeometries, mergeVertices, toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
 import { getReadyRockSurfaceTextures, rockSurfaceVariantSpec, ROCK_SURFACE_VARIANTS } from './rockSurfaceLibrary.js';
@@ -2648,6 +2649,128 @@ function gateLensMaterial(isWormhole) {
   });
 }
 
+// EVENT HORIZON face — a structured, time-driven construction, not a painted card. The old face
+// was a static radial-gradient canvas (the soft-card read VFX_TECHNIQUE_STANDARD bans for
+// objects); this one carries internal structure AND travelling motion:
+//   - a 3-armed log-spiral fold rosette whose radial phase advances with uTime, so every crest
+//     travels INWARD toward the throat (the mesh swirl infrastructureMotion applies cannot
+//     express radial infall — the two motions compose, and the disc counter-rotates against the
+//     lens disc above for parallax);
+//   - differential rotation: the fold field runs prograde, the dark channel field slow
+//     retrograde, so the combined rosette shears over time instead of spinning as one decal;
+//   - fine counter-drifting filaments and dark channels that cut the glow into arms, so the
+//     face reads as infalling matter, never as a filled soft square.
+// Seam safety: every angular frequency is an integer multiple of theta, so the atan(±π) branch
+// cut is invisible — same guarantee as the lens shader. Instruction set is exactly the lens
+// family (atan/sin/exp/pow/smoothstep/log), which this project already runs on the software
+// rasterizer; `setFactoryPortalRenderMode('canvas')` restores the legacy gradient card if a
+// rasterizer ever refuses the program.
+const GATE_PORTAL_FRAGMENT = `
+  precision highp float;
+  varying vec2 vUv;
+  uniform float uTime;
+  uniform vec3 uColorCore;   // hot throat tone (was the gradient's centre stop)
+  uniform vec3 uColorArm;    // fold / filament mid tone (was the gradient's mid stop)
+  uniform vec3 uColorDeep;   // deep body tone between the folds (was the gradient's outer stop)
+  uniform float uOpacity;    // legacy additive envelope: 0.55 gate / 0.7 wormhole
+  uniform float uIntensity;
+
+  void main() {
+    vec2 p = vUv * 2.0 - 1.0;
+    float r = length(p);
+    if (r > 1.0) discard;
+    float theta = atan(p.y, p.x);
+
+    // Differential rotation: folds prograde, channels slow retrograde.
+    float angF = theta - uTime * 0.50;
+    float angC = theta + uTime * 0.13;
+
+    // Infall: adding uTime to the radial phase moves every crest toward r=0 over time.
+    float fall = uTime * 0.34;
+    float radial = r + fall;
+
+    // Log-spiral fold coordinate (integer angular multiplier keeps the atan seam hidden).
+    float spiralF = angF * 3.0 - 4.6 * log(r + 0.14) + radial * 3.1;
+    // Quasi-organic wobble from two incommensurate seam-safe terms — no hash noise needed.
+    float wob = sin(angF * 2.0 + r * 7.0 - uTime * 0.7) * 0.5
+              + sin(angC * 3.0 - r * 4.0 + uTime * 0.4) * 0.5;
+    float folds = smoothstep(0.10, 0.95, sin(spiralF + wob * 1.4));
+
+    // Fine counter-drifting filaments, strongest mid-disc where the folds read.
+    float fil = smoothstep(0.55, 1.0, sin(angF * 9.0 - 12.6 * log(r + 0.14) + radial * 6.2 - wob * 1.9));
+    float midWeight = smoothstep(0.05, 0.28, r) * smoothstep(1.0, 0.60, r);
+
+    // Dark channels cut the glow into arms so the face never reads as a filled card.
+    float channels = smoothstep(0.40, 0.88, sin(angC * 5.0 + 2.4 * log(r + 0.14) + wob));
+    float channelDark = mix(1.0, 0.20, channels * midWeight);
+
+    // Hot throat keeps the established bright-centre silhouette; slow breath, no strobe.
+    float core = exp(-r * r * 6.0) * (0.86 + 0.14 * sin(uTime * 1.3));
+    float rim = exp(-pow((r - 0.94) * 9.5, 2.0));
+    float rimFade = smoothstep(1.0, 0.80, r);
+
+    float structure = (folds * 0.62 + fil * 0.38) * midWeight * channelDark;
+    vec3 col = mix(uColorDeep, uColorArm, clamp(structure * 1.4, 0.0, 1.0));
+    col = mix(col, uColorCore, clamp(core + rim * 0.5, 0.0, 1.0));
+
+    float a = clamp(core * 0.92 + structure * 0.85 + rim * 0.34, 0.0, 1.0) * rimFade * uOpacity;
+    gl_FragColor = vec4(col * uIntensity, a);
+  }
+`;
+
+// Bench/CI escape hatch: 'shader' (default) builds the animated construction; 'canvas' builds the
+// legacy gradient-card material. Must be set before the first gate is built (the material cache
+// is per type, so a mid-session flip only affects not-yet-built gate types).
+let _portalRenderMode = 'shader';
+export function setFactoryPortalRenderMode(mode) {
+  if (mode === 'shader' || mode === 'canvas') _portalRenderMode = mode;
+}
+
+// One material per portal TYPE (never per gate instance) — the pre-existing cache keys.
+function gatePortalMaterial(isWormhole) {
+  if (_portalRenderMode === 'canvas') return gatePortalFallbackMaterial(isWormhole);
+  return getMaterial(isWormhole ? 'gate:portal:wh' : 'gate:portal', () => {
+    const material = new THREE.ShaderMaterial({
+      name: isWormhole ? 'GatePortalWormhole' : 'GatePortal',
+      uniforms: {
+        uTime: { value: 0 },
+        uColorCore: { value: new THREE.Color(isWormhole ? '#f0c0ff' : '#bff4ff') },
+        uColorArm: { value: new THREE.Color(isWormhole ? '#9030ff' : '#39d0ff') },
+        uColorDeep: { value: new THREE.Color(isWormhole ? '#3a0a4a' : '#0a1830') },
+        uOpacity: { value: isWormhole ? 0.7 : 0.55 },
+        uIntensity: { value: 1 },
+      },
+      vertexShader: GATE_LENS_VERTEX,
+      fragmentShader: GATE_PORTAL_FRAGMENT,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    });
+    configurePlanarAdditiveMaterial(material);
+    return material;
+  });
+}
+
+// Sane fallback: the legacy radial-gradient card, kept verbatim (texture cache keys included) so
+// the gate still renders a full portal face if the shader program is ever unavailable.
+function gatePortalFallbackMaterial(isWormhole) {
+  return getMaterial(isWormhole ? 'gate:portal:wh:canvas' : 'gate:portal:canvas', () => {
+    const tex = getTexture(isWormhole ? 'grad:portal:wh' : 'grad:portal', () => makeGradientTexture({
+      type: 'radial',
+      stops: isWormhole
+        ? [[0, '#f0c0ff'], [0.35, '#9030ff'], [0.7, '#3a0a4a'], [1, '#08000f']]
+        : [[0, '#bff4ff'], [0.4, '#39d0ff'], [1, '#0a1830']],
+    }));
+    const material = new THREE.MeshBasicMaterial({
+      map: tex, transparent: true, opacity: isWormhole ? 0.7 : 0.55,
+      blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+    });
+    configurePlanarAdditiveMaterial(material);
+    return material;
+  });
+}
+
 // Vertical jump gate: a chunky portal you fly THROUGH. The ring plane contains the
 // world Y axis + the radial-in direction (toward sector center), so a ship approaching
 // from the sector center passes cleanly through the opening. Built from primitives +
@@ -2696,25 +2819,20 @@ function buildGate(e, pal) {
   innerRing.scale.setScalar(R);
   orient.add(innerRing);
 
-  // EVENT HORIZON — swirling additive disc filling the opening.
-  const portalMat = getMaterial(isWormhole ? 'gate:portal:wh' : 'gate:portal', () => {
-    const tex = getTexture(isWormhole ? 'grad:portal:wh' : 'grad:portal', () => makeGradientTexture({
-      type: 'radial',
-      stops: isWormhole
-        ? [[0, '#f0c0ff'], [0.35, '#9030ff'], [0.7, '#3a0a4a'], [1, '#08000f']]
-        : [[0, '#bff4ff'], [0.4, '#39d0ff'], [1, '#0a1830']],
-    }));
-    const material = new THREE.MeshBasicMaterial({
-      map: tex, transparent: true, opacity: isWormhole ? 0.7 : 0.55,
-      blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
-    });
-    configurePlanarAdditiveMaterial(material);
-    return material;
-  });
+  // EVENT HORIZON — structured additive disc filling the opening (see GATE_PORTAL_FRAGMENT):
+  // an infalling fold rosette cut by dark channels, time-driven, not a static gradient card.
+  const portalMat = gatePortalMaterial(isWormhole);
   const portal = new THREE.Mesh(
     getGeometry('gate:disc', () => new THREE.CircleGeometry(0.78, 48)),
     portalMat,
   );
+  // Shared-material clock: every gate of a type writes the same uTime (idempotent — the boltMesh
+  // pattern). nowSec() is the presentation sim clock, so the face holds still with the world on
+  // pause/hit-stop. Guarded so the canvas fallback material (no uniforms) is left untouched.
+  portal.onBeforeRender = () => {
+    const u = portalMat.uniforms;
+    if (u && u.uTime) u.uTime.value = nowSec();
+  };
   portal.scale.setScalar(R);
   orient.add(portal);
 
@@ -5480,7 +5598,7 @@ export function createVisualFactory() {
           case 'station': return stampBuiltVisual(freezeStaticPresentation(attachStationHlod(buildStation(e), e)));
           case 'pickup': return stampBuiltVisual(buildPickup(e));
           case 'projectile': return stampBuiltVisual(buildProjectile(e));
-          case 'drone': return stampBuiltVisual(e.data?.morrow === true ? buildMorrowVisual(e) : buildDrone(e));
+          case 'drone': return stampBuiltVisual(e.data?.vesper === true ? buildVesperVisual(e) : e.data?.morrow === true ? buildMorrowVisual(e) : buildDrone(e));
           case 'payload': return stampBuiltVisual(buildPayload(e));
           case 'mine': return stampBuiltVisual(buildMine(e));
           case 'vectormine': return stampBuiltVisual(buildVectorMine(e));

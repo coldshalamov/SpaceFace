@@ -405,7 +405,10 @@ function riskSentence(m, consequences, facShort) {
   const loss = consequences.collateral
     ? `costs ${cr(consequences.collateral)} collateral${consequences.repPenalty < 0 ? ` and ${consequences.repPenalty} ${facShort} standing` : ''}`
     : (consequences.repPenalty < 0 ? `costs ${consequences.repPenalty} ${facShort} standing` : 'costs nothing');
-  return `${RISK_LABEL[r]} risk. Success pays ${gain}; failure ${loss}.`;
+  // SF-112: the premium names its cause when the offer was priced on a real complication —
+  // a customs weir on the lane, or the destination sector's thin patrol cover.
+  const note = typeof m.riskNote === 'string' && m.riskNote ? ` — ${m.riskNote}` : '';
+  return `${RISK_LABEL[r]} risk${note}. Success pays ${gain}; failure ${loss}.`;
 }
 
 /**

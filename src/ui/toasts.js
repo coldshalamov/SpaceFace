@@ -23,6 +23,7 @@ import { jumpAbortReceipt } from './jumpNotice.js';
 import { resolveObjectiveHudLayout } from './hud.js';
 import { glyphSvg } from './glyphs.js';
 import { bindAutomationPayoffUi } from './automationPayoff.js';
+import { bindReturningPilotSummary } from './dockArrival.js';
 
 const MAX = RECEIPT_MAX;
 // Receipt kind icons — inline SVG from src/ui/glyphs.js (was text ✓ ✕ ! ¢ ◈, which leaned on
@@ -318,6 +319,7 @@ export function createToasts(ctx) {
   bindJumpDenialToasts(bus, () => ctx.state);
   bindExportRecoveryToasts(bus);
   bindAutomationPayoffUi(bus, () => ctx.state);
+  bindReturningPilotSummary(bus, ctx && ctx.state);
 
   return { push, tick };
 }

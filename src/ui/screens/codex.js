@@ -15,6 +15,7 @@
 // state.story + the pure-data narrative tables; never mutates sim state.
 
 import { SHIP, COLD_START, REFS, FIGURES, COMMS, GRAFFITI, BEAT_CONTENT, ENDGAME_CHOICES, PERSISTENT_CARGO } from '../../data/narrative.js';
+import { writtenEndingArchive } from '../../story/endings/index.js';
 import { TETHYS_BLACK_MARKET_DISCOVERY } from '../../data/frontierRumors.js';
 import { CANONICAL_PORTRAITS, PORTRAIT_ASSET_ROOT } from '../../data/portraits.js';
 import { hullPosterUrl } from '../hullPosters.js';
@@ -630,6 +631,9 @@ export const codexScreen = {
     this._unsubs.push(ctx.bus.on('comms:popup', refreshIfVisible));
     this._unsubs.push(ctx.bus.on('graffiti:show', refreshIfVisible));
     this._unsubs.push(ctx.bus.on('discovery:plateUnlocked', refreshIfVisible));
+    // The story owner emits the filed ending's manuscript when it is written (and on archive
+    // open); the Archive tab reads it straight from state on the next render.
+    this._unsubs.push(ctx.bus.on('endgame:archive', refreshIfVisible));
 
     this._render(ctx);
     rootEl.dataset.kReady = '1';
@@ -1087,7 +1091,30 @@ export const codexScreen = {
 
   // Signal Archive — every recovered signal an entry on the dial (its still in the aperture); PLAY
   // runs the clip through the UI system's shared cinematic player (ui.playCinematic).
-  _renderArchive() {
+  _renderArchive(ctx) {
+    // FB-129 — the written ending is part of the ship's own record. Once the story owner files it
+    // (state.story.writtenFinale), the Archive carries the manuscript itself: the transmission
+    // that played, then the epilogue — cited back to its receipt. Read-only; the story owner
+    // remains the only writer.
+    const archive = writtenEndingArchive(
+      ctx && ctx.state && ctx.state.story ? ctx.state.story.writtenFinale : null,
+    );
+    if (archive) {
+      const body = archive.transmission
+        .map((b) => `${b.sender}: ${b.text}`)
+        .join('\n');
+      const epilogue = (archive.epilogue || []).join('\n');
+      this._section('Filed Ending', [makeEntry({
+        id: 'endgame:filed',
+        name: archive.title,
+        sub: 'Filed ending',
+        title: archive.title,
+        meta: `${archive.subtitle ? archive.subtitle + ' · ' : ''}filed under ${archive.receiptId}`,
+        body: body || archive.subtitle || '',
+        note: epilogue || 'The record stands.',
+        signal: true,
+      })]);
+    }
     // Each recovered signal is an entry: its still in the aperture, its log as the reading, and
     // PLAY, the tab's one Lamp Key, under it (the clip runs through the UI's shared player).
     const entries = SIGNAL_ARCHIVE.map((c) => {

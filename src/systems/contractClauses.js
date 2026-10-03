@@ -128,6 +128,7 @@ export function attachClauses(offer, seed) {
 /** Terms that regulate the same physical quantity must not stack on one offer. */
 function conditionGroupOf(condition) {
   if (condition.id === 'steady_hands' || condition.id === 'quiet_approach') return 'speed';
+  if (condition.id === 'fragile_intact' || condition.id === 'fragile_graded') return 'fragile';
   return condition.id;
 }
 

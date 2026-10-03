@@ -37,6 +37,7 @@ import { COORDINATE_SCHEMA, applyFrameOrigin, deriveFrameOrigin } from '../core/
 import { isCatchupPresentationSkip } from '../core/catchupPolicy.js';
 import { shouldSkipFullTickSystems } from '../core/presentationFreeze.js';
 import { ORBIT_ASSIST_STRENGTH } from '../core/flight/orbitAssist.js';
+import { HOLD_TO_TOGGLE_ACTIONS } from '../systems/input.js';
 import {
   SAVE_JOURNAL_EVENT,
   acknowledgeSaveSnapshotBoundary,
@@ -590,6 +591,7 @@ export const save = {
       // Salvage must restore before world enterSector rematerializes an authored wreck. Its own
       // serializer owns the bounded source ledger; save only preserves the dependency order.
       ['morrow', () => this._callSerialize('morrow') || {}],
+      ['vesper', () => this._callSerialize('vesper') || {}],
       ['salvage', () => this._callSerialize('salvage') || {}],
       // survivorPod rides the same boundary: its promoted/stripped records must be present before
       // enterSector's salvage replan (and the survivorPod promotion listener) runs — otherwise a
@@ -679,6 +681,7 @@ export const save = {
     data.cargo = this._serializeCargo();
     yield 'serialize:cargo';
     data.morrow = this._callSerialize('morrow') || {};
+    data.vesper = this._callSerialize('vesper') || {};
     data.salvage = this._callSerialize('salvage') || {};
     yield 'serialize:salvage';
     data.survivorPod = this._callSerialize('survivorPod') || {};
@@ -4412,6 +4415,7 @@ export const save = {
       this._restoreCargo(data.cargo);
       yield 'cargo-restored';
       this._callDeserialize('morrow', data.morrow);
+      this._callDeserialize('vesper', data.vesper);
       this._callDeserialize('salvage', data.salvage);
       yield 'salvage-restored';
       // Before enterSector: the sector replan re-derives points/entities and the promotion
@@ -5083,6 +5087,14 @@ export const save = {
       // injected by old-save migration underneath a newer Space-primary profile.
       if (profile.controls && Object.prototype.hasOwnProperty.call(profile.controls, 'bindings')) {
         restored.controls.bindings = normalizeControlBindings(profile.controls.bindings);
+      }
+      // FB-005: rumble level is profile-scoped and never persisted inside a save slot. The
+      // profile merge normally wins outright; when the profile predates the setting, the save's
+      // copy must not leak through either — the shipped default stands.
+      const profileHaptics = profile.accessibility && profile.accessibility.haptics;
+      if (profileHaptics !== 'off' && profileHaptics !== 'low' && profileHaptics !== 'full'
+        && restored.accessibility) {
+        restored.accessibility.haptics = 'full';
       }
     }
     this.state.settings = restored;
@@ -6520,6 +6532,36 @@ function sanitizeRestoredSettings(settings) {
   if (typeof gp.invertY !== 'boolean') gp.invertY = false;
   if (gp.scheme !== 'twinstick' && gp.scheme !== 'drive') gp.scheme = 'drive';
   if (typeof gp.schemeSuggested !== 'boolean') gp.schemeSuggested = false;
+  // FB-004: pad response tuning. 'linear' is the shipped curve; deadzoneRight absent/invalid
+  // inherits the shared deadzone at tick time rather than pinning a stale number here; the
+  // sensitivities normalize to 1 like every other positive-scalar setting.
+  if (gp.curve !== 'linear' && gp.curve !== 'expo') delete gp.curve;
+  if (typeof gp.deadzoneRight !== 'number' || !(gp.deadzoneRight >= 0 && gp.deadzoneRight <= 1)) {
+    delete gp.deadzoneRight;
+  }
+  if (typeof gp.sensitivityAim !== 'number' || !(gp.sensitivityAim > 0)) delete gp.sensitivityAim;
+  if (typeof gp.sensitivityFly !== 'number' || !(gp.sensitivityFly > 0)) delete gp.sensitivityFly;
+  // FB-004: pointer aim tuning rides its own subtree so a pad-less player never carries pad noise.
+  if (!s.controls.mouse || typeof s.controls.mouse !== 'object' || Array.isArray(s.controls.mouse)) {
+    s.controls.mouse = { sensitivity: 1, invertY: false };
+  }
+  const mouse = s.controls.mouse;
+  if (typeof mouse.sensitivity !== 'number' || !(mouse.sensitivity > 0)) mouse.sensitivity = 1;
+  if (typeof mouse.invertY !== 'boolean') mouse.invertY = false;
+  if (!s.accessibility || typeof s.accessibility !== 'object' || Array.isArray(s.accessibility)) {
+    s.accessibility = {};
+  }
+  // FB-005: rumble is its own accessibility axis, never tied to reduce-motion. Profile-scoped.
+  const haptics = s.accessibility.haptics;
+  if (haptics !== 'off' && haptics !== 'low' && haptics !== 'full') s.accessibility.haptics = 'full';
+  // FB-113: hold-to-toggle is a per-verb boolean set; unknown verbs and non-true values drop out.
+  // The verb list is the one input.js publishes — keep this gate in step with it.
+  const htt = s.accessibility.holdToToggle;
+  const httClean = {};
+  if (htt && typeof htt === 'object' && !Array.isArray(htt)) {
+    for (const verb of HOLD_TO_TOGGLE_ACTIONS) if (htt[verb] === true) httClean[verb] = true;
+  }
+  s.accessibility.holdToToggle = httClean;
   // Touch (P1-12): { enabled } where enabled is true/false/null (null = auto-detect on touch devices).
   if (!s.controls.touch || typeof s.controls.touch !== 'object' || Array.isArray(s.controls.touch)) {
     s.controls.touch = { enabled: null };

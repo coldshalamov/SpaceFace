@@ -81,6 +81,7 @@ import { cloak } from '../systems/cloak.js';                          // §4.2 c
 import { lootShards } from '../systems/lootShards.js';                // §4.3 kill shards over the shipped loot:drop seam
 import { terrainAnchors } from '../systems/terrainAnchors.js';        // §4.4 big-and-few rocks per encounter bubble
 import { jettisonImpulse } from '../systems/jettisonImpulse.js';      // §5.3 cargo dump reaction impulse
+import { volatileExposure } from '../systems/volatileExposure.js';    // NXB-008: exposure-driven volatile load state (shock/heat facts, vent/rupture)
 import { masslineHud } from '../ui/masslineHud.js';                   // M2 surfacing: release indicator + cloak ring + meters (DOM-guarded)
 import { mining } from '../systems/mining.js';
 import { fieldDepletion } from '../systems/fieldDepletion.js';
@@ -132,6 +133,7 @@ import { pirateRumor } from '../systems/pirateRumor.js';             // BP-13/B1
 import { ambushSignatures } from '../systems/ambushSignatures.js';   // BP-13/B14 passive pre-ambush scan tells
 import { bountyHunt } from '../systems/bountyHunt.js';               // BP-13/B16 neutral bounty hunter contracts
 import { morrow } from '../systems/morrow.js';
+import { vesper } from '../systems/vesper.js';
 import { salvage } from '../systems/salvage.js';                     // derelict-field discovery loop
 import { voiceArbiter } from '../ui/voiceArbiter.js';                // "one voice at a time" priority queue (ctx.helpers.voice)
 // BP-11 Sector Atmosphere (Wave 3, design/revamp/detail/A_sector_station.md) — SYSTEMS-only
@@ -458,6 +460,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['lootShards', lootShards],
     ['terrainAnchors', terrainAnchors],
     ['jettisonImpulse', jettisonImpulse],
+    ['volatileExposure', volatileExposure],
     ['mining', mining],
     ['fieldDepletion', fieldDepletion],
     ['cargo', cargo],
@@ -499,6 +502,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['difficultyDirector', difficultyDirector],
     ['gateControlDirector', gateControlDirector],
     ['morrow', morrow],
+    ['vesper', vesper],
     ['salvage', salvage],
     ['lossInvestigation', lossInvestigation],
     ['salvageActions', salvageActions],

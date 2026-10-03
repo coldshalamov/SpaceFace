@@ -6459,6 +6459,29 @@ function authoredUpgradeAssetRequests(job) {
   return requests;
 }
 
+/** Same bound as assetLoader.preloadAuthoredParts: two files in flight, not the whole plan
+ * at once and not one-after-another. The shared decode budget still caps real workers. */
+export const AUTHORED_PREFETCH_DEPTH = 2;
+
+/** Start `depth` loads at a time. Wall time tracks the slowest wave, not the sum of every file. */
+export function prefetchAuthoredAssetRequests(requests, loadOne, depth = AUTHORED_PREFETCH_DEPTH) {
+  const list = Array.isArray(requests) ? requests : [];
+  if (!list.length || typeof loadOne !== 'function') return Promise.resolve();
+  const width = Math.max(1, Math.min(list.length, Math.floor(Number(depth)) || 1));
+  let cursor = 0;
+  const worker = async () => {
+    for (;;) {
+      const index = cursor;
+      cursor += 1;
+      if (index >= list.length) return;
+      await loadOne(list[index], index);
+    }
+  };
+  const tasks = [];
+  for (let i = 0; i < width; i += 1) tasks.push(worker());
+  return Promise.all(tasks).then(() => undefined);
+}
+
 /** Warm the runtime decode cache for one queued job. Ships keep the full library path; every other
  * authored body (place/station/fx/payload, wreck/kit plans) only needs its own files resident. */
 function startAuthoredJobAssetPrefetch(job) {
@@ -6471,11 +6494,9 @@ function startAuthoredJobAssetPrefetch(job) {
   if (!requests.length) return null;
   const options = job.options || {};
   const loadPart = typeof options.loadAuthoredPart === 'function' ? options.loadAuthoredPart : loadAuthoredPart;
-  // Fan the requests out: a place+overlay job otherwise pays the full fetch→decode tail
-  // nose-to-tail where the shared task-cache dedupe and worker decode budget already bound
-  // concurrency. The prefetch's job is to make the files resident before admission — the
-  // slowest request, not their sum, is the honest wait.
-  return Promise.all(requests.map((request) => loadPart(request.url, {
+  // Fan the requests out through the bounded prefetch pool: the slowest request, not their
+  // sum, is the honest wait, and the depth cap keeps a place+overlay job's tail bounded.
+  return prefetchAuthoredAssetRequests(requests, (request) => loadPart(request.url, {
     renderer: job.renderer,
     slot: request.slot,
     optional: true,
@@ -6484,7 +6505,7 @@ function startAuthoredJobAssetPrefetch(job) {
     sectorId: options.sectorId,
     isResidencyOwnerActive: options.isResidencyOwnerActive,
     admissionVisible: options.admissionVisible,
-  })));
+  }));
 }
 
 function authoredUpgradeEstimatedBytes(job) {

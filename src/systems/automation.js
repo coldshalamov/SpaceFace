@@ -23,7 +23,7 @@
 // Pure-data deps only (no 'three'). Reads economy via the registry (priceOf/quote/getMarket),
 // danger from the SECTORS catalog (dangerIndex), the player tier from player.droneTierCap.
 import { DRONES, TRADERS, OUTPOSTS, AUTO_BALANCE } from '../data/automation.js';
-import { TECH_NODES } from '../data/tech.js';
+import { TECH_NODES, techDisplayName } from '../data/tech.js';
 import { SECTORS, dangerIndex } from '../data/sectors.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
 import { consumePeriodicClock, normalizePeriodicAccumulator } from '../core/periodicClock.js';
@@ -2130,9 +2130,21 @@ export const automation = {
   },
 
   // ---- TRADERS ----
+  // The tech gate is enforced at the transaction owner, not only in the panel: an intent on
+  // ui:fleetOrder must not bypass the research the shop UI shows. Same rule claims.buildModule
+  // applies for claim construction and ships applies at the fit boundary.
+  _researchedTech(nodeId) {
+    const researched = this.state.player && this.state.player.researchedNodes;
+    return Array.isArray(researched) && researched.includes(nodeId);
+  },
+
   hireTrader(defId) {
     const def = TRADER_BY_ID.get(defId);
     if (!def) return false;
+    if (!this._researchedTech('tech_autonomous_fleets')) {
+      this.toast('Research required: ' + techDisplayName('tech_autonomous_fleets'), 'error');
+      return false;
+    }
     if (!this._charge(def.hireCost, 'hire:' + defId)) return false;
     const good = this._currentOreId();
     const t = {
@@ -2219,6 +2231,10 @@ export const automation = {
   buildOutpost(defId) {
     const def = OUTPOST_BY_ID.get(defId);
     if (!def) return false;
+    if (!this._researchedTech('tech_outpost_charter')) {
+      this.toast('Research required: ' + techDisplayName('tech_outpost_charter'), 'error');
+      return false;
+    }
     if (!this._charge(def.buildCost, 'build:' + defId)) return false;
     const id = this._allocId();
     const o = {

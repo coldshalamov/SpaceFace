@@ -19,7 +19,9 @@ import { stationIcon } from './stationArt.js';
 import { createStationEffects, stationMotionAllowed } from './stationEffects.js';
 import { ensureStylesheet } from './stationStyles.js';
 import { createStationCommands } from './stationCommands.js';
-import { berthSeatDefId, buildDockArrival, writeBerthArrival } from '../dockArrival.js';
+import {
+  berthSeatDefId, bindReturningPilotSummary, buildDockArrival, finishReturnSummary, writeBerthArrival,
+} from '../dockArrival.js';
 import { createFactionsScreen } from './screens/factions.js';
 import { createMarketScreen } from './screens/market.js';
 import { createContractsScreen } from './screens/contracts.js';
@@ -200,6 +202,7 @@ function departureChipIntent(chip) {
 }
 
 export function createStationApp(rootEl, ctx, opts = {}) {
+  bindReturningPilotSummary(ctx && ctx.bus, ctx && ctx.state);
   ensureStylesheet();
   const state = () => (ctx && ctx.state) || {};
   const stationId = () => (state().ui && state().ui.dockedStationId) || null;
@@ -1163,7 +1166,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     let arrival = { news: null, eventCard: null };
     try { arrival = buildDockArrival(s, { id: stationId(), name: st.name, services: st.services, typeLabel: st.typeLabel, factionName: st.factionName }); } catch (_) { /* keep empty arrival */ }
     writeBerthArrival(
-      { newsEl, cardEl: eventEl },
+      { newsEl, cardEl: eventEl, state: s },
       arrival,
       '',
     );
@@ -1347,6 +1350,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       }
     },
     onHide() {
+      finishReturnSummary(state());
       shown = false; commands.setEnabled(false); effects.hide();
       if (receiptTimer) { clearTimeout(receiptTimer); receiptTimer = 0; }
       receiptEl.hidden = true;

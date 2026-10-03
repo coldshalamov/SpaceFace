@@ -1,6 +1,6 @@
-// Pure player-damage and recovery receipts. Combat owns the transition; UI consumes these models.
-// No wall clock, RNG, DOM, or mutation lives here, so the same lethal hit always produces the same
-// after-action account in browser, Electron, saves, and headless verification.
+// Player-damage and recovery receipts. Combat owns the transition; UI consumes these models.
+// No wall clock, RNG, or DOM lives here. A massline snap offers the swing rung once.
+// The cause lines stay with the existing formatter.
 
 import { ENEMY_TYPES } from '../data/enemies.js';
 import { FACTION_META } from '../data/factions.js';
@@ -10,6 +10,7 @@ import { SHIPS } from '../data/ships.js';
 import { WEAPONS } from '../data/weapons.js';
 import { formatNumber, resolveNumberLocale } from '../ui/numberFormat.js';
 import { INSURANCE_DEFAULTS } from '../systems/economy.js';
+import { RANGE_RAIL_ROWS, rangeRungIndex, sentenceCase } from '../ui/screens/range.js';
 
 const ENEMY_BY_ID = new Map(ENEMY_TYPES.map((entry) => [entry.id, entry]));
 const FACTION_BY_ID = new Map(FACTION_META.map((entry) => [entry.id, entry]));
@@ -316,6 +317,56 @@ export function buildRecoveryPlan(state, playerEntity) {
   };
 }
 
+const MASSLINE_SNAP_KINDS = new Set([
+  'massline_whip',
+  'massline_whip_recoil',
+  'massline_tumble_impact',
+]);
+const SWING_RUNG_ID = 'swing_do_not_pull';
+
+function swingRangeRow() {
+  const rows = Array.isArray(RANGE_RAIL_ROWS) ? RANGE_RAIL_ROWS : [];
+  const row = rows.find((entry) => entry && entry.id === SWING_RUNG_ID);
+  if (!row || rangeRungIndex(row.id) < 0) return null;
+  return row;
+}
+
+function kindOf(record) {
+  return record && typeof record.kind === 'string' ? record.kind : '';
+}
+
+function isSnapCut(record) {
+  if (!record || typeof record !== 'object') return false;
+  return record.cutReason === 'snap' || record.reason === 'snap';
+}
+
+/** A massline whip or a recorded line snap. A weapon kill stays a combat death. */
+export function isSlackLineSnapDeath(lethal) {
+  if (!lethal || typeof lethal !== 'object') return false;
+  const origin = lethal.origin && typeof lethal.origin === 'object' ? lethal.origin : null;
+  const source = lethal.packet && lethal.packet.source && typeof lethal.packet.source === 'object'
+    ? lethal.packet.source
+    : null;
+  if (kindOf(origin) === 'weapon' || kindOf(source) === 'weapon') return false;
+  if (MASSLINE_SNAP_KINDS.has(kindOf(origin)) || MASSLINE_SNAP_KINDS.has(kindOf(source))) return true;
+  if (MASSLINE_SNAP_KINDS.has(lethal.context)) return true;
+  if (isSnapCut(lethal) || isSnapCut(origin) || isSnapCut(source)) return true;
+  return false;
+}
+
+export function defeatRangeOffer(state, lethal) {
+  if (!isSlackLineSnapDeath(lethal)) return null;
+  const ui = state && state.ui;
+  if (ui && ui.deathRangeOfferedRung) return null;
+  const row = swingRangeRow();
+  if (!row) return null;
+  return {
+    rungId: row.id,
+    once: true,
+    line: `The Range can teach ${sentenceCase(row.rule)}.`,
+  };
+}
+
 export function buildDefeatReceipt(state, playerEntity, killerId, lethal = {}) {
   const weaponId = lethal.weaponId || weaponIdFromDamage({
     origin: lethal.origin,
@@ -334,7 +385,7 @@ export function buildDefeatReceipt(state, playerEntity, killerId, lethal = {}) {
     pos: lethal.packet && lethal.packet.hit && lethal.packet.hit.pos || null,
   });
   const recovery = buildRecoveryPlan(state, playerEntity);
-  return {
+  const receipt = {
     schemaVersion: 1,
     tick: Number.isFinite(state.tick) ? state.tick | 0 : 0,
     simTime: Number.isFinite(state.simTime) ? state.simTime : 0,
@@ -359,4 +410,11 @@ export function buildDefeatReceipt(state, playerEntity, killerId, lethal = {}) {
     pos: playerEntity && playerEntity.pos ? { x: playerEntity.pos.x, z: playerEntity.pos.z } : null,
     recovery,
   };
+  const offer = defeatRangeOffer(state, lethal);
+  if (offer) {
+    receipt.rangeOffer = offer;
+    if (!state.ui || typeof state.ui !== 'object') state.ui = {};
+    state.ui.deathRangeOfferedRung = offer.rungId;
+  }
+  return receipt;
 }

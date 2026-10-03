@@ -214,12 +214,49 @@ function isDrawable(object) {
   return !!(object && DRAWABLE_TYPES.some((key) => object[key] === true));
 }
 
-function isVisibleInProductionGraph(object, root) {
-  for (let cursor = object; cursor; cursor = cursor.parent) {
-    if (cursor.visible === false) return false;
-    if (cursor === root) break;
+// Leaf lists are never reused. A same-turn memo keyed only by root, camera, and the
+// offscreen flag handed back a draw list that ignored a reveal, an added child, an
+// instance count, a draw range, or a layer mask changed before the next microtask.
+// The program-subject hash is still reused until that microtask, and only while the
+// producer manifest string is unchanged. Hidden subtrees are not entered: a hidden
+// ancestor hides every descendant.
+let openingMemoGeneration = 0;
+let openingMemoBumpQueued = false;
+const openingSubjectMemo = new WeakMap();
+const openingRepeatWork = {
+  leafWalks: 0,
+  leafCacheHits: 0,
+  subjectHashes: 0,
+  subjectCacheHits: 0,
+};
+
+function armOpeningMemoGeneration() {
+  if (!openingMemoBumpQueued) {
+    openingMemoBumpQueued = true;
+    const generation = openingMemoGeneration;
+    const bump = () => {
+      if (openingMemoGeneration === generation) openingMemoGeneration += 1;
+      openingMemoBumpQueued = false;
+    };
+    if (typeof queueMicrotask === 'function') queueMicrotask(bump);
+    else Promise.resolve().then(bump);
   }
-  return true;
+  return openingMemoGeneration;
+}
+
+/** Counts for the opening-plan walk and program-subject hash. Test seam, not a sim input. */
+export function readOpeningSubmissionRepeatWork() {
+  return { ...openingRepeatWork };
+}
+
+/** Drop the subject-key memo so the next call hashes again. Leaf lists are not memoized. */
+export function resetOpeningSubmissionRepeatWork() {
+  openingRepeatWork.leafWalks = 0;
+  openingRepeatWork.leafCacheHits = 0;
+  openingRepeatWork.subjectHashes = 0;
+  openingRepeatWork.subjectCacheHits = 0;
+  openingMemoGeneration += 1;
+  openingMemoBumpQueued = false;
 }
 
 function hasDrawableInstance(object) {
@@ -248,10 +285,7 @@ function makeFrustum(camera) {
   return null;
 }
 
-function leafContributes(object, root, frustum, options = {}) {
-  if (!isDrawable(object) || !isVisibleInProductionGraph(object, root) || !hasDrawableInstance(object)) {
-    return false;
-  }
+function leafBodyContributes(object, frustum, options = {}) {
   // Direct-authored admission mounts a temporary resolving marker while the real GLB is still
   // pending. That marker is not first-picture production identity — counting it as a blocking
   // opening leaf left soft-GPU plans incomplete (missing content hash) and skipped residency.
@@ -271,16 +305,36 @@ function leafContributes(object, root, frustum, options = {}) {
   try { return frustum.intersectsObject(object); } catch (_) { return true; }
 }
 
-/** Return the flat production draw leaves in stable traversal order. */
+// Depth-first, self then children — the same order as Object3D.traverse. A hidden node
+// contributes nothing and neither do its descendants, so the walk does not enter them.
+function walkOpeningLeaves(object, frustum, options, out) {
+  if (!object || object.visible === false) return;
+  if (isDrawable(object) && hasDrawableInstance(object) && leafBodyContributes(object, frustum, options)) {
+    out.push(object);
+  }
+  const children = object.children;
+  if (!children || children.length === 0) return;
+  for (let i = 0, n = children.length; i < n; i += 1) {
+    walkOpeningLeaves(children[i], frustum, options, out);
+  }
+}
+
+/** Return the flat production draw leaves in stable traversal order. Every call walks. */
 export function collectOpeningSubmissionLeaves(root, options = {}) {
   if (!root) return Object.freeze([]);
-  if (typeof root.traverse !== 'function') return Object.freeze(isDrawable(root) ? [root] : []);
-  const leaves = [];
-  const frustum = makeFrustum(options.camera);
-  root.traverse((object) => {
-    if (leafContributes(object, root, frustum, options)) leaves.push(object);
-  });
-  return Object.freeze(leaves);
+  // `live` is accepted so receipt callers stay explicit. It no longer bypasses a cache:
+  // there is no leaf cache to bypass.
+  void options.live;
+  openingRepeatWork.leafWalks += 1;
+  if (typeof root.traverse !== 'function') {
+    return Object.freeze(isDrawable(root) ? [root] : []);
+  }
+  const includeOffscreen = options.includeOffscreen === true;
+  const camera = options.camera || null;
+  const out = [];
+  const frustum = includeOffscreen ? null : makeFrustum(camera);
+  walkOpeningLeaves(root, frustum, options, out);
+  return Object.freeze(out);
 }
 
 function materialList(object) {
@@ -452,7 +506,20 @@ function shaderSourceSignature(source) {
  */
 export function openingProgramSubjectKey(material) {
   if (!material) return null;
-  return `producer-program:${contentHashForProducerManifest(materialProgramSubjectManifest(material))}`;
+  const generation = armOpeningMemoGeneration();
+  // The stamp is the manifest the hash consumes. A blend, depth test, vertex-color,
+  // fog, light, tone-map, env-map, or driver program-cache change misses in this turn.
+  const manifest = materialProgramSubjectManifest(material);
+  const stamp = stableManifestString(manifest);
+  const hit = openingSubjectMemo.get(material);
+  if (hit && hit.generation === generation && hit.stamp === stamp) {
+    openingRepeatWork.subjectCacheHits += 1;
+    return hit.key;
+  }
+  openingRepeatWork.subjectHashes += 1;
+  const key = `producer-program:${contentHashForProducerManifest(manifest)}`;
+  openingSubjectMemo.set(material, { generation, stamp, key });
+  return key;
 }
 
 function geometryDescriptor(geometry, index) {
@@ -1183,6 +1250,7 @@ function currentPlanResourceIdentitySets(plan) {
   if (plan && plan.scene) {
     const sceneLeaves = collectOpeningSubmissionLeaves(plan.scene, {
       camera: plan.camera,
+      live: true,
     });
     for (const leaf of sceneLeaves) leaves.add(leaf);
   }

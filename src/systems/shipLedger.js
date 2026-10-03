@@ -2,8 +2,8 @@
 //
 // This module intentionally has no registry slot, init(), event subscriptions, serializer, or
 // state mutation. Source systems remain the sole writers. Dock UI asks for a page and receives a
-// deterministic snapshot assembled from loss, trade, wreck, encounter, title, and recovered-name
-// state that already round-trips through saves.
+// deterministic snapshot assembled from loss, trade, wreck, encounter, title, career, and
+// recovered-name state that already round-trips through saves.
 
 import { hash32 } from '../core/rng.js';
 import { livingHullScars, livingHullRenown } from '../core/livingHull.js';
@@ -660,6 +660,28 @@ function collectCandidates(state, options = {}) {
       tokens: {
         event: ENCOUNTER_TITLES[record.shapeId] || humanizeId(record.shapeId, 'an unfiled encounter'),
         outcome: humanizeId(record.outcome, 'unresolved'),
+      },
+    });
+    if (probe && probe.done) return probeResult();
+  }
+
+  // FB-127 — career origin and ladder decisions are already durable story facts (the story owner
+  // records them off the career outcome events); the ledger projects each fact as its own row so
+  // the ship's record keeps the road taken and the road declined beside the rest of the hull's
+  // history. Offered-then-declined shares one fact id, so it reads as one "road not taken" line.
+  for (const fact of sourceArray(state && state.story && state.story.facts)) {
+    if (!fact || fact.kind !== 'career') continue;
+    const factId = text(fact.id, '');
+    if (!factId) continue;
+    add({
+      type: 'career',
+      sourceId: `career:${factId}`,
+      sourceKind: 'story.facts.career',
+      at: fact.atS,
+      tokens: {
+        career: humanizeId(factId.split(':')[1], 'an unnamed career'),
+        record: text(fact.text, 'a decision kept on file'),
+        citation: text(fact.citation, ''),
       },
     });
     if (probe && probe.done) return probeResult();

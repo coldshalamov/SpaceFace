@@ -9,6 +9,7 @@ export const WANTED_KIND_LABELS = Object.freeze({
   payload_theft: 'CARGO THEFT',
   unlawful_kill: 'KILL',
   lawful_kill: 'LAW KILL',
+  reckless_kill: 'RECKLESS KILL',
 });
 
 export function wantedReasonText(packet, player) {
