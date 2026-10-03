@@ -93,6 +93,7 @@ import {
   CERES_ACTIVITY_SERVICE_SLOTS,
   activityPocketsForSector,
 } from '../data/sectorActivityPockets.js';
+import { stepPallasWorkLoop } from './pallasWorkLoop.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { NPC_JOB_PHASE, NPC_JOB_SCHEMA } from './npcJobs.js';
 import {
@@ -1490,6 +1491,7 @@ export const traffic = {
     this.bus.on('freight:recoveryAbandoned', (p) => this._onCeresDisabledHaulerAbandoned(p || {}));
     this.bus.on('pickup:collected', (p) => this._onCeresDisabledHaulerPickup(p || {}));
     this.bus.on('freight:cargoSpilled', (p) => this._onFreightCargoSpilled(p || {}));
+    this.bus.on('uniqueWreck:resolved', (p) => this._onCeresTenderWreckResolved(p || {}));
     this.bus.on('survivorPod:rescued', (p) => this._onSurvivorPodRescued(p || {}));
     // Nearby violence: production hits, aimed ship-to-ship combat:fire (Ambush first shots often
     // apply 0), and opened incidents. Bare/mining fire without a live ship victim is ignored.
@@ -3923,10 +3925,42 @@ export const traffic = {
    * (or spawn a dedicated freighter if none match the contact's role). Reuses freight causality
    * manifests — no parallel economy authority. Idempotent per sector presence.
    */
+  _offerCeresTenderRumor() {
+    this._ensureState();
+    const trafficState = this.state.traffic;
+    if (trafficState.ceresTenderRumorSent) return;
+    trafficState.ceresTenderRumorSent = true;
+    if (!this.bus || typeof this.bus.emit !== 'function') return;
+    this.bus.emit('uniqueWreck:rumorHeard', {
+      wreckId: 'wreck_dmc_refinery_tender',
+      sourceRef: 'bar.station_ceres.refinery_tender',
+      channelId: 'bar',
+      text: 'A refinery tender went dark on the Ceres seam. The manifest is still aboard.',
+    });
+  },
+
+  _onCeresTenderWreckResolved(payload) {
+    if (!payload || payload.wreckId !== 'wreck_dmc_refinery_tender') return;
+    this._ensureState();
+    const effects = this.state.traffic.ceresPocketEffects
+      || (this.state.traffic.ceresPocketEffects = {});
+    const now = this.state.simTime || 0;
+    if (payload.choiceId === 'strip') {
+      effects.salvorQuietUntil = now + 600;
+      effects.tenderJob = 'quiet';
+      return;
+    }
+    if (payload.choiceId === 'return_manifest') {
+      effects.tenderJob = 'resumed';
+      effects.salvorQuietUntil = 0;
+    }
+  },
+
   _ensureNamedLaneContact(sectorId, sector, stations) {
     this._ensureState();
     const list = this.state.traffic.freighters || [];
     if (sectorId === CERES_ACTIVITY_SECTOR_ID) {
+      this._offerCeresTenderRumor();
       const seed = (this.state.meta && this.state.meta.seed) || 1;
       const contact = pickNamedLaneContact(sectorId, seed);
       if (!contact || contact.id !== 'lane_rell_moisture') return;
@@ -4702,6 +4736,9 @@ export const traffic = {
     if (state.run?.kind === 'survival' && state.run.phase !== 'inactive') return;
     ensureActivityClassified(state);
     this._ensureState();
+    if (state.world && state.world.currentSectorId === 'sector_pallas_drift') {
+      stepPallasWorkLoop(state, dt);
+    }
     if ((state.simTime || 0) >= (this._nextDepotDispatchAt || 0)) {
       this._nextDepotDispatchAt = (state.simTime || 0) + 1;
       this._maintainClaimDepotTraffic();

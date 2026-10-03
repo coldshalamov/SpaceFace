@@ -252,6 +252,9 @@ const CORE_SECTORS = [
     stations: [
       { id: 'station_forge',  name: 'Forge Foundry', type: 'fab',    factionId: 'faction_dmc',   size: 'M', services: ['trade','shipyard','repair','refine','module_craft'],
         chartNote: 'Plate and fittings out the door. Bring alloy, leave with modules.' },
+      { id: 'station_vesta_outlying_yard', name: 'Forge Outlying Yard', type: 'fab', factionId: 'faction_dmc', size: 'S', services: ['repair','refine'],
+        pos: { x: -820, z: 280 },
+        chartNote: 'The foundry’s outer jig. Plate comes off the line and waits here for a hull.' },
       { id: 'station_depot3', name: 'Refuel Depot',  type: 'mining', factionId: 'faction_choir', size: 'S', services: ['refuel', 'missions'],
         chartNote: 'Pumps for the slag crews, and a posted board. The Choir posts shift work in verses.' },
     ],
@@ -528,6 +531,7 @@ const CORE_SECTORS = [
         },
       },
       { id: 'poi_wormhole', type: 'wormhole', name: 'Wormhole', gatedBy: 'tech:tech_long_range_survey', machineGate: 'route_veil_ashfall' },
+      { id: 'poi_veil_far_sounding', type: 'wormhole', name: 'Far Sounding', pos: { x: 3100, z: -2400 } },
       // Alien Ecology (AE-066) + Verge-Layer structures (AE-101/102/108).
       { id: 'poi_veil_quiet_ice', type: 'anomaly', name: 'Quiet Ice', pos: { x: 900, z: 1500 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
       { id: 'poi_veil_survey_monolith', type: 'anomaly', name: 'Pale Spire', pos: { x: -1400, z: 600 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly' },
@@ -564,6 +568,7 @@ const CORE_SECTORS = [
         afterBossDefeat: { poiId: 'poi_boss', intensity: 0.35 },
       },
       { type: 'debris',    center: { x: 400, z: 300 }, radius: 800,  intensity: 0.5 },
+      { id: 'hazard_ashfall_slag_yard', type: 'debris', center: { x: 1100, z: -200 }, radius: 640, intensity: 0.45 },
     ],
     pois: [
       {

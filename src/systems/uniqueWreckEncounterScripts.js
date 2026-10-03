@@ -101,6 +101,39 @@ export const uniqueWreckChoirTenderInvestigator = Object.freeze({
   tick: tickInvestigatorAudit,
 });
 
+// D17 — a signal that points at the Ceres refinery tender. The wreck record pays. This script does not.
+function startCeresRefineryTender(d, live) {
+  live.phase = 'offer';
+  live.data = live.data || {};
+  live.data.wreckId = 'wreck_dmc_refinery_tender';
+  live.data.paid = false;
+  live.deadlineAt = d.now() + ((live.shape && live.shape.windowS) || 180);
+  d.say(live, 'alert', 'A refinery tender is dark on the Ceres seam. The manifest is still aboard.', null, { literal: true, primary: true });
+  d.offerChoices(live, ['return_manifest', 'strip'], 'return_manifest', live.deadlineAt);
+  return live;
+}
+
+function chooseCeresRefineryTender(d, live, _state, choiceId) {
+  if (live.phase !== 'offer') return null;
+  if (choiceId !== 'return_manifest' && choiceId !== 'strip') return null;
+  live.data = live.data || {};
+  live.data.choiceId = choiceId;
+  live.data.paid = false;
+  // The wreck system pays the one chosen branch. This script only names the choice.
+  d.emit('uniqueWreck:choose', {
+    wreckId: 'wreck_dmc_refinery_tender',
+    choiceId,
+    source: 'ceres_refinery_tender',
+  });
+  return d.resolve(live, choiceId === 'return_manifest' ? 'manifest_returned' : 'stripped', { speak: false });
+}
+
+export const uniqueWreckCeresRefineryTender = Object.freeze({
+  start: startCeresRefineryTender,
+  fire: startCeresRefineryTender,
+  choose: chooseCeresRefineryTender,
+});
+
 export const uniqueWreckHeldMass = directOnlyScript();
 export const uniqueWreckPingElite = directOnlyScript();
 export const uniqueWreckSilverDraftCleaner = directOnlyScript();

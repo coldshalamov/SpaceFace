@@ -151,6 +151,41 @@ export const POI_BEHAVIOR_FAMILIES = Object.freeze({
 
 export const POI_FAMILY_IDS = Object.freeze(Object.keys(POI_BEHAVIOR_FAMILIES));
 
+const AUTHORED_PLACE_FAMILIES = Object.freeze({
+  poi_triton_field_lab: 'anomaly_research',
+  station_vesta_outlying_yard: 'lawful_station_yard',
+  hazard_ashfall_slag_yard: 'derelict_salvage',
+  poi_veil_far_sounding: 'gravity_well_sounding',
+});
+
+/** Family plan for one authored place. Seed is recorded; the verb comes from the family contract. */
+export function resolveAuthoredPlacePlan(id, seed = 4242) {
+  const familyId = AUTHORED_PLACE_FAMILIES[id];
+  if (!familyId) return null;
+  const family = POI_BEHAVIOR_FAMILIES[familyId];
+  if (!validatePoiBehaviorFamily(family)) return null;
+  const numericSeed = Number(seed);
+  return Object.freeze({
+    placeId: id,
+    seed: Number.isFinite(numericSeed) ? numericSeed : 4242,
+    familyId,
+    verb: family.contract.verb,
+  });
+}
+
+/** Plans for the places this sector actually authors. Not a zone-row plan. */
+export function authoredPlacePlansForSector(sector, seed = 4242) {
+  if (!sector) return [];
+  const ids = [];
+  for (const list of [sector.stations, sector.pois, sector.hazards]) {
+    if (!Array.isArray(list)) continue;
+    for (const row of list) {
+      if (row && row.id && AUTHORED_PLACE_FAMILIES[row.id]) ids.push(row.id);
+    }
+  }
+  return ids.map((id) => resolveAuthoredPlacePlan(id, seed)).filter(Boolean);
+}
+
 export function validatePoiBehaviorFamily(family) {
   if (!family || typeof family !== 'object') return false;
   if (!family.id || !Array.isArray(family.zoneTypes) || family.zoneTypes.length === 0) return false;
