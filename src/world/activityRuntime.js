@@ -1548,9 +1548,14 @@ function classifyWorld(state, runtime) {
     ctx.graceUntilT = entity.activity && entity.activity.graceUntilT;
     const authoredPresence = data.factionPresence
       && data.factionPresence.source === 'depth-program-k1';
+    // Combat-postured hull — carries an authored reason to fight: an explicit combatant flag,
+    // an escalation trigger, or an attack_run activity. Such ships are never "ordinary
+    // traffic": they keep the ordinary distance tiers (live to the physics rim, dormant past
+    // it) instead of aggregating into anonymous population.
+    const combatPostured = !!(ai && (ai.combatant === true || ai.engagementTrigger != null
+      || (ai.activity && ai.activity.kind === 'attack_run')));
     const authoredActiveCombat = authoredPresence && ai && ai.passive === false
-      && (ai.combatant === true || ai.engagementTrigger != null
-        || (ai.activity && ai.activity.kind === 'attack_run'));
+      && combatPostured;
     const namedAceActor = !!(
       data.namedAceId
       || (data.aceMemory && data.aceMemory.aceId)
@@ -1572,12 +1577,19 @@ function classifyWorld(state, runtime) {
       // the exact owner view; generic far passive traffic remains wake-gated below.
       || authoredActiveCombat);
     ctx.imminentCollision = imminentCollisionFor(state, player, entity, passCollisionIds);
+    // Distant-sleep gate: a generic ship off the submit (draw) runway is aggregate population.
+    // Test against `submitRunway` alone — `onRunway` also includes `prefetchKeep`, the mesh
+    // residency decode-ahead band (TABLE_RESIDENCY_PREFETCH_SECONDS past the glass). That band
+    // is a render-resource horizon, not a sim-liveness boundary: when the prefetch window grew
+    // 2.0 s → 3.5 s the keep rim reached ~1070 WU and ordinary traffic ~900 WU out re-entered
+    // S1_NEAR and the SG-06 roster instead of sleeping on the far ledger (D133). Combat-postured
+    // hulls are exempt: an inbound attacker lives to the physics rim regardless of the runway.
     ctx.aggregateOnly = entity.type === 'ship'
       && !onGlass
-      && !onRunway
+      && !submitRunway
       && !data.itinerary
       && !data.named
-      && !(ai && ai.combatant === true)
+      && !combatPostured
       && !ctx.missionCritical;
     ctx.dormant = false;
 
