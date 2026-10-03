@@ -29,7 +29,68 @@ export const THUNDERCHILD = Object.freeze({
   }),
 });
 
-export const TITLES = Object.freeze([THUNDERCHILD]);
+// FB-060 — three more earned world titles, keyed to counters the game already keeps. Same
+// aura/succession law as Thunderchild; the earn verbs differ: rescue deliveries, razor releases,
+// and wanted clears with no kill during the wanted window. `counter` names the semantic ledger
+// field the titles system keeps per holder; `counterTarget` is the count that qualifies.
+export const LIFELINE_TITLE_ID = 'title_lifeline';
+export const RAZORLINE_TITLE_ID = 'title_razorline';
+export const QUIET_CLEAR_TITLE_ID = 'title_quiet_clear';
+
+export const LIFELINE = Object.freeze({
+  id: LIFELINE_TITLE_ID,
+  title: 'Lifeline',
+  counter: 'rescues',            // survivor pods delivered to lawful custody
+  counterTarget: 3,
+  aura: Object.freeze({ radius: 1200, morale: 0.12 }),
+  news: Object.freeze({
+    earnedSuffix: ' has earned the title Lifeline.',
+    successionPrefix: 'The Lifeline is dead. ',
+    successionSuffix: ' carries the title now.',
+    vacant: 'The Lifeline is dead. The title waits.',
+  }),
+});
+
+export const RAZORLINE = Object.freeze({
+  id: RAZORLINE_TITLE_ID,
+  title: 'Razorline',
+  counter: 'razorReleases',      // swing releases rated razor
+  counterTarget: 5,
+  aura: Object.freeze({ radius: 1200, morale: 0.08 }),
+  news: Object.freeze({
+    earnedSuffix: ' has earned the title Razorline.',
+    successionPrefix: 'The Razorline is dead. ',
+    successionSuffix: ' carries the title now.',
+    vacant: 'The Razorline is dead. The title waits.',
+  }),
+});
+
+export const QUIET_CLEAR = Object.freeze({
+  id: QUIET_CLEAR_TITLE_ID,
+  title: 'Quiet-Clear',
+  counter: 'quietClears',        // WANTED crossings ended with no kill during the window
+  counterTarget: 2,
+  aura: Object.freeze({ radius: 1200, morale: 0.10 }),
+  news: Object.freeze({
+    earnedSuffix: ' has earned the title Quiet-Clear.',
+    successionPrefix: 'The Quiet-Clear is dead. ',
+    successionSuffix: ' carries the title now.',
+    vacant: 'The Quiet-Clear is dead. The title waits.',
+  }),
+});
+
+export const COUNTER_TITLES = Object.freeze([LIFELINE, RAZORLINE, QUIET_CLEAR]);
+
+/** Every title carrying the aura law — the thunderchild hold plus the counter titles. */
+export const AURA_TITLES = Object.freeze([THUNDERCHILD, ...COUNTER_TITLES]);
+
+export const TITLE_DEFS_BY_ID = new Map(AURA_TITLES.map((def) => [def.id, def]));
+
+export function titleDefFor(titleId) {
+  return TITLE_DEFS_BY_ID.get(titleId) || null;
+}
+
+export const TITLES = Object.freeze([THUNDERCHILD, ...COUNTER_TITLES]);
 
 /** Live titlesSeen ids are authoredId:succession:holder or authoredId:holder:tick. */
 export function authoredTitleId(value) {
