@@ -30,6 +30,9 @@ status service. Runtime completion evidence stays with existing owners and recei
 underlying system is absent. Adjacent P packets name coordination, not a demand to complete whole
 P packets before starting one bounded encounter.
 
+See [EXECUTION_STATUS](EXECUTION_STATUS.md) for the sequential next step and evidence boundaries,
+and [ART_REVIEW](ART_REVIEW.md) for all 26 full-expansion model verdicts and concrete remediations.
+
 ## Consolidation and execution
 
 Use INFERENCE §0.2 and the existing FINISH_LANES area: choose a player-visible vertical slice,
@@ -91,12 +94,14 @@ as history instead of making the player replay an artificial prerequisite missio
   memory. Latch's clearance and Tally's claims remain serious working functions with their own
   silhouettes, cadence and evidence. Red Kite's force-driven route race retains its own course
   and physical decision; it does not reskin the small-goal minigame or the Orra/nemesis arc.
-- **RAVEL / KNELL:** no exact-word identity matches were found in `src` or `design/program` at
-  this plan checkout or cached `origin/master` (`418cfe568`, 3 October). This is not proof that
-  other active branches lack them. Before introducing any overlapping sound, salvage or memory
-  character, inspect current branch/PR work and establish exact IDs, purpose, art and save owners.
-  Reuse common infrastructure; retain SF20 identity/outcome coverage. Do not invent RAVEL's role
-  from its name or claim a nonexistent duplicate audit pass across all remote branches.
+- **RAVEL / KNELL:** RAVEL's PR [#217](https://github.com/coldshalamov/SpaceFace/pull/217)
+  is verified merged at `a9be4b03`. The earlier no-match search used this plan checkout and cached
+  `origin/master` (`418cfe568`); it was stale evidence, not evidence that RAVEL was absent.
+  Inspect the merged RAVEL changes/current successor and establish exact IDs, purpose, art and
+  save owners before introducing an overlapping character. Its role is not inferred from its
+  name or merge status. KNELL's current implementation/branch status remains unverified.
+  Reuse common infrastructure; retain SF20 identity/outcome coverage. Do not claim a completed
+  behavioral duplicate audit until the relevant merged source and active work have been read.
 - **Scissorwake / P05:** Scissorwake is the named realization of P05's narrow engineered
   line-cutter. Extend the actual selected tactical/massline-threat/attachment kernel after intake;
   never create a second detach authority or weaken ordinary Massline break tension. Keep P05's
@@ -184,6 +189,10 @@ run screen lifecycle and use its established presentation clock for Pip/Spanner 
 previews. Selection, Back and launch never wait for an animation; reduced motion can snap to the
 receipt-derived pose. Dispose/cancel callbacks on close; rapid reopen cannot finish an old view.
 Transactions still come only from the existing run/fit owners, even when simulation is paused.
+Current intake identifies survivalDraft as menu purchase/repair owner; swarmSupply is kill-drop
+repair/resupply, not another menu economy. Preserve crucibleDraft's existing visual armory, hull
+schematic, slot jig, equipment SVG and mount-once/refresh/focus lifecycle; see EXECUTION_STATUS
+for the verified event names and next operation.
 Test pause, zero sim advancement, tab suspension, close-during-pending and resume explicitly.
 
 ## Enforceable visual-quality acceptance, independent of budgets
@@ -195,7 +204,10 @@ keep one system. No mandatory number of review cycles and no human approval cere
 Before multiplying a new family, the maker and an independent image-review agent must inspect
 matched current-game reference images and the new candidate at real gameplay framing. Reference
 selection is a production task: this plan identifies concrete sources, not aesthetically approved
-screenshots. Start with live Morrow/R-07, Vesper/SV-3 and BRACKET/BX-9 for authored character
+screenshots. The independent audit now identifies Kestrel/Hitch, Salvage Cutter, Trade Hub and Helios Arclight
+as strong form benchmarks; use its exact diagnostic qualifications and later verify the real-game
+picture. Existing procedural fauna provide species context, not an acceptance ceiling. Start
+with live Morrow/R-07, Vesper/SV-3 and BRACKET/BX-9 for authored character
 construction/motion; the current Forge work fleet and the actual collector/service craft/Ceres
 breaker/receiver for manufactured work bodies; the current `veil_ray`/Cinder Nursery for ecology;
 and current live ORRERY pre-run and shipworks screens for service integration. Resolve their actual
