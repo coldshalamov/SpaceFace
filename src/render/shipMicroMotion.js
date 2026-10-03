@@ -1275,15 +1275,15 @@ export function createShipMicroMotionTracker() {
   function bindEvents(bus) {
     if (!bus || typeof bus.on !== 'function') return;
     busRef = bus;
-    busSubscribers.push(bus.on('entity:killed', onKilled));
-    busSubscribers.push(bus.on('entity:spawned', onSpawned));
+    busSubscribers.push(bus.on('entity:killed', onKilled, { presentation: true }));
+    busSubscribers.push(bus.on('entity:spawned', onSpawned, { presentation: true }));
     busSubscribers.push(bus.on('sector:enter', clearSpiralMemory));
     busSubscribers.push(bus.on('save:loaded', clearSpiralMemory));
     busSubscribers.push(bus.on('game:newGame', clearSpiralMemory));
     busSubscribers.push(bus.on('combat:fire', onFire));
     busSubscribers.push(bus.on('weapons:vent', onVent));
-    busSubscribers.push(bus.on('combat:damage', onDamage));
-    busSubscribers.push(bus.on('physics:impact', onImpact));
+    busSubscribers.push(bus.on('combat:damage', onDamage, { presentation: true }));
+    busSubscribers.push(bus.on('physics:impact', onImpact, { presentation: true }));
     busSubscribers.push(bus.on('hazard:enter', onHazardEnter));
     busSubscribers.push(bus.on('hazard:exit', onHazardExit));
     busSubscribers.push(bus.on('jump:chargeStart', onJumpChargeStart));

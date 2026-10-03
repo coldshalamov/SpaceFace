@@ -286,6 +286,13 @@ export const recoveryEncounter = {
     this._listen('sector:exit', (payload) => this._onSectorExit(payload || {}));
     this._listen('sector:enter', (payload) => this._rebindSector(payload && payload.sectorId));
     this._listen('entity:spawned', (payload) => this._onEntitySpawned(payload && payload.entity));
+    // The enter materialization (adopt-or-spawn derelict wrecks) registers for the
+    // deterministic cook census instead of depending on listener order.
+    if (this.helpers) {
+      (this.helpers.sectorCookProviders
+        || (this.helpers.sectorCookProviders = []))
+        .push((sector) => this._rebindSector(sector && sector.id));
+    }
   },
 
   _listen(event, fn) {

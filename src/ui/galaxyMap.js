@@ -4682,8 +4682,8 @@ export const galaxyMapScreen = {
     const bus = this._ctx && this._ctx.bus;
     if (!bus || typeof bus.on !== 'function') return;
     this._busUnsubs = [];
-    const on = (event, handler) => {
-      const off = bus.on(event, handler);
+    const on = (event, handler, opts) => {
+      const off = bus.on(event, handler, opts);
       const disposer = typeof off === 'function'
         ? off
         : (typeof bus.off === 'function' ? () => bus.off(event, handler) : null);
@@ -4696,7 +4696,7 @@ export const galaxyMapScreen = {
       galaxyMapScreen._localModelDirty = true;
       galaxyMapScreen._inspectorPending = true;
       galaxyMapScreen._wake();
-    });
+    }, { presentation: true });
     const wake = () => {
       galaxyMapScreen._lastRibbonKey = null;
       galaxyMapScreen._lastDeckKey = null;

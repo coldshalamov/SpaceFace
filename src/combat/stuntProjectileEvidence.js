@@ -2,10 +2,14 @@
 // This observer never changes motion or damage. A verified hostile redirect transfers combat ownership.
 import { journalFor, bodyLife, angleBetween, EVIDENCE_REVISION, EVIDENCE_LIMITS } from './stuntEvidence.js';
 import { isHostileForAI } from '../ai/engagementAuthority.js';
+import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { isSurfaceContactReceipt, surfaceResponseFor, SURFACE_RESPONSE } from '../core/surfaceContact.js';
 import { witnessLineOfSight } from './stuntWitnesses.js';
 import { readTumbleStatus } from './tumbleStatus.js';
 const LIMITS={shots:64,contacts:32,surfaces:8,history:121};
+// Scratch for the spatial-hash surface query — material-surface candidates near the player
+// are the domain, and every per-candidate gate still re-runs below.
+const surfaceCandidates=[];
 const STATES=new WeakMap();
 const point=p=>({x:p.x,z:p.z});
 const valid=p=>Number.isFinite(p?.x)&&Number.isFinite(p?.z);
@@ -41,7 +45,14 @@ if(!(width>0&&(displacement>=width||turn>=20)))return null;
 return {solutionTick:startTick,surfaceDisplacement:displacement,surfaceTurn:turn,surfaceWidth:width,surfaceLife:life.id,surfaceId:entity.id,rootId:root?.id??null,priorPos:point(first.pos),priorRot:first.rot};}
 export function sampleProjectileEvidence(state,bus){const record=own(state);if(!record||state.mode!=='flight'||record.lastTick===state.tick)return;record.lastTick=state.tick;
 const player=state.entities.get(state.playerId);if(player?.alive&&valid(player.pos)&&valid(player.vel)){const life=bodyLife(player,state);record.playerHistory.push({tick:state.tick,lifeId:life.id,pos:point(player.pos),velocity:point(player.vel)});if(record.playerHistory.length>121)record.playerHistory.shift();
-let count=0;const px=player.pos.x,pz=player.pos.z;for(const entity of state.entities.values()){if(count>=8)break;if(!entity.alive||!entity.collides||!valid(entity.pos))continue;const dx=entity.pos.x-px,dz=entity.pos.z-pz;if(dx*dx+dz*dz>360000)continue;if(!materialSurface(entity))continue;const life=bodyLife(entity,state);const row=record.surfaceHistory[life.id]||={id:entity.id,lifeId:life.id,frames:[]};row.frames.push({tick:state.tick,pos:point(entity.pos),rot:entity.rot||0});if(row.frames.length>121)row.frames.shift();count++;}}
+// The hash narrows the domain to 600WU but returns bucket order, where the capped walk below
+// used to pick the first 8 qualifying bodies in entities insertion order. occupantGeneration is
+// stamped monotonically at every canonical insert, so a generation sort reproduces that order.
+// The cold-hash fallback returns entityList itself — already insertion (generation) order, so
+// the sort is hash-path only (sorting entityList in place would reorder live state).
+const surfaceHits=queryNearbyEntities(state,player.pos,600,surfaceCandidates);
+if(surfaceHits===surfaceCandidates)surfaceCandidates.sort((a,b)=>(a&&a.occupantGeneration||0)-(b&&b.occupantGeneration||0));
+let count=0;for(const entity of surfaceHits){if(count>=8)break;if(!entity||!entity.alive||!entity.collides||!valid(entity.pos)||!materialSurface(entity)||distance(entity.pos,player.pos)>600)continue;const life=bodyLife(entity,state);const row=record.surfaceHistory[life.id]||={id:entity.id,lifeId:life.id,frames:[]};row.frames.push({tick:state.tick,pos:point(entity.pos),rot:entity.rot||0});if(row.frames.length>121)row.frames.shift();count++;}}
 for(const [id,row] of Object.entries(record.surfaceHistory))if(state.tick-(row.frames.at(-1)?.tick??-Infinity)>120)delete record.surfaceHistory[id];
 for(const [id,torque] of Object.entries(record.surfaceTorques||{})){const entity=state.entities.get(torque.id);if(!entity||bodyLife(entity,state)?.id!==id||state.tick-torque.tick>120){delete record.surfaceTorques[id];continue;}const turn=Math.atan2(Math.sin((entity.rot||0)-torque.lastRot),Math.cos((entity.rot||0)-torque.lastRot)),spin=entity.angVel||0;
 if(turn*torque.delta>0)torque.ownedDegrees+=Math.abs(turn)*180/Math.PI*Math.min(1,Math.abs(torque.delta)/Math.max(Math.abs(torque.after),Math.abs(spin),1e-6));torque.lastRot=entity.rot||0;}

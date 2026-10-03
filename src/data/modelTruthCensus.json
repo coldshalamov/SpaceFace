@@ -18307,6 +18307,447 @@
     {
       "bounds": {
         "center": [
+          0.406536,
+          0.173006,
+          0.00229
+        ],
+        "max": [
+          3.93,
+          1.896158,
+          1.54458
+        ],
+        "min": [
+          -3.116928,
+          -1.550145,
+          -1.54
+        ],
+        "size": [
+          7.046928,
+          3.446303,
+          3.08458
+        ]
+      },
+      "bytes": 316012,
+      "collider": {
+        "coverageWu": 0,
+        "gapWu": 0,
+        "id": "skin:place_47a_rescue_capsule",
+        "kind": "proxy",
+        "outline": [
+          3.523465,
+          3.544359,
+          2.67385,
+          1.947281,
+          1.579445,
+          1.556057,
+          1.428033,
+          1.618582,
+          1.980587,
+          2.433756,
+          3.422727,
+          3.568028,
+          3.56731,
+          3.419635,
+          2.430616,
+          1.977289,
+          1.614545,
+          1.4236,
+          1.55605,
+          1.575308,
+          1.944033,
+          2.684447,
+          3.542928,
+          3.521643
+        ],
+        "overTolerance": false,
+        "stickWu": 0,
+        "throatSealed": false,
+        "toleranceWu": 2,
+        "worstSize": null
+      },
+      "drawOffset": [
+        -0.406536,
+        0,
+        -0.00229
+      ],
+      "drawScale": 1,
+      "family": "place",
+      "forwardAxis": "+X",
+      "frozenMesh": false,
+      "gameplay": {
+        "ballFactor": null,
+        "colliderId": "skin:place_47a_rescue_capsule",
+        "colliderKind": "proxy",
+        "dockRadius": null,
+        "entityRadius": 12,
+        "proportions": null,
+        "sizes": null
+      },
+      "id": "place_47a_rescue_capsule",
+      "lod": {
+        "lod0": true,
+        "lod1": true,
+        "lod2": true,
+        "outlineDeltaWu": {},
+        "overTolerance": false,
+        "toleranceWu": 4
+      },
+      "materials": [
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Accent",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Armor",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Amber",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_NavRed",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Warm",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Mechanical",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_MechanicalDark",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Warning",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "other",
+          "role": "other"
+        }
+      ],
+      "measuredProportions": null,
+      "meshHash": null,
+      "meshes": 27,
+      "nodes": 29,
+      "note": null,
+      "opening": null,
+      "pivot": [
+        0.406536,
+        0.173006,
+        0.00229
+      ],
+      "proposedSkin": {
+        "adopted": true,
+        "capped": false,
+        "cellWu": 2,
+        "gapWu": 0,
+        "mouthBearingDeg": null,
+        "primitiveCount": 24,
+        "primitives": [
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.274586,
+            "bz": -0.03615,
+            "id": "arm-0",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.257482,
+            "bz": -0.106653,
+            "id": "arm-1",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.163553,
+            "bz": -0.125499,
+            "id": "arm-2",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.08864,
+            "bz": -0.115518,
+            "id": "arm-3",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.043991,
+            "bz": -0.106203,
+            "id": "arm-4",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.01475,
+            "bz": -0.112038,
+            "id": "arm-5",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.013358,
+            "bz": -0.101461,
+            "id": "arm-6",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.045239,
+            "bz": -0.109217,
+            "id": "arm-7",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.090329,
+            "bz": -0.11772,
+            "id": "arm-8",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.14768,
+            "bz": -0.113319,
+            "id": "arm-9",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.248118,
+            "bz": -0.102774,
+            "id": "arm-10",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.278268,
+            "bz": -0.036635,
+            "id": "arm-11",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.278208,
+            "bz": 0.036627,
+            "id": "arm-12",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.24788,
+            "bz": 0.102675,
+            "id": "arm-13",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.147472,
+            "bz": 0.113159,
+            "id": "arm-14",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.090162,
+            "bz": 0.117502,
+            "id": "arm-15",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.04511,
+            "bz": 0.108906,
+            "id": "arm-16",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.013309,
+            "bz": 0.101094,
+            "id": "arm-17",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.01475,
+            "bz": 0.112037,
+            "id": "arm-18",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.043859,
+            "bz": 0.105885,
+            "id": "arm-19",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.088475,
+            "bz": 0.115303,
+            "id": "arm-20",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.164254,
+            "bz": 0.126036,
+            "id": "arm-21",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.257372,
+            "bz": 0.106607,
+            "id": "arm-22",
+            "kind": "capsule",
+            "r": 0.0375
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.274436,
+            "bz": 0.03613,
+            "id": "arm-23",
+            "kind": "capsule",
+            "r": 0.0375
+          }
+        ],
+        "silhouetteRadius": 3.568028,
+        "toleranceWu": 2
+      },
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "shell": {
+        "boundaryEdges": 0,
+        "inwardFaceFraction": 0.281,
+        "silhouetteRadius": 3.568028,
+        "sliceY": 0
+      },
+      "sockets": [
+        {
+          "name": "SOCKET_Airlock",
+          "position": [
+            3.92,
+            0.02,
+            0
+          ]
+        }
+      ],
+      "solid": true,
+      "source": "glb",
+      "status": "red",
+      "tasteBudget": "legacy-texture-role",
+      "triangles": 8860,
+      "unmeasuredHitVolumes": [],
+      "url": "assets/ships/release/parts/places/place_47a_rescue_capsule.glb",
+      "worldSize": [
+        7.046928,
+        3.446303,
+        3.08458
+      ]
+    },
+    {
+      "bounds": {
+        "center": [
           0,
           1.631491,
           0
@@ -52704,6 +53145,397 @@
         10.199679,
         5.308637,
         5.060018
+      ]
+    },
+    {
+      "bounds": {
+        "center": [
+          -0.105,
+          0.76,
+          -0.03498
+        ],
+        "max": [
+          2.6,
+          2.600097,
+          1.555168
+        ],
+        "min": [
+          -2.81,
+          -1.080097,
+          -1.625128
+        ],
+        "size": [
+          5.41,
+          3.680193,
+          3.180296
+        ]
+      },
+      "bytes": 451804,
+      "collider": {
+        "coverageWu": 0,
+        "gapWu": 0,
+        "id": "skin:pod_47a_evidence_spindle",
+        "kind": "proxy",
+        "outline": [
+          5.00309,
+          5.274843,
+          5.339954,
+          4.130165,
+          3.124177,
+          2.778527,
+          2.768816,
+          2.836969,
+          4.040235,
+          5.319747,
+          5.67838,
+          0,
+          4.4745,
+          5.74085,
+          5.386552,
+          3.978976,
+          2.960571,
+          2.895405,
+          2.904693,
+          3.236899,
+          4.067559,
+          5.406336,
+          5.330066,
+          5.009303
+        ],
+        "overTolerance": false,
+        "stickWu": 0,
+        "throatSealed": false,
+        "toleranceWu": 2,
+        "worstSize": null
+      },
+      "drawOffset": [
+        0.194085,
+        -1.404806,
+        0.064658
+      ],
+      "drawScale": 1.848429,
+      "family": "pod",
+      "forwardAxis": "+X",
+      "frozenMesh": false,
+      "gameplay": {
+        "ballFactor": null,
+        "colliderId": "skin:pod_47a_evidence_spindle",
+        "colliderKind": "proxy",
+        "dockRadius": null,
+        "entityRadius": 5,
+        "proportions": null,
+        "sizes": null
+      },
+      "id": "pod_47a_evidence_spindle",
+      "lod": {
+        "lod0": true,
+        "lod1": false,
+        "lod2": false,
+        "outlineDeltaWu": {},
+        "overTolerance": false,
+        "toleranceWu": 4
+      },
+      "materials": [
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Accent_seal",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Amber",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Mechanical",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Warning",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "other",
+          "role": "other"
+        }
+      ],
+      "measuredProportions": null,
+      "meshHash": null,
+      "meshes": 6,
+      "nodes": 7,
+      "note": null,
+      "opening": null,
+      "pivot": [
+        -0.105,
+        0.76,
+        -0.03498
+      ],
+      "proposedSkin": {
+        "adopted": true,
+        "capped": false,
+        "cellWu": 2,
+        "gapWu": 0,
+        "mouthBearingDeg": null,
+        "primitiveCount": 23,
+        "primitives": [
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.9524,
+            "bz": -0.125386,
+            "id": "arm-0",
+            "kind": "capsule",
+            "r": 0.09
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.937709,
+            "bz": -0.388412,
+            "id": "arm-1",
+            "kind": "capsule",
+            "r": 0.09
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.81556,
+            "bz": -0.625801,
+            "id": "arm-2",
+            "kind": "capsule",
+            "r": 0.09
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.478507,
+            "bz": -0.623602,
+            "id": "arm-3",
+            "kind": "capsule",
+            "r": 0.09
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.223807,
+            "bz": -0.540317,
+            "id": "arm-4",
+            "kind": "capsule",
+            "r": 0.09
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.067313,
+            "bz": -0.511293,
+            "id": "arm-5",
+            "kind": "capsule",
+            "r": 0.09
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.06706,
+            "bz": -0.509368,
+            "id": "arm-6",
+            "kind": "capsule",
+            "r": 0.09
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.201825,
+            "bz": -0.487248,
+            "id": "arm-7",
+            "kind": "capsule",
+            "r": 0.09
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.467557,
+            "bz": -0.609333,
+            "id": "arm-8",
+            "kind": "capsule",
+            "r": 0.09
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.812354,
+            "bz": -0.623341,
+            "id": "arm-9",
+            "kind": "capsule",
+            "r": 0.09
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 1.012273,
+            "bz": -0.419297,
+            "id": "arm-10",
+            "kind": "capsule",
+            "r": 0.09
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.847586,
+            "bz": 0.111587,
+            "id": "arm-12",
+            "kind": "capsule",
+            "r": 0.09
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 1.023816,
+            "bz": 0.424078,
+            "id": "arm-13",
+            "kind": "capsule",
+            "r": 0.09
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.822954,
+            "bz": 0.631475,
+            "id": "arm-14",
+            "kind": "capsule",
+            "r": 0.09
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.460099,
+            "bz": 0.599613,
+            "id": "arm-15",
+            "kind": "capsule",
+            "r": 0.09
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.211285,
+            "bz": 0.510087,
+            "id": "arm-16",
+            "kind": "capsule",
+            "r": 0.09
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": 0.070364,
+            "bz": 0.534469,
+            "id": "arm-17",
+            "kind": "capsule",
+            "r": 0.09
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.070607,
+            "bz": 0.536311,
+            "id": "arm-18",
+            "kind": "capsule",
+            "r": 0.09
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.232434,
+            "bz": 0.561146,
+            "id": "arm-19",
+            "kind": "capsule",
+            "r": 0.09
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.470884,
+            "bz": 0.613668,
+            "id": "arm-20",
+            "kind": "capsule",
+            "r": 0.09
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.826093,
+            "bz": 0.633883,
+            "id": "arm-21",
+            "kind": "capsule",
+            "r": 0.09
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.947913,
+            "bz": 0.392638,
+            "id": "arm-22",
+            "kind": "capsule",
+            "r": 0.09
+          },
+          {
+            "ax": 0,
+            "az": 0,
+            "bx": -0.913211,
+            "bz": 0.120227,
+            "id": "arm-23",
+            "kind": "capsule",
+            "r": 0.130769
+          }
+        ],
+        "silhouetteRadius": 5.74085,
+        "toleranceWu": 2
+      },
+      "reasons": [
+        "legacy-texture-role"
+      ],
+      "shell": {
+        "boundaryEdges": 0,
+        "inwardFaceFraction": 0.301,
+        "silhouetteRadius": 5.74085,
+        "sliceY": 0
+      },
+      "sockets": [],
+      "solid": true,
+      "source": "glb",
+      "status": "red",
+      "tasteBudget": "legacy-texture-role",
+      "triangles": 10608,
+      "unmeasuredHitVolumes": [],
+      "url": "assets/ships/release/parts/pods/pod_47a_evidence_spindle.glb",
+      "worldSize": [
+        10,
+        6.802576,
+        5.87855
       ]
     },
     {

@@ -56,7 +56,7 @@ import {
 } from './particleShards.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
 import { massline2Flag } from '../data/featureFlags.js';
-import { indexedShipLikeScan, indexedTypeScan, entityIndexVersion } from '../world/livingWorldViews.js';
+import { indexedShipLikeScan, indexedTypeScan, entityIndexLaneVersion, entityIndexVersion } from '../world/livingWorldViews.js';
 import { resolveFractureProgress, resolveVeinFracturePattern } from './asteroidMotionPresentation.js';
 import { resolveFunnelMoteStream, spiralMoteWithinDraw } from './pickupMotionPresentation.js';
 import { notePresentationFrame } from './presentationSimClock.js';
@@ -318,6 +318,18 @@ import { spawnCausalStructuralBurst } from './combat/causalStructuralBurst.js';
 import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
 
 const EMPTY_TRAIL_SOCKETS = Object.freeze([]);
+const VFX_TRAIL_LANES = ['shipLike'];
+const WRECK_WISPS_LANES = ['wrecks'];
+const LOOT_MAGNET_LANES = ['pickups', 'payloads'];
+/** Membership lanes for the seam-marker / projectile-trail quiet latches — seam reads
+ * asteroids, projectile trails read projectiles; other churn can't wake them. */
+const VFX_SEAM_LANES = ['asteroids'];
+const VFX_PROJECTILE_LANES = ['projectiles'];
+
+function vfxMembershipVersion(state, lanes) {
+  const laneVersion = entityIndexLaneVersion(state, lanes);
+  return laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
+}
 const EMPTY_PROJECTILE_DATA = Object.freeze({});
 const EMPTY_VIDEO_SETTINGS = Object.freeze({});
 // Entity `type` → entityIndex bucket name, for indexed contact-target lookup.
@@ -2399,7 +2411,7 @@ export const vfx = {
 
   _subscribe() {
     const bus = this.bus;
-    const add = (name, fn) => this._subs.push(bus.on(name, fn));
+    const add = (name, fn, opts) => this._subs.push(bus.on(name, fn, opts));
     for (const name of ACTION_VFX_EVENTS) add(name, (p) => this._onActionVfx(name, p));
     for (const name of ['sector:exit', 'sector:enter', 'game:new', 'game:newGame', 'save:restoring', 'save:loaded']) {
       add(name, () => { this._actionVfx?.clear(); this._stationOperationVfx?.clear(); this._bombDetonationVfx?.clear(); this._statusMatterVfx?.clear(); this._combatContactVfx?.clear(); this._releaseTransientEventLights(); });
@@ -2450,13 +2462,16 @@ export const vfx = {
         this._momentumSinkQuietSeq = -1;
       }
     });
-    add('entity:killed', (p) => { clearTumbleCadenceFor(p); this._forgetMomentumSinkEntity(p); this._markEntityCacheDirty(); this._onKilled(p); this._onChainEntityKilled(p); });
+    // Kill/despawn bursts fan out to these tails inside one emit — the per-kill structural
+    // spawn + spall compose is the single heaviest tail — so they ride the presentation
+    // tier's per-frame drain instead of the sim tick.
+    add('entity:killed', (p) => { clearTumbleCadenceFor(p); this._forgetMomentumSinkEntity(p); this._markEntityCacheDirty(); this._onKilled(p); this._onChainEntityKilled(p); }, { presentation: true });
     add('entity:destroyed', (p) => {
       clearTumbleCadenceFor(p);
       this._forgetMomentumSinkEntity(p);
       this._markEntityCacheDirtyIfTrailType(p);
       this._onDestroyed(p);
-    });
+    }, { presentation: true });
     add('entity:spawned', (p) => { this._markEntityCacheDirtyIfTrailType(p); this._onChainEntitySpawned(p); this._offerWreckHandoff(p); });
     add('weapons:mineDeployed', (p) => this._noteWellDeployed(p));
     add('weapons:mineExpired', (p) => { if (this._causeMarks && p) this._causeMarks.forgetWell(p.mineId); });
@@ -3139,8 +3154,11 @@ export const vfx = {
   _refreshTrailCandidates() {
     const list = indexedShipLikeScan(this.state);
     // Index membership can churn in place at a stable length (swap-remove + append), so the
-    // version watch catches same-length changes that the ref/length pair would miss.
-    const version = entityIndexVersion(this.state);
+    // version watch catches same-length changes that the ref/length pair would miss. The
+    // cache is ship/drone-only, so it latches the shipLike lane — projectile/pickup churn
+    // no longer re-sorts two arrays every frame. -1 (index unready) acts like the old
+    // null: constant sentinel, ref+length legs carry the entityList fallback path.
+    const version = entityIndexLaneVersion(this.state, VFX_TRAIL_LANES);
     if (!this._trailCacheDirty && this._trailListRef === list
       && this._trailListLength === list.length && this._trailListVersion === version) return;
     this._trailCandidates.length = 0;
@@ -5099,7 +5117,9 @@ export const vfx = {
     }
     const entities = this.state && this.state.entities;
     const now = this._causeNow();
-    if (entities && typeof entities.get === 'function') bindKillStreak(layer.handoff, entities, now);
+    if (entities && typeof entities.get === 'function') {
+      bindKillStreak(layer.handoff, entities, now, indexedTypeScan(this.state, 'wrecks'));
+    }
     layer.update(now, (id) => this._ent(id), this._isReduced(), entities);
   },
 
@@ -5135,7 +5155,9 @@ export const vfx = {
     const now = this._causeNow();
     layer.noteKill({ ...p, pos: { x: pos.x, z: pos.z } }, now);
     const entities = this.state && this.state.entities;
-    if (entities && typeof entities.get === 'function') bindKillStreak(layer.handoff, entities, now);
+    if (entities && typeof entities.get === 'function') {
+      bindKillStreak(layer.handoff, entities, now, indexedTypeScan(this.state, 'wrecks'));
+    }
   },
 
   _offerWreckHandoff(p) {
@@ -7447,11 +7469,28 @@ export const vfx = {
       return slot.contactTarget;
     }
     if (!field) return null;
+    // Keyed maps under the entity index's coverage contract: slot refs name an
+    // activityObjectSlotId (indexed set enumerates every indexed carrier), and a world-site
+    // ref is a worldRecordId with a counted holder — count>1 keeps the lane scan so duplicate
+    // carriers still resolve the same answer the walk gives.
+    let keyed = null;
+    const index = this.state.entityIndex;
+    // Only under full coverage (every entities-map member indexed) do the keyed sets
+    // enumerate the whole candidate population — otherwise keep the historical lane scan.
+    if (index && index.__spacefaceEntityIndexV1 === true && index.ready === true
+      && index._indexedIds instanceof Set && this.state.entities
+      && this.state.entities.size === index._indexedIds.size) {
+      if (field === 'activityObjectSlotId') {
+        keyed = index.byActivityObjectSlotId.get(value) || null;
+      } else if (field === 'worldRecordId'
+        && (index.byWorldRecordIdCount.get(value) || 0) === 1) {
+        keyed = [index.byWorldRecordId.get(value)];
+      }
+    }
     // Indexed type bucket when available — the predicate below still re-checks `body.type`,
     // so an unknown type simply falls back to the full entity list.
-    const list = indexedTypeScan(this.state, INDEX_BUCKET_BY_TYPE[type]);
-    for (let i = 0; i < list.length; i++) {
-      const body = list[i];
+    const list = keyed || indexedTypeScan(this.state, INDEX_BUCKET_BY_TYPE[type]);
+    for (const body of list) {
       if (body === ent || body.alive === false || body.type !== type
         || !body.data || body.data[field] !== value || !body.pos) continue;
       if (slot.contactTarget) { slot.contactTarget = null; break; }
@@ -8734,7 +8773,8 @@ export const vfx = {
   },
 
   _updateWantedSearchRing() {
-    const volume = readWantedSearchVolume(this.state);
+    const volume = readWantedSearchVolume(this.state,
+      this._wantedVolume || (this._wantedVolume = {}));
     if (!this._wantedRing && this._scene) {
       const geo = new THREE.RingGeometry(0.985, 1, 64);
       geo.rotateX(-Math.PI / 2);
@@ -12241,7 +12281,10 @@ export const vfx = {
   // entityIndexVersion only. No index (version null) refuses the latch so
   // entityList fallback stays truthful. Soft-GPU fps not claimed.
   _lootMagnetQuietMaybeAwake() {
-    const version = entityIndexVersion(this.state);
+    // Members are pickups+payloads — latch those lanes so combat volleys can't wake the
+    // empty latch every frame. -1 (index unready) plays the old null role.
+    const laneVersion = entityIndexLaneVersion(this.state, LOOT_MAGNET_LANES);
+    const version = laneVersion === -1 ? null : laneVersion;
     if (version == null) return true;
     return version !== this._lootMagnetQuietIndexVersion;
   },
@@ -12261,7 +12304,8 @@ export const vfx = {
     const pickups = indexedTypeScan(state, 'pickups');
     const payloads = indexedTypeScan(state, 'payloads');
     if (!pickups.length && !payloads.length) {
-      const version = entityIndexVersion(state);
+      const magnetLane = entityIndexLaneVersion(state, LOOT_MAGNET_LANES);
+      const version = magnetLane === -1 ? null : magnetLane;
       if (version != null) {
         this._lootMagnetQuietEmpty = true;
         this._lootMagnetQuietIndexVersion = version;
@@ -12380,7 +12424,10 @@ export const vfx = {
   // entityIndexVersion only. No index (version null) refuses the latch so
   // entityList fallback stays truthful. Soft-GPU fps not claimed.
   _wreckWispsQuietMaybeAwake() {
-    const version = entityIndexVersion(this.state);
+    // Members are index.wrecks only — latch that lane so projectile/pickup churn can't
+    // wake the empty latch every frame. -1 (index unready) plays the old null role.
+    const laneVersion = entityIndexLaneVersion(this.state, WRECK_WISPS_LANES);
+    const version = laneVersion === -1 ? null : laneVersion;
     if (version == null) return true;
     return version !== this._wreckWispsQuietIndexVersion;
   },
@@ -12413,7 +12460,8 @@ export const vfx = {
     // Empty wrecks: clear residual slots once, then latch when version trustworthy.
     this._cadenceWreckWisps = 0;
     if (this._wreckWispSlots) this._wreckWispSlots.clear();
-    const version = entityIndexVersion(state);
+    const wispsLane = entityIndexLaneVersion(state, WRECK_WISPS_LANES);
+    const version = wispsLane === -1 ? null : wispsLane;
     if (version != null) {
       this._wreckWispsQuietIdle = true;
       this._wreckWispsQuietIndexVersion = version;
@@ -12806,7 +12854,7 @@ export const vfx = {
     const pz = player && player.pos ? (player.pos.z || 0) : 0;
     this._seamMarkersQuietPlayerQX = Math.round(px / cell);
     this._seamMarkersQuietPlayerQZ = Math.round(pz / cell);
-    this._seamMarkersQuietIndexVersion = entityIndexVersion(state);
+    this._seamMarkersQuietIndexVersion = vfxMembershipVersion(state, VFX_SEAM_LANES);
     this._seamMarkersQuietDrawWu = drawWu;
     const pulseId = this._miningSeamPulseId;
     const pulseUntil = this._miningSeamPulseUntil || 0;
@@ -12822,7 +12870,7 @@ export const vfx = {
     const state = this.state;
     const drawWu = this._tableVfxDrawWu || tableVfxDrawWuFromState(state);
     if (drawWu !== this._seamMarkersQuietDrawWu) return true;
-    if (entityIndexVersion(state) !== this._seamMarkersQuietIndexVersion) return true;
+    if (vfxMembershipVersion(state, VFX_SEAM_LANES) !== this._seamMarkersQuietIndexVersion) return true;
     const pulseId = this._miningSeamPulseId;
     const pulseUntil = this._miningSeamPulseUntil || 0;
     const pulseKey = pulseId != null ? `${pulseId}|${pulseUntil}` : '';
@@ -12857,7 +12905,7 @@ export const vfx = {
     // closed by either side's motion. A full scan records that distance plus the movers' speeds;
     // the latch also expires on a sim-time bound so a rock bumped onto a closing drift can't
     // hold a stale "false" while the player sits parked.
-    const v = entityIndexVersion(state);
+    const v = vfxMembershipVersion(state, VFX_SEAM_LANES);
     const now = Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0) / 60;
     const last = this._seamRelCache;
     if (last && last.v === v && last.drawWu === drawWu && last.versionMode === (v !== null)) {
@@ -13370,11 +13418,20 @@ export const vfx = {
     }
     if (!this._ribbonTrails) this._initRibbonTrails();
     let ribbons = 0;
-    if (this._ribbonTrails && this.state.entities && typeof this.state.entities.values === 'function') {
+    // Ribbon owners are exactly ships+drones — the index's shipLike bucket when it is ready,
+    // the full entity walk when it is not (same member set either way, just cheaper input).
+    const index = this.state && this.state.entityIndex;
+    const ribbonCandidates = index && index.__spacefaceEntityIndexV1 && index.ready === true
+      && Array.isArray(index.shipLike)
+      ? index.shipLike
+      : (this.state.entities && typeof this.state.entities.values === 'function'
+        ? this.state.entities.values()
+        : []);
+    if (this._ribbonTrails) {
       const nearby = [];
       const originX = player && player.pos ? player.pos.x : 0;
       const originZ = player && player.pos ? player.pos.z : 0;
-      for (const entity of this.state.entities.values()) {
+      for (const entity of ribbonCandidates) {
         if (!entity || !entity.alive) continue;
         if (entity.type !== 'ship' && entity.type !== 'drone') continue;
         if (player && entity.id === player.id) continue;
@@ -15043,7 +15100,7 @@ export const vfx = {
 
   _refreshProjectileCandidates() {
     const list = indexedTypeScan(this.state, 'projectiles');
-    const version = entityIndexVersion(this.state);
+    const version = vfxMembershipVersion(this.state, VFX_PROJECTILE_LANES);
     if (!this._projectileCacheDirty && this._projectileListRef === list
       && this._projectileListLength === list.length
       && this._projectileListVersion === version) return;
@@ -15065,7 +15122,7 @@ export const vfx = {
   // Soft-GPU fps not claimed.
   _projectileTrailsQuietMaybeAwake() {
     if (this._projectileCacheDirty) return true;
-    const version = entityIndexVersion(this.state);
+    const version = vfxMembershipVersion(this.state, VFX_PROJECTILE_LANES);
     if (version == null) return true;
     return version !== this._projectileTrailsQuietIndexVersion;
   },
@@ -15086,7 +15143,7 @@ export const vfx = {
     }
     // First empty observe — zero diag once, then latch.
     resetProjectileTrailDiag(this._projectileTrailDiag);
-    const version = entityIndexVersion(this.state);
+    const version = vfxMembershipVersion(this.state, VFX_PROJECTILE_LANES);
     if (version != null) {
       this._projectileTrailsQuietEmpty = true;
       this._projectileTrailsQuietIndexVersion = version;
@@ -15265,7 +15322,7 @@ export const vfx = {
     const state = this.state;
     if (!state) return true;
     if (state.mode && state.mode !== 'flight') return true;
-    const version = entityIndexVersion(state);
+    const version = vfxMembershipVersion(state, VFX_TRAIL_LANES);
     if (version !== this._trailEmitQuietIndexVersion) return true;
     const player = state.entities && state.entities.get(state.playerId);
     if (player && player.alive && (player.type === 'ship' || player.type === 'drone')) {
@@ -15418,7 +15475,7 @@ export const vfx = {
     this._publishTrailBudgetDiag();
     if (!anyBusy) {
       this._trailEmitQuietIdle = true;
-      this._trailEmitQuietIndexVersion = entityIndexVersion(this.state);
+      this._trailEmitQuietIndexVersion = vfxMembershipVersion(this.state, VFX_TRAIL_LANES);
     } else {
       this._trailEmitQuietIdle = false;
     }
@@ -16295,6 +16352,42 @@ export function createVfxPrecompileSalvo() {
   sigilSpecimen.mesh.visible = true;
   sigilSpecimen.mesh.name = 'SF_Precompile_SelectionSigil';
   group.add(sigilSpecimen.mesh);
+
+  // Emergent combat structures (energy arcs, pressure rings, deposits, splinters) live in a
+  // lazily-created pool — the first real event used to link 4 bespoke programs plus the
+  // force-particle transport inside a presented combat frame. One packet per family drives
+  // every instanced mesh visible here so the link lands inside the salvo.
+  const emergentWarm = createEmergentPrimitivePools();
+  group.add(emergentWarm.group);
+  emergentWarm.update({
+    simTime: 0.016,
+    emergent: {
+      presentation: [
+        { kind: 'arc', x: -12, z: -14, x2: -9, z2: -14, scale: 1, yaw: 0 },
+        { kind: 'ring', x: -4, z: -14, x2: -4, z2: -14, scale: 3, yaw: 0 },
+        { kind: 'gel', x: 4, z: -14, x2: 4, z2: -14, scale: 8, yaw: 0 },
+        { kind: 'prism', x: 12, z: -14, x2: 12, z2: -14, scale: 2, yaw: 0.6 },
+      ],
+      presentationCount: 4,
+      flashes: [
+        { kind: 'arc', x: -12, z: -14, x2: -9, z2: -14, scale: 1, yaw: 0, ttl: 0.1 },
+        { kind: 'ring', x: -4, z: -14, x2: -4, z2: -14, scale: 3, yaw: 0, ttl: 0.15 },
+      ],
+      fields: [{ x: 4, z: -14, radius: 8, life: 1.5 }],
+      prisms: [{ x: 12, z: -14, radius: 2, yaw: 0.6, life: 2 }],
+    },
+  }, null);
+
+  // Arcade structural pools (blades, broken arcs, physical shards, plates) are created lazily on
+  // the first structural impact — 2 additive surface programs + 2 lit standard variants used to
+  // link inside the same combat frame the wreck announced. A spawn plus one update flips each
+  // pool's instanced mesh visible here so the link lands in the salvo instead.
+  const arcadeWarm = new ArcadeStructuralFx(group);
+  arcadeWarm.spawnBlade({ life: 0.4, x: -14, z: -14, length0: 3, width0: 1.2, color: 0xffb060 });
+  arcadeWarm.spawnArc({ life: 0.4, x: -10, z: -14, length0: 2, width0: 1, color: 0xffd090 });
+  arcadeWarm.spawnShard({ life: 0.4, x: 14, z: -14, length0: 1.5, width0: 1 });
+  arcadeWarm.spawnPlate({ life: 0.4, x: 18, z: -14, length0: 2.5, width0: 1.6 });
+  arcadeWarm.update(0.016);
 
   // Fracture-vein strips (asteroidMotionPresentation ensureVeinRig) mount nested under an
   // already-presented asteroid root the first time a rock cracks past 2% — outside the scene

@@ -23,6 +23,7 @@
 // owned-ship fittings directly so ships.js's derived shape stays untouched.
 import { massline2Flag } from '../data/featureFlags.js';
 import { MODULES } from '../data/modules.js';
+import { indexedShipLikeOrEntitiesScan } from '../world/livingWorldViews.js';
 
 // --- Dials (design doc §12) -----------------------------------------------------------------
 const CLOAK_MIN_ENGAGE = 0.12;      // energy floor to engage
@@ -286,10 +287,12 @@ function ensureCloak(state) {
   return root.cloak;
 }
 
-/** Every entity worth a cloak read on a burn sweep — the live entity map, else the list. */
+/** Every entity worth a cloak read on a burn sweep — cloaks are ship-shaped (the player's
+ * ship entity plus ship-class NPC producers), so the ready index's shipLike bucket is the
+ * domain; unindexed states keep the entity map/list walk. The runtime re-test stays per
+ * entity either way. */
 function cloakCandidateEntities(state) {
-  if (state.entities && typeof state.entities.values === 'function') return state.entities.values();
-  return Array.isArray(state.entityList) ? state.entityList : [];
+  return indexedShipLikeOrEntitiesScan(state);
 }
 
 /**

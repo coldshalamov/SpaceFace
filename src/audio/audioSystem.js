@@ -31,6 +31,12 @@ import {
 } from './bombAudio.js';
 import { bindFieldAudio, isFieldLoopKey } from './fieldAudio.js';
 import { resolveMasslineInstrument, resolveTetherTone } from './masslineInstrument.js';
+import { entityIndexLaneVersion, indexedWorldRecordEntity } from '../world/livingWorldViews.js';
+import { ceresActivityActorWorldRecordId } from '../systems/traffic.js';
+
+/** Remote-engine candidate lanes — hoisted so the 10 Hz census doesn't mint an array
+ * per run (ship|drone|freighter members). */
+const REMOTE_CANDIDATE_LANES = ['shipLike', 'freighters'];
 import {
   buildElementaryVoiceGraph,
   legacyContinuousGain,
@@ -963,7 +969,7 @@ export function resolveCollisionCue(input) {
   const dp = Number.isFinite(src.dp) ? src.dp : Number.isFinite(src.impulse) ? src.impulse : 0;
   // Force axis for the pitch bend. Pre-solve closing speed is the receipt's true "how hard" —
   // dp is capped by the per-tick solver clamp, so a 150 WU/s ram can otherwise read as a 40 WU/s
-  // nudge. Receipts without a speed field (the legacy 'collision' event) fall back to the dp
+  // nudge. Receipts without a speed field fall back to the dp
   // tier axis. sqrt shaping matches the feel ramp so a scrape is a tick and a slam is a beat.
   const forceU = Number.isFinite(src.closingSpeed) && src.closingSpeed > 0
     ? Math.sqrt(clamp(
@@ -2316,13 +2322,12 @@ export const audio = {
       if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return;
       this.play('sfx_cm_chaff', { position: { x: pos.x, z: pos.z }, gain: 0.45 });
     });
-    bus.on('combat:damage', (p) => this._onDamage(p));
-    // Contact sound rides whichever receipt the physics authority publishes: the live
-    // rapier-dynamic backend emits only `physics:impact`, while the custom path emits
-    // `physics:impact` AND legacy `collision` for the same contact in the same tick.
-    // `_admitCollisionCue`'s pair+tick window collapses that double-emit into one voice.
-    bus.on('collision', (p) => this._onCollision(p));
-    bus.on('physics:impact', (p) => this._onCollision(p));
+    bus.on('combat:damage', (p) => this._onDamage(p), { presentation: true });
+    // Contact sound rides the physics authority's receipt: `physics:impact` is the single
+    // emit per contact on every backend (the legacy `collision` twin was retired — its
+    // fields were a strict subset of the pooled payload's, and the pair+tick dedupe window
+    // already collapsed the double-emit into one voice).
+    bus.on('physics:impact', (p) => this._onCollision(p), { presentation: true });
     // Optic lattice contacts: weapons settles bolt-vs-prism and publishes the response here.
     // Each response kind owns one cue, and a ring can light a whole lattice neighborhood in a
     // single tick — the handlers collapse the burst through the shared `_heardRecipes` window,
@@ -2362,8 +2367,8 @@ export const audio = {
       const position = pos || (target ? { x: target.pos.x, z: target.pos.z } : null);
       this.play('sfx_shield_restore', { position, gain: isPlayer ? 0.8 : 0.4 });
     });
-    bus.on('entity:killed', (p) => this._onKilled(p));
-    bus.on('entity:destroyed', (p) => this._onDestroyed(p));
+    bus.on('entity:killed', (p) => this._onKilled(p), { presentation: true });
+    bus.on('entity:destroyed', (p) => this._onDestroyed(p), { presentation: true });
     bus.on('player:death', (p) => this._onPlayerDeath(p));
     bus.on('player:respawn', (p) => this._onPlayerRespawn(p));
     bus.on('mining:start', (p) => this._onMiningStart(p));
@@ -3097,6 +3102,10 @@ export const audio = {
     if (rt._samples) {
       rt._samples.setContext(ctx);
       rt._samples.prefetchTier(0);
+      // Action tier too — menu dwell is the warm window; the first combat cue otherwise
+      // falls back to full-synth while its designed layer fetches. The LRU budget keeps
+      // the whole library resident anyway, so this only moves the decode earlier.
+      rt._samples.prefetchTier(1);
       for (const id of Object.values(AUTHORED_STEM_SAMPLES)) rt._samples.acquire(id);
     }
 
@@ -3994,11 +4003,10 @@ export const audio = {
     this.play('sfx_discovery_reveal', { gain: 0.7 });
   },
 
-  // One voice per contact. The live rapier-dynamic backend emits `physics:impact` only; the
-  // custom path emits `physics:impact` and legacy `collision` for the same pair in the same
-  // tick — the pair+tick window collapses that double-emit. A sustained grind re-arms only
-  // after the cooldown, unless the new contact is meaningfully harder (the same escalation
-  // law the feel hit-stop uses).
+  // One voice per contact.
+  // The pair+tick window collapses a sustained grind's repeat receipts: the same pair can
+  // re-contact every tick while pinned, and re-arms only after the cooldown, unless the new
+  // contact is meaningfully harder (the same escalation law the feel hit-stop uses).
   _admitCollisionCue(p) {
     if (!this._collisionCueContacts) this._collisionCueContacts = new Map();
     const tick = Number.isFinite(p && p.tick)
@@ -4192,6 +4200,10 @@ export const audio = {
 
   _onDestroyed(p) {
     if (!p) return;
+    // Roster clears (prepareRun / discardPreparedNewGameScene) emit one destroyed per entity for
+    // teardown bookkeeping — they are not deaths: skip the explosion voices + station hush that
+    // would otherwise burst behind the loading veil against the old player position.
+    if (p.reason === 'run_reset') return;
     // Only ships/drones/wrecks get an explosion here; asteroids handled via asteroid:destroyed,
     // projectiles/pickups/fx are silent. entity:killed already covered combat kills, so keep this
     // to non-ship physical destructions to avoid doubling.
@@ -4553,7 +4565,30 @@ export const audio = {
   _ceresCausalActorPosition(actorSlotIds) {
     const slotId = Array.isArray(actorSlotIds) ? actorSlotIds[0] : null;
     if (typeof slotId !== 'string' || !slotId) return null;
-    const entityList = this.state && this.state.entityList;
+    const state = this.state;
+    // Activity slots bind 1:1 — the freighter ledger and the cast's durable world-record
+    // cover every actor traffic spawns, so the O(entityList) walk only remains for a
+    // stamped entity outside both (activity-adopted strays). Same resolution order as
+    // traffic's _ceresCausalActorBySlot.
+    const freighters = state && state.traffic && state.traffic.freighters;
+    if (Array.isArray(freighters)) {
+      for (let i = 0; i < freighters.length; i++) {
+        const rec = freighters[i];
+        if (!rec || rec.activityActorSlotId !== slotId) continue;
+        const candidate = state.entities && state.entities.get && state.entities.get(rec.id);
+        if (candidate && candidate.alive !== false && candidate.data
+          && candidate.data.activityActorSlotId === slotId && candidate.pos) {
+          return { x: candidate.pos.x, z: candidate.pos.z };
+        }
+      }
+    }
+    const worldRecordId = ceresActivityActorWorldRecordId(state, slotId);
+    const bound = worldRecordId && indexedWorldRecordEntity(state, worldRecordId);
+    if (bound && bound.alive !== false && bound.data
+      && bound.data.activityActorSlotId === slotId && bound.pos) {
+      return { x: bound.pos.x, z: bound.pos.z };
+    }
+    const entityList = state && state.entityList;
     if (Array.isArray(entityList)) {
       for (let i = 0; i < entityList.length; i++) {
         const candidate = entityList[i];
@@ -5429,14 +5464,16 @@ export const audio = {
   _stepWantedSearchAudio() {
     const state = this.state;
     if (!state) return;
-    const volume = readWantedSearchVolume(state);
+    const rt = this.rt || (this.rt = {});
+    const volume = readWantedSearchVolume(state,
+      rt._wantedVolume || (rt._wantedVolume = {}));
     const player = state.entities && state.playerId != null && state.entities.get
       ? state.entities.get(state.playerId)
       : null;
     const inside = !!(volume && player && player.pos
       && pointInsideWantedSearch(volume, player.pos.x, player.pos.z));
-    const rt = this.rt || (this.rt = {});
-    const step = stepWantedSearchEdge(rt._wantedSearchInside, inside);
+    const step = stepWantedSearchEdge(rt._wantedSearchInside, inside,
+      rt._wantedEdge || (rt._wantedEdge = {}));
     rt._wantedSearchInside = step.inside;
     if (step.edge === 'leave') this.play(WANTED_SEARCH_EDGE_CUES.leave, { gain: 0.45 });
     else if (step.edge === 'enter') this.play(WANTED_SEARCH_EDGE_CUES.enter, { gain: 0.4 });
@@ -6927,7 +6964,12 @@ export const audio = {
       // walks those ~small lists instead of the whole entityList. Interned id/loop keys ride a
       // WeakMap so nothing allocates a String(entity.id) per ship per run.
       const index = this.state.entityIndex;
-      const indexVersion = index && Number.isFinite(index.version) ? index.version : null;
+      // Members are ship|drone|freighter — shipLike carries ships+drones, the counter-only
+      // 'freighters' lane tracks the radarContacts-only type, so churn on the rest of
+      // radarContacts (stations/asteroids) can't rebuild the candidate list. -1 (index
+      // unready) plays the old null role: no latch.
+      const laneVersion = entityIndexLaneVersion(this.state, REMOTE_CANDIDATE_LANES);
+      const indexVersion = laneVersion === -1 ? null : laneVersion;
       const buckets = (index && index.shipLike && index.radarContacts) ? index : null;
       if (indexVersion == null || rt._remoteCandVersion !== indexVersion || !buckets) {
         rt._remoteCandVersion = indexVersion;

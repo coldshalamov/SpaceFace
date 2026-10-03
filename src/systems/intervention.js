@@ -69,6 +69,10 @@ export const intervention = {
     this.bus.on('automation:assetLost', (p) => this._onAssetLost(p));
     // Cross-sector honesty: a logged site materializes when the player arrives.
     this.bus.on('sector:enter', () => this._materializePendings());
+    // Census arm: logged sites materialize inside the sector cook deterministically.
+    this._cookProvider = () => this._materializePendings();
+    (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
+      .push(this._cookProvider);
   },
 
   _onAssetLost(p) {

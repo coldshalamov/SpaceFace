@@ -1315,6 +1315,10 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
 
   // ---------------------------------------------------------------- renderer + shared bloom pipeline
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'high-performance' });
+  // Same contract as the flight + ship-preview renderers: skip three's
+  // synchronous getProgramInfoLog/getShaderInfoLog round trips on first draw —
+  // they cost the measured ~1.3s stall class inside the screen's open frame.
+  renderer.debug.checkShaderErrors = false;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   // The shared composite owns tone mapping (its COLOR-MANAGEMENT INVARIANT); a renderer-level map

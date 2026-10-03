@@ -10,7 +10,7 @@ import { applyPendingSubsystemTransitions, recomputeCombatantModifiers, repairSu
 import { appendCombatTrace, canonicalize, readCombatTrace } from './trace.js';
 import { assertValidCombatCatalog } from './validate.js';
 import { isDynamicPhysicsBodyEntity, writePhysicsBodyResponse } from '../core/physicsAuthority.js';
-import { forEachLivingWorldActor } from '../world/livingWorldViews.js';
+import { entityIndexLaneVersion, forEachLivingWorldActor } from '../world/livingWorldViews.js';
 
 const KERNELS = new WeakMap();
 
@@ -169,12 +169,21 @@ export function createCombatKernel(ctx, options = {}) {
   for (const entity of sortedEntitiesForTick()) initializeEntity(entity);
   if (bus && typeof bus.on === 'function') {
     subscriptions.push(bus.on('entity:spawned', (payload) => {
-      invalidateSortedCache();
+      // The sorted roster only holds living-world actors — a projectile volley or pickup
+      // drop changes none of its membership, so the revision survives their churn.
+      const type = payload && (payload.type || (payload.entity && payload.entity.type));
+      // Untyped payloads invalidate anyway — an unknown spawn might still join the roster.
+      if (!type || type === 'ship' || type === 'drone' || type === 'station' || type === 'wreck') {
+        invalidateSortedCache();
+      }
       const entity = payload && (payload.entity || getEntity(payload.id));
       if (entity) initializeEntity(entity);
     }));
     subscriptions.push(bus.on('entity:destroyed', (payload) => {
-      invalidateSortedCache();
+      const type = payload && (payload.type || (payload.entity && payload.entity.type));
+      if (!type || type === 'ship' || type === 'drone' || type === 'station' || type === 'wreck') {
+        invalidateSortedCache();
+      }
       onEntityGone(payload);
     }));
     subscriptions.push(bus.on('combat:requestAction', (payload) => actions.requestAction(payload || {})));
@@ -458,11 +467,24 @@ export function createCombatKernel(ctx, options = {}) {
   }
 
   function sortedEntitiesForTick() {
+    const indexVersion = combatTickIndexVersion(state);
+    // With the V1 index live, the tick + revision + version triple already pins the living
+    // set — every membership mutation bumps index.version and spawn/destroy emits bump the
+    // revision — so a hit can return before the O(living actors) walk that only feeds the
+    // length check and the sort input.
+    if (
+      indexVersion >= 0 &&
+      sortedCache &&
+      sortedCacheTick === state.tick &&
+      sortedCacheSeenRevision === sortedCacheRevision &&
+      sortedCacheIndexVersion === indexVersion
+    ) {
+      return sortedCache;
+    }
     sourceScratch.length = 0;
     forEachLivingWorldActor(state, pushSourceEntity);
     const source = sourceScratch;
     const length = source.length;
-    const indexVersion = combatTickIndexVersion(state);
     if (
       sortedCache &&
       sortedCacheTick === state.tick &&
@@ -493,9 +515,14 @@ export function createCombatKernel(ctx, options = {}) {
   }
 }
 
+// The tick roster walks shipLike + stations + wrecks, so its latches only need those lane
+// versions — projectile/pickup/fx churn outside them no longer starves the sorted cache.
+const ROSTER_LANES = ['shipLike', 'stations', 'wrecks'];
+
 function combatTickIndexVersion(state) {
-  const index = state && state.entityIndex;
-  return index && index.__spacefaceEntityIndexV1 ? (Number(index.version) || 0) : -1;
+  // -1 reports the index unusable (mid-rebuild, unready, or lane counters absent) — readers
+  // then skip the index-version leg rather than scan a partial domain entityList covers.
+  return entityIndexLaneVersion(state, ROSTER_LANES);
 }
 
 /**

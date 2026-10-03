@@ -1,6 +1,9 @@
 // Segment-vs-body line-of-sight primitives shared by the PQ-146 observers. Leaf module: reads
 // entity geometry and collision proxy manifests only; no journal, physics or state writes.
-import { resolveCollisionProxyManifest, proxyWorldPrimitives } from '../data/collisionProxyManifests.js';
+import { resolveCollisionProxyManifest, proxyWorldPrimitives, proxyScaleFor, expandProxyPrimitives } from '../data/collisionProxyManifests.js';
+import { modelTruthProxyRowForEntity } from '../data/modelTruth.js';
+import { isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
+import { collidesFlipEpoch, entityIndexVersion } from '../world/livingWorldViews.js';
 const point = p => p && Number.isFinite(p.x) && Number.isFinite(p.z);
 function pointSegmentDistance(p,a,b) {
   const dx=b.x-a.x,dz=b.z-a.z, square=dx*dx+dz*dz;
@@ -25,7 +28,7 @@ function segmentIntersects(a,b,c,d) {
   const cross=(p,q,r)=>(q.x-p.x)*(r.z-p.z)-(r.x-p.x)*(q.z-p.z);
   return cross(a,b,c)*cross(a,b,d)<=0&&cross(c,d,a)*cross(c,d,b)<=0;
 }
-function primitiveBlocksSegment(a, b, p) {
+export function primitiveBlocksSegment(a, b, p) {
   if (p.kind === 'circle' && p.r > 0 && pointSegmentDistance(p, a, b) < p.r) return true;
   if (p.kind === 'obb' && crossesBox(a, b, p)) return true;
   if (p.kind === 'capsule') {
@@ -55,12 +58,137 @@ export function segmentHitsProxy(entity, a, b) {
   return false;
 }
 
+// Furthest primitive surface distance from an entity's own origin — rotation-invariant (a
+// rotated offset keeps its magnitude), so it caches per (manifest, scale) and lets
+// witnessLineOfSight skip proxy expansion for every entity whose reach cannot touch the
+// segment. The skip is verdict-identical: every primitive surface sits within reach of
+// entity.pos, so distance(pos, segment) > reach proves no primitive can intersect.
+const _occluderReachMemo = new WeakMap();
+function occluderReach(entity, manifest) {
+  if (!manifest) {
+    return Math.max(0, entity.physicsBody?.radius ?? entity.radius ?? entity.r ?? 0);
+  }
+  const scale = proxyScaleFor(entity, manifest);
+  const hit = _occluderReachMemo.get(entity);
+  if (hit && hit.manifest === manifest && hit.scale === scale) return hit.reach;
+  const local = expandProxyPrimitives(manifest, { entity });
+  let reach = 0;
+  for (const p of local) {
+    let extent = 0;
+    if (p.kind === 'capsule') {
+      extent = Math.max(
+        Math.hypot(Number(p.ax) || 0, Number(p.az) || 0),
+        Math.hypot(Number(p.bx) || 0, Number(p.bz) || 0),
+      ) + Math.max(0, Number(p.r) || 0);
+    } else {
+      const body = p.kind === 'obb'
+        ? Math.hypot(Number(p.hx) || 0, Number(p.hz) || 0)
+        : Math.max(0, Number(p.r) || 0);
+      extent = Math.hypot(Number(p.x) || 0, Number(p.z) || 0) + body;
+    }
+    if (extent > reach) reach = extent;
+  }
+  reach *= scale;
+  _occluderReachMemo.set(entity, { manifest, scale, reach });
+  return reach;
+}
+
+// One fused memo per body on the full input space of resolve + scale + reach — a call hit
+// pays field reads + compares and skips the resolver's helper walks entirely. `data` object
+// identity alone can't serve as the key: canonical identity mutates in place (a hull swap
+// rewrites data.defId on the same object), so the resolved row rides the key with it. The
+// raw corridorBearingDeg stamp rides too — chain expansion and approach-framed manifests
+// reshape the primitive set inside the reach bound.
+const _occluderBodyMemo = new WeakMap();
+function occluderBodyView(entity) {
+  const data = entity.data;
+  const body = entity.physicsBody && typeof entity.physicsBody === 'object' ? entity.physicsBody : null;
+  const hit = _occluderBodyMemo.get(entity);
+  if (hit && hit.data === data && hit.type === entity.type && hit.collides === entity.collides
+    && hit.row === modelTruthProxyRowForEntity(entity)
+    && hit.dynamic === isDynamicPhysicsBodyEntity(entity)
+    && hit.body === body
+    && hit.bodyRevision === (body ? Math.max(0, Math.trunc(Number(body.revision) || 0)) : -1)
+    && hit.bodyShape === (body && body.shape) && hit.bodySkin === (body && body.useMeasuredSkin)
+    && hit.authored === (body && body.collisionProxyManifest)
+    && hit.proxyId === (data && data.collisionProxy)
+    && hit.dockRadius === (data && data.dockRadius) && hit.radius === entity.radius
+    && hit.bearing === (data && data.corridorBearingDeg)) {
+    return hit.view;
+  }
+  const manifest = resolveCollisionProxyManifest(entity);
+  const view = { manifest, reach: occluderReach(entity, manifest) };
+  _occluderBodyMemo.set(entity, {
+    data, type: entity.type, collides: entity.collides,
+    row: modelTruthProxyRowForEntity(entity), dynamic: isDynamicPhysicsBodyEntity(entity),
+    body, bodyRevision: body ? Math.max(0, Math.trunc(Number(body.revision) || 0)) : -1,
+    bodyShape: body && body.shape, bodySkin: body && body.useMeasuredSkin,
+    authored: body && body.collisionProxyManifest,
+    proxyId: data && data.collisionProxy,
+    dockRadius: data && data.dockRadius, radius: entity.radius,
+    bearing: data && data.corridorBearingDeg,
+    view,
+  });
+  return view;
+}
+
+// The accept predicate requires entity.collides, so the candidate domain is a subset of the
+// collidables index lane — iterate it directly when the index provably covers every map
+// entity (the proven-coverage gate the other lanes use), else fall back to the full walk.
+// Stale T→F members (the syncEntityCollisionIndexMembership caveat) are excluded by the
+// per-call collides check below; observer/ignored are per-call inputs and stay per-call.
+function occluderScanDomain(state) {
+  const index = state && state.entityIndex;
+  const entities = state && state.entities;
+  if (index && index.__spacefaceEntityIndexV1 === true && index.ready === true
+    && Array.isArray(index.collidables) && index._indexedIds instanceof Set
+    && entities && entities.size === index._indexedIds.size) {
+    return index.collidables;
+  }
+  return (entities && typeof entities.values === 'function' ? entities.values() : []);
+}
+
+// Prepared occluder rows shared by every witness call under one membership — mirrors the
+// adjudicated LAW_WITNESS_PLAN_MEMO. Rows are pos-free (reach is pose-invariant; eval reads
+// live pos), so the key is membership only: index version (spawns/removals), map size and
+// _indexedIds.size (uncovered-domain and coverage-mode changes), and the collides flip epoch
+// (a mid-tick F→T flip joins the lane without a version bump — post-flip queries must see
+// the new member or the verdict diverges). The type/sensorBlocking filter is stamp-stable
+// (zero post-spawn writers — verified in the W44 audit) and hoists to build time.
+const WITNESS_OCCLUDER_PLAN_MEMO = new WeakMap();
+
+function witnessOccluderPlan(state) {
+  const index = state && state.entityIndex;
+  const entities = state && state.entities;
+  const covered = !!(index && index.__spacefaceEntityIndexV1 === true && index.ready === true
+    && Array.isArray(index.collidables) && index._indexedIds instanceof Set
+    && entities && entities.size === index._indexedIds.size);
+  const idxV = entityIndexVersion(state);
+  const key = `${idxV == null ? 'nv' : idxV}`
+    + `|${entities && Number.isFinite(entities.size) ? entities.size : -1}`
+    + `|${collidesFlipEpoch()}`
+    + `|${index && index._indexedIds instanceof Set ? index._indexedIds.size : -1}`
+    + `|${covered ? 1 : 0}`;
+  const hit = WITNESS_OCCLUDER_PLAN_MEMO.get(state);
+  if (hit && hit.key === key) return hit.plan;
+  const plan = [];
+  for (const entity of occluderScanDomain(state)) {
+    if (!entity) continue;
+    if (!['ship','station','asteroid','planet','wreck','debris'].includes(entity.type)
+      && entity.data?.sensorBlocking !== true) continue;
+    plan.push({ occ: entity, reach: occluderBodyView(entity).reach });
+  }
+  WITNESS_OCCLUDER_PLAN_MEMO.set(state, { key, plan });
+  return plan;
+}
+
 /** Uses the same station primitives as physics, preserving real gaps through compound geometry. */
 export function witnessLineOfSight(state, observer, destination, ignored = []) {
   if (!point(observer?.pos)||!point(destination))return false;
-  for (const entity of state.entities?.values?.() || []) {
+  for (const rec of witnessOccluderPlan(state)) {
+    const entity = rec.occ;
     if(!entity?.alive||!entity.collides||entity.id===observer.id||ignored.includes(entity.id)||!point(entity.pos))continue;
-    if(!['ship','station','asteroid','planet','wreck','debris'].includes(entity.type) && entity.data?.sensorBlocking!==true)continue;
+    if (pointSegmentDistance(entity.pos, observer.pos, destination) > rec.reach) continue;
     if (segmentHitsProxy(entity, observer.pos, destination)) return false;
   }
   return true;

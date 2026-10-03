@@ -209,9 +209,9 @@ export function createFloatingText(ctx) {
     const big = amount >= 25 || p.killing;
     spawn(String(Math.round(amount)), cls + (big ? ' sf-ft--big' : ''), wx, wz, p.targetId,
       { life: big ? 0.95 : 0.72, vy: big ? 58 : 42, damage: amount, damageClass: cls });
-  });
+  }, { presentation: true });
   // INST-14: "SHIELD DOWN" does not float over the fight; alerts/voice floor owns shield-break telemetry.
-  bus.on('entity:killed', (p) => { if (p && p.pos) spawn('DESTROYED', 'sf-ft--kill', p.pos.x, p.pos.z, null, { life: 1.3, vy: 26 }); });
+  bus.on('entity:killed', (p) => { if (p && p.pos) spawn('DESTROYED', 'sf-ft--kill', p.pos.x, p.pos.z, null, { life: 1.3, vy: 26 }); }, { presentation: true });
   // Weak-point hit (BP-02): a player shot landed in the target's exposed subsystem arc. Callout at the
   // hit so the bonus reads as skill, not noise. targetId lets it ride the target's screen motion.
   bus.on('combat:weakPointHit', (p) => {
@@ -261,7 +261,7 @@ export function createFloatingText(ctx) {
     // Toast: "Enemy Destroyed · +800 CR"
     const label = (p.victimClass === 'capital' || p.victimClass === 'large') ? 'Capital Destroyed' : 'Enemy Destroyed';
     bus.emit('toast', { text: label + ' · +' + p.bountyCr + ' CR', kind: 'credits', ttl: 3.5 });
-  });
+  }, { presentation: true });
 
   // ---- pickup collected (ore / cargo / module) ----------------------------------------------
   bus.on('pickup:collected', (p) => {

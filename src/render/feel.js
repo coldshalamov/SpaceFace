@@ -1250,7 +1250,7 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
       const dur = isPlayer ? HS_HEAVY * 1.3 : HS_HEAVY * 0.6;
       const fov = isPlayer ? FOV_PUNCH_HEAVY : FOV_PUNCH_HEAVY * 0.4;
       this._trigger(dur, fov, isPlayer ? VIG_HEAVY : 0, isPlayer ? 'hit' : null);
-    });
+    }, { presentation: true });
 
     // Spec2/02 §3: small kill = 60 ms hit-stop + kill-cam kiss; capital kill = 0.5 trauma scaled
     // 1/d² (max 0.5 at ≤ 400 wu) + 800 ms hit-stop window. Player involvement required for the kiss.
@@ -1287,7 +1287,7 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
       if (ctrl && typeof ctrl.killCam === 'function') {
         ctrl.killCam(victimAcousticMass(p, state), { capital: false });
       }
-    });
+    }, { presentation: true });
 
     // Player death is the single biggest beat in the game — long dip, big FOV punch, red wash,
     // and a death cam (PQ-159.02) so the wreck is a picture, not a cut.
@@ -1383,7 +1383,7 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
 
     // Consequences can arrive inside physics:impact dispatch or at the deferred contact flush.
     // Both feed one frame-level beat; neither listener writes timeScale or routes damage.
-    bus.on('physics:impact', (p) => this._onPhysicsImpact(p));
+    bus.on('physics:impact', (p) => this._onPhysicsImpact(p), { presentation: true });
     bus.on('emergent:contact', (p) => {
       if (!p || !(p.impulse > 0)) return;
       const deltaV = Number.isFinite(p.deltaV) && p.deltaV > 0

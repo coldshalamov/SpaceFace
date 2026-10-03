@@ -107,6 +107,16 @@ export const salvage = {
 
     // On sector entry, (re)plan salvage for this sector's derelict fields.
     this.bus.on('sector:enter', (p) => this._planForSector(p && p.sectorId));
+
+    // Census mount (vesper pattern): register a cook provider so derelict salvage points
+    // plan inside the renderer's deterministic sector census (jump + opening) instead of
+    // relying on this listener's emit position. _planForSector's plannedSectorId guard
+    // makes the emit listener's own call a no-op — ordering insurance, not a second plan.
+    if (this.helpers) {
+      (this.helpers.sectorCookProviders
+        || (this.helpers.sectorCookProviders = []))
+        .push((sector) => this._planForSector(sector && sector.id));
+    }
     this.bus.on('aftermathWreck:recorded', (p) => this._onPlayerWreckMarker(p));
     this.bus.on('aftermathWreck:spawned', (p) => this._onPlayerWreckSpawned(p));
     // Scanning a communicator is an alternate trigger to reaching it (scan:completed carries a target).

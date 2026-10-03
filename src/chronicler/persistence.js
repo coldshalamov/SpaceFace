@@ -122,7 +122,17 @@ function exemplar(e, path) {
 
 /** Strict and atomic. Missing legacy data starts empty; malformed/future schemas do not wipe a run. */
 export function restoreMemory(input, fallbackConfig, now = 0) {
-  if (input === null || input === undefined) return freshMemory(fallbackConfig, now);
+  let last;
+  for (const r of restoreMemoryChunked(input, fallbackConfig, now)) last = r;
+  return last;
+}
+
+// Generator twin so the async restore lane can paint between validation groups — the
+// stringify+deep-clone plus the story/profile/legend walks are the brick on a long
+// campaign's archive. Validation is read-only on `m`, so a yield between groups can't
+// reorder anything; throws surface at the same check in the same order on both lanes.
+export function* restoreMemoryChunked(input, fallbackConfig, now = 0) {
+  if (input === null || input === undefined) { yield freshMemory(fallbackConfig, now); return; }
   check(typeof input === 'object' && input.schemaVersion === CHRONICLER_VERSION, 'unsupported schemaVersion');
   // Reject giant/cyclic input before traversal. This path runs only at a load boundary.
   const json = JSON.stringify(input);
@@ -135,6 +145,7 @@ export function restoreMemory(input, fallbackConfig, now = 0) {
   array(m.pending, m.config.maxPending, 'pending');
   array(m.seen, m.config.maxSeen, 'seen'); m.seen.forEach(s => string(s, 'seen key', 1024));
   array(m.stories, m.config.maxStories, 'stories');
+  yield 'chronicler-canonical';
   const ids = new Set(), sequences = new Set(), storyIds = new Set();
   function uniqueFact(f, p) {
     fact(f, p); check(!ids.has(f.id) && !sequences.has(f.seq), 'duplicate fact identity');
@@ -160,6 +171,7 @@ export function restoreMemory(input, fallbackConfig, now = 0) {
     check(s.announcedRevision <= s.revision && s.newsRevision <= s.revision && s.radioRevision <= s.revision, 'revision order');
     clock(s.newsAt, 'story.newsAt'); string(s.signature, 'signature', 8192);
   }
+  yield 'chronicler-stories';
   check(m.activeWanted === null || storyIds.has(m.activeWanted), 'activeWanted');
   object(m.cadence, ['newsAt', 'radioAt', 'recallAt'], 'cadence');
   for (const key of ['newsAt', 'radioAt', 'recallAt']) clock(m.cadence[key], key);
@@ -173,6 +185,7 @@ export function restoreMemory(input, fallbackConfig, now = 0) {
     object(p.counts, COUNTS, 'counts'); object(p.examples, COUNTS, 'examples');
     for (const key of COUNTS) { integer(p.counts[key], 'count'); array(p.examples[key], 3, 'examples'); p.examples[key].forEach(e => exemplar(e, 'example')); }
   }
+  yield 'chronicler-profiles';
   array(m.legends, m.config.maxLegends, 'legends');
   for (const l of m.legends) {
     object(l, ['id', 'actorKey', 'actorName', 'kind', 'title', 'count', 'formedAt', 'text', 'evidence', 'announced', 'visibility'], 'legend');
@@ -182,5 +195,6 @@ export function restoreMemory(input, fallbackConfig, now = 0) {
     check(typeof l.announced === 'boolean' && ['public', 'private', 'player'].includes(l.visibility), 'legend audience');
     array(l.evidence, 3, 'legend.evidence'); l.evidence.forEach(e => exemplar(e, 'legend evidence'));
   }
-  return m;
+  yield 'chronicler-legends';
+  yield m;
 }

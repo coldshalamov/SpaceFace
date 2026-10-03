@@ -249,7 +249,7 @@ export const physics = {
           'spatial-rebuild-layers',
         );
       }
-      hash.rebuildLayers(layers.statics, layers.dynamics, layers.staticVersion);
+      hash.rebuildLayers(layers.statics, layers.dynamics, layers.staticVersion, layers.dynamicsVersion);
       return;
     }
     if (countVisits) countVisits.countEntityVisits(state.entityList.length, 'spatial-rebuild');
@@ -327,10 +327,10 @@ export const physics = {
   },
 
   deserialize(payload) {
-    // Stashed until the next SG-02 owner comes up: adoption replaces a fresh owner's empty
-    // world, while an owner that survives the restore keeps its own state (see
-    // _resetSg02AfterLoad). A malformed payload is ignored — the entity-level restore still
-    // rebuilds every body the way older saves always did.
+    // Stashed until the restore settles: adoption replaces a fresh owner's empty world
+    // (boot-load, harness reset) or the surviving owner's live world in _resetSg02AfterLoad.
+    // A malformed payload is ignored — the entity-level restore still rebuilds every body
+    // the way older saves always did.
     this._pendingSg02Snapshot = payload && typeof payload === 'object' ? payload : null;
   },
 
@@ -838,9 +838,6 @@ export const physics = {
     const out = this._scratch;
     const wake = this._projectileWake || (this._projectileWake = []);
     wake.length = 0;
-    this._syncProjectileBroadphase(state);
-    const useBroadphase = !!(this._projectileBroadphaseReady && this._projectileBroadphase);
-    const useHash = !useBroadphase && hasActiveSpatialHash(state.spatialHash);
     const projectiles = (state.entityIndex && state.entityIndex.projectiles) || state.entityList;
     const extra = this._sweepExtraCandidates || (this._sweepExtraCandidates = []);
     // Dormant-body admit pre-pass: every live projectile used to run a field query plus a
@@ -851,11 +848,13 @@ export const physics = {
     // A rec promoted by an earlier projectile already self-skips: promote marks rec.alive
     // false, and the per-projectile filters below test exactly that.
     let unionMinX = Infinity, unionMinZ = Infinity, unionMaxX = -Infinity, unionMaxZ = -Infinity;
+    let sweepCandidate = false;
     for (const proj of projectiles) {
       if (!proj.alive || proj.type !== 'projectile' || !proj.collides) continue;
       const start = previousPosInto(this._prevPosScratch, proj, dt);
       const limit = this._projectileSweepLimitScratch;
       if (!projectileSweepLimitInto(limit, proj, start, proj.pos)) continue;
+      sweepCandidate = true;
       const reach = Math.hypot(proj.pos.x - start.x, proj.pos.z - start.z) * 0.5 + (proj.radius || 0) + 120;
       if (!(reach > 0)) continue;
       const cx = (start.x + proj.pos.x) * 0.5;
@@ -885,6 +884,11 @@ export const physics = {
     this._sweepUnionBoundsZ1 = unionMaxZ;
     this._sweepUnionRocksLive = unionRocks;
     this._sweepUnionActorsLive = unionActors;
+    // The broadphase is only consulted by a segment that survived the sweep limit — a
+    // projectile-free tick (plain cruise) needs no sector-wide dynamic-layer resync.
+    if (sweepCandidate) this._syncProjectileBroadphase(state);
+    const useBroadphase = !!(this._projectileBroadphaseReady && this._projectileBroadphase);
+    const useHash = !useBroadphase && hasActiveSpatialHash(state.spatialHash);
     for (const proj of projectiles) {
       if (!proj.alive || proj.type !== 'projectile' || !proj.collides) continue;
       const start = previousPosInto(this._prevPosScratch, proj, dt);
@@ -954,6 +958,7 @@ export const physics = {
       index.spatialStatics,
       index.spatialDynamics,
       index.spatialStaticVersion || 0,
+      index.spatialDynamicsVersion || 0,
     );
   },
 
@@ -1145,14 +1150,7 @@ export const physics = {
     pushApart(a, b, dist, dx, dz, material.push);
     const impulseMag = impulse(a, b, nx, nz, material);
     _contactPosScratch.x = a.pos.x; _contactPosScratch.z = a.pos.z;
-    const impactDp = emitPhysicsImpact(bus, state, a, b, impulseMag, material, _contactPosScratch, impactOptions);
-    bus.emit('collision', {
-      aId: a.id,
-      bId: b.id,
-      impulse: Math.max(0.1, impulseMag * material.impactScale * 0.01),
-      dp: impactDp,
-      pos: { x: a.pos.x, z: a.pos.z },
-    });
+    emitPhysicsImpact(bus, state, a, b, impulseMag, material, _contactPosScratch, impactOptions);
   },
 
   updateDockRange(state) {
@@ -1336,6 +1334,7 @@ export function spatialHashLayersFromState(state) {
       statics: activity.physicsStatics,
       dynamics: activity.physicsDynamics,
       staticVersion: activity.physicsStaticVersion || 0,
+      dynamicsVersion: activity.physicsDynamicsVersion || 0,
     };
   }
   const index = state && state.entityIndex;
@@ -1345,6 +1344,7 @@ export function spatialHashLayersFromState(state) {
       statics: index.spatialStatics,
       dynamics: index.spatialDynamics,
       staticVersion: index.spatialStaticVersion || 0,
+      dynamicsVersion: index.spatialDynamicsVersion || 0,
     };
   }
   return null;
@@ -1789,8 +1789,64 @@ const _impactTraumaCtx = {
   playerContact: false,
 };
 
+// The payload obeys the same contract: every listener reads its fields synchronously inside
+// the dispatch, and the one deferred consumer (collisionConsequences._deferCraftContact)
+// snapshots field-by-field via snapshotContactPayload — nothing retains the object past the
+// emit, so one refilled record replaces the per-contact literal + pos/normal objects.
+// Deferred presentation tails queue this pooled record past the emit — they receive the
+// emit-time clone below (pos/normal are pooled sub-objects, everything else is scalar).
+function snapshotImpactPayload(p) {
+  return { ...p, pos: { ...p.pos }, normal: { ...p.normal } };
+}
+const _impactPayload = {
+  consequenceKernelVersion: 1,
+  backend: 'custom',
+  tick: 0,
+  aId: null,
+  bId: null,
+  pairKey: '',
+  dp: 0,
+  trauma: 0,
+  impulse: 0,
+  playerInvolved: false,
+  playerDeltaV: 0,
+  causalActorId: null,
+  pos: { x: 0, z: 0 },
+  normal: { x: 0, z: 0 },
+  preSolveClosingSpeed: undefined,
+  appliedPlayerDeltaV: undefined,
+  solverPlayerHeadingRad: undefined,
+  solverPlayerYawRateKick: undefined,
+  solverPlayerCourseRad: undefined,
+  appliedPlayerHeadingRad: undefined,
+  appliedPlayerCourseRad: undefined,
+};
+
+// Pair keys are interned per unordered id pair — the nested lookup allocates nothing, so a
+// contact storm pays the `${a}\0${b}` template once per pair instead of once per contact.
+const _impactPairKeys = new Map();
+const _IMPACT_PAIR_KEY_MAX_OUTER = 1024;
+
+function impactPairKeyFor(aKey, bKey) {
+  const lo = aKey < bKey ? aKey : bKey;
+  const hi = aKey < bKey ? bKey : aKey;
+  let inner = _impactPairKeys.get(lo);
+  if (inner) {
+    const hit = inner.get(hi);
+    if (hit !== undefined) return hit;
+  } else {
+    if (_impactPairKeys.size >= _IMPACT_PAIR_KEY_MAX_OUTER) _impactPairKeys.clear();
+    inner = new Map();
+    _impactPairKeys.set(lo, inner);
+  }
+  const key = `${lo}\u0000${hi}`;
+  inner.set(hi, key);
+  return key;
+}
+
 function emitPhysicsImpact(bus, state, a, b, impulseMag, material, pos, options = {}) {
   if (!bus || typeof bus.emit !== 'function') return 0;
+  if (bus.setPayloadSnapshot) bus.setPayloadSnapshot('physics:impact', snapshotImpactPayload);
   const dp = Math.max(0, finiteOrZero(impulseMag) * Math.max(0, finiteOrZero(material && material.impactScale) || 1));
   if (!(dp > 0)) return 0;
   const playerId = state && state.playerId;
@@ -1807,49 +1863,47 @@ function emitPhysicsImpact(bus, state, a, b, impulseMag, material, pos, options 
   ctx.preSolveClosingSpeed = options.preSolveClosingSpeed;
   ctx.playerContact = playerInvolved;
   const trauma = traumaFromContact(dp, ctx);
-  // Pair key is built once here: audio/vfx/hud each used to re-derive the same
-  // `min\0max` string per emit to dedupe, so a contact storm paid the alloc N times.
+  // audio/vfx/hud each used to re-derive the same `min\0max` pair string per emit to dedupe;
+  // the interned key is allocated once per unordered pair and reused by every consumer.
   const aKey = String(a.id);
   const bKey = String(b.id);
-  const payload = {
-    consequenceKernelVersion: 1,
-    backend: String(options.backend || 'custom'),
-    tick: Number.isFinite(options.tick) ? Math.max(0, Math.trunc(options.tick)) : Math.max(0, Math.trunc(state && state.tick || 0)),
-    aId: a.id,
-    bId: b.id,
-    pairKey: aKey < bKey ? `${aKey}\u0000${bKey}` : `${bKey}\u0000${aKey}`,
-    dp,
-    trauma,
-    impulse: finiteOrZero(impulseMag),
-    playerInvolved,
-    playerDeltaV,
-    causalActorId: options.causalActorId == null ? null : options.causalActorId,
-    pos: { x: finiteOrZero(pos && pos.x), z: finiteOrZero(pos && pos.z) },
-    normal: normalizedPlanar(options.normal),
-  };
-  if (Number.isFinite(options.preSolveClosingSpeed)) {
-    payload.preSolveClosingSpeed = options.preSolveClosingSpeed;
+  const payload = _impactPayload;
+  payload.backend = String(options.backend || 'custom');
+  payload.tick = Number.isFinite(options.tick) ? Math.max(0, Math.trunc(options.tick)) : Math.max(0, Math.trunc(state && state.tick || 0));
+  payload.aId = a.id;
+  payload.bId = b.id;
+  payload.pairKey = impactPairKeyFor(aKey, bKey);
+  payload.dp = dp;
+  payload.trauma = trauma;
+  payload.impulse = finiteOrZero(impulseMag);
+  payload.playerInvolved = playerInvolved;
+  payload.playerDeltaV = playerDeltaV;
+  payload.causalActorId = options.causalActorId == null ? null : options.causalActorId;
+  const payloadPos = payload.pos;
+  payloadPos.x = finiteOrZero(pos && pos.x);
+  payloadPos.z = finiteOrZero(pos && pos.z);
+  const payloadNormal = payload.normal;
+  const normX = finiteOrZero(options.normal && options.normal.x);
+  const normZ = finiteOrZero(options.normal && options.normal.z);
+  const normLen = Math.hypot(normX, normZ);
+  if (normLen > 1e-9) {
+    payloadNormal.x = normX / normLen;
+    payloadNormal.z = normZ / normLen;
+  } else {
+    payloadNormal.x = 0;
+    payloadNormal.z = 0;
   }
-  if (Number.isFinite(options.appliedPlayerDeltaV)) {
-    payload.appliedPlayerDeltaV = options.appliedPlayerDeltaV;
-  }
+  // Every receipt field is rewritten each emit — an unmeasured channel returns to `undefined`
+  // so a prior contact's measured value cannot leak into this payload.
+  payload.preSolveClosingSpeed = Number.isFinite(options.preSolveClosingSpeed) ? options.preSolveClosingSpeed : undefined;
+  payload.appliedPlayerDeltaV = Number.isFinite(options.appliedPlayerDeltaV) ? options.appliedPlayerDeltaV : undefined;
   // PQ-137.11 owner receipts. Emitted only when the authority measured them, so a missing field
   // stays a hole rather than becoming a confident zero.
-  if (Number.isFinite(options.solverPlayerHeadingRad)) {
-    payload.solverPlayerHeadingRad = options.solverPlayerHeadingRad;
-  }
-  if (Number.isFinite(options.solverPlayerYawRateKick)) {
-    payload.solverPlayerYawRateKick = options.solverPlayerYawRateKick;
-  }
-  if (Number.isFinite(options.solverPlayerCourseRad)) {
-    payload.solverPlayerCourseRad = options.solverPlayerCourseRad;
-  }
-  if (Number.isFinite(options.appliedPlayerHeadingRad)) {
-    payload.appliedPlayerHeadingRad = options.appliedPlayerHeadingRad;
-  }
-  if (Number.isFinite(options.appliedPlayerCourseRad)) {
-    payload.appliedPlayerCourseRad = options.appliedPlayerCourseRad;
-  }
+  payload.solverPlayerHeadingRad = Number.isFinite(options.solverPlayerHeadingRad) ? options.solverPlayerHeadingRad : undefined;
+  payload.solverPlayerYawRateKick = Number.isFinite(options.solverPlayerYawRateKick) ? options.solverPlayerYawRateKick : undefined;
+  payload.solverPlayerCourseRad = Number.isFinite(options.solverPlayerCourseRad) ? options.solverPlayerCourseRad : undefined;
+  payload.appliedPlayerHeadingRad = Number.isFinite(options.appliedPlayerHeadingRad) ? options.appliedPlayerHeadingRad : undefined;
+  payload.appliedPlayerCourseRad = Number.isFinite(options.appliedPlayerCourseRad) ? options.appliedPlayerCourseRad : undefined;
   bus.emit('physics:impact', payload);
   return dp;
 }
@@ -1878,13 +1932,6 @@ function directContactImpactOptions(out, state, a, b, nx, nz) {
     finiteOrZero(b.pos && b.pos.z) - finiteOrZero(a.pos && a.pos.z),
   );
   return out;
-}
-
-function normalizedPlanar(value) {
-  const x = finiteOrZero(value && value.x);
-  const z = finiteOrZero(value && value.z);
-  const length = Math.hypot(x, z);
-  return length > 1e-9 ? { x: x / length, z: z / length } : { x: 0, z: 0 };
 }
 
 function finiteOrZero(value) {

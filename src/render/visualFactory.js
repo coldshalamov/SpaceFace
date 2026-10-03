@@ -65,10 +65,12 @@ import {
   AUTHORED_ADMISSION_RETRY_MAX,
   authoredReadmissionStatus,
   boundaryLiveEntity,
+  carryAdmittedOnceStamp,
   markAuthoredBoundaryForReadmission,
   prepareAuthoredVisualPipelines,
   releaseBoundaryResidency,
   residencyOptionsForBoundary,
+  staleAuthoredRunVerdict,
   waitForOpeningGraphPublicationRelease,
   wholeShipVisualForEntity,
 } from './partsLibrary.js';
@@ -3385,6 +3387,20 @@ export function fractureFragmentFileForEntity(e) {
   return (spec && spec.file) || null;
 }
 
+/** Every authored fragment file a hull of this def can tear into — the warm lane's list. */
+export function fractureFragmentFilesForDef(defId) {
+  const table = defId && WRECK_FRAGMENT_FILES[defId];
+  if (!table) return null;
+  const files = [];
+  for (const entry of Object.values(table.seam || {})) {
+    if (entry && entry.file) files.push(entry.file);
+  }
+  for (const entry of Object.values(table.remainder || {})) {
+    if (entry && entry.file) files.push(entry.file);
+  }
+  return files.length ? files : null;
+}
+
 // The fragment GLBs are authored in intact-hull coordinates: fit each piece to its authored
 // share of the victim's envelope (victimRadius x share), not the mass-derived collision
 // radius — otherwise a 0.34-mass bow renders ~1.4x its true share of hull.
@@ -3783,9 +3799,12 @@ export function fitPackagedGroup(group, targetRadius) {
   const center = box.getCenter(new THREE.Vector3());
   const size = box.getSize(new THREE.Vector3());
   const envelope = Math.max(size.x, size.y, size.z, 1e-6);
-  group.position.sub(center);
   const radius = Number(targetRadius);
-  if (Number.isFinite(radius) && radius > 0) group.scale.setScalar((radius * 2) / envelope);
+  const fitScale = Number.isFinite(radius) && radius > 0 ? (radius * 2) / envelope : 1;
+  group.scale.setScalar(fitScale);
+  // The recenter composes with the scale: a child at authored point v lands at
+  // position + s·v, so the measured center reaches origin only at position = -s·c.
+  group.position.set(-center.x * fitScale, -center.y * fitScale, -center.z * fitScale);
 }
 
 function hideProceduralChildren(root) {
@@ -3930,8 +3949,36 @@ export function deadenPackagedHulk(group, options = {}) {
   return [...clones.values()];
 }
 
+// A detached packaged group the admission run still owns: its primitives were minted fresh for
+// this mount, so geometry and material instances die with it. Shared-asset geometries keep
+// their pool pin; texture maps ride the packaged cache and are left alone.
+function disposeDetachedPackagedGroup(group) {
+  if (!group || typeof group.traverse !== 'function') return;
+  group.traverse((object) => {
+    if (!object) return;
+    if (object.geometry && typeof object.geometry.dispose === 'function'
+      && !(object.geometry.userData && object.geometry.userData.spacefaceSharedAsset)) {
+      object.geometry.dispose();
+    }
+    const materials = Array.isArray(object.material)
+      ? object.material
+      : object.material ? [object.material] : [];
+    for (const material of materials) {
+      if (material && typeof material.dispose === 'function') material.dispose();
+    }
+  });
+}
+
 function attachPackagedBody(root, relativeFile, entity) {
-  if (!root || !relativeFile) return root;
+  if (!root || !relativeFile) {
+    // No packaged file resolved — stamp the terminal identity so the root never sits
+    // 'missing' in front of the readiness gate (same wedge class as buildFallback).
+    if (root) {
+      root.userData.authoredAssetState = 'unavailable';
+      root.userData.authoredVisualRoot = 'none-build-failed';
+    }
+    return root;
+  }
   const url = packagedPartUrl(relativeFile);
   // The packaged file IS the victim's own hull only when the hulk selector chose it —
   // a wreck that fell back to a generic aftermath piece must not be dead-stated. ANI-08
@@ -3956,7 +4003,20 @@ function attachPackagedBody(root, relativeFile, entity) {
     const existing = root.userData.authoredUpgradePromise;
     // An orphaned admission settles its promise while the kept boundary stays mounted —
     // honouring it would suppress the restored owner's re-admission forever.
-    if (existing && !authoredReadmissionStatus(state)) return existing;
+    if (existing && !authoredReadmissionStatus(state)) {
+      // A glass-visible re-request joins the in-flight packaged decode at the visible class —
+      // loadAuthoredPart's deadlineJoin re-grades the shared task's remaining posts without
+      // queuing a second decode.
+      if (renderer && requestOptions && requestOptions.admissionVisible === true) {
+        const joiner = typeof requestOptions.loadAuthoredPart === 'function'
+          ? requestOptions.loadAuthoredPart
+          : loadAuthoredPart;
+        Promise.resolve(joiner(url, {
+          renderer, slot: 'place', optional: true, admissionVisible: true,
+        })).catch(() => {});
+      }
+      return existing;
+    }
     if (existing) delete root.userData.authoredUpgradePromise;
     if (!renderer) return null;
     if (state === 'authored') return Promise.resolve(true);
@@ -3969,6 +4029,10 @@ function attachPackagedBody(root, relativeFile, entity) {
       ...residencyOptionsForBoundary(liveEntity, root, renderer),
       ...requestOptions,
     });
+    // Mint once at request: residencyOptionsForBoundary bumps the boundary epoch on every call,
+    // so every verdict write and the commit guard below compare this run's own epoch — including
+    // the pre-mint legs and the outer catch, which a .then-scoped mint could not reach.
+    const mintedAdmissionOptions = admissionOptions();
     // Same admission barrier as the scenario-prop packaged path (visualOverrides.js): the group
     // is compiled and its buffers uploaded while still detached, and publication waits on the
     // opening-graph release. Attaching straight to the live root linked the packaged materials
@@ -3984,6 +4048,7 @@ function attachPackagedBody(root, relativeFile, entity) {
       ...requestOptions,
     }).then(async (record) => {
       if (!record || !root.parent) {
+        if (!record && staleAuthoredRunVerdict(root, mintedAdmissionOptions)) return false;
         root.userData.authoredAssetState = record ? 'orphaned-before-swap' : 'unavailable';
         if (!record) restorePackagedBodyFallback(root, 'packaged-body-load-missed');
         return false;
@@ -4031,6 +4096,7 @@ function attachPackagedBody(root, relativeFile, entity) {
       }
       if (!packaged.children.length) instantiatePackagedPrimitives(record, packaged);
       if (!packaged.children.length) {
+        if (staleAuthoredRunVerdict(root, mintedAdmissionOptions)) return false;
         root.userData.authoredAssetState = 'unavailable';
         restorePackagedBodyFallback(root, 'packaged-body-empty');
         return false;
@@ -4063,15 +4129,16 @@ function attachPackagedBody(root, relativeFile, entity) {
       freezeStaticChildMatrices(packaged);
       root.userData.authoredAssetState = 'compiling-pipelines';
       try {
-        await prepareAuthoredVisualPipelines(packaged, admissionOptions());
+        await prepareAuthoredVisualPipelines(packaged, mintedAdmissionOptions);
       } catch (error) {
-        releaseBoundaryResidency(renderer, root, 'packaged-body-pipeline-failed');
+        releaseBoundaryResidency(renderer, root, 'packaged-body-pipeline-failed', mintedAdmissionOptions.admissionEpoch);
+        if (staleAuthoredRunVerdict(root, mintedAdmissionOptions)) return false;
         // Same lifecycle abort partsLibrary classifies: an owner that dies mid-admission has no
         // visual to publish — a breadcrumb, not a composition defect.
         const causes = error && Array.isArray(error.errors) && error.errors.length
           ? error.errors
           : [error];
-        const ownerInactive = admissionOwnerInactive(admissionOptions(), liveEntity, error)
+        const ownerInactive = admissionOwnerInactive(mintedAdmissionOptions, liveEntity, error)
           || causes.every((cause) => cause && /owner became inactive/i.test(String(cause && (cause.message || cause))));
         if (ownerInactive) {
           if (root.parent) {
@@ -4087,7 +4154,7 @@ function attachPackagedBody(root, relativeFile, entity) {
         return false;
       }
       if (!root.parent) {
-        releaseBoundaryResidency(renderer, root, 'packaged-body-orphaned-after-compile');
+        releaseBoundaryResidency(renderer, root, 'packaged-body-orphaned-after-compile', mintedAdmissionOptions.admissionEpoch);
         root.userData.authoredAssetState = 'orphaned-before-swap';
         return false;
       }
@@ -4096,14 +4163,25 @@ function attachPackagedBody(root, relativeFile, entity) {
       });
       if (publicationWait) await publicationWait;
       if (!root.parent) {
-        releaseBoundaryResidency(renderer, root, 'packaged-body-orphaned-before-publication');
+        releaseBoundaryResidency(renderer, root, 'packaged-body-orphaned-before-publication', mintedAdmissionOptions.admissionEpoch);
         root.userData.authoredAssetState = 'orphaned-before-swap';
+        return false;
+      }
+      // Same stale-run guard the cargo/place/ship commits carry: a run parked at the
+      // publication wait while its boundary re-admitted under a newer epoch must not mount
+      // its packaged root over the replacement's — the live epoch owns the boundary.
+      if ((mintedAdmissionOptions.admissionEpoch != null && root.userData.admissionEpoch != null
+            && root.userData.admissionEpoch !== mintedAdmissionOptions.admissionEpoch)
+          || (typeof mintedAdmissionOptions.isAbortedStalledAdmission === 'function' && mintedAdmissionOptions.isAbortedStalledAdmission())
+          || admissionOwnerInactive(mintedAdmissionOptions, liveEntity)) {
+        disposeDetachedPackagedGroup(packaged);
         return false;
       }
       // Re-hide in case a retained fallback (or a retry already in flight) re-showed the
       // procedural children while this admission was mid-flight.
       hideProceduralChildren(root);
       root.add(packaged);
+      carryAdmittedOnceStamp(packaged, root);
       canonicalizeObjectSurfaceProgramKeys(packaged);
       root.userData.hull = packaged;
       root.userData.authoredReadableFallbackRetained = false;
@@ -4111,6 +4189,7 @@ function attachPackagedBody(root, relativeFile, entity) {
       root.userData.authoredVisualRoot = record.assetId || url;
       return true;
     }).catch((error) => {
+      if (staleAuthoredRunVerdict(root, mintedAdmissionOptions)) return false;
       if (root.parent && admissionOwnerInactive(null, entity, error)) {
         markAuthoredBoundaryForReadmission(root, 'packaged-body-owner-inactive');
       } else {
@@ -5361,6 +5440,11 @@ function buildFallback(e) {
   root.visible = false;
   root.userData.visualBuildFailed = true;
   root.userData.failedEntityType = e && e.type || 'unknown';
+  // A builder throw on a gate-bound contact would otherwise sit 'missing' forever and
+  // hold flight-ready hostage; stamp the terminal fail-closed identity like
+  // unavailableVisual so the readiness scan releases it.
+  root.userData.authoredAssetState = 'unavailable';
+  root.userData.authoredVisualRoot = 'none-build-failed';
   return root;
 }
 

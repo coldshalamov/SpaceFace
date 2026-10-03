@@ -31,16 +31,20 @@ import {
   requestActivityReclassify,
 } from '../world/activityRuntime.js';
 import {
+  entityIndexLaneVersion,
   forEachFieldRock,
   forEachJobInteractable,
   forEachLivingWorldActor,
+  indexedTypeScan,
   indexedWorldRecordEntity,
+  registerEntityWorldRecordId,
 } from '../world/livingWorldViews.js';
 import { getAsteroidFieldRock, promoteAsteroidFieldRock } from '../world/asteroidField.js';
 import { getFarActor } from '../world/farActorTable.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from './ships.js';
 import { CombatDoctrineId } from '../ai/combatDoctrine.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
+import { syncEntityActivitySlotMembership } from '../core/coreSystem.js';
 import {
   RECORD_KIND,
   stableRecordId,
@@ -1325,6 +1329,77 @@ function pickRole(roleWeights, rng) {
   return 'hauler';
 }
 
+// The ship files a live sector:enter can mount through this system, as {defId, factionId}
+// rows for the decode warm. Covers the ambient role-mix anchors (plus every faction-group
+// hull an anchor can substitute to — the spawn path picks ONE member via factionHullFor, so
+// the stub walks the whole group), authored activity-pocket presentation roles, the ceres
+// service slots, and the named lane contacts stamped for this sector (a contact's own ship
+// outranks the faction fleet exactly as the spawn code does). Extra files in the runway
+// cost nothing; a missed hull decodes cold at mount and pops in.
+export function sectorEnterTrafficShipStubs(sector, state) {
+  const out = [];
+  const seen = new Set();
+  const sectorId = sector && sector.id;
+  const factionId = (sector && sector.factionId) || 'faction_free';
+  // Rows carry the mount's trafficRole: wholeShipVisualForEntity resolves role before defId
+  // and the role/defId whole-ship maps are near-disjoint, so a stub without the role warms
+  // the wrong GLB. Dedupe on defId|role — two roles mapping to one hull still need both
+  // role files warmed.
+  const push = (defId, role) => {
+    if (typeof defId !== 'string' || !defId) return;
+    const key = defId + '|' + (role || '');
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push({ defId, factionId, trafficRole: role || null });
+  };
+  const pushWithFactionGroup = (anchorDefId, role) => {
+    push(anchorDefId, role);
+    const groups = FLEET_BY_FACTION.get(factionId);
+    const group = groups && groups.find((entry) => entry.hullIds.includes(anchorDefId));
+    if (group && group.hullIds.length > 1) {
+      for (const hullId of group.hullIds) push(hullId, role);
+    }
+  };
+  if (!sector) return out;
+  if (ambientCountForSector(sector, state) > 0) {
+    const mix = trafficRoleMixForSector(sector, state);
+    for (const [roleId, w] of Object.entries(mix)) {
+      if (!Number.isFinite(w) || w <= 0) continue;
+      const def = TRAFFIC_ROLES[roleId];
+      if (def && def.ship) pushWithFactionGroup(def.ship, roleId);
+    }
+  }
+  for (const pocket of activityPocketsForSector(sectorId) || []) {
+    for (const slot of (pocket && pocket.actorSlots) || []) {
+      const def = TRAFFIC_ROLES[slot && slot.presentationRole];
+      if (def && def.ship) push(def.ship, slot.presentationRole);
+    }
+  }
+  if (sectorId === CERES_ACTIVITY_SECTOR_ID) {
+    for (const slot of CERES_ACTIVITY_SERVICE_SLOTS) {
+      const def = TRAFFIC_ROLES[slot && slot.presentationRole];
+      if (def && def.ship) push(def.ship, slot.presentationRole);
+    }
+  }
+  for (const contact of NAMED_LANE_CONTACTS) {
+    if (!contact || !Array.isArray(contact.sectorIds)
+        || contact.sectorIds.indexOf(sectorId) < 0) continue;
+    // The spawn stamps trafficRole = contact.role || 'hauler' whether the hull is the
+    // contact's own or a role-default faction pick — the stub mirrors that role so the
+    // warm resolves the same whole-ship file the mount reads. A named contact's own hull
+    // outranks the faction fleet: the spawn does not run factionHullFor for it, so neither
+    // does the stub.
+    const contactRole = contact.role || 'hauler';
+    if (contact.ship) {
+      push(contact.ship, contactRole);
+    } else {
+      const def = TRAFFIC_ROLES[contactRole];
+      if (def && def.ship) pushWithFactionGroup(def.ship, contactRole);
+    }
+  }
+  return out;
+}
+
 /** Ambient count from trafficPerMin — core pockets floor at CORE_MIN_TRAFFIC. Exported for tests. */
 export function ambientCountForSector(sector, state = null) {
   // NO AMBIENT FREIGHT IN A CRUCIBLE RUN (PQ-135). Helios carries eighteen haulers a minute, and a
@@ -1414,6 +1489,9 @@ function normalizeDepotServices(rows) {
 
 export const traffic = {
   name: 'traffic',
+  // Every serialized field is rebuilt by a normalizer, sliced, or primitive — saveSystem need
+  // not defensively clone the (large) traffic payload a second time during autosave capture.
+  saveSnapshotOwned: true,
 
   init(ctx) {
     this.state = ctx.state;
@@ -1461,6 +1539,17 @@ export const traffic = {
     }
 
     this.bus.on('sector:enter', (p) => this._onSectorEnter(p));
+    // Census arm: ambient traffic materialization lands inside the sector cook
+    // deterministically (the handler falls back to world.currentSectorId itself).
+    this._cookProvider = (sector) => this._onSectorEnter({
+      sector: sector || null,
+      sectorId: (sector && sector.id) || undefined,
+      _viaCook: true,
+    });
+    if (this.helpers) {
+      (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
+        .push(this._cookProvider);
+    }
     // PIC-21: one glint record for the open seam, cleared when the seam is worked.
     // The listeners fire on the events; nothing here emits per tick.
     if (!this._richSeamGlintBound && this.bus && typeof this.bus.on === 'function') {
@@ -1505,6 +1594,24 @@ export const traffic = {
       this._ceresDisabledHaulerRestorePending = true;
       this._invalidateCausalRunEpoch();
     });
+    this.bus.on('save:error', (p) => {
+      // A restore that dies mid-chunk never emits save:loaded — without this the epoch latch
+      // would starve every ambient top-up guard for the rest of the session. Only
+      // restore-lifecycle failures clear it: an unrelated write error arriving mid-restore
+      // must not reopen the ambient lanes while the envelope is still respawning.
+      const reason = p && p.reason;
+      if (reason !== 'load_failed' && reason !== 'visual_gate_failed'
+          && reason !== 'deferred_transition_failed') return;
+      if (this._restoreEpochPending === true) this._restoreEpochPending = false;
+      // Same lifecycle as the epoch latch: a failed restore leaves the disabled-hauler
+      // incident unable to terminalize (actor_absent gate) until the next successful load.
+      if (this._ceresDisabledHaulerRestorePending === true) {
+        this._ceresDisabledHaulerRestorePending = false;
+      }
+    });
+    // Adjacent listeners, economy-slice style: registration order preserves the original
+    // sequence exactly, but the emit-slice drain can cut between units at the deadline —
+    // the two O(hooks × freighters) sort passes stop riding one atomic brick.
     this.bus.on('save:loaded', () => {
       // Real restores already invalidated at save:restoring. Standalone fixture/compat signals still
       // form an authoritative boundary, so fail closed once without double-invalidating a real load.
@@ -1530,6 +1637,8 @@ export const traffic = {
       this._clearCivilianViolenceMemory();
       this._resetCeresCausalChain('save_loaded');
       this._adoptLegacyCeresActivityTargetRefs();
+    });
+    this.bus.on('save:loaded', () => {
       const sectorId = this.state.world && this.state.world.currentSectorId;
       // Persistent general cutters materialize after world.enterSector, so the sector-enter
       // adoption pass cannot see them. Re-adopt here before the next traffic tick can refresh a
@@ -1538,7 +1647,12 @@ export const traffic = {
       // lawSecurity is session-only. A saved predeparture delay cannot remain asserted after its
       // raw incident map has gone away, while a saved physical diversion remains intact.
       this._clearStalePassengerLinerDelays();
-      this._applyWorldSiteTrafficHooks(sectorId);
+    });
+    this.bus.on('save:loaded', () => {
+      this._applyWorldSiteTrafficHooks(this.state.world && this.state.world.currentSectorId);
+    });
+    this.bus.on('save:loaded', () => {
+      const sectorId = this.state.world && this.state.world.currentSectorId;
       this._applyClaimTravelHooks(sectorId);
       if (sectorId === CERES_ACTIVITY_SECTOR_ID) this._ensureCeresCausalChain('save_loaded');
     });
@@ -1620,6 +1734,32 @@ export const traffic = {
 
   _onSectorEnter(p) {
     if (this.state.run?.kind === 'survival' && this.state.run.phase !== 'inactive') return;
+    // The emit listener precedes the census cook on the live enter path, so each side can
+    // only skip on the other's stamp: a replayed emit for an enter the cook or the first
+    // emit already handled, and a census cook for an enter the emit just handled (re-running
+    // would cleanup + remint the freighters the emit minted moments earlier). Continuous/
+    // noTeleport payloads are a different enter and must always run. Minted payloads
+    // discriminate by enterEpoch (a frozen simTime can't alias a second real enter). The
+    // simTime fallback applies only where the serial machinery doesn't exist — on a minted
+    // world an un-minted payload is a synthetic enter that must never be suppressed.
+    const _serialNow = this.state.world && this.state.world.enterSerial;
+    if (p && p._viaCook && p.sector && p.sector === this._emittedSector
+      && (Number.isFinite(this._emittedEpoch)
+        ? _serialNow === this._emittedEpoch
+        : (!Number.isFinite(_serialNow) && this.state.simTime === this._emittedSimTime))) {
+      return;
+    }
+    if (p && !p._viaCook && p.sector && !(p.continuous || p.noTeleport)
+      && ((p.sector === this._cookedSector
+          && (Number.isFinite(p.enterEpoch)
+            ? p.enterEpoch === this._cookedEnterEpoch
+            : (!Number.isFinite(_serialNow) && this.state.simTime === this._cookedSimTime)))
+        || (p.sector === this._emittedSector
+          && (Number.isFinite(p.enterEpoch)
+            ? p.enterEpoch === this._emittedEpoch
+            : (!Number.isFinite(_serialNow) && this.state.simTime === this._emittedSimTime))))) {
+      return;
+    }
     const continuous = !!(p && (p.continuous || p.noTeleport));
     const requestedSectorId = (p && p.sector && p.sector.id)
       || (p && p.sectorId)
@@ -1638,6 +1778,18 @@ export const traffic = {
     }
     const sector = p && p.sector;
     if (!sector || !this.helpers || !this.helpers.spawnEntity) return;
+    if (p._viaCook) {
+      this._cookedSector = sector;
+      this._cookedSimTime = this.state.simTime;
+      // The cook runs synchronously inside the emit it cooks for, so the world's serial is
+      // already minted for this enter — stamp it so the emit's replay matches by epoch.
+      const serial = this.state.world && this.state.world.enterSerial;
+      this._cookedEnterEpoch = Number.isFinite(serial) ? serial : null;
+    } else {
+      this._emittedSector = sector;
+      this._emittedSimTime = this.state.simTime;
+      this._emittedEpoch = Number.isFinite(p.enterEpoch) ? p.enterEpoch : null;
+    }
     const sectorId = sector.id || requestedSectorId;
     if (sectorId === CERES_ACTIVITY_SECTOR_ID) {
       this._retireLegacyCeresTraffic();
@@ -2218,6 +2370,8 @@ export const traffic = {
     entity.homeSectorId = CERES_ACTIVITY_SECTOR_ID;
     data.homeSectorId = CERES_ACTIVITY_SECTOR_ID;
     data.sectorId = CERES_ACTIVITY_SECTOR_ID;
+    this._indexWorldRecordId(entity);
+    syncEntityActivitySlotMembership(this.state && this.state.entityIndex, entity);
   },
 
   _captureCeresActivityCast() {
@@ -2353,6 +2507,8 @@ export const traffic = {
     entity.homeSectorId = sectorId;
     data.homeSectorId = sectorId;
     data.sectorId = sectorId;
+    this._indexWorldRecordId(entity);
+    syncEntityActivitySlotMembership(this.state && this.state.entityIndex, entity);
   },
 
   _assignActivityJob(entity, entry) {
@@ -4391,6 +4547,7 @@ export const traffic = {
     if (sectorId === 'sector_helios_prime' && role === 'ore_carrier') {
       ent.data = ent.data || {};
       ent.data.activityActorSlotId = 'helios_starter_ore_carrier';
+      syncEntityActivitySlotMembership(this.state && this.state.entityIndex, ent);
       requestActivityReclassify(this.state, ent);
     }
     if (!ent.data) ent.data = {};
@@ -4444,11 +4601,7 @@ export const traffic = {
    * live hull as absent and spawn a duplicate over its durable record.
    */
   _indexWorldRecordId(ent) {
-    const index = this.state && this.state.entityIndex;
-    const worldRecordId = ent && ent.data && ent.data.worldRecordId;
-    if (worldRecordId == null) return;
-    if (!index || !index.__spacefaceEntityIndexV1 || !(index.byWorldRecordId instanceof Map)) return;
-    if (!index.byWorldRecordId.has(worldRecordId)) index.byWorldRecordId.set(worldRecordId, ent);
+    registerEntityWorldRecordId(this.state && this.state.entityIndex, ent);
   },
 
   /**
@@ -4470,6 +4623,7 @@ export const traffic = {
       if (tracked.has(e.id)) return;
       if (sectorId === 'sector_helios_prime' && d.trafficRole === 'ore_carrier') {
         d.activityActorSlotId = 'helios_starter_ore_carrier';
+        syncEntityActivitySlotMembership(this.state && this.state.entityIndex, e);
         requestActivityReclassify(this.state, e);
       }
       // Ensure durable stamps survive even if rematerialize omitted a field.
@@ -4814,8 +4968,17 @@ export const traffic = {
     // site through a full entity scan was O(routedFreighters × entities) at 60 Hz. The index is
     // built before the stepper loop, whose world-site branch only reads positions and writes
     // intent, so the entity set it snapshots is the same one each per-freighter scan saw.
+    // Live index read when available: the stepper only needs get/set, and misses fall
+    // through to the same reseeding entity walk either way — so copying the whole map into a
+    // scratch Map every tick buys nothing once byWorldRecordId is the source.
+    const liveWorldRecordMap = anyWorldSiteRoute
+      && state.entityIndex && state.entityIndex.__spacefaceEntityIndexV1 === true
+      && state.entityIndex.ready === true
+      && state.entityIndex.byWorldRecordId instanceof Map
+      ? state.entityIndex.byWorldRecordId : null;
     const worldRecordIndex = anyWorldSiteRoute
-      ? buildWorldRecordIndex(state, this._worldRecordIndexScratch || (this._worldRecordIndexScratch = new Map()))
+      ? liveWorldRecordMap
+        || buildWorldRecordIndex(state, this._worldRecordIndexScratch || (this._worldRecordIndexScratch = new Map()))
       : null;
     // Retained per-tick options record: _ambientPlanGate reads playerId/playerTeam/
     // authorityRadius/origin synchronously, so the same object is rewritten each update.
@@ -4903,7 +5066,7 @@ export const traffic = {
       const role = TRAFFIC_ROLES[rec.role] || TRAFFIC_ROLES.hauler;
 
       if (rec.worldSiteRoute) {
-        this._stepWorldSiteRoute(e, rec, stations, dt, worldRecordIndex);
+        this._stepWorldSiteRoute(e, rec, stations, dt, worldRecordIndex, worldRecordIndex === liveWorldRecordMap);
         this._syncTrafficRecordToData(e, rec);
         continue;
       }
@@ -4999,12 +5162,38 @@ export const traffic = {
     this._maintainYardTugJobs();
   },
 
-  _stepWorldSiteRoute(entity, rec, stations, dt, worldRecordIndex = null) {
+  _stepWorldSiteRoute(entity, rec, stations, dt, worldRecordIndex = null, worldRecordIndexIsLive = false) {
     const route = rec.worldSiteRoute;
     // The per-tick map can miss a carrier stamped with its record id after spawn; the helper
     // resolves those through the same entity walk and reseeds the index map on a hit.
-    const site = (worldRecordIndex && worldRecordIndex.get(route.siteWorldRecordId))
-      || entityWithWorldRecord(this.state, route.siteWorldRecordId);
+    let site = worldRecordIndex && worldRecordIndex.get(route.siteWorldRecordId);
+    // Live index rows aren't alive-filtered like the scratch copy — a dead-but-still-mapped
+    // carrier resolves the same way the copy's undefined did: through the walk below.
+    if (site && site.alive === false) site = null;
+    if (!site) {
+      // A permanently-absent site is the index's documented negative hole: the map cannot
+      // cache a miss, so every routed freighter otherwise re-walks the entity set per tick.
+      // Memoize misses on the worldRecordIds lane — appends/removes and registered post-spawn
+      // stamps all bump it, so a served miss is bit-identical to what the fallback walk sees
+      // and the walk's repair path stays open across any mutation.
+      const lane = entityIndexLaneVersion(this.state, ['worldRecordIds']);
+      const memo = this._worldSiteRouteMissMemo || (this._worldSiteRouteMissMemo = { lane: -1, ids: new Set() });
+      if (lane < 0 || memo.lane !== lane) {
+        memo.lane = lane;
+        memo.ids.clear();
+      }
+      if (!memo.ids.has(route.siteWorldRecordId)) {
+        site = entityWithWorldRecord(this.state, route.siteWorldRecordId);
+        if (site) {
+          // A walk-hit on the live index already registered itself (count + marker + lane
+          // via registerEntityWorldRecordId inside indexedWorldRecordEntity) — a bare set
+          // would diverge the bookkeeping. The scratch copy still needs its per-tick reseed.
+          if (worldRecordIndex && !worldRecordIndexIsLive) worldRecordIndex.set(route.siteWorldRecordId, site);
+        } else {
+          memo.ids.add(route.siteWorldRecordId);
+        }
+      }
+    }
     const station = stations.find((candidate) => stationIdentity(candidate) === route.stationId);
     const target = route.endpoint === 'station' ? station : site;
     let targetPos = target && target.pos;
@@ -5277,7 +5466,7 @@ export const traffic = {
     }
 
     if (this.state && this.state.entities && typeof this.state.entities.forEach === 'function') {
-      this.state.entities.forEach((ent) => {
+      forEachLivingWorldActor(this.state, (ent) => {
         if (!ent || ent.id === caller.id || ent.alive === false || ent.type !== 'ship') return;
         if (ent.id === (this.state && this.state.playerId)) return;
         if (!ent.pos) return;
@@ -6013,7 +6202,7 @@ export const traffic = {
       }
     };
     if (state.entities && typeof state.entities.forEach === 'function') {
-      state.entities.forEach(checkPod);
+      forEachJobInteractable(state, checkPod);
     }
     if (bestPod) {
       return { kind: 'pod', entity: bestPod, pos: { x: bestPod.pos.x, z: bestPod.pos.z } };
@@ -7691,17 +7880,30 @@ export const traffic = {
       return { kind: 'activity', id: null };
     }
 
+    const index = this.state.entityIndex;
+    // Keyed answers are exact only under full coverage: when every entities-map member is an
+    // indexed carrier (entities.size === _indexedIds.size), the slot sets and type lanes
+    // enumerate the whole candidate population. A bare-map/unindexed member shrinks the keyed
+    // view — fall back to the whole-map walk, preserving the old result for every member.
+    // (No _indexedIds on a partial index shape means coverage can't be proven — walk.)
+    const entitiesMap = this.state.entities;
+    const covered = index && index.__spacefaceEntityIndexV1 === true && index.ready === true
+      && index._indexedIds instanceof Set && entitiesMap
+      && entitiesMap.size === index._indexedIds.size;
     let predicate = null;
+    let keyed = null;
     let kind = namespace;
     if (namespace === 'field' && parts.length === 3 && parts[1] === 'slot') {
       const slotId = parts[2];
       predicate = (entity) => entity.type === 'asteroid'
         && entity.data && entity.data.activityObjectSlotId === slotId;
       kind = 'field-slot';
+      if (covered) keyed = index.byActivityObjectSlotId.get(slotId) || null;
     } else if (namespace === 'object' && parts.length === 2) {
       const slotId = parts[1];
       predicate = (entity) => entity.type === 'fx'
         && entity.data && entity.data.activityObjectSlotId === slotId;
+      if (covered) keyed = index.byActivityObjectSlotId.get(slotId) || null;
     } else if (namespace === 'actor' && parts.length === 2) {
       const slotId = parts[1];
       const activityEntry = CERES_ACTIVITY_CAST_BY_SLOT_ID.get(slotId);
@@ -7722,24 +7924,39 @@ export const traffic = {
         && entity.data.activityActorSlotId === slotId
         && entity.data.worldRecordId === expectedWorldRecordId
         && !terminalWorldRecord(durableRecord);
+      if (covered) keyed = index.byActivityActorSlotId.get(slotId) || null;
     } else if ((namespace === 'dest' || namespace === 'station') && parts.length >= 2) {
       const stationId = parts[1];
       predicate = (entity) => entity.type === 'station'
         && entity.data && entity.data.stationId === stationId;
       kind = 'station';
+      if (covered) keyed = index.stations.length ? index.stations : null;
     } else if (namespace === 'world-site' && parts.length === 2) {
       const worldRecordId = `${parts[1]}/root`;
       predicate = (entity) => entity.type === 'fx'
         && entity.data && entity.data.worldRecordId === worldRecordId;
       kind = 'world-site';
+      const counted = covered ? (index.byWorldRecordIdCount.get(worldRecordId) || 0) : -1;
+      if (counted === 1) {
+        keyed = [index.byWorldRecordId.get(worldRecordId)];
+      } else if (counted > 1 && index.fx.length) {
+        // Duplicate keepers exist — the fx lane is the type-filtered superset of every
+        // indexed candidate, so the exactly-one count below sees the same population.
+        keyed = index.fx;
+      }
     } else {
       return null;
     }
 
+    // A present keyed set/bucket answers O(1); its absence falls back to the whole-map walk so
+    // an unindexed carrier (harness, bare-map write) still resolves exactly like before. Keyed
+    // answers carry the byWorldRecordId coverage contract: every writer of the slot fields is
+    // either a spawn literal (append-covered) or a sync-armed stamp site — a new unregistered
+    // write would need its own syncEntityActivitySlotMembership arm.
+    const source = keyed
+      || (this.state.entities && this.state.entities.values ? this.state.entities.values() : []);
     const matches = [];
-    for (const entity of this.state.entities && this.state.entities.values
-      ? this.state.entities.values()
-      : []) {
+    for (const entity of source) {
       if (!entity || entity.alive === false || !predicate(entity)
         || !hasExactCeresSectorAuthority(entity)) continue;
       matches.push(entity);
@@ -9227,9 +9444,7 @@ export const traffic = {
       || targetData.sectorId !== CERES_ACTIVITY_SECTOR_ID
       || (this.state.world && this.state.world.currentSectorId) !== CERES_ACTIVITY_SECTOR_ID) return false;
     const candidates = [];
-    for (const entity of this.state.entities && this.state.entities.values
-      ? this.state.entities.values()
-      : []) {
+    for (const entity of indexedTypeScan(this.state, 'asteroids')) {
       if (!entity || entity.alive === false || entity.type !== 'asteroid') continue;
       const entityData = entity.data || {};
       if (entityData.activityObjectSlotId !== CERES_RICH_SEAM_OBJECT_SLOT_ID
@@ -9611,18 +9826,7 @@ export const traffic = {
   },
 
   _ceresCausalWorldRecordIdForSlot(slotId) {
-    if (typeof slotId !== 'string' || !slotId) return null;
-    const entry = CERES_ACTIVITY_CAST_BY_SLOT_ID.get(slotId);
-    const worldRecordSlotId = entry && entry.slot && entry.slot.worldRecordSlotId
-      ? entry.slot.worldRecordSlotId
-      : `ceres:activity:${slotId}`;
-    const seed = (this.state && this.state.meta && this.state.meta.seed) || 1;
-    return stableRecordId(
-      seed,
-      CERES_ACTIVITY_SECTOR_ID,
-      RECORD_KIND.CONVOY,
-      worldRecordSlotId,
-    );
+    return ceresActivityActorWorldRecordId(this.state, slotId);
   },
 
   /** True when the durable cast record is terminal (destroyed/defeated) — not merely absent this tick. */
@@ -11035,6 +11239,12 @@ export const traffic = {
   },
 
   deserialize(data) {
+    for (const _ of this.deserializeChunked(data)) { /* sync lane: every batch inline */ }
+  },
+
+  // Generator twin: each section (release pass, incident normalizes, id compacts) is atomic —
+  // yields sit only at those boundaries so order and RNG consumption stay identical.
+  *deserializeChunked(data) {
     const previousTraffic = this.state && this.state.traffic;
     this._releaseCeresMinerHaulerHandoffControls(previousTraffic && previousTraffic.ceresMinerHaulerHandoff);
     this._releaseCeresTenderServiceControls(previousTraffic && previousTraffic.ceresTenderServiceIncident);
@@ -11044,6 +11254,7 @@ export const traffic = {
     this._ensureState();
     this._nextDepotDispatchAt = 0;
     this._depotWatchRequested = new Set();
+    yield 'traffic-releases';
     const depotServices = normalizeDepotServices(data?.depotServices);
     if (depotServices.length) this.state.traffic.depotServices = depotServices;
     else delete this.state.traffic.depotServices;
@@ -11071,6 +11282,7 @@ export const traffic = {
       ? normalizeCeresDisabledHaulerIncident(data.ceresDisabledHaulerIncident)
       : null;
     const validTrafficSave = !!(data && !Array.isArray(data) && data.schema === CERES_MINER_HAULER_SAVE_SCHEMA);
+    yield 'traffic-incidents';
     this.state.traffic.passengerReceiptIds = compactStableIds(
       validTrafficSave ? data.passengerReceiptIds : [],
       PASSENGER_LINER_RECEIPT_CAP,
@@ -11105,6 +11317,14 @@ export const traffic = {
     this._invalidateCausalRunEpoch();
     this._restoreEpochPending = false;
     this._active = [];
+    // Enter-dedupe stamps: sector-object identity already makes a stale match impossible,
+    // but reset them so a new world can't carry previous-run epoch/simTime tokens forward.
+    this._emittedSector = null;
+    this._emittedSimTime = 0;
+    this._emittedEpoch = null;
+    this._cookedSector = null;
+    this._cookedSimTime = 0;
+    this._cookedEnterEpoch = null;
     this._ensureCausalLedgerSets();
     for (const ledger of [
       this._pendingJobActionIds,
@@ -11165,6 +11385,27 @@ function dominantAsteroidCommodity(asteroid) {
 
 function entityWithWorldRecord(state, worldRecordId) {
   return indexedWorldRecordEntity(state, worldRecordId);
+}
+
+/**
+ * The durable CONVOY worldRecordId a ceres activity actor is stamped under — the cast
+ * entry's authored worldRecordSlotId, else the `ceres:activity:` convention. Exported so
+ * slot-scoped lookups outside traffic (audio cue positioning) probe the world-record index
+ * instead of walking entityList.
+ */
+export function ceresActivityActorWorldRecordId(state, slotId) {
+  if (typeof slotId !== 'string' || !slotId) return null;
+  const entry = CERES_ACTIVITY_CAST_BY_SLOT_ID.get(slotId);
+  const worldRecordSlotId = entry && entry.slot && entry.slot.worldRecordSlotId
+    ? entry.slot.worldRecordSlotId
+    : `ceres:activity:${slotId}`;
+  const seed = (state && state.meta && state.meta.seed) || 1;
+  return stableRecordId(
+    seed,
+    CERES_ACTIVITY_SECTOR_ID,
+    RECORD_KIND.CONVOY,
+    worldRecordSlotId,
+  );
 }
 
 // Per-tick worldRecordId → entity index for callers that resolve several records in one pass

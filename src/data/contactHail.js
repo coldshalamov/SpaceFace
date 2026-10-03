@@ -13,6 +13,30 @@ import {
 } from './laneContacts.js';
 import { richSeamOpportunityForEntity } from '../systems/fieldDepletion.js';
 import { buildSlotList, fits } from '../systems/ships.js';
+import { entityIndexLaneVersion, entityIndexVersion } from '../world/livingWorldViews.js';
+
+// Asteroid subset latched on {entityIndexVersion, state.entities}: hail/status lookups used
+// to walk the whole entity map per call. The subset preserves entities.values() order and
+// every volatile gate (slot stamps, opportunity state) still re-runs per candidate.
+const _hailAsteroids = { version: null, source: null, list: [] };
+// Members are asteroids only — latch the asteroids lane so ship/payload/projectile churn
+// can't rebuild the subset. -1 (index unready) falls back to the whole-version contract.
+const HAIL_ASTEROID_LANES = ['asteroids'];
+function hailAsteroidsOf(state) {
+  const laneVersion = entityIndexLaneVersion(state, HAIL_ASTEROID_LANES);
+  const version = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
+  const cache = _hailAsteroids;
+  if (version == null || cache.version !== version || cache.source !== state.entities) {
+    cache.version = version;
+    cache.source = state.entities;
+    cache.list.length = 0;
+    const entities = state.entities && typeof state.entities.values === 'function'
+      ? state.entities.values()
+      : Array.isArray(state.entityList) ? state.entityList : [];
+    for (const e of entities) if (e && e.type === 'asteroid') cache.list.push(e);
+  }
+  return cache.list;
+}
 
 export const CONTACT_HAIL_RANGE = 5200;
 export const CONTACT_HAIL_REQUEST_TTL_S = 8;
@@ -204,13 +228,8 @@ function richSeamHelpAvailable(state, entity, kind) {
     || (state.world && state.world.currentSectorId) !== CERES_ACTIVITY_SECTOR_ID
     || typeof data.worldRecordId !== 'string' || !data.worldRecordId
     || data.jobId !== `job:${data.worldRecordId}`) return false;
-  const entities = state.entities && typeof state.entities.values === 'function'
-    ? state.entities.values()
-    : Array.isArray(state.entityList) ? state.entityList : [];
-  for (const candidate of entities) {
-    const opportunity = candidate && candidate.type === 'asteroid'
-      ? richSeamOpportunityForEntity(state, candidate)
-      : null;
+  for (const candidate of hailAsteroidsOf(state)) {
+    const opportunity = richSeamOpportunityForEntity(state, candidate);
     const candidateData = candidate && candidate.data || {};
     if (candidateData.activityObjectSlotId !== CERES_RICH_SEAM_OBJECT_SLOT_ID
       || candidateData.sectorId !== CERES_ACTIVITY_SECTOR_ID
@@ -918,6 +937,16 @@ function manifestText(state, target, manifestOverride = undefined) {
 
 function liveEntityForWorldRecord(state, worldRecordId) {
   if (!state || typeof worldRecordId !== 'string' || !worldRecordId) return null;
+  const index = state.entityIndex;
+  // A proven-unique live carrier resolves O(1) — the count gate reproduces the fail-closed
+  // ambiguity rule below: any second carrier keeps the walk (which then returns null).
+  if (index && index.__spacefaceEntityIndexV1 === true && index.ready === true
+    && index.byWorldRecordId instanceof Map && index.byWorldRecordIdCount instanceof Map
+    && index.byWorldRecordIdCount.get(worldRecordId) === 1) {
+    const holder = index.byWorldRecordId.get(worldRecordId);
+    if (holder && holder.alive !== false && holder.data
+      && holder.data.worldRecordId === worldRecordId) return holder;
+  }
   const entities = state.entities && typeof state.entities.values === 'function'
     ? state.entities.values()
     : state.entityList || [];
@@ -1100,17 +1129,18 @@ function workerStatusText(target, state = null) {
   const handoffStatus = typeof data.ceresHandoffStatus === 'string' && data.ceresHandoffStatus.trim();
   if (handoffStatus) return `STATUS · ${handoffStatus}`;
   if (state && richSeamHelpAvailable(state, target, 'worker')) {
-    const entities = state.entities && typeof state.entities.values === 'function'
-      ? state.entities.values() : [];
-    const richOpportunity = [...entities]
-      .map((entity) => {
-        const data = entity && entity.data || {};
-        if (!entity || entity.type !== 'asteroid' || data.activityObjectSlotId !== CERES_RICH_SEAM_OBJECT_SLOT_ID
-          || data.sectorId !== CERES_ACTIVITY_SECTOR_ID || data.homeSectorId !== CERES_ACTIVITY_SECTOR_ID) return null;
-        return richSeamOpportunityForEntity(state, entity);
-      })
-      .find((opportunity) => opportunity && opportunity.sectorId === CERES_ACTIVITY_SECTOR_ID
-        && opportunity.state === 'open' && !opportunity.reservationId);
+    let richOpportunity = null;
+    for (const entity of hailAsteroidsOf(state)) {
+      const data = entity && entity.data || {};
+      if (data.activityObjectSlotId !== CERES_RICH_SEAM_OBJECT_SLOT_ID
+        || data.sectorId !== CERES_ACTIVITY_SECTOR_ID || data.homeSectorId !== CERES_ACTIVITY_SECTOR_ID) continue;
+      const opportunity = richSeamOpportunityForEntity(state, entity);
+      if (opportunity && opportunity.sectorId === CERES_ACTIVITY_SECTOR_ID
+        && opportunity.state === 'open' && !opportunity.reservationId) {
+        richOpportunity = opportunity;
+        break;
+      }
+    }
     return `STATUS · RICH SEAM · +${richOpportunity ? richOpportunity.bonusU : 8}u · HOT CUT · HOLD OFF`;
   }
   const phase = data.ceresCausalPhase || data.jobPhase || null;

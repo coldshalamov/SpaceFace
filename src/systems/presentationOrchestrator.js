@@ -161,7 +161,7 @@ export const presentationOrchestrator = {
       // presentation:cue is emitted. The releaseScore drives magnitude so adapters can scale.
       this.bus.on('tether:releaseRated', (payload) => this._onReleaseRated(payload || {})),
       this.bus.on('massline:releaseValidated', (payload) => this._onMasslineReleaseValidated(payload || {})),
-      this.bus.on('combat:damage', (payload) => this._onCombatDamage(payload || {})),
+      this.bus.on('combat:damage', (payload) => this._onCombatDamage(payload || {}), { presentation: true }),
       this.bus.on('ai:telegraph', (payload) => this._onDoctrineTelegraph(payload || {})),
       this.bus.on('ai:counterTether', (payload) => this._onCounterTether(payload || {})),
       this.bus.on('ai:doctrinePhase', (payload) => this._onDoctrinePhase(payload || {})),
@@ -172,8 +172,8 @@ export const presentationOrchestrator = {
         this.bus.on(sourceEvent, (payload) => this._onCombatActionLifecycle(sourceEvent, payload || {}))
       )),
       this.bus.on('projectile:nearMiss', (payload) => this._onProjectileNearMiss(payload || {})),
-      this.bus.on('entity:killed', (payload) => this._onEntityKilled(payload || {})),
-      this.bus.on('entity:destroyed', (payload) => this._clearDoctrineCyclesFor(payload && payload.id)),
+      this.bus.on('entity:killed', (payload) => this._onEntityKilled(payload || {}), { presentation: true }),
+      this.bus.on('entity:destroyed', (payload) => this._clearDoctrineCyclesFor(payload && payload.id), { presentation: true }),
       this.bus.on('cruise:charging', (payload) => this._onTravelCruiseCharging(payload || {})),
       this.bus.on('cruise:engaged', (payload) => this._onTravelCruiseEngaged(payload || {})),
       this.bus.on('cruise:dropped', (payload) => this._onTravelCruiseDropped(payload || {})),
@@ -1506,6 +1506,11 @@ export const presentationOrchestrator = {
   },
 
   _emitCue(cueId, payload, options = {}) {
+    // Both deferred lanes (presentation:cue via emitDeferred, cueSuppressed via _suppress)
+    // retain the payload object past the emit — an emitter whose record is pooled and
+    // rewritten by its next emit would hand queued readers mutated fields. Snapshot the
+    // top level here; nested refs stay fresh-per-emit literals by emitter contract.
+    payload = payload && typeof payload === 'object' ? { ...payload } : payload;
     const recipe = getPresentationRecipe(cueId);
     if (!recipe) {
       return this._suppress(cueId, payload, options, 'missing_recipe');

@@ -4,7 +4,8 @@
 // loss-ledger state are read-only.
 
 import { hash32 } from '../core/rng.js';
-import { indexedShipLikeScan, entityIndexVersion } from '../world/livingWorldViews.js';
+import { indexedShipLikeScan, entityIndexVersion, entityIndexLaneVersion, registerEntityWorldRecordId } from '../world/livingWorldViews.js';
+import { syncEntityActivitySlotMembership } from '../core/coreSystem.js';
 import { shouldRunOnTick } from '../core/activityScheduler.js';
 import { normalizeFactionBehaviorProfile } from '../ai/factionBehavior.js';
 import { buildSlotList, makeShipEntitySpec } from './ships.js';
@@ -42,6 +43,9 @@ export function getFactionPresenceQuietLatchForBench() {
 
 /** Membership rescan while latched (0.5 s @ 60 Hz). */
 const FACTION_PRESENCE_QUIET_RESCAN_TICKS = 30;
+
+/** Membership lanes for the quiet latch — the route/pitborn census reads shipLike only. */
+const PRESENCE_QUIET_LANES = ['shipLike'];
 
 // Entity ids sort numerically when both sides carry one (spawn counters reach two digits);
 // string compare alone would order '10' before '9' and bind first-fire targets to the wrong hull.
@@ -98,7 +102,10 @@ function factionReps(state) {
   return reps;
 }
 
-function currentStoryInputs(state) {
+// Exported so the live-sector warm can feed planFactionPresence the exact same story
+// inputs the enter listener does — the warm enumerates the plan hulls without running
+// the spawner.
+export function currentStoryInputs(state) {
   const story = (state && state.story) || {};
   const verge = story.verge && typeof story.verge === 'object' ? story.verge : {};
   const storyFlags = {
@@ -441,6 +448,14 @@ export const factionPresence = {
       this.bus.on('save:loaded', () => this._onSaveLoaded()),
       this.bus.on('conflict:flip', (payload) => this._onConflictFlip(payload || {})),
     ];
+    // Census arm: faction-presence materialization lands inside the sector cook
+    // deterministically (the handler falls back to world.currentSectorId itself).
+    this._cookProvider = (sector) => {
+      if (!this._unsub || !this._unsub.length) return;
+      this._onSectorEnter({ sectorId: (sector && sector.id) || undefined });
+    };
+    (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
+      .push(this._cookProvider);
   },
 
   newGame() {
@@ -465,7 +480,8 @@ export const factionPresence = {
     const state = this.state;
     const own = ensureOwnState(state);
     if (FACTION_PRESENCE_QUIET_LATCH !== false) {
-      const membership = entityIndexVersion(state);
+      const laneVersion = entityIndexLaneVersion(state, PRESENCE_QUIET_LANES);
+      const membership = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
       const tick = state.tick | 0;
       const wakeSeq = this._presenceWakeSeq | 0;
       const quiet = this._presenceQuiet;
@@ -492,7 +508,8 @@ export const factionPresence = {
     this._updateBoarding();
 
     if (FACTION_PRESENCE_QUIET_LATCH !== false) {
-      const membership = entityIndexVersion(state);
+      const laneVersion = entityIndexLaneVersion(state, PRESENCE_QUIET_LANES);
+      const membership = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
       const census = this._censusPresenceWork();
       if (membership != null && !own.boarding && !census.busy) {
         this._presenceQuiet = {
@@ -629,10 +646,18 @@ export const factionPresence = {
       // World-record rematerialization intentionally builds a generic shell. Restore the canonical
       // Ironback presentation/loadout/AI fields, while never touching its saved pose or vitals.
       rehydrateCeresTender(entity, canonicalSpec, context);
+      // stampCeresTenderIdentity stamps data.worldRecordId post-append on this live indexed
+      // entity — register it or the new id stays a miss-memo'd negative / walk-only carrier.
+      registerEntityWorldRecordId(this.state && this.state.entityIndex, entity);
+      syncEntityActivitySlotMembership(this.state && this.state.entityIndex, entity);
     } else if (typeof this.helpers.spawnEntity === 'function') {
       entity = this.helpers.spawnEntity(canonicalSpec);
       spawned = !!entity;
-      if (entity) stampCeresTenderIdentity(entity, context);
+      if (entity) {
+        stampCeresTenderIdentity(entity, context);
+        registerEntityWorldRecordId(this.state && this.state.entityIndex, entity);
+        syncEntityActivitySlotMembership(this.state && this.state.entityIndex, entity);
+      }
     }
     if (!entity) return null;
     // World rematerializes every durable NPC through its generic FULL-extra bag. This tender is

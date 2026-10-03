@@ -59,7 +59,7 @@ for (const field of ['savedAt', 'playtimeS', 'credits', 'sectorName', 'shipName'
 }
 // 2026-09-30 cb8320ea7 (perf wave 7) split the write into a local card so the blob hash can be
 // stamped before it lands in the index; the prefer-frozen-envelope-then-live contract is unchanged.
-assert.match(save, /const card = fromFile\s*\|\|\s*liveSlotSummary\(slot,\s*envelope,\s*this\.state\);[\s\S]{0,600}?idx\[slot\]\s*=\s*card;/,
+assert.match(save, /const card = fromFile\s*\|\|\s*liveSlotSummary\(slot,\s*envelope,\s*this\.state\);[\s\S]{0,1400}?idx\[slot\]\s*=\s*card;/,
   'save index write should prefer the card frozen from the written envelope, with live state as fallback');
 assert.match(save, /slotCardFromEnvelopeData\(slot,\s*envelope/,
   'save index card should be built from the envelope that was just written, not post-encode live state');

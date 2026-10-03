@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
+import { entityVisualCullRadius } from './visualCullRadius.js';
 
 const FORGIVE_PX = 6;
 const TINY_BODY_PX = 12;
@@ -168,7 +169,7 @@ export function createWorldObjectPicker(env) {
   const getCamera = env.getCamera || (() => state && state.render && state.render.camera);
   const getMeshes = env.getMeshes || (() => state && state.render && state.render.meshes);
   const getScene = env.getScene || (() => state && state.render && state.render.scene);
-  const getViewport = env.getViewport || (() => {
+  const rawGetViewport = env.getViewport || (() => {
     const c = state && state.render && state.render.canvas;
     if (c && c.width && c.height) {
       const rect = typeof c.getBoundingClientRect === 'function' ? c.getBoundingClientRect() : null;
@@ -176,6 +177,21 @@ export function createWorldObjectPicker(env) {
     }
     return { width: 1, height: 1 };
   });
+  // The canvas is a fixed fullscreen surface — its rect only moves on resize, so a short
+  // TTL drops the forced getBoundingClientRect layout read out of the per-frame pick path.
+  let vpCache = null;
+  const perfNow = () => (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now());
+  const getViewport = () => {
+    const now = perfNow();
+    // canvas.width/height are attribute reads (no layout) — invalidate the rect
+    // cache on a resize instead of letting a stale rect survive the full TTL.
+    const c = state && state.render && state.render.canvas;
+    const cw = c && c.width, ch = c && c.height;
+    if (!vpCache || now - vpCache.at >= 500 || vpCache.cw !== cw || vpCache.ch !== ch) {
+      vpCache = { at: now, vp: rawGetViewport(), cw, ch };
+    }
+    return vpCache && vpCache.vp;
+  };
 
   const raycaster = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
@@ -209,9 +225,19 @@ export function createWorldObjectPicker(env) {
     return !scene;
   }
 
+  const _invRoot = new THREE.Matrix4();
+  const _relM = new THREE.Matrix4();
+  const _leafCenter = new THREE.Vector3();
+
   function rebuildRoot(entry, root) {
     entry.nodes.length = 0;
     entry.recs.length = 0;
+    entry.maxReachLocal = 0;
+    // Per-root leaf reach: the drawn cull sphere is XZ-only, so a leaf high on
+    // +Y or far past the pad overhangs the envelope — maxReachLocal covers the
+    // true 3-D leaf silhouette in root-local space (rigid-invariant under
+    // rotation; root scale re-multiplies at pick time).
+    _invRoot.copy(root.matrixWorld).invert();
     root.traverse((object) => {
       let rec = entry.recs[entry.nodes.length];
       if (!rec) {
@@ -221,9 +247,30 @@ export function createWorldObjectPicker(env) {
       rec.parent = object.parent || null;
       rec.geometry = object.geometry || null;
       rec.kids.length = 0;
+      // Leaf transforms move the measured reach without touching parent/geometry/children —
+      // a dish spinning about an offset pivot or a sliding arm sweeps past its build-time
+      // envelope while the structural signature reads clean.
+      rec.px = object.position.x; rec.py = object.position.y; rec.pz = object.position.z;
+      rec.qx = object.quaternion.x; rec.qy = object.quaternion.y;
+      rec.qz = object.quaternion.z; rec.qw = object.quaternion.w;
+      rec.sx = object.scale.x; rec.sy = object.scale.y; rec.sz = object.scale.z;
       const kids = object.children;
       for (let k = 0; k < kids.length; k++) rec.kids.push(kids[k]);
       entry.nodes.push(object);
+      const geo = object.geometry;
+      if (geo) {
+        if (!geo.boundingSphere) {
+          try { geo.computeBoundingSphere(); } catch (_) {}
+        }
+        const bs = geo.boundingSphere;
+        if (bs) {
+          _relM.multiplyMatrices(_invRoot, object.matrixWorld);
+          _leafCenter.copy(bs.center).applyMatrix4(_relM);
+          const scale = _relM.getMaxScaleOnAxis() || 1;
+          const reach = _leafCenter.length() + bs.radius * scale;
+          if (reach > entry.maxReachLocal) entry.maxReachLocal = reach;
+        }
+      }
     });
     entry.recs.length = entry.nodes.length;
   }
@@ -237,6 +284,12 @@ export function createWorldObjectPicker(env) {
       if (!rec) return true;
       if ((node.parent || null) !== rec.parent) return true;
       if ((node.geometry || null) !== rec.geometry) return true;
+      if (node.position.x !== rec.px || node.position.y !== rec.py || node.position.z !== rec.pz
+          || node.quaternion.x !== rec.qx || node.quaternion.y !== rec.qy
+          || node.quaternion.z !== rec.qz || node.quaternion.w !== rec.qw
+          || node.scale.x !== rec.sx || node.scale.y !== rec.sy || node.scale.z !== rec.sz) {
+        return true;
+      }
       const kids = node.children;
       if (kids.length !== rec.kids.length) return true;
       for (let k = 0; k < kids.length; k++) {
@@ -247,15 +300,19 @@ export function createWorldObjectPicker(env) {
   }
 
   function nodesFor(root) {
+    return entryFor(root).nodes;
+  }
+
+  function entryFor(root) {
     let entry = leafCache.get(root);
     if (!entry) {
-      entry = { nodes: [], recs: [] };
+      entry = { nodes: [], recs: [], maxReachLocal: 0 };
       leafCache.set(root, entry);
       rebuildRoot(entry, root);
     } else if (signatureDirty(entry)) {
       rebuildRoot(entry, root);
     }
-    return entry.nodes;
+    return entry;
   }
 
   function presentedStaticBatch(nodes, root) {
@@ -302,7 +359,29 @@ export function createWorldObjectPicker(env) {
       if (!root || !rootPresented(root)) return;
       const entity = resolveWorldPresentationEntity(state, id);
       if (!isSelectableWorldObject(entity)) return;
-      const nodes = nodesFor(root);
+      // Envelope reject: the drawn cull sphere is XZ-only — a leaf high on +Y or
+      // past the pad overhangs it — so the reject bound unions the cull radius
+      // with the root's measured leaf reach (root-local reach x world scale).
+      // A ray that misses the union misses every leaf; the approx path forgives
+      // FORGIVE_PX for tiny bodies, and exceeding it proves no leaf can qualify.
+      const nodesEntry = entryFor(root);
+      const cullR = Math.max(
+        entityVisualCullRadius(entity, root),
+        nodesEntry.maxReachLocal * (root.matrixWorld.getMaxScaleOnAxis() || 1),
+      );
+      if (cullR > 0) {
+        tmpV.setFromMatrixPosition(root.matrixWorld);
+        toCenter.subVectors(tmpV, ro);
+        const tE = toCenter.dot(rd);
+        if (tE + cullR < 0) return;
+        const envMissSq = toCenter.lengthSq() - tE * tE;
+        const envOverhang = envMissSq > 0 ? Math.sqrt(envMissSq) - cullR : -cullR;
+        if (envOverhang > 0) {
+          const pxScaleMin = projectRadiusPx(1, Math.max(0.001, tE + cullR), camera, vp);
+          if (!(envOverhang * pxScaleMin <= FORGIVE_PX)) return;
+        }
+      }
+      const nodes = nodesEntry.nodes;
       const batchPresented = presentedStaticBatch(nodes, root);
       for (let i = 0; i < nodes.length; i++) {
         const leaf = nodes[i];

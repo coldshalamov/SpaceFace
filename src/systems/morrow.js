@@ -77,6 +77,10 @@ export function createMorrow() {
       on('save:restoring', () => this._reset());
       on('save:loaded', () => { this._reset(); this._syncEntity(); });
       on('sector:enter', () => { this._scanSeq = 0; this._syncEntity(); });
+      // Census arm: the morrow entity materializes inside the sector cook deterministically.
+      this._cookProvider = () => { this._scanSeq = 0; this._syncEntity(); };
+      (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
+        .push(this._cookProvider);
     },
     _reset() {
       this._id = null; this._nextSync = 0; this._scanSeq = 0; this._scanSource = null;

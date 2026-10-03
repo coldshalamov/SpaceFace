@@ -145,7 +145,7 @@ export const bulkHaulTag = {
       this._bus.on('tether:attached', this._onTether);
       this._bus.on('mining:bulkHaulDelivered', this._onDelivered);
       this._bus.on('asteroid:destroyed', this._onDestroyed);
-      this._bus.on('entity:destroyed', this._onDestroyed);
+      this._bus.on('entity:destroyed', this._onDestroyed, { presentation: true });
       this._bus.on('sector:enter', this._onSector);
     }
   },

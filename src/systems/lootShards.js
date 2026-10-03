@@ -53,7 +53,16 @@ import { COMMODITIES } from '../data/commodities.js';
 import { volatileClassOf } from '../data/commodityVolatileClasses.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import { rollKillRewardItems } from '../data/killRewards.js';
-import { forEachJobInteractable, indexedShipLikeScan, indexedTypeScan, entityIndexVersion } from '../world/livingWorldViews.js';
+import { forEachJobInteractable, indexedShipLikeScan, indexedTypeScan, entityIndexLaneVersion, entityIndexVersion } from '../world/livingWorldViews.js';
+
+// Catch-net census members are jettisoned-cargo pods (payloads) and outlaw nets (shipLike)
+// — latch those lanes so combat projectile churn can't wake the empty latch every tick.
+const CATCH_NETS_LANES = ['payloads', 'shipLike'];
+function catchNetsMembershipVersion(state) {
+  const laneVersion = entityIndexLaneVersion(state, CATCH_NETS_LANES);
+  // -1 (index unready) plays the old null role: the latch refuses to arm.
+  return laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
+}
 import { isHostileToPlayer } from './scanner.js';
 
 const SHARD_REWARD_SALT = 'loot_shards_reward_v3';
@@ -674,7 +683,7 @@ export const lootShards = {
     // live net/pod, or 0.5 s rescan. Soft-GPU fps not claimed. Fresh lootShards
     // residual after #145 customs cones (same helpers, different owner).
     if (CATCH_NETS_EMPTY_QUIET_LATCH !== false) {
-      const membership = entityIndexVersion(state);
+      const membership = catchNetsMembershipVersion(state);
       const tick = state.tick | 0;
       const quiet = this._catchNetsQuiet;
       if (quiet
@@ -695,7 +704,7 @@ export const lootShards = {
     if (index && index.__spacefaceEntityIndexV1 && Array.isArray(index.payloads)
       && index.payloads.length === 0) {
       if (CATCH_NETS_EMPTY_QUIET_LATCH !== false) {
-        const membership = entityIndexVersion(state);
+        const membership = catchNetsMembershipVersion(state);
         if (membership != null) {
           this._catchNetsQuiet = { membership, armedTick: state.tick | 0 };
           publishCatchNetsQuiet(state, true);
@@ -729,7 +738,7 @@ export const lootShards = {
     }
     if (nets.length === 0 || pods.length === 0) {
       if (CATCH_NETS_EMPTY_QUIET_LATCH !== false) {
-        const membership = entityIndexVersion(state);
+        const membership = catchNetsMembershipVersion(state);
         if (membership != null && nets.length === 0 && pods.length === 0) {
           this._catchNetsQuiet = { membership, armedTick: state.tick | 0 };
           publishCatchNetsQuiet(state, true);

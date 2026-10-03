@@ -12,7 +12,7 @@ import { hash32 } from '../core/rng.js';
 import { getCombatKernel } from '../combat/kernel.js';
 import { legacyHitToDamagePacket, scalarHitToDamagePacket } from '../combat/damage.js';
 import { createVictimRewardRng, missionOwnsReward, runOwnsReward } from '../combat/rewardEligibility.js';
-import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { hasActiveSpatialHash, queryNearbyEntities } from '../core/spatialQuery.js';
 import { queryCombatTableEntities, COMBAT_TABLE_FLAGS } from '../core/combatTable.js';
 import { opticBeamHit, opticMaterialOf } from '../combat/opticField.js';
 import { markDirty, isDirty, hasDirty, DIRTY } from '../core/dirtyJournal.js';
@@ -1433,10 +1433,31 @@ function beamDamageCandidates(host, state, beam, dx, dz) {
     host._diag.beamCandidates += tableHits.length;
     return tableHits;
   }
-  const candidates = queryNearbyEntities(state, center, queryRadius, host._beamCandidateScratch, fallback);
-  if (candidates === host._beamCandidateScratch) host._diag.beamSpatialQueries++;
+  const candidates = hasActiveSpatialHash(state.spatialHash)
+    ? beamSharedDisc(host, state, beam, dx, dz)
+    : queryNearbyEntities(state, center, queryRadius, host._beamCandidateScratch, fallback);
+  if (candidates === host._beamCandidateScratch || candidates === host._beamDiscScratch) {
+    host._diag.beamSpatialQueries++;
+  }
   host._diag.beamCandidates += candidates.length;
   return candidates;
+}
+
+// The active-hash path of queryNearbyEntities walks the shared collider buckets — the
+// fallback lane is only consulted when no hash is live, so the hull sweep and the optic
+// sweep were paying the identical disc scan twice per energy beam. Keyed on the beam
+// object: one fill per beam serves whichever consumer reaches it first.
+function beamSharedDisc(host, state, beam, dx, dz) {
+  if (host._beamDiscBeam !== beam) {
+    host._beamDiscBeam = beam;
+    const center = host._beamQueryCenter;
+    center.x = (beam.from.x + beam.to.x) * 0.5;
+    center.z = (beam.from.z + beam.to.z) * 0.5;
+    const queryRadius = Math.hypot(dx, dz) * 0.5 + BEAM_QUERY_RADIUS_PAD;
+    host._beamDiscScratch.length = 0;
+    state.spatialHash.queryRadius(center.x, center.z, queryRadius, host._beamDiscScratch);
+  }
+  return host._beamDiscScratch;
 }
 
 // Optic terrain rides `collidables` (rocks are colliders, never damageables): same query
@@ -1445,6 +1466,7 @@ function beamDamageCandidates(host, state, beam, dx, dz) {
 function beamOpticCandidates(host, state, beam, dx, dz) {
   ensureCombatRuntime(host);
   const fallback = (state.entityIndex && state.entityIndex.collidables) || state.entityList;
+  if (hasActiveSpatialHash(state.spatialHash)) return beamSharedDisc(host, state, beam, dx, dz);
   const center = host._beamQueryCenter;
   center.x = (beam.from.x + beam.to.x) * 0.5;
   center.z = (beam.from.z + beam.to.z) * 0.5;
@@ -1455,6 +1477,7 @@ function beamOpticCandidates(host, state, beam, dx, dz) {
 function ensureCombatRuntime(host) {
   if (!host._beamCandidateScratch) host._beamCandidateScratch = [];
   if (!host._opticBeamScratch) host._opticBeamScratch = [];
+  if (!host._beamDiscScratch) host._beamDiscScratch = [];
   if (!host._beamQueryCenter) host._beamQueryCenter = { x: 0, z: 0 };
   if (!host._diag) {
     host._diag = {

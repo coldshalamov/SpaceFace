@@ -179,8 +179,9 @@ import {
   missionIdentityOf,
   stableRecordId,
 } from '../world/worldRecords.js';
-import { entityIndexVersion, forEachLivingWorldActor, forEachJobInteractable } from '../world/livingWorldViews.js';
+import { bumpCollidesFlipEpoch, entityIndexVersion, forEachLivingWorldActor, forEachJobInteractable, isLivingWorldActor, registerEntityWorldRecordId } from '../world/livingWorldViews.js';
 import { CIVILIAN_MANIFEST_PAYLOAD_TYPE } from './lootShards.js';
+import { syncEntityCollisionIndexMembership, syncEntityTypeLaneMembership } from '../core/coreSystem.js';
 import { getDressingRow } from '../world/dressingTable.js';
 // Cargo single-writer helper (same pattern economy.js uses) — delivery missions consume the
 // required cargo through this so usedVolume/usedMass caches stay correct (§0.6).
@@ -1413,6 +1414,13 @@ export const missions = {
     // ── Lazy mission-target spawning when the player enters a target sector ───────────────────
     bus.on('sector:enter', (p) => this._onSectorEnter(p));
     bus.on('sector:exit', (p) => this._onSectorExit(p));
+    // Census arm: mission-target spawns land inside the sector cook deterministically.
+    this._cookProvider = (sector) => this._onSectorEnter({
+      sectorId: (sector && sector.id)
+        || (this.state && this.state.world && this.state.world.currentSectorId),
+    });
+    (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
+      .push(this._cookProvider);
 
     // ── WF-08 claim-stake salvage: the contested wreck's own listeners. Every row below is a
     // strict no-op unless an active contract owns the touched entity, so ordinary wrecks,
@@ -5933,7 +5941,10 @@ export const missions = {
     const prefix = `${m.id}/`;
     const have = new Set(m.targetEntityIds || []);
     let reattached = 0;
-    for (const e of this.state.entityList || []) {
+    const castIndex = this.state.entityIndex;
+    const cast = castIndex && castIndex.__spacefaceEntityIndexV1 === true && castIndex.ready === true
+      && castIndex.capitalBossCast instanceof Set ? castIndex.capitalBossCast : this.state.entityList || [];
+    for (const e of cast) {
       if (!e || e.alive === false) continue;
       const key = e.data && (e.data.capitalBossActorKey || e.data.capitalBossWingKey);
       if (!key || !String(key).startsWith(prefix) || have.has(e.id)) continue;
@@ -5963,7 +5974,10 @@ export const missions = {
     this._reattachCapitalBossCastTargets(m);
     let repointed = 0;
     const liveByKey = new Map();
-    for (const e of this.state.entityList || []) {
+    const castScanIndex = this.state.entityIndex;
+    const castScan = castScanIndex && castScanIndex.__spacefaceEntityIndexV1 === true && castScanIndex.ready === true
+      && castScanIndex.capitalBossCast instanceof Set ? castScanIndex.capitalBossCast : this.state.entityList || [];
+    for (const e of castScan) {
       const key = e && e.data && (e.data.capitalBossActorKey || e.data.capitalBossWingKey);
       if (key && e.alive !== false) liveByKey.set(String(key), e);
     }
@@ -7668,13 +7682,29 @@ export const missions = {
   /**
    * Enemy-catalog archetypes a target-spawning mission can roll at its destination. The exact
    * roster is rolled at spawn, but the POOL is fixed at accept — warming the pool (≤4 unique
-   * hulls) covers every roll, plus the escort/claim hauler and ghost-pack nest ids.
+   * hulls) covers every roll, plus the escort/claim hauler, claim-site/rescue wasp crews,
+   * ghost-pack nest ids, and set-piece/capital encounter actors.
    */
   _missionTargetArchetypes(m) {
     const archetypes = new Set(markArchetypePoolFor(m && m.riskTier));
     if (m && m.storyTarget && m.storyTarget.archetype) archetypes.add(m.storyTarget.archetype);
     if (m && (m.type === 'escort' || m.type === 'salvage_retrieval')) archetypes.add('mule_trader');
     if (m && m.params && m.params.ghostConvoy) { archetypes.add('reaver_pirate'); archetypes.add('wasp_swarmer'); }
+    // The restore stub covers these crews' hulls; the live jump projection must name them
+    // too or claim-site/rescue spawns decode at the glass.
+    if (contractClaimSiteMission(m)) archetypes.add('wasp_swarmer');
+    if (m && m.type === 'rescue_under_fire') archetypes.add('wasp_swarmer');
+    // Set pieces and capital contracts spawn their encounter's ship actors — same
+    // archetype-or-fallback pick as the spawn sites and the restore stub.
+    if (m && (m.type === 'authored_set_piece' || m.type === 'capital_boss')) {
+      const encounter = m.type === 'capital_boss'
+        ? capitalBossEncounter(m.params && m.params.encounterId)
+        : authoredEncounterOf(authoredDefinitionOf(m));
+      const fallback = m.type === 'capital_boss' ? 'bruiser_brawler' : 'wasp_swarmer';
+      for (const actor of (encounter && encounter.actors) || []) {
+        if (actor && actor.kind === 'ship') archetypes.add(actor.archetype || fallback);
+      }
+    }
     return [...archetypes];
   },
 
@@ -7706,11 +7736,8 @@ export const missions = {
       const entity = this.state.entities.get(id);
       return entity && entity.alive !== false;
     });
-    // Continue: adopt rematerialized hosts before deciding to spawn (avoids duplicate targets).
-    this._adoptLiveMissionTargets(m);
-    // The adopt view never yields asteroids: re-attach the authored capital cast by durable key.
-    this._reattachCapitalBossCastTargets(m);
-    // _spawnTargetsFor computes the exact remaining quota, so partial cap grants can top up later.
+    // _spawnTargetsFor leads with the same adopt + capital-cast reattach pair — calling them
+    // here too paid a second living-actor scan per ensure for identical, idempotent output.
     this._spawnTargetsFor(m);
     this._refreshTrackedMissionNav(m);
   },
@@ -7793,7 +7820,14 @@ export const missions = {
     ent.team = 2;
     ent.factionId = null;
     ent.type = follow.targetType;
+    if (ent.collides !== false) bumpCollidesFlipEpoch();
     ent.collides = false;
+    // The flip leaves a permanent stale member otherwise: the entity stays alive as the scan
+    // objective, so the collidables/spatial buckets it was appended under carry it forever.
+    syncEntityCollisionIndexMembership(this.state && this.state.entityIndex, ent);
+    // Same hazard on the type lanes: the rebadged anomaly/wreck keeps shipLike/damageables
+    // membership and never joins wrecks/mineables readers without this re-key.
+    syncEntityTypeLaneMembership(this.state && this.state.entityIndex, ent);
     ent.data = ent.data || {};
     ent.data.poiType = follow.targetType;
     ent.data.kind = follow.targetType;
@@ -7869,6 +7903,9 @@ export const missions = {
     ent.data.identityKey = key;
     ent.data.durable = true;
     ent.data.recordCreatedTick = this.state.tick | 0;
+    // Post-spawn stamp — register it so byWorldRecordId/count answer O(1) (the contender path
+    // proves a single carrier) and the per-tick miss-memos see the new carrier immediately.
+    registerEntityWorldRecordId(this.state && this.state.entityIndex, ent);
   },
 
   /**
@@ -8488,9 +8525,43 @@ export const missions = {
   _contractClaimCrew(m) {
     const out = [];
     if (!m) return out;
-    forEachLivingWorldActor(this.state, (e) => {
-      if (e && e.data && String(e.data.contractClaimCrewOf) === String(m.id)) out.push(e);
-    });
+    const stamp = String(m.id);
+    const entities = this.state && this.state.entities;
+    // Cached ids resolve O(1) each and self-prune on re-verify (a dead, released,
+    // recycled, or stamp-cleared row fails the stamp check). The first resolution scans
+    // once to seed it; the spawn path below appends — callers only read membership
+    // (find/some/filter/iterate), never order.
+    let justScanned = false;
+    if (!Array.isArray(m._crewEntityIds)) {
+      m._crewEntityIds = [];
+      justScanned = true;
+      forEachLivingWorldActor(this.state, (e) => {
+        if (e && e.data && String(e.data.contractClaimCrewOf) === stamp) m._crewEntityIds.push(e.id);
+      });
+    }
+    if (m._crewEntityIds.length) {
+      const kept = [];
+      for (const id of m._crewEntityIds) {
+        const e = entities && entities.get ? entities.get(id) : null;
+        if (!e || e.alive === false || !e.data || String(e.data.contractClaimCrewOf) !== stamp) continue;
+        kept.push(id);
+        out.push(e);
+      }
+      if (kept.length !== m._crewEntityIds.length) m._crewEntityIds = kept;
+    }
+    // An empty resolve can't distinguish "all released" from ids reminted by a restore —
+    // one rescan covers it, tombstoned on this runtime (transient: a deserialized mission
+    // is a fresh key, so post-load always rescans) so a persistent empty stays O(1).
+    const tomb = this._claimCrewEmptyTomb || (this._claimCrewEmptyTomb = new WeakMap());
+    if (out.length === 0 && !justScanned && !tomb.has(m)) {
+      forEachLivingWorldActor(this.state, (e) => {
+        if (e && e.data && String(e.data.contractClaimCrewOf) === stamp) {
+          m._crewEntityIds.push(e.id);
+          out.push(e);
+        }
+      });
+      if (out.length === 0) tomb.set(m, true);
+    }
     return out;
   },
 
@@ -8673,6 +8744,9 @@ export const missions = {
       }
       if (ent) {
         if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(ent.id, requester);
+        if (!Array.isArray(m._crewEntityIds)) m._crewEntityIds = [];
+        m._crewEntityIds.push(ent.id);
+        if (this._claimCrewEmptyTomb) this._claimCrewEmptyTomb.delete(m);
         spawned++;
         crewIndex++;
       }
@@ -8972,9 +9046,22 @@ export const missions = {
     }
     const targetIds = new Set(m.targetEntityIds || []);
     if (follow) {
-      forEachLivingWorldActor(this.state, (e) => {
-        if (e && e.data && e.data.worldRecordId === follow.targetRecordId) targetIds.add(e.id);
-      });
+      // O(1) holder arm under a proven single count — the walk predicate pins the same
+      // recordId plus living-actor membership, so a counted unique holder is the only
+      // possible match. Ambiguous/absent counts keep the lane walk (multi-carrier rows).
+      const wrIndex = this.state && this.state.entityIndex;
+      const holder = wrIndex && wrIndex.__spacefaceEntityIndexV1 === true && wrIndex.ready === true
+        && wrIndex.byWorldRecordId instanceof Map && wrIndex.byWorldRecordIdCount instanceof Map
+        && wrIndex.byWorldRecordIdCount.get(follow.targetRecordId) === 1
+        ? wrIndex.byWorldRecordId.get(follow.targetRecordId)
+        : null;
+      if (holder) {
+        if (isLivingWorldActor(holder)) targetIds.add(holder.id);
+      } else {
+        forEachLivingWorldActor(this.state, (e) => {
+          if (e && e.data && e.data.worldRecordId === follow.targetRecordId) targetIds.add(e.id);
+        });
+      }
     }
     // NXI-145: a shared subject belongs to every live contract chasing it — settling this one
     // releases this mission's claim but must not sweep a body the other contract still needs.
@@ -9151,6 +9238,11 @@ export const missions = {
   },
 
   spawnTargetsForSector(sectorId) {
+    for (const _ of this.spawnTargetsForSectorChunked(sectorId)) { /* sync lane: inline */ }
+  },
+
+  // Generator twin: each mission's adopt/spawn is atomic, so yields sit only between missions.
+  *spawnTargetsForSectorChunked(sectorId) {
     if (!sectorId) return;
     // Continue runs this pass twice — restore step 13 and the save:loaded navigation refresh —
     // each O(missions × living-actors) via _adoptLiveMissionTargets. When the mission fields the
@@ -9189,10 +9281,12 @@ export const missions = {
       m.targetEntityIds = m.targetEntityIds.filter((id) => {
         const e = this.state.entities.get(id); return e && e.alive;
       });
-      this._adoptLiveMissionTargets(m);
+      // _spawnTargetsFor re-runs the adopt + cast-reattach itself — the explicit adopt
+      // here duplicated its living-actor scan for identical output.
       if (m.objectiveProgress < m.objectiveTarget) {
         this._spawnTargetsFor(m);
       }
+      yield 'mission-targets';
     }
     if (passKey) passKey.version = entityIndexVersion(this.state);
   },
@@ -9794,7 +9888,7 @@ export const missions = {
     const m = this.state.missions;
     // Strip transient runtime fields (entity ids) from active missions.
     const active = (m.active || []).map((a) => {
-      const { targetEntityIds, _escorteeId, _escorteeSectorId, _escorteeArrived, ...rest } = a;
+      const { targetEntityIds, _escorteeId, _escorteeSectorId, _escorteeArrived, _crewEntityIds, ...rest } = a;
       const row = { ...rest, targetEntityIds: [], needsTargets: a.needsTargets };
       // PQ-019C: canonical, order-stable snapshot of the heist subrecord. It rides INSIDE the active
       // entry this owner already serializes, so there is no new top-level save key and no schema
@@ -9821,6 +9915,14 @@ export const missions = {
   },
 
   deserialize(data) {
+    for (const _ of this.deserializeChunked(data)) { /* sync lane: every batch inline */ }
+  },
+
+  // Generator twin so the async restore lane can paint between boards/active sections — a
+  // long campaign's boards + active list is the heaviest ledger left on this stretch. Yields
+  // sit only at section boundaries; per-row heist restore keeps the sync lane's order, so the
+  // run stays bit-identical.
+  *deserializeChunked(data) {
     if (!data) return;
     const state = this.state;
     state.missions.boards = data.boards || {};
@@ -9843,9 +9945,11 @@ export const missions = {
     } else {
       delete state.missions.postEndingReplay;
     }
+    yield 'missions-scalars';
     // Stale-target GC: clear live entity ids; targets re-spawn when the player (re-)enters the sector.
     const heistRestoreTick = state.tick | 0;
-    state.missions.active = (data.active || []).map((a) => {
+    const restoredActive = [];
+    for (const a of data.active || []) {
       const row = {
         ...a, targetEntityIds: [], _escorteeId: null, _escorteeArrived: false,
         status: a.status || 'active',
@@ -9857,8 +9961,10 @@ export const missions = {
       // decided receipt, re-request a never-launched schedule, and otherwise reach
       // `unresolved_absent`. Never fabricate a capsule and never fabricate a payout.
       if (a && a.heist) row.heist = heistMissionRuntime.restore(a.heist, { tick: heistRestoreTick });
-      return row;
-    });
+      restoredActive.push(row);
+      if (restoredActive.length % 8 === 0) yield 'missions-active-batch';
+    }
+    state.missions.active = restoredActive;
     if (data.story) state.story = data.story;
     // Sidecar lives inside already-serialized state.story — migrate/init without save schema change.
     ensureCampaign47aState(state);
@@ -10234,7 +10340,11 @@ function capitalBossPlacementClear(state, pos, radius) {
     const pad = radius + (player.radius || 10) + 150;
     if (distSq(pos, player.pos) < pad * pad) return false;
   }
-  const list = state.entityList;
+  const index = state.entityIndex;
+  const list = index && index.__spacefaceEntityIndexV1 === true && index.ready === true
+    && Array.isArray(index.collidables)
+    ? index.collidables
+    : state.entityList;
   if (Array.isArray(list)) {
     for (const other of list) {
       if (!other || other.alive === false || !other.pos || other.collides === false) continue;

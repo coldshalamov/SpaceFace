@@ -33,6 +33,7 @@ import {
   entityIsDurableCandidate,
   upsertRecord,
 } from './worldRecords.js';
+import { registerEntityWorldRecordId } from './livingWorldViews.js';
 
 const RUNTIMES = new WeakMap();
 const RECENT_DAMAGE_TICKS = 120;
@@ -178,7 +179,9 @@ function ensureRuntime(state) {
       physicsStatics: [],
       physicsDynamics: [],
       physicsStaticVersion: 0,
+      physicsDynamicsVersion: 0,
       _staticEntities: [],
+      _dynamicEntities: [],
       _staticAuthorityVersion: entityIndexPhysicsStaticVersion(state),
       _staticMembershipDirty: false,
       exactIds: [],
@@ -296,6 +299,9 @@ function captureDematerialized(state, entity, simTime, abstractTier) {
   upsertRecord(bag, captured);
   if (!entity.data) entity.data = {};
   entity.data.worldRecordId = captured.recordId;
+  // Post-spawn stamp — register it so byWorldRecordId/count answer O(1) and the per-tick
+  // miss-memos see the new carrier instead of walking entities until some hit reseeds.
+  registerEntityWorldRecordId(state && state.entityIndex, entity);
   return captured;
 }
 
@@ -749,8 +755,11 @@ export function admitSameTickProjectiles(state, runtime, membership) {
     const entity = unseen[i];
     runtime.seenEntityIds.add(entity.id);
     runtime.currentEntityIds.add(entity.id);
+    const partitionBefore = entity._physicsPartition;
     entity._physicsPartition = 2;
+    if (partitionBefore !== 2) PHYSICS_PARTITION_EPOCH += 1;
     runtime.physicsDynamics.push(entity);
+    runtime.physicsDynamicsVersion++;
     runtime.exactIds.push(entity.id);
     runtime.counts.physics += 1;
   }
@@ -1694,6 +1703,20 @@ function classifyWorld(state, runtime) {
     runtime._staticAuthorityVersion = staticAuthorityVersion;
     runtime._staticMembershipDirty = false;
   }
+  // Dynamics get the same membership-version treatment: the classify pass rebuilds the lane
+  // each run, but the layered hash's stale-member sweep only needs to fire when the member
+  // set actually changed. Identity order can shuffle without membership changing — a reorder
+  // over-bumps, which only costs a sweep, never correctness.
+  const priorDynamics = runtime._dynamicEntities;
+  let dynamicMembershipChanged = priorDynamics.length !== dynamics.length;
+  for (let i = 0; !dynamicMembershipChanged && i < dynamics.length; i++) {
+    if (priorDynamics[i] !== dynamics[i]) dynamicMembershipChanged = true;
+  }
+  if (dynamicMembershipChanged) {
+    runtime.physicsDynamicsVersion++;
+    priorDynamics.length = dynamics.length;
+    for (let i = 0; i < dynamics.length; i++) priorDynamics[i] = dynamics[i];
+  }
 
 }
 
@@ -1761,6 +1784,7 @@ export function resetActivityRuntimeForRestore(state) {
   runtime.classifiedTick = -1;
   runtime.classifiedStaticAuthority = null;
   runtime._staticMembershipDirty = true;
+  if (runtime._dynamicEntities) runtime._dynamicEntities.length = 0;
   return true;
 }
 
@@ -1877,18 +1901,31 @@ export function entityNeedsPhysics(entity) {
  * Mirrors entityNeedsPhysics + shouldSyncPhysicsBodyEntity + isDynamicPhysicsBodyEntity
  * (projectile forced dynamic). Quiet revisits read the byte; applyStamp refreshes on
  * simTier / pinnedExact flips.
+ *
+ * Partition flips take an entity in or out of the spatial-hash physics layers — a
+ * consumer caching "members the hash cannot see" (the travel-infrastructure
+ * uncovered set) latches on this epoch rather than walking entityList every call.
  */
+let PHYSICS_PARTITION_EPOCH = 0;
+export function physicsPartitionEpoch() { return PHYSICS_PARTITION_EPOCH; }
+
 export function refreshPhysicsPartition(entity) {
+  const before = entity && entity._physicsPartition;
   if (!entity || entity.alive === false) {
-    if (entity) entity._physicsPartition = 0;
+    if (entity) {
+      entity._physicsPartition = 0;
+      if (before === 1 || before === 2) PHYSICS_PARTITION_EPOCH += 1;
+    }
     return 0;
   }
   if (!entityNeedsPhysics(entity) || !shouldSyncPhysicsBodyEntity(entity)) {
     entity._physicsPartition = 0;
+    if (before === 1 || before === 2) PHYSICS_PARTITION_EPOCH += 1;
     return 0;
   }
   const kind = (isDynamicPhysicsBodyEntity(entity) || entity.type === 'projectile') ? 2 : 1;
   entity._physicsPartition = kind;
+  if (kind !== before) PHYSICS_PARTITION_EPOCH += 1;
   return kind;
 }
 

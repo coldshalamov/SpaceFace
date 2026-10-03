@@ -2019,7 +2019,9 @@ export function weaponBankReadiness(mount, runtime) {
 
 function combatRuntimeOf(state, entity) {
   const bag = state && state.combat && state.combat.entities;
-  if (bag && entity && entity.id != null && bag[String(entity.id)]) return bag[String(entity.id)];
+  // Numeric keys coerce inside the dictionary lookup — String(id) would allocate
+  // a boxed key per weapon-tick per ship for the same answer.
+  if (bag && entity && entity.id != null && bag[entity.id]) return bag[entity.id];
   return (entity && entity.data && entity.data.combatRuntime) || null;
 }
 

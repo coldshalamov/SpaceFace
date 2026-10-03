@@ -85,6 +85,7 @@ import {
 } from './shareCode.js';
 import {
   buildSandboxLaunchConfig,
+  emitSandboxEmbarkSpeculation,
   requestSandboxGame,
   SCENARIO_PRESETS,
 } from '../sandbox/sandboxSetup.js';
@@ -1186,6 +1187,26 @@ export const crucibleScreen = {
         other.setAttribute('aria-pressed', String(on));
         if (other.classList && typeof other.classList.toggle === 'function') other.classList.toggle('is-on', on);
       }
+      armEmbarkSpec();
+    }
+    // Picker dwell is real warm lead: the launch's sector + hull are knowable the moment a
+    // tile flips, so arm the same embark speculation the sandbox picker posts on hover. The
+    // renderer latches by signature — repeat re-syncs of an unchanged pick are near-free.
+    function armEmbarkSpec() {
+      if (!ctx || !ctx.bus) return;
+      const arena = COMBAT_LAB_ARENAS.find((entry) => entry.id === arenaId) || COMBAT_LAB_ARENAS[0];
+      const hullPick = typeof starterId === 'string' && starterId.startsWith('hull:')
+        ? starterId.slice(5)
+        : ((COMBAT_LAB_STARTER_PACKAGES.find((s) => s.id === starterId) || {}).hullId || null);
+      // The seed row's const is declared after the first syncArena paint, so a TDZ read
+      // there just means the input isn't mounted yet — freeSeed already covers restores.
+      let seed = normalizeSeed(freeSeed);
+      try { seed = normalizeSeed(seedInput && seedInput.value); } catch { /* pre-mount */ }
+      emitSandboxEmbarkSpeculation(ctx.bus, {
+        sectorId: arena && arena.sectorId,
+        shipId: hullPick,
+        seed,
+      });
     }
     for (const starter of COMBAT_LAB_STARTER_PACKAGES) {
       const open = isStarterAvailable(doorProfile, starter.id);
@@ -1331,6 +1352,7 @@ export const crucibleScreen = {
       for (const button of arenas.querySelectorAll('button')) {
         syncChoice(button, button.dataset.arenaId === arenaId);
       }
+      armEmbarkSpec();
     };
     for (const arena of COMBAT_LAB_ARENAS.filter(entry => arenaDescriptions[entry.id])) {
       const button = choiceTile(arenaDescriptions[arena.id][0], 'sf-crd-arena-choice', kitUrl(ARENA_TILE[arena.id] || ARENA_TILE.helios_core));
@@ -1369,6 +1391,7 @@ export const crucibleScreen = {
       seedInput.value = freeSeed;
       cue('confirm');
       syncGhost();
+      armEmbarkSpec();
       const reduce = typeof document !== 'undefined' && document.documentElement
         && document.documentElement.classList.contains('sf-reduce-motion');
       if (reduce || typeof setInterval !== 'function') return;
@@ -1398,6 +1421,7 @@ export const crucibleScreen = {
     seedInput.addEventListener('input', () => {
       if (!daily) freeSeed = seedInput.value;
       syncGhost();
+      armEmbarkSpec();
     });
     seedRow.appendChild(reroll);
     seedBody.appendChild(seedRow);
@@ -1567,6 +1591,12 @@ export const crucibleScreen = {
         const practiceRow = el('div', 'k-row sf-crd-practice');
         const practiceWord = word('Practice room', 'k-word--emph');
         practiceWord.setAttribute('aria-label', 'Practice room: sling range. No records, no rewards. Spawn, latch, throw, and slow time stay on screen. Relaunch to reset.');
+        // Hover/focus dwell on the door is real warm lead — the preset's sector + hull are
+        // fixed, so arm the same embark speculation the click re-arms at request time (the
+        // renderer latches by signature, repeat arms are near-free).
+        const armPracticeSpec = () => emitSandboxEmbarkSpeculation(ctx.bus, practicePreset.config);
+        practiceWord.addEventListener('pointerenter', armPracticeSpec);
+        practiceWord.addEventListener('focus', armPracticeSpec);
         practiceWord.addEventListener('click', () => {
           cue('confirm');
           notePracticeLaunch(ctx);
@@ -2894,6 +2924,9 @@ export const crucibleResultsScreen = {
     // teardown Main menu runs, then a fresh adventure through the ordinary game:new route.
     if (IS_DEMO) {
       const belt = addWord(word('Take it to the belt', 'k-word--emph'));
+      // The belt door boots a fresh NEW_GAME run — results-plate dwell is warm lead for the
+      // default embark target, exactly the speculation requestSandboxGame posts at request time.
+      emitSandboxEmbarkSpeculation(ctx.bus, {});
       belt.addEventListener('click', () => {
         ctx.bus.emit('game:over:dismissed', {});
         ctx.bus.emit('game:exitToMenu', { source: 'crucible_results' });

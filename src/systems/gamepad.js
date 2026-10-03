@@ -756,7 +756,7 @@ export function createGamepad(ctx) {
   };
   const CHARGE_PLAYER_TRIGGERS = new Set(['manual', 'proximity']);
   if (bus && typeof bus.on === 'function') {
-    bus.on('physics:impact', onImpact);
+    bus.on('physics:impact', onImpact, { presentation: true });
     bus.on('combat:collisionConsequence', onImpact);
     bus.on('tether:latched', () => startPulse(HAPTIC_VERB_PULSES['tether:latched'], 'tether:latched'));
     bus.on('tether:cut', () => startPulse(HAPTIC_VERB_PULSES['tether:cut'], 'tether:cut'));

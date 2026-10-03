@@ -968,6 +968,7 @@ export const tetherGameplay = {
     mirror.targetShare = shares.target;
     mirror.shareSourceId = source.id;
     mirror.shareTargetId = target.id;
+    if (!emit || !this.bus || typeof this.bus.emit !== 'function') return null;
     const payload = {
       schemaVersion: 1,
       kind: 'twin_bridle',
@@ -982,9 +983,7 @@ export const tetherGameplay = {
       share: shares.source,
       tick: state.tick | 0,
     };
-    if (emit && this.bus && typeof this.bus.emit === 'function') {
-      this.bus.emit('chain:tetherShare', payload);
-    }
+    this.bus.emit('chain:tetherShare', payload);
     return payload;
   },
 

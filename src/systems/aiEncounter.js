@@ -2,7 +2,7 @@ import { AI_CONTRACT_VERSION, wrapAngle } from '../ai/contracts.js';
 import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../ai/doctrine.js';
 import { hash32 } from '../core/rng.js';
 import { makeEnemySpawnSpec } from './combat.js';
-import { indexedShipLikeScan, entityIndexVersion } from '../world/livingWorldViews.js';
+import { indexedShipLikeScan, entityIndexVersion, entityIndexLaneVersion } from '../world/livingWorldViews.js';
 import { ENCOUNTER_COMMAND_RING_CAPACITY } from './aiPorts.js';
 import { turretLossCount } from '../combat/turretSubsystems.js';
 
@@ -20,6 +20,10 @@ export function getAiEncounterQuietLatchForBench() {
 
 /** Membership rescan while latched (0.5 s @ 60 Hz). */
 const AI_ENCOUNTER_QUIET_RESCAN_TICKS = 30;
+
+/** Membership lanes for the quiet latch — the reinforcement census reads shipLike only,
+ * so projectile/pickup churn no longer wakes it. */
+const AI_ENCOUNTER_QUIET_LANES = ['shipLike'];
 
 function publishAiEncounterQuiet(state, latched) {
   if (!state) return;
@@ -145,7 +149,8 @@ export const aiEncounter = {
     if (AI_ENCOUNTER_QUIET_LATCH !== false) {
       const quiet = this._aiEncounterQuiet;
       if (quiet) {
-        const membership = entityIndexVersion(state);
+        const laneVersion = entityIndexLaneVersion(state, AI_ENCOUNTER_QUIET_LANES);
+        const membership = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
         const tick = state.tick | 0;
         const wakeSeq = this._aiEncounterWakeSeq | 0;
         const enc = state.aiEncounter;
@@ -188,7 +193,8 @@ export const aiEncounter = {
     this._spawnDue(owner, state);
 
     if (AI_ENCOUNTER_QUIET_LATCH !== false) {
-      const membership = entityIndexVersion(state);
+      const laneVersion = entityIndexLaneVersion(state, AI_ENCOUNTER_QUIET_LANES);
+      const membership = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
       const census = this._censusAiEncounterWork(state, encounter, owner);
       if (membership != null && !census.busy) {
         this._aiEncounterQuiet = {

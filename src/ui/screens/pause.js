@@ -1077,6 +1077,11 @@ export const pauseScreen = {
 
   onShow(ctx) {
     if (ctx.state.mode === 'flight') ctx.state.mode = 'paused';
+    // The only load reachable from here is F9's 'quick' — start its envelope decode during
+    // the pause dwell instead of on the keypress.
+    if (ctx.bus && typeof ctx.bus.emit === 'function') {
+      ctx.bus.emit('save:loadSpeculationTarget', { slot: 'quick' });
+    }
     renderFlightBrief(ctx);
     if (els) {
       if (els.title) settle(els.title, { from: 'left', state: 'pause-title' });

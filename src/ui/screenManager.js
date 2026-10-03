@@ -217,10 +217,75 @@ export function createScreenManager(ctx) {
       screensRoot.appendChild(el);
       rec.el = el;
       try { if (rec.def.mount) rec.def.mount(el, ctx); }
-      catch (err) { console.error(`[screenManager] mount("${id}") failed:`, err); }
+      catch (err) {
+        console.error(`[screenManager] mount("${id}") failed:`, err);
+        // A throwing mount leaves a half-built root — drop it and keep mounted:false so the
+        // next push rebuilds from scratch instead of presenting the partial tree forever.
+        rec.el = null;
+        if (el.parentNode) el.parentNode.removeChild(el);
+        return rec;
+      }
       rec.mounted = true;
+      // Some screens stamp aria-modal='true' as static markup in mount(); the manager owns that
+      // attribute (syncVisibility) — a warmed mount that is not stack top must not keep it.
+      if (stack[stack.length - 1] !== id) el.removeAttribute('aria-modal');
     }
     return rec;
+  }
+
+  // Mount a registered-but-unbuilt screen while its root stays hidden — the prewarm path
+  // lets menu dwell pay the DOM/stylesheet cost that would otherwise land inside the first
+  // open's flight frame. build() itself is failure-safe; a throwing mount stays unmounted.
+  function prewarm(id) {
+    return build(id);
+  }
+
+  // Force one style+layout pass on a mounted-but-hidden root. A display:none mount never
+  // enters the render tree — its first in-flight open pays stylesheet compile, layout, and
+  // lazy font subsets inside the live frame. visibility:hidden still styles and lays out
+  // (fonts in laid-out text resolve; paint is skipped), and #ui-root carries
+  // contain:layout+paint with absolute-positioned screen roots, so the one-frame flash
+  // cannot disturb live UI. A racing real open wins: syncVisibility owns the element then.
+  function paintWarm(id) {
+    const rec = build(id);
+    if (!rec || !rec.el || rec.painted) return;
+    // A racing real open owns the element — its open already paid mount+layout,
+    // and the warm's hidden write would fight it.
+    if (stack[stack.length - 1] === id) return;
+    rec.painted = true;
+    const el = rec.el;
+    clearInlineDisplay(el.style);
+    // Mirror the display choice syncVisibility makes for a real open — a kit
+    // screen's grid shell must not be clobbered by a flex write.
+    el.style.display = (typeof el.classList?.contains === 'function'
+      && (el.classList.contains('k-screen') || el.classList.contains('dp-frame'))) ? 'grid' : 'flex';
+    // position:fixed keeps the warmed root out of #screens' flex flow — an
+    // in-flow sibling would reflow the visible screen for exactly one frame.
+    el.style.position = 'fixed';
+    el.style.visibility = 'hidden';
+    // The warm must actually render: a display:none subtree (stack empty →
+    // #screens hidden) never enters the render tree, so flip the root to
+    // rendered-but-hidden for this one frame instead of latching a dead
+    // painted stamp that blocks every later warm.
+    const rootHidden = screensRoot && screensRoot.style.display === 'none';
+    if (rootHidden) {
+      screensRoot.style.display = 'flex';
+      screensRoot.style.visibility = 'hidden';
+    }
+    // Force the style+layout pass synchronously, then restore in the same task — an rAF-spanned
+    // warm leaves display:flex/grid on the element for a full frame, and a computed-style probe
+    // (check-new-game-layout modal semantics) can land inside that window.
+    void el.offsetHeight;
+    el.style.visibility = '';
+    el.style.position = '';
+    if (stack[stack.length - 1] !== id) hideImportant(el.style);
+    if (rootHidden && screensRoot) {
+      screensRoot.style.visibility = '';
+      const stillOpen = stack.length > 0
+        || (typeof screensRoot.querySelector === 'function'
+          && !!screensRoot.querySelector('.sf-find--host'));
+      if (!stillOpen) screensRoot.style.display = 'none';
+    }
   }
 
   function syncVisibility() {
@@ -241,6 +306,10 @@ export function createScreenManager(ctx) {
         clearInlineDisplay(rec.el.style);
         rec.el.style.display = (typeof rec.el.classList?.contains === 'function'
           && (rec.el.classList.contains('k-screen') || rec.el.classList.contains('dp-frame'))) ? 'grid' : 'flex';
+        // The top screen is always visibility-clean — a paintWarm frame that
+        // raced this open must not leave its hidden write behind.
+        rec.el.style.visibility = '';
+        rec.el.style.position = '';
         rec.el.removeAttribute('aria-hidden');
         rec.el.setAttribute('aria-modal', 'true');
         rec.el.inert = false;
@@ -544,6 +613,10 @@ export function createScreenManager(ctx) {
     rec.mounted = false;
     if (rec.el && rec.el.parentNode) rec.el.parentNode.removeChild(rec.el);
     rec.el = null;
+    // The warm stamp answered for the dropped element's layout pass — a released screen
+    // that stays prewarm-queued (newGame/saveLoad ride BOOT_SCREEN_EXPORTS) would hit
+    // `painted === true` on every later wave and pay a cold mount+layout at its next open.
+    rec.painted = false;
     if (stacked >= 0) syncVisibility();
   }
 
@@ -684,7 +757,7 @@ export function createScreenManager(ctx) {
   return {
     register, pushScreen, popScreen, replaceScreen, closeAll, releaseScreen,
     isOpen, hasScreen, top, getActiveScreenDef, refreshTop, syncVisibility, syncHudAccessibility,
-    isLiveOverlay, locked, destroy,
+    isLiveOverlay, locked, destroy, prewarm, paintWarm,
     screenMemory,
   };
 }

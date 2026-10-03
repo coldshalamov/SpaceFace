@@ -117,6 +117,12 @@ export const wingmen = {
     // Spawn wingmen when the player enters a sector (world emits sector:enter on entry).
     // _spawnWingmen skips fleet entries that already have a live _liveId (continuous handoff).
     this.bus.on('sector:enter', () => { this._wingmenQuiet = null; this._spawnWingmen(); });
+    // Census arm: the same re-fire as a sector cook provider so wingmen spawn inside the
+    // deterministic composition census, not wherever listener registration order puts them.
+    this._cookProvider = () => {
+      if (this._spawnWingmen) { this._wingmenQuiet = null; this._spawnWingmen(); }
+    };
+    (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = [])).push(this._cookProvider);
     // Canonical seam is sector:exit (world never emits sector:leave). Continuous free-flight
     // membership preserves live wingmen; hard jump/load boundaries despawn and re-spawn on enter.
     this.bus.on('sector:exit', (p) => {
@@ -521,7 +527,12 @@ export const wingmen = {
       if (wingmanMineableRock(held) && this._rockInLeash(held, player)) return held;
     }
     const claimed = this._mineClaimedRocks(fs, state);
-    const list = state.entityList || [];
+    const index = state.entityIndex;
+    const indexed = index && index.__spacefaceEntityIndexV1 === true
+      && index.ready === true
+      && index._indexedIds instanceof Set
+      && state.entities.size === index._indexedIds.size;
+    const list = (indexed && index.asteroids) || state.entityList || [];
     let best = null;
     let bestD2 = Infinity;
     let bestId = '';
@@ -624,7 +635,11 @@ function guardAssetFor(state, fs, selfId) {
 // Nearest hostile closing on the guarded asset: team-1 hulls, or any hull actively
 // targeting it. Deterministic (distance, then id) like the mining prospect ring.
 function guardThreatFor(state, asset, selfId) {
-  const list = state && state.entityList;
+  const index = state && state.entityIndex;
+  const list = index && index.__spacefaceEntityIndexV1 === true && index.ready === true
+    && Array.isArray(index.shipLike)
+    ? index.shipLike
+    : state && state.entityList;
   if (!Array.isArray(list) || !asset || !asset.pos) return null;
   let best = null;
   let bestD2 = Infinity;

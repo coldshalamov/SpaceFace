@@ -31,7 +31,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
   label?.setAttribute?.('role', 'status'); label?.setAttribute?.('aria-live', 'polite');
   let terminalArt = null, retainWorkerArt = false, retainedCanvas = null;
   let retainedPointerMove = null, needsPointerBridge = false;
-  let hideTimer = null, activeStage = null, revealRaf = null, revealDeadlineTimer = null;
+  let hideTimer = null, activeStage = null, revealRaf = null, revealPollTimer = null, revealDeadlineTimer = null;
   let workTimer = null, pendingWork = null, accumulator = null, disposed = false;
   let session = 0;
   const visible = () => overlay.style.display !== 'none' && !overlay.classList.contains('hidden');
@@ -75,6 +75,8 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
   function cancelRevealWait() {
     if (revealRaf !== null) cancelRaf?.(revealRaf);
     revealRaf = null;
+    if (revealPollTimer !== null) clearTimeout(revealPollTimer);
+    revealPollTimer = null;
     if (revealDeadlineTimer !== null) clearTimeout(revealDeadlineTimer);
     revealDeadlineTimer = null;
   }
@@ -158,8 +160,11 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     if (baseline === null || !raf || !visible()) { hide({ completed: false }); return; }
     // Reserve the final arc until the existing renderer-frame handoff gate actually advances.
     ring?.report({ id: 'entering-flight', progress: .96, ceiling: .997, label: 'Presenting the first frame' });
-    const poll = () => {
-      revealRaf = null;
+    // rAF alone can starve the whole escape window on a throttled host (background tab,
+    // occluded window) while the game presents frames on its own cadence — pair it with a
+    // self-clearing timer channel like the continue-fade veil so the shell still lifts.
+    const poll = (viaTimer) => {
+      if (viaTimer) revealPollTimer = null; else revealRaf = null;
       if (disposed) return;
       if (frameNow() > baseline) {
         cancelRevealWait(); ring?.finish();
@@ -168,9 +173,11 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
         else hide(); // no decorative instrument to finish on minimal shells
         return;
       }
-      revealRaf = raf(poll);
+      if (raf && revealRaf === null) revealRaf = raf(() => poll(false));
+      if (revealPollTimer === null) revealPollTimer = setTimeout(() => poll(true), 200);
     };
-    revealRaf = raf(poll);
+    revealRaf = raf(() => poll(false));
+    revealPollTimer = setTimeout(() => poll(true), 200);
     // Preserve the pre-existing escape hatch; timeout is NOT evidence of readiness or 100%.
     revealDeadlineTimer = setTimeout(() => hide({ completed: false }), 20500);
   }

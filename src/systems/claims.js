@@ -61,6 +61,9 @@ import { farActorTableRadius } from '../world/farActorTable.js';
 import { depotPatrolLine, stationFactionIdFor, stationGrowthReaction, endgamePullLine, aceTrophyNewsLine } from '../data/conflictReactions.js';
 import { aceById } from '../data/namedAces.js';
 import { stableRecordId, RECORD_KIND } from '../world/worldRecords.js';
+import { hasActiveSpatialHash } from '../core/spatialQuery.js';
+import { collidesFlipEpoch } from '../world/livingWorldViews.js';
+import { physicsPartitionEpoch } from '../world/activityRuntime.js';
 
 // Refinery conversion: 2 ore -> 1 refined material (the "lighter, dearer goods to ship" beat).
 const REFINE_RATIO = 2;
@@ -322,6 +325,9 @@ export function relayFreightLedger(departed, aboard, recoverable = 0) {
 
 export const claims = {
   name: 'claims',
+  // serialize() deep-copies every field it returns — the owned flag keeps saveSystem from
+  // re-cloning the bodies payload a second time inside the single-task autosave capture.
+  saveSnapshotOwned: true,
 
   init(ctx) {
     this.state = ctx.state;
@@ -830,14 +836,111 @@ export const claims = {
   },
 
   _travelInfrastructureStaticCandidates() {
-    const index = this.state && this.state.entityIndex;
-    if (index && index.__spacefaceEntityIndexV1 && index.ready === true && Array.isArray(index.statics)) {
-      return index.statics;
-    }
+    // The blocker domain is every entityList member the blocker accepts — index.statics is
+    // station|asteroid only, so an index-ready-but-no-hash middle branch would silently stop
+    // mines/bombs/props blocking a hardpoint.
     return this.state.entityList || [];
   },
 
+  // Blocker-passing bodies the spatial hash cannot cover: hash membership requires
+  // e.collides truthy, so a member with collides===undefined/0 still passes
+  // _travelInfrastructureStaticBlocker (only ===false fails it) yet never reaches a
+  // queryRadius result — and a collides-truthy member shelved out of the physics
+  // partition (_physicsPartition ∉ {1,2}) is hash-invisible the same way. The domain
+  // is the blocker domain — entityList minus the six excluded types — not index.statics.
+  // Rebuilt on index churn, a collides flip, or a physics-partition flip (shelf in/out).
+  _travelInfrastructureStaticsUncovered() {
+    const index = this.state && this.state.entityIndex;
+    const version = index && Number.isFinite(index.version) ? index.version : null;
+    const epoch = collidesFlipEpoch();
+    const partitionEpoch = physicsPartitionEpoch();
+    const cache = this._infraStaticsUncovered
+      || (this._infraStaticsUncovered = { version: -1, epoch: -1, partitionEpoch: -1, list: [] });
+    if (version === null || cache.version !== version || cache.epoch !== epoch
+      || cache.partitionEpoch !== partitionEpoch) {
+      cache.version = version == null ? -1 : version;
+      cache.epoch = epoch;
+      cache.partitionEpoch = partitionEpoch;
+      cache.list.length = 0;
+      const list = (this.state && this.state.entityList) || [];
+      for (const e of list) {
+        if (e && e.collides !== false
+          && (!e.collides || (e._physicsPartition !== 1 && e._physicsPartition !== 2))) {
+          cache.list.push(e);
+        }
+      }
+    }
+    return cache.list;
+  },
+
+  // The hash + uncovered pair only covers the blocker domain when the index provably
+  // covers every entity: hash members derive from index lanes, so an unindexed
+  // collides-truthy member would live in neither set.
+  _travelInfrastructureIndexCovers() {
+    const index = this.state && this.state.entityIndex;
+    const entities = this.state && this.state.entities;
+    return !!(
+      index
+      && index.__spacefaceEntityIndexV1 === true
+      && index.ready === true
+      && index._indexedIds instanceof Set
+      && entities
+      && entities.size === index._indexedIds.size
+    );
+  },
+
+  // Radius bound for the padded query: every covered blocker satisfies
+  // dist < base + e.radius <= base + maxR. The domain is every entityList member:
+  // blockers are not station/asteroid-only, and a collides===false member can only
+  // enter via a collides flip (epoch-bumped) or a radius growth (epoch-bumped at the
+  // single post-spawn growth site, alienEcology juvenile promotion).
+  _travelInfrastructureBlockerMaxRadius() {
+    const index = this.state && this.state.entityIndex;
+    const version = index && Number.isFinite(index.version) ? index.version : null;
+    const epoch = collidesFlipEpoch();
+    const cache = this._infraBlockerMaxR
+      || (this._infraBlockerMaxR = { version: -1, epoch: -1, max: 0 });
+    if (version === null || cache.version !== version || cache.epoch !== epoch) {
+      cache.version = version == null ? -1 : version;
+      cache.epoch = epoch;
+      cache.max = 0;
+      const list = (this.state && this.state.entityList) || [];
+      for (const e of list) {
+        const r = e && Math.max(0, Number(e.radius) || 0);
+        if (r > cache.max) cache.max = r;
+      }
+    }
+    return cache.max;
+  },
+
+  // Shared blocker probe over a candidate set. The blocker itself applies the domain
+  // (excludes ship/drone/projectile/pickup/payload/wreck) — any other type that passes it
+  // (mine, bomb, fx, place prop, ...) blocked under the original entityList walk and must
+  // keep blocking here.
+  _travelInfrastructureAnyBlocker(candidates, test) {
+    for (const entity of candidates) {
+      if (!entity) continue;
+      if (test(entity)) return true;
+    }
+    return false;
+  },
+
   _travelInfrastructurePointClear(pos, body, station) {
+    const hash = this.state && this.state.spatialHash;
+    if (hasActiveSpatialHash(hash) && this._travelInfrastructureIndexCovers()) {
+      const out = this._infraPointScratch || (this._infraPointScratch = []);
+      out.length = 0;
+      hash.queryRadius(pos.x, pos.z, 72 + this._travelInfrastructureBlockerMaxRadius(), out);
+      const hits = (entity) => {
+        if (!this._travelInfrastructureStaticBlocker(entity, body, station)) return false;
+        const clearance = 72 + Math.max(0, Number(entity.radius) || 0);
+        return Math.hypot(entity.pos.x - pos.x, entity.pos.z - pos.z) < clearance;
+      };
+      if (this._travelInfrastructureAnyBlocker(out, hits)) return false;
+      return !this._travelInfrastructureAnyBlocker(
+        this._travelInfrastructureStaticsUncovered(), hits,
+      );
+    }
     const list = this._travelInfrastructureStaticCandidates();
     for (const entity of list) {
       // A passing craft cannot invalidate a permanent surveyed hardpoint. Only static world bodies
@@ -850,15 +953,34 @@ export const claims = {
   },
 
   _travelInfrastructureCorridorClear(from, to, corridorRadiusWU, body, station) {
-    const list = this._travelInfrastructureStaticCandidates();
-    for (const entity of list) {
-      if (!this._travelInfrastructureStaticBlocker(entity, body, station)) continue;
+    const hits = (entity) => {
+      if (!this._travelInfrastructureStaticBlocker(entity, body, station)) return false;
       const radius = corridorRadiusWU + Math.max(0, Number(entity.radius) || 0);
-      if (pointSegmentDistanceSquared(
+      return pointSegmentDistanceSquared(
         entity.pos.x, entity.pos.z,
         from.x, from.z,
         to.x, to.z,
-      ) < radius * radius) return false;
+      ) < radius * radius;
+    };
+    const hash = this.state && this.state.spatialHash;
+    if (hasActiveSpatialHash(hash) && this._travelInfrastructureIndexCovers()) {
+      // One union disc covers the corridor's Minkowski sum: any blocker within
+      // corridorRadius+e.radius of the segment sits inside it.
+      const midX = (from.x + to.x) / 2;
+      const midZ = (from.z + to.z) / 2;
+      const halfLen = Math.hypot(to.x - from.x, to.z - from.z) / 2;
+      const r = halfLen + corridorRadiusWU + this._travelInfrastructureBlockerMaxRadius();
+      const out = this._infraCorridorScratch || (this._infraCorridorScratch = []);
+      out.length = 0;
+      hash.queryRadius(midX, midZ, r, out);
+      if (this._travelInfrastructureAnyBlocker(out, hits)) return false;
+      return !this._travelInfrastructureAnyBlocker(
+        this._travelInfrastructureStaticsUncovered(), hits,
+      );
+    }
+    const list = this._travelInfrastructureStaticCandidates();
+    for (const entity of list) {
+      if (hits(entity)) return false;
     }
     return true;
   },
@@ -2659,8 +2781,8 @@ export const claims = {
       specVersion: 1,
       bodies: (claims.bodies || []).map((b) => JSON.parse(JSON.stringify(b))),
     };
-    if (claims.meta) out.meta = { ...claims.meta };
-    if (claims.legacyMigration) out.legacyMigration = { ...claims.legacyMigration };
+    if (claims.meta) out.meta = JSON.parse(JSON.stringify(claims.meta));
+    if (claims.legacyMigration) out.legacyMigration = JSON.parse(JSON.stringify(claims.legacyMigration));
     if (claims.stationGrowth) out.stationGrowth = JSON.parse(JSON.stringify(claims.stationGrowth));
     if (claims.endgamePulls) out.endgamePulls = JSON.parse(JSON.stringify(claims.endgamePulls));
     if (claims.legendaryHeads) out.legendaryHeads = JSON.parse(JSON.stringify(claims.legendaryHeads));
@@ -2668,6 +2790,12 @@ export const claims = {
   },
 
   deserialize(data) {
+    for (const _ of this.deserializeChunked(data)) { /* sync lane: every batch inline */ }
+  },
+
+  // Generator twin: each body's normalize (spec/infrastructure/depot graph walks) is record-
+  // atomic, so yields sit only at body and section boundaries — order and RNG stay identical.
+  *deserializeChunked(data) {
     if (!data || typeof data !== 'object') {
       this.state.claims = { bodies: [], specVersion: 1 };
       _nextClaimId = 1;
@@ -2688,6 +2816,7 @@ export const claims = {
       if (b.spec && b.spec.defense && b.spec.defense.phase === 'engaged') {
         this._resumeDefenseIds.add(b.spec.defense.id);
       }
+      yield 'claims-body';
     }
     this.state.claims = { bodies, specVersion: 1 };
     if (data.meta && typeof data.meta === 'object') {
@@ -2730,9 +2859,12 @@ export const claims = {
       const m = /^claim_(\d+)$/.exec(b && b.id || '');
       if (m) _nextClaimId = Math.max(_nextClaimId, (parseInt(m[1], 10) || 0) + 1);
     }
+    yield 'claims-id-rescan';
     // Saves older than specVersion 1 may still carry abstract automation outposts — the F6 path.
     if (data.specVersion == null) this._migrateLegacyOutposts();
+    yield 'claims-migrated';
     this._applyAllPoiLabels();
+    yield 'claims-poi-labels';
     this._stampAllStationGrowth();
   },
 

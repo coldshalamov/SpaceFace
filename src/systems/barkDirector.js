@@ -31,7 +31,7 @@ import { getOccupationalSilhouetteRule } from '../data/occupationalSilhouettes.j
 import { shouldOwnerThink } from '../core/activityScheduler.js';
 import { shouldDrawTableVfx, tableLookAtDelta, tableSimAuthorityWuFromState, tableVfxDrawWuFromState } from '../render/tabletopPolicy.js';
 import { ensureActivityClassified } from '../world/activityRuntime.js';
-import { entityIndexVersion, forEachLivingWorldActor, indexedShipLikeOrEntitiesScan, indexedTypeScan } from '../world/livingWorldViews.js';
+import { entityIndexVersion, entityIndexLaneVersion, forEachLivingWorldActor, indexedShipLikeOrEntitiesScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { activeHullIdentity } from '../data/hullIdentity.js';
 import { livingHullNotoriety } from '../core/livingHull.js';
 import { adventureStunts, completeWitness, incidentIdentity, knownStuntTitles, observerProfile, STUNT_SITUATION_LINES, STUNT_TITLE_RULES, witnessLineOfSight } from '../combat/stuntWitnesses.js';
@@ -98,6 +98,10 @@ export function getBarkDirectorQuietLatchForBench() {
 /** Membership rescan while latched (0.5 s @ 60 Hz). */
 const BARK_DIRECTOR_QUIET_RESCAN_TICKS = 30;
 
+/** Membership lanes for the quiet latch — the census walks living actors (shipLike,
+ * stations, wrecks); projectile/pickup/asteroid churn no longer wakes it. */
+const BARK_QUIET_LANES = ['shipLike', 'stations', 'wrecks'];
+
 function publishBarkDirectorQuiet(state, latched) {
   if (!state) return;
   const rt = state.barkDirectorRuntime || (state.barkDirectorRuntime = {});
@@ -151,18 +155,6 @@ export function spillNoticeBarkText(seed, hullId) {
   return SPILL_NOTICE_LINES[index % SPILL_NOTICE_LINES.length];
 }
 
-function eachLiveEntity(state, fn) {
-  const entities = state && state.entities;
-  if (!entities || typeof fn !== 'function') return;
-  if (typeof entities.forEach === 'function') {
-    entities.forEach(fn);
-    return;
-  }
-  if (typeof entities.values === 'function') {
-    for (const entity of entities.values()) fn(entity);
-  }
-}
-
 /** Nearest living ship inside the watch, never the player and never a hull that missed the spill. */
 export function noticingHullForSpill(state, payload) {
   if (!state || !payload) return null;
@@ -178,9 +170,9 @@ export function noticingHullForSpill(state, payload) {
   const limit = SPILL_NOTICE_WATCH_WU * SPILL_NOTICE_WATCH_WU;
   let best = null;
   let bestD = limit;
-  eachLiveEntity(state, (entity) => {
-    if (!entity || entity.alive === false || entity.type !== 'ship' || !entity.pos) return;
-    if (entity.id === state.playerId) return;
+  for (const entity of indexedShipLikeOrEntitiesScan(state)) {
+    if (!entity || entity.alive === false || entity.type !== 'ship' || !entity.pos) continue;
+    if (entity.id === state.playerId) continue;
     let nearest = Infinity;
     for (let i = 0; i < pods.length; i++) {
       const dx = entity.pos.x - pods[i].pos.x;
@@ -188,12 +180,12 @@ export function noticingHullForSpill(state, payload) {
       const d2 = dx * dx + dz * dz;
       if (d2 < nearest) nearest = d2;
     }
-    if (nearest > limit) return;
+    if (nearest > limit) continue;
     if (nearest < bestD || (nearest === bestD && best && entity.id < best.id)) {
       best = entity;
       bestD = nearest;
     }
-  });
+  }
   return best;
 }
 
@@ -455,21 +447,21 @@ export const barkDirector = {
     this._onFulfillmentProvoked = (payload) => this._speakFulfillmentProvoked(payload || {});
     this._onAdministrativeRouting = (payload) => this._speakAdministrativeRouting(payload || {});
     if (this.bus && typeof this.bus.on === 'function') {
-      this.bus.on('entity:spawned', this._onEntitySpawnedBark);
-      this.bus.on('entity:spawned', this._onCounterHintSpawn);
+      this.bus.on('entity:spawned', this._onEntitySpawnedBark, { presentation: true });
+      this.bus.on('entity:spawned', this._onCounterHintSpawn, { presentation: true });
       this.bus.on('ai:flee', this._onFlee);
       this.bus.on('save:loaded', this._onStuntLoad);
       this.bus.on('ai:reinforcementScheduled', this._onReinforcement);
       this.bus.on('combat:outcome', this._onCombatOutcome);
       this.bus.on('ship:livingHullChanged', this._onHullHistory);
       this.bus.on('voice:surface', this._onStuntSurface);
-      this.bus.on('combat:damage', this._onStuntDamage);
+      this.bus.on('combat:damage', this._onStuntDamage, { presentation: true });
       this.bus.on('story:stuntIncidentUpdated', this._onStuntTrick);
       this.bus.on('story:stuntIncidentRecorded', this._onStuntTrick);
       this.bus.on('freight:cargoSpilled', this._onCargoSpilled);
       this.bus.on('cargo:jettisoned', this._onCargoJettisoned);
-      this.bus.on('entity:killed', this._onCargoKilled);
-      this.bus.on('entity:killed', this._onVictimKilled);
+      this.bus.on('entity:killed', this._onCargoKilled, { presentation: true });
+      this.bus.on('entity:killed', this._onVictimKilled, { presentation: true });
       this.bus.on('law:dispatchStarted', this._onLawDispatchStarted);
       this.bus.on('law:wantedWarrantPosted', this._onLawWarrantPosted);
       this.bus.on('law:wantedCheckpointPosted', this._onLawCheckpointPosted);
@@ -516,7 +508,7 @@ export const barkDirector = {
       };
       this.bus.on('harasser:disengaged', this._onHarasserDisengaged);
       this.bus.on(HITSTUN_IMPULSE_EVENT, this._onBodyShoved);
-      this.bus.on('physics:impact', this._onBodyImpact);
+      this.bus.on('physics:impact', this._onBodyImpact, { presentation: true });
     }
   },
 
@@ -551,7 +543,8 @@ export const barkDirector = {
     // body-near-miss cues, or 0.5 s rescan. Soft-GPU fps not claimed. Fresh
     // radio residual after #152 flybyFocus.
     if (BARK_DIRECTOR_QUIET_LATCH !== false) {
-      const membership = entityIndexVersion(state);
+      const laneVersion = entityIndexLaneVersion(state, BARK_QUIET_LANES);
+      const membership = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
       const tick = state.tick | 0;
       const wakeSeq = this._barkWakeSeq | 0;
       const quiet = this._barkQuiet;
@@ -600,7 +593,8 @@ export const barkDirector = {
       const nearMissBusy = !!(this._bodyNearMisses && this._bodyNearMisses.size);
       const stuntBusy = barkPendingStuntBusy(state);
       if (!spoke && !nearMissBusy && !stuntBusy) {
-        const membership = entityIndexVersion(state);
+        const laneVersion = entityIndexLaneVersion(state, BARK_QUIET_LANES);
+        const membership = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
         if (membership != null) {
           this._barkQuiet = {
             membership,

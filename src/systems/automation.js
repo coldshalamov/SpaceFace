@@ -39,6 +39,7 @@ import {
   shipmentQty,
   shipmentUsed,
 } from './cargoCustody.js';
+import { indexedTypeScan } from '../world/livingWorldViews.js';
 import {
   applyFuelShortage,
   boundDemandQty,
@@ -70,6 +71,7 @@ import {
   forEachDressingRow,
   getDressingRow,
   insertDressingRow,
+  markDressingRowPoseDirty,
 } from '../world/dressingTable.js';
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
@@ -587,6 +589,14 @@ export const automation = {
       if (this._saveRestoring) return;
       this._syncOutpostPresence(this.state.automation);
     });
+    // Census arm: outpost presence materialization lands inside the sector cook
+    // deterministically (continuous-membership adoption stays on the bus payload).
+    this._cookProvider = () => {
+      if (this._saveRestoring) return;
+      this._syncOutpostPresence(this.state.automation);
+    };
+    (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
+      .push(this._cookProvider);
 
     // Tech can raise the drone tier cap → just affects gating/cap; nothing to do eagerly.
   },
@@ -1231,7 +1241,7 @@ export const automation = {
     push(this._getRuntimeEntity(o.entityId));
     forEachDressingRow(this.state, push);
     // Pre-dressing leftovers stay type fx on the table; skip ships/stations/shots.
-    const list = (this.state && this.state.entityList) || [];
+    const list = indexedTypeScan(this.state, 'fx');
     for (let i = 0; i < list.length; i++) {
       const entity = list[i];
       if (entity && entity.type === 'fx') push(entity);
@@ -1329,8 +1339,12 @@ export const automation = {
   _placeOutpostEntity(entity, o) {
     if (!entity || !o || !o.pos) return;
     entity.pos = entity.pos || { x: 0, z: 0 };
-    entity.pos.x = Number(o.pos.x) || 0;
-    entity.pos.z = Number(o.pos.z) || 0;
+    const nx = Number(o.pos.x) || 0;
+    const nz = Number(o.pos.z) || 0;
+    if (entity.pos.x === nx && entity.pos.z === nz) return;
+    entity.pos.x = nx;
+    entity.pos.z = nz;
+    markDressingRowPoseDirty(this.state, entity.id);
   },
 
   _ensureOutpostPosition(o) {

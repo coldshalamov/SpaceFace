@@ -28,8 +28,22 @@ export class SpatialHash {
     this._coherentQueryLimit = 256;
     // id -> { entity, x0, x1, z0, z1, r, stamp } — dynamic membership for incremental rehash
     this._dynamicMembers = new Map();
+    // Lane-version gate for the stale-member sweep: the dynamics lane's membership version
+    // (entityIndex.spatialDynamicsVersion / activity physicsDynamicsVersion) bumps on every
+    // enter/exit, so an unchanged version + same lane array + length proves every member is
+    // revisited this pass and the drop-unvisited sweep is a no-op. null = caller has no lane
+    // version → always sweep.
+    this._dynamicsVersion = null;
+    this._dynamicsCount = -1;
+    this._dynamicsSource = null;
     this._dynamicSyncStamp = 1;
     this._memberRemoveScratch = [];
+    // id|entity -> member record — static membership for the incremental diff sync. Statics
+    // are stable index refs, so unidentified members key safely on the object itself.
+    this._staticMembers = new Map();
+    this._staticSyncStamp = 1;
+    this._staticMemberRemoveScratch = [];
+    this._staticDirtyRects = [];
     this._seenIds = new Map();
     this._spanScratch = { r: 0, x0: 0, x1: 0, z0: 0, z1: 0 };
     this._batchSeenIds = [];
@@ -43,6 +57,8 @@ export class SpatialHash {
       dynamicFullRebuilds: 0,
       dynamicReinserts: 0,
       dynamicUnchanged: 0,
+      staticReinserts: 0,
+      staticUnchanged: 0,
       gateSkips: 0,
       queries: 0,
       candidates: 0,
@@ -53,6 +69,8 @@ export class SpatialHash {
       dynamicFullRebuilds: 0,
       dynamicReinserts: 0,
       dynamicUnchanged: 0,
+      staticReinserts: 0,
+      staticUnchanged: 0,
       gateSkips: 0,
       queries: 0,
       candidates: 0,
@@ -76,6 +94,9 @@ export class SpatialHash {
     this._seenIds.clear();
     this._queryStamp = 1;
     this._staticVersion = null;
+    this._dynamicsVersion = null;
+    this._dynamicsCount = -1;
+    this._dynamicsSource = null;
     this._dynamicQueryVersion = 1;
     this._clearDynamicQueryCache();
     this._coherentQueries.clear();
@@ -132,18 +153,16 @@ export class SpatialHash {
     this._updateActiveDiagnostics();
   }
 
-  rebuildLayers(staticEntities = [], dynamicEntities = [], staticVersion = 0) {
+  rebuildLayers(staticEntities = [], dynamicEntities = [], staticVersion = 0, dynamicsVersion = null) {
     if (this._staticVersion !== staticVersion) {
-      this._clearStaticLayer();
-      for (const e of staticEntities) {
-        if (e.alive && e.collides) this._insertStatic(e);
-      }
+      // Incremental diff instead of clear+reinsert: only spawned/despawned/span-changed
+      // statics are rehashed and only the cells they touched leave the query caches — a
+      // version bump that changed no membership keeps every warm entry.
+      this._syncStaticLayer(staticEntities);
       this._staticVersion = staticVersion;
-      this._pending.rebuilds++;
-      this.diagnostics.rebuilds++;
     }
 
-    this._syncDynamicLayer(dynamicEntities);
+    this._syncDynamicLayer(dynamicEntities, dynamicsVersion);
     this._updateActiveDiagnostics();
   }
 
@@ -152,9 +171,18 @@ export class SpatialHash {
    * radius/coverage, spawn, die, or fail membership identity checks are rehashed.
    * Stamp-based queryRadius semantics are unchanged (queries always read live entity.pos).
    */
-  _syncDynamicLayer(dynamicEntities) {
+  _syncDynamicLayer(dynamicEntities, dynamicsVersion = null) {
     this._pending.dynamicRebuilds++;
     this.diagnostics.dynamicRebuilds++;
+
+    // Version + length unchanged proves the lane's membership is identical to last pass —
+    // every member gets re-stamped in the walk below, so the drop-unvisited sweep can only
+    // be a no-op. Members that die or lose collides while IN the lane are removed inline,
+    // not by the sweep. An unversioned caller (null) always sweeps.
+    const membershipStable = dynamicsVersion != null
+      && dynamicsVersion === this._dynamicsVersion
+      && dynamicEntities === this._dynamicsSource
+      && dynamicEntities.length === this._dynamicsCount;
 
     let stamp = this._dynamicSyncStamp + 1;
     if (stamp > 0x7fffffff) stamp = 1;
@@ -237,20 +265,25 @@ export class SpatialHash {
     }
 
     // Drop memberships not visited this pass (despawned / left dynamic set / id retired).
-    const removeScratch = this._memberRemoveScratch;
-    removeScratch.length = 0;
-    for (const [id, rec] of this._dynamicMembers) {
-      if (rec.stamp !== stamp) removeScratch.push(id);
+    if (!membershipStable) {
+      const removeScratch = this._memberRemoveScratch;
+      removeScratch.length = 0;
+      for (const [id, rec] of this._dynamicMembers) {
+        if (rec.stamp !== stamp) removeScratch.push(id);
+      }
+      for (let i = 0; i < removeScratch.length; i++) {
+        const id = removeScratch[i];
+        const rec = this._dynamicMembers.get(id);
+        if (!rec) continue;
+        this._removeDynamicMemberRecord(rec);
+        this._dynamicMembers.delete(id);
+        removed++;
+      }
+      removeScratch.length = 0;
     }
-    for (let i = 0; i < removeScratch.length; i++) {
-      const id = removeScratch[i];
-      const rec = this._dynamicMembers.get(id);
-      if (!rec) continue;
-      this._removeDynamicMemberRecord(rec);
-      this._dynamicMembers.delete(id);
-      removed++;
-    }
-    removeScratch.length = 0;
+    this._dynamicsVersion = dynamicsVersion;
+    this._dynamicsCount = dynamicEntities.length;
+    this._dynamicsSource = dynamicEntities;
 
     if (reinserts > 0 || removed > 0) {
       this._compactActiveBuckets(
@@ -268,6 +301,157 @@ export class SpatialHash {
       this._dynamicQueryVersion = (this._dynamicQueryVersion + 1) | 0;
       if (this._dynamicQueryVersion <= 0) this._dynamicQueryVersion = 1;
       this._clearDynamicQueryCache();
+    }
+  }
+
+  /**
+   * Incremental static-layer sync, mirroring _syncDynamicLayer: only statics that spawn, die,
+   * or cross cell/radius boundaries are rehashed. Cached static-query and coherent-query
+   * entries are invalidated only where their cell rectangle intersects a changed span — a
+   * staticVersion bump that changed no real membership leaves every cache warm.
+   */
+  // Incremental static sync. Ordering caveat (adjudicated, W27): a member removed and
+  // reinserted lands at its cells' tail rather than its original slot, so bucket iteration
+  // order is history-dependent — not equivalent to a from-scratch rebuild. That is legal
+  // because every consumer treats results as sets; the only order-observing reader is the
+  // strict first-wins `hit.t < bestHit.t` tie-break (physics.js ~869) on exact ties, which
+  // stays deterministic for any given history. If a live full rebuild is ever introduced
+  // alongside this incremental path, either preserve order on reinsert or sort on read.
+  _syncStaticLayer(staticEntities) {
+    this._pending.rebuilds++;
+    this.diagnostics.rebuilds++;
+
+    let stamp = this._staticSyncStamp + 1;
+    if (stamp > 0x7fffffff) stamp = 1;
+    this._staticSyncStamp = stamp;
+
+    const dirty = this._staticDirtyRects;
+    dirty.length = 0;
+    let reinserts = 0;
+    let unchanged = 0;
+    let removed = 0;
+    const list = staticEntities || [];
+
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      const key = e && e.id != null ? e.id : e;
+      if (!e || !e.alive || !e.collides || !e.pos) {
+        if (key != null) {
+          const stale = this._staticMembers.get(key);
+          if (stale && stale.entity === e) {
+            this._removeStaticMemberRecord(stale);
+            this._staticMembers.delete(key);
+            dirty.push({ x0: stale.x0, x1: stale.x1, z0: stale.z0, z1: stale.z1 });
+            removed++;
+          }
+        }
+        continue;
+      }
+
+      const span = this._cellSpan(e);
+      const prev = this._staticMembers.get(key);
+      if (!prev || prev.entity !== e) {
+        if (prev) {
+          this._removeStaticMemberRecord(prev);
+          dirty.push({ x0: prev.x0, x1: prev.x1, z0: prev.z0, z1: prev.z1 });
+        }
+        this._insertStatic(e);
+        this._staticMembers.set(key, {
+          entity: e,
+          x0: span.x0, x1: span.x1, z0: span.z0, z1: span.z1, r: span.r,
+          stamp,
+        });
+        dirty.push({ x0: span.x0, x1: span.x1, z0: span.z0, z1: span.z1 });
+        reinserts++;
+        continue;
+      }
+
+      if (prev.x0 !== span.x0 || prev.x1 !== span.x1
+        || prev.z0 !== span.z0 || prev.z1 !== span.z1
+        || prev.r !== span.r) {
+        this._removeStaticMemberRecord(prev);
+        this._insertStatic(e);
+        dirty.push({ x0: prev.x0, x1: prev.x1, z0: prev.z0, z1: prev.z1 });
+        dirty.push({ x0: span.x0, x1: span.x1, z0: span.z0, z1: span.z1 });
+        prev.entity = e;
+        prev.x0 = span.x0; prev.x1 = span.x1; prev.z0 = span.z0; prev.z1 = span.z1; prev.r = span.r;
+        prev.stamp = stamp;
+        reinserts++;
+        continue;
+      }
+
+      prev.entity = e;
+      prev.stamp = stamp;
+      unchanged++;
+    }
+
+    // Drop memberships not visited this pass (despawned / left the static set / id retired).
+    const removeScratch = this._staticMemberRemoveScratch;
+    removeScratch.length = 0;
+    for (const [key, rec] of this._staticMembers) {
+      if (rec.stamp !== stamp) removeScratch.push(key);
+    }
+    for (let i = 0; i < removeScratch.length; i++) {
+      const rec = this._staticMembers.get(removeScratch[i]);
+      if (!rec) continue;
+      this._staticMembers.delete(removeScratch[i]);
+      this._removeStaticMemberRecord(rec);
+      dirty.push({ x0: rec.x0, x1: rec.x1, z0: rec.z0, z1: rec.z1 });
+      removed++;
+    }
+    removeScratch.length = 0;
+
+    if (reinserts > 0 || removed > 0) {
+      this._compactActiveBuckets(
+        this._staticActiveBuckets, this._staticActiveCellX, this._staticActiveCellZ,
+      );
+      this._invalidateStaticCells(dirty);
+    }
+
+    this._pending.staticReinserts += reinserts + removed;
+    this._pending.staticUnchanged += unchanged;
+    this.diagnostics.staticReinserts += reinserts + removed;
+    this.diagnostics.staticUnchanged += unchanged;
+  }
+
+  _removeStaticMemberRecord(rec) {
+    if (!rec || !rec.entity) return;
+    this._removeEntityFromCells(
+      this._staticBuckets, this._staticActiveBuckets, this._staticActiveCellX, this._staticActiveCellZ,
+      rec.entity, rec.x0, rec.x1, rec.z0, rec.z1,
+    );
+  }
+
+  _invalidateStaticCells(dirty) {
+    if (!dirty || dirty.length === 0) return;
+    const intersects = (x0, x1, z0, z1) => {
+      for (let i = 0; i < dirty.length; i++) {
+        const d = dirty[i];
+        if (x0 <= d.x1 && x1 >= d.x0 && z0 <= d.z1 && z1 >= d.z0) return true;
+      }
+      return false;
+    };
+    // A cached static query is stale iff the cells it scanned overlap a changed member span.
+    const cache = this._staticQueryCache;
+    for (const [x0, a] of cache) {
+      for (const [x1, b] of a) {
+        for (const [z0, c] of b) {
+          for (const [z1, d] of c) {
+            if (!intersects(x0, x1, z0, z1)) continue;
+            this._staticQueryCacheEntries -= d.size;
+            c.delete(z1);
+          }
+          if (c.size === 0) b.delete(z0);
+        }
+        if (b.size === 0) a.delete(x1);
+      }
+      if (a.size === 0) cache.delete(x0);
+    }
+    this.diagnostics.staticQueryCacheEntries = this._staticQueryCacheEntries;
+    // Coherent records capture queryRadius unions (dynamic + static), so a static membership
+    // change in their rectangle invalidates them by the same intersection rule.
+    for (const [key, rec] of this._coherentQueries) {
+      if (intersects(rec.x0, rec.x1, rec.z0, rec.z1)) this._coherentQueries.delete(key);
     }
   }
 
@@ -311,7 +495,9 @@ export class SpatialHash {
         const idx = b.indexOf(e);
         if (idx < 0) continue;
         const last = b.length - 1;
-        if (idx !== last) b[idx] = b[last];
+        // Order-preserving removal: a bucket's emission order must equal full-rebuild
+        // order so pair resolution never diverges across removal histories.
+        for (let i = idx; i < last; i++) b[i] = b[i + 1];
         b.pop();
         // Continuous-world travel must not leave an ever-growing map of empty cell arrays.
         // Active-array references are compacted once per sync after all removals complete.
@@ -798,6 +984,7 @@ export class SpatialHash {
   _clearStaticLayer() {
     this._clearStaticQueryCache();
     this._coherentQueries.clear();
+    this._staticMembers.clear();
     this._staticBuckets.clear();
     this._staticActiveBuckets.length = 0;
     this._staticActiveCellX.length = 0;
@@ -828,6 +1015,8 @@ export class SpatialHash {
       p.dynamicFullRebuilds = 0;
       p.dynamicReinserts = 0;
       p.dynamicUnchanged = 0;
+      p.staticReinserts = 0;
+      p.staticUnchanged = 0;
       p.gateSkips = 0;
       p.queries = 0;
       p.candidates = 0;
@@ -836,7 +1025,8 @@ export class SpatialHash {
     if (
       !p.rebuilds && !p.dynamicRebuilds && !p.dynamicFullRebuilds &&
       !p.dynamicReinserts && !p.dynamicUnchanged && !p.gateSkips &&
-      !p.queries && !p.candidates
+      !p.queries && !p.candidates &&
+      !p.staticReinserts && !p.staticUnchanged
     ) return;
     perfRuntime.recordSpatialHash(p);
     p.rebuilds = 0;
@@ -844,6 +1034,8 @@ export class SpatialHash {
     p.dynamicFullRebuilds = 0;
     p.dynamicReinserts = 0;
     p.dynamicUnchanged = 0;
+    p.staticReinserts = 0;
+    p.staticUnchanged = 0;
     p.gateSkips = 0;
     p.queries = 0;
     p.candidates = 0;

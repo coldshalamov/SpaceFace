@@ -1140,6 +1140,12 @@ export function createUnreadyDrawableGuard(renderer) {
   // a changed set with an empty drain means an add path bypassed the hook → full traverse once.
   const unreadyMountedRoots = [];
   let mountWatchScene = null;
+  // Pending-only windows scope the unready scan to the pending subjects' subtrees and
+  // instrumented mounts; every Nth such frame still runs the full traverse as the
+  // failsafe for mounts that bypassed scene.add (bounded to N presented-frame draws
+  // for an interior never-compiled mount during a pending window).
+  const UNREADY_PENDING_SWEEP_FRAMES = 30;
+  let unreadyPendingSweep = 0;
   function ensureSceneMountWatch(scene) {
     if (!scene || typeof scene.add !== 'function' || mountWatchScene === scene) return;
     mountWatchScene = scene;
@@ -1185,13 +1191,18 @@ export function createUnreadyDrawableGuard(renderer) {
     // drivers, so the program-readiness scan below can never see them — drawing one would link
     // its variants synchronously inside this presented frame. Hide the root (subtree included)
     // until its admission resolves; restoreUnreadySceneDrawables re-shows it after the pass.
+    // An sfAdmittedOnce root already has linked content worth drawing — a re-admission on it
+    // (a late-mounted drawable discovered under it, a live-geometry re-link) must not blank
+    // the whole ship for the admission window: the per-material scan below and the
+    // renderBufferDirect guard still cover its never-compiled children.
     const pendingSubjects = renderer && renderer.userData
       ? renderer.userData.spacefacePendingPipelineSubjects
       : null;
     if (pendingSubjects && pendingSubjects.size > 0) {
       for (const subject of pendingSubjects) {
         if (unreadySceneCount >= UNREADY_SCENE_CAP) break;
-        if (subject && subject.visible === true) {
+        if (subject && subject.visible === true
+            && !(subject.userData && subject.userData.sfAdmittedOnce === true)) {
           unreadySceneScratch[unreadySceneCount] = subject;
           unreadySceneCount += 1;
           subject.visible = false;
@@ -1261,11 +1272,33 @@ export function createUnreadyDrawableGuard(renderer) {
     // Anything still queued was detached before this pass or covered by the full traverse —
     // drop it so stale roots never accumulate.
     unreadyMountedRoots.length = 0;
-    if (unreadyProgramsPending || (pendingSubjects && pendingSubjects.size > 0)
-        || (sceneSetChanged && drainRoots === null) || !drainRoots) {
-      // Program-level trigger, pending-subject trigger, or the uninstrumented-mutation
-      // failsafe: any existing drawable could hold the unready program — full traverse.
+    const pendingOnlyWindow = unreadyProgramsPending !== true
+      && pendingSubjects && pendingSubjects.size > 0;
+    if (unreadyProgramsPending || (sceneSetChanged && drainRoots === null)
+        || (!pendingOnlyWindow && !drainRoots)) {
+      // Program-level trigger or the uninstrumented-mutation failsafe: any existing
+      // drawable could hold the unready program — full traverse.
+      unreadyPendingSweep = 0;
       scanPresentedDrawables(scene);
+    } else if (pendingOnlyWindow) {
+      // The pending latch already hides those roots; the scoped scan still catches
+      // interior mounts inside them and inside the instrumented drain, and the
+      // periodic sweep below keeps the uninstrumented-mount failsafe bounded.
+      unreadyPendingSweep = (unreadyPendingSweep + 1) % UNREADY_PENDING_SWEEP_FRAMES;
+      if (unreadyPendingSweep === 0) {
+        scanPresentedDrawables(scene);
+      } else {
+        for (const subject of pendingSubjects) {
+          if (subject && typeof subject.traverse === 'function') {
+            scanPresentedDrawables(subject);
+          }
+        }
+        if (drainRoots) {
+          for (const root of drainRoots) {
+            if (root && typeof root.traverse === 'function') scanPresentedDrawables(root);
+          }
+        }
+      }
     } else {
       for (let i = 0; i < drainRoots.length; i++) {
         if (drainRoots[i] && typeof drainRoots[i].traverse === 'function') {
@@ -1361,9 +1394,16 @@ export function createUnreadyDrawableGuard(renderer) {
 
   function restoreUnreadySceneDrawables() {
     if (renderer) renderer.__sfUnreadyDrawGuardDepth = Math.max(0, (renderer.__sfUnreadyDrawGuardDepth || 0) - 1);
+    // Dev instrumentation: remember what was hidden during the pass so the ?drawhist
+    // sampler (which runs after visibility is restored) can still skip it. Bounded —
+    // the sampler clears the set each frame; when it is unarmed the set saturates.
+    const hiddenLog = renderer
+      ? (renderer.__sfLastHiddenDrawables || (renderer.__sfLastHiddenDrawables = new Set()))
+      : null;
     for (let i = 0; i < unreadySceneCount; i++) {
       const object = unreadySceneScratch[i];
       if (object) object.visible = true;
+      if (object && hiddenLog && hiddenLog.size < 4096) hiddenLog.add(object);
       unreadySceneScratch[i] = null;
     }
     unreadySceneCount = 0;

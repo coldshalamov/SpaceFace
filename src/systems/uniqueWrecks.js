@@ -17,6 +17,7 @@ import {
   rewardDescriptors,
 } from '../core/uniqueWreckComplications.js';
 import {
+  UNIQUE_WRECK_MATERIALIZE_PHASES,
   UNIQUE_WRECK_RECEIPT_LIMIT,
   UNIQUE_WRECK_SCAN_RADIUS,
   UNIQUE_WRECK_STATE_SCHEMA_VERSION,
@@ -42,7 +43,9 @@ import { createMemorialThief, normalizeMemorialThief } from './memorialThief.js'
 import { createRescuedWorkerReturn, normalizeRescuedWorkers } from './rescuedWorkerReturn.js';
 import { createScavengerOccupationSwitch, normalizeOccupationSwitch } from './scavengerOccupationSwitch.js';
 
-const VALID_PHASES = new Set(['rumored', 'fixed', 'decision', 'salvaged']);
+// The materialize phase set lives beside the registry so the sector decode warms grade
+// the same gate without importing this module (data/uniqueWrecks.js owns the constants).
+const VALID_PHASES = UNIQUE_WRECK_MATERIALIZE_PHASES;
 
 // The seven canon rumor channels remain native surfaces. A carrier event is only a transport:
 // `_recordRumor` additionally requires the exact primary sourceRef and matching channel.
@@ -123,6 +126,38 @@ function copyPoint(value, fallback) {
     x: finite(value && value.x, base.x),
     z: finite(value && value.z, base.z),
   };
+}
+
+/**
+ * The deterministic plan a wreck complication's fire resolves: pseudo-zone from the def,
+ * rng stream keyed on (programSeed, wreck, encounter), day bucket off simTime. Shared by
+ * _activateEncounter and the renderer's decode warm so the warm replays the same shape.
+ */
+export function planUniqueWreckEncounter({ programSeed, def, bearing, complication, sectorId, simTime, shape }) {
+  const center = globalToSectorLocalForSector(copyPoint(complication.anchor || bearing.exactPos), sectorId);
+  const rng = mulberry32(hash32(
+    programSeed,
+    def.id,
+    complication.encounterId,
+    'unique-wreck-direct-encounter:v1',
+  ) || 1);
+  const zone = {
+    id: `unique-wreck-zone:${def.id}`,
+    name: def.name,
+    type: 'unique_wreck',
+    center,
+    radius: 520,
+    threat: def.programSlot === 'D6' ? 4 : 3,
+    factionId: def.factionId,
+  };
+  return planEncounterShape(
+    shape,
+    zone,
+    sectorId,
+    Math.floor(Math.max(0, finite(simTime, 0)) / 600),
+    0,
+    rng,
+  );
 }
 
 export function createUniqueWreckState(metaSeed) {
@@ -398,6 +433,13 @@ export const uniqueWrecks = {
     this._listen('save:loaded', () => this._onSaveLoaded());
     this._listen('save:restoring', () => this._clearRuntime());
     this._listen('sector:enter', (payload) => this._onSectorEnter(payload));
+    // Census arm: unique-wreck registration lands inside the sector cook deterministically.
+    this._cookProvider = (sector) => this._onSectorEnter({
+      sectorId: (sector && sector.id)
+        || (this.state && this.state.world && this.state.world.currentSectorId),
+    });
+    (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
+      .push(this._cookProvider);
     this._listen('dock:docked', (payload) => this._onDocked(payload));
     for (const [channelId, event] of Object.entries(RUMOR_EVENT_BY_CHANNEL)) {
       this._listen(event, (payload) => this._onNativeRumor(channelId, payload));
@@ -1015,30 +1057,15 @@ export const uniqueWrecks = {
       return true;
     }
     const own = this._ensureState();
-    const center = globalToSectorLocalForSector(anchor, sectorId);
-    const rng = mulberry32(hash32(
-      own.programSeed,
-      def.id,
-      complication.encounterId,
-      'unique-wreck-direct-encounter:v1',
-    ) || 1);
-    const zone = {
-      id: `unique-wreck-zone:${def.id}`,
-      name: def.name,
-      type: 'unique_wreck',
-      center,
-      radius: 520,
-      threat: def.programSlot === 'D6' ? 4 : 3,
-      factionId: def.factionId,
-    };
-    const item = planEncounterShape(
-      shape,
-      zone,
+    const item = planUniqueWreckEncounter({
+      programSeed: own.programSeed,
+      def,
+      bearing,
+      complication,
       sectorId,
-      Math.floor(Math.max(0, finite(this.state.simTime, 0)) / 600),
-      0,
-      rng,
-    );
+      simTime: this.state.simTime,
+      shape,
+    });
     if (!item || !Array.isArray(item.ships) || !item.ships.length) return false;
     item.encounterId = encounterId;
     item.squadId = encounterId;

@@ -27,6 +27,7 @@
 // the recovery, so every bite is preceded by a visible wind-up and a full re-approach.
 import { specialistPlanByEnemyId } from './specialistPlans.js';
 import { wrapAngle } from './contracts.js';
+import { entityIndexLaneVersion, entityIndexVersion } from '../world/livingWorldViews.js';
 
 const CUT_COOLDOWN_TICKS = 90;
 const DISRUPT_COOLDOWN_TICKS = 120;
@@ -88,6 +89,34 @@ function enemyTypeId(entity) {
   return (data && (data.lootTableId || data.enemyTypeId)) || null;
 }
 
+// Warden membership is spawn-fixed — enemyTypeId is stamped on the spec before the entity
+// enters the index — so the roster latches on the entity-index version instead of walking
+// the whole map per routed hit. Volatile gates (alive/pos/team/distance) still run per call.
+// Members are always type 'ship' (warden_escort → ship_bastion), so the live index path
+// latches the shipLike lane only: projectile spawn/expire churn bumps the whole-map version
+// several times a frame under fire while shipLike stays still, and the rebuild pool is the
+// ship bucket, not every entity. Membership and order are identical on both paths.
+const WARD_LANES = ['shipLike'];
+const _wardRoster = { version: null, source: null, list: [] };
+function wardRosterFor(state) {
+  const index = state && state.entityIndex;
+  const useIndex = !!(index && index.__spacefaceEntityIndexV1 === true && index.ready === true
+    && Array.isArray(index.shipLike));
+  const version = useIndex ? entityIndexLaneVersion(state, WARD_LANES) : entityIndexVersion(state);
+  const src = useIndex ? index.shipLike : (state && state.entities);
+  const cache = _wardRoster;
+  if (version == null || version === -1 || cache.version !== version || cache.source !== src) {
+    cache.version = version;
+    cache.source = src;
+    cache.list.length = 0;
+    const pool = useIndex ? index.shipLike : shipsOf(state);
+    for (const e of pool) {
+      if (e && enemyTypeId(e) === WARD_ID) cache.list.push(e);
+    }
+  }
+  return cache.list;
+}
+
 /** Distance from a point to the segment AB, in the XZ plane. */
 export function pointSegmentDistance(point, a, b) {
   if (!point || !a || !b) return Infinity;
@@ -119,9 +148,8 @@ export function wardScreenTarget(state, attacker, target, origin) {
   if (enemyTypeId(target) === WARD_ID) return null;
   let best = null;
   let bestDist = Infinity;
-  for (const ent of shipsOf(state)) {
+  for (const ent of wardRosterFor(state)) {
     if (!ent || ent.alive === false || !ent.pos || ent.id === target.id) continue;
-    if (enemyTypeId(ent) !== WARD_ID) continue;
     if (target.team == null || ent.team !== target.team) continue;
     const radius = finite(ent.collisionRadius, 21) + 6;
     const dist = pointSegmentDistance(ent.pos, attacker.pos, target.pos);
@@ -408,13 +436,29 @@ export function applySpecialistCounterplay({
       ? state.entities.get(state.playerId)
       : null;
     if (!player) return null;
-    for (const ent of shipsOf(state)) {
-      if (!ent || ent.alive === false || ent.id === specialist.id || ent.id === player.id) continue;
-      if (ent.team != null && specialist.team != null && ent.team !== specialist.team) continue;
-      const blocked = wardScreenTarget(state, player, ent, { kind: 'weapon' });
-      if (blocked && blocked.id === specialist.id) return { verb: 'ward_screen', ok: true, targetId: ent.id };
+    // Screen targets resolve to hulls — wardScreenTarget gates on type==='ship', so the
+    // stations lane is dead iteration: every member is rejected at the type check. The
+    // shipLike lane alone answers identically; the unindexed pool keeps its full walk.
+    const index = state && state.entityIndex;
+    const indexed = index && index.__spacefaceEntityIndexV1 === true && index.ready === true
+      && Array.isArray(index.shipLike);
+    const pool = indexed ? null : shipsOf(state);
+    const lanes = indexed ? [index.shipLike] : [pool];
+    // Pick the lowest entity id among valid screeners, not first-in-lane: the shipLike lane's
+    // append order and entityList's swap-pop order diverge, and a replay/test pinning a
+    // targetId must observe the same pick on both paths.
+    let best = null;
+    for (const lane of lanes) {
+      for (const ent of lane) {
+        if (!ent || ent.alive === false || ent.id === specialist.id || ent.id === player.id) continue;
+        if (ent.team != null && specialist.team != null && ent.team !== specialist.team) continue;
+        if (best !== null && ent.id >= best) continue;
+        const blocked = wardScreenTarget(state, player, ent, { kind: 'weapon' });
+        if (blocked && blocked.id === specialist.id) best = ent.id;
+      }
     }
-    return null;
+    if (best === null) return null;
+    return { verb: 'ward_screen', ok: true, targetId: best };
   }
   return null;
 }

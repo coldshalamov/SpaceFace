@@ -243,6 +243,10 @@ export const heistFacilities = {
     this._wiredBus = this.bus;
 
     this.bus.on('sector:enter', ({ sectorId } = {}) => this.materializeForSector(sectorId));
+    // Census arm: facility materialization lands inside the sector cook deterministically.
+    this._cookProvider = (sector) => this.materializeForSector(sector && sector.id);
+    (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
+      .push(this._cookProvider);
     this.bus.on('sector:exit', ({ sectorId } = {}) => this._dematerializeSector(sectorId));
     this.bus.on('entity:destroyed', ({ id } = {}) => this._onEntityDestroyed(id));
     this.bus.on('physics:impact', (impact = {}) => this._onPhysicsImpact(impact));
@@ -426,6 +430,14 @@ export const heistFacilities = {
 
   /** The live berth worker hull, matched by its stable record id (never a recycled numeric id). */
   _findBerthWorker(worldRecordId) {
+    const index = this.state && this.state.entityIndex;
+    if (index && index.__spacefaceEntityIndexV1 === true && index.ready === true
+      && index.byWorldRecordId instanceof Map && index.byWorldRecordIdCount instanceof Map
+      && index.byWorldRecordIdCount.get(worldRecordId) === 1) {
+      const entity = index.byWorldRecordId.get(worldRecordId);
+      return (entity && entity.alive !== false && entity.data
+        && entity.data.berthWorkerId === BREAKAWAY_BERTH.id) ? entity : null;
+    }
     const list = (this.state && this.state.entityList) || [];
     for (let i = 0; i < list.length; i++) {
       const entity = list[i];

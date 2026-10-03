@@ -53,7 +53,7 @@ import {
   createContactHailResponse,
   pirateParleyDemandForHandoff,
 } from '../data/contactHail.js';
-import { entityIndexVersion, forEachLivingWorldActor } from '../world/livingWorldViews.js';
+import { entityIndexVersion, entityIndexLaneVersion, forEachLivingWorldActor } from '../world/livingWorldViews.js';
 import { makeShipEntitySpec } from './ships.js';
 
 export const SCANNER_CONTACT_RANGE = CONTACT_HAIL_RANGE;
@@ -120,6 +120,10 @@ export function scannerProfileForState(state) {
 // Writers of isGhost/ghost bump this so the cadence walk can skip re-collecting when no
 // ghost flag was set or cleared since the last pass.
 let _ghostFlagSeq = 0;
+
+/** Membership lanes for the ghost collect — it walks living actors (shipLike, stations,
+ * wrecks); projectile/pickup/asteroid churn no longer re-collects. */
+const SCANNER_GHOST_LANES = ['shipLike', 'stations', 'wrecks'];
 
 export function markEntityGhost(entity, opts = {}) {
   if (!entity || !entity.alive) return null;
@@ -964,7 +968,8 @@ export const scanner = {
     // the cadence walk would push the same (usually empty) list every 8 ticks.
     const collect = this._ghostCollect || (this._ghostCollect = { flagSeq: -1, version: -1 });
     const ghosts = this._ghostScratch || (this._ghostScratch = []);
-    const version = entityIndexVersion(state);
+    const laneVersion = entityIndexLaneVersion(state, SCANNER_GHOST_LANES);
+    const version = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
     if (collect.flagSeq !== _ghostFlagSeq || collect.version !== version) {
       ghosts.length = 0;
       forEachLivingWorldActor(state, (entity) => {

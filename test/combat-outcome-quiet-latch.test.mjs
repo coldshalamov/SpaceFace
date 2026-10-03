@@ -131,6 +131,11 @@ test('membership change (spawn) invalidates the latch', () => {
   h.state.entities.set(fresh.id, fresh);
   h.state.entityIndex.shipLike.push(fresh);
   h.state.entityIndex.version += 1;
+  // Mirror appendEntityIndex: a shipLike append bumps the lane counter, and the
+  // latched reader now keys on the lane sum rather than the whole index version.
+  const laneVersions = h.state.entityIndex.laneVersions
+    || (h.state.entityIndex.laneVersions = Object.create(null));
+  laneVersions.shipLike = (laneVersions.shipLike || 0) + 1;
   step(h, 4);
   assert.ok(combatOutcomeForEntity(h.state, fresh.id));
 });

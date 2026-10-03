@@ -57,6 +57,7 @@ import {
   normalizeSurveyRecord,
 } from './siteSurvey.js';
 import { getDressingRow, insertDressingRow } from '../world/dressingTable.js';
+import { indexedWorldRecordEntity } from '../world/livingWorldViews.js';
 
 const WORLD_SITE_PAYLOAD_CAPTURE_TICKS = 15;
 
@@ -525,6 +526,19 @@ export const asteroidSites = {
     });
     this.bus.on('save:error', () => { this._worldRestoreActive = false; });
     this.bus.on('physics:impact', (payload = {}) => this._onWorldSiteImpact(payload));
+
+    // Census mount (vesper pattern): register a cook provider so anchored-site rows
+    // materialize inside the renderer's deterministic sector census (jump + opening)
+    // instead of relying on this listener's emit position. syncWorldSiteMaterialization
+    // dedupes by world record, so the emit listener's own call later in the slice is a
+    // no-op — the provider is ordering insurance, not a second spawn path.
+    if (this.ctx && this.ctx.helpers) {
+      (this.ctx.helpers.sectorCookProviders
+        || (this.ctx.helpers.sectorCookProviders = []))
+        .push((sector) => {
+          if (!this._worldRestoreActive) this._syncWorldSites(sector && sector.id);
+        });
+    }
   },
 
   newGame() {
@@ -577,6 +591,12 @@ export const asteroidSites = {
   },
 
   deserialize(data) {
+    for (const _ of this.deserializeChunked(data)) { /* sync lane: every batch inline */ }
+  },
+
+  // Generator twin: each site clone and each manifest normalize is record-atomic, so yields sit
+  // only at record and section boundaries — order and RNG consumption stay identical.
+  *deserializeChunked(data) {
     const next = makeDefaultSites();
     if (data && typeof data === 'object') {
       next.nextSiteNum = Math.max(1, Math.trunc(Number(data.nextSiteNum) || 1));
@@ -587,14 +607,17 @@ export const asteroidSites = {
         if (!site || typeof site !== 'object' || next.byId[id]) continue;
         next.byId[id] = JSON.parse(JSON.stringify(site));
         next.order.push(id);
+        yield 'sites-record';
       }
       for (const manifest of WORLD_SITE_MANIFESTS) {
         const prior = data.worldById && data.worldById[manifest.id];
         next.worldById[manifest.id] = normalizeWorldSiteRecord(manifest, prior);
         next.worldOrder.push(manifest.id);
+        yield 'sites-world-record';
       }
     }
     this.state.sites = next;
+    yield 'sites-assigned';
     this._normalize(next);
     this._ensureWorldSiteRecords();
     this._rt = new Map();
@@ -766,18 +789,57 @@ export const asteroidSites = {
     const payloadDef = manifest.payloads.find((payload) => payload.id === operation.payloadId);
     const receiverDef = manifest.receivers.find((receiver) => receiver.id === operation.receiverId);
     if (!payloadDef || !receiverDef) return null;
+    // Called every beam tick — two worldRecordId lookups, not an O(entities) walk. When the
+    // byWorldRecordId index holds both holders, re-verify the site stamps on the hits and
+    // accept the indexed entity; transient duplicate holders (respawn repair windows) resolve
+    // to the index's holder, per the helper's documented contract. An unready index or a
+    // verification miss falls through to the old walk, which keeps the uniqueness guard.
+    const receiverWorldRecordId = `${manifest.worldObjectId}/component/${receiverDef.componentId}`;
+    const index = this.state.entityIndex;
+    const byWorldRecord = index && index.__spacefaceEntityIndexV1 && index.ready === true
+      && index.byWorldRecordId instanceof Map ? index.byWorldRecordId : null;
+    // The map holds the FIRST carrier — provably the only candidate only when the
+    // count is exactly one; a multi-carrier id falls back to the walk so a later
+    // carrier satisfying the compound predicate is not missed.
+    const wrCounts = index && index.byWorldRecordIdCount instanceof Map
+      ? index.byWorldRecordIdCount : null;
+    let payloadEntity = null;
+    let receiverEntity = null;
+    if (byWorldRecord && wrCounts
+      && wrCounts.get(payloadDef.worldObjectId) === 1
+      && wrCounts.get(receiverWorldRecordId) === 1) {
+      const payloadHit = indexedWorldRecordEntity(this.state, payloadDef.worldObjectId);
+      const receiverHit = indexedWorldRecordEntity(this.state, receiverWorldRecordId);
+      if (payloadHit && payloadHit.data && payloadHit.data.worldSiteId === manifest.id
+        && payloadHit.data.worldSitePayloadId === payloadDef.id) payloadEntity = payloadHit;
+      if (receiverHit && receiverHit.data && receiverHit.data.worldSiteId === manifest.id
+        && receiverHit.data.worldSiteComponentId === receiverDef.componentId) receiverEntity = receiverHit;
+      if (!payloadEntity || !receiverEntity) return null;
+      return {
+        payloadId: payloadDef.id,
+        payloadWorldObjectId: payloadDef.worldObjectId,
+        receiverId: receiverDef.id,
+        payloadPos: { x: payloadEntity.pos.x, z: payloadEntity.pos.z },
+        receiverPos: { x: receiverEntity.pos.x, z: receiverEntity.pos.z },
+      };
+    }
     const payloadEntities = [];
     const receiverEntities = [];
-    for (const entity of this.state.entities.values()) {
+    const idx = this.state.entityIndex;
+    const siteBucket = idx && idx.ready === true && idx.byWorldSiteId instanceof Map
+      && idx._indexedIds && idx._indexedIds.size === this.state.entities.size
+      ? idx.byWorldSiteId.get(manifest.id) : null;
+    const candidates = siteBucket || this.state.entities.values();
+    for (const entity of candidates) {
       if (!entity || entity.alive === false || !entity.data || entity.data.worldSiteId !== manifest.id) continue;
       if (entity.data.worldRecordId === payloadDef.worldObjectId
         && entity.data.worldSitePayloadId === payloadDef.id) payloadEntities.push(entity);
       if (entity.data.worldSiteComponentId === receiverDef.componentId
-        && entity.data.worldRecordId === `${manifest.worldObjectId}/component/${receiverDef.componentId}`) receiverEntities.push(entity);
+        && entity.data.worldRecordId === receiverWorldRecordId) receiverEntities.push(entity);
     }
     if (payloadEntities.length !== 1 || receiverEntities.length !== 1) return null;
-    const payloadEntity = payloadEntities[0];
-    const receiverEntity = receiverEntities[0];
+    payloadEntity = payloadEntities[0];
+    receiverEntity = receiverEntities[0];
     return {
       payloadId: payloadDef.id,
       payloadWorldObjectId: payloadDef.worldObjectId,

@@ -401,7 +401,7 @@ export function createCommandBar(ctx) {
   bus.on('combat:damage', (p) => {
     if (!p || p.targetId === state.playerId) reconcileVitals();
     showImpact(p);
-  });
+  }, { presentation: true });
   bus.on('player:death', () => {
     clearTimeout(impactTimer);
     bar.classList.remove('sf-cb--impact');

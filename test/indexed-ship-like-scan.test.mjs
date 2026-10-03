@@ -173,8 +173,12 @@ test('indexedTypeScan returns the named bucket only when the index is ready', ()
 });
 
 test('entityIndexVersion reports the maintained version or null', () => {
-  const state = { entityIndex: { __spacefaceEntityIndexV1: true, version: 7 } };
+  const state = { entityIndex: { __spacefaceEntityIndexV1: true, version: 7, ready: true } };
   assert.equal(entityIndexVersion(state), 7);
+  // An index mid-repair (ready !== true) reports null — its buckets are emptied/stale, so
+  // readers unify onto the entityList fallback domain instead of scanning a partial set.
+  assert.equal(entityIndexVersion({ entityIndex: { __spacefaceEntityIndexV1: true, version: 7 } }), null);
+  assert.equal(entityIndexVersion({ entityIndex: { __spacefaceEntityIndexV1: true, version: 7, ready: false } }), null);
   assert.equal(entityIndexVersion({ entityIndex: { __spacefaceEntityIndexV1: true } }), null);
   assert.equal(entityIndexVersion({ entityIndex: { version: 3 } }), null);
   assert.equal(entityIndexVersion({}), null);

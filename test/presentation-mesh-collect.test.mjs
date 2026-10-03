@@ -119,6 +119,25 @@ test('mesh collect takes the prefetch circle, not the whole belt', () => {
   assert.ok(mesh.length < 20, `collect must not walk the far belt, got ${mesh.length}`);
 });
 
+test('mesh collect unions the player leg while the look-at lags a relocate', () => {
+  const { state } = boot();
+  const prefetch = prefetchRadius(state);
+  // Post-relocate the frame-local focus can trail thousands of WU behind the player
+  // while it crawls over; rows near the player must not wait for it to arrive.
+  state.camera.focus = { x: 30000, z: 0 };
+  const playerSide = insertFar(state, 901, prefetch - 30, 0);
+  const focusSide = insertFar(state, 902, 30000 - 30, 0);
+  // Inbound hull between the collect disc and the decode runway: closing on the
+  // player means receding from the stale focus, so a focus-only ballot strands it.
+  const inbound = insertFar(state, 903, prefetch + 2000, 0);
+  inbound.vel = { x: -400, z: 0 };
+  const mesh = collectMeshPresentationEntities(state);
+  const seen = ids(mesh);
+  assert.ok(seen.has(playerSide.id), 'a hull inside the player leg still cooks');
+  assert.ok(seen.has(focusSide.id), 'a hull inside the focus leg still cooks');
+  assert.ok(seen.has(inbound.id), 'an inbound hull near the player reaches the runway during the lag');
+});
+
 test('decode-runway promote still leaves field rocks off the combat list', () => {
   const { state, helpers } = boot();
   const prefetch = prefetchRadius(state);

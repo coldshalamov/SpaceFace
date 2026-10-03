@@ -10,6 +10,7 @@ import { createBus } from './core/eventBus.js';
 import { createRegistry } from './core/registry.js';
 import { startLoop } from './core/loop.js';
 import { createPresentationJournal } from './core/presentationJournal.js';
+import { entityIsJournaled } from './world/presentationSources.js';
 import { createPresentationRuntimeCloser } from './core/presentationRunner.js';
 import { canonicalStringify } from './core/simSnapshot.js';
 import { installLiveClipDirector } from './ui/screens/clips.js';
@@ -134,7 +135,13 @@ async function boot() {
       seedOf: () => state && state.meta && state.meta.seed,
       tickOf: () => state && state.tick,
     });
-    const presentationJournal = createPresentationJournal();
+    // Mirrors pushAlive()'s mesh test in presentationSources.js: entities the
+    // rebuild collect can never republish must never journal — a spawn
+    // suppressed during a pending rebuild would otherwise leave the entity
+    // permanently journaled-out, tripping a rebuild once per tick for life.
+    const presentationJournal = createPresentationJournal(undefined, {
+      isEntityJournaled: entityIsJournaled,
+    });
     const loadingPresenter = createLoadingPresenter({ document, bus, state });
     const failurePresenter = createRuntimeFailurePresenter({ document });
     bus.emit('game:loadingProgress', { id: 'boot-contract', progress: .18, ceiling: .20,
@@ -158,7 +165,9 @@ async function boot() {
     const registry = createRegistry(ctx);
     ctx.registry = registry;
     const bootInitMetrics = await registry.initAsync({
-      budgetMs: 4,
+      // Each yield costs a rAF+task hop (~a frame); the loading shell owns the picture, so
+      // larger slices convert that scheduling overhead back into time-to-title.
+      budgetMs: 10,
       onProgress({ completed, total }) {
         bus.emit('game:loadingProgress', {
           id: 'boot-systems', progress: .20 + .72 * (total ? completed / total : 1), ceiling: .94,
@@ -173,7 +182,8 @@ async function boot() {
     // authority is never re-armed under the running sim. finalizeLoadedGame adopts the
     // promise below (and kicks itself if this lane never ran).
     let earlyContinuePhysicsPrep = null;
-    bus.on('save:envelopePrepared', () => {
+    const kickEarlyContinuePhysicsPrep = () => {
+      if (earlyContinuePhysicsPrep) return;
       if (state.mode === 'flight') return;
       const physicsSystem = registry.get('physics');
       if (!physicsSystem || typeof physicsSystem.prepareBackend !== 'function') return;
@@ -187,7 +197,11 @@ async function boot() {
       earlyContinuePhysicsPrep = Promise.resolve()
         .then(() => physicsSystem.prepareBackend(state));
       earlyContinuePhysicsPrep.catch(() => {});
-    });
+    };
+    // Speculative prepare fires during menu dwell — WASM bring-up reads no envelope data,
+    // so it can overlap the dwell instead of serializing inside the Continue gate.
+    bus.on('save:envelopeSpecPrepared', kickEarlyContinuePhysicsPrep);
+    bus.on('save:envelopePrepared', kickEarlyContinuePhysicsPrep);
     helpers.deferLoadedGameRestore = (restore) => {
       bus.emit('game:loadingProgress', {
         id: 'restoring-save',
@@ -538,16 +552,27 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
     guard: runTransitionGuard,
     token: transitionToken,
     async prepareRun() {
+      // The veil goes up before the roster clear: a populated sector's entity:destroyed fan-out
+      // is a multi-hundred-ms stretch, and it must not brick on the previous screen.
+      enterLoadingMode(state, bus);
+      let cleared = 0;
       for (const e of [...state.entityList]) {
         clearEntityRuntime(e);
-        bus.emit('entity:destroyed', { id: e.id, type: e.type, pos: { x: e.pos.x, z: e.pos.z }, radius: e.radius, factionId: e.factionId });
+        bus.emit('entity:destroyed', { id: e.id, type: e.type, pos: { x: e.pos.x, z: e.pos.z }, radius: e.radius, factionId: e.factionId, reason: 'run_reset' });
         if (!runTransitionGuard.isCurrent(transitionToken)) return;
+        if (++cleared % 16 === 0) {
+          await nextPaintSliced();
+          if (!runTransitionGuard.isCurrent(transitionToken)) return;
+        }
       }
       state.entities.clear(); state.entityList.length = 0; state.freeIds.length = 0; state.nextEntityId = 1; state.playerId = 0;
 
       resetRunState(state, opts || {});
+      // The run reset clears every time-effects request, including the veil the loading shell
+      // raised above — re-assert it or a frame landing on the paints below steps the sim while
+      // state.combat is still the fresh, pre-newGame shape.
+      createTimeEffects(state).set('runtime:loading', { scale: 0 });
       resetCombatInputMode(state, registry);
-      enterLoadingMode(state, bus);
       if (!runTransitionGuard.isCurrent(transitionToken)) return;
       // Let the loading shell paint the "preparing" stage between the synchronous chunks —
       // the bar's smoothing loop only moves when the compositor gets a frame.
@@ -814,6 +839,7 @@ function discardPreparedNewGameScene(state, bus, runTransitionGuard, transitionT
       pos: { x: entity.pos.x, z: entity.pos.z },
       radius: entity.radius,
       factionId: entity.factionId,
+      reason: 'run_reset',
     });
     if (!runTransitionGuard.isCurrent(transitionToken)) return false;
   }
@@ -1212,16 +1238,38 @@ function loadingDetailForStage(stageOrId) {
 // its rAF with a timer fallback — when frames present normally the timer is a no-op, and under
 // starvation the waits resolve at the fallback cadence so their callers' own wall-clock bounds
 // still apply instead of the load hanging open.
+// Starvation latch shared by the frame waits: when the timer wins twice running the compositor
+// is demonstrably starved, so remaining boundaries downgrade to setTimeout(0) — they still
+// flush the task queue (worker posts, bus emits) instead of burning the full 48/250ms floor a
+// frame wait cannot deliver anyway. A pending probe rAF re-arms the race on real delivery.
+let frameWaitStarved = 0;
+let frameWaitProbePending = false;
+
+function armFrameWaitProbe() {
+  if (frameWaitProbePending || typeof requestAnimationFrame !== 'function') return;
+  frameWaitProbePending = true;
+  requestAnimationFrame(() => {
+    frameWaitProbePending = false;
+    frameWaitStarved = 0;
+  });
+}
+
 function nextFrame() {
   return new Promise((resolve) => {
     let done = false;
-    const finish = () => {
+    const finish = (viaTimer) => {
       if (done) return;
       done = true;
+      frameWaitStarved = viaTimer ? frameWaitStarved + 1 : 0;
       resolve();
     };
-    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(finish);
-    setTimeout(finish, 48);
+    if (frameWaitStarved >= 2) {
+      armFrameWaitProbe();
+      setTimeout(() => finish(true), 0);
+      return;
+    }
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => finish(false));
+    setTimeout(() => finish(true), 48);
   });
 }
 
@@ -1231,16 +1279,22 @@ function nextPaint() {
   if (typeof requestAnimationFrame !== 'function') return delay(0);
   return new Promise((resolve) => {
     let done = false;
-    const finish = () => {
+    const finish = (viaTimer) => {
       if (done) return;
       done = true;
+      frameWaitStarved = viaTimer ? frameWaitStarved + 1 : 0;
       lastPaintAt = nowMs();
       resolve();
     };
-    requestAnimationFrame(() => requestAnimationFrame(finish));
+    if (frameWaitStarved >= 2) {
+      armFrameWaitProbe();
+      setTimeout(() => finish(true), 0);
+      return;
+    }
+    requestAnimationFrame(() => requestAnimationFrame(() => finish(false)));
     // 250 ms ≈ 4 fps: a merely slow compositor still wins the race and gets its real paint;
     // only a starved one gives the boundary up to the timer.
-    setTimeout(finish, 250);
+    setTimeout(() => finish(true), 250);
   });
 }
 

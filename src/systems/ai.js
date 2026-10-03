@@ -97,6 +97,10 @@ export const ai = {
     if (!state.combat) state.combat = {};
     if (!(state.combat.threatTables instanceof Map)) state.combat.threatTables = new Map();
     this._threat = state.combat.threatTables;
+    // Attacker-side mirror of every id present in any inner table — the only writer is
+    // _addThreat, so onGone skips the O(#tables) values() sweep for corpses that never
+    // aggroed (the overwhelming majority under a residency teardown burst).
+    this._attackersSeen = new Set();
 
     // Aggro on damage: the victim accrues threat against its attacker (§ AGGRO/THREAT).
     bus.on('combat:damage', (p) => {
@@ -109,6 +113,7 @@ export const ai = {
     const onGone = (p) => {
       if (!p || p.id == null) return;
       this._threat.delete(p.id);
+      if (!this._attackersSeen.delete(p.id)) return;
       for (const tbl of this._threat.values()) tbl.delete(p.id);
     };
     bus.on('entity:destroyed', onGone);
@@ -681,6 +686,7 @@ export const ai = {
     let tbl = this._threat.get(targetId);
     if (!tbl) { tbl = new Map(); this._threat.set(targetId, tbl); }
     tbl.set(attackerId, (tbl.get(attackerId) || 0) + amount);
+    this._attackersSeen.add(attackerId);
   },
 
   _checkReinforcements(e, data, state) {
