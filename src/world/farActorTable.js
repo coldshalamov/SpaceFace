@@ -251,6 +251,12 @@ export function shouldVirtualizeFarActor(entity, state) {
   // respawns the full hulk on sector entry. The lean far row drops markerId, so a shelved wreck
   // would promote as an unbindable shell duplicating the marker's own respawn (D89).
   if (data.markerId) return false;
+  // A physical world one-off's body belongs to the dressing materializer the same way:
+  // _spawnWorldOneOffs re-mints/re-decorates by recordId on every sector materialize. The lean
+  // row drops worldOneOff/oneOffId/name/masslineTetherable, so shelving both degrades the
+  // promoted shell and hides the shelved copy from the materializer's live-entity dedup —
+  // every load minted a twin anchored to the same permanent record (D141).
+  if (data.worldOneOff === true) return false;
   if (data.activityActorSlotId || data.wingman || data.role === 'wingman') return false;
   if (flags.tethered || data.tethered) return false;
   if (state.player && state.player.tether && state.player.tether.targetId === entity.id) return false;
@@ -288,6 +294,11 @@ function leanIdentityData(entity) {
   if (d.kind != null) out.kind = d.kind;
   if (d.role != null) out.role = d.role;
   if (d.persistenceOwner != null) out.persistenceOwner = d.persistenceOwner;
+  // The faction-presence marker is the hull's authored identity: activityRuntime's
+  // authoredPresence combat rule, traffic, lossLedger, barkDirector, hails, and the presence
+  // owner's own re-adoption all key on it. A shelved hull that drops it promotes stripped
+  // and unmatchable — its owner then mints a twin beside it (D141).
+  if (d.factionPresence != null) out.factionPresence = d.factionPresence;
   if (d.nextEventAtT != null) out.nextEventAtT = d.nextEventAtT;
   // The durable AI descriptor (archetype/doctrine) must survive shelve→promote: captureEntityRecord
   // reads it, and entitySpecFromRecord only default-fills when the record carries none — dropping it

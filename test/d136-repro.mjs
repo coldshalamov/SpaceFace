@@ -96,13 +96,11 @@ let phaseTag = 'boot';
 
 function tagStack() {
   const s = new Error().stack || '';
-  // Keep the frame that names the spawning function inside src/.
+  // Keep the frames that name the spawning function inside src/ — D141 needs producers
+  // beyond the D136 traffic/world/save list (aftermath, tension, salvage, encounter).
   const frames = s.split('\n')
     .map((l) => l.trim())
-    .filter((l) => l.includes('traffic.js') || l.includes('world.js')
-      || l.includes('saveSystem.js') || l.includes('npcJobsRuntime.js')
-      || l.includes('encounterDirector') || l.includes('missions.js')
-      || l.includes('worldSiteRuntime') || l.includes('activityRuntime'));
+    .filter((l) => (l.includes('src\\') || l.includes('src/')) && !l.includes('d136-repro'));
   return frames.slice(0, 3).join(' | ');
 }
 
@@ -195,6 +193,38 @@ function farRowCensus(state) {
   let dupRows = 0;
   for (const n of byRec.values()) if (n > 1) dupRows += 1;
   return { total: rows.length, dupRecords: dupRows };
+}
+
+// D141 provenance (D141_PROV=1): which records/jobs the accumulating far rows anchor, and
+// whether each anchor is live (record in world.records.byId, job in npcJobs.byId) — the
+// row's own durability law under farActorTable.farRowIsDurable.
+function farRowProvenance(state, label) {
+  const table = state.world && state.world.farActors;
+  const rows = table && Array.isArray(table.rows) ? table.rows : [];
+  const records = (state.world && state.world.records && state.world.records.byId) || {};
+  const jobs = (state.npcJobs && state.npcJobs.byId) || {};
+  const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+  console.log(`\n--- far-row provenance @ ${label} (rows=${rows.length}, simT=${now.toFixed(0)}) ---`);
+  for (const rec of rows) {
+    if (!rec) continue;
+    const d = rec.data && typeof rec.data === 'object' ? rec.data : {};
+    const wr = rec.worldRecordId != null ? rec.worldRecordId : (d.worldRecordId != null ? d.worldRecordId : null);
+    const jobId = rec.jobId != null ? rec.jobId : (d.jobId != null ? d.jobId : null);
+    const record = wr != null ? records[wr] : null;
+    const jobLive = jobId != null && Object.prototype.hasOwnProperty.call(jobs, jobId);
+    const shelfAge = Number.isFinite(rec.virtualizedAt) ? now - rec.virtualizedAt : NaN;
+    const recObsAge = record && Number.isFinite(record.lastObservedT) ? now - record.lastObservedT : NaN;
+    const recNextEvent = record && Number.isFinite(record.nextEventAtT) ? record.nextEventAtT : null;
+    console.log(`  row id=${rec.id} type=${rec.type} role=${rec.trafficRole || d.trafficRole || '-'} `
+      + `wr=${wr || '-'} jobId=${jobId || '-'} jobLive=${jobLive} `
+      + `rec=${record ? `${record.kind}/${record.retentionClass}` : 'MISSING'} `
+      + `recJob=${record && record.jobId || '-'} recAlive=${record ? record.alive !== false : '-'} `
+      + `recOutcome=${record && record.outcome || '-'} shelfAge=${shelfAge.toFixed(0)}s `
+      + `obsAge=${Number.isFinite(recObsAge) ? recObsAge.toFixed(0) + 's' : '-'} `
+      + `nextEvt=${recNextEvent != null ? recNextEvent.toFixed(0) : '-'} `
+      + `anchor=${record || jobLive ? 'durable' : (wr || jobId ? 'ORPHAN' : 'plain')} `
+      + `spawn=[${spawnTrace.get(rec.id) || 'pre-instrument'}]`);
+  }
 }
 
 function worldRecordHistogram(state, label) {
@@ -296,6 +326,7 @@ for (let c = 1; c <= CYCLES; c++) {
   if (dupsBefore.length === 0 && dupsAfter.length > 0) {
     console.log(`  >>> first dups appeared across the save/load boundary this cycle`);
   }
+  if (process.env.D141_PROV === '1') farRowProvenance(state, `cycle ${c}`);
 }
 console.log('\nDONE');
 process.exit(0);

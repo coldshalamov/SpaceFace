@@ -2975,6 +2975,11 @@ export const world = {
         ent = findLiveRecordEntity(this.state, recordId);
         if (ent) {
           this._decoratePhysicalOneOff(ent, oneOff, sector, recordId, identityKey);
+        } else if (farActorHoldsWorldRecord(this.state, recordId)) {
+          // A shelved far row already owns this record's body. Minting a second copy here
+          // shelves again on exit — one extra durable row per load cycle (D141). The row
+          // promotes back on approach and this path re-decorates it live next materialize.
+          continue;
         } else {
           const mass = oneOff.physicalBody.mass;
           ent = this.helpers.spawnEntity({
