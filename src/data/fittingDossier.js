@@ -573,6 +573,7 @@ function deadZero(value) {
 }
 
 /** Weapon spec chips. */
+const TRACKING_LABEL = { fixed: 'Fixed', auto_turret: 'Auto-turret', hitscan: 'Hitscan', homing: 'Homing', deploy: 'Deployed' };
 function weaponStats(def) {
   const out = [];
   const push = (label, value) => { if (value != null && value !== '' && !deadZero(value)) out.push({ label, value }); };
@@ -581,11 +582,26 @@ function weaponStats(def) {
   push('Rate', def.rof != null ? `${num(def.rof, 1)}/s` : null);
   push('Proj. speed', num(def.projSpeed));
   push('Range', num(def.range));
-  push('Tracking', def.tracking);
+  push('Tracking', TRACKING_LABEL[def.tracking] || def.tracking);
   push('Lock', def.lockTimeS != null ? `${num(def.lockTimeS, 1)} s` : null);
   push('Splash', num(def.splashDmg));
   push('Splash radius', num(def.splashRadius));
   push('Impulse', num(def.impulsePerHit));
+  push('Spread', def.spreadDeg != null ? `${num(def.spreadDeg, 1)}°` : null);
+  push('Pierce', def.armorPierce != null ? pct(def.armorPierce) : null);
+  push('Homing turn', def.tracking === 'homing' && def.turnRate != null ? `×${num(def.turnRate, 1)}` : null);
+  push('Arc', def.turretArcDeg != null ? `${num(def.turretArcDeg)}°` : null);
+  push('Intercept', def.interceptChance != null ? pct(def.interceptChance) : null);
+  push('Intercept cd', def.interceptCooldownS != null ? `${num(def.interceptCooldownS, 1)} s` : null);
+  push('Shield bypass', def.shieldBypass != null ? pct(def.shieldBypass) : null);
+  push('Subsystem', def.subsystemShare != null ? pct(def.subsystemShare) : null);
+  push('RCS disrupt', def.rcsDisruptS != null ? `${num(def.rcsDisruptS, 1)} s` : null);
+  push('Pull', num(def.mineWellPull));
+  push('Arms in', def.mineArmS != null ? `${num(def.mineArmS, 1)} s` : null);
+  push('Trigger', def.mineTriggerRadius != null && def.mineTriggerRadius > 0 ? num(def.mineTriggerRadius) : null);
+  push('Blast radius', num(def.mineBlastRadius));
+  push('Life', def.mineLifeS != null ? `${num(def.mineLifeS)} s` : null);
+  push('Max active', num(def.mineMaxActive));
   push('Heat', def.heatPerShot != null ? `${num(def.heatPerShot)}/shot` : (def.heatPerSec != null ? `${num(def.heatPerSec)}/s` : null));
   push('Energy', def.energyCost != null ? `${num(def.energyCost)}${def.continuous ? '/s' : '/shot'}` : null);
   push('Statuses', (def.statuses || []).map((s) => String(s.id || s)
@@ -674,6 +690,11 @@ function hullStats(def) {
   push('Energy regen', num(def.energyRegen));
   push('Cargo', num(def.cargo));
   push('Outfit space', num(def.outfitSpace));
+  push('Handling', def.handling != null ? `×${num(def.handling, 2)}` : null);
+  push('Boost pool', def.boost && def.boost.max != null ? num(def.boost.max) : null);
+  push('Weapon cap', num(def.weaponCapacity));
+  push('Engine cap', num(def.engineCapacity));
+  push('Hardpoints', def.slots ? String(Object.values(def.slots).flat().length) : null);
   return out;
 }
 

@@ -1114,7 +1114,7 @@ export const crucibleDraftScreen = {
       ? (dossier.kind === 'hull' ? dossier.tip : `When it pays: ${dossier.tip}`) : '';
     if (parts.stats && typeof document !== 'undefined') {
       parts.stats.replaceChildren();
-      for (const s of (dossier ? dossier.stats : []).slice(0, 8)) {
+      for (const s of (dossier ? dossier.stats : []).slice(0, 14)) {
         const chip = document.createElement('span'); chip.className = 'orr-armory-stat';
         const k = document.createElement('em'); k.textContent = s.label;
         const v = document.createElement('b'); v.textContent = s.value;

@@ -3,6 +3,7 @@
 import { equipmentSvg } from './equipmentGlyphs.js';
 import { hullPosterUrl } from '../hullPosters.js';
 import { fittingMedia } from '../../data/fittingDossier.js';
+import { SHIPS } from '../../data/ships.js';
 import { injectCruciblePreparation } from './cruciblePreparationLayouts.js';
 
 export function createVisualArmory({ root, reading, parts, onPurchase } = {}) {
@@ -37,17 +38,33 @@ export function createVisualArmory({ root, reading, parts, onPurchase } = {}) {
   return {
     wallet(credits, visible = true) { wallet.hidden = !visible; balance.textContent = `${Math.max(0, Number(credits) || 0).toLocaleString('en-US')} cr`; },
     show(offer, lines, { credits = 0, hullId = '', rows = [] } = {}) {
-      const fitKey = `${hullId}:${rows.map(row => row.defId || '').join('|')}`;
+      const offerHull = offer.kind === 'hull' ? SHIPS.find(s => s.id === (offer.defId || offer.hullId)) : null;
+      const fitKey = `${offerHull ? `offer:${offerHull.id}` : hullId}:${rows.map(row => row.defId || '').join('|')}`;
       if (fitKey !== lastFit) {
         lastFit = fitKey; buildList.replaceChildren();
-        buildSummary.textContent = `Current build · ${rows.filter(row => row.defId).length} / ${rows.length} fitted`;
-        for (const row of rows) {
-          const li = make('li', '');
-          li.appendChild(equipmentSvg({ defId: row.defId || row.slotType }, doc));
-          const text = make('span', '');
-          text.append(make('small', '', `${row.slotIndex + 1} / ${row.slotType} ${row.slotSize}`),
-            make('span', '', row.defId ? row.name || row.defId : 'Empty'));
-          li.appendChild(text); buildList.appendChild(li);
+        if (offerHull && offerHull.slots) {
+          // A hull card's build panel would only restate the current ship — the
+          // deciding information is the offered hull's hardpoint map instead.
+          const oSlots = Object.entries(offerHull.slots)
+            .flatMap(([type, arr]) => (arr || []).map((s) => ({ type, size: typeof s === 'string' ? s : s.size })));
+          buildSummary.textContent = `Offered hull · ${oSlots.length} hardpoints`;
+          oSlots.forEach((slot, i) => {
+            const li = make('li', '');
+            li.appendChild(equipmentSvg({ defId: slot.type }, doc));
+            const text = make('span', '');
+            text.append(make('small', '', `${i + 1} / ${slot.type} ${slot.size}`), make('span', '', 'Open'));
+            li.appendChild(text); buildList.appendChild(li);
+          });
+        } else {
+          buildSummary.textContent = `Current build · ${rows.filter(row => row.defId).length} / ${rows.length} fitted`;
+          for (const row of rows) {
+            const li = make('li', '');
+            li.appendChild(equipmentSvg({ defId: row.defId || row.slotType }, doc));
+            const text = make('span', '');
+            text.append(make('small', '', `${row.slotIndex + 1} / ${row.slotType} ${row.slotSize}`),
+              make('span', '', row.defId ? row.name || row.defId : 'Empty'));
+            li.appendChild(text); buildList.appendChild(li);
+          }
         }
       }
       const artId = `${offer.kind || ''}:${offer.defId || offer.id}`;
