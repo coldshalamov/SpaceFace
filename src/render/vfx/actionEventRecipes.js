@@ -89,6 +89,17 @@ export const ADDITIONAL_ACTION_VFX_RECIPES = Object.freeze({
       ransomed:SURVIVOR_POD_RETIRE.ransomed,
       abandoned:SURVIVOR_POD_RETIRE.abandoned,
     }},
+  // Departure is the cradle run backwards: a vent along the nose, not a second inbound chevron.
+  'dock:undocked': {verb:'vent',primitive:'compression',color:0xc8dff5,life:.7,continuous:false},
+  // Cargo leaves along the ship's impulse. The receipt supplies the point; the sim event does not.
+  'cargo:jettisoned': {verb:'fling',primitive:'pressure',color:0xd8c49a,life:.55,continuous:false},
+  'planet:plungeStage': {verb:'ignition',primitive:'compression',color:0xff8a5c,life:.8,continuous:false},
+  'planet:recoveryBurn': {verb:'ignition',primitive:'compression',color:0xffb070,life:.7,continuous:false,
+    variants:{ off:{verb:'cool',primitive:'deposition',color:0x8aa4c0,life:.4} }},
+  'planet:collector': {verb:'harvest',primitive:'deposition',color:0xc9e6a0,life:.6,continuous:false,
+    variants:{ off:{verb:'cool',primitive:'deposition',color:0x8aa4b8,life:.35} }},
+  // A refused deposit is a cool surface, never a toast.
+  'planet:harvestDenied': {verb:'cool',primitive:'deposition',color:0x9bb7c9,life:.45,continuous:false},
 });
 
 const point = p => p && Number.isFinite(p.x) && Number.isFinite(p.z);
@@ -202,6 +213,39 @@ export function resolveAdditionalActionVfxReceipt(name,p,state) {
   if (name === 'mines:triggered' || name === 'mines:detonated') {
     if (!point(p && p.pos)) return null;
     return {...p, pos: copyPoint(p.pos), sourceId: p.mineId, targetId: p.targetId, attachToTarget: false};
+  }
+  if (name === 'dock:undocked' || name === 'cargo:jettisoned') {
+    const ship = body(state, state && state.playerId);
+    if (!point(ship && ship.pos) || ship.alive === false) return null;
+    const heading = ship.rot || 0;
+    let dx = Math.cos(heading);
+    let dz = Math.sin(heading);
+    if (name === 'cargo:jettisoned') {
+      const vx = ship.vel && ship.vel.x;
+      const vz = ship.vel && ship.vel.z;
+      if (Math.hypot(vx || 0, vz || 0) > 1) { dx = vx; dz = vz; }
+      else { dx = -dx; dz = -dz; }
+    }
+    return {...p, targetId: ship.id, sourceId: ship.id, pos: copyPoint(ship.pos),
+      direction: { x: dx, z: dz }, attachToTarget: false};
+  }
+  if (name === 'planet:plungeStage') {
+    const ent = body(state, p && p.id);
+    if (!point(ent && ent.pos)) return null;
+    const vx = ent.vel && ent.vel.x;
+    const vz = ent.vel && ent.vel.z;
+    const moving = Math.hypot(vx || 0, vz || 0) > 1;
+    return {...p, targetId: ent.id, sourceId: ent.id, pos: copyPoint(ent.pos), attachToTarget: false,
+      direction: moving ? { x: vx, z: vz } : { x: Math.cos(ent.rot || 0), z: Math.sin(ent.rot || 0) }};
+  }
+  if (name === 'planet:recoveryBurn' || name === 'planet:collector' || name === 'planet:harvestDenied') {
+    const ship = body(state, state && state.playerId);
+    if (!point(ship && ship.pos) || ship.alive === false) return null;
+    const aft = name === 'planet:recoveryBurn';
+    const a = (ship.rot || 0) + (aft ? Math.PI : 0);
+    const kind = name === 'planet:harvestDenied' ? undefined : (p && p.on ? 'on' : 'off');
+    return {...p, kind, targetId: ship.id, sourceId: ship.id, pos: copyPoint(ship.pos),
+      direction: { x: Math.cos(a), z: Math.sin(a) }, attachToTarget: false};
   }
   if (name === 'combat:warded') {
     const aimed = body(state, p && p.targetId);
