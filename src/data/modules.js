@@ -321,8 +321,8 @@ const SHIPPED_MODULES = [
   {
     id: 'unique_knitbots', baseId: 'mod_repair_nanobots_m', name: 'Knitbots', slotType: 'utility', size: 'M', tier: 3, mass: 6, price: 0,
     energyDraw: 3, purchasable: false, unique: true, salvageOnly: true,
-    mods: { hullRepairOOC: 4.4, repairDockedDrones: true },
-    variantBonuses: { hullRepairPct: 0.10, repairDockedDrones: true },
+    mods: { hullRepairOOC: 4.4 },
+    variantBonuses: { hullRepairPct: 0.10 },
   },
   {
     id: 'mod_tractor_beam_m', name: 'Tractor Beam M', slotType: 'utility', size: 'M', tier: 2, mass: 4, price: 12000, requiresTech: 'tech_tractor_systems',

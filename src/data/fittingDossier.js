@@ -588,6 +588,7 @@ function weaponStats(def) {
   push('Splash', num(def.splashDmg));
   push('Splash radius', num(def.splashRadius));
   push('Impulse', num(def.impulsePerHit));
+  push('Tumble', num(def.tumbleTorque));
   push('Spread', def.spreadDeg != null ? `${num(def.spreadDeg, 1)}°` : null);
   push('Pierce', def.armorPierce != null ? pct(def.armorPierce) : null);
   push('Homing turn', def.tracking === 'homing' && def.turnRate != null ? `×${num(def.turnRate, 1)}` : null);
