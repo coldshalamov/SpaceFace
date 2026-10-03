@@ -2430,6 +2430,22 @@ export const ships = {
     return true;
   },
 
+  /** NXI-128 — the consume-path twin of unfitModule: a sale/craft router takes the exact
+   *  record the slot carried (never a minted stand-in for a same-defId duplicate), clears
+   *  occupancy, and recomputes. Returns the consumed instance record; null when the slot
+   *  is empty. The record leaves the world with its defId — no hold push, no orphan on
+   *  a null fitting. */
+  takeFittedModuleInstance(shipIndex, slotIndex) {
+    const owned = this.ownedShip(shipIndex);
+    if (!owned || !Array.isArray(owned.fittings)) return null;
+    const defId = owned.fittings[slotIndex];
+    if (!defId) return null;
+    const inst = this._takeFittedInstance(owned, slotIndex);
+    owned.fittings[slotIndex] = null;
+    this.recomputeIfActive(shipIndex, owned.fittings);
+    return inst || { instanceId: null, defId };
+  },
+
   loadoutPresets() {
     const p = this.state.player;
     if (!Array.isArray(p.loadoutPresets)) p.loadoutPresets = [];
