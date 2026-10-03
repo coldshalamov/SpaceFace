@@ -33,10 +33,12 @@ const up = async (k) => page.keyboard.up(k);
 async function settle(ms) { await page.waitForTimeout(ms); }
 
 // --- demo verbs ---------------------------------------------------------------
-// Demos whose whole point is discharging a weapon — a record for one of these with
-// zero combat:fire means the clip shows a ship drifting, so the run gates on it.
-// Specs with an explicit `must` (emergent tools, deploys) keep their own signature.
-const FIRE_DEMOS = new Set(['shoot', 'shoot_nose', 'shoot_inert', 'trait', 'duo_line', 'bank', 'tether_shoot', 'dronebay', 'gyros']);
+// Demos whose whole point is pulling the trigger — a record for one of these with
+// zero player-attributed discharge means the clip shows a ship drifting, so the run
+// gates on it. Specs with an explicit `must` (emergent tools, deploys) keep their own
+// signature. `gyros` is absent on purpose: it holds W through a turn to show handling
+// and never fires — its spec.ev is the gate.
+const FIRE_DEMOS = new Set(['shoot', 'shoot_nose', 'shoot_inert', 'trait', 'duo_line', 'bank', 'tether_shoot', 'dronebay']);
 const ACTS = {
   async shoot(page, spec, t) {
     // Combat-stick auto-aim resolves the locked hostile and writes the lead angle;
