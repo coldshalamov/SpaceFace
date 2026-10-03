@@ -7596,6 +7596,8 @@ export function authoredCriticalVisualReadiness(state) {
       || data.renderFlightReadyRole || data.render && data.render.flightReadyRole
       || (state && state.mode === 'loading'
           && (entity.type === 'wreck' || entity.type === 'drone')
+          && entity.alive !== false
+          && !authoredOpeningFailedClosed(authoredAssetState(entity))
           && startupAuthoredContactOnRunway(entity, state)
           ? FLIGHT_READY_ROLE.GLASS_ACTORS : null)
       || ((isCurrentGlass || (allowRuntimeActivityGate
@@ -7641,6 +7643,7 @@ function authoredPipelineStaged(status) {
     || status === 'authored'
     || status === 'authored-with-cleanup-error'
     || status === 'authored-prepared'
+    || status === 'same-semantic-fallback'
     || status === 'same-semantic-fallback-prepared'
     || status === 'shell-ready';
 }

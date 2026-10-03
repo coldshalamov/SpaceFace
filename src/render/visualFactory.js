@@ -5431,6 +5431,11 @@ function buildFallback(e) {
   root.visible = false;
   root.userData.visualBuildFailed = true;
   root.userData.failedEntityType = e && e.type || 'unknown';
+  // A builder throw on a gate-bound contact would otherwise sit 'missing' forever and
+  // hold flight-ready hostage; stamp the terminal fail-closed identity like
+  // unavailableVisual so the readiness scan releases it.
+  root.userData.authoredAssetState = 'unavailable';
+  root.userData.authoredVisualRoot = 'none-build-failed';
   return root;
 }
 
