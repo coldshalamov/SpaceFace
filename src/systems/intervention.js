@@ -16,7 +16,7 @@
 // story" law. Never writes credits, cargo, or rep (single-writer §0.6); never rolls its own losses.
 
 import { drawSeeded, hash32 } from '../core/rng.js';
-import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
+import { deferSectorEnterMaterialization, deferredEnterNow } from '../core/sectorEnterDefer.js';
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 
 const MAX_ACTIVE = 4;        // cap concurrent interventions so a mass-loss event doesn't spam wrecks
@@ -193,7 +193,7 @@ export const intervention = {
       jumper: null,
       value: job.value,
       recoverable: poolTotal(pool),
-      t: state.simTime || 0,
+      t: deferredEnterNow(state) || 0,
     };
     if (job.cause === 'raided') rec.guardId = this._spawnGuard(rec, pos);
     rec.jumper = this._spawnJumper(rec, pos);

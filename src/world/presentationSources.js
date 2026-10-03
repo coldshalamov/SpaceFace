@@ -354,15 +354,20 @@ function appendNearbyLedgerRows(state, out) {
 
 // Chunked twin: yields per row so the sector cook can drive the ledger walks across its
 // slice clock. Row order (therefore `out` contents) is identical to the sync drain.
+// The module scratches are shared by every collect: a reconcile drain's own collect
+// refills them while this generator is suspended mid-walk, so the row refs are
+// snapshotted at creation — the walk answers the set it was created against.
 export function* appendNearbyLedgerRowsChunked(state, out) {
   const ctx = _nearbyLedgerRowsContext(state);
   if (!ctx) return;
-  for (let i = 0; i < _meshRockScratch.length; i++) {
-    _appendLedgerRockRow(_meshRockScratch[i], ctx, out);
+  const rocks = _meshRockScratch.slice();
+  const fars = _meshFarScratch.slice();
+  for (let i = 0; i < rocks.length; i++) {
+    _appendLedgerRockRow(rocks[i], ctx, out);
     yield;
   }
-  for (let i = 0; i < _meshFarScratch.length; i++) {
-    _appendLedgerFarRow(_meshFarScratch[i], ctx, out);
+  for (let i = 0; i < fars.length; i++) {
+    _appendLedgerFarRow(fars[i], ctx, out);
     yield;
   }
 }

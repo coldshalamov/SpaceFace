@@ -7616,6 +7616,7 @@ export function collectPreparedAuthoredCompileRoots(scene) {
 /** Loading-shell wait only. Does not change the flight-start readiness gate. */
 export async function waitForAuthoredUpgradeQueueIdle(scene, options = {}) {
   const timeoutMs = Math.max(0, Number(options.timeoutMs) || 6000);
+  const stale = typeof options.stale === 'function' ? options.stale : () => false;
   const yieldToMain = typeof options.yieldToMain === 'function'
     ? options.yieldToMain
     : () => new Promise((resolve) => setTimeout(resolve, 16));
@@ -7639,6 +7640,7 @@ export async function waitForAuthoredUpgradeQueueIdle(scene, options = {}) {
     return pumpAuthoredUpgradeQueue(scene);
   };
   while (now() - started < timeoutMs) {
+    if (stale()) return { idle: false, superseded: true, waitedMs: now() - started, ...snapshot() };
     pump();
     const stats = snapshot();
     if (stats.pending === 0 && stats.inFlight === 0 && stats.running !== true
@@ -7695,6 +7697,7 @@ export function requestOpeningCompositionUpgrades(state, renderer, scene, meshes
 /** Loading-shell wait only. Nearby opening actors settle before the live-scene cook, not the flight gate. */
 export async function waitForOpeningCompositionSettled(state, options = {}) {
   const timeoutMs = Math.max(0, Number(options.timeoutMs) || 8000);
+  const stale = typeof options.stale === 'function' ? options.stale : () => false;
   const yieldToMain = typeof options.yieldToMain === 'function'
     ? options.yieldToMain
     : () => new Promise((resolve) => setTimeout(resolve, 16));
@@ -7717,6 +7720,17 @@ export async function waitForOpeningCompositionSettled(state, options = {}) {
   };
   let lastRequest = { requested: 0, ids: [] };
   while (now() - started < timeoutMs) {
+    if (stale()) {
+      return {
+        settled: false,
+        reason: 'superseded',
+        waitedMs: now() - started,
+        pending: -1,
+        ids: [],
+        requested: lastRequest,
+        queue: describeAuthoredUpgradeQueue(options.scene),
+      };
+    }
     lastRequest = request();
     pump();
     const readiness = authoredCriticalVisualReadiness(state);

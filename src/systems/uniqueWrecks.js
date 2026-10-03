@@ -9,7 +9,7 @@ import { salvagePoolForWreck } from '../data/salvageLegality.js';
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 import { globalToSectorLocalForSector } from '../data/sectorCoordinates.js';
 import { hash32, mulberry32 } from '../core/rng.js';
-import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
+import { deferSectorEnterMaterialization, deferredEnterNow } from '../core/sectorEnterDefer.js';
 import { fittedModuleDefs } from '../core/fittedModules.js';
 import {
   complicationEncounterId,
@@ -1081,7 +1081,7 @@ export const uniqueWrecks = {
       bearing,
       complication,
       sectorId,
-      simTime: this.state.simTime,
+      simTime: deferredEnterNow(this.state),
       shape,
     });
     if (!item || !Array.isArray(item.ships) || !item.ships.length) return false;
@@ -1092,7 +1092,7 @@ export const uniqueWrecks = {
       uniqueWreckId: def.id,
       uniqueWreckEncounterId: complication.encounterId,
     };
-    director._fire(dir, this.state, item, shape, Math.max(0, finite(this.state.simTime, 0)));
+    director._fire(dir, this.state, item, shape, Math.max(0, finite(deferredEnterNow(this.state), 0)));
     if (!dir.live[encounterId]) return false;
     complication.status = 'active';
     this.bus.emit('uniqueWreck:encounterActivated', {

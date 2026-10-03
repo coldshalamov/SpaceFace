@@ -960,6 +960,13 @@ export const world = {
     const prevSectorId = state.world.currentSectorId || null;
     if (prevSectorId && prevSectorId !== sectorId) {
       this.bus.emit('sector:exit', { sectorId: prevSectorId, continuous, noTeleport });
+      // Bump the epoch NOW: the deferred-enter FIFO holds entries minted under the
+      // outgoing epoch, and the residency collect below yields (enter-pre-emit) — a
+      // hold beat inside that gap would still see the old epoch as live and mint into
+      // the departing sector. A run-scoped monotonic minted at exit keeps every
+      // pre-gap payload dead for the rest of the enter.
+      state.enterSerialSeq = (Number(state.enterSerialSeq) || 0) + 1;
+      state.world.enterSerial = state.enterSerialSeq;
     }
 
     // Discovery overlay bookkeeping (§3.8) — entering reveals the sector + one hop.
@@ -1046,9 +1053,12 @@ export const world = {
     // The sequence lives on the state root, not the world record: New Game replaces
     // state.world wholesale, so a per-world counter restarts at 1 and a pending emit tail
     // carrying epoch 1 would alias into the fresh world. A run-scoped monotonic keeps every
-    // pre-reset payload mismatched forever.
-    state.enterSerialSeq = (Number(state.enterSerialSeq) || 0) + 1;
-    state.world.enterSerial = state.enterSerialSeq;
+    // pre-reset payload mismatched forever. Same-sector enters (no exit emit) still mint
+    // here; sector-changing enters already minted at the exit emit above.
+    if (!(prevSectorId && prevSectorId !== sectorId)) {
+      state.enterSerialSeq = (Number(state.enterSerialSeq) || 0) + 1;
+      state.world.enterSerial = state.enterSerialSeq;
+    }
     const enterPayload = {
       sectorId, sector, entryPoint, firstVisit, continuous, noTeleport,
       enterEpoch: state.world.enterSerial,
@@ -1056,6 +1066,7 @@ export const world = {
       // 4/frame); state.simTime has advanced by then. Carry the emit's sim time so
       // stamps that want the enter's own clock don't wobble by the window length.
       enterSimTime: state.simTime,
+      enterTick: state.tick,
     };
     // The shell latch must cover the frames between this emit and the renderer's own
     // tail-position sector:enter listener — the 32-listener slice drains 4/frame after
