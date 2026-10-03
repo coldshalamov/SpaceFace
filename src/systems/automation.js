@@ -1243,14 +1243,39 @@ export const automation = {
     if (this._saveRestoring) return;
     if (!a || !Array.isArray(a.outposts)) return;
     const currentSectorId = this.state.world && this.state.world.currentSectorId || null;
-    for (const o of a.outposts) {
+    // Bucket live presence once up front — a per-outpost presence walk costs
+    // O(dressing table + fx lane), so an N-outpost empire paid N × O(D+F)
+    // inside one drive. Rows are keyed by data.automationOutpostId; per-outpost
+    // steps become O(1) lookups (tracked entity still resolves per call).
+    const bucket = new Map();
+    const bucketPush = (entity) => {
+      if (!entity || entity.alive === false || entity.id == null || !entity.data) return;
+      const key = entity.data.automationOutpostId;
+      if (key == null) return;
+      const arr = bucket.get(key) || [];
+      arr.push(entity);
+      bucket.set(key, arr);
+    };
+    const table = this.state.world && this.state.world.dressing;
+    if (table && Array.isArray(table.rows)) {
+      for (const row of table.rows.slice()) {
+        yield;
+        if (row && row.alive !== false) bucketPush(row);
+      }
+    }
+    for (const entity of indexedTypeScan(this.state, 'fx').slice()) {
       yield;
-      if (currentSectorId && o.sectorId === currentSectorId) this._spawnOutpostEntity(o, reconcile);
-      else if (reconcile || o.entityId != null) this._releaseOutpostEntity(o, reconcile);
+      if (entity && entity.type === 'fx') bucketPush(entity);
+    }
+    // Snapshot the live roster — a mid-flight _repossessOne splice can shift it.
+    for (const o of a.outposts.slice()) {
+      yield;
+      if (currentSectorId && o.sectorId === currentSectorId) this._spawnOutpostEntity(o, reconcile, bucket);
+      else if (reconcile || o.entityId != null) this._releaseOutpostEntity(o, reconcile, bucket);
     }
   },
 
-  _collectOutpostPresence(o) {
+  _collectOutpostPresence(o, bucket) {
     const live = [];
     const seen = new Set();
     const push = (entity) => {
@@ -1260,17 +1285,21 @@ export const automation = {
       live.push(entity);
     };
     push(this._getRuntimeEntity(o.entityId));
-    forEachDressingRow(this.state, push);
-    // Pre-dressing leftovers stay type fx on the table; skip ships/stations/shots.
-    const list = indexedTypeScan(this.state, 'fx');
-    for (let i = 0; i < list.length; i++) {
-      const entity = list[i];
-      if (entity && entity.type === 'fx') push(entity);
+    if (bucket) {
+      for (const entity of bucket.get(o.id) || []) push(entity);
+    } else {
+      forEachDressingRow(this.state, push);
+      // Pre-dressing leftovers stay type fx on the table; skip ships/stations/shots.
+      const list = indexedTypeScan(this.state, 'fx');
+      for (let i = 0; i < list.length; i++) {
+        const entity = list[i];
+        if (entity && entity.type === 'fx') push(entity);
+      }
     }
     return live;
   },
 
-  _spawnOutpostEntity(o, reconcile = true) {
+  _spawnOutpostEntity(o, reconcile = true, bucket) {
     if (!o || !this.state) return null;
 
     this._ensureOutpostPosition(o);
@@ -1285,7 +1314,7 @@ export const automation = {
 
     // Reconcile leftover live entities and dressing rows. Repeated enter/load must stay
     // idempotent and collapse a duplicate if an earlier partial transition spawned twice.
-    const live = this._collectOutpostPresence(o);
+    const live = this._collectOutpostPresence(o, bucket);
     if (live.length) {
       const canonical = tracked && live.includes(tracked) ? tracked : live[0];
       o.entityId = canonical.id;
@@ -1321,12 +1350,12 @@ export const automation = {
     return entity || null;
   },
 
-  _releaseOutpostEntity(o, reconcile = true) {
+  _releaseOutpostEntity(o, reconcile = true, bucket) {
     if (!o) return;
     const ids = new Set();
     if (o.entityId != null) ids.add(o.entityId);
     if (reconcile) {
-      for (const entity of this._collectOutpostPresence(o)) ids.add(entity.id);
+      for (const entity of this._collectOutpostPresence(o, bucket)) ids.add(entity.id);
     }
     for (const id of ids) {
       const entity = this._getRuntimeEntity(id);

@@ -149,14 +149,23 @@ export const intervention = {
     const current = state.world && state.world.currentSectorId;
     if (!current) return;
     const pendings = state.pendingInterventions || [];
-    for (let i = pendings.length - 1; i >= 0; i--) {
-      yield;
-      const rec = pendings[i];
-      if (!rec || rec.sectorId !== current) continue;
-      if ((state.interventions || []).length >= MAX_ACTIVE) return;
-      const spawned = this._spawnSite({ ...rec, arrived: true });
-      if (spawned) pendings.splice(i, 1);
-      else break; // no player/spawner in this harness — keep the log, don't spin
+    // Drain to a fixpoint: a pending logged while this generator is suspended
+    // lands past the bound cursor, so a single backwards walk never visits it —
+    // the emit-era inline drain re-walked and caught it. Re-walk only while a
+    // pass consumed at least one record (each splice shrinks the list, so the
+    // fixpoint terminates); a failed spawn still returns immediately.
+    for (;;) {
+      let progressed = false;
+      for (let i = pendings.length - 1; i >= 0; i--) {
+        yield;
+        const rec = pendings[i];
+        if (!rec || rec.sectorId !== current) continue;
+        if ((state.interventions || []).length >= MAX_ACTIVE) return;
+        const spawned = this._spawnSite({ ...rec, arrived: true });
+        if (spawned) { pendings.splice(i, 1); progressed = true; }
+        else return; // no player/spawner in this harness — keep the log, don't spin
+      }
+      if (!progressed) return;
     }
   },
 

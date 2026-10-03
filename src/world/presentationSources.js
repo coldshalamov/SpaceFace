@@ -352,6 +352,17 @@ function appendNearbyLedgerRows(state, out) {
   for (let i = 0; i < _meshFarScratch.length; i++) _appendLedgerFarRow(_meshFarScratch[i], ctx, out);
 }
 
+// Driver-side warm step for the chunked collect: the memo-miss refill inside
+// _nearbyLedgerRowsContext (queryAsteroidField + queryFarActors over the union
+// walk disc, which spans the whole post-jump corridor) is the collect's largest
+// unbounded single step, and inside the generator it runs in the FIRST next()
+// before any yield — slicing can't bound inside a step. Drivers call this as
+// their own step before minting the chunked iterator so the refill lands
+// between slice boundaries; the generator's ctx call then serves from the memo.
+export function warmNearbyLedgerRows(state) {
+  _nearbyLedgerRowsContext(state);
+}
+
 // Chunked twin: yields per row so the sector cook can drive the ledger walks across its
 // slice clock. Row order (therefore `out` contents) is identical to the sync drain.
 // The module scratches are shared by every collect: a reconcile drain's own collect

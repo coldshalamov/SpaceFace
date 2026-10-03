@@ -172,6 +172,7 @@ import {
   clearWaveHullRunwayKeys,
   collectMeshPresentationEntities,
   collectMeshPresentationEntitiesChunked,
+  warmNearbyLedgerRows,
   collectWaveHullDecodeKeys,
   enemyHullDecodeKey,
   enemySpawnFactionId,
@@ -1771,9 +1772,8 @@ export function serviceRenderMeshResidency(owner, frameDt) {
     owner._holdExemptCollectS = (Number(owner._holdExemptCollectS) || 0) - dt;
     if (owner._holdExemptCollectS <= 0) {
       owner._holdExemptCollectS = HOLD_EXEMPT_COLLECT_SECONDS;
-      enqueueHoldExemptMeshBuilds(owner);
+      enqueueHoldExemptMeshBuildsSliced(owner, 4);
       owner._holdExemptRepartition = true;
-      kickDecodeRunwayAssets(owner, owner._presentationMeshScratch);
       // The seam's deferred enter-materializers ride this beat (core/sectorEnterDefer.js):
       // continuous enters used to run the whole spawn cohort inside the emit tail —
       // the last un-veiled in-flight brick — so the beat drives the same FIFO the
@@ -1919,14 +1919,12 @@ export function serviceRenderMeshResidency(owner, frameDt) {
     owner._holdExemptCollectS = (Number(owner._holdExemptCollectS) || 0) - dt;
     if (owner._holdExemptCollectS <= 0) {
       owner._holdExemptCollectS = HOLD_EXEMPT_COLLECT_SECONDS;
-      enqueueHoldExemptMeshBuilds(owner);
+      enqueueHoldExemptMeshBuildsSliced(owner, 4);
       // The exempt verdicts only change with the collect — repartition the tail on this
       // beat, not every display frame (the drain reads the stamped order meanwhile).
       owner._holdExemptRepartition = true;
-      // Lane C: authored decode must cook on the approach runway even while the
-      // hold blocks ordinary residency thrash. preloadAuthoredAssetsForEntity is
-      // bounded (2 starts) and never invents a dummy prewarm key.
-      kickDecodeRunwayAssets(owner, owner._presentationMeshScratch);
+      // Lane C's decode kick rides inside the sliced collect's completing beat —
+      // it consumes the committed presentation set the partition just enqueued.
     }
     if (typeof owner._drainProtectedFirstFlightBuilds === 'function') owner._drainProtectedFirstFlightBuilds();
     return 'held-first-flight';
@@ -1935,6 +1933,9 @@ export function serviceRenderMeshResidency(owner, frameDt) {
   owner._holdExemptRepartition = false;
   owner._holdExemptRemaining = 0;
   owner._holdExemptPersistentSkips = null;
+  // A chunked hold-exempt collect suspended at hold release must close — its
+  // snapshotted scratch rows belong to a window that no longer drives beats.
+  abandonHoldExemptCollect(owner);
   owner._renderResidencyPollS -= dt;
   let pollDue = false;
   const pollCamera = owner.state && owner.state.camera || {};
@@ -2151,32 +2152,82 @@ export function isEntityMeshExpected(entity, state) {
   return isHoldExemptMeshBuild(entity, state, frame && frame.renderGlassIds);
 }
 
+// Close any in-flight chunked hold-exempt collect — called at hold release so a
+// suspended iterator can't pin its snapshotted scratch arrays past the window.
+function abandonHoldExemptCollect(owner) {
+  const iterator = owner && owner._holdExemptCollectIter;
+  if (iterator && typeof iterator.return === 'function') {
+    try { iterator.return(); } catch { /* abandon proceeds regardless */ }
+  }
+  owner._holdExemptCollectIter = null;
+  owner._holdExemptCollectOut = null;
+  owner._holdExemptCollectEpoch = null;
+}
+
 /**
  * Queue the hold-exempt set while the first-flight residency hold owns streaming.
  * Reconcile and poll never run under the hold, so without this the build queue stays
  * empty and the exempt drain below is a no-op (live-confirmed: the rescue rock sat
  * meshless until the hold released at +20 s). The per-build relevance check inside
  * _drainMeshBuildQueue stays the backstop, so far exempt rows still wait their turn.
+ *
+ * Beat-sliced: the sync collect measured
+ * ~5-12 ms atomic (journal walk + ledger scratch loops + union walk) and every
+ * beat paid it inside one presented frame — ~200 beats across the first-flight
+ * hold. The chunked collect rides `collectMeshPresentationEntitiesChunked` with
+ * the iterator held on the owner across beats; each beat resumes until `sliceMs`
+ * or done, then commits `out` into `_presentationMeshScratch` and runs the
+ * exempt partition + decode kick once (the kick consumes the completed list).
+ * `out` lives on the owner between beats — the shared scratch cannot host a
+ * suspended walk (see the jump-census comment at the collect site).
+ * Returns the enqueued count on the completing beat, else 0.
  */
-function enqueueHoldExemptMeshBuilds(owner) {
+function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
   const state = owner && owner.state;
   if (!owner || !state || !owner._meshes || !owner._meshBuildQueuedIds || !owner._meshBuildQueue) return 0;
+  const liveEpoch = state.world && state.world.enterSerial != null ? state.world.enterSerial : null;
+  let iterator = owner._holdExemptCollectIter || null;
+  if (iterator && owner._holdExemptCollectEpoch !== liveEpoch) {
+    abandonHoldExemptCollect(owner);
+    iterator = null;
+  }
+  if (!iterator) {
+    // The spatial refill inside the ctx is the collect's biggest single step —
+    // run it as this beat's own step before minting the iterator.
+    warmNearbyLedgerRows(state);
+    owner._holdExemptCollectOut = [];
+    iterator = collectMeshPresentationEntitiesChunked(state, owner._holdExemptCollectOut);
+    owner._holdExemptCollectIter = iterator;
+    owner._holdExemptCollectEpoch = liveEpoch;
+  }
+  const now = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now() : Date.now());
+  const started = now();
+  let done = false;
+  for (;;) {
+    const step = iterator.next();
+    if (step.done) { done = true; break; }
+    if (now() - started >= sliceMs) break;
+  }
+  if (!done) return 0;
+  const out = owner._holdExemptCollectOut || [];
+  abandonHoldExemptCollect(owner);
+  const scratch = owner._presentationMeshScratch || (owner._presentationMeshScratch = []);
+  scratch.length = 0;
+  for (let i = 0; i < out.length; i++) scratch.push(out[i]);
   const frame = owner._activityFrame;
   const glassIds = frame && frame.renderGlassIds;
-  const list = collectMeshPresentationEntities(
-    state,
-    owner._presentationMeshScratch || (owner._presentationMeshScratch = []),
-  );
   const exempt = makeHoldExemptMeshBuildEvaluator(state, glassIds);
   const before = owner._meshBuildQueue.length;
   enqueueMissingMeshBuilds(
-    list,
+    scratch,
     owner._meshes,
     owner._meshBuildQueuedIds,
     owner._meshBuildQueue,
     (entity) => !owner._sectorBoundaryPreparations?.has(entity.id)
       && exempt(entity),
   );
+  kickDecodeRunwayAssets(owner, scratch);
   return owner._meshBuildQueue.length - before;
 }
 
@@ -10300,6 +10351,10 @@ export const render = {
           remaining: pending ? pending.remainingCount : undefined,
         });
       liveStepStarted = prepareNow();
+      // The pendingPipelines drain early-outs on supersession, but a stale resume
+      // still ran the unguarded window below (player re-derive, rockHit query,
+      // promote loop) under dead authority before the :10353-era guard.
+      if (cookStale()) return cookSuperseded;
       if (opening && opening.settled !== true) {
         console.warn('[render] opening composition still pending at live-sector cook', {
           pending: opening.pending,
@@ -10349,16 +10404,16 @@ export const render = {
         // provider only skips its own cook pass (its cohort was minted at emit) — the
         // cook tail (entity census → teardown → build drain → seals → receipt) survives.
         let openingSliceStart = openingProviderNow();
-        for (const provider of openingCookProviders) {
+        // Snapshot the live registry — a provider that tears down a sibling's
+        // registration mid-drive would otherwise skip the sliding element.
+        for (const provider of openingCookProviders.slice()) {
           if (cookStale()) return cookSuperseded;
+          let iterator = null;
           try {
-            const iterator = provider(openingSector);
+            iterator = provider(openingSector);
             if (iterator && typeof iterator.next === 'function') {
               for (;;) {
-                if (cookStale()) {
-                  if (typeof iterator.return === 'function') iterator.return();
-                  return cookSuperseded;
-                }
+                if (cookStale()) break;
                 const step = iterator.next();
                 if (step.done) break;
                 if (openingProviderNow() - openingSliceStart >= 8) {
@@ -10372,7 +10427,17 @@ export const render = {
               recordOpeningCookStep(state.render, 'opening.sectorCookProvider', openingSliceStart,
                 'failed', { reason: String(providerError && providerError.message || providerError) });
             } catch { /* ledger bookkeeping only */ }
+            if (cookStale()) return cookSuperseded;
             continue;
+          }
+          // A throwing iterator.return() must not swallow the supersession, so the
+          // return runs outside the provider try (after the last provider a throw
+          // would have fallen through to the collect before the next recheck).
+          if (cookStale()) {
+            if (iterator && typeof iterator.return === 'function') {
+              try { iterator.return(); } catch { /* supersession bookkeeping only */ }
+            }
+            return cookSuperseded;
           }
           if (openingProviderNow() - openingSliceStart >= 8) {
             await yieldLiveSectorGpu();
@@ -10380,6 +10445,9 @@ export const render = {
           }
         }
       }
+      // The last provider's elapsed-yield resumes without a recheck — guard
+      // before the collects below re-derive the new world under dead authority.
+      if (cookStale()) return cookSuperseded;
       const firstFlightEntities = recook
         ? openingEntities
         : collectFirstFlightCookEntities(state);
@@ -10401,6 +10469,7 @@ export const render = {
         // Enqueue these builds BEFORE the widened entity set: the queue drains FIFO, and a
         // promoted rock left unbuilt never registers its leaf — the variant chunk then springs
         // into existence mid-round, cold, exactly what this exists to prevent.
+        let survivalSliceStart = openingProviderNow();
         if (player && player.pos) {
           const coveredKeys = new Set();
           for (const entity of state.entityList || []) {
@@ -10421,7 +10490,15 @@ export const render = {
               return (dlx * dlx + dlz * dlz) - (drx * drx + drz * drz);
             });
           const promotedRocks = [];
+          // The rock-promote walk rides the same slice clock as the provider
+          // drive — promotes mutate the world one record at a time, so a bail
+          // mid-walk leaves a completed prefix for the live cook to re-derive.
           for (const rec of reach) {
+            if (cookStale()) return cookSuperseded;
+            if (openingProviderNow() - survivalSliceStart >= 8) {
+              await yieldLiveSectorGpu();
+              survivalSliceStart = openingProviderNow();
+            }
             const key = asteroidFirstFlightCookKey(rec);
             if (coveredKeys.has(key)) continue;
             const promoted = promoteAsteroidFieldRock(state, rec.id, this._simHelpers,
@@ -10448,6 +10525,11 @@ export const render = {
           if (!isEntityRenderRelevant(entity, state)) continue;
           cookSeen.add(entity.id);
           firstFlightEntities.push(entity);
+          if (openingProviderNow() - survivalSliceStart >= 8) {
+            await yieldLiveSectorGpu();
+            survivalSliceStart = openingProviderNow();
+            if (cookStale()) return cookSuperseded;
+          }
         }
       }
       // PQ-210.02 — outside survival the cook covered only the opening table: the
@@ -10462,10 +10544,29 @@ export const render = {
         for (const entity of firstFlightEntities) {
           if (entity && entity.id != null) cookSeen.add(entity.id);
         }
-        const presentation = this._presentationMeshScratch
-          || (this._presentationMeshScratch = []);
-        presentation.length = 0;
-        collectMeshPresentationEntities(state, presentation);
+        // Drive the chunked twin on the provider slice clock and keep the array
+        // LOCAL — the hold beat reuses `_presentationMeshScratch`, so a yield
+        // mid-walk would let that beat empty the scratch and silently drop rows.
+        const presentation = [];
+        let widenSliceStart = openingProviderNow();
+        // The spatial refill inside the ctx is the collect's biggest single
+        // step — run it as the driver's own step before minting the iterator.
+        warmNearbyLedgerRows(state);
+        {
+          const collectIterator = collectMeshPresentationEntitiesChunked(state, presentation);
+          for (;;) {
+            const step = collectIterator.next();
+            if (step.done) break;
+            if (openingProviderNow() - widenSliceStart >= 8) {
+              await yieldLiveSectorGpu();
+              widenSliceStart = openingProviderNow();
+              if (cookStale()) {
+                if (typeof collectIterator.return === 'function') collectIterator.return();
+                return cookSuperseded;
+              }
+            }
+          }
+        }
         for (const entity of presentation) {
           if (!entity || entity.id == null || cookSeen.has(entity.id)) continue;
           // Field-rock records keep their own deliberate coverage (per-variant key
@@ -10480,8 +10581,12 @@ export const render = {
                 renderResidencyRadius(state, 'prefetch', entity))) continue;
           cookSeen.add(entity.id);
           firstFlightEntities.push(entity);
+          if (openingProviderNow() - widenSliceStart >= 8) {
+            await yieldLiveSectorGpu();
+            widenSliceStart = openingProviderNow();
+            if (cookStale()) return cookSuperseded;
+          }
         }
-        presentation.length = 0;
       }
       // Same supersession contract as the after-jump census: a stale cook stamps
       // no id-set and runs no departing-mesh dispose sweep under the new world.
@@ -10745,6 +10850,8 @@ export const render = {
             return !(typeof label === 'string' && label.startsWith('decode:'));
           });
           for (;;) {
+            // A superseded cook must not keep pumping flushes under dead authority.
+            if (cookStale()) return cookSuperseded;
             for (let pending = attachPending(); pending.length > 0; pending = attachPending()) {
               const waitSliceMs = deadline - prepareNow();
               if (waitSliceMs <= 0) { timedOut = true; break; }
@@ -10756,7 +10863,10 @@ export const render = {
             }
             if (timedOut || (pipelineAdmissions.pendingCount | 0) === 0) break;
             flushPipelinesBehindShell();
-            const drain = Promise.resolve(state.render.drainPendingPipelineAdmissions())
+            const drain = Promise.resolve(state.render.drainPendingPipelineAdmissions({
+              timeoutMs: Math.min(Math.max(0, deadline - prepareNow()), 250),
+              stale: cookStale,
+            }))
               .catch(() => null);
             const waitSliceMs = deadline - prepareNow();
             if (waitSliceMs <= 0) { timedOut = true; break; }
@@ -10779,7 +10889,8 @@ export const render = {
           // exemplar subtrees and the authored pool chunks their compose created were never
           // swept. Un-latch so the call below re-runs it — the pass dedupes warm work and
           // re-collects pools/scene drawables, so only genuinely cold subjects cost links.
-          this._postOpeningPipelineAdmissionReleased = false;
+          // A superseded cook must not force the live cook's pass to re-run.
+          if (!cookStale()) this._postOpeningPipelineAdmissionReleased = false;
         }
         // Survival's widened cook enqueues the arena's authored jobs long after the early
         // upgradeQueueIdle wait ran, and a settle timeout can leave jobs in flight when the
@@ -10977,6 +11088,11 @@ export const render = {
               console.warn('[render] bounded warm root residency stamp failed', error);
             }
           }
+          // A superseded cook must not park the bounded warm roots: detached roots
+          // are invisible to the live cook's coverage sweeps (postOpening draws,
+          // never-linked census, depth sweep), so an early park leaves shared
+          // wave-hull programs unlinked until their first presented-frame draw.
+          if (cookStale()) return cookSuperseded;
           const parked = this._parkBoundedWarmRoots();
           if (parked.roots > 0) {
             recordOpeningCookStep(state.render, 'live.parkWarmRoots', parkStarted, 'resolved', {
@@ -11120,9 +11236,9 @@ export const render = {
         for (;;) {
           const sliceMs = settleDeadline - prepareNow();
           if (sliceMs <= 0) { settleOutcome = 'timeout'; break; }
+          if (cookStale()) return cookSuperseded;
           kickMountedBoundaries();
           try {
-            if (cookStale()) return cookSuperseded;
             settleResult = await waitForAuthoredUpgradeQueueIdle(scene, {
               stale: cookStale,
               timeoutMs: Math.min(sliceMs, 4000),
@@ -12307,9 +12423,11 @@ export const render = {
               state.render._deferredEnterClock = prevDeferredEnterClock;
               state.render._deferredEnterTick = prevDeferredEnterTick;
             };
+            let iterator = null;
+            let yieldedSuperseded = null;
             try {
               pinDeferredEnter();
-              const iterator = provider(sector);
+              iterator = provider(sector);
               // Chunked providers return an iterator the census drives serially to completion
               // before the next provider starts (cross-provider adoption order holds), yielding
               // between atomic items on the same slice clock. The pin only covers synchronous
@@ -12319,20 +12437,14 @@ export const render = {
                 for (;;) {
                   // Staleness is consulted per atomic item too: a continuous membership
                   // flip mid-drive must not mint into a sector the cook no longer owns.
-                  if (cookStale()) {
-                    if (typeof iterator.return === 'function') iterator.return();
-                    return cookSuperseded;
-                  }
+                  if (cookStale()) break;
                   const step = iterator.next();
                   if (step.done) break;
                   if (providerNow() - providerSliceStart >= 8) {
                     unpinDeferredEnter();
                     let superseded = null;
                     try { superseded = await providerYield(); } finally { pinDeferredEnter(); }
-                    if (superseded) {
-                      if (typeof iterator.return === 'function') iterator.return();
-                      return superseded;
-                    }
+                    if (superseded) { yieldedSuperseded = superseded; break; }
                   }
                 }
               }
@@ -12341,12 +12453,22 @@ export const render = {
                 recordOpeningCookStep(state.render, 'jump.sectorCookProvider', providerSliceStart,
                   'failed', { reason: String(providerError && providerError.message || providerError) });
               } catch { /* ledger bookkeeping only */ }
+              if (cookStale()) return cookSuperseded;
               continue;
             } finally {
               // Restore the previous pin — a suspended outer driver (another drain,
               // a superseded cook's own provider window) may still be holding one.
               state.render._deferredEnterClock = prevDeferredEnterClock;
               state.render._deferredEnterTick = prevDeferredEnterTick;
+            }
+            // iterator.return() rides outside the provider try — a throwing return
+            // inside it would be recorded as a provider failure and swallow the
+            // supersession (after the last provider there is no loop-head recheck).
+            if (cookStale() || yieldedSuperseded) {
+              if (iterator && typeof iterator.return === 'function') {
+                try { iterator.return(); } catch { /* supersession bookkeeping only */ }
+              }
+              return yieldedSuperseded || cookSuperseded;
             }
             if (providerNow() - providerSliceStart >= 8) {
               const superseded = await providerYield();
@@ -12381,6 +12503,9 @@ export const render = {
           // beat reuses `_presentationMeshScratch`, so a yield here would let that beat
           // empty the scratch mid-walk and silently drop rows.
           const presentation = [];
+          // The spatial refill inside the ctx is the collect's biggest single
+          // step — run it as the driver's own step before minting the iterator.
+          warmNearbyLedgerRows(state);
           {
             const collectIterator = collectMeshPresentationEntitiesChunked(state, presentation);
             for (;;) {
