@@ -689,7 +689,9 @@ export const crucibleDraftScreen = {
         demo: el('p', 'orr-armory-reading__demo', ''),
       };
       const words = el('div', 'orr-armory-reading__words');
-      words.append(parts.verb, parts.name, parts.blurb, parts.act, parts.detail, parts.tip, parts.stats, parts.compare, parts.budget, parts.buy, parts.demo);
+      // "When it pays" is the decision line — it sits above the longer detail paragraph
+      // so the highest-value copy is reachable at short viewports.
+      words.append(parts.verb, parts.name, parts.blurb, parts.act, parts.tip, parts.detail, parts.stats, parts.compare, parts.budget, parts.buy, parts.demo);
       reading.append(parts.jig, words);
       rootEl.appendChild(reading);
       this._reading = { el: reading, parts, jig: createSlotJig({ host: parts.jig }), offerId: null };

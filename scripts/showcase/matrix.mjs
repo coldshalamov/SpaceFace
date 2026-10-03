@@ -63,7 +63,7 @@ export const DEMOS = {
   wpn_sticky_detonator:   { hull: H_M, demo: 'shoot', ev: ['emergent:applied', 'combat:damage', 'weapons:mineDetonated', 'combat:statusApplied'], clip: 9 , must: ['emergent:applied'] },
   wpn_conductive_primer:  { hull: H_M, demo: 'shoot', ev: ['emergent:applied', 'combat:statusApplied', 'combat:damage'], clip: 8 , must: ['emergent:applied'] },
   tool_grav_anchor:       { hull: H_M, demo: 'shoot_inert', ev: ['emergent:applied', 'combat:statusApplied', 'projectile:hit', 'fields:hitchLatched'], clip: 8 , must: ['emergent:applied'] },
-  wpn_thermal_cooker:     { hull: H_M, demo: 'shoot_inert', ev: ['emergent:applied', 'combat:damage', 'combat:statusApplied'], clip: 8 , must: ['emergent:applied'] },
+  wpn_thermal_cooker:     { hull: H_M, demo: 'shoot_inert', ev: ['emergent:applied', 'combat:damage', 'combat:statusApplied'], clip: 8, dist: 25 , must: ['emergent:applied'] },
   wpn_mass_driver:        { hull: H_M, demo: 'shoot_inert', ev: ['emergent:applied', 'combat:shove', 'combat:tumbled', 'projectile:hit'], clip: 8 , must: ['emergent:applied'] },
   tool_polarity_inverter: { hull: H_M, demo: 'shoot', ev: ['emergent:applied', 'combat:statusApplied', 'combat:shove', 'projectile:hit'], clip: 8 , must: ['emergent:applied'] },
   tool_viscosity_field:   { hull: H_M, demo: 'shoot_inert', ev: ['emergent:applied', 'combat:statusApplied', 'fields:deployed', 'projectile:hit'], clip: 8 , must: ['emergent:applied'] },
@@ -111,7 +111,7 @@ export const DEMOS = {
   mod_massline_spool_m:     { hull: H_DRIFTER, demo: 'tether', ev: ['tether:latched'], support: ['mod_tractor_beam_m'], stat: 'tetherSpoolMult', clip: 10 },
   mod_massline_spool_l:     { hull: H_L, demo: 'tether', ev: ['tether:latched'], support: ['mod_tractor_beam_m'], stat: 'tetherSpoolMult', clip: 10 },
   mod_swing_drive_m:        { hull: H_DRIFTER, demo: 'swing', ev: ['tether:latched'], support: ['mod_tractor_beam_m'], stat: 'swingDrive', clip: 10 },
-  mod_swing_drive_s:        { hull: H_KESTREL, demo: 'swing', ev: ['tether:latched'], support: ['mod_tractor_beam_m'], stat: 'swingDrive', clip: 10 },
+  mod_swing_drive_s:        { hull: H_KESTREL, demo: 'swing', ev: ['tether:latched'], stat: 'swingDrive', clip: 10 },
   mod_mass_flail_rig_m:     { hull: H_DRIFTER, demo: 'flail', ev: ['tether:latched', 'combat:damage'], support: ['mod_tractor_beam_m'], stat: 'towFlail', clip: 11 },
 
   // ---- hull bursts -----------------------------------------------------------

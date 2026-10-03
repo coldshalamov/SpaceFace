@@ -8975,9 +8975,11 @@
   "ok": true,
   "clip": "assets/ui/fitting-media/wpn_thermal_cooker.webm",
   "events": {
-   "emergent:applied": 1,
-   "toast": 2,
-   "fields:ended": 1
+   "emergent:applied": 2,
+   "combat:tumbled": 2,
+   "shieldDown": 2,
+   "combat:damage": 2,
+   "combat:statusApplied": 2
   },
   "statDiff": {
    "topSpeed": {
@@ -9006,34 +9008,83 @@
     {
      "c": 1,
      "p": {
-      "targetId": 426,
+      "targetId": 378,
       "weaponId": "wpn_thermal_cooker",
       "kind": "thermal"
-     }
-    }
-   ],
-   "toast": [
-    {
-     "c": 1,
-     "p": {
-      "kind": "good",
-      "text": "Autosaved"
      }
     },
     {
      "c": 2,
      "p": {
-      "kind": "warn",
-      "text": "COUNTEREXAMPLE INBOUND — Standard lance fit. No committed countermeasure. Counterplay: The ordinary lance reset is your approach window."
+      "targetId": 378,
+      "weaponId": "wpn_thermal_cooker",
+      "kind": "thermal"
      }
     }
    ],
-   "fields:ended": [
+   "combat:tumbled": [
     {
      "c": 1,
      "p": {
-      "kind": "cone",
-      "reason": "field_toggled_off"
+      "attackerId": 354,
+      "source": "collision"
+     }
+    },
+    {
+     "c": 2,
+     "p": {
+      "attackerId": 353,
+      "source": "collision"
+     }
+    }
+   ],
+   "shieldDown": [
+    {
+     "c": 1,
+     "p": {}
+    },
+    {
+     "c": 2,
+     "p": {}
+    }
+   ],
+   "combat:damage": [
+    {
+     "c": 1,
+     "p": {
+      "targetId": 353,
+      "attackerId": null,
+      "weaponId": null,
+      "amount": 91.02314504984425,
+      "damageType": null
+     }
+    },
+    {
+     "c": 2,
+     "p": {
+      "targetId": 354,
+      "attackerId": null,
+      "weaponId": null,
+      "amount": 91.02314504984425,
+      "damageType": null
+     }
+    }
+   ],
+   "combat:statusApplied": [
+    {
+     "c": 1,
+     "p": {
+      "targetId": 353,
+      "attackerId": 1,
+      "statusId": "status_tumbling"
+     }
+    },
+    {
+     "c": 2,
+     "p": {
+      "targetId": 354,
+      "attackerId": 1,
+      "statusId": "status_tumbling"
      }
     }
    ]
@@ -13700,49 +13751,43 @@
    "tether:attached": 1,
    "tether:latched": 1,
    "alert": 2,
-   "massline:releaseWindow": 44,
-   "toast": 5,
-   "tether:whipImpact": 1,
-   "combat:tumbled": 2,
-   "combat:damage": 2
+   "combat:damage": 2,
+   "tether:whipImpact": 1
   },
   "statDiff": {
    "topSpeed": {
-    "from": 54.76183017913443,
-    "to": 53.360955942567074
+    "from": 172.05806081961927,
+    "to": 158.94735919965657
    },
    "thrust": {
-    "from": 201.63534690412092,
-    "to": 200.46134307343132
+    "from": 299.9355515212131,
+    "to": 288.9481170156139
    },
    "turnRate": {
-    "from": 1.120011201319808,
-    "to": 1.0883882898210857
+    "from": 4.5619130220708115,
+    "to": 4.079171563599345
    },
    "swingDrive": {
     "from": false,
     "to": true
    },
-   "massLoadFactor": {
-    "from": 0.48994478740549047,
-    "to": 0.48023322136246127
-   },
    "operationalMass": {
-    "from": 95.9062,
-    "to": 98.9062
+    "from": 18.0031,
+    "to": 21.0031
    }
   },
   "fitOk": true,
-  "errors": [
-   "support:mod_tractor_beam_m -> no utility slot >= M on ship_kestrel"
-  ],
+  "errors": [],
+  "mods": {
+   "swingDrive": true
+  },
   "poster": "assets/ui/fitting-media/mod_swing_drive_s.png",
   "evidenceSamples": {
    "tether:attached": [
     {
      "c": 1,
      "p": {
-      "targetId": 432
+      "targetId": 378
      }
     }
    ],
@@ -13750,123 +13795,21 @@
     {
      "c": 1,
      "p": {
-      "targetId": 432
+      "targetId": 378
      }
     }
    ],
    "alert": [
     {
      "c": 1,
-     "p": {}
-    },
-    {
-     "c": 2,
-     "p": {}
-    }
-   ],
-   "massline:releaseWindow": [
-    {
-     "c": 1,
      "p": {
-      "targetId": 459
+      "text": "MASSLINE ATTACHED"
      }
     },
     {
      "c": 2,
      "p": {
-      "targetId": 459
-     }
-    },
-    {
-     "c": 3,
-     "p": {
-      "targetId": 459
-     }
-    },
-    {
-     "c": 4,
-     "p": {
-      "targetId": 459
-     }
-    },
-    {
-     "c": 5,
-     "p": {
-      "targetId": 459
-     }
-    },
-    {
-     "c": 6,
-     "p": {
-      "targetId": 459
-     }
-    },
-    {
-     "c": 7,
-     "p": {
-      "targetId": 459
-     }
-    },
-    {
-     "c": 8,
-     "p": {
-      "targetId": 459
-     }
-    }
-   ],
-   "toast": [
-    {
-     "c": 1,
-     "p": {
-      "kind": "info"
-     }
-    },
-    {
-     "c": 2,
-     "p": {
-      "kind": "good"
-     }
-    },
-    {
-     "c": 3,
-     "p": {
-      "kind": "info"
-     }
-    },
-    {
-     "c": 4,
-     "p": {
-      "kind": "warn"
-     }
-    },
-    {
-     "c": 5,
-     "p": {
-      "kind": "warn"
-     }
-    }
-   ],
-   "tether:whipImpact": [
-    {
-     "c": 1,
-     "p": {
-      "targetId": 432
-     }
-    }
-   ],
-   "combat:tumbled": [
-    {
-     "c": 1,
-     "p": {
-      "attackerId": 459,
-      "source": "collision"
-     }
-    },
-    {
-     "c": 2,
-     "p": {
-      "attackerId": 432,
-      "source": "collision"
+      "text": "MASSLINE IMPACT"
      }
     }
    ],
@@ -13874,26 +13817,33 @@
     {
      "c": 1,
      "p": {
-      "targetId": 432,
+      "targetId": 378,
       "attackerId": null,
       "weaponId": null,
-      "amount": 60.825599999999994,
+      "amount": 0.05050279052548504,
       "damageType": null
      }
     },
     {
      "c": 2,
      "p": {
-      "targetId": 459,
+      "targetId": 379,
       "attackerId": null,
       "weaponId": null,
-      "amount": 60.825599999999994,
+      "amount": 0.05050279052548504,
       "damageType": null
      }
     }
+   ],
+   "tether:whipImpact": [
+    {
+     "c": 1,
+     "p": {
+      "targetId": 378
+     }
+    }
    ]
-  },
-  "mods": null
+  }
  },
  "mod_mass_flail_rig_m": {
   "id": "mod_mass_flail_rig_m",
