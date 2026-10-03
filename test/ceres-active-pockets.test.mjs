@@ -513,12 +513,26 @@ test('R5B materializes six inert object slots and two existing-budget collision 
     'same-sector entry must not create, replace, or reorder Ceres entities');
   assert.deepEqual(repeat.fullCeresSignature, first.fullCeresSignature,
     'same-seed rebuild must retain the complete live Ceres entity signature');
+  // Census re-pinned 2026-10-03 (D137 adjudication) — each drift traced to authored work:
+  //   fauna +12      af734e085 — the wave-C closed_refinery site casts 6 suture mites, 2 archive
+  //                  crabs, 3 casket worms and 1 stone lung at The Closed Refinery
+  //                  (materializeAlienEcology, deterministic off its own rng stream)
+  //   fx +3          7885a276d — the Kettle Line WF-10 legs (poi_kettle_hopper/ribs/stern) are
+  //                  live-actor POIs, promoted through poiMustStayLiveActor
+  //   colliders +52  954a0ab8c + eb1869826 — solid dynamic bodies adopt measured model-truth
+  //                  skins: the two pocket ships went single-capsule → 24-primitive polygon
+  //                  skins, and the three place-dressed rocks compacted 22 → 24-primitive hulls
+  //   opticCells −42 50cc3f2b7 — the prism gallery is field-resident (insertAsteroidFieldRock):
+  //                  its cells promote into entityList only inside the authored decode disc, so
+  //                  a quiet pocket keeps zero live cells. opticResidentCells pins the lattice's
+  //                  survival as bag records so a lost lattice cannot read as a quiet pass.
   assert.deepEqual(first.census, {
     total: 39,
     byType: { asteroid: 6, fauna: 12, fx: 13, ship: 2, station: 6 },
     collidable: 14,
     colliders: 236,
     opticCells: 0,
+    opticResidentCells: 42,
   }, 'a sixth logical object must still add no entity, type, or collider cost to full Ceres');
 
   assert.deepEqual(first.activity.map((row) => row.slotId).sort(), [...EXPECTED_OBJECT_SLOTS].sort());
@@ -871,6 +885,9 @@ function captureCeresActivityState(state, formationModel) {
       collidable: collidable.length,
       colliders,
       opticCells,
+      // 50cc3f2b7 made the lattice field-resident: live cells read 0 by design in a quiet
+      // pocket, so the bag's resident record ids are what prove the gallery still stamps.
+      opticResidentCells: (active.opticStructureIds || []).length,
     },
     activity,
     activityBySlot,
