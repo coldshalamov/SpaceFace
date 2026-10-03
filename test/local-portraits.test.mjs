@@ -24,7 +24,7 @@ test('a local gets one stable face from its role pool, never a role mask', () =>
   for (const role of Object.keys(LOCAL_PORTRAIT_POOL)) {
     const first = localPortraitForContact(contact('station_ceres', 0, role));
     assert.equal(first, localPortraitForContact(contact('station_ceres', 0, role)), 'the same person keeps the same face');
-    assert.match(first, new RegExp(`^${LOCAL_PORTRAIT_ROOT}${role}_0[1-9]\\.jpg$`));
+    assert.match(first, new RegExp(`^${LOCAL_PORTRAIT_ROOT}${role}_\\d{2}\\.jpg$`));
   }
   // Across the 34 stations the pool is spread EVENLY: no face is used more than its fair share.
   const stations = [];

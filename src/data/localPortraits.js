@@ -15,7 +15,7 @@ export const LOCAL_PORTRAIT_ROOT = `${PORTRAIT_ASSET_ROOT}locals/`;
 
 /** role -> number of authored faces (files `<role>_01.jpg` … `<role>_NN.jpg`). Raise a count only with its files. */
 export const LOCAL_PORTRAIT_POOL = Object.freeze({
-  barkeep: 8,
+  barkeep: 16,
   merchant: 8,
   pilot: 8,
   smuggler: 8,
