@@ -215,6 +215,25 @@ function textureFingerprint(resource) {
   };
 }
 
+/**
+ * Mirrors three's setTexture2D upload gate (r184): whether this texture's next bind re-enters
+ * uploadTexture — its version moved (needsUpdate) or its properties record was recreated after
+ * a dispose freed it. On a detached texture that answer is the admission-touch throw: the
+ * uploader reads mipmaps[0]/image on the emptied payload. `properties` is the renderer's own
+ * `renderer.properties` map. A detached texture whose upload stamp still holds binds its live
+ * GPU copy and stays released, so callers pay the re-decode only for textures a draw would
+ * actually re-upload.
+ */
+export function detachedTextureUploadPending(texture, properties) {
+  if (!isPackageTextureDetached(texture)) return false;
+  if (texture.isRenderTargetTexture === true || texture.isExternalTexture === true) return false;
+  if (!(texture.version > 0)) return false;
+  const props = properties && typeof properties.get === 'function'
+    ? properties.get(texture)
+    : null;
+  return !props || props.__version !== texture.version;
+}
+
 async function rehydrateManifest(manifest) {
   const decoded = await manifest.redecode();
   const template = decodedTemplate(decoded);
@@ -259,6 +278,57 @@ async function rehydrateManifest(manifest) {
   return { textures: restored, bytes: restoredBytes };
 }
 
+function rehydrateManifestOnce(manifest) {
+  // One in-flight decode per package: concurrent callers (the serial restore runway and a
+  // targeted texture-level rehydrate) share the same promise instead of double-decoding the
+  // immutable render.glb.
+  if (!manifest.rehydrating) {
+    manifest.rehydrating = rehydrateManifest(manifest).finally(() => {
+      manifest.rehydrating = null;
+    });
+  }
+  return manifest.rehydrating;
+}
+
+/**
+ * Re-attach the CPU payloads of exactly the manifests covering `textures` — the narrow form of
+ * rehydrateDetachedPackages for a caller holding the texture list a pass is about to bind (the
+ * exact-target admission touch). The GPU copies these textures proved still live; this only
+ * refills the emptied mipmaps/source.data so a bind that re-enters the uploader (moved version,
+ * a different upload-cache key on the shared dedupe Source, or a properties record recreated
+ * after dispose) reads real bytes instead of mipmaps[0] on an empty array. Untouched manifests
+ * stay released, and the next residency stamp re-detaches whatever this restored.
+ */
+export async function rehydrateDetachedTextures(textures, options = {}) {
+  const yieldToMain = typeof options.yieldToMain === 'function' ? options.yieldToMain : null;
+  const wanted = new Set();
+  for (const texture of textures || []) {
+    if (!isPackageTextureDetached(texture)) continue;
+    const mark = texture.userData && texture.userData.spacefaceCpuDetach;
+    const manifest = mark && manifests.get(mark.contentHash);
+    if (manifest && !manifest.evicted) wanted.add(manifest);
+  }
+  const result = {
+    skipped: wanted.size === 0,
+    packages: 0,
+    textures: 0,
+    bytes: 0,
+    errors: [],
+  };
+  for (const manifest of wanted) {
+    try {
+      const receipt = await rehydrateManifestOnce(manifest);
+      result.packages += 1;
+      result.textures += receipt.textures;
+      result.bytes += receipt.bytes;
+    } catch (error) {
+      result.errors.push({ assetId: manifest.assetId, error: String(error && error.message || error) });
+    }
+    if (yieldToMain) await yieldToMain();
+  }
+  return result;
+}
+
 /**
  * Re-populate every detached package texture's CPU payload by re-decoding its immutable package,
  * one package at a time (the serial restore runway — a burst of parallel decodes is exactly the
@@ -280,13 +350,8 @@ export async function rehydrateDetachedPackages(options = {}) {
       detachedManifests.delete(manifest);
       continue;
     }
-    if (!manifest.rehydrating) {
-      manifest.rehydrating = rehydrateManifest(manifest).finally(() => {
-        manifest.rehydrating = null;
-      });
-    }
     try {
-      const receipt = await manifest.rehydrating;
+      const receipt = await rehydrateManifestOnce(manifest);
       result.packages += 1;
       result.textures += receipt.textures;
       result.bytes += receipt.bytes;

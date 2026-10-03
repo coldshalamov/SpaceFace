@@ -376,6 +376,7 @@ import {
 } from './resourceGovernor.js';
 import { shouldAwaitOpeningGpuCook } from './renderCapabilityProfile.js';
 import {
+  collectStartupTextures,
   collectUnresidentInstancedDrawables,
   hasUnresidentGeometry,
   prepareStartupGeometryResidency,
@@ -384,7 +385,11 @@ import {
   yieldToNextPresent,
 } from './startupGpuResidency.js';
 import { makeGpuQueuePacer } from './gpuQueuePace.js';
-import { rehydrateDetachedPackages } from './packageCpuDetach.js';
+import {
+  detachedTextureUploadPending,
+  rehydrateDetachedPackages,
+  rehydrateDetachedTextures,
+} from './packageCpuDetach.js';
 import { sharedImageSourceUsers } from './imageSourceDedupe.js';
 import {
   collectOpeningSubmissionLeaves,
@@ -589,6 +594,16 @@ const _overheadCuesOptions = { reducedMotion: false, reducedFlash: false, simTim
 // _shadowPolicyOptions only reads .id, so one frozen-shape object replaces the old
 // per-entity `{ type: typeName }` allocation.
 const _shadowFallbackEntity = { id: undefined, type: '' };
+// livingMachineScore destructures its options synchronously — same contract as the
+// scratches above: every field is rewritten per entity, nothing retains the struct.
+const _livingMachineOptions = {
+  isPlayer: false,
+  onGlass: false,
+  distanceWu: 0,
+  speedWu: 0,
+  role: '',
+  glassRadiusWu: 800,
+};
 
 // Projection/LOD retain: skip updateLod when hysteresis keeps the same band.
 // Asteroid/station updateLod used to re-traverse every visible frame; ships already self-retain.
@@ -1030,7 +1045,13 @@ function entityWithinPlayerRadius(entity, state, radius) {
   return relPx * relPx + relPz * relPz <= reach2;
 }
 
-function liveTableCamera(state) {
+// Every liveTableCamera caller reads the fields synchronously in the same expression that
+// follows the call (residency/shadow radii, admission env, glass extents) and none retains
+// the struct — one pooled env like _admissionEnv, with `out` left for a caller that ever
+// needs its own copy.
+const _liveTableCamera = { zoom: 0, prefetchZoom: 0, fov: 0, tilt: 0, aspect: 0 };
+
+function liveTableCamera(state, out = _liveTableCamera) {
   const camera = state && state.camera || {};
   const video = state && state.settings && state.settings.video || {};
   const requested = Number.isFinite(camera.zoom) ? camera.zoom : NaN;
@@ -1041,7 +1062,12 @@ function liveTableCamera(state) {
     : (Number.isFinite(video.fov) ? video.fov : 50);
   const tilt = Number.isFinite(camera.tilt) ? camera.tilt : 60;
   const aspect = Number.isFinite(camera.aspect) && camera.aspect > 0 ? camera.aspect : 16 / 9;
-  return { zoom, prefetchZoom, fov, tilt, aspect };
+  out.zoom = zoom;
+  out.prefetchZoom = prefetchZoom;
+  out.fov = fov;
+  out.tilt = tilt;
+  out.aspect = aspect;
+  return out;
 }
 
 function liveShadowCastRadius(state) {
@@ -1437,6 +1463,15 @@ function _landmarkKeepOptsFor(entity, state) {
   return _landmarkKeepOpts;
 }
 
+// Activity-frame glass/runway membership: Set.has when the frame publishes a real set,
+// array includes for the serialized/lite frames — hoisted so the per-entity residency
+// poll does not re-allocate the probe closure.
+function activityFrameListsId(collection, id) {
+  return collection && typeof collection.has === 'function'
+    ? collection.has(id)
+    : Array.isArray(collection) && collection.includes(id);
+}
+
 /** Pure render-streaming policy used by reconciliation and focused tests. */
 export function isEntityRenderRelevant(entity, state, radius = null, options = null) {
   if (!entity || entity.alive === false || entity._noMesh) return false;
@@ -1480,11 +1515,8 @@ export function isEntityRenderRelevant(entity, state, radius = null, options = n
   const activityFrame = state && state.render && state.render.activityFrame;
   const inboundDecode = isInboundDecodeHull(entity, state, radius, scan && scan.env);
   if (activityFrame && activityFrame.complete === true) {
-    const has = (collection) => collection && typeof collection.has === 'function'
-      ? collection.has(entity.id)
-      : Array.isArray(collection) && collection.includes(entity.id);
-    if (has(activityFrame.renderGlassIds)) return true;
-    if (has(activityFrame.renderRunwayIds)) return true;
+    if (activityFrameListsId(activityFrame.renderGlassIds, entity.id)) return true;
+    if (activityFrameListsId(activityFrame.renderRunwayIds, entity.id)) return true;
     // Ledger rows are not combat-list members, so the activity frame never
     // names them. Distance policy still owns their mesh so the rim cannot pop.
     // A just-promoted inbound hull has the same hole: requestDecodeRunwayPromote
@@ -8727,6 +8759,7 @@ export const render = {
         await admitOpeningUnitsAcrossSlices({
           deadlineMs: 8000,
           units: uniqueAdmissionUnits([...leaves, ...extraVfx]),
+          renderer,
           beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
           compileOne: async (subject) => {
             if (!lifecycle.isActive()) throw new Error('renderer lifecycle destroyed during opening admission');
@@ -9252,6 +9285,21 @@ export const render = {
       return touchSubjectOnExactTarget(renderer, null, list, cam.obj, scene);
     };
     const admissionPaceYield = () => yieldToNextPresent({ boundMs: FLIGHT_ADMISSION_PRESENT_BOUND_MS });
+    // A package texture whose CPU mirror was released after its proven upload still reaches
+    // three's uploader when the next bind re-enters it — a moved version, a different
+    // upload-cache key on the shared dedupe Source, or a properties record recreated after
+    // dispose — and uploadTexture reads mipmaps[0] on the emptied array (D150). Re-attach just
+    // those payloads before the draw: the forced upload then lands real bytes behind the
+    // admission's own latch instead of throwing mid-touch and pushing the residual links into
+    // a presented bloom frame. Still-stamped detached textures keep their release; the next
+    // residency pass re-detaches whatever this restored.
+    const detachedSubjectUploadsPending = (subjects) => collectStartupTextures(subjects)
+      .filter((texture) => detachedTextureUploadPending(texture, renderer.properties));
+    const reattachDetachedSubjectTextures = async (subjects) => {
+      const pending = detachedSubjectUploadsPending(subjects);
+      if (pending.length === 0) return null;
+      return rehydrateDetachedTextures(pending, { yieldToMain: admissionPaceYield });
+    };
     const compileForCurrentTarget = (subjects, compileOptions) => {
       const optionActive = compileOptions && compileOptions.isActive;
       const isRootActive = typeof optionActive === 'function'
@@ -9594,7 +9642,7 @@ export const render = {
             () => result,
           );
         })
-        .then((result) => {
+        .then(async (result) => {
           if (state.mode === 'loading' && state.render.liveSectorGpuAdmission !== true) {
             return result;
           }
@@ -9607,6 +9655,14 @@ export const render = {
           if (typeof admissionOptions.isActive === 'function'
               && admissionOptions.isActive(subject) !== true) {
             return result;
+          }
+          // A cpu-detached package texture this draw would force-upload reads an emptied mip
+          // chain inside uploadTexture and throws — the touch exists to keep exactly that work
+          // out of the presented pass, so re-attach those payloads first (D150).
+          try {
+            await reattachDetachedSubjectTextures(subject);
+          } catch (error) {
+            console.warn('[render] admission touch texture reattach failed', error);
           }
           // compile() resolves under the armed admission state; the presented pass can still
           // ask the driver for a different program key (shadow-gate drift, env binding, target
@@ -9740,6 +9796,30 @@ export const render = {
           || (recovery.pendingExactTargetTouches = new Set());
         queued.add(subject);
         return { skipped: true, reason: 'context-recovery-queued' };
+      }
+      // The seam is synchronous, but a cpu-detached package texture this draw would
+      // force-upload reads emptied mipmaps inside the draw and throws (D150) — for that
+      // subject only, re-attach the payloads first and run the identical reveal+touch in the
+      // continuation. Every other subject keeps the sync draw below.
+      const detachedPendingUpload = detachedSubjectUploadsPending(subject);
+      if (detachedPendingUpload.length > 0) {
+        return rehydrateDetachedTextures(detachedPendingUpload, { yieldToMain: admissionPaceYield })
+          .catch((error) => {
+            console.warn('[render] exact-target touch texture reattach failed', error);
+          })
+          .then(() => {
+            const restoreDetached = revealSubjectWithAncestors(subject);
+            try {
+              return touchExactTargetSubject(subject);
+            } catch (error) {
+              // Sync callers catch the same throw; the async branch logs it here so the
+              // returned promise never lands an unhandled rejection on a best-effort caller.
+              console.warn('[render] exact-target admission touch failed', error);
+              return { skipped: true, reason: 'touch-failed' };
+            } finally {
+              restoreDetached();
+            }
+          });
       }
       // The boundary itself can still be hidden ('authored-prepared' substrates are), so the
       // reveal must cover ancestors as well as the subject subtree — a hidden ancestor makes
@@ -10185,6 +10265,7 @@ export const render = {
       const result = allSubjects.length > 0
         ? await admitOpeningUnitsAcrossSlices({
           units,
+          renderer,
           beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
           compileOne: (subject) => whileRevealed(subject, () => compileSubjectColorAndDepth(subject, route)),
           touchOne: (subject) => whileRevealed(subject, () => touchExactTargetSubject(subject)),
@@ -10336,6 +10417,14 @@ export const render = {
         const recookRoute = typeof this._selectPostRoute === 'function' ? this._selectPostRoute() : null;
         const rehearsalStarted = recookNow();
         let rehearsalOutcome = 'resolved';
+        // The whole-scene rehearsal render can bind a cpu-detached package texture whose next
+        // upload re-enters three's uploader on the emptied mirror (D150) — re-attach just those
+        // payloads first so the warm draws real bytes instead of throwing mid-render.
+        try {
+          await reattachDetachedSubjectTextures(this.scene);
+        } catch (error) {
+          console.warn('[render] rehearsal texture reattach failed', error);
+        }
         try {
           if (recookStale()) {
             rehearsalOutcome = 'skipped';
@@ -10388,6 +10477,22 @@ export const render = {
       // publication gate so they can commit here; keep mesh streaming deferred.
       releaseOpeningGraphPublication(this);
       state.render.liveSectorGpuAdmission = true;
+      // Minted into the same generation counter the after-jump cook uses: a second
+      // restore/new-game mid-cook mints again, so every mutating step below re-checks
+      // staleness before it commits against a world this cook no longer owns — the
+      // preflight path is the longest cook window in the game (~20-120 s of awaits).
+      // The mint sits outside the try block: the finally tail reads this capture to
+      // skip flag-clearing owned by a superseding cook — declaring it inside the try
+      // scopes it away from the finally and turns every completion into a
+      // ReferenceError.
+      const sectorId = state.world && state.world.currentSectorId;
+      const cookGeneration = (this._liveSectorCookGeneration = (this._liveSectorCookGeneration || 0) + 1);
+      const cookEnterSerial = state.world && state.world.enterSerial;
+      const cookStale = () => cookGeneration !== this._liveSectorCookGeneration
+        || !state.world
+        || state.world.enterSerial !== cookEnterSerial
+        || state.world.currentSectorId !== sectorId;
+      const cookSuperseded = { skipped: true, reason: 'sector-superseded', sectorId: sectorId || null };
       try {
       const yieldLiveSectorGpu = async () => {
         // GLB/KTX2 decode, ANGLE links, and 1x1 buffer uploads do not retire
@@ -10464,18 +10569,6 @@ export const render = {
       };
       if (!scene.environment) this._bakeEnv({ force: true });
       if (scene.environment) bindEnvironmentToStandardMaterials(scene, scene.environment);
-      const sectorId = state.world && state.world.currentSectorId;
-      // Minted into the same generation counter the after-jump cook uses: a second
-      // restore/new-game mid-cook mints again, so every mutating step below re-checks
-      // staleness before it commits against a world this cook no longer owns — the
-      // preflight path is the longest cook window in the game (~20-120 s of awaits).
-      const cookGeneration = (this._liveSectorCookGeneration = (this._liveSectorCookGeneration || 0) + 1);
-      const cookEnterSerial = state.world && state.world.enterSerial;
-      const cookStale = () => cookGeneration !== this._liveSectorCookGeneration
-        || !state.world
-        || state.world.enterSerial !== cookEnterSerial
-        || state.world.currentSectorId !== sectorId;
-      const cookSuperseded = { skipped: true, reason: 'sector-superseded', sectorId: sectorId || null };
       const recook = this._sessionLiveSectorCookedId === sectorId && this._contextLost !== true;
       const resumed = recook
         ? resumeAuthoredUpgradeQueueForLoadingHulls(scene)
@@ -10987,6 +11080,7 @@ export const render = {
             materialSettle = await admitOpeningUnitsAcrossSlices({
               deadlineMs: Math.min(6000, remainingMs()),
               units: uniqueAdmissionUnits(staleSubjects),
+              renderer,
               beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
               compileOne: (subject) => {
                 const restore = revealSubjectWithAncestors(subject);
@@ -11269,6 +11363,7 @@ export const render = {
               await admitOpeningUnitsAcrossSlices({
                 units: sealUnits,
                 issueKeyFor: openingCompileIssueKey,
+                renderer,
                 beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
                 compileOne: (subject) => whileRevealed(subject,
                   () => compileSubjectColorAndDepth(subject, sealRoute)),
@@ -11676,6 +11771,19 @@ export const render = {
       if (state.mode !== 'loading' && state.render.sectorShellAdmission !== true) {
         return { skipped: true, reason: 'not-loading' };
       }
+      // This cook runs under the invoker's generation mint (the preflight and
+      // after-jump paths both increment _liveSectorCookGeneration before calling
+      // here). Capture the live value at entry: a newer mint — or a world swap that
+      // never minted — means every staged compile/upload below belongs to a dead
+      // world and must bail. The callers' cookStale closures are sibling scope and
+      // are not visible here.
+      const cookGeneration = this._liveSectorCookGeneration;
+      const cookEnterSerial = state.world && state.world.enterSerial;
+      const cookSectorId = state.world && state.world.currentSectorId;
+      const cookStale = () => cookGeneration !== this._liveSectorCookGeneration
+        || !state.world
+        || state.world.enterSerial !== cookEnterSerial
+        || state.world.currentSectorId !== cookSectorId;
       if (cookStale()) return { skipped: true, reason: 'sector-superseded' };
       const cookNow = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
         ? performance.now() : Date.now());
@@ -11972,6 +12080,14 @@ export const render = {
               contextLost: cohortDrain && cohortDrain.contextLost === true ? true : undefined,
               yields: compileYield ? compileYield.yields : undefined,
             });
+          // This hand-rolled cohort bypasses the admit driver, so it runs the same detach
+          // census itself: a cpu-detached package texture a touch below would force-upload
+          // reads emptied mipmaps inside the draw (D150) — re-attach those payloads first.
+          try {
+            await reattachDetachedSubjectTextures(units.programSubjects);
+          } catch (error) {
+            console.warn('[render] cook touch texture reattach failed', error);
+          }
           // Loading shell: several touches share a frame until ~8 ms of touch work, then yield
           // (laneB-fixA: 89 touches drew for 1261 ms and spent ~1.3 s more yielding a whole frame after
           // every one). The jump shell keeps one touch per frame.
@@ -12376,6 +12492,7 @@ export const render = {
           try {
             rockPools = await admitOpeningUnitsAcrossSlices({
               units: cookUnits,
+              renderer,
               // Thousands of palette-cloned subjects share a program signature — issue one
               // compile per signature, not one per material object (~14 s of per-unit issue
               // JS on the owner's iGPU collapses to the distinct-program count).
@@ -13070,6 +13187,7 @@ export const render = {
               },
             ),
             issueKeyFor: openingCompileIssueKey,
+            renderer,
             beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
             compileOne: (subject) => whileRevealed(subject, () => compileSubjectColorAndDepth(subject, route)),
             touchOne: (subject) => whileRevealed(subject, () => touchExactTargetSubject(subject)),
@@ -18122,6 +18240,20 @@ export const render = {
     return this._posePackEpoch;
   },
 
+  // The state.render mirror is a stats record, not an event: consumers read the fields
+  // (runtimeWitness bytes), nothing compares wrapper identity. One stable object mutated
+  // in place keeps the per-frame pack path allocation-free.
+  _publishSnapshotFenceStats(packed) {
+    const renderState = this.state && this.state.render;
+    const fence = this._snapshotFence;
+    if (!renderState || !fence) return;
+    const info = renderState.snapshotFence
+      || (renderState.snapshotFence = { sequence: 0, packed: 0, bytes: 0 });
+    info.sequence = fence.sequence;
+    info.packed = packed;
+    info.bytes = fence.lastBytesPacked;
+  },
+
   _applyPresentationPose(slot, mesh, alpha, currentOnly = false) {
     if (!mesh || !mesh.position) return false;
     const world = this._presentationWorld;
@@ -18398,7 +18530,9 @@ export const render = {
       _viewBandOptions.radius = viewRadius;
       _viewBandOptions.forceInner = forceRender || neverCull;
       const viewBand = classifyEntityViewBand(_viewBandOptions);
-      const runClosures = shouldRunEntityClosures(viewBand, this.state.tick, slot);
+      // _viewBandOptions already carries forceInner; a middle band can only exist with it
+      // false, so the pooled struct answers exactly like the callee's `{}` default.
+      const runClosures = shouldRunEntityClosures(viewBand, this.state.tick, slot, _viewBandOptions);
       let lodLevel = userData.lod ? userData.lod.level : null;
       const hlodVisualRadius = userData.hlod && Number(userData.hlod.visualRadius);
       // Projected size must measure the drawn envelope, not the presence proxy: a station's
@@ -18460,17 +18594,16 @@ export const render = {
         if (Number.isFinite(entity.speed)) planarSpeed = entity.speed;
         else if (entity.vel) planarSpeed = Math.hypot(Number(entity.vel.x) || 0, Number(entity.vel.z) || 0);
       }
-      const machineScore = livingMachineScore({
-        isPlayer,
-        onGlass: onLiveGlass,
-        distanceWu: Math.hypot(
-          (mesh.position ? mesh.position.x : 0) - (bounds.x || 0),
-          (mesh.position ? mesh.position.z : 0) - (bounds.z || 0),
-        ),
-        speedWu: planarSpeed,
-        role: typeName,
-        glassRadiusWu: glassSpan,
-      });
+      _livingMachineOptions.isPlayer = isPlayer;
+      _livingMachineOptions.onGlass = onLiveGlass;
+      _livingMachineOptions.distanceWu = Math.hypot(
+        (mesh.position ? mesh.position.x : 0) - (bounds.x || 0),
+        (mesh.position ? mesh.position.z : 0) - (bounds.z || 0),
+      );
+      _livingMachineOptions.speedWu = planarSpeed;
+      _livingMachineOptions.role = typeName;
+      _livingMachineOptions.glassRadiusWu = glassSpan;
+      const machineScore = livingMachineScore(_livingMachineOptions);
       userData.livingMachineScore = machineScore;
       userData.livingMachineAwake = livingMachineStaysInMotion(machineScore);
       if (living) {
@@ -18925,6 +19058,20 @@ export const render = {
     const originSeq = (this.state.world && this.state.world.frameOriginSeq) | 0;
     const fieldVersion = field && Number.isFinite(field.version) ? field.version : 0;
     const fieldCount = field && Array.isArray(field.rocks) ? field.rocks.length : 0;
+    // Same gate the field rows use: dressingTable.version bumps on add/drop, frameOriginSeq on
+    // an origin shift, so a steady-state frame skips the per-row toLocal writes entirely.
+    const dressingVersion = dressing && Number.isFinite(dressing.version) ? dressing.version : 0;
+    const dressingCount = dressing && Array.isArray(dressing.rows) ? dressing.rows.length : 0;
+    const fieldStale = !!(field && Array.isArray(field.rocks))
+      && (this._worldFieldPoseOriginSeq !== originSeq
+        || this._worldFieldPoseVersion !== fieldVersion
+        || this._worldFieldPoseCount !== fieldCount);
+    const dressingStale = !!(dressing && Array.isArray(dressing.rows))
+      && (this._worldDressingPoseOriginSeq !== originSeq
+        || this._worldDressingPoseVersion !== dressingVersion
+        || this._worldDressingPoseCount !== dressingCount);
+    // Steady state is the common frame: skip before the poseRow closure is even created.
+    if (!fieldStale && !dressingStale) return 0;
     let posedField = 0;
     const poseRow = (row) => {
       if (!row || row.alive === false || !row.pos) return false;
@@ -18940,10 +19087,7 @@ export const render = {
       if (mesh.matrixAutoUpdate === false) mesh.updateMatrix();
       return true;
     };
-    if ((this._worldFieldPoseOriginSeq !== originSeq
-        || this._worldFieldPoseVersion !== fieldVersion
-        || this._worldFieldPoseCount !== fieldCount)
-      && field && Array.isArray(field.rocks)) {
+    if (fieldStale) {
       const fieldDirty = field.dirtyPoseIds;
       if (this._worldFieldPoseOriginSeq !== originSeq || !(fieldDirty instanceof Set)) {
         // Origin rebase touches every row's local pose; a table without the dirty journal
@@ -18965,14 +19109,7 @@ export const render = {
       this._worldFieldPoseCount = fieldCount;
       if (posedField) invalidateAsteroidInstancePool(this._asteroidInstancePool);
     }
-    // Same gate the field rows use: dressingTable.version bumps on add/drop, frameOriginSeq on
-    // an origin shift, so a steady-state frame skips the per-row toLocal writes entirely.
-    const dressingVersion = dressing && Number.isFinite(dressing.version) ? dressing.version : 0;
-    const dressingCount = dressing && Array.isArray(dressing.rows) ? dressing.rows.length : 0;
-    if (dressing && Array.isArray(dressing.rows)
-      && (this._worldDressingPoseOriginSeq !== originSeq
-        || this._worldDressingPoseVersion !== dressingVersion
-        || this._worldDressingPoseCount !== dressingCount)) {
+    if (dressingStale) {
       const dressingDirty = dressing.dirtyPoseIds;
       if (this._worldDressingPoseOriginSeq !== originSeq || !(dressingDirty instanceof Set)) {
         for (let i = 0; i < dressing.rows.length; i++) poseRow(dressing.rows[i]);
@@ -19060,13 +19197,7 @@ export const render = {
         this._advancePosePackEpoch(publication),
       );
       this._snapshotSourceTick = state && Number.isInteger(state.tick) ? state.tick : 0;
-      if (state && state.render) {
-        state.render.snapshotFence = {
-          sequence: this._snapshotFence.sequence,
-          packed,
-          bytes: this._snapshotFence.lastBytesPacked,
-        };
-      }
+      this._publishSnapshotFenceStats(packed);
     }
 
     const activityTick = state && Number.isInteger(state.tick) ? state.tick : -1;
@@ -19384,13 +19515,7 @@ export const render = {
         this._advancePosePackEpoch(publication),
       );
       this._snapshotSourceTick = completedTick;
-      if (this.state && this.state.render) {
-        this.state.render.snapshotFence = {
-          sequence: this._snapshotFence.sequence,
-          packed,
-          bytes: this._snapshotFence.lastBytesPacked,
-        };
-      }
+      this._publishSnapshotFenceStats(packed);
     }
     // While the GL context is lost, the renderer can't draw — skip all remaining per-frame work until
     // webglcontextrestored rebuilds GPU resources. The derived publication mirror remains current.

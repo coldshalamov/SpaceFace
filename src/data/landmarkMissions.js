@@ -122,11 +122,105 @@ export const QUIESSENCE_CENSUS = Object.freeze({
   }),
 });
 
+// C13d — the Reach fortress on the Sker Bazaar approach. The Bazaar sells the raid stories its
+// walls are welded from; a close plate-by-plate archive read is the only provenance it accepts.
+export const SKERRIS_THRONE_PROVENANCE = Object.freeze({
+  id: 'landmark_c13d_trophy_provenance',
+  sectorId: 'sector_sker_haven',
+  poiId: 'poi_sker_throne',
+  targetRef: 'landmark_c13d_skerris_throne',
+  stationId: 'station_sker',
+  factionId: 'faction_reach',
+  targetLocalPos: Object.freeze({ x: 300, z: -550 }),
+  maxRangeWu: 300,
+  poiLabel: 'The Skerris Throne',
+  rewardCr: 2600,
+  minRep: -1000,
+  riskTier: 3,
+  title: 'The Skerris Throne: Trophy Provenance',
+  brief: 'Hold close along the fortress wall and fire one scanner pass deep enough to read the welded plate registries.',
+  summary: 'Every wall of the Throne was once somebody else\'s hull, and the Bazaar sells those stories by the plate. The broker pays for a registry read done at the wall, not one invented on the berth.',
+  causeTag: 'landmark:skerris_trophy_provenance',
+  causeFingerprint: 'landmark:c13d:trophy-provenance:v1',
+  causeLine: 'The Throne\'s walls answer the archive scan with three dead registries and one blank plate.',
+  successText: 'Provenance filed. Three plate walls resolved to hull registries; the broker paid without asking which story got more expensive.',
+  artifact: Object.freeze({
+    id: 'artifact_c13d_trophy_provenance_ledger',
+    title: 'C13d-2 · Trophy Provenance Ledger',
+    body: 'The close pass returns three readable registries — a mule line-hauler, a Vael cutter, a drifter nobody claimed — and one plate that answers no registry at all. It is newer than the wall around it, and welded blank on purpose.',
+  }),
+});
+
+// C12 — the eight-second sweep the Quiet schedule their crossings inside of. Margin Fence does
+// not want the beam explained; it wants the off-beat window timed by something that sat inside it.
+export const METRONOME_OFFBEAT_WINDOW = Object.freeze({
+  id: 'landmark_c12_offbeat_window',
+  sectorId: 'sector_eris_margin',
+  poiId: 'poi_eris_metronome',
+  targetRef: 'landmark_c12_metronome',
+  stationId: 'station_eris_margin',
+  factionId: 'faction_quiet',
+  // The Metronome sits at a generated site; missions resolve the live POI entity first and
+  // only fall back to this sector-center coordinate when the sector is not resident.
+  targetLocalPos: Object.freeze({ x: 0, z: 0 }),
+  maxRangeWu: 300,
+  poiLabel: 'The Metronome',
+  rewardCr: 1900,
+  minRep: -1000,
+  riskTier: 2,
+  title: 'The Metronome: Off-Beat Window',
+  brief: 'Sit inside the sweep and fire one close scanner pulse so the recorder catches a full eight-second cycle from under the beam.',
+  summary: 'Navigators calibrate to the Metronome; the Fence sells the gap between its returns. Margin pays for one cycle timed from inside the sweep, not for a copy of the shipping schedules it already keeps.',
+  causeTag: 'landmark:metronome_offbeat_window',
+  causeFingerprint: 'landmark:c12:offbeat-window:v1',
+  causeLine: 'The recorder rode the sweep for one cycle and caught the eighth second coming up short.',
+  successText: 'Window filed. The Fence paid the moment the file confirmed the beam does not keep perfect time.',
+  artifact: Object.freeze({
+    id: 'artifact_c12_offbeat_window_record',
+    title: 'C12-2 · Metronome Off-Beat Window',
+    body: 'One full cycle from under the beam: 8.00 seconds, except the eighth, which runs short by a fixed hair. The gap has been narrowing on every recorded pass. Quiet\'s crossing logs cluster inside it.',
+  }),
+});
+
+// C11 — the ring that outlived its star. The Directorate's Sedna post files readings; it pays
+// for one clean pass on the dormant city grid, filed as a record, never a claim.
+export const RINGWORLD_GRID_READING = Object.freeze({
+  id: 'landmark_c11_grid_reading',
+  sectorId: 'sector_sedna_dark',
+  poiId: 'poi_sedna_ringworld',
+  targetRef: 'landmark_c11_ringworld_arc',
+  stationId: 'station_sedna',
+  factionId: 'faction_helix',
+  // The Arc sits at a generated site; missions resolve the live POI entity first and
+  // only fall back to this sector-center coordinate when the sector is not resident.
+  targetLocalPos: Object.freeze({ x: 0, z: 0 }),
+  maxRangeWu: 300,
+  poiLabel: 'The Ringworld Arc',
+  rewardCr: 2100,
+  minRep: -1000,
+  riskTier: 2,
+  title: 'The Ringworld Arc: Grid Reading',
+  brief: 'Bring the reader inside the arc\'s shadow and fire one close scanner pulse across the interior face.',
+  summary: 'The dead rivers and the cycling city lights have outlived their star, and the Directorate\'s rim post wants to know what still answers. One clean field record, taken from inside the arc, filed correctly.',
+  causeTag: 'landmark:ringworld_grid_reading',
+  causeFingerprint: 'landmark:c11:grid-reading:v1',
+  causeLine: 'One street of the dead city answered the reader before the record could close.',
+  successText: 'Reading filed. The post logged the street that lit as an equipment anomaly; the record says otherwise.',
+  artifact: Object.freeze({
+    id: 'artifact_c11_grid_reading_record',
+    title: 'C11-2 · Ringworld Grid Reading',
+    body: 'The close pass crosses a dry river basin and one street of the dead city lights beneath it, briefly, while the reader holds inside the shadow. The batteries answer after eighty million years — slowly, like something waking.',
+  }),
+});
+
 const LANDMARK_QUESTS = Object.freeze([
   CAVED_SHAFT_PROBE,
   SHARD_SPHERE_SONG,
   RESONANCE_OBELISK_SURVEY,
   QUIESSENCE_CENSUS,
+  SKERRIS_THRONE_PROVENANCE,
+  METRONOME_OFFBEAT_WINDOW,
+  RINGWORLD_GRID_READING,
 ]);
 const LANDMARK_QUEST_BY_ID = new Map(LANDMARK_QUESTS.map((definition) => [definition.id, definition]));
 

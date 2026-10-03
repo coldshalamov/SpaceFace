@@ -195,7 +195,7 @@ export const SOUTH_SECTORS = Object.freeze([
         type: 'research',
         factionId: 'faction_helix',
         size: 'S',
-        services: Object.freeze(['scan_tech', 'repair']),
+        services: Object.freeze(['scan_tech', 'missions', 'repair']),
         chartNote: 'Sensors and hull patches at the dark rim; no fuel, no rescue, few questions.',
       }),
     ]),

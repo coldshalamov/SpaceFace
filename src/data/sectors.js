@@ -9,6 +9,7 @@ import { FRONTIER_CORE_NEIGHBOR_PATCHES, FRONTIER_SECTORS } from './frontierRegi
 import { applyClaimableBodySites } from './claimableBodies.js';
 import { KETTLE_LINE_POIS } from './kettleLine.js';
 import { VESPER } from './vesper.js';
+import { SOLSTICE } from './solstice.js';
 import { applyPlanetStateAssignments } from './planetStates.js';
 import { appendPq019FacilityPois } from './heistFacilities.js';
 // Per ARCHITECTURE §0.8:
@@ -152,8 +153,16 @@ const CORE_SECTORS = [
     neighbors: ['sector_helios_prime', 'sector_tethys_junction', 'sector_pallas_drift'],
     stations: [
       { id: 'station_ceres',   name: 'Ceres Refinery', type: 'refinery', factionId: 'faction_dmc', size: 'M', services: ['trade','refuel','repair','ore_buy','refine'],
+        // The crackers split feed into fuel cells three shifts long — more than the belt burns.
+        // This standing cell surplus changes only the listing's stock equilibrium; the commodity
+        // price curve and every other market stay shared (cheap end of the west-cut cell run).
+        marketEquilibriumFactors: { cmdty_fuel_cells: 2.4 },
         chartNote: 'Refinery row — buys ore dear, sells plates cheap.' },
       { id: 'station_beltout', name: 'Belt Outpost',   type: 'mining',   factionId: 'faction_dmc', size: 'S', services: ['trade','missions','ore_buy'],
+        // Rock crews eat same-shift and the ration skiff never lands enough — a standing
+        // provisions shortage. Same shared curve; only this listing's stock equilibrium moves
+        // (dear end of the Drift Market ration run).
+        marketEquilibriumFactors: { cmdty_food: 0.1 },
         chartNote: 'Rock crews and a scale. Ore moves same-shift; nothing else does.' },
     ],
     fields: [
@@ -181,6 +190,18 @@ const CORE_SECTORS = [
       // and the payoff pod live in that module and its owners.
       ...KETTLE_LINE_POIS,
       { id: 'poi_ceres_closed_refinery', type: 'anomaly', name: 'The Closed Refinery', pos: { x: 1600, z: 1800 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
+      {
+        id: 'poi_solstice_lantern',
+        type: 'anomaly',
+        name: 'The Star Lantern',
+        pos: { ...SOLSTICE.anchor },
+        runtimeOwner: 'solstice',
+        scannerSignalKind: 'anomaly',
+        discoveryPlate: {
+          title: 'SL-9 / The Star Lantern',
+          body: 'An ancient gyroscopic astronomical lantern turning on the cold rim of Ceres Belt. Three floating focus prisms orbit its captive stellar heart. Scan to hail; ride the beam to recharge, or tether the prisms into alignment to ignite the lantern.',
+        },
+      },
     ],
   },
   {
@@ -315,6 +336,10 @@ const CORE_SECTORS = [
     neighbors: ['sector_ceres_belt', 'sector_io_reach', 'sector_sker_haven'],
     stations: [
       { id: 'station_drift',    name: 'Drift Market', type: 'trade_hub',   factionId: 'faction_mts',   size: 'M', services: ['trade','refuel','repair','missions'],
+        // The Drift feeds the fringe — every unlisted crew buys rations here, and the intake
+        // keeps overshooting. This standing provisions surplus changes only the listing's stock
+        // equilibrium; the shared price curve turns it into the cheap end of the Belt ration run.
+        marketEquilibriumFactors: { cmdty_food: 2.4 },
         chartNote: 'Open board, thin oversight. Good rates on cargo nobody wants logged.' },
       { id: 'station_smuggler', name: 'Smuggler Den', type: 'blackmarket', factionId: 'faction_quiet', size: 'S', services: ['black_market','missions','refuel'],
         chartNote: 'No manifest, no memory. The Quiet keep the lights on, the records off.' },
@@ -490,6 +515,7 @@ const CORE_SECTORS = [
         placeTargetRadius: 150,
         factionId: 'faction_reach',
         scannerSignalKind: 'archive',
+        repeatableScannerSignal: true,
         flavorTargetRef: 'landmark_c13d_skerris_throne',
         dressingExclusionRadius: 170,
         discoveryPlate: {

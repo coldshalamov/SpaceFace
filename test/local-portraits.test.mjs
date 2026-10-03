@@ -4,6 +4,7 @@ import test from 'node:test';
 
 import { LOCAL_PORTRAIT_POOL, LOCAL_PORTRAIT_ROOT, localPortraitForContact } from '../src/data/localPortraits.js';
 import * as portraitRegistry from '../src/data/portraits.js';
+import { SECTORS } from '../src/data/sectors.js';
 
 const contact = (stationId, slot, role) => ({ id: `contact_${stationId}_${slot}`, name: `Local ${slot}`, role });
 
@@ -25,10 +26,19 @@ test('a local gets one stable face from its role pool, never a role mask', () =>
     assert.equal(first, localPortraitForContact(contact('station_ceres', 0, role)), 'the same person keeps the same face');
     assert.match(first, new RegExp(`^${LOCAL_PORTRAIT_ROOT}${role}_0[1-9]\\.jpg$`));
   }
-  // Across the stations a role is seen at, the pool is actually used (not one photo standing in for everyone).
-  const seen = new Set();
-  for (let i = 0; i < 31; i += 1) seen.add(localPortraitForContact(contact(`station_${i}_x`, 0, 'barkeep')));
-  assert.ok(seen.size >= 6, `31 stations should reach most of the 8 barkeep faces, got ${seen.size}`);
+  // Across the 34 stations the pool is spread EVENLY: no face is used more than its fair share.
+  const stations = [];
+  for (const sector of SECTORS) for (const station of sector.stations || []) stations.push(station.id);
+  assert.ok(stations.length >= 30);
+  for (const [role, count] of Object.entries(LOCAL_PORTRAIT_POOL)) {
+    const uses = new Map();
+    for (const id of stations) {
+      const face = localPortraitForContact(contact(id, 0, role));
+      uses.set(face, (uses.get(face) || 0) + 1);
+    }
+    assert.equal(uses.size, count, `${role}: every authored face is used`);
+    assert.ok(Math.max(...uses.values()) <= Math.ceil(stations.length / count), `${role}: no face repeats more than ${Math.ceil(stations.length / count)} times`);
+  }
 });
 
 test('people at one station never share a face while the pool allows', () => {

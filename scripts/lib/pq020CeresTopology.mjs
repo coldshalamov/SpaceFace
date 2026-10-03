@@ -122,8 +122,20 @@ export const PQ020_CERES_ADDITIVE_DRESSING_SCHEMA =
 // (48 primitives), growing colliders from 68 (single balls/capsules) to 236 (60 station/gate +
 // 128 asteroid + 48 ship). Entity/type census, cathedral census, releaseSha256 and every other
 // topology assertion are unchanged. Prior digest was 718d39d8123d511762ea7f84901c359088fe1372c55abae632271c8e2eb32544.
+// 2026-10-05: re-pinned after adjudicating D90/D145 — every delta traced to authored work.
+// SOLSTICE / SL-9 (5103e8668) added the Star Lantern (poi_solstice_lantern) → authored pois
+// 9 → 10. _spawnPOIs() draws two rng values per POI even for authored fixed `pos`, so the new
+// POI shifts the deterministic spawn stream: one patrol ship's new landing falls inside the
+// far-shelf boundary, so the live core census drops ship 2 → 1 (entities 38 → 37, collidable
+// 14 → 13, colliders 236 → 212 as its 24-primitive solid skin leaves the live list). The
+// Long Berth yard tug now stays live too — D141 (09132834b) excludes physical worldOneOff
+// bodies from the far shelf because lean far rows strip the identity fields needed to
+// rematerialize them without duplicates — but additive-dressing entities are excluded from
+// this core census, so it moves only the dressing pin below, not this digest's entity counts.
+// Cathedral census 15/15 (14 shelved), all topology/exact-agreement assertions unchanged.
+// Prior digest was b0627637f6ac3f120dc67fb2197c0817165bf3d002dcaf8ca1fcacf9af9028c0.
 export const PQ020_EXPECTED_STRUCTURAL_COST_DIGEST =
-  'b0627637f6ac3f120dc67fb2197c0817165bf3d002dcaf8ca1fcacf9af9028c0';
+  '8404e62c8acaa5e75feca22c173c32ee3597254df16ab0f4db176d516cf77e1b';
 
 const EXPECTED_ADDITIVE_WORLD_SITE_IDS = Object.freeze([CINDER_SLUICE_SITE_ID]);
 const EXPECTED_ADDITIVE_DRESSING_CENSUSES = Object.freeze({
@@ -140,13 +152,17 @@ const EXPECTED_ADDITIVE_DRESSING_CENSUSES = Object.freeze({
     colliders: 0,
   }),
   // PQ-143.02: the strut shrine, the pirate ram, and the eight pod-field shells are the
-  // non-colliding fx dressing. The yard tug is a physical wreck and leaves the fx census when
-  // the far-actor shelf takes it. Excluded from the core structural census.
+  // non-colliding fx dressing. The Long Berth yard tug is an authored physical wreck
+  // (0c6f0ea1a). It used to leave this census whenever the far-actor shelf took it; D141
+  // (09132834b) deliberately excludes data.worldOneOff bodies from shelving — lean far rows
+  // strip the identity fields needed to rematerialize a unique one-off and re-minted
+  // duplicates — so it stays live, collidable, and carries its 24-primitive measured skin.
+  // Still excluded from the core structural census.
   worldOneOff: Object.freeze({
-    entities: 10,
-    byType: Object.freeze({ fx: 10 }),
-    collidable: 0,
-    colliders: 0,
+    entities: 11,
+    byType: Object.freeze({ fx: 10, wreck: 1 }),
+    collidable: 1,
+    colliders: 24,
   }),
 });
 

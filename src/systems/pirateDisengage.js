@@ -9,6 +9,9 @@ import { hash32 } from '../core/rng.js';
 import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../ai/doctrine.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import { entityIndexVersion, entityIndexLaneVersion, indexedShipLikeScan } from '../world/livingWorldViews.js';
+import { spawnPayloadEntity } from '../combat/industrialBeam.js';
+import { JETTISONED_CARGO_PAYLOAD_TYPE } from './lootShards.js';
+import { rememberMoralDebt } from './moralMemory.js';
 
 /** Bench A/B: production default ON. Quiet latch skips pirateDisengage's dual
  * shipLike census (lawfulPatrols + combatantSquads) when no active combatants
@@ -38,6 +41,11 @@ function publishPirateDisengageQuiet(state, latched) {
 const PATROL_RADIUS = 900;
 const NERVE_DELAY_S = 1.0;
 const FLEE_DURATION_S = 18.0;
+// How long the deck holds an accepted-yield offer before neglect reads as "let them go".
+const SURRENDER_OFFER_WINDOW_S = 12.0;
+// What a yielding crew dumps for passage: their take, as ordinary scoopable pods. Stolen goods
+// on purpose — mercy pays in hot cargo, and the fence is the player's problem.
+const YIELD_COMMODITY_ID = 'cmdty_stolen_goods';
 const PLAYER_TEAM = 0;
 const SURRENDER_HULL_FRACTION = 0.16;
 const DAMAGE_RETREAT_HULL_FRACTION = 0.28;
@@ -67,6 +75,8 @@ export const pirateDisengage = {
     this._listen('game:newGame', () => this.noteCombatantWake());
     this._listen('sector:enter', () => this.noteCombatantWake());
     this._listen('pirateParley:resolved', () => this.noteCombatantWake());
+    // The surrendered crew's offered yield: the deck answers here.
+    this._listen('pirateDisengage:verdict', (p) => this._onYieldVerdict(p || {}));
   },
 
   /** External wake when a combatant role is stamped without a fresh spawn index bump. */
@@ -225,6 +235,114 @@ export const pirateDisengage = {
       reason: rec.reason,
       outcome: 'surrendered',
       t: now,
+    });
+    // A surrendered crew offers its take for passage. The deck surfaces the offer; silence or
+    // refusal leaves them drifting passive exactly as before — the verb adds, never takes away.
+    rec.yieldState = 'offered';
+    rec.offerUntil = now + SURRENDER_OFFER_WINDOW_S;
+    this._emit('pirateDisengage:surrenderOffer', {
+      squadId: rec.squadId,
+      memberIds: rec.memberIds.slice(),
+      leaderId: (members[0] && members[0].id) != null ? members[0].id : null,
+      factionId: (members[0] && members[0].factionId) || null,
+      offerUntil: rec.offerUntil,
+      t: now,
+    });
+  },
+
+  _onYieldVerdict(payload) {
+    const state = this.state;
+    if (!state || !payload || payload.squadId == null) return;
+    const own = ensureState(state);
+    const rec = own.squads[payload.squadId];
+    if (!rec || rec.outcome !== 'surrendered' || rec.yieldState !== 'offered') return;
+    if (payload.accept !== true) {
+      rec.yieldState = 'refused';
+      this._emit('pirateDisengage:yieldResolved', {
+        squadId: rec.squadId, accepted: false, pods: 0, t: state.simTime || 0,
+      });
+      return;
+    }
+    this._acceptYield(rec, state);
+  },
+
+  // The generous verb: the squad dumps its take as ordinary jettisoned-cargo pods, then runs
+  // for the lane empty. Provenance files it as a secured nonlethal resolution; moral memory
+  // remembers the mercy. Killing the same crew would have paid nothing and cost the ledger.
+  _acceptYield(rec, state) {
+    const now = state.simTime || 0;
+    const members = (rec.memberIds || [])
+      .map((id) => (state.entities ? state.entities.get(id) : null))
+      .filter((entity) => entity && entity.alive !== false && entity.pos);
+    const seed = state.meta && state.meta.seed;
+    let pods = 0;
+    for (const entity of members) {
+      const bearing = ((hash32(seed == null ? 0 : seed, entity.id, 'yield_bearing') % 6283) / 1000);
+      const range = 14 + (hash32(seed == null ? 0 : seed, entity.id, 'yield_range') % 12);
+      const amount = 6 + (hash32(seed == null ? 0 : seed, entity.id, 'yield_amount') % 9);
+      const pod = spawnPayloadEntity(state, {
+        pos: { x: entity.pos.x + Math.cos(bearing) * range, z: entity.pos.z + Math.sin(bearing) * range },
+        vel: { x: 0, z: 0 },
+        radius: 5,
+        mass: 24,
+        physicsBody: { mass: 24 },
+        hull: 100,
+        hullMax: 100,
+        ownerId: null,
+        factionId: entity.factionId || null,
+        salvagePool: { [YIELD_COMMODITY_ID]: amount },
+        payloadType: JETTISONED_CARGO_PAYLOAD_TYPE,
+        worldRecordId: null,
+        transientSector: false,
+      }, this.helpers);
+      if (!pod) continue;
+      pods += 1;
+      entity.data = entity.data || {};
+      const ai = entity.data.ai || (entity.data.ai = {});
+      ai.disengageUntil = now + FLEE_DURATION_S;
+    }
+    for (const entity of members) {
+      markFleeing(entity, state.entities ? state.entities.get(state.playerId) : null, rec, state);
+      // markFleeing owns the pirateDisengage data shape — stamp after it, not before.
+      entity.data.pirateDisengage.yieldDumped = true;
+    }
+    rec.yieldState = 'accepted';
+    rec.until = now + FLEE_DURATION_S;
+    if (members.length) {
+      rememberMoralDebt(state, {
+        id: `yield:${rec.squadId}`,
+        name: 'Yielded Crew',
+        cause: 'accepted_surrender',
+        factionId: members[0].factionId || null,
+        archetype: 'pirate_squad',
+        t: now,
+        source: 'pirateDisengage:yield',
+      });
+      this._emit('combat:nonlethalResolution', {
+        squadId: rec.squadId,
+        count: members.length,
+        factionId: members[0].factionId || null,
+        sectorId: state.world && state.world.currentSectorId || null,
+        text: `Squad ${rec.squadId} yielded its take and ran clean.`,
+        t: now,
+      });
+    }
+    const leader = members[0] || null;
+    const voice = this.helpers && this.helpers.voice;
+    if (voice && typeof voice.say === 'function') {
+      voice.say({
+        channel: 'bark',
+        text: 'Yield\'s in the drift. Count it fair. We\'re gone.',
+        kind: 'pirateDisengage',
+        ttl: 1,
+        id: `pirateDisengage:yield:${rec.squadId}`,
+        factionId: (leader && leader.factionId) || 'faction_reach',
+      });
+    } else {
+      this._emit('toast', { text: 'Yield\'s in the drift. We\'re gone.', kind: 'pirateDisengage', ttl: 1 });
+    }
+    this._emit('pirateDisengage:yieldResolved', {
+      squadId: rec.squadId, accepted: true, pods, t: now,
     });
   },
 

@@ -371,8 +371,8 @@
       "slot": "place",
       "releaseAssetId": "place_conveyor_barge",
       "sourceUrl": "assets/ships/release/parts/places/place_conveyor_barge.glb",
-      "releaseSha256": "b64f6e65c3e9dea4a60b7d507009088307bfbda8ddf2701cb52ef60cfc2abfc1",
-      "releaseBytes": 557360,
+      "releaseSha256": "3665d4d8b4d443d6b9b6e883394c6ffb9fa365f206dd58acab894eea1b472e0d",
+      "releaseBytes": 559352,
       "rootNode": "SF_PLACE_CONVEYOR_BARGE_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",

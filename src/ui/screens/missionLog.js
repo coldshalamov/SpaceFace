@@ -2132,6 +2132,37 @@ export const missionLogScreen = {
       toggle.setAttribute('aria-expanded', this._compVisible ? 'true' : 'false');
       cue('confirm');
       if (this._compVisible) this._renderCompleted();
+      if (this._corrVisible) this._renderCorridorLog();
+      this._placeHand(true);
+    });
+
+    // Corridor log (U9): the encounter receipts ring, finally readable. A beat's outcome
+    // text used to live only as a transient toast; the saved ring now has a reader, folded
+    // behind the same fine Show/Hide word as Completed.
+    const corrH = el('div', 'k-row k-row--static sf-mlog-section-corr');
+    corrH.appendChild(el('div', 'k-caps', 'Corridor log'));
+    const corrToggle = el('button', 'k-word k-word--fine sf-mlog-toggle', 'Show');
+    corrToggle.type = 'button';
+    corrToggle.setAttribute('aria-expanded', 'false');
+    corrToggle.setAttribute('aria-controls', 'sf-mlog-corridor-list');
+    corrH.appendChild(corrToggle);
+    body.appendChild(corrH);
+    this._corrHeader = corrH;
+
+    const corrList = el('div', 'sf-mlog-comp-list');
+    corrList.id = 'sf-mlog-corridor-list';
+    corrList.hidden = true;
+    body.appendChild(corrList);
+    this._corrListEl = corrList;
+    this._corrVisible = false;
+
+    corrToggle.addEventListener('click', () => {
+      this._corrVisible = !this._corrVisible;
+      corrList.hidden = !this._corrVisible;
+      corrToggle.textContent = this._corrVisible ? 'Hide' : 'Show';
+      corrToggle.setAttribute('aria-expanded', this._corrVisible ? 'true' : 'false');
+      cue('confirm');
+      if (this._corrVisible) this._renderCorridorLog();
       this._placeHand(true);
     });
 
@@ -2481,6 +2512,7 @@ export const missionLogScreen = {
       this._focusedId = null;
       this._renderStage(state, null, tracked);
       if (this._compVisible) this._renderCompleted();
+      if (this._corrVisible) this._renderCorridorLog();
       this._placeHand();
       this._rootEl.dataset.kReady = '1';
       return;
@@ -2540,6 +2572,7 @@ export const missionLogScreen = {
 
     this._renderStage(state, activeMissions.find((m) => m.id === this._focusedId) || null, tracked);
     if (this._compVisible) this._renderCompleted();
+    if (this._corrVisible) this._renderCorridorLog();
     this._restoreFocusToken(focusToken);
     if (this._observeHangRows) this._observeHangRows();
     this._placeHand();
@@ -3159,5 +3192,37 @@ export const missionLogScreen = {
       frag.appendChild(totals);
     }
     this._compListEl.appendChild(frag);
+  },
+
+  // U9 — the corridor log: the encounter director's saved receipts ring, newest first.
+  // Saved with the game (RECEIPT_CAP 12), so the log survives Continue.
+  _renderCorridorLog() {
+    if (!this._corrListEl || !this._ctx) return;
+    const dir = this._ctx.state.encounterDirector;
+    const receipts = Array.isArray(dir && dir.receipts) ? dir.receipts.slice(-5).reverse() : [];
+    this._corrListEl.innerHTML = '';
+    if (!receipts.length) {
+      this._corrListEl.innerHTML = '<div class="sf-mlog-empty"><p class="k-sentence k-38">Nothing worth logging yet. Fly the lane.</p></div>';
+      return;
+    }
+    const now = Number(this._ctx.state.simTime) || 0;
+    const frag = document.createDocumentFragment();
+    const list = el('div', 'k-rows sf-mlog-corridor-rows');
+    for (const rec of receipts) {
+      const ageS = Math.max(0, now - (Number(rec.t) || 0));
+      const age = ageS >= 120 ? `${Math.round(ageS / 60)} min ago` : `${Math.round(ageS)} s ago`;
+      const title = String(rec.shape || 'encounter').replace(/_/g, ' ').toUpperCase();
+      const outcome = String(rec.outcome || '').replace(/_/g, ' ').toUpperCase();
+      const row = el('div', 'k-row k-row--static sf-mlog-receipt-row sf-mlog-receipt-row--corridor');
+      row.innerHTML =
+        '<div>' +
+          '<span class="k-38 sf-mlog-receipt-title">' + escapeHtml(title) + '</span>' +
+          '<div class="k-row__sub sf-mlog-receipt-body">' + escapeHtml(rec.text || '') + '</div>' +
+        '</div>' +
+        '<span class="k-38 sf-mlog-receipt-outcome">' + escapeHtml(outcome ? `${outcome} · ${age}` : age) + '</span>';
+      list.appendChild(row);
+    }
+    frag.appendChild(list);
+    this._corrListEl.appendChild(frag);
   },
 };

@@ -81,8 +81,10 @@ test('live VFX roots join the loading-stage texture upload instead of waiting fo
   }, roots, { yieldToMain: async () => {} });
   assert.equal(result.textures, textures.length);
   assert.deepEqual(new Set(uploaded), new Set(textures));
+  // The two anchors sit in the same startup function; the window is a proximity pin, not a line count
+  // (renderer.js growth had pushed them past the old 1800-character window).
   assert.match(RENDERER_SOURCE,
-    /openingSubmissionPlan[\s\S]{0,1800}prepareStartupGpuResidency\(renderer, plan\.residencySubjects/,
+    /openingSubmissionPlan[\s\S]{0,4000}prepareStartupGpuResidency\(renderer, plan\.residencySubjects/,
     'the loading-stage renderer must derive GPU uploads from the exact opening submission plan');
   system.destroy();
   assert.equal(state.render.collectVfxGpuResidencyRoots, undefined);

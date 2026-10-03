@@ -26,6 +26,11 @@ function point(p) {
   return p && Number.isFinite(p.x) && Number.isFinite(p.z) ? { x: p.x, z: p.z } : null;
 }
 function positive(n) { return typeof n === 'number' && Number.isFinite(n) && n > 0 && n <= MAX_QTY; }
+// An id a human reads aloud: `ship_kestrel` -> "Kestrel", `first_blood` -> "First Blood".
+// Same replace the authored-story cases inline; one helper now that deed ids need it too.
+function properName(value, fallback) {
+  return text(String(value).replace(/[_-]+/g, ' ').replace(/\b\w/g, (ch) => ch.toUpperCase()), fallback);
+}
 function killFacts(p, state) {
   // Match compactKillCausality's precedence. Copy only semantic scalars from presentation;
   // NEVER retain that receipt, its vectors, Three objects, or arbitrary source data.
@@ -385,6 +390,83 @@ export function normalizeFact(event, p, state) {
         note: `The Verge lattice sealed ${f.subject.name} out of the gates`,
       };
       f.dedupe = `story:verge:revocation:${gateId}`;
+      break;
+    }
+    case 'ship:purchased': {
+      // One fact per hull id, ever — re-buying a hull already in the ledger dedupes, a different
+      // hull is a new beat. Emitted by ships.js with { defId, price } (grant purchases price 0).
+      const defId = id(p.defId);
+      if (defId === null) return { invalid: true };
+      const price = Math.max(0, finite(p.price));
+      f.stage = 'story';
+      f.actor = identity(state, state.playerId);
+      f.subject = { id: defId, key: `hull:${defId}`, player: false,
+        name: text(p.name || p.defName, properName(defId.replace(/^ship_/, ''), 'a new hull')) };
+      f.group = `deed:ship:${defId}`;
+      f.details = { kind: 'ship_purchase', defId, price, title: 'A new hull',
+        note: price > 0
+          ? `Commissioned the ${f.subject.name} for ${price} credits`
+          : `Commissioned the ${f.subject.name} from the shipyard's fabricators` };
+      f.dedupe = `deed:ship:${defId}`;
+      break;
+    }
+    case 'achievement:unlocked': {
+      // Emitted by achievements.js with the achievement def: { id, name, category, at, via,
+      // retroactive }. Retroactive/merged unlocks are still true, so they record; the id dedupes.
+      const achievementId = id(p.id);
+      if (achievementId === null) return { invalid: true };
+      const name = text(p.name, properName(achievementId, achievementId));
+      f.stage = 'story';
+      f.actor = identity(state, state.playerId);
+      f.subject = { id: achievementId, key: `achievement:${achievementId}`, player: false, name };
+      f.group = `deed:achievement:${achievementId}`;
+      f.details = { kind: 'achievement', achievementId,
+        category: text(p.category) || null, via: text(p.via) || null,
+        retroactive: p.retroactive === true,
+        title: name, note: `Unlocked the "${name}" achievement` };
+      f.dedupe = `deed:achievement:${achievementId}`;
+      break;
+    }
+    case 'career:ladder:completed': {
+      // Emitted by ladderShared.js with { careerId, receiptId, nonBinding, simTime }. One ladder
+      // completion per career, ever; the receipt rides as the fact's externalId (a receipt ref).
+      const careerId = id(p.careerId);
+      if (careerId === null) return { invalid: true };
+      f.stage = 'story';
+      f.externalId = id(p.receiptId);
+      f.actor = identity(state, state.playerId);
+      f.subject = { id: careerId, key: `career:${careerId}`, player: false,
+        name: properName(careerId, careerId) };
+      f.group = `deed:ladder:${careerId}`;
+      f.details = { kind: 'ladder_complete', careerId,
+        title: `${f.subject.name} ladder`,
+        note: `Completed the ${f.subject.name} career ladder` };
+      f.dedupe = `deed:ladder:${careerId}`;
+      break;
+    }
+    case 'stunt:trickDetected': {
+      // Anti-spam law: only marquee tricks are facts — a legendary feat outright, a rare one only
+      // when it caught other hulls in it (the same gate the witnessed-news consumer applies).
+      // Uncommon/common tricks and unepisoded detections are filtered noise, not facts.
+      const episodeId = id(p.episodeId);
+      const trickId = id(p.trickId);
+      const rarity = p.rarity === 'legendary' || p.rarity === 'rare' ? p.rarity : null;
+      const collateral = Math.max(1, finite(p.modifiers && p.modifiers.collateralCount, 1));
+      if (!rarity || (rarity === 'rare' && collateral < 2) || episodeId === null || trickId === null) {
+        return null;
+      }
+      const name = text(p.name, properName(trickId, trickId));
+      f.stage = 'story';
+      f.actor = identity(state, p.actorId ?? state.playerId);
+      f.subject = { id: trickId, key: `stunt:${trickId}`, player: false, name };
+      f.group = `deed:stunt:${episodeId}`;
+      f.details = { kind: 'stunt', trickId, episodeId, rarity,
+        baseScore: Math.max(0, finite(p.baseScore)), collateralCount: collateral,
+        title: name,
+        note: rarity === 'legendary'
+          ? `${name} — a legendary feat the whole pocket witnessed`
+          : `${name} — a rare feat that caught ${collateral} hulls in it` };
+      f.dedupe = `deed:stunt:${episodeId}`;
       break;
     }
     default: return null;

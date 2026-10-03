@@ -48,6 +48,7 @@ import {
 } from '../combat/hullScars.js';
 import { cleanShipName } from '../data/hullIdentity.js';
 import { SWARM_CROSSOVER_CATALOG, swarmCrossoverEarned } from '../data/swarmCrossover.js';
+import { FACTION_META } from '../data/factions.js';
 import { hash32 } from '../core/rng.js';
 
 /** Non-negative finite reading of a receipt amount; a missing measurement stays zero, never NaN. */
@@ -93,6 +94,7 @@ export function hullExclusiveStationId(def) {
 /**
  * The refusal line a locked def earns. A swarmEarned def is not behind research — the ledger
  * says exactly how it opens, so the toast says that instead of naming a tech that cannot help.
+ * A standing-exclusive names the standing rung instead of a tech for the same reason.
  */
 export function defLockReasonText(def) {
   if (def && typeof def.swarmEarned === 'string' && def.swarmEarned) {
@@ -101,7 +103,31 @@ export function defLockReasonText(def) {
       ? `Earned in Swarm — ${row.blurb}`
       : 'Earned in Swarm';
   }
+  if (def && def.exclusivity) return exclusivityLockLabel(def.exclusivity);
   return 'Research required: ' + techDisplayName(def && def.requiresTech);
+}
+
+// ── REP-EXCLUSIVE HARDWARE (`exclusivity: { factionId, minRep }`) ───────────────────────────
+// The owning faction fits these only at Allied standing (rep ≥ 400 — the tier systems/factions.js
+// names at min 400). The rep read mirrors rankForState there: state.factions[id].rep, guarded,
+// 0 when the record is absent. Kept a local pure read so ships never imports the faction system;
+// an unknown faction, a missing record, or a non-finite minRep fails CLOSED.
+const KNOWN_FACTION_IDS = new Set(FACTION_META.map((f) => f && f.id));
+
+export function exclusivityRepMet(exclusivity, factions) {
+  if (!exclusivity || typeof exclusivity !== 'object') return true;
+  if (!KNOWN_FACTION_IDS.has(exclusivity.factionId)) return false;
+  const rec = factions && typeof factions === 'object' ? factions[exclusivity.factionId] : null;
+  const rep = rec && Number.isFinite(rec.rep) ? rec.rep : 0;
+  return rep >= Number(exclusivity.minRep);
+}
+
+/** The standing sentence a rep-locked def refuses with, or null when it cannot name one. */
+export function exclusivityLockLabel(exclusivity) {
+  if (!exclusivity || typeof exclusivity !== 'object') return null;
+  const meta = FACTION_META.find((f) => f && f.id === exclusivity.factionId);
+  const name = (meta && (meta.name || meta.short)) || 'its faction';
+  return 'Requires Allied — ' + name;
 }
 
 /**
@@ -2022,12 +2048,18 @@ export const ships = {
   /** A ship/module def is buyable iff it has no requiresTech, that tech is researched, or the
    *  docked station stocks it on the shop rack. A `swarmEarned` def answers a different ledger
    *  entirely (SWARM-06): the crossover row the player's Swarm runs wrote — research never
-   *  opens it, and the station-rack exception is the only other door. */
+   *  opens it, and the station-rack exception is the only other door. An `exclusivity` def
+   *  answers the owning faction's standing ledger: rep ≥ minRep is the whole gate, the research
+   *  tree plays no part, and no station rack bypasses it — faction yards do not stock rivals'
+   *  exclusives. The buy price still quotes through the normal standing-discount path. */
   isUnlocked(def) {
     if (!def) return false;
     if (def.swarmEarned) {
       return swarmCrossoverEarned(def.swarmEarned)
         || !!stationShopOffer(def, dockedShopStationId(this.state));
+    }
+    if (def.exclusivity && !exclusivityRepMet(def.exclusivity, this.state && this.state.factions)) {
+      return false;
     }
     if (!def.requiresTech) return true;
     if (this.state.player.researchedNodes.includes(def.requiresTech)) return true;

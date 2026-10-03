@@ -14,6 +14,39 @@
 // `beginReadinessBatch` to pool that wait. See design/perf/OPENING-COMPILE-BATCH-2026-08-28.md.
 
 import { compileSubjectsAcrossPresents } from './compilePresentSlice.js';
+import {
+  detachedTextureUploadPending,
+  rehydrateDetachedTextures,
+} from './packageCpuDetach.js';
+import { collectStartupTextures } from './startupGpuResidency.js';
+
+/**
+ * A package texture whose CPU mirror was released after its proven upload still reaches three's
+ * uploader when the next bind re-enters it — a moved version, a different upload-cache key on
+ * the shared dedupe Source, or a properties record recreated after dispose — and uploadTexture
+ * reads mipmaps[0] on the emptied array (D150). Re-attach just those payloads before the touch
+ * loop draws: the forced upload then lands real bytes instead of throwing mid-draw and leaving
+ * the residual work to a presented pass. Still-stamped detached textures keep their release;
+ * the next residency stamp re-detaches whatever this restored. `renderer` is optional — callers
+ * without one skip the census (the texture list needs its properties map).
+ */
+async function reattachDetachedAdmissionTextures(subjects, renderer, yieldToMain) {
+  const properties = renderer && renderer.properties;
+  if (!properties || typeof properties.get !== 'function') return;
+  const pending = collectStartupTextures(subjects)
+    .filter((texture) => detachedTextureUploadPending(texture, properties));
+  if (pending.length === 0) return;
+  let receipt = null;
+  try {
+    receipt = await rehydrateDetachedTextures(pending, { yieldToMain });
+  } catch (error) {
+    console.warn('[render] admission texture reattach failed', error);
+    return;
+  }
+  if (receipt && Array.isArray(receipt.errors) && receipt.errors.length > 0) {
+    console.warn('[render] admission texture reattach errors', JSON.stringify(receipt.errors));
+  }
+}
 
 function isDrawable(object) {
   return !!(object && (
@@ -411,6 +444,8 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
     ? options.beginReadinessBatch
     : null;
   if (!beginBatch) {
+    // Compile+touch interleave per unit, so the detach census runs before the first draw.
+    await reattachDetachedAdmissionTextures(ordered, options.renderer, yieldToMain);
     const results = await compileSubjectsAcrossPresents(
       ordered,
       async (subject) => {
@@ -499,6 +534,9 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
     await Promise.allSettled(issued);
     if (typeof batch.restoreEntryTarget === 'function') batch.restoreEntryTarget();
   }
+  // Touches run next: restore any cpu-detached payloads a forced upload would read empty before
+  // the first draw binds them. Issue order above stays exactly as it was.
+  await reattachDetachedAdmissionTextures(ordered, options.renderer, yieldToMain);
   const results = [];
   const touchStarted = now();
   // Optional grouped touch: `touchMany(subjects)` draws a whole group in one render. Same subjects

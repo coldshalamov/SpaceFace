@@ -19,6 +19,22 @@ const _glassCache = {
   result: { halfX: 0, halfZ: 0 },
 };
 
+/**
+ * Same normalized-input memo as _glassCache, declared up here because the module-init
+ * TABLE_HEARING_FAR_WU / TABLE_AI_AUTHORITY_WU constants call through it: the render cull
+ * bounds and the sim classify pass both ask every frame, and the answer only moves with
+ * the five terms keyed below. The result is replaced on a miss, never mutated — a
+ * retained return keeps the snapshot semantics the old fresh literal had.
+ */
+const _submitCullCache = {
+  zoom: NaN,
+  fov: NaN,
+  aspect: NaN,
+  tilt: NaN,
+  speed: NaN,
+  result: { glass: { halfX: 0, halfZ: 0 }, runway: 0, halfX: 0, halfZ: 0 },
+};
+
 /** Typical live maxSpeed (engine.topSpeed * SPEED_SCALE) used when state has no ship. */
 export const TABLE_REFERENCE_SPEED_WU = 160;
 
@@ -615,6 +631,11 @@ export function authoredLookaheadSeconds() {
 /**
  * Hidden/submit box: the readable glass plus a short approach runway.
  * Replaces the old max(900, zoom*8) fake-visible margin.
+ *
+ * Memoized on the normalized terms (an omitted/NaN term maps to the same default the math
+ * would use, so it cannot false-miss); see _submitCullCache up top. The function reads
+ * only its parameters (glassHalfExtents/submitRunwayWu are pure), so the key covers
+ * every input — zoom, fov, aspect, tilt, travel speed.
  */
 export function submitCullHalfExtents(
   zoom,
@@ -623,14 +644,35 @@ export function submitCullHalfExtents(
   speed = TABLE_REFERENCE_SPEED_WU,
   tiltDeg = 60,
 ) {
-  const glass = glassHalfExtents(zoom, fovDeg, aspect, tiltDeg);
-  const runway = submitRunwayWu(speed);
-  return {
+  const distance = Number.isFinite(zoom) ? zoom : 88;
+  const fov = Number.isFinite(fovDeg) ? fovDeg : 50;
+  const aspectValue = Number.isFinite(aspect) && aspect > 0 ? aspect : 16 / 9;
+  const tiltDegValue = Number.isFinite(tiltDeg) ? tiltDeg : 60;
+  const travel = Math.max(0, Number(speed) || 0);
+  const speedValue = travel > 0 ? travel : TABLE_REFERENCE_SPEED_WU;
+  if (
+    _submitCullCache.zoom === distance
+    && _submitCullCache.fov === fov
+    && _submitCullCache.aspect === aspectValue
+    && _submitCullCache.tilt === tiltDegValue
+    && _submitCullCache.speed === speedValue
+  ) {
+    return _submitCullCache.result;
+  }
+  const glass = glassHalfExtents(distance, fov, aspectValue, tiltDegValue);
+  const runway = submitRunwayWu(speedValue);
+  _submitCullCache.zoom = distance;
+  _submitCullCache.fov = fov;
+  _submitCullCache.aspect = aspectValue;
+  _submitCullCache.tilt = tiltDegValue;
+  _submitCullCache.speed = speedValue;
+  _submitCullCache.result = {
     glass,
     runway,
     halfX: glass.halfX + runway,
     halfZ: glass.halfZ + runway,
   };
+  return _submitCullCache.result;
 }
 
 export function tableShadowCastRadius(zoom, fovDeg, aspect, tiltDeg = 60) {

@@ -8,6 +8,8 @@
 import { Masks } from '../core/entity.js';
 import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 import { queuePhysicsImpulse, queuePhysicsTorqueImpulse } from '../core/physicsAuthority.js';
+import { wrapAngle } from '../core/rng.js';
+import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import {
   BREAKAWAY_BERTH,
@@ -15,8 +17,13 @@ import {
   BREAKAWAY_CARRIER,
   BREAKAWAY_FORK_COLLIDERS,
   BREAKAWAY_FORK_VISUAL,
+  COUNTERWEIGHT_SCENE,
+  HOT_RETURN_MONITORS,
   PQ019_FACILITIES,
   PQ019_HEIST_SECTOR_ID,
+  PQ019_OBSERVE,
+  PQ019_ROUTINE,
+  PQ019_SHIPMENT_UNIT,
   HEIST_CAPSULE_RUN_VARIANT_ID,
   BREAKAWAY_THIRD_SHIFT_VARIANT_ID,
   heistLaunchVariant,
@@ -26,6 +33,7 @@ import {
   projectPq019FacilitySocket,
 } from '../data/heistFacilities.js';
 import { makeShipEntitySpec } from './ships.js';
+import { makeEnemySpawnSpec } from './combat.js';
 import { RECORD_KIND, stableRecordId } from '../world/worldRecords.js';
 import {
   captureCandidate,
@@ -122,6 +130,13 @@ export function launchCueAwayText(variantId = HEIST_CAPSULE_RUN_VARIANT_ID) {
 // can act on (too fast, too sideways, off-centre) are published only when the load actually crosses
 // the mouth plane, so the event stream is bounded by real attempts rather than per-frame.
 const CAPTURE_REFUSAL_REASONS = new Set(['too_fast', 'too_sideways', 'outside_mouth', 'wrong_direction']);
+const CAPTURE_REFUSAL_TEXT = Object.freeze({
+  too_fast: 'Too fast for the catcher — bleed speed before the mouth',
+  too_sideways: 'Too much sideways — line up with the rails',
+  outside_mouth: 'Missed the catcher mouth',
+  wrong_direction: 'Wrong way into the catcher',
+});
+const CAPTURE_REFUSAL_REPEAT_TICKS = 90;
 // A refused crossing is narrated only within this many rail half-widths of the fork's centre line.
 const CAPTURE_REFUSAL_LATERAL_REACH = 2;
 const CAPTURE_SETTLED_KIND = 'capture_settled';
@@ -149,6 +164,49 @@ function makeState() {
     carrierLaunchPos: null,
     carrierReleaseAnchor: null,
     carrierDepartAnchor: null,
+    // SF-140: the routine lawful transfer. Runs whenever no contract owns the launcher schedule.
+    // `nextLaunchAtSimT` and `seq` are durable — the cadence survives sector hops and reloads;
+    // the live capsule/escort ids never do.
+    routine: {
+      seq: 0,
+      nextLaunchAtSimT: null,
+      capsuleEntityId: null,
+      escortEntityId: null,
+      escortsRemaining: 0,
+      theftReportId: null,
+    },
+    // SF-140: durable learned facts — { factId: { atTick, method, detail } }. Learned once,
+    // kept across reloads: observation is knowledge, and knowledge is durable.
+    observed: {},
+    // SF-140: cumulative tailing progress toward the crew-route observation.
+    followHoldTicks: 0,
+    // SF-143: the counterweight yard. Always physical; `sceneId` is the armed contract.
+    counterweight: makeCounterweightState(),
+    // SF-147: monitor posts — edge-trigger bookkeeping keyed `${monitorId}:${entityId}`.
+    monitorContacts: {},
+  };
+}
+
+/** The counterweight scene's owned record. Bodies are spawned lazily by materialize. */
+function makeCounterweightState() {
+  return {
+    sceneId: null,          // armed contract; null = scenery only
+    armedTick: null,
+    gate: 'closed',         // closed | opening | open | closing
+    gateHoldTicks: 0,
+    gateReleaseTicks: 0,
+    doorPose01: 0,
+    doorEntityId: null,
+    ballastEntityId: null,
+    crewEntityId: null,
+    crewClampId: null,
+    crewPhase: 'parked',    // parked | fetch | carry | hold | deliver | lost
+    crewTargetId: null,
+    crates: {},             // stableId -> { entityId, state, restTicks, deliveredTick }
+    legsDone: 0,
+    pressureSpawned: false,
+    // SF-147-style suspension: body snapshots taken at sector exit for re-entry.
+    suspendedBodies: null,
   };
 }
 
@@ -268,6 +326,14 @@ export const heistFacilities = {
     this.bus.on('heist:requestLaunchSchedule', (request = {}) => {
       this.requestLaunchSchedule(request);
     });
+    // SF-140: a scan pulse that covers a heist object resolves it as knowledge. The scanner
+    // emits a sector-wide `scan:completed` (targetId null); WHICH object was learned is read
+    // off player proximity at pulse time — the pulse physically covered what it covered.
+    this.bus.on('scan:completed', (p = {}) => this._onScanCompleted(p));
+    // SF-140: taking a routine capsule is a real theft. The law owner judges witnesses and
+    // jurisdiction exactly as it does for a mission's payload — a stolen lawful transfer
+    // raises WANTED and pays nobody.
+    this.bus.on('tether:latched', (p = {}) => this._onRoutineTake(p));
     this.bus.on('save:loaded', () => this._resetForRestore());
 
     if (this.state.world?.currentSectorId === PQ019_HEIST_SECTOR_ID) {
@@ -284,10 +350,23 @@ export const heistFacilities = {
 
   update(dt, state) {
     const owned = state.heistFacilities;
-    const schedule = owned?.schedule;
+    if (!owned) return;
+    const inSector = state.world?.currentSectorId === PQ019_HEIST_SECTOR_ID;
+    // The whole scene is sector-local machinery: outside Tethys nothing steps, and nothing
+    // pretends to. Sector exit dematerializes the transients; the durable records wait.
+    if (!inSector) return;
+
+    // SF-140/143/147 — the standing machinery always steps while the sector is live, whether
+    // or not any contract is armed: routine transfers fly, the gate answers its cradle, the
+    // monitors sweep the lane, and watching/following accrues knowledge.
+    this._stepRoutine(state, dt);
+    this._stepCounterweightScene(state);
+    this._stepMonitors(state);
+    this._stepFollowObserve(state);
+
+    const schedule = owned.schedule;
     if (!schedule) return;
     if (schedule.status === 'launched') {
-      if (state.world?.currentSectorId !== PQ019_HEIST_SECTOR_ID) return;
       if (heistLaunchVariant(schedule.variantId).custody === 'capture_fork') {
         this._stepCarrier(state);
         this._stepCaptureFork(schedule, state);
@@ -295,7 +374,6 @@ export const heistFacilities = {
       return;
     }
     if (schedule.status !== 'scheduled') return;
-    if (state.world?.currentSectorId !== PQ019_HEIST_SECTOR_ID) return;
     // Announce before launching: a countdown that speaks only after the capsule is away is not a cue.
     this._publishLaunchCue(schedule, state, dt);
     if (state.simTime + 1e-9 < schedule.launchAtSimT) return;
@@ -311,13 +389,28 @@ export const heistFacilities = {
     if (!Number.isFinite(step) || step <= 0) return null;
     const simT = Number(state.simTime);
     const tMinus = crossedLaunchCueTMinus(schedule.launchAtSimT, simT - step, simT);
-    if (tMinus === null) return null;
-    return this._sayLaunchCue({
-      scheduleId: schedule.scheduleId,
-      moment: `t_minus_${tMinus}`,
-      tMinusS: tMinus,
-      text: launchCueTextForTMinus(tMinus),
-    });
+    if (tMinus !== null) {
+      return this._sayLaunchCue({
+        scheduleId: schedule.scheduleId,
+        moment: `t_minus_${tMinus}`,
+        tMinusS: tMinus,
+        text: launchCueTextForTMinus(tMinus),
+      });
+    }
+    // SF-140: a LEARNED schedule speaks earlier than the authored countdown — the 60s moment an
+    // unobserved launcher never earns. Same pure crossing rule, same one-voice seam.
+    if (state.heistFacilities?.observed?.launcher_schedule) {
+      const at = schedule.launchAtSimT - PQ019_OBSERVE.earlyWarningS;
+      if (at > simT - step && at <= simT) {
+        return this._sayLaunchCue({
+          scheduleId: schedule.scheduleId,
+          moment: `t_minus_${PQ019_OBSERVE.earlyWarningS}`,
+          tMinusS: PQ019_OBSERVE.earlyWarningS,
+          text: `${PQ019_FACILITIES.heist_launcher.name}: cargo launch in ${PQ019_OBSERVE.earlyWarningS}s — you know this cadence`,
+        });
+      }
+    }
+    return null;
   },
 
   /**
@@ -408,6 +501,11 @@ export const heistFacilities = {
     // npcJobsRuntime on the same entry), so its presence is materialization, not consequence state.
     yield;
     created += this._materializeBerthWorker();
+    // SF-143: the counterweight yard — cradle, door, ballast, staged crates, tug. Always
+    // materialized: the machinery is real whether or not a watch is armed on it.
+    created += this._materializeCounterweight();
+    // SF-147: the monitored posts on the escape lane — permanent lawful machinery.
+    created += this._materializeMonitors();
     return created;
   },
 
@@ -544,6 +642,25 @@ export const heistFacilities = {
       && typeof owned.clampAttachmentId !== 'string') {
       owned.clampAttachmentId = null;
     }
+    // SF-140/143/147 rows: state grown by this packet. Missing fields in a stale restore are
+    // rebuilt, never invented.
+    if (!owned.routine || typeof owned.routine !== 'object') {
+      owned.routine = {
+        seq: 0, nextLaunchAtSimT: null, capsuleEntityId: null,
+        escortEntityId: null, escortsRemaining: 0, theftReportId: null,
+      };
+    }
+    if (!owned.observed || typeof owned.observed !== 'object') owned.observed = {};
+    if (!Number.isInteger(Number(owned.followHoldTicks))) owned.followHoldTicks = 0;
+    if (!owned.counterweight || typeof owned.counterweight !== 'object') {
+      owned.counterweight = makeCounterweightState();
+    } else {
+      const cw = owned.counterweight;
+      if (!cw.crates || typeof cw.crates !== 'object') cw.crates = {};
+      if (cw.gate !== 'open' && cw.gate !== 'opening' && cw.gate !== 'closing') cw.gate = 'closed';
+    }
+    if (!owned.monitorContacts || typeof owned.monitorContacts !== 'object') owned.monitorContacts = {};
+    if (!owned.monitorPosts || typeof owned.monitorPosts !== 'object') owned.monitorPosts = {};
   },
 
   _facilityRecord(facilityId) {
@@ -824,6 +941,63 @@ export const heistFacilities = {
     owned.carrierLaunchPos = null;
     owned.carrierReleaseAnchor = null;
     owned.carrierDepartAnchor = null;
+
+    // SF-140: the routine capsule and its escort are bounded transients — the cadence waits in
+    // `routine.nextLaunchAtSimT`, the bodies never cross the boundary.
+    if (owned.routine) {
+      if (owned.routine.capsuleEntityId != null) this.helpers.removeEntity(owned.routine.capsuleEntityId);
+      if (owned.routine.escortEntityId != null) this.helpers.removeEntity(owned.routine.escortEntityId);
+      owned.routine.capsuleEntityId = null;
+      owned.routine.escortEntityId = null;
+      owned.routine.theftReportId = null;
+    }
+    // SF-147: shed shipment units are sector transients too — the mission runtime's suspension
+    // snapshot (taken in its own earlier `sector:exit` listener) is what carries them back, so
+    // the live bodies are removed here rather than left floating in an unloaded sector.
+    for (const entity of indexedTypeScan(this.state, 'payloads')) {
+      if (entity?.alive !== false && entity.data?.heistUnit === true
+        && entity.data?.runtimeOwner === 'heistFacilities') {
+        this.helpers.removeEntity(entity.id);
+      }
+    }
+
+    // SF-143: an ARMED yard snapshots every loose body before dematerializing them, so sector
+    // re-entry restores the exact physical commitment — not a reset yard and not a fabricated
+    // manifest. Unarmed yards simply restock on the next materialize.
+    const cw = owned.counterweight;
+    if (cw) {
+      if (cw.sceneId) {
+        cw.suspendedBodies = this.snapshotCounterweightBodies();
+      }
+      if (cw.doorEntityId != null) this.helpers.removeEntity(cw.doorEntityId);
+      if (cw.ballastEntityId != null) this.helpers.removeEntity(cw.ballastEntityId);
+      if (cw.crewEntityId != null) this.helpers.removeEntity(cw.crewEntityId);
+      for (const row of Object.values(cw.crates || {})) {
+        if (row.entityId != null) this.helpers.removeEntity(row.entityId);
+        row.entityId = null;
+        row.restTicks = 0;
+      }
+      cw.doorEntityId = null;
+      cw.ballastEntityId = null;
+      cw.crewEntityId = null;
+      cw.crewClampId = null;
+      cw.crewTargetId = null;
+      cw.crewPhase = 'parked';
+      const sceneRows = [];
+      forEachDressingRow(this.state, (row) => {
+        if (row.data?.heistFacilityId === COUNTERWEIGHT_SCENE.id) sceneRows.push(row.id);
+      });
+      for (const rowId of sceneRows) dropDressingRow(this.state, rowId);
+    }
+
+    // SF-147: the monitor posts are scenery rows; the contact edge-set resets with the field.
+    if (owned.monitorPosts) {
+      for (const row of Object.values(owned.monitorPosts)) {
+        if (row.entityId != null) dropDressingRow(this.state, row.entityId);
+        row.entityId = null;
+      }
+    }
+    owned.monitorContacts = {};
   },
 
   _launchScheduledCapsule(schedule) {
@@ -944,6 +1118,11 @@ export const heistFacilities = {
         sectorId: PQ019_HEIST_SECTOR_ID,
         homeSectorId: PQ019_HEIST_SECTOR_ID,
         transientSector: true,
+        // SF-147: the sealed units physically inside the shell. Knocks shed them as real pods;
+        // custody at a receiver reads this count — the fence pays for units, not intentions.
+        ...(Number.isFinite(payload.shipmentUnits)
+          ? { shipmentUnits: payload.shipmentUnits, shipmentUnitsTotal: payload.shipmentUnits }
+          : {}),
         ...(variant.id !== HEIST_CAPSULE_RUN_VARIANT_ID ? { heistVariantId: variant.id } : {}),
       },
     };
@@ -1141,21 +1320,84 @@ export const heistFacilities = {
    * Write the carrier's `data.intent` exactly like a civilian mover: forward throttle toward an
    * aim angle. Throttle is the target pace as a fraction of governed speed, so a heavier hull
    * settles at the authored cruise instead of sprinting.
+   *
+   * `approach` marks a move that must ARRIVE, not transit — the same trapezoid a working
+   * hauler drives (`npcJobsRuntime._driveTo`): the commanded speed is the lesser of the plan
+   * and the decel-bound speed for the remaining distance, and the helm asserts brake once the
+   * hull can no longer stop inside the reach. Assisted Flight V3 treats `moveZ` as a fraction
+   * of the kernel's governed combat speed — `entity.maxSpeed` is the legacy cruise figure and
+   * undershoots it ~3x, which is how the tug used to orbit its crate at 120 WU/s forever.
    */
-  _driveCarrier(carrier, target, speedWu) {
+  _driveCarrier(carrier, target, speedWu, approach = null) {
     const dx = target.x - carrier.pos.x;
     const dz = target.z - carrier.pos.z;
     const dist = Math.hypot(dx, dz);
     const data = carrier.data || (carrier.data = {});
     const intent = data.intent || (data.intent = {});
-    const governed = Math.max(1, Number(carrier.maxSpeed) || 1);
+    const profile = resolvePropulsionProfile(carrier, this.state);
+    const governed = Math.max(1,
+      Number(profile && profile.combatSpeed) || Number(carrier.maxSpeed) || 1);
+    const deadInput = Math.max(0, Number(profile && profile.assist && profile.assist.deadInput) || 0.025);
+    const reach = approach && Number.isFinite(approach.reachWu) ? Math.max(0, approach.reachWu) : 0;
+    // A tow measures the LOAD's distance to the goal, not the nose's: the crate trails a body
+    // length down the line, so braking on the tug's own distance released it outside the pad.
+    const approachDist = approach && Number.isFinite(approach.measuredDistWu)
+      ? approach.measuredDistWu
+      : dist;
+    const remaining = Math.max(0, approachDist - reach);
+    const decel = Math.max(1,
+      Number(profile && profile.reverseAccel) || 0,
+      (Number(profile && profile.mainAccel) || 0) * 0.72)
+      // A load on the clamp line is real mass: with a 120 t crate on a ~70 t tug the same helm
+      // stops in barely a third of the solo envelope. Scale the estimate or the trapezoid plans
+      // a stop the towed assembly cannot make.
+      * Math.max(0.05, Math.min(1, Number(approach && approach.decelScale) || 1));
+    // The speed an ARRIVE maneuver must kill is the hull's whole speed, not only the closing
+    // component: a tangential drift reads zero closing forever and orbits its mark without ever
+    // falling inside the working ring.
+    const closing = Math.hypot(
+      Number(carrier.vel && carrier.vel.x) || 0,
+      Number(carrier.vel && carrier.vel.z) || 0);
+    const aimAngle = dist > 1e-6 ? Math.atan2(dz, dx) : Number(carrier.rot) || 0;
+    const brake = !!(approach && (
+      (approach.brakeWithinWu > 0 && approachDist <= approach.brakeWithinWu)
+      || closing * closing / (2 * decel) >= remaining));
+    const speed = brake ? 0
+      : Math.min(speedWu, approach ? Math.sqrt(2 * decel * remaining) : speedWu);
+    let moveZ;
+    if (approach) {
+      // Δv steering for ARRIVE moves: commanded velocity is plan speed along the approach line;
+      // the helm points the nose at the velocity it must CHANGE (v_cmd − v), so a tangential
+      // drift gets burned off instead of orbited and the stop is the same law, not a second
+      // controller. Throttle rides the correction's size — a heavy tow puts down real authority
+      // instead of a fraction of a governed figure the load never feels.
+      const vx = Number(carrier.vel && carrier.vel.x) || 0;
+      const vz = Number(carrier.vel && carrier.vel.z) || 0;
+      const ux = dist > 1e-6 ? dx / dist : 0;
+      const uz = dist > 1e-6 ? dz / dist : 0;
+      const dvx = ux * speed - vx;
+      const dvz = uz * speed - vz;
+      const dv = Math.hypot(dvx, dvz);
+      const dvAngle = dv > 1e-6 ? Math.atan2(dvz, dvx) : aimAngle;
+      const aligned = Math.cos(wrapAngle(dvAngle - (Number(carrier.rot) || 0))) >= 0.8;
+      intent.aimAngle = dvAngle;
+      // Braking rides the same law: a zero commanded speed turns dv into pure retrograde — the
+      // nose flips and burns the hull's whole speed off. `intent.brake` still asserts the
+      // kernel's own reverse gear underneath.
+      moveZ = dv <= deadInput * 2 || !aligned
+        ? 0
+        : Math.min(1, dv / 12);
+    } else {
+      const throttle = Math.min(1, Math.max(speed / governed, deadInput + 0.001));
+      intent.aimAngle = aimAngle;
+      moveZ = speed <= 0 ? 0 : throttle;
+    }
     intent.moveX = 0;
-    intent.moveZ = Math.min(1, speedWu / governed);
+    intent.moveZ = moveZ;
     intent.boost = false;
-    intent.brake = false;
+    intent.brake = brake;
     intent.fire = false;
     intent.fireGroup = null;
-    intent.aimAngle = dist > 1e-6 ? Math.atan2(dz, dx) : Number(carrier.rot) || 0;
   },
 
   /**
@@ -1217,6 +1459,15 @@ export const heistFacilities = {
         transientSector: true,
         resumedFromSuspension: true,
         ...(variant.id !== HEIST_CAPSULE_RUN_VARIANT_ID ? { heistVariantId: variant.id } : {}),
+        // SF-147: the load ledger survives the boundary — a shell that left with two units
+        // returns with two units, not a refilled manifest.
+        ...(Number.isFinite(snapshot.shipmentUnits)
+          ? {
+            shipmentUnits: snapshot.shipmentUnits,
+            shipmentUnitsTotal: Number.isFinite(snapshot.shipmentUnitsTotal)
+              ? snapshot.shipmentUnitsTotal : snapshot.shipmentUnits,
+          }
+          : {}),
       },
     });
     if (!capsule) return null;
@@ -1255,6 +1506,70 @@ export const heistFacilities = {
       source: 'heistFacilities',
     }));
     return capsule;
+  },
+
+  /**
+   * SF-147: re-embody the shipment units a hot run shed before it crossed the boundary. Same rule
+   * as `respawnSuspendedCapsule` — snapshots are the bodies, never a refilled manifest; a pod that
+   * was fenced, returned, or destroyed while the sector was out simply does not come back.
+   */
+  respawnSuspendedUnits({ scheduleId = null, snapshots = null } = {}) {
+    if (!scheduleId || !Array.isArray(snapshots) || !snapshots.length) return { respawned: 0, entityIds: [] };
+    const entityIds = [];
+    for (const snap of snapshots) {
+      if (!snap || !snap.pos || !Number.isFinite(snap.pos.x) || !Number.isFinite(snap.pos.z)) continue;
+      const index = Number.isFinite(snap.unitIndex) ? snap.unitIndex : 0;
+      const unitOf = String(snap.unitOf || '');
+      if (!unitOf) continue;
+      const entity = this.helpers.spawnEntity({
+        type: 'payload',
+        factionId: snap.factionId || 'faction_scn',
+        ownerId: snap.ownerId || null,
+        team: 2,
+        pos: { x: snap.pos.x, z: snap.pos.z },
+        vel: { x: Number(snap.vel?.x) || 0, z: Number(snap.vel?.z) || 0 },
+        rot: Number.isFinite(snap.rot) ? snap.rot : 0,
+        radius: PQ019_SHIPMENT_UNIT.radius,
+        mass: PQ019_SHIPMENT_UNIT.mass,
+        hull: Number.isFinite(snap.hull) ? snap.hull : PQ019_SHIPMENT_UNIT.hull,
+        hullMax: PQ019_SHIPMENT_UNIT.hull,
+        collides: true,
+        collisionMask: Masks.SHIP | Masks.ASTEROID | Masks.STATION | Masks.PROJECTILE,
+        ttl: Infinity,
+        flags: { missionPinned: true },
+        homeSectorId: PQ019_HEIST_SECTOR_ID,
+        physicsBody: {
+          dynamic: true,
+          radius: PQ019_SHIPMENT_UNIT.radius,
+          mass: PQ019_SHIPMENT_UNIT.mass,
+          inertiaY: 0.5 * PQ019_SHIPMENT_UNIT.mass * PQ019_SHIPMENT_UNIT.radius ** 2,
+          ccd: true,
+          material: 'payload',
+        },
+        data: {
+          heistFacilityRole: 'shipment_unit',
+          heistUnit: true,
+          heistUnitOf: unitOf,
+          heistUnitIndex: index,
+          heistPayloadStableId: `${unitOf}:u${index}`,
+          authoredPayloadAssetId: PQ019_SHIPMENT_UNIT.authoredPayloadAssetId,
+          legalOwnerFactionId: snap.legalOwnerFactionId || snap.factionId || 'faction_scn',
+          ownerId: snap.ownerId || null,
+          launchScheduleId: scheduleId,
+          missionPinned: true,
+          runtimeOwner: 'heistFacilities',
+          sectorId: PQ019_HEIST_SECTOR_ID,
+          homeSectorId: PQ019_HEIST_SECTOR_ID,
+          transientSector: true,
+          resumedFromSuspension: true,
+        },
+      });
+      if (entity) {
+        if (Number.isFinite(snap.angVel)) entity.angVel = snap.angVel;
+        entityIds.push(entity.id);
+      }
+    }
+    return { respawned: entityIds.length, entityIds };
   },
 
   _facilityHead(facilityId) {
@@ -1315,6 +1630,45 @@ export const heistFacilities = {
       && !(current && current.alive !== false && current.data?.berthWorkerId === BREAKAWAY_BERTH.id)) {
       owned.berth.workerEntityId = null;
     }
+
+    // SF-140: routine capsule + escort handles.
+    if (owned.routine) {
+      if (owned.routine.capsuleEntityId === id
+        && !(current && current.alive !== false && current.data?.heistRoutine === true)) {
+        owned.routine.capsuleEntityId = null;
+      }
+      if (owned.routine.escortEntityId === id
+        && !(current && current.alive !== false && current.data?.heistRoutineEscort === true)) {
+        owned.routine.escortEntityId = null;
+      }
+    }
+
+    // SF-143: door/ballast/crew/crate handles — and honest loss events while a watch is armed.
+    const cw = owned.counterweight;
+    if (cw) {
+      const stillOursScene = (entity, role) => !!(entity && entity.alive !== false
+        && entity.data?.heistFacilityRole === role);
+      if (cw.doorEntityId === id && !stillOursScene(current, 'counterweight_door')) cw.doorEntityId = null;
+      if (cw.ballastEntityId === id && !stillOursScene(current, 'counterweight_body')) cw.ballastEntityId = null;
+      if (cw.crewEntityId === id
+        && !(current && current.alive !== false && current.data?.counterweightCrew === true)) {
+        cw.crewEntityId = null;
+        // The crew-lost event is spoken by `_stepGateCrew` on the next live tick — only while
+        // armed does a missing tug count as a lost actor rather than unspawned scenery.
+      }
+      for (const [stableId, row] of Object.entries(cw.crates || {})) {
+        if (row.entityId !== id) continue;
+        if (!(current && current.alive !== false && current.data?.counterweightStableId === stableId)) {
+          row.entityId = null;
+          if (row.state !== 'delivered' && row.state !== 'lost') {
+            row.state = 'lost';
+            if (cw.sceneId) {
+              this._emitCounterweightEvent(this.state, { event: 'crate_lost', stableId });
+            }
+          }
+        }
+      }
+    }
   },
 
   _onPhysicsImpact(impact) {
@@ -1322,6 +1676,10 @@ export const heistFacilities = {
     const a = entityIsAlive(this.state, impact.aId);
     const b = entityIsAlive(this.state, impact.bId);
     if (!a || !b) return;
+
+    // SF-140/147: routine-capsule custody and unit pods at receivers resolve independently of any
+    // booked schedule — these bodies are never the schedule's capsule.
+    if (this._onSceneImpact(impact, a, b)) return;
 
     const owned = this.state.heistFacilities;
     const schedule = owned.schedule;
@@ -1334,15 +1692,22 @@ export const heistFacilities = {
     if (!capsule) return;
     const head = capsule === a ? b : a;
     const facilityId = head.data?.heistFacilityId;
-    if (!facilityId || head.data?.heistFacilityRole !== `${facilityId}_head`) return;
-    if (facilityId !== 'lawful_catcher' && facilityId !== 'fence_receiver') return;
-    if (!head.collides || head.collisionMask !== Masks.PAYLOAD
-      || head.physicsBody?.dynamic !== false) return;
+    const custodyHead = !!(facilityId && head.data?.heistFacilityRole === `${facilityId}_head`
+      && (facilityId === 'lawful_catcher' || facilityId === 'fence_receiver')
+      && head.collides && head.collisionMask === Masks.PAYLOAD
+      && head.physicsBody?.dynamic === false);
+    const variant = heistLaunchVariant(schedule.variantId);
+    // The receiver's grab is CUSTODY of the whole shell — the units inside arrive with it. A catch
+    // impact is never the "hard knock" that sheds a pod; knocks are ships, rock, the fork steel.
+    const takesCustody = custodyHead
+      && (facilityId === 'fence_receiver' || variant.custody === 'contact');
+    // SF-147: a hard knock sheds a sealed unit as a real pod — physical loss of load, not a flag.
+    if (!takesCustody) this._maybeEjectShipmentUnit(capsule, impact);
+    if (!custodyHead) return;
     // CONTACT CUSTODY IS FACILITY-SPECIFIC. A capture-fork variant never takes custody from a touch
     // of the catcher head — that head is the fork's rear stop and only the fork kernel settles a
     // delivery there. The Quiet fence is a plain contact receiver for EVERY payload, so the SAME
     // physical body can still be handed over at the fence. That is PQ-195.03's second destination.
-    const variant = heistLaunchVariant(schedule.variantId);
     if (variant.custody !== 'contact' && facilityId !== 'fence_receiver') return;
 
     const kind = facilityId === 'lawful_catcher'
@@ -1376,6 +1741,173 @@ export const heistFacilities = {
       }),
     });
     this._pushCandidateReceipt(receipt);
+  },
+
+  /**
+   * SF-140/147: custody contact for bodies that are NOT the booked schedule's capsule —
+   * the routine transfer, and the sealed units a stolen shipment sheds on hard knocks.
+   * Returns true when the impact was ours to handle.
+   */
+  _onSceneImpact(impact, a, b) {
+    const owned = this.state.heistFacilities;
+    const headOf = (entity) => {
+      const facilityId = entity.data?.heistFacilityId;
+      return facilityId && entity.data?.heistFacilityRole === `${facilityId}_head`
+        ? facilityId
+        : null;
+    };
+    const headA = headOf(a);
+    const headB = headOf(b);
+    if (!headA && !headB) return false;
+    const body = headA ? b : a;
+    const facilityId = headA || headB;
+    const tick = Math.max(0, Math.trunc(finite(impact.tick, this.state.tick)));
+
+    // The routine capsule landing in the Concord catcher — lawful freight received, logged,
+    // and consumed, exactly like a contract catch minus the contract.
+    if (this._isRoutineCapsule(body) && facilityId === 'lawful_catcher') {
+      const scheduleId = body.data.launchScheduleId;
+      const receipt = Object.freeze({
+        receiptId: `pq019a:routine:caught:${scheduleId}`,
+        kind: 'routine_caught',
+        source: 'physics:impact',
+        scheduleId,
+        payloadEntityId: body.id,
+        payloadStableId: body.data.heistPayloadStableId,
+        facilityId,
+        tick,
+        pos: Object.freeze({ x: stableNumber(impact.pos?.x), z: stableNumber(impact.pos?.z) }),
+      });
+      this.helpers.removeEntity(body.id);
+      if (owned.routine) {
+        if (owned.routine.capsuleEntityId === body.id) owned.routine.capsuleEntityId = null;
+        if (owned.routine.escortEntityId != null) {
+          this.helpers.removeEntity(owned.routine.escortEntityId);
+          owned.routine.escortEntityId = null;
+        }
+      }
+      this.bus.emit('heist:routineReceipt', receipt);
+      // A witnessed catch teaches where lawful freight actually lands.
+      if (this._playerDistTo(body.pos) <= PQ019_OBSERVE.watchRadiusWu) {
+        this._observeFact('catcher_receiver', 'watch', { routineSeq: owned.routine?.seq });
+      }
+      return true;
+    }
+
+    // The Quiet fence has no use for logged Concord freight — it says so, once, per capsule.
+    if (this._isRoutineCapsule(body) && facilityId === 'fence_receiver') {
+      if (body.data.routineRefusedAtTick === tick) return true;
+      if (body.data.routineRefusedAtTick == null) {
+        body.data.routineRefusedAtTick = tick;
+        this._saySceneCue({
+          cueId: `pq019a:routine:refused:${body.data.launchScheduleId}`,
+          text: `${PQ019_FACILITIES.fence_receiver.name} waves the freight off — logged Concord freight is worth nothing here`,
+        });
+      }
+      return true;
+    }
+
+    // A shed shipment unit finding a receiver: custody is per-unit, and which receiver got it is
+    // the custody the mission settles against.
+    if (body.data?.heistUnit === true
+      && (facilityId === 'lawful_catcher' || facilityId === 'fence_receiver')) {
+      const kind = facilityId === 'lawful_catcher' ? 'unit_returned' : 'unit_fenced';
+      const scheduleId = body.data.launchScheduleId;
+      const receipt = Object.freeze({
+        receiptId: `pq019a:${scheduleId}:${body.data.heistUnitOf}:unit:${body.id}:${facilityId}`,
+        kind,
+        source: 'physics:impact',
+        scheduleId,
+        payloadEntityId: body.id,
+        payloadStableId: body.data.heistUnitOf,
+        unitEntityId: body.id,
+        facilityId,
+        physicsImpactDp: stableNumber(impact.dp),
+        tick,
+        pos: Object.freeze({ x: stableNumber(impact.pos?.x), z: stableNumber(impact.pos?.z) }),
+      });
+      // The receiver takes custody — the pod is consumed by the handoff.
+      this.helpers.removeEntity(body.id);
+      this._pushCandidateReceipt(receipt);
+      return true;
+    }
+
+    return false;
+  },
+
+  /**
+   * SF-147: a hard knock physically sheds one sealed unit from a multi-unit stolen shipment as a
+   * real pod beside the capsule. The capsule's `shipmentUnits` count is the durable load ledger —
+   * the fence pays for units that actually arrive, not for the manifest the shell once claimed.
+   */
+  _maybeEjectShipmentUnit(capsule, impact) {
+    const units = Number(capsule.data?.shipmentUnits) || 0;
+    if (units <= 0) return;
+    if (!(Number(impact.dp) >= 30)) return;
+    const tick = Math.max(0, Math.trunc(finite(impact.tick, this.state.tick)));
+    if (capsule.data.lastUnitEjectTick === tick) return; // one unit per hard hit
+    capsule.data.lastUnitEjectTick = tick;
+    capsule.data.shipmentUnits = units - 1;
+    const scheduleId = capsule.data.launchScheduleId;
+    const index = (Number(capsule.data.shipmentUnitsTotal) || units) - (units - 1);
+    const angle = ((index * 2.399963) % (Math.PI * 2)); // deterministic spread per unit
+    const pod = this.helpers.spawnEntity({
+      type: 'payload',
+      factionId: capsule.factionId,
+      ownerId: capsule.ownerId,
+      team: Number.isFinite(capsule.team) ? capsule.team : 2,
+      pos: { x: impact.pos?.x ?? capsule.pos.x, z: impact.pos?.z ?? capsule.pos.z },
+      vel: {
+        x: (capsule.vel?.x || 0) * 0.85 + Math.cos(angle) * 8,
+        z: (capsule.vel?.z || 0) * 0.85 + Math.sin(angle) * 8,
+      },
+      radius: PQ019_SHIPMENT_UNIT.radius,
+      mass: PQ019_SHIPMENT_UNIT.mass,
+      hull: PQ019_SHIPMENT_UNIT.hull,
+      hullMax: PQ019_SHIPMENT_UNIT.hull,
+      collides: true,
+      collisionMask: Masks.SHIP | Masks.ASTEROID | Masks.STATION | Masks.PROJECTILE,
+      ttl: Infinity,
+      // Like the capsule itself: mission-pinned, and NOT save-persistent — the mission's load
+      // snapshot re-embodies shed units on restore just as it does the shell.
+      flags: { missionPinned: true },
+      homeSectorId: PQ019_HEIST_SECTOR_ID,
+      physicsBody: {
+        dynamic: true,
+        radius: PQ019_SHIPMENT_UNIT.radius,
+        mass: PQ019_SHIPMENT_UNIT.mass,
+        inertiaY: 0.5 * PQ019_SHIPMENT_UNIT.mass * PQ019_SHIPMENT_UNIT.radius ** 2,
+        ccd: true,
+        material: 'payload',
+      },
+      data: {
+        heistFacilityRole: 'shipment_unit',
+        heistUnit: true,
+        heistUnitOf: capsule.data.heistPayloadStableId,
+        heistUnitIndex: index,
+        heistPayloadStableId: `${capsule.data.heistPayloadStableId}:u${index}`,
+        authoredPayloadAssetId: PQ019_SHIPMENT_UNIT.authoredPayloadAssetId,
+        legalOwnerFactionId: capsule.data.legalOwnerFactionId,
+        ownerId: capsule.ownerId,
+        launchScheduleId: scheduleId,
+        missionPinned: true,
+        runtimeOwner: 'heistFacilities',
+        sectorId: PQ019_HEIST_SECTOR_ID,
+        homeSectorId: PQ019_HEIST_SECTOR_ID,
+        transientSector: true,
+      },
+    });
+    if (!pod) return;
+    this.bus.emit('heist:shipmentUnit', Object.freeze({
+      event: 'unit_ejected',
+      scheduleId,
+      unitEntityId: pod.id,
+      unitIndex: index,
+      unitsRemaining: units - 1,
+      pos: Object.freeze({ x: stableNumber(pod.pos.x), z: stableNumber(pod.pos.z) }),
+      tick,
+      source: 'heistFacilities',
+    }));
   },
 
   /** Journal one custody receipt (bounded) and publish it. The only emitter of facility candidates. */
@@ -1515,10 +2047,27 @@ export const heistFacilities = {
       }));
     }
 
+    if (refused) this._narrateCaptureRefusal(schedule.scheduleId, out.reason, tick);
     if (out.event === 'capture_ready') {
       this._recordSettledCapture(schedule, load, variant, receiver, capture, sample);
     }
     return out;
+  },
+
+  /** One line per reason per approach. A miss the player can see has to say which gate failed. */
+  _narrateCaptureRefusal(scheduleId, reason, tick) {
+    const text = CAPTURE_REFUSAL_TEXT[reason];
+    if (!text) return false;
+    const owned = this.state && this.state.heistFacilities;
+    if (!owned) return false;
+    const told = owned.captureRefusalTold || (owned.captureRefusalTold = { key: '', tick: -1e9 });
+    const key = `${scheduleId || ''}:${reason}`;
+    const now = Number.isFinite(tick) ? tick : 0;
+    if (told.key === key && now - told.tick < CAPTURE_REFUSAL_REPEAT_TICKS) return false;
+    told.key = key;
+    told.tick = now;
+    this._saySceneCue({ cueId: `pq019a:capture:${reason}`, text });
+    return true;
   },
 
   /** Journal the settled-capture custody receipt for the current sample, if proof holds right now. */
@@ -1596,6 +2145,34 @@ export const heistFacilities = {
     owned.carrierLaunchPos = null;
     owned.carrierReleaseAnchor = null;
     owned.carrierDepartAnchor = null;
+    // SF-140/143/147: every live-id reference is stale after a restore. The yard's armed sceneId
+    // is the MISSION's durable record — `adoptCounterweightScene` re-arms it from that record, so
+    // the facility clears its session arming here rather than trusting a stale scene.
+    if (owned.routine) {
+      owned.routine.capsuleEntityId = null;
+      owned.routine.escortEntityId = null;
+      owned.routine.theftReportId = null;
+    }
+    const cw = owned.counterweight;
+    if (cw) {
+      cw.doorEntityId = null;
+      cw.ballastEntityId = null;
+      cw.crewEntityId = null;
+      cw.crewClampId = null;
+      cw.crewTargetId = null;
+      cw.crewPhase = 'parked';
+      cw.sceneId = null;
+      cw.armedTick = null;
+      cw.suspendedBodies = null;
+      for (const row of Object.values(cw.crates || {})) {
+        row.entityId = null;
+        row.restTicks = 0;
+      }
+    }
+    if (owned.monitorPosts) {
+      for (const row of Object.values(owned.monitorPosts)) row.entityId = null;
+    }
+    owned.monitorContacts = {};
   },
 
   /**
@@ -1753,6 +2330,11 @@ export const heistFacilities = {
       scheduleId: schedule.scheduleId,
       capsuleEntityId: capsule.id,
       custodyReceiptId: contact.receiptId,
+      // SF-147: the sealed units physically inside the shell at custody — the custody the
+      // settlement reads, captured before consumption.
+      shipmentUnits: Number.isFinite(capsule.data?.shipmentUnits) ? capsule.data.shipmentUnits : null,
+      shipmentUnitsTotal: Number.isFinite(capsule.data?.shipmentUnitsTotal)
+        ? capsule.data.shipmentUnitsTotal : null,
       status: 'prepared',
       preparedAtTick: this.state.tick | 0,
       committedAtTick: null,
@@ -1906,6 +2488,1384 @@ export const heistFacilities = {
       source: 'heistFacilities',
     }));
     return { released: true, scheduleId: schedule.scheduleId };
+  },
+
+  // ── SF-140: the routine lawful transfer ─────────────────────────────────────────────────────
+  //
+  // While no contract owns `owned.schedule` the launcher keeps flying ordinary logged freight to
+  // the Concord catcher. The routine capsule is the same physical body on the same launch math —
+  // what it never carries is a mission schedule identity, so no settlement table can see it. A
+  // stolen routine capsule reports through the ordinary law seam (`_onRoutineTake`) and pays
+  // nobody: "legitimate transfers never become player rewards" is structural here, not a rule
+  // someone must remember.
+
+  _isRoutineCapsule(entity) {
+    return !!entity && entity.type === 'payload' && entity.data?.heistRoutine === true;
+  },
+
+  _stepRoutine(state, dt) {
+    const owned = state.heistFacilities;
+    const routine = owned?.routine;
+    if (!routine) return;
+
+    // Track the flying capsule; catch/loss/theft bookkeeping lives in the impact and
+    // entity-destroyed handlers.
+    if (routine.capsuleEntityId != null) {
+      const capsule = entityIsAlive(state, routine.capsuleEntityId);
+      if (this._isRoutineCapsule(capsule)) {
+        this._stepRoutineEscort(state, routine, capsule);
+        return;
+      }
+      routine.capsuleEntityId = null;
+      routine.escortEntityId = null;
+      routine.theftReportId = null;
+      if (routine.nextLaunchAtSimT == null) {
+        routine.nextLaunchAtSimT = stableNumber(state.simTime + PQ019_ROUTINE.cadenceS);
+      }
+      return;
+    }
+
+    // A booked launcher flies no routine — the contract owns the slot until it settles.
+    if (owned.schedule) return;
+    if (routine.nextLaunchAtSimT == null) {
+      routine.nextLaunchAtSimT = stableNumber(state.simTime + PQ019_ROUTINE.firstLaunchDelayS);
+      return;
+    }
+
+    // The OBSERVED schedule earns a spoken early warning; an unwatched launcher throws silently.
+    const facts = owned.observed || {};
+    if (facts.launcher_schedule
+      && routine.earlyCueSeq !== routine.seq
+      && state.simTime + 1e-9 >= routine.nextLaunchAtSimT - PQ019_OBSERVE.earlyWarningS) {
+      routine.earlyCueSeq = routine.seq;
+      this._saySceneCue({
+        cueId: `pq019a:routine:early:${routine.seq}`,
+        text: `${PQ019_FACILITIES.heist_launcher.name}: routine transfer in ~${PQ019_OBSERVE.earlyWarningS}s — you know this cadence`,
+      });
+    }
+
+    if (state.simTime + 1e-9 < routine.nextLaunchAtSimT) return;
+    this._launchRoutineCapsule(state, routine, dt);
+  },
+
+  _launchRoutineCapsule(state, routine) {
+    const launcher = this._facilityHead('heist_launcher');
+    const catcher = this._facilityHead('lawful_catcher');
+    if (!launcher || !catcher) {
+      // Machinery down — retry on a bounded delay rather than throwing nothing forever.
+      routine.nextLaunchAtSimT = stableNumber(state.simTime + 30);
+      return null;
+    }
+    const dx = catcher.pos.x - launcher.pos.x;
+    const dz = catcher.pos.z - launcher.pos.z;
+    const length = Math.hypot(dx, dz);
+    if (!(length > 0) || !Number.isFinite(length)) {
+      routine.nextLaunchAtSimT = stableNumber(state.simTime + 30);
+      return null;
+    }
+    routine.seq = (routine.seq | 0) + 1;
+    const scheduleId = `${PQ019_ROUTINE.schedulePrefix}:${routine.seq}`;
+    const payload = heistLaunchVariant(null).payload;
+    const nx = dx / length;
+    const nz = dz / length;
+    const clearance = launcher.radius + payload.radius + 2;
+    const capsule = this.helpers.spawnEntity(this._payloadSpawnSpec({
+      payload,
+      schedule: { scheduleId, variantId: null },
+      variant: heistLaunchVariant(null),
+      pos: { x: launcher.pos.x + nx * clearance, z: launcher.pos.z + nz * clearance },
+      vel: { x: nx * payload.launchSpeed, z: nz * payload.launchSpeed },
+      rot: Math.atan2(nz, nx),
+    }));
+    if (!capsule) {
+      routine.nextLaunchAtSimT = stableNumber(state.simTime + 30);
+      return null;
+    }
+    // Logged ordinary freight: nothing separable inside, and its own marker so handlers never
+    // confuse it with a mission's payload.
+    capsule.data.heistRoutine = true;
+    capsule.data.shipmentUnits = 0;
+    routine.capsuleEntityId = capsule.id;
+    routine.nextLaunchAtSimT = stableNumber(state.simTime + PQ019_ROUTINE.cadenceS);
+    routine.theftReportId = null;
+    this._saySceneCue({
+      cueId: `pq019a:routine:away:${routine.seq}`,
+      text: `Routine transfer away — ${PQ019_FACILITIES.lawful_catcher.name} bound`,
+    });
+    // Watching a real throw IS the schedule lesson — no scan pulse required.
+    const player = entityIsAlive(this.state, this.state.playerId);
+    if (player && Math.hypot(player.pos.x - capsule.pos.x, player.pos.z - capsule.pos.z)
+        <= PQ019_OBSERVE.watchRadiusWu) {
+      this._observeFact('launcher_schedule', 'watch', { routineSeq: routine.seq });
+    }
+    // A fenced theft buys the launcher an escort for its next transfers — a real consequence
+    // the player can see, not a flag.
+    if ((routine.escortsRemaining | 0) > 0) {
+      this._spawnRoutineEscort(state, routine, capsule);
+      routine.escortsRemaining--;
+    }
+    return capsule;
+  },
+
+  _spawnRoutineEscort(state, routine, capsule) {
+    const spec = makeShipEntitySpec(PQ019_ROUTINE.escortShipId, {
+      team: 2,
+      factionId: PQ019_ROUTINE.escortFactionId,
+      pos: { x: capsule.pos.x - 30, z: capsule.pos.z + 30 },
+      rot: Number(capsule.rot) || 0,
+      ai: { archetype: 'passive', passive: true, spawnContext: 'routine_escort' },
+    });
+    spec.ttl = Infinity;
+    spec.homeSectorId = PQ019_HEIST_SECTOR_ID;
+    spec.data = Object.assign(spec.data || {}, {
+      heistRoutineEscort: true,
+      missionPinned: true,
+      runtimeOwner: 'heistFacilities',
+      sectorId: PQ019_HEIST_SECTOR_ID,
+      homeSectorId: PQ019_HEIST_SECTOR_ID,
+      transientSector: true,
+    });
+    const escort = this.helpers.spawnEntity(spec);
+    if (escort) routine.escortEntityId = escort.id;
+    return escort;
+  },
+
+  /** The escort shadows its capsule at a standoff behind it — an ordinary hull with intent. */
+  _stepRoutineEscort(state, routine, capsule) {
+    const escort = entityIsAlive(state, routine.escortEntityId);
+    if (!escort || escort.data?.heistRoutineEscort !== true) {
+      routine.escortEntityId = null;
+      return;
+    }
+    const speed = Math.hypot(capsule.vel?.x || 0, capsule.vel?.z || 0) || 1;
+    const bx = capsule.pos.x - (capsule.vel.x / speed) * PQ019_ROUTINE.escortStandoffWu;
+    const bz = capsule.pos.z - (capsule.vel.z / speed) * PQ019_ROUTINE.escortStandoffWu;
+    this._driveCarrier(escort, { x: bx, z: bz }, PQ019_ROUTINE.escortSpeedWu);
+  },
+
+  /** `tether:latched` on a routine capsule — a real theft, judged by the law owner. */
+  _onRoutineTake(payload = {}) {
+    const state = this.state;
+    const owned = state.heistFacilities;
+    const routine = owned?.routine;
+    if (!routine) return false;
+    const capsule = entityIsAlive(state, payload.targetId);
+    if (!this._isRoutineCapsule(capsule)) return false;
+    if (capsule.data?.runtimeOwner !== 'heistFacilities') return false;
+    const scheduleId = capsule.data.launchScheduleId;
+    if (!scheduleId || routine.theftReportId === scheduleId) return false;
+    const law = this.registry && typeof this.registry.get === 'function'
+      ? this.registry.get('lawSecurity')
+      : null;
+    if (!law || typeof law.reportIncident !== 'function') return false;
+    const reportId = `pq019a:routine-theft:${scheduleId}`;
+    const receipt = law.reportIncident({
+      reportId,
+      kind: 'payload_theft',
+      offenderStableId: 'player',
+      offenderEntityId: state.playerId,
+      payloadStableId: capsule.data.heistPayloadStableId,
+      causalTick: state.tick | 0,
+      pos: { x: capsule.pos.x, z: capsule.pos.z },
+    });
+    // Denied reports are not cached — a latch later, inside a witness ring, must get a fresh
+    // judgement. An accepted report is stored only to spare the bus a repeat call for the same
+    // take; law's own idempotency ledger is still the authority.
+    if (receipt && receipt.accepted === true) routine.theftReportId = scheduleId;
+    this._saySceneCue({
+      cueId: `pq019a:routine:theft:${scheduleId}:${receipt && receipt.accepted === true ? 'w' : 'u'}`,
+      text: receipt && receipt.accepted === true
+        ? 'Routine cargo taken — witnesses logged it, Concord will come'
+        : 'Routine cargo taken — nobody is coming for it, and nobody is paying for it',
+    });
+    return true;
+  },
+
+  // ── SF-140: interception by observation ─────────────────────────────────────────────────────
+
+  /** One durable learned fact. First writer wins; knowledge is never un-learned. */
+  _observeFact(factId, method, detail = null) {
+    const owned = this.state.heistFacilities;
+    const facts = owned.observed || (owned.observed = {});
+    if (facts[factId]) return false;
+    facts[factId] = {
+      atTick: this.state.tick | 0,
+      method: String(method || 'watch'),
+      ...(detail && typeof detail === 'object' ? { detail } : {}),
+    };
+    this.bus.emit('heist:observed', Object.freeze({
+      fact: factId,
+      method: String(method || 'watch'),
+      atTick: this.state.tick | 0,
+      source: 'heistFacilities',
+    }));
+    this._saySceneCue({
+      cueId: `pq019a:observed:${factId}`,
+      text: {
+        launcher_schedule: 'Launcher schedule learned — it throws freight on a real cadence, observed or not',
+        catcher_receiver: 'Concord catcher geometry learned — its custody head is the lawful end of the line',
+        fence_receiver: 'Quiet fence geometry learned — the only buyer that does not ask questions',
+        crew_route: 'Crew route learned — where the worker goes is where the machinery is',
+      }[factId] || `Heist fact learned — ${factId}`,
+    });
+    return true;
+  },
+
+  /** Read-only view of the learned fact table for the mission owner and tests. */
+  heistObservations() {
+    const observed = this.state?.heistFacilities?.observed || {};
+    return Object.freeze({ ...observed });
+  },
+
+  _playerDistTo(pos) {
+    const player = entityIsAlive(this.state, this.state?.playerId);
+    if (!player || !pos) return Infinity;
+    return Math.hypot(player.pos.x - pos.x, player.pos.z - pos.z);
+  },
+
+  /** `scan:completed` — a pulse covered whatever it physically covered. */
+  _onScanCompleted(payload = {}) {
+    if (payload.sectorId !== PQ019_HEIST_SECTOR_ID) return;
+    const state = this.state;
+    const radius = PQ019_OBSERVE.scanRadiusWu;
+    // Facility heads are the real objects; their visuals share the socket.
+    const heads = {
+      launcher_schedule: this._facilityHead('heist_launcher'),
+      catcher_receiver: this._facilityHead('lawful_catcher'),
+      fence_receiver: this._facilityHead('fence_receiver'),
+    };
+    for (const [factId, head] of Object.entries(heads)) {
+      if (head && this._playerDistTo(head.pos) <= radius) this._observeFact(factId, 'scan');
+    }
+    // A pulse over a flying routine capsule teaches both ends of its lane.
+    const routine = state.heistFacilities?.routine;
+    const capsule = routine && entityIsAlive(state, routine.capsuleEntityId);
+    if (this._isRoutineCapsule(capsule) && this._playerDistTo(capsule.pos) <= radius) {
+      this._observeFact('launcher_schedule', 'scan', { routineSeq: routine.seq });
+      this._observeFact('catcher_receiver', 'scan', { routineSeq: routine.seq });
+    }
+    // Scanning a working hull teaches its route.
+    const worker = entityIsAlive(state, state.heistFacilities?.berth?.workerEntityId);
+    if (worker && this._playerDistTo(worker.pos) <= radius) this._observeFact('crew_route', 'scan');
+    const crew = entityIsAlive(state, state.heistFacilities?.counterweight?.crewEntityId);
+    if (crew && this._playerDistTo(crew.pos) <= radius) this._observeFact('crew_route', 'scan');
+  },
+
+  /** "Follow a worker": cumulative proximity accrues the crew-route fact. */
+  _stepFollowObserve(state) {
+    const owned = state.heistFacilities;
+    if (owned.observed?.crew_route) return;
+    const candidates = [
+      owned.berth?.workerEntityId,
+      owned.carrierEntityId,
+      owned.counterweight?.crewEntityId,
+    ];
+    for (const id of candidates) {
+      const hull = entityIsAlive(state, id);
+      if (hull && this._playerDistTo(hull.pos) <= PQ019_OBSERVE.followRadiusWu) {
+        owned.followHoldTicks = (owned.followHoldTicks | 0) + 1;
+        if (owned.followHoldTicks >= PQ019_OBSERVE.followTicks) {
+          this._observeFact('crew_route', 'follow', {
+            worker: hull.data?.berthWorkerId || hull.data?.heistFacilityRole || 'yard',
+          });
+        }
+        return;
+      }
+    }
+    owned.followHoldTicks = 0;
+  },
+
+  // ── SF-143: the counterweight scene ─────────────────────────────────────────────────────────
+  //
+  // The yard is real whether or not a watch is armed: the gate answers its cradle for anyone.
+  // Arming gives the crew a work order — the tug walks staged crates through the open gate while
+  // the balance holds. Commitment is the physical change of balance; interruption is a physical
+  // choice between the mechanism and the output.
+
+  _materializeCounterweight() {
+    const owned = this.state.heistFacilities;
+    const cw = owned.counterweight || (owned.counterweight = makeCounterweightState());
+    const scene = COUNTERWEIGHT_SCENE;
+    let created = 0;
+
+    // Cradle pad and receiver pad visuals — scenery the gate/door read off.
+    if (!this._findOwnedEntity(scene.id, 'counterweight_cradle')) {
+      insertDressingRow(this.state, {
+        type: 'fx',
+        pos: this._global(scene.cradle.pos),
+        radius: scene.cradle.radiusWu,
+        homeSectorId: PQ019_HEIST_SECTOR_ID,
+        data: {
+          heistFacilityId: scene.id,
+          heistFacilityRole: 'counterweight_cradle',
+          runtimeOwner: 'heistFacilities',
+          sectorId: PQ019_HEIST_SECTOR_ID,
+          homeSectorId: PQ019_HEIST_SECTOR_ID,
+          name: 'Counterweight Cradle',
+          worldDressing: true,
+          factionId: scene.crew.factionId,
+        },
+      });
+      created++;
+    }
+    if (!this._findOwnedEntity(scene.id, 'counterweight_pad')) {
+      insertDressingRow(this.state, {
+        type: 'fx',
+        pos: this._global(scene.receiverPad.pos),
+        radius: scene.receiverPad.radiusWu,
+        homeSectorId: PQ019_HEIST_SECTOR_ID,
+        data: {
+          heistFacilityId: scene.id,
+          heistFacilityRole: 'counterweight_pad',
+          runtimeOwner: 'heistFacilities',
+          sectorId: PQ019_HEIST_SECTOR_ID,
+          homeSectorId: PQ019_HEIST_SECTOR_ID,
+          name: 'Transfer Receiver Pad',
+          worldDressing: true,
+          factionId: scene.crew.factionId,
+        },
+      });
+      created++;
+    }
+
+    // The door: a real static collider at its current pose — kinematic machinery, never teleported.
+    let door = entityIsAlive(this.state, cw.doorEntityId)
+      || this._findOwnedEntity(scene.id, 'counterweight_door');
+    if (!door) {
+      door = this._spawnCounterweightDoor(cw.doorPose01);
+      created++;
+    }
+    cw.doorEntityId = door ? door.id : null;
+
+    // The ballast block — the intended counterweight, staged beside the cradle.
+    let ballast = entityIsAlive(this.state, cw.ballastEntityId)
+      || this._findScenePayload(scene.ballast.stableId);
+    if (!ballast) {
+      const snap = this._suspendedBodyFor(scene.ballast.stableId);
+      ballast = snap
+        ? this._spawnSceneBodyAt(scene.ballast, snap)
+        : this._spawnSceneBody(scene.ballast, scene.ballast.localPos);
+      created++;
+    }
+    cw.ballastEntityId = ballast ? ballast.id : null;
+
+    // The staged crates — respawn only what the manifest says should exist. A `lost` crate while
+    // ARMED stays gone (the manifest shrank); while unarmed the yard has restocked.
+    for (const def of scene.crates) {
+      const row = cw.crates[def.stableId] || (cw.crates[def.stableId] = {
+        entityId: null, state: 'staged', restTicks: 0, deliveredTick: null,
+      });
+      let crate = entityIsAlive(this.state, row.entityId)
+        || this._findScenePayload(def.stableId);
+      // While ARMED the manifest is the truth: `lost` and `delivered` crates stay gone — the
+      // pad consumed one, the void took the other; neither respawns at the staging point.
+      if (!crate && !(cw.sceneId && (row.state === 'lost' || row.state === 'delivered'))) {
+        const snap = this._suspendedBodyFor(def.stableId);
+        crate = snap
+          ? this._spawnSceneBodyAt(def, snap)
+          : this._spawnSceneBody(def, def.localPos);
+        if (crate) {
+          if (row.state === 'lost') row.state = 'staged';
+          created++;
+        }
+      }
+      row.entityId = crate ? crate.id : null;
+      row.restTicks = 0;
+    }
+
+    // The yard tug — an ordinary hull parked at the yard. `persistenceOwner` keeps it out of the
+    // world-record respawn path exactly like Berth Three's worker.
+    let crew = entityIsAlive(this.state, cw.crewEntityId) || this._findSceneCrew();
+    if (!crew) {
+      const worldRecordId = stableRecordId(
+        (Number(this.state.meta && this.state.meta.seed) >>> 0) || 1,
+        PQ019_HEIST_SECTOR_ID,
+        RECORD_KIND.NPC,
+        scene.crew.worldRecordSlotId,
+      );
+      const record = this.state.world?.records?.byId?.[worldRecordId];
+      if (!(record && record.alive !== false && record.outcome !== 'destroyed')) {
+        const spec = makeShipEntitySpec(scene.crew.shipId, {
+          team: 2,
+          factionId: scene.crew.factionId,
+          pos: this._global(scene.crew.parkLocalPos),
+          ai: { archetype: 'passive', passive: true, spawnContext: 'counterweight_crew' },
+        });
+        spec.homeSectorId = PQ019_HEIST_SECTOR_ID;
+        // Yard machinery, same pin class as the breakaway carrier and the gate door: without the
+        // mission pin the activity classifier shelves the parked hull beyond the physics reach,
+        // no Rapier body is ever created, and `_driveCarrier`'s written intent produces force on
+        // a body that does not exist — the tug reads as frozen at its park point.
+        spec.flags = { ...(spec.flags || {}), missionPinned: true };
+        spec.data.worldRecordId = worldRecordId;
+        spec.data.persistenceOwner = 'heistFacilities';
+        spec.data.counterweightCrew = true;
+        spec.data.missionPinned = true;
+        // A yard tug tows crates on the same transport clamp the breakaway carrier uses — it
+        // needs the carrier profile's aft `transport_clamp` socket or every clamp attempt is a
+        // source_socket_unavailable refusal.
+        spec.data.combatProfileId = 'combat_profile_heist_carrier';
+        spec.data.sectorId = PQ019_HEIST_SECTOR_ID;
+        spec.data.homeSectorId = PQ019_HEIST_SECTOR_ID;
+        spec.data.trafficLabel = scene.crew.label;
+        crew = this.helpers.spawnEntity(spec);
+        if (crew) created++;
+      }
+    }
+    cw.crewEntityId = crew ? crew.id : null;
+    if (cw.crewPhase !== 'lost' && !crew) cw.crewPhase = 'lost';
+    if (cw.suspendedBodies) cw.suspendedBodies = null;
+    return created;
+  },
+
+  _suspendedBodyFor(stableId) {
+    const snaps = this.state?.heistFacilities?.counterweight?.suspendedBodies;
+    if (!Array.isArray(snaps)) return null;
+    const snap = snaps.find((row) => row && row.stableId === stableId);
+    return snap && snap.pos ? { x: snap.pos.x, z: snap.pos.z } : null;
+  },
+
+  _spawnCounterweightDoor(pose01) {
+    const scene = COUNTERWEIGHT_SCENE;
+    const mass = 1e9;
+    const open = this._doorPose(pose01);
+    return this.helpers.spawnEntity({
+      type: 'fx',
+      _noMesh: true,
+      factionId: scene.crew.factionId,
+      pos: this._global(open),
+      rot: Math.PI / 2, // capsule length along local +X → spans Z, across the corridor
+      radius: Math.max(scene.door.lengthWu * 0.5, scene.door.halfWidthWu),
+      mass,
+      hull: 1e9,
+      hullMax: 1e9,
+      collides: true,
+      collisionMask: Masks.SHIP | Masks.PAYLOAD,
+      ttl: Infinity,
+      flags: { noInterp: true, invuln: true, missionPinned: true },
+      homeSectorId: PQ019_HEIST_SECTOR_ID,
+      physicsBody: {
+        dynamic: false,
+        shape: 'capsule',
+        radius: 1,
+        mass,
+        inertiaY: 1,
+        ccd: false,
+        material: 'station',
+      },
+      data: {
+        proportions: { length: scene.door.lengthWu, halfWidth: scene.door.halfWidthWu },
+        heistFacilityId: scene.id,
+        heistFacilityRole: 'counterweight_door',
+        runtimeOwner: 'heistFacilities',
+        sectorId: PQ019_HEIST_SECTOR_ID,
+        homeSectorId: PQ019_HEIST_SECTOR_ID,
+        name: 'Yard Gate Door',
+      },
+    });
+  },
+
+  /** Door world pose for a 0..1 slide — closed across the corridor, open parked beside it. */
+  _doorPose(pose01) {
+    const d = COUNTERWEIGHT_SCENE.door;
+    return {
+      x: d.closedPos.x,
+      z: d.closedPos.z - Math.max(0, Math.min(1, pose01)) * d.openOffsetWu,
+    };
+  },
+
+  _spawnSceneBody(def, localPos) {
+    const spec = this._sceneBodySpec(def);
+    spec.pos = this._global(localPos);
+    spec.vel = { x: 0, z: 0 };
+    return this.helpers.spawnEntity(spec);
+  },
+
+  /** Same body at an exact WORLD position — suspended snapshots are already global. */
+  _spawnSceneBodyAt(def, worldPos) {
+    const spec = this._sceneBodySpec(def);
+    spec.pos = { x: worldPos.x, z: worldPos.z };
+    spec.vel = { x: 0, z: 0 };
+    return this.helpers.spawnEntity(spec);
+  },
+
+  _findScenePayload(stableId) {
+    const list = this.state.entityList || [];
+    for (const entity of list) {
+      if (entity?.alive !== false && entity.type === 'payload'
+        && entity.data?.counterweightStableId === stableId
+        && entity.data?.runtimeOwner === 'heistFacilities') {
+        return entity;
+      }
+    }
+    return null;
+  },
+
+  _findSceneCrew() {
+    const list = this.state.entityList || [];
+    for (const entity of list) {
+      if (entity?.alive !== false && entity.data?.counterweightCrew === true) return entity;
+    }
+    return null;
+  },
+
+  /** Any qualifying body physically resting on the cradle — or null. Mass is the contract. */
+  _cradleHeldBody(state) {
+    const cradle = COUNTERWEIGHT_SCENE.cradle;
+    const center = this._global(cradle.pos);
+    const list = state.entityList || [];
+    for (const entity of list) {
+      if (!entity || entity.alive === false || !entity.pos) continue;
+      // Ships are never ballast — only loose heavy bodies count.
+      if (entity.type !== 'payload' && entity.type !== 'wreck' && entity.type !== 'asteroid'
+        && entity.type !== 'debris' && entity.type !== 'hulk') continue;
+      const mass = Number(entity.physicsBody?.mass ?? entity.mass);
+      if (!(mass >= cradle.minMass && mass <= cradle.maxMass)) continue;
+      const dx = entity.pos.x - center.x;
+      const dz = entity.pos.z - center.z;
+      if (dx * dx + dz * dz > cradle.radiusWu * cradle.radiusWu) continue;
+      const speed = Math.hypot(entity.vel?.x || 0, entity.vel?.z || 0);
+      if (speed >= cradle.settleSpeedWu) continue;
+      return entity;
+    }
+    return null;
+  },
+
+  _stepCounterweightScene(state) {
+    const owned = state.heistFacilities;
+    const cw = owned?.counterweight;
+    if (!cw) return;
+    const cradle = COUNTERWEIGHT_SCENE.cradle;
+    const wasOpen = cw.gate === 'open';
+
+    // 1. The gate answers actual configured conditions — the balance, never a trigger flag.
+    const held = this._cradleHeldBody(state);
+    if (held) {
+      cw.gateHoldTicks = (cw.gateHoldTicks | 0) + 1;
+      cw.gateReleaseTicks = 0;
+    } else {
+      cw.gateReleaseTicks = (cw.gateReleaseTicks | 0) + 1;
+      cw.gateHoldTicks = 0;
+    }
+    if (cw.gateHoldTicks >= cradle.holdTicks) {
+      if (cw.gate !== 'open') {
+        cw.gate = 'open';
+        this._emitCounterweightEvent(state, { event: 'gate_open', holderEntityId: held?.id ?? null });
+        this._saySceneCue({
+          cueId: 'pq019a:counterweight:gate_open',
+          text: 'Yard gate open — the balance is holding',
+        });
+        // The first committed opening under an armed contract brings the yard's one bounded
+        // interruption — the choice between the mechanism and the output, made physical.
+        if (cw.sceneId && !cw.pressureSpawned) {
+          this._spawnCounterweightPressure(state, cw);
+        }
+      }
+    } else if (cw.gateHoldTicks > 0) {
+      if (!wasOpen) cw.gate = 'opening';
+    } else if (wasOpen || cw.gate === 'opening' || cw.gate === 'closing') {
+      if (cw.gateReleaseTicks >= cradle.releaseTicks) {
+        // 'closing' only ever comes FROM 'open' — the committed-open close announces once on the
+        // transition into 'closed', whatever tick the slide actually finished on.
+        const wasCommittedOpen = wasOpen || cw.gate === 'closing';
+        cw.gate = 'closed';
+        if (wasCommittedOpen) {
+          this._emitCounterweightEvent(state, { event: 'gate_closed' });
+          this._saySceneCue({
+            cueId: 'pq019a:counterweight:gate_closed',
+            text: 'Yard gate shut — the balance left the cradle',
+          });
+        }
+      } else if (wasOpen) {
+        cw.gate = 'closing';
+      }
+    }
+
+    // 2. The door is kinematic steel — its pose follows the balance, never teleports.
+    const prevDoorPose = cw.doorPose01;
+    const target = cw.gate === 'open' || cw.gate === 'opening' ? 1 : 0;
+    const step = 1 / Math.max(1, COUNTERWEIGHT_SCENE.door.travelTicks);
+    if (cw.doorPose01 < target) cw.doorPose01 = Math.min(target, cw.doorPose01 + step);
+    else if (cw.doorPose01 > target) cw.doorPose01 = Math.max(target, cw.doorPose01 - step);
+    const door = entityIsAlive(state, cw.doorEntityId);
+    if (door) {
+      const pose = this._doorPose(cw.doorPose01);
+      const world = this._global(pose);
+      door.pos.x = world.x;
+      door.pos.z = world.z;
+      if (door.physicsBody) { door.dirty = true; }
+      if (cw.doorPose01 !== prevDoorPose) {
+        // The collider is a fixed SG-02 body: entity.pos writes alone never reach it — the
+        // static layer only re-evaluates records on physicsStaticVersion change (entity
+        // add/remove). Bumping the index on each slide tick is the sanctioned invalidation
+        // (massSeed does the same for its anchor rebuild): the next sync sees the moved pose
+        // and translates the steel. Without it the collider stays at its spawn pose — an
+        // invisible closed wall the tug presses into forever.
+        const index = state.entityIndex;
+        if (index && Number.isFinite(index.physicsStaticVersion)) index.physicsStaticVersion++;
+      }
+    }
+
+    // 3. The crew works only for an armed contract, and only while it exists.
+    if (!cw.sceneId) return;
+    this._stepGateCrew(state, cw);
+
+    // 4. A delivery is a crate physically at rest inside the pad — whoever carried it. The pad is
+    // a working receiver, not a painted circle: a body crossing its footprint below the arrest
+    // speed is damped to a standstill by the pad's own machinery (a crate slung through faster
+    // transits honest and untouched). A crate the tug just let go ('released') counts the same as
+    // any loose body; one that rolls back out unfinished is just a staged crate again.
+    const pad = COUNTERWEIGHT_SCENE.receiverPad;
+    const padCenter = this._global(pad.pos);
+    const arrestEvidence = this._padArrestEvidence || (this._padArrestEvidence = {
+      provenance: 'counterweight:receiverPad', tick: 0, kind: 'receiver_brake',
+    });
+    arrestEvidence.tick = state.tick | 0;
+    for (const [stableId, row] of Object.entries(cw.crates)) {
+      if (row.state !== 'staged' && row.state !== 'carried' && row.state !== 'released') continue;
+      const crate = entityIsAlive(state, row.entityId);
+      if (!crate) continue;
+      const dx = crate.pos.x - padCenter.x;
+      const dz = crate.pos.z - padCenter.z;
+      const inside = dx * dx + dz * dz <= pad.radiusWu * pad.radiusWu;
+      const vx = Number(crate.vel?.x) || 0;
+      const vz = Number(crate.vel?.z) || 0;
+      const speed = Math.hypot(vx, vz);
+      if (inside && speed <= pad.arrestSpeedWu && speed > pad.settleSpeedWu) {
+        // Arrest: the pad bleeds the crossing body's momentum — impulse opposing velocity, strong
+        // enough to win against a taut clamp line, so a crate towed in under power is caught off
+        // the line instead of orbiting its tug across the receiver forever.
+        const mass = Math.max(1, Number(crate.physicsBody?.mass ?? crate.mass) || 1);
+        queuePhysicsImpulse(crate, {
+          x: -vx * mass * 0.8, y: 0, z: -vz * mass * 0.8,
+        }, arrestEvidence);
+      }
+      if (inside && speed < pad.settleSpeedWu) {
+        row.restTicks = (row.restTicks | 0) + 1;
+        if (row.restTicks >= pad.settleTicks) {
+          row.state = 'delivered';
+          row.deliveredTick = state.tick | 0;
+          cw.legsDone = (cw.legsDone | 0) + 1;
+          // Custody passes to the pad: a crate still on the tug's clamp is taken off the line.
+          if (cw.crewTargetId === stableId && cw.crewClampId != null) {
+            const attachments = this._combatAttachments();
+            const crew = entityIsAlive(state, cw.crewEntityId);
+            if (attachments && crew) {
+              try { attachments.cut(cw.crewClampId, crew.id, 'receiver_custody'); }
+              catch { /* the joint may already be gone */ }
+            }
+            cw.crewClampId = null;
+            cw.crewTargetId = null;
+            cw.carryStandoff = null;
+            if (cw.crewPhase !== 'lost') cw.crewPhase = 'parked';
+          }
+          this._emitCounterweightEvent(state, {
+            event: 'crate_delivered',
+            stableId,
+            legsDone: cw.legsDone,
+          });
+        }
+      } else {
+        row.restTicks = 0;
+        if (row.state === 'released' && !inside) row.state = 'staged';
+      }
+    }
+  },
+
+  _emitCounterweightEvent(state, payload) {
+    const cw = state.heistFacilities?.counterweight;
+    this.bus.emit('heist:counterweight', Object.freeze({
+      sceneId: cw?.sceneId || null,
+      tick: state.tick | 0,
+      source: 'heistFacilities',
+      ...payload,
+    }));
+  },
+
+  /**
+   * The yard's one bounded interruption: `lightCount` light raiders inbound on the corridor while
+   * the gate is held. Positions are derived from the authored corridor ends — deterministic, no
+   * rng — so the same commitment always draws the same answer.
+   */
+  _spawnCounterweightPressure(state, cw) {
+    const pressure = COUNTERWEIGHT_SCENE.pressure;
+    cw.pressureSpawned = true;
+    const spawned = [];
+    const origins = [COUNTERWEIGHT_SCENE.corridor.stagePos, COUNTERWEIGHT_SCENE.corridor.receiverPos];
+    for (let i = 0; i < (pressure.lightCount | 0); i++) {
+      const origin = this._global(origins[i % origins.length]);
+      // Inbound along the corridor: spawn one body-length outside the field and leave the run to
+      // the raider's own AI.
+      const inward = i % origins.length === 0 ? 1 : -1;
+      const pos = { x: origin.x - inward * pressure.spawnDistanceWu, z: origin.z };
+      const enemyTypeId = pressure.lightPool[i % pressure.lightPool.length];
+      const spec = makeEnemySpawnSpec(enemyTypeId, pressure.lightLevel, pos, {
+        spawnContext: 'counterweight_pressure',
+      });
+      if (!spec) continue;
+      spec.homeSectorId = PQ019_HEIST_SECTOR_ID;
+      spec.data = Object.assign(spec.data || {}, {
+        counterweightPressure: true,
+        runtimeOwner: 'heistFacilities',
+        sectorId: PQ019_HEIST_SECTOR_ID,
+        homeSectorId: PQ019_HEIST_SECTOR_ID,
+        transientSector: true,
+        spawnMotive: pressure.motive,
+      });
+      const entity = this.helpers.spawnEntity(spec);
+      if (entity) spawned.push(entity.id);
+    }
+    this._emitCounterweightEvent(state, {
+      event: 'pressure_inbound',
+      count: spawned.length,
+      entityIds: spawned,
+    });
+    this._saySceneCue({
+      cueId: `pq019a:counterweight:pressure:${cw.sceneId}`,
+      text: 'Raiders inbound on the yard — the balance or the crates, you can only cover one',
+    });
+    return spawned;
+  },
+
+  /**
+   * The yard tug's one working loop: fetch a staged crate, carry it through the open gate,
+   * release at the pad, come back. Carries HOLD where they physically are while the gate is not
+   * open — the clamped crate is real mass in the corridor, not a paused animation.
+   */
+  _stepGateCrew(state, cw) {
+    const scene = COUNTERWEIGHT_SCENE;
+    const crew = entityIsAlive(state, cw.crewEntityId);
+    if (!crew || crew.data?.counterweightCrew !== true) {
+      if (cw.crewPhase !== 'lost') {
+        cw.crewPhase = 'lost';
+        this._emitCounterweightEvent(state, { event: 'crew_lost' });
+      }
+      return;
+    }
+    const attachments = this._combatAttachments();
+    const staged = () => Object.entries(cw.crates).find(
+      ([, row]) => row.state === 'staged' && entityIsAlive(state, row.entityId),
+    );
+
+    if (cw.crewPhase === 'lost' || cw.crewPhase === 'parked') {
+      const next = staged();
+      if (next && cw.gate === 'open' && attachments) {
+        cw.crewPhase = 'fetch';
+        cw.crewTargetId = next[0];
+      } else {
+        // Idle or blocked — sit at the park point.
+        const park = this._global(scene.crew.parkLocalPos);
+        this._driveCarrier(crew, park, scene.crew.cruiseSpeedWu, {
+          reachWu: 8,
+          brakeWithinWu: 12,
+        });
+        return;
+      }
+    }
+
+    const target = cw.crewTargetId ? cw.crates[cw.crewTargetId] : null;
+    const crate = target ? entityIsAlive(state, target.entityId) : null;
+
+    if (cw.crewPhase === 'fetch') {
+      if (!crate) {
+        // The crate it was fetching is gone — pick another or stand down.
+        const next = staged();
+        if (next) { cw.crewTargetId = next[0]; return; }
+        cw.crewPhase = 'parked';
+        cw.crewTargetId = null;
+        return;
+      }
+      const dist = Math.hypot(crew.pos.x - crate.pos.x, crew.pos.z - crate.pos.z);
+      const clampRing = crew.radius + crate.radius + scene.crew.clampStandoffWu + 4;
+      if (dist <= clampRing) {
+        const result = attachments && attachments.create({
+          defId: 'attachment_transport_clamp',
+          ownerId: crew.id,
+          targetId: crate.id,
+        });
+        if (result && result.ok) {
+          cw.crewClampId = result.attachment.id;
+          target.state = 'carried';
+          cw.crewPhase = 'carry';
+          cw.carryStandoff = null; // re-latch the leg's standoff off the load's fresh position
+          return;
+        }
+        if (result && result.reason !== 'physics_port_unavailable'
+          && result.reason !== 'physics_create_rejected') {
+          // A real refusal (no socket, dead endpoint) — this crate cannot ride the tug.
+          cw.crewPhase = 'parked';
+          cw.crewTargetId = null;
+          return;
+        }
+      }
+      this._driveCarrier(crew, crate.pos, scene.crew.cruiseSpeedWu, {
+        reachWu: scene.crew.clampStandoffWu,
+        // Braking is ring-INCLUSIVE: the clamp check above runs first every tick, so a hull that
+        // crosses the ring at speed still lands the joint; a transient physics-port refusal just
+        // holds station inside the ring until the body records exist.
+        brakeWithinWu: clampRing,
+      });
+      return;
+    }
+
+    if (cw.crewPhase === 'carry' || cw.crewPhase === 'hold' || cw.crewPhase === 'deliver') {
+      // The clamp is the custody: a cut line means the crate is loose wherever physics left it —
+      // unless the yard just released it at the pad, where 'released' belongs to the pad's own
+      // rest detection now. Without that distinction the cut's very next tick read as a dropped
+      // carry and the tug re-clamped its own delivery forever.
+      const clamp = cw.crewClampId != null && attachments
+        ? attachments.get(cw.crewClampId) : null;
+      if (!clamp || clamp.state !== 'active') {
+        if (target && crate && target.state === 'carried') target.state = 'staged';
+        cw.crewClampId = null;
+        cw.crewTargetId = null;
+        cw.carryStandoff = null;
+        cw.crewPhase = 'parked';
+        return;
+      }
+      if (cw.crewPhase === 'deliver') {
+        // Released at the pad: the crate's own rest detection finishes the leg.
+        if (!crate || (target.state !== 'carried' && target.state !== 'released')) {
+          cw.crewPhase = 'parked';
+          cw.crewTargetId = null;
+          cw.crewClampId = null;
+          cw.carryStandoff = null;
+        }
+        return;
+      }
+      if (crate) {
+        // The cage's own dampers: a bolted transport clamp is not a free pivot — its shunt
+        // bleeds the load's swing relative to the hull and hands the momentum to the tug as
+        // reaction. A radial spring alone conserves the pair's angular momentum: once slung,
+        // tug and crate orbit their barycenter with the helm's alignment gate shut forever.
+        const mCrate = Math.max(1, Number(crate.physicsBody?.mass ?? crate.mass) || 1);
+        const mTug = Math.max(1, Number(crew.physicsBody?.mass ?? crew.mass) || 1);
+        const mu = (mCrate * mTug) / (mCrate + mTug);
+        const rvx = (Number(crate.vel?.x) || 0) - (Number(crew.vel?.x) || 0);
+        const rvz = (Number(crate.vel?.z) || 0) - (Number(crew.vel?.z) || 0);
+        if (rvx * rvx + rvz * rvz > 0.25) {
+          const dampEvidence = this._clampDampEvidence || (this._clampDampEvidence = {
+            provenance: 'counterweight:clampDamper', tick: 0, kind: 'receiver_brake',
+          });
+          dampEvidence.tick = state.tick | 0;
+          const jx = -rvx * mu * 0.1;
+          const jz = -rvz * mu * 0.1;
+          queuePhysicsImpulse(crate, { x: jx, y: 0, z: jz }, dampEvidence);
+          queuePhysicsImpulse(crew, { x: -jx, y: 0, z: -jz }, dampEvidence);
+        }
+      }
+      if (cw.gate !== 'open') {
+        // HOLD — the carry parks clear of the door plane, off whichever side of the steel the
+        // hull is already on. Braking in place inside the door's footprint lets the sliding
+        // collider shove or pin the hull; the west standoff also keeps the towed load's swing
+        // out of the gate. A hull already through reverses only for the load it trails.
+        cw.crewPhase = 'hold';
+        const doorWorld = this._global(this._doorPose(0));
+        const towLine = (Number(crew.radius) || 0) + (Number(crate && crate.radius) || 0)
+          + scene.crew.clampStandoffWu + 6;
+        const east = crew.pos.x > doorWorld.x;
+        const holdPos = {
+          x: doorWorld.x + (east ? 1 : -1) * (scene.door.halfWidthWu + towLine + 24),
+          z: this._global(scene.receiverPad.pos).z,
+        };
+        this._driveCarrier(crew, holdPos, scene.crew.towSpeedWu ?? scene.crew.cruiseSpeedWu, {
+          reachWu: 10,
+          brakeWithinWu: 16,
+          speedServo: true,
+        });
+        return;
+      }
+      cw.crewPhase = 'carry';
+      const padPos = this._global(scene.receiverPad.pos);
+      // The load owns the delivery: the crate trails the nose a body-length back, so its own
+      // distance to the receiver is what matters — a tug that parked its own hull inside the ring
+      // used to drop its trailer just outside it.
+      const crateDist = crate
+        ? Math.hypot(crate.pos.x - padPos.x, crate.pos.z - padPos.z)
+        : Infinity;
+      const releaseRing = scene.receiverPad.radiusWu - scene.crew.deliverStandoffWu;
+      const crateSpeed = crate
+        ? Math.hypot(crate.vel?.x || 0, crate.vel?.z || 0)
+        : Infinity;
+      // Let go only where the pad can keep it: inside the delivery ring AND settled below its own
+      // rest speed. A cut at carry pace tosses a 120 t crate straight through the receiver and the
+      // "delivered" leg becomes a loose body drifting out the far side.
+      if (crate && crateDist <= releaseRing && crateSpeed <= scene.receiverPad.settleSpeedWu) {
+        attachments.cut(clamp.id, crew.id, 'transport_release');
+        if (target) target.state = 'released';
+        cw.crewClampId = null;
+        cw.crewPhase = 'deliver';
+        return;
+      }
+      if (crate && crateDist <= scene.receiverPad.radiusWu) {
+        // The load is over the receiver — kill the tow now. Holding power drags it through the
+        // pad at carry pace; braking lets its own momentum carry it deep into the arrest field
+        // while the hull comes back to meet it. If it skids wide and leaves the ring, the next
+        // tick's carry plan takes over and brings it around again.
+        const data = crew.data || (crew.data = {});
+        const intent = data.intent || (data.intent = {});
+        intent.moveX = 0;
+        intent.moveZ = 0;
+        intent.boost = false;
+        intent.brake = true;
+        intent.fire = false;
+        return;
+      }
+      const crateRelX = crate ? crate.pos.x - crew.pos.x : 0;
+      const crateRelZ = crate ? crate.pos.z - crew.pos.z : 0;
+      const crateRel = Math.hypot(crateRelX, crateRelZ);
+      const lineLen = (Number(crew.radius) || 0) + (Number(crate && crate.radius) || 0)
+        + scene.crew.clampStandoffWu + 6;
+      const toPadX = padPos.x - crew.pos.x;
+      const toPadZ = padPos.z - crew.pos.z;
+      const toPadD = Math.hypot(toPadX, toPadZ) || 1;
+      const planSpeed = scene.crew.towSpeedWu ?? scene.crew.cruiseSpeedWu;
+      const crewSpeed = Math.hypot(Number(crew.vel?.x) || 0, Number(crew.vel?.z) || 0);
+      if (crateSpeed > planSpeed * 1.6 || crewSpeed > planSpeed * 1.6) {
+        // Slung past plan pace: the line is storing energy the helm cannot spend. Bleed the swing
+        // before adding more — thrust fed into an over-speed tether assembly is a slingshot pump,
+        // not a tow.
+        const data = crew.data || (crew.data = {});
+        const intent = data.intent || (data.intent = {});
+        intent.moveX = 0;
+        intent.moveZ = 0;
+        intent.boost = false;
+        intent.brake = true;
+        intent.fire = false;
+        return;
+      }
+      if (crate && crateRel > lineLen * 0.6) {
+        // Tow geometry: a load ahead of or abeam the bow turns thrust into a mutual orbit — the
+        // tug circles its own anchor and the crate never moves. While the line leads, swing to
+        // the load's far side first so the crate lies behind the bow on the pad line.
+        const lead = (crateRelX * toPadX + crateRelZ * toPadZ) / (crateRel * toPadD);
+        if (lead > 0.15) {
+          const px = padPos.x - crate.pos.x;
+          const pz = padPos.z - crate.pos.z;
+          const pd = Math.hypot(px, pz) || 1;
+          const lineUp = {
+            x: crate.pos.x + (px / pd) * (lineLen + 8),
+            z: crate.pos.z + (pz / pd) * (lineLen + 8),
+          };
+          this._driveCarrier(crew, lineUp, scene.crew.cruiseSpeedWu, {
+            reachWu: 12,
+            brakeWithinWu: 16,
+            speedServo: true,
+          });
+          return;
+        }
+      }
+      // The carry target stands PAST the receiver on the far side from where the load came on —
+      // LATCHED once per leg. The tow drags the crate through the pad's circle, where the
+      // receiver's own arrest machinery catches it off the line. Recomputing the aim off the live
+      // crate every tick made the target outrun the tow and spiralled the assembly out.
+      if (!cw.carryStandoff || cw.carryStandoff.stableId !== cw.crewTargetId) {
+        const bx = padPos.x - crate.pos.x;
+        const bz = padPos.z - crate.pos.z;
+        const bd = Math.hypot(bx, bz) || 1;
+        cw.carryStandoff = {
+          stableId: cw.crewTargetId,
+          x: padPos.x + (bx / bd) * (scene.receiverPad.radiusWu + 30),
+          z: padPos.z + (bz / bd) * (scene.receiverPad.radiusWu + 30),
+        };
+      }
+      const towMass = Math.max(1,
+        (Number(crate && (crate.physicsBody?.mass ?? crate.mass)) || 0)
+        + (Number(crew.physicsBody?.mass ?? crew.mass) || 1));
+      this._driveCarrier(crew, cw.carryStandoff, planSpeed, {
+        reachWu: 14,
+        brakeWithinWu: 20,
+        speedServo: true,
+        decelScale: (Number(crew.physicsBody?.mass ?? crew.mass) || 1) / towMass,
+      });
+      return;
+    }
+  },
+
+  /**
+   * Arm the yard for one contract. One scene at a time — the machinery is singular. Idempotent
+   * per sceneId so a mission re-requesting its own arming gets its own receipt back.
+   */
+  requestCounterweightScene(request = {}) {
+    const sceneId = cleanScheduleId(request.sceneId);
+    const owned = this.state.heistFacilities;
+    const cw = owned?.counterweight;
+    if (!sceneId || !cw) {
+      const denied = Object.freeze({ accepted: false, reason: 'invalid_scene', sceneId, source: 'heistFacilities' });
+      this.bus.emit('heist:counterweightSceneReceipt', denied);
+      return denied;
+    }
+    if (cw.sceneId && cw.sceneId !== sceneId) {
+      const denied = Object.freeze({
+        accepted: false, reason: 'active_scene', sceneId, activeSceneId: cw.sceneId,
+        source: 'heistFacilities',
+      });
+      this.bus.emit('heist:counterweightSceneReceipt', denied);
+      return denied;
+    }
+    if (cw.sceneId === sceneId) {
+      const receipt = Object.freeze({ accepted: true, sceneId, resumed: true, source: 'heistFacilities' });
+      this.bus.emit('heist:counterweightSceneReceipt', receipt);
+      return receipt;
+    }
+    cw.sceneId = sceneId;
+    cw.armedTick = this.state.tick | 0;
+    cw.legsDone = 0;
+    cw.pressureSpawned = false;
+    // RESUME: the mission's durable manifest ledger re-marks the scene — a crate already paid
+    // stays delivered (never paid twice), a crate already lost stays lost (the manifest does not
+    // refill across a boundary or a reload).
+    const resume = request.resume && typeof request.resume === 'object' ? request.resume : null;
+    if (resume) {
+      const delivered = new Set(Array.isArray(resume.deliveredStableIds) ? resume.deliveredStableIds : []);
+      const lost = new Set(Array.isArray(resume.lostStableIds) ? resume.lostStableIds : []);
+      for (const [stableId, row] of Object.entries(cw.crates)) {
+        if (delivered.has(stableId)) row.state = 'delivered';
+        else if (lost.has(stableId)) row.state = 'lost';
+      }
+      cw.legsDone = Math.max(0, Number(resume.legsDone) | 0);
+    }
+    this._emitCounterweightEvent(this.state, { event: 'scene_armed' });
+    const receipt = Object.freeze({ accepted: true, sceneId, source: 'heistFacilities' });
+    this.bus.emit('heist:counterweightSceneReceipt', receipt);
+    return receipt;
+  },
+
+  /**
+   * Disarm the yard. The machinery stays; the work order ends — crates keep their physical
+   * positions ("lost output remains physical") and the tug returns to its park point.
+   */
+  releaseCounterweightScene(request = {}) {
+    const sceneId = cleanScheduleId(request.sceneId);
+    const cw = this.state.heistFacilities?.counterweight;
+    if (!cw || (sceneId && cw.sceneId !== sceneId)) {
+      return { released: false, reason: cw ? 'scene_mismatch' : 'no_scene' };
+    }
+    const releasedId = cw.sceneId;
+    const attachments = this._combatAttachments();
+    const crew = entityIsAlive(this.state, cw.crewEntityId);
+    if (cw.crewClampId != null && attachments && crew) {
+      try { attachments.cut(cw.crewClampId, crew.id, 'scene_release'); } catch { /* clamp may be gone */ }
+    }
+    cw.crewClampId = null;
+    cw.crewTargetId = null;
+    cw.carryStandoff = null;
+    if (cw.crewPhase !== 'lost') cw.crewPhase = 'parked';
+    for (const row of Object.values(cw.crates)) {
+      if (row.state === 'carried') row.state = 'staged';
+    }
+    cw.sceneId = null;
+    cw.armedTick = null;
+    this._emitCounterweightEvent(this.state, { event: 'scene_released', releasedSceneId: releasedId });
+    return { released: true, sceneId: releasedId };
+  },
+
+  /** Plain snapshot for the mission owner — positions are durable truth, ids are not. */
+  counterweightSceneStatus() {
+    const state = this.state;
+    const cw = state?.heistFacilities?.counterweight;
+    if (!cw) return null;
+    const crates = {};
+    for (const [stableId, row] of Object.entries(cw.crates)) {
+      const crate = entityIsAlive(state, row.entityId);
+      crates[stableId] = {
+        state: row.state,
+        pos: crate ? { x: crate.pos.x, z: crate.pos.z } : null,
+      };
+    }
+    return {
+      sceneId: cw.sceneId,
+      armedTick: cw.armedTick,
+      gate: cw.gate,
+      doorPose01: cw.doorPose01,
+      legsDone: cw.legsDone,
+      crewPhase: cw.crewPhase,
+      crates,
+    };
+  },
+
+  /** Durable body snapshots of every loose scene body — the suspension contract. */
+  snapshotCounterweightBodies() {
+    const state = this.state;
+    const cw = state?.heistFacilities?.counterweight;
+    if (!cw || !cw.sceneId) return null;
+    const snap = (entity, stableId, role) => (entity ? {
+      stableId, role,
+      pos: { x: entity.pos.x, z: entity.pos.z },
+      vel: { x: entity.vel?.x || 0, z: entity.vel?.z || 0 },
+      rot: Number.isFinite(entity.rot) ? entity.rot : 0,
+      angVel: Number.isFinite(entity.angVel) ? entity.angVel : 0,
+      hull: Number.isFinite(entity.hull) ? entity.hull : null,
+      hullMax: entity.hullMax,
+      state: role === 'crate' ? cw.crates[stableId]?.state : undefined,
+    } : null);
+    const out = [];
+    const ballast = entityIsAlive(state, cw.ballastEntityId) || this._findScenePayload(COUNTERWEIGHT_SCENE.ballast.stableId);
+    const b = snap(ballast, COUNTERWEIGHT_SCENE.ballast.stableId, 'ballast');
+    if (b) out.push(b);
+    for (const [stableId, row] of Object.entries(cw.crates)) {
+      const crate = entityIsAlive(state, row.entityId) || this._findScenePayload(stableId);
+      const s = snap(crate, stableId, 'crate');
+      if (s) out.push(s);
+    }
+    return out;
+  },
+
+  /**
+   * Re-embody suspended scene bodies after a sector boundary or a reload. Relinks the durable
+   * rows by stableId — the same bodies, never duplicates of an already-carried manifest.
+   */
+  respawnCounterweightBodies(snapshots = []) {
+    const state = this.state;
+    const cw = state?.heistFacilities?.counterweight;
+    if (!cw) return { respawned: 0 };
+    const byStable = new Map();
+    for (const def of [COUNTERWEIGHT_SCENE.ballast, ...COUNTERWEIGHT_SCENE.crates]) {
+      byStable.set(def.stableId, def);
+    }
+    let respawned = 0;
+    for (const snap of snapshots) {
+      if (!snap || !snap.stableId || !snap.pos) continue;
+      const def = byStable.get(snap.stableId);
+      if (!def) continue;
+      const existing = this._findScenePayload(snap.stableId);
+      if (existing) continue; // never double a body that survived
+      // Snapshots are already world positions — no sector-local re-projection.
+      const entity = this.helpers.spawnEntity({
+        ...this._sceneBodySpec(def),
+        pos: { x: snap.pos.x, z: snap.pos.z },
+        vel: { x: Number(snap.vel?.x) || 0, z: Number(snap.vel?.z) || 0 },
+        rot: Number.isFinite(snap.rot) ? snap.rot : 0,
+        hull: Number.isFinite(snap.hull) ? snap.hull : def.hull,
+        hullMax: Number.isFinite(snap.hullMax) ? snap.hullMax : def.hull,
+      });
+      if (entity) {
+        if (Number.isFinite(snap.angVel)) entity.angVel = snap.angVel;
+        respawned++;
+      }
+    }
+    // Relink every live body to its row.
+    cw.ballastEntityId = (this._findScenePayload(COUNTERWEIGHT_SCENE.ballast.stableId) || {}).id ?? null;
+    for (const def of COUNTERWEIGHT_SCENE.crates) {
+      const row = cw.crates[def.stableId];
+      const body = this._findScenePayload(def.stableId);
+      if (row && body) row.entityId = body.id;
+    }
+    cw.suspendedBodies = null;
+    return { respawned };
+  },
+
+  _sceneBodySpec(def) {
+    return {
+      type: 'payload',
+      factionId: COUNTERWEIGHT_SCENE.crew.factionId,
+      ownerId: `facility:${COUNTERWEIGHT_SCENE.id}`,
+      team: 2,
+      radius: def.radius,
+      mass: def.mass,
+      hull: def.hull,
+      hullMax: def.hull,
+      collides: true,
+      collisionMask: Masks.SHIP | Masks.ASTEROID | Masks.STATION | Masks.PROJECTILE,
+      ttl: Infinity,
+      flags: { missionPinned: true, persistent: true },
+      homeSectorId: PQ019_HEIST_SECTOR_ID,
+      physicsBody: {
+        dynamic: true,
+        radius: def.radius,
+        mass: def.mass,
+        inertiaY: 0.5 * def.mass * def.radius * def.radius,
+        ccd: true,
+        material: 'payload',
+      },
+      data: {
+        heistFacilityRole: 'counterweight_body',
+        counterweightStableId: def.stableId,
+        counterweightRole: def.stableId === COUNTERWEIGHT_SCENE.ballast.stableId ? 'ballast' : 'crate',
+        authoredPayloadAssetId: def.authoredPayloadAssetId,
+        legalOwnerFactionId: COUNTERWEIGHT_SCENE.crew.factionId,
+        ownerId: `facility:${COUNTERWEIGHT_SCENE.id}`,
+        name: def.name,
+        missionPinned: true,
+        runtimeOwner: 'heistFacilities',
+        sectorId: PQ019_HEIST_SECTOR_ID,
+        homeSectorId: PQ019_HEIST_SECTOR_ID,
+        transientSector: true,
+      },
+    };
+  },
+
+  /**
+   * After a reload: bodies restored by the save owner (persistent flags) are re-adopted by the
+   * armed record; the scene re-links by stableId rather than by live entity id.
+   */
+  adoptCounterweightScene(request = {}) {
+    const sceneId = cleanScheduleId(request.sceneId);
+    const cw = this.state?.heistFacilities?.counterweight;
+    if (!sceneId || !cw) return { adopted: false, reason: 'no_scene' };
+    if (cw.sceneId && cw.sceneId !== sceneId) return { adopted: false, reason: 'active_scene' };
+    cw.sceneId = sceneId;
+    cw.ballastEntityId = (this._findScenePayload(COUNTERWEIGHT_SCENE.ballast.stableId) || {}).id ?? null;
+    let found = 0;
+    for (const def of COUNTERWEIGHT_SCENE.crates) {
+      const row = cw.crates[def.stableId] || (cw.crates[def.stableId] = {
+        entityId: null, state: 'staged', restTicks: 0, deliveredTick: null,
+      });
+      const body = this._findScenePayload(def.stableId);
+      if (body) { row.entityId = body.id; found++; }
+      row.restTicks = 0;
+    }
+    return { adopted: true, sceneId, bodiesRelinked: found };
+  },
+
+  /**
+   * Terminal notification from the mission owner: a fenced capsule run costs the launcher its
+   * next routine transfers' escort coverage — a durable consequence the next schedules show.
+   */
+  noteScheduleOutcome(request = {}) {
+    const owned = this.state?.heistFacilities;
+    if (!owned) return false;
+    const outcome = cleanScheduleId(request.outcome);
+    const record = this._facilityRecord('heist_launcher');
+    if (!Array.isArray(record.losses)) record.losses = [];
+    record.losses.push({
+      scheduleId: cleanScheduleId(request.scheduleId) || null,
+      outcome,
+      unitsLost: Number.isFinite(request.unitsLost) ? request.unitsLost : null,
+      atTick: this.state.tick | 0,
+    });
+    while (record.losses.length > 8) record.losses.shift();
+    if (outcome === 'fenced_success' && owned.routine) {
+      owned.routine.escortsRemaining = (owned.routine.escortsRemaining | 0)
+        + PQ019_ROUTINE.escortAfterLosses;
+    }
+    return true;
+  },
+
+  // ── SF-147: the monitored lane ──────────────────────────────────────────────────────────────
+  //
+  // The posts are permanent lawful scenery on the escape route. They emit a scan receipt for any
+  // heist payload body that crosses their field — what a scan MEANS (a re-raised theft, fresh
+  // pursuit) is the mission's reading of provenance, never the post's.
+
+  _materializeMonitors() {
+    const owned = this.state.heistFacilities;
+    if (!owned.monitorPosts || typeof owned.monitorPosts !== 'object') owned.monitorPosts = {};
+    let created = 0;
+    for (const post of HOT_RETURN_MONITORS.posts) {
+      const row = owned.monitorPosts[post.id] || (owned.monitorPosts[post.id] = { entityId: null });
+      let entity = entityIsAlive(this.state, row.entityId)
+        || this._findMonitorPost(post.id);
+      if (!entity) {
+        entity = insertDressingRow(this.state, {
+          type: 'fx',
+          pos: this._global(post.localPos),
+          radius: 30,
+          homeSectorId: PQ019_HEIST_SECTOR_ID,
+          data: {
+            heistFacilityId: 'hot_return_monitor',
+            heistMonitorId: post.id,
+            heistFacilityRole: 'monitor_post',
+            runtimeOwner: 'heistFacilities',
+            sectorId: PQ019_HEIST_SECTOR_ID,
+            homeSectorId: PQ019_HEIST_SECTOR_ID,
+            name: post.name,
+            worldDressing: true,
+            factionId: post.factionId,
+          },
+        });
+        created++;
+      }
+      row.entityId = entity ? entity.id : null;
+    }
+    return created;
+  },
+
+  _findMonitorPost(monitorId) {
+    let found = null;
+    forEachDressingRow(this.state, (row) => {
+      if (found) return;
+      if (row.data?.heistMonitorId === monitorId) found = row;
+    });
+    return found;
+  },
+
+  _stepMonitors(state) {
+    const owned = state.heistFacilities;
+    const posts = owned?.monitorPosts;
+    if (!posts) return;
+    const contacts = owned.monitorContacts || (owned.monitorContacts = {});
+    const radius = HOT_RETURN_MONITORS.radiusWu;
+    const radius2 = radius * radius;
+    // Current crossings, computed fresh each tick — deterministic, no drift.
+    const live = {};
+    for (const entity of state.entityList || []) {
+      if (!entity || entity.alive === false || entity.type !== 'payload' || !entity.pos) continue;
+      const data = entity.data || {};
+      // Only heist payloads and their shed units are interesting to a theft monitor.
+      if (!data.heistPayloadStableId && !data.heistUnitOf) continue;
+      for (const post of HOT_RETURN_MONITORS.posts) {
+        const world = this._global(post.localPos);
+        const dx = entity.pos.x - world.x;
+        const dz = entity.pos.z - world.z;
+        if (dx * dx + dz * dz > radius2) continue;
+        const key = `${post.id}:${entity.id}`;
+        live[key] = true;
+        if (contacts[key]) continue;
+        contacts[key] = true;
+        const hot = owned.monitorHot || (owned.monitorHot = {});
+        if (!hot[post.id]) {
+          hot[post.id] = true;
+          this._saySceneCue({
+            cueId: `pq019a:monitor:${post.id}`,
+            text: `${post.name} has the shipment`,
+          });
+        }
+        this.bus.emit('heist:monitorScan', Object.freeze({
+          monitorId: post.id,
+          monitorName: post.name,
+          scheduleId: data.launchScheduleId || null,
+          payloadStableId: data.heistUnitOf || data.heistPayloadStableId,
+          payloadEntityId: entity.id,
+          pos: Object.freeze({ x: stableNumber(entity.pos.x), z: stableNumber(entity.pos.z) }),
+          tick: state.tick | 0,
+          source: 'heistFacilities',
+        }));
+      }
+    }
+    // Re-arm: a body that left the field scans again on its next pass.
+    const postsStillHot = {};
+    for (const key of Object.keys(live)) postsStillHot[key.split(':')[0]] = true;
+    for (const key of Object.keys(contacts)) {
+      if (!live[key]) delete contacts[key];
+    }
+    const hot = owned.monitorHot;
+    if (hot) {
+      for (const id of Object.keys(hot)) {
+        if (!postsStillHot[id]) delete hot[id];
+      }
+    }
+  },
+
+  /**
+   * One spoken line for scene machinery (routine throws, refusals, observations, gate events).
+   * Same one-voice seam as `_sayLaunchCue` on the objective channel, under the scene's own id.
+   */
+  _saySceneCue({ cueId, text }) {
+    if (this.state?.mode !== 'flight') return null;
+    const receipt = Object.freeze({
+      cueId,
+      text,
+      voiceId: 'pq019a:scene',
+      channel: PQ019_LAUNCH_CUE_CHANNEL,
+      source: 'heistFacilities',
+    });
+    const say = this.helpers?.voice?.say;
+    if (typeof say === 'function') {
+      say({ channel: PQ019_LAUNCH_CUE_CHANNEL, id: 'pq019a:scene', text, kind: 'info', ttl: LAUNCH_CUE_TTL_S });
+    }
+    this.bus.emit('heist:launchCue', receipt);
+    return receipt;
   },
 };
 

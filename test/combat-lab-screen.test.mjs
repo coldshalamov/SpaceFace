@@ -176,9 +176,12 @@ test('successful launch stores the setup; form edits and failed launches do not'
   assert.deepEqual(stored, launched.value);
   assert.equal(validateCombatLabSetup(stored).ok, true);
   assert.equal(emitCombatLabLaunch(bus, stored), true);
-  assert.equal(payloads.length, 1);
-  assert.equal(payloads[0].type, 'game:new');
-  assert.equal(payloads[0].payload.seed, 1864401122);
+  // A launch also emits the embark-speculation visual prefetch (w33); what this test pins is
+  // the game:new row each launch produces, so read those, not the whole payload stream.
+  const gameNews = () => payloads.filter((row) => row.type === 'game:new');
+  assert.equal(gameNews().length, 1);
+  assert.equal(gameNews()[0].type, 'game:new');
+  assert.equal(gameNews()[0].payload.seed, 1864401122);
 
   const edited = readCombatLabForm(validValues({ seed: '99', wave: '8' }));
   assert.equal(edited.ok, true);
@@ -190,14 +193,14 @@ test('successful launch stores the setup; form edits and failed launches do not'
   assert.equal(failed.ok, false);
   const afterFail = nextCombatLabStoredSetup(stored, failed);
   assert.deepEqual(afterFail, stored);
-  assert.equal(payloads.length, 1);
+  assert.equal(gameNews().length, 1);
 
   stored = afterFail;
   assert.equal(emitCombatLabLaunch(bus, stored), true);
-  assert.equal(payloads.length, 2);
-  assert.equal(payloads[1].type, 'game:new');
-  assert.equal(payloads[1].payload.seed, 1864401122);
-  assert.deepEqual(payloads[1].payload, payloads[0].payload);
+  assert.equal(gameNews().length, 2);
+  assert.equal(gameNews()[1].type, 'game:new');
+  assert.equal(gameNews()[1].payload.seed, 1864401122);
+  assert.deepEqual(gameNews()[1].payload, gameNews()[0].payload);
 });
 
 test('combatLabRelaunchConfig matches the original launch config for the same setup', () => {

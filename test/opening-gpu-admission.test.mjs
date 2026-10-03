@@ -11,6 +11,12 @@ import {
   uniqueAdmissionUnits,
   withOnlySubjectsDrawable,
 } from '../src/render/openingGpuAdmission.js';
+import {
+  createPackageDetachManifest,
+  detachPackageTexture,
+  isPackageTextureDetached,
+  resetPackageDetachManifestsForTests,
+} from '../src/render/packageCpuDetach.js';
 import { openingCompileIssueKey } from '../src/render/renderer.js';
 import { revealSubjectWithAncestors } from '../src/render/compilePresentSlice.js';
 
@@ -517,6 +523,112 @@ test('a batched admission can touch in groups: same order, one yield per group',
   assert.deepEqual(result.results.map((entry) => entry.compiled),
     ['compiled:a', 'compiled:b', 'compiled:c', 'compiled:d', 'compiled:e']);
   assert.ok(result.timing && Number.isFinite(result.timing.touchMs), 'the step reports where its time went');
+});
+
+test('a cohort rehydrates a cpu-detached texture its touch would force-upload, before the draw', async () => {
+  // D150: packageCpuDetach empties a resident texture's mipmaps after the residency stamp; a
+  // later bind whose properties record lacks the upload stamp (a dedupe-shared Source bound
+  // under a different upload-cache key, or a record recreated after dispose) re-enters three's
+  // uploadTexture and reads mipmaps[0] on the empty array. The admission driver re-attaches
+  // just those payloads once per cohort — every touch must bind real bytes.
+  resetPackageDetachManifestsForTests();
+  const freshTexture = () => {
+    const texture = new THREE.CompressedTexture(
+      [{ data: new Uint8Array(2048), width: 4, height: 4 }],
+      4, 4, THREE.RGBAFormat,
+    );
+    texture.name = 'forge_panel_albedo';
+    texture.needsUpdate = true; // a decoded texture reaches the uploader with version > 0
+    return texture;
+  };
+  const texture = freshTexture();
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial({ map: texture }));
+
+  let decodes = 0;
+  createPackageDetachManifest(
+    {
+      assetId: 'fixture.admission-detach',
+      contentHash: 'a'.repeat(64),
+      renderUrl: 'https://fixtures.test/render.glb',
+      resources: [texture],
+    },
+    {
+      redecode: async () => {
+        decodes += 1;
+        const root = new THREE.Group();
+        root.add(new THREE.Mesh(
+          new THREE.BoxGeometry(),
+          new THREE.MeshStandardMaterial({ map: freshTexture() }),
+        ));
+        return { scene: root };
+      },
+      collectResources: (root) => {
+        const found = [];
+        root.traverse((object) => {
+          for (const material of [object.material].flat().filter(Boolean)) {
+            for (const value of Object.values(material)) {
+              if (value && value.isTexture) found.push(value);
+            }
+          }
+        });
+        return found;
+      },
+    },
+  );
+  assert.equal(detachPackageTexture(texture), true, 'payload released after the proven upload');
+  assert.equal(texture.mipmaps.length, 0);
+
+  // The renderer's texture-properties map: no record for this texture, so its next bind
+  // re-enters the uploader (three's setTexture2D gate).
+  const renderer = { properties: new Map() };
+  const touchSeesBytes = () => {
+    assert.ok(texture.mipmaps.length > 0,
+      'the touch must bind real bytes — the detach mirror was re-attached first');
+    return { skipped: false };
+  };
+
+  // Unbatched route: census runs before the compile+touch interleave.
+  const unbatched = await admitOpeningUnitsAcrossSlices({
+    subjects: [mesh],
+    renderer,
+    compileOne: () => Promise.resolve(null),
+    touchOne: touchSeesBytes,
+    yieldToMain: async () => {},
+  });
+  assert.equal(unbatched.results.length, 1);
+  assert.equal(decodes, 1, 'one re-decode refilled the manifest');
+  assert.equal(isPackageTextureDetached(texture), false, 'rehydrate cleared the detached entry');
+
+  // Batched route: the census runs after the readiness drain, still before the touch loop.
+  assert.equal(detachPackageTexture(texture), true, 're-detached for the batched pass');
+  const batched = await admitOpeningUnitsAcrossSlices({
+    subjects: [mesh],
+    renderer,
+    beginReadinessBatch: () => ({
+      async drain() { return { contextLost: false }; },
+      close() {},
+    }),
+    compileOne: () => Promise.resolve('compiled'),
+    touchOne: touchSeesBytes,
+    yieldToMain: async () => {},
+  });
+  assert.equal(batched.touched, 1);
+  assert.equal(decodes, 2, 'the batched path rehydrates before touching too');
+
+  // A still-stamped detached texture binds its live GPU copy — no re-decode, no refill.
+  assert.equal(detachPackageTexture(texture), true);
+  renderer.properties.set(texture, { __version: texture.version });
+  const stamped = await admitOpeningUnitsAcrossSlices({
+    subjects: [mesh],
+    renderer,
+    compileOne: () => Promise.resolve(null),
+    touchOne: () => ({ skipped: false }),
+    yieldToMain: async () => {},
+  });
+  assert.equal(stamped.results.length, 1);
+  assert.equal(decodes, 2, 'no rehydrate when the upload stamp still holds');
+  assert.equal(isPackageTextureDetached(texture), true, 'stayed released');
+  resetPackageDetachManifestsForTests();
 });
 
 test('opening compile primes shadows, bakes env cardinality, and slices exact-target touches', async () => {

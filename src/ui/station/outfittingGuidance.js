@@ -2,6 +2,8 @@
 // This module intentionally has no panel factory or DOM lifecycle.
 import {
   buildSlotList,
+  exclusivityLockLabel,
+  exclusivityRepMet,
   findMasslineHeadConflict,
   fits,
   outfitBudgetBlocker,
@@ -13,6 +15,7 @@ import { MODULES } from '../../data/modules.js';
 import { WEAPONS } from '../../data/weapons.js';
 import { SECTORS } from '../../data/sectors.js';
 import { TECH_NODES } from '../../data/tech.js';
+import { FACTION_META } from '../../data/factions.js';
 import { HULL_BURST_TYPES } from '../../data/hullBurst.js';
 import { escapeHtml } from '../comms.js';
 import {
@@ -64,6 +67,10 @@ function techName(id) {
   const node = TECH_BY_ID.get(id);
   return (node && node.name) || String(id || 'required tech').replace(/^tech_/, '').replace(/_/g, ' ');
 }
+function factionDisplayName(factionId) {
+  const meta = FACTION_META.find((f) => f && f.id === factionId);
+  return (meta && (meta.name || meta.short)) || String(factionId || 'its faction');
+}
 
 function fitBlockerForSlot(shipDef, fittings, slotIndex, def) {
   const conflict = findMasslineHeadConflict(fittings, slotIndex, def);
@@ -92,7 +99,13 @@ export function describeOutfittingPurchase(def, player = {}, slots = [], fitting
   const credits = Math.max(0, Number(player.credits) || 0);
   const offer = stationShopOffer(def, opts.stationId);
   const price = offer ? offer.price : Math.max(0, Number(def.price) || 0);
-  const unlocked = !def.requiresTech || researched.has(def.requiresTech) || !!offer;
+  // REP-EXCLUSIVE — the standing lock, parallel to the research lock below. The faction rep
+  // record rides in as opts.factions (state.factions); without it a rep-gated def fails closed.
+  // No station-rack exception: a faction exclusive never unlocks off a shop offer.
+  const standingLocked = !!def.exclusivity
+    && !exclusivityRepMet(def.exclusivity, opts.factions);
+  const unlocked = !standingLocked
+    && (!def.requiresTech || researched.has(def.requiresTech) || (!def.exclusivity && !!offer));
   const afford = credits >= price;
   const safeSlots = Array.isArray(slots) ? slots : [];
   const safeFittings = Array.isArray(fittings) ? fittings : [];
@@ -107,6 +120,20 @@ export function describeOutfittingPurchase(def, player = {}, slots = [], fitting
     ? fitBlockerForSlot(shipDef, safeFittings, emptyCompatibleSlots[0].index, def)
     : null;
 
+  if (standingLocked) {
+    const factionName = factionDisplayName(def.exclusivity.factionId);
+    return {
+      state: 'standing',
+      unlocked: false,
+      afford,
+      hasSlot,
+      fitSlotIndex,
+      disabled: true,
+      label: exclusivityLockLabel(def.exclusivity) || ('Requires Allied — ' + factionName),
+      title: def.name + ' is fitted only for captains ' + factionName + ' trusts at Allied standing.',
+      price,
+    };
+  }
   if (!unlocked) {
     const req = techName(def.requiresTech);
     return {
@@ -260,7 +287,9 @@ export function recommendOutfittingPurchase(player = {}, slots = [], fittings = 
     ? ' Track the prerequisite in the Tech Tree before buying.'
     : (pick.purchase.state === 'funding'
       ? ' Run a contract or trade loop to fund the upgrade.'
-      : ' Clear the blocker, then return to Outfitting.');
+      : (pick.purchase.state === 'standing'
+        ? ' Earn the faction\'s trust to Allied before its yard will fit it.'
+        : ' Clear the blocker, then return to Outfitting.'));
   return {
     state: pick.purchase.state,
     kind: 'warn',
