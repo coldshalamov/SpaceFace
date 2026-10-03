@@ -7,9 +7,11 @@ import { canvasFont } from '../canvasFonts.js';
 // rather than the only way to tell "me", "goal", "threat", and "infrastructure" apart.
 
 export const TACTICAL_MAP_PALETTE = Object.freeze({
-  /* Deckplate register (2026-09-18): the contact grammar moves onto the ONE warm accent. The map
-     reads as an etched plate under the lamp — warm bone ink, lamp amber for live/selected, the
-     same lamp driven red for hostiles. Cyan/green sprite marks are the retired glass HUD. */
+  /* Owner ruling 2026-10-03 (supersedes the 2026-09-18 one-accent register): the all-bone scope
+     read as one wash — nothing was identifiable at a glance. Each contact class carries its own
+     hue again, drawn from the accessibility semantic register so default and colorblind palettes
+     agree. Shape still carries role; hue is the fast second channel, never the only one. The
+     warm etched-plate ground, bone self-ink, amber lamp and red hostile lamp stay. */
   ground: '#0b0d10',
   groundPlate: 'rgba(11, 13, 16, 0.96)',
   ink: '#e8e2d4',
@@ -19,11 +21,16 @@ export const TACTICAL_MAP_PALETTE = Object.freeze({
   player: '#e8e2d4',
   objective: '#f2b950',
   hostile: '#ff5038',
-  station: '#c9bda4',
-  /* Gates are passive infrastructure: a quiet bone, so amber stays on what the pilot acts on.
-     Shape (the double ring) carries the identity. */
-  gate: '#a3a092',
-  neutral: '#6f7076',
+  /* Dockable infrastructure: cyan hex = station (where you dock and trade). */
+  station: '#6ec3d8',
+  /* Jump infrastructure: quiet violet double ring, distinct from cyan and from the red lamp. */
+  gate: '#a89ae0',
+  /* Faction ships: the semantic friendly green (matches accessibility PALETTES.none). */
+  friendly: '#4fbf8f',
+  /* Unaligned small traffic: blue-grey, the semantic neutral — deliberately the quietest live mark. */
+  neutral: '#9aa8bc',
+  /* Dead hulks: muted rust, salvage reading distinct from amber pickups and the red lamp. */
+  wreck: '#c08a58',
   asteroid: '#4a5162',
 });
 
