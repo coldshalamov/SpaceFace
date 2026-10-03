@@ -2,7 +2,7 @@
 // uiRoot invokes this same one-time style owner; no copied CSS or substitute runtime.
 // The flight HUD is the first surface built on the deckplate design system (src/ui/deckplate/*);
 // injectDeckplate runs before the HUD sheet so the register's var(--dp-*) references resolve.
-import { bracketCss } from '../hudBrackets.js';
+import { bracketCss, INK_SHADOW } from '../hudBrackets.js';
 import { injectDeckplate } from '../deckplate/index.js';
 const HUD_STYLE_ID = 'sf-hud-style';
 
@@ -294,57 +294,96 @@ export function injectHudCss() {
   .sf-watchline--foe .sf-watchline__detail { color:var(--k-red); }
 
   /* ===== alerts ===== */
+  /* The house de-boxed annunciator: four hairline corner brackets (hudBrackets.js idiom) around
+     the deckplate lamp lens and the word — no plate, no border, no fill. A status light is a
+     word with corners, not a card. Severity rides the warm signal voice; red stays threat-only.
+     (No dock/gate prompt carries a hold verb today — promptLabel('dock') and the gate line are
+     plain presses — so there is no hold ring to draw.) */
   .sf-alert { display:flex; align-items:center; gap:8px; padding:6px 16px;
-    font-family:var(--hud-data); font-size:var(--k-fs-data); border:1px solid var(--k-hair); color:var(--hud-paper); }
-  .sf-alert--info { color:var(--hud-cyan); border-color:var(--hud-cyan); }
-  .sf-alert--warn { color:var(--hud-amber); border-color:var(--hud-amber); }
-  .sf-alert--danger { color:var(--k-red); border-color:var(--k-red);
+    font-family:var(--hud-data); font-size:var(--k-fs-data); color:var(--hud-paper);
+    background-color:transparent; border:none; border-radius:0; box-shadow:none;
+    text-shadow:${INK_SHADOW};
+    ${bracketCss('var(--sf-brk-col, rgba(148,178,205,.42))')} }
+  .sf-alert--info { color:var(--hud-paper); ${bracketCss('var(--k-bone-62)')} }
+  .sf-alert--warn { color:var(--hud-amber); ${bracketCss('var(--hud-amber)')} }
+  .sf-alert--danger { color:var(--k-red); ${bracketCss('var(--k-red)')}
     animation:sf-alertpulse .8s ease-in-out infinite alternate; }
   /* One-voice floor: the arbiter-surfaced attention line always sits atop the persistent status
      pills (dock/gate/lock/low-vitals) in the top-center slot, regardless of DOM insertion order. */
   .sf-alert--floor { order:-1; }
-  .sf-alert--dock { color:var(--hud-cyan); border-color:var(--hud-cyan); font-size:var(--k-fs-emph);
-    padding:12px 28px; }
+  .sf-alert--dock { color:var(--dp-lamp, #f2b950); font-size:var(--k-fs-emph);
+    padding:12px 28px; ${bracketCss('var(--dp-lamp, #f2b950)', 14)} }
   @keyframes sf-alertpulse { from { transform:scale(1); }
     to { transform:scale(1.03); } }
 
-  /* ===== combat HUD overlay (lock-on, weapon heat bars, target diamond) ===== */
+  /* ===== combat HUD overlay (lock-on instrument, weapon heat bars, target sigil) ===== */
 
-  /* Lock-on progress arc — circular SVG indicator near reticle center */
+  /* Lock-on instrument — the kit reticle-lock construction (reticle-lock.svg): a graduated scale
+     ring, the cooldown-ring dasharray progress arc, four corner brackets that close on lock, a
+     centre pip. Light only, no boxes. States are the ORRERY voice — warm bone at rest, paper
+     readings while tracking, the Hand amber when locked; red stays threat-only, never cyan. */
   .sf-lockring { display:none; position:absolute; left:50%; top:50%; width:72px; height:72px;
     transform:translate(-50%,-50%) scale(1); transform-origin:50% 50%;
     pointer-events:none; z-index:14; opacity:0; will-change:transform;
     transition:opacity .15s ease; }
   .sf-lockring.active { display:block; opacity:1; }
   .sf-lockring.sf-lockring--latch { animation:sf-lockring-latch 160ms cubic-bezier(.2,.7,.2,1) 1; }
-  .sf-lockring .sf-lockring__track { fill:none; stroke:var(--k-hair); stroke-width:2.5; }
-  .sf-lockring .sf-lockring__fill { fill:none; stroke:var(--hud-cyan); stroke-width:3;
+  .sf-lockring svg { display:block; width:100%; height:100%; overflow:visible; }
+  .sf-lockring .sf-lockring__scale { fill:none; stroke:var(--k-hair); stroke-width:1;
+    stroke-dasharray:2.2 2.25; }              /* the 96-division bezel rail, quoted */
+  .sf-lockring .sf-lockring__track { fill:none; stroke:var(--k-hair); stroke-width:2; }
+  .sf-lockring .sf-lockring__fill { fill:none; stroke:var(--k-bone-38); stroke-width:3;
     stroke-linecap:round; transition:stroke .15s ease; }
-  .sf-lockring.locked .sf-lockring__fill { stroke:var(--k-red); }
+  .sf-lockring .sf-lockring__pip { fill:none; stroke:var(--k-bone-38); stroke-width:1.5;
+    transition:fill .15s ease, stroke .15s ease; }
   .sf-lockring__label { position:absolute; left:50%; bottom:-2px; transform:translateX(-50%);
-    font-family:var(--hud-data); font-size:var(--k-fs-data); color:var(--hud-cyan); white-space:nowrap; }
-  .sf-lockring.locked .sf-lockring__label { color:var(--k-red); font-weight:700; }
+    font-family:var(--hud-data); font-size:var(--k-fs-data); color:var(--k-bone-62); white-space:nowrap; }
   @keyframes sf-lockring-latch {
     0% { transform:translate(-50%,-50%) scale(1); }
     50% { transform:translate(-50%,-50%) scale(1.16); }
     100% { transform:translate(-50%,-50%) scale(1); }
   }
 
-  /* Multi-stage convergence brackets inside lockRing */
-  .sf-lockring__brackets { position:absolute; inset:0; pointer-events:none; will-change:transform; transition:transform .08s linear; }
-  .sf-lockring__bracket { position:absolute; width:8px; height:8px; border-color:var(--hud-cyan); border-style:solid; opacity:.8; }
-  .sf-lockring__bracket--tl { top:10px; left:10px; border-width:2px 0 0 2px; }
-  .sf-lockring__bracket--tr { top:10px; right:10px; border-width:2px 2px 0 0; }
-  .sf-lockring__bracket--br { bottom:10px; right:10px; border-width:0 2px 2px 0; }
-  .sf-lockring__bracket--bl { bottom:10px; left:10px; border-width:0 0 2px 2px; }
+  /* Multi-stage convergence brackets inside lockRing — one svg of four L-strokes; the colour is
+     the container's currentColor so the stage rules tint all four arms in one declaration. */
+  .sf-lockring__brackets { position:absolute; inset:0; pointer-events:none; will-change:transform; transition:transform .08s linear;
+    color:var(--k-bone-62); }
+  .sf-lockring__bracket { fill:none; stroke:currentColor; stroke-width:2; }
 
-  .sf-lockring[data-stage="acquiring"] .sf-lockring__track { stroke-dasharray:6 6; }
-  .sf-lockring[data-stage="tracking"] .sf-lockring__fill { stroke:var(--hud-amber); }
-  .sf-lockring[data-stage="tracking"] .sf-lockring__label { color:var(--hud-amber); }
-  .sf-lockring[data-stage="tracking"] .sf-lockring__bracket { border-color:var(--hud-amber); opacity:1; }
-  .sf-lockring[data-stage="locked"] .sf-lockring__fill { stroke:var(--k-red); }
-  .sf-lockring[data-stage="locked"] .sf-lockring__label { color:var(--k-red); }
-  .sf-lockring[data-stage="locked"] .sf-lockring__bracket { border-color:var(--k-red); opacity:1; border-width:2.5px; }
+  /* acquiring — searching: the scale ring sweeps while the arc fills in rest bone */
+  .sf-lockring[data-stage="acquiring"] .sf-lockring__scale { transform-origin:50% 50%;
+    animation:sf-lockring-sweep 3.2s linear infinite; }
+  .sf-lockring[data-stage="tracking"] .sf-lockring__fill { stroke:var(--dp-phos, #dfeeff); }
+  .sf-lockring[data-stage="tracking"] .sf-lockring__label { color:var(--dp-phos, #dfeeff); }
+  .sf-lockring[data-stage="tracking"] .sf-lockring__brackets { color:var(--dp-phos, #dfeeff); }
+  .sf-lockring[data-stage="locked"] .sf-lockring__fill,
+  .sf-lockring.locked .sf-lockring__fill { stroke:var(--dp-lamp, #f2b950); }
+  .sf-lockring[data-stage="locked"] .sf-lockring__pip { fill:var(--dp-lamp-hot, #ffd98c); stroke:var(--dp-lamp, #f2b950); }
+  .sf-lockring[data-stage="locked"] .sf-lockring__label,
+  .sf-lockring.locked .sf-lockring__label { color:var(--dp-lamp, #f2b950); font-weight:700; }
+  .sf-lockring[data-stage="locked"] .sf-lockring__brackets { color:var(--dp-lamp, #f2b950); }
+  .sf-lockring[data-stage="locked"] .sf-lockring__bracket { stroke-width:2.5; }
+  @keyframes sf-lockring-sweep { to { transform:rotate(360deg); } }
+  html.sf-reduce-motion .sf-lockring[data-stage="acquiring"] .sf-lockring__scale { animation:none; }
+  @media (prefers-reduced-motion: reduce) {
+    .sf-lockring[data-stage="acquiring"] .sf-lockring__scale { animation:none; }
+  }
+
+  /* styles/hud.css (@imported by ui.css) carries an earlier iteration of this instrument — border
+     divs, strobing bracket pulses, drop-shadow glows — and is not this sheet's to edit, so the
+     retirements are counted here where the cascade is won: filters are banned in flight, the
+     6 Hz strobes die, the stage beats stay with the JS-driven convergence and the latch, and the
+     diamond's pulse rides its svg child so it never overrides the inline optical-lag transform. */
+  .sf-lockring__bracket { opacity:1; animation:none; }
+  .sf-lockring[data-stage] .sf-lockring__brackets,
+  .sf-lockring[data-stage="acquiring"] .sf-lockring__brackets,
+  .sf-lockring[data-stage="tracking"] .sf-lockring__brackets { animation:none; }
+  .sf-lockring[data-stage="acquiring"] .sf-lockring__track { stroke-dasharray:none; animation:none; }
+  .sf-lockring[data-stage="locked"] .sf-lockring__fill,
+  .sf-lockring[data-stage="locked"] .sf-lockring__bracket { filter:none; }
+  .sf-lockdiamond[data-stage="acquiring"] .sf-lockdiamond__inner,
+  .sf-lockdiamond[data-stage="tracking"] .sf-lockdiamond__inner,
+  .sf-lockdiamond[data-stage="locked"] .sf-lockdiamond__inner { animation:none; box-shadow:none; }
 
   /* Weapon heat bars — chromeless, anchored above the schematic (left:22px matches .sf-bars) */
   .sf-wpn-heats { position:absolute; left:22px;
@@ -364,30 +403,32 @@ export function injectHudCss() {
   .sf-wpn-heats.venting .sf-wpn-heat__label { color:var(--k-red); }
   .sf-wpn-heats.venting { animation:sf-wpnpulse .4s ease-in-out infinite alternate; }
 
-  /* Target lock diamond — world-space overlay on locked/selected enemy.
-     Outer div is the invisible positioning anchor (translate -50% centers on target).
-     Inner div is the visible rotated diamond with pulsing glow. */
+  /* Target lock sigil — world-space overlay on locked/selected target.
+     Outer div is the invisible positioning anchor (translate -50% centres on target); the inner
+     div carries one svg whose three emblem groups quote the selection sigil's class geometry
+     (src/render/selectionSigil.js): hostile hexagram + tick burst, friendly hexagon rosette,
+     cargo eight-point star. data-shape (targetBracketShape) picks the emblem; colour is the
+     state voice — warm bone at rest, paper while tracking, the Hand when locked, red only for
+     an actual missile threat. Shape carries the class, so the mark stays legible greyscale. */
   .sf-lockdiamond { display:none; position:absolute; left:0; top:0; width:32px; height:32px; pointer-events:none; z-index:13;
-    opacity:0; transition:opacity .12s ease; will-change:transform;
-    --dia-glow:57,208,255; }
+    opacity:0; transition:opacity .12s ease; will-change:transform; }
   .sf-lockdiamond.visible { display:block; opacity:1; }
-  .sf-lockdiamond.locked-tgt { --dia-glow:255,84,112; }
-  .sf-lockdiamond__inner { position:absolute; inset:2px;
-    transform:rotate(45deg); will-change:transform;
-    border:2px solid var(--hud-cyan);
-    animation:sf-diamondpulse 1s ease-in-out infinite alternate; }
-  @keyframes sf-diamondpulse {
-    from { transform:rotate(45deg) scale(.92); }
-    to { transform:rotate(45deg) scale(1.04); } }
-  .sf-lockdiamond[data-stage="tracking"] .sf-lockdiamond__inner { border-color:var(--hud-amber); }
-  .sf-lockdiamond[data-stage="locked"] .sf-lockdiamond__inner { border-color:var(--k-red); border-width:3px; animation:none; }
-  .sf-lockdiamond[data-shape="bracket-hostile"] .sf-lockdiamond__inner {
-    border-radius:0; animation:none;
-    clip-path:polygon(50% 0, 100% 100%, 0 100%); }
-  .sf-lockdiamond[data-shape="bracket-friendly"] .sf-lockdiamond__inner {
-    border-radius:0; clip-path:none; }
-  .sf-lockdiamond[data-shape="bracket-cargo"] .sf-lockdiamond__inner {
-    border-radius:50%; clip-path:none; animation:none; }
+  .sf-lockdiamond__inner { position:absolute; inset:2px; color:var(--k-bone-62); will-change:transform; }
+  .sf-lockdiamond__inner svg { display:block; width:100%; height:100%; overflow:visible;
+    fill:none; stroke:currentColor; stroke-width:1.5; stroke-linejoin:round;
+    animation:sf-sigilpulse 1s ease-in-out infinite alternate; }
+  @keyframes sf-sigilpulse {
+    from { transform:scale(.92); }
+    to { transform:scale(1.04); } }
+  .sf-lockdiamond__emblem { display:none; }
+  .sf-lockdiamond[data-shape="bracket-hostile"] .sf-lockdiamond__emblem--hostile { display:inline; }
+  .sf-lockdiamond[data-shape="bracket-friendly"] .sf-lockdiamond__emblem--friendly { display:inline; }
+  .sf-lockdiamond[data-shape="bracket-cargo"] .sf-lockdiamond__emblem--cargo { display:inline; }
+  .sf-lockdiamond[data-stage="tracking"] .sf-lockdiamond__inner { color:var(--dp-phos, #dfeeff); }
+  .sf-lockdiamond[data-stage="locked"] .sf-lockdiamond__inner { color:var(--dp-lamp, #f2b950); }
+  .sf-lockdiamond[data-stage="locked"] .sf-lockdiamond__inner svg,
+  .sf-lockdiamond[data-stage="tracking"] .sf-lockdiamond__inner svg { animation:none; }
+  .sf-lockdiamond.locked-tgt .sf-lockdiamond__inner { color:var(--k-red); }
 
   /* G-LOC tunnel vision vignette — sleeps out of the compositor tree until the first
      fade-in; hud.js drives display block/none so opacity:0 never holds a live layer. */
@@ -1219,7 +1260,6 @@ export function injectHudCss() {
   .sf-alert {
     min-width:220px; justify-content:center; padding:7px 18px;
     font-family:var(--hud-display); font-size:var(--k-fs-data); font-weight:700;
-    border:1px solid var(--hud-cyan); border-top-color:var(--hud-cyan);
   }
   .sf-alert--dock { font-size:var(--k-fs-data); padding:9px 24px; }
 
@@ -1400,30 +1440,20 @@ export function injectHudCss() {
   .sf-schematic.sf-sch-warning .sf-sch-ship--fill .sf-sch-hull { stroke:var(--k-signal); fill:color-mix(in srgb, var(--k-signal) 18%, transparent); }
   .sf-schematic.sf-sch-warning .sf-sch-fill-line { background:var(--k-signal); }
   .sf-schematic.sf-sch-critical .sf-sch-fill-line { background:var(--k-red); }
-  /* ══ THE POWER RAIL AS MACHINED SOCKETS ═══════════════════════════════════════════════════════
+  /* ══ THE POWER RAIL ═══════════════════════════════════════════════════════════════════════════
      What stood here: .sf-pslot { background:none; border:0 } with __art { display:none } — nine
      powers rendered as three columns of words under a 2 px underline. That was the "slots become
      words" reading of Cinematic Minimal, which FIELD_HARDWARE_PROGRAM §8 voids on aesthetics.
 
-     The kit had already produced the exact hardware this widget is: assets/ui/kit/assets/sockets/
-     holds a machined recess in five states plus a 240x72 9-slice band bracket, and the kit's own
-     reference sheet says in as many words "a socket is a machined recess that holds a verb icon —
-     the action bar is sockets, not buttons". Nothing in the game referenced any of it. The icons
-     match too: the produced family carries seed, well, repel, cone, skim and line, which are the
-     rail's own verb names and appear nowhere else — see src/ui/views/fhGlyphs.js.
-
-     Sprite per state. The kit ships five recesses for six rail states, so one is deliberate reuse:
-       ready         socket.rest      a bay with a verb in it, waiting
-       armed         socket.lit       the warm backlit bay — the only state that glows
-       cooling       socket.cooling   dimmed bay, with the sweep ring running over it
-       unaffordable  socket.rest      rest with the mark dropped: the bay is fine, the magazine is
-                                      empty. socket.locked would lie about why the key is dead.
-       locked        socket.locked
-       empty         socket.empty     an authored gap that still reads as a bay you could fill
-
-     Every sprite is the @2x file drawn at half size, so the rail stays crisp when the media query
-     below shrinks it and on high-DPI displays. State is carried by the sprite, so the base block's
-     opacity dimming above is reset — stacking both turned a locked bay into a grey smear. */
+     TRUTH FOR AUDITORS (was previously worded as if the kit socket art were live): the kit DID
+     produce the hardware — assets/ui/kit/assets/sockets/ holds a machined recess in five states
+     plus a 240x72 9-slice band bracket, and the produced glyph family (seed, well, repel, cone,
+     skim, line in src/ui/views/fhGlyphs.js) is this rail's own verb set. But NO sprite is wired:
+     the rules below deliberately set background-image:none on every socket state and
+     border-image-source:none on the slots and bars, so the rail draws nothing but the glyph, the
+     key numeral and the word over clear ground. State is carried by colour/opacity of the glyph
+     and name, not by a recess sprite. If the socket art is ever wired, this is the block that
+     changes — until then, any recess you see in the kit reference sheet is unwired. */
   .sf-prail {
     --sf-socket:48px; --sf-lip:18px; --sf-socket-gap:6px;
     gap:calc(16px * var(--k-s)); align-items:flex-end; padding-bottom:0;
@@ -1533,9 +1563,9 @@ export function injectHudCss() {
      across the RIG bracket's top lip.
 
      The breakpoints resize by token: --sf-lip drives border-width AND border-image-width together,
-     so the bracket art always scales as a whole. border-image-slice must stay 36 at every size —
-     it names the authored corner region of the @2x source, not a display size, and retuning it
-     would cut the bracket apart at a seam the artwork never had.
+     so the bracket geometry scales as a whole. border-image-slice stays 36 at every size for the
+     day the kit band art is wired — today border-image-source is none, so the slice is inert
+     (see the socket block's TRUTH FOR AUDITORS note above).
 
      The socket gap GROWS as the sockets shrink, which looks backwards until you notice what sets
      the pitch: the verb name under each bay is pinned at the 12 px floor and cannot shrink with the
@@ -1594,9 +1624,11 @@ export function injectHudCss() {
   .sf-toast--success, .sf-toast--good, .sf-toast--error, .sf-toast--danger, .sf-toast--warn { border:0; }
   .sf-toast__icon { display:none; }
   .sf-toast__count { border:0; padding:0; background:none; color:var(--k-bone-62); font-family:var(--k-text); font-size:var(--k-fs-data); }
-  /* one voice: text at emph 100 %, no pill; the wanted text stays; nothing pulses */
+  /* one voice: text at emph 100 %, no pill; the wanted text stays; nothing pulses. The corner
+     brackets ride the background-image layers declared upstream — background:none here would
+     wipe them, so only the plate properties are stripped. */
   .sf-alert, .sf-alert--info, .sf-alert--warn, .sf-alert--danger, .sf-alert--dock, .sf-alert--floor {
-    min-width:0; padding:0; border:0; background:none; box-shadow:none;
+    min-width:0; padding:2px 12px; border:0; box-shadow:none;
     font-family:var(--k-text); font-size:var(--k-fs-emph); font-weight:500; color:var(--k-text-live); animation:none; }
   .sf-alert--warn { color:var(--k-signal); }
   .sf-alert--danger { color:var(--k-red); }
@@ -1609,9 +1641,9 @@ export function injectHudCss() {
   /* the world-space marks: stroke colours to kit tokens, nothing else */
   .sf-schematic .sf-sch-ship { stroke:var(--k-bone-62); }
   .sf-lockring .sf-lockring__track { stroke:var(--k-bone-38); }
-  .sf-lockring .sf-lockring__fill { stroke:var(--k-text-live); }
-  .sf-lockring__label { font-family:var(--k-text); font-size:var(--k-fs-data); color:var(--k-text-live); }
-  .sf-lockdiamond__inner { border-color:var(--k-text-live); }
+  .sf-lockring .sf-lockring__fill { stroke:var(--k-bone-38); }
+  .sf-lockring__label { font-family:var(--k-text); font-size:var(--k-fs-data); color:var(--k-bone-62); }
+  .sf-lockdiamond__inner { color:var(--k-text-live); }
   .sf-leadpip__full, .sf-leadpip__arc, .sf-leadpip__tick { stroke:var(--k-text-live); }
   .sf-gravity-mark__ring { border-color:var(--k-text-live); }
   .sf-gravity-mark__core { background:var(--k-text-live); }
@@ -1682,7 +1714,12 @@ export function injectHudCss() {
     .sf-pslot { transition:none; }
   }
 
-  /* ===== Field Hardware instruments — produced bezels/faces, not CSS hairlines ===== */
+  /* ===== Field Hardware instruments =====
+     TRUTH FOR AUDITORS: despite the header's old wording, NO produced bezel/face/gauge/radar
+     sprite from assets/ui/kit/assets/ is wired here. Every carrier below
+     (.sf-kit-bar border, .sf-kit-gauge face, .sf-kit-radar bezel/face/north) sets
+     background:none / background-image:none and the bars set border-image-source:none, so the
+     geometry you see is CSS-drawn (mask arcs, needles, the canvas radar) over clear ground. */
   .sf-bars {
     width:min(320px, 100%);
     grid-template-columns:88px minmax(0, 1fr);
@@ -2173,7 +2210,9 @@ export function injectHudCss() {
     --hud-line:var(--dp-metal-4);
   }
 
-  /* --- shared machined surface: every panel that carries text is a dp-plate --- */
+  /* --- shared machined surface: every panel that carries text is a dp-plate ---
+     (.sf-alert is deliberately NOT in this list: it is the de-boxed corner-bracket annunciator
+     declared upstream — a status light, not a plate.) */
   #hud .sf-bars,
   #hud .sf-overview,
   #hud .sf-target,
@@ -2183,7 +2222,6 @@ export function injectHudCss() {
   #hud .sf-cargo-panel,
   #hud .sf-commtape,
   #hud .sf-objarrow__label,
-  .sf-alert,
   .sf-toast {
     box-sizing:border-box;
     background-color:var(--dp-metal-2);
@@ -2195,7 +2233,6 @@ export function injectHudCss() {
     -webkit-backdrop-filter:none !important;
   }
   #hud .sf-objarrow__label, .sf-toast { border-radius:var(--dp-r-plate); }
-  .sf-alert { border-radius:var(--dp-r-instrument); }
 
   /* --- left instrument card: hull schematic + vitals, a raised plate --- */
   #hud .sf-bars { width:100%; max-width:288px; padding:10px 12px 11px; gap:5px 10px; border-radius:var(--dp-r-instrument); box-shadow:none; }
@@ -2471,11 +2508,25 @@ export function injectHudCss() {
   #aim-reticle[data-hit="kill"] .sf-reticle-hit-ticks { stroke:var(--dp-lamp-hot); filter:drop-shadow(0 0 7px var(--dp-lamp-bloom)); }
   #aim-reticle[data-hit="kill"] > svg > circle:last-of-type { fill:var(--dp-lamp-hot); }
 
-  /* --- world marks near the reticle ride the lamp ramp --- */
-  #hud .sf-lockring .sf-lockring__fill { stroke:var(--dp-lamp); }
+  /* --- world marks near the reticle ride the lamp ramp. The lock instrument is stage-voiced
+         (bone rest → paper tracking → Hand locked, red only for an actual missile threat), so
+         the ramp is restated per stage at this sheet-winning specificity rather than as one
+         flat base that would pin every stage to the lamp. --- */
+  #hud .sf-lockring .sf-lockring__fill { stroke:var(--k-bone-38); }
+  #hud .sf-lockring[data-stage="tracking"] .sf-lockring__fill { stroke:var(--dp-phos); }
+  #hud .sf-lockring[data-stage="locked"] .sf-lockring__fill,
+  #hud .sf-lockring.locked .sf-lockring__fill { stroke:var(--dp-lamp); }
   #hud .sf-lockring .sf-lockring__track { stroke:var(--dp-metal-4); }
   #hud .sf-lockring__label { color:var(--hud-paper); }
-  #hud .sf-lockdiamond__inner { border-color:var(--dp-lamp); }
+  #hud .sf-lockring[data-stage="tracking"] .sf-lockring__label { color:var(--dp-phos); }
+  #hud .sf-lockring[data-stage="locked"] .sf-lockring__label,
+  #hud .sf-lockring.locked .sf-lockring__label { color:var(--dp-lamp); font-weight:700; }
+  #hud .sf-lockring[data-stage="tracking"] .sf-lockring__brackets { color:var(--dp-phos); }
+  #hud .sf-lockring[data-stage="locked"] .sf-lockring__brackets { color:var(--dp-lamp); }
+  #hud .sf-lockdiamond__inner { color:var(--dp-ink); }
+  #hud .sf-lockdiamond[data-stage="tracking"] .sf-lockdiamond__inner { color:var(--dp-phos); }
+  #hud .sf-lockdiamond[data-stage="locked"] .sf-lockdiamond__inner { color:var(--dp-lamp); }
+  #hud .sf-lockdiamond.locked-tgt .sf-lockdiamond__inner { color:var(--k-red); }
   #hud .sf-leadpip__full, #hud .sf-leadpip__arc, #hud .sf-leadpip__tick { stroke:var(--dp-lamp); }
   #hud .sf-gravity-mark__ring { border-color:var(--hud-paper); }
   #hud .sf-gravity-mark__core { background:var(--hud-paper); }
@@ -2483,11 +2534,12 @@ export function injectHudCss() {
   #hud .sf-objarrow--onscreen .sf-objarrow__mark { stroke:var(--hud-paper); }
   #hud .sf-objarrow__label { padding:4px 9px; }
 
-  /* --- alerts and receipts: one machined strip each (the annunciator's plate) --- */
+  /* --- alerts and receipts: the de-boxed corner-bracket annunciator; the floor is the same
+         voice as the pills (no metal plate — the ORRERY skin gives it its own shadow pool) --- */
   .sf-alert { padding:7px 18px; }
   .sf-alert.sf-alert--floor {
     padding:4px 14px; font-size:var(--dp-fs-data); font-weight:500; letter-spacing:.02em;
-    color:var(--dp-ink-dim); background-color:var(--dp-metal-1); box-shadow:none;
+    color:var(--dp-ink-dim); box-shadow:none;
   }
   .sf-alert--dock { padding:9px 24px; }
   .sf-toast { padding:6px 10px; }
@@ -2900,8 +2952,10 @@ export function injectHudCss() {
   @media (forced-colors:active) { #hud .sf-band-hud__button:focus-visible { outline:2px solid Highlight !important; } }
   #hud .sf-pslot[data-state="ready"] .fh-glyph .accent { fill:var(--dp-lamp-hot); }
   #hud .sf-pslot:is([data-state="cooling"], [data-state="unaffordable"], [data-state="locked"], [data-state="empty"]) .sf-pslot__art { color:var(--dp-ink-dim); }
-  /* alerts, toasts, the edge-arrow caption: the same flight glass, one lit rim */
-  html .sf-alert, html .sf-alert.sf-alert--floor, html .sf-toast, html #hud .sf-objarrow__label, html #hud .sf-commtape {
+  /* alerts, toasts, the edge-arrow caption: the same flight glass, one lit rim.
+     (.sf-alert is deliberately not in this list any more: it is the de-boxed corner-bracket
+     annunciator upstream — corners of light, not a glass plate.) */
+  html .sf-toast, html #hud .sf-objarrow__label, html #hud .sf-commtape {
     background:var(--dp-glass-flight); background-color:transparent;
     box-shadow:var(--dp-glass-depth);
   }

@@ -81,6 +81,7 @@ import * as encounter077 from './363-the-wrong-convoy.js';
 import * as encounter078 from './364-the-short-line.js';
 import * as encounter079 from './365-the-grandee.js';
 import * as encounter080 from './366-the-counting-relay.js';
+import * as encounter081 from './367-the-salvage-tail.js';
 
 export const ENCOUNTER_MODULES = Object.freeze([
   encounter001,
@@ -163,5 +164,6 @@ export const ENCOUNTER_MODULES = Object.freeze([
   encounter078,
   encounter079,
   encounter080,
+  encounter081,
 ]);
 export const ENCOUNTERS = buildEncounterCatalog(ENCOUNTER_MODULES);

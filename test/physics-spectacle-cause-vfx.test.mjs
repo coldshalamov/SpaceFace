@@ -185,7 +185,15 @@ test('reduced settings retain direction-locked structure with lower count, trave
     < Math.max(...normalStreaks.map((call) => Math.hypot(call.args[8] - 7, call.args[9] + 3))));
   assert.ok(Math.max(...reducedStreaks.map((call) => call.args[6]))
     < Math.max(...normalStreaks.map((call) => call.args[6])));
-  assert.equal(reduced.some((call) => call.type === 'light'), false);
+  // FB-077: reduced motion holds a light cue at the 0.1 peak floor (applied inside _flashLight)
+  // rather than deleting it — no new light sites appear and the authored plan cannot brighten.
+  const normalLights = normal.filter((call) => call.type === 'light');
+  const reducedLights = reduced.filter((call) => call.type === 'light');
+  assert.ok(reducedLights.length <= normalLights.length,
+    'reduced adds no light sites beyond the normal-mode plan');
+  assert.ok(Math.max(0, ...reducedLights.map((call) => call.args[2]))
+    <= Math.max(0, ...normalLights.map((call) => call.args[2])),
+    'reduced light cue cannot out-peak the normal-mode plan');
   assert.ok(reduced.some((call) => call.type === 'sprite' && call.args[0] === flashKind
     && Number.isFinite(call.args[13])), 'reduced flash retains an anisotropic direction-locked core');
 });
@@ -311,7 +319,10 @@ test('collision rungs keep low contact, real medium consequence, and catastrophi
   const reducedStreak = reduced.calls.find((call) => call.type === 'streak');
   assert.ok(reducedStreak && Number.isFinite(reducedStreak.args[10]) && Number.isFinite(reducedStreak.args[11]),
     'reduced medium collision retains its explicit contact axis');
-  assert.equal(reduced.calls.some((call) => call.type === 'light'), false);
+  // FB-077: reduced keeps a held low-peak cue — allowed, but never more light sites than normal.
+  const normalLightCount = calls.filter((call) => call.type === 'light').length;
+  assert.ok(reduced.calls.filter((call) => call.type === 'light').length <= normalLightCount,
+    'reduced adds no light sites beyond the normal-mode plan');
 });
 
 test('physics impact admission requires a production receipt and starts a new epoch on tick rollback', () => {

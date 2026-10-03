@@ -492,7 +492,7 @@ test('the first-frame pool census seal is not gated on KHR or the prepare budget
   assert.ok(sealIndex > barrierIndex,
     'the seal must run after the barrier decision, not inside it');
   const between = body.slice(barrierIndex, sealIndex)
-    .split('\n').map((line) => line.replace(/\/\/.*$/, '')).join('\n');
+    .split('\n').map((line) => line.replace(/\/\/.*/, '')).join('\n');
   assert.doesNotMatch(between, /PREPARE_BUDGET_MS/,
     'no prepare-budget gate may sit between the barrier decision and the seal');
 });
@@ -636,8 +636,13 @@ test('latched geometry roots compile on the explicit lane, not the ambient quiet
     'latched roots must bypass the ambient compile queue');
   const admitStart = RENDERER_SOURCE.indexOf('const admitSubjectPipelines = (subject');
   assert.ok(admitStart >= 0, 'the subject admission must exist');
-  const admitBlock = RENDERER_SOURCE.slice(admitStart, admitStart + 1400);
-  assert.match(admitBlock, /explicit === true\s*\?\s*pipelineAdmissions\.compileExplicit\(subject[^)]*\)\s*:\s*pipelineAdmissions\.compile\(subject\)/,
+  const admitBlock = RENDERER_SOURCE.slice(admitStart, admitStart + 3600);
+  assert.match(admitBlock, /compilePipelineSubject\(\s*pipelineAdmissions,\s*subject,\s*admissionOptions,\s*urgent,?\s*\)/,
+    'the admission must route compiles through the explicit/urgent helper');
+  const routeStart = RENDERER_SOURCE.indexOf('export function compilePipelineSubject(tracker, subject');
+  assert.ok(routeStart >= 0, 'the compile routing helper must exist');
+  const routeBlock = RENDERER_SOURCE.slice(routeStart, routeStart + 700);
+  assert.match(routeBlock, /explicit === true\)\s*return tracker\.compileExplicit\(subject,\s*options\)/,
     'the explicit flag must route to compileExplicit, not the quiet-window queue');
 });
 
@@ -665,17 +670,17 @@ test('the live geometry admission queue drains nearest-deadline-first', () => {
 // Within each build tier the drain used to be FIFO, so collection order — not the deadline —
 // decided which of several same-tier candidates spent the bounded per-frame build budget.
 test('mesh build candidates drain nearest-deadline-first inside each tier', () => {
-  const pollStart = RENDERER_SOURCE.indexOf('reconcileMeshResidency() {');
+  const pollStart = RENDERER_SOURCE.indexOf('_reconcileMeshResidencySteps() {');
   assert.ok(pollStart >= 0, 'the residency poll must exist');
   const drainIndex = RENDERER_SOURCE.indexOf('stats.built = this._drainMeshBuildQueue', pollStart);
   assert.ok(drainIndex > pollStart, 'the poll must drain builds after enqueueing');
   const between = RENDERER_SOURCE.slice(pollStart, drainIndex);
-  assert.match(between, /entityTimeToGlassSeconds\(a, env, state\) - entityTimeToGlassSeconds\(b, env, state\)/,
+  assert.match(between, /tGlass\(a\) - tGlass\(b\)/,
     'each tier must be sorted by predicted time-to-glass before enqueue');
-  const reconcileStart = RENDERER_SOURCE.indexOf('enqueueMissingMeshBuilds(\n      presentationList');
+  const reconcileStart = RENDERER_SOURCE.search(/enqueueMissingMeshBuildsSteps\(\r?\n\s+presentationList/);
   assert.ok(reconcileStart >= 0, 'the full reconcile enqueue must exist');
   const reconcileCall = RENDERER_SOURCE.slice(reconcileStart, reconcileStart + 900);
-  assert.match(reconcileCall, /\(entity\) => entityTimeToGlassSeconds\(entity, env, state\),\s*\)/,
+  assert.match(reconcileCall, /\(entity\) => tGlass\(entity\),\s*\)/,
     'the full reconcile must pass the same deadline ordering');
 });
 
@@ -683,15 +688,15 @@ test('mesh build candidates drain nearest-deadline-first inside each tier', () =
 // toward the glass while older far entries sit ahead of it. The poll must re-hoist already-queued
 // ids whose deadline moved inside the urgent window, not only sort new candidates.
 test('the poll re-hoists queued builds whose deadline moved inside the urgent window', () => {
-  const pollStart = RENDERER_SOURCE.indexOf('reconcileMeshResidency() {');
+  const pollStart = RENDERER_SOURCE.indexOf('_reconcileMeshResidencySteps() {');
   assert.ok(pollStart >= 0, 'the residency poll must exist');
   const drainIndex = RENDERER_SOURCE.indexOf('stats.built = this._drainMeshBuildQueue', pollStart);
   assert.ok(drainIndex > pollStart, 'the poll must drain builds after enqueueing');
   const between = RENDERER_SOURCE.slice(pollStart, drainIndex);
-  assert.match(between, /pendingBuilds\.splice\(/,
+  assert.match(between, /pendingBuilds\[write\+\+\]\s*=\s*urgentNow\[i\]/,
     'the already-queued tail must be repartitioned, not just newly enqueued candidates');
   assert.match(between, /entityTimeToGlassSeconds\(entity, env, state\) <= TABLE_BUILD_URGENT_SECONDS/,
-    'the hoist must use the same urgent deadline as the enqueue tiers');
+    'the hoist must re-grade on fresh verdicts at the same urgent deadline as the enqueue tiers');
 });
 
 // The exempt set only changes on sim ticks and spawn events; a full entity scan every display

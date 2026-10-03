@@ -551,7 +551,8 @@ export const automation = {
     // presence during that interval so structures from the previous run cannot flash into view.
     bus.on('save:restoring', () => {
       this._saveRestoring = true;
-      for (const o of this.state.automation.outposts) this._releaseOutpostEntity(o);
+      const bucket = this._presenceBucket();
+      for (const o of this.state.automation.outposts) this._releaseOutpostEntity(o, true, bucket);
     });
     // Offline catch-up: when a save is loaded, simulate the elapsed-away window once, then
     // materialize only the restored current-sector ledger.
@@ -581,7 +582,8 @@ export const automation = {
       this._flushOffscreenNetworkBeforeSectorTransition(p && p.sectorId);
       if (p && (p.continuous || p.noTeleport)) return;
       for (const g of this.state.automation.drones) this._releaseDroneEntities(g);
-      for (const o of this.state.automation.outposts) this._releaseOutpostEntity(o);
+      const bucket = this._presenceBucket();
+      for (const o of this.state.automation.outposts) this._releaseOutpostEntity(o, true, bucket);
     });
     // Continuous enter: adopt sector membership for still-live drone groups. No spawn, no task/
     // route/program/cargo reset — identity stays on the live entity ids (M2-C1).
@@ -597,7 +599,7 @@ export const automation = {
     // deterministically (continuous-membership adoption stays on the bus payload).
     this._cookProvider = () => {
       if (this._saveRestoring) return;
-      this._syncOutpostPresence(this.state.automation);
+      return this._syncOutpostPresenceSteps(this.state.automation);
     };
     (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
       .push(this._cookProvider);
@@ -1234,36 +1236,97 @@ export const automation = {
   // Outposts remain coarse ledger records everywhere, but materialize one authored place entity
   // while their home sector is the player's current sector.
   _syncOutpostPresence(a, { reconcile = true } = {}) {
+    // Sync lane (emit listener, save paths, tier updates): drain the chunked steps
+    // inline — the census drive holds the same generator across its slices.
+    for (const _ of this._syncOutpostPresenceSteps(a, { reconcile })) { /* inline */ }
+  },
+
+  *_syncOutpostPresenceSteps(a, { reconcile = true } = {}) {
     if (this._saveRestoring) return;
-    if (!a || !Array.isArray(a.outposts)) return;
+    if (!a || !Array.isArray(a.outposts) || a.outposts.length === 0) return;
     const currentSectorId = this.state.world && this.state.world.currentSectorId || null;
-    for (const o of a.outposts) {
-      if (currentSectorId && o.sectorId === currentSectorId) this._spawnOutpostEntity(o, reconcile);
-      else if (reconcile || o.entityId != null) this._releaseOutpostEntity(o, reconcile);
+    // Bucket live presence once up front — a per-outpost presence walk costs
+    // O(dressing table + fx lane), so an N-outpost empire paid N × O(D+F)
+    // inside one drive. Rows are keyed by data.automationOutpostId; per-outpost
+    // steps become O(1) lookups (tracked entity still resolves per call).
+    const bucket = new Map();
+    const table = this.state.world && this.state.world.dressing;
+    if (table && Array.isArray(table.rows)) {
+      for (const row of table.rows.slice()) {
+        yield;
+        if (row && row.alive !== false) this._presenceBucketPush(bucket, row);
+      }
+    }
+    for (const entity of indexedTypeScan(this.state, 'fx').slice()) {
+      yield;
+      if (entity && entity.type === 'fx') this._presenceBucketPush(bucket, entity);
+    }
+    // Snapshot the live roster — a mid-flight _repossessOne splice can shift it.
+    for (const o of a.outposts.slice()) {
+      yield;
+      // A repossess/decommission landing while this drive is suspended splices o
+      // off the live roster; stepping it would mint a ghost presence entity no
+      // ledger owner ever releases.
+      if (!a.outposts.includes(o)) continue;
+      if (currentSectorId && o.sectorId === currentSectorId) this._spawnOutpostEntity(o, reconcile, bucket);
+      else if (reconcile || o.entityId != null) this._releaseOutpostEntity(o, reconcile, bucket);
     }
   },
 
-  _collectOutpostPresence(o) {
+  _presenceBucketPush(bucket, entity) {
+    if (!entity || entity.alive === false || entity.id == null || !entity.data) return;
+    const key = entity.data.automationOutpostId;
+    if (key == null) return;
+    const arr = bucket.get(key) || [];
+    arr.push(entity);
+    bucket.set(key, arr);
+  },
+
+  // One bucket for a whole release loop — the per-outpost fallback walk is
+  // O(dressing + fx) per call, so an N-outpost loop paid N × O(D+F) inside an
+  // emit handler firing mid-transition.
+  _presenceBucket() {
+    const bucket = new Map();
+    const table = this.state.world && this.state.world.dressing;
+    if (table && Array.isArray(table.rows)) {
+      for (const row of table.rows) this._presenceBucketPush(bucket, row);
+    }
+    for (const entity of indexedTypeScan(this.state, 'fx')) {
+      if (entity && entity.type === 'fx') this._presenceBucketPush(bucket, entity);
+    }
+    return bucket;
+  },
+
+  _collectOutpostPresence(o, bucket) {
     const live = [];
     const seen = new Set();
     const push = (entity) => {
       if (!entity || entity.alive === false || entity.id == null || seen.has(entity.id)) return;
       if (!entity.data || entity.data.automationOutpostId !== o.id) return;
+      // dropDressingRow splices + byId.delete but never stamps alive — a row
+      // dropped after a snapshot bucket was built lingers in it as a phantom and
+      // would still win the canonical pick. Adopt only rows a live table owns.
+      if (getDressingRow(this.state, entity.id) !== entity
+          && !(this.state.entities && this.state.entities.get(entity.id) === entity)) return;
       seen.add(entity.id);
       live.push(entity);
     };
     push(this._getRuntimeEntity(o.entityId));
-    forEachDressingRow(this.state, push);
-    // Pre-dressing leftovers stay type fx on the table; skip ships/stations/shots.
-    const list = indexedTypeScan(this.state, 'fx');
-    for (let i = 0; i < list.length; i++) {
-      const entity = list[i];
-      if (entity && entity.type === 'fx') push(entity);
+    if (bucket) {
+      for (const entity of bucket.get(o.id) || []) push(entity);
+    } else {
+      forEachDressingRow(this.state, push);
+      // Pre-dressing leftovers stay type fx on the table; skip ships/stations/shots.
+      const list = indexedTypeScan(this.state, 'fx');
+      for (let i = 0; i < list.length; i++) {
+        const entity = list[i];
+        if (entity && entity.type === 'fx') push(entity);
+      }
     }
     return live;
   },
 
-  _spawnOutpostEntity(o, reconcile = true) {
+  _spawnOutpostEntity(o, reconcile = true, bucket) {
     if (!o || !this.state) return null;
 
     this._ensureOutpostPosition(o);
@@ -1278,7 +1341,7 @@ export const automation = {
 
     // Reconcile leftover live entities and dressing rows. Repeated enter/load must stay
     // idempotent and collapse a duplicate if an earlier partial transition spawned twice.
-    const live = this._collectOutpostPresence(o);
+    const live = this._collectOutpostPresence(o, bucket);
     if (live.length) {
       const canonical = tracked && live.includes(tracked) ? tracked : live[0];
       o.entityId = canonical.id;
@@ -1314,12 +1377,12 @@ export const automation = {
     return entity || null;
   },
 
-  _releaseOutpostEntity(o, reconcile = true) {
+  _releaseOutpostEntity(o, reconcile = true, bucket) {
     if (!o) return;
     const ids = new Set();
     if (o.entityId != null) ids.add(o.entityId);
     if (reconcile) {
-      for (const entity of this._collectOutpostPresence(o)) ids.add(entity.id);
+      for (const entity of this._collectOutpostPresence(o, bucket)) ids.add(entity.id);
     }
     for (const id of ids) {
       const entity = this._getRuntimeEntity(id);
@@ -3021,7 +3084,8 @@ export const automation = {
   // ------------------------------------------------------------------------------------------
   newGame() {
     if (this.state.automation && Array.isArray(this.state.automation.outposts)) {
-      for (const o of this.state.automation.outposts) this._releaseOutpostEntity(o);
+      const bucket = this._presenceBucket();
+      for (const o of this.state.automation.outposts) this._releaseOutpostEntity(o, true, bucket);
     }
     this.state.automation = makeDefaultAutomation();
     this._normalizeAutomation(this.state.automation);
@@ -3076,7 +3140,8 @@ export const automation = {
   deserialize(data) {
     if (!data) return;
     if (this.state.automation && Array.isArray(this.state.automation.outposts)) {
-      for (const o of this.state.automation.outposts) this._releaseOutpostEntity(o);
+      const bucket = this._presenceBucket();
+      for (const o of this.state.automation.outposts) this._releaseOutpostEntity(o, true, bucket);
     }
     const a = this.state.automation = Object.assign(makeDefaultAutomation(), data);
     this._normalizeAutomation(a);

@@ -21,6 +21,7 @@ import {
   compilePipelineSubject,
   hoistDeadlineGlassMeshBuilds,
   preparePipelineSubjectResidency,
+  promoteOnGlassPipelineLatch,
   render,
 } from '../src/render/renderer.js';
 import * as partsLibrary from '../src/render/partsLibrary.js';
@@ -120,6 +121,85 @@ test('pipeline admission: urgent re-request folds a queued ambient admission of 
   assert.deepEqual(await ambient, { compiled: 'urgent' });
   assert.deepEqual(await urgent, { compiled: 'urgent' });
   assert.equal(resumed.length, 1, 'the armed ambient beat stays armed but has nothing left');
+});
+
+test('pipeline latch promotion: a measured on-glass pending root re-fires urgent and folds its queued ambient admission', async () => {
+  // D38 — asteroid 30 sat 14 frames hidden behind `pipelinesPending` on R0_GLASS: its compile
+  // was queued ambient before the rock crossed the glass, and no lane re-graded it. The submit
+  // pass now re-fires the latched root at the deadline class; the tracker folds the still-queued
+  // ambient entry into the urgent run so both latches settle on one link.
+  const { tracker, order, resumed, gates } = makeTracker();
+  tracker.resumeAutoFlush();
+
+  const mesh = { userData: { pipelinesPending: true }, name: 'asteroid-30' };
+  const owner = {
+    state: {
+      render: {
+        compileObjectPipelines: (subject, options) => tracker.compile(subject, options),
+      },
+    },
+  };
+
+  // Ambient admission queued while the rock was still off-glass.
+  const ambient = tracker.compile(mesh);
+  assert.equal(tracker.queuedCount, 1);
+
+  // The submit pass measures the latch on the live glass and promotes it.
+  assert.equal(promoteOnGlassPipelineLatch(owner, mesh), true);
+  assert.equal(tracker.queuedCount, 0,
+    'the still-queued ambient entry folds into the urgent run instead of waiting FIFO');
+
+  await Promise.resolve();
+  assert.equal(gates.length, 1, 'one link serves both the ambient latch and the promotion');
+  assert.deepEqual(order[0].subjects, [mesh]);
+
+  // A second promote while the urgent run is outstanding joins it — no duplicate link.
+  assert.equal(promoteOnGlassPipelineLatch(owner, mesh), true);
+  assert.equal(gates.length, 1, 'the outstanding urgent run is joined, never duplicated');
+  assert.equal(resumed.length, 1, 'the ambient beat stays armed but has nothing left');
+
+  gates[0].resolve({ compiled: 'urgent' });
+  assert.deepEqual(await ambient, { compiled: 'urgent' });
+});
+
+test('pipeline latch promotion: only a latched root re-fires, and only through a live compile port', () => {
+  const calls = [];
+  const owner = {
+    state: {
+      render: {
+        compileObjectPipelines: (subject, options) => {
+          calls.push({ subject, options });
+          return Promise.resolve({ skipped: false });
+        },
+      },
+    },
+  };
+  const latched = { userData: { pipelinesPending: true } };
+  assert.equal(promoteOnGlassPipelineLatch(owner, latched), true);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].options.urgent, true,
+    'the caller measured the glass — urgency is explicit, not re-derived');
+  assert.equal(calls[0].options.joinOutstanding, true,
+    'an outstanding urgent admission is joined, not recompiled');
+
+  const unlatched = { userData: {} };
+  assert.equal(promoteOnGlassPipelineLatch(owner, unlatched), false,
+    'a root with no pending latch never queues a promotion admission');
+  assert.equal(calls.length, 1);
+
+  assert.equal(promoteOnGlassPipelineLatch({ state: { render: {} } }, latched), false,
+    'no compile port means no promotion (pre-setup render state)');
+  assert.equal(calls.length, 1);
+
+  const throwing = {
+    state: {
+      render: {
+        compileObjectPipelines: () => { throw new Error('stale owner'); },
+      },
+    },
+  };
+  assert.equal(promoteOnGlassPipelineLatch(throwing, latched), false,
+    'a refused promotion reports false and retries next frame instead of throwing in the submit walk');
 });
 
 test('pipeline admission: urgent compiles join an in-flight or already-urgent admission, never duplicate', async () => {

@@ -226,6 +226,31 @@ export default defineFlavorPack({
       recovery: 'A SECOND SEAL HOLDS. THE FENCE WILL STILL TAKE THE LEDGER QUIETLY.',
     }),
 
+    ...stageCopy('choir_vigil', 'first_light', {
+      instruction: 'The Helios loss report names a bearing ring. Fly it and pulse the wreck into a fixed site.',
+      success: 'BEARING FIXED. THE CHOIR-TENDER IS A PLACE NOW, NOT A STORY.',
+      failure: 'SURVEY CLOSED. THE LAST LIGHT KEEPS ITS OWN VIGIL.',
+      recovery: 'HELIOS KEPT THE CLIPPING. THE SAME RING MAY BE READ AGAIN.',
+    }),
+    ...stageCopy('choir_vigil', 'the_long_night', {
+      instruction: 'Stand the long watch: reach the warm wreck, live through its reactor, and finish the salvage decision.',
+      success: 'DECISION REACHED. THE WRECK NOW WAITS ON A NAME FOR WHAT REMAINS.',
+      failure: 'THE WATCH BROKE. THE COMPLICATION KEPT THE SITE AND ITS CREW.',
+      recovery: 'THE BEARING REMAINS FIXED. A SHORTER WATCH MAY STILL BE STOOD.',
+    }),
+    ...stageCopy('choir_vigil', 'walk_the_recovery', {
+      instruction: 'Return the relief claim, then fly back to the site and read what the recovery left standing.',
+      success: 'RECOVERY WALKED. THE BERTH HAS ITS CREW, THE SITE HAS ITS PLACARD.',
+      failure: 'THE RETURN WAS NEVER MADE. THE SITE KEEPS THE OUTCOME WITHOUT YOU.',
+      recovery: 'THE PLACARD STILL STANDS. THE SAME RETURN MAY BE WALKED AGAIN.',
+    }),
+    ...stageCopy('choir_vigil', 'read_the_placard', {
+      instruction: 'Claim the surviving systems under your own name, then go back and read the placard you wrote.',
+      success: 'PLACARD READ. THE SITE SAYS YOUR NAME IN PERMANENT PAINT.',
+      failure: 'THE RETURN WAS NEVER MADE. THE CLAIM STANDS; THE STORY WENT UNREAD.',
+      recovery: 'THE SITE STILL CARRIES YOUR STAMP. THE READING MAY BE TRIED AGAIN.',
+    }),
+
     travelLine('dorin', '01', 'They made the seal clean after they made the corridor quiet.'),
     travelLine('dorin', '02', 'The first list named the missing. The second named authorized witnesses.'),
     travelLine('dorin', '03', 'Not courage. I exhausted every department willing to lose that page.'),

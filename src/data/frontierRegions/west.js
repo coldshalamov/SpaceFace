@@ -279,6 +279,10 @@ const REGION_HYPERION = freezeRegion({
         factionId: 'faction_dmc',
         size: 'S',
         services: ['trade', 'ore_buy', 'missions'],
+        // The claim crews run drills and haulers off cells and burn the ration by mid-shift —
+        // a standing fuel-cell shortage. Same shared price curve; only this listing's stock
+        // equilibrium moves (dear end of the Ceres Refinery cell run, one bridge gate up-lane).
+        marketEquilibriumFactors: { cmdty_fuel_cells: 0.1 },
         chartNote: 'Claim crews buy ore at the seam and post dangerous short-haul work.',
       },
     ],

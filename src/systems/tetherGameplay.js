@@ -21,7 +21,7 @@ import { publishHitstunImpulse, signedHitSide } from '../combat/impulseKernel.js
 import { createMasslineRuntime } from '../core/constraints/masslineController.js';
 import { hasActiveSpatialHash, queryNearbyEntities } from '../core/spatialQuery.js';
 import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidField.js';
-import { queuePhysicsImpulse, queuePhysicsTorqueImpulse } from '../core/physicsAuthority.js';
+import { isDynamicPhysicsBodyEntity, queuePhysicsImpulse, queuePhysicsTorqueImpulse } from '../core/physicsAuthority.js';
 import { isHostileToPlayer } from './scanner.js';
 import { combatFlag, massline2Flag } from '../data/featureFlags.js';
 import { isMassSeedTetherEligible, massSeedLatchPreview } from './massSeed.js';
@@ -2566,11 +2566,23 @@ function contextualRemoteAttachmentWorlds(source, target) {
   };
 }
 
+/** Does this body anchor a tow line at its center of mass? COM exists to keep the joint off a
+ * lever arm: a hull-offset anchor torques a body the constraint can actually rotate and quietly
+ * becomes an attitude controller. A COM-type body that cannot rotate under the joint — an
+ * authored-static placed slab/cradle (`physicsBody.dynamic === false`), or `physicsBody: false`
+ * (no live body at all) — keeps the readable hull endpoint the player latched, the same rule
+ * terrain and stations already follow. */
+function towAnchorAtCenterOfMass(entity) {
+  if (!entity || !TOW_TARGET_COM_TYPES.has(entity.type)) return false;
+  if (entity.physicsBody === false) return false;
+  return isDynamicPhysicsBodyEntity(entity);
+}
+
 function remoteAttachmentWorld(entity, toward) {
   if (!entity || !entity.pos) return { x: 0, y: 0, z: 0 };
   // Moving payloads/craft attach through COM. A hull-offset world-to-world rope would apply yaw
   // torque and become an accidental facing controller; static scenery keeps the visible surface hit.
-  if (TOW_TARGET_COM_TYPES.has(entity.type)) {
+  if (towAnchorAtCenterOfMass(entity)) {
     return { x: entity.pos.x, y: 0, z: entity.pos.z };
   }
   return surfacePointToward(entity, toward);
@@ -3131,13 +3143,16 @@ function masslineTargetLabel(target) {
 /** Resolve physical world anchors once at latch time. Both ends of a dynamic attachment are
  * the bodies' centers of mass — the standing remoteAttachmentWorld contract: a constraint
  * hung on a hull socket applies steering torque by itself and becomes an accidental attitude
- * controller. Static/terrain anchors keep the readable surface endpoint the player latched. */
+ * controller. A COM-type body the joint cannot rotate (authored-static socket-less wrecks —
+ * placed aftermath slabs, the salvage cradle) falls back to the measured hardpoint or the
+ * acquired surface endpoint, so the line lands on the hull instead of floating at body center.
+ * Static/terrain anchors keep the readable surface endpoint the player latched. */
 export function contextualAttachmentWorlds(player, target, acquiredTargetWorld) {
   const source = modelTruthRopeEnd(player);
-  const sourceWorld = TOW_TARGET_COM_TYPES.has(player && player.type) && player.pos
+  const sourceWorld = towAnchorAtCenterOfMass(player) && player.pos
     ? { x: player.pos.x, y: 0, z: player.pos.z }
     : (source ? { x: source.x, y: 0, z: source.z } : { x: player.pos.x, y: 0, z: player.pos.z });
-  const targetWorld = target && TOW_TARGET_COM_TYPES.has(target.type) && target.pos
+  const targetWorld = target && towAnchorAtCenterOfMass(target) && target.pos
     ? { x: target.pos.x, y: 0, z: target.pos.z }
     : (modelTruthRopeEnd(target) || acquiredTargetWorld);
   return { sourceWorld, targetWorld };

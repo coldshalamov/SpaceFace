@@ -161,6 +161,9 @@ const COMBAT_HASH_MIN_COUNT = 48;
 export function queryCombatTableEntities(state, x, z, radius, out = [], flagMask = 0) {
   out.length = 0;
   const table = state && state.combatTable;
+  // SpatialHash.queryRadius appends. This private buffer belongs to one query,
+  // including empty/linear fallback calls that must release old body references.
+  if (table && table._hashScratch) table._hashScratch.length = 0;
   if (!table || table.count <= 0 || !state.entities || typeof state.entities.get !== 'function') {
     return out;
   }

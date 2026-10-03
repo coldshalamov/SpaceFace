@@ -13,7 +13,7 @@
 // team-0 wings — wingmen just join it.
 
 import { makeShipEntitySpec } from './ships.js';
-import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
+import { deferSectorEnterMaterialization, deferredEnterTick } from '../core/sectorEnterDefer.js';
 import {
   WING_ORDER,
   WING_ORDER_LIMITS,
@@ -126,7 +126,7 @@ export const wingmen = {
     // Census arm: the same re-fire as a sector cook provider so wingmen spawn inside the
     // deterministic composition census, not wherever listener registration order puts them.
     this._cookProvider = () => {
-      if (this._spawnWingmen) { this._wingmenQuiet = null; this._spawnWingmen(); }
+      if (this._spawnWingmenSteps) { this._wingmenQuiet = null; return this._spawnWingmenSteps(); }
     };
     (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = [])).push(this._cookProvider);
     // Canonical seam is sector:exit (world never emits sector:leave). Continuous free-flight
@@ -202,6 +202,9 @@ export const wingmen = {
         // consistent + the LOST/asset-lost flow fires (same as the pre-P1-8 passive path).
         fs.hp = 0; fs.hullPct = 0;
         this.bus.emit('combat:hitAsset', { assetKind: 'fleet', assetId: fs.id, dmg: 9999, killerId: null });
+        // One named line per death. Clearing _liveId below keeps later ticks silent.
+        const name = (fs.customName || fs.name) || 'Wingman';
+        this.bus.emit('toast', { text: 'Wingman down — ' + name, kind: 'error', ttl: 4 });
         fs._liveId = null;
         continue;
       }
@@ -217,6 +220,12 @@ export const wingmen = {
   },
 
   _spawnWingmen() {
+    // Sync lane (emit listener): drain the chunked steps inline — the census
+    // drive holds the same generator across its slices.
+    for (const _ of this._spawnWingmenSteps()) { /* inline */ }
+  },
+
+  *_spawnWingmenSteps() {
     const state = this.state;
     const fleet = state.automation && state.automation.fleet;
     if (!fleet || !fleet.length) return;
@@ -225,7 +234,8 @@ export const wingmen = {
 
     let spawned = 0;
     const ordered = this._orderedFleetFor(fleet);
-    for (const fs of fleet) {
+    for (const fs of fleet.slice()) {
+      yield;
       if (fs._liveId) continue; // already live (continuous handoff or same-sector re-enter)
       const spec = this._buildWingmanSpec(fs, player);
       if (!spec) continue;
@@ -397,7 +407,7 @@ export const wingmen = {
         leashRadius: GUARD_INTERCEPT_LEASH_WU,
         preferredRange: GUARD_INTERCEPT_RANGE_WU,
         targetId: interceptId,
-        startedTick: Number.isInteger(this.state.tick) ? this.state.tick : 0,
+        startedTick: Number.isInteger(deferredEnterTick(this.state)) ? deferredEnterTick(this.state) : 0,
       } : wingOrderActivity(fs.wingOrder, {
         playerPos: player.pos,
         anchorPos: guardAnchor,
@@ -446,7 +456,7 @@ export const wingmen = {
     fs.wingOrder = normalizeLiveWingOrder({
       kind: WING_ORDER.REGROUP,
       commandId: previousCommandId,
-      issuedTick: Number.isInteger(this.state.tick) ? this.state.tick : 0,
+      issuedTick: Number.isInteger(deferredEnterTick(this.state)) ? deferredEnterTick(this.state) : 0,
     }, this.state.world && this.state.world.currentSectorId);
     fs.order = legacyFleetOrderFor(WING_ORDER.REGROUP);
     fs.targetRef = null;

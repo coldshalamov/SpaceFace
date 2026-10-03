@@ -248,6 +248,11 @@ export const DOCTRINE_AUDIO_SIGNATURES = Object.freeze({
   [CombatDoctrineId.RANGED_DISENGAGER]: Object.freeze({
     recipeId: 'sfx_doctrine_ranged_charge', fireRate: 0.94, fireGain: 0.84, fireDetune: -2,
   }),
+  [CombatDoctrineId.RANGED_STALKER]: Object.freeze({
+    // The stalker's charge reads patient: slower and lower than the disengager's kiter voice,
+    // a watcher settling onto a new bearing rather than a kite backing off.
+    recipeId: 'sfx_doctrine_ranged_charge', fireRate: 0.82, fireGain: 0.8, fireDetune: -14,
+  }),
   [CombatDoctrineId.SHIELD_BREAKER]: Object.freeze({
     // The lance telegraph is a charge-up into an ion burst: brighter and faster than the
     // kiter's standoff charge, so the peel window is heard.
@@ -2499,10 +2504,15 @@ export const audio = {
     // WANTED heat escalation: heat:changed drove VFX/telemetry but was silent — the player could
     // become hunted with no sound. The authoritative packet keys the whole family (see handler).
     bus.on('heat:changed', (p) => this._onHeatChanged(p));
-    // Tech research + ship purchase: the two biggest credit sinks were silent. A confirm chime
-    // makes the payoff of a major purchase/upgrade land.
-    bus.on('tech:researched', () => this.play('sfx_mission_complete', { gain: 0.6 }));
-    bus.on('ship:purchased', () => this.play('sfx_mission_complete', { gain: 0.7 }));
+    // Tech research + ship purchase: the two biggest credit sinks get their own voices (they had
+    // been reusing the mission-complete jingle). The ship buy ducks the bed briefly so the low
+    // hull swell reads over whatever was playing.
+    bus.on('tech:researched', () => this.play('sfx_tech_researched', { gain: 0.6 }));
+    bus.on('ship:purchased', () => { this._duckMusic(); this.play('sfx_ship_purchased', { gain: 0.7 }); });
+    // Achievements and career promotions: previously silent or text-only. An unlocked deed gets
+    // the fanfare (and ducks the bed, like a mission resolve); a rank-up gets the warm chord.
+    bus.on('achievement:unlocked', () => { this._duckMusic(); this.play('sfx_achievement_fanfare', { gain: 0.75 }); });
+    bus.on('career:ladder:completed', () => this.play('sfx_promotion_chord', { gain: 0.7 }));
     // Feature 16 — the ka-ching. Settled sales ring the register; buys stay a quiet confirm.
     // A profitable lot rings a shade brighter so the good deal is audible, not just green.
     bus.on('economy:tradeCompleted', (p) => {

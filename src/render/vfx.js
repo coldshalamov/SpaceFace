@@ -363,6 +363,8 @@ export function initNpcJobContactScratch(slot) {
 
 // SF-266 — deterministic order for spatial-hash candidate lists. EntityList/index order is
 // not guaranteed inside a radius result, so seam-marker iteration sorts by stable id.
+// The query opts stay a frozen constant: a literal in the 20 Hz beat would allocate.
+const SEAM_MARKER_QUERY_OPTS = Object.freeze({ countDiagnostics: false });
 function compareSeamCandidateIds(left, right) {
   const a = left && left.id, b = right && right.id;
   if (Number.isFinite(a) && Number.isFinite(b)) return a - b;
@@ -13110,7 +13112,7 @@ export const vfx = {
     candidates.length = 0;
     const origin = tableLookAtOrigin(state, player.pos,
       this._seamMarkerOrigin || (this._seamMarkerOrigin = { x: 0, z: 0 }));
-    hash.queryRadius(origin.x, origin.z, drawWu, candidates, { countDiagnostics: false });
+    hash.queryRadius(origin.x, origin.z, drawWu, candidates, SEAM_MARKER_QUERY_OPTS);
     candidates.sort(compareSeamCandidateIds);
     return candidates;
   },

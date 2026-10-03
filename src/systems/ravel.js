@@ -41,7 +41,7 @@ export function createRavel() {
     on('save:restoring',()=>{this._restoring=true;this._cancel(false);});
     on('save:loaded',()=>{this._restoring=false;this._reset();this._sync();});
     on('sector:enter',p=>{if(!deferSectorEnterMaterialization(this.state,p,this._cookProvider))this._sync();});
-    this._cookProvider=()=>this._sync();
+    this._cookProvider=()=>this._syncSteps();
     (this.helpers.sectorCookProviders||(this.helpers.sectorCookProviders=[])).push(this._cookProvider);
   },
   _reset() {
@@ -61,18 +61,29 @@ export function createRavel() {
   _removeOwned(){for(const e of this.state?.entityList||[])if(e?.alive&&e.data?.ravelPart)this.helpers?.removeEntity?.(e.id);
     this._coreRef=null;this._spools=[null,null,null];},
   _sync() {
+    // Sync lane (emit listener, save:loaded): drain the chunked steps inline —
+    // the census drive holds the same generator across its slices.
+    for(const _ of this._syncSteps()) { /* inline */ }
+  },
+  *_syncSteps() {
     if(this._restoring)return;
     const m=this.state.ravel;
     if(!this._adventure()||m.destroyed){this._cancel(false);this._removeOwned();this._inside=false;return;}
     const found=[null,null,null,null];
-    for(const e of this.state.entityList||[]) {
+    // Snapshot the live list across yields; ravelPart bodies minted by a
+    // suspended run are adopted on re-scan, not re-minted.
+    for(const e of (this.state.entityList||[]).slice()) {
+      yield;
       if(!e?.alive||!e.data?.ravelPart)continue;
       const i=e.data.ravelPart==='core'?0:e.data.ravelIndex+1;
       if(!Number.isInteger(i)||i<0||i>3||found[i]||(i>0&&(m.broken&(1<<(i-1)))))this.helpers.removeEntity?.(e.id);
       else found[i]=e;
     }
-    for(let i=0;i<4;i++)if(!found[i]&&!(i>0&&(m.broken&(1<<(i-1)))))
-      found[i]=this.helpers.spawnEntity?.(ravelEntitySpec(i===0?'core':'spool',Math.max(0,i-1),m))||null;
+    for(let i=0;i<4;i++) {
+      yield;
+      if(!found[i]&&!(i>0&&(m.broken&(1<<(i-1)))))
+        found[i]=this.helpers.spawnEntity?.(ravelEntitySpec(i===0?'core':'spool',Math.max(0,i-1),m))||null;
+    }
     this._coreRef=found[0];this._spools=found.slice(1);
     this._publish();
   },

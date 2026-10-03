@@ -416,14 +416,16 @@ test('absence: a capsule that leaves the field resolves unresolved_absent with n
   const t = scene();
   const m = t.accept();
   assert.ok(t.stepToLaunch());
-  t.latch();
+  // The run is UN-taken: SF-147 parks a stolen load at the boundary as a suspension, but a load
+  // nobody possessed follows the historical rule — a dematerialized body is absent, never
+  // re-created, never paid. (The taken-load suspension is exercised by row85-pb-mis-d.)
   t.step(1);
   // Sector exit removes the transient capsule without a destruction event — the facility owner's
   // own dematerialize path, not a synthetic delete.
   t.bus.emit('sector:exit', { sectorId: PQ019_HEIST_SECTOR_ID });
   t.step(6);
   const inv = t.invariants(m);
-  assertPacketInvariants(inv, { outcome: 'unresolved_absent', witnessedTheft: true });
+  assertPacketInvariants(inv, { outcome: 'unresolved_absent', witnessedTheft: false });
   assert.equal(inv.economyRewardCount, 0, 'absence never fabricates a payout');
 });
 

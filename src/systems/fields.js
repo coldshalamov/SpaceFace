@@ -1537,6 +1537,13 @@ export const fields = {
     this.bus.emit('fields:ended', { fieldId: rec.fieldId, kind: rec.kind, reason });
     if (reason === FIELD_END_REASONS.destroyed || reason === FIELD_END_REASONS.expired) {
       this.bus.emit('audio:cue', { id: 'sfx_explosion_small', gain: 0.35 });
+    } else if (reason === FIELD_END_REASONS.replaced && !rec.planted) {
+      // Cap replacement has no explosion cue. Only the player's own oldest emitter is announced.
+      this.bus.emit('toast', {
+        text: `Oldest ${rec.kind === 'well' ? 'Well' : 'Repulsor'} was replaced`,
+        kind: 'warn',
+        ttl: 1.6,
+      });
     }
   },
 

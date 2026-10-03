@@ -520,9 +520,16 @@ try {
     if (roundTrip && saved) {
       let loaded = false;
       try {
+        // Name the sub-stage in the failure line. A bare "did not return to flight" cannot
+        // distinguish "the reloaded page never evaluated its module graph (window.SF absent)"
+        // from "Continue's own load gates never released" — the 2026-09-30 capture was the
+        // first kind and sat unconfirmed because the error did not say where it died.
+        let continueStage = 'harness-reload';
         phase = 'harness-reload';
         await page.reload({ waitUntil: 'domcontentloaded', timeout: 180000 });
+        continueStage = 'boot-graph (window.SF)';
         await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 60000 });
+        continueStage = 'main-menu';
         await page.waitForFunction(() => {
           const el = document.querySelector('[data-screen="mainMenu"]');
           return el && getComputedStyle(el).display !== 'none';
@@ -531,9 +538,11 @@ try {
         // Press the real Continue button. mainMenu.js:254 reads the save index and emits
         // game:load with the latest slot; firing the event directly would skip the index lookup,
         // which is itself a place this can break.
+        continueStage = 'continue-click';
         const clicked = await clickButton(page, 'Continue');
         if (!clicked) throw new Error('Continue button absent or disabled after saving');
         phase = 'launch';
+        continueStage = 'load-gates→flight';
         await page.waitForFunction(() => {
           const st = window.SF.state;
           const p = st && st.entities && st.entities.get(st.playerId);
@@ -544,7 +553,7 @@ try {
         loaded = true;
         record('CONTINUE', true, 'loaded the save back into flight');
       } catch (err) {
-        record('CONTINUE', false, 'Continue did not return to flight: ' + err.message);
+        record('CONTINUE', false, `Continue did not return to flight (stage: ${continueStage}): ` + err.message);
       }
       if (loaded) await assertPlayable(page, '~LOAD');
       else for (const step of ['PILOT', 'HULL', 'WORLD', 'CONTROLS']) record(step + '~LOAD', false, 'skipped (Continue failed)');

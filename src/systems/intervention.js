@@ -16,7 +16,7 @@
 // story" law. Never writes credits, cargo, or rep (single-writer §0.6); never rolls its own losses.
 
 import { drawSeeded, hash32 } from '../core/rng.js';
-import { deferSectorEnterMaterialization, deferredEnterNow } from '../core/sectorEnterDefer.js';
+import { deferSectorEnterMaterialization, deferredEnterNow, deferredEnterProviderInFlight } from '../core/sectorEnterDefer.js';
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 
 const MAX_ACTIVE = 4;        // cap concurrent interventions so a mass-loss event doesn't spam wrecks
@@ -77,7 +77,7 @@ export const intervention = {
       this._materializePendings();
     });
     // Census arm: logged sites materialize inside the sector cook deterministically.
-    this._cookProvider = () => this._materializePendings();
+    this._cookProvider = () => this._materializePendingsSteps();
     (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
       .push(this._cookProvider);
   },
@@ -136,17 +136,51 @@ export const intervention = {
   },
 
   _materializePendings() {
+    // Sync lane (emit listener, update sweep): drain the chunked steps inline —
+    // the census drive holds the same generator across its slices. While the
+    // FIFO holds this provider's live entry, the inline run would be a second
+    // driver on the same mutable pendingInterventions array — defer to it.
+    if (deferredEnterProviderInFlight(this.state, this._cookProvider)) return;
+    for (const _ of this._materializePendingsSteps()) { /* inline */ }
+  },
+
+  *_materializePendingsSteps() {
     const state = this.state;
     const current = state.world && state.world.currentSectorId;
     if (!current) return;
     const pendings = state.pendingInterventions || [];
-    for (let i = pendings.length - 1; i >= 0; i--) {
-      const rec = pendings[i];
-      if (!rec || rec.sectorId !== current) continue;
-      if ((state.interventions || []).length >= MAX_ACTIVE) return;
-      const spawned = this._spawnSite({ ...rec, arrived: true });
-      if (spawned) pendings.splice(i, 1);
-      else break; // no player/spawner in this harness — keep the log, don't spin
+    // Drain to a fixpoint: a pending logged while this generator is suspended
+    // lands past the bound cursor, so a single backwards walk never visits it —
+    // the emit-era inline drain re-walked and caught it. Re-walk only while a
+    // pass consumed at least one record (each splice shrinks the list, so the
+    // fixpoint terminates); a failed spawn still returns immediately.
+    for (;;) {
+      let progressed = false;
+      for (let i = pendings.length - 1; i >= 0; i--) {
+        yield;
+        const rec = pendings[i];
+        if (!rec || rec.sectorId !== current) continue;
+        if ((state.interventions || []).length >= MAX_ACTIVE) {
+          this._noteInterventionCap(rec);
+          return;
+        }
+        const spawned = this._spawnSite({ ...rec, arrived: true });
+        if (spawned) { pendings.splice(i, 1); progressed = true; }
+        else return; // no player/spawner in this harness — keep the log, don't spin
+      }
+      if (!progressed) return;
+    }
+  },
+
+  _noteInterventionCap(rec) {
+    if (!rec || rec.capTold) return;
+    rec.capTold = true;
+    if (this.bus) {
+      this.bus.emit('toast', {
+        text: 'Recovery sites are full — finish one before the next wreck appears',
+        kind: 'warn',
+        ttl: 4,
+      });
     }
   },
 

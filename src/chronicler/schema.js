@@ -62,6 +62,11 @@ export const FACT_EVENTS = Object.freeze([
   // are the receipts that turn the campaign into evidence the Chronicler can cite.
   'story:playerChoiceRecorded', 'story:vergeEvidenceRecorded',
   'story:kurtzLedger', 'story:vergeValeGatesRevoked',
+  // Marquee-deed batch: the player's own big beats, all live emitters in the current tree — a
+  // new hull (ships.js), an achievement (achievements.js), a completed career ladder
+  // (ladderShared.js), and a stunt trick (stuntGrammar.js, gated to marquee rarity in
+  // normalize.js so routine tricks stay receipts). Recorded on the existing 'story' stage.
+  'ship:purchased', 'achievement:unlocked', 'career:ladder:completed', 'stunt:trickDetected',
 ]);
 export const STAGES = Object.freeze([
   'kill', 'aftermath', 'binding', 'salvage', 'recovered', 'sold', 'law',

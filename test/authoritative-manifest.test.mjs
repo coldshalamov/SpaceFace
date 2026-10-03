@@ -87,8 +87,10 @@ test('production init + update order lengths match the live browser baseline', (
   // 172 -> 173 init / 131 -> 132 update: SWARM-06 swarmElites — the Threat stamp, seeded
   // elite affixes and the live perk effects (§6.4/§4.3). One system in both orders, after
   // swarmJuice so a wave's spawn receipts are already stamped before the HUDs read.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 173);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 132);
+  // 173 -> 174 init / 132 -> 133 update: SOLSTICE / SL-9 system owner, registered with
+  // the character owners after ravel and before physics.
+  assert.equal(PRODUCTION_INIT_ORDER.length, 174);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 133);
   assert.ok(PRODUCTION_INIT_ORDER.includes('ravel'));
   assert.ok(PRODUCTION_UPDATE_ORDER.indexOf('bracket') < PRODUCTION_UPDATE_ORDER.indexOf('ravel'));
   assert.ok(PRODUCTION_UPDATE_ORDER.indexOf('ravel') < PRODUCTION_UPDATE_ORDER.indexOf('physics'));
@@ -249,7 +251,8 @@ test('browser production system set is unchanged vs production manifest constant
   // 172 with ravel (PR #217 — fixed-step character owner after bracket, before physics).
   // 173 with SWARM-06 swarmElites (the Threat/affix/perk runtime; one system in both orders,
   // after swarmJuice so cohort stamps precede the HUDs' readout).
-  assert.equal(registry.systems.length, 173);
+  // 174 with solstice (SL-9 system owner, after ravel and before physics).
+  assert.equal(registry.systems.length, 174);
   const names = registry.systems.map((s) => s.name);
   assert.ok(names.includes('render') || registry.runtimeManifest.authoritativeSystemIds.includes('render'));
   assert.ok(registry.runtimeManifest.authoritativeSystemIds.includes('ui'));

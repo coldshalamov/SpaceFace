@@ -37,6 +37,15 @@ import { resolveActionLabel } from './input.js';
 import { substanceFor } from '../core/physicsAuthority.js';
 import { towClassMassFor } from './shipCapabilities.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
+
+// U5 — the planetary bands' first-contact lines. Instrument register, one line each: what
+// the band is, and the law that governs it. Spoken once per band per body per save.
+const PLANET_BAND_FIRST_LINES = Object.freeze({
+  sling: 'The sling band — speed you carry out of this arc is yours to keep.',
+  skim: 'The working band — the scoop harvests here, and hull heat is climbing.',
+  danger: 'The danger band — drag owns the hull now. The recovery burn is the way back out.',
+  reentry: 'Reentry — everything hot is real. Get the nose up and burn.',
+});
 // TEACH-06: FIELD_ESCAPES is the authored "you are never trapped without a verb" table, and until
 // now nothing in src/ read it. The player had a named escape for every power and no way to learn it.
 import { fieldEscapeOf, FIELD_KINDS } from '../data/fields.js';
@@ -781,6 +790,9 @@ export const onboarding = {
       if (!p || p.on !== true) return; // toggling off is not the lesson
       this._speakShelfVerb('toggleSkimCollector', p);
     });
+    // The planet's bands speak the first time the player reaches them (U5): each band's
+    // receipt names what the band is and the law that governs it — once per save.
+    bus.on('planet:bandFirst', (p) => this._speakBandFirst(p));
     bus.on('cargo:jettisoned', (p) => {
       // The drop-kick line owns an at-speed first dump; the shelf defers so the moment
       // never speaks two lessons. At rest, flag-off, or any later dump the shelf names
@@ -840,6 +852,20 @@ export const onboarding = {
   },
 
   // Show a one-time contextual hint via the toast system. The hint key corresponds to a flag in
+  // U5 — one receipt per planetary band, per body, per save. The instrument shows the band
+  // every frame; this is the one time the band explains itself.
+  _speakBandFirst(p) {
+    const st = this.state;
+    if (!p || !st || p.isPlayer !== true) return false;
+    const line = PLANET_BAND_FIRST_LINES[p.band];
+    if (!line) return false;
+    const key = `band_first_${p.siteId || 'body'}_${p.band}`;
+    const hints = st.player && st.player.hints;
+    if (hints && hints[key]) return false;
+    this._showHint(key, line, p);
+    return !!(st.player.hints && st.player.hints[key]);
+  },
+
   // state.player.hints. If the flag is already true (hint was shown before, even in a prior save),
   // this is a no-op. Respects the tutorialHints setting.
   _showHint(key, text, payload) {

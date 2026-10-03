@@ -222,6 +222,30 @@ test('tethered payload stays exact after leaving the glass', () => {
   assert.equal(entityNeedsPhysics(chunk), true);
 });
 
+test('broken tether receipt does not pin a far payload', () => {
+  const player = ship(1, 0, { isPlayer: true, team: 0 });
+  const snapped = rock(9, 3000);
+  const live = rock(10, 3000);
+  const state = makeState([player, snapped, live], {
+    combat: {
+      attachments: {
+        byId: {
+          // Dead receipt-ledger records hold no joint and are not serialized on save —
+          // they must not act as residency pins (47a sim-v3 reload divergence, D145).
+          t_dead: { ownerId: 1, targetId: 9, state: 'broken' },
+          t_live: { ownerId: 1, targetId: 10, state: 'active' },
+        },
+      },
+    },
+  });
+  const runtime = ensureActivityClassified(state);
+  assert.notEqual(snapped.activity.simTier, SIM_TIER.S0_EXACT);
+  assert.equal(entityNeedsPhysics(snapped), false);
+  assert.equal(runtime.physicsDynamics.includes(snapped), false);
+  assert.equal(live.activity.simTier, SIM_TIER.S0_EXACT);
+  assert.equal(entityNeedsPhysics(live), true);
+});
+
 test('job-pinned far actor stays exact', () => {
   const player = ship(1, 0, { isPlayer: true, team: 0 });
   const courier = ship(8, 5000, { data: { jobId: 'job_courier_1' } });

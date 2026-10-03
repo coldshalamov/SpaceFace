@@ -259,9 +259,16 @@ export function observeContact(a, b, contact, state = activeState) {
         playerOccludedAtRoot=!witnessLineOfSight(state,{id:state.playerId,pos:root.playerPos},thenPos,[state.playerId,source.id,target.id]);
       }
     }
+    // Closing speed is how fast the pair was approaching, not how the solver aimed its
+    // max-force vector. On a sphere that vector can sit tangential to the center line and
+    // project a real strike (~120) down to 0, so a flail kill never clears half cruise.
+    // The contact's pre-solve radial closing is that center-line approach; the force-axis
+    // projection stays as the fallback for contacts that never recorded one.
+    const normalClosing = Math.max(0, (sv.x-tv.x)*axis.x+(sv.z-tv.z)*axis.z);
+    const radialClosing = Number.isFinite(contact.preSolveClosingSpeed) ? Math.max(0, contact.preSolveClosingSpeed) : 0;
     const path = { rootId: root.id, sourceId: source.id, targetId: target.id, sourceLife: sl.id, targetLife: tl.id, playerOccludedAtRoot,
       sourceOccludedAtRoot:sl.id===root.sourceLife?root.sourceOccludedAtRoot:null,
-      tick, edges: influence.edges + 1, usefulDeltaV: useful, closingSpeed: Math.max(0, (sv.x-tv.x)*axis.x+(sv.z-tv.z)*axis.z),
+      tick, edges: influence.edges + 1, usefulDeltaV: useful, closingSpeed: Math.max(normalClosing, radialClosing),
       missDistance,changedCorridor,submaterialSource,submaterialTarget,priorSpeed,normal: axis, sourceVelocity: point(sv), targetVelocity: point(tv),
       momentum: (target.physicsBody?.dynamic === false || ['asteroid','station','planet'].includes(target.type) ? sl.mass : sl.mass*tl.mass/(sl.mass+tl.mass)) * Math.max(0,(sv.x-tv.x)*axis.x+(sv.z-tv.z)*axis.z) };
     record.paths.push(path);

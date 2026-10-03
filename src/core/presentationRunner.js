@@ -986,7 +986,6 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
         }
       }
 
-      diagnostics.lastLeftoverMs = Math.max(0, frameBudgetMs - presentationMs);
       // A restore frame's picture is out; settle its accumulator without advancing the clock.
       if (restoring && !destroyed && !suspended) advanceSimulation(frameDt, true, undefined, perf);
       // Sim and picture are both done. The compile drain is offered what TRULY remains of this

@@ -368,12 +368,21 @@ const RAW_UNIQUE_WRECKS = [
   }),
   wreck({
     id: 'wreck_choir_tender', programSlot: 'D10', name: 'Relief-Freighter Choir-Tender', victimLabel: 'Choir-Tender',
+    // SF-149: the Choir vigil SP1 chain (data/missions.js `choir_vigil`) owns this hull as its
+    // dedicated three-visit site — the same `wreckChainId` binding the D13-D16 wrecks carry.
+    wreckChainId: 'choir_vigil',
     wreckClass: 'fresh', sectorId: 'sector_helios_prime', factionId: 'faction_choir',
     scanLabel: 'RELIEF-FREIGHTER CHOIR-TENDER · REACTOR LEAK',
     uniqueDropId: 'unique_knitbots',
     uniqueDrops: [{ id: 'unique_knitbots', kind: 'module', baseId: 'mod_repair_nanobots_m' }],
     bearingSourceRef: 'news.tragedy_at_helios',
-    rumorSources: [{ id: 'tragedy_at_helios', sourceRef: 'news.tragedy_at_helios', channelId: 'news' }],
+    rumorSources: [
+      { id: 'tragedy_at_helios', sourceRef: 'news.tragedy_at_helios', channelId: 'news' },
+      // SF-149: accepting the vigil chain reprints the same public loss report through the
+      // mission channel — the chain's accept is the native bearing carrier, same law as the
+      // D13-D16 mission sources.
+      { id: 'sp1_choir_vigil_assignment', sourceRef: 'news.tragedy_at_helios', channelId: 'mission' },
+    ],
     provenance: { lossId: 'loss_choir_tender', incidentId: 'incident_helios_relief_reactor', sourceRef: 'news.tragedy_at_helios', recordType: 'fresh_civilian_loss' },
     hazardContext: { label: 'Helios outer yard', anchorType: 'sector', anchorId: 'sector_helios_prime', zoneId: 'zone_helios_core', hazardTypes: [], placementRule: 'near_spawn_outer_yard', approachGate: null },
     complications: [
@@ -383,6 +392,18 @@ const RAW_UNIQUE_WRECKS = [
     ],
     encounterRefs: ['unique_wreck_choir_tender_investigator'],
     bonusCargo: [{ commodityId: 'cmdty_medical', qty: 50 }], reactor: { timerS: 60, damage: 12 },
+    // SF-141 warm-site freight: the relief lot that tore loose on impact is physically on the
+    // field — real persistent pods owned by the attendant's durable record, so scooping them is
+    // cargo-first theft the law can price while Mercy and the attendant still need help. The
+    // spawn is one-shot per site (uniqueWrecks.state.warm); offsets are galactic-global deltas
+    // from the materialized hull.
+    warm: {
+      cargoPods: [
+        { id: 'choir_medical_triage', commodityId: 'cmdty_medical', amount: 4, unitMass: 0.4, radius: 6, offset: { x: 96, z: -54 } },
+        { id: 'choir_relief_provisions', commodityId: 'cmdty_food', amount: 6, unitMass: 0.7, radius: 5, offset: { x: -78, z: 84 } },
+        { id: 'choir_patch_alloy', commodityId: 'cmdty_alloys', amount: 3, unitMass: 0.6, radius: 5, offset: { x: 44, z: 118 } },
+      ],
+    },
     placement: { anchorLocal: { x: 0, z: 0 }, minRadius: 700, maxRadius: 920, bearingRadiusMin: 260, bearingRadiusMax: 420 },
     decision: salvageDecision({
       headline: 'CHOIR-TENDER RECOVERY CLAIM',
@@ -796,8 +817,14 @@ export function validateUniqueWreckRegistry() {
     }
     if (!Array.isArray(def.rumorSources) || !def.rumorSources.length) errors.push(`${def.id}: no rumor sources`);
     for (const source of def.rumorSources || []) {
-      if (!source.sourceRef || sources.has(source.sourceRef)) errors.push(`${def.id}: duplicate/missing source ${source.sourceRef || '<empty>'}`);
-      sources.add(source.sourceRef);
+      // A public report may ride several carriers (SF-149: the Helios loss news reprints
+      // through the vigil chain's mission:accepted). Uniqueness is per source+channel pair —
+      // the same ref through a second channel is one source, not a duplicate provenance.
+      const sourceKey = `${source.sourceRef || '<empty>'}|${source.channelId || '<none>'}`;
+      if (!source.sourceRef || sources.has(sourceKey)) {
+        errors.push(`${def.id}: duplicate/missing source ${source.sourceRef || '<empty>'} (${source.channelId || 'no channel'})`);
+      }
+      sources.add(sourceKey);
       channels.add(source.channelId);
     }
     if (!(def.rumorSources || []).some((source) => source.sourceRef === def.bearingSourceRef)) errors.push(`${def.id}: bearing source is not authored`);

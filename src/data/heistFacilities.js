@@ -92,6 +92,20 @@ export const PQ019_CAPSULE = Object.freeze({
   // launcher leg to be a real interception problem rather than a reflex. 100 WU/s is the
   // fastest candidate that clears it, at 20.4 s. The matrix CONFIRMED `mass` at 180 unchanged.
   launchSpeed: 100,
+  // SF-147: the sealed shipment inside is FOUR separable units. Hard knocks in flight shed
+  // units as physical pods; the fence pays for what is actually inside the delivered shell.
+  // Provenance lives on each unit pod, never in a manifest line.
+  shipmentUnits: 4,
+});
+
+/** A shipment unit knocked loose from a capsule — a real body with lawful provenance. */
+export const PQ019_SHIPMENT_UNIT = Object.freeze({
+  stableId: 'shipment_unit',
+  name: 'sealed shipment unit',
+  radius: 5,
+  mass: 40,
+  hull: 60,
+  authoredPayloadAssetId: 'pod_cargo_container',
 });
 
 // ── BREAKAWAY: the SP-07 flywheel assembly and its capture fork ─────────────────────────────────
@@ -122,6 +136,8 @@ export const BREAKAWAY_SP07 = Object.freeze({
   // Physical Y spin at release (rad/s): above the fork's settle limit, so a tumbling load cannot
   // count as settled until something takes the spin out of it.
   launchSpinRadS: 0.5,
+  // One indivisible assembly — there is no partial-load version of a flywheel.
+  shipmentUnits: 1,
 });
 
 export const BREAKAWAY_CAPTURE_FORK = Object.freeze({
@@ -424,5 +440,190 @@ export function projectPq019FacilitySocket(facility) {
     z: facility.localPos.z + x * sin + z * cos,
   };
 }
+
+// ── SF-140: the routine transfer — a lawful schedule that exists whether or not a job does ─────
+//
+// The Tethys launcher does not wait for a thief to want it. When no contract owns the schedule it
+// keeps throwing ordinary logged freight to the Concord catcher on a fixed cadence — a real lawful
+// transfer the player can watch, scan, follow, or rob. It is deliberately NOT a launch variant:
+// `requestLaunchSchedule` still owns the one launcher slot, and a routine flight is what runs when
+// that slot is empty. Routine capsules use the same physical body spec and the same custody heads;
+// what they never carry is a mission's schedule identity, so no settlement table ever sees them —
+// a stolen routine capsule raises WANTED through the ordinary law seam and pays nobody.
+export const PQ019_ROUTINE = Object.freeze({
+  /** Seconds between routine throws while the launcher is unbooked and the sector is live. */
+  cadenceS: 240,
+  /** Grace before the first throw after materialize/restore, so the player can learn it exists. */
+  firstLaunchDelayS: 75,
+  /** A stolen-and-fenced capsule makes the launcher ship its next transfers under escort. */
+  escortAfterLosses: 2,
+  escortShipId: 'ship_hawser',
+  escortFactionId: 'faction_scn',
+  escortStandoffWu: 70,
+  escortSpeedWu: 62,
+  /** The routine's own schedule-id prefix. Never equal to a mission's `pq019c:<id>` identity. */
+  schedulePrefix: 'pq019a:routine',
+});
+
+// ── SF-140: interception by observation ────────────────────────────────────────────────────────
+//
+// "Learn the real schedule and receiver geometry before committing to the interception window" —
+// three physical methods, all writing the same durable `state.heistFacilities.observed` facts:
+//
+//   * SCAN   — a scan pulse that physically covers the object resolves its fact.
+//   * FOLLOW — staying inside `followRadiusWu` of a working hull (the berth tug, the carrier) for
+//              `followTicks` accumulates what its route already says.
+//   * WATCH  — being present for a routine catch or a launch teaches the receiver's place and the
+//              schedule's cadence. No UI verb required: proximity and a live event are the truth.
+//
+// Each fact is journaled once (`heist:observed`); observations never grant resources — they make
+// the machinery's own cues speak earlier and with precise truth.
+export const PQ019_OBSERVE = Object.freeze({
+  /** How close the player's scan pulse must land to an object to resolve its fact. */
+  scanRadiusWu: 900,
+  /** "Follow the worker": proximity that counts as tailing a crew hull. */
+  followRadiusWu: 260,
+  /** Consecutive ticks inside the radius before the route is learned. */
+  followTicks: 240,
+  /** Being inside this of a custody receiver when a routine catch lands teaches the receiver. */
+  watchRadiusWu: 1400,
+  /** Earlier countdown knowledge an observed schedule earns over the authored T-minus set. */
+  earlyWarningS: 60,
+  /** The stable fact ids. Values: { atTick, method, detail } once learned, absent before. */
+  facts: Object.freeze({
+    launcher_schedule: 'launcher_schedule',
+    catcher_receiver: 'catcher_receiver',
+    fence_receiver: 'fence_receiver',
+    crew_route: 'crew_route',
+  }),
+});
+
+// ── SF-143: the counterweight scene — hold one thing to move another ────────────────────────────
+//
+// A gate across a freight corridor, held open only while a qualifying MASS rests settled on its
+// counterweight cradle. Beside it: a parked yard tug, two sealed transfer crates staged on the
+// near side, and a receiver pad on the far side. Armed by a contract, the tug clamps a crate and
+// walks it through; the moment the balance breaks the door slides back and the carry holds where
+// it physically is — "lost output remains physical".
+//
+// Configured conditions only: any heavy non-ship body inside the cradle at settle speed counts as
+// ballast (the authored block, a crate the player sacrifices, a towed rock) — and nothing counts
+// by grazing a trigger. The door is a real static collider that MOVES; a closed gate is a wall.
+export const COUNTERWEIGHT_SCENE = Object.freeze({
+  id: 'counterweight_yard',
+  name: 'Tethys Transfer Yard',
+  /** The cradle the counterweight sits on. Sector-local XZ. */
+  cradle: Object.freeze({
+    pos: Object.freeze({ x: -950, z: -320 }),
+    radiusWu: 80,
+    minMass: 40,
+    maxMass: 900,
+    settleSpeedWu: 8,
+    /** Ticks of continuously-held balance before the gate is committed open. */
+    holdTicks: 90,
+    /** Ticks after the balance breaks before the door is physically shut again. */
+    releaseTicks: 45,
+  }),
+  /** The freight corridor the door guards: a straight lane from stage to receiver. */
+  corridor: Object.freeze({
+    stagePos: Object.freeze({ x: -880, z: -520 }),
+    receiverPos: Object.freeze({ x: -380, z: -520 }),
+    halfWidthWu: 40,
+  }),
+  /** The door: a static capsule collider that slides between its closed and open poses. */
+  door: Object.freeze({
+    closedPos: Object.freeze({ x: -620, z: -520 }),
+    /** Open pose is slid laterally clear of the corridor — parked, not deleted. */
+    openOffsetWu: 110,
+    lengthWu: 96,
+    halfWidthWu: 8,
+    /** Ticks for a full closed->open travel. The door never teleports. */
+    travelTicks: 90,
+  }),
+  /** The ballast block staged beside the cradle — the intended counterweight. */
+  ballast: Object.freeze({
+    stableId: 'counterweight_ballast',
+    name: 'yard ballast block',
+    radius: 14,
+    mass: 300,
+    hull: 900,
+    authoredPayloadAssetId: 'pod_cargo_container',
+    localPos: Object.freeze({ x: -1030, z: -290 }),
+  }),
+  /** The sealed transfer crates, staged on the near side of the gate. */
+  crates: Object.freeze([
+    Object.freeze({
+      stableId: 'transfer_crate_alpha',
+      name: 'sealed transfer crate',
+      radius: 9,
+      mass: 120,
+      hull: 220,
+      authoredPayloadAssetId: 'pod_cargo_container',
+      localPos: Object.freeze({ x: -880, z: -520 }),
+    }),
+    Object.freeze({
+      stableId: 'transfer_crate_beta',
+      name: 'sealed transfer crate',
+      radius: 9,
+      mass: 120,
+      hull: 220,
+      authoredPayloadAssetId: 'pod_cargo_container',
+      // Staged clear of the A↔pad working lane and the door's open pocket: at (-856,-556) the
+      // tug's clamp dance on alpha clipped beta loose and chased a drifting crate forever.
+      localPos: Object.freeze({ x: -920, z: -600 }),
+    }),
+  ]),
+  /** The receiver pad: a crate at rest inside it is a delivery. */
+  receiverPad: Object.freeze({
+    pos: Object.freeze({ x: -380, z: -520 }),
+    radiusWu: 70,
+    settleSpeedWu: 6,
+    settleTicks: 20,
+    /** The pad's arrest machinery: a crate crossing its circle below this speed is physically
+     *  damped to a stop — freight is CAUGHT, not just parked on. A faster transit sails through
+     *  honest and untouched. */
+    arrestSpeedWu: 26,
+  }),
+  /** The yard tug and its working pace. Same class as the breakaway carrier. */
+  crew: Object.freeze({
+    shipId: 'ship_hawser',
+    factionId: 'faction_mts',
+    cruiseSpeedWu: 34,
+    /** The crate outweighs the tug ~2:1 on the clamp line — a carried leg walks at a pace the
+     *  joint can actually damp instead of swinging the assembly past the pad. */
+    towSpeedWu: 20,
+    parkLocalPos: Object.freeze({ x: -720, z: -430 }),
+    /** World-record join key — never a live entity id. */
+    worldRecordSlotId: 'counterweight:yard:crew',
+    label: 'Yard tug',
+    clampStandoffWu: 8,
+    /** Close enough to the pad that a released crate settles inside it. */
+    deliverStandoffWu: 10,
+  }),
+  /** One bounded interruption, granted at the first committed gate opening. */
+  pressure: Object.freeze({
+    lightPool: Object.freeze(['wasp_swarmer', 'reaver_pirate']),
+    lightCount: 2,
+    lightLevel: 3,
+    spawnDistanceWu: 640,
+    motive: 'contested_mechanism',
+  }),
+});
+
+// ── SF-147: monitored posts on the escape lane ────────────────────────────────────────────────
+//
+// Three lawful Concord sensor posts stand between the launcher corridor and the Quiet fence.
+// They are permanent scene machinery — always live — and they pulse whatever heist payload body
+// crosses their field. Whether a scan means anything (a re-raised theft, fresh pursuit) is the
+// mission's reading of the payload's provenance; the post itself just reports what crossed.
+export const HOT_RETURN_MONITORS = Object.freeze({
+  posts: Object.freeze([
+    Object.freeze({ id: 'monitor_ridge', name: 'Concord Monitor — Ridge', localPos: Object.freeze({ x: 500, z: -1100 }), factionId: 'faction_scn' }),
+    Object.freeze({ id: 'monitor_hollow', name: 'Concord Monitor — Hollow', localPos: Object.freeze({ x: -420, z: -560 }), factionId: 'faction_scn' }),
+    Object.freeze({ id: 'monitor_shoal', name: 'Concord Monitor — Shoal', localPos: Object.freeze({ x: -880, z: -60 }), factionId: 'faction_scn' }),
+  ]),
+  /** A payload inside this radius is scanned — bounded by authored spacing, not by luck. */
+  radiusWu: 420,
+});
 
 export default PQ019_FACILITIES;

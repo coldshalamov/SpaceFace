@@ -54,20 +54,20 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `tumbleStates` | `systems/tumbleStates.js` | 736 | 9 | 7 | `audio:cue`×2, `presentation:vfxCue`×2, `massline:recovered`×1 |
 | `collisionConsequences` | `systems/collisionConsequences.js` | 837 | 2 | 6 | `combat:collisionConsequence`×1, `combat:collisionDebris`×1 |
 | `stuntGrammar` | `systems/stuntGrammar.js` | 230 | 7 | 0 | `stunt:styleBanked`×1, `faction:repDelta`×1, `stunt:salvageRights`×1 |
-| `weapons` | `systems/weapons.js` | 2890 | 21 | 0 | `combat:fire`×4, `presentation:vfxCue`×3, `weapons:vent`×2 |
+| `weapons` | `systems/weapons.js` | 2902 | 21 | 0 | `combat:fire`×4, `presentation:vfxCue`×3, `weapons:vent`×2 |
 | `countermeasures` | `systems/countermeasures.js` | 794 | 5 | 3 | `audio:cue`×2, `pds:intercept`×1, `countermeasure:deployed`×1 |
 | `bombs` | `systems/bombs.js` | 1485 | 32 | 14 | `bombs:denied`×8, `economy:chargeCredits`×4, `bombs:stockChanged`×3 |
 | `emergentPrimitives` | `systems/emergentPrimitives.js` | 1171 | 2 | 0 | `emergent:audio`×1, `emergent:contact`×1 |
 | `impulseCharges` | `systems/impulseCharges.js` | 1563 | 24 | 6 | `audio:cue`×5, `charge:detonated`×4, `chain:slam`×2 |
 | `hullBurst` | `systems/hullBurst.js` | 573 | 16 | 0 | `audio:cue`×5, `presentation:vfxCue`×4, `hullBurst:hit`×3 |
 | `mines` | `systems/mines.js` | 357 | 10 | 6 | `mines:armed`×2, `mines:capReached`×1, `voice:say`×1 |
-| `massSeed` | `systems/massSeed.js` | 668 | 23 | 4 | `presentation:vfxCue`×4, `massSeed:collapsing`×4, `massSeed:collapsed`×4 |
-| `uniqueLootAbilities` | `systems/uniqueLootAbilities.js` | 544 | 3 | 5 | `uniqueLoot:paleCoilBlink`×1, `uniqueLoot:nestbreakerSplit`×1, `uniqueLoot:choirBellPulse`×1 |
+| `massSeed` | `systems/massSeed.js` | 673 | 23 | 4 | `presentation:vfxCue`×4, `massSeed:collapsing`×4, `massSeed:collapsed`×4 |
+| `uniqueLootAbilities` | `systems/uniqueLootAbilities.js` | 582 | 3 | 5 | `uniqueLoot:paleCoilBlink`×1, `uniqueLoot:nestbreakerSplit`×1, `uniqueLoot:choirBellPulse`×1 |
 | `dockingCorridor` | `systems/dockingCorridor.js` | 343 | 0 | 4 | — |
 | `environmentalMachinery` | `systems/environmentalMachinery.js` | 1343 | 9 | 4 | `environmentalMachinery:ensureAnvil`×2, `environmentalMachinery:ensureAperturePlug`×1, `environmentalMachinery:releaseAperturePlug`×1 |
 | `survivalArena` | `systems/survivalArena.js` | 1694 | 4 | 7 | `survivalArena:rosterPrewarm`×1, `mines:placeRequest`×1, `encounter:telegraph`×1 |
 | `fields` | `systems/fields.js` | 3006 | 30 | 13 | `fields:deployed`×6, `audio:cue`×4, `fields:ended`×4 |
-| `planetRuntime` | `systems/planetRuntime.js` | 686 | 11 | 3 | `planet:plungeStage`×2, `planet:registered`×1, `planet:unregistered`×1 |
+| `planetRuntime` | `systems/planetRuntime.js` | 702 | 12 | 3 | `planet:plungeStage`×2, `planet:registered`×1, `planet:unregistered`×1 |
 | `morrow` | `systems/morrow.js` | 323 | 5 | 0 | `morrow:voice`×1, `audio:cue`×1, `morrow:met`×1 |
 | `vesper` | `systems/vesper.js` | 304 | 7 | 0 | `vesper:voice`×1, `vesper:met`×1, `audio:cue`×1 |
 | `bracket` | `systems/bracket.js` | 327 | 7 | 0 | `bracket:voice`×1, `audio:cue`×1, `bracket:matchStarted`×1 |
@@ -103,10 +103,10 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `economy` | `systems/economy.js` | 4688 | 33 | 31 | `service:completed`×7, `fuel:changed`×3, `ecology:factionOutcome`×2 |
 | `intervention` | `systems/intervention.js` | 553 | 5 | 2 | `intervention:logged`×1, `camera:shake`×1, `intervention:available`×1 |
 | `world` | `systems/world.js` | 7166 | 80 | 53 | `poi:discovered`×5, `discovery:plateUnlocked`×4, `world:residency`×3 |
-| `heistFacilities` | `systems/heistFacilities.js` | 1935 | 13 | 6 | `heist:launchScheduleReceipt`×4, `heist:launchCue`×1, `heist:capsuleLaunched`×1 |
+| `heistFacilities` | `systems/heistFacilities.js` | 3575 | 23 | 8 | `heist:launchScheduleReceipt`×4, `heist:counterweightSceneReceipt`×4, `heist:launchCue`×2 |
 | `regionalEcology` | `systems/regionalEcology.js` | 454 | 0 | 0 | — |
 | `tensionDirector` | `systems/tensionDirector.js` | 278 | 0 | 0 | — |
-| `encounterDirector` | `systems/encounterDirector.js` | 4823 | 28 | 33 | `encounter:resolved`×2, `economy:applyTradePressure`×2, `encounter:stale`×1 |
+| `encounterDirector` | `systems/encounterDirector.js` | 4847 | 28 | 33 | `encounter:resolved`×2, `economy:applyTradePressure`×2, `encounter:stale`×1 |
 | `routeFollower` | `systems/routeFollower.js` | 949 | 1 | 9 | `nav:engageRoute`×1 |
 | `livingPoiBehaviors` | `systems/livingPoiBehaviors.js` | 874 | 0 | 0 | — |
 | `pirateRumor` | `systems/pirateRumor.js` | 674 | 0 | 0 | — |
@@ -124,7 +124,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `factions` | `systems/factions.js` | 1060 | 13 | 18 | `faction:repChanged`×3, `faction:aggro`×3, `comms:log`×1 |
 | `sectorSim` | `systems/sectorSim.js` | 1135 | 9 | 14 | `sectorsim:tick`×1, `sectorsim:fieldAdvanced`×1, `economy:applyTradePressure`×1 |
 | `npcJobsRuntime` | `systems/npcJobsRuntime.js` | 5253 | 14 | 17 | `combat:repairSubsystem`×2, `npcjobs:lotReplaced`×1, `npcjobs:lotPosted`×1 |
-| `missions` | `systems/missions.js` | 11091 | 127 | 67 | `mission:updated`×59, `comms:popup`×12, `research:pointsChanged`×6 |
+| `missions` | `systems/missions.js` | 11157 | 128 | 67 | `mission:updated`×60, `comms:popup`×12, `research:pointsChanged`×6 |
 | `careerOrigins` | `careers/origins/careerOrigins.js` | 1246 | 0 | 0 | — |
 | `careerLadders` | `careers/ladders/careerLadders.js` | 348 | 0 | 0 | — |
 | `liveCareerLadderBranches` | `careers/ladders/liveCareerLadderBranches.js` | 206 | 0 | 0 | — |
@@ -144,7 +144,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `claims` | `systems/claims.js` | 3214 | 51 | 15 | `audio:cue`×5, `economy:chargeCredits`×4, `news:publish`×4 |
 | `chronicler` | `systems/chronicler.js` | 410 | 0 | 0 | — |
 | `bandRadio` | `systems/bandRadio.js` | 723 | 4 | 0 | `band:bearingRequest`×1, `band:bearingReceipt`×1, `band:status`×1 |
-| `onboarding` | `systems/onboarding.js` | 3596 | 20 | 75 | `onboarding:rangePrompt`×2, `rescue:beat`×2, `hud:firstUse`×1 |
+| `onboarding` | `systems/onboarding.js` | 3622 | 20 | 76 | `onboarding:rangePrompt`×2, `rescue:beat`×2, `hud:firstUse`×1 |
 | `masslineHud` | `ui/masslineHud.js` | 2281 | 0 | 3 | — |
 | `massSeedHud` | `ui/massSeedHud.js` | 381 | 0 | 0 | — |
 | `fieldHud` | `ui/fieldHud.js` | 303 | 0 | 0 | — |

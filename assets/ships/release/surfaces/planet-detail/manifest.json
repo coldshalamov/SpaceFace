@@ -1,0 +1,17 @@
+{
+  "schema": "spaceface.generatedArt.v1",
+  "set": "planet-site surface detail",
+  "use": "src/render/planetDetailLibrary.js, read by the colossal planet-site bodies (planetSiteVisual.js): a seamless neutral-grey relief MULTIPLIER (mean 0.5) projected down the pole axis with one extra texture fetch. The authored PLANET_COLORS bake still supplies the palette; the tile adds craters, dunes, ice plates, lava cracks, coasts or cloud filaments.",
+  "date": "2026-10-03",
+  "generator": "OpenAI image generation via codex exec -m gpt-5.5 (ChatGPT account); tools/art/imagegen_variants.py (3 variants per job, each taken from its own session folder), reviewed by eye, then tools/art/finish_generated.py detail (grayscale, seamless by offset-and-blend, broad tone high-passed away, contrast stretched around 0.5)",
+  "license": "Generated for SpaceFace by the project; no third-party source image supplied.",
+  "files": {
+    "rock.jpg": { "type": "rocky, dead, scorched", "chosen": "detail_rock v2 of 3", "contrast": 0.9, "subject": "airless cratered grey regolith: overlapping craters with crisp rims, ejecta rays, boulders, fine dust" },
+    "dune.jpg": { "type": "arid", "chosen": "detail_dune v1 of 3 (v2 and v3 came back vignetted, not full-bleed tiles)", "contrast": 0.8, "subject": "desert: long parallel dune ridges, wind ripples, dry riverbeds, rocky outcrops, salt pans" },
+    "ice.jpg": { "type": "ice", "chosen": "detail_ice v2 of 3 (v1 came back as a round vignetted patch)", "contrast": 0.7, "subject": "fractured ice plates, pressure ridges, long cracks, frost" },
+    "lava.jpg": { "type": "lava", "chosen": "detail_lava v3 of 3 (v2 came back as cloud bands, the wrong subject)", "contrast": 0.9, "subject": "cooled basalt crust broken by a branching network of glowing lava cracks and molten pools" },
+    "terrain.jpg": { "type": "terran", "chosen": "detail_terrain v2 of 3", "contrast": 0.5, "subject": "temperate world: mountain ranges, river valleys, forest texture, coastlines and lakes; contrast lowered because water against land fought the baked continents" },
+    "cloud.jpg": { "type": "oceanic, gas_giant", "chosen": "detail_cloud v3 of 3", "contrast": 0.8, "subject": "gas-giant cloud tops: turbulent swirling bands, eddies, fine filaments" }
+  },
+  "prompt": "A flat-lit, shadowless, perfectly top-down orthographic square swatch, 1024 by 1024, seamlessly tileable, seen from directly above like an aerial survey photograph lit from straight overhead with no cast shadows, no horizon, no text, no objects. A surface of <per-tile subject above>."
+}

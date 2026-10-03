@@ -938,6 +938,12 @@ export const bombs = {
     this._targets.sort(compareBombEntityIds);
   },
 
+  /** A press that did not drop. Other ships stay silent — their bay is not the player's. */
+  _notePlayerBombRefusal(owner, state, text) {
+    if (!owner || !state || owner.id !== state.playerId || !this.bus) return;
+    this.bus.emit('toast', { text, kind: 'info', ttl: 1.6 });
+  },
+
   // Public common release path for player and NPC doctrine. NPCs call this plus commandDetonate
   // (src/ai/npcBombMirror.js); they do not copy fuze/cooldown/effect code.
   // Caller must hold a live entity; it cannot smuggle an unregistered owner into attribution.
@@ -953,12 +959,16 @@ export const bombs = {
       cell = rt.rack.cells.find((c) => c && c.id === payloadId && c.count > 0) || null;
       if (!cell) {
         this.bus.emit('bombs:denied', { ownerId: owner.id, reason: 'not_loaded', payloadId });
+        this._notePlayerBombRefusal(owner, state, 'That bomb is not loaded');
         return null;
       }
     }
     let bay = isPlayer ? rt : this._ownerCooldowns.get(owner.id);
     if (!bay) this._ownerCooldowns.set(owner.id, bay = { cooldownUntil: 0, cooldowns: {} });
-    if (now < Math.max(bay.cooldownUntil || 0, bay.cooldowns[payloadId] || 0)) return null;
+    if (now < Math.max(bay.cooldownUntil || 0, bay.cooldowns[payloadId] || 0)) {
+      this._notePlayerBombRefusal(owner, state, 'Bomb bay cycling');
+      return null;
+    }
     let owned = 0, total = 0;
     for (const e of liveBombList(state)) {
       if (!e?.alive || e.type !== BOMB_TYPE) continue;
@@ -966,8 +976,11 @@ export const bombs = {
       if (e.data?.ownerId === owner.id) owned++;
     }
     if (owned >= BOMB_DRIFT.maxActive || total >= BOMB_DRIFT.maxWorldActive) {
-      this.bus.emit('bombs:denied', { ownerId: owner.id, reason: owned >= BOMB_DRIFT.maxActive ? 'bay_full' : 'world_full' });
-      if (owner.id === state.playerId) this.bus.emit('toast', { text: 'Bomb bay full — trigger armed ordnance or let its fuze finish.', kind: 'info', ttl: 1.6 });
+      const reason = owned >= BOMB_DRIFT.maxActive ? 'bay_full' : 'world_full';
+      this.bus.emit('bombs:denied', { ownerId: owner.id, reason });
+      this._notePlayerBombRefusal(owner, state, reason === 'world_full'
+        ? 'The field is full of armed ordnance — wait for one to finish'
+        : 'Bomb bay full — trigger armed ordnance or let its fuze finish.');
       return null; // no cooldown, no eviction, no free explosion
     }
     const def = bombDef(payloadId), vx = Number(owner.vel?.x) || 0, vz = Number(owner.vel?.z) || 0;

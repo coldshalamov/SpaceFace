@@ -3,7 +3,7 @@
 
 ```yaml
 refreshed: 2026-10-03
-baseCommit: 7b4b36fe2
+baseCommit: 0d9dc433a
 expiresAfterCommits: 10
 expiresAfterDays: 2
 ```
@@ -43,9 +43,11 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| 20 board rows — seams economy (74/107/108/109/110/210/249/250), missions (83/84/85/86/222/254), drift 168/207/211, imports 30, accept 60/63/64 — plus inference NXI-176/084/099/216/043/175/148/180 + 2 picked at edit time; ALSO defect sweep D141/D142/D138 + people (201/212/213), swarm (264–268), ui-sim (197/246/276/277) via dispatched agents | devin-sweep-oct2 | IN PROGRESS | `src/systems/{economy,missions,stationServices,heat}.js`, `src/systems/contractClauses.js`, `src/systems/cargoCustody.js`, `src/ui/station/screens/market.js`, `src/ui/screens/drill.js`, `src/ui/watchlist.js`, `src/combat/impulseKernel.js`, `src/systems/npcJobs*.js`, `src/systems/convoy*.js`, `src/systems/survival*.js`, `src/systems/swarm*.js`, `src/data/swarm*.js`, `src/ui/localmap.js`, `src/ui/codex.js`, `src/ui/screens/contracts*.js`, `src/systems/lawSecurity.js` (D142 only), `test/d136-repro.mjs` (D141 only), new focused tests under `test/`, `build_map.md` §1C seam claims, `design/program/NOW.md`, `design/program/INFERENCE_IDEAS.md`, `design/program/DEMO_READINESS_2026-09-20.md` §6 rows as fixed, `design/program/vm-drop/` import sync for row 30 only | land by pathspec in small packets after subagent review; never a dirty foreign hunk |
-| Board row 218 (NXB-051 hull marks) plus free-seam leaves that do not overlap the sweep: stunt flail D144, SF-263 publish seam outside renderer.js | grok-oct3 | IN PROGRESS | `src/render/weapons/presenter.js`, `src/render/weapons/contactMarks.js`, `src/systems/stuntGrammar.js`, `src/combat/stuntEvidence.js`, `src/combat/stuntRecognition.js`, `src/systems/collisionConsequences.js`, `src/render/pipelineReadiness.js`, `src/render/renderPackageLoader.js`, `src/render/presentationPublisher.js`, `src/render/compilePresentSlice.js`, `test/pq146-tether-physics.test.mjs` (run only), `test/next-wave-nxb-051.test.mjs`, `build_map.md` camera seam claim only | prove each leaf with a focused test; do not commit; do not revert foreign hunks |
-| 30-unit sweep: seams picture (140 minus SF-263-in-grok-paths, 141, 259), boot 57, art 223, unblocked 142/170/224 — plus inference NXI-008/039/040/051/052/063/064/160/196/207 | devin-oct3-40 | IN PROGRESS | `src/render/renderer.js`, `src/render/{admissionSliceBudget,precompile,tabletopPolicy,lod,bloom,entityMeshVisibility,actionVfx}.js`, `src/render/materials*.js`, `src/core/{simulationRunner,perfRuntime,presentationRunner}.js`, `src/systems/{world,bombs,encounterScripts}.js`, `src/world/activityRuntime.js`, `src/ai/{squad,shipDecision,engagementAuthority}.js`, `src/core/flight/flightTelemetry.js`, `src/ui/powerRail.js`, `src/data/starterBuilds.js`, `src/audio/cuePriorityBus.js`, Forge/asset files for row 223, new focused tests under `test/`, `build_map.md`, `design/program/NOW.md`, `design/program/INFERENCE_IDEAS.md` | dispatched subagents land by exact pathspec; never touch sweep/grok/oct2 hunks |
+| Sole-agent cleanup + demo-polish sweep: tree drained, worktrees removed, PRs resolved; now bug sweep + small build-map demo rows + baseline | devin-sweep-oct3 | IN PROGRESS | `design/program/DEMO_READINESS_2026-09-20.md` §6 as rows fix, `build_map.md` open rows, whatever focused tests each fix needs | small fixes landed by pathspec; bigger defects to the ledger |
+| Mission seam closeout — rows 85/86 DONE; PR #215/#216/#218/#219 merged, #192 closed; tree drained to zero uncommitted work | devin-sweep-oct2 | RELEASED | all landed | — |
+| Board row 218 (NXB-051 hull marks) plus free-seam leaves: stunt flail D144, depot redirect haul pair, salvage-bay tip, and 24 infer-* voice leaf units | grok-oct3 | RELEASED | all landed: `20ec8233b`, `30b842ee3`, `408c2ce07` (237/237 leaf tests green) | — |
+| INFERENCE 10 — celebration+identity audio, landmark payoffs, rep-exclusive hardware, answerable maydays, sector trade signatures, chronicler big beats, presence, surrender verb, ending archive, kill replay | glm-infer-10b-oct3 | RELEASED | all landed (survivor pods `c277e8357`, ending archive `f1e895529`, replay tape `b3cdd5f76`, landmark payoffs `90bb99af1`, chronicler `9d67ee246`, barkeep faces `420223a34`) | — |
+| Cross-area documented polish/research pass — review sweep + small fixes + ledger rows | polish-pass-oct3 | RELEASED | `POLISH_PASS_2026-10-03.md` + look/bloom retune landed `a57a9cbed` | — |
 
 ## Remaster machine
 

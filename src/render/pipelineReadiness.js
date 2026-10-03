@@ -212,6 +212,13 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
   const linkSpecs = [];
   let linkActive = false;
   let tailSettle = Promise.resolve();
+  // Every bound in the admission system sits on a waiter — the link run itself had
+  // none: a compile/link that never settles would keep linkActive forever and wedge
+  // every later spec (ambient AND urgent). Race each run against a bound well above
+  // the 20s KHR drain; on timeout the entries resolve with a tagged outcome and the
+  // pump advances — refused subjects re-admit through the normal lanes.
+  const LINK_RUN_TAIL_TIMEOUT_MS = 50000;
+  const LINK_TAIL_TIMEOUT_RESULT = Object.freeze({ tailTimeout: true });
   let nextAdmissionId = 0;
   let settledAdmissions = 0;
   let boundedResume = false;
@@ -328,10 +335,14 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
       spec.subjects, spec.path, spec.compileOptions,
     ));
     observePipelineAdmission(run, onRejected);
-    spec.resolveRun(run);
-    tailSettle = tailSettle.then(() => run.catch(() => null));
+    const bounded = Promise.race([
+      run,
+      new Promise((resolve) => setTimeout(() => resolve(LINK_TAIL_TIMEOUT_RESULT), LINK_RUN_TAIL_TIMEOUT_MS)),
+    ]);
+    spec.resolveRun(bounded);
+    tailSettle = tailSettle.then(() => bounded.catch(() => null));
     const next = () => { linkActive = false; pumpLinks(); };
-    run.then(next, next);
+    bounded.then(next, next);
   }
 
   function flushQueuedThrough(
@@ -469,6 +480,8 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
     return result();
   }
 
+  // Test-only wait: each iteration pays a whole-queue flushQueued() — production
+  // waits go through waitForCaptured (watermark-scoped, batch-capped).
   async function waitForPending(options = {}) {
     const stale = typeof options.stale === 'function' ? options.stale : null;
     const timeoutMs = Number.isFinite(options.timeoutMs) ? Math.max(0, options.timeoutMs) : null;
@@ -697,6 +710,8 @@ export function createGpuResidencyAdmissionTracker(prepare) {
     return result();
   }
 
+  // Test-only wait: each iteration pays a whole-queue flushQueued() — production
+  // waits go through waitForCaptured (watermark-scoped, batch-capped).
   async function waitForPending(options = {}) {
     const stale = typeof options.stale === 'function' ? options.stale : null;
     const timeoutMs = Number.isFinite(options.timeoutMs) ? Math.max(0, options.timeoutMs) : null;

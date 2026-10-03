@@ -109,7 +109,11 @@ def height_to_normal(height, strength):
 
 
 def cmd_tile(a):
-    im = Image.open(a.src).convert('RGB').resize((a.size, a.size), Image.LANCZOS)
+    im = Image.open(a.src).convert('RGB')
+    if a.crop:  # a generator that returns a vignetted patch instead of a full-bleed tile: keep only the clean centre
+        left, top = (im.width - a.crop) // 2, (im.height - a.crop) // 2
+        im = im.crop((left, top, left + a.crop, top + a.crop))
+    im = im.resize((a.size, a.size), Image.LANCZOS)
     arr = np.asarray(im).astype(np.float32) / 255.0
     arr = make_seamless(arr)
     base = Image.fromarray((np.clip(arr, 0, 1) * 255).astype(np.uint8))
@@ -145,6 +149,27 @@ def cmd_tile(a):
     print(a.out, 'seam/neighbour ratio %.2f' % (e / max(n, 1e-6)))
 
 
+def cmd_detail(a):
+    """A terrain/cloud tile -> a neutral grey relief MULTIPLIER (mean 0.5): the game keeps its authored palette and the
+    tile only adds local detail. Seamless, broad tone high-passed away, contrast stretched to a fixed band."""
+    im = Image.open(a.src).convert('L')
+    if a.crop:
+        left, top = (im.width - a.crop) // 2, (im.height - a.crop) // 2
+        im = im.crop((left, top, left + a.crop, top + a.crop))
+    im = im.resize((a.size, a.size), Image.LANCZOS)
+    lum = np.asarray(im).astype(np.float32) / 255.0
+    lum = make_seamless(lum[..., None])[..., 0]
+    blur = np.asarray(Image.fromarray((np.clip(lum, 0, 1) * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(a.size / 10))).astype(np.float32) / 255.0
+    rel = lum - blur
+    lo, hi = np.percentile(rel, 3), np.percentile(rel, 97)
+    rel = np.clip((rel - lo) / max(hi - lo, 1e-6), 0, 1)
+    out = 0.5 + (rel - rel.mean()) * a.contrast
+    Image.fromarray((np.clip(out, 0, 1) * 255).astype(np.uint8), 'L').save(a.out, quality=90, optimize=True)
+    e = np.abs(out[:, 0] - out[:, -1]).mean() + np.abs(out[0] - out[-1]).mean()
+    n = np.abs(out[:, 1] - out[:, 0]).mean() + np.abs(out[1] - out[0]).mean()
+    print(a.out, 'mean %.3f std %.3f seam/neighbour %.2f' % (out.mean(), out.std(), e / max(n, 1e-6)))
+
+
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest='cmd', required=True)
@@ -156,8 +181,12 @@ if __name__ == '__main__':
     p.add_argument('--cell', type=int, default=627); p.add_argument('--fill', type=float, default=0.86); p.set_defaults(fn=cmd_atlas)
     t = sub.add_parser('tile'); t.add_argument('--src', required=True); t.add_argument('--out', required=True)
     t.add_argument('--size', type=int, default=512); t.add_argument('--normal-strength', type=float, default=2.0)
+    t.add_argument('--crop', type=int, default=0, help='centre-crop this many source pixels before resizing')
     t.add_argument('--emissive', choices=['magenta', 'violet'], default=None, help='also key a glow map out of the albedo')
     t.add_argument('--emissive-gain', type=float, default=1.6)
     t.add_argument('--emissive-range', default='', help='lo,hi colour-score ramp for the glow key')
     t.add_argument('--emissive-grow', type=int, default=0, help='dilate the glow key this many 3x3 steps'); t.set_defaults(fn=cmd_tile)
+    d = sub.add_parser('detail'); d.add_argument('--src', required=True); d.add_argument('--out', required=True)
+    d.add_argument('--size', type=int, default=1024); d.add_argument('--crop', type=int, default=0)
+    d.add_argument('--contrast', type=float, default=0.9); d.set_defaults(fn=cmd_detail)
     a = ap.parse_args(); a.fn(a)

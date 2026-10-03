@@ -245,7 +245,7 @@ export const SHIPS = [
     hull: 640, shield: 460, baseShieldRegen: 18, cargo: 450, mass: 80, handling: 1.1,
     outfitSpace: 132, weaponCapacity: 72, engineCapacity: 18, designMass: 172,
     bankFactor: 0.55,
-    driveId: 'drive_torch_l',  // open-cycle torch drive — high sustained axial acceleration for the warship
+    driveId: 'drive_gravimetric_m',  // gravimetric vector drive M — FB-059 warship field drive
     energyCap: 420, energyRegen: 52, collisionRadius: 22, price: 320000,
     boost: { max: 200, drainRate: 36, regenRate: 30, dashImpulse: 120, dashCooldown: 2.4 },  // warship: steady, not flashy
     // corvette: 2 front + 1 broadside gun each side
@@ -319,7 +319,7 @@ export const SHIPS = [
     hull: 1100, shield: 820, baseShieldRegen: 22, cargo: 550, mass: 150, handling: 0.95,
     outfitSpace: 188, weaponCapacity: 84, engineCapacity: 18, designMass: 282,
     bankFactor: 0.40,
-    driveId: 'drive_torch_l',  // torch drive — the wall of guns advances under sustained thrust
+    driveId: 'drive_gravimetric_m',  // gravimetric vector drive M — FB-059 gunship heavy field drive
     energyCap: 720, energyRegen: 84, collisionRadius: 26, price: 384000,
     boost: { max: 180, drainRate: 40, regenRate: 24, dashImpulse: 90, dashCooldown: 3.0 },  // a wall of guns that advances, doesn't chase
     // PQ-140.01: a gunship banks through a line change instead of pinning in place.
@@ -344,7 +344,7 @@ export const SHIPS = [
     hull: 1600, shield: 1100, baseShieldRegen: 26, cargo: 1200, mass: 300, handling: 0.7,
     outfitSpace: 248, weaponCapacity: 108, engineCapacity: 18, designMass: 474,
     bankFactor: 0.30,
-    driveId: 'drive_torch_l',  // torch drive — high-acceleration axial thrust for the capital battlecruiser
+    driveId: 'drive_torch_xl',  // capital torch drive XL — FB-059 capital battlecruiser torch variant
     energyCap: 900, energyRegen: 100, collisionRadius: 32, price: 456000,
     boost: { max: 160, drainRate: 42, regenRate: 22, dashImpulse: 70, dashCooldown: 3.2 },
     // PQ-140.01: broad turn commitment makes this hull a navigable obstacle, not a turret.
@@ -370,7 +370,7 @@ export const SHIPS = [
     hull: 3200, shield: 2600, baseShieldRegen: 32, cargo: 2500, mass: 600, handling: 0.6,
     outfitSpace: 360, weaponCapacity: 150, engineCapacity: 18, designMass: 852,
     bankFactor: 0.22,
-    driveId: 'drive_torch_l',  // torch drive — the flagship's enormous axial motor
+    driveId: 'drive_torch_xl',  // capital torch drive XL — FB-059 flagship colossal torch motor
     energyCap: 1600, energyRegen: 160, collisionRadius: 45, price: 720000,
     boost: { max: 140, drainRate: 46, regenRate: 18, dashImpulse: 50, dashCooldown: 3.6 },
     // PQ-140.01: the flagship takes the longest line to change and keeps its wake through it.

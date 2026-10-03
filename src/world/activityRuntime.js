@@ -575,7 +575,12 @@ function rebuildPinFacts(state, player, facts, simTime) {
   if (attachments && typeof attachments === 'object') {
     for (const key of Object.keys(attachments)) {
       const att = attachments[key];
-      if (!att || att.state === 'cut' || att.state === 'dead') continue;
+      // Only a live coupling may pin residency. Terminal records ('broken'; defensively also
+      // 'cut'/'dead') are a receipt ledger: they hold no joint, are prunable by
+      // pruneBrokenAttachmentHistory, and combat/persistence serializes 'active' records only —
+      // a pin they produced would vanish across a save/reload while everything downstream of it
+      // (physics partition, body residency) kept treating the survivor as restored.
+      if (!att || att.state !== 'active') continue;
       if (att.ownerId != null) tetherScratch.push(att.ownerId);
       if (att.targetId != null) tetherScratch.push(att.targetId);
     }

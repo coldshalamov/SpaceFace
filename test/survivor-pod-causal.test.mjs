@@ -232,7 +232,7 @@ test('TTL expiry abandons with moralMemory note', () => {
   }
 });
 
-test('player tow into lawful station rescues without minting credits', () => {
+test('player tow into lawful station rescues and pays the answerable-mayday salvage fee', () => {
   const h = boot();
   try {
     const victim = h.spawnCrewed({ extraData: { worldRecordId: 'wr_rescue' } });
@@ -268,7 +268,11 @@ test('player tow into lawful station rescues without minting credits', () => {
     assert.equal(rescued.length, 1, 'pod rescued at lawful station');
     assert.equal(rescued[0].reason, 'station_delivery');
     assert.ok(rep.some((r) => r.reason === 'survivorPod:rescued' && r.delta > 0));
-    assert.equal(credits.length, 0, 'causal path must not mint credits');
+    // Superseded 2026-10-03 by the answerable-mayday unit: a player-towed causal rescue now pays
+    // the 420 cr salvage fee through economy:grantCredits (economy stays the single writer).
+    assert.equal(credits.length, 1, 'the answered mayday pays once');
+    assert.equal(credits[0].amount, 420);
+    assert.match(String(credits[0].reason), /^survivor_mayday:/);
     assert.equal(h.pods().length, 0);
     const memory = ensureMoralMemory(h.state);
     const debt = Object.values(memory.debts).find((d) => d.cause === 'rescued_survivors');

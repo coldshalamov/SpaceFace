@@ -41,6 +41,8 @@ Run upward. A higher layer never substitutes for a lower layer.
 | L3 | route claims a unit actually asserts: Browser/Electron behavior, visible/accessibility behavior, feel | validation-broker manifest and current artifacts |
 | L4 | matched performance, soak, held-out, and release claims | packet-declared performance/release cells |
 
+Diagnostic doors, not gates: `npm run probe:heap-verify`, `npm run probe:main-thread`, and `npm run probe:crucible-cpu` name a heap leak, a main-thread owner, and a Crucible CPU owner. They stay out of `check:baseline`.
+
 Do not run the repository-wide `npm run check` while a focused owner failure is still red. Do not
 use Browser/Electron as an implementation debugger when a deterministic owner-level reproduction is
 possible.

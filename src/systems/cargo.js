@@ -236,6 +236,13 @@ export function selectedJettisonLot(state) {
   return ids[0] || null;
 }
 
+function jettisonRefusalText(state) {
+  const items = state && state.player && state.player.cargo && state.player.cargo.items;
+  if (!items || typeof items !== 'object') return 'Hold is empty';
+  const held = Object.keys(items).some((id) => Number(items[id]) > 0);
+  return held ? 'That lot is sealed — it stays aboard' : 'Hold is empty';
+}
+
 // Exported addCargo/removeCargo calls need their state-local bus without relying on whichever
 // system instance initialized most recently. Bindings are weakly keyed by state so isolated
 // runtimes cannot cross-talk and disposed states do not stay alive through this module.
@@ -442,13 +449,24 @@ export function salvageBayCap(state) {
   return Math.max(SALVAGE_BAY.capFloor, hold * SALVAGE_BAY.capMult);
 }
 
-/** What the UI shows: { used, cap, units } or null when the bay has never held anything. Pure. */
+/** What the UI shows: { used, cap, units, summary? } or null when the bay has never held anything. Pure. */
 export function salvageBayReading(state) {
   const bay = state && state.player && state.player.salvageBay;
   if (!bay) return null;
   let units = 0;
   for (const id in bay.items) units += Number(bay.items[id]) || 0;
-  return { used: Math.round(Number(bay.usedVolume) || 0), cap: Math.round(salvageBayCap(state)), units };
+  const reading = { used: Math.round(Number(bay.usedVolume) || 0), cap: Math.round(salvageBayCap(state)), units };
+  // Read only. Same id sort as cash-in, so the tip does not follow insertion order.
+  if (units > 0 && bay.items) {
+    const parts = [];
+    for (const id of Object.keys(bay.items).sort()) {
+      const qty = Number(bay.items[id]);
+      if (!Number.isFinite(qty) || qty <= 0) continue;
+      parts.push(`${commodityName(id)}: ${qty}`);
+    }
+    if (parts.length) reading.summary = parts.join(', ');
+  }
+  return reading;
 }
 
 function ensureBay(state) {
@@ -649,7 +667,14 @@ export const cargo = {
     if (state && state.input && state.input.actions && state.input.actions.jettisonLot) {
       state.input.actions.jettisonLot = false;
       const commodityId = selectedJettisonLot(state);
-      if (commodityId) this.jettison(commodityId, 1);
+      const dumped = commodityId ? this.jettison(commodityId, 1) : 0;
+      if (!(dumped > 0) && this.bus) {
+        this.bus.emit('toast', {
+          text: commodityId ? 'That lot is sealed — it stays aboard' : jettisonRefusalText(state),
+          kind: 'warn',
+          ttl: 1.6,
+        });
+      }
     }
     const binding = stateBindings.get(state);
     const dirty = binding ? binding.dirty : this._dirty;

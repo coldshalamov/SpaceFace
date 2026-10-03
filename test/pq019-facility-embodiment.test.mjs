@@ -179,8 +179,10 @@ test('Tethys exposes three ordinary delegated Atlas POIs and materializes their 
   }
 
   const owned = liveOwnedHeist(t.state);
-  assert.equal(owned.length, 6, 'the idle live list is the three socket heads plus the fork\'s rail/arrestor colliders');
-  assert.equal(owned.filter((entity) => entity.collides).length, 6, 'only the socket heads and fork steel collide while idle');
+  assert.equal(owned.length, 10,
+    'the idle live list is the three socket heads, the fork\'s rail/arrestor colliders, and the counterweight yard (door, ballast, two crates)');
+  assert.equal(owned.filter((entity) => entity.collides).length, 10,
+    'the socket heads, fork steel, and yard bodies all collide while idle');
   assert.equal(owned.filter((entity) => String(entity.data?.heistFacilityRole || '').endsWith('_head')).length, 3);
   assert.equal(
     owned.filter((entity) => /(_rail_a|_rail_b|_arrestor)$/.test(String(entity.data?.heistFacilityRole || ''))).length,
@@ -244,8 +246,9 @@ test('schedule intent is deterministic, idempotent, competing-safe, and launches
   assert.equal(t.state.heistFacilities.schedule.status, 'launched');
   assert.equal(t.events.filter((entry) => entry.name === 'heist:capsuleLaunched').length, 1);
   const ownedAfterLaunch = liveOwnedHeist(t.state);
-  assert.equal(ownedAfterLaunch.length, 7, 'one active schedule adds exactly one capsule beside the three heads and fork steel');
-  assert.equal(ownedAfterLaunch.filter((entity) => entity.collides).length, 7);
+  assert.equal(ownedAfterLaunch.length, 11,
+    'one active schedule adds exactly one capsule beside the three heads, fork steel, and the counterweight yard (door, ballast, two crates)');
+  assert.equal(ownedAfterLaunch.filter((entity) => entity.collides).length, 11);
 
   for (let index = 0; index < 30; index++) t.sim.step(SIM_DT);
   assert.equal(roleEntities(t.state, 'cargo_capsule').length, 1);

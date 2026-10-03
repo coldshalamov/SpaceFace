@@ -774,6 +774,13 @@ function settleCourierTokenDelivery(world, token, pod, now) {
     siteId: token.destSiteId, tokenId: token.tokenId, receiptId: token.receiptId,
     duplicate: commit.duplicate === true,
   });
+  // The receiver visibly takes custody: an authored intake cue at the acceptance point
+  // (sfx_dock_capture = the physical "guide takes hold" sound) so the player hears the
+  // handoff settle, not just reads a comm line.
+  world.bus.emit('audio:cue', {
+    id: 'presentation.dock.capture',
+    position: { x: pod ? pod.pos.x : token.destPos.x, z: pod ? pod.pos.z : token.destPos.z },
+  });
   return true;
 }
 
@@ -811,6 +818,17 @@ function tickCourierTokenReturn(world, token, now) {
   world.bus.emit('comms:log', {
     from: dest ? dest.name : 'Verge lattice', kind: 'machine',
     text: 'LATE DELIVERY ACCEPTED. CUSTODY CHAIN CLOSED.',
+  });
+  // A late return IS a delivery: same receiver commit, same consequence event, same intake
+  // cue — so downstream consumers (and the player's ears) cannot tell a late handoff from
+  // a clean one except by the comm line that says so.
+  world.bus.emit('machine:tokenDelivered', {
+    siteId: token.destSiteId, tokenId: token.tokenId, receiptId: token.receiptId,
+    duplicate: commit.duplicate === true,
+  });
+  world.bus.emit('audio:cue', {
+    id: 'presentation.dock.capture',
+    position: { x: token.destPos.x, z: token.destPos.z },
   });
 }
 

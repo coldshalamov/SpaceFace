@@ -526,9 +526,18 @@ test('R5B materializes six inert object slots and two existing-budget collision 
   //                  its cells promote into entityList only inside the authored decode disc, so
   //                  a quiet pocket keeps zero live cells. opticResidentCells pins the lattice's
   //                  survival as bag records so a lost lattice cannot read as a quiet pass.
+  // Census re-pinned 2026-10-05 (D90/D145 adjudication) — both deltas traced to authored work:
+  //   ship 2 → 1    5103e8668 — SOLSTICE / SL-9's fixed-pos Star Lantern POI consumes two
+  //                 _spawnPOIs rng draws, shifting the deterministic spawn stream; one patrol
+  //                 ship's new landing falls inside the far-shelf boundary and shelves at boot
+  //   +wreck:1      09132834b — D141 excludes data.worldOneOff bodies from the far shelf (lean
+  //                 far rows cannot rematerialize a unique one-off without duplicates), so the
+  //                 Long Berth yard tug (0c6f0ea1a) now stays live and collidable here
+  // The two deltas cancel in total/collidable/colliders (the shelved ship's 24-primitive skin is
+  // replaced one-for-one by the tug's measured hull skin), so only byType moves.
   assert.deepEqual(first.census, {
     total: 39,
-    byType: { asteroid: 6, fauna: 12, fx: 13, ship: 2, station: 6 },
+    byType: { asteroid: 6, fauna: 12, fx: 13, ship: 1, station: 6, wreck: 1 },
     collidable: 14,
     colliders: 236,
     opticCells: 0,
@@ -635,12 +644,16 @@ test('R5B materializes six inert object slots and two existing-budget collision 
     'place_conveyor_barge',
   ]);
   assert.deepEqual(first.activity.map((row) => row.id).sort((a, b) => a - b), [5, 105, 106, 108, 110, 111]);
-  assert.equal(first.ceresRngDraws, 499,
+  // 499 → 501 (D90/D145): SOLSTICE / SL-9 (5103e8668) added poi_solstice_lantern — a fixed-pos
+  // POI still consumes its two unconditional _spawnPOIs draws inside this content stream.
+  assert.equal(first.ceresRngDraws, 501,
     'Ceres materialization must retain the complete pre-R5B content-stream draw count');
 
+  // Buoy positions re-pinned 2026-10-05 (D90/D145): the Star Lantern POI's two stream draws
+  // (5103e8668) legitimately shifted the dressing cadence these ambient props ride on.
   assert.deepEqual(first.unaffectedRngSignature, [
-    [107, -13072.473297, 8733.618916],
-    [109, -11280.368378, 8699.797738],
+    [107, -12877.223012, 8738.019899],
+    [109, -11502.299647, 9307.673708],
   ], 'unaffected tail positions fingerprint the asteroid/dressing layout cadence');
   assert.equal(first.asteroidInvariantHash, PRE_CLOSEOUT_ASTEROID_INVARIANT_HASH,
     'all per-rock type, mining, collider, size, motion, and seam properties remain byte-stable');

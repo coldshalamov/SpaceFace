@@ -41,6 +41,8 @@ import { normalizeShipAppearance, shipAppearanceSignature } from '../../../core/
 import {
   buildSlotList,
   dryRunLoadoutPresetApply,
+  exclusivityLockLabel,
+  exclusivityRepMet,
   findMasslineHeadConflict,
   fitRefusalText,
   fits,
@@ -3860,9 +3862,12 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       prospective[slotIndex] = d.id;
       const budgetBlocker = outfitBudgetBlocker(def, prospective);
       // The backend's isUnlocked gate — a held research-locked module must refuse in words,
-      // not click through to a toast.
-      const researchBlock = d.requiresTech && !researched.includes(d.requiresTech) && !stationShopOffer(d, shopStationId)
-        ? 'Research required: ' + techDisplayName(d.requiresTech) : null;
+      // not click through to a toast. A standing exclusive refuses the same way: the rep
+      // mirror of the research stop (rep ≥ minRep opens it, nothing else does).
+      const standingBlock = d.exclusivity && !exclusivityRepMet(d.exclusivity, ctx.state && ctx.state.factions)
+        ? (exclusivityLockLabel(d.exclusivity) || 'Requires Allied standing with its faction') : null;
+      const researchBlock = (d.requiresTech && !researched.includes(d.requiresTech) && !stationShopOffer(d, shopStationId)
+        ? 'Research required: ' + techDisplayName(d.requiresTech) : null) || standingBlock;
       const blocked = mountBlock || headConflict || budgetBlocker || researchBlock;
       const blockedText = mountBlock
         ? (mountRefusal(slot, d) || fitRefusalText(slot, d) || `${d.name} does not fit this slot`)
@@ -3907,7 +3912,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       });
       const fittedDef = fittedId ? FITTABLE_BY_ID.get(fittedId) : null;
       const chips = shopDeltaChipsHtml(shopDelta, d, fittedDef, slot);
-      const purchase = describeOutfittingPurchase(d, ctx.state.player || {}, slots, fittings, def, { stationId: shopStationId });
+      const purchase = describeOutfittingPurchase(d, ctx.state.player || {}, slots, fittings, def, { stationId: shopStationId, factions: ctx.state.factions });
       const selectedFittings = fittings.slice();
       selectedFittings[slotIndex] = d.id;
       const selectedBudgetBlocker = outfitBudgetBlocker(def, selectedFittings);
@@ -3927,7 +3932,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const buyWord = availability.outfitEnabled ? (selectedFit ? (fittedId ? 'Buy & Replace' : 'Buy & Fit') : 'Buy to Inventory') : 'Dock to fit';
       const btn = equipped
         ? `<span class="k-t-fine k-38 sx-modrow__eq">Equipped</span>`
-        : purchase.state === 'locked'
+        : purchase.state === 'locked' || purchase.state === 'standing'
           ? `<span class="k-t-fine k-38 sx-modrow__lock">${escapeHtml(purchase.label)}</span>`
           : purchase.state === 'funding'
             ? `<span class="k-t-fine k-38 sx-modrow__buy is-funding">${fmt(purchase.price)} cr · ${escapeHtml(purchase.label)}</span>`

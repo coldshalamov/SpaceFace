@@ -67,7 +67,7 @@
     "tether:attached": 1
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "8d4492dc0eca9f17bc3d00eb293cab5bcb0c4c19295b7826f3c0edc17cb068c8",
+    "authoritativeHash": "bf3451ae1d209ba353ae338c7add11e66ba7b10dd8585bc03caeda9dc58eb6b0",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -213,6 +213,8 @@
     "Companion physics change in the same commit: SG-02 now round-trips the complete Rapier world snapshot through saves",
     "(cont.) (warm-start contact manifolds, pending forces, sleep verdicts, attachment/joint state) instead of rebuilding bodies from entity scalars.",
     "Reload is now bit-exact at every probed point — reload@60/90/110/120/140/300/600 each reproduce the uninterrupted hash;",
-    "(cont.) previously a marginal player-spindle resting contact's lost warm-start plus stale pending force made every reload inside ticks 4-129 diverge."
+    "(cont.) previously a marginal player-spindle resting contact's lost warm-start plus stale pending force made every reload inside ticks 4-129 diverge.",
+    "2026-10-03 deliberate re-record post-D145: legacy envelope re-pinned at 618d7f16 after ~278 commits of landed drift; uninterrupted-vs-reload hashEqual confirmed.",
+    "2026-10-06 re-record: golden-diff vs bf75bd987 (reproduces prior hash) verdict CONTENT_ONLY — 10 $.economy fields moved, zero motion fields changed, zero trace diffs; reload@600 hashEqual."
   ]
 }

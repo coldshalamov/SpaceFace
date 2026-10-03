@@ -841,6 +841,9 @@ export const encounterDirector = {
       && state.story.depthProgramEncounters.completed || {};
     if (g.uniqueOnce && completed[shape.id]) return false;
     if (g.blockAfterOutcome && completed[shape.id] && completed[shape.id].outcome === g.blockAfterOutcome) return false;
+    // A second chapter must know its first happened: the named shape has to be in the
+    // completed record (any outcome) before this shape can fire.
+    if (g.requiresCompletedShape && !completed[g.requiresCompletedShape]) return false;
     if (Array.isArray(g.sectorIds) && !g.sectorIds.includes(sectorId)) return false;
     if (Number.isFinite(g.storyBeatMin) && ((state.story && state.story.beatIndex) | 0) < g.storyBeatMin) return false;
     if (!options.ignoreMinSectorTier
@@ -1681,6 +1684,9 @@ export const encounterDirector = {
     const now = this.now();
     let i = 0;
     for (const e of this.entsOf(live, role || undefined)) {
+      // SF-150: durable/foreign-owned roster members are released, not stamped — custody pods
+      // keep their authored TTL and world actors stay under their own persistence owner.
+      if (!encounterMayScheduleDespawn(e)) continue;
       e.data = e.data || {};
       e.data.despawnAt = now + (afterS || 20) + i * 0.5;   // small stagger so departures read natural
       i++;
@@ -1800,6 +1806,9 @@ export const encounterDirector = {
       dir.stats.ceresActivityAmbush = { phase: 'done', outcome };
     } else {
       for (const e of this.entsOf(live)) {
+        // SF-150: a durable or foreign-owned roster member is released intact — the encounter
+        // only retires the stragglers it actually spawned.
+        if (!encounterMayScheduleDespawn(e)) continue;
         if (!e.data || e.data.despawnAt == null) { e.data = e.data || {}; e.data.despawnAt = now + 45; }
       }
     }
@@ -4205,6 +4214,24 @@ function indexActiveMember(dir, live, id) {
 function dropActiveMemberId(dir, id, squadId) {
   const membership = dir.activeMembership;
   if (membership && membership[id] === squadId) delete membership[id];
+}
+
+// SF-150 — resolving an encounter releases temporary ownership; it must never erase an actor
+// or object whose durable persistence is owned elsewhere. The roster legitimately carries
+// things the encounter did not make: freight-custody pods (flags.persistent pickups with an
+// authored despawnAt TTL), adopted world actors (worldRecordId / persistenceOwner / traffic
+// roles), and mission-pinned bodies. A blanket despawnAt on any of those is a kill order a
+// foreign owner never agreed to. Anything carrying a durable claim is RELEASED from encounter
+// membership instead of stamped — its own persistence authority decides when it leaves. This
+// mirrors the same predicate world residency already protects (world.js protected markers).
+function encounterMayScheduleDespawn(entity) {
+  const flags = (entity && entity.flags) || {};
+  const data = (entity && entity.data) || {};
+  if (flags.persistent || flags.missionPinned) return false;
+  if (data.persistent || data.missionPinned || data.missionId || data.missionTag) return false;
+  if (data.worldRecordId != null || data.persistenceOwner != null) return false;
+  if (data.trafficRole || data.convoyId != null || data.itinerary) return false;
+  return true;
 }
 
 // dir.live rows whose script probes data.cacheId / data.sourceId in _onEntityGone — those

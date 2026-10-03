@@ -87,6 +87,8 @@ import {
   regionalTrafficRoleWeights,
 } from './regionalEcology.js';
 import {
+  APERTURE_GLOBAL_POS,
+  APERTURE_ID,
   CINDER_SLUICE_SITE_ID,
   CINDER_SLUICE_TRAFFIC_STAGING_POS,
   cinderSluicePhase,
@@ -1533,6 +1535,7 @@ export const traffic = {
     this._ceresDisabledHaulerImpairmentActor = null;
     this._ceresDisabledHaulerRepairActor = null;
     this._ceresDisabledHaulerRestorePending = false;
+    this._industryHaulDispatched = new Map();
 
     if (this.helpers) {
       this.helpers.traffic = {
@@ -1682,6 +1685,8 @@ export const traffic = {
       const record = siteId && this.state.sites && this.state.sites.worldById && this.state.sites.worldById[siteId];
       this._applyWorldSiteTrafficHooks(record && record.sectorId);
     });
+    // A full hangar depot or a jammed aperture asks for one haul. The job kernel flies it.
+    this.bus.on('industry:haulRequested', (p) => this._onIndustryHaulRequested(p || {}));
   },
 
   heaveToEntity(entityId, {
@@ -2028,7 +2033,7 @@ export const traffic = {
         reservedByWorldRecordId: recordId,
         reservedByActivityActorSlotId: CERES_SEAM_MINER_SLOT_ID,
         reservedByJobId: `job:${recordId}`,
-        simTime: this.state.simTime,
+        simTime: deferredEnterNow(this.state),
       });
       if (missed && this.bus && typeof this.bus.emit === 'function') {
         this.bus.emit('field:richSeamMissed', { ...missed, reason: 'owner_invalidated' });
@@ -2389,7 +2394,7 @@ export const traffic = {
     data.worldRecordId = recordId;
     data.identityKey = entry.slot.worldRecordSlotId;
     data.durable = true;
-    if (!Number.isFinite(data.recordCreatedTick)) data.recordCreatedTick = this.state.tick | 0;
+    if (!Number.isFinite(data.recordCreatedTick)) data.recordCreatedTick = deferredEnterTick(this.state) | 0;
     data.activityActorSlotId = entry.slot.id;
     data.ceresActivityCast = true;
     data.ceresActivityJobOwned = !entry.service;
@@ -2526,7 +2531,7 @@ export const traffic = {
     data.worldRecordId = recordId;
     data.identityKey = entry.slot.worldRecordSlotId;
     data.durable = true;
-    if (!Number.isFinite(data.recordCreatedTick)) data.recordCreatedTick = this.state.tick | 0;
+    if (!Number.isFinite(data.recordCreatedTick)) data.recordCreatedTick = deferredEnterTick(this.state) | 0;
     data.activityActorSlotId = entry.slot.id;
     data.authoredActivityCast = true;
     data.authoredActivityJobOwned = true;
@@ -3168,6 +3173,132 @@ export const traffic = {
     return true;
   },
 
+  /**
+   * A full depot or a jammed aperture asked for one haul. Bind an idle hauler, or
+   * retask one plain hauler run, onto that source → destination route through the
+   * existing job kernel. The receipt stays empty until that job and its actor both exist.
+   */
+  _onIndustryHaulRequested(payload) {
+    const receipt = payload && payload.receipt;
+    if (!receipt || typeof receipt !== 'object') return;
+    if (typeof receipt.jobId === 'string' && receipt.jobId && receipt.entityId != null) return;
+    const kind = payload.kind === 'redirect' || payload.kind === 'repair-parts' ? payload.kind : null;
+    const sourceId = typeof payload.sourceId === 'string' ? payload.sourceId : '';
+    const destinationId = typeof payload.destinationId === 'string' ? payload.destinationId : '';
+    const commodityId = typeof payload.commodityId === 'string' ? payload.commodityId : '';
+    const qty = Math.floor(Number(payload.qty));
+    if (!kind || !sourceId || !destinationId || sourceId === destinationId
+      || !commodityId || !Number.isSafeInteger(qty) || qty <= 0) return;
+
+    this._ensureState();
+    if (!this._industryHaulDispatched) this._industryHaulDispatched = new Map();
+    const key = `${kind}|${sourceId}|${destinationId}|${commodityId}|${qty}`;
+    const remembered = this._recalledIndustryHaul(key, sourceId, destinationId);
+    if (remembered) {
+      receipt.jobId = remembered.jobId;
+      receipt.entityId = remembered.entityId;
+      return;
+    }
+
+    const source = this._industryHaulPoint(sourceId);
+    const destination = this._industryHaulPoint(destinationId);
+    if (!source || !destination) return;
+    const chosen = this._idleIndustryHauler();
+    if (!chosen) return;
+    const assign = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.assign;
+    const getJob = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.get;
+    if (typeof assign !== 'function' || typeof getJob !== 'function') return;
+
+    const sectorId = (this.state.world && this.state.world.currentSectorId) || null;
+    const jobId = assign(chosen.entity, {
+      kind: 'hauler',
+      sectorId,
+      speed: TRAFFIC_ROLES.hauler.speed,
+      route: [
+        industryHaulWaypointSpec(sourceId, source, 'origin'),
+        industryHaulWaypointSpec(destinationId, destination, 'dest'),
+      ],
+      payload: {
+        haulKind: kind,
+        commodityId,
+        qty,
+        sourceId,
+        destinationId,
+      },
+    });
+    if (typeof jobId !== 'string' || !jobId) return;
+    const entry = getJob(jobId);
+    const job = entry && entry.job;
+    if (!job || job.kind !== 'hauler' || job.corrupt === true || entry.entityId !== chosen.entity.id) return;
+    if (!industryHaulRouteAims(job.route, sourceId, source.pos, destinationId, destination.pos)) return;
+    const actor = liveEntity(this.state, chosen.entity.id);
+    if (!actor || !actor.data || actor.data.jobId !== jobId) return;
+
+    this._industryHaulDispatched.set(key, { jobId, entityId: actor.id });
+    receipt.jobId = jobId;
+    receipt.entityId = actor.id;
+  },
+
+  _recalledIndustryHaul(key, sourceId, destinationId) {
+    const remembered = this._industryHaulDispatched && this._industryHaulDispatched.get(key);
+    if (!remembered || typeof remembered.jobId !== 'string') return null;
+    const getJob = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.get;
+    if (typeof getJob !== 'function') return null;
+    const entry = getJob(remembered.jobId);
+    const job = entry && entry.job;
+    const actor = liveEntity(this.state, remembered.entityId);
+    if (!job || job.kind !== 'hauler' || job.corrupt === true || !actor || !actor.data
+      || actor.data.jobId !== remembered.jobId) return null;
+    const source = this._industryHaulPoint(sourceId);
+    const destination = this._industryHaulPoint(destinationId);
+    if (!source || !destination
+      || !industryHaulRouteAims(job.route, sourceId, source.pos, destinationId, destination.pos)) {
+      return null;
+    }
+    return remembered;
+  },
+
+  _industryHaulPoint(pointId) {
+    if (pointId === APERTURE_ID) {
+      return {
+        pos: { x: APERTURE_GLOBAL_POS.x, z: APERTURE_GLOBAL_POS.z },
+        label: 'Hangar aperture',
+        targetRef: `site:${APERTURE_ID}`,
+      };
+    }
+    const station = this._sectorStations().find((row) => stationIdentity(row) === pointId);
+    if (!station || !station.pos || !Number.isFinite(station.pos.x) || !Number.isFinite(station.pos.z)) return null;
+    const id = stationIdentity(station);
+    return {
+      pos: { x: station.pos.x, z: station.pos.z },
+      label: stationName(station, id),
+      targetRef: `station:${id}`,
+    };
+  },
+
+  _idleIndustryHauler() {
+    const jobs = this.helpers && this.helpers.npcJobs;
+    const getJob = jobs && jobs.get;
+    const rows = (this.state.traffic && this.state.traffic.freighters) || [];
+    const idle = [];
+    for (let i = 0; i < rows.length; i++) {
+      const rec = rows[i];
+      const entity = liveEntity(this.state, rec && rec.id);
+      if (!rec || !entity || !industryHaulerEligible(rec, entity)) continue;
+      const worldRecordId = entity.data.worldRecordId;
+      const existingId = typeof entity.data.jobId === 'string' ? entity.data.jobId : null;
+      const entry = typeof getJob === 'function'
+        ? (existingId && getJob(existingId)) || getJob(`job:${worldRecordId}`)
+        : null;
+      // A hauler already on a run stays on it. The depot marker waits for an idle hull.
+      if (existingId || entry) continue;
+      idle.push({ rec, entity });
+    }
+    if (!idle.length) return null;
+    idle.sort((a, b) => stableTrafficKey(a.entity).localeCompare(stableTrafficKey(b.entity)));
+    return idle[0];
+  },
+
   // PQ-014 — natural NPC job assignment. Civilian traffic IS the natural producer for the three
   // job kinds: role 'miner' → miner job (home refinery ↔ asteroid field), 'hauler' → hauler job
   // (origin → destination terminal run), 'patrol' → patrol job (cyclic beat around a station).
@@ -3391,7 +3522,7 @@ export const traffic = {
   },
 
   _newPriorityCourierItinerary(stations, originStationId, destinationStationId, legSeq = 0) {
-    const departureAt = (Number.isFinite(this.state.simTime) ? this.state.simTime : 0)
+    const departureAt = (Number.isFinite(deferredEnterNow(this.state)) ? deferredEnterNow(this.state) : 0)
       + PRIORITY_COURIER_SERVICE.dwellS;
     const dueAt = this._priorityCourierDueAt(stations, originStationId, destinationStationId, departureAt);
     if (!Number.isFinite(dueAt)) return null;
@@ -3426,7 +3557,7 @@ export const traffic = {
     if (job && (job.phase === NPC_JOB_PHASE.FLEE || jobEntry.control)) return 'INTERRUPTED';
     const escort = itinerary && itinerary.escort || {};
     const creditS = Number.isFinite(escort.creditS) ? Math.max(0, escort.creditS) : 0;
-    const now = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    const now = Number.isFinite(deferredEnterNow(this.state)) ? deferredEnterNow(this.state) : 0;
     if (now > itinerary.dueAt + creditS) return 'LATE';
     if (!entity.data.jobId && now < itinerary.departureAt) return 'BERTH';
     return 'ON_TIME';
@@ -3690,7 +3821,7 @@ export const traffic = {
   _newPassengerLinerItinerary(entity, originStationId, destinationStationId, legSeq = 0) {
     const worldRecordId = entity && entity.data && entity.data.worldRecordId;
     if (typeof worldRecordId !== 'string' || !worldRecordId) return null;
-    const now = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    const now = Number.isFinite(deferredEnterNow(this.state)) ? deferredEnterNow(this.state) : 0;
     const departureAt = now + PASSENGER_LINER_SERVICE.dwellS;
     const ids = passengerLinerLegIds(worldRecordId, legSeq);
     return {
@@ -6742,7 +6873,7 @@ export const traffic = {
   },
 
   _listSalvageTargets() {
-    const tick = this.state && Number.isInteger(this.state.tick) ? this.state.tick : 0;
+    const tick = Number.isInteger(deferredEnterTick(this.state)) ? deferredEnterTick(this.state) : 0;
     if (this._salvageTargetCache
         && this._salvageTargetCacheTick != null
         && tick - this._salvageTargetCacheTick < 4
@@ -6785,7 +6916,7 @@ export const traffic = {
     for (const target of this._listSalvageTargets()) {
       const claim = this._salvorClaimantOf(target);
       if (claim) continue;
-      if (!this._salvorNoticeReady(target, this.state.simTime || 0)) continue;
+      if (!this._salvorNoticeReady(target, deferredEnterNow(this.state) || 0)) continue;
       const dx = target.pos.x - ax;
       const dz = target.pos.z - az;
       const d2 = dx * dx + dz * dz;
@@ -7079,7 +7210,7 @@ export const traffic = {
     let bestId = '';
     for (const target of this._listSalvageTargets()) {
       if (!this._isTowableBody(target)) continue;
-      if (!this._salvorNoticeReady(target, this.state.simTime || 0)) continue;
+      if (!this._salvorNoticeReady(target, deferredEnterNow(this.state) || 0)) continue;
       const dx = target.pos.x - ax;
       const dz = target.pos.z - az;
       const d2 = dx * dx + dz * dz;
@@ -7370,7 +7501,7 @@ export const traffic = {
     for (const target of targets) {
       if (active >= MAX_GENERAL_SALVORS_PER_SECTOR) break;
       if (this._salvorClaimantOf(target)) continue;
-      if (!this._salvorNoticeReady(target, this.state.simTime || 0)) continue;
+      if (!this._salvorNoticeReady(target, deferredEnterNow(this.state) || 0)) continue;
       // The authored Vesta cutter must return to Forge, not whichever pocket station happens to
       // be first in the current entity ordering. Missing Forge means no Vesta dispatch, never a
       // fallback trip to another sector's service route.
@@ -9765,7 +9896,7 @@ export const traffic = {
     if (this._ceresCausal && this._ceresCausal.schema === CERES_CAUSAL_CHAIN_SCHEMA) {
       return this._ceresCausal;
     }
-    const simTime = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    const simTime = Number.isFinite(deferredEnterNow(this.state)) ? deferredEnterNow(this.state) : 0;
     this._ceresCausal = {
       schema: CERES_CAUSAL_CHAIN_SCHEMA,
       cycle: 0,
@@ -9977,7 +10108,7 @@ export const traffic = {
       schema: CERES_CAUSAL_CHAIN_SCHEMA,
       kind: String(kind || 'tick'),
       sectorId: CERES_ACTIVITY_SECTOR_ID,
-      simTime: Number.isFinite(this.state && this.state.simTime) ? this.state.simTime : 0,
+      simTime: Number.isFinite(deferredEnterNow(this.state)) ? deferredEnterNow(this.state) : 0,
       cycle: chain ? chain.cycle | 0 : 0,
       activeCount: chain && Array.isArray(chain.active) ? chain.active.length : 0,
       completed: chain && Array.isArray(chain.completed) ? chain.completed.slice() : [],
@@ -11243,7 +11374,7 @@ export const traffic = {
 
   _resetRngForSector(sectorId) {
     this._ensureState();
-    this.state.traffic.rngSeed = hash32(this.state.meta && this.state.meta.seed, 'traffic', sectorId, this.state.tick || 0);
+    this.state.traffic.rngSeed = hash32(this.state.meta && this.state.meta.seed, 'traffic', sectorId, deferredEnterTick(this.state) || 0);
   },
 
   _rng() {
@@ -11403,6 +11534,45 @@ function setIntent(e, moveX, moveZ, boost, fire, fireGroup, aimAngle) {
   intent.fire = fire;
   intent.fireGroup = fireGroup;
   intent.aimAngle = aimAngle;
+}
+
+const INDUSTRY_HAUL_TARGET_REF = /^[a-z][a-z0-9-]*(?::[a-z_][a-z0-9_.-]*)+$/;
+
+function industryHaulWaypointSpec(pointId, point, prefix) {
+  const waypoint = {
+    id: `${prefix}:${pointId}`,
+    pos: { x: point.pos.x, z: point.pos.z },
+    label: point.label,
+  };
+  if (typeof point.targetRef === 'string' && INDUSTRY_HAUL_TARGET_REF.test(point.targetRef)) {
+    waypoint.targetRef = point.targetRef;
+  }
+  return waypoint;
+}
+
+function industryHaulWaypointMatches(waypoint, pointId, pos) {
+  if (!waypoint || !waypoint.pos || !pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return false;
+  const id = typeof waypoint.id === 'string' ? waypoint.id : '';
+  if (id !== `origin:${pointId}` && id !== `dest:${pointId}`) return false;
+  const dx = waypoint.pos.x - pos.x;
+  const dz = waypoint.pos.z - pos.z;
+  return dx * dx + dz * dz <= 1;
+}
+
+function industryHaulRouteAims(route, sourceId, sourcePos, destinationId, destPos) {
+  if (!Array.isArray(route) || route.length < 2) return false;
+  return industryHaulWaypointMatches(route[0], sourceId, sourcePos)
+    && industryHaulWaypointMatches(route[route.length - 1], destinationId, destPos);
+}
+
+function industryHaulerEligible(rec, entity) {
+  const data = entity && entity.data;
+  if (!data || typeof data.worldRecordId !== 'string' || !data.worldRecordId) return false;
+  if (data.worldSiteTrafficHookId || data.claimTravelTrafficHookId || data.namedLaneContactId) return false;
+  if (data.ceresActivityCast === true || data.authoredActivityCast === true) return false;
+  if (data.activityActorSlotId || data.claimDepotId) return false;
+  const role = (rec && rec.role) || data.trafficRole;
+  return role === 'hauler' || data.jobKind === 'hauler';
 }
 
 function stationIdentity(station) {

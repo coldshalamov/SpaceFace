@@ -128,10 +128,18 @@ function longReadTarget(state, cursor) {
   return candidates[index];
 }
 
-function primaryRumorSource(wreck) {
-  return wreck && (wreck.rumorSources || []).find((entry) => (
+function primaryRumorSource(wreck, chainOwned = false) {
+  // For a chain that owns its hull the accept IS the native bearing carrier: when the wreck
+  // declares a mission-channel row for its bearing source (D13-D16 natively, the Choir-Tender's
+  // vigil via SF-149), the offer carries 'mission' so the synchronous mission:accepted mint is
+  // the delivery. A dynamic long_read pick stays on the wreck's public row — its rumor-purchase
+  // reprint goes out through the same news/bar/campaign channel the rumor census audits.
+  const sources = wreck && (wreck.rumorSources || []).filter((entry) => (
     entry && entry.sourceRef === wreck.bearingSourceRef
-  )) || null;
+  ));
+  if (!sources || !sources.length) return null;
+  if (chainOwned) return sources.find((entry) => entry.channelId === 'mission') || sources[0];
+  return sources[0];
 }
 
 function serializableClause(clauseId) {
@@ -208,7 +216,9 @@ function buildOffer(state, definition, cursor, stage, branch, wreck = null) {
   ));
   const existingBearing = wreck && state && state.player && state.player.uniqueWrecks
     && state.player.uniqueWrecks.bearings && state.player.uniqueWrecks.bearings[wreck.id];
-  const knownRumorOpening = definition.id === 'long_read' && cursor.stageIndex === 0 && !!existingBearing;
+  // SF-149: the known-bearing reconcile is the same for every wreck-bound opening, not only
+  // long_read's dynamic pick — a Choir vigil re-run over a fixed site is a reconcile too.
+  const knownRumorOpening = !!wreck && cursor.stageIndex === 0 && !!existingBearing;
   const title = knownRumorOpening
     ? `Reconcile the Known Bearing: ${wreck.name}`
     : stage.title || `${definition.title}: ${String(stage.id || 'stage').replace(/_/g, ' ')}`;
@@ -217,7 +227,7 @@ function buildOffer(state, definition, cursor, stage, branch, wreck = null) {
     .map(serializableClause)
     .filter(Boolean);
   const witness = witnessFor(state, definition, cursor, chainId);
-  const source = primaryRumorSource(wreck);
+  const source = primaryRumorSource(wreck, !!definition.wreckId && definition.wreckId === (wreck && wreck.id));
   const summary = knownRumorOpening
     ? `${wreck.name} is already in your ledger. Reconcile its bearing and proceed to recovery.`
     : textFor(stage.instructionRef, instructionFallback);
@@ -326,10 +336,13 @@ export function buildSetPieceMissionOffers(state, rawCursor) {
     && state.player.uniqueWrecks.bearings
     && state.player.uniqueWrecks.bearings[wreck.id];
   const branchChoiceIndex = Array.isArray(definition.commonStages) ? definition.commonStages.length : 0;
-  if (definition.id === 'long_read' && cursor.stageIndex >= branchChoiceIndex
+  // SF-149: same rule for every wreck-bound chain — a disposition already filed on the hull
+  // prunes the contradictory sibling offer, so only the matching branch ever posts.
+  if (wreck && cursor.stageIndex >= branchChoiceIndex
     && bearing && bearing.phase === 'salvaged' && bearing.choiceId) {
     rows = rows.filter(({ stage }) => (
-      stage && stage.params && stage.params.wreckChoiceId === bearing.choiceId
+      !stage.params || stage.params.wreckChoiceId == null
+      || stage.params.wreckChoiceId === bearing.choiceId
     ));
   }
   return rows.map(({ stage, branch }) => (
