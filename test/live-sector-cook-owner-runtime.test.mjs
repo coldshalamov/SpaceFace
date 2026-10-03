@@ -69,6 +69,7 @@ function fixture(providers = []) {
     formatOpeningCookLedger: () => 'test', console: { info: noop, warn: noop, error: noop },
     armSectorArrivalPublishRelease: () => marks.push('release'),
     SECTOR_ARRIVAL_PUBLISH_HOLD_SECONDS: 2, FIRST_FLIGHT_DEFERRED_HOLD_SECONDS: 20,
+    warmNearbyLedgerRows: noop, makeHoldExemptScanContext: () => ({}),
     exactSectorId: 'ceres', sector: { id: 'ceres' }, continuous: false, enterEpoch: 7,
   };
   if (guardCode) values.captureLiveSectorCookStale = evaluate(guardCode, owner, values);

@@ -12822,17 +12822,19 @@ export const render = {
             const deferredEnterTick = deferredProviderTick
               ? deferredProviderTick.get(provider) : null;
 
-            const prevDeferredEnterClock = state.render._deferredEnterClock;
-            const prevDeferredEnterTick = state.render._deferredEnterTick;
+            const providerRender = state.render;
+            const prevDeferredEnterClock = providerRender._deferredEnterClock;
+            const prevDeferredEnterTick = providerRender._deferredEnterTick;
             const pinDeferredEnter = () => {
-              if (deferredEnterClock != null) state.render._deferredEnterClock = deferredEnterClock;
-              if (deferredEnterTick != null) state.render._deferredEnterTick = deferredEnterTick;
+              if (deferredEnterClock != null) providerRender._deferredEnterClock = deferredEnterClock;
+              if (deferredEnterTick != null) providerRender._deferredEnterTick = deferredEnterTick;
             };
             const unpinDeferredEnter = () => {
-              state.render._deferredEnterClock = prevDeferredEnterClock;
-              state.render._deferredEnterTick = prevDeferredEnterTick;
+              providerRender._deferredEnterClock = prevDeferredEnterClock;
+              providerRender._deferredEnterTick = prevDeferredEnterTick;
             };
             let iterator = null;
+            let iteratorDone = false;
             let yieldedSuperseded = null;
             try {
               pinDeferredEnter();
@@ -12849,7 +12851,7 @@ export const render = {
 
                   if (cookStale()) break;
                   const step = iterator.next();
-                  if (step.done) break;
+                  if (step.done) { iteratorDone = true; break; }
                   if (providerNow() - providerSliceStart >= 8) {
                     unpinDeferredEnter();
                     let superseded = null;
@@ -12874,8 +12876,7 @@ export const render = {
               // return() rides here instead of inside the provider try so it can't
               // be recorded as a provider failure or swallow the supersession (after
               // the last provider there is no loop-head recheck).
-              if ((cookStale() || yieldedSuperseded)
-                  && iterator && typeof iterator.return === 'function') {
+              if (iterator && !iteratorDone && typeof iterator.return === 'function') {
                 try {
                   iterator.return();
                 } catch (returnError) {
@@ -12887,8 +12888,10 @@ export const render = {
               }
               // Restore the previous pin — a suspended outer driver (another drain,
               // a superseded cook's own provider window) may still be holding one.
-              state.render._deferredEnterClock = prevDeferredEnterClock;
-              state.render._deferredEnterTick = prevDeferredEnterTick;
+              // Restore lands on the captured render object, not a replacement
+              // that may have been installed while this provider was suspended.
+              providerRender._deferredEnterClock = prevDeferredEnterClock;
+              providerRender._deferredEnterTick = prevDeferredEnterTick;
             }
             if (cookStale() || yieldedSuperseded) {
               return yieldedSuperseded || cookSuperseded;
