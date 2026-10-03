@@ -303,6 +303,27 @@ export function createChoirReliefBerth(owner) {
         });
       }
     }
+    // SF-141 — rescue-by-tow: Mercy does not need her drive back to live. A patient hull that
+    // arrives inside the Helios berth slow enough to hold (the player's tether did the flying)
+    // is a delivered survivor: the berth takes her, the attendant stands down, and the site
+    // keeps the outcome. Nothing repairs the drive here — the hulk stays wounded, and the
+    // same durable `evacuated` flag the swarm path sets records which mercy actually happened.
+    if (!relief.evacuated && !relief.driveRestored && patient) {
+      const home = station();
+      if (home
+        && Math.hypot(patient.pos.x - home.pos.x, patient.pos.z - home.pos.z)
+          <= (home.radius || 50) + 240
+        && Math.hypot(patient.vel?.x || 0, patient.vel?.z || 0) <= 8) {
+        relief.evacuated = true;
+        relief.evacuatedAtS = simNowOf(state);
+        patient.data.scanLabel = 'CHOIR MEDICAL SHUTTLE · MERCY — TOWED HOME';
+        sendHome(attendant, home);
+        bus.emit('news:publish', {
+          text: 'CHOIR-TENDER SURVIVORS REACH HELIOS — MERCY BROUGHT IN UNDER TOW.',
+          kind: 'wreck_recovery', sourceRef: 'followup.choir_relief_evacuated', sectorId: SECTOR,
+        });
+      }
+    }
     syncReliefTraffic(relief);
   }
 

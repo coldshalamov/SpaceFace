@@ -67,7 +67,12 @@ test(`seed ${META_SEED}: every wreck-bound chain compiles its opening against it
     assert.equal(offer.wreckId, def.id);
     assert.equal(offer.params.wreckId, def.id);
     assert.equal(offer.sourceRef, def.bearingSourceRef);
-    assert.equal(offer.channelId, 'mission');
+    // The chain's accept IS the bearing carrier — through whichever channel row the wreck
+    // declares for its bearing source (mission for D13-D16 and the vigil, the public channel
+    // otherwise). The offer's channel must be one of those authored carriers.
+    assert.ok((def.rumorSources || []).some((entry) => entry
+      && entry.sourceRef === def.bearingSourceRef && entry.channelId === offer.channelId),
+      `${def.wreckChainId}: accept carries the wreck's native bearing channel`);
     assert.equal(offer.destSectorId, def.sectorId);
   }
 });

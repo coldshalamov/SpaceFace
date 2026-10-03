@@ -845,6 +845,15 @@ const LONG_READ_RUMOR_EVENT = Object.freeze({
   loss_investigation: 'lossInvestigation:authoredRead',
   bar: 'uniqueWreck:rumorHeard',
 });
+// SF-149 — the Choir vigil rides the same set-piece event surface as long_read rather than a
+// parallel lifecycle: `choir_long_night` IS the live-salvage verdict drive (complication +
+// decision ready), and `choir_what_remains` is a disposition stage whose accept files the
+// named outcome into the durable bearing — the mission then completes on the physical return
+// visit, not on the filing itself.
+const SET_PIECE_RECOVERY_OBJECTIVES = new Set(['long_read_salvage', 'choir_long_night']);
+const SET_PIECE_DISPOSITION_OBJECTIVES = new Set(['long_read_fence', 'choir_what_remains']);
+// Radius of the third-visit site return: standing inside the recovered site is the job.
+const CHOIR_RETURN_RADIUS_WU = 500;
 export const CONTRACT_47A_B0_TAG = 'campaign47a:b0:recovery';
 export const CONTRACT_47A_SAMPLE_ID = 'cmdty_47a_assay_sample';
 export const CONTRACT_47A_B1_TAG = 'campaign47a:b1:honest_work';
@@ -1560,6 +1569,12 @@ export const missions = {
       // units while the player watches, and the claim lapses when nobody is left to hold it.
       if (m.type === 'salvage_retrieval' && m.needsTargets) {
         this._driveContractClaimSite(m, state, dt);
+      }
+      // SF-149: the vigil's third visit completes on the physical return — the filed outcome
+      // is already durable; what remains is standing inside the changed site.
+      if (m.type === 'salvage_retrieval' && m.params
+        && m.params.setPieceObjective === 'choir_what_remains' && m.params.outcomeFiled === true) {
+        this._driveChoirWhatRemainsReturn(m, i, state);
       }
       // FB-066: an ordered gate course scores the player's own flight line each tick — the
       // contract is the geometry, so the per-tick predicate is the only honest judge.
@@ -3334,7 +3349,7 @@ export const missions = {
     }
     const { offer, board } = this._findOffer(missionId);
     if (!offer) return false;
-    if (offer.params && offer.params.setPieceObjective === 'long_read_fence') {
+    if (offer.params && SET_PIECE_DISPOSITION_OBJECTIVES.has(offer.params.setPieceObjective)) {
       const wreckId = offer.params.wreckId || offer.wreckId || offer.cause && offer.cause.wreckId;
       const bearing = this.state.player && this.state.player.uniqueWrecks
         && this.state.player.uniqueWrecks.bearings
@@ -5171,7 +5186,9 @@ export const missions = {
     if (!mission || mission.status !== 'active' || !params) return false;
     const objective = params.setPieceObjective;
     const wreckId = params.wreckId || mission.wreckId || mission.cause && mission.cause.wreckId;
-    if (!wreckId || !String(objective || '').startsWith('long_read_')) return false;
+    const isLongReadFamily = String(objective || '').startsWith('long_read_')
+      || String(objective || '').startsWith('choir_');
+    if (!wreckId || !isLongReadFamily) return false;
     const own = this.state.player && this.state.player.uniqueWrecks;
     const bearing = own && own.bearings && own.bearings[wreckId];
 
@@ -5203,7 +5220,7 @@ export const missions = {
       return true;
     }
 
-    if (objective === 'long_read_salvage') {
+    if (SET_PIECE_RECOVERY_OBJECTIVES.has(objective)) {
       if (this._longReadComplicationObserved(mission)) params.complicationObserved = true;
       if (bearing && (bearing.phase === 'decision' || bearing.phase === 'salvaged')) {
         this._onLongReadDecisionReady({ wreckId, sectorId: mission.destSectorId, phase: bearing.phase });
@@ -5217,7 +5234,7 @@ export const missions = {
       return true;
     }
 
-    if (objective === 'long_read_fence' && params.wreckChoiceId) {
+    if (SET_PIECE_DISPOSITION_OBJECTIVES.has(objective) && params.wreckChoiceId) {
       if (bearing && bearing.phase === 'salvaged') {
         if (bearing.choiceId !== params.wreckChoiceId) return false;
         return this._onLongReadResolved({
@@ -5265,7 +5282,10 @@ export const missions = {
       for (const offer of board.slots) {
         const cause = setPieceCauseOf(offer);
         const params = offer && offer.params;
-        if (!cause || cause.archetypeId !== 'long_read' || cause.stageIndex !== 0 || !params
+        // Wreck-bound chain openings reconcile the same way: a bearing already in the ledger
+        // is the durable fact, whatever epoch originally posted the survey stage.
+        if (!cause || (cause.archetypeId !== 'long_read' && cause.archetypeId !== 'choir_vigil')
+          || cause.stageIndex !== 0 || !params
           || (cause.wreckId || offer.wreckId || params.wreckId) !== wreckId) continue;
         const wreckName = params.wreckName || cause.wreckName || 'Known Wreck';
         params.rumorAlreadyKnown = true;
@@ -5329,7 +5349,7 @@ export const missions = {
       const mission = this.state.missions.active[i];
       const params = mission && mission.params;
       if (!mission || mission.status !== 'active' || !params
-        || params.setPieceObjective !== 'long_read_salvage'
+        || !SET_PIECE_RECOVERY_OBJECTIVES.has(params.setPieceObjective)
         || params.wreckId !== payload.wreckId) continue;
       params.complicationObserved = true;
       if (params.salvageDecisionReady) {
@@ -5350,7 +5370,7 @@ export const missions = {
       const mission = this.state.missions.active[i];
       const params = mission && mission.params;
       if (!mission || mission.status !== 'active' || !params
-        || params.setPieceObjective !== 'long_read_salvage'
+        || !SET_PIECE_RECOVERY_OBJECTIVES.has(params.setPieceObjective)
         || params.wreckId !== payload.wreckId) continue;
       params.salvageDecisionReady = true;
       if (!params.complicationObserved && this._longReadComplicationObserved(mission)) {
@@ -5374,12 +5394,29 @@ export const missions = {
       const mission = this.state.missions.active[i];
       const params = mission && mission.params;
       if (!mission || mission.status !== 'active' || !params
-        || params.setPieceObjective !== 'long_read_fence'
-        || params.wreckId !== payload.wreckId
-        || params.wreckChoiceId !== payload.choiceId) continue;
-      mission.objectiveProgress = mission.objectiveTarget;
-      this._completeMission(mission, i);
-      return true;
+        || params.wreckId !== payload.wreckId) continue;
+      const objective = params.setPieceObjective;
+      if (objective === 'long_read_fence' && params.wreckChoiceId === payload.choiceId) {
+        mission.objectiveProgress = mission.objectiveTarget;
+        this._completeMission(mission, i);
+        return true;
+      }
+      // SF-149: the third visit does not complete on the filing — the filed outcome is only
+      // the durable fact the return trip must go and read. A mismatched filed disposition is
+      // an honest failure: the site will never carry the outcome this stage promised.
+      if (objective === 'choir_what_remains') {
+        if (params.wreckChoiceId === payload.choiceId) {
+          params.outcomeFiled = true;
+          this._refreshTrackedMissionNav(mission);
+          this.bus.emit('mission:updated', {
+            missionId: mission.id, outcomeFiled: true,
+            wreckId: payload.wreckId, choiceId: payload.choiceId,
+          });
+        } else {
+          this._failMission(mission, i, 'disposition_filed');
+        }
+        return true;
+      }
     }
     let changed = false;
     for (const board of Object.values(this.state.missions.boards || {})) {
@@ -5389,13 +5426,38 @@ export const missions = {
         const params = offer && offer.params;
         const wreckId = params && params.wreckId || offer && offer.wreckId
           || offer && offer.cause && offer.cause.wreckId;
-        return !(params && params.setPieceObjective === 'long_read_fence'
+        return !(params && SET_PIECE_DISPOSITION_OBJECTIVES.has(params.setPieceObjective)
           && wreckId === payload.wreckId && params.wreckChoiceId !== payload.choiceId);
       });
       if (board.slots.length !== before) changed = true;
     }
     if (changed) this.bus.emit('mission:updated', { missionId: null, wreckId: payload.wreckId });
     return changed;
+  },
+
+  /**
+   * SF-149 — the third visit's per-tick predicate. Accepting `choir_what_remains` already
+   * filed the named disposition into the durable bearing (or reconciled an outcome the site
+   * was already wearing); the stage's remaining job is physical: be inside the recovered
+   * site's sector and stand close enough to read the placard. A wreckless coordinate still
+   * works — the place is the fixedPos, not the hull.
+   */
+  _driveChoirWhatRemainsReturn(m, index, state) {
+    const params = m && m.params || {};
+    const wreckId = params.wreckId || m.wreckId || (m.cause && m.cause.wreckId);
+    const own = state && state.player && state.player.uniqueWrecks;
+    const bearing = own && own.bearings && own.bearings[wreckId];
+    if (!bearing || bearing.phase !== 'salvaged') return false;
+    if (!state || !state.world || state.world.currentSectorId !== m.destSectorId) return false;
+    const player = state.entities && state.entities.get && state.entities.get(state.playerId);
+    if (!player || !player.pos) return false;
+    const site = bearing.fixedPos || bearing.exactPos;
+    if (!site) return false;
+    const r = CHOIR_RETURN_RADIUS_WU;
+    if (distSq(player.pos, site) > r * r) return false;
+    m.objectiveProgress = m.objectiveTarget;
+    this._completeMission(m, index);
+    return true;
   },
 
   _onSignalInvestigated(p) {
