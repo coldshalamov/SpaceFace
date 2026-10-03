@@ -219,10 +219,17 @@ export function createBus() {
     // remainder synchronously so no listener is ever skipped — but bound the flush to one
     // thin slice: a tail that outlives the wall-clock cap queues the NEW emit behind the
     // drain (ordering still holds emit-by-emit) instead of holding this frame hostage.
-    while (emitSlice) drainEmitSlice(Number.MAX_SAFE_INTEGER, 4);
+    if (emitSlice) drainEmitSlice(Number.MAX_SAFE_INTEGER, 4);
     if (emitSlice) { pendingSlicedEmits.push({ event, payload, budget }); return; }
     const fns = snapshotListeners(listeners, listenerSnapshots, event);
-    if (!fns) { dispatchPresentation(event, payload); return; }
+    if (!fns) {
+      dispatchPresentation(event, payload);
+      if (pendingSlicedEmits.length) {
+        const next = pendingSlicedEmits.shift();
+        startEmitSlice(next.event, next.payload, next.budget);
+      }
+      return;
+    }
     emitSlice = { event, payload, fns, index: 0 };
     drainEmitSlice(budget);
     dispatchPresentation(event, payload);

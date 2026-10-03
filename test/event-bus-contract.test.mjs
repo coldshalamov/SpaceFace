@@ -284,6 +284,9 @@ test('a sliced emit arriving behind a pending slice drains all earlier events in
   bus.emit('sector:enter', 'a');
   assert.deepEqual(seen, ['l0:a'], 'only the inline slice ran');
   bus.emit('sector:enter', 'c');
+  assert.deepEqual(seen, ['l0:a', 'l1:a', 'l2:a', 'l0:b'], 'the bounded flush left the b tail and queued c');
+  assert.equal(bus.pendingEmitSliceCount(), 3, 'b tail plus the queued c emit');
+  bus.drainEmitSlice(SECTOR_ENTER_DRAIN_BUDGET);
   assert.deepEqual(seen, ['l0:a', 'l1:a', 'l2:a', 'l0:b', 'l1:b', 'l2:b', 'l0:c'], 'a and b fully finish before c begins; no b tail is lost');
   assert.equal(bus.pendingEmitSliceCount(), 2, 'only the c tail remains');
   bus.drainEmitSlice(SECTOR_ENTER_DRAIN_BUDGET);

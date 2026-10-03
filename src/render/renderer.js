@@ -12013,13 +12013,19 @@ export const render = {
             }
           }
         }
+        // The entity collect and teardown ride the SAME clock as the provider drive — a
+        // fresh clock would let the last provider slice + collect + the first teardown
+        // slice run ~16ms+ contiguous between GPU yields.
+        if (providerNow() - providerSliceStart >= 8) {
+          const superseded = await providerYield();
+          if (superseded) return superseded;
+        }
         const firstFlightEntities = collectFirstFlightCookEntities(state);
         state.render.liveSectorFirstFlightIds = new Set(
           firstFlightEntities.map((entity) => entity && entity.id).filter((id) => id != null),
         );
         // Departing a dense sector sweeps hundreds of mounted meshes through GL dispose —
         // the same brick class the build drain below slices, so it rides the same clock.
-        let teardownSliceStart = providerNow();
         for (const [id, mesh] of this._meshes) {
           const entity = resolveWorldPresentationEntity(state, id);
           if (entity && isEntityRenderRelevant(entity, state)) continue;
@@ -12031,10 +12037,9 @@ export const render = {
           this._meshesVersion += 1;
           noteShadowMeshRemoved(this, mesh);
           clearEntityMeshReference(entity, mesh);
-          if (providerNow() - teardownSliceStart >= 8) {
-            await yieldLiveSectorGpu();
-            teardownSliceStart = providerNow();
-            if (cookStale()) return cookSuperseded;
+          if (providerNow() - providerSliceStart >= 8) {
+            const superseded = await providerYield();
+            if (superseded) return superseded;
           }
         }
         enqueueMissingMeshBuilds(
@@ -13557,10 +13562,6 @@ export const render = {
         state.render.sectorShellAdmission = true;
         this._publishArrivalRoster(exactSectorId);
       }
-      // Captured before the async cook starts: prepareLiveSectorAfterJump mints a fresh
-      // generation when a NEWER enter supersedes this one — the .finally below must not
-      // release the shared latch out from under that cook.
-      const cookGenerationAtAttach = this._liveSectorCookGeneration;
       const pipelinePrecompile = state.mode === 'loading'
         ? Promise.resolve({
           skipped: true,
@@ -13571,11 +13572,19 @@ export const render = {
             skipped: true,
             reason: 'continuous-sector-handoff-defers-pipeline-precompile',
           })
-          : compileSectorPipelines(sector).finally(() => {
-            // Generation-scoped latch release: a superseded cook's promise still resolves,
-            // and clearing the latch then would strip it from under the LIVE cook — its
-            // cookLiveSceneGpu call reads `sectorShellAdmission !== true` and skips the
-            // whole arrival cohort's GPU cook (meshes then compile inside presented frames).
+          : (() => {
+            const precompile = compileSectorPipelines(sector);
+            // compileSectorPipelines mints _liveSectorCookGeneration in its synchronous
+            // prefix (or early-outs before it) — capture after the call so the guard
+            // compares the generation THIS cook minted. A newer enter's cook mints
+            // again before this promise settles, and the guard then keeps this
+            // superseded cook from stripping the live cook's latch — its
+            // cookLiveSceneGpu call reads `sectorShellAdmission !== true` and skips
+            // the whole arrival cohort's GPU cook (meshes compile inside presented
+            // frames). Skip paths never mint, so the capture still equals the live
+            // value and the release runs exactly as before.
+            const cookGenerationAtAttach = this._liveSectorCookGeneration;
+            return precompile.finally(() => {
             if (this._liveSectorCookGeneration !== cookGenerationAtAttach) return;
             state.render.sectorShellAdmission = false;
             const sim = Number(state.simTime);
@@ -13596,7 +13605,8 @@ export const render = {
                   : FIRST_FLIGHT_DEFERRED_HOLD_SECONDS
               );
             }
-          });
+            });
+          })();
 
       if (state.mode === 'loading' || !exactSectorId) {
         // Run reset/New Game can publish its loading-sector enter without a preceding sector:exit.
