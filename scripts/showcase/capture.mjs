@@ -411,8 +411,13 @@ async function runItem(id, spec) {
       if (skipClips && prior && prior.clip) { rec.clip = prior.clip; if (prior.poster) rec.poster = prior.poster; }
     }
     const ev = await sh(() => window.__showcase.evidence());
-    rec.events = ev.counts;
-    rec.evidenceSamples = ev.samples;
+    // Diagram demos claim no behavior: the record proves fit + declared contract only,
+    // so ambient sandbox combat noise is kept out of the record rather than scrubbed
+    // after the fact. `proof` says which gate class the record actually passed.
+    const isDiagram = spec.demo === 'diagram';
+    rec.events = isDiagram ? {} : ev.counts;
+    rec.evidenceSamples = isDiagram ? {} : ev.samples;
+    rec.proof = isDiagram ? 'diagram' : 'behavioral';
     const evList = spec.ev || [];
     const evOk = evList.length ? evList.some((e) => (ev.counts[e] || 0) > 0) : true;
     // `must` pins the signature event: an item may not pass on ambient damage/toasts alone.
@@ -422,11 +427,14 @@ async function runItem(id, spec) {
     // so the gate checks the shadow counter the harness increments on ownerId === playerId.
     const must = spec.must || (FIRE_DEMOS.has(spec.demo) ? ['combat:fire:player'] : []);
     const mustOk = must.every((e) => (ev.counts[e] || 0) > 0);
-    // The stat is proven either by a derived-field diff (numbers that live on the hull)
-    // or by the fitted def carrying the same key in its mods (use-time flags).
-    const statOk = spec.stat ? (rec.statDiff[spec.stat] !== undefined
-      || (rec.mods != null && rec.mods[spec.stat] != null && rec.mods[spec.stat] !== false)) : true;
-    rec.ok = rec.fitOk !== false && evOk && mustOk && statOk && (evList.length > 0 || !!spec.stat);
+    // `stat` pins are strict: the key must diff in the derived() extractor — a mods-bag
+    // presence can never satisfy it, so a stat pin can never pass vacuously.
+    const statOk = spec.stat ? rec.statDiff[spec.stat] !== undefined : true;
+    // `mods` pins are the explicit use-time contract: the fitted def must declare the key
+    // the consumer system reads at use time (fittedFlag / maxFittedModuleMod callers).
+    const modsOk = spec.mods ? (rec.mods != null && rec.mods[spec.mods] != null && rec.mods[spec.mods] !== false) : true;
+    rec.ok = rec.fitOk !== false && evOk && mustOk && statOk && modsOk
+      && (evList.length > 0 || !!spec.stat || !!spec.mods);
     // teardown
     await sh(() => window.__showcase.setFire(false));
     await sh(() => window.__showcase.setAutoFire(false));
