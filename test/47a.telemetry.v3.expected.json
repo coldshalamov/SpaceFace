@@ -69,7 +69,7 @@
     "tether:broken": 1
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "0d85fa3f16daae683aaa871e3944fe6672132c264ea9b56b08aaa754b583c0d4",
+    "authoritativeHash": "f4a6217584fd4f4cbe7d401c4f91df5b19ae922d5ba9f22f254f0de9f9f12ed7",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -222,6 +222,10 @@
     "reload@60 now reproduces the uninterrupted hash exactly; previously the reload killed held boost, dropped the first-step impulse",
     "(cont.) (mass recompute ordering), and lost contact warm-start — every reload inside ticks 4-129 diverged.",
     "Repeat-20 deterministic; reload baselineSha256 equals run sha256 at 60/90/110/120/140/300/600.",
-    "2026-10-03 deliberate re-record after the D145 reload-fidelity fix (3f3aa05a6): hashEqual restored at 57068fab. Count drift = landed change (D142 contact budget; new cue sources)."
+    "2026-10-03 deliberate re-record after the D145 reload-fidelity fix (3f3aa05a6): hashEqual restored at 57068fab. Count drift = landed change (D142 contact budget; new cue sources).",
+    "2026-10-03 deliberate re-record for the save-canonicalization fix (dimforge/rapier#910). A restored Rapier world is canonical w.r.t. snapshot bytes but the organic layout is not serializable: reload-at-240+ diverged inside world.step.",
+    "(cont.) Every save now re-adopts its own world snapshot so save-and-continue is bit-identical to save-quit-reload; the entity-id allocator (freeIds, nextEntityId, nextOccupantGeneration) is serialized so post-load spawn ids replay exactly.",
+    "(cont.) Reload-vs-baseline bitwise equality now holds at 60/120/240/360/480/600 (was red at 240, 258 via recycled-id order). Repeat-20 deterministic. Trajectory delta vs prior pin is post-save-tick only, by design.",
+    "Prior authoritativeHash was 0d85fa3f16daae683aaa871e3944fe6672132c264ea9b56b08aaa754b583c0d4."
   ]
 }
