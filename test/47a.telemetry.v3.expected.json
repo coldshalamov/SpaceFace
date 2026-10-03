@@ -44,19 +44,19 @@
     "audio:cue"
   ],
   "phase0ObservedTraceCounts": {
-    "audio:cue": 6,
+    "audio:cue": 5,
     "camera:shake": 3,
-    "combat:damage": 17,
+    "combat:damage": 9,
     "combat:fire": 17,
     "economy:tick": 2,
-    "presentation:audioCue": 5,
+    "presentation:audioCue": 4,
     "presentation:cameraCue": 3,
     "presentation:caption": 4,
-    "presentation:cue": 22,
-    "presentation:cueApplied": 22,
+    "presentation:cue": 13,
+    "presentation:cueApplied": 13,
     "presentation:uiCue": 4,
-    "presentation:vfxCue": 5,
-    "projectile:hit": 17,
+    "presentation:vfxCue": 4,
+    "projectile:hit": 9,
     "scenario:actorBindings": 1,
     "scenario:beatEntered": 1,
     "scenario:dialogueLine": 1,
@@ -69,7 +69,7 @@
     "tether:broken": 1
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "136268366d4b1ad7ec86ec70b1a24069e63af64e5e67962fc52f4622bd9c09bc",
+    "authoritativeHash": "57068fab36025c81a2ae03830e5a79b72dae3c84ddfc85531ee82eeafe4e539b",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -221,6 +221,7 @@
     "(cont.) (warm-start manifolds, pending forces, sleep verdicts, attachment state) and v3 restores serialized boost state on load instead of cancelling it.",
     "reload@60 now reproduces the uninterrupted hash exactly; previously the reload killed held boost, dropped the first-step impulse",
     "(cont.) (mass recompute ordering), and lost contact warm-start — every reload inside ticks 4-129 diverged.",
-    "Repeat-20 deterministic; reload baselineSha256 equals run sha256 at 60/90/110/120/140/300/600."
+    "Repeat-20 deterministic; reload baselineSha256 equals run sha256 at 60/90/110/120/140/300/600.",
+    "2026-10-03 deliberate re-record after the D145 reload-fidelity fix (3f3aa05a6): hashEqual restored at 57068fab. Count drift = landed change (D142 contact budget; new cue sources)."
   ]
 }
