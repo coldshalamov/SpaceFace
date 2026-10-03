@@ -677,7 +677,7 @@ function weaponStats(def) {
   const push = (label, value) => { if (value != null && value !== '' && !deadZero(value)) out.push({ label, value }); };
   push('Damage', num(def.dmg));
   push('Type', def.damageType ? String(def.damageType).replace(/^\w/, (c) => c.toUpperCase()) : null);
-  push('DPS', num(def.dps));
+  push('DPS', num(def.dps, 1));
   push('Rate', def.rof != null ? `${num(def.rof, 1)}/s` : null);
   push('Proj. speed', num(def.projSpeed));
   push('Range', num(def.range));
@@ -782,7 +782,7 @@ function moduleStats(def) {
   push('Stealth bio', m.stealthBioMult != null ? `×${num(m.stealthBioMult, 2)}` : null);
   push('Point defense', m.pointDefense ? `${num(m.pointDefense.radius)} · ${num(m.pointDefense.cooldownS, 1)}s` : null);
   push('Countermeasure', m.countermeasure ? `${m.countermeasure.kind} · ${num(m.countermeasure.radius)} · ${num(m.countermeasure.cooldownS, 0)}s cd` : null);
-  push('Mining DPS', def.dps != null && def.slotType === 'mining' ? num(def.dps) : null);
+  push('Mining DPS', def.dps != null && def.slotType === 'mining' ? num(def.dps, 1) : null);
   push('Mining range', def.range != null && def.slotType === 'mining' ? num(def.range) : null);
   push('Rare ore', def.rareOreChance != null ? pct(def.rareOreChance) : null);
   push('Ore flow', def.directToCargo === true ? 'straight to cargo' : null);
