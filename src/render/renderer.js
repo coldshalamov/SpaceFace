@@ -10129,6 +10129,22 @@ export const render = {
       // publication gate so they can commit here; keep mesh streaming deferred.
       releaseOpeningGraphPublication(this);
       state.render.liveSectorGpuAdmission = true;
+      // Minted into the same generation counter the after-jump cook uses: a second
+      // restore/new-game mid-cook mints again, so every mutating step below re-checks
+      // staleness before it commits against a world this cook no longer owns — the
+      // preflight path is the longest cook window in the game (~20-120 s of awaits).
+      // The mint sits outside the try block: the finally tail reads this capture to
+      // skip flag-clearing owned by a superseding cook — declaring it inside the try
+      // scopes it away from the finally and turns every completion into a
+      // ReferenceError.
+      const sectorId = state.world && state.world.currentSectorId;
+      const cookGeneration = (this._liveSectorCookGeneration = (this._liveSectorCookGeneration || 0) + 1);
+      const cookEnterSerial = state.world && state.world.enterSerial;
+      const cookStale = () => cookGeneration !== this._liveSectorCookGeneration
+        || !state.world
+        || state.world.enterSerial !== cookEnterSerial
+        || state.world.currentSectorId !== sectorId;
+      const cookSuperseded = { skipped: true, reason: 'sector-superseded', sectorId: sectorId || null };
       try {
       const yieldLiveSectorGpu = async () => {
         // GLB/KTX2 decode, ANGLE links, and 1x1 buffer uploads do not retire
@@ -10205,18 +10221,6 @@ export const render = {
       };
       if (!scene.environment) this._bakeEnv({ force: true });
       if (scene.environment) bindEnvironmentToStandardMaterials(scene, scene.environment);
-      const sectorId = state.world && state.world.currentSectorId;
-      // Minted into the same generation counter the after-jump cook uses: a second
-      // restore/new-game mid-cook mints again, so every mutating step below re-checks
-      // staleness before it commits against a world this cook no longer owns — the
-      // preflight path is the longest cook window in the game (~20-120 s of awaits).
-      const cookGeneration = (this._liveSectorCookGeneration = (this._liveSectorCookGeneration || 0) + 1);
-      const cookEnterSerial = state.world && state.world.enterSerial;
-      const cookStale = () => cookGeneration !== this._liveSectorCookGeneration
-        || !state.world
-        || state.world.enterSerial !== cookEnterSerial
-        || state.world.currentSectorId !== sectorId;
-      const cookSuperseded = { skipped: true, reason: 'sector-superseded', sectorId: sectorId || null };
       const recook = this._sessionLiveSectorCookedId === sectorId && this._contextLost !== true;
       const resumed = recook
         ? resumeAuthoredUpgradeQueueForLoadingHulls(scene)
@@ -11292,6 +11296,19 @@ export const render = {
       if (state.mode !== 'loading' && state.render.sectorShellAdmission !== true) {
         return { skipped: true, reason: 'not-loading' };
       }
+      // This cook runs under the invoker's generation mint (the preflight and
+      // after-jump paths both increment _liveSectorCookGeneration before calling
+      // here). Capture the live value at entry: a newer mint — or a world swap that
+      // never minted — means every staged compile/upload below belongs to a dead
+      // world and must bail. The callers' cookStale closures are sibling scope and
+      // are not visible here.
+      const cookGeneration = this._liveSectorCookGeneration;
+      const cookEnterSerial = state.world && state.world.enterSerial;
+      const cookSectorId = state.world && state.world.currentSectorId;
+      const cookStale = () => cookGeneration !== this._liveSectorCookGeneration
+        || !state.world
+        || state.world.enterSerial !== cookEnterSerial
+        || state.world.currentSectorId !== cookSectorId;
       if (cookStale()) return { skipped: true, reason: 'sector-superseded' };
       const cookNow = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
         ? performance.now() : Date.now());
