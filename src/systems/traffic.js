@@ -20,6 +20,7 @@
 //   - Single-writer: traffic owns only its own spawned entities (tracked in state.traffic); it
 //     never touches player state. Economy impact is via the event bus.
 
+import { anvilTrafficMethods } from './anvilWork.js';
 import { isRunSealed } from '../core/runSeal.js';
 import { shouldRunOnTick, takeNearWorkSlice, ownerAiRecord, ownerTeamId, isActiveOwner, hashOwnerKey } from '../core/activityScheduler.js';
 import { SIM_TIER } from '../world/activityClassification.js';
@@ -1322,6 +1323,7 @@ function normalizeDepotServices(rows) {
 }
 
 export const traffic = {
+  ...anvilTrafficMethods,
   name: 'traffic',
 
   init(ctx) {
@@ -4591,6 +4593,7 @@ export const traffic = {
       this._maintainClaimDepotTraffic();
       this._maintainClaimConvoys();
     }
+    this._stepAnvilWork(dt, state);
     const list = state.traffic.freighters;
     const stations = this._sectorStations();
     // Even with zero freighters, a wreck can still call a cutter into the sector.
@@ -4745,6 +4748,7 @@ export const traffic = {
         }
         continue;
       }
+      if (e.data?.itinerary?.kind === 'anvil_work') continue;
       if (e.data && e.data.jobId) continue;
       if (e.data?.claimDepotId) continue; // wait for the depot's next berth job, never ambient rerouting
       const role = TRAFFIC_ROLES[rec.role] || TRAFFIC_ROLES.hauler;
