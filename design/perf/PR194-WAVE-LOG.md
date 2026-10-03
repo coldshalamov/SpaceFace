@@ -734,3 +734,13 @@ Audit HEAD `c84dfb254` (post-#213-merge `4c04eb8aa`). All four lanes reported `s
 - **Documented, not implemented**: lod F2 `liveSectorFirstFlightIds` derives from `entityList` only — ledger-sourced mounts (getAsteroidFieldRock/getDressingRow/getFarActor/appendNearbyLedgerRows) pop ~1.75s late (M effort); lod F3 rock-variant key cap 8 leaves whole variants uncooked (M-L); lod F4 pre-20s jump parks non-ship authored upgrades (L, documented); lod F5 `drainMeshBuildQueue(∞)` stall-escape is the census loop's termination guarantee — bounding it risks livelock on genuinely huge builds (L); lod F6 + boot F5 unsliced collect seam (~8ms worst-case residual — M effort, accepted); hitches F6 emit-vs-emit ordering across the queue boundary is a contract caveat, not a defect.
 
 Verify: golden `47a` trajectory **bit-identical** (`8d4492dc…`, deterministic). Focused suites green (event-bus contract, first-flight cook coverage, vesper + vesper-model, opening cook ledger slice). Residual red: `the live-sector cook flushes the admission lane while it waits` source pin — expects `timeoutMs: Math.min(6000, …)` which is absent on `origin/master` and on `53a5ae7d5~1` (pre-W49) — preexisting canon, not this wave's.
+
+## W52 — 2026-10-03 (hitches lane landed; lod/popin/boot auditing)
+
+Audit HEAD `e95285d8d` (post-#214-merge `a84d9d365`).
+
+- **hitches F1 `pendingSlicedEmits` was the last uncapped deferred-work queue**: `presentationQueue` sheds past 64, `deferredEnterMaterializers` dedupe and epoch-drop, `deferred[]` pools per step — the sliced-emit backlog alone grew without bound. `MAX_QUEUED_SLICED_EMITS = 8`; on overflow the OLDEST entry delivers fully inline via `emitAll` — the queue's only contract is that no listener is skipped; it never promised sliced delivery.
+- **hitches F3 `!fns` restart re-minted the caller's full window**: W51 threaded `maxMs` into the forced flush and the completion restart, but the listenerless path forwarded the *original* `maxMs` — each hop overspent the caller's bound by up to a whole window (≤4ms via the runner, ~16ms in the restore loop). `startEmitSlice` now computes one `windowEnd` and hands `remainingMs()` to the flush, the fresh slice, and every restart hop.
+- **Documented, not implemented**: hitches F2 restart recursion depth is bounded by the queue itself — F1's cap supplies the bound (≤8×2 frames); hitches F4 dropping stale-`enterEpoch` queued entries is blocked on the same listener-classification problem the W44/W49 deferrals carry.
+
+Verify: golden `47a` trajectory **bit-identical** (`8d4492dc…`, deterministic). Focused suites green (event-bus contract 31/31, admission-slice-budget 12/12).
