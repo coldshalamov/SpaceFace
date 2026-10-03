@@ -102,7 +102,7 @@ export const STAT_ONLY_JUSTIFICATIONS = Object.freeze({
   tech_autonomous_fleets:
     'No ship or module. Hire-trader flag plus a tier cap. Hiring is a menu, not a field verb. Folding into drone_swarm would bury the hire behind a cap bump.',
   tech_outpost_charter:
-    'No ship or module. Outpost-construction flag plus a tier cap. Placement is not yet a field verb on the default route. Folding into fleets would bury a late flag.',
+    'No ship or module. Outpost-construction flag plus a tier cap — and it is the charter that opens claim-body construction (depot/battery via claims.buildModule) and automation outposts. Still no unlocks.ships/modules entry, so strict stays stat-only. Folding into fleets would bury a late flag.',
   tech_industrial_mining:
     'Hull license only (Ironback). Same mining verb as the starter laser, on a barge. Not folded: ships.js keys the hull to this id (ships.js is out of this write set).',
   tech_strike_craft:
