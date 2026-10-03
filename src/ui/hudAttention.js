@@ -221,6 +221,9 @@ export const FIRST_USE_LINE = Object.freeze({
   masslineHitchhiking: 'Ride, then cut.',
   masslineSelfSling: 'Cut to sling.',
   masslineJettisonImpulse: 'Dump aft to push.',
+  // TEACH-03 — the cadence winch is taught by the first swing that could actually pump,
+  // not by a straight tow that would lie about the gesture.
+  masslineCadenceWinch: 'Swing carries — reel under BOOST to pump.',
   masslineBulletTime: 'Hold to stretch time.',
   masslineCloak: 'Coast to stay hidden.',
   // FB-013 — the four silent heads announce themselves once, on the head's first defining

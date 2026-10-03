@@ -32,6 +32,7 @@ import { activeFieldSnapshot } from './fields.js';
 import { ONBOARDING_CHOICE_SOURCE } from './missions.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import { DROP_KICK_CRUISE_SPEED } from './jettisonImpulse.js';
+import { readCadencePair, rateCadenceTechnique } from './masslineControlLaw.js';
 import { substanceFor } from '../core/physicsAuthority.js';
 import { towClassMassFor } from './shipCapabilities.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
@@ -1402,6 +1403,7 @@ export const onboarding = {
       this._accum = 0;
       this._noteMissingThreeUses();
       this._teachFieldEscapes();
+      this._teachCadencePump();
       if (!ob.active || ob.finished) return;
             this._tryAdvanceBeat();
       this._resolveProximityDone();
@@ -2952,6 +2954,26 @@ export const onboarding = {
       this._showHint('fieldEscape:' + escape.id, escape.name + ' — ' + escape.sentence);
       return; // one lesson per pass — a stack of fields must not stack toasts in one tick
     }
+  },
+
+  /** TEACH-03 — the cadence winch lesson is earned by the first swing that could actually
+   *  pump: the line is live and the pair's own technique rating reads 'swing'. A straight
+   *  tow, a slack line, or a dead payload never qualifies — and player.hints keeps the
+   *  lesson once-per-profile so later swings stay silent. */
+  _teachCadencePump() {
+    if (!massline2Flag('throw')) return;
+    const st = this.state;
+    if (!st || !st.player) return;
+    if (st.player.hints && st.player.hints.masslineCadenceWinch) return;
+    const tether = st.player.tether;
+    if (!tether || tether.active !== true || tether.targetId == null) return;
+    const owner = st.entities && st.entities.get(st.playerId);
+    const payload = st.entities && st.entities.get(tether.targetId);
+    if (!owner || !payload || payload.alive === false) return;
+    const pair = readCadencePair(owner, payload, Number(tether.restLength) || 0);
+    const rated = rateCadenceTechnique(pair, { phase: tether.phase });
+    if (rated.technique !== 'swing') return;
+    this._showHint('masslineCadenceWinch', firstUseLine('masslineCadenceWinch'), { entityId: tether.targetId });
   },
 
   _noteMissingThreeUses() {
