@@ -13,6 +13,7 @@ import { barFrameHtml } from '../../views/stationFrames.js';
 import {
   generateContacts,
   installGhostConvoyBarListener,
+  installOreLotBarListener,
   getChoices,
   buildReply,
   emitBarContactChoice,
@@ -126,6 +127,7 @@ function offerWord(attrs, label) {
 
 export function createBarScreen(ctx) {
   installGhostConvoyBarListener(ctx && ctx.bus, ctx && ctx.state);
+  installOreLotBarListener(ctx && ctx.bus, ctx && ctx.state);
   const el = document.createElement('div');
   el.className = 'k-panel sx-bar';
   el.innerHTML = barFrameHtml();

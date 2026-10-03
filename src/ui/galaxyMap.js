@@ -1688,9 +1688,83 @@ function anchorFrames(anchor, sid, localZ) {
  * player entity; it is never a fabricated origin position.
  *
  * @returns {{ level:'system', sectorId, sectorName, zones:Array, points:Array, ownership:Array,
- *             bearings:Array,
+ *             bearings:Array, wrecks:Array,
  *             player:{id,x,z,drawPos,rot,inSector,bearing,distance}|null }}
  */
+function aftermathCauseLine(marker) {
+  const cause = marker && marker.cause;
+  if (typeof cause === 'string' && cause.trim()) return cause.replace(/\s+/g, ' ').trim();
+  if (cause && typeof cause === 'object') {
+    if (typeof cause.line === 'string' && cause.line.trim()) return cause.line.replace(/\s+/g, ' ').trim();
+    if (cause.actor) {
+      const victim = marker.victimLabel || marker.victimClass || 'ship';
+      const zone = marker.zoneName || 'a local zone';
+      const motive = cause.motiveId ? ` to ${cause.motiveId}` : '';
+      return `${victim} destroyed in ${zone}; evidence links ${cause.actor}${motive}.`;
+    }
+  }
+  if (marker && marker.headline) return String(marker.headline).replace(/\s+/g, ' ').trim();
+  return '';
+}
+
+/** WORLD-41 — chart projection only. Retirement stays with the wreck system. */
+export function noteAftermathWreckRetired(state, payload) {
+  if (!state || !payload || payload.markerId == null || payload.markerId === '') return false;
+  if (!state.ui || typeof state.ui !== 'object') state.ui = {};
+  if (!state.ui.retiredAftermathChart || typeof state.ui.retiredAftermathChart !== 'object') {
+    state.ui.retiredAftermathChart = {};
+  }
+  const markerId = String(payload.markerId);
+  state.ui.retiredAftermathChart[markerId] = {
+    markerId,
+    sectorId: payload.sectorId || null,
+    causeCleared: true,
+  };
+  return true;
+}
+
+export function installAftermathChartListener(bus, state) {
+  if (!bus || typeof bus.on !== 'function' || !state) return () => {};
+  if (!state.ui || typeof state.ui !== 'object') state.ui = {};
+  if (state.ui._aftermathChartBound) return () => {};
+  state.ui._aftermathChartBound = true;
+  const off = bus.on('aftermathWreck:retired', (payload) => noteAftermathWreckRetired(state, payload));
+  return () => {
+    if (typeof off === 'function') off();
+  };
+}
+
+/** Aftermath wrecks the chart still lists. A retired id drops the marker and its cause line. */
+export function aftermathChartMarkers(state, sectorId) {
+  const own = state && state.aftermathWrecks;
+  const list = own && own.bySector && sectorId ? own.bySector[sectorId] : null;
+  if (!Array.isArray(list)) return [];
+  const retired = state && state.ui && state.ui.retiredAftermathChart;
+  const rows = [];
+  for (const marker of list) {
+    if (!marker || marker.markerId == null || marker.markerId === '') continue;
+    const markerId = String(marker.markerId);
+    if (retired && retired[markerId]) continue;
+    const causeLine = aftermathCauseLine(marker);
+    const pos = marker.pos || { x: 0, z: 0 };
+    rows.push({
+      id: `wreck:${markerId}`,
+      markerId,
+      kind: 'wreck',
+      name: marker.victimLabel || marker.wreckClassLabel || 'Aftermath wreck',
+      causeLine,
+      statusLine: causeLine,
+      x: Number(pos.x) || 0,
+      z: Number(pos.z) || 0,
+      drawPos: globalToSectorLocalForSector(pos, sectorId),
+      entityId: null,
+      stationId: null,
+      sectorId,
+    });
+  }
+  return rows;
+}
+
 export function buildSystemModel(state, sectorId, options = {}) {
   const sid = sectorId || currentSectorId(state);
   const record = sectorRecordById(state, sid);
@@ -1899,9 +1973,12 @@ export function buildSystemModel(state, sectorId, options = {}) {
     };
   }
 
+  const wrecks = aftermathChartMarkers(state, sid);
+  for (const wreck of wrecks) points.push(wreck);
+
   return {
     level: 'system', sectorId: sid, sectorName, ...confidence,
-    zones, points, ownership, bearings, player: playerMark,
+    zones, points, ownership, bearings, wrecks, player: playerMark,
   };
 }
 
@@ -2024,6 +2101,7 @@ export function buildLocalModel(state, isHostile, options = {}) {
     contacts,
     ownership: buildClaimOwnershipMarkers(state, sectorId, options.claimsSystem || null),
     bearings: discoveryBearingReadouts(state, sectorId),
+    wrecks: aftermathChartMarkers(state, sectorId),
   };
 }
 
@@ -3862,6 +3940,7 @@ export const galaxyMapScreen = {
   mount(rootEl, ctx) {
     injectStyle();
     this._ctx = ctx;
+    installAftermathChartListener(ctx && ctx.bus, ctx && ctx.state);
     if (HAS_DOC && rootEl && this._setCourseButton && this._setCourseHandler) {
       this._setCourseButton.removeEventListener('click', this._setCourseHandler);
     }

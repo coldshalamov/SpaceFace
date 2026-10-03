@@ -34,6 +34,7 @@ import { injectDeckplate } from '../deckplate/index.js';
 import { selectLatestOccupiedSlot } from '../../save/saveSystem.js';
 import { confirm } from '../confirm.js';
 import { loadConfirmBody } from './saveLoad.js';
+import { rangeRungIndex } from './range.js';
 
 /** The career ring's stations: [label, bearing in dial degrees (0 = up, clockwise)]. Time flown reads
  *  at the hub; the lost hull's life sits by the red arc it names (top left). */
@@ -224,6 +225,14 @@ export function currentDefeat(ctx = {}) {
   return state.combat && state.combat.lastPlayerDefeat || null;
 }
 
+/** One offer line when the receipt names a real Range rung. Empty for every other death. */
+export function deathRangeOfferText(receipt) {
+  const offer = receipt && receipt.rangeOffer;
+  if (!offer || !offer.line || !offer.rungId) return '';
+  if (rangeRungIndex(offer.rungId) < 0) return '';
+  return String(offer.line);
+}
+
 /**
  * Ironman is permadeath (src/systems/combat.js): death ends the run and the save is final. Offering
  * "Load latest" on an Ironman death would hand the player a way to undo the one promise that
@@ -380,6 +389,10 @@ export const gameOverScreen = {
     const insurance = el('p', 'k-sentence');
     this._summaryEls.insurance = insurance;
     stage.appendChild(insurance);
+    const rangeOffer = el('p', 'k-sentence');
+    rangeOffer.hidden = true;
+    this._summaryEls.rangeOffer = rangeOffer;
+    stage.appendChild(rangeOffer);
     const recovery = el('p', 'k-sentence sf-go-recovery', 'Recovery receipt pending.');
     this._recoveryEl = recovery;
     stage.appendChild(recovery);
@@ -839,6 +852,7 @@ export const gameOverScreen = {
       recovery.hardshipCoveredCr, recovery.cargoLostQty, recovery.persistentCargoProtected,
       recovery.insuranceStatus, recovery.coverageNote,
       recovery.policyName, recovery.premiumCr, recovery.deductibleCr,
+      deathRangeOfferText(receipt),
       latestSlot,
     ].join('|');
     if (sig === this._summarySig) return;
@@ -877,6 +891,11 @@ export const gameOverScreen = {
       if (key === 'cause') continue; // the title carries the cause (below)
       const text = key === 'insurance' ? LABEL.insurance + ': ' + values[key] : values[key];
       if (els[key] && els[key].textContent !== text) els[key].textContent = text;
+    }
+    if (els.rangeOffer) {
+      const offerText = deathRangeOfferText(receipt);
+      if (els.rangeOffer.textContent !== offerText) els.rangeOffer.textContent = offerText;
+      els.rangeOffer.hidden = !offerText;
     }
     // The named recovery berth is a station door, not just a caption.
     if (els.dock && recovery.stationId) decorateEntityNode(els.dock, 'station:' + recovery.stationId);
