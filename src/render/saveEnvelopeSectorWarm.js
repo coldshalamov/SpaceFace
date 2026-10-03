@@ -41,7 +41,7 @@ import {
 import { sectorGlobalOrigin } from '../data/sectorCoordinates.js';
 import { zonesForSector } from '../data/sectorZones.js';
 import { hash32, mulberry32 } from '../core/rng.js';
-import { sectorEnterTrafficShipStubs } from '../systems/traffic.js';
+import { sectorEnterTrafficShipStubs, priorityCourierServiceForSector, TRAFFIC_ROLES } from '../systems/traffic.js';
 import { planFactionPresence } from '../data/factionPresence.js';
 import { lossesFor } from '../systems/lossLedger.js';
 import { currentStoryInputs } from '../systems/factionPresence.js';
@@ -818,6 +818,16 @@ function liveEnterSpawnerStubs(state, sector, out, coverBareMissionWrecks) {
       type: 'ship',
       factionId: row.factionId,
       data: { defId: row.defId, trafficRole: row.trafficRole || null, lootTableId: null },
+    });
+  }
+  // The priority-courier service rebuilds a live freighter to the courier hull in place
+  // (_rebuildPriorityCourierService) — outside the role-mix enumeration, so a service
+  // sector whose ambient mix dropped courier would decode the hull unwarmed at mount.
+  if (priorityCourierServiceForSector(sector.id)) {
+    out.shipStubs.push({
+      type: 'ship',
+      factionId: null,
+      data: { defId: TRAFFIC_ROLES.courier.ship, trafficRole: 'courier', lootTableId: null },
     });
   }
   // Faction-presence plans — the same pure planner with the same inputs the system's

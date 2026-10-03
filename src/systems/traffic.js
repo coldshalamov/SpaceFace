@@ -400,7 +400,7 @@ function occupationalJobKind(role) {
 
 // Exported for the PQ-045 identity contract test (distinct hull + label per occupational role);
 // not a new write seam — runtime ownership of role resolution is unchanged.
-export { TRAFFIC_ROLES };
+export { TRAFFIC_ROLES, priorityCourierServiceForSector };
 
 /** WORLD-20 — the memorial sightseer stands on the zone center, inside its radius. */
 export const HELIOS_MEMORIAL_TOURIST = Object.freeze({

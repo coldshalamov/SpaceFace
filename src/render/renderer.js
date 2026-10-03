@@ -1737,10 +1737,30 @@ export function serviceRenderMeshResidency(owner, frameDt) {
   const dt = Number.isFinite(frameDt) ? Math.max(0, frameDt) : 0;
   if (owner._sectorHandoffStreamHoldS > 0) {
     owner._sectorHandoffStreamHoldS = Math.max(0, owner._sectorHandoffStreamHoldS - dt);
+    // The identically-lengthed jump-arrival hold below keeps an exempt collect+drain+decode
+    // beat every 100 ms so the cohort materializing inside the window mounts behind the
+    // blend. A continuous seam materializes the same FULL-extras cohort inside its hold
+    // (the residency plan promotes before the emit) — run the same budgeted beat here or
+    // on-seam rows wait hold-end + a full poll for their first build. The late-present
+    // gate still throttles each slice.
+    owner._holdExemptCollectS = (Number(owner._holdExemptCollectS) || 0) - dt;
+    if (owner._holdExemptCollectS <= 0) {
+      owner._holdExemptCollectS = HOLD_EXEMPT_COLLECT_SECONDS;
+      enqueueHoldExemptMeshBuilds(owner);
+      owner._holdExemptRepartition = true;
+      kickDecodeRunwayAssets(owner, owner._presentationMeshScratch);
+    }
+    if (typeof owner._drainProtectedFirstFlightBuilds === 'function') owner._drainProtectedFirstFlightBuilds();
     if (owner._sectorHandoffStreamHoldS === 0) {
       // The seam's dirty flag requests a whole-world recovery scan. Once the visual blend has
       // finished, discard that seam-only request and let the ordinary spatial poll self-heal.
       owner._meshReconcileDirty = false;
+      // The predicted prewarm pinned the destination cohort while the spatial runway was
+      // frozen; the ordinary lanes are live again, so the pin can drop now.
+      if (owner._incomingSectorPrewarm) {
+        releaseSectorPrewarm(owner._incomingSectorPrewarm, 'continuous-sector-entry-uses-spatial-runway');
+        owner._incomingSectorPrewarm = null;
+      }
       if (owner._authoredSectorPrewarmPendingId === owner._sectorHandoffSectorId) {
         owner._authoredSectorPrewarmPendingId = null;
         owner._authoredSectorPrewarmPending = null;
@@ -13451,7 +13471,11 @@ export const render = {
         // normal spatial authored-upgrade runway. Do not assemble a whole-sector decode/GPU batch
         // at the seam; that batch is exactly the admission spike the visual transition is meant to
         // hide. Intentional jumps retain the prepare-then-publish contract below.
-        if (this._incomingSectorPrewarm) {
+        // Keep a matching predicted pin until the hold ends: the spatial runway that is
+        // supposed to own the cohort is frozen for the whole window, so releasing here
+        // would leave nothing able to re-request the pin. A stale/different-sector record
+        // still releases now; supersession inside the window releases it there instead.
+        if (this._incomingSectorPrewarm && this._incomingSectorPrewarm.sectorId !== exactSectorId) {
           releaseSectorPrewarm(this._incomingSectorPrewarm, 'continuous-sector-entry-uses-spatial-runway');
           this._incomingSectorPrewarm = null;
         }
