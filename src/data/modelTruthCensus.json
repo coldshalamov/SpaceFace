@@ -1,8 +1,8 @@
 {
   "counts": {
     "rows": 208,
-    "red": 196,
-    "green": 12
+    "red": 195,
+    "green": 13
   },
   "generatedBy": "scripts/model-truth-census.mjs",
   "law": {
@@ -21277,58 +21277,58 @@
       "bounds": {
         "center": [
           0,
-          0.897629,
-          7.841416
+          0.9,
+          7.8375
         ],
         "max": [
           90,
-          13.997763,
-          49.504064
+          14,
+          49.5
         ],
         "min": [
           -90,
-          -12.202504,
-          -33.821232
+          -12.2,
+          -33.825001
         ],
         "size": [
           180,
-          26.200268,
-          83.325295
+          26.2,
+          83.325001
         ]
       },
-      "bytes": 2314708,
+      "bytes": 2894544,
       "collider": {
-        "coverageWu": 0.012603,
-        "gapWu": 0.012604,
+        "coverageWu": 0,
+        "gapWu": 0,
         "id": null,
         "kind": "world-site-bodies",
         "outline": [
-          178.324857,
-          189.578823,
-          63.686,
-          79.771979,
-          72.032103,
-          69.413343,
-          69.638784,
-          72.03151,
-          79.767189,
-          63.686,
-          189.578823,
-          182.720665,
-          182.729576,
-          200.672497,
-          184.544036,
-          79.768045,
-          108.343541,
-          60.297946,
-          60.089474,
-          108.322624,
-          79.75167,
-          184.599429,
-          200.613633,
-          178.324532
+          178.318162,
+          189.578023,
+          63.682978,
+          79.771997,
+          72.022773,
+          69.412504,
+          69.635672,
+          72.022773,
+          79.760543,
+          63.682978,
+          189.576884,
+          182.723,
+          182.721126,
+          200.669001,
+          184.544474,
+          79.771997,
+          108.345464,
+          60.295935,
+          60.085924,
+          108.324841,
+          79.757541,
+          184.585206,
+          200.620562,
+          178.318162
         ],
-        "overTolerance": true,
+        "overTolerance": false,
         "stickWu": null,
         "throatSealed": false,
         "toleranceWu": 0.05,
@@ -21378,14 +21378,14 @@
               "triangles": 138628
             },
             {
-              "clearVolumeIntersections": 24,
+              "clearVolumeIntersections": 0,
               "coverageMetric": "all visible triangle vertices to native XZ body union; one-way distance only",
-              "coverageWu": 0.012603,
-              "gapWu": 0.012603,
+              "coverageWu": 0,
+              "gapWu": 0,
               "kind": "release",
               "maxOutsideTriangleAreaWu2": 0,
               "outsideTriangles": 0,
-              "overTolerance": true,
+              "overTolerance": false,
               "path": "assets/ships/release/parts/places/place_ceres_second_measure.glb",
               "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
               "reverseProjectionSamples": [
@@ -21393,42 +21393,42 @@
                   "lod": 0,
                   "nativeSamples": 35126,
                   "triangles": 88190,
-                  "uncoveredOutsidePerBodyProjectedHull": 1138,
-                  "uncoveredSamples": 8437,
-                  "uncoveredWithinPerBodyProjectedHull": 7299
+                  "uncoveredOutsidePerBodyProjectedHull": 1134,
+                  "uncoveredSamples": 8315,
+                  "uncoveredWithinPerBodyProjectedHull": 7181
                 },
                 {
                   "lod": 1,
                   "nativeSamples": 35126,
                   "triangles": 35276,
                   "uncoveredOutsidePerBodyProjectedHull": 1136,
-                  "uncoveredSamples": 8495,
-                  "uncoveredWithinPerBodyProjectedHull": 7359
+                  "uncoveredSamples": 8479,
+                  "uncoveredWithinPerBodyProjectedHull": 7343
                 },
                 {
                   "lod": 2,
                   "nativeSamples": 35126,
                   "triangles": 15162,
-                  "uncoveredOutsidePerBodyProjectedHull": 1139,
-                  "uncoveredSamples": 8653,
+                  "uncoveredOutsidePerBodyProjectedHull": 1136,
+                  "uncoveredSamples": 8650,
                   "uncoveredWithinPerBodyProjectedHull": 7514
                 }
               ],
-              "sha256": "37b427dda0a3de4918ad50330d71dcf08b380ef3201e0321cb1fadc4acbc22d2",
+              "sha256": "009c76381c60544613b95f0deb3276cb9a377eee86507e8e800b4c9e09cd31f9",
               "stickWu": null,
               "toleranceWu": 0.05,
               "triangleMetric": "every visible projected triangle area and edges vs native box union expanded by 0.05 WU per axis",
               "triangles": 138628
             },
             {
-              "clearVolumeIntersections": 24,
+              "clearVolumeIntersections": 0,
               "coverageMetric": "all visible triangle vertices to native XZ body union; one-way distance only",
-              "coverageWu": 0.012604,
-              "gapWu": 0.012604,
+              "coverageWu": 0,
+              "gapWu": 0,
               "kind": "package",
               "maxOutsideTriangleAreaWu2": 0,
               "outsideTriangles": 0,
-              "overTolerance": true,
+              "overTolerance": false,
               "path": "assets/ships/release/render-packages/ceres-second-measure/render.glb",
               "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
               "reverseProjectionSamples": [
@@ -21436,36 +21436,36 @@
                   "lod": 0,
                   "nativeSamples": 35126,
                   "triangles": 88190,
-                  "uncoveredOutsidePerBodyProjectedHull": 1138,
-                  "uncoveredSamples": 8437,
-                  "uncoveredWithinPerBodyProjectedHull": 7299
+                  "uncoveredOutsidePerBodyProjectedHull": 1134,
+                  "uncoveredSamples": 8315,
+                  "uncoveredWithinPerBodyProjectedHull": 7181
                 },
                 {
                   "lod": 1,
                   "nativeSamples": 35126,
                   "triangles": 35276,
                   "uncoveredOutsidePerBodyProjectedHull": 1136,
-                  "uncoveredSamples": 8495,
-                  "uncoveredWithinPerBodyProjectedHull": 7359
+                  "uncoveredSamples": 8479,
+                  "uncoveredWithinPerBodyProjectedHull": 7343
                 },
                 {
                   "lod": 2,
                   "nativeSamples": 35126,
                   "triangles": 15162,
-                  "uncoveredOutsidePerBodyProjectedHull": 1139,
-                  "uncoveredSamples": 8653,
+                  "uncoveredOutsidePerBodyProjectedHull": 1136,
+                  "uncoveredSamples": 8650,
                   "uncoveredWithinPerBodyProjectedHull": 7514
                 }
               ],
-              "sha256": "eaedbd30a8c0994a0706fabd3a67c7b2ba77785c8fd4b70ed9f7083da4a2c505",
+              "sha256": "8fae06c9b1b5359eda65c4222b30de519ea9c14e99a3822e323ffb77fd244f9c",
               "stickWu": null,
               "toleranceWu": 0.05,
               "triangleMetric": "every visible projected triangle area and edges vs native box union expanded by 0.05 WU per axis",
               "triangles": 138628
             }
           ],
-          "authoredClearVolumesPreserved": false,
-          "clearVolumeIntersections": 24,
+          "authoredClearVolumesPreserved": true,
+          "clearVolumeIntersections": 0,
           "collisionAuthority": {
             "bodies": [
               {
@@ -21563,12 +21563,12 @@
             "stateScope": "five separate fixed collision bodies; visual root has no collider"
           },
           "coverageMetric": "all visible triangle vertices to native XZ body union; one-way distance only",
-          "coverageWu": 0.012603,
-          "gapWu": 0.012604,
+          "coverageWu": 0,
+          "gapWu": 0,
           "kind": "release",
           "maxOutsideTriangleAreaWu2": 0,
           "outsideTriangles": 0,
-          "overTolerance": true,
+          "overTolerance": false,
           "path": "assets/ships/release/parts/places/place_ceres_second_measure.glb",
           "provenance": [
             {
@@ -21585,7 +21585,7 @@
             },
             {
               "path": "src/data/worldSiteAssetBindings.js",
-              "sha256": "d036004d8b3f7c63b90424949313ac69a01366abbee7cc1e81a7f3fc9637c1e2"
+              "sha256": "e2cb3123b8c0dbb917d524ab78b256962cabe6ec7b2df2716de7d60adc0e9902"
             },
             {
               "path": "src/systems/worldSiteKernel.js",
@@ -21601,7 +21601,7 @@
             },
             {
               "path": "scripts/lib/modelTruthWorldSite.mjs",
-              "sha256": "ed7bb6f91e9373fc9bfad8d415edc1624a49e37da7aac769f114d5c699a421fb"
+              "sha256": "a7265d0634d14fbc54bed6831c5a05839956f249fc6c1fc68a811861944ab1d0"
             },
             {
               "path": "scripts/lib/modelTruthAuthoredCompound.mjs",
@@ -21621,15 +21621,15 @@
             },
             {
               "path": "assets/ships/release/release_manifest.json",
-              "sha256": "c32fb519a9f94930ddfa21b48add9208911e41c2fd58954d4a52bf66886e70a3"
+              "sha256": "3e9a519928d2122064ea292ba05e8c18c9ff2a25b022e16008c3928c95fce25d"
             },
             {
               "path": "assets/ships/render-packages/pilots.json",
-              "sha256": "7a45630bd9c777ab25e7afc8a301629721c30e6328b30117e7b04788dad37937"
+              "sha256": "fe9fc5d51c8302dac1143bb9094be797fa261bd3901491b2c69d061b84660889"
             },
             {
               "path": "assets/ships/release/render-packages/ceres-second-measure/render-package.json",
-              "sha256": "ef5b8d5d6d76276e4edddb3a9aeab0a25c64315432c8d1789edfbd8fee351934"
+              "sha256": "a2b887a9b16d479b38ae23fc128f92cd813952988a8d0f26f832f7f498b20b5b"
             }
           ],
           "reverseMetric": "1 WU grid cell centers in native XZ union vs each LOD full-Y triangle projection; outside per-body projected convex hull is exterior; within may be enclosed hollow or open topology; diagnostic only, not volumetric or bidirectional surface equivalence",
@@ -21638,29 +21638,29 @@
               "lod": 0,
               "nativeSamples": 35126,
               "triangles": 88190,
-              "uncoveredOutsidePerBodyProjectedHull": 1138,
-              "uncoveredSamples": 8437,
-              "uncoveredWithinPerBodyProjectedHull": 7299
+              "uncoveredOutsidePerBodyProjectedHull": 1134,
+              "uncoveredSamples": 8315,
+              "uncoveredWithinPerBodyProjectedHull": 7181
             },
             {
               "lod": 1,
               "nativeSamples": 35126,
               "triangles": 35276,
               "uncoveredOutsidePerBodyProjectedHull": 1136,
-              "uncoveredSamples": 8495,
-              "uncoveredWithinPerBodyProjectedHull": 7359
+              "uncoveredSamples": 8479,
+              "uncoveredWithinPerBodyProjectedHull": 7343
             },
             {
               "lod": 2,
               "nativeSamples": 35126,
               "triangles": 15162,
-              "uncoveredOutsidePerBodyProjectedHull": 1139,
-              "uncoveredSamples": 8653,
+              "uncoveredOutsidePerBodyProjectedHull": 1136,
+              "uncoveredSamples": 8650,
               "uncoveredWithinPerBodyProjectedHull": 7514
             }
           ],
           "scope": "Only this source/release/package chain was freshly measured. No full-corpus or GPU acceptance claim.",
-          "sha256": "37b427dda0a3de4918ad50330d71dcf08b380ef3201e0321cb1fadc4acbc22d2",
+          "sha256": "009c76381c60544613b95f0deb3276cb9a377eee86507e8e800b4c9e09cd31f9",
           "sourceCertificateSha256": "885192acd509b47b75a98f315f05cdc9b5fee285f52b7473131e8b3c26989616",
           "sourceCompoundParity": true,
           "stickWu": null,
@@ -21695,7 +21695,7 @@
         "lod2": true,
         "outlineDeltaWu": {},
         "overTolerance": false,
-        "toleranceWu": 16.0538
+        "toleranceWu": 16.05352
       },
       "materials": [
         {
@@ -21775,14 +21775,11 @@
         0
       ],
       "proposedSkin": null,
-      "reasons": [
-        "collider-gap",
-        "authored-clear-volume-intrusion"
-      ],
+      "reasons": [],
       "shell": {
-        "boundaryEdges": 716,
-        "inwardFaceFraction": 0.46225,
-        "silhouetteRadius": 200.672497,
+        "boundaryEdges": 80,
+        "inwardFaceFraction": 0.461,
+        "silhouetteRadius": 200.669001,
         "sliceY": 0
       },
       "sockets": [
@@ -21845,15 +21842,15 @@
       ],
       "solid": true,
       "source": "glb",
-      "status": "red",
+      "status": "green",
       "tasteBudget": null,
       "triangles": 138628,
       "unmeasuredHitVolumes": [],
       "url": "assets/ships/release/parts/places/place_ceres_second_measure.glb",
       "worldSize": [
         360,
-        52.400535,
-        166.65059
+        52.4,
+        166.650002
       ]
     },
     {
@@ -22140,7 +22137,7 @@
             },
             {
               "path": "src/data/worldSiteAssetBindings.js",
-              "sha256": "d036004d8b3f7c63b90424949313ac69a01366abbee7cc1e81a7f3fc9637c1e2"
+              "sha256": "e2cb3123b8c0dbb917d524ab78b256962cabe6ec7b2df2716de7d60adc0e9902"
             },
             {
               "path": "src/systems/worldSiteKernel.js",
@@ -22156,7 +22153,7 @@
             },
             {
               "path": "scripts/lib/modelTruthWorldSite.mjs",
-              "sha256": "ed7bb6f91e9373fc9bfad8d415edc1624a49e37da7aac769f114d5c699a421fb"
+              "sha256": "a7265d0634d14fbc54bed6831c5a05839956f249fc6c1fc68a811861944ab1d0"
             },
             {
               "path": "scripts/lib/modelTruthAuthoredCompound.mjs",
@@ -22176,11 +22173,11 @@
             },
             {
               "path": "assets/ships/release/release_manifest.json",
-              "sha256": "c32fb519a9f94930ddfa21b48add9208911e41c2fd58954d4a52bf66886e70a3"
+              "sha256": "3e9a519928d2122064ea292ba05e8c18c9ff2a25b022e16008c3928c95fce25d"
             },
             {
               "path": "assets/ships/render-packages/pilots.json",
-              "sha256": "7a45630bd9c777ab25e7afc8a301629721c30e6328b30117e7b04788dad37937"
+              "sha256": "fe9fc5d51c8302dac1143bb9094be797fa261bd3901491b2c69d061b84660889"
             },
             {
               "path": "assets/ships/release/render-packages/ceres-second-measure-crossbeam/render-package.json",
@@ -22608,7 +22605,7 @@
             },
             {
               "path": "src/data/worldSiteAssetBindings.js",
-              "sha256": "d036004d8b3f7c63b90424949313ac69a01366abbee7cc1e81a7f3fc9637c1e2"
+              "sha256": "e2cb3123b8c0dbb917d524ab78b256962cabe6ec7b2df2716de7d60adc0e9902"
             },
             {
               "path": "src/systems/worldSiteKernel.js",
@@ -22624,7 +22621,7 @@
             },
             {
               "path": "scripts/lib/modelTruthWorldSite.mjs",
-              "sha256": "ed7bb6f91e9373fc9bfad8d415edc1624a49e37da7aac769f114d5c699a421fb"
+              "sha256": "a7265d0634d14fbc54bed6831c5a05839956f249fc6c1fc68a811861944ab1d0"
             },
             {
               "path": "scripts/lib/modelTruthAuthoredCompound.mjs",
@@ -22644,11 +22641,11 @@
             },
             {
               "path": "assets/ships/release/release_manifest.json",
-              "sha256": "c32fb519a9f94930ddfa21b48add9208911e41c2fd58954d4a52bf66886e70a3"
+              "sha256": "3e9a519928d2122064ea292ba05e8c18c9ff2a25b022e16008c3928c95fce25d"
             },
             {
               "path": "assets/ships/render-packages/pilots.json",
-              "sha256": "7a45630bd9c777ab25e7afc8a301629721c30e6328b30117e7b04788dad37937"
+              "sha256": "fe9fc5d51c8302dac1143bb9094be797fa261bd3901491b2c69d061b84660889"
             },
             {
               "path": "assets/ships/release/render-packages/ceres-second-measure-keel/render-package.json",
@@ -23112,7 +23109,7 @@
             },
             {
               "path": "src/data/worldSiteAssetBindings.js",
-              "sha256": "d036004d8b3f7c63b90424949313ac69a01366abbee7cc1e81a7f3fc9637c1e2"
+              "sha256": "e2cb3123b8c0dbb917d524ab78b256962cabe6ec7b2df2716de7d60adc0e9902"
             },
             {
               "path": "src/systems/worldSiteKernel.js",
@@ -23128,7 +23125,7 @@
             },
             {
               "path": "scripts/lib/modelTruthWorldSite.mjs",
-              "sha256": "ed7bb6f91e9373fc9bfad8d415edc1624a49e37da7aac769f114d5c699a421fb"
+              "sha256": "a7265d0634d14fbc54bed6831c5a05839956f249fc6c1fc68a811861944ab1d0"
             },
             {
               "path": "scripts/lib/modelTruthAuthoredCompound.mjs",
@@ -23148,11 +23145,11 @@
             },
             {
               "path": "assets/ships/release/release_manifest.json",
-              "sha256": "c32fb519a9f94930ddfa21b48add9208911e41c2fd58954d4a52bf66886e70a3"
+              "sha256": "3e9a519928d2122064ea292ba05e8c18c9ff2a25b022e16008c3928c95fce25d"
             },
             {
               "path": "assets/ships/render-packages/pilots.json",
-              "sha256": "7a45630bd9c777ab25e7afc8a301629721c30e6328b30117e7b04788dad37937"
+              "sha256": "fe9fc5d51c8302dac1143bb9094be797fa261bd3901491b2c69d061b84660889"
             },
             {
               "path": "assets/ships/release/render-packages/ceres-second-measure-long-plate/render-package.json",
