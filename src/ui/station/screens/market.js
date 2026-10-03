@@ -14,8 +14,9 @@ import { dressLampKey } from '../../orrery/lampKey.js';
 import { rollTo } from '../../orrery/text.js';
 import { arcD, polar } from '../../orrery/svg.js';
 import { SECTORS } from '../../../data/sectors.js';
-import { isUnsellableCargo, reservedCargoQuantity, sellableCargoQuantity } from '../../../systems/cargo.js';
+import { isUnsellableCargo, releasableContractUnits, reservedCargoQuantity, sellableCargoQuantity } from '../../../systems/cargo.js';
 import { compareDockedFreight, formatFreightComparison } from '../../../systems/economy.js';
+import { partialDeliverySettlement } from '../../../systems/missions.js';
 import { predictPriceCurve, regimeLabel } from '../../../systems/economyCycles.js';
 import { escapeHtml } from '../../comms.js';
 import { entitySpanHtml } from '../../entityResolver.js';
@@ -219,6 +220,71 @@ export function legalityRole(legal) {
   if (legal === 'contraband') return 'foe';
   if (legal === 'restricted') return 'goal';
   return 'calm';
+}
+
+/**
+ * The tracked contract's delivery line for the quote stage. NXI-111 / NXB-028: a short
+ * manifest is a real settlement on recorded terms, not a failure — so before the pilot
+ * commits to the dock, the line names the units the berth will actually sign for and what
+ * they pay, instead of letting a short (or sealed-out) hold read as the full-contract
+ * reward. Deliverable units are counted the owner's way: a sealed manifest draws only its
+ * own reservation, loose freight only unsealed stock. Pure over state — the view-model
+ * behind the .sx-mkt-tracked line rendered by marketQuoteHtml.
+ */
+export function trackedCargoGuidance(state, cmdtyId, commodityName) {
+  const trackedId = state && state.ui && state.ui.trackedMissionId;
+  const active = (state && state.missions && state.missions.active) || [];
+  const mission = trackedId ? active.find((entry) => entry && entry.id === trackedId) : null;
+  const missionCmdty = mission && ((mission.cargo && mission.cargo.commodityId)
+    || (mission.params && mission.params.cmdtyId));
+  if (!mission || !missionCmdty || missionCmdty !== cmdtyId) {
+    return { state: 'missing', text: `Buy ${commodityName} here to load your job.` };
+  }
+  const requested = Math.max(1, Math.floor(Number(
+    (mission.cargo && mission.cargo.qty) || (mission.params && mission.params.qty) || 1,
+  ) || 1));
+  const held = heldQty(state, cmdtyId);
+  const destination = mission.destinationName || mission.destName
+    || (mission.params && (mission.params.destinationName || mission.params.destName))
+    || mission.destStationId || mission.destSectorId || 'the marked destination';
+  // A delivery contract that cannot fill its manifest settles the deliverable fraction —
+  // say so, with the owner's own numbers (accepted quantity, recorded-terms payment).
+  const isDelivery = mission.type === 'cargo_delivery';
+  const settlement = isDelivery ? partialDeliverySettlement(mission, state) : null;
+  if (settlement) {
+    const shortfall = Math.max(0, Math.floor(Number(settlement.shortfallUnits) || 0));
+    const fullCr = Math.max(0, Math.round(Number(mission.reward_cr) || 0));
+    return {
+      state: 'partial',
+      text: `Delivers ${fmt(settlement.deliverQty)} of ${fmt(settlement.needQty)}u as held — the dock pays ${fmt(settlement.payCr)} cr, not the full ${fmt(fullCr)} cr. Load ${fmt(shortfall)}u more to settle in full.`,
+    };
+  }
+  let aboard = held >= requested;
+  let remaining = Math.max(0, requested - held);
+  let sealedElsewhere = 0;
+  if (isDelivery) {
+    const sealed = mission.preloadedCargo === true;
+    const need = sealed && mission.params && mission.params.sealedRemaining != null
+      ? Math.max(0, Math.floor(Number(mission.params.sealedRemaining) || 0))
+      : requested;
+    const releasable = sealed
+      ? Math.max(0, Math.floor(Number(releasableContractUnits(state, mission)) || 0))
+      : sellableCargoQuantity(state, cmdtyId);
+    const deliverable = Math.min(need, releasable);
+    aboard = deliverable >= need;
+    remaining = Math.max(0, need - deliverable);
+    sealedElsewhere = Math.max(0, held - deliverable);
+  }
+  if (aboard) {
+    return {
+      state: 'aboard',
+      text: `Cargo is aboard — undock and follow nav to ${destination}.`,
+    };
+  }
+  return {
+    state: 'missing',
+    text: `Load ${fmt(remaining)}u more ${commodityName} before undocking${sealedElsewhere > 0 ? ` — ${fmt(sealedElsewhere)}u aboard is sealed to other contracts` : ''}.`,
+  };
 }
 
 
@@ -600,35 +666,6 @@ export function createMarketScreen(ctx) {
     const m = tid ? active.find((x) => x && x.id === tid) : null;
     const cid = m && ((m.cargo && m.cargo.commodityId) || (m.params && m.params.cmdtyId));
     return cid || null;
-  }
-
-  function trackedCargoGuidance(state, cmdtyId, commodityName) {
-    const trackedId = state && state.ui && state.ui.trackedMissionId;
-    const active = (state && state.missions && state.missions.active) || [];
-    const mission = trackedId ? active.find((entry) => entry && entry.id === trackedId) : null;
-    const missionCmdty = mission && ((mission.cargo && mission.cargo.commodityId)
-      || (mission.params && mission.params.cmdtyId));
-    if (!mission || !missionCmdty || missionCmdty !== cmdtyId) {
-      return { state: 'missing', text: `Buy ${commodityName} here to load your job.` };
-    }
-    const requested = Math.max(1, Math.floor(Number(
-      (mission.cargo && mission.cargo.qty) || (mission.params && mission.params.qty) || 1,
-    ) || 1));
-    const held = heldQty(state, cmdtyId);
-    if (held >= requested) {
-      const destination = mission.destinationName || mission.destName
-        || (mission.params && (mission.params.destinationName || mission.params.destName))
-        || mission.destStationId || mission.destSectorId || 'the marked destination';
-      return {
-        state: 'aboard',
-        text: `Cargo is aboard — undock and follow nav to ${destination}.`,
-      };
-    }
-    const remaining = requested - held;
-    return {
-      state: 'missing',
-      text: `Load ${remaining}u more ${commodityName} before undocking.`,
-    };
   }
 
   function tradedList(state) {
