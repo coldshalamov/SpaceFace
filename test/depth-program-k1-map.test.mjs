@@ -35,8 +35,8 @@ test('galaxy model adds five presence groups to charted authority nodes without 
   const model = buildGalaxyModel(state);
   assert.deepEqual(state, before, 'pure map projection must not mutate story, discovery, or authority state');
   const placements = model.nodes.flatMap((node) => (node.presence || []).map((presence) => ({ node, presence })));
-  assert.equal(placements.length, 11);
-  assert.equal(new Set(placements.map((row) => row.presence.factionId)).size, 5);
+  assert.equal(placements.length, 14);
+  assert.equal(new Set(placements.map((row) => row.presence.factionId)).size, 8);
 
   const helios = model.nodes.find((node) => node.id === 'sector_helios_prime');
   assert.equal(helios.factionId, 'faction_scn');

@@ -51,6 +51,16 @@ export function factionPresenceServiceRows(state, stationId) {
       targetTab: null,
     }];
   }
+  if (stored.factionId === 'faction_helix' && stored.services.includes('directorate_audit')) {
+    return [{
+      id: 'directorate_audit',
+      label: 'Helix Directorate Audit',
+      desc: 'Submit your paperwork for a stamped rim-audit receipt.',
+      available,
+      disabledReason: available ? '' : `Requires Helix reputation ${stored.requiredRep}`,
+      targetTab: null,
+    }];
+  }
   return [];
 }
 

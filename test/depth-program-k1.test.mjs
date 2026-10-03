@@ -133,8 +133,8 @@ test('K1 pure presence model exposes five map seams and story-gated deterministi
   } = await import('../src/data/factionPresence.js');
   const { SECTORS } = await import('../src/data/sectors.js');
   const stationIds = new Set(SECTORS.flatMap((sector) => sector.stations || []).map((station) => station.id));
-  assert.equal(FACTION_PRESENCE_NODES.length, 5);
-  assert.equal(mapFactionPresenceNodes().length, 5);
+  assert.equal(FACTION_PRESENCE_NODES.length, 8);
+  assert.equal(mapFactionPresenceNodes().length, 8);
   assert.equal(FACTION_PRESENCE_NODES.every((node) => node.stationIds.every((id) => stationIds.has(id))), true);
 
   assert.equal(resolveVergePhase({ seed: 77, revocationCount: 3, storyFlags: {} }).phase, 'asleep');

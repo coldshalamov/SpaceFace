@@ -874,7 +874,7 @@ export const factionPresence = {
       ? this.state.entities.get(payload.targetId)
       : null;
     const marker = target && target.data && target.data.factionPresence;
-    if (marker && ['faction_understory', 'faction_archive'].includes(marker.factionId)) {
+    if (marker && ['faction_understory', 'faction_archive', 'faction_choir'].includes(marker.factionId)) {
       this._activateDefensivePresence(marker.factionId, this.state.playerId, 'direct_attack');
       return;
     }
@@ -1086,6 +1086,7 @@ export const factionPresence = {
     if (serviceId === 'pitborn_yard' && current.services.includes('yard')) targetTab = 'shipyard';
     else if (serviceId === 'pitborn_fence' && current.services.includes('fence')) targetTab = 'market';
     else if (serviceId === 'understory_wreck_buy' && current.services.includes('wreck_buy')) targetTab = null;
+    else if (serviceId === 'directorate_audit' && current.services.includes('directorate_audit')) targetTab = null;
     else if (serviceId !== 'archive_reading_room' || !current.services.includes('reading_room')) return;
 
     if (serviceId === 'archive_reading_room') {
@@ -1131,6 +1132,20 @@ export const factionPresence = {
       }
       this.bus.emit('comms:popup', {
         id: appraisalId, sender: 'Understory Wreck Buyer', text, category: 'salvage', persist: true,
+      });
+    } else if (serviceId === 'directorate_audit') {
+      // The paper faction: one stamped receipt, no credits, no hulls, no ledger writes.
+      const auditId = `helix_${hash32((this.state.meta && this.state.meta.seed) || 1, stationId, 'directorate-audit').toString(36)}`;
+      const text = 'Form 7-V received and reviewed: your paperwork is in order, Captain. '
+        + 'The Directorate thanks you for your meticulous filing. '
+        + 'STAMP: SEDNA-7 // NO VARIANCE. This receipt is your copy.';
+      if (!own.serviceReceipts[auditId]) {
+        const receipt = { kind: 'directorateAudit', auditId, stationId, text, t: this.state.simTime || 0 };
+        own.serviceReceipts[auditId] = receipt;
+        pushReceipt(this.state, receipt);
+      }
+      this.bus.emit('comms:popup', {
+        id: auditId, sender: 'Helix Rim Audit', text, category: 'paper', persist: true,
       });
     } else {
       pushReceipt(this.state, {
