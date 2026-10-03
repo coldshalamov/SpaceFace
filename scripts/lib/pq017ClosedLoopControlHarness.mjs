@@ -1304,6 +1304,14 @@ function runExpectedLaunchGateLeg({
 
     const keys = pq017PublicKeysForDecision(decision);
     tape.hold(state.tick, keys);
+    // The observation window bounds how long one held key state may run unobserved, but an
+    // atomic action the controller deliberately bounds (decision.maximumHoldTicks, e.g. a
+    // one-tick nudge pulse) ends its applied batch at its own keyup — the release is itself
+    // an observable receipt, so the next decision may legitimately land there.
+    const appliedTicks = Number.isInteger(decision.maximumHoldTicks)
+      && decision.maximumHoldTicks >= 1
+      ? Math.min(batchTicks, decision.maximumHoldTicks)
+      : batchTicks;
     const batchStartVelocity = { x: player.vel.x, z: player.vel.z };
     const batchStartSpeed = Math.hypot(batchStartVelocity.x, batchStartVelocity.z);
     const batchStartUnit = batchStartSpeed > 1e-9
@@ -1313,7 +1321,7 @@ function runExpectedLaunchGateLeg({
       }
       : null;
     const batch = {
-      ticks: batchTicks,
+      ticks: appliedTicks,
       decision: decision.action,
       decisionReason: decision.reason,
       phase: `local:${decision.action}`,
@@ -1324,7 +1332,7 @@ function runExpectedLaunchGateLeg({
       signedVelocityPreserved: true,
       sweeps: [],
     };
-    executeBatch(batch, batchTicks, {
+    executeBatch(batch, appliedTicks, {
       precisionMonotonic: decision.action === 'precision-brake',
     });
     if (decision.action === 'precision-brake'
