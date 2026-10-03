@@ -18,7 +18,7 @@ export {
   releaseSharedTextureConsumer,
 };
 import { createLiveGeometryAdmissionQueue } from './liveGeometryAdmission.js';
-import { applyMasslineReleaseCameraCue, createChaseCamera, shakeDistanceAttenuation } from './camera.js';
+import { applyMasslineReleaseCameraCue, createChaseCamera, IMPACT_KICK_WU_MAX, shakeDistanceAttenuation } from './camera.js';
 import {
   clearanceCellInRange,
   clearanceGridRawAt,
@@ -12662,11 +12662,25 @@ export const render = {
     onBus('camera:shake', (payload) => {
       const amount = (payload && payload.amount) || 0.3;
       const at = payload && payload.position;
-      if (!at || !Number.isFinite(at.x) || !Number.isFinite(at.z)) { cam.addTrauma(amount); return; }
-      const p = state.entities.get(state.playerId);
-      if (!p || !p.pos) { cam.addTrauma(amount); return; }
-      const scaled = amount * shakeDistanceAttenuation(Math.hypot(at.x - p.pos.x, at.z - p.pos.z));
-      if (scaled > 0.001) cam.addTrauma(scaled);
+      let scaled = amount;
+      if (at && Number.isFinite(at.x) && Number.isFinite(at.z)) {
+        const p = state.entities.get(state.playerId);
+        if (p && p.pos) {
+          scaled = amount * shakeDistanceAttenuation(Math.hypot(at.x - p.pos.x, at.z - p.pos.z));
+        }
+      }
+      if (scaled <= 0.001) return;
+      // FB-072 — a shake that carries a direction is a knock, not noise: the view is pushed
+      // along the real hit axis via the kick envelope instead of undirected trauma. The kick
+      // controller itself drops the motion under motion-reduce, so this stays vestibular-safe.
+      const dir = payload && payload.direction;
+      if (dir && Number.isFinite(dir.x) && Number.isFinite(dir.z)
+        && (dir.x * dir.x + dir.z * dir.z) > 1e-12
+        && typeof cam.impactKick === 'function') {
+        cam.impactKick(dir.x, dir.z, Math.min(IMPACT_KICK_WU_MAX, scaled * 12));
+        return;
+      }
+      cam.addTrauma(scaled);
     });
     onBus('camera:kill', () => cam.killCam && cam.killCam());
     // Boost release leaves velocity lookahead in place. The chase camera already eases its small

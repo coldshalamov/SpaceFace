@@ -1446,6 +1446,29 @@ export const BUILD_IDENTITY_REVEAL_CUE = 'sfx_scan_pulse';
 // FIGHT-07: Mine cap refusal voice (combat refusal, distinct from UI error blip)
 export const MINE_CAP_REFUSAL_RECIPE = 'sfx_massline_deny';
 
+// FB-142 — the planet verbs have voices. One route per event: the collector mouth (on and off
+// registers), the settled deposit (the shared mining yield — the same cargo idiom), a refused
+// deposit on the capacity-refusal voice, the plunge ring's stage ladder, and the recovery burn.
+export const PLANET_EVENT_AUDIO = Object.freeze({
+  'planet:collector': { recipeId: 'sfx_planet_collector', gain: 0.55 },
+  'planet:harvest': { recipeId: 'sfx_mining_yield', gain: 0.6 },
+  'planet:harvestDenied': { recipeId: MINE_CAP_REFUSAL_RECIPE, gain: 0.65 },
+  'planet:plungeStage': { recipeId: 'sfx_planet_plunge', gain: 0.7 },
+  'planet:recoveryBurn': { recipeId: 'sfx_planet_recovery_burn', gain: 0.75 },
+});
+
+// The plunge ring's one recipe climbs a stage ladder: hotter stages speak louder and higher,
+// 'clear' reads as quiet relief, 'aftermath' lands as the terminal thud. One recipe, six
+// registers — never five recipes for one event.
+export const PLANET_PLUNGE_VOICE = Object.freeze({
+  skim: { gain: 0.4, rate: 1.0 },
+  commit: { gain: 0.85, rate: 1.18 },
+  breakup: { gain: 0.9, rate: 1.32 },
+  descent: { gain: 0.9, rate: 0.82 },
+  aftermath: { gain: 0.8, rate: 0.68 },
+  clear: { gain: 0.32, rate: 0.78 },
+});
+
 // Semantic cue ids (audio:cue / toast / ui:*) -> recipe id.
 export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   'mines:capReached': MINE_CAP_REFUSAL_RECIPE,
@@ -1487,7 +1510,9 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   'massline.bulletTimeOut': 'sfx_massline_bt_out',
   'massline.cloakOn': 'sfx_massline_cloak_on',
   'massline.cloakOff': 'sfx_massline_cloak_off',
-  'massline.jettisonKick': 'sfx_massline_jettison',
+  // FB-073: 'massline.jettisonKick' (jettisonImpulse's physics-adjacent emit) deliberately has NO
+  // row — the unguarded cargo:jettisoned handler is the single jettison voice (sfx_cargo_jettison),
+  // and a mapped row would stack a second hit on flag-on routes.
   'massline.bombDrop': 'sfx_massline_bomb_drop',
   'massline.reel': 'sfx_massline_reel_whine',
   'massline.release': 'sfx_massline_release',
@@ -2388,11 +2413,16 @@ export const audio = {
     bus.on('economy:tradeFailed', (p) => this._onTradeFailed(p || {}));
     bus.on('mines:capReached', (p) => this._onMineCapReached(p));
     // Cargo jettison (HUD cargo panel "JETTISON" → cargo.js dump): previously TOTAL silence for an
-    // audible world act — pods shoved out an airlock. Reuses the authored massline jettison kick,
-    // but only on routes where jettisonImpulse's own audio:cue is flag-gated OFF; with the flag on
-    // (the production default) that cue already speaks and this handler must stay silent. The
-    // event has no position; play() resolves the player ship locally and the dump happens at the hull.
+    // audible world act — pods shoved out an airlock. FB-073: this handler is the single jettison
+    // voice on every route; the event has no position, so play() resolves the player ship locally
+    // and the dump reads at the hull.
     bus.on('cargo:jettisoned', (p) => this._onCargoJettisoned(p));
+    // FB-142 — the planet verbs' voices: intake, deposit, refusal, the stage ring, the burn.
+    bus.on('planet:collector', (p) => this._onPlanetVerb('planet:collector', p));
+    bus.on('planet:harvest', (p) => this._onPlanetVerb('planet:harvest', p));
+    bus.on('planet:harvestDenied', (p) => this._onPlanetVerb('planet:harvestDenied', p));
+    bus.on('planet:plungeStage', (p) => this._onPlanetVerb('planet:plungeStage', p));
+    bus.on('planet:recoveryBurn', (p) => this._onPlanetVerb('planet:recoveryBurn', p));
     // Mission accept/complete: previously TOTAL silence on the core progression loop. Accept gets a
     // bright rising stinger; complete gets a triumphant two-note chord + a brief music duck so the
     // payoff lands above the bed.
@@ -4494,16 +4524,47 @@ export const audio = {
     this.play('sfx_stunt_bank', { gain: 0.6 });
   },
 
-  // Cargo jettison (HUD cargo panel → cargo.dumpCargo): an audible world act that was total
-  // silence. Reuses the authored massline jettison kick. jettisonImpulse plays the same recipe
-  // through its own audio:cue whenever its flag is on (the production default), so this handler
-  // only speaks on routes where that flag is off — otherwise the kick plays twice, stacked. The
-  // receipt carries no position — a dump always happens at the dumping ship's hull, and
+  // Cargo jettison (HUD cargo panel → cargo.dumpCargo): pods leaving the hold are a world act
+  // with their own authored voice. FB-073: sfx_cargo_jettison shares the massline kick's
+  // dash_punch sample binding at rate 0.8 — the old sfx_massline_jettison borrow and its flag
+  // double-guard are gone; this handler is the single voice on every route. jettisonImpulse's
+  // audio:cue stays physics-adjacent and unmapped (AUDIO_CUE_TO_RECIPE has no jettisonKick row),
+  // so the kick cue resolves to silence rather than stacking a second hit on flag-on routes.
+  // The receipt carries no position — a dump always happens at the dumping ship's hull, and
   // non-positional play() already reads as ship-local.
   _onCargoJettisoned(p) {
-    if (massline2Flag('jettisonImpulse')) return;
     if (!p || !(p.amount > 0)) return;
-    this.play('sfx_massline_jettison', { gain: 0.7 });
+    this.play('sfx_cargo_jettison', { gain: 0.7 });
+  },
+
+  // FB-142 — the planet verbs' voices (PLANET_EVENT_AUDIO). Off-transitions speak in the same
+  // voice closing down (rate/gain dropped), the plunge ring climbs its stage ladder, and a
+  // foreign ship's plunge answers positionally at its hull — never the player's local alarm.
+  // Denial rides the capacity-refusal recipe; it never borrows a toast tone.
+  _onPlanetVerb(name, p) {
+    const row = PLANET_EVENT_AUDIO[name];
+    if (!row) return;
+    let gain = row.gain, rate = 1;
+    const on = !p || p.on !== false;
+    if ((name === 'planet:collector' || name === 'planet:recoveryBurn') && !on) {
+      gain *= 0.55;
+      rate = 0.78;
+    }
+    let position = null;
+    if (name === 'planet:plungeStage') {
+      const voice = PLANET_PLUNGE_VOICE[p && p.stage] || null;
+      if (voice) { gain = voice.gain; rate = voice.rate; }
+      if (p && p.isPlayer === false && this.state && this.state.entities
+        && typeof this.state.entities.get === 'function') {
+        const ent = this.state.entities.get(p.id);
+        const pos = ent && ent.pos;
+        if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.z)) {
+          position = { x: pos.x, z: pos.z };
+          gain *= 0.5;
+        }
+      }
+    }
+    this.play(row.recipeId, { position, gain, rate });
   },
 
   // ECON-03 — `economy:tradeFailed` (economy.js handleTrade) is the one refusal event the counter

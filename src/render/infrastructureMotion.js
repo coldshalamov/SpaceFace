@@ -13,6 +13,8 @@
 //
 // PURE RENDER-ONLY PRESENTATION: Determinism-safe, zero per-frame allocation.
 
+import { resolveStationSideEventVfxProfile } from './stationSideEventVfx.js';
+
 function hashId(id) {
   const s = String(id || '');
   let h = 0x811c9dc5;
@@ -98,6 +100,67 @@ export function resolveRingSizeFactor(radius) {
   return clamp(Math.sqrt(60 / r), 0.4, 1.6);
 }
 
+// --- Station work arms (FB-076) ---------------------------------------------------------------
+// station:sideEvent is the station's real operating state — while an event is live the matching
+// hardware articulates once: reach, hold, settle. Constant decorative spinning was rejected
+// (SF-215); nothing here moves without a live event. The kind → articulation mapping lives on
+// the VFX profiles in stationSideEventVfx.js — one profile row owns both the light and the arm.
+export function resolveStationArmArticulation(kind) {
+  const profile = resolveStationSideEventVfxProfile(kind);
+  return (profile && profile.arm) || null;
+}
+
+// Arm/crane/loader/gantry/boom hardware on the station model — same lazy-scan convention as the
+// sensor dishes above: authored kits that name nodes this way articulate for free.
+const ARM_NODE_PATTERN = /arm|crane|loader|gantry|clamp|boom/i;
+
+/**
+ * The shared reach envelope: swing out over the first fifth, hold on target through the work,
+ * settle home by the end. 0..1, NaN-safe. Reduced motion scales amplitude at the caller —
+ * the envelope itself, and therefore the reach direction, never changes.
+ */
+export function resolveStationArmReach(ageS, durationS) {
+  const duration = Math.max(0.5, Number.isFinite(durationS) ? durationS : 0.5);
+  const progress = clamp((Number(ageS) || 0) / duration, 0, 1);
+  const out = clamp(progress / 0.22, 0, 1);
+  const back = clamp((progress - 0.74) / 0.26, 0, 1);
+  const outE = out * out * (3 - 2 * out);
+  const backE = back * back * (3 - 2 * back);
+  return outE * (1 - backE);
+}
+
+/**
+ * Per-event arm pose in deltas off the captured node base. `bearingLocal` is the work site's
+ * bearing relative to the station's own yaw, so a reach swings TOWARD the work, a release
+ * swings away, and a slide/stroke ride their own axes. Returns {reach01, stroke01, yaw, slide,
+ * pitch} — the caller adds them to captured bases; nothing here accumulates.
+ */
+export function resolveStationArmPose(articulation, ageS, durationS, bearingLocal, reducedMotion) {
+  const pose = { reach01: 0, stroke01: 0, yaw: 0, slide: 0, pitch: 0 };
+  if (!articulation) return pose;
+  const reach = resolveStationArmReach(ageS, durationS);
+  const amp = articulation.amplitude * (reducedMotion ? 0.5 : 1);
+  const progress = clamp((Number(ageS) || 0) / Math.max(0.5, Number.isFinite(durationS) ? durationS : 0.5), 0, 1);
+  pose.reach01 = reach;
+  const bearing = Number.isFinite(bearingLocal) ? bearingLocal : 0;
+  const toward = clamp(bearing, -1, 1); // radians of swing toward the work site
+  if (articulation.duty === 'release-and-return') {
+    pose.yaw = -toward * reach * amp * 2 - reach * amp * 0.4; // open the cradle away from the lane
+  } else if (articulation.duty === 'slide-track') {
+    pose.slide = reach * amp;
+  } else if (articulation.duty === 'stroke-and-return') {
+    // The loader pumps twice per event: a double stroke on the reach envelope.
+    pose.stroke01 = Math.abs(Math.sin(progress * Math.PI * 2)) * reach;
+    pose.pitch = pose.stroke01 * amp;
+  } else if (articulation.duty === 'sweep') {
+    pose.yaw = Math.sin(progress * Math.PI * 2) * reach * amp;
+  } else {
+    pose.yaw = toward * reach * amp * 2 + reach * amp * 0.4;  // arm reaches toward the berth side
+    pose.pitch = reach * amp * 0.25;
+  }
+  return pose;
+}
+
 export function createInfrastructureMotionTracker() {
   const infrastructureStates = new Map();
   let busSubscribers = [];
@@ -106,6 +169,9 @@ export function createInfrastructureMotionTracker() {
   // undock pulse reuses the last docked station — berths always release where they seated.
   const dockPulse = { stationId: null, kind: null, t0: -1 };
   const gatePulse = { sectorId: null, kind: null, t0: -1 };
+  // FB-076 — one live articulation record per station, keyed off the same stationId the dock
+  // pulse uses. start/settle stamps make the record inspectable; the envelope writes the pose.
+  const armWork = new Map();
 
   function onDocked(payload) {
     const stationId = payload && (payload.stationId != null ? payload.stationId : payload.id);
@@ -131,6 +197,23 @@ export function createInfrastructureMotionTracker() {
       gatePulse.kind = payload.type || payload.kind || null;
       gatePulse.t0 = lastSimTime;
     }));
+    // FB-076 — a side event is the station doing work: arm one articulation record per event.
+    busSubscribers.push(bus.on('station:sideEvent', (payload) => {
+      if (!payload) return;
+      const articulation = resolveStationArmArticulation(payload.kind);
+      const stationId = payload.stationId != null ? String(payload.stationId) : null;
+      if (!articulation || !stationId) return;
+      armWork.set(stationId, {
+        kind: payload.kind,
+        articulationId: articulation.id,
+        eventId: payload.eventId != null ? String(payload.eventId) : null,
+        t0: lastSimTime,
+        durationS: Number.isFinite(payload.durationS) ? payload.durationS : null,
+        bearing: Number.isFinite(payload.bearing) ? payload.bearing : 0,
+        startedS: lastSimTime,
+        settledS: -1,
+      });
+    }));
   }
 
   function unbindEvents() {
@@ -145,6 +228,7 @@ export function createInfrastructureMotionTracker() {
     gatePulse.sectorId = null;
     gatePulse.kind = null;
     gatePulse.t0 = -1;
+    armWork.clear();
   }
 
   function getState(entityId) {
@@ -172,6 +256,8 @@ export function createInfrastructureMotionTracker() {
         hash: h,
         dishNodes: null,   // lazy [{ node, baseY }] — swept sensor hardware, scanned once
         dishScanned: false,
+        armNodes: null,    // lazy [{ node, baseY, baseZ, basePX }] — articulating work hardware
+        armScanned: false,
       };
       infrastructureStates.set(entityId, rec);
     }
@@ -324,6 +410,59 @@ export function createInfrastructureMotionTracker() {
       }
     }
 
+    // Station work arms (FB-076): a live side event articulates the matching arm/crane/loader/
+    // gantry/boom node once — reach, hold, settle — then rests at its captured base. Reduced
+    // motion halves amplitude but keeps the reach direction. No event: no motion.
+    if (!rec.armScanned) {
+      rec.armScanned = true;
+      if (mesh.children) {
+        for (const child of mesh.children) {
+          const n = child.name ? String(child.name) : '';
+          if (n && ARM_NODE_PATTERN.test(n) && child.rotation) {
+            if (!rec.armNodes) rec.armNodes = [];
+            rec.armNodes.push({
+              node: child,
+              baseY: Number.isFinite(child.rotation.y) ? child.rotation.y : 0,
+              baseZ: Number.isFinite(child.rotation.z) ? child.rotation.z : 0,
+              basePX: child.position && Number.isFinite(child.position.x) ? child.position.x : 0,
+            });
+          }
+        }
+      }
+    }
+    const armStationId = data.stationId != null ? String(data.stationId) : String(entity.id);
+    const work = armWork.get(armStationId) || armWork.get(String(entity.id)) || null;
+    if (work && rec.armNodes && rec.armNodes.length) {
+      const articulation = resolveStationArmArticulation(work.kind);
+      const durationS = work.durationS || 30;
+      const age = simTime - work.t0;
+      if (age <= durationS && articulation) {
+        // The work site's bearing, carried by the event, in the station's own frame.
+        const stationRot = Number.isFinite(entity.rot) ? entity.rot : 0;
+        const bearingLocal = work.bearing - stationRot;
+        const pose = resolveStationArmPose(articulation, age, durationS, bearingLocal, reducedMotion);
+        const slideWu = Math.max(2, Math.min(24, (Number(entity.radius) || 10) * 0.3));
+        for (const a of rec.armNodes) {
+          a.node.rotation.y = a.baseY + pose.yaw;
+          a.node.rotation.z = a.baseZ + pose.pitch;
+          if (a.node.position && typeof a.node.position.set === 'function') {
+            a.node.position.set(a.basePX + pose.slide * slideWu, a.node.position.y, a.node.position.z);
+          } else if (a.node.position) {
+            a.node.position.x = a.basePX + pose.slide * slideWu;
+          }
+        }
+      } else {
+        // Settle: the event ended — arms come home and the record closes out.
+        for (const a of rec.armNodes) {
+          a.node.rotation.y = a.baseY;
+          a.node.rotation.z = a.baseZ;
+          if (a.node.position) a.node.position.x = a.basePX;
+        }
+        work.settledS = simTime;
+        armWork.delete(armStationId);
+      }
+    }
+
     // Dock contact thump on the root scale (multiplicative off the captured base — the fence
     // never writes scale, so this cannot drift against pose updates).
     if (mesh.scale && (scalePing !== 1 || rec.stationScaleDirty)) {
@@ -395,25 +534,40 @@ export function createInfrastructureMotionTracker() {
     return false;
   }
 
+  /** FB-076 — the live articulation record for a station, or null when no work is armed. */
+  function stationArmRecord(stationId) {
+    return stationId == null ? null : (armWork.get(String(stationId)) || null);
+  }
+
   // Same teardown contract as the other motion trackers: the entity outlives its mesh, so
-  // the record drops Object3D references (scanned dish nodes) while keeping motion state.
+  // the record drops Object3D references (scanned dish/arm nodes) while keeping motion state.
   function releaseEntityMesh(entityId) {
     const rec = infrastructureStates.get(entityId);
     if (!rec) return;
     rec.dishNodes = null;
     rec.dishScanned = false;
+    rec.armNodes = null;
+    rec.armScanned = false;
   }
 
-  // Ids recycle across save restore; a record keyed by a reused id can keep dish node
+  // Ids recycle across save restore; a record keyed by a reused id can keep dish/arm node
   // references into a retired station mesh — release by mesh identity too.
   function releaseMesh(mesh) {
     if (!mesh) return;
     for (const rec of infrastructureStates.values()) {
-      if (!rec.dishNodes) continue;
-      const hit = rec.dishNodes.some((entry) => entry && entry.node && nodeInsideTree(entry.node, mesh));
-      if (hit) {
-        rec.dishNodes = null;
-        rec.dishScanned = false;
+      if (rec.dishNodes) {
+        const hit = rec.dishNodes.some((entry) => entry && entry.node && nodeInsideTree(entry.node, mesh));
+        if (hit) {
+          rec.dishNodes = null;
+          rec.dishScanned = false;
+        }
+      }
+      if (rec.armNodes) {
+        const hit = rec.armNodes.some((entry) => entry && entry.node && nodeInsideTree(entry.node, mesh));
+        if (hit) {
+          rec.armNodes = null;
+          rec.armScanned = false;
+        }
       }
     }
   }
@@ -436,6 +590,7 @@ export function createInfrastructureMotionTracker() {
     prune,
     releaseEntityMesh,
     releaseMesh,
+    stationArmRecord,
   };
 }
 

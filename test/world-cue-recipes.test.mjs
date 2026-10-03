@@ -12,12 +12,14 @@ function fixture(){return {simTime:1,playerId:1,entities:new Map([
 ]),settings:{video:{}}};}
 function cue(id,extra={}){return {id,sourceId:1,targetId:2,position:{x:137,y:2,z:28},...extra};}
 
-test('whitelist covers twenty-seven work cues and nine composed travel handoffs',()=>{
-  const entries=Object.entries(WORLD_CUE_ACTION_RECIPE.variants);assert.equal(entries.length,36);
-  // PIC-26/27/28 cues arrive as complete presentation:cue envelopes — the world-cue variant IS
-  // the recipe, so they deliberately carry no PRESENTATION_RECIPES lane row. Every other admitted
+test('whitelist covers thirty-two work cues and nine composed travel handoffs',()=>{
+  const entries=Object.entries(WORLD_CUE_ACTION_RECIPE.variants);assert.equal(entries.length,41);
+  // PIC-26/27/28 and FB-142 planet cues arrive as complete presentation:cue envelopes — the
+  // world-cue variant IS the recipe, so they deliberately carry no PRESENTATION_RECIPES lane
+  // row (the planet verbs' audio rides the dedicated planet:* routes). Every other admitted
   // cue still must have one with a vfx.direct_* lane.
-  const BARE_ENVELOPE_CUES=new Set(['cargo.spill.berth','wreck.scavenge.cut','salvage.cooker.tracked','salvage.core.tracked']);
+  const BARE_ENVELOPE_CUES=new Set(['cargo.spill.berth','wreck.scavenge.cut','salvage.cooker.tracked','salvage.core.tracked',
+    'planet.skim.intake','planet.harvest.deposit','planet.harvest.denied','planet.plunge.stage','planet.recovery.burn']);
   for(const [id,recipe] of entries){
     if(BARE_ENVELOPE_CUES.has(id))assert.equal(PRESENTATION_RECIPES[id],undefined,id);
     else{assert.ok(PRESENTATION_RECIPES[id],id);assert.ok(isComposedTravelCue(id)||PRESENTATION_RECIPES[id].lanes.vfx.startsWith('vfx.direct_'),id);}

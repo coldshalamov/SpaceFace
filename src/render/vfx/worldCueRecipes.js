@@ -22,8 +22,21 @@ const miningVariants=Object.freeze({
   'mining.yield.collected':{...recipe('harvest','deposition',0xd4dcad,.78),surfaceWork:true},
 });
 export const isComposedMiningCue=id=>Object.hasOwn(miningVariants,id);
+// FB-142 — the planet verbs have a shape. The collector mouth opening (skim intake), the
+// settled yield depositing into the hold, a refused deposit priming on the closed hold (the
+// mining.cargo.full register — a capacity warning, never a success), the plunge ring advancing
+// a stage, and the recovery burn shoving back out of the well. planetRuntime emits one cue
+// beside each planet:* event; the receipt anchors on the working ship, not the planet centre.
+const planetVariants=Object.freeze({
+  'planet.skim.intake':recipe('catch','capture',0x9fd8e8,.7),
+  'planet.harvest.deposit':recipe('harvest','deposition',0xc9e6a0,.78),
+  'planet.harvest.denied':recipe('prime','capture',0xd9a970,.68),
+  'planet.plunge.stage':recipe('ignition','compression',0xff8a5c,.8),
+  'planet.recovery.burn':recipe('ignition','compression',0xffb070,.7),
+});
+export const isComposedPlanetCue=id=>Object.hasOwn(planetVariants,id);
 const variants=Object.freeze({
-  ...travelVariants,...miningVariants,
+  ...travelVariants,...miningVariants,...planetVariants,
   'mining.survey.pulse':recipe('survey','pressure',0x78bdcc,1.05),
   'mining.survey.resolved':recipe('cool','deposition',0x96c2c6,.62),
   'mining.survey.classified':recipe('command','induction',0x94dcd1,.82),

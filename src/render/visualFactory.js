@@ -51,6 +51,7 @@ import { WEAPONS } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
 import { commodityPresentationFor } from '../data/commodities.js';
 import { buildPickupGeometry, pickupShapeForCommodity } from './pickupShapes.js';
+import { PICKUP_ROLE, buildPickupRoleGeometry, pickupRoleForEntity } from './vfx/fragmentFamilies.js';
 import { FACTION_META } from '../data/factions.js';
 import { configureMaterialLibrary } from './materialLibrary.js';
 import { createEnergyMaterial } from './energy/energyMaterials.js';
@@ -3206,13 +3207,21 @@ function buildCreditChip(e) {
 }
 
 function buildPickup(e) {
+  // FB-075: a volatile lot in a pickup body is still the hazard bottle — the silhouette carries
+  // the warning regardless of which spawn path dropped it.
+  if (e.data && (e.data.volatileClass || e.data.volatileLamp)) return buildVolatilePod(e);
   if (e.data && e.data.freightCustodyPod) {
     const canister = buildPayload(e);
     canister.userData.kind = 'pickup';
     canister.userData.interactionKind = 'pickup';
+    canister.userData.pickupRole = PICKUP_ROLE.POD;
     return canister;
   }
-  if (isCreditChipEntity(e)) return buildCreditChip(e);
+  if (isCreditChipEntity(e)) {
+    const chip = buildCreditChip(e);
+    chip.userData.pickupRole = PICKUP_ROLE.CHIP;
+    return chip;
+  }
   const R = e.radius || 2.2;
   const color = commodityColor(e);
   const g = new THREE.Group();
@@ -3232,6 +3241,10 @@ function buildPickup(e) {
   g.add(gem);
   g.userData.kind = 'pickup'; g.userData.gem = gem;
   g.userData.pickupShape = shapeName || 'octahedron';
+  // FB-075: the ore role resolves to the kit's faceted block; other categories keep their own
+  // kit silhouette. The stamp is the inspectable role identity, the geometry stays authored.
+  g.userData.pickupRole = shapeName === 'raw_ore' ? PICKUP_ROLE.ORE
+    : (pickupRoleForEntity(e) || null);
   const ph = (hashId(e.id) % 100) / 100 * Math.PI * 2;
   gem.frustumCulled = false;
   // Emissive glint only — tumble/bob/vortex/intake transforms are owned by
@@ -5528,7 +5541,47 @@ function laneTrafficVisualEntity(e) {
   };
 }
 
+// FB-075 — volatile cargo reads as a hazard bottle, not another canister: sphere under a
+// containment collar (fragmentFamilies' 'volatile' role recipe), with the class's lamp color
+// carried in the collar material so the warning survives the chase camera.
+const VOLATILE_LAMP_COLOR = Object.freeze({
+  // keyed by class id and by the stamped lamp name — the sim writes both
+  explosive: 0xffb340, corrosive: 0x7dd66a, superdense: 0xa77dff,
+  amber: 0xffb340, green: 0x7dd66a, violet: 0xa77dff, red: 0xff5c4a,
+  default: 0xffb340,
+});
+
+function volatileLampColor(e) {
+  const lamp = e && e.data && (e.data.volatileClass || e.data.volatileLamp);
+  return VOLATILE_LAMP_COLOR[lamp] || VOLATILE_LAMP_COLOR.default;
+}
+
+function buildVolatilePod(e) {
+  const R = Math.max(1, (e && e.radius) || 3);
+  const g = new THREE.Group();
+  const lamp = volatileLampColor(e);
+  const bottle = new THREE.Mesh(
+    getGeometry('pickup:role:volatile', () => buildPickupRoleGeometry(PICKUP_ROLE.VOLATILE)),
+    getMaterial(`payload:volatile:${e.data.volatileClass || 'any'}`, () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+      color: 0x2a2f33, roughness: 0.42, metalness: 0.55,
+      emissive: new THREE.Color(lamp), emissiveIntensity: 0.55,
+    }), SHARED_MATERIAL_ROLE.HULL)),
+  );
+  bottle.name = 'VolatilePod_Bottle';
+  g.add(bottle);
+  g.scale.setScalar(R);
+  g.userData.kind = e && e.type === 'pickup' ? 'pickup' : 'payload';
+  g.userData.interactionKind = g.userData.kind;
+  g.userData.visualLanguage = 'volatile-pressure-bottle';
+  g.userData.pickupRole = PICKUP_ROLE.VOLATILE;
+  g.userData.animated = true;
+  return g;
+}
+
 function buildPayload(e) {
+  // FB-075: a pod carrying a volatile lot is a pressure bottle with a collar, not a canister —
+  // the silhouette is the hazard warning at chase distance.
+  if (e && e.data && (e.data.volatileClass || e.data.volatileLamp)) return buildVolatilePod(e);
   const R = Math.max(1, (e && e.radius) || 3);
   const g = new THREE.Group();
   const commodityId = payloadCommodityId(e && e.data);
@@ -5568,6 +5621,7 @@ function buildPayload(e) {
   g.userData.kind = 'payload';
   g.userData.interactionKind = 'payload';
   g.userData.visualLanguage = 'sealed-cargo-canister';
+  g.userData.pickupRole = PICKUP_ROLE.POD;
   g.userData.animated = true;
   if (presentation) {
     g.userData.commodityPresentationId = presentation.id;
