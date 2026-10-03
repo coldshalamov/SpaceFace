@@ -23,6 +23,7 @@ import {
   APERTURE_ID,
   APERTURE_MOUTH,
   APERTURE_PLUG,
+  APERTURE_RECEIVER,
   METRONOME_BEAM_DPS,
   METRONOME_FIELD,
   METRONOME_POI_ID,
@@ -43,6 +44,7 @@ import {
   metronomeBeamEtaAt,
   pallasReefPhase,
   pointInsideAperture,
+  pointInsideApertureMouth,
   pointInsideCinderSluice,
   pointInsideKillMachine,
   pointInsideMetronomeBeam,
@@ -53,6 +55,20 @@ import {
 } from '../data/environmentalMachinery.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { NEAR_EXIT_PAD_WU } from '../world/activityClassification.js';
+import {
+  choosePowerPriority,
+  commitReceiverAcceptance,
+  createIndustryLedger,
+  evaluateReceiverAcceptance,
+  judgeKillMachineCollateral,
+  offerSortingJob,
+  openOutage,
+  projectIndustrySiteResult,
+  redirectFullDepot,
+  reserveRepairOrder,
+  resolveSortingJob,
+  stepPowerPriority,
+} from './worldSiteRuntime.js';
 
 const HAZARD_TYPE = 'debris_current';
 
@@ -66,7 +82,26 @@ const APERTURE_MOUTH_QUERY = (() => {
   return Object.freeze({ x: center.x, z: center.z, radius });
 })();
 const APERTURE_OCCUPANT_SCRATCH = [];
+const KILL_COLLATERAL_SCRATCH = [];
 const EMPTY_LIST = [];
+
+function apertureDeliveryBody(entity) {
+  if (!entity || entity.alive === false || !entity.pos) return false;
+  if (entity.data && entity.data.aperturePlugId) return false;
+  const amount = Math.floor(Number(entity.data && entity.data.amount));
+  if (!(Number.isFinite(amount) && amount > 0)) return false;
+  return pointInsideAperture(entity.pos);
+}
+
+function industryContactRole(state, entity) {
+  if (!entity) return 'unknown';
+  if (state && entity.id === state.playerId) return 'player';
+  if (entity.type === 'pickup' || entity.type === 'payload') return 'cargo';
+  const data = entity.data || {};
+  if (entity.type === 'ship' && (data.hostile === true || data.role === 'attacker')) return 'attacker';
+  if (entity.type === 'ship' && (data.trafficRole || data.role === 'worker')) return 'worker';
+  return 'unknown';
+}
 
 function apertureOccupantIsLive(state, entity) {
   if (!entity || entity.alive === false) return false;
@@ -138,6 +173,10 @@ export const environmentalMachinery = {
     this._aperturePlugEnsured = false;
     this._apertureLastPhase = null;
     this._apertureLastOccupant = null;
+    this._apertureDeliveryCandidate = null;
+    this._industryLedger = null;
+    this._industrySiteResult = null;
+    this._killCollateral = new Map();
     // The Metronome (Eris Margin): a rotating denial cone registered per-tick via one
     // dir patch — the field kernel renormalizes it, presentation reads field.dir live.
     this._metronomeRegistered = false;
@@ -171,6 +210,7 @@ export const environmentalMachinery = {
   },
 
   update(_dt, state) {
+    this._industryDt = Number.isFinite(_dt) ? _dt : 0;
     const sectorId = state && state.world && state.world.currentSectorId;
     const inFlight = !!(state && state.mode === 'flight');
     const inCeres = !!(inFlight && sectorId === CINDER_SLUICE_SECTOR_ID);
@@ -353,12 +393,14 @@ export const environmentalMachinery = {
     const simTime = simTimeOf(state);
     const machines = ALL_KILL_MACHINES.map((machine) => {
       const phase = killMachinePhase(machine, simTime);
+      const collateral = this._killCollateral && this._killCollateral.get(machine.id);
       return Object.freeze({
         id: machine.id,
         phase: phase.phase,
         fieldActive: phase.fieldActive,
         remainingS: phase.remainingS,
         playerInside: this._killPlayerInside.has(machine.id),
+        ...(collateral ? { collateral } : {}),
       });
     });
     if (!record) {
@@ -424,6 +466,7 @@ export const environmentalMachinery = {
       playerInside: this._aperturePlayerInside,
       jammedAtS: this._apertureJammedAtS,
       occupied: phase.occupied,
+      ...(this._industrySiteResult ? { industry: this._industrySiteResult } : {}),
     });
   },
 
@@ -477,6 +520,7 @@ export const environmentalMachinery = {
       this._ensureAnvil(machine);
       this._ensureMachineMouth(machine);
       this._updateKillMachinePlayerBoundary(state, machine, player, phase.fieldActive);
+      this._noteKillCollateral(state, machine, player, phase);
     }
   },
 
@@ -557,6 +601,7 @@ export const environmentalMachinery = {
     else this._releaseAperturePlug();
     this._publishAperturePhase(phase);
     this._updateAperturePlayerBoundary(state, phase);
+    this._publishApertureIndustry(state, phase);
   },
 
   _apertureOccupied(state) {
@@ -574,6 +619,7 @@ export const environmentalMachinery = {
       ? Math.hypot(player.pos.x - APERTURE_MOUTH_QUERY.x, player.pos.z - APERTURE_MOUTH_QUERY.z)
       : Infinity;
     const covered = mouthDist + APERTURE_MOUTH_QUERY.radius <= reach;
+    this._apertureDeliveryCandidate = null;
     if (covered) {
       const nearby = queryNearbyEntities(
         state,
@@ -581,15 +627,16 @@ export const environmentalMachinery = {
         APERTURE_MOUTH_QUERY.radius,
         APERTURE_OCCUPANT_SCRATCH,
       );
+      let occupant = null;
       for (let i = 0; i < nearby.length; i++) {
         const entity = nearby[i];
-        if (isApertureOccupant(entity)) {
-          this._apertureLastOccupant = entity;
-          return true;
+        if (!occupant && isApertureOccupant(entity)) occupant = entity;
+        if (!this._apertureDeliveryCandidate && apertureDeliveryBody(entity)) {
+          this._apertureDeliveryCandidate = entity;
         }
       }
-      this._apertureLastOccupant = null;
-      return false;
+      this._apertureLastOccupant = occupant;
+      return !!occupant;
     }
     // Off-hash: a parked occupant is dormant and missing from the classify bubble.
     // Do not walk rocks, FX, or projectiles — only the three occupant types.
@@ -686,6 +733,159 @@ export const environmentalMachinery = {
       remainingS: phase.remainingS,
       phase: phase.phase,
     });
+  },
+
+  // Site-side receiver result for the hangar mouth. A jam records a repair-parts offer and a
+  // sorting job; it does not spawn a hull. traffic.js remains the only convoy writer.
+  _publishApertureIndustry(state, phase) {
+    if (!phase) return;
+    const jammed = phase.phase === 'jam';
+    const pendingSort = !!(this._industryLedger && this._industryLedger.sorting
+      && this._industryLedger.sorting.status === 'open');
+    const candidate = jammed
+      ? (this._apertureLastOccupant || this._apertureDeliveryCandidate)
+      : this._apertureDeliveryCandidate;
+    if (!candidate && !jammed && !pendingSort) return;
+    if (!this._industryLedger) {
+      this._industryLedger = createIndustryLedger({
+        capacity: APERTURE_RECEIVER.capacity,
+        powerBudget: APERTURE_RECEIVER.powerBudget,
+        refineDemand: APERTURE_RECEIVER.refineDemand,
+        sortDemand: APERTURE_RECEIVER.sortDemand,
+        simTime: simTimeOf(state),
+      });
+    }
+    let ledger = this._industryLedger;
+    const data = candidate && candidate.data || {};
+    const entered = !!(candidate && candidate.pos && pointInsideApertureMouth(candidate.pos));
+    const inVolume = !!(candidate && candidate.pos && pointInsideAperture(candidate.pos));
+    const contact = evaluateReceiverAcceptance({
+      phase: phase.phase,
+      occupied: jammed || phase.occupied === true,
+      entered,
+      lipContact: inVolume && !entered,
+      relativeSpeed: candidate && candidate.vel
+        ? Math.hypot(Number(candidate.vel.x) || 0, Number(candidate.vel.z) || 0)
+        : 0,
+      bodyRadius: Number(candidate && candidate.radius) || 0,
+      mouthHalfWidth: APERTURE_MOUTH.halfWidth,
+      damaged: data.damagedEnvelope === true,
+      damagedHalfWidthScale: APERTURE_RECEIVER.damagedHalfWidthScale,
+      quantity: data.amount,
+      capacity: APERTURE_RECEIVER.capacity,
+      stored: ledger.stored,
+      cargoClass: data.cargoClass || null,
+      acceptsClasses: APERTURE_RECEIVER.classes,
+      intakeClass: APERTURE_RECEIVER.intakeClass,
+      obstructClass: APERTURE_RECEIVER.obstructClass,
+      commodityId: data.commodityId || null,
+      alternateDestinationId: APERTURE_RECEIVER.repairSourceId,
+      mass: candidate && candidate.mass,
+      maxRelativeSpeed: APERTURE_RECEIVER.maxRelativeSpeed,
+      lot: data.lot || null,
+      payloadPos: candidate && candidate.pos,
+    });
+    if (candidate && candidate.id != null) {
+      const committed = commitReceiverAcceptance(ledger, contact, candidate.id);
+      if (committed.committed) {
+        ledger = committed.ledger;
+        const data = candidate.data;
+        if (data && !Object.isFrozen(data)) {
+          const left = Math.max(0, Math.floor(Number(data.amount) || 0) - committed.acceptedQty);
+          data.amount = left;
+          if (left <= 0 && (candidate.type === 'pickup' || candidate.type === 'payload')) {
+            candidate.alive = false;
+          }
+        }
+      }
+    }
+    if (contact.redirect && (!ledger.worker || ledger.worker.stage !== 'redirect')) {
+      ledger = redirectFullDepot(ledger, contact).ledger;
+    }
+    if (!jammed && ledger.sorting && ledger.sorting.status === 'open' && !this._apertureLastOccupant) {
+      const resolved = resolveSortingJob(ledger, {
+        action: 'remove',
+        cargoClass: ledger.sorting.obstructClass,
+        receiptId: 'occupancy-cleared',
+      });
+      ledger = resolved.ledger;
+    }
+    if (jammed) {
+      if (!ledger.repair) {
+        ledger = reserveRepairOrder(ledger, {
+          orderId: 'aperture-repair',
+          commodityId: APERTURE_RECEIVER.repairCommodityId,
+          qty: APERTURE_RECEIVER.repairQty,
+          sourceId: APERTURE_RECEIVER.repairSourceId,
+          destId: APERTURE_ID,
+          simTime: simTimeOf(state),
+        }).ledger;
+      }
+      if (!ledger.sorting) {
+        ledger = offerSortingJob(ledger, {
+          workerId: 'aperture-hauler',
+          obstructClass: APERTURE_RECEIVER.obstructClass,
+          validClass: APERTURE_RECEIVER.intakeClass,
+          obstructionId: candidate && candidate.id != null ? String(candidate.id) : 'aperture-obstruction',
+        }).ledger;
+      }
+      if (!ledger.shortage) {
+        ledger = openOutage(ledger, {
+          cause: 'receiver-jam',
+          missingCommodity: APERTURE_RECEIVER.intakeClass,
+          remedy: 'sort-or-repair-parts',
+        }).ledger;
+      }
+    }
+    if (ledger.power && ledger.power.priorityId) {
+      ledger = { ...ledger, power: stepPowerPriority(ledger.power, Number(this._industryDt) || 0) };
+    }
+    this._industryLedger = ledger;
+    this._industrySiteResult = projectIndustrySiteResult(ledger, contact);
+    if (candidate && candidate.data && !Object.isFrozen(candidate.data)
+      && contact.scanSentence && candidate.data.scanSentence !== contact.scanSentence) {
+      candidate.data.scanSentence = contact.scanSentence;
+    }
+  },
+
+  chooseAperturePower(priorityId) {
+    if (!this._industryLedger) {
+      this._industryLedger = createIndustryLedger({
+        capacity: APERTURE_RECEIVER.capacity,
+        powerBudget: APERTURE_RECEIVER.powerBudget,
+        refineDemand: APERTURE_RECEIVER.refineDemand,
+        sortDemand: APERTURE_RECEIVER.sortDemand,
+      });
+    }
+    this._industryLedger = {
+      ...this._industryLedger,
+      power: choosePowerPriority(this._industryLedger.power, priorityId),
+    };
+    this._industrySiteResult = projectIndustrySiteResult(
+      this._industryLedger,
+      this._industrySiteResult && this._industrySiteResult.contact,
+    );
+    return this._industryLedger.power.priorityId;
+  },
+
+  // Names who is already inside the working volume. Force and anvil contact stay the
+  // damage path; this record grants no credit and does not despawn collateral.
+  _noteKillCollateral(state, machine, player, phase) {
+    if (!player || player.alive === false || !player.pos || !phase || phase.phase !== 'surge') return;
+    if (!pointInsideKillMachine(machine, player.pos)) return;
+    const occupants = [{ id: player.id, role: 'player', inside: true }];
+    const hash = state && state.spatialHash;
+    if (hash && typeof hash.queryRadius === 'function' && hash.diagnostics && hash.diagnostics.activeBuckets > 0) {
+      const found = queryNearbyEntities(state, player.pos, machine.hazardRadius, KILL_COLLATERAL_SCRATCH);
+      for (let i = 0; i < found.length; i++) {
+        const entity = found[i];
+        if (!entity || entity === player || entity.alive === false || !entity.pos) continue;
+        if (!pointInsideKillMachine(machine, entity.pos)) continue;
+        occupants.push({ id: entity.id, role: industryContactRole(state, entity), inside: true });
+      }
+    }
+    if (!this._killCollateral) this._killCollateral = new Map();
+    this._killCollateral.set(machine.id, judgeKillMachineCollateral({ phase: phase.phase, occupants }));
   },
 
   _updateReef(state) {
@@ -1063,6 +1263,11 @@ export const environmentalMachinery = {
     this._clearReef(why);
     this._clearWeather(why);
     this._clearMetronome(why);
+    if (why === 'new_game' || why === 'destroy') {
+      this._industryLedger = null;
+      this._industrySiteResult = null;
+      if (this._killCollateral) this._killCollateral.clear();
+    }
     this._clearSettled = true;
   },
 };
