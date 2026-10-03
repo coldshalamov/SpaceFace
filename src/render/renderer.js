@@ -228,6 +228,8 @@ import {
   createAdaptiveResolution,
   shouldSuggestIntegratedPreset,
   INTEGRATED_PRESET_SUGGESTION,
+  dynResFloorForTier,
+  softwareRendererEmergencyProfile,
 } from './adaptiveQuality.js';
 import { createGpuTimers } from './gpuTimers.js';
 import { ensurePerfRuntime } from '../core/perfRuntime.js';
@@ -8705,7 +8707,7 @@ export const render = {
     // Per-tier floor for how far dynamic resolution may back off. Software rendering will never be
     // fast, so let it drop much lower (and drop bloom); the real fix is a hardware context, surfaced
     // to the player below.
-    const dynFloor = gpu.tier === 'software' ? 0.34 : gpu.tier === 'integrated' ? 0.5 : 0.6;
+    const dynFloor = dynResFloorForTier(gpu.tier);
     this._adaptive = createAdaptiveResolution({
       floor: dynFloor,
       apply: (s) => { this.state.render.dynResScale = s; this._applySize(); },
@@ -8721,26 +8723,25 @@ export const render = {
     state.render.dynResAllowed = this._dynResAllowed;
     this._adaptive.setEnabled(this._dynResAllowed && !(state.settings && state.settings.video && state.settings.video.dynamicResolution === false));
 
-    if (gpu.software) {
-      // Hardware acceleration is OFF: the browser is rendering WebGL on the CPU (SwiftShader). No
-      // in-game setting makes this fast — auto-drop to the cheapest path and tell the player exactly
-      // how to fix it. Runtime-only (NOT persisted into settings.video) so it recovers on a hardware
-      // context after relaunch.
+    // Hardware acceleration OFF (CPU WebGL: SwiftShader/llvmpipe): no in-game setting makes that
+    // fast — apply the software-only emergency profile and tell the player exactly how to fix it.
+    // Runtime-only (NOT persisted into settings.video) so it recovers on a hardware context after
+    // relaunch. The profile is authored in adaptiveQuality.js (MACH-04) and only exists when
+    // gpu.software === true; every other tier keeps bloom.
+    const softwareEmergency = softwareRendererEmergencyProfile(gpu);
+    if (softwareEmergency) {
       state.render.softwareRenderer = true;
       try { if (this.bloom) this.bloom.setOptions({ bloom: false }); } catch (_) {}
       // Do not submit the very first flight frame at full hardware resolution and only react after
       // it freezes. The software-only emergency profile begins at its established adaptive floor;
       // hardware contexts remain full-resolution and never enter this branch.
-      state.render.dynResScale = dynFloor;
+      state.render.dynResScale = softwareEmergency.dynFloor;
       this._applySize();
       scheduleTimeout(() => {
         try {
-          bus.emit('toast', {
-            text: 'Graphics hardware acceleration appears OFF — the game is rendering in slow software mode. Turn on hardware acceleration in your browser (or run the Desktop launcher) for smooth play.',
-            kind: 'warn', ttl: 14,
-          });
+          bus.emit('toast', { ...softwareEmergency.toast });
         } catch (_) { /* toast is best-effort; the console log above still records it */ }
-      }, 1200);
+      }, softwareEmergency.toastDelayMs);
     }
 
     // Opt-in integrated-GPU preset suggestion. Never auto-applies — PERF_WHAT_MATTERS forbids
