@@ -1428,19 +1428,35 @@ function beamDamageCandidates(host, state, beam, dx, dz) {
     host._beamTableScratch || (host._beamTableScratch = []),
     COMBAT_TABLE_FLAGS.SHIP,
   );
-  if (tableHits.length) {
-    host._diag.beamSpatialQueries++;
-    host._diag.beamCandidates += tableHits.length;
-    return tableHits;
+  if (!tableHits.length) {
+    const candidates = hasActiveSpatialHash(state.spatialHash)
+      ? beamSharedDisc(host, state, beam, dx, dz)
+      : queryNearbyEntities(state, center, queryRadius, host._beamCandidateScratch, fallback);
+    if (candidates === host._beamCandidateScratch || candidates === host._beamDiscScratch) {
+      host._diag.beamSpatialQueries++;
+    }
+    host._diag.beamCandidates += candidates.length;
+    return candidates;
   }
-  const candidates = hasActiveSpatialHash(state.spatialHash)
-    ? beamSharedDisc(host, state, beam, dx, dz)
-    : queryNearbyEntities(state, center, queryRadius, host._beamCandidateScratch, fallback);
-  if (candidates === host._beamCandidateScratch || candidates === host._beamDiscScratch) {
-    host._diag.beamSpatialQueries++;
+  // The table only packs ship/projectile/wreck lanes, and the beam owner's own row keeps
+  // tableHits non-empty — returning it alone strands the station lane the hit loop accepts
+  // (packCombatTable must stay ship-lane-only: its projectile consumers assume that domain).
+  // Stations are few, so a linear scan appended into the same reused scratch is the cheap fix.
+  const stations = state.entityIndex && state.entityIndex.stations;
+  if (stations && stations.length) {
+    const r2 = queryRadius * queryRadius;
+    for (let i = 0; i < stations.length; i++) {
+      const s = stations[i];
+      if (!s || s.alive === false || !s.pos) continue;
+      const sx = s.pos.x - center.x;
+      const sz = s.pos.z - center.z;
+      if (sx * sx + sz * sz > r2) continue;
+      tableHits.push(s);
+    }
   }
-  host._diag.beamCandidates += candidates.length;
-  return candidates;
+  host._diag.beamSpatialQueries++;
+  host._diag.beamCandidates += tableHits.length;
+  return tableHits;
 }
 
 // The active-hash path of queryNearbyEntities walks the shared collider buckets — the
