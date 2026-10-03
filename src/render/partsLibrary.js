@@ -45,7 +45,7 @@ import {
   tableOpeningCompositionWu,
   tableTravelSpeed,
 } from './tabletopPolicy.js';
-import { willEntityEnterAuthoredUpgradeRunway } from './authoredAdmissionPolicy.js';
+import { authoredRunwayHorizonSeconds, willEntityEnterAuthoredUpgradeRunway } from './authoredAdmissionPolicy.js';
 import { isReleaseAssetMode } from './releaseMode.js';
 import { entityVisualCullRadius } from './visualCullRadius.js';
 import { RENDER_PACKAGE_PILOTS } from './renderPackageManifest.js';
@@ -5642,14 +5642,16 @@ function backgroundUpgradePriority(job) {
   // identically at rung 10 while its capsule waits behind ambient work.
   if (entityRidesAuthoredRunway(entity)
       && willEntityEnterAuthoredUpgradeRunway(entity, liveState, {
-        horizonSeconds: TABLE_PROMOTE_HORIZON_SECONDS,
+        horizonSeconds: authoredRunwayHorizonSeconds(entity),
       })) return 5;
   return 10;
 }
 
-// Serial-lane authored riders the runway grade + bypass + release clauses all agree on:
-// hulls on the promote horizon, station props ('fx'), and geology-skinned asteroids —
-// every type that can enqueue an authored boundary the player is about to see.
+// Serial-lane authored riders the runway grade + bypass + release clauses all agree on.
+// The set is exactly the entity types that feed enqueueBoundaryUpgrade's four producers
+// (ship :2748, payload :2910, place-driven stations/fx/geology :3507/:3659) plus the
+// wreck/drone types that mount the same packaged bodies through direct loadPart — vacuous
+// but harmless members kept so the predicate names "authored packaged body" in one place.
 function entityRidesAuthoredRunway(entity) {
   return !!(entity && (entity.type === 'ship' || entity.type === 'wreck'
     || entity.type === 'drone' || entity.type === 'station' || entity.type === 'payload'
@@ -5659,7 +5661,10 @@ function entityRidesAuthoredRunway(entity) {
 function entityIsAuthoredRunwayInbound(entity, live) {
   return !!(entityRidesAuthoredRunway(entity) && live
     && willEntityEnterAuthoredUpgradeRunway(entity, live, {
-      horizonSeconds: TABLE_PROMOTE_HORIZON_SECONDS,
+      // Stations ride the decode runway (13.5s), hulls the promote horizon (7.5s) — a
+      // station due inside its own runway but outside the promote horizon must still
+      // grade inbound here or a wedged non-ship slot hides it behind the 120s stall bound.
+      horizonSeconds: authoredRunwayHorizonSeconds(entity),
     }));
 }
 
@@ -5756,11 +5761,14 @@ function firstFlightShipCanPassBusyPlace(state) {
 // decode has sat in flight for minutes (ledger D48) — held every ship behind it, and the player
 // watched stand-ins for as long as it took. The first-flight hold already grants one extra ship
 // slot past a busy non-ship job; steady flight gets the same grant for the body the player is
-// already looking at (rung ≤ on-glass): a far runway job still waits its turn, so two full
-// composes never overlap (the measured combat stall), and at most one extra job ever rides
-// beside one non-ship job. The glass law is type-agnostic — the loading hold and the late-present
-// throttle already exempt ANY on-glass body — so an on-glass station/place earns the pass the
-// same way a ship does, while the in-flight guard keeps the serial ship invariant intact.
+// already looking at (rung ≤ on-glass), widened to cover runway-inbound riders due inside
+// their own horizon (a hull 6s out held behind a healthy 3-minute station decode still pops
+// as a marker — the deadline is real even when the holder isn't stalled). Bounding the pass
+// to active ≤ limit keeps at most one extra job riding beside one non-ship job, so the
+// widened grant cannot chain composes the way the serial lane exists to prevent. The glass
+// law is type-agnostic — the loading hold and the late-present throttle already exempt ANY
+// on-glass body — so an on-glass or inbound station/place earns the pass the same way a
+// ship does, while the in-flight guard keeps the serial ship invariant intact.
 const STEADY_SHIP_PASS_MAX_PRIORITY = 1.5;
 function queuedGlassLawJobStillNeeded(state, job) {
   return !!(job && job.entity && jobStillNeeded(state, job)

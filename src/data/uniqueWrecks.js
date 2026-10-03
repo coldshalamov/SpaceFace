@@ -644,6 +644,17 @@ const CERES_REFINERY_TENDER = wreck({
 });
 
 export const UNIQUE_WRECKS = deepFreeze(RAW_UNIQUE_WRECKS);
+
+// The bearing phases the system's _materialize gate accepts — a unique wreck only mounts
+// once its bearing is minted into one of these. Kept beside the registry so non-system
+// enumerators (the sector decode warms) can grade the same gate without importing the
+// system module.
+export const UNIQUE_WRECK_MATERIALIZE_PHASES = Object.freeze(new Set([
+  'rumored',
+  'fixed',
+  'decision',
+  'salvaged',
+]));
 export const CERES_ACTIVITY_WRECKS = Object.freeze([deepFreeze(CERES_REFINERY_TENDER)]);
 
 // PQ-133.11 — reserved uniques that never ride a wreck: artifacts recovered at authored sites.

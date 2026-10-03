@@ -1329,6 +1329,67 @@ function pickRole(roleWeights, rng) {
   return 'hauler';
 }
 
+// The ship files a live sector:enter can mount through this system, as {defId, factionId}
+// rows for the decode warm. Covers the ambient role-mix anchors (plus every faction-group
+// hull an anchor can substitute to — the spawn path picks ONE member via factionHullFor, so
+// the stub walks the whole group), authored activity-pocket presentation roles, the ceres
+// service slots, and the named lane contacts stamped for this sector (a contact's own ship
+// outranks the faction fleet exactly as the spawn code does). Extra files in the runway
+// cost nothing; a missed hull decodes cold at mount and pops in.
+export function sectorEnterTrafficShipStubs(sector, state) {
+  const out = [];
+  const seen = new Set();
+  const sectorId = sector && sector.id;
+  const factionId = (sector && sector.factionId) || 'faction_free';
+  const push = (defId) => {
+    if (typeof defId !== 'string' || !defId || seen.has(defId)) return;
+    seen.add(defId);
+    out.push({ defId, factionId });
+  };
+  const pushWithFactionGroup = (anchorDefId) => {
+    push(anchorDefId);
+    const groups = FLEET_BY_FACTION.get(factionId);
+    const group = groups && groups.find((entry) => entry.hullIds.includes(anchorDefId));
+    if (group && group.hullIds.length > 1) {
+      for (const hullId of group.hullIds) push(hullId);
+    }
+  };
+  if (!sector) return out;
+  if (ambientCountForSector(sector, state) > 0) {
+    const mix = trafficRoleMixForSector(sector, state);
+    for (const [roleId, w] of Object.entries(mix)) {
+      if (!Number.isFinite(w) || w <= 0) continue;
+      const def = TRAFFIC_ROLES[roleId];
+      if (def && def.ship) pushWithFactionGroup(def.ship);
+    }
+  }
+  for (const pocket of activityPocketsForSector(sectorId) || []) {
+    for (const slot of (pocket && pocket.actorSlots) || []) {
+      const def = TRAFFIC_ROLES[slot && slot.presentationRole];
+      if (def && def.ship) push(def.ship);
+    }
+  }
+  if (sectorId === CERES_ACTIVITY_SECTOR_ID) {
+    for (const slot of CERES_ACTIVITY_SERVICE_SLOTS) {
+      const def = TRAFFIC_ROLES[slot && slot.presentationRole];
+      if (def && def.ship) push(def.ship);
+    }
+  }
+  for (const contact of NAMED_LANE_CONTACTS) {
+    if (!contact || !Array.isArray(contact.sectorIds)
+        || contact.sectorIds.indexOf(sectorId) < 0) continue;
+    if (contact.ship) {
+      // A named contact's own hull outranks the faction fleet — the spawn code does not
+      // run factionHullFor for it, so neither does the stub.
+      push(contact.ship);
+    } else {
+      const def = TRAFFIC_ROLES[contact.role] || TRAFFIC_ROLES.hauler;
+      if (def && def.ship) pushWithFactionGroup(def.ship);
+    }
+  }
+  return out;
+}
+
 /** Ambient count from trafficPerMin — core pockets floor at CORE_MIN_TRAFFIC. Exported for tests. */
 export function ambientCountForSector(sector, state = null) {
   // NO AMBIENT FREIGHT IN A CRUCIBLE RUN (PQ-135). Helios carries eighteen haulers a minute, and a

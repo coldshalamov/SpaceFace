@@ -421,6 +421,7 @@ import {
 } from './dynamicBufferRanges.js';
 import {
   AUTHORED_ASSET_PREFETCH_RADIUS,
+  authoredRunwayHorizonSeconds,
   willEntityEnterAuthoredUpgradeRunway,
 } from './authoredAdmissionPolicy.js';
 import { predictNextSector } from './sectorPredict.js';
@@ -1263,7 +1264,8 @@ function isInboundDecodeHull(entity, state, radius = null, admissionEnv = null) 
   // lastExactT first — their stored pos is stale for anything that kept moving.
   // Stations approach on the full authored decode runway — the same horizon
   // kickDecodeRunwayAssets decodes them on — while hulls keep the promote horizon.
-  const horizon = stationBoundary ? TABLE_DECODE_RUNWAY_SECONDS : TABLE_PROMOTE_HORIZON_SECONDS;
+  // Shared definition: every serial-lane predicate grades the same per-type ladder.
+  const horizon = authoredRunwayHorizonSeconds(entity);
   const player = playerEntityForRenderState(state);
   if (!player || !player.pos) return false;
   const env = admissionEnv || renderAdmissionEnv(state);
@@ -1871,13 +1873,13 @@ function isHoldExemptMeshBuildCore(entity, state, glassIds, onReadableGlass, adm
   const env = admissionEnv();
   const hull = entity.type === 'ship' || entity.type === 'wreck'
     || entity.type === 'drone' || entity.type === 'payload';
-  const horizon = entity.type === 'station'
-    ? TABLE_DECODE_RUNWAY_SECONDS
-    : hull
-      ? TABLE_PROMOTE_HORIZON_SECONDS
-      : isPresentationLedgerRow(entity)
-        ? TABLE_COLLECT_HORIZON_SECONDS
-        : TABLE_RESIDENCY_PREFETCH_SECONDS;
+  // Station/hull rows ride the shared authored ladder (station→decode runway,
+  // hull→promote horizon); ledger + other rows keep their own horizon names.
+  const horizon = entity.type === 'station' || hull
+    ? authoredRunwayHorizonSeconds(entity)
+    : isPresentationLedgerRow(entity)
+      ? TABLE_COLLECT_HORIZON_SECONDS
+      : TABLE_RESIDENCY_PREFETCH_SECONDS;
   const tGlass = entityTimeToGlassSeconds(entity, env, state, horizon);
   return tGlass <= horizon;
 }
@@ -11836,8 +11838,15 @@ export const render = {
           }
         }
         // Deterministic population arm: systems that materialize bodies on sector:enter
-        // (the vesper ensemble) register here so their spawn lands inside this census
-        // rather than on listener registration order or the emit slice boundary.
+        // (the vesper ensemble, wingmen, aftermath markers, missions, uniqueWrecks, traffic,
+        // intervention, factionPresence, heistFacilities, asteroidSites, salvage, automation)
+        // register here so their spawn lands inside this census rather than on listener
+        // registration order or the emit slice boundary. A NON-provider enter materializer
+        // is only covered when its listener registers before 'render' in
+        // PRODUCTION_INIT_ORDER — render's own handler sits in the drained tail past the
+        // SECTOR_ENTER_LISTENER_BUDGET slice, so anything registered later (or spawned past
+        // the drain window) mounts post-census. Route new enter-time materializers through
+        // sectorCookProviders instead of relying on that ordering.
         const cookProviders = this._simHelpers && this._simHelpers.sectorCookProviders;
         if (Array.isArray(cookProviders)) {
           for (const provider of cookProviders) provider(sector);

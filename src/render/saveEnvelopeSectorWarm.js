@@ -41,6 +41,12 @@ import {
 import { sectorGlobalOrigin } from '../data/sectorCoordinates.js';
 import { zonesForSector } from '../data/sectorZones.js';
 import { hash32, mulberry32 } from '../core/rng.js';
+import { sectorEnterTrafficShipStubs } from '../systems/traffic.js';
+import { planFactionPresence } from '../data/factionPresence.js';
+import { lossesFor } from '../systems/lossLedger.js';
+import { currentStoryInputs } from '../systems/factionPresence.js';
+import { UNIQUE_WRECKS, UNIQUE_WRECK_MATERIALIZE_PHASES } from '../data/uniqueWrecks.js';
+import { MORROW } from '../data/morrow.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 const AST_BY_ID = new Map(ASTEROIDS.map((a) => [a.id, a]));
@@ -109,6 +115,26 @@ export function promotedAceShapeForRecord(id, rec) {
     baseReturnLevel: rec.baseReturnLevel || null,
   };
 }
+
+// Bare mission wreck coverage pushes the same six aftermath-residue classes once per
+// enumeration. One boxed flag lets every cohort collector share that dedupe so the
+// warm emits the same stub multiset whether one ledger or six asked for it.
+function makeBareWreckCover(out) {
+  let covered = false;
+  return () => {
+    if (covered) return;
+    covered = true;
+    pushBareWreckResidues(out.placeStubs);
+  };
+}
+
+// Mirror of automation.js OUTPOST_VISUAL_BY_DEF — unknown defs mount the base outpost
+// body. Hoisted module scope: both the envelope lane and the live lane read it.
+const OUTPOST_STUB_VISUAL = {
+  outpost_refinery: { placeId: 'place_claim_outpost_refinery', claimSpecId: 'spec_refinery' },
+  outpost_fuelsynth: { placeId: 'place_claim_outpost_refinery', claimSpecId: 'spec_refinery' },
+  outpost_habhub: { placeId: 'place_claim_outpost_relay', claimSpecId: 'spec_relay' },
+};
 
 // Mirror of worldSiteKernel.evaluateStage + the materialization plan's placeId pick: the
 // last satisfied stage wins, a stage missing `requires` is always satisfied, and a stage
@@ -373,19 +399,75 @@ export function saveEnvelopeSectorStubs(data) {
   // Bare mission wrecks pick their packaged body by id hash across the aftermath table —
   // covering the residue classes needs the same hash the mount reads (machinery shared with
   // the identity-less aftermath-marker case below).
-  let bareMissionWrecksCovered = false;
-  const coverBareMissionWrecks = () => {
-    if (bareMissionWrecksCovered) return;
-    bareMissionWrecksCovered = true;
-    pushBareWreckResidues(out.placeStubs);
-  };
+  const coverBareMissionWrecks = makeBareWreckCover(out);
 
+  // sector:enter mounts this whole cohort on EVERY entry — the shared prop collector reads
+  // the same ledgers the live lane enumerates (src.X ↔ state.X carry identical shapes), so
+  // both warms walk one enumeration instead of drifting copies.
+  collectEnterSpawnerPropStubs(data, sector, out, coverBareMissionWrecks);
+
+  // sector_ceres_belt re-points three ambient drone props onto the throughline activity bodies
+  // (world.js CERES_ACTIVITY_DRONE_SLOT_PRESENTATION); the palette literal set covers dead_hulk
+  // and conveyor_barge but never these two.
+  if (sector.id === 'sector_ceres_belt') {
+    out.placeStubs.push({ type: 'fx', data: { placeId: 'place_dead_hulk', worldDressing: true } });
+    out.placeStubs.push({ type: 'fx', data: { placeId: 'place_ceres_bait_wreck', worldDressing: true } });
+    out.placeStubs.push({ type: 'fx', data: { placeId: 'place_ceres_grave_shard', worldDressing: true } });
+  }
+  // Live payload pods (helios rope cache + kettle payoff) mount place_cargo_pod_standard —
+  // absent from the one-off table. A restored bag always lacks the prior pod.
+  pushRopeCachePodStub(out.placeStubs, sector.id,
+    data.world && data.world.discovery && data.world.discovery[sector.id], false);
+
+  for (const rec of sectorRecords) {
+    if (rec.kind === RECORD_KIND.WRECK || rec.kind === RECORD_KIND.AFTERMATH) {
+      // Rematerialized wrecks resolve through the six-file aftermath residue table — the
+      // roster exemplar prewarm only covers survival arenas, so arm the same class cover.
+      coverBareMissionWrecks();
+      continue;
+    }
+    // Convoy/npc/mission_target records rematerialize through the ship spec — the resolver
+    // reads lootTableId then silhouette/defId, and the kit lane reads entity.factionId,
+    // exactly as the spawned spec stamps them (spawnSpecFromRecord shell / makeEnemySpawnSpec).
+    out.shipStubs.push(shipStubForRecord(rec));
+  }
+
+  // Owed mission targets + restore-scheduled hostile rosters — the shared roster collector
+  // walks the same mission/ace ledgers the live lane enumerates.
+  collectEnterSpawnerRosterStubs(data, sector,
+    (data.entities && Number.isFinite(data.entities.simTime)) ? data.entities.simTime : 0,
+    out, coverBareMissionWrecks);
+  // A serialized nemesis.pending never deploys post-restore: nemesis.js's save:loaded
+  // reconcile unconditionally _cancelPending's it ('save load invalidated in-flight
+  // deployment'), and the encounter host requires pending.dispatched for the request id,
+  // so hulls warmed here could never mount. The real re-planned deployment warms its
+  // roster via warmNemesisSquadDecode on the ~6 s announce window — no stub needed.
+
+  return out;
+}
+
+// aceMemory's serialized top level mixes pilot records with these metadata keys — only the
+// record rows are crew-bearing (normalizeMemory skips the same set, plus 'aces').
+export const ACE_MEMORY_META_KEYS = new Set([
+  'schemaVersion', 'news', 'activeReturns', 'cultureIntros', 'planetChallenges', 'playerStyle',
+  'aces',
+]);
+
+// ── Enter-spawner cohorts (shared envelope/live enumeration) ─────────────────────────────
+// A sector:enter mounts every cohort below on EVERY entry — restore or revisit, REDUCED or
+// FULL bag — from ledgers whose live and serialized views carry identical shapes
+// (state.X ↔ data.X). One enumerator feeds both warms so the live lane can never drift
+// from the restore lane's coverage as the owning systems evolve. `src` is the save packet
+// (envelope lane) or the live state (jump/charge warm); `coverBareMissionWrecks` is the
+// boxed residue-cover flag shared across a single enumeration.
+
+function collectEnterSpawnerPropStubs(src, sector, out, coverBareMissionWrecks) {
   // Aftermath wreck markers serialize the victim's full visual identity (defId + the same
   // visual fields its own admission read, faction kit, fracture piece) and _spawnForSector
   // rematerializes them at save:loaded — the stub resolves through the same wreckPackagedFile
   // pick the spawned body takes, so defId hulls and fragment files warm with everything else.
-  const aftermathMarkers = data.aftermathWrecks && data.aftermathWrecks.bySector
-    && data.aftermathWrecks.bySector[sector.id];
+  const aftermathMarkers = src.aftermathWrecks && src.aftermathWrecks.bySector
+    && src.aftermathWrecks.bySector[sector.id];
   if (Array.isArray(aftermathMarkers)) {
     for (const marker of aftermathMarkers) {
       if (!marker) continue;
@@ -415,7 +497,7 @@ export function saveEnvelopeSectorStubs(data) {
   // Claim-owned bodies, automation outposts, and asteroid-site beacons materialize as runtime
   // dressing rows (never envelope sector dressing): their place ids resolve through
   // placeFileForEntity exactly as the spawned rows do.
-  const claimBodies = (data.claims && Array.isArray(data.claims.bodies)) ? data.claims.bodies : [];
+  const claimBodies = (src.claims && Array.isArray(src.claims.bodies)) ? src.claims.bodies : [];
   for (const body of claimBodies) {
     if (!body || body.sectorId !== sector.id || body.owned !== true) continue;
     out.placeStubs.push({
@@ -423,15 +505,9 @@ export function saveEnvelopeSectorStubs(data) {
       data: { claimOwned: true, claimSpecId: (body.spec && body.spec.id) || null },
     });
   }
-  const outposts = (data.automation && Array.isArray(data.automation.outposts))
-    ? data.automation.outposts
+  const outposts = (src.automation && Array.isArray(src.automation.outposts))
+    ? src.automation.outposts
     : [];
-  // automation.js OUTPOST_VISUAL_BY_DEF — unknown defs mount the base outpost body.
-  const OUTPOST_STUB_VISUAL = {
-    outpost_refinery: { placeId: 'place_claim_outpost_refinery', claimSpecId: 'spec_refinery' },
-    outpost_fuelsynth: { placeId: 'place_claim_outpost_refinery', claimSpecId: 'spec_refinery' },
-    outpost_habhub: { placeId: 'place_claim_outpost_relay', claimSpecId: 'spec_relay' },
-  };
   for (const o of outposts) {
     if (!o || o.sectorId !== sector.id) continue;
     const visual = OUTPOST_STUB_VISUAL[o.defId] || { placeId: 'place_claim_outpost_base', claimSpecId: null };
@@ -444,7 +520,7 @@ export function saveEnvelopeSectorStubs(data) {
   // Fleet wingmen live in automation.fleet, not sector records — wingmen.js _spawnWingmen
   // rematerializes every ledger row on sector:enter through makeShipEntitySpec with the
   // Concord faction, so mirror the same defId route into the ship-warm lane.
-  const fleet = (data.automation && Array.isArray(data.automation.fleet)) ? data.automation.fleet : [];
+  const fleet = (src.automation && Array.isArray(src.automation.fleet)) ? src.automation.fleet : [];
   for (const fs of fleet) {
     const defId = fs && (fs.shipDefId || fs.defId);
     if (!defId) continue;
@@ -457,7 +533,7 @@ export function saveEnvelopeSectorStubs(data) {
   // Mining-drone groups repopulate live hulls on the first in-sector tick (_updateDrones →
   // _spawnDroneEntities → type 'drone' → the census packaged body). One stub covers the file
   // no matter how many groups the sector owes.
-  const droneGroups = (data.automation && Array.isArray(data.automation.drones)) ? data.automation.drones : [];
+  const droneGroups = (src.automation && Array.isArray(src.automation.drones)) ? src.automation.drones : [];
   for (const g of droneGroups) {
     if (g && g.sectorId === sector.id) { out.placeStubs.push({ type: 'drone' }); break; }
   }
@@ -478,7 +554,7 @@ export function saveEnvelopeSectorStubs(data) {
 
   // World-site roots mount the place id of their EVALUATED stage (stage.placeId falling back
   // to the manifest's visual root) — warm the file the progressed record will actually mount.
-  const siteRecords = data.sites && data.sites.worldById;
+  const siteRecords = src.sites && src.sites.worldById;
   if (siteRecords) {
     const warmedSiteFiles = new Set();
     let sectorSites = 0;
@@ -501,7 +577,7 @@ export function saveEnvelopeSectorStubs(data) {
   // Anchored claim sites re-ensure their massline relay on entry (asteroidSites
   // _syncClaims/_ensureBeacon): anchored + in-sector + survey lifecycle 'producing'.
   // Same relay file the tethys facility mounts — one stub covers every eligible site.
-  const claimSites = data.sites && data.sites.byId;
+  const claimSites = src.sites && src.sites.byId;
   if (claimSites) {
     for (const id of Object.keys(claimSites)) {
       const site = claimSites[id];
@@ -515,7 +591,7 @@ export function saveEnvelopeSectorStubs(data) {
   // recoveryEncounter._rebindSector rematerializes every in-sector record, open or
   // closed (closed records still mount the recovered/burned derelict body), and its
   // parentType picks from the same residue table mission wrecks use.
-  const recState = data.recoveryEncounters;
+  const recState = src.recoveryEncounters;
   if (recState && recState.records && typeof recState.records === 'object') {
     for (const id of Object.keys(recState.records)) {
       const rec = recState.records[id];
@@ -532,40 +608,17 @@ export function saveEnvelopeSectorStubs(data) {
   if ((zonesForSector(sector.id) || []).some((z) => z && z.type === 'derelict_field' && z.center)) {
     coverBareMissionWrecks();
   }
+}
 
-  // sector_ceres_belt re-points three ambient drone props onto the throughline activity bodies
-  // (world.js CERES_ACTIVITY_DRONE_SLOT_PRESENTATION); the palette literal set covers dead_hulk
-  // and conveyor_barge but never these two.
-  if (sector.id === 'sector_ceres_belt') {
-    out.placeStubs.push({ type: 'fx', data: { placeId: 'place_dead_hulk', worldDressing: true } });
-    out.placeStubs.push({ type: 'fx', data: { placeId: 'place_ceres_bait_wreck', worldDressing: true } });
-    out.placeStubs.push({ type: 'fx', data: { placeId: 'place_ceres_grave_shard', worldDressing: true } });
-  }
-  // Live payload pods (helios rope cache + kettle payoff) mount place_cargo_pod_standard —
-  // absent from the one-off table. A restored bag always lacks the prior pod.
-  pushRopeCachePodStub(out.placeStubs, sector.id,
-    data.world && data.world.discovery && data.world.discovery[sector.id], false);
-
-  for (const rec of sectorRecords) {
-    if (rec.kind === RECORD_KIND.WRECK || rec.kind === RECORD_KIND.AFTERMATH) {
-      // Rematerialized wrecks resolve through the six-file aftermath residue table — the
-      // roster exemplar prewarm only covers survival arenas, so arm the same class cover.
-      coverBareMissionWrecks();
-      continue;
-    }
-    // Convoy/npc/mission_target records rematerialize through the ship spec — the resolver
-    // reads lootTableId then silhouette/defId, and the kit lane reads entity.factionId,
-    // exactly as the spawned spec stamps them (spawnSpecFromRecord shell / makeEnemySpawnSpec).
-    out.shipStubs.push(shipStubForRecord(rec));
-  }
-
-  // Owed mission targets in the saved sector (_spawnTargetsFor): named marks carry their hull
-  // on the row; ghost packs are a fixed anchor+cutter cast; anonymous bounties draw from the
-  // shared risk pool. Adopted hosts are already covered by the sector-records pass above.
-  // The non-bounty needsTargets families (escort convoys, claim sites, salvage pockets, signal
-  // derelicts, physical set pieces, authored casts) respawn through the same pass — bare wreck
-  // props warm the aftermath table by residue class, ship actors warm their archetype hulls.
-  const missions = (data.missions && Array.isArray(data.missions.active)) ? data.missions.active : [];
+function collectEnterSpawnerRosterStubs(src, sector, simTime, out, coverBareMissionWrecks) {
+  // Owed mission targets in the entered sector (_spawnTargetsFor): named marks carry their
+  // hull on the row; ghost packs are a fixed anchor+cutter cast; anonymous bounties draw
+  // from the shared risk pool. Adopted hosts are already covered by the sector-records
+  // pass. The non-bounty needsTargets families (escort convoys, claim sites, salvage
+  // pockets, signal derelicts, physical set pieces, authored casts) respawn through the
+  // same pass — bare wreck props warm the aftermath table by residue class, ship actors
+  // warm their archetype hulls.
+  const missions = (src.missions && Array.isArray(src.missions.active)) ? src.missions.active : [];
   for (const m of missions) {
     if (!m || !m.needsTargets || m.status !== 'active') continue;
     if (m.destSectorId !== sector.id) continue;
@@ -674,13 +727,12 @@ export function saveEnvelopeSectorStubs(data) {
     }
   }
 
-  // Restore-scheduled hostile rosters — due ace returns and a pending nemesis deployment —
-  // spawn through makeEnemySpawnSpec inside the restored sector's first seconds but never
-  // enter any record or mission pass above. Mirror each builder's archetype/faction pick;
-  // gated variants simply leave speculative decodes in the runway, which cost nothing.
-  const aceNow = (data.entities && Number.isFinite(data.entities.simTime))
-    ? data.entities.simTime : 0;
-  const aceMemory = data.aceMemory;
+  // Enter-scheduled hostile rosters — due ace returns spawn through makeEnemySpawnSpec inside
+  // the entered sector's first seconds but never enter any record or mission pass above.
+  // Mirror each builder's archetype/faction pick; gated variants simply leave speculative
+  // decodes in the runway, which cost nothing.
+  const aceNow = Number.isFinite(simTime) ? simTime : 0;
+  const aceMemory = src.aceMemory;
   if (aceMemory && typeof aceMemory === 'object') {
     for (const id of Object.keys(aceMemory)) {
       if (ACE_MEMORY_META_KEYS.has(id)) continue;
@@ -694,7 +746,7 @@ export function saveEnvelopeSectorStubs(data) {
       if (!ace || ace.lifecycleOwner === 'nemesis') continue;
       // _spawnReturn gates a promoted record whose spared-debt already revealed through the
       // authored moral-return encounter — the ledger counts it settled, no crew fields.
-      const debts = data.story && data.story.moralMemory && data.story.moralMemory.debts;
+      const debts = src.story && src.story.moralMemory && src.story.moralMemory.debts;
       if (rec.promoted === true && debts && debts[rec.id] && debts[rec.id].status === 'revealed') continue;
       // offers_work routes to _spawnWorkOffer with an UNSTYLED crew (style=null); warming
       // the escalated style's counter hulls there decodes the wrong files. Other stances
@@ -707,21 +759,91 @@ export function saveEnvelopeSectorStubs(data) {
       }
     }
   }
-  // A serialized nemesis.pending never deploys post-restore: nemesis.js's save:loaded
-  // reconcile unconditionally _cancelPending's it ('save load invalidated in-flight
-  // deployment'), and the encounter host requires pending.dispatched for the request id,
-  // so hulls warmed here could never mount. The real re-planned deployment warms its
-  // roster via warmNemesisSquadDecode on the ~6 s announce window — no stub needed.
-
-  return out;
 }
 
-// aceMemory's serialized top level mixes pilot records with these metadata keys — only the
-// record rows are crew-bearing (normalizeMemory skips the same set, plus 'aces').
-export const ACE_MEMORY_META_KEYS = new Set([
-  'schemaVersion', 'news', 'activeReturns', 'cultureIntros', 'planetChallenges', 'playerStyle',
-  'aces',
-]);
+// Live-only enter cohorts — the serialized packet cannot enumerate these, but a live
+// sector:enter mounts them all: ambient/authored traffic hulls, faction-presence plans,
+// intervention sites, authored unique wrecks with minted bearings, the morrow companion,
+// and the survivor pod a player-wreck marker rematerializes.
+function liveEnterSpawnerStubs(state, sector, out, coverBareMissionWrecks) {
+  // Ambient role-mix + pocket/cast/lane-contact hulls — the spawn path's own enumeration
+  // (traffic.js) so the warm can't drift from the mount set as roles evolve.
+  for (const row of sectorEnterTrafficShipStubs(sector, state)) {
+    out.shipStubs.push({
+      type: 'ship',
+      factionId: row.factionId,
+      data: { defId: row.defId, lootTableId: null },
+    });
+  }
+  // Faction-presence plans — the same pure planner with the same inputs the system's
+  // sector:enter listener feeds it (hasLedger gate included, so this observer can never
+  // initialize another system's state).
+  const hasLedger = !!(state.lossLedger
+    && state.lossLedger.bySector
+    && typeof state.lossLedger.bySector === 'object'
+    && Array.isArray(state.lossLedger.entries));
+  const presencePlans = planFactionPresence({
+    sectorId: sector.id,
+    seed: ((state.meta && state.meta.seed) || 1) >>> 0,
+    losses: hasLedger ? lossesFor(state, sector.id) : [],
+    ...currentStoryInputs(state),
+    conflicts: state.conflicts || null,
+    ownerFactionId: sector.owner || null,
+  });
+  for (const plan of presencePlans || []) {
+    if (!plan || !plan.shipDefId) continue;
+    out.shipStubs.push({
+      type: 'ship',
+      factionId: plan.factionId || null,
+      data: { defId: plan.shipDefId, lootTableId: null },
+    });
+  }
+  // Pending interventions materialize a wreck + guard/jumper pair on entry
+  // (intervention.js _materializePendings → _spawnSite/_spawnGuard/_spawnJumper).
+  const pendings = Array.isArray(state.pendingInterventions) ? state.pendingInterventions : [];
+  for (const job of pendings) {
+    if (!job || job.sectorId !== sector.id) continue;
+    out.placeStubs.push({ type: 'wreck', data: { parentType: job.kind || 'asset' } });
+    // A guard only mounts for 'raided' sites; every site draws the claim-jumper.
+    if (job.cause === 'raided') out.roster.push({ archetype: 'pirate', factionId: 'faction_reach' });
+    out.roster.push({ archetype: 'fleeing_trader', factionId: 'faction_free' });
+  }
+  // Authored unique wrecks whose bearing already minted mount their authored body on
+  // entry (uniqueWrecks.js _materialize gates on bearings + the same phase set).
+  const bearings = state.player && state.player.uniqueWrecks
+    && state.player.uniqueWrecks.bearings;
+  if (bearings && typeof bearings === 'object') {
+    for (const def of UNIQUE_WRECKS) {
+      if (!def || def.sectorId !== sector.id) continue;
+      const bearing = bearings[def.id];
+      if (!bearing || !UNIQUE_WRECK_MATERIALIZE_PHASES.has(bearing.phase)) continue;
+      out.placeStubs.push({
+        type: 'wreck',
+        data: {
+          parentType: def.wreckClass === 'military' ? 'military' : 'ship',
+          wreckClass: def.wreckClass,
+          aftermathMarkerId: `authored:${def.id}`,
+        },
+      });
+    }
+  }
+  // The morrow companion mounts the packaged drone body on entry into its home sector.
+  if (sector.id === MORROW.sectorId) out.placeStubs.push({ type: 'drone' });
+  // A player-wreck marker anywhere rematerializes the survivor pod (generic tow body).
+  const bySector = state.aftermathWrecks && state.aftermathWrecks.bySector;
+  if (bySector && typeof bySector === 'object') {
+    for (const list of Object.values(bySector)) {
+      if (!Array.isArray(list)) continue;
+      if (list.some((m) => m && (m.playerWreck === true || m.kind === 'player_wreck'))) {
+        out.placeStubs.push({
+          type: 'payload',
+          data: { payloadType: 'survivor_pod', tetherRole: 'survivor_pod' },
+        });
+        break;
+      }
+    }
+  }
+}
 
 // ── Live-sector FULL-extras stubs ───────────────────────────────────────────────────────────
 // Twin of saveEnvelopeSectorStubs for a sector being charged into: a bag materialized REDUCED
@@ -933,13 +1055,24 @@ export function liveSectorFullExtrasStubs(state, sectorId, activeOverride) {
   const out = { sectorId: null, placeStubs: [], shipStubs: [], roster: [] };
   const world = state && state.world;
   const sector = sectorId && (world.sectors && world.sectors[sectorId] || SECTOR_BY_ID.get(sectorId));
+  if (!sector) return out;
+  out.sectorId = sector.id;
+  // sector:enter mounts a second cohort independent of the bag's tier — every system's own
+  // enter listener fires on every entry, and nothing on the promote path covers hulls the
+  // jump ships into the census (W42-popin: enter-spawned hulls decoded cold at mount).
+  // Same enumeration the envelope lane runs, reading the live ledgers, plus the cohorts
+  // only live state can enumerate (traffic plans, faction presence, interventions,
+  // authored unique wrecks, the morrow companion, the survivor pod).
+  const coverBareMissionWrecks = makeBareWreckCover(out);
+  collectEnterSpawnerPropStubs(state, sector, out, coverBareMissionWrecks);
+  collectEnterSpawnerRosterStubs(state, sector, state && state.simTime, out, coverBareMissionWrecks);
+  liveEnterSpawnerStubs(state, sector, out, coverBareMissionWrecks);
   // The materialize lane arms the warm with its in-flight bag — it is populated but not yet
   // published to sectorContents when the decode runway needs the cohort.
   const active = activeOverride || (world && world.sectorContents && world.sectorContents[sectorId]);
   // A bag already built at FULL (or absent — the charge path only reaches resident sectors,
   // which all carry bags) has no promote cohort to warm.
-  if (!sector || !active || active.fullExtrasBuilt === true) return out;
-  out.sectorId = sector.id;
+  if (!active || active.fullExtrasBuilt === true) return out;
   const seed = (state.meta && Number.isFinite(state.meta.seed)) ? state.meta.seed : 1;
   const sectorRecords = recordsForSector(world.records, sector.id);
   const heldRecordIds = liveSectorRecordHolderIds(state);
@@ -982,7 +1115,7 @@ export function liveSectorFullExtrasStubs(state, sectorId, activeOverride) {
   // Rematerialized wreck/aftermath records mount a bare 'wreck' body whose packaged file is
   // an allocated-id hash pick across the residue table — cover all six classes like the
   // envelope lane does for mission wrecks.
-  if (hasRematerializingWrecks) pushBareWreckResidues(out.placeStubs);
+  if (hasRematerializingWrecks) coverBareMissionWrecks();
 
   // POI dressing rows that promote to live actors — always runs (the promote re-arms them
   // even when dressing already exists), mirroring _promotePoiRowsToLive's own predicate.

@@ -17,6 +17,7 @@ import {
   rewardDescriptors,
 } from '../core/uniqueWreckComplications.js';
 import {
+  UNIQUE_WRECK_MATERIALIZE_PHASES,
   UNIQUE_WRECK_RECEIPT_LIMIT,
   UNIQUE_WRECK_SCAN_RADIUS,
   UNIQUE_WRECK_STATE_SCHEMA_VERSION,
@@ -42,7 +43,9 @@ import { createMemorialThief, normalizeMemorialThief } from './memorialThief.js'
 import { createRescuedWorkerReturn, normalizeRescuedWorkers } from './rescuedWorkerReturn.js';
 import { createScavengerOccupationSwitch, normalizeOccupationSwitch } from './scavengerOccupationSwitch.js';
 
-const VALID_PHASES = new Set(['rumored', 'fixed', 'decision', 'salvaged']);
+// The materialize phase set lives beside the registry so the sector decode warms grade
+// the same gate without importing this module (data/uniqueWrecks.js owns the constants).
+const VALID_PHASES = UNIQUE_WRECK_MATERIALIZE_PHASES;
 
 // The seven canon rumor channels remain native surfaces. A carrier event is only a transport:
 // `_recordRumor` additionally requires the exact primary sourceRef and matching channel.

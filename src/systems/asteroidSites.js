@@ -526,6 +526,19 @@ export const asteroidSites = {
     });
     this.bus.on('save:error', () => { this._worldRestoreActive = false; });
     this.bus.on('physics:impact', (payload = {}) => this._onWorldSiteImpact(payload));
+
+    // Census mount (vesper pattern): register a cook provider so anchored-site rows
+    // materialize inside the renderer's deterministic sector census (jump + opening)
+    // instead of relying on this listener's emit position. syncWorldSiteMaterialization
+    // dedupes by world record, so the emit listener's own call later in the slice is a
+    // no-op — the provider is ordering insurance, not a second spawn path.
+    if (this.ctx && this.ctx.helpers) {
+      (this.ctx.helpers.sectorCookProviders
+        || (this.ctx.helpers.sectorCookProviders = []))
+        .push((sector) => {
+          if (!this._worldRestoreActive) this._syncWorldSites(sector && sector.id);
+        });
+    }
   },
 
   newGame() {

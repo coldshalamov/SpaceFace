@@ -102,7 +102,10 @@ function factionReps(state) {
   return reps;
 }
 
-function currentStoryInputs(state) {
+// Exported so the live-sector warm can feed planFactionPresence the exact same story
+// inputs the enter listener does — the warm enumerates the plan hulls without running
+// the spawner.
+export function currentStoryInputs(state) {
   const story = (state && state.story) || {};
   const verge = story.verge && typeof story.verge === 'object' ? story.verge : {};
   const storyFlags = {
