@@ -344,3 +344,30 @@ export function fillCause(template, tokens) {
     .replace(/\s+/g, ' ')
     .trim();
 }
+
+/**
+ * NXB-043 — the starvation row's title+cause line, shared between the emit-only producer
+ * (economyContracts posts it) and the board owner (missions re-quotes it when the live
+ * deficit moves). One builder keeps the posted row and the refreshed row in the same voice.
+ * `rivalName` marks the competing pair: two yards bidding on the same finite feedstock.
+ * `rivalStillHungry` lets a refreshed row admit the other berth was fed. PURE.
+ */
+export function starvedOfferProse({ qty, commodity, destName, rivalName = null, rivalStillHungry = true }) {
+  const amount = `${Math.max(1, Math.floor(Number(qty) || 1))}u ${commodity || 'cargo'}`;
+  if (rivalName) {
+    const line = rivalStillHungry
+      ? `${destName} and ${rivalName} are bidding on the same ${commodity} — one hold of `
+        + `feedstock won't cover both yards. The first delivery takes the premium; the loser keeps waiting.`
+      : `${rivalName}'s hopper filled — ${destName}'s ${commodity} bid stands alone now. `
+        + `Its line is still idling on an empty hopper.`;
+    return {
+      title: `Feedstock bid: ${amount} to ${destName} — ${rivalName} wants the same`,
+      line,
+    };
+  }
+  return {
+    title: `Yard feed run: ${amount} into ${destName} (line starved)`,
+    line: `${destName}'s yard is starving for ${commodity} — its line is idling on an empty hopper. `
+      + `Run feedstock in and the berth pays the scarcity premium while it lasts.`,
+  };
+}

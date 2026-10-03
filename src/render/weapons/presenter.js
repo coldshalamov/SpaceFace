@@ -28,6 +28,7 @@ import {
   resolveWeaponRecipe,
 } from './recipes.js';
 import { FIELD_DEFS, FIELD_KINDS, FIELD_MAX_ACTIVE } from '../../data/fields.js';
+import { worldSizeForPixels } from './pixelFloor.js';
 
 const _color = new THREE.Color();
 const _local = { x: 0, z: 0 };
@@ -176,7 +177,12 @@ export class WeaponVfxPresenter {
       profile: 0,
     };
     this._nearMissSpec = { x: 0, y: 0.4, z: 0, radius: 5.5, strength: 0, life: 0.08 };
-    this._flashScratch = { life: 0, size0: 0, size1: 0, opacity0: 0, opacity1: 0, r: 1, g: 1, b: 1 };
+    this._flashScratch = { life: 0, size0: 0, size1: 0, opacity0: 0, opacity1: 0, r: 1, g: 1, b: 1, pxw: 0 };
+    // Camera the surfaces are judged from: a hairline strip that is 1 px at the chase camera is
+    // not an effect. Events stamp `pxw` (world units per screen pixel at the event) so the shared
+    // discharge pool can keep every muzzle and contact strip at a readable on-screen thickness.
+    this._pxCamera = null;
+    this._pxViewportHeight = 1000;
     this._scorchPoseCallback = (slot) => this._resolveScorchPose(slot);
     this._graph = null;
     this._disposed = false;
@@ -231,6 +237,7 @@ export class WeaponVfxPresenter {
     const pose = this._socketPose(ownerId, origin, angle);
     const muzzle = recipe.muzzle;
     const flash = this._flashSpec(muzzle.life, muzzle.width, muzzle.height, 1.35);
+    flash.pxw = this._pixelWorldAt(pose.x, pose.y, pose.z);
     hexColor(muzzle.coreColor, _color);
     // Muzzle and bore are one ignition beat in the source geometry; there is no second
     // stacked card. A missing/dead socket still yields a pose, so the source cannot vanish.
@@ -310,7 +317,7 @@ export class WeaponVfxPresenter {
         Math.max(1, Number(body?.radius) || Number(payload.targetRadius) || 8),
         Number.isFinite(this.state?.simTime) ? this.state.simTime : this.heavyImpacts.time);
       if (!handled) {
-        const impact = this._flashSpec(0.14, 1.6, 2.8, 1.15);
+        const impact = this._flashSpec(0.16, 1.9, 3.3, 1.15);
         this._spawnImpactSurface(captured, IMPACT_KIND.HULL, recipe, impact, nx, nz, ax, az, payload.targetId);
       }
     }
@@ -361,6 +368,17 @@ export class WeaponVfxPresenter {
     return { sparks: !hitShield && recipe.hull.sparks };
   }
 
+  /** World units covered by one screen pixel at (x, y, z); 0 until a camera has been seen. */
+  _pixelWorldAt(x, y, z) {
+    const camera = this._pxCamera;
+    const position = camera && camera.position;
+    if (!position) return 0;
+    const dx = position.x - x, dy = position.y - y, dz = position.z - z;
+    const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    if (!(distance > 0)) return 0;
+    return worldSizeForPixels(distance, 1, camera.fov, this._pxViewportHeight);
+  }
+
   update(dt, context = {}) {
     this.state = context.state || this.state;
     this.helpers = context.helpers || this.helpers;
@@ -372,6 +390,8 @@ export class WeaponVfxPresenter {
     const camera = context.camera;
     const alpha = Number.isFinite(context.interpolationAlpha) ? context.interpolationAlpha : 1;
     const viewportHeight = context.viewportHeight || 1000;
+    this._pxCamera = camera || this._pxCamera;
+    this._pxViewportHeight = viewportHeight;
     const index = this.state && this.state.entityIndex;
     const entities = (index && index.__spacefaceEntityIndexV1 && Array.isArray(index.projectiles))
       ? index.projectiles
@@ -754,6 +774,7 @@ export class WeaponVfxPresenter {
     const side = apx * nz - apz * nx;
     pose.slant = Math.atan2(side, Math.max(0.25, -into));
     flash.r = _color.r; flash.g = _color.g; flash.b = _color.b;
+    flash.pxw = this._pixelWorldAt(pose.x, pose.y, pose.z);
     const priority = targetId === (this.state && this.state.playerId) ? 0.9 : 0.4;
     this.discharges.spawnImpact(pose, kind, recipe.variant, flash, priority);
   }

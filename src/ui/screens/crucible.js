@@ -35,6 +35,16 @@ import {
   swarmStakePitch,
 } from '../../data/swarmStakes.js';
 import { SWARM_EVENT_BY_ID, SWARM_EVENT_TABLES } from '../../data/swarmEvents.js';
+import {
+  swarmArcadeSeedFor,
+  swarmArenaIsUnlocked,
+  SWARM_ARENA_STAR_GATES,
+  swarmCheckpointPurseFor,
+  swarmCheckpointStartWave,
+  swarmLadderStarTotal,
+  swarmZoneFor,
+  swarmZoneIndexFor,
+} from '../../data/swarmLadder.js';
 import { SURVIVAL_UNLOCK_CATALOG } from '../../data/survivalUnlocks.js';
 import { createStationRow } from '../orrery/stopDial.js';
 import { createCruciblePreparation } from '../orrery/cruciblePreparation.js';
@@ -749,6 +759,16 @@ export const crucibleScreen = {
     // S5: the swarm's difficulty contract, remembered with the rest of the launch. Contender is
     // the tuning baseline — an absent or unknown stake normalizes to it, never silently higher.
     let stake = normalizeSwarmStake(previous && previous.swarmStake);
+    // SWARM-04: the ladder at the door. `startWave` is the picked checkpoint entry (1 = the
+    // ladder's first round); `seedCustom` marks a seed the player typed, rolled, or staged —
+    // the arena's authored ladder seed fills the field but never overwrites a deliberate
+    // Custom run. A previous CUSTOM swarm seed restores its flag; a ladder or other-mode seed
+    // does not (the last launch's number was not a side-door pick).
+    let startWave = 1;
+    let seedCustom = !!(previous && !previous.dailyDateKey
+      && lastCrucibleRuleset() === SWARM_RULESET
+      && Number.isInteger(previous.seed)
+      && previous.seed !== swarmArcadeSeedFor(previous.arenaId));
 
     // .k-title — stencil marking and the live mode's blurb (syncMode writes it).
     const title = el('header', 'k-title');
@@ -1036,6 +1056,7 @@ export const crucibleScreen = {
       if (launch.arenaId && arenaDescriptions[launch.arenaId]) arenaId = launch.arenaId;
       seedInput.value = String(launch.seed);
       freeSeed = seedInput.value;
+      seedCustom = true;
       raceGhost = true;
       practiceQueued = true;
       syncMode();
@@ -1318,6 +1339,9 @@ export const crucibleScreen = {
           if (button.classList && typeof button.classList.toggle === 'function') {
             button.classList.toggle('is-on', on);
           }
+          // SWARM-04: a mutator contract is a side door — the Zone row and the authored
+          // seed's meaning change the moment one is picked.
+          syncLadder();
           cue('confirm');
         });
         addWord(modList, button);
@@ -1344,25 +1368,74 @@ export const crucibleScreen = {
     const arenaSentence = el('p', 'k-sentence sf-crd-arena', '');
     const syncArena = () => {
       if (preparation) preparation.update();
+      // SWARM-04: the ladder's star gates. Under the swarm ruleset the rooms open in the
+      // authored order as the profile's star total climbs (§6.3); the Daily is exempt — a
+      // shared challenge is a side door, not the climb. Other modes keep the rooms open.
+      if (arenaLockedFor(arenaId)) {
+        const fallback = COMBAT_LAB_ARENAS.find((a) => arenaDescriptions[a.id] && !arenaLockedFor(a.id));
+        arenaId = fallback ? fallback.id : 'helios_core';
+      }
       const described = arenaDescriptions[arenaId] || arenaDescriptions.helios_core;
+      delete arenaSentence.dataset.kind;
       arenaSentence.textContent = ruleset === SWARM_RULESET && described[2]
         ? `${described[1]} Signature events: ${described[2]}.`
         : described[1];
       paintHero(arenaId, described[0], described[1]);
       for (const button of arenas.querySelectorAll('button')) {
+        const locked = arenaLockedFor(button.dataset.arenaId);
+        button.classList.toggle('is-unavail', locked);
+        button.setAttribute('aria-disabled', String(locked));
+        let badge = button.querySelector && button.querySelector('.sf-crd-lock');
+        if (locked && !badge) {
+          badge = el('span', 'sf-crd-lock');
+          const mark = dpIcon('lock', 18, { className: 'sf-crd-lock-glyph' });
+          if (mark && typeof badge.insertAdjacentHTML === 'function') badge.insertAdjacentHTML('beforeend', mark);
+          badge.setAttribute('aria-hidden', 'true');
+          button.appendChild(badge);
+        } else if (!locked && badge && typeof badge.remove === 'function') {
+          badge.remove();
+        }
         syncChoice(button, button.dataset.arenaId === arenaId);
       }
+      syncLadder();
       armEmbarkSpec();
     };
     for (const arena of COMBAT_LAB_ARENAS.filter(entry => arenaDescriptions[entry.id])) {
       const button = choiceTile(arenaDescriptions[arena.id][0], 'sf-crd-arena-choice', kitUrl(ARENA_TILE[arena.id] || ARENA_TILE.helios_core));
       button.dataset.arenaId = arena.id;
-      button.addEventListener('click', () => { arenaId = arena.id; cue('confirm'); syncArena(); });
+      button.addEventListener('click', () => {
+        if (arenaLockedFor(arena.id)) {
+          const need = SWARM_ARENA_STAR_GATES[arena.id] || 0;
+          const have = swarmLadderStarTotal(doorProfile && doorProfile.ladder);
+          arenaSentence.dataset.kind = 'earn';
+          arenaSentence.textContent = `${arenaDescriptions[arena.id][0]} opens at ${need} ladder `
+            + `star${need === 1 ? '' : 's'} — you have ${have}. The Foundry's climb pays them.`;
+          cue('deny');
+          return;
+        }
+        arenaId = arena.id;
+        cue('confirm');
+        syncArena();
+      });
       addWord(arenas, button);
     }
     arenaBody.appendChild(arenas);
     arenaBody.appendChild(arenaSentence);
     syncArena();
+
+    // SWARM-04 — THE ZONE ROW (the ladder's entry point). Round 1 is always open; each zone
+    // boss cleared unlocks the next zone's checkpoint — "from Round 11" — and the star marks
+    // ride the words. Only the ladder shows it: a Custom seed or another mode starts at the
+    // top, so the row hides and startWave stays 1. syncLadder rebuilds it on every repaint.
+    const zoneBody = settingRow('Zone', 'sf-crd-row--zone');
+    const zoneLi = zoneBody.parentNode;
+    const zoneWords = el('ul', 'k-words k-words--row sf-crd-zones fh-cluster');
+    zoneWords.setAttribute('aria-label', 'Zone');
+    pin(zoneWords, { gap: '10px', 'align-items': 'stretch', 'flex-wrap': 'wrap' });
+    zoneBody.appendChild(zoneWords);
+    const zoneSentence = el('p', 'k-sentence sf-crd-zone', '');
+    zoneBody.appendChild(zoneSentence);
+    zoneLi.hidden = true;
 
     // Seed — the number as an underlined input, "New seed" as a fine word, the arena in fine print.
     const seedBody = settingRow('Seed', 'sf-crd-row--seed');
@@ -1416,15 +1489,110 @@ export const crucibleScreen = {
     }
     reroll.addEventListener('click', () => {
       if (daily) { cue('deny'); return; }
+      seedCustom = true;
       rollSeed(freshSeed());
+      syncLadder();
     });
     seedInput.addEventListener('input', () => {
-      if (!daily) freeSeed = seedInput.value;
+      if (!daily) { freeSeed = seedInput.value; seedCustom = true; }
       syncGhost();
+      syncLadder();
       armEmbarkSpec();
     });
     seedRow.appendChild(reroll);
     seedBody.appendChild(seedRow);
+    // SWARM-04: the seed's honesty line. On the arena's authored seed the run is the ladder;
+    // on anything else it is a Custom run — the room still plays, stars and checkpoints do not.
+    const seedNote = el('p', 'k-t-fine k-38 sf-crd-seed-note', '');
+    seedBody.appendChild(seedNote);
+
+    // SWARM-04 — THE LADDER AT THE DOOR. Swarm's Play is the arena's authored seed: the field
+    // fills itself until the player types or rolls, and the Zone row offers every checkpoint
+    // the profile's ladder has opened (deepest picked by default — a checkpoint exists to skip
+    // what you mastered). Daily/weekly/practice/share/mutator doors never enter it: those
+    // contracts are side doors exactly like a Custom seed (isSwarmLadderRun settles the same
+    // list at run end).
+    function ladderArenaRec() {
+      const ladder = doorProfile && doorProfile.ladder;
+      const rec = ladder && ladder.arenas ? ladder.arenas[arenaId] : null;
+      return rec && typeof rec === 'object' && rec.zones && typeof rec.zones === 'object'
+        ? rec : { zones: {}, checkpoint: 0, bestWave: 0 };
+    }
+    function ladderGateOn() {
+      return ruleset === SWARM_RULESET && !daily;
+    }
+    function arenaLockedFor(id) {
+      return ladderGateOn()
+        && !swarmArenaIsUnlocked(doorProfile && doorProfile.ladder, id);
+    }
+    function ladderPlayOn() {
+      return ruleset === SWARM_RULESET && !daily && !weekly && !practiceQueued && !pendingShare
+        && selectedModifiers.size === 0 && swarmArcadeSeedFor(arenaId) != null;
+    }
+    function syncLadder() {
+      // The first arena paint runs before these rows exist (declared below it); the post-mount
+      // syncMode re-runs this with every element in place.
+      let els = null;
+      try { els = { zoneLi, zoneWords, zoneSentence, seedNote, seedInput }; }
+      catch { return; /* pre-mount */ }
+      const arcadeSeed = swarmArcadeSeedFor(arenaId);
+      const onPlay = ladderPlayOn();
+      if (onPlay && !seedCustom) els.seedInput.value = String(arcadeSeed);
+      const seedNow = normalizeSeed(els.seedInput.value);
+      const onLadder = onPlay && seedNow === arcadeSeed;
+      els.seedNote.textContent = !onPlay ? ''
+        : onLadder
+          ? 'The authored climb — this seed banks stars and checkpoints.'
+          : 'Custom seed — the room still plays; the ladder does not count it.';
+      els.zoneLi.hidden = !onLadder;
+      if (!onLadder) {
+        startWave = 1;
+        return;
+      }
+      const rec = ladderArenaRec();
+      const zones = rec.zones;
+      const checkpoint = Number.isInteger(rec.checkpoint) && rec.checkpoint > 0
+        ? rec.checkpoint : 0;
+      if (!Number.isInteger(startWave) || startWave < 1
+        || swarmZoneIndexFor(startWave) > checkpoint) {
+        startWave = swarmCheckpointStartWave(checkpoint);
+      }
+      els.zoneWords.innerHTML = '';
+      for (let z = 0; z <= checkpoint; z += 1) {
+        const wave = swarmCheckpointStartWave(z);
+        const zone = swarmZoneFor(wave);
+        const zRec = zones[String(z)];
+        const stars = zRec && Number.isInteger(zRec.stars)
+          ? Math.max(0, Math.min(3, zRec.stars)) : 0;
+        const label = z === 0 ? `Round 1 — ${zone.name}` : `${zone.name} — Round ${wave}`;
+        const button = word(label, 'k-word--fine sf-crd-zone-pick');
+        const mark = `${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}`;
+        button.title = z === 0
+          ? 'From the top — the whole ladder ahead.'
+          : `Checkpoint start — the armory holds a working purse. ${mark} banked`;
+        button.setAttribute('aria-label',
+          `Zone ${zone.number}, ${zone.name}, from round ${wave}. ${stars} of 3 stars banked.`);
+        button.addEventListener('click', () => {
+          startWave = wave;
+          cue('confirm');
+          syncLadder();
+        });
+        syncChoice(button, startWave === wave);
+        addWord(els.zoneWords, button);
+      }
+      const picked = swarmZoneFor(startWave);
+      els.zoneSentence.textContent = startWave > 1
+        ? `${picked.name} — checkpoint start at Round ${startWave}. The opening armory holds `
+          + `${swarmCheckpointPurseFor(swarmZoneIndexFor(startWave))} cr for a mid-build.`
+        : `${picked.name} — from Round 1. Clear each zone's boss for stars and the next checkpoint.`;
+      // The verb says where Play goes (§7.2): only on the ladder's own door — weekly, daily
+      // and the other modes keep their own words.
+      if (enterButton && ruleset === SWARM_RULESET && !daily && !weekly) {
+        enterButton.textContent = startWave > 1
+          ? `Play ${picked.name} — Round ${startWave}`
+          : 'Launch Swarm';
+      }
+    }
 
     // Share (PQ-160.02): a run travels as a code, a ghost as a share block — files and codes,
     // never a service. Both fields are plain paste targets; a bad code fails closed with the
@@ -1483,6 +1651,8 @@ export const crucibleScreen = {
       practiceQueued = false;
       freeSeed = String(res.seed);
       seedInput.value = freeSeed;
+      // A code's seed is a staged Custom — the ladder sync must not replace it.
+      seedCustom = true;
       seedInput.readOnly = false;
       seedInput.removeAttribute('aria-readonly');
       reroll.disabled = false;
@@ -1567,6 +1737,7 @@ export const crucibleScreen = {
       // Point the door at the ghost's seed so its race offer resolves immediately.
       freeSeed = String(res.seed);
       seedInput.value = freeSeed;
+      seedCustom = true;
       ghostInput.value = '';
       shareNote.textContent = res.alreadyPresent
         ? `Ghost ${res.hash} was already on this machine.`
@@ -1686,6 +1857,7 @@ export const crucibleScreen = {
           arenaId,
           ruleset,
           swarmStake: launchStake,
+          startWave,
         })
         : crucibleSetupFor({
           starterId,
@@ -1693,6 +1865,7 @@ export const crucibleScreen = {
           arenaId,
           ruleset,
           swarmStake: launchStake,
+          startWave,
         });
       if (!setup.ok || !setup.value) {
         cue('deny');
@@ -1732,21 +1905,21 @@ export const crucibleScreen = {
       requestCrucibleRun(ctx.bus, payload, ruleset);
     }
     const quick = word('Quick play', 'k-word--emph');
-    quick.setAttribute('aria-label', 'Quick play: Swarm now on a fresh seed');
-    quick.title = 'Swarm now on a fresh seed, with this build and arena.';
+    quick.setAttribute('aria-label', 'Quick play: Swarm now on your ladder');
+    quick.title = 'Swarm now on the arena\u2019s ladder, with this build and checkpoint.';
     // A key like Back beside it, not loose words in front of the launch key.
     paintKey(quick, 'small');
     quick.addEventListener('click', () => {
-      // Quick play is the fast game with nothing to decide: Swarm, a fresh seed, no
-      // challenge keys, no ghost. Hull and arena stay as chosen — those are loadout.
+      // Quick play IS the ladder (§6.1/§7.2): Swarm on the arena's authored seed, at the
+      // picked checkpoint, no challenge keys, no ghost. Hull and arena stay — loadout is
+      // the player's to keep. seedCustom clears so the authored seed fills the field.
       ruleset = SWARM_RULESET;
       daily = false;
       weekly = false;
       practiceQueued = false;
       pendingShare = null;
       raceGhost = false;
-      seedInput.value = String(freshSeed());
-      freeSeed = seedInput.value;
+      seedCustom = false;
       syncMode();
       syncHull();
       syncGhost();

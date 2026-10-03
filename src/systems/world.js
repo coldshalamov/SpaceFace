@@ -194,6 +194,7 @@ import {
   materializeMachineLayer,
   tickMachineLayer,
   machineRouteOpen,
+  handleMachinePickupCollected,
 } from './precursorMachines.js'; // Verge-Layer machine layer (doc 07, AE-090..109): same seam
 import { MACHINE_PROTOCOL_FAULTS } from '../data/precursorMachines.js';
 import { createAlienEcologyState, ensureAlienEcologyState } from '../data/alienEcologyState.js';
@@ -591,6 +592,9 @@ export const world = {
     bus.on('pallasHiddenCache:choose', (p) => this._onPallasHiddenCacheChoice(p || {}));
     bus.on('pickup:collected', (p) => this._onVestaOreCachePickupCollected(p || {}));
     bus.on('pickup:collected', (p) => this._onPallasHiddenCachePickupCollected(p || {}));
+    // SFQ-B141: a committed pickup receipt is the courier token's custody transfer — the
+    // machine layer settles intercept/stolen on the same receipt cargo's listener wrote.
+    bus.on('pickup:collected', (p) => handleMachinePickupCollected(this, p || {}));
     bus.on('save:restoring', () => {
       this._vestaDecisionSignature = null;
       this._pallasDecisionSignature = null;
@@ -3012,6 +3016,11 @@ export const world = {
         ent = findLiveRecordEntity(this.state, recordId);
         if (ent) {
           this._decoratePhysicalOneOff(ent, oneOff, sector, recordId, identityKey);
+        } else if (farActorHoldsWorldRecord(this.state, recordId)) {
+          // A shelved far row already owns this record's body. Minting a second copy here
+          // shelves again on exit — one extra durable row per load cycle (D141). The row
+          // promotes back on approach and this path re-decorates it live next materialize.
+          continue;
         } else {
           const mass = oneOff.physicalBody.mass;
           ent = this.helpers.spawnEntity({

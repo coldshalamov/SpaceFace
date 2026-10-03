@@ -618,3 +618,102 @@ function withMasslineFlags(fn) {
     masslineThrow.destroy();
   }
 }
+
+// ── RELEASE-TRUTH C1 — the producer receipt must keep aimed misses and untargeted neutral ──────
+// The presentation gate reads prediction.valid + prediction.onSolution straight off the
+// validation receipt, so the producer's shape IS the contract: a lawful untargeted release
+// reports valid:false (no attempted solution), while a deliberately aimed off-window throw
+// reports valid:true + onSolution:false (the aimed miss the missed-window cue may speak).
+
+test('RELEASE-TRUTH: an untargeted RMB throw reports a neutral receipt (valid:false)', () => {
+  withMasslineFlags(() => {
+    const h = makeThrowHarness({ assist: 'snap', aimAngle: Math.PI / 2, omega: 0.4 });
+    h.state.player.targetId = null; // no selection, no waypoint, no pointer aim -> untargeted
+    masslineThrow.init(h.ctx);
+    masslineThrow.update(1 / 60, h.state); // throwArm already held -> press edge -> execute
+
+    const thrown = h.events.find((e) => e.type === 'massline:throw');
+    assert.ok(thrown, 'the untargeted cut is still a legal throw, not a swallowed input');
+    assert.equal(thrown.payload.prediction.valid, false,
+      'no aim -> no attempted solution -> the receipt is neutral');
+    assert.equal(thrown.payload.prediction.onSolution, false);
+
+    h.state.tick += 1;
+    h.state.simTime += 1 / 60;
+    masslineThrow.update(1 / 60, h.state);
+    const validated = h.events.find((e) => e.type === 'massline:releaseValidated');
+    assert.ok(validated, 'the validation receipt still arrives — neutral is not silent');
+    assert.equal(validated.payload.prediction.valid, false,
+      'the receipt the presentation gate reads keeps valid:false for a lawful untargeted release');
+    assert.equal(validated.payload.prediction.onSolution, false);
+  });
+});
+
+test('RELEASE-TRUTH: a taut untargeted F-cut reports a neutral self-sling receipt', () => {
+  withMasslineFlags(() => {
+    const player = {
+      id: 1, type: 'ship', alive: true, mass: 20, radius: 8,
+      pos: { x: 0, z: 0 }, vel: { x: 100, z: 0 },
+    };
+    const anchor = {
+      id: 2, type: 'asteroid', alive: true, mass: 20_000, radius: 40,
+      pos: { x: 100, z: 0 }, vel: { x: 0, z: 0 },
+    };
+    const state = {
+      mode: 'flight', tick: 300, simTime: 5, playerId: 1,
+      entities: new Map([[1, player], [2, anchor]]), entityList: [player, anchor],
+      settings: { gameplay: { masslineReleaseAssist: 'snap' } },
+      input: { actions: { throwArm: false } },
+      player: {
+        targetId: null, // no selected sling target
+        tether: { active: true, targetId: 2, attachmentId: 'att-sling', phase: 'loaded', load: 1 },
+        masslineTelemetry: { active: true, tangentialSpeed: 100 },
+      },
+      nav: {}, // no waypoint either: the cut is lawful and untargeted
+    };
+    const bus = makeRecordingBus();
+    masslineThrow.init({ state, bus, helpers: {}, registry: { get: () => null } });
+    masslineThrow.update(1 / 60, state); // settle the swing mirror
+    bus.emit('tether:cut', { targetId: anchor.id });
+
+    const sling = bus.events.find((e) => e.type === 'massline:selfSling')?.payload;
+    assert.ok(sling, 'the taut untargeted cut still releases');
+    assert.equal(sling.prediction.valid, false,
+      'no sling target -> no attempted solution -> neutral, not a missed window');
+    assert.equal(sling.prediction.onSolution, false);
+
+    state.player.tether.active = false;
+    state.tick = 301;
+    state.simTime = 301 / 60;
+    masslineThrow.update(1 / 60, state);
+    const validated = bus.events.find((e) => e.type === 'massline:releaseValidated')?.payload;
+    assert.ok(validated, 'the self-sling validation receipt still arrives');
+    assert.equal(validated.prediction.valid, false, 'untargeted cut stays neutral downstream');
+    assert.equal(validated.prediction.onSolution, false);
+  });
+});
+
+test('RELEASE-TRUTH: an aimed off-window throw keeps the valid aimed-miss receipt', () => {
+  withMasslineFlags(() => {
+    // Aim 90° off the throw heading: a real, valid solution exists but the release is not on
+    // it — the aimed miss the missed-window cue is FOR.
+    const h = makeThrowHarness({ assist: 'snap', aimAngle: Math.PI / 2, omega: 0.4 });
+    masslineThrow.init(h.ctx);
+    masslineThrow.update(1 / 60, h.state);
+
+    const thrown = h.events.find((e) => e.type === 'massline:throw');
+    assert.ok(thrown, 'the aimed release executes');
+    assert.equal(thrown.payload.prediction.valid, true,
+      'an aimed miss carries a valid attempted solution — the cue may speak');
+    assert.equal(thrown.payload.prediction.onSolution, false);
+
+    h.state.tick += 1;
+    h.state.simTime += 1 / 60;
+    masslineThrow.update(1 / 60, h.state);
+    const validated = h.events.find((e) => e.type === 'massline:releaseValidated');
+    assert.ok(validated);
+    assert.equal(validated.payload.prediction.valid, true);
+    assert.equal(validated.payload.prediction.onSolution, false,
+      'the deliberate aimed miss keeps its missed-window truth');
+  });
+});

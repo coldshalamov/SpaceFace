@@ -86,6 +86,11 @@ const CSS = `
   -webkit-mask:var(--orr-icon) center / contain no-repeat; mask:var(--orr-icon) center / contain no-repeat; color:var(--dp-ink, #e8e2d4); opacity:.9; }
 .orr-cluster__key.is-node .orr-cluster__icon { width:14px; height:14px; margin:-7px 0 0 -7px; opacity:.66; }
 .orr-cluster__key.is-armed .orr-cluster__icon { color:var(--dp-hand-hot, #ffd98c); opacity:1; }
+/* SWARM-03: a tactically-live verb breathes — the key warms and exhales so "why now"
+   reads at a glance (latch in reach, ordnance armed, a pack inside the well). */
+.orr-cluster__key.is-live .orr-cluster__icon { color:var(--dp-hand, #f2b950); animation:orr-key-live 1.15s ease-in-out infinite; }
+.orr-cluster__key.is-live .orr-cluster__keytag b { color:var(--dp-hand-hot, #ffd98c); }
+@keyframes orr-key-live { 0%,100% { opacity:1; } 50% { opacity:.5; } }
 .orr-cluster__key.is-cooldown .orr-cluster__icon { opacity:.5; }
 .orr-cluster__key.is-locked .orr-cluster__icon, .orr-cluster__key.is-empty .orr-cluster__icon { opacity:.24; }
 /* labels hold a 10 px floor on screen whatever the cluster's scale */
@@ -498,10 +503,12 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
       if (sk.slot) {
         const st = slotStates[sid(sk.slot)] || {};
         const state = st.state || 'ready';
+        const live = st.live === true;
         // write only what changed: a settled HUD frame must not dirty the SVG
-        if (sk.state !== state) {
+        if (sk.state !== state || sk.live !== live) {
           sk.state = state;
-          sk.el.className = `orr-cluster__key is-${state}`;
+          sk.live = live;
+          sk.el.className = `orr-cluster__key is-${state}${live ? ' is-live' : ''}`;
           sk.armed.setAttribute('opacity', state === 'armed' ? '1' : '0');
           sk.armedB.setAttribute('opacity', state === 'armed' ? '.26' : '0');
         }

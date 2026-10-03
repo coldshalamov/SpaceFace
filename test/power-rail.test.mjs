@@ -13,6 +13,7 @@ import { resolveImpulseChargeCapacity } from '../src/systems/impulseCharges.js';
 import {
   SWEEP_CIRCUMFERENCE,
   RAIL_SLOTS,
+  BAND_DRIVE,
   BAND_ORDNANCE,
   BAND_FIELDWORK,
   BAND_RIG,
@@ -44,11 +45,14 @@ function baseSlots(overrides = {}) {
 }
 
 test('the rank keeps nine keys and gives drifting bombs their own bay band', () => {
-  assert.equal(RAIL_SLOTS.length, 9);
-  for (const [band, count] of [[BAND_ORDNANCE, 3], [BAND_FIELDWORK, 3], [BAND_RIG, 2], [BAND_BAY, 1]]) {
+  // FB-002: slot 0 rides ahead of the hotbar as the DRIVE state lamp — it owns no digit,
+  // so the rank is still the nine keys the player reaches for plus the latch socket.
+  assert.equal(RAIL_SLOTS.length, 10);
+  for (const [band, count] of [[BAND_DRIVE, 1], [BAND_ORDNANCE, 3], [BAND_FIELDWORK, 3], [BAND_RIG, 2], [BAND_BAY, 1]]) {
     assert.equal(RAIL_SLOTS.filter((s) => s.band === band).length, count);
   }
-  assert.deepEqual(RAIL_SLOTS.map((s) => s.index), [1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  assert.deepEqual(RAIL_SLOTS.map((s) => s.index), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  assert.equal(RAIL_SLOTS[0].action, 'travelBurn', 'slot 0 is the travel-drive latch');
 });
 
 test('FIELDWORK and RIG name the physics verbs that are actually bound today', () => {
@@ -101,39 +105,42 @@ test('a SINGLE claim borrows one slot and leaves the rest live', () => {
     { claimId: 'hail', slots: [1], answers: ['Accept'], mode: CLAIM_SINGLE },
   ], 1000);
   assert.equal(out.claimed, true);
-  assert.equal(out.slots[0].answer, 'Accept');
-  assert.equal(out.slots[0].claimedBy, 'hail');
-  assert.equal(out.slots[3].answer, null, 'slot 4 keeps its power');
-  assert.equal(out.slots[3].claimedBy, null);
+  assert.equal(out.slots[1].answer, 'Accept');
+  assert.equal(out.slots[1].claimedBy, 'hail');
+  assert.equal(out.slots[0].answer, null, 'slot 0 is a state lamp, never an answer key');
+  assert.equal(out.slots[4].answer, null, 'slot 4 keeps its power');
+  assert.equal(out.slots[4].claimedBy, null);
 });
 
 test('a FULL claim blanks every slot it has no answer for', () => {
   const out = applyClaims(baseSlots(), [
     { claimId: 'surrender', answers: ['Yes', 'No'], mode: CLAIM_FULL },
   ], 1000);
-  assert.equal(out.slots[0].answer, 'Yes');
-  assert.equal(out.slots[1].answer, 'No');
+  assert.equal(out.slots[1].answer, 'Yes');
+  assert.equal(out.slots[2].answer, 'No');
+  assert.equal(out.slots[0].answer, null, 'the drive lamp cannot answer a prompt');
+  assert.equal(out.slots[0].state, 'ready', 'and it never goes inert under a claim');
   // Without this, a live power would sit beside a prompt answer and imply both keys respond.
-  assert.equal(out.slots[3].answer, null);
-  assert.equal(out.slots[3].state, 'empty', 'unanswered slots go inert under a FULL claim');
+  assert.equal(out.slots[4].answer, null);
+  assert.equal(out.slots[4].state, 'empty', 'unanswered slots go inert under a FULL claim');
 });
 
 test('the newest claim wins a contested slot, and releasing restores what was underneath', () => {
   const first = { claimId: 'a', slots: [1], answers: ['First'], mode: CLAIM_PARTIAL };
   const second = { claimId: 'b', slots: [1], answers: ['Second'], mode: CLAIM_PARTIAL };
   const both = applyClaims(baseSlots(), [first, second], 1000);
-  assert.equal(both.slots[0].answer, 'Second');
-  assert.equal(both.slots[0].claimedBy, 'b');
+  assert.equal(both.slots[1].answer, 'Second');
+  assert.equal(both.slots[1].claimedBy, 'b');
 
   const afterRelease = applyClaims(baseSlots(), [first], 1000);
-  assert.equal(afterRelease.slots[0].answer, 'First', 'the older claim is still underneath');
+  assert.equal(afterRelease.slots[1].answer, 'First', 'the older claim is still underneath');
 });
 
 test('an expired claim is dropped, so a prompt that dies cannot wedge the rail', () => {
   const stale = { claimId: 'ghost', slots: [1, 2], answers: ['X', 'Y'], mode: CLAIM_PARTIAL, expiresAt: 500 };
   const out = applyClaims(baseSlots(), [stale], 1000);
   assert.equal(out.claimed, false, 'a claim past its deadline is not honoured');
-  assert.equal(out.slots[0].answer, null);
+  assert.equal(out.slots[1].answer, null);
 
   const stillLive = applyClaims(baseSlots(), [stale], 400);
   assert.equal(stillLive.claimed, true, 'and is honoured before the deadline');
@@ -143,8 +150,14 @@ test('a claim naming a slot that does not exist is ignored, not thrown', () => {
   const out = applyClaims(baseSlots(), [
     { claimId: 'bad', slots: [42], answers: ['Nope'], mode: CLAIM_PARTIAL },
   ], 1000);
-  assert.equal(out.slots.length, 9);
+  assert.equal(out.slots.length, 10);
   assert.ok(out.slots.every((s) => s.answer === null));
+  // Slot 0 is not claimable either — a prompt that names it by index still cannot borrow the lamp.
+  const lamp = applyClaims(baseSlots(), [
+    { claimId: 'lampjack', slots: [0], answers: ['Steal'], mode: CLAIM_PARTIAL },
+  ], 1000);
+  assert.equal(lamp.slots[0].answer, null);
+  assert.equal(lamp.slots[0].claimedBy, null);
 });
 
 test('the CSS sweep keyframe matches the JS ring circumference', () => {

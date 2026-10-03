@@ -1434,7 +1434,8 @@ export const encounterDirector = {
       mass: 1e6,
       hull: 1,
       hullMax: 1,
-      physicsBody: { shape: 'capsule' },
+      // SFQ-B025: authored dead-mass stays the body's own mass through normalization.
+      physicsBody: { shape: 'capsule', mass: 1e6 },
       data: {
         parentType: 'debris',
         proportions: WRECK_COLLIDER_PROPORTIONS,

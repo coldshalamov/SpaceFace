@@ -192,6 +192,36 @@ export const GAMEPAD_DUAL_LABELS = Object.freeze({
   home: 'Guide',
 });
 
+// FB-117 glyph sets — the face-button vocabulary a prompt prints. 'xb' is the stock Xbox
+// spelling (GAMEPAD_BUTTON_LABELS); 'ds' is the DualShock symbol register; 'fh' is the
+// Field Hardware filled-letter register, the same filled-glyph language the Power Rail
+// speaks (src/ui/views/fhGlyphs.js). Only the four face buttons differ across sets —
+// shoulders, sticks, the D-pad and the menu pair read the same on every pad, so they
+// fall through to the stock label. The set lives at settings.controls.gamepad.glyphSet;
+// readers pass it through the { glyphSet } option on gamepadButtonLabels.
+export const GAMEPAD_DS_FACE_LABELS = Object.freeze({
+  accept: '✕',
+  cancel: '◯',
+  action: '□',
+  alt: '△',
+});
+export const GAMEPAD_FH_FACE_LABELS = Object.freeze({
+  accept: 'Ⓐ',
+  cancel: 'Ⓑ',
+  action: 'Ⓧ',
+  alt: 'Ⓨ',
+});
+export const GAMEPAD_GLYPH_SETS = Object.freeze(['xb', 'ds', 'fh']);
+const FACE_LABEL_SETS = Object.freeze({ ds: GAMEPAD_DS_FACE_LABELS, fh: GAMEPAD_FH_FACE_LABELS });
+export function normalizeGamepadGlyphSet(set) {
+  return set === 'ds' || set === 'fh' ? set : 'xb';
+}
+/** The face-button label under the player's glyph set; non-face names keep the stock register. */
+export function gamepadFaceButtonLabel(name, glyphSet) {
+  const set = FACE_LABEL_SETS[normalizeGamepadGlyphSet(glyphSet)];
+  return (set && set[name]) || GAMEPAD_BUTTON_LABELS[name] || '';
+}
+
 /**
  * Every standard button name bound to `action`, in binding order, with unknown names dropped.
  *
@@ -208,26 +238,28 @@ export function gamepadButtonNames(action, map) {
   return Array.isArray(list) ? list.filter(isGamepadButtonName) : [];
 }
 
-/** Player text for one binding name — a chord prints every button it holds. */
-function gamepadButtonLabel(name, dual) {
+/** Player text for one binding name — a chord prints every button it holds. `glyphSet`
+ *  overrides the face-button spelling ('ds' symbols, 'fh' filled letters); 'dual' keeps its
+ *  stock Xbox/PlayStation register and loses only when a face set is explicitly chosen. */
+function gamepadButtonLabel(name, dual, glyphSet) {
   const chord = parseGamepadChord(name);
-  if (!chord) {
-    return dual
-      ? GAMEPAD_DUAL_LABELS[name] || GAMEPAD_BUTTON_LABELS[name]
-      : GAMEPAD_BUTTON_LABELS[name];
-  }
-  const mod = dual ? GAMEPAD_DUAL_LABELS[chord[0]] || GAMEPAD_BUTTON_LABELS[chord[0]] : GAMEPAD_BUTTON_LABELS[chord[0]];
-  const key = dual ? GAMEPAD_DUAL_LABELS[chord[1]] || GAMEPAD_BUTTON_LABELS[chord[1]] : GAMEPAD_BUTTON_LABELS[chord[1]];
-  return `${mod} + ${key}`;
+  const label = (btn) => {
+    const set = normalizeGamepadGlyphSet(glyphSet);
+    if (set !== 'xb') return gamepadFaceButtonLabel(btn, set);
+    return dual ? GAMEPAD_DUAL_LABELS[btn] || GAMEPAD_BUTTON_LABELS[btn] : GAMEPAD_BUTTON_LABELS[btn];
+  };
+  if (!chord) return label(name);
+  return `${label(chord[0])} + ${label(chord[1])}`;
 }
 
 /**
  * `gamepadButtonNames` mapped to player text. `dual` selects the Xbox/PlayStation register used by
  * the stock Help sheet; a remapped map prints the short glyph, which is the same register the
- * Settings remap row shows, so the two screens agree after a rebind.
+ * Settings remap row shows, so the two screens agree after a rebind. `glyphSet` ('xb'|'ds'|'fh')
+ * picks the face-button family the prompt prints — Settings → Controls owns the choice.
  */
-export function gamepadButtonLabels(action, map, { dual = false } = {}) {
-  return gamepadButtonNames(action, map).map(name => gamepadButtonLabel(name, dual));
+export function gamepadButtonLabels(action, map, { dual = false, glyphSet = 'xb' } = {}) {
+  return gamepadButtonNames(action, map).map(name => gamepadButtonLabel(name, dual, glyphSet));
 }
 
 // FB-003: keyboard flight verbs whose pad route is a differently-named channel rather than a

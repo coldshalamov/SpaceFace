@@ -47,6 +47,17 @@ export function labelPriority(kind, hostile = false) {
   return 3;
 }
 
+// FB-035 — the plan's single reader path: the anchor entity carries the stamped zoneId
+// (livingPoiBehaviors writes entity.data.poiBehavior once) and state.world.poiReadouts holds
+// the live row keyed by zoneId, so progress stays fresh with no subscription. An absent stamp
+// or empty bag means the POI is dormant and the marker stays quiet.
+export function poiReadoutForEntity(state, entity) {
+  const stamped = entity && entity.data && entity.data.poiBehavior;
+  if (!stamped || stamped.zoneId == null) return null;
+  const published = state && state.world && state.world.poiReadouts;
+  return (published && published[stamped.zoneId]) || null;
+}
+
 function labelRectsOverlap(a, b, pad) {
   return a.x < b.x + b.w + pad && a.x + a.w + pad > b.x
     && a.y < b.y + b.h + pad && a.y + a.h + pad > b.y;
@@ -380,6 +391,10 @@ function intel() {
   return _intel;
 }
 
+// Session-singleton accessor so the deterministic feed path can be driven and read without a
+// mounted screen (focused instrument tests, telemetry probes).
+export function localMapIntel() { return intel(); }
+
 // Legend marks quote the exact shapes the chart above draws — station = filled berth circle,
 // gate = open diamond, contacts = heading triangles (hue is the only hostile/friendly channel,
 // same as the canvas), asteroid = micro dot, scan ping = the shared dashed unknown glyph. Same
@@ -467,6 +482,11 @@ export const localmapScreen = {
       const btn = ev.target.closest('[data-act="route-nav"]');
       if (!btn) return;
       applyTradeNavigation(this._ctx, btn.getAttribute('data-destination'), btn.getAttribute('data-commodity'));
+    });
+    // NXI-223: keyboard/pad focus on a wrapped route reveals it once the list's bounds settle.
+    this._routesPanel.addEventListener('focusin', (ev) => {
+      const btn = ev.target && ev.target.closest && ev.target.closest('[data-act="route-nav"]');
+      if (btn) this._scheduleSettledReveal(btn);
     });
     // Auto-fit the canvas to its container (DPI-scaled).
     this._ro = new ResizeObserver(() => this._resize());
@@ -611,6 +631,7 @@ export const localmapScreen = {
     const playerTeam = player.team;
     const consider = (e) => {
       if (!e || !e.alive || e.id === state.playerId) return;
+      const poiReadout = poiReadoutForEntity(state, e);
       if (e.type === 'ship' || e.type === 'drone') {
         m.observeContact({
           id: e.id, type: 'ship', name: e.data && e.data.name || e.role || 'ship',
@@ -621,12 +642,21 @@ export const localmapScreen = {
         m.markLandmark({
           id: e.id, kind: (e.data && e.data.isGate) ? 'gate' : 'station',
           name: e.data && e.data.name || e.name || 'station', pos: e.pos, factionId: e.factionId,
+          metadata: poiReadout ? { poiReadout } : null,
         });
         m.observeContact({ id: e.id, type: 'station', pos: e.pos, radius: e.radius, dockable: true },
           { timeS: now, confidence: 1, source: 'static' });
       } else if (e.type === 'asteroid') {
         m.observeContact({ id: e.id, type: 'asteroid', pos: e.pos, radius: e.radius },
           { timeS: now, confidence: 0.7, source: 'passive' });
+      }
+      // A non-station anchor body (field/POI/asteroid root) is the zone marker for its plan:
+      // it joins the landmarks as a poi-kind mark carrying the live readout.
+      if (poiReadout && e.type !== 'station') {
+        m.markLandmark({
+          id: e.id, kind: 'poi', name: poiReadout.mapLabel || e.name || 'POI',
+          pos: e.pos, factionId: e.factionId, metadata: { poiReadout },
+        });
       }
     };
     for (const e of indexedShipLikeScan(state)) consider(e);
@@ -724,7 +754,53 @@ export const localmapScreen = {
     }
     if (html === this._routesSig) return;
     this._routesSig = html;
+    // NXI-223: a repaint rebuilds every route node, so a focused route loses focus and, once its
+    // long name wraps taller, can sit outside the scrolled viewport. Carry the player's focus
+    // across by route identity and reveal it only after the new markup has laid out — bounds read
+    // before the wrap settles are stale.
+    const focusKey = this._focusedRouteKey();
     panel.innerHTML = html;
+    this._restoreRouteFocus(focusKey);
+  },
+
+  _focusedRouteKey() {
+    try {
+      const panel = this._routesPanel;
+      const doc = panel && panel.ownerDocument;
+      const active = doc && doc.activeElement;
+      if (!active || !active.closest || !panel.contains(active)) return null;
+      const btn = active.closest('[data-act="route-nav"]');
+      if (!btn) return null;
+      return `${btn.getAttribute('data-destination') || ''}|${btn.getAttribute('data-commodity') || ''}`;
+    } catch (_) { return null; }
+  },
+
+  _restoreRouteFocus(key) {
+    if (!key || !this._routesPanel) return;
+    const [dest, comm] = String(key).split('|');
+    let btn = null;
+    for (const cand of this._routesPanel.querySelectorAll('[data-act="route-nav"]')) {
+      if ((cand.getAttribute('data-destination') || '') === dest
+        && (cand.getAttribute('data-commodity') || '') === comm) { btn = cand; break; }
+    }
+    if (!btn) return;
+    try { btn.focus(); } catch (_) { /* a headless host has no focus */ }
+    this._scheduleSettledReveal(btn);
+  },
+
+  // Reveal once the repainted list has actually laid out: two frames — the first lands the new
+  // geometry, the second measures it. scrollIntoView with block:'nearest' is a no-op when the
+  // result is already fully visible.
+  _scheduleSettledReveal(el) {
+    const reveal = () => {
+      try {
+        if (el && el.isConnected !== false && typeof el.scrollIntoView === 'function') {
+          el.scrollIntoView({ block: 'nearest' });
+        }
+      } catch (_) { /* cosmetic */ }
+    };
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => requestAnimationFrame(reveal));
+    else reveal();
   },
 
   _close() {
@@ -826,11 +902,39 @@ export const localmapScreen = {
         priority: target.priority,
         target,
       });
+      // FB-035 — a living plan rides its zone marker: the mapLabel speaks under the name (the
+      // poi-kind landmark's name IS the mapLabel, so only stations/gates need the second line)
+      // and progress sweeps a small arc around the mark. Additive decoration; the mark's own
+      // shape and hue are untouched.
+      const poiReadout = lm.metadata && lm.metadata.poiReadout;
+      if (poiReadout && poiReadout.mapLabel && lm.kind !== 'poi') {
+        labelJobs.push({
+          x, y: y + 13, dx: 8,
+          text: poiReadout.mapLabel,
+          font: canvasFont(500, 11, 'data'),
+          color: roles.calm,
+          priority: target.priority + 0.5,
+          target,
+        });
+      }
       g.save();
       g.fillStyle = roles.calm;
       g.strokeStyle = roles.calm;
       if (isGate) { g.beginPath(); g.moveTo(x, y - 5); g.lineTo(x + 5, y); g.lineTo(x, y + 5); g.lineTo(x - 5, y); g.closePath(); g.stroke(); }
       else { g.beginPath(); g.arc(x, y, 5, 0, Math.PI * 2); g.fill(); }
+      if (poiReadout) {
+        const required = Number(poiReadout.required) || 0;
+        const ratio = required > 0
+          ? Math.max(0, Math.min(1, (Number(poiReadout.progress) || 0) / required))
+          : 0;
+        if (ratio > 0) {
+          g.globalAlpha = 0.9;
+          g.lineWidth = 1.4;
+          g.beginPath();
+          g.arc(x, y, 8, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * ratio);
+          g.stroke();
+        }
+      }
       g.restore();
     }
 

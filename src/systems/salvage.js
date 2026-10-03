@@ -537,7 +537,9 @@ export const salvage = {
         mass: WRECK_MASS,
         hull: 1,
         hullMax: 1,
-        physicsBody: { shape: 'capsule' },
+        // SFQ-B025: author the named mass on the body — normalization keeps it instead of
+        // substituting the generic wreck-density value.
+        physicsBody: { shape: 'capsule', mass: WRECK_MASS },
         data: {
           parentType: isCommunicator ? 'communicator' : 'debris',
           proportions: WRECK_COLLIDER_PROPORTIONS,
@@ -653,7 +655,7 @@ export const salvage = {
           mass: SORT_DEBRIS_MASS,
           hull: 1,
           hullMax: 1,
-          physicsBody: { shape: 'capsule' },
+          physicsBody: { shape: 'capsule', mass: SORT_DEBRIS_MASS },
           data: {
             parentType: 'sort_debris',
             loot: [],
@@ -910,7 +912,7 @@ export const salvage = {
         mass: WRECK_MASS,
         hull: 1,
         hullMax: 1,
-        physicsBody: { shape: 'capsule' },
+        physicsBody: { shape: 'capsule', mass: WRECK_MASS },
         data: {
           parentType: 'freighter',
           proportions: WRECK_COLLIDER_PROPORTIONS,

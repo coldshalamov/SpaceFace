@@ -692,7 +692,8 @@ export const recoveryEncounter = {
       mass: 1800,
       hull: 1,
       hullMax: 1,
-      physicsBody: { shape: 'capsule' },
+      // SFQ-B025: the named 1800-mass hulk is the body's own mass, not a density re-derive.
+      physicsBody: { shape: 'capsule', mass: 1800 },
       data: {
         parentType: record.sourceKind === 'distress' ? 'communicator' : 'ship',
         proportions: WRECK_COLLIDER_PROPORTIONS,

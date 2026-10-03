@@ -550,6 +550,62 @@ export const factionPresence = {
     return { fixedRoute, pitborn, busy: fixedRoute > 0 || pitborn > 0 };
   },
 
+  // Every presence plan key is re-derivable off an existing carrier — live or shelved — because
+  // the carrier retains the authored marker plus either its loiter anchor (= plan.pos) or the
+  // fixed-route frame + formation slot that produced plan.pos. deserialize() clears own.active,
+  // so without this census the first sector:enter after load mints a twin beside every shelved
+  // hull; the shelved rows then pile up one plan set per visit (D141).
+  _presenceCarrierIndex(sectorId) {
+    const carriers = new Map();
+    const collect = (carrier) => {
+      // A wreck carrier keeps the marker but is not the plan's live body — adopting it would
+      // suppress the hull the plan is owed. Dead or wrecked carriers leave the mint path alone.
+      if (!carrier || carrier.alive === false || carrier.type === 'wreck') return;
+      const data = carrier.data && typeof carrier.data === 'object' ? carrier.data : null;
+      const marker = data && data.factionPresence;
+      if (!marker || typeof marker !== 'object' || marker.source !== 'depth-program-k1') return;
+      let px = null;
+      let pz = null;
+      if (marker.fixedRoute && marker.routeStart && marker.routeEnd) {
+        // _updateFulfillmentRoutes rewrites activity.anchor to the moving route point each
+        // tick, so the plan key must be rebuilt from the stored frame the same way
+        // planFactionPresence built plan.pos.
+        const dx = marker.routeEnd.x - marker.routeStart.x;
+        const dz = marker.routeEnd.z - marker.routeStart.z;
+        const length = Math.hypot(dx, dz) || 1;
+        const offset = ((Number(marker.formationIndex) || 0)
+          - ((Number(marker.formationCount) || 1) - 1) / 2)
+          * (Number(marker.formationSpacing) || 52);
+        px = marker.routeStart.x + (-dz / length) * offset;
+        pz = marker.routeStart.z + (dx / length) * offset;
+      } else {
+        const ai = (carrier.ai && typeof carrier.ai === 'object' ? carrier.ai : null)
+          || (data.ai && typeof data.ai === 'object' ? data.ai : null);
+        const anchor = ai && ai.activity && ai.activity.anchor;
+        if (anchor && Number.isFinite(anchor.x) && Number.isFinite(anchor.z)) {
+          px = anchor.x;
+          pz = anchor.z;
+        }
+      }
+      if (px == null || pz == null) return;
+      const key = [
+        sectorId,
+        marker.factionId || carrier.factionId,
+        marker.lossId || marker.routeId || marker.vergePhase || 'presence',
+        px,
+        pz,
+      ].join(':');
+      if (!carriers.has(key)) carriers.set(key, carrier.id != null ? carrier.id : null);
+    };
+    for (const entity of indexedShipLikeScan(this.state)) collect(entity);
+    const rows = this.state && this.state.world && this.state.world.farActors
+      && this.state.world.farActors.rows;
+    if (Array.isArray(rows)) {
+      for (let i = 0; i < rows.length; i++) collect(rows[i]);
+    }
+    return carriers;
+  },
+
   _onSectorEnter(payload) {
     for (const _ of this._onSectorEnterSteps(payload)) { /* inline */ }
   },
@@ -586,6 +642,7 @@ export const factionPresence = {
       ownerFactionId: (sectors[sectorId] && sectors[sectorId].owner) || null,
     });
     const own = ensureOwnState(state);
+    const carriers = this._presenceCarrierIndex(sectorId);
     for (const presencePlan of plans) {
       const tenderContext = ceresTenderContext(presencePlan, seed, deferredEnterTick(state));
       if (tenderContext) {
@@ -594,6 +651,19 @@ export const factionPresence = {
       }
       const key = spawnKey(presencePlan);
       if (own.active[key]) continue;
+      const carrierId = carriers.get(key);
+      if (carrierId !== undefined) {
+        // Re-own the existing hull — live or a shelved far row — instead of minting a twin.
+        // The shelved copy promotes when the player crosses its bubble, so the presence set
+        // stays exactly-once across load/enter cycles (D141).
+        own.active[key] = {
+          entityId: carrierId,
+          sectorId,
+          factionId: presencePlan.factionId,
+          routeId: presencePlan.routeId || null,
+        };
+        continue;
+      }
       const spec = makePresenceSpec(presencePlan, state);
       const entity = typeof this.helpers.spawnEntity === 'function'
         ? this.helpers.spawnEntity(spec)

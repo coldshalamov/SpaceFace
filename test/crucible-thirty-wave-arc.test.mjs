@@ -78,7 +78,14 @@ test('same seed replays the same thirty waves; a different seed does not', () =>
   assert.notDeepEqual(a.map(fightOf), other.map(fightOf), 'a different seed must change fight content, not just plan ids');
 });
 
-test('acts change composition, not raw body count, against the template wave', () => {
+test('acts re-ask the wave through composition — more bodies, never grown elites', () => {
+  // FB-026 shipped the act pressure curve: the same wave's question returns through MORE
+  // bodies on new bearings (applyActPressure adds +count/4 in act II, +count/2 in act III,
+  // and the wave-20 overlay splits a mass package into escorts). The law that survives is
+  // the elite clause — a hunt or a boss fields the hull it was authored with — plus the
+  // spawn-cap ceiling the next test pins. Body parity is no longer the contract.
+  const eliteCount = (pkgs) => (pkgs || []).filter((p) => p.role === 'elite')
+    .reduce((n, p) => n + (Number.isInteger(p.count) ? p.count : 0), 0);
   for (let wave = 1; wave <= SURVIVAL_ARC_LENGTH; wave++) {
     const template = templateWaveOf(wave);
     const composed = planWave({ seed: SEED, arenaId: ARENA, wave });
@@ -91,8 +98,12 @@ test('acts change composition, not raw body count, against the template wave', (
     });
     assert.ok(isPlan(composed), `wave ${wave}`);
     assert.ok(isPlan(baseline), `template ${template}`);
-    assert.equal(bodyCount(composed.packages), bodyCount(baseline.packages), `wave ${wave} body count`);
-    assert.equal(peakConcurrentDemand(composed.packages), peakConcurrentDemand(baseline.packages));
+    assert.ok(bodyCount(composed.packages) >= bodyCount(baseline.packages),
+      `wave ${wave} never sheds the template's pressure`);
+    assert.equal(eliteCount(composed.packages), eliteCount(baseline.packages),
+      `wave ${wave} elite hulls never grow`);
+    assert.ok(peakConcurrentDemand(composed.packages) <= SPAWN_BUDGET_DEFAULT_MAX,
+      `wave ${wave} growth stays inside the cap`);
     if (wave > 10) {
       const composedGaps = composed.packages.map((pkg) => pkg.batchGapTicks);
       const baselineGaps = baseline.packages.map((pkg) => pkg.batchGapTicks);
@@ -137,8 +148,15 @@ test('the wave-20 system event is on the plan exactly once in the arc', () => {
   assert.equal(plans[19].objective.kind, 'system_event');
   assert.equal(plans[29].systemEvent.id, 'forge_regent_crown');
   assert.equal(plans[29].objective.kind, 'boss');
-  assert.equal(bodyCount(plans[19].packages), bodyCount(plans[9].packages));
-  assert.equal(bodyCount(plans[29].packages), bodyCount(plans[9].packages));
+  // The event waves re-ask their template with grown packages (FB-026 act pressure +
+  // the wave-20 escort overlay), so raw parity is gone. What must hold: the elite hull
+  // is untouched and the extra bodies arrive through the authored support/mass roles.
+  const eliteCount = (pkgs) => (pkgs || []).filter((p) => p.role === 'elite')
+    .reduce((n, p) => n + (Number.isInteger(p.count) ? p.count : 0), 0);
+  assert.equal(eliteCount(plans[19].packages), eliteCount(plans[9].packages));
+  assert.equal(eliteCount(plans[29].packages), eliteCount(plans[9].packages));
+  assert.ok(bodyCount(plans[19].packages) >= bodyCount(plans[9].packages));
+  assert.ok(bodyCount(plans[29].packages) >= bodyCount(plans[9].packages));
 });
 
 test('waves 1, 5 and 10 stay the authored ten-wave plans', () => {

@@ -589,6 +589,12 @@ export const settingsScreen = {
       // Access row below. It is now a read-only mirror pointing at the home.
       motionEffectsRow(build, s, false);
       rowSlider('Screen Shake', () => vd.screenShake != null ? vd.screenShake : 100, 0, 100, 1, (x) => Math.round(x) + '%', (v, persist) => this._set(ctx, 'video', 'screenShake', v, persist));
+      // SWARM-02: the Swarm arcade layer's own volume. Reduced keeps the words (kills, chains,
+      // boss calls) and drops the motion and hit-stop; Off drops the layer. Reduced motion and
+      // reduced flash already read it down to Reduced for whoever set those.
+      rowSelect('Arcade effects (Swarm)', () => vd.arcadeEffects || 'full',
+        [['full', 'Full'], ['reduced', 'Reduced'], ['off', 'Off']],
+        (v) => this._set(ctx, 'video', 'arcadeEffects', v));
       // FB-100 parity rows — keys that already drive the picture/mix but had no control, plus
       // the HUD's own scale/opacity (consumed by #hud as --sf-hud-scale/--sf-hud-opacity,
       // applied on the root so they compose with UI scale and survive Continue).
@@ -852,6 +858,14 @@ export const settingsScreen = {
     build.slider('Aim stick sensitivity', () => gp().sensitivityAim ?? 1,
       0.25, 3, 0.05, (x) => `${Math.round(x * 100)}%`,
       (v, persist) => this._set(ctx, 'controls', 'gamepad', { ...gp(), sensitivityAim: v }, persist));
+    // FB-002/B117: the face-button register prompts and speech print — the same set the
+    // rebind rows below render, so a switch re-labels both at once.
+    build.select('Button glyphs', () => {
+      const v = gp().glyphSet;
+      return (v === 'ds' || v === 'fh') ? v : 'xb';
+    },
+      [['xb', 'Xbox — A B X Y'], ['ds', 'DualShock — ✕ ◯ □ △'], ['fh', 'Field Hardware — Ⓐ Ⓑ Ⓧ Ⓨ']],
+      (v) => this._set(ctx, 'controls', 'gamepad', { ...gp(), glyphSet: v }));
     // FB-004: pointer aim gets the same two axes — a sensitivity multiplier on the derived
     // cursor channel and a Y inversion, both independent of the sticks.
     if (!s.controls.mouse || typeof s.controls.mouse !== 'object') {
@@ -877,7 +891,7 @@ export const settingsScreen = {
     GAMEPAD_REBINDABLE.forEach((action) => {
       // Chord names render both halves ('LB + D-Pad Up') through the same label vocabulary the
       // Help sheet uses — the row must never print a raw 'l1+dUp' at a player.
-      const keyText = gamepadButtonLabels(action, padMap).join(' / ') || '—';
+      const keyText = gamepadButtonLabels(action, padMap, { glyphSet: gp().glyphSet }).join(' / ') || '—';
       build.key(GAMEPAD_REBIND_LABELS[action] || action, keyText,
         (btn) => this._capturePad(ctx, btn, action, padMap));
     });

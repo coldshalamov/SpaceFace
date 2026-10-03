@@ -495,29 +495,109 @@ export function dryRunLoadoutPresetApply({
   if (!afterFittings) {
     return { ok: false, reason: 'invalid_preset', text: 'Preset does not match this hull layout' };
   }
+  // NXI-115 — collect every slot-level blocker instead of stopping at the first, so the
+  // saved-loadout detail can name each required part that prevents application. The primary
+  // reason stays the first blocker in slot order, the same answer the early return gave.
+  const slotBlockers = [];
   for (let slotIndex = 0; slotIndex < slots.length; slotIndex += 1) {
     const defId = afterFittings[slotIndex];
     if (!defId) continue;
     const def = defById(defId);
-    if (!def) return { ok: false, reason: 'unknown_module', text: 'Preset contains unknown hardware' };
+    if (!def) {
+      slotBlockers.push({
+        reason: 'unknown_module',
+        defId,
+        name: null,
+        slotIndex,
+        text: `Preset contains unknown hardware (${defId})`,
+      });
+      continue;
+    }
     if (!fits(slots[slotIndex], def)) {
-      return { ok: false, reason: 'incompatible_slot', text: fitRefusalText(slots[slotIndex], def) };
+      slotBlockers.push({
+        reason: 'incompatible_slot',
+        defId,
+        name: def.name,
+        slotIndex,
+        slotType: slots[slotIndex].type,
+        slotSize: slots[slotIndex].size,
+        text: fitRefusalText(slots[slotIndex], def),
+      });
+      continue;
     }
     const unlocked = typeof isUnlockedFn === 'function'
       ? !!isUnlockedFn(def)
       : !(def.requiresTech && !(player && Array.isArray(player.researchedNodes)
         && player.researchedNodes.includes(def.requiresTech)));
     if (!unlocked) {
-      return { ok: false, reason: 'research_required', text: 'Research required: ' + techDisplayName(def.requiresTech) };
+      slotBlockers.push({
+        reason: 'research_required',
+        defId,
+        name: def.name,
+        slotIndex,
+        text: 'Research required: ' + techDisplayName(def.requiresTech),
+      });
+      continue;
     }
     const conflictingDef = findMasslineHeadConflict(afterFittings, slotIndex, def);
     if (conflictingDef) {
-      return {
-        ok: false,
+      slotBlockers.push({
         reason: 'massline_head_conflict',
+        defId,
+        name: def.name,
+        slotIndex,
+        conflictDefId: conflictingDef.id,
         text: 'Unfit ' + conflictingDef.name + ' before fitting another head',
-      };
+      });
     }
+  }
+  const currentCounts = countDefIds(asFittingsArray(currentFittings, slots.length) || []);
+  const targetCounts = countDefIds(afterFittings);
+  const inventoryCounts = countInventoryDefIds(moduleInventory);
+  const takeByDefId = new Map();
+  const returnByDefId = new Map();
+  const blockedDefIds = new Set(slotBlockers.map((blocker) => blocker.defId));
+  const missingParts = [];
+  let missingCount = 0;
+  for (const [defId, targetCount] of targetCounts.entries()) {
+    const keepCount = Math.min(targetCount, currentCounts.get(defId) || 0);
+    const needCount = Math.max(0, targetCount - keepCount);
+    if (needCount <= 0) continue;
+    takeByDefId.set(defId, needCount);
+    const availableCount = inventoryCounts.get(defId) || 0;
+    const shortfall = needCount - availableCount;
+    if (shortfall <= 0) continue;
+    missingCount += shortfall;
+    // A part already named under a slot cause (unavailable, will not fit, needs research)
+    // is not also "missing stock" — each required part is listed once, under its
+    // strongest cause, so missing stock stays distinguishable from slot trouble.
+    if (blockedDefIds.has(defId)) continue;
+    const missingDef = defById(defId);
+    missingParts.push({
+      defId,
+      name: missingDef ? missingDef.name : String(defId),
+      missing: shortfall,
+      need: needCount,
+      have: availableCount,
+    });
+  }
+  for (const [defId, currentCount] of currentCounts.entries()) {
+    const keepCount = Math.min(currentCount, targetCounts.get(defId) || 0);
+    const returnCount = Math.max(0, currentCount - keepCount);
+    if (returnCount > 0) returnByDefId.set(defId, returnCount);
+  }
+  if (slotBlockers.length) {
+    const first = slotBlockers[0];
+    return {
+      ok: false,
+      reason: first.reason,
+      text: first.text,
+      slotBlockers,
+      ...(missingParts.length ? { missingParts } : {}),
+      afterFittings,
+      takeByDefId,
+      returnByDefId,
+    };
   }
   const budgetBlocker = outfitBudgetBlocker(shipDef, afterFittings);
   if (budgetBlocker) return { ok: false, ...budgetBlocker };
@@ -528,30 +608,12 @@ export function dryRunLoadoutPresetApply({
       return { ok: false, reason: 'cargo_overflow', text: 'Cargo would overflow — jettison first' };
     }
   }
-  const currentCounts = countDefIds(asFittingsArray(currentFittings, slots.length) || []);
-  const targetCounts = countDefIds(afterFittings);
-  const inventoryCounts = countInventoryDefIds(moduleInventory);
-  const takeByDefId = new Map();
-  const returnByDefId = new Map();
-  let missingCount = 0;
-  for (const [defId, targetCount] of targetCounts.entries()) {
-    const keepCount = Math.min(targetCount, currentCounts.get(defId) || 0);
-    const needCount = Math.max(0, targetCount - keepCount);
-    if (needCount <= 0) continue;
-    takeByDefId.set(defId, needCount);
-    const availableCount = inventoryCounts.get(defId) || 0;
-    if (availableCount < needCount) missingCount += (needCount - availableCount);
-  }
-  for (const [defId, currentCount] of currentCounts.entries()) {
-    const keepCount = Math.min(currentCount, targetCounts.get(defId) || 0);
-    const returnCount = Math.max(0, currentCount - keepCount);
-    if (returnCount > 0) returnByDefId.set(defId, returnCount);
-  }
   if (missingCount > 0) {
     return {
       ok: false,
       reason: 'missing_modules',
       missingCount,
+      missingParts,
       text: missingModulesText(missingCount),
       afterFittings,
       takeByDefId,
@@ -2366,6 +2428,22 @@ export const ships = {
     this.bus.emit('module:unequipped', { shipId: this.shipIdFor(shipIndex), slotIndex, defId });
     this.recomputeIfActive(shipIndex, owned.fittings);
     return true;
+  },
+
+  /** NXI-128 — the consume-path twin of unfitModule: a sale/craft router takes the exact
+   *  record the slot carried (never a minted stand-in for a same-defId duplicate), clears
+   *  occupancy, and recomputes. Returns the consumed instance record; null when the slot
+   *  is empty. The record leaves the world with its defId — no hold push, no orphan on
+   *  a null fitting. */
+  takeFittedModuleInstance(shipIndex, slotIndex) {
+    const owned = this.ownedShip(shipIndex);
+    if (!owned || !Array.isArray(owned.fittings)) return null;
+    const defId = owned.fittings[slotIndex];
+    if (!defId) return null;
+    const inst = this._takeFittedInstance(owned, slotIndex);
+    owned.fittings[slotIndex] = null;
+    this.recomputeIfActive(shipIndex, owned.fittings);
+    return inst || { instanceId: null, defId };
   },
 
   loadoutPresets() {

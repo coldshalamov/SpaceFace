@@ -1578,7 +1578,9 @@ export const mining = {
       mass,
       hull: 1,
       hullMax: 1,
-      physicsBody: { shape: 'capsule' },
+      // SFQ-B025: author the named mass on the body so normalization keeps it instead of
+      // substituting the generic wreck-density value every tether/impact consumer reads.
+      physicsBody: { shape: 'capsule', mass },
       data: {
         parentType: 'ship',
         kind: 'wreck',

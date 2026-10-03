@@ -15,7 +15,9 @@ import { BLUEPRINTS, BLUEPRINT_BY_ID } from '../data/blueprints.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { MODULES } from '../data/modules.js';
 import { techDisplayName } from '../data/tech.js';
-import { addCargo, removeCargo } from './cargo.js';
+import { addCargo, removeCargo, sellableCargoQuantity } from './cargo.js';
+import { getDerivedStats } from './ships.js';
+import { instanceIdentityText } from './shipLedger.js';
 
 // Sensible build durations by category when a blueprint doesn't specify one (the data ships with
 // timeS:0 everywhere — these defaults make manufacturing feel like a real production loop without
@@ -88,6 +90,52 @@ function cargoCanFitBlueprintSwap(state, bp) {
   }
   used += (Number(out.qty) || 0) * commodityVolume(out.id);
   return used <= (Number(cargo.capVolume) || 0) + 1e-9;
+}
+
+/** Where consumeOneModule(p, defId) would take the unit from, mirrored read-only: any loose
+ *  inventory instance answers first (its default pick is a plain duplicate), else the first
+ *  owned ship carrying the def fitted, in ownedShips order. Returns the FITTED pick as
+ *  { owned, shipIndex, slotIndex }, or null when a loose instance (or nothing) would go. */
+function fittedSourcePick(p, defId) {
+  for (const m of (p && p.moduleInventory) || []) {
+    if (m && m.defId === defId) return null;
+  }
+  const ships = Array.isArray(p && p.ownedShips) ? p.ownedShips : [];
+  for (let shipIndex = 0; shipIndex < ships.length; shipIndex++) {
+    const owned = ships[shipIndex];
+    if (!owned || !Array.isArray(owned.fittings)) continue;
+    const slotIndex = owned.fittings.indexOf(defId);
+    if (slotIndex >= 0) return { owned, shipIndex, slotIndex };
+  }
+  return null;
+}
+
+/** P03 — an augment can consume its source OFF A FITTED SLOT; when that slot rides on the
+ *  flown hull, a capacity-bearing source (a cargo pod) shrinks the hold the moment it is eaten.
+ *  The canonical post-consumption capacity is getDerivedStats on the fittings the consume would
+ *  leave; the load it must carry is the hold minus the inputs eaten up front. Returns the
+ *  refusal sentence when that load overflows, else null. Read-only — build() gates on it
+ *  before any mutation. */
+function fittedSourceOverflowText(state, bp) {
+  const p = state && state.player;
+  if (!p || !bp || bp.category !== 'augment' || !bp.fromModule) return null;
+  const pick = fittedSourcePick(p, bp.fromModule);
+  if (!pick) return null;
+  // Only the flown ship's hold is player cargo (same seam unfitModule's overflow guard uses).
+  const activeOwned = (Array.isArray(p.ownedShips) ? p.ownedShips : [])[p.activeShipIndex];
+  if (!activeOwned || pick.owned !== activeOwned) return null;
+  const cargo = p.cargo;
+  if (!cargo) return null;
+  const afterFittings = pick.owned.fittings.slice();
+  afterFittings[pick.slotIndex] = null;
+  const capAfter = getDerivedStats(pick.owned.defId, afterFittings, p).cargoCap;
+  let usedAfter = Number(cargo.usedVolume) || 0;
+  for (const id of Object.keys(bp.inputs || {})) {
+    usedAfter -= (Number(bp.inputs[id]) || 0) * commodityVolume(id);
+  }
+  if (usedAfter <= capAfter + 1e-9) return null;
+  return 'Consuming the fitted ' + moduleName(bp.fromModule)
+    + ' would overflow the hold — free cargo space first';
 }
 
 function normalizeQueues(raw) {
@@ -224,11 +272,13 @@ export const crafting = {
     return { techOk, matsOk, sourceOk, canBuild: techOk && matsOk && sourceOk, materials: mats };
   },
 
-  /** Material breakdown with have/need for display + gating. */
+  /** Material breakdown with have/need for display + gating. P02 — `have` is the cargo-owned
+   *  FREE quantity: sealed contract freight and persistent story cargo stay reserved for their
+   *  owners even while they ride in the same hold, so they can never feed a fabricator. */
   haveMaterials(bp, p) {
     p = p || this.state.player;
-    const items = p.cargo.items || {};
-    return Object.keys(bp.inputs).map((id) => ({ id, need: bp.inputs[id], have: items[id] || 0 }));
+    const state = (this.state && this.state.player === p) ? this.state : { player: p };
+    return Object.keys(bp.inputs).map((id) => ({ id, need: bp.inputs[id], have: sellableCargoQuantity(state, id) }));
   },
 
   /** Consume inputs + enqueue (or grant instantly if timeS=0). Returns true on success.
@@ -258,6 +308,13 @@ export const crafting = {
     }
     if (bp.outputs && bp.outputs.kind === 'commodity' && !cargoCanFitBlueprintSwap(this.state, bp)) {
       this.bus.emit('toast', { text: 'Cargo hold cannot take the finished goods', kind: 'error', ttl: 3 });
+      return false;
+    }
+    // P03 — before consuming an exact fitted source, gate on the canonical post-input-consumption
+    // capacity: a cargo pod eaten off the flown hull shrinks the hold under the load it carried.
+    const sourceOverflow = fittedSourceOverflowText(this.state, bp);
+    if (sourceOverflow) {
+      this.bus.emit('toast', { text: sourceOverflow, kind: 'error', ttl: 3 });
       return false;
     }
 
@@ -337,17 +394,52 @@ export const crafting = {
     return n;
   },
 
-  /** Remove one instance of a module def: prefer loose inventory, else unfits it from a ship. */
-  consumeOneModule(p, defId) {
+  /** Remove one instance of a module def: prefer loose inventory, else unfits it from a ship.
+   *  NXI-128 — with `options.instanceId` the caller's selection is consumed exactly; two valid
+   *  duplicates sharing a catalog id never let an arbitrary record answer for the named one.
+   *  With no selection the plainest duplicate goes first: a pristine catalog copy is consumed
+   *  before a recovered or worn instance, so the recorded instance survives its anonymous
+   *  twin. Returns the consumed instance record, or null when nothing matched. */
+  consumeOneModule(p, defId, options = null) {
     const inv = p.moduleInventory || [];
-    const idx = inv.findIndex((m) => m.defId === defId);
-    if (idx >= 0) { inv.splice(idx, 1); return; }
-    // not in inventory — unfit from the first owned ship that has it fitted
+    const selectedId = options && options.instanceId != null ? options.instanceId : null;
+    let idx = -1;
+    if (selectedId != null) {
+      idx = inv.findIndex((m) => m && m.instanceId === selectedId);
+      if (idx < 0 || inv[idx].defId !== defId) return null; // the selection must name a live instance of this def
+    } else {
+      let firstMatch = -1;
+      for (let i = 0; i < inv.length; i++) {
+        const m = inv[i];
+        if (!m || m.defId !== defId) continue;
+        if (firstMatch < 0) firstMatch = i;
+        if (!instanceIdentityText(m)) { idx = i; break; }
+      }
+      if (idx < 0) idx = firstMatch;
+    }
+    if (idx >= 0) { const [consumed] = inv.splice(idx, 1); return consumed || null; }
+    // not in inventory — unfit from the first owned ship that has it fitted; an explicit
+    // selection only takes the slot whose fitted record is that instance.
     for (let si = 0; si < (p.ownedShips || []).length; si++) {
       const s = p.ownedShips[si];
-      const slot = (s.fittings || []).indexOf(defId);
-      if (slot >= 0) { s.fittings[slot] = null; this._ships.recomputeIfActive(si, s.fittings); return; }
+      const fittings = s && s.fittings;
+      if (!Array.isArray(fittings)) continue;
+      const fitted = s.fittedInstances || null;
+      const slot = selectedId != null
+        ? fittings.findIndex((fid, i) => fid === defId && fitted && fitted[i] && fitted[i].instanceId === selectedId)
+        : fittings.indexOf(defId);
+      if (slot < 0) continue;
+      // Consume through the fitted-instance record — the craft eats the same record the
+      // ships owner minted; a bare fittings write would orphan identity on a null slot.
+      if (this._ships && typeof this._ships.takeFittedModuleInstance === 'function') {
+        return this._ships.takeFittedModuleInstance(si, slot);
+      }
+      const inst = fitted && fitted[slot] ? { ...fitted[slot] } : null;
+      fittings[slot] = null;
+      this._ships.recomputeIfActive(si, fittings);
+      return inst || { instanceId: null, defId };
     }
+    return null;
   },
 
   serialize() {

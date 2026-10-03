@@ -29,7 +29,7 @@
 //   Event→handler wiring: see _subscribe (L256). Full event routing map: docs/EVENT_ROUTING.md
 // ── end index ──
 import * as THREE from 'three';
-import { modelTruthPlumeSocketName } from '../data/modelTruth.js';
+import { modelTruthPlumeSocketName, modelTruthTrailSocketName } from '../data/modelTruth.js';
 import { ActionVfx, ACTION_VFX_EVENTS } from './actionVfx.js';
 import { StationOperationVfx } from './vfx/stationOperationVfx.js';
 import { BombDetonationVfx } from './vfx/bombDetonationVfx.js';
@@ -85,12 +85,15 @@ import {
   TABLE_LOOT_MAGNET_CAP_WU,
   tableDoctrineTellCueWu,
   tableLookAtDelta,
+  tableLookAtOrigin,
   tableNpcTrailTier,
   tableVfxDrawWuFromState,
   projectileOnReadableFrame,
 } from './tabletopPolicy.js';
+import { hasActiveSpatialHash } from '../core/spatialQuery.js';
 import { PROJECTILE_DRAW_PAD_WU } from '../combat/projectileFlight.js';
 import { applyFlashAccessibility, resolveVfxAccessibilityProfile } from './vfxAccessibility.js';
+import { presetFor, scalePreset } from './vfxColorLightDirector.js';
 import {
   collectStatusAttachedVictims,
   planStatusAttachedEmit,
@@ -105,7 +108,7 @@ import {
 } from './combat/collisionImpactScale.js';
 import { readWantedSearchVolume } from '../presentation/wantedSearchVolume.js';
 import { readCustomsWeir } from '../presentation/customsWeir.js';
-import { routeRibbon, ROUTE_RIBBON_BRIGHTNESS } from '../presentation/routeRibbon.js';
+import { routeRibbon, ROUTE_RIBBON_BRIGHTNESS, setPieceRibbons } from '../presentation/routeRibbon.js';
 import {
   broadcastDishBeatRecord,
   createStationSideEventVfxFrameScratch,
@@ -273,6 +276,7 @@ import {
 import {
   createDockingCradle,
   createDockingCradleGeometry,
+  releaseDockingCradle,
   resetDockingCradle,
   updateDockingCradle,
   writeDockingCradleGeometry,
@@ -330,8 +334,63 @@ function vfxMembershipVersion(state, lanes) {
   const laneVersion = entityIndexLaneVersion(state, lanes);
   return laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
 }
+
+// FB-096 — contact scratch is part of slot construction, never a first-contact gift.
+// A working hull's first weld/sampler beat used to mint three Vector3s, a Box3, and the
+// traverse closure inside the presenting frame; every npc-job signature slot and the pirate
+// scratch now owns them from pool fill. `_emitNpcJobContact` keeps this as its defensive
+// fallback for harness-built bare slots only — pool slots never re-enter it.
+export function initNpcJobContactScratch(slot) {
+  slot.contactVertex = new THREE.Vector3();
+  slot.contactPoint = new THREE.Vector3();
+  slot.contactFrom = new THREE.Vector3();
+  slot.contactBox = new THREE.Box3();
+  slot.contactVisit = (part) => {
+    const attr = part.isMesh && part.geometry && part.geometry.attributes.position;
+    if (!attr) return;
+    const stride = Math.max(1, Math.ceil(attr.count / 128));
+    for (let i = 0; i < attr.count; i += stride) {
+      slot.contactVertex.fromBufferAttribute(attr, i).applyMatrix4(part.matrixWorld);
+      const d2 = slot.contactVertex.distanceToSquared(slot.contactFrom);
+      if (d2 < slot.contactBest) {
+        slot.contactBest = d2;
+        slot.contactPoint.copy(slot.contactVertex);
+      }
+    }
+  };
+  return slot;
+}
+
+// SF-266 — deterministic order for spatial-hash candidate lists. EntityList/index order is
+// not guaranteed inside a radius result, so seam-marker iteration sorts by stable id.
+function compareSeamCandidateIds(left, right) {
+  const a = left && left.id, b = right && right.id;
+  if (Number.isFinite(a) && Number.isFinite(b)) return a - b;
+  const sa = String(a), sb = String(b);
+  return sa < sb ? -1 : sa > sb ? 1 : 0;
+}
+
+// Release-side counterpart: a recycled slot drops its target and sampled surface without
+// allocating — vectors and the box are reset in place so the next claim starts empty, never
+// holding a departed client's transform or mesh root.
+export function resetNpcJobContactScratch(slot) {
+  slot.contactRef = null;
+  slot.contactRefreshAt = 0;
+  slot.contactTarget = null;
+  slot.contactBest = Infinity;
+  slot.contactSurfaceRoot = null;
+  slot.contactSurfaceUntil = 0;
+  if (slot.contactVertex) slot.contactVertex.set(0, 0, 0);
+  if (slot.contactPoint) slot.contactPoint.set(0, 0, 0);
+  if (slot.contactFrom) slot.contactFrom.set(0, 0, 0);
+  if (slot.contactBox) slot.contactBox.makeEmpty();
+  return slot;
+}
+
 const EMPTY_PROJECTILE_DATA = Object.freeze({});
 const EMPTY_VIDEO_SETTINGS = Object.freeze({});
+// Shared no-options token for _eventLight so light calls stay allocation-free.
+const _FLASH_LIGHT_BLANK_OPTS = Object.freeze({});
 // Entity `type` → entityIndex bucket name, for indexed contact-target lookup.
 const INDEX_BUCKET_BY_TYPE = {
   ship: 'ships',
@@ -1416,7 +1475,7 @@ export const vfx = {
     this._cadenceNpcJobSignature = 0;
     this._npcJobSignatureSlots = [];
     for (let i = 0; i < NPC_JOB_SIGNATURE_CAPACITY; i++) {
-      this._npcJobSignatureSlots.push({
+      const slot = initNpcJobContactScratch({
         jobId: null,
         profileId: null,
         elapsed: 0,
@@ -1428,7 +1487,8 @@ export const vfx = {
         reactionT: 0,     // 0 .. 1 as the player closes
         frame: createNpcJobSignatureFrameScratch(),
         // Contact-effect scratch (see _npcJobContactTarget / _emitNpcJobContact). Declared up
-        // front so the first contact beat never reshapes the slot's hidden class.
+        // front so the first contact beat never reshapes the slot's hidden class; the
+        // Vector3/Box3/visit objects are filled by initNpcJobContactScratch above (FB-096).
         contactRef: null,
         contactRefreshAt: 0,
         contactTarget: null,
@@ -1438,12 +1498,14 @@ export const vfx = {
         contactVertex: null,
         contactPoint: null,
         contactFrom: null,
+        contactBox: null,
         contactVisit: null,
       });
+      this._npcJobSignatureSlots.push(slot);
     }
     // One reused scratch for pirate intercept light. Pirates are not npcJobs; the hunt beam
     // is pulled from live combat/activity targets and must not reshape a job slot.
-    this._pirateInterceptScratch = {
+    this._pirateInterceptScratch = initNpcJobContactScratch({
       elapsed: 0,
       lastEmitStep: -1,
       jobId: null,
@@ -1463,10 +1525,11 @@ export const vfx = {
       contactVertex: null,
       contactPoint: null,
       contactFrom: null,
+      contactBox: null,
       contactVisit: null,
       job: { kind: 'pirate', phase: 'hold', routeIndex: 0, route: null },
       cadence: { cadenceHz: 3.2, reducedCadenceHz: 1.2 },
-    };
+    });
     this._npcJobSignatureActive = 0;
     this._npcJobSignatureDrawn = 0;
     // Quiet settled flight: empty npcJobs bag still paid existence probe +
@@ -2413,6 +2476,10 @@ export const vfx = {
     const bus = this.bus;
     const add = (name, fn, opts) => this._subs.push(bus.on(name, fn, opts));
     for (const name of ACTION_VFX_EVENTS) add(name, (p) => this._onActionVfx(name, p));
+    // FB-073 — undock also plays the docking cradle backwards (brackets release, chevrons run
+    // outbound over the same 0.28 s fade). The ACTION_VFX_EVENTS row above owns the vent
+    // primitive; this subscription is the cradle hologram's half of the same departure.
+    add('dock:undocked', () => this._releaseDockingCradle());
     for (const name of ['sector:exit', 'sector:enter', 'game:new', 'game:newGame', 'save:restoring', 'save:loaded']) {
       add(name, () => { this._actionVfx?.clear(); this._stationOperationVfx?.clear(); this._bombDetonationVfx?.clear(); this._statusMatterVfx?.clear(); this._combatContactVfx?.clear(); this._releaseTransientEventLights(); });
       add(name, () => this._resetDamagedPortVfx());
@@ -3245,26 +3312,21 @@ export const vfx = {
   _trailSocketWorldPose(e) {
     const sockets = this._trailSocketObjects(e);
     if (sockets.length) return this._trailSocketPoseFromObject(sockets[0]);
-    const socketName = modelTruthPlumeSocketName(e);
-    if (!socketName) return null;
-    if (this.helpers.socketWorldPose) {
-      const pose = this.helpers.socketWorldPose(e.id, socketName);
-      if (pose) {
-        return this._writeTrailSocketPose(
-          pose.x, pose.y || 0, pose.z,
-          pose.forwardX, pose.forwardY, pose.forwardZ,
-        );
-      }
+    return namedTrailSocketPose(this, e, modelTruthPlumeSocketName(e));
+  },
+
+  // The recorded wake anchors at the authored 'vfx' trail stations (SOCKET_Trail_*), not the
+  // nozzle mount face: on a hull whose drive mount is not its trailing edge — ship_saucer's
+  // ventral field core sits at hull center — a nozzle-anchored ribbon head records history
+  // from mid-body, visibly detached from the silhouette. Nozzle-less hulls fall back to the
+  // same census chain the plume pose uses, with the trail-preferred name pick.
+  _wakeTrailSocketWorldPose(e) {
+    this._trailSocketObjects(e);
+    const cache = e && e.view && e.view.__vfxTrailSockets;
+    if (cache && Array.isArray(cache.wake) && cache.wake.length) {
+      return this._trailSocketPoseFromObject(cache.wake[0]);
     }
-    if (this.helpers.socketWorldPos) {
-      const pos = this.helpers.socketWorldPos(e.id, socketName);
-      if (pos) {
-        const cf = Math.cos(e && e.rot || 0);
-        const sf = Math.sin(e && e.rot || 0);
-        return this._writeTrailSocketPose(pos.x, pos.y || 0, pos.z, -cf, 0, -sf);
-      }
-    }
-    return null;
+    return namedTrailSocketPose(this, e, modelTruthTrailSocketName(e));
   },
 
   _trailSocketObjects(e) {
@@ -3295,6 +3357,9 @@ export const vfx = {
           compositionId,
           childCount,
           sockets: nozzles.length ? nozzles : (sockets.length ? sockets : drivePlumes),
+          // Recorded-wake anchors prefer the authored 'vfx' trail stations; the nozzle mount
+          // face remains the fallback when a hull authors no SOCKET_Trail_* objects.
+          wake: sockets.length ? sockets : (nozzles.length ? nozzles : drivePlumes),
         };
         view.__vfxTrailSocket = { root, socket: cache.sockets[0] || null };
       }
@@ -3580,7 +3645,11 @@ export const vfx = {
       this._spawnProjectileTrailStreak(mx, 0.16, mz, 0.085 * sm, 0.22 * sm, 3.2 * sm,
         0.72, profile.coreColor || '#ffffff', Math.cos(base) * 20, Math.sin(base) * 20);
     }
-    this._flashLight({ x: origin.x, z: origin.z }, profile.coreColor || '#ffffff', (rail ? 4.2 : 2.4) * sm, 12, rail ? 150 : 78);
+    this._eventLight({ x: origin.x, z: origin.z }, 'muzzle', {
+      severity: rail ? 'rail' : undefined,
+      color: profile.coreColor,
+      sizeMul: sm,
+    });
     if (!rail) this._spawnMuzzleCasings(origin, base, profile, burst);
   },
 
@@ -3633,8 +3702,11 @@ export const vfx = {
       this._spawnProjectileTrailStreak(mx, 0.20, mz, 0.095, 0.24 * sm, 4.8 * sm,
         0.78, profile.coreColor || '#e8f8ff', Math.cos(base) * 25, Math.sin(base) * 25);
     }
-    this._flashLight({ x: origin.x, z: origin.z }, profile.lightColor || col,
-      (emp ? 3.8 : thermal ? 3.2 : pulse ? 2.8 : 2.1) * sm, 11, emp ? 145 : pulse ? 125 : 105);
+    this._eventLight({ x: origin.x, z: origin.z }, 'muzzle', {
+      severity: emp ? 'emp' : (thermal ? 'thermal' : (pulse ? 'pulse' : undefined)),
+      color: profile.lightColor || col,
+      sizeMul: sm,
+    });
   },
 
   _spawnMuzzleExplosive(origin, base, profile, burst) {
@@ -3651,7 +3723,11 @@ export const vfx = {
     this._spawnSprite(SPR_PUFF, origin.x - Math.cos(base) * 0.9, 0, origin.z - Math.sin(base) * 0.9,
       0.38 * sm, 1.15 * sm, 3.6 * sm, 0.24, 0.0, '#3a312d',
       -Math.cos(base) * 8, -Math.sin(base) * 8, 2.6, base + Math.PI);
-    this._flashLight({ x: origin.x, z: origin.z }, profile.lightColor || col, (torpedo ? 4.4 : 3.1) * sm, 10, torpedo ? 160 : 115);
+    this._eventLight({ x: origin.x, z: origin.z }, 'muzzle', {
+      severity: torpedo ? 'torpedo' : 'explosive',
+      color: profile.lightColor || col,
+      sizeMul: sm,
+    });
   },
 
   _spawnMuzzleBeam(origin, base, profile, burst) {
@@ -3662,7 +3738,10 @@ export const vfx = {
     this._spawnProjectileTrailStreak(mx, 0.24, mz, 0.09 * sm,
       0.22 * sm, 5.4 * sm, 0.88, profile.coreColor || '#d8f0ff',
       Math.cos(base) * 18, Math.sin(base) * 18);
-    this._flashLight({ x: mx, z: mz }, profile.lightColor || col, 2.4 * sm, 18, 70);
+    this._eventLight({ x: mx, z: mz }, 'beam', {
+      color: profile.lightColor || col,
+      sizeMul: sm,
+    });
   },
 
   // resolve a heading angle from a payload `dir` that may be a number (radians), a {x,z} vector, or
@@ -4068,8 +4147,11 @@ export const vfx = {
       this._spawnProjectileTrailStreak(pos.x, 0.18, pos.z, 0.18, 0.19 * scale, 2.7 * scale,
         0.38, shieldColor, 0, 0, -tx, -tz);
     }
-    this._flashLight({ x: pos.x, z: pos.z }, hitShield ? shieldColor : profile.accentColor,
-      profile.lightPeak * scale, 13, 110 * scale);
+    this._eventLight({ x: pos.x, z: pos.z }, hitShield ? 'shield' : 'impact', {
+      color: hitShield ? shieldColor : profile.accentColor,
+      peak: profile.lightPeak * scale,
+      distance: 110 * scale,
+    });
   },
 
   // One directional shock sheet + ribbon + cone along a REAL signed shove. Used by impulse-charge
@@ -4358,7 +4440,7 @@ export const vfx = {
 
     // The shared event-light pool supplies a brief hot reflection; accessibility scales or removes
     // it, while the directional geometry above remains the readable receipt.
-    this._flashLight(pos, '#d7efff', 2.8 * scale, 14, 86);
+    this._eventLight(pos, 'pickup', { sizeMul: scale });
   },
 
   _onDamage(p) {
@@ -4400,7 +4482,7 @@ export const vfx = {
 
       if (p.brokeShield) {
         // Shield break: the tear, not the scar as well. Five fixed tangent tears crawl the shell.
-        if (!reducedFlash) this._flashLight({ x: cx, z: cz }, '#39d0ff', 7.2, 9, 240);
+        if (!reducedFlash) this._eventLight({ x: cx, z: cz }, 'shield', { severity: 'break' });
         if (this._weaponPresenter && this._weaponPresenter.quarks) {
           const local = this._toLocalXZ(cx, cz, this._spawnLocalXZ);
           this._weaponPresenter.quarks.spawnShieldBreak(local.x, 0.35, local.z, 24);
@@ -4425,7 +4507,7 @@ export const vfx = {
       } else if (tgt) {
         // Ordinary shield receipt is the contact scar only. A second streak reads as a second hit.
         addShieldContact(tgt.id, nx, 0.12, nz, 1.0);
-        if (!reducedFlash) this._flashLight({ x: pos.x, z: pos.z }, col, 2.8, 11, 110);
+        if (!reducedFlash) this._eventLight({ x: pos.x, z: pos.z }, 'shield', { severity: 'contact', color: col });
       }
     }
     if (p.armorHit) {
@@ -4455,7 +4537,7 @@ export const vfx = {
       }
       this._spawnProjectileTrailStreak(pos.x, 0.16, pos.z, 0.17, 0.18, 2.2,
         0.44, '#b7aa96', 0, 0, nx, nz);
-      if (!this._isReduced()) this._flashLight({ x: pos.x, z: pos.z }, '#d8c39e', 1.6, 13, 72);
+      if (!this._isReduced()) this._eventLight({ x: pos.x, z: pos.z }, 'graze');
     }
     if (p.hullHit) {
       this._emitJuiceCue('combat.damage.hull', p, 1);
@@ -4486,7 +4568,7 @@ export const vfx = {
           Math.max(3, Math.round(5 * (this._burst || 1))), 0.48, 0.78,
           '#ffb36a', '#3a1710', 1.2);
       }
-      if (!this._isReduced()) this._flashLight({ x: pos.x, z: pos.z }, '#ff7040', 2.2, 11, 90);
+      if (!this._isReduced()) this._eventLight({ x: pos.x, z: pos.z }, 'impact', { severity: 'hull' });
     }
   },
 
@@ -4536,13 +4618,16 @@ export const vfx = {
       const off = i - (maxLights - 1) * 0.5;
       const dx = Math.cos(angle + Math.PI / 2) * off * radius * 0.35;
       const dz = Math.sin(angle + Math.PI / 2) * off * radius * 0.35;
-      if (this._flashLight(
+      if (this._eventLight(
         { x: pos.x + dx, z: pos.z + dz },
-        style.lightColor || style.color0,
-        style.lightPeak,
-        style.lightDecay,
-        style.lightDistance,
-        admissionPriority,
+        'cue',
+        {
+          color: style.lightColor || style.color0,
+          peak: style.lightPeak,
+          decay: style.lightDecay,
+          distance: style.lightDistance,
+          priority: admissionPriority,
+        },
       )) {
         lightsActivated++;
       }
@@ -4605,7 +4690,7 @@ export const vfx = {
       const seam = Math.random() * Math.PI * 2;
       this._spawnSprite(SPR_COMBUSTION, pos.x, 0, pos.z, 0.7, radius * 0.3, radius * 1.5, 0.82, 0, '#8d66ff', 0, 0, 0.28, seam);
       this._spawnSprite(SPR_COMBUSTION, pos.x, 0, pos.z, 1.0, radius * 0.18, radius * 1.05, 0.58, 0, '#d7e6ff', 0, 0, 0.2, seam + 0.5);
-      this._flashLight({ x: pos.x, z: pos.z }, '#8d66ff', 2.8, 8, 150);
+      this._eventLight({ x: pos.x, z: pos.z }, 'vein');
       return;
     }
     if (id === 'mining.rich_core.charge') {
@@ -4627,7 +4712,7 @@ export const vfx = {
         this._spawnParticle(pos.x, pos.z, Math.cos(a) * speed, Math.sin(a) * speed,
           0.65 + Math.random() * 0.3, 3.0, 0.45, this._c0, this._c1, 1.6, 0, 3 + Math.random() * 4);
       }
-      this._flashLight({ x: pos.x, z: pos.z }, '#d7e6ff', 3.8, 7, 180);
+      this._eventLight({ x: pos.x, z: pos.z }, 'vein', { severity: 'payout' });
       return;
     }
     if (id === 'mining.rich_core.fizzle') {
@@ -5963,8 +6048,12 @@ export const vfx = {
       if (phase === 'ignition' || phase === 'contact-compression' || phase === 'rupture') {
         const family = explosionRuptureFamily(entry);
         if (accessibility.eventLightPeakScale > 0) {
-          this._flashLight({ x: entry.x, z: entry.z }, family === 'reactor' ? '#91dfff' : '#ffb05b',
-            (phase === 'rupture' ? 8 : 5) * accessibility.eventLightPeakScale, 10, 100 + entry.radius * 4);
+          // _flashLight applies eventLightPeakScale internally — the raw preset peak goes in.
+          this._eventLight({ x: entry.x, z: entry.z }, 'explosion', {
+            severity: (family === 'reactor' ? 'reactor' : 'beat')
+              + (phase === 'rupture' ? '-rupture' : ''),
+            distance: 100 + entry.radius * 4,
+          });
         }
         if (phase === 'rupture') this.bus.emit('camera:shake', {
           amount: (accessibility.id === 'full' ? 0.28 : 0.12) * (entry.classId === 'capital' ? 1.5 : 1),
@@ -6076,7 +6165,13 @@ export const vfx = {
           r * 0.05 * scale, r * (entry.classId === 'capital' ? 0.55 : 0.40) * scale,
           reduced ? 0.30 : 0.52, 0.0, '#fff0c0', 0, 0);
       }
-      this._flashLight({ x, z }, '#fff0c0', (entry.classId === 'capital' ? 12 : 7.5) * scale, 11, 120 + r * 5);
+      // FB-074 — the capital kill is bound to the authored `explosionCapital` identity so the
+      // audio's five-part beat has a matching light plan in the record.
+      this._eventLight({ x, z }, 'explosion', {
+        severity: entry.classId === 'capital' ? 'capital' : 'ignition',
+        sizeMul: scale,
+        distance: 120 + r * 5,
+      });
       this._emitDestructionLightBeats(entry, scale, reduced);
       return;
     }
@@ -6251,7 +6346,11 @@ export const vfx = {
             shearX, shearZ);
         }
       }
-      this._flashLight({ x, z }, '#ffa050', (entry.classId === 'capital' ? 13 : 8.0) * scale, 5.5, 180 + r * 7);
+      this._eventLight({ x, z }, 'explosion', {
+        severity: entry.classId === 'capital' ? 'burst-capital' : 'burst',
+        sizeMul: scale,
+        distance: 180 + r * 7,
+      });
       const shake = entry.classId === 'capital' ? 0.62 : (entry.classId === 'small' ? 0.16 : 0.34);
       // A ship blowing up is a WORLD event: send where it happened so the consumer can fall it off
       // with distance. Untagged, this kicked the player's camera identically whether the wreck was on
@@ -6433,7 +6532,9 @@ export const vfx = {
       this._spawnCauseFragment(entry, x, z, contactAngle, reduced ? 0.24 : 0.34,
         0.08 * scale, 2.8 * scale, 0.66 * opacityScale, '#f1d2a0', 18, travelScale);
       if (accessibility.eventLightPeakScale > 0) {
-        this._flashLight({ x, z }, '#ffc080', 6.4 * scale, 12, 100 + r * 3);
+        this._eventLight({ x, z }, 'explosion', {
+          severity: 'compression', sizeMul: scale, distance: 100 + r * 3,
+        });
       }
       return;
     }
@@ -6474,7 +6575,9 @@ export const vfx = {
         r * 0.25 * scale,
         0.84, 0, '#ffffff', 0, 0, 2.6, contactAngle);
       if (accessibility.eventLightPeakScale > 0) {
-        this._flashLight({ x, z }, '#dcecff', 6.8 * scale, 12, 110 + r * 3);
+        this._eventLight({ x, z }, 'explosion', {
+          severity: 'shear', sizeMul: scale, distance: 110 + r * 3,
+        });
       }
       return;
     }
@@ -6504,8 +6607,11 @@ export const vfx = {
         }
       }
       if (accessibility.eventLightPeakScale > 0) {
-        this._flashLight({ x, z }, cause === 'kinetic' ? '#fff0d0' : '#ff9a48',
-          (cause === 'kinetic' ? 5.8 : 8.2) * scale, 11, 110 + r * 4);
+        this._eventLight({ x, z }, 'explosion', {
+          severity: cause === 'kinetic' ? 'kinetic-ignition' : 'thermal-ignition',
+          sizeMul: scale,
+          distance: 110 + r * 4,
+        });
       }
       this._emitDestructionLightBeats(entry, scale, reduced);
       return;
@@ -6591,7 +6697,9 @@ export const vfx = {
         0.90, 0, '#ffffff',
         Math.cos(ruptureAngle) * 3, Math.sin(ruptureAngle) * 3, 2.7, ruptureAngle);
       if (accessibility.eventLightPeakScale > 0) {
-        this._flashLight({ x, z }, '#ff9a50', 8.4 * scale, 7, 140 + r * 5);
+        this._eventLight({ x, z }, 'explosion', {
+          severity: 'tear', sizeMul: scale, distance: 140 + r * 5,
+        });
       }
       this.bus.emit('camera:shake', {
         amount: (reduced ? 0.16 : 0.30) * (entry.classId === 'capital' ? 1.5 : 1),
@@ -7054,18 +7162,20 @@ export const vfx = {
     const pulseSerial = ctrl.consumeWantedPulse && ctrl.consumeWantedPulse();
     if (pulseSerial) {
       const pp = this._playerPos();
-      // _flashLight already multiplies by eventLightPeakScale. Under reduced-motion that scale is
-      // 0, so use the sustained-light path for a calm landed accent that still respects no
-      // full-screen flash (bounded pool slot + short lifetime handled by the stamp).
+      // _flashLight already multiplies by eventLightPeakScale. FB-077 keeps a 0.1 floor under
+      // reduced motion, so this branch still runs there — the 'calm' severity is its authored
+      // reduced form. Only a zeroed floor takes the sustained-light path for a calm landed
+      // accent that still respects no full-screen flash.
       if (peakScale > 0) {
-        const peak = (reducedMotion ? 2.2 : 4.8) * flashDim;
-        this._flashLight(
+        this._eventLight(
           { x: pp.x || 0, z: pp.z || 0 },
-          LAW_HEAT_COLORS.wantedFlip,
-          peak,
-          reducedMotion ? 6 : 9,
-          160,
-          LAW_HEAT_ADMISSION.WANTED_FLIP,
+          'law',
+          {
+            severity: reducedMotion ? 'calm' : undefined,
+            color: LAW_HEAT_COLORS.wantedFlip,
+            peakMul: flashDim,
+            priority: LAW_HEAT_ADMISSION.WANTED_FLIP,
+          },
         );
       } else {
         // Calm one-shot via a short sustained claim that the stamp lifetime will release.
@@ -7195,8 +7305,7 @@ export const vfx = {
     const pirateSlot = this._pirateInterceptScratch;
     if (pirateSlot) {
       pirateSlot.elapsed = 0;
-      pirateSlot.contactRef = null;
-      pirateSlot.contactTarget = null;
+      resetNpcJobContactScratch(pirateSlot);
     }
   },
 
@@ -7416,13 +7525,15 @@ export const vfx = {
     emitted += this._emitNpcPirateIntercepts(player, drawWu, reducedMotion);
 
     // Release slots whose job vanished this tick, so a departed hull's cache cannot be mistaken for
-    // a live one when ids are recycled.
+    // a live one when ids are recycled. Contact scratch is reset in place (FB-096) — the next
+    // claim re-samples its own client's surface rather than reusing a dead job's cached root.
     for (let i = 0; i < slots.length; i++) {
       if (slots[i].gen !== gen && slots[i].jobId !== null) {
         slots[i].jobId = null;
         slots[i].profileId = null;
         slots[i].lastEmitStep = -1;
         slots[i].elapsed = 0;
+        resetNpcJobContactScratch(slots[i]);
       }
     }
 
@@ -7615,24 +7726,9 @@ export const vfx = {
       // metal, with a bounded sample per submesh; never a collision-radius point in empty space.
       const origin = this.state.world && this.state.world.frameOrigin;
       const ox = origin && origin.x || 0, oz = origin && origin.z || 0;
-      if (!slot.contactVertex) {
-        slot.contactVertex = new THREE.Vector3();
-        slot.contactPoint = new THREE.Vector3();
-        slot.contactFrom = new THREE.Vector3();
-        slot.contactVisit = (part) => {
-          const attr = part.isMesh && part.geometry && part.geometry.attributes.position;
-          if (!attr) return;
-          const stride = Math.max(1, Math.ceil(attr.count / 128));
-          for (let i = 0; i < attr.count; i += stride) {
-            slot.contactVertex.fromBufferAttribute(attr, i).applyMatrix4(part.matrixWorld);
-            const d2 = slot.contactVertex.distanceToSquared(slot.contactFrom);
-            if (d2 < slot.contactBest) {
-              slot.contactBest = d2;
-              slot.contactPoint.copy(slot.contactVertex);
-            }
-          }
-        };
-      }
+      // Pool slots own their contact scratch from construction (FB-096); only a bare
+      // harness-built slot arrives here without it.
+      if (!slot.contactVisit) initNpcJobContactScratch(slot);
       const now = this.state.simTime || 0;
       if (slot.contactSurfaceRoot !== root || now >= (slot.contactSurfaceUntil || 0)) {
         slot.contactFrom.set(x - ox, y, z - oz);
@@ -7703,6 +7799,7 @@ export const vfx = {
       let weldY = endY;
       const weldRoot = target.view && target.view.root;
       if (weldRoot) {
+        // Pool-owned scratch (FB-096); bare harness slots still get one on first weld.
         if (!slot.contactBox) slot.contactBox = new THREE.Box3();
         slot.contactBox.setFromObject(weldRoot);
         if (Number.isFinite(slot.contactBox.max.y)) weldY = slot.contactBox.max.y + 0.15;
@@ -8824,19 +8921,36 @@ export const vfx = {
     const ribbon = routeRibbon(this.state);
     if (!ribbon || ribbon.active !== true) {
       if (this._routeRibbon) this._routeRibbon.mesh.visible = false;
-      return;
+    } else {
+      const start = ribbon.points[0];
+      const end = ribbon.points[1];
+      this._writeWorldSegment(
+        '_routeRibbon',
+        0xc8a15a,
+        start.x,
+        start.z,
+        end.x,
+        end.z,
+        (ROUTE_RIBBON_BRIGHTNESS / 6.5) * 0.4,
+      );
     }
-    const start = ribbon.points[0];
-    const end = ribbon.points[1];
-    this._writeWorldSegment(
-      '_routeRibbon',
-      0xc8a15a,
-      start.x,
-      start.z,
-      end.x,
-      end.z,
-      (ROUTE_RIBBON_BRIGHTNESS / 6.5) * 0.4,
-    );
+    // FB-137 — spoken set-piece travel lines ride as second-destination ribbons: distinct
+    // teal, dimmer than the primary route, one slot per mission id, hidden the frame the
+    // model stops returning them (transition settled or the run left the sector).
+    const lines = setPieceRibbons(this.state) || [];
+    const seen = this._setPieceRibbonSeen || (this._setPieceRibbonSeen = new Map());
+    for (const key of seen.keys()) seen.set(key, false);
+    for (const line of lines.slice(0, 3)) {
+      const slot = `_setPieceLine_${String(line.missionId).replace(/\W/g, '_')}`;
+      seen.set(slot, true);
+      const a = line.points[0];
+      const b = line.points[1];
+      this._writeWorldSegment(slot, 0x5ac8a1, a.x, a.z, b.x, b.z,
+        (line.brightness / 6.5) * 0.4);
+    }
+    for (const [slot, live] of seen) {
+      if (!live && this[slot]) this[slot].mesh.visible = false;
+    }
   },
 
   _arcPreviewActive() {
@@ -9490,6 +9604,14 @@ export const vfx = {
     this._dockingCradleQuietHidden = false;
   },
 
+  _releaseDockingCradle() {
+    const dc = this._dockingCradle;
+    if (!dc) return;
+    releaseDockingCradle(dc.cradle);
+    // A quiet-latched cradle would otherwise skip the whole beat — wake it for the fade.
+    this._dockingCradleQuietHidden = false;
+  },
+
   _resetDockingCradle() {
     const dc = this._dockingCradle;
     if (!dc) return;
@@ -9994,7 +10116,7 @@ export const vfx = {
     const pulse = 0.82 + 0.18 * Math.sin(this._t * 4.2);
     const drawWu = this._tableVfxDrawWu || tableVfxDrawWuFromState(state);
     let n = 0;
-    const list = indexedTypeScan(state, 'asteroids');
+    const list = this._seamMarkerCandidates(state, player, drawWu);
     for (let i = 0; i < list.length && n < sm.CAP; i++) {
       const e = list[i];
       if (!e || !e.alive || e.type !== 'asteroid') continue;
@@ -10173,7 +10295,7 @@ export const vfx = {
       // The recoil ring is a shock, not a smoke cloud: fast, thin and hot. At 16 wu it swallowed the
       // whole ship in a flat orange donut for a third of a second.
       this._spawnSprite(SPR_RING, endX, 0.9, endZ, 0.26, 1.4, 8.5, 0.55, 0.0, '#ffc9a0', 0, 0);
-      this._flashLight({ x: endX, z: endZ }, '#ffb0a0', 5.4, 12, 200);
+      this._eventLight({ x: endX, z: endZ }, 'tether', { severity: 'snap' });
     }
   },
 
@@ -10402,7 +10524,7 @@ export const vfx = {
           0.28 + Math.random() * 0.24, 1.55, 0.0, this._c0, this._c1, 3.4, 0, 0);
       }
       this._spawnSprite(SPR_FLASH, pos.x, 0, pos.z, 0.07, 3.0, 5.8, 0.9, 0.0, '#a6f0ff', 0, 0);
-      this._flashLight({ x: pos.x, z: pos.z }, '#39d0ff', 3.2, 12, 140);
+      this._eventLight({ x: pos.x, z: pos.z }, 'tether');
     }
     if (!anchor) return;
     const ship = ends[0];
@@ -10411,7 +10533,7 @@ export const vfx = {
     const chord = Math.hypot(dirX, dirZ);
     // Simultaneous anchor flash + light: both ends firing together is the connection read.
     this._spawnSprite(SPR_FLASH, anchor.x, 0, anchor.z, 0.07, 3.0, 5.8, 0.9, 0.0, '#a6f0ff', 0, 0);
-    this._flashLight({ x: anchor.x, z: anchor.z }, '#39d0ff', 3.2, 12, 140);
+    this._eventLight({ x: anchor.x, z: anchor.z }, 'tether');
     if (!(chord > 1e-3)) return;
     dirX /= chord;
     dirZ /= chord;
@@ -10505,8 +10627,13 @@ export const vfx = {
     _impactOpts.hero = false;
     this._composeImpact(pos.x, 0.2, pos.z, 0, 0, 1, false, 0.62, 'hull', r * 0.45, _impactOpts);
     if (acc.eventLightPeakScale > 0) {
-      this._flashLight({ x: pos.x, z: pos.z }, profile.accentColor || '#39d0ff',
-        4.2 * neon.lightPeak * acc.eventLightPeakScale, 8, 180);
+      // _flashLight already applies eventLightPeakScale — the neon gain is the authored runtime
+      // multiplier the preset peak doesn't own.
+      this._eventLight({ x: pos.x, z: pos.z }, 'impact', {
+        severity: 'detonation',
+        color: profile.accentColor,
+        peakMul: neon.lightPeak,
+      });
     }
   },
 
@@ -10624,7 +10751,11 @@ export const vfx = {
         this._admitAndSpawnArcadeStructural('combat:collisionConsequence', p);
       }
       const light = collisionImpactLight(p);
-      this._flashLight(p.pos, p.surface === 'terrain' ? '#ffcaa0' : '#bcd8ff', light.intensity, 9, light.range);
+      this._eventLight(p.pos, 'collision', {
+        severity: p.surface === 'terrain' ? 'terrain' : undefined,
+        peak: light.intensity,
+        distance: light.range,
+      });
       return true;
     }
     const pos = p.pos;
@@ -10696,8 +10827,11 @@ export const vfx = {
     }
     if (acc.eventLightPeakScale > 0) {
       const light = collisionImpactLight(p);
-      this._flashLight({ x: pos.x, z: pos.z }, terrain ? '#ffcaa0' : '#bcd8ff',
-        light.intensity, 9, light.range);
+      this._eventLight({ x: pos.x, z: pos.z }, 'collision', {
+        severity: terrain ? 'terrain' : undefined,
+        peak: light.intensity,
+        distance: light.range,
+      });
     }
     this._fillCollisionStructuralReq(p);
     // A stagger is a control, not a structural hit. The arbiter already refuses it.
@@ -11023,7 +11157,10 @@ export const vfx = {
       this._spawnSprite(SPR_FLASH, x, 0, z, reduced ? 0.28 : 0.22, s0 * 0.4, s0 * 1.1, style.coreOp, 0.0, style.color1, 0, 0);
     }
     if (style.useLight && isStart) {
-      this._flashLight({ x, z }, style.light, reduced ? 1.4 : 2.6, 9, 140);
+      this._eventLight({ x, z }, 'tell', {
+        severity: reduced ? 'mark-calm' : 'mark',
+        color: style.light,
+      });
     }
   },
 
@@ -11168,7 +11305,7 @@ export const vfx = {
       this._spawnSprite(SPR_PUFF, cx + ux * 8, 0, cz + uz * 8, life, 4.0, 10.0, style.linkOp, 0.0, style.color1, ux * 12, uz * 12);
     }
     if (style.useLight && isStart) {
-      this._flashLight({ x: cx, z: cz }, style.light, 1.8, 10, 110);
+      this._eventLight({ x: cx, z: cz }, 'tell', { severity: 'link', color: style.light });
     }
   },
 
@@ -11280,7 +11417,7 @@ export const vfx = {
       }
     }
     // Strong ore-tinted dynamic light at contact — brighter, wider
-    this._flashLight({ x: pos.x, z: pos.z }, col, 4.6, 3.8, 155);
+    this._eventLight({ x: pos.x, z: pos.z }, 'mining', { severity: 'contact', color: col });
     if (this._weaponPresenter && this._weaponPresenter.quarks) {
       const local = this._toLocalXZ(pos.x, pos.z, this._spawnLocalXZ);
       const nx = backA != null ? Math.cos(backA) : 0;
@@ -11368,7 +11505,7 @@ export const vfx = {
         occluderRadius: rockR * 0.9,
       });
     }
-    this._flashLight({ x: pos.x, z: pos.z }, col, 6.0, 4.5, 200);
+    this._eventLight({ x: pos.x, z: pos.z }, 'mining', { severity: 'yield', color: col });
     if (this._weaponPresenter && this._weaponPresenter.quarks) {
       const local = this._toLocalXZ(pos.x, pos.z, this._spawnLocalXZ);
       this._weaponPresenter.quarks.spawnMiningEjecta(local.x, 0.3, local.z, 0, 1, 0, Math.min(12, 4 + qty), p.commodityId);
@@ -11428,7 +11565,7 @@ export const vfx = {
         occluderRadius: rockR * 0.7,
       });
     }
-    this._flashLight({ x: pos.x, z: pos.z }, col, 5.0, 4.0, 170);
+    this._eventLight({ x: pos.x, z: pos.z }, 'mining', { severity: 'shatter', color: col });
     this._emitJuiceCue(
       chunked ? 'presentation.mining.chunk' : 'presentation.mining.shatter',
       { pos },
@@ -11564,7 +11701,7 @@ export const vfx = {
       this._spawnSprite(SPR_FLASH, bx, 0, bz, 0.14, 3.5, 7.5, 0.78, 0.0, '#ffffff', 0, 0);
       this._spawnSprite(SPR_FLASH, bx, 0, bz, 0.22, 4.5, 10, 0.46, 0.0, col, 0, 0);
       this._spawnSprite(SPR_RING, bx, 0, bz, 0.18, 2, 8, 0.45, 0.0, col, exhaustX * 5, exhaustZ * 5);
-      this._flashLight({ x: bx, z: bz }, col, 2.2, 14, 80);
+      this._eventLight({ x: bx, z: bz }, 'thrust', { severity: 'boost', color: col });
       this._c0.set('#ffffff'); this._c1.set(col);
       const baseA = sock ? sock.angle : Math.atan2(-sf, -cf);
       const n = Math.max(10, Math.round(22 * (this._burst || 1)));
@@ -11598,7 +11735,7 @@ export const vfx = {
     this._spawnSprite(SPR_FLASH, bx, 0, bz, 0.18, 5.5, 11, 0.95, 0.0, HOT, 0, 0);
     this._spawnSprite(SPR_FLASH, bx, 0, bz, 0.28, 4.0, 12, 0.7, 0.0, VIOLET, 0, 0);
     this._spawnSprite(SPR_RING, bx, 0, bz, 0.26, 2.5, 10, 0.75, 0.0, VIOLET, exhaustX * 7, exhaustZ * 7);
-    this._flashLight({ x: bx, z: bz }, VIOLET, 2.8, 16, 95);
+    this._eventLight({ x: bx, z: bz }, 'thrust', { severity: 'afterburner', color: VIOLET });
     // Afterburner streak: fast rear particles (hot core → purple exhaust)
     this._c0.set(HOT); this._c1.set(DEEP);
     const baseA = sock ? sock.angle : Math.atan2(-sf, -cf);
@@ -11680,7 +11817,7 @@ export const vfx = {
       this._spawnParticle(p.x, p.z, Math.cos(a) * sp, Math.sin(a) * sp,
         0.4 + Math.random() * 0.3, 1.3, 0.1, this._c0, this._c1, 1.8, 0.15, 0);
     }
-    this._flashLight({ x: p.x, z: p.z }, '#ff8a3a', 2.6 * scale, 12, 90);
+    this._eventLight({ x: p.x, z: p.z }, 'explosion', { severity: 'breach', sizeMul: scale });
   },
 
   _onShipDeathFlash(p) {
@@ -11703,7 +11840,9 @@ export const vfx = {
       this._spawnParticle(p.x, p.z, Math.cos(a) * sp, Math.sin(a) * sp,
         0.5 + Math.random() * 0.5, 1.6, 0.15, this._c0, this._c1, 1.2, 0.2, 0);
     }
-    this._flashLight({ x: p.x, z: p.z }, '#fff0d0', 7.5 * scale, 11, 120 + r * 5);
+    this._eventLight({ x: p.x, z: p.z }, 'explosion', {
+      severity: 'detonation', sizeMul: scale, distance: 120 + r * 5,
+    });
   },
 
   // The render alpha the renderer posed this frame's hulls with (accumulator/fixedDt, set in
@@ -11919,13 +12058,16 @@ export const vfx = {
   },
 
   _noteCauseSilhouette(name, payload) {
-    const layer = this._ensureCauseMarks();
-    if (!layer || !payload || !this.state) return;
+    if (!this._scene || !payload || !this.state) return;
     const receipt = resolveAdditionalActionVfxReceipt(name, payload, this.state);
     if (!receipt || !receipt.pos || !Number.isFinite(receipt.pos.x) || !Number.isFinite(receipt.pos.z)) return;
     const dir = receipt.direction;
     const mark = causeSilhouetteSegments(name, receipt.pos.x, receipt.pos.z, dir && dir.x, dir && dir.z);
     if (!mark || mark.sprite === true || mark.vanish === true) return;
+    // Create the layer only when a receipt actually marks — receipts that never silhouette must
+    // not park an empty mesh in the scene.
+    const layer = this._ensureCauseMarks();
+    if (!layer) return;
     layer.noteSilhouette(mark, this._causeNow());
   },
 
@@ -12953,6 +13095,24 @@ export const vfx = {
     const sm = this._seamMarkers;
     if (!sm || !sm.mesh) return;
     if (!commitDynamicBufferOwner(sm.dynamicBufferOwner, 0) && sm.mesh.count) sm.mesh.count = 0;
+  },
+
+  // SF-266 — seam markers only ever draw inside the live table disc, but the candidate walk
+  // used to visit every asteroid in the universe each beat. With a live spatial hash the
+  // disc's colliders are the candidate set: queryRadius returns a conservative cell-level
+  // superset, the loop's shouldDrawTableVfx predicate re-filters exactly, and iteration is
+  // sorted by entity id so the emitted markers stay deterministic. Without a live hash the
+  // lane falls back to the indexed type scan, unchanged.
+  _seamMarkerCandidates(state, player, drawWu) {
+    const hash = state && state.spatialHash;
+    if (!hasActiveSpatialHash(hash)) return indexedTypeScan(state, 'asteroids');
+    const candidates = this._seamMarkerCandidateList || (this._seamMarkerCandidateList = []);
+    candidates.length = 0;
+    const origin = tableLookAtOrigin(state, player.pos,
+      this._seamMarkerOrigin || (this._seamMarkerOrigin = { x: 0, z: 0 }));
+    hash.queryRadius(origin.x, origin.z, drawWu, candidates, { countDiagnostics: false });
+    candidates.sort(compareSeamCandidateIds);
+    return candidates;
   },
 
   _energyMaterialsEnabled() {
@@ -14897,11 +15057,47 @@ export const vfx = {
     return true;
   },
 
+  // FB-074 — every event light resolves its authored identity through the light director before
+  // it reaches the pool. A call site names the event KIND and an optional severity (a tier,
+  // phase or cause qualifier — 'capital', 'break', 'terrain', 'reactor-rupture'); the preset row
+  // supplies colour, peak, decay, distance and admission priority. Options carry only size and
+  // authored runtime sources, never a fresh identity: `color` for a colour the weapon profile,
+  // doctrine style or ore tint already owns, `peak`/`decay`/`distance`/`priority` for values an
+  // authored scaler (collisionImpactLight, force-neon metrics, LAW dimming, cue style) owns,
+  // `peakMul` for a runtime gain, `sizeMul`/`boost` for the scalePreset curve.
+  // The resolved identity lands on _lastEventLightPlan so probes/tests can audit WHICH authored
+  // plan carried the event.
+  _eventLight(pos, kind, opts) {
+    const o = opts || _FLASH_LIGHT_BLANK_OPTS;
+    const scaled = scalePreset(presetFor(kind, o.severity), o);
+    if (!scaled) return false;
+    const ok = this._flashLight(
+      pos,
+      o.color || scaled.color,
+      (o.peak != null ? o.peak : scaled.peak) * (o.peakMul != null ? o.peakMul : 1),
+      o.decay != null ? o.decay : scaled.decay,
+      o.distance != null ? o.distance : scaled.distance,
+      o.priority != null ? o.priority : scaled.priority,
+    );
+    if (ok) {
+      this._lastEventLightPlan = {
+        kind,
+        severity: o.severity || null,
+        presetColor: scaled.color,
+        color: o.color || scaled.color,
+        peak: o.peak != null ? o.peak : scaled.peak,
+      };
+    }
+    return ok;
+  },
+
   // Grab a pool light, position it at {x,z} (y lifted slightly above the plane), set its color +
   // peak intensity, and arm a decay rate. Intensity eases up over ~50ms then decays exponentially
   // — reads as a sharp flash, not a fade-in. `decayRate` ~ 6-10 (higher = snappier).
   // `color` may be a hex number (0xffb060) OR a CSS string ('#ffb060') — normalized internally.
   // `pos` is galactic-global XZ (same as entity.pos / event payloads); GPU placement is frame-local.
+  // FB-074: callers should route through _eventLight so the light director owns the identity;
+  // direct _flashLight use is reserved for sites carrying externally-authored plans.
   _flashLight(pos, color, peak, decayRate, dist, admissionPriority) {
     const pool = this._lights;
     if (!pool || !pos) return false;
@@ -15612,7 +15808,7 @@ export const vfx = {
       const anchorRot = presentedAnchorRot(e, anchorAlpha);
       const cf = Math.cos(anchorRot), sf = Math.sin(anchorRot);
       const back = (e.radius || 14) * 0.88;
-      const sock = this._trailSocketWorldPose(e);
+      const sock = this._wakeTrailSocketWorldPose(e);
       const anchor = presentedAnchorXZ(e, anchorAlpha, this._presentedAnchorXZScratch());
       const txG = sock ? sock.x : anchor.x - cf * back;
       const tzG = sock ? sock.z : anchor.z - sf * back;
@@ -16446,6 +16642,31 @@ export function createSeamMarkerPipelineMesh({ visibleInstances = 0 } = {}) {
 // ---------------------------------------------------------------------------
 // pure helpers (module scope)
 // ---------------------------------------------------------------------------
+// Census-name socket pose for hulls whose live view carries no socket objects. Module scope so
+// the .call probe seam in test/model-truth-mounts.test.mjs keeps working with just helpers and
+// _writeTrailSocketPose on `this`.
+function namedTrailSocketPose(ctx, e, socketName) {
+  if (!socketName) return null;
+  if (ctx.helpers && ctx.helpers.socketWorldPose) {
+    const pose = ctx.helpers.socketWorldPose(e.id, socketName);
+    if (pose) {
+      return ctx._writeTrailSocketPose(
+        pose.x, pose.y || 0, pose.z,
+        pose.forwardX, pose.forwardY, pose.forwardZ,
+      );
+    }
+  }
+  if (ctx.helpers && ctx.helpers.socketWorldPos) {
+    const pos = ctx.helpers.socketWorldPos(e.id, socketName);
+    if (pos) {
+      const cf = Math.cos(e && e.rot || 0);
+      const sf = Math.sin(e && e.rot || 0);
+      return ctx._writeTrailSocketPose(pos.x, pos.y || 0, pos.z, -cf, 0, -sf);
+    }
+  }
+  return null;
+}
+
 function isNozzleSocketObject(object) {
   if (!object || !object.userData || !object.userData.spacefaceSocket) return false;
   return /^SOCKET_Engine_/i.test(String(object.name || ''));

@@ -30,6 +30,7 @@
 import { MODULES } from '../../data/modules.js';
 import { SURVIVAL_DRAFT_CHOICES } from '../../data/survivalDraft.js';
 import { SWARM_CATEGORIES } from '../../data/swarmCatalog.js';
+import { swarmRoundPreview } from '../../data/swarmLadder.js';
 import { WEAPONS } from '../../data/weapons.js';
 import { canExtract, requestSurvivalExtraction } from '../../systems/survivalExtraction.js';
 import { canContinueSurvivalEndless, continueSurvivalEndless } from '../../systems/survivalEndless.js';
@@ -592,6 +593,21 @@ export function refitFootLines(run) {
   };
 }
 
+/** SWARM-04 §6.5 — the one next-round sentence the armory and the refit bench both print. */
+function swarmNextLine(next) {
+  if (!next) return '';
+  const bits = [
+    `Round ${next.wave} — ${next.zone.name}`,
+    `clear ${next.killTarget}`,
+    `${next.concurrent} in the room`,
+  ];
+  if (next.roster.length) bits.push(next.roster.join(', '));
+  if (next.newcomer) bits.push(`new: ${next.newcomer}`);
+  if (next.event) bits.push(`${next.event.name} — ${next.event.telegraph}`);
+  if (next.boss) bits.push(`boss: ${next.boss.label}`);
+  return `Next — ${bits.join(' · ')}`;
+}
+
 export const crucibleDraftScreen = {
   id: 'crucibleDraft',
   // Locked: the run is paused on this choice, and Escape must not leave the phase machine
@@ -620,8 +636,15 @@ export const crucibleDraftScreen = {
     title.appendChild(h);
     const sub = el('p', 'k-t-emph k-62 sf-cru-sub', '');
     title.appendChild(sub);
+    // SWARM-04 §6.5 — the next-round preview: body count, archetypes, any newcomer, the event
+    // card, the boss. Buying becomes counter-planning when the fight coming is on the same
+    // screen as the shelf. The armory alone carries it; the gauntlet's Rearm stays quiet.
+    const preview = el('p', 'k-sentence sf-cru-preview', '');
+    preview.hidden = true;
+    title.appendChild(preview);
     rootEl.appendChild(title);
     this._sub = sub;
+    this._preview = preview;
 
     // .k-stage — the three offers across on the sky, then the one status line.
     const stage = el('section', 'k-stage sf-cru-stage');
@@ -862,6 +885,7 @@ export const crucibleDraftScreen = {
     if (typeof window !== 'undefined' && this._onRailResize) window.removeEventListener?.('resize', this._onRailResize);
     this._reading = null;
     this._visualArmory = null;
+    this._preview = null;
     this._ctx = null;
   },
 
@@ -928,12 +952,36 @@ export const crucibleDraftScreen = {
       }
     }
 
+    // SWARM-04: a checkpoint start's opening armory parks run.wave one below the bought
+    // entry — "Round 10 cleared" would claim a fight this run never flew. The bought purse
+    // and the round ahead are the honest words.
+    const runStart = context.state?.run?.telemetry
+      && Number.isInteger(context.state.run.telemetry.startWave)
+      ? context.state.run.telemetry.startWave : 1;
     this._sub.textContent = offers.length
       ? (wave === 0
         ? 'Fit out before round 1 — the purse is already open.'
-        : shop ? `Round ${wave} cleared. Buy a new toy, or save for something bigger.`
-          : `Wave ${wave} cleared. Choose a new weapon.`)
+        : shop && runStart > 1 && wave === runStart - 1
+          ? `Checkpoint start — the purse is stocked for Round ${runStart}.`
+          : shop ? `Round ${wave} cleared. Buy a new toy, or save for something bigger.`
+            : `Wave ${wave} cleared. Choose a new weapon.`)
       : `Wave ${wave} cleared. Nothing new fits this hull.`;
+
+    // SWARM-04 §6.5 — plan around the next fight. `wave` is the round just cleared (0 before
+    // the opener), so the preview is always wave + 1. Everything on the line is already
+    // authored on the pure plan — same seed, same card — so the armory can speak for the
+    // round coming without touching generation.
+    if (this._preview) {
+      let text = '';
+      const run = context.state && context.state.run;
+      if (shop && run) {
+        text = swarmNextLine(
+          swarmRoundPreview({ arenaId: run.arenaId, wave: wave + 1, seed: run.seed }),
+        );
+      }
+      this._preview.textContent = text;
+      this._preview.hidden = !text;
+    }
 
     // INF-060: a purchase rebuilds the cards; the player stays on the same offer instead of
     // being thrown back to the first card (or into detached-focus limbo).
@@ -1298,6 +1346,12 @@ export const crucibleRefitScreen = {
     note.setAttribute('aria-live', 'polite');
     title.appendChild(note);
     this._note = note;
+    // SWARM-04 §6.5 — the refit bench is the armory's zone boundary: the round after a
+    // wave-10 refit opens the next zone, so the preview rides here too.
+    const preview = el('p', 'k-sentence sf-cru-preview', '');
+    preview.hidden = true;
+    title.appendChild(preview);
+    this._preview = preview;
 
     // .k-stage — one row per hardpoint: its name, what is fitted beneath, the spare words and the
     // verb. ORRERY §6: the rows are the labels of a hull on the jig — the run's ship in plan at the
@@ -1561,6 +1615,7 @@ export const crucibleRefitScreen = {
     if (this._hullWatch) { this._hullWatch.disconnect(); this._hullWatch = null; }
     if (this._doneHold) { this._doneHold.dispose(); this._doneHold = null; }
     if (this._extractHold) { this._extractHold.dispose(); this._extractHold = null; }
+    this._preview = null;
   },
 
   /** The three keys, their words and their fine print, for the run as it stands now. */
@@ -1611,6 +1666,20 @@ export const crucibleRefitScreen = {
     if (!rows || !context) return;
     this._ctx = context;
     this._syncFoot(context);
+    // SWARM-04 §6.5 — the same next-round card the armory shows. The refit opens after the
+    // wave it names; the round ahead is run.wave + 1.
+    if (this._preview) {
+      let text = '';
+      const run = context.state && context.state.run;
+      if (run && run.ruleset === 'swarm') {
+        const wave = Number.isInteger(run.wave) ? run.wave : 0;
+        text = swarmNextLine(
+          swarmRoundPreview({ arenaId: run.arenaId, wave: wave + 1, seed: run.seed }),
+        );
+      }
+      this._preview.textContent = text;
+      this._preview.hidden = !text;
+    }
     // INF-060: a fit/strip rebuilds every row. Capture where the player was (and which spare they
     // had chosen per hardpoint) so the rebuild neither drops focus nor resets their picks.
     const rootEl = this._root;

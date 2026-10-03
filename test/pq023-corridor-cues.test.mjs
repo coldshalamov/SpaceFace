@@ -438,22 +438,28 @@ test('(c) the fixture controller disposes every resource it created', () => {
 
 // ------------------------------------------------------ (d) recipe contract
 
-test('(d) reduced-mode declarations are optional and vocabulary-checked', () => {
+test('(d) reduced-mode declarations are required and vocabulary-checked', () => {
   const damage = getPresentationRecipe('world_site.damage');
   assert.ok(REDUCED_CUE_MODES.includes(damage.reducedMotionMode));
   assert.ok(REDUCED_CUE_MODES.includes(damage.reducedFlashMode));
 
-  // Optional: the recipes outside this leaf declare nothing and must stay valid.
-  const untouched = getPresentationRecipe('mining.drill.contact');
-  assert.equal(untouched.reducedMotionMode, undefined);
+  // FB-077: every recipe declares its reduced-motion form — a leaf that names none still
+  // carries the factory-derived honest default, and the validator rejects a missing one.
+  const derived = getPresentationRecipe('mining.drill.contact');
+  assert.ok(REDUCED_CUE_MODES.includes(derived.reducedMotionMode));
   assert.equal(validatePresentationRecipes().ok, true, 'the whole registry must remain valid');
 
-  // A bogus mode is rejected.
+  // A bogus mode is rejected, and a missing one is a defect.
   const bad = validatePresentationRecipes({
     'x.y': { ...damage, id: 'x.y', reducedMotionMode: 'teleport' },
   });
   assert.equal(bad.ok, false);
   assert.ok(bad.issues.some((i) => i.includes('reducedMotionMode')));
+  const missing = validatePresentationRecipes({
+    'x.y': { ...damage, id: 'x.y', reducedMotionMode: undefined },
+  });
+  assert.equal(missing.ok, false);
+  assert.ok(missing.issues.some((i) => i.includes('reducedMotionMode')));
 });
 
 test('(d)(e) every recipe still declares all five lanes and a voice budget', () => {
@@ -497,10 +503,16 @@ function captureImpactGrammar(weaponId) {
   host._posFrom = () => ({ x: 10, z: 20 });
   host._ent = () => ({ factionId: 'test', shield: 0 });
   host._shieldColor = () => '#66ccff';
+  host._c0 = new THREE.Color();
+  host._c1 = new THREE.Color();
   host._spawnSprite = (...args) => calls.sprites.push(args);
   host._spawnProjectileTrailStreak = (...args) => calls.streaks.push(args);
   host._impactParticleCone = (...args) => calls.cones.push(args);
   host._flashLight = (...args) => calls.lights.push(args);
+  // Same capture-seam discipline as captureExplosionPhase: armor spall spawns pooled cosmetic
+  // particles, and this host never initializes the renderer-owned pool.
+  calls.particles = [];
+  host._spawnParticle = (...args) => calls.particles.push(args);
   host._onProjectileHit({
     weaponId,
     targetId: 17,
@@ -516,7 +528,13 @@ test('(a) flak executes an outward volume burst instead of the autocannon fallba
 
   assert.equal(autocannon.sprites.length, 0,
     'the autocannon remains an attached gouge and directional fragment fan');
-  assert.ok(flak.sprites.length >= 1,
+  assert.equal(flak.sprites.length, 0,
+    'the flak core stays directional structure — it must not borrow the shared circular flash card');
+  // The compact ignition core is authored as two crossed high-alpha streaks centered on the
+  // contact, then the outward fragment volume. `calls.streaks` preserves spawn order, so the
+  // first two entries are that core: short, wide, and brighter than the fragment spread.
+  const core = flak.streaks.slice(0, 2);
+  assert.ok(core.length === 2 && core[0][6] >= 0.7 && core[1][6] >= 0.5,
     'a proximity burst needs a compact visible core at the ordinary camera');
   assert.ok(flak.streaks.length >= 6,
     `flak needs an outward fragment volume, got ${flak.streaks.length} streaks`);
@@ -527,7 +545,7 @@ test('(a) flak executes an outward volume burst instead of the autocannon fallba
 });
 
 function captureExplosionPhase(classId, phase, settings = { video: {}, accessibility: {} }) {
-  const calls = { sprites: [], streaks: [], cones: [], lights: [], bus: [] };
+  const calls = { sprites: [], streaks: [], cones: [], lights: [], particles: [], bus: [] };
   const host = Object.create(vfx);
   host._scene = {};
   host._burst = 1;
@@ -537,6 +555,9 @@ function captureExplosionPhase(classId, phase, settings = { video: {}, accessibi
   host._spawnProjectileTrailStreak = (...args) => calls.streaks.push(args);
   host._impactParticleCone = (...args) => calls.cones.push(args);
   host._flashLight = (...args) => calls.lights.push(args);
+  // Destruction light beats spawn pooled cosmetic particles; the pool is renderer-owned state this
+  // bare capture host never initializes, so the spawn seam is captured rather than the pool touched.
+  host._spawnParticle = (...args) => calls.particles.push(args);
   host._emitExplosionPhase(phase, {
     classId,
     x: 0,

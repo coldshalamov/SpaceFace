@@ -18,7 +18,7 @@ export {
   releaseSharedTextureConsumer,
 };
 import { createLiveGeometryAdmissionQueue } from './liveGeometryAdmission.js';
-import { applyMasslineReleaseCameraCue, createChaseCamera, shakeDistanceAttenuation } from './camera.js';
+import { applyMasslineReleaseCameraCue, createChaseCamera, IMPACT_KICK_WU_MAX, shakeDistanceAttenuation } from './camera.js';
 import {
   clearanceCellInRange,
   clearanceGridRawAt,
@@ -229,6 +229,8 @@ import {
   createAdaptiveResolution,
   shouldSuggestIntegratedPreset,
   INTEGRATED_PRESET_SUGGESTION,
+  dynResFloorForTier,
+  softwareRendererEmergencyProfile,
 } from './adaptiveQuality.js';
 import { createGpuTimers } from './gpuTimers.js';
 import { ensurePerfRuntime } from '../core/perfRuntime.js';
@@ -8830,7 +8832,7 @@ export const render = {
     // Per-tier floor for how far dynamic resolution may back off. Software rendering will never be
     // fast, so let it drop much lower (and drop bloom); the real fix is a hardware context, surfaced
     // to the player below.
-    const dynFloor = gpu.tier === 'software' ? 0.34 : gpu.tier === 'integrated' ? 0.5 : 0.6;
+    const dynFloor = dynResFloorForTier(gpu.tier);
     this._adaptive = createAdaptiveResolution({
       floor: dynFloor,
       apply: (s) => { this.state.render.dynResScale = s; this._applySize(); },
@@ -8846,26 +8848,25 @@ export const render = {
     state.render.dynResAllowed = this._dynResAllowed;
     this._adaptive.setEnabled(this._dynResAllowed && !(state.settings && state.settings.video && state.settings.video.dynamicResolution === false));
 
-    if (gpu.software) {
-      // Hardware acceleration is OFF: the browser is rendering WebGL on the CPU (SwiftShader). No
-      // in-game setting makes this fast — auto-drop to the cheapest path and tell the player exactly
-      // how to fix it. Runtime-only (NOT persisted into settings.video) so it recovers on a hardware
-      // context after relaunch.
+    // Hardware acceleration OFF (CPU WebGL: SwiftShader/llvmpipe): no in-game setting makes that
+    // fast — apply the software-only emergency profile and tell the player exactly how to fix it.
+    // Runtime-only (NOT persisted into settings.video) so it recovers on a hardware context after
+    // relaunch. The profile is authored in adaptiveQuality.js (MACH-04) and only exists when
+    // gpu.software === true; every other tier keeps bloom.
+    const softwareEmergency = softwareRendererEmergencyProfile(gpu);
+    if (softwareEmergency) {
       state.render.softwareRenderer = true;
       try { if (this.bloom) this.bloom.setOptions({ bloom: false }); } catch (_) {}
       // Do not submit the very first flight frame at full hardware resolution and only react after
       // it freezes. The software-only emergency profile begins at its established adaptive floor;
       // hardware contexts remain full-resolution and never enter this branch.
-      state.render.dynResScale = dynFloor;
+      state.render.dynResScale = softwareEmergency.dynFloor;
       this._applySize();
       scheduleTimeout(() => {
         try {
-          bus.emit('toast', {
-            text: 'Graphics hardware acceleration appears OFF — the game is rendering in slow software mode. Turn on hardware acceleration in your browser (or run the Desktop launcher) for smooth play.',
-            kind: 'warn', ttl: 14,
-          });
+          bus.emit('toast', { ...softwareEmergency.toast });
         } catch (_) { /* toast is best-effort; the console log above still records it */ }
-      }, 1200);
+      }, softwareEmergency.toastDelayMs);
     }
 
     // Opt-in integrated-GPU preset suggestion. Never auto-applies — PERF_WHAT_MATTERS forbids
@@ -12946,7 +12947,9 @@ export const render = {
     // safe regardless — worldToScreen ignores a non-object second argument (a .map() index, say).
     const helperBindings = {
       worldToScreen: (v, out) => this.worldToScreen(v, out),
-      raycastToPlane: (ndc) => this.raycastToPlane(ndc),
+      // MACH-05 — forward the out scratch exactly like worldToScreen: a bare binding made every
+      // helpers.raycastToPlane caller allocate a result object per call.
+      raycastToPlane: (ndc, out) => this.raycastToPlane(ndc, out),
       addTrauma: (a) => cam.addTrauma(a),
       socketWorldPose: (id, name) => this.socketWorldPose(id, name),
       socketWorldPos: (id, name) => this.socketWorldPos(id, name),
@@ -13039,11 +13042,25 @@ export const render = {
     onBus('camera:shake', (payload) => {
       const amount = (payload && payload.amount) || 0.3;
       const at = payload && payload.position;
-      if (!at || !Number.isFinite(at.x) || !Number.isFinite(at.z)) { cam.addTrauma(amount); return; }
-      const p = state.entities.get(state.playerId);
-      if (!p || !p.pos) { cam.addTrauma(amount); return; }
-      const scaled = amount * shakeDistanceAttenuation(Math.hypot(at.x - p.pos.x, at.z - p.pos.z));
-      if (scaled > 0.001) cam.addTrauma(scaled);
+      let scaled = amount;
+      if (at && Number.isFinite(at.x) && Number.isFinite(at.z)) {
+        const p = state.entities.get(state.playerId);
+        if (p && p.pos) {
+          scaled = amount * shakeDistanceAttenuation(Math.hypot(at.x - p.pos.x, at.z - p.pos.z));
+        }
+      }
+      if (scaled <= 0.001) return;
+      // FB-072 — a shake that carries a direction is a knock, not noise: the view is pushed
+      // along the real hit axis via the kick envelope instead of undirected trauma. The kick
+      // controller itself drops the motion under motion-reduce, so this stays vestibular-safe.
+      const dir = payload && payload.direction;
+      if (dir && Number.isFinite(dir.x) && Number.isFinite(dir.z)
+        && (dir.x * dir.x + dir.z * dir.z) > 1e-12
+        && typeof cam.impactKick === 'function') {
+        cam.impactKick(dir.x, dir.z, Math.min(IMPACT_KICK_WU_MAX, scaled * 12));
+        return;
+      }
+      cam.addTrauma(scaled);
     });
     onBus('camera:kill', () => cam.killCam && cam.killCam());
     // Boost release leaves velocity lookahead in place. The chase camera already eases its small

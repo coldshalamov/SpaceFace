@@ -1052,4 +1052,31 @@ export function formatInstanceProvenance(instance) {
   return 'unrecorded';
 }
 
+/** Condition readout for a module instance: accepts a word ('worn'), a 0–1 ratio, or a
+ *  percent number; returns display text ('62% condition') or '' when absent. */
+export function instanceConditionText(condition) {
+  if (condition == null || condition === '') return '';
+  if (typeof condition === 'string') return condition.trim();
+  const n = Number(condition);
+  if (!Number.isFinite(n)) return '';
+  const pct = n <= 1 ? Math.round(n * 100) : Math.round(n);
+  return pct + '% condition';
+}
+
+/**
+ * NXI-127 — one-line instance identity for Shipworks detail. Returns '' for an instance
+ * with nothing recorded, so ordinary catalog units stay pristine; a recovered or worn unit
+ * names itself ('recovered · 62% condition') wherever it is shown — fitted or in the hold.
+ * Reads only player-owned instance records: never NPC loadout provenance.
+ */
+export function instanceIdentityText(instance) {
+  if (!instance || typeof instance !== 'object') return '';
+  const bits = [];
+  const prov = formatInstanceProvenance(instance);
+  if (prov !== 'unrecorded') bits.push(prov);
+  const cond = instanceConditionText(instance.condition);
+  if (cond) bits.push(cond);
+  return bits.join(' · ');
+}
+
 export default buildShipLedger;

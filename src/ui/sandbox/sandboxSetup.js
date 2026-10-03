@@ -36,6 +36,7 @@ import { mulberry32 } from '../../core/rng.js';
 import { validateCombatLabSetup } from '../../contracts/combatLabSetupSchema.js';
 import { SWARM_RULESET } from '../../data/swarmMode.js';
 import { normalizeSwarmStake, swarmStakeFor } from '../../data/swarmStakes.js';
+import { swarmCheckpointPurseFor, swarmZoneIndexFor } from '../../data/swarmLadder.js';
 import {
   COMBAT_LAB_ARENAS,
   COMBAT_LAB_ENEMY_PACKAGES,
@@ -1173,6 +1174,12 @@ export function applySandboxSetup(ctx, config) {
           swarmStake: launchRuleset === SWARM_RULESET && typeof cfg.swarmStake === 'string'
             ? cfg.swarmStake
             : undefined,
+          // SWARM-04: a checkpoint start enters mid-ladder. The schema-validated wave is the
+          // ladder's bought entry point — anything ≤1 is an ordinary opening, so the field
+          // only travels when a checkpoint is actually picked.
+          startWave: launchRuleset === SWARM_RULESET && Number.isInteger(setup.wave) && setup.wave > 1
+            ? setup.wave
+            : undefined,
         });
         // The purse is the difficulty you bought at the door: it lands in the run wallet
         // through the wallet's own award seam, BEFORE the opening armory can spend it — and only
@@ -1187,6 +1194,21 @@ export function applySandboxSetup(ctx, config) {
             ctx.bus.emit('run:awardRequested', {
               credits: purse,
               reason: 'swarm:stake:' + normalizeSwarmStake(cfg.swarmStake),
+            });
+          }
+          // SWARM-04: the checkpoint's purse, "sized to a typical run's purse at that point"
+          // (§6.2). The opening armory needs real money to fit a mid-build — a bought Round 11
+          // with a Round-1 wallet would be a restart in disguise. Same award seam as the stake.
+          const startWave = Number.isInteger(setup.wave) ? setup.wave : 1;
+          const checkpointPurse = startWave > 1
+            ? swarmCheckpointPurseFor(swarmZoneIndexFor(startWave))
+            : 0;
+          const runAfterStake = ctx.state && ctx.state.run;
+          if (checkpointPurse > 0 && runAfterStake && runAfterStake.kind === 'survival'
+            && runAfterStake.phase === 'loadout' && runAfterStake.seed === (setup.seed >>> 0)) {
+            ctx.bus.emit('run:awardRequested', {
+              credits: checkpointPurse,
+              reason: `swarm:checkpoint:w${startWave}`,
             });
           }
         }

@@ -1798,6 +1798,10 @@ const _impactTraumaCtx = {
 function snapshotImpactPayload(p) {
   return { ...p, pos: { ...p.pos }, normal: { ...p.normal } };
 }
+// Optional measurement channels are deliberately NOT owned by the retained literal: an
+// unmeasured receipt field must stay a hole on the wire. `emitPhysicsImpact` writes the
+// key only when a finite value lands and deletes it otherwise, so neither a ghost key
+// nor a prior contact's measured value can leak into the emit.
 const _impactPayload = {
   consequenceKernelVersion: 1,
   backend: 'custom',
@@ -1813,13 +1817,6 @@ const _impactPayload = {
   causalActorId: null,
   pos: { x: 0, z: 0 },
   normal: { x: 0, z: 0 },
-  preSolveClosingSpeed: undefined,
-  appliedPlayerDeltaV: undefined,
-  solverPlayerHeadingRad: undefined,
-  solverPlayerYawRateKick: undefined,
-  solverPlayerCourseRad: undefined,
-  appliedPlayerHeadingRad: undefined,
-  appliedPlayerCourseRad: undefined,
 };
 
 // Pair keys are interned per unordered id pair — the nested lookup allocates nothing, so a
@@ -1893,19 +1890,27 @@ function emitPhysicsImpact(bus, state, a, b, impulseMag, material, pos, options 
     payloadNormal.x = 0;
     payloadNormal.z = 0;
   }
-  // Every receipt field is rewritten each emit — an unmeasured channel returns to `undefined`
-  // so a prior contact's measured value cannot leak into this payload.
-  payload.preSolveClosingSpeed = Number.isFinite(options.preSolveClosingSpeed) ? options.preSolveClosingSpeed : undefined;
-  payload.appliedPlayerDeltaV = Number.isFinite(options.appliedPlayerDeltaV) ? options.appliedPlayerDeltaV : undefined;
+  // Every receipt field is rewritten each emit — an unmeasured channel loses its key so a
+  // prior contact's measured value can leak neither as a stale number nor as a ghost field.
+  setOptionalImpactChannel(payload, 'preSolveClosingSpeed', options.preSolveClosingSpeed);
+  setOptionalImpactChannel(payload, 'appliedPlayerDeltaV', options.appliedPlayerDeltaV);
   // PQ-137.11 owner receipts. Emitted only when the authority measured them, so a missing field
   // stays a hole rather than becoming a confident zero.
-  payload.solverPlayerHeadingRad = Number.isFinite(options.solverPlayerHeadingRad) ? options.solverPlayerHeadingRad : undefined;
-  payload.solverPlayerYawRateKick = Number.isFinite(options.solverPlayerYawRateKick) ? options.solverPlayerYawRateKick : undefined;
-  payload.solverPlayerCourseRad = Number.isFinite(options.solverPlayerCourseRad) ? options.solverPlayerCourseRad : undefined;
-  payload.appliedPlayerHeadingRad = Number.isFinite(options.appliedPlayerHeadingRad) ? options.appliedPlayerHeadingRad : undefined;
-  payload.appliedPlayerCourseRad = Number.isFinite(options.appliedPlayerCourseRad) ? options.appliedPlayerCourseRad : undefined;
+  setOptionalImpactChannel(payload, 'solverPlayerHeadingRad', options.solverPlayerHeadingRad);
+  setOptionalImpactChannel(payload, 'solverPlayerYawRateKick', options.solverPlayerYawRateKick);
+  setOptionalImpactChannel(payload, 'solverPlayerCourseRad', options.solverPlayerCourseRad);
+  setOptionalImpactChannel(payload, 'appliedPlayerHeadingRad', options.appliedPlayerHeadingRad);
+  setOptionalImpactChannel(payload, 'appliedPlayerCourseRad', options.appliedPlayerCourseRad);
   bus.emit('physics:impact', payload);
   return dp;
+}
+
+// An unmeasured channel is a hole, not an undefined value: key presence on the wire is the
+// contract (`'solverPlayerHeadingRad' in payload` must be false when nothing was measured),
+// and deleting the leftover key is also what stops a prior emit's number leaking forward.
+function setOptionalImpactChannel(payload, key, value) {
+  if (Number.isFinite(value)) payload[key] = value;
+  else delete payload[key];
 }
 
 function directContactImpactOptions(out, state, a, b, nx, nz) {

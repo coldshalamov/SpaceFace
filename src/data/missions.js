@@ -21,6 +21,7 @@ export const MISSION_TUNING = {
     tow_recovery: 697,
     demolition: 635,
     rescue_under_fire: 739,
+    race: 370,
     authored_set_piece: 863,
     capital_boss: 1237,
   },
@@ -31,6 +32,7 @@ export const MISSION_TUNING = {
     passenger_transport: 2, recon_scan: 4,
     tow_recovery: 3, demolition: 4, rescue_under_fire: 5,
     authored_set_piece: 5, capital_boss: 6,
+    race: 3,
   },
   distDivisor: 2000,
   valueDivisor: 8000,
@@ -281,6 +283,16 @@ export const MISSION_TYPES = [
     timeFormula: 'economyTerms.deadlineS', taskTime: 70,
     failureCondition: 'timer OR all life pods destroyed',
     constraints: { physicalVerb: 'pull', fValueIsTargetStrength: true },
+  },
+  {
+    // FB-066 — the race archetype. A timed gate course on real lane geometry or a field ring:
+    // ordered positional terms, gate order enforced, time scored into three pay bands.
+    type: 'race', riskTierRange: [0, 3], chainable: true,
+    completionEvent: 'race.gatesClearedInOrder (all course gates crossed in order, timed)',
+    rewardFormula: 'economyTerms.rewardCr',
+    timeFormula: 'economyTerms.deadlineS', taskTime: 80,
+    failureCondition: 'timer expires with gates uncleared; a skipped gate never scores',
+    constraints: { courseSector: 'lane or scenic sectors only' },
   },
   {
     // PQ-152.01 — ten authored physical set pieces. AUTHORED-ONLY, never procedurally rolled.
@@ -1284,11 +1296,12 @@ function withNamedColumns(row) {
   return row;
 }
 
-function withPhysicalMix(row, tow, demolition, rescue) {
+function withPhysicalMix(row, tow, demolition, rescue, race = 0) {
   withNamedColumns(row);
   row.tow_recovery = tow;
   row.demolition = demolition;
   row.rescue_under_fire = rescue;
+  row.race = race;
   return row;
 }
 
@@ -1297,6 +1310,68 @@ export const PHYSICAL_MISSION_TYPES = Object.freeze([
   'demolition',
   'rescue_under_fire',
 ]);
+
+// FB-067 — the physical archetypes get a second ROW, not a fifth type. A variant is a different
+// physical problem on the same contract verb: different body, different complication, different
+// authored clause set. The variant id rides `params.variant`; the pick is hashed off the offer
+// identity (never the board rng stream) so ordinary rolls stay bit-identical.
+export const PHYSICAL_MISSION_VARIANTS = Object.freeze({
+  tow_recovery: Object.freeze([
+    Object.freeze({
+      id: 'slag_core',
+      titleVerb: 'slag core',
+      scanLabel: 'SLAG CORE',
+      clauseIds: Object.freeze([]),
+    }),
+    Object.freeze({
+      id: 'drift_hulk',
+      titleVerb: 'dead freighter',
+      scanLabel: 'DEAD FREIGHTER',
+      // A heavier hull off the drift: same tow verb, a longer, colder problem.
+      massMult: 1.7,
+      bodyRadius: 22,
+      clauseIds: Object.freeze(['no_slack']),
+    }),
+  ]),
+  demolition: Object.freeze([
+    Object.freeze({
+      id: 'dead_tower',
+      clauseIds: Object.freeze([]),
+    }),
+    Object.freeze({
+      id: 'guarded_tower',
+      // The mass-through problem now has a crew sitting on it: same knock-down verb.
+      escortCount: 2,
+      clauseIds: Object.freeze(['mass_on_target']),
+    }),
+  ]),
+  rescue_under_fire: Object.freeze([
+    Object.freeze({
+      id: 'open_pull',
+      clauseIds: Object.freeze([]),
+    }),
+    Object.freeze({
+      id: 'pocket_pull',
+      // Pods clustered in a tight pocket, heavier cover on it: same pull verb.
+      escortCount: 3,
+      podSpreadWu: 90,
+      clauseIds: Object.freeze(['soft_berth']),
+    }),
+  ]),
+});
+
+/** Stable variant row for a physical type; unknown/blank ids fall back to row zero. */
+export function physicalMissionVariantFor(typeId, variantId) {
+  const rows = PHYSICAL_MISSION_VARIANTS[typeId];
+  if (!rows || !rows.length) return null;
+  for (const row of rows) if (row.id === variantId) return row;
+  return rows[0];
+}
+
+// FB-066 — the race archetype's course vocabulary (gate radius, gate count, pay bands, course
+// derivation) lives in src/data/raceCourses.js: courses are derived from frozen lane/sector
+// data, which this file deliberately does not import.
+export const RACE_MISSION_TYPE = 'race';
 
 // PQ-152.03 — mid-run twist clauses. Catalog ids live in missionConditions.js.
 // This map is the board-facing type each clause is allowed to stamp onto.

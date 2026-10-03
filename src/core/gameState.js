@@ -40,7 +40,7 @@ function defaultSettings() {
     // affords, sun shadow-maps read as crawling miscolored clumps, not depth. The pooled contact
     // shadow carries grounding; the toggle/Quality preset still live-applies the opt-in pass.
     // shadowsDefaultVersion stamps the migration policy (graphicsProfileBootstrap owns it).
-    video: { renderScale: 1.0, bloom: true, bloomStrength: 0.52, bloomThreshold: 1.0, vsync: true, fov: 50, particleQuality: 'medium', engineTrails: true, pixelRatioCap: 2, motionReduce: false, shadows: false, shadowsDefaultVersion: SHADOWS_DEFAULT_VERSION, energyMaterials: true, renderGraph: false, dynamicResolution: false, chaseClose: false, qualityPreset: 'medium', frameCap: 0, bloomLevels: 2, postFx: true, sharpen: false, screenShake: 100, hudScale: 1, hudOpacity: 1 },
+    video: { renderScale: 1.0, bloom: true, bloomStrength: 0.52, bloomThreshold: 1.0, vsync: true, fov: 50, particleQuality: 'medium', engineTrails: true, pixelRatioCap: 2, motionReduce: false, shadows: false, shadowsDefaultVersion: SHADOWS_DEFAULT_VERSION, energyMaterials: true, renderGraph: false, dynamicResolution: false, chaseClose: false, qualityPreset: 'medium', frameCap: 0, bloomLevels: 2, postFx: true, sharpen: false, screenShake: 100, hudScale: 1, hudOpacity: 1, arcadeEffects: 'full' },
     gameplay: {
       autosaveIntervalS: 120,
       tutorialHints: true,
@@ -81,6 +81,10 @@ function defaultSettings() {
       gamepad: {
         enabled: true, deadzone: 0.12, invertY: false, scheme: 'drive', schemeSuggested: false,
         curve: 'linear', deadzoneRight: 0.12, sensitivityAim: 1, sensitivityFly: 1,
+        // FB-002/B117: which face-button vocabulary prompts print — 'xb' A/B/X/Y, 'ds'
+        // DualShock shapes, 'fh' Field Hardware circled letters. Speech and prompt chips
+        // both read this one address.
+        glyphSet: 'xb',
       },
       // FB-004: pointer aim gets the same tuning maturity — a sensitivity multiplier on the
       // normalized cursor axis and an invert for players who read screen-up as world-down.

@@ -44,6 +44,8 @@
 import {
   MISSION_TYPES, STORY_BEATS, OFFER_MIX, MISSION_TUNING, ONE_LOAD_CARGO_TYPES,
   PHYSICAL_MISSION_TYPES,
+  PHYSICAL_MISSION_VARIANTS,
+  physicalMissionVariantFor,
   AUTHORED_SET_PIECE_TYPE,
   AUTHORED_SET_PIECE_SOURCE,
   AUTHORED_SET_PIECES,
@@ -151,6 +153,16 @@ import { zonesForSector } from '../data/sectorZones.js';
 import { rollBountyMark, bountyMarkHail, markArchetypePoolFor, MARK_HAIL_RANGE_WU } from '../data/bountyMarks.js';
 import { promotedPilotIdentity } from '../data/pilotCallsigns.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
+// FB-066 — race courses are derived data: the course record rides the offer's params verbatim.
+import {
+  raceCourseForSector,
+  raceBandForElapsed,
+  RACE_GATE_RADIUS_WU,
+  RACE_BAND_MULT,
+} from '../data/raceCourses.js';
+// FB-068 — external target loss names its cause from the shared kill-causality vocabulary,
+// so a void contract's receipt says what actually took the objective down.
+import { compactKillCausality, killCauseFamily } from '../combat/killCausality.js';
 import { customsWeirForSector } from '../world/customsWeir.js';
 import { hash32 } from '../core/rng.js';
 import { deferSectorEnterMaterialization, deferredEnterNow, deferredEnterTick } from '../core/sectorEnterDefer.js';
@@ -190,6 +202,9 @@ import { addCargo, releasableContractUnits, removeCargo, sellableCargoQuantity }
 // NXI-169 — acceptance-time revalidation of shortage-backed offers reads the same live hopper
 // the posting used (pure exported read; economy stays the sole stock/market writer).
 import { starvedIndustryNeedFor } from './economy.js';
+// NXI-171 — the shared starvation-row prose builder, so a board refresh re-quotes a live
+// deficit in the exact voice the emit-only producer posted it (no second wording authority).
+import { starvedOfferProse } from '../data/economyContractTemplates.js';
 import {
   CONTRACT_47A_B0_BODY,
   THREAD_B_FRAGMENT_ID,
@@ -308,6 +323,7 @@ const PHYSICAL_ROLE = Object.freeze({
   BELT: 'crusher_belt',
   CAPITAL: 'capital_hull',
   THROW_MASS: 'throw_mass',
+  GATE: 'race_gate',
 });
 const CAPITAL_SUBSYSTEM_ORDER = Object.freeze([
   'subsystem_drive',
@@ -490,6 +506,16 @@ const MISSION_MUTATIONS = Object.freeze({
   pods_lost: Object.freeze({ type: 'salvage_retrieval', tag: 'recovery' }),
   // The towed slag core broke up → the scatter still pays at the yard.
   core_lost: Object.freeze({ type: 'salvage_retrieval', tag: 'recovery' }),
+  // FB-068 — another crew (or the rocks) took the objective down. The contract voids fairly
+  // (deposit back, no penalty — handled by the 'failed_external' branch in _failMission) and
+  // the objective's wreck still pays as a recovery leg: the loss is an outcome, not a dead end.
+  failed_external: Object.freeze({
+    type: 'salvage_retrieval',
+    tag: 'recovery',
+    // Names the cause the failing contract stamped (gunnery / an explosive / the rocks) — the
+    // player hears WHAT took the objective down, not just that a follow-up exists.
+    toast: (title, m) => `${(m && m.params && m.params.externalCauseLabel) || 'The objective went down to someone else'} — its wreck can still be recovered: ${title}.`,
+  }),
   // BP-01.1: the ship went down WITH the contract manifest → the player's own wreck still holds
   // the lost units. keepManifest keeps the failed contract's commodity on the successor; the
   // ship_lost handler stamps the durable wreck site and the lost quantity before settling.
@@ -519,6 +545,7 @@ const FAIL_REASON_WORD = Object.freeze({
   deadline: 'the window lapsed',
   seed_asset_lost: 'the seed asset was lost',
   target_lost: 'the mark is gone',
+  failed_external: 'the objective went down to someone else',
   busted: 'the lot was seized',
   heist_failed: 'the job fell apart',
   failed: 'the contract could not be completed',
@@ -740,6 +767,25 @@ export function bountyTargetLost(m, killedId, isGone) {
   if ((m.objectiveProgress || 0) >= target) return false;
   const gone = typeof isGone === 'function' ? isGone : () => true;
   return ids.every((id) => id === killedId || gone(id));
+}
+
+/**
+ * FB-068: is this kill-lane contract's objective dead under someone else's guns? Shared predicate
+ * behind the non-player entity:killed lane. Bounty marks are named persons — dead is dead, so the
+ * INF-067 check decides (multi-target nests can still be hunted after a rival takes one).
+ * patrol_clear packs deliberately stay OUT: the spawn quota tops back up to the owed count from
+ * vacant slots, so an external kill there costs the player time, never the contract — voiding
+ * a still-winnable job would be the dishonest outcome. Physical objectives (core, tower, pods)
+ * settle through the physical kill/destroy lanes, which own their own role checks.
+ * Pure over the instance plus a liveness predicate.
+ */
+export function externalTargetLoss(m, killedId, isGone) {
+  if (!m || m.status !== 'active' || m.storyTag) return false;
+  const ids = Array.isArray(m.targetEntityIds) ? m.targetEntityIds : [];
+  if (!ids.includes(killedId)) return false;
+  if ((m.objectiveProgress || 0) >= Math.max(1, m.objectiveTarget || 1)) return false;
+  if (m.type === 'bounty_hunt') return bountyTargetLost(m, killedId, isGone);
+  return false;
 }
 
 /**
@@ -1009,6 +1055,16 @@ function isFingerprintBoardSource(source) {
     // one-row-per-source, so a site holding several contracts surfaces all of them.
     || source === 'ecology'
     || source === SET_PIECE_FOLLOW_ON_SOURCE;
+}
+
+/**
+ * NXB-043 — a competing feedstock bid is TWO rows for ONE shortage: a rival-tagged starvation
+ * row may board beside the other member of its pair (a different starving yard), while the
+ * same yard can never double-post. Anything else keeps the one-row-per-source guard.
+ */
+function isCompetingStarvedRow(offer) {
+  return !!(offer && offer.source === 'economyContract' && offer.type === 'cargo_delivery'
+    && offer.cause && offer.cause.tag === 'industry_starved' && offer.cause.rivalStationId);
 }
 
 function isZeroPayLandmarkMission(mission, rewardCr) {
@@ -1288,6 +1344,22 @@ export const missions = {
     // ── Objective tracking listeners ─────────────────────────────────────────────────────────
     // bulk_trade quota: sell qty of the target commodity (trade.sold alias → economy:tradeCompleted).
     bus.on('economy:tradeCompleted', (p) => this._onTrade(p));
+    // NXB-043/NXI-171 — a real stock write (mission freight, a market sale, or a relieved
+    // starvation threshold) changes the hopper the board's shortage rows quote. Re-derive
+    // those rows from the same read that planned them so no board replays a resolved
+    // emergency; a competing bid admits when its rival's line was fed.
+    const refreshShortageBoards = () => {
+      const boards = this.state.missions && this.state.missions.boards;
+      if (!boards) return;
+      for (const [stId, b] of Object.entries(boards)) {
+        if (this._syncShortageOffers(b)) {
+          this.bus.emit('mission:updated', { missionId: null, stationId: stId });
+        }
+      }
+    };
+    bus.on('economy:freightAccepted', refreshShortageBoards);
+    bus.on('economy:shortageRelieved', refreshShortageBoards);
+    bus.on('economy:tradeCompleted', refreshShortageBoards);
     // A sold cargo-ship salvage becomes one board opportunity. Not a fine, a lock, or a failed job.
     bus.on('economy:cargoKillOpportunity', (p) => this._onCargoKillOpportunity(p));
     // mining_quota: aggregate mined units of the target commodity.
@@ -1489,6 +1561,9 @@ export const missions = {
       if (m.type === 'salvage_retrieval' && m.needsTargets) {
         this._driveContractClaimSite(m, state, dt);
       }
+      // FB-066: an ordered gate course scores the player's own flight line each tick — the
+      // contract is the geometry, so the per-tick predicate is the only honest judge.
+      if (m.type === 'race') this._driveRace(m, i, state);
     }
     // A saturated cap defers authored targets; retry in stable mission order at a bounded cadence.
     // This is also the Continue top-up path after world adopted only part of a target group.
@@ -1710,8 +1785,9 @@ export const missions = {
       const authoredChanged = this._syncAuthoredSetPieceOffers(info, board, epoch);
       const megaHeistChanged = this._syncMegaHeistOffers(info, board, epoch);
       const capitalChanged = this._syncCapitalBossOffer(info, board, epoch);
+      const shortageChanged = this._syncShortageOffers(board);
       if (storyChanged || setPieceChanged || heistChanged || breakawayChanged
-        || authoredChanged || megaHeistChanged || capitalChanged) {
+        || authoredChanged || megaHeistChanged || capitalChanged || shortageChanged) {
         this.bus.emit('mission:updated', { missionId: null, stationId });
       }
       return board;
@@ -2444,9 +2520,17 @@ export const missions = {
     if (board.slots.some((offer) => offer && offer.id === rawOffer.id)) return false;
     // One row per source for ambient sources. Fingerprinted sources (salvage's stable
     // point-derived ids, set-piece chain causes, …) dedupe per identity above/below instead,
-    // so a second communicator in one sector still boards.
+    // so a second communicator in one sector still boards. NXB-043's exception: the two
+    // members of one competing feedstock bid are rival-tagged rows for DISTINCT starving
+    // yards — the board carries both so the player can read the tradeoff.
     if (!isFingerprintBoardSource(rawOffer.source)
-      && board.slots.some((offer) => offer && offer.source === rawOffer.source)) return false;
+      && board.slots.some((offer) => {
+        if (!offer || offer.source !== rawOffer.source) return false;
+        if (isCompetingStarvedRow(rawOffer) && isCompetingStarvedRow(offer)) {
+          return offer.destStationId === rawOffer.destStationId;
+        }
+        return true;
+      })) return false;
     if (isFingerprintBoardSource(rawOffer.source) && board.slots.some((offer) => (
       offer && offer.source === rawOffer.source && offer.cause && rawOffer.cause
       && offer.cause.fingerprint === rawOffer.cause.fingerprint
@@ -2660,6 +2744,12 @@ export const missions = {
     // Authored-only types are never rolled. Second guard behind _pickType's weighted fallthrough:
     // a procedural roll of one would produce an offer with no params and no physical facility.
     if (def.proceduralWeight === 0) return null;
+    // FB-066: a race offer exists only where a course exists — a lane endpoint sector runs the
+    // chord's inside segment, a scenic sector runs its ring. A board with neither declines the
+    // pick BEFORE any rng draw so a zero-course sector's rolls stay bit-identical to a mix that
+    // never carried the column.
+    const raceCourse = typeId === 'race' ? raceCourseForSector(info.sectorId) : null;
+    if (typeId === 'race' && !raceCourse) return null;
     const cfg = this.state.missions.config || MISSION_TUNING;
 
     // Destination: pick a reachable station (or self for mining/recon-at-home).
@@ -2711,6 +2801,43 @@ export const missions = {
     // deterministic storyTarget (seeded by offer id — never an rng draw, so every other rolled
     // field stays bit-identical). Ghost-convoy offers already own their place fiction.
     const offerId = `mo_${info.id}_${epoch}_${idx}`;
+
+    // FB-066: the course record rides the offer's params verbatim — the derived geometry is
+    // pure over frozen data, so the stamped copy is identical to what raceCourseForSector would
+    // re-derive, and it survives save/load without depending on data staying frozen forever.
+    if (raceCourse) {
+      params.courseId = raceCourse.courseId;
+      params.courseName = raceCourse.courseName;
+      params.courseKind = raceCourse.kind;
+      params.courseSectorId = raceCourse.sectorId;
+      params.gates = raceCourse.gates.map((g) => ({ x: g.x, z: g.z }));
+      params.gateRadiusWU = raceCourse.gateRadiusWU;
+      params.courseLengthWU = raceCourse.courseLengthWU;
+      params.recordS = raceCourse.recordS;
+      params.bandCapsS = raceCourse.bandCapsS.slice();
+      params.nextGate = 0;
+    }
+
+    // FB-067: the variant row rides the offer id's own hash lane — never an rng draw — so a
+    // board with the same seed reproduces the same variant, and every other rolled field stays
+    // bit-identical to a build with one variant row per type.
+    const variantRows = PHYSICAL_MISSION_VARIANTS[typeId];
+    if (variantRows && variantRows.length) {
+      const variant = physicalMissionVariantFor(typeId,
+        variantRows[(hash32(this.state.meta.seed, offerId, 'variant') >>> 0) % variantRows.length].id);
+      params.variant = variant.id;
+      if (Number.isFinite(variant.massMult)) {
+        params.massU = Math.max(8, Math.round((params.massU || 30) * variant.massMult));
+        // The tow pay terms are mass × price: re-price the value family for the heavier hull.
+        params.cargoValue = params.massU * 22;
+        params.fValue = 1 + params.cargoValue / 8000;
+      }
+      if (Number.isFinite(variant.bodyRadius)) params.bodyRadius = variant.bodyRadius;
+      if (variant.scanLabel) params.scanLabel = variant.scanLabel;
+      if (Number.isFinite(variant.escortCount)) params.escortCount = variant.escortCount;
+      if (Number.isFinite(variant.podSpreadWu)) params.podSpreadWu = variant.podSpreadWu;
+    }
+
     const bountyMark = (typeId === 'bounty_hunt' && !(params && params.ghostConvoy))
       ? rollBountyMark({ seed: this.state.meta.seed, offerId, sectorId: destSectorId,
           riskTier, sectorDef: SECTOR_BY_ID.get(destSectorId) })
@@ -2753,8 +2880,41 @@ export const missions = {
       ...(bountyMark ? { storyTarget: markStoryTarget } : {}),
     };
     // Physics terms are the last thing stamped onto a rolled offer so the reward/deadline family
-    // above is untouched: a condition-free offer is byte-identical to the shipped one.
-    return options.attachConditions === false ? offer : this._withConditions(offer, epoch);
+    // above is untouched: a condition-free offer is byte-identical to the shipped one. Variant
+    // clauses ride the same seam — the authored variant's own term list on top of the rolled terms.
+    const conditioned = options.attachConditions === false ? offer : this._withConditions(offer, epoch);
+    return this._withVariantClauses(conditioned);
+  },
+
+  /**
+   * FB-067 — the variant row's authored clause set, stamped after the random-term pass. Rows are
+   * the same serializableMissionCondition records a rolled term uses, so the observer and the
+   * tick evaluator need no knowledge of which ROW asked for them. Only rows the offer does not
+   * already carry are appended (rolled terms win — same clause id never counts twice).
+   */
+  _withVariantClauses(offer) {
+    if (!offer || !offer.params || !offer.params.variant) return offer;
+    const variant = physicalMissionVariantFor(offer.type, offer.params.variant);
+    const ids = variant && Array.isArray(variant.clauseIds) ? variant.clauseIds : [];
+    if (!ids.length) return offer;
+    const existing = Array.isArray(offer.clauses) ? offer.clauses.slice() : [];
+    const briefBits = [];
+    let changed = false;
+    for (const clauseId of ids) {
+      if (existing.some((row) => row && (row.conditionId === clauseId || row.id === clauseId))) continue;
+      const row = serializableMissionCondition(clauseId);
+      if (!row) continue;
+      existing.push(row);
+      changed = true;
+      const def = missionConditionById(clauseId);
+      if (def && def.brief) briefBits.push(def.brief);
+    }
+    if (!changed) return offer;
+    const stamped = { ...offer, clauses: existing };
+    if (briefBits.length) {
+      stamped.brief = withClauseBriefSuffix(String(stamped.brief || '').trim(), briefBits.join(' '));
+    }
+    return stamped;
   },
 
   /**
@@ -2883,7 +3043,8 @@ export const missions = {
    *  back to the origin (a buyer). */
   _pickDestination(typeId, info, rng) {
     // Mining quota: deliver to origin (it buys ore). Recon/bounty/patrol: pick a nearby sector.
-    if (typeId === 'mining_quota') return info;
+    // A race posts on its own course — the board's sector IS the destination.
+    if (typeId === 'mining_quota' || typeId === 'race') return info;
     // Prefer a discovered/known station; fall back to any in the catalog within a few hops.
     const candidates = ALL_STATIONS.filter((s) => s.id !== info.id
       && !(typeId === 'smuggling_run' && Array.isArray(s.services) && s.services.includes('scan')));
@@ -2998,6 +3159,13 @@ export const missions = {
           physicalVerb: 'pull', completionMethods: ['stage_tow', 'corridor_pull'],
         };
       }
+      case 'race': {
+        // The course record itself is stamped by _rollOffer (it owns the sector guard). Params
+        // here price the work: the clock is the risk — a hotter sector posts the same course
+        // with the same bands and pays its tier through the ordinary economy terms.
+        const targetStrength = 1.0 + riskTier * 0.25 + rng() * 0.3;
+        return { targetStrength, fValue: targetStrength, taskTime: 80 };
+      }
       default:
         return { fValue: 1, taskTime: 30 };
     }
@@ -3055,9 +3223,16 @@ export const missions = {
       case 'passenger_transport': return p.passenger
         ? `Take ${p.passenger.name} to ${destName}`
         : `Transport a passenger to ${destName}`;
-      case 'tow_recovery': return `Tow the ${p.massU} t slag core to ${destName}`;
-      case 'demolition': return `Knock down the tower near ${destName}`;
-      case 'rescue_under_fire': return `Pull the pods out of ${destName}`;
+      case 'tow_recovery': return p.variant === 'drift_hulk'
+        ? `Tow the dead freighter to ${destName}`
+        : `Tow the ${p.massU} t slag core to ${destName}`;
+      case 'demolition': return p.variant === 'guarded_tower'
+        ? `Knock down the picketed tower near ${destName}`
+        : `Knock down the tower near ${destName}`;
+      case 'rescue_under_fire': return p.variant === 'pocket_pull'
+        ? `Pull the pods out of the pocket near ${destName}`
+        : `Pull the pods out of ${destName}`;
+      case 'race': return `Run the ${p.courseName || 'gate course'} gates`;
       case AUTHORED_SET_PIECE_TYPE: return p.title || `Physical set piece at ${destName}`;
       case CAPITAL_BOSS_TYPE: return p.title || CAPITAL_BOSS.title;
       default: return `Contract at ${destName}`;
@@ -3112,13 +3287,22 @@ export const missions = {
           : `One passenger to ${destName}. Quiet trip, quiet fee.`;
         break;
       case 'tow_recovery':
-        line = `Tow the slag core into ${destName}, or sling it in on a clean release.`;
+        line = p.variant === 'drift_hulk'
+          ? `A dead freighter sits off the ${destName} drift — heavier, colder. Tow it or sling it.`
+          : `Tow the slag core into ${destName}, or sling it in on a clean release.`;
         break;
       case 'demolition':
-        line = `Knock the dead tower down near ${destName}. Swing mass, or cut it.`;
+        line = p.variant === 'guarded_tower'
+          ? `The tower near ${destName} has a crew sitting on it. Knock it down anyway.`
+          : `Knock the dead tower down near ${destName}. Swing mass, or cut it.`;
         break;
       case 'rescue_under_fire':
-        line = `Pull the pods out of the field near ${destName}. Tow one, or open a corridor.`;
+        line = p.variant === 'pocket_pull'
+          ? `Pods bunched in the pocket near ${destName}, heavier cover on top. Pull one out.`
+          : `Pull the pods out of the field near ${destName}. Tow one, or open a corridor.`;
+        break;
+      case 'race':
+        line = `${p.gates ? p.gates.length : 6} gates on the ${p.courseName || 'course'}, in order, on the clock. Record is ${p.recordS}s.`;
         break;
       case AUTHORED_SET_PIECE_TYPE:
         line = p.brief || `Physical job at ${destName}. Two ways through.`;
@@ -3316,6 +3500,85 @@ export const missions = {
     if (!sector) return false;
     const need = starvedIndustryNeedFor(info.type, sector.tier || 0, market);
     return !need || need.inputId !== cmdtyId;
+  },
+
+  /**
+   * NXB-043/NXI-171 — shortage-backed board rows track the live hopper that posted them.
+   * A delivery (or any real stock write) that feeds the destination yard retires its row;
+   * a partially fed yard re-quotes its quantity, payout and prose from the same read that
+   * planned the posting — the board reflects the new actual requirement instead of replaying
+   * the original emergency. Runs only on board reads and freight facts, never per frame.
+   * Returns true when any row changed so the caller can emit one mission:updated.
+   */
+  _syncShortageOffers(board) {
+    if (!board || !Array.isArray(board.slots)) return false;
+    const markets = this.state.economy && this.state.economy.markets;
+    if (!markets) return false;
+    let changed = false;
+    const kept = [];
+    for (const offer of board.slots) {
+      if (!offer || offer.source !== 'economyContract' || offer.type !== 'cargo_delivery'
+        || !offer.cause || offer.cause.tag !== 'industry_starved'
+        || !offer.params || !offer.params.cmdtyId || !offer.destStationId) {
+        kept.push(offer);
+        continue;
+      }
+      const market = markets[offer.destStationId];
+      const destInfo = stationInfoFor(this.state, offer.destStationId);
+      const destSector = destInfo && SECTOR_BY_ID.get(offer.destSectorId || destInfo.sectorId);
+      const need = destInfo && market && destSector
+        ? starvedIndustryNeedFor(destInfo.type, destSector.tier || 0, market)
+        : null;
+      if (!need || need.inputId !== offer.params.cmdtyId) {
+        changed = true; // the hopper is fed — the post comes down; it is not re-rolled
+        continue;
+      }
+      // Re-quote the live deficit under the same 20u posting bound. Reward and cargo value
+      // scale with the new quantity — the berth pays for what it still needs, not the memory.
+      const liveQty = Math.max(1, Math.min(20, need.deficitUnits));
+      const qtyBefore = offer.params.qty;
+      if (Number.isFinite(qtyBefore) && liveQty !== qtyBefore) {
+        const ratio = liveQty / Math.max(1, qtyBefore);
+        offer.params.qty = liveQty;
+        offer.params.cargoValue = Math.max(1, Math.round((offer.params.cargoValue || 0) * ratio));
+        offer.params.fValue = 1 + offer.params.cargoValue / 8000;
+        offer.reward_cr = Math.max(1, Math.round((offer.reward_cr || 0) * ratio));
+      }
+      // Prose rebuild is deterministic — for a competing bid it also admits when the rival
+      // yard's hopper filled and the duel collapsed to one berth.
+      const summaryBefore = offer.summary;
+      this._rewriteStarvedOfferText(offer, destInfo, markets);
+      if (offer.summary !== summaryBefore || offer.params.qty !== qtyBefore) changed = true;
+      kept.push(offer);
+    }
+    if (changed) board.slots = kept;
+    return changed;
+  },
+
+  /** Re-derive a starvation row's title/summary/cause line from live names + need. */
+  _rewriteStarvedOfferText(offer, destInfo, markets) {
+    if (!offer || !offer.params) return;
+    const destName = (destInfo && destInfo.name) || offer.destStationId;
+    const commodity = this._cmdtyName(offer.params.cmdtyId);
+    const rivalId = offer.cause && offer.cause.rivalStationId;
+    let rivalName = null;
+    let rivalStillHungry = true;
+    if (rivalId) {
+      const rivalInfo = stationInfoFor(this.state, rivalId);
+      rivalName = (rivalInfo && rivalInfo.name) || rivalId;
+      const rivalSector = rivalInfo && SECTOR_BY_ID.get(rivalInfo.sectorId);
+      const rivalMarket = markets && markets[rivalId];
+      const rivalNeed = rivalInfo && rivalSector && rivalMarket
+        ? starvedIndustryNeedFor(rivalInfo.type, rivalSector.tier || 0, rivalMarket)
+        : null;
+      rivalStillHungry = !!(rivalNeed && rivalNeed.inputId === offer.params.cmdtyId);
+    }
+    const prose = starvedOfferProse({
+      qty: offer.params.qty, commodity, destName, rivalName, rivalStillHungry,
+    });
+    offer.title = prose.title;
+    offer.summary = prose.line;
+    if (offer.cause) offer.cause.line = prose.line;
   },
 
   _withdrawSetPieceChoiceOffers(selectedOffer) {
@@ -3571,6 +3834,9 @@ export const missions = {
       case AUTHORED_SET_PIECE_TYPE:
       case CAPITAL_BOSS_TYPE:
         return 1;
+      case 'race':
+        // One objective unit per gate: the log reads N/N the same way a clear contract does.
+        return Math.max(1, (params && Array.isArray(params.gates) && params.gates.length) || 1);
       default: return 1; // boolean-at-dest types
     }
   },
@@ -3581,6 +3847,7 @@ export const missions = {
     if (typeId === 'salvage_retrieval' && contractClaimSiteOffer(offer)) return true;
     const p = params || (offer && offer.params) || null;
     return typeId === 'bounty_hunt' || typeId === 'patrol_clear' || typeId === 'escort'
+      || typeId === 'race'    // course gates materialize as beacon entities in the course sector
       || PHYSICAL_TYPE_SET.has(typeId)
       || !!(p && p.poiSignalFollowup);
   },
@@ -3902,6 +4169,25 @@ export const missions = {
           : fallback && { x: fallback.x, z: fallback.z },
         presentationEntityId: target && target.id || null,
         reason: missionNavReason(m, station, sector),
+      };
+    }
+
+    // FB-066 — the race marker is the NEXT uncleared gate, the same ownership cue every other
+    // waypoint follows: it points at the thing you have to fly through, not the whole course.
+    if (m.type === 'race') {
+      const params = m.params || {};
+      const gates = Array.isArray(params.gates) ? params.gates : [];
+      const next = Math.max(0, Math.min(Math.max(0, gates.length - 1), params.nextGate | 0));
+      const gatePos = this._raceGateGlobal(m, next);
+      return {
+        ...base,
+        label: params.courseName || 'Gate course',
+        stationId: null,
+        sectorId: params.courseSectorId || m.destSectorId,
+        pos: gatePos ? { x: gatePos.x, z: gatePos.z } : null,
+        reason: gates.length
+          ? `Gate ${Math.min((params.nextGate | 0) + 1, gates.length)}/${gates.length} — in order, on the clock`
+          : 'Run the course gates in order',
       };
     }
 
@@ -4532,6 +4818,7 @@ export const missions = {
           return !e || e.alive === false;
         };
         if (bountyTargetLost(m, p.entityId, gone)) this._failMission(m, i, 'target_lost');
+        else if (externalTargetLoss(m, p.entityId, gone)) this._settleExternalTargetLoss(m, i, p);
         continue;
       }
       if (m.type !== 'bounty_hunt' && m.type !== 'patrol_clear') continue;
@@ -4540,9 +4827,11 @@ export const missions = {
   },
 
   /**
-   * INF-067: a tagged bounty target destroyed by someone else. When the mark is gone with the
-   * objective unmet, the contract voids fairly (no penalty, deposit back) instead of stranding
-   * the player in a mission whose destination no longer exists. Never respawns the target.
+   * INF-067 + FB-068: a tagged contract target destroyed by someone else. When the mark is gone
+   * with the objective unmet, the contract voids fairly (no penalty, deposit back) instead of
+   * stranding the player in a mission whose destination no longer exists. Never respawns the
+   * target. A bounty keeps its own reason word; every other contract type whose objective just
+   * became physically unreachable settles through 'failed_external' with the cause named.
    */
   _voidLostBountyTargets(p) {
     if (!p || p.id == null) return;
@@ -4555,8 +4844,42 @@ export const missions = {
       };
       if (bountyTargetLost(m, p.id, gone)) {
         this._failMission(m, i, 'target_lost');
+      } else if (externalTargetLoss(m, p.id, gone)) {
+        this._settleExternalTargetLoss(m, i, p);
       }
     }
+  },
+
+  /**
+   * FB-068: honest settlement for a contract objective destroyed by a non-player actor. The
+   * contract voids — deposit refunded, no rep penalty — and the receipt names what took it down
+   * (gunnery / an explosive / the rocks / a collision) from the shared kill-causality vocabulary.
+   * The loss-site stamp routes the recovery successor to where the objective actually died.
+   */
+  _settleExternalTargetLoss(m, i, p) {
+    if (!m || m.status !== 'active') return;
+    // Authored chains own their own failure branches — a third-party kill on a campaign 47-A
+    // leg, a heist objective, or an authored set piece is the chain's call to make, never a
+    // generic void. Mirrors the refusal set _mutateInsteadOfFail already honors. Career legs
+    // carry a storyTag but are ordinary physical contracts and settle here like any other.
+    if (m.heist || m.type === AUTHORED_SET_PIECE_TYPE || setPieceCauseOf(m)
+      || m.campaign47aBeat != null
+      || String(m.storyTag || '').startsWith('campaign47a:')) return;
+    const causal = compactKillCausality(p, this.state.playerId);
+    const CAUSE_LABEL = {
+      kinetic: 'gunnery',
+      explosive: 'an explosive',
+      terrain_collision: 'the rocks',
+      ship_collision: 'a collision',
+      generic: 'another crew',
+    };
+    m.params = m.params || {};
+    m.params.externalCause = causal.cause;
+    m.params.externalCauseFamily = killCauseFamily(causal.cause);
+    m.params.externalKillerId = p && p.killerId != null ? p.killerId : null;
+    m.params.externalCauseLabel = `the objective went down to ${CAUSE_LABEL[causal.cause] || CAUSE_LABEL.generic}`;
+    this._stampPhysicalLossSite(m, p);
+    this._failMission(m, i, 'failed_external');
   },
 
   _onEntityDestroyed(p) {
@@ -5536,7 +5859,12 @@ export const missions = {
     const wantCore = m.type === 'tow_recovery' ? 1 : 0;
     const wantTower = m.type === 'demolition' ? 1 : 0;
     const wantPods = m.type === 'rescue_under_fire' ? Math.max(1, m.params && m.params.podCount || 2) : 0;
-    const wantEscorts = m.type === 'rescue_under_fire' ? Math.max(0, m.params && m.params.escortCount || 2) : 0;
+    // FB-067: escortCount is a VARIANT field now, not a rescue constant — a guarded tower rows
+    // its own picket screen (demolition) and a pocket pull packs heavier cover (rescue). The
+    // rescue default stays 2; every other type defaults to zero pickets unless the variant says so.
+    const wantEscorts = m.type === 'rescue_under_fire'
+      ? Math.max(0, (m.params && m.params.escortCount != null ? m.params.escortCount : 2))
+      : Math.max(0, (m.params && m.params.escortCount) || 0);
     const need = Math.max(0, wantCore - have.core)
       + Math.max(0, wantTower - have.tower)
       + Math.max(0, wantPods - have.pods)
@@ -5604,7 +5932,8 @@ export const missions = {
         hullMax: 160,
         collides: true,
         collisionMask: MISSION_WRECK_COLLISION_MASK,
-        physicsBody: { shape: 'capsule' },
+        // SFQ-B025: the named mass is the body's own mass, not a density re-derive.
+        physicsBody: { shape: 'capsule', mass: 180 },
         data: {
           missionTag: m.id,
           physicalRole: PHYSICAL_ROLE.TOWER,
@@ -5615,11 +5944,17 @@ export const missions = {
       });
     }
     if (m.type === 'rescue_under_fire') {
+      // FB-067 pocket_pull: the variant's podSpreadWu is the pocket's own radius — a tight
+      // cluster of pods reads as one problem under heavy cover, not a scattered field.
+      const podSpread = Number.isFinite(m.params && m.params.podSpreadWu)
+        ? Math.max(40, m.params.podSpreadWu) : null;
       for (let i = have.pods; i < wantPods; i++) {
         const durableSlot = nextSlot();
         const rng = nextRng(durableSlot);
         const ang = rng() * Math.PI * 2;
-        const r = 180 + rng() * 70;
+        const r = podSpread != null
+          ? podSpread * (0.6 + rng() * 0.5)
+          : 180 + rng() * 70;
         spawnAt(durableSlot, {
           type: 'wreck',
           team: 2,
@@ -5632,7 +5967,7 @@ export const missions = {
           hullMax: 36,
           collides: true,
           collisionMask: MISSION_WRECK_COLLISION_MASK,
-          physicsBody: { shape: 'capsule' },
+          physicsBody: { shape: 'capsule', mass: 10 },
           data: {
             missionTag: m.id,
             physicalRole: PHYSICAL_ROLE.POD,
@@ -5642,21 +5977,29 @@ export const missions = {
           },
         });
       }
+    }
+    // FB-067: picket/escort bodies spawn for ANY type whose variant rows them in. A demolition
+    // picket screens the TOWER (anchored on the live body, falling back to the player ring);
+    // a rescue escort screens the pod pocket as before.
+    if (wantEscorts > have.escorts) {
       const sector = SECTOR_BY_ID.get(m.destSectorId);
       const [lvLo, lvHi] = sector ? (sector.enemyLevel || [2, 4]) : [2, 4];
+      const tower = m.type === 'demolition' ? this._physicalTargetOf(m, PHYSICAL_ROLE.TOWER) : null;
+      const anchor = tower && tower.pos ? { x: tower.pos.x, z: tower.pos.z } : { x: px, z: pz };
       for (let i = have.escorts; i < wantEscorts; i++) {
         const durableSlot = nextSlot();
         const rng = nextRng(durableSlot);
-        const pos = missionHostileSpawnPos(this.state, { x: px, z: pz }, rng) || {
-          x: px + 400, z: pz + 200,
-        };
+        const ang = rng() * Math.PI * 2;
+        const pos = tower
+          ? { x: anchor.x + Math.cos(ang) * (120 + rng() * 60), z: anchor.z + Math.sin(ang) * (120 + rng() * 60) }
+          : (missionHostileSpawnPos(this.state, anchor, rng) || { x: px + 400, z: pz + 200 });
         const spec = makeEnemySpawnSpec('wasp_swarmer', Math.round((lvLo + lvHi) / 2), pos, {
           startedTick: deferredEnterTick(this.state),
         });
         spec.data = spec.data || {};
         spec.data.missionTag = m.id;
         spec.data.physicalRole = PHYSICAL_ROLE.ESCORT;
-        spec.data.scanLabel = 'RESCUE ESCORT';
+        spec.data.scanLabel = m.type === 'demolition' ? 'TOWER PICKET' : 'RESCUE ESCORT';
         spawnAt(durableSlot, spec);
       }
     }
@@ -6463,8 +6806,35 @@ export const missions = {
         this._completeCapitalBossFromKill(m, i);
         continue;
       }
-      if (m.type === 'demolition' && byPlayer) {
-        this._completePhysical(m, i, 'cut_down');
+      if (m.type === 'demolition' && role === PHYSICAL_ROLE.TOWER) {
+        // The knock-down objective going down under the PLAYER's guns is the job done; under
+        // anyone else's it is gone before the player could do it — FB-068 voids fairly with
+        // cause. (Role-gated: guarded-course pickets are mission targets too, and dropping a
+        // picket must not settle the tower's row.)
+        if (byPlayer) this._completePhysical(m, i, 'cut_down');
+        else this._settleExternalTargetLoss(m, i, p);
+        continue;
+      }
+      if (m.type === 'tow_recovery' && role === PHYSICAL_ROLE.SLAG_CORE && !byPlayer) {
+        // FB-068: a third party blew the objective core apart — same honest void as a patrol
+        // mark lost to another hunter. A player-caused core death keeps the 'core_lost' word;
+        // it arrives on the destroyed lane where legacy callers already settled it.
+        this._settleExternalTargetLoss(m, i, p);
+        continue;
+      }
+      if (m.type === 'rescue_under_fire' && role === PHYSICAL_ROLE.POD) {
+        // FB-068: record who brought this pod down. Counting stays in the destroyed lane, which
+        // reads this ledger when the last pod falls to pick 'pods_lost' vs 'failed_external'.
+        m.params = m.params || {};
+        const causes = m.params.podLossCauses || (m.params.podLossCauses = {});
+        if (!causes[p.id]) {
+          const causal = compactKillCausality(p, this.state.playerId);
+          causes[p.id] = {
+            byPlayer,
+            cause: causal.cause,
+            killerId: p.killerId != null ? p.killerId : null,
+          };
+        }
         continue;
       }
       if (m.type === 'rescue_under_fire' && role === PHYSICAL_ROLE.ESCORT) {
@@ -6496,12 +6866,25 @@ export const missions = {
       const m = this.state.missions.active[i];
       if (!m || m.status !== 'active' || !PHYSICAL_TYPE_SET.has(m.type)) continue;
       if (!m.targetEntityIds || !m.targetEntityIds.includes(p.id)) continue;
-      const victim = this.state.entities.get(p.id);
+      // The destroy payload carries the victim row itself; the entity map may already have
+      // dropped it by the time this listener runs.
+      const victim = this.state.entities.get(p.id) || (p && p.entity) || null;
       const role = physicalRoleOf(victim);
       if ((m.type === 'tow_recovery' || (m.type === AUTHORED_SET_PIECE_TYPE && role === PHYSICAL_ROLE.SLAG_CORE))
         && role === PHYSICAL_ROLE.SLAG_CORE) {
+        // A kill-event settlement (player 'core_lost' is impossible here — kills arrive on the
+        // killed lane first — but an external kill already settled failed_external and changed
+        // status) leaves nothing to do; a core destroyed with no kill record keeps the legacy word.
         this._stampPhysicalLossSite(m, p);
         this._failMission(m, i, 'core_lost');
+        continue;
+      }
+      if (m.type === 'demolition' && role === PHYSICAL_ROLE.TOWER) {
+        // Backstop only: real kills settled on the killed lane (player → cut_down, external →
+        // failed_external). Reaching here means the tower vanished without a kill attribution —
+        // swept by something other than the player's work — which voids the contract fairly.
+        this._stampPhysicalLossSite(m, p);
+        this._settleExternalTargetLoss(m, i, p);
         continue;
       }
       if ((m.type === 'rescue_under_fire' || m.type === AUTHORED_SET_PIECE_TYPE) && role === PHYSICAL_ROLE.POD) {
@@ -6512,9 +6895,171 @@ export const missions = {
         const remaining = m.type === AUTHORED_SET_PIECE_TYPE
           ? (this._countAuthoredRoles(m).life_pod || 0)
           : this._countPhysicalRoles(m).pods;
-        if (remaining <= 0) this._failMission(m, i, 'pods_lost');
+        if (remaining <= 0) {
+          // FB-068: an all-external pod loss voids fairly with the cause named. Any pod the
+          // player put down keeps the authored 'pods_lost' penalty — mixed blame is player fault.
+          const causes = m.params.podLossCauses || {};
+          const anyByPlayer = Object.keys(causes).some((id) => causes[id] && causes[id].byPlayer);
+          const last = causes[p.id] || null;
+          if (m.type !== AUTHORED_SET_PIECE_TYPE && !anyByPlayer && last && !last.byPlayer) {
+            this._settleExternalTargetLoss(m, i, {
+              ...p,
+              killerId: last.killerId,
+              cause: last.cause,
+              presentation: null,
+            });
+          } else {
+            this._failMission(m, i, 'pods_lost');
+          }
+        }
       }
     }
+  },
+
+  // =========================================================================================
+  // FB-066 — RACE COURSE: an ordered chain of buoy gates on the clock. The offer carries the whole
+  // course record in params (sector-local gate chain, posted record, band caps); the per-tick
+  // driver scores the player's own flight line and the band prices the payout. Every field the
+  // driver writes lives under m.params so a save/load mid-run resumes the same course.
+  // =========================================================================================
+
+  /** World-frame position of gate `index` (params.gates are sector-local). Null when absent. */
+  _raceGateGlobal(m, index) {
+    const params = (m && m.params) || {};
+    const gates = Array.isArray(params.gates) ? params.gates : [];
+    const gate = gates[index];
+    if (!gate || !Number.isFinite(gate.x) || !Number.isFinite(gate.z)) return null;
+    const sectorId = params.courseSectorId || m.destSectorId;
+    return sectorLocalToGlobalForSector({ x: gate.x, z: gate.z }, sectorId, { x: 0, z: 0 });
+  },
+
+  /**
+   * The course's physical presence: one non-colliding buoy per gate, spawned through the same
+   * mission-target ledger every other contract body uses so Continue/rematerialization adopts
+   * instead of doubling. Already-cleared gates are still re-stood — the furniture shows the flown
+   * line, and nextGate (not the entity set) owns progress.
+   */
+  _spawnRaceGateTargets(m) {
+    const helpers = this.helpers;
+    if (!helpers || !helpers.spawnEntity || !m) return;
+    const params = m.params || {};
+    const gates = Array.isArray(params.gates) ? params.gates : [];
+    if (!gates.length) return;
+    const occupied = new Set((m.targetEntityIds || []).map((id) => (
+      missionTargetSlotOf(this.state.entities.get(id), m.id)
+    )).filter((slot) => slot != null));
+    let spawned = 0;
+    for (let slot = 0; slot < gates.length; slot++) {
+      if (occupied.has(slot)) continue;
+      const gatePos = this._raceGateGlobal(m, slot);
+      if (!gatePos) continue;
+      const ent = helpers.spawnEntity({
+        type: 'beacon',
+        team: 2,
+        pos: { x: gatePos.x, z: gatePos.z },
+        vel: { x: 0, z: 0 },
+        rot: 0,
+        radius: Math.max(14, (Number(params.gateRadiusWU) || RACE_GATE_RADIUS_WU) * 0.35),
+        mass: 1e6,
+        hull: 1,
+        hullMax: 1,
+        collides: false,
+        flags: { noInterp: true, missionPinned: true, durable: true },
+        data: {
+          missionTag: m.id,
+          physicalRole: PHYSICAL_ROLE.GATE,
+          raceGateIndex: slot,
+          gateCount: gates.length,
+          courseId: params.courseId || null,
+          scanLabel: `${(params.courseName || 'COURSE').toUpperCase()} — GATE ${slot + 1}/${gates.length}`,
+          tetherable: false,
+        },
+      });
+      if (!ent) continue;
+      this._stampMissionTargetIdentity(ent, m, slot);
+      m.targetEntityIds.push(ent.id);
+      spawned++;
+    }
+    if (spawned > 0) this.bus.emit('mission:updated', { missionId: m.id });
+  },
+
+  /**
+   * Per-tick scoring while the mission is active. The clock starts on gate 1 and stops on the
+   * last gate — the posted record prices the gate-to-gate leg, so every pilot runs the same
+   * timed segment regardless of where they were standing when the contract posted. Gates score
+   * ONLY in order: standing inside a later buoy early warns once per gate and counts nothing.
+   */
+  _driveRace(m, index, state) {
+    const params = (m && m.params) || {};
+    const gates = Array.isArray(params.gates) ? params.gates : [];
+    if (!gates.length) return;
+    const courseSectorId = params.courseSectorId || m.destSectorId;
+    const current = state.world && state.world.currentSectorId;
+    if (courseSectorId && current && current !== courseSectorId) return;
+    const player = state.entities && state.playerId != null
+      ? state.entities.get(state.playerId) : null;
+    if (!player || !player.pos || player.alive === false) return;
+    const gateCount = gates.length;
+    const next = Math.max(0, Math.min(gateCount, params.nextGate | 0));
+    if (next >= gateCount) return;
+    const gatePos = this._raceGateGlobal(m, next);
+    if (!gatePos) return;
+    const reach = Math.max(24, Number(params.gateRadiusWU) || RACE_GATE_RADIUS_WU)
+      + Math.max(0, Number(player.radius) || 0);
+    const dx = player.pos.x - gatePos.x;
+    const dz = player.pos.z - gatePos.z;
+    if (dx * dx + dz * dz > reach * reach) {
+      // Order matters: inside a LATER gate while an earlier one is still owed says so, once.
+      for (let ahead = next + 1; ahead < gateCount; ahead++) {
+        const later = this._raceGateGlobal(m, ahead);
+        if (!later) continue;
+        const lx = player.pos.x - later.x;
+        const lz = player.pos.z - later.z;
+        if (lx * lx + lz * lz <= reach * reach) {
+          if (params.orderWarnGate !== ahead) {
+            params.orderWarnGate = ahead;
+            this.bus.emit('toast', {
+              text: `${m.title}: gates run in order — gate ${next + 1}/${gateCount} first.`,
+              kind: 'warn',
+              ttl: 3,
+            });
+          }
+          break;
+        }
+      }
+      return;
+    }
+    if (!Number.isFinite(params.raceStartSimS)) params.raceStartSimS = state.simTime || 0;
+    params.nextGate = next + 1;
+    params.orderWarnGate = null;
+    m.objectiveProgress = params.nextGate;
+    this._refreshTrackedMissionNav(m);
+    const elapsedS = Math.max(0, (state.simTime || 0) - params.raceStartSimS);
+    this.bus.emit('mission:gateCleared', {
+      missionId: m.id,
+      gateIndex: next,
+      gateCount,
+      elapsedS,
+    });
+    this.bus.emit('mission:updated', { missionId: m.id });
+    if (params.nextGate < gateCount) {
+      this.bus.emit('toast', { text: `Gate ${params.nextGate}/${gateCount}`, kind: 'info', ttl: 2 });
+      return;
+    }
+    // Finish — the band prices against the posted record riding the contract terms.
+    const band = raceBandForElapsed(elapsedS, params);
+    const mult = RACE_BAND_MULT[band] != null ? RACE_BAND_MULT[band] : 1;
+    params.raceBand = band;
+    params.raceElapsedS = Math.round(elapsedS * 100) / 100;
+    // reward_cr is the STANDARD-band figure the board advertised; the band scales it once at the
+    // flag so the payout, the receipt, and the debrief all agree on the same number.
+    m.reward_cr = Math.max(0, Math.round((m.reward_cr || 0) * mult));
+    this.bus.emit('toast', {
+      text: `Course clear — ${band.toUpperCase()} time ${Math.round(elapsedS)}s vs record ${params.recordS}s.`,
+      kind: 'success',
+      ttl: 4,
+    });
+    this._completeMission(m, index);
   },
 
   /** Dock-at-destination objectives: delivery / passenger / salvage / smuggling / escort. These are
@@ -7305,7 +7850,7 @@ export const missions = {
       ? descriptor.toast
       : MUTATION_TOAST[descriptor.tag];
     const toastText = toastFor
-      ? toastFor(successor.title)
+      ? toastFor(successor.title, m)
       : `Contract broken — a follow-up is live: ${successor.title}.`;
     return { missionId: successor.id, offerId: posted.offerId, tag: descriptor.tag, toastText };
   },
@@ -7536,8 +8081,9 @@ export const missions = {
     // Failure rep penalty to the offering faction. We emit faction:repDelta directly and keep the
     // mission:failed payload factionId-FREE so factions' onMissionLost doesn't ALSO penalise.
     // INF-067: a voided contract (target lost to a third party) is not the player's fault — no
-    // penalty, and the deposit comes back. Rewards and penalties follow the visible resolution.
-    const voided = reason === 'target_lost';
+    // penalty, and the deposit comes back. FB-068 extends the same honest void to ANY objective
+    // killed by a non-player actor ('failed_external'), with the cause named on the receipt.
+    const voided = reason === 'target_lost' || reason === 'failed_external';
     const penalty = voided ? 0 : missionRepDeltaFor(m, 'failed');
     if (m.factionId && penalty < 0) {
       this.bus.emit('faction:repDelta', { factionId: m.factionId, delta: penalty, reason: `mission_failed:${m.type}` });
@@ -7550,12 +8096,20 @@ export const missions = {
     const contractCargoRemoved = this._removePreloadedContractCargo(m);
     // Collateral is forfeited (already charged at accept — nothing to refund).
     this._logCompletion(m.type, 0, false);
+    const externalLoss = reason === 'failed_external' && m.params && m.params.externalCauseLabel
+      ? {
+          externalCause: m.params.externalCause || 'generic',
+          externalCauseFamily: m.params.externalCauseFamily || 'direct',
+          externalKillerId: m.params.externalKillerId != null ? m.params.externalKillerId : null,
+        }
+      : null;
     this._recordMissionReceipt(m, 'failed', reason || 'failed', {
       rewardCr: 0,
       collateralLostCr: voided ? 0 : m.collateral_cr || 0,
       repDelta: penalty,
       contractCargoRemoved,
       setPieceReceipt: setPieceTransition && setPieceTransition.receipt || null,
+      ...(externalLoss || {}),
       // Mutation provenance rides the receipt only when a mutation actually happened.
       ...(mutation ? { mutatedToMissionId: mutation.missionId, mutationTag: mutation.tag } : {}),
     });
@@ -7579,7 +8133,14 @@ export const missions = {
     if (mutation) {
       this.bus.emit('toast', { text: mutation.toastText, kind: 'warn', ttl: 5 });
     } else if (voided) {
-      this.bus.emit('toast', { text: `Contract void: the mark for ${m.title} was destroyed — deposit refunded.`, kind: 'warn', ttl: 5 });
+      const causeLabel = m.params && m.params.externalCauseLabel;
+      this.bus.emit('toast', {
+        text: reason === 'failed_external' && causeLabel
+          ? `Contract void: ${m.title} — ${causeLabel}; deposit refunded.`
+          : `Contract void: the mark for ${m.title} was destroyed — deposit refunded.`,
+        kind: 'warn',
+        ttl: 5,
+      });
     } else {
       const why = failReasonWord(reason);
       this.bus.emit('toast', {
@@ -8326,6 +8887,8 @@ export const missions = {
       // WF-08 claim-stake salvage: the board row's physical content — a filed wreck with a
       // working claim crew parked on the destination approach. Its own scene, spawned here.
       this._spawnContractClaimSite(m, nextRng, px, pz);
+    } else if (m.type === 'race') {
+      this._spawnRaceGateTargets(m);
     } else if (m.type === AUTHORED_SET_PIECE_TYPE) {
       this._spawnAuthoredSetPieceTargets(m, nextRng, px, pz);
     } else if (m.type === CAPITAL_BOSS_TYPE) {
@@ -8662,7 +9225,7 @@ export const missions = {
           hullMax: 150,
           collides: true,
           collisionMask: MISSION_WRECK_COLLISION_MASK,
-          physicsBody: { shape: 'capsule' },
+          physicsBody: { shape: 'capsule', mass: 160 },
           data: {
             contractClaimSiteOf: m.id,
             proportions: WRECK_COLLIDER_PROPORTIONS,
@@ -9165,6 +9728,9 @@ export const missions = {
       // The once flag lives in the normal active cause and therefore survives the ordinary mission
       // save path without a witness-run sidecar.
       cause.travelLineSpoken = true;
+      // FB-137: the durable fact the route-ribbon presentation reads — which berth the spoken
+      // line points at. Same save path as the flag above; the ribbon resolves it live.
+      cause.travelLineTo = mission.destStationId || null;
       this.bus.emit('comms:popup', {
         sender: cause.witnessName || 'Witness',
         text: cause.travelText,
@@ -10162,6 +10728,14 @@ export function missionReceiptFor(m, outcome, reason, settlement = {}) {
     ...(settlement.mutatedToMissionId ? {
       mutatedToMissionId: settlement.mutatedToMissionId,
       mutationTag: settlement.mutationTag || null,
+    } : {}),
+    // FB-068: an external-loss void names what took the objective down (kill-causality vocabulary)
+    // so the debrief and the durable receipt agree. Conditional — ordinary failures keep the
+    // legacy shape.
+    ...(settlement.externalCause ? {
+      externalCause: settlement.externalCause,
+      externalCauseFamily: settlement.externalCauseFamily || null,
+      externalKillerId: settlement.externalKillerId != null ? settlement.externalKillerId : null,
     } : {}),
   };
 }

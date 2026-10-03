@@ -157,7 +157,11 @@ test('recovery launcher exposes the exact eight named playtest scenarios', () =>
   const ceres = recoveryPreset('ceres_reference_pocket');
   assert.equal(Object.hasOwn(ceres.config, 'seed'), true);
   assert.equal(ceres.config.seed, CERES_REFERENCE_ACCEPTANCE_ENTRY.fixedSeed);
-  for (const preset of SCENARIO_PRESETS.filter((entry) => entry.id !== 'ceres_reference_pocket')) {
+  // Only the eight named playtest scenarios are bound by the Ceres-seed quarantine. Presets
+  // outside that set may pin their own seed on purpose — sling_practice fixes 39039 so a
+  // relaunch rebuilds the identical practice room (see its card comment).
+  for (const preset of SCENARIO_PRESETS.filter(
+    (entry) => RECOVERY_SCENARIO_IDS.includes(entry.id) && entry.id !== 'ceres_reference_pocket')) {
     assert.equal(Object.hasOwn(preset.config, 'seed'), false,
       `${preset.id} does not inherit the Ceres acceptance seed`);
   }
@@ -167,6 +171,7 @@ test('recovery launcher exposes the exact eight named playtest scenarios', () =>
     'starter',
     'impulse',
     'physics_toolkit',
+    'light_impulse',
   ]);
 });
 

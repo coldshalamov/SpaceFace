@@ -11,11 +11,13 @@
 import { MORROW_AUDIO_RECIPES } from './morrow.js';
 import { VESPER_AUDIO_RECIPES } from './vesper.js';
 import { BRACKET_AUDIO_RECIPES } from './bracket.js';
+import { RAVEL_AUDIO_RECIPES } from './ravel.js';
 
 export const RECIPES = [
   ...MORROW_AUDIO_RECIPES,
   ...VESPER_AUDIO_RECIPES,
   ...BRACKET_AUDIO_RECIPES,
+  ...RAVEL_AUDIO_RECIPES,
   // --- Engine SFX ---
   {
     id: 'sfx_engine_idle',
@@ -461,6 +463,15 @@ export const RECIPES = [
     baseFreq: 165, freqSweep: [165, 247.5], sweepTimeS: 0.28,
     gainEnvelope: { attack: 0.008, sustain: 0.04, release: 0.34 },
     filterType: 'lowpass', filterFreq: 720, filterQ: 0.8,
+  },
+  {
+    // FB-131 — the ghost that slipped the net: the one scan-family voice that falls instead
+    // of rising, so "contact lost" reads as loss in the ear, not another success ping.
+    id: 'sfx_mining_scan_escaped',
+    category: 'mining', type: 'oscillator', wave: 'triangle',
+    baseFreq: 233, freqSweep: [233, 116.5], sweepTimeS: 0.44,
+    gainEnvelope: { attack: 0.01, sustain: 0.05, release: 0.42 },
+    filterType: 'lowpass', filterFreq: 560, filterQ: 1.0,
   },
   {
     id: 'sfx_mining_cutter_lock',
@@ -2269,6 +2280,51 @@ export const RECIPES = [
     filterType: 'lowpass', filterFreq: 420,
     gainMult: 0.75,
   },
+  // FB-073 — cargo jettison: pods leaving the hold. Same blunt rear-quarter thud register as the
+  // massline kick (its dash_punch sample binding is shared at rate 0.8), a touch lower and longer
+  // so the read is "mass leaving" rather than "line kicked".
+  {
+    id: 'sfx_cargo_jettison',
+    category: 'engine',
+    type: 'noise_filtered',
+    baseFreq: 84,
+    gainEnvelope: { attack: 0.004, sustain: 0.02, release: 0.22 },
+    filterType: 'lowpass', filterFreq: 400,
+    gainMult: 0.75,
+  },
+  // FB-142 — the planet band verbs. Collector intake: a breath of band-passed air opening on the
+  // skim band — a mouth, not a chime; the off register is the same voice pitched down.
+  {
+    id: 'sfx_planet_collector',
+    category: 'engine',
+    type: 'noise_filtered',
+    baseFreq: 480,
+    gainEnvelope: { attack: 0.025, sustain: 0.06, release: 0.38 },
+    filterType: 'bandpass', filterFreq: 780, filterQ: 1.7,
+    gainMult: 0.6,
+  },
+  // The plunge ring advancing: a low heat growl — atmosphere pressing in, not combustion. The
+  // audio route steps rate/gain per stage, so commit/breakup/descent climb and 'clear' releases.
+  {
+    id: 'sfx_planet_plunge',
+    category: 'engine',
+    type: 'noise_filtered',
+    baseFreq: 130,
+    gainEnvelope: { attack: 0.02, sustain: 0.1, release: 0.5 },
+    filterType: 'lowpass', filterFreq: 460,
+    gainMult: 0.75,
+  },
+  // The recovery burn: a sustained outward shove in the jettison-thud register, longer — burning
+  // out of the well, not kicking a pod.
+  {
+    id: 'sfx_planet_recovery_burn',
+    category: 'engine',
+    type: 'noise_filtered',
+    baseFreq: 105,
+    gainEnvelope: { attack: 0.012, sustain: 0.14, release: 0.42 },
+    filterType: 'lowpass', filterFreq: 440,
+    gainMult: 0.8,
+  },
   // Aft rack ejector: short mechanical clack + filtered breath, distinct from detonation.
   // (type was 'noise' — corrected to 'noise_filtered'; intent unchanged.)
   {
@@ -3242,6 +3298,8 @@ export const SAMPLE_BINDINGS = {
   sfx_mining_scan_classified: { id: 'mine_scan', share: 0.5, rate: 0.8 },
   sfx_mining_scan_tracked: { id: 'mine_scan', share: 0.5, rate: 0.62 },
   sfx_mining_scan_investigated: { id: 'mine_scan', share: 0.5, rate: 0.9 },
+  // FB-131: the escape tone borrows the same scan recording, pitched low — one family, one loss.
+  sfx_mining_scan_escaped: { id: 'mine_scan', share: 0.5, rate: 0.5 },
   sfx_scan_pulse: { id: 'mine_scan', share: 0.5, rate: 0.9 },
   sfx_scenario_signal: { id: 'mine_scan', share: 0.5, rate: 1.5 },
 
@@ -3330,6 +3388,8 @@ export const SAMPLE_BINDINGS = {
   sfx_massline_cloak_on: { id: 'massline_cloak', share: 0.6 },
   sfx_massline_cloak_off: { id: 'massline_cloak', share: 0.6, rate: 1.4 },
   sfx_massline_jettison: { id: 'dash_punch', share: 0.5, rate: 0.8 },
+  // FB-073: the cargo jettison voice shares the massline kick's punch recording at the same rate.
+  sfx_cargo_jettison: { id: 'dash_punch', share: 0.5, rate: 0.8 },
   // Aft rack ejector: the massline release recording a register down — ordnance
   // hardware letting go, never a menu detent.
   sfx_massline_bomb_drop: { id: 'massline_release', share: 0.55, rate: 0.8 },

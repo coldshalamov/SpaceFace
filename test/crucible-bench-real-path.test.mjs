@@ -133,7 +133,10 @@ test('B3b retains exclusion accounting and counts missing doctrine evidence', (t
 const VISION = 'Crucible first: every combat number is tuned in the Crucible bench, and adventure inherits it.';
 const SEED = 4242;
 const ARENA = 'helios_core';
-const SHORT = 180;
+// The authored intro windows are real sim time: arena_intro holds 120 ticks and wave_intro 90
+// (SURVIVAL_ARENA_INTRO_TICKS / SURVIVAL_WAVE_INTRO_TICKS), so `active` can only arrive after
+// ~211 ticks of run. Any cap meant to reach the first wave must clear the intro budget.
+const SHORT = 260;
 const FIT_TICKS = 40;
 const TIMEOUT = 120_000;
 
@@ -236,7 +239,7 @@ test('a run executes with Math.random, Date.now and performance.now replaced by 
       arenaId: ARENA,
       loadoutId: 'energy_baseline',
       seed: SEED,
-      tickCap: 80,
+      tickCap: SHORT,
     });
     assert.ok(run.runHash);
     assert.equal(run.phase, 'active');

@@ -1518,6 +1518,12 @@ export function injectHudCss() {
   .sf-prail[data-claimed="FULL"] .sf-pslot[data-state="empty"] .sf-pslot__name { display:none; }
   .sf-prail[data-claimed] .sf-pslot__name { color:var(--k-signal, var(--hud-amber)); }
   .sf-prail[data-claimed="FULL"] .sf-prail__label { opacity:.5; }
+  /* SWARM-03: a tactically-live slot breathes — "the rail answers why now". One glyph
+     pulse, compositor-only, suppressed under reduced motion like every other cue. */
+  .sf-pslot[data-live="true"] .fh-glyph { animation: sf-pslot-live 1.15s ease-in-out infinite; }
+  .sf-pslot[data-live="true"] .fh-glyph .accent { fill:var(--k-signal, var(--hud-amber)); }
+  @keyframes sf-pslot-live { 0%,100% { opacity:1; } 50% { opacity:.45; } }
+  html.sf-reduce-motion .sf-pslot[data-live="true"] .fh-glyph { animation:none; }
 
   /* Clearance, measured from the box rather than guessed. The rail is now lip(18) + pad(2) +
      socket(48) + lip(18) = 86 px tall on bottom:10px, so it occupies 10-96. The slot names hang

@@ -191,6 +191,13 @@ export const presentationOrchestrator = {
       this.bus.on('signal:scanResults', (payload) => this._onMiningSignalResults(payload || {})),
       this.bus.on('signal:tracked', (payload) => this._onMiningSignalTracked(payload || {})),
       this.bus.on('signal:investigated', (payload) => this._onMiningSignalInvestigated(payload || {})),
+      // FB-131 — the scanner speaks: escape, each counted bearing (anomaly triangulation and
+      // the band's canonical receipt share the bearing voice), wreck reveal, debris cache.
+      this.bus.on('scanner:ghostEscaped', (payload) => this._onSurveyGhostEscaped(payload || {})),
+      this.bus.on('anomaly:bearing', (payload) => this._onSurveyBearing('anomaly:bearing', payload || {})),
+      this.bus.on('band:bearingReceipt', (payload) => this._onSurveyBearing('band:bearingReceipt', payload || {})),
+      this.bus.on('scan:wreckRevealed', (payload) => this._onSurveyRevealed('scan:wreckRevealed', payload || {})),
+      this.bus.on('scan:debrisCache', (payload) => this._onSurveyRevealed('scan:debrisCache', payload || {})),
       this.bus.on('mining:start', (payload) => this._onMiningStart(payload || {})),
       this.bus.on('mining:stop', (payload) => this._onMiningStop(payload || {})),
       this.bus.on('mining:tick', (payload) => this._onMiningTick(payload || {})),
@@ -970,6 +977,57 @@ export const presentationOrchestrator = {
     });
   },
 
+  // FB-131 — the scanner speaks. A ghost that slips the net is already dead (alive=false) when
+  // the event lands, so the mark anchors at its last-known position via an explicit position,
+  // not a body lookup that would fail closed on the corpse.
+  _onSurveyGhostEscaped(payload) {
+    const entityId = payload.entityId ?? null;
+    const ghost = entityId != null && this.state && this.state.entities && this.state.entities.get
+      ? this.state.entities.get(entityId)
+      : null;
+    const gpos = ghost && ghost.pos;
+    const position = payload.position || (gpos && Number.isFinite(gpos.x) && Number.isFinite(gpos.z)
+      ? { x: gpos.x, y: Number.isFinite(gpos.y) ? gpos.y : 0, z: gpos.z }
+      : null);
+    this._emitCue('mining.survey.escaped', { ...payload, position }, {
+      sourceEvent: 'scanner:ghostEscaped',
+      sourceId: this.state.playerId,
+      targetId: entityId,
+      sequence: entityId ?? currentTick(this.state),
+      tags: ['escaped'],
+      accessibilityText: 'Contact escaped sensor range.',
+    });
+  },
+
+  // A bearing counted toward a fix speaks at a pitch step per accepted ping — magnitude carries
+  // the count, sequence keys the dedupe so step N+1 is a new cue while a replayed step N is not.
+  // Never anchor the cue at the anomaly: until the required pings land, its position is hidden.
+  _onSurveyBearing(sourceEvent, payload) {
+    if (payload.accepted === false) return;
+    const count = Math.max(1, Math.floor(Number(payload.sampleCount ?? payload.count) || 1));
+    const key = payload.poiId ?? payload.requestId ?? payload.wreckId ?? payload.sectorId ?? 'fix';
+    this._emitCue('mining.survey.bearing', payload, {
+      sourceEvent,
+      sourceId: this.state.playerId,
+      magnitude: count,
+      sequence: `${key}:${count}`,
+      tags: ['bearing'],
+      accessibilityText: count > 1 ? `Bearing ${count} acquired.` : 'Bearing acquired.',
+    });
+  },
+
+  _onSurveyRevealed(sourceEvent, payload) {
+    const entityId = payload.entityId ?? payload.wreckId ?? null;
+    this._emitCue('mining.survey.revealed', payload, {
+      sourceEvent,
+      sourceId: this.state.playerId,
+      targetId: entityId,
+      sequence: `${sourceEvent}:${entityId ?? 'unknown'}`,
+      tags: sourceEvent === 'scan:debrisCache' ? ['revealed', 'cache'] : ['revealed'],
+      accessibilityText: sourceEvent === 'scan:debrisCache' ? 'Debris cache found.' : 'Wreck revealed.',
+    });
+  },
+
   _onMiningStart(payload) {
     const sourceId = payload.minerId ?? this.state.playerId;
     const targetId = payload.targetId ?? null;
@@ -1390,7 +1448,13 @@ export const presentationOrchestrator = {
 
   _onMasslineReleaseValidated(payload) {
     if (payload && payload.schema !== 'spaceface.masslineReleaseValidation.v1') return false;
-    if (!payload || !payload.prediction || payload.prediction.onSolution !== false) return false;
+    // RELEASE-TRUTH C1: Missed names a missed WINDOW, so a valid attempted solution must have
+    // existed. An untargeted throw or cut is a lawful neutral release — the producer already
+    // reports it as prediction.valid=false — not a failed aim, and it must not wear the
+    // missed-window mark. A deliberately aimed release whose valid solution was off-window
+    // still speaks; an on-solution release obviously stays silent too.
+    const prediction = payload && payload.prediction;
+    if (!prediction || prediction.valid !== true || prediction.onSolution !== false) return false;
     if (typeof payload.releaseId !== 'string' || !payload.releaseId.trim()) return false;
     if (payload.kind !== 'throw' && payload.kind !== 'self-sling') return false;
 
@@ -1554,6 +1618,9 @@ export const presentationOrchestrator = {
     // Reduced-mode intent likewise travels with the cue when the recipe declares it.
     if (recipe.reducedMotionMode) event.reducedMotionMode = recipe.reducedMotionMode;
     if (recipe.reducedFlashMode) event.reducedFlashMode = recipe.reducedFlashMode;
+    // FB-072 — the declared shape tier (silhouette/layout/signaturePrimitive) rides the cue so
+    // the render record shows WHICH shape carried severity, not only how much was spent.
+    if (recipe.shape) event.shape = recipe.shape;
 
     const suppressReason = this._suppressionReason(event, recipe);
     if (suppressReason) return this._suppress(cueId, payload, options, suppressReason, event);

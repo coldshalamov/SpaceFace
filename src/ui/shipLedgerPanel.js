@@ -90,6 +90,13 @@ export function createShipLedgerPanel(ctx, options = {}) {
   intro.className = 'k-sentence st-ledger-intro';
   intro.textContent = hostOptions.intro || 'The Tessera keeps what the manifests leave out.';
 
+  // FB-069 — the doing/then/so prose `buildShipLedger` already returns. Rendered once at the
+  // head of both hosts through this shared panel; the UI never recomputes it.
+  const story = document.createElement('p');
+  story.className = 'k-sentence k-sentence--emph st-ledger-story';
+  story.setAttribute('aria-label', 'The story so far');
+  story.hidden = true;
+
   const status = document.createElement('p');
   status.className = 'k-caps st-ledger-status mono';
   status.setAttribute('role', 'status');
@@ -151,7 +158,7 @@ export function createShipLedgerPanel(ctx, options = {}) {
 
   detail.append(back, detailHeading, detailFragment, detailBody, figure, provenance);
 
-  root.append(heading, intro, status, list, empty, nav, detail);
+  root.append(heading, intro, story, status, list, empty, nav, detail);
 
   let page = 0;
   let lastModel = null;
@@ -209,6 +216,12 @@ export function createShipLedgerPanel(ctx, options = {}) {
     page = model.page;
     lastModel = model;
 
+    // The story-so-far prose heads the page exactly like the shipped prose reads the log:
+    // present means shown verbatim; absent means the line collapses, never a placeholder.
+    const storyProse = model.storySoFar && model.storySoFar.prose ? String(model.storySoFar.prose) : '';
+    story.textContent = storyProse;
+    story.hidden = !storyProse;
+
     const fragment = document.createDocumentFragment();
     for (const entry of model.entries) fragment.appendChild(renderEntry(entry));
     list.replaceChildren(fragment);
@@ -247,6 +260,7 @@ export function createShipLedgerPanel(ctx, options = {}) {
     list.hidden = !!(lastModel && lastModel.total === 0);
     nav.hidden = !!(lastModel && lastModel.pageCount <= 1);
     empty.hidden = !!(lastModel && lastModel.total !== 0);
+    story.hidden = !(lastModel && lastModel.storySoFar && lastModel.storySoFar.prose);
     const target = restoreFocus ? (openerEl || newer) : null;
     openerEl = null;
     if (target && typeof target.focus === 'function') target.focus();
@@ -282,6 +296,7 @@ export function createShipLedgerPanel(ctx, options = {}) {
     list.hidden = true;
     nav.hidden = true;
     empty.hidden = true;
+    story.hidden = true;
     if (typeof back.focus === 'function') back.focus();
   }
 
