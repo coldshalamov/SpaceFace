@@ -65,15 +65,55 @@ const ARCHETYPE_TACTICAL_CAPABILITIES = Object.freeze({
   kamikaze: Object.freeze([]),
 });
 
+// A wave of the same archetype samples one frozen doctrine row. Rebuilding it per body
+// was pure repeat work on fight entry (same faction, same seed, same count of 1).
+const factionSpawnBehaviorCache = new Map();
+const weaponTemplateCache = new Map();
+let capabilityByDef = new WeakMap();
+const enemySpawnRepeatWork = {
+  factionBehaviorBuilds: 0,
+  factionBehaviorHits: 0,
+  capabilityBuilds: 0,
+  capabilityHits: 0,
+  weaponTemplateBuilds: 0,
+  weaponTemplateHits: 0,
+};
+
+/** How many identical fight-entry samples were rebuilt versus reused. Test seam. */
+export function readEnemySpawnRepeatWork() {
+  return { ...enemySpawnRepeatWork };
+}
+
+export function resetEnemySpawnRepeatWork() {
+  enemySpawnRepeatWork.factionBehaviorBuilds = 0;
+  enemySpawnRepeatWork.factionBehaviorHits = 0;
+  enemySpawnRepeatWork.capabilityBuilds = 0;
+  enemySpawnRepeatWork.capabilityHits = 0;
+  enemySpawnRepeatWork.weaponTemplateBuilds = 0;
+  enemySpawnRepeatWork.weaponTemplateHits = 0;
+  factionSpawnBehaviorCache.clear();
+  weaponTemplateCache.clear();
+  capabilityByDef = new WeakMap();
+}
+
 function factionBehaviorForCombatSpawn(factionId, opts = {}) {
   const seedBase = Number.isFinite(opts.doctrineSeed)
     ? opts.doctrineSeed
     : (Number.isFinite(opts.startedTick) ? opts.startedTick : 0);
-  return sampleFactionBehavior(
+  const key = `${String(factionId)}|${seedBase}`;
+  if (factionSpawnBehaviorCache.has(key)) {
+    enemySpawnRepeatWork.factionBehaviorHits += 1;
+    return factionSpawnBehaviorCache.get(key);
+  }
+  enemySpawnRepeatWork.factionBehaviorBuilds += 1;
+  const row = sampleFactionBehavior(
     factionId,
     hash32(seedBase, factionId, 'combat-spawn-doctrine'),
     1,
   )[0] || null;
+  if (factionSpawnBehaviorCache.size > 64) factionSpawnBehaviorCache.clear();
+  factionSpawnBehaviorCache.set(key, row);
+  return row;
 }
 
 /** Scale an enemy archetype's base stats by encounter level. */
@@ -85,40 +125,66 @@ export function scaleCombatant(def, level) {
 // C1: floor for enemy direct-fire projectile speed (WU/s) — keeps shots readable on screen.
 const ENEMY_PROJ_SPEED_FLOOR = 380;
 
+function enemyWeaponTemplateKey(w) {
+  return [
+    w.id,
+    w.turret === true ? 1 : 0,
+    w.dmgOverride ?? '',
+    w.rofOverride ?? '',
+    w.projSpeedOverride ?? '',
+    w.rangeOverride ?? '',
+    w.occasional === true ? 1 : 0,
+    w.defensiveOnly === true ? 1 : 0,
+  ].join('|');
+}
+
 function resolveEnemyWeapon(w, slotIndex) {
   const base = WPN.get(w.id);
   if (!base) return null;
-  // Phase 2 hardpoint fields: enemy ships have no per-hull facing data, so default front + the
-  // standard fixed-gun gimbal arc (they gimbal toward their AI lead angle, like the player does).
-  // An enemy entry may force a turret mount via w.turret:true (e.g. capital boss broadside beams).
-  const isTurret = base.tracking === 'auto_turret' || !!w.turret;
-  const isHoming = base.tracking === 'homing';
-  const facing = isTurret ? 'turret' : 'front';
-  const gimbalArc = isTurret ? (base.turretArcDeg || 180) * Math.PI / 180
-    : (isHoming ? Math.PI : 22 * Math.PI / 180);
-  return {
-    ...base, slotIndex, defId: w.id,
-    facing, facingAngle: facing === 'turret' ? 0 : 0, gimbalArc,
-    muzzleOffset: [0.8, 0],
-    dmg: w.dmgOverride ?? base.dmg,
-    rof: w.rofOverride ?? base.rof,
-    // C1 engagement scale: enemy direct-fire projectiles fly at >= 380 WU/s so a shot crosses the
-    // visible frame in well under a second. Homing and deployed ordnance keep authored speeds.
-    projSpeed: (isHoming || base.tracking === 'deploy')
-      ? (w.projSpeedOverride ?? base.projSpeed)
-      : Math.max(ENEMY_PROJ_SPEED_FLOOR, w.projSpeedOverride ?? base.projSpeed),
-    range: w.rangeOverride ?? base.range,
-    spread: base.spreadDeg ?? 0,
-    tracking: isTurret ? 'auto_turret' : (base.tracking || 'fixed'),
-    arc: isTurret ? { turret: base.turretArcDeg || 180 } : 'fixed',
-    heatMax: base.heatMax ?? 100, lockTimeS: base.lockTimeS ?? 0,
-    // Mount roles authored in enemies.js: `occasional` fires in deterministic windows,
-    // `defensiveOnly` answers only inside its own close envelope. weapons.js gates on
-    // these — they must survive resolution or the mounts read as always-on primaries.
-    ...(w.occasional === true ? { occasional: true } : null),
-    ...(w.defensiveOnly === true ? { defensiveOnly: true } : null),
-    _cooldown: 0, _heat: 0,
-  };
+  const templateKey = enemyWeaponTemplateKey(w);
+  let template = weaponTemplateCache.get(templateKey);
+  if (template) {
+    enemySpawnRepeatWork.weaponTemplateHits += 1;
+  } else {
+    enemySpawnRepeatWork.weaponTemplateBuilds += 1;
+    // Phase 2 hardpoint fields: enemy ships have no per-hull facing data, so default front + the
+    // standard fixed-gun gimbal arc (they gimbal toward their AI lead angle, like the player does).
+    // An enemy entry may force a turret mount via w.turret:true (e.g. capital boss broadside beams).
+    const isTurret = base.tracking === 'auto_turret' || !!w.turret;
+    const isHoming = base.tracking === 'homing';
+    const facing = isTurret ? 'turret' : 'front';
+    const gimbalArc = isTurret ? (base.turretArcDeg || 180) * Math.PI / 180
+      : (isHoming ? Math.PI : 22 * Math.PI / 180);
+    template = {
+      ...base, defId: w.id,
+      facing, facingAngle: facing === 'turret' ? 0 : 0, gimbalArc,
+      muzzleOffset: [0.8, 0],
+      dmg: w.dmgOverride ?? base.dmg,
+      rof: w.rofOverride ?? base.rof,
+      // C1 engagement scale: enemy direct-fire projectiles fly at >= 380 WU/s so a shot crosses the
+      // visible frame in well under a second. Homing and deployed ordnance keep authored speeds.
+      projSpeed: (isHoming || base.tracking === 'deploy')
+        ? (w.projSpeedOverride ?? base.projSpeed)
+        : Math.max(ENEMY_PROJ_SPEED_FLOOR, w.projSpeedOverride ?? base.projSpeed),
+      range: w.rangeOverride ?? base.range,
+      spread: base.spreadDeg ?? 0,
+      tracking: isTurret ? 'auto_turret' : (base.tracking || 'fixed'),
+      arc: isTurret ? { turret: base.turretArcDeg || 180 } : 'fixed',
+      heatMax: base.heatMax ?? 100, lockTimeS: base.lockTimeS ?? 0,
+      // Mount roles authored in enemies.js: `occasional` fires in deterministic windows,
+      // `defensiveOnly` answers only inside its own close envelope. weapons.js gates on
+      // these — they must survive resolution or the mounts read as always-on primaries.
+      ...(w.occasional === true ? { occasional: true } : null),
+      ...(w.defensiveOnly === true ? { defensiveOnly: true } : null),
+    };
+    if (weaponTemplateCache.size > 128) weaponTemplateCache.clear();
+    weaponTemplateCache.set(templateKey, template);
+  }
+  // Cooldown, heat, and the small per-mount arrays are per body. The template stays shared.
+  const instance = { ...template, slotIndex, _cooldown: 0, _heat: 0 };
+  if (Array.isArray(template.muzzleOffset)) instance.muzzleOffset = template.muzzleOffset.slice();
+  if (template.arc && typeof template.arc === 'object') instance.arc = { ...template.arc };
+  return instance;
 }
 
 /** Build a spawnEntity spec for a hostile NPC (team 1) from an enemy archetype id. */
@@ -324,6 +390,12 @@ function doctrineTelegraphFor(doctrineId) {
 }
 
 function tacticalCapabilitiesFor(def) {
+  const cached = def ? capabilityByDef.get(def) : null;
+  if (cached) {
+    enemySpawnRepeatWork.capabilityHits += 1;
+    return cached.slice();
+  }
+  enemySpawnRepeatWork.capabilityBuilds += 1;
   const caps = new Set(BASE_AI_CAPABILITIES);
   if (Array.isArray(def.weapons) && def.weapons.length) caps.add('ranged');
   for (const capability of ARCHETYPE_TACTICAL_CAPABILITIES[def.aiArchetype] || []) caps.add(capability);
@@ -335,7 +407,9 @@ function tacticalCapabilitiesFor(def) {
     caps.add('disable');
     caps.add('screen');
   }
-  return [...caps].sort();
+  const sorted = Object.freeze([...caps].sort());
+  if (def) capabilityByDef.set(def, sorted);
+  return sorted.slice();
 }
 
 function defaultDoctrineFor(def, pos, startedTick = 0) {
