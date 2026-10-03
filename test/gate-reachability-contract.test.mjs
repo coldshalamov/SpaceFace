@@ -7,6 +7,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import * as ciReport from '../scripts/check-ci-report.mjs';
 import {
   auditReachability,
   collectReachable,
@@ -207,5 +208,27 @@ test('the atlas program suite is pinned and reachable, not merely green', () => 
   for (const gate of atlasGates) {
     assert.ok(reachable.has(gate), `${gate} must be reachable from the CI matrix roots`);
     assert.ok(baseline.mustGate.includes(gate), `${gate} must be pinned in the baseline`);
+  }
+});
+
+// These quick Node acceptance files are independent matrix leaves, not a browser or broad-suite job.
+test('CI reaches the combat query and station exit regressions exactly once in one static shard', () => {
+  const packageScripts = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).scripts;
+  const matrix = ciReport.buildCommandMatrix(
+    resolveAggregateCommand(packageScripts, 'check:ci'), packageScripts,
+  );
+  for (const path of [
+    'test/combat-table-query-scratch.test.mjs',
+    'test/station-exit-confirmation.test.mjs',
+  ]) {
+    const matches = matrix.flatMap((def) => ciReport.resolveLeafCommands(def.command, packageScripts)
+      .filter((leaf) => leaf.split(/\s+/).includes(path)).map((leaf) => ({ def, leaf })));
+    assert.equal(matches.length, 1, `${path} must run exactly once through check:ci`);
+    const { def, leaf } = matches[0];
+    assert.equal(leaf, `node --test ${path}`, 'run the focused file without a duplicated broad batch');
+    assert.equal(ciReport.classifyCommandGroup(def, packageScripts), 'static');
+    const group = ciReport.selectGroup(matrix, 'static', packageScripts);
+    const shards = [1, 2, 3].flatMap((index) => ciReport.selectShard(group, { index, total: 3 }));
+    assert.equal(shards.filter((entry) => entry.id === def.id).length, 1);
   }
 });
