@@ -5826,7 +5826,10 @@ function armStalledHogWake(state) {
   // cancellation until the admission actually settles.
   const active = [...state.byBoundary.values()].filter((job) =>
     job.lifecycle === 'in-flight'
-    && (job.serialSlotReleased !== true || job.upgradeDiagnostic?.endedAtMs == null));
+    && (job.serialSlotReleased !== true
+      || job.upgradeDiagnostic?.endedAtMs == null
+      || !(job.boundary && job.boundary.userData
+        && authoredCommittedBoundaryStatus(job.boundary.userData.authoredAssetState))));
   if (!active.length) {
     if (state.stalledHogWakeTimer != null) clearTimeout(state.stalledHogWakeTimer);
     state.stalledHogWakeTimer = null;

@@ -3236,6 +3236,40 @@ function warmPendingReinforcementsDecode(owner) {
 }
 
 /**
+ * Archetype self-call reinforcements queue on state.combat.pendingReinforcements with a
+ * 1.5-2.5 s sim-time lead ("ENEMY CALLING REINFORCEMENTS") — a different channel than
+ * aiEncounter.owner.pendingReinforcements (dueTick records), so the wing lane above never
+ * sees them and a not-yet-warm swarmer file decodes on the entity:spawned kick inside the
+ * arrival window the caller just announced. Poll once per residency pass and warm the
+ * typeId's resolved hull while the record sits inside the runway; consumed/abandoned
+ * records drop off the queue and let the lease expire.
+ */
+function warmCombatReinforcementsDecode(owner) {
+  const state = owner && owner.state;
+  const pending = state && state.combat && state.combat.pendingReinforcements;
+  if (!Array.isArray(pending) || !pending.length) return;
+  const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+  const warmedAt = owner._combatReinforcementWarmAt
+    || (owner._combatReinforcementWarmAt = new WeakMap());
+  const sectorId = (state.world && state.world.currentSectorId) || null;
+  const records = [];
+  for (const item of pending) {
+    if (!item || typeof item.typeId !== 'string' || !item.typeId) continue;
+    if (!Number.isFinite(item.spawnAt)
+        || item.spawnAt - now > TABLE_DECODE_RUNWAY_SECONDS) continue;
+    if (warmedAt.get(item) === item.spawnAt) continue;
+    warmedAt.set(item, item.spawnAt);
+    records.push({
+      archetype: item.typeId,
+      factionId: enemySpawnFactionId(item.typeId, item.factionId),
+    });
+  }
+  if (records.length) {
+    warmEnemyRosterDecode(owner, records, 'combat-reinforcement-decode-runway', sectorId);
+  }
+}
+
+/**
  * Hostile-pursuit resolution watches a pest for PURSUIT_RESOLVE_S, then spawns the fixed
  * patrol roster (patrol_lawman @ faction_scn) 420 WU from the player with zero warm arm —
  * the only scripted patrol spawn that bypasses dir.pending, so it decodes on the bare
@@ -15793,6 +15827,7 @@ export const render = {
     updatePredictedSectorPrewarm(this);
     warmEncounterPendingDecode(this);
     warmPendingReinforcementsDecode(this);
+    warmCombatReinforcementsDecode(this);
     warmClaimDefenseDecode(this);
     warmAceReturnDecode(this);
     warmCultureIntroDecode(this);
