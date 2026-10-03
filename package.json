@@ -95,7 +95,7 @@
     "check:bark-silence": "node scripts/check-bark-silence.mjs",
     "check:proof-ritual": "node scripts/check-proof-ritual.mjs",
     "check:event-bus-contract": "node --test test/event-bus-contract.test.mjs",
-    "check:live-sector-cook-owners": "node --test test/live-sector-cook-owner-runtime.test.mjs",
+    "check:live-sector-cook-owners": "node --test test/live-sector-cook-owner-runtime.test.mjs test/authored-decode-prefetch-lifetime.test.mjs test/render-package-loader.test.mjs",
     "check:save-envelope-fidelity": "node --test test/save-envelope-fidelity.test.mjs",
     "check:asteroid-promote-overlap-guard": "node --test test/asteroid-promote-overlap-guard.test.mjs",
     "check:pq146-stunt-proofs": "node --test test/pq146-escape-routes.test.mjs test/pq146-evidence.test.mjs test/pq146-projectiles.test.mjs test/pq146-save-roundtrip.test.mjs test/pq146-save-episodes.test.mjs test/pq146-clothesline-route.test.mjs test/pq146-narrative.test.mjs test/pq146-field-routes.test.mjs test/pq146-flight-evidence.test.mjs",
