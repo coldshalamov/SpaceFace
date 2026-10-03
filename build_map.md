@@ -398,20 +398,20 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | save | devin-oct2-batch | save system | 150, 151, 152, 153, 154, 226, 240, 241 |
 | economy | devin-sweep-oct2 | economy, contracts, station services | 74, 107, 108, 109, 110, 165, 183, 210, 249, 250, 274 |
 | effects | free | vfx, profiles, cues | 230, 255 |
-| swarm | free | swarm planner, survival waves, arenas, swarm wallet/Hangar, swarm HUD presenters | 100, 101, 180, 181, 203, 204, 232, 233, 235, 263, 264, 265, 266, 267, 268, 269, 270, 271, 272, 273 |
+| swarm | devin-sweep-oct2 | swarm planner, survival waves, arenas, swarm wallet/Hangar, swarm HUD presenters | 100, 101, 180, 181, 203, 204, 232, 233, 235, 263, 264, 265, 266, 267, 268, 269, 270, 271, 272, 273 |
 | fight | free | enemies, bombs, countermeasures, squads | 178, 179, 200, 202 |
 | fields | done | fields | 162 |
 | law | devin-oct2-batch | law, claims, custody consequences | 120, 122, 123, 124, 163, 167, 176, 191, 247 |
 | discovery | done | scanner, scan reveal | 214 |
 | industry | done | world sites, machinery, mining commitment | 206 |
-| people | free | jobs, aftermath, convoys | 201, 209, 212, 213 |
+| people | devin-sweep-oct2 | jobs, aftermath, convoys | 201, 209, 212, 213 |
 | ship | devin-oct2-batch | ships, modules, shipworks, tech ladder | 117, 118, 119, 184, 185, 186, 208, 251, 252 |
 | hand | free | flight, tether, massline, onboarding | 106, 220, 238, 275 |
 | missions | devin-sweep-oct2 | missions | 83, 84, 85, 86, 188, 189, 211, 222, 254 |
 | world | done | sectors, traffic, factions, news | 243, 244, 245, 248 |
 | story | devin-oct2-batch | story | 192, 215, 216, 253 |
 | input | devin-oct2-batch | gamepad, input, settings behavior | 196, 237, 260, 262 |
-| ui-sim | free | sim halves of screens and the map; no visual redesign | 197, 246, 276, 277 |
+| ui-sim | devin-sweep-oct2 | sim halves of screens and the map; no visual redesign | 197, 246, 276, 277 |
 | physics | devin-oct2-batch | physics clocks, manifest | 258 |
 | accept | devin-sweep-oct2 | judge work that is already built | 60, 63, 64 |
 | imports | devin-sweep-oct2 | doc imports only, after code seams | 30 |
