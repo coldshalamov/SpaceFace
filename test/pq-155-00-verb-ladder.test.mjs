@@ -51,11 +51,11 @@ test('PQ-155.00: each row is hour → verb → cost → gate', () => {
   }
 });
 
-test('PQ-155.00: strict 29 verb / 3 stat-only; each leftover justified', () => {
+test('PQ-155.00: strict 32 verb / 0 stat-only; FB-053 reclassified the three leftovers', () => {
   const counts = countVerbVsStatOnly(TECH_NODES, 'strict');
   assert.equal(counts.total, 32);
-  assert.equal(counts.verb, 29);
-  assert.equal(counts.statOnly, 3);
+  assert.equal(counts.verb, 32);
+  assert.equal(counts.statOnly, 0);
   assert.ok(counts.statOnly <= MAX_STAT_ONLY);
   assert.deepEqual(counts.statOnlyIds.slice().sort(), STRICT_STAT_ONLY_IDS.slice().sort());
   for (const id of STRICT_STAT_ONLY_IDS) {
@@ -67,10 +67,10 @@ test('PQ-155.00: strict 29 verb / 3 stat-only; each leftover justified', () => {
   }
 });
 
-test('PQ-155.00: broad 23 verb / 9 stat-only; each leftover justified', () => {
+test('PQ-155.00: broad 26 verb / 6 stat-only; each leftover justified', () => {
   const counts = countVerbVsStatOnly(TECH_NODES, 'broad');
-  assert.equal(counts.verb, 23);
-  assert.equal(counts.statOnly, 9);
+  assert.equal(counts.verb, 26);
+  assert.equal(counts.statOnly, 6);
   assert.ok(counts.statOnly <= MAX_STAT_ONLY);
   const hullLicenses = TECH_NODES.filter(isHullLicenseOnly).map((node) => node.id).sort();
   assert.deepEqual(hullLicenses, [

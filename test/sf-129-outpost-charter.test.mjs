@@ -24,7 +24,7 @@ import { automation } from '../src/systems/automation.js';
 import { OUTPOSTS, TRADERS } from '../src/data/automation.js';
 import { BODY_MODULES } from '../src/data/claimableBodies.js';
 import { TECH_NODES } from '../src/data/tech.js';
-import { STRICT_STAT_ONLY_IDS } from '../src/data/techVerbLadder.js';
+import { classifyTechNode } from '../src/data/techVerbLadder.js';
 
 const FRONTIER = 'sector_io_reach';
 const NODE = 'tech_outpost_charter';
@@ -100,12 +100,12 @@ function toasts(h) {
   return h.bus.emitLog.filter((e) => e.evt === 'toast').map((e) => e.payload.text);
 }
 
-test('the node is the one strict leftover whose unlock opens construction in the world', () => {
+test('the node is the strict leftover whose unlock opens construction in the world', () => {
   const node = TECH_NODES.find((n) => n.id === NODE);
   assert.ok(node, 'the charter node exists');
   assert.deepEqual(node.prereqs, [PREREQ], 'prerequisites stay the authored chain');
-  assert.ok(STRICT_STAT_ONLY_IDS.includes(NODE),
-    'the strict ladder still counts it a passive node — the packet node');
+  assert.equal(classifyTechNode(node, 'strict'), 'verb',
+    'FB-053: outpostConstruction is a live verb key — the node is no longer stat-only');
 
   // Its physical questions are real catalog entries: the depot is a drone dropoff (MOVE
   // beacon), the battery contests raids; both carry the node's techReq at the claims owner.
