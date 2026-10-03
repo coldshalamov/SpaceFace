@@ -231,7 +231,7 @@ export const wingmen = {
 
     let spawned = 0;
     const ordered = this._orderedFleetFor(fleet);
-    for (const fs of fleet) {
+    for (const fs of fleet.slice()) {
       yield;
       if (fs._liveId) continue; // already live (continuous handoff or same-sector re-enter)
       const spec = this._buildWingmanSpec(fs, player);

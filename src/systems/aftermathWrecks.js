@@ -1851,6 +1851,7 @@ export const aftermathWrecks = {
     if (this._saveRestoring) return 0;
     if (!state || !sectorId || !this.helpers || typeof this.helpers.spawnEntity !== 'function') return 0;
     const listed = aftermathForSector(state, sectorId);
+    const own = ensureAftermathState(state);
     const player = listed.filter(isPlayerWreckMarker);
     const rest = listed.filter((marker) => !isPlayerWreckMarker(marker))
       .slice(0, Math.max(0, MAX_SPAWNED_PER_SECTOR - player.length));
@@ -1885,6 +1886,10 @@ export const aftermathWrecks = {
         }
       }
       if (this._resolveBoundWreck(marker.markerId)) continue;
+      // Markers retire mid-slice (salvage completion, arena cap) while this pass is
+      // suspended — spawning for a dead marker leaves an orphan body that claims nothing.
+      const liveBag = own.bySector[sectorId];
+      if (Array.isArray(liveBag) && liveBag.indexOf(marker) === -1) continue;
       const entity = this.helpers.spawnEntity(this._specForMarker(marker));
       if (!entity) continue;
       this._bindLiveMarker(marker, entity);

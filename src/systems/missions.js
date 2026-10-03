@@ -9861,7 +9861,7 @@ export const missions = {
     // Spawn (or re-spawn after load) deferred targets for any active mission keyed to this sector.
     // Continue order: world rematerializes mission_target records first; adopt those live IDs
     // before any fresh spawn so targetEntityIds (cleared on deserialize) do not duplicate.
-    for (const m of this.state.missions.active) {
+    for (const m of (this.state.missions.active || []).slice()) {
       if (m.status !== 'active' || !m.needsTargets) continue;
       if (m.destSectorId !== sectorId) continue;
       m.targetEntityIds = m.targetEntityIds.filter((id) => {

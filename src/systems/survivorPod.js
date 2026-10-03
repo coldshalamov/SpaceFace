@@ -1098,6 +1098,12 @@ export const survivorPod = {
       stripped: false,
     };
 
+    // Commit the promotion record before the point mutation: a suspended-and-killed
+    // pass that stamped the point but not the record would re-plan to a different
+    // point — the `existing` head then repairs the rest on re-run.
+    own.promotedBySector[sectorId] = rec;
+    own.promotedByPoint[point.id] = rec;
+
     point.isCommunicator = true;
     point.wreckMissionId = MISSION_ID;
     point.survivorPod = publicMeta(state, rec);
@@ -1115,8 +1121,6 @@ export const survivorPod = {
       ent.data.scanLabel = `Survivor Pod - ${countdownLabel(state, rec)}`;
     }
 
-    own.promotedBySector[sectorId] = rec;
-    own.promotedByPoint[point.id] = rec;
     if (this._bus && this._bus.emit) {
       this._bus.emit('survivorPod:promoted', { ...publicMeta(state, rec), zoneId: point.zoneId || null });
     }

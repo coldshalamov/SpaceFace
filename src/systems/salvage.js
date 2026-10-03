@@ -369,11 +369,15 @@ export const salvage = {
 
     // Drop stale points from other sectors (their wreck entities are culled by world teardown).
     state.salvage.points = state.salvage.points.filter((s) => s.sectorId === sectorId);
-    state.salvage.plannedSectorId = sectorId;
+    // plannedSectorId stamps in the tail: a census-spliced run (iterator.return mid-scatter)
+    // must not latch the sector as planned on a partial point set — the re-run adopts
+    // existing rows by id below and finishes the same deterministic layout.
     // Sort pockets share the points' lifecycle: rebuilt with the sector, transient by design.
     if (Array.isArray(state.salvage.sortPockets)) {
       state.salvage.sortPockets = state.salvage.sortPockets.filter((p) => p && p.sectorId === sectorId);
     }
+    const byId = new Set();
+    for (const p of state.salvage.points) if (p && p.id != null) byId.add(p.id);
 
     const zones = (typeof zonesForSector === 'function' ? zonesForSector(sectorId) : [])
       .filter((z) => z && z.type === 'derelict_field' && z.center);
@@ -391,7 +395,7 @@ export const salvage = {
       yield;
       if (zone.salvageCutterSource) {
         const rec = this._makeSourceSalvagePoint(sectorId, zone, zone.salvageCutterSource, spawnEntity);
-        if (rec) state.salvage.points.push(rec);
+        if (rec && !byId.has(rec.id)) { byId.add(rec.id); state.salvage.points.push(rec); }
         continue;
       }
       const rng = mulberry32(hash32(seed, sectorId, zone.id, 'salvage'));
@@ -407,7 +411,12 @@ export const salvage = {
         const r = SCATTER_MIN + Math.sqrt(rng()) * (radius - SCATTER_MIN);
         const pos = { x: zone.center.x + Math.cos(ang) * r, z: zone.center.z + Math.sin(ang) * r };
         const isCommunicator = wantComm && i === 0;   // at most one communicator per zone, first slot
-        const rec = this._makeSalvagePoint(sectorId, zone, i, pos, isCommunicator, rng, spawnEntity, seed);
+        // A killed first run left this row pushed — still roll its identical rng draws
+        // so the remaining slots roll the same stream, but skip the spawn and push
+        // (null spawnEntity short-circuits the wreck + sort-pocket mint inside).
+        const rec = this._makeSalvagePoint(sectorId, zone, i, pos, isCommunicator, rng,
+          byId.has(`${zone.id}:sal${i}`) ? null : spawnEntity, seed);
+        if (byId.has(rec.id)) continue;
         // A durable recovery sidecar may already own this stable point across Continue. Reserve it
         // before salvage:placed so survivor/loss promotion systems cannot claim the same wreck.
         const recovery = Object.values(state.recoveryEncounters && state.recoveryEncounters.records || {})
@@ -417,9 +426,11 @@ export const salvage = {
           rec.recoveryEncounterId = recovery.id;
         }
         state.salvage.points.push(rec);
+        byId.add(rec.id);
       }
     }
 
+    state.salvage.plannedSectorId = sectorId;
     if (state.salvage.points.length) {
       this.bus.emit('salvage:placed', {
         sectorId,

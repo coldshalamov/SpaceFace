@@ -124,6 +124,13 @@ export function createVesper() {
       for (let slot = 0; slot < 4; slot++) {
         yield;
         const record = slot === 0 ? m.hub : m.bells[slot - 1];
+        // A live sync sweep can mint this body while the sliced pass sleeps — re-resolve
+        // live per slot before spawning or the suspended snapshot mints a duplicate.
+        if (!found[slot] && !record.dead) {
+          for (const e of this.state.entityList || []) {
+            if (e?.alive && belongs(e) && e.data.vesperBell + 1 === slot) { found[slot] = e; break; }
+          }
+        }
         if (!found[slot] && !record.dead && this.helpers.spawnEntity) found[slot] = this.helpers.spawnEntity(vesperEntitySpec(m, slot - 1));
       }
       this._hubId = found[0]?.id ?? null; this._bellIds = found.slice(1).map(e => e?.id ?? null);

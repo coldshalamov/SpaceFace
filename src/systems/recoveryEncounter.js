@@ -662,6 +662,9 @@ export const recoveryEncounter = {
     for (const record of Object.values(own.records)) {
       yield;
       if (!record || record.sectorId !== sectorId) continue;
+      // Records retire mid-slice while this pass is suspended — claiming a salvage
+      // point and materializing for a dead row leaves an orphan husk.
+      if (record.id != null && own.records[record.id] !== record) continue;
       this._claimSalvagePoint(record);
       const wreck = this._materialize(record);
       if (wreck) this._applyRecordToWreck(record, wreck);

@@ -148,6 +148,9 @@ export function createMorrow() {
         if (found) this.helpers.removeEntity?.(e.id);
         else found = e;
       }
+      // A live update() sweep can run the sync twin while this pass sleeps between
+      // slices — re-resolve before minting or the suspended snapshot mints a double.
+      if (!found) found = this._entity();
       if (!found && this.helpers.spawnEntity) found = this.helpers.spawnEntity(morrowEntitySpec(this.state.morrow));
       this._id = found?.id ?? null;
     },
