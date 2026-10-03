@@ -486,6 +486,108 @@ export function resolveObjectiveEdgePlacement(width, height, player, target, mar
   return result;
 }
 
+/**
+ * FB-065 — a physics contract condition says when it is pending, progressing or broken, in
+ * flight. missions.js already emits the three states from the per-tick evaluator and the
+ * turn-in refusal; the HUD's objective slot is the one consumer. The record is UI-owned
+ * (`state.ui.missionTerms` — never a sim write), keyed by mission id, and bounded by the
+ * active mission list that already owns the slot.
+ */
+export const MISSION_TERM_BROKEN_HOLD_S = 4;
+
+export function noteMissionTermEvent(state, payload, kind) {
+  if (!state || !payload || payload.missionId == null) return null;
+  const ui = state.ui || (state.ui = {});
+  const terms = ui.missionTerms || (ui.missionTerms = {});
+  const missionId = String(payload.missionId);
+  const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+  const label = String(payload.label || 'contract term');
+  if (kind === 'broken') {
+    terms[missionId] = {
+      conditionId: payload.conditionId || null,
+      label,
+      state: 'broken',
+      onBreach: payload.onBreach || null,
+      brokenAt: now,
+    };
+  } else if (kind === 'progress') {
+    const count = Math.max(0, Math.round(Number(payload.count) || 0));
+    const target = Math.max(1, Math.round(Number(payload.target) || 1));
+    terms[missionId] = {
+      conditionId: payload.conditionId || null,
+      label,
+      state: count >= target ? 'satisfied' : 'progress',
+      count,
+      target,
+      at: now,
+    };
+  } else if (kind === 'satisfied') {
+    terms[missionId] = {
+      conditionId: payload.conditionId || null,
+      label,
+      state: 'satisfied',
+      count: 1,
+      target: 1,
+      at: now,
+    };
+  } else {
+    terms[missionId] = {
+      conditionId: payload.conditionId || null,
+      label,
+      state: 'pending',
+      remaining: Math.max(0, Math.round(Number(payload.remaining) || 0)) || null,
+      at: now,
+    };
+  }
+  return terms[missionId];
+}
+
+/**
+ * The state word a live term contributes to the objective line, or null. Pending shows the
+ * term; progress shows the fraction; broken swaps the word and stays for
+ * MISSION_TERM_BROKEN_HOLD_S, then falls silent — the mission itself carries the consequence.
+ */
+export function missionTermWord(state, missionId) {
+  if (!state || missionId == null) return null;
+  const rec = state.ui && state.ui.missionTerms && state.ui.missionTerms[String(missionId)];
+  if (!rec) return null;
+  const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+  if (rec.state === 'broken') {
+    if (now - (Number(rec.brokenAt) || 0) > MISSION_TERM_BROKEN_HOLD_S) return null;
+    return { word: 'BROKEN', text: `TERM BROKEN — ${rec.label}`, tone: 'broken' };
+  }
+  if (rec.state === 'progress') {
+    return {
+      word: `${rec.count}/${rec.target}`,
+      text: `TERM ${rec.label} — ${rec.count}/${rec.target}`,
+      tone: 'progress',
+    };
+  }
+  if (rec.state === 'satisfied') {
+    return { word: 'MET', text: `TERM ${rec.label} — MET`, tone: 'met' };
+  }
+  return { word: 'PENDING', text: `TERM ${rec.label} — PENDING`, tone: 'pending' };
+}
+
+/**
+ * Voice the break once at mission priority (the 'objective' channel, tier 60). 'fail' terms
+ * otherwise only toast; 'forfeit' terms are already voiced by missions' own comms line — so
+ * this announces the unannounced half and never double-speaks a break. The `id` pins one
+ * queue entry per (mission, condition) so a repeated breach can never stack the floor.
+ */
+export function announceTermBreak(bus, payload) {
+  if (!bus || typeof bus.emit !== 'function' || !payload) return false;
+  if (payload.onBreach === 'forfeit') return false;
+  bus.emit('voice:say', {
+    channel: 'objective',
+    kind: 'missionTerm',
+    id: `mission-term-broken:${payload.missionId}:${payload.conditionId || 'term'}`,
+    text: `Contract term broken: ${payload.label || 'standing term'}.`,
+    ttl: 4,
+  });
+  return true;
+}
+
 function mtObjectiveAction(action, wp) {
   const verb = String(action || 'Open the Mission Log').trim();
   // Prefer the physical target label; sector name is the fallback for cross-sector guidance.
@@ -572,7 +674,12 @@ export function flightDestinationSurface(state, command) {
       travel.etaS == null ? '' : travel.etaText,
       deadline,
     );
-    return { show: true, line: readings ? `${action}\n${readings}` : action, urgent };
+    // FB-065: one state word on the same line, never a second line — the objective slot stays
+    // a single line. A broken term also takes the urgent tone for its four-second hold.
+    const term = missionTermWord(state, tracked && tracked.id);
+    if (term) urgent = urgent || term.tone === 'broken';
+    const objectiveLine = term ? `${action} · ${term.text}` : action;
+    return { show: true, line: readings ? `${objectiveLine}\n${readings}` : objectiveLine, urgent };
   }
   if (command.owner === 'navigation') {
     const wp = command.waypoint;
@@ -1630,6 +1737,25 @@ export function createHud(ctx, alerts) {
   const mtTime = missionTracker.querySelector('.sf-mt-time');
   const objectiveRecall = createObjectiveRecall();
   if (ctx.bus) {
+    // FB-065 — the three condition states the sim already emits, surfaced on the objective
+    // slot this same tracker owns. Progress never voices; the break voices once at mission
+    // priority (announceTermBreak skips the already-voiced 'forfeit' half).
+    ctx.bus.on('mission:conditionPending', (p) => noteMissionTermEvent(state, p, 'pending'));
+    ctx.bus.on('mission:conditionProgress', (p) => noteMissionTermEvent(state, p, 'progress'));
+    ctx.bus.on('mission:conditionSatisfied', (p) => noteMissionTermEvent(state, p, 'satisfied'));
+    ctx.bus.on('mission:conditionBroken', (p) => {
+      noteMissionTermEvent(state, p, 'broken');
+      announceTermBreak(ctx.bus, p);
+    });
+    // A settled or removed contract stops speaking — stale words must never outlive the job.
+    ctx.bus.on('mission:failed', (p) => {
+      const terms = state.ui && state.ui.missionTerms;
+      if (terms && p && p.missionId != null) delete terms[String(p.missionId)];
+    });
+    ctx.bus.on('mission:completed', (p) => {
+      const terms = state.ui && state.ui.missionTerms;
+      if (terms && p && p.missionId != null) delete terms[String(p.missionId)];
+    });
     ctx.bus.on('hud:recallObjective', () => {
       if (objectiveRecall.dismissed) {
         const restored = recallObjective(objectiveRecall);

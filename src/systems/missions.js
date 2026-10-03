@@ -9283,6 +9283,9 @@ export const missions = {
       // The once flag lives in the normal active cause and therefore survives the ordinary mission
       // save path without a witness-run sidecar.
       cause.travelLineSpoken = true;
+      // FB-137: the durable fact the route-ribbon presentation reads — which berth the spoken
+      // line points at. Same save path as the flag above; the ribbon resolves it live.
+      cause.travelLineTo = mission.destStationId || null;
       this.bus.emit('comms:popup', {
         sender: cause.witnessName || 'Witness',
         text: cause.travelText,
