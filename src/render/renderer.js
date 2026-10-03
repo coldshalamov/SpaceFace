@@ -2523,8 +2523,13 @@ function queueOrRequestAuthoredUpgrade(owner, entity, mesh, state, scan = null) 
     });
     return;
   }
+  // A hull that crossed onto glass after the pass-head scan minted still earns the
+  // visible class on this post — the scan verdict widens only, never narrows, and the
+  // live re-check costs one derivation per scan-negative row.
+  const postVisible = onReadableGlass
+    || (scan ? entityIsOnReadableGlass(entity, state) : false);
   requestAuthoredUpgrade(mesh, owner.renderer, owner.scene,
-    onReadableGlass ? { admissionVisible: true } : undefined);
+    postVisible ? { admissionVisible: true } : undefined);
 }
 
 function canRequestAuthoredUpgrade(entity, state, pendingSectorId = null) {
@@ -3300,7 +3305,7 @@ function authoredPendingBoundarySubmitsStandIn(mesh) {
  * admission-time call resolves 'authored' and exits. Shared by the runway poll and the
  * entity:spawned decode kick; a refused request leaves the relevance trigger armed.
  */
-function kickAuthoredBoundaryUpgrade(owner, entity, residencyRole) {
+function kickAuthoredBoundaryUpgrade(owner, entity, residencyRole, runwayEnv = null) {
   const state = owner && owner.state;
   const renderer = owner && owner.renderer;
   if (entityHomeSectorMismatch(entity, state)) return;
@@ -3311,10 +3316,16 @@ function kickAuthoredBoundaryUpgrade(owner, entity, residencyRole) {
     // Same 'visible' class the spawn decode kick posts: a boundary job at the glass must not
     // decode at deadline FIFO behind wave-hull warms — its stand-in is the hole in the frame.
     const onGlass = entityIsOnReadableGlass(entity, state);
+    // Walk-minted terms ride the caller's ctx when supplied so a multi-pick burst does not
+    // pay an env mint + speed probe per kicked boundary inside the poll's sync span.
+    const env = runwayEnv && runwayEnv.env ? runwayEnv.env : renderAdmissionEnv(state);
+    const pad = runwayEnv && Number.isFinite(runwayEnv.decodePad)
+      ? runwayEnv.decodePad
+      : approachDistanceWu(TABLE_SUBMIT_APPROACH_SECONDS, tableTravelSpeed(state));
     const tGlass = onGlass ? 0 : entityTimeToGlassSeconds(
-      entity, renderAdmissionEnv(state), state,
+      entity, env, state,
       TABLE_DECODE_RUNWAY_SECONDS,
-      approachDistanceWu(TABLE_SUBMIT_APPROACH_SECONDS, tableTravelSpeed(state)));
+      pad);
     try {
       requestAuthoredUpgrade(boundary, renderer, owner.scene, {
         residencyRole,
@@ -3433,14 +3444,14 @@ function kickDecodeRunwayAssets(owner, entities) {
     key.wave = wave ? 0 : 1;
     key.seconds = effective;
     return true;
-  });
+  }, decodeCap);
   // The decode runway warms the LIBRARY half only — a mounted substrate would otherwise
   // still run compose+compile+upload at admission pick, which is the dominant marker-on-glass
   // interval for inbound traffic. Its boundary upgrade job is the same job relevance would
   // enqueue, so starting it here stages the whole pipeline tail inside the runway window;
   // the admission-time call then resolves 'authored' and exits. Shared by ships and stations.
   const kickBoundaryUpgrade = (entity, wave) => kickAuthoredBoundaryUpgrade(owner, entity,
-    wave ? 'wave-hull-decode-runway' : 'decode-runway-prepare');
+    wave ? 'wave-hull-decode-runway' : 'decode-runway-prepare', { env, decodePad });
   let started = 0;
   for (let i = 0; i < ordered.length && started < decodeCap; i++) {
     const entity = ordered[i];
@@ -16217,9 +16228,19 @@ export const render = {
     // settled — a bounded wait expiring mid-flight (or a records throw below) must not
     // make the root parkable while jobs still run: a parked boundary fails
     // boundaryBelongsToScene and its queued attaches drop silently.
-    Promise.allSettled(warm.pendingAttachments).then(() => {
-      if (warm.root && warm.root.userData) warm.root.userData.warmBuilding = false;
-    });
+    // Re-arm rather than clear when a post-snapshot push lands during the gate's await —
+    // the snapshot only covers jobs queued before allSettled read the array, and a
+    // scenePrepared-driven top-up can attach after it.
+    const settleWarmBuilding = (snapshotLength) => {
+      Promise.allSettled(warm.pendingAttachments).then(() => {
+        if (warm.pendingAttachments.length > snapshotLength) {
+          settleWarmBuilding(warm.pendingAttachments.length);
+          return;
+        }
+        if (warm.root && warm.root.userData) warm.root.userData.warmBuilding = false;
+      });
+    };
+    settleWarmBuilding(warm.pendingAttachments.length);
     let records = [];
     try {
       records = await listDecodedAuthoredParts(renderer, { settledOnly: true });
@@ -16637,6 +16658,11 @@ export const render = {
       // the half-built root doesn't sit mounted+invisible+unparkable until run end.
       warm.building = false;
       root.userData.warmBuilding = false;
+      // The detached root must leave the prewarm census too — a dead subtree kept in the
+      // list gets re-collected by every post-opening rescan sweep until run end.
+      const prewarmRoots = this._rosterPrewarmRoots;
+      const prewarmIndex = Array.isArray(prewarmRoots) ? prewarmRoots.indexOf(root) : -1;
+      if (prewarmIndex >= 0) prewarmRoots.splice(prewarmIndex, 1);
       if (root.parent) root.parent.remove(root);
       return null;
     }
@@ -17924,15 +17950,19 @@ export const render = {
       restNow.length = 0;
       for (let index = this._meshBuildQueueHead; index < pendingBuilds.length; index++) {
         const entity = resolveWorldPresentationEntity(state, pendingBuilds[index]);
-        if (entity && entityTimeToGlassSeconds(entity, env, state) <= TABLE_BUILD_URGENT_SECONDS) {
-          urgentNow.push(pendingBuilds[index]);
+        const seconds = entity ? entityTimeToGlassSeconds(entity, env, state) : Infinity;
+        if (seconds <= TABLE_BUILD_URGENT_SECONDS) {
+          urgentNow.push({ entry: pendingBuilds[index], seconds });
         } else {
           restNow.push(pendingBuilds[index]);
         }
       }
       if (urgentNow.length > 0) {
+        // Within the urgent prefix the nearest deadline drains first — enqueue FIFO order
+        // can strand a hull crossing now behind one crossing in seconds on a burst admit.
+        urgentNow.sort((a, b) => a.seconds - b.seconds);
         let write = this._meshBuildQueueHead;
-        for (let i = 0; i < urgentNow.length; i++) pendingBuilds[write++] = urgentNow[i];
+        for (let i = 0; i < urgentNow.length; i++) pendingBuilds[write++] = urgentNow[i].entry;
         for (let i = 0; i < restNow.length; i++) pendingBuilds[write++] = restNow[i];
       }
       urgentNow.length = 0;
