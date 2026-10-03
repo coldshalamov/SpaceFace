@@ -11,6 +11,7 @@ Current save version: `14`
 - `cargo`
 - `morrow`
 - `vesper`
+- `bracket`
 - `salvage`
 - `survivorPod`
 - `economy`
@@ -129,6 +130,7 @@ Current save version: `14`
 | `$.automation.traders` | array | length 0 |
 | `$.bandRadio` | object | {} |
 | `$.bombs` | object | {} |
+| `$.bracket` | object | {} |
 | `$.capitalBoss` | null | null |
 | `$.careerLadders` | object | {} |
 | `$.careerOrigins` | object | {} |

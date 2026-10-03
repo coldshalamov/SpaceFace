@@ -78,8 +78,9 @@ test('production init + update order lengths match the live browser baseline', (
   // 167 -> 168 init / 126 -> 127 update: volatileExposure (NXB-008) — exposure-driven volatile
   // cargo state; one system in both orders right after jettisonImpulse. Its update is a cheap
   // tick%15 gate on non-cadence ticks, so it runs on the table clock beside lootShards.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 168);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 127);
+  // 168 -> 169 init / 127 -> 128 update: BRACKET adds one fixed-step character owner before physics.
+  assert.equal(PRODUCTION_INIT_ORDER.length, 169);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 128);
   assert.equal(PRODUCTION_UPDATE_ORDER[PRODUCTION_UPDATE_ORDER.length - 1], 'save');
   assert.ok(PRODUCTION_UPDATE_ORDER.includes('save'));
   assert.equal(PRODUCTION_INIT_ORDER[0], 'core');
@@ -231,7 +232,8 @@ test('browser production system set is unchanged vs production manifest constant
   // 166 with morrow (fixed-step character owner before physics); 167 with vesper (same
   // posture — one system in both orders, between morrow and physics). 168 with
   // volatileExposure (NXB-008, beside jettisonImpulse in both orders).
-  assert.equal(registry.systems.length, 168);
+  // 169 with bracket (PR #210 — a third fixed-step character owner before physics).
+  assert.equal(registry.systems.length, 169);
   const names = registry.systems.map((s) => s.name);
   assert.ok(names.includes('render') || registry.runtimeManifest.authoritativeSystemIds.includes('render'));
   assert.ok(registry.runtimeManifest.authoritativeSystemIds.includes('ui'));
