@@ -814,6 +814,32 @@ export const settingsScreen = {
     build.select('Flight scheme', () => gp().scheme === 'twinstick' ? 'twinstick' : 'drive',
       [['drive', 'Drive — left stick steers and throttles'], ['twinstick', 'Twin-stick — left stick drives, right stick aims']],
       (v) => this._set(ctx, 'controls', 'gamepad', { ...gp(), scheme: v }));
+    // FB-004: response tuning. The right stick's deadzone is its own axis — aim jitter should
+    // never force the fly hand wider. 'Expo' softens the stick's center while the edge still
+    // reaches full deflection; the sensitivities scale derived intent, never the raw axes.
+    build.slider('Aim deadzone (right stick)', () => gp().deadzoneRight ?? gp().deadzone,
+      0, 0.5, 0.01, (x) => Math.round(x * 100) + '%',
+      (v, persist) => this._set(ctx, 'controls', 'gamepad', { ...gp(), deadzoneRight: v }, persist));
+    build.select('Stick response curve', () => gp().curve === 'expo' ? 'expo' : 'linear',
+      [['linear', 'Linear — shipped feel'], ['expo', 'Expo — soft center, full edge']],
+      (v) => this._set(ctx, 'controls', 'gamepad', { ...gp(), curve: v }));
+    build.slider('Flight stick sensitivity', () => gp().sensitivityFly ?? 1,
+      0.25, 3, 0.05, (x) => `${Math.round(x * 100)}%`,
+      (v, persist) => this._set(ctx, 'controls', 'gamepad', { ...gp(), sensitivityFly: v }, persist));
+    build.slider('Aim stick sensitivity', () => gp().sensitivityAim ?? 1,
+      0.25, 3, 0.05, (x) => `${Math.round(x * 100)}%`,
+      (v, persist) => this._set(ctx, 'controls', 'gamepad', { ...gp(), sensitivityAim: v }, persist));
+    // FB-004: pointer aim gets the same two axes — a sensitivity multiplier on the derived
+    // cursor channel and a Y inversion, both independent of the sticks.
+    if (!s.controls.mouse || typeof s.controls.mouse !== 'object') {
+      s.controls.mouse = { sensitivity: 1, invertY: false };
+    }
+    const mo = () => s.controls.mouse;
+    build.slider('Mouse aim sensitivity', () => mo().sensitivity ?? 1,
+      0.25, 3, 0.05, (x) => `${Math.round(x * 100)}%`,
+      (v, persist) => this._set(ctx, 'controls', 'mouse', { ...mo(), sensitivity: v }, persist));
+    build.toggle('Invert mouse Y (aim)', () => !!mo().invertY,
+      (v) => this._set(ctx, 'controls', 'mouse', { ...mo(), invertY: v }));
     // Matches src/systems/gamepad.js ACTION_MAP + UI route: Start/menu → pause only;
     // Mission Log is chosen from the Pause menu (no direct gamepad missionLog action).
     // LB is the survey/deploy chord layer, RB the combat-state layer — every row below shows

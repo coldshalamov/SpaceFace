@@ -5499,6 +5499,22 @@ function sanitizeRestoredSettings(settings) {
   if (typeof gp.invertY !== 'boolean') gp.invertY = false;
   if (gp.scheme !== 'twinstick' && gp.scheme !== 'drive') gp.scheme = 'drive';
   if (typeof gp.schemeSuggested !== 'boolean') gp.schemeSuggested = false;
+  // FB-004: pad response tuning. 'linear' is the shipped curve; deadzoneRight absent/invalid
+  // inherits the shared deadzone at tick time rather than pinning a stale number here; the
+  // sensitivities normalize to 1 like every other positive-scalar setting.
+  if (gp.curve !== 'linear' && gp.curve !== 'expo') delete gp.curve;
+  if (typeof gp.deadzoneRight !== 'number' || !(gp.deadzoneRight >= 0 && gp.deadzoneRight <= 1)) {
+    delete gp.deadzoneRight;
+  }
+  if (typeof gp.sensitivityAim !== 'number' || !(gp.sensitivityAim > 0)) delete gp.sensitivityAim;
+  if (typeof gp.sensitivityFly !== 'number' || !(gp.sensitivityFly > 0)) delete gp.sensitivityFly;
+  // FB-004: pointer aim tuning rides its own subtree so a pad-less player never carries pad noise.
+  if (!s.controls.mouse || typeof s.controls.mouse !== 'object' || Array.isArray(s.controls.mouse)) {
+    s.controls.mouse = { sensitivity: 1, invertY: false };
+  }
+  const mouse = s.controls.mouse;
+  if (typeof mouse.sensitivity !== 'number' || !(mouse.sensitivity > 0)) mouse.sensitivity = 1;
+  if (typeof mouse.invertY !== 'boolean') mouse.invertY = false;
   // Touch (P1-12): { enabled } where enabled is true/false/null (null = auto-detect on touch devices).
   if (!s.controls.touch || typeof s.controls.touch !== 'object' || Array.isArray(s.controls.touch)) {
     s.controls.touch = { enabled: null };

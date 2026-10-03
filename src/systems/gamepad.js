@@ -428,6 +428,55 @@ function applyDeadzone(v, d) {
   return sign * ((a - d) / (1 - d));
 }
 
+// --- Response curves (FB-004) ------------------------------------------------------------------
+// Curves apply ONLY to derived intents (turn/move/aim) inside input.js — never to the published
+// gp.axes, which stay the deadzoned raw truth the input contract guarantees. 'linear' with
+// sensitivity 1 reproduces the shipped numbers exactly; 'expo' blends a cubic term in so the
+// center of the stick is soft while the edge still reaches full deflection.
+export const GAMEPAD_AXIS_CURVES = Object.freeze(['linear', 'expo']);
+const PAD_EXPO_BLEND = 0.55; // cubic share of the expo response — soft center, unchanged edge
+
+export function normalizePadCurve(curve) {
+  return curve === 'expo' ? 'expo' : 'linear';
+}
+
+export function normalizePadSensitivity(v) {
+  return Number.isFinite(v) && v > 0 ? v : 1;
+}
+
+/** Shape one normalized axis by the response curve, then scale by sensitivity and clamp to ±1. */
+export function shapePadAxis(value, curve = 'linear', sensitivity = 1) {
+  const x = Number(value) || 0;
+  const shaped = curve === 'expo'
+    ? x * (1 - PAD_EXPO_BLEND) + x * x * x * PAD_EXPO_BLEND
+    : x;
+  const y = shaped * normalizePadSensitivity(sensitivity);
+  return y < -1 ? -1 : (y > 1 ? 1 : y);
+}
+
+/**
+ * Shape a stick vector (aim and the twin-stick drive): the curve reshapes the magnitude so the
+ * direction the pilot pointed survives untouched. For 'linear' the magnitude is passed through
+ * unclamped so diagonal stick values reproduce the shipped numbers exactly; each component is
+ * clamped to ±1 only after shaping, so a high sensitivity saturates a channel without skewing
+ * an unsaturated partner.
+ */
+export function shapePadVector(x, y, curve = 'linear', sensitivity = 1) {
+  const mag = Math.hypot(Number(x) || 0, Number(y) || 0);
+  if (!(mag > 1e-4)) return { x: 0, y: 0 };
+  const unit = Math.min(1, mag);
+  const shapedMag = curve === 'expo'
+    ? unit * (1 - PAD_EXPO_BLEND) + unit * unit * unit * PAD_EXPO_BLEND
+    : mag;
+  const k = (shapedMag * normalizePadSensitivity(sensitivity)) / mag;
+  const sx = x * k;
+  const sy = y * k;
+  return {
+    x: sx < -1 ? -1 : (sx > 1 ? 1 : sx),
+    y: sy < -1 ? -1 : (sy > 1 ? 1 : sy),
+  };
+}
+
 const PAD_SLOT_LIMIT = 8;
 
 function buttonDown(pad, name) {
@@ -723,6 +772,9 @@ export function createGamepad(ctx) {
         {};
       const enabled = cfg.enabled !== false;
       const dz = typeof cfg.deadzone === 'number' ? cfg.deadzone : DEFAULT_DEADZONE;
+      // FB-004: the right stick's deadzone is its own axis — aim jitter should never force the
+      // fly hand to absorb a wider center than it wants. Absent inherits the shared value.
+      const dzRight = typeof cfg.deadzoneRight === 'number' ? cfg.deadzoneRight : dz;
       const invertY = !!cfg.invertY;
 
       const padList = (enabled && typeof navigator !== 'undefined' && navigator.getGamepads)
@@ -777,8 +829,8 @@ export function createGamepad(ctx) {
 
       this.axes.leftX = applyDeadzone(pad.axes[0] || 0, dz);
       this.axes.leftY = applyDeadzone(pad.axes[1] || 0, dz);
-      this.axes.rightX = applyDeadzone(pad.axes[2] || 0, dz);
-      this.axes.rightY = applyDeadzone(pad.axes[3] || 0, dz) * (invertY ? -1 : 1);
+      this.axes.rightX = applyDeadzone(pad.axes[2] || 0, dzRight);
+      this.axes.rightY = applyDeadzone(pad.axes[3] || 0, dzRight) * (invertY ? -1 : 1);
       this.axes.l2 = Math.max(0, pad.buttons[6] ? pad.buttons[6].value : 0);
       this.axes.r2 = Math.max(0, pad.buttons[7] ? pad.buttons[7].value : 0);
       this.id = pad.id || this.id || 'gamepad';

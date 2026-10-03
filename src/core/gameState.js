@@ -71,7 +71,16 @@ function defaultSettings() {
       // scheme: 'drive' keeps the wheel-like pad map (left stick = yaw + throttle);
       // 'twinstick' makes the left stick a world-frame drive vector while the right stick
       // aims and steers the nose (PQ-164.04). schemeSuggested: the one-shot pad-connect toast.
-      gamepad: { enabled: true, deadzone: 0.12, invertY: false, scheme: 'drive', schemeSuggested: false },
+      // FB-004: curve/feel tuning. 'linear' + deadzoneRight = deadzone + sensitivity 1 reproduces
+      // the shipped numbers exactly; 'expo' softens the center without losing the edges, and the
+      // right stick's deadzone is its own axis so aim jitter never tunes out fly precision.
+      gamepad: {
+        enabled: true, deadzone: 0.12, invertY: false, scheme: 'drive', schemeSuggested: false,
+        curve: 'linear', deadzoneRight: 0.12, sensitivityAim: 1, sensitivityFly: 1,
+      },
+      // FB-004: pointer aim gets the same tuning maturity — a sensitivity multiplier on the
+      // normalized cursor axis and an invert for players who read screen-up as world-down.
+      mouse: { sensitivity: 1, invertY: false },
     },
     // Accessibility (V2 §9/§12). motionReduce lives under video (feel/vfx read it there); uiScale is the
     // root field above. These are the net-new a11y fields driven by src/ui/accessibility.js.

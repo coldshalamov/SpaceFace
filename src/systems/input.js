@@ -42,7 +42,13 @@
 // for movement so arrow-key players aren't stranded.
 import { emptyDrawFlightPath, emptyDrawFlightGesture } from './drawFlightInput.js';
 import { projectDynamicFlightStick, recordDynamicFlightStick, resetDynamicFlightStick } from './dynamicFlightStick.js';
-import { createGamepad } from './gamepad.js';
+import {
+  createGamepad,
+  normalizePadCurve,
+  normalizePadSensitivity,
+  shapePadAxis,
+  shapePadVector,
+} from './gamepad.js';
 import { createTouch } from './touch.js';
 import { createMasslineInputGrammar } from './masslineInputGrammar.js';
 import { wrapAngle } from '../core/rng.js';
@@ -1363,8 +1369,13 @@ export const input = {
     // PQ-164.04: pad flight scheme is its own axis — 'drive' keeps the wheel map;
     // 'twinstick' turns the left stick into a screen-frame drive vector while the right
     // stick aims and steers the nose (the chase runs below once aimAngle exists).
-    const padScheme = (state.settings && state.settings.controls && state.settings.controls.gamepad
-      && state.settings.controls.gamepad.scheme) === 'twinstick' ? 'twinstick' : 'drive';
+    const padCfg = (state.settings && state.settings.controls && state.settings.controls.gamepad) || {};
+    const padScheme = padCfg.scheme === 'twinstick' ? 'twinstick' : 'drive';
+    // FB-004: response shaping applies to derived intents only — gp.axes keep the raw deadzoned
+    // truth. 'linear' with sensitivity 1 reproduces the shipped numbers exactly.
+    const padCurve = normalizePadCurve(padCfg.curve);
+    const padSensFly = normalizePadSensitivity(padCfg.sensitivityFly);
+    const padSensAim = normalizePadSensitivity(padCfg.sensitivityAim);
     let gpTurn = 0;
     let gpMoveX = 0;
     let gpMoveZ = 0;
@@ -1377,16 +1388,18 @@ export const input = {
     if (gp && gp.isConnected()) {
       if (padScheme === 'twinstick' && p && p.pos) {
         // The stick points where the ship pushes on screen — decomposed into the hull's
-        // forward/strafe axes the same way helm-assist decomposes a brake vector.
-        const wx = gp.axes.leftX;
-        const wz = -gp.axes.leftY;
+        // forward/strafe axes the same way helm-assist decomposes a brake vector. The curve
+        // reshapes the magnitude so the pushed direction survives untouched.
+        const fly = shapePadVector(gp.axes.leftX, -gp.axes.leftY, padCurve, padSensFly);
+        const wx = fly.x;
+        const wz = fly.y;
         const cf = Math.cos(p.rot || 0);
         const sf = Math.sin(p.rot || 0);
         gpMoveZ = wx * cf + wz * sf;
         gpMoveX = wx * -sf + wz * cf;
       } else {
-        gpTurn = gp.axes.leftX;
-        gpMoveZ = -gp.axes.leftY; // stick up = forward
+        gpTurn = shapePadAxis(gp.axes.leftX, padCurve, padSensFly);
+        gpMoveZ = shapePadAxis(-gp.axes.leftY, padCurve, padSensFly); // stick up = forward
       }
       gpBoost = gp.actions.boost && gp.actions.boost.held;
       gpFire = gp.actions.fire && gp.actions.fire.held;
@@ -1511,8 +1524,14 @@ export const input = {
     if (aimAxes && !kbmRecent && p && p.pos) {
       inp.aimIntentActive = true;
       // Right-stick / right-touch aim is independent of the ship nose, like the mouse.
-      const ax = aimAxes.rightX;
-      const ay = -aimAxes.rightY; // world +Z is "up" on the stick
+      // FB-004: pad aim rides the shared response curve + aim sensitivity (touch keeps its own
+      // scale); the raw gp.axes stay untouched either way.
+      const aimIsPad = !!(gp && gp.isConnected() && aimAxes === gp.axes);
+      const shapedAim = aimIsPad
+        ? shapePadVector(aimAxes.rightX, -aimAxes.rightY, padCurve, padSensAim)
+        : { x: aimAxes.rightX, y: -aimAxes.rightY };
+      const ax = shapedAim.x;
+      const ay = shapedAim.y; // world +Z is "up" on the stick
       const angle = Math.atan2(ay, ax);
       const dist = 300;
       inp.aimAngle = angle;
@@ -1524,13 +1543,21 @@ export const input = {
       writeAutoTargetVector(inp, ax, ay, controllerDrawToFly);
     } else {
       // Mouse aim is INDEPENDENT of the nose: weapons gimbal toward the cursor (Phase 2).
+      // FB-004: the raw _ndc stays the device truth; sensitivity and Y inversion apply to the
+      // derived aim channel only (amplified or flipped NDC still raycasts — the aim just points
+      // further out or mirrored across the horizon).
+      const mouseCfg = (state.settings && state.settings.controls && state.settings.controls.mouse) || {};
+      const mouseSens = normalizePadSensitivity(mouseCfg.sensitivity);
+      const aimNdc = this._aimNdc || (this._aimNdc = { x: 0, y: 0 });
+      aimNdc.x = this._ndc.x * mouseSens;
+      aimNdc.y = this._ndc.y * mouseSens * (mouseCfg.invertY ? -1 : 1);
       const hit = this.helpers && this.helpers.raycastToPlane
-        ? this.helpers.raycastToPlane(this._ndc, this._rayHit || (this._rayHit = { x: 0, z: 0 }))
+        ? this.helpers.raycastToPlane(aimNdc, this._rayHit || (this._rayHit = { x: 0, z: 0 }))
         : null;
       const w = hit && Number.isFinite(hit.x) && Number.isFinite(hit.z) ? hit : { x: 0, z: 0 };
       aimWorld.x = w.x; aimWorld.z = w.z;
       if (p && p.pos) inp.aimAngle = Math.atan2(w.z - p.pos.z, w.x - p.pos.x);
-      inp.mouseNdc.x = this._ndc.x; inp.mouseNdc.y = this._ndc.y;
+      inp.mouseNdc.x = aimNdc.x; inp.mouseNdc.y = aimNdc.y;
       const pointerScreen = inp.pointerScreen || (inp.pointerScreen = { x: 0, y: 0, active: false });
       pointerScreen.x = this._screen.x;
       pointerScreen.y = this._screen.y;
