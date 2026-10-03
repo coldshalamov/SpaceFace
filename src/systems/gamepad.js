@@ -23,6 +23,14 @@
 //  14  D-pad left      -> UI nav left; cycle bomb-bay payload
 //  15  D-pad right     -> UI nav right; drop bomb
 //  16  Home / Guide    -> codex / journal (moved off Y; see GAMEPAD_DEFAULT_BINDINGS)
+//
+// FB-003 chord layer: the solo buttons above leave a dozen flight verbs keyboard-only. Holding
+// LB or RB and tapping a d-pad/face button is a second "shifted" layer — LB hosts survey and
+// deploy verbs under the brake hand, RB hosts combat-state verbs under the boost hand. A chord
+// name is '<modifier>+<button>' and lives in GAMEPAD_DEFAULT_BINDINGS like any other binding:
+// resolvable, rebindable, and labeled by the help sheet with every button it holds. While a
+// chord's KEY is held inside an active chord its solo verb is suppressed for the hold; the
+// modifier's own verb (brake/boost) keeps working — chords are additive, not a mode.
 
 const STD = {
   accept: 0,
@@ -43,6 +51,27 @@ const STD = {
   dRight: 15,
   home: 16,
 };
+
+/**
+ * A chord binding is '<modifier>+<button>' — both names standard buttons, modifier first. It is
+ * the ONE name shape that is not itself a button index: the action layer evaluates it as
+ * "modifier held while button edges", and the solo verb on the button is suppressed for the
+ * hold so a chord never double-fires its key. Returns [modifier, button] or null.
+ */
+export function parseGamepadChord(name) {
+  if (typeof name !== 'string') return null;
+  const at = name.indexOf('+');
+  if (at <= 0 || at === name.length - 1 || name.indexOf('+', at + 1) !== -1) return null;
+  const mod = name.slice(0, at);
+  const key = name.slice(at + 1);
+  if (STD[mod] == null || STD[key] == null || mod === key) return null;
+  return [mod, key];
+}
+
+/** True for a standard button name or a well-formed chord name. */
+export function isGamepadButtonName(name) {
+  return STD[name] != null || parseGamepadChord(name) != null;
+}
 
 // An action can be bound to multiple physical buttons (e.g. accept also fires in flight).
 // This is the default map; Settings may overlay player remaps (PQ-164.01) stored at
@@ -79,6 +108,25 @@ export const GAMEPAD_DEFAULT_BINDINGS = Object.freeze({
   dropBomb: Object.freeze(['dRight']),
   cycleBomb: Object.freeze(['dLeft']),
   chargeDetonate: Object.freeze(['dDown']), // flight only; UI navigation remains modal-owned
+  // FB-003 — the chord layer. Hold LB or RB and tap the second button; the modifier's own verb
+  // keeps working (you can brake while pinging), and the chorded button's solo verb is held off
+  // only while that button is down — releasing it re-arms the solo on the next press. LB is the
+  // survey/deploy layer (the brake hand steadies the ship for deliberate work); RB is the
+  // combat-state layer (the boost hand picks the fighting mode). autoFire needs no slot —
+  // D-pad up is already autoTarget/draw-to-fly — and reel is the left stick while the Massline
+  // line-control owns the axis. Every verb is rebindable under Settings → Controls.
+  scanPulse: Object.freeze(['l1+dUp']),           // LB layer: scanner ping, "look up"
+  deployMassSeed: Object.freeze(['l1+dDown']),    // LB layer: set the anchor seed, "plant it"
+  deployWell: Object.freeze(['l1+dLeft']),        // LB layer: pull field, left hand shape
+  toggleClearingCone: Object.freeze(['l1+dRight']),// LB layer: the snowplow, right hand shape
+  toggleSkimCollector: Object.freeze(['l1+alt']), // LB+Y: the harvest tool under the brake hand
+  siteBeam: Object.freeze(['l1+action']),         // LB+X: the contextual world-site beam
+  bulletTime: Object.freeze(['r1+dUp']),          // RB layer: time dilation, "slow up"
+  cloak: Object.freeze(['r1+dDown']),             // RB layer: cloak engages, "drop out of sight"
+  chargeThrow: Object.freeze(['r1+dLeft']),       // RB layer: throw a plate behind the charge
+  cruise: Object.freeze(['r1+dRight']),           // RB layer: the long-burn state, rightward = forward
+  deployBeacon: Object.freeze(['r1+view']),       // RB+View: mark the claim while running
+  jettisonLot: Object.freeze(['r1+home']),        // RB+Guide: dump the hold lot while running
   // The hull burst (Gravity Bumper / Fire Lance / Grip Bumper) has no pad verb (owner principle
   // 2026-09-30): the fitted boost upgrade rides the boost button itself, fired by the hullBurst
   // system polling the player's boost flag. There is nothing to bind.
@@ -157,7 +205,20 @@ export const GAMEPAD_DUAL_LABELS = Object.freeze({
  */
 export function gamepadButtonNames(action, map) {
   const list = map && map[action];
-  return Array.isArray(list) ? list.filter(name => GAMEPAD_BUTTON_LABELS[name]) : [];
+  return Array.isArray(list) ? list.filter(isGamepadButtonName) : [];
+}
+
+/** Player text for one binding name — a chord prints every button it holds. */
+function gamepadButtonLabel(name, dual) {
+  const chord = parseGamepadChord(name);
+  if (!chord) {
+    return dual
+      ? GAMEPAD_DUAL_LABELS[name] || GAMEPAD_BUTTON_LABELS[name]
+      : GAMEPAD_BUTTON_LABELS[name];
+  }
+  const mod = dual ? GAMEPAD_DUAL_LABELS[chord[0]] || GAMEPAD_BUTTON_LABELS[chord[0]] : GAMEPAD_BUTTON_LABELS[chord[0]];
+  const key = dual ? GAMEPAD_DUAL_LABELS[chord[1]] || GAMEPAD_BUTTON_LABELS[chord[1]] : GAMEPAD_BUTTON_LABELS[chord[1]];
+  return `${mod} + ${key}`;
 }
 
 /**
@@ -166,9 +227,19 @@ export function gamepadButtonNames(action, map) {
  * Settings remap row shows, so the two screens agree after a rebind.
  */
 export function gamepadButtonLabels(action, map, { dual = false } = {}) {
-  return gamepadButtonNames(action, map)
-    .map(name => (dual ? GAMEPAD_DUAL_LABELS[name] || GAMEPAD_BUTTON_LABELS[name] : GAMEPAD_BUTTON_LABELS[name]));
+  return gamepadButtonNames(action, map).map(name => gamepadButtonLabel(name, dual));
 }
+
+// FB-003: keyboard flight verbs whose pad route is a differently-named channel rather than a
+// binding of their own. The rope verb rides the Massline button; draw-to-fly is the auto-target
+// toggle; reel is the left stick while the Massline's line-control owns the axis. The help/test
+// coverage check reads this so a named route is a route, not a hand-waved "the stick does it".
+export const GAMEPAD_VERB_ALIASES = Object.freeze({
+  tether: 'massline',
+  autoFire: 'autoTarget',
+  reelIn: 'lineControl',
+  reelOut: 'lineControl',
+});
 
 // --- Remapping (PQ-164.01) -------------------------------------------------------------------
 // A button may serve two actions only when their contexts are disjoint — a modal-only verb
@@ -195,6 +266,20 @@ const PAD_ACTION_CONTEXT = Object.freeze({
   massline: 'flight',
   deployRepulsor: 'flight',
   dock: 'flight',
+  // FB-003 chord-layer verbs are all flight-only: a modal owns the stick and the bumpers, so no
+  // chord may reach through a screen.
+  scanPulse: 'flight',
+  deployMassSeed: 'flight',
+  deployWell: 'flight',
+  toggleClearingCone: 'flight',
+  toggleSkimCollector: 'flight',
+  siteBeam: 'flight',
+  bulletTime: 'flight',
+  cloak: 'flight',
+  chargeThrow: 'flight',
+  cruise: 'flight',
+  deployBeacon: 'flight',
+  jettisonLot: 'flight',
   cancel: 'modal',
   tabPrev: 'modal',
   tabNext: 'modal',
@@ -250,7 +335,7 @@ export function resolveGamepadBindings(settings) {
     const names = Array.isArray(raw) ? raw : [raw];
     const out = [];
     for (const n of names) {
-      if (typeof n === 'string' && STD[n] != null && !out.includes(n)) out.push(n);
+      if (typeof n === 'string' && isGamepadButtonName(n) && !out.includes(n)) out.push(n);
     }
     return out;
   };
@@ -507,6 +592,9 @@ function beginPadGesture(gp, pad, edgeName, dz) {
   gp._inheritedButtons = inherited;
   const prev = gp._prev || (gp._prev = {});
   for (const key in prev) prev[key] = false;
+  // A live chord's hold does not ride the swap; a deliberate re-press on the new pad re-arms it.
+  gp._chordHeld = Object.create(null);
+  gp._chordConsumed = Object.create(null);
   if (Array.isArray(gp._pressQueue)) gp._pressQueue.length = 0;
   gp._suppressEdgesOnce = false;
   gp._sawDisconnect = false;
@@ -705,23 +793,112 @@ export function createGamepad(ctx) {
       }
 
       // PQ-164.01: resolved binding map, rebuilt only when the stored override object changes.
+      // The chord index rides the same cache so a remap swaps the shifted layer with it. The
+      // chords check matters on a stock profile: `source` initializes to `undefined`, the same
+      // value an override-free `cfg.bindings` reports, so without it the index would stay
+      // unbuilt and the whole shifted layer silent.
       const customBindings = cfg.bindings;
-      if (this._mapCache.source !== customBindings) {
+      if (this._mapCache.source !== customBindings || !this._mapCache.chords) {
         this._mapCache.source = customBindings;
         this._mapCache.map = resolveGamepadBindings(live && live.settings);
+        const chords = {};
+        for (const action in this._mapCache.map) {
+          for (const n of this._mapCache.map[action]) {
+            const parts = parseGamepadChord(n);
+            if (parts) chords[n] = { mod: parts[0], key: parts[1] };
+          }
+        }
+        this._mapCache.chords = chords;
+        this._chordConsumed = {};
       }
       const actionMap = this._mapCache.map;
+      const chordDefs = this._mapCache.chords || (this._mapCache.chords = {});
+
+      // Sample every standard button once — the press queue, the chord layer and the action
+      // loop all read the same snapshot this tick.
+      const downNow = this._downNow || (this._downNow = Object.create(null));
+      for (const name in STD) downNow[name] = buttonDown(pad, name);
+
+      // FB-003 chord layer. A chord completes when its KEY edges while its MODIFIER is held —
+      // press order matters: key-first means the solo verb was already live and stays live.
+      // While a chorded key is held its solo binding is suppressed for the hold (consumed), so
+      // "LB + D-pad up" is a scan ping and never an auto-target; releasing the key re-arms the
+      // solo for the next press. prevButtons still holds last tick's snapshot here.
+      const prevButtons = this._prevButtons;
+      const chordHeld = this._chordHeld || (this._chordHeld = Object.create(null));
+      const consumed = this._chordConsumed || (this._chordConsumed = Object.create(null));
+      for (const name in chordDefs) {
+        const c = chordDefs[name];
+        const complete = downNow[c.mod] && downNow[c.key] && !prevButtons[c.key];
+        if (downNow[c.mod] && downNow[c.key]) {
+          chordHeld[name] = complete || chordHeld[name] === true;
+        } else {
+          chordHeld[name] = false;
+        }
+        if (complete) consumed[c.key] = true;
+      }
+      for (const key in consumed) {
+        if (!downNow[key]) delete consumed[key];
+      }
 
       // Raw button edges for the remap capture — recorded for every standard button, bound or
-      // not, so an unbound button can still be offered to the capture handler.
-      const prevButtons = this._prevButtons;
+      // not, so an unbound button can still be offered to the capture handler. In captureMode the
+      // press becomes a GESTURE (FB-003): a lone button commits on release, while an edge landing
+      // on a held button completes a '<modifier>+<button>' chord — without this the modifier's
+      // own edge would always reach the capture handler before the key it is meant to shift.
+      const capture = this.captureMode === true;
+      const gesture = capture
+        ? (this._captureGesture || (this._captureGesture = []))
+        : null;
+      const spent = capture
+        ? (this._captureSpent || (this._captureSpent = Object.create(null)))
+        : null;
+      if (!capture && this._captureGesture) {
+        this._captureGesture.length = 0;
+        this._captureSpent = null;
+      }
       for (const name in STD) {
-        const idx = STD[name];
-        const b = pad.buttons && pad.buttons[idx];
-        const pressed = !!(b && (b.pressed || b.value > 0.5));
-        if (pressed && !prevButtons[name]) {
-          if (this._pressQueue.length < 8) this._pressQueue.push(name);
-          this.lastButton = name;
+        const pressed = downNow[name];
+        const was = prevButtons[name];
+        if (!capture) {
+          if (pressed && !was) {
+            if (this._pressQueue.length < 8) this._pressQueue.push(name);
+            this.lastButton = name;
+          }
+        } else if (pressed && !was) {
+          if (!spent[name]) {
+            if (gesture.length > 0) {
+              const mod = gesture.shift();
+              const chord = `${mod}+${name}`;
+              spent[mod] = true;
+              spent[name] = true;
+              if (this._pressQueue.length < 8) this._pressQueue.push(chord);
+              this.lastButton = chord;
+            } else {
+              // Another unspent button already down is the chord's modifier — press order is
+              // the truth a gesture capture commits to.
+              let mod = null;
+              for (const other in STD) {
+                if (other !== name && downNow[other] && !spent[other]) { mod = other; break; }
+              }
+              if (mod) {
+                const chord = `${mod}+${name}`;
+                spent[mod] = true;
+                spent[name] = true;
+                if (this._pressQueue.length < 8) this._pressQueue.push(chord);
+                this.lastButton = chord;
+              } else {
+                gesture.push(name);
+              }
+            }
+          }
+        } else if (!pressed && was) {
+          if (gesture.length && gesture[0] === name) {
+            gesture.length = 0;
+            if (this._pressQueue.length < 8) this._pressQueue.push(name);
+            this.lastButton = name;
+          }
+          delete spent[name];
         }
         prevButtons[name] = pressed;
       }
@@ -739,6 +916,12 @@ export function createGamepad(ctx) {
         let held = false;
         let value = 0;
         for (const n of names) {
+          if (consumed[n]) continue; // this button is held inside a live chord — solo stays quiet
+          if (chordDefs[n]) {
+            // A chord binding reports held while the completed chord is held.
+            if (chordHeld[n]) held = true;
+            continue;
+          }
           const btn = readButton(pad, n);
           if (!btn) continue;
           if (btn.pressed) held = true;
@@ -888,6 +1071,8 @@ export function createGamepad(ctx) {
       for (const key in prev) delete prev[key];
       const prevButtons = this._prevButtons || (this._prevButtons = {});
       for (const key in prevButtons) delete prevButtons[key];
+      this._chordHeld = Object.create(null);
+      this._chordConsumed = Object.create(null);
       if (Array.isArray(this._pressQueue)) this._pressQueue.length = 0;
       else this._pressQueue = [];
       this.lastButton = null;

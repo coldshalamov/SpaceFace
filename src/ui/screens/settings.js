@@ -17,6 +17,8 @@ import {
 import {
   GAMEPAD_BUTTON_LABELS,
   findGamepadBindConflict,
+  gamepadButtonLabels,
+  parseGamepadChord,
   resolveGamepadBindings,
 } from '../../systems/gamepad.js';
 import { massline2Flag } from '../../data/featureFlags.js';
@@ -272,10 +274,14 @@ export const REBIND_LABELS = {
 };
 
 // PQ-164.01 pad remap. Every gamepad action is rebindable; labels describe the verb, not the
-// default button (the live resolved map prints the button on the right of each row).
+// default button (the live resolved map prints the button on the right of each row). FB-003 adds
+// the chord layer: every keyboard flight verb has a pad route, and capture accepts a held
+// modifier + a tapped key as a 'mod+key' chord.
 export const GAMEPAD_REBINDABLE = [
   'accept', 'cancel', 'massline', 'dock', 'deployRepulsor', 'fire', 'mine', 'boost', 'brake', 'cycleTarget', 'autoTarget',
   'map', 'codex', 'pause', 'countermeasure', 'travelBurn', 'dropBomb', 'cycleBomb', 'chargeDetonate', 'tabPrev', 'tabNext',
+  'scanPulse', 'cruise', 'bulletTime', 'cloak', 'chargeThrow', 'siteBeam', 'deployMassSeed', 'deployWell',
+  'toggleClearingCone', 'toggleSkimCollector', 'deployBeacon', 'jettisonLot',
 ];
 export const GAMEPAD_REBIND_LABELS = {
   accept: 'Accept',
@@ -299,6 +305,19 @@ export const GAMEPAD_REBIND_LABELS = {
   tabNext: 'Station tab: next',
   dropBomb: 'Bomb bay: drop bomb',
   cycleBomb: 'Bomb bay: cycle payload',
+  // FB-003 chord layer — stock seats live on LB (survey/deploy) and RB (combat-state) chords.
+  scanPulse: 'Scanner pulse',
+  cruise: 'Cruise drive (charge/drop)',
+  bulletTime: 'Bullet time (hold)',
+  cloak: 'Cloak toggle',
+  chargeThrow: 'Impulse charge: throw',
+  siteBeam: 'World Site beam (selected target)',
+  deployMassSeed: 'Anchor Mass Seed: deploy',
+  deployWell: 'Field: deploy attractive Well',
+  toggleClearingCone: 'Field: toggle Clearing Cone',
+  toggleSkimCollector: 'Field: toggle skim collector',
+  deployBeacon: 'Nav beacon: deploy',
+  jettisonLot: 'Cargo: jettison lot',
 };
 
 function controlSchemeFor(settings) {
@@ -797,7 +816,9 @@ export const settingsScreen = {
       (v) => this._set(ctx, 'controls', 'gamepad', { ...gp(), scheme: v }));
     // Matches src/systems/gamepad.js ACTION_MAP + UI route: Start/menu → pause only;
     // Mission Log is chosen from the Pause menu (no direct gamepad missionLog action).
-    build.note('Default layout: left stick fly, right stick aim, RT fire, LT mine, RB boost, LB brake, Y shove, R3 countermeasure, D-pad right bomb, D-pad left cycle bombs, A/Cross Massline, B dock when prompted, X/Square target, D-pad up auto-target (right stick draw-to-fly), View star map, Guide or Pause for the codex, Start → Pause → Mission Log.');
+    // LB is the survey/deploy chord layer, RB the combat-state layer — every row below shows
+    // the live seat, including 'LB + D-Pad Up' style chords.
+    build.note('Default layout: left stick fly, right stick aim, RT fire, LT mine, RB boost, LB brake, Y shove, R3 countermeasure, D-pad right bomb, D-pad left cycle bombs, A/Cross Massline, B dock when prompted, X/Square target, D-pad up auto-target (right stick draw-to-fly), View star map, Guide or Pause for the codex, Start → Pause → Mission Log. Hold LB or RB and tap a second button for the survey/deploy and combat-state verbs (scanner ping, fields, cloak, cruise).');
 
     // PQ-164.01 pad remap: capture-on-press rows, same grammar as the flight keys above — press
     // a word, then press the pad button. Conflict detection honours the designed context shares
@@ -805,8 +826,9 @@ export const settingsScreen = {
     build.header('Gamepad Buttons');
     const padMap = resolveGamepadBindings(s);
     GAMEPAD_REBINDABLE.forEach((action) => {
-      const names = padMap[action] || [];
-      const keyText = names.map((n) => GAMEPAD_BUTTON_LABELS[n] || n).join(' / ') || '—';
+      // Chord names render both halves ('LB + D-Pad Up') through the same label vocabulary the
+      // Help sheet uses — the row must never print a raw 'l1+dUp' at a player.
+      const keyText = gamepadButtonLabels(action, padMap).join(' / ') || '—';
       build.key(GAMEPAD_REBIND_LABELS[action] || action, keyText,
         (btn) => this._capturePad(ctx, btn, action, padMap));
     });

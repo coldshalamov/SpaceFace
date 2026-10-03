@@ -573,6 +573,26 @@ const SAMPLED_EDGE_ACTIONS = new Set([
   'deployMassSeed', 'deployWell', 'deployRepulsor', 'toggleClearingCone',
   'toggleSkimCollector', 'dropBomb', 'cycleBomb', 'cloak', 'travelBurn', 'jettisonLot',
 ]);
+
+// Pad verbs that must re-prove a deliberate press after a lifecycle reset (blur, dock, resume).
+// The first connected sample must be neutral before a held button can re-arm an edge verb — a
+// chord physically held across a dock or a tab-hide must not fire the moment the pad publishes
+// again. The bomb bay verbs always read this gate; adding them here repairs a silent no-op.
+const GAMEPAD_LIFECYCLE_QUARANTINE_ACTIONS = Object.freeze([
+  'massline', 'countermeasure', 'travelBurn', 'autoTarget', 'chargeDetonate', 'deployRepulsor',
+  'dropBomb', 'cycleBomb',
+  'scanPulse', 'cruise', 'deployBeacon', 'deployMassSeed', 'deployWell', 'toggleClearingCone',
+  'toggleSkimCollector', 'siteBeam', 'bulletTime', 'cloak', 'chargeThrow', 'jettisonLot',
+]);
+
+function freshGamepadLifecycleQuarantine() {
+  // A plain object, not Object.create(null): the lifecycle suites deep-compare this map against
+  // an object literal, and the keys are a fixed internal table, never player-supplied names.
+  const q = {};
+  for (const action of GAMEPAD_LIFECYCLE_QUARANTINE_ACTIONS) q[action] = true;
+  return q;
+}
+
 const KEY_EDGE_CAP = 64;
 
 function flightEdgeQueue(host) {
@@ -817,14 +837,7 @@ export const input = {
     this._m2UsesUiClock = false;
     this._m2TimerTarget = null;
     this._cmHeld = false;
-    this._gamepadLifecycleQuarantine = {
-      massline: true,
-      countermeasure: true,
-      travelBurn: true,
-      autoTarget: true,
-      chargeDetonate: true,
-      deployRepulsor: true,
-    };
+    this._gamepadLifecycleQuarantine = freshGamepadLifecycleQuarantine();
     this._masslineGrammar = createMasslineInputGrammar();
     // F4/G9: device arbitration uses deterministic (tick, sequence) activity stamps shared
     // across keyboard/gamepad/touch — never performance.now()/Date.now(). Sequence reflects
@@ -1078,14 +1091,7 @@ export const input = {
     this._cmHeld = false;
     // Keyboard transitions remain event-owned after restore. Only polled gamepad actions need a
     // connected neutral sample before a hold can become authoritative again.
-    this._gamepadLifecycleQuarantine = {
-      massline: true,
-      countermeasure: true,
-      travelBurn: true,
-      autoTarget: true,
-      chargeDetonate: true,
-      deployRepulsor: true,
-    };
+    this._gamepadLifecycleQuarantine = freshGamepadLifecycleQuarantine();
     if (this._edgePrev) {
       for (const action in this._edgePrev) this._edgePrev[action] = false;
     }
@@ -1127,7 +1133,7 @@ export const input = {
     const quarantine = this._gamepadLifecycleQuarantine;
     if (!quarantine || !gamepad || typeof gamepad.isConnected !== 'function'
       || !gamepad.isConnected()) return;
-    for (const action of ['massline', 'countermeasure', 'travelBurn', 'autoTarget', 'chargeDetonate', 'deployRepulsor']) {
+    for (const action of GAMEPAD_LIFECYCLE_QUARANTINE_ACTIONS) {
       const sample = gamepad.actions && gamepad.actions[action];
       if (quarantine[action] && sample && sample.held === false) quarantine[action] = false;
     }
@@ -1136,6 +1142,20 @@ export const input = {
   _gamepadLifecycleActionAllowed(action) {
     const quarantine = this._gamepadLifecycleQuarantine;
     return !quarantine || quarantine[action] !== true;
+  },
+
+  /** Quarantine-gated pad action edge — FB-003 chord verbs merge through the same seam as stock. */
+  _padEdge(gp, action) {
+    return !!(gp && gp.isConnected()
+      && this._gamepadLifecycleActionAllowed(action)
+      && gp.actions[action] && gp.actions[action].pressed);
+  },
+
+  /** Quarantine-gated pad action hold — same seam for level verbs (bulletTime, siteBeam). */
+  _padHeld(gp, action) {
+    return !!(gp && gp.isConnected()
+      && this._gamepadLifecycleActionAllowed(action)
+      && gp.actions[action] && gp.actions[action].held);
   },
 
   _updateCountermeasureHold(held, inp) {
@@ -1450,7 +1470,9 @@ export const input = {
     // dance partner; see mining.activeMineableTetherTarget). Unlatched play is unchanged.
     const selectedSite = selectedWorldSiteTarget(state);
     const contextualSiteBeam = this._held(state, 'siteBeam') && !!selectedSite;
-    const gamepadSiteBeam = gpMine && !!selectedSite;
+    // FB-003: LB+X is the pad's dedicated site-beam channel; LT still doubles while a site is
+    // selected. Both claim the selected-site lane, never ordinary rock mining.
+    const gamepadSiteBeam = (gpMine || this._padHeld(gp, 'siteBeam')) && !!selectedSite;
     const siteBeamHeld = !!(contextualSiteBeam || gamepadSiteBeam);
     this._m2HeldS = this._m2 ? (this._m2HeldS || 0) + dt : 0;
     const mouseToolHeld = !!(this._m2 && (this._m2UsesUiClock
@@ -1574,24 +1596,27 @@ export const input = {
     acts.tetherFire = masslineCommand.latch;
     acts.tetherCut = masslineCommand.cut;
     inp.tetherMode = masslineCommand.latch && nearestTetherMode ? 'nearest' : null;
-    acts.chargeThrow = edge('chargeThrow');
+    // FB-003: every verb below also listens on its pad binding (stock chords or a player remap)
+    // through the same quarantine gate the stock pad verbs already used. `_padEdge`/`_padHeld`
+    // read gp.actions.<name>, which the chord layer resolves before this merge runs.
+    acts.chargeThrow = edge('chargeThrow') || this._padEdge(gp, 'chargeThrow');
     acts.chargeDetonate = edge('chargeDetonate') || !!(gp && gp.isConnected()
       && this._gamepadLifecycleActionAllowed('chargeDetonate')
       && gp.actions.chargeDetonate && gp.actions.chargeDetonate.pressed);
-    acts.scanPulse = edge('scanPulse');
-    acts.cruise = edge('cruise');
+    acts.scanPulse = edge('scanPulse') || this._padEdge(gp, 'scanPulse');
+    acts.cruise = edge('cruise') || this._padEdge(gp, 'cruise');
     acts.autopursuit = false;
-    acts.deployBeacon = edge('deployBeacon');
+    acts.deployBeacon = edge('deployBeacon') || this._padEdge(gp, 'deployBeacon');
     // PQ-011 anchor Mass Seed: ordinary edge verb (Digit4 default, rebindable like every flight verb).
-    acts.deployMassSeed = edge('deployMassSeed');
+    acts.deployMassSeed = edge('deployMassSeed') || this._padEdge(gp, 'deployMassSeed');
     // PQ-012 field tools: three ordinary edge verbs (Digit5-7 default, rebindable like every flight verb).
-    acts.deployWell = edge('deployWell');
+    acts.deployWell = edge('deployWell') || this._padEdge(gp, 'deployWell');
     acts.deployRepulsor = edge('deployRepulsor') || !!(gp && gp.isConnected()
       && this._gamepadLifecycleActionAllowed('deployRepulsor')
       && gp.actions.deployRepulsor && gp.actions.deployRepulsor.pressed);
-    acts.toggleClearingCone = edge('toggleClearingCone');
+    acts.toggleClearingCone = edge('toggleClearingCone') || this._padEdge(gp, 'toggleClearingCone');
     // PQ-013 skim collector: ordinary edge verb (Digit8 default, rebindable like every flight verb).
-    acts.toggleSkimCollector = edge('toggleSkimCollector');
+    acts.toggleSkimCollector = edge('toggleSkimCollector') || this._padEdge(gp, 'toggleSkimCollector');
     // Drift-bomb bay: two ordinary edge verbs (Digit9/Comma default, rebindable like every flight
     // verb), OR-ed with the pad edges (dRight/dLeft default) behind the same lifecycle gate as
     // travelBurn. The bombs system consumes them; input only reports the edges.
@@ -1605,7 +1630,7 @@ export const input = {
     // may refuse when empty); cloakToggle is an edge; throwArm was resolved above where the mining
     // beam routing is decided (single owner for the RMB arbitration).
     acts.bulletTime = this._held(state, 'bulletTime');
-    acts.cloakToggle = edge('cloak');
+    acts.cloakToggle = edge('cloak') || this._padEdge(gp, 'cloak');
     acts.throwArm = throwArmHeld;
     // Travel Burn latch (D5/W1-5). Edge-triggered toggle; the state machine below owns what a
     // press MEANS in each state (arm a spool, cancel a spool, disengage a burn).
@@ -1614,7 +1639,7 @@ export const input = {
       && gp.actions.travelBurn && gp.actions.travelBurn.pressed);
     this._travelEdge = travelPressed;
     acts.travelBurn = travelPressed;
-    acts.jettisonLot = edge('jettisonLot');
+    acts.jettisonLot = edge('jettisonLot') || this._padEdge(gp, 'jettisonLot');
     // Positive reelDelta lengthens the authoritative line; line-control uses ship-local axes.
     acts.reelDelta = masslineCommand.lineControl ? masslineCommand.lineLength : dedicatedLineLength;
     // M6: while line control owns the forward axis (W reels in, S pays out), the same key must
