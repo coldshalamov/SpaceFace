@@ -303,7 +303,8 @@ export const recoveryEncounter = {
     // The enter materialization (adopt-or-spawn derelict wrecks) registers for the
     // deterministic cook census instead of depending on listener order.
     if (this.helpers) {
-      this._cookProvider = (sector) => this._rebindSector(sector && sector.id);
+      this._cookProvider = (sector) => this._rebindSector((sector && sector.id)
+        || (this.state && this.state.world && this.state.world.currentSectorId));
       (this.helpers.sectorCookProviders
         || (this.helpers.sectorCookProviders = []))
         .push(this._cookProvider);

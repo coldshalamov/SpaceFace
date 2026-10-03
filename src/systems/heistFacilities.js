@@ -258,7 +258,8 @@ export const heistFacilities = {
       this.materializeForSector(sectorId);
     });
     // Census arm: facility materialization lands inside the sector cook deterministically.
-    this._cookProvider = (sector) => this.materializeForSector(sector && sector.id);
+    this._cookProvider = (sector) => this.materializeForSector((sector && sector.id)
+      || (this.state && this.state.world && this.state.world.currentSectorId));
     (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
       .push(this._cookProvider);
     this.bus.on('sector:exit', ({ sectorId } = {}) => this._dematerializeSector(sectorId));

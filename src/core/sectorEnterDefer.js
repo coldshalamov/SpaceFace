@@ -30,11 +30,12 @@ export function drainDeferredEnterMaterializers(state, sector) {
   if (!queue || !queue.length) return;
   const liveEpoch = state.world && state.world.enterSerial != null
     ? state.world.enterSerial : null;
-  const rest = [];
   for (const entry of queue) {
     const live = entry && typeof entry.provider === 'function'
       && (entry.epoch == null || liveEpoch == null || entry.epoch === liveEpoch);
-    if (!live) { rest.push(entry); continue; }
+    // Serials are monotone: an epoch that fails the match can never match a later
+    // serial — a re-queue would only re-check the same dead entry on every call.
+    if (!live) continue;
     try {
       const iterator = entry.provider(sector);
       if (iterator && typeof iterator.next === 'function') {
@@ -43,7 +44,6 @@ export function drainDeferredEnterMaterializers(state, sector) {
     } catch (_) { /* isolated like a bus listener — one body's throw frees the rest */ }
   }
   queue.length = 0;
-  for (const entry of rest) queue.push(entry);
 }
 export function deferSectorEnterMaterialization(state, payload, provider) {
   const render = state && state.render;
@@ -51,9 +51,10 @@ export function deferSectorEnterMaterialization(state, payload, provider) {
       || render.sectorEnterCookWillRun(payload) !== true
       || typeof provider !== 'function') return false;
   const queue = render.deferredEnterMaterializers || (render.deferredEnterMaterializers = []);
-  queue.push({
-    epoch: payload && Number.isFinite(payload.enterEpoch) ? payload.enterEpoch : null,
-    provider,
-  });
+  const epoch = payload && Number.isFinite(payload.enterEpoch) ? payload.enterEpoch : null;
+  // A second emit carrying the same epoch must not stack a second copy of this
+  // system's entry — both would drain and the cohort would materialize twice.
+  if (queue.some((entry) => entry && entry.provider === provider && entry.epoch === epoch)) return true;
+  queue.push({ epoch, provider });
   return true;
 }
