@@ -117,6 +117,35 @@ export function missionMinRepForRisk(riskTier) {
   return gate ? gate.minRep : 0;
 }
 
+// FB-044 — one contract row per faction, posted only at the second rank step and above.
+// These are board rows, not a story gate and not a second reputation number.
+const RANK_CONTRACT_FACTIONS = Object.freeze([
+  ['faction_scn', 'Concord cleared escort', 'escort'],
+  ['faction_mts', 'Meridian known haul', 'cargo_delivery'],
+  ['faction_dmc', 'Drift shift haul', 'mining_quota'],
+  ['faction_reach', 'Reach crew run', 'bounty_hunt'],
+  ['faction_quiet', 'Quiet known exchange', 'smuggling_run'],
+  ['faction_vael', 'Vael noticed survey', 'recon_scan'],
+  ['faction_free', 'Frontier known patrol', 'patrol_clear'],
+  ['faction_choir', 'Choir heard escort', 'escort'],
+  ['faction_archive', 'Archive filed reading', 'recon_scan'],
+  ['faction_understory', 'Understory carried load', 'cargo_delivery'],
+  ['faction_helix', 'Helix sample run', 'recon_scan'],
+  ['faction_fulfillment', 'Fulfillment listed delivery', 'cargo_delivery'],
+  ['faction_pitborn', 'Pitborn known weld', 'tow_recovery'],
+  ['faction_verge_layers', 'Verge noticed sounding', 'recon_scan'],
+]);
+
+export const RANK_GATED_CONTRACTS = Object.freeze(RANK_CONTRACT_FACTIONS.map(([factionId, title, type]) => Object.freeze({
+  id: `rank_contract_${factionId}`,
+  factionId,
+  type,
+  title,
+  minRankStep: 1,
+  minRep: -29,
+  rankGated: true,
+})));
+
 export const STORY_BRANCH_INTRO_TAG = 'story.branch_intro';
 export const STORY_BRANCH_INTRO_MIN_REP = -29;
 

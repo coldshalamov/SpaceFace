@@ -4,6 +4,7 @@
 import { COMMODITIES } from '../../data/commodities.js';
 import { presenceServiceForStation } from '../../data/factionPresence.js';
 import { SERVICE_PRICES, INSURANCE_DEFAULTS, loanLimitFor, cargoPolicyQuoteFor } from '../../systems/economy.js';
+import { rankServiceDiscount } from '../../systems/factions.js';
 import { livingHullCyclesSinceWash, livingHullGrimeAt } from '../../core/livingHull.js';
 import { recoveryCostQuote } from '../../combat/playerDefeat.js';
 import { stationControlAttrs } from './stationBindingMap.js';
@@ -272,11 +273,13 @@ export function serviceQuote(type, state, entity) {
     const current = Math.round(fuel.current || 0);
     const max = Math.round(fuel.max || 0);
     const missing = Math.max(0, (fuel.max || 0) - (fuel.current || 0));
-    const cost = Math.round(missing * SERVICE_PRICES.fuelCrPerUnit);
+    const dockFaction = state && state.dock && state.dock.factionId;
+    const fuelUnit = SERVICE_PRICES.fuelCrPerUnit * (1 - rankServiceDiscount(state, dockFaction));
+    const cost = Math.round(missing * fuelUnit);
     if (missing <= 0) {
       return { amount: 0, cost: 0, detail: 'Fuel ' + current + '/' + max + ' · full', buttonLabel: 'Full', disabled: true, chips: [{ text: 'full', kind: 'ok' }] };
     }
-    const affordableUnits = Math.max(0, Math.floor(credits / SERVICE_PRICES.fuelCrPerUnit));
+    const affordableUnits = Math.max(0, Math.floor(credits / fuelUnit));
     if (credits < cost && affordableUnits <= 0) {
       // INF-089 dead end: broke with an empty tank. The blocking condition is exact and the
       // remedy names the nearest real credit source (cargo in the hold → Market sell).
@@ -284,22 +287,22 @@ export function serviceQuote(type, state, entity) {
       return {
         amount: 0,
         cost,
-        detail: 'Fuel ' + current + '/' + max + ' · ' + Math.round(missing) + 'u @ ' + fmtCr(SERVICE_PRICES.fuelCrPerUnit) + ' cr/u',
+        detail: 'Fuel ' + current + '/' + max + ' · ' + Math.round(missing) + 'u @ ' + fmtCr(fuelUnit) + ' cr/u',
         buttonLabel: 'Refuel',
         disabled: true,
-        disabledReason: 'need ' + fmtCr(SERVICE_PRICES.fuelCrPerUnit) + ' cr/u',
+        disabledReason: 'need ' + fmtCr(fuelUnit) + ' cr/u',
         remedy: carrying
           ? 'Sell cargo at the Market to raise fuel money'
           : 'Take a station contract or sell salvage, then refuel',
-        chips: [{ text: fmtCr(cost) + ' cr', kind: 'cost' }, { text: 'need ' + fmtCr(SERVICE_PRICES.fuelCrPerUnit) + ' cr/u', kind: 'bad' }],
+        chips: [{ text: fmtCr(cost) + ' cr', kind: 'cost' }, { text: 'need ' + fmtCr(fuelUnit) + ' cr/u', kind: 'bad' }],
       };
     }
     if (credits < cost) {
-      const partialCost = Math.round(affordableUnits * SERVICE_PRICES.fuelCrPerUnit);
+      const partialCost = Math.round(affordableUnits * fuelUnit);
       return {
         amount: Math.min(missing, affordableUnits),
         cost: partialCost,
-        detail: 'Fuel ' + current + '/' + max + ' · partial ' + affordableUnits + '/' + Math.round(missing) + 'u @ ' + fmtCr(SERVICE_PRICES.fuelCrPerUnit) + ' cr/u',
+        detail: 'Fuel ' + current + '/' + max + ' · partial ' + affordableUnits + '/' + Math.round(missing) + 'u @ ' + fmtCr(fuelUnit) + ' cr/u',
         buttonLabel: 'Partial Refuel',
         disabled: false,
         chips: [{ text: fmtCr(partialCost) + ' / ' + fmtCr(cost) + ' cr', kind: 'warn' }, afterCreditsChip(credits, partialCost)],
@@ -308,7 +311,7 @@ export function serviceQuote(type, state, entity) {
     return {
       amount: missing,
       cost,
-      detail: 'Fuel ' + current + '/' + max + ' · ' + Math.round(missing) + 'u @ ' + fmtCr(SERVICE_PRICES.fuelCrPerUnit) + ' cr/u',
+      detail: 'Fuel ' + current + '/' + max + ' · ' + Math.round(missing) + 'u @ ' + fmtCr(fuelUnit) + ' cr/u',
       buttonLabel: 'Refuel',
       disabled: false,
       chips: [{ text: fmtCr(cost) + ' cr', kind: 'cost' }, afterCreditsChip(credits, cost)],
@@ -316,7 +319,9 @@ export function serviceQuote(type, state, entity) {
   }
   if (type === 'repair') {
     const missing = repairMissing(entity);
-    const cost = Math.round(missing.total * SERVICE_PRICES.repairCrPerHp);
+    const dockFaction = state && state.dock && state.dock.factionId;
+    const repairUnit = SERVICE_PRICES.repairCrPerHp * (1 - rankServiceDiscount(state, dockFaction));
+    const cost = Math.round(missing.total * repairUnit);
     const hullText = 'Hull ' + Math.round(entity ? entity.hull : 0) + '/' + Math.round(entity ? entity.hullMax : 0);
     const armorText = 'Armor ' + Math.round(entity ? entity.armorHp || 0 : 0) + '/' + Math.round(entity ? entity.armorMax || 0 : 0);
     if (missing.total <= 0.5 || cost <= 0) {
