@@ -298,6 +298,17 @@ export const NAMED_LANE_CONTACTS = Object.freeze([
     memoryHook: 'sedna-dry-rim',
     sectorIds: Object.freeze(['sector_sedna_dark']),
   }),
+  Object.freeze({
+    // WORLD-40 — Ceres already wears Rell on the seam miner. Jorah is the second face,
+    // on the refinery hauler, so a return trip meets someone else.
+    id: 'lane_jorah_seam_haul',
+    name: 'Jorah of the Seam Haul',
+    callsign: 'SEAM-HAUL',
+    role: 'hauler',
+    gimmick: 'seam-haul',
+    ship: 'ship_mule',
+    sectorIds: Object.freeze(['sector_ceres_belt']),
+  }),
 ]);
 
 /** PQ-143.02: the one-off courier's contact id, exported for traffic.js's dedicated fixture slot. */

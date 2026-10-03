@@ -71,7 +71,7 @@ import { resolveTravelCeiling } from '../core/flight/propulsionKernel.js';
 import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { sectorLocalToGlobalForSector, sectorMembershipAtGlobal } from '../data/sectorCoordinates.js';
-import { LANE_HELIOS_TETHYS, buildLaneGeometry } from '../data/travelLaneRoutes.js';
+import { LANE_HELIOS_TETHYS, buildLaneGeometry, laneDisruptionHeadline } from '../data/travelLaneRoutes.js';
 import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 
 export const TRAVEL_LANE_SCHEMA = 'travel_lane_v1';
@@ -957,13 +957,17 @@ export const travelLanes = {
     // cell must be retried on a later tick, not silently swallowed forever.
     if (result && result.ok) {
       this._ambushRequested.add(key);
+      const headline = laneDisruptionHeadline({ id: this.lane.id, name: this.lane.name });
       this._emit('lane:disrupted', {
         laneId: this.lane.id,
+        laneName: this.lane.name,
         segmentIndex: segment.index,
         encounterId: result.encounterId || null,
         anchor: { x: anchor.x, z: anchor.z },
         sectorId,
+        sourceRef: headline.sourceRef,
       });
+      this._emit('news:publish', headline);
     }
   },
 

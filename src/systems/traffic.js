@@ -3952,6 +3952,17 @@ export const traffic = {
         }
       }
       if (miner) this._stampNamedLaneContact(miner, contact);
+      const second = NAMED_LANE_CONTACTS.find((row) => row && row.id === 'lane_jorah_seam_haul');
+      if (second) {
+        for (const rec of list) {
+          const entity = rec && liveEntity(this.state, rec.id);
+          if (!entity || !entity.data) continue;
+          if (entity.data.activityActorSlotId !== CERES_REFINERY_HAULER_SLOT_ID) continue;
+          if (entity.data.namedLaneContactId && entity.data.namedLaneContactId !== second.id) continue;
+          this._stampNamedLaneContact(entity, second);
+          break;
+        }
+      }
       return;
     }
     // Tethys has one explicit Kess service. Never let the generic named-contact fallback append a
