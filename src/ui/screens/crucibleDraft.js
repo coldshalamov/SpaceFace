@@ -1108,7 +1108,10 @@ export const crucibleDraftScreen = {
       const detail = dossier && dossier.detail ? dossier.detail : '';
       parts.detail.textContent = detail && detail !== (lines.blurb || '') ? detail : '';
     }
-    if (parts.tip) parts.tip.textContent = dossier && dossier.tip ? `When it pays: ${dossier.tip}` : '';
+    // Hull tips already carry their own lead-in ("For the run that…") — the "When it
+    // pays:" prefix would double the cue, so hull dossiers render the tip as written.
+    if (parts.tip) parts.tip.textContent = dossier && dossier.tip
+      ? (dossier.kind === 'hull' ? dossier.tip : `When it pays: ${dossier.tip}`) : '';
     if (parts.stats && typeof document !== 'undefined') {
       parts.stats.replaceChildren();
       for (const s of (dossier ? dossier.stats : []).slice(0, 8)) {

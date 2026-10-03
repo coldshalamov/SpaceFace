@@ -587,8 +587,10 @@ function weaponStats(def) {
   push('Splash radius', num(def.splashRadius));
   push('Impulse', num(def.impulsePerHit));
   push('Heat', def.heatPerShot != null ? `${num(def.heatPerShot)}/shot` : (def.heatPerSec != null ? `${num(def.heatPerSec)}/s` : null));
-  push('Energy', def.energyCost != null ? `${num(def.energyCost)}/shot` : null);
-  push('Statuses', (def.statuses || []).map((s) => s.id).join(', ') || null);
+  push('Energy', def.energyCost != null ? `${num(def.energyCost)}${def.continuous ? '/s' : '/shot'}` : null);
+  push('Statuses', (def.statuses || []).map((s) => String(s.id || s)
+    .replace(/^status_/, '').replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase())).join(', ') || null);
   return out;
 }
 
@@ -639,6 +641,11 @@ function moduleStats(def) {
   push('Loot range', m.lootMagnetRange != null ? num(m.lootMagnetRange) : null);
   push('Scan range', m.scanRangeMult != null ? `×${num(m.scanRangeMult, 2)}` : null);
   push('Anomaly fix', m.anomalyPingReduction != null ? `−${m.anomalyPingReduction} scan` : null);
+  push('Bio scan', m.bioScanTier != null ? `+${m.bioScanTier} tier` : null);
+  push('Capture survival', m.captureSurvivalMult != null ? `×${num(m.captureSurvivalMult, 2)}` : null);
+  push('Rich core', m.richCoreRingPctBonus != null ? `+${pct(m.richCoreRingPctBonus)}` : null);
+  push('Survey RP', m.scanRpBonus != null ? `+${num(m.scanRpBonus)}` : null);
+  push('Scan detection', m.scannerCloak != null ? `−${pct(m.scannerCloak)}` : null);
   push('Hull burst', m.hullBurst ? `${m.hullBurst} · rank ${m.hullBurstRank || 1}` : null);
   push('Ram damage', m.ramDamageDealtMult != null && m.ramDamageDealtMult !== 1 ? `×${num(m.ramDamageDealtMult, 2)}` : null);
   push('Tow flail', m.towFlail === true ? 'rigged' : null);

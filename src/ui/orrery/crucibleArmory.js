@@ -55,10 +55,12 @@ export function createVisualArmory({ root, reading, parts, onPurchase } = {}) {
         lastArt = artId; item.replaceChildren();
         const url = offer.kind === 'hull' ? hullPosterUrl(offer.defId || offer.hullId) : null;
         const media = offer.kind === 'hull' || offer.kind === 'service' ? null : fittingMedia(offer.defId);
-        const fallback = () => { item.replaceChildren(equipmentSvg(offer, doc)); label.textContent = 'Equipment schematic'; };
+        const schematicWord = offer.kind === 'hull' ? 'Hull schematic'
+          : offer.kind === 'service' ? 'Service schematic' : 'Equipment schematic';
+        const fallback = () => { item.replaceChildren(equipmentSvg(offer, doc)); label.textContent = schematicWord; };
         if (url) {
           const image = make('img', ''); image.src = url; image.alt = ''; image.decoding = 'async';
-          image.addEventListener('error', () => { item.replaceChildren(equipmentSvg(offer, doc)); }, { once: true });
+          image.addEventListener('error', () => { if (lastArt === artId) fallback(); }, { once: true });
           item.appendChild(image);
         } else if (media) {
           // The showcase clip is the schematic's upgrade: the real fitting firing in the
@@ -75,7 +77,7 @@ export function createVisualArmory({ root, reading, parts, onPurchase } = {}) {
           item.appendChild(video);
         } else item.appendChild(equipmentSvg(offer, doc));
         label.textContent = offer.kind === 'hull' ? 'Hull preview'
-          : item.querySelector('video') ? 'In action' : 'Equipment schematic';
+          : item.querySelector('video') ? 'In action' : schematicWord;
       }
       fitline.textContent = lines.slot || (offer.kind === 'service' ? 'Applies to this run.' : 'Inspect before you fit.');
       const price = Math.max(0, Number(offer.price) || 0);
@@ -87,6 +89,11 @@ export function createVisualArmory({ root, reading, parts, onPurchase } = {}) {
       refusal.textContent = offer.purchased ? 'This item is part of your current build.'
         : !offer.available ? offer.unavailableReason || 'This offer cannot be fitted to the current build.'
           : `${Math.max(0, credits - price).toLocaleString('en-US')} cr remaining after purchase${offer.replaces ? ` · replaces ${offer.replacesName || 'the fitted item'}` : ''}.`;
+      // At the stacked ≤760px layout the reading pane sits below the rail — bring it
+      // into view on each focus change or the dossier silently updates off-screen.
+      if (doc.defaultView?.matchMedia?.('(max-width: 760px)')?.matches) {
+        reading.scrollIntoView?.({ block: 'nearest' });
+      }
     },
     buy,
   };
