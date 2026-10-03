@@ -50,11 +50,14 @@ export const TABLE_AUTHORED_IMMEDIATE_SECONDS = 1.25;
 /**
  * Fastest sustained inbound approach the admission window must anticipate (WU/s).
  * Ship ceilings run engine.topSpeed (~150) x the boost clamp (~2.6) x travel
- * multipliers (~1.4) ~= 550; anything faster is a projectile, which carries no
- * authored mesh. This sizes query discs only — per-candidate closing speed still
- * decides admission.
+ * multipliers (~1.4) ~= 550 — but that model under-covers two real exceeders:
+ * sling-flung hulls exit at 3x combat cruise (SLING_THROW_EXIT_MULT x 320 = ~960
+ * for drive_torch_l traffic), and a shelved row freezes whatever governed its
+ * flight — torch_l's travelCeiling (1120) is the catalog's absolute bound.
+ * Anything faster is a projectile, which carries no authored mesh. This sizes
+ * query discs only — per-candidate closing speed still decides admission.
  */
-export const TABLE_INBOUND_APPROACH_WU = 600;
+export const TABLE_INBOUND_APPROACH_WU = 1200;
 
 /**
  * Prediction horizon for promote -> decode -> build: the authored decode runway

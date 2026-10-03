@@ -46,7 +46,6 @@ import { planFactionPresence } from '../data/factionPresence.js';
 import { lossesFor } from '../systems/lossLedger.js';
 import { currentStoryInputs } from '../systems/factionPresence.js';
 import { UNIQUE_WRECKS, UNIQUE_WRECK_MATERIALIZE_PHASES } from '../data/uniqueWrecks.js';
-import { MORROW } from '../data/morrow.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 const AST_BY_ID = new Map(ASTEROIDS.map((a) => [a.id, a]));
@@ -635,10 +634,9 @@ function collectEnterSpawnerPropStubs(src, sector, out, coverBareMissionWrecks) 
       }
     }
   }
-  // The morrow companion mounts the packaged drone body on entry into its home sector —
-  // ledger-free, so the packet lane enumerates it identically (Helios' core palette literals
-  // never name place_mining_drone).
-  if (sector.id === MORROW.sectorId) out.placeStubs.push({ type: 'drone' });
+  // Morrow's companion mounts a fully procedural body (buildMorrowVisual self-stamps authored;
+  // it never reads a packaged drone file), so no warm stub is owed here — the automation-drone
+  // groups branch above is the real coverage for the packaged drone census file.
   // A player-wreck marker anywhere rematerializes the survivor pod (generic tow body) on
   // entry — the persistent-entity warm only covers a pod already spawned at save time; a
   // marker minted without a pod mount (saved before the next enter) decodes cold on restore.
