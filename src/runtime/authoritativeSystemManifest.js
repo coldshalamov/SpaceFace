@@ -49,7 +49,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'travelLanes', 'livingPoiBehaviors', 'pirateRumor', 'ambushSignatures', 'bountyHunt',
   'stationSideEventDirector', 'stationContacts', 'stationContactLoadBoundary',
   'stationServices', 'difficultyDirector',
-  'gateControlDirector', 'morrow', 'salvage', 'lossInvestigation', 'salvageActions', 'survivorPod',
+  'gateControlDirector', 'morrow', 'vesper', 'salvage', 'lossInvestigation', 'salvageActions', 'survivorPod',
   'recoveryEncounter', 'factions', 'sectorSim', 'npcJobsRuntime', 'careerOrigins',
   'careerLadders', 'liveCareerLadderBranches', 'missions', 'careerContracts',
   'economyContracts', 'postEndingReplay', 'story', 'scenarioRuntime',
@@ -91,7 +91,7 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   'collisionConsequences', 'stuntGrammar', 'weapons', 'countermeasures', 'bombs', 'emergentPrimitives', 'impulseCharges', 'hullBurst', 'mines', 'massSeed',
   'uniqueLootAbilities', 'dockingCorridor', 'environmentalMachinery',
   // Arena toys intercept shots and update field strengths before fields and physics resolve this tick.
-  'survivalArena', 'fields', 'planetRuntime', 'morrow', 'physics', 'combat',
+  'survivalArena', 'fields', 'planetRuntime', 'morrow', 'vesper', 'physics', 'combat',
   'combatOutcome', 'aftermathWrecks', 'titles', 'wingMorale', 'tetherGameplay', 'surrenderRecovery',
   'custodyConsequences', 'masslineTelemetry', 'masslineThreats', 'masslineImpacts',
   'masslineSnares', 'masslineThrow', 'masslineImpactDamage', 'lootShards', 'terrainAnchors', 'jettisonImpulse',
@@ -239,6 +239,16 @@ export const CALENDAR_CLOCK_IDS = Object.freeze([
   'aftermathWrecks', 'wingMorale',
   // Event-driven owners whose update() is an empty registry placeholder.
   'terrainAnchors', 'jettisonImpulse', 'masslineImpactDamage',
+  // FB-089 moves — pure observers / slow owners whose own code shows no per-tick physics:
+  // pacing director: stances dwell for seconds and mults ramp on elapsed dt — nothing is
+  // written per frame that a 2 Hz cadence changes.
+  'difficultyDirector',
+  // noFireAdvisory: the tick only tracks ring inside/outside to re-arm the advisory bark;
+  // the bark itself emits on the combat:fire event, not the tick.
+  'noFireAdvisory',
+  // moralTrapSystem: fires the reveal fork once simTime passes _trapRevealAt; every other
+  // path is already event-driven.
+  'moralTrapSystem',
 ]);
 
 /**
@@ -285,13 +295,63 @@ export const NEAR_CLOCK_IDS = Object.freeze([
   'combatOutcome',
   // Dirty-flag mass recompute; catch-up extra steps do not change the hold.
   'cargo',
+  // FB-089: observer telemetry republished each active tick — a catch-up extra step would
+  // only repaint the same kinematics read, so it does not belong on the table.
+  'masslineTelemetry',
+]);
+
+/**
+ * FB-089 — the table clock is now a declaration, not a default. Every id in
+ * PRODUCTION_UPDATE_ORDER must appear in exactly one of TABLE_CLOCK_IDS, NEAR_CLOCK_IDS,
+ * or CALENDAR_CLOCK_IDS, or carry a glass capability (hud/voice/presentation).
+ * validateSystemClockDeclarations() is run by the manifest tests (and getSystemClock
+ * throws for an undeclared production id) so a new system added to the update order
+ * without a clock entry fails with its id named — it can no longer join the 60 Hz tick
+ * by forgetting a line.
+ */
+export const TABLE_CLOCK_IDS = Object.freeze([
+  // Input and control owners — per-tick player intent and assists.
+  'input', 'autoTargetAssist', 'bulletTime', 'cloak', 'actions',
+  // Flight + physics authorities: single writers of position/velocity.
+  'flightSlot', 'cruise', 'tumbleStates', 'physics', 'dockingCorridor',
+  // Nemesis: arc engine cadence + per-fixed-step spawn-request drain.
+  'nemesis', 'nemesisEncounter',
+  // Capital score publishes orders the tactical slot reads the same tick.
+  'capitalBossEncounters',
+  // Combat/contact owners and damage single-writers.
+  'collisionConsequences', 'stuntGrammar', 'weapons', 'countermeasures', 'bombs',
+  'emergentPrimitives', 'impulseCharges', 'hullBurst', 'mines', 'massSeed',
+  'uniqueLootAbilities', 'fields', 'environmentalMachinery',
+  // Anchored set-pieces queue physics impulses every tick.
+  'morrow', 'vesper',
+  // Combat island: damage/attachment/custody owners at combat cadence.
+  'combat', 'tetherGameplay', 'surrenderRecovery', 'custodyConsequences',
+  // Massline physics owners (throws, snares, impact resolution move or damage bodies).
+  'masslineThreats', 'masslineImpacts', 'masslineSnares', 'masslineThrow',
+  // Debris/damage owners with live bodies or timed expiry.
+  'lootShards', 'mining', 'fieldDepletion', 'fragileCargo',
+  // Survival/Crucible phase machines and per-tick recorders.
+  'survivalArena', 'swarmArena', 'survivalWave', 'survivalRun', 'swarmChain',
+  'killReplay', 'killcamRecorder',
+  // Fleet movement owner, world bounds/sector authority, WANTED-heat single writer.
+  'wingmen', 'world', 'heat',
+  // Chronicler: fact events must land on the tick that creates them (its FB-090 quiet
+  // latch already covers the idle pole). Docked-yard job progression is real per-tick
+  // service work, so the yard stays on the table.
+  'chronicler', 'stationServices',
 ]);
 
 const CLOCK_BY_ID = new Map();
 for (const id of CALENDAR_CLOCK_IDS) CLOCK_BY_ID.set(id, SYSTEM_CLOCK.CALENDAR);
 for (const id of NEAR_CLOCK_IDS) CLOCK_BY_ID.set(id, SYSTEM_CLOCK.NEAR);
+for (const id of TABLE_CLOCK_IDS) CLOCK_BY_ID.set(id, SYSTEM_CLOCK.TABLE);
 
-export function getSystemClock(id) {
+/**
+ * The declared clock for a registered system id, or null when the id carries no clock
+ * declaration (not in any clock list and no glass capability). Null is the signal the
+ * coverage assertion rejects for production update-order ids.
+ */
+export function getDeclaredSystemClock(id) {
   // Hosts partition instantiated systems by name, after resolving manifest slots. Both AI
   // backends must retain aiSlot's near clock or every extra catch-up step repeats full AI.
   const clockId = id === 'ai' || id === 'tacticalAI' ? 'aiSlot' : id;
@@ -300,7 +360,62 @@ export function getSystemClock(id) {
   const cap = SYSTEM_CAPABILITIES[id];
   const kind = cap && cap.capability;
   if (kind === 'hud' || kind === 'voice' || kind === 'presentation') return SYSTEM_CLOCK.GLASS;
+  return null;
+}
+
+export function getSystemClock(id) {
+  const declared = getDeclaredSystemClock(id);
+  if (declared) return declared;
+  const clockId = id === 'ai' || id === 'tacticalAI' ? 'aiSlot' : id;
+  if (PRODUCTION_UPDATE_ORDER.includes(clockId)) {
+    // A registered production system with no clock declaration is a manifest bug, not a
+    // default. Throw so the missing line surfaces at host init, not as a silent 60 Hz join.
+    throw new Error(
+      `[manifest] system '${id}' is in PRODUCTION_UPDATE_ORDER but has no declared clock —`
+      + ' add it to TABLE_CLOCK_IDS, NEAR_CLOCK_IDS, or CALENDAR_CLOCK_IDS',
+    );
+  }
+  // Harness/test rigs keep the historical table answer for non-manifest names.
   return SYSTEM_CLOCK.TABLE;
+}
+
+/**
+ * FB-089 manifest assertion, run by the manifest tests. Returns violation strings (empty
+ * when the declaration set is complete): an update-order id with no declared clock, a clock
+ * entry naming no registered system, a duplicate across lists, or a clocked id that also
+ * carries a glass capability.
+ */
+export function validateSystemClockDeclarations(updateIds = PRODUCTION_UPDATE_ORDER) {
+  const violations = [];
+  const declared = new Map();
+  const lists = [
+    [SYSTEM_CLOCK.TABLE, TABLE_CLOCK_IDS],
+    [SYSTEM_CLOCK.NEAR, NEAR_CLOCK_IDS],
+    [SYSTEM_CLOCK.CALENDAR, CALENDAR_CLOCK_IDS],
+  ];
+  const known = new Set([...PRODUCTION_UPDATE_ORDER, ...PRODUCTION_INIT_ORDER]);
+  for (const [clock, list] of lists) {
+    for (const id of list) {
+      const prev = declared.get(id);
+      if (prev) violations.push(`'${id}' declared on two clocks (${prev} + ${clock})`);
+      declared.set(id, clock);
+      if (!known.has(id)) violations.push(`'${id}' has a ${clock} clock but is not a registered system id`);
+      if (!updateIds.includes(id)) {
+        violations.push(`'${id}' holds a ${clock} clock but is not in the update order (clock is dead weight)`);
+      }
+      const cap = SYSTEM_CAPABILITIES[id];
+      const kind = cap && cap.capability;
+      if (kind === 'hud' || kind === 'voice' || kind === 'presentation') {
+        violations.push(`'${id}' has glass capability '${kind}' but also a ${clock} clock declaration`);
+      }
+    }
+  }
+  for (const id of updateIds) {
+    if (getDeclaredSystemClock(id) == null) {
+      violations.push(`'${id}' is in the update order with no declared clock`);
+    }
+  }
+  return violations;
 }
 
 /** 60 Hz combat island: table + near + glass. Calendar owners are not in this list. */

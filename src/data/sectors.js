@@ -8,6 +8,7 @@ import {
 import { FRONTIER_CORE_NEIGHBOR_PATCHES, FRONTIER_SECTORS } from './frontierRegions/index.js';
 import { applyClaimableBodySites } from './claimableBodies.js';
 import { KETTLE_LINE_POIS } from './kettleLine.js';
+import { VESPER } from './vesper.js';
 import { applyPlanetStateAssignments } from './planetStates.js';
 import { appendPq019FacilityPois } from './heistFacilities.js';
 // Per ARCHITECTURE §0.8:
@@ -44,6 +45,7 @@ export const SECTOR_PALETTE_CLASSES = {
 const CORE_SECTORS = [
   {
     id: 'sector_helios_prime', name: 'Helios Prime', tier: 0, security: 0.98, charted: true,
+    scenic: true,
     factionId: 'faction_scn', position: { x: 0, y: 0 }, worldRadius: 3500,
     palette: SECTOR_PALETTE_CLASSES.core,
     // Tutorial home sector: NO hostile spawns (enemyDensity 0). A brand-new pilot must not be
@@ -75,6 +77,10 @@ const CORE_SECTORS = [
     hazards: [],
     pois: [
       { id: 'poi_tutorial', type: 'beacon', name: 'Tutorial Beacon' },
+      { id: 'poi_vesper_rehearsal', type: 'anomaly', name: 'Vesper’s Rehearsal',
+        pos: { ...VESPER.anchor }, runtimeOwner: 'vesper', scannerSignalKind: 'anomaly',
+        discoveryPlate: { title: 'SV-3 / Kinetic Choir',
+          body: 'Three loose resonators and a moth-winged survey machine. Scan the conductor; Massline a bell, pull, and release. The chart marks the rehearsal site, not the moving band.' } },
       {
         id: 'poi_memorial',
         type: 'beacon',
@@ -179,6 +185,7 @@ const CORE_SECTORS = [
   },
   {
     id: 'sector_tethys_junction', name: 'Tethys Junction', tier: 1, security: 0.65, charted: true,
+    scenic: true,
     factionId: 'faction_mts', position: { x: 3, y: 2 }, worldRadius: 4000,
     palette: SECTOR_PALETTE_CLASSES.core,
     trafficPerMin: 14, enemyDensity: 0.20, enemyLevel: [1, 2],
@@ -388,7 +395,7 @@ const CORE_SECTORS = [
   },
   {
     id: 'sector_charon_expanse', name: 'Charon Expanse', tier: 2, security: 0.30, charted: true,
-    factionId: 'faction_dmc', position: { x: 2, y: 7 }, worldRadius: 4800,
+    factionId: 'faction_dmc', industries: { refinery: true }, position: { x: 2, y: 7 }, worldRadius: 4800,
     palette: SECTOR_PALETTE_CLASSES.belt,
     trafficPerMin: 4, enemyDensity: 0.50, enemyLevel: [5, 9],
     neighbors: ['sector_vesta_forge', 'sector_io_reach', 'sector_ashfall_reach'],
@@ -494,6 +501,7 @@ const CORE_SECTORS = [
   },
   {
     id: 'sector_veil_nebula', name: 'Veil Nebula', tier: 3, security: 0.12, charted: false,
+    scenic: true, industries: { research: true },
     factionId: 'faction_free', position: { x: 7, y: 9 }, worldRadius: 5200,
     palette: SECTOR_PALETTE_CLASSES.anomaly,
     trafficPerMin: 0, enemyDensity: 0.65, enemyLevel: [8, 12],
@@ -531,7 +539,7 @@ const CORE_SECTORS = [
   },
   {
     id: 'sector_ashfall_reach', name: 'Ashfall Reach', tier: 4, security: 0.05, charted: false,
-    factionId: 'faction_vael', position: { x: 4, y: 11 }, worldRadius: 5500,
+    factionId: 'faction_vael', threat: 'vael', position: { x: 4, y: 11 }, worldRadius: 5500,
     palette: SECTOR_PALETTE_CLASSES.anomaly,
     trafficPerMin: 0, enemyDensity: 0.80, enemyLevel: [10, 15],
     neighbors: ['sector_charon_expanse'],
