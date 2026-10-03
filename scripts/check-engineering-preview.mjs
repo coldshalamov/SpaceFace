@@ -13,6 +13,7 @@ import {
   fittingsFromDefaultModules,
   getDerivedStats,
 } from '../src/systems/ships.js';
+import { forwardAccelFor } from '../src/systems/shipCapabilities.js';
 import {
   ENGINEERING_PREVIEW_SCHEMA,
   formatPreviewDelta,
@@ -81,7 +82,9 @@ const gauges = presentGaugePacket('ship_kestrel', starterFit, null);
 assert.equal(gauges.ok, true);
 assert.equal(gauges.shieldMax, live.shieldMax);
 assert.equal(gauges.cargoCap, live.cargoCap);
-assert.equal(gauges.maxSpeed, live.maxSpeed);
+// NXB-030: the 'Thrust' gauge quotes the live forward accel the kernel commands, not the
+// legacy maxSpeed spec field the key used to read.
+assert.equal(gauges.thrust, forwardAccelFor(live));
 assert.equal(gauges.mass, live.mass);
 assert.equal(gauges.continuousDrain, live.continuousDrain);
 ok('gauge packet matches getDerivedStats');

@@ -59,6 +59,23 @@ const CRUCIBLE_BEST_KEY_MAX = 512;
 const SHARED_STORE_SYNC_FALLBACK_MS = 15000;
 const EPOCH_ISO = '1970-01-01T00:00:00.000Z';
 
+// ── FB-102 career-counter vocabulary ──────────────────────────────────────────────────────────
+// Five career truths a statistics screen reads (FB-103) and the death summary may reuse:
+// distance flown (odometer), kills by kill-cause family (`killsBy:<cause>`), biggest throw
+// (massline release speed), time per sector (`sectorTime:<sectorId>`), and the player's own
+// hull losses. Keys are bag counter keys; the two dynamic families are prefix-folded by
+// careerStats(). Not achievement inputs — ACHIEVEMENT_COUNTERS stays the achievement ladder.
+export const CAREER_KEY_DISTANCE_FLOWN = 'distanceFlownWu';
+export const CAREER_KEY_BIGGEST_THROW = 'biggestThrowSpeed';
+export const CAREER_KEY_SHIPS_LOST = 'shipsLost';
+export const KILLS_BY_PREFIX = 'killsBy:';
+export const SECTOR_TIME_PREFIX = 'sectorTime:';
+// The odometer's near-clock gate: displacement is folded at most twice per sim second, and a
+// single interval that jumps past this many WU is a teleport (jump arrival, undock reposition),
+// not flown distance — the baseline resets instead of summing it.
+const ODOMETER_MIN_INTERVAL_S = 0.5;
+const ODOMETER_TELEPORT_WU = 750;
+
 /* ---------------------------------------------------------------------------------------------- */
 /* storage + clock seams (same shape as survivalRecords)                                          */
 /* ---------------------------------------------------------------------------------------------- */
@@ -397,6 +414,88 @@ export const ACHIEVEMENT_EVENT_HANDLERS = Object.freeze({
   },
 });
 
+/**
+ * Kill-provenance vocabulary the career layer counts by (src/combat/killCausality.js KillCause
+ * values). Declared here rather than imported so the META ledger keeps no combat-module dependency.
+ */
+const KILL_CAUSE_KEYS = new Set(Object.freeze([
+  'generic', 'kinetic', 'explosive', 'terrain_collision', 'ship_collision',
+]));
+
+/**
+ * FB-102 career add-counters. Deliberately SEPARATE from ACHIEVEMENT_EVENT_HANDLERS: that table
+ * is, by test contract, exactly the set of events feeding declared ACHIEVEMENT_COUNTERS, and the
+ * career truths are not achievement inputs. Same add-model, same bag, own vocabulary.
+ */
+export const CAREER_EVENT_HANDLERS = Object.freeze({
+  // The player's own hull losses, exactly once per defeat (combat.js guards the defeat path; the
+  // world's radiation fallback fires only when combat.kill is unavailable).
+  'player:death': () => [['shipsLost', 1]],
+  // Kills by the kill provenance the owner already computes (combat.js
+  // buildKillPresentationReceipt → presentation.cause), mirroring the stats.kills adjudication —
+  // killerId === playerId, ships only.
+  'entity:killed': (p, context) => {
+    if (!p || p.type !== 'ship') return NONE;
+    const playerId = playerIdOf(context);
+    if (playerId == null || p.killerId !== playerId) return NONE;
+    const cause = p.presentation && typeof p.presentation.cause === 'string'
+      && KILL_CAUSE_KEYS.has(p.presentation.cause) ? p.presentation.cause : 'generic';
+    return [[`killsBy:${cause}`, 1]];
+  },
+});
+
+/** Apply one career add-event to the bag in place. Returns the counter keys that moved. */
+export function applyCareerEvent(bag, event, payload, context = {}) {
+  const handler = CAREER_EVENT_HANDLERS[event];
+  if (!handler || !bag) return NONE;
+  let increments;
+  try {
+    increments = handler(payload || EMPTY_PAYLOAD, context);
+  } catch {
+    return NONE;
+  }
+  if (!increments || increments.length === 0) return NONE;
+  const moved = [];
+  for (const [key, amount] of increments) {
+    const n = cleanCount(amount);
+    if (n <= 0) continue;
+    bag.counters[key] = cleanCount(bag.counters[key]) + n;
+    moved.push(key);
+  }
+  return moved;
+}
+
+/**
+ * FB-102 max-counters: events whose career truth is the BEST value ever seen, not a sum. The
+ * add-model tables cannot express a max, so these run alongside them in onCounterEvent.
+ */
+export const CAREER_MAX_EVENT_HANDLERS = Object.freeze({
+  // massline:throw payload is runtime.lastThrow (masslineThrow.js): `payloadSpeed` is the
+  // release solution's speed. Rounded to whole WU/s so the integer bag holds it honestly.
+  'massline:throw': (p) => ({
+    key: 'biggestThrowSpeed',
+    value: Math.floor(Number(p && p.payloadSpeed) || 0),
+  }),
+});
+
+/** Apply one max-event to the bag in place. Returns the counter key when it moved. */
+export function applyCareerMaxEvent(bag, event, payload) {
+  const handler = CAREER_MAX_EVENT_HANDLERS[event];
+  if (!handler || !bag) return null;
+  let row = null;
+  try {
+    row = handler(payload || EMPTY_PAYLOAD);
+  } catch {
+    return null;
+  }
+  if (!row || typeof row.key !== 'string') return null;
+  const value = Math.floor(Number(row.value));
+  if (!Number.isFinite(value) || value <= 0) return null;
+  if (value <= cleanCount(bag.counters[row.key])) return null;
+  bag.counters[row.key] = value;
+  return row.key;
+}
+
 /** Apply one event to the bag's counters in place. Returns the counter keys that moved. */
 export function applyAchievementEvent(bag, event, payload, context = {}) {
   const handler = ACHIEVEMENT_EVENT_HANDLERS[event];
@@ -622,6 +721,36 @@ export function readAchievementRows() {
   return achievementRows(bag, crucibleFactsFromProfile(safeLoadCrucibleMeta()));
 }
 
+/**
+ * FB-102/FB-103: the read-only career-statistics read. Folds the ledger's flat counters into the
+ * five career truths a statistics screen (or the death summary) needs — distance flown, the
+ * biggest massline throw, hulls lost, kills grouped by kill-cause family, and time per sector —
+ * plus the raw counter bag for every other reader. Reads the live ledger when installed, else
+ * the stored bag; never writes and never creates state.
+ */
+export function careerStats(storage = liveStorage()) {
+  const snapshot = activeLedger ? activeLedger.snapshot() : null;
+  const counters = snapshot ? snapshot.counters : loadAchievementBag(storage).counters;
+  const killsByWeapon = {};
+  const timeBySector = {};
+  for (const key of Object.keys(counters)) {
+    if (typeof key !== 'string') continue;
+    if (key.startsWith(KILLS_BY_PREFIX)) {
+      killsByWeapon[key.slice(KILLS_BY_PREFIX.length)] = cleanCount(counters[key]);
+    } else if (key.startsWith(SECTOR_TIME_PREFIX)) {
+      timeBySector[key.slice(SECTOR_TIME_PREFIX.length)] = cleanCount(counters[key]);
+    }
+  }
+  return Object.freeze({
+    distanceFlownWu: cleanCount(counters[CAREER_KEY_DISTANCE_FLOWN]),
+    biggestThrowSpeed: cleanCount(counters[CAREER_KEY_BIGGEST_THROW]),
+    shipsLost: cleanCount(counters[CAREER_KEY_SHIPS_LOST]),
+    killsByWeapon: Object.freeze(killsByWeapon),
+    timeBySector: Object.freeze(timeBySector),
+    counters: Object.freeze({ ...counters }),
+  });
+}
+
 function resolveShell(explicit) {
   if (explicit !== undefined) return explicit;
   try {
@@ -671,6 +800,94 @@ export function installAchievements({
   const preSyncSavedAt = readStoredAchievementSavedAt(store) || EPOCH_ISO;
   let syncFallback = null;
 
+  // ── FB-102 career samplers ─────────────────────────────────────────────────────────────────
+  // The odometer samples the player's displacement on the near clock — a sim-time-gated read of
+  // the live position on economy:tick, never a per-frame accumulation — and the sector clock
+  // stamps sector:enter and settles on sector:exit. Every value runs on state.simTime, so the
+  // counters stay deterministic; fractional remainders live in these closures and the bag keeps
+  // the floored integers the save format stores.
+  let odometer = { at: null, x: 0, z: 0 };
+  let odometerTotal = cleanCount(bag.counters[CAREER_KEY_DISTANCE_FLOWN]);
+  let sectorStamp = null;
+  const sectorTotals = new Map();
+  for (const key of Object.keys(bag.counters)) {
+    if (typeof key === 'string' && key.startsWith(SECTOR_TIME_PREFIX)) {
+      sectorTotals.set(key.slice(SECTOR_TIME_PREFIX.length), cleanCount(bag.counters[key]));
+    }
+  }
+
+  function livePlayerPos() {
+    let player = null;
+    const entities = state && state.entities;
+    if (entities && typeof entities.get === 'function') player = entities.get(state.playerId);
+    else if (entities && typeof entities === 'object' && state.playerId != null) player = entities[state.playerId];
+    const raw = (player && player.pos) || (state && state.player && state.player.pos) || null;
+    const x = Number(raw && raw.x);
+    const z = Number(raw && raw.z);
+    return Number.isFinite(x) && Number.isFinite(z) ? { x, z } : null;
+  }
+
+  function resetOdometerBaseline() {
+    const pos = livePlayerPos();
+    const t = simSeconds();
+    if (!pos || t == null) {
+      odometer.at = null;
+      return;
+    }
+    odometer = { at: t, x: pos.x, z: pos.z };
+  }
+
+  function sampleOdometer(payload) {
+    const t = Number(payload && payload.t);
+    if (!Number.isFinite(t) || t < 0) return;
+    const pos = livePlayerPos();
+    if (!pos) {
+      odometer.at = null; // no live position: resync on the next sample
+      return;
+    }
+    if (odometer.at == null || t < odometer.at) {
+      odometer = { at: t, x: pos.x, z: pos.z };
+      return;
+    }
+    if (t - odometer.at < ODOMETER_MIN_INTERVAL_S) return; // hold the baseline across the gate
+    const d = Math.hypot(pos.x - odometer.x, pos.z - odometer.z);
+    // A teleport (jump arrival, undock reposition) is not distance flown: past the cap the
+    // interval is dropped and only the baseline moves.
+    if (Number.isFinite(d) && d < ODOMETER_TELEPORT_WU) {
+      odometerTotal += d;
+      bag.counters[CAREER_KEY_DISTANCE_FLOWN] = Math.floor(odometerTotal);
+    }
+    odometer = { at: t, x: pos.x, z: pos.z };
+  }
+
+  /** Fold the open residence into its sector counter and keep the stamp running. */
+  function checkpointSectorStamp() {
+    const stamp = sectorStamp;
+    if (!stamp) return;
+    const t = simSeconds();
+    if (t == null) return;
+    const dt = t - stamp.at;
+    if (!Number.isFinite(dt) || dt <= 0) return;
+    stamp.at = t;
+    const total = (sectorTotals.get(stamp.sectorId) || 0) + dt;
+    sectorTotals.set(stamp.sectorId, total);
+    bag.counters[SECTOR_TIME_PREFIX + stamp.sectorId] = Math.floor(total);
+  }
+
+  function settleSectorStamp() {
+    checkpointSectorStamp();
+    sectorStamp = null;
+  }
+
+  function openSectorStamp(sectorId) {
+    settleSectorStamp();
+    if (typeof sectorId !== 'string' || !sectorId) return;
+    const t = simSeconds();
+    if (t == null) return;
+    sectorStamp = { sectorId, at: t };
+  }
+  // ─────────────────────────────────────────────────────────────────────────────────────────────
+
   function refreshCrucible() {
     const profile = safeLoadCrucibleMeta();
     if (profile) {
@@ -685,6 +902,7 @@ export function installAchievements({
       try { clearTimeout(saveTimer); } catch { /* ignore */ }
       saveTimer = null;
     }
+    checkpointSectorStamp();
     const merged = saveAchievementBag(bag, store, synced ? {} : { savedAt: preSyncSavedAt, push: false });
     if (merged) bag = merged;
   }
@@ -808,7 +1026,11 @@ export function installAchievements({
 
   function onCounterEvent(event, payload) {
     if (disposed) return;
-    const moved = applyAchievementEvent(bag, event, payload, eventContext);
+    // applyAchievementEvent may return the shared frozen NONE — never push onto it.
+    const moved = [...applyAchievementEvent(bag, event, payload, eventContext)];
+    for (const key of applyCareerEvent(bag, event, payload, eventContext)) moved.push(key);
+    const maxKey = applyCareerMaxEvent(bag, event, payload);
+    if (maxKey) moved.push(maxKey);
     if (!moved.length) return;
     const fresh = evaluate(event);
     if (!fresh.length) scheduleSave();
@@ -864,6 +1086,29 @@ export function installAchievements({
     const off = bus.on(event, (payload) => onCounterEvent(event, payload));
     if (typeof off === 'function') unsubs.push(off);
   }
+  for (const event of Object.keys(CAREER_EVENT_HANDLERS)) {
+    const off = bus.on(event, (payload) => onCounterEvent(event, payload));
+    if (typeof off === 'function') unsubs.push(off);
+  }
+  // FB-102 samplers: odometer on economy:tick (the near clock the market already beats on),
+  // sector residence on world's enter/exit pair, and a teleport reset at every dock and arrival
+  // so repositioning never reads as flown distance.
+  const offTick = bus.on('economy:tick', (payload) => { if (!disposed) sampleOdometer(payload); });
+  if (typeof offTick === 'function') unsubs.push(offTick);
+  const offSectorEnter = bus.on('sector:enter', (payload) => {
+    if (disposed) return;
+    openSectorStamp(payload && payload.sectorId);
+    resetOdometerBaseline();
+  });
+  if (typeof offSectorEnter === 'function') unsubs.push(offSectorEnter);
+  const offSectorExit = bus.on('sector:exit', (payload) => {
+    if (disposed) return;
+    const sectorId = payload && payload.sectorId != null ? String(payload.sectorId) : null;
+    if (!sectorStamp || sectorId == null || sectorStamp.sectorId === sectorId) settleSectorStamp();
+  });
+  if (typeof offSectorExit === 'function') unsubs.push(offSectorExit);
+  const offDockSample = bus.on('dock:docked', () => { if (!disposed) resetOdometerBaseline(); });
+  if (typeof offDockSample === 'function') unsubs.push(offDockSample);
   const offResults = bus.on('run:resultsReady', onRunResults);
   if (typeof offResults === 'function') unsubs.push(offResults);
   const offSynced = bus.on('save:store-synced', onStoreSynced);
@@ -899,7 +1144,10 @@ export function installAchievements({
     flush: () => { if (!disposed) saveNow(); },
     dispose({ flush = true } = {}) {
       if (disposed) return;
-      if (flush) saveNow();
+      if (flush) {
+        settleSectorStamp();
+        saveNow();
+      }
       disposed = true;
       if (syncFallback !== null) {
         try { clearTimeout(syncFallback); } catch { /* ignore */ }

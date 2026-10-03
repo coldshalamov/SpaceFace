@@ -50,6 +50,9 @@ const MARK_PREDICTION_S = 1 / 120;
 // to outlive the next attempt.
 const MASSLINE_DENIAL_PILL_S = 1.2;
 
+// FB-007 — the drawn stroke fades over 2 s after it completes (the packet's fade law).
+export const DRAW_INK_FADE_S = 2;
+
 // CV-THROW-1: a deliberate release gets a 1.8 s verdict pill anchored where the payload left —
 // the grade (razor/clean/good/messy) plus the one cause the cadence law measured, so the next
 // cut is a choice the player understands. Breaks and target loss are not graded aloud.
@@ -70,6 +73,11 @@ const VERDICT_CAUSE_COPY = Object.freeze({
 export function releaseVerdictCopy(rating) {
   if (!rating || typeof rating !== 'object') return '';
   const grade = VERDICT_GRADE_COPY[rating.classification] || 'RELEASED';
+  // FB-006 — a release that ends a ride grades the ride: how much of the anchor's speed the
+  // pilot kept at the cut. The ride cause names the specific lesson before the generic swing.
+  if (rating.ride && Number.isFinite(rating.ride.keptFraction)) {
+    return `${grade} · KEPT ${Math.round(Math.max(0, Math.min(1, rating.ride.keptFraction)) * 100)}%`;
+  }
   if (rating.releasedAtApex) return `${grade} · AT THE APEX`;
   const cause = rating.classification === 'razor' || rating.classification === 'clean'
     ? 'CREST RELEASE'
@@ -375,6 +383,13 @@ export const MASSLINE_HUD_CSS = `
 #sf-ml2 .ml2-ghost-path { fill:none; stroke:rgba(140,190,235,0.5); stroke-width:1.4;
   stroke-dasharray:3 7; stroke-linecap:round; vector-effect:non-scaling-stroke; }
 #sf-ml2 svg.ml2-ghost.ml2-hot .ml2-ghost-path { stroke:rgba(255,217,140,0.85); }
+/* FB-007 — the drawn stroke is ink on the same glass: the flown prefix dims behind the ship,
+   the ink ahead stays bright, and the whole ribbon fades over DRAW_INK_FADE_S once graded. */
+#sf-ml2 svg.ml2-ink { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+#sf-ml2 .ml2-ink-ahead { fill:none; stroke:rgba(242,185,80,0.55); stroke-width:1.6;
+  stroke-dasharray:5 4; stroke-linecap:round; vector-effect:non-scaling-stroke; }
+#sf-ml2 .ml2-ink-flown { fill:none; stroke:rgba(242,185,80,0.22); stroke-width:1.6;
+  stroke-linecap:round; vector-effect:non-scaling-stroke; }
 #sf-ml2 .ml2-throw { width:26px; height:26px; margin:-13px 0 0 -13px; }
 #sf-ml2 .ml2-throw .ml2-diamond { width:100%; height:100%; transform:rotate(45deg);
   border:2px solid var(--ml2-c,var(--dp-lamp, #f2b950)); box-shadow:0 0 10px var(--ml2-c,var(--dp-lamp, #f2b950));
@@ -674,6 +689,11 @@ function writeMasslineHudFields(fields, state, player) {
   // CV-THROW-1: a live release verdict is world-anchored DOM work — it must leave the
   // quiescent path or the grade would never paint (post-release IS the idle case).
   const verdict0 = state.masslineReleaseVerdict;
+  // FB-007: a live drawn stroke is world-anchored ink — it leaves the quiescent path too, or
+  // the line would never paint while the pilot flies it.
+  const drawnStroke = state.input && state.input.autoTargetPath;
+  const inkActive = !!(drawnStroke && drawnStroke.active === true
+    && Array.isArray(drawnStroke.points) && drawnStroke.points.length >= 2);
   const quiescent = !throwState.armed && !solution.valid && !solution.onSolution
     && !selfSolution.onSolution && selfSolution.targetId == null
     && throwState.payloadId == null && throwState.aimTargetId == null
@@ -685,7 +705,7 @@ function writeMasslineHudFields(fields, state, player) {
     && !(playerState.tether && playerState.tether.active)
     && !(state.massSeed && state.massSeed.latchPreview && state.massSeed.latchPreview.word)
     && !cloak.active && !bulletTime.active
-    && denial0 == null && verdict0 == null;
+    && denial0 == null && verdict0 == null && !inkActive;
   if (quiescent) {
     fields[index++] = 'idle';
     fields[index++] = video.fov;
@@ -838,6 +858,27 @@ function writeMasslineHudFields(fields, state, player) {
     strain = Math.round(finite(raw) * 50) / 50;
   }
   fields[index++] = strain;
+  // FB-006 — the RIDE chip repaints when the state flips or the measured figures move a step.
+  const rideMirror = playerState.tether && playerState.tether.ride;
+  fields[index++] = !!(rideMirror && rideMirror.active === true);
+  fields[index++] = rideMirror && rideMirror.active === true
+    ? Math.round(finite(rideMirror.speedGained) * 2) / 2 : 0;
+  fields[index++] = rideMirror && rideMirror.active === true
+    ? Math.round(finite(rideMirror.anchorSpeed) * 2) / 2 : 0;
+  // FB-007 — the drawn-stroke ink: presence, flown head, band and quantized fade so the lines
+  // repaint as the stroke grows, grades and fades without churning the whole signature.
+  fields[index++] = inkActive;
+  fields[index++] = inkActive ? drawnStroke.points.length : 0;
+  fields[index++] = inkActive ? finite(drawnStroke.pointIndex, 1) : 0;
+  const inkStroke = inkActive && drawnStroke.stroke && drawnStroke.stroke.band
+    ? drawnStroke.stroke : null;
+  fields[index++] = inkStroke ? inkStroke.band : null;
+  // The completed stroke fades over DRAW_INK_FADE_S; the alpha step joins the signature so the
+  // fade repaints in visible steps instead of churning the whole signature every tick.
+  const inkFade = inkStroke && state.masslineInk
+    ? 1 - Math.max(0, finite(state.simTime) - finite(state.masslineInk.fadeStart)) / DRAW_INK_FADE_S
+    : 1;
+  fields[index++] = inkStroke ? Math.max(0, Math.ceil(finite(inkFade) * 8)) : 0;
   fields[index++] = bridle.phase
     ? Math.max(0, Math.ceil(Number(bridle.expiresAt) - Number(state.simTime)))
     : '';
@@ -900,6 +941,31 @@ export function masslineHudInputsUnchanged(state, player) {
   return hudFieldsUnchanged(state, 'masslineHud', writeMasslineHudFields, player);
 }
 
+// FB-007 — the drawn stroke as a paint model, pure over state: the ink ahead of the ship, the
+// flown prefix behind it, and the completed stroke's grade. The follower owns the measurement
+// (src/combat/drawFlightPath.js publishes `route.stroke`); this only decides what the glass says.
+// Returns null with no live stroke — an inactive route paints nothing.
+export function resolveDrawFlightInk(state) {
+  const input = state && state.input;
+  const route = input && input.autoTargetPath;
+  if (!route || route.active !== true || !Array.isArray(route.points) || route.points.length < 2) {
+    return null;
+  }
+  const points = route.points;
+  const flownIndex = Math.max(1, Math.min(points.length, finite(route.pointIndex, 1)));
+  const stroke = route.stroke && route.stroke.band ? route.stroke : null;
+  const fade = stroke && state.masslineInk
+    ? Math.max(0, Math.min(1, 1 - (finite(state.simTime) - finite(state.masslineInk.fadeStart)) / DRAW_INK_FADE_S))
+    : 1;
+  return {
+    ahead: points.slice(Math.min(flownIndex - 1, points.length - 1)),
+    flown: points.slice(0, flownIndex),
+    stroke,
+    fade,
+    points: points.length,
+  };
+}
+
 export const masslineHud = {
   id: 'masslineHud',
   name: 'masslineHud',
@@ -947,6 +1013,10 @@ export const masslineHud = {
           classification: p.classification,
           technique: p.technique,
           releasedAtApex: p.releasedAtApex === true,
+          // FB-006 — the ride grade rides the same pill; releaseVerdictCopy names the kept share.
+          ride: p.ride && Number.isFinite(p.ride.keptFraction)
+            ? { keptFraction: Math.max(0, Math.min(1, p.ride.keptFraction)) }
+            : null,
           targetId: p.targetId != null ? p.targetId : null,
           atX: Number.isFinite(target && target.pos && target.pos.x) ? target.pos.x : null,
           atZ: Number.isFinite(target && target.pos && target.pos.z) ? target.pos.z : null,
@@ -968,6 +1038,7 @@ export const masslineHud = {
     if (this.state) {
       this.state.masslineDenial = null;
       this.state.masslineReleaseVerdict = null;
+      this.state.masslineInk = null;
     }
     clearHudSignatures(this.state);
   },
@@ -998,6 +1069,7 @@ export const masslineHud = {
     this._updateSnagMark(dom, state, w2s);
     this._updateCloakRing(dom, ml2.cloak, player, w2s);
     this._updateOrbitRing(dom, player, state, w2s);
+    this._updateDrawInk(dom, state, w2s);
     this._updateMeters(dom, ml2, state);
     this._updateCadenceReadout(state);
   },
@@ -1675,6 +1747,50 @@ export const masslineHud = {
     setAttr(dom.ringCircle, 'r', String(r));
   },
 
+  // FB-007 — the drawn stroke on the glass: the model decides what is true (resolveDrawFlightInk),
+  // this only projects and paints. A completed stroke stamps its fade start once (state.masslineInk,
+  // so the HUD signature can roll with the fade) and both paths fade out over DRAW_INK_FADE_S.
+  _updateDrawInk(dom, state, w2s) {
+    const svg = dom.inkSvg;
+    if (!svg) return;
+    const ink = resolveDrawFlightInk(state);
+    if (!ink) {
+      if (state && state.masslineInk) state.masslineInk = null;
+      setStyle(svg, 'display', 'none');
+      return;
+    }
+    if (ink.fade <= 0) {
+      setStyle(svg, 'display', 'none');
+      return;
+    }
+    if (ink.stroke && !state.masslineInk) {
+      state.masslineInk = { fadeStart: finite(state.simTime) };
+    }
+    const paint = (path, points) => {
+      let d = '';
+      for (const p of points) {
+        if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.z)) continue;
+        const s = projectWorld(w2s, p.x, p.z);
+        if (!s || !Number.isFinite(s.x) || !Number.isFinite(s.y)) continue;
+        d += `${d === '' ? 'M' : 'L'}${Math.round(s.x * 10) / 10} ${Math.round(s.y * 10) / 10}`;
+      }
+      return d;
+    };
+    const flownD = paint(dom.inkFlownPath, ink.flown);
+    const aheadD = paint(dom.inkAheadPath, ink.ahead);
+    if (flownD && dom.inkDFlown !== flownD) {
+      dom.inkDFlown = flownD;
+      dom.inkFlownPath.setAttribute('d', flownD);
+    }
+    if (aheadD && dom.inkDAhead !== aheadD) {
+      dom.inkDAhead = aheadD;
+      dom.inkAheadPath.setAttribute('d', aheadD);
+    }
+    setStyle(svg, 'display', 'block');
+    if (ink.stroke) setStyle(svg, 'opacity', String(Math.max(0, Math.min(1, ink.fade))));
+    else if (svg.style.opacity !== '1') svg.style.opacity = '1';
+  },
+
   // VERB-29: the ring the orbit assist is holding the pilot to, centered on the tether anchor.
   _updateOrbitRing(dom, player, state, w2s) {
     const ring = resolveOrbitAssistRing(state, player);
@@ -1743,6 +1859,19 @@ export const masslineHud = {
       setClass(dom.strainPill, 'ml2-warn', false);
       if (dom.strainText && dom.strainText.textContent !== 'LINE') dom.strainText.textContent = 'LINE';
     }
+    // FB-006 — the RIDE chip. The fill is the share of the anchor's speed the ride has lent the
+    // player; the words stay in the pill grammar (FOCUS/CLOAK/LINE) with the numbers in the
+    // reading. Exists only beside a live tether, so the quiescent gate already covers idle.
+    const ride = active ? tether.ride : null;
+    const showRide = !!(ride && ride.active === true);
+    if (dom.ridePill) setStyle(dom.ridePill, 'display', showRide ? 'flex' : 'none');
+    if (showRide) {
+      const gained = finite(ride.speedGained);
+      const anchorSpeed = Math.max(1, finite(ride.anchorSpeed));
+      if (dom.rideFill) setStyle(dom.rideFill, 'transform', `scaleX(${clamp01(gained / anchorSpeed)})`);
+      setAttr(dom.ridePill, 'aria-label',
+        `Riding the anchor — gained ${Math.round(gained)} of ${Math.round(finite(ride.anchorSpeed))} wu per second`);
+    }
   },
 
   // Cadence instrument (Massline Cadence overlay). Pure DOM view over the new preview/window
@@ -1772,6 +1901,9 @@ export const masslineHud = {
     setStyle(dom.btPill, 'display', 'none');
     setStyle(dom.ckPill, 'display', 'none');
     if (dom.strainPill) setStyle(dom.strainPill, 'display', 'none');
+    if (dom.ridePill) setStyle(dom.ridePill, 'display', 'none');
+    if (dom.inkSvg) setStyle(dom.inkSvg, 'display', 'none');
+    this._ink = null;
     this._lineLoad = null;
     // The panel gates itself on tether.active, not on flight/docked — hide it explicitly here so
     // it never outlives the flight HUD (docked, flag off, dead player). hide() keeps the
@@ -1847,6 +1979,20 @@ export const masslineHud = {
     ghostPath.setAttribute('class', 'ml2-ghost-path');
     ghostSvg.appendChild(ghostPath);
     root.appendChild(ghostSvg);
+
+    // FB-007 — the drawn-stroke ink. Sits UNDER the marks like the ghost: the stroke is the
+    // future and the past of this flight, not a target.
+    const inkSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    inkSvg.setAttribute('class', 'ml2-ink');
+    inkSvg.style.display = 'none';
+    inkSvg.setAttribute('aria-hidden', 'true');
+    const inkFlownPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    inkFlownPath.setAttribute('class', 'ml2-ink-flown');
+    inkSvg.appendChild(inkFlownPath);
+    const inkAheadPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    inkAheadPath.setAttribute('class', 'ml2-ink-ahead');
+    inkSvg.appendChild(inkAheadPath);
+    root.appendChild(inkSvg);
 
     const throwEl = document.createElement('div');
     throwEl.className = 'ml2-mark ml2-throw';
@@ -1949,6 +2095,8 @@ export const masslineHud = {
     const bt = makePill('FOCUS', 'ml2-bt');
     const ck = makePill('CLOAK', 'ml2-cloak');
     const strain = makePill('LINE', 'ml2-strain');
+    // FB-006 — the RIDE chip: the same pill grammar, naming the hitchhike state while it lives.
+    const ride = makePill('RIDE', 'ml2-ride');
     root.appendChild(meters);
 
     // Cadence instrument slot (mid-left column). The component owns its subtree; this system owns
@@ -1976,11 +2124,13 @@ export const masslineHud = {
     this._dom = {
       root, previewEl, previewMark, previewSourceMark, previewSvg, previewLine,
       ghostSvg, ghostPath, ghostD: null,
+      inkSvg, inkAheadPath, inkFlownPath, inkD: null,
       throwEl, throwLabel, selfEl, selfLabel, ringSvg, ringCircle,
       orbitSvg, orbitCircle,
       threatMark, threatMarkLabel, snagMark, snagMarkLabel,
       btPill: bt.pill, btFill: bt.bar, ckPill: ck.pill, ckFill: ck.bar,
       strainPill: strain.pill, strainFill: strain.bar, strainText: strain.text,
+      ridePill: ride.pill, rideFill: ride.bar,
     };
     // A recreated DOM tree must receive its first complete paint even when the state object was
     // reused across a route/new-run boundary and its previous signature happens to match.

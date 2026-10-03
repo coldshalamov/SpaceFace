@@ -15,10 +15,8 @@ import {
   formatBindingCode,
 } from '../../systems/input.js';
 import {
-  GAMEPAD_BUTTON_LABELS,
   findGamepadBindConflict,
   gamepadButtonLabels,
-  parseGamepadChord,
   resolveGamepadBindings,
 } from '../../systems/gamepad.js';
 import { massline2Flag } from '../../data/featureFlags.js';
@@ -641,6 +639,10 @@ export const settingsScreen = {
         ['light', 'Light'],
         ['off', 'Off'],
       ], (v) => this._set(ctx, 'gameplay', 'orbitAssistStrength', v));
+      // FB-001: the pursuit-slot chase assist. Off by default — an opt-in flight option that
+      // holds a bearing/range slot off a locked moving target; it composes with, and sits
+      // beside, the orbit-assist row above.
+      rowToggle('Pursuit slot assist', () => g.pursuitSlotAssist === true, (v) => this._set(ctx, 'gameplay', 'pursuitSlotAssist', v));
       rowSelect('Auto-target assist', () => g.targetAssistStrength || 'full', [
         ['full', 'Full'],
         ['standard', 'Standard'],

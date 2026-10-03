@@ -1,7 +1,8 @@
 // A forward-only steering ribbon. Ink supplies a route and an exit tangent, never a stopping
 // position or a corner speed. Lookahead scales with the full-speed turn radius: tight ink is
 // rounded rather than pursued by alternating full-thrust recapture commands.
-import { DRAW_FLIGHT, drawFlightTurnRate, drawWrapAngle } from '../core/flight/drawFlightControl.js';
+import { DRAW_FLIGHT, drawFlightTurnRate, drawWrapAngle,
+  emptyStrokeGrader, gradeStroke, gradeStrokeSample } from '../core/flight/drawFlightControl.js';
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const finite = (v, fallback = 0) => Number.isFinite(v) ? v : fallback;
@@ -23,7 +24,10 @@ function cacheFor(runtime, route) {
   if (replaced) {
     c = runtime.path = { source: points, headX: head?.x, headZ: head?.z, consumed: 0,
       lastX: null, lastZ: null, witness: [], nodes: [], total: 0, progressS: 0, complete: false,
-      projection: { s: 0, x: 0, z: 0 }, carrot: { x: 0, z: 0 } };
+      projection: { s: 0, x: 0, z: 0 }, carrot: { x: 0, z: 0 },
+      // FB-007 — the stroke's error ledger lives and dies with the path cache: a new stroke
+      // (or an edited one) grades from zero.
+      grader: emptyStrokeGrader() };
   }
   // Input bounds live strokes; externally supplied/replayed corrupt routes get the same bound.
   // No distance/spacing loop: even a 1e308 coordinate pair cannot monopolize a simulation tick.
@@ -112,11 +116,21 @@ export function followDrawFlightPath(route, player, runtime, profile, dt) {
   if (!c.complete) {
     const projection = projectAhead(c, px, pz, Math.max(lookahead, speed * dt * 2));
     c.progressS = Math.max(c.progressS, projection.s);
+    // FB-007 — the cross-track error this projection already computed, accumulated against the
+    // band law in drawFlightControl. Measurement only; the acceleration law is untouched.
+    gradeStrokeSample(c.grader || (c.grader = emptyStrokeGrader()),
+      Math.hypot(px - projection.x, pz - projection.z), speed, dt);
     const endAlong = (px - last.x) * Math.cos(endHeading) + (pz - last.z) * Math.sin(endHeading);
     if (c.progressS >= c.total - 1e-5 ||
       (c.total - c.progressS < lookahead * 0.35 && endAlong >= 0)) {
       c.complete = true;
       c.progressS = c.total;
+    }
+    // FB-007 — the completed-stroke record: distance, peak speed and the error band, published
+    // on the stroke itself (route.stroke) where the massline HUD reads it. Exactly once.
+    if (c.complete && !(route.stroke && route.stroke.band)) {
+      c.grader.distanceWu = c.total;
+      route.stroke = gradeStroke(c.grader);
     }
   }
   const carrot = pointAt(c, c.progressS + lookahead, c.carrot);

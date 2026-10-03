@@ -54,6 +54,10 @@ function defaultSettings() {
       controlScheme: 'pilot',
       controlSchemeV2: true,
       orbitAssistStrength: 'standard',
+      // FB-001: the pursuit-slot chase assist, re-surfaced as an opt-in assisted-flight option.
+      // Default off so the default route, its feel, and every golden stay exactly as shipped;
+      // flightV3 gates on strict `=== true` for the same reason.
+      pursuitSlotAssist: false,
       // VERB-17: auto-target aim correction. Full is the authored solution (the behaviour
       // everything shipped with); off is zero correction. Persisted like the orbit assist.
       targetAssistStrength: 'full',

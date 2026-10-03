@@ -16,6 +16,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { getDerivedStats } from '../src/systems/ships.js';
+import { handlingProfileForShip } from '../src/ui/panels/handlingProfile.js';
 import { playerRamPlateImpact } from '../src/systems/collisionConsequences.js';
 import {
   resolveCollisionConsequence,
@@ -32,6 +33,7 @@ import {
 import { synergiesForFittings, explainSynergy, synergyById } from '../src/data/synergies.js';
 import {
   estimateAtCargoBasis,
+  governedYawRateFor,
   shipCapabilityVerbs,
   turnRecordText,
 } from '../src/systems/shipCapabilities.js';
@@ -87,21 +89,34 @@ test('cargo mass is real mass: a loaded hold moves the same physics the plate sw
   assert.ok(podded.cargoCap > bare.cargoCap, 'the pod is where the capacity comes from');
 });
 
-test('the fit screen says the same thing in words: loaded hold, worse turn', () => {
+test('the fit screen says the same thing in words: loaded hold, slower response', () => {
   const empty = getDerivedStats(MULE, RAMMER_FIT, playerWithCargoMass(0));
   const loaded = getDerivedStats(MULE, RAMMER_FIT, playerWithCargoMass(400));
   assert.match(turnRecordText(empty), /empty hold/);
   assert.match(turnRecordText(loaded), /cargo aboard/);
-  // The row prints the real rate: the loaded-hold number the player reads is the dropped one.
+  // NXB-030: the printed rate is the kernel's governed yaw ceiling — the live law does not
+  // move it with the hold, so the row must not pretend loading drops it. What the hold really
+  // costs is on the response channel: the thruster bay's yaw accel (the screen's own Agility
+  // bar reads it) and the main drive both drop under 400 t of cargo.
   const emptyRate = Number(turnRecordText(empty).split(' ')[0]);
   const loadedRate = Number(turnRecordText(loaded).split(' ')[0]);
-  assert.ok(loadedRate < emptyRate, `printed turn ${loadedRate} under load must be below ${emptyRate} empty`);
+  assert.equal(loadedRate, emptyRate,
+    `the printed yaw cap is the governed number — the hold does not move it (${emptyRate})`);
+  assert.ok(loaded.propulsion.yawAccel < empty.propulsion.yawAccel,
+    'the loaded turn response really is slower — that is the channel the hold taxes');
+  const agilityAxis = (profile) => profile.axes.find((axis) => axis.id === 'agility');
+  const emptyBand = handlingProfileForShip(MULE, { fittings: RAMMER_FIT, player: playerWithCargoMass(0) });
+  const loadedBand = handlingProfileForShip(MULE, { fittings: RAMMER_FIT, player: playerWithCargoMass(400) });
+  assert.ok(agilityAxis(loadedBand).raw < agilityAxis(emptyBand).raw,
+    'the visible Agility bar carries the load cost the yaw cap cannot show');
   const estimate = estimateAtCargoBasis({ derived: loaded, basis: 'current', fittings: RAMMER_FIT });
   assert.equal(estimate.basis, 'current');
   assert.match(estimate.sentence, /With the cargo aboard, the turn radius at fight speed is \d+ m/);
   const emptyEstimate = estimateAtCargoBasis({ derived: empty, basis: 'current', fittings: RAMMER_FIT });
-  assert.ok(estimate.turnRate < emptyEstimate.turnRate,
-    'the same estimate object carries the visibly worse turn');
+  assert.equal(estimate.turnRate, governedYawRateFor(loaded),
+    'the estimate carries the same governed yaw cap the radius is divided out of');
+  assert.equal(estimate.turnRadiusWu, emptyEstimate.turnRadiusWu,
+    'fight-speed turn radius is honest either way — the load costs response, not the circle');
 });
 
 test('a ram plate turns the contact into a weapon only while the plate is fitted', () => {

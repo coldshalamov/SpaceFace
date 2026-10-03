@@ -94,7 +94,9 @@ const CLAUSE_SKIP_SOURCES = new Set([
  *
  * A clause attaches only when:
  *   1. the seeded roll beats ATTACH_PROB (clause-free is the common case — offers behave as today),
- *   2. the clause's event is in OBSERVED_CLAUSE_EVENTS (a clause a system can't observe is forbidden),
+ *   2. the clause's event is in OBSERVED_CLAUSE_EVENTS — or is the `time_limit` sentinel, which the
+ *      system observes via its own deadline tick rather than a bus emit (a clause a system can't
+ *      observe is forbidden),
  *   3. the clause is APPROPRIATE for the offer's type (e.g. no_kills fits combat/escort, not cargo).
  * PURE over its inputs; deterministic per (seed, offerId).
  */
@@ -107,10 +109,11 @@ export function attachClauses(offer, seed) {
   const rng = mulberry32(hash32(seed, offer.id, 'clause') >>> 0);
   if (rng() > ATTACH_PROB) return offer; // clause-free (the common case — no observable difference)
 
-  // Candidate clauses: observed-event only, and type-appropriate.
+  // Candidate clauses: observed-event only (the time_limit sentinel is observed by the system's
+  // own deadline tick), and type-appropriate.
   const candidates = CLAUSE_IDS
     .map((id) => CONTRACT_CLAUSES[id])
-    .filter((c) => c && SET_OBSERVED.has(c.event) && clauseFitsOffer(c, offer));
+    .filter((c) => c && (SET_OBSERVED.has(c.event) || c.event === 'time_limit') && clauseFitsOffer(c, offer));
   if (!candidates.length) return offer;
   const pick = candidates[Math.floor(rng() * candidates.length)];
   const clauses = [{
@@ -199,7 +202,13 @@ function clauseFitsOffer(clause, offer) {
     if (SCAN_SERVICE_STATIONS.has(offer.destStationId)) return false;
     return t === 'cargo_delivery' || t === 'smuggling_run' || t === 'bulk_trade' || t === 'salvage_retrieval';
   }
-  if (clause.id === 'time_limit') return true; // any type can carry a deadline
+  if (clause.id === 'time_limit') {
+    // Any type can carry a deadline — but only an offer that actually HAS one. A deadline-free
+    // offer would make the +5% unconditional premium: a dead term, not a risk (the same
+    // unobservable-clause discipline, applied to the deadline the predicate ticks against).
+    const durationS = Number(offer.duration_s);
+    return Number.isFinite(durationS) && durationS > 0;
+  }
   return false;
 }
 
@@ -214,6 +223,11 @@ export const contractClausesSystem = {
     this._helpers = ctx && ctx.helpers;
     this._onAccept = (p) => this._onMissionAccepted(p);
     this._onLegacyComplete = (p) => this._onLegacyMissionCompleted(p);
+    this._onExpired = (p) => this._onMissionExpired(p);
+    this._onHonor = (p) => this._onClauseHonored(p);
+    // Dedupe for the honor receipt — a clause honors at most once per mission, so a bounded
+    // missionId:clauseId set is sufficient even across a long session.
+    this._honorLogged = new Set();
     // Event-scoped clause index: physics:impact and combat:fire are the two highest-rate
     // events on the bus, so scanning every clause of every mission per emit (plus cloning
     // the active array for safety) was a constant alloc tax. Rows are rebuilt only when the
@@ -243,6 +257,47 @@ export const contractClausesSystem = {
       // after settling clauses and removes the active instance before this event, so live play can
       // never enter the fallback or emit a second honor.
       this._bus.on('mission:completed', this._onLegacyComplete);
+      // FB-056 — the deadline sentinel has no bus event to subscribe to: missions' own expiry
+      // machinery fires mission:expired first in registry order, so this is where the clause
+      // actually records the breach. The honor side needs no sender — missions emits
+      // contract:clauseHonored inside settlement; this listener just posts its receipt line.
+      this._bus.on('mission:expired', this._onExpired);
+      this._bus.on('contract:clauseHonored', this._onHonor);
+    }
+  },
+
+  /**
+   * FB-056 — the time_limit clause keys off the clock, not a bus event, so this is the one
+   * per-tick predicate the observer runs (against state.simTime, never wall time). In the live
+   * registry missions.update() expires a deadline'd contract first, so this tick normally only
+   * sees the clause inside its window — the breach lands through _onMissionExpired. When ordering
+   * or a harness leaves an active mission past its deadline, the same breach path every other
+   * clause uses fires here, and missions' own fail guard keeps the penalty single.
+   */
+  update(dt, state) {
+    const active = (state && state.missions && state.missions.active) || [];
+    for (const m of active) {
+      if (!m || m.status !== 'active' || !Array.isArray(m.clauses)) continue;
+      const clause = m.clauses.find((row) => row && row.id === 'time_limit');
+      if (!clause) continue;
+      if (!m._clauseState) m._clauseState = {};
+      const runtime = m._clauseState.time_limit;
+      if (runtime && runtime.breached) continue; // fire once
+      const deadline = runtime && Number.isFinite(runtime.deadline_s)
+        ? runtime.deadline_s
+        : (Number.isFinite(m.deadline_s) ? m.deadline_s : null);
+      // A deadline-less clause can never breach — and never should have attached (see
+      // clauseFitsOffer). Skip rather than mint a free +5% on completion.
+      if (!Number.isFinite(deadline)) continue;
+      const termDef = contractTermById('time_limit');
+      let breached = false;
+      try {
+        breached = !!(termDef && termDef.breachOn(null, {
+          simTime: state.simTime || 0, deadline_s: deadline, mission: m,
+        }));
+      } catch (_) { breached = false; }
+      if (!breached) continue;
+      this._breachTimeLimit(m, clause, deadline);
     }
   },
 
@@ -449,6 +504,72 @@ export const contractClausesSystem = {
     }
   },
 
+  /**
+   * FB-056 — record the time_limit breach on the instance (so settleContractClauses reads the
+   * same flag every other clause sets) and emit the ONE penalty intent. Reachable from the tick
+   * (mission still active past deadline) and from _onMissionExpired (mission already settled by
+   * its own deadline machinery); either way the flag guarantees it fires exactly once.
+   */
+  _breachTimeLimit(mission, clause, deadlineS) {
+    if (!mission) return;
+    const runtime = mission._clauseState && mission._clauseState.time_limit;
+    if (runtime && runtime.breached) return;
+    if (!mission._clauseState) mission._clauseState = {};
+    const deadline = Number.isFinite(deadlineS) ? deadlineS
+      : (runtime && Number.isFinite(runtime.deadline_s) ? runtime.deadline_s
+        : (Number.isFinite(mission.deadline_s) ? mission.deadline_s : null));
+    mission._clauseState.time_limit = {
+      ...(runtime || {}),
+      deadline_s: deadline,
+      breached: true,
+      at: (this._state && this._state.simTime) || 0,
+    };
+    this._emitBreach(mission, clause || { id: 'time_limit', label: 'Time limit' }, 'time_limit');
+  },
+
+  /**
+   * Missions expires a deadline'd contract inside its own update — before this observer's tick —
+   * so the expiry event is where the clause actually records its breach in live play (the mission
+   * is still listed at emit time; removal follows the emit). Expiry IS the breach: no predicate
+   * re-check. The emitted contract:clauseBroken routes through missions' fail path, which ignores
+   * it on a contract already out of 'active' — one penalty path, never two.
+   */
+  _onMissionExpired(payload) {
+    const missionId = payload && payload.missionId;
+    if (!missionId) return;
+    const m = this._findActive(missionId);
+    if (!m || !Array.isArray(m.clauses)) return;
+    const clause = m.clauses.find((row) => row && row.id === 'time_limit');
+    if (!clause) return;
+    this._breachTimeLimit(m, clause);
+  },
+
+  /**
+   * FB-056 — every honored clause leaves one visible receipt line on the comms/mission-log lane.
+   * The research-point grant itself stays inside missions' settlement; this listener never grants,
+   * never multiplies, never writes credits — it only prints what already settled.
+   */
+  _onClauseHonored(payload) {
+    const missionId = payload && payload.missionId;
+    const clauseId = payload && payload.clauseId;
+    if (!missionId || !clauseId || !this._bus || !this._bus.emit) return;
+    if (!this._honorLogged) this._honorLogged = new Set();
+    const key = `${missionId}:${clauseId}`;
+    if (this._honorLogged.has(key)) return;
+    this._honorLogged.add(key);
+    const canonical = contractTermById(clauseId);
+    const label = (canonical && canonical.label) || clauseId;
+    const mult = Number(payload.rewardMult);
+    const bonusText = Number.isFinite(mult) && mult > 1
+      ? ` — contract pay +${Math.round((mult - 1) * 100)}%`
+      : '';
+    this._bus.emit('comms:log', {
+      from: 'Contract desk',
+      text: `Term honored: ${label}${bonusText}.`,
+      kind: 'contract',
+    });
+  },
+
   _emitBreach(m, clause, eventName, breachText = null) {
     if (!this._bus || !this._bus.emit) return;
     // Fail-level breach: suppress the settled-kill pass-through for this event.
@@ -486,12 +607,18 @@ export const contractClausesSystem = {
         this._bus.off('mission:abandoned', this._invalidateIndex);
       }
       if (this._onLegacyComplete) this._bus.off('mission:completed', this._onLegacyComplete);
+      if (this._onExpired) this._bus.off('mission:expired', this._onExpired);
+      if (this._onHonor) this._bus.off('contract:clauseHonored', this._onHonor);
     }
     if (this._termHandlers) this._termHandlers.clear();
+    if (this._honorLogged) this._honorLogged.clear();
     this._termHandlers = null;
     this._onAccept = null;
     this._invalidateIndex = null;
     this._onLegacyComplete = null;
+    this._onExpired = null;
+    this._onHonor = null;
+    this._honorLogged = null;
     this._clauseIndexMissions = null;
     this._clauseIndexActive = null;
   },

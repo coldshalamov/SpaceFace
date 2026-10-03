@@ -2742,6 +2742,113 @@ export const RECIPES = [
     gainEnvelope: { attack: 0.01, sustain: 0.1, release: 0.32 },
     filterType: 'lowpass', filterFreq: 1100, filterQ: 1.8,
   },
+  // FB-010 — the transverse snare and the mass seed have voices. Synth recipes on the existing
+  // oscillator/noise families; no samples, no new UI countdown (the seed HUD exists). The seed's
+  // warning-then-collapse is the pair that matters most: it is a timer the player stands on.
+  {
+    // Snare arm: one small mechanical tick as the cross-line's anchors arm.
+    id: 'sfx_snare_arm_tick',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'square',
+    baseFreq: 620,
+    freqSweep: [620, 500],
+    sweepTimeS: 0.03,
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.07 },
+    filterType: 'bandpass', filterFreq: 820, filterQ: 2.6,
+  },
+  {
+    // Snare cut: the tether twang's brighter, tighter cousin for the cross-line's release.
+    id: 'sfx_snare_cut',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 340,
+    freqSweep: [340, 120],
+    sweepTimeS: 0.12,
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.14 },
+    filterType: 'bandpass', filterFreq: 900, filterQ: 3.2,
+    pitchRange: [0.94, 1.06],
+  },
+  {
+    // Seed deploy: the throw's soft falling whistle as the seed travels out.
+    id: 'sfx_massseed_deploy',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 480,
+    freqSweep: [480, 300],
+    sweepTimeS: 0.22,
+    gainEnvelope: { attack: 0.008, sustain: 0.02, release: 0.2 },
+    filterType: 'bandpass', filterFreq: 760, filterQ: 2.2,
+  },
+  {
+    // Seed locking rise: the first half of the lock figure, a tone climbing while the ring seats.
+    id: 'sfx_massseed_lock_rise',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 196,
+    freqSweep: [196, 392],
+    sweepTimeS: 0.4,
+    gainEnvelope: { attack: 0.02, sustain: 0.24, release: 0.1 },
+    filterType: 'lowpass', filterFreq: 1200, filterQ: 1.6,
+  },
+  {
+    // Seed lock chord, low voice: the ring lands with the root under the rise's octave.
+    id: 'sfx_massseed_chord_low',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 196,
+    gainEnvelope: { attack: 0.006, sustain: 0.1, release: 0.3 },
+    filterType: 'lowpass', filterFreq: 760, filterQ: 1.4,
+  },
+  {
+    // Seed lock chord, high voice: the fifth above, so landing reads as resolution not click.
+    id: 'sfx_massseed_chord_high',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 294,
+    gainEnvelope: { attack: 0.008, sustain: 0.08, release: 0.34 },
+    filterType: 'lowpass', filterFreq: 1100, filterQ: 1.8,
+  },
+  {
+    id: 'sfx_massseed_lock_chord',
+    category: 'weapon',
+    type: 'layered',
+    layers: ['sfx_massseed_chord_low', 'sfx_massseed_chord_high'],
+    gainMult: 0.95,
+  },
+  {
+    // Seed warning pulse that quickens: a narrow alarm tone under a fast tremolo with a rising
+    // figure — reads as a countdown the ear can follow, never a menu beep.
+    id: 'sfx_massseed_warning',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'square',
+    baseFreq: 392,
+    freqSweep: [392, 523],
+    sweepTimeS: 0.6,
+    gainEnvelope: { attack: 0.01, sustain: 0.5, release: 0.16 },
+    filterType: 'bandpass', filterFreq: 900, filterQ: 2.4,
+    lfoRate: 8, lfoDepth: 0.72,
+  },
+  {
+    // Seed collapse drop: the floor falls away under the anchored mass — one low drop, then
+    // silence (the despawn is bookkeeping and stays silent).
+    id: 'sfx_massseed_collapse',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 220,
+    freqSweep: [220, 40],
+    sweepTimeS: 0.5,
+    gainEnvelope: { attack: 0.004, sustain: 0.0, release: 0.45 },
+    subBass: 0.5,
+    reverbMix: 0.2, reverbDecay: 0.8,
+  },
   // PQ-158.04 — directed synthetic radio voice (sample body + radio recipe).
   {
     id: 'sfx_bark_radio',

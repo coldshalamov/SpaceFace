@@ -407,6 +407,9 @@ export function createDamageRouter(context, statusService, options = {}) {
         appliedTick: state.tick,
       } : null;
       const reason = tag ? 'weapon_hit' : 'damage';
+      const maxTorque = packet && Number.isFinite(packet.tumbleTorque)
+        ? packet.tumbleTorque
+        : (input && input.packet && Number.isFinite(input.packet.tumbleTorque) ? input.packet.tumbleTorque : undefined);
       const accepted = physics.applyImpulse({
         entityId: target.id,
         impulse: vector,
@@ -414,6 +417,7 @@ export function createDamageRouter(context, statusService, options = {}) {
         reason,
         tick: state.tick,
         provenance,
+        maxTorque,
       });
       if (accepted === false) return { applied: false, reason: 'physics_rejected' };
       const magnitude = Math.hypot(vector.x, vector.z);

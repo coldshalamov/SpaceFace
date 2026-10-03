@@ -369,6 +369,30 @@ export function traumaFromContact(dp, context = {}) {
   return feel && Number.isFinite(feel.trauma) ? feel.trauma : 0;
 }
 
+/**
+ * FB-084 — the victim's acoustic mass for the weight-keyed kill beat, read off the dying entity
+ * the same way the physics solver and the collision-cue ladder read it: the entity's authored
+ * mass first, then its physics body, then the combat data record, then the kill receipt. An
+ * unknown mass falls back to the collision law's ACOUSTIC_MASS_UNKNOWN, which the camera's tier
+ * table maps to the conservative medium beat (the old unconditional kiss), never to silence.
+ */
+function victimAcousticMass(receipt, state) {
+  const entity = state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(receipt.id)
+    : null;
+  const candidates = [
+    entity && entity.mass,
+    entity && entity.physicsBody && entity.physicsBody.mass,
+    entity && entity.data && entity.data.mass,
+    receipt && receipt.mass,
+  ];
+  for (let i = 0; i < candidates.length; i++) {
+    const m = candidates[i];
+    if (Number.isFinite(m) && m > 0) return m;
+  }
+  return 0;
+}
+
 const STYLE_ID = 'sf-feel-style';
 
 // Tunables — spec2/02 §3 exact numbers. Hit-stop is short so it reads as "weight," not "lag.
@@ -1250,11 +1274,19 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
         }
         if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(trauma);
         this._trigger(HS_CAPITAL_KILL, FOV_PUNCH_KILL, 0, null);
+        // FB-084: the capital tier of the weight-keyed kill beat (deep push + hold), keyed on
+        // the same acoustic mass the kill audio resolves.
+        if (ctrl && typeof ctrl.killCam === 'function') {
+          ctrl.killCam(victimAcousticMass(p, state), { capital: true });
+        }
         return;
       }
-      // Small kill: short hit-stop + camera kiss.
+      // Small kill: short hit-stop + camera beat, now weighted (FB-084): light victims get no
+      // beat, the wasp's kiss is gone rather than stacked; medium+ tier by the mass law.
       this._trigger(HS_KILL, FOV_PUNCH_KILL, 0, null);
-      this.bus.emit('camera:kill', {});
+      if (ctrl && typeof ctrl.killCam === 'function') {
+        ctrl.killCam(victimAcousticMass(p, state), { capital: false });
+      }
     }, { presentation: true });
 
     // Player death is the single biggest beat in the game — long dip, big FOV punch, red wash,
@@ -1734,11 +1766,13 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
 
   // Kill-cam "kiss": camera push-zoom only. The actual hit-stop is now a short 60 ms dip in the
   // entity:killed handler; this helper exists for callers that want to trigger the kiss explicitly.
+  // FB-084: the beat is weight-keyed, so an explicit trigger without a victim mass resolves
+  // through the unknown-mass law (the conservative medium beat) on the camera controller itself.
   _triggerKillCam() {
     if (this.state.mode !== 'flight') return;
     if (!this._modalClear()) return;
-    if (this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce) return;
-    this.bus.emit('camera:kill', {});
+    const ctrl = this.state.render && this.state.render.cameraCtrl;
+    if (ctrl && typeof ctrl.killCam === 'function') ctrl.killCam(0);
   },
 
   // True when no modal screen is open (screenManager maintains state.ui.screenStack).

@@ -36,6 +36,11 @@ import {
 import { indexedTypeScan } from '../world/livingWorldViews.js';
 import { createChoirReliefBerth, normalizeChoirRelief } from './choirReliefBerth.js';
 import { createMemorialThief, normalizeMemorialThief } from './memorialThief.js';
+// PB-CONS-B (SF-156 + SF-162): the aftermath-people companions, same hosting law as the Choir
+// berth — durable world records live in this owner's saved bag, the physical people ride the
+// job kernel, and every consequence outside the records stays with its canonical owner.
+import { createRescuedWorkerReturn } from './rescuedWorkerReturn.js';
+import { createScavengerOccupationSwitch } from './scavengerOccupationSwitch.js';
 
 const VALID_PHASES = new Set(['rumored', 'fixed', 'decision', 'salvaged']);
 
@@ -412,6 +417,8 @@ export const uniqueWrecks = {
     this._ensureState();
     this._choirRelief = createChoirReliefBerth(this);
     this._memorialThief = createMemorialThief(this);
+    this._rescuedWorkers = createRescuedWorkerReturn(this);
+    this._occupationSwitch = createScavengerOccupationSwitch(this);
 
     this._listen('game:started', () => this._onGameStarted());
     this._listen('save:loaded', () => this._onSaveLoaded());
@@ -427,15 +434,28 @@ export const uniqueWrecks = {
       this._pumpComplications();
       this._choirRelief.sync();
       this._memorialThief.sync();
+      this._rescuedWorkers.sync();
+      this._occupationSwitch.sync();
     });
     this._listen('npcjobs:work', (payload) => this._choirRelief.work(payload));
-    this._listen('npcjobs:complete', (payload) => this._choirRelief.complete(payload));
+    this._listen('npcjobs:complete', (payload) => {
+      this._choirRelief.complete(payload);
+      this._occupationSwitch.jobComplete(payload || {});
+    });
     this._listen('combat:subsystemEnabled', (payload) => this._choirRelief.enabled(payload));
     this._listen('combat:subsystemDisabled', (payload) => this._choirRelief.disabled(payload));
     this._listen('entity:killed', (payload) => {
       this._choirRelief.killed(payload);
       this._memorialThief.killed(payload);
+      this._rescuedWorkers.killed(payload);
+      this._occupationSwitch.killed(payload || {});
     });
+    // SF-156: the survivor-pod resolution seam decides the person's fate; the return is the
+    // later workplace beat. SF-162: the field owner's own departed event is the released
+    // obligation both packets require before any switch may fire.
+    this._listen('survivorPod:ejected', (payload) => this._rescuedWorkers.podEjected(payload || {}));
+    this._listen('survivorPod:resolved', (payload) => this._rescuedWorkers.podResolved(payload || {}));
+    this._listen('wreckEcology:departed', (payload) => this._occupationSwitch.departed(payload || {}));
     this._listen('salvage:completed', (payload) => this._onSalvageCompleted(payload));
     this._listen('uniqueWreck:choose', (payload) => this._onChoose(payload));
     this._listen('uniqueWreck:decisionRequest', (payload) => this._republishPendingDecisions(payload));
@@ -481,6 +501,8 @@ export const uniqueWrecks = {
   _clearRuntime() {
     this._choirRelief?.clear();
     this._memorialThief?.clear();
+    this._rescuedWorkers?.clear();
+    this._occupationSwitch?.clear();
     if (this._entityByWreck) this._entityByWreck.clear();
     if (this._wreckByEntity) this._wreckByEntity.clear();
     if (this._bandRequestResolutions) this._bandRequestResolutions.clear();

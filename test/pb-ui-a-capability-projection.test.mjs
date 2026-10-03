@@ -26,6 +26,12 @@ import { createGameState } from '../src/core/gameState.js';
 import { getDerivedStats } from '../src/systems/ships.js';
 import { dryRunLoadoutPresetApply } from '../src/systems/ships.js';
 import {
+  forwardAccelFor,
+  governedFightSpeedFor,
+  governedYawRateFor,
+  travelSpeedFor,
+} from '../src/systems/shipCapabilities.js';
+import {
   presentLoadoutDelta,
   presentModuleFitPreview,
   presentHullCompare,
@@ -73,11 +79,22 @@ test('capability comparison is honest: deltas are owner numbers and show a real 
   assert.ok(delta.rows.length > 0, 'delta rows exist');
 
   // Every number is the derived-stats owner's own: row.delta === getDerivedStats(after) - before.
+  // NXB-030: the motion rows resolve through the capability owner's live-profile reads — the
+  // governed fight cap, burn ceiling, kernel yaw ceiling and forward accel — because those are
+  // the numbers the flight kernel actually commands.
+  const ownerRead = {
+    operationalMass: (d) => d.operationalMass ?? d.mass,
+    maxSpeed: governedFightSpeedFor,
+    travelCeiling: travelSpeedFor,
+    turnRate: governedYawRateFor,
+    thrust: forwardAccelFor,
+  };
   const ownerBefore = getDerivedStats(KESTREL, delta.beforeFittings, player);
   const ownerAfter = getDerivedStats(KESTREL, delta.afterFittings, player);
   for (const row of delta.rows) {
-    const beforeVal = row.key === 'operationalMass' ? (ownerBefore.operationalMass ?? ownerBefore.mass) : ownerBefore[row.key];
-    const afterVal = row.key === 'operationalMass' ? (ownerAfter.operationalMass ?? ownerAfter.mass) : ownerAfter[row.key];
+    const resolve = ownerRead[row.key] || ((d) => d[row.key]);
+    const beforeVal = resolve(ownerBefore);
+    const afterVal = resolve(ownerAfter);
     assert.ok(Number.isFinite(beforeVal) && Number.isFinite(afterVal), `row ${row.key} reads finite owner numbers`);
     assert.equal(row.before, beforeVal, `row ${row.key} before side is the owner value`);
     assert.equal(row.after, afterVal, `row ${row.key} after side is the owner value`);

@@ -59,6 +59,7 @@ export class SpatialHash {
       dynamicUnchanged: 0,
       staticReinserts: 0,
       staticUnchanged: 0,
+      gateSkips: 0,
       queries: 0,
       candidates: 0,
     };
@@ -70,6 +71,7 @@ export class SpatialHash {
       dynamicUnchanged: 0,
       staticReinserts: 0,
       staticUnchanged: 0,
+      gateSkips: 0,
       queries: 0,
       candidates: 0,
       activeBuckets: 0,
@@ -995,6 +997,16 @@ export class SpatialHash {
     this.diagnostics.activeBuckets = this.diagnostics.dynamicBuckets + this.diagnostics.staticBuckets;
   }
 
+  /**
+   * FB-088: the physics authority skipped a sync because the coverage gate proved no dynamic
+   * member moved cells / spawned / despawned and the static version is unchanged. Counted so
+   * the runtime witness can read gate behaviour next to the rebuild counters.
+   */
+  noteGateSkip() {
+    this._pending.gateSkips++;
+    this.diagnostics.gateSkips++;
+  }
+
   flushPerfCounters(perfRuntime) {
     const p = this._pending;
     if (!perfRuntime || typeof perfRuntime.recordSpatialHash !== 'function') {
@@ -1005,13 +1017,15 @@ export class SpatialHash {
       p.dynamicUnchanged = 0;
       p.staticReinserts = 0;
       p.staticUnchanged = 0;
+      p.gateSkips = 0;
       p.queries = 0;
       p.candidates = 0;
       return;
     }
     if (
       !p.rebuilds && !p.dynamicRebuilds && !p.dynamicFullRebuilds &&
-      !p.dynamicReinserts && !p.dynamicUnchanged && !p.queries && !p.candidates &&
+      !p.dynamicReinserts && !p.dynamicUnchanged && !p.gateSkips &&
+      !p.queries && !p.candidates &&
       !p.staticReinserts && !p.staticUnchanged
     ) return;
     perfRuntime.recordSpatialHash(p);
@@ -1022,6 +1036,7 @@ export class SpatialHash {
     p.dynamicUnchanged = 0;
     p.staticReinserts = 0;
     p.staticUnchanged = 0;
+    p.gateSkips = 0;
     p.queries = 0;
     p.candidates = 0;
   }

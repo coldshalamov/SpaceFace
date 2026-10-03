@@ -6,7 +6,7 @@ import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { NEW_GAME, NEW_GAME_STARTERS, resolveNewGameStarter } from '../src/data/newGameDefaults.js';
 import { fittingsFromDefaultModules, getDerivedStats, ships as shipsPrototype } from '../src/systems/ships.js';
-import { lineLoadSpeedFor } from '../src/systems/shipCapabilities.js';
+import { forwardAccelFor, lineLoadSpeedFor } from '../src/systems/shipCapabilities.js';
 import { starterAirCard } from '../src/ui/starterAirCard.js';
 
 test('each starter sentence matches that hull derived mass, thrust, and line load', () => {
@@ -19,7 +19,10 @@ test('each starter sentence matches that hull derived mass, thrust, and line loa
     const line = Math.round(lineLoadSpeedFor(derived).speedWuPerS || 0);
     assert.ok(card.sentence.length > 0);
     assert.equal(card.massT, Math.round(derived.operationalMass));
-    assert.equal(card.thrust, Math.round(derived.thrust));
+    // NXB-030: the card's thrust word is the live forward accel — the same channel the
+    // Shipworks gauge prints — not the legacy spec field the kernel never commanded.
+    assert.equal(card.thrust, Math.round(forwardAccelFor(derived)));
+    assert.equal(card.thrust, Math.round(derived.propulsion.mainAccel));
     assert.equal(card.lineWuPerS, line);
     assert.match(card.sentence, new RegExp(`${card.massT} t, thrust ${card.thrust}, line ${card.lineWuPerS} WU/s`));
     roles.add(card.role);

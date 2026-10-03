@@ -11,6 +11,7 @@ import {
   PICKUP_ACCEPTANCE_RETRY_S,
 } from '../core/pickupAcceptance.js';
 import { spawnJettisonedCargoPod, volatileThrowSpeedScale } from './lootShards.js';
+import { getDerivedStats, shipworksStationAccess } from './ships.js';
 
 // commodityId -> { volPerU, massPerU } lookup, built once from the static registry.
 const VOL = Object.create(null);
@@ -632,6 +633,15 @@ export const cargo = {
       if (derived && typeof derived.cargoCap === 'number') setCap(shipId, derived.cargoCap);
     });
 
+    // FB-061 — the hold is part of the hull. Ships announces a berth swap before it flips
+    // activeShipIndex; cargo does the whole move here so state.player.cargo keeps one writer:
+    // the live hold parks onto the outgoing record, the incoming hull's parked hold loads in,
+    // and anything over the new capacity simply stays parked aboard that hull.
+    subscribe(binding, 'ship:parkedHoldSwap', (payload) => this._swapParkedHold(payload || {}));
+    // The cargo-deck verb: docked at a shipyard with a second hull parked, the deck crew moves
+    // units between the live hold and that hull's hold. UI emits the intent only.
+    subscribe(binding, 'ui:transferParkedCargo', (payload) => this._transferParkedCargo(payload || {}));
+
     this.recompute(); // seed caches from whatever the starting hold contains
   },
 
@@ -703,6 +713,184 @@ export const cargo = {
 
   removeCargo(commodityId, qty) {
     return removeCargo(this.state, commodityId, qty);
+  },
+
+  // ---- FB-061: parked holds ---------------------------------------------------------------
+  // `ownedShip.cargo` is the hold aboard a hull that is not flying: { items, richLots,
+  // usedVolume, usedMass }. Written only here; absent on old saves and created the first time a
+  // hull actually parks with units aboard (an empty store deletes itself, records stay lean).
+
+  _parkedStore(owned) {
+    const store = owned.cargo && typeof owned.cargo === 'object'
+      ? owned.cargo
+      : (owned.cargo = { items: {}, richLots: [] });
+    if (!store.items || typeof store.items !== 'object') store.items = {};
+    if (!Array.isArray(store.richLots)) store.richLots = [];
+    return store;
+  },
+
+  _syncParkedCaches(state, store) {
+    let vol = 0;
+    let mass = 0;
+    for (const id of Object.keys(store.items)) {
+      const def = defOf(state, id);
+      if (!def) continue;
+      const qty = Math.floor(Number(store.items[id]) || 0);
+      if (qty <= 0) continue;
+      vol += qty * volumePerUnit(def);
+      mass += qty * def.mass;
+    }
+    store.usedVolume = vol;
+    store.usedMass = mass;
+    return store;
+  },
+
+  /**
+   * Berth swap, run on `ship:parkedHoldSwap` before ships flips activeShipIndex: the live hold
+   * merges onto the outgoing record (adding to any remainder already parked aboard that hull),
+   * then the incoming hull's parked hold loads into the live hold under the new capacity.
+   * Cargo the pilot cannot put down — sealed contract freight, story items — never parks; if it
+   * alone would overflow the new hold the swap refuses before anything moves. What does not fit
+   * stays aboard the parked hull. Nothing is created or lost: every unit is held somewhere.
+   */
+  _swapParkedHold(payload) {
+    const state = this.state;
+    const p = state && state.player;
+    const live = p && p.cargo;
+    if (!p || !Array.isArray(p.ownedShips) || !live || !live.items) return false;
+    const from = p.ownedShips[payload && payload.fromIndex];
+    const to = p.ownedShips[payload && payload.toIndex];
+    if (!from || !to || from === to) return false;
+    const cap = Math.max(0, Number(payload && payload.cargoCapVolume) || 0);
+
+    // Feasibility first: reserved units ride with the pilot, so they have to fit the new hold.
+    let mustCarryVol = 0;
+    for (const id of Object.keys(live.items)) {
+      const held = Math.floor(Number(live.items[id]) || 0);
+      const keep = Math.min(held, reservedCargoQuantity(state, id));
+      if (keep <= 0) continue;
+      const def = defOf(state, id);
+      if (def) mustCarryVol += keep * volumePerUnit(def);
+    }
+    if (mustCarryVol > cap) {
+      if (payload) payload.refused = 'sealed_cargo_overflow';
+      return false;
+    }
+
+    const store = this._parkedStore(from);
+    for (const id of Object.keys(live.items)) {
+      const held = Math.floor(Number(live.items[id]) || 0);
+      const keep = Math.min(held, reservedCargoQuantity(state, id));
+      const parkedQty = held - keep;
+      if (parkedQty <= 0) continue;
+      store.items[id] = (store.items[id] || 0) + parkedQty;
+      if (keep > 0) live.items[id] = keep;
+      else delete live.items[id];
+      for (const lot of richLotSourcesForQty(live, id, parkedQty)) store.richLots.push({ ...lot });
+      decrementRichLots(live, id, parkedQty);
+    }
+
+    // The live hold now carries only what must ride with the pilot; adopt the incoming cap so
+    // the parked hold's load phase obeys it before ships re-derives the entity.
+    live.capVolume = cap;
+    this.recompute(state);
+
+    const parked = to.cargo && to.cargo.items ? to.cargo : null;
+    let movedUnits = 0;
+    if (parked) {
+      const ids = Object.keys(parked.items)
+        .filter((id) => Math.floor(Number(parked.items[id]) || 0) > 0)
+        .sort();
+      for (const id of ids) {
+        const qty = Math.floor(Number(parked.items[id]) || 0);
+        if (qty <= 0 || !defOf(state, id)) continue;
+        const accepted = addCargo(state, id, qty);
+        if (accepted <= 0) continue;
+        const left = qty - accepted;
+        if (left > 0) parked.items[id] = left;
+        else delete parked.items[id];
+        for (const lot of richLotSourcesForQty(parked, id, accepted)) appendRichLot(live, lot, id, lot.richQty);
+        decrementRichLots(parked, id, accepted);
+        movedUnits += accepted;
+      }
+      this._syncParkedCaches(state, parked);
+      if (!Object.keys(parked.items).length) delete to.cargo;
+    }
+    this._syncParkedCaches(state, store);
+    if (!Object.keys(store.items).length) delete from.cargo;
+    const bus = busForState(state);
+    if (bus) bus.emit('cargo:parkedHoldSwapped', { fromIndex: payload.fromIndex, toIndex: payload.toIndex, loadedUnits: movedUnits });
+    return true;
+  },
+
+  /**
+   * The cargo-deck verb (`ui:transferParkedCargo`): docked at a shipyard with a second hull in
+   * the berths, move units between the live hold and that parked hull's hold. `direction` is
+   * 'load' (parked → live hold, under the live cap) or 'stow' (live → parked, under the parked
+   * hull's own derived hold cap). Sealed/persistent units never leave the pilot's hold.
+   */
+  _transferParkedCargo({ shipIndex, direction, commodityId, qty }) {
+    const state = this.state;
+    const access = shipworksStationAccess(state);
+    if (!access.hull) {
+      const bus = busForState(state);
+      if (bus) bus.emit('toast', { text: access.hullReason || 'Dock at a shipyard', kind: 'error', ttl: 3 });
+      return false;
+    }
+    const p = state.player;
+    if (!p || !Array.isArray(p.ownedShips) || p.ownedShips.length < 2) return false;
+    const index = Number(shipIndex);
+    const live = p.cargo;
+    if (!Number.isInteger(index) || index === p.activeShipIndex || !live || !live.items) return false;
+    const owned = p.ownedShips[index];
+    if (!owned) return false;
+    const dir = direction === 'stow' ? 'stow' : 'load';
+    const source = dir === 'load' ? (owned.cargo && owned.cargo.items ? owned.cargo : null) : live;
+    if (!source) return false;
+    const target = dir === 'load' ? live : this._parkedStore(owned);
+    const capVolume = dir === 'load'
+      ? Math.max(0, Number(live.capVolume) || 0)
+      : Math.max(0, Number(getDerivedStats(owned.defId, owned.fittings || [], p).cargoCap) || 0);
+    const ids = (commodityId ? [commodityId] : Object.keys(source.items))
+      .filter((id) => Math.floor(Number(source.items[id]) || 0) > 0)
+      .sort();
+    let moved = 0;
+    for (const id of ids) {
+      const def = defOf(state, id);
+      if (!def) continue;
+      let want = Math.floor(Number(source.items[id]) || 0);
+      if (dir === 'stow') want = Math.min(want, sellableCargoQuantity(state, id));
+      if (qty != null) want = Math.min(want, Math.max(0, Math.floor(Number(qty) || 0)));
+      if (want <= 0) continue;
+      const volPerU = volumePerUnit(def);
+      const free = capVolume - (Number(target.usedVolume) || 0);
+      const accepted = volPerU === 0 ? want : Math.max(0, Math.min(want, Math.floor(free / volPerU)));
+      if (accepted <= 0) continue;
+      target.items[id] = (target.items[id] || 0) + accepted;
+      target.usedVolume = (Number(target.usedVolume) || 0) + accepted * volPerU;
+      target.usedMass = (Number(target.usedMass) || 0) + accepted * def.mass;
+      const left = Math.floor(Number(source.items[id]) || 0) - accepted;
+      if (left > 0) source.items[id] = left;
+      else delete source.items[id];
+      for (const lot of richLotSourcesForQty(source, id, accepted)) appendRichLot(target, lot, id, lot.richQty);
+      decrementRichLots(source, id, accepted);
+      moved += accepted;
+    }
+    this._syncParkedCaches(state, dir === 'load' ? source : target);
+    if (owned.cargo && owned.cargo.items && !Object.keys(owned.cargo.items).length) delete owned.cargo;
+    this.recompute(state);
+    const bus = busForState(state);
+    if (bus) {
+      bus.emit('cargo:parkedTransfer', { shipIndex: index, direction: dir, movedUnits: moved });
+      bus.emit('toast', {
+        text: moved > 0
+          ? `Deck crew moved ${moved} unit${moved === 1 ? '' : 's'} ${dir === 'load' ? 'aboard' : 'onto the parked hull'}.`
+          : 'Nothing the deck crew could move.',
+        kind: moved > 0 ? 'success' : 'info',
+        ttl: 3,
+      });
+    }
+    return moved > 0;
   },
 
   _spillHotArrival(payload = {}) {

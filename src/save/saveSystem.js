@@ -54,7 +54,13 @@ import {
   migrateLegacyMasslineBindingProfile,
   readProfileSettings,
 } from '../core/graphicsProfileBootstrap.js';
-import { encodeSavePayload, SAVE_WORKER_SOURCE } from './saveWorker.js';
+import {
+  encodeSavePayload,
+  SAVE_WORKER_SOURCE,
+  isGzippedSaveText,
+  SAVE_GZIP_FORMAT,
+  SAVE_WRITE_MAX_BYTES,
+} from './saveWorker.js';
 import {
   applySharedStoreKeys,
   collectLocalSharedStoreKeys,
@@ -649,6 +655,9 @@ export const save = {
       ['tensionDirector', () => clonePlain(state.tensionDirector || null)],
       ['regionalEcology', () => this._callSerialize('regionalEcology') || clonePlain(state.regionalEcology || {})],
       ['stationServices', () => this._callSerialize('stationServices') || {}],
+      // FB-114: the first-hour rail (rescue/raid/claimed/missing-three) — a save at
+      // rail step N resumes at step N instead of dropping to the returning-pilot path.
+      ['onboarding', () => this._callSerialize('onboarding')],
       ['encounterDirector', () => this._serializeEncounterDirector()],
       ['flight', () => this._serializeFlight()],
       ['nav', () => this._serializeNav()],
@@ -768,6 +777,8 @@ export const save = {
     yield 'serialize:regionalEcology';
     data.stationServices = this._callSerialize('stationServices') || {};
     yield 'serialize:stationServices';
+    data.onboarding = this._callSerialize('onboarding');
+    yield 'serialize:onboarding';
     data.encounterDirector = this._serializeEncounterDirector();
     yield 'serialize:encounterDirector';
     data.flight = this._serializeFlight();
@@ -1113,13 +1124,40 @@ export const save = {
    * the shared store so a boot-time merge cannot resurrect them.
    * @returns {number} bytes freed (approximate — measured pre-removal)
    */
-  _evictForQuotaPressure({ includeAutosaveSlot = false } = {}) {
+  _evictForQuotaPressure({ includeAutosaveSlot = false, keepRecoverySlot = null } = {}) {
     const doomed = [];
     let freed = 0;
+    // FB-109 — one rollback always survives a quota pass. The write that triggered eviction is
+    // the freshest slot (its rotation just parked the previous save); when the caller cannot
+    // name one, fall back to the newest recovery-bearing slot the index knows. Never dropping
+    // the newest slot's primary AND recovery in the same pass keeps the end state loadable.
+    let keepRecoveryKey = keepRecoverySlot ? RECOVERY_PREFIX + keepRecoverySlot : null;
+    if (!keepRecoveryKey) {
+      try {
+        const merged = this._slotIndexWithFallback ? this._slotIndexWithFallback() : {};
+        let newestAt = null;
+        for (const slot in merged) {
+          const card = merged[slot];
+          if (!card || card.recoveryAvailable !== true) continue;
+          const at = Date.parse(card.savedAt || '') || 0;
+          if (newestAt == null || at >= newestAt) { newestAt = at; keepRecoveryKey = RECOVERY_PREFIX + slot; }
+        }
+      } catch (_) { /* index unreadable — fall through to the enumerated key below */ }
+    }
     try {
+      const recoveries = [];
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && key.startsWith(RECOVERY_PREFIX)) doomed.push(key);
+        if (key && key.startsWith(RECOVERY_PREFIX)) recoveries.push(key);
+      }
+      // A kept key must name a backup that exists — a stale index card or an already-
+      // sacrificed same-slot copy must not spend the keep on a dead key. Fall back to the
+      // last enumerated key: a deterministic survivor, never an all-or-nothing guess.
+      if (!keepRecoveryKey || !recoveries.includes(keepRecoveryKey)) {
+        keepRecoveryKey = recoveries[recoveries.length - 1] || null;
+      }
+      for (const key of recoveries) {
+        if (key !== keepRecoveryKey) doomed.push(key);
       }
       if (includeAutosaveSlot) doomed.push(LS_PREFIX + AUTOSAVE_SLOT);
       for (const key of doomed) {
@@ -1222,12 +1260,22 @@ export const save = {
     let storageMs = 0;
     let indexMs = 0;
     if (json == null) {
+      // FB-093 — the manual stringify lane carries no worker bound, so the import limit
+      // object asserts here: an oversized envelope fails with a named reason rather than
+      // landing truncated under the quota. Worker encodes bound on their own side.
+      const bound = preflightSaveImport(envelope);
+      if (!bound.ok) {
+        return { ok: false, reason: bound.reason, limit: bound.limit, actual: bound.actual, bytes: 0, stringifyMs, storageMs, indexMs };
+      }
       try {
         const t = nowMs();
         json = JSON.stringify(envelope);
         stringifyMs = nowMs() - t;
       }
       catch (err) { return { ok: false, reason: 'stringify_failed', bytes: 0, stringifyMs, storageMs, indexMs }; }
+      if (json.length > SAVE_WRITE_MAX_BYTES) {
+        return { ok: false, reason: 'save_size_limit', limit: SAVE_WRITE_MAX_BYTES, actual: json.length, bytes: 0, stringifyMs, storageMs, indexMs };
+      }
     }
     const primaryKey = LS_PREFIX + slot;
     const recoveryKey = RECOVERY_PREFIX + slot;
@@ -1289,7 +1337,7 @@ export const save = {
           }
         }
         if (!fitted) {
-          this._evictForQuotaPressure();
+          this._evictForQuotaPressure({ keepRecoverySlot: slot });
           try {
             const t = nowMs();
             localStorage.setItem(primaryKey, json);
@@ -1298,7 +1346,9 @@ export const save = {
           } catch (_) { /* keep escalating */ }
         }
         if (!fitted && slot !== AUTOSAVE_SLOT) {
-          this._evictForQuotaPressure({ includeAutosaveSlot: true });
+          // Dropping the autosave primary keeps its rollback: the newest insurance slot
+          // stays loadable from sf.recovery.autosave after this pass.
+          this._evictForQuotaPressure({ includeAutosaveSlot: true, keepRecoverySlot: AUTOSAVE_SLOT });
           try {
             const t = nowMs();
             localStorage.setItem(primaryKey, json);
@@ -1327,7 +1377,12 @@ export const save = {
       // stale null) must not masquerade as corruption — a real byte mismatch reads identically.
       try { storedRaw = localStorage.getItem(primaryKey); } catch (err) {}
     }
-    const storedPrepared = this._prepareEnvelopeString(storedRaw);
+    // A worker-compressed write cannot re-validate on this sync lane — the byte-exact
+    // re-read above is the corruption gate, and the worker already proved the envelope
+    // before encoding it.
+    const storedPrepared = storedRaw === json && isGzippedSaveText(storedRaw)
+      ? { ok: true }
+      : this._prepareEnvelopeString(storedRaw);
     if (storedRaw !== json || !storedPrepared.ok) {
       try {
         if (previousRaw == null) localStorage.removeItem(primaryKey);
@@ -1857,11 +1912,18 @@ export const save = {
           }
         }
         const env = this._prepareEnvelopeMeta(raw);
-        if (!env) continue;
-        // Card straight off the envelope: _prepareEnvelopeMeta already ran the checksum before
-        // migrating in place, so slotMetaFromEnvelope's duplicate re-verify would read the
-        // post-migration bytes and always fail.
-        const meta = slotCardFromEnvelopeData(slot, env, null);
+        if (env) {
+          // Card straight off the envelope: _prepareEnvelopeMeta already ran the checksum before
+          // migrating in place, so slotMetaFromEnvelope's duplicate re-verify would read the
+          // post-migration bytes and always fail.
+          const meta = slotCardFromEnvelopeData(slot, env, null);
+          if (meta) out[slot] = meta;
+          continue;
+        }
+        // A compressed envelope still proves a generation lives here — the index-scan
+        // card keeps the slot discoverable for 'latest' and the title list.
+        const peek = this._peekSaveEnvelope(raw);
+        const meta = peek && peek.ok ? slotMetaFromGzipEnvelope(slot, peek.env) : null;
         if (meta) out[slot] = meta;
       }
     } catch (err) {
@@ -1893,8 +1955,13 @@ export const save = {
           continue;
         }
         const env = this._prepareEnvelopeMeta(raw);
-        if (!env) continue;
-        const meta = slotCardFromEnvelopeData(slot, env, null);
+        if (env) {
+          const meta = slotCardFromEnvelopeData(slot, env, null);
+          if (meta) out[slot] = meta;
+          continue;
+        }
+        const peek = this._peekSaveEnvelope(raw);
+        const meta = peek && peek.ok ? slotMetaFromGzipEnvelope(slot, peek.env) : null;
         if (meta) out[slot] = meta;
       }
     } catch (err) {
@@ -2026,8 +2093,11 @@ export const save = {
     } catch (err) { return null; }
     const primary = this._prepareEnvelopeString(primaryRaw);
     if (primary.ok) return null;
+    // A compressed generation cannot be judged on this sync lane — never skip past it.
+    if (primary.reason === 'compressed_envelope') return null;
     const backup = this._prepareEnvelopeString(backupRaw);
     if (backup.ok) return null;
+    if (backup.reason === 'compressed_envelope') return null;
     return { slot: best, reason: primary.reason || 'no_save', recoveryReason: backup.reason || 'no_backup' };
   },
 
@@ -2508,7 +2578,7 @@ export const save = {
 
   _startAutosaveEncoding(job, capture) {
     const setupStarted = workNowMs();
-    const worker = this._trackSaveWorker(this._createSaveWorker());
+    const worker = this._checkoutSaveWorker();
     const setupMs = workNowMs() - setupStarted;
     capture.workerSetupMs += setupMs;
     this._pushAutosaveSlice(capture, 'encode_worker_setup', setupMs);
@@ -2535,8 +2605,7 @@ export const save = {
       encoder.settled = true;
       capture.workerRoundtripMs += Math.max(0, nowMs() - encoder.roundtripStartedAtMs);
       clearTimeout(encoder.timeout);
-      worker.__spacefaceSaveSupersede = null;
-      try { worker.terminate(); } catch (error) {}
+      this._releaseSaveWorker(worker);
       if (this._autosaveJobCurrent(job)) {
         if (fallback && capture.workerAttempts < 2) {
           this._scheduleAutosaveWork(() => this._startAutosaveEncoding(job, capture));
@@ -2548,13 +2617,18 @@ export const save = {
     };
     worker.onmessage = (event) => {
       const message = event && event.data;
+      // A bounded encode that refused its envelope carries a named reason — fall back to the
+      // sync lane with the same data so the reason (not a phantom worker error) is the receipt,
+      // unless the sync lane would write it anyway, in which case the bound IS the answer.
+      if (message && message.id === encoder.id && message.type === 'encoded' && message.ok === false) {
+        return fail(message.reason || 'save_size_limit', false);
+      }
       if (!message || message.id !== encoder.id || message.type !== 'encoded'
         || typeof message.json !== 'string') return fail('save_worker_failed');
       encoder.settled = true;
       capture.workerRoundtripMs += Math.max(0, nowMs() - encoder.roundtripStartedAtMs);
       clearTimeout(encoder.timeout);
-      worker.__spacefaceSaveSupersede = null;
-      try { worker.terminate(); } catch (error) {}
+      this._releaseSaveWorker(worker, { reusable: true });
       if (!this._autosaveJobCurrent(job)) return;
       const envelope = { ...capture.descriptor, checksum: message.checksum, data: capture.data };
       this._beginAutosaveTransaction(job, {
@@ -2795,6 +2869,15 @@ export const save = {
     let encoded;
     try { encoded = encodeSavePayload({ descriptor: capture.descriptor, data: capture.data }); }
     catch (error) { return this._failAutosave(job, 'stringify_failed', capture, workNowMs() - started); }
+    // FB-093 — the same write bound the worker lane enforces: an over-limit envelope fails
+    // with the preflight reason instead of landing truncated under the quota.
+    const bound = preflightSaveImport({ data: capture.data });
+    if (!bound.ok) {
+      return this._failAutosave(job, bound.reason, capture, workNowMs() - started);
+    }
+    if (encoded.json.length > SAVE_WRITE_MAX_BYTES) {
+      return this._failAutosave(job, 'save_size_limit', capture, workNowMs() - started);
+    }
     const encodeMs = workNowMs() - started;
     if (encodeMs > AUTOSAVE_HARD_SLICE_MS) {
       capture.slowSerializer = 'sync_encode_fallback';
@@ -2832,9 +2915,17 @@ export const save = {
       const serializeStarted = workNowMs();
       envelope = this.serialize(AUTOSAVE_SLOT);
       serializeMs = workNowMs() - serializeStarted;
+      // FB-093 — one write bound for every lane: over-limit fails, never truncates.
+      const bound = preflightSaveImport(envelope);
+      if (!bound.ok) {
+        return this._failAutosave(job, bound.reason, null, workNowMs() - sliceStarted);
+      }
       const stringifyStarted = workNowMs();
       json = JSON.stringify(envelope);
       stringifyMs = workNowMs() - stringifyStarted;
+      if (json.length > SAVE_WRITE_MAX_BYTES) {
+        return this._failAutosave(job, 'save_size_limit', null, workNowMs() - sliceStarted);
+      }
     } catch (err) {
       console.error('[save] autosave snapshot failed', err);
       const snapshotSliceMs = workNowMs() - sliceStarted;
@@ -2986,6 +3077,24 @@ export const save = {
     return worker;
   },
 
+  // FB-094 — the mirror of checkout: a worker that delivered its real response is quiescent
+  // enough to stay warm for the next request; a superseded/timed-out/errored worker may still
+  // post its stale answer, which the next request would read as its own failure — terminate
+  // instead of pooling it.
+  _releaseSaveWorker(worker, { reusable = false } = {}) {
+    if (!worker) return;
+    worker.__spacefaceSaveSupersede = null;
+    worker.__spacefaceSaveBusy = false;
+    if (reusable && this._warmSaveWorker === worker) return; // already the hot one
+    if (reusable && (!this._warmSaveWorker
+      || !this._activeSaveWorkers || !this._activeSaveWorkers.has(this._warmSaveWorker))) {
+      this._warmSaveWorker = worker; // promote the survivor rather than spawn again
+      return;
+    }
+    try { worker.terminate(); } catch (error) {}
+    if (this._warmSaveWorker === worker) this._warmSaveWorker = null;
+  },
+
   _requestSaveWorker(type, payload, onResult, onFailure, options = {}) {
     const worker = this._checkoutSaveWorker();
     if (!worker) return false;
@@ -2996,21 +3105,8 @@ export const save = {
       if (settled) return;
       settled = true;
       clearTimeout(timeout);
-      worker.__spacefaceSaveSupersede = null;
-      worker.__spacefaceSaveBusy = false;
-      // Only a worker that delivered its real response is quiescent enough to stay warm. A
-      // superseded/timed-out/errored worker may still post its stale answer, which the next
-      // request would read as its own failure — terminate instead of pooling it.
-      const keepWarm = callback === onResult;
-      if (keepWarm && this._warmSaveWorker === worker) {
-        // stays hot for the next request
-      } else if (keepWarm && (!this._warmSaveWorker
-        || !this._activeSaveWorkers || !this._activeSaveWorkers.has(this._warmSaveWorker))) {
-        this._warmSaveWorker = worker; // promote the survivor rather than spawn again
-      } else {
-        try { worker.terminate(); } catch (error) {}
-        if (this._warmSaveWorker === worker) this._warmSaveWorker = null;
-      }
+      // Only a worker that delivered its real response is quiescent enough to stay warm.
+      this._releaseSaveWorker(worker, { reusable: callback === onResult });
       if (typeof options.onRoundtrip === 'function') {
         try { options.onRoundtrip(Math.max(0, nowMs() - roundtripStartedAtMs)); } catch (error) {}
       }
@@ -3162,7 +3258,8 @@ export const save = {
       if (result && result.ok && result.version < CURRENT_VERSION) {
         this._scheduleAutosaveWork(() => {
           const verifyStarted = workNowMs();
-          const prepared = this._prepareEnvelopeString(tx.previousRaw);
+          const peek = this._peekSaveEnvelope(tx.previousRaw);
+          const prepared = peek || this._prepareEnvelopeString(tx.previousRaw);
           const verifyMs = workNowMs() - verifyStarted;
           tx.verifyMs += verifyMs;
           this._pushAutosaveSlice(tx, 'validate_previous_migration', verifyMs);
@@ -3196,7 +3293,10 @@ export const save = {
   _autosaveValidatePreviousSync(job, snapshot, tx) {
     if (!this._autosaveTransactionCurrent(job, snapshot, tx)) return false;
     const started = workNowMs();
-    const prepared = this._prepareEnvelopeString(tx.previousRaw);
+    // A prior compressed generation is a valid previous write: its wrapper meta proves it
+    // without a sync decode the platform cannot run.
+    const peek = this._peekSaveEnvelope(tx.previousRaw);
+    const prepared = peek || this._prepareEnvelopeString(tx.previousRaw);
     const verifyMs = workNowMs() - started;
     tx.verifyMs += verifyMs;
     this._pushAutosaveSlice(tx, 'validate_previous_sync', verifyMs);
@@ -3244,7 +3344,7 @@ export const save = {
       // insurance, so it may never escalate to evicting another slot's primary the way a manual
       // save can. If the recovery sweep is not enough, this cycle's autosave simply fails; the
       // next trigger retries against whatever the manual save left behind.
-      if (error && error.name === 'QuotaExceededError' && this._evictForQuotaPressure() > 0) {
+      if (error && error.name === 'QuotaExceededError' && this._evictForQuotaPressure({ keepRecoverySlot: AUTOSAVE_SLOT }) > 0) {
         try {
           localStorage.setItem(LS_PREFIX + AUTOSAVE_SLOT, snapshot.json);
           const sliceMs = workNowMs() - started;
@@ -3323,7 +3423,11 @@ export const save = {
   _autosaveValidateReadbackSync(job, snapshot, tx, storedRaw) {
     if (!this._autosaveTransactionCurrent(job, snapshot, tx)) return false;
     const started = workNowMs();
-    const prepared = this._prepareEnvelopeString(storedRaw);
+    // A worker-compressed write cannot re-validate on this sync lane; a byte-exact re-read of
+    // the string the worker produced is the corruption gate (the worker bounded it pre-write).
+    const prepared = storedRaw === snapshot.json && isGzippedSaveText(storedRaw)
+      ? { ok: true }
+      : this._prepareEnvelopeString(storedRaw);
     const verifyMs = workNowMs() - started;
     tx.verifyMs += verifyMs;
     this._pushAutosaveSlice(tx, 'validate_readback_sync', verifyMs);
@@ -3527,6 +3631,11 @@ export const save = {
       return this._restorePreparedEnvelope(primary, slot,
         skippedNewer ? { skippedNewer } : undefined);
     }
+    // A compressed envelope cannot decode on this synchronous lane — the worker restore
+    // lane owns it. Keep the caller's bool contract via the async load entry.
+    if (primary.reason === 'compressed_envelope' && typeof this.loadAsync === 'function') {
+      return this.loadAsync(slot);
+    }
 
     // A named load and title Continue both recover from the previous valid generation. Validation
     // happens before any destructive restore, and the corrupt bytes are never rotated over backup.
@@ -3534,6 +3643,9 @@ export const save = {
     try { backupRaw = (typeof localStorage !== 'undefined') ? localStorage.getItem(RECOVERY_PREFIX + slot) : null; }
     catch (err) { /* primary failure below remains the player-facing reason */ }
     const backup = this._prepareEnvelopeString(backupRaw);
+    if (!backup.ok && backup.reason === 'compressed_envelope' && typeof this.loadAsync === 'function') {
+      return this.loadAsync(slot);
+    }
     if (backup.ok) {
       const restored = this._restorePreparedEnvelope(backup, slot, Object.assign(
         { emitError: false, recovered: true }, skippedNewer ? { skippedNewer } : null));
@@ -3772,7 +3884,16 @@ export const save = {
         await this._restoreFrameYield();
         const normalized = normalizeRestorableData(data);
         if (!normalized.ok) return { ok: false, reason: normalized.reason };
-        return { ok: true, env, data, version: ver };
+        const preparedResult = { ok: true, env, data, version: ver };
+        // A compressed generation the worker just proved stays readable to every sync
+        // caller downstream (rollback verification, slot cards, NG+ prep).
+        if (isGzippedSaveText(raw)) {
+          try {
+            this._decodedSaveEnvelopes = this._decodedSaveEnvelopes || new Map();
+            this._decodedSaveEnvelopes.set(raw, preparedResult);
+          } catch (err) { /* a cache miss only forces the async lane again */ }
+        }
+        return preparedResult;
       } catch (err) {
         return { ok: false, reason: 'load_failed', error: err };
       }
@@ -3781,8 +3902,28 @@ export const save = {
 
   /** Parse + validate + migrate a raw JSON string, then restore. Shared by load() and import. */
   loadEnvelopeFromString(raw, slot) {
+    // FB-093 — a compressed string cannot decode synchronously; the async lane restores it
+    // with the same save:error/save:loaded contract and resolves to the same bool.
+    if (typeof raw === 'string' && isGzippedSaveText(raw)) {
+      return this._loadEnvelopeFromStringAsync(raw, slot);
+    }
     const prepared = this._prepareEnvelopeString(raw);
     if (!prepared.ok) {
+      this.bus.emit('save:error', {
+        slot,
+        reason: prepared.reason,
+        ...(prepared.limit != null ? { limit: prepared.limit } : {}),
+        ...(prepared.actual != null ? { actual: prepared.actual } : {}),
+      });
+      return false;
+    }
+    return this._restorePreparedEnvelope(prepared, slot);
+  },
+
+  async _loadEnvelopeFromStringAsync(raw, slot) {
+    const prepared = await this._prepareEnvelopeStringAsync(raw);
+    if (!prepared.ok) {
+      if (prepared.reason === 'superseded') return false;
       this.bus.emit('save:error', {
         slot,
         reason: prepared.reason,
@@ -3818,6 +3959,11 @@ export const save = {
     if (bytes > SAVE_IMPORT_MAX_BYTES) {
       return importLimitFailure('import_too_large', SAVE_IMPORT_MAX_BYTES, bytes);
     }
+    if (isGzippedSaveText(raw)) {
+      const cached = this._decodedSaveEnvelopes && this._decodedSaveEnvelopes.get(raw);
+      if (cached) return cached;
+      return { ok: false, reason: 'compressed_envelope' };
+    }
     let env;
     try { env = JSON.parse(raw); }
     catch (err) { return { ok: false, reason: 'parse_failed' }; }
@@ -3836,6 +3982,11 @@ export const save = {
     const bytes = saveImportByteLength(raw);
     if (bytes > SAVE_IMPORT_MAX_BYTES) {
       return importLimitFailure('import_too_large', SAVE_IMPORT_MAX_BYTES, bytes);
+    }
+    if (isGzippedSaveText(raw)) {
+      const cached = this._decodedSaveEnvelopes && this._decodedSaveEnvelopes.get(raw);
+      if (cached) return cached;
+      return { ok: false, reason: 'compressed_envelope' };
     }
     let env;
     try { env = JSON.parse(raw); }
@@ -3869,6 +4020,27 @@ export const save = {
     } catch (err) {
       return { ok: false, reason: 'load_failed', error: err };
     }
+  },
+
+  // A gzip-compressed stored envelope. The wrapper carries fmt/version/savedAt/checksum at
+  // top level so card and quota reads never pay a decode; `data` lives in the payload and is
+  // only decodable through the async worker lane (DecompressionStream has no sync form).
+  // `_prepareEnvelopeStringAsync` caches each decoded envelope here keyed on its raw string so
+  // a generation the async lane proved stays readable to every sync caller downstream.
+  _peekSaveEnvelope(raw) {
+    if (typeof raw !== 'string' || !isGzippedSaveText(raw)) return null;
+    let env;
+    try { env = JSON.parse(raw); } catch (_) { return { ok: false, reason: 'parse_failed' }; }
+    if (!env || env.fmt !== SAVE_GZIP_FORMAT || typeof env.payload !== 'string') {
+      return { ok: false, reason: 'bad_format' };
+    }
+    const versionRead = readSaveVersion(env.version);
+    if (!versionRead.ok) return versionRead;
+    return {
+      ok: true,
+      gz: true,
+      env: { fmt: FMT, version: env.version, savedAt: env.savedAt || null, checksum: env.checksum || null },
+    };
   },
 
   _prepareEnvelope(env) {
@@ -4619,6 +4791,11 @@ export const save = {
       // graph BEFORE adopting; null/absent starts an empty archive (old saves migrate cleanly).
       yield* this._callDeserializeChunked('chronicler', data.chronicler);
       yield 'chronicler-restored';
+      // FB-114: the first-hour rail restores BEFORE save:loaded so onboarding's handler
+      // can resume the saved beat (restage cast, re-present the line) instead of running
+      // the returning-pilot path. Absent key (pre-rail saves) resets to the pre-begin
+      // baseline — a live session's rail must not bleed into the loaded game.
+      this._callDeserialize('onboarding', data.onboarding);
       // Station-yard service jobs (repair/refuel booked before the save). Restores the parked
       // player block only — NPC client traffic is re-derived from the seeded schedule, and the
       // job stays parked until the player re-docks at that yard (ui.docked clears on load).
@@ -5078,6 +5255,15 @@ export const save = {
       && Object.prototype.hasOwnProperty.call(saveSettings.controls, 'bindings')) {
       restored.controls.bindings = normalizeControlBindings(saveSettings.controls.bindings);
     }
+    // FB-114: the pad override map is an atomic player choice for the same reason —
+    // a deep merge would union the save's chords over whatever the live profile bound,
+    // so a slot that never rebound pad buttons would keep the previous game's map.
+    if (saveSettings && saveSettings.controls && saveSettings.controls.gamepad
+      && Object.prototype.hasOwnProperty.call(saveSettings.controls.gamepad, 'bindings')) {
+      if (!restored.controls.gamepad || typeof restored.controls.gamepad !== 'object'
+        || Array.isArray(restored.controls.gamepad)) restored.controls.gamepad = {};
+      restored.controls.gamepad.bindings = clonePlain(saveSettings.controls.gamepad.bindings);
+    }
     const profile = migrateGameMotionDefault(migrateDefaultMutedAudioProfile(
       migrateLegacyMasslineBindingProfile(this._readProfileSettings()),
     ));
@@ -5413,7 +5599,13 @@ export const save = {
     }
     if (typeof FileReader === 'undefined') { if (cb) cb(false); return; }
     const reader = new FileReader();
-    reader.onload = () => { const ok = this.importString(String(reader.result || ''), 'quick'); if (cb) cb(ok); };
+    reader.onload = () => {
+      const out = this.importString(String(reader.result || ''), 'quick');
+      // A compressed import restores through the async lane and reports on resolution; legacy
+      // plain imports keep the synchronous callback contract callers already observe.
+      if (out && typeof out.then === 'function') out.then((ok) => { if (cb) cb(!!ok); });
+      else if (cb) cb(!!out);
+    };
     reader.onerror = () => { this.bus.emit('save:error', { slot: 'import', reason: 'read_failed' }); if (cb) cb(false); };
     reader.readAsText(file);
   },
@@ -6471,6 +6663,27 @@ export function slotCardFromEnvelopeData(slot, env, sectorNameOf = null) {
     objectiveSummary: resumeObjectiveSummary({ navSummary, missionSummary, storySummary }),
     endingChoice: completedEndingChoiceFromSaveData(data) || undefined,
     version: env.version,
+  };
+}
+
+// The gzip wrapper's top-level fields are enough to keep a compressed slot discoverable in
+// index-scan fallbacks — the richer card written at save time still wins while the index lives.
+function slotMetaFromGzipEnvelope(slot, env) {
+  if (!env || typeof env !== 'object' || env.fmt !== FMT) return null;
+  const versionRead = readSaveVersion(env.version);
+  if (!versionRead.ok) return null;
+  return {
+    slot,
+    savedAt: env.savedAt || '',
+    playtimeS: 0,
+    sectorName: '',
+    shipName: '',
+    navObjectiveSummary: '',
+    missionSummary: null,
+    storySummary: null,
+    objectiveSummary: '',
+    version: versionRead.version,
+    gz: true,
   };
 }
 

@@ -223,6 +223,12 @@ export const FIRST_USE_LINE = Object.freeze({
   masslineJettisonImpulse: 'Dump aft to push.',
   masslineBulletTime: 'Hold to stretch time.',
   masslineCloak: 'Coast to stay hidden.',
+  // FB-013 — the four silent heads announce themselves once, on the head's first defining
+  // event (tractor capture, coupler lock, sweep cut, whip snap). Same ≤12-word drill budget.
+  masslineTractor: 'Line holds. Pull it in.',
+  masslineCoupler: 'Coupler locked. You tow as one hull.',
+  masslineSweep: 'Blade across their line.',
+  masslineWhip: 'Let the stretch go.',
   bombPropulsion: 'Drop aft, then detonate.',
   firstBombDrop: 'Bomb away. Clear the blast.',
   firstWellDrop: 'Well deployed. Pull the scrap.',

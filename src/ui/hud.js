@@ -55,6 +55,10 @@ import { createPowerRail, readRailModel } from './powerRail.js';
 import { mountOrreryCluster } from './orrery/hudAdapter.js';
 import { arcGauge } from './orrery/instruments.js';
 import { createForkInstrument } from './forkInstrument.js';
+// FB-012 — the flight HUD mounts the stunt callout layer, so a wrecking ball, a clothesline or
+// a tow kill is NAMED in adventure too, not only inside a Crucible run. The layer self-gates:
+// its quiet path renders nothing and drops its frame listener when there is nothing to say.
+import { ensureStuntCallout, releaseStuntCallout } from './stuntCallout.js';
 import { settle as kitSettle, cue as kitCue, reducedMotion as kitReducedMotion } from './kit/index.js';
 import { createThreatHalo } from './threatHalo.js';
 import { targetBracketShape } from './targetBracket.js';
@@ -1411,6 +1415,11 @@ export function createHud(ctx, alerts) {
   // (towing it, or bringing it to the catcher fork) and fully detaches when it is not.
   const forkInstrument = createForkInstrument();
   forkInstrument.mount(leftContext);
+
+  // FB-012 — mount the stunt callout layer from the flight HUD path. Adventure now names its
+  // stunts; the Crucible-only score fields stay gated inside the layer itself. Idle-quiet: the
+  // layer's update returns false and stops listening for frames when nothing is on screen.
+  ensureStuntCallout({ state, bus: ctx.bus });
 
   // Lamina: authored hull laminae + a split, globally driven shield envelope.
   // The view reads the same authoritative entity as all other vitals; it owns no simulation state.
@@ -5818,6 +5827,9 @@ export function createHud(ctx, alerts) {
         disruptionTimeout = null;
       }
       objectiveHudDrag.destroy();
+      // FB-012 — the flight HUD owns the stunt callout mount; releasing it here mirrors the
+      // Crucible results screen's dispose (the layer re-ensures idempotently on next mount).
+      releaseStuntCallout();
       if (offSlotClaim) offSlotClaim();
       if (offSlotRelease) offSlotRelease();
       clearCargoGaugeSettle(cargoGaugeSettle.used);

@@ -8,6 +8,11 @@
 // `src/data/flavor/040-band.js` already speaks the name. Later hulls draw a name from an authored
 // bank, seeded by the run seed and the berth index, so the same save always says the same word.
 //
+// FB-057 — the owner can overrule the banked word. `ownedShip.name` is a hand-typed name the ships
+// system writes (cleaned, capped). When present it outranks both canon and the bank, and every
+// reader funnels through `hullNameForOwnedShip`, so the ledger, the barks, and the shipworks crest
+// all say the renamed word.
+//
 // Pure data + pure functions. No state writes, no bus, no imports outside data/core.
 import { SHIP as NARRATIVE_SHIP } from './narrative.js';
 import { NEW_GAME } from './newGameDefaults.js';
@@ -27,19 +32,23 @@ export const HULL_NAME_BANK = Object.freeze([
 /** The registry code the Concord ping reads out for the starting hull. */
 export const STARTER_HULL_REGISTRATION = NARRATIVE_SHIP.registration;
 
-/** Longest owner-given hull name. The nameplate input enforces the same bound (FB-057). */
+/** FB-057: the longest name the ships owner will write onto an ownedShip record. */
 export const SHIP_NAME_MAX = 32;
 
 /**
- * The one normalization rule for an owner-given hull name (FB-057): drop control characters
- * outright ('A\0B' cleans to 'AB', not 'A B'), collapse whitespace runs to single spaces, trim,
- * and cap at SHIP_NAME_MAX. Anything unusable cleans to '' so callers can fall back to the
- * canonical resolver rather than wedging the nameplate on a blank record. Profanity-agnostic.
+ * Owner-given hull name, cleaned for the record: trimmed, whitespace collapsed, control
+ * characters dropped, capped at SHIP_NAME_MAX. Returns '' for no usable name — an empty
+ * string is never a name, so the banked name answers instead (nothing is fabricated).
  */
 export function cleanShipName(value) {
   if (typeof value !== 'string') return '';
-  const collapsed = value.replace(/[\x00-\x1f\x7f-\x9f]/g, '').replace(/\s+/g, ' ').trim();
-  return collapsed.length > SHIP_NAME_MAX ? collapsed.slice(0, SHIP_NAME_MAX) : collapsed;
+  const cleaned = value
+    .replace(/[\x00-\x1F\x7F]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, SHIP_NAME_MAX)
+    .trim();
+  return cleaned;
 }
 
 function positiveIndex(value) {
@@ -64,9 +73,12 @@ export function isStarterHull(ownedShip, index) {
     && ownedShip.starterHull !== false;
 }
 
-/** The spoken name of one owned hull. An owner-given name outranks canon and bank (FB-057). */
+/**
+ * The spoken name of one owned hull. An owner-given name wins; then the starter's canon name; then
+ * a deterministic pick from the bank for the given seed + berth.
+ */
 export function hullNameForOwnedShip(ownedShip, index = 0, seed = 0) {
-  const given = ownedShip ? cleanShipName(ownedShip.name) : '';
+  const given = ownedShip && typeof ownedShip.name === 'string' ? cleanShipName(ownedShip.name) : '';
   if (given) return given;
   if (isStarterHull(ownedShip, index)) return NARRATIVE_SHIP.name;
   const defId = ownedShip && ownedShip.defId ? String(ownedShip.defId) : 'ship_unknown';

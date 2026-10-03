@@ -390,6 +390,10 @@ export const HAPTIC_VERB_PULSES = Object.freeze({
   'massline:snareCaught': { strong: 0.80, weak: 0.95, ms: 150 },
   'charge:detonated':     { strong: 0.90, weak: 0.65, ms: 170 },
   'cloak:engaged':        { strong: 0.15, weak: 0.45, ms: 110 },
+  // FB-009 — the two Massline edges that reached every other sense but the pad. A hostile
+  // blade severing one of the player's lines is a warning jolt; the whip's stored snap is a crack.
+  'massline:playerLineCut': { strong: 0.55, weak: 0.35, ms: 120 },
+  'tether:whipSnap':        { strong: 0.70, weak: 0.30, ms: 100 },
 });
 // Release grading band → pulse. A razor release is a whipcrack; a messy one a low thud.
 export const HAPTIC_RELEASE_PULSES = Object.freeze({
@@ -767,6 +771,10 @@ export function createGamepad(ctx) {
       }
     });
     bus.on('cloak:engaged', () => startPulse(HAPTIC_VERB_PULSES['cloak:engaged'], 'cloak:engaged'));
+    // FB-009: the cut-BY-an-NPC edge is the player's own line dying under them; the whip snap
+    // is the player's own stored release. Both pulse through the same one-live-pulse gate.
+    bus.on('massline:playerLineCut', () => startPulse(HAPTIC_VERB_PULSES['massline:playerLineCut'], 'massline:playerLineCut'));
+    bus.on('tether:whipSnap', () => startPulse(HAPTIC_VERB_PULSES['tether:whipSnap'], 'tether:whipSnap'));
   }
 
   const gp = {

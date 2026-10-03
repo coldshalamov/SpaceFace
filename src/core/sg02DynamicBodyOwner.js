@@ -544,7 +544,21 @@ export class Sg02DynamicBodyOwner {
     // The LINEAR impulse is passed through in full: nothing is scaled, damped or clamped. Only the
     // torque arm is dropped, and only for the player.
     if (recordTakesOffCentreImpulse(rec) && input.point && typeof rec.body.applyImpulseAtPoint === 'function') {
-      rec.body.applyImpulseAtPoint(impulse, this._globalPointToFrameLocal(input.point, rec.body.translation(), _vecWriteScratch), true);
+      const localPoint = this._globalPointToFrameLocal(input.point, rec.body.translation(), _vecWriteScratch);
+      const maxTorque = Number.isFinite(input.maxTorque) ? Math.max(0, input.maxTorque) : null;
+      if (maxTorque != null) {
+        const trans = rec.body.translation();
+        const rx = localPoint.x - trans.x;
+        const rz = localPoint.z - trans.z;
+        const torqueY = rx * impulse.z - rz * impulse.x;
+        const clampedTorqueY = Math.max(-maxTorque, Math.min(maxTorque, torqueY));
+        rec.body.applyImpulse(impulse, true);
+        if (clampedTorqueY !== 0) {
+          applyYawTorqueImpulse(rec, { y: clampedTorqueY }, input);
+        }
+      } else {
+        rec.body.applyImpulseAtPoint(impulse, localPoint, true);
+      }
     } else {
       if (input.point) rec._playerOffCentreImpulsesCentred = (rec._playerOffCentreImpulsesCentred || 0) + 1;
       rec.body.applyImpulse(impulse, true);
@@ -1083,17 +1097,34 @@ export class Sg02DynamicBodyOwner {
 
   _playerContactClosingFraction(rec) {
     const receipts = this._stepContactReceipts;
-    if (!receipts || !receipts.length) return 0;
+    if (!receipts || !receipts.length) return null;
     const own = rec.entity && rec.entity.id;
     let maxClosing = 0;
+    let involved = false;
     for (let i = 0; i < receipts.length; i++) {
       const r = receipts[i];
       if (r.aId === own || r.bId === own) {
-        if (Number.isFinite(r.preSolveClosingSpeed) && r.preSolveClosingSpeed > maxClosing) {
-          maxClosing = r.preSolveClosingSpeed;
+        involved = true;
+        let closing = r.preSolveClosingSpeed;
+        if (!Number.isFinite(closing)) {
+          const other = this.records.get(r.aId === own ? r.bId : r.aId);
+          const e = rec.expected;
+          const oe = other && other.expected;
+          const at = rec.kinematics;
+          const from = other && other.kinematics;
+          // Older/custom receipts can omit the measurement; use the same pre-solve
+          // relative motion and body positions as the native contact recorder.
+          closing = other ? preSolveRadialClosingSpeed(
+            finite(e && e.vx), finite(e && e.vz),
+            finite(oe && oe.vx), finite(oe && oe.vz),
+            finite(from && from.x) - finite(at && at.x),
+            finite(from && from.z) - finite(at && at.z),
+          ) : 0;
         }
+        if (closing > maxClosing) maxClosing = closing;
       }
     }
+    if (!involved) return null;
     const incomingSpeed = Math.hypot(finite(rec.expected && rec.expected.vx), finite(rec.expected && rec.expected.vz));
     return incomingSpeed > 1e-3 ? maxClosing / incomingSpeed : 0;
   }
@@ -1132,7 +1163,8 @@ export class Sg02DynamicBodyOwner {
     const rawDvz = Number(v.z) - e.vz;
     const rawDv = Math.hypot(rawDvx, rawDvz);
 
-    const isActive = rawDv > PLAYER_CONTACT_ACTIVITY_EPSILON;
+    const closingFraction = this._playerContactClosingFraction(rec);
+    const isActive = closingFraction != null && rawDv > PLAYER_CONTACT_ACTIVITY_EPSILON;
     const tickNow = Number.isFinite(this._simTick) ? this._simTick : this.tick;
     if (isActive) {
       const lastTick = rec._playerContactLastTick;
@@ -1144,9 +1176,12 @@ export class Sg02DynamicBodyOwner {
     }
 
     const cumulative = rec._playerContactCumulativeDeltaV || 0;
-    const isDirectSlam = rec._tumbling === true || this._playerContactClosingFraction(rec) > 0.55;
+    const preservesSolverResponse = closingFraction == null
+      || rec._tumbling === true
+      || this._sleepHeld.has(rec)
+      || closingFraction > 0.55;
     let contactDvBudget;
-    if (isDirectSlam) {
+    if (preservesSolverResponse) {
       contactDvBudget = (!Number.isFinite(rawDv)
           || rawDv > (rec._tumbling === true ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV))
         ? this._contactResponseDvBudget(rec)
@@ -1190,21 +1225,14 @@ export class Sg02DynamicBodyOwner {
       if (post) post.vDirty = true;
     }
 
-    // There is no episode budget to clock on the sim tick: the admitted linear response IS the
-    // solver's planar velocity — sliding, deflection, and mass transfer are real physics — and
-    // the recorded delta-V is the measured solver-vs-prediction gap rather than a shaped
-    // allowance. No setLinvel runs on this path at all: the solver's velocity stands. THE ROPE
-    // IS A ROPE still holds: a live line already couples the player to an anchor, and traffic
-    // brushing the hull while the player is swinging is ordinary solid contact — the velocity
-    // answer is never rewritten, tethered or not, so a live line never turns traffic into a
-    // phase-through surface. The contact record is physics-owner runtime: a save/load rebuild
-    // starts from the body's live pose and keeps solving, and a serialized
-    // entity.playerContactGive episode on an old save is ignored — harmless metadata that caps
-    // nothing. The episode bookkeeping is gone with the budget: no cumulative counter, no
-    // last-contact tick, and no tethered-traffic scan survive on the record — contact is just
-    // contact now.
+    // Only receipted ordinary contact in uncoupled flight draws on the cruise budget.
+    // With no player receipt, earned solver momentum is not contact work. A live rope
+    // deliberately transfers momentum through its constraint, including solid hull contact;
+    // keep that solver response subject to the same numerical safety bound as a direct slam.
+    // The existing attachment cache is refreshed before every solve, so no contact-time scan
+    // or serialized entity metadata decides whether the player is physically coupled.
     const actualPlayerDeltaV = Math.hypot(acceptedVx - e.vx, acceptedVz - e.vz);
-    if (isActive && !isDirectSlam) {
+    if (isActive && !preservesSolverResponse) {
       rec._playerContactCumulativeDeltaV = cumulative + actualPlayerDeltaV;
     }
 
