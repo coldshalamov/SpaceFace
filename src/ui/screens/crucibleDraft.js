@@ -1036,7 +1036,13 @@ export const crucibleDraftScreen = {
     }
 
     if (shop && !visibleOffers.length && typeof document.createElementNS === 'function') {
-      const empty = el('div', 'orr-armory-empty', 'No equipment matches this search.');
+      // An empty shelf reached by clicking its tab needs to say so — the search
+      // phrasing only fits when a query or a non-empty shelf did the filtering.
+      const empty = el('div', 'orr-armory-empty', this._query
+        ? 'No equipment matches this search.'
+        : this._category !== 'All'
+          ? `Nothing stocked under ${this._category} this visit.`
+          : 'Nothing new fits this hull.');
       const clear = el('button', 'orr-armory-clear', 'Clear filters'); clear.type = 'button';
       clear.addEventListener('click', () => {
         this._category = 'All'; this._query = ''; this._search.value = ''; this.refresh(context);
