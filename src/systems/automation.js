@@ -26,6 +26,7 @@ import { DRONES, TRADERS, OUTPOSTS, AUTO_BALANCE } from '../data/automation.js';
 import { TECH_NODES, techDisplayName } from '../data/tech.js';
 import { SECTORS, dangerIndex } from '../data/sectors.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
+import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 import { consumePeriodicClock, normalizePeriodicAccumulator } from '../core/periodicClock.js';
 import { queryNearbyEntities, hasActiveSpatialHash } from '../core/spatialQuery.js';
 import { fittedModuleDefs } from '../core/fittedModules.js';
@@ -587,6 +588,9 @@ export const automation = {
     bus.on('sector:enter', (p) => {
       this._onContinuousDroneMembership(p);
       if (this._saveRestoring) return;
+      // Live GPU + flight + hard enter: the presence sync defers into the cook's FIFO —
+      // the census drains the same call under its slice clock in listener order.
+      if (deferSectorEnterMaterialization(this.state, p, this._cookProvider)) return;
       this._syncOutpostPresence(this.state.automation);
     });
     // Census arm: outpost presence materialization lands inside the sector cook

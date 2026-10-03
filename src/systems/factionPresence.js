@@ -4,6 +4,7 @@
 // loss-ledger state are read-only.
 
 import { hash32 } from '../core/rng.js';
+import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 import { indexedShipLikeScan, entityIndexVersion, entityIndexLaneVersion, registerEntityWorldRecordId } from '../world/livingWorldViews.js';
 import { syncEntityActivitySlotMembership } from '../core/coreSystem.js';
 import { shouldRunOnTick } from '../core/activityScheduler.js';
@@ -436,8 +437,11 @@ export const factionPresence = {
     this._presenceWakeSeq = 0;
     ensureOwnState(this.state);
     this._unsub = [
-      // Sync lane (emit listener): drain the chunked steps inline.
+      // Live GPU + flight + hard enter: defer into the cook's FIFO — the census
+      // drains this same body under its slice clock in listener order.
       this.bus.on('sector:enter', (payload) => {
+        if (deferSectorEnterMaterialization(this.state, payload, this._cookProvider)) return;
+        // Sync lane (emit listener): drain the chunked steps inline.
         for (const _ of this._onSectorEnterSteps(payload || {})) { /* inline */ }
       }),
       this.bus.on('sector:exit', (payload) => this._onSectorExit(payload || {})),

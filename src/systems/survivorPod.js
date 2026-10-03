@@ -25,6 +25,7 @@
 
 import { spawnPayloadEntity } from '../combat/industrialBeam.js';
 import { hash32 } from '../core/rng.js';
+import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 import { clearEntityRuntime } from '../core/entity.js';
 import { SECTORS } from '../data/sectors.js';
 import { wreckMissionById } from '../data/wreckMissions.js';
@@ -451,7 +452,12 @@ export const survivorPod = {
     };
     if (this._bus && this._bus.on) {
       this._bus.on('salvage:placed', this._onPlaced);
-      this._bus.on('sector:enter', this._onSectorEnter);
+      // Live GPU + flight + hard enter: defer into the cook's FIFO — the census
+      // drains the same _onSectorEnter under its slice clock in listener order.
+      this._bus.on('sector:enter', (p) => {
+        if (deferSectorEnterMaterialization(this._state, p, this._cookProvider)) return;
+        this._onSectorEnter(p);
+      });
       // Census arm: survivor-pod promotion lands inside the sector cook deterministically.
       if (this.helpers) {
         this._cookProvider = (sector) => {

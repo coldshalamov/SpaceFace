@@ -8,6 +8,7 @@
 // salvage, or sectorSim edits.
 
 import { hash32 } from '../core/rng.js';
+import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 import { validateRunState } from '../core/runState.js';
 import { salvagePoolFromManifest } from './lootShards.js';
 import { peekPendingSlam } from './hullFracture.js';
@@ -964,7 +965,12 @@ export const aftermathWrecks = {
       this.bus.on('player:death', this._onPlayerDeath);
       this.bus.on('entity:destroyed', this._onDestroyed);
       this.bus.on('wreckField:source', this._onFieldSource);
-      this.bus.on('sector:enter', this._onSectorEnter);
+      // Live GPU + flight + hard enter: defer into the cook's FIFO — the census
+      // drains the same _onSectorEnter under its slice clock in listener order.
+      this.bus.on('sector:enter', (p) => {
+        if (deferSectorEnterMaterialization(this.state, p, this._cookProvider)) return;
+        this._onSectorEnter(p);
+      });
       this.bus.on('sector:exit', this._onSectorExit);
       // Census arm: sector-dust wrecks materialize inside the cook, not on emit order.
       this._cookProvider = (sector) => {

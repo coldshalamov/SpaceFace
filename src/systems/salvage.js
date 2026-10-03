@@ -17,6 +17,7 @@
 // zoneId, …)); NEVER Math.random. The per-zone hash stream is independent of live state.world.rng
 // draw-order, so interleaving with other sector:enter consumers can't shift our rolls.
 
+import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 import { zonesForSector, VESTA_DERELICT_SALVAGE_SOURCE } from '../data/sectorZones.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { SECTORS } from '../data/sectors.js';
@@ -106,16 +107,22 @@ export const salvage = {
     }
 
     // On sector entry, (re)plan salvage for this sector's derelict fields.
-    this.bus.on('sector:enter', (p) => this._planForSector(p && p.sectorId));
+    // Live GPU + flight + hard enter: defer into the cook's FIFO — the census
+    // drains the same plan under its slice clock in listener order.
+    this.bus.on('sector:enter', (p) => {
+      if (deferSectorEnterMaterialization(this.state, p, this._cookProvider)) return;
+      this._planForSector(p && p.sectorId);
+    });
 
     // Census mount (vesper pattern): register a cook provider so derelict salvage points
     // plan inside the renderer's deterministic sector census (jump + opening) instead of
     // relying on this listener's emit position. _planForSector's plannedSectorId guard
     // makes the emit listener's own call a no-op — ordering insurance, not a second plan.
     if (this.helpers) {
+      this._cookProvider = (sector) => this._planForSector(sector && sector.id);
       (this.helpers.sectorCookProviders
         || (this.helpers.sectorCookProviders = []))
-        .push((sector) => this._planForSector(sector && sector.id));
+        .push(this._cookProvider);
     }
     this.bus.on('aftermathWreck:recorded', (p) => this._onPlayerWreckMarker(p));
     this.bus.on('aftermathWreck:spawned', (p) => this._onPlayerWreckSpawned(p));

@@ -9,6 +9,7 @@ import { salvagePoolForWreck } from '../data/salvageLegality.js';
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 import { globalToSectorLocalForSector } from '../data/sectorCoordinates.js';
 import { hash32, mulberry32 } from '../core/rng.js';
+import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 import { fittedModuleDefs } from '../core/fittedModules.js';
 import {
   complicationEncounterId,
@@ -901,6 +902,9 @@ export const uniqueWrecks = {
   },
 
   _onSectorEnter(payload) {
+    // Live GPU + flight + hard enter: defer into the cook's FIFO — the census
+    // drains this same body under its slice clock in listener order.
+    if (deferSectorEnterMaterialization(this.state, payload, this._cookProvider)) return;
     // Sync lane (emit listener, tests): drain the chunked steps inline.
     for (const _ of this._onSectorEnterSteps(payload)) { /* inline */ }
   },

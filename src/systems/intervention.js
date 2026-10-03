@@ -16,6 +16,7 @@
 // story" law. Never writes credits, cargo, or rep (single-writer §0.6); never rolls its own losses.
 
 import { drawSeeded, hash32 } from '../core/rng.js';
+import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 
 const MAX_ACTIVE = 4;        // cap concurrent interventions so a mass-loss event doesn't spam wrecks
@@ -68,7 +69,13 @@ export const intervention = {
     // The trigger: an automation asset was lost. Spawn salvage + raise the alert.
     this.bus.on('automation:assetLost', (p) => this._onAssetLost(p));
     // Cross-sector honesty: a logged site materializes when the player arrives.
-    this.bus.on('sector:enter', () => this._materializePendings());
+    // Live GPU + flight + hard enter: defer into the cook's FIFO — the census
+    // drains the same _materializePendings call under its slice clock in
+    // listener order instead of synchronously inside the emit.
+    this.bus.on('sector:enter', (p) => {
+      if (deferSectorEnterMaterialization(this.state, p, this._cookProvider)) return;
+      this._materializePendings();
+    });
     // Census arm: logged sites materialize inside the sector cook deterministically.
     this._cookProvider = () => this._materializePendings();
     (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))

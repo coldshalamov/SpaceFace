@@ -37,6 +37,7 @@ import {
   promotedReturnLine,
 } from '../data/pilotCallsigns.js';
 import { ensureMoralMemory, rememberMoralDebt, revealMoralDebt } from './moralMemory.js';
+import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 import { barkFor } from '../data/barks.js';
 import { pirateDoctrineForEntity, reachCultureDoctrineById } from '../data/pirateDoctrines.js';
 import { planetStatesForSector } from '../data/planetStates.js';
@@ -108,6 +109,9 @@ export const aceMemory = {
       this._planetChallengeResolved(p);
     });
     this._listen('sector:enter', (p) => {
+      // Live GPU + flight + hard enter: defer into the cook's FIFO — the census
+      // drains the same two schedulers under its slice clock in listener order.
+      if (deferSectorEnterMaterialization(this.state, p, this._cookProvider)) return;
       this._scheduleCultureIntro(p);
       this._schedulePlanetChallenges(p);
     });

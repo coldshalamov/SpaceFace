@@ -22,6 +22,7 @@
 
 import { anvilTrafficMethods } from './anvilWork.js';
 import { isRunSealed } from '../core/runSeal.js';
+import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 import { shouldRunOnTick, takeNearWorkSlice, ownerAiRecord, ownerTeamId, isActiveOwner, hashOwnerKey } from '../core/activityScheduler.js';
 import { SIM_TIER } from '../world/activityClassification.js';
 import { tableSimAuthorityWuFromState } from '../render/tabletopPolicy.js';
@@ -1737,6 +1738,10 @@ export const traffic = {
   },
 
   _onSectorEnter(p) {
+    // Live GPU + flight + hard enter: defer into the cook's FIFO — the census drains
+    // this same body under its slice clock in listener order instead of paying the
+    // whole cohort synchronously inside the emit.
+    if (deferSectorEnterMaterialization(this.state, p, this._cookProvider)) return;
     // Sync lane (emit listener, tests): drain the chunked steps inline.
     for (const _ of this._onSectorEnterSteps(p)) { /* inline */ }
   },

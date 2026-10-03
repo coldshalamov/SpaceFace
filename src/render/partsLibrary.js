@@ -2551,6 +2551,19 @@ const PRE_JOB_REFUSAL_STATUSES = new Set([
   'regrade-evict-cooloff',
 ]);
 
+// Non-counting refusals persist while their class is live (a detached boundary, a survival
+// defer, a malformed request): a synchronously re-armed on-glass trigger reposts every
+// rendered frame for the whole window — a 60 Hz ping-pong of guaranteed-refused enqueues.
+// Counting refusals already pace themselves through the repost cap, so only they re-arm
+// immediately; the rest poll again at this interval while their class may have cleared
+// (re-mount, run end) without a repost per frame.
+const REFUSAL_TRIGGER_REARM_DELAY_MS = 1000;
+function scheduleRefusalTriggerRearm(status, arm) {
+  if (status === 'regrade-evict-cooloff') { arm(); return; }
+  const timer = setTimeout(arm, REFUSAL_TRIGGER_REARM_DELAY_MS);
+  if (timer && typeof timer.unref === 'function') timer.unref();
+}
+
 function restoreBoundaryAfterPreJobRefusal(boundary, status) {
   delete boundary.userData.authoredUpgradePromise;
   if (boundary.userData.authoredAssetState === 'loading') {
@@ -2558,6 +2571,7 @@ function restoreBoundaryAfterPreJobRefusal(boundary, status) {
   }
   if (status === 'regrade-evict-cooloff') {
     boundary.userData.regradeRestoreCount = (boundary.userData.regradeRestoreCount | 0) + 1;
+    boundary.userData.regradeRestoreLastAt = monotonicNow();
   }
   boundary.userData.authoredReadmissionReason = status === 'cancelled-before-queue'
     ? 'cancelled-before-queue-detached'
@@ -2827,7 +2841,9 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
       if (result && PRE_JOB_REFUSAL_STATUSES.has(result.status)) {
         restoreBoundaryAfterPreJobRefusal(boundary, result.status);
         armed = true;
-        if (trigger) trigger.onBeforeRender = authoredAssetTrigger;
+        if (trigger) scheduleRefusalTriggerRearm(result.status, () => {
+          if (trigger) trigger.onBeforeRender = authoredAssetTrigger;
+        });
       }
       return result;
     });
@@ -3579,7 +3595,9 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
       if (result && PRE_JOB_REFUSAL_STATUSES.has(result.status)) {
         restoreBoundaryAfterPreJobRefusal(boundary, result.status);
         armed = true;
-        if (trigger) trigger.onBeforeRender = authoredStationTrigger;
+        if (trigger) scheduleRefusalTriggerRearm(result.status, () => {
+          if (trigger) trigger.onBeforeRender = authoredStationTrigger;
+        });
       }
       return result;
     });
@@ -3739,7 +3757,9 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
       if (result && PRE_JOB_REFUSAL_STATUSES.has(result.status)) {
         restoreBoundaryAfterPreJobRefusal(boundary, result.status);
         armed = true;
-        if (trigger) trigger.onBeforeRender = authoredPlaceTrigger;
+        if (trigger) scheduleRefusalTriggerRearm(result.status, () => {
+          if (trigger) trigger.onBeforeRender = authoredPlaceTrigger;
+        });
       }
       return result;
     });
@@ -5448,7 +5468,14 @@ export function enqueueBoundaryUpgrade(scene, job) {
       })) {
     return Promise.resolve({ status: 'regrade-evict-cooloff', boundary: job.boundary });
   }
-  const regradeRestores = job.boundary.userData && (job.boundary.userData.regradeRestoreCount | 0);
+  // The cap binds a sustained oscillation episode, not a lifetime tally: refusals older than
+  // the decay window belong to a resolved graze and must not demote a later genuine approach
+  // to glass-time admission for the rest of the boundary's mounted life.
+  const restoreLastAt = job.boundary.userData && job.boundary.userData.regradeRestoreLastAt;
+  const regradeRestores = Number.isFinite(restoreLastAt)
+    && monotonicNow() - restoreLastAt > AUTHORED_REGRADE_RESTORE_DECAY_MS
+    ? 0
+    : (job.boundary.userData && (job.boundary.userData.regradeRestoreCount | 0));
   if (regradeRestores >= AUTHORED_REGRADE_REPOST_MAX
       && !runwayWantedBeyondHorizon(job.entity, {
         admissionVisible: !!(job.options && job.options.admissionVisible === true),
@@ -5766,7 +5793,6 @@ function authoredRuntimeState() {
 // zero-draw admission boundary (and the temporary marker) where a ship should be for 20 seconds.
 // A complete NPC body can spend several seconds in decode and pipeline preparation. Start queued
 // runway ships before the contact reaches the glass instead of making the player watch that work.
-const FIRST_FLIGHT_SHIP_ADMISSION_RADIUS_WU = 700;
 function firstFlightReadableContactKind(entity) {
   const type = entity && entity.type;
   if (type === 'ship' || type === 'station' || type === 'wreck'
@@ -5803,10 +5829,13 @@ function firstFlightReadableShipJob(job) {
     // not. The frustum center-point helper can say false while its marker is already drawn.
     && (entityIsOnReadableGlass(entity) || entity.mesh?.visible === true
       || (entity.activity?.presentationTier === PRESENTATION_TIER.R1_RUNWAY
-        && ((runwayDistance !== null && runwayDistance <= FIRST_FLIGHT_SHIP_ADMISSION_RADIUS_WU)
+        && ((runwayDistance !== null && runwayDistance <= authoredPrefetchRadius(tableTravelSpeed(live)))
           || (firstFlightClosingToward(entity, player, live)
             && willEntityEnterAuthoredUpgradeRunway(entity, live, {
-              radius: FIRST_FLIGHT_SHIP_ADMISSION_RADIUS_WU,
+              // The normal ladder admits the same contact the moment its surface crosses the
+              // authored prefetch radius with no closing requirement — a non-closing ship in
+              // that rim band is a stand-in hole if the hold pins it shorter.
+              radius: authoredPrefetchRadius(tableTravelSpeed(live)),
               horizonSeconds: TABLE_DECODE_RUNWAY_SECONDS,
             }))))));
 }
@@ -5899,6 +5928,10 @@ function jobRunwayRegradeStillWanted(state, job) {
 // clause is the hard-evidence floor a capped boundary's repost must clear — real need
 // (admissionVisible, steady priority, actual glass) posts; drift alone does not.
 const AUTHORED_REGRADE_REPOST_MAX = 3;
+// The cap exists for a sustained repost/refuse churn inside one oscillation episode; episodes
+// are separated by minutes, so a refusal history older than this window no longer counts —
+// otherwise two distant grazes permanently demote every later approach to glass-time admission.
+const AUTHORED_REGRADE_RESTORE_DECAY_MS = 30000;
 function runwayWantedBeyondHorizon(entity, { admissionVisible = false, priority = Infinity } = {}) {
   if (!entityRidesAuthoredRunway(entity)) return true;
   if (admissionVisible === true) return true;

@@ -153,6 +153,7 @@ import { promotedPilotIdentity } from '../data/pilotCallsigns.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { customsWeirForSector } from '../world/customsWeir.js';
 import { hash32 } from '../core/rng.js';
+import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 import { Masks } from '../core/entity.js';
 import { maxFittedModuleMod } from '../core/fittedModules.js';
 import { effectiveDangerTierFor } from './sectorSim.js';   // V2 §33 — live (drifted) hazard for mission risk
@@ -9130,6 +9131,9 @@ export const missions = {
   },
 
   _onSectorEnter(p) {
+    // Live GPU + flight + hard enter: defer into the cook's FIFO — the census
+    // drains this same body under its slice clock in listener order.
+    if (deferSectorEnterMaterialization(this.state, p, this._cookProvider)) return;
     // Sync lane (emit listener, tests): drain the chunked steps inline.
     for (const _ of this._onSectorEnterSteps(p)) { /* inline */ }
   },
@@ -9284,7 +9288,9 @@ export const missions = {
           && prev.sig === passKey.sig && prev.version === passKey.version) {
         return;
       }
-      this._spawnTargetsPassKey = passKey;
+      // Not stored yet: a superseded cook pass (iterator.return mid-loop) must not leave a
+      // key that reads like a completed pass — the next invocation would skip on the stale
+      // latch while missions this pass never reached stay unevaluated.
     }
     // Spawn (or re-spawn after load) deferred targets for any active mission keyed to this sector.
     // Continue order: world rematerializes mission_target records first; adopt those live IDs
@@ -9302,7 +9308,10 @@ export const missions = {
       }
       yield 'mission-targets';
     }
-    if (passKey) passKey.version = entityIndexVersion(this.state);
+    if (passKey) {
+      passKey.version = entityIndexVersion(this.state);
+      this._spawnTargetsPassKey = passKey;
+    }
   },
 
   _onSectorExit(p) {

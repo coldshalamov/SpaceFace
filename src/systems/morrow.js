@@ -3,6 +3,7 @@
 // the same additive command membrane used by Massline. The player keeps their own controls.
 import { MORROW, MORROW_LINES, freshMorrowMemory, normalizeMorrowMemory } from '../data/morrow.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
+import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 
 const TAU = Math.PI * 2;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -76,7 +77,12 @@ export function createMorrow() {
       on('game:newGame', () => this.newGame());
       on('save:restoring', () => this._reset());
       on('save:loaded', () => { this._reset(); this._syncEntity(); });
-      on('sector:enter', () => { this._scanSeq = 0; this._syncEntity(); });
+      // Live GPU + flight + hard enter: defer into the cook's FIFO — the census
+      // drains the same reset+sync under its slice clock in listener order.
+      on('sector:enter', (p) => {
+        if (deferSectorEnterMaterialization(this.state, p, this._cookProvider)) return;
+        this._scanSeq = 0; this._syncEntity();
+      });
       // Census arm: the morrow entity materializes inside the sector cook deterministically.
       this._cookProvider = () => { this._scanSeq = 0; this._syncEntity(); };
       (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))

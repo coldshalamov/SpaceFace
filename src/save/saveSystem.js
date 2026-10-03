@@ -4641,6 +4641,12 @@ export const save = {
     const timeEffects = createTimeEffects(state); // fixtures may call _restore without init()
     this._beginRestoreSequence();
     const restoreSource = `save:restore:${this._restoreSequence}`;
+    // A sector:enter tail pending at restore start drains during the restore's early yields
+    // while the last live serial still sits on state.world — mint a fresh epoch now so every
+    // pre-restore payload mismatches the enterEpoch guards from the first yield onward (the
+    // world object itself survives deserialize; only its bags are reset).
+    state.enterSerialSeq = (Number(state.enterSerialSeq) || 0) + 1;
+    if (state.world && typeof state.world === 'object') state.world.enterSerial = state.enterSerialSeq;
     this.bus.emit('save:restoring', { slot, source: restoreSource });
     timeEffects.reset();
     timeEffects.set(restoreSource, { scale: 0 });

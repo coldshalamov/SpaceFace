@@ -1043,7 +1043,12 @@ export const world = {
     // A per-emit serial lets replay-suppression (traffic's cook dedupe) distinguish the
     // sliced re-dispatch of THIS emit from a genuinely new same-sector enter under a
     // frozen simTime — the replay carries this payload verbatim, a new enter mints +1.
-    state.world.enterSerial = (Number(state.world.enterSerial) || 0) + 1;
+    // The sequence lives on the state root, not the world record: New Game replaces
+    // state.world wholesale, so a per-world counter restarts at 1 and a pending emit tail
+    // carrying epoch 1 would alias into the fresh world. A run-scoped monotonic keeps every
+    // pre-reset payload mismatched forever.
+    state.enterSerialSeq = (Number(state.enterSerialSeq) || 0) + 1;
+    state.world.enterSerial = state.enterSerialSeq;
     this.bus.emit('sector:enter', { sectorId, sector, entryPoint, firstVisit, continuous, noTeleport, enterEpoch: state.world.enterSerial });
     return active;
   },

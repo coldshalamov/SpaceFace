@@ -8,6 +8,7 @@
 // post-scan 10% still-powered surprise; it requests one defense drone through world spawn authority.
 
 import { hash32 } from '../core/rng.js';
+import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 import { CONTACT_HAIL_RANGE } from '../data/contactHail.js';
 import { SECTORS } from '../data/sectors.js';
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
@@ -293,15 +294,19 @@ export const recoveryEncounter = {
       if (payload && payload.enterEpoch != null && this.state && this.state.world
           && this.state.world.enterSerial != null
           && payload.enterEpoch !== this.state.world.enterSerial) return;
+      // Live GPU + flight + hard enter: defer into the cook's FIFO — the census
+      // drains the same rebind under its slice clock in listener order.
+      if (deferSectorEnterMaterialization(this.state, payload, this._cookProvider)) return;
       this._rebindSector(sectorId);
     });
     this._listen('entity:spawned', (payload) => this._onEntitySpawned(payload && payload.entity));
     // The enter materialization (adopt-or-spawn derelict wrecks) registers for the
     // deterministic cook census instead of depending on listener order.
     if (this.helpers) {
+      this._cookProvider = (sector) => this._rebindSector(sector && sector.id);
       (this.helpers.sectorCookProviders
         || (this.helpers.sectorCookProviders = []))
-        .push((sector) => this._rebindSector(sector && sector.id));
+        .push(this._cookProvider);
     }
   },
 
