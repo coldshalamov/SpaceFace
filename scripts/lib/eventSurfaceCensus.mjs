@@ -513,7 +513,7 @@ function emitMarkdown(path) {
   L.push('| event type | main emitters | reason |');
   L.push('|---|---|---|');
   for (const r of rows) {
-    if (r.needsForward || r.mainEmitters.size === 0 || r.simSubscribers.size > 0) continue;
+    if (r.needsForward || r.mainEmitters.length === 0 || r.simSubscribers.length > 0) continue;
     L.push(`| \`${r.type}\` | ${r.mainEmitters.map((f) => `\`${f}\``).join('<br>')} | no sim-side subscribers |`);
   }
   L.push('');
