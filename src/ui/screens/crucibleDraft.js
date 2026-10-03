@@ -484,10 +484,10 @@ function budgetGauge(wallet, price) {
   // the label's measured width once it is in the document (an off-DOM text length reads
   // as zero, so the estimate that used to stand in for it stays out).
   const top = svgNode('text', { x: at(w).toFixed(1), y: y - 13, 'text-anchor': 'middle', class: 'orr-armory-budget__word' });
-  top.textContent = `WALLET ${w} CR`;
+  top.textContent = `WALLET ${w.toLocaleString('en-US')} CR`;
   root.appendChild(top);
   const under = svgNode('text', { x: x0, y: y + 26, class: 'orr-armory-budget__read' });
-  under.textContent = left >= 0 ? `costs ${p} \u00b7 leaves ${left}` : `short ${-left} cr`;
+  under.textContent = left >= 0 ? `costs ${p.toLocaleString('en-US')} \u00b7 leaves ${left.toLocaleString('en-US')}` : `short ${(-left).toLocaleString('en-US')} cr`;
   if (left < 0) under.setAttribute('class', 'orr-armory-budget__read is-short');
   root.appendChild(under);
   return root;
@@ -694,7 +694,7 @@ export const crucibleDraftScreen = {
       const words = el('div', 'orr-armory-reading__words');
       // "When it pays" is the decision line — it sits above the longer detail paragraph
       // so the highest-value copy is reachable at short viewports.
-      words.append(parts.verb, parts.name, parts.blurb, parts.act, parts.tip, parts.detail, parts.stats, parts.compare, parts.demo);
+      words.append(parts.verb, parts.name, parts.blurb, parts.act, parts.tip, parts.detail, parts.stats, parts.compare);
       const main = el('div', 'orr-armory-reading__main');
       main.append(parts.jig, words);
       // Wallet and Install dock as a footer under the scrolling dossier — the buy key

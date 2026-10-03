@@ -44,9 +44,24 @@ try {
       buyInsidePane: !!(reading && buy) && buy.getBoundingClientRect().bottom <= reading.getBoundingClientRect().bottom + 1,
       walletWordX: word && word.getAttribute('x'),
       walletWordLen: word && word.getComputedTextLength && word.getComputedTextLength(),
+      // which dossier band reads first in the pane — at cramped viewports the words
+      // must lead so the name and 'when it pays' line are the fold, not the clip
+      firstVisible: (() => {
+        if (!main) return null;
+        const mb = main.getBoundingClientRect();
+        for (const child of [...main.children]) {
+          const b = child.getBoundingClientRect();
+          if (b.height > 0 && b.top < mb.bottom && b.bottom > mb.top) {
+            return { cls: child.className, top: b.top | 0, h: b.height | 0 };
+          }
+        }
+        return null;
+      })(),
+      nameText: (() => { const n = document.querySelector('.orr-armory-reading__name'); return n && n.textContent; })(),
     };
   });
   console.log(JSON.stringify(out, null, 2));
+  await page.screenshot({ path: `media/armory-foot-${vp.width}x${vp.height}-top.png` });
   // scroll the dossier deep — the footer must stay pinned
   await sh(() => { const m = document.querySelector('.orr-armory-reading__main'); if (m) m.scrollTop = m.scrollHeight; });
   await settle(400);

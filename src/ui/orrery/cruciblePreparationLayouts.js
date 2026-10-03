@@ -302,17 +302,28 @@ ${D} .k-foot .orr-prep-continue:active, ${D} .k-foot .orr-key--hazard:active { t
  ${A} .orr-armory-object-label { display:none; }
  ${A} .orr-slotjig__word, ${A} .orr-slotjig__sub { display:none; }
 }
-/* narrow AND short: the stacked clip shrinks further so the dossier words begin
-   above the fold instead of a scroll below the band. */
+/* narrow AND short: the dossier words lead and the transaction band compresses, so
+   the name and the 'when it pays' line are the fold, not the clip. */
 @media (max-width:1150px) and (max-height:720px) {
  ${A} .orr-armory-item { height:120px; min-height:104px; }
  ${A} .orr-armory-item > .orr-equipment-glyph { width:96px; height:96px; }
  ${A} .orr-armory-reading__jig { height:120px !important; min-height:104px; }
  ${A} .orr-armory-reading__name { font-size:20px !important; margin:4px 0 8px !important; }
+ /* words before the media band: what it IS reads before what it looks like */
+ ${A} .orr-armory-reading__main { display:flex !important; flex-direction:column !important; }
+ ${A} .orr-armory-reading__words { order:-1; }
+ ${A} .orr-armory-visual { order:2; }
  /* squeeze the words column so the 'when it pays' line still starts above the fold */
  ${A} .orr-armory-reading__blurb, ${A} .orr-armory-reading__act { line-height:1.38 !important; }
  ${A} .orr-armory-reading__blurb, ${A} .orr-armory-reading__act,
  ${A} .orr-armory-reading__tip, ${A} .orr-armory-reading__detail { margin:0 0 4px !important; }
+ /* compress the docked band so Install still pins above the fold */
+ ${A} .orr-armory-reading__foot { margin-top:6px !important; padding-top:6px !important; }
+ ${A} .orr-armory-reading__budget { margin:0 0 6px !important; }
+ ${A} .orr-armory-budget { height:40px !important; width:auto !important; }
+ ${A} .orr-armory-reading__foot .orr-armory-reading__demo { margin:0 0 4px !important; }
+ ${A} .orr-armory-reading__demo-word { min-height:26px; padding:3px 0; }
+ ${A} .orr-armory-purchase { min-height:38px !important; padding:7px 12px !important; }
 }
 @media (max-width:760px) {
  ${D}, ${A} { display:flex !important; flex-direction:column !important; height:100dvh !important; padding:18px !important; gap:16px !important; overflow:auto !important; }
@@ -339,7 +350,7 @@ ${D} .k-foot .orr-prep-continue:active, ${D} .k-foot .orr-key--hazard:active { t
  ${A} .orr-armory-wallet strong { font-size:30px; }
  ${A} > .sf-cru-stage { height:420px !important; flex:none !important; }
  ${A} .orr-armory-reading.orr-armory-reading { display:flex !important; flex-direction:column !important; height:auto !important; flex:none !important; padding:16px 0 !important; border-left:0; border-top:1px solid var(--dp-line); overflow:visible !important; }
- ${A} .orr-armory-reading__main { display:flex !important; flex-direction:column !important; flex:none !important; overflow:visible !important; }
+ ${A} .orr-armory-reading__main { display:flex !important; flex-direction:column !important; flex:none !important; overflow:visible !important; mask-image:none !important; -webkit-mask-image:none !important; }
  ${A} .orr-armory-reading[hidden] { display:none !important; }
  ${A} .orr-armory-visual { flex-direction:row; flex:none; width:100%; }
  ${A} .orr-armory-reading__words { width:100%; }
