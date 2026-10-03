@@ -1,6 +1,6 @@
 // Segment-vs-body line-of-sight primitives shared by the PQ-146 observers. Leaf module: reads
 // entity geometry and collision proxy manifests only; no journal, physics or state writes.
-import { resolveCollisionProxyManifest, proxyWorldPrimitives } from '../data/collisionProxyManifests.js';
+import { resolveCollisionProxyManifest, proxyWorldPrimitives, proxyScaleFor, expandProxyPrimitives } from '../data/collisionProxyManifests.js';
 const point = p => p && Number.isFinite(p.x) && Number.isFinite(p.z);
 function pointSegmentDistance(p,a,b) {
   const dx=b.x-a.x,dz=b.z-a.z, square=dx*dx+dz*dz;
@@ -55,12 +55,49 @@ export function segmentHitsProxy(entity, a, b) {
   return false;
 }
 
+// Furthest primitive surface distance from an entity's own origin — rotation-invariant (a
+// rotated offset keeps its magnitude), so it caches per (manifest, scale) and lets
+// witnessLineOfSight skip proxy expansion for every entity whose reach cannot touch the
+// segment. The skip is verdict-identical: every primitive surface sits within reach of
+// entity.pos, so distance(pos, segment) > reach proves no primitive can intersect.
+const _occluderReachMemo = new WeakMap();
+function occluderReach(entity, manifest) {
+  if (!manifest) {
+    return Math.max(0, entity.physicsBody?.radius ?? entity.radius ?? entity.r ?? 0);
+  }
+  const scale = proxyScaleFor(entity, manifest);
+  const hit = _occluderReachMemo.get(entity);
+  if (hit && hit.manifest === manifest && hit.scale === scale) return hit.reach;
+  const local = expandProxyPrimitives(manifest, { entity });
+  let reach = 0;
+  for (const p of local) {
+    let extent = 0;
+    if (p.kind === 'capsule') {
+      extent = Math.max(
+        Math.hypot(Number(p.ax) || 0, Number(p.az) || 0),
+        Math.hypot(Number(p.bx) || 0, Number(p.bz) || 0),
+      ) + Math.max(0, Number(p.r) || 0);
+    } else {
+      const body = p.kind === 'obb'
+        ? Math.hypot(Number(p.hx) || 0, Number(p.hz) || 0)
+        : Math.max(0, Number(p.r) || 0);
+      extent = Math.hypot(Number(p.x) || 0, Number(p.z) || 0) + body;
+    }
+    if (extent > reach) reach = extent;
+  }
+  reach *= scale;
+  _occluderReachMemo.set(entity, { manifest, scale, reach });
+  return reach;
+}
+
 /** Uses the same station primitives as physics, preserving real gaps through compound geometry. */
 export function witnessLineOfSight(state, observer, destination, ignored = []) {
   if (!point(observer?.pos)||!point(destination))return false;
   for (const entity of state.entities?.values?.() || []) {
     if(!entity?.alive||!entity.collides||entity.id===observer.id||ignored.includes(entity.id)||!point(entity.pos))continue;
     if(!['ship','station','asteroid','planet','wreck','debris'].includes(entity.type) && entity.data?.sensorBlocking!==true)continue;
+    const manifest = resolveCollisionProxyManifest(entity);
+    if (pointSegmentDistance(entity.pos, observer.pos, destination) > occluderReach(entity, manifest)) continue;
     if (segmentHitsProxy(entity, observer.pos, destination)) return false;
   }
   return true;

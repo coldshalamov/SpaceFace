@@ -1937,11 +1937,11 @@ export const npcJobsRuntime = {
     for (const jobId of Object.keys(byId)) {
       const entry = byId[jobId];
       if (!entry) continue;
-      if (entry.entityId != null && !byEntity.has(entry.entityId)) byEntity.set(entry.entityId, entry);
+      if (entry.entityId != null && !byEntity.has(entry.entityId)) byEntity.set(entry.entityId, { jobId, entry });
       if (entry.towTargetId != null) {
         let bucket = byTowTarget.get(entry.towTargetId);
         if (!bucket) { bucket = []; byTowTarget.set(entry.towTargetId, bucket); }
-        bucket.push(entry);
+        bucket.push({ jobId, entry });
       }
     }
     this._goneIndex = { byEntity, byTowTarget };
@@ -1951,10 +1951,16 @@ export const npcJobsRuntime = {
 
   _entryForEntity(entityId) {
     if (entityId == null) return null;
-    const hit = this._ensureGoneIndex().byEntity.get(entityId);
-    // The verify is defensive only: every link/unlink/delete site dirties the index,
-    // so under the documented coverage contract hit.entityId is already entityId.
-    return hit && hit.entityId === entityId ? hit : null;
+    let index = this._ensureGoneIndex();
+    let rec = index.byEntity.get(entityId);
+    if (rec && this._byId()[rec.jobId] !== rec.entry) {
+      // A byId slot was swapped without a link site (wrapper replacement, ad-hoc restore) —
+      // other rows can be just as stale; rebuild rather than trust a healed slot.
+      this._goneIndexDirty = true;
+      index = this._ensureGoneIndex();
+      rec = index.byEntity.get(entityId);
+    }
+    return rec && rec.entry.entityId === entityId ? rec.entry : null;
   },
 
   newGame() {
@@ -5109,9 +5115,15 @@ export const npcJobsRuntime = {
     if (id == null) return;
     const entry = this._entryForEntity(id);
     if (entry) this.release('job:' + entry.worldRecordId);
-    const towed = this._ensureGoneIndex().byTowTarget.get(id);
+    let towed = this._ensureGoneIndex().byTowTarget.get(id);
     if (!towed) return;
-    for (const candidate of towed) this._clearTugAttachment(candidate, 'npc_tow_target_gone');
+    if (towed.some((rec) => this._byId()[rec.jobId] !== rec.entry)) {
+      // Same stale-slot class as _entryForEntity — rebuild once, then read the fresh bucket.
+      this._goneIndexDirty = true;
+      towed = this._ensureGoneIndex().byTowTarget.get(id) || null;
+    }
+    if (!towed) return;
+    for (const rec of towed) this._clearTugAttachment(rec.entry, 'npc_tow_target_gone');
   },
 
   // ── save / restore ────────────────────────────────────────────────────────────────────────────

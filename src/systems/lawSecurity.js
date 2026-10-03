@@ -3191,12 +3191,17 @@ export const lawSecurity = {
     this._customsConesQuiet = null;
     publishCustomsConesQuiet(state, false);
 
+    const shipViews = this._coneScratchShipViews || (this._coneScratchShipViews = []);
+    shipViews.length = 0;
+    for (let o = 0; o < occluders.length; o++) shipViews.push(lawWitnessOccluderView(occluders[o]));
+    const podIgnore = this._coneScratchPodIgnore || (this._coneScratchPodIgnore = new Set());
     const seen = this._coneScratchSeen || (this._coneScratchSeen = new Set());
     seen.clear();
     for (let s = 0; s < scanners.length; s++) {
       const scanner = scanners[s];
       const cone = customsScanConeOf(scanner);
       if (!cone) continue;
+      const coneObserver = { id: scanner.id, pos: cone.origin };
       for (let p = 0; p < pods.length; p++) {
         const pod = pods[p];
         if (!pod.data) continue;
@@ -3216,15 +3221,9 @@ export const lawSecurity = {
           dwell.delete(key);
           continue;
         }
-        let hidden = false;
-        for (let o = 0; o < occluders.length; o++) {
-          const hull = occluders[o];
-          if (!hull || hull.id === scanner.id || hull.id === pod.id) continue;
-          if (scanLineOccluded(cone.origin, pod.pos, hull)) {
-            hidden = true;
-            break;
-          }
-        }
+        podIgnore.clear();
+        podIgnore.add(pod.id);
+        const hidden = lawWitnessSightBlocked(state, coneObserver, pod.pos, podIgnore, shipViews);
         if (hidden) {
           dwell.delete(key);
           continue;
@@ -5743,7 +5742,29 @@ const LAW_WITNESS_OCCLUDER_TYPES = new Set(['station', 'asteroid', 'planet', 'wr
 // field-rock walk, manifest resolution, and primitive expansion happen once per query
 // instead of once per candidate. The candidate evaluator below mirrors scanLineOccluded
 // verdict-for-verdict on the prepared views.
+//
+// The plan is query-independent (it depends only on the entity set, their poses, and the
+// field rocks), so every witness query in one tick shares one build — a kill that asks both
+// the lawful and the civilian question pays the walk once, and callers that find zero
+// candidates never build it at all (lazy, below). Membership is keyed on tick + map size +
+// index version + rock count: alive/collides flips are re-checked per candidate at eval,
+// spawns and removals change the key, and a new tick rebuilds with fresh poses.
+const LAW_WITNESS_PLAN_MEMO = new WeakMap();
+
 function lawWitnessOccluderPlan(state) {
+  const entities = state && state.entities;
+  const size = entities && typeof entities.size === 'number' ? entities.size : -1;
+  const rocks = state && state.world && state.world.asteroidField
+    && Array.isArray(state.world.asteroidField.rocks) ? state.world.asteroidField.rocks.length : -1;
+  const key = `${(state && state.tick) | 0}|${size}|${entityIndexVersion(state) ?? 'nv'}|${rocks}`;
+  const hit = LAW_WITNESS_PLAN_MEMO.get(state);
+  if (hit && hit.key === key) return hit.plan;
+  const plan = buildLawWitnessOccluderPlan(state);
+  LAW_WITNESS_PLAN_MEMO.set(state, { key, plan });
+  return plan;
+}
+
+function buildLawWitnessOccluderPlan(state) {
   const prepared = [];
   const entities = state && state.entities;
   if (entities && typeof entities.values === 'function') {
@@ -5868,7 +5889,8 @@ export function lawWitnessesNear(state, { pos, offenderEntityId = null, radius =
   }
   const out = [];
   const seen = new Set();
-  const occluders = lawWitnessOccluderPlan(state);
+  let occluders = null;
+  const occluderPlan = () => occluders || (occluders = lawWitnessOccluderPlan(state));
   const consider = (entity) => {
     if (!entity || !entity.pos) return;
     if (offenderEntityId != null && entity.id === offenderEntityId) return;
@@ -5877,7 +5899,7 @@ export function lawWitnessesNear(state, { pos, offenderEntityId = null, radius =
     if (!isLawful(entity) && entity.data?.lawWitness !== true) return;
     const d2 = distance2(entity.pos, anchor);
     if (d2 > limitSq) return;
-    if (lawWitnessSightBlocked(state, entity, anchor, ignoredOccluders, occluders)) return;
+    if (lawWitnessSightBlocked(state, entity, anchor, ignoredOccluders, occluderPlan())) return;
     seen.add(entity.id);
     out.push({
       stableId: String(entity.data?.worldRecordId
@@ -5916,7 +5938,8 @@ function civilianKillWitnessesNear(state, pos, offenderEntityId, alreadyCollecte
   if (state.playerId != null) ignoredOccluders.add(state.playerId);
   if (victimEntityId != null) ignoredOccluders.add(victimEntityId);
   const out = [];
-  const occluders = lawWitnessOccluderPlan(state);
+  let occluders = null;
+  const occluderPlan = () => occluders || (occluders = lawWitnessOccluderPlan(state));
   forEachLivingWorldActor(state, (entity) => {
     if (!entity || !entity.pos || entity.alive === false) return;
     if (entity.id === offenderEntityId || entity.id === state.playerId) return;
@@ -5926,7 +5949,7 @@ function civilianKillWitnessesNear(state, pos, offenderEntityId, alreadyCollecte
     const d2 = distance2(entity.pos, anchor);
     if (d2 > limitSq) return;
     // Civilian eyes obey the same sight rule — a hauler behind a station did not watch it.
-    if (lawWitnessSightBlocked(state, entity, anchor, ignoredOccluders, occluders)) return;
+    if (lawWitnessSightBlocked(state, entity, anchor, ignoredOccluders, occluderPlan())) return;
     out.push({
       stableId: String(entity.data?.worldRecordId
         || entity.data?.stationId

@@ -1470,10 +1470,14 @@ export const traffic = {
     // Census arm: ambient traffic materialization lands inside the sector cook
     // deterministically (the handler falls back to world.currentSectorId itself).
     this._cookProvider = (sector) => this._onSectorEnter({
+      sector: sector || null,
       sectorId: (sector && sector.id) || undefined,
+      _viaCook: true,
     });
-    (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
-      .push(this._cookProvider);
+    if (this.helpers) {
+      (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
+        .push(this._cookProvider);
+    }
     // PIC-21: one glint record for the open seam, cleared when the seam is worked.
     // The listeners fire on the events; nothing here emits per tick.
     if (!this._richSeamGlintBound && this.bus && typeof this.bus.on === 'function') {
@@ -1657,6 +1661,13 @@ export const traffic = {
 
   _onSectorEnter(p) {
     if (this.state.run?.kind === 'survival' && this.state.run.phase !== 'inactive') return;
+    // The cook provider already ran this exact enter; the bus emit replays it synchronously
+    // and a second hard cleanup would despawn the freighters the census just cooked. Real
+    // continuous/noTeleport payloads are a different enter and must always run.
+    if (p && !p._viaCook && p.sector && p.sector === this._cookedSector
+      && this.state.simTime === this._cookedSimTime && !(p.continuous || p.noTeleport)) {
+      return;
+    }
     const continuous = !!(p && (p.continuous || p.noTeleport));
     const requestedSectorId = (p && p.sector && p.sector.id)
       || (p && p.sectorId)
@@ -1675,6 +1686,10 @@ export const traffic = {
     }
     const sector = p && p.sector;
     if (!sector || !this.helpers || !this.helpers.spawnEntity) return;
+    if (p._viaCook) {
+      this._cookedSector = sector;
+      this._cookedSimTime = this.state.simTime;
+    }
     const sectorId = sector.id || requestedSectorId;
     if (sectorId === CERES_ACTIVITY_SECTOR_ID) {
       this._retireLegacyCeresTraffic();

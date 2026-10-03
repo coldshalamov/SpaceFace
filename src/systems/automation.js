@@ -589,6 +589,14 @@ export const automation = {
       if (this._saveRestoring) return;
       this._syncOutpostPresence(this.state.automation);
     });
+    // Census arm: outpost presence materialization lands inside the sector cook
+    // deterministically (continuous-membership adoption stays on the bus payload).
+    this._cookProvider = () => {
+      if (this._saveRestoring) return;
+      this._syncOutpostPresence(this.state.automation);
+    };
+    (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
+      .push(this._cookProvider);
 
     // Tech can raise the drone tier cap → just affects gating/cap; nothing to do eagerly.
   },
