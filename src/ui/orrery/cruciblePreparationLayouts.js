@@ -305,6 +305,10 @@ ${D} .k-foot .orr-prep-continue:active, ${D} .k-foot .orr-key--hazard:active { t
  ${A} .orr-armory-item > .orr-equipment-glyph { width:96px; height:96px; }
  ${A} .orr-armory-reading__jig { height:120px !important; min-height:104px; }
  ${A} .orr-armory-reading__name { font-size:20px !important; margin:4px 0 8px !important; }
+ /* squeeze the words column so the 'when it pays' line still starts above the fold */
+ ${A} .orr-armory-reading__blurb, ${A} .orr-armory-reading__act { line-height:1.38 !important; }
+ ${A} .orr-armory-reading__blurb, ${A} .orr-armory-reading__act,
+ ${A} .orr-armory-reading__tip, ${A} .orr-armory-reading__detail { margin:0 0 4px !important; }
 }
 @media (max-width:760px) {
  ${D}, ${A} { display:flex !important; flex-direction:column !important; height:100dvh !important; padding:18px !important; gap:16px !important; overflow:auto !important; }

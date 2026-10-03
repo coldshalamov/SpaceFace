@@ -55,30 +55,43 @@ const ACTS = {
     await sh(() => window.__showcase.aimLockStop());
   },
   async shoot_nose(page, spec, t) {
-    // Spinal/launcher mounts can't gimbal to the lead angle — track the nearest
-    // hostile with the nose while holding fire (launchers also need the lock window).
+    // Spinal/launcher mounts can't gimbal to the lead angle — track the pinned target
+    // with the nose while holding fire (launchers also need the lock window). A 500ms
+    // poll lets a charging brawler slide the 25° cone and the lock never completes, so
+    // the tracker runs in-page every 50ms: rot snaps are instant, the cone holds.
     await page.mouse.move(480, 270);
     await sh(() => window.__showcase.aimLockStart());
-    const aimOnce = () => sh(() => {
+    await sh(() => {
       const s = window.__showcase;
-      const st = window.SF.state;
-      const pl = st.entities.get(st.playerId);
-      if (!pl || !pl.pos) return;
-      let best = null, bd = Infinity;
-      for (const e of st.entities.values()) {
-        if (!e || !e.alive || !e.pos || (e.type !== 'ship' && e.type !== 'drone')) continue;
-        if (e.team === 0 || e.team === 2 || e.id === st.playerId) continue;
-        const d = (e.pos.x - pl.pos.x) ** 2 + (e.pos.z - pl.pos.z) ** 2;
-        if (d < bd) { bd = d; best = e; }
-      }
-      if (best) s.faceTo(best.pos.x, best.pos.z);
+      const track = () => {
+        const st = window.SF.state;
+        const pl = st.entities.get(st.playerId);
+        if (!pl || !pl.pos) return;
+        // The nose lock tracks the PINNED target — face that one, not the nearest: when
+        // they disagree the cone never sits on the locked body and launchers never fire.
+        let best = pl.targetId != null ? st.entities.get(pl.targetId) : null;
+        if (!best || !best.alive || !best.pos) {
+          best = null; let bd = Infinity, bestSpawn = null, bdSpawn = Infinity;
+          const spawned = new Set(s.spawnedIdsList());
+          for (const e of st.entities.values()) {
+            if (!e || !e.alive || !e.pos || (e.type !== 'ship' && e.type !== 'drone')) continue;
+            if (e.team === 0 || e.team === 2 || e.id === st.playerId) continue;
+            const d = (e.pos.x - pl.pos.x) ** 2 + (e.pos.z - pl.pos.z) ** 2;
+            if (d < bd) { bd = d; best = e; }
+            if (spawned.has(e.id) && d < bdSpawn) { bdSpawn = d; bestSpawn = e; }
+          }
+          best = bestSpawn || best;
+        }
+        if (best) s.faceTo(best.pos.x, best.pos.z);
+      };
+      window.__noseIv = setInterval(track, 50);
+      track();
     });
     await settle(300);
-    await aimOnce();
     await sh(() => window.__showcase.setFire(true));
-    const end = Date.now() + t - 300;
-    while (Date.now() < end) { await aimOnce(); await settle(500); }
+    await settle(t - 300);
     await sh(() => window.__showcase.setFire(false));
+    await sh(() => { clearInterval(window.__noseIv); window.__noseIv = null; });
     await sh(() => window.__showcase.aimLockStop());
   },
   async shoot_inert(page, spec, t) {
@@ -282,7 +295,7 @@ const ACTS = {
 
 // --- scene setters --------------------------------------------------------------
 const SCENES = {
-  async pack3(spec) { await sh((s) => window.__showcase.spawnPack({ count: 3, distance: s?.dist || 60, hostile: true, arcDeg: 70, jitter: 8 }), spec); },
+  async pack3(spec) { await sh((s) => window.__showcase.spawnPack({ count: 3, distance: s?.dist || 60, hostile: true, arcDeg: s?.arcDeg ?? 70, jitter: s?.jitter ?? 8 }), spec); },
   async pack5(spec) { await sh((s) => window.__showcase.spawnPack({ count: 5, distance: s?.dist || 55, hostile: true, arcDeg: 80, jitter: 8 }), spec); },
   async drones(spec) { await sh((s) => window.__showcase.spawnPack({ count: s?.n || 2, distance: s?.dist || 45, hostile: false, arcDeg: 20, jitter: 5 }), spec); },
   async duoLine(spec) {
@@ -311,7 +324,7 @@ const SCENES = {
   // A big, slow, hostile tank dead ahead — the honest target for spinal mounts and
   // capital ordnance that can't chase a strafing swarmer.
   async bruiser(spec) {
-    await sh((s) => window.__showcase.spawnPack({ count: 1, distance: s?.dist || 80, hostile: true, enemyType: 'bruiser_brawler', arcDeg: 0, jitter: 0 }), spec);
+    await sh((s) => window.__showcase.spawnPack({ count: 1, distance: s?.dist || 80, hostile: true, enemyType: s?.enemyType || 'bruiser_brawler', arcDeg: 0, jitter: 0 }), spec);
   },
   async payloads(spec) {
     await sh(() => {

@@ -48,8 +48,11 @@ export const DEMOS = {
   wpn_plasma_cannon_m:    { hull: H_M, demo: 'shoot', ev: ['combat:damage'], clip: 8 },
   // Homing racks only launch inside the nose lock cone — the pinned-target nose-track
   // demo holds the pick in the cone long enough for lockProgress to reach 1.
-  wpn_missile_rack_m:     { hull: H_M, demo: 'shoot_nose', ev: ['combat:damage', 'entity:killed'], clip: 9, dist: 100 },
+  wpn_missile_rack_m:     { hull: H_M, demo: 'shoot_nose', ev: ['combat:damage', 'entity:killed'], clip: 9, dist: 160 },
   wpn_heavy_beam_l:       { hull: H_L, demo: 'shoot', ev: ['combat:damage', 'combat:beamStop'], clip: 8 },
+  // The charging brawler is the honest target: it holds the nose cone during its
+  // approach, so the lock completes and launches — an orbiting gunship slips the
+  // cone and the rack never fires. The lock ring is the torpedo HUD itself.
   wpn_torpedo_l:          { hull: H_L, demo: 'shoot_nose', ev: ['combat:damage', 'entity:killed', 'projectile:hit'], clip: 14, dist: 80 },
   wpn_siege_lance_l:      { hull: H_L, demo: 'shoot', ev: ['combat:damage'], clip: 8, dist: 110 },
   wpn_emp_disruptor_m:    { hull: H_M, demo: 'shoot', ev: ['combat:damage', 'combat:statusApplied', 'combat:emp'], clip: 8 },
@@ -183,7 +186,7 @@ export const DEMOS = {
   mod_ion_payload:       { hull: H_M, demo: 'trait', support: ['wpn_pulse_laser_s'], ev: ['combat:statusApplied', 'combat:damage'], clip: 8 },
   mod_incendiary_payload:{ hull: H_M, demo: 'trait', support: ['wpn_pulse_laser_s'], ev: ['combat:statusApplied', 'combat:damage'], clip: 8 },
   mod_gravity_tag:       { hull: H_M, demo: 'trait', support: ['wpn_pulse_laser_s'], ev: ['combat:statusApplied', 'combat:damage'], clip: 8 },
-  mod_relay_arc:         { hull: H_M, demo: 'trait', support: ['wpn_pulse_laser_s'], ev: ['combat:damage'], clip: 8 },
+  mod_relay_arc:         { hull: H_M, demo: 'trait', support: ['wpn_pulse_laser_s'], ev: ['combat:damage'], clip: 8, dist: 35, arcDeg: 30, jitter: 2 },
   mod_bank_relay:        { hull: H_DRIFTER, demo: 'bank', support: ['wpn_pulse_laser_m'], ev: ['combat:damage', 'projectile:hit'], clip: 8 },
   mod_tether_capacitor:  { hull: H_DRIFTER, demo: 'tether_shoot', support: ['mod_tractor_beam_m', 'wpn_pulse_laser_m'], ev: ['tether:latched', 'combat:damage'], clip: 10 },
   mod_conductive_path:   { hull: H_DRIFTER, demo: 'trait', support: ['wpn_pulse_laser_m', 'mod_ion_payload'], ev: ['combat:damage', 'combat:statusApplied'], clip: 8 },

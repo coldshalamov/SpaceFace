@@ -309,22 +309,29 @@ async function installShowcaseApi(page) {
           const st = sf.state;
           const p = st.entities.get(st.playerId);
           if (!p || !p.pos) return null;
-          let best = null, bd = Infinity;
+          // Prefer a spawned demo target: an ambient hostile pinned instead of the
+          // pack the scene just spawned leaves the lock tracking the wrong body.
+          let best = null, bd = Infinity, bestSpawn = null, bdSpawn = Infinity;
           for (const e of st.entities.values()) {
             if (!e || !e.alive || !e.pos || (e.type !== 'ship' && e.type !== 'drone')) continue;
             if (e.team === 0 || e.team === 2) continue;
             const d = (e.pos.x - p.pos.x) ** 2 + (e.pos.z - p.pos.z) ** 2;
             if (d < bd) { bd = d; best = e; }
+            if (spawnedIds.has(e.id) && d < bdSpawn) { bdSpawn = d; bestSpawn = e; }
           }
-          return best ? best.id : null;
+          return (bestSpawn || best)?.id || null;
         };
         window.__aimIv = setInterval(() => {
           const st = sf.state;
           const pl = st.player;
           if (!pl) return;
           const cur = pl.targetId != null ? st.entities.get(pl.targetId) : null;
-          if (cur && cur.alive && cur.pos) return;
-          pl.targetId = pick();
+          if (!cur || !cur.alive || !cur.pos) pl.targetId = pick();
+          // Weapons resolve combat.targetId before player.targetId — an AI-assist
+          // residue there would shadow the pin, so pin the same pick on the entity's
+          // combat slot too (st.player may be a view over the entity, not the entity).
+          const ent = st.entities.get(st.playerId);
+          if (ent && ent.data && ent.data.combat) ent.data.combat.targetId = pl.targetId;
         }, 120);
         return true;
       },
@@ -332,6 +339,7 @@ async function installShowcaseApi(page) {
         clearInterval(window.__aimIv); window.__aimIv = null;
         const pl = sf.state.player;
         if (pl) pl.targetId = null;
+        if (pl && pl.data && pl.data.combat) pl.data.combat.targetId = null;
       },
       screenPos(id) {
         const e = sf.state.entities.get(id);

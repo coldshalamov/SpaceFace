@@ -641,6 +641,10 @@ function moduleStats(def) {
   push('Hull burst', m.hullBurst ? `${m.hullBurst} · rank ${m.hullBurstRank || 1}` : null);
   push('Ram damage', m.ramDamageDealtMult != null && m.ramDamageDealtMult !== 1 ? `×${num(m.ramDamageDealtMult, 2)}` : null);
   push('Tow flail', m.towFlail === true ? 'rigged' : null);
+  // Boolean mod keys with no numeric chip of their own (scanner flags, swing drive,
+  // tractor specials) — name them so a flag-only card is self-explanatory.
+  const flags = Object.keys(m).filter((k) => m[k] === true && k !== 'towFlail');
+  push('Flags', flags.length ? flags.join(' · ') : null);
   // A def whose mods are all identity (the stock thruster cluster) has no numeric stat
   // to quote — the truthful chip is that it grants the hull's unmodified handling.
   if (out.length === 0) out.push({ label: 'Handling', value: 'stock baseline' });
