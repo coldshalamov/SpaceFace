@@ -554,7 +554,7 @@ ship stills (all REVISE — awaiting new remote candidates).
 | 61 | PQ-038/041 | Native acceptances: PERF-04 dense PresentationWorld + PERF-07 exact-package Electron pair — `implemented`, never run | ACCEPT | PARKED needs quiet host |
 | 62 | PQ-022.h3 | Corridor-asset perf envelope — harness on master; the ~50-min capture was never executed | ACCEPT | PARKED needs quiet host |
 | 63 | PQ-161.00 | Role silhouettes — `implemented`, awaiting readable-at-zoom review | ACCEPT | DONE 2026-10-03 — fleet-look chase+top stills of all nine role hulls opened (`.devshots/accept-roles/`); 9/9 roles nameable from silhouette + hardware protagonist vs the 8-of-9 bar (`design/program/roadmap/receipts/PQ-161.00-REPORT.md`) |
-| 64 | ZH-STRANGER | §25 stranger passes owed on Phases 1, 2, 3, 5, 6 — open frames and judge; metrics alone don't close | ACCEPT | OPEN |
+| 64 | ZH-STRANGER | §25 stranger passes owed on Phases 1, 2, 3, 5, 6 — open frames and judge; metrics alone don't close | ACCEPT | DONE 2026-10-03 — frames opened and judged against the law of the glass: P1 PASS (hull ~180–200 px chase, plume behind hull), P2 PASS (one hero body/sky yields, thin true wakes), P3 PASS (ember-lit victim hulk + drifting pieces at kill), P5 PASS (title→launch→fight→results→end card surfaces read), P6 PASS (working neighbourhood + A6 beats pinned) — verdicts + caveats in `design/program/roadmap/receipts/ZH-STRANGER-REPORT.md` |
 | 65 | PQ-042 | Branch selection — `ready` but dep-gated on PERF native acceptances (row 61) | BUILD | PARKED gated on row 61 |
 | 66 | PQ-210.08 | Fifteen-minute demo end-to-end — parked per owner pre-release ruling | ACCEPT | PARKED pre-release |
 
