@@ -332,6 +332,50 @@ function vfxMembershipVersion(state, lanes) {
   const laneVersion = entityIndexLaneVersion(state, lanes);
   return laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
 }
+
+// FB-096 — contact scratch is part of slot construction, never a first-contact gift.
+// A working hull's first weld/sampler beat used to mint three Vector3s, a Box3, and the
+// traverse closure inside the presenting frame; every npc-job signature slot and the pirate
+// scratch now owns them from pool fill. `_emitNpcJobContact` keeps this as its defensive
+// fallback for harness-built bare slots only — pool slots never re-enter it.
+export function initNpcJobContactScratch(slot) {
+  slot.contactVertex = new THREE.Vector3();
+  slot.contactPoint = new THREE.Vector3();
+  slot.contactFrom = new THREE.Vector3();
+  slot.contactBox = new THREE.Box3();
+  slot.contactVisit = (part) => {
+    const attr = part.isMesh && part.geometry && part.geometry.attributes.position;
+    if (!attr) return;
+    const stride = Math.max(1, Math.ceil(attr.count / 128));
+    for (let i = 0; i < attr.count; i += stride) {
+      slot.contactVertex.fromBufferAttribute(attr, i).applyMatrix4(part.matrixWorld);
+      const d2 = slot.contactVertex.distanceToSquared(slot.contactFrom);
+      if (d2 < slot.contactBest) {
+        slot.contactBest = d2;
+        slot.contactPoint.copy(slot.contactVertex);
+      }
+    }
+  };
+  return slot;
+}
+
+// Release-side counterpart: a recycled slot drops its target and sampled surface without
+// allocating — vectors and the box are reset in place so the next claim starts empty, never
+// holding a departed client's transform or mesh root.
+export function resetNpcJobContactScratch(slot) {
+  slot.contactRef = null;
+  slot.contactRefreshAt = 0;
+  slot.contactTarget = null;
+  slot.contactBest = Infinity;
+  slot.contactSurfaceRoot = null;
+  slot.contactSurfaceUntil = 0;
+  if (slot.contactVertex) slot.contactVertex.set(0, 0, 0);
+  if (slot.contactPoint) slot.contactPoint.set(0, 0, 0);
+  if (slot.contactFrom) slot.contactFrom.set(0, 0, 0);
+  if (slot.contactBox) slot.contactBox.makeEmpty();
+  return slot;
+}
+
 const EMPTY_PROJECTILE_DATA = Object.freeze({});
 const EMPTY_VIDEO_SETTINGS = Object.freeze({});
 // Shared no-options token for _eventLight so light calls stay allocation-free.
@@ -1420,7 +1464,7 @@ export const vfx = {
     this._cadenceNpcJobSignature = 0;
     this._npcJobSignatureSlots = [];
     for (let i = 0; i < NPC_JOB_SIGNATURE_CAPACITY; i++) {
-      this._npcJobSignatureSlots.push({
+      const slot = initNpcJobContactScratch({
         jobId: null,
         profileId: null,
         elapsed: 0,
@@ -1432,7 +1476,8 @@ export const vfx = {
         reactionT: 0,     // 0 .. 1 as the player closes
         frame: createNpcJobSignatureFrameScratch(),
         // Contact-effect scratch (see _npcJobContactTarget / _emitNpcJobContact). Declared up
-        // front so the first contact beat never reshapes the slot's hidden class.
+        // front so the first contact beat never reshapes the slot's hidden class; the
+        // Vector3/Box3/visit objects are filled by initNpcJobContactScratch above (FB-096).
         contactRef: null,
         contactRefreshAt: 0,
         contactTarget: null,
@@ -1442,12 +1487,14 @@ export const vfx = {
         contactVertex: null,
         contactPoint: null,
         contactFrom: null,
+        contactBox: null,
         contactVisit: null,
       });
+      this._npcJobSignatureSlots.push(slot);
     }
     // One reused scratch for pirate intercept light. Pirates are not npcJobs; the hunt beam
     // is pulled from live combat/activity targets and must not reshape a job slot.
-    this._pirateInterceptScratch = {
+    this._pirateInterceptScratch = initNpcJobContactScratch({
       elapsed: 0,
       lastEmitStep: -1,
       jobId: null,
@@ -1467,10 +1514,11 @@ export const vfx = {
       contactVertex: null,
       contactPoint: null,
       contactFrom: null,
+      contactBox: null,
       contactVisit: null,
       job: { kind: 'pirate', phase: 'hold', routeIndex: 0, route: null },
       cadence: { cadenceHz: 3.2, reducedCadenceHz: 1.2 },
-    };
+    });
     this._npcJobSignatureActive = 0;
     this._npcJobSignatureDrawn = 0;
     // Quiet settled flight: empty npcJobs bag still paid existence probe +
@@ -7246,8 +7294,7 @@ export const vfx = {
     const pirateSlot = this._pirateInterceptScratch;
     if (pirateSlot) {
       pirateSlot.elapsed = 0;
-      pirateSlot.contactRef = null;
-      pirateSlot.contactTarget = null;
+      resetNpcJobContactScratch(pirateSlot);
     }
   },
 
@@ -7467,13 +7514,15 @@ export const vfx = {
     emitted += this._emitNpcPirateIntercepts(player, drawWu, reducedMotion);
 
     // Release slots whose job vanished this tick, so a departed hull's cache cannot be mistaken for
-    // a live one when ids are recycled.
+    // a live one when ids are recycled. Contact scratch is reset in place (FB-096) — the next
+    // claim re-samples its own client's surface rather than reusing a dead job's cached root.
     for (let i = 0; i < slots.length; i++) {
       if (slots[i].gen !== gen && slots[i].jobId !== null) {
         slots[i].jobId = null;
         slots[i].profileId = null;
         slots[i].lastEmitStep = -1;
         slots[i].elapsed = 0;
+        resetNpcJobContactScratch(slots[i]);
       }
     }
 
@@ -7666,24 +7715,9 @@ export const vfx = {
       // metal, with a bounded sample per submesh; never a collision-radius point in empty space.
       const origin = this.state.world && this.state.world.frameOrigin;
       const ox = origin && origin.x || 0, oz = origin && origin.z || 0;
-      if (!slot.contactVertex) {
-        slot.contactVertex = new THREE.Vector3();
-        slot.contactPoint = new THREE.Vector3();
-        slot.contactFrom = new THREE.Vector3();
-        slot.contactVisit = (part) => {
-          const attr = part.isMesh && part.geometry && part.geometry.attributes.position;
-          if (!attr) return;
-          const stride = Math.max(1, Math.ceil(attr.count / 128));
-          for (let i = 0; i < attr.count; i += stride) {
-            slot.contactVertex.fromBufferAttribute(attr, i).applyMatrix4(part.matrixWorld);
-            const d2 = slot.contactVertex.distanceToSquared(slot.contactFrom);
-            if (d2 < slot.contactBest) {
-              slot.contactBest = d2;
-              slot.contactPoint.copy(slot.contactVertex);
-            }
-          }
-        };
-      }
+      // Pool slots own their contact scratch from construction (FB-096); only a bare
+      // harness-built slot arrives here without it.
+      if (!slot.contactVisit) initNpcJobContactScratch(slot);
       const now = this.state.simTime || 0;
       if (slot.contactSurfaceRoot !== root || now >= (slot.contactSurfaceUntil || 0)) {
         slot.contactFrom.set(x - ox, y, z - oz);
@@ -7754,6 +7788,7 @@ export const vfx = {
       let weldY = endY;
       const weldRoot = target.view && target.view.root;
       if (weldRoot) {
+        // Pool-owned scratch (FB-096); bare harness slots still get one on first weld.
         if (!slot.contactBox) slot.contactBox = new THREE.Box3();
         slot.contactBox.setFromObject(weldRoot);
         if (Number.isFinite(slot.contactBox.max.y)) weldY = slot.contactBox.max.y + 0.15;
