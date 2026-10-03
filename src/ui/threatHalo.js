@@ -1,3 +1,4 @@
+import { publishedWardTarget, refreshWardScreenPublication } from '../ai/specialistCounterplay.js';
 import { contactThreatTier, isHostileToPlayer, SCANNER_CONTACT_RANGE } from '../systems/scanner.js';
 import { countermeasureReadiness } from '../systems/countermeasures.js';
 import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';
@@ -16,6 +17,16 @@ export {
   OCCUPATIONAL_SILHOUETTE_RULES,
   getOccupationalSilhouetteRule,
 };
+
+/** Mark the screened hull (the warded id), and clear the mark when the ward drops. */
+export function applyWardScreenMark(host, state) {
+  const id = publishedWardTarget(state);
+  if (host && typeof host.setAttribute === 'function') {
+    if (id == null) host.removeAttribute('data-warded-id');
+    else host.setAttribute('data-warded-id', String(id));
+  }
+  return id == null ? null : id;
+}
 
 export function resolveEntityOccupationalRule(entity) {
   if (!entity) return null;
@@ -1229,6 +1240,8 @@ export function createThreatHalo(root, busOrOpts) {
   return {
     noteTelegraph,
     update(player, state, worldToScreen) {
+      if (state) refreshWardScreenPublication(state);
+      applyWardScreenMark(layer, state);
       if (!player || !state || typeof worldToScreen !== 'function' || !player.pos) {
         hideAllSlots();
         return;

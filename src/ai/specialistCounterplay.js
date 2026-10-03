@@ -43,6 +43,34 @@ const DISRUPT_COMMIT_LOCK_TICKS = 60;
 // Per-state ledger of the currently committed pass: { kind, untilTick }. Keyed by the GameState
 // object (never serialized) and advanced purely by sim ticks — no ambient randomness.
 const commitLedger = new WeakMap();
+// The screen function still RETURNS the warden (damage routes the hit onto that hull).
+// The warded id is a side channel so the halo can mark the hull that is being covered
+// until a later weapon/action check of the same pair finds no screen.
+const wardPublications = new WeakMap();
+
+export function publishedWardTarget(state) {
+  const pub = state ? wardPublications.get(state) : null;
+  return pub && pub.wardedId != null ? pub.wardedId : null;
+}
+
+export function refreshWardScreenPublication(state) {
+  const pub = state ? wardPublications.get(state) : null;
+  if (!pub) return null;
+  const ships = shipsOf(state);
+  let attacker = null;
+  let target = null;
+  for (const ent of ships) {
+    if (!ent) continue;
+    if (ent.id === pub.attackerId) attacker = ent;
+    if (ent.id === pub.wardedId) target = ent;
+  }
+  if (!attacker || !target || attacker.alive === false || target.alive === false) {
+    wardPublications.delete(state);
+    return null;
+  }
+  wardScreenTarget(state, attacker, target, { kind: 'weapon' });
+  return publishedWardTarget(state);
+}
 
 function finite(value, fallback = 0) {
   return Number.isFinite(value) ? value : fallback;
@@ -100,6 +128,18 @@ export function wardScreenTarget(state, attacker, target, origin) {
     if (dist > radius || dist >= bestDist) continue;
     best = ent;
     bestDist = dist;
+  }
+  if (state) {
+    const prev = wardPublications.get(state);
+    if (best) {
+      wardPublications.set(state, {
+        wardedId: target.id,
+        wardenId: best.id,
+        attackerId: attacker.id,
+      });
+    } else if (prev && prev.wardedId === target.id && prev.attackerId === attacker.id) {
+      wardPublications.delete(state);
+    }
   }
   return best;
 }
