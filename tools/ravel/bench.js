@@ -45,7 +45,7 @@ async function reset(){if(busy)return;busy=true;f?.destroy();disposeViews();f=cr
  selected=f.system._core();f.bus.on('ravel:voice',p=>{$('line').textContent=p.text;});
  f.bus.on('audio:cue',p=>{if(!audio||!$('sound').checked)return;const recipe=RAVEL_AUDIO_RECIPES.find(r=>r.id===p.id);
   if(recipe)voices.push(playRecipe(audio,recipe,audio.destination,{peakGain:.45},audioCache));});
- $('line').textContent='Scan to hail. Nothing here attacks until you accept the challenge.';lastFire=-10;acc=0;busy=false;syncViews();}
+ $('line').textContent='Scan to hail. Nothing here attacks until you accept the challenge.';lastFire=-10;acc=0;busy=false;syncViews();$('diagnostic').textContent=`PRODUCTION RAVEL + Rapier · ${views.size} authored bodies · isolated encounter bench, not the full world`;}
 function syncViews(){if(!f)return;
  for(const [id,root]of views){if(!f.state.entities.get(id)?.alive){disposeRavelVisual(root);views.delete(id);}}
  for(const e of f.state.entityList){if(!e.alive||!e.data?.ravelPart)continue;
@@ -73,8 +73,13 @@ function fire(){if(!f||!selected?.alive||busy||f.state.timeScale===0||f.state.si
  if(selected.pos.distanceTo(f.player.pos)>340){$('line').textContent='Target beyond the bench weapon’s 340-unit range.';return;}
  lastFire=f.state.simTime;const r=f.damage(selected,45);if(r.applied===0&&selected.flags.invuln)$('line').textContent='The spindle is closed. Wait for the cast to end, or take its weights instead.';}
 function pause(){if(!f)return;f.state.timeScale=f.state.timeScale?0:1;$('pause').textContent=f.state.timeScale?'Pause':'Resume';$('pause').setAttribute('aria-pressed',String(!f.state.timeScale));}
-function setStudy(value){study=value;document.body.classList.toggle('study',value);$('study').setAttribute('aria-pressed',String(value));
- camera.position.set(...(value?[66,103,97]:[170,285,255]));camera.lookAt(value?0:35,0,0);}
+function positionCamera(){
+ // Preserve the whole counterweight silhouette at narrow aspect ratios.
+ const fit=innerWidth<700?Math.max(1,(study?1.6:.9)/(innerWidth/innerHeight)):1;
+ const base=study?[66,103,97]:[170,285,255];
+ camera.position.set(base[0]*fit,base[1]*fit,base[2]*fit);camera.lookAt(study?0:35,0,0);
+}
+function setStudy(value){study=value;document.body.classList.toggle('study',value);$('study').setAttribute('aria-pressed',String(value));positionCamera();}
 $('hail').onclick=()=>f?.scan();$('tether').onclick=grip;$('fire').onclick=fire;$('reset').onclick=reset;$('pause').onclick=pause;$('study').onclick=()=>setStudy(!study);
 $('sound').onchange=async()=>{if($('sound').checked){audio ||= new AudioContext();await audio.resume();}else for(const v of voices)disposeVoice(v);};
 window.addEventListener('keydown',e=>{if(e.target.matches('input'))return;
@@ -86,7 +91,7 @@ const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();canvas.addEventListene
  canvas.focus();mouse.set(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1);ray.setFromCamera(mouse,camera);
  const hits=ray.intersectObjects([...views.values()],true);for(const h of hits){let o=h.object;while(o&&!o.userData.entityId)o=o.parent;
   if(o){selected=f.state.entities.get(o.userData.entityId);break;}}});
-function resize(){renderer.setSize(innerWidth,innerHeight);composer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();}
+function resize(){renderer.setSize(innerWidth,innerHeight);composer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();positionCamera();}
 window.addEventListener('resize',resize);resize();
 function tick(t){requestAnimationFrame(tick);const elapsed=Math.min(.1,(t-last)/1000);last=t;
  if(f&&!busy){if(f.state.timeScale&&f.player.alive){acc+=elapsed;let steps=0;while(acc>=1/60&&steps++<8){

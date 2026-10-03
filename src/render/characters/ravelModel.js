@@ -121,12 +121,13 @@ export function buildRavelVisual(e={data:{ravelPart:'core',ravelPose:{}}}){
   const arm=new THREE.Group();arm.name=`carved_hook_${i}`;pivot.add(arm);
   const outline=[[7,-3],[13,-6],[21,-5.2],[27,-1.8],[29,2],[26,6],[22,8],[22.4,4],[20,1.5],[13,2],[8,1.3]];
   add(arm,slab(outline,1.8,.5),i===1?m.wine:m.shell,'swept_ceramic_guard',0,2.0,0);
-  add(arm,slab([[10,-3.6],[15,-4.5],[22,-3.5],[25,-1.6],[21,-1.8],[15,-2.4]],.2,.08),m.dark,'recessed_guard_channel',0,4,0);
-  add(arm,slab([[11,-2.7],[16,-3.2],[21,-2.6],[22,-2.1],[16,-2.5]],.1,.04),m.light,'loaded_inlay',0,4.15,0);
-  add(arm,slab([[23.5,0],[27,2],[25,5],[23.5,5],[25,2]],.55,.15),m.brass,'worn_gripping_tip',0,3.6,0);
-  for(let k=0;k<4;k++)add(arm,new THREE.BoxGeometry(.28,.2,1.5),m.brass,'guard_stitches',10+k*2.5,4.2,.4);
+  // Guard surface is y=4.3 including bevel: keep every detail above it.
+  add(arm,slab([[10,-3.6],[15,-4.5],[22,-3.5],[25,-1.6],[21,-1.8],[15,-2.4]],.2,.08),m.dark,'recessed_guard_channel',0,4.42,0);
+  add(arm,slab([[11,-2.7],[16,-3.2],[21,-2.6],[22,-2.1],[16,-2.5]],.1,.04),m.light,'loaded_inlay',0,4.78,0);
+  add(arm,slab([[23.5,0],[27,2],[25,5],[23.5,5],[25,2]],.55,.15),m.brass,'worn_gripping_tip',0,4.46,0);
+  for(let k=0;k<4;k++)add(arm,new THREE.BoxGeometry(.28,.2,1.5),m.brass,'guard_stitches',10+k*2.5,4.46,.4);
   add(arm,new THREE.CylinderGeometry(1.55,1.7,1.5,12),m.dark,'joint_well',9,2,-.7);
-  add(arm,new THREE.CylinderGeometry(.8,.8,.22,12),m.brass,'joint_lock',9,3.2,-.7);rigid(arm);
+  add(arm,new THREE.CylinderGeometry(.8,.8,.22,12),m.brass,'joint_lock',9,4.45,-.7);rigid(arm);
  }
  const lids=[];
  for(let i=0;i<3;i++){

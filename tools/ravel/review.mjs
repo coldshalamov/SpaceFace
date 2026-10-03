@@ -13,9 +13,10 @@ try{
   args:['--no-sandbox','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
  const page=await browser.newPage({viewport:{width:1440,height:960},deviceScaleFactor:1});
  page.on('pageerror',e=>errors.push(String(e)));page.on('console',m=>{if(m.type()==='error'&&!m.text().includes('favicon'))errors.push(m.text());});
+ page.on('response',r=>{if(r.status()>=400)errors.push(`${r.status()} ${r.url()}`);});
  page.on('requestfailed',r=>errors.push(`${r.url()}: ${r.failure()?.errorText}`));
  await page.goto('http://127.0.0.1:8765/tools/ravel/bench.html',{waitUntil:'networkidle'});
- await page.waitForFunction(()=>window.__ravelReady===true,{timeout:30000});
+ await page.waitForFunction(()=>window.__ravelReady===true,null,{timeout:30000});
  await page.screenshot({path:path.join(out,'01-encounter.png')});
  await page.click('#study');await page.screenshot({path:path.join(out,'02-model-study.png')});
  await page.click('#study');
@@ -37,7 +38,7 @@ try{
   f.bus.emit('save:loaded',{});lab.setStudy(true);lab.render();});
  await page.screenshot({path:path.join(out,'06-peace-restored.png')});report.checks.push('Peaceful saved state loads and renders without an active attack');
  await page.click('#reset');await page.waitForFunction(()=>window.__ravelLab.fixture.state.ravel.met===false);
- await page.setViewportSize({width:390,height:844});await page.screenshot({path:path.join(out,'07-narrow-layout.png')});
+ await page.setViewportSize({width:390,height:844});await page.evaluate(()=>window.__ravelLab.render());await page.screenshot({path:path.join(out,'07-narrow-layout.png')});
  if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw Error('Horizontal layout overflow');
  report.checks.push('Reset and narrow viewport layout');report.stats=await page.evaluate(()=>window.__ravelLab.stats());
  report.errors=errors;if(errors.length)throw Error(errors.join('\n'));report.passed=true;
