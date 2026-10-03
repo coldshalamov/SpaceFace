@@ -300,14 +300,18 @@ export const NAMED_LANE_CONTACTS = Object.freeze([
   }),
   Object.freeze({
     // WORLD-40 — Ceres already wears Rell on the seam miner. Jorah is the second face,
-    // on the refinery hauler, so a return trip meets someone else.
+    // on the refinery hauler, so a return trip meets someone else. He is placed by the
+    // dedicated authored-cast fixture in traffic._ensureNamedLaneContact (found by id on
+    // the refinery hauler), never by the seed pick: the Ceres pick pool must stay
+    // single-member — a second pickable face displaces the seam miner's identity on the
+    // seeds that choose it (the same hazard the Cinder Run Courier note above records).
     id: 'lane_jorah_seam_haul',
     name: 'Jorah of the Seam Haul',
     callsign: 'SEAM-HAUL',
     role: 'hauler',
     gimmick: 'seam-haul',
     ship: 'ship_mule',
-    sectorIds: Object.freeze(['sector_ceres_belt']),
+    sectorIds: Object.freeze([]),
   }),
 ]);
 

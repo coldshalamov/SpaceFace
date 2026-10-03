@@ -267,7 +267,10 @@ test('world.js owns the pass end to end: spawn on dressing, tick in update, rese
   const source = readFileSync(fileURLToPath(new URL('../src/systems/world.js', import.meta.url)), 'utf8');
   assert.match(source, /import \{ WORLD_ONE_OFFS \} from '\.\.\/data\/worldOneOffs\.js';/,
     'the one-off data is imported, not duplicated');
-  assert.match(source, /this\._spawnWreckAftermathDressing\(sector, active, paletteClass\);\s*\n\s*this\._spawnWorldOneOffs\(sector, active\);/,
+  // The materialize scheduler interleaves a yield marker between dressing passes; the pin is
+  // that one-offs run in the same dressing sequence directly after wreck aftermath, not that
+  // no scheduler beat sits between the calls.
+  assert.match(source, /this\._spawnWreckAftermathDressing\(sector, active, paletteClass\);\s*\n\s*(?:yield 'materialize:dressing-wrecks';\s*\n\s*)?this\._spawnWorldOneOffs\(sector, active\);/,
     'the one-off pass runs with the other dressing passes on sector activation');
   assert.match(source, /this\._tickWorldOneOffSpin\(dt, state\);/,
     'the spin ticks inside world.update');
