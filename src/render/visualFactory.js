@@ -23,6 +23,7 @@ import { buildRavelVisual } from './characters/ravelModel.js';
 import { modelTruthMountFractions } from '../data/modelTruth.js';
 import { mergeGeometries, mergeVertices, toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
 import { getReadyRockSurfaceTextures, rockSurfaceVariantSpec, ROCK_SURFACE_VARIANTS } from './rockSurfaceLibrary.js';
+import { rockFamilyFor, ROCK_FAMILY_TINT_MIX, ROCK_FAMILY_EMISSIVE_LIFT } from './rockFamilyLibrary.js';
 import {
   COMMON_ROCK_MATERIAL_ROLES,
   COMMON_ROCK_MINERAL_SHEEN,
@@ -2323,11 +2324,16 @@ function astMaterial(typeId, def, tint, variantIdx = 0) {
   // numbers; this key keeps one cached material per variant.
   const variantSpec = commonSurfaceReady ? rockSurfaceVariantSpec(variantIdx) : null;
   const variantKey = variantSpec ? `:v${ROCK_SURFACE_VARIANTS.indexOf(variantSpec)}` : '';
-  const key = `astmat:${typeId}:${tint || 'def'}${variantKey}${bare ? ':bare' : ''}`;
+  // Metallic / crystalline / exotic rocks wear a generated surface family once its maps have decoded
+  // (rockFamilyLibrary.js); a rock built before then keeps the flat tinted material under its own key.
+  const family = typeId === 'ast_common_rock' ? null : rockFamilyFor(def.variant);
+  const key = `astmat:${typeId}:${tint || 'def'}${variantKey}${bare ? ':bare' : ''}${family ? ':fam' : ''}`;
   return getMaterial(key, () => {
     const commonSurface = commonSurfaceReady;
-    const color = tint != null ? new THREE.Color(tint) : new THREE.Color(def.color);
+    let color = tint != null ? new THREE.Color(tint) : new THREE.Color(def.color);
     if (variantSpec) color.multiply(new THREE.Color(...variantSpec.tint));
+    // The texture carries the surface, so the type colour only tints it rather than multiplying it dark.
+    if (family) color = new THREE.Color(0xffffff).lerp(color, ROCK_FAMILY_TINT_MIX[def.variant] ?? 0.25);
     const skipRoughNoise = !!commonSurface || def.variant === 'crystal' || def.variant === 'ice';
     const rough = skipRoughNoise
       ? null
@@ -2364,8 +2370,9 @@ function astMaterial(typeId, def, tint, variantIdx = 0) {
 
     const material = new THREE.MeshStandardMaterial({
       color,
-      map: commonSurface && commonSurface.baseColor || null,
-      normalMap: commonSurface && commonSurface.normal || null,
+      map: commonSurface && commonSurface.baseColor || family && family.baseColor || null,
+      normalMap: commonSurface && commonSurface.normal || family && family.normal || null,
+      emissiveMap: family && family.emissive || null,
       normalScale: commonSurface
         ? new THREE.Vector2(variantSpec.normalScale, variantSpec.normalScale)
         : new THREE.Vector2(1, 1),
@@ -2377,7 +2384,9 @@ function astMaterial(typeId, def, tint, variantIdx = 0) {
         || (def.variant === 'crystal' ? null : rough),
       metalnessMap: commonSurface && commonSurface.orm || null,
       vertexColors: !!commonSurface,
-      emissive: new THREE.Color(def.emissive), emissiveIntensity: eiBoost,
+      emissive: new THREE.Color(def.emissive),
+      // A glow map confines the glow to the crystals / veins, so the intensity is lifted to keep them readable.
+      emissiveIntensity: family && family.emissive ? Math.min(3.2, eiBoost * ROCK_FAMILY_EMISSIVE_LIFT) : eiBoost,
       flatShading: def.flat,
     });
     if (bare) {

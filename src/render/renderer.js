@@ -336,6 +336,7 @@ import {
   disposeAdmissionShadowResources,
 } from './shadowDepthAdmission.js';
 import { preloadRockSurfaceLibrary } from './rockSurfaceLibrary.js';
+import { preloadRockFamilyLibrary } from './rockFamilyLibrary.js';
 import {
   beginOpeningCookLedger,
   createGpuResidencyAdmissionTracker,
@@ -6877,7 +6878,7 @@ const RENDER_STATE_REFERENCE_KEYS = Object.freeze([
   'drainOpeningPipelinePlan', 'captureOpeningGpuResidencyPlan', 'drainOpeningGpuResidencyPlan',
   'resumeDeferredPipelineAdmissions', 'compileCurrentPipelines', 'pendingPipelineAdmissions',
   'preparePostOpeningPipelines', 'prepareOpeningGpuResources', 'retryAuthoredPartLibrary',
-  'startupGpuResidency', 'rockSurfaceLibraryReady', 'authoredPartLibraryReady',
+  'startupGpuResidency', 'rockSurfaceLibraryReady', 'rockFamilyLibraryReady', 'authoredPartLibraryReady',
   'dynamicBufferRanges', 'presentationWorld', 'presentationPublisher', 'presentationQueries',
   'presentationFrame', 'snapshotFence', 'activityFrame', 'entityFrame', 'hlod', 'entityViewSync',
   'asteroidInstancePool', 'renderGraph', 'bloom', 'contextRecovery', 'sectorBoundaryPrewarm',
@@ -7230,6 +7231,7 @@ export function disposeRendererOwnedResources(owner, options = {}) {
   owner._frameMembrane = null;
   owner.authoredPartLibraryReady = null;
   owner.rockSurfaceLibraryReady = null;
+  owner.rockFamilyLibraryReady = null;
   owner.viewport = null;
   owner._postFrameOptions = null;
   owner._postOptionsSig = null;
@@ -8074,6 +8076,9 @@ export const render = {
     // publishing the old flat/clay material and then changing identity a few frames later.
     this.rockSurfaceLibraryReady = preloadRockSurfaceLibrary(renderer);
     state.render.rockSurfaceLibraryReady = this.rockSurfaceLibraryReady;
+    // The generated surface families for metallic / crystalline / exotic rocks decode alongside. Never
+    // fatal: on failure those types keep the flat tinted material (rockFamilyLibrary.js resolves null).
+    this.rockFamilyLibraryReady = preloadRockFamilyLibrary(renderer);
     // The opening only waits 4 s for these maps (prepareOpeningGpuResources races them against a
     // timeout), and the onboarding rescue rock spawns the moment flight starts. On a slow decode
     // that rock used to publish the bare white material and keep it for the session. When the
@@ -12594,6 +12599,11 @@ export const render = {
       }
       recordOpeningCookStep(state.render, 'opening.rockSurfaceLibrary', rockWaitStarted,
         this.rockSurfaceLibraryReady ? (rockTimedOut ? 'timeout' : 'resolved') : 'skipped');
+      // The asteroid warm groups below build their materials from the decoded families, so the final
+      // programs compile behind the shell instead of on a first sighting in flight (same 4 s cap).
+      if (this.rockFamilyLibraryReady) {
+        await Promise.race([this.rockFamilyLibraryReady, new Promise((resolve) => setTimeout(resolve, 4000))]);
+      }
       parallaxLayers.seatReadyRockSurfaceTextures();
       const openingNow = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
         ? performance.now() : Date.now());
