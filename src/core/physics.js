@@ -23,8 +23,8 @@ import {
   resetActivityRuntimeForRestore,
 } from '../world/activityRuntime.js';
 import {
-  resolveBerthWorld,
   resolveCollisionProxyManifest,
+  resolveDockAnchor,
 } from '../data/collisionProxyManifests.js';
 import { queuePhysicsImpulse, resolvePhysicsBodySpec } from './physicsAuthority.js';
 // FB-095: tickMs is diagnostics-only, so it reads the classified instrumentation clock in
@@ -1118,12 +1118,16 @@ export const physics = {
         // PQ-008 truthful exterior docking: stations declaring a collisionProxyManifest dock at
         // their berth, not at a forgiving center radius. The berth gate requires proximity AND a
         // slow approach; everything else about the dock:range seam is unchanged.
+        // SF-130: the anchor is the berth for hulls whose planar envelope clears the pocket,
+        // or the corridor-axis mooring standoff for hulls too deep for it — the same prompt
+        // and gates, resolved from the station's real collision geometry each tick.
         const manifest = resolveCollisionProxyManifest(st);
         if (manifest && manifest.docking) {
-          const berth = resolveBerthWorld(st, manifest);
-          const dBerth = Math.hypot(berth.x - player.pos.x, berth.z - player.pos.z);
-          if (dBerth <= manifest.docking.berth.dockRadius && playerSpeed <= manifest.docking.berth.speedGate && dBerth < nextDist) {
-            nextDist = dBerth;
+          const anchor = resolveDockAnchor(st, manifest, player);
+          if (!anchor) continue;
+          const dAnchor = Math.hypot(anchor.x - player.pos.x, anchor.z - player.pos.z);
+          if (dAnchor <= anchor.dockRadius && playerSpeed <= anchor.speedGate && dAnchor < nextDist) {
+            nextDist = dAnchor;
             nextStationId = data.stationId;
           }
           continue;
