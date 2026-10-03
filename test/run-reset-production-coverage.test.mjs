@@ -17,6 +17,7 @@ const EVENT_OWNED = Object.freeze({
   swarmSupply: { event: 'run:ended', method: '_reset', reason: 'The terminal receipt resets supply cadence and drop ownership.' },
   swarmChain: { event: 'run:ended', method: '_reset', reason: 'The terminal receipt publishes the best chain, then clears it.' },
   swarmJuice: { event: 'run:started', method: '_reset', reason: 'The production arcade detector resets its run-local receipts and hit-stop lease on both accepted run start and terminal run end.' },
+  swarmElites: { event: 'run:started', method: '_reset', reason: 'The elite affix stamper resets its per-run scan cursor, ordinals and chains on both accepted run start and terminal run end.' },
   aftermathWrecks: { event: 'game:newGame', method: 'newGame', reason: 'Existing post-state-reset lifecycle subscription owns its marker/identity stores.' },
   fields: { event: 'game:new', method: '_clearAll', reason: 'The public New Game request releases field instances before scene teardown.' },
   environmentalMachinery: { event: 'game:new', method: '_clear', reason: 'The public New Game request releases machinery/field ownership before scene teardown.' },
