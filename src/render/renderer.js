@@ -911,10 +911,11 @@ function openingEntityRootIntersectsCamera(root, entity, camera, scene) {
 }
 
 function enqueueMeshBuildCandidate(entity, meshes, queuedIds, queue) {
-  if (!entity || entity._noMesh || meshes.has(entity.id) || queuedIds.has(entity.id)) return;
-  if (entity.type === 'projectile' && projectileSkipsVisualFactoryMesh(entity)) return;
+  if (!entity || entity._noMesh || meshes.has(entity.id) || queuedIds.has(entity.id)) return false;
+  if (entity.type === 'projectile' && projectileSkipsVisualFactoryMesh(entity)) return false;
   queue.push(entity.id);
   queuedIds.add(entity.id);
+  return true;
 }
 
 // Producers stamp _noMesh for intentionally mesh-less entities, so a renderer build-failure
@@ -965,6 +966,7 @@ export function* enqueueMissingMeshBuildsSteps(entityList, meshes, queuedIds, qu
     : null;
   const passShips = [];
   const passOthers = [];
+  let enqueued = 0;
   for (let pass = 0; pass < passes; pass++) {
     const urgentPass = isUrgent ? pass === 0 : false;
     passShips.length = 0;
@@ -987,9 +989,16 @@ export function* enqueueMissingMeshBuildsSteps(entityList, meshes, queuedIds, qu
       passShips.sort(byUrgency);
       passOthers.sort(byUrgency);
     }
-    for (const entity of passShips) { yield; enqueueMeshBuildCandidate(entity, meshes, queuedIds, queue); }
-    for (const entity of passOthers) { yield; enqueueMeshBuildCandidate(entity, meshes, queuedIds, queue); }
+    for (const entity of passShips) {
+      yield;
+      if (enqueueMeshBuildCandidate(entity, meshes, queuedIds, queue)) enqueued += 1;
+    }
+    for (const entity of passOthers) {
+      yield;
+      if (enqueueMeshBuildCandidate(entity, meshes, queuedIds, queue)) enqueued += 1;
+    }
   }
+  return enqueued;
 }
 
 function entitySectorId(entity) {
@@ -2436,9 +2445,9 @@ function residencyPruneSweepDue(owner) {
  * beat paid it inside one presented frame — ~200 beats across the first-flight
  * hold. The chunked collect rides `collectMeshPresentationEntitiesChunked` with
  * the iterator held on the owner across beats; each beat resumes until `sliceMs`
- * or done, then commits `out` into `_presentationMeshScratch` and runs the
+ * or done, then snapshots `out` into `_holdExemptCommitList` and runs the
  * exempt partition + decode kick once (the kick consumes the completed list).
- * `out` lives on the owner between beats — the shared scratch cannot host a
+ * `out` lives on the owner between beats — a shared scratch cannot host a
  * suspended walk (see the jump-census comment at the collect site).
  * Returns the enqueued count on the completing beat, else 0.
  */
@@ -2468,6 +2477,11 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
   const started = now();
   let enqueued = 0;
   for (;;) {
+    // The cycle's work counts come from each iterator's return value — the
+    // generators accumulate them across suspensions, so they describe the whole
+    // cycle no matter which invocation completes it.
+    let cycleEnqueued = 0;
+    let cycleKickStarted = 0;
     if (iterator) {
       let done = false;
       for (;;) {
@@ -2487,8 +2501,13 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
     }
     // The commit (enqueue + decode kick) used to run synchronously on the beat that
     // completed the collect — two more whole-list walks paid inside one presented
-    // frame. Both phases now drive chunked iterators persisted on the owner, so the
-    // commit itself rides the same beat clock the collect does.
+    // frame. Both phases now drive chunked iterators persisted on the owner. The
+    // commit keeps its own per-invocation clock: sharing the collect's clock would
+    // starve it whenever the collect spends the whole slice (a heavy-sector hold
+    // would never land a single exempt build or decode kick). Small exempt sets
+    // still drain inline: their commit is a few ms of fixed pick/kick overhead, not
+    // the 10-30 ms list walks the slice exists for.
+    const commitStarted = now();
     if (!owner._holdExemptCommitList) {
       const out = owner._holdExemptCollectOut || [];
       abandonHoldExemptCollect(owner);
@@ -2499,7 +2518,6 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
       const frame = owner._activityFrame;
       const glassIds = frame && frame.renderGlassIds;
       owner._holdExemptCommitExempt = makeHoldExemptMeshBuildEvaluator(state, glassIds);
-      owner._holdExemptEnqueueBefore = owner._meshBuildQueue.length;
       const commitExempt = owner._holdExemptCommitExempt;
       owner._holdExemptEnqueueIter = enqueueMissingMeshBuildsSteps(
         owner._holdExemptCommitList,
@@ -2510,26 +2528,31 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
           && commitExempt(entity),
       );
     }
+    const commitBounded = owner._holdExemptCommitList.length > 16;
     while (owner._holdExemptEnqueueIter) {
-      if (now() - started >= sliceMs) break;
+      if (commitBounded && now() - commitStarted >= sliceMs) break;
       const step = owner._holdExemptEnqueueIter.next();
-      if (step.done) owner._holdExemptEnqueueIter = null;
+      if (step.done) { cycleEnqueued = step.value || 0; owner._holdExemptEnqueueIter = null; }
     }
     if (owner._holdExemptEnqueueIter) break;
     if (!owner._holdExemptKickIter) {
       owner._holdExemptKickIter = kickDecodeRunwayAssetsSteps(owner, owner._holdExemptCommitList);
     }
     while (owner._holdExemptKickIter) {
-      if (now() - started >= sliceMs) break;
+      if (commitBounded && now() - commitStarted >= sliceMs) break;
       const step = owner._holdExemptKickIter.next();
-      if (step.done) owner._holdExemptKickIter = null;
+      if (step.done) { cycleKickStarted = step.value || 0; owner._holdExemptKickIter = null; }
     }
     if (owner._holdExemptKickIter) break;
-    enqueued += owner._meshBuildQueue.length - owner._holdExemptEnqueueBefore;
+    enqueued += cycleEnqueued;
     owner._holdExemptCommitList = null;
     owner._holdExemptCommitEpoch = null;
     owner._holdExemptCommitExempt = null;
     if (now() - started >= sliceMs) break;
+    // A completed cycle that queued nothing and started no decode is a converged
+    // world: reminting the ~5-12 ms collect inside this beat just re-pays the
+    // spatial refill and journal walk until the hold ends.
+    if (cycleEnqueued === 0 && cycleKickStarted === 0) break;
     // Remint the next collect inside this beat's remaining slice: without it a row
     // becoming exempt just after a commit waits a full beat plus a walk before its
     // enqueue/kick lands — several times coarser than the pre-sliced cadence.
@@ -3374,10 +3397,12 @@ function kickAuthoredBoundaryUpgrade(owner, entity, residencyRole, runwayEnv = n
     const pad = runwayEnv && Number.isFinite(runwayEnv.decodePad)
       ? runwayEnv.decodePad
       : approachDistanceWu(TABLE_SUBMIT_APPROACH_SECONDS, tableTravelSpeed(state));
-    const tGlass = onGlass ? 0 : entityTimeToGlassSeconds(
-      entity, env, state,
-      TABLE_DECODE_RUNWAY_SECONDS,
-      pad);
+    // The decode-runway walk passes its per-entity memo so a kicked boundary
+    // re-reads the time-to-glass the pick computed instead of paying the second
+    // geometry walk; other callers keep the direct derivation.
+    const tGlass = onGlass ? 0 : (runwayEnv && typeof runwayEnv.secondsFor === 'function'
+      ? runwayEnv.secondsFor(entity)
+      : entityTimeToGlassSeconds(entity, env, state, TABLE_DECODE_RUNWAY_SECONDS, pad));
     try {
       requestAuthoredUpgrade(boundary, renderer, owner.scene, {
         residencyRole,
@@ -3503,10 +3528,14 @@ function* kickDecodeRunwayAssetsSteps(owner, entities) {
   // enqueue, so starting it here stages the whole pipeline tail inside the runway window;
   // the admission-time call then resolves 'authored' and exits. Shared by ships and stations.
   const kickBoundaryUpgrade = (entity, wave) => kickAuthoredBoundaryUpgrade(owner, entity,
-    wave ? 'wave-hull-decode-runway' : 'decode-runway-prepare', { env, decodePad });
+    wave ? 'wave-hull-decode-runway' : 'decode-runway-prepare',
+    { env, decodePad, secondsFor: decodeSeconds });
   let started = 0;
   for (let i = 0; i < ordered.length && started < decodeCap; i++) {
     const entity = ordered[i];
+    // A suspended pick can outlive its row — the evaluate ran before a yield, so
+    // re-check aliveness before claiming one of the budgeted start slots for it.
+    if (!entity || entity.alive === false) continue;
     if (entity.type === 'ship') {
       pending.add(entity.id);
       started += 1;
@@ -3554,15 +3583,6 @@ function* kickDecodeRunwayAssetsSteps(owner, entities) {
     yield;
   }
   return started;
-}
-
-// Sync drain of the chunked twin: identical pick order, identical starts — the extra
-// yields are no-ops for an inline drain.
-function kickDecodeRunwayAssets(owner, entities) {
-  const it = kickDecodeRunwayAssetsSteps(owner, entities);
-  let step = it.next();
-  while (!step.done) step = it.next();
-  return step.value;
 }
 
 /**
@@ -7769,6 +7789,7 @@ export function disposeRendererOwnedResources(owner, options = {}) {
   owner._presentationQueryOptions = null;
   owner._deferNoncriticalMeshStreaming = false;
   owner._postOpeningPipelineAdmissionReleased = false;
+  owner._postOpeningRescanRequested = false;
   owner._pendingPostOpeningSector = null;
   owner._openingEnvFrozen = false;
   owner._openingFirstPicturePrepared = false;
@@ -9066,6 +9087,7 @@ export const render = {
     this._deferNoncriticalMeshStreaming = false;
     state.render.deferNoncriticalMeshStreaming = false;
     this._postOpeningPipelineAdmissionReleased = false;
+    this._postOpeningRescanRequested = false;
     this._pendingPostOpeningSector = null;
     this._incomingSectorPrewarm = null;
     this._currentSectorPrewarm = null;
@@ -11052,8 +11074,8 @@ export const render = {
           if (entity && entity.id != null) cookSeen.add(entity.id);
         }
         // Drive the chunked twin on the provider slice clock and keep the array
-        // LOCAL — the hold beat reuses `_presentationMeshScratch`, so a yield
-        // mid-walk would let that beat empty the scratch and silently drop rows.
+        // LOCAL — a suspended walk's out buffer spans beats, so sharing it with
+        // another walk's collect would silently drop rows either side writes.
         const presentation = [];
         let widenSliceStart = openingProviderNow();
         // The spatial refill inside the ctx is the collect's biggest single
@@ -11407,7 +11429,10 @@ export const render = {
           // swept. Un-latch so the call below re-runs it — the pass dedupes warm work and
           // re-collects pools/scene drawables, so only genuinely cold subjects cost links.
           // A superseded cook must not force the live cook's pass to re-run.
-          if (!cookStale()) this._postOpeningPipelineAdmissionReleased = false;
+          if (!cookStale()) {
+            this._postOpeningPipelineAdmissionReleased = false;
+            this._postOpeningRescanRequested = false;
+          }
         }
         // Survival's widened cook enqueues the arena's authored jobs long after the early
         // upgradeQueueIdle wait ran, and a settle timeout can leave jobs in flight when the
@@ -11497,7 +11522,10 @@ export const render = {
           // The drain's commits ran under the open gate with liveSectorGpuAdmission on; whatever
           // they attached still needs the sweep below to see it — unlatch even on timeout, since
           // the iterations that did run may already have published new subtrees.
-          if (!cookStale()) this._postOpeningPipelineAdmissionReleased = false;
+          if (!cookStale()) {
+            this._postOpeningPipelineAdmissionReleased = false;
+            this._postOpeningRescanRequested = false;
+          }
         }
         // Pool chunks created during the roster settle/drain (witness promotions, drained
         // boundary commits) postdate cook.rockPools — and under host load that step can be
@@ -13091,9 +13119,9 @@ export const render = {
           }
           // The collect seam (journal walk + ledger scratch loops + this union walk) ran
           // ~5-12 ms atomic between GPU yields — visible inside the transition. Drive the
-          // chunked twin on the provider slice clock, and keep the array LOCAL: the hold
-          // beat reuses `_presentationMeshScratch`, so a yield here would let that beat
-          // empty the scratch mid-walk and silently drop rows.
+          // chunked twin on the provider slice clock, and keep the array LOCAL: a
+          // suspended walk's out buffer spans beats, so sharing it with another
+          // walk's collect would silently drop rows either side writes.
           const presentation = [];
           // The spatial refill inside the ctx is the collect's biggest single
           // step — run it as the driver's own step before minting the iterator.
@@ -13475,20 +13503,24 @@ export const render = {
           lateCandidates.push(root);
         }
         if (rescanDelta.length === 0) continue;
-        try {
+        // Compute the not-ready set once: a delta whose units are all compiled
+        // makes the admit slice loop + readiness batch pure overhead, so skip the
+        // leg outright rather than driving it to an empty conclusion.
+        const rescanUnits = uniqueAdmissionUnits(
+          rescanDelta.flatMap((root) => collectCompileSubjects(root)),
+          {
+            skipReadyMaterial: (material) => {
+              try {
+                return materialHasCompiledProgram(material,
+                  (entry) => renderer.properties.get(entry));
+              } catch (_) { return false; }
+            },
+          },
+        );
+        if (rescanUnits.length > 0) try {
           const rescanRoute = this._selectPostRoute();
           await admitOpeningUnitsAcrossSlices({
-            units: uniqueAdmissionUnits(
-              rescanDelta.flatMap((root) => collectCompileSubjects(root)),
-              {
-                skipReadyMaterial: (material) => {
-                  try {
-                    return materialHasCompiledProgram(material,
-                      (entry) => renderer.properties.get(entry));
-                  } catch (_) { return false; }
-                },
-              },
-            ),
+            units: rescanUnits,
             issueKeyFor: openingCompileIssueKey,
             renderer,
             beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
@@ -13516,8 +13548,13 @@ export const render = {
           stagingName: 'SF_PostOpeningRescanShadowDepth',
         });
       }
+      // A rescan request still armed at the pass cap means a joiner's cohort was
+      // never swept — stamping released over it would compile that cohort cold at
+      // first draw instead. Leave the latch down (the armed flag survives) so the
+      // next caller re-runs a full pass that consumes it.
       if (passEpoch === (state.world && state.world.enterSerial != null
-        ? state.world.enterSerial : null)) {
+        ? state.world.enterSerial : null)
+          && this._postOpeningRescanRequested !== true) {
         this._postOpeningPipelineAdmissionReleased = true;
       }
       return {
@@ -15856,6 +15893,7 @@ export const render = {
           warm.pendingAttachments.push(track(mesh.userData.requestAuthoredUpgrade(renderer, scene, {
             residencyRole: decodeRole,
             sectorId,
+            isResidencyOwnerActive: () => warm.building === true,
           }), `attach:${spec && spec.id}`));
         }
       } catch (error) {
@@ -15890,6 +15928,9 @@ export const render = {
       : [];
     if (profile === 'crucible' && swarmScoped) {
       this._swarmWarmCoveredEnemyIds = new Set(launchEligibility);
+      // Keep the marked list on the warm so a throwing begin can unmark exactly
+      // the rows it stamped — the deferred lane skips whatever the ledger names.
+      warm.coveredEnemyIds = launchEligibility;
     }
     // The player hull joins the set: its live entity only spawns at the flight transition,
     // so without an exemplar its authored compose (the GLTFKit_ship_wasp cluster) runs inside
@@ -15922,6 +15963,7 @@ export const render = {
             residencyRole: decodeRole,
             sectorId,
             upgradeJobKey: `${specPrefix}job:${spec.id}`,
+            isResidencyOwnerActive: () => warm.building === true,
           }), `ship:${spec.id}`);
           kick.then((result) => { entry.result = result; });
           warm.pendingAttachments.push(kick);
@@ -15948,6 +15990,7 @@ export const render = {
             hulk.userData.requestAuthoredUpgrade(renderer, scene, {
               residencyRole: decodeRole,
               sectorId,
+              isResidencyOwnerActive: () => warm.building === true,
             }),
             `hulk:${spec.id}`,
           ));
@@ -16093,6 +16136,11 @@ export const render = {
       // warmBuilding stuck is skipped by every park sweep forever and its decode
       // leases stay pinned live for the run.
       console.warn('[render] crucible roster warm begin failed', error);
+      // Unmark the coverage rows this begin stamped — the deferred lane treats
+      // them as already-warmed and would never rebuild what a failed begin dropped.
+      if (Array.isArray(warm.coveredEnemyIds) && this._swarmWarmCoveredEnemyIds) {
+        for (const enemyId of warm.coveredEnemyIds) this._swarmWarmCoveredEnemyIds.delete(enemyId);
+      }
       warm.building = false;
       root.userData.warmBuilding = false;
       const prewarmRoots = this._rosterPrewarmRoots;
@@ -17748,8 +17796,8 @@ export const render = {
     }
     // Queue relevant ships first, then relevant world geometry. Distant reduced-sector entities
     // continue to exist in state and are admitted automatically as the player approaches.
-    // LOCAL array: a suspended walk can't host on _presentationMeshScratch (the hold beat
-    // empties it mid-walk — same rule as the cook collect sites).
+    // LOCAL array: a suspended walk can't host on a shared scratch another collect
+    // writes across beats (same rule as the cook collect sites).
     const presentationList = [];
     // The ctx's memo-miss refill is the collect's largest single step — drive it as this
     // stage's own step so a next() never pays it whole.
@@ -17895,8 +17943,8 @@ export const render = {
       queueOrRequestAuthoredUpgrade(this, entity, mesh, state, residencyScan);
     }
 
-    // LOCAL array (same suspended-walk rule as the cook collect sites): the hold
-    // beat empties _presentationMeshScratch mid-walk and would drop rows.
+    // LOCAL array (same suspended-walk rule as the cook collect sites): a buffer
+    // spanning beats can't be shared with another walk's collect without drops.
     const presentationList = [];
     // The ctx's memo-miss refill is the collect's largest single step — driver's own.
     warmNearbyLedgerRows(state);

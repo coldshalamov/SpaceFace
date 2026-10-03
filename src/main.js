@@ -1034,12 +1034,30 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
     {
       // Same D26 gate as New Game: the loaded world must enter flight only after the
       // SG-02 authority exists. No reset — save:loaded already rebound the retained
-      // player record; the promise kicked at function top just resolves here.
+      // player record; the promise kicked at function top just resolves here. This
+      // gate needs the same pulse loop New Game runs under 'physics-authority' —
+      // an un-pulsed await reads as a frozen shell while a slow WASM bring-up
+      // settles, and an unbounded one freezes the transition forever on a wedge.
       if (continuePhysicsPrep) {
-        const physicsReady = await continuePhysicsPrep;
-        if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
-        if (physicsReady === false) {
-          throw new Error('The dynamic physics backend did not initialize after save load; refusing to enter flight frozen in place.');
+        const stopPhysicsPulse = startGatePulse('physics-authority', 0.94, 'Preparing flight dynamics',
+          () => 'Waking the flight authority');
+        try {
+          // The prepare has overlapped the whole GPU chain by now — whatever is
+          // still outstanding 20 s later is a wedged bring-up, not a slow one.
+          const physicsReady = await Promise.race([
+            continuePhysicsPrep.catch(() => false),
+            new Promise((resolve) => setTimeout(() => resolve(false), 20000)),
+          ]);
+          if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
+          if (physicsReady === false) {
+            throw new GameStartReadinessError(
+              'PHYSICS_BACKEND_UNAVAILABLE',
+              'physics-authority',
+              'The dynamic physics backend did not initialize after save load; refusing to enter flight frozen in place.',
+            );
+          }
+        } finally {
+          stopPhysicsPulse();
         }
       }
     }

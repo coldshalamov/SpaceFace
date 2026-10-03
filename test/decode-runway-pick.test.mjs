@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { pickDecodeRunwayCandidates } from '../src/render/decodeRunwayPick.js';
+import { pickDecodeRunwayCandidates, pickDecodeRunwayCandidatesSteps } from '../src/render/decodeRunwayPick.js';
 
 // Oracle: the pre-optimization kickDecodeRunwayAssets — copy the list, fully sort it with the
 // (wave-matched first, then decodeSeconds) comparator, then walk until two eligible entities
@@ -147,6 +147,62 @@ test('wave-matched candidates outrank earlier decode seconds; ties keep list ord
   const pending = new Set();
   const started = newStarts(list, pending);
   assert.deepEqual(started.map((e) => e.id), ['waveA', 'waveB']);
+});
+
+function drainSteps(it) {
+  let step = it.next();
+  while (!step.done) step = it.next();
+  return step.value;
+}
+
+// Mirrors newStarts through the generator twin — the chunked walk must select the
+// identical prefix since the sliced drivers replaced every sync call site.
+function stepsStarts(list, pending, cap = 2) {
+  const ordered = drainSteps(pickDecodeRunwayCandidatesSteps(list, (entity, key) => {
+    if (!entity || entity.alive === false) return false;
+    if (entity.type !== 'ship' && entity.type !== 'station') return false;
+    if (!entity.needsDecode) return false;
+    if (pending.has(entity.id)) return false;
+    const wave = !!entity.wave;
+    const seconds = entity.decodeS;
+    if (!wave && !entity.relevant && !(seconds <= RUNWAY)) return false;
+    key.wave = wave ? 0 : 1;
+    key.seconds = seconds;
+    return true;
+  }, cap));
+  const started = [];
+  for (const entity of ordered) {
+    pending.add(entity.id);
+    started.push(entity);
+  }
+  return started;
+}
+
+test('chunked twin picks identically to the sync pick on 800 randomized lists', () => {
+  const rand = mulberry32(0xDEC0DE);
+  for (let c = 0; c < 800; c++) {
+    const list = randomList(rand);
+    const pending = new Set();
+    for (let i = 0; i < Math.floor(rand() * 10); i++) {
+      pending.add(`e${Math.floor(rand() * 30)}`);
+    }
+    const expected = newStarts(list, new Set(pending));
+    const actual = stepsStarts(list, new Set(pending));
+    assert.equal(actual.length, expected.length, `case ${c}: started count`);
+    for (let i = 0; i < expected.length; i++) {
+      assert.equal(actual[i], expected[i], `case ${c}: pick ${i} identity`);
+    }
+  }
+});
+
+test('chunked twin honors cap and supersede claims like the sync pick', () => {
+  const dup5 = { id: 'dup', alive: true, type: 'ship', needsDecode: true, wave: false, relevant: true, decodeS: 5 };
+  const dup0 = { id: 'dup', alive: true, type: 'ship', needsDecode: true, wave: false, relevant: true, decodeS: 0 };
+  const other = { id: 'b', alive: true, type: 'ship', needsDecode: true, wave: false, relevant: true, decodeS: 1 };
+  const tail = { id: 'c', alive: true, type: 'ship', needsDecode: true, wave: false, relevant: true, decodeS: 9 };
+  const started = stepsStarts([dup5, other, tail, dup0], new Set());
+  assert.deepEqual(started.map((e) => e.id), ['dup', 'b']);
+  assert.equal(started[0], dup0);
 });
 
 test('duplicate ids: the first sorted eligible occurrence claims the slot', () => {

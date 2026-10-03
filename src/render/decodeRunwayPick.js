@@ -17,6 +17,9 @@
 //
 // The returned array is shared scratch: consume it before the next call.
 
+// `_key` is shared module scratch: safe only because every caller writes it via
+// evaluate() and reads wave/seconds back inside the same synchronous segment —
+// never read it across a yield, and never let an evaluate stash the reference.
 const _key = { wave: 0, seconds: 0 };
 const _picks = [];
 const _claims = new Map();

@@ -6662,12 +6662,25 @@ function authoredUpgradeKey(job) {
   return job.boundary;
 }
 
+// The ship plan walk re-derives the same manifest for every call site of one
+// admission (asset urls, byte estimate, cache status, request list) — memoize
+// per job. A job's entity and options are fixed at mint, so freezing the first
+// derivation also keeps a mid-job entity mutation from tearing the call sites.
+const authoredPlanMemo = new WeakMap();
+
 function authoredUpgradePlan(job) {
   const entity = job && job.entity;
   if (!entity) return {};
-  if (entity.type === 'ship') return authoredPreloadPlanForEntity(entity, job.options || {});
-  const placeFile = placeFileForEntity(entity);
-  return placeFile ? { place: [placeFile] } : {};
+  const cached = authoredPlanMemo.get(job);
+  if (cached) return cached;
+  const plan = entity.type === 'ship'
+    ? authoredPreloadPlanForEntity(entity, job.options || {})
+    : (() => {
+      const placeFile = placeFileForEntity(entity);
+      return placeFile ? { place: [placeFile] } : {};
+    })();
+  authoredPlanMemo.set(job, plan);
+  return plan;
 }
 
 function authoredUpgradeAssetUrls(job) {

@@ -205,7 +205,6 @@ export function compileShadowDepthPipelines(options = {}) {
   const captureObjectHome = options.captureObjectHome;
   const restoreObjectHome = options.restoreObjectHome;
   const shadowMap = renderer && renderer.shadowMap;
-  const casting = collectPotentialShadowCastSubjects(subjects);
   const forceEnable = options.forceEnable === true;
   if (!shadowMap || !light) {
     return { skipped: true, reason: 'shadow depth compiler unavailable', subjects: 0 };
@@ -217,6 +216,9 @@ export function compileShadowDepthPipelines(options = {}) {
   if (!forceEnable && (previousEnabled !== true || previousCastShadow !== true)) {
     return { skipped: true, reason: 'directional shadows inactive', subjects: 0 };
   }
+  // The caster census walks every subject's subtree — run it only after the cheap
+  // flag checks above have ruled the pass out entirely.
+  const casting = collectPotentialShadowCastSubjects(subjects);
   // Zero casters means zero depth programs to link — the staging ceremony (whole-scene
   // light traverse, reparenting, census render) is net-zero work then, even under
   // forceEnable whose enabled flag restores in finally anyway.
