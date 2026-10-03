@@ -718,6 +718,10 @@ function beginPadGesture(gp, pad, edgeName, dz) {
   gp._chordHeld = Object.create(null);
   gp._chordConsumed = Object.create(null);
   if (Array.isArray(gp._pressQueue)) gp._pressQueue.length = 0;
+  // NXI-004: a half-formed remap gesture is cached input from the losing generation — a
+  // modifier still pending here must not chord with the new pad's presses under it.
+  if (gp._captureGesture) gp._captureGesture.length = 0;
+  gp._captureSpent = null;
   gp._suppressEdgesOnce = false;
   gp._sawDisconnect = false;
   gp.helmGestureEdge = true;
@@ -1249,6 +1253,10 @@ export function createGamepad(ctx) {
       this._chordConsumed = Object.create(null);
       if (Array.isArray(this._pressQueue)) this._pressQueue.length = 0;
       else this._pressQueue = [];
+      // NXI-004: same rejection inside a remap capture — a pending modifier or spent mark
+      // sampled from the lost connection must not survive into the next device's sample.
+      if (this._captureGesture) this._captureGesture.length = 0;
+      this._captureSpent = null;
       pulseTicks = 0;
       pulseGapTicks = 0;
       pulseSpec = null;
