@@ -35,7 +35,6 @@ const WPN = new Map(WEAPONS.map((w) => [w.id, w]));
 const ENEMY = new Map(ENEMY_TYPES.map((e) => [e.id, e]));
 const SHIP = new Map(SHIPS.map((s) => [s.id, s]));
 const MOD = new Map(MODULES.map((m) => [m.id, m]));
-const CARGO_LOSS_RATE = 0.5;
 // Massline whip damage (rung 14, flag combat.whipDamage): a solid/crushing whip-impact routes
 // momentum-scaled kinetic damage to the struck body. Tuning knobs, not physics — the momentum
 // number comes from masslineImpacts' record (mass × relSpeed).
@@ -465,12 +464,6 @@ function defaultDoctrineFor(def, pos, startedTick = 0) {
 }
 
 function qrange(range, r) { if (!range) return 1; const [lo, hi] = range; return Math.round(lo + (hi - lo) * r()); }
-
-function catalogValue(id) {
-  const def = SHIP.get(id) || WPN.get(id) || MOD.get(id);
-  if (!def) return 0;
-  return Math.max(0, Math.round((def.buyback != null ? def.buyback : def.price) || 0));
-}
 
 function setVecXZ(vec, x, z) {
   if (!vec) return;
@@ -1151,32 +1144,6 @@ export const combat = {
     return { credits, items };
   },
 
-  respawnPlayer(t, killerId) {
-    const state = this.state, bus = this.bus;
-    bus.emit('player:death', { pos: { x: t.pos.x, z: t.pos.z }, killerId });
-    const stationId = this.respawnStationId();
-    const respawnPos = this.respawnPosition(stationId);
-    const refundCr = this.insuranceRefund(t);
-    const cargoLostQty = this.applyRespawnCargoLoss();
-    if (refundCr > 0) bus.emit('economy:grantCredits', { amount: refundCr, reason: 'insurance:respawn' });
-    t.alive = true;
-    t.hull = t.hullMax; t.armorHp = t.armorMax; t.shield = t.shieldMax; t.cap = t.capMax;
-    setVecXZ(t.pos, respawnPos.x, respawnPos.z);
-    setVecXZ(t.vel, 0, 0);
-    if (t.prevPos && typeof t.prevPos.copy === 'function') t.prevPos.copy(t.pos);
-    else setVecXZ(t.prevPos, respawnPos.x, respawnPos.z);
-    t.flags.invuln = true; t._invulnUntil = state.simTime + UNDOCK_INVULN_S;
-    bus.emit('player:respawn', {
-      stationId,
-      shipId: t.data && t.data.defId,
-      refundCr,
-      invulnS: UNDOCK_INVULN_S,
-      cargoLost: cargoLostQty > 0,
-      cargoLostQty,
-    });
-    bus.emit('camera:shake', { amount: 0.8 });
-  },
-
   rememberRespawnStation(stationId) {
     if (!stationId) return;
     const player = this.state && this.state.player;
@@ -1231,34 +1198,6 @@ export const combat = {
       pos = live && live.pos;
     }
     return pos ? { x: pos.x || 0, z: pos.z || 0 } : { x: 0, z: 0 };
-  },
-
-  insuranceRefund(t) {
-    const player = this.state && this.state.player;
-    const ins = player && player.insurance;
-    if (!player || !ins || !ins.insuredModules) return 0;
-    const owned = (player.ownedShips || [])[player.activeShipIndex || 0] || {};
-    const shipId = owned.defId || (t.data && t.data.defId);
-    const shipValue = catalogValue(shipId);
-    let moduleValue = 0;
-    for (const id of (owned.fittings || [])) {
-      if (id) moduleValue += catalogValue(id);
-    }
-    const rate = Math.max(0, Number(ins.rate) || 0);
-    const deductible = Math.max(0, Math.round(ins.deductibleCr || 0));
-    return Math.max(0, Math.round(rate * (shipValue + moduleValue) - deductible));
-  },
-
-  applyRespawnCargoLoss() {
-    const cargo = this.state && this.state.player && this.state.player.cargo;
-    if (!cargo || !cargo.items) return 0;
-    let lost = 0;
-    for (const id of Object.keys(cargo.items)) {
-      const have = Math.max(0, Math.floor(cargo.items[id] || 0));
-      const qty = Math.floor(have * CARGO_LOSS_RATE);
-      if (qty > 0) lost += removeCargo(this.state, id, qty);
-    }
-    return lost;
   },
 
   update(dt, state) {
@@ -1529,7 +1468,8 @@ function labPlayerEntity(state) {
 function refillLabPlayer(state) {
   const player = labPlayerEntity(state);
   if (!player) return;
-  // Same restore vocabulary as respawnPlayer — current pools only, never the maxima.
+  // Same pool restore as the live recovery path (restorePlayerAtRecoveryDock) — pools to full,
+  // the maxima themselves untouched.
   if (Number.isFinite(player.hullMax)) player.hull = player.hullMax;
   if (Number.isFinite(player.armorMax)) player.armorHp = player.armorMax;
   if (Number.isFinite(player.shieldMax)) player.shield = player.shieldMax;
