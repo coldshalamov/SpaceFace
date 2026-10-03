@@ -84,8 +84,11 @@ test('production init + update order lengths match the live browser baseline', (
   // presenter (swarmJuiceHud, after survivalHud); one in both orders each.
   // 171 -> 172 init / 130 -> 131 update: RAVEL is a fixed-step character owner
   // after BRACKET and before physics, shared by browser and Node production paths.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 172);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 131);
+  // 172 -> 173 init / 131 -> 132 update: SWARM-06 swarmElites — the Threat stamp, seeded
+  // elite affixes and the live perk effects (§6.4/§4.3). One system in both orders, after
+  // swarmJuice so a wave's spawn receipts are already stamped before the HUDs read.
+  assert.equal(PRODUCTION_INIT_ORDER.length, 173);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 132);
   assert.ok(PRODUCTION_INIT_ORDER.includes('ravel'));
   assert.ok(PRODUCTION_UPDATE_ORDER.indexOf('bracket') < PRODUCTION_UPDATE_ORDER.indexOf('ravel'));
   assert.ok(PRODUCTION_UPDATE_ORDER.indexOf('ravel') < PRODUCTION_UPDATE_ORDER.indexOf('physics'));
@@ -243,7 +246,10 @@ test('browser production system set is unchanged vs production manifest constant
   // 169 with bracket (PR #210 — a third fixed-step character owner before physics).
   // 171 with SWARM-02 juice pack — swarmJuice (arcade detector, after swarmChain) and
   // swarmJuiceHud (DOM-guarded presenter, after survivalHud), one system in both orders each.
-  assert.equal(registry.systems.length, 171);
+  // 172 with ravel (PR #217 — fixed-step character owner after bracket, before physics).
+  // 173 with SWARM-06 swarmElites (the Threat/affix/perk runtime; one system in both orders,
+  // after swarmJuice so cohort stamps precede the HUDs' readout).
+  assert.equal(registry.systems.length, 173);
   const names = registry.systems.map((s) => s.name);
   assert.ok(names.includes('render') || registry.runtimeManifest.authoritativeSystemIds.includes('render'));
   assert.ok(registry.runtimeManifest.authoritativeSystemIds.includes('ui'));
