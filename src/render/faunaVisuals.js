@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { faunaSpeciesById } from '../data/alienFauna.js';
 import { alienStrainById } from '../data/alienEcology.js';
+import { creatureSkin } from './creatureSkinLibrary.js';
 
 const TISSUE = 0x9aa08e;
 const FILAMENT = 0xc94f3d;
@@ -20,9 +21,19 @@ function strainColors(entity) {
   };
 }
 
+// How much of the strain colour tints the generated skin (the skin is a light neutral; 1 = the old flat colour).
+const TISSUE_TINT_MIX = 0.78;
+
 function tissueMat(color) {
+  // Every creature body goes through here: once the skin has decoded (creatureSkinLibrary.js) they all wear
+  // living tissue — veins, pores, folds — tinted by the strain, instead of a flat primitive colour.
+  const skin = creatureSkin('tissue');
   return new THREE.MeshStandardMaterial({
-    color, roughness: 0.85, metalness: 0.0,
+    color: skin ? new THREE.Color(0xffffff).lerp(new THREE.Color(color), TISSUE_TINT_MIX) : color,
+    map: skin ? skin.baseColor : null,
+    normalMap: skin ? skin.normal : null,
+    normalScale: new THREE.Vector2(0.9, 0.9),
+    roughness: 0.85, metalness: 0.0,
     emissive: 0x1a1408, emissiveIntensity: 0.15,
   });
 }

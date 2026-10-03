@@ -109,7 +109,11 @@ def height_to_normal(height, strength):
 
 
 def cmd_tile(a):
-    im = Image.open(a.src).convert('RGB').resize((a.size, a.size), Image.LANCZOS)
+    im = Image.open(a.src).convert('RGB')
+    if a.crop:  # a generator that returns a vignetted patch instead of a full-bleed tile: keep only the clean centre
+        left, top = (im.width - a.crop) // 2, (im.height - a.crop) // 2
+        im = im.crop((left, top, left + a.crop, top + a.crop))
+    im = im.resize((a.size, a.size), Image.LANCZOS)
     arr = np.asarray(im).astype(np.float32) / 255.0
     arr = make_seamless(arr)
     base = Image.fromarray((np.clip(arr, 0, 1) * 255).astype(np.uint8))
@@ -156,6 +160,7 @@ if __name__ == '__main__':
     p.add_argument('--cell', type=int, default=627); p.add_argument('--fill', type=float, default=0.86); p.set_defaults(fn=cmd_atlas)
     t = sub.add_parser('tile'); t.add_argument('--src', required=True); t.add_argument('--out', required=True)
     t.add_argument('--size', type=int, default=512); t.add_argument('--normal-strength', type=float, default=2.0)
+    t.add_argument('--crop', type=int, default=0, help='centre-crop this many source pixels before resizing')
     t.add_argument('--emissive', choices=['magenta', 'violet'], default=None, help='also key a glow map out of the albedo')
     t.add_argument('--emissive-gain', type=float, default=1.6)
     t.add_argument('--emissive-range', default='', help='lo,hi colour-score ramp for the glow key')
