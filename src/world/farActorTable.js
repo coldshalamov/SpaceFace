@@ -392,6 +392,21 @@ export function catchUpFarRecord(rec, simTime, table = null) {
 export function insertFarActor(state, entity, simTime = 0, helpers = null) {
   const table = ensureFarActorTable(state);
   const rec = snapshotActor(entity, simTime);
+  if (!rec.intent) {
+    // The entity's live control intent ({moveX,moveZ,...}) carries no itinerary kind, so
+    // snapshotActor normalizes it to null — resume the durable record's canonical intent
+    // instead: the shelved row then advances along its route at cruise rather than
+    // drifting ballistically along its velocity tangent, and the row's promote position
+    // tracks the same window the parallel record advertises. Degenerate windows
+    // (endT <= startT — a parked or unspeeded body) stay ballistic: honoring one would
+    // park the row at `to` on its first advance.
+    const recordId = rec.data && rec.data.worldRecordId;
+    const record = recordId != null && state && state.world
+      && state.world.records && state.world.records.byId
+      ? state.world.records.byId[recordId] : null;
+    const seeded = record && normalizeIntent(record.intent);
+    if (seeded && seeded.endT > seeded.startT) rec.intent = seeded;
+  }
   // A shelved body's entity:destroyed releases its spawn-budget slot. Remember who owned it so
   // promotion re-acquires a slot instead of returning an uncounted live entity (D70).
   const budget = helpers && helpers.spawnBudget;

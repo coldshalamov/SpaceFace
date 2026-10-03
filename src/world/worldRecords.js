@@ -503,15 +503,37 @@ export function canonicalTrafficIntent(entity, opts = {}, previous = null) {
       || stationPositionForId(stationIdFromValue(waypoints[1]), opts, entity);
   }
   if (!from || !to) return prior;
-  const startT = Number.isFinite(itinerary.startT)
+  const authoredStart = Number.isFinite(itinerary.startT)
     ? itinerary.startT
-    : (Number.isFinite(itinerary.departureAt) ? itinerary.departureAt : (opts.simTime || 0));
+    : (Number.isFinite(itinerary.departureAt) ? itinerary.departureAt : NaN);
+  let startT = Number.isFinite(authoredStart) ? authoredStart : (opts.simTime || 0);
   const duration = Number.isFinite(itinerary.durationS) ? Math.max(0, itinerary.durationS) : 0;
-  const endT = Number.isFinite(itinerary.endT)
+  let endT = Number.isFinite(itinerary.endT)
     ? itinerary.endT
     : (Number.isFinite(itinerary.arrivalAt)
       ? itinerary.arrivalAt
       : (Number.isFinite(itinerary.dueAt) ? itinerary.dueAt : startT + duration));
+  if (!(endT > startT)) {
+    // No authored window (express_hitch_route carries none): derive the span from the route
+    // length and the body's own cruise speed. When the capture happens mid-route and the
+    // itinerary authored no departure time, anchor the window at the entity's progress —
+    // u(now) then lands on its real leg position instead of rewinding to `from`. Bodies
+    // too slow to fly the route keep the degenerate shape; callers guard endT<=startT
+    // into ballistic drift.
+    const velX = entity && entity.vel && Number.isFinite(entity.vel.x) ? entity.vel.x : 0;
+    const velZ = entity && entity.vel && Number.isFinite(entity.vel.z) ? entity.vel.z : 0;
+    const cruise = Math.hypot(velX, velZ);
+    const total = Math.hypot(to.x - from.x, to.z - from.z);
+    if (cruise > 0.5 && total > 0) {
+      if (!Number.isFinite(authoredStart)) {
+        const ex = entity && entity.pos && Number.isFinite(entity.pos.x) ? entity.pos.x : from.x;
+        const ez = entity && entity.pos && Number.isFinite(entity.pos.z) ? entity.pos.z : from.z;
+        const elapsed = Math.hypot(ex - from.x, ez - from.z) / cruise;
+        startT = (opts.simTime || 0) - elapsed;
+      }
+      endT = startT + total / cruise;
+    }
+  }
   const kind = itinerary.intentKind === 'patrol' || itinerary.kind === 'patrol'
     ? 'patrol'
     : (itinerary.intentKind === 'escort' ? 'escort' : 'travel');

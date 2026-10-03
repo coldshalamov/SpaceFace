@@ -1341,17 +1341,23 @@ export function sectorEnterTrafficShipStubs(sector, state) {
   const seen = new Set();
   const sectorId = sector && sector.id;
   const factionId = (sector && sector.factionId) || 'faction_free';
-  const push = (defId) => {
-    if (typeof defId !== 'string' || !defId || seen.has(defId)) return;
-    seen.add(defId);
-    out.push({ defId, factionId });
+  // Rows carry the mount's trafficRole: wholeShipVisualForEntity resolves role before defId
+  // and the role/defId whole-ship maps are near-disjoint, so a stub without the role warms
+  // the wrong GLB. Dedupe on defId|role — two roles mapping to one hull still need both
+  // role files warmed.
+  const push = (defId, role) => {
+    if (typeof defId !== 'string' || !defId) return;
+    const key = defId + '|' + (role || '');
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push({ defId, factionId, trafficRole: role || null });
   };
-  const pushWithFactionGroup = (anchorDefId) => {
-    push(anchorDefId);
+  const pushWithFactionGroup = (anchorDefId, role) => {
+    push(anchorDefId, role);
     const groups = FLEET_BY_FACTION.get(factionId);
     const group = groups && groups.find((entry) => entry.hullIds.includes(anchorDefId));
     if (group && group.hullIds.length > 1) {
-      for (const hullId of group.hullIds) push(hullId);
+      for (const hullId of group.hullIds) push(hullId, role);
     }
   };
   if (!sector) return out;
@@ -1360,31 +1366,35 @@ export function sectorEnterTrafficShipStubs(sector, state) {
     for (const [roleId, w] of Object.entries(mix)) {
       if (!Number.isFinite(w) || w <= 0) continue;
       const def = TRAFFIC_ROLES[roleId];
-      if (def && def.ship) pushWithFactionGroup(def.ship);
+      if (def && def.ship) pushWithFactionGroup(def.ship, roleId);
     }
   }
   for (const pocket of activityPocketsForSector(sectorId) || []) {
     for (const slot of (pocket && pocket.actorSlots) || []) {
       const def = TRAFFIC_ROLES[slot && slot.presentationRole];
-      if (def && def.ship) push(def.ship);
+      if (def && def.ship) push(def.ship, slot.presentationRole);
     }
   }
   if (sectorId === CERES_ACTIVITY_SECTOR_ID) {
     for (const slot of CERES_ACTIVITY_SERVICE_SLOTS) {
       const def = TRAFFIC_ROLES[slot && slot.presentationRole];
-      if (def && def.ship) push(def.ship);
+      if (def && def.ship) push(def.ship, slot.presentationRole);
     }
   }
   for (const contact of NAMED_LANE_CONTACTS) {
     if (!contact || !Array.isArray(contact.sectorIds)
         || contact.sectorIds.indexOf(sectorId) < 0) continue;
+    // The spawn stamps trafficRole = contact.role || 'hauler' whether the hull is the
+    // contact's own or a role-default faction pick — the stub mirrors that role so the
+    // warm resolves the same whole-ship file the mount reads. A named contact's own hull
+    // outranks the faction fleet: the spawn does not run factionHullFor for it, so neither
+    // does the stub.
+    const contactRole = contact.role || 'hauler';
     if (contact.ship) {
-      // A named contact's own hull outranks the faction fleet — the spawn code does not
-      // run factionHullFor for it, so neither does the stub.
-      push(contact.ship);
+      push(contact.ship, contactRole);
     } else {
-      const def = TRAFFIC_ROLES[contact.role] || TRAFFIC_ROLES.hauler;
-      if (def && def.ship) pushWithFactionGroup(def.ship);
+      const def = TRAFFIC_ROLES[contactRole];
+      if (def && def.ship) pushWithFactionGroup(def.ship, contactRole);
     }
   }
   return out;

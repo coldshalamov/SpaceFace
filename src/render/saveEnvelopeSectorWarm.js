@@ -819,7 +819,7 @@ function liveEnterSpawnerStubs(state, sector, out, coverBareMissionWrecks) {
     out.shipStubs.push({
       type: 'ship',
       factionId: row.factionId,
-      data: { defId: row.defId, lootTableId: null },
+      data: { defId: row.defId, trafficRole: row.trafficRole || null, lootTableId: null },
     });
   }
   // Faction-presence plans — the same pure planner with the same inputs the system's
