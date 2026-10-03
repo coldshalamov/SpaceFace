@@ -503,6 +503,7 @@ const CORE_SECTORS = [
         placeTargetRadius: 150,
         factionId: 'faction_reach',
         scannerSignalKind: 'archive',
+        repeatableScannerSignal: true,
         flavorTargetRef: 'landmark_c13d_skerris_throne',
         dressingExclusionRadius: 170,
         discoveryPlate: {
