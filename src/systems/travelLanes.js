@@ -126,8 +126,18 @@ const SLING_RING_RADIUS_WU = 48;
 const SLING_ALIGN_DOT_MIN = 0.85;
 /** Exit bar: at least twice the hull's governed combat cruise. */
 const SLING_EXIT_MULT = 2;
-/** Along-axis catapult acceleration inside the tube (WU/s²). Impulse is a·mass·dt. */
+/** Aim point above the bar so residual losses still land the ride at ≥ the bar. */
+const SLING_EXIT_OVERSHOOT = 1.1;
+/** Along-axis catapult acceleration inside the tube (WU/s²). Impulse is a·mass·dt.
+ *  This is the FLOOR of the boost: the tube's contract is the exit speed, and the
+ *  accel that lands it is solved per body in `_boostSlingBody`. A flat 240 adds
+ *  2·a·L ≈ 46 080 (WU/s)² over the 96 WU tube, which reaches 2× cruise only while
+ *  3·cruise² ≤ that — true when governed cruises topped out near ~120 WU/s, not
+ *  for the current 170–195 hulls. */
 const SLING_ACCEL_WU_S2 = 240;
+/** Bound on the solved accel so a body entering a metre from the exit face cannot
+ *  take an unbounded kick. Well under the one-tick delta the fling already grants. */
+const SLING_ACCEL_MAX_WU_S2 = 4800;
 /** Off-axis throw: exit at least 3× the hull's governed combat cruise. */
 const SLING_THROW_EXIT_MULT = 3;
 /** Sustain accel while an off-axis body is still below the throw bar. */
@@ -139,6 +149,15 @@ const SLING_HAULER_RECYCLE_ALONG_WU = 280;
 const SLING_HAULER_CRUISE_WU_S = 85;
 const SLING_HAULER_MASS = 55;
 const SLING_HAULER_RADIUS = 18;
+/**
+ * Scheduled freight rides a marked side lane, not the approach centreline. The catapult's
+ * contract is a ≥2× exit for a rider on the through-line — it cannot honour that while its
+ * own parked traffic sits on the axis (a boosted rider rear-ends the slower hauler and both
+ * leave at the collision's momentum average, under the bar). 40 keeps the hull inside the
+ * 48-radius boost volume (its edge may kiss the soft cylinder — there is no wall) while
+ * clearing rider+hull contact for any hull up to ~22 radius on the centreline.
+ */
+const SLING_HAULER_LANE_OFFSET_WU = 40;
 /** Solid manufactured ring at infrastructure.from. The claim catapult sits just past it. */
 const MANUFACTURED_RING_RADIUS_WU = 32;
 /**
@@ -689,9 +708,29 @@ export const travelLanes = {
     if (alignmentDot(entity.vel, ring.axis) < SLING_ALIGN_DOT_MIN) return false;
     const target = Math.max(0, finite(cruise, 0)) * SLING_EXIT_MULT;
     if (!(target > 0)) return false;
-    if (bodyAlongSpeed(entity, ring) >= target * 1.05) return true;
+    const alongSpeed = bodyAlongSpeed(entity, ring);
+    const aim = target * SLING_EXIT_OVERSHOOT;
+    if (alongSpeed >= aim) return true;
+    // The tube's contract is the exit speed, not a fixed shove — and this system
+    // runs on the 2 Hz calendar clock in production, so `dt` is the ELAPSED window
+    // since the last firing, not a frame. A ~0.4 s transit gets ~one firing: a flat
+    // a·dt grant delivers `accel × arbitrary elapsed`, which is how the corridor
+    // under-threw its own traffic (measured +77 WU/s on a +170 bar). Two regimes:
+    //   • At a sparse firing the honest grant is the fling's own idiom — a catch-up
+    //     impulse sized to land the aim, capped at `aim − alongSpeed`. A body caught
+    //     inside leaves at the bar no matter how long the window was.
+    //   • At a per-tick cadence the grant is the authored ride: an accel solved to
+    //     land the aim AT the exit face (v² + 2·a·rem = aim²), floored at the base
+    //     rate so slow hulls keep the same feel and capped against edge spikes.
+    // The catch-up cap binds whichever regime is larger, so fast hulls get the
+    // lift they need and no body is ever granted more than the ride owes it.
+    const remaining = Math.max(1, ring.length * 0.5 - ringAlong(entity.pos, ring));
+    const need = (aim * aim - alongSpeed * alongSpeed) / (2 * remaining);
+    const accel = Math.min(SLING_ACCEL_MAX_WU_S2, Math.max(SLING_ACCEL_WU_S2, need));
+    const deltaV = Math.min(accel * dt, aim - alongSpeed);
+    if (!(deltaV > 0)) return true;
     const mass = bodyMass(entity);
-    const impulse = SLING_ACCEL_WU_S2 * mass * dt;
+    const impulse = deltaV * mass;
     const axis = ring.axis;
     queuePhysicsImpulse(entity, { x: axis.x * impulse, y: 0, z: axis.z * impulse });
     return true;
@@ -869,11 +908,15 @@ export const travelLanes = {
     if (!near || this._slingHaulerId != null) return;
 
     const axis = CERES_SLING_RING.axis;
+    const perp = CERES_SLING_RING.throwPerp;
     const cruise = SLING_HAULER_CRUISE_WU_S;
     const spawnAlong = 12;
     const entity = spawnEntity({
       type: 'ship',
-      pos: { x: origin.x + axis.x * spawnAlong, z: origin.z + axis.z * spawnAlong },
+      pos: {
+        x: origin.x + axis.x * spawnAlong + perp.x * SLING_HAULER_LANE_OFFSET_WU,
+        z: origin.z + axis.z * spawnAlong + perp.z * SLING_HAULER_LANE_OFFSET_WU,
+      },
       vel: { x: axis.x * cruise, z: axis.z * cruise },
       rot: this._slingHaulerHeading,
       radius: SLING_HAULER_RADIUS,
