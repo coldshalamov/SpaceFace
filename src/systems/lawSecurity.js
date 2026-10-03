@@ -2651,11 +2651,32 @@ export const lawSecurity = {
       label: `fine at ${stationId}`,
     });
     const choice = payload && typeof payload.fineChoice === 'string' ? payload.fineChoice : null;
-    if (choice === 'leave') {
+    // FB-039 — docking only assesses; the charge is the player's answer, not the berth's act.
+    // The live offer row survives a plain re-dock: 'working' keeps its accrued shift and a
+    // 'left' row re-opens as offered so the next berth can ask again. A different station or
+    // tier always writes a fresh row — the reply resolves the fine actually on the counter.
+    const priorOffer = own.fineOffer && own.fineOffer.causeId === causeId ? own.fineOffer : null;
+    if (!priorOffer || priorOffer.status === 'paid' || priorOffer.status === 'left') {
       own.fineOffer = {
-        stationId, amount: fine, causeId, status: 'left', choice: 'leave',
+        stationId, amount: fine, causeId, status: 'offered', choice: null,
         heatLevel: level, wantedTier: tier,
       };
+    }
+
+    if (!choice) {
+      this._lawResponse('fine_assessed', {
+        stationId, fineCr: fine, heatLevel: level, wantedTier: tier,
+      });
+      this._emit('law:fineAssessed', {
+        stationId, amount: fine, paid: false, offer: true,
+        working: own.fineOffer.status === 'working' || undefined,
+        credits, heatLevel: level, wantedTier: tier,
+      });
+      return;
+    }
+    if (choice === 'leave') {
+      own.fineOffer.status = 'left';
+      own.fineOffer.choice = 'leave';
       this._lawResponse('fine_left', { stationId, fineCr: fine, heatLevel: level, wantedTier: tier });
       this._emit('law:fineAssessed', {
         stationId, amount: fine, paid: false, choice: 'leave',
@@ -2669,10 +2690,12 @@ export const lawSecurity = {
       return;
     }
     if (choice === 'work') {
-      own.fineOffer = {
-        stationId, amount: fine, causeId, status: 'working', choice: 'work',
-        workS: 0, workNeedS: LAW_FINE_WORK_S, heatLevel: level, wantedTier: tier,
-      };
+      if (own.fineOffer.status !== 'working') {
+        own.fineOffer.status = 'working';
+        own.fineOffer.choice = 'work';
+        own.fineOffer.workS = 0;
+        own.fineOffer.workNeedS = LAW_FINE_WORK_S;
+      }
       this._lawResponse('fine_work', { stationId, fineCr: fine, heatLevel: level, wantedTier: tier });
       this._emit('law:fineAssessed', {
         stationId, amount: fine, paid: false, choice: 'work',
@@ -2685,11 +2708,12 @@ export const lawSecurity = {
       });
       return;
     }
+    if (choice !== 'pay') return; // an answer the desk does not know leaves the offer standing
 
-    this._lawResponse('fine_assessed', {
-      stationId, fineCr: fine, heatLevel: level, wantedTier: tier,
-    });
+    // PAY — the engine re-validates credits on the reply; a short account keeps the offer open
+    // so work or leave still answer it, and nothing is charged for the attempt.
     if (credits < fine) {
+      own.fineOffer.status = 'offered';
       this._lawResponse('fine_unpaid', {
         stationId, fineCr: fine, shortfallCr: fine - credits, heatLevel: level, wantedTier: tier,
       });
@@ -2699,7 +2723,7 @@ export const lawSecurity = {
         text: `FINE ASSESSED ${fine} cr — insufficient funds. Warrant stands.`,
       });
       this._emit('law:fineAssessed', {
-        stationId, amount: fine, paid: false, shortfall: fine - credits,
+        stationId, amount: fine, paid: false, choice: 'pay', shortfall: fine - credits,
         heatLevel: level, wantedTier: tier,
       });
       return;
@@ -2707,7 +2731,7 @@ export const lawSecurity = {
 
     if (!own.fineSettled || typeof own.fineSettled !== 'object') own.fineSettled = {};
     own.fineSettled[causeId] = 'pay';
-    if (own.fineOffer && own.fineOffer.causeId === causeId) own.fineOffer.status = 'paid';
+    own.fineOffer.status = 'paid';
     this._markObligationSettled('warrant', causeId);
     this._emit('economy:chargeCredits', {
       amount: fine,
@@ -2717,7 +2741,7 @@ export const lawSecurity = {
     });
     this._emit('heat:clear', { reason: 'station_fine' });
     this._emit('law:fineAssessed', {
-      stationId, amount: fine, paid: true, choice: choice || 'pay',
+      stationId, amount: fine, paid: true, choice: 'pay',
       heatLevel: level, wantedTier: tier,
     });
     this._lawResponse('fine_paid', {
@@ -4330,11 +4354,20 @@ export const lawSecurity = {
   },
 
   _chooseFine(payload = {}) {
+    const state = this.state;
+    if (!state) return null;
     const choice = payload.choice || payload.fineChoice;
     if (choice !== 'pay' && choice !== 'work' && choice !== 'leave') return null;
-    const own = this.state && this.state.lawSecurity;
-    const offer = own && own.fineOffer;
+    const own = ensureState(state);
+    const offer = own.fineOffer;
     const stationId = payload.stationId || (offer && offer.stationId);
+    // FB-039 — a reply only resolves the fine actually on the counter. A stale panel (already
+    // paid, a different berth, no open offer at all) is refused, never charged: the handler
+    // re-derives tier and price from current heat before it acts.
+    if (!offer || offer.status === 'paid' || String(offer.stationId) !== String(stationId)) {
+      this._emit('law:fineRefused', { reason: 'no_open_fine', stationId: stationId || null });
+      return { accepted: false, reason: 'no_open_fine' };
+    }
     return this._handleDockedLawfulClearance({ ...payload, stationId, fineChoice: choice });
   },
 
