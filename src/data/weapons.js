@@ -190,6 +190,7 @@ const SHIPPED_WEAPONS = [
   },
   {
     id: 'unique_lighthouse_heavy_beam', baseId: 'wpn_heavy_beam_l', name: 'Lighthouse Heavy Beam', slotType: 'weapon', size: 'L', tier: 4, mass: 16, price: 0,
+    sentence: 'The big lance, hitting harder and reaching farther — the radiators pay for it.',
     dmg: 200, rof: 0, dps: 200, damageType: 'energy', energyCost: 22,
     projSpeed: Infinity, range: 1035, tracking: 'hitscan',
     continuous: true, heatPerSec: 67.5, heatMax: 100, heatDissip: 20,
