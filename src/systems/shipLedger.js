@@ -514,6 +514,34 @@ function collectCandidates(state, options = {}) {
     candidates.push(candidate);
   }
 
+  // FB-014 — stunt-minted salvage rights and their claims are durable economy receipts in
+  // player.salvageRightsLog (stuntGrammar is the single writer); this projector only reads
+  // them, exactly like the session sinks above. The prose is the ledger's own 'salvage' bank.
+  if (sourceArray(state && state.player && state.player.salvageRightsLog).length) {
+    const playerEntity = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId) : null;
+    const salvageShip = text(playerEntity && playerEntity.data && playerEntity.data.shipName,
+      'the hull');
+    for (const record of sourceArray(state.player.salvageRightsLog)) {
+      if (!record || (record.kind !== 'mint' && record.kind !== 'claim')) continue;
+      const claimed = record.kind === 'claim';
+      const sourceId = text(record.id, `salvage:${record.kind}:${record.at || 0}`);
+      add({
+        type: 'salvage',
+        sourceId,
+        sourceKind: 'player.salvageRightsLog',
+        at: record.at,
+        tokens: {
+          ship: salvageShip,
+          rights: Math.max(0, Math.floor(finite(record.amount, 0))),
+          trick: text(record.name || record.trickId, 'a stunt'),
+          verb: claimed ? 'redeemed' : 'minted',
+          verbPast: claimed ? 'redeemed' : 'minted',
+        },
+      });
+    }
+  }
+
   const bearings = sourceObjectValues(state && state.player && state.player.uniqueWrecks
     && state.player.uniqueWrecks.bearings);
   for (const record of bearings) {

@@ -48,6 +48,15 @@ function ensure(state) {
 function noteContractHarm(st,entry) {
   const harm=st.contracts.harm;harm.push(entry);if(harm.length>16)harm.shift();
 }
+// FB-014 — salvage rights are heard AND kept: every mint and every claim also lands as a
+// durable receipt the ship ledger projects (player.salvageRightsLog). Bounded like the other
+// receipt arrays; the id dedupes a save/load relay of the same event.
+function noteSalvageRightsReceipt(s,record) {
+  const player=s.player||(s.player={});
+  const log=player.salvageRightsLog||(player.salvageRightsLog=[]);
+  if(log.some(r=>r&&r.id===record.id))return;
+  log.push(record);if(log.length>48)log.shift();
+}
 export const stuntGrammar={
   id:'stuntGrammar',name:'stuntGrammar',
   // serialize() wraps every branch in structuredClone before bounding; saveSystem must not
@@ -102,6 +111,8 @@ export const stuntGrammar={
     if(rep>0)this.bus?.emit('faction:repDelta',{factionId:pay.factionId,delta:rep,reason:'stunt_trick',trickId:trick.trickId,episodeId:trick.episodeId,tick});
     if(rights<=0)return;
     this.bus?.emit('stunt:salvageRights',{salvageRights:rights,trickId:trick.trickId,name:trick.name,episodeId:trick.episodeId,rarity:trick.rarity,tick});
+    noteSalvageRightsReceipt(this.state,{id:`srmint:${trick.episodeId}:${tick}`,kind:'mint',at:tick,
+      amount:rights,trickId:trick.trickId,name:trick.name,episodeId:trick.episodeId,rarity:trick.rarity});
     const s=this.state;
     if(s.run?.kind==='survival'&&s.run.phase!=='inactive')return;
     const chit=makeSalvageRightsItem(rights,`${trick.trickId}:${trick.episodeId}`);
@@ -124,6 +135,8 @@ export const stuntGrammar={
     const player=s.player||(s.player={});
     player.salvageRights=Math.max(0,Math.floor(Number(player.salvageRights)||0))+amount;
     this.bus?.emit('stunt:salvageRightsClaimed',{salvageRights:amount,pickupId:p.pickupId??null,grantReason:data?.grantReason??p.grantReason??null,tick:s.tick});
+    noteSalvageRightsReceipt(s,{id:`srclaim:${p.pickupId??'hand'}:${s.tick}`,kind:'claim',at:s.tick,
+      amount,grantReason:data?.grantReason??p.grantReason??null});
   },
   _event(event,p) {
     const s=this.state,st=ensure(s),tick=Number.isFinite(p.tick)?p.tick:s.tick;

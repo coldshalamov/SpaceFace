@@ -104,6 +104,20 @@ import {
 // fields synchronously, so one shared options object serves every call site.
 const _exactAudioOpts = { playerId: null };
 
+// FB-010 — where a mass-seed event sits in the world: the payload's own coordinates when the
+// emitter carries them, else the live seed body's position. A missing body resolves to null so
+// a retired seed plays unpanned rather than inventing a point.
+function seedPosition(state, pos, seedId) {
+  if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.z)) return { x: pos.x, z: pos.z };
+  const seed = seedId != null && state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(seedId)
+    : null;
+  if (seed && seed.pos && Number.isFinite(seed.pos.x) && Number.isFinite(seed.pos.z)) {
+    return { x: seed.pos.x, z: seed.pos.z };
+  }
+  return null;
+}
+
 // --- positional model (ARCHITECTURE / spec) ---
 const D_NEAR = 40;     // wu — full volume within this
 const D_FAR = TABLE_HEARING_FAR_WU;     // wu — silent / culled beyond the table
@@ -2571,6 +2585,34 @@ export const audio = {
       if (!id) return;
       const position = p && Number.isFinite(p.x) && Number.isFinite(p.z) ? { x: p.x, z: p.z } : null;
       this.play(id, { position, gain: 0.7 });
+    });
+    // FB-010 — the transverse snare and the mass seed have voices: authored synth recipes on the
+    // events the deployables already emit, replacing the seed's generic menu-register blips
+    // (confirm/lock_acquired/alert) with the family the verb deserves. Silence is authored too:
+    // snareDeployed (the arm tick + telegraph own the deploy moment), snareEnded (the line going
+    // slack is the absence), massSeed:collapsed (the drop already spoke; the despawn 0.45 s later
+    // is bookkeeping) and massSeed:cleared (cleanup) stay quiet by design.
+    bus.on('massline:snareArmed', () => this.play('sfx_snare_arm_tick', { gain: 0.5 }));
+    bus.on('massline:snareCut', () => this.play('sfx_snare_cut', { gain: 0.7 }));
+    bus.on('massSeed:deployed', (p) => {
+      this.play('sfx_massseed_deploy', { gain: 0.55, position: seedPosition(this.state, p && p.spawnPos) });
+    });
+    bus.on('massSeed:locking', (p) => {
+      this.play('sfx_massseed_lock_rise', { gain: 0.4, position: seedPosition(this.state, p && p.pos) });
+    });
+    bus.on('massSeed:locked', (p) => {
+      this.play('sfx_massseed_lock_chord', { gain: 0.55, position: seedPosition(this.state, p && p.pos) });
+    });
+    bus.on('massSeed:warning', (p) => {
+      this.play('sfx_massseed_warning', { gain: 0.6, position: seedPosition(this.state, null, p && p.seedId) });
+    });
+    bus.on('massSeed:collapsing', (p) => {
+      this.play('sfx_massseed_collapse', { gain: 0.75, position: seedPosition(this.state, null, p && p.seedId) });
+    });
+    // The player's rope snapped off the seed: the ordinary tether cut voice, not a new one.
+    bus.on('massSeed:tetherCut', () => {
+      const id = combatVerbRecipe('tether:cut');
+      if (id) this.play(id, { gain: 0.6 });
     });
     bus.on('barkDirector:voice', (p) => this._onBarkVoice(p));
     // The first-hour instructor speaks every tutorial line through the same radio treatment the

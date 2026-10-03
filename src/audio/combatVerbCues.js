@@ -116,6 +116,8 @@ export const PLAYER_ACTION_CUES = Object.freeze({
   'contactHail:clear': SILENT('Clearing a hail is bookkeeping.'),
   'contactHail:handoff': SILENT('The handoff is bookkeeping between comms speakers.'),
   hail: SILENT('The hail is the comms voice line, not a second sting.'),
+  // The NPC's own greeting lands as the bark voice on the same tick.
+  'npc:hailed': SILENT('The hail speaks as its bark; a sting would double the greeting.'),
 
   'tether:latched': 'sfx_tether_latch_lock',
   'tether:attached': 'sfx_tether_latch_lock',
@@ -135,6 +137,11 @@ export const PLAYER_ACTION_CUES = Object.freeze({
   'tether:whipImpact': 'sfx_hull_decompress',
   'tether:whipSnap': 'sfx_tether_crack',
   'tether:snapCatch': 'sfx_tether_latch_lock',
+  // FB-013 receipts. The tractor capture lands the same tick as tether:latched, whose latch
+  // lock already speaks it; the coupler's rigid lock is the line's load voice rising. Both
+  // receipts are for the picture and the first-use line.
+  'tether:tractorCapture': SILENT('The same-tick latch lock already speaks the capture.'),
+  'tether:couplerLock': SILENT('The rigid lock reads as the load voice rising, not a new sting.'),
   'tether:latchDenied': REFUSAL_ROW,
   'tether:cutDenied': REFUSAL_ROW,
   'tether:lineControlDenied': REFUSAL_ROW,
@@ -180,6 +187,13 @@ export const PLAYER_ACTION_CUES = Object.freeze({
   'salvage:npcExtraction': SILENT('NPC extraction is bookkeeping.'),
   'salvage:npcUnload': SILENT('NPC unload is bookkeeping.'),
   'salvage:placed': SILENT('Placement is the same cut, already heard when it completes.'),
+  // SF-029 sort-pocket receipts. The sheared clamp speaks as the comms line and the loose rope;
+  // the impact is the warn toast; the delivery plays its scan-resolve cue directly; the loss is
+  // bookkeeping on a job that no longer exists.
+  'salvage:sortSeparated': SILENT('The shear is the comms line and the line going slack.'),
+  'salvage:sortImpact': SILENT('The debris strike is the warn toast on the tow.'),
+  'salvage:sortDelivered': SILENT('The delivery plays its own scan-resolve cue directly.'),
+  'salvage:sortLost': SILENT('Losing a job is the absence of the job, not a sting.'),
   'salvage:reactorBurst': 'sfx_hull_decompress',
   'salvage:reactorTowedClear': 'sfx_wanted_clear',
   'salvage:reactorVented': 'sfx_hull_stress_groan',

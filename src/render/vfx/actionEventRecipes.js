@@ -100,6 +100,45 @@ export const ADDITIONAL_ACTION_VFX_RECIPES = Object.freeze({
     variants:{ off:{verb:'cool',primitive:'deposition',color:0x8aa4b8,life:.35} }},
   // A refused deposit is a cool surface, never a toast.
   'planet:harvestDenied': {verb:'cool',primitive:'deposition',color:0x9bb7c9,life:.45,continuous:false},
+  // FB-009 — the signature verb's thirteen receipts reach the picture. One row per bus event the
+  // Massline already emits, each naming the verb it already is (link, cut, end, share, snap,
+  // rebound). No new physics, no new presentation channel: this table is auto-subscribed by
+  // vfx.js via ACTION_VFX_EVENTS. Denials are FB-070's; these are the affirmative receipts.
+  // The bridle link draws the shared filament between its two endpoints...
+  'massline:bridleLinked': {verb:'latch',primitive:'connection',color:0x76efd1,life:.8,continuous:false},
+  // ...a deliberate bridle cut flashes the severed pair...
+  'massline:bridleCut': {verb:'cut',primitive:'connection',color:0xffd9a0,life:.4,continuous:false},
+  // ...an ended bridle cools off the player's hull (the mirror is already gone when it fires)...
+  'massline:bridleEnded': {verb:'cool',primitive:'deposition',color:0x9fc4d4,life:.6,continuous:false},
+  // ...a selected bridle endpoint is a command mark on that body...
+  'massline:bridleEndpointSelected': {verb:'command',primitive:'induction',color:0x85d0da,life:.7,continuous:false},
+  // ...a setup that ends without linking withdraws quietly...
+  'massline:bridleSetupEnded': {verb:'cool',primitive:'deposition',color:0x8aa4b8,life:.5,continuous:false},
+  // ...the cadence phase change rides the reel-transfer family, kind = phase...
+  'massline:cadenceChanged': {verb:'transfer',primitive:'connection',color:0x72cfff,life:.4,continuous:false},
+  // ...NPC counterplay cuts with the cutter's own hostile amber...
+  'massline:npcCounterplay': {verb:'cut',primitive:'connection',color:0xff8a5c,life:.5,continuous:false},
+  // ...the player's sweep severing an NPC line flashes the authored contact point in the
+  // sweep's teal; a hostile blade severing the player's line flashes the cut span amber...
+  'massline:npcLineCut': {verb:'cut',primitive:'connection',color:0x9effd3,life:.45,continuous:false},
+  'massline:playerLineCut': {verb:'cut',primitive:'connection',color:0xffb98b,life:.5,continuous:false},
+  // ...a shared ΔV is a transfer bead along the rope...
+  'chain:tetherShare': {verb:'transfer',primitive:'connection',color:0xb4e0c0,life:.5,continuous:false},
+  // ...a whip snap flings the stored energy at the released mass...
+  'tether:whipSnap': {verb:'fling',primitive:'pressure',color:0xfff0bf,life:.4,continuous:false},
+  // ...a rebound is a short vent on the re-caught body...
+  'tether:rebound': {verb:'vent',primitive:'compression',color:0x9ad0c4,life:.35,continuous:false},
+  // ...and a web link runs a bead along the new strand.
+  'web:linked': {verb:'latch',primitive:'connection',color:0x82cce6,life:.5,continuous:false},
+  // FB-010 — the two deployable edges that had a voice-shaped hole in the picture: the snare's
+  // arm tick on its anchor pair, and the seed's collapse warning on the seed itself (the body
+  // despawns on `collapsed`; `collapsing` is the beat the player is standing on).
+  'massline:snareArmed': {verb:'arm',primitive:'capture',color:0xffa557,life:.75,continuous:false},
+  'massSeed:collapsing': {verb:'disrupt',primitive:'induction',color:0xff5030,life:.7,continuous:false},
+  // FB-013 — the two heads whose defining moment had no receipt at all: the tractor's capture
+  // (a catch on the taken body) and the frame coupler's rigid lock (a latch along the pair).
+  'tether:tractorCapture': {verb:'catch',primitive:'capture',color:0x87caff,life:.6,surfaceCapture:true,continuous:false},
+  'tether:couplerLock': {verb:'latch',primitive:'connection',color:0x9bdfff,life:.55,continuous:false},
 });
 
 const point = p => p && Number.isFinite(p.x) && Number.isFinite(p.z);
@@ -267,6 +306,106 @@ export function resolveAdditionalActionVfxReceipt(name,p,state) {
       out.approach = { x: Number(p.approach.x), z: Number(p.approach.z) };
     }
     return out;
+  }
+  // ── FB-009: the Massline's thirteen receipts resolve to the bodies they name. ──
+  // A missing endpoint fabricates nothing: a dead endpoint means no line, so no picture.
+  if (name === 'massline:bridleLinked' || name === 'massline:bridleCut') {
+    const a = body(state, p.sourceId), b = body(state, p.targetId);
+    if (!point(a?.pos) || !point(b?.pos)) return null;
+    return { ...p, sourceId: a.id, targetId: b.id, attachToTarget: true };
+  }
+  // The bridle mirror is already cleared when the line ends; the rope was the player's
+  // controlled attachment, so the withdrawal reads off the player's hull.
+  if (name === 'massline:bridleEnded') {
+    const ship = body(state, state.playerId);
+    if (!point(ship?.pos) || ship.alive === false) return null;
+    return { ...p, targetId: ship.id, sourceId: ship.id, bodySurface: true, attachToTarget: true };
+  }
+  if (name === 'massline:bridleEndpointSelected') {
+    const endpoint = body(state, p.sourceId);
+    if (!point(endpoint?.pos)) return null;
+    return { ...p, targetId: endpoint.id, sourceId: state.playerId, attachToTarget: true };
+  }
+  // A cancelled setup cools on the endpoint it had, or on the player when none survived. A
+  // fallback that names a hull which is itself gone fabricates nothing.
+  if (name === 'massline:bridleSetupEnded') {
+    const endpoint = body(state, p.sourceId);
+    const ship = body(state, state.playerId);
+    const targetId = endpoint && point(endpoint.pos) ? endpoint.id
+      : ship && point(ship.pos) && ship.alive !== false ? state.playerId : null;
+    if (targetId == null) return null;
+    return { ...p, targetId, sourceId: state.playerId, bodySurface: targetId === state.playerId };
+  }
+  if (name === 'massline:cadenceChanged') {
+    const ship = body(state, p.sourceId ?? state.playerId);
+    if (!point(ship?.pos) || ship.alive === false) return null;
+    return { ...p, kind: p.phase, targetId: ship.id, sourceId: ship.id, bodySurface: true, attachToTarget: true };
+  }
+  if (name === 'massline:npcCounterplay') {
+    const actor = body(state, p.actorId);
+    if (!point(actor?.pos)) return null;
+    return { ...p, targetId: actor.id, sourceId: actor.id, bodySurface: true, attachToTarget: true };
+  }
+  // The player's blade cutting an NPC line: the authored contact point is the receipt.
+  if (name === 'massline:npcLineCut') {
+    if (!point(p.contact)) return null;
+    return { ...p, pos: copyPoint(p.contact), sourceId: state.playerId,
+      targetId: p.ownerId ?? null, attachToTarget: false };
+  }
+  // A hostile blade severing one of the player's lines: flash the severed span's midpoint,
+  // falling back to the player's hull when the endpoints are already gone.
+  if (name === 'massline:playerLineCut') {
+    const a = body(state, p.ownerId), b = body(state, p.targetId);
+    if (point(a?.pos) && point(b?.pos)) {
+      return { ...p, sourceId: p.cutterId ?? a.id, targetId: a.id, attachToTarget: true,
+        pos: { x: (a.pos.x + b.pos.x) / 2, z: (a.pos.z + b.pos.z) / 2 } };
+    }
+    const ship = body(state, state.playerId);
+    if (!point(ship?.pos)) return null;
+    return { ...p, sourceId: p.cutterId ?? null, targetId: ship.id, bodySurface: true, attachToTarget: true };
+  }
+  if (name === 'chain:tetherShare') {
+    const a = body(state, p.fromId), b = body(state, p.toId);
+    if (!point(a?.pos) || !point(b?.pos)) return null;
+    return { ...p, sourceId: a.id, targetId: b.id, attachToTarget: true };
+  }
+  if (name === 'tether:whipSnap') {
+    const target = body(state, p.targetId);
+    if (!point(target?.pos)) return null;
+    return { ...p, targetId: target.id, sourceId: state.playerId, attachToTarget: true };
+  }
+  if (name === 'tether:rebound') {
+    const target = body(state, p.targetId ?? p.ownerId);
+    if (!point(target?.pos)) return null;
+    return { ...p, targetId: target.id,
+      sourceId: p.actorId ?? p.controllerId ?? state.playerId, attachToTarget: true };
+  }
+  if (name === 'web:linked') {
+    const a = body(state, p.ownerId), b = body(state, p.targetId);
+    if (!point(a?.pos) || !point(b?.pos)) return null;
+    return { ...p, sourceId: a.id, targetId: b.id, attachToTarget: true };
+  }
+  // ── FB-010: the deployables' arm/collapse edges resolve to their own bodies. ──
+  if (name === 'massline:snareArmed') {
+    const a = body(state, p.sourceId), b = body(state, p.targetId);
+    if (!point(a?.pos) || !point(b?.pos)) return null;
+    return { ...p, sourceId: a.id, targetId: b.id, attachToTarget: true };
+  }
+  if (name === 'massSeed:collapsing') {
+    const seed = body(state, p.seedId);
+    if (!point(seed?.pos)) return null;
+    return { ...p, pos: copyPoint(seed.pos), targetId: seed.id, sourceId: seed.id, attachToTarget: true };
+  }
+  // FB-013 — the tractor's capture lands on the taken body; the coupler's lock spans its pair.
+  if (name === 'tether:tractorCapture') {
+    const target = body(state, p.targetId);
+    if (!point(target?.pos)) return null;
+    return { ...p, targetId: target.id, sourceId: p.sourceId ?? state.playerId, attachToTarget: true };
+  }
+  if (name === 'tether:couplerLock') {
+    const a = body(state, p.sourceId ?? state.playerId), b = body(state, p.targetId);
+    if (!point(a?.pos) || !point(b?.pos)) return null;
+    return { ...p, sourceId: a.id, targetId: b.id, attachToTarget: true };
   }
   return p;
 }
