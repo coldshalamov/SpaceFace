@@ -1,6 +1,7 @@
 import { createWorldObjectPicker } from '../render/worldObjectPicking.js';
 import { createWorldObjectHoverPresentation } from '../render/objectHoverFeedback.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
+import { occupantGenerationOf } from '../core/entity.js';
 import { isBeamTargetEligible, beamRangeFor } from '../systems/mining.js';
 import { initialMouseToolLane } from '../systems/input.js';
 import { interactionDisplayName, interactionProfileForEntity, presentationStatusWord } from '../data/entityInteractionProfiles.js';
@@ -57,6 +58,9 @@ export function applyWorldObjectSelection(state, entity, source) {
     targetId: entity.id,
     source: source || 'pointer',
     stableKey: entity.stableKey != null ? entity.stableKey : entity.id,
+    // The pick binds the occupant, not the number: when the id recycles, a recorded token that
+    // no longer matches the resolved subject tells the sweep the picked body is gone.
+    occupantGeneration: occupantGenerationOf(entity),
   };
   if (state.input) state.input.targetAssistDisabled = false;
   return true;
@@ -380,9 +384,18 @@ export function createWorldObjectInteraction(ctx, screenManager) {
 
   function sweepDeadSubjects() {
     const sel = state.ui && state.ui.objectSelection;
-    if (sel && sel.targetId != null && !presentableSubject(state, sel.targetId)) {
-      state.ui.objectSelection = null;
-      if (state.player && state.player.targetId === sel.targetId) state.player.targetId = null;
+    if (sel && sel.targetId != null) {
+      const subject = presentableSubject(state, sel.targetId);
+      // Recycled id: the pick recorded one occupant token and the resolved body carries a
+      // different one — the picked body is dead even though the id still presents. Only a
+      // present-vs-present mismatch proves that; a ledger row without a token stays honest.
+      const generation = subject ? occupantGenerationOf(subject) : null;
+      const recycled = !!(subject && sel.occupantGeneration != null && generation != null
+        && generation !== sel.occupantGeneration);
+      if (!subject || recycled) {
+        state.ui.objectSelection = null;
+        if (state.player && state.player.targetId === sel.targetId) state.player.targetId = null;
+      }
     }
     if (hoverId != null && !presentableSubject(state, hoverId)) setHover(null);
     if (gestureTargetId != null && !presentableSubject(state, gestureTargetId)) {

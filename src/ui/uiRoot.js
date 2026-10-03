@@ -32,6 +32,7 @@ import { installSandboxGameStartedHook } from './sandbox/sandboxSetup.js';
 import { bindSound, bindTemperature } from './kit/index.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
+import { occupantGenerationOf } from '../core/entity.js';
 
 // Clean inline UI art (replaces the captioned reference-sheet .jpg assets that rendered text).
 const RETICLE_SVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;overflow:visible">
@@ -1627,7 +1628,14 @@ function explicitObjectSelectionAlive(state, targetId) {
   const sel = state.ui && state.ui.objectSelection;
   if (!sel || sel.targetId !== targetId) return false;
   const subject = resolveWorldPresentationEntity(state, targetId);
-  return !!(subject && subject.alive !== false);
+  if (!subject || subject.alive === false) return false;
+  // A recorded pick token that no longer matches the resolved occupant is a recycled id: the
+  // selection named the dead body, not the heir holding its number.
+  const generation = occupantGenerationOf(subject);
+  if (sel.occupantGeneration != null && generation != null && generation !== sel.occupantGeneration) {
+    return false;
+  }
+  return true;
 }
 
 // The hostile the Massline is physically holding, if it is a legal scanner lock. Whenever this
@@ -1649,6 +1657,12 @@ function tetheredHostileLock(player, state) {
 // the entire job of the quiet refresh.
 function isDeliberateNonHostilePick(player, state, entity) {
   if (!player || !entity || entity.alive === false || !entity.pos) return false;
+  // A deliberate pick bound to an occupant token the live body no longer carries is a recycled
+  // id — the player selected the dead body, and the heir does not inherit the pick.
+  const sel = state.ui && state.ui.objectSelection;
+  const generation = occupantGenerationOf(entity);
+  if (sel && sel.targetId === entity.id && sel.occupantGeneration != null && generation != null
+      && generation !== sel.occupantGeneration) return false;
   return !isHostileToPlayer(entity, player.team, state);
 }
 

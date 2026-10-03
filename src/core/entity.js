@@ -199,6 +199,17 @@ export function stampOccupantGeneration(state, entity) {
   return next;
 }
 
+/**
+ * Read the per-occupant identity token stamped at spawn. Entity ids recycle through freeIds,
+ * so a bare id can name a different body one tick later; a recorded generation is the proof a
+ * numeric id still names the same occupant. Returns null when the body was never stamped
+ * (fixture-authored entities) — callers decide whether an unprovable identity is acceptable.
+ */
+export function occupantGenerationOf(entity) {
+  if (!entity || entity.occupantGeneration == null || entity.occupantGeneration === '') return null;
+  return entity.occupantGeneration;
+}
+
 function v3(src) {
   return new SimVector3(src && src.x || 0, 0, src && src.z || 0);
 }

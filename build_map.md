@@ -389,21 +389,21 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | picture | grok-build20 | renderer, admission, residency | 31, 32, 39, 45, 75, 139, 140, 141, 171, 259 |
 | camera | zai-board20 | camera, tabletop, hull readability | 58, 135, 136, 137, 138, 217, 218, 257 |
 | boot | grok-build20 | boot time, hitch leaves, not the renderer seam | 33, 34, 57, 225 |
-| audio | done | audio system, combat verb cues | 143, 144, 145, 146, 194, 228, 256 |
+| audio | done | audio system, combat verb cues | 143, 194, 228 |
 | save | devin-oct2-batch | save system | 150, 151, 152, 153, 154, 226, 240, 241 |
 | economy | devin-sweep-oct2 | economy, contracts, station services | 74, 107, 108, 109, 110, 165, 183, 210, 249, 250 |
 | effects | grok-build20 | vfx, profiles, cues | 131, 132, 133, 134, 193, 230, 255 |
 | swarm | free | swarm planner, survival waves, arenas, swarm wallet/Hangar, swarm HUD presenters | 100, 101, 180, 181, 203, 204, 232, 233, 235, 263, 264, 265, 266, 267, 268, 269, 270, 271, 272, 273 |
 | fight | free | enemies, bombs, countermeasures, squads | 178, 179, 200, 202 |
-| fields | done | fields | 94, 162 |
+| fields | done | fields | 162 |
 | law | devin-oct2-batch | law, claims, custody consequences | 120, 122, 123, 124, 163, 167, 176, 191, 247 |
-| discovery | done | scanner, scan reveal | 125, 126, 127, 128, 129, 130, 214 |
-| industry | done | world sites, machinery, mining commitment | 112, 113, 114, 115, 116, 182, 198, 205, 206 |
+| discovery | done | scanner, scan reveal | 214 |
+| industry | done | world sites, machinery, mining commitment | 206 |
 | people | zai-board20 | jobs, aftermath, convoys | 111, 121, 201, 209, 212, 213 |
 | ship | devin-oct2-batch | ships, modules, shipworks, tech ladder | 117, 118, 119, 184, 185, 186, 208, 251, 252 |
 | hand | zai-board20 | flight, tether, massline, onboarding | 104, 105, 106, 175, 199, 219, 229, 236, 238, 239 |
 | missions | devin-sweep-oct2 | missions | 83, 84, 85, 86, 188, 189, 222, 254 |
-| world | free | sectors, traffic, factions, news | 242, 243, 244, 245, 248 |
+| world | free | sectors, traffic, factions, news | 243, 244, 245, 248 |
 | story | devin-oct2-batch | story | 192, 215, 216, 253 |
 | input | devin-oct2-batch | gamepad, input, settings behavior | 196, 237, 260, 262 |
 | ui-sim | zai-board20 | sim halves of screens and the map; no visual redesign | 147, 148, 149, 195, 197, 246, 261 |
@@ -637,7 +637,7 @@ listed order, in the row's commit(s). Before mutating, read the packet `.md` und
 | 150 | PB-CONT-A | SF-273+274 interrupted cargo handoff conserves the lot + site reconstruction preserves work | PB | SHIPPED 2026-10-02 devin-oct2-batch (d4c6b219d) — fail-closed site restore; seal failure refunds lot, settled intents never double-pay, _pod custody reseats, machines/counters repair conserved |
 | 151 | PB-CONT-B | SF-278+283+285 once-only rewards, no spectacle replay, interrupted failure leads back | PB | OPEN — seam saveSystem serial |
 | 152 | PB-CONT-C | SF-280+281+284 migration template, failed-save visibility, bounds preserve consequences | PB | OPEN — seam saveSystem serial |
-| 153 | PB-CONT-D | SF-271+275+276+279 interleaved-load guard verify, pause-hold ownership, focus-loss release, attachment cleanup | PB | OPEN — SF-276 pointer-cancel releases held fire and thrust; SF-271, SF-275, SF-279 still open. non-saveSystem seams; parallel-safe with 150–152 |
+| 153 | PB-CONT-D | SF-271+275+276+279 interleaved-load guard verify, pause-hold ownership, focus-loss release, attachment cleanup | PB | SHIPPED 2026-10-02 devin-oct2-batch — SF-271/275/276 verified green with new suites; SF-279 built: occupant-generation proofs stop corpse attachments welding to the id's heir |
 | 154 | PB-CONT-E | SF-272+282 validate-then-restore boundary + one real browser/Electron divergence | PB | OPEN — CHECK pair |
 | 155 | PB-ECO | SF-181–195 Charon Bloom ecology — 15-packet opt-in expansion; SF-181 first if admitted (deep-dive 08), 183–185/189/192/193 chain behind it | PB | PARKED expansion opt-in |
 | 156 | PB-LANE-GRAPHICS | SF-211–214, 220, 224 — authored-hull/LOD/wreck-family/place-state packets; Forge+assets write-sets | PB | PARKED devin-graphics lane |

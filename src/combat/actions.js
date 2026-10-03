@@ -3,6 +3,7 @@ import { ensureCombatant, entityKey } from './runtime.js';
 import { actionBlockedByCombatant } from './subsystems.js';
 import { appendCombatTrace } from './trace.js';
 import { usesMountedBurst, mountedBurstRange } from './mountedBurst.js';
+import { occupantGenerationOf } from '../core/entity.js';
 
 export function createActionService(context, attachments, routeDamage) {
   const { state, catalog, bus, helpers } = context;
@@ -24,6 +25,13 @@ export function createActionService(context, attachments, routeDamage) {
       notBeforeTick: Number.isInteger(request.notBeforeTick) ? Math.max(state.tick, request.notBeforeTick) : state.tick,
       metadata: sanitizeMetadata(request.metadata),
     };
+    // Pin request-time identity: notBeforeTick defers evaluation past the point where an id
+    // can recycle, so a bare entityId would silently re-aim the effect at the replacement.
+    // Null means unprovable (fixture entity, never stamped) — the id-only checks still apply.
+    queued.actorGeneration = occupantGenerationOf(entity(actorId));
+    if (queued.target && queued.target.kind === 'entity') {
+      queued.target.entityGeneration = occupantGenerationOf(entity(queued.target.entityId));
+    }
     state.combat.actions.requests.push(queued);
     appendCombatTrace(state.combat, state.tick, 'action.requested', {
       actorId,
@@ -91,7 +99,9 @@ export function createActionService(context, attachments, routeDamage) {
   function processRequest(request) {
     const actor = entity(request.actorId);
     const def = catalog.actions.get(request.actionId);
-    if (!actor || !actor.alive) return reject(request, 'actor_missing');
+    if (!actor || !actor.alive || occupantMismatch(actor, request.actorGeneration)) {
+      return reject(request, 'actor_missing');
+    }
     if (!def) return reject(request, 'unknown_action');
     const key = entityKey(actor.id);
     let current = state.combat.actions.activeByActor[key];
@@ -152,6 +162,7 @@ export function createActionService(context, attachments, routeDamage) {
       seq,
       requestId: request.id,
       actorId: actor.id,
+      actorGeneration: request.actorGeneration != null ? request.actorGeneration : null,
       actionId: def.id,
       source: request.source,
       target: request.target,
@@ -183,8 +194,11 @@ export function createActionService(context, attachments, routeDamage) {
     if (instance.lastProcessedTick === state.tick) return;
     const def = catalog.actions.get(instance.actionId);
     const actor = entity(instance.actorId);
-    if (!def || !actor || !actor.alive) {
-      cancel(instance, key, !actor ? 'actor_missing' : 'definition_missing');
+    // A live occupant whose generation differs from the recorded one is a recycled id, not
+    // the actor this instance was committed to — that is actor_missing, same as a despawn.
+    if (!def || !actor || !actor.alive || occupantMismatch(actor, instance.actorGeneration)) {
+      cancel(instance, key,
+        !actor || occupantMismatch(actor, instance.actorGeneration) ? 'actor_missing' : 'definition_missing');
       return;
     }
     const timeline = phaseAt(def, state.tick - instance.startedTick);
@@ -259,14 +273,22 @@ export function createActionService(context, attachments, routeDamage) {
     switch (effect.type) {
       case 'createAttachment': {
         const targetId = instance.target && instance.target.entityId;
-        result = attachments.create({
-          defId: effect.attachmentDefId,
-          ownerId: actor.id,
-          targetId,
-          sourceSocketId: instance.target && instance.target.sourceSocketId,
-          targetSocketId: instance.target && instance.target.targetSocketId,
-          actionInstanceId: instance.id,
-        });
+        // The target check ran at commit time; if the id recycled between then and this
+        // effect tick, attachments.create would stamp the REPLACEMENT as the endpoint —
+        // welding the line onto a body the verb never named. Refuse like a missing target.
+        const targetEntity = instance.target && instance.target.kind === 'entity'
+          ? entity(targetId) : null;
+        result = instance.target && instance.target.kind === 'entity'
+            && occupantMismatch(targetEntity, instance.target.entityGeneration)
+          ? { ok: false, reason: 'target_missing' }
+          : attachments.create({
+            defId: effect.attachmentDefId,
+            ownerId: actor.id,
+            targetId,
+            sourceSocketId: instance.target && instance.target.sourceSocketId,
+            targetSocketId: instance.target && instance.target.targetSocketId,
+            actionInstanceId: instance.id,
+          });
         if (result.ok) instance.result = { ...(instance.result || {}), attachmentId: result.attachment.id };
         break;
       }
@@ -292,8 +314,10 @@ export function createActionService(context, attachments, routeDamage) {
         }
         const targetId = instance.target && instance.target.entityId;
         const target = entity(targetId);
-        if (!target || !target.alive) result = { ok: false, reason: 'target_missing' };
-        else {
+        if (!target || !target.alive
+            || occupantMismatch(target, instance.target && instance.target.entityGeneration)) {
+          result = { ok: false, reason: 'target_missing' };
+        } else {
           const packet = clonePacket(effect.packet);
           if (!packet.hit) packet.hit = { pos: { x: target.pos.x, z: target.pos.z } };
           result = routeDamage({
@@ -420,7 +444,10 @@ export function createActionService(context, attachments, routeDamage) {
     if (!target) return { ok: false, reason: 'target_required' };
     if (targetDef.kind === 'entity') {
       const targetEntity = entity(target.entityId);
-      if (!targetEntity || !targetEntity.alive || targetEntity.id === actor.id) return { ok: false, reason: 'target_missing' };
+      if (!targetEntity || !targetEntity.alive || targetEntity.id === actor.id
+          || occupantMismatch(targetEntity, target.entityGeneration)) {
+        return { ok: false, reason: 'target_missing' };
+      }
       if (targetDef.hostile && actor.team != null && targetEntity.team != null && actor.team === targetEntity.team) return { ok: false, reason: 'target_not_hostile' };
       if (Number.isFinite(targetDef.maxRange)) {
         const distance = Math.hypot(targetEntity.pos.x - actor.pos.x, targetEntity.pos.z - actor.pos.z);
@@ -569,6 +596,12 @@ function missingPhysicsOperation(def, physics) {
 
 function actionTargetEntityId(instance) {
   return instance && instance.target && instance.target.kind === 'entity' ? instance.target.entityId : null;
+}
+
+// Same contract as combat/attachments: a recorded generation proves which body an id named;
+// a mismatch means the id recycled onto a different occupant. Null recordings never mismatch.
+function occupantMismatch(entity, recordedGeneration) {
+  return recordedGeneration != null && occupantGenerationOf(entity) !== recordedGeneration;
 }
 
 function clonePacket(packet) {
