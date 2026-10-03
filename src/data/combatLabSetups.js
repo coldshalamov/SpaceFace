@@ -86,26 +86,39 @@ export const COMBAT_LAB_STARTER_PACKAGES = freezeDeep([
       { slotIndex: 7, defId: 'mod_elastic_whip_m' },
     ],
   },
-  // THE SYNTHESIS FORGE (CRU-038 / PQ-133.07). The Hawser is the smallest hull in the lab
-  // with THREE utility slots — the only starter that can mount every Storm Carom part at
-  // once: Bank Shot, Relay Arc and Ion Payload side by side. In the swarm armory the named
+  // THE SYNTHESIS FORGE (CRU-038 / PQ-133.07). The Ranger is the smallest hull that can
+  // hold all three Storm Carom parts at once AND still fly the room — Bank Shot, Relay
+  // Arc and Ion Payload side by side in its survey bay. In the swarm armory the named
   // synthesis then offers its conversion, three held parts for one evolved item and two
   // freed hardpoints. The lab package is the reversible door: launch it, take the trade
   // (or refuse it), read the new gun law, and leave — nothing persists.
-  // Hawser slot order: weapon M (0) | shield M (1) | engine M (2) | cargo S (3) |
-  // utility M x3 (4,5,6) | thruster M (7). S parts sit in the M utility slots legally.
+  //
+  // It launched on the Hawser because that tug was the smallest hull with three utility
+  // slots. The tug's envelope made the package a trap: even with its best legal fit
+  // (Fusion M + Vernier M) the Hawser derives 97 speed and a 1.47 s turn-about — slower
+  // than every body the swarm fields and unable to face a threat behind it inside the
+  // one-second surround bound (D147). A starter kit that cannot disengage is not a
+  // starter kit. The Ranger's deep utility bay is the same authored idea on a hull that
+  // can move: three parts fitted, a Fusion drive and Vernier bells, and it derives
+  // ~279 speed with a ~0.40 s turn-about — inside the pack, not ahead of it.
+  // Ranger slot order: weapon M x2 front (0,1) + M turret (2) | shield M x2 (3,4) |
+  // engine L (5) | cargo M x2 (6,7) | utility L x4 (8,9,10,11) | thruster M (12).
+  // S parts sit in the L utility bays legally, and the M drive sits in the L engine bay.
   {
     id: 'storm_carom_forge',
     label: 'Storm Carom Forge',
-    hullId: 'ship_hawser',
+    hullId: 'ship_ranger',
     blurb: 'Three loose laws held at once. The armory will offer to weld them into one.',
-    // Hawser weapon capacity is 6, so the forge gun is the honest starter bolt rather than the
-    // ricochet stream — Bank Shot is the part that bends it anyway.
+    // The forge gun is the honest starter bolt rather than the ricochet stream — Bank Shot
+    // is the part that bends it anyway. The drive and the bells are not optional: they are
+    // what let a parts-hauler disengage, the same lesson the Massline Rig taught.
     loadout: [
       { slotIndex: 0, defId: 'wpn_pulse_laser_m' },
-      { slotIndex: 4, defId: 'mod_bank_shot' },
-      { slotIndex: 5, defId: 'mod_relay_arc' },
-      { slotIndex: 6, defId: 'mod_ion_payload' },
+      { slotIndex: 5, defId: 'mod_engine_fusion_m' },
+      { slotIndex: 8, defId: 'mod_bank_shot' },
+      { slotIndex: 9, defId: 'mod_relay_arc' },
+      { slotIndex: 10, defId: 'mod_ion_payload' },
+      { slotIndex: 12, defId: 'mod_thruster_vernier_m' },
     ],
   },
   // PQ-176.01 — the drive/thruster split, as two kits you can actually launch.
@@ -146,6 +159,11 @@ export const COMBAT_LAB_STARTER_PACKAGES = freezeDeep([
   // plates and off the Foreman's authored mirror prow. Slot plan follows the massline_rig
   // precedent: the Drifter's utility bays (7, 8) carry the modifiers beside a single front gun.
   // Schema-validated against spaceface.combatLabSetup.v1 on ship_drifter.
+  // IT NEEDS THE ENGINE — the same Drifter lesson the Massline Rig was built on. Bare,
+  // this hull derives ~141 while the Corsair Raider joining the roster at wave 10 does
+  // 147: a teaching kit the swarm can run down teaches the wrong lesson (D147). A Fusion
+  // Drive puts it at ~206 with a ~0.80 s turn-about, inside the same envelope the Rig
+  // holds, and still inside the hull's own outfit budget.
   {
     id: 'mirror_demonstrator',
     label: 'Mirror Demonstrator',
@@ -153,6 +171,7 @@ export const COMBAT_LAB_STARTER_PACKAGES = freezeDeep([
     hullId: 'ship_drifter',
     loadout: [
       { slotIndex: 0, defId: 'wpn_pulse_laser_s' },
+      { slotIndex: 3, defId: 'mod_engine_fusion_m' },
       { slotIndex: 7, defId: 'mod_bank_shot' },
       { slotIndex: 8, defId: 'mod_smart_bank' },
     ],
