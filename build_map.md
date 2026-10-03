@@ -612,7 +612,7 @@ listed order, in the row's commit(s). Before mutating, read the packet `.md` und
 | 104 | PB-MASS-B | SF-027+029 release-space swept-contact delta + salvage-sorting job (route around infer10's mission claims) | PB | OPEN — seam tetherGameplay serial with 103 |
 | 105 | PB-HAND-A | SF-012 swept-hull advisory for hand-flown slides — publish untargeted telemetry | PB | OPEN — seam flightV3 |
 | 106 | PB-HAND-B | SF-015 three proving-ground exercises: slip a gap, brake beside a moving load, orbit-before-release | PB | OPEN — onboarding venue, adoptable-claim check |
-| 107 | PB-ECON-B | SF-096+108+114 graded damaged delivery + stackable sealed-lot eligibility + damage clause | PB | OPEN — seam contractClauses+custody |
+| 107 | PB-ECON-B | SF-096+108+114 graded damaged delivery + stackable sealed-lot eligibility + damage clause | PB | DONE — `fragile_graded` clause (forfeit-premium, crack survives → NXB-028 partial settle); sealed-lot claims stack per-contract (pinned); recoverable spill→re-scoop→short-settle loop closed |
 | 108 | PB-ECON-C | SF-112+113 priced hazard/jurisdiction terms — detour-vs-weir-run price + threat-name binding | PB | OPEN |
 | 109 | PB-ECON-D | SF-115+117 per-cycle automation cost breakdown + capability-gated route opportunity | PB | OPEN |
 | 110 | PB-ECON-E | SF-109+116+119 supply-signal story, substitute-remedy flow, guaranteed reachable job | PB | OPEN — CHECK trio |
@@ -628,8 +628,8 @@ listed order, in the row's commit(s). Before mutating, read the packet `.md` und
 | 120 | PB-CONS-A | SF-151+159 witness-validated intake legibility + verdict escalation windows | PB | OPEN — law pair; reproduce first |
 | 121 | PB-CONS-B | SF-156+162 rescued worker returns to work + scavenger occupation switch | PB | OPEN — aftermath pair |
 | 122 | PB-CONS-C | SF-160+163 memorial responds to named loss + uncertain evidence presented as uncertain | PB | SHIPPED already true — memorialSites + witnessed/uncertain evidence in lawSecurity, pinned infer-law-rows |
-| 123 | PB-CONS-D | SF-153+161+164 restitution repairs something real, chase-end clarity, debt paid through appropriate job | PB | OPEN — custody trio |
-| 124 | PB-CONS-E | SF-152+157+158+165 detection distinction, thief-lead trail, work-pattern change, settle-once audit | PB | OPEN — CHECK quartet |
+| 123 | PB-CONS-D | SF-153+161+164 restitution repairs something real, chase-end clarity, debt paid through appropriate job | PB | SHIPPED 2026-10-02 devin-oct2-batch — SF-153/164 built: yard work credits the bill as it accrues (exact partial debt, foreign-billId guard); SF-161 already-true |
+| 124 | PB-CONS-E | SF-152+157+158+165 detection distinction, thief-lead trail, work-pattern change, settle-once audit | PB | SHIPPED 2026-10-02 devin-oct2-batch (db8d4c271) — SF-157 built: escaped raider keeps take on ai.stolenLoot + leaves bounded clue; SF-152/158/165 already-true |
 | 125 | PB-DISC-A | SF-166+168 wreck-trail navigation + survey feeds a trade decision | PB | OPEN — seam scanReveal+scanner |
 | 126 | PB-DISC-B | SF-171+178 falsifiable anomaly rule + scan that reveals an absence | PB | OPEN — seam scanner |
 | 127 | PB-DISC-C | SF-174+180 capability-gated revisit + discovery memory stale-vs-current | PB | OPEN |
@@ -655,7 +655,7 @@ listed order, in the row's commit(s). Before mutating, read the packet `.md` und
 | 147 | PB-UI-A | SF-242+251 capability comparison + draft fit projection — sim halves only; UI surface is ORRERY's | PB | OPEN |
 | 148 | PB-UI-B | SF-243+244+245 custody projection, stable-identity selection, discovery-knowledge model — sim halves | PB | OPEN |
 | 149 | PB-UI-C | SF-241+246 trade-confirm truth residue + mission phase→next-action derivation — sim halves | PB | OPEN |
-| 150 | PB-CONT-A | SF-273+274 interrupted cargo handoff conserves the lot + site reconstruction preserves work | PB | OPEN — seam saveSystem serial |
+| 150 | PB-CONT-A | SF-273+274 interrupted cargo handoff conserves the lot + site reconstruction preserves work | PB | SHIPPED 2026-10-02 devin-oct2-batch (d4c6b219d) — fail-closed site restore; seal failure refunds lot, settled intents never double-pay, _pod custody reseats, machines/counters repair conserved |
 | 151 | PB-CONT-B | SF-278+283+285 once-only rewards, no spectacle replay, interrupted failure leads back | PB | OPEN — seam saveSystem serial |
 | 152 | PB-CONT-C | SF-280+281+284 migration template, failed-save visibility, bounds preserve consequences | PB | OPEN — seam saveSystem serial |
 | 153 | PB-CONT-D | SF-271+275+276+279 interleaved-load guard verify, pause-hold ownership, focus-loss release, attachment cleanup | PB | OPEN — SF-276 pointer-cancel releases held fire and thrust; SF-271, SF-275, SF-279 still open. non-saveSystem seams; parallel-safe with 150–152 |
