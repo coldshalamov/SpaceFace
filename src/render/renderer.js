@@ -12567,7 +12567,9 @@ export const render = {
     // safe regardless — worldToScreen ignores a non-object second argument (a .map() index, say).
     const helperBindings = {
       worldToScreen: (v, out) => this.worldToScreen(v, out),
-      raycastToPlane: (ndc) => this.raycastToPlane(ndc),
+      // MACH-05 — forward the out scratch exactly like worldToScreen: a bare binding made every
+      // helpers.raycastToPlane caller allocate a result object per call.
+      raycastToPlane: (ndc, out) => this.raycastToPlane(ndc, out),
       addTrauma: (a) => cam.addTrauma(a),
       socketWorldPose: (id, name) => this.socketWorldPose(id, name),
       socketWorldPos: (id, name) => this.socketWorldPos(id, name),

@@ -821,14 +821,19 @@ export const ui = {
         for (let i = startIndex; i < flightPath.points.length; i++) {
           projectedPoints.push(flightPath.points[i]);
         }
+        // MACH-05 — one reused in/out pair for the whole polyline: per-point literal + result
+        // objects allocated two records for every path point on this overlay refresh.
+        const fpIn = this._flightPathProjIn || (this._flightPathProjIn = { x: 0, y: 0, z: 0 });
+        const fpOut = this._flightPathProjOut || (this._flightPathProjOut = { x: 0, y: 0, onScreen: false });
         const screenPoints = [];
         for (const point of projectedPoints) {
-          const projected = this.helpers.worldToScreen({ x: point.x, y: 0, z: point.z });
+          fpIn.x = point.x; fpIn.y = 0; fpIn.z = point.z;
+          const projected = this.helpers.worldToScreen(fpIn, fpOut);
           if (projected && Number.isFinite(projected.x) && Number.isFinite(projected.y)) {
-            screenPoints.push(projected);
+            screenPoints.push(`${projected.x.toFixed(1)},${projected.y.toFixed(1)}`);
           }
         }
-        const pointsValue = screenPoints.map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(' ');
+        const pointsValue = screenPoints.join(' ');
         if (pointsValue !== lastFlightPathPoints) {
           autoTargetRouteLine.setAttribute('points', pointsValue);
           lastFlightPathPoints = pointsValue;
