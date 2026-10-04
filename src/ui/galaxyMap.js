@@ -54,6 +54,11 @@ import { enhanceSelects, dataStateHtml } from './uiPrimitives.js';
 import { dpIcon, injectDeckplate } from './deckplate/index.js';
 import { entityAttr } from './entityResolver.js';
 import {
+  captureEntitySelection,
+  refreshEntitySelection,
+  resolveEntitySelection,
+} from './sim/stableSelection.js';
+import {
   careersTabAvailability, careersTabHtml, careersOverviewLineHtml,
 } from './map/careersReadout.js';
 import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';
@@ -794,6 +799,7 @@ export function resolveMapOpenTarget(state, intent) {
         x: e.pos.x,
         z: e.pos.z,
         entityId: e.id,
+        stable: captureEntitySelection(e),
         stationId,
         factionId: e.factionId || (e.data && e.data.factionId) || null,
         sectorId: sectorId || currentSectorId(state),
@@ -815,6 +821,7 @@ export function resolveMapOpenTarget(state, intent) {
           x: p.x,
           z: p.z,
           entityId: p.entityId || null,
+          stable: p.stable || null,
           stationId: p.stationId || stationId,
           factionId: p.factionId || null,
           sectorId: sid,
@@ -1289,6 +1296,7 @@ export function describeClaimMapMarker(body = {}, ledger = null, liveEntity = nu
       attackerName: defense.attackerName || null, attackerCount: defense.attackerCount || 0,
     } : null,
     targetEntityId: liveEntity && liveEntity.id || null,
+    stable: liveEntity ? captureEntitySelection(liveEntity) : null,
     kind: def ? `claim-${def.id.replace(/^spec_/, '')}` : 'claim',
     role,
     glyph: def ? def.mapGlyph : '◆',
@@ -1412,6 +1420,7 @@ export function buildClaimOwnershipMarkers(state, sectorId, claimsSystem = null)
         id: `depot-patrol:${body.id}`,
         claimId: body.id,
         targetEntityId: hull && hull.id != null ? hull.id : null,
+        stable: hull ? captureEntitySelection(hull) : null,
         kind: 'depot-patrol',
         role: 'PATROL',
         glyph: '◆',
@@ -1462,6 +1471,7 @@ export function buildClaimOwnershipMarkers(state, sectorId, claimsSystem = null)
         id: `${idPrefix}:${infrastructure.id}:${partDef.id}`,
         claimId: ownerId,
         targetEntityId: live && live.id || null,
+        stable: live ? captureEntitySelection(live) : null,
         kind,
         role: partDef.role,
         glyph: partDef.glyph,
@@ -1871,6 +1881,7 @@ export function buildSystemModel(state, sectorId, options = {}) {
           x: e.pos.x, z: e.pos.z,
           drawPos: globalToSectorLocalForSector(e.pos, sid),
           entityId: e.id,
+          stable: captureEntitySelection(e),
           stationId: data.stationId || null,
           factionId: e.factionId || data.factionId || null,
           targetSectorId: isGate
@@ -2069,6 +2080,7 @@ export function buildLocalModel(state, isHostile, options = {}) {
       hostile,
       factionId: e.factionId || null,
       entityId: e.id,
+      stable: captureEntitySelection(e),
       stationId: (e.type === 'station' && e.data && e.data.stationId) || null,
       named: !!(e.data && (e.data.namedLaneContactId || e.data.callsign || e.data.name)),
       scanHighlightUntil: kind === 'asteroid' ? (Number(e.data && e.data.scanHighlightUntil) || 0) : 0,
@@ -2220,6 +2232,51 @@ export function resolveCourseTarget(target) {
   const sectorId = target.sectorId || target.targetSectorId || null;
   if (sectorId) return { type: 'sector', sectorId, path: null, label: target.name || sectorId };
   return null;
+}
+
+/**
+ * Re-resolve a held map marker's captured stable identity against the live entity set
+ * (src/ui/sim/stableSelection.js — SF-244). A marker stamped at build time answers:
+ *
+ *   - the identity is still live -> the same marker (or a rebound copy when a durable identity
+ *     moved to a fresh instance: the selection follows the station, not the dead id);
+ *   - nothing holds that identity any more -> NULL. A destroyed transient whose entity id was
+ *     recycled must close the selection rather than paint the ring, inspector and course commit
+ *     onto the body that inherited the id.
+ *
+ * Markers without a stamp keep their historical bare-id behaviour and pass through unchanged.
+ */
+export function reconcileMapSelection(state, target) {
+  if (!target || !target.stable) return target || null;
+  const entity = resolveEntitySelection(state, target.stable);
+  if (!entity) return null;
+  if (entity.id === target.stable.entityId) return target;
+  const next = {
+    ...target,
+    stable: refreshEntitySelection(state, target.stable) || target.stable,
+    entityId: entity.id,
+  };
+  // A marker whose display id IS the entity id follows the re-materialized instance; authored
+  // marker ids (claims, readouts, sector nodes) are already durable and keep their own.
+  if (target.id === target.stable.entityId) next.id = entity.id;
+  if (entity.pos) { next.x = entity.pos.x; next.z = entity.pos.z; }
+  return next;
+}
+
+/**
+ * The entityId a course commit may bind for this marker, resolved through its stable stamp.
+ * A stamp that no longer resolves (destroyed + recycled id) answers NULL — the caller drops
+ * `targetEntityId` and the payload's position stays the fail-closed place the sim contracts.
+ * Unstamped markers answer the raw id they always carried.
+ */
+export function resolveCourseEntityId(state, target) {
+  if (!target) return null;
+  if (target.stable) {
+    const entity = resolveEntitySelection(state, target.stable);
+    return entity ? entity.id : null;
+  }
+  const raw = target.targetEntityId != null ? target.targetEntityId : target.entityId;
+  return raw != null ? raw : null;
 }
 
 /**
@@ -3520,6 +3577,7 @@ function getSearchTargets(state, level, curSecId, claimsSystem = null, isHostile
         x: c.x,
         z: c.z,
         entityId: c.entityId,
+        stable: c.stable || null,
         factionId: c.factionId,
         hostile: c.hostile,
         detail: `Contact · ${c.kind.toUpperCase()}`,
@@ -7544,6 +7602,15 @@ _onCanvasDblClick(ev) {
   _commitCourse(target, { lock = false } = {}) {
     const payload = resolveCourseTarget(target);
     if (!payload || !this._ctx || !this._ctx.bus) return false;
+    // A stamped mark may not arm a course at a different body: when its captured stable identity
+    // no longer resolves (destroyed, the id recycled onto something else) the bind is dropped
+    // and the payload's position stands alone — the fail-closed place the sim already contracts.
+    // A durable identity re-materialized onto a new instance rebinds the course to that instance.
+    if (target.stable) {
+      const liveId = resolveCourseEntityId(this._ctx.state, target);
+      if (liveId == null) delete payload.targetEntityId;
+      else payload.targetEntityId = liveId;
+    }
     if (payload.type === 'sector' && payload.sectorId) {
       this._ctx.bus.emit('world:requestRoute', { targetSectorId: payload.sectorId, mode: 'fuel' });
     }
@@ -7625,6 +7692,12 @@ _draw() {
     this._clickTargets.length = 0;
     this._lastAmbientDraw = this._nowMs();
     if (!state) return;
+    // The world moves under an open chart: a selection stamped with a stable identity follows
+    // its body onto a fresh instance, while a destroyed transient whose entity id was recycled
+    // closes instead of painting the ring and inspector onto the hull that inherited the id.
+    if (this._selectedTarget && this._selectedTarget.stable) {
+      this._selectedTarget = reconcileMapSelection(state, this._selectedTarget);
+    }
     // The screen has drawn its first frame — the capture protocol (KIT_SPEC §13) waits for this.
     if (this._root && this._root.dataset && this._root.dataset.kReady !== '1') this._root.dataset.kReady = '1';
 
@@ -9074,7 +9147,7 @@ _drawSystem(g, state, w, h) {
       const pointMark = chartMarkSizes(p, pxPerWU);
       const target = {
         sx: x, sy: y, radiusPx: Math.max(pointMark.pipPx, isStation || isGate ? 14 : 10), kind: p.kind, id: p.id, x: p.x, z: p.z,
-        entityId: p.entityId, stationId: p.stationId, targetSectorId: p.targetSectorId,
+        entityId: p.entityId, stationId: p.stationId, stable: p.stable || null, targetSectorId: p.targetSectorId,
         name: displayName, factionId: p.factionId,
         mapKind: p.mapKind, stageId: p.stageId, stageLabel: p.stageLabel,
         coursePos: p.coursePos, courseLabel: p.courseLabel,
@@ -9619,7 +9692,7 @@ _drawLocal(g, state, w, h) {
           pushEdgeTick(x, y, c.hostile && c.kind !== 'station' && c.kind !== 'gate' ? INK.red : INK.ink0,
             c.kind === 'gate' ? 'gate' : c.kind === 'station' ? 'station' : 'hostile', {
               kind: c.kind, id: c.id, x: c.x, z: c.z,
-              entityId: c.entityId, stationId: c.stationId, name: displayName, factionId: c.factionId,
+              entityId: c.entityId, stationId: c.stationId, stable: c.stable || null, name: displayName, factionId: c.factionId,
               hostile: c.hostile,
               detail: `Contact · ${displayName} · off-view ${c.kind.toUpperCase()}`,
             });
@@ -9630,7 +9703,7 @@ _drawLocal(g, state, w, h) {
       const contactMark = chartMarkSizes(c, baseScale * cam.zoom);
       this._clickTargets.push({
         sx: x, sy: y, radiusPx: Math.max(contactMark.pipPx, c.kind === 'asteroid' ? 6 : 11), kind: c.kind, id: c.id, x: c.x, z: c.z,
-        entityId: c.entityId, stationId: c.stationId, name: displayName, factionId: c.factionId,
+        entityId: c.entityId, stationId: c.stationId, stable: c.stable || null, name: displayName, factionId: c.factionId,
         hostile: c.hostile,
         closed: c.closed === true,
         statusLine: c.statusLine || null,
