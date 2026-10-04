@@ -89,7 +89,9 @@ test('the regrowth clock is durable, deterministic, and gated below the worked b
   const data = fieldDepletion.serialize.call(sys);
   assert.equal(data.fields.f_test.regrownBatches, 1);
   const restored = createGameState(77);
-  fieldDepletion.deserialize.call({ state: restored }, data);
+  const restoreSys = { state: restored };
+  restoreSys.deserializeChunked = fieldDepletion.deserializeChunked.bind(restoreSys);
+  fieldDepletion.deserialize.call(restoreSys, data);
   assert.equal(restored.fieldDepletion.fields.f_test.regrownBatches, 1);
   assert.equal(restored.fieldDepletion.fields.f_test.lastRegrowT, FIELD_REGROWTH_INTERVAL_S);
 });
