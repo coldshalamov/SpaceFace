@@ -528,7 +528,6 @@ rows carry commits and focused suites. NXI-024's evidence was re-anchored on its
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
 | 14 | D83 | pq020 Ceres structural-cost digest drift — adjudicate semantically, then re-derive the pin | FIX | CLAIMED devin-graphics |
-| 15 | D67 | Market-tab dispatch hang — not reproduced; one quiet-host sweep owed before delete | FIX | PARKED needs quiet host |
 | 16 | D24 | Renderer resource residency — fix landed `4365769c6`; 40-cycle uncontended soak owed | FIX | PARKED needs quiet host |
 | 17 | D54 | Hero landmarks: dark-freighter place model, Anvil well-edge, ×30 Wreck Cathedral draw scale | ART | CLAIMED devin-graphics |
 | 18 | D72 | Pelican starter hull is blockout-grade | ART | CLAIMED devin-graphics |
@@ -2676,7 +2675,6 @@ writes minutes old at checkpoint; do not touch.
 
 **Open items — each owned by a dispatched wave agent (fresh worktree writes at checkpoint):**
 - soak encounters `got 0` + `first layered sync should import fixed bodies once` (spawn path)
-- `check-station-tabs`: market tab pointer response absent
 - 47-A telemetry envelope re-record: **owner action after sim-moving fixes land** — re-record
   hash + moved-field counts + a notes entry citing Package D/E/F evidence (`f70aac37f`,
   `1639c221e`, `b7b499263`, `954a0ab8c`). Do NOT pin-update without that ruling.
