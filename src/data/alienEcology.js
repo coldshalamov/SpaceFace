@@ -1065,6 +1065,9 @@ export const EVIDENCE_TABLE = Object.freeze({
     text: 'The shepherd\'s corridor failed and the growth did not flood in — it waited at the gap. It chose.' }),
   L10: Object.freeze({ tier: 3, source: 'veil_exception_chamber',
     text: 'The verdict record is physical: a chamber that adjudicates by proximity. Appeals are locations.' }),
+  // SFQ-B078 — the human × living-site collision beat: salvage law met the older claim.
+  L11: Object.freeze({ tier: 1, source: 'cinder_nursery',
+    text: 'Human claim stakes ring a living site — the filaments grew around the markers, not through them. Two registries hold one barge.' }),
   // Phase 31 P-table — program mysteries; earned from setpieces and deep play.
   P01: Object.freeze({ tier: 3, source: 'harvest_deep',
     text: 'The harvest-deep strata are machined to fold — the deep architecture predates the sectors it lives under.' }),
@@ -1141,7 +1144,9 @@ export function grantAlienUnique(world, defId, viaKey) {
 // ── Phase 29 / AE-282..AE-290 — N-table setpieces: one-shot authored beats that fire on
 // condition, record evidence, and never refire. `rec.setpieces[id]` is the once-flag. ──
 // trigger: 'approach' (radius), 'close' (radius), 'hold' (seconds inside radius),
-//          'cross' (cross the line), 'exposed' (exposure threshold), 'interact'.
+//          'cross' (cross the line), 'exposed' (exposure threshold), 'interact',
+//          'foreignWork' (non-player beam work lands on a living site component — fired by
+//          the claim-crew cycle, not the motion scanner).
 export const SETPIECE_DEFS = Object.freeze([
   Object.freeze({ id: 'N01_broken_corridor', siteId: 'charon_broken_shepherd', trigger: 'approach', radius: 700,
     evidence: 'L09',
@@ -1182,12 +1187,56 @@ export const SETPIECE_DEFS = Object.freeze([
   Object.freeze({ id: 'N15_deep_chorus', siteId: 'harvest_deep', trigger: 'close', radius: 300, needsRevelation: 3,
     evidence: 'P01',
     text: 'At deep-trace sensitivity the strata harmonize — the architecture is not under the sector. The sector is in the architecture.' }),
+  // SFQ-B078 — fired by the claim-crew work cycle (src/systems/alienEcology.js), not by the
+  // motion triggers below: the beat is FOREIGN industrial work on a living component.
+  Object.freeze({ id: 'N16_claim_torches', siteId: 'cinder_nursery', trigger: 'foreignWork',
+    evidence: 'L11',
+    text: 'Industrial torchlight on a living hull — the claim crew cuts, and the whole cast turns toward the sound.' }),
 ]);
 
 /** Setpiece def by id. */
 export function setpieceById(id) {
   return SETPIECE_DEFS.find((s) => s.id === id) || null;
 }
+
+// ── SFQ-B078 — the nursery claim crew (M31 × M34 collision beat) ────────────────────────────
+// An authored human salvage detail that works a LIVING ecology site on the ordinary routes:
+// their cutters feed the world-site's declared industrial-work intake (the same beam-op
+// record, cursor, and once-rules the player's mining beam uses), and the site answers through
+// its own consequence chain (extract_cyst_cluster → nursery_bloom intent → bloom handler +
+// released payload). No bespoke physics anywhere: the crew is ordinary spawned ship traffic,
+// their work is the site's single writer, the choice (protect / let them work / race) is the
+// player's. All numbers authored here; the runtime never invents a phase or a rate.
+export const NURSERY_CLAIM_CREW = Object.freeze({
+  setpieceId: 'N16_claim_torches',
+  siteId: 'cinder_nursery',
+  worldSiteId: 'world_site_charon_cinder_nursery',
+  componentId: 'cyst_cluster',
+  operationId: 'extract_cyst_cluster',
+  verb: 'extract',
+  // The nursery manifest declares this stream for its operations; kernel rule: a request
+  // stream must BE the operation's declared stream, so every industrial worker on this site
+  // — player or crew — feeds the same intake and the same once-rules. Sequence = state.tick.
+  requestStreamId: 'player-industrial-beam',
+  crewSize: 2,
+  factionId: 'faction_free',
+  archetypePassive: 'fleeing_trader',
+  archetypeHostile: 'pirate',
+  radius: 10,
+  mass: 12,
+  hull: 70,
+  approachSpeed: 26,
+  spawnRadius: 620,    // inside the close arrival band (520) reading distance, off the barge
+  workRange: 90,
+  workPerSec: 0.5,     // threshold 20 → ~40 s of readable torch work
+  workBatchS: 1.5,
+  armedS: 2.5,         // burn-in delay after the player closes — the crew arrives, not pre-set
+  leaveGraceS: 6,
+  arriveComms: 'Claim crew (tight beam): "That barge is posted for salvage — the cyst lot is ours by claim. We file interference on anyone who closes."',
+  hostileComms: 'Claim crew (open channel): "Cutters down! The claim stands and you are the interference now."',
+  lapsedComms: 'Claim crew (tight beam): "Someone beat the torches. Claim\'s dead — we burn for the next posted lot."',
+  paidComms: 'Claim crew (tight beam): "Rupture confirmed, contract paid. The spill is forfeit — take it or leave it."',
+});
 
 /** Weighted ecology encounter pick for a zone (deterministic via the caller's rng). */
 export function pickEcologyEncounter(state, sectorId, zoneId, rng) {
