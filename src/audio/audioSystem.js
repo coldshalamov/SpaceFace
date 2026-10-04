@@ -7592,6 +7592,19 @@ export const audio = {
     }
   },
 
+  // FB-079: the tow's mass. The mirror carries no mass field, so the body is read
+  // read-only through tether.targetId — the same lookup flightV3 uses for its anchor.
+  // A missing body or non-finite mass degrades to "no lift", identical to a bare line.
+  // Shared by the Elementary rope voice and the legacy hum so both backends lift off
+  // the same number on the same frame.
+  _tetherTowMass(tether) {
+    const entities = this.state && this.state.entities;
+    const towed = tether && tether.targetId != null && entities && typeof entities.get === 'function'
+      ? entities.get(tether.targetId)
+      : null;
+    return towed && Number.isFinite(towed.mass) ? towed.mass : undefined;
+  },
+
   _pushElementaryVoices(dt) {
     const rt = this.rt;
     if (!rt || !rt.ctx) return;
@@ -7609,7 +7622,7 @@ export const audio = {
       : null;
     const input = (this.state && this.state.input) || {};
     const tetherState = this.state && this.state.player && this.state.player.tether;
-    const tether = readTetherLoad(tetherState);
+    const tether = readTetherLoad(tetherState, this._tetherTowMass(tetherState));
     const prev = rt._elemVoice || (rt._elemVoice = { engineGain: 0, ropeGain: 0 });
     const stepDt = (inFlight && !paused) ? Math.min(Math.max(0, Number(dt) || 0), 0.25) : 0;
     const next = stepElementaryVoices(prev, {
@@ -7942,18 +7955,14 @@ export const audio = {
     // reduced motion quiets the tone, never silences it — it is information, not ornament.
     // FB-079: the tow's own mass feeds resolveTetherTone's towMass channel — a heavy tow
     // creaks even before its strain climbs; the lift only applies while the line is taut,
-    // so a slack line stays silent. The mirror carries no mass, so the body is read
-    // read-only through tether.targetId, the same lookup flightV3 uses for its anchor.
+    // so a slack line stays silent. _tetherTowMass does the read-only targetId lookup the
+    // Elementary rope voice uses too, so both backends lift off the same number.
     const strain = clamp(Number(tether && tether.strain) || 0, 0, 1.25);
     const motionReduce = !!(this.state.settings && this.state.settings.video
       && this.state.settings.video.motionReduce);
-    const entities = this.state.entities;
-    const towed = tether && tether.targetId != null && entities && typeof entities.get === 'function'
-      ? entities.get(tether.targetId)
-      : null;
     const tone = resolveTetherTone({
       tether,
-      towMass: towed && Number.isFinite(towed.mass) ? towed.mass : undefined,
+      towMass: this._tetherTowMass(tether),
       motionReduce,
       duck: rt.sidechainDuck,
     });

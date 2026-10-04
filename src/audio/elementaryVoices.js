@@ -15,7 +15,7 @@ import {
   TETHER_TONE_MOTION_REDUCE,
   TETHER_TONE_RELEASE_S,
   TETHER_TONE_SILENCE,
-  TETHER_TONE_TAUT_PHASES,
+  resolveTetherLineLoad,
 } from './masslineInstrument.js';
 
 /** Existing engine-hum fundamentals. Idle is silent; the others are the authored tiers. */
@@ -123,14 +123,14 @@ export function readPublishedThrottle(source = {}) {
   return clamp(Math.max(0, physics, pilot, strafe), 0, 1);
 }
 
-/** Taut line only. Slack and a missing tether publish load 0 and playing false. */
-export function readTetherLoad(tether) {
-  const phase = String((tether && tether.phase) || '');
-  const playing = !!(tether && (tether.active === true || TETHER_TONE_TAUT_PHASES.includes(phase)));
-  const raw = playing
-    ? (Number.isFinite(tether.load) ? tether.load : Number(tether.strain) || 0)
-    : 0;
-  return { playing, load: clamp(raw, 0, 1.25) };
+/**
+ * Taut line only. Slack and a missing tether publish load 0 and playing false. FB-079:
+ * the caller's resolved tow mass lifts the read through the same law the legacy hum's
+ * resolveTetherTone uses — one writer (resolveTetherLineLoad), so a heavy tow creaks on
+ * this backend exactly as authored there, and never through a slack line.
+ */
+export function readTetherLoad(tether, towMass) {
+  return resolveTetherLineLoad(tether, towMass);
 }
 
 /**
