@@ -91,6 +91,21 @@ import {
   SWARM_BROOD_MAX,
   SWARM_BROOD_MIN,
   SWARM_BROOD_STATE_KEY,
+  SWARM_BROOD_TENDRIL_ID,
+  TENDRIL_HEAD_LOOT_ID,
+  TENDRIL_SEG_CONTACT_COOLDOWN_S,
+  TENDRIL_SEG_CONTACT_DAMAGE,
+  TENDRIL_SEG_CONTACT_SHOVE_DV,
+  TENDRIL_SEG_HULL,
+  TENDRIL_SEG_MAX,
+  TENDRIL_SEG_PAY_FAMILY,
+  TENDRIL_SEG_PER_WORM,
+  TENDRIL_SEG_RADIUS,
+  TENDRIL_SEG_SPACING,
+  TENDRIL_SEG_SPEED,
+  TENDRIL_SEG_WIGGLE_BLEND,
+  TENDRIL_SEG_WIGGLE_RAD_S,
+  swarmBroodBossFor,
   swarmBroodKillPay,
   swarmBroodPlan,
 } from '../data/swarmBrood.js';
@@ -194,7 +209,39 @@ export function createBroodEngine(deps = {}) {
   const movMass = new Float32Array(MOVER_CACHE_MAX);
   const movRad = new Float32Array(MOVER_CACHE_MAX);
   const movIsPlayer = new Uint8Array(MOVER_CACHE_MAX);
+  const movIsHead = new Uint8Array(MOVER_CACHE_MAX);
   let movCount = 0;
+
+  // --- B3: the Tendril's segment chain (see src/data/swarmBrood.js §B3) ---------------------
+  //
+  // Segments are light bodies like the flock but live on their own buffers: they do not
+  // flock, do not attack, and do not count in the population law — they are the boss's body.
+  // `segLead` is the Centipede link: SEG_LEAD_HEAD trails the champion hull, a slot index
+  // trails that segment, SEG_LEAD_FREE means the link ahead died and this body now leads a
+  // free chain that hunts the pilot on its own serpentine.
+  const SEG_LEAD_HEAD = -1;
+  const SEG_LEAD_FREE = -2;
+  const segX = new Float32Array(TENDRIL_SEG_MAX);
+  const segZ = new Float32Array(TENDRIL_SEG_MAX);
+  const segVX = new Float32Array(TENDRIL_SEG_MAX);
+  const segVZ = new Float32Array(TENDRIL_SEG_MAX);
+  const segHp = new Float32Array(TENDRIL_SEG_MAX);
+  const segAlive = new Uint8Array(TENDRIL_SEG_MAX);
+  const segLead = new Int32Array(TENDRIL_SEG_MAX);
+  const segHeading = new Float32Array(TENDRIL_SEG_MAX);
+  const segSeed = new Float32Array(TENDRIL_SEG_MAX);
+  const segContactT = new Float32Array(TENDRIL_SEG_MAX);
+  let segAliveCount = 0;
+  let tendrilMode = false;    // the live wave is the Tendril's
+  let tendrilHeadSeen = false;
+  let tendrilDone = false;    // the head died — the body collapsed with it
+  let wormSpawned = false;    // the chain lands once per wave; dead links stay dead
+  // Head discovery — the champion hull is a real entity, found by its catalog stamp.
+  let headX = 0;
+  let headZ = 0;
+  let headVX = 0;
+  let headVZ = 0;
+  let headFound = false;
 
   // per-tick kill receipt scratch (causes fixed — SWARM_BROOD_KILL_CAUSES order)
   const CAUSE_N = SWARM_BROOD_KILL_CAUSES.length;
@@ -241,7 +288,7 @@ export function createBroodEngine(deps = {}) {
   let liveWave = 0;
 
   const view = {
-    schema: 'spaceface.swarmBrood.v2',
+    schema: 'spaceface.swarmBrood.v3',
     cap: CAP,
     aliveCount: 0,
     wave: 0,
@@ -251,6 +298,15 @@ export function createBroodEngine(deps = {}) {
     lobCount: 0,
     poolX, poolZ, poolAge, poolTtl,
     poolCount: 0,
+    // B3 — the Tendril's body. The champion hull is a real entity; this is the chain it
+    // drags: segLead === SEG_LEAD_HEAD trails the head, a slot index trails that segment,
+    // SEG_LEAD_FREE is a split body hunting on its own (presentation tints it hungrier).
+    tendril: false,
+    segAliveCount: 0,
+    segX, segZ, segVX, segVZ, segHeading, segAlive, segLead,
+    segLeadHead: SEG_LEAD_HEAD,
+    segLeadFree: SEG_LEAD_FREE,
+    segRadius: TENDRIL_SEG_RADIUS,
   };
 
   // --- family table mirror (numeric fields the hot loop reads, rebuilt on demand) ----------
@@ -303,6 +359,15 @@ export function createBroodEngine(deps = {}) {
     if (lobCount > 0) { lobAlive.fill(0); lobCount = 0; }
     poolCount = 0;
     acidTickAcc = 0;
+    if (segAliveCount > 0) segAlive.fill(0);
+    segAliveCount = 0;
+    segLead.fill(0);
+    segContactT.fill(0);
+    tendrilMode = false;
+    tendrilHeadSeen = false;
+    tendrilDone = false;
+    wormSpawned = false;
+    headFound = false;
     publish();
     void reason;
   }
@@ -314,8 +379,12 @@ export function createBroodEngine(deps = {}) {
     clear('wave_planned');
     rng = mulberry32(broodStreamSeed(seed, w));
     pendingPlan = swarmBroodPlan(w, rng);
+    // The Tendril's wave arms the body: the engine waits for the champion hull to materialize
+    // (a real entity, stamped by its catalog id) and trails the chain behind it.
+    tendrilMode = swarmBroodBossFor(w) === SWARM_BROOD_TENDRIL_ID;
     liveWave = w;
     view.wave = liveWave;
+    view.tendril = tendrilMode;
     publish();
   }
 
@@ -409,6 +478,10 @@ export function createBroodEngine(deps = {}) {
       const e = list[i];
       if (!e || e.alive === false || !e.pos) continue;
       if (e.collides === false) continue;
+      // The Tendril head is never terrain — it plows the flock through the MOVER cache like
+      // any heavy body. Under the index it never reaches this list anyway; on the un-indexed
+      // fallback every entity lands here, and without the guard the worm eats its own neck.
+      if (e.data && e.data.lootTableId === TENDRIL_HEAD_LOOT_ID) continue;
       rockX[rockCount] = finite(e.pos.x);
       rockZ[rockCount] = finite(e.pos.z);
       rockR[rockCount] = finite(e.radius, 10) * 1.05;
@@ -420,12 +493,23 @@ export function createBroodEngine(deps = {}) {
 
   function cacheMovers(state) {
     movCount = 0;
+    headFound = false;
     const list = indexedShipLikeScan(state);
     const playerId = state.playerId;
     for (let i = 0; i < list.length && movCount < MOVER_CACHE_MAX; i++) {
       const e = list[i];
       if (!e || e.alive === false || !e.pos || !e.vel) continue;
       if (e.type !== 'ship' && e.type !== 'drone') continue;
+      // The Tendril's head is the wave's champion hull — a real entity found by its catalog
+      // stamp, the same read-only seam every other system uses to recognize a named hull.
+      const isHead = e.data && e.data.lootTableId === TENDRIL_HEAD_LOOT_ID;
+      if (isHead) {
+        headX = finite(e.pos.x);
+        headZ = finite(e.pos.z);
+        headVX = finite(e.vel.x);
+        headVZ = finite(e.vel.z);
+        headFound = true;
+      }
       movX[movCount] = finite(e.pos.x);
       movZ[movCount] = finite(e.pos.z);
       movVX[movCount] = finite(e.vel.x);
@@ -433,6 +517,7 @@ export function createBroodEngine(deps = {}) {
       movMass[movCount] = finite(e.mass, 1);
       movRad[movCount] = finite(e.radius, 6);
       movIsPlayer[movCount] = e.id === playerId ? 1 : 0;
+      movIsHead[movCount] = isHead ? 1 : 0;
       movCount += 1;
     }
   }
@@ -452,7 +537,11 @@ export function createBroodEngine(deps = {}) {
   function step(state) {
     const run = liveSwarmRun(state);
     if (!run || run.phase !== 'active' || state.mode !== 'flight') return false;
-    if (aliveCount <= 0 && lobCount <= 0 && poolCount <= 0) { publish(); return false; }
+    // The Tendril wave keeps stepping while the body may still exist — the champion hull can
+    // materialize after the flock dies, and the chain outlives it by exactly one collapse.
+    const tendrilWatching = tendrilMode && !tendrilDone;
+    if (aliveCount <= 0 && lobCount <= 0 && poolCount <= 0 && segAliveCount <= 0
+      && !tendrilWatching) { publish(); return false; }
 
     cachePlayer(state);
     cacheRocks(state);
@@ -637,6 +726,7 @@ export function createBroodEngine(deps = {}) {
     sweepWhipLine(state);
     stepLobs(state, dt);
     stepPools(state, dt);
+    stepTendril(state, dt, simTime);
     flushKills(state);
     publish();
     return true;
@@ -885,6 +975,189 @@ export function createBroodEngine(deps = {}) {
     void state;
   }
 
+  // --- B3: the Tendril's body --------------------------------------------------------------
+  //
+  // The head is a real hull fighting the authored score; the body behind it is this chain.
+  // The chain's telegraph is the thing itself — the weave lane is the score's tell, and the
+  // body visibly follows the line the head commits to. Segments die by the same room law the
+  // flock dies by (rocks, plows, whips, blasts); killing a middle link frees the chain behind
+  // it to hunt on its own, and killing the head collapses the whole body. The constraint is
+  // the worm's muscle: a hard projection, so the chain holds its spacing through any field.
+
+  /** Lay the chain behind the head the first tick the champion hull is seen. */
+  function spawnWorm() {
+    // The body trails where the head is heading: its velocity, or toward the pilot when the
+    // head has just materialized and is still finding its line.
+    const hspd = Math.sqrt(headVX * headVX + headVZ * headVZ);
+    let dirx;
+    let dirz;
+    if (hspd > 1) { dirx = headVX / hspd; dirz = headVZ / hspd; }
+    else {
+      const dx = playerX - headX;
+      const dz = playerZ - headZ;
+      const d = Math.sqrt(dx * dx + dz * dz) || 1;
+      dirx = dx / d; dirz = dz / d;
+    }
+    const n = Math.min(TENDRIL_SEG_PER_WORM, TENDRIL_SEG_MAX);
+    for (let k = 0; k < n; k++) {
+      segX[k] = headX - dirx * TENDRIL_SEG_SPACING * (k + 1);
+      segZ[k] = headZ - dirz * TENDRIL_SEG_SPACING * (k + 1);
+      segVX[k] = headVX;
+      segVZ[k] = headVZ;
+      segHp[k] = TENDRIL_SEG_HULL;
+      segAlive[k] = 1;
+      segLead[k] = k === 0 ? SEG_LEAD_HEAD : k - 1;
+      segHeading[k] = Math.atan2(dirz, dirx);
+      segSeed[k] = rng() * Math.PI * 2;
+      segContactT[k] = 0;
+    }
+    segAliveCount = n;
+    wormSpawned = true;
+    view.segAliveCount = segAliveCount;
+  }
+
+  /** The head died — the whole body comes apart with it (the knot's last act). */
+  function collapseTendril() {
+    tendrilDone = true;
+    for (let i = 0; i < TENDRIL_SEG_MAX; i++) {
+      if (segAlive[i]) killSeg(i, 'direct', segX[i], segZ[i]);
+    }
+    view.segAliveCount = 0;
+  }
+
+  /** One dead link: the receipt, and the Centipede rule — its follower now leads a free body. */
+  function killSeg(i, cause, sampleX, sampleZ) {
+    if (!segAlive[i]) return;
+    segAlive[i] = 0;
+    segAliveCount -= 1;
+    view.segAliveCount = segAliveCount;
+    for (let j = 0; j < TENDRIL_SEG_MAX; j++) {
+      if (segAlive[j] && segLead[j] === i) segLead[j] = SEG_LEAD_FREE;
+    }
+    const c = CAUSE_INDEX[cause];
+    if (c == null) return;
+    killCount[c] += 1;
+    if (killCount[c] === 1) {
+      killPosX[c] = finite(sampleX);
+      killPosZ[c] = finite(sampleZ);
+    }
+    const pay = killPayFor(TENDRIL_SEG_PAY_FAMILY);
+    killCredits[c] += pay.credits;
+    killScore[c] += pay.score;
+  }
+
+  function stepTendril(state, dt, simTime) {
+    if (!tendrilMode || tendrilDone) return;
+    if (!headFound) {
+      // The head vanished after materializing — the champion hull died; the body dies with it.
+      if (tendrilHeadSeen) collapseTendril();
+      return;
+    }
+    tendrilHeadSeen = true;
+    if (!wormSpawned) spawnWorm();
+    if (segAliveCount <= 0) return;
+    const spacing = TENDRIL_SEG_SPACING;
+    for (let i = 0; i < TENDRIL_SEG_MAX; i++) {
+      if (!segAlive[i]) continue;
+      const ox = segX[i];
+      const oz = segZ[i];
+      let lead = segLead[i];
+      // A dead or missing lead frees its follower — the split is the counter's second reward.
+      if (lead >= 0 && !segAlive[lead]) lead = segLead[i] = SEG_LEAD_FREE;
+      if (lead === SEG_LEAD_HEAD && !headFound) lead = segLead[i] = SEG_LEAD_FREE;
+      if (lead === SEG_LEAD_FREE) {
+        // A free body still hunts: serpentine seek on the pilot, wiggle and all.
+        const dx = playerX - ox;
+        const dz = playerZ - oz;
+        const d = Math.sqrt(dx * dx + dz * dz) || 1;
+        const wob = Math.sin(simTime * TENDRIL_SEG_WIGGLE_RAD_S + segSeed[i])
+          * TENDRIL_SEG_WIGGLE_BLEND;
+        const nx = dx / d;
+        const nz = dz / d;
+        const mx = nx - nz * wob;
+        const mz = nz + nx * wob;
+        const ml = Math.sqrt(mx * mx + mz * mz) || 1;
+        segVX[i] = (mx / ml) * TENDRIL_SEG_SPEED;
+        segVZ[i] = (mz / ml) * TENDRIL_SEG_SPEED;
+        segX[i] += segVX[i] * dt;
+        segZ[i] += segVZ[i] * dt;
+      } else {
+        // Attached: hold the authored spacing behind the lead point — a projection, so the
+        // chain is taut through the weave instead of sagging on a spring.
+        const tx = lead === SEG_LEAD_HEAD ? headX : segX[lead];
+        const tz = lead === SEG_LEAD_HEAD ? headZ : segZ[lead];
+        const dx = segX[i] - tx;
+        const dz = segZ[i] - tz;
+        const d = Math.sqrt(dx * dx + dz * dz);
+        if (d > spacing && d > 1e-4) {
+          const k = (d - spacing) / d;
+          segX[i] -= dx * k;
+          segZ[i] -= dz * k;
+        }
+        segVX[i] = (segX[i] - ox) / dt;
+        segVZ[i] = (segZ[i] - oz) / dt;
+      }
+      const sp2 = segVX[i] * segVX[i] + segVZ[i] * segVZ[i];
+      if (sp2 > 4) {
+        const target = Math.atan2(segVZ[i], segVX[i]);
+        let dh = target - segHeading[i];
+        while (dh > Math.PI) dh -= Math.PI * 2;
+        while (dh < -Math.PI) dh += Math.PI * 2;
+        segHeading[i] += dh * Math.min(1, 8 * dt);
+      }
+      // Hull contact: the body's approach is its own telegraph — a light sting and a shove,
+      // on the same cadence law the flock uses so a chain rakes instead of melting.
+      segContactT[i] -= dt;
+      if (segContactT[i] <= 0 && playerRef && playerRef.alive !== false && sp2 > 1) {
+        const dx = playerX - segX[i];
+        const dz = playerZ - segZ[i];
+        const rr = playerRad + TENDRIL_SEG_RADIUS;
+        if (dx * dx + dz * dz <= rr * rr) {
+          routePlayerDamage(TENDRIL_SEG_CONTACT_DAMAGE, segX[i], segZ[i], 'brood_tendril');
+          const d = Math.sqrt(dx * dx + dz * dz) || 1;
+          queuePhysicsImpulse(playerRef, {
+            x: (dx / d) * TENDRIL_SEG_CONTACT_SHOVE_DV * playerMass,
+            y: 0,
+            z: (dz / d) * TENDRIL_SEG_CONTACT_SHOVE_DV * playerMass,
+          });
+          segContactT[i] = TENDRIL_SEG_CONTACT_COOLDOWN_S;
+        }
+      }
+      // Deaths by the room — the same law the flock obeys. A fast rock is a thrown rock:
+      // the sling's answer to the committed weave lives here, verbatim.
+      for (let r = 0; r < rockCount; r++) {
+        const dx = segX[i] - rockX[r];
+        const dz = segZ[i] - rockZ[r];
+        const rr = rockR[r] + TENDRIL_SEG_RADIUS;
+        if (dx * dx + dz * dz > rr * rr) continue;
+        const relx = rockVX[r] - segVX[i];
+        const relz = rockVZ[r] - segVZ[i];
+        const moving = relx * relx + relz * relz >= BROOD_PLOW_MIN_SPEED * BROOD_PLOW_MIN_SPEED;
+        killSeg(i, moving ? 'collision' : 'terrain', segX[i], segZ[i]);
+        break;
+      }
+      if (!segAlive[i]) continue;
+      // Deaths by plow — everything the flock dies to, EXCEPT its own head (the worm cannot
+      // eat itself mid-weave; the head sweeping its own chain is the weave, not a throw).
+      for (let m = 0; m < movCount; m++) {
+        if (movIsHead[m]) continue;
+        const dx = segX[i] - movX[m];
+        const dz = segZ[i] - movZ[m];
+        const rr = movRad[m] + TENDRIL_SEG_RADIUS;
+        if (dx * dx + dz * dz > rr * rr) continue;
+        const relx = movVX[m] - segVX[i];
+        const relz = movVZ[m] - segVZ[i];
+        const relSpeed2 = relx * relx + relz * relz;
+        const isPlayer = movIsPlayer[m] === 1;
+        const ramSpeed = isPlayer ? BROOD_PLAYER_RAM_SPEED : BROOD_PLOW_MIN_SPEED;
+        if (relSpeed2 >= ramSpeed * ramSpeed && (isPlayer || movMass[m] >= BROOD_PLOW_MIN_MASS)) {
+          killSeg(i, 'collision', segX[i], segZ[i]);
+          break;
+        }
+      }
+    }
+  }
+
   /** The tether line itself is a blade: a taut sweep shreds or bats the brood it crosses. */
   function sweepWhipLine(state) {
     const player = state.entities && state.playerId != null ? state.entities.get(state.playerId) : null;
@@ -926,12 +1199,26 @@ export function createBroodEngine(deps = {}) {
         vz[i] += batz;
       }
     }
+    // The same line crosses the Tendril's body — a taut whip severs a link exactly like it
+    // shreds a mite, and the freed tail hunts on its own.
+    for (let i = 0; i < TENDRIL_SEG_MAX; i++) {
+      if (!segAlive[i]) continue;
+      const t = ((segX[i] - axp) * segx + (segZ[i] - azp) * segz) / len2;
+      const tc = t < 0 ? 0 : t > 1 ? 1 : t;
+      const cxn = axp + segx * tc;
+      const czn = azp + segz * tc;
+      const dx = segX[i] - cxn;
+      const dz = segZ[i] - czn;
+      const rr = halfWidth + TENDRIL_SEG_RADIUS;
+      if (dx * dx + dz * dz > rr * rr) continue;
+      if (kills) killSeg(i, 'collision', segX[i], segZ[i]);
+    }
   }
 
   // --- explosions (event-driven; the shared blast receipts) --------------------------------
 
   function onExplosion(payload) {
-    if (!payload || aliveCount <= 0) return;
+    if (!payload || (aliveCount <= 0 && segAliveCount <= 0)) return;
     const ex = finite(payload.pos && payload.pos.x, NaN);
     const ez = finite(payload.pos && payload.pos.z, NaN);
     const radius = finite(payload.radius, NaN);
@@ -957,6 +1244,15 @@ export function createBroodEngine(deps = {}) {
       const falloff = 1 - d / shoveR;
       vx[i] += (dx / d) * falloff * 90;
       vz[i] += (dz / d) * falloff * 90;
+    }
+    for (let i = 0; i < TENDRIL_SEG_MAX; i++) {
+      if (!segAlive[i]) continue;
+      const dx = segX[i] - ex;
+      const dz = segZ[i] - ez;
+      const d2 = dx * dx + dz * dz;
+      if (d2 <= killR2) killSeg(i, 'explosive', ex, ez);
+      // A blast shove on a chain is just a faster weave for a tick — the projection next
+      // tick pulls it back onto the line, which reads as the body flexing, not breaking.
     }
     flushKillsFrom(getState());
     publish();
@@ -1020,6 +1316,8 @@ export function createBroodEngine(deps = {}) {
     view.wave = liveWave;
     view.lobCount = lobCount;
     view.poolCount = poolCount;
+    view.tendril = tendrilMode;
+    view.segAliveCount = segAliveCount;
     const state = getState();
     if (state && state[SWARM_BROOD_STATE_KEY] !== view) {
       // Assign once; the view identity is stable for the engine's whole life.
@@ -1046,12 +1344,25 @@ export function createBroodEngine(deps = {}) {
     _bodies: { px, pz, vx, vz, alive, family, heading, hp, phase, timer, teleX, teleZ, teleDir, serial, seedPhase },
     _lobs: { x: lobX, z: lobZ, t: lobT, total: lobTotal, tx: lobTX, tz: lobTZ, alive: lobAlive },
     _pools: { x: poolX, z: poolZ, age: poolAge, ttl: poolTtl },
+    // B3 — the Tendril's chain: read-only buffers plus one write seam for the split test.
+    _segs: { x: segX, z: segZ, vx: segVX, vz: segVZ, hp: segHp, alive: segAlive, lead: segLead, heading: segHeading },
+    _tendril() {
+      return { mode: tendrilMode, headSeen: tendrilHeadSeen, done: tendrilDone, spawned: wormSpawned, headFound };
+    },
     _setFamilyMirrorForTest: setFamilyMirror,
     _killDirectForTest(i, cause) {
       killCount.fill(0);
       killCredits.fill(0);
       killScore.fill(0);
       kill(i, cause, px[i], pz[i]);
+      flushKillsFrom(getState());
+      publish();
+    },
+    _killSegDirectForTest(i, cause) {
+      killCount.fill(0);
+      killCredits.fill(0);
+      killScore.fill(0);
+      killSeg(i, cause, segX[i], segZ[i]);
       flushKillsFrom(getState());
       publish();
     },

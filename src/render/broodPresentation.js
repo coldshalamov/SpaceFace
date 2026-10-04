@@ -15,7 +15,8 @@
 // and population stay exact.
 
 import * as THREE from 'three';
-import { SWARM_BROOD_FAMILIES, BROOD_SPITTER_SPLASH_RADIUS, BROOD_SPITTER_POOL_RADIUS } from '../data/swarmBrood.js';
+import { SWARM_BROOD_FAMILIES, BROOD_SPITTER_SPLASH_RADIUS, BROOD_SPITTER_POOL_RADIUS,
+  TENDRIL_SEG_MAX, TENDRIL_SEG_RADIUS } from '../data/swarmBrood.js';
 
 const FAMILY_N = SWARM_BROOD_FAMILIES.length;
 
@@ -87,6 +88,7 @@ const LOB_MAX_ITER = 24; // = BROOD_LOB_MAX; lob slots are sparse
 const POOL_CAP = 12;
 const LINE_CAP = 32;
 const LOB_CAP = 24;
+const SEG_CAP = TENDRIL_SEG_MAX;
 
 /**
  * Create the presentation. Returns { mesh, update(view, dt, opts), dispose() }.
@@ -171,6 +173,32 @@ export function createBroodPresentation(scene, capacity = 400) {
   lobs.visible = false;
   scene.add(lobs);
 
+  // B3 — the Tendril's body: jointed knuckles on the same dart geometry, drawn on their own
+  // instanced mesh so the chain reads as one animal, not as flock bodies. Attached links run
+  // the worm's carapace tone; a freed link (its lead died — the Centipede split) burns hotter
+  // so the player's counter is visible at a glance.
+  const segMat = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    roughness: 0.55,
+    metalness: 0.22,
+    flatShading: true,
+    emissive: new THREE.Color(0.18, 0.09, 0.03),
+    emissiveIntensity: 1.0,
+    side: THREE.DoubleSide,
+  });
+  const segs = new THREE.InstancedMesh(geometry, segMat, SEG_CAP);
+  segs.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  segs.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(SEG_CAP * 3), 3);
+  segs.instanceColor.setUsage(THREE.DynamicDrawUsage);
+  segs.name = 'sf-swarm-tendril';
+  segs.frustumCulled = false;
+  segs.count = 0;
+  segs.visible = false;
+  segs.renderOrder = 2;
+  scene.add(segs);
+  const SEG_BODY_COLOR = new THREE.Color(0.42, 0.34, 0.18);  // carapace bronze
+  const SEG_FREE_COLOR = new THREE.Color(0.9, 0.42, 0.16);   // the freed link burns hotter
+
   const matrix = new THREE.Matrix4();
   const quat = new THREE.Quaternion();
   const axis = new THREE.Vector3(0, 1, 0);
@@ -183,7 +211,7 @@ export function createBroodPresentation(scene, capacity = 400) {
   ));
 
   function dispose() {
-    for (const m of [mesh, rings, pools, lines, lobs]) {
+    for (const m of [mesh, rings, pools, lines, lobs, segs]) {
       scene.remove(m);
       m.geometry.dispose();
       m.material.dispose();
@@ -327,9 +355,38 @@ export function createBroodPresentation(scene, capacity = 400) {
     lobs.visible = lobN > 0;
     if (lobN > 0) lobs.instanceMatrix.needsUpdate = true;
 
-    return written > 0 || ringN > 0 || poolN > 0 || chargersWinding > 0 || lobN > 0;
+    // ---- B3: the Tendril's chain ----------------------------------------------------
+    // Read-only over the published segment buffers: jointed darts on the same geometry,
+    // stretched lengthwise into knuckles. A freed link (SEG_LEAD_FREE) tints hot — the
+    // Centipede split made visible. Reduced motion drops the tail sway only.
+    let segN = 0;
+    if (view && view.tendril && view.segAliveCount > 0 && view.segAlive) {
+      const freeLead = view.segLeadFree;
+      const base = (view.segRadius || TENDRIL_SEG_RADIUS) / 2.4;
+      for (let i = 0; i < SEG_CAP && segN < SEG_CAP; i++) {
+        if (!view.segAlive[i]) continue;
+        const sway = reduced ? 0 : Math.sin(simTime * 6.4 + i * 0.9) * 0.28;
+        quat.setFromAxisAngle(axis, view.segHeading ? view.segHeading[i] : 0);
+        pos.set(view.segX[i], 0.7 + sway, view.segZ[i]);
+        // The knuckle: longer than the dart, narrower — one link of a worm, not a ship.
+        scl.set(base * 1.7, base * 0.8, base * 0.85);
+        matrix.compose(pos, quat, scl);
+        segs.setMatrixAt(segN, matrix);
+        color.copy(view.segLead[i] === freeLead ? SEG_FREE_COLOR : SEG_BODY_COLOR);
+        segs.setColorAt(segN, color);
+        segN += 1;
+      }
+    }
+    segs.count = segN;
+    segs.visible = segN > 0;
+    if (segN > 0) {
+      segs.instanceMatrix.needsUpdate = true;
+      if (segs.instanceColor) segs.instanceColor.needsUpdate = true;
+    }
+
+    return written > 0 || ringN > 0 || poolN > 0 || chargersWinding > 0 || lobN > 0 || segN > 0;
   }
 
-  return { mesh, rings, pools, lines, lobs, update, dispose };
+  return { mesh, rings, pools, lines, lobs, segs, update, dispose };
 }
 

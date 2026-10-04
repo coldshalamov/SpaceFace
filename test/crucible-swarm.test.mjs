@@ -568,7 +568,7 @@ function forceWave(h, wave) {
  */
 function liveBosses(h, wave) {
   const champions = new Set(
-    (swarmBossFor(wave) || { packages: [] }).packages.map((p) => p.enemyId),
+    bossPackagesFor(swarmBossFor(wave)).map((p) => p.enemyId),
   );
   return liveHostiles(h).filter((e) => e.data && champions.has(e.data.lootTableId));
 }
@@ -635,7 +635,7 @@ test('a refused champion remains owed until the spawn budget has room', () => {
   assert.ok(liveBosses(h, 10).length > 0, 'the deferred boss materializes');
 });
 
-test('the champion changes: six different shapes of boss wave, in step with the roster', () => {
+test('the champion changes: every rotation row a different shape of boss wave, in step with the roster', () => {
   const seen = [];
   for (let step = 1; step <= SWARM_BOSS_ROTATION.length; step++) {
     const wave = step * 10;
@@ -654,7 +654,7 @@ test('the champion changes: six different shapes of boss wave, in step with the 
     }
     assert.ok(boss.label && boss.line, `${boss.id} names itself`);
   }
-  assert.equal(seen.length, SWARM_BOSS_ROTATION.length, 'all six before any repeat');
+  assert.equal(seen.length, SWARM_BOSS_ROTATION.length, 'the whole rotation before any repeat');
   // And it wraps rather than running out.
   assert.equal(swarmBossFor((SWARM_BOSS_ROTATION.length + 1) * 10).id, SWARM_BOSS_ROTATION[0].id);
   assert.equal(swarmBossFor(7), null, 'an ordinary wave has no champion');

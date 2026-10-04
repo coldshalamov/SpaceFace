@@ -582,4 +582,77 @@ export const ENEMY_TYPES = [
     bountyCr: 0, shipClass: 'gunship',
     loot: null,
   },
+  // SWARM-07 B3 — the Brood champions (SWARM_EXPANSION §4 B3). Both are REAL combat entities:
+  // they materialize through the same wave package path as the Foreman and hand their hull to
+  // the authored score the wave owner starts (`capitalBoss:start`). Ordinary brood stay light
+  // bodies in the second population; these two are its named set-pieces. Zero pay and no loot
+  // for the same reason the Foreman and Regent carry none: combat pays d.bountyCr/d.loot without
+  // a run-ownership gate, and a survival boss must not leak campaign economy.
+  //
+  // THE BROOD QUEEN. Not a bigger wasp — the room's mother. She is ponderous until the hunt:
+  // the three egg sacs are her guns AND her weak points (turret mounts, destructible through
+  // the ordinary subsystem machinery — a dead sac goes silent), and the sacs hang off her
+  // stern so the weak arc and the mounts tell one story. Her flood is the brood cohort itself:
+  // her wave's plan fields nothing but mites at full population.
+  {
+    id: 'brood_queen', name: 'Brood Queen', shipId: 'ship_saucer',
+    silhouette: 'drone_swarm', factionId: 'faction_reach',
+    aiArchetype: 'brawler', levelRange: [4, 4],
+    combatDoctrineId: 'pack_pursuit',
+    hull: 900, armor: 140, armorFlat: 2, shield: 0, shieldRegen: 0,
+    cap: 300, capRegen: 30,
+    maxSpeed: 46, accel: 30, turnRate: 1.0, collisionRadius: 34, mass: 520,
+    weapons: [
+      // The three sacs: each turret mount is a destructible subsystem (subsystems.turretHp),
+      // so "break the sacs" is a literal verb — a dead mount goes silent through the ordinary
+      // weaponBankReadiness gate, and she enters her last act spitting nothing.
+      { id: 'wpn_plasma_cannon_m', count: 3, turret: true, dmgOverride: 9, rofOverride: 0.7 },
+    ],
+    aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 260, leashRadius: 2400 },
+    subsystems: { turretHp: 220 },
+    // FB-020 weak-point pattern (the Iron Maw's prow rib), moved to her stern: the egg sacs
+    // hang off the back — her back is the soft part, and the same arc the mounts occupy.
+    weakPoint: {
+      label: 'BROOD SAC', arcCenter: Math.PI, arcHalfWidth: 0.62,
+      bonusMult: 1.55, hint: 'The sacs hang off her stern. Cross the lunge and work her back.',
+    },
+    physicalClass: 'specialist',
+    telegraph: {
+      bark: 'warn', cue: 'pd_curtain',
+      line: 'The broodmother floods the room. Her sacs are the weak points — her own brood is ammunition.',
+    },
+    counterHint: 'The sacs are her guns and her soft arc — cross her committed lunge, work the stern, and feed the flood back to her.',
+    behavior: 'broodmother: floods the room with mites, spits acid fans off three sac mounts, then hunts when the sacs are broken',
+    bountyCr: 0, shipClass: 'gunship',
+    loot: null,
+  },
+  //
+  // THE TENDRIL. A giant segmented worm through the asteroid field — the head is this real
+  // hull (a committed weave that cannot turn mid-pass), and its trailing body is the brood
+  // engine's segment chain: light bodies that follow the head, split when a middle segment
+  // dies, and collapse when the head does. Sling it into itself: feed the weave a rock.
+  {
+    id: 'brood_tendril', name: 'The Tendril', shipId: 'ship_hornet',
+    silhouette: 'drone_swarm', factionId: 'faction_reach',
+    aiArchetype: 'brawler', levelRange: [4, 4],
+    combatDoctrineId: 'brawler_commit',
+    hull: 640, armor: 100, armorFlat: 1, shield: 0, shieldRegen: 0,
+    cap: 260, capRegen: 26,
+    maxSpeed: 95, accel: 60, turnRate: 1.4, collisionRadius: 26, mass: 300,
+    weapons: [
+      // A light sting so the head is never free to ignore you between weaves — the body
+      // trailing it is the real weapon.
+      { id: 'wpn_pulse_laser_s', dmgOverride: 7, rofOverride: 1.6 },
+    ],
+    aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 190, leashRadius: 2400 },
+    physicalClass: 'specialist',
+    telegraph: {
+      bark: 'warn', cue: 'engine_flare',
+      line: 'A worm works the field. It cannot turn mid-weave — put a rock on the line.',
+    },
+    counterHint: 'The weave is committed before it starts — sidestep and feed it a rock; break a middle segment and the body splits and hunts on its own.',
+    behavior: 'segmented worm: committed weave passes with a trailing chain that splits when a mid segment dies and collapses when the head does',
+    bountyCr: 0, shipClass: 'gunship',
+    loot: null,
+  },
 ];

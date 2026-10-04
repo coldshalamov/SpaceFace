@@ -22,6 +22,8 @@
 //   * Brood are DESIGNED bodies, not sprites: each family carries its own silhouette scale and
 //     hull colour recipe consumed by the instanced renderer.
 
+import { isSwarmBossWave, swarmBossFor } from './swarmMode.js';
+
 export const SWARM_BROOD_SCHEMA_VERSION = 1;
 
 /** Population law. Every active population holds inside this band — the cap never moves. */
@@ -32,16 +34,38 @@ export const SWARM_BROOD_FULL_WAVE = 21;
 /** Boss waves field this fraction of the wave's population — the champion stays legible. */
 export const SWARM_BROOD_BOSS_FRACTION = 0.4;
 
+/** The champion ids whose waves bend the brood cohort's size or composition. */
+export const SWARM_BROOD_QUEEN_ID = 'brood_queen';
+export const SWARM_BROOD_TENDRIL_ID = 'brood_tendril';
+
+/**
+ * The champion this wave fields when it is one of the Brood's own named set-pieces —
+ * 'brood_queen' or 'brood_tendril' — or null for every other wave (including capital waves
+ * that are not the Brood's own). Pure read of the rotation; the engine keys segment mode
+ * and the flood off this instead of re-deriving the wave table.
+ */
+export function swarmBroodBossFor(wave) {
+  if (!isSwarmBossWave(wave)) return null;
+  const boss = swarmBossFor(wave);
+  if (!boss || (boss.id !== SWARM_BROOD_QUEEN_ID && boss.id !== SWARM_BROOD_TENDRIL_ID)) return null;
+  return boss.id;
+}
+
 /**
  * The population this wave fields. 100 at wave one, the 400 ceiling by SWARM_BROOD_FULL_WAVE,
- * boss waves pulled down toward the minimum but never under it. Pure; the engine and the tests
- * both read this — there is no second population formula anywhere.
+ * boss waves pulled down toward the minimum but never under it — with ONE exception: the
+ * Brood Queen's wave fields the FULL curve, because her flood IS the fight (the spec's
+ * "she floods the room with mites" is the population law, not a flag). Pure; the engine and
+ * the tests both read this — there is no second population formula anywhere.
  */
 export function swarmBroodPopulation(wave) {
   const w = Math.max(1, Math.trunc(Number(wave) || 1));
   const raw = SWARM_BROOD_MIN + Math.round((w - 1) * ((SWARM_BROOD_MAX - SWARM_BROOD_MIN) / (SWARM_BROOD_FULL_WAVE - 1)));
   const target = Math.min(SWARM_BROOD_MAX, Math.max(SWARM_BROOD_MIN, raw));
-  return target;
+  if (!isSwarmBossWave(w)) return target;
+  const boss = swarmBossFor(w);
+  if (boss && boss.id === SWARM_BROOD_QUEEN_ID) return target; // the flood is the fight
+  return Math.max(SWARM_BROOD_MIN, Math.round(target * SWARM_BROOD_BOSS_FRACTION));
 }
 
 /**
@@ -160,6 +184,12 @@ const BROOD_FAMILY_IDS = new Set(SWARM_BROOD_FAMILIES.map((row) => row.id));
 export function swarmBroodPlan(wave, rng) {
   const w = Math.max(1, Math.trunc(Number(wave) || 1));
   const total = swarmBroodPopulation(w);
+  // THE QUEEN'S FLOOD: her wave is nothing but mites — the spec's signature is the room
+  // drowning in the base family, not a specialist mix. Still lawful: the mite unlocks at
+  // wave 1 and the population law above already held the count inside the band.
+  if (swarmBroodBossFor(w) === SWARM_BROOD_QUEEN_ID) {
+    return [{ id: 'mite', count: total }];
+  }
   const roster = swarmBroodRosterFor(w);
   const roll = typeof rng === 'function' ? rng : () => 0.5;
   // Weighted draws: each non-base family claims its weight's share of the room first; the base
@@ -306,6 +336,39 @@ export const BROOD_SHED_SPEED = 8;
 
 /** The damage channel brood hazards burn on (acid reads thermal in the damage model). */
 export const BROOD_PLASMA_TYPE = 'thermal';
+
+// --- B3: THE TENDRIL'S BODY ---------------------------------------------------------------
+//
+// The Tendril head is a real combat entity (enemies.js / the capital score) — the BODY behind
+// it is this tier's own light bodies: an instanced segment chain the engine owns, follows the
+// head by constraint, splits Centipede-style when a middle segment dies, and collapses when
+// the head dies. The head entity is discovered by its lootTableId stamp, never by a registry
+// hook — the same read-only seam the rock/mover caches already use.
+
+/** Entity `data.lootTableId` the Tendril head carries (the enemy catalog id verbatim). */
+export const TENDRIL_HEAD_LOOT_ID = 'brood_tendril';
+/** Segment chain law: at most this many live chains (initial + splits), this many bodies. */
+export const TENDRIL_CHAIN_MAX = 4;
+export const TENDRIL_SEG_MAX = 48;
+/** Segments trailing the head when the worm lands. */
+export const TENDRIL_SEG_PER_WORM = 14;
+/** Follow-the-leader spacing between segment centres (wu). */
+export const TENDRIL_SEG_SPACING = 9;
+/** Segment body. Bigger than a mite, lighter than the head — a link, not a ship. */
+export const TENDRIL_SEG_RADIUS = 4.2;
+export const TENDRIL_SEG_MASS = 18;
+export const TENDRIL_SEG_HULL = 30;
+/** Free-chain lead speed: a split body still hunts, at a fraction of the head's weave. */
+export const TENDRIL_SEG_SPEED = 62;
+/** The serpentine wiggle a free lead carries while it hunts (rad/s, blend fraction). */
+export const TENDRIL_SEG_WIGGLE_RAD_S = 3.1;
+export const TENDRIL_SEG_WIGGLE_BLEND = 0.45;
+/** Hull contact with a live segment: light damage plus a shove, at most this often per chain. */
+export const TENDRIL_SEG_CONTACT_DAMAGE = 8;
+export const TENDRIL_SEG_CONTACT_COOLDOWN_S = 0.9;
+export const TENDRIL_SEG_CONTACT_SHOVE_DV = 30;
+/** Kill pay for one segment — brood fodder rates, keyed off the mite's family row. */
+export const TENDRIL_SEG_PAY_FAMILY = 'mite';
 
 /** The state subtree the engine publishes its live buffers under (never saved, never snapshotted). */
 export const SWARM_BROOD_STATE_KEY = 'swarmBrood';

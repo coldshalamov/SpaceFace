@@ -1,0 +1,78 @@
+import { freezeDeep, hullActor, ballast, sector, lane, ring, packet, beat, score,
+  THROW_WINDOW, SUBSYSTEM_ROLES } from './shared.js';
+
+// SWARM-07 B3 — The Tendril (SWARM_EXPANSION §4 B3). The Crucible's wave-80 champion.
+//
+// A giant segmented worm through the asteroid field. The head is a real hull on a committed
+// weave — every pass declares its bearing and cannot turn once started — and the body is the
+// brood engine's segment chain trailing behind it: break a middle segment and the chain
+// splits and hunts on its own. The counter the score teaches is the room's own verb: sling
+// it into itself — a rock on the weave's line is the answer it cannot dodge.
+export const TENDRIL = freezeDeep({
+  id: 'capital_boss_tendril',
+  shape: { situation: 'set_piece', place: 'arena_ring', twist: 'named', actor: 'brood_tendril' },
+  placeName: 'Crucible coil field',
+  twist: 'The weave is committed before it starts. The body behind it is the second hazard — break a link and the chain hunts on its own.',
+  subsystemRoles: SUBSYSTEM_ROLES,
+  actors: [hullActor({ label: 'THE TENDRIL', archetype: 'brood_tendril', hull: 640,
+    mass: 300, radius: 26, speed: 95, doctrine: 'brawler_commit' }),
+    ballast('FIELD WRECKAGE', 140)],
+  score: score({
+    name: 'THE TENDRIL', missionDefinitionId: 'capital_boss', identity: 'commitment',
+    rangeResponse: { minRange: 380, beatId: 'weave_lane' },
+    intro: 'TENDRIL: The field is mine to wind through. Try to follow.',
+    lesson: 'It only ever weaves where it already aimed — the commit is the opening, and a rock on the line is the answer it cannot turn away from.',
+    lossLesson: 'The chain behind it is the trap you forgot about. Watch the body, not the head.',
+    victory: 'TENDRIL: The knot comes apart. The field keeps the pieces.',
+    escape: 'TENDRIL: It winds. It returns. It does not forget the lane.',
+    budget: { referenceEffectiveDps: 96 / 12.25, gunOnlySeconds: [75, 105],
+      mixedArmsSeconds: [45, 85], targetWinnerHullFraction: [0.12, 0.32],
+      intendedMaxSingleMistake: 22,
+      note: 'Faster and lighter than the Foreman, but the weave windows are honest — the mixed-arms path is feeding the committed pass.' },
+    arena: { radius: 480, entryBearing: 0, ballastOffsets: [[-160,-60],[170,90],[-40,190]],
+      exitHint: 'The weave is a lane, not a wall — sidestep after the lock and the coast is the throw window.' },
+    wings: [],
+    acts: [
+      { id: 'the_weave', title: 'I · THE WEAVE', enter: { hullAtMost: 1.01 },
+        bark: 'TENDRIL: Wind. Bend. Strike. The pattern is already written.',
+        doctrine: 'brawler_commit', opening: ['weave_lane'],
+        pattern: ['weave_lane', 'tail_sweep', 'weave_lane'],
+        physicalStory: 'Committed weave passes with the chain trailing through the same lanes — the head declares, the body rakes, the coast is the window.' },
+      { id: 'the_coil', title: 'II · THE COIL', enter: { hullAtMost: 0.62 },
+        bark: 'TENDRIL: It wraps the room now. The gap is the way through.',
+        doctrine: 'brawler_commit',
+        opening: ['coil_wrap'], pattern: ['coil_wrap', 'weave_lane', 'tail_sweep'],
+        physicalStory: 'Hurt, it coils: the body draws a ring around the fight and the weave keeps its line — inside the eye or past the rim is safe.' },
+      { id: 'the_knot', title: 'III · THE KNOT', enter: { hullAtMost: 0.3 },
+        bark: 'TENDRIL: Knot tight. No more field to give.',
+        doctrine: 'brawler_commit',
+        opening: ['knot_bind'], pattern: ['knot_bind', 'weave_lane', 'coil_wrap'],
+        physicalStory: 'The last act is the whole body at once — flanks cinch, the weave commits fastest, and every pass is a longer throw window.' },
+    ],
+    beats: [
+      beat({ id: 'weave_lane', title: 'COMMITTED WEAVE', cue: 'maw.keel',
+        requires: ['drive'], trackTicks: 44, tellTicks: 140, activeTicks: 36, recoverTicks: 195,
+        motion: { forward: 0.9, brake: false },
+        shapes: [lane(0, 30, 600, 40, 0, 'target')], packet: packet({ kinetic: 20 }),
+        expose: THROW_WINDOW,
+        counter: 'The weave commits to a bearing and cannot turn — slide off the line and feed it a rock from the field it winds through.' }),
+      beat({ id: 'tail_sweep', title: 'TAIL SWEEP', cue: 'maw.crossing',
+        trackTicks: 0, tellTicks: 132, activeTicks: 26, recoverTicks: 168,
+        shapes: [lane(Math.PI / 2, -150, 150, 64, 0, 'hull'), lane(-Math.PI / 2, -150, 150, 64, 0, 'hull')],
+        packet: packet({ kinetic: 14 }),
+        counter: 'The body rakes a band through itself — off the axis it declared is safe, and the head is never where the tail is.' }),
+      beat({ id: 'coil_wrap', title: 'COIL WRAP', cue: 'maw.stern',
+        trackTicks: 0, tellTicks: 150, activeTicks: 28, recoverTicks: 170,
+        shapes: [ring(60, 200)], packet: packet({ kinetic: 16 }),
+        counter: 'It draws a ring around you. The eye of the coil is the one place it cannot reach — or be outside the ring before it closes.' }),
+      beat({ id: 'knot_bind', title: 'KNOT BIND', cue: 'maw.last_port',
+        trackTicks: 38, tellTicks: 128, activeTicks: 34, recoverTicks: 215,
+        motion: { forward: 0.88, brake: false },
+        shapes: [sector(Math.PI / 2, 0.46, 40, 270), sector(-Math.PI / 2, 0.46, 40, 270),
+          lane(0, 26, 560, 42, 0, 'target')],
+        packet: packet({ kinetic: 22 }),
+        expose: THROW_WINDOW,
+        counter: 'The whole body cinches at once — the flanks and the lane all declare together. The gap between the sectors is the honest way through.' }),
+    ],
+  }),
+});

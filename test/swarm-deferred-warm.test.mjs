@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs';
 // data contract (what each wave can field), the spec scoping, and the wiring that moves
 // the work out of the launch cook without dropping coverage.
 
-const { swarmEligibleEnemyIds, SWARM_ROSTER, SWARM_BOSS_ROTATION } = await import('../src/data/swarmMode.js');
+const { swarmEligibleEnemyIds, SWARM_ROSTER, SWARM_BOSS_ROTATION, bossPackagesFor } = await import('../src/data/swarmMode.js');
 const {
   swarmRosterShipExemplarSpecs,
   rosterPoolWitnessFilePalettes,
@@ -25,7 +25,9 @@ const DRAFT_SOURCE = readFileSync(
 const ALL_ROSTER_IDS = [
   ...new Set([
     ...SWARM_ROSTER.map((entry) => entry.enemyId),
-    ...SWARM_BOSS_ROTATION.flatMap((boss) => (boss.packages || []).map((pkg) => pkg.enemyId)),
+    // bossPackagesFor, not boss.packages: capital champion rows carry a bare enemyId —
+    // reading the field directly would drop their hulls out of the unscoped coverage check.
+    ...SWARM_BOSS_ROTATION.flatMap((boss) => bossPackagesFor(boss).map((pkg) => pkg.enemyId)),
   ]),
 ];
 

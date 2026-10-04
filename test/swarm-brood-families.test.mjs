@@ -340,8 +340,9 @@ test('the renderer speaks the attack language: markers, lines, pools, lobs, fami
   const scene = { objects: [], add(o) { this.objects.push(o); }, remove(o) { const i = this.objects.indexOf(o); if (i >= 0) this.objects.splice(i, 1); } };
   const pres = createBroodPresentation(scene, 400);
   pres.update(engine.view, DT, { simTime: 0 });
-  assert.equal(scene.objects.length, 5, 'bodies + marks + pools + lines + lobs');
-  const [mesh, rings, pools, lines, lobs] = scene.objects;
+  assert.equal(scene.objects.length, 6, 'bodies + marks + pools + lines + lobs + tendril segs');
+  const [mesh, rings, pools, lines, lobs, segs] = scene.objects;
+  assert.equal(segs.count, 0, 'no champion wave, no worm — the chain mesh stays empty');
   assert.equal(mesh.count, engine.census().alive);
 
   // A winding spitter draws its marker ring; a winding charger draws its line.

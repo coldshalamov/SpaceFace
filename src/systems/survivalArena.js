@@ -670,6 +670,47 @@ function planArenaInstallBody({
         }
         break;
       }
+      // SWARM-07 B3 — the Queen's nest. A soft pull toward the rear of the arrival lane (the
+      // nest draws the fight toward the sacs), a repulsor berm on the lean flank to throw the
+      // flood into, and cover rocks for ammunition — the rocks the lunges get fed.
+      if (bossRoom === 'brood_nest') {
+        out.note = 'the nest pulls toward the sacs — cover to break the flood, rocks to throw back';
+        out.cover = true;
+        out.fields.push({
+          kind: 'well',
+          center: alongBearing(at, lane, -240),
+          radius: 480,
+          strength: 62,
+          damping: 0.9,
+          falloff: 1.2,
+        });
+        out.fields.push({
+          kind: 'repulsor',
+          center: alongBearing(at, lean, 300),
+          radius: 320,
+          strength: 140,
+          falloff: 1.25,
+        });
+        break;
+      }
+      // SWARM-07 B3 — the Tendril's coil field. A slow cross-breeze rakes the weave lanes
+      // sideways (dodging WITH the drift is free, fighting it costs) and the cover rocks are
+      // the ammunition: feed the committed pass a stone and the weave answers for itself.
+      if (bossRoom === 'coil_field') {
+        out.note = 'the weave field — a slow cross-breeze, and rocks to feed the committed pass';
+        out.cover = true;
+        out.fields.push({
+          kind: 'cone',
+          center: alongBearing(at, lane, 60),
+          dir: { x: across.x, z: across.z },
+          radius: 560,
+          strength: 78,
+          falloff: 1.15,
+          halfAngleRad: 0.62,
+          edgeSoftRad: 0.16,
+        });
+        break;
+      }
       out.note = 'a heavy central pull, a berm on one flank, a mined ring and cover';
       out.cover = true;
       out.fields.push({
