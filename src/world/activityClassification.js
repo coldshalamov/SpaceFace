@@ -33,6 +33,7 @@ export const PIN_REASON = Object.freeze({
   PLAYER_SCANNED_AND_TRACKED: 'PLAYER_SCANNED_AND_TRACKED',
   IMMINENT_COLLISION: 'IMMINENT_COLLISION',
   VISIBLE_ON_GLASS: 'VISIBLE_ON_GLASS',
+  FIELD_DRIVEN: 'FIELD_DRIVEN',
 });
 
 const PIN_SET = new Set(Object.values(PIN_REASON));
@@ -149,6 +150,7 @@ export function resolvePins(entity, context = {}) {
     pins.push(PIN_REASON.PROJECTILE_THREAT);
   }
   if (context.tetherOrAttachment === true) pins.push(PIN_REASON.TETHER_OR_ATTACHMENT_COMPONENT);
+  if (context.fieldDriven === true) pins.push(PIN_REASON.FIELD_DRIVEN);
   if (context.dockingOrLanding === true) pins.push(PIN_REASON.DOCKING_OR_LANDING);
   if (context.missionCritical === true) pins.push(PIN_REASON.MISSION_CRITICAL);
   if (context.escortOrFollow === true) pins.push(PIN_REASON.ESCORT_OR_FOLLOW_RELATION);
