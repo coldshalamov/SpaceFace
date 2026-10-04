@@ -202,7 +202,7 @@ test('the between-round deferred warm twins newcomers and settles them before it
   // launch warm: twin witnesses per newcomer ship, and the authored commits settle before the
   // palette census mints its subjects — never promotion inside the next round.
   const region = RENDERER_SOURCE.slice(
-    RENDERER_SOURCE.indexOf('_warmSwarmDeferredRoster(nextWave)'),
+    RENDERER_SOURCE.indexOf('_warmSwarmDeferredRoster(nextWave, plan'),
     RENDERER_SOURCE.indexOf('_mintDeferredPaletteSubjects(root, freshSet, sectorId) {'),
   );
   assert.ok(region.length > 0, 'the deferred warm region exists');

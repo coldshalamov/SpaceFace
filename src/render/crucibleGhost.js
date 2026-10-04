@@ -28,7 +28,27 @@ const GHOST_CLONE_USERDATA_DROP = new Set([
   'sfStableEntityKey',
   'sfHiddenFrozen',
   'lod',
+  // Subsystem marks whose owners never see the ghost: a frozen-matrix stamp on a
+  // descendant under a forced matrixAutoUpdate root, admission/resolving-window
+  // state, and gameplay attachments that mean nothing to a pose tape.
+  'sfMatrixFrozen',
+  'animated',
+  'hlod',
+  'spacefaceSocket',
+  'spacefaceSharedAsset',
+  'keepSeparate',
+  'admissionStandInPending',
+  'authoredAdmissionSubstrate',
+  'resolvingMarker',
+  'weapons',
+  'turretHead',
+  'shieldBubble',
 ]);
+
+// A mint landing while the source hull is inside the admission hidden-but-resolving
+// window freezes that transient visible=false into the clone forever — defer the
+// clone while pending, bounded so the ghost always appears.
+const GHOST_MINT_DEFER_MAX = 60;
 
 function plainUserDataValue(value, depth) {
   if (value == null) return value;
@@ -67,7 +87,17 @@ function ghostUserDataProjection(data) {
 
 function applyGhostMaterial(material) {
   if (!material || typeof material.clone !== 'function') return material;
-  const next = cloneMaterialPreservingShaderHooks(material);
+  // Material.copy JSON round-trips material.userData the same way node userData
+  // does — clone under the same plain-data projection so a non-serializable
+  // receipt can't mangle silently on the ghost's variant.
+  const originalData = material.userData;
+  if (originalData) material.userData = ghostUserDataProjection(originalData);
+  let next;
+  try {
+    next = cloneMaterialPreservingShaderHooks(material);
+  } finally {
+    if (originalData) material.userData = originalData;
+  }
   next.transparent = true;
   next.opacity = Math.min(CRUCIBLE_GHOST_OPACITY, Number.isFinite(next.opacity) ? next.opacity * CRUCIBLE_GHOST_OPACITY : CRUCIBLE_GHOST_OPACITY);
   next.depthWrite = false;
@@ -79,8 +109,10 @@ export function createCrucibleGhostPresentation() {
   let scene = null;
   let root = null;
   let clonedFrom = null;
+  let clonedChildren = null;
   let clonedMaterials = [];
   let warmPending = false;
+  let mintDefers = 0;
 
   function hide() {
     if (root) root.visible = false;
@@ -97,13 +129,33 @@ export function createCrucibleGhostPresentation() {
     clonedMaterials = [];
     root = null;
     clonedFrom = null;
+    clonedChildren = null;
     warmPending = false;
   }
 
   function ensureClone(playerMesh) {
     if (!playerMesh || typeof playerMesh.clone !== 'function') return;
     if (playerMesh.userData && playerMesh.userData.crucibleGhost) return;
-    if (root && clonedFrom === playerMesh) return;
+    if (root && clonedFrom === playerMesh) {
+      // In-place subtree swaps (authored commits, LOD family swaps) keep the same
+      // root identity: every top-level add/remove under it changes the direct-child
+      // set — drift there means the clone shows the superseded generation.
+      const kids = playerMesh.children || [];
+      if (clonedChildren && kids.length === clonedChildren.size
+          && kids.every((kid) => clonedChildren.has(kid))) return;
+    } else if (root) {
+      // Identity changed entirely — handled by the re-mint below.
+    }
+    if (mintDefers < GHOST_MINT_DEFER_MAX) {
+      let pending = 0;
+      playerMesh.traverse((obj) => {
+        const data = obj && obj.userData;
+        if (!data) return;
+        if (data.admissionStandInPending === true
+            || (data.resolvingMarker === true && obj.visible === false)) pending += 1;
+      });
+      if (pending > 0) { mintDefers += 1; return; }
+    }
     disposeRoot();
     const originals = [];
     playerMesh.traverse((obj) => {
@@ -140,6 +192,8 @@ export function createCrucibleGhostPresentation() {
     if (!root.userData) root.userData = {};
     root.userData.crucibleGhost = true;
     clonedFrom = playerMesh;
+    clonedChildren = new Set(playerMesh.children || []);
+    mintDefers = 0;
     warmPending = true;
     if (scene && typeof scene.add === 'function') scene.add(root);
   }

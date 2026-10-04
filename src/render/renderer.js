@@ -126,8 +126,8 @@ import { aceById, escalatedStyleFromMemory, returnCrewForAce, stanceForRecord, s
 import { clearCanonicalProgramSpecimens } from './programCanon.js';
 import {
   bindAuthoredAssetPerfCounters,
-  listDecodedAuthoredParts,
   loadAuthoredPart,
+  peekSettledAuthoredEntries,
   prepareSectorEntry,
   preloadAuthoredParts,
 } from './assetLoader.js';
@@ -3998,14 +3998,17 @@ function warmEncounterPendingDecode(owner) {
     // the 'place'-slot hulk the roster's warm must resolve.
     const archetypes = [];
     for (const ship of item.ships || []) {
-      const archetype = ship && ship.archetype;
-      if (typeof archetype === 'string' && archetype) archetypes.push(ship);
+      // Escape-hatch records carry a complete entitySpec instead of an archetype —
+      // warmEnemyRosterDecode resolves the spec's own hull key, so accept them here
+      // or their hull escapes the pending warm entirely.
+      if ((ship && typeof ship.archetype === 'string' && ship.archetype)
+        || (ship && ship.entitySpec && ship.entitySpec.type === 'ship')) archetypes.push(ship);
     }
     // Warm-only hulls mounted outside plan.ships at fire (the ambush claim victim) — same
     // record shape as roster ships, never part of the spawn list.
     for (const ship of item.warmShips || []) {
-      const archetype = ship && ship.archetype;
-      if (typeof archetype === 'string' && archetype) archetypes.push(ship);
+      if ((ship && typeof ship.archetype === 'string' && ship.archetype)
+        || (ship && ship.entitySpec && ship.entitySpec.type === 'ship')) archetypes.push(ship);
     }
     // warmAssets: packaged bodies the script's fire body will mount (cargo-pod spills,
     // authored props) that no hull archetype covers — a session that missed the opening
@@ -4918,11 +4921,11 @@ function kickWaveHullDecodeAssets(owner, hullKeys) {
   if (state.mode !== 'flight' && state.mode !== 'loading') return 0;
   const pending = owner._waveHullDecodePending || (owner._waveHullDecodePending = new Set());
   const list = Array.isArray(hullKeys) ? hullKeys : [];
-  // Distinct hull keys per wave plan stay small (archetype→shipId sharing leaves ~≤4 unique
-  // files even when a wave packs several enemy ids); decode the whole set in one burst —
+  // Distinct hull keys per wave plan stay small — a mutator-heavy roster still keeps
+  // unique (shipId|faction) files near a dozen; decode the whole set in one burst —
   // the deadline class absorbs it — rather than letting keys past the cap pop at combat spawn.
   let started = 0;
-  for (let i = 0; i < list.length && started < 4; i++) {
+  for (let i = 0; i < list.length && started < 12; i++) {
     const key = list[i];
     if (!key || typeof key.key !== 'string' || pending.has(key.key)) continue;
     const stub = makeWaveHullDecodeStub(key);
@@ -6064,12 +6067,19 @@ const SWARM_WARM_CLAIMED_OUTCOMES = new Set([
   'shell-ready',
   'procedural-settled',
   'invalid-upgrade-request',
+  // The terminal authoredAssetState values a successful packaged upgrade resolves
+  // with — the only 'authored*' strings that mean the boundary really warmed. The
+  // prefix class also captured transient/cancelled/failure states minted under the
+  // same vocabulary ('awaiting-authored-admission', 'authored-upgrade-request-threw')
+  // whose coverage must release toward a re-warm.
+  'authored',
+  'authored-prepared',
+  'authored-with-cleanup-error',
 ]);
 const swarmWarmOutcomeClaims = (status) => {
   if (status === true) return true;
   if (typeof status !== 'string') return false;
   return SWARM_WARM_CLAIMED_OUTCOMES.has(status)
-    || status.startsWith('authored')
     || status.startsWith('same-semantic-fallback');
 };
 
@@ -15092,7 +15102,7 @@ export const render = {
     onBus('run:wavePlanned', (p) => {
       const wave = p && Number.isInteger(p.wave) ? p.wave : null;
       if (wave == null || wave < 2) return;
-      try { this._warmSwarmDeferredRoster(wave); }
+      try { this._warmSwarmDeferredRoster(wave, p && p.plan); }
       catch (error) { console.warn('[render] deferred swarm warm fallback failed', error); }
     });
     onBus('run:ended', () => {
@@ -16866,17 +16876,18 @@ export const render = {
     const covered = warm.coveredMap;
     if (reKickBudget > 0 && covered && Array.isArray(warm.retriableKicks)) {
       const reKicks = [];
-      const releaseClaim = (enemyId, keepCovered = false) => {
+      const releaseClaim = (enemyId, keepCovered = false, claimsMap = this._swarmWarmReKickClaims) => {
         if (!keepCovered) {
           const count = covered.get(enemyId) || 0;
           if (count > 1) covered.set(enemyId, count - 1);
           else covered.delete(enemyId);
         }
-        const claims = this._swarmWarmReKickClaims;
-        if (claims instanceof Map) {
-          const left = (claims.get(enemyId) || 0) - 1;
-          if (left > 0) claims.set(enemyId, left);
-          else claims.delete(enemyId);
+        // The settle may land a whole run later — release on the map this kick's
+        // mint was written to, not whatever map is current then.
+        if (claimsMap instanceof Map) {
+          const left = (claimsMap.get(enemyId) || 0) - 1;
+          if (left > 0) claimsMap.set(enemyId, left);
+          else claimsMap.delete(enemyId);
         }
       };
       const collectReKicks = () => {
@@ -16894,27 +16905,28 @@ export const render = {
             continue;
           }
           entry.reKicked = true;
+          let kickClaims = null;
           if (enemyId != null) {
             covered.set(enemyId, (covered.get(enemyId) || 0) + 1);
-            const claims = this._swarmWarmReKickClaims
+            kickClaims = this._swarmWarmReKickClaims
               || (this._swarmWarmReKickClaims = new Map());
-            claims.set(enemyId, (claims.get(enemyId) || 0) + 1);
+            kickClaims.set(enemyId, (kickClaims.get(enemyId) || 0) + 1);
           }
           let reKickResult = null;
           try {
             reKickResult = reKick(1);
           } catch (err) {
-            if (enemyId != null) releaseClaim(enemyId);
+            if (enemyId != null) releaseClaim(enemyId, false, kickClaims);
             continue;
           }
           if (!reKickResult || typeof reKickResult.then !== 'function') {
-            if (enemyId != null) releaseClaim(enemyId);
+            if (enemyId != null) releaseClaim(enemyId, false, kickClaims);
             continue;
           }
           reKickResult.then((result) => {
             entry.result = result;
             const settled = result && typeof result === 'object' ? result.status : result;
-            if (enemyId != null) releaseClaim(enemyId, swarmWarmOutcomeClaims(settled));
+            if (enemyId != null) releaseClaim(enemyId, swarmWarmOutcomeClaims(settled), kickClaims);
           });
           reKicks.push(reKickResult);
           warm.pendingAttachments.push(reKickResult);
@@ -16945,9 +16957,11 @@ export const render = {
     // just decoded. Instantiating each once links every material family it carries.
     // settledOnly — snapshot what finished decoding, never await the registry's pending tasks.
     this._armCrucibleWarmBuildingSettle(warm);
+    // Sync settled peek instead of the awaited registry walk: settledOnly semantics
+    // and Map order are identical, minus one promise pair per live decode entry.
     let records = [];
     try {
-      records = await listDecodedAuthoredParts(renderer, { settledOnly: true });
+      records = peekSettledAuthoredEntries(renderer);
     } finally {
       // A mid-finish throw must not leave residency leases pointing at a live owner.
       warm.building = false;
@@ -17259,7 +17273,7 @@ export const render = {
    * still gets the batch through the run:wavePlanned call — its links just land inside
    * the round's first seconds rather than behind the shop.
    */
-  _warmSwarmDeferredRoster(nextWave) {
+  _warmSwarmDeferredRoster(nextWave, plan = null) {
     const { renderer, scene, state } = this;
     if (!renderer || !scene || !this.vf || !state || !state.render) return null;
     const run = state.run;
@@ -17274,6 +17288,23 @@ export const render = {
         [...swarmEligibleEnemyIds(run.wave || 1)].map((enemyId) => [enemyId, 1]),
       );
     }
+    // The plan the wave actually fields outranks the static unlock table: mutators
+    // rewrite swarm.roster (heavies_only stamps heavies fromWave 1), and the wave's
+    // own schedule/packages declare hulls the ruleset never lists. Union the plan's
+    // declared surface so a rewritten archetype gets the same exemplar warm.
+    const eligible = new Set(swarmEligibleEnemyIds(nextWave));
+    if (plan) {
+      const takeEnemyId = (value) => {
+        if (typeof value === 'string' && value.length > 0) eligible.add(value);
+      };
+      const planRoster = plan.swarm && Array.isArray(plan.swarm.roster) ? plan.swarm.roster : [];
+      for (const entry of planRoster) takeEnemyId(entry && entry.enemyId);
+      const planSchedule = Array.isArray(plan.schedule) ? plan.schedule : [];
+      for (const entry of planSchedule) takeEnemyId(entry && entry.enemyId);
+      const planPackages = Array.isArray(plan.packages) ? plan.packages : [];
+      for (const pkg of planPackages) takeEnemyId(pkg && pkg.enemyId);
+      if (plan.swarm && plan.swarm.newcomer) takeEnemyId(plan.swarm.newcomer.enemyId);
+    }
     // A row held only by a launch re-kick's in-flight mint is already warming for
     // one bounded strike — but a second-strike release would leave the archetype
     // uncovered for a whole dwell. Taking such a row risks one duplicated
@@ -17281,7 +17312,7 @@ export const render = {
     // strike-2 failure — the class this warm exists to kill.
     const reKickClaims = this._swarmWarmReKickClaims instanceof Map
       ? this._swarmWarmReKickClaims : null;
-    const fresh = [...swarmEligibleEnemyIds(nextWave)]
+    const fresh = [...eligible]
       .filter((enemyId) => (this._swarmWarmCoveredEnemyIds.get(enemyId) || 0)
         <= ((reKickClaims && reKickClaims.get(enemyId)) || 0));
     if (fresh.length === 0) return null;
@@ -17305,6 +17336,11 @@ export const render = {
     // Same alignment: the closure that re-runs THAT kick's own boundary through the
     // same request for the single bounded same-dwell retry below.
     const pendingAttachmentRetries = [];
+    // Per-kick settle records keyed by the tracked promise — the deadline race
+    // hides per-kick outcomes inside allSettled, so each kick notes its own result
+    // for the timed-out release path (a settle already 'completed' keeps coverage;
+    // only retriable-or-missing outcomes release).
+    const pendingAttachmentResults = new Map();
     // Per-id tally of retry-minted coverage claims so the catch-unmark below
     // releases exactly what this warm stamped (one per fresh mark + one per retry).
     const retryMintCounts = new Map();
@@ -17354,6 +17390,10 @@ export const render = {
           + (retryMintCounts.get(enemyId) || 0)
           - (retryReleasedCounts.get(enemyId) || 0);
         unmarked.add(enemyId);
+        // Consume the retry mints this wholesale release covered: a late settle's
+        // own release must find nothing outstanding or it decrements the shared
+        // row a second time.
+        retryReleasedCounts.set(enemyId, retryMintCounts.get(enemyId) || 0);
         if (mine <= 0) continue;
         const count = coveredMap.get(enemyId) || 0;
         if (count > mine) coveredMap.set(enemyId, count - mine);
@@ -17365,7 +17405,10 @@ export const render = {
     // and re-run the same request under the same track() bookkeeping. The re-mark
     // lands at dispatch; a second retriable settle decrements exactly that claim —
     // each retry carries its own allowance, so exemplars sharing an enemyId can't
-    // double-release the shared row.
+    // double-release the shared row. The provisional claim rides
+    // _swarmWarmReKickClaims (launch-lane parity) so the next wave's fresh filter
+    // reads an in-flight retry as in-flight, not covered — a hung retry would
+    // otherwise read covered for the rest of the run.
     const makeDeferredWarmKickRetry = (boundary, enemyId, kick) => () => {
       if (!warm.building || !root.parent || !boundary || !boundary.parent) return null;
       if (!authoredReadmissionStatus(boundary.userData && boundary.userData.authoredAssetState)) {
@@ -17376,17 +17419,36 @@ export const render = {
       }
       const reKick = kick(1);
       if (!reKick || typeof reKick.then !== 'function') return null;
-      coveredMap.set(enemyId, (coveredMap.get(enemyId) || 0) + 1);
-      retryMintCounts.set(enemyId, (retryMintCounts.get(enemyId) || 0) + 1);
+      let kickClaims = null;
+      if (enemyId != null) {
+        coveredMap.set(enemyId, (coveredMap.get(enemyId) || 0) + 1);
+        retryMintCounts.set(enemyId, (retryMintCounts.get(enemyId) || 0) + 1);
+        kickClaims = this._swarmWarmReKickClaims
+          || (this._swarmWarmReKickClaims = new Map());
+        kickClaims.set(enemyId, (kickClaims.get(enemyId) || 0) + 1);
+      }
       let settled = false;
       reKick.then((result) => {
         const status = result && typeof result === 'object' ? result.status : result;
-        if (!settled && !swarmWarmOutcomeClaims(status)) {
-          settled = true;
-          retryReleasedCounts.set(enemyId, (retryReleasedCounts.get(enemyId) || 0) + 1);
-          const count = coveredMap.get(enemyId) || 0;
-          if (count > 1) coveredMap.set(enemyId, count - 1);
-          else coveredMap.delete(enemyId);
+        if (settled) return;
+        settled = true;
+        if (kickClaims) {
+          const left = (kickClaims.get(enemyId) || 0) - 1;
+          if (left > 0) kickClaims.set(enemyId, left);
+          else kickClaims.delete(enemyId);
+        }
+        if (enemyId != null && !swarmWarmOutcomeClaims(status)) {
+          // Release only while this mint is still outstanding — unmark() consumes
+          // whatever remains at chain teardown, so a settle landing after that
+          // must not decrement the shared row twice.
+          const outstanding = (retryMintCounts.get(enemyId) || 0)
+            - (retryReleasedCounts.get(enemyId) || 0);
+          if (outstanding > 0) {
+            retryReleasedCounts.set(enemyId, (retryReleasedCounts.get(enemyId) || 0) + 1);
+            const count = coveredMap.get(enemyId) || 0;
+            if (count > 1) coveredMap.set(enemyId, count - 1);
+            else coveredMap.delete(enemyId);
+          }
         }
       });
       return reKick;
@@ -17442,14 +17504,18 @@ export const render = {
             ship.visible = false;
             root.add(ship);
             if (typeof ship.userData?.requestAuthoredUpgrade === 'function') {
-              const kickShip = (attempt) => track(requestAuthoredUpgrade(ship, renderer, scene, {
-                residencyRole: 'crucible-roster-warm',
-                sectorId,
-                deferPackagePoolActivation: false,
-                deferBoundaryPublication: true,
-                overlapAuthoredPipelineCompile: true,
-                upgradeJobKey: `deferred-warm:job:${spec.id}:w${witness}${attempt > 0 ? `:r${attempt}` : ''}`,
-              }), `ship:${spec.id}:w${witness}${attempt > 0 ? `:r${attempt}` : ''}`);
+              const kickShip = (attempt) => {
+                const kicked = track(requestAuthoredUpgrade(ship, renderer, scene, {
+                  residencyRole: 'crucible-roster-warm',
+                  sectorId,
+                  deferPackagePoolActivation: false,
+                  deferBoundaryPublication: true,
+                  overlapAuthoredPipelineCompile: true,
+                  upgradeJobKey: `deferred-warm:job:${spec.id}:w${witness}${attempt > 0 ? `:r${attempt}` : ''}`,
+                }), `ship:${spec.id}:w${witness}${attempt > 0 ? `:r${attempt}` : ''}`);
+                kicked.then((value) => { pendingAttachmentResults.set(kicked, value); });
+                return kicked;
+              };
               warm.pendingAttachments.push(kickShip(0));
               const shipEnemyId = spec.data && spec.data.lootTableId;
               pendingAttachmentEnemyIds.push(shipEnemyId);
@@ -17470,13 +17536,17 @@ export const render = {
             hulk.visible = false;
             root.add(hulk);
             if (typeof hulk.userData?.requestAuthoredUpgrade === 'function') {
-              const kickHulk = (attempt) => track(
-                hulk.userData.requestAuthoredUpgrade(renderer, scene, {
-                  residencyRole: 'crucible-roster-warm',
-                  sectorId,
-                }),
-                `hulk:${spec.id}${attempt > 0 ? `:r${attempt}` : ''}`,
-              );
+              const kickHulk = (attempt) => {
+                const kicked = track(
+                  hulk.userData.requestAuthoredUpgrade(renderer, scene, {
+                    residencyRole: 'crucible-roster-warm',
+                    sectorId,
+                  }),
+                  `hulk:${spec.id}${attempt > 0 ? `:r${attempt}` : ''}`,
+                );
+                kicked.then((value) => { pendingAttachmentResults.set(kicked, value); });
+                return kicked;
+              };
               warm.pendingAttachments.push(kickHulk(0));
               const hulkEnemyId = spec && spec.data
                 && spec.data.hulkVisual && spec.data.hulkVisual.lootTableId;
@@ -17534,8 +17604,13 @@ export const render = {
         const releasedRetries = [];
         for (let i = 0; i < bound; i += 1) {
           const settled = results && results[i];
-          const result = settled && settled.status === 'fulfilled'
-            ? settled.value : null;
+          // On deadline the aggregate hides per-kick outcomes — read each kick's
+          // own recorded result instead, so a settle that already landed
+          // 'completed' keeps its coverage rather than re-marking into a
+          // duplicate build next dwell.
+          const result = timedOut
+            ? pendingAttachmentResults.get(warm.pendingAttachments[i])
+            : (settled && settled.status === 'fulfilled' ? settled.value : null);
           const status = result && typeof result === 'object' ? result.status : result;
           if (!swarmWarmOutcomeClaims(status)) {
             unmarkEnemy(pendingAttachmentEnemyIds[i]);
@@ -17553,7 +17628,12 @@ export const render = {
         if (!releasedRetries.length || !warm.building) return null;
         const reKicks = [];
         for (const retry of releasedRetries) {
-          const reKick = retry();
+          // A synchronous throw (raw hulk request, readmission mark) must not
+          // abort the pass into the chain's catch — the whole wave's warm would
+          // forfeit to one bad exemplar.
+          let reKick = null;
+          try { reKick = retry(); }
+          catch (error) { console.warn('[render] deferred swarm warm re-kick threw', error); }
           if (reKick) reKicks.push(reKick);
         }
         // The re-kicks share the settle deadline — a hung retry must not
@@ -17573,10 +17653,15 @@ export const render = {
           ? state.render.compileObjectPipelines(root, { explicit: true })
           : null
       )))
-      // The compile links programs and touches buffers, but texture uploads live on the
-      // residency lane — without this leg a newcomer file's maps would upload on its first
-      // in-round draw (the PQ-210.00 zero-first-draw-upload rule).
-      .then((ok) => (ok === false ? false : (
+      // The compile admission already ends every non-skipped subject in a residency
+      // prepare on this same lane (admitSubjectPipelines → preparePipelineSubjectResidency),
+      // and nothing attaches to the warm root after that walk — so a second whole-tree
+      // pass here only re-pays the sliced traverse + version checks. Keep it solely as
+      // the residency source when compile skipped its own admission (opening/loading
+      // lanes) or never ran, which is the exact 'minted post-admission' delta left.
+      .then((ok) => (ok === false || (ok && ok.skipped !== true && ok !== null) ? (
+        ok === false ? false : null
+      ) : (
         state.render && typeof state.render.prepareAuthoredGpuResidency === 'function'
           ? state.render.prepareAuthoredGpuResidency(root, { isActive: false })
           : null
@@ -17605,6 +17690,19 @@ export const render = {
         }
       });
     state.render.swarmDeferredWarm = { wave: nextWave, pending: true, promise: done };
+    // The draft gate's bound is the attach settle deadline, not the compile +
+    // residency legs: paced drains can hold those legs seconds past it under an
+    // ambient backlog, parking the gate open while the warm's coverage is already
+    // as settled as it gets. On expiry the gate reads settled while the legs keep
+    // running detached — the chain's tail still parks and clears building when
+    // they land. A later wave's record supersedes the stamp.
+    const gateTimer = setTimeout(() => {
+      const record = state.render && state.render.swarmDeferredWarm;
+      if (record && record.wave === nextWave && record.pending === true) {
+        state.render.swarmDeferredWarm = { wave: nextWave, pending: false, promise: record.promise };
+      }
+    }, Math.max(0, settleDeadlineAt - Date.now()));
+    done.then(() => clearTimeout(gateTimer), () => clearTimeout(gateTimer));
     return done;
   },
 
@@ -17619,7 +17717,9 @@ export const render = {
     if (!root || !renderer) return;
     let records = [];
     try {
-      records = await listDecodedAuthoredParts(renderer, { settledOnly: true });
+      // Synchronous settled peek — same rows/order as the settledOnly census,
+      // without a Promise.race pair per registry entry inside this task.
+      records = peekSettledAuthoredEntries(renderer);
     } catch (error) {
       console.warn('[render] deferred swarm warm census failed', error);
       return;
@@ -17706,9 +17806,13 @@ export const render = {
     let roots = 0;
     let nodes = 0;
     // The detach+measure runs inside presented flight frames — debit the paced
-    // ledger so the frame's other slicers back off around the spend.
-    const parkStartedAt = (typeof performance !== 'undefined' && typeof performance.now === 'function')
-      ? performance.now() : Date.now();
+    // ledger per root so sibling slicers see the spend mid-walk, and break to a
+    // deferred continuation once the ledger is spent rather than paying every
+    // root's subtree traverse inside one task.
+    const parkNow = (typeof performance !== 'undefined' && typeof performance.now === 'function')
+      ? () => performance.now() : () => Date.now();
+    const parkStartedAt = parkNow();
+    let lastDebitAt = parkStartedAt;
     for (const root of this._rosterPrewarmRoots || []) {
       // Still-building roots keep their mount: a parked boundary fails
       // boundaryBelongsToScene and its queued attach/upgrade jobs drop silently.
@@ -17733,11 +17837,21 @@ export const render = {
       } catch (error) {
         console.warn('[render] bounded warm root park failed', root.name, error);
       }
-    }
-    if (roots > 0) {
-      notePacedFrameSpend(
-        ((typeof performance !== 'undefined' && typeof performance.now === 'function')
-          ? performance.now() : Date.now()) - parkStartedAt);
+      const debitAt = parkNow();
+      notePacedFrameSpend(debitAt - lastDebitAt);
+      lastDebitAt = debitAt;
+      // Roots are independent and the loop skips anything already detached, so a
+      // spent ledger defers the tail one macrotask instead of paying it here.
+      if (roots >= 1 && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) {
+        if (this._warmRootParkContinuation !== true) {
+          this._warmRootParkContinuation = true;
+          setTimeout(() => {
+            this._warmRootParkContinuation = false;
+            try { this._parkBoundedWarmRoots(); } catch (_) { /* parking is best-effort */ }
+          }, 0);
+        }
+        break;
+      }
     }
     return { roots, nodes };
   },
@@ -18217,7 +18331,13 @@ export const render = {
 
   _unbindPresentationMesh(entityId, mesh = null) {
     if (mesh) {
-      releasePooledPresentationTextures(mesh, entityId, this);
+      // Noted consumers were keyed under the mesh's own mark at sync time, so the
+      // release must pay the mark's owner — a caller id that mismatches the mark
+      // (a stranded rekeyed entry) would otherwise strip a different live
+      // binding's claims while the true ones leak.
+      const releaseId = mesh.userData && mesh.userData.sfBoundEntityId != null
+        ? mesh.userData.sfBoundEntityId : entityId;
+      releasePooledPresentationTextures(mesh, releaseId, this);
       // The pooled-mark contract is the entity bound *right now*: a mesh leaving
       // the presentation world keeps no owner, so entity resolvers can't hand
       // its next incarnation the previous owner's id. Preserve a mismatched
