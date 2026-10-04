@@ -97,3 +97,72 @@ note to the live lane that already owns the file.
    `test/ceres-visible-job-actions.test.mjs` (10 failures, in-flight traffic lane),
    `check-market-chart` scrap-metal series (D162), escort-convoy raider stamp (D163),
    pq022 relay manifest gate (D164).
+
+---
+
+## Session 2 (2026-10-03 evening) — the reload-determinism arc + second sweep
+
+Opening state: `check:baseline` 11/16 — sim, sim-compare, sim-v3, m1-tether-mass and massline
+(2 children) red. Session 2 took the three sim reds; the m1/massline reds rode flight-lane edits
+then in flight and went green as those lanes landed. Closing state: **16/16 green** — first full
+green of the day.
+
+### The arc (session 1's core sweep had called core/sim clean; the defect lived in the harness×save interplay)
+
+1. `sim-v3` failed `reload-at 60` with a hash divergence that reproduced **identically at clean
+   HEAD** — the dirty tree was innocent; the save→reload path genuinely did not reproduce the
+   uninterrupted run.
+2. Full-precision kinematics traces were bit-identical across all 720 ticks, yet the final hash
+   differed and the tick-243 body dump diverged inside one physics step (entity 6's fling:
+   reloaded av 27.7 vs 0.04). The injected difference was **not physics**: the envelope diff
+   showed `settings.gameplay.aiBackend` flips `legacy` → `sg06-tactical` across the reload.
+3. Root cause: `sanitizeRestoredSettings` (saveSystem.js) force-resets the three gameplay
+   backends to shipped defaults on every load; the scenario contract boots 47-A on legacy AI;
+   `reloadThroughSave` restored only `flightBackend` while its sibling `resumeLoadedEnvelope`
+   restored all four fields. After tick 60 the sim ran a different AI controller.
+4. Fix `327cf1c02`: `reloadThroughSave` restores the booted `physicsBackend`/`aiBackend`/
+   `runtimeProfile` — the same contract `resumeLoadedEnvelope` already honored.
+5. Pin flavor discovery (shared with a concurrently-landing lane): the never-saved "organic"
+   Rapier world layout is **not reproducible across processes** (dimforge/rapier#910), while the
+   save/restore path canonicalizes the world once. The envelope pin must record the canonical
+   reload-run hash; the pin ping-ponged 0d85fa↔f4a621 across four commits in 15 minutes (two
+   consumers measure different reload points) until the lane's `authoritativeHashByReloadAt`
+   per-point map (`d5ea3fa16`, with save-time world re-adoption `b144f226e`) resolved it
+   structurally. The v1 + v3 envelopes now both carry a note saying which flavor to pin from.
+6. `ad55f562f`: SAVE_SCHEMA.md regenerated (stale since the gamepad glyphSet landing —
+   `saveSystem.js` was clean at HEAD, so the regen was a free path).
+
+### Landed fixes (session 2)
+
+| Commit | What |
+|---|---|
+| `327cf1c02` | Reload keeps the booted AI/physics backends (`reloadThroughSave` restore block); v3 pin moves to the canonical reload hash |
+| `ad55f562f` | v3 envelope pin-flavor note; SAVE_SCHEMA.md regenerated |
+| `687c1ed58` | Six-fix sweep batch: lab `runScenario` in-place save/load restores booted physics/AI backends (same contract as the harness fix — closes the tool-scoped gap where SG-02 authority/aiPorts/massline gates silently flip after a mid-lab load); nine attachment/snare denial reasons get real copy instead of generic UNAVAILABLE; `commsRadial.destroy()` clears the held-open flag (velocity tape stayed suppressed after teardown); toast decay bar gains the `prefers-reduced-motion` twin; `--canonicalize-at` honored by run/compare/trace/profile instead of silently dropped; `compareExpectedEnvelope` resolves `authoritativeHashByReloadAt` like the assert side; v1 envelope documents the hash flavor (schema-cap-safe length) |
+
+### Verified findings, documented not fixed
+
+- `physics.js:1251` `_syncOptionalBackend` compares `=== 'rapier'` but only `'rapier-dynamic'`
+  ships — the legacy-path optional collision world can never enable. Flipping it is a behavior
+  decision on a compat path (§5), not a polish edit.
+- `registry.js:954` `selectAISystem` conjunction can misreport in lab telemetry (settings claim
+  sg06 while legacy AI runs on a non-rapier boot); no behavior gate reads settings.aiBackend
+  post-selection today.
+- `simSnapshot.js` latent collapses: `round6` folds non-finite to 0; the vec2 heuristic drops
+  sibling keys of ≤4-key `{x,z}` objects. No verified victim field in snapshotted state.
+- `settings.js` Gameplay tab force-writes the three backends as a render side effect (bypasses
+  persist; no `legacy` choice reachable). ORRERY lane's surface — recorded, not edited.
+- Verified benign: the encounterDirector / controls.touch save-presence asymmetries (lazy init
+  and sanitize materialization, no behavior delta); `check:sim:profile`'s plain-run assert stays
+  green (legacy controller hash is flavor-invariant at this horizon — verified by run).
+- Dead micro-code: `validateTwinBridlePair`'s `same_endpoint` is unreachable; `.sf-toast--out`
+  style can never render; drive-out toast uses `warn` on one path and `info` on the other.
+
+### Notes for the next session
+
+1. The harness×save backend-restore contract now exists in three places (47-A reload,
+   `--load-envelope`, lab `runScenario` in-place). If a fourth save-consuming harness appears,
+   it needs the same restore — consider a shared helper next time saveSystem changes.
+2. Session 2 ran while multiple lanes landed (six foreign commits during the session). The
+   envelope/pin files are contention hot spots; the pin-flavor notes in both envelopes are the
+   durable guidance — keep them when re-pinning.
