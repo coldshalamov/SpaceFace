@@ -1620,6 +1620,15 @@ export const fields = {
     return !!(this._kernel && this._kernel.has(id));
   },
 
+  // SWARM-07 B1 — read-only kernel access for second-population force consumers (the Brood
+  // tier). Returns the kernel's cached id-sorted field list — the SAME records the sampler
+  // sums, in the SAME stable order — so a consumer can sample field force without its own
+  // registry of deploys. Read-only by contract: the list is the kernel's live cache and must
+  // not be stored or mutated.
+  kernelList() {
+    return this._kernel ? this._kernel.list() : [];
+  },
+
   // ── force application (the ONE kernel → membrane) ────────────────────────────────────────────
 
   _forceableBody(e) {
