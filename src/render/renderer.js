@@ -336,6 +336,7 @@ import {
   armAdmissionShadows,
   collectUnstagedShadowCasters,
   compileShadowDepthPipelines,
+  createShadowDepthStagingSession,
   disposeAdmissionShadowResources,
   lightCensusSignature,
 } from './shadowDepthAdmission.js';
@@ -5910,6 +5911,25 @@ export function tickShieldShellClock(pool, state) {
   const a11y = state && state.settings && state.settings.accessibility;
   const motionReduce = !!((video && video.motionReduce) || (a11y && (a11y.reducedMotion || a11y.motionReduce)));
   return setShieldShellClock(material, state && state.simTime, motionReduce);
+}
+
+// Marker stamped on a root whose dirty flag is our own post-withhold invalidation —
+// the arm's identical-opts restore needs the dirty, but a queued clean root must not
+// re-pay the signature collect every presented frame until its arm lands.
+const STAGE_SELF_DIRTY_KEY = '__spacefaceDepthStageSelfDirty';
+
+// Nearest ancestor that owns a shadow-caster policy record (same userData key as
+// shadowCasterPolicy.js), else the direct scene child — the granularity the arm's
+// per-root collect/restore machinery works at.
+function shadowPolicyRootOf(mesh, scene) {
+  let node = mesh;
+  let topmost = null;
+  while (node && node !== scene) {
+    if (node.userData && node.userData.__spacefaceShadowCasterPolicyV1) return node;
+    topmost = node;
+    node = node.parent;
+  }
+  return topmost;
 }
 
 // Geometry attribute refs are fixed at mesh creation; memoize per mesh instead of
@@ -21005,40 +21025,44 @@ export const render = {
    */
   _syncShadowCasterPolicyChecked(root, lodLevel, entity) {
     const opts = this._shadowPolicyOptions(entity, root);
-    let syncOpts = opts;
-    let withheldMeshes = null;
-    let withholdCast = false;
     const band = shadowCasterBand(root);
-    // The signature walk is affordable on the promotion class (band !== 1) and on a
-    // dirty in-band policy (a swap minted fresh meshes); a clean same-band sync keeps
-    // the fast path and never pays the collect.
+    const queued = !!(this._pendingDepthStageRoots && this._pendingDepthStageRoots.has(root));
+    const selfDirty = !!(root.userData && root.userData[STAGE_SELF_DIRTY_KEY]);
+    // The signature walk runs on first withhold only: a queued band<1 root is already
+    // withheld whole-tree (its collect returns the identical unstaged set every frame
+    // until the arm lands — pure burn), and a queued band-1 root re-collects only on a
+    // genuine policy dirty, not our own post-withhold invalidation.
     const unstaged = (opts.allowCast === true && this._shadowSettingOn === true
         && this.renderer && this.scene && this._keyLight
-        && (band !== 1 || shadowCasterPolicyDirty(root)))
+        && (band !== 1 ? !queued : (shadowCasterPolicyDirty(root) && !selfDirty)))
       ? collectUnstagedShadowCasters(this.renderer, [root], this.scene, this._shadowCensusForFrame())
       : null;
+    let syncOpts = opts;
+    let withheldMeshes = null;
     if (unstaged && unstaged.length > 0) {
-      if (band !== 1) {
-        syncOpts = { ...opts, allowCast: false };
-        withholdCast = true;
-      } else {
-        // In-band: a mesh added under an already-casting root would otherwise link its
-        // depth variant inside this presented frame. Withhold only the unstaged casters
-        // — already-staged siblings keep casting (no blink).
-        withheldMeshes = unstaged;
-      }
+      // Promotions and in-band adds share the per-mesh withhold — only the genuinely
+      // unstaged casters wait for the arm; staged siblings and the band stamp stay live.
+      withheldMeshes = unstaged;
+    } else if (band !== 1 && queued) {
+      syncOpts = { ...opts, allowCast: false };
+    } else if (band === 1 && selfDirty && queued && this._withheldDepthCasters) {
+      const cached = this._withheldDepthCasters.get(root);
+      if (cached) withheldMeshes = [...cached];
     }
     const changed = syncShadowCasterPolicy(root, lodLevel, syncOpts);
-    if (withheldMeshes) {
+    if (withheldMeshes && withheldMeshes.length > 0) {
       for (const mesh of withheldMeshes) {
         if (mesh) mesh.castShadow = false;
+      }
+      if (unstaged && unstaged.length > 0) {
+        const cache = this._withheldDepthCasters
+          || (this._withheldDepthCasters = new Map());
+        cache.set(root, new Set(withheldMeshes));
       }
       // The arm's restore re-runs identical opts — re-dirty so its traverse can't
       // early-out on the state this sync just stamped.
       invalidateShadowCasterPolicy(root);
-    }
-    if ((withholdCast || (withheldMeshes !== null && withheldMeshes.length > 0))
-        && opts.allowCast === true) {
+      root.userData[STAGE_SELF_DIRTY_KEY] = true;
       this._queueShadowDepthStage(root, lodLevel, entity);
     }
     return changed;
@@ -21080,6 +21104,7 @@ export const render = {
       if (!pending || pending.size === 0) {
         this._pendingDepthStageRoots = null;
         this._depthStageScheduled = false;
+        this._killDepthStageSession();
         return;
       }
       const renderer = this.renderer;
@@ -21097,6 +21122,8 @@ export const render = {
           // Detached before staging: nothing to restore or mark — a re-mount runs the
           // checked policy sync again and re-queues if still unstaged.
           pending.delete(root);
+          if (root.userData) root.userData[STAGE_SELF_DIRTY_KEY] = false;
+          if (this._withheldDepthCasters) this._withheldDepthCasters.delete(root);
         }
       }
       entries.sort((a, b) => (
@@ -21123,19 +21150,48 @@ export const render = {
           const lightSig = this._shadowCensusForFrame();
           const unstaged = collectUnstagedShadowCasters(renderer, sliceRoots, scene, lightSig);
           if (unstaged.length > 0) {
-            compileShadowDepthPipelines({
-              renderer,
-              light: this._keyLight,
-              camera,
-              subjects: unstaged,
-              forceEnable: false,
-              THREE,
-              captureObjectHome,
-              restoreObjectHome,
-              lightingScene: scene,
-              lightSigOverride: lightSig,
-              stagingName: 'SF_ShadowPromoteDepthAdmission',
-            });
+            // Arms within one drain share a staging session: the reparent/census/
+            // lights warm is a fixed per-arm cost, so a burst of N promotions used
+            // to pay it N times. The session keys on the live light census — a sig
+            // drift or shadow disable tears it down and the next arm re-mints.
+            let session = this._depthStageSession;
+            if (session && session.lightSig !== lightSig) {
+              this._killDepthStageSession();
+              session = null;
+            }
+            if (!session) {
+              session = createShadowDepthStagingSession({
+                renderer,
+                light: this._keyLight,
+                camera,
+                THREE,
+                captureObjectHome,
+                restoreObjectHome,
+                lightingScene: scene,
+                lightSig,
+                stagingName: 'SF_ShadowPromoteDepthAdmission',
+              });
+              if (session) this._depthStageSession = session;
+            }
+            if (session) {
+              session.slice(unstaged);
+            } else {
+              // Session unavailable (warm-up failed or API shape missing) — the
+              // single-shot compile is the same ceremony minus the reuse.
+              compileShadowDepthPipelines({
+                renderer,
+                light: this._keyLight,
+                camera,
+                subjects: unstaged,
+                forceEnable: false,
+                THREE,
+                captureObjectHome,
+                restoreObjectHome,
+                lightingScene: scene,
+                lightSigOverride: lightSig,
+                stagingName: 'SF_ShadowPromoteDepthAdmission',
+              });
+            }
           }
         } catch (error) {
           console.warn('[render] shadow-promote depth stage failed', error);
@@ -21148,6 +21204,8 @@ export const render = {
       // root permanently shadowless.
       for (const [root, { lodLevel, entity }] of slice) {
         if (!root || !root.parent) continue;
+        if (root.userData) root.userData[STAGE_SELF_DIRTY_KEY] = false;
+        if (this._withheldDepthCasters) this._withheldDepthCasters.delete(root);
         try {
           syncShadowCasterPolicy(root, lodLevel, this._shadowPolicyOptions(entity, root));
         } catch (_) { /* restore is best-effort */ }
@@ -21157,8 +21215,19 @@ export const render = {
       } else {
         this._pendingDepthStageRoots = null;
         this._depthStageScheduled = false;
+        this._killDepthStageSession();
       }
     });
+  },
+
+  // Session teardown: the staging scene parks cloned lights + a renderBufferDirect
+  // capture — always close() so the wrapper comes off the renderer.
+  _killDepthStageSession() {
+    const session = this._depthStageSession;
+    this._depthStageSession = null;
+    if (session) {
+      try { session.close(); } catch (_) { /* best effort */ }
+    }
   },
 
   _stageShadowDepthOnSettingEnable() {
@@ -21173,18 +21242,20 @@ export const render = {
     try {
       const unstaged = collectUnstagedShadowCasters(renderer, [scene], scene);
       if (unstaged.length === 0) return;
-      compileShadowDepthPipelines({
-        renderer,
-        light: this._keyLight,
-        camera,
-        subjects: unstaged,
-        forceEnable: true,
-        THREE,
-        captureObjectHome,
-        restoreObjectHome,
-        lightingScene: scene,
-        stagingName: 'SF_ShadowEnableDepthAdmission',
-      });
+      // The whole-scene toggle used to pay one synchronous reparent+census+compile
+      // inside the settings handler — an unbounded stall on a presented frame for a
+      // busy sector. Route the same stage through the arm queue instead: bounded
+      // root slices across presents, nearest-first, identical restore semantics.
+      const pending = this._pendingDepthStageRoots
+        || (this._pendingDepthStageRoots = new Map());
+      for (const mesh of unstaged) {
+        const root = shadowPolicyRootOf(mesh, scene);
+        if (root) pending.set(root, { lodLevel: null, entity: null });
+      }
+      if (pending.size > 0 && this._depthStageScheduled !== true) {
+        this._depthStageScheduled = true;
+        this._armDepthStage();
+      }
     } catch (error) {
       console.warn('[render] shadow-enable depth stage failed', error);
     }
@@ -21211,6 +21282,9 @@ export const render = {
     if (!this._shadowSettingOn) {
       this.renderer.shadowMap.enabled = false;
       this._keyLight.castShadow = false;
+      // A live staging session is useless while the map is off and would otherwise
+      // keep cloned lights + the buffer capture parked until the next drain.
+      this._killDepthStageSession?.();
       return;
     }
     if (this._shadowReceiverTally) {

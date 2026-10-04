@@ -8,6 +8,7 @@ import {
   collectShadowCastSubjects,
   collectUnstagedShadowCasters,
   compileShadowDepthPipelines,
+  createShadowDepthStagingSession,
   disposeAdmissionShadowResources,
 } from '../src/render/shadowDepthAdmission.js';
 import { scheduleRealtimeShadowRefresh } from '../src/render/shadowPresentCadence.js';
@@ -553,4 +554,54 @@ test('a pending live shadow refresh survives an interleaved private admission pa
   assert.equal(rig.renderer.shadowMap.autoUpdate, false);
   assert.equal(rig.light.shadow.map, rig.liveMap, 'live shadow map identity preserved');
   assert.equal(rig.light.shadow.matrix, rig.liveMatrix, 'live shadow matrix preserved');
+});
+
+test('staging session pays the census warm once and slices stage without re-ceremony', () => {
+  const hullA = { isMesh: true, castShadow: true, name: 'hullA', parent: { children: [] } };
+  hullA.parent.children.push(hullA);
+  const hullB = { isMesh: true, castShadow: true, name: 'hullB', parent: { children: [] } };
+  hullB.parent.children.push(hullB);
+  const restored = [];
+  const renderTypes = [];
+  const renderer = {
+    shadowMap: {
+      enabled: true,
+      needsUpdate: false,
+      render(lights, staging) {
+        renderTypes.push({ lights: lights.map((l) => l.name), children: staging.children.map((c) => c.name) });
+      },
+    },
+    render(staging) {
+      if (renderer.shadowMap.enabled === false) { renderTypes.push({ census: true }); return; }
+      renderer.shadowMap.render(staging.children.filter((c) => c.castShadow === true), staging, null);
+    },
+    getRenderTarget() { return null; },
+    setRenderTarget() {},
+    properties: { get: (material) => material && material.properties || {} },
+    renderBufferDirect() {},
+  };
+  const light = { name: 'key', castShadow: true, shadow: { needsUpdate: false } };
+  const liveScene = { fog: null, traverse(fn) { fn(light); } };
+  const session = createShadowDepthStagingSession({
+    renderer, light, camera: { name: 'chase' },
+    lightingScene: liveScene, THREE: mockThree(),
+    captureObjectHome: (object) => ({ object }),
+    restoreObjectHome(home) { restored.push(home.object.name); },
+    lightSig: 'l1|f0',
+  });
+  assert.ok(session, 'session minted under a live renderer');
+  assert.equal(session.lightSig, 'l1|f0');
+  assert.equal(renderTypes.length, 1, 'one census warm render at create');
+  assert.equal(renderTypes[0].census, true);
+  session.slice([hullA]);
+  session.slice([hullB]);
+  assert.equal(renderTypes.length, 3, 'each slice renders once — no further census');
+  assert.ok(renderTypes[1].children.includes('hullA'));
+  assert.ok(renderTypes[2].children.includes('hullB'));
+  const report = session.close();
+  assert.equal(session.slice([hullA]).skipped, true, 'a closed session reports skipped');
+  session.close();
+  assert.equal(report.subjects, 0, 'mock has no depth draws recorded');
+  assert.equal(renderer.shadowMap.needsUpdate, false);
+  assert.deepEqual(restored, ['hullA', 'hullB']);
 });

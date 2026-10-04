@@ -6251,24 +6251,45 @@ function entityOnDeadlineGlass(entity, state) {
 // queue in arrival order and a few continue per presented frame.
 const OPENING_PUBLICATION_RESUME_BATCH = 4;
 
-function paceOpeningPublicationResume(render) {
+function paceOpeningPublicationResume(render, gatePromise) {
   const queue = render._openingPublicationResumeQueue
     || (render._openingPublicationResumeQueue = []);
   return new Promise((resolve) => {
-    queue.push(resolve);
+    queue.push({ resolve, gate: gatePromise });
     if (queue.length === 1) driveOpeningPublicationResume(render, queue);
   });
 }
 
 function driveOpeningPublicationResume(render, queue) {
+  // Bounded idle wait: a saturated postTask queue must not starve the drain — a
+  // parked commit tail would otherwise hold its release through the freeze window.
   armCallbackAfterPresent(() => {
     for (let i = 0; i < OPENING_PUBLICATION_RESUME_BATCH && queue.length > 0; i += 1) {
       const next = queue.shift();
-      if (typeof next === 'function') next();
+      if (next && typeof next.resolve === 'function') {
+        // The entry parked under an already-released gate: when a newer freeze
+        // owns the window it must re-park behind that gate instead of committing
+        // inside this hold (sector jumps don't bump the generation, so nothing
+        // else distinguishes the released gate from the live one).
+        const liveGatePromise = render.openingGraphPublicationFrozen === true
+          && typeof render.waitForOpeningGraphPublicationRelease === 'function'
+          ? render.waitForOpeningGraphPublicationRelease() : null;
+        if (liveGatePromise && liveGatePromise !== next.gate) {
+          next.gate = liveGatePromise;
+          liveGatePromise.then(() => {
+            const requeue = render._openingPublicationResumeQueue
+              || (render._openingPublicationResumeQueue = []);
+            requeue.push(next);
+            if (requeue.length === 1) driveOpeningPublicationResume(render, requeue);
+          });
+        } else {
+          next.resolve();
+        }
+      }
     }
     if (queue.length > 0) driveOpeningPublicationResume(render, queue);
     else render._openingPublicationResumeQueue = null;
-  });
+  }, { idleBoundMs: 48 });
 }
 
 export function waitForOpeningGraphPublicationRelease(options = {}) {
@@ -6311,8 +6332,9 @@ export function waitForOpeningGraphPublicationRelease(options = {}) {
       throw error;
     }
   };
-  const released = waitForAuthoredAdmission(Promise.resolve(wait.call(render)).then((value) => (
-    paceOpeningPublicationResume(render).then(() => {
+  const gatePromise = wait.call(render);
+  const released = waitForAuthoredAdmission(Promise.resolve(gatePromise).then((value) => (
+    paceOpeningPublicationResume(render, gatePromise).then(() => {
       assertGateOwnerCurrent();
       return value;
     })
@@ -6355,7 +6377,7 @@ export function waitForOpeningGraphPublicationRelease(options = {}) {
         finish(resolve, undefined);
         return;
       }
-      armCallbackAfterPresent(recheck);
+      armCallbackAfterPresent(recheck, { idleBoundMs: 48 });
     };
     recheck();
   });

@@ -517,3 +517,178 @@ export function armAdmissionShadows(options = {}) {
     if (light.shadow && previousNeedsUpdate !== undefined) light.shadow.needsUpdate = previousNeedsUpdate;
   };
 }
+
+/**
+ * A burst-scoped depth-staging session: consecutive promote arms share ONE staging
+ * scene + census render instead of re-paying the reparent/warm/restore ceremony per
+ * arm. The live scene's lights are CLONED into staging (arms hold it across
+ * presents — borrowed lights would blank live lighting); program keys bake type
+ * counts + fog, not identity, so clone proxies key identically to live draws.
+ * Invalidate on a light-census-signature change or shadow disable; always close()
+ * when the drain empties.
+ */
+export function createShadowDepthStagingSession(options = {}) {
+  const renderer = options.renderer;
+  const light = options.light;
+  const camera = options.camera;
+  const lightingScene = options.lightingScene || null;
+  const THREE = options.THREE;
+  const captureObjectHome = options.captureObjectHome;
+  const restoreObjectHome = options.restoreObjectHome;
+  if (!renderer || !camera || !THREE || typeof THREE.Scene !== 'function'
+      || typeof renderer.render !== 'function' || !lightingScene
+      || typeof lightingScene.traverse !== 'function'
+      || typeof captureObjectHome !== 'function' || typeof restoreObjectHome !== 'function') {
+    return null;
+  }
+  const shadowMap = renderer.shadowMap;
+  const stagedKeyLight = admissionKeyLight(renderer, light, THREE);
+  if (!stagedKeyLight) return null;
+  const stagedLights = [];
+  lightingScene.traverse((object) => {
+    if (object && object.isLight === true && object !== light) stagedLights.push(object);
+  });
+  const staging = new THREE.Scene();
+  staging.name = options.stagingName || 'SF_ShadowDepthStagingSession';
+  const colorOverride = admissionOverrideMaterial(THREE);
+  if (colorOverride) staging.overrideMaterial = colorOverride;
+  if (lightingScene.fog) staging.fog = lightingScene.fog;
+  const restoreVisibility = revealSubjectForCompile(staging);
+  staging.add(stagedKeyLight);
+  if (stagedKeyLight.target && stagedKeyLight.target.isObject3D === true) {
+    staging.add(stagedKeyLight.target);
+  }
+  for (const sceneLight of stagedLights) {
+    const clone = typeof sceneLight.clone === 'function' ? sceneLight.clone() : null;
+    if (!clone) continue;
+    if (sceneLight.target && sceneLight.target.isObject3D === true && clone.target) {
+      // clone() aliases the source target — give the clone its own so the live
+      // target object never leaves the scene across presents.
+      const targetClone = new THREE.Object3D();
+      targetClone.position.copy(sceneLight.target.position);
+      clone.target = targetClone;
+      staging.add(targetClone);
+    }
+    staging.add(clone);
+  }
+  const previousTarget = typeof renderer.getRenderTarget === 'function' ? renderer.getRenderTarget() : null;
+  const scratch = admissionScratchTarget(THREE);
+  if (scratch && typeof renderer.setRenderTarget === 'function') renderer.setRenderTarget(scratch);
+  // Per-slice capture state — the wrapper records drawn objects for the slice
+  // currently rendering; close() reports the union for diagnostics.
+  let currentSliceDrawn = null;
+  const drawnNames = new Set();
+  const drawnKeys = new Set();
+  const programCacheKeys = new Set();
+  const drawnDepthObjects = new Set();
+  let renderedMaterials = 0;
+  let missingProgramBindings = 0;
+  const originalRenderBufferDirect = typeof renderer.renderBufferDirect === 'function'
+    ? renderer.renderBufferDirect
+    : null;
+  if (originalRenderBufferDirect) {
+    renderer.renderBufferDirect = function captureShadowProgramBinding(...args) {
+      const result = originalRenderBufferDirect.apply(this, args);
+      renderedMaterials += 1;
+      const drawn = args[4];
+      const depthDraw = args[1] == null;
+      if (depthDraw && drawn) {
+        if (currentSliceDrawn) currentSliceDrawn.add(drawn);
+        drawnDepthObjects.add(drawn);
+        if (typeof drawn.name === 'string' && drawn.name) drawnNames.add(drawn.name);
+      }
+      const material = args[3];
+      let program = null;
+      try {
+        program = renderer.properties && typeof renderer.properties.get === 'function'
+          ? renderer.properties.get(material)?.currentProgram
+          : null;
+      } catch (_) { /* The real shadow draw succeeded; report its missing binding fail-closed. */ }
+      const key = program && (program.cacheKey || (program.id != null ? `id:${program.id}` : ''));
+      if (key) {
+        programCacheKeys.add(String(key));
+        if (depthDraw && drawn && /CommonRockInstances|LivingHull|Wreck_Batch/.test(drawn.name || '')) {
+          const source = drawn.material;
+          drawnKeys.add(`${drawn.name}|key:${String(key)}|side:${source && source.side}|shadowSide:${source && source.shadowSide}|map:${!!(source && source.map)}|depthType:${material && material.type}`);
+        }
+      } else missingProgramBindings += 1;
+      return result;
+    };
+  }
+  try {
+    staging.updateMatrixWorld(true);
+    // Same census trick as the single-shot compile: WebGLShadowMap runs before
+    // setupLights(), so a never-rendered staging scene bakes empty light counts into
+    // depth program keys. One lights-only render populates this scene's persistent
+    // render state for the whole session.
+    const censusRenderEnabled = shadowMap.enabled;
+    shadowMap.enabled = false;
+    renderer.render(staging, camera);
+    shadowMap.enabled = censusRenderEnabled;
+  } catch (error) {
+    if (originalRenderBufferDirect) renderer.renderBufferDirect = originalRenderBufferDirect;
+    restoreVisibility();
+    if (typeof staging.clear === 'function') staging.clear();
+    if (typeof renderer.setRenderTarget === 'function') renderer.setRenderTarget(previousTarget || null);
+    console.warn('[render] shadow depth staging session warm-up failed', error);
+    return null;
+  }
+  let closed = false;
+  return {
+    get lightSig() { return options.lightSig || ''; },
+    /** Stage one root slice: reparent casters, render, mark observed draws, restore. */
+    slice(casting) {
+      if (closed || !Array.isArray(casting) || casting.length === 0) {
+        return { skipped: closed, subjects: 0 };
+      }
+      const homes = casting.map((root) => captureObjectHome(root));
+      const restoreCasters = casting.map((root) => revealSubjectForCompile(root));
+      const castShadowRestore = [];
+      for (const object of casting) {
+        if (object.castShadow !== true) {
+          castShadowRestore.push(object);
+          object.castShadow = true;
+        }
+      }
+      const sliceDrawn = new Set();
+      currentSliceDrawn = sliceDrawn;
+      const previousNeedsUpdate = shadowMap.needsUpdate;
+      try {
+        for (const root of casting) staging.add(root);
+        staging.updateMatrixWorld(true);
+        shadowMap.needsUpdate = true;
+        if (stagedKeyLight.shadow) stagedKeyLight.shadow.needsUpdate = true;
+        renderer.render(staging, camera);
+        markCastersDepthStaged(renderer, casting, lightingScene, sliceDrawn, camera, options.lightSig);
+        return { skipped: false, subjects: casting.length };
+      } finally {
+        shadowMap.needsUpdate = previousNeedsUpdate;
+        currentSliceDrawn = null;
+        for (const root of casting) {
+          if (root && root.parent === staging) staging.remove(root);
+        }
+        for (const object of castShadowRestore) object.castShadow = false;
+        for (const restore of restoreCasters) restore();
+        for (const home of homes) restoreObjectHome(home);
+      }
+    },
+    close() {
+      if (closed) return;
+      closed = true;
+      if (originalRenderBufferDirect) renderer.renderBufferDirect = originalRenderBufferDirect;
+      restoreVisibility();
+      if (typeof staging.clear === 'function') staging.clear();
+      if (typeof renderer.setRenderTarget === 'function') renderer.setRenderTarget(previousTarget || null);
+      return {
+        subjects: drawnDepthObjects.size,
+        programCacheKeys: [...programCacheKeys].sort(),
+        programBindingFailures: missingProgramBindings > 0
+          ? [`shadow-depth-session:${missingProgramBindings}/${renderedMaterials}:unprepared-program-binding`]
+          : [],
+        stagedNames: [...drawnNames]
+          .filter((name) => /CommonRockInstances|LivingHull|InstancePool|Wreck_Batch/.test(name)),
+        stagedKeys: [...drawnKeys],
+      };
+    },
+  };
+}

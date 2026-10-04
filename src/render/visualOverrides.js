@@ -1112,7 +1112,10 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
         root.userData.authoredAssetState = 'orphaned-before-swap';
         return false;
       }
-      const publicationWait = waitForOpeningGraphPublicationRelease();
+      const publicationWait = waitForOpeningGraphPublicationRelease({
+        ...mintedAdmissionOptions,
+        entity: liveEntity || entity,
+      });
       if (publicationWait) await publicationWait;
       if (!root.parent) {
         releaseBoundaryResidency(renderer, root, 'packaged-prop-orphaned-before-publication', mintedAdmissionOptions.admissionEpoch);
