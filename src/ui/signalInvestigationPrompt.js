@@ -109,7 +109,7 @@ export function createSignalInvestigationPrompt(ctx = {}) {
     if (deck) deck.resolveDecision(DECK_ID_RESULT);
     if (!payload || !payload.classification) return false;
     return !!bus.emit('toast', {
-      text: `NAV FIX ARMED — ${String(payload.classification).toUpperCase()} — course plotted. Follow the primary objective marker to investigate.`,
+      text: `Course plotted to the ${String(payload.classification).toLowerCase()}. Follow the objective marker.`,
       kind: 'info',
       ttl: RECEIPT_TTL_S,
     });
@@ -120,7 +120,7 @@ export function createSignalInvestigationPrompt(ctx = {}) {
     if (deck) deck.resolveDecision(DECK_ID_RESULT);
     if (!payload || !payload.classification) return false;
     return !!bus.emit('toast', {
-      text: `MANUAL INVESTIGATION ARMED — ${String(payload.classification).toUpperCase()} — fly to the return yourself; no course was set.`,
+      text: `Investigating the ${String(payload.classification).toLowerCase()}. No course set — fly to the return yourself.`,
       kind: 'info',
       ttl: RECEIPT_TTL_S,
     });
@@ -150,7 +150,7 @@ export function createSignalInvestigationPrompt(ctx = {}) {
       deck.resolveDecision(DECK_ID_CODEX);
     }
     return !!bus.emit('toast', {
-      text: `INVESTIGATION COMPLETE — ${String(payload.classification || 'signal').toUpperCase()} — discovery logged. No duplicate reward.`,
+      text: `${String(payload.classification || 'signal').toLowerCase().replace(/^./, (c) => c.toUpperCase())} investigated — discovery logged. No duplicate reward.`,
       kind: 'info',
       ttl: RECEIPT_TTL_S,
     });

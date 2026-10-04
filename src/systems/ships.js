@@ -2015,7 +2015,16 @@ export const ships = {
     if (!node) return false;
     const p = this.state.player;
     if (!this.researchable(nodeId)) {
-      this.bus.emit('toast', { text: 'Cannot research ' + (node.name || nodeId), kind: 'error', ttl: 3 });
+      // Name the blocker: a bare "Cannot research X" leaves the player guessing which of the
+      // four gates (already done, prerequisite, credits, RP) closed it.
+      const name = node.name || nodeId;
+      const missingPre = (node.prereqs || []).filter((pre) => !p.researchedNodes.includes(pre));
+      let text = 'Cannot research ' + name;
+      if (p.researchedNodes.includes(nodeId)) text = name + ' is already researched';
+      else if (missingPre.length) text = 'Research ' + missingPre.map((pre) => (TECH_BY_ID.get(pre) || {}).name || pre).join(' and ') + ' first';
+      else if (p.credits < node.cost.credits) text = 'Need ' + Math.ceil(node.cost.credits - p.credits).toLocaleString('en-US') + ' more cr to research ' + name;
+      else if ((p.researchPoints || 0) < node.cost.rp) text = 'Need ' + Math.ceil(node.cost.rp - (p.researchPoints || 0)).toLocaleString('en-US') + ' more RP to research ' + name;
+      this.bus.emit('toast', { text, kind: 'error', ttl: 3 });
       return false;
     }
     // spend: credits via economy (single writer §0.6); RP is ours to deduct.

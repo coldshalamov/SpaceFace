@@ -511,15 +511,17 @@ function nextStepText(m) {
   switch (m.type) {
     case 'cargo_delivery':
     case 'passenger_transport':
-      return 'Next: follow tracked nav to ' + dest + ', dock, and complete the handoff.';
+      return m.destStationId
+        ? 'Next: follow tracked nav to ' + dest + ', dock, and hand over the cargo.'
+        : 'Next: follow tracked nav, dock, and hand over the cargo.';
     case 'bulk_trade':
-      return 'Next: buy or carry ' + cmdtyName(p.cmdtyId) + ', then sell into the tracked destination market.';
+      return 'Next: buy or carry ' + cmdtyName(p.cmdtyId) + ', then sell at the destination market.';
     case 'mining_quota':
-      return 'Next: mine ' + cmdtyName(p.cmdtyId) + ' in an asteroid field, keep cargo space open, then follow the tracker.';
+      return 'Next: mine ' + cmdtyName(p.cmdtyId) + ' in an asteroid field and keep cargo space free.';
     case 'salvage_retrieval':
       return 'Next: recover the marked cargo, keep enough hold space, and deliver it to ' + dest + '.';
     case 'bounty_hunt':
-      return 'Next: follow tracked nav, engage the target, then check this log for completion.';
+      return 'Next: follow tracked nav and take down the target.';
     case 'patrol_clear':
       return 'Next: follow tracked nav and clear hostiles until the progress bar fills.';
     case 'escort':
@@ -531,7 +533,7 @@ function nextStepText(m) {
     case 'smuggling_run':
       return 'Next: deliver quietly to ' + dest + '; avoid scans and keep an escape route.';
     default:
-      return 'Next: track this mission, undock, and follow the nav/objective marker.';
+      return 'Next: track this mission, undock, and follow the objective marker.';
   }
 }
 

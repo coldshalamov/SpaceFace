@@ -415,10 +415,8 @@ function saveErrorReasonText(payload = {}) {
 
 function wireSaveFeedback(bus) {
   if (!bus || !bus.on) return;
-  bus.on('save:started', ({ slot } = {}) => {
-    if (slot === 'auto' || slot === 'autosave') return;
-    bus.emit('toast', { text: 'Saving ' + saveSlotLabel(slot), kind: 'info', ttl: 1600 });
-  });
+  // No 'Saving …' receipt: the write lands in milliseconds and 'Saved …' follows, so two toasts
+  // for one press only crowded the lane.
   bus.on('save:completed', ({ slot } = {}) => {
     bus.emit('toast', {
       text: (slot === 'auto' || slot === 'autosave') ? 'Autosaved' : 'Saved ' + saveSlotLabel(slot),
@@ -527,9 +525,9 @@ export const ui = {
         try { this.screenManager.refreshTop(); } catch (e) { console.error(e); }
       }
       if (payload.mirrorRecovered) {
-        this.bus.emit('toast', { text: 'Shared save store reconnected — mirroring resumed.', kind: 'good', ttl: 2600 });
+        this.bus.emit('toast', { text: 'Save sync restored.', kind: 'good', ttl: 2600 });
       } else if (payload.ok === false && payload.mirror === 'shared') {
-        this.bus.emit('toast', { text: 'Shared save store unreachable — saves stay on this device.', kind: 'warn', ttl: 3600 });
+        this.bus.emit('toast', { text: 'Save sync unavailable. Saves stay on this device.', kind: 'warn', ttl: 3600 });
       }
     });
 

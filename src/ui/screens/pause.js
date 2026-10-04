@@ -339,7 +339,7 @@ function saveLine(state) {
   const savedAt = state && state.meta && state.meta.lastSavedAt;
   const savedWhen = fmtSavedAt(savedAt);
   if (savedWhen) {
-    return 'Saved ' + savedWhen + (slot ? ' to ' + slotLabel(slot) : '') + '. F5 quick-saves, F9 quick-loads.';
+    return 'Saved ' + savedWhen + (slot ? ' to ' + slotLabel(slot) : '') + '.';
   }
   if (slot) {
     return 'Loaded ' + slotLabel(slot) + '. Nothing saved this session. Use Save or F5 before quitting.';

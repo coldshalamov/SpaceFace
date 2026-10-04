@@ -404,7 +404,7 @@ async function confirmMarketPurchase(ctx, stationId, cmdtyId, qty, opts = {}) {
   const name = (COMMODITY_BY_ID.get(cmdtyId) || {}).name || cmdtyId;
   const routeLine = opts.routeName
     ? '\n\nThis loads the Best Trades route and sets nav for ' + opts.routeName + '.'
-    : '\n\nCargo only pays off when you sell it into demand, complete a contract, or feed manufacturing. Check Best Trades or Mission Log after buying.';
+    : '\n\nCargo pays when you sell it into demand or use it for a contract or manufacturing.';
   return confirm({
     title: 'Confirm purchase',
     body: 'Buy ' + qty + ' ' + name + ' for ' + Math.round(total).toLocaleString() + ' CR?' + routeLine,

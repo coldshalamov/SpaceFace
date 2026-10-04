@@ -308,7 +308,7 @@ export function codexProgressSummary(story = {}, state = null) {
   return {
     beat,
     phase,
-    note: 'Locked counts mean future entries are intentionally hidden until story progress, encounter flags, or conditional signal triggers reveal them.',
+    note: 'Locked entries are hidden on purpose until you reach them in the story.',
     items,
   };
 }
@@ -1382,7 +1382,7 @@ export const codexScreen = {
       sub: gal.overallPercent + '% · ' + gal.foundPois + '/' + gal.totalPois + ' sites',
       title: 'Galaxy Cartography & Survey Status',
       meta: 'Survey',
-      body: 'Fly close to unresolved signatures or perform deep triangulations to expand known frontier cartography.',
+      body: 'Fly close to unresolved signals and triangulate them to chart the frontier.',
     });
     survey.article.setAttribute('aria-label', 'Survey and cartography summary');
     const heroes = el('div', 'k-words k-words--row');
@@ -1875,7 +1875,7 @@ export const codexScreen = {
       });
       const sectionLabel = label + ' (' + visible.length + '/' + entries.length + ')';
       if (!visible.length) {
-        this._section(sectionLabel, [], key === 'traps' ? '— no conditional signals encountered yet —' : '— nothing encountered yet —');
+        this._section(sectionLabel, [], key === 'traps' ? '— none found yet —' : '— nothing encountered yet —');
         continue;
       }
       this._section(sectionLabel, visible.map((c) => makeEntry({

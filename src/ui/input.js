@@ -567,7 +567,7 @@ export function createUiInput(ctx, screenManager) {
       const interaction = interactionProfileForEntity(wreck);
       if (interaction.hazardous) {
         bus.emit('toast', {
-          text: 'Hazardous reactor wreck — it can explode if its reactor timer expires. '
+          text: 'Hazardous reactor wreck — it explodes when its reactor timer runs out. '
             + `${BINDINGS.drill.label} drills asteroids; hold the mining control to salvage this wreck or tow it clear.`,
           kind: 'warn',
           ttl: 5,
@@ -609,7 +609,7 @@ export function createUiInput(ctx, screenManager) {
       const dist = Math.hypot(dx, dz);
       const surfaceDist = Math.max(0, dist - (ast.radius || 0) - (player.radius || 0));
       if (surfaceDist > 220) {
-        bus.emit('toast', { text: 'Too far to establish drill link! Fly closer to the asteroid.', kind: 'warn', ttl: 3 });
+        bus.emit('toast', { text: 'Too far to drill. Fly closer to the asteroid.', kind: 'warn', ttl: 3 });
         return;
       }
     }
@@ -624,7 +624,7 @@ export function createUiInput(ctx, screenManager) {
       const latchHint = tetherKey
         ? `Launch a tether (${tetherKey}) to lock onto the asteroid first.`
         : 'Launch a tether to lock onto the asteroid first.';
-      bus.emit('toast', { text: `No massline link! ${latchHint}`, kind: 'warn', ttl: 3.5 });
+      bus.emit('toast', { text: `No Massline link. ${latchHint}`, kind: 'warn', ttl: 3.5 });
       return;
     }
     if (activeTether.defId !== 'tether_standard') {

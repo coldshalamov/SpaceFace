@@ -74,7 +74,7 @@ assert.match(lines.objective, /50% complete/);
 assert.match(lines.objective, /6m left/);
 assert.match(lines.next, /Helios Gate/);
 assert.match(lines.save, /Quick/);
-assert.match(lines.save, /F5 quick-saves/);
+assert.doesNotMatch(lines.save, /F5/, 'the pause footer already lists F5/F9; the save line does not repeat them');
 
 let body = pauseExitConfirmBody(trackedState, 'load');
 assert.match(body, /Opening Load lets you review slots/);

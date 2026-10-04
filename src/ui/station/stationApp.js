@@ -1121,7 +1121,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       vitals.push({
         k: 'muni', label: 'Munitions', frac: Math.min(1, muniAboard / MUNITIONS_LOAD), tone: 'warn', track: false,
         value: `${fmtCr(muniAboard)} / ${MUNITIONS_LOAD}`, aria: `Munitions low: ${fmtCr(muniAboard)} aboard of a ${MUNITIONS_LOAD}-round load`,
-        acts: [vitalActHtml('resupply', costs.resupply, 'Resupply')],
+        acts: [vitalActHtml('resupply', costs.resupply, 'Rearm')],
       });
     }
     // Claimed rights surface only while there is something to redeem — like Munitions, this is
