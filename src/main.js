@@ -32,7 +32,7 @@ import {
 import { applyAccessibility } from './ui/accessibility.js';
 import { ensureStylesheet as ensureStationStylesheet } from './ui/station/stationStyles.js';
 import { createLoadingPresenter } from './ui/loadingPresenter.js';
-import { createRuntimeFailurePresenter } from './ui/runtimeFailurePresenter.js';
+import { createRuntimeFailurePresenter, describeBootFailure } from './ui/runtimeFailurePresenter.js';
 import { authoredCriticalVisualReadiness, isAuthoredPartLibraryUsable } from './render/partsLibrary.js';
 import { settleOpeningCompositionTail } from './render/precompile.js';
 import {
@@ -215,7 +215,13 @@ async function boot() {
       // of dead time before the slot scans and worker dispatch could even start.
       nextFrame().then(restore).catch((error) => {
         console.error('[SpaceFace] deferred save restore failed', error);
-        bus.emit('save:error', { slot: 'latest', reason: 'load_failed' });
+        // SFQ-B228: name the cause so the recovery toast can state it — the saveSystem's own
+        // failure receipts already carry `error`; this outer catch was the bare one.
+        bus.emit('save:error', {
+          slot: 'latest',
+          reason: 'load_failed',
+          error: error && error.message ? error.message : String(error),
+        });
       });
       return true;
     };
@@ -1384,10 +1390,21 @@ function resetRunState(state, opts = {}) {
   state.save = fresh.save;
 }
 
+// SFQ-B228: a boot-stage failure (missing scenario asset, failed fetch, init throw) used to
+// dump a raw stack into the overlay — a cause, but no exit: a dead screen. The recovery pane
+// owner (runtimeFailurePresenter) renders instead: named cause + Retry, saves untouched.
+// The raw stack stays the fallback (and always reaches the console for devtools).
+let bootFailurePresenter = null;
 function showBootError(err) {
+  console.error('[boot]', err);
+  try {
+    if (!bootFailurePresenter) bootFailurePresenter = createRuntimeFailurePresenter({ document });
+    if (bootFailurePresenter.show(describeBootFailure(err))) return;
+  } catch (paneError) {
+    console.error('[boot] recovery pane failed; falling back to raw boot error', paneError);
+  }
   const o = document.getElementById('boot-overlay');
   if (o) o.innerHTML = '<div class="boot-error">BOOT ERROR\n\n' + ((err && err.stack) || err) + '</div>';
-  console.error('[boot]', err);
 }
 
 async function loadScenarioContract(url, path) {
