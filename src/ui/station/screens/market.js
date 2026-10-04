@@ -496,8 +496,8 @@ function freightOwnerWord(record) {
  * so per-pod sums undercount it); the pod lineage only tells whether a lawful carrier's units
  * could be among them, which decides the wording — the legally worse claim wins. Units are
  * fungible, so every count is bounded by what the hold actually carries. */
-export function heldFreightCustodyRows(state, commodityId, heldQty) {
-  let aboard = Math.max(0, Math.floor(Number(heldQty) || 0));
+export function heldFreightCustodyRows(state, commodityId, held) {
+  let aboard = Math.max(0, Math.floor(Number(held) || 0));
   if (!commodityId || aboard <= 0) return [];
   const rows = [];
   for (const record of openFreightCustodyRecords(state, commodityId)) {
@@ -510,13 +510,13 @@ export function heldFreightCustodyRows(state, commodityId, heldQty) {
     const raiderLineage = pods.some((pod) => pod && pod.custodySourceKind === 'hostile_raider');
     const owner = freightOwnerWord(record);
     if (record.lawTheftIncidentReceiptId) {
-      rows.push({ text: `up to ${units} u aboard is reported ${owner} — the take is on the warrant ledger`, tone: 'loss' });
+      rows.push({ text: `up to ${units} u aboard is reported ${owner} — the take is on the warrant ledger` });
     } else if (lawfulLineage) {
-      rows.push({ text: `up to ${units} u aboard is still ${owner} — custody open, no report logged`, tone: 'loss' });
+      rows.push({ text: `up to ${units} u aboard is still ${owner} — custody open, no report logged` });
     } else if (raiderLineage) {
-      rows.push({ text: `up to ${units} u aboard was recovered from raiders — yours to settle`, tone: 'gain' });
+      rows.push({ text: `up to ${units} u aboard was recovered from raiders — yours to settle` });
     } else {
-      rows.push({ text: `up to ${units} u aboard traces to an open freight claim`, tone: '' });
+      rows.push({ text: `up to ${units} u aboard traces to an open freight claim` });
     }
   }
   return rows;
@@ -534,23 +534,23 @@ const VOLATILE_HELD_WORDS = Object.freeze({
 });
 
 /** Condition rows for the selected held lot: hazard class and handling, never a countdown. */
-export function heldShipmentConditionRows(state, commodityId) {
+export function heldShipmentConditionRows(commodityId) {
   const rows = [];
   const klass = volatileClassOf(commodityId);
-  if (klass && VOLATILE_HELD_WORDS[klass.id]) rows.push({ text: VOLATILE_HELD_WORDS[klass.id], tone: '' });
+  if (klass && VOLATILE_HELD_WORDS[klass.id]) rows.push({ text: VOLATILE_HELD_WORDS[klass.id] });
   if (fragileCargoGlyphFor(commodityId)) {
-    rows.push({ text: 'fragile — hard impacts crack units', tone: '' });
+    rows.push({ text: 'fragile — hard impacts crack units' });
   }
   return rows;
 }
 
 /** The disposition sentence for the selected sell lot, or '' when nothing is aboard —
  * a sold-out selection never keeps a hazard label for cargo it no longer carries. */
-export function sellDispositionText(state, commodityId, heldQty) {
-  if (!(Math.floor(Number(heldQty) || 0) > 0)) return '';
+export function sellDispositionText(state, commodityId, held) {
+  if (!(Math.floor(Number(held) || 0) > 0)) return '';
   const parts = [];
-  for (const row of heldFreightCustodyRows(state, commodityId, heldQty)) parts.push(row.text);
-  for (const row of heldShipmentConditionRows(state, commodityId)) parts.push(row.text);
+  for (const row of heldFreightCustodyRows(state, commodityId, held)) parts.push(row.text);
+  for (const row of heldShipmentConditionRows(commodityId)) parts.push(row.text);
   if (!parts.length) return '';
   const sentence = parts.join(' · ');
   return `${sentence.charAt(0).toUpperCase()}${sentence.slice(1)}.`;
