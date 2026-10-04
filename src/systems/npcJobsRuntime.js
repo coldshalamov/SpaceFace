@@ -157,6 +157,16 @@ const NPC_BERTH_OCCUPY_PHASES = new Set([
   NPC_JOB_PHASE.COMMISSION, NPC_JOB_PHASE.DEPART, NPC_JOB_PHASE.APPROACH,
   NPC_JOB_PHASE.WORK, NPC_JOB_PHASE.LOAD, NPC_JOB_PHASE.UNLOAD, NPC_JOB_PHASE.HOLD,
 ]);
+// SF-081: a close call is not a crime. A fast hull crossing a worker's bench gets ONE braced
+// beat — the job clock pauses while the crew braces, one restrained line per worker per
+// cooldown, and nothing else: no heat, no flee, no violence escalation counters. A distant or
+// gentle pass triggers nothing; actually hitting the worker or its load stays on the
+// damage/protest path below, which is what keeps annoyance and crime different things.
+const CLOSE_CALL_RADIUS_WU = 150;
+const CLOSE_CALL_SPEED_WU = 40;
+const CLOSE_CALL_HOLD_S = 2.5;
+const CLOSE_CALL_COOLDOWN_S = 30;
+const CLOSE_CALL_PHASES = new Set([NPC_JOB_PHASE.WORK, NPC_JOB_PHASE.LOAD, NPC_JOB_PHASE.UNLOAD]);
 // One barge in the Helios starter field. The shift is a slice of the job's own WORK phase:
 // long enough for the live beam to bite, short enough that it stops while the rock is still a rock.
 const HELIOS_STARTER_SECTOR_ID = 'sector_helios_prime';
@@ -3965,7 +3975,11 @@ export const npcJobsRuntime = {
       } else {
         this._updateBerthHold(entry, entity, simT);
       }
-      if (step > 0 && !approachingSeam && !holdingForArrival && !entry.berthHold
+      // SF-081: a close pass at a working bench braces the crew — a bounded work pause, not a
+      // threat interrupt (that lives on the damage/proximity seams and stays untouched here).
+      if (!claimedBeforeAdvance) this._updateCloseCall(entry, entity, simT);
+      const braced = !claimedBeforeAdvance && entry.closeCallUntil != null && simT < entry.closeCallUntil;
+      if (step > 0 && !approachingSeam && !holdingForArrival && !entry.berthHold && !braced
         && entry.job.phase !== NPC_JOB_PHASE.COMPLETE) {
         advance(entry.job, step, this._sink);
       }
@@ -4594,6 +4608,12 @@ export const npcJobsRuntime = {
         return;
       }
     }
+    // SF-081: the braced worker visibly halts — bleed residual drift and stay on the bench.
+    const ccNow = finite(this.state && this.state.simTime, 0);
+    if (entry.closeCallUntil != null && ccNow < entry.closeCallUntil) {
+      this._writeIntent(entity, 0, 0, false, entity.rot || 0, true);
+      return;
+    }
     // Stationary phases (commission / depart / approach / work / load / unload / hold): hold position.
     this._writeIntent(entity, 0, 0, false, entity.rot || 0);
   },
@@ -4707,6 +4727,43 @@ export const npcJobsRuntime = {
       berthId: targetId,
     };
     entry.berthHold = true;
+  },
+
+  /**
+   * SF-081: a fast hull crossing a working bench triggers one braced beat — the work clock
+   * pauses while the crew braces, and one restrained protest per worker per cooldown. The
+   * scan is gated to the stationary work acts (WORK/LOAD/UNLOAD): a hull mid-route is already
+   * moving and has nothing to brace for. Proximity alone never raises heat, never flees, and
+   * never touches the player-damage escalation counters.
+   */
+  _updateCloseCall(entry, entity, now) {
+    if (!entry || !entry.job || entry.job.corrupt) return;
+    if (!CLOSE_CALL_PHASES.has(entry.job.phase)) return;
+    if (Number.isFinite(entry.closeCallCooldownUntil) && now < entry.closeCallCooldownUntil) return;
+    const playerId = this.state && this.state.playerId;
+    const player = playerId != null && this.state.entities
+      ? this.state.entities.get(playerId) : null;
+    if (!player || player.alive === false || !player.pos || !entity.pos) return;
+    const dx = entity.pos.x - player.pos.x;
+    const dz = entity.pos.z - player.pos.z;
+    const d2 = dx * dx + dz * dz;
+    if (d2 > CLOSE_CALL_RADIUS_WU * CLOSE_CALL_RADIUS_WU) return;
+    const rvx = (player.vel && player.vel.x || 0) - (entity.vel && entity.vel.x || 0);
+    const rvz = (player.vel && player.vel.z || 0) - (entity.vel && entity.vel.z || 0);
+    const relSpeed = Math.hypot(rvx, rvz);
+    if (relSpeed < CLOSE_CALL_SPEED_WU) return;
+    entry.closeCallUntil = now + CLOSE_CALL_HOLD_S;
+    entry.closeCallCooldownUntil = now + CLOSE_CALL_COOLDOWN_S;
+    const kindLabel = { miner: 'Miner', hauler: 'Hauler', salvor: 'Salvor', tender: 'Tender', courier: 'Courier', patrol: 'Patrol' }[entry.job.kind] || 'Crew';
+    if (this.bus && typeof this.bus.emit === 'function') {
+      try {
+        this.bus.emit('toast', { text: `${kindLabel}: Watch your wash — I'm on a bench here!`, kind: 'warn', ttl: 3 });
+        this.bus.emit('npcjobs:closeCall', {
+          jobId: entry.job.id, kind: entry.job.kind, sectorId: entry.sectorId || null,
+          distance: Math.sqrt(d2), relSpeed, simTime: now,
+        });
+      } catch { /* advisory only */ }
+    }
   },
 
   // ── threat / flee ─────────────────────────────────────────────────────────────────────────────
