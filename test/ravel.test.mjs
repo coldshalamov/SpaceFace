@@ -44,6 +44,46 @@ test('one cohort; never appears in arcade, laboratory or another sector',()=>{
   f.state.run.kind=kind;f.state.world.currentSectorId=sector;f.bus.emit('sector:enter',{});assert.equal(f.system._core(),null);
  }f.destroy();
 });
+const partsOf=f=>f.state.entityList.filter(e=>e.alive&&e.data?.ravelPart);
+test('streaming: nothing is minted for a far pilot; the encounter streams in and out with hysteresis and never flaps',()=>{
+ const f=fixture(),exit=f.system._exitRadius();assert.ok(exit>400);
+ f.player.pos.x=O.x+exit+400;f.player.pos.z=O.z;ticks(f,130);
+ assert.equal(partsOf(f).length,0,'a far pilot costs nothing: no core or spool is minted');
+ let spawned=0;const spawn=f.helpers.spawnEntity;
+ f.helpers.spawnEntity=s=>{const e=spawn(s);if(e?.data?.ravelPart)spawned++;return e;};
+ f.player.pos.x=O.x+exit-C.streamInMargin-60;ticks(f,130);
+ assert.equal(partsOf(f).length,4,'inside the stream-in radius the encounter appears whole');
+ const ids=()=>partsOf(f).map(e=>e.id).sort((a,b)=>a-b).join();const born=ids(),afterIn=spawned;
+ f.player.pos.x=O.x+exit-C.streamOutMargin-40;ticks(f,130);
+ assert.equal(partsOf(f).length,4,'inside the hysteresis band it stays');
+ f.player.pos.x=O.x+exit-C.streamInMargin+20;ticks(f,130);
+ assert.equal(partsOf(f).length,4,'between the two radii it neither appears nor vanishes');
+ assert.equal(spawned,afterIn,'and nothing is re-minted while it stays');assert.equal(ids(),born,'the same bodies, no thrash');
+ f.player.pos.x=O.x+exit-C.streamOutMargin+40;ticks(f,130);
+ assert.equal(partsOf(f).length,0,'past the stream-out radius it is withdrawn whole');
+ f.player.pos.x=O.x+200;ticks(f,130);
+ assert.equal(partsOf(f).length,4,'and returns as core + three spools');f.destroy();
+});
+test('an anonymous shell promoted from a shelved far-actor row is removed by its owner stamp; the real cohort stays singular',()=>{
+ const f=fixture();ticks(f,5);
+ const twin=f.helpers.spawnEntity({type:'drone',team:2,pos:{x:O.x,z:O.z},radius:5,mass:5,hull:5,hullMax:5,
+  data:{persistenceOwner:'ravel',homeSectorId:C.sectorId}});
+ const stranger=f.helpers.spawnEntity({type:'drone',team:2,pos:{x:O.x+9,z:O.z},radius:5,mass:5,hull:5,hullMax:5,
+  data:{persistenceOwner:'traffic'}});
+ ticks(f,130);
+ assert.equal(twin.alive,false,'our twin is cleaned up');assert.equal(stranger.alive,true,'and nobody else\'s entity is touched');
+ assert.equal(partsOf(f).length,4);f.destroy();
+});
+test('a duplicate core does not survive the census beside the adopted one',()=>{
+ const f=fixture();ticks(f,5);
+ const dupe=f.helpers.spawnEntity(ravelEntitySpec('core'));ticks(f,130);
+ assert.equal(dupe.alive,false);assert.equal(partsOf(f).length,4);f.destroy();
+});
+test('every ravel body carries the owner stamp the census cleans shells by',()=>{
+ const f=fixture();
+ for(const e of partsOf(f))assert.equal(e.data.persistenceOwner,'ravel');
+ assert.equal(ravelEntitySpec('spool',2).data.persistenceOwner,'ravel');f.destroy();
+});
 test('scan consent: hail, then challenge, then cancel; duplicate sequence never arms',()=>{
  const f=fixture();f.scan();assert.equal(f.state.ravel.met,true);assert.equal(f.system._phase,'idle');
  f.scan({seq:1});assert.equal(f.system._phase,'idle');f.scan();assert.equal(f.system._phase,'windup');

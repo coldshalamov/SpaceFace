@@ -4,6 +4,7 @@ import { RAVEL as C, RAVEL_LINES, freshRavelMemory, normalizeRavelMemory } from 
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
+import { farActorTableRadius } from '../world/farActorTable.js';
 import { finiteXZ, clamp, distanceXZ, spoolGoal, boundedServo, sweptWaveHit, playerOwnsSpoolLine } from '../characters/ravelRules.js';
 
 export const RAVEL_GLOBAL_ANCHOR = Object.freeze(sectorLocalToGlobalForSector(C.anchor, C.sectorId));
@@ -19,6 +20,9 @@ export function ravelEntitySpec(part = 'core', index = 0, memory = freshRavelMem
     physicsBody:{dynamic:!core,shape:'ball',radius,mass,useMeasuredSkin:false,material:'debris',ccd:true,
       contact:{friction:0.15,restitution:0.2,linearDamping:0.08,angularDamping:0.3}},
     data:{ravelPart:part,ravelIndex:index,authoredCharacter:C.id,identityKey:core?C.id:`${C.id}:spool:${index}`,
+      // The census removes a far-table shell by this stamp: a body the table shelved returns
+      // promoted but anonymous (the lean row drops ravelPart), and only the owner may kill it.
+      persistenceOwner:'ravel',
       ai:{passive:true},homeSectorId:C.sectorId,callsign:C.callsign,
       scanLabel:core?'RAVEL · scan twice to challenge':`Counterweight ${index+1} · pull beyond outer teeth`,
       scannerSignalKind:'anomaly',visualRadius:core?300:11,
@@ -47,7 +51,7 @@ export function createRavel() {
   _reset() {
     this._coreRef=null;this._spools=[null,null,null];this._phase=this.state?.ravel?.pacified?'peace':this.state?.ravel?.met?'idle':'sleep';
     this._elapsed=0;this._angle=0;this._waveHit=false;this._cycle=0;this._scanSeq=0;this._scanSource=null;
-    this._syncAt=0;this._discovered=false;this._inside=false;this._quiet=0;this._lastVoice=-100;
+    this._syncAt=0;this._streaming=false;this._discovered=false;this._inside=false;this._quiet=0;this._lastVoice=-100;
     this._touched=[-100,-100,-100];this._held=[0,0,0];this._lastDistance=[0,0,0];
     this._previousPlayer=null;this._goal={x:0,z:0};this._delta={x:0,z:0};this._outImpulse={x:0,z:0};
   },
@@ -58,7 +62,24 @@ export function createRavel() {
     &&this.state.world?.currentSectorId===C.sectorId;},
   _live(){const p=this._player();return !this._restoring&&this._adventure()&&this.state.mode==='flight'
     &&this.state.timeScale>0&&p?.alive&&!p.flags?.docked&&finiteXZ(p.pos)&&finiteXZ(p.vel);},
-  _removeOwned(){for(const e of this.state?.entityList||[])if(e?.alive&&e.data?.ravelPart)this.helpers?.removeEntity?.(e.id);
+  /** The far-actor table's exit radius: past it a drone is shelved and later promoted as an anonymous shell. */
+  _exitRadius(){
+    try{const r=farActorTableRadius(this.state);if(r&&Number.isFinite(r.exit)&&r.exit>400)return r.exit;}
+    catch(_){/* minimal harness: no far-actor table */}
+    return C.farFallback;
+  },
+  /** Distance streaming with hysteresis: the encounter is alive only while the player is near enough that the
+   * far-actor table would leave it alone. The hysteresis band is also the roam bound — core and spools stay
+   * within ~200 WU of the anchor (servo goals; a cast excursion is far inside the band). */
+  _streamed(){
+    const p=this._player();
+    if(!p||!finiteXZ(p.pos))return this._streaming;
+    const exit=this._exitRadius(),d=distanceXZ(p.pos,RAVEL_GLOBAL_ANCHOR);
+    const limit=this._streaming?exit-C.streamOutMargin:exit-C.streamInMargin;
+    return (this._streaming=d<=Math.max(limit,250));
+  },
+  _removeOwned(){/* Snapshot: removeEntity may splice the live list mid-walk, stranding every other part. */
+    for(const e of (this.state?.entityList||[]).slice())if(e?.alive&&e.data?.ravelPart)this.helpers?.removeEntity?.(e.id);
     this._coreRef=null;this._spools=[null,null,null];},
   _sync() {
     // Sync lane (emit listener, save:loaded): drain the chunked steps inline —
@@ -68,13 +89,16 @@ export function createRavel() {
   *_syncSteps() {
     if(this._restoring)return;
     const m=this.state.ravel;
-    if(!this._adventure()||m.destroyed){this._cancel(false);this._removeOwned();this._inside=false;return;}
+    if(!this._adventure()||m.destroyed){this._streaming=false;this._cancel(false);this._removeOwned();this._inside=false;return;}
+    if(!this._streamed()){this._cancel(false);this._removeOwned();this._inside=false;return;}
     const found=[null,null,null,null];
     // Snapshot the live list across yields; ravelPart bodies minted by a
     // suspended run are adopted on re-scan, not re-minted.
     for(const e of (this.state.entityList||[]).slice()) {
       yield;
-      if(!e?.alive||!e.data?.ravelPart)continue;
+      if(!e?.alive)continue;
+      // A shell the far-actor table promoted from a shelved row keeps our owner stamp but not our part.
+      if(!e.data?.ravelPart){if(e.data?.persistenceOwner==='ravel')this.helpers.removeEntity?.(e.id);continue;}
       const i=e.data.ravelPart==='core'?0:e.data.ravelIndex+1;
       if(!Number.isInteger(i)||i<0||i>3||found[i]||(i>0&&(m.broken&(1<<(i-1)))))this.helpers.removeEntity?.(e.id);
       else found[i]=e;
@@ -210,6 +234,7 @@ export function createRavel() {
     if(!Number.isFinite(dt)||dt<=0||dt>0.1||this._restoring)return;
     const now=this.state.simTime||0;
     if(now>=this._syncAt){this._syncAt=now+1;this._sync();}
+    if(!this._adventure()||!this._streaming)return;
     const core=this._core();if(!core)return;
     if(!this._live()){
       // Pause freezes phase and pose; docking/leaving flight cancels dangerous carryover.

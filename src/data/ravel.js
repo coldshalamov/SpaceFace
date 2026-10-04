@@ -5,6 +5,12 @@ export const RAVEL = Object.freeze({
   coreRadius: 24, coreMass: 40000, hull: 720,
   spoolRadius: 5.8, spoolMass: 24, spoolHull: 110, orbitRadius: 65,
   freeRadius: 128, freeHold: 0.35, touchGrace: 3.0,
+  // Streaming. The world's far-actor table shelves any drone beyond its exit radius of the player,
+  // so the encounter exists only while the player is inside it: spawn within (exit - streamInMargin)
+  // of the anchor, withdraw beyond (exit - streamOutMargin). Core and spools stay near the anchor
+  // (servo goals and a cast excursion of ~200 WU), so the hysteresis band is also the roam bound.
+  // farFallback stands in where there is no far-actor table (minimal harnesses).
+  streamInMargin: 350, streamOutMargin: 200, farFallback: 1300,
   discoverRadius: 440, scanRadius: 300, leashRadius: 520,
   windup: 2.1, cast: 1.5, exposed: 4.2, recover: 1.8,
   waveStart: 28, waveSpeed: 145, waveHalfAngle: 0.43,

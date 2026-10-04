@@ -4,6 +4,7 @@ import { SOLSTICE as C, SOLSTICE_LINES, freshSolsticeMemory, normalizeSolsticeMe
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
+import { farActorTableRadius } from '../world/farActorTable.js';
 import {
   finiteXZ, clamp, distanceXZ, wrapAngle,
   prismFocalGoal, isPrismInFocalZone, boundedPrismServo,
@@ -63,6 +64,9 @@ export function solsticeEntitySpec(part = 'core', index = 0, memory = freshSolst
       solsticeIndex: index,
       authoredCharacter: C.id,
       identityKey: isCore ? C.id : `${C.id}:${part}:${index}`,
+      // The census removes a far-table shell by this stamp: a body the table shelved returns
+      // promoted but anonymous (the lean row drops solsticePart), and only the owner may kill it.
+      persistenceOwner: 'solstice',
       homeSectorId: C.sectorId,
       callsign: C.callsign,
       scanLabel: isCore
@@ -124,6 +128,8 @@ export function createSolstice() {
       this._coreRef = null;
       this._prisms = [null, null, null];
       this._wispRef = null;
+      this._syncAt = 0;
+      this._streaming = false;
       this._beamAngle = 0;
       this._beamSweepDir = 1;
       this._beamInPlayer = false;
@@ -155,9 +161,26 @@ export function createSolstice() {
       return !this._restoring && this._adventure() && this.state.mode === 'flight'
         && this.state.timeScale > 0 && p?.alive && !p.flags?.docked && finiteXZ(p.pos) && finiteXZ(p.vel);
     },
+    /** The far-actor table's exit radius: past it a drone is shelved and later promoted as an anonymous shell. */
+    _exitRadius() {
+      try { const r = farActorTableRadius(this.state); if (r && Number.isFinite(r.exit) && r.exit > 400) return r.exit; }
+      catch (_) { /* minimal harness: no far-actor table */ }
+      return C.farFallback;
+    },
+    /** Distance streaming with hysteresis: the encounter is alive only while the player is near enough that the
+     * far-actor table would leave it alone. The hysteresis band is also the roam bound — every part clusters at
+     * the anchor (the core is fixed, prisms servo to it, the wisp follows the player). */
+    _streamed() {
+      const p = this._player();
+      if (!p || !finiteXZ(p.pos)) return this._streaming;
+      const exit = this._exitRadius(), d = distanceXZ(p.pos, SOLSTICE_GLOBAL_ANCHOR);
+      const limit = this._streaming ? exit - C.streamOutMargin : exit - C.streamInMargin;
+      return (this._streaming = d <= Math.max(limit, 250));
+    },
 
     _removeOwned() {
-      for (const e of this.state?.entityList || []) {
+      // Snapshot: removeEntity may splice the live list mid-walk, which would strand every other part.
+      for (const e of (this.state?.entityList || []).slice()) {
         if (e?.alive && e.data?.solsticePart) this.helpers?.removeEntity?.(e.id);
       }
       this._coreRef = null;
@@ -169,6 +192,12 @@ export function createSolstice() {
       if (this._restoring) return;
       const m = this.state.solstice;
       if (!this._adventure() || m.destroyed) {
+        this._streaming = false;
+        this._removeOwned();
+        return;
+      }
+      if (!this._streamed()) {
+        this._cancel();
         this._removeOwned();
         return;
       }
@@ -177,13 +206,18 @@ export function createSolstice() {
       const prisms = [null, null, null];
       let wisp = null;
 
-      for (const e of this.state.entityList || []) {
-        if (!e?.alive || !e.data?.solsticePart) continue;
-        if (e.data.solsticePart === 'core') core = e;
-        else if (e.data.solsticePart === 'prism') {
+      for (const e of (this.state.entityList || []).slice()) {
+        if (!e?.alive) continue;
+        const part = e.data?.solsticePart;
+        // A shell the far-actor table promoted from a shelved row keeps our owner stamp but not our part.
+        if (!part) { if (e.data?.persistenceOwner === 'solstice') this.helpers.removeEntity?.(e.id); continue; }
+        if (part === 'core' && !core) core = e;
+        else if (part === 'prism') {
           const idx = e.data.solsticeIndex;
-          if (idx >= 0 && idx < 3) prisms[idx] = e;
-        } else if (e.data.solsticePart === 'wisp') wisp = e;
+          if (idx >= 0 && idx < 3 && !prisms[idx]) prisms[idx] = e;
+          else this.helpers.removeEntity?.(e.id);
+        } else if (part === 'wisp' && !wisp) wisp = e;
+        else this.helpers.removeEntity?.(e.id);
       }
 
       if (!core) core = this.helpers.spawnEntity?.(solsticeEntitySpec('core', 0, m)) || null;
@@ -229,6 +263,8 @@ export function createSolstice() {
         const i = providers.indexOf(this._cookProvider);
         if (i >= 0) providers.splice(i, 1);
       }
+      const q = this.state?.render?.deferredEnterMaterializers;
+      if (q) for (let i = q.length - 1; i >= 0; i--) if (q[i].provider === this._cookProvider) q.splice(i, 1);
       this._cookProvider = null;
     },
 
@@ -354,10 +390,12 @@ export function createSolstice() {
 
     update(dt) {
       if (!Number.isFinite(dt) || dt <= 0 || dt > 0.1 || this._restoring) return;
+      const now = this.state.simTime || 0;
+      if (now >= this._syncAt) { this._syncAt = now + 1; this._sync(); }
+      if (!this._adventure() || !this._streaming) return;
       const core = this._core();
       if (!core) return;
       const player = this._player();
-      const now = this.state.simTime || 0;
       const m = this.state.solstice;
 
       // 1. Beam steering: slow gentle astronomical sweep or soft lock towards player if hailed

@@ -212,10 +212,13 @@ label). It reads `state.aftermathWrecks` markers' wreck clones and never writes 
   are future content: the marker only exists in Tethys, by design.
 - **Other characters and the far-actor table:** the thrash described in §7 is a property of the world, not of
   Rubric. Solstice, Ravel, Vesper and Bracket mint their parts from the same once-a-second census and were shelved
-  and re-minted the same way for any pilot arriving from a gate. They are fixed by one stamp, `data.authoredCharacter`,
-  that `shouldVirtualizeFarActor` honours (`test/character-far-actor-residency.test.mjs`, real-game check
-  `scripts/characters/check-residency-live.mjs`). Rubric keeps its own distance streaming because it is cheaper to
-  not exist at all than to keep a paint-mark entity resident across a sector. A new character whose system
-  spawns bodies from a census should stamp `data.authoredCharacter` on every body.
+  and re-minted the same way for any pilot arriving from a gate. Solstice and Ravel are fixed by distance streaming
+  like Rubric — nothing is minted for a far pilot, and the census withdraws the cohort past the stream-out radius
+  (`test/solstice.test.mjs`, `test/ravel.test.mjs`, real-game check `scripts/characters/check-solstice-ravel-live.mjs`) —
+  with `data.authoredCharacter` kept on every body as belt-and-braces for any part that still reaches the table.
+  Vesper and Bracket hold residency on the stamp alone, which `shouldVirtualizeFarActor` honours
+  (`test/character-far-actor-residency.test.mjs`, real-game check `scripts/characters/check-residency-live.mjs`).
+  A new character whose system spawns bodies from a census should stream by distance and stamp
+  `data.authoredCharacter` on every body.
 - **Ship paint reward:** the Shipworks rack is an ungated swatch list; a "Red Lead" paint would not be a reward
   without UI gating owned by the ORRERY lane.

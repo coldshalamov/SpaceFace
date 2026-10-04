@@ -2,9 +2,10 @@
 //   main menu -> New Game -> Launch -> world:requestJump (gate) to each character's sector
 // A pilot who arrives by gate is far (well past the far-actor table's exit radius) from the character. The
 // far-actor table used to shelve its bodies within two ticks and the owner system re-minted them every second,
-// so the character vanished, thrashed, and left anonymous twins. This asserts, in the real game, that for each
-// character the cohort is present on arrival, is the very same set of bodies for the whole sample window,
-// is never shelved, and never shows up as a far-table row.
+// so the character vanished, thrashed, and left anonymous twins. Vesper and Bracket now hold residency on the
+// data.authoredCharacter stamp: the cohort is present on arrival and is the very same set of bodies for the
+// whole sample window. Solstice and Ravel stream by distance like Rubric: a far pilot mints NOTHING (so there
+// is nothing to thrash), and approaching past the stream-in radius mints the cohort once, whole and stable.
 //
 //   node scripts/characters/check-residency-live.mjs
 // Saves are isolated (SPACEFACE_PLAYER_STORE_DIR=''), never the player's drawer. Report: .devshots/residency/.
@@ -21,12 +22,13 @@ await mkdir(OUT, { recursive: true });
 const { chromium } = await loadPlaywright();
 
 const SAMPLE_SIM_SECONDS = 8;
-// cohort: how many bodies the character's system mints.
+// cohort: how many bodies the character's system mints. streamed: it exists only inside the
+// streaming radius (mint on approach, withdraw past the stream-out radius) instead of always.
 const TARGETS = [
   { name: 'vesper', sector: 'sector_helios_prime', cohort: 4, here: true },
   { name: 'bracket', sector: 'sector_helios_prime', cohort: 5, here: true },
-  { name: 'solstice', sector: 'sector_ceres_belt', cohort: 4 },
-  { name: 'ravel', sector: 'sector_pallas_drift', cohort: 4 },
+  { name: 'solstice', sector: 'sector_ceres_belt', cohort: 4, streamed: true, system: '/src/systems/solstice.js', anchor: 'SOLSTICE_GLOBAL_ANCHOR' },
+  { name: 'ravel', sector: 'sector_pallas_drift', cohort: 4, streamed: true, system: '/src/systems/ravel.js', anchor: 'RAVEL_GLOBAL_ANCHOR' },
 ];
 const OWNS = {
   vesper: "e.data?.vesper === true",
@@ -88,12 +90,30 @@ try {
   }, [who, OWNS[who]]);
 
   async function judge(target) {
-    // The cohort must exist (the sector may still be cooking), then stay the same set of bodies while the pilot is far.
+    const exit = await page.evaluate(async () => { try { const m = await import('/src/world/farActorTable.js'); return m.farActorTableRadius(window.SF.state).exit; } catch { return null; } });
+    if (target.streamed) {
+      // A streamed character mints nothing for a pilot who is past the exit radius: the encounter does
+      // not exist yet, so there is nothing to shelve and no census thrash can start.
+      const far = await snapshot(target.name);
+      assert.equal(far.ids.length, 0, `${target.name}: a pilot arriving past the exit radius mints nothing`);
+      report.checks.push(`${target.name}: 0 bodies while the pilot is far (exit radius ${exit == null ? 'n/a' : Math.round(exit)}) — nothing to thrash`);
+      // Approach past the stream-in radius (exit - 350): along the arrival bearing, so the teleport reads
+      // as a pilot flying the last stretch rather than a warp onto the anchor.
+      await page.evaluate(async ([systemUrl, anchorExport, howClose]) => {
+        const s = window.SF.state, p = s.entities.get(s.playerId);
+        const m = await import(systemUrl);
+        const a = m[anchorExport];
+        const dx = p.pos.x - a.x, dz = p.pos.z - a.z, d = Math.hypot(dx, dz) || 1;
+        if (typeof p.pos.set === 'function') p.pos.set(a.x + dx / d * howClose, 0, a.z + dz / d * howClose);
+        else { p.pos.x = a.x + dx / d * howClose; p.pos.z = a.z + dz / d * howClose; }
+        p.vel.x = 0; p.vel.z = 0;
+      }, [target.system, target.anchor, exit == null ? 900 : Math.max(250, exit - 450)]);
+    }
+    // The cohort must exist (the sector may still be cooking, or the pilot has just closed in), then stay
+    // the same set of bodies for the whole sample window.
     await page.waitForFunction(([src, n]) => { const f = new Function('e', `return ${src};`);
       return window.SF.state.entityList.filter(e => e?.alive && f(e)).length >= n; }, [OWNS[target.name], target.cohort], { timeout: 180_000 });
-    const exit = await page.evaluate(async () => { try { const m = await import('/src/world/farActorTable.js'); return m.farActorTableRadius(window.SF.state).exit; } catch { return null; } });
     const first = await snapshot(target.name);
-    const spawnedBefore = await page.evaluate(() => window.__spawned.length);
     // Sample on the SIM clock, not the wall clock: a loaded host runs far fewer than 60 sim-s per 60 wall-s, and the
     // old thrash needed whole seconds of sim time (the owner census runs once a sim-second) to show itself.
     const timeline = [first], wallStart = Date.now();
@@ -102,15 +122,19 @@ try {
     }
     const last = timeline.at(-1), simSpan = +(last.t - first.t).toFixed(1);
     const shelved = await page.evaluate(ids => window.__shelved.filter(x => ids.includes(x.id)), first.ids);
-    const respawned = await page.evaluate(([n, who]) => window.__spawned.slice(n).filter(x => x.who === who), [spawnedBefore, target.name]);
+    // A re-mint is a spawn whose id is not in the first snapshot: birth records of the observed cohort can
+    // flush late (a sector-entry stall delays the bus), so a positional cut would accuse the birth itself.
+    // Entity ids are never recycled.
+    const respawned = await page.evaluate(([who, ids]) => window.__spawned.filter(x => x.who === who && !ids.includes(x.id)), [target.name, first.ids]);
     report.characters[target.name] = { sector: target.sector, exitRadius: exit, nearest: first.nearest, ids: first.ids, simSpan, shelved, respawned, farRows: last.farRows };
     assert.equal(first.sector, target.sector, `${target.name}: pilot is in ${target.sector}`);
     assert.ok(simSpan >= SAMPLE_SIM_SECONDS, `${target.name}: the sample window ran ${simSpan}s of sim time (wanted ${SAMPLE_SIM_SECONDS})`);
     assert.deepEqual(timeline.map(x => x.ids.join()).filter((v, i, a) => v !== a[0]), [], `${target.name}: the same bodies the whole time`);
     assert.deepEqual(shelved, [], `${target.name}: never shelved`);
     assert.deepEqual(respawned, [], `${target.name}: never re-minted after the first census`);
-    if (!target.here) assert.ok(exit == null || first.nearest > exit, `${target.name}: the pilot arrived beyond the exit radius (${Math.round(first.nearest)} > ${Math.round(exit)}), so this proves residency while far`);
-    report.checks.push(`${target.name}: ${first.ids.length} bodies resident over ${simSpan}s of sim time, nearest ${Math.round(first.nearest)} WU (exit radius ${exit == null ? 'n/a' : Math.round(exit)}), 0 shelved, 0 re-minted`);
+    if (target.streamed) assert.ok(exit == null || first.nearest < exit, `${target.name}: the cohort exists inside the streaming radius (${Math.round(first.nearest)} < ${Math.round(exit)})`);
+    if (!target.streamed && !target.here) assert.ok(exit == null || first.nearest > exit, `${target.name}: the pilot arrived beyond the exit radius (${Math.round(first.nearest)} > ${Math.round(exit)}), so this proves residency while far`);
+    report.checks.push(`${target.name}: ${first.ids.length} bodies${target.streamed ? ' after streaming in' : ' resident'} over ${simSpan}s of sim time, nearest ${Math.round(first.nearest)} WU (exit radius ${exit == null ? 'n/a' : Math.round(exit)}), 0 shelved, 0 re-minted`);
   }
 
   for (const target of TARGETS) {
