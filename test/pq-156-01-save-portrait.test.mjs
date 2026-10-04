@@ -100,14 +100,14 @@ function envelopeFor(data, seed = SEED) {
 test('PQ-156.01: seed matches the packet', () => {
   assert.equal(SEED, 15610);
   assert.equal(SAVE_PORTRAIT_SEED, 15610);
-  assert.deepEqual(SAVE_PORTRAIT_FIELDS.slice(), ['hull', 'scars', 'titles', 'rapSheet', 'grudge']);
+  assert.deepEqual(SAVE_PORTRAIT_FIELDS.slice(), ['hull', 'scars', 'repairs', 'titles', 'rapSheet', 'grudge']);
   assert.equal(shipLabel('ship_kestrel'), 'Hitch');
   assert.equal(shipLabel('ship_pelican'), 'Pelican');
   assert.equal(shipLabel('ship_wasp'), 'Wasp');
   assert.equal(shipLabel('ship_kestrel_runner'), 'Kestrel Runner');
 });
 
-test('PQ-156.01: a file-list index still yields five portrait fields', () => {
+test('PQ-156.01: a file-list index still yields the portrait fields', () => {
   const portrait = buildSavePortrait({
     meta: {
       savedAt: '2026-09-08T00:00:00.000Z',
