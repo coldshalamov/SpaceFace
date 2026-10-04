@@ -469,6 +469,39 @@ function upsertUnknownPing(state, sectorId, ping) {
   return true;
 }
 
+// A ping row may exist only while its source POI still qualifies for one (hidden or an anomaly,
+// triangulation answered, cache signal live) — the SAME predicate the upsert in
+// _pingHiddenPois grants, minus the pulse radius, so an out-of-range fix stays remembered.
+// When the source is answered — the POI discovered (world.js poi:discovered flips .hidden),
+// a named cache consumed, an untriangulated anomaly regressed — the row would otherwise live
+// forever (upsert is create-only; the bucket rides the save), and every map surface would keep
+// offering an 'Unresolved contact' course to a question that has been answered. Runs on the
+// pulse that refreshes the bucket, in this single-writer file; keyed on the POI identity
+// (poi.poiId || poi_<entity id>), never on a signal-string namespace.
+function pruneResolvedPings(state, sectorId, pois) {
+  const bucket = state.world && state.world.scanPings;
+  const list = bucket && bucket[sectorId];
+  if (!Array.isArray(list) || !list.length) return;
+  const live = new Set();
+  for (const poi of pois || []) {
+    if (!poi || !(poi.hidden || poi.type === 'anomaly')) continue;
+    const entity = state.entities && state.entities.get && state.entities.get(poi.id);
+    if (entity && entity.data && entity.data.requiresTriangulation && !entity.data.anomalyTriangulated) continue;
+    if (!vestaOreCacheSignalAvailable(state, poi.poiId || poi.id)
+      || !pallasHiddenCacheSignalAvailable(state, poi.poiId || poi.id)) continue;
+    live.add(poi.poiId || `poi_${poi.id}`);
+  }
+  // An id no current POI claims is an orphan only once the sector is cooked (a non-empty poi
+  // list answers "who could own a ping here"); a transiently empty list must not wipe the
+  // remembered fixes the bucket exists to keep.
+  const cooked = Array.isArray(pois) && pois.length > 0;
+  bucket[sectorId] = list.filter((ping) => {
+    if (!ping || ping.id == null) return false;
+    if (live.has(ping.id)) return true;
+    return !cooked;
+  });
+}
+
 export function signalStrengthFor(distance, range) {
   const r = Math.max(1, Number(range) || 1);
   return Math.max(0, Math.min(1, 1 - Math.max(0, Number(distance) || 0) / r));
@@ -1187,7 +1220,9 @@ export const scanner = {
 
   _pingHiddenPois(state, sectorId, origin, scanRadius = HIDDEN_POI_RADIUS) {
     const active = state.world && state.world.activeSector;
-    for (const poi of active && active.pois || []) {
+    const pois = active && active.pois || [];
+    pruneResolvedPings(state, sectorId, pois);
+    for (const poi of pois) {
       if (!poi || !(poi.hidden || poi.type === 'anomaly')) continue;
       const entity = state.entities && state.entities.get && state.entities.get(poi.id);
       if (entity && entity.data && entity.data.requiresTriangulation && !entity.data.anomalyTriangulated) continue;
