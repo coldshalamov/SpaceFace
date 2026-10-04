@@ -27,6 +27,8 @@ const STORY_KEYS = ['id', 'sequence', 'createdAt', 'updatedAt', 'nodes', 'edges'
 const COUNTS = ['collisionKills', 'rescues', 'aceDefeats'];
 const EVENT_STAGES = Object.freeze({
   'entity:killed': ['kill'], 'aftermathWreck:recorded': ['aftermath'],
+  // The player's own hull dying: normalize.js files it on the kill stage, seats swapped.
+  'player:death': ['kill'],
   'loot:manifestPayload': ['aftermath'], 'aftermathWreck:spawned': ['binding'],
   'salvage:completed': ['salvage'], 'chronicler:provenance': ['recovered', 'sold', 'law'],
   'economy:tradeCompleted': ['trade'], 'aceMemory:transition': ['ace'],

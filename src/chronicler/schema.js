@@ -43,6 +43,10 @@ export const MAX_RETAINED_FACTS = 4096;
 
 export const FACT_EVENTS = Object.freeze([
   'entity:killed',
+  // The player's own hull dying is a kill fact with the seats swapped (subject = the player,
+  // actor = whoever the defeat receipt names). combat.js emits it for every defeat — weapon,
+  // environment hazard (world.js), ironman — and nothing else consumed it as evidence.
+  'player:death',
   'aftermathWreck:recorded', 'aftermathWreck:spawned',
   'aftermath:causeRecorded', 'aftermath:remedied',
   'loot:manifestPayload', 'salvage:completed',

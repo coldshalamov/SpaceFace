@@ -370,6 +370,7 @@ export const lossLedger = {
     this._onOutpostRaided = (p) => this._handleOutpostRaided(p);
     this._onEntitySpawned = (p) => this._tagWreck(p);
     this._onEntityKilled = (p) => this._handleEntityKilled(p);
+    this._onPlayerDeath = (p) => this._handlePlayerDeath(p);
     this._onMissionCompleted = (p) => this._handleMissionCompleted(p);
     this._onNewGame = () => this._reset();
 
@@ -378,6 +379,7 @@ export const lossLedger = {
       this._bus.on('automation:outpostRaided', this._onOutpostRaided);
       this._bus.on('entity:spawned', this._onEntitySpawned);
       this._bus.on('entity:killed', this._onEntityKilled);
+      this._bus.on('player:death', this._onPlayerDeath);
       this._bus.on('mission:completed', this._onMissionCompleted);
       this._bus.on('game:newGame', this._onNewGame);
     }
@@ -468,6 +470,42 @@ export const lossLedger = {
     });
   },
 
+  // The player's own hull dying is ledger history too — the defeat receipt names the killer and
+  // the sector, and the aftermath marker's cargo residue is real. It stays LEDGER-ONLY (source is
+  // deliberately not in AUTOMATION_LOSS_SOURCES): no news-voice consumption, no ghost-convoy lane
+  // counting — the one-voice news floor is for the world's losses, not for a defeat the player
+  // is standing inside of. killedByPlayer is always false: a death is not a kill, even the
+  // self-inflicted edge, so the living-hull kill-renown consumer cannot misfire on it.
+  _handlePlayerDeath(p) {
+    const state = this._state;
+    if (!state) return;
+    const entity = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+    const data = (entity && entity.data) || {};
+    // The player is always in the active sector when a defeat fires (combat and hazard emitters
+    // are live-tick paths); data.sectorId is a boot-time stamp and goes stale across gates.
+    const sectorId = state.world && state.world.currentSectorId;
+    if (!sectorId) return;
+    const L = ensureState(state);
+    record(state, this._bus, this._helpers, {
+      lossId: makeLossId(L.seed, sectorId, 'ship', state.simTime || 0, state.playerId),
+      sectorId,
+      assetId: state.playerId,
+      factionId: (entity && entity.factionId) || ownerOf(state, sectorId),
+      kind: 'ship',
+      simDay: dayOf(state),
+      t: state.simTime || 0,
+      cargoHint: CARGO_HINT.ship,
+      value: 0,
+      shipDefId: SHIP_IDS.has(data.defId) ? data.defId : null,
+      killerId: p && p.killerId != null ? p.killerId : null,
+      killedByPlayer: false,
+      victimName: durableIdentityText(data.shipName) || durableIdentityText(data.name)
+        || durableIdentityText(data.ai && data.ai.name),
+      victimCallsign: durableIdentityText(data.callsign),
+      source: 'player:death',
+    });
+  },
+
   // The rumor's ending: when the ghost-convoy bounty settles, the lane's news voice reports the
   // quiet — once, through the same one-voice news channel that announced the deaths. A bounty that
   // expires or fails stays silent; the lane's losses remain true, so no false closure is spoken.
@@ -516,6 +554,10 @@ export const lossLedger = {
       simDay: loss.simDay,
       cargoHint: loss.cargoHint,
     };
+    // The player's own wreck keeps its authored identity — the marker's 'Your Hull' scanLabel and
+    // its own wreck class. What it takes from this seam is the provenance, which now names its
+    // own recorded loss instead of whatever hull the sector ring happened to lose last.
+    if (e.data.playerWreck === true) return;
     e.data.wreckClass = classId;
     if (!isComms) {
       e.data.scanLabel = cls.scanLabel;
@@ -533,6 +575,7 @@ export const lossLedger = {
       if (this._onOutpostRaided) this._bus.off('automation:outpostRaided', this._onOutpostRaided);
       if (this._onEntitySpawned) this._bus.off('entity:spawned', this._onEntitySpawned);
       if (this._onEntityKilled) this._bus.off('entity:killed', this._onEntityKilled);
+      if (this._onPlayerDeath) this._bus.off('player:death', this._onPlayerDeath);
       if (this._onMissionCompleted) this._bus.off('mission:completed', this._onMissionCompleted);
       if (this._onNewGame) this._bus.off('game:newGame', this._onNewGame);
     }
@@ -540,6 +583,7 @@ export const lossLedger = {
     this._onOutpostRaided = null;
     this._onEntitySpawned = null;
     this._onEntityKilled = null;
+    this._onPlayerDeath = null;
     this._onMissionCompleted = null;
     this._onNewGame = null;
   },
