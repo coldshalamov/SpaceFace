@@ -66,29 +66,46 @@ one live NOW row per seam.
 ## Prompt D — a batch development push (twenty units, default)
 
 For "push the development the equivalent of 20 tasks" with many agents working at once. This is
-the collective-gobble prompt: every agent runs the same loop on a different unit and they
-collectively drain what remains. It leans on root `AGENTS.md` §3 for the whole concurrency
-contract (NOW rows, liveness, pathspec commits, foreign-hunk preservation) instead of repeating
-it. Development over capture: the machine will be loud with N agents, so no capture work.
+the collective-gobble prompt: every agent runs the same copy-paste text on a different unit and
+they collectively drain what remains. It leans on root `AGENTS.md` §3 for the concurrency
+contract (NOW rows, liveness, pathspec commits, foreign-hunk preservation) and §4 for the
+gate-defusal law (no playtest gates) instead of repeating them. Development over capture: the
+machine will be loud with N agents, so no capture work.
 
 ```text
 BATCH 20 — push development by landing twenty units, one at a time, alongside the other agents
-already working in this checkout. Governing law first: root AGENTS.md — especially §3 (shared
-tree: NOW.md rows, check-now-liveness, pathspec commits, preserve foreign hunks, merge
-collisions by content, never revert another agent's work) — plus build_map.md §1C and
-design/program/NOW.md. Those carry the concurrency contract; this prompt only adds the loop and
-the count.
+already working in this checkout. Governing law first: root AGENTS.md — §3 for the shared tree
+(NOW.md rows, check-now-liveness, pathspec commits, preserve foreign hunks, merge collisions by
+content, never revert another agent's work) and §4 for authority (the only real blocker is a
+missing dependency; no human verdict is an execution gate; no playtest gates) — plus
+build_map.md §1C and design/program/NOW.md. Those carry the contracts; this prompt adds the
+ladder, the loop, and the count.
 
-Pick ONE unit at a time, development over capture, in this priority order:
+Pick ONE unit at a time, development over capture, descending this ladder — never stop for
+"no tasks left":
 1. An open row in the demo defect ledger (design/program/DEMO_READINESS_2026-09-20.md §6).
 2. An OPEN numbered row on the board (build_map.md §1C; node scripts/board-chunks.mjs) —
    includes the §L Long Game rows 278-283.
 3. A lane sitting (design/program/FINISH_LANES.md): decompose one admitted outcome — the lane's
    counted surface, or the Alpha/Depth tables in design/program/02_REMAINING_WORK.md — into an
-   exact row with a done-when in player units, then land it. Missing code or assets is work to
-   build, not a blocker; an empty queue is never a stopping condition.
-One unit = one ledger/board row closed, or one lane row you decomposed and landed. Reading,
-review, discussion, and capture do not count toward the twenty.
+   exact row with a done-when in player units, then land it.
+4. Nothing scoped anywhere: create the unit yourself from the open-ended directions (build_map
+   §23 open feelings, the INFERENCE rotation law, design/VISION.md and GDD slices the live game
+   does not answer yet). Write the exact row — player-visible change, paths, done-when, do-not —
+   into its proper home (board row or inference line), then immediately execute it. You may not
+   stop with "there were no more tasks"; unblocking, reorienting, and inventing the next exact
+   unit are the job. Missing code or assets is work to build, not a blocker.
+One unit = one ledger/board/inference row closed, or one row you authored from rung 4 and
+landed. Reading, review, discussion, and capture do not count toward the twenty.
+
+Defuse every gate on contact (AGENTS.md §4): any plan step that waits for the user to play,
+test, review, report back, or give feedback is replaced in the same sitting by its agentic
+equivalent — a scripted route check, the runtime witness (npm run probe:runtime-witness), one
+capped session-SHAPE playthrough (docs/VALIDATION_WORKFLOW.md), a fixed-seed number, or an
+independent agent review against the named evidence — and the plan is rewritten as you go:
+strike the gate, name the substitute, keep building. Development never pauses behind a human
+step; only the user's own explicit external asks (publish, purchase) stay deferred, and the
+quiet-host session is its own program.
 
 The loop, per unit: claim the exact paths in a NOW.md row before the first edit (check foreign
 rows' liveness first — a stale row is adoptable: finish its work, never restart or revert it) →
@@ -97,15 +114,16 @@ focused test on a fixed seed → commit chunks as you go by exact pathspec → a
 one fresh subagent to adversarially review the diff (does it do what the row says; does any test
 pin the wrong thing) and fix or justify what it finds → delete the board/ledger row in the
 landing commit (ledger rows never leave any other way), release the NOW row, write the RESULT:
-DONE receipt from 02_REMAINING_WORK.md → take the next unit. If two agents collide on one hunk,
-merge by content and keep both changes.
+DONE receipt from 02_REMAINING_WORK.md → take the next unit down the ladder. If two agents
+collide on one hunk, merge by content and keep both changes.
 
 Off-limits: quiet-host producer steps (scripts/quiet-host-session.mjs refuses non-quiet hosts —
 no perf captures and no stills-as-proof from this box; perf work is a code-judgment change-loop
 on a focused fixture, measurement only as the receipt of a change), ORRERY's UI redesign lane,
 design/program/vm-drop/, and owner phase-gated work (SWARM-08+, L-RELEASE). The INFERENCE
-catalog is empty — fold small wiring into the row you are already doing. Small unrelated bugs
-you meet: fix them in the same sitting (AGENTS.md §7 total-fix mode).
+catalog is empty — rung 4 replaces it: fold small wiring into your row, author new lines when
+you need one. Small unrelated bugs you meet: fix them in the same sitting (AGENTS.md §7
+total-fix mode).
 
 Stop when twenty units are closed or you are told to stop. Final report: one line per unit —
 id, commit, proof — then anything you left open and why.
