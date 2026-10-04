@@ -450,6 +450,18 @@ test('PQ-006 earned Massline release adds a bounded camera push with a reduced-m
   assert.equal(unearnedCue.physicsEarned, false);
   assert.deepEqual(unearnedCalls, [], 'correction-only releases do not borrow earned-speed camera language');
 
+  // The real self-sling receipt spends its earned Δv on `selfSlingBonusDv` — `bonusDv: 0` is
+  // authored (the free-release bonus is zero by decision), so the cue must read the channel
+  // that actually carries the kick or the slingshot never gets its camera punch.
+  const selfCalls = [];
+  const selfCue = cameraModule.applyMasslineReleaseCameraCue({
+    pushZoom(...args) { selfCalls.push(['push', ...args]); },
+    easeRecenter(...args) { selfCalls.push(['recenter', ...args]); },
+  }, state, { ...payload, bonusDv: 0, selfSlingBonusDv: 110 });
+  assert.equal(selfCue.physicsEarned, true);
+  assert.ok(selfCue.zoomFactor > 0, 'the self-sling fires the earned-release zoom');
+  assert.equal(selfCalls.filter((call) => call[0] === 'push').length, 1);
+
   const rendererSource = readFileSync(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
   // Pin repair (predates the Cadence overlay): renderer.js renamed its bus handle `bus` -> `onBus`
   // (commit c11d40af3 line of work), so the old literal `bus\.on\('massline:selfSling'` matched
