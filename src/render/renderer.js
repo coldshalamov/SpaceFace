@@ -2788,6 +2788,27 @@ function admissionSubjectIsOnDeadlineGlass(subject, state) {
   return false;
 }
 
+// First live entity a policy root belongs to — the id can sit on an ancestor
+// (bind stamps presentationEntityId on the mesh root; pooled marks stamp
+// sfBoundEntityId; other seams stamp entityId/sfEntityId) so the walk is the
+// same ancestor climb the glass check
+// runs, returning the entity itself rather than a verdict.
+function shadowPolicyEntityOf(root, state) {
+  if (!root || !state) return null;
+  for (let node = root; node; node = node.parent) {
+    const data = node.userData;
+    if (!data) continue;
+    let id = data.presentationEntityId ?? data.sfBoundEntityId ?? data.entityId ?? data.sfEntityId;
+    if (typeof id === 'string' && /^\d+$/.test(id)) id = Number(id);
+    if (id == null) continue;
+    const entity = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(id)
+      : null;
+    if (entity) return entity;
+  }
+  return null;
+}
+
 /**
  * D38 — the pending latch hiding a first-arrival root may sit on work that was queued ambient
  * BEFORE the body reached the glass. Once the submit pass measures the latched root on the live
@@ -10319,11 +10340,17 @@ export const render = {
       if (!root) return;
       // Exact receiver bookkeeping — the grafted subtree was never tallied, so its
       // minted flags count as a pre-sync add and the traverse's own delta settles
-      // the rewrites. No whole-scene recount on a per-package commit path.
-      if (addedSubtree) this._noteShadowMeshAdded?.(addedSubtree);
+      // the rewrites. The count rides the sync's own traverse (preCountRoot)
+      // instead of a second subtree walk. No whole-scene recount on a per-package
+      // commit path.
       invalidateShadowCasterPolicy(root);
       const lodLevel = root.userData && root.userData.lod ? root.userData.lod.level : null;
-      const packagedPolicy = this._syncShadowCasterPolicyChecked(root, lodLevel, entity);
+      const packagedPolicy = this._syncShadowCasterPolicyChecked(
+        root, lodLevel, entity, addedSubtree ? { preCountRoot: addedSubtree } : null);
+      if (addedSubtree) {
+        this._noteShadowMeshAdded?.(
+          addedSubtree, packagedPolicy ? packagedPolicy.preReceiverCount : null);
+      }
       if (packagedPolicy) {
         this._shadowMapDirty = true;
         if (!noteShadowPolicyChanged(this._shadowReceiverTally, packagedPolicy)) {
@@ -12167,9 +12194,15 @@ export const render = {
               } catch (_) {
                   if (cookStale()) return cookSuperseded; /* warmup is cosmetic — the sweep still runs without it */ }
             }
-            const sweepSubjects = [scene];
+            // cook.rockPools' parity: once the settle window has closed the
+            // scene-wide leg stops being affordable — the living-hull subtree
+            // still primes since it is the in-round caster the fight draws first.
+            const sweepSubjects = [];
+            if (prepareNow() < settleDeadline) sweepSubjects.push(scene);
             if (livingHullRoot) sweepSubjects.push(livingHullRoot);
-            const sweepResult = compileShadowDepthPipelines({
+            const sweepResult = sweepSubjects.length === 0
+              ? { skipped: true, reason: 'settle-window-closed', subjects: 0 }
+              : compileShadowDepthPipelines({
               renderer,
               light: this._keyLight,
               camera: this.cam && this.cam.obj,
@@ -14287,8 +14320,12 @@ export const render = {
         // presented frame for zero flag changes.
         if (shadowSettingChanged) this._markShadowReceiversDirty();
         this._ensureKeyLightShadows();
-        if (shadowSettingWasOff && this._shadowSettingOn === true) this._stageShadowDepthOnSettingEnable();
+        // castShadow flips inside _syncShadowMapEnabled — run it before the
+        // enable stage so that leg's light census mints under the ON-era set.
+        // A collect comparing OFF-era sig to ON-era marks reads every staged
+        // caster as unstaged and withholds the whole linked set.
         this._syncShadowMapEnabled();
+        if (shadowSettingWasOff && this._shadowSettingOn === true) this._stageShadowDepthOnSettingEnable();
       }
       // dynamicResolution flips the graph-route gate (renderGraphDynResBlocked), so the buffer
       // scale must be re-derived too — not just the adaptive controller's enabled flag.
@@ -15047,6 +15084,7 @@ export const render = {
       this._earlyCrucibleWarm = null;
       this._earlyCrucibleWarmMenu = false;
       this._swarmWarmCoveredEnemyIds = null;
+      this._swarmWarmReKickClaims = null;
       if (this.state && this.state.render) this.state.render.swarmDeferredWarm = null;
       clearWaveHullRunwayKeys(this.state);
       if (this._waveHullDecodePending) this._waveHullDecodePending.clear();
@@ -16679,13 +16717,19 @@ export const render = {
         const entry = { id: spec.id, boundary: ship, result: undefined };
         warm.boundaryKicks.push(entry);
         const sectorId = (state.world && state.world.currentSectorId) || null;
-        const kick = warm.track(requestAuthoredUpgrade(ship, renderer, scene, {
+        const kickSpec = (attempt) => warm.track(requestAuthoredUpgrade(ship, renderer, scene, {
           residencyRole: 'crucible-roster-warm',
           sectorId,
-          upgradeJobKey: `crucible-warm:job:${spec.id}`,
-        }), `ship:${spec.id}`);
+          upgradeJobKey: `crucible-warm:job:${spec.id}${attempt > 0 ? `:r${attempt}` : ''}`,
+          isResidencyOwnerActive: () => warm.building === true,
+        }), `ship:${spec.id}${attempt > 0 ? `:r${attempt}` : ''}`);
+        const kick = kickSpec(0);
         kick.then((result) => { entry.result = result; });
         warm.pendingAttachments.push(kick);
+        // The player hull carries no coverage row — its re-kick rides the same
+        // bounded pass with the claim math skipped (enemyId stays null).
+        (warm.retriableKicks || (warm.retriableKicks = []))
+          .push({ entry, enemyId: null, kick: kickSpec });
       }
     } catch (error) {
       console.warn('[render] early crucible warm player top-up failed', error);
@@ -16764,39 +16808,76 @@ export const render = {
     // failed-marks guard already owns the first strike); a second retriable settle
     // releases the row for the next dwell — two strikes. Undefined results are
     // kicks still in flight past the deadline — they keep their own settle path.
+    // A settled 'unavailable'/'fallback-after-error' boundary echoes its own promise
+    // on a raw re-request, so the dispatch mirrors the deferred lane: the bounded
+    // readmission mark is what mints a real second attempt.
     const reKickBudget = Math.max(0, Math.min(budgetLeft() - 8000, 15000));
     const covered = warm.coveredMap;
     if (reKickBudget > 0 && covered && Array.isArray(warm.retriableKicks)) {
       const reKicks = [];
-      for (const { entry, enemyId, kick: reKick } of warm.retriableKicks) {
-        const status = entry.result && typeof entry.result === 'object'
-          ? entry.result.status : entry.result;
-        if (status === undefined || enemyId == null || swarmWarmOutcomeClaims(status)) continue;
-        covered.set(enemyId, (covered.get(enemyId) || 0) + 1);
-        const reKickResult = reKick(1);
-        if (!reKickResult || typeof reKickResult.then !== 'function') {
-          const count = covered.get(enemyId) || 0;
-          if (count > 1) covered.set(enemyId, count - 1);
-          else covered.delete(enemyId);
-          continue;
+      const releaseClaim = (enemyId) => {
+        const count = covered.get(enemyId) || 0;
+        if (count > 1) covered.set(enemyId, count - 1);
+        else covered.delete(enemyId);
+        const claims = this._swarmWarmReKickClaims;
+        if (claims instanceof Map) {
+          const left = (claims.get(enemyId) || 0) - 1;
+          if (left > 0) claims.set(enemyId, left);
+          else claims.delete(enemyId);
         }
-        reKickResult.then((result) => {
-          entry.result = result;
-          const settled = result && typeof result === 'object' ? result.status : result;
-          if (!swarmWarmOutcomeClaims(settled)) {
-            const count = covered.get(enemyId) || 0;
-            if (count > 1) covered.set(enemyId, count - 1);
-            else covered.delete(enemyId);
+      };
+      const collectReKicks = () => {
+        for (const { entry, enemyId, kick: reKick } of warm.retriableKicks) {
+          if (entry.reKicked === true) continue;
+          const status = entry.result && typeof entry.result === 'object'
+            ? entry.result.status : entry.result;
+          if (status === undefined || swarmWarmOutcomeClaims(status)) continue;
+          const boundary = entry.boundary;
+          if (!boundary || !boundary.parent || !warm.root || !warm.root.parent) continue;
+          if (!authoredReadmissionStatus(boundary.userData && boundary.userData.authoredAssetState)) {
+            retryFailedAuthoredAdmission(boundary);
           }
-        });
-        reKicks.push(reKickResult);
-        warm.pendingAttachments.push(reKickResult);
-      }
+          if (!authoredReadmissionStatus(boundary.userData && boundary.userData.authoredAssetState)) {
+            continue;
+          }
+          entry.reKicked = true;
+          if (enemyId != null) {
+            covered.set(enemyId, (covered.get(enemyId) || 0) + 1);
+            const claims = this._swarmWarmReKickClaims
+              || (this._swarmWarmReKickClaims = new Map());
+            claims.set(enemyId, (claims.get(enemyId) || 0) + 1);
+          }
+          const reKickResult = reKick(1);
+          if (!reKickResult || typeof reKickResult.then !== 'function') {
+            if (enemyId != null) releaseClaim(enemyId);
+            continue;
+          }
+          reKickResult.then((result) => {
+            entry.result = result;
+            const settled = result && typeof result === 'object' ? result.status : result;
+            if (enemyId != null && !swarmWarmOutcomeClaims(settled)) releaseClaim(enemyId);
+          });
+          reKicks.push(reKickResult);
+          warm.pendingAttachments.push(reKickResult);
+        }
+      };
+      collectReKicks();
       if (reKicks.length) {
         await Promise.race([
           Promise.allSettled(reKicks),
           new Promise((resolve) => setTimeout(resolve, reKickBudget)),
         ]);
+        // Kicks still in flight at the first census can settle retriable during
+        // the race — one re-scan gives them the same bounded strike.
+        const settledCount = reKicks.length;
+        collectReKicks();
+        if (reKicks.length > settledCount) {
+          const tailBudget = Math.max(0, Math.min(budgetLeft() - 2000, 8000));
+          await Promise.race([
+            Promise.allSettled(reKicks.slice(settledCount)),
+            new Promise((resolve) => setTimeout(resolve, tailBudget)),
+          ]);
+        }
       }
     }
 
@@ -17150,8 +17231,16 @@ export const render = {
         [...swarmEligibleEnemyIds(run.wave || 1)].map((enemyId) => [enemyId, 1]),
       );
     }
+    // A row held only by a launch re-kick's in-flight mint is already warming for
+    // one bounded strike — but a second-strike release would leave the archetype
+    // uncovered for a whole dwell. Taking such a row risks one duplicated
+    // exemplar behind the armory; skipping it guarantees the round-N+1 pop-in on
+    // strike-2 failure — the class this warm exists to kill.
+    const reKickClaims = this._swarmWarmReKickClaims instanceof Map
+      ? this._swarmWarmReKickClaims : null;
     const fresh = [...swarmEligibleEnemyIds(nextWave)]
-      .filter((enemyId) => !this._swarmWarmCoveredEnemyIds.has(enemyId));
+      .filter((enemyId) => (this._swarmWarmCoveredEnemyIds.get(enemyId) || 0)
+        <= ((reKickClaims && reKickClaims.get(enemyId)) || 0));
     if (fresh.length === 0) return null;
     // Mark before building: a second trigger (cleanup -> draft -> wavePlanned) must not
     // double-queue the same exemplars. A build that throws unmarks so the next dwell retries.
@@ -17176,6 +17265,7 @@ export const render = {
     // Per-id tally of retry-minted coverage claims so the catch-unmark below
     // releases exactly what this warm stamped (one per fresh mark + one per retry).
     const retryMintCounts = new Map();
+    const retryReleasedCounts = new Map();
     const root = warm.root;
     root.name = `SF_SwarmDeferredWarm_w${nextWave}`;
     root.visible = false;
@@ -17213,9 +17303,16 @@ export const render = {
     };
     const unmark = () => {
       for (const enemyId of fresh) {
+        // Release only this warm's still-outstanding contributions: a sync-failure
+        // unmarkEnemy already returned the initial mark, and a retriable retry
+        // settle already returned its retry mint — releasing them again eats a
+        // foreign claim on the shared row.
+        const mine = (unmarked.has(enemyId) ? 0 : 1)
+          + (retryMintCounts.get(enemyId) || 0)
+          - (retryReleasedCounts.get(enemyId) || 0);
         unmarked.add(enemyId);
+        if (mine <= 0) continue;
         const count = coveredMap.get(enemyId) || 0;
-        const mine = 1 + (retryMintCounts.get(enemyId) || 0);
         if (count > mine) coveredMap.set(enemyId, count - mine);
         else coveredMap.delete(enemyId);
       }
@@ -17243,6 +17340,7 @@ export const render = {
         const status = result && typeof result === 'object' ? result.status : result;
         if (!settled && !swarmWarmOutcomeClaims(status)) {
           settled = true;
+          retryReleasedCounts.set(enemyId, (retryReleasedCounts.get(enemyId) || 0) + 1);
           const count = coveredMap.get(enemyId) || 0;
           if (count > 1) coveredMap.set(enemyId, count - 1);
           else coveredMap.delete(enemyId);
@@ -21988,38 +22086,53 @@ export const render = {
       // mark-check twin also keeps already-staged casters out of the withhold:
       // enabling the map used to drop every linked caster's shadow for the drain.
       const toggleBudget = { remaining: SHADOW_DEPTH_PASS_NODE_CAP };
-      const unstaged = collectUnstagedShadowCastersFlag(
-        [scene], this._shadowCensusForFrame(), toggleBudget);
-      if (unstaged === UNSTAGED_COLLECT_OVER_COVER) {
-        // The walk outran the click budget mid-scene — a partial set can't be
-        // trusted for per-mesh withhold. Queue the scene's top-level roots so the
-        // arm's deadline-bounded per-root collects re-derive the real unstaged
-        // sets (queued roots withhold whole-subtree at their next sync).
-        const pending = this._pendingDepthStageRoots
-          || (this._pendingDepthStageRoots = new Map());
-        for (const child of scene.children) {
-          if (child && child.parent === scene && !pending.has(child)) {
-            const entityId = child.userData && child.userData.entityId;
-            const resolvedEntity = (entityId != null && this.state && this.state.entities)
-              ? this.state.entities.get(entityId) : null;
-            const lodLevel = (child.userData && child.userData.lod && child.userData.lod.level)
-              || 'lod0';
-            pending.set(child, { lodLevel, entity: resolvedEntity || null });
+      this._shadowCensusMemo = null;
+      const census = this._shadowCensusForFrame();
+      // Walk top-level roots one at a time so the node-budget abort only blurs
+      // the root it died inside: a completed root whose unstaged set is empty is
+      // provably mark-current — light shells, pools, and parallax roots never
+      // enqueue. Roots holding unstaged casters take the per-mesh withhold; the
+      // in-flight root and every unvisited sibling queue whole-subtree.
+      const unstaged = [];
+      const queueOverCover = [];
+      const children = scene.children || [];
+      for (let i = 0; i < children.length; i += 1) {
+        const child = children[i];
+        if (!child || child.parent !== scene) continue;
+        const collected = collectUnstagedShadowCastersFlag([child], census, toggleBudget);
+        if (collected === UNSTAGED_COLLECT_OVER_COVER) {
+          // The walk outran the click budget mid-root — a partial set can't be
+          // trusted for per-mesh withhold. Queue this root and every unvisited
+          // sibling so the arm's deadline-bounded per-root collects re-derive
+          // the real unstaged sets (queued roots withhold at their next sync).
+          queueOverCover.push(child);
+          for (let j = i + 1; j < children.length; j += 1) {
+            const later = children[j];
+            if (later && later.parent === scene) queueOverCover.push(later);
           }
+          break;
         }
-        if (pending.size > 0 && this._depthStageScheduled !== true) {
-          this._depthStageScheduled = true;
-          this._armDepthStage();
-        }
-        return;
+        for (const mesh of collected) unstaged.push(mesh);
       }
-      if (unstaged.length === 0) return;
+      if (unstaged.length === 0 && queueOverCover.length === 0) return;
       // The whole-scene toggle used to pay one synchronous reparent+census+compile
       // inside the settings handler — an unbounded stall on a presented frame for a
       // busy sector. Route the same stage through the arm queue instead: bounded
       // root slices across presents, nearest-first, identical restore semantics.
       const pending = this._pendingDepthStageRoots
         || (this._pendingDepthStageRoots = new Map());
+      for (const child of queueOverCover) {
+        if (child && !pending.has(child)) {
+          // Same invalidate+stamp the withheld path pays: a queued band-1 root
+          // whose dirtySeq still equals its stamp must re-collect — the census
+          // drifted while shadows were OFF so its marks describe a dead light set.
+          invalidateShadowCasterPolicy(child);
+          child.userData[STAGE_SELF_DIRTY_KEY] = shadowCasterPolicyDirtySeq(child);
+          const lodLevel = (child.userData && child.userData.lod && child.userData.lod.level)
+            || 'lod0';
+          pending.set(child, { lodLevel, entity: shadowPolicyEntityOf(child, this.state) });
+        }
+      }
       // Withhold like the promotion path — a queued caster that keeps castShadow=true
       // draws its unlinked depth variant on the first presented shadow refresh while
       // it waits for the arm. The arm's restore loop already clears every flag.
@@ -22051,12 +22164,9 @@ export const render = {
         // over-cast for a frame on every out-of-ortho root) plus lodLevel=null
         // (a forced traverse at the next sync). userData.lod is the same source
         // _shadowPolicyOptions reads for its own lodLevel.
-        const entityId = root.userData && root.userData.entityId;
-        const resolvedEntity = (entityId != null && this.state && this.state.entities)
-          ? this.state.entities.get(entityId) : null;
         const lodLevel = (root.userData && root.userData.lod && root.userData.lod.level)
           || 'lod0';
-        pending.set(root, { lodLevel, entity: resolvedEntity || null });
+        pending.set(root, { lodLevel, entity: shadowPolicyEntityOf(root, this.state) });
       }
       if (pending.size > 0 && this._depthStageScheduled !== true) {
         this._depthStageScheduled = true;
@@ -22099,6 +22209,8 @@ export const render = {
     if (!this._shadowSettingOn) {
       this.renderer.shadowMap.enabled = false;
       this._keyLight.castShadow = false;
+      // The light set just changed mid-seq — any memoized census is stale.
+      this._shadowCensusMemo = null;
       // A live staging session is useless while the map is off and would otherwise
       // keep cloned lights + the buffer capture parked until the next drain.
       this._killDepthStageSession?.();
@@ -22128,6 +22240,7 @@ export const render = {
     // map work and non-receivers never sample the map (receiveShadow is a per-object uniform).
     this.renderer.shadowMap.enabled = true;
     this._keyLight.castShadow = true;
+    this._shadowCensusMemo = null;
   },
 
   _syncKeyLightShadowFrustum(radius) {

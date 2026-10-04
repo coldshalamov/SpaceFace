@@ -360,6 +360,8 @@ function casterDepthVariant(material) {
     material.clipShadows === true ? 1 : 0,
     material.side == null ? 0 : material.side,
     material.shadowSide == null ? 0 : material.shadowSide,
+    material.alphaHash === true ? 1 : 0,
+    material.vertexColors === true ? 1 : 0,
   ];
   const cached = _depthVariantCache.get(material);
   if (cached && cached.bits.every((bit, i) => bit === bits[i])) return cached.variant;
@@ -370,7 +372,9 @@ function casterDepthVariant(material) {
     + `c${bits[4]}`
     + `p${bits[5]}`
     + `s${bits[6]}`
-    + `h${bits[7]}`;
+    + `h${bits[7]}`
+    + `z${bits[8]}`
+    + `v${bits[9]}`;
   _depthVariantCache.set(material, { bits, variant });
   return variant;
 }

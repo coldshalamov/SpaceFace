@@ -3707,6 +3707,13 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
   if (fallbackHasBody || geologySkin) boundary.userData.authoredPendingFallbackDrawn = true;
   boundary.add(fallbackRoot);
   Object.assign(boundary.userData, fallbackRoot.userData || {});
+  // Per-root shadow bookkeeping is scoped to the subtree it was minted on —
+  // copying it onto the boundary would let the wrong root answer the checked
+  // sync's dirty/stamp/park reads and double-count the tally notes seam.
+  delete boundary.userData.__spacefaceShadowCasterPolicyV1;
+  delete boundary.userData.__spacefaceDepthStageSelfDirty;
+  delete boundary.userData.sfDepthUndrawableCycles;
+  delete boundary.userData.shadowMeshNotes;
   // The matching procedural geology body stays local to the boundary as the visible stand-in
   // during admission and the emergency fallback afterwards. Never expose its common-rock leaf
   // through the stable boundary: the renderer's asteroid InstancedMesh pool would otherwise
@@ -10753,6 +10760,20 @@ function dropFlightTemplateDynamicUserData(data) {
   delete data.hull;
   delete data.shieldBubble;
   delete data.openingSubmissionPackage;
+  // Per-root shadow + depth bookkeeping describes the SOURCE subtree — a clone
+  // carrying its stamps reads certified-current on casts the source's arm
+  // proved, so its genuinely-unstaged variants link inside presented frames.
+  delete data.__spacefaceShadowCasterPolicyV1;
+  delete data.__spacefaceDepthStageSelfDirty;
+  delete data.sfDepthUndrawableCycles;
+  delete data.sfDepthMark;
+  delete data.shadowMeshNotes;
+  // The source entity's identity stamps ride the clone until bind re-stamps
+  // them — deadline-glass and pooled-identity reads would attribute the
+  // instance to the template's owner in the gap.
+  delete data.presentationEntityId;
+  delete data.sfBoundEntityId;
+  delete data.sfStableEntityKey;
   return data;
 }
 
