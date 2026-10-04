@@ -27,6 +27,7 @@ import { WEAPONS } from '../data/weapons.js';
 import { BODY_MODULES } from '../data/claimableBodies.js';
 import { aceById, knownAces } from '../data/namedAces.js';
 import { stuntDossierForNetwork } from '../combat/stuntWitnesses.js';
+import { airSentenceForId } from './ship/fitReadout.js';
 
 export const ENTITY_TYPES = Object.freeze([
   'faction', 'commodity', 'station', 'hull', 'module', 'captain', 'sector', 'contract',
@@ -335,9 +336,14 @@ function moduleDossier(state, id) {
   // Naming it here is the cheapest place that gap becomes visible before J2 lands.
   if (m.energyDraw != null) facts.push({ k: 'Power draw', v: String(m.energyDraw), tone: m.energyDraw > 0 ? 'foe' : 'calm', num: true });
   const lines = [];
-  const mods = m.mods && Object.keys(m.mods);
-  if (mods && mods.length) {
-    lines.push({ label: 'Changes', text: mods.map((k) => `${k.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase()} ${m.mods[k] > 0 ? '+' : ''}${m.mods[k]}`).join(' · ') });
+  const sentence = airSentenceForId(id);
+  if (sentence) {
+    lines.push({ label: 'Does', text: sentence });
+  } else {
+    const mods = m.mods && Object.keys(m.mods);
+    if (mods && mods.length) {
+      lines.push({ label: 'Changes', text: mods.map((k) => `${k.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase()} ${m.mods[k] > 0 ? '+' : ''}${m.mods[k]}`).join(' · ') });
+    }
   }
   if (m.desc) lines.push({ label: 'About', text: String(m.desc) });
   const kind = m.slotType === 'weapon' ? 'Weapon' : (m.slotType ? 'Module' : 'Installation');
