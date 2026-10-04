@@ -76,6 +76,115 @@ export function admitNpcCounterplayBark(host, payload, now) {
   host._npcCounterplayBarks.push(bark);
   return bark;
 }
+
+// Witness-theft register: the theft-side sibling of WITNESS_CRIME_BARKS (which voices only
+// homicides). When lawSecurity validates a witnessed THEFT (kind `payload_theft` — the door
+// the pod, freight, mining-claim, heist and onboarding owners all report through), the
+// watching voice names the taking in its own house register. Before this corpus existed the
+// witness read a kill line for a scooped pod — the law's first response accused the player
+// of a murder it had just recorded as a theft. Same contract as the barks.js event corpora:
+// deterministic selector, faction_free fallback, one line per entity per situation. Kept
+// here beside the other local event-line helpers because the write set for this unit is the
+// four law owner files plus a test.
+export const WITNESS_THEFT_BARKS = Object.freeze({
+  faction_scn: Object.freeze([
+    'Witness statement filed: cargo taken in controlled space. Ref 44-C, theft schedule.',
+    'This channel confirms a theft of freight in jurisdiction. Statement logged.',
+    'Concord advisory: we watched you take that cargo. The record watched it too.',
+    'Pod observed going into your hold, timestamped. Your transponder is in the file.',
+  ]),
+  faction_mts: Object.freeze([
+    'Meridian channel: somebody just walked freight off the book. Adjusting the spread.',
+    'We saw the grab and the manifest behind it. That report has a price attached.',
+    'Cargo lifted in the open market — bold, expensive, noted.',
+    'Someone is about to learn what lifting freight costs. We already invoiced.',
+  ]),
+  faction_dmc: Object.freeze([
+    "Saw that from the rig — somebody's freight just walked off, calling it in.",
+    "That's a theft on my watch — great, more paperwork nobody pays me for.",
+    'Whole crew saw you take it. Drift crews talk, friend — that story is already moving.',
+    "Swiping cargo in front of working people. Report's gone up the shaft.",
+  ]),
+  faction_reach: Object.freeze([
+    'Hooo — did you SEE that — scooped their cargo, seal and all!',
+    'We watched you lift it. No charge for the show — the law pays for the tip.',
+    'That was smooth and we loved it. Still selling your transponder though.',
+    'Reach saw the take — Reach always sees, and Reach always bills somebody.',
+  ]),
+  faction_quiet: Object.freeze([
+    'Taken. Reported.',
+    'Counted. Missing.',
+    'Taken. The channel knows.',
+    'Logged. Cargo gone.',
+  ]),
+  faction_choir: Object.freeze([
+    'The Pattern receives one less. We witnessed the taking.',
+    'Freight carried off before its interval. We saw the hand that took it.',
+    'The theft was witnessed. It is notated in your name.',
+    'One more absence entered the Pattern. Your signature attends it.',
+  ]),
+  faction_free: Object.freeze([
+    'Frontier channel — just watched somebody lift a cargo out here. Reporting it now.',
+    'We saw what you took, friend. Whole lane saw it.',
+    "That's stolen freight on the board. Frontier talks fast — it's already out.",
+    'Saw the whole take. Around here, seeing means saying.',
+  ]),
+  faction_vael: Object.freeze([
+    'Clause 14 observed: unlawful removal of freight. This-vessel files the breach.',
+    'The taking is entered into evidence. Witness-terms satisfied.',
+    'Appropriation witnessed under accord. The ledger does not unsee.',
+    'This-vessel attests: the theft was observed. Attestation is binding.',
+  ]),
+  faction_archive: Object.freeze([
+    'Cargo vanished in the open. The index files the taking under your name.',
+    'The stacks saw the taking. The stacks file everything.',
+    'Theft witnessed. Your chapter gains a red marginalia.',
+    'The reading room watched the whole of it. Nothing goes missing unread.',
+  ]),
+  faction_fulfillment: Object.freeze([
+    'Cargo removal logged at this waypoint. Incident attributed.',
+    'Observation complete: freight diverted, outside sequence. A report generates itself.',
+    'Your lifting has been appended to the route ledger. Retrieval is pending.',
+    'Theft event filed. The manifest now includes the taker.',
+  ]),
+  faction_pitborn: Object.freeze([
+    'Whole yard saw that, kin. Lifting cargo like that gets talked about.',
+    "You just robbed the fence in front of the fence. Bold or stupid — we'll see.",
+    "That cargo's got a price now. The yard always learns the price.",
+    'We watched you pocket it. The fence decides what that means.',
+  ]),
+  faction_understory: Object.freeze([
+    'The garden watched the cargo walk away. It knows the weight of taking.',
+    'Something was carried off. The roots noticed who let it go.',
+    'A theft is never wasted here. But it is always witnessed.',
+    'The bloom saw. It keeps the memory of what you took.',
+  ]),
+  faction_verge_layers: Object.freeze([
+    'The lattice observed the appropriation. The audit expands to include it.',
+    'A cargo was carried off within sight of the prism. It is inscribed.',
+    'The crossing registered a removal. Your signature is on it.',
+    'Theft inside the audit is still an audit item. It is yours now.',
+  ]),
+});
+
+/**
+ * One deterministic witness-theft line for the watching faction (numeric rng wraps into
+ * range, same contract as the barks.js selectors). Falls back to the Frontier pack.
+ */
+export function witnessTheftBarkFor(factionId, rng) {
+  const lines = (factionId && WITNESS_THEFT_BARKS[factionId]) || WITNESS_THEFT_BARKS.faction_free;
+  let index = 0;
+  if (typeof rng === 'number' && Number.isFinite(rng)) {
+    index = ((Math.floor(rng) % lines.length) + lines.length) % lines.length;
+  } else if (typeof rng === 'function') {
+    const v = rng();
+    const f = (typeof v === 'number' && Number.isFinite(v)) ? v : 0;
+    index = Math.floor((f < 0 ? 0 : f >= 1 ? 0.9999999 : f) * lines.length);
+  }
+  const line = lines[index] || lines[0];
+  return typeof line === 'string' && line.length ? line : '...';
+}
+
 export const AMBIENT_QUIET_STEP_S = 60.0;
 export const AMBIENT_MAX_GAP_S = 60.0;
 export const BODY_NEAR_MISS_RADIUS_WU = 70;
@@ -712,7 +821,7 @@ export const barkDirector = {
     return true;
   },
 
-  // ── Law radio cadence: heat, pursuit, and witnesses speak ────────────────────────────────
+// ── Law radio cadence: heat, pursuit, and witnesses speak ────────────────────────────────
   //
   // The law layer emits receipts, not voices — these listeners give each law action leg an
   // audible line from the live entity that owns it. None of them move gameplay state; they
@@ -754,9 +863,20 @@ export const barkDirector = {
   _speakLawWitness(payload) {
     const state = this.state;
     if (!state || !payload || payload.accepted !== true) return false;
+    // No false witness: the line is spoken BY a person who saw the act. A discovered
+    // receipt (the wreck's black box names the killer) carries zero living witnesses by
+    // design — the record itself says nobody watched — so it gets no "I watched you" line.
+    if (!(Number(payload.witnessCount) > 0)) return false;
     const witness = this._resolveReceiptWitness(payload);
     if (!witness) return false;
-    return this._speakEventLine(witness, 'witness-crime', 'law:reportIncidentReceipt', witnessCrimeBarkFor, payload);
+    // The first response names the crime. Kill receipts keep the homicide register;
+    // property kinds (payload_theft — the door every theft owner reports through) voice
+    // the theft sibling corpus, so a scooped pod near a patrol is not called a murder.
+    // An absent kind keeps the historical kill register.
+    const lineFor = typeof payload.kind === 'string' && /_kill$/.test(payload.kind)
+      ? witnessCrimeBarkFor
+      : witnessTheftBarkFor;
+    return this._speakEventLine(witness, 'witness-crime', 'law:reportIncidentReceipt', lineFor, payload);
   },
 
   // LAW-03 — a patrol that spawns to take the player's fight announces itself in the law's
