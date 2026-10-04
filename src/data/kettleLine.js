@@ -125,7 +125,7 @@ export function kettleLineLegFor(sourceId) {
 }
 
 function octantFor(dx, dz) {
-  // Player compass: −z is north. Same function as the frontier rumor card.
+  // Player compass: +z is north (screen up). Same function as the frontier rumor card.
   return playerBearingHyphen(dx, dz);
 }
 

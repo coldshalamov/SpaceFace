@@ -329,7 +329,7 @@ export function planCryoInstall({
       out.cover = true;
       break;
     case 'shutter_alternating': {
-      // nw/ne (the cold pair) sit on +z. Player north is −z, so that pair is south.
+      // nw/ne (the cold pair) sit on +z, which is player north — the top of the flight view.
       const halves = cryoThermalSentence(thermal);
       out.note = halves ? `the halves have rotated; ${halves}` : 'the halves have rotated';
       break;

@@ -334,7 +334,7 @@ for (const sector of SECTORS) {
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 
-// Screen-space compass for scan text. Player north is −z (playerCompass.js).
+// Screen-space compass for scan text. Player north is +z, screen up (playerCompass.js).
 function compassLabel(dx, dz) {
   return playerBearingLetter(dx, dz);
 }

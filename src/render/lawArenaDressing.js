@@ -480,7 +480,7 @@ function buildCryoRoomFrame(roomSpec, sink) {
   const keys = ['nw', 'ne', 'sw', 'se'];
   for (let i = 0; i < keys.length; i++) {
     const key = keys[i];
-    // cryoQuadrantKey puts nw/ne at +z. Player north is −z, so those posts stand south.
+    // cryoQuadrantKey puts nw/ne at +z. That is player north — the top of the flight view.
     const sx = key === 'ne' || key === 'se' ? 1 : -1;
     const sz = key === 'nw' || key === 'ne' ? 1 : -1;
     const post = new THREE.Group();

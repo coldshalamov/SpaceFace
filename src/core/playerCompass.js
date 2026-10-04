@@ -1,20 +1,21 @@
 // Player-facing compass. One convention for every bearing a pilot reads.
 //
-// The chase camera follows position and never yaw, and the chart draws −z at the top of the
-// screen. North is −z. East is +x. South is +z. West is −x.
+// The chase camera sits on −z and looks toward +z, so world +z is screen up
+// (src/ui/hud.js objectiveBearingGlyph, measured 2026-09-19). The radar draws the
+// same way: y = center − dz, and the N mark sits above the dial. North is +z.
+// East is +x (screen left on that same camera). South is −z. West is −x.
 //
-// Cryo quadrant keys (nw/ne/sw/se) are axis labels, not this compass: cryoQuadrantKey puts
-// nw/ne on +z, which is south here. Do not describe those keys as north.
+// Cryo quadrant keys put nw/ne on +z, which is north here.
 
 const HYPHEN = Object.freeze([
   'east', 'north-east', 'north', 'north-west', 'west', 'south-west', 'south', 'south-east',
 ]);
 const LETTERS = Object.freeze(['E', 'NE', 'N', 'NW', 'W', 'SW', 'S', 'SE']);
 
-/** Index 0 is east, matching atan2(−dz, dx). −1 when the offset is not a finite vector. */
+/** Index 0 is east, matching atan2(dz, dx). −1 when the offset is not a finite vector. */
 export function playerBearingIndex(dx, dz) {
   if (!Number.isFinite(dx) || !Number.isFinite(dz)) return -1;
-  return (Math.round(Math.atan2(-dz, dx) / (Math.PI / 4)) + 8) % 8;
+  return (Math.round(Math.atan2(dz, dx) / (Math.PI / 4)) + 8) % 8;
 }
 
 /** 'north', 'northeast', 'east', … Empty when the offset is not finite. */
@@ -36,7 +37,7 @@ export function playerBearingLetter(dx, dz) {
 }
 
 /**
- * World offset of each cryo quadrant key. +z (nw/ne) is player south.
+ * World offset of each cryo quadrant key. +z (nw/ne) is player north, screen up.
  * Kept beside the compass so a dressing comment cannot re-teach the opposite north.
  */
 export const CRYO_KEY_VECTOR = Object.freeze({
@@ -57,7 +58,7 @@ export function sharedPlayerHalf(keys) {
   }
   const sameX = vecs.every((vector) => Math.sign(vector.x) === Math.sign(vecs[0].x));
   const sameZ = vecs.every((vector) => Math.sign(vector.z) === Math.sign(vecs[0].z));
-  if (sameZ && !sameX) return vecs[0].z > 0 ? 'south' : 'north';
+  if (sameZ && !sameX) return vecs[0].z > 0 ? 'north' : 'south';
   if (sameX && !sameZ) return vecs[0].x > 0 ? 'east' : 'west';
   return null;
 }

@@ -416,7 +416,7 @@ export const WORLD_ONE_OFFS = Object.freeze([
     placeId: 'place_drill_platform_cold',
     sectorId: 'sector_hyperion_cut',
     anchor: { type: 'station', id: 'station_hyperion_cut' },
-    // station_hyperion_cut (-640, 480) + this = (-60, 60): mid-sector, away from the driller poi.
+    // station_hyperion_cut (-640, 480) + this = (-60, 60): mid-sector, south-east of the refinery (+z is north).
     offsetLocal: Object.freeze({ x: 580, z: -420 }),
     rot: 2.9,
     spin: 0,
@@ -482,7 +482,7 @@ export const WORLD_ONE_OFFS = Object.freeze([
     placeId: 'place_slurry_tank',
     sectorId: 'sector_rhea_cinder',
     anchor: { type: 'station', id: 'station_rhea_cinder' },
-    // station_rhea_cinder (-640, 520) + this = (240, 120): north-east of the cinder line.
+    // station_rhea_cinder (-640, 520) + this = (240, 120): south-east of the cinder line (+z is north).
     offsetLocal: Object.freeze({ x: 880, z: -400 }),
     rot: 2.7,
     spin: 0.08,
@@ -552,7 +552,7 @@ export const WORLD_ONE_OFFS = Object.freeze([
     placeId: 'place_comms_array',
     sectorId: 'sector_phoebe_echo',
     anchor: { type: 'station', id: 'station_phoebe_echo' },
-    // station_phoebe_echo (280, -960) + this = (-300, -300): open floor south-west of the station.
+    // station_phoebe_echo (280, -960) + this = (-300, -300): open floor north-west of the station (+z is north).
     offsetLocal: Object.freeze({ x: -580, z: 660 }),
     rot: 2.0,
     spin: 0.1,
@@ -572,7 +572,7 @@ export const WORLD_ONE_OFFS = Object.freeze([
     placeId: 'place_tanker_coupling',
     sectorId: 'sector_nereid_shoal',
     anchor: { type: 'station', id: 'station_nereid' },
-    // station_nereid (960, -380) + this = (1340, 60): east of the market, off the wreck approach.
+    // station_nereid (960, -380) + this = (1340, 60): north-east of the market (+z is north), off the wreck approach.
     offsetLocal: Object.freeze({ x: 380, z: 440 }),
     rot: 1.2,
     spin: 0,
@@ -594,7 +594,7 @@ export const WORLD_ONE_OFFS = Object.freeze([
     placeId: 'place_container_rack_abandoned',
     sectorId: 'sector_proteus_well',
     anchor: { type: 'station', id: 'station_proteus' },
-    // station_proteus (-640, 520) + this = (40, 820): south-east, clear of the fog rim.
+    // station_proteus (-640, 520) + this = (40, 820): north-east (+z is north), clear of the fog rim.
     offsetLocal: Object.freeze({ x: 680, z: 300 }),
     rot: 0.8,
     spin: 0,

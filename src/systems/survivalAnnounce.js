@@ -58,8 +58,9 @@ export const MAX_HINTS_PER_WAVE = 1;
  * is explicit that the chase camera "follows player POSITION only (never yaw)" — north is always
  * the same direction on screen.
  *
- * The words are derived from GATE_BEARINGS through playerCompass (−z is north, +x is east).
- * A hand-written table here is how a second north gets back in.
+ * The words are derived from GATE_BEARINGS through playerCompass (+z is north, screen up).
+ * A hand-written table here is how a second north gets back in. The old −z-is-north
+ * reading pointed every callout at the bottom of the flight view.
  */
 const BEARING_WORD = Object.freeze(Object.fromEntries(
   Object.keys(GATE_BEARINGS).map((gateGroup) => {
@@ -185,7 +186,7 @@ function displayName(enemyId) {
  * Shape: what is coming, from where, and what closes the wave. Every clause is checked against the
  * plan, so it can never promise a body the plan does not contain.
  *
- *   "Wave 1. Six hostiles from the north. Clear the arena."
+ *   "Wave 1. Six hostiles from the south. Clear the arena."
  *   "Wave 5. Seven hostiles from the north and the south. Corsair Raider leads. Kill the elite and
  *    clear the rest."
  *   "Wave 10. Seven hostiles from the northwest and the east. Dreadnought 'Iron Maw' leads. Kill it

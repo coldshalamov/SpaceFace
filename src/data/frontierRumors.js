@@ -32,15 +32,15 @@ export const AUTHORED_DOCK_RUMORS = Object.freeze({
   station_veil: 'The researchers welded a memorial to a comms mast out in the fog, north-west of the storm\u2019s heart, so the surge could ring it like a bell. It rings. Ask anyone here about the Surge Shrine and they will point into the murk.',
   station_ashcache: 'Ask Kurtz what he counts and he will tell you without looking up: the dead liner on the debris floor. Nothing else out here has moved in eleven years, so the locals named the count after her ledger.',
   station_nyx_march: 'Past the market, on the open march floor, a jump ring sits welded into a memorial and never once spun. The locals call it the False Gate. Pilots leave fuel pellets on the rim and nobody says why.',
-  station_hyperion_cut: 'East of the refinery a drill platform died mid-bite on a seamed rock. The crusher still holds the grip, the mast still holds the bite. The crews call it the Half-Cut and steer wide.',
+  station_hyperion_cut: 'South-east of the refinery a drill platform died mid-bite on a seamed rock. The crusher still holds the grip, the mast still holds the bite. The crews call it the Half-Cut and steer wide.',
   station_kepler_scar: 'On the irradiated floor there is a pirate sensor mast still standing inside a ring of dead corvettes. Whatever that battle was about, the mast won. They call it the Unbroken and nobody salvages the ring.',
   station_orcus_shadow: 'Debris pins itself in a slow ring out on the anomaly\'s rim — a tide nobody put there and nobody can stop. A transponder gate marks where to watch it turn. The regulars just call it the Tide.',
-  station_rhea_cinder: 'North-east of the claim a slurry tank tipped mid-pour and the pour just stopped — stream, spill, tank and all, sitting there in the dark. The tank is ropeable. It is heavier than it looks.',
+  station_rhea_cinder: 'South-east of the claim a slurry tank tipped mid-pour and the pour just stopped — stream, spill, tank and all, sitting there in the dark. The tank is ropeable. It is heavier than it looks.',
   station_haumea_rift: 'A worklight is still burning on the fissure lip, and the extraction mast is still seated in the seam. The shift left mid-bite and the fissure kept the tools. We call it the Seam-Light.',
   station_eris_margin: 'Inside the west fog, dead habitat pods hang on an old tether line like laundry — crews call it the Drift Choir. The line is older than the writs. Nobody reels it in, but the last pod would come off easy.',
-  station_phoebe_echo: 'South-west of here a comms array still repeats her last transmission on a channel the network retired years ago. The nav buoy beside her answers anyway. It is the most reliable signal in the Reach.',
-  station_nereid: 'East of the market a tanker coupling sits mid-dock with nothing docked — freight platform, hull rack, handshake still out. The tanker that was supposed to take it broke up a decade ago.',
-  station_proteus: 'South-east of here, in the well, a stash rack sits parked in a dead boatbay\'s shadow. First crew through named it the Double Take. Second crew agreed and left it there.',
+  station_phoebe_echo: 'North-west of here a comms array still repeats her last transmission on a channel the network retired years ago. The nav buoy beside her answers anyway. It is the most reliable signal in the Reach.',
+  station_nereid: 'North-east of the market a tanker coupling sits mid-dock with nothing docked — freight platform, hull rack, handshake still out. The tanker that was supposed to take it broke up a decade ago.',
+  station_proteus: 'North-east of here, in the well, a stash rack sits parked in a dead boatbay\'s shadow. First crew through named it the Double Take. Second crew agreed and left it there.',
   station_triton: 'Pilots leave offerings on the anomaly\'s rim — pods, tally plates, the occasional whistle. They call it the Watcher\'s Tithe. Take one if you like. Nobody does.',
   station_eunomia: 'Beside the old ledger there is a freight platform still holding a container addressed to a crew that died two contracts ago. Delivered, signed, never collected. The note stays pinned.',
   station_sedna: 'Out near the cadence there is a lane pin that points at nothing — a survey marker for a route the dark never let anyone finish. It still points the way.',
@@ -231,7 +231,7 @@ function candidateStillUnknown(state, candidate) {
 }
 
 function octantFor(point) {
-  // Player compass: −z is north, same function as the scan line and the chart.
+  // Player compass: +z is north, same function as the scan line and the chart.
   return playerBearingLetter(finite(point && point.x), finite(point && point.z));
 }
 
