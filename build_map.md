@@ -2676,9 +2676,6 @@ writes minutes old at checkpoint; do not touch.
 
 **Open items — each owned by a dispatched wave agent (fresh worktree writes at checkpoint):**
 - soak encounters `got 0` + `first layered sync should import fixed bodies once` (spawn path)
-- `check-pq146-stunt-proofs`: clothesline trajectory + two save-lineage fails
-- `check-shipworks-dock-composition`: pelican fallback hull clips dock interior at yaw 45/90
-  (14 raycast hits)
 - `check-station-tabs`: market tab pointer response absent
 - 47-A telemetry envelope re-record: **owner action after sim-moving fixes land** — re-record
   hash + moved-field counts + a notes entry citing Package D/E/F evidence (`f70aac37f`,

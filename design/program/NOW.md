@@ -43,7 +43,7 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| Sole-agent cleanup + demo-polish sweep: tree drained, worktrees removed, PRs resolved; adopted stale foreign packets landed; D157/D155/D160 ledger rows fixed+pushed; K1 faction_fulfillment EMP fixed (first-session cap candidacy, `5f4f84245`) and the k1-behavior check is green; D24 quiet-host resoak attempt 3 running | devin-sweep-oct3 | IN PROGRESS | `design/program/DEMO_READINESS_2026-09-20.md` §6 as rows fix, `build_map.md` open rows, whatever focused tests each fix needs | D24 resoak verdict → remove or keep row; D67 station-tabs sweep after the soak frees the browser |
+| Sole-agent cleanup + demo-polish sweep: tree drained, worktrees removed, PRs resolved; adopted stale foreign packets landed; D157/D155/D160 ledger rows fixed+pushed; K1 faction_fulfillment EMP fixed (first-session cap candidacy, `5f4f84245`); field-driven bodies stay resident (FIELD_DRIVEN pin + huntPlayer/forcePlayerTarget combat posture + chain-reaction bench cast posture, `534fccb7d`) — pq146 stunt proofs 42/42 and chain-reaction determinism green; D24 quiet-host resoak attempt D running on committed tree | devin-sweep-oct3 | IN PROGRESS | `design/program/DEMO_READINESS_2026-09-20.md` §6 as rows fix, `build_map.md` open rows, whatever focused tests each fix needs | D24 resoak verdict → remove or keep row; D67 station-tabs sweep after the soak frees the browser |
 
 ## Remaster machine
 
