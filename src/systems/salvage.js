@@ -82,6 +82,15 @@ const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 
 const BASE_PRICE_BY_ID = new Map((COMMODITIES || []).map((row) => [row.id, Math.max(0, Math.floor(Number(row.basePrice) || 0))]));
 
+// D130 structural counter (headless/quantum safe): how many entities the fallback
+// salvage-point walk visited on its last call. Buckets answer resets the shape.
+function noteSalvagePointScanVisits(state, visited) {
+  if (!state || typeof state !== 'object') return;
+  try {
+    (state.salvage || (state.salvage = {})).lastPointScanVisits = visited | 0;
+  } catch (_) { /* transient probe field only */ }
+}
+
 export const salvage = {
   name: 'salvage',
 
@@ -233,12 +242,37 @@ export const salvage = {
       const entity = entities.get(point.entityId);
       if (entity && entity.alive !== false) return entity;
     }
+    // Salvage-point fallback: bound the walk to the live wrecks bucket (index-ready) or
+    // the master list — a point id names a wreck, so rocks/ships/projectiles are skipped
+    // structurally instead of visited on every claim/drain/take call.
+    let visited = 0;
+    const consider = (entity) => {
+      visited += 1;
+      const data = entity && entity.data;
+      return entity && entity.alive !== false && data && data.salvagePointId === wantedPointId
+        && (!wantedSourceKey || data.salvageSourceKey === wantedSourceKey) ? entity : null;
+    };
+    const bucket = indexedTypeScan(this.state, 'wrecks');
+    if (Array.isArray(bucket)) {
+      for (let i = 0; i < bucket.length; i++) {
+        const hit = consider(bucket[i]);
+        if (hit) {
+          noteSalvagePointScanVisits(this.state, visited);
+          return hit;
+        }
+      }
+      noteSalvagePointScanVisits(this.state, visited);
+      return null;
+    }
     if (!entities || typeof entities.values !== 'function') return null;
     for (const entity of entities.values()) {
-      const data = entity && entity.data;
-      if (entity && entity.alive !== false && data && data.salvagePointId === wantedPointId
-        && (!wantedSourceKey || data.salvageSourceKey === wantedSourceKey)) return entity;
+      const hit = consider(entity);
+      if (hit) {
+        noteSalvagePointScanVisits(this.state, visited);
+        return hit;
+      }
     }
+    noteSalvagePointScanVisits(this.state, visited);
     return null;
   },
 
