@@ -1,0 +1,34 @@
+--- a/src/render/partsLibrary.js
++++ b/src/render/partsLibrary.js
+@@ -12500,6 +12500,9 @@
+ }
+ 
+ function canPoolRenderPackageShipMesh(source, tags = {}) {
++  // A sealed material cell must move to its descendant at death. Cross-actor pool slots
++  // keep the old body's ownership and cannot serve that transfer; ordinary assets are unchanged.
++  if (broodCellBatchKey('', tags)) return false;
+   if (!isRigidOpaqueBatchableSurface(source, tags, { requiresPerShipMesh })) return false;
+   if (source.onBeforeRender !== THREE.Object3D.prototype.onBeforeRender
+     || source.onAfterRender !== THREE.Object3D.prototype.onAfterRender) return false;
+@@ -15464,15 +15467,16 @@
+ 
+ /** CPU admission probe: invokes the same raw/package composition and batch owners as play.
+  * This does not certify GPU residency, shader compilation or the default-camera picture. */
+-export function composeBroodMaterialForProbe(record) {
++export function composeBroodMaterialForProbe(record, options = {}) {
+   const body=Object.values(BROOD_BODY_CONTRACTS).find(b=>b.assetId===record?.assetId);
+   if(!body||!record.metadata?.broodMaterialContract)throw new Error('sealed Brood model required');
+-  const entity={id:'brood-material-probe',occupantGeneration:1,type:'ship',alive:true,team:1,
++  const entity=options.entity||{id:options.entityId||'brood-material-probe',occupantGeneration:1,type:'ship',alive:true,team:1,
+     radius:body.radius,mass:body.mass,hull:36,hullMax:36,shield:0,pos:{x:0,z:0},vel:{x:0,z:0},rot:0,
+     data:{defId:body.id,broodBodyId:body.id,enemyTypeId:body.id,weapons:[],fittings:[]}};
+-  const scene=new THREE.Scene(),owner=new THREE.Group();scene.add(owner);
++  const scene=options.scene||new THREE.Scene(),owner=new THREE.Group();owner.userData.kind='ship';scene.add(owner);
+   const library=new Map(SHIP_ASSEMBLY_SLOTS.map(slot=>[slot,slot==='hull'?[record]:[]]));
+   const iterator=composedShipSteps(entity,library,scene,owner,{requiredWholeShip:true});
+   let step;do{step=iterator.next();}while(!step.done);
+-  return {entity,root:step.value.root,composed:step.value,scene};
+-}
++  owner.add(step.value.root);
++  return {entity,root:step.value.root,owner,composed:step.value,scene};
++}

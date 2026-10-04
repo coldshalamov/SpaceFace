@@ -1,0 +1,29 @@
+✔ resident parent material transfers at exact world pose with parent tier and one resource owner per cell (10.22292ms)
+✔ partial publication refuses the whole first frame and retries without new geometry or leaked ownership (2.288453ms)
+✔ stale occupants and Retry/context-loss resets retire pending leases without binding wrong lives (5.112451ms)
+✔ foreign live parents and original source cache references remain valid until their own retirement (2.170776ms)
+✔ copied tags, stale source models and unrelated child families cannot transfer or acquire leases (5.067314ms)
+✔ admission failure retains an exact usable parent and releases every staged reference (1.728641ms)
+ Particle system powered by three.quarks. https://quarks.art/
+✔ real native lethal receipt transfers the already-drawn parent into three visible children before the next frame (190.630782ms)
+✔ real unreserved parent fallback keeps the whole resident material and exact corpse life receipt (63.058321ms)
+✔ actual compiled cells retain exact pose, material and LOD on the first publish after parent retirement (134.417991ms)
+✔ actual shared package survives parent removal and refused first publication until every real owner retires (50.879767ms)
+✔ actual pending cells release safely on recycled-life (34.672775ms)
+✔ actual pending cells release safely on Retry (43.07809ms)
+✔ actual pending cells release safely on context-loss (51.63257ms)
+v12 canonical composed cells [{"id":"brood_splitter_axial","meshes":3,"triangles":62414},{"id":"brood_splitter_port","meshes":3,"triangles":24832},{"id":"brood_splitter_starboard","meshes":3,"triangles":24760}]
+✔ exact v12 raw source survives canonical runtime tables and final cell-separated batching (161.308452ms)
+✔ unrelated copied part tags retain ordinary batching and cannot mint a sealed runtime identity (0.490618ms)
+✔ real compiled brood-splitter binds its exact table, sealed bank and normal ship composition (86.619118ms)
+✔ real compiled brood-splitter-axial binds its exact table, sealed bank and normal ship composition (53.070104ms)
+✔ real compiled brood-splitter-port binds its exact table, sealed bank and normal ship composition (16.079412ms)
+✔ real compiled brood-splitter-starboard binds its exact table, sealed bank and normal ship composition (17.362652ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 19
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2423.512778

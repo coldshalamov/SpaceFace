@@ -1,0 +1,121 @@
+✔ an admission wait settles wedged work at its deadline (2.089721ms)
+✔ abort rejects pending and later waits with an AbortError reason (0.5454ms)
+✔ finish clears the deadline without aborting the signal (0.237838ms)
+✔ an admission rejects malformed deadlines and still honors a finite zero (0.261373ms)
+✔ a wait on a dead admission still observes the supplied work rejection (0.468184ms)
+✔ each wait detaches its abort listener on settle, exactly once (0.476927ms)
+✔ an external signal relays abort and detaches on finish (0.2926ms)
+✔ a late rejection of aborted work is observed, not unhandled (0.267442ms)
+✔ decode budget rejects malformed limits instead of parking acquires (0.3854ms)
+✔ decode budget keeps FIFO order and idempotent per-lease release (1.119353ms)
+✔ decode budget cancels a queued waiter on abort and frees the slot (0.322505ms)
+✔ KTX2 disposal rejects queued and in-flight pool tasks and returns budget tokens (1.067835ms)
+✔ a rejected KTX2 transcoder init clears the latch so the next decode retries (0.596807ms)
+✔ a stalled KTX2 transcode releases its token at the deadline and admits a later decode (0.359751ms)
+✔ a hung authored asset task settles at the deadline and cannot evict a fresh admission (0.482115ms)
+✔ an authored source URL timeout retains fallback and its late result cannot replace a retry (0.847003ms)
+✔ authored consumers can cancel independently while another owner finishes the shared decode (5.556663ms)
+✔ runtime retirement resolves after bounded task settlement and disposes decoders once (0.548124ms)
+✔ registry factory failure frees the renderer slot for a fresh admission (0.362075ms)
+✔ disposing a renderer mid-factory still owns and retires the produced runtime (0.251428ms)
+✔ render package loader disposal settles a wedged entry decode and evicts the cache lease (51.381722ms)
+✔ a render package entry that outlives its deadline rejects, evicts, and retries fresh (6.217707ms)
+✔ compile reveal keeps geometry-less drawables and fallback layers hidden and restores on throw (1.066604ms)
+✔ decode budget preserves a positive fractional limit as one slot (0.157487ms)
+✔ a stale task deadline cannot overwrite a newer failure record (0.268504ms)
+✔ disposeDecodedResources releases shared geometry, materials, and textures exactly once (0.408915ms)
+✔ a stale KTX2 init cannot overwrite a healthy retry after its admission expires (0.584609ms)
+✔ a meshopt decode past its admission deadline returns the shared budget token (0.438479ms)
+✔ a stalled render package metadata fetch rejects at the admission deadline (0.225158ms)
+✔ dispose during the runtime hash stage aborts the load before any decode starts (1.234696ms)
+✔ loader decodes once per content hash and creates lightweight instances sharing immutable resources (21.999432ms)
+✔ loader records encoded package bytes as CPU residency, never as decoded GPU fallback (9.1069ms)
+✔ flight-static instances materialise one root per prepared primitive and marker while sharing resources (12.65882ms)
+✔ flight-static instance creation rejects missing preparation and dynamic-group packages (4.435357ms)
+✔ runtime-table hash and expected binding fail closed while legacy packages remain valid (7.046373ms)
+✔ loader exposes one prepared blueprint and lets a render boundary own instance residency (2.227939ms)
+✔ loader validates metadata and declared content identity before decoding (4.594557ms)
+✔ loader disposes decoded resources when semantic template validation fails before registration (2.618516ms)
+✔ loader rejects missing and duplicate compiler-owned semantic IDs (2.783715ms)
+✔ package and instance owners dispose shared resources only at the final residency release (2.893791ms)
+✔ loader disposal cancels an in-flight package generation and releases decoded resources (1.739134ms)
+✔ loader disposal during content hashing cannot admit a later decode (0.854815ms)
+✔ source fallback is explicit, diagnostic, and never changes the ordinary package route silently (2.311265ms)
+✔ disposing a package load cannot start a replacement source fallback (1.293575ms)
+✔ loader preserves absolute, rooted, protocol-relative, and parent-relative render URLs (14.831185ms)
+✔ loader revalidates package URLs so a stale Electron cache cannot pin Hitch (4.58311ms)
+✔ loader preserves parent traversal when metadata itself is loaded by relative URL (1.274616ms)
+✔ loader resolves relative render URLs from the final redirected metadata response URL (1.331812ms)
+✔ flat-plan instances are structurally identical to a recursive SkeletonUtils clone (3.739331ms)
+✔ createNode hook substitutes plan objects without changing plan or semantic-map identity (1.625714ms)
+✔ createNode hook rejects non-objects, template nodes, aliases, descendants, and attached objects (1.893647ms)
+✔ two instances of one package are independent in transform and shared in resources (1.752465ms)
+✔ a package containing skinned content is rejected rather than silently deep-cloned (1.492724ms)
+✔ load claims the consumer owner at commit so byte pressure cannot evict a mount in flight (1.52337ms)
+✔ canceling one consumer leaves a shared decode available without retaining its dead owner (1.920146ms)
+✔ cache hits claim the consumer owner before the shared package resolves (1.76257ms)
+✔ D24: sector-exit eviction drops the stale source-url task instead of pinning the dead generation (6.374943ms)
+✔ D24: a released package generation drops its task and reacquires without re-decoding (2.127529ms)
+✔ source-url dedupe preserves a live package consumer after the first owner departs (1.530892ms)
+✔ all shared pilot consumers departing disposes once and a fresh owner gets a fresh decode (2.733309ms)
+✔ an aborted creator cannot receive a shared package or overwrite a live joiner cache result (1.49664ms)
+✔ real shared-package decode errors retain their original diagnostic and a later owner retries (5.309622ms)
+✔ inline metadata cache hits see the complete source-task consumer set before the first loader call (1.64967ms)
+ Particle system powered by three.quarks. https://quarks.art/
+[partsLibrary] queued authored composition aborted; owner left before publish
+✖ a wedged station admission releases the serial lane at the stall bound (5.254339ms)
+✔ an owner that departs mid-flight aborts and marks the boundary for readmission (0.923769ms)
+✔ cancelAuthoredUpgradeQueue settles queued and in-flight work and clears timers (1.011931ms)
+✔ the overlap pipeline release frees the serial slot exactly once (0.769948ms)
+✔ captured residency ports invoke the captured render and fail closed when it departs (1.357591ms)
+✔ the opening publication gate refuses a foreign generation and settles for the live one (0.426951ms)
+✔ pipeline preparation rejects through the admission instead of authorizing a stale root (0.954244ms)
+✔ a post-route compile rejects for a disposed owner and a retired generation (0.721524ms)
+✔ a synchronous exact-target touch throws on a retired port instead of leaking a rejection (0.3263ms)
+✔ identical port functions on a replaced native renderer still fail closed (0.422505ms)
+✔ a cancelled job cannot clobber a fresh admission for the same boundary and key (0.687483ms)
+✖ a timed-out ship admission never publishes its boundary as ready (0.47234ms)
+✔ a queued batch drops the expired entry and still serves the live one (40.387494ms)
+✔ a subject that expires inside an in-flight batch rejects on settle (40.870992ms)
+✔ an expired explicit subject cannot starve the ambient entries it flushes (0.742516ms)
+✔ duplicate consumers of one subject compile once while any consumer is active (0.296215ms)
+✔ a deferred second shadow pass never receives a subject that expired mid-batch (40.526614ms)
+✔ an observed background admission rejection stays off the global unhandledRejection (1.060194ms)
+✔ observePipelineAdmission returns the same promise unchanged (0.392791ms)
+✔ an ignored cleanup finally runs once and a throwing observer stays inert (0.926733ms)
+ℹ tests 83
+ℹ suites 0
+ℹ pass 81
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 51722.663655
+
+✖ failing tests:
+
+test at test/renderer-owner-lifetime.test.mjs:89:1
+✖ a wedged station admission releases the serial lane at the stall bound (5.254339ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'aborted-stalled'
+  - 'stalled-slot-released'
+  
+      at TestContext.<anonymous> (file:///workspace/scratch/d2415e46e35b/splitter-followon-v2/test/renderer-owner-lifetime.test.mjs:125:12)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'aborted-stalled',
+    expected: 'stalled-slot-released',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test/renderer-owner-lifetime.test.mjs:548:1
+✖ a timed-out ship admission never publishes its boundary as ready (0.47234ms)
+  TypeError: Cannot read properties of null (reading 'name')
+      at TestContext.<anonymous> (file:///workspace/scratch/d2415e46e35b/splitter-followon-v2/test/renderer-owner-lifetime.test.mjs:569:31)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7)

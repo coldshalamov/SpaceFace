@@ -1,0 +1,149 @@
+{
+  "schema": "spaceface.splitter-resident-followon.v2",
+  "status": "review-only; all shown art rejected; no default activation",
+  "patches": [
+    {
+      "path": "resident-pooling-and-probe.patch",
+      "sha256": "0376323fda887a7d755e8e53c0a7ac30f63dd89f47e86207ecee8e1c649e0ef3"
+    },
+    {
+      "path": "real-package-handoff-tests.patch",
+      "sha256": "0d751d5f049ff4626e59c61a89767abebaab568eea1922ad89205a22a87d4a15"
+    },
+    {
+      "path": "rest-only-motion-banks.patch",
+      "sha256": "57b3afb9e567ee5b933487b0e8712489f6e96afbb7aad6e1122cf027732085e2"
+    }
+  ],
+  "files": [
+    {
+      "path": "src/render/partsLibrary.js",
+      "patch": "resident-pooling-and-probe.patch",
+      "beforeSHA256": "19b1776784685b8528279f63d9f9ad8a5d236d8f55e6a17ac83a3bd5870c6424",
+      "afterSHA256": "bb398a20f9348e070491dfd268316a00dd8d2343fa23341e511ed35fa918bcfe"
+    },
+    {
+      "path": "test/lib/splitterV12Graph.mjs",
+      "patch": "real-package-handoff-tests.patch",
+      "beforeSHA256": "791ece2ffaa7e087318bd484034a69476b8ef70ad3cdab373f111693f1866659",
+      "afterSHA256": "52c1d95658c145bb8d2438ad1bd6bc83c80ffa060ebff7bff705c00e69032c78"
+    },
+    {
+      "path": "test/brood-resident-source.test.mjs",
+      "patch": "real-package-handoff-tests.patch",
+      "beforeSHA256": "c9fca5cfc97d4a63516b89e7274956b9cc24aecbc0ee50a8c7fd56caa3941293",
+      "afterSHA256": "a312301182220a05287222d894ee96ed30b92424e74b13ef2f3d630578ac7e22"
+    },
+    {
+      "path": "test/lib/splitterCompiledPackage.mjs",
+      "patch": "real-package-handoff-tests.patch",
+      "beforeSHA256": null,
+      "afterSHA256": "2b9bb3d21059cc855061d2fab32dfa7b35b4e02af1d275a474a3ef551fc83054"
+    },
+    {
+      "path": "test/brood-resident-package-handoff.test.mjs",
+      "patch": "real-package-handoff-tests.patch",
+      "beforeSHA256": null,
+      "afterSHA256": "9ad5d1bbae0c323476a80385dbefc30178541ec169d988c0506ec5f6f2134cf2"
+    },
+    {
+      "path": "test/brood-resident-connected-death.test.mjs",
+      "patch": "real-package-handoff-tests.patch",
+      "beforeSHA256": null,
+      "afterSHA256": "a522593a0ca55d6a6f3155185325a2793730213ddd54e1713f6639efe3a77010"
+    },
+    {
+      "path": "assets/ships/motions/brood-splitter.motion.json",
+      "patch": "rest-only-motion-banks.patch",
+      "beforeSHA256": null,
+      "afterSHA256": "fd9720ab93a0ba55dcc3bb7a20a23a3e1d5d961e854fd7a6ed0bbe062ea06b12"
+    },
+    {
+      "path": "assets/ships/motions/brood-splitter-axial.motion.json",
+      "patch": "rest-only-motion-banks.patch",
+      "beforeSHA256": null,
+      "afterSHA256": "f4ea1e4325bb5d0fa999e6878e4f43d162858c45e781920deff95a6dcd301ad7"
+    }
+  ],
+  "compiledPackages": [
+    {
+      "path": "candidate-packages/brood-splitter/render.glb",
+      "sha256": "ed8a1158a89e7a792a814cbbfb829b3def5d7d9bddc6c0cb2952e4fc7b2eb408",
+      "bytes": 3069884
+    },
+    {
+      "path": "candidate-packages/brood-splitter/render-package.json",
+      "sha256": "405e743fe8e011043f71e3145dd8a461c545a90337e983382cd2db34a488a77e",
+      "bytes": 156855
+    },
+    {
+      "path": "candidate-packages/brood-splitter-axial/render.glb",
+      "sha256": "743c37f8a40a0b1cc5d33382cc36c19ec23f84eb5393394f7031874e5cc20393",
+      "bytes": 1691816
+    },
+    {
+      "path": "candidate-packages/brood-splitter-axial/render-package.json",
+      "sha256": "372f7ddfa0e05d0a2983d604f6cadb0ce95ded392354c0736d54e7218899c5b0",
+      "bytes": 90670
+    },
+    {
+      "path": "candidate-packages/brood-splitter-port/render.glb",
+      "sha256": "9054a91049b3f47f6ba354efcc69a8cee185d14d4d7bc7412f5cfe7c61fd0a09",
+      "bytes": 766044
+    },
+    {
+      "path": "candidate-packages/brood-splitter-port/render-package.json",
+      "sha256": "945e1471819e2b0a423aa20ebece8a3bfe0d824d3a3cffdf7332ae6bb219a867",
+      "bytes": 43817
+    },
+    {
+      "path": "candidate-packages/brood-splitter-starboard/render.glb",
+      "sha256": "3250a59190d0584660bdedac273b72b9feb806e361c3918fa8a6109efe017f72",
+      "bytes": 770528
+    },
+    {
+      "path": "candidate-packages/brood-splitter-starboard/render-package.json",
+      "sha256": "391cee53156ddbd968d394713ce31882acf3fb1e8d4ad1febb35013cb1884524",
+      "bytes": 46976
+    }
+  ],
+  "dependencies": [
+    {
+      "path": "splitter-presentation-overlay/packet-wip/manifest.json",
+      "sha256": "2cd283b034792574e9c6242bf7089ac81dd13126d078dd1b97d0dbceaa843621"
+    },
+    {
+      "path": "splitter-presentation-overlay/packet-wip/corpse-life-followup.patch",
+      "sha256": "87f7c5ae6fa6e6d6cdeee56058990e24b8b6dfe4a0f176c7052caec05685e47f"
+    },
+    {
+      "path": "splitter-runtime-packet/final-candidate-v1/manifest.json",
+      "sha256": "372aa9b0c2ca2027fce181b1b91886827b15a131561fbfe8f5e516e31ce02419"
+    },
+    {
+      "path": "brood-current-source-rebase/splitter-roster-supplement/splitter-roster-closure.patch",
+      "sha256": "10e2819dec417db5f9b4ce9e1441c728bbc4f4f5e9220bd93e98aafc8abdfe15"
+    }
+  ],
+  "verification": {
+    "residentTests": {
+      "pass": 19,
+      "fail": 0
+    },
+    "budgetAndRoster": {
+      "pass": 47,
+      "fail": 0
+    },
+    "adjacentCurrentOwners": {
+      "pass": 81,
+      "fail": 2,
+      "qualification": "Both failures reproduce the prior baseline: stalled-slot-released vs aborted-stalled; timed-out admission null boundary.name."
+    },
+    "packageRebuildCheck": "four candidates byte-stable",
+    "browser": "Blocked at Chromium launch by Unix-socket EPERM before navigation; no pixels, image transcode, WebGL context or GPU timings obtained."
+  },
+  "sourcePins": {
+    "presentation": "904f9e7bbaab6a7d51e2fc5b85ccbe77dcf4a18296196d13bcbb0a14508f1bb2",
+    "lifecycle": "c838e777b20d338b98397fc9ebecbf38f5800a7588add8864a5f6bba30892fca"
+  }
+}

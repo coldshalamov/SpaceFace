@@ -1,0 +1,113 @@
+{
+  "schema": "spaceface.rigidMotionBank.v1",
+  "rigId": "brood_splitter_axial_static_rest",
+  "sourceAssetId": "SF_BROOD_SPLITTER_AXIAL_V01",
+  "sourceGlbSha256": "70b2b62318af2d3a44204d2957d65305c4ee475219c514fdf358139bc1ab19f3",
+  "fps": 60,
+  "bindings": [
+    {
+      "id": "splitter_jaw_port",
+      "node": "MOTION_SPLITTER_JAW_PORT",
+      "parent": null,
+      "restPose": {
+        "translation": [
+          1.31496262550354,
+          -0.18000000715255737,
+          -1.3599369525909424
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "id": "splitter_jaw_starboard",
+      "node": "MOTION_SPLITTER_JAW_STARBOARD",
+      "parent": null,
+      "restPose": {
+        "translation": [
+          1.31496262550354,
+          -0.18000000715255737,
+          1.360063076019287
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ]
+    }
+  ],
+  "clips": [
+    {
+      "name": "static_rest",
+      "durationS": 1,
+      "loop": false,
+      "endMode": "rest",
+      "channels": [
+        {
+          "group": "splitter_jaw_port",
+          "path": "translation",
+          "times": [
+            0,
+            1
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "group": "splitter_jaw_starboard",
+          "path": "translation",
+          "times": [
+            0,
+            1
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        }
+      ]
+    }
+  ],
+  "provenance": {
+    "purpose": "Explicitly static rest-only candidate. No jaw animation or native collider motion is claimed.",
+    "sourceSha256": "70b2b62318af2d3a44204d2957d65305c4ee475219c514fdf358139bc1ab19f3"
+  }
+}
