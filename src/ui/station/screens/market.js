@@ -9,6 +9,9 @@ import { marketFrameHtml } from '../../views/stationFrames.js';
 // is pinned from this module; buy/sell stay the same verbs.
 import { COMMODITIES, commodityPresentationFor } from '../../../data/commodities.js';
 import { canLaunderSalvageAtStation } from '../../../data/salvageLegality.js';
+import { FACTION_LABELS } from '../../../data/encounters.js';
+import { volatileClassOf } from '../../../data/commodityVolatileClasses.js';
+import { fragileCargoGlyphFor } from '../../../systems/fragileCargo.js';
 import { injectOrreryMarket, qtyFromDialPoint, setQtyDial } from '../../orrery/marketLayouts.js';
 import { dressLampKey } from '../../orrery/lampKey.js';
 import { rollTo } from '../../orrery/text.js';
@@ -451,6 +454,106 @@ export function marketLaunderLedgerHtml(state) {
       rowKV('Papers washed', `${fmt(units)} u · ${names.join(', ')}`) +
       rowKV(`Cut paid (${fmt((Number(receipt.cutFrac) || 0) * 100)}%)`, `${fmt(receipt.cut)} cr`, 'loss') +
     `</ul></section>`;
+}
+
+// ── Held-lot disposition (NXI-019 custody / NXI-031 condition) ──────────────────────
+// The sell detail is the freight's last handover before settlement. Two identical commodities
+// can sit in the hold under different custody: units bought or mined are simply yours, while
+// units collected out of a convoy's open freight custody are still somebody's manifest until
+// the record closes. The durable ledger the parent custody work persists
+// (state.encounterDirector.stats.openFreightCustodies) carries exactly the disposition facts —
+// whose freight it was, how many units are already in your hold, and whether the law accepted
+// a report. A closed custody leaves the ledger entirely, so the wording only ever claims
+// "custody open"; silence means settled, never "clean".
+
+const FREIGHT_CUSTODY_MAX_ROWS = 2;
+
+function openFreightCustodyRecords(state, commodityId) {
+  const dir = state && state.encounterDirector;
+  const list = dir && dir.stats && dir.stats.openFreightCustodies;
+  if (!Array.isArray(list)) return [];
+  const out = [];
+  for (const envelope of list) {
+    const record = envelope && (envelope.record || envelope);
+    if (!record || typeof record !== 'object' || record.terminal === true) continue;
+    if (record.commodityId !== commodityId) continue;
+    if (!(Math.floor(Number(record.playerCollectedQty) || 0) > 0)) continue;
+    out.push(record);
+  }
+  out.sort((a, b) => String(a.custodyId || '').localeCompare(String(b.custodyId || '')));
+  return out;
+}
+
+function freightOwnerWord(record) {
+  const faction = record && FACTION_LABELS[record.legalOwnerFactionId];
+  if (faction) return `${faction} freight`;
+  if (record && record.legalOwnerKind === 'civilian') return 'civilian freight';
+  return "another owner's freight";
+}
+
+/** Custody disposition rows for the selected held lot — pure read, sell-side only.
+ * `playerCollectedQty` is the record's own aggregate (a partial collect leaves its pod live,
+ * so per-pod sums undercount it); the pod lineage only tells whether a lawful carrier's units
+ * could be among them, which decides the wording — the legally worse claim wins. Units are
+ * fungible, so every count is bounded by what the hold actually carries. */
+export function heldFreightCustodyRows(state, commodityId, heldQty) {
+  let aboard = Math.max(0, Math.floor(Number(heldQty) || 0));
+  if (!commodityId || aboard <= 0) return [];
+  const rows = [];
+  for (const record of openFreightCustodyRecords(state, commodityId)) {
+    if (rows.length >= FREIGHT_CUSTODY_MAX_ROWS || aboard <= 0) break;
+    const units = Math.min(Math.max(0, Math.floor(Number(record.playerCollectedQty) || 0)), aboard);
+    if (!(units > 0)) continue;
+    aboard -= units;
+    const pods = Array.isArray(record.pods) ? record.pods : [];
+    const lawfulLineage = pods.some((pod) => pod && pod.custodySourceKind === 'lawful_carrier');
+    const raiderLineage = pods.some((pod) => pod && pod.custodySourceKind === 'hostile_raider');
+    const owner = freightOwnerWord(record);
+    if (record.lawTheftIncidentReceiptId) {
+      rows.push({ text: `up to ${units} u aboard is reported ${owner} — the take is on the warrant ledger`, tone: 'loss' });
+    } else if (lawfulLineage) {
+      rows.push({ text: `up to ${units} u aboard is still ${owner} — custody open, no report logged`, tone: 'loss' });
+    } else if (raiderLineage) {
+      rows.push({ text: `up to ${units} u aboard was recovered from raiders — yours to settle`, tone: 'gain' });
+    } else {
+      rows.push({ text: `up to ${units} u aboard traces to an open freight claim`, tone: '' });
+    }
+  }
+  return rows;
+}
+
+// The held state is the truth the pod record cannot reach: cargo in the hold is intact by
+// definition (exposure lives on the world pod and dies with it; fragile cracks spill at the
+// knock). The label therefore names the class hazard — what a spilled pod does — and says the
+// riding lot is stable. A hazard state, never a fuse (NXI-031).
+const VOLATILE_HELD_WORDS = Object.freeze({
+  explosive: 'explosive class — stable while it rides; a knocked or burning pod cooks off',
+  corrosive: 'corrosive class — stable while it rides; a breached pod bites the hull',
+  superdense: 'superdense class — dead mass aboard; stable while it rides',
+  cryogenic: 'cryogenic class — stable while it rides; a hard slam flashes it off',
+});
+
+/** Condition rows for the selected held lot: hazard class and handling, never a countdown. */
+export function heldShipmentConditionRows(state, commodityId) {
+  const rows = [];
+  const klass = volatileClassOf(commodityId);
+  if (klass && VOLATILE_HELD_WORDS[klass.id]) rows.push({ text: VOLATILE_HELD_WORDS[klass.id], tone: '' });
+  if (fragileCargoGlyphFor(commodityId)) {
+    rows.push({ text: 'fragile — hard impacts crack units', tone: '' });
+  }
+  return rows;
+}
+
+/** The disposition sentence for the selected sell lot, or '' when nothing is aboard —
+ * a sold-out selection never keeps a hazard label for cargo it no longer carries. */
+export function sellDispositionText(state, commodityId, heldQty) {
+  if (!(Math.floor(Number(heldQty) || 0) > 0)) return '';
+  const parts = [];
+  for (const row of heldFreightCustodyRows(state, commodityId, heldQty)) parts.push(row.text);
+  for (const row of heldShipmentConditionRows(state, commodityId)) parts.push(row.text);
+  if (!parts.length) return '';
+  const sentence = parts.join(' · ');
+  return `${sentence.charAt(0).toUpperCase()}${sentence.slice(1)}.`;
 }
 
 // unit prices — station BUY (what you pay) / SELL (what station pays you)
@@ -1068,7 +1171,10 @@ export function createMarketScreen(ctx) {
     stageEl.setAttribute('aria-labelledby', `sx-market-tab-${r.id}`);
     stageEl.setAttribute('aria-label', def.name);
     stageEl.setAttribute('aria-describedby', 'sx-market-driver-summary');
-    quoteEl.innerHTML = marketQuoteHtml({ id: r.id, name: def.name, category: def.category, legal,
+    const dispositionText = mode === 'sell' ? sellDispositionText(state, r.id, heldQty(state, r.id)) : '';
+    quoteEl.innerHTML = (dispositionText
+      ? `<p class="k-sentence sx-mkt-disposition" data-disposition="sell">${escapeHtml(dispositionText)}</p>`
+      : '') + marketQuoteHtml({ id: r.id, name: def.name, category: def.category, legal,
       titleHtml: entitySpanHtml('commodity:' + r.id, escapeHtml(def.name)), mode, buy, sell, avg,
       demandWord: demandWord(demand), driversSummary: drivers.accessibleSummary, drivers: drivers.primary, hist, trackedGuidance,
       producedBy: def.producedBy, consumedBy: def.consumedBy, stationType: resolveDockStationType(state),
