@@ -90,6 +90,10 @@ const allowedRandomFiles = new Map([
   // `freeSeed` when done. Programmatic `.value` writes fire no `input` event, so `freeSeed` — the
   // explicit seed that drives the run — never picks up an ambient draw. Cosmetic display only.
   ['src/ui/screens/crucible.js', 'cosmetic seed-counter scramble digits (display only; run seed stays explicit)'],
+  // New Game "New seed" word: `randomSeedText()` draws one suggestion into the seed FIELD.
+  // The src/main.js boot-seed case — the run's seed is whatever the field says when Launch is
+  // pressed, so the raw draw never reaches a sim stream.
+  ['src/ui/screens/newGame.js', 'seed suggestion written to the seed field; run seed stays explicit'],
 ]);
 const randomSites = activeMathRandomSites('src');
 for (const site of randomSites) {

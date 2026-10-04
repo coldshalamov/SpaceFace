@@ -32,6 +32,7 @@ Allowed current call sites:
 | `src/ui/orrery/waveform.js` | cosmetic UI | ORRERY station waveform bars: draws land in `--orr-wave-*` CSS custom properties (rest offset, animation duration/delay/spread, opacity range) on the bar element — presentation variance only. |
 | `src/ui/screens/sandbox.js` | seed mint | The Combat Lab "roll" button. The boot-seed case in miniature: a human presses roll, the value lands in the seed input, and everything downstream runs from that explicit seed — nothing authoritative reads the raw draw. The screen is additionally DEV ONLY (IS_DEV folds false at build time; uiRoot registers it only behind that flag), so it cannot reach a player build. |
 | `src/ui/screens/crucible.js` | cosmetic UI | Crucible seed "Counter" roll animation: draws pick transient scramble digits written to `seedInput.value` while the real seed tumbles into place, then the interval restores `freeSeed`. Programmatic `.value` writes fire no `input` event, so the explicit run seed never picks up an ambient draw. |
+| `src/ui/screens/newGame.js` | seed mint | `randomSeedText()` fills the seed field with a fresh suggestion. Same boot-seed case as `src/main.js`: the draw lands in a text input, and the run's seed is whatever the field says when Launch is pressed — everything downstream runs from that explicit seed. |
 
 Forbidden classes:
 
@@ -64,6 +65,8 @@ Current classified wall-clock owners:
 | Owner | Classification | Rationale |
 |---|---|---|
 | `src/core/loop.js` | frame driver | Measures elapsed real time only to feed the fixed-step accumulator (receives RAF/host stamps; no direct read today). |
+| `src/core/eventBus.js` | frame driver | `flush(maxMs)` bounds how long a queued emit slice may hold the frame — wall stamps set a delivery deadline, never a sim outcome. Stays dependency-free, so it does not route through `perfNow()`. |
+| `src/core/sectorEnterDefer.js` | frame driver | The chunked deferred-enter drain runs until a millisecond work budget expires — wall stamps bound per-tick work. Sim stamps ride separately on `_deferredEnterClock`/`_deferredEnterTick`. |
 | `src/core/perfRuntime.js` | diagnostics | The instrumentation clock. `perfNow()` is the exported seam; per-tick `tickMs` diagnostics in `src/core/physics.js`, `src/systems/flightV3.js`, and `src/systems/flight.js` call it instead of reading wall time locally (FB-095). |
 | `src/core/presentationRunner.js` | presentation | Cue/presentation pacing over wall time; owns no sim outcomes. |
 | `src/core/runtimeWitness.js` | diagnostics | 1 Hz flight recorder (`window.__SF_WITNESS__`); wall stamps label human-facing reports. |

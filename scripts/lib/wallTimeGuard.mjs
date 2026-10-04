@@ -32,6 +32,15 @@ export const ALLOWED_WALL_TIME_FILES = new Map([
   // flight.js call perfNow() for _diag.tickMs instead of touching wall time themselves.
   ['src/core/perfRuntime.js', 'perf instrumentation clock; perfNow() is the sanctioned diagnostic seam'],
   ['src/core/loop.js', 'frame driver: wall/elapsed stamps only feed the fixed-step accumulator'],
+  // Delivery-deadline clock: flush(maxMs) bounds how long a listener drain may hold the frame.
+  // The stamps set a wall budget for queued emit slices — the same frame-pacing class as the
+  // loop accumulator — and never name a sim outcome. The bus stays dependency-free, which is
+  // why it does not route through perfNow().
+  ['src/core/eventBus.js', 'emit-slice delivery deadline; wall stamps bound frame time, not sim state'],
+  // Deferred materialization budget: the chunked enter drain stops when the millisecond work
+  // budget runs out — a wall bound on per-tick work, not a sim clock (entries pin their own
+  // sim stamps separately via _deferredEnterClock).
+  ['src/core/sectorEnterDefer.js', 'deferred enter materialization work budget; wall stamps bound frame time'],
   ['src/core/presentationRunner.js', 'presentation runner pacing/diagnostics; owns no sim outcomes'],
   ['src/core/runtimeWitness.js', '1 Hz flight-recorder instrumentation; wall stamps label human-facing reports'],
   ['src/core/renderUpdatePhase.js', 'render-phase timing instrumentation'],
