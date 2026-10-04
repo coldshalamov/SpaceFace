@@ -105,8 +105,13 @@ export function recordDynamicFlightStick(host, dx, dy, width, height) {
   return true;
 }
 
-/** The deadzone as px at the live radius — the same fraction project() shapes against. */
-function effectiveDeadzonePx(radiusPx) {
+/**
+ * The deadzone as px at the live radius — the same fraction project() shapes against.
+ * The 0.35 small-radius clamp is part of the AUTHORED deadzone family: the SFQ-B011 suites
+ * import this rule instead of re-implementing it, so a module-side change here moves the
+ * pins with it rather than silently validating a stale shape.
+ */
+export function effectiveDeadzonePx(radiusPx) {
   return Math.min(DYNAMIC_FLIGHT_STICK_TUNING.deadzonePx, radiusPx * 0.35);
 }
 

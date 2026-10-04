@@ -50,7 +50,13 @@ wrong still starts at the fun loop (§1.7), then returns here.
    works it in when it returns. A cosmetic frontend impulse your task does not need is one ledger
    row (§7 of `AGENTS.md`), never a second designer. Authority:
    [`design/frontend/ORRERY.md`](./design/frontend/ORRERY.md) + [`design/frontend/OVERHAUL_PLAN_2026-09-25.md`](./design/frontend/OVERHAUL_PLAN_2026-09-25.md).
-2. If this sitting is a finishing or A-list pass with no named packet — "make it better", "finish
+2. **Maturity first (owner, 2026-10-04):** debugging and polish are planned production work,
+   including in areas whose feature rows say `done`. For "fix the bugs", "make it solid",
+   "polish" or "demo ready", use [§1.8](#18-production-maturity-debugging-and-polish).
+   For unnamed next work, fix an available confirmed player-facing defect before adding a
+   feature; if the selected area has no current maturity coverage, do its bounded discovery
+   pass first. Exact-path ownership still applies. Otherwise, if this sitting is a finishing
+   or A-list pass with no named packet — "make it better", "finish
    the game", "polish", a long build session — take a lane from
    [§27](#27-the-finish-in-lanes--admitted-2026-09-24) / [`FINISH_LANES.md`](./design/program/FINISH_LANES.md):
    the first lane whose files are free, worked in order. A lane is an open-ended area assignment —
@@ -91,6 +97,10 @@ Broad, unnamed quality work still goes through the Central Brain manager loop
 inside the same queue; it never admits, mutates queue truth, or replaces this procedure.
 
 ### 1.2 The order (why `--next` returns what it returns)
+
+**The maturity priority in [§1.8](#18-production-maturity-debugging-and-polish) precedes this
+feature sequence.** A broken existing workflow is production work now, even when its packet
+is closed or release packaging is parked. Queue order does not require building on a broken game.
 
 Dispatch order is kind first (build before proof), then unit priority. The units of the finishing
 program carry priorities that encode this sequence, and their dependencies name the exact units they
@@ -248,6 +258,7 @@ procedure:
 
 | The owner says | Start here |
 |---|---|
+| "it's super buggy", "fix all the bugs", "make it solid", "debug and polish", "text overflows", "models don't load", "too much off-screen loading", "demo ready" | **[§1.8](#18-production-maturity-debugging-and-polish)** — own discovery and repair of ordinary player workflows through the existing lanes and ONE defect ledger. The owner supplies the symptom, not a technical diagnosis |
 | "Here is a taste review / an outside audit; fold it in" | Grade every recommendation in §15.9 (adopt / adopt with a guard / decline, with the ruling it agrees or conflicts with); admit each adopted item as a leaf of the packet that already owns the surface, or a new packet only when no packet does; store the review under `docs/handoffs/` as HISTORICAL evidence with a pointer back to the grade. Never a second queue, never verbatim orders |
 | "review what just landed", "second pair of eyes", "taste passover before those units are finished" | Play the named surfaces yourself or hand them to one agent, **fix** what is real (taste and bugs), and report in §1.4 words. Incoming written audits grade through the row above and §15.9. There is no standing review queue |
 | "it's not fun", "make it better", "it sucks", "wonky", "no control" | **§27** → [`FINISH_LANES.md`](./design/program/FINISH_LANES.md) lane **THE HAND**; the loop method is [`design/program/FUN_CONVERGENCE_LOOP.md`](./design/program/FUN_CONVERGENCE_LOOP.md) |
@@ -272,6 +283,88 @@ procedure:
 | "it crashed / my save is gone / it won't start" | integrity first: §7, `PQ-033`, the save checks |
 
 Do not sweep `design/`, `.campaign/`, assets, transcripts, or screenshots for an ordinary unit.
+
+### 1.8 Production maturity: debugging and polish
+
+**Owner direction, 2026-10-04:** mature the existing game into a dependable, polished experience.
+Feature expansion alone is not progress when ordinary play is buggy. Agents own finding,
+reproducing and fixing failures; the owner does not need jargon or a bug-by-bug briefing.
+This is an active production priority across §27's existing lanes, not a second queue or an audit
+deliverable. The ONE open-defect ledger remains
+[`DEMO_READINESS_2026-09-20.md` §6](./design/program/DEMO_READINESS_2026-09-20.md#6-the-demo-defect-ledger--everything-a-demo-player-will-hit-live-opened-2026-09-22).
+
+**Copy-ready assignment:** "Debug and polish SpaceFace using build_map §1.8. Own discovery
+and repair of the assigned area; for a whole-game campaign cover every workflow in the table.
+Fix production causes, verify ordinary play and recovery, and report what now works and any
+remaining defects in plain player language. You own finding the bugs, not just checking a list."
+
+**Choose repairs before expansion.** First: crashes, lost progress, failed launch/Continue,
+softlocks and unusable controls. Then: repeatable hitches, missing bodies, broken transactions,
+unreadable or unreachable UI and incorrect gameplay feedback. Then: visual, audio and interaction
+polish. Rank by severity, frequency and reach, not by how easy the task is to count. Fix an
+available defect in the selected area before extending it; unaffected work can continue in disjoint
+paths. `done` on a feature or `free` on a seam says nothing about current product quality.
+
+**Discover by player workflow.** A maturity assignment covers an ordinary workflow and its
+failure/recovery edges, not just the happy path or a named function. Use the following coverage
+to select area-sized repair work. Across a finishing campaign, cover every row; a single fix
+checks only the affected row and adjacent transitions. Reuse current results when the relevant
+owners have not changed. These are assignments and completion bars, not new status IDs.
+
+| Player problem / coverage | Existing owner and concrete repair assignment | The result the player should get |
+|---|---|---|
+| **Start, stop and resume** | THE MACHINE + THE LONG GAME: cold New Game → Launch → control; save → title/restart → Continue; death → retry; failed/invalid load → recover. Cover Browser and Electron's shared route and any affected shell boundary. | No crash, endless spinner, invisible world, lost progress, duplicate rewards or dead end. A failed operation explains itself and leaves a usable route back. |
+| **Controls and everyday play** | THE HAND + THE FIGHT: ordinary flight, targeting, mining, towing, fighting and camera/zoom; pause/settings/modal → resume; held/released inputs, rebinding and focus changes. | Input answers once, the camera and body agree, and closing a screen never leaves stuck controls, accidental actions or an unusable ship. |
+| **Menus, HUD and text** | The workflow owner repairs functional UI within ORRERY: exercise title/new game/load/settings/pause, map, station/market/outfitting, jobs and Swarm draft/refit/results. Check narrow/default/wide layouts, long names/numbers, +40% pseudo-localized copy, populated/empty/error states, scrolling and focus. | No overflow, overlap, cropped meaning, off-screen action, unreadable feedback or dead control. Needed information and controls remain reachable by the supported input methods; motion/accessibility settings preserve meaning. |
+| **The visible world loads and stays there** | THE PICTURE + THE MACHINE: camera approach/turn/zoom, fast travel, sector arrival/exit, combat spawns and save/load. Repair the actual asset resolution, fetch/decode/compose/compile/admission/residency owner that fails. | Ships, stations, rocks, wrecks and effects appear as authored bodies when needed; nothing usable is an empty lock, invisible collider, missing part or disappearing on-screen model. Loading failure is recoverable and cannot silently count as readiness. |
+| **Off-screen work and loading pressure** | THE MACHINE with THE PICTURE/WORLD: bound predictive admission, decode/compile queues, draw submission, distant queries, texture/model residency and retirement. Check rapid direction reversals, arrivals and repeated sector revisits. Separate render cost from simulation authority. | Nearby and imminent content wins priority; distant content does not flood expensive queues or remain resident without need. Culling/residency does not pop visible bodies, discard imminent arrivals, erase NPC consequences or change default visual quality. |
+| **Hitches and long-session stability** | THE MACHINE: repair identified main-thread stalls, allocation/GC churn, repeated setup, unbounded scans, resource/event/timer leaks and stale async callbacks through dock/undock/jump/fight/save/load cycles. | Stable frame pacing and bounded resources over ordinary transitions. Use existing demo/min-spec budgets; report frame tails and missing-body evidence as well as averages. A smoother empty scene does not pass. |
+| **Transactions, jobs and progression** | THE WORLD + THE LONG GAME: accept → do → settle/abandon/fail → reload; trade, buy/fit/use, cargo custody, credits, law and unlocks. Include invalid/stale selections and repeated clicks. | Displayed price, eligibility, inventory, physical result and saved result agree. Settlement happens once; cancellation/failure leaves coherent play and useful feedback. |
+| **Visual and audio finish** | THE PICTURE + THE EAR + the affected workflow owner: broken transforms/materials/lighting, clipping/z-fighting, stuck/floating effects, unreadable cues, missing/duplicated sound and effects surviving their owner. | The authored picture and feedback remain coherent at the gameplay camera, dense moments and supported accessibility settings. Repair defects within the existing art direction. |
+
+**Run a finite find → fix → verify loop.**
+
+1. Pick the highest-impact available ledger defect, or one workflow above lacking current
+   coverage. Check the live owner and exact dirty paths. State the player-visible outcome in
+   one sentence. A closed packet is a lead, not a reason to dismiss a current failure.
+2. Exercise the real workflow with representative existing content. Include the relevant
+   interruption, repeated action or recovery edge. Existing fixtures, DOM/layout checks and
+   fixed-seed routes are the default; do not create a universal crawler or another census.
+   A full campaign rotates through the table rather than repeating the same easy opening.
+3. Reproduce a found failure at the cheapest relevant layer and fix the production cause.
+   If a missing lifecycle owner, loading policy, cancellation path, resource budget or shared
+   layout primitive is necessary, build that specific structure and wire it into the default
+   route. Prefer that shared repair over scattered symptom patches; no speculative rewrite.
+4. Verify the affected workflow and its failure/recovery edge after the fix. Add a focused
+   regression when recurrence or a meaningful boundary warrants it; do not write tests that
+   merely mirror the code. Run affected existing checks once; broaden only for a real failure
+   or a change that crosses more owners. Green tests cannot prove a visual or timing claim
+   they do not observe.
+5. Commit the owned repair by exact paths, removing its ledger row in the fixing commit.
+   Out-of-area defects follow root `AGENTS.md` §7: fix small ones, delegate medium ones,
+   otherwise one ledger row with what the player sees, the route/actions, expected/actual
+   behavior, frequency/seed if known and the cheapest repro. Never substitute a report for
+   an assigned repair or silently discard a defect because its cause is unknown.
+6. A bounded assignment ends when its outcome works, direct verification passes and no
+   unresolved defect materially changes that outcome. A broader maturity campaign continues
+   through uncovered workflows and remaining repairs until its agreed scope is complete.
+   Report coverage and any material remaining defect plainly; do not call a whole game
+   flawless because one fixture or one route passed. No repeated confidence-only review.
+
+**Demo-ready is a product condition, separate from publishing.** The existing demo path
+(§21/§25: launch, fight, results/retry, Adventure job, purchase/fit/use an upgrade, save/Continue)
+must work with the real picture and reachable UI, without known crashes, lost progress, softlocks,
+visible-body failures, obstructed controls/text or repeatable player-disrupting hitches in that
+scope. The table above covers ordinary play beyond that showcase; a narrow demo pass does not
+close the whole maturity program. Packaging/store work keeps its existing release authorization.
+Maturity fixes remain active while THE RELEASE is parked.
+
+**Use the right host without stalling repairs.** Clean-machine captures, absolute performance
+readings and soaks belong only to [`QUIET_HOST_PROGRAM.md`](./design/program/QUIET_HOST_PROGRAM.md).
+On the shared dev box, fix known causes with source inspection and focused functional/layout/
+resource checks; do not produce captures, hunt historical freezes, or claim a hardware speedup
+from contended timings. Consume the quiet-host receipt for the broader timing/visual verdict
+and route real failures back to these repair owners. Human play or approval is not a repair gate.
 
 ## 1A. Central Brain quality-convergence layer
 
@@ -358,6 +451,9 @@ Moved to [build_map_done.md](./build_map_done.md) — completed/historical, kept
 ## 1C. The board — every dispatchable unit, numbered (refreshed 2026-09-27)
 
 The old packet queue (`program-dispatch --next`) is drained. **That is not an empty plan.**
+For debugging/polish work, [§1.8](#18-production-maturity-debugging-and-polish) takes priority:
+repair existing ledger defects and discover failures in the selected ordinary workflow even when
+its seam has no OPEN feature rows. Preserve row statuses; this does not mint a parallel catalog.
 An empty script result is this board. It is not permission to switch to
 `INFERENCE_IDEAS.md`. The inference catalog is the small wiring inside a seam you already
 claimed, and it is the whole job only when the owner said INFERENCE.
@@ -890,8 +986,6 @@ Lane checklist: FINISH_LANES.md §8 (PQ-032/142/152/155/156/170/172/176–178/19
 
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
-| 278 | LG-TOW-PREDICT | Fit screen predicts tow class before you pay (M2): `handlingProfileForShip().predictions` gains `towClassMassT` + named heaviest towable roster hull, read off the live tow law (`shipCapabilities.towClassMassFor`), same derived block the bars read. Prior owner: PQ-176.03 fit sentences. Done when: predicted tow class matches a live tow of that hull within 20 % on seed 4242, and the fit screen names the hull. | BUILD | OPEN |
-| 279 | LG-FORECAST-PROOF | The market forecast cone is falsifiable (M4): each cone stores its quoted band + the sim event ids that moved the price, and the market screen prints one line tracing the last move to its cause. Prior owner: economy forecast band. Done when: on seed 4242 a reader of the cone out-earns a non-reader by ≥ 30 % over a seeded hour and every ticker line names its event. | BUILD | OPEN |
 | 280 | LG-STARTER-JOBS | Three starters are three jobs (F10/PQ-156): each starter hull ships an authored opening contract chain that only its fit can run cleanly, accepted from the ordinary board on the default route. Prior owner: onboarding/new-game defaults. Done when: a stranger flies each starter's chain to payout with no flag or debug key. | BUILD | OPEN |
 | 281 | LG-SPINE-HEADLINES | Every story beat has a physical headline verb (M5/PQ-032): beats that are text-only gain a staged physical action (tow, deliver, scan, survive) wired through the live `headlineVerb` mission seam. Prior owner: story beat content. Done when: all 8 beats each name a verb a player performs, reachable by a combat-only and a builder run on seed 4242. | BUILD | OPEN |
 | 283 | LG-VERB-CURVE | A new verb every hour for ten hours (B8/PQ-155): the verb-unlock curve is a data table keyed to hours 1–10 with each unlock wired to its live verb key (PQ-208), surfaced once in the fit/tech screen. Prior owner: tech/unlock catalog. Done when: a fixed-seed ten-hour reference route meets 10 distinct verbs, each usable the hour it unlocks. | BUILD | OPEN |
@@ -6086,6 +6180,10 @@ for. They wait until that flyby is one world. Shelf bodies that are only a repai
 do not get a second production pass. Captures, tool caches, and old checkouts are not the game.
 
 ## 27. The finish in lanes — ADMITTED 2026-09-24
+
+**Maturity update, owner 2026-10-04:** every lane also owns the debugging and polish assignments
+in [§1.8](#18-production-maturity-debugging-and-polish). Repair broken existing workflows before
+expansion; a lane with closed feature rows and a buggy player experience remains unfinished.
 
 Owner direction, 2026-09-24: batch the granular plans into a few logical lanes, with open-ended
 instructions — the agent owns an *area*, lands the named work still open there, and reviews and

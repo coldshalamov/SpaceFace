@@ -31,6 +31,7 @@ import test from 'node:test';
 
 import {
   DYNAMIC_FLIGHT_STICK_TUNING,
+  effectiveDeadzonePx,
   projectDynamicFlightStick,
   recordDynamicFlightStick,
   resetDynamicFlightStick,
@@ -65,7 +66,7 @@ function stickHost() {
 // SFQ-B011 — the G-stick answers, at real viewport sizes
 // --------------------------------------------------------------------------------------------
 
-test('B011 stationary symmetric pointer noise never commands thrust, at two real viewports', () => {
+test('B011 stationary symmetric pointer noise never commands thrust, at three real viewports', () => {
   const rand = lcg(20261002);
   for (const [w, h] of [[400, 400], [1000, 600], [2560, 1080]]) {
     const host = stickHost();
@@ -137,7 +138,7 @@ test('B011 the response curve is monotonic across travel at real viewport sizes'
     assert.ok(radius >= DYNAMIC_FLIGHT_STICK_TUNING.minRadiusPx
       && radius <= DYNAMIC_FLIGHT_STICK_TUNING.maxRadiusPx,
       `${w}x${h}: the live radius sits in the authored band (${radius})`);
-    const deadzone = Math.min(DYNAMIC_FLIGHT_STICK_TUNING.deadzonePx, radius * 0.35);
+    const deadzone = effectiveDeadzonePx(radius);
     let previous = -1;
     for (let px = deadzone - 2; px <= radius; px += Math.max(1, radius / 40)) {
       const probe = stickHost();
@@ -217,7 +218,7 @@ test('B011 diagonal reversal tracks the curve with no displacement jump', () => 
   // raw step is at most hypot(2/steps, 0.7*PI/steps) — the arc's own sampling grid. By the
   // mean value theorem consecutive samples may differ by at most slope x step; anything
   // larger is a displacement jump, not the curve.
-  const deadzoneFraction = Math.min(DYNAMIC_FLIGHT_STICK_TUNING.deadzonePx, radius * 0.35) / radius;
+  const deadzoneFraction = effectiveDeadzonePx(radius) / radius;
   const maxCurveSlope = DYNAMIC_FLIGHT_STICK_TUNING.responseExponent / (1 - deadzoneFraction);
   const maxRawStep = Math.hypot(2 / steps, 0.7 * Math.PI / steps);
   const maxStepDelta = maxCurveSlope * maxRawStep;
