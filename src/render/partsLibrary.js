@@ -6285,16 +6285,20 @@ function driveOpeningPublicationResume(render, queue) {
           });
         } else {
           next.resolve();
-          // The resumed tail's first slice runs as a queued microtask — yield once so
-          // it lands, then stop the batch when the frame is already spent (both by the
-          // tail's own measured cost and by the shared paced ledger) instead of
-          // stacking N compose slices + sync prefixes into one post-present task.
+          // The resumed tail's commit continuation chains through microtasks — a
+          // macrotask yield lets the whole chain land before the batch decides,
+          // so the measured window actually contains the commit cost it spaces
+          // (a bare microtask hop saw only the resolution, ~µs, and the brake
+          // could not see the N commit tails it stacked per arm). The ledger
+          // debit tells sibling slicers the frame is spent too.
           if (queue.length > 0) {
             const measuredAt = (typeof performance !== 'undefined' && performance.now)
               ? performance.now() : Date.now();
-            await Promise.resolve();
-            spentMs += ((typeof performance !== 'undefined' && performance.now)
+            await new Promise((resolveYield) => { setTimeout(resolveYield, 0); });
+            const elapsed = ((typeof performance !== 'undefined' && performance.now)
               ? performance.now() : Date.now()) - measuredAt;
+            spentMs += elapsed;
+            notePacedFrameSpend(elapsed);
             if (spentMs >= PACED_FRAME_BUDGET_MS || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
           }
         }
@@ -6346,12 +6350,26 @@ export function waitForOpeningGraphPublicationRelease(options = {}) {
     }
   };
   const gatePromise = wait.call(render);
-  const released = waitForAuthoredAdmission(Promise.resolve(gatePromise).then((value) => (
-    paceOpeningPublicationResume(render, gatePromise).then(() => {
+  const awaitGate = (gate) => waitForAuthoredAdmission(Promise.resolve(gate).then((value) => (
+    paceOpeningPublicationResume(render, gate).then(() => {
       assertGateOwnerCurrent();
       return value;
     })
   )), options);
+  let released = awaitGate(gatePromise);
+  // The resume drain resolves a waiter as soon as its captured gate pops — a
+  // newer freeze can own the window again by the time the caller's commit
+  // continuation actually runs (the tail chains through paced queues). The wait
+  // is not released until no live gate holds: re-park under the current gate
+  // instead of handing a commit license into the middle of the next hold.
+  released = released.then(async (value) => {
+    for (;;) {
+      const liveGate = render.openingGraphPublicationFrozen === true
+        ? wait.call(render) : null;
+      if (!liveGate) return value;
+      await awaitGate(liveGate);
+    }
+  });
   if (!entity || !postFirstPicture) return released;
   let settled = false;
   return new Promise((resolve, reject) => {

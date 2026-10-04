@@ -38,14 +38,50 @@ export const DECODE_CLASS_RANK = Object.freeze({ ambient: 0, deadline: 1, visibl
 // in paced main-thread JS. Slicers report their measured slice spend here; a slicer that runs
 // later in the same frame window can read what the frame has already spent and stand down for
 // the frame instead of stacking its budget on top.
+//
+// The wallet is keyed on the present boundary, not a wall-clock window: an 8ms
+// anchor re-mints a fresh wallet per >8ms frame, so the effective budget scaled
+// with frame length — worst exactly on the heavy frames the ledger exists for.
+// A lazily-armed rAF pump bumps the epoch each displayed frame; spend minted
+// under an older epoch is invisible to this frame's readers. Headless hosts
+// (no rAF) keep the legacy 8ms wall-clock window — there are no presents to key.
 const PACE_FRAME_WINDOW_MS = 8;
 const paceNow = (typeof performance !== 'undefined' && typeof performance.now === 'function')
   ? () => performance.now()
   : () => Date.now();
 let paceFrameStartedAt = -Infinity;
 let paceFrameSpentMs = 0;
+let paceFrameEpoch = 0;
+let paceSpentEpoch = -1;
+let pacePumpArmed = false;
+
+function paceEpochNow() {
+  // Only a real browser frame loop keys the epoch — headless/test hosts that stub
+  // globalThis.requestAnimationFrame (often microtask-driven) would either hang the
+  // pump's self-re-arm chain or freeze the epoch and livelock paced drains. No
+  // `window` means no presents, so the wall-clock window below is the right key.
+  if (typeof window !== 'object' || typeof window.requestAnimationFrame !== 'function') return -1;
+  if (!pacePumpArmed) {
+    pacePumpArmed = true;
+    const pump = () => {
+      paceFrameEpoch += 1;
+      window.requestAnimationFrame(pump);
+    };
+    window.requestAnimationFrame(pump);
+  }
+  return paceFrameEpoch;
+}
 
 export function notePacedFrameSpend(ms) {
+  const epoch = paceEpochNow();
+  if (epoch >= 0) {
+    if (paceSpentEpoch !== epoch) {
+      paceSpentEpoch = epoch;
+      paceFrameSpentMs = 0;
+    }
+    paceFrameSpentMs += Math.max(0, Number(ms) || 0);
+    return;
+  }
   const t = paceNow();
   if (t - paceFrameStartedAt >= PACE_FRAME_WINDOW_MS) {
     paceFrameStartedAt = t;
@@ -55,6 +91,8 @@ export function notePacedFrameSpend(ms) {
 }
 
 export function pacedFrameSpend() {
+  const epoch = paceEpochNow();
+  if (epoch >= 0) return paceSpentEpoch === epoch ? paceFrameSpentMs : 0;
   const t = paceNow();
   return (t - paceFrameStartedAt < PACE_FRAME_WINDOW_MS) ? paceFrameSpentMs : 0;
 }

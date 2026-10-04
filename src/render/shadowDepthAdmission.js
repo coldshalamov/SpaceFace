@@ -215,6 +215,96 @@ export function collectPotentialShadowCastSubjects(roots) {
 // read; a material-less stub records nothing (there is no program to link).
 const _stagedDepthSignatures = new WeakMap();
 
+// Per-mesh staged certificate, written at mark time next to the signature entries.
+// The presented-frame policy collect reads this tuple instead of re-minting signature
+// strings — it carries the identical discriminant set (material uuids + interned
+// variant bits, object kind, morph census, custom depth material, layer mask, light
+// census) so a mismatch is exactly a re-minted signature: the collect proves
+// staged-vs-unstaged with zero per-caster allocs.
+const DEPTH_MARK_KEY = 'sfDepthMark';
+
+function writeDepthMark(caster, lightSig) {
+  const kind = caster.isSkinnedMesh === true ? 'sk'
+    : (caster.isInstancedMesh === true ? 'in' : 'me');
+  const geometry = caster.geometry || null;
+  const materials = Array.isArray(caster.material) ? caster.material : [caster.material];
+  const mats = [];
+  for (const material of materials) {
+    if (!material || !material.uuid || material.visible === false) continue;
+    mats.push(material.uuid, casterDepthVariant(material));
+  }
+  if (!caster.userData) caster.userData = {};
+  caster.userData[DEPTH_MARK_KEY] = {
+    l: lightSig,
+    g: geometry,
+    ma: geometry && geometry.morphAttributes ? geometry.morphAttributes : null,
+    mn: geometry && geometry.morphAttributes ? Object.keys(geometry.morphAttributes).length : 0,
+    c: caster.customDepthMaterial || null,
+    ly: caster.layers && Number.isFinite(caster.layers.mask) ? caster.layers.mask : 1,
+    k: kind,
+    a: mats,
+  };
+}
+
+/**
+ * The mesh's depth-staged certificate still describes its live discriminant set: every
+ * field mismatch is a re-minted signature, i.e. genuinely unstaged. Mirrors
+ * casterDepthSignatures' inputs — a material mutation (in-place or swap), geometry or
+ * morph census change, custom depth material swap, layer mask flip, or a light-census
+ * drift all re-collect the caster. uuid strings compare by value; variant strings are
+ * interned per material so a repeat lookup is a reference hit.
+ */
+export function casterDepthMarkCurrent(caster, lightSig) {
+  const mark = caster && caster.userData ? caster.userData[DEPTH_MARK_KEY] : null;
+  if (!mark || mark.l !== lightSig) return false;
+  const geometry = caster.geometry || null;
+  if (mark.g !== geometry) return false;
+  if (mark.ma !== (geometry && geometry.morphAttributes ? geometry.morphAttributes : null)) return false;
+  if (mark.c !== (caster.customDepthMaterial || null)) return false;
+  const layerMask = caster.layers && Number.isFinite(caster.layers.mask) ? caster.layers.mask : 1;
+  if (mark.ly !== layerMask) return false;
+  const kind = caster.isSkinnedMesh === true ? 'sk'
+    : (caster.isInstancedMesh === true ? 'in' : 'me');
+  if (mark.k !== kind) return false;
+  const morphCount = mark.ma ? Object.keys(mark.ma).length : 0;
+  if (mark.mn !== morphCount) return false;
+  const materials = Array.isArray(caster.material) ? caster.material : [caster.material];
+  let i = 0;
+  for (const material of materials) {
+    if (!material || !material.uuid || material.visible === false) continue;
+    if (i + 1 >= mark.a.length
+        || mark.a[i] !== material.uuid
+        || mark.a[i + 1] !== casterDepthVariant(material)) return false;
+    i += 2;
+  }
+  return i === mark.a.length;
+}
+
+/**
+ * Flag-collect twin of collectUnstagedShadowCasters for the presented-frame policy
+ * sync: same unstaged set (signature-capable casters with no current mark) without
+ * paying signature mints + staged-Set probes per caster. The arm re-collects with the
+ * full signature path at its own deadline — this is only the withhold decision.
+ */
+export function collectUnstagedShadowCastersFlag(roots, lightSig) {
+  const casting = collectPotentialShadowCastSubjects(roots);
+  if (casting.length === 0) return casting;
+  const unstaged = [];
+  for (const caster of casting) {
+    // A caster that cannot mint a signature (no material uuid, or every material
+    // invisible) also cannot draw — identical to the signatures.length===0 skip in
+    // the signature collect.
+    const materials = Array.isArray(caster.material) ? caster.material : [caster.material];
+    let capable = false;
+    for (const material of materials) {
+      if (material && material.uuid && material.visible !== false) { capable = true; break; }
+    }
+    if (!capable) continue;
+    if (!casterDepthMarkCurrent(caster, lightSig)) unstaged.push(caster);
+  }
+  return unstaged;
+}
+
 export function lightCensusSignature(lightingScene) {
   if (!lightingScene || typeof lightingScene.traverse !== 'function') return 'l0|f0';
   // Key what the program key actually bakes: the RENDERED light set's per-type
@@ -339,6 +429,7 @@ function markCastersDepthStaged(renderer, casting, lightingScene, drawnDepthObje
       if (!layerMiss) continue;
     }
     for (const signature of casterDepthSignatures(caster, lightSig)) staged.add(signature);
+    writeDepthMark(caster, lightSig);
   }
 }
 
@@ -507,6 +598,9 @@ export function compileShadowDepthPipelines(options = {}) {
     for (const root of casting) {
       if (typeof staging.add === 'function') staging.add(root);
     }
+    // The shadow pass iterates this subset instead of scanning the global caster
+    // registry with an ancestor-membership walk per entry.
+    if (staging.userData) staging.userData.sfShadowCastSubset = new Set(casting);
     if (typeof staging.updateMatrixWorld === 'function') staging.updateMatrixWorld(true);
     shadowMap.needsUpdate = true;
     if (stagedKeyLight.shadow) stagedKeyLight.shadow.needsUpdate = true;
@@ -698,6 +792,7 @@ export function createShadowDepthStagingSession(options = {}) {
       const previousNeedsUpdate = shadowMap.needsUpdate;
       try {
         for (const root of casting) staging.add(root);
+        if (staging.userData) staging.userData.sfShadowCastSubset = new Set(casting);
         staging.updateMatrixWorld(true);
         shadowMap.needsUpdate = true;
         if (stagedKeyLight.shadow) stagedKeyLight.shadow.needsUpdate = true;

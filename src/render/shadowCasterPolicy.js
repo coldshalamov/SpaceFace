@@ -269,6 +269,14 @@ export function syncShadowCasterPolicy(root, lodLevel = null, options = null) {
       object.castShadow = false;
       return;
     }
+    if (object.userData && object.userData.authoredReadableFallbackLayer === true) {
+      // The procedural fallback layer is excluded from every depth-staging
+      // collector, so its depth variant can never link — casting it would mint
+      // the program inside a presented frame (the cold link the arm exists to
+      // prevent). Receiving stays live so the fallback reads normally.
+      object.castShadow = false;
+      return;
+    }
     const materials = Array.isArray(object.material) ? object.material : [object.material];
     const opaqueReceiver = materials.some((material) => (
       material

@@ -375,12 +375,44 @@ export const physics = {
       if (remainingMs > 0 && remainingMs <= initTimeoutMs) {
         const sg02TokenAtDefer = this._sg02Token;
         await new Promise((resolve) => { setTimeout(resolve, remainingMs + 1); });
-        // A concurrent prepare minted while this one waited out the window — the
-        // fresher call owns the race, so this stale tail steps aside.
-        if (sg02TokenAtDefer !== this._sg02Token) return false;
+        if (sg02TokenAtDefer !== this._sg02Token) {
+          // A concurrent prepare minted while this one waited out the window —
+          // the fresher call owns the race, but a `false` here is what the live
+          // caller's waitForPhysics reads as backend-failure → the deterministic
+          // backend bounce under overlapping Continue+reset clicks. Adopt the
+          // winner's in-flight init on the same envelope instead.
+          if (this._sg02Init) {
+            let adoptTimer = null;
+            const adopted = await Promise.race([
+              Promise.resolve(this._sg02Init).then(() => true, () => true),
+              new Promise((resolve) => { adoptTimer = setTimeout(() => resolve(false), initTimeoutMs); }),
+            ]);
+            if (adoptTimer !== null) clearTimeout(adoptTimer);
+            if (!adopted) return false;
+            this._updateSg02DynamicAuthority(0, state);
+            this._diag.tickMs = 0;
+            this._publishRuntime(state);
+            return this._diag.sg02Ready === true;
+          }
+          return false;
+        }
       }
     }
-    if (reset) this._disableSg02DynamicAuthority();
+    if (reset) {
+      // A reset prepare while an init is still pending used to stamp a new token
+      // and mint a second concurrent wasm world-init (the loser ran to
+      // completion before dispose). Await the pending init's settle on the same
+      // envelope so N overlapping clicks can't fan out N inits.
+      if (this._sg02Init) {
+        let settleTimer = null;
+        await Promise.race([
+          Promise.resolve(this._sg02Init).then(() => true, () => true),
+          new Promise((resolve) => { settleTimer = setTimeout(() => resolve(false), initTimeoutMs); }),
+        ]);
+        if (settleTimer !== null) clearTimeout(settleTimer);
+      }
+      this._disableSg02DynamicAuthority();
+    }
     this._updateSg02DynamicAuthority(0, state);
     if (this._sg02Init) {
       let timer = null;
