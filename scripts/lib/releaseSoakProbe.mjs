@@ -18,7 +18,7 @@ import {
   createIsolatedElectronLaunch,
 } from './electronTestIsolation.mjs';
 import { loadPlaywright } from './load-playwright.mjs';
-import { installCspSafePlaywrightPolling } from './playwrightCspPolling.mjs';
+import { installCspSafePlaywrightPolling, installFrameKeepalive } from './playwrightCspPolling.mjs';
 import {
   RELEASE_SOAK_SCHEMA,
   PERFORMANCE_ATTRIBUTION_SCHEMA,
@@ -781,6 +781,9 @@ async function launchBrowser(viewport, { enableTier1Counters = false } = {}) {
     await installGlProgramQueryTrap(context);
     await installGlDeleteTrap(context);
     const page = await context.newPage();
+    // Docked/menu phases are event-rendered and produce no frames; native waitFor/actionability
+    // polls ride rAF and starve (the .sx-trade buy-wait soak deaths). Keep real frames coming.
+    await installFrameKeepalive(page);
     return { browserServer, browserChildProcess, browser, context, page };
   } catch (error) {
     await browser?.close?.().catch(() => {});
@@ -833,6 +836,7 @@ async function launchElectron(
   const page = await electronApp.firstWindow({ timeout: 90_000 });
   publishOwnership({ page });
   installCspSafePlaywrightPolling(page);
+  await installFrameKeepalive(page);
   const canonicalUrlTracker = createElectronCanonicalUrlTracker(page, {
     bootstrapTimeoutMs: 10_000,
     pollIntervalMs: 75,
