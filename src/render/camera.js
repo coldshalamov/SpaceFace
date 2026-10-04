@@ -115,18 +115,45 @@ export function getChaseLookAtRetainForBench() {
   return CHASE_LOOKAT_RETAIN !== false;
 }
 
+// Quiet chase drift used to miss lookAt retain every frame: eye/target floats creep
+// by ≪ chase distance, so bit-identical keys never matched in flight (#72 settled-only).
+// Quantize the retain KEY (not the lookAt inputs) to the same 0.25 WU cell as
+// authored-instance / presentation-query / clearance-floor retain. Exact floats still
+// drive Three lookAt on cell change. At typical chase distance (~100–300 WU) a one-cell
+// delay is sub-degree. Soft-GPU fps not claimed.
+const CHASE_LOOKAT_RETAIN_POS_QUANT_WU = 0.25;
+let CHASE_LOOKAT_RETAIN_POS_QUANTIZE = true;
+export function setChaseLookAtRetainPosQuantizeForBench(enabled) {
+  CHASE_LOOKAT_RETAIN_POS_QUANTIZE = enabled !== false;
+  return CHASE_LOOKAT_RETAIN_POS_QUANTIZE;
+}
+export function getChaseLookAtRetainPosQuantizeForBench() {
+  return CHASE_LOOKAT_RETAIN_POS_QUANTIZE !== false;
+}
+function quantizeChaseLookAtRetainPos(value) {
+  if (CHASE_LOOKAT_RETAIN_POS_QUANTIZE === false) return value;
+  const q = CHASE_LOOKAT_RETAIN_POS_QUANT_WU;
+  return Math.round(value / q) * q;
+}
+
 /**
  * Apply chase look-at. Caller must set cam.position to (eyeX,eyeY,eyeZ) first.
  * cache bag (per camera): { eyeX, eyeY, eyeZ, targetX, targetZ, baseQuat }.
+ * Retain keys may be quantized (0.25 WU); lookAt always uses exact floats.
  * Returns true when Three lookAt ran; false when the cached base quat was restored.
  */
 export function applyChaseLookAt(cam, eyeX, eyeY, eyeZ, targetX, targetZ, cache = null) {
   if (!cam) return false;
   const tx = Number.isFinite(targetX) ? targetX : 0;
   const tz = Number.isFinite(targetZ) ? targetZ : 0;
+  const qEyeX = quantizeChaseLookAtRetainPos(eyeX);
+  const qEyeY = quantizeChaseLookAtRetainPos(eyeY);
+  const qEyeZ = quantizeChaseLookAtRetainPos(eyeZ);
+  const qTx = quantizeChaseLookAtRetainPos(tx);
+  const qTz = quantizeChaseLookAtRetainPos(tz);
   if (CHASE_LOOKAT_RETAIN && cache && cache.baseQuat
-      && eyeX === cache.eyeX && eyeY === cache.eyeY && eyeZ === cache.eyeZ
-      && tx === cache.targetX && tz === cache.targetZ) {
+      && qEyeX === cache.eyeX && qEyeY === cache.eyeY && qEyeZ === cache.eyeZ
+      && qTx === cache.targetX && qTz === cache.targetZ) {
     cam.quaternion.copy(cache.baseQuat);
     return false;
   }
@@ -134,11 +161,11 @@ export function applyChaseLookAt(cam, eyeX, eyeY, eyeZ, targetX, targetZ, cache 
   if (cache) {
     if (!cache.baseQuat) cache.baseQuat = cam.quaternion.clone();
     else cache.baseQuat.copy(cam.quaternion);
-    cache.eyeX = eyeX;
-    cache.eyeY = eyeY;
-    cache.eyeZ = eyeZ;
-    cache.targetX = tx;
-    cache.targetZ = tz;
+    cache.eyeX = qEyeX;
+    cache.eyeY = qEyeY;
+    cache.eyeZ = qEyeZ;
+    cache.targetX = qTx;
+    cache.targetZ = qTz;
   }
   return true;
 }
