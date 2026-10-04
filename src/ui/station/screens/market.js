@@ -27,7 +27,7 @@ import { MAP_FOCUS, openGalaxyMap } from '../../mapAuthority.js';
 import { focusNamedStationControl } from '../../outfittingSpendConfirm.js';
 import { mountDataState } from '../../uiPrimitives.js';
 import { renderAdBoardNotice } from '../adBoard.js';
-import { marketQuoteValue, presentMarketDrivers } from '../../marketDriverPresenter.js';
+import { lastMoveCause, marketQuoteValue, presentMarketDrivers } from '../../marketDriverPresenter.js';
 import { presentCommodityIntel, presentInspectorRows } from '../../marketIntelPresenter.js';
 import { starvedNeedLine } from '../../worldNewsBeats.js';
 // Trade-route intel + course plotting reuse the canonical market logic (same waypoint/ui:setCourse
@@ -1077,7 +1077,8 @@ export function createMarketScreen(ctx) {
     if (signature !== listRenderSignature) {
       listRenderSignature = signature;
       modeEl.firstChild.textContent = cargoOnly ? 'Your cargo hold' : 'Station exchange';
-      modeEl.querySelector('b').textContent = ` · ${visible.length} of ${rows.length}`;
+      // "10 of 10" says nothing; the count earns its place only when a filter or search narrows the list.
+      modeEl.querySelector('b').textContent = visible.length < rows.length ? ` · ${visible.length} of ${rows.length}` : '';
       for (const [id, btn] of filterEls) {
         btn.classList.toggle('is-on', id === marketFilter);
         btn.setAttribute('aria-pressed', String(id === marketFilter));
@@ -1165,6 +1166,7 @@ export function createMarketScreen(ctx) {
     const avg = Number(def.basePrice) || buy;
     const demand = demandLevel(entry);
     const drivers = presentMarketDrivers({ state, stationId: sid, commodity: def, entry });
+    const cause = lastMoveCause({ state, stationId: sid, commodity: def, entry });
     const legal = def.legality || 'legal';
     const isTracked = trackedCmdty(state) === r.id;
     const trackedGuidance = isTracked ? trackedCargoGuidance(state, r.id, def.name) : null;
@@ -1181,6 +1183,7 @@ export function createMarketScreen(ctx) {
       forecast, now: state && state.simTime, regime: liveRegimeWord(state, sid, r.id),
       quoteAge: 'fresh', quoteSource: 'live',
       survey: rememberedSurveyFreshness(state, r.id),
+      cause,
       saleQty: qty,
       saleQuote: contemplatedSaleQuote(sid, r.id, qty) }) + (decisionEl ? '' : marketDecisionHtml(state, sid));
     if (decisionEl) {

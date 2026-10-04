@@ -635,6 +635,18 @@ export function predictPriceCurve(state, stationId, cmdtyId, steps = 24, stepS =
     out.push({ t, mid, lo, hi, statedRate: FORECAST_CONE_STATED_RATE });
   }
   out.statedRate = FORECAST_CONE_STATED_RATE;
+  // LG-FORECAST-PROOF (row 279): the cone is falsifiable. `band` is the envelope it quotes
+  // at its horizon — what a reader holds it to at arrival — and `eventIds` are the live sim
+  // event ids whose mods moved this price (the same ids economy stamps on the listing).
+  const lastPoint = out.length ? out[out.length - 1] : null;
+  out.band = lastPoint
+    ? Object.freeze({ lo: lastPoint.lo, hi: lastPoint.hi, t: lastPoint.t, statedRate: FORECAST_CONE_STATED_RATE })
+    : null;
+  const causeIds = [];
+  for (const m of (Array.isArray(entry.eventMods) ? entry.eventMods : [])) {
+    if (m && m.eventId != null && !causeIds.includes(m.eventId)) causeIds.push(m.eventId);
+  }
+  out.eventIds = Object.freeze(causeIds);
   return out;
 }
 

@@ -3,9 +3,11 @@
 // tell different stories.
 
 import { SECTORS } from '../data/sectors.js';
+import { hash32 } from '../core/rng.js';
 import { causeFor } from './causeLedger.js';
 import { forecastFor } from './priceForecast.js';
 import { regimeLabel } from '../systems/economyCycles.js';
+import { generateHeadline } from './marketNews.js';
 import { summarizeDemandDrivers } from './demandDriverSummary.js';
 
 const STATION_CONTEXT = new Map();
@@ -100,4 +102,39 @@ export function presentMarketDrivers({ state, stationId, commodity, entry, cycle
     sectorContext,
     accessibleSummary: [...primary.map((item) => item.explanation), sectorContext.explanation].filter(Boolean).join(' '),
   });
+}
+
+/**
+ * LG-FORECAST-PROOF (row 279): one line tracing the last move to its cause. The listing's
+ * eventMods carry the live sim eventIds; the newest one names what is moving the price right
+ * now, in the same words the news ticker speaks. With no event mods the mover is the formula
+ * regime — the same word the cone read prints, because that is what moved it.
+ */
+export function lastMoveCause({ state, stationId, commodity, entry } = {}) {
+  const seed = (state && state.meta && (hash32(state.meta.seed) >>> 0)) || 0;
+  const ids = [];
+  for (const m of (entry && Array.isArray(entry.eventMods) ? entry.eventMods : [])) {
+    if (m && m.eventId != null && !ids.includes(m.eventId)) ids.push(m.eventId);
+  }
+  if (ids.length) {
+    const events = (state && state.economy && state.economy.econEvents) || [];
+    let newest = null;
+    for (const id of ids) {
+      const ev = events.find((e) => e && e.id === id);
+      if (ev && (!newest || Number(ev.startT) >= Number(newest.startT))) newest = ev;
+    }
+    if (newest) {
+      const headline = generateHeadline({
+        type: newest.type,
+        stationId: newest.stationId || stationId,
+        commodityId: newest.commodityId === '*' ? (commodity && commodity.id) : newest.commodityId,
+        eventId: newest.id,
+      }, { seed });
+      if (headline) return Object.freeze({ text: `Last move: ${headline}`, eventId: String(newest.id) });
+    }
+  }
+  const liveCycle = state && state.economy && state.economy.cycles
+    && state.economy.cycles[stationId] && commodity && state.economy.cycles[stationId][commodity.id];
+  const regime = (liveCycle && (liveCycle.regime || liveCycle.family)) || 'stable';
+  return Object.freeze({ text: `Last move: ${regimeLabel(regime)}`, eventId: null });
 }
