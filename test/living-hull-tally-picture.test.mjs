@@ -141,9 +141,12 @@ test('tally gates keep the five-bar read: separated strokes, diagonal slash, dec
     if (Math.abs(angle) > 0.4) {
       diagonals.push(i);
     }
+    // These bounds are the live-validated mid-deck footprint constants (the field was pulled
+    // inboard after the live render showed the outboard row floating past the nose taper), not a
+    // node-side geometry proof — hull-surface contact rests on the unit's live-render check.
     assert.ok(
       position.z <= 0.36 && Math.abs(position.x) <= 0.16,
-      `mark ${i} stays on the flat starboard-forward deck (x ${position.x.toFixed(3)}, z ${position.z.toFixed(3)})`,
+      `mark ${i} stays within the mid-deck footprint validated in the live render (x ${position.x.toFixed(3)}, z ${position.z.toFixed(3)})`,
     );
   }
   assert.deepEqual(

@@ -213,15 +213,18 @@ function tallyTransforms() {
   const transforms = [];
   // Chase-distance paint: one stroke ~0.42 x 1.65 WU on a radius-14 hull — a 2.4 px mark at the
   // default chase zoom, ~6 px at chase-close, instead of the sub-pixel hairlines this grid used
-  // to stamp. Gates keep paint separation (0.39 WU gaps in a gate, 0.17 WU between gate rows);
-  // the field hugs the flat mid-deck (z centers 0.06/0.175/0.29, x 0.14 aft-ward) — the forward
+  // to stamp. Gates keep paint separation: the baked stroke fills ~72% of the plane's width and
+  // ~76% of its length, so the PAINTED gaps are ~0.51 WU inside a gate and ~0.35 WU between gate
+  // rows; full plane extents overlap between rows by ~0.04 WU — a deliberate tight cluster.
+  // The field hugs the flat mid-deck (z centers 0.06/0.175/0.29, x 0.14 aft-ward) — the forward
   // outboard rows used to run past the nose taper and read as floating off the hull.
+  const completeGates = Math.floor(LIVING_HULL_KILL_TALLY_MAX / 5);
   for (let i = 0; i < LIVING_HULL_KILL_TALLY_MAX; i += 1) {
     const row = Math.floor(i / 5);
     const col = i % 5;
     transforms.push({
       position: [0.14 - col * 0.058, 0.372 + row * 0.002, 0.06 + row * 0.115],
-      rotation: [-Math.PI / 2, 0, (col === 4 && row < 2) ? -0.55 : 0],
+      rotation: [-Math.PI / 2, 0, (col === 4 && row < completeGates) ? -0.55 : 0],
       scale: [0.03, 0.118, 1],
     });
   }
