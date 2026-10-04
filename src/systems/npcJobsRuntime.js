@@ -5248,6 +5248,22 @@ export const npcJobsRuntime = {
     // owns its casualty end to end; a second responder would be a second owner of one story.
     // Other causal stamps are handoff choreography, not service — they do not block.
     if (casualty.data && CREW_RESPONSE_YIELD_CAUSAL_EVENTS.has(casualty.data.ceresCausalEventId)) return;
+    // The cue stamp only exists while its chain link is live; the incident records are the
+    // durable ownership truth and can exist before or without it. Match the casualty's stable
+    // identity so a scripted disable can never have the tender claimed out from under its own
+    // responder window — the incident then fails 'responder_control_refused' and the casualty
+    // sits broken forever while a stolen tender idles on a response that resolves nothing.
+    const casualtyWorldId = casualty.data && casualty.data.worldRecordId;
+    const trafficState = this.state.traffic;
+    if (casualtyWorldId && trafficState) {
+      const disabledIncident = trafficState.ceresDisabledHaulerIncident;
+      if (disabledIncident && disabledIncident.outcome == null
+        && disabledIncident.haulerWorldRecordId === casualtyWorldId) return;
+      const serviceIncident = trafficState.ceresTenderServiceIncident;
+      if (serviceIncident && serviceIncident.state !== 'succeeded'
+        && serviceIncident.state !== 'failed'
+        && serviceIncident.minerWorldRecordId === casualtyWorldId) return;
+    }
     const casualtyJobId = this._jobIdForEntity(p.targetId);
     if (casualtyJobId == null) return;
     const casualtyEntry = this._byId()[casualtyJobId];
