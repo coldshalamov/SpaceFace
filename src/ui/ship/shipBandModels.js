@@ -234,6 +234,13 @@ export function conditionFromEntity(entity) {
   };
 }
 
+/** The fit-screen line that names the heaviest roster hull this fit can tow. */
+export function towSentence(predictions) {
+  const name = predictions && predictions.towableHullName;
+  if (!name) return '';
+  return `Can tow a ${name}.`;
+}
+
 function handlingSentence(profile, derived, emptyDerived) {
   if (!profile || !Array.isArray(profile.axes) || !profile.axes.length) return '';
   const agilityAxis = profile.axes.find((axis) => axis.id === 'agility');
@@ -420,13 +427,16 @@ export function handlingBandModel({ shipId, fittings = [], player = null, domain
   const turnSentence = turnRadiusSentence(profile.predictions);
   const reversalLine = reversalSentence(profile.predictions);
   const sustainedFire = sustainedFireForFit(shipId, fittings, player);
+  const towLine = towSentence(profile.predictions);
   // The crest is the sentence the fit screen already prints under the hull name. Turn radius,
-  // reversal and the burst length belong there, before the player commits, not in a tooltip.
+  // reversal, the burst length, and the hull this fit can tow belong there, before the player
+  // commits, not in a tooltip.
   const crestSentence = [
     handlingSentence(profile, derived, dryDerived),
     turnSentence,
     reversalLine,
     sustainedFire.sentence,
+    towLine,
   ].filter(Boolean).join(' ');
   return {
     shipId,
@@ -436,6 +446,7 @@ export function handlingBandModel({ shipId, fittings = [], player = null, domain
     crestSentence,
     turnSentence,
     reversalSentence: reversalLine,
+    towSentence: towLine,
     sustainedFire,
     moduleSentences: moduleSentencesForFittings(fittings),
   };

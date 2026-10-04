@@ -17,6 +17,8 @@ import {
   towClassMassFor,
 } from '../src/systems/shipCapabilities.js';
 import { handlingProfileForShip } from '../src/ui/panels/handlingProfile.js';
+import { handlingBandModel } from '../src/ui/ship/shipBandModels.js';
+import { SHIPS } from '../src/data/ships.js';
 
 const SEED_NOTE = 'seed 4242: fixed roster, deterministic heaviest-hull pick';
 
@@ -33,6 +35,16 @@ test('predictions name the heaviest towable roster hull', () => {
   const expected = heaviestHullWithin(profile.predictions.towClassMassT);
   assert.equal(profile.predictions.towableHullId, expected ? expected.id : null);
   assert.ok(profile.predictions.towableHullName, 'a hull name is named, not a tonnage');
+  const catalog = SHIPS.find((ship) => ship.id === profile.predictions.towableHullId);
+  assert.equal(profile.predictions.towableHullName, catalog && catalog.name);
+});
+
+test('the fit screen crest names that hull (' + SEED_NOTE + ')', () => {
+  const model = handlingBandModel({ shipId: 'ship_kestrel', fittings: [] });
+  const name = model.profile.predictions.towableHullName;
+  assert.ok(name, 'seed 4242 names a towable hull');
+  assert.equal(model.towSentence, `Can tow a ${name}.`);
+  assert.ok(model.crestSentence.includes(model.towSentence), model.crestSentence);
 });
 
 test('tow prediction moves with the fit (drive up, mass up moves it)', () => {
