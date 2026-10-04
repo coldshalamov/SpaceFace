@@ -289,8 +289,8 @@ test('PQ-152.01 catalog is eleven physical headlines with two solutions', () => 
   const validation = validateAuthoredSetPieceCatalog();
   assert.equal(validation.ok, true, validation.errors.join('; '));
   assert.equal(AUTHORED_SET_PIECES.length, 11);
-  // The sixth chain (lung_run, e7cf3bb8b) landed without re-pinning this row.
-  assert.equal(SET_PIECE_MISSIONS.length, 6, 'SP1 chains stay six');
+  // The seventh chain (choir_vigil, 9487e2390) landed without re-pinning this row.
+  assert.equal(SET_PIECE_MISSIONS.length, 7, 'SP1 chains stay seven');
   for (const row of AUTHORED_SET_PIECES) {
     assert.match(row.title, AUTHORED_SET_PIECE_HEADLINE);
     assert.equal(row.methods.length, 2);
