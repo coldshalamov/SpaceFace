@@ -23,7 +23,10 @@ import {
 import { createLivingHullPresentation } from '../src/render/livingHullPresentation.js';
 
 const SEED = 4242;
-// Default chase camera at 1080p: px per world unit at focus distance.
+// Default chase camera at 1080p: px per world unit at focus distance. Flat arithmetic — the real
+// pose is 60° tilted (src/render/camera.js:457), so deck marks foreshorten; the live renderer
+// measured ~8% WIDER than this flat figure (3.66 px plane vs ~3.38), which is the margin this
+// >=2 px assertion spends. Do not shrink the stroke budget without a live re-measure.
 const CHASE_PX_PER_WU = (1080 / 2) / (144 * Math.tan((50 / 2) * (Math.PI / 180)));
 const HITCH_RADIUS = 14; // ship_kestrel collisionRadius (src/data/ships.js)
 
@@ -96,6 +99,13 @@ test('a fought hull (seed 4242) paints each kill as a stroke wide enough to read
   assert.ok(
     strokeLengthWu * CHASE_PX_PER_WU >= 10,
     `a kill mark is >=10 px long at the default chase zoom: ${(strokeLengthWu * CHASE_PX_PER_WU).toFixed(1)} px`,
+  );
+  // Second half of the named root cause: alphaTest 0.45 erased the mip-faded fragments of a
+  // 2-3 px mark. Coverage and px width alone do not pin it — re-raising 0.45 would still pass
+  // them while re-erasing the marks in the live renderer.
+  assert.ok(
+    tallies.material.alphaTest > 0 && tallies.material.alphaTest <= 0.3,
+    `alphaTest stays mip-friendly (was 0.45, now ${tallies.material.alphaTest})`,
   );
 
   controller.dispose();
