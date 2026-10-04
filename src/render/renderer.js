@@ -15146,12 +15146,16 @@ export const render = {
     if (!lifecycle) return false;
     const destroyed = lifecycle.destroy();
     if (!destroyed && this._rendererResourcesDisposed === true) return false;
-    for (; this._despawnDisposeHead < this._despawnDisposeQueue.length; this._despawnDisposeHead++) {
-      const queued = this._despawnDisposeQueue[this._despawnDisposeHead];
-      if (queued && queued.parent == null) disposeObject(queued);
+    // The deferred-corpse queue only exists once init reaches its allocation — a renderer torn
+    // down mid-init (or a facade owner in tests) must still destroy cleanly.
+    if (Array.isArray(this._despawnDisposeQueue)) {
+      for (; this._despawnDisposeHead < this._despawnDisposeQueue.length; this._despawnDisposeHead++) {
+        const queued = this._despawnDisposeQueue[this._despawnDisposeHead];
+        if (queued && queued.parent == null) disposeObject(queued);
+      }
+      this._despawnDisposeQueue.length = 0;
+      this._despawnDisposeHead = 0;
     }
-    this._despawnDisposeQueue.length = 0;
-    this._despawnDisposeHead = 0;
     disposeRendererOwnedResources(this, { contextLost: this._contextLost === true });
     globalShipMicroMotion.unbindEvents();
     globalAsteroidMotion.unbindEvents();

@@ -506,7 +506,9 @@ export const flightV3 = {
       // Holding past this point is just boost. The pre-kick event carries the 80 ms anticipation
       // beat to presentation (FOV/plume/audio) only when the press can actually produce thrust —
       // an empty capacitor stays silent rather than mimicking the success cue.
-      if (boost.energy > 1) {
+      const dashWillFire = boost.dashImpulse > 0 && boost.dashCdT <= 0
+        && boost.energy >= boost.dashCost && boost.energy > 1;
+      if (dashWillFire) {
         boost._overshootUntil = finite(state && state.simTime, 0) + BOOST_ACCEL_OVERSHOOT_S;
         if (this.bus && typeof this.bus.emit === 'function') {
           this.bus.emit('ship:boostPreKick', { shipId: e.id, windowS: BOOST_PREKICK_S });
@@ -518,6 +520,7 @@ export const flightV3 = {
         // The dash already spent the tank under the sustain floor. Disarm now, or regen
         // on this same hold climbs back through `energy > 1` and the burn relights.
         boost._boostArmed = false;
+        if (boost.burnDurS > 0 && !(boost._burnT > 0) && boost._burnCdT > 0) this._burnerCoolTold = true;
         if (!travelBurnEngaged(state) && this.bus && typeof this.bus.emit === 'function') {
           this.bus.emit('toast', { text: 'Boost spent', kind: 'warn', ttl: 1.6 });
         }
@@ -525,10 +528,22 @@ export const flightV3 = {
     }
     if (!rawBoostHeld && suppressBoost && !controlsBlocked) this._suppressBoostUntilRelease = false;
     this._prevBoost = boostHeld;
-    if (!boostHeld) this._burnerCoolTold = false;
+    if (!boostHeld) {
+      this._burnerCoolTold = false;
+      this._dashSpokeThisHold = false;
+      this._dashEmptyThisHold = false;
+    }
+    if (dashSpoken) {
+      this._dashSpokeThisHold = true;
+      // An empty tank never starts dashCdT, so the excuse has to last the whole hold.
+      // Otherwise the cooling line arrives on the next frame beside "Boost empty".
+      if (!(boost.dashCdT > 0)) this._dashEmptyThisHold = true;
+    }
     if (burnerJustSpent && boostHeld) {
       this._burnerCoolTold = true;
-      if (this.bus && typeof this.bus.emit === 'function') {
+      // A tank already under the sustain floor has said "Boost spent". The window
+      // ending on that same hold must not add a second sentence.
+      if (boost.energy > 1 && this.bus && typeof this.bus.emit === 'function') {
         this.bus.emit('toast', { text: 'Afterburner spent', kind: 'warn', ttl: 1.6 });
       }
     }
@@ -551,13 +566,7 @@ export const flightV3 = {
         // With a burner fitted, boost only exists inside a lit window; light it when the
         // cooldown has elapsed. Without one the capacitor governs alone, exactly as before.
         if (burnerFitted && boost._burnT <= 0 && boost._burnCdT <= 0) boost._burnT = boost.burnDurS;
-        if (burnerFitted && boost._burnT <= 0 && boost._burnCdT > 0 && !this._burnerCoolTold) {
-          this._burnerCoolTold = true;
-          if (this.bus && typeof this.bus.emit === 'function') {
-            const left = Math.max(1, Math.ceil(boost._burnCdT));
-            this.bus.emit('toast', { text: `Afterburner cooling — ${left}s`, kind: 'warn', ttl: 1.6 });
-          }
-        } else if (!burnerFitted || boost._burnT > 0) {
+        if (!burnerFitted || boost._burnT > 0) {
           boosting = true;
           boost.energy = Math.max(0, boost.energy - boost.drainRate * dt);
           // The sustain gate is `energy > 1`. A 60 Hz drain is smaller than that gap, so the
@@ -575,6 +584,16 @@ export const flightV3 = {
       boost._boostArmed = true;
     }
     boost._burnActive = boosting && burnerFitted && boost._burnT > 0;
+    const burnerCooling = burnerFitted && boost._burnT <= 0 && boost._burnCdT > 0;
+    const dashExcuseOver = !this._dashSpokeThisHold
+      || (!(boost.dashCdT > 0) && !this._dashEmptyThisHold);
+    if (burnerCooling && boostHeld && boost.energy > 1 && !this._burnerCoolTold && !dashSpoken && dashExcuseOver) {
+      this._burnerCoolTold = true;
+      if (this.bus && typeof this.bus.emit === 'function') {
+        const left = Math.max(1, Math.ceil(boost._burnCdT));
+        this.bus.emit('toast', { text: `Afterburner cooling — ${left}s`, kind: 'warn', ttl: 1.6 });
+      }
+    }
     if (!boosting && !opts.suppressRegen) {
       boost.energy = Math.min(boost.max, boost.energy + boost.regenRate * boostCapRegenScale(state, e) * dt);
     }

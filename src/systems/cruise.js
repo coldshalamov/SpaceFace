@@ -21,6 +21,7 @@ const CHIP_WINDOW_S = 1.25;         // rolling window for sustained weapon press
 const CHIP_WINDOW_FLOOR = 36;       // applied dmg in-window — above sustained starter fire (~31), below beams
 const DROP_REASONS = Object.freeze({
   DAMAGE: 'damage', MASSLOCK: 'masslock', MANUAL: 'manual', SNARED: 'snared', DRIVE: 'drive',
+  BOOST: 'boost', FIRED: 'fired',
 });
 
 // Weapons whose hit IS the verb, not the damage number: EMP/subsystem spikes, latch/status
@@ -58,10 +59,10 @@ export const cruise = {
       this._drop(DROP_REASONS.DAMAGE);
     });
     this.bus.on('ship:boostStart', (p) => {
-      if (p && p.shipId === this.state.playerId) this._cancelIfCharging(DROP_REASONS.DAMAGE);
+      if (p && p.shipId === this.state.playerId) this._cancelIfCharging(DROP_REASONS.BOOST);
     });
     this.bus.on('combat:fire', (p) => {
-      if (p && p.ownerId === this.state.playerId) this._cancelIfCharging(DROP_REASONS.DAMAGE);
+      if (p && p.ownerId === this.state.playerId) this._cancelIfCharging(DROP_REASONS.FIRED);
     });
     // Interdiction hook (encounter director ambush shape): an external snare drops cruise with
     // the full SNARED stumble. Only meaningful while cruising — otherwise a strict no-op.
@@ -208,6 +209,14 @@ export const cruise = {
     }
     if (reason === DROP_REASONS.DRIVE && this.bus) {
       this.bus.emit('toast', { text: 'Drive out — cruise can\'t hold', kind: 'warn', ttl: 1.6 });
+    }
+    // kind error: a fight or a hurt hull drops warn receipts, and these two drops
+    // happen in exactly that window. Boost and firing cancel a charge without a sentence.
+    if (reason === DROP_REASONS.DAMAGE && this.bus) {
+      this.bus.emit('toast', { text: 'Cruise lost — the ship took damage', kind: 'error', ttl: 1.6 });
+    }
+    if (reason === DROP_REASONS.SNARED && this.bus) {
+      this.bus.emit('toast', { text: 'Cruise lost — mass snare', kind: 'error', ttl: 1.6 });
     }
   },
 
