@@ -3224,6 +3224,9 @@ export const npcJobsRuntime = {
     if (!entry || !jobId) return { granted: false, reason: 'no_job' };
     if (!entry.job || !TOW_ASSIST_KINDS.has(entry.job.kind)) return { granted: false, reason: 'not_a_mover' };
     if (entry.towAssist) return { granted: false, reason: 'already_hired' };
+    // SF-087: a panicking worker cannot take the job — the hire must never silently override
+    // the flee reflex. The refusal is legible ('under_threat') and lapses with the reflex.
+    if (entry.job.phase === NPC_JOB_PHASE.FLEE) return { granted: false, reason: 'under_threat' };
     const target = targetEntityId != null && entities ? entities.get(targetEntityId) : null;
     // Same towability gate the tug's own job uses: a real loose cargo body, never scenery.
     if (!isTowableCargoTarget(target)) return { granted: false, reason: 'not_towable' };
