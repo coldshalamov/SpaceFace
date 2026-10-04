@@ -211,7 +211,7 @@ function collectPotentialShadowCastSubjects(roots) {
 // read; a material-less stub records nothing (there is no program to link).
 const _stagedDepthSignatures = new WeakMap();
 
-function lightCensusSignature(lightingScene) {
+export function lightCensusSignature(lightingScene) {
   if (!lightingScene || typeof lightingScene.traverse !== 'function') return 'l0|f0';
   let lights = 0;
   lightingScene.traverse((object) => { if (object && object.isLight === true) lights += 1; });
@@ -259,12 +259,12 @@ function casterDepthSignatures(caster, lightSig) {
  * uuid, so a mesh re-minted with a different material (attach job, skin swap) reports
  * unstaged again — a false 'ready' is the in-round depth-link brick, never trusted.
  */
-export function collectUnstagedShadowCasters(renderer, subjects, lightingScene) {
+export function collectUnstagedShadowCasters(renderer, subjects, lightingScene, lightSigOverride = undefined) {
   const casting = collectPotentialShadowCastSubjects(subjects);
   if (casting.length === 0) return [];
   const staged = _stagedDepthSignatures.get(renderer);
   if (!staged || staged.size === 0) return casting;
-  const lightSig = lightCensusSignature(lightingScene);
+  const lightSig = typeof lightSigOverride === 'string' ? lightSigOverride : lightCensusSignature(lightingScene);
   const unstaged = [];
   for (const caster of casting) {
     const signatures = casterDepthSignatures(caster, lightSig);

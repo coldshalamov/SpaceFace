@@ -336,6 +336,7 @@ import {
   collectUnstagedShadowCasters,
   compileShadowDepthPipelines,
   disposeAdmissionShadowResources,
+  lightCensusSignature,
 } from './shadowDepthAdmission.js';
 import { preloadRockSurfaceLibrary } from './rockSurfaceLibrary.js';
 import { preloadRockFamilyLibrary } from './rockFamilyLibrary.js';
@@ -18884,6 +18885,9 @@ export const render = {
   },
 
   syncEntityViews(alpha) {
+    // Per-pass sequence stamp: the shadow light census memo keys on it so a frame's
+    // N withhold-gate evaluations share one whole-scene traverse.
+    this._viewSyncSeq = (this._viewSyncSeq || 0) + 1;
     // Opt-in CPU attribution only — no performance.now()/ring write when disabled.
     const useCpu = !!(this.state && this.state.perfRuntime
       && this.state.perfRuntime.renderWorkEnabled
@@ -20983,7 +20987,7 @@ export const render = {
     let withholdCast = false;
     if (opts.allowCast === true && shadowCasterBand(root) !== 1
         && this._shadowSettingOn === true && this.renderer && this.scene && this._keyLight
-        && collectUnstagedShadowCasters(this.renderer, [root], this.scene).length > 0) {
+        && collectUnstagedShadowCasters(this.renderer, [root], this.scene, this._shadowCensusForFrame()).length > 0) {
       syncOpts = { ...opts, allowCast: false };
       withholdCast = true;
     }
@@ -20995,6 +20999,19 @@ export const render = {
   },
 
 
+  // The live scene's light census, memoized per entity-view pass: the withhold gate
+  // evaluates collectUnstagedShadowCasters once per withheld root per frame, and the
+  // pools mount permanently — a whole-scene traverse per root is N identical walks.
+  _shadowCensusForFrame() {
+    const memo = this._shadowCensusMemo;
+    const seq = this._viewSyncSeq || 0;
+    const scene = this.scene;
+    if (memo && memo.seq === seq && memo.scene === scene) return memo.sig;
+    const sig = lightCensusSignature(scene);
+    this._shadowCensusMemo = { seq, scene, sig };
+    return sig;
+  },
+
   _queueShadowDepthStage(root, lodLevel = null, entity = null) {
     if (!root || this._shadowSettingOn !== true) return;
     const pending = this._pendingDepthStageRoots
@@ -21002,25 +21019,46 @@ export const render = {
     pending.set(root, { lodLevel, entity });
     if (this._depthStageScheduled === true) return;
     this._depthStageScheduled = true;
+    this._armDepthStage();
+  },
+
+  // The stage runs one bounded arm per presented frame: an unbounded 50-caster
+  // promotion burst's reparent + census render + shadow render + link + restore used
+  // to land in a single background task that delayed the next rAF by its whole cost.
+  // Incremental staging is already legal — marks cover only observed draws — so each
+  // arm slices a few roots, stages them, restores their policies, and re-arms while
+  // the queue holds more. Roots a slice never reaches keep their withheld cast flag.
+  _armDepthStage() {
     void yieldAfterPresent().then(() => {
-      this._depthStageScheduled = false;
       const pending = this._pendingDepthStageRoots;
-      this._pendingDepthStageRoots = null;
-      if (!pending || pending.size === 0) return;
+      if (!pending || pending.size === 0) {
+        this._pendingDepthStageRoots = null;
+        this._depthStageScheduled = false;
+        return;
+      }
       const renderer = this.renderer;
       const scene = this.scene;
       const camera = this.cam && this.cam.obj;
-      if (this._shadowSettingOn === true && renderer && scene && camera && this._keyLight) {
+      const slice = [];
+      for (const [root, entry] of pending) {
+        if (slice.length >= 8) break;
+        if (root && root.parent) {
+          slice.push([root, entry]);
+          pending.delete(root);
+        } else {
+          // Detached before staging: nothing to restore or mark — a re-mount runs the
+          // checked policy sync again and re-queues if still unstaged.
+          pending.delete(root);
+        }
+      }
+      const sliceRoots = slice.map(([root]) => root);
+      if (this._shadowSettingOn === true && renderer && scene && camera && this._keyLight
+          && sliceRoots.length > 0) {
         try {
           // Coalesced promotions share one stage; roots whose signatures were already
           // marked (opening/admission staged them under the same light census) are
           // filtered so the ceremony only pays for genuinely unlinked depth variants.
-          const roots = [];
-          for (const root of pending.keys()) {
-            if (root && root.parent) roots.push(root);
-          }
-          const unstaged = roots.length > 0
-            ? collectUnstagedShadowCasters(renderer, roots, scene) : [];
+          const unstaged = collectUnstagedShadowCasters(renderer, sliceRoots, scene);
           if (unstaged.length > 0) {
             compileShadowDepthPipelines({
               renderer,
@@ -21039,16 +21077,22 @@ export const render = {
           console.warn('[render] shadow-promote depth stage failed', error);
         }
       }
-      // Re-apply the live cast policy on every queued root: promotions whose cast
+      // Re-apply the live cast policy on the staged slice: promotions whose cast
       // flag was withheld pending this stage restore now — staged roots enter the
       // cast band on already-linked depth programs; if the stage was skipped the
       // restore lands the original promotion semantics rather than leaving the
       // root permanently shadowless.
-      for (const [root, { lodLevel, entity }] of pending) {
+      for (const [root, { lodLevel, entity }] of slice) {
         if (!root || !root.parent) continue;
         try {
           syncShadowCasterPolicy(root, lodLevel, this._shadowPolicyOptions(entity, root));
         } catch (_) { /* restore is best-effort */ }
+      }
+      if (pending.size > 0) {
+        this._armDepthStage();
+      } else {
+        this._pendingDepthStageRoots = null;
+        this._depthStageScheduled = false;
       }
     });
   },

@@ -9,16 +9,43 @@ const RAPIER_COMPAT_INIT_WARNING = 'using deprecated parameters for the initiali
 const RAPIER_GLOBAL_GETTER_SOURCE = 'return this';
 
 let rapierRuntimePromise = null;
+let rapierRuntimeFailures = 0;
+let rapierRuntimeBlockedUntil = 0;
+
+// A deterministically-failed init (missing wasm, CSP, a broken worker import) re-pays
+// the whole WASM bootstrap on every caller mint — per-tick physics re-prepares would
+// serialize fresh init attempts forever on a doomed environment. After repeated
+// failures, refuse for a backing-off window: a recovering env self-heals, a dead one
+// settles instead of churning.
+const RAPIER_INIT_FAILURES_BEFORE_BACKOFF = 2;
+const RAPIER_INIT_BACKOFF_STEP_MS = 15000;
+const RAPIER_INIT_BACKOFF_CAP_MS = 120000;
 
 export function loadRapierCompatRuntime({
   importModule = () => import('@dimforge/rapier3d-compat'),
   globalObject = globalThis,
 } = {}) {
   if (!rapierRuntimePromise) {
-    rapierRuntimePromise = initializeRapierCompatRuntime({ importModule, globalObject }).catch((error) => {
-      rapierRuntimePromise = null;
-      throw error;
-    });
+    const now = Date.now();
+    if (rapierRuntimeFailures >= RAPIER_INIT_FAILURES_BEFORE_BACKOFF && now < rapierRuntimeBlockedUntil) {
+      return Promise.reject(new Error(
+        `Rapier runtime init in failure backoff (${rapierRuntimeFailures} consecutive failures)`,
+      ));
+    }
+    rapierRuntimePromise = initializeRapierCompatRuntime({ importModule, globalObject }).then(
+      (runtime) => {
+        rapierRuntimeFailures = 0;
+        rapierRuntimeBlockedUntil = 0;
+        return runtime;
+      },
+      (error) => {
+        rapierRuntimePromise = null;
+        rapierRuntimeFailures += 1;
+        rapierRuntimeBlockedUntil = Date.now()
+          + Math.min(rapierRuntimeFailures * RAPIER_INIT_BACKOFF_STEP_MS, RAPIER_INIT_BACKOFF_CAP_MS);
+        throw error;
+      },
+    );
   }
   return rapierRuntimePromise;
 }

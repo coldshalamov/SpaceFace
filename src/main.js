@@ -182,8 +182,12 @@ async function boot() {
     // authority is never re-armed under the running sim. finalizeLoadedGame adopts the
     // promise below (and kicks itself if this lane never ran).
     let earlyContinuePhysicsPrep = null;
+    let earlyContinueKickPending = false;
     const kickEarlyContinuePhysicsPrep = () => {
-      if (earlyContinuePhysicsPrep) return;
+      // An emit landing while a doomed prep pends skips its re-mint; flag it so the
+      // settle-clear re-kicks instead of waiting on the next emit or finalize.
+      if (earlyContinuePhysicsPrep) { earlyContinueKickPending = true; return; }
+      earlyContinueKickPending = false;
       if (state.mode === 'flight') return;
       const physicsSystem = registry.get('physics');
       if (!physicsSystem || typeof physicsSystem.prepareBackend !== 'function') return;
@@ -199,12 +203,15 @@ async function boot() {
       earlyContinuePhysicsPrep = prep;
       // A stale settle (the SG-02 token guard's false, or a rejection) must not
       // latch: clear it so the next envelope kick re-mints instead of the gate
-      // inheriting a verdict from a dead authority.
-      prep.then((verdict) => {
-        if (verdict !== true && earlyContinuePhysicsPrep === prep) earlyContinuePhysicsPrep = null;
-      }, () => {
+      // inheriting a verdict from a dead authority. A skipped emit then re-kicks
+      // immediately rather than serializing its fresh prepare inside the gate.
+      const settleClear = () => {
         if (earlyContinuePhysicsPrep === prep) earlyContinuePhysicsPrep = null;
-      });
+        if (earlyContinueKickPending && !earlyContinuePhysicsPrep) kickEarlyContinuePhysicsPrep();
+      };
+      prep.then((verdict) => {
+        if (verdict !== true) settleClear();
+      }, settleClear);
     };
     // Speculative prepare fires during menu dwell — WASM bring-up reads no envelope data,
     // so it can overlap the dwell instead of serializing inside the Continue gate.
@@ -248,6 +255,7 @@ async function boot() {
     helpers.finalizeLoadedGame = (payload) => {
       const inherited = earlyContinuePhysicsPrep;
       earlyContinuePhysicsPrep = null;
+      earlyContinueKickPending = false;
       return finalizeLoadedGame(
         state,
         bus,

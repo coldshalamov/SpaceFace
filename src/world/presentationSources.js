@@ -35,6 +35,7 @@ const _meshSpatialKey = {
   originX: NaN,
   originZ: NaN,
   radius: NaN,
+  needRadius: NaN,
   fieldVersion: -1,
   farVersion: -1,
 };
@@ -206,12 +207,12 @@ function meshSpatialKeyMatches(state, walkX, walkZ, walkRadius) {
     && key.far === far
     && key.originX === walkX
     && key.originZ === walkZ
-    && key.radius === walkRadius
+    && key.needRadius === walkRadius
     && key.fieldVersion === (field && Number.isFinite(field.version) ? field.version : 0)
     && key.farVersion === (far && Number.isFinite(far.version) ? far.version : 0);
 }
 
-function rememberMeshSpatialKey(state, walkX, walkZ, walkRadius) {
+function rememberMeshSpatialKey(state, walkX, walkZ, collectRadius, needRadius) {
   const world = state && state.world;
   const field = world && world.asteroidField;
   const far = world && world.farActors;
@@ -220,7 +221,8 @@ function rememberMeshSpatialKey(state, walkX, walkZ, walkRadius) {
   _meshSpatialKey.far = far;
   _meshSpatialKey.originX = walkX;
   _meshSpatialKey.originZ = walkZ;
-  _meshSpatialKey.radius = walkRadius;
+  _meshSpatialKey.radius = collectRadius;
+  _meshSpatialKey.needRadius = needRadius;
   _meshSpatialKey.fieldVersion = field && Number.isFinite(field.version) ? field.version : 0;
   _meshSpatialKey.farVersion = far && Number.isFinite(far.version) ? far.version : 0;
   // The collect disc the scratch set answers for. catchUpFarRecord reads it to stamp a
@@ -230,7 +232,7 @@ function rememberMeshSpatialKey(state, walkX, walkZ, walkRadius) {
     const disc = far.collectDisc || (far.collectDisc = { x: 0, z: 0, r: 0 });
     disc.x = walkX;
     disc.z = walkZ;
-    disc.r = walkRadius;
+    disc.r = collectRadius;
   }
 }
 
@@ -287,6 +289,12 @@ function _nearbyLedgerRowsContext(state, opts = null) {
   const walkZ = (Math.floor(unionZ / ASTEROID_FIELD_CELL) + 0.5) * ASTEROID_FIELD_CELL;
   const radiusPad = Math.ceil(ASTEROID_FIELD_CELL * Math.SQRT1_2);
   const walkRadius = Math.ceil((scanRadius + legSpan / 2 + radiusPad) / 500) * 500;
+  // The minted disc collects one cell-diagonal beyond the needed radius so a
+  // quantized-cell flip of the union origin — a player hovering a cell rim — stays
+  // inside the stamped coverage ('covered' rides the flip instead of paying the
+  // grid refill every beat). The needed radius stays unpadded: containment is a
+  // true superset because the collect paid for the overlap.
+  const collectRadius = walkRadius + Math.ceil(ASTEROID_FIELD_CELL * Math.SQRT2);
   const toleration = opts && opts.tolerateMiss;
   const world = state && state.world;
   const field = world && world.asteroidField;
@@ -319,9 +327,9 @@ function _nearbyLedgerRowsContext(state, opts = null) {
     } else {
       _meshWalkOrigin.x = walkX;
       _meshWalkOrigin.z = walkZ;
-      queryAsteroidField(state, _meshWalkOrigin, walkRadius, _meshRockScratch);
-      queryFarActors(state, _meshWalkOrigin, walkRadius, _meshFarScratch);
-      rememberMeshSpatialKey(state, walkX, walkZ, walkRadius);
+      queryAsteroidField(state, _meshWalkOrigin, collectRadius, _meshRockScratch);
+      queryFarActors(state, _meshWalkOrigin, collectRadius, _meshFarScratch);
+      rememberMeshSpatialKey(state, walkX, walkZ, collectRadius, walkRadius);
     }
   }
   const pvx = finite(player.vel && player.vel.x);
