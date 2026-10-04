@@ -4998,6 +4998,13 @@ export const missions = {
       }
       if (m.status !== 'active' || m.type !== 'mining_quota') continue;
       if (m.params.cmdtyId !== p.commodityId) continue;
+      // A starter cut pays only while its tool is fitted. The Hitch contract is a rich-core
+      // hold (Drill Amp) plus the mining laser. Iron mined without that fit does not count.
+      if (m.params.starterJobId) {
+        const ship = activeOwnedShip(this.state);
+        if (!shipCarriesModule(ship, m.params.requiredModule)) continue;
+        if (!shipCarriesModule(ship, 'mod_mining_laser_s')) continue;
+      }
       m.objectiveProgress = Math.min(m.objectiveTarget, m.objectiveProgress + (p.qty || 0));
       if (m.objectiveProgress >= m.objectiveTarget) this._completeMission(m, i);
       else { this._refreshTrackedMissionNav(m); this.bus.emit('mission:updated', { missionId: m.id }); }
@@ -5109,6 +5116,13 @@ export const missions = {
    */
   _settleBountyTargetKill(m, i, p) {
     if (!Array.isArray(m.targetEntityIds) || !m.targetEntityIds.includes(p.id)) return;
+    if (m.params && m.params.requiredModule === 'mod_ram_plate') {
+      if (!shipCarriesModule(activeOwnedShip(this.state), 'mod_ram_plate')) return;
+      const weapon = p.weaponId || p.tag
+        || (p.presentation && p.presentation.weaponId)
+        || (p.provenance && p.provenance.weaponId);
+      if (weapon !== 'mod_ram_plate' && weapon !== 'ram_plate') return;
+    }
     if (m.storyTag === CONTRACT_47A_B2_TAG) {
       this._resolveContract47aB2(m, i, 'force', p.id);
       return;
@@ -7028,6 +7042,14 @@ export const missions = {
       return this._tryCompleteAuthored(m, index, 'latch_dock', role, this._playerLatchedTo(m, role));
     }
     if (m.type === 'tow_recovery') {
+      if (m.params && m.params.requiredModule === 'mod_winch_hd') {
+        if (!shipCarriesModule(activeOwnedShip(this.state), 'mod_winch_hd')) return false;
+        const winched = this._playerLatchedTo(m, PHYSICAL_ROLE.SLAG_CORE);
+        if (winched && this._entityNearDestBerth(winched, m)) {
+          return this._completePhysical(m, index, 'tow_in');
+        }
+        return false;
+      }
       const core = this._playerLatchedTo(m, PHYSICAL_ROLE.SLAG_CORE);
       const storyDock = m.storyTag === CONTRACT_47A_B3_TAG;
       if (core) {
@@ -11439,6 +11461,9 @@ export const missions = {
       nextId: m.nextId, config: m.config || MISSION_TUNING,
       story: this.state.story,
     };
+    if (m.starterJobStep && Object.keys(m.starterJobStep).length) {
+      serialized.starterJobStep = { ...m.starterJobStep };
+    }
     const setPieceSettlements = normalizeSetPieceSettlements(m.setPieceSettlements, m.receipts);
     if (Object.keys(setPieceSettlements).length) serialized.setPieceSettlements = setPieceSettlements;
     // PB-MIS-E: the retired yard-contract ledger. Preserves absence like setPieceSettlements —
@@ -11478,6 +11503,11 @@ export const missions = {
       state.missions.yardContracts = { ...data.yardContracts };
     } else {
       delete state.missions.yardContracts;
+    }
+    if (data.starterJobStep && typeof data.starterJobStep === 'object' && !Array.isArray(data.starterJobStep)) {
+      state.missions.starterJobStep = { ...data.starterJobStep };
+    } else {
+      delete state.missions.starterJobStep;
     }
     state.missions.nextId = data.nextId || 1;
     state.missions.config = data.config || MISSION_TUNING;

@@ -9,8 +9,8 @@ export const STARTER_JOBS = Object.freeze([
     shipId: 'ship_kestrel',
     requiredModule: 'mod_drill_amp',
     steps: Object.freeze([
-      Object.freeze({ step: 1, type: 'mining_quota', title: 'Cut the beacon rock', cmdtyId: 'cmdty_ore_iron', qty: 2, rewardCr: 420 }),
-      Object.freeze({ step: 2, type: 'mining_quota', title: 'Cut the second seam', cmdtyId: 'cmdty_ore_iron', qty: 2, rewardCr: 640 }),
+      Object.freeze({ step: 1, type: 'mining_quota', title: 'Hold the rich core and cut the beacon rock', cmdtyId: 'cmdty_ore_iron', qty: 2, rewardCr: 420 }),
+      Object.freeze({ step: 2, type: 'mining_quota', title: 'Hold the rich core and cut the second seam', cmdtyId: 'cmdty_ore_iron', qty: 2, rewardCr: 640 }),
     ]),
   }),
   Object.freeze({

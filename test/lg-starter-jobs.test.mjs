@@ -51,8 +51,22 @@ function starterOffer(offers, jobId, step) {
     && offer.params.starterStep === step) || null;
 }
 
+function stillActive(h, mission) {
+  return h.state.missions.active.some((row) => row.id === mission.id);
+}
+
 function finish(h, mission) {
   if (mission.type === 'mining_quota') {
+    const ship = h.state.player.ownedShips[0];
+    const kept = ship.fittings.slice();
+    ship.fittings = kept.filter((id) => id !== 'mod_drill_amp');
+    h.sim.bus.emit('mining:yield', {
+      commodityId: mission.params.cmdtyId,
+      qty: mission.objectiveTarget,
+      minerId: h.state.playerId,
+    });
+    assert.equal(stillActive(h, mission), true, 'iron cut without the drill amp does not pay the hitch job');
+    ship.fittings = kept;
     h.sim.bus.emit('mining:yield', {
       commodityId: mission.params.cmdtyId,
       qty: mission.objectiveTarget,
@@ -77,11 +91,16 @@ function finish(h, mission) {
     core.pos.x = station.pos.x;
     core.pos.z = station.pos.z;
     h.sim.bus.emit('dock:docked', { stationId: mission.destStationId });
+    assert.equal(stillActive(h, mission), true, 'a loose core at the berth does not pay the winch job');
+    h.sim.bus.emit('tether:latched', { targetId: core.id });
+    h.sim.bus.emit('dock:docked', { stationId: mission.destStationId });
     return;
   }
   const targetId = mission.targetEntityIds && mission.targetEntityIds[0];
   assert.ok(targetId, 'the bounty mark spawned');
   h.sim.bus.emit('entity:killed', { id: targetId, killerId: h.state.playerId });
+  assert.equal(stillActive(h, mission), true, 'a gun kill does not pay the ram job');
+  h.sim.bus.emit('entity:killed', { id: targetId, killerId: h.state.playerId, weaponId: 'mod_ram_plate' });
 }
 
 test('seed 4242 each starter flies its chain to payout and the other fits are refused', () => {
@@ -107,14 +126,33 @@ test('seed 4242 each starter flies its chain to payout and the other fits are re
       assert.equal(h.state.missions.active.some((row) => row.id === mission.id), false, 'the step settled');
       paid += step.rewardCr;
     }
-    assert.ok(h.payouts.reduce((sum, n) => sum + n, 0) >= paid, `${starter.id} was paid`);
+    assert.equal(h.payouts.length, job.steps.length, `${starter.id} paid once per step`);
+    job.steps.forEach((step, index) => {
+      assert.ok(h.payouts[index] >= step.rewardCr, `${starter.id} step ${step.step} paid ${h.payouts[index]}`);
+    });
     h.sim.dispose();
   }
 
   const hitch = NEW_GAME_STARTERS.find((starter) => starter.id === 'starter_hitch');
   const wasp = NEW_GAME_STARTERS.find((starter) => starter.id === 'starter_wasp');
+  const saved = boot(hitch);
+  const firstBoard = saved.missionsSys.ensureBoard(info.id);
+  const first = starterOffer(firstBoard.slots, 'starter_hitch', 1);
+  assert.equal(saved.missionsSys.acceptMission(first.id), true);
+  const firstMission = saved.state.missions.active.find((row) => row.params && row.params.starterStep === 1);
+  finish(saved, firstMission);
+  const packed = saved.missionsSys.serialize();
+  assert.equal(packed.starterJobStep.starter_hitch, 1);
+  delete saved.state.missions.starterJobStep;
+  saved.missionsSys.deserialize(packed);
+  assert.equal(saved.state.missions.starterJobStep.starter_hitch, 1);
+  const secondBoard = saved.missionsSys.ensureBoard(info.id);
+  assert.ok(starterOffer(secondBoard.slots, 'starter_hitch', 2), 'step 2 is on the cached Helios board after reload');
+  saved.sim.dispose();
+
   const hitchRun = boot(hitch);
-  const waspOffers = boot(wasp).missionsSys._generateOffers(info, 1);
+  const waspBoard = boot(wasp).missionsSys.ensureBoard(info.id);
+  const waspOffers = waspBoard.slots;
   const waspJob = starterOffer(waspOffers, 'starter_wasp', 1);
   assert.ok(waspJob, 'the wasp chain is on a wasp board');
   hitchRun.state.missions.boards[info.id] = { refreshEpoch: 0, slots: [waspJob] };
