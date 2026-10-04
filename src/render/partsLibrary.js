@@ -8179,6 +8179,10 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
     // regrade), so sustained deadline traffic cannot stall the in-flight job behind its
     // own ambient prefetch chain all the way to the stall bound.
     const deadlineLibrary = waitForAuthoredAdmission(preloadAuthoredAssetsForEntity(renderer, entity, decodeOptions), options);
+    // Belt: the prefetch await below can outlive the deadline decode's rejection, so the
+    // stored promise must be marked handled now or the gap surfaces an unhandled rejection
+    // even though the later await observes it (same belt as the boot contract fetch).
+    deadlineLibrary.catch(() => {});
     if (prefetchedLibrary) {
       try { await waitForAuthoredAdmission(prefetchedLibrary, options); }
       catch { assertQueuedAuthoredAdmissionActive(options, 'after-ship-prefetch'); }
