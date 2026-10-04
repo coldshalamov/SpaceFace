@@ -1243,6 +1243,80 @@ function setLagTranslate(el, x, y, opts = null) {
   el.style.transform = next;
 }
 
+// Restart a one-shot credits chip pulse without `void el.offsetWidth` (forced sync layout).
+// Remove pulse classes now; add the next class on the following animation frame so the
+// browser applies the removal first. A newer pulse bumps `_sfCredPulseToken` and cancels
+// a stale scheduled add. Exported for the portable microbench / focused test.
+const CREDITS_PULSE_CLASSES = ['sf-credits--gain', 'sf-credits--spend'];
+export function restartCreditsChipPulse(chip, pulseClass, schedule = null) {
+  if (!chip || !chip.classList) return false;
+  const next = pulseClass === 'sf-credits--spend' ? 'sf-credits--spend' : 'sf-credits--gain';
+  chip.classList.remove(...CREDITS_PULSE_CLASSES);
+  const token = (chip._sfCredPulseToken = (chip._sfCredPulseToken | 0) + 1);
+  const run = typeof schedule === 'function'
+    ? schedule
+    : (typeof requestAnimationFrame === 'function'
+      ? requestAnimationFrame.bind(globalThis)
+      : (fn) => setTimeout(fn, 0));
+  run(() => {
+    if (chip._sfCredPulseToken !== token) return;
+    chip.classList.add(next);
+  });
+  return true;
+}
+
+/** Portable A/B: count sync layout reads (offsetWidth) for legacy vs no-reflow pulse restart. */
+export function runCreditsPulseReflowAb({ rounds = 2000 } = {}) {
+  let legacyLayouts = 0;
+  let modernLayouts = 0;
+  const mkChip = (counter) => ({
+    classList: {
+      values: new Set(),
+      remove(...xs) { xs.forEach((x) => this.values.delete(x)); },
+      add(...xs) { xs.forEach((x) => this.values.add(x)); },
+      contains(x) { return this.values.has(x); },
+    },
+    get offsetWidth() { counter.n++; return 120; },
+  });
+  const legacyCounter = { n: 0 };
+  const modernCounter = { n: 0 };
+  const legacyChip = mkChip(legacyCounter);
+  const modernChip = mkChip(modernCounter);
+  const queueSchedule = [];
+  const schedule = (fn) => queueSchedule.push(fn);
+
+  const t0 = performance.now();
+  for (let i = 0; i < rounds; i++) {
+    legacyChip.classList.remove('sf-credits--gain', 'sf-credits--spend');
+    void legacyChip.offsetWidth;
+    legacyChip.classList.add(i & 1 ? 'sf-credits--spend' : 'sf-credits--gain');
+  }
+  const legacyMs = performance.now() - t0;
+
+  const t1 = performance.now();
+  for (let i = 0; i < rounds; i++) {
+    restartCreditsChipPulse(modernChip, i & 1 ? 'sf-credits--spend' : 'sf-credits--gain', schedule);
+  }
+  while (queueSchedule.length) queueSchedule.shift()();
+  const modernMs = performance.now() - t1;
+
+  legacyLayouts = legacyCounter.n;
+  modernLayouts = modernCounter.n;
+  const layoutReduction = modernLayouts === 0 && legacyLayouts > 0
+    ? legacyLayouts // treat zero modern reads as full elimination (N→0)
+    : (modernLayouts > 0 ? legacyLayouts / modernLayouts : 1);
+  return {
+    rounds,
+    legacy: { ms: legacyMs, layoutReads: legacyLayouts },
+    modern: { ms: modernMs, layoutReads: modernLayouts },
+    layoutReduction,
+    layoutEliminated: modernLayouts === 0 && legacyLayouts > 0,
+    // Primary KPI: sync layout reads must go to zero. Soft-GPU / Node wall is noise here —
+    // the player-facing win is the ~100 ms early-flight hitch from forced reflow.
+    primary: 'layoutReads',
+  };
+}
+
 function setCssVar(el, name, value) {
   if (!el) return;
   const cache = el._sfCssVar || (el._sfCssVar = Object.create(null));
@@ -4229,13 +4303,14 @@ export function createHud(ctx, alerts) {
     }
     if (_credTo !== _credFrom) {
       chipShow('credits');   // money moved — surface the chip
-      // Directional pulse on the readout: income reads mint, spend reads amber. Removing + reflow
-      // restarts the one-shot animation when credits move again before the last pulse finished.
+      // Directional pulse: income mint / spend amber. Restart the one-shot CSS animation by
+      // removing classes this frame and adding on the next animation frame — never force a
+      // synchronous layout read to restart the pulse. Quiet settled profile on master tip
+      // attributed ~104 ms self to a single early-flight refreshCredits that forced reflow.
       const chip = chipEls.credits;
       if (chip) {
-        chip.classList.remove('sf-credits--gain', 'sf-credits--spend');
-        void chip.offsetWidth;
-        chip.classList.add(_credTo > _credFrom ? 'sf-credits--gain' : 'sf-credits--spend');
+        const pulse = _credTo > _credFrom ? 'sf-credits--gain' : 'sf-credits--spend';
+        restartCreditsChipPulse(chip, pulse);
       }
     }
   }

@@ -1,8 +1,34 @@
 // Retained visibility queries over PresentationWorld's render-owned spatial grid.
 // Results are deterministic by stable entity ID and carry slot-generation snapshots.
-import { PRESENTATION_FLAGS } from './presentationWorld.js';
+import { PRESENTATION_FLAGS, PRESENTATION_DIRTY } from './presentationWorld.js';
 
 const INVALID_SLOT = -1;
+
+// Quiet settled retain: when presentationWorld.dirtyCount is 0, layout/maxRadius are
+// unchanged, and the cull rectangle + origin + playerId are bit-identical, the visible
+// set cannot change — skip spatial collect / sort / exactVisible / hidden diff.
+// Soft-GPU fps not claimed. Bench toggle restores always-walk.
+//
+// Pose-dirty retain: TRANSFORM-only dirties on already-visible roots cannot admit
+// newcomers (those are not in the prior visible set). Re-exactVisible the dirty slots;
+// hide any that left the cull; skip spatial collect when the retain key still matches.
+// BINDING/VISUAL/VISIBILITY dirties and dirties outside the prior visible set fail open.
+let PRESENTATION_QUERY_ZERO_DIRTY_RETAIN = true;
+let PRESENTATION_QUERY_POSE_DIRTY_RETAIN = true;
+export function setPresentationQueryZeroDirtyRetainForBench(enabled) {
+  PRESENTATION_QUERY_ZERO_DIRTY_RETAIN = enabled !== false;
+  return PRESENTATION_QUERY_ZERO_DIRTY_RETAIN;
+}
+export function getPresentationQueryZeroDirtyRetainForBench() {
+  return PRESENTATION_QUERY_ZERO_DIRTY_RETAIN !== false;
+}
+export function setPresentationQueryPoseDirtyRetainForBench(enabled) {
+  PRESENTATION_QUERY_POSE_DIRTY_RETAIN = enabled !== false;
+  return PRESENTATION_QUERY_POSE_DIRTY_RETAIN;
+}
+export function getPresentationQueryPoseDirtyRetainForBench() {
+  return PRESENTATION_QUERY_POSE_DIRTY_RETAIN !== false;
+}
 
 function finite(value) {
   return Number.isFinite(value) ? value : 0;
@@ -116,6 +142,21 @@ export function createPresentationQueries(world) {
       && Math.abs(localZ - bounds.z) <= bounds.halfZ + radius;
   }
 
+  const retainCache = {
+    primed: false,
+    layoutVersion: -1,
+    maxRadius: NaN,
+    boundCount: -1,
+    boundsX: NaN,
+    boundsZ: NaN,
+    halfX: NaN,
+    halfZ: NaN,
+    originX: NaN,
+    originZ: NaN,
+    playerId: null,
+    candidateCount: 0,
+  };
+
   function query(options = {}) {
     ensureCapacity();
     const bounds = options.bounds || ZERO_BOUNDS;
@@ -124,6 +165,118 @@ export function createPresentationQueries(world) {
     originScratch.z = finite(sourceOrigin.z);
     const origin = originScratch;
     const playerId = options.playerId;
+    const boundsX = finite(bounds.x);
+    const boundsZ = finite(bounds.z);
+    const halfX = Math.max(0, finite(bounds.halfX));
+    const halfZ = Math.max(0, finite(bounds.halfZ));
+    const layoutVersion = Number.isFinite(world.layoutVersion) ? world.layoutVersion : -1;
+    const maxRadius = Number.isFinite(world.maxRadius) ? world.maxRadius : 0;
+    const boundCount = world.boundCount | 0;
+    const retainKeyMatches = retainCache.primed
+        && retainCache.layoutVersion === layoutVersion
+        && retainCache.maxRadius === maxRadius
+        && retainCache.boundCount === boundCount
+        && retainCache.boundsX === boundsX
+        && retainCache.boundsZ === boundsZ
+        && retainCache.halfX === halfX
+        && retainCache.halfZ === halfZ
+        && retainCache.originX === origin.x
+        && retainCache.originZ === origin.z
+        && retainCache.playerId === playerId;
+    const dirtyCountNow = world.dirtyCount | 0;
+    if (PRESENTATION_QUERY_ZERO_DIRTY_RETAIN && retainKeyMatches && dirtyCountNow === 0) {
+      newlyVisibleSlots.length = 0;
+      newlyVisibleGenerations.length = 0;
+      hiddenSlots.length = 0;
+      hiddenGenerations.length = 0;
+      result.visibleSlots = visibleSlots;
+      result.visibleGenerations = visibleGenerations;
+      result.candidateCount = retainCache.candidateCount;
+      result.visibleCount = visibleSlots.length;
+      result.newlyVisibleCount = 0;
+      result.hiddenCount = 0;
+      result.culledCount = Math.max(0, boundCount - visibleSlots.length);
+      diagnostics.queries++;
+      diagnostics.candidates = result.candidateCount;
+      diagnostics.visible = result.visibleCount;
+      diagnostics.newlyVisible = 0;
+      diagnostics.hidden = 0;
+      diagnostics.culled = result.culledCount;
+      return result;
+    }
+    // Pose-dirty retain: TRANSFORM-only dirties on already-visible roots. Newcomers are
+    // never in the prior visible set, so they fail open to the full walk below.
+    if (PRESENTATION_QUERY_ZERO_DIRTY_RETAIN
+        && PRESENTATION_QUERY_POSE_DIRTY_RETAIN
+        && retainKeyMatches
+        && dirtyCountNow > 0) {
+      const dirtySlots = world.dirtySlots;
+      const dirtyMasks = world.dirtyMasks;
+      const nonTransform = PRESENTATION_DIRTY.ALL & ~PRESENTATION_DIRTY.TRANSFORM;
+      let poseOnly = true;
+      for (let d = 0; d < dirtyCountNow; d++) {
+        const slot = dirtySlots[d];
+        if ((dirtyMasks[slot] & nonTransform) !== 0) { poseOnly = false; break; }
+      }
+      if (poseOnly) {
+        // Mark prior visible for O(1) membership of dirty slots.
+        const frameEpoch = nextEpoch('visibility');
+        for (let index = 0; index < visibleSlots.length; index++) {
+          const slot = visibleSlots[index];
+          if (slot < 0 || slot >= world.capacity) continue;
+          previousMarks[slot] = frameEpoch;
+          previousMarkGenerations[slot] = visibleGenerations[index];
+        }
+        let allPriorVisible = true;
+        for (let d = 0; d < dirtyCountNow; d++) {
+          const slot = dirtySlots[d];
+          if (previousMarks[slot] !== frameEpoch) { allPriorVisible = false; break; }
+        }
+        if (allPriorVisible) {
+          newlyVisibleSlots.length = 0;
+          newlyVisibleGenerations.length = 0;
+          hiddenSlots.length = 0;
+          hiddenGenerations.length = 0;
+          let hideCount = 0;
+          for (let d = 0; d < dirtyCountNow; d++) {
+            const slot = dirtySlots[d];
+            if (exactVisible(slot, bounds, origin, playerId)) continue;
+            const generation = previousMarkGenerations[slot];
+            hiddenSlots.push(slot);
+            hiddenGenerations.push(generation);
+            world.setVisibility(slot, generation, false);
+            previousMarks[slot] = 0; // drop from visible compact
+            hideCount++;
+          }
+          if (hideCount > 0) {
+            let write = 0;
+            for (let index = 0; index < visibleSlots.length; index++) {
+              const slot = visibleSlots[index];
+              if (previousMarks[slot] !== frameEpoch) continue;
+              visibleSlots[write] = slot;
+              visibleGenerations[write] = visibleGenerations[index];
+              write++;
+            }
+            visibleSlots.length = write;
+            visibleGenerations.length = write;
+          }
+          result.visibleSlots = visibleSlots;
+          result.visibleGenerations = visibleGenerations;
+          result.candidateCount = retainCache.candidateCount;
+          result.visibleCount = visibleSlots.length;
+          result.newlyVisibleCount = 0;
+          result.hiddenCount = hiddenSlots.length;
+          result.culledCount = Math.max(0, boundCount - visibleSlots.length);
+          diagnostics.queries++;
+          diagnostics.candidates = result.candidateCount;
+          diagnostics.visible = result.visibleCount;
+          diagnostics.newlyVisible = 0;
+          diagnostics.hidden = result.hiddenCount;
+          diagnostics.culled = result.culledCount;
+          return result;
+        }
+      }
+    }
     const candidateEpoch = nextEpoch('candidate');
     const frameEpoch = nextEpoch('visibility');
     candidateSlots.length = 0;
@@ -141,14 +294,14 @@ export function createPresentationQueries(world) {
       previousMarkGenerations[slot] = visibleGenerations[index];
     }
 
-    const expansion = world.maxRadius;
-    const centerX = finite(bounds.x) + origin.x;
-    const centerZ = finite(bounds.z) + origin.z;
+    const expansion = maxRadius;
+    const centerX = boundsX + origin.x;
+    const centerZ = boundsZ + origin.z;
     world.collectSpatialBounds(
-      centerX - Math.max(0, finite(bounds.halfX)) - expansion,
-      centerX + Math.max(0, finite(bounds.halfX)) + expansion,
-      centerZ - Math.max(0, finite(bounds.halfZ)) - expansion,
-      centerZ + Math.max(0, finite(bounds.halfZ)) + expansion,
+      centerX - halfX - expansion,
+      centerX + halfX + expansion,
+      centerZ - halfZ - expansion,
+      centerZ + halfZ + expansion,
       candidateSlots,
     );
     world.collectSpecialSlots(candidateSlots);
@@ -206,7 +359,20 @@ export function createPresentationQueries(world) {
     result.visibleCount = visibleSlots.length;
     result.newlyVisibleCount = newlyVisibleSlots.length;
     result.hiddenCount = hiddenSlots.length;
-    result.culledCount = Math.max(0, world.boundCount - visibleSlots.length);
+    result.culledCount = Math.max(0, boundCount - visibleSlots.length);
+
+    retainCache.primed = true;
+    retainCache.layoutVersion = layoutVersion;
+    retainCache.maxRadius = maxRadius;
+    retainCache.boundCount = boundCount;
+    retainCache.boundsX = boundsX;
+    retainCache.boundsZ = boundsZ;
+    retainCache.halfX = halfX;
+    retainCache.halfZ = halfZ;
+    retainCache.originX = origin.x;
+    retainCache.originZ = origin.z;
+    retainCache.playerId = playerId;
+    retainCache.candidateCount = result.candidateCount;
 
     diagnostics.queries++;
     diagnostics.candidates = result.candidateCount;
@@ -218,6 +384,7 @@ export function createPresentationQueries(world) {
   }
 
   function reset() {
+    retainCache.primed = false;
     for (let index = 0; index < visibleSlots.length; index++) {
       world.setVisibility(visibleSlots[index], visibleGenerations[index], false);
     }

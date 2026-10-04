@@ -255,6 +255,15 @@ export function isCompoundSkinDynamicEligible(entity) {
   return false;
 }
 
+/** Presentation fx that explicitly declares a measured-skin proxy id opts into solidity —
+ * solid dressing rows and presentation-carried structures (activity objects, memorial hulls,
+ * landmark POIs) keep their fx presentation while taking the census collider. Undeclared fx
+ * stay ghosts (markers, effects). */
+function declaresMeasuredSkinProxy(entity) {
+  const proxy = entity && entity.data && entity.data.collisionProxy;
+  return typeof proxy === 'string' && proxy.startsWith('skin:');
+}
+
 /** True when the measured skin may stand in for this body's collider. Fixed bodies (stations,
  * landmark rocks) always take their skin; solid dynamic bodies take it as one tolerance-checked
  * convex hull when the census outline permits, else a bounded compound — proven deterministic
@@ -262,7 +271,8 @@ export function isCompoundSkinDynamicEligible(entity) {
 export function measuredSkinAllowedFor(entity) {
   if (!entity || entity.physicsBody === false || entity.collides === false) return false;
   const type = entity.type;
-  if (type === 'projectile' || type === 'pickup' || type === 'fx' || type === 'sensor') return false;
+  if (type === 'projectile' || type === 'pickup' || type === 'sensor') return false;
+  if (type === 'fx' && !declaresMeasuredSkinProxy(entity)) return false;
   const substance = substanceFor(entity);
   const material = PHYSICS_MATERIALS[substance.material];
   if (substance.sensor === true || (material && material.ghost === true)) return false;

@@ -365,7 +365,7 @@ ${T} .sx-bar-row__role { ${LABEL} font-size: 12px !important; letter-spacing:.14
 ${T} .sx-bar__leads > .k-caps { margin-top:18px !important; }
 ${T} .sx-lead__rows, ${T} .sx-intel__rows, ${T} .sx-bar__foot { ${PLAIN} }
 ${T} .sx-lead { ${PLAIN} display:grid !important; grid-template-columns:minmax(0, 1fr) auto; column-gap:12px; align-items:baseline; padding:6px 0 6px 26px !important; min-height:0 !important; }
-${T} .sx-lead__body { display:flex !important; flex-direction:column; gap:1px; min-width:0; overflow:hidden; }
+${T} .sx-lead__body { display:flex !important; flex-direction:column; gap:1px; min-width:0; overflow:visible; }
 ${T} .sx-lead__t { display:block !important; font-size:12.5px !important; line-height:1.3; color:rgb(248 244 234) !important; white-space:normal !important; overflow:visible !important;
   text-overflow:clip !important; max-width:none !important; }
 ${T} .sx-lead__t .sf-entity-link { text-decoration:none !important; background-image:none !important; border-bottom:0 !important; color:inherit !important; }

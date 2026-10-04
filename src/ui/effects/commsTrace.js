@@ -57,6 +57,7 @@ export function createCommsTrace(mountEl, opts = {}) {
   let active = false;
   let phase = 0;
   let lastAmplitude = 0;
+  let lastHeldAmplitude = 0;
   let lastFaction = '';
   let lastText = '';
 
@@ -75,6 +76,7 @@ export function createCommsTrace(mountEl, opts = {}) {
     if (!active) {
       lastText = '';
       lastAmplitude = 0;
+      lastHeldAmplitude = 0;
       morph.set('');
     }
   }
@@ -90,12 +92,14 @@ export function createCommsTrace(mountEl, opts = {}) {
     const amplitude = clamp01(state.amplitude);
     const density = clamp01(state.density);
     if (prefersReducedMotion(opts)) {
-      // Static wave: keep whatever glyph row is already shown; set one when empty so a live
-      // transmission still reads. No phase advance, no per-frame rebuild.
-      if (!lastText) {
+      // Static wave: hold the glyph row, refreshing it only when loudness has moved materially —
+      // a transmission that starts quiet must not stay frozen as a row of dots once it gets loud.
+      // No phase advance, no per-frame rebuild.
+      if (!lastText || Math.abs(amplitude - lastHeldAmplitude) > 0.2) {
         const text = buildTraceText(amplitude, density, phase);
         morph.set(text);
         lastText = text;
+        lastHeldAmplitude = amplitude;
       }
     } else {
       phase += Math.max(0.12, finite(state.phaseStep, 0.42)) + density * 0.31;

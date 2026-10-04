@@ -84,6 +84,9 @@ const CORE_SECTOR_ANCHORS = {
         position: CERES_THROUGHLINE_BEACON_LOCAL_POS,
         landmarkGlb: 'place_lane_beacon',
         landmark: true,
+        // PQ-020 transit no-presence contract: this route pin stays a non-colliding marker
+        // even though it is a landmark draw (world must not grow a keep-out wall mid-lane).
+        collides: false,
       },
       { id: 'world_site_wreck_cathedral', pos: CERES_WRECK_CATHEDRAL_LOCAL_POS, landmark: true },
     ],

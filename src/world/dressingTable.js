@@ -1,6 +1,6 @@
 // Presenter/atlas dressing. POI markers, landmarks, and band props are not combat entities.
 
-import { allocateEntityId, clearEntityRuntime } from '../core/entity.js';
+import { allocateEntityId, clearEntityRuntime, Masks } from '../core/entity.js';
 import { initializePresentationAdmission } from '../core/presentationAdmission.js';
 
 export const DRESSING_TABLE_SCHEMA = 'spaceface.dressingTable.v1';
@@ -66,10 +66,18 @@ export function insertDressingRow(state, spec = {}) {
     pos: { x: finite(spec.pos && spec.pos.x), z: finite(spec.pos && spec.pos.z) },
     rot: finite(spec.rot),
     radius: Math.max(0.5, finite(spec.radius, 10)),
-    collides: false,
+    // Default stays a presentation ghost. Solid dressing rows opt in through their spec
+    // (solidDressing.js census plan): collides plus an authored fixed-body spec; the measured
+    // collider itself rides data.collisionProxy = 'skin:<census row>'.
+    collides: spec.collides === true,
     homeSectorId: spec.homeSectorId || (spec.data && spec.data.homeSectorId) || null,
     data: spec.data && typeof spec.data === 'object' ? spec.data : {},
   };
+  if (row.collides && spec.physicsBody && typeof spec.physicsBody === 'object') {
+    row.physicsBody = { ...spec.physicsBody };
+    // Station-category structure for the projectile-sweep and pair mask gates (physics.js).
+    row.collisionMask = Masks.STATION;
+  }
   initializePresentationAdmission(row);
   table.rows.push(row);
   table.byId.set(id, row);

@@ -5680,6 +5680,18 @@ export const audio = {
     if (!verdict.play) return verdict;
     rt._stuntHushMs = nowMs;
     this._triggerHush({ kind: 'stunt' });
+    // FB-082 — the same admission mails the camera its beat through the shared camera record,
+    // so the hush and the room land on the same tick. camera.js consumes it once per stamp;
+    // the hold is the hush's own envelope so the frame stays as long as the silence does.
+    const cameraState = this.state && this.state.camera;
+    if (cameraState && typeof cameraState === 'object') {
+      const spec = HUSH.stunt;
+      cameraState.stuntHushBeat = {
+        kind: 'stunt',
+        tick: Math.max(0, Math.trunc(Number(this.state && this.state.tick) || 0)),
+        holdS: spec.attackS + spec.holdS + spec.releaseS,
+      };
+    }
     return verdict;
   },
 
@@ -7580,6 +7592,19 @@ export const audio = {
     }
   },
 
+  // FB-079: the tow's mass. The mirror carries no mass field, so the body is read
+  // read-only through tether.targetId — the same lookup flightV3 uses for its anchor.
+  // A missing body or non-finite mass degrades to "no lift", identical to a bare line.
+  // Shared by the Elementary rope voice and the legacy hum so both backends lift off
+  // the same number on the same frame.
+  _tetherTowMass(tether) {
+    const entities = this.state && this.state.entities;
+    const towed = tether && tether.targetId != null && entities && typeof entities.get === 'function'
+      ? entities.get(tether.targetId)
+      : null;
+    return towed && Number.isFinite(towed.mass) ? towed.mass : undefined;
+  },
+
   _pushElementaryVoices(dt) {
     const rt = this.rt;
     if (!rt || !rt.ctx) return;
@@ -7597,7 +7622,7 @@ export const audio = {
       : null;
     const input = (this.state && this.state.input) || {};
     const tetherState = this.state && this.state.player && this.state.player.tether;
-    const tether = readTetherLoad(tetherState);
+    const tether = readTetherLoad(tetherState, this._tetherTowMass(tetherState));
     const prev = rt._elemVoice || (rt._elemVoice = { engineGain: 0, ropeGain: 0 });
     const stepDt = (inFlight && !paused) ? Math.min(Math.max(0, Number(dt) || 0), 0.25) : 0;
     const next = stepElementaryVoices(prev, {
@@ -7928,10 +7953,19 @@ export const audio = {
     // F2: pitch and loudness follow the published tether.load (phase floors included) through one
     // voice. The sidechain duck factor rides along so the tone ducks under weapons with the world;
     // reduced motion quiets the tone, never silences it — it is information, not ornament.
+    // FB-079: the tow's own mass feeds resolveTetherTone's towMass channel — a heavy tow
+    // creaks even before its strain climbs; the lift only applies while the line is taut,
+    // so a slack line stays silent. _tetherTowMass does the read-only targetId lookup the
+    // Elementary rope voice uses too, so both backends lift off the same number.
     const strain = clamp(Number(tether && tether.strain) || 0, 0, 1.25);
     const motionReduce = !!(this.state.settings && this.state.settings.video
       && this.state.settings.video.motionReduce);
-    const tone = resolveTetherTone({ tether, motionReduce, duck: rt.sidechainDuck });
+    const tone = resolveTetherTone({
+      tether,
+      towMass: this._tetherTowMass(tether),
+      motionReduce,
+      duck: rt.sidechainDuck,
+    });
     const targetFreq = tone.hz;
     const priorityDuck = rt._priorityDuckWeapon == null ? 1 : rt._priorityDuckWeapon;
     const targetGain = tone.gain * priorityDuck;

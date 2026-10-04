@@ -4723,6 +4723,11 @@ export const lawSecurity = {
     for (const other of state.entityList || []) {
       applyAcceptedSurrenderStandDown(other, { playerId: state.playerId, causeId: hold.causeId });
     }
+    const obligation = noted && noted.obligation || null;
+    // NXI-055 — describe the stand-down by its accepted disposition. Custody with an open bill
+    // is a suspended stop, not a settled one, and it is never global exoneration: the heat
+    // owner still holds the sheet and new causes reopen engagement on their own record.
+    const disposition = obligation && obligation.status === 'paid' ? 'settled' : 'suspended';
     this._emit('combat:surrendered', {
       player: true,
       accepted: true,
@@ -4735,14 +4740,21 @@ export const lawSecurity = {
       priceCr,
       causeId: hold.causeId,
       responderId: hold.responderId,
-      obligation: noted && noted.obligation || null,
+      obligation,
+      disposition,
     });
     this._emit('toast', {
-      text: `CUSTODY ACCEPTED — the law holds the guns. Bill posted: ${priceCr} Cr.`,
+      text: disposition === 'settled'
+        ? 'CUSTODY ACCEPTED — the law holds the guns. This lot is already settled on the record.'
+        : obligation
+          ? `CUSTODY ACCEPTED — the law holds the guns. Bill posted: ${priceCr} Cr.`
+          : 'CUSTODY ACCEPTED — the law holds the guns. Custody stands; no new bill could be posted.',
       kind: 'good', ttl: 4,
     });
-    this._lawResponse('surrender_accepted', { priceCr, causeId: hold.causeId });
-    return { accepted: true, priceCr, causeId: hold.causeId, obligation: noted && noted.obligation || null };
+    this._lawResponse('surrender_accepted', {
+      priceCr, causeId: hold.causeId, disposition, globalExoneration: false,
+    });
+    return { accepted: true, priceCr, causeId: hold.causeId, obligation, disposition };
   },
 
   destroy() {

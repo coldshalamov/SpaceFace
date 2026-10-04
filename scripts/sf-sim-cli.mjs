@@ -127,7 +127,7 @@ if (command === 'inspect') {
   process.stdout.write(JSON.stringify(result, null, 2) + '\n');
 } else if (command === 'trace') {
   const traced = await run47a({
-    seed, ticks, tape, reloadAt, traceEvents, traceLimit, includeTrace: true,
+    seed, ticks, tape, reloadAt, canonicalizeAt: canonicalizeAt ?? reloadAt, traceEvents, traceLimit, includeTrace: true,
     physicsBackend, tacticalAI, counterTetherProbe, flightSystem,
     writeEnvelopePath, loadEnvelopePath,
   });
@@ -158,7 +158,7 @@ if (command === 'inspect') {
   };
   process.stdout.write(JSON.stringify(result, null, 2) + '\n');
 } else if (command === 'profile') {
-  const profiled = await profile47a({ seed, ticks, tape, reloadAt, physicsBackend, tacticalAI, counterTetherProbe, flightSystem });
+  const profiled = await profile47a({ seed, ticks, tape, reloadAt, canonicalizeAt: canonicalizeAt ?? reloadAt, physicsBackend, tacticalAI, counterTetherProbe, flightSystem });
   const run = profiled.run;
   assert47aPhase0Metrics(run.metrics, { physicsBackend, counterTetherProbe, ...(reloadAt == null ? {} : { reloadAt }) });
   if (expectedEnvelope) assertExpectedEnvelope(expectedEnvelope, run, { inputPath, seed, reloadAt });
@@ -186,7 +186,7 @@ if (command === 'inspect') {
   process.stdout.write(JSON.stringify(result, null, 2) + '\n');
 } else if (command === 'compare') {
   if (reloadAt == null) usage(1, 'compare requires --reload-at');
-  const baseline = await run47a({ seed, ticks, tape, canonicalizeAt: reloadAt, physicsBackend, tacticalAI, counterTetherProbe, flightSystem });
+  const baseline = await run47a({ seed, ticks, tape, canonicalizeAt: canonicalizeAt ?? reloadAt, physicsBackend, tacticalAI, counterTetherProbe, flightSystem });
   assert47aPhase0Metrics(baseline.metrics, { physicsBackend, counterTetherProbe });
   const candidate = await run47a({ seed, ticks, tape, reloadAt, physicsBackend, tacticalAI, counterTetherProbe, flightSystem });
   assert47aPhase0Metrics(candidate.metrics, { physicsBackend, reloadAt, counterTetherProbe });
@@ -227,7 +227,7 @@ if (command === 'inspect') {
     seed, ticks, tape, physicsBackend, tacticalAI, counterTetherProbe, flightSystem,
     writeEnvelopePath, loadEnvelopePath,
   };
-  const baseline = await run47a({ ...runOptions, canonicalizeAt: reloadAt });
+  const baseline = await run47a({ ...runOptions, canonicalizeAt: canonicalizeAt ?? reloadAt });
   if (!loadEnvelopePath) assert47aPhase0Metrics(baseline.metrics, { physicsBackend, counterTetherProbe });
   const first = reloadAt == null ? baseline : await run47a({ ...runOptions, reloadAt });
   if (!loadEnvelopePath) assert47aPhase0Metrics(first.metrics, { physicsBackend, reloadAt, counterTetherProbe });
@@ -891,11 +891,16 @@ function compareExpectedEnvelope(envelope, run, options) {
     });
   }
   const criteria = envelope.acceptanceCriteria || {};
-  if (criteria.authoritativeHash != null && run.sha256 !== criteria.authoritativeHash) {
+  // Same per-reload-point resolution as assertExpectedEnvelope: a compare at a reload point
+  // with a per-point pin must measure that pin, not the top-level (different-point) hash.
+  const perReload = (options.reloadAt != null && criteria.authoritativeHashByReloadAt)
+    ? criteria.authoritativeHashByReloadAt[String(options.reloadAt)] : null;
+  const expectedHash = perReload != null ? perReload : criteria.authoritativeHash;
+  if (expectedHash != null && run.sha256 !== expectedHash) {
     diffs.push({
       kind: 'expectedHash',
       path: '$.acceptanceCriteria.authoritativeHash',
-      expected: criteria.authoritativeHash,
+      expected: expectedHash,
       actual: run.sha256,
     });
   }

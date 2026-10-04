@@ -42,6 +42,8 @@ import { projectileTravelLimit } from '../combat/projectileFlight.js';
 import { traumaFromContact } from '../render/feel.js';
 import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidField.js';
 import { promoteFarActor, queryFarActors } from '../world/farActorTable.js';
+import { dressingStaticLayerFor } from '../world/solidDressing.js';
+import { getDressingRow } from '../world/dressingTable.js';
 
 const DEFAULT_MATERIAL = Object.freeze({
   push: 1,
@@ -593,8 +595,8 @@ export const physics = {
     let emitted = 0;
     const options = this._sg02ImpactOptionsScratch;
     for (const receipt of receipts) {
-      const a = state.entities && state.entities.get ? state.entities.get(receipt.aId) : null;
-      const b = state.entities && state.entities.get ? state.entities.get(receipt.bId) : null;
+      const a = impactBodyForReceipt(state, receipt.aId);
+      const b = impactBodyForReceipt(state, receipt.bId);
       if (!a || !b || a.alive === false || b.alive === false) continue;
       const material = pairMaterialInto(this._pairMaterialScratch, a, b);
       // Every option field is rewritten per receipt; receipt fields absent on non-player
@@ -683,12 +685,14 @@ export const physics = {
       this._diag.activityPhysicsBodies = activity.counts.physics;
     }
     if (this._sg02 && typeof this._sg02.syncFromEntityLayers === 'function' && activity) {
-      this._sg02.syncFromEntityLayers(
+      // Solid dressing rows ride the static layer without entityList membership
+      // (solidDressing.js); the folded version reconciles on either membership change.
+      const layer = dressingStaticLayerFor(
+        state,
         activity.physicsStatics,
-        activity.physicsDynamics,
         activity.physicsStaticVersion || 0,
-        null,
       );
+      this._sg02.syncFromEntityLayers(layer.statics, activity.physicsDynamics, layer.staticVersion, null);
       return;
     }
     this._sg02.syncFromEntities(state.entityList);
@@ -964,10 +968,12 @@ export const physics = {
     this._projectileBroadphaseReady = ready;
     if (!ready) return;
     if (!this._projectileBroadphase) this._projectileBroadphase = new SpatialHash(64);
+    // Solid dressing rows join the sweep so rounds stop on the hulls the player sees.
+    const staticLayer = dressingStaticLayerFor(state, index.spatialStatics, index.spatialStaticVersion || 0);
     this._projectileBroadphase.rebuildLayers(
-      index.spatialStatics,
+      staticLayer.statics,
       index.spatialDynamics,
-      index.spatialStaticVersion || 0,
+      staticLayer.staticVersion,
       index.spatialDynamicsVersion || 0,
     );
   },
@@ -1323,6 +1329,18 @@ function usesSg02DynamicAuthority(state) {
   return gameplay && gameplay.physicsBackend === 'rapier-dynamic';
 }
 
+/**
+ * Contact-receipt body resolution: solver bodies that are not entities (solid dressing rows)
+ * still owe their contact receipts an impact event, so fall back to the dressing table.
+ */
+function impactBodyForReceipt(state, id) {
+  const entity = state && state.entities && state.entities.get
+    ? state.entities.get(id)
+    : null;
+  if (entity) return entity;
+  return (id != null && getDressingRow(state, id)) || null;
+}
+
 function worldFrameOrigin(state) {
   const origin = state && state.world && state.world.frameOrigin;
   return origin && typeof origin === 'object' ? origin : ZERO_FRAME_ORIGIN;
@@ -1589,7 +1607,14 @@ function maskOf(e) {
     // (the seed spawns with collisionMask PROJECTILE), ships never broadphase against it.
     case 'massSeed': return MINE_COLLISION_CATEGORY;
     case 'masslineSnareAnchor': return MINE_COLLISION_CATEGORY;
-    default: return 0;
+    default: {
+      // Solid dressing rows and measured-skin presentation bodies are not combat types; they
+      // author Masks.STATION so projectile sweeps and pair gates see them as structure.
+      // Every other unlisted type keeps the legacy 0 — authored masks elsewhere stay inert.
+      const solidPresentation = e && e.data && typeof e.data.collisionProxy === 'string'
+        && e.data.collisionProxy.startsWith('skin:');
+      return (e && (e.dressingResident || solidPresentation) && e.collisionMask) || 0;
+    }
   }
 }
 

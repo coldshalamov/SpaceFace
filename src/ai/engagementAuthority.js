@@ -458,15 +458,19 @@ export function isHostileForAI(state, self, other) {
   // Team 0 is the player flight (player + wingmen). Lawful WANTED gating must cover the whole
   // flight — wingmen share the player's team but not the playerId, so id-only checks left them
   // exposed to team-mismatch hostility while the clean player was ignored.
-  if (selfIsPlayer) return isHostileToPlayer(other, self.team, state);
-  if (otherIsPlayer) return isHostileToPlayer(self, other.team, state);
+  if (selfIsPlayer) return lawfulAwareHostileToPlayer(other, self.team, state);
+  if (otherIsPlayer) return lawfulAwareHostileToPlayer(self, other.team, state);
   const selfIsPlayerSide = self.team === 0;
   const otherIsPlayerSide = other.team === 0;
 
   if ((selfAi && selfAi.passive) || (otherAi && otherAi.passive)
     || self.team === 2 || other.team === 2) return false;
-  if (selfAi && selfAi.lawful && otherIsPlayerSide) return isPlayerWanted(state);
-  if (otherAi && otherAi.lawful && selfIsPlayerSide) return isPlayerWanted(state);
+  if (selfAi && selfAi.lawful && otherIsPlayerSide) {
+    return isPlayerWanted(state) && !acceptedPlayerSurrenderCovers(state);
+  }
+  if (otherAi && otherAi.lawful && selfIsPlayerSide) {
+    return isPlayerWanted(state) && !acceptedPlayerSurrenderCovers(state);
+  }
   return self.team !== other.team;
 }
 
@@ -776,6 +780,41 @@ function isDispatchedSecurityResponse(ai, target) {
     && ai.securityTargetId != null
     && target && target.id != null
     && ai.securityTargetId === target.id);
+}
+
+/**
+ * NXI-056 — the parent settlement identity for an accepted player surrender. A lawful
+ * observer arriving late validates this disposition instead of reopening the surrendered
+ * lot as a fresh accusation. It counts only while custody is `accepted` AND carries its
+ * cause identity — a provisional or malformed hold suppresses nothing. The hold is
+ * session-scoped like the rest of the surrender state; settling the bill clears the sheet
+ * itself, and a genuinely new cause reopens engagement through the normal authority (a
+ * dispatch mark, retaliation, faction aggro), not through this read.
+ */
+function acceptedPlayerSurrenderCovers(state) {
+  const hold = state && state.lawSecurity && state.lawSecurity.playerSurrender;
+  return !!(hold && hold.phase === 'accepted' && nonEmpty(hold.causeId));
+}
+
+/**
+ * `isHostileToPlayer`'s lawful line is a dispatch mark OR the WANTED sheet OR declared
+ * faction aggro. The accepted surrender disposition covers the sheet term alone — the
+ * surrendered lot — so a second lawful observer evaluating the same freight does not
+ * reopen it. The mark and aggro terms are causes outside the lot and keep their answer.
+ * Every early-out in the scanner's oracle (passive, same team, team 2) is preserved by
+ * reading its answer first.
+ */
+function lawfulAwareHostileToPlayer(observer, playerTeam, state) {
+  const base = isHostileToPlayer(observer, playerTeam, state);
+  if (!base || !acceptedPlayerSurrenderCovers(state)) return base;
+  const ai = observer && observer.data && observer.data.ai;
+  if (!ai || ai.lawful !== true) return base;
+  const playerId = state && state.playerId;
+  if (ai.securityTargetId === playerId) return true;
+  const standing = state.factions && observer.factionId != null
+    ? state.factions[observer.factionId]
+    : null;
+  return !!(standing && standing.aggro === true);
 }
 
 function committedTargetId(decision) {
