@@ -54,6 +54,7 @@ import { injectOrreryStation, setVitalDial, vitalDialSvg, vitalValueHtml } from 
 import { injectOrreryStationTabs } from '../orrery/stationTabsLayouts.js';
 import { createStationRow } from '../orrery/stopDial.js';
 import { AMMO_BATCH as MUNITIONS_LOAD } from './serviceQuotes.js';
+import { tradeClearedReceipt } from './tradeReceipt.js';
 
 const STATION_REC = new Map();
 for (const sec of SECTORS) for (const s of (sec.stations || [])) STATION_REC.set(s.id, { station: s, sector: sec });
@@ -773,10 +774,10 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   });
 
   subscribe('economy:tradeCompleted', (p = {}) => {
-    const name = CMDTY_NAME.get(p.commodityId) || titleCaseWords(p.commodityId || 'cargo');
-    const verb = p.side === 'sell' ? 'SOLD' : 'BOUGHT';
-    const sign = p.side === 'sell' ? '+' : '−';
-    showReceipt('TRADE CLEARED', `${verb} ${fmtCr(p.qty)}u ${name}`, `${sign}${fmtCr(p.total)} cr`);
+    // SF-241: the receipt reads what settled through tradeTruth against the terms the market
+    // confirmed — a partial fill says "6 of the 10 confirmed", a full fill reports agreement.
+    const receipt = tradeClearedReceipt(state(), p);
+    showReceipt(receipt.title, receipt.line, receipt.detail);
     // The cargo handoff is a live task shortcut, not static onboarding copy. A completed trade
     // changes hold contents, credits, and whether the shortcut must open owned-only Sell mode.
     refresh();

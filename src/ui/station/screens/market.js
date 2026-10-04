@@ -28,6 +28,8 @@ import { focusNamedStationControl } from '../../outfittingSpendConfirm.js';
 import { mountDataState } from '../../uiPrimitives.js';
 import { renderAdBoardNotice } from '../adBoard.js';
 import { lastMoveCause, marketQuoteValue, presentMarketDrivers } from '../../marketDriverPresenter.js';
+import { latestTradeReceipt } from '../../sim/tradeTruth.js';
+import { TRADE_EXPECTATION_KEY } from '../tradeReceipt.js';
 import { presentCommodityIntel, presentInspectorRows } from '../../marketIntelPresenter.js';
 import { starvedNeedLine } from '../../worldNewsBeats.js';
 // Trade-route intel + course plotting reuse the canonical market logic (same waypoint/ui:setCourse
@@ -1774,6 +1776,21 @@ export function createMarketScreen(ctx) {
         // INF-084: bind the trade to the stated terms so a stale quote cannot settle
         // silently at a worse price. tradeBusy already stops a repeated confirmation
         // from emitting twice in-screen.
+        // SF-241: stamp the confirmed terms into the UI-owned scratch tree first, so the
+        // TRADE CLEARED receipt can compare what settled against what was confirmed — a
+        // partial fill says "6 of the 10 confirmed", never silently reprints a new total.
+        if (tradeState.ui) {
+          const lastReceipt = latestTradeReceipt(tradeState);
+          tradeState.ui[TRADE_EXPECTATION_KEY] = {
+            commodityId: decision.payload.commodityId,
+            side: mode,
+            qty: decision.payload.qty,
+            total: decision.payload.expectedTotal != null ? decision.payload.expectedTotal : null,
+            stationId: stationId(tradeState) || null,
+            afterSequence: lastReceipt ? lastReceipt.tradeSequence : 0,
+            atSimTime: Number(tradeState.simTime) || 0,
+          };
+        }
         ctx.bus.emit(mode === 'buy' ? 'ui:buy' : 'ui:sell', decision.payload);
         ctx.bus.emit('audio:cue', { id: 'ui_click' });
       }
