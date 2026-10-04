@@ -1,0 +1,481 @@
+--- a/src/core/sg02DynamicBodyOwner.js
++++ b/src/core/sg02DynamicBodyOwner.js
+@@ -458,6 +458,12 @@
+     for (const [id, attachment] of this.attachments) {
+       attachments[id] = nativeAttachmentDescriptor(attachment);
+     }
++    // Retired ghost bodies still own native arena slots. Preserve each bucket's LIFO order,
++    // handles and retired life instead of discarding them or treating them as live actors.
++    const ghostPools = Array.from(this._ghostProjectilePool, ([key, entries]) => ({ key,
++      entries: entries.map(entry => ({ handle: String(entry.body.handle),
++        colliderHandles: entry.colliders.map(collider => String(collider.handle)),
++        origin: nativePlain(entry.origin), native: nativeBodyProperties(entry.body, entry.colliders) })) }));
+     return {
+       schema: SG02_WORLD_SNAPSHOT_SCHEMA_VERSION,
+       nativeGeometryRevision: SG02_NATIVE_GEOMETRY_REVISION,
+@@ -469,6 +475,7 @@
+       bodyOrder: Array.from(this.records.keys(), String),
+       ceresBodyOrder: Array.from(this.ceresWorkfleetRecords, rec => String(rec.entity.id)),
+       dynamicBodyOrder: Array.from(this.dynamicRecords, rec => String(rec.entity.id)),
++      ghostPools,
+       attachments,
+       attachmentOrder: Array.from(this.attachments.keys()),
+       tick: this.tick,
+@@ -622,8 +629,68 @@
+         claimed.add(entity.id); handles.add(handle); remapped.set(savedId, entity.id);
+       }
+       if (claimed.size !== live.length) throw new Error('unclaimed_current_body');
+-      // Disabled pooled bodies still affect future reuse/arena allocation. Until their pool
+-      // ownership and ordering are serialized, their presence requires honest scalar fallback.
++      // Only explicitly represented, disabled projectile ghosts can own retired native slots.
++      // Validate against a newly authored ghost, not just metadata beside opaque WASM bytes.
++      // Old schema-3 captures without this optional descriptor still reject unknown bodies.
++      const ghostPools = payload.ghostPools ?? [];
++      if (!Array.isArray(ghostPools)) throw new Error('invalid_native_ghost_pools');
++      const poolKeys = new Set();
++      for (const pool of ghostPools) {
++        if (!pool || typeof pool.key !== 'string' || poolKeys.has(pool.key)
++          || !Array.isArray(pool.entries)) throw new Error('invalid_native_ghost_pool');
++        poolKeys.add(pool.key);
++        const entries = [];
++        for (const saved of pool.entries) {
++          const origin = saved?.origin;
++          if (!origin || typeof origin.entityId !== 'string' || !origin.entityId
++            || !(origin.life === null || (Number.isSafeInteger(origin.life) && origin.life > 0))
++            || origin.identity?.type !== 'projectile' || origin.identity?.isPlayer !== false
++            || !origin.contract || origin.contract.manifest !== null
++            || typeof saved.handle !== 'string' || !saved.handle
++            || !Number.isFinite(Number(saved.handle)) || String(Number(saved.handle)) !== saved.handle) {
++            throw new Error('invalid_native_ghost_origin');
++          }
++          const entity = { id: origin.entityId, occupantGeneration: origin.life,
++            type: 'projectile', isPlayer: false, alive: true,
++            defId: origin.identity.defId, shipId: origin.identity.shipId,
++            data: { ...origin.identity }, pos: { x: 0, y: 0, z: 0 },
++            vel: { x: 0, y: 0, z: 0 }, rot: 0, angVel: 0, flags: {},
++            physicsBody: nativePlain(origin.contract.spec) };
++          const spec = resolvePhysicsBodySpec(entity);
++          if (!spec || !spec.dynamic || spec.shape !== 'ball' || spec.material !== 'projectile'
++            || !contactMaterialFor(entity, spec).ghost || ghostProjectilePoolKey(spec) !== pool.key
++            || !sameNativeValue(nativeEntityIdentity(entity), origin.identity)
++            || !sameNativeValue(nativeBodyContract(entity, spec), origin.contract)) {
++            throw new Error('native_ghost_contract_changed');
++          }
++          const handle = Number(saved.handle), body = candidate.world.getRigidBody(handle);
++          if (!body || handles.has(handle) || body.isEnabled() || !body.isDynamic()
++            || body.isCcdEnabled() !== spec.ccd || body.numColliders() !== 1) {
++            throw new Error('invalid_native_ghost_body');
++          }
++          const colliders = [body.collider(0)];
++          if (!sameNativeValue(colliders.map(collider => String(collider.handle)), saved.colliderHandles)
++            || !sameNativeValue(nativeBodyProperties(body, colliders), saved.native)) {
++            throw new Error('native_ghost_body_mismatch');
++          }
++          const expected = validator._createRecord(entity, spec);
++          expected.body.setEnabled(false);
++          // Rapier propagates a parent's disabled flag to its collider on the next step.
++          // A save may capture either side of that propagation, so validate both authored
++          // states in the scratch world without touching the candidate's native bytes.
++          if (!sameNativeValue(nativeBodyProperties(expected.body, expected.colliders), saved.native)) {
++            validator.world.step();
++          }
++          if (!sameNativeValue(nativeBodyProperties(expected.body, expected.colliders), saved.native)) {
++            throw new Error('authored_native_ghost_changed');
++          }
++          validator.world.removeRigidBody(expected.body);
++          validator._colliderOwners.clear();
++          handles.add(handle);
++          entries.push({ body, colliders, origin: nativePlain(origin) });
++        }
++        candidate._ghostProjectilePool.set(pool.key, entries);
++      }
+       candidate.world.forEachRigidBody(body => {
+         if (!handles.has(body.handle)) throw new Error('unrepresented_native_body');
+       });
+@@ -686,6 +753,17 @@
+       else if (restored) restored.free();
+       return false;
+     }
++  }
++
++  // Same-life save canonicalization uses the normal transactional adoption path.
++  // The current semantic policy resolver remains authoritative for every attachment.
++  canonicalizeWorldSnapshot(payload, options = {}) {
++    if (!payload || typeof payload !== 'object') return false;
++    const entities = [];
++    for (const rec of this.records.values()) {
++      if (rec && rec.entity && !entities.includes(rec.entity)) entities.push(rec.entity);
++    }
++    return this.adoptWorldSnapshot(payload, entities, options);
+   }
+ 
+   // A fallback owns a fresh complete world, never old bodies with their owner maps cleared.
+@@ -856,6 +934,7 @@
+       },
+     };
+     for (const owned of colliders) this._colliderOwners.set(owned.handle, { rec: record, collider: owned });
++    record.ghostOrigin = ghostPoolKey == null ? null : nativeGhostOrigin(entity, spec);
+     this.records.set(entity.id, record);
+     if (spec.dynamic) this.dynamicRecords.add(record);
+     // Same contract as rebindEntity: the restored body already holds the entity's saved
+@@ -2221,6 +2300,7 @@
+         revision: spec.revision,
+       },
+     };
++    record.ghostOrigin = ghostPoolKey == null ? null : nativeGhostOrigin(entity, spec);
+     // Old saves may carry a mirrored entity.playerContactGive episode record; nothing reads it —
+     // contact velocity is the solver's answer now, so a rebuilt body simply keeps solving from
+     // its live pose.
+@@ -2293,7 +2373,7 @@
+         bucket = [];
+         this._ghostProjectilePool.set(rec.ghostPoolKey, bucket);
+       }
+-      bucket.push({ body: rec.body, colliders });
++      bucket.push({ body: rec.body, colliders, origin: nativePlain(rec.ghostOrigin) });
+       for (const collider of colliders) this._colliderOwners.delete(collider.handle);
+       this.records.delete(id);
+       return true;
+@@ -2781,6 +2861,10 @@
+       rec.effectiveInertiaY = spec.inertiaY;
+       rec.bodyResponseMassScale = 1;
+       rec.bodyResponseInertiaScale = 1;
++      if (rec.ghostPoolKey != null && rec.ghostOrigin) {
++        rec.ghostPoolKey = ghostProjectilePoolKey(spec);
++        rec.ghostOrigin = { ...rec.ghostOrigin, contract: nativeBodyContract(rec.entity, spec) };
++      }
+       return true;
+     } catch (_) {
+       return false;
+@@ -3930,6 +4014,13 @@
+     payloadId: data.payloadId ?? null, stationId: data.stationId ?? entity.stationId ?? null,
+     gateId: data.gateId ?? entity.gateId ?? null, poiId: data.poiId ?? null });
+ }
++// Capture ownership while the record is created. Entities are pooled mutable objects; by
++// retirement their ID/life/data may already describe another occupant. The exact Rapier
++// body handle includes its native arena generation and remains the unique slot identity.
++function nativeGhostOrigin(entity, spec) {
++  return { entityId: String(entity.id), life: occupantGenerationOf(entity),
++    identity: nativeEntityIdentity(entity), contract: nativeBodyContract(entity, spec) };
++}
+ function nativeBodyContract(entity, spec) {
+   const manifest = proxyManifestForBody(entity, spec);
+   return nativePlain({ spec, manifest,
+@@ -4623,4 +4714,3 @@
+   if (!manifest || manifest.compactHull || manifest.planarPolygon) return `native:${index}`;
+   return expandProxyPrimitives(manifest,{entity:rec.entity})[index]?.id ?? `native:${index}`;
+ }
+-
+--- a/src/core/physics.js
++++ b/src/core/physics.js
+@@ -341,7 +341,21 @@
+     const owner = this._sg02;
+     if (!owner || typeof owner.exportWorldSnapshot !== 'function') return null;
+     try {
+-      return owner.exportWorldSnapshot();
++      const payload = owner.exportWorldSnapshot();
++      // A restored Rapier world is canonical w.r.t. its snapshot bytes, but the organic
++      // world it replaces is not itself serializable (broad-phase workspace state,
++      // dimforge/rapier#910). Re-adopting our own export keeps the post-save continuation
++      // bit-identical to the post-load continuation instead of letting the two worlds'
++      // internal layouts drift.
++      if (payload && typeof owner.canonicalizeWorldSnapshot === 'function') {
++        // A rejected transaction cannot certify native save-and-continue parity.
++        // Preserve the live owner and fall back to the ordinary scalar save path.
++        if (!owner.canonicalizeWorldSnapshot(payload, {
++          attachments: this.state?.combat?.attachments?.byId || {},
++          resolveAttachmentContract: this.helpers?.describeCombatPhysicsAttachment,
++        })) return null;
++      }
++      return payload;
+     } catch (err) {
+       console.error('[physics] SG-02 world snapshot export failed', err);
+       return null;
+--- a/src/save/saveSystem.js
++++ b/src/save/saveSystem.js
+@@ -1148,6 +1148,12 @@
+       ceresWorkfleetRefs: [...ceresWorkfleetRefs.values()],
+       simTime: state.simTime,
+       tick: state.tick,
++      // Entity-id allocator state. freeIds order is load-bearing: allocateEntityId pops from
++      // the tail, so a save/continue that resumes with a different recycle list assigns
++      // different ids to the same post-load spawns and the sim hash diverges.
++      freeIds: Array.isArray(state.freeIds) ? state.freeIds.slice() : [],
++      nextEntityId: Number.isSafeInteger(state.nextEntityId) ? state.nextEntityId : null,
++      nextOccupantGeneration: Number.isSafeInteger(state.nextOccupantGeneration) ? state.nextOccupantGeneration : null,
+     };
+   },
+ 
+@@ -4883,6 +4889,7 @@
+         this._reportRestoreProgress(0.20, 'Restoring traffic and contacts');
+         yield 'persistent-spawned';
+       }
++      this._restoreEntityIdAllocator(data.entities);
+ 
+       this._restoreCeresEntityReferences(data.entities?.ceresWorkfleetRefs, legacyFinite, entityIdRemap);
+ 
+@@ -5222,6 +5229,37 @@
+     state.days = Math.max(0, Math.floor(state.simTime / 600));
+   },
+ 
++  /**
++   * Restore the entity-id allocator after every respawn has claimed its saved id. freeIds
++   * order is load-bearing (allocateEntityId pops from the tail), so the recycle list is
++   * serialized verbatim and dropped ids that a restore-side spawn meanwhile claimed are
++   * filtered out — allocateEntityId already skips live/ledger-held ids at pop time, this
++   * just keeps the list itself identical to the pre-save one.
++   */
++  _restoreEntityIdAllocator(entities) {
++    const state = this.state;
++    if (!entities || typeof entities !== 'object') return;
++    const live = state.entities instanceof Map ? state.entities : null;
++    const savedFree = Array.isArray(entities.freeIds) ? entities.freeIds : [];
++    const free = [];
++    const seen = new Set();
++    for (const id of savedFree) {
++      if (!Number.isSafeInteger(id) || id < 1 || seen.has(id)) continue;
++      if (live && live.has(id)) continue;
++      if (worldLedgerHoldsId(state.world, id)) continue;
++      seen.add(id);
++      free.push(id);
++    }
++    state.freeIds.length = 0;
++    state.freeIds.push(...free);
++    if (Number.isSafeInteger(entities.nextEntityId) && entities.nextEntityId > 0) {
++      state.nextEntityId = entities.nextEntityId;
++    }
++    if (Number.isSafeInteger(entities.nextOccupantGeneration) && entities.nextOccupantGeneration > 0) {
++      state.nextOccupantGeneration = entities.nextOccupantGeneration;
++    }
++  },
++
+   // Reconstruction (not live play): assign credits/cargo directly — routing through
+   // economy:grantCredits / faction:repDelta would double-count (advisor #7).
+   _restorePlayer(p) {
+--- a/test/sg02-native-save-reconciliation.test.mjs
++++ b/test/sg02-native-save-reconciliation.test.mjs
+@@ -273,7 +273,9 @@
+     projectile.alive = false; source.syncFromEntities([ship]);
+     assert.equal([...source._ghostProjectilePool.values()].flat().length, 1);
+     const current = clone(ship);
+-    assert.equal(target.adoptWorldSnapshot(clone(source.exportWorldSnapshot()), [current]), false);
++    const legacyPayload = clone(source.exportWorldSnapshot());
++    delete legacyPayload.ghostPools;
++    assert.equal(target.adoptWorldSnapshot(legacyPayload, [current]), false);
+     target.rebuildWorldFromEntities([current]);
+     const incoming = clone(projectile); incoming.alive = true; incoming.id = 3;
+     target.syncFromEntities([current, incoming]); target.step(DT);
+--- a/test/sg02-planar-prism-restore.test.mjs
++++ b/test/sg02-planar-prism-restore.test.mjs
+@@ -7,6 +7,9 @@
+ async function boot(payload){const sim=createSimulation({seed:260926,bus:createBus(),systems:[physics]});const state=sim.state;state.mode='flight';state.settings.gameplay.physicsBackend='rapier-dynamic';const player=sim.spawn({type:'ship',alive:true,isPlayer:true,radius:16,mass:41.0031,pos:{x:0,z:0},vel:{x:4,z:1},rot:.3,angVel:0,hull:100,hullMax:100,collides:true,data:{defId:'ship_hornet'},physicsBody:{schemaVersion:1,radius:16,mass:41.0031,inertiaY:16.4450935828877,dynamic:true,ccd:true,revision:0}});state.playerId=player.id;const phys=sim.registry.get('physics');if(payload)phys.deserialize(payload);assert.equal(await phys.prepareBackend(state,{reset:true}),true);return{sim,phys};}
+ function shapeState(phys){return [...phys._sg02.records.values()].map(r=>({id:r.entity.id,mass:r.body.mass(),inertia:r.body.principalInertia(),pose:r.body.translation(),v:r.body.linvel(),colliders:r.colliders.map(c=>({type:c.shapeType(),vertices:c.shape.vertices?[...c.shape.vertices]:null,density:c.density(),friction:c.friction(),restitution:c.restitution(),groups:c.collisionGroups()}))}));}
+ for(const name of ['legacy-base','legacy-next'])test(`physics adapter rejects ${name} native bytes and reconstructs identically to ordinary fresh candidate`,async()=>{
+- const payload=JSON.parse(readFileSync(new URL(`./fixtures/planar-prism/${name}-snapshot.json`,import.meta.url)));const fresh=await boot(),restored=await boot(payload);assert.equal(restored.phys._pendingSg02Snapshot,null);assert.deepEqual(shapeState(restored.phys),shapeState(fresh.phys));assert.equal(restored.phys.serialize().nativeGeometryRevision,'xz-support-prism-obb-v3');
+- for(let i=0;i<5;i++){fresh.sim.step(SIM_DT);restored.sim.step(SIM_DT);assert.deepEqual(shapeState(restored.phys),shapeState(fresh.phys));}fresh.phys._sg02.dispose();restored.phys._sg02.dispose();
++ const payload=JSON.parse(readFileSync(new URL(`./fixtures/planar-prism/${name}-snapshot.json`,import.meta.url)));const fresh=await boot(),restored=await boot(payload);assert.equal(restored.phys._pendingSg02Snapshot,null);assert.deepEqual(shapeState(restored.phys),shapeState(fresh.phys));assert.equal(restored.phys._sg02.exportWorldSnapshot().nativeGeometryRevision,'xz-support-prism-obb-v3');
++ // At tick zero the authored yaw has not yet been mirrored from native f32 rotation.
++ // Export can describe the geometry, but a refused live canonicalization must save scalars.
++ assert.equal(restored.phys.serialize(),null);assert.equal(fresh.phys.serialize(),null);
++ for(let i=0;i<5;i++){fresh.sim.step(SIM_DT);restored.sim.step(SIM_DT);assert.deepEqual(shapeState(restored.phys),shapeState(fresh.phys));}assert.equal(restored.phys.serialize().nativeGeometryRevision,'xz-support-prism-obb-v3');assert.equal(fresh.phys.serialize().nativeGeometryRevision,'xz-support-prism-obb-v3');fresh.phys._sg02.dispose();restored.phys._sg02.dispose();
+ });
+--- /dev/null
++++ b/test/sg02-native-live-save-ghost-pool.test.mjs
+@@ -0,0 +1,198 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { createSg02DynamicBodyOwner } from '../src/core/sg02DynamicBodyOwner.js';
++import { createSimulation } from '../src/core/sim.js';
++import { physics } from '../src/core/physics.js';
++import { combat } from '../src/systems/combat.js';
++import { save } from '../src/save/saveSystem.js';
++const clone = x => JSON.parse(JSON.stringify(x)), DT = 1 / 60;
++function actor(id = 1, x = 0, life = id) {
++  return { id, occupantGeneration: life, type: 'ship', alive: true, isPlayer: id === 1,
++    hull: 100, hullMax: 100, radius: 3, mass: 24, pos: { x, y: 0, z: 0 },
++    vel: { x: 0, y: 0, z: 0 }, rot: 0, angVel: 0,
++    data: { defId: 'ship_kestrel' }, flags: { persistent: true },
++    physicsBody: { schemaVersion: 1, radius: 3, mass: 24, inertiaY: 48,
++      dynamic: true, shape: 'ball', ccd: false, revision: 0 } };
++}
++function projectile(id, life = id) {
++  const e = actor(id, 500 + id, life);
++  e.type = 'projectile'; e.isPlayer = false; e.data = {}; e.flags = {};
++  e.physicsBody.material = 'projectile'; e.vel.x = 10;
++  return e;
++}
++async function fixture({ retired = 2, stepped = true } = {}) {
++  const live = actor(), shots = Array.from({ length: retired }, (_, i) => projectile(2 + i, 11 + i));
++  const source = await createSg02DynamicBodyOwner({ publishTelemetry: false });
++  source.syncFromEntities([live, ...shots]); source.step(DT);
++  for (const shot of shots) shot.alive = false;
++  source.syncFromEntities([live]);
++  if (stepped) source.step(DT);
++  return { source, live, shots, payload: clone(source.exportWorldSnapshot()) };
++}
++const pools = owner => [...owner._ghostProjectilePool].map(([key, entries]) => ({ key,
++  entries: entries.map(e => ({handle:String(e.body.handle), colliderHandles:e.colliders.map(c=>String(c.handle)), origin:clone(e.origin)})) }));
++
++for (const stepped of [false, true]) test(`retired pool keeps exact native handles, lives, LIFO order and reuse (${stepped ? 'propagated' : 'pending'} disable)`, async () => {
++  const f = await fixture({ stepped }), target = await createSg02DynamicBodyOwner({ publishTelemetry: false });
++  try {
++    const current = clone(f.live);
++    assert.equal(target.adoptWorldSnapshot(f.payload, [current]), true);
++    assert.deepEqual(pools(target), pools(f.source));
++    assert.equal(target.world.bodies.len(), 3); assert.equal(target.records.size, 1);
++    assert.equal(target._colliderOwners.size, 1);
++    assert.equal(f.source.canonicalizeWorldSnapshot(f.payload), true);
++    const handles = f.payload.ghostPools[0].entries.map(e => e.handle);
++    const a = projectile(2, 40), b = projectile(3, 41), ca = clone(a), cb = clone(b);
++    f.source.syncFromEntities([f.live, a]); target.syncFromEntities([current, ca]);
++    assert.equal(String(target.records.get(2).body.handle), handles[1]);
++    f.source.syncFromEntities([f.live, a, b]); target.syncFromEntities([current, ca, cb]);
++    assert.equal(String(target.records.get(3).body.handle), handles[0]);
++    for (let i=0;i<30;i++) { f.source.step(DT); target.step(DT); }
++    assert.deepEqual(target.quantizedSnapshot(), f.source.quantizedSnapshot());
++    assert.deepEqual([current,ca,cb].map(e=>[e.pos,e.vel,e.rot]),[f.live,a,b].map(e=>[e.pos,e.vel,e.rot]));
++    a.alive = ca.alive = false;
++    f.source.syncFromEntities([f.live,b]); target.syncFromEntities([current,cb]);
++    assert.equal(pools(target)[0].entries[0].origin.life, 40, 'reused handle must retire with its new occupant life');
++    assert.deepEqual(pools(target), pools(f.source));
++  } finally { f.source.dispose(); target.dispose(); }
++});
++
++for (const [name, mutate] of [
++  ['missing descriptor', p => delete p.ghostPools],
++  ['non-array descriptor', p => p.ghostPools = {}],
++  ['duplicate bucket', p => p.ghostPools.push(clone(p.ghostPools[0]))],
++  ['duplicate native handle', p => p.ghostPools[0].entries[1].handle=p.ghostPools[0].entries[0].handle],
++  ['invalid generation', p => p.ghostPools[0].entries[0].origin.life=-1],
++  ['missing provenance', p => delete p.ghostPools[0].entries[0].origin],
++  ['active native handle alias', p => p.ghostPools[0].entries[0].handle=p.bodies['1'].handle],
++  ['wrong bucket shape', p => p.ghostPools[0].key='forged'],
++  ['wrong collider handle', p => p.ghostPools[0].entries[0].colliderHandles=['999']],
++  ['forged solid material', p => p.ghostPools[0].entries[0].origin.contract.spec.material='default'],
++  ['forged current policy', p => p.ghostPools[0].entries[0].origin.contract.material.ghost=false],
++]) test(`malformed pool ${name} refuses atomically`, async () => {
++  const f = await fixture(), target = await createSg02DynamicBodyOwner({ publishTelemetry: false });
++  try {
++    const sentinel = actor(90,900,90); target.syncFromEntities([sentinel]);
++    const oldWorld = target.world, oldRecords = target.records, oldPools=target._ghostProjectilePool;
++    mutate(f.payload);
++    assert.equal(target.adoptWorldSnapshot(f.payload, [clone(f.live)]), false);
++    assert.equal(target.world,oldWorld);assert.equal(target.records,oldRecords);assert.equal(target._ghostProjectilePool,oldPools);
++    target.step(DT); assert.equal(target.records.get(90).body.isValid(),true);
++  } finally { f.source.dispose(); target.dispose(); }
++});
++
++test('a genuinely foreign disabled native body is never accepted as a retired pool member',async()=>{
++  const f=await fixture(), target=await createSg02DynamicBodyOwner({publishTelemetry:false});
++  try {
++    const foreign=f.source.world.createRigidBody(f.source.RAPIER.RigidBodyDesc.dynamic().setEnabled(false));
++    const payload=f.source.exportWorldSnapshot(); assert.ok(payload);
++    assert.equal(target.adoptWorldSnapshot(payload,[clone(f.live)]),false);
++    assert.equal(f.source.canonicalizeWorldSnapshot(payload),false);
++    assert.equal(foreign.isValid(),true,'refusal may not discard unknown native ownership');
++  }finally{f.source.dispose();target.dispose();}
++});
++
++test('same-life spec replacement preserves both retired native generations with their creation contracts',async()=>{
++  const source=await createSg02DynamicBodyOwner({publishTelemetry:false}),target=await createSg02DynamicBodyOwner({publishTelemetry:false});
++  try{
++    const e=projectile(2,9);source.syncFromEntities([e]);
++    const first=String(source.records.get(2).body.handle);
++    e.physicsBody.radius=4;e.physicsBody.revision=1;source.syncFromEntities([e]);
++    const second=String(source.records.get(2).body.handle);assert.notEqual(second,first);
++    e.physicsBody.radius=5;e.physicsBody.revision=2;source.syncFromEntities([e]);
++    const payload=source.exportWorldSnapshot();assert.equal(payload.ghostPools.flatMap(p=>p.entries).length,2);
++    assert.equal(target.adoptWorldSnapshot(payload,[clone(e)]),true);
++    assert.deepEqual(pools(target),pools(source));
++    assert.equal(source.canonicalizeWorldSnapshot(payload),true);
++  }finally{source.dispose();target.dispose();}
++});
++
++test('retirement preserves creation-time source life despite in-place reuse of the mutable entity object',async()=>{
++  const source=await createSg02DynamicBodyOwner({publishTelemetry:false});
++  try{
++    const e=projectile(2,9);source.syncFromEntities([e]);
++    e.id=99;e.occupantGeneration=100;e.data.defId='changed-after-native-creation';
++    source.syncFromEntities([]);
++    const origin=[...source._ghostProjectilePool.values()].flat()[0].origin;
++    assert.equal(origin.entityId,'2');assert.equal(origin.life,9);assert.equal(origin.identity.defId,null);
++  }finally{source.dispose();}
++});
++
++test('in-place projectile mass update retires into the matching pool with refreshed contract and unchanged origin life',async()=>{
++  const source=await createSg02DynamicBodyOwner({publishTelemetry:false}),target=await createSg02DynamicBodyOwner({publishTelemetry:false});
++  try{
++    const ship=actor(),e=projectile(2,9);source.syncFromEntities([ship,e]);
++    const handle=source.records.get(2).body.handle;
++    e.physicsBody.mass=30;e.physicsBody.inertiaY=60;e.physicsBody.revision=1;source.syncFromEntities([ship,e]);
++    assert.equal(source.records.get(2).body.handle,handle);
++    e.alive=false;source.syncFromEntities([ship]);
++    const payload=source.exportWorldSnapshot(),entry=payload.ghostPools.find(p=>p.entries.length).entries[0];
++    assert.equal(entry.origin.life,9);assert.equal(entry.origin.contract.spec.mass,30);
++    assert.equal(target.adoptWorldSnapshot(payload,[clone(ship)]),true);
++    const next=projectile(3,10);next.physicsBody.mass=30;next.physicsBody.inertiaY=60;next.physicsBody.revision=1;
++    target.syncFromEntities([clone(ship),next]);assert.equal(target.records.get(3).body.handle,handle);
++  }finally{source.dispose();target.dispose();}
++});
++
++test('failed publication after pool validation keeps old native owner and every pool entry alive',async()=>{
++  const f=await fixture();try{
++    const old=f.source.world, before=pools(f.source), original=f.source._commitNativeOwner;
++    f.source._commitNativeOwner=()=>{throw new Error('publication refused');};
++    assert.equal(f.source.canonicalizeWorldSnapshot(f.payload),false);
++    f.source._commitNativeOwner=original;
++    assert.equal(f.source.world,old);assert.deepEqual(pools(f.source),before);
++    assert.ok([...f.source._ghostProjectilePool.values()].flat().every(e=>e.body.isValid()));
++  }finally{f.source.dispose();}
++});
++
++async function liveFixture() {
++  const sim=createSimulation({seed:47,systems:[physics,combat,save]});sim.state.mode='flight';
++  sim.state.settings.gameplay.physicsBackend='rapier-dynamic';
++  const player=sim.spawn(actor());sim.state.playerId=player.id;
++  const shots=[sim.spawn(projectile(2)),sim.spawn(projectile(3))];
++  const phys=sim.registry.get('physics'),saver=sim.registry.get('save');
++  assert.equal(await phys.prepareBackend(sim.state),true);
++  sim.step(DT);
++  for(const shot of shots)shot.alive=false;
++  sim.step(DT);sim.step(DT);
++  assert.equal([...phys._sg02._ghostProjectilePool.values()].flat().length,2);
++  return {sim,phys,saver};
++}
++test('actual Save/Continue preserves allocator free-list, fresh lives, reused ghost handles and exact continuation',async()=>{
++  const a=await liveFixture(),b=await liveFixture();
++  try {
++    const savedA=a.saver.serialize('continue'),savedB=b.saver.serialize('reload');
++    assert.ok(savedA.data.physics);assert.ok(savedB.data.physics);
++    assert.equal(savedB.data.physics.ghostPools[0].entries.length,2);
++    assert.equal(b.saver.loadEnvelope(savedB,'reload'),true);
++    assert.deepEqual(b.sim.state.physicsRuntime.nativeRestore,{mode:'native',exact:true,reason:null});
++    assert.deepEqual(b.sim.state.freeIds,a.sim.state.freeIds);
++    assert.equal(b.sim.state.nextEntityId,a.sim.state.nextEntityId);
++    assert.equal(b.sim.state.nextOccupantGeneration,a.sim.state.nextOccupantGeneration);
++    assert.deepEqual(pools(b.phys._sg02),pools(a.phys._sg02));
++    const newA=[a.sim.spawn(projectile(8)),a.sim.spawn(projectile(9))];
++    const newB=[b.sim.spawn(projectile(8)),b.sim.spawn(projectile(9))];
++    assert.deepEqual(newB.map(e=>[e.id,e.occupantGeneration]),newA.map(e=>[e.id,e.occupantGeneration]));
++    for(let i=0;i<30;i++){a.sim.step(DT);b.sim.step(DT);}
++    assert.deepEqual(b.phys._sg02.quantizedSnapshot(),a.phys._sg02.quantizedSnapshot());
++    assert.deepEqual(newB.map(e=>[e.pos,e.vel,e.rot]),newA.map(e=>[e.pos,e.vel,e.rot]));
++    assert.deepEqual(newB.map(e=>b.phys._sg02.records.get(e.id).body.handle),newA.map(e=>a.phys._sg02.records.get(e.id).body.handle));
++  }finally{a.phys._sg02?.dispose();b.phys._sg02?.dispose();a.sim.dispose();b.sim.dispose();}
++});
++
++test('live Save forwards current attachment policy and refused canonicalization cannot publish exact native state',async()=>{
++  const a=await liveFixture();try{
++    const target=a.sim.spawn({...actor(9,60,9),isPlayer:false});a.sim.step(DT);
++    const result=a.sim.registry.get('combat').kernel.attachments.create({defId:'tether_standard',ownerId:a.sim.state.playerId,targetId:target.id});
++    assert.equal(result.ok,true);
++    const before=a.phys._sg02.world,payload=a.saver.serialize('live-policy');
++    assert.ok(payload.data.physics);assert.notEqual(a.phys._sg02.world,before);
++    assert.equal(a.phys._sg02.attachments.size,1);
++    const good=a.phys._sg02.world,helper=a.phys.helpers.describeCombatPhysicsAttachment;
++    a.phys.helpers.describeCombatPhysicsAttachment=()=>null;
++    assert.equal(a.phys.serialize(),null);assert.equal(a.phys._sg02.world,good);
++    a.phys.helpers.describeCombatPhysicsAttachment=helper;
++    assert.equal(a.saver.loadEnvelope(payload,'live-policy'),true);
++    assert.equal(a.sim.state.physicsRuntime.nativeRestore.exact,true);
++  }finally{a.phys._sg02?.dispose();a.sim.dispose();}
++});

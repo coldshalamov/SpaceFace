@@ -1,0 +1,37 @@
+{
+  "patchSha256": "a34ae4f0265ce4a681236a7bb08a5a14871533d666c280c5ab504ad3ffd204d7",
+  "gitApplyCheck": true,
+  "gitApply": true,
+  "files": [
+    {
+      "path": "src/core/sg02DynamicBodyOwner.js",
+      "sha256": "3875b640eb9b148364ce1929f9cab6ac587231689906d9d15456ee1c9e6bc927",
+      "exact": true
+    },
+    {
+      "path": "src/core/physics.js",
+      "sha256": "1260d6ac66329610a81c1c3d5d0651da5d0e141a5c02978783f074913752ba6a",
+      "exact": true
+    },
+    {
+      "path": "src/save/saveSystem.js",
+      "sha256": "923648e24d27900d6b3bf739294c6cbb5e6f898ad9bc9b9edb0d2e62f19a154c",
+      "exact": true
+    },
+    {
+      "path": "test/sg02-native-save-reconciliation.test.mjs",
+      "sha256": "be14a7110fe026b295bd1a621716e8af7cc87b8de7f8e2dc97f58e99f838a843",
+      "exact": true
+    },
+    {
+      "path": "test/sg02-planar-prism-restore.test.mjs",
+      "sha256": "70c26ccd78d9c110c8f3271bd3b8febbe7d4a2de68e6ee37108395c3816afecb",
+      "exact": true
+    },
+    {
+      "path": "test/sg02-native-live-save-ghost-pool.test.mjs",
+      "sha256": "6c06ebb5467e77db2a5b903fc3e9d5c892466e6ab6fcbf6c94746df7bf3adf9d",
+      "exact": true
+    }
+  ]
+}
