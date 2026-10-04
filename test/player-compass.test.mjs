@@ -20,11 +20,14 @@ import {
   VESTA_ORE_WINNOW,
   VESTA_SHEAR_JAWS,
 } from '../src/data/environmentalMachinery.js';
+import { frontierRumorOffer } from '../src/data/frontierRumors.js';
 import { kettleLineBearingToNext, KETTLE_LINE_LEGS } from '../src/data/kettleLine.js';
 import { SECTOR_ANCHORS } from '../src/data/sectorAnchors.js';
+import { SECTORS } from '../src/data/sectors.js';
 import { cryoQuadrantKey, cryoThermalMap, planCryoInstall } from '../src/systems/cryoDriftArena.js';
 import { survivalAnnounce, waveOpeningLine } from '../src/systems/survivalAnnounce.js';
 import { GATE_BEARINGS } from '../src/systems/waveMaterialization.js';
+import { world } from '../src/systems/world.js';
 
 const SEED = 4242;
 
@@ -133,4 +136,48 @@ test('seed 4242: kettle tell, winnow banks, and sited machines use the same nort
   const shearDx = VESTA_SHEAR_JAWS.localPos.x - forge.pos.x;
   const shearDz = VESTA_SHEAR_JAWS.localPos.z - forge.pos.z;
   assert.equal(playerBearingName(shearDx, shearDz), 'northeast');
+});
+
+test('seed 4242: a scan lead and a rumor card use the same letters', () => {
+  const lead = world._scanFieldLead({
+    world: { activeSector: { fields: [{ id: 'f_north', center: { x: 0, z: -250 } }] } },
+    entities: { get() { return { pos: { x: 0, z: 0 } }; } },
+    playerId: 'p',
+    fieldDepletion: { fields: { f_north: { depletion: 0.4 } } },
+  });
+  assert.equal(lead, 'freshest seam 250 WU N');
+
+  const east = world._scanFieldLead({
+    world: { activeSector: { fields: [{ id: 'f_east', center: { x: 80, z: 0 } }] } },
+    entities: { get() { return { pos: { x: 0, z: 0 } }; } },
+    playerId: 'p',
+    fieldDepletion: { fields: { f_east: { depletion: 0.5 } } },
+  });
+  assert.equal(east, 'freshest seam 80 WU E');
+
+  const state = createGameState(SEED);
+  state.player.credits = 20000;
+  state.world.sectors = Object.fromEntries(SECTORS.map((sector) => [sector.id, { ...sector }]));
+  state.world.discovery = {};
+  const sectorById = new Map(SECTORS.map((sector) => [sector.id, sector]));
+  let matched = 0;
+  for (const sector of SECTORS) {
+    for (const station of sector.stations || []) {
+      const offer = frontierRumorOffer(state, station.id);
+      if (!offer || !offer.text) continue;
+      const home = sectorById.get(offer.sectorId);
+      const poi = home && (home.pois || []).find((row) => row.id === offer.targetId);
+      const field = home && (home.fields || []).find((row) => row.id === offer.targetId);
+      const local = (poi && poi.pos) || (field && field.center) || null;
+      if (!local) continue;
+      const letter = playerBearingLetter(local.x, local.z);
+      if (!letter) continue;
+      assert.ok(offer.text.includes(` ${letter} `) || offer.text.includes(`${letter} of`),
+        `${offer.id} text should carry ${letter}: ${offer.text}`);
+      matched += 1;
+      if (matched >= 3) break;
+    }
+    if (matched >= 3) break;
+  }
+  assert.ok(matched >= 1, 'a station on the default route offered a bearing card');
 });
