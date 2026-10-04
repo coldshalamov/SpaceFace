@@ -157,11 +157,14 @@ for (const weaponId of STARTER_WEAPON_IDS) {
     assert.equal(dischargeFlowAt(source, life, life), 0, 'flow dies with the shot');
     assert.equal(dischargeFlowAt(source, life * 1.5, life), 0, 'no flow outlives the shot');
 
-    // 3. The band actually travels: the fragment advances it by life * flow * 5 radians, so one
-    //    full crossing of the bore (2π) must fit inside the flash's own life.
+    // 3. The band's travel RATE crosses the bore within the flash's life: peak-flow rate times
+    //    life exceeds 2π. This is a peak-rate proxy, not integrated travel — the CPU envelope
+    //    scales the flow term down over the flash's life (and the fragment integrates
+    //    vCycle.z * vFlow.x * 5), so real integrated travel is a fraction of this figure. The
+    //    row's claim this test owns is per-frame flow non-zero, which block 2 pins directly.
     assert.ok(
       life * speed * 5 >= Math.PI * 2,
-      `${weaponId} band travel ${life * speed * 5} rad must cross the bore (2π) before the flash dies`,
+      `${weaponId} peak band-travel rate ${life * speed * 5} rad/life must exceed 2π`,
     );
   });
 }
