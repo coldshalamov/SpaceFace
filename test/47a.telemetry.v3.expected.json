@@ -69,10 +69,10 @@
     "tether:broken": 1
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "f4a6217584fd4f4cbe7d401c4f91df5b19ae922d5ba9f22f254f0de9f9f12ed7",
+    "authoritativeHash": "ba7a68bd5367cd692fbe7c2e631331edd566dfa423e5f455cafd3d9cb6dd8ebb",
     "authoritativeHashByReloadAt": {
-      "60": "0d85fa3f16daae683aaa871e3944fe6672132c264ea9b56b08aaa754b583c0d4",
-      "600": "f4a6217584fd4f4cbe7d401c4f91df5b19ae922d5ba9f22f254f0de9f9f12ed7"
+      "60": "abe0a36b96308c9aa4141fe33dcaab6ed7404e04115111a27e916c9f3ba68d18",
+      "600": "ba7a68bd5367cd692fbe7c2e631331edd566dfa423e5f455cafd3d9cb6dd8ebb"
     },
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
@@ -233,6 +233,7 @@
     "Prior authoritativeHash was 0d85fa3f16daae683aaa871e3944fe6672132c264ea9b56b08aaa754b583c0d4.",
     "2026-10-03 polish pass: authoritativeHash is the CANONICAL reload-run hash (save canonicalizes the Rapier world once), not the organic never-saved hash — organic layouts are not reproducible (rapier#910); do not re-pin from a plain --hash run.",
     "(cont.) The canonical hash depends on the save tick: reload-60 -> 0d85fa3f, reload-600 -> f4a62175. Pin by reload point via authoritativeHashByReloadAt; the top-level field is the reload-600 gate value.",
-    "2026-10-03 correction: 0d85fa3f is the reload-60 hash, not stale — the canonical hash is a function of the save tick, so the envelope pins per reload point via authoritativeHashByReloadAt."
+    "2026-10-03 correction: 0d85fa3f is the reload-60 hash, not stale — the canonical hash is a function of the save tick, so the envelope pins per reload point via authoritativeHashByReloadAt.",
+    "D162 repin (2026-10): cheap-goods cycle-amplitude floor now delivers its authored chart-movement guarantee, so seeded market cycles and economy-driven traffic drift legitimately. Sim/reload equivalence unchanged."
   ]
 }

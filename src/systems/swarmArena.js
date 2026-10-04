@@ -40,6 +40,8 @@ import { mulberry32 } from '../core/rng.js';
 import { withBankStone } from '../core/surfaceContact.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { validateRunState } from '../core/runState.js';
+import { createBroodEngine } from './swarmBrood.js';
+import { BROOD_EXPLOSION_EVENTS } from '../data/swarmBrood.js';
 import {
   SWARM_BREATH_SECONDS,
   SWARM_BREATH_TICKS,
@@ -434,6 +436,29 @@ export const swarmArena = {
     this._lessonRockId = null;
     this._wallWave = 0;
     resetSwarmPressureState();
+    // SWARM-07 B1 — the room's second population. The arena hosts the Brood engine: it reads the
+    // live field kernel through the fields owner's read seam, and its kill/wave receipts leave
+    // through the same bus every other swarm consumer listens on.
+    this._brood = createBroodEngine({
+      bus: this.bus,
+      getState: () => this.state,
+      fieldList: () => {
+        const fields = this.registry && this.registry.get ? this.registry.get('fields') : null;
+        return fields && typeof fields.kernelList === 'function' ? fields.kernelList() : null;
+      },
+      // Brood hazards damage the hull through the SAME routed damage owner mines use.
+      routeDamage: (request) => {
+        const helpers = this.helpers;
+        if (helpers && typeof helpers.routeCombatDamage === 'function') {
+          return helpers.routeCombatDamage(request);
+        }
+        const combat = this.registry && this.registry.get ? this.registry.get('combat') : null;
+        if (combat && typeof combat.ensureKernel === 'function') {
+          return combat.ensureKernel().routeDamage(request);
+        }
+        return null;
+      },
+    });
     bindSwarmPressureContext({
       getAlive: () => liveCohortCount(this.state),
       onHoldStart: (p) => this._onPressureHoldStart(p),
@@ -445,7 +470,13 @@ export const swarmArena = {
     this._unsubs.push(this.bus.on('run:waveStarted', (p) => this._onWaveStarted(p)));
     this._unsubs.push(this.bus.on('entity:destroyed', () => this._onPressureDestroyed()));
     this._unsubs.push(this.bus.on('physics:impact', (p) => this._onDebrisImpact(p)));
-    this._unsubs.push(this.bus.on('run:ended', () => this._release('run_ended')));
+    this._unsubs.push(this.bus.on('run:ended', () => {
+      if (this._brood) this._brood.clear('run_ended');
+      this._release('run_ended');
+    }));
+    for (const name of BROOD_EXPLOSION_EVENTS) {
+      this._unsubs.push(this.bus.on(name, (p) => this._brood && this._brood.onExplosion(p)));
+    }
   },
 
   destroy() {
@@ -454,6 +485,7 @@ export const swarmArena = {
     bindSwarmPressureContext(null);
     resetSwarmPressureState();
     this._pressureAlive = null;
+    if (this._brood) this._brood.clear('destroyed');
   },
 
   newGame() {
@@ -465,6 +497,7 @@ export const swarmArena = {
     this._terrainRetry = false;
     this._lessonRockId = null;
     this._wallWave = 0;
+    if (this._brood) this._brood.clear('new_game');
     this._releaseWells();
     this._restoreCapacity();
     this._pressureAlive = null;
@@ -475,6 +508,9 @@ export const swarmArena = {
   /** Refresh only after a meaningful drift, at most once per two simulation seconds. */
   update() {
     const state = this.state;
+    // SWARM-07 B1 — the Brood step runs on the same fixed tick as the room's own housekeeping.
+    // The engine re-gates on the live swarm run, the active phase and flight mode itself.
+    if (this._brood) this._brood.step(state);
     const run = liveSwarmRun(state);
     if (!run || run.phase !== 'active' || state.mode !== 'flight') return;
     if ((state.simTime || 0) < (this._nextTerrainCheck || 0)) return;
@@ -501,6 +537,8 @@ export const swarmArena = {
     const run = liveSwarmRun(this.state);
     if (!run) return;
     const wave = payload && Number.isInteger(payload.wave) ? payload.wave : run.wave;
+    // SWARM-07 B1 — plan the wave's Brood cohort (spawn happens when the wave goes live).
+    if (this._brood) this._brood.prepareWave(run, wave);
     this._pressureWave = wave;
     // Consecutive waves of the same run carry remaining hold time and stored pressure.
     // Reset only on a new run's opener; teardown / newGame / run:ended already reset.
@@ -518,6 +556,8 @@ export const swarmArena = {
 
   _onWaveStarted() {
     if (!liveSwarmRun(this.state)) return;
+    // SWARM-07 B1 — the fight goes live; the planned cohort arrives around the pilot.
+    if (this._brood) this._brood.spawnWave(this.state);
     this._pressureAlive = liveCohortCount(this.state);
   },
 

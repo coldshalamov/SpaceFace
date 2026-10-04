@@ -33,6 +33,7 @@ import { styleCauseFromKill } from './survivalStyle.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
 import { WAVE_CLEARED_SEAM } from './survivalRun.js';
 import { swarmBossFor, swarmNewcomerFor, SWARM_BOSS_ROTATION } from '../data/swarmMode.js';
+import { swarmBroodNewcomerFor } from '../data/swarmBrood.js';
 import {
   SWARM_CLOSE_CALL_HULL,
   SWARM_HITSTOP_SCALE,
@@ -67,6 +68,9 @@ function simTimeOf(state) {
   return Math.max(0, Number(state && state.tick) || 0) / 60;
 }
 
+/** A single brood receipt joins at most this many bodies into the multi-kill window. */
+const SWARM_BROOD_WINDOW_CAP = 64;
+
 function hullFracOf(entity) {
   if (!entity || typeof entity !== 'object') return 1;
   const max = Number(entity.hullMax);
@@ -95,6 +99,8 @@ export const swarmJuice = {
     if (!this.bus || typeof this.bus.on !== 'function') return;
     this._unsubs.push(this.bus.on('entity:killed', (p) => this._onKilled(p)));
     this._unsubs.push(this.bus.on('combat:damage', (p) => this._onDamage(p)));
+    // SWARM-07 B1 — the Brood tier's room wipes ride the same announcer/popups as ship kills.
+    this._unsubs.push(this.bus.on('swarm:broodKills', (p) => this._onBroodKills(p)));
     this._unsubs.push(this.bus.on('run:wavePlanned', (p) => this._onWavePlanned(p)));
     this._unsubs.push(this.bus.on('run:waveStarted', () => this._onWaveStarted()));
     this._unsubs.push(this.bus.on(WAVE_CLEARED_SEAM, (p) => this._onWaveCleared(p)));
@@ -254,18 +260,76 @@ export const swarmJuice = {
     if (Number(payload.hullDamage) > 0) this._hullLost = true;
   },
 
+  /**
+   * SWARM-07 B1 — a batched brood-kill receipt: one receipt per cause per tick from the Brood
+   * engine. One popup per receipt (the presenter's pool is sized for 30+ bodies a minute, not
+   * one per mite), the batch counted into the same multi-kill window as ship kills, so a
+   * 40-body wipe reads SWARM WIPE / PILE-UP ×N exactly as the room-kill grammar promises.
+   */
+  _onBroodKills(payload) {
+    const st = this.state;
+    const run = liveSwarmRun(st);
+    if (!run || !payload) return;
+    const count = Math.max(0, Math.trunc(Number(payload.count) || 0));
+    if (count <= 0) return;
+    const now = simTimeOf(st);
+    const cause = typeof payload.cause === 'string' && payload.cause ? payload.cause : 'direct';
+    const word = swarmKillCauseWord({ cause });
+    this._waveKills += count;
+    this._lastKillAt = now;
+    this._emit('swarm:killPopup', {
+      pos: payload.pos || null,
+      word,
+      cause,
+      score: Math.max(0, Math.round(Number(payload.score) || 0)),
+      credits: Math.max(0, Math.round(Number(payload.credits) || 0)),
+      wave: run.wave,
+      count,
+    });
+    // The multi-kill window: a receipt joins as its bodies, capped so one huge wipe cannot
+    // stretch the window array without bound.
+    const joined = Math.min(count, SWARM_BROOD_WINDOW_CAP);
+    for (let i = 0; i < joined; i++) this._recent.push({ t: now, cause });
+    while (this._recent.length && now - this._recent[0].t > SWARM_MULTI_WINDOW_S) this._recent.shift();
+    const windowCount = this._recent.length;
+    if (windowCount >= 2) {
+      const causes = this._recent.map((k) => k.cause);
+      if (swarmPileUp(causes)) {
+        this._emit('swarm:announce', { kind: 'pileup', text: `PILE-UP ×${windowCount}`, count: windowCount });
+      } else {
+        const word2 = swarmMultiKillWord(windowCount);
+        if (word2) this._emit('swarm:announce', { kind: 'multikill', text: word2, count: windowCount });
+      }
+    }
+    // Physical punch: the wipe is the beat worth the dip.
+    if (windowCount >= 3) {
+      this._requestHitStop(run);
+      this._emit('camera:shake', {
+        amount: Math.min(1, 0.25 + 0.02 * windowCount),
+        position: payload.pos || null,
+      });
+    }
+  },
+
   _onWavePlanned(payload) {
     const run = liveSwarmRun(this.state);
     if (!run || !payload || !Number.isInteger(payload.wave)) return;
     const wave = payload.wave;
     const boss = swarmBossFor(wave);
     const newcomer = swarmNewcomerFor(wave);
+    // SWARM-07 B1 — a Brood family debut rides the same slam card when the ship roster is quiet.
+    const broodNewcomer = swarmBroodNewcomerFor(wave);
     const bossCard = boss ? { name: boss.label, line: boss.line } : null;
     const newcomerCard = newcomer ? {
       enemyId: newcomer.enemyId,
       name: newcomer.name,
       counter: SWARM_NEWCOMER_COUNTERS[newcomer.enemyId] || null,
-    } : null;
+    } : (broodNewcomer ? {
+      enemyId: broodNewcomer.id,
+      name: broodNewcomer.name,
+      counter: broodNewcomer.counter,
+      brood: true,
+    } : null);
     this._emit('swarm:roundSlam', { wave, boss: bossCard, newcomer: newcomerCard });
     if (bossCard) {
       this._emit('swarm:bossIntro', { name: bossCard.name, line: bossCard.line, wave });

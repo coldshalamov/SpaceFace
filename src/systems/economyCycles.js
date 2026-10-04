@@ -121,8 +121,10 @@ export function createCycle(rng, def, simTime) {
   // (~±1.5 cr swing minimum at base). High-priced goods use the percent band only.
   const base = def && def.basePrice > 0 ? def.basePrice : 50;
   // Compensate the authored minimum for CYCLE_WEIGHT so cheap one-credit listings still cross an
-  // integer boundary on the chart after the short-term overlay is demoted.
-  const minReadableAmp = clamp(1.5 / (base * CYCLE_WEIGHT), 0.02, 0.20);
+  // integer boundary on the chart after the short-term overlay is demoted. The cap must stay above
+  // the floor the cheapest authored base (7 cr) needs at the tuned weight, or it silently
+  // re-flattens exactly the listings the floor exists for.
+  const minReadableAmp = clamp(1.5 / (base * CYCLE_WEIGHT), 0.02, 0.70);
 
   // Amplitude budget scales with commodity volatility; families further modulate it.
   let amp = Math.max(minReadableAmp, randRange(rng, 0.06, 0.18) * vs);

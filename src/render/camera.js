@@ -589,7 +589,8 @@ function isMotionReduced(state) {
 }
 
 export function resolveMasslineReleaseCameraCue(payload, motionReduced = false) {
-  const bonusDv = Math.max(0, finiteOr(payload && payload.bonusDv, 0));
+  const bonusDv = Math.max(0,
+    finiteOr(payload && payload.bonusDv, 0) || finiteOr(payload && payload.selfSlingBonusDv, 0));
   const earned = !!(payload && payload.source === 'massline' && payload.physicsEarned && bonusDv > 0);
   const strength = clamp01(bonusDv / 165);
   return {

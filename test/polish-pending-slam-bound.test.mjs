@@ -61,3 +61,15 @@ test('freshness semantics at consume are unchanged', () => {
   assert.equal(note(21, 10), true);
   assert.equal(consumePendingSlamIfFresh(21, 30), null, '20 ticks later the note is stale');
 });
+
+// D168: the shard-suppression peek must apply the same freshness window as the consume — a
+// note whose kill never landed in-window is dead weight that used to read as a live slam.
+test('a ticked peek reads stale notes as absent without consuming them', () => {
+  resetPendingSlams();
+  assert.equal(note(31, 10), true);
+  assert.ok(peekPendingSlam(31, 10 + PENDING_SLAM_MAX_AGE_TICKS), 'window-edge peek still sees the note');
+  assert.equal(peekPendingSlam(31, 10 + PENDING_SLAM_MAX_AGE_TICKS + 1), null,
+    'one tick past the window the peek reads the note as absent');
+  assert.ok(peekPendingSlam(31), 'the unticked peek still sees it — read-only, nothing consumed');
+  assert.ok(consumePendingSlamIfFresh(31, 10), 'the note remains consumable inside its window');
+});

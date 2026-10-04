@@ -469,6 +469,31 @@ export function normalizeFact(event, p, state) {
       f.dedupe = `deed:stunt:${episodeId}`;
       break;
     }
+    case 'news:headline': {
+      // The record channel. marketNews re-broadcasts every committed ticker line on this same
+      // event — those echoes carry a `source` ('news:publish', 'freight_causality', …) and must
+      // not double-record. An emitter's own line has no source. A citation — receipt/event id or
+      // a domain id — pins the fact to the same key the emitter would cite; a bare line falls
+      // back to its own text so a repeated identical headline records once.
+      if (id(p.source) !== null) return null;
+      const headline = text(p.headline || p.text, '', 160);
+      if (!headline) return { invalid: true };
+      const newsKind = id(p.kind) || 'news';
+      const citation = f.externalId
+        || id(p.markerId) || id(p.aceId) || id(p.profileId) || id(p.sourceId)
+        || id(p.intentId) || id(p.freighterKey)
+        || (id(p.fieldId) ? `${id(p.fieldId)}:${id(p.activityObjectSlotId) || ''}` : null)
+        || (id(p.sectorId) && id(p.zoneId) ? `${id(p.sectorId)}:${id(p.zoneId)}:${id(p.reason) || ''}` : null)
+        || text(headline, '', 96);
+      f.stage = 'story';
+      f.actor = { id: null, key: 'news', player: false, name: 'the wires' };
+      f.group = `newsheadline:${newsKind}`;
+      f.details = { kind: 'news_headline', newsKind,
+        title: properName(newsKind, 'A headline'),
+        note: headline };
+      f.dedupe = `newsHeadline:${newsKind}:${citation}`;
+      break;
+    }
     default: return null;
   }
   f.provides = f.provides.filter(Boolean);

@@ -14,9 +14,11 @@ import { measuredSkinAllowedFor } from '../data/collisionProxyManifests.js';
 
 // Bench A/B: production default ON. Quiet Ceres keeps short-lived lanes empty; the clocks walk
 // then only re-checks Infinity-ttl movers whose POSE was already published in preStep. Skip the
-// walk when short-lived lanes are empty and no shipLike carries despawnAt. Dirty-wake: any
-// projectile/fx/bomb/charge/pickup/mine/snare/payload on a lane, or a shipLike despawnAt, restores
-// the full clocks path. Different angle from held pose-rematch / sleeping-clocks / compact-skip.
+// walk when short-lived lanes are empty, no shipLike carries despawnAt, and no wreck/asteroid
+// lane holds a finite ttl/despawnAt deadline (C8). Dirty-wake: any projectile/fx/bomb/charge/
+// pickup/mine/snare/payload on a lane, a shipLike despawnAt, or a timed wreck/loose asteroid
+// restores the full clocks path. Different angle from held pose-rematch / sleeping-clocks /
+// compact-skip.
 let LIFETIME_SWEEP_QUIET_CLOCKS_SKIP = true;
 export function setLifetimeSweepQuietClocksSkipForBench(enabled) {
   LIFETIME_SWEEP_QUIET_CLOCKS_SKIP = enabled !== false;
@@ -47,6 +49,28 @@ function shipLikeHasDespawnAt(index) {
     if (e && e.alive && e.data && e.data.despawnAt != null) return true;
   }
   return false;
+}
+
+// C8 (research I): a dynamic wreck or loose asteroid expires through the same clocks walk —
+// a ttl countdown or a data.despawnAt deadline. Its deadline must fail the quiet skip open
+// exactly like a shipLike despawnAt, so expiry never waits for an unrelated projectile to
+// wake a short-lived lane. Settled fields (deadline-free lanes, the common case) cost one
+// bounded lane walk over wrecks+asteroids and keep the skip; no universe scan, no behavior
+// change to lifetime semantics — the clocks path already owned both deadlines.
+function laneHasFiniteDeadline(lane) {
+  if (!lane || lane.length === 0) return false;
+  for (let i = 0; i < lane.length; i++) {
+    const e = lane[i];
+    if (!e || !e.alive) continue;
+    if (e.ttl !== Infinity) return true;
+    if (e.data && e.data.despawnAt != null) return true;
+  }
+  return false;
+}
+
+function timedWreckOrAsteroidDeadline(index) {
+  if (!index || index.__spacefaceEntityIndexV1 !== true || index.ready !== true) return false;
+  return laneHasFiniteDeadline(index.wrecks) || laneHasFiniteDeadline(index.asteroids);
 }
 
 
@@ -418,7 +442,8 @@ export const core = {
     // POSE preStep already published. Skip the walk; dirty publish + corpse compact still run.
     const skipQuietClocks = LIFETIME_SWEEP_QUIET_CLOCKS_SKIP
       && shortLivedClockLanesEmpty(index)
-      && !shipLikeHasDespawnAt(index);
+      && !shipLikeHasDespawnAt(index)
+      && !timedWreckOrAsteroidDeadline(index);
     if (!skipQuietClocks) {
       for (let i = 0; i < clocks.length; i++) {
         const e = clocks[i];

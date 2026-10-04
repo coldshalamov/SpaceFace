@@ -75,6 +75,7 @@ import {
   assertProjectileTrailProfileContracts,
 } from './vfxProfiles.js';
 import { createRenderFrameMembrane } from './frameCoordinates.js';
+import { createBroodPresentation } from './broodPresentation.js';
 import { presentedAnchorRot, presentedAnchorXZ } from './presentedAnchor.js';
 import { readOwnedExceptionalSpeed } from './velocityLanguage.js';
 import {
@@ -1062,6 +1063,7 @@ function emptyVfxSubsystemDiag() {
     tetherCable: 0,
     masslineReleaseArc: 0,
     swingTrace: 0,      // attached-body swept-path ribbon (luminous arc of the flail's travel)
+    brood: 0,           // SWARM-07: the Brood tier, instanced bodies drawn this frame
     masslineChainReadout: 0, // thrown mass's accepted release→contact→kill ancestry trace
     monofilamentBlade: 0, // taut monofilament chord: one world-XZ segment, gone the tick it slacks
     dockingCradle: 0,   // holo berth pad on the bay floor while a corridor engagement is live
@@ -2177,6 +2179,7 @@ export const vfx = {
     this._initApexFlare();
     this._initSelectionSigil();
     this._initSeamMarkers();
+    this._initBroodPresentation();
     this._initCombatBeams();
     this._initArcadeStructural();
     this._initFieldGeometry();
@@ -8983,6 +8986,10 @@ export const vfx = {
     if (this._selectionSigil) this._selectionSigil.dispose();
     this._selectionSigil = null;
   },
+  _resetBroodPresentation() {
+    if (this._broodPresentation) this._broodPresentation.dispose();
+    this._broodPresentation = null;
+  },
   _updateSelectionSigil(dt) {
     const sigil = this._selectionSigil;
     if (!sigil) return false;
@@ -9126,6 +9133,31 @@ export const vfx = {
   // -------------------------------------------------------------------------
   _masslineSwingTrace: null,
   _monofilamentBlade: null,
+
+  // -------------------------------------------------------------------------
+  // SWARM-07 B1 — the Brood tier. One InstancedMesh over the sim's flat arrays;
+  // the room's second population costs one draw call. Hidden whenever the run
+  // fields no brood; reduced motion drops the idle bob, never the bodies.
+  // -------------------------------------------------------------------------
+  _broodPresentation: null,
+
+  _initBroodPresentation() {
+    if (!this._scene || this._broodPresentation) return;
+    this._broodPresentation = createBroodPresentation(this._scene, 400);
+  },
+
+  _updateBroodPresentation(dt) {
+    const pres = this._broodPresentation;
+    if (!pres) return false;
+    const state = this.state;
+    const view = state && state.swarmBrood;
+    if (!view || !(view.aliveCount > 0)) return pres.update(null, dt, {});
+    const settings = state.settings || null;
+    const video = settings && settings.video;
+    const access = settings && settings.accessibility;
+    const reducedMotion = !!(video && video.motionReduce) || !!(access && access.flashReduce);
+    return pres.update(view, dt, { simTime: state.simTime, reducedMotion });
+  },
 
   _initMasslineSwingTrace() {
     if (!this._scene) return;
@@ -12189,6 +12221,7 @@ export const vfx = {
       sub.tetherCable = 0;
     }
     sub.swingTrace = this._updateMasslineSwingTrace(dt) ? 1 : 0;
+    sub.brood = this._updateBroodPresentation(dt) ? 1 : 0;
     sub.masslineChainReadout = this._updateMasslineChainReadout(dt) ? 1 : 0;
     sub.monofilamentBlade = this._updateMonofilamentBlade() ? 1 : 0;
     sub.dockingCradle = this._updateDockingCradle(dt) ? 1 : 0;

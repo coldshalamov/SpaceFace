@@ -85,8 +85,15 @@ export function notePendingSlam(target, slam = {}) {
   return true;
 }
 
-export function peekPendingSlam(victimId) {
-  return victimId == null ? null : pendingByVictimId.get(victimId) || null;
+export function peekPendingSlam(victimId, tick) {
+  const note = victimId == null ? null : pendingByVictimId.get(victimId) || null;
+  if (!note || tick == null) return note;
+  // A note past the freshness window can never satisfy consumePendingSlamIfFresh again, so it
+  // must not keep suppressing the shard path that reads this peek. Read-only: the insert-time
+  // prune still owns deletion.
+  const now = Math.max(0, Math.trunc(finite(tick)));
+  const then = Math.max(0, Math.trunc(finite(note.tick)));
+  return Math.abs(now - then) <= PENDING_SLAM_MAX_AGE_TICKS ? note : null;
 }
 
 export function consumePendingSlam(victimId) {

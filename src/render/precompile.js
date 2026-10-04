@@ -88,7 +88,9 @@ function openingScenarioMaterialRecipe(material) {
  * renderer counters or replace a package that the prop already owns.
  */
 export function ensureOpeningGeneratedScenarioPropPackage(root) {
-  if (!root || root.userData?.scenarioAssetRef !== 'asset.slice.civilian_pod') return null;
+  const scenarioPod = !!root && root.userData?.scenarioAssetRef === 'asset.slice.civilian_pod';
+  const generatedVisual = !!root && root.userData?.generatedVisualProducer === 'visual-factory-procedural';
+  if (!scenarioPod && !generatedVisual) return null;
   if (root.userData.openingSubmissionPackage) return root.userData.openingSubmissionPackage;
   const leaves = [];
   root.traverse((object) => {
@@ -127,16 +129,36 @@ export function ensureOpeningGeneratedScenarioPropPackage(root) {
       materials: materials.map(openingScenarioMaterialRecipe),
     });
   });
+  if (scenarioPod) {
+    return stampOpeningSubmissionPackage(root, {
+      schema: 'spaceface.scenario47aGeneratedPropProducer.v1',
+      producer: 'scenario-47a-generated-prop',
+      assetRef: root.userData.scenarioAssetRef,
+      assetId: root.userData.assetId || null,
+      renderContract: openingRecipeValue(root.userData.renderContract || null),
+      leaves,
+    }, {
+      producer: 'scenario-47a-generated-prop',
+      assetId: root.userData.assetId || 'SF_47A_CIVILIAN_POD',
+    });
+  }
+  // Generated factory visuals (D157): the producer marker was set at the factory boundary when
+  // this root was built — see stampBuiltVisual. The leaf recipe is the same recipe contract the
+  // pod publishes, so a mounted beacons/drone/freighter hull proves producer provenance instead
+  // of sitting unverified in the first picture. A root that later mounts an authored packaged
+  // body keeps both boundaries: this recipe describes the procedural substrate, and the
+  // packaged descendant carries its own loader-verified `spacefaceRenderPackage` identity.
   return stampOpeningSubmissionPackage(root, {
-    schema: 'spaceface.scenario47aGeneratedPropProducer.v1',
-    producer: 'scenario-47a-generated-prop',
-    assetRef: root.userData.scenarioAssetRef,
-    assetId: root.userData.assetId || null,
+    schema: 'spaceface.generatedVisualProducerManifest.v1',
+    producer: 'visual-factory-procedural',
+    kind: String(root.userData.kind || ''),
+    visualLanguage: String(root.userData.visualLanguage || ''),
+    interactionKind: String(root.userData.interactionKind || ''),
     renderContract: openingRecipeValue(root.userData.renderContract || null),
     leaves,
   }, {
-    producer: 'scenario-47a-generated-prop',
-    assetId: root.userData.assetId || 'SF_47A_CIVILIAN_POD',
+    producer: 'visual-factory-procedural',
+    assetId: root.userData.assetId || root.name || 'generated-visual-root',
   });
 }
 
