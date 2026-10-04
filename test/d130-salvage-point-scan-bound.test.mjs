@@ -44,9 +44,28 @@ test('D130: salvage-point lookup answers from the wrecks bucket', () => {
   if (typeof sys._ensureState === 'function') sys._ensureState();
   const found = sys._entityForPoint('d130:point');
   assert.ok(found && found.type === 'wreck');
-  const visited = state.salvage && state.salvage.lastPointScanVisits;
+  const visited = sys._rt && sys._rt.lastPointScanVisits;
   assert.ok(Number.isInteger(visited), `expected a visit counter, got ${visited}`);
   assert.ok(visited <= 8, `wreck-bucket visits bounded (got ${visited})`);
+  assert.ok(!('lastPointScanVisits' in (state.salvage || {})),
+    'read-path lookup must not write sim state');
+});
+
+test('D130: sort-pocket payload lookup still resolves by point id', () => {
+  const { sim, state } = buildWorld();
+  // Sort-pocket core: a payload sharing the point id (salvage.js _makeSortPocket).
+  const core = sim.spawn({
+    type: 'payload', pos: { x: 20, z: 0 }, radius: 5, mass: 620, hull: 60, hullMax: 60,
+    data: { salvagePointId: 'd130:sort-point', salvagePool: { cmdty_scrap_metal: 3 } },
+  });
+  assert.ok(core && core.id != null);
+  const sys = Object.create(salvage);
+  sys.state = state;
+  if (typeof sys._ensureState === 'function') sys._ensureState();
+  // Direct entity wins when the point record is absent: the scan must reach payloads.
+  const found = sys._entityForPoint('d130:sort-point');
+  assert.ok(found, 'expected the sort-pocket core to resolve');
+  assert.equal(found.id, core.id);
 });
 
 test('D130: salvage-point miss does not walk the whole map', () => {
@@ -56,8 +75,10 @@ test('D130: salvage-point miss does not walk the whole map', () => {
   if (typeof sys._ensureState === 'function') sys._ensureState();
   const found = sys._entityForPoint('d130:absent');
   assert.equal(found, null);
-  const visited = state.salvage && state.salvage.lastPointScanVisits;
+  const visited = sys._rt && sys._rt.lastPointScanVisits;
   assert.ok(Number.isInteger(visited), `expected a visit counter, got ${visited}`);
   assert.ok(visited < nonWrecks, `miss visits ${visited} < non-wreck bodies ${nonWrecks}`);
   assert.ok(visited <= 8, `miss visits bounded (got ${visited})`);
+  assert.ok(!('lastPointScanVisits' in (state.salvage || {})),
+    'read-path lookup must not write sim state');
 });
