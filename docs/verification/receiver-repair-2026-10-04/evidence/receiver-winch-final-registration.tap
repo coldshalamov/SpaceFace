@@ -1,0 +1,34 @@
+REACQUIRE_FINAL_DIAGNOSTIC {"file":"seed47-head-return-entry.json","job":{"reacquire":null,"reacquireReturnBudget":null,"reacquireRetryTick":29497,"id":"job:ceres:second_measure:long_plate","worker":"ceres:second_measure:breaker","section":"world_site_ceres_second_measure/payload/long_plate","head":"ceres:second_measure:cutter_head","cradle":"ceres:second_measure:section_cradle","phase":"reacquire","recovery":null,"extractionMisalignedSince":null,"phaseTick":18696,"updatedTick":29456,"index":3,"sequence":0,"mountId":"att_000001","towId":null,"receiverId":null,"reason":null,"blockedReason":"reacquire-cargo-moving","restorePending":true},"breaker":{"pos":{"x":-12868.009216308594,"z":9571.973388671875},"vel":{"x":2.7465449900766415e-43,"z":2.7465449900766415e-43},"rot":1.5708546246513937,"angVel":2.3541814200656927e-43},"head":{"pos":{"x":-12898.033142089844,"z":9533.971923828125},"vel":{"x":0.015684328973293304,"z":-0.00017041359387803823},"rot":1.5708682806742715,"angVel":-0.000011932390407309867},"section":{"pos":{"x":-12868,"z":9903.321166992188},"vel":{"x":-0.00005133749436936341,"z":0.26442089676856995},"rot":0.01690680512479922,"angVel":1.0276237597407062e-14},"continued":null}
+REACQUIRE_FINAL_DIAGNOSTIC {"file":"seed47-mid-head-return.json","job":{"reacquire":null,"reacquireReturnBudget":null,"reacquireRetryTick":18752,"id":"job:ceres:second_measure:long_plate","worker":"ceres:second_measure:breaker","section":"world_site_ceres_second_measure/payload/long_plate","head":"ceres:second_measure:cutter_head","cradle":"ceres:second_measure:section_cradle","phase":"extract","recovery":null,"extractionMisalignedSince":null,"phaseTick":20164,"updatedTick":20768,"index":3,"sequence":0,"mountId":"att_000001","towId":"att_000002","receiverId":null,"reason":null,"blockedReason":null,"restorePending":true,"reacquireBlocker":null},"breaker":{"pos":{"x":-12868.009155273438,"z":9573.315795898438},"vel":{"x":0.000038969232264207676,"z":-0.9683859944343567},"rot":1.5707409966692694,"angVel":-0.000056408178352285177},"head":{"pos":{"x":-12898.011657714844,"z":9535.496704101562},"vel":{"x":0.00032468364224769175,"z":-0.9552224278450012},"rot":1.5707888747352732,"angVel":-0.00002329630297026597},"section":{"pos":{"x":-12868,"z":9794.22265625},"vel":{"x":-0.00005102299837744795,"z":-1.07810378074646},"rot":1.0637584324513249e-7,"angVel":0},"continued":{"reacquire":null,"reacquireReturnBudget":null,"reacquireRetryTick":18752,"id":"job:ceres:second_measure:long_plate","worker":"ceres:second_measure:breaker","section":"world_site_ceres_second_measure/payload/long_plate","head":"ceres:second_measure:cutter_head","cradle":"ceres:second_measure:section_cradle","phase":"extract","recovery":null,"extractionMisalignedSince":null,"phaseTick":20169,"updatedTick":20769,"index":3,"sequence":0,"mountId":"att_000001","towId":"att_000002","receiverId":null,"reason":null,"blockedReason":null,"restorePending":true}}
+CERES_REACQUIRE_CYCLE {"file":"seed47-mid-head-return.json","tick":20768,"continuedTick":20769,"plateBeforeTow":{"x":-12868,"y":0,"z":9800},"after":{"x":-12868,"y":0,"z":9794.22265625},"towId":"att_000002"}
+✖ seed47-head-return-entry.json: reacquires the actually released displaced plate and resumes physical extraction with Continue (8072.108378ms)
+✔ seed47-mid-head-return.json: reacquires the actually released displaced plate and resumes physical extraction with Continue (6042.904886ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 1
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 14921.282275
+
+✖ failing tests:
+
+test at test/ceres-reacquire-cycle.test.mjs:7:83
+✖ seed47-head-return-entry.json: reacquires the actually released displaced plate and resumes physical extraction with Continue (8072.108378ms)
+  AssertionError [ERR_ASSERTION]: released cargo is physically reacquired instead of permanently waiting at commissioning
+  + actual - expected
+  
+  + 'reacquire'
+  - 'extract'
+  
+      at TestContext.<anonymous> (file:///workspace/scratch/d2415e46e35b/current-expansion-composition/test/ceres-reacquire-cycle.test.mjs:27:10)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'reacquire',
+    expected: 'extract',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
