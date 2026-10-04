@@ -1037,6 +1037,11 @@ export const aftermathWrecks = {
     for (const fieldId in ecology) {
       const field = ecology[fieldId];
       if (!field || field.sectorId !== sectorId) continue;
+      // The work loop below resolves marker-bound wrecks only (_nearestFieldWreck) — authored
+      // salvage/unique field pools have other owners, so driving those fields' scavengers would
+      // just order an instant departure. Their resident scavenger holds station until a
+      // profession runtime (the Ceres salvor adoption) claims it, like the squatter does.
+      if (field.kind !== 'aftermath') continue;
       for (const slot of field.roster || []) {
         if (!slot || slot.role !== 'scavenger' || slot.status !== 'live') continue;
         const entity = this._resolveEcologySlot(field, slot);
@@ -1048,6 +1053,10 @@ export const aftermathWrecks = {
   _driveScavenger(state, field, entity) {
     const now = Number(state.simTime) || 0;
     const data = entity.data || (entity.data = {});
+    // A hull carrying a job answers to the jobs runtime for steering; the ecology tick must not
+    // also command it (an adopted scavenger on a marker-less approach would be ordered away from
+    // the very wreck its job is wrangling).
+    if (data.jobId) return;
     const work = data.scavengerWork
       || (data.scavengerWork = { state: 'approach', holdQty: 0, nextWorkAt: 0, announcedWreckId: null });
 
@@ -1467,7 +1476,9 @@ export const aftermathWrecks = {
     // A duplicate kill receipt must not mint a second body on the same marker.
     const bound = this._resolveBoundWreck(marker.markerId);
     if (bound && bound.alive !== false) return bound;
-    if (skipIfFracture && peekPendingSlam(marker.victimId)) return null;
+    // Fresh-window peek: a slam note whose kill never landed in-window must not suppress this
+    // wreck or its companion shard (D168 — the tickless peek used to read stale notes as live).
+    if (skipIfFracture && peekPendingSlam(marker.victimId, this.state && this.state.tick)) return null;
     const entity = this.helpers.spawnEntity(this._specForMarker(marker, { atKill: true }));
     if (!entity) return null;
     const run = liveSurvivalRunFor(this.state);
@@ -2416,6 +2427,18 @@ export const aftermathWrecks = {
   _spawnInhabitant(field, slot) {
     const seed = seedOf(this.state);
     if (slot.role === 'scavenger') {
+      // Salvage/unique fields hold authored wrecks, never aftermath markers — a ring spawn
+      // there has no marker-bound wreck to fly into and the worker would turn around and
+      // leave inside a second. On an authored field the ecology's scavenger is resident:
+      // it settles inside the field's working volume like the squatter/trap slots, which is
+      // also where the jobs runtime's scavenger adoption expects to find it.
+      if (field.kind !== 'aftermath') {
+        const settled = inhabitantOffset(seed, field.fieldId, slot.id, slot.role);
+        return this._spawnScavenger(field, {
+          x: field.pos.x + settled.x,
+          z: field.pos.z + settled.z,
+        });
+      }
       // The scavenger arrives from outside work range and flies in — the approach is the tell
       // that someone is racing you for the loot, so it never materializes on top of the wreck.
       const ang = (hash32(seed, field.fieldId, slot.id, slot.role, 'arrivalAng') % 360) * (Math.PI / 180);
@@ -2464,7 +2487,11 @@ export const aftermathWrecks = {
         shipClass: 'fighter',
         // Deliberately NO trafficRole: traffic's rematerialized-adoption path would claim the
         // hull as a hauler, steer it to a station (fighting this system's intent for the same
-        // field), and mint a phantom cargoManifest on top of the work hold.
+        // field), and mint a phantom cargoManifest on top of the work hold. `role` (not
+        // trafficRole) is the occupation identity the jobs runtime's scavenger adoption and
+        // the ordinary role reads (HUD/census) key on — traffic's gates all key trafficRole,
+        // so stamping it does not reopen the hauler claim.
+        role: 'scavenger',
         // The hold uses the ordinary kill-spill schema (data.cargo.items), so a laden scavenger
         // that is killed spills what it stole through the shipped cargo path — no special case.
         cargo: { items: {} },
