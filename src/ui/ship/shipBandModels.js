@@ -10,7 +10,7 @@ import {
   normalizeLivingHull,
 } from '../../core/livingHull.js';
 import { getDerivedStats } from '../../systems/ships.js';
-import { shipCapabilityVerbs } from '../../systems/shipCapabilities.js';
+import { shipCapabilityVerbs, withArticle } from '../../systems/shipCapabilities.js';
 import { handlingProfileForShip } from '../panels/handlingProfile.js';
 import { stopDistanceEstimate } from '../panels/massDelta.js';
 import { describeTechNodeReadiness } from '../screens/techTree.js';
@@ -234,11 +234,12 @@ export function conditionFromEntity(entity) {
   };
 }
 
-/** The fit-screen line that names the heaviest roster hull this fit can tow. */
+/** The fit-screen line that names the hull this fit tows at the under-way bar. */
 export function towSentence(predictions) {
   const name = predictions && predictions.towableHullName;
-  if (!name) return '';
-  return `Can tow a ${name}.`;
+  if (name) return `Can tow ${withArticle(name)}.`;
+  if (predictions && predictions.towCoversRoster) return 'Can tow anything on the roster.';
+  return '';
 }
 
 function handlingSentence(profile, derived, emptyDerived) {
