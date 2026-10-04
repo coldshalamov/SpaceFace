@@ -137,11 +137,14 @@ test('Tethys exposes three ordinary delegated Atlas POIs and materializes their 
   }
 
   const t = boot();
-  assert.equal(
-    t.state.world.activeSector.pois.some((entry) => PQ019_FACILITY_POIS.some((poi) => poi.id === entry.poiId)),
-    false,
-    'world does not fork a second marker beside delegated physical facilities',
-  );
+  // Delegated POIs may join activeSector.pois only as the world's own markerless projection
+  // (id: null, runtimeOwned: true) — a catalog row discovery sweeps can resolve, never a forked
+  // marker entity beside the physical facility.
+  for (const entry of t.state.world.activeSector.pois) {
+    if (!PQ019_FACILITY_POIS.some((poi) => poi.id === entry.poiId)) continue;
+    assert.equal(entry.id, null, `${entry.poiId} must be a markerless projection, not a second marker`);
+    assert.equal(entry.runtimeOwned, true, `${entry.poiId} declares its runtime owner`);
+  }
 
   for (const facility of Object.values(PQ019_FACILITIES)) {
     const visuals = roleEntities(t.state, `${facility.role}_visual`);
