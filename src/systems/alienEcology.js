@@ -816,12 +816,25 @@ export function tickAlienEcology(world, dt) {
         }
         if (meterSite) {
           const r = siteRecord(state, meterSite.siteId);
+          const coherent = r.relaySevered !== true && r.state !== 'severed';
           world.bus.emit('ecology:coherence', {
             siteId: meterSite.siteId,
-            coherent: r.relaySevered !== true && r.state !== 'severed',
+            coherent,
             contamination: sectorC,
             t: now,
           });
+          // The 1 Hz event is the sample. The flight log speaks only when the
+          // reading changes, so a meter inside the field is not a toast every second.
+          const shown = `${meterSite.siteId}:${coherent ? 'coherent' : 'severed'}`;
+          if (ae._cohShown !== shown) {
+            ae._cohShown = shown;
+            const name = meterSite.name || meterSite.siteId;
+            world.bus.emit('comms:log', {
+              from: 'Coherence meter',
+              kind: 'ecology',
+              text: coherent ? `${name} is still coherent.` : `${name} has been severed.`,
+            });
+          }
         }
       }
     }
