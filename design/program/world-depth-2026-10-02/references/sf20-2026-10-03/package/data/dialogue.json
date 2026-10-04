@@ -1,0 +1,905 @@
+{
+  "schema": "spaceface.expansion.dialogue.planning.v1",
+  "lines": [
+    {
+      "id": "SF20-01-first_clearance",
+      "concept_id": "SF20-01",
+      "trigger_proposal": "first_clearance",
+      "text": "Latch Nine. Follow the open arm. The closed one is not a suggestion.",
+      "voice_direction": "Dry, unhurried, lightly resonant machine speech with a soft electromechanical click before sentences. Keep consonants clear; no vocoder on critical instructions. This character is courteous, not another wisecracking mascot.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-01-hold",
+      "concept_id": "SF20-01",
+      "trigger_proposal": "hold",
+      "text": "Hold outside the throat. Something larger has right of way.",
+      "voice_direction": "Dry, unhurried, lightly resonant machine speech with a soft electromechanical click before sentences. Keep consonants clear; no vocoder on critical instructions. This character is courteous, not another wisecracking mascot.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-01-clean_repeat",
+      "concept_id": "SF20-01",
+      "trigger_proposal": "clean_repeat",
+      "text": "Same ship. Better angle. Welcome back.",
+      "voice_direction": "Dry, unhurried, lightly resonant machine speech with a soft electromechanical click before sentences. Keep consonants clear; no vocoder on critical instructions. This character is courteous, not another wisecracking mascot.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-01-player_collision",
+      "concept_id": "SF20-01",
+      "trigger_proposal": "player_collision",
+      "text": "That was the station. It has filed no intention to move.",
+      "voice_direction": "Dry, unhurried, lightly resonant machine speech with a soft electromechanical click before sentences. Keep consonants clear; no vocoder on critical instructions. This character is courteous, not another wisecracking mascot.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-01-repair_paid",
+      "concept_id": "SF20-01",
+      "trigger_proposal": "repair_paid",
+      "text": "Repairs recorded. Your next approach begins without a grudge.",
+      "voice_direction": "Dry, unhurried, lightly resonant machine speech with a soft electromechanical click before sentences. Keep consonants clear; no vocoder on critical instructions. This character is courteous, not another wisecracking mascot.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-02-intro",
+      "concept_id": "SF20-02",
+      "trigger_proposal": "intro",
+      "text": "Sable Venn. I fix the part between what a ship promises and what it does.",
+      "voice_direction": "Warm contralto or low mezzo, close-mic conversational delivery; practical and exact, with amusement reserved for preventable mistakes. No celebrity imitation. Human portrait may be a later separately scoped asset; the shipped character can live through her ship, comms and hands-on demonstrations.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-02-impulse_demo",
+      "concept_id": "SF20-02",
+      "trigger_proposal": "impulse_demo",
+      "text": "More shove. More mass. Nothing in that sentence was free.",
+      "voice_direction": "Warm contralto or low mezzo, close-mic conversational delivery; practical and exact, with amusement reserved for preventable mistakes. No celebrity imitation. Human portrait may be a later separately scoped asset; the shipped character can live through her ship, comms and hands-on demonstrations.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-02-incompatible",
+      "concept_id": "SF20-02",
+      "trigger_proposal": "incompatible",
+      "text": "That mount cannot carry it. The catalog does not get a vote.",
+      "voice_direction": "Warm contralto or low mezzo, close-mic conversational delivery; practical and exact, with amusement reserved for preventable mistakes. No celebrity imitation. Human portrait may be a later separately scoped asset; the shipped character can live through her ship, comms and hands-on demonstrations.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-02-keep_old",
+      "concept_id": "SF20-02",
+      "trigger_proposal": "keep_old",
+      "text": "Then keep the old one. Knowing your tools is also an upgrade.",
+      "voice_direction": "Warm contralto or low mezzo, close-mic conversational delivery; practical and exact, with amusement reserved for preventable mistakes. No celebrity imitation. Human portrait may be a later separately scoped asset; the shipped character can live through her ship, comms and hands-on demonstrations.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-02-return_after_test",
+      "concept_id": "SF20-02",
+      "trigger_proposal": "return_after_test",
+      "text": "Tell me what it did. Not what the label said.",
+      "voice_direction": "Warm contralto or low mezzo, close-mic conversational delivery; practical and exact, with amusement reserved for preventable mistakes. No celebrity imitation. Human portrait may be a later separately scoped asset; the shipped character can live through her ship, comms and hands-on demonstrations.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-03-unclaimed",
+      "concept_id": "SF20-03",
+      "trigger_proposal": "unclaimed",
+      "text": "No living claim. That is a status, not a blessing.",
+      "voice_direction": "An almost musical monotone that pauses before important nouns. Its humor comes from literal classification. Warmth appears when somebody returns an object that nobody expected to see again.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-03-owned",
+      "concept_id": "SF20-03",
+      "trigger_proposal": "owned",
+      "text": "Owner identified. You may still move it. Moving is not owning.",
+      "voice_direction": "An almost musical monotone that pauses before important nouns. Its humor comes from literal classification. Warmth appears when somebody returns an object that nobody expected to see again.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-03-evidence",
+      "concept_id": "SF20-03",
+      "trigger_proposal": "evidence",
+      "text": "The record is wrong. How inconvenient for the record.",
+      "voice_direction": "An almost musical monotone that pauses before important nouns. Its humor comes from literal classification. Warmth appears when somebody returns an object that nobody expected to see again.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-03-return",
+      "concept_id": "SF20-03",
+      "trigger_proposal": "return",
+      "text": "Returned intact. I will round nothing down.",
+      "voice_direction": "An almost musical monotone that pauses before important nouns. Its humor comes from literal classification. Warmth appears when somebody returns an object that nobody expected to see again.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-03-theft",
+      "concept_id": "SF20-03",
+      "trigger_proposal": "theft",
+      "text": "Transfer observed. Consent remains conspicuously absent.",
+      "voice_direction": "An almost musical monotone that pauses before important nouns. Its humor comes from literal classification. Warmth appears when somebody returns an object that nobody expected to see again.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-04-depart",
+      "concept_id": "SF20-04",
+      "trigger_proposal": "depart",
+      "text": "Six vaults. Most of what they carry has never seen a sky.",
+      "voice_direction": "Captain Ilex speaks gently and clinically under pressure. The cargo is precious, but she never berates the player for choosing a rescue over a bonus. Use short counting phrases during the incident.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-04-severed",
+      "concept_id": "SF20-04",
+      "trigger_proposal": "severed",
+      "text": "Vault four is free. The ship can continue. The choice is yours.",
+      "voice_direction": "Captain Ilex speaks gently and clinically under pressure. The cargo is precious, but she never berates the player for choosing a rescue over a bonus. Use short counting phrases during the incident.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-04-tow",
+      "concept_id": "SF20-04",
+      "trigger_proposal": "tow",
+      "text": "Slowly. The roots will forgive distance before they forgive shock.",
+      "voice_direction": "Captain Ilex speaks gently and clinically under pressure. The cargo is precious, but she never berates the player for choosing a rescue over a bonus. Use short counting phrases during the incident.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-04-partial",
+      "concept_id": "SF20-04",
+      "trigger_proposal": "partial",
+      "text": "Four arrived. Four is a future.",
+      "voice_direction": "Captain Ilex speaks gently and clinically under pressure. The cargo is precious, but she never berates the player for choosing a rescue over a bonus. Use short counting phrases during the incident.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-04-total_loss",
+      "concept_id": "SF20-04",
+      "trigger_proposal": "total_loss",
+      "text": "Bring back the recorder. We still owe them an explanation.",
+      "voice_direction": "Captain Ilex speaks gently and clinically under pressure. The cargo is precious, but she never berates the player for choosing a rescue over a bonus. Use short counting phrases during the incident.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-05-offer",
+      "concept_id": "SF20-05",
+      "trigger_proposal": "offer",
+      "text": "Three handoffs. One clean run. I will try not to look impressed.",
+      "voice_direction": "Fast but intelligible, playful rather than taunting; a pilot who loves the shape of a good trajectory. Avoid constant chatter during turns.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-05-sling",
+      "concept_id": "SF20-05",
+      "trigger_proposal": "sling",
+      "text": "That was not the short route. It was the clever one.",
+      "voice_direction": "Fast but intelligible, playful rather than taunting; a pilot who loves the shape of a good trajectory. Avoid constant chatter during turns.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-05-loss",
+      "concept_id": "SF20-05",
+      "trigger_proposal": "loss",
+      "text": "I got there first. You got there interestingly.",
+      "voice_direction": "Fast but intelligible, playful rather than taunting; a pilot who loves the shape of a good trajectory. Avoid constant chatter during turns.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-05-win",
+      "concept_id": "SF20-05",
+      "trigger_proposal": "win",
+      "text": "Fine. I am stealing that corner.",
+      "voice_direction": "Fast but intelligible, playful rather than taunting; a pilot who loves the shape of a good trajectory. Avoid constant chatter during turns.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-05-attack_abort",
+      "concept_id": "SF20-05",
+      "trigger_proposal": "attack_abort",
+      "text": "Clock is dead. People first. Get clear.",
+      "voice_direction": "Fast but intelligible, playful rather than taunting; a pilot who loves the shape of a good trajectory. Avoid constant chatter during turns.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-06-help_offered",
+      "concept_id": "SF20-06",
+      "trigger_proposal": "help_offered",
+      "text": "Mara: We have a line free. Tell us what you need moved.",
+      "voice_direction": "Three identifiable voices: Mara is concise and matter-of-fact; Odo narrates the practical next step; Kit uses humor after danger has passed. One speaker at a time, routed through the same arbiter. No overlapping radio sitcom during combat.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-06-help_declined",
+      "concept_id": "SF20-06",
+      "trigger_proposal": "help_declined",
+      "text": "Odo: Understood. We will keep the approach clear.",
+      "voice_direction": "Three identifiable voices: Mara is concise and matter-of-fact; Odo narrates the practical next step; Kit uses humor after danger has passed. One speaker at a time, routed through the same arbiter. No overlapping radio sitcom during combat.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-06-favor_return",
+      "concept_id": "SF20-06",
+      "trigger_proposal": "favor_return",
+      "text": "Kit: Your terrible afternoon has qualified for our terrible-afternoon program.",
+      "voice_direction": "Three identifiable voices: Mara is concise and matter-of-fact; Odo narrates the practical next step; Kit uses humor after danger has passed. One speaker at a time, routed through the same arbiter. No overlapping radio sitcom during combat.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-06-cleanup",
+      "concept_id": "SF20-06",
+      "trigger_proposal": "cleanup",
+      "text": "Mara: The lane is blocked. The cause can wait until the ships are safe.",
+      "voice_direction": "Three identifiable voices: Mara is concise and matter-of-fact; Odo narrates the practical next step; Kit uses humor after danger has passed. One speaker at a time, routed through the same arbiter. No overlapping radio sitcom during combat.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-06-member_lost",
+      "concept_id": "SF20-06",
+      "trigger_proposal": "member_lost",
+      "text": "Odo: That berth stays empty tonight.",
+      "voice_direction": "Three identifiable voices: Mara is concise and matter-of-fact; Odo narrates the practical next step; Kit uses humor after danger has passed. One speaker at a time, routed through the same arbiter. No overlapping radio sitcom during combat.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-07-first_scan",
+      "concept_id": "SF20-07",
+      "trigger_proposal": "first_scan",
+      "text": "Scissorwake \u2014 cuts exposed lines on a committed pass.",
+      "voice_direction": "Enemy has no conversational personality. A sharp ratcheting spool announces arming; one rising ceramic scrape ends when the attack commits. Optional hostile barks are short and subordinate to warning audio.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-07-windup",
+      "concept_id": "SF20-07",
+      "trigger_proposal": "windup",
+      "text": "Cutter opening. Move the line or move the ship.",
+      "voice_direction": "Enemy has no conversational personality. A sharp ratcheting spool announces arming; one rising ceramic scrape ends when the attack commits. Optional hostile barks are short and subordinate to warning audio.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-07-miss",
+      "concept_id": "SF20-07",
+      "trigger_proposal": "miss",
+      "text": "Cut missed. Jaws resetting.",
+      "voice_direction": "Enemy has no conversational personality. A sharp ratcheting spool announces arming; one rising ceramic scrape ends when the attack commits. Optional hostile barks are short and subordinate to warning audio.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-07-disable",
+      "concept_id": "SF20-07",
+      "trigger_proposal": "disable",
+      "text": "Blade drive disabled.",
+      "voice_direction": "Enemy has no conversational personality. A sharp ratcheting spool announces arming; one rising ceramic scrape ends when the attack commits. Optional hostile barks are short and subordinate to warning audio.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-07-salvage",
+      "concept_id": "SF20-07",
+      "trigger_proposal": "salvage",
+      "text": "A cutter without a cutting edge. Finally, an honest ship.",
+      "voice_direction": "Enemy has no conversational personality. A sharp ratcheting spool announces arming; one rising ceramic scrape ends when the attack commits. Optional hostile barks are short and subordinate to warning audio.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-08-preheat",
+      "concept_id": "SF20-08",
+      "trigger_proposal": "preheat",
+      "text": "Stand clear. This rig does not turn cold quickly.",
+      "voice_direction": "Mostly industrial sound: a compressor inhalation, radiator clacks and a pressured roar. Pilot is impatient, self-preserving and more interested in keeping the stolen machine intact than dying theatrically.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-08-cask_lost",
+      "concept_id": "SF20-08",
+      "trigger_proposal": "cask_lost",
+      "text": "Coolant gone. Pulling back.",
+      "voice_direction": "Mostly industrial sound: a compressor inhalation, radiator clacks and a pressured roar. Pilot is impatient, self-preserving and more interested in keeping the stolen machine intact than dying theatrically.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-08-scan",
+      "concept_id": "SF20-08",
+      "trigger_proposal": "scan",
+      "text": "Kilnback \u2014 external coolant casks; slow turn during a burn.",
+      "voice_direction": "Mostly industrial sound: a compressor inhalation, radiator clacks and a pressured roar. Pilot is impatient, self-preserving and more interested in keeping the stolen machine intact than dying theatrically.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-08-vent",
+      "concept_id": "SF20-08",
+      "trigger_proposal": "vent",
+      "text": "Burn exhausted. Radiator exposed.",
+      "voice_direction": "Mostly industrial sound: a compressor inhalation, radiator clacks and a pressured roar. Pilot is impatient, self-preserving and more interested in keeping the stolen machine intact than dying theatrically.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-08-flee",
+      "concept_id": "SF20-08",
+      "trigger_proposal": "flee",
+      "text": "Keep the scrap. I am keeping the engine.",
+      "voice_direction": "Mostly industrial sound: a compressor inhalation, radiator clacks and a pressured roar. Pilot is impatient, self-preserving and more interested in keeping the stolen machine intact than dying theatrically.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-09-approach",
+      "concept_id": "SF20-09",
+      "trigger_proposal": "approach",
+      "text": "Unsecured freight. Tragic oversight.",
+      "voice_direction": "A hustler who believes every crime is a logistics problem. Short, evasive, amusing without glamorizing a random massacre. Cargo loss\u2014not damage\u2014is the primary trigger for panic.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-09-grab",
+      "concept_id": "SF20-09",
+      "trigger_proposal": "grab",
+      "text": "I have a delivery to make. It has recently changed owners.",
+      "voice_direction": "A hustler who believes every crime is a logistics problem. Short, evasive, amusing without glamorizing a random massacre. Cargo loss\u2014not damage\u2014is the primary trigger for panic.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-09-contested",
+      "concept_id": "SF20-09",
+      "trigger_proposal": "contested",
+      "text": "That is not a handle for two ships.",
+      "voice_direction": "A hustler who believes every crime is a logistics problem. Short, evasive, amusing without glamorizing a random massacre. Cargo loss\u2014not damage\u2014is the primary trigger for panic.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-09-surrender",
+      "concept_id": "SF20-09",
+      "trigger_proposal": "surrender",
+      "text": "Clamp is open. We can all become less involved.",
+      "voice_direction": "A hustler who believes every crime is a logistics problem. Short, evasive, amusing without glamorizing a random massacre. Cargo loss\u2014not damage\u2014is the primary trigger for panic.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-09-escape",
+      "concept_id": "SF20-09",
+      "trigger_proposal": "escape",
+      "text": "Follow the paperwork. I will follow the exit.",
+      "voice_direction": "A hustler who believes every crime is a logistics problem. Short, evasive, amusing without glamorizing a random massacre. Cargo loss\u2014not damage\u2014is the primary trigger for panic.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-10-scan",
+      "concept_id": "SF20-10",
+      "trigger_proposal": "scan",
+      "text": "Mothlight \u2014 two lamps, one weapon. Watch the shutter.",
+      "voice_direction": "Sparse synthetic radio mimicry restricted to authored combat tones, never copies named allies or critical navigation messages. The pilot is a cautious showman who retreats when its apparatus is stripped.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-10-identified",
+      "concept_id": "SF20-10",
+      "trigger_proposal": "identified",
+      "text": "Decoy confirmed. No drive signature.",
+      "voice_direction": "Sparse synthetic radio mimicry restricted to authored combat tones, never copies named allies or critical navigation messages. The pilot is a cautious showman who retreats when its apparatus is stripped.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-10-true_charge",
+      "concept_id": "SF20-10",
+      "trigger_proposal": "true_charge",
+      "text": "Central shutter opening.",
+      "voice_direction": "Sparse synthetic radio mimicry restricted to authored combat tones, never copies named allies or critical navigation messages. The pilot is a cautious showman who retreats when its apparatus is stripped.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-10-stripped",
+      "concept_id": "SF20-10",
+      "trigger_proposal": "stripped",
+      "text": "The performance appears to be over.",
+      "voice_direction": "Sparse synthetic radio mimicry restricted to authored combat tones, never copies named allies or critical navigation messages. The pilot is a cautious showman who retreats when its apparatus is stripped.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-10-retreat",
+      "concept_id": "SF20-10",
+      "trigger_proposal": "retreat",
+      "text": "No audience worth dying for.",
+      "voice_direction": "Sparse synthetic radio mimicry restricted to authored combat tones, never copies named allies or critical navigation messages. The pilot is a cautious showman who retreats when its apparatus is stripped.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-11-jam",
+      "concept_id": "SF20-11",
+      "trigger_proposal": "jam",
+      "text": "Berth two is waiting on that pallet. The rest of the shift is waiting on berth two.",
+      "voice_direction": "Human dispatcher with clipped logistics phrases, noticeably relieved when a jam clears. Machinery itself communicates through clutches and relay clicks, not a sentient station personality.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-11-wrong_berth",
+      "concept_id": "SF20-11",
+      "trigger_proposal": "wrong_berth",
+      "text": "Wrong receiver. Keep the load; take the outside lane.",
+      "voice_direction": "Human dispatcher with clipped logistics phrases, noticeably relieved when a jam clears. Machinery itself communicates through clutches and relay clicks, not a sentient station personality.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-11-restart",
+      "concept_id": "SF20-11",
+      "trigger_proposal": "restart",
+      "text": "Clearance confirmed. Gantry moving in three.",
+      "voice_direction": "Human dispatcher with clipped logistics phrases, noticeably relieved when a jam clears. Machinery itself communicates through clutches and relay clicks, not a sentient station personality.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-11-diversion",
+      "concept_id": "SF20-11",
+      "trigger_proposal": "diversion",
+      "text": "That shipment is no longer on its original route.",
+      "voice_direction": "Human dispatcher with clipped logistics phrases, noticeably relieved when a jam clears. Machinery itself communicates through clutches and relay clicks, not a sentient station personality.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-11-complete",
+      "concept_id": "SF20-11",
+      "trigger_proposal": "complete",
+      "text": "Line moving. Everyone downstream just got their afternoon back.",
+      "voice_direction": "Human dispatcher with clipped logistics phrases, noticeably relieved when a jam clears. Machinery itself communicates through clutches and relay clicks, not a sentient station personality.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-12-arrival",
+      "concept_id": "SF20-12",
+      "trigger_proposal": "arrival",
+      "text": "Borrowed Sun taking berth. Bring something worth a conversation.",
+      "voice_direction": "Market operator Nemi speaks like a host who remembers the work of feeding a crowd. Background chatter is abstract and low-volume; only the selected speaker has semantic lines.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-12-open",
+      "concept_id": "SF20-12",
+      "trigger_proposal": "open",
+      "text": "The light is free. The spare parts are regrettably not.",
+      "voice_direction": "Market operator Nemi speaks like a host who remembers the work of feeding a crowd. Background chatter is abstract and low-volume; only the selected speaker has semantic lines.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-12-repeat",
+      "concept_id": "SF20-12",
+      "trigger_proposal": "repeat",
+      "text": "Same ship, different cargo. That is usually a good story.",
+      "voice_direction": "Market operator Nemi speaks like a host who remembers the work of feeding a crowd. Background chatter is abstract and low-volume; only the selected speaker has semantic lines.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-12-closing",
+      "concept_id": "SF20-12",
+      "trigger_proposal": "closing",
+      "text": "We are packing slowly. Finish your business; no one is racing the door.",
+      "voice_direction": "Market operator Nemi speaks like a host who remembers the work of feeding a crowd. Background chatter is abstract and low-volume; only the selected speaker has semantic lines.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-12-next_stop",
+      "concept_id": "SF20-12",
+      "trigger_proposal": "next_stop",
+      "text": "Next berth is on the chart. We prefer being found.",
+      "voice_direction": "Market operator Nemi speaks like a host who remembers the work of feeding a crowd. Background chatter is abstract and low-volume; only the selected speaker has semantic lines.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-13-discover",
+      "concept_id": "SF20-13",
+      "trigger_proposal": "discover",
+      "text": "The Thimble Door. An optimistic name for a hole in a ship.",
+      "voice_direction": "Mostly quiet. A recorded surveyor voice is concise and slightly amused, never a mystical whisper. The structure itself has no personhood.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-13-clearance",
+      "concept_id": "SF20-13",
+      "trigger_proposal": "clearance",
+      "text": "Hull clear. Attached load still needs room.",
+      "voice_direction": "Mostly quiet. A recorded surveyor voice is concise and slightly amused, never a mystical whisper. The structure itself has no personhood.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-13-uncertain",
+      "concept_id": "SF20-13",
+      "trigger_proposal": "uncertain",
+      "text": "Clearance uncertain. The outside route is open.",
+      "voice_direction": "Mostly quiet. A recorded surveyor voice is concise and slightly amused, never a mystical whisper. The structure itself has no personhood.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-13-recorder",
+      "concept_id": "SF20-13",
+      "trigger_proposal": "recorder",
+      "text": "Recorder recovered. Survey complete.",
+      "voice_direction": "Mostly quiet. A recorded surveyor voice is concise and slightly amused, never a mystical whisper. The structure itself has no personhood.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-13-bypass",
+      "concept_id": "SF20-13",
+      "trigger_proposal": "bypass",
+      "text": "Long way around. Still a perfectly good way around.",
+      "voice_direction": "Mostly quiet. A recorded surveyor voice is concise and slightly amused, never a mystical whisper. The structure itself has no personhood.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-14-intro",
+      "concept_id": "SF20-14",
+      "trigger_proposal": "intro",
+      "text": "The orchard is ready. The weather has not agreed to help.",
+      "voice_direction": "Foreman Alin sounds relaxed because they have learned not to argue with weather. Critical lines are clear, short and directional; ambient poetry waits until the player is safe.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-14-forecast",
+      "concept_id": "SF20-14",
+      "trigger_proposal": "forecast",
+      "text": "Gust in two. Hold outside the band.",
+      "voice_direction": "Foreman Alin sounds relaxed because they have learned not to argue with weather. Critical lines are clear, short and directional; ambient poetry waits until the player is safe.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-14-safe",
+      "concept_id": "SF20-14",
+      "trigger_proposal": "safe",
+      "text": "You are clear. Let the pod settle before the next burn.",
+      "voice_direction": "Foreman Alin sounds relaxed because they have learned not to argue with weather. Critical lines are clear, short and directional; ambient poetry waits until the player is safe.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-14-loss",
+      "concept_id": "SF20-14",
+      "trigger_proposal": "loss",
+      "text": "Lost the harvest, not the lesson. Come back cold.",
+      "voice_direction": "Foreman Alin sounds relaxed because they have learned not to argue with weather. Critical lines are clear, short and directional; ambient poetry waits until the player is safe.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-14-repeat",
+      "concept_id": "SF20-14",
+      "trigger_proposal": "repeat",
+      "text": "Same sky. Different bad idea. Show me.",
+      "voice_direction": "Foreman Alin sounds relaxed because they have learned not to argue with weather. Critical lines are clear, short and directional; ambient poetry waits until the player is safe.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-15-survey",
+      "concept_id": "SF20-15",
+      "trigger_proposal": "survey",
+      "text": "Veil-rays. They noticed the scanner before we noticed them.",
+      "voice_direction": "No speaking animals and no sentimental child voices. Use gentle resonant membrane tones and distant radio from a surveyor, only after the observation window. Captions identify the stimulus/response for players unable to hear it.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-15-disturbance",
+      "concept_id": "SF20-15",
+      "trigger_proposal": "disturbance",
+      "text": "The formation broke when the drive flared.",
+      "voice_direction": "No speaking animals and no sentimental child voices. Use gentle resonant membrane tones and distant radio from a surveyor, only after the observation window. Captions identify the stimulus/response for players unable to hear it.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-15-settle",
+      "concept_id": "SF20-15",
+      "trigger_proposal": "settle",
+      "text": "Engines quiet. Give them room.",
+      "voice_direction": "No speaking animals and no sentimental child voices. Use gentle resonant membrane tones and distant radio from a surveyor, only after the observation window. Captions identify the stimulus/response for players unable to hear it.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-15-observed",
+      "concept_id": "SF20-15",
+      "trigger_proposal": "observed",
+      "text": "The route is there. They are using it, not guarding it.",
+      "voice_direction": "No speaking animals and no sentimental child voices. Use gentle resonant membrane tones and distant radio from a surveyor, only after the observation window. Captions identify the stimulus/response for players unable to hear it.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-15-return",
+      "concept_id": "SF20-15",
+      "trigger_proposal": "return",
+      "text": "Same shelter. Fewer disturbances in the log.",
+      "voice_direction": "No speaking animals and no sentimental child voices. Use gentle resonant membrane tones and distant radio from a surveyor, only after the observation window. Captions identify the stimulus/response for players unable to hear it.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-16-fragment_a",
+      "concept_id": "SF20-16",
+      "trigger_proposal": "fragment_a",
+      "text": "\u2014third shift. Receiver two is answering before we call\u2014",
+      "voice_direction": "Fragmented maintenance radio from the fictional lost crew: dry, intimate, imperfectly stitched. No imitation of the player or a real person. Distortion sits around intelligible words, not on top of captions; unrecovered text remains literally unknown.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-16-fragment_b",
+      "concept_id": "SF20-16",
+      "trigger_proposal": "fragment_b",
+      "text": "\u2014not a second crew. Same words. Wrong order\u2014",
+      "voice_direction": "Fragmented maintenance radio from the fictional lost crew: dry, intimate, imperfectly stitched. No imitation of the player or a real person. Distortion sits around intelligible words, not on top of captions; unrecovered text remains literally unknown.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-16-fragment_c",
+      "concept_id": "SF20-16",
+      "trigger_proposal": "fragment_c",
+      "text": "\u2014leave the recorder attached. We need to know what it remembers\u2014",
+      "voice_direction": "Fragmented maintenance radio from the fictional lost crew: dry, intimate, imperfectly stitched. No imitation of the player or a real person. Distortion sits around intelligible words, not on top of captions; unrecovered text remains literally unknown.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-16-interpretation",
+      "concept_id": "SF20-16",
+      "trigger_proposal": "interpretation",
+      "text": "Recovered record. Source continuity remains unconfirmed.",
+      "voice_direction": "Fragmented maintenance radio from the fictional lost crew: dry, intimate, imperfectly stitched. No imitation of the player or a real person. Distortion sits around intelligible words, not on top of captions; unrecovered text remains literally unknown.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-16-quarantine",
+      "concept_id": "SF20-16",
+      "trigger_proposal": "quarantine",
+      "text": "Signal isolated. The missing segment is still missing.",
+      "voice_direction": "Fragmented maintenance radio from the fictional lost crew: dry, intimate, imperfectly stitched. No imitation of the player or a real person. Distortion sits around intelligible words, not on top of captions; unrecovered text remains literally unknown.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-17-request",
+      "concept_id": "SF20-17",
+      "trigger_proposal": "request",
+      "text": "RETURN TRANSIT TOKEN TO EXTERNAL CRADLE.",
+      "voice_direction": "Procedural, exact, almost ordinary. Short phrases with no theatrical omniscience or mystical riddles. Mechanical audio is sparse sub-bass with a dry upper click; captions repeat the exact directive.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-17-wrong_object",
+      "concept_id": "SF20-17",
+      "trigger_proposal": "wrong_object",
+      "text": "OBJECT IDENTITY DOES NOT SATISFY REQUEST.",
+      "voice_direction": "Procedural, exact, almost ordinary. Short phrases with no theatrical omniscience or mystical riddles. Mechanical audio is sparse sub-bass with a dry upper click; captions repeat the exact directive.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-17-accept",
+      "concept_id": "SF20-17",
+      "trigger_proposal": "accept",
+      "text": "CUSTODY ACCEPTED. TRANSIT INTERVAL OPEN.",
+      "voice_direction": "Procedural, exact, almost ordinary. Short phrases with no theatrical omniscience or mystical riddles. Mechanical audio is sparse sub-bass with a dry upper click; captions repeat the exact directive.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-17-occupied",
+      "concept_id": "SF20-17",
+      "trigger_proposal": "occupied",
+      "text": "CLOSURE DEFERRED. PASSAGE OCCUPIED.",
+      "voice_direction": "Procedural, exact, almost ordinary. Short phrases with no theatrical omniscience or mystical riddles. Mechanical audio is sparse sub-bass with a dry upper click; captions repeat the exact directive.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-17-retain",
+      "concept_id": "SF20-17",
+      "trigger_proposal": "retain",
+      "text": "CUSTODY UNRESOLVED. OUTER ROUTE AVAILABLE.",
+      "voice_direction": "Procedural, exact, almost ordinary. Short phrases with no theatrical omniscience or mystical riddles. Mechanical audio is sparse sub-bass with a dry upper click; captions repeat the exact directive.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-18-rumor",
+      "concept_id": "SF20-18",
+      "trigger_proposal": "rumor",
+      "text": "Yard report: probable pirate strike. No witnesses interviewed.",
+      "voice_direction": "Recorded crew dialogue, short and practical, with life implied by work rather than a long final speech. The survivor is not present to explain the whole plot. Keep silence around important discoveries.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-18-record_a",
+      "concept_id": "SF20-18",
+      "trigger_proposal": "record_a",
+      "text": "We have the tug on the line. Do not burn yet.",
+      "voice_direction": "Recorded crew dialogue, short and practical, with life implied by work rather than a long final speech. The survivor is not present to explain the whole plot. Keep silence around important discoveries.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-18-record_b",
+      "concept_id": "SF20-18",
+      "trigger_proposal": "record_b",
+      "text": "Cut the load. Keep the ship. I said keep the ship.",
+      "voice_direction": "Recorded crew dialogue, short and practical, with life implied by work rather than a long final speech. The survivor is not present to explain the whole plot. Keep silence around important discoveries.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-18-evidence",
+      "concept_id": "SF20-18",
+      "trigger_proposal": "evidence",
+      "text": "The damage pattern supports a lateral tow failure, not incoming fire.",
+      "voice_direction": "Recorded crew dialogue, short and practical, with life implied by work rather than a long final speech. The survivor is not present to explain the whole plot. Keep silence around important discoveries.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-18-partial_report",
+      "concept_id": "SF20-18",
+      "trigger_proposal": "partial_report",
+      "text": "Two records recovered. Final sequence remains incomplete.",
+      "voice_direction": "Recorded crew dialogue, short and practical, with life implied by work rather than a long final speech. The survivor is not present to explain the whole plot. Keep silence around important discoveries.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-19-first_visit",
+      "concept_id": "SF20-19",
+      "trigger_proposal": "first_visit",
+      "text": "Pip: Pick the part. Spanner: We will show you what it changes.",
+      "voice_direction": "Pip: short bright mechanical chirps with text labels. Spanner: one lower mechanical reply. They do not speak over the run announcer. Optional two-line radio banter appears only while idle, never on every focus change.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-19-tradeoff",
+      "concept_id": "SF20-19",
+      "trigger_proposal": "tradeoff",
+      "text": "More impulse. Less room for supplies.",
+      "voice_direction": "Pip: short bright mechanical chirps with text labels. Spanner: one lower mechanical reply. They do not speak over the run announcer. Optional two-line radio banter appears only while idle, never on every focus change.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-19-repair",
+      "concept_id": "SF20-19",
+      "trigger_proposal": "repair",
+      "text": "Hull restored. Resources deducted. Both are on the receipt.",
+      "voice_direction": "Pip: short bright mechanical chirps with text labels. Spanner: one lower mechanical reply. They do not speak over the run announcer. Optional two-line radio banter appears only while idle, never on every focus change.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-19-no_purchase",
+      "concept_id": "SF20-19",
+      "trigger_proposal": "no_purchase",
+      "text": "Keeping the build. Ready when you are.",
+      "voice_direction": "Pip: short bright mechanical chirps with text labels. Spanner: one lower mechanical reply. They do not speak over the run announcer. Optional two-line radio banter appears only while idle, never on every focus change.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-19-denied",
+      "concept_id": "SF20-19",
+      "trigger_proposal": "denied",
+      "text": "Not enough run supplies. Nothing has been charged.",
+      "voice_direction": "Pip: short bright mechanical chirps with text labels. Spanner: one lower mechanical reply. They do not speak over the run announcer. Optional two-line radio banter appears only while idle, never on every focus change.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-20-offer",
+      "concept_id": "SF20-20",
+      "trigger_proposal": "offer",
+      "text": "Mara: We do not need a hero. We need a working power unit.",
+      "voice_direction": "The final scene uses the established crew voices, not a new narrator. Gratitude is small and specific: a working route, a clear arrival, a lamp someone fixed. Keep the big emotional beat in the physical change.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-20-partial",
+      "concept_id": "SF20-20",
+      "trigger_proposal": "partial",
+      "text": "Odo: Half a route is not a route. But it is a start we can use.",
+      "voice_direction": "The final scene uses the established crew voices, not a new narrator. Gratitude is small and specific: a working route, a clear arrival, a lamp someone fixed. Keep the big emotional beat in the physical change.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-20-ilex_branch",
+      "concept_id": "SF20-20",
+      "trigger_proposal": "ilex_branch",
+      "text": "Ilex: There is room for four vaults. Four will do.",
+      "voice_direction": "The final scene uses the established crew voices, not a new narrator. Gratitude is small and specific: a working route, a clear arrival, a lamp someone fixed. Keep the big emotional beat in the physical change.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-20-first_convoy",
+      "concept_id": "SF20-20",
+      "trigger_proposal": "first_convoy",
+      "text": "Kit: Look at that. Ordinary traffic. Practically a miracle.",
+      "voice_direction": "The final scene uses the established crew voices, not a new narrator. Gratitude is small and specific: a working route, a clear arrival, a lamp someone fixed. Keep the big emotional beat in the physical change.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    },
+    {
+      "id": "SF20-20-final",
+      "concept_id": "SF20-20",
+      "trigger_proposal": "final",
+      "text": "Mara: Your part is on the record. So is everyone else\u2019s.",
+      "voice_direction": "The final scene uses the established crew voices, not a new narrator. Gratitude is small and specific: a working route, a clear arrival, a lamp someone fixed. Keep the big emotional beat in the physical change.",
+      "priority": "resolve through current voice arbiter",
+      "caption_required": true
+    }
+  ]
+}

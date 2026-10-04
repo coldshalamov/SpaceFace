@@ -1,0 +1,10 @@
+{
+  "transform": "glTF Transform dedup only; no simplification, quantization, compression, flattening or node pruning",
+  "inputSHA256": "f2a7d59c2e21eb38792404ef25cf4b6c70c827554997e5eba9a9eb5da0eb70cd",
+  "outputSHA256": "b9652f016df179441a0f9cde9e69531f4c3a2c07a9ac9a87187c6122a953c43c",
+  "inputBytes": 426068,
+  "outputBytes": 423260,
+  "positionArraysByteIdentical": true,
+  "artStatus": "unfinished, user-rejected direction",
+  "releaseAdmitted": false
+}

@@ -1,0 +1,212 @@
+{
+  "status": "immutable M7 art/geometry review candidate; no runtime or budget admission",
+  "source_sha256": "c5507e3d6eb5012a4bd9b496f3bdd38d71c01c41c5cc3d4e325e3e9e29c60d9a",
+  "glb_sha256": "07479da4dc2c95ab9c8fbd1c2e7cf91703bc3e499f02ccd0a7ab148ee7df0e28",
+  "unchanged_physics": {
+    "mass": 22,
+    "radius": 7.1,
+    "centerOfMass": [
+      -0.7,
+      0,
+      0
+    ],
+    "contactTips": [
+      [
+        6,
+        0,
+        -1.6
+      ],
+      [
+        6,
+        0,
+        1.6
+      ]
+    ],
+    "attackProfile": {
+      "range": 55,
+      "windupTicks": 30,
+      "commitTicks": 48,
+      "recoveryTicks": 48,
+      "speed": 105,
+      "damage": 12
+    }
+  },
+  "geometryGate": "All87 distinct fixed-tick fractions: precise exposed reverse bound <=.115603 WU and forward raster bound <=.116266 WU",
+  "files": {
+    "study-m6/mite-M6-source.blend": {
+      "sha256": "c5507e3d6eb5012a4bd9b496f3bdd38d71c01c41c5cc3d4e325e3e9e29c60d9a",
+      "bytes": 1458410
+    },
+    "candidate-m7/brood_mite_v01.glb": {
+      "sha256": "07479da4dc2c95ab9c8fbd1c2e7cf91703bc3e499f02ccd0a7ab148ee7df0e28",
+      "bytes": 410644
+    },
+    "candidate-m7/brood-mite.motion.json": {
+      "sha256": "1dce1265d79bfd29d7fd24a3c5e2d67cbef2be83391ee746c10b3767937233c6",
+      "bytes": 4167
+    },
+    "candidate-m7/mite-M7-LOD0-editable.blend": {
+      "sha256": "554bd8b1fad8201445aea596d35756a8860d18fbf1998349eee4a3646403d0df",
+      "bytes": 913690
+    },
+    "candidate-m7/mite-M7-LOD1-editable.blend": {
+      "sha256": "123fb5ca275a5cbe825e7e3763134aca49f9c0e33b65f97cd6634d4c8aa3d4eb",
+      "bytes": 780946
+    },
+    "candidate-m7/mite-M7-LOD2-editable.blend": {
+      "sha256": "d6e6807577b5afe1a07537d253032382659c4cff0915f4d34b4b8f2fcaa8e5e0",
+      "bytes": 741946
+    },
+    "candidate-m7/review/mite-m7-matched-lod-review.png": {
+      "sha256": "875fc3af204e50142548787a772c03cf1d5fe512bbb6c0ee469d44b19c218810",
+      "bytes": 861443
+    },
+    "candidate-m7/precise-boundary-check.json": {
+      "sha256": "d5b9c5d079d40bdd4f26ad979fd87e75ad97d1ecdee95b833a9a176cdb5e40a2",
+      "bytes": 82124
+    },
+    "candidate-m7/lod-coverage-check.json": {
+      "sha256": "6f4a9be34c906f1bad03982bd92d22c8c00fb6e345e93754889cd815400fa006",
+      "bytes": 73591
+    },
+    "candidate-m7/assembly.json": {
+      "sha256": "171bae05d1c0b4ae8ed8b96244087511e20b70443189c3d5b6b512dc25cfb743",
+      "bytes": 1868
+    },
+    "candidate-m7/lod-stats.json": {
+      "sha256": "b5427fd2ff7d473309df350390180affa527e638dfc3cfea59964b692aa08c1b",
+      "bytes": 9167
+    },
+    "candidate-m6/source-geometry-check.json": {
+      "sha256": "81e3f32e600329613d4a5a7a8b02de54d9b967afe56a0411c1ad1d1f9d28f488",
+      "bytes": 3827
+    },
+    "contracts/proposed-mite-contract.json": {
+      "sha256": "02dee48836ad542476276648b4bde2949d2b782d18220ffcdcfd7d175a589ce4",
+      "bytes": 19524
+    },
+    "contracts/contract-diff.json": {
+      "sha256": "a8cac74c66ba8aad9c1949ed21eb09a90695622add7f57b063fba469d62946ec",
+      "bytes": 24750
+    },
+    "contracts/convex-proxy-proposal.json": {
+      "sha256": "34aa700687ad84db1122a2c867905132c3a585b05cd147395d0807401f1d6664",
+      "bytes": 18238
+    },
+    "contracts/convex-overlay-poses.png": {
+      "sha256": "4d95c9912092c0d471f0dfa734e25b940c8ff15c93ccb3022c44fa30ca71c7b5",
+      "bytes": 224727
+    },
+    "patches/brood-mite-contract.proposed.patch": {
+      "sha256": "ba823f36857742e1d082f28816fbaa9a455b6c846cf7ab7152f3e7dcee678ef1",
+      "bytes": 22578
+    },
+    "patches/brood-mite-authoring.proposed.patch": {
+      "sha256": "8d6f9fee92bb10de7e70ac410b659e54aa96484f65bc6beb73eb373d10851830",
+      "bytes": 63574
+    },
+    "patches/asset-replacements.json": {
+      "sha256": "3d9af7ba6bfd2aae5c0a9fcf6ed13191f14eb92251cef75c7992e14f854d0ef4",
+      "bytes": 858
+    },
+    "tests/contract-and-contact.log": {
+      "sha256": "a54dc3e462529101f9eea6e859851c2513f5c483e3d298ac5f33ad5850bae008",
+      "bytes": 706
+    },
+    "tests/recipe-import.log": {
+      "sha256": "1bfd46f2eb9ea176fae55db4c620d03b738dfb19e07d0e2cc2f77c2f35639a31",
+      "bytes": 126
+    },
+    "tests/patch-check.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "DELIVERY.md": {
+      "sha256": "17eea1d4ca5396dedabb70926a45bab786d80dc229c24a2abb7d0dc23100f633",
+      "bytes": 7346
+    },
+    "LOD_ADMISSION.md": {
+      "sha256": "b4ae621f9d533a636e371c66b2f8a2b9686160cfe8889797e106c387212eed1b",
+      "bytes": 1579
+    },
+    "MATERIAL_BATCHING_REVIEW.md": {
+      "sha256": "e6391f2b0bdd13962fa793f346128910d31a108a34a13b978c46bcc78410a0f0",
+      "bytes": 3336
+    },
+    "source/export_lods.py": {
+      "sha256": "92efe9d944f374d8573ad4a312f765bfa7c72c812cb4137c14a0b5e4016029eb",
+      "bytes": 7120
+    },
+    "source/render_comparison.py": {
+      "sha256": "0b724fac5c6b6c525064f98c7ba5d4978089cfc8343ce44e998854f2bac11109",
+      "bytes": 3493
+    },
+    "source/build_mite.py": {
+      "sha256": "a9823aeefe50d6e99c91c05e734b980c165a4d5ac24139c5ada0a91610976788",
+      "bytes": 11457
+    },
+    "source/forge_paths.py": {
+      "sha256": "ef2714a6d961231d89aed6607951606c52ff7884ef885c23a0038628424b98b9",
+      "bytes": 592
+    },
+    "source/a6_shape_helpers.py": {
+      "sha256": "4aae3c788d9e81e12635abc931af686cbdf9da1dfef19a285b973720c213080e",
+      "bytes": 2225
+    },
+    "source/shape_base.py": {
+      "sha256": "47b3fd878d76754aeec5703ee7edbe66992635c6723acc51b1a75083b7764af9",
+      "bytes": 2932
+    },
+    "source/extract_anatomy.py": {
+      "sha256": "db4daa8df6bc89914c3ddb2325a1a6f0e3faf041beec98d84a518ea1b7f4197c",
+      "bytes": 1002
+    },
+    "source/derive_proxies.py": {
+      "sha256": "0e442047bfa1697700679dd4a90e663f1c0003ea8f380dc4066aa974120ac7ce",
+      "bytes": 7280
+    },
+    "source/build_contract.py": {
+      "sha256": "470b3e1e78bfe5912cdb24c286d517f3e825ea39c6d59ec22c5e210514b1875b",
+      "bytes": 2617
+    },
+    "source/verify_geometry.py": {
+      "sha256": "f3a1a32aa2dcc8ac5c2639f5cb4d9498bfc65a035c490dbb4ded9679c16c2b82",
+      "bytes": 1881
+    },
+    "source/check_precise_boundary.py": {
+      "sha256": "a59499960ceb3dd65e6f425048d135e74bbf29185ed8508e52855e160ede4c95",
+      "bytes": 4030
+    },
+    "source/check_lod_coverage.py": {
+      "sha256": "7354bca4e8399a2fba7df829ec8570cc2821833d1cfff85aa48298a12a1b323a",
+      "bytes": 3742
+    },
+    "source/assemble_candidate.py": {
+      "sha256": "e4ce45f7205b9f5b3548ccc84658c28e095e1faf5691241655d26ee06461ab6e",
+      "bytes": 3562
+    },
+    "tests/contract-and-contact.test.mjs": {
+      "sha256": "ed18925514a61cc1df499dc6cff317ea47c0b3dd07b07160fba9e5fffc972d2e",
+      "bytes": 5830
+    }
+  },
+  "readOnlyForgeDependencies": {
+    "/workspace/shared/SpaceFace-integration-d0ae/tools/blender/forge/forge.py": "987500394bedd3875c916afa7eeff368c2c545e4ac7371592a9f02e3283e064d",
+    "/workspace/shared/SpaceFace-integration-d0ae/tools/blender/forge/forge_export.py": "f9964988d97fef59ce764031091993178af96989be88c8e237f63d8da6c6b946",
+    "/workspace/shared/SpaceFace-integration-d0ae/tools/blender/forge/brood_kit.py": "80f98695b94feddfd5cae9ac435dc2b01658fdc965c6278f41cffb96f344c14d",
+    "/workspace/shared/SpaceFace-integration-d0ae/tools/blender/forge/animations/motion_bank.py": "b0f0c16db14facc11bb7dcc6e4441693a756caa80300ed75fc3f6f463277bd45"
+  },
+  "libraryDelivery": {
+    "library_file_id": "libfile_6b0595d75f9081919c4d70c8d009236a",
+    "file_id": "file_000000004e04823093941e95340f000f",
+    "version": 0,
+    "imageSha256": "875fc3af204e50142548787a772c03cf1d5fe512bbb6c0ee469d44b19c218810"
+  },
+  "openGates": [
+    "root M7 final static review",
+    "canonical shared convex native/projectile/LOS/tether integration",
+    "9-batch and1000-triangle LOD2 budget",
+    "actual default-route Look, transition pixels and target GPU/swarm40 evidence"
+  ],
+  "frozen": true
+}

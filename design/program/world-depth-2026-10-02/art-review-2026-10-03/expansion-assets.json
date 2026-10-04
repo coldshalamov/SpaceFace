@@ -1,0 +1,3310 @@
+{
+  "root": "isolated integration candidate (not a Git checkout)",
+  "read_only_inputs": true,
+  "base_pin": "f10eec26ab34c09ca43314fae3c683ebf48c7a68",
+  "local_pin": "fb73c1cdf5f8a41ee7eb1e9fdaaa143f810c1d0f",
+  "upstream_pin": "d0ae623385521e64b7f4e4d3940adc58482e2cbc",
+  "staging_is_not_git_checkout": true,
+  "scope": "All current parts-manifest additions relative to common base, plus supporting source/motion provenance; original local delta is retained separately to distinguish regenerated artifacts from original art.",
+  "base_part_rows": 183,
+  "current_part_rows": 208,
+  "new_model_count": 25,
+  "new_by_family": {
+    "Stormshift": 12,
+    "Ceres": 9,
+    "Brood": 4
+  },
+  "unique_recipe_count": 18,
+  "new_motion_banks": [
+    "assets/ships/motions/brood-charger.motion.json",
+    "assets/ships/motions/brood-leecher.motion.json",
+    "assets/ships/motions/brood-mite.motion.json",
+    "assets/ships/motions/brood-spitter.motion.json",
+    "assets/ships/motions/ceres-breaker.motion.json",
+    "assets/ships/motions/ceres-section-cradle.motion.json",
+    "assets/ships/motions/stormshift-collector.motion.json",
+    "assets/ships/motions/stormshift-service-cradle-blocked.motion.json",
+    "assets/ships/motions/stormshift-service-cradle-intact.motion.json",
+    "assets/ships/motions/stormshift-service-cradle-repaired.motion.json",
+    "assets/ships/motions/stormshift-service-craft.motion.json"
+  ],
+  "all_source_and_release_hashes_match_manifest": true,
+  "delta_counts": {
+    "motion bank": 10,
+    "art/support source": 26,
+    "catalog/manifest": 3,
+    "new source/release model": 48,
+    "regenerated existing render package metadata": 285,
+    "new render package metadata": 24,
+    "new compiled model": 24,
+    "recompiled existing model": 1
+  },
+  "new_models": [
+    {
+      "id": "wholeship_ship_stormshift_collector_v01",
+      "classification": "new expansion model",
+      "category": "wholeships",
+      "source_model_path": "assets/ships/parts/wholeships/ship_stormshift_collector_v01.glb",
+      "source_available": true,
+      "release_model_path": "assets/ships/release/parts/wholeships/ship_stormshift_collector_v01.glb",
+      "release_available": true,
+      "forge_id": "stormshift_collector",
+      "note": "Forge Stormshift collector: articulated low intake cheeks, folding radiator fans and four cargo canister positions. Live game visual and target GPU review pending.",
+      "recipe_path": "tools/blender/forge/ships/stormshift_collector.py",
+      "recipe_available": true,
+      "asset_id": "SF_STORMSHIFT_COLLECTOR_V01",
+      "layout": "npc",
+      "state": null,
+      "packages": [
+        {
+          "key": "stormshift-collector",
+          "model_path": "assets/ships/release/render-packages/stormshift-collector/render.glb",
+          "metadata_path": "assets/ships/release/render-packages/stormshift-collector/render-package.json",
+          "provenance": {
+            "path": "assets/ships/release/render-packages/stormshift-collector/render.glb",
+            "exists": true,
+            "base_present": false,
+            "local_present": true,
+            "upstream_present": true,
+            "bytes": 1747432,
+            "sha256": "269dccbde5aaa3177a1b970f5c94611913581a2c7410ff1d80fc452e3e5695b0",
+            "git_blob_oid": "342dc238166763392e5fb483bff973058dab71fd",
+            "matches_pinned": [
+              "local"
+            ],
+            "first_pass_integration": "conflicts"
+          }
+        }
+      ],
+      "family": "Stormshift",
+      "provenance": {
+        "source_model": {
+          "path": "assets/ships/parts/wholeships/ship_stormshift_collector_v01.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": true,
+          "bytes": 2319096,
+          "sha256": "d01f07348d32723939a9e704896d4d76f68cf8d026b63bfb90cb584f514b9e2f",
+          "git_blob_oid": "af64289bcf7d9a79d58235a526447275679287de",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "conflicts"
+        },
+        "release_model": {
+          "path": "assets/ships/release/parts/wholeships/ship_stormshift_collector_v01.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": true,
+          "bytes": 1095208,
+          "sha256": "37e16653cd0cb877add39c27f456f76895540a193f2b2933428ecc758e17c8ac",
+          "git_blob_oid": "6be9ae515b8151eb2b86054a948811c8cfde7868",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "conflicts"
+        },
+        "recipe": {
+          "path": "tools/blender/forge/ships/stormshift_collector.py",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": true,
+          "bytes": 16630,
+          "sha256": "98f3f1394b22935e21543a7de2dc437f52e810fc5828d87a24095106d6a4c9d3",
+          "git_blob_oid": "2dec91a6ab7988ba80168799e043be5bafe2f806",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "conflicts"
+        }
+      },
+      "source_metadata": {
+        "generator": "Khronos glTF Blender I/O v4.3.47",
+        "extensions_used": [
+          "KHR_materials_emissive_strength",
+          "KHR_materials_specular"
+        ],
+        "material_names": [
+          "Material_Armor",
+          "Material_Emissive_Amber",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Thruster",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Accent",
+          "Material_MechanicalDark",
+          "Material_Emissive_NavRed",
+          "Material_Emissive_NavGreen"
+        ],
+        "material_finish_tags": [
+          "forge-v1"
+        ],
+        "images": 6,
+        "lod_nodes": [],
+        "mesh_count_all_lods": 136
+      },
+      "registered_metrics": {
+        "tris": 33094,
+        "bytes": 2319096,
+        "bounds": {
+          "min": [
+            -9.19598388671875,
+            -0.800000011920929,
+            -8.74010181427002
+          ],
+          "max": [
+            8.89571475982666,
+            2.047304153442383,
+            8.74073600769043
+          ],
+          "dimensionsM": [
+            18.09169864654541,
+            2.8473041653633118,
+            17.48083782196045
+          ]
+        }
+      },
+      "release_manifest_hash_match": {
+        "source": true,
+        "release": true
+      },
+      "motion_banks": [
+        "assets/ships/motions/stormshift-collector.motion.json"
+      ],
+      "provenance_note": "Present as a new file in both local and upstream; initial conflict, current bytes choose/resolve their variants"
+    },
+    {
+      "id": "place_stormshift_cooling_rack_intact_v01",
+      "classification": "new expansion model",
+      "category": "places",
+      "source_model_path": "assets/ships/parts/places/place_stormshift_cooling_rack_intact_v01.glb",
+      "source_available": true,
+      "release_model_path": "assets/ships/release/parts/places/place_stormshift_cooling_rack_intact_v01.glb",
+      "release_available": true,
+      "forge_id": "place_stormshift_cooling_rack_intact",
+      "note": "Forge Stormshift cooling_rack intact; source-origin at 2 WU/m; compound collision owned by simulation.",
+      "recipe_path": "tools/blender/forge/ships/stormshift_cooling_rack.py",
+      "recipe_available": true,
+      "asset_id": "SF_STORMSHIFT_COOLING_RACK_INTACT_V01",
+      "layout": "place",
+      "state": "intact",
+      "packages": [
+        {
+          "key": "stormshift-cooling-rack-intact",
+          "model_path": "assets/ships/release/render-packages/stormshift-cooling-rack-intact/render.glb",
+          "metadata_path": "assets/ships/release/render-packages/stormshift-cooling-rack-intact/render-package.json",
+          "provenance": {
+            "path": "assets/ships/release/render-packages/stormshift-cooling-rack-intact/render.glb",
+            "exists": true,
+            "base_present": false,
+            "local_present": true,
+            "upstream_present": false,
+            "bytes": 1407008,
+            "sha256": "36ece4017028e611e09dea317eacdda2f21bc6b1dff3a93179cba614ced9d5a2",
+            "git_blob_oid": "bece91c27f4490bfc9a7820d1ef66132a0d55e4b",
+            "matches_pinned": [
+              "local"
+            ],
+            "first_pass_integration": "applied_local"
+          }
+        }
+      ],
+      "family": "Stormshift",
+      "provenance": {
+        "source_model": {
+          "path": "assets/ships/parts/places/place_stormshift_cooling_rack_intact_v01.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 2338584,
+          "sha256": "15929f7c786e3797c3b6bb513debffb56de537d3aea0361a6e1fc7af028c3a14",
+          "git_blob_oid": "79bae02da56cf52520941222291ce9491434ce3d",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "release_model": {
+          "path": "assets/ships/release/parts/places/place_stormshift_cooling_rack_intact_v01.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 788400,
+          "sha256": "5342c9e46ea90d88a4a627026bc785b7c57220928eb05ca5641803ddb6aecb9b",
+          "git_blob_oid": "a00bf8d0ca51c3ddca7ec612151d00943d35dc12",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "recipe": {
+          "path": "tools/blender/forge/ships/stormshift_cooling_rack.py",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": true,
+          "bytes": 13512,
+          "sha256": "6222f9c83b53b93b34e7fdf8800d50c95236649c3f7cbe4c36ac93f040f786a6",
+          "git_blob_oid": "b14291291d74bc8c8f49755a4ea5bac491ce1b08",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "conflicts"
+        }
+      },
+      "source_metadata": {
+        "generator": "Khronos glTF Blender I/O v4.3.47",
+        "extensions_used": [
+          "KHR_materials_emissive_strength"
+        ],
+        "material_names": [
+          "Material_Armor",
+          "Material_Emissive_Amber",
+          "Material_BrushedMetal",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Accent",
+          "Material_Warning"
+        ],
+        "material_finish_tags": [
+          "forge-v1"
+        ],
+        "images": 6,
+        "lod_nodes": [],
+        "mesh_count_all_lods": 47
+      },
+      "registered_metrics": {
+        "tris": 22300,
+        "bytes": 2338584,
+        "bounds": {
+          "min": [
+            -5.389999866485596,
+            -0.8799999952316284,
+            -6.099999904632568
+          ],
+          "max": [
+            7.059999942779541,
+            1.5698097944259644,
+            2.4000000953674316
+          ],
+          "dimensionsM": [
+            12.449999809265137,
+            2.4498097896575928,
+            8.5
+          ]
+        }
+      },
+      "release_manifest_hash_match": {
+        "source": true,
+        "release": true
+      },
+      "motion_banks": [],
+      "provenance_note": "Absent from common base and upstream pin; added by expansion local pin, with current byte comparison recorded"
+    },
+    {
+      "id": "place_stormshift_cooling_rack_damaged_v01",
+      "classification": "new expansion model",
+      "category": "places",
+      "source_model_path": "assets/ships/parts/places/place_stormshift_cooling_rack_damaged_v01.glb",
+      "source_available": true,
+      "release_model_path": "assets/ships/release/parts/places/place_stormshift_cooling_rack_damaged_v01.glb",
+      "release_available": true,
+      "forge_id": "place_stormshift_cooling_rack_damaged",
+      "note": "Forge Stormshift cooling_rack damaged; source-origin at 2 WU/m; compound collision owned by simulation.",
+      "recipe_path": "tools/blender/forge/ships/stormshift_cooling_rack.py",
+      "recipe_available": true,
+      "asset_id": "SF_STORMSHIFT_COOLING_RACK_DAMAGED_V01",
+      "layout": "place",
+      "state": "damaged",
+      "packages": [
+        {
+          "key": "stormshift-cooling-rack-damaged",
+          "model_path": "assets/ships/release/render-packages/stormshift-cooling-rack-damaged/render.glb",
+          "metadata_path": "assets/ships/release/render-packages/stormshift-cooling-rack-damaged/render-package.json",
+          "provenance": {
+            "path": "assets/ships/release/render-packages/stormshift-cooling-rack-damaged/render.glb",
+            "exists": true,
+            "base_present": false,
+            "local_present": true,
+            "upstream_present": false,
+            "bytes": 1337348,
+            "sha256": "78918c4938ed5ddc5b66c33ea9ee845176f17415dbb241ac458dad93375b6584",
+            "git_blob_oid": "4691dfdc319c7f404cb339d91feb1a3080da4ba2",
+            "matches_pinned": [
+              "local"
+            ],
+            "first_pass_integration": "applied_local"
+          }
+        }
+      ],
+      "family": "Stormshift",
+      "provenance": {
+        "source_model": {
+          "path": "assets/ships/parts/places/place_stormshift_cooling_rack_damaged_v01.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 2210272,
+          "sha256": "cf9b81c287386ff62a941ba0cc6d2a37bcc4aa4e70337ad045f2a3d0950307d5",
+          "git_blob_oid": "aa323b0927710984fa8ce39bd5ac2417fb2d8377",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "release_model": {
+          "path": "assets/ships/release/parts/places/place_stormshift_cooling_rack_damaged_v01.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 752480,
+          "sha256": "c8b11cc76ae57996225199ffaeabecde2e375bddde368558f6296dff56cfe243",
+          "git_blob_oid": "341dbf2a2a7543731a0fc8a3f0b050fe6d0a5240",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "recipe": {
+          "path": "tools/blender/forge/ships/stormshift_cooling_rack.py",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": true,
+          "bytes": 13512,
+          "sha256": "6222f9c83b53b93b34e7fdf8800d50c95236649c3f7cbe4c36ac93f040f786a6",
+          "git_blob_oid": "b14291291d74bc8c8f49755a4ea5bac491ce1b08",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "conflicts"
+        }
+      },
+      "source_metadata": {
+        "generator": "Khronos glTF Blender I/O v4.3.47",
+        "extensions_used": [
+          "KHR_materials_emissive_strength"
+        ],
+        "material_names": [
+          "Material_Armor",
+          "Material_Emissive_Amber",
+          "Material_BrushedMetal",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Accent",
+          "Material_Warning"
+        ],
+        "material_finish_tags": [
+          "forge-v1"
+        ],
+        "images": 6,
+        "lod_nodes": [],
+        "mesh_count_all_lods": 47
+      },
+      "registered_metrics": {
+        "tris": 21012,
+        "bytes": 2210272,
+        "bounds": {
+          "min": [
+            -5.389999866485596,
+            -0.8799999952316284,
+            -6.099999904632568
+          ],
+          "max": [
+            7.059999942779541,
+            1.5698097944259644,
+            2.4000000953674316
+          ],
+          "dimensionsM": [
+            12.449999809265137,
+            2.4498097896575928,
+            8.5
+          ]
+        }
+      },
+      "release_manifest_hash_match": {
+        "source": true,
+        "release": true
+      },
+      "motion_banks": [],
+      "provenance_note": "Absent from common base and upstream pin; added by expansion local pin, with current byte comparison recorded"
+    },
+    {
+      "id": "place_stormshift_cooling_rack_repaired_v01",
+      "classification": "new expansion model",
+      "category": "places",
+      "source_model_path": "assets/ships/parts/places/place_stormshift_cooling_rack_repaired_v01.glb",
+      "source_available": true,
+      "release_model_path": "assets/ships/release/parts/places/place_stormshift_cooling_rack_repaired_v01.glb",
+      "release_available": true,
+      "forge_id": "place_stormshift_cooling_rack_repaired",
+      "note": "Forge Stormshift cooling_rack repaired; source-origin at 2 WU/m; compound collision owned by simulation.",
+      "recipe_path": "tools/blender/forge/ships/stormshift_cooling_rack.py",
+      "recipe_available": true,
+      "asset_id": "SF_STORMSHIFT_COOLING_RACK_REPAIRED_V01",
+      "layout": "place",
+      "state": "repaired",
+      "packages": [
+        {
+          "key": "stormshift-cooling-rack-repaired",
+          "model_path": "assets/ships/release/render-packages/stormshift-cooling-rack-repaired/render.glb",
+          "metadata_path": "assets/ships/release/render-packages/stormshift-cooling-rack-repaired/render-package.json",
+          "provenance": {
+            "path": "assets/ships/release/render-packages/stormshift-cooling-rack-repaired/render.glb",
+            "exists": true,
+            "base_present": false,
+            "local_present": true,
+            "upstream_present": false,
+            "bytes": 1417536,
+            "sha256": "b30424b75b4555baaa4ab04fb3322622a0aa864edebaf3ad62e5cbdef9799269",
+            "git_blob_oid": "2f0c49c4084772628cfdc146c3d1d4d35afb2f37",
+            "matches_pinned": [
+              "local"
+            ],
+            "first_pass_integration": "applied_local"
+          }
+        }
+      ],
+      "family": "Stormshift",
+      "provenance": {
+        "source_model": {
+          "path": "assets/ships/parts/places/place_stormshift_cooling_rack_repaired_v01.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 2356028,
+          "sha256": "1f6651c39c12f92ea03e79108c5ddafed5fa3f3db5abde27325124e4b0f5a8dd",
+          "git_blob_oid": "3521e75f9a3c0eaf80c6a0bba2a76892e6b2169c",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "release_model": {
+          "path": "assets/ships/release/parts/places/place_stormshift_cooling_rack_repaired_v01.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 793368,
+          "sha256": "73ca9c4f1054d7dd4a96e8a4c31b2b470543afddd02175811e333ce9aea61289",
+          "git_blob_oid": "e5dc8ca2fcda519981a5b79b66c2cbef23f8bd35",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "recipe": {
+          "path": "tools/blender/forge/ships/stormshift_cooling_rack.py",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": true,
+          "bytes": 13512,
+          "sha256": "6222f9c83b53b93b34e7fdf8800d50c95236649c3f7cbe4c36ac93f040f786a6",
+          "git_blob_oid": "b14291291d74bc8c8f49755a4ea5bac491ce1b08",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "conflicts"
+        }
+      },
+      "source_metadata": {
+        "generator": "Khronos glTF Blender I/O v4.3.47",
+        "extensions_used": [
+          "KHR_materials_emissive_strength"
+        ],
+        "material_names": [
+          "Material_Armor",
+          "Material_Emissive_Amber",
+          "Material_BrushedMetal",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Accent",
+          "Material_Warning"
+        ],
+        "material_finish_tags": [
+          "forge-v1"
+        ],
+        "images": 6,
+        "lod_nodes": [],
+        "mesh_count_all_lods": 47
+      },
+      "registered_metrics": {
+        "tris": 22500,
+        "bytes": 2356028,
+        "bounds": {
+          "min": [
+            -5.389999866485596,
+            -0.8799999952316284,
+            -6.099999904632568
+          ],
+          "max": [
+            7.059999942779541,
+            1.590000033378601,
+            2.4000000953674316
+          ],
+          "dimensionsM": [
+            12.449999809265137,
+            2.4700000286102295,
+            8.5
+          ]
+        }
+      },
+      "release_manifest_hash_match": {
+        "source": true,
+        "release": true
+      },
+      "motion_banks": [],
+      "provenance_note": "Absent from common base and upstream pin; added by expansion local pin, with current byte comparison recorded"
+    },
+    {
+      "id": "place_stormshift_service_cradle_intact_v01",
+      "classification": "new expansion model",
+      "category": "places",
+      "source_model_path": "assets/ships/parts/places/place_stormshift_service_cradle_intact_v01.glb",
+      "source_available": true,
+      "release_model_path": "assets/ships/release/parts/places/place_stormshift_service_cradle_intact_v01.glb",
+      "release_available": true,
+      "forge_id": "place_stormshift_service_cradle_intact",
+      "note": "Forge Stormshift service_cradle intact; source-origin at 2 WU/m; compound collision owned by simulation.",
+      "recipe_path": "tools/blender/forge/ships/stormshift_service_cradle.py",
+      "recipe_available": true,
+      "asset_id": "SF_STORMSHIFT_SERVICE_CRADLE_INTACT_V01",
+      "layout": "place",
+      "state": "intact",
+      "packages": [
+        {
+          "key": "stormshift-service-cradle-intact",
+          "model_path": "assets/ships/release/render-packages/stormshift-service-cradle-intact/render.glb",
+          "metadata_path": "assets/ships/release/render-packages/stormshift-service-cradle-intact/render-package.json",
+          "provenance": {
+            "path": "assets/ships/release/render-packages/stormshift-service-cradle-intact/render.glb",
+            "exists": true,
+            "base_present": false,
+            "local_present": true,
+            "upstream_present": false,
+            "bytes": 759168,
+            "sha256": "4e2973f60f1da0fe537d6fdc9b15f33d508eae75b8a66e60b815f2ea79e734da",
+            "git_blob_oid": "06a19504b77dc81ae41de064d00901892b27e13e",
+            "matches_pinned": [
+              "local"
+            ],
+            "first_pass_integration": "applied_local"
+          }
+        }
+      ],
+      "family": "Stormshift",
+      "provenance": {
+        "source_model": {
+          "path": "assets/ships/parts/places/place_stormshift_service_cradle_intact_v01.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 1204144,
+          "sha256": "04fc5e23df4dfdce6c7cd66f9882e3f4f8e54581c79236dc48ba6ca03a91ab0e",
+          "git_blob_oid": "2f008656529dab246c7c24304d33f670e5319127",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "release_model": {
+          "path": "assets/ships/release/parts/places/place_stormshift_service_cradle_intact_v01.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 466048,
+          "sha256": "6a89a9f84e6d62e2bcf2da7828b722d9d2f500229df644b12edf4d250c3a3a97",
+          "git_blob_oid": "5904262fa3c588a6ebbed3db2909d73226f3f7a7",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "recipe": {
+          "path": "tools/blender/forge/ships/stormshift_service_cradle.py",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 12995,
+          "sha256": "ada0606a8cc277a7e9b1d6811ac3d3d79a0e64d3658f438793fd7b34eb9757fd",
+          "git_blob_oid": "fb6cb3584f1f54da3626bd4b91f748365366b393",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        }
+      },
+      "source_metadata": {
+        "generator": "Khronos glTF Blender I/O v4.3.47",
+        "extensions_used": [
+          "KHR_materials_emissive_strength"
+        ],
+        "material_names": [
+          "Material_Armor",
+          "Material_Hull",
+          "Material_Emissive_Warm",
+          "Material_Accent",
+          "Material_Mechanical",
+          "Material_MechanicalDark",
+          "Material_Warning",
+          "Material_BrushedMetal"
+        ],
+        "material_finish_tags": [
+          "forge-v1"
+        ],
+        "images": 6,
+        "lod_nodes": [],
+        "mesh_count_all_lods": 40
+      },
+      "registered_metrics": {
+        "tris": 9648,
+        "bytes": 1204144,
+        "bounds": {
+          "min": [
+            -13.47499942779541,
+            -0.9750000238418579,
+            -9.524999618530273
+          ],
+          "max": [
+            13.47499942779541,
+            1.975292444229126,
+            7.599999904632568
+          ],
+          "dimensionsM": [
+            26.94999885559082,
+            2.950292468070984,
+            17.124999523162842
+          ]
+        }
+      },
+      "release_manifest_hash_match": {
+        "source": true,
+        "release": true
+      },
+      "motion_banks": [
+        "assets/ships/motions/stormshift-service-cradle-intact.motion.json"
+      ],
+      "provenance_note": "Absent from common base and upstream pin; added by expansion local pin, with current byte comparison recorded"
+    },
+    {
+      "id": "place_stormshift_service_cradle_blocked_v01",
+      "classification": "new expansion model",
+      "category": "places",
+      "source_model_path": "assets/ships/parts/places/place_stormshift_service_cradle_blocked_v01.glb",
+      "source_available": true,
+      "release_model_path": "assets/ships/release/parts/places/place_stormshift_service_cradle_blocked_v01.glb",
+      "release_available": true,
+      "forge_id": "place_stormshift_service_cradle_blocked",
+      "note": "Forge Stormshift service_cradle blocked; source-origin at 2 WU/m; compound collision owned by simulation.",
+      "recipe_path": "tools/blender/forge/ships/stormshift_service_cradle.py",
+      "recipe_available": true,
+      "asset_id": "SF_STORMSHIFT_SERVICE_CRADLE_BLOCKED_V01",
+      "layout": "place",
+      "state": "blocked",
+      "packages": [
+        {
+          "key": "stormshift-service-cradle-blocked",
+          "model_path": "assets/ships/release/render-packages/stormshift-service-cradle-blocked/render.glb",
+          "metadata_path": "assets/ships/release/render-packages/stormshift-service-cradle-blocked/render-package.json",
+          "provenance": {
+            "path": "assets/ships/release/render-packages/stormshift-service-cradle-blocked/render.glb",
+            "exists": true,
+            "base_present": false,
+            "local_present": true,
+            "upstream_present": false,
+            "bytes": 581896,
+            "sha256": "e123816fdb9453c9ebf84d0208add1bcc1104aaff0a34229d89d1c31c3b75336",
+            "git_blob_oid": "908db91ff325331290aac8a3349f75f6d48c4433",
+            "matches_pinned": [
+              "local"
+            ],
+            "first_pass_integration": "applied_local"
+          }
+        }
+      ],
+      "family": "Stormshift",
+      "provenance": {
+        "source_model": {
+          "path": "assets/ships/parts/places/place_stormshift_service_cradle_blocked_v01.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 905100,
+          "sha256": "1f372701c8a916a3f47ab4b6a33b0dddcacb5d62cac65587a687297901c1b844",
+          "git_blob_oid": "2f5565aea50c2f119386ecc7dc2719e73d2af28c",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "release_model": {
+          "path": "assets/ships/release/parts/places/place_stormshift_service_cradle_blocked_v01.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 387492,
+          "sha256": "d44cbc2ac89405496d43d5a434ea85f3e4ae78285214afa4494ac1ab972219bc",
+          "git_blob_oid": "4e24c724f56fa64b3d25ff64083fc715ad2b8ab7",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "recipe": {
+          "path": "tools/blender/forge/ships/stormshift_service_cradle.py",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 12995,
+          "sha256": "ada0606a8cc277a7e9b1d6811ac3d3d79a0e64d3658f438793fd7b34eb9757fd",
+          "git_blob_oid": "fb6cb3584f1f54da3626bd4b91f748365366b393",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        }
+      },
+      "source_metadata": {
+        "generator": "Khronos glTF Blender I/O v4.3.47",
+        "extensions_used": [
+          "KHR_materials_emissive_strength"
+        ],
+        "material_names": [
+          "Material_Armor",
+          "Material_BrushedMetal",
+          "Material_Emissive_NavRed",
+          "Material_Hull",
+          "Material_Emissive_Warm",
+          "Material_Accent",
+          "Material_Mechanical",
+          "Material_MechanicalDark",
+          "Material_Warning"
+        ],
+        "material_finish_tags": [
+          "forge-v1"
+        ],
+        "images": 6,
+        "lod_nodes": [],
+        "mesh_count_all_lods": 40
+      },
+      "registered_metrics": {
+        "tris": 6560,
+        "bytes": 905100,
+        "bounds": {
+          "min": [
+            -13.47499942779541,
+            -0.9750000238418579,
+            -9.524999618530273
+          ],
+          "max": [
+            13.424999237060547,
+            1.975292444229126,
+            7.599999904632568
+          ],
+          "dimensionsM": [
+            26.899998664855957,
+            2.950292468070984,
+            17.124999523162842
+          ]
+        }
+      },
+      "release_manifest_hash_match": {
+        "source": true,
+        "release": true
+      },
+      "motion_banks": [
+        "assets/ships/motions/stormshift-service-cradle-blocked.motion.json"
+      ],
+      "provenance_note": "Absent from common base and upstream pin; added by expansion local pin, with current byte comparison recorded"
+    },
+    {
+      "id": "place_stormshift_service_cradle_repaired_v01",
+      "classification": "new expansion model",
+      "category": "places",
+      "source_model_path": "assets/ships/parts/places/place_stormshift_service_cradle_repaired_v01.glb",
+      "source_available": true,
+      "release_model_path": "assets/ships/release/parts/places/place_stormshift_service_cradle_repaired_v01.glb",
+      "release_available": true,
+      "forge_id": "place_stormshift_service_cradle_repaired",
+      "note": "Forge Stormshift service_cradle repaired; source-origin at 2 WU/m; compound collision owned by simulation.",
+      "recipe_path": "tools/blender/forge/ships/stormshift_service_cradle.py",
+      "recipe_available": true,
+      "asset_id": "SF_STORMSHIFT_SERVICE_CRADLE_REPAIRED_V01",
+      "layout": "place",
+      "state": "repaired",
+      "packages": [
+        {
+          "key": "stormshift-service-cradle-repaired",
+          "model_path": "assets/ships/release/render-packages/stormshift-service-cradle-repaired/render.glb",
+          "metadata_path": "assets/ships/release/render-packages/stormshift-service-cradle-repaired/render-package.json",
+          "provenance": {
+            "path": "assets/ships/release/render-packages/stormshift-service-cradle-repaired/render.glb",
+            "exists": true,
+            "base_present": false,
+            "local_present": true,
+            "upstream_present": false,
+            "bytes": 785668,
+            "sha256": "b634b88d4ed40a614a2736177396024c09753d91fe988c5bc7577f838f9b8945",
+            "git_blob_oid": "aab970c435e1a324065a75ba3f1780f3fc43c694",
+            "matches_pinned": [
+              "local"
+            ],
+            "first_pass_integration": "applied_local"
+          }
+        }
+      ],
+      "family": "Stormshift",
+      "provenance": {
+        "source_model": {
+          "path": "assets/ships/parts/places/place_stormshift_service_cradle_repaired_v01.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 1239304,
+          "sha256": "179dda3ef5525badfe6405dc98d8dbe5281304364f0dee12777ecace1596a467",
+          "git_blob_oid": "d10f10717be2c519a755bc8142f6f43922cac75a",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "release_model": {
+          "path": "assets/ships/release/parts/places/place_stormshift_service_cradle_repaired_v01.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 480948,
+          "sha256": "fd31256403b665b193acae786b4e5f680f46ea4377eb1bec93ae1a27fa6a9f3b",
+          "git_blob_oid": "ebb980699cae17f611cae84fcd0b7681786759c7",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "recipe": {
+          "path": "tools/blender/forge/ships/stormshift_service_cradle.py",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 12995,
+          "sha256": "ada0606a8cc277a7e9b1d6811ac3d3d79a0e64d3658f438793fd7b34eb9757fd",
+          "git_blob_oid": "fb6cb3584f1f54da3626bd4b91f748365366b393",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        }
+      },
+      "source_metadata": {
+        "generator": "Khronos glTF Blender I/O v4.3.47",
+        "extensions_used": [
+          "KHR_materials_emissive_strength"
+        ],
+        "material_names": [
+          "Material_Armor",
+          "Material_BrushedMetal",
+          "Material_Hull",
+          "Material_Emissive_Warm",
+          "Material_Accent",
+          "Material_Mechanical",
+          "Material_MechanicalDark",
+          "Material_Warning"
+        ],
+        "material_finish_tags": [
+          "forge-v1"
+        ],
+        "images": 6,
+        "lod_nodes": [],
+        "mesh_count_all_lods": 45
+      },
+      "registered_metrics": {
+        "tris": 9908,
+        "bytes": 1239304,
+        "bounds": {
+          "min": [
+            -13.47499942779541,
+            -0.9750000238418579,
+            -9.524999618530273
+          ],
+          "max": [
+            13.5,
+            1.975292444229126,
+            7.599999904632568
+          ],
+          "dimensionsM": [
+            26.97499942779541,
+            2.950292468070984,
+            17.124999523162842
+          ]
+        }
+      },
+      "release_manifest_hash_match": {
+        "source": true,
+        "release": true
+      },
+      "motion_banks": [
+        "assets/ships/motions/stormshift-service-cradle-repaired.motion.json"
+      ],
+      "provenance_note": "Absent from common base and upstream pin; added by expansion local pin, with current byte comparison recorded"
+    },
+    {
+      "id": "wholeship_ship_stormshift_service_craft_v01",
+      "classification": "new expansion model",
+      "category": "wholeships",
+      "source_model_path": "assets/ships/parts/wholeships/ship_stormshift_service_craft_v01.glb",
+      "source_available": true,
+      "release_model_path": "assets/ships/release/parts/wholeships/ship_stormshift_service_craft_v01.glb",
+      "release_available": true,
+      "forge_id": "stormshift_service_craft",
+      "note": "Dedicated Stormshift receiving/service craft. Physics-owned articulated service arm and finite replacement stock; target GPU visual review pending.",
+      "recipe_path": "tools/blender/forge/ships/stormshift_service_craft.py",
+      "recipe_available": true,
+      "asset_id": "SF_STORMSHIFT_SERVICE_CRAFT_V01",
+      "layout": "npc",
+      "state": null,
+      "packages": [
+        {
+          "key": "stormshift-service-craft",
+          "model_path": "assets/ships/release/render-packages/stormshift-service-craft/render.glb",
+          "metadata_path": "assets/ships/release/render-packages/stormshift-service-craft/render-package.json",
+          "provenance": {
+            "path": "assets/ships/release/render-packages/stormshift-service-craft/render.glb",
+            "exists": true,
+            "base_present": false,
+            "local_present": true,
+            "upstream_present": false,
+            "bytes": 1491792,
+            "sha256": "4fd8c8e91b9fe52343acffdff0abae53f61d4895942e6d8f2c1b3d6a619e13ff",
+            "git_blob_oid": "951f5e6c50709e371616cf3384b1a9bd706cdc62",
+            "matches_pinned": [
+              "local"
+            ],
+            "first_pass_integration": "applied_local"
+          }
+        }
+      ],
+      "family": "Stormshift",
+      "provenance": {
+        "source_model": {
+          "path": "assets/ships/parts/wholeships/ship_stormshift_service_craft_v01.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 2047168,
+          "sha256": "1e3e72d8b056b8483ad14068a2220aaf377219b9bdbd84688663d24855204ede",
+          "git_blob_oid": "71e2be7c1f89bd7ff24559d1d5f31cb5c7d5acb2",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "release_model": {
+          "path": "assets/ships/release/parts/wholeships/ship_stormshift_service_craft_v01.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 993188,
+          "sha256": "54069cae4302d2da8e32cf158233de67c470795eebb3a90d288d3b6ef6e57285",
+          "git_blob_oid": "1e3b1dd060f44cc202b71151711d29d88ea6dce7",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "recipe": {
+          "path": "tools/blender/forge/ships/stormshift_service_craft.py",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 18197,
+          "sha256": "6d9dd34a8e4f09e48b03198f43357d0d0ee65db484793e18b643792a2c7672d6",
+          "git_blob_oid": "e6ce1f88b009460fc1c985c00c3a6a226efea775",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        }
+      },
+      "source_metadata": {
+        "generator": "Khronos glTF Blender I/O v4.3.47",
+        "extensions_used": [
+          "KHR_materials_emissive_strength",
+          "KHR_materials_specular"
+        ],
+        "material_names": [
+          "Material_Armor",
+          "Material_Emissive_Amber",
+          "Material_BrushedMetal",
+          "Material_Canopy",
+          "Material_Thruster",
+          "Material_Emissive_NavRed",
+          "Material_Emissive_NavGreen",
+          "Material_Hull",
+          "Material_Emissive_Warm",
+          "Material_Accent",
+          "Material_Mechanical",
+          "Material_MechanicalDark",
+          "Material_Warning"
+        ],
+        "material_finish_tags": [
+          "forge-v1"
+        ],
+        "images": 6,
+        "lod_nodes": [],
+        "mesh_count_all_lods": 100
+      },
+      "registered_metrics": {
+        "tris": 30070,
+        "bytes": 2047168,
+        "bounds": {
+          "min": [
+            -6.470888137817383,
+            -0.8003404140472412,
+            -4.029999732971191
+          ],
+          "max": [
+            7.250020980834961,
+            2.325336456298828,
+            3.203347682952881
+          ],
+          "dimensionsM": [
+            13.720909118652344,
+            3.1256768703460693,
+            7.233347415924072
+          ]
+        }
+      },
+      "release_manifest_hash_match": {
+        "source": true,
+        "release": true
+      },
+      "motion_banks": [
+        "assets/ships/motions/stormshift-service-craft.motion.json"
+      ],
+      "provenance_note": "Absent from common base and upstream pin; added by expansion local pin, with current byte comparison recorded"
+    },
+    {
+      "id": "wholeship_ship_stormshift_clamp_raider_v01",
+      "classification": "new expansion model",
+      "category": "wholeships",
+      "source_model_path": "assets/ships/parts/wholeships/ship_stormshift_clamp_raider_v01.glb",
+      "source_available": true,
+      "release_model_path": "assets/ships/release/parts/wholeships/ship_stormshift_clamp_raider_v01.glb",
+      "release_available": true,
+      "forge_id": "stormshift_clamp_raider",
+      "note": "Fixed stern-jawed Stormshift hardware thief; source-origin compound collision and physical aft fairlead. Target GPU visual review pending.",
+      "recipe_path": "tools/blender/forge/ships/stormshift_clamp_raider.py",
+      "recipe_available": true,
+      "asset_id": "SF_STORMSHIFT_CLAMP_RAIDER_V01",
+      "layout": "npc",
+      "state": null,
+      "packages": [
+        {
+          "key": "stormshift-clamp-raider",
+          "model_path": "assets/ships/release/render-packages/stormshift-clamp-raider/render.glb",
+          "metadata_path": "assets/ships/release/render-packages/stormshift-clamp-raider/render-package.json",
+          "provenance": {
+            "path": "assets/ships/release/render-packages/stormshift-clamp-raider/render.glb",
+            "exists": true,
+            "base_present": false,
+            "local_present": true,
+            "upstream_present": false,
+            "bytes": 1400296,
+            "sha256": "a7c52813afd00c20395d3363d01bfdcfcc7eeb20012d34ef7f784bdb3d45537d",
+            "git_blob_oid": "71fefb028348f49463faf7f05a2fbc2177c0289a",
+            "matches_pinned": [
+              "local"
+            ],
+            "first_pass_integration": "applied_local"
+          }
+        }
+      ],
+      "family": "Stormshift",
+      "provenance": {
+        "source_model": {
+          "path": "assets/ships/parts/wholeships/ship_stormshift_clamp_raider_v01.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 1908788,
+          "sha256": "4edfc2d5e1838fe5590c63a3871b53f40c10e94cbd6ecd805ee9876e479c4324",
+          "git_blob_oid": "495423796fb9a0aefd4d6d513c3706410b91f9b2",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "release_model": {
+          "path": "assets/ships/release/parts/wholeships/ship_stormshift_clamp_raider_v01.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 832232,
+          "sha256": "ee222d6708b379a5fdd536a2e5ddc7eb0629682fbbdc6d914ebb085e4f1100d8",
+          "git_blob_oid": "cc42fb71ba62586775ae7e915f09e343c74f9e0f",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "recipe": {
+          "path": "tools/blender/forge/ships/stormshift_clamp_raider.py",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 11417,
+          "sha256": "4619192f072302abcd6bbbf072a6c745935c2efd0dab33a4be9a9bdccd26b41e",
+          "git_blob_oid": "6a5dcf9214118737eecd00eb3755a6fc47a2a3ff",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        }
+      },
+      "source_metadata": {
+        "generator": "Khronos glTF Blender I/O v4.3.47",
+        "extensions_used": [
+          "KHR_materials_emissive_strength",
+          "KHR_materials_specular"
+        ],
+        "material_names": [
+          "Material_Armor",
+          "Material_Emissive_Amber",
+          "Material_BrushedMetal",
+          "Material_Canopy",
+          "Material_Thruster",
+          "Material_Emissive_NavRed",
+          "Material_Emissive_NavGreen",
+          "Material_Hull",
+          "Material_Emissive_Warm",
+          "Material_Accent",
+          "Material_Mechanical",
+          "Material_MechanicalDark",
+          "Material_Warning"
+        ],
+        "material_finish_tags": [
+          "forge-v1"
+        ],
+        "images": 6,
+        "lod_nodes": [],
+        "mesh_count_all_lods": 40
+      },
+      "registered_metrics": {
+        "tris": 29454,
+        "bytes": 1908788,
+        "bounds": {
+          "min": [
+            -6.800000190734863,
+            -1,
+            -6.500000476837158
+          ],
+          "max": [
+            4.101189136505127,
+            2.5568530559539795,
+            6.500000476837158
+          ],
+          "dimensionsM": [
+            10.90118932723999,
+            3.5568530559539795,
+            13.000000953674316
+          ]
+        }
+      },
+      "release_manifest_hash_match": {
+        "source": true,
+        "release": true
+      },
+      "motion_banks": [],
+      "provenance_note": "Absent from common base and upstream pin; added by expansion local pin, with current byte comparison recorded"
+    },
+    {
+      "id": "place_ceres_second_measure",
+      "classification": "new expansion model",
+      "category": "places",
+      "source_model_path": "assets/ships/parts/places/place_ceres_second_measure.glb",
+      "source_available": true,
+      "release_model_path": "assets/ships/release/parts/places/place_ceres_second_measure.glb",
+      "release_available": true,
+      "forge_id": "place_ceres_second_measure",
+      "note": "P03 Second Measure matched structural shipbreak. Source origin, two through-passages and independent keel mouth. Runtime collision is world-site owned.",
+      "recipe_path": "tools/blender/forge/ships/place_ceres_second_measure.py",
+      "recipe_available": true,
+      "asset_id": "SF_PLACE_CERES_SECOND_MEASURE",
+      "layout": "place",
+      "state": null,
+      "packages": [
+        {
+          "key": "ceres-second-measure",
+          "model_path": "assets/ships/release/render-packages/ceres-second-measure/render.glb",
+          "metadata_path": "assets/ships/release/render-packages/ceres-second-measure/render-package.json",
+          "provenance": {
+            "path": "assets/ships/release/render-packages/ceres-second-measure/render.glb",
+            "exists": true,
+            "base_present": false,
+            "local_present": true,
+            "upstream_present": false,
+            "bytes": 4777696,
+            "sha256": "288b1d1bcd7ae50c4747dd169448dfdd2b6be8e09485d7c2ff0ef3fe2de79e89",
+            "git_blob_oid": "3438e85279ddc7275dea1d07b079203602254a33",
+            "matches_pinned": [
+              "local"
+            ],
+            "first_pass_integration": "applied_local"
+          }
+        }
+      ],
+      "family": "Ceres",
+      "provenance": {
+        "source_model": {
+          "path": "assets/ships/parts/places/place_ceres_second_measure.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 7449728,
+          "sha256": "83fd27f3490af1d1f49961fc0276404ff1857959c18593a9d788dc5342312f09",
+          "git_blob_oid": "01b6bd54e46e36b2e3272c323d43a0378116f51f",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "release_model": {
+          "path": "assets/ships/release/parts/places/place_ceres_second_measure.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 2150124,
+          "sha256": "bd4446fa90f389366abf0e54780974c5dd0f9b0c8efe75edbfa6a0281862431d",
+          "git_blob_oid": "583129ace9b936811d8cab1deaef9f2563816c59",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "recipe": {
+          "path": "tools/blender/forge/ships/place_ceres_second_measure.py",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 307,
+          "sha256": "ae805d88aa184b99cfac921acff8da2675eba73890a9e354efa1318c2840c94d",
+          "git_blob_oid": "1eaa46b56ee4b61648a6975f86d2f2ce877f6bfd",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        }
+      },
+      "source_metadata": {
+        "generator": "Khronos glTF Blender I/O v4.3.47",
+        "extensions_used": [
+          "KHR_materials_emissive_strength"
+        ],
+        "material_names": [
+          "Material_Armor",
+          "Material_Emissive_Amber",
+          "Material_BrushedMetal",
+          "Material_Hull",
+          "Material_Accent",
+          "Material_Mechanical",
+          "Material_MechanicalDark",
+          "Material_Warning"
+        ],
+        "material_finish_tags": [
+          "forge-v1"
+        ],
+        "images": 6,
+        "lod_nodes": [],
+        "mesh_count_all_lods": 24
+      },
+      "registered_metrics": {
+        "tris": 127944,
+        "bytes": 7449728,
+        "bounds": {
+          "min": [
+            -90,
+            -11.791524887084961,
+            -33.82500076293945
+          ],
+          "max": [
+            90,
+            14,
+            49.5
+          ],
+          "dimensionsM": [
+            180,
+            25.79152488708496,
+            83.32500076293945
+          ]
+        }
+      },
+      "release_manifest_hash_match": {
+        "source": true,
+        "release": true
+      },
+      "motion_banks": [],
+      "provenance_note": "Absent from common base and upstream pin; added by expansion local pin, with current byte comparison recorded"
+    },
+    {
+      "id": "place_ceres_second_measure_long_plate",
+      "classification": "new expansion model",
+      "category": "places",
+      "source_model_path": "assets/ships/parts/places/place_ceres_second_measure_long_plate.glb",
+      "source_available": true,
+      "release_model_path": "assets/ships/release/parts/places/place_ceres_second_measure_long_plate.glb",
+      "release_available": true,
+      "forge_id": "place_ceres_second_measure_long_plate",
+      "note": "P03 Second Measure matched structural shipbreak. Source origin, two through-passages and independent keel mouth. Runtime collision is world-site owned.",
+      "recipe_path": "tools/blender/forge/ships/place_ceres_second_measure_long_plate.py",
+      "recipe_available": true,
+      "asset_id": "SF_PLACE_CERES_SECOND_MEASURE_LONG_PLATE",
+      "layout": "place",
+      "state": null,
+      "packages": [
+        {
+          "key": "ceres-second-measure-long-plate",
+          "model_path": "assets/ships/release/render-packages/ceres-second-measure-long-plate/render.glb",
+          "metadata_path": "assets/ships/release/render-packages/ceres-second-measure-long-plate/render-package.json",
+          "provenance": {
+            "path": "assets/ships/release/render-packages/ceres-second-measure-long-plate/render.glb",
+            "exists": true,
+            "base_present": false,
+            "local_present": true,
+            "upstream_present": false,
+            "bytes": 467968,
+            "sha256": "a5f597c49834c8c07e02d2e33a145931f6b5ca9771d5dedf12ce21549498a2ce",
+            "git_blob_oid": "1e6dfbef0f7cbd5cd3c2baa5f80191abc64a95bb",
+            "matches_pinned": [
+              "local"
+            ],
+            "first_pass_integration": "applied_local"
+          }
+        }
+      ],
+      "family": "Ceres",
+      "provenance": {
+        "source_model": {
+          "path": "assets/ships/parts/places/place_ceres_second_measure_long_plate.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 733412,
+          "sha256": "03930bb4528739a93aca7ad6f9ecf898a65e5bc8b3541a10df47381e19bd65b1",
+          "git_blob_oid": "6ccdd900002975458189bb9a27bf6fd3a3bbb9f7",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "release_model": {
+          "path": "assets/ships/release/parts/places/place_ceres_second_measure_long_plate.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 288768,
+          "sha256": "ff9e6270e3f5bde9ce90d5c1a0772b6700db83a1f0e17469aad5de321c6bac45",
+          "git_blob_oid": "6ee77b3c5f9e34b1155a2593beb364b595672cc3",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "recipe": {
+          "path": "tools/blender/forge/ships/place_ceres_second_measure_long_plate.py",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 331,
+          "sha256": "926fc787ba9d20bf9ad0607b9dfe212e7c04972b5d8103f47c5d2518a87f20d4",
+          "git_blob_oid": "d620bc0af7f2964893bfed6b89de8f5424c254d1",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        }
+      },
+      "source_metadata": {
+        "generator": "Khronos glTF Blender I/O v4.3.47",
+        "extensions_used": [],
+        "material_names": [
+          "Material_Armor",
+          "Material_BrushedMetal",
+          "Material_Hull",
+          "Material_Accent",
+          "Material_Mechanical"
+        ],
+        "material_finish_tags": [
+          "forge-v1"
+        ],
+        "images": 6,
+        "lod_nodes": [],
+        "mesh_count_all_lods": 13
+      },
+      "registered_metrics": {
+        "tris": 9024,
+        "bytes": 733412,
+        "bounds": {
+          "min": [
+            -17,
+            -2.5,
+            -27.5
+          ],
+          "max": [
+            17,
+            2.5,
+            27.5
+          ],
+          "dimensionsM": [
+            34,
+            5,
+            55
+          ]
+        }
+      },
+      "release_manifest_hash_match": {
+        "source": true,
+        "release": true
+      },
+      "motion_banks": [],
+      "provenance_note": "Absent from common base and upstream pin; added by expansion local pin, with current byte comparison recorded"
+    },
+    {
+      "id": "place_ceres_second_measure_crossbeam",
+      "classification": "new expansion model",
+      "category": "places",
+      "source_model_path": "assets/ships/parts/places/place_ceres_second_measure_crossbeam.glb",
+      "source_available": true,
+      "release_model_path": "assets/ships/release/parts/places/place_ceres_second_measure_crossbeam.glb",
+      "release_available": true,
+      "forge_id": "place_ceres_second_measure_crossbeam",
+      "note": "P03 Second Measure matched structural shipbreak. Source origin, two through-passages and independent keel mouth. Runtime collision is world-site owned.",
+      "recipe_path": "tools/blender/forge/ships/place_ceres_second_measure_crossbeam.py",
+      "recipe_available": true,
+      "asset_id": "SF_PLACE_CERES_SECOND_MEASURE_CROSSBEAM",
+      "layout": "place",
+      "state": null,
+      "packages": [
+        {
+          "key": "ceres-second-measure-crossbeam",
+          "model_path": "assets/ships/release/render-packages/ceres-second-measure-crossbeam/render.glb",
+          "metadata_path": "assets/ships/release/render-packages/ceres-second-measure-crossbeam/render-package.json",
+          "provenance": {
+            "path": "assets/ships/release/render-packages/ceres-second-measure-crossbeam/render.glb",
+            "exists": true,
+            "base_present": false,
+            "local_present": true,
+            "upstream_present": false,
+            "bytes": 539804,
+            "sha256": "a08fc4c92f86697b8e7bc0b4980d0982b0c1178a1005ec6e6321faa03481d309",
+            "git_blob_oid": "1fed08a20e5d5272a70b84b91a07d46b8d62e44f",
+            "matches_pinned": [
+              "local"
+            ],
+            "first_pass_integration": "applied_local"
+          }
+        }
+      ],
+      "family": "Ceres",
+      "provenance": {
+        "source_model": {
+          "path": "assets/ships/parts/places/place_ceres_second_measure_crossbeam.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 828444,
+          "sha256": "c5ae144b3a26f4d95235bc1c3ed6ee102d3e296185cca70fc2d77010825ed3b3",
+          "git_blob_oid": "b77925e08f5e775d608d882675c59c95a34feb9f",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "release_model": {
+          "path": "assets/ships/release/parts/places/place_ceres_second_measure_crossbeam.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 321964,
+          "sha256": "c81c7f311d0004000d8538012af83b1dd9054c6384af7b70b5c25b9fa086f31e",
+          "git_blob_oid": "f5867d747996eaacbfa83789f4dab477ff2e3754",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "recipe": {
+          "path": "tools/blender/forge/ships/place_ceres_second_measure_crossbeam.py",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 328,
+          "sha256": "dc72d6203655bbaa97b29253de3639283b0dfd47f67ac780b62664265a52a3d9",
+          "git_blob_oid": "84c57999e6fb89f301fa2675bb34a4542c1fad2d",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        }
+      },
+      "source_metadata": {
+        "generator": "Khronos glTF Blender I/O v4.3.47",
+        "extensions_used": [],
+        "material_names": [
+          "Material_Armor",
+          "Material_BrushedMetal",
+          "Material_Hull",
+          "Material_Accent",
+          "Material_Mechanical"
+        ],
+        "material_finish_tags": [
+          "forge-v1"
+        ],
+        "images": 6,
+        "lod_nodes": [],
+        "mesh_count_all_lods": 15
+      },
+      "registered_metrics": {
+        "tris": 10508,
+        "bytes": 828444,
+        "bounds": {
+          "min": [
+            -17,
+            -3,
+            -27.5
+          ],
+          "max": [
+            17,
+            3,
+            27.5
+          ],
+          "dimensionsM": [
+            34,
+            6,
+            55
+          ]
+        }
+      },
+      "release_manifest_hash_match": {
+        "source": true,
+        "release": true
+      },
+      "motion_banks": [],
+      "provenance_note": "Absent from common base and upstream pin; added by expansion local pin, with current byte comparison recorded"
+    },
+    {
+      "id": "place_ceres_second_measure_keel",
+      "classification": "new expansion model",
+      "category": "places",
+      "source_model_path": "assets/ships/parts/places/place_ceres_second_measure_keel.glb",
+      "source_available": true,
+      "release_model_path": "assets/ships/release/parts/places/place_ceres_second_measure_keel.glb",
+      "release_available": true,
+      "forge_id": "place_ceres_second_measure_keel",
+      "note": "P03 Second Measure matched structural shipbreak. Source origin, two through-passages and independent keel mouth. Runtime collision is world-site owned.",
+      "recipe_path": "tools/blender/forge/ships/place_ceres_second_measure_keel.py",
+      "recipe_available": true,
+      "asset_id": "SF_PLACE_CERES_SECOND_MEASURE_KEEL",
+      "layout": "place",
+      "state": null,
+      "packages": [
+        {
+          "key": "ceres-second-measure-keel",
+          "model_path": "assets/ships/release/render-packages/ceres-second-measure-keel/render.glb",
+          "metadata_path": "assets/ships/release/render-packages/ceres-second-measure-keel/render-package.json",
+          "provenance": {
+            "path": "assets/ships/release/render-packages/ceres-second-measure-keel/render.glb",
+            "exists": true,
+            "base_present": false,
+            "local_present": true,
+            "upstream_present": false,
+            "bytes": 267232,
+            "sha256": "288fabe6142099a62b3d2e9d6f336f09b9c812bdb24bbc49a372cef3538c20a7",
+            "git_blob_oid": "9ddf50bda6d85abc7c932781e4f8affeebb7e88a",
+            "matches_pinned": [
+              "local"
+            ],
+            "first_pass_integration": "applied_local"
+          }
+        }
+      ],
+      "family": "Ceres",
+      "provenance": {
+        "source_model": {
+          "path": "assets/ships/parts/places/place_ceres_second_measure_keel.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 407228,
+          "sha256": "b9339124a928d4ace117cc3b515a72abc9e7914763ec9a02ce509a83d7f6b08a",
+          "git_blob_oid": "7882c635a1e22998722e9c16d5312b9e54498286",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "release_model": {
+          "path": "assets/ships/release/parts/places/place_ceres_second_measure_keel.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 198056,
+          "sha256": "fb03ac7c8f0ad18e12781c58ced6b6e4dbcadab2510f01f4fe3969c1ee1ae65e",
+          "git_blob_oid": "6203ff9b274ae5033ddb52f9d9cd2f8a9b97e3cc",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "recipe": {
+          "path": "tools/blender/forge/ships/place_ceres_second_measure_keel.py",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 313,
+          "sha256": "40ba0e4938c8b1fbbbe7f850a7fcf727c538e01766dd477462e3b97c853401b3",
+          "git_blob_oid": "e41c7bf8c95c90985b9a12e4c837f6c0e360ff4e",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        }
+      },
+      "source_metadata": {
+        "generator": "Khronos glTF Blender I/O v4.3.47",
+        "extensions_used": [],
+        "material_names": [
+          "Material_Armor",
+          "Material_BrushedMetal",
+          "Material_Hull",
+          "Material_Accent",
+          "Material_Mechanical"
+        ],
+        "material_finish_tags": [
+          "forge-v1"
+        ],
+        "images": 6,
+        "lod_nodes": [],
+        "mesh_count_all_lods": 13
+      },
+      "registered_metrics": {
+        "tris": 3068,
+        "bytes": 407228,
+        "bounds": {
+          "min": [
+            -17.5,
+            -3,
+            -5
+          ],
+          "max": [
+            17.5,
+            3,
+            5
+          ],
+          "dimensionsM": [
+            35,
+            6,
+            10
+          ]
+        }
+      },
+      "release_manifest_hash_match": {
+        "source": true,
+        "release": true
+      },
+      "motion_banks": [],
+      "provenance_note": "Absent from common base and upstream pin; added by expansion local pin, with current byte comparison recorded"
+    },
+    {
+      "id": "place_stormshift_storage_saddle_foundation_v01",
+      "classification": "new expansion model",
+      "category": "places",
+      "source_model_path": "assets/ships/parts/places/place_stormshift_storage_saddle_foundation_v01.glb",
+      "source_available": true,
+      "release_model_path": "assets/ships/release/parts/places/place_stormshift_storage_saddle_foundation_v01.glb",
+      "release_available": true,
+      "forge_id": "place_stormshift_storage_saddle_foundation",
+      "note": "Forge Stormshift storage saddle foundation; optional finite player fabrication; source-origin 2 WU/m; exact compound and cargo custody owned by simulation.",
+      "recipe_path": "tools/blender/forge/ships/stormshift_storage_saddle.py",
+      "recipe_available": true,
+      "asset_id": "SF_STORMSHIFT_STORAGE_SADDLE_FOUNDATION_V01",
+      "layout": "place",
+      "state": "foundation",
+      "packages": [
+        {
+          "key": "stormshift-storage-saddle-foundation-v01",
+          "model_path": "assets/ships/release/render-packages/stormshift-storage-saddle-foundation-v01/render.glb",
+          "metadata_path": "assets/ships/release/render-packages/stormshift-storage-saddle-foundation-v01/render-package.json",
+          "provenance": {
+            "path": "assets/ships/release/render-packages/stormshift-storage-saddle-foundation-v01/render.glb",
+            "exists": true,
+            "base_present": false,
+            "local_present": true,
+            "upstream_present": false,
+            "bytes": 385128,
+            "sha256": "987f151faec0e99553ff72bc9863d37d7e69c8fae89c792091669ff11979a3dd",
+            "git_blob_oid": "316789110fb7409ef13630a05c2539254d3abad2",
+            "matches_pinned": [
+              "local"
+            ],
+            "first_pass_integration": "applied_local"
+          }
+        }
+      ],
+      "family": "Stormshift",
+      "provenance": {
+        "source_model": {
+          "path": "assets/ships/parts/places/place_stormshift_storage_saddle_foundation_v01.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 573964,
+          "sha256": "d2ac167af1a1c30aecdd0619e28411643c8b8f99de5b0a13457431536be1f62d",
+          "git_blob_oid": "caf30ca30f9ebb36a7963e3f7915940a0bc0e463",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "release_model": {
+          "path": "assets/ships/release/parts/places/place_stormshift_storage_saddle_foundation_v01.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 255096,
+          "sha256": "ac32aa46983e59fb414762b22ff1ec5d71a69e874b130917b1e51e8f4f95e1e9",
+          "git_blob_oid": "e405e0fa9b81b2166b7d0003c7224d8cf85877a0",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "recipe": {
+          "path": "tools/blender/forge/ships/stormshift_storage_saddle.py",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 12179,
+          "sha256": "0951b96cb74e48592381f36286f99d4c4c1f56aeb4b94c8acb55941be7419858",
+          "git_blob_oid": "d45e7d5290657543679c3c9db413e760453e28de",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        }
+      },
+      "source_metadata": {
+        "generator": "Khronos glTF Blender I/O v4.3.47",
+        "extensions_used": [
+          "KHR_materials_emissive_strength"
+        ],
+        "material_names": [
+          "Material_Armor",
+          "Material_Emissive_Amber",
+          "Material_BrushedMetal",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Warning"
+        ],
+        "material_finish_tags": [
+          "forge-v1"
+        ],
+        "images": 6,
+        "lod_nodes": [],
+        "mesh_count_all_lods": 17
+      },
+      "registered_metrics": {
+        "tris": 3784,
+        "bytes": 573964,
+        "bounds": {
+          "min": [
+            -2.140000104904175,
+            -0.6800000071525574,
+            -6
+          ],
+          "max": [
+            2.140000104904175,
+            1.4192500114440918,
+            2.1500000953674316
+          ],
+          "dimensionsM": [
+            4.28000020980835,
+            2.099250018596649,
+            8.150000095367432
+          ]
+        }
+      },
+      "release_manifest_hash_match": {
+        "source": true,
+        "release": true
+      },
+      "motion_banks": [],
+      "provenance_note": "Absent from common base and upstream pin; added by expansion local pin, with current byte comparison recorded"
+    },
+    {
+      "id": "place_stormshift_storage_saddle_intact_v01",
+      "classification": "new expansion model",
+      "category": "places",
+      "source_model_path": "assets/ships/parts/places/place_stormshift_storage_saddle_intact_v01.glb",
+      "source_available": true,
+      "release_model_path": "assets/ships/release/parts/places/place_stormshift_storage_saddle_intact_v01.glb",
+      "release_available": true,
+      "forge_id": "place_stormshift_storage_saddle_intact",
+      "note": "Forge Stormshift storage saddle intact; optional finite player fabrication; source-origin 2 WU/m; exact compound and cargo custody owned by simulation.",
+      "recipe_path": "tools/blender/forge/ships/stormshift_storage_saddle.py",
+      "recipe_available": true,
+      "asset_id": "SF_STORMSHIFT_STORAGE_SADDLE_INTACT_V01",
+      "layout": "place",
+      "state": "intact",
+      "packages": [
+        {
+          "key": "stormshift-storage-saddle-intact-v01",
+          "model_path": "assets/ships/release/render-packages/stormshift-storage-saddle-intact-v01/render.glb",
+          "metadata_path": "assets/ships/release/render-packages/stormshift-storage-saddle-intact-v01/render-package.json",
+          "provenance": {
+            "path": "assets/ships/release/render-packages/stormshift-storage-saddle-intact-v01/render.glb",
+            "exists": true,
+            "base_present": false,
+            "local_present": true,
+            "upstream_present": false,
+            "bytes": 2115208,
+            "sha256": "fae8aa94d001835efe6f49e34c9147e7ba2fce3932cbea13505a6d0b7199210e",
+            "git_blob_oid": "e44ee8c06584d8a6c6f6f245eb50fb55b3e671d1",
+            "matches_pinned": [
+              "local"
+            ],
+            "first_pass_integration": "applied_local"
+          }
+        }
+      ],
+      "family": "Stormshift",
+      "provenance": {
+        "source_model": {
+          "path": "assets/ships/parts/places/place_stormshift_storage_saddle_intact_v01.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 3558204,
+          "sha256": "dbdb8aa0a4d3c060e35df00161d9cf38765bd6ee6ef9812cb735693bc953b078",
+          "git_blob_oid": "0f5dce774786b06b2b4ea03ba4a116f647aa7096",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "release_model": {
+          "path": "assets/ships/release/parts/places/place_stormshift_storage_saddle_intact_v01.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 1257020,
+          "sha256": "a770fb4f37bf2725cc677237fc684bd5a61df7fbc966ea56635e732057f10e14",
+          "git_blob_oid": "f51f3cb40c818dbb5a82b2c9c7061ed53dce4f1a",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "recipe": {
+          "path": "tools/blender/forge/ships/stormshift_storage_saddle.py",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 12179,
+          "sha256": "0951b96cb74e48592381f36286f99d4c4c1f56aeb4b94c8acb55941be7419858",
+          "git_blob_oid": "d45e7d5290657543679c3c9db413e760453e28de",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        }
+      },
+      "source_metadata": {
+        "generator": "Khronos glTF Blender I/O v4.3.47",
+        "extensions_used": [
+          "KHR_materials_emissive_strength"
+        ],
+        "material_names": [
+          "Material_Armor",
+          "Material_Emissive_Amber",
+          "Material_BrushedMetal",
+          "Material_Hull",
+          "Material_Accent",
+          "Material_Mechanical",
+          "Material_MechanicalDark",
+          "Material_Warning"
+        ],
+        "material_finish_tags": [
+          "forge-v1"
+        ],
+        "images": 6,
+        "lod_nodes": [],
+        "mesh_count_all_lods": 124
+      },
+      "registered_metrics": {
+        "tris": 33800,
+        "bytes": 3558204,
+        "bounds": {
+          "min": [
+            -6.150000095367432,
+            -0.6800000071525574,
+            -6
+          ],
+          "max": [
+            6.150000095367432,
+            1.8949037790298462,
+            4.840000152587891
+          ],
+          "dimensionsM": [
+            12.300000190734863,
+            2.5749037861824036,
+            10.84000015258789
+          ]
+        }
+      },
+      "release_manifest_hash_match": {
+        "source": true,
+        "release": true
+      },
+      "motion_banks": [],
+      "provenance_note": "Absent from common base and upstream pin; added by expansion local pin, with current byte comparison recorded"
+    },
+    {
+      "id": "place_stormshift_storage_saddle_damaged_v01",
+      "classification": "new expansion model",
+      "category": "places",
+      "source_model_path": "assets/ships/parts/places/place_stormshift_storage_saddle_damaged_v01.glb",
+      "source_available": true,
+      "release_model_path": "assets/ships/release/parts/places/place_stormshift_storage_saddle_damaged_v01.glb",
+      "release_available": true,
+      "forge_id": "place_stormshift_storage_saddle_damaged",
+      "note": "Forge Stormshift storage saddle damaged; optional finite player fabrication; source-origin 2 WU/m; exact compound and cargo custody owned by simulation.",
+      "recipe_path": "tools/blender/forge/ships/stormshift_storage_saddle.py",
+      "recipe_available": true,
+      "asset_id": "SF_STORMSHIFT_STORAGE_SADDLE_DAMAGED_V01",
+      "layout": "place",
+      "state": "damaged",
+      "packages": [
+        {
+          "key": "stormshift-storage-saddle-damaged-v01",
+          "model_path": "assets/ships/release/render-packages/stormshift-storage-saddle-damaged-v01/render.glb",
+          "metadata_path": "assets/ships/release/render-packages/stormshift-storage-saddle-damaged-v01/render-package.json",
+          "provenance": {
+            "path": "assets/ships/release/render-packages/stormshift-storage-saddle-damaged-v01/render.glb",
+            "exists": true,
+            "base_present": false,
+            "local_present": true,
+            "upstream_present": false,
+            "bytes": 2139740,
+            "sha256": "920031314717eb48fb9bc11e53afff612d8d86126a7ba520cf89199bd2b83e53",
+            "git_blob_oid": "bda9b4686b5d4d632b875307c231e994541075fe",
+            "matches_pinned": [
+              "local"
+            ],
+            "first_pass_integration": "applied_local"
+          }
+        }
+      ],
+      "family": "Stormshift",
+      "provenance": {
+        "source_model": {
+          "path": "assets/ships/parts/places/place_stormshift_storage_saddle_damaged_v01.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 3590328,
+          "sha256": "4141cfb26653fb2c8bbf73704d2a7b3e8290e810237149c2e603a1f0f34686d6",
+          "git_blob_oid": "9d0a9700d342ecde859992c5d881efab230d9795",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "release_model": {
+          "path": "assets/ships/release/parts/places/place_stormshift_storage_saddle_damaged_v01.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 1271352,
+          "sha256": "3025d310db7e33ba8d1b43adf9c663b686adba65d8890391dbc4d780896982d1",
+          "git_blob_oid": "1060386af8b144db47eff14299405fde8019b63c",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "recipe": {
+          "path": "tools/blender/forge/ships/stormshift_storage_saddle.py",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 12179,
+          "sha256": "0951b96cb74e48592381f36286f99d4c4c1f56aeb4b94c8acb55941be7419858",
+          "git_blob_oid": "d45e7d5290657543679c3c9db413e760453e28de",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        }
+      },
+      "source_metadata": {
+        "generator": "Khronos glTF Blender I/O v4.3.47",
+        "extensions_used": [
+          "KHR_materials_emissive_strength"
+        ],
+        "material_names": [
+          "Material_Armor",
+          "Material_Emissive_Amber",
+          "Material_BrushedMetal",
+          "Material_Hull.001",
+          "Material_Hull",
+          "Material_Accent",
+          "Material_Mechanical",
+          "Material_MechanicalDark",
+          "Material_Warning"
+        ],
+        "material_finish_tags": [
+          "forge-v1"
+        ],
+        "images": 6,
+        "lod_nodes": [],
+        "mesh_count_all_lods": 127
+      },
+      "registered_metrics": {
+        "tris": 34176,
+        "bytes": 3590328,
+        "bounds": {
+          "min": [
+            -6.150000095367432,
+            -0.6800000071525574,
+            -6
+          ],
+          "max": [
+            6.150000095367432,
+            1.8949037790298462,
+            4.840000152587891
+          ],
+          "dimensionsM": [
+            12.300000190734863,
+            2.5749037861824036,
+            10.84000015258789
+          ]
+        }
+      },
+      "release_manifest_hash_match": {
+        "source": true,
+        "release": true
+      },
+      "motion_banks": [],
+      "provenance_note": "Absent from common base and upstream pin; added by expansion local pin, with current byte comparison recorded"
+    },
+    {
+      "id": "place_ceres_seam_survey_probe",
+      "classification": "new expansion model",
+      "category": "places",
+      "source_model_path": "assets/ships/parts/places/place_ceres_seam_survey_probe.glb",
+      "source_available": true,
+      "release_model_path": "assets/ships/release/parts/places/place_ceres_seam_survey_probe.glb",
+      "release_available": true,
+      "forge_id": "place_ceres_seam_survey_probe",
+      "note": "Forge Ceres finite physical survey instrument intact; source-origin at 1 WU/m; source-certified compound and sensor axis.",
+      "recipe_path": "tools/blender/forge/ships/place_ceres_seam_survey_probe.py",
+      "recipe_available": true,
+      "asset_id": "SF_PLACE_CERES_SEAM_SURVEY_PROBE",
+      "layout": "place",
+      "state": "intact",
+      "packages": [
+        {
+          "key": "ceres-seam-survey-probe",
+          "model_path": "assets/ships/release/render-packages/ceres-seam-survey-probe/render.glb",
+          "metadata_path": "assets/ships/release/render-packages/ceres-seam-survey-probe/render-package.json",
+          "provenance": {
+            "path": "assets/ships/release/render-packages/ceres-seam-survey-probe/render.glb",
+            "exists": true,
+            "base_present": false,
+            "local_present": true,
+            "upstream_present": false,
+            "bytes": 662684,
+            "sha256": "e913b9ad36d476b71b7f8fdf16ff7702928f37e7596ccc115552baf326b1b70f",
+            "git_blob_oid": "c03e44fc3ee0a37b8577962fc334a38e0781445c",
+            "matches_pinned": [
+              "local"
+            ],
+            "first_pass_integration": "applied_local"
+          }
+        }
+      ],
+      "family": "Ceres",
+      "provenance": {
+        "source_model": {
+          "path": "assets/ships/parts/places/place_ceres_seam_survey_probe.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 1066548,
+          "sha256": "0577883a024ddb333fc7b1b55d30f0d813593ebb948bcb36075d67f9754ba67e",
+          "git_blob_oid": "4bd46177bff7b7963abe6adeed3e754ae6c83c27",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "release_model": {
+          "path": "assets/ships/release/parts/places/place_ceres_seam_survey_probe.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 356536,
+          "sha256": "7f310e892be222d55832861fe2eac48af50c58b7826a99155c10c5e11d5ab702",
+          "git_blob_oid": "53838da49f5674490a172780865f5f38e34d8f6a",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "recipe": {
+          "path": "tools/blender/forge/ships/place_ceres_seam_survey_probe.py",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 10301,
+          "sha256": "3aeac9aeed3d0626c2c4daf945c772891d873cc73880edf5527c25d819e6ed72",
+          "git_blob_oid": "3595b705a454553d8e662a797b1e79c0c05cf631",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        }
+      },
+      "source_metadata": {
+        "generator": "Khronos glTF Blender I/O v4.3.47",
+        "extensions_used": [
+          "KHR_materials_emissive_strength"
+        ],
+        "material_names": [
+          "Material_Armor",
+          "Material_Emissive_Amber",
+          "Material_Hull",
+          "Material_Accent",
+          "Material_Mechanical",
+          "Material_MechanicalDark"
+        ],
+        "material_finish_tags": [
+          "forge-v1"
+        ],
+        "images": 6,
+        "lod_nodes": [],
+        "mesh_count_all_lods": 18
+      },
+      "registered_metrics": {
+        "tris": 9616,
+        "bytes": 1066548,
+        "bounds": {
+          "min": [
+            -1.2680256366729736,
+            0,
+            -1.9177206754684448
+          ],
+          "max": [
+            2.0749998092651367,
+            3.9700000286102295,
+            1.9177206754684448
+          ],
+          "dimensionsM": [
+            3.3430254459381104,
+            3.9700000286102295,
+            3.8354413509368896
+          ]
+        }
+      },
+      "release_manifest_hash_match": {
+        "source": true,
+        "release": true
+      },
+      "motion_banks": [],
+      "provenance_note": "Absent from common base and upstream pin; added by expansion local pin, with current byte comparison recorded"
+    },
+    {
+      "id": "place_ceres_seam_survey_probe_damaged",
+      "classification": "new expansion model",
+      "category": "places",
+      "source_model_path": "assets/ships/parts/places/place_ceres_seam_survey_probe_damaged.glb",
+      "source_available": true,
+      "release_model_path": "assets/ships/release/parts/places/place_ceres_seam_survey_probe_damaged.glb",
+      "release_available": true,
+      "forge_id": "place_ceres_seam_survey_probe_damaged",
+      "note": "Forge Ceres finite physical survey instrument damaged; source-origin at 1 WU/m; source-certified compound and sensor axis.",
+      "recipe_path": "tools/blender/forge/ships/place_ceres_seam_survey_probe.py",
+      "recipe_available": true,
+      "asset_id": "SF_PLACE_CERES_SEAM_SURVEY_PROBE_DAMAGED",
+      "layout": "place",
+      "state": "damaged",
+      "packages": [
+        {
+          "key": "ceres-seam-survey-probe-damaged",
+          "model_path": "assets/ships/release/render-packages/ceres-seam-survey-probe-damaged/render.glb",
+          "metadata_path": "assets/ships/release/render-packages/ceres-seam-survey-probe-damaged/render-package.json",
+          "provenance": {
+            "path": "assets/ships/release/render-packages/ceres-seam-survey-probe-damaged/render.glb",
+            "exists": true,
+            "base_present": false,
+            "local_present": true,
+            "upstream_present": false,
+            "bytes": 672000,
+            "sha256": "a36c5ed1a31e2fefb4e205b7d1b4dd9bb12ba53aebdbffd9c0e48678e1bacf11",
+            "git_blob_oid": "5d9b6b545f13004895012d97daa584960956e85c",
+            "matches_pinned": [
+              "local"
+            ],
+            "first_pass_integration": "applied_local"
+          }
+        }
+      ],
+      "family": "Ceres",
+      "provenance": {
+        "source_model": {
+          "path": "assets/ships/parts/places/place_ceres_seam_survey_probe_damaged.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 1089192,
+          "sha256": "f23d2f0121b5e17036dce01c062e08e8494164d5a60cc2371f246d2484fcbd07",
+          "git_blob_oid": "f677084dad9ccd7c483af647e78960bc407523d5",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "release_model": {
+          "path": "assets/ships/release/parts/places/place_ceres_seam_survey_probe_damaged.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 357548,
+          "sha256": "afaaf6dd41fb57b084090217e2c7f6f4fbd619cd9239f8ae5c426eccade9980a",
+          "git_blob_oid": "52080f4a38d14a17b172139123c5846141ead129",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "recipe": {
+          "path": "tools/blender/forge/ships/place_ceres_seam_survey_probe.py",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 10301,
+          "sha256": "3aeac9aeed3d0626c2c4daf945c772891d873cc73880edf5527c25d819e6ed72",
+          "git_blob_oid": "3595b705a454553d8e662a797b1e79c0c05cf631",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        }
+      },
+      "source_metadata": {
+        "generator": "Khronos glTF Blender I/O v4.3.47",
+        "extensions_used": [],
+        "material_names": [
+          "Material_Armor",
+          "Material_Hull",
+          "Material_Accent",
+          "Material_Mechanical",
+          "Material_MechanicalDark"
+        ],
+        "material_finish_tags": [
+          "forge-v1"
+        ],
+        "images": 6,
+        "lod_nodes": [],
+        "mesh_count_all_lods": 15
+      },
+      "registered_metrics": {
+        "tris": 9992,
+        "bytes": 1089192,
+        "bounds": {
+          "min": [
+            -1.2680256366729736,
+            0,
+            -1.9177206754684448
+          ],
+          "max": [
+            2.0749998092651367,
+            3.255000114440918,
+            1.9177206754684448
+          ],
+          "dimensionsM": [
+            3.3430254459381104,
+            3.255000114440918,
+            3.8354413509368896
+          ]
+        }
+      },
+      "release_manifest_hash_match": {
+        "source": true,
+        "release": true
+      },
+      "motion_banks": [],
+      "provenance_note": "Absent from common base and upstream pin; added by expansion local pin, with current byte comparison recorded"
+    },
+    {
+      "id": "wholeship_ceres_breaker",
+      "classification": "new expansion model",
+      "category": "wholeships",
+      "source_model_path": "assets/ships/parts/wholeships/ceres_breaker.glb",
+      "source_available": true,
+      "release_model_path": "assets/ships/release/parts/wholeships/ceres_breaker.glb",
+      "release_available": true,
+      "forge_id": "ceres_breaker",
+      "note": "Original Ceres open-gantry breaker. Authored source origin at 2 WU/metre, physical passive stops, native swept shoe articulation and explicit compound load well.",
+      "recipe_path": "tools/blender/forge/ships/ceres_breaker.py",
+      "recipe_available": true,
+      "asset_id": "SF_WHOLESHIP_CERES_BREAKER",
+      "layout": "npc",
+      "state": null,
+      "packages": [
+        {
+          "key": "ceres-breaker",
+          "model_path": "assets/ships/release/render-packages/ceres-breaker/render.glb",
+          "metadata_path": "assets/ships/release/render-packages/ceres-breaker/render-package.json",
+          "provenance": {
+            "path": "assets/ships/release/render-packages/ceres-breaker/render.glb",
+            "exists": true,
+            "base_present": false,
+            "local_present": true,
+            "upstream_present": false,
+            "bytes": 2915112,
+            "sha256": "61036050d3be4f32a2e637f7541d625c6ea15d7f90c5159fd529d7d08afa088c",
+            "git_blob_oid": "5af22bd4d9526dbb7e5e8a2ef46ced7ff74b9f47",
+            "matches_pinned": [
+              "local"
+            ],
+            "first_pass_integration": "applied_local"
+          }
+        }
+      ],
+      "family": "Ceres",
+      "provenance": {
+        "source_model": {
+          "path": "assets/ships/parts/wholeships/ceres_breaker.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 4587792,
+          "sha256": "cf747aae2c679f393962fa801fd5708f58facbb7a9c7e3b8fac6e8ccf694c811",
+          "git_blob_oid": "fa75b1136d28acceaf133f35f89d2a8cd5313fbd",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "release_model": {
+          "path": "assets/ships/release/parts/wholeships/ceres_breaker.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 1638816,
+          "sha256": "fab8b4f58ffa328785cc79b58ba26a2a269554685d00d63e3fca662d7ee6d9b5",
+          "git_blob_oid": "0d4e822204a43dfb7b592ba6ffc74396188c7b24",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "recipe": {
+          "path": "tools/blender/forge/ships/ceres_breaker.py",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 42343,
+          "sha256": "a2c7d15f8fc29d85a27565a2fddbbec87228676b16ec4eb6b0fc23a490590bd3",
+          "git_blob_oid": "b668c814093cfe61f0ffb4108c956dbdb28f5eca",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        }
+      },
+      "source_metadata": {
+        "generator": "Khronos glTF Blender I/O v4.3.47",
+        "extensions_used": [
+          "KHR_materials_emissive_strength",
+          "KHR_materials_specular"
+        ],
+        "material_names": [
+          "Material_MechanicalDark",
+          "Material_Armor",
+          "Material_Emissive_Amber",
+          "Material_BrushedMetal",
+          "Material_Canopy",
+          "Material_Thruster",
+          "Material_Emissive_NavRed",
+          "Material_Emissive_NavGreen",
+          "Material_Hull",
+          "Material_Emissive_Warm",
+          "Material_Mechanical",
+          "Material_Warning"
+        ],
+        "material_finish_tags": [
+          "forge-v1"
+        ],
+        "images": 6,
+        "lod_nodes": [],
+        "mesh_count_all_lods": 118
+      },
+      "registered_metrics": {
+        "tris": 44698,
+        "bytes": 4587792,
+        "bounds": {
+          "min": [
+            -45,
+            -6,
+            -31
+          ],
+          "max": [
+            45,
+            11,
+            31
+          ],
+          "dimensionsM": [
+            90,
+            17,
+            62
+          ]
+        }
+      },
+      "release_manifest_hash_match": {
+        "source": true,
+        "release": true
+      },
+      "motion_banks": [
+        "assets/ships/motions/ceres-breaker.motion.json"
+      ],
+      "provenance_note": "Absent from common base and upstream pin; added by expansion local pin, with current byte comparison recorded"
+    },
+    {
+      "id": "place_ceres_section_cradle",
+      "classification": "new expansion model",
+      "category": "places",
+      "source_model_path": "assets/ships/parts/places/place_ceres_section_cradle.glb",
+      "source_available": true,
+      "release_model_path": "assets/ships/release/parts/places/place_ceres_section_cradle.glb",
+      "release_available": true,
+      "forge_id": "place_ceres_section_cradle",
+      "note": "Original Ceres open sectional receiver. Authored source origin at 2 WU/metre, native retention pads and explicit compound receiving void.",
+      "recipe_path": "tools/blender/forge/ships/place_ceres_section_cradle.py",
+      "recipe_available": true,
+      "asset_id": "SF_PLACE_CERES_SECTION_CRADLE",
+      "layout": "place",
+      "state": null,
+      "packages": [
+        {
+          "key": "ceres-section-cradle",
+          "model_path": "assets/ships/release/render-packages/ceres-section-cradle/render.glb",
+          "metadata_path": "assets/ships/release/render-packages/ceres-section-cradle/render-package.json",
+          "provenance": {
+            "path": "assets/ships/release/render-packages/ceres-section-cradle/render.glb",
+            "exists": true,
+            "base_present": false,
+            "local_present": true,
+            "upstream_present": false,
+            "bytes": 1756224,
+            "sha256": "33d81ff15c902dfa1e6b8c3a3019037f79db48c502c872dcec85b6b04f7581e5",
+            "git_blob_oid": "b559ff4ae19ca1281260355a45660ced2a66941a",
+            "matches_pinned": [
+              "local"
+            ],
+            "first_pass_integration": "applied_local"
+          }
+        }
+      ],
+      "family": "Ceres",
+      "provenance": {
+        "source_model": {
+          "path": "assets/ships/parts/places/place_ceres_section_cradle.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 3044260,
+          "sha256": "f9aa72b7871e9ecd4fddec27af0bbf92c18f49ff5e533c0825c95b83f17e4795",
+          "git_blob_oid": "878ca0af93438d30f50e0cfe80bfe635bbc94436",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "release_model": {
+          "path": "assets/ships/release/parts/places/place_ceres_section_cradle.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 990488,
+          "sha256": "ba9afa2dbf672fe65fa57a4d6af6d2b23cb269a2fb96c7a08129792321e15f4c",
+          "git_blob_oid": "d93131a52e2b2f152f5e582c146747e74cb9b412",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "recipe": {
+          "path": "tools/blender/forge/ships/place_ceres_section_cradle.py",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 278,
+          "sha256": "f49275f80f324db6ae00c18c7afd60a62342b2d2b0a070fa8192c1d1276c1464",
+          "git_blob_oid": "5706a6088ab6aa10597673423ac8bdc6bcf9615b",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        }
+      },
+      "source_metadata": {
+        "generator": "Khronos glTF Blender I/O v4.3.47",
+        "extensions_used": [
+          "KHR_materials_emissive_strength"
+        ],
+        "material_names": [
+          "Material_MechanicalDark",
+          "Material_Armor",
+          "Material_Emissive_Amber",
+          "Material_BrushedMetal",
+          "Material_Emissive_NavGreen",
+          "Material_Hull",
+          "Material_Emissive_Warm",
+          "Material_Mechanical",
+          "Material_Warning"
+        ],
+        "material_finish_tags": [
+          "forge-v1"
+        ],
+        "images": 6,
+        "lod_nodes": [],
+        "mesh_count_all_lods": 78
+      },
+      "registered_metrics": {
+        "tris": 28576,
+        "bytes": 3044260,
+        "bounds": {
+          "min": [
+            -42.5,
+            -5,
+            -37.5
+          ],
+          "max": [
+            42.5,
+            10,
+            37.5
+          ],
+          "dimensionsM": [
+            85,
+            15,
+            75
+          ]
+        }
+      },
+      "release_manifest_hash_match": {
+        "source": true,
+        "release": true
+      },
+      "motion_banks": [
+        "assets/ships/motions/ceres-section-cradle.motion.json"
+      ],
+      "provenance_note": "Absent from common base and upstream pin; added by expansion local pin, with current byte comparison recorded"
+    },
+    {
+      "id": "place_ceres_breaker_cutter_head",
+      "classification": "new expansion model",
+      "category": "places",
+      "source_model_path": "assets/ships/parts/places/place_ceres_breaker_cutter_head.glb",
+      "source_available": true,
+      "release_model_path": "assets/ships/release/parts/places/place_ceres_breaker_cutter_head.glb",
+      "release_available": true,
+      "forge_id": "place_ceres_breaker_cutter_head",
+      "note": "Original detachable Ceres cutter head. Authored source origin at 2 WU/metre, aligned cut and mounting sockets and explicit compound solids.",
+      "recipe_path": "tools/blender/forge/ships/place_ceres_breaker_cutter_head.py",
+      "recipe_available": true,
+      "asset_id": "SF_PLACE_CERES_BREAKER_CUTTER_HEAD",
+      "layout": "place",
+      "state": null,
+      "packages": [
+        {
+          "key": "ceres-breaker-cutter-head",
+          "model_path": "assets/ships/release/render-packages/ceres-breaker-cutter-head/render.glb",
+          "metadata_path": "assets/ships/release/render-packages/ceres-breaker-cutter-head/render-package.json",
+          "provenance": {
+            "path": "assets/ships/release/render-packages/ceres-breaker-cutter-head/render.glb",
+            "exists": true,
+            "base_present": false,
+            "local_present": true,
+            "upstream_present": false,
+            "bytes": 651796,
+            "sha256": "7bd58ffac3c73fba4757caa0348168e4e422acee9f48f2aed7ace4e201d0bf04",
+            "git_blob_oid": "fb2857b051cfe8aa5600afd03fb1c8bdf4b8431f",
+            "matches_pinned": [
+              "local"
+            ],
+            "first_pass_integration": "applied_local"
+          }
+        }
+      ],
+      "family": "Ceres",
+      "provenance": {
+        "source_model": {
+          "path": "assets/ships/parts/places/place_ceres_breaker_cutter_head.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 980232,
+          "sha256": "d7f83eb487651bedce526c8f7fb8667fafc2c55f9f1c40a62697b937f0a17706",
+          "git_blob_oid": "8240cf67a219536eba3b2bc901bb1ac74a114d32",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "release_model": {
+          "path": "assets/ships/release/parts/places/place_ceres_breaker_cutter_head.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 395784,
+          "sha256": "5dc77863c0b3442d3ae58fa6e71b2c3aae3c82fb1c5bf6aab66dc862edfe5e8f",
+          "git_blob_oid": "b3aaa349fc49d3f29b500a4316df1668da244b67",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "recipe": {
+          "path": "tools/blender/forge/ships/place_ceres_breaker_cutter_head.py",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 284,
+          "sha256": "1e8095a35eb311a3ae23be3eb34c9af78a63c60dd9bff5ed7344473b040d8a32",
+          "git_blob_oid": "a90a45c2f3846d83a6c447e94e5038fa5d4015f1",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        }
+      },
+      "source_metadata": {
+        "generator": "Khronos glTF Blender I/O v4.3.47",
+        "extensions_used": [
+          "KHR_materials_emissive_strength"
+        ],
+        "material_names": [
+          "Material_MechanicalDark",
+          "Material_Armor",
+          "Material_Emissive_Amber",
+          "Material_BrushedMetal",
+          "Material_Thruster",
+          "Material_Hull",
+          "Material_Emissive_Warm",
+          "Material_Mechanical",
+          "Material_Warning"
+        ],
+        "material_finish_tags": [
+          "forge-v1"
+        ],
+        "images": 6,
+        "lod_nodes": [],
+        "mesh_count_all_lods": 43
+      },
+      "registered_metrics": {
+        "tris": 7424,
+        "bytes": 980232,
+        "bounds": {
+          "min": [
+            -4,
+            -2,
+            -3
+          ],
+          "max": [
+            4,
+            2,
+            3
+          ],
+          "dimensionsM": [
+            8,
+            4,
+            6
+          ]
+        }
+      },
+      "release_manifest_hash_match": {
+        "source": true,
+        "release": true
+      },
+      "motion_banks": [],
+      "provenance_note": "Absent from common base and upstream pin; added by expansion local pin, with current byte comparison recorded"
+    },
+    {
+      "id": "wholeship_brood_mite_v01",
+      "classification": "new expansion model",
+      "category": "wholeships",
+      "source_model_path": "assets/ships/parts/wholeships/brood_mite_v01.glb",
+      "source_available": true,
+      "release_model_path": "assets/ships/release/parts/wholeships/brood_mite_v01.glb",
+      "release_available": true,
+      "forge_id": "brood_mite",
+      "note": "Original Brood organism: Three pearl lobes, split bite. Authored source origin at 1 WU/metre; canonical concave compound, four opaque biological finishes and rigid anatomical motion.",
+      "recipe_path": "tools/blender/forge/ships/brood_mite.py",
+      "recipe_available": true,
+      "asset_id": "SF_BROOD_MITE_V01",
+      "layout": "npc",
+      "state": null,
+      "packages": [
+        {
+          "key": "brood-mite",
+          "model_path": "assets/ships/release/render-packages/brood-mite/render.glb",
+          "metadata_path": "assets/ships/release/render-packages/brood-mite/render-package.json",
+          "provenance": {
+            "path": "assets/ships/release/render-packages/brood-mite/render.glb",
+            "exists": true,
+            "base_present": false,
+            "local_present": true,
+            "upstream_present": false,
+            "bytes": 308488,
+            "sha256": "256e8cb15d60011afc2db9779a25fbdda2a399ae18ba615be9e936b2273b1c40",
+            "git_blob_oid": "19c59cd4258b887354359f314732709c00497fcf",
+            "matches_pinned": [
+              "local"
+            ],
+            "first_pass_integration": "applied_local"
+          }
+        }
+      ],
+      "family": "Brood",
+      "provenance": {
+        "source_model": {
+          "path": "assets/ships/parts/wholeships/brood_mite_v01.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 444728,
+          "sha256": "5c0fe979d1746b725ca821e68fff9c04bb81312725a08436404a0800a1fdc7d3",
+          "git_blob_oid": "170b546797a9243972b12e409ea1ebabc2c330a0",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "release_model": {
+          "path": "assets/ships/release/parts/wholeships/brood_mite_v01.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 216704,
+          "sha256": "c989d1dfced7909773ba95a68782bc70bf0c9c591a5898b80447c884b800564d",
+          "git_blob_oid": "c7478feddc7e7ddbc61b5cb33fc32a472e9c527a",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "recipe": {
+          "path": "tools/blender/forge/ships/brood_mite.py",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 467,
+          "sha256": "4572de210afecdd62890d655bca0ffa5f68abde98e2734a5a2dc32c16696ea00",
+          "git_blob_oid": "0a4d5e6f973b23f9deaff81cd90734801d9ab138",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        }
+      },
+      "source_metadata": {
+        "generator": "Khronos glTF Blender I/O v4.3.47",
+        "extensions_used": [],
+        "material_names": [
+          "Material_Ceramic_BroodMembrane.003",
+          "Material_Hull_BroodCarapace.003",
+          "Material_Ceramic_BroodChitin.003",
+          "Material_Emissive_BroodSignal.003"
+        ],
+        "material_finish_tags": [
+          "forge-v1"
+        ],
+        "images": 2,
+        "lod_nodes": [],
+        "mesh_count_all_lods": 25
+      },
+      "registered_metrics": {
+        "tris": 3484,
+        "bytes": 444728,
+        "bounds": {
+          "min": [
+            -6,
+            -0.6499999761581421,
+            -4.199999809265137
+          ],
+          "max": [
+            6,
+            2.1700072288513184,
+            4.199999809265137
+          ],
+          "dimensionsM": [
+            12,
+            2.8200072050094604,
+            8.399999618530273
+          ]
+        }
+      },
+      "release_manifest_hash_match": {
+        "source": true,
+        "release": true
+      },
+      "motion_banks": [
+        "assets/ships/motions/brood-mite.motion.json"
+      ],
+      "provenance_note": "Absent from common base and upstream pin; added by expansion local pin, with current byte comparison recorded"
+    },
+    {
+      "id": "wholeship_brood_charger_v01",
+      "classification": "new expansion model",
+      "category": "wholeships",
+      "source_model_path": "assets/ships/parts/wholeships/brood_charger_v01.glb",
+      "source_available": true,
+      "release_model_path": "assets/ships/release/parts/wholeships/brood_charger_v01.glb",
+      "release_available": true,
+      "forge_id": "brood_charger",
+      "note": "Original Brood organism: Forked shield, contracting segmented abdomen. Authored source origin at 1 WU/metre; canonical concave compound, four opaque biological finishes and rigid anatomical motion.",
+      "recipe_path": "tools/blender/forge/ships/brood_charger.py",
+      "recipe_available": true,
+      "asset_id": "SF_BROOD_CHARGER_V01",
+      "layout": "npc",
+      "state": null,
+      "packages": [
+        {
+          "key": "brood-charger",
+          "model_path": "assets/ships/release/render-packages/brood-charger/render.glb",
+          "metadata_path": "assets/ships/release/render-packages/brood-charger/render-package.json",
+          "provenance": {
+            "path": "assets/ships/release/render-packages/brood-charger/render.glb",
+            "exists": true,
+            "base_present": false,
+            "local_present": true,
+            "upstream_present": false,
+            "bytes": 351584,
+            "sha256": "b265ec619bc06e18eb7d942a8ce59888de1110f460b53e20fc763dd8d6db2523",
+            "git_blob_oid": "443ed6ad83fc350b51427f8f9546f99005eeb951",
+            "matches_pinned": [
+              "local"
+            ],
+            "first_pass_integration": "applied_local"
+          }
+        }
+      ],
+      "family": "Brood",
+      "provenance": {
+        "source_model": {
+          "path": "assets/ships/parts/wholeships/brood_charger_v01.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 520304,
+          "sha256": "71b9154bf64fb75296a99db51d6f8f0377e1a2eb16bc531e1ca884f7488ddc75",
+          "git_blob_oid": "c5218806f27a700dc4e696c65a682e1595fabaab",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "release_model": {
+          "path": "assets/ships/release/parts/wholeships/brood_charger_v01.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 249072,
+          "sha256": "5c18c8e68dacfe3878da918ac17b798ef0ada79d481bc8b94fde81cd15c592a7",
+          "git_blob_oid": "34d3371a395ef27250510e50e9f3dbe1ce909bd0",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "recipe": {
+          "path": "tools/blender/forge/ships/brood_charger.py",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 482,
+          "sha256": "9f76c61faf5cc8975f1b4f803845c343524d3a7a22be15a06afbf608ffa63121",
+          "git_blob_oid": "90549c7065ecfd58908aa722f3e6ca4c8481ba31",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        }
+      },
+      "source_metadata": {
+        "generator": "Khronos glTF Blender I/O v4.3.47",
+        "extensions_used": [],
+        "material_names": [
+          "Material_Ceramic_BroodMembrane.003",
+          "Material_Hull_BroodCarapace.003",
+          "Material_Ceramic_BroodChitin.003",
+          "Material_Emissive_BroodSignal.003"
+        ],
+        "material_finish_tags": [
+          "forge-v1"
+        ],
+        "images": 2,
+        "lod_nodes": [],
+        "mesh_count_all_lods": 29
+      },
+      "registered_metrics": {
+        "tris": 3724,
+        "bytes": 520304,
+        "bounds": {
+          "min": [
+            -9.899999618530273,
+            -1.0499999523162842,
+            -8
+          ],
+          "max": [
+            11,
+            2.5,
+            8
+          ],
+          "dimensionsM": [
+            20.899999618530273,
+            3.549999952316284,
+            16
+          ]
+        }
+      },
+      "release_manifest_hash_match": {
+        "source": true,
+        "release": true
+      },
+      "motion_banks": [
+        "assets/ships/motions/brood-charger.motion.json"
+      ],
+      "provenance_note": "Absent from common base and upstream pin; added by expansion local pin, with current byte comparison recorded"
+    },
+    {
+      "id": "wholeship_brood_spitter_v01",
+      "classification": "new expansion model",
+      "category": "wholeships",
+      "source_model_path": "assets/ships/parts/wholeships/brood_spitter_v01.glb",
+      "source_available": true,
+      "release_model_path": "assets/ships/release/parts/wholeships/brood_spitter_v01.glb",
+      "release_available": true,
+      "forge_id": "brood_spitter",
+      "note": "Original Brood organism: Horseshoe cradle, recoiling pressure sac. Authored source origin at 1 WU/metre; canonical concave compound, four opaque biological finishes and rigid anatomical motion.",
+      "recipe_path": "tools/blender/forge/ships/brood_spitter.py",
+      "recipe_available": true,
+      "asset_id": "SF_BROOD_SPITTER_V01",
+      "layout": "npc",
+      "state": null,
+      "packages": [
+        {
+          "key": "brood-spitter",
+          "model_path": "assets/ships/release/render-packages/brood-spitter/render.glb",
+          "metadata_path": "assets/ships/release/render-packages/brood-spitter/render-package.json",
+          "provenance": {
+            "path": "assets/ships/release/render-packages/brood-spitter/render.glb",
+            "exists": true,
+            "base_present": false,
+            "local_present": true,
+            "upstream_present": false,
+            "bytes": 338764,
+            "sha256": "ea4779a917e9fce96be941ae4be735609df5e75119693475f082345a96dc4139",
+            "git_blob_oid": "7296612a2d2e80ba146ce35f95d9af498656a417",
+            "matches_pinned": [
+              "local"
+            ],
+            "first_pass_integration": "applied_local"
+          }
+        }
+      ],
+      "family": "Brood",
+      "provenance": {
+        "source_model": {
+          "path": "assets/ships/parts/wholeships/brood_spitter_v01.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 519988,
+          "sha256": "6652f509622c934d02ccb63e9b83e279c58cb8a2347196b02c7b0ce4d18c4df7",
+          "git_blob_oid": "60807b18669e14749c7ab72dc7064288f0196f07",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "release_model": {
+          "path": "assets/ships/release/parts/wholeships/brood_spitter_v01.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 246380,
+          "sha256": "4aa2f0dc922d84deb0be5101b78d3f87af6d88af11003a70fbfdc4f1f399104f",
+          "git_blob_oid": "ce7390cec58a99f05ad93033fa02f2a70215b3da",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        },
+        "recipe": {
+          "path": "tools/blender/forge/ships/brood_spitter.py",
+          "exists": true,
+          "base_present": false,
+          "local_present": true,
+          "upstream_present": false,
+          "bytes": 6214,
+          "sha256": "ea1f84e6c32f3cb66c9efa6ef6f378d0a4821638581780db7a43d9014647cf93",
+          "git_blob_oid": "4e9c5be836269c244566b0ed425600370e163869",
+          "matches_pinned": [
+            "local"
+          ],
+          "first_pass_integration": "applied_local"
+        }
+      },
+      "source_metadata": {
+        "generator": "Khronos glTF Blender I/O v4.3.47",
+        "extensions_used": [],
+        "material_names": [
+          "Material_Ceramic_BroodMembrane.003",
+          "Material_Hull_BroodCarapace.003",
+          "Material_Ceramic_BroodChitin.003",
+          "Material_Emissive_BroodSignal.003"
+        ],
+        "material_finish_tags": [
+          "forge-v1"
+        ],
+        "images": 2,
+        "lod_nodes": [],
+        "mesh_count_all_lods": 28
+      },
+      "registered_metrics": {
+        "tris": 4444,
+        "bytes": 519988,
+        "bounds": {
+          "min": [
+            -6.400000095367432,
+            -0.699999988079071,
+            -5.449999809265137
+          ],
+          "max": [
+            6.400000095367432,
+            2.0091285705566406,
+            5.449999809265137
+          ],
+          "dimensionsM": [
+            12.800000190734863,
+            2.7091285586357117,
+            10.899999618530273
+          ]
+        }
+      },
+      "release_manifest_hash_match": {
+        "source": true,
+        "release": true
+      },
+      "motion_banks": [
+        "assets/ships/motions/brood-spitter.motion.json"
+      ],
+      "provenance_note": "Absent from common base and upstream pin; added by expansion local pin, with current byte comparison recorded"
+    },
+    {
+      "id": "wholeship_brood_leecher_v01",
+      "classification": "new expansion model",
+      "category": "wholeships",
+      "source_model_path": "assets/ships/parts/wholeships/brood_leecher_v01.glb",
+      "source_available": true,
+      "release_model_path": "assets/ships/release/parts/wholeships/brood_leecher_v01.glb",
+      "release_available": true,
+      "forge_id": "brood_leecher",
+      "note": "Original Brood organism: Spade mouth, long pleated ribbon. Authored source origin at 1 WU/metre; five fixed contact capsules, four shared opaque biological finishes, two rigid cosmetic pivots and exact mouth/dorsal sockets.",
+      "recipe_path": "tools/blender/forge/ships/brood_leecher.py",
+      "recipe_available": true,
+      "asset_id": "SF_BROOD_LEECHER_V01",
+      "layout": "npc",
+      "state": null,
+      "packages": [
+        {
+          "key": "brood-leecher",
+          "model_path": "assets/ships/release/render-packages/brood-leecher/render.glb",
+          "metadata_path": "assets/ships/release/render-packages/brood-leecher/render-package.json",
+          "provenance": {
+            "path": "assets/ships/release/render-packages/brood-leecher/render.glb",
+            "exists": true,
+            "base_present": false,
+            "local_present": false,
+            "upstream_present": false,
+            "bytes": 255896,
+            "sha256": "240e953ffa99925bdab8957aab10301233ac768a15e98a350a89142d69f43bbe",
+            "git_blob_oid": "d643a539c10c29bd260ee90ba4316d9d641c4555",
+            "matches_pinned": [],
+            "first_pass_integration": "not listed in first-pass integration report"
+          }
+        }
+      ],
+      "family": "Brood",
+      "provenance": {
+        "source_model": {
+          "path": "assets/ships/parts/wholeships/brood_leecher_v01.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": false,
+          "upstream_present": false,
+          "bytes": 367544,
+          "sha256": "ed4727f4373afc881874b2780d98eea85539c0a9b8596be14e8d9690e31170f8",
+          "git_blob_oid": "3942b0fdcd506c83cbc926b4993a6ed692461920",
+          "matches_pinned": [],
+          "first_pass_integration": "not listed in first-pass integration report"
+        },
+        "release_model": {
+          "path": "assets/ships/release/parts/wholeships/brood_leecher_v01.glb",
+          "exists": true,
+          "base_present": false,
+          "local_present": false,
+          "upstream_present": false,
+          "bytes": 191328,
+          "sha256": "1e9665a34957429ddf39387e1f3c56281e0e77f8e26437ad4c63064c681f769e",
+          "git_blob_oid": "954cc04c3f523e1a499128829ef4814a397d11cd",
+          "matches_pinned": [],
+          "first_pass_integration": "not listed in first-pass integration report"
+        },
+        "recipe": {
+          "path": "tools/blender/forge/ships/brood_leecher.py",
+          "exists": true,
+          "base_present": false,
+          "local_present": false,
+          "upstream_present": false,
+          "bytes": 6381,
+          "sha256": "4363339d5d19bc071b78637cb89834a0eabdb4d96bf51f7f76938e729f6d4ac2",
+          "git_blob_oid": "f0db6b8cf275a74e97a38530d5a8ae375d2380a4",
+          "matches_pinned": [],
+          "first_pass_integration": "not listed in first-pass integration report"
+        }
+      },
+      "source_metadata": {
+        "generator": "Khronos glTF Blender I/O v4.3.47",
+        "extensions_used": [],
+        "material_names": [
+          "Material_Ceramic_BroodMembrane.003",
+          "Material_Hull_BroodCarapace.003",
+          "Material_Ceramic_BroodChitin.003",
+          "Material_Emissive_BroodSignal.003"
+        ],
+        "material_finish_tags": [
+          "forge-v1"
+        ],
+        "images": 2,
+        "lod_nodes": [],
+        "mesh_count_all_lods": 23
+      },
+      "registered_metrics": {
+        "tris": 2652,
+        "bytes": 367544,
+        "bounds": {
+          "min": [
+            -7.150000095367432,
+            -0.6499999761581421,
+            -2.549999952316284
+          ],
+          "max": [
+            5.599999904632568,
+            1.9199999570846558,
+            2.549999952316284
+          ],
+          "dimensionsM": [
+            12.75,
+            2.569999933242798,
+            5.099999904632568
+          ]
+        }
+      },
+      "release_manifest_hash_match": {
+        "source": true,
+        "release": true
+      },
+      "motion_banks": [
+        "assets/ships/motions/brood-leecher.motion.json"
+      ],
+      "provenance_note": "Post-first-pass addition; .integration/leecher/asset-review.md documents independent original authoring and final source/release hashes"
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+import {NodeIO}from'/workspace/shared/SpaceFace-dev/node_modules/@gltf-transform/core/dist/index.js';
+import {dedup}from'/workspace/shared/SpaceFace-dev/node_modules/@gltf-transform/functions/dist/index.js';
+import fs from'node:fs';import path from'node:path';import {fileURLToPath}from'node:url';import crypto from'node:crypto';
+const O=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../candidate-c6');const io=new NodeIO(),file=path.join(O,'brood_charger_v01.glb'),doc=await io.read(file);
+const positions=d=>d.getRoot().listMeshes().flatMap(m=>m.listPrimitives().map(p=>crypto.createHash('sha256').update(Buffer.from(p.getAttribute('POSITION').getArray().buffer)).digest('hex'))).sort();
+const before=positions(doc);await doc.transform(dedup());const out=path.join(O,'brood_charger_v01.dedup-candidate.glb');await io.write(out,doc);const after=await io.read(out);if(JSON.stringify(positions(after))!==JSON.stringify(before))throw Error('Position arrays changed');
+const hash=p=>crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');const bank=JSON.parse(fs.readFileSync(path.join(O,'brood-charger.motion.json')));bank.sourceGlbSha256=hash(out);fs.writeFileSync(path.join(O,'brood-charger.dedup-candidate.motion.json'),JSON.stringify(bank,null,1)+'\n');
+fs.writeFileSync(path.join(O,'gltf-transform-receipt.json'),JSON.stringify({transform:'glTF Transform dedup only; no simplification, quantization, compression, flattening or node pruning',inputSHA256:hash(file),outputSHA256:hash(out),inputBytes:fs.statSync(file).size,outputBytes:fs.statSync(out).size,positionArraysByteIdentical:true,artStatus:'unfinished, user-rejected direction',releaseAdmitted:false},null,2)+'\n');
