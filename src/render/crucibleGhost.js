@@ -152,7 +152,7 @@ export function createCrucibleGhostPresentation() {
         const data = obj && obj.userData;
         if (!data) return;
         if (data.admissionStandInPending === true
-            || (data.resolvingMarker === true && obj.visible === false)) pending += 1;
+            || (data.authoredResolvingMarker === true && obj.visible === false)) pending += 1;
       });
       if (pending > 0) { mintDefers += 1; return; }
     }

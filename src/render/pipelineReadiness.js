@@ -134,10 +134,14 @@ export function createSlicedYield(yieldFn, options = {}) {
   if (typeof yieldFn !== 'function') throw new TypeError('createSlicedYield requires a yield function');
   const sliceMs = Number.isFinite(Number(options.sliceMs)) ? Math.max(0, Number(options.sliceMs)) : 8;
   const now = typeof options.now === 'function' ? options.now : ledgerNow;
+  const shouldYield = typeof options.shouldYield === 'function' ? options.shouldYield : null;
+  const debit = typeof options.debit === 'function' ? options.debit : null;
   let sliceStarted = now();
   const sliced = async (force = false) => {
-    if (force !== true && now() - sliceStarted < sliceMs) return false;
+    const tick = now();
+    if (force !== true && tick - sliceStarted < sliceMs && !(shouldYield && shouldYield())) return false;
     sliced.yields += 1;
+    if (debit) debit(tick - sliceStarted);
     await yieldFn();
     sliceStarted = now();
     return true;

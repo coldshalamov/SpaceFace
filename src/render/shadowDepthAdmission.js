@@ -424,8 +424,15 @@ function casterDepthSignatures(caster, lightSig) {
  * uuid, so a mesh re-minted with a different material (attach job, skin swap) reports
  * unstaged again — a false 'ready' is the in-round depth-link brick, never trusted.
  */
-export function collectUnstagedShadowCasters(renderer, subjects, lightingScene, lightSigOverride = undefined) {
-  const casting = collectPotentialShadowCastSubjects(subjects);
+export function collectUnstagedShadowCasters(renderer, subjects, lightingScene, lightSigOverride = undefined, nodeBudget = null) {
+  let casting;
+  try {
+    casting = collectPotentialShadowCastSubjects(subjects, nodeBudget);
+  } catch (error) {
+    if (error === _walkBudgetAbort) return UNSTAGED_COLLECT_OVER_COVER;
+    throw error;
+  }
+  if (casting === UNSTAGED_COLLECT_OVER_COVER) return UNSTAGED_COLLECT_OVER_COVER;
   if (casting.length === 0) return [];
   const staged = _stagedDepthSignatures.get(renderer);
   if (!staged || staged.size === 0) return casting;

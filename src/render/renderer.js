@@ -9947,7 +9947,11 @@ export const render = {
           } else {
             await yieldToBrowser();
           }
-        }, { sliceMs: ADMISSION_SLICE_TARGET_MS });
+        }, {
+          sliceMs: ADMISSION_SLICE_TARGET_MS,
+          shouldYield: () => state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS,
+          debit: (ms) => { if (state.mode === 'flight') notePacedFrameSpend(ms); },
+        });
       return prepareStartupGpuResidency(renderer, subject, {
         includeGeometry: true,
         // Late-admitted roots carry dormant pools (plume/RCS layers sit at count 0 until
@@ -11049,7 +11053,10 @@ export const render = {
         let capped = false;
         // Several builds share a frame until ~8 ms is spent instead of one build per frame. A pass the
         // late-present gate held (the queue head did not move) still waits for a real frame.
-        const buildYield = createSlicedYield(yieldLiveSectorGpu);
+        const buildYield = createSlicedYield(yieldLiveSectorGpu, {
+          shouldYield: () => state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS,
+          debit: (ms) => { if (state.mode === 'flight') notePacedFrameSpend(ms); },
+        });
         while (this._meshBuildQueueHead < this._meshBuildQueue.length) {
           if (cookStale()) return;
           if (prepareNow() - started > cap) {
@@ -16369,6 +16376,16 @@ export const render = {
           kick.then((result) => {
             entry.result = result;
             unmarkOnRetriableOutcome(result, enemyId);
+            // A retriable settle landing after finish()'s collect census still earns
+            // the same bounded strike — otherwise the released row stays unwarmed
+            // until the next dwell. The park latch (userData.warmBuilding) is the
+            // window: while it stands the settle arm re-arms on pushes, and once it
+            // drains the root can park so no re-kick is possible anyway.
+            const lateStatus = result && typeof result === 'object' ? result.status : result;
+            if (root.userData && root.userData.warmBuilding === true
+                && !swarmWarmOutcomeClaims(lateStatus)) {
+              this._mintWarmReKick(warm, { entry, enemyId, kick: kickShip });
+            }
           });
           warm.pendingAttachments.push(kick);
           // Retriable outcomes get one same-window re-kick inside finish() —
@@ -16415,6 +16432,11 @@ export const render = {
           hulkKick.then((result) => {
             hulkEntry.result = result;
             unmarkOnRetriableOutcome(result, hulkEnemyId);
+            const lateStatus = result && typeof result === 'object' ? result.status : result;
+            if (root.userData && root.userData.warmBuilding === true
+                && !swarmWarmOutcomeClaims(lateStatus)) {
+              this._mintWarmReKick(warm, { entry: hulkEntry, enemyId: hulkEnemyId, kick: kickHulk });
+            }
           });
           warm.pendingAttachments.push(hulkKick);
           (warm.retriableKicks || (warm.retriableKicks = []))
@@ -16753,7 +16775,14 @@ export const render = {
           isResidencyOwnerActive: () => warm.building === true,
         }), `ship:${spec.id}${attempt > 0 ? `:r${attempt}` : ''}`);
         const kick = kickSpec(0);
-        kick.then((result) => { entry.result = result; });
+        kick.then((result) => {
+          entry.result = result;
+          const lateStatus = result && typeof result === 'object' ? result.status : result;
+          if (warm.root && warm.root.userData && warm.root.userData.warmBuilding === true
+              && !swarmWarmOutcomeClaims(lateStatus)) {
+            this._mintWarmReKick(warm, { entry, enemyId: null, kick: kickSpec });
+          }
+        });
         warm.pendingAttachments.push(kick);
         // The player hull carries no coverage row — its re-kick rides the same
         // bounded pass with the claim math skipped (enemyId stays null).
@@ -16831,6 +16860,67 @@ export const render = {
     settle(warm.pendingAttachments.length);
   },
 
+  /**
+   * One bounded second strike for a warm kick that settled a retriable outcome —
+   * shared by finish()'s same-window collect pass and by kicks settling late
+   * (in flight past the collect census): a kick whose result lands after the
+   * window released its coverage row would otherwise leave the archetype
+   * unwarmed until the next dwell. Re-marks coverage + the kickClaims ledger
+   * before dispatching; the re-kick's own settle releases the restored claim
+   * on a second retriable outcome — two strikes is the next dwell's signal.
+   * Returns the dispatched re-kick promise, or null when the row can't retry.
+   */
+  _mintWarmReKick(warm, row) {
+    const { entry, enemyId, kick: reKick } = row || {};
+    if (!warm || !entry || entry.reKicked === true) return null;
+    const covered = warm.coveredMap;
+    const boundary = entry.boundary;
+    if (!boundary || !boundary.parent || !warm.root || !warm.root.parent) return null;
+    if (!authoredReadmissionStatus(boundary.userData && boundary.userData.authoredAssetState)) {
+      retryFailedAuthoredAdmission(boundary);
+    }
+    if (!authoredReadmissionStatus(boundary.userData && boundary.userData.authoredAssetState)) {
+      return null;
+    }
+    entry.reKicked = true;
+    let kickClaims = null;
+    if (enemyId != null && covered) {
+      covered.set(enemyId, (covered.get(enemyId) || 0) + 1);
+      kickClaims = this._swarmWarmReKickClaims
+        || (this._swarmWarmReKickClaims = new Map());
+      kickClaims.set(enemyId, (kickClaims.get(enemyId) || 0) + 1);
+    }
+    const releaseClaim = (keepCovered = false) => {
+      if (enemyId == null) return;
+      if (!keepCovered && covered) {
+        const count = covered.get(enemyId) || 0;
+        if (count > 1) covered.set(enemyId, count - 1);
+        else covered.delete(enemyId);
+      }
+      // The settle may land a whole run later — release on the map this kick's
+      // mint was written to, not whatever map is current then.
+      if (kickClaims instanceof Map) {
+        const left = (kickClaims.get(enemyId) || 0) - 1;
+        if (left > 0) kickClaims.set(enemyId, left);
+        else kickClaims.delete(enemyId);
+      }
+    };
+    let reKickResult = null;
+    try { reKickResult = reKick(1); }
+    catch (_) { releaseClaim(false); return null; }
+    if (!reKickResult || typeof reKickResult.then !== 'function') {
+      releaseClaim(false);
+      return null;
+    }
+    reKickResult.then((result) => {
+      entry.result = result;
+      const settled = result && typeof result === 'object' ? result.status : result;
+      releaseClaim(swarmWarmOutcomeClaims(settled));
+    });
+    if (Array.isArray(warm.pendingAttachments)) warm.pendingAttachments.push(reKickResult);
+    return reKickResult;
+  },
+
   async _finishCrucibleBoundedRosterWarm(warm, options = {}) {
     const { renderer, scene, state } = this;
     if (!warm || !warm.root || !renderer || !scene) return null;
@@ -16876,60 +16966,14 @@ export const render = {
     const covered = warm.coveredMap;
     if (reKickBudget > 0 && covered && Array.isArray(warm.retriableKicks)) {
       const reKicks = [];
-      const releaseClaim = (enemyId, keepCovered = false, claimsMap = this._swarmWarmReKickClaims) => {
-        if (!keepCovered) {
-          const count = covered.get(enemyId) || 0;
-          if (count > 1) covered.set(enemyId, count - 1);
-          else covered.delete(enemyId);
-        }
-        // The settle may land a whole run later — release on the map this kick's
-        // mint was written to, not whatever map is current then.
-        if (claimsMap instanceof Map) {
-          const left = (claimsMap.get(enemyId) || 0) - 1;
-          if (left > 0) claimsMap.set(enemyId, left);
-          else claimsMap.delete(enemyId);
-        }
-      };
       const collectReKicks = () => {
         for (const { entry, enemyId, kick: reKick } of warm.retriableKicks) {
           if (entry.reKicked === true) continue;
           const status = entry.result && typeof entry.result === 'object'
             ? entry.result.status : entry.result;
           if (status === undefined || swarmWarmOutcomeClaims(status)) continue;
-          const boundary = entry.boundary;
-          if (!boundary || !boundary.parent || !warm.root || !warm.root.parent) continue;
-          if (!authoredReadmissionStatus(boundary.userData && boundary.userData.authoredAssetState)) {
-            retryFailedAuthoredAdmission(boundary);
-          }
-          if (!authoredReadmissionStatus(boundary.userData && boundary.userData.authoredAssetState)) {
-            continue;
-          }
-          entry.reKicked = true;
-          let kickClaims = null;
-          if (enemyId != null) {
-            covered.set(enemyId, (covered.get(enemyId) || 0) + 1);
-            kickClaims = this._swarmWarmReKickClaims
-              || (this._swarmWarmReKickClaims = new Map());
-            kickClaims.set(enemyId, (kickClaims.get(enemyId) || 0) + 1);
-          }
-          let reKickResult = null;
-          try {
-            reKickResult = reKick(1);
-          } catch (err) {
-            if (enemyId != null) releaseClaim(enemyId, false, kickClaims);
-            continue;
-          }
-          if (!reKickResult || typeof reKickResult.then !== 'function') {
-            if (enemyId != null) releaseClaim(enemyId, false, kickClaims);
-            continue;
-          }
-          reKickResult.then((result) => {
-            entry.result = result;
-            const settled = result && typeof result === 'object' ? result.status : result;
-            if (enemyId != null) releaseClaim(enemyId, swarmWarmOutcomeClaims(settled), kickClaims);
-          });
-          reKicks.push(reKickResult);
-          warm.pendingAttachments.push(reKickResult);
+          const minted = this._mintWarmReKick(warm, { entry, enemyId, kick: reKick });
+          if (minted) reKicks.push(minted);
         }
       };
       collectReKicks();
@@ -17061,6 +17105,15 @@ export const render = {
     const reloadAuthoredPart = (partUrl, partOptions) => (
       loadAuthoredPart(partUrl, { renderer, ...partOptions })
     );
+    // Pace on elapsed time, not row count: skipped rows tick nothing, and a run
+    // of fat hulls stacks into one task — the per-6-instantiated cadence let six
+    // fat rows land tens of ms inside the cook. Debit the paced ledger per slice
+    // so sibling slicers see the spend.
+    const censusNow = (typeof performance !== 'undefined' && typeof performance.now === 'function')
+      ? () => performance.now() : () => Date.now();
+    const censusStartedAt = censusNow();
+    let censusSliceAt = censusStartedAt;
+    let censusLastDebitAt = censusStartedAt;
     for (const { cacheKey, record: decoded } of records) {
       let record = decoded;
       if (!record) continue;
@@ -17215,11 +17268,18 @@ export const render = {
       } catch (error) {
         console.warn('[render] crucible warm instantiate failed', cacheKey, error);
       }
-      if (instantiated % 6 === 0 && yieldStep) await yieldStep();
+      const censusTick = censusNow();
+      if (censusTick - censusSliceAt > 4 || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) {
+        notePacedFrameSpend(censusTick - censusLastDebitAt);
+        if (yieldStep) await yieldStep();
+        censusSliceAt = censusNow();
+        censusLastDebitAt = censusSliceAt;
+      }
       // Over budget, stop instantiating — the holders already mounted still compile, and
       // spending the rest of the cook here is what pushed the compile batch into flight.
       if (budgetLeft() <= 4000) break;
     }
+    notePacedFrameSpend(censusNow() - censusLastDebitAt);
     // Let the package instances' residency leases release with the root at teardown — the hook
     // is the one disposeObject already honours on userData. The warm owner's own retains drain
     // through the same hook so a retain without an instance cannot leak.
@@ -17281,12 +17341,35 @@ export const render = {
     if (run.phase === 'ended' || run.phase === 'victory' || run.phase === 'inactive') return null;
     if (!Number.isInteger(nextWave) || nextWave < 2) return null;
     if (!(this._swarmWarmCoveredEnemyIds instanceof Map)) {
-      // No launch warm ran this session (mid-run restore off the cook path): every hull the
-      // cleared waves could field already spawned — and linked — in the rounds played, so the
-      // ledger starts at current-wave eligibility and the batch below takes only newcomers.
-      this._swarmWarmCoveredEnemyIds = new Map(
-        [...swarmEligibleEnemyIds(run.wave || 1)].map((enemyId) => [enemyId, 1]),
-      );
+      // No launch warm ran this session (mid-run restore off the cook path): claim coverage
+      // only for archetypes with residency evidence — a hull file carrying a settled authored
+      // record already linked in the rounds played. Weighted-rare non-picks, atTick>saved-tick
+      // packages and never-linked hulls mint no record, so seeding them covered would skip
+      // their warm for the whole run.
+      this._swarmWarmCoveredEnemyIds = new Map();
+      let residentFiles = null;
+      try {
+        residentFiles = new Set();
+        for (const { cacheKey } of peekSettledAuthoredEntries(renderer)) {
+          const parts = String(cacheKey || '').split('::');
+          if (parts[1] === 'hull' && parts[0]) residentFiles.add(normalizeWarmHullFile(parts[0]));
+        }
+      } catch (_) { residentFiles = null; }
+      if (residentFiles) {
+        for (const spec of swarmRosterShipExemplarSpecs(
+          'deferred-warm:seed:',
+          { enemyIds: swarmEligibleEnemyIds(run.wave || 1) },
+        )) {
+          const enemyId = spec && spec.data && spec.data.lootTableId;
+          if (!enemyId) continue;
+          for (const file of warmHullFilesForSpecs([spec])) {
+            if (residentFiles.has(file)) {
+              this._swarmWarmCoveredEnemyIds.set(enemyId, 1);
+              break;
+            }
+          }
+        }
+      }
     }
     // The plan the wave actually fields outranks the static unlock table: mutators
     // rewrite swarm.roster (heavies_only stamps heavies fromWave 1), and the wave's
@@ -17304,6 +17387,13 @@ export const render = {
       const planPackages = Array.isArray(plan.packages) ? plan.packages : [];
       for (const pkg of planPackages) takeEnemyId(pkg && pkg.enemyId);
       if (plan.swarm && plan.swarm.newcomer) takeEnemyId(plan.swarm.newcomer.enemyId);
+      // A bound champion mints its wing through capitalBoss:start's spawnWing — rows the
+      // static eligibility table never lists, so a wave-Boss dwell would otherwise skip them.
+      if (plan.swarm && typeof plan.swarm.bossScoreId === 'string') {
+        for (const row of capitalBossWingRosterRows(plan.swarm.bossScoreId)) {
+          takeEnemyId(row && row.archetype);
+        }
+      }
     }
     // A row held only by a launch re-kick's in-flight mint is already warming for
     // one bounded strike — but a second-strike release would leave the archetype
@@ -17480,12 +17570,16 @@ export const render = {
     const buildReady = (async () => {
       const buildStartedAt = buildNow();
       let sliceStartedAt = buildStartedAt;
+      let lastDebitAt = buildStartedAt;
       try {
         const shipSpecs = swarmRosterShipExemplarSpecs('deferred-warm:ship:', { enemyIds: freshSet });
         for (const spec of shipSpecs) {
-          if (buildNow() - sliceStartedAt > 4) {
+          const buildTick = buildNow();
+          if (buildTick - sliceStartedAt > 4 || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) {
+            notePacedFrameSpend(buildTick - lastDebitAt);
             await yieldToBrowser();
             sliceStartedAt = buildNow();
+            lastDebitAt = sliceStartedAt;
           }
           // Twin witnesses: a packaged hull promotes its direct-mesh candidate into a
           // GLTFKit_InstancePool chunk on the SECOND same-key owner — one exemplar leaves the
@@ -17526,9 +17620,12 @@ export const render = {
         // The first kill of a newcomer draws its dead hulk — the 'place'-slot packaged attach
         // the live hull's 'hull' decode never produces. Same exemplar the launch warm builds.
         for (const spec of hulkExemplarSpecsForShips(shipSpecs, 'deferred-warm:hulk:')) {
-          if (buildNow() - sliceStartedAt > 4) {
+          const buildTick = buildNow();
+          if (buildTick - sliceStartedAt > 4 || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) {
+            notePacedFrameSpend(buildTick - lastDebitAt);
             await yieldToBrowser();
             sliceStartedAt = buildNow();
+            lastDebitAt = sliceStartedAt;
           }
           try {
             const hulk = this.vf.build(spec);
@@ -17567,7 +17664,7 @@ export const render = {
         teardown();
         return false;
       } finally {
-        notePacedFrameSpend(buildNow() - buildStartedAt);
+        notePacedFrameSpend(buildNow() - lastDebitAt);
       }
       return true;
     })();
@@ -17701,6 +17798,15 @@ export const render = {
       if (record && record.wave === nextWave && record.pending === true) {
         state.render.swarmDeferredWarm = { wave: nextWave, pending: false, promise: record.promise };
       }
+      // The settle deadline covers the mint/compile/residency legs too: a never-settling
+      // one would pin warmBuilding forever, and a warmBuilding-stuck root is skipped by
+      // every park sweep while its decode leases stay held. Force the flags — the legs
+      // keep running detached and the chain tail re-clears them when they land.
+      warm.building = false;
+      if (root.userData) root.userData.warmBuilding = false;
+      if (state.mode !== 'loading') {
+        try { this._parkBoundedWarmRoots(); } catch (_) { /* parking is best-effort */ }
+      }
     }, Math.max(0, settleDeadlineAt - Date.now()));
     done.then(() => clearTimeout(gateTimer), () => clearTimeout(gateTimer));
     return done;
@@ -17739,11 +17845,15 @@ export const render = {
       ? () => performance.now() : () => Date.now();
     const scanStartedAt = scanNow();
     let sliceStartedAt = scanStartedAt;
+    let lastDebitAt = scanStartedAt;
     for (const { cacheKey, record } of records) {
       if (!record) continue;
-      if (scanNow() - sliceStartedAt > 4) {
+      const scanTick = scanNow();
+      if (scanTick - sliceStartedAt > 4 || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) {
+        notePacedFrameSpend(scanTick - lastDebitAt);
         await yieldToBrowser();
         sliceStartedAt = scanNow();
+        lastDebitAt = sliceStartedAt;
       }
       const parts = String(cacheKey || '').split('::');
       if (parts[1] !== 'hull') continue;
@@ -17785,7 +17895,7 @@ export const render = {
       }
     }
     if (minted > 0) canonicalizeObjectSurfaceProgramKeys(root);
-    notePacedFrameSpend(scanNow() - scanStartedAt);
+    notePacedFrameSpend(scanNow() - lastDebitAt);
   },
 
   /**
@@ -17847,6 +17957,10 @@ export const render = {
           this._warmRootParkContinuation = true;
           setTimeout(() => {
             this._warmRootParkContinuation = false;
+            // Same gate every synchronous call site carries: a mode flip inside
+            // the macrotask gap (death -> reload, warp) must not detach roots a
+            // live cook's coverage sweeps expect mounted.
+            if (this.state && this.state.mode === 'loading') return;
             try { this._parkBoundedWarmRoots(); } catch (_) { /* parking is best-effort */ }
           }, 0);
         }
@@ -18331,20 +18445,28 @@ export const render = {
 
   _unbindPresentationMesh(entityId, mesh = null) {
     if (mesh) {
-      // Noted consumers were keyed under the mesh's own mark at sync time, so the
-      // release must pay the mark's owner — a caller id that mismatches the mark
-      // (a stranded rekeyed entry) would otherwise strip a different live
-      // binding's claims while the true ones leak.
-      const releaseId = mesh.userData && mesh.userData.sfBoundEntityId != null
-        ? mesh.userData.sfBoundEntityId : entityId;
-      releasePooledPresentationTextures(mesh, releaseId, this);
+      // The caller-match gate covers the release too: a stale caller id that
+      // mismatches the mark must not strip the live mark-owner's claims — a
+      // sole-consumer evictable texture would dispose mid-display. Leave the
+      // release to the owner's own unbind.
+      const marked = mesh.userData && mesh.userData.sfBoundEntityId != null;
+      const callerMatches = !marked || entityId == null
+        || mesh.userData.sfBoundEntityId === entityId;
+      if (callerMatches) {
+        // Noted consumers were keyed under the mesh's own mark at sync time, so the
+        // release must pay the mark's owner — a caller id that mismatches the mark
+        // (a stranded rekeyed entry) would otherwise strip a different live
+        // binding's claims while the true ones leak.
+        const releaseId = marked ? mesh.userData.sfBoundEntityId : entityId;
+        releasePooledPresentationTextures(mesh, releaseId, this);
+      }
       // The pooled-mark contract is the entity bound *right now*: a mesh leaving
       // the presentation world keeps no owner, so entity resolvers can't hand
       // its next incarnation the previous owner's id. Preserve a mismatched
       // mark — it belongs to a different binding's lifecycle.
-      if (mesh.userData && (entityId == null
-          || mesh.userData.sfBoundEntityId === entityId)) {
+      if (callerMatches && mesh.userData) {
         delete mesh.userData.sfBoundEntityId;
+        delete mesh.userData.presentationEntityId;
       }
     }
     if (this._livingHullPresentation) {
@@ -22050,16 +22172,27 @@ export const render = {
           // armCallbackAfterPresent, so the _viewSyncSeq memo can serve a sig
           // minted before a light add/remove landed; the session keys on it.
           lightSig = lightCensusSignature(scene);
-          // Per-root collect under a wall-clock deadline: one fat subtree used to
-          // push the whole arm past the post-present budget. Roots the deadline
-          // skipped requeue still-withheld; min-1 root keeps the drain honest.
+          // Per-root collect under a wall-clock deadline AND a shared node budget:
+          // one fat subtree's traverse + signature mints is atomic inside the arm,
+          // so an unbounded root used to push the whole arm's task past budget. A
+          // root the budget aborts requeues still-withheld (the arm needs the real
+          // set — over-cover can't stage) and escalates its own budget scale so a
+          // permanently-over-cap root can't starve; the deadline's skipped tail
+          // requeues the same way, min-1 root keeps the drain honest.
           const collectDeadline = armStartedAt + SHADOW_DEPTH_ARM_COLLECT_MS;
+          const headScale = (slice[0] && slice[0][1] && slice[0][1].depthNodeScale) || 1;
+          const collectNodeBudget = { remaining: SHADOW_DEPTH_PASS_NODE_CAP * headScale };
           const unstaged = [];
           unstagedByRoot = new Map();
           let collected = 0;
           while (collected < sliceRoots.length) {
+            const entry = slice[collected] && slice[collected][1];
             const found = collectUnstagedShadowCasters(
-              renderer, [sliceRoots[collected]], scene, lightSig);
+              renderer, [sliceRoots[collected]], scene, lightSig, collectNodeBudget);
+            if (found === UNSTAGED_COLLECT_OVER_COVER) {
+              if (entry) entry.depthNodeScale = Math.min(8, (entry.depthNodeScale || 1) * 2);
+              break;
+            }
             if (found.length > 0) unstagedByRoot.set(sliceRoots[collected], found);
             for (const mesh of found) unstaged.push(mesh);
             collected += 1;
