@@ -17,7 +17,9 @@ import { RECIPES, SAMPLE_BINDINGS } from '../src/data/audioRecipes.js';
 import { FIRST_HOUR_AUDIO_SIGNATURES } from '../src/audio/audioSystem.js';
 import {
   MASSLINE_INSTRUMENT_SEED,
+  MASSLINE_INSTRUMENT_EVENTS,
   MASSLINE_RECIPES,
+  masslineEventsAreDistinct,
   resolveMasslineInstrument,
   resolveTetherTone,
   TETHER_TONE_SILENCE,
@@ -50,6 +52,14 @@ const FOUR_VOICES = Object.freeze([
 ]);
 
 test(`seed ${SEED}: latch, tension, safe release and break are four distinct authored recipe routes`, () => {
+  // The whole six-event instrument mapping stays one-recipe-per-event too (attach, strain, reel,
+  // release, break, bridle) — the four packet moments ride the same authored table.
+  const distinct = masslineEventsAreDistinct();
+  assert.equal(distinct.recipes, true, 'all six events own distinct recipes');
+  assert.equal(distinct.captions, true, 'all six captions name their event');
+  assert.equal(distinct.releaseVsBreak, true, 'release is not the break');
+  assert.equal(MASSLINE_INSTRUMENT_EVENTS.length, 6);
+
   const rng = makeRng(SEED);
   const resolved = FOUR_VOICES.map((moment, i) => {
     // The seeded walk supplies the live load each moment would read off the tether mirror.
