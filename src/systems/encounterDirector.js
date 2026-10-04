@@ -634,16 +634,18 @@ export const encounterDirector = {
   },
 
   _rebindPersistedFreightCustodyCarriers() {
-    // No open custodies means nothing the rebind feeds into — skip the entity walk entirely
-    // (the overwhelmingly common case; this is the heaviest indivisible save:loaded listener).
-    const dir = this.state && this.state.encounterDirector;
-    const custodies = dir && dir.stats && dir.stats.openFreightCustodies;
-    if (!Array.isArray(custodies) || custodies.length === 0) return 0;
     // Carriers are always type === 'ship' — ride the shipLike bucket when the index is live,
     // falling back to the entity Map for load owners that publish before the index rebuild.
+    // The rebind gate is the live carrier annotation itself, never stats.openFreightCustodies:
+    // initializeConvoyPredation stamps data.freightCustody at fire while the custody envelope is
+    // only minted at the first spill, so an envelope-gated skip dropped every pre-spill carrier
+    // rebind. The cheap annotation probe keeps the common no-custody load near-free — the full
+    // persistedFreightCarrierBinding predicate runs only on ships that could possibly rebind.
     const scan = indexedShipLikeOrEntitiesScan(this.state);
     let rebound = 0;
     for (const entity of scan) {
+      const data = entity && entity.data;
+      if (!data || data.freightCustody == null) continue;
       const binding = persistedFreightCarrierBinding(entity);
       if (!binding || binding.custody.carrierId === entity.id) continue;
       const previousCarrierId = binding.custody.carrierId;
