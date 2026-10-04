@@ -339,7 +339,12 @@ export const SKER_SCRAP_BALER = buildKillMachine({
   hazardType: 'debris',
   placeId: 'place_crusher_module',
   sectorId: SKER_SCRAP_BALER_SECTOR_ID,
-  localPos: { x: -200, z: -1400 },
+  // Nudged 180 WU west of the original (-200,-1400) site: alien-ecology cycle 2 appended
+  // zone_sker_red_snow (center 400,-1800 r=780) and zone_sker_harvest_deep after the baler
+  // was sited, and the old spot sat 59 WU inside Red Snow's rim. Still south-west of the
+  // Bazaar, still in open water — >=120 WU clear of every station, gate, zone, field,
+  // hazard, and POI in the sector.
+  localPos: { x: -350, z: -1300 },
   rot: 0.95,
   phaseOffsetS: 6,
   hazardRadius: 130,
