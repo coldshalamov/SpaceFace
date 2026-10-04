@@ -170,6 +170,11 @@ import { actionById as salvageActionById } from '../data/salvageActions.js';
 import { towClassMassFor } from './shipCapabilities.js';
 import { playerWreckMarker } from './aftermathWrecks.js';
 import { SECTORS, dangerTier } from '../data/sectors.js';
+import {
+  activeOwnedShip,
+  nextStarterStep,
+  shipCarriesModule,
+} from '../data/starterJobs.js';
 import { SECTOR_ANCHORS } from '../data/sectorAnchors.js';
 import { zonesForSector } from '../data/sectorZones.js';
 import { rollBountyMark, bountyMarkHail, markArchetypePoolFor, MARK_HAIL_RANGE_WU } from '../data/bountyMarks.js';
@@ -2862,9 +2867,41 @@ export const missions = {
       const trapIdx = offers.findIndex((o) => o && !o.storyTag && !o.source
         && (o.type === 'cargo_delivery' || o.type === 'passenger_transport'));
       if (trapIdx >= 0) offers[trapIdx] = seedHeliosOfferTrap(offers[trapIdx]);
+      this._injectStarterJob(info, offers, S);
     }
     this._markFeaturedOffer(offers, info, epoch);
     return offers;
+  },
+
+  /** The starter hull's next opening job, pinned at the head of the Helios board. */
+  _injectStarterJob(info, offers, cap) {
+    const ship = activeOwnedShip(this.state);
+    const next = ship && nextStarterStep(this.state, ship.defId);
+    if (!next) return;
+    const already = offers.some((offer) => offer && offer.params
+      && offer.params.starterJobId === next.job.id
+      && offer.params.starterStep === next.step.step);
+    if (already) return;
+    const offer = this._rollOffer(next.step.type, info, () => 0.2, 0, 90, { attachConditions: false });
+    if (!offer) return;
+    offer.id = `starter-${next.job.id}-${next.step.step}`;
+    offer.title = next.step.title;
+    offer.reward_cr = next.step.rewardCr;
+    offer.collateral_cr = 0;
+    offer.riskTier = 0;
+    offer.source = 'starterJob';
+    offer.params = offer.params || {};
+    offer.params.starterJobId = next.job.id;
+    offer.params.starterStep = next.step.step;
+    offer.params.requiredModule = next.job.requiredModule;
+    if (next.step.cmdtyId) {
+      offer.params.cmdtyId = next.step.cmdtyId;
+      offer.params.qty = next.step.qty;
+    }
+    offer.destStationId = info.id;
+    offer.destSectorId = info.sectorId;
+    offers.unshift(offer);
+    if (offers.length > cap) offers.length = cap;
   },
 
   /** Real-calendar day bucket for the featured mark — the only wall-clock read on the missions
@@ -3847,6 +3884,10 @@ export const missions = {
   },
 
   _acceptPreflight(offer) {
+    const requiredModule = offer && offer.params && offer.params.requiredModule;
+    if (requiredModule && !shipCarriesModule(activeOwnedShip(this.state), requiredModule)) {
+      return { ok: false, reason: 'This job needs the fit you woke up in' };
+    }
     // The Tethys launcher holds exactly one schedule. A second launcher contract accepted while one
     // is live would be denied at schedule time and fail as `unresolved_absent` — refuse it up front,
     // in words, instead.
@@ -7991,6 +8032,11 @@ export const missions = {
         rewardMult: honored.rewardMult,
         rewardCr: settledRewardCr,
       });
+    }
+    if (m.params && m.params.starterJobId) {
+      const bag = state.missions.starterJobStep || (state.missions.starterJobStep = {});
+      const step = Math.max(0, Math.floor(Number(m.params.starterStep) || 0));
+      if (step > (bag[m.params.starterJobId] || 0)) bag[m.params.starterJobId] = step;
     }
     if (settledRewardCr > 0) {
       this.bus.emit('economy:grantCredits', { amount: settledRewardCr, reason: `mission:${m.id}` });

@@ -982,11 +982,7 @@ shipped, so their J1/J6 and P04 residuals moved to §K rows 276/277; §K rows re
 
 ### L. THE LONG GAME — first decomposition (lane L-LONGGAME sitting 1, 2026-10-04)
 
-Lane checklist: FINISH_LANES.md §8 (PQ-032/142/152/155/156/170/172/176–178/195, PQ-208 verb keys, PQ-209.02) against §17 bars M1–M6. Each row is one seam's write set with a done-when in player units. Prior owner named per row.
-
-| # | ID | Work | Kind | Status |
-|---|---|---|---|---|
-| 280 | LG-STARTER-JOBS | Three starters are three jobs (F10/PQ-156): each starter hull ships an authored opening contract chain that only its fit can run cleanly, accepted from the ordinary board on the default route. Prior owner: onboarding/new-game defaults. Done when: a stranger flies each starter's chain to payout with no flag or debug key. | BUILD | OPEN |
+Lane checklist: FINISH_LANES.md §8 (PQ-032/142/152/155/156/170/172/176–178/195, PQ-208 verb keys, PQ-209.02) against §17 bars M1–M6. Each row is one seam's write set with a done-when in player units. Prior owner named per row. The first six rows are landed; the table is empty until the next decomposition.
 
 ## 2. Product north star
 
