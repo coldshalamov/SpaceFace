@@ -134,35 +134,46 @@ export const PQ020_CERES_ADDITIVE_DRESSING_SCHEMA =
 // this core census, so it moves only the dressing pin below, not this digest's entity counts.
 // Cathedral census 15/15 (14 shelved), all topology/exact-agreement assertions unchanged.
 // Prior digest was b0627637f6ac3f120dc67fb2197c0817165bf3d002dcaf8ca1fcacf9af9028c0.
+// 2026-10-03: re-pinned for the solid-dressing lane (D161 adjudication): Ceres activity
+// objects that re-point dressing props (disabled refinery hull → dead-hulk draw, bait wreck,
+// grave shard, cargo staging pod → barge draw) now take fixed measured-skin bodies, so their
+// census rows gained real colliders. The transit weigh beacon keeps its authored no-presence
+// contract (explicit `collides:false` on poi_ceres_throughline — it stays a non-colliding
+// route marker mid-lane). Entity/type census, cathedral census, releaseSha256 and every
+// topology/exact-agreement assertion are unchanged. Prior digest was
+// 8404e62c8acaa5e75feca22c173c32ee3597254df16ab0f4db176d516cf77e1b.
 export const PQ020_EXPECTED_STRUCTURAL_COST_DIGEST =
-  '8404e62c8acaa5e75feca22c173c32ee3597254df16ab0f4db176d516cf77e1b';
+  '1e245a850b53c10a7de1cda7ce4caf7cf97685e39f5e1b39e30529c4b15e68a6';
 
 const EXPECTED_ADDITIVE_WORLD_SITE_IDS = Object.freeze([CINDER_SLUICE_SITE_ID]);
+// 2026-10-03 (solid-dressing lane, D161 adjudication): dressing structures the player can see
+// now take fixed measured-skin bodies — the census collider equals the drawn model, sized from
+// modelTruthCensus. Pieces under the craft-scale floor (frag scraps, small pins) stay ghosts.
 const EXPECTED_ADDITIVE_DRESSING_CENSUSES = Object.freeze({
   everydaySpaceKit: Object.freeze({
     entities: 6,
     byType: Object.freeze({ fx: 6 }),
-    collidable: 0,
-    colliders: 0,
+    collidable: 3,
+    colliders: 58,
   }),
   wreckAftermath: Object.freeze({
     entities: 4,
     byType: Object.freeze({ fx: 4 }),
-    collidable: 0,
-    colliders: 0,
+    collidable: 3,
+    colliders: 58,
   }),
-  // PQ-143.02: the strut shrine, the pirate ram, and the eight pod-field shells are the
-  // non-colliding fx dressing. The Long Berth yard tug is an authored physical wreck
-  // (0c6f0ea1a). It used to leave this census whenever the far-actor shelf took it; D141
-  // (09132834b) deliberately excludes data.worldOneOff bodies from shelving — lean far rows
-  // strip the identity fields needed to rematerialize a unique one-off and re-minted
-  // duplicates — so it stays live, collidable, and carries its 24-primitive measured skin.
-  // Still excluded from the core structural census.
+  // PQ-143.02: the Long Berth yard tug is an authored physical wreck (0c6f0ea1a). It used to
+  // leave this census whenever the far-actor shelf took it; D141 (09132834b) deliberately
+  // excludes data.worldOneOff bodies from shelving — lean far rows strip the identity fields
+  // needed to rematerialize a unique one-off and re-minted duplicates — so it stays live,
+  // collidable, and carries its 24-primitive measured skin. The strut shrine, the pirate ram,
+  // and the pod-field shells above the craft-scale floor join it as measured-skin solids under
+  // the solid-dressing lane. Still excluded from the core structural census.
   worldOneOff: Object.freeze({
     entities: 11,
     byType: Object.freeze({ fx: 10, wreck: 1 }),
-    collidable: 1,
-    colliders: 24,
+    collidable: 9,
+    colliders: 183,
   }),
 });
 

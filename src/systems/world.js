@@ -182,6 +182,7 @@ import {
   getDressingRow,
   markDressingRowPoseDirty,
 } from '../world/dressingTable.js';
+import { stampSolidDressing } from '../world/solidDressing.js';
 import { requestDecodeRunwayPromote, resetWorldPresentationTables } from '../world/presentationSources.js';
 import {
   materializeAlienEcology,
@@ -199,6 +200,7 @@ import {
 import { MACHINE_PROTOCOL_FAULTS } from '../data/precursorMachines.js';
 import { createAlienEcologyState, ensureAlienEcologyState } from '../data/alienEcologyState.js';
 import { removeCargo } from './cargo.js';
+import { Masks } from '../core/entity.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import {
   dropFarActorSector,
@@ -2854,18 +2856,40 @@ export const world = {
         ? poi.activityObjectSlotId
         : null;
       if (activityObjectSlotId) poiData.activityObjectSlotId = activityObjectSlotId;
+      // What the player sees is what the ship hits: an authored landmark (or a POI that
+      // explicitly declares collision) takes a fixed measured-skin body. Target-pinned draws
+      // re-derive the body radius so the skin scale equals the drawn scale exactly
+      // (solidDressing.js). An explicit `collides: false` is a no-presence contract (PQ-020
+      // transit pins) and outranks the landmark default; plain markers stay ghosts.
+      const solidPlan = (poi.collides !== false && (poi.landmark || poi.collides === true))
+        ? stampSolidDressing(poiData, {
+          radius: visualRadius,
+          placeTargetRadius: Number(poiData.placeTargetRadius) || 0,
+        })
+        : null;
+      const spawnRadius = solidPlan ? solidPlan.radius : visualRadius;
       const keepLive = fullPresence
         ? poiMustStayLiveActor(poi, activityObjectSlotId)
         : (!!activityObjectSlotId || poi.collides === true);
       const ent = keepLive
         ? this.helpers.spawnEntity({
           type: 'fx', factionId: poi.factionId || null, pos,
-          radius: visualRadius, mass: 0, collides: !!poi.collides, ttl: Infinity,
+          radius: spawnRadius, mass: 0,
+          collides: solidPlan ? true : !!poi.collides,
+          ...(solidPlan ? {
+            physicsBody: { dynamic: false, material: 'prop' },
+            collisionMask: Masks.STATION,
+          } : {}),
+          ttl: Infinity,
           data: poiData,
         })
         : insertDressingRow(this.state, {
           pos,
-          radius: visualRadius,
+          radius: spawnRadius,
+          ...(solidPlan ? {
+            collides: true,
+            physicsBody: { dynamic: false, material: 'prop' },
+          } : {}),
           homeSectorId: sector.id,
           data: poiData,
         });
@@ -2885,8 +2909,9 @@ export const world = {
       });
 
       // A1/V2 physical Quiessence carriers. H1c still owns the eventual dark-freighter art;
-      // these sector-owned, non-colliding actors give the existing scanner and Band routes real
-      // identities today without introducing combatants, physics bodies, or a parallel signal path.
+      // these sector-owned actors give the existing scanner and Band routes real identities.
+      // They are becalmed hulks the player can see, so they take real measured-skin fixed
+      // bodies (solid below) — no combatants, no signal-path change, but no fly-through either.
       const fleetCount = Math.max(0, Math.min(24, Math.trunc(Number(poi.bandLandmarkFleet) || 0)));
       if (fleetCount > 0 && poi.flavorTargetRef) {
         const hullFleetData = (shipIndex) => ({
@@ -2919,22 +2944,35 @@ export const world = {
             x: pos.x + Math.cos(angle) * ring,
             z: pos.z + Math.sin(angle) * ring,
           };
+          const hullData = hullFleetData(shipIndex);
+          const hullPlan = stampSolidDressing(hullData, { radius: 21, placeTargetRadius: 21 });
+          const hullRadius = hullPlan ? hullPlan.radius : 21;
           const hull = fullPresence
             ? this.helpers.spawnEntity({
               type: 'fx',
               pos: hullPos,
-              radius: 21,
+              radius: hullRadius,
               mass: 0,
-              collides: false,
-              physicsBody: false,
+              ...(hullPlan ? {
+                collides: true,
+                physicsBody: { dynamic: false, material: 'prop' },
+                collisionMask: Masks.STATION,
+              } : {
+                collides: false,
+                physicsBody: false,
+              }),
               ttl: Infinity,
-              data: hullFleetData(shipIndex),
+              data: hullData,
             })
             : insertDressingRow(this.state, {
               pos: hullPos,
-              radius: 21,
+              radius: hullRadius,
+              ...(hullPlan ? {
+                collides: true,
+                physicsBody: { dynamic: false, material: 'prop' },
+              } : {}),
               homeSectorId: sector.id,
-              data: hullFleetData(shipIndex),
+              data: hullData,
             });
           this._stampHomeSector(hull, sector.id);
           active.pois.push({
@@ -3507,12 +3545,20 @@ export const world = {
       ...(options.wreckAftermath === true ? { wreckAftermath: true } : {}),
       ...(options.worldOneOff === true ? { worldOneOff: true } : {}),
     };
+    // What the player sees is what the ship hits: census-backed places at or above the
+    // craft-scale floor take a fixed measured-skin body (solidDressing.js). The skin's world
+    // scale tracks the same radius the renderer draws at, so collider == visible model.
+    const solidPlan = stampSolidDressing(data, { radius });
     const spec = {
       pos,
       rot: propRot,
       radius,
       homeSectorId: sector.id,
       data,
+      ...(solidPlan ? {
+        collides: true,
+        physicsBody: { dynamic: false, material: 'prop' },
+      } : {}),
     };
     const ent = activityObjectSlotId
       ? this.helpers.spawnEntity({
@@ -3522,7 +3568,13 @@ export const world = {
         rot: spec.rot,
         radius: spec.radius,
         mass: 0,
-        collides: false,
+        ...(solidPlan ? {
+          collides: true,
+          physicsBody: { dynamic: false, material: 'prop' },
+          collisionMask: Masks.STATION,
+        } : {
+          collides: false,
+        }),
         ttl: Infinity,
         flags: { noInterp: true },
         data,
