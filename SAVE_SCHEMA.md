@@ -14,6 +14,7 @@ Current save version: `14`
 - `bracket`
 - `ravel`
 - `solstice`
+- `rubric`
 - `salvage`
 - `survivorPod`
 - `economy`
@@ -337,6 +338,7 @@ Current save version: `14`
 | `$.ravel` | object | {} |
 | `$.recoveryEncounters` | object | {} |
 | `$.regionalEcology` | object | {} |
+| `$.rubric` | object | {} |
 | `$.salvage` | object | {} |
 | `$.scenario` | object | {} |
 | `$.scenario.active` | null | null |

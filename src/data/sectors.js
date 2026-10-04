@@ -262,6 +262,15 @@ const CORE_SECTORS = [
       { id: 'poi_tethys_tally_rack', type: 'derelict', name: 'Held-for-Count Rack', pos: { x: -710, z: -990 }, landmarkGlb: 'place_container_rack', visualRadius: 14 },
       { id: 'poi_tethys_tally_pod', type: 'derelict', name: 'Seized Cargo Pod', pos: { x: -660, z: -1050 }, landmarkGlb: 'place_cargo_pod_standard', visualRadius: 8 },
       { id: 'poi_tethys_tally_light', type: 'beacon', name: 'Count-Face Worklight', pos: { x: -650, z: -950 }, landmarkGlb: 'place_worklight_tower', visualRadius: 8 },
+      // RUBRIC / HM-11 (src/data/rubric.js, src/systems/rubric.js): the Customs Gate's retired hull marker works a
+      // filing it was ordered to mark CLEARED. South of the held-for-count rack, off the inbound queue lane.
+      { id: 'poi_rubric_marking_line', type: 'anomaly', name: 'RUBRIC · The Marking Line',
+        pos: { x: -790, z: -1190 }, runtimeOwner: 'rubric', scannerSignalKind: 'anomaly', dressingExclusionRadius: 180,
+        chartNote: 'A hull marker will not mark a moving hull. Scan to read its work; put a line on the hull and bring it to rest.',
+        discoveryPlate: {
+          title: 'HM-11 / The Marking Line',
+          body: 'A retired Customs Gate stencil drone hangs hull F-41 on a slack line south of the count rack. The hull is filed CLEARED. The drone has painted a different answer beside it. Scan to read its work; it will not mark a moving hull, so put a line on the hull and bring it to rest.',
+        } },
     ],
   },
   {

@@ -72,6 +72,9 @@
   <link rel="preload" as="fetch" crossorigin href="./vendor/addons/libs/draco/gltf/draco_wasm_wrapper.js" />
   <link rel="preload" as="fetch" crossorigin href="./vendor/addons/libs/draco/gltf/draco_decoder.js" />
   <link rel="preload" as="fetch" crossorigin href="./vendor/addons/libs/draco/gltf/draco_decoder.wasm" />
+  <link rel="modulepreload" href="./src/characters/rubricRules.js" />
+  <link rel="modulepreload" href="./src/data/rubric.js" />
+  <link rel="modulepreload" href="./src/render/characters/rubricModel.js" />
   <link rel="modulepreload" href="./src/render/embeddedKtx2Textures.js" />
   <!-- The KTX2 transcoder trio is discovered one layer deeper still — the worker script, its
        importScripts target, and the .wasm it fetches are a serialized 3-fetch chain inside
@@ -96,6 +99,8 @@
   <link rel="modulepreload" href="./vendor/addons/loaders/HDRLoader.js" />
   <!-- uiRoot's menu-gating screens are dynamic imports by design; the menu push waits for
        these three registrations, so their fetch stays off the title→menu critical path. -->
+  <link rel="modulepreload" href="./src/render/rubricSkinLibrary.js" />
+  <link rel="modulepreload" href="./src/systems/rubric.js" />
   <link rel="modulepreload" href="./src/ui/screens/mainMenu.js" />
   <link rel="modulepreload" href="./src/ui/screens/motionAsk.js" />
   <link rel="modulepreload" href="./src/ui/screens/newGame.js" />
