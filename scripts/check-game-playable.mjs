@@ -519,12 +519,13 @@ try {
 
     if (roundTrip && saved) {
       let loaded = false;
+      // Declared outside the try: the catch below names the stage the load died in.
+      let continueStage = 'harness-reload';
       try {
         // Name the sub-stage in the failure line. A bare "did not return to flight" cannot
         // distinguish "the reloaded page never evaluated its module graph (window.SF absent)"
         // from "Continue's own load gates never released" — the 2026-09-30 capture was the
         // first kind and sat unconfirmed because the error did not say where it died.
-        let continueStage = 'harness-reload';
         phase = 'harness-reload';
         await page.reload({ waitUntil: 'domcontentloaded', timeout: 180000 });
         continueStage = 'boot-graph (window.SF)';

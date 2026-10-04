@@ -449,7 +449,11 @@ test('pursuit borrows a real patrol job and hands every hull back at terminal', 
 
 test('no patrol in range is a recorded outcome, not permission to spawn one', () => {
   const t = scene({ withPatrol: false });
-  const before = t.state.entityList.length;
+  const beforeOwned = new Set(
+    t.state.entityList
+      .filter((e) => e?.data?.runtimeOwner === 'heistFacilities')
+      .map((e) => e.id),
+  );
   const m = t.accept();
   assert.ok(t.stepToLaunch());
   t.latch();
@@ -457,7 +461,17 @@ test('no patrol in range is a recorded outcome, not permission to spawn one', ()
   assert.equal(m.heist.leases.length, 0, 'no lease is taken when nobody can be steered');
   const lawful = t.state.entityList.filter((e) => e?.data?.ai?.archetype === 'patrol_lawman');
   assert.equal(lawful.length, 0, 'the mission must never manufacture a responder');
-  assert.ok(t.state.entityList.length <= before + 1, 'only the capsule was added');
+  // World residency may finish materializing (asteroids) and law may post its own wanted_warrant
+  // hunter on the witnessed theft — those are other owners' designed consequences. What the
+  // mission itself may add is bounded: exactly one new heistFacilities-owned hull, the capsule.
+  const addedOwned = t.state.entityList.filter(
+    (e) => e?.data?.runtimeOwner === 'heistFacilities' && !beforeOwned.has(e.id),
+  );
+  const capsule = t.capsule();
+  assert.ok(
+    addedOwned.length === 1 && addedOwned[0].id === capsule.id,
+    'the mission adds only its capsule — every other spawn belongs to another owner',
+  );
   // The law owner records the absence in its own visible ledger.
   const rows = (t.state.lawSecurity.receipts || []).filter((r) => r && r.outcome === 'dispatch_unavailable');
   assert.ok(rows.length >= 1, 'law records "no patrol in range" as a visible row');
