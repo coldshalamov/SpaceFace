@@ -140,6 +140,23 @@ const NPC_SURVEY_MARK_RANGE_WU = 1400;
 const NPC_SURVEY_MARK_FIELDS_PER_STOP = 2;
 const NPC_SURVEY_MARK_FRESH_S = 420;
 const NPC_SURVEY_MARK_LEDGER_MAX = 24;
+// SF-080: a berth-class stop ('home:', 'origin:', 'dest:', 'yard:', 'berth:', 'client:') is one
+// physical dock — one job hull works it at a time. A job arriving inside the apron while the
+// berth is claimed holds at a lane-side queue point OUTSIDE the approach corridor, in stable
+// arrival order (first-in-apron, then jobId), for at most a legitimate wait; after that it
+// proceeds rather than letting a dead holder starve the pocket. The queue is intent-only —
+// nothing is emitted at the player, so crossing the lane never builds an invisible wall, and
+// pausing the kernel clock while held keeps the ship's unload honest (no work at distance).
+const NPC_BERTH_CLASS = /^(?:home|origin|dest|yard|berth|client):/;
+const NPC_BERTH_QUEUE_ZONE_WU = 420;
+const NPC_BERTH_OCCUPY_RADIUS_WU = 320;
+const NPC_BERTH_HOLD_OFFSET_WU = 130;
+const NPC_BERTH_HOLD_STACK_WU = 55;
+const NPC_BERTH_HOLD_TIMEOUT_S = 60;
+const NPC_BERTH_OCCUPY_PHASES = new Set([
+  NPC_JOB_PHASE.COMMISSION, NPC_JOB_PHASE.DEPART, NPC_JOB_PHASE.APPROACH,
+  NPC_JOB_PHASE.WORK, NPC_JOB_PHASE.LOAD, NPC_JOB_PHASE.UNLOAD, NPC_JOB_PHASE.HOLD,
+]);
 // One barge in the Helios starter field. The shift is a slice of the job's own WORK phase:
 // long enough for the live beam to bite, short enough that it stops while the rock is still a rock.
 const HELIOS_STARTER_SECTOR_ID = 'sector_helios_prime';
@@ -3939,7 +3956,17 @@ export const npcJobsRuntime = {
         && ![NPC_JOB_PHASE.TRANSIT, NPC_JOB_PHASE.RETURN].includes(entry.job.phase)
         && (Math.hypot(entity.pos.x - physicalTarget.pos.x, entity.pos.z - physicalTarget.pos.z) > physicalTarget.reach
           || Math.hypot(entity.vel?.x || 0, entity.vel?.z || 0) > 8);
-      if (step > 0 && !approachingSeam && !holdingForArrival && entry.job.phase !== NPC_JOB_PHASE.COMPLETE) {
+      // SF-080: a queued berth wait is the same class of bounded physical hold — the hull waits
+      // out the line at a real position, so the kernel clock waits with it (no work at distance).
+      // Leased hulls keep their clock: their owner drives, we never gate a controller's route.
+      if (claimedBeforeAdvance) {
+        entry.berthHold = false;
+        entry.berthHoldPoint = null;
+      } else {
+        this._updateBerthHold(entry, entity, simT);
+      }
+      if (step > 0 && !approachingSeam && !holdingForArrival && !entry.berthHold
+        && entry.job.phase !== NPC_JOB_PHASE.COMPLETE) {
         advance(entry.job, step, this._sink);
       }
 
@@ -4486,6 +4513,27 @@ export const npcJobsRuntime = {
     }
 
     if (phase === NPC_JOB_PHASE.TRANSIT || phase === NPC_JOB_PHASE.RETURN) {
+      // SF-080: berth held → ease onto the queue point and wait there; the leg resumes the
+      // moment right-of-way returns, from exactly where the hull parked.
+      if (entry.berthHold === true && entry.berthHoldPoint) {
+        const hp = entry.berthHoldPoint;
+        const dxh = hp.x - entity.pos.x;
+        const dzh = hp.z - entity.pos.z;
+        const dh = Math.hypot(dxh, dzh);
+        const aimH = dh > 0.01 ? Math.atan2(dzh, dxh) : (entity.rot || 0);
+        if (dh <= 14) {
+          this._writeIntent(entity, 0, 0, false, aimH, true);
+          return;
+        }
+        const hProfile = resolvePropulsionProfile(entity, this.state);
+        const governed = Math.max(1, finite(hProfile && hProfile.combatSpeed, 1));
+        const deadInput = Math.max(0, finite(hProfile && hProfile.assist && hProfile.assist.deadInput, 0.025));
+        const hSpeed = Math.min(job.speed || 35, 24);
+        const throttle = clamp(Math.max(hSpeed / governed, deadInput + 0.001), 0, 1);
+        const brake = dh <= hSpeed * ROUTE_BRAKE_WINDOW_S;
+        this._writeIntent(entity, 0, brake ? 0 : throttle, false, aimH, brake);
+        return;
+      }
       const planned = routePosition(job);
       const target = this._targetWaypointPos(job);
       if (planned && target) {
@@ -4559,6 +4607,106 @@ export const npcJobsRuntime = {
       if (wp && wp.pos) return { x: wp.pos.x, z: wp.pos.z };
     }
     return null;
+  },
+
+  /**
+   * SF-080: physical berth right-of-way. Recomputed each tick for materialized, unclaimed jobs.
+   * A job in TRANSIT/RETURN whose target is a berth-class waypoint and which is inside the apron
+   * either owns the approach or waits at a queue point. Claims: another job parked in a stationary
+   * phase at that same waypoint id owns the berth outright; failing that, the earliest apron
+   * contender (berthWaitSince, then jobId) does. Waits are bounded — after the timeout the hull
+   * proceeds anyway, so a dead or leased-out holder cannot deadlock the pocket.
+   */
+  _updateBerthHold(entry, entity, now) {
+    entry.berthHold = false;
+    entry.berthHoldPoint = null;
+    const job = entry.job;
+    if (!job || job.corrupt || !entity || !entity.pos) return;
+    const phase = job.phase;
+    if (phase !== NPC_JOB_PHASE.TRANSIT && phase !== NPC_JOB_PHASE.RETURN) {
+      entry.berthWaitSince = null;
+      return;
+    }
+    const desc = describeMaterialization(job);
+    const targetId = desc && desc.targetId;
+    if (typeof targetId !== 'string' || !NPC_BERTH_CLASS.test(targetId)) {
+      entry.berthWaitSince = null;
+      return;
+    }
+    const wp = Array.isArray(job.route) ? job.route.find((w) => w && w.id === targetId) : null;
+    if (!wp || !wp.pos) { entry.berthWaitSince = null; return; }
+    const dx = wp.pos.x - entity.pos.x;
+    const dz = wp.pos.z - entity.pos.z;
+    if (dx * dx + dz * dz > NPC_BERTH_QUEUE_ZONE_WU * NPC_BERTH_QUEUE_ZONE_WU) {
+      // Outside the apron: fly the leg, the corridor is still open.
+      entry.berthWaitSince = null;
+      return;
+    }
+    if (Number.isFinite(entry.berthYieldUntil)) {
+      if (now < entry.berthYieldUntil) return; // a legitimate wait already spent; divert through
+      entry.berthYieldUntil = null;
+    }
+    if (!Number.isFinite(entry.berthWaitSince)) entry.berthWaitSince = now;
+
+    let occupier = null;
+    const contenders = [];
+    const byId = this._byId();
+    for (const otherId of Object.keys(byId)) {
+      if (otherId === job.id) continue;
+      const other = byId[otherId];
+      if (!other || !other.job || other.job.corrupt || other.entityId == null) continue;
+      const otherEntity = this.state.entities && this.state.entities.get(other.entityId);
+      if (!otherEntity || otherEntity.alive === false || !otherEntity.pos) continue;
+      const otherJob = other.job;
+      const atWp = Array.isArray(otherJob.route) ? otherJob.route[otherJob.routeIndex] : null;
+      if (NPC_BERTH_OCCUPY_PHASES.has(otherJob.phase)
+        && atWp && atWp.id === targetId && atWp.pos) {
+        const odx = atWp.pos.x - otherEntity.pos.x;
+        const odz = atWp.pos.z - otherEntity.pos.z;
+        if (odx * odx + odz * odz <= NPC_BERTH_OCCUPY_RADIUS_WU * NPC_BERTH_OCCUPY_RADIUS_WU) {
+          if (!occupier) occupier = other; // a hull is physically on the berth — no tie to break
+          continue;
+        }
+      }
+      const oPhase = otherJob.phase;
+      if ((oPhase === NPC_JOB_PHASE.TRANSIT || oPhase === NPC_JOB_PHASE.RETURN)
+        && Number.isFinite(other.berthWaitSince)) {
+        const oDesc = describeMaterialization(otherJob);
+        if (oDesc && oDesc.targetId === targetId) contenders.push(other);
+      }
+    }
+    // I am always in my own queue ordering — the rank below is my place in line whether the
+    // berth itself is occupied or not.
+    contenders.push(entry);
+    if (contenders.length > 1) {
+      contenders.sort((a, b) => (a.berthWaitSince - b.berthWaitSince)
+        || String(a.job.id).localeCompare(String(b.job.id)));
+    }
+    const holder = occupier || contenders[0];
+    if (holder === entry && !occupier) return; // right-of-way: the approach is mine
+
+    if (now - entry.berthWaitSince > NPC_BERTH_HOLD_TIMEOUT_S) {
+      // A legitimate wait was spent: divert through rather than deadlock on a dead holder.
+      entry.berthYieldUntil = now + NPC_BERTH_HOLD_TIMEOUT_S;
+      entry.berthWaitSince = null;
+      return;
+    }
+    // Queue point: stand off the berth on the waiter's own side, one lateral step per place
+    // in line — visible separation, no collision body, no corridor block.
+    const rank = Math.max(0, contenders.indexOf(entry));
+    const bx = wp.pos.x;
+    const bz = wp.pos.z;
+    let nx = entity.pos.x - bx;
+    let nz = entity.pos.z - bz;
+    const len = Math.hypot(nx, nz) || 1;
+    nx /= len;
+    nz /= len;
+    entry.berthHoldPoint = {
+      x: bx + nx * NPC_BERTH_HOLD_OFFSET_WU - nz * rank * NPC_BERTH_HOLD_STACK_WU,
+      z: bz + nz * NPC_BERTH_HOLD_OFFSET_WU + nx * rank * NPC_BERTH_HOLD_STACK_WU,
+      berthId: targetId,
+    };
+    entry.berthHold = true;
   },
 
   // ── threat / flee ─────────────────────────────────────────────────────────────────────────────
