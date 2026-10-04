@@ -68,11 +68,22 @@ const SPECIALIZED_TETHER_HEADS = Object.freeze({
   twin_bridle: Object.freeze({ flag: 'masslineHeadTwinBridle', spring: Object.freeze({}) }),
 });
 
+// One fail-closed bound for every tether rating lane — live spool/reel multipliers and the
+// persisted-policy rebase below share it so they cannot drift. An unbounded multiplier moves
+// the joint hundreds of WU in one tick (teleport + solver destabilization); authored ratings
+// max-fold at 1.8x, so only corrupt data ever reaches the cap.
+const TETHER_RATING_MULT_MIN = 1;
+const TETHER_RATING_MULT_MAX = 6;
+
+function clampTetherRatingMult(raw) {
+  return typeof raw === 'number' && Number.isFinite(raw) && raw > 0
+    ? Math.max(TETHER_RATING_MULT_MIN, Math.min(TETHER_RATING_MULT_MAX, raw))
+    : TETHER_RATING_MULT_MIN;
+}
+
 function standardTetherSpoolMultiplier(owner) {
   const raw = owner && owner.data && owner.data.derived && owner.data.derived.tetherSpoolMult;
-  return typeof raw === 'number' && Number.isFinite(raw) && raw > 0
-    ? Math.max(1, Math.min(6, raw))
-    : 1;
+  return clampTetherRatingMult(raw);
 }
 
 function baseTetherMaxLength(def) {
@@ -118,9 +129,7 @@ export function effectiveTetherPolicy(def, owner, features = null) {
   // Fail-closed symmetric with the spool cap above (1..6): an unbounded reel multiplier lets a
   // stacked/load-derived mult move the joint hundreds of WU in one tick, which reads as a teleport
   // and destabilizes the solver. Ships max-fold reel at 1.8x today; the cap binds only corrupt data.
-  const reelMult = typeof rawReel === 'number' && Number.isFinite(rawReel) && rawReel > 0
-    ? Math.max(1, Math.min(6, rawReel))
-    : 1;
+  const reelMult = clampTetherRatingMult(rawReel);
   const policy = {
     break: effectiveTetherBreak(def, owner),
     reelRate: baseReelRate * reelMult,
@@ -154,7 +163,7 @@ export function rebasePersistedTetherPolicy(def, policy) {
       Number(savedBreak.maxImpulse) / PREVIOUS_STANDARD_TETHER_BREAK.maxImpulse,
       Number(savedBreak.maxYank) / PREVIOUS_STANDARD_TETHER_BREAK.maxYank,
     ].filter((value) => Number.isFinite(value) && value > 0);
-    const savedRating = Math.max(1, Math.min(6, ratios.length ? Math.max(...ratios) : 1));
+    const savedRating = clampTetherRatingMult(ratios.length ? Math.max(...ratios) : 1);
     rebased = {
       ...rebased,
       break: {
@@ -171,7 +180,7 @@ export function rebasePersistedTetherPolicy(def, policy) {
   const baseMaxLength = baseTetherMaxLength(def);
   if (baseMaxLength > 0) {
     const savedMaxLength = rebased.maxLength;
-    const maximumSupportedLength = baseMaxLength * 6;
+    const maximumSupportedLength = baseMaxLength * TETHER_RATING_MULT_MAX;
     const validSavedLength = typeof savedMaxLength === 'number'
       && Number.isFinite(savedMaxLength)
       && savedMaxLength >= baseMaxLength
@@ -183,6 +192,24 @@ export function rebasePersistedTetherPolicy(def, policy) {
         ...rebased,
         maxLength: normalizedMaxLength,
         payoutRevision: STANDARD_TETHER_PAYOUT_REVISION,
+      };
+    }
+  }
+  // The reel-rate snapshot has the same persisted hole payout had: a save written before the
+  // multiplier clamp (a48a898fc) carries an unbounded rate that survives Continue forever — and
+  // no revision bump marks it, so the implied multiplier re-derives unconditionally through the
+  // same fail-closed bound. In-envelope snapshots pass through bitwise, keeping the rebase an
+  // identity no-op for current saves; malformed or out-of-envelope rates fold to base..cap.
+  const baseReelRate = Number.isFinite(def.reelRate) && def.reelRate > 0 ? def.reelRate : null;
+  if (baseReelRate != null) {
+    const impliedMult = Number(rebased.reelRate) / baseReelRate;
+    const withinEnvelope = Number.isFinite(impliedMult)
+      && impliedMult >= TETHER_RATING_MULT_MIN
+      && impliedMult <= TETHER_RATING_MULT_MAX;
+    if (!withinEnvelope) {
+      rebased = {
+        ...rebased,
+        reelRate: baseReelRate * clampTetherRatingMult(impliedMult),
       };
     }
   }
