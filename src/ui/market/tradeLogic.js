@@ -497,6 +497,14 @@ export function applyTradeNavigation(ctx, stationId, cmdtyId) {
  * capacity; this reads the projected load factor, it never gates the load. Null when the
  * hull or its derived block is not reachable (headless/legacy callers): the card then simply
  * carries no mass phrase, like every other optional field.
+ *
+ * The base mass is projected, not read: operationalMass only re-derives on the
+ * cargo:massSettled flush (ships.js) and the registry skips cargo/ships while ui.docked —
+ * the exact session in which this card renders — so after a buy the block lags the hold.
+ * dryMass only moves on refit (recomputed synchronously), and cargo.usedMass is updated
+ * synchronously by the single writer, so dryMass + usedMass is the always-current operational
+ * mass; when the block is fresh the two are equal (ships.js: operationalMass = dryMass +
+ * cargo.usedMass) and the forecast is identical either way.
  */
 function loadHandlingForecast(state, def, units) {
   if (!(units > 0)) return null;
@@ -507,10 +515,19 @@ function loadHandlingForecast(state, def, units) {
     : null;
   const data = (entity && entity.data) || {};
   const derived = data.derived || null;
-  const operationalMass = derived && Number.isFinite(derived.operationalMass) ? derived.operationalMass : 0;
-  if (!data.defId || !(operationalMass > 0)) return null;
+  if (!data.defId || !derived) return null;
+  const cargo = (state && state.player && state.player.cargo) || null;
+  const heldMass = cargo && Number.isFinite(Number(cargo.usedMass))
+    ? Math.max(0, Number(cargo.usedMass))
+    : 0;
+  const dryMass = Number(derived.dryMass);
+  const operationalMass = Number(derived.operationalMass);
+  const baseMass = Number.isFinite(dryMass) && dryMass > 0
+    ? dryMass + heldMass
+    : (Number.isFinite(operationalMass) && operationalMass > 0 ? operationalMass : 0);
+  if (!(baseMass > 0)) return null;
   const loadMassT = Math.round(units * massPerU * 10) / 10;
-  const load = massLoadFactor(data.defId, operationalMass + units * massPerU);
+  const load = massLoadFactor(data.defId, baseMass + units * massPerU);
   return { loadMassT, thrustPct: Math.max(0, Math.round((1 - load) * 100)) };
 }
 
