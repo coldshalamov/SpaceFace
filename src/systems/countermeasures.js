@@ -653,8 +653,14 @@ export function selectLockLineage(state, deployer) {
   // nothing, so the missile that triggered it flew straight through the countermeasure.
   // Anchor the lineage on the live round itself — the same construction the loose-round branch
   // always used, extended to owned rounds.
+  // Code-unit ordering, not localeCompare: the anchor pick is a determinism-sensitive sim
+  // choice and must not drift with the host's ICU locale (the held-lock tiebreak above is
+  // already a plain string <).
   const anchor = inbound.loose.concat(inbound.ownedList)
-    .sort((a, b) => String(a.id).localeCompare(String(b.id)))[0];
+    .sort((a, b) => {
+      const x = String(a.id), y = String(b.id);
+      return x < y ? -1 : x > y ? 1 : 0;
+    })[0];
   if (!anchor) return null;
   const data = anchor.data || {};
   return {
