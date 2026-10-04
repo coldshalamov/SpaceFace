@@ -86,7 +86,7 @@ export const FITTING_DOSSIER = Object.freeze({
   },
   wpn_plasma_cannon_m: {
     detail: 'Heavy luminous slugs with splash. A hit leaves the hull cooking — burning damage lingers after impact.',
-    tip: 'The highest per-shot dps an M mount can field; splash means near-misses still count.',
+    tip: 'The highest dps an M mount can field; splash means near-misses still count.',
   },
   wpn_missile_rack_m: {
     detail: 'Lock on and release a homing missile that steers itself into the target — works even after you stop pointing at it.',
@@ -870,7 +870,7 @@ function hullStats(def) {
  */
 export const SERVICE_DOSSIER = {
   svc_weld: {
-    detail: 'A dockside crew re-welds the hull seams and flushes armor plating back to spec — both pools restored in full the moment the credit clears. The counter only puts it up while the hull is actually hurt.',
+    detail: 'A dockside crew re-welds the hull seams and flushes armor plating back to spec — both pools restored in full the moment the credit clears. The counter only welds a hull that is actually hurt.',
     tip: 'The cheapest armor in the shop when the next pack would catch you under-plated; a sound hull never needs it.',
   },
   svc_ordnance: {

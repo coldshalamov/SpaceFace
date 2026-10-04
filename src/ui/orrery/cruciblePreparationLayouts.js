@@ -130,7 +130,9 @@ ${A} .orr-armory-reading__hold-word:hover { color:var(--dp-ink) !important; }
 ${A} .orr-armory-reading[hidden] { display:none !important; }
 /* bottom fade on the scrollable pane — the cue that dossier words continue below the fold */
 ${A} .orr-armory-reading__main { mask-image:linear-gradient(to bottom,#000 0,#000 calc(100% - 30px),transparent 100%); -webkit-mask-image:linear-gradient(to bottom,#000 0,#000 calc(100% - 30px),transparent 100%); }
-${A} .orr-armory-visual { display:flex; flex-direction:column; width:100%; min-width:0; gap:16px; }
+/* the visual band runs item + label + jig + build at a fixed ~536 in a 524 box
+   at 1080p — the gap between planes pays the fold back, the media keeps its size. */
+${A} .orr-armory-visual { display:flex; flex-direction:column; width:100%; min-width:0; gap:12px; }
 ${A} .orr-armory-item { position:relative; display:grid; place-items:center; min-height:210px; height:250px; flex:none; }
 ${A} .orr-armory-item::before { content:''; position:absolute; inset:16px; border-radius:50%; border:1px solid var(--dp-line); pointer-events:none; }
 ${A} .orr-armory-item > .orr-equipment-glyph { width:180px; height:180px; color:var(--dp-ink); }
