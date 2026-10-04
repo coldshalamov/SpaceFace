@@ -66,18 +66,18 @@ test('wave-30 materialization fields wave-1 hull for the same archetype', () => 
   assert.equal(late.data.level, early.data.level ?? 1);
 });
 
-test('the curve moved into composition — later acts field more bodies', () => {
+test('the curve moved into cadence and bearings — same bodies, faster and wider', () => {
   // Waves 1 / 11 / 21 are the same template slot re-asked by acts I / II / III.
   const w1 = planFor(1);
   const w11 = planFor(11);
   const w21 = planFor(21);
-  const t1 = bodyTotal(w1);
-  const t11 = bodyTotal(w11);
-  const t21 = bodyTotal(w21);
-  assert.ok(t11 > t1, `act II raises the body count (${t1} -> ${t11})`);
-  assert.ok(t21 > t11, `act III raises it again (${t11} -> ${t21})`);
+  assert.equal(bodyTotal(w11), bodyTotal(w1), 'act II fields the template bodies');
+  assert.equal(bodyTotal(w21), bodyTotal(w1), 'act III fields the template bodies');
+  const gatesOf = (plan) => new Set(plan.packages.map((pkg) => pkg.gateGroup)).size;
+  assert.ok(gatesOf(w11) >= gatesOf(w1), 'act II never narrows the bearings');
+  assert.ok(gatesOf(w21) >= gatesOf(w1), 'act III never narrows the bearings');
   assert.ok(peakConcurrentDemand(w21.packages) <= SPAWN_BUDGET_DEFAULT_MAX,
-    'growth stays inside the shared 24-body peak budget');
+    'composition stays inside the shared 24-body peak budget');
 });
 
 test('later acts re-ask the wave through different bearings', () => {
@@ -110,7 +110,7 @@ test('batch cadence tightens with the act rather than hull', () => {
   );
 });
 
-test('an authored elite keeps its authored count — growth lands in the company it keeps', () => {
+test('an authored elite keeps its authored count — the cadence moves around it', () => {
   // Wave 30 is the finale: the boss crown swaps the hull, but the elite package count
   // stays authored and only the chaff around it grows.
   const eliteCount = (plan) => plan.packages
@@ -118,8 +118,8 @@ test('an authored elite keeps its authored count — growth lands in the company
     .reduce((sum, pkg) => sum + pkg.count, 0);
   assert.equal(eliteCount(planFor(10)), 1);
   assert.equal(eliteCount(planFor(30)), 1, 'the finale still fields ONE elite');
-  assert.ok(bodyTotal(planFor(30)) > bodyTotal(planFor(10)),
-    'and the room around it is denser than the wave-ten template');
+  assert.equal(bodyTotal(planFor(30)), bodyTotal(planFor(10)),
+    'and the room around it is the same bodies, asked faster and wider');
 });
 
 test('a live survival run is exempt from the damage profile in both directions', () => {

@@ -188,25 +188,48 @@ function crownFinaleBoss(packages) {
 }
 
 /**
- * FB-026 — the arc's difficulty is composition, not hit points. levelForWave is flat, so
- * the rising acts have to carry their own pressure: the same wave's question re-asked by
- * MORE bodies arriving on NEW bearings (batch gaps already tighten upstream through
- * applyDifficulty). Elite packages never grow — a hunt or a boss fields the hull it was
- * authored with; the pressure lands in the company it keeps. The sum is clamped to the
- * 24-body peak budget the planner enforces, trimming the largest grown package first.
+ * FB-026 (honest pressure) — the arc's difficulty is composition and cadence, not hit
+ * points AND not body count. Every act fields the template's bodies: pressure comes from
+ * (1) tighter batch cadence — trickled packs arrive sooner, (2) wider bearings — a
+ * second door opens so the same bodies surround instead of queueing, (3) a rotated
+ * ingress — the act never reads as a replay of the template. Elite packages are
+ * untouched; the 24-body peak budget guard stays as the ceiling.
  */
+const ACT_PRESSURE_GAP_TICKS = Object.freeze({ 1: 15, 2: 30 });
 function applyActPressure(packages, act) {
   if (act <= 0) return packages;
-  const share = act === 1 ? 4 : 2; // act II: +count/4; act III: +count/2 — min one body
+  const tighten = ACT_PRESSURE_GAP_TICKS[act] || 0;
   const next = packages.map(clonePackage);
+  // Same bodies, faster arrival: trickled packs (batchGapTicks > 0) tighten by the act's
+  // step; one-shot arrivals (gap 0) keep their authored schedule — the wave's shape, not
+  // its headcount, carries the act.
   for (const pkg of next) {
-    if (pkg.role === 'elite') continue;
-    if (!Number.isInteger(pkg.count) || pkg.count < 1) continue;
-    pkg.count += Math.max(1, Math.floor(pkg.count / share));
+    if (!Number.isInteger(pkg.batchGapTicks) || pkg.batchGapTicks <= 0) continue;
+    // applyDifficulty runs downstream of this composer and tightens 15 ticks per act step,
+    // so the floor here reserves that headroom: act II leaves ≥30 (final ≥15), act III
+    // leaves ≥45 (final ≥15). An act hurries the trickle, never collapses it into one dump.
+    const floor = act === 1 ? 30 : 45;
+    pkg.batchGapTicks = Math.max(floor, pkg.batchGapTicks - tighten);
   }
-  // Never exceed the cap the planner enforces. Walk the grown packages largest-first and
-  // hand bodies back until the wave fits — deterministic, and only ever trims the
-  // act-growth, never the authored count.
+  // The same bodies through an extra door: when the whole wave files through one gate,
+  // the largest non-elite package takes the gate two slots over, so the act surrounds
+  // instead of queueing. Deterministic; count-neutral.
+  const used = new Set(next.map((pkg) => pkg.gateGroup));
+  if (used.size === 1 && next.length > 1) {
+    let widest = null;
+    for (const pkg of next) {
+      if (pkg.role === 'elite') continue;
+      if (!Number.isInteger(pkg.count) || pkg.count < 1) continue;
+      if (!widest || pkg.count > widest.count) widest = pkg;
+    }
+    if (widest) {
+      const gates = SURVIVAL_GATE_GROUPS;
+      const index = gates.indexOf(widest.gateGroup);
+      if (index >= 0 && gates.length > 2) widest.gateGroup = gates[(index + 2) % gates.length];
+    }
+  }
+  // Peak-budget guard stays: a pathological authored recipe can never ride an act over
+  // the 24-body cap the planner enforces. Trims only non-elite overflow, largest first.
   for (let guard = 0; guard < 64 && peakConcurrentDemand(next) > SPAWN_BUDGET_DEFAULT_MAX; guard++) {
     let largest = null;
     for (const pkg of next) {
@@ -229,7 +252,7 @@ function applyActPressure(packages, act) {
 
 /**
  * Act composition for one planned wave. Identity for Act I except the wave-20 overlay.
- * Later acts re-ask the same wave with more bodies and rotated bearings.
+ * Later acts re-ask the same wave with tighter cadence and wider bearings.
  */
 export function composeArcWave({ packages, blockingRoles, arenaPhase, objective, wave }) {
   const act = actIndexForWave(wave);
