@@ -811,7 +811,7 @@ export function createMarketScreen(ctx) {
       return (intelRow.id === 'margin' || intelRow.id === 'route') && !!route;
     });
     const starved = starvedNeedLine(state, sid, row.id);
-    if (starved) rows.push({ id: 'starved', text: starved });
+    if (starved) rows.push({ id: 'starved', label: 'NEED', value: starved });
     return rows;
   }
 
