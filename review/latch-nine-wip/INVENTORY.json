@@ -1,0 +1,57 @@
+[
+  {
+    "path": "latch-nine-clearance-contract/SF20-01-clearance-adapter.patch",
+    "bytes": 37587,
+    "sha256": "5b30771fbd1e82cf6c0298d8f74f1a02fc3aa3fefe5470d2529b31ff35601ee7"
+  },
+  {
+    "path": "latch-nine-clearance-contract/PACKET.json",
+    "bytes": 1713,
+    "sha256": "2f18d0b83a78c5dbeebf3271c90e2d2d824c5ec800403b6112501fe8ce33c3df"
+  },
+  {
+    "path": "latch-nine-route-integration/SF20-01-route-observer.patch",
+    "bytes": 41871,
+    "sha256": "abcd840e961c7d401fbf2e85022cf30431775e903f4811e08ff63e63cc9637a6"
+  },
+  {
+    "path": "latch-nine-route-integration/ROUTE_PACKET.json",
+    "bytes": 3922,
+    "sha256": "01e74f5141412fbbee6d06ad700bad810aff9d2b2fb05b85c2fadb28bfd2c180"
+  },
+  {
+    "path": "latch-nine-route-integration/ROUTE_REVIEW.md",
+    "bytes": 3798,
+    "sha256": "2560f9213eada3298a3b167dc7496d1fefc23cb49588546f83d71cb8fbfdd6f2"
+  },
+  {
+    "path": "latch-nine-route-integration/LATCH_NINE_MODEL_CONTRACT.md",
+    "bytes": 7911,
+    "sha256": "e01394ba9536e3eefe13305ad3a4c3ceb20fc44caac2cf5625d9a9fb36a29540"
+  },
+  {
+    "path": "latch-nine-live-command-guard/SF20-01-live-command-guard.patch",
+    "bytes": 5433,
+    "sha256": "022035d89537c16b792d07bf7d2f912050643bba4c11ed00f43f1080f3a42c8f"
+  },
+  {
+    "path": "latch-nine-live-command-guard/GUARD_PACKET.json",
+    "bytes": 855,
+    "sha256": "36d9bdc05933fc537ab572fb792e936aff8f6bacf1753c92f3986753061526aa"
+  },
+  {
+    "path": "latch-nine-live-command-guard/candidate-guard-loader.mjs",
+    "bytes": 355,
+    "sha256": "656376518b4ab38584178709514461df0f44e0ea5f43c7cf594df2234cce2709"
+  },
+  {
+    "path": "latch-nine-sealed-evidence/SUMMARY.md",
+    "bytes": 1507,
+    "sha256": "b011bf88d236aaeb8d7d2487db2616c4e9dd52b2e4fbb9d14d743057d7be3771"
+  },
+  {
+    "path": "latch-nine-sealed-evidence/focused-61.tap",
+    "bytes": 13453,
+    "sha256": "63d4d292ea98ab0923c6adeb7a45a4cb3e19bb28a2de593037ef16e0bf84a9b3"
+  }
+]
