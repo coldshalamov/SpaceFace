@@ -308,7 +308,8 @@ const CORE_SECTORS = [
       // PQ-153.02 hero landmark (depth program C13e, lore `landmark_c13e_resonant_cathedral`).
       // Anchors zone_vesta_forge beside the foundry it was raised against: (-330,1060) sits ~350 WU
       // off station_forge with the f_vesta_3 crystal field's rim (~460 WU out, rocks to r360)
-      // composing its northern sky, clear of the vesta_storm_lane sheet at (680,320). The 2026-09-25
+      // composing its eastern sky (f_vesta_3 centres (120,980), due east of the cathedral;
+      // +z is north), clear of the vesta_storm_lane sheet at (680,320). The 2026-09-25
       // landmark still review parked at (-1050,1180) and framed nothing but black — the old spot was
       // 740 WU from the foundry and 1100+ WU from any field, a bare void the sector's dressing never
       // reaches. `pos` is inline sector-local (the frontier-region precedent) because
