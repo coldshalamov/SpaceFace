@@ -195,6 +195,78 @@ test('the authored Ceres service incidents keep their casualty — no second res
   assert.ok(vic.hull.alive !== false);
 });
 
+// The cue stamp above is only the transient half of the yield. The durable incident records
+// (state.traffic.ceresDisabledHaulerIncident / ceresTenderServiceIncident) are the ownership
+// truth that outlives a chain link — a casualty named by a LIVE record must yield the
+// responder even with no cue stamp at all, and a record that has gone terminal must release
+// the casualty back to the general responder.
+test('the durable incident records yield the responder — and a terminal record releases it', async () => {
+  const { sim, player } = await bootCeres();
+  const { rt, tender, casualties } = findCast(sim);
+  const stages = [];
+  sim.bus.on('npcjobs:crewResponse', (p) => stages.push(p.stage));
+  sim.state.traffic = sim.state.traffic || {};
+
+  // Closest casualty to the tender, explicitly clear of any cue stamp: whatever happens
+  // next is decided by the durable records alone.
+  const vic = casualties[casualties.length - 1];
+  assert.ok(vic, 'a working casualty must exist');
+  vic.hull.data = vic.hull.data || {};
+  delete vic.hull.data.ceresCausalEventId;
+  const wrId = vic.hull.data.worldRecordId || vic.entry.worldRecordId || 'wr-crew-test-casualty';
+  vic.hull.data.worldRecordId = wrId;
+  const phaseBefore = vic.entry.job.phase;
+  const driveDown = () => sim.bus.emit('combat:subsystemDisabled', {
+    targetId: vic.hull.id,
+    subsystemId: 'subsystem_drive',
+    attackerId: player.id,
+  });
+
+  // A live disabled-hauler recovery owns this casualty end to end: the yard's responder
+  // yields — no dispatch, no lease, and the casualty's own job is not even interrupted
+  // (a second responder would be a second owner of one story).
+  sim.state.traffic.ceresDisabledHaulerIncident = {
+    schema: 'spaceface.ceresDisabledHaulerRecovery.v1',
+    incidentId: 'test-disabled-hauler:1',
+    haulerWorldRecordId: wrId,
+    state: 'responder_approach',
+    outcome: null,
+  };
+  driveDown();
+  assert.deepEqual(stages, [], 'a live incident record yields the responder — no second owner');
+  assert.equal(sim.helpers.npcJobs.crewResponse(), null);
+  assert.equal(vic.entry.job.phase, phaseBefore, 'the yield precedes even the casualty interrupt');
+
+  // The same record gone terminal stops owning the casualty — the crew response runs.
+  sim.state.traffic.ceresDisabledHaulerIncident.state = 'recovered';
+  sim.state.traffic.ceresDisabledHaulerIncident.outcome = 'recovered';
+  driveDown();
+  assert.ok(stages.includes('dispatched'), 'a terminal record does not yield — the yard answers');
+  const lease = sim.helpers.npcJobs.crewResponse();
+  assert.ok(lease, 'the tender is on a control lease for the response');
+  assert.equal(lease.jobId, tender.jobId);
+  assert.equal(lease.casualtyEntityId, vic.hull.id);
+
+  // Same law for the tender-services-miner record: a non-terminal state yields the casualty…
+  resetCrewSlot(rt);
+  stages.length = 0;
+  sim.state.traffic.ceresDisabledHaulerIncident = null;
+  sim.state.traffic.ceresTenderServiceIncident = {
+    schema: 'spaceface.ceresTenderServiceIncident.v1',
+    incidentId: 'test-tender-service:1',
+    minerWorldRecordId: wrId,
+    state: 'approach',
+  };
+  driveDown();
+  assert.deepEqual(stages, [], 'a live tender-service record yields the responder too');
+  assert.equal(sim.helpers.npcJobs.crewResponse(), null);
+
+  // …and 'succeeded' is terminal — the casualty returns to the general responder pool.
+  sim.state.traffic.ceresTenderServiceIncident.state = 'succeeded';
+  driveDown();
+  assert.ok(stages.includes('dispatched'), 'a closed service record does not yield');
+});
+
 test('a hot wreck holds the truck, and a sky that never clears ends the run honestly', async () => {
   const { sim, player } = await bootCeres();
   const { rt, tender, casualties } = findCast(sim);
