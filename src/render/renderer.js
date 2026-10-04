@@ -21123,11 +21123,9 @@ export const render = {
     const capturedPass = route === POST_PROCESS_ROUTE.GRAPH ? (this._renderGraph || null)
       : route === POST_PROCESS_ROUTE.BLOOM ? (this.bloom || null)
         : null;
-    if ((route === POST_PROCESS_ROUTE.GRAPH || route === POST_PROCESS_ROUTE.BLOOM)
-        && capturedPass === null
-        && this._selectPostRoute() !== POST_PROCESS_ROUTE.NATIVE) {
-      return Promise.reject(abortError());
-    }
+    // A sibling post route staying live while the captured one was disposed must not abort the
+    // warm either: the native screen-target compile still populates the shared program cache
+    // the surviving route renders from (D102).
     const isActive = options && options.isActive;
     const ownerActive = () => (
       this._rendererResourcesDisposed !== true && !!this.renderer
