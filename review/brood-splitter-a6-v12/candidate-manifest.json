@@ -1,0 +1,54 @@
+{
+  "status": "user-rejected/redesign-needed",
+  "runtimeRegistered": false,
+  "files": [
+    {
+      "path": "review/brood-splitter-a6-v12/source/brood_splitter_v01.glb",
+      "sha256": "6bf7ef85ab3d4a13e0d73e9dfa03bcdc476efeae268807eec12c7a2b25b9d9d1",
+      "bytes": 4613008,
+      "status": "user-rejected visual candidate; redesign required; not runtime registered"
+    },
+    {
+      "path": "review/brood-splitter-a6-v12/release-candidate/brood_splitter_v01.glb",
+      "sha256": "abdd19057857dac783b3cb7860d4e8dbf9ddcca5b276bbfe7e090937cc8cca6a",
+      "bytes": 1411764,
+      "status": "user-rejected visual candidate; redesign required; not runtime registered"
+    },
+    {
+      "path": "review/brood-splitter-a6-v12/source/brood_splitter_axial_v01.glb",
+      "sha256": "eabc33fd9e7081a71b2ffabb60bc61a75005558c7cbea4e56927914ff6805fec",
+      "bytes": 2526172,
+      "status": "user-rejected visual candidate; redesign required; not runtime registered"
+    },
+    {
+      "path": "review/brood-splitter-a6-v12/release-candidate/brood_splitter_axial_v01.glb",
+      "sha256": "70b2b62318af2d3a44204d2957d65305c4ee475219c514fdf358139bc1ab19f3",
+      "bytes": 787896,
+      "status": "user-rejected visual candidate; redesign required; not runtime registered"
+    },
+    {
+      "path": "review/brood-splitter-a6-v12/source/brood_splitter_port_v01.glb",
+      "sha256": "ab5993d54a4a48ea5a8ec3ee9b509d914aaae5649eefe4ac2de5d08ced2651f3",
+      "bytes": 1106136,
+      "status": "user-rejected visual candidate; redesign required; not runtime registered"
+    },
+    {
+      "path": "review/brood-splitter-a6-v12/release-candidate/brood_splitter_port_v01.glb",
+      "sha256": "27c5292bcccf3b37342d090722893cd7ef244e6c6c18ec7d06adc8b2399d1c27",
+      "bytes": 378648,
+      "status": "user-rejected visual candidate; redesign required; not runtime registered"
+    },
+    {
+      "path": "review/brood-splitter-a6-v12/source/brood_splitter_starboard_v01.glb",
+      "sha256": "495e5095904636a2d918233a6f12145368a22ffe662fb04eda5d65738135768c",
+      "bytes": 1109952,
+      "status": "user-rejected visual candidate; redesign required; not runtime registered"
+    },
+    {
+      "path": "review/brood-splitter-a6-v12/release-candidate/brood_splitter_starboard_v01.glb",
+      "sha256": "e67bb6c771845f058bb2e0a401bcaaed69a1f13e3ac6725391a59844047af533",
+      "bytes": 381404,
+      "status": "user-rejected visual candidate; redesign required; not runtime registered"
+    }
+  ]
+}
