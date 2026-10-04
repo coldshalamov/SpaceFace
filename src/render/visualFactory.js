@@ -21,6 +21,7 @@ import { buildVesperVisual } from './characters/vesperModel.js';
 import { buildBracketVisual } from './characters/bracketModel.js';
 import { buildRavelVisual } from './characters/ravelModel.js';
 import { buildSolsticeVisual } from './characters/solsticeModel.js';
+import { buildRubricVisual } from './characters/rubricModel.js';
 import { modelTruthMountFractions } from '../data/modelTruth.js';
 import { mergeGeometries, mergeVertices, toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
 import { getReadyRockSurfaceTextures, rockSurfaceVariantSpec, ROCK_SURFACE_VARIANTS } from './rockSurfaceLibrary.js';
@@ -5708,9 +5709,8 @@ export function createVisualFactory() {
         if (e.data?.ravelPart) return stampBuiltVisual(buildRavelVisual(e));
         if (e.data?.bracketPart) return stampBuiltVisual(buildBracketVisual(e));
         if (e.data?.solsticePart) return stampBuiltVisual(buildSolsticeVisual(e));
-        // RUBRIC: the marker and its paint marks are authored; the filing hull (rubricPart 'hull')
-        // is an ordinary wreck. characters/rubricModel.js lands with the rubric lane — rubricPart
-        // entities take the ordinary type path below until the import + dispatch exist.
+        // RUBRIC: the marker and its paint marks are authored; the filing hull (rubricPart 'hull') is an ordinary wreck.
+        if (e.data?.rubricPart === 'body' || e.data?.rubricPart === 'mark') return stampBuiltVisual(buildRubricVisual(e));
         switch (e.type) {
           case 'ship': return stampBuiltVisual(optimizeStaticBatches(buildShipMesh(e, resolvePalette(e))));
           case 'asteroid': return stampBuiltVisual(freezeStaticPresentation(buildAsteroid(e), { merge: false }));
