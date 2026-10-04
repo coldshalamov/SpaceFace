@@ -346,6 +346,18 @@ export function lightCensusSignature(lightingScene) {
   return `${fogKey}|${parts.join('|')}`;
 }
 
+// Seq-memoized census readers (renderer._shadowCensusForFrame) fold this into
+// their validity: any mid-seq mutation of the rendered light set — precompile
+// stand-in mounts/removals, a torn-down subtree that carried a light — bumps it
+// once so a same-seq memo can't serve the pre-mutation signature.
+let shadowCensusMutationEpoch = 0;
+export function noteShadowCensusLightMutation() {
+  shadowCensusMutationEpoch += 1;
+}
+export function shadowCensusEpoch() {
+  return shadowCensusMutationEpoch;
+}
+
 // The variant substring's inputs are ~9 primitive reads — intern it per material
 // so repeat collects on the same casters don't re-alloc the discriminant string
 // every slice. A mutation that changes any input re-mints under the new bits.

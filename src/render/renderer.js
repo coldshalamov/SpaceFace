@@ -343,6 +343,8 @@ import {
   createShadowDepthStagingSession,
   disposeAdmissionShadowResources,
   lightCensusSignature,
+  noteShadowCensusLightMutation,
+  shadowCensusEpoch,
   UNSTAGED_COLLECT_OVER_COVER,
 } from './shadowDepthAdmission.js';
 import { preloadRockSurfaceLibrary } from './rockSurfaceLibrary.js';
@@ -6070,6 +6072,15 @@ const swarmWarmOutcomeClaims = (status) => {
     || status.startsWith('authored')
     || status.startsWith('same-semantic-fallback');
 };
+
+// Absolute cap on how long a warm root's warmBuilding flag waits on queued
+// attach/upgrade jobs. A job that never settles (hung decode/lease) wedges the
+// flag: the ~14k-node hidden subtree can never park and pays its
+// updateMatrixWorld in every presented frame, and isResidencyOwnerActive pins
+// the warm's decode leases for the whole run. Past the deadline the flag
+// releases and a late-settling attach drops silently via
+// boundaryBelongsToScene — the documented trade, confined to the hang.
+const WARM_BUILDING_SETTLE_DEADLINE_MS = 30000;
 
 // Nearest ancestor that owns a shadow-caster policy record (same userData key as
 // shadowCasterPolicy.js), else the direct scene child — the granularity the arm's
@@ -12954,6 +12965,14 @@ export const render = {
           } catch (error) {
             console.warn('[render] crucible bounded roster warm finish failed', error);
           }
+        } else if (crucibleWarm) {
+          // Over-budget skips finish wholesale — but the flags finish() drains
+          // still have to drop or the mounted warm root can never park (its
+          // hidden subtree then rides every presented frame for the run) and
+          // its decode leases stay owner-pinned. Mirror finish()'s early
+          // building clear and arm the bounded settle.
+          crucibleWarm.building = false;
+          this._armCrucibleWarmBuildingSettle(crucibleWarm);
         }
         if (cookStale()) return cookSuperseded;
         recordOpeningCookStep(state.render, 'cook.crucibleWarm', crucibleWarmStarted,
@@ -16770,6 +16789,38 @@ export const render = {
     } catch (_) { /* teardown is best-effort */ }
   },
 
+  // Park-safety: the root flag may drop only once every queued attach/upgrade
+  // job settles — a parked boundary fails boundaryBelongsToScene and its queued
+  // attaches drop silently. Post-snapshot pushes re-arm (the snapshot only
+  // covers jobs queued before allSettled read the array) but never past
+  // WARM_BUILDING_SETTLE_DEADLINE_MS; the arm also drains `warm.building`, the
+  // residency-owner pin, so finish() being skipped over-budget or a single
+  // never-settling job can't leave either flag up for the run.
+  _armCrucibleWarmBuildingSettle(warm) {
+    if (!warm || !warm.root) return;
+    if (!Number.isFinite(warm.settleDeadlineAt)) {
+      warm.settleDeadlineAt = Date.now() + WARM_BUILDING_SETTLE_DEADLINE_MS;
+    }
+    const settle = (snapshotLength) => {
+      Promise.race([
+        Promise.allSettled(warm.pendingAttachments),
+        new Promise((resolve) => setTimeout(
+          resolve,
+          Math.max(0, warm.settleDeadlineAt - Date.now()),
+        )),
+      ]).then(() => {
+        if (warm.pendingAttachments.length > snapshotLength
+            && Date.now() < warm.settleDeadlineAt) {
+          settle(warm.pendingAttachments.length);
+          return;
+        }
+        warm.building = false;
+        if (warm.root && warm.root.userData) warm.root.userData.warmBuilding = false;
+      });
+    };
+    settle(warm.pendingAttachments.length);
+  },
+
   async _finishCrucibleBoundedRosterWarm(warm, options = {}) {
     const { renderer, scene, state } = this;
     if (!warm || !warm.root || !renderer || !scene) return null;
@@ -16815,10 +16866,12 @@ export const render = {
     const covered = warm.coveredMap;
     if (reKickBudget > 0 && covered && Array.isArray(warm.retriableKicks)) {
       const reKicks = [];
-      const releaseClaim = (enemyId) => {
-        const count = covered.get(enemyId) || 0;
-        if (count > 1) covered.set(enemyId, count - 1);
-        else covered.delete(enemyId);
+      const releaseClaim = (enemyId, keepCovered = false) => {
+        if (!keepCovered) {
+          const count = covered.get(enemyId) || 0;
+          if (count > 1) covered.set(enemyId, count - 1);
+          else covered.delete(enemyId);
+        }
         const claims = this._swarmWarmReKickClaims;
         if (claims instanceof Map) {
           const left = (claims.get(enemyId) || 0) - 1;
@@ -16847,7 +16900,13 @@ export const render = {
               || (this._swarmWarmReKickClaims = new Map());
             claims.set(enemyId, (claims.get(enemyId) || 0) + 1);
           }
-          const reKickResult = reKick(1);
+          let reKickResult = null;
+          try {
+            reKickResult = reKick(1);
+          } catch (err) {
+            if (enemyId != null) releaseClaim(enemyId);
+            continue;
+          }
           if (!reKickResult || typeof reKickResult.then !== 'function') {
             if (enemyId != null) releaseClaim(enemyId);
             continue;
@@ -16855,7 +16914,7 @@ export const render = {
           reKickResult.then((result) => {
             entry.result = result;
             const settled = result && typeof result === 'object' ? result.status : result;
-            if (enemyId != null && !swarmWarmOutcomeClaims(settled)) releaseClaim(enemyId);
+            if (enemyId != null) releaseClaim(enemyId, swarmWarmOutcomeClaims(settled));
           });
           reKicks.push(reKickResult);
           warm.pendingAttachments.push(reKickResult);
@@ -16885,23 +16944,7 @@ export const render = {
     // spawnable archetypes, boundary compositions that already ran, plus the packaged bodies
     // just decoded. Instantiating each once links every material family it carries.
     // settledOnly — snapshot what finished decoding, never await the registry's pending tasks.
-    // Park-safety: the flag may drop only once every queued attach/upgrade job has
-    // settled — a bounded wait expiring mid-flight (or a records throw below) must not
-    // make the root parkable while jobs still run: a parked boundary fails
-    // boundaryBelongsToScene and its queued attaches drop silently.
-    // Re-arm rather than clear when a post-snapshot push lands during the gate's await —
-    // the snapshot only covers jobs queued before allSettled read the array, and a
-    // scenePrepared-driven top-up can attach after it.
-    const settleWarmBuilding = (snapshotLength) => {
-      Promise.allSettled(warm.pendingAttachments).then(() => {
-        if (warm.pendingAttachments.length > snapshotLength) {
-          settleWarmBuilding(warm.pendingAttachments.length);
-          return;
-        }
-        if (warm.root && warm.root.userData) warm.root.userData.warmBuilding = false;
-      });
-    };
-    settleWarmBuilding(warm.pendingAttachments.length);
+    this._armCrucibleWarmBuildingSettle(warm);
     let records = [];
     try {
       records = await listDecodedAuthoredParts(renderer, { settledOnly: true });
@@ -17363,96 +17406,141 @@ export const render = {
       }
     };
 
-    try {
-      const shipSpecs = swarmRosterShipExemplarSpecs('deferred-warm:ship:', { enemyIds: freshSet });
-      for (const spec of shipSpecs) {
-        // Twin witnesses: a packaged hull promotes its direct-mesh candidate into a
-        // GLTFKit_InstancePool chunk on the SECOND same-key owner — one exemplar leaves the
-        // promotion (chunk program link + bufferData) for the first live twin spawn.
-        for (let witness = 0; witness < 2; witness += 1) {
-          let ship = null;
-          try { ship = this.vf.build(spec); } catch (error) {
-            console.warn('[render] deferred swarm warm ship build failed', spec && spec.id, error);
-            unmarkEnemy(spec && spec.data && spec.data.lootTableId);
-            break;
+    // The exemplar builds are the in-flight heavy half of this emit: 1-4
+    // archetypes x 2 ship witnesses + hulk exemplars of vf.build plus the kick
+    // dispatches used to mint one unbounded synchronous block inside a presented
+    // frame (the wavePlanned fallback can land in the round's first frames).
+    // Drive them as an async continuation that yields between exemplars and
+    // debit the paced ledger so sibling slicers see the spend. The marks above
+    // already landed — a failed build still unmarks + tears down exactly once.
+    const buildNow = (typeof performance !== 'undefined' && typeof performance.now === 'function')
+      ? () => performance.now() : () => Date.now();
+    const buildReady = (async () => {
+      const buildStartedAt = buildNow();
+      let sliceStartedAt = buildStartedAt;
+      try {
+        const shipSpecs = swarmRosterShipExemplarSpecs('deferred-warm:ship:', { enemyIds: freshSet });
+        for (const spec of shipSpecs) {
+          if (buildNow() - sliceStartedAt > 4) {
+            await yieldToBrowser();
+            sliceStartedAt = buildNow();
           }
-          if (!ship) {
-            unmarkEnemy(spec && spec.data && spec.data.lootTableId);
-            break;
-          }
-          ship.visible = false;
-          root.add(ship);
-          if (typeof ship.userData?.requestAuthoredUpgrade === 'function') {
-            const kickShip = (attempt) => track(requestAuthoredUpgrade(ship, renderer, scene, {
-              residencyRole: 'crucible-roster-warm',
-              sectorId,
-              deferPackagePoolActivation: false,
-              deferBoundaryPublication: true,
-              overlapAuthoredPipelineCompile: true,
-              upgradeJobKey: `deferred-warm:job:${spec.id}:w${witness}${attempt > 0 ? `:r${attempt}` : ''}`,
-            }), `ship:${spec.id}:w${witness}${attempt > 0 ? `:r${attempt}` : ''}`);
-            warm.pendingAttachments.push(kickShip(0));
-            const shipEnemyId = spec.data && spec.data.lootTableId;
-            pendingAttachmentEnemyIds.push(shipEnemyId);
-            pendingAttachmentRetries.push(makeDeferredWarmKickRetry(ship, shipEnemyId, kickShip));
-          }
-        }
-      }
-      // The first kill of a newcomer draws its dead hulk — the 'place'-slot packaged attach
-      // the live hull's 'hull' decode never produces. Same exemplar the launch warm builds.
-      for (const spec of hulkExemplarSpecsForShips(shipSpecs, 'deferred-warm:hulk:')) {
-        try {
-          const hulk = this.vf.build(spec);
-          if (!hulk) continue;
-          hulk.visible = false;
-          root.add(hulk);
-          if (typeof hulk.userData?.requestAuthoredUpgrade === 'function') {
-            const kickHulk = (attempt) => track(
-              hulk.userData.requestAuthoredUpgrade(renderer, scene, {
+          // Twin witnesses: a packaged hull promotes its direct-mesh candidate into a
+          // GLTFKit_InstancePool chunk on the SECOND same-key owner — one exemplar leaves the
+          // promotion (chunk program link + bufferData) for the first live twin spawn.
+          for (let witness = 0; witness < 2; witness += 1) {
+            let ship = null;
+            try { ship = this.vf.build(spec); } catch (error) {
+              console.warn('[render] deferred swarm warm ship build failed', spec && spec.id, error);
+              unmarkEnemy(spec && spec.data && spec.data.lootTableId);
+              break;
+            }
+            if (!ship) {
+              unmarkEnemy(spec && spec.data && spec.data.lootTableId);
+              break;
+            }
+            ship.visible = false;
+            root.add(ship);
+            if (typeof ship.userData?.requestAuthoredUpgrade === 'function') {
+              const kickShip = (attempt) => track(requestAuthoredUpgrade(ship, renderer, scene, {
                 residencyRole: 'crucible-roster-warm',
                 sectorId,
-              }),
-              `hulk:${spec.id}${attempt > 0 ? `:r${attempt}` : ''}`,
-            );
-            warm.pendingAttachments.push(kickHulk(0));
-            const hulkEnemyId = spec && spec.data
-              && spec.data.hulkVisual && spec.data.hulkVisual.lootTableId;
-            pendingAttachmentEnemyIds.push(hulkEnemyId);
-            pendingAttachmentRetries.push(makeDeferredWarmKickRetry(hulk, hulkEnemyId, kickHulk));
+                deferPackagePoolActivation: false,
+                deferBoundaryPublication: true,
+                overlapAuthoredPipelineCompile: true,
+                upgradeJobKey: `deferred-warm:job:${spec.id}:w${witness}${attempt > 0 ? `:r${attempt}` : ''}`,
+              }), `ship:${spec.id}:w${witness}${attempt > 0 ? `:r${attempt}` : ''}`);
+              warm.pendingAttachments.push(kickShip(0));
+              const shipEnemyId = spec.data && spec.data.lootTableId;
+              pendingAttachmentEnemyIds.push(shipEnemyId);
+              pendingAttachmentRetries.push(makeDeferredWarmKickRetry(ship, shipEnemyId, kickShip));
+            }
           }
-        } catch (error) {
-          console.warn('[render] deferred swarm warm hulk build failed', spec && spec.id, error);
-          unmarkEnemy(spec && spec.data && spec.data.hulkVisual && spec.data.hulkVisual.lootTableId);
         }
+        // The first kill of a newcomer draws its dead hulk — the 'place'-slot packaged attach
+        // the live hull's 'hull' decode never produces. Same exemplar the launch warm builds.
+        for (const spec of hulkExemplarSpecsForShips(shipSpecs, 'deferred-warm:hulk:')) {
+          if (buildNow() - sliceStartedAt > 4) {
+            await yieldToBrowser();
+            sliceStartedAt = buildNow();
+          }
+          try {
+            const hulk = this.vf.build(spec);
+            if (!hulk) continue;
+            hulk.visible = false;
+            root.add(hulk);
+            if (typeof hulk.userData?.requestAuthoredUpgrade === 'function') {
+              const kickHulk = (attempt) => track(
+                hulk.userData.requestAuthoredUpgrade(renderer, scene, {
+                  residencyRole: 'crucible-roster-warm',
+                  sectorId,
+                }),
+                `hulk:${spec.id}${attempt > 0 ? `:r${attempt}` : ''}`,
+              );
+              warm.pendingAttachments.push(kickHulk(0));
+              const hulkEnemyId = spec && spec.data
+                && spec.data.hulkVisual && spec.data.hulkVisual.lootTableId;
+              pendingAttachmentEnemyIds.push(hulkEnemyId);
+              pendingAttachmentRetries.push(makeDeferredWarmKickRetry(hulk, hulkEnemyId, kickHulk));
+            }
+          } catch (error) {
+            console.warn('[render] deferred swarm warm hulk build failed', spec && spec.id, error);
+            unmarkEnemy(spec && spec.data && spec.data.hulkVisual && spec.data.hulkVisual.lootTableId);
+          }
+        }
+      } catch (error) {
+        console.warn('[render] deferred swarm warm build failed', error);
+        unmark();
+        // A thrown build skips the settle chain below: detach the half-built root so it
+        // doesn't sit mounted+invisible+unparkable until run end (and leave the prewarm
+        // census — a dead subtree kept in the list is re-collected by every rescan).
+        teardown();
+        return false;
+      } finally {
+        notePacedFrameSpend(buildNow() - buildStartedAt);
       }
-    } catch (error) {
-      console.warn('[render] deferred swarm warm build failed', error);
-      unmark();
-      // A sync-throw skips the settle chain below: detach the half-built root so it
-      // doesn't sit mounted+invisible+unparkable until run end (and leave the prewarm
-      // census — a dead subtree kept in the list is re-collected by every rescan).
-      teardown();
-      return null;
-    }
+      return true;
+    })();
 
     // Settle: authored attaches land first (they decode the records the palette pass reads),
     // then the (file x palette) subjects mint exactly like finish() does, then the whole root
     // runs the mid-flight admission chain — compile, residency upload, exact-target touch.
-    const done = Promise.allSettled(warm.pendingAttachments)
+    // The wait is deadline-bounded: one never-settling attach (hung decode/lease) wedges the
+    // whole chain — warmBuilding stays true so the root can never park, and
+    // swarmDeferredWarm.pending stays true so every "Keep current loadout" click pays the
+    // draft-gate stall. On expiry the never-settled rows release coverage like retriable
+    // settles (but earn no same-dwell re-kick — their kicks may still be in flight) and the
+    // chain proceeds on what did land; late attaches drop silently via boundaryBelongsToScene.
+    const settleDeadlineAt = Date.now() + WARM_BUILDING_SETTLE_DEADLINE_MS;
+    const done = buildReady
+      .then((built) => (built === true ? Promise.race([
+        Promise.allSettled(warm.pendingAttachments),
+        new Promise((resolve) => setTimeout(
+          () => resolve(false),
+          Math.max(0, settleDeadlineAt - Date.now()),
+        )),
+      ]) : Promise.resolve(null)))
       .then((outcomes) => {
+        // A failed build already unmarked + tore down — skip the work legs below.
+        if (outcomes === null) return false;
+        const timedOut = outcomes === false;
+        const results = timedOut ? null : outcomes;
+        const bound = timedOut ? warm.pendingAttachments.length : results.length;
         // Coverage only counts what the kick actually warmed: release rows whose
         // exemplar attach settled a retriable outcome so the next dwell retries
         // them (same contract as the launch warm's per-kick unmark). unmarkEnemy
         // is per-warm idempotent, so the ship kick and its derived hulk kick
         // release one shared row once.
         const releasedRetries = [];
-        for (let i = 0; i < outcomes.length; i += 1) {
-          const result = outcomes[i] && outcomes[i].status === 'fulfilled'
-            ? outcomes[i].value : null;
+        for (let i = 0; i < bound; i += 1) {
+          const settled = results && results[i];
+          const result = settled && settled.status === 'fulfilled'
+            ? settled.value : null;
           const status = result && typeof result === 'object' ? result.status : result;
           if (!swarmWarmOutcomeClaims(status)) {
             unmarkEnemy(pendingAttachmentEnemyIds[i]);
-            if (pendingAttachmentEnemyIds[i] != null && pendingAttachmentRetries[i]) {
+            if (!timedOut && pendingAttachmentEnemyIds[i] != null
+                && pendingAttachmentRetries[i]) {
               releasedRetries.push(pendingAttachmentRetries[i]);
             }
           }
@@ -17468,22 +17556,31 @@ export const render = {
           const reKick = retry();
           if (reKick) reKicks.push(reKick);
         }
-        return reKicks.length ? Promise.allSettled(reKicks) : null;
+        // The re-kicks share the settle deadline — a hung retry must not
+        // re-wedge the chain it was bounded to protect. A late-settling
+        // re-kick still runs its own coverage release at dispatch.
+        return reKicks.length ? Promise.race([
+          Promise.allSettled(reKicks),
+          new Promise((resolve) => setTimeout(
+            resolve,
+            Math.max(0, settleDeadlineAt - Date.now()),
+          )),
+        ]) : null;
       })
-      .then(() => this._mintDeferredPaletteSubjects(root, freshSet, sectorId))
-      .then(() => (
+      .then((ok) => (ok === false ? false : this._mintDeferredPaletteSubjects(root, freshSet, sectorId)))
+      .then((ok) => (ok === false ? false : (
         state.render && typeof state.render.compileObjectPipelines === 'function'
           ? state.render.compileObjectPipelines(root, { explicit: true })
           : null
-      ))
+      )))
       // The compile links programs and touches buffers, but texture uploads live on the
       // residency lane — without this leg a newcomer file's maps would upload on its first
       // in-round draw (the PQ-210.00 zero-first-draw-upload rule).
-      .then(() => (
+      .then((ok) => (ok === false ? false : (
         state.render && typeof state.render.prepareAuthoredGpuResidency === 'function'
           ? state.render.prepareAuthoredGpuResidency(root, { isActive: false })
           : null
-      ))
+      )))
       .catch((error) => {
         console.warn('[render] deferred swarm warm compile failed', error);
         // Coverage only counts what actually compiled: unmark so the next dwell (or the
@@ -17535,8 +17632,19 @@ export const render = {
     const playerHullFiles = playerSpec ? warmHullFilesForSpecs([playerSpec]) : new Set();
     const seenPairs = new Set();
     let minted = 0;
+    // The registry walk runs inside a flight microtask — slice it so a large
+    // authored library can't mint one unbounded presented-frame block, and
+    // debit the paced ledger so sibling slicers see the spend.
+    const scanNow = (typeof performance !== 'undefined' && typeof performance.now === 'function')
+      ? () => performance.now() : () => Date.now();
+    const scanStartedAt = scanNow();
+    let sliceStartedAt = scanStartedAt;
     for (const { cacheKey, record } of records) {
       if (!record) continue;
+      if (scanNow() - sliceStartedAt > 4) {
+        await yieldToBrowser();
+        sliceStartedAt = scanNow();
+      }
       const parts = String(cacheKey || '').split('::');
       if (parts[1] !== 'hull') continue;
       const palettes = rosterFilePalettes.get(normalizeFile(parts[0]));
@@ -17577,6 +17685,7 @@ export const render = {
       }
     }
     if (minted > 0) canonicalizeObjectSurfaceProgramKeys(root);
+    notePacedFrameSpend(scanNow() - scanStartedAt);
   },
 
   /**
@@ -18107,7 +18216,17 @@ export const render = {
   },
 
   _unbindPresentationMesh(entityId, mesh = null) {
-    if (mesh) releasePooledPresentationTextures(mesh, entityId, this);
+    if (mesh) {
+      releasePooledPresentationTextures(mesh, entityId, this);
+      // The pooled-mark contract is the entity bound *right now*: a mesh leaving
+      // the presentation world keeps no owner, so entity resolvers can't hand
+      // its next incarnation the previous owner's id. Preserve a mismatched
+      // mark — it belongs to a different binding's lifecycle.
+      if (mesh.userData && (entityId == null
+          || mesh.userData.sfBoundEntityId === entityId)) {
+        delete mesh.userData.sfBoundEntityId;
+      }
+    }
     if (this._livingHullPresentation) {
       if (mesh) this._livingHullPresentation.detach(mesh);
       else if (entityId === this.state.playerId) this._livingHullPresentation.detach();
@@ -21691,9 +21810,12 @@ export const render = {
     const memo = this._shadowCensusMemo;
     const seq = this._viewSyncSeq || 0;
     const scene = this.scene;
-    if (memo && memo.seq === seq && memo.scene === scene) return memo.sig;
+    const epoch = shadowCensusEpoch();
+    if (memo && memo.seq === seq && memo.scene === scene && memo.epoch === epoch) {
+      return memo.sig;
+    }
     const sig = lightCensusSignature(scene);
-    this._shadowCensusMemo = { seq, scene, sig };
+    this._shadowCensusMemo = { seq, scene, sig, epoch };
     return sig;
   },
 
@@ -23264,8 +23386,10 @@ function disposeObject(obj) {
   // No-op until a context loss stashes the identities; an identity is only removed when the
   // recorded provenance set holds it, so foreign listeners are never touched.
   detachStashedStaleWebGlDisposeListeners([obj]);
+  let heldLight = false;
   obj.traverse((c) => {
     if (!c) return;
+    if (c.isLight === true) heldLight = true;
     // Release the vendored maintained shadow-caster registry entry: a flagged-but-torn-down
     // object would stay pinned by the registry Set otherwise.
     c.castShadow = false;
@@ -23310,4 +23434,7 @@ function disposeObject(obj) {
       }
     }
   });
+  // A torn-down subtree that carried a light changed the rendered light set —
+  // same-seq census memos minted before this teardown would serve the stale sig.
+  if (heldLight) noteShadowCensusLightMutation();
 }

@@ -10,6 +10,61 @@ import { cloneMaterialPreservingShaderHooks } from './materialClone.js';
 
 export const CRUCIBLE_GHOST_OPACITY = 0.32;
 
+// Object3D.clone JSON round-trips every node's userData — on a depth-staged,
+// packaged, LOD-bound hull that serializes sfDepthMark geometry+material refs,
+// the quadratic renderPackageInstance subtree, entity-identity stamps (which
+// would resolve the ghost to the live entity), and every function disposer
+// into dead {} records, all inside a presented frame. Clone under a plain-data
+// projection of each node's userData instead, then restore the source's.
+const GHOST_CLONE_USERDATA_DROP = new Set([
+  '__spacefaceShadowCasterPolicyV1',
+  '__spacefaceDepthStageSelfDirty',
+  'sfDepthUndrawableCycles',
+  'sfDepthMark',
+  'shadowMeshNotes',
+  'renderPackageInstance',
+  'presentationEntityId',
+  'sfBoundEntityId',
+  'sfStableEntityKey',
+  'sfHiddenFrozen',
+  'lod',
+]);
+
+function plainUserDataValue(value, depth) {
+  if (value == null) return value;
+  const type = typeof value;
+  if (type !== 'object') {
+    return type === 'function' || type === 'symbol' ? undefined : value;
+  }
+  if (depth > 4) return undefined;
+  if (!Array.isArray(value)) {
+    const proto = Object.getPrototypeOf(value);
+    if (proto !== Object.prototype && proto !== null) return undefined;
+    const out = {};
+    for (const key of Object.keys(value)) {
+      const entry = plainUserDataValue(value[key], depth + 1);
+      if (entry !== undefined) out[key] = entry;
+    }
+    return out;
+  }
+  const out = [];
+  for (const item of value) {
+    const entry = plainUserDataValue(item, depth + 1);
+    if (entry !== undefined) out.push(entry);
+  }
+  return out;
+}
+
+function ghostUserDataProjection(data) {
+  const out = {};
+  for (const key of Object.keys(data)) {
+    if (GHOST_CLONE_USERDATA_DROP.has(key)) continue;
+    const entry = plainUserDataValue(data[key], 0);
+    if (entry !== undefined) out[key] = entry;
+  }
+  return out;
+}
+
 function applyGhostMaterial(material) {
   if (!material || typeof material.clone !== 'function') return material;
   const next = cloneMaterialPreservingShaderHooks(material);
@@ -50,7 +105,20 @@ export function createCrucibleGhostPresentation() {
     if (playerMesh.userData && playerMesh.userData.crucibleGhost) return;
     if (root && clonedFrom === playerMesh) return;
     disposeRoot();
-    root = playerMesh.clone(true);
+    const originals = [];
+    playerMesh.traverse((obj) => {
+      if (!obj || !obj.userData) return;
+      originals.push([obj, obj.userData]);
+      obj.userData = ghostUserDataProjection(obj.userData);
+    });
+    try {
+      root = playerMesh.clone(true);
+    } finally {
+      for (const [obj, data] of originals) obj.userData = data;
+    }
+    // A source frozen while hidden mints an unposeable ghost — the tape drives
+    // this transform from sync(), never the live writers.
+    root.matrixAutoUpdate = true;
     clonedMaterials = [];
     root.traverse((obj) => {
       if (!obj) return;

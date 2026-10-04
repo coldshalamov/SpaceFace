@@ -27,6 +27,7 @@ import { waitForRockSurfaceLibraryReady } from './rockSurfaceLibrary.js';
 import { createDynamicBufferCoordinator } from './dynamicBufferRanges.js';
 import { compileScenePipelinesSafely } from './compilePipelinesSafely.js';
 import { compileScenePipelinesForRenderTarget } from './bloom.js';
+import { noteShadowCensusLightMutation } from './shadowDepthAdmission.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
 const WEAPON_BY_ID = new Map(WEAPONS.map((weapon) => [weapon.id, weapon]));
@@ -176,6 +177,7 @@ export function releaseVisiblePointLightBudget(scene) {
   if (!staging) return null;
   staging.removeFromParent();
   if (typeof staging.clear === 'function') staging.clear();
+  noteShadowCensusLightMutation();
   return staging;
 }
 
@@ -193,6 +195,7 @@ export function syncVisiblePointLightBudget(scene, video) {
     standIn.position.set(i * 24, 10, 0);
     lightStaging.add(standIn);
   }
+  noteShadowCensusLightMutation();
   return lightStaging;
 }
 /**
