@@ -36,8 +36,11 @@ working. Product status and remaining tasks live in
    means the shared index is stale, not that the file is gone: `git reset -- <paths>`, then publish.
 6. End every task with `RESULT: DONE` or `RESULT: NOT DONE` using the template in
    [`02_REMAINING_WORK.md`](./02_REMAINING_WORK.md). Delete stale rows; Git and receipts own history.
-7. Do not create a worktree by default. Existing worktrees are recovery obligations recorded in
+7. Do not create a worktree by default; if one is unavoidable it is a single `.worktrees/<name>`
+   shared by the whole sitting — port the work back and `git worktree remove --force` in the same
+   turn. Existing worktrees are recovery obligations recorded in
    [`04_WORKTREE_AND_INTEGRATION.md`](./04_WORKTREE_AND_INTEGRATION.md), not current ownership.
+   `git worktree list` shows only the main checkout before you walk away.
 
 ## Active mutation windows
 

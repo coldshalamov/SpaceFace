@@ -65,6 +65,15 @@ The working tree may contain valuable concurrent work that is newer than `HEAD`.
   unrelated edits. `git add -N` new files immediately. Stay on the current branch unless the user
   asked to switch. Push only the owned branch by explicit name. Commit finished owned files as you
   go - do not wait for blanket authorization.
+- **No worktrees - keep one checkout.** Isolate lanes by file and by pathspec commit, never by a
+  second checkout: leftover worktrees and temp copies took 117 GB of this disk on 2026-08-23, and
+  zombie checkouts keep resurfacing (two more on 2026-10-04). If a side checkout is truly
+  unavoidable, the only sanctioned shape is one `.worktrees/<name>` shared by you and every
+  subagent you spawn: port the work back with a pathspec commit, then `git worktree remove
+  --force` it in the same turn you finish - a branch preserves work, a checkout never does. Temp
+  repo copies (~15 GB each) die in-session as well. Before you report done, `git worktree list`
+  shows only the main checkout; a stale worktree you find is yours to salvage-then-drop in the same
+  turn, never to leave for the next sitting.
 - **Commit with exact paths.** `git add -A` and `git commit -a` sweep other lanes' half-finished
   work into your commit; stage only what you changed (`git add -- <paths>`). If a sweep already
   happened, name it in the commit body instead of unpicking it.

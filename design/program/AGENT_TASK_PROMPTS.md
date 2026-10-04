@@ -324,7 +324,9 @@ continue on disjoint work or take the next returned task; if its checkpoint is s
 than working around it. Do not declare the packet or repo blocked, ask for a human verdict, or loop on
 an unchanged failing command.
 
-Stop after one finished task. Your final response must be exactly understandable as:
+Stop after one finished task. `git worktree list` must show only the main checkout before you stop —
+remove any worktree your sitting created (its commits survive on their branch; the checkout is not
+the rescue). Your final response must be exactly understandable as:
 RESULT: DONE or NOT DONE
 PLAYER RESULT: one plain sentence
 COMMIT: hash, or none
