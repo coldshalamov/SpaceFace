@@ -226,9 +226,9 @@ export function controlSections(state) {
       ['Massline dedicated reel in', 'reelIn'],
       ['Massline dedicated pay out', 'reelOut'],
       ['Deploy anchor Mass Seed (toward aim; locks on arrival, then latch it)', 'deployMassSeed'],
-      ['Deploy attractive Well (at aim; pulls light bodies & shots — heavy ships shrug)', 'deployWell'],
+      ['Deploy Well (at aim; pulls light bodies and shots — heavy ships shrug)', 'deployWell'],
       ['Deploy Repulsor (drops at ship; shoves bodies outward)', 'deployRepulsor'],
-      ['Toggle Clearing Cone (forward gravitic snowplow; toggle on/off)', 'toggleClearingCone'],
+      ['Toggle Clearing Cone (forward gravitic snowplow)', 'toggleClearingCone'],
       ['Open a scoop sheet and harvest by grazing a planet band', 'toggleSkimCollector'],
       // The keyboard sheet is COMPLETE: every live rebindable flight verb gets a row, same as the
       // pad sheet. These seven shipped bound (scanPulse KeyC is the scanner verb the first-hour

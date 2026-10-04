@@ -92,7 +92,7 @@ const PHRASES = Object.freeze({
   JETTISON: L('ABANDONAR', 'JETER', 'ABWERFEN', 'ALIJAR'),
   'LOCK: PERSISTENT': L('BLOQUEO: PERSISTENTE', 'VERROU : PERSISTANT', 'LOCK: DAUERHAFT', 'TRAVA: PERSISTENTE'),
   'Catalog Supply Chain': L('Cadena de suministro del catálogo', 'Chaîne d’approvisionnement du catalogue', 'Katalog-Lieferkette', 'Cadeia de suprimentos do catálogo'),
-  'Are you sure you want to jettison {qty}x {name}? This action is permanent.': L(
+  'Are you sure you want to jettison {qty}× {name}? This action is permanent.': L(
     '¿Seguro que quieres alijar {qty}× {name}? Esta acción es permanente.',
     'Jeter {qty}× {name} ? Cette action est définitive.',
     '{qty}× {name} abwerfen? Das ist endgültig.',
@@ -119,7 +119,7 @@ const PHRASES = Object.freeze({
     'Alvo selecionado: {rec_name}',
   ),
   'WEAPONS VENTING': L('ARMAS VENTEANDO', 'ARMES EN PURGE', 'WAFFEN ENTLÜFTEN', 'ARMAS VENTILANDO'),
-  'Jettisoned {dumped}x {name}': L(
+  'Jettisoned {dumped}× {name}': L(
     'Alijado {dumped}× {name}',
     'Jeté {dumped}× {name}',
     '{dumped}× {name} abgeworfen',

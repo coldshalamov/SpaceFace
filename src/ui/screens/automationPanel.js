@@ -1784,7 +1784,7 @@ export function automationNextAction(state) {
     const overCap = capLoad.state === 'over-cap';
     return nextAction('drones', 'Raise automation ceiling',
       overCap
-        ? 'Production is over the cap and the overflow is lost. Research logistics tiers or rebalance before buying more.'
+        ? 'Production is over the cap, so the overflow is dropped. Research logistics tiers or rebalance before buying more.'
         : 'Production is near the cap. Research logistics tiers or rebalance before buying more.',
       overCap ? `${fmtCr(capLoad.overagePerMin)} cr/min over cap` : `${Math.round(summary.capUsedPct)}% cap load`,
       'Review Drones');

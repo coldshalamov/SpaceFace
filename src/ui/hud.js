@@ -3815,7 +3815,7 @@ export function createHud(ctx, alerts) {
         ctx.bus.emit('audio:cue', { id: 'ui_click' });
         const ok = await confirm({
           title: 'Confirm Jettison',
-          body: `Are you sure you want to jettison ${dumpQty}x ${name}? This action is permanent.${sealed > 0 ? ` (${sealed} units are sealed for a contract and stay aboard.)` : ''}`,
+          body: `Are you sure you want to jettison ${dumpQty}× ${name}? This action is permanent.${sealed > 0 ? ` (${sealed} units are sealed for a contract and stay aboard.)` : ''}`,
           confirmLabel: 'Jettison',
           danger: true
         });
@@ -3939,7 +3939,7 @@ export function createHud(ctx, alerts) {
           rowsHtml += `
             <div class="sf-ledger-row">
               <div class="sf-ledger-left">
-                <span class="sf-ledger-title"><span class="sf-ledger-side ${sideClass}">${sideText}</span> ${qty}x ${name}</span>
+                <span class="sf-ledger-title"><span class="sf-ledger-side ${sideClass}">${sideText}</span> ${qty}× ${name}</span>
                 <span class="sf-ledger-station">${stn} (${age})</span>
               </div>
               <div class="sf-ledger-right">
@@ -4120,7 +4120,7 @@ export function createHud(ctx, alerts) {
       const dumped = cargoSys.jettison(commodityId, qty || 1);
       if (dumped > 0) {
         const name = cargoDisplayName(commodityId);
-        ctx.bus.emit('toast', { text: `Jettisoned ${dumped}x ${name}`, kind: 'warn', ttl: 2 });
+        ctx.bus.emit('toast', { text: `Jettisoned ${dumped}× ${name}`, kind: 'warn', ttl: 2 });
       }
     }
   });
