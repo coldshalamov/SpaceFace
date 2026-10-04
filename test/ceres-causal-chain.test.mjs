@@ -1695,3 +1695,80 @@ test('the escort link covers the recovered hauler once and plants yard_cover, no
   assert.ok(stories.length >= 1);
   assert.match(stories[stories.length - 1].text, /clean seam shift/);
 });
+
+// SF-086 — a work shift that changes the same place (equivalence pin on the handover itself).
+// The acceptance asks that the pocket hand responsibility over and re-rhythm without spawning a
+// second permanent population: same cast, same berths, a different working rhythm on return.
+// The causal chain is exactly that shift machine — this test pins the part the other rows do
+// not: cycle N resolves, the pocket takes its authored idle gap, and the SAME hulls open the
+// next shift's first act. No entity joins or leaves; identity stays stable across the seam.
+test('SF-086: a resolved shift idles, then the same cast opens the next shift', () => {
+  const { traffic, state, receipts, asteroid, tender, combatKernel } =
+    bootCausalHarness({ simTime: 0, withTenderCombat: true });
+  stepTo(traffic, state, 0);
+  stepUntilRichSeamSeeded(traffic, state);
+  assert.equal(applyCeresMinerWork(traffic, state, asteroid).applied, true,
+    'the authored miner work materializes the load the chain hands down the lane');
+
+  // Run shift 1 to its resolved terminal, keeping the bound pairs together (this timer-only
+  // harness has no flight integrator — the rendezvous proof lives in the dedicated test).
+  let doneAt = null;
+  for (let t = Math.max(60, state.simTime); t <= 924; t += 3) {
+    const { actor: miner } = actorBySlot(state, 'ceres_seam_miner');
+    const { actor: hauler } = actorBySlot(state, 'ceres_refinery_hauler');
+    hauler.pos = { ...miner.pos };
+    const disabledIncident = state.traffic.ceresDisabledHaulerIncident;
+    if (disabledIncident && !['repaired', 'recovered', 'stolen', 'abandoned', 'destroyed', 'failed'].includes(disabledIncident.state)) {
+      const standoff = traffic._ceresTenderServiceStandoff(tender, hauler);
+      tender.pos = { x: hauler.pos.x + standoff, z: hauler.pos.z };
+    }
+    const incident = state.traffic.ceresTenderServiceIncident;
+    if (incident && incident.state !== 'succeeded' && incident.state !== 'failed') {
+      const standoff = traffic._ceresTenderServiceStandoff(tender, miner);
+      tender.pos = { x: miner.pos.x + standoff, z: miner.pos.z };
+    }
+    stepTo(traffic, state, t);
+    state.tick += 1;
+    combatKernel.prePhysics(1 / 60);
+    if ((traffic.getCeresCausalChainSnapshot().cycle | 0) >= 1) { doneAt = t; break; }
+  }
+  assert.ok(doneAt != null, 'shift 1 resolves inside ten minutes of sim time');
+  assert.ok(receipts.some((r) => r.kind === 'cycle_complete' && (r.cycle | 0) >= 1));
+
+  // THE HANDOVER SEAM. Snapshot the whole cast's stable identity and the pocket population —
+  // a second permanent population would show up here as new entities or new world records.
+  const castBefore = state.entityList
+    .map((e) => e && e.data && e.data.worldRecordId)
+    .filter(Boolean).sort();
+  const entityCountBefore = state.entityList.length;
+  const snapAtHandover = traffic.getCeresCausalChainSnapshot();
+  assert.equal(snapAtHandover.cycle | 0, 1);
+  assert.equal(snapAtHandover.active.length, 0, 'the pocket is quiet between shifts');
+  assert.ok(snapAtHandover.nextEligibleAt > state.simTime,
+    'the authored inter-shift gap is real — the rhythm visibly rests');
+
+  // Through the gap: nothing runs early, then the SAME place re-opens its first act.
+  const gapEnd = snapAtHandover.nextEligibleAt;
+  let reopenedAt = null;
+  for (let t = state.simTime; t <= gapEnd + 120; t += 2) {
+    stepTo(traffic, state, t);
+    const snap = traffic.getCeresCausalChainSnapshot();
+    if (t < gapEnd) assert.equal(snap.active.length, 0, 'the gap is an honest idle, not hidden work');
+    if (t >= gapEnd && snap.active.length > 0) { reopenedAt = t; break; }
+  }
+  assert.ok(reopenedAt != null, 'the pocket re-arms on schedule after the authored gap');
+
+  // The re-opened act is the authored opener again — the new shift reads as a new rhythm on
+  // the same stage, and a second probe-line start receipt proves the cycle restarted.
+  const probeStarts = receipts.filter((r) => r.eventId === 'ev_surveyor_probe_line'
+    && r.kind === 'event_start');
+  assert.ok(probeStarts.length >= 2, 'the next shift opens the surveyor line again');
+
+  // Nobody spawned, nobody was replaced: the population is the same hulls under the same
+  // durable identities before and after the shift change.
+  const castAfter = state.entityList
+    .map((e) => e && e.data && e.data.worldRecordId)
+    .filter(Boolean).sort();
+  assert.deepEqual(castAfter, castBefore, 'the shift change hands the same cast, not a new population');
+  assert.equal(state.entityList.length, entityCountBefore, 'no second population materialized');
+});
