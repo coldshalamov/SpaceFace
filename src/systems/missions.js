@@ -1427,6 +1427,8 @@ export const missions = {
       // A multi-scan landmark may become board-ready on this exact pulse. Reconcile after scanner
       // has committed its durable count so the fourth Shard Sphere fragment posts the real offer.
       this._reconcileLandmarkQuestOffers({ sectorId: p && p.sectorId });
+      // NXI-180: a revised clue reading qualifies the affected mission course (see handler).
+      this._onClueRouteRevision(p || {});
     });
     // Census-style landmarks become ready when flavor files a reading, which lands after this
     // system's scanResults listener runs. Reconcile on presentation too so the seventeenth
@@ -5693,6 +5695,35 @@ export const missions = {
     if (distSq(player.pos, site) > r * r) return false;
     m.objectiveProgress = m.objectiveTarget;
     this._completeMission(m, index);
+    return true;
+  },
+
+  // NXI-180 — a revised observation qualifies only the course it concerns. When a scan stales
+  // out or contradicts a filed clue (NXB-045's book keeps the superseded reading), the LIVE
+  // course — if missions authored it for a tracked job — has its suggestion sentence re-qualified
+  // through the clue's route advice, so the old advice does not keep sending the player at a
+  // bearing the evidence has already revised. Unrelated tracked jobs, board rows, and the
+  // tracked-mission selection are untouched, and nothing is auto-accepted: no accept/track call
+  // sits on this path. A scanner-laid signal course (no missionId) stays the scanner's to move.
+  _onClueRouteRevision(payload) {
+    const state = this.state;
+    const wp = state && state.nav && state.nav.waypoint;
+    if (!wp || !wp.missionId) return false;
+    const signals = payload && Array.isArray(payload.signals) ? payload.signals : [];
+    const scannedAt = Number(payload && payload.scannedAt);
+    let clue = null;
+    for (const row of signals) {
+      const c = row && row.clue;
+      if (!c || !Array.isArray(c.history) || !c.history.length) continue;
+      // Only a reading filed by THIS pulse qualifies; an older superseded clue already spoke.
+      if (Number.isFinite(scannedAt) && Number(c.observedAt) !== scannedAt) continue;
+      clue = c;
+      break;
+    }
+    if (!clue || !clue.route || !clue.route.reason) return false;
+    if (wp.reason === clue.route.reason) return false;
+    wp.reason = String(clue.route.reason).slice(0, 160);
+    this.bus.emit('nav:waypoint', wp);
     return true;
   },
 
