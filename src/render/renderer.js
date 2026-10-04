@@ -16437,6 +16437,16 @@ export const render = {
     // Decodes tag their residency to the warm owner — close it so a discarded warm does not
     // pin its GLB records as live forever.
     warm.building = false;
+    // A discarded warm's coverage claims die with it: decrement the rows its specs
+    // stamped so a retried begin (or the deferred lane) can re-warm those archetypes
+    // instead of skipping them for the rest of the run.
+    if (warm.coveredEnemyIds && this._swarmWarmCoveredEnemyIds instanceof Map) {
+      for (const enemyId of warm.coveredEnemyIds) {
+        const count = this._swarmWarmCoveredEnemyIds.get(enemyId) || 0;
+        if (count > 1) this._swarmWarmCoveredEnemyIds.set(enemyId, count - 1);
+        else this._swarmWarmCoveredEnemyIds.delete(enemyId);
+      }
+    }
     const root = warm.root;
     const list = Array.isArray(this._rosterPrewarmRoots) ? this._rosterPrewarmRoots : [];
     const index = list.indexOf(root);
