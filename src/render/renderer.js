@@ -5912,6 +5912,24 @@ export function tickShieldShellClock(pool, state) {
   return setShieldShellClock(material, state && state.simTime, motionReduce);
 }
 
+// Geometry attribute refs are fixed at mesh creation; memoize per mesh instead of
+// re-resolving 6 keyed getAttribute lookups per shielded ship per frame.
+const SHIELD_AUX_ATTRS = new WeakMap();
+function shieldAuxAttrs(mesh) {
+  let attrs = SHIELD_AUX_ATTRS.get(mesh);
+  if (!attrs) {
+    const hits = [];
+    for (let i = 0; i < SHIELD_HIT_SLOTS; i++) hits.push(mesh.geometry.getAttribute(`instanceHit${i}`));
+    attrs = {
+      flash: mesh.geometry.getAttribute('instanceFlash'),
+      base: mesh.geometry.getAttribute('instanceBase'),
+      hits,
+    };
+    SHIELD_AUX_ATTRS.set(mesh, attrs);
+  }
+  return attrs;
+}
+
 export function syncShipAuxPools(pool, frameOrEntities, meshes) {
   if (!pool) return;
   const classifiedFrame = frameOrEntities && Array.isArray(frameOrEntities.shipAux)
@@ -5946,8 +5964,9 @@ export function syncShipAuxPools(pool, frameOrEntities, meshes) {
         const shieldIndex = shieldCount++;
         if (shieldIndex < pool.shield.capacity) {
           const shieldMesh = pool.shield.mesh;
-          const flashAttr = shieldMesh.geometry.getAttribute('instanceFlash');
-          const baseAttr = shieldMesh.geometry.getAttribute('instanceBase');
+          const shieldAttrs = shieldAuxAttrs(shieldMesh);
+          const flashAttr = shieldAttrs.flash;
+          const baseAttr = shieldAttrs.base;
           bubble.updateWorldMatrix(true, false);
           if (writeInstanceMatrixIfChanged(
             shieldMesh, shieldIndex, bubble.matrixWorld,
@@ -5969,7 +5988,7 @@ export function syncShipAuxPools(pool, frameOrEntities, meshes) {
           const hits = readShieldContacts(entity.id, SHIELD_HIT_SCRATCH) || SHIELD_HIT_SCRATCH;
           if (!hits) SHIELD_HIT_SCRATCH.fill(0);
           for (let hit = 0; hit < SHIELD_HIT_SLOTS; hit++) {
-            const hitAttr = shieldMesh.geometry.getAttribute(`instanceHit${hit}`);
+            const hitAttr = shieldAttrs.hits[hit];
             const o = hit * 4;
             if (writeVec4AttributeIfChanged(
               hitAttr, shieldIndex,
@@ -19354,15 +19373,15 @@ export const render = {
             globalAsteroidMotion.updateAsteroidMotion(entity, mesh, simTime, frameDt, _worldSiteA11y);
           }
         } else if (typeName === 'pickup') {
-          const playerEntity = this.state && this.state.entities && this.state.entities.get(this.state.playerId);
+          const playerEntity = framePlayer;
           globalPickupMotion.updatePickupMotion(entity, mesh, simTime, frameDt, playerEntity, _worldSiteA11y);
         } else if (typeName === 'bomb' || typeName === 'mine' || typeName === 'vectormine'
             || typeName === 'charge' || typeName === 'payload' || typeName === 'beacon') {
-          const playerEntity = this.state && this.state.entities && this.state.entities.get(this.state.playerId);
+          const playerEntity = framePlayer;
           globalOrdnanceMotion.updateOrdnanceMotion(entity, mesh, simTime, frameDt, playerEntity, _worldSiteA11y);
         } else if (typeName === 'station' && machineAwake) {
           const isGate = entity.data && (entity.data.isGate || entity.data.isWormhole);
-          const playerEntity = this.state && this.state.entities && this.state.entities.get(this.state.playerId);
+          const playerEntity = framePlayer;
           if (isGate) {
             globalInfrastructureMotion.updateGateMotion(entity, mesh, simTime, frameDt, playerEntity, _worldSiteA11y);
           } else {
@@ -19372,7 +19391,7 @@ export const render = {
           // Landmarks/props carry authored ANIM_ parts (beacons, dishes, drills); gates
           // filed as places still get the full gate treatment.
           const isGate = entity.data && (entity.data.isGate || entity.data.isWormhole);
-          const playerEntity = this.state && this.state.entities && this.state.entities.get(this.state.playerId);
+          const playerEntity = framePlayer;
           if (isGate) {
             globalInfrastructureMotion.updateGateMotion(entity, mesh, simTime, frameDt, playerEntity, _worldSiteA11y);
           } else {

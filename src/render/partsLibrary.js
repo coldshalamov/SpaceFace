@@ -13780,6 +13780,9 @@ function finalizeInstanceChunk(chunk, dirty, stats, context = null) {
 }
 
 function applyInstanceChunkPolicies(state, context) {
+  // Bound slack-expired metric recomputes per pass — a large same-frame displacement
+  // exhausts every chunk's slack at once; deferred chunks re-evaluate next frame.
+  const recomputeBudget = { remaining: 32 };
   for (const pool of state.pools.values()) {
     for (const chunk of pool.chunks) {
       applyInstanceChunkSubmitPolicy(chunk, {
@@ -13789,6 +13792,7 @@ function applyInstanceChunkPolicies(state, context) {
         castRadiusSq: context && context.castRadiusSq,
         castRadius: context && context.castRadius,
         refreshBounds: false,
+        recomputeBudget,
       });
     }
   }
@@ -13890,7 +13894,7 @@ function sceneState(scene) {
       preparedAuthoredRoots: new Map(),
       frameRecordsByOwner: new Map(),
       cullContext: createInstanceCullContext(),
-      cameraState: { initialized: false, present: false, values: new Float64Array(32) },
+      cameraState: { initialized: false, present: false, values: new Float64Array(32), projKey: null },
       syncFrame: 0,
       opaqueBatch: createOpaqueMaterialBatchState(),
       scene,
@@ -14090,7 +14094,16 @@ function buildInstanceCullContext(state, opts) {
     return context;
   }
   camera.updateMatrixWorld();
-  if (typeof camera.updateProjectionMatrix === 'function') camera.updateProjectionMatrix();
+  if (typeof camera.updateProjectionMatrix === 'function') {
+    // Projection only changes with the camera's frustum params — recompute on drift
+    // instead of unconditionally per frame.
+    const projKey = `${camera.fov ?? ""}|${camera.aspect ?? ""}|${camera.left ?? ""}|${camera.right ?? ""}`
+      + `|${camera.top ?? ""}|${camera.bottom ?? ""}|${camera.near ?? ""}|${camera.far ?? ""}|${camera.zoom ?? ""}`;
+    if (state.cameraState.projKey !== projKey) {
+      camera.updateProjectionMatrix();
+      state.cameraState.projKey = projKey;
+    }
+  }
   context.cameraDirty = captureCullCameraState(camera, state.cameraState);
   CULL_PROJECTION.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
   CULL_FRUSTUM.setFromProjectionMatrix(CULL_PROJECTION);
@@ -14302,6 +14315,7 @@ export function runAuthoredInstanceCameraDirtyMicrobench(options = {}) {
     if (poolState && poolState.cameraState) {
       poolState.cameraState.initialized = false;
       poolState.cameraState.values.fill(0);
+      poolState.cameraState.projKey = null;
     }
     const prime = frameFor(0);
     syncAuthoredInstancePools(scene, {
