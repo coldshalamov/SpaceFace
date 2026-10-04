@@ -1067,6 +1067,9 @@ export const settingsScreen = {
     try { if (preview) preview.listen(true, btn.closest ? btn.closest('.k-row') : null); } catch (e) { /* cosmetic */ }
 
     const done = (commit) => {
+      // A stale close (the conflict label's 900 ms timer, a second Escape) must never touch a
+      // newer capture's button or handle: only the capture that owns the slot may close it (J5).
+      if (this._activeCapture !== done) return;
       try { if (preview) preview.listen(false); } catch (e) { /* cosmetic */ }
       this._capturing = false;
       btn.classList.remove('sf-bind-btn--capture');
@@ -1081,6 +1084,17 @@ export const settingsScreen = {
       // Escape cancels; Backspace resets this action to default.
       if (ev.code === 'Escape') { done(false); return; }
       if (ev.code === 'Backspace' || ev.code === 'Delete') {
+        // J4: restoring the default must pass the same conflict rule as an ordinary rebind —
+        // a key the player deliberately gave another verb keeps its owner; the reset names it.
+        const def = (base && base[action]) || DEFAULT_BINDINGS[action] || [];
+        const ownerOf = (code) => REBINDABLE.find((other) => other !== action && (live[other] || []).includes(code));
+        const clashOwner = def.map(ownerOf).find(Boolean);
+        if (clashOwner) {
+          btn.textContent = settingsInUseLabel(REBIND_LABELS[clashOwner] || clashOwner);
+          cue('deny');
+          setTimeout(() => done(false), 900);
+          return;
+        }
         this._commitBind(ctx, action, null, live, base);
         done(true);
         return;
@@ -1101,6 +1115,7 @@ export const settingsScreen = {
       done(true);
     };
     const onClickAway = (ev) => { if (ev.target !== btn) done(false); };
+    // Registered before any close path can arm: the guard in `done` compares against this slot.
     this._activeCapture = done;
     window.addEventListener('keydown', onKey, true);
     window.addEventListener('mousedown', onClickAway, true);
@@ -1148,6 +1163,9 @@ export const settingsScreen = {
     try { if (preview) preview.listen(true, btn.closest ? btn.closest('.k-row') : null); } catch (e) { /* cosmetic */ }
 
     const done = (commit) => {
+      // Same ownership guard as the keyboard capture: a stale conflict timer must never close a
+      // newer pad capture's listen (J5).
+      if (this._activeCapture !== done) return;
       try { if (preview) preview.listen(false); } catch (e) { /* cosmetic */ }
       this._capturing = false;
       btn.classList.remove('sf-bind-btn--capture');
@@ -1185,6 +1203,7 @@ export const settingsScreen = {
       done(true);
     });
     const onClickAway = (ev) => { if (ev.target !== btn) done(false); };
+    // Registered before any close path can arm: the guard in `done` compares against this slot.
     this._activeCapture = done;
     window.addEventListener('keydown', onKey, true);
     window.addEventListener('mousedown', onClickAway, true);
