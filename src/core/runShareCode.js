@@ -297,6 +297,37 @@ export function decodeRunShareCode(code) {
   return { ok: true, spec };
 }
 
+const CHALLENGE_CODE_MAX = 512;
+
+/**
+ * A seed is not a replay. Comparable means the rules, arena, starter and mutators match.
+ * Invalid or oversized text is refused without a spec the caller could apply.
+ */
+export function compareChallengeCodes(left, right) {
+  const oversized = (typeof left === 'string' && left.length > CHALLENGE_CODE_MAX)
+    || (typeof right === 'string' && right.length > CHALLENGE_CODE_MAX);
+  if (oversized) return { ok: false, comparable: false, label: 'invalid', mutated: false };
+  const a = decodeRunShareCode(left);
+  const b = decodeRunShareCode(right);
+  if (!a.ok || !b.ok) return { ok: false, comparable: false, label: 'invalid', mutated: false };
+  const af = runShareSpecFields(a.spec);
+  const bf = runShareSpecFields(b.spec);
+  const sameRules = af.ruleset === bf.ruleset
+    && af.arenaId === bf.arenaId
+    && af.starterId === bf.starterId
+    && JSON.stringify(af.mutators) === JSON.stringify(bf.mutators)
+    && JSON.stringify(af.loadout) === JSON.stringify(bf.loadout);
+  if (!af.ruleset || !bf.ruleset) {
+    return { ok: true, comparable: false, label: 'non-comparable', reason: 'seed_is_not_replay', mutated: false };
+  }
+  return {
+    ok: true,
+    comparable: sameRules,
+    label: sameRules ? 'comparable' : 'non-comparable',
+    mutated: false,
+  };
+}
+
 /** Long-form field names for callers that want the door's vocabulary. */
 export function runShareSpecFields(spec) {
   const s = spec && typeof spec === 'object' ? spec : {};

@@ -1,12 +1,14 @@
 // Thirty-wave Foundry arc (PQ-133.07a).
 // Pure data + composition. No bus, state, or spawnBudget import.
 // Waves 1–10 stay the authored template. Waves 11–30 reuse that template with
-// role, bearing, and arena-phase swaps. Body counts never rise.
+// role, bearing, and arena-phase swaps — and, since FB-026 flattened the hull-level
+// curve, rising body counts and rotated gates inside the shared spawn budget.
 
 import {
   SURVIVAL_ENDLESS_OVERLAYS,
   SURVIVAL_ENDLESS_START_WAVE,
   SURVIVAL_GATE_GROUPS,
+  peakConcurrentDemand,
   templateQuestionOf,
 } from './survivalWaves.js';
 
@@ -186,8 +188,72 @@ function crownFinaleBoss(packages) {
 }
 
 /**
+ * FB-026 (honest pressure) — the arc's difficulty is composition and cadence, not hit
+ * points AND not body count. Every act fields the template's bodies: pressure comes from
+ * (1) tighter batch cadence — trickled packs arrive sooner, (2) wider bearings — a
+ * second door opens so the same bodies surround instead of queueing, (3) a rotated
+ * ingress — the act never reads as a replay of the template. Elite packages are
+ * untouched; the 24-body peak budget guard stays as the ceiling.
+ */
+const ACT_PRESSURE_GAP_TICKS = Object.freeze({ 1: 15, 2: 30 });
+function applyActPressure(packages, act) {
+  if (act <= 0) return packages;
+  const tighten = ACT_PRESSURE_GAP_TICKS[act] || 0;
+  const next = packages.map(clonePackage);
+  // Same bodies, faster arrival: trickled packs (batchGapTicks > 0) tighten by the act's
+  // step; one-shot arrivals (gap 0) keep their authored schedule — the wave's shape, not
+  // its headcount, carries the act.
+  for (const pkg of next) {
+    if (pkg.role === 'elite') continue;
+    if (!Number.isInteger(pkg.batchGapTicks) || pkg.batchGapTicks <= 0) continue;
+    // applyDifficulty runs downstream of this composer and tightens 15 ticks per act step,
+    // so the floor here reserves that headroom: act II leaves ≥30 (final ≥15), act III
+    // leaves ≥45 (final ≥15). An act hurries the trickle, never collapses it into one dump.
+    const floor = act === 1 ? 30 : 45;
+    pkg.batchGapTicks = Math.max(floor, pkg.batchGapTicks - tighten);
+  }
+  // The same bodies through an extra door: when the whole wave files through one gate,
+  // the largest non-elite package takes the gate two slots over, so the act surrounds
+  // instead of queueing. Deterministic; count-neutral.
+  const used = new Set(next.map((pkg) => pkg.gateGroup));
+  if (used.size === 1 && next.length > 1) {
+    let widest = null;
+    for (const pkg of next) {
+      if (pkg.role === 'elite') continue;
+      if (!Number.isInteger(pkg.count) || pkg.count < 1) continue;
+      if (!widest || pkg.count > widest.count) widest = pkg;
+    }
+    if (widest) {
+      const gates = SURVIVAL_GATE_GROUPS;
+      const index = gates.indexOf(widest.gateGroup);
+      if (index >= 0 && gates.length > 2) widest.gateGroup = gates[(index + 2) % gates.length];
+    }
+  }
+  // Peak-budget guard stays: a pathological authored recipe can never ride an act over
+  // the 24-body cap the planner enforces. Trims only non-elite overflow, largest first.
+  for (let guard = 0; guard < 64 && peakConcurrentDemand(next) > SPAWN_BUDGET_DEFAULT_MAX; guard++) {
+    let largest = null;
+    for (const pkg of next) {
+      if (pkg.role === 'elite') continue;
+      if (!largest || pkg.count > largest.count) largest = pkg;
+    }
+    if (!largest || largest.count <= 1) break;
+    largest.count -= 1;
+  }
+  // The same wave re-asked through different doors: shift every gate by `act` slots so an
+  // act's ingress never reads as a replay of the template's.
+  const gates = SURVIVAL_GATE_GROUPS;
+  for (const pkg of next) {
+    const index = gates.indexOf(pkg.gateGroup);
+    if (index < 0) continue;
+    pkg.gateGroup = gates[(index + act) % gates.length];
+  }
+  return next;
+}
+
+/**
  * Act composition for one planned wave. Identity for Act I except the wave-20 overlay.
- * Never changes the sum of package counts.
+ * Later acts re-ask the same wave with tighter cadence and wider bearings.
  */
 export function composeArcWave({ packages, blockingRoles, arenaPhase, objective, wave }) {
   const act = actIndexForWave(wave);
@@ -218,6 +284,11 @@ export function composeArcWave({ packages, blockingRoles, arenaPhase, objective,
     nextPackages = crownFinaleBoss(nextPackages);
     nextRoles = rebuildBlockingRoles(nextRoles, nextPackages);
     systemEvent = { id: WAVE_30_SYSTEM_EVENT.id, wave: 30 };
+  }
+
+  if (act > 0) {
+    nextPackages = applyActPressure(nextPackages, act);
+    nextRoles = rebuildBlockingRoles(nextRoles, nextPackages);
   }
 
   return {
@@ -296,3 +367,70 @@ export function bodyCount(packages) {
   }
   return total;
 }
+
+/**
+ * NXB-017 / SF-061 / SF-062 / SF-064 / SF-068:
+ * The authored three-round act whose physical question changes each round.
+ * Round 1: Exploit loose mass against an exposed enemy (throw wasps into rocks/each other).
+ * Round 2: A specialist arrives to contest that use (rehearsal on its own bearing; shove/counterplay).
+ * Round 3: Combine with a heavy anchor and a clear counter-window (rope the anchor / move the well).
+ */
+export const SURVIVAL_THREE_ROUND_ACT = Object.freeze([
+  Object.freeze({
+    round: 1,
+    roleProblem: 'mass',
+    verb: 'throw',
+    question: 'Six identical lights on one bearing. Throw them into each other before they close.',
+    physicalTool: 'loose_mass',
+    archetype: 'wasp_swarmer',
+    draftAfter: true,
+  }),
+  Object.freeze({
+    round: 2,
+    roleProblem: 'pressure',
+    verb: 'shove',
+    question: 'The second pack arrives behind you. Shove the rear so you can turn.',
+    physicalTool: 'specialist_rehearsal',
+    archetype: 'reaver_pirate',
+    draftAfter: true,
+  }),
+  Object.freeze({
+    round: 3,
+    roleProblem: 'anchor',
+    verb: 'rope',
+    question: 'A tether on the far end is pulling your line. Rope it so the well moves with you.',
+    physicalTool: 'anchor_counter_window',
+    archetype: 'field_anchor_controller',
+    draftAfter: true,
+  }),
+]);
+
+/**
+ * Validate that an authored act sequence satisfies NXB-017 / SF-061..068:
+ * 1. Each round has a different physical decision / answer verb.
+ * 2. Progression moves from loose mass -> specialist contesting -> heavy anchor counter-window.
+ * 3. Each round provides genuine draft / fitting recovery opportunity.
+ */
+export function validateThreeRoundActSequence(act = SURVIVAL_THREE_ROUND_ACT) {
+  if (!Array.isArray(act) || act.length !== 3) {
+    return { valid: false, error: 'Three-round act must have exactly 3 rounds' };
+  }
+  const verbs = new Set();
+  const problems = new Set();
+  for (let i = 0; i < 3; i++) {
+    const round = act[i];
+    if (!round || typeof round !== 'object') {
+      return { valid: false, error: `Round ${i + 1} definition missing` };
+    }
+    if (verbs.has(round.verb)) {
+      return { valid: false, error: `Duplicate answer verb ${round.verb} across rounds` };
+    }
+    verbs.add(round.verb);
+    problems.add(round.roleProblem);
+  }
+  if (!verbs.has('throw') || !verbs.has('shove') || !verbs.has('rope')) {
+    return { valid: false, error: 'Act sequence must cover throw, shove, and rope' };
+  }
+  return { valid: true, error: null };
+}
+

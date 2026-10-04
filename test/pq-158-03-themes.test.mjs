@@ -107,9 +107,11 @@ test('per-sector beds are identifiable blind: unique hz/wave/noise per named sec
   console.log(`[pq-158.03 beds] ${labels.join(' | ')}`);
 });
 
-test('faction stings ride the Band: eight unique profiles a stranger can tell apart', () => {
+test('faction stings ride the Band: unique profiles a stranger can tell apart', () => {
   const ids = Object.keys(FACTION_STINGS);
-  assert.equal(ids.length, 8);
+  // The catalog grew past the original eight as factions landed — the contract is a unique
+  // profile per entry, not a fixed count.
+  assert.ok(ids.length >= 8, `expected at least the original eight stings, got ${ids.length}`);
   const signatures = new Set();
   for (const id of ids) {
     const sting = resolveFactionSting(id);
@@ -117,7 +119,7 @@ test('faction stings ride the Band: eight unique profiles a stranger can tell ap
     assert.ok(BAND_BED_PROFILES[sting.profileKey], `${id} Band profile ${sting.profileKey} missing`);
     signatures.add(sting.signature);
   }
-  assert.equal(signatures.size, 8);
+  assert.equal(signatures.size, ids.length, 'two factions share a sting — cannot tell them apart');
 });
 
 test('adaptive matrix: travel / combat / station / wanted from the live snapshot', () => {

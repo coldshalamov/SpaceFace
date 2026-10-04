@@ -101,7 +101,13 @@ test('PQ-161.02: minPairDeltaE separates every force pair under normal and CVD v
 
 test('PQ-161.02: telegraph kinds map to force channels, never faction identity', () => {
   const kinds = Object.keys(TELEGRAPH_FORCE_CHANNELS);
-  assert.deepEqual(kinds.sort(), ['attach_spool', 'engine_flare', 'wake_mines', 'weapon_charge']);
+  // FB-016 opened the vocabulary: every authored cue a doctrine or enemy row emits resolves here.
+  assert.deepEqual(kinds.sort(), [
+    'alphaStrike', 'attach_spool', 'attackRun', 'broadside_charge', 'detonator_fuse',
+    'engine_flare', 'field_spool', 'pd_curtain', 'pd_curtain_closing', 'pirate_stalk',
+    'return_fire_warning', 'scan_sweep', 'sensor_ghost', 'shield_lance', 'wake_mines',
+    'warden_screen_closing', 'weapon_charge',
+  ]);
   const used = new Set();
   for (const kind of kinds) {
     const channel = forceChannelForTelegraphKind(kind);

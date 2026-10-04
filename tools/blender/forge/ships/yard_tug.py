@@ -12,6 +12,7 @@ import forge as F  # noqa: E402
 import forge_export as E  # noqa: E402
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'animations'))
 import ANI_03  # noqa: E402
+import ANI_21  # noqa: E402
 
 SHIP_ID = 'yard_tug'
 COLORS = {
@@ -170,8 +171,8 @@ def build():
     F.light(s, 'NavStarboard', (-11.6, -NY - 1.18, 0.2), 'glow_green', size=0.2)
     F.light(s, 'NavPortFwd', (10.1, 3.83, 0.6), 'glow_red', size=0.16)
     F.light(s, 'NavStarboardFwd', (10.1, -3.83, 0.6), 'glow_green', size=0.16)
-    F.light(s, 'Beacon', (5.9, 0.0, 3.58), 'glow_amber', size=0.3)
-    F.light(s, 'BeaconAft', (-10.35, 0.0, 2.16), 'glow_amber', size=0.18)
+    F.light(s, 'Beacon', (5.9, 0.0, 3.58), 'glow_amber.beacon', size=0.3)
+    F.light(s, 'BeaconAft', (-10.35, 0.0, 2.16), 'glow_amber.beacon', size=0.18)
 
     # --- damage hooks: mast + tow gear shed, beacons strobe, port winch cheek lifts ----------------
     _dmg = {o.name: o for o in s.objects}
@@ -188,6 +189,8 @@ def build():
         'fairlead': [_dmg['Fairlead'], _dmg['FairleadRoll']],
         'hook': [_dmg['TowHook'], _dmg['TowCable']],
     }, source_asset_id=E.fleet_spec(SHIP_ID)['asset_id'])
+    # ANI-21: idle hook dangle + line quiver ride the same groups and merge into the tug's bank.
+    ANI_21.build(s, None, source_asset_id=None, bank=s.ani03_bank)
     return s
 
 

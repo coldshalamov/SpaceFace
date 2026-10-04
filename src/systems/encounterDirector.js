@@ -49,6 +49,7 @@ import {
 import { hash32, mulberry32 } from '../core/rng.js';
 import { bumpCollidesFlipEpoch, indexedShipLikeOrEntitiesScan, indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { syncEntityCollisionIndexMembership } from '../core/coreSystem.js';
+import { writePickupRemainder } from '../core/pickupAcceptance.js';
 import { zonesForSector, zoneAt, zoneThreat } from '../data/sectorZones.js';
 import { ZONE_CERES_THROUGHLINE } from '../data/authoredPlaces.js';
 import {
@@ -61,6 +62,7 @@ import {
   ENCOUNTER_SHAPE_BUDGET_PER_HOUR,
   ENCOUNTER_SHAPE_HOUR_SECONDS,
   encounterGrammarKey,
+  emitPredationStalkTelegraph,
 } from './encounterScripts.js';
 import { ENCOUNTERS, NAMED_CAPTAINS, barkText, receiptTextWithFallback } from '../data/encounters.js';
 import { ENCOUNTER_MODULES } from '../data/encounters/index.generated.js';
@@ -128,7 +130,7 @@ const SELF_REGISTERED_RUNTIME_BY_ID = new Map(
 );
 
 // ── hostile pursuit resolution (the touchable anti-pest valve) ──────────────────────────────────
-const PURSUIT_RESOLVE_S = 60;        // a hostile sitting on a non-fighting player resolves
+export const PURSUIT_RESOLVE_S = 60; // a hostile sitting on a non-fighting player resolves
 const PURSUIT_RADIUS = 1600;         // radar/engagement distance to track
 const PURSUIT_RADIUS_SQ = PURSUIT_RADIUS * PURSUIT_RADIUS;
 
@@ -371,7 +373,18 @@ export const encounterDirector = {
    */
   _ambientPredationCtx() {
     return {
-      emit: (name, payload) => this.emit(name, payload),
+      emit: (name, payload) => {
+        // Ambient stalks publish encounter:ambientPredationTelegraph. The telegraph
+        // path (authored motion and the rest of the convoy contract) listens for
+        // encounter:predationTelegraph. Forward once per raid, before the engage
+        // commit, without emitting that event again when the stalk commits.
+        if (name === 'encounter:ambientPredationTelegraph' && payload) {
+          emitPredationStalkTelegraph(this.state, payload, (eventName, eventPayload) => {
+            this.emit(eventName, eventPayload);
+          });
+        }
+        this.emit(name, payload);
+      },
       docked: isDocked(this.state),
       spawnCargoPod: (s, spec) => spawnJettisonedCargoPod(s, spec, this.helpers),
       removeEntity: (id, opts) => (
@@ -484,6 +497,11 @@ export const encounterDirector = {
     // Ignore that early event rather than applying the outgoing timeline's one-shot phase to the
     // incoming durable actors; save:loaded below seeds once the saved stats are authoritative.
     if (this._saveRestoring) return;
+    // payload whose enterEpoch no longer matches the world's serial is stale — a queued tail
+    // delivered inside a newer enter's window must not reseed pressure, wipe pending, or plan
+    // beats for the sector the player already departed.
+    if (p && p.enterEpoch != null && this.state && this.state.world
+        && this.state.world.enterSerial != null && p.enterEpoch !== this.state.world.enterSerial) return;
     // Continuous free-flight membership is a soft handoff (M2-C1). Soft exit preserves
     // live/pending/pressure/active; continuous enter must NOT reseed grace pressure, clear the
     // pacing window, or replan (which wipes pending for a new sector-day key). Intentional
@@ -533,6 +551,8 @@ export const encounterDirector = {
     dir.squadMembership = {};
     dir.pending = [];
     dir.active = {};                                   // spawnBudget hard-resets on non-continuous exit
+    dir.activeMembership = {};
+    dir.scriptProbeRows = 0;
     dir.plannedKey = null;                             // same-day re-entry must replan
   },
 
@@ -614,16 +634,18 @@ export const encounterDirector = {
   },
 
   _rebindPersistedFreightCustodyCarriers() {
-    // No open custodies means nothing the rebind feeds into — skip the entity walk entirely
-    // (the overwhelmingly common case; this is the heaviest indivisible save:loaded listener).
-    const dir = this.state && this.state.encounterDirector;
-    const custodies = dir && dir.stats && dir.stats.openFreightCustodies;
-    if (!Array.isArray(custodies) || custodies.length === 0) return 0;
     // Carriers are always type === 'ship' — ride the shipLike bucket when the index is live,
     // falling back to the entity Map for load owners that publish before the index rebuild.
+    // The rebind gate is the live carrier annotation itself, never stats.openFreightCustodies:
+    // initializeConvoyPredation stamps data.freightCustody at fire while the custody envelope is
+    // only minted at the first spill, so an envelope-gated skip dropped every pre-spill carrier
+    // rebind. The cheap annotation probe keeps the common no-custody load near-free — the full
+    // persistedFreightCarrierBinding predicate runs only on ships that could possibly rebind.
     const scan = indexedShipLikeOrEntitiesScan(this.state);
     let rebound = 0;
     for (const entity of scan) {
+      const data = entity && entity.data;
+      if (!data || data.freightCustody == null) continue;
       const binding = persistedFreightCarrierBinding(entity);
       if (!binding || binding.custody.carrierId === entity.id) continue;
       const previousCarrierId = binding.custody.carrierId;
@@ -738,6 +760,10 @@ export const encounterDirector = {
     for (let i = 0; i < dir.pending.length; i++) {
       const it = dir.pending[i];
       if (it.dueAt <= now) {
+        // Beats stamped for a departed sector (a stale enter tail can still write
+        // them — the listener guards reject the payload but pending rows written
+        // before the guard shipped persist) must never fire on the live world.
+        if (it.sectorId && it.sectorId !== this._currentSectorId()) continue;
         if (tutorialActive && !isAuthoredGuaranteeItem(it)) continue;
         const rank = tensionCandidateRank(state, it, ENCOUNTERS[it.shapeId], now);
         if (rank < dueBest) { dueBest = rank; dueIdx = i; }
@@ -818,6 +844,9 @@ export const encounterDirector = {
       && state.story.depthProgramEncounters.completed || {};
     if (g.uniqueOnce && completed[shape.id]) return false;
     if (g.blockAfterOutcome && completed[shape.id] && completed[shape.id].outcome === g.blockAfterOutcome) return false;
+    // A second chapter must know its first happened: the named shape has to be in the
+    // completed record (any outcome) before this shape can fire.
+    if (g.requiresCompletedShape && !completed[g.requiresCompletedShape]) return false;
     if (Array.isArray(g.sectorIds) && !g.sectorIds.includes(sectorId)) return false;
     if (Number.isFinite(g.storyBeatMin) && ((state.story && state.story.beatIndex) | 0) < g.storyBeatMin) return false;
     if (!options.ignoreMinSectorTier
@@ -954,41 +983,13 @@ export const encounterDirector = {
     }
     if (!payload.force && !this._gatesPass(shape, state)) return { ok: false, reason: 'gated' };
 
-    const requestedZone = payload.zoneId
-      ? zonesForSector(payload.sectorId).find((candidate) => candidate.id === payload.zoneId)
-      : null;
-    const anchor = payload.anchor
-      || (requestedZone && sectorLocalToGlobalForSector(requestedZone.center, payload.sectorId))
-      || (this.player() && this.player().pos)
-      || { x: 0, z: 0 };
-    const local = globalToSectorLocalForSector(anchor, payload.sectorId);
-    const zone = {
-      ...(requestedZone || {}),
-      id: payload.zoneId || (requestedZone && requestedZone.id) || `authored:${shape.id}`,
-      name: payload.zoneName || (requestedZone && requestedZone.name) || shape.title || shape.id,
-      type: payload.zoneType || (requestedZone && requestedZone.type)
-        || (shape.zoneTypes && shape.zoneTypes[0]) || 'authored',
-      center: { x: local.x, z: local.z },
-      radius: Math.max(80, Number(payload.zoneRadius) || (requestedZone && requestedZone.radius) || 520),
-      threat: Number.isFinite(payload.threat)
-        ? payload.threat
-        : (Number.isFinite(requestedZone && requestedZone.threat) ? requestedZone.threat : 1),
-    };
-    const rng = mulberry32(hash32(
-      (state.meta && state.meta.seed) || 0,
-      payload.encounterId,
-      shape.id,
-      'authored-encounter',
-    ));
-    const item = resolveEncounter(
-      shape,
-      zone,
-      payload.sectorId,
-      Math.floor((state.simTime || 0) / DAY_SECONDS),
-      0,
-      rng,
-    );
-    if (!item) return { ok: false, reason: 'empty_plan' };
+    const planned = planAuthoredEncounterItem({
+      state,
+      payload,
+      playerPos: this.player() && this.player().pos,
+    });
+    if (!planned || !planned.item) return { ok: false, reason: 'empty_plan' };
+    const { item, zone, anchor } = planned;
     item.encounterId = payload.encounterId;
     item.squadId = payload.encounterId;
     item.sectorId = payload.sectorId;
@@ -1135,6 +1136,7 @@ export const encounterDirector = {
 
     const live = makeEncounterLiveRecord(state, item, shape, now);
     dir.live[live.id] = live;
+    noteScriptProbeRow(dir, live, +1);
     dir.stats.fired++;
     if (live.data.ceresActivityAmbush === true) {
       dir.stats.ceresActivityAmbush = { phase: 'revealed' };
@@ -1412,6 +1414,7 @@ export const encounterDirector = {
         if (ent && ent.id != null) {
           spawned.push(ent.id);
           rec.ids.push(ent.id);
+          indexActiveMember(dir, live, ent.id);
           live.ids.push(ent.id);
           live.roles[ent.id] = sh.role || 'squad';
           indexSquadMember(dir, live, ent.id);
@@ -1437,7 +1440,8 @@ export const encounterDirector = {
       mass: 1e6,
       hull: 1,
       hullMax: 1,
-      physicsBody: { shape: 'capsule' },
+      // SFQ-B025: authored dead-mass stays the body's own mass through normalization.
+      physicsBody: { shape: 'capsule', mass: 1e6 },
       data: {
         parentType: 'debris',
         proportions: WRECK_COLLIDER_PROPORTIONS,
@@ -1522,7 +1526,7 @@ export const encounterDirector = {
     entity.mass = physical.bodyMass;
     entity.radius = physical.radius;
     const data = entity.data || (entity.data = {});
-    data.amount = amount;
+    writePickupRemainder(data, amount);
     data.freightCargoPhysics = physical;
     return true;
   },
@@ -1683,6 +1687,9 @@ export const encounterDirector = {
     const now = this.now();
     let i = 0;
     for (const e of this.entsOf(live, role || undefined)) {
+      // SF-150: durable/foreign-owned roster members are released, not stamped — custody pods
+      // keep their authored TTL and world actors stay under their own persistence owner.
+      if (!encounterMayScheduleDespawn(e)) continue;
       e.data = e.data || {};
       e.data.despawnAt = now + (afterS || 20) + i * 0.5;   // small stagger so departures read natural
       i++;
@@ -1802,6 +1809,9 @@ export const encounterDirector = {
       dir.stats.ceresActivityAmbush = { phase: 'done', outcome };
     } else {
       for (const e of this.entsOf(live)) {
+        // SF-150: a durable or foreign-owned roster member is released intact — the encounter
+        // only retires the stragglers it actually spawned.
+        if (!encounterMayScheduleDespawn(e)) continue;
         if (!e.data || e.data.despawnAt == null) { e.data = e.data || {}; e.data.despawnAt = now + 45; }
       }
     }
@@ -1836,6 +1846,7 @@ export const encounterDirector = {
       if (dir.receipts.length > RECEIPT_CAP) dir.receipts.splice(0, dir.receipts.length - RECEIPT_CAP);
     }
     dropLiveSquadMembership(dir, live);
+    noteScriptProbeRow(dir, live, -1);
     delete dir.live[live.id];
   },
 
@@ -1861,6 +1872,7 @@ export const encounterDirector = {
       causality: live.causality ? { ...live.causality } : null,
     });
     dropLiveSquadMembership(dir, live);
+    noteScriptProbeRow(dir, live, -1);
     delete dir.live[live.id];
   },
 
@@ -1970,36 +1982,68 @@ export const encounterDirector = {
     }
     if (dir.patrolIntervened) delete dir.patrolIntervened[id];
     if (dir.playerDealtDamageAt) delete dir.playerDealtDamageAt[id];
-    for (const squadId of Object.keys(dir.active)) {
+    // The active-spawn index answers the squad question in O(1) — every rec.ids push
+    // indexes, every removal drops, so a miss is provably absent. A stale-looking row
+    // (map hit, rec missing or ids lacking the entity) falls back to the original walk.
+    const squadId = dir.activeMembership ? dir.activeMembership[id] : null;
+    if (squadId != null) {
       const rec = dir.active[squadId];
-      const idx = rec.ids.indexOf(id);
-      if (idx === -1) continue;
-      rec.ids.splice(idx, 1);
-      const budget = this.helpers && this.helpers.spawnBudget;
-      if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(squadId, 1);
-      if (!rec.ids.length) delete dir.active[squadId];
-      break;
-    }
-    // Cache wrecks resolve their salvage-signal encounter when stripped/destroyed.
-    for (const lid of Object.keys(dir.live)) {
-      const live = dir.live[lid];
-      const liveIndex = live.ids.indexOf(id);
-      if (!this._saveRestoring && live.script === 'convoy' && liveIndex !== -1) {
-        this._scriptEvent(live, 'entityGone', { ...(p || {}), id });
-      }
-      if (live.script === 'salvageSignal' && live.data && live.data.cacheId === id) {
-        this._scriptEvent(live, 'cacheGone', { id });
-      }
-      if (live.script === 'whisper' && live.data && live.data.sourceId === id) {
-        this._scriptEvent(live, 'sourceGone', { id });
-      }
-      if (liveIndex !== -1) {
-        for (let index = live.ids.length - 1; index >= 0; index--) {
-          if (live.ids[index] === id) live.ids.splice(index, 1);
+      const idx = rec ? rec.ids.indexOf(id) : -1;
+      if (rec && idx !== -1) {
+        delete dir.activeMembership[id];
+        rec.ids.splice(idx, 1);
+        const budget = this.helpers && this.helpers.spawnBudget;
+        if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(squadId, 1);
+        if (!rec.ids.length) delete dir.active[squadId];
+      } else {
+        for (const sid of Object.keys(dir.active)) {
+          const row = dir.active[sid];
+          const rowIdx = row.ids.indexOf(id);
+          if (rowIdx === -1) continue;
+          delete dir.activeMembership[id];
+          row.ids.splice(rowIdx, 1);
+          const budget = this.helpers && this.helpers.spawnBudget;
+          if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(sid, 1);
+          if (!row.ids.length) delete dir.active[sid];
+          break;
         }
-        if (live.roles && typeof live.roles === 'object') delete live.roles[id];
-        dropSquadMember(dir, live, id);
       }
+    }
+    // Cache wrecks resolve their salvage-signal encounter when stripped/destroyed. Rows
+    // whose script probes a data key (cacheId/sourceId) are not covered by the id
+    // membership map — when any such row exists (or the map answer looks stale), run
+    // the original full walk verbatim.
+    const probeRows = Number.isFinite(dir.scriptProbeRows) ? dir.scriptProbeRows : 0;
+    const memberLiveId = dir.squadMembership ? dir.squadMembership[id] : null;
+    const memberLive = memberLiveId != null ? dir.live[memberLiveId] : null;
+    const memberHit = !!(memberLive && memberLive.ids.indexOf(id) !== -1);
+    if (probeRows > 0 || (memberLiveId != null && !memberHit)) {
+      for (const lid of Object.keys(dir.live)) {
+        this._noteLiveGone(dir, dir.live[lid], id, p);
+      }
+    } else if (memberHit) {
+      this._noteLiveGone(dir, memberLive, id, p);
+    }
+  },
+
+  _noteLiveGone(dir, live, id, p) {
+    if (!live) return;
+    const liveIndex = live.ids.indexOf(id);
+    if (!this._saveRestoring && live.script === 'convoy' && liveIndex !== -1) {
+      this._scriptEvent(live, 'entityGone', { ...(p || {}), id });
+    }
+    if (live.script === 'salvageSignal' && live.data && live.data.cacheId === id) {
+      this._scriptEvent(live, 'cacheGone', { id });
+    }
+    if (live.script === 'whisper' && live.data && live.data.sourceId === id) {
+      this._scriptEvent(live, 'sourceGone', { id });
+    }
+    if (liveIndex !== -1) {
+      for (let index = live.ids.length - 1; index >= 0; index--) {
+        if (live.ids[index] === id) live.ids.splice(index, 1);
+      }
+      if (live.roles && typeof live.roles === 'object') delete live.roles[id];
+      dropSquadMember(dir, live, id);
     }
   },
 
@@ -2734,6 +2778,7 @@ export const encounterDirector = {
     const live = makeEncounterLiveRecord(this.state, item, shape, this.now());
     live.data.restored = true;
     dir.live[live.id] = live;
+    noteScriptProbeRow(dir, live, +1);
     const marker = cohort.some((entity) => (
       entity.data && entity.data.ai
       && entity.data.ai[CERES_ACTIVITY_AMBUSH_MARKER] === 'conflict'
@@ -2741,6 +2786,7 @@ export const encounterDirector = {
     const script = encounterScriptFor(live);
     if (!script || typeof script.resume !== 'function') {
       dropLiveSquadMembership(dir, live);
+      noteScriptProbeRow(dir, live, -1);
       delete dir.live[live.id];
       return false;
     }
@@ -3227,13 +3273,33 @@ export function planEncountersDay(seed, sectorId, dayIndex, zones, ecologyState 
 
   // Nominal spacing: keep planned onsets ≥45 s apart (the runtime gate enforces the real law).
   // An authored earlyDelayS window is a hard promise — the bump may never push it past its hi.
+  // When a pinned item cannot slide later far enough to clear its predecessor, the unwindowed
+  // predecessors yield instead: pull the contiguous run ending at i-1 earlier (preserving
+  // order and the ≥45 s gaps) so the authored onset stays inside its promised window rather
+  // than silently landing <45 s behind another beat.
+  const delayWindow = (it) => {
+    const enc = (encounterCatalog || ENCOUNTERS)[it.shapeId];
+    return enc && Array.isArray(enc.earlyDelayS) && enc.earlyDelayS.length === 2 ? enc.earlyDelayS : null;
+  };
   out.sort((a, b) => a.delay - b.delay || a.encounterId.localeCompare(b.encounterId));
   for (let i = 1; i < out.length; i++) {
-    if (out[i].delay - out[i - 1].delay < 45) {
-      const enc = (encounterCatalog || ENCOUNTERS)[out[i].shapeId];
-      const win = enc && Array.isArray(enc.earlyDelayS) && enc.earlyDelayS.length === 2 ? enc.earlyDelayS : null;
-      const bumped = out[i - 1].delay + 45;
-      out[i].delay = win ? Math.min(bumped, win[1]) : bumped;
+    if (out[i].delay - out[i - 1].delay >= 45) continue;
+    const win = delayWindow(out[i]);
+    const bumped = out[i - 1].delay + 45;
+    if (!win || bumped <= win[1]) {
+      out[i].delay = bumped;
+      continue;
+    }
+    // The pinned item cannot move later — the preceding run yields earlier, each pulled item
+    // keeping ≥45 s ahead of the next. A pinned predecessor yields only down to its own
+    // window's lo; an impossible calendar (two windows that cannot coexist) surfaces as the
+    // residual <45 s pair the spacing contract already names, not a silently moved promise.
+    for (let j = i - 1; j >= 0; j--) {
+      const need = out[j + 1].delay - 45;
+      if (out[j].delay <= need) break;
+      const jWin = delayWindow(out[j]);
+      out[j].delay = jWin ? Math.max(need, jWin[0]) : Math.max(0, need);
+      if (out[j].delay > need) break;
     }
   }
   return out;
@@ -3243,6 +3309,54 @@ export function planEncountersDay(seed, sectorId, dayIndex, zones, ecologyState 
  *  tests can force-fire a specific shape without re-implementing squad resolution. */
 export function planEncounterShape(enc, zone, sectorId, dayIndex, seq, rng) {
   return resolveEncounter(enc, zone, sectorId, dayIndex, seq, rng);
+}
+
+/**
+ * The deterministic plan requestAuthoredEncounter fires: authored-zone lookup, anchor
+ * fallback chain, zone assembly, and the 'authored-encounter' rng stream — all keyed on the
+ * payload fields plus (meta.seed, simTime). Exported so the renderer's decode warm can replay
+ * the exact roster an announced request will spawn instead of re-implementing the assembly.
+ * Pure: reads state.meta/state.simTime only; returns {item, zone, anchor} or null.
+ */
+export function planAuthoredEncounterItem({ state, payload, playerPos }) {
+  const shape = ENCOUNTERS[payload && payload.shapeId];
+  if (!shape) return null;
+  const requestedZone = payload.zoneId
+    ? zonesForSector(payload.sectorId).find((candidate) => candidate.id === payload.zoneId)
+    : null;
+  const anchor = payload.anchor
+    || (requestedZone && sectorLocalToGlobalForSector(requestedZone.center, payload.sectorId))
+    || playerPos
+    || { x: 0, z: 0 };
+  const local = globalToSectorLocalForSector(anchor, payload.sectorId);
+  const zone = {
+    ...(requestedZone || {}),
+    id: payload.zoneId || (requestedZone && requestedZone.id) || `authored:${shape.id}`,
+    name: payload.zoneName || (requestedZone && requestedZone.name) || shape.title || shape.id,
+    type: payload.zoneType || (requestedZone && requestedZone.type)
+      || (shape.zoneTypes && shape.zoneTypes[0]) || 'authored',
+    center: { x: local.x, z: local.z },
+    radius: Math.max(80, Number(payload.zoneRadius) || (requestedZone && requestedZone.radius) || 520),
+    threat: Number.isFinite(payload.threat)
+      ? payload.threat
+      : (Number.isFinite(requestedZone && requestedZone.threat) ? requestedZone.threat : 1),
+  };
+  const rng = mulberry32(hash32(
+    (state.meta && state.meta.seed) || 0,
+    payload.encounterId,
+    shape.id,
+    'authored-encounter',
+  ));
+  const item = resolveEncounter(
+    shape,
+    zone,
+    payload.sectorId,
+    Math.floor((state.simTime || 0) / DAY_SECONDS),
+    0,
+    rng,
+  );
+  if (!item) return null;
+  return { item, zone, anchor };
 }
 
 // Resolve one encounter shape on a chosen zone into a schedule item (composition + anchor).
@@ -3344,13 +3458,21 @@ function resolveEncounter(enc, zone, sectorId, dayIndex, seq, rng) {
     // Hull archetypes the fire path mounts outside plan.ships — the ambush claim victim
     // spawns beside the fight and a player_in_range trigger can land engagement while it
     // is still on-glass. Warm-only: never feeds the spawn list (spawnClaimVictim owns it).
-    warmShips: enc.claimVictim && typeof enc.claimVictim.archetype === 'string' && enc.claimVictim.archetype
-      ? [{
-        archetype: enc.claimVictim.archetype,
-        factionId: enc.claimVictim.factionId || 'faction_dmc',
-        role: 'claim',
-      }]
-      : null,
+    warmShips: enc.script === 'namedHunter'
+      // The captain pool resolves at fire time from the live roster (grudges evolve),
+      // so plan.ships stays empty — but every hull it can pick is known now: the three
+      // seed archetypes plus each captain's escort pool. Warm the union so whichever
+      // pool entry fires is already decoded when the entrance lands on-glass.
+      ? NAMED_CAPTAINS.flatMap((cap) => [cap.archetype, ...((cap.escort && cap.escort.archetypes) || [])])
+          .filter((a, i, arr) => typeof a === 'string' && a && arr.indexOf(a) === i)
+          .map((archetype) => ({ archetype, factionId, role: 'captain' }))
+      : (enc.claimVictim && typeof enc.claimVictim.archetype === 'string' && enc.claimVictim.archetype
+        ? [{
+          archetype: enc.claimVictim.archetype,
+          factionId: enc.claimVictim.factionId || 'faction_dmc',
+          role: 'claim',
+        }]
+        : null),
     // WF-02 terrain lee: authored squads may declare `terrain: 'lee'` to spawn behind the best
     // rock near their anchor (applied at spawnShips time, once per encounter).
     terrain: enc.squad && enc.squad.terrain === 'lee' ? 'lee' : null,
@@ -4103,6 +4225,46 @@ function dropLiveSquadMembership(dir, live) {
   }
 }
 
+// entityId -> squadId for the active-spawn ledger: the same coverage contract as
+// squadMembership, only for dir.active rec.ids (every push indexes, every removal drops).
+function indexActiveMember(dir, live, id) {
+  if (!dir.activeMembership || typeof dir.activeMembership !== 'object' || Array.isArray(dir.activeMembership)) {
+    dir.activeMembership = {};
+  }
+  dir.activeMembership[id] = live.squadId;
+}
+
+function dropActiveMemberId(dir, id, squadId) {
+  const membership = dir.activeMembership;
+  if (membership && membership[id] === squadId) delete membership[id];
+}
+
+// SF-150 — resolving an encounter releases temporary ownership; it must never erase an actor
+// or object whose durable persistence is owned elsewhere. The roster legitimately carries
+// things the encounter did not make: freight-custody pods (flags.persistent pickups with an
+// authored despawnAt TTL), adopted world actors (worldRecordId / persistenceOwner / traffic
+// roles), and mission-pinned bodies. A blanket despawnAt on any of those is a kill order a
+// foreign owner never agreed to. Anything carrying a durable claim is RELEASED from encounter
+// membership instead of stamped — its own persistence authority decides when it leaves. This
+// mirrors the same predicate world residency already protects (world.js protected markers).
+function encounterMayScheduleDespawn(entity) {
+  const flags = (entity && entity.flags) || {};
+  const data = (entity && entity.data) || {};
+  if (flags.persistent || flags.missionPinned) return false;
+  if (data.persistent || data.missionPinned || data.missionId || data.missionTag) return false;
+  if (data.worldRecordId != null || data.persistenceOwner != null) return false;
+  if (data.trafficRole || data.convoyId != null || data.itinerary) return false;
+  return true;
+}
+
+// dir.live rows whose script probes data.cacheId / data.sourceId in _onEntityGone — those
+// lookups are outside squadMembership coverage, so any live probe row forces the full walk.
+function noteScriptProbeRow(dir, live, sign) {
+  if (!live || (live.script !== 'salvageSignal' && live.script !== 'whisper')) return;
+  if (!Number.isFinite(dir.scriptProbeRows)) dir.scriptProbeRows = 0;
+  dir.scriptProbeRows += sign;
+}
+
 function ensureDirectorState(state) {
   if (!state.encounterDirector || typeof state.encounterDirector !== 'object' || Array.isArray(state.encounterDirector)) {
     state.encounterDirector = freshState();
@@ -4112,6 +4274,21 @@ function ensureDirectorState(state) {
   if (!d.active || typeof d.active !== 'object' || Array.isArray(d.active)) d.active = {};
   if (!d.live || typeof d.live !== 'object' || Array.isArray(d.live)) d.live = {};
   if (!d.squadMembership || typeof d.squadMembership !== 'object' || Array.isArray(d.squadMembership)) d.squadMembership = {};
+  if (!d.activeMembership || typeof d.activeMembership !== 'object' || Array.isArray(d.activeMembership)) {
+    const map = {};
+    for (const squadId of Object.keys(d.active)) {
+      const rec = d.active[squadId];
+      if (!rec || !Array.isArray(rec.ids)) continue;
+      for (const id of rec.ids) map[id] = squadId;
+    }
+    d.activeMembership = map;
+  }
+  if (!Number.isFinite(d.scriptProbeRows)) {
+    d.scriptProbeRows = 0;
+    for (const live of Object.values(d.live)) {
+      if (live && (live.script === 'salvageSignal' || live.script === 'whisper')) d.scriptProbeRows += 1;
+    }
+  }
   if (!d.pressure || typeof d.pressure !== 'object') d.pressure = { combat: 0, civilian: 0, mystery: 0, patrol: 0 };
   if (!Number.isFinite(d.pressure.combat)) d.pressure.combat = 0;
   if (!Number.isFinite(d.pressure.civilian)) d.pressure.civilian = 0;
@@ -4415,7 +4592,9 @@ function isWanted(state) {
   return typeof h === 'number' ? h >= 0.15 : false;    // mirrors heat.WANTED_THRESHOLD (read-only)
 }
 
-function sectorSecurityOf(state) {
+// Exported so presentation-side warm gates can consult the exact baseline the resolver
+// applies — the static SECTORS def, not the drifted live sector record.
+export function sectorSecurityOf(state) {
   const sid = state.world && state.world.currentSectorId;
   if (!sid) return 0.5;
   const def = SECTORS.find((s) => s.id === sid);
@@ -4630,7 +4809,14 @@ export function seedEscalationFromAct(dir, state, cause, payload) {
   const beat = beatForCause(cause, act);
   if (!beat) return null;
   const causeId = escalationCauseId(cause, act);
-  if (host.escalationSeeds.some((row) => row && row.causeId === causeId)) return null;
+  const openNeed = host.escalationSeeds.find((row) => (
+    row && row.causeId === causeId && row.arrived !== true && row.resolved !== true
+  ));
+  if (openNeed) return openNeed;
+  const priorNeedCount = host.escalationSeeds.reduce(
+    (count, row) => count + (row && row.causeId === causeId ? 1 : 0),
+    0,
+  );
 
   const now = Number.isFinite(state && state.simTime) ? state.simTime : 0;
   const sectorId = escalationText(act.sectorId)
@@ -4649,7 +4835,7 @@ export function seedEscalationFromAct(dir, state, cause, payload) {
   }
 
   const seed = sanitizeEscalationSeed({
-    id: `esc:${cause}:${causeId}`,
+    id: priorNeedCount === 0 ? `esc:${cause}:${causeId}` : `esc:${cause}:${causeId}:g${priorNeedCount}`,
     cause,
     beat,
     causeId,

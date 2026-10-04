@@ -1,0 +1,21 @@
+{
+  "replacements": [
+    {
+      "candidate": "candidate-m7/brood_mite_v01.glb",
+      "target": "assets/ships/parts/wholeships/brood_mite_v01.glb",
+      "sha256": "07479da4dc2c95ab9c8fbd1c2e7cf91703bc3e499f02ccd0a7ab148ee7df0e28",
+      "bytes": 410644,
+      "status": "review-gated; do not copy before shared runtime/source-seal admission"
+    },
+    {
+      "candidate": "candidate-m7/brood-mite.motion.json",
+      "target": "assets/ships/motions/brood-mite.motion.json",
+      "sha256": "1dce1265d79bfd29d7fd24a3c5e2d67cbef2be83391ee746c10b3767937233c6",
+      "bytes": 4167,
+      "status": "review-gated; do not copy before shared runtime/source-seal admission"
+    }
+  ],
+  "releaseManifestEdits": false,
+  "runtimePromotion": false,
+  "next": "After review, run canonical Forge/release/package/census tooling; never hand-rewrite release hashes"
+}

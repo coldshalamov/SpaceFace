@@ -8,6 +8,8 @@ import {
   CAREER_CONTRACT_SCHEMA_VERSION,
   REPEATABLE_CAREER_CONTRACTS,
 } from '../data/careerContracts.js';
+import { physicalMissionVariantFor } from '../data/missions.js';
+import { serializableMissionCondition } from '../data/missionConditions.js';
 import { getRegionalEcologyProfile } from '../data/regionalEcology.js';
 
 const RECEIPT_CAP = 96;
@@ -155,6 +157,13 @@ export function buildCareerContractOffer(state, defOrId, runInput = null) {
     ? ` Causal lead ${aftermath.fingerprint}: ${aftermath.motiveId || aftermath.consequenceKind || 'unresolved loss'}.`
     : ' No unresolved wreck cause is required; the regional ecology is the standing evidence.';
   const summary = `${def.actor.name}: ${def.actor.motive} ${stage.instruction} Failure: ${stage.failureText} Recovery: ${stage.recoveryText}${aftermathLine}`;
+  // FB-067: a stage that names a physical variant carries the variant's authored clause rows the
+  // same way a rolled offer does — the observer/tick evaluator read the shared catalog either way.
+  const variant = stage.params && stage.params.variant
+    ? physicalMissionVariantFor(stage.type, stage.params.variant) : null;
+  const variantClauses = variant && Array.isArray(variant.clauseIds)
+    ? variant.clauseIds.map((clauseId) => serializableMissionCondition(clauseId)).filter(Boolean)
+    : [];
   return {
     id: `offer_${fingerprint}`,
     source: 'careerContract',
@@ -172,6 +181,7 @@ export function buildCareerContractOffer(state, defOrId, runInput = null) {
     destSectorId: stage.destSectorId,
     preloadedCargo: !!stage.preloadedCargo,
     params: scaledParams(stage.params, run.cycle),
+    ...(variantClauses.length ? { clauses: variantClauses } : {}),
     storyTag: `career.repeatable.${def.careerId}:${def.id}:${run.cycle}:${stage.id}`,
     markerId: `career-contract:${def.id}:${run.cycle}:${stage.id}`,
     mapLabel: stage.instruction,

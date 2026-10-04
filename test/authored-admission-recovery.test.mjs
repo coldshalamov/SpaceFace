@@ -7,6 +7,7 @@ import {
   admissionOwnerInactive,
   AUTHORED_ADMISSION_RETRY_BASE_DELAY_MS,
   AUTHORED_ADMISSION_RETRY_MAX,
+  markAuthoredBoundaryForReadmission,
   retryFailedAuthoredAdmission,
 } from '../src/render/partsLibrary.js';
 import { shouldSubmitEntityMesh } from '../src/render/entityMeshVisibility.js';
@@ -117,6 +118,37 @@ test('admission retries are bounded and never churn a visible fallback', () => {
 
   const authored = failedBoundary('authored');
   assert.equal(retryFailedAuthoredAdmission(authored, 0), false);
+});
+
+test('a lifecycle readmission starts a new episode with a fresh retry budget', () => {
+  const boundary = failedBoundary('unavailable');
+  let t = 0;
+  for (let i = 0; i < AUTHORED_ADMISSION_RETRY_MAX; i++) {
+    assert.equal(retryFailedAuthoredAdmission(boundary, t), true, `attempt ${i + 1}`);
+    boundary.userData.authoredAssetState = 'unavailable';
+    t += AUTHORED_ADMISSION_RETRY_BASE_DELAY_MS * (2 ** i) + 1;
+  }
+  assert.equal(retryFailedAuthoredAdmission(boundary, t + 1e9), false,
+    'the spent episode stays terminal — a missing asset is not a spinner');
+
+  // An owner-inactive recook re-arms the same boundary for a NEW episode: the next failure
+  // verdict must get the designed bounded budget again instead of inheriting the spent one.
+  markAuthoredBoundaryForReadmission(boundary, 'owner-inactive');
+  assert.equal(boundary.userData.authoredAdmissionRetryCount, undefined);
+  assert.equal(boundary.userData.authoredAdmissionNextRetryAt, undefined);
+
+  boundary.userData.authoredAssetState = 'unavailable';
+  assert.equal(retryFailedAuthoredAdmission(boundary, t + 2e9), true,
+    'the post-readmission failure retries instead of stranding the entity invisible');
+  assert.equal(boundary.userData.authoredAdmissionRetryCount, 1);
+});
+
+test('the retry re-arm keeps its own count so the per-episode cap still bounds churn', () => {
+  const boundary = failedBoundary('unavailable');
+  assert.equal(retryFailedAuthoredAdmission(boundary, 1000), true);
+  assert.equal(boundary.userData.authoredAdmissionRetryCount, 1,
+    'a transient-admission-retry mark must not refund the attempt it just spent');
+  assert.equal(boundary.userData.authoredReadmissionReason, 'transient-admission-retry');
 });
 
 test('a pending authored boundary with a resolving marker still submits', () => {

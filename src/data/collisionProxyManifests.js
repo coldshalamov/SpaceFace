@@ -24,7 +24,13 @@
 // it never teleports, never writes velocity directly, and never seizes control (player input always
 // blends). Stations WITHOUT a manifest keep the legacy center-radius dock behavior untouched.
 
-import { modelTruthProxyManifest, modelTruthSkinHull, modelTruthSkinPolygon } from './modelTruth.js';
+import {
+  modelTruthPlanarRadius,
+  modelTruthProxyManifest,
+  modelTruthProxyRowForEntity,
+  modelTruthSkinHull,
+  modelTruthSkinPolygon,
+} from './modelTruth.js';
 import { isDynamicPhysicsBodyEntity, substanceFor } from '../core/physicsAuthority.js';
 import { PHYSICS_MATERIALS } from './physicsMaterials.js';
 
@@ -158,6 +164,18 @@ function ringHubManifest(id, stationIds) {
         maxAccel: 26,              // wu/s² hard bound — a fraction of player thrust authority
         inputBlend: 0.75,          // assist fades by inputMag*inputBlend; player always blends
       }),
+      // SF-130 — the berth is a pocket bounded by the station's own proxy surfaces. A hull
+      // whose planar envelope cannot clear that pocket by `hullMarginWu` may not take the
+      // deck berth at all: it moors at a standoff on the corridor axis — outermost structure
+      // + hull envelope + `standoffWu` — where the same dock gate fires the dock:range
+      // prompt. Clearance and standoff are measured against the resolved primitives (the
+      // measured skin when adopted, the authored silhouette otherwise), so the route
+      // consequence comes from real collision truth on both sides: bigger hulls lose tight
+      // berths; they never lose docking.
+      mooring: Object.freeze({
+        hullMarginWu: 2,           // berth pocket fit margin (wu) — clearance minus this
+        standoffWu: 4,             // mooring anchor distance off the outermost structure (wu)
+      }),
     }),
   });
 }
@@ -237,6 +255,15 @@ export function isCompoundSkinDynamicEligible(entity) {
   return false;
 }
 
+/** Presentation fx that explicitly declares a measured-skin proxy id opts into solidity —
+ * solid dressing rows and presentation-carried structures (activity objects, memorial hulls,
+ * landmark POIs) keep their fx presentation while taking the census collider. Undeclared fx
+ * stay ghosts (markers, effects). */
+function declaresMeasuredSkinProxy(entity) {
+  const proxy = entity && entity.data && entity.data.collisionProxy;
+  return typeof proxy === 'string' && proxy.startsWith('skin:');
+}
+
 /** True when the measured skin may stand in for this body's collider. Fixed bodies (stations,
  * landmark rocks) always take their skin; solid dynamic bodies take it as one tolerance-checked
  * convex hull when the census outline permits, else a bounded compound — proven deterministic
@@ -244,7 +271,8 @@ export function isCompoundSkinDynamicEligible(entity) {
 export function measuredSkinAllowedFor(entity) {
   if (!entity || entity.physicsBody === false || entity.collides === false) return false;
   const type = entity.type;
-  if (type === 'projectile' || type === 'pickup' || type === 'fx' || type === 'sensor') return false;
+  if (type === 'projectile' || type === 'pickup' || type === 'sensor') return false;
+  if (type === 'fx' && !declaresMeasuredSkinProxy(entity)) return false;
   const substance = substanceFor(entity);
   const material = PHYSICS_MATERIALS[substance.material];
   if (substance.sensor === true || (material && material.ghost === true)) return false;
@@ -283,10 +311,15 @@ export function resolveCollisionProxyManifest(entity) {
   // the unknown skin id resolves to nothing and the body falls back to its capsule/ball.
   if (!measuredSkinAllowedFor(entity)) return declared;
   const dynamic = isDynamicPhysicsBodyEntity(entity);
+  // Canonical identity is mutable in place — a hull swap rewrites data.defId on the SAME data
+  // object — so the data shell, stamped id, and type are not enough: the resolved row is the
+  // identity, and any change to it must invalidate the cached manifest.
+  const row = modelTruthProxyRowForEntity(entity);
   const cached = MEASURED_PROXY_CACHE.get(entity);
-  if (cached && cached.data === data && cached.id === id && cached.type === entity.type && cached.dynamic === dynamic) return cached.manifest;
+  if (cached && cached.data === data && cached.id === id && cached.type === entity.type
+    && cached.dynamic === dynamic && cached.row === row) return cached.manifest;
   const manifest = resolveMeasuredProxyManifest(entity, id, declared);
-  MEASURED_PROXY_CACHE.set(entity, { data, id, type: entity.type, dynamic, manifest });
+  MEASURED_PROXY_CACHE.set(entity, { data, id, type: entity.type, dynamic, row, manifest });
   return manifest;
 }
 
@@ -508,6 +541,108 @@ export function resolveCorridorAxisWorld(entity, manifest) {
   const bearingDeg = effectiveCorridorBearingDeg(manifest, entity);
   const a = finite(entity && entity.rot) + bearingDeg * DEG;
   return { x: Math.cos(a), z: Math.sin(a), bearingRad: a };
+}
+
+// -----------------------------------------------------------------------------------------------
+// SF-130 — hull envelope vs berth pocket: which dock anchor a given hull can physically take.
+// The pocket's free room is the berth point's signed distance to the nearest proxy surface; the
+// hull's envelope is its measured planar radius (model truth) with the collider radius as the
+// unmeasured fallback. Fit is a pure geometric comparison against the same primitives the
+// physics authority collides against — authored silhouette or adopted measured skin alike.
+// -----------------------------------------------------------------------------------------------
+
+/** Planar hull envelope in world units: the measured skin bound when adopted (live hull
+ * colliders are those skins), else the authored collider radius — the bound the live body
+ * never exceeds. */
+export function hullEnvelopeWu(entity) {
+  return positive(modelTruthPlanarRadius(entity), positive(entity && entity.radius, 0));
+}
+
+/** Radial extent of a normalized proxy primitive from the manifest origin. */
+function proxyPrimitiveRadialExtent(primitive) {
+  if (primitive.kind === 'circle') {
+    return Math.hypot(finite(primitive.x), finite(primitive.z)) + finite(primitive.r);
+  }
+  if (primitive.kind === 'capsule') {
+    return Math.max(
+      Math.hypot(finite(primitive.ax), finite(primitive.az)),
+      Math.hypot(finite(primitive.bx), finite(primitive.bz)),
+    ) + finite(primitive.r);
+  }
+  if (primitive.kind === 'obb') {
+    return Math.hypot(finite(primitive.x), finite(primitive.z))
+      + Math.hypot(finite(primitive.hx), finite(primitive.hz));
+  }
+  return 0;
+}
+
+/** Outermost radial extent of the resolved proxy primitives, in world units. Any world point
+ * this far from the station center clears every primitive by definition. */
+export function proxyOuterRadiusWu(manifest, entity) {
+  const scale = positive(proxyScaleFor(entity, manifest), 1);
+  const corridorDeg = effectiveCorridorBearingDeg(manifest, entity);
+  const primitives = expandedPrimitivesCached(manifest, entity, corridorDeg);
+  let outer = 0;
+  for (const primitive of primitives) {
+    const extent = proxyPrimitiveRadialExtent(primitive);
+    if (extent > outer) outer = extent;
+  }
+  return outer * scale;
+}
+
+/** Signed distance (wu) from the berth point to the nearest proxy surface, measured in the
+ * manifest's normalized local frame against the same cached expansion the berth LOS test
+ * uses. Negative would mean the berth itself sits inside structure. */
+export function berthClearanceWu(manifest, entity) {
+  const docking = manifest && manifest.docking;
+  if (!docking || !docking.berth) return Infinity;
+  const scale = positive(proxyScaleFor(entity, manifest), 1);
+  const corridorDeg = effectiveCorridorBearingDeg(manifest, entity);
+  const a = corridorDeg * DEG;
+  const r = positive(docking.berth.radius, 0);
+  const berthLocal = { x: Math.cos(a) * r, z: Math.sin(a) * r };
+  const primitives = expandedPrimitivesCached(manifest, entity, corridorDeg);
+  return distanceToProxySet(berthLocal, primitives) * scale;
+}
+
+/** True when the hull's planar envelope clears the berth pocket by the manifest's authored
+ * margin. Manifests without a `mooring` block berth every hull (legacy contract unchanged);
+ * a null ship or zero envelope always fits. */
+export function berthFitsHull(manifest, entity, ship) {
+  const mooring = manifest && manifest.docking && manifest.docking.mooring;
+  if (!mooring || !ship) return true;
+  const envelope = hullEnvelopeWu(ship);
+  if (!(envelope > 0)) return true;
+  return envelope <= berthClearanceWu(manifest, entity) - positive(mooring.hullMarginWu, 2);
+}
+
+/** The dock anchor a hull can physically take: the berth point when its envelope clears the
+ * pocket, else the mooring standoff on the corridor axis. Returns
+ * { x, z, dockRadius, speedGate, kind } with kind 'berth' | 'mooring', or null when the
+ * manifest carries no berth at all. The gate values are the authored berth gate in both
+ * cases — the dock:range contract is identical, only the anchor moves. */
+export function resolveDockAnchor(entity, manifest, ship) {
+  const docking = manifest && manifest.docking;
+  if (!docking || !docking.berth) return null;
+  const gate = {
+    dockRadius: positive(docking.berth.dockRadius, 12),
+    speedGate: positive(docking.berth.speedGate, 12),
+  };
+  if (berthFitsHull(manifest, entity, ship)) {
+    const berth = resolveBerthWorld(entity, manifest);
+    return { x: berth.x, z: berth.z, ...gate, kind: 'berth' };
+  }
+  const axis = resolveCorridorAxisWorld(entity, manifest);
+  const mooring = docking.mooring || {};
+  const along = proxyOuterRadiusWu(manifest, entity)
+    + hullEnvelopeWu(ship)
+    + positive(mooring.standoffWu, 4);
+  return {
+    x: finite(entity && entity.pos && entity.pos.x) + axis.x * along,
+    z: finite(entity && entity.pos && entity.pos.z) + axis.z * along,
+    ...gate,
+    kind: 'mooring',
+  };
 }
 
 /**

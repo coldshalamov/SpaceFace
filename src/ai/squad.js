@@ -143,6 +143,7 @@ export class SquadCommander {
     const bestObjective = selectObjectiveContact(contacts);
     const bestTether = selectTetherContact(contacts);
     const hostilesPresent = contacts.some((contact) => contact.kind === ContactKind.SHIP && contact.hostileVotes > 0);
+    const withdrawal = stepSquadWithdrawal(squad, tick, perceptions, focus, leader);
     const directives = new Map();
     const freeze = this.freeze;
     for (let index = 0; index < squad.members.length; index++) {
@@ -156,11 +157,24 @@ export class SquadCommander {
       }
       const breakFormation = (squad.breakUntil.get(member.id) || -1) >= tick;
       if (!breakFormation) squad.breakReason.delete(member.id);
-      const formationSlot = formationSlotFor(squad, leader, index, squad.members.length);
+      let formationSlot = formationSlotFor(squad, leader, index, squad.members.length);
       const allocationActive = targetAssignments !== null && targetAssignments.has(member.id);
       const assignedTarget = allocationActive ? targetAssignments.get(member.id) : null;
-      const objective = objectiveFor(selected.id, role, focus, bestObjective, bestTether, perception,
+      let objective = objectiveFor(selected.id, role, focus, bestObjective, bestTether, perception,
         assignedTarget, allocationActive, hostilesPresent, freeze);
+      if (withdrawal && member.id === withdrawal.wardId) {
+        formationSlot = { x: withdrawal.corridor.x, z: withdrawal.corridor.z };
+        objective = freezeObjective(ObjectiveKind.RETREAT, null, 'wounded_corridor', freeze, undefined, {
+          flightPoint: freeze({ x: withdrawal.corridor.x, z: withdrawal.corridor.z }),
+          cue: withdrawal.announce ? 'fighting_retreat' : null,
+        });
+      } else if (withdrawal && member.id === withdrawal.coverId) {
+        objective = freezeObjective(ObjectiveKind.SCREEN, focus ? focus.id : null, 'covering_withdrawal', freeze,
+          targetObservedBySquad(focus));
+      } else if (withdrawal && objective.kind === ObjectiveKind.RETREAT) {
+        objective = freezeObjective(ObjectiveKind.ENGAGE, focus ? focus.id : null, 'withdrawal_hold', freeze,
+          targetObservedBySquad(focus));
+      }
       const directive = freeze({
         tick,
         squadId,
@@ -181,7 +195,7 @@ export class SquadCommander {
             z: leader && leader.self ? leader.self.vel.z : 0,
           }),
           bound: squad.formationBound,
-          breakFormation,
+          breakFormation: breakFormation || (withdrawal && member.id === withdrawal.wardId),
           breakReason: breakFormation ? squad.breakReason.get(member.id) || 'explicit_break' : null,
         }),
       });
@@ -737,12 +751,243 @@ function selectTetherContact(contacts) {
   return best;
 }
 
-function freezeObjective(kind, targetId, reason, freeze = Object.freeze, targetObserved) {
+function freezeObjective(kind, targetId, reason, freeze = Object.freeze, targetObserved, extra) {
   const out = { kind, targetId: targetId == null ? null : targetId, reason };
   // SF-057: absent = observation not tracked (legacy/non-squad producers); false = the squad's
   // merged contact is memory only — members may fly the search leg but must not fire on it.
   if (targetObserved !== undefined) out.targetObserved = targetObserved;
+  if (extra && extra.flightPoint) out.flightPoint = extra.flightPoint;
+  if (extra && extra.cue) out.cue = extra.cue;
   return freeze(out);
+}
+
+const WITHDRAWAL_HULL = 0.35;
+const WITHDRAWAL_REACH = 640;
+const WITHDRAWAL_COMMIT_TICKS = 180;
+const WITHDRAWAL_ESCAPE = 720;
+const WITHDRAWAL_ARRIVE = 48;
+const WITHDRAWAL_STALL_TICKS = 90;
+const WITHDRAWAL_BLOCK = 36;
+const WITHDRAWAL_REPLAN_CAP = 2;
+
+function stepSquadWithdrawal(squad, tick, perceptions, focus, leaderPerception) {
+  // An accepted escape stays released while the ward remains clear. Without the latch a ward
+  // parked on its corridor or beyond the threat's reach is re-committed on the next decision
+  // tick, and the covering ship is re-drafted forever onto a retreat that already succeeded —
+  // plus a fresh announcement every re-commit. The latch clears when the ward's escape no
+  // longer holds (it drifted back into the fight or was disabled), making it a live ward again.
+  const released = squad.releasedWards || (squad.releasedWards = new Map());
+  for (const [releasedId, corridor] of released) {
+    if (!releasedWardStillEscaped(releasedId, corridor, perceptions, focus)) released.delete(releasedId);
+  }
+  const wounded = [];
+  for (const perception of perceptions) {
+    const self = perception && perception.self;
+    if (!self || self.alive === false || self.disabled) continue;
+    if (!(self.hullFraction <= WITHDRAWAL_HULL)) continue;
+    if (released.has(self.id)) continue;
+    wounded.push(perception);
+  }
+  wounded.sort((a, b) => a.self.hullFraction - b.self.hullFraction
+    || String(a.self.id).localeCompare(String(b.self.id)));
+  const ward = wounded[0] || null;
+  const previous = squad.withdrawalCommit || null;
+  if (!ward) {
+    squad.withdrawalCommit = null;
+    return null;
+  }
+  const wardId = ward.self.id;
+  const leaderRejected = retreatLeaderRejected(squad, leaderPerception);
+  const sameWard = previous && previous.wardId === wardId;
+  const escaped = sameWard && wardEscaped(ward, previous, focus);
+  const coverGone = sameWard && previous.coverId != null && !covererHealthy(perceptions, previous.coverId, wardId);
+  const blocked = sameWard && corridorBlocked(perceptions, previous.corridor, focus);
+  const stalled = sameWard && tick - (previous.stillSince || previous.sinceTick) >= WITHDRAWAL_STALL_TICKS;
+  const expired = sameWard && tick - previous.sinceTick > WITHDRAWAL_COMMIT_TICKS;
+  const leaderMoved = sameWard && previous.anchorLeaderGeneration != null && leaderRejected
+    && previous.anchorLeaderGeneration !== squad.leaderOccupantGeneration;
+  if (escaped) {
+    released.set(previous.wardId, previous.corridor);
+    squad.withdrawalCommit = null;
+    return null;
+  }
+  let replan = !sameWard || coverGone || blocked || stalled || expired || leaderMoved;
+  if (sameWard && (previous.replans || 0) >= WITHDRAWAL_REPLAN_CAP && (blocked || stalled)) replan = false;
+  if (!replan) {
+    const dist = pointDistance(ward.self.pos, previous.corridor);
+    if (dist + 8 < (previous.lastDist || Infinity)) {
+      previous.lastDist = dist;
+      previous.stillSince = tick;
+    }
+    previous.announce = false;
+    if (!covererHealthy(perceptions, previous.coverId, wardId)) {
+      const cover = chooseWithdrawalCover(perceptions, wardId, squad);
+      previous.coverId = cover ? cover.self.id : null;
+    }
+    return previous;
+  }
+  const salt = sameWard ? (previous.replans || 0) + 1 : 0;
+  const corridor = chooseWithdrawalCorridor(ward, perceptions, focus, squad, leaderPerception, salt);
+  if (!corridor) {
+    squad.withdrawalCommit = null;
+    return null;
+  }
+  const cover = chooseWithdrawalCover(perceptions, wardId, squad);
+  const commit = {
+    wardId,
+    coverId: cover ? cover.self.id : null,
+    corridor,
+    sinceTick: tick,
+    stillSince: tick,
+    lastDist: pointDistance(ward.self.pos, corridor),
+    replans: salt,
+    announce: true,
+    anchorLeaderId: squad.members[0] && squad.members[0].id,
+    anchorLeaderGeneration: squad.leaderOccupantGeneration,
+  };
+  squad.withdrawalCommit = commit;
+  return commit;
+}
+
+function retreatLeaderRejected(squad, leaderPerception) {
+  const leaderId = squad.members[0] && squad.members[0].id;
+  const self = leaderPerception && leaderPerception.self;
+  if (!self || self.alive === false || self.id !== leaderId) return true;
+  return !leaderSelfAccepted(self, squad.leaderOccupantGeneration);
+}
+
+function wardEscaped(ward, commit, focus) {
+  if (pointDistance(ward.self.pos, commit.corridor) <= WITHDRAWAL_ARRIVE) return true;
+  if (focus && focus.pos && pointDistance(ward.self.pos, focus.pos) >= WITHDRAWAL_ESCAPE) return true;
+  return false;
+}
+
+// A released ward stays out of ward selection while the same escape criteria still hold: it is
+// sitting on the corridor it was given, or it is beyond the threat's reach. A ward missing from
+// the picture is departed — released for good. A ward that left its corridor and is inside the
+// threat's reach again is a live wounded member once more and earns a fresh commitment.
+function releasedWardStillEscaped(wardId, corridor, perceptions, focus) {
+  for (const perception of perceptions) {
+    const self = perception && perception.self;
+    if (!self || self.id !== wardId) continue;
+    if (self.alive === false || self.disabled === true) return false;
+    if (corridor && pointDistance(self.pos, corridor) <= WITHDRAWAL_ARRIVE) return true;
+    return !!(focus && focus.pos && pointDistance(self.pos, focus.pos) >= WITHDRAWAL_ESCAPE);
+  }
+  return true;
+}
+
+function covererHealthy(perceptions, coverId, wardId) {
+  if (coverId == null || coverId === wardId) return false;
+  for (const perception of perceptions) {
+    const self = perception && perception.self;
+    if (!self || self.id !== coverId) continue;
+    return self.alive !== false && !self.disabled && self.hullFraction > WITHDRAWAL_HULL;
+  }
+  return false;
+}
+
+function corridorBlocked(perceptions, corridor, focus) {
+  if (!corridor) return true;
+  for (const perception of perceptions) {
+    for (const contact of perception.contacts || []) {
+      if (!contact || contact.alive === false || !contact.pos) continue;
+      if (contact.kind !== ContactKind.SHIP || contact.hostile !== true) continue;
+      if (focus && contact.id === focus.id && pointDistance(contact.pos, corridor) <= WITHDRAWAL_BLOCK) return true;
+      if (pointDistance(contact.pos, corridor) <= WITHDRAWAL_BLOCK) return true;
+    }
+  }
+  return false;
+}
+
+function chooseWithdrawalCover(perceptions, wardId, squad) {
+  const healthy = [];
+  for (const perception of perceptions) {
+    const self = perception && perception.self;
+    if (!self || self.id === wardId || self.alive === false || self.disabled) continue;
+    if (!(self.hullFraction > WITHDRAWAL_HULL)) continue;
+    healthy.push(perception);
+  }
+  healthy.sort((a, b) => {
+    const roleA = squad.roles.get(a.self.id) === SquadRole.SCREEN ? 0 : 1;
+    const roleB = squad.roles.get(b.self.id) === SquadRole.SCREEN ? 0 : 1;
+    if (roleA !== roleB) return roleA - roleB;
+    return String(a.self.id).localeCompare(String(b.self.id));
+  });
+  return healthy[0] || null;
+}
+
+function chooseWithdrawalCorridor(ward, perceptions, focus, squad, leaderPerception, salt) {
+  const leaderId = squad.members[0] && squad.members[0].id;
+  const leaderRejected = retreatLeaderRejected(squad, leaderPerception);
+  let hazard = null;
+  for (const perception of perceptions) {
+    for (const contact of perception.contacts || []) {
+      if (!contact || contact.kind !== ContactKind.HAZARD || contact.visible !== true) continue;
+      if (contact.alive === false || !contact.pos) continue;
+      if (contact.id === leaderId && leaderRejected) continue;
+      hazard = contact;
+      break;
+    }
+    if (hazard) break;
+  }
+  const threat = focus && focus.pos ? focus.pos : null;
+  if (hazard && threat) {
+    const dx = hazard.pos.x - threat.x;
+    const dz = hazard.pos.z - threat.z;
+    const len = Math.hypot(dx, dz) || 1;
+    return pushCorridorOut(ward.self.pos, {
+      x: hazard.pos.x + (dx / len) * 80,
+      z: hazard.pos.z + (dz / len) * 80,
+      id: `hazard:${hazard.id}:${salt}`,
+    });
+  }
+  const origin = ward.self.pos || { x: 0, z: 0 };
+  let ax = Math.cos(ward.self.rot || 0);
+  let az = Math.sin(ward.self.rot || 0);
+  if (threat) {
+    const dx = origin.x - threat.x;
+    const dz = origin.z - threat.z;
+    const len = Math.hypot(dx, dz) || 1;
+    ax = dx / len;
+    az = dz / len;
+  }
+  const side = salt % 2 === 0 ? 1 : -1;
+  if (leaderPerception && leaderPerception.self && leaderRejected) {
+    const leaderPos = leaderPerception.self.pos;
+    const parked = {
+      x: origin.x + ax * WITHDRAWAL_REACH + (-az) * side * 80,
+      z: origin.z + az * WITHDRAWAL_REACH + ax * side * 80,
+    };
+    if (leaderPos && pointDistance(parked, leaderPos) < 24) {
+      return {
+        x: parked.x - leaderPos.x,
+        z: parked.z - leaderPos.z,
+        id: `away:${ward.self.id}:${salt}`,
+      };
+    }
+  }
+  return pushCorridorOut(origin, {
+    x: origin.x + ax * WITHDRAWAL_REACH + (-az) * side * 80,
+    z: origin.z + az * WITHDRAWAL_REACH + ax * side * 80,
+    id: `away:${ward.self.id}:${salt}`,
+  });
+}
+
+function pushCorridorOut(origin, point) {
+  const from = origin || { x: 0, z: 0 };
+  const dx = point.x - (from.x || 0);
+  const dz = point.z - (from.z || 0);
+  const dist = Math.hypot(dx, dz);
+  const minDist = WITHDRAWAL_ARRIVE + 120;
+  if (dist >= minDist) return point;
+  const scale = minDist / (dist || 1);
+  return { ...point, x: (from.x || 0) + dx * scale, z: (from.z || 0) + dz * scale };
+}
+
+function pointDistance(a, b) {
+  if (!a || !b) return Infinity;
+  return Math.hypot((a.x || 0) - (b.x || 0), (a.z || 0) - (b.z || 0));
 }
 
 /** Whether the merged contact carries a live squad sighting this tick. Untracked contact sources

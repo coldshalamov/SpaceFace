@@ -23,7 +23,24 @@ export const CUE_GAIN = Object.freeze({
   fallTau: THROTTLE_WINDOWS.cueFallTau,
 });
 
-/** Advance engine-cue gain toward silence or the loud cue. Allocates nothing when `out` is passed. */
+/** Undock idle is audible but quiet. Zero throttle in flight follows the silence law. */
+export const IDLE_ENGINE_DB = -32;
+
+export function engineIdleCue({ undockIdle = false, throttle = 0, gain = 0.5, dt = 0.25 } = {}) {
+  const stepped = stepCueGain(gain, throttle, dt);
+  if (undockIdle) {
+    return { recipe: 'sfx_engine_idle', play: true, db: IDLE_ENGINE_DB, gain: stepped.gain };
+  }
+  const inFlightSilent = !(Number(throttle) > 0.02);
+  return {
+    recipe: 'sfx_engine_idle',
+    play: false,
+    db: null,
+    silent: inFlightSilent,
+    gain: inFlightSilent ? stepped.gain : stepped.gain,
+  };
+}
+
 export function stepCueGain(gain, throttle, dt, out = null) {
   const current = Number.isFinite(gain) ? gain : 0;
   const cmd = Math.max(0, Math.min(1, Number(throttle) || 0));

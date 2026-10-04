@@ -39,6 +39,7 @@ const EXPECTED_ARCHETYPES = new Set([
   'blockade_run',
   'investigation_chain',
   'lung_run',
+  'choir_vigil',
 ]);
 const STATION_TO_SECTOR = new Map();
 for (const sector of SECTORS) {
@@ -237,18 +238,18 @@ function walkRoute(api, state, definition, branchId, startEpoch = 4) {
   assert.fail(`${definition.id}/${branchId}: route did not resolve within the 3-4 stage contract`);
 }
 
-test('SP1 catalog has six authored archetypes, one branch point each, and twelve valid 3-4 stage routes', () => {
+test('SP1 catalog has seven authored archetypes, one branch point each, and fourteen valid 3-4 stage routes', () => {
   const definitions = missionData.SET_PIECE_MISSIONS;
   assert.ok(Array.isArray(definitions), 'missions data exports SET_PIECE_MISSIONS');
-  assert.equal(definitions.length, 6);
+  assert.equal(definitions.length, 7);
   assert.deepEqual(new Set(definitions.map((entry) => entry.id)), EXPECTED_ARCHETYPES);
   assert.equal(typeof missionData.validateSetPieceMissionCatalog, 'function',
     'missions data exports validateSetPieceMissionCatalog()');
   const validation = missionData.validateSetPieceMissionCatalog();
   assert.equal(validation.ok, true, (validation.errors || []).join('\n'));
   assert.deepEqual(validation.errors || [], []);
-  assert.equal(validation.archetypes, 6);
-  assert.equal(validation.playableRoutes, 12);
+  assert.equal(validation.archetypes, 7);
+  assert.equal(validation.playableRoutes, 14);
 
   for (const definition of definitions) {
     assert.ok(definition.title && definition.title.length >= 8, `${definition.id}: authored title`);
@@ -640,8 +641,12 @@ test('repeatable Long Read uses every unsettled wreck before finite all-salvaged
       channelId: wreck.rumorSources.find((source) => source.sourceRef === wreck.bearingSourceRef).channelId,
     }])),
   };
+  // Eleven open D-loop targets: the four chain-dedicated hulls plus the Choir-Tender's vigil
+  // wreck (SF-149) are reserved by their own chains and never enter the long_read pool.
+  const expectedTargets = UNIQUE_WRECKS.filter((wreck) => !wreck.wreckChainId).length;
+  assert.equal(expectedTargets, 11);
   const reserved = new Set();
-  for (let epoch = 0; epoch < 12; epoch++) {
+  for (let epoch = 0; epoch < expectedTargets; epoch++) {
     const offer = api.buildSetPieceMissionOffers(state, initialCursor('long_read', epoch))[0];
     assert.ok(offer, `epoch ${epoch}: another unsettled canon wreck remains contractible`);
     assert.ok(uniqueWreckById(offer.wreckId));
@@ -653,9 +658,9 @@ test('repeatable Long Read uses every unsettled wreck before finite all-salvaged
     reserved.add(offer.wreckId);
     state.player.uniqueWrecks.bearings[offer.wreckId] = { phase: 'salvaged' };
   }
-  assert.equal(reserved.size, 12, 'all twelve D-loop targets participate before exhaustion');
-  assert.deepEqual(api.buildSetPieceMissionOffers(state, initialCursor('long_read', 12)), [],
-    'the only terminal exhaustion is deliberate: all twelve one-per-save wrecks are settled');
+  assert.equal(reserved.size, expectedTargets, 'all eleven D-loop targets participate before exhaustion');
+  assert.deepEqual(api.buildSetPieceMissionOffers(state, initialCursor('long_read', expectedTargets)), [],
+    'the only terminal exhaustion is deliberate: all eleven one-per-save wrecks are settled');
 });
 
 test('known-rumor acceptance charges no service fee and posted or active chains reserve their wreck', async () => {

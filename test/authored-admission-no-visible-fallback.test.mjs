@@ -5,16 +5,19 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 import {
   authoredBootstrapPreloadPlan,
+  authoredCriticalVisualReadiness,
   buildAuthoredPlaceProp,
   buildAuthoredStationArchetype,
   collectFirstFlightCookEntities,
   isFirstFlightCookEntity,
   isInitialAuthoredCompositionEntity,
+  isOpeningFlightGateEntity,
   resolvePlaceFileForEntity,
   upgradeAuthoredPlaceBoundaryForProbe,
   wrapShipWithAuthoredParts,
 } from '../src/render/partsLibrary.js';
 import { ILLUSTRATED_SURFACE_KEY } from '../src/render/illustratedSurface.js';
+import { modelTruthRow } from '../src/data/modelTruth.js';
 import { installVisualOverrides } from '../src/render/visualOverrides.js';
 import {
   asteroidInstanceMembership,
@@ -293,7 +296,7 @@ test('authored geology never leaks its hidden procedural body into the asteroid 
   assert.equal(leaf.visible, true, 'pool rejection must not mutate the hidden fallback leaf itself');
 });
 
-test('authored geology composes its GLB envelope to the simulation asteroid radius', async () => {
+test('authored geology keeps the measured census scale of its adopted collision skin', async () => {
   const entity = {
     id: 23,
     type: 'asteroid',
@@ -311,15 +314,20 @@ test('authored geology composes its GLB envelope to the simulation asteroid radi
   const fallbackRoot = boundary.children[0];
   const scene = new THREE.Scene();
   scene.add(boundary);
+  const measured = modelTruthRow('place_asteroid_rock_a');
+  assert.equal(measured.collider.kind, 'proxy');
+  assert.equal(measured.proposedSkin.adopted, true);
+  // Adopted geology draws with its measured collision skin. The entity radius remains the
+  // gameplay footprint; stretching this GLB to 2*radius would detach it from its proxy.
   const record = {
     url: 'assets/ships/release/parts/places/place_asteroid_rock_a.glb',
     assetId: 'place_asteroid_rock_a',
     slot: 'place',
-    bounds: { size: [10, 8, 6], center: [1, 0, -2] },
+    bounds: measured.bounds,
     primitives: [{
       key: 'rock:0',
       name: 'Rock',
-      geometry: new THREE.BoxGeometry(10, 8, 6),
+      geometry: new THREE.BoxGeometry(...measured.bounds.size),
       material: new THREE.MeshStandardMaterial(),
       matrix: new THREE.Matrix4(),
       tags: {},
@@ -343,9 +351,11 @@ test('authored geology composes its GLB envelope to the simulation asteroid radi
   assert.equal(entity.type, 'asteroid', 'presentation swap cannot rewrite simulation type');
   assert.equal(entity.collides, true, 'presentation swap cannot rewrite collision truth');
   assert.equal(authoredRoot.userData.placeTargetRadius, entity.radius);
-  assert.equal(authoredRoot.userData.authoredWorldScale, 3,
-    'a radius-15 asteroid uses diameter 30 over the authored 10-unit maximum envelope');
-  assert.deepEqual(authoredRoot.userData.visualBounds.size, [30, 24, 18]);
+  const measuredScale = measured.drawScale * (entity.radius / measured.gameplay.entityRadius);
+  assert.equal(authoredRoot.userData.authoredWorldScale, measuredScale,
+    'the adopted skin follows its census scale ahead of the broadphase radius target');
+  assert.deepEqual(authoredRoot.userData.visualBounds.size,
+    measured.bounds.size.map((size) => size * measuredScale));
 });
 
 test('visual overrides route only explicit geology asteroids through the authored place builder', () => {
@@ -1056,7 +1066,7 @@ test('boot preload contains only the opening-shot identities', () => {
 
   const player = { id: 1, alive: true, type: 'ship', pos: { x: 0, z: 0 } };
   const helios = {
-    id: 'station_helios', alive: true, type: 'station', pos: { x: 600, z: 0 },
+    id: 'station_helios', alive: true, type: 'station', pos: { x: 9000, z: 0 },
     data: {
       stationId: 'station_helios', sectorId: 'sector_helios_prime',
       archetypeGlb: 'place_station_trade_hub',
@@ -1146,15 +1156,59 @@ test('the default Helios relay settles inside the loading-time authored runway',
     id: 10,
     alive: true,
     type: 'wreck',
-    pos: { x: 340, z: 220 },
+    pos: { x: 300, z: 160 },
     data: { assetRef: 'asset.slice.bourse_carrier_wreck' },
+  };
+  const farWreck = {
+    id: 13,
+    alive: true,
+    type: 'wreck',
+    pos: { x: 7000, z: 0 },
+    data: { assetRef: 'asset.slice.bourse_carrier_wreck' },
+  };
+  const nearbyDrone = {
+    id: 17,
+    alive: true,
+    type: 'drone',
+    pos: { x: -260, z: 40 },
+    data: {},
   };
   assert.equal(isInitialAuthoredCompositionEntity(spindle, state), false,
     'the 47-A spindle stays out of the authored opening set');
   assert.equal(isFirstFlightCookEntity(spindle, state), true,
     'the on-table spindle must still cook before first flight bloom');
-  assert.equal(isFirstFlightCookEntity(nearbyWreck, state), false,
-    'the carrier wreck is not a first-flight cook subject');
+  const runwayWreck = {
+    id: 18,
+    alive: true,
+    type: 'wreck',
+    pos: { x: 800, z: 0 },
+    data: {},
+  };
+  const runwayDrone = {
+    id: 19,
+    alive: true,
+    type: 'drone',
+    pos: { x: 0, z: -800 },
+    data: {},
+  };
+  assert.equal(isInitialAuthoredCompositionEntity(nearbyWreck, state), true,
+    'a wreck on the opening table owns a packaged body and must cook behind loading');
+  assert.equal(isFirstFlightCookEntity(nearbyWreck, state), true,
+    'the near carrier wreck is now a first-flight cook subject');
+  assert.equal(isInitialAuthoredCompositionEntity(nearbyDrone, state), true,
+    'a drone on the opening table joins the same startup set');
+  assert.equal(isFirstFlightCookEntity(nearbyDrone, state), true);
+  assert.equal(isInitialAuthoredCompositionEntity(runwayWreck, state), true,
+    'a contact wreck closing inside the authored decode runway cooks before first flight');
+  assert.equal(isFirstFlightCookEntity(runwayWreck, state), true,
+    'the approaching runway wreck joins the first-flight cook set');
+  assert.equal(isInitialAuthoredCompositionEntity(runwayDrone, state), true,
+    'a contact drone on the approach runway joins the same startup set');
+  assert.equal(isFirstFlightCookEntity(runwayDrone, state), true);
+  assert.equal(isInitialAuthoredCompositionEntity(farWreck, state), false,
+    'a far metadata wreck remains deferred');
+  assert.equal(isFirstFlightCookEntity(farWreck, state), false,
+    'a far wreck is not a first-flight cook subject');
 
   const nearRock = {
     id: 11, alive: true, type: 'asteroid', pos: { x: 40, z: 0 }, data: {},
@@ -1189,5 +1243,126 @@ test('the default Helios relay settles inside the loading-time authored runway',
   assert.equal(cookedIds.includes(otherVariantRock.id), true,
     'the nearest unused displacement variant still cooks');
   assert.equal(cookedIds.includes(farRock.id), false);
-  assert.equal(cookedIds.includes(nearbyWreck.id), false);
+  assert.equal(cookedIds.includes(nearbyWreck.id), true,
+    'the on-table packaged wreck cooks with the opening composition');
+});
+
+test('the critical Helios hub joins the startup set inside the authored decode runway', () => {
+  const player = {
+    id: 1, alive: true, type: 'ship', pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, maxSpeed: 174,
+  };
+  const hubData = {
+    stationId: 'station_helios', sectorId: 'sector_helios_prime',
+    archetypeGlb: 'place_station_trade_hub',
+  };
+  const hub = {
+    id: 'station_helios', alive: true, type: 'station', pos: { x: 1280, z: -420 },
+    radius: 42, data: hubData,
+  };
+  const state = {
+    mode: 'loading', playerId: 1,
+    entities: new Map([[1, player], [hub.id, hub]]),
+    entityList: [player, hub],
+    world: { currentSectorId: 'sector_helios_prime' },
+  };
+  assert.equal(isInitialAuthoredCompositionEntity(hub, state), true,
+    'the spawn-approach hub cooks behind loading instead of cold-composing in flight');
+  assert.equal(isOpeningFlightGateEntity(hub, state), true,
+    'the same hub holds the opening flight gate while it approaches the table');
+
+  const beyondRunway = { ...hub, pos: { x: 9000, z: 0 } };
+  assert.equal(isInitialAuthoredCompositionEntity(beyondRunway, state), false,
+    'a hub beyond the decode runway stays streamed');
+  assert.equal(isOpeningFlightGateEntity(beyondRunway, state), false);
+
+  const otherSector = {
+    ...hub,
+    homeSectorId: 'sector_ceres_belt',
+    data: { ...hubData, sectorId: 'sector_ceres_belt' },
+  };
+  assert.equal(isInitialAuthoredCompositionEntity(otherSector, state), false,
+    'a same-id hub in another sector is not the current startup hub');
+  assert.equal(isOpeningFlightGateEntity(otherSector, state), false);
+
+  const shellRecord = { id: 'station_helios', alive: true, type: 'station', data: hubData };
+  assert.equal(isInitialAuthoredCompositionEntity(shellRecord, state), true,
+    'a pose-less hub shell record still belongs to the startup composition');
+  assert.equal(isOpeningFlightGateEntity(shellRecord, state), true);
+});
+
+test('a live wreck or drone on the opening table holds loading readiness until authored', () => {
+  const player = {
+    id: 1, alive: true, type: 'ship', pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 },
+    maxSpeed: 174,
+    data: {},
+    mesh: { userData: { authoredAssetState: 'authored' } },
+  };
+  const wreck = {
+    id: 30, alive: true, type: 'wreck', pos: { x: 230, z: 40 },
+    data: {},
+    mesh: { userData: { authoredAssetState: 'compiling-pipelines' } },
+  };
+  const drone = {
+    id: 31, alive: true, type: 'drone', pos: { x: -300, z: -60 },
+    data: {},
+    mesh: { userData: { authoredAssetState: 'awaiting-authored-admission' } },
+  };
+  const farWreck = {
+    id: 32, alive: true, type: 'wreck', pos: { x: 7000, z: 0 },
+    data: { assetRef: 'asset.slice.bourse_carrier_wreck' },
+    mesh: { userData: { authoredAssetState: 'awaiting-authored-admission' } },
+  };
+  const runwayWreck = {
+    id: 33, alive: true, type: 'wreck', pos: { x: 800, z: 0 },
+    data: {},
+    mesh: { userData: { authoredAssetState: 'compiling-pipelines' } },
+  };
+  const runwayDrone = {
+    id: 34, alive: true, type: 'drone', pos: { x: 0, z: -800 },
+    data: {},
+    mesh: { userData: { authoredAssetState: 'awaiting-authored-admission' } },
+  };
+  const state = {
+    mode: 'loading', playerId: 1, simTime: 0,
+    entities: new Map([
+      [1, player], [30, wreck], [31, drone], [32, farWreck],
+      [33, runwayWreck], [34, runwayDrone],
+    ]),
+    entityList: [player, wreck, drone, farWreck, runwayWreck, runwayDrone],
+    world: { currentSectorId: 'sector_helios_prime' },
+    camera: { zoom: 144 },
+    render: {},
+  };
+
+  let readiness = authoredCriticalVisualReadiness(state);
+  assert.equal(readiness.ready, false,
+    'an on-table wreck or drone still inside its packaged pipeline blocks the shell release');
+  const blockedIds = readiness.flightReadyBlockers
+    .filter((entry) => entry.role === 'glassActors')
+    .map((entry) => entry.metadata && entry.metadata.id)
+    .sort();
+  assert.deepEqual(blockedIds, [30, 31, 33, 34],
+    'the near and approaching-runway wreck/drone bodies require the glass actor role');
+  assert.equal(readiness.flightReadyBlockers.some((entry) => (
+    entry.metadata && entry.metadata.id === 32
+  )), false, 'a far metadata wreck never blocks');
+
+  wreck.mesh.userData.authoredAssetState = 'authored';
+  readiness = authoredCriticalVisualReadiness(state);
+  assert.equal(readiness.ready, false, 'the drone must still finish its authored body');
+  drone.mesh.userData.authoredAssetState = 'authored';
+  readiness = authoredCriticalVisualReadiness(state);
+  assert.equal(readiness.ready, false,
+    'a contact wreck already inside the approach runway still gates the shell');
+  runwayWreck.mesh.userData.authoredAssetState = 'authored';
+  runwayDrone.mesh.userData.authoredAssetState = 'authored';
+  readiness = authoredCriticalVisualReadiness(state);
+  assert.equal(readiness.ready, true,
+    'once every on-table contact body is authored the gate opens');
+
+  const flight = { ...state, mode: 'flight' };
+  wreck.mesh.userData.authoredAssetState = 'compiling-pipelines';
+  readiness = authoredCriticalVisualReadiness(flight);
+  assert.equal(readiness.ready, true,
+    'the loading-only glass role releases once flight begins');
 });

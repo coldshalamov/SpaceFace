@@ -46,6 +46,19 @@ export const STORM_RELAY_ORBIT = 70;
 export const STORM_ISLAND_RADIUS = 32;
 export const STORM_RELAY_PERIOD = ORBIT_DEFAULT_PERIOD_TICKS;
 
+// FB-022: the relays are real dynamic bodies the Massline can latch and drag — a buoy's mass,
+// not a shutter's. The room re-anchors a free relay that leaves its band with a bounded servo
+// through the SG-02 membrane; a held relay is left to the tether alone.
+export const STORM_RELAY_MASS = 260;
+export const STORM_RELAY_RADIUS = 12;
+export const STORM_RELAY_BAND = 22;
+export const STORM_RELAY_SERVO = Object.freeze({
+  pull: 0.055,
+  damp: 0.30,
+  forceMax: 16000,
+  maxSpeed: 60,
+});
+
 const TAU = Math.PI * 2;
 
 function finite(value, fallback = 0) {
@@ -317,37 +330,84 @@ export function conductAlongGraph(graph, originId, lineage, options = {}) {
   return { hops, suppressed };
 }
 
-export function stormGraphNodes(at, simTime = 0, extras = []) {
+/**
+ * PURE conductivity node list. `liveRelays` (optional) overrides a relay's computed pose with
+ * its live body position — Map or array of {id, pos}; the graph then arcs the cells the
+ * dragged relays actually close, not the ones their orbit would have (FB-022).
+ */
+export function stormGraphNodes(at, simTime = 0, extras = [], liveRelays = null) {
   const pylons = stormPylons(at);
-  const relays = placeStormRelays(at, simTime);
+  let relays = placeStormRelays(at, simTime);
+  if (liveRelays) {
+    const override = liveRelays instanceof Map
+      ? (id) => liveRelays.get(id)
+      : (id) => (Array.isArray(liveRelays) ? liveRelays.find((row) => row && row.id === id) : null);
+    relays = relays.map((relay) => {
+      const live = override(relay.id);
+      if (!live) return relay;
+      const pos = live.pos ? live.pos : live;
+      if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return relay;
+      return {
+        ...relay,
+        pos: { x: pos.x, z: pos.z },
+        conductive: live.conductive !== false,
+      };
+    });
+  }
   const extra = Array.isArray(extras) ? extras : [];
   return pylons.concat(relays, extra);
 }
 
+/**
+ * PURE re-anchor command for one relay body (FB-022). A bounded spring toward the moving pose
+ * with damping — mode 'relay_reanchor' when the body has left its band, 'relay_orbit' while it
+ * rides the ring. The caller decides when the relay is held and must not write this at all.
+ */
+export function stormRelayGuide(pos, vel, posePos, mass = STORM_RELAY_MASS, servo = STORM_RELAY_SERVO) {
+  const m = Math.max(1, finite(mass, STORM_RELAY_MASS));
+  const dx = finite(posePos && posePos.x) - finite(pos && pos.x);
+  const dz = finite(posePos && posePos.z) - finite(pos && pos.z);
+  const drift = Math.hypot(dx, dz);
+  const vx = finite(vel && vel.x);
+  const vz = finite(vel && vel.z);
+  let fx = m * (servo.pull * dx - servo.damp * vx);
+  let fz = m * (servo.pull * dz - servo.damp * vz);
+  const mag = Math.hypot(fx, fz);
+  if (mag > servo.forceMax) {
+    const s = servo.forceMax / mag;
+    fx *= s;
+    fz *= s;
+  }
+  return {
+    mode: drift > STORM_RELAY_BAND ? 'relay_reanchor' : 'relay_orbit',
+    force: { x: fx, y: 0, z: fz },
+    maxSpeed: servo.maxSpeed,
+    drift,
+  };
+}
+
 function placeStormToys(at, relays) {
+  const relayToy = (relay) => ({
+    id: relay.id,
+    kind: 'relay',
+    verb: 'conduct',
+    hazardType: 'debris',
+    usable: true,
+    throwable: true,
+    // FB-022: a real dynamic body the Massline can latch — the room tracks it through
+    // propRole 'relay' so the law follows the body, not the seed pose.
+    solid: true,
+    dynamic: true,
+    propRole: 'relay',
+    radius: STORM_RELAY_RADIUS,
+    mass: STORM_RELAY_MASS,
+    pos: { x: relay.pos.x, z: relay.pos.z },
+    conductive: true,
+    score: 2,
+  });
   return [
-    {
-      id: 'relay_0',
-      kind: 'relay',
-      verb: 'conduct',
-      hazardType: 'debris',
-      usable: true,
-      throwable: true,
-      pos: { x: relays[0].pos.x, z: relays[0].pos.z },
-      conductive: true,
-      score: 2,
-    },
-    {
-      id: 'relay_1',
-      kind: 'relay',
-      verb: 'conduct',
-      hazardType: 'debris',
-      usable: true,
-      throwable: true,
-      pos: { x: relays[1].pos.x, z: relays[1].pos.z },
-      conductive: true,
-      score: 2,
-    },
+    relayToy(relays[0]),
+    relayToy(relays[1]),
     {
       id: 'grid_shutter',
       kind: 'shutter',

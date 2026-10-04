@@ -58,7 +58,7 @@ function cleanPin(row) {
   if (!kind || kind !== row.kind) return null;
   const label = String(row.label || entityLabel(ref) || '').trim();
   if (!label) return null;
-  return {
+  const pin = {
     ref,
     kind,
     label: label.slice(0, 80),
@@ -67,6 +67,15 @@ function cleanPin(row) {
     priceAt: row.priceAt == null ? null : (Number.isFinite(Number(row.priceAt)) ? Number(row.priceAt) : null),
     createdAt: Math.max(0, finite(row.createdAt)),
   };
+  // FB-050: an optional alert arm — 'tell me when this crosses N'. direction 'below' fires when
+  // the quote drops to target or under; anything else fires at-or-above. Persisted with the pin.
+  const target = Number(row.target);
+  if (kind === 'price' && Number.isFinite(target) && target > 0) {
+    pin.target = Math.round(target);
+    pin.direction = row.direction === 'below' ? 'below' : 'above';
+    pin.alertFired = row.alertFired === true;
+  }
+  return pin;
 }
 
 /** Save-file and hand-edited input -> clean pin list. Dedupes on ref; first writer wins. */
@@ -101,7 +110,7 @@ export function isWatched(state, ref) {
  * for a ref the watch list does not track. Mutates only state.ui.watchlist; callers emit the
  * receipt and watch:changed.
  */
-export function toggleWatchPin(state, ref, { label = '', stationId = null } = {}) {
+export function toggleWatchPin(state, ref, { label = '', stationId = null, target = null, direction = null } = {}) {
   const kind = pinKindForRef(ref);
   if (!kind) return { pinned: false, reason: 'unpinnable' };
   const pins = watchlistPins(state);
@@ -116,6 +125,8 @@ export function toggleWatchPin(state, ref, { label = '', stationId = null } = {}
     kind,
     label: label || entityLabel(ref),
     stationId: kind === 'price' ? stationId : null,
+    target,
+    direction,
     createdAt: finite(state && state.simTime),
   });
   if (!pin) return { pinned: false, reason: 'unpinnable' };
@@ -174,6 +185,7 @@ export function resolveWatchPin(state, pin) {
     const ace = aceById(id);
     const mem = state.aceMemory && state.aceMemory[id];
     if (!ace) return { ...base, detail: 'off the books' };
+    if (mem && mem.defeated === true) return { ...base, detail: 'defeated', tone: 'calm' };
     if (mem && mem.status) return { ...base, detail: String(mem.status).replace(/_/g, ' '), tone: 'foe' };
     if (mem && Number(mem.kills) > 0) return { ...base, detail: `downed you ×${Number(mem.kills)}`, tone: 'foe' };
     if (mem && Number(mem.defeats) > 0) return { ...base, detail: `downed ×${Number(mem.defeats)}`, tone: 'you' };
@@ -202,8 +214,59 @@ export function resolveWatchPin(state, pin) {
 }
 
 /** The rendered list: resolved pins, capped at the watch max, in pin order. */
+/** A search view. It does not rewrite pins or the active route. */
+export function filterWatchPins(pins, query) {
+  const list = Array.isArray(pins) ? pins : [];
+  const q = String(query || '').trim().toLowerCase();
+  if (!q) return list.slice();
+  return list.filter((pin) => String(pin.label || pin.ref || '').toLowerCase().includes(q));
+}
+
+/**
+ * Navigation is a separate act from tracking. Rumored or unknown access is refused.
+ * Filtering is not this function and must not be passed a query.
+ */
+export function engageKnownDestination(nav, destination) {
+  if (!nav || typeof nav !== 'object') return { ok: false, reason: 'no_nav' };
+  const access = destination && destination.access;
+  if (!destination || destination.known === false || access === 'rumored' || access === 'unknown') {
+    return { ok: false, reason: 'unknown', route: nav.route || null };
+  }
+  nav.route = { ref: destination.ref, label: destination.label || destination.ref };
+  return { ok: true, route: nav.route };
+}
+
 export function resolveWatchlist(state) {
   return watchlistPins(state).slice(0, WATCHLIST_MAX).map((pin) => resolveWatchPin(state, pin));
+}
+
+/**
+ * FB-050 — price-target alerts. Evaluated on dock and sector entry (the moments market memory
+ * refreshes), never per frame. A pin only has an opinion about a station the pilot has actually
+ * seen — marketMemory is the visited gate, so an unvisited market can never announce a price.
+ * One announcement per crossing; the pin re-arms when the quote crosses back. Returns the fired
+ * pins so the HUD layer can speak them; mutates only state.ui.watchlist alert bookkeeping.
+ */
+export function checkWatchlistAlerts(state) {
+  const pins = watchlistPins(state);
+  const memory = state && state.player && state.player.marketMemory;
+  const fired = [];
+  for (const pin of pins) {
+    if (pin.kind !== 'price' || pin.target == null || !pin.stationId) continue;
+    const commodityId = pin.ref.slice(pin.ref.indexOf(':') + 1);
+    const mem = memory && memory[pin.stationId] && memory[pin.stationId][commodityId];
+    if (!mem) continue; // never seen this market quote — the pin stays silent
+    const price = marketPriceAt(state, pin.stationId, pin.ref);
+    if (!Number.isFinite(price) || price <= 0) continue;
+    const crossed = pin.direction === 'below' ? price <= pin.target : price >= pin.target;
+    if (crossed && !pin.alertFired) {
+      pin.alertFired = true;
+      fired.push({ pin, price: Math.round(price), target: pin.target, direction: pin.direction });
+    } else if (!crossed && pin.alertFired) {
+      pin.alertFired = false; // crossed back — the alert arms again for the next approach
+    }
+  }
+  return fired;
 }
 
 export function watchKindWord(kind) {

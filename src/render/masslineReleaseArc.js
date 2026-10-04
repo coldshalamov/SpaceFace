@@ -197,6 +197,17 @@ export function resolveMasslineReleaseArcPlan(out, input) {
   if (finitePoint(explicitCenter)) {
     centerX = explicitCenter.x;
     centerZ = explicitCenter.z;
+  } else if (hasQuality) {
+    // Post-release (NXI-197): the annulus is history, not tracking. Freeze it to the
+    // captured release frame — releaseTarget.pos was stamped at the release moment —
+    // and only fall back to the live entity when that record has no frozen point.
+    if (releaseTarget && finitePoint(releaseTarget.pos)) {
+      centerX = releaseTarget.pos.x;
+      centerZ = releaseTarget.pos.z;
+    } else if (liveTarget && liveTarget.alive !== false && finitePoint(liveTarget.pos)) {
+      centerX = liveTarget.pos.x;
+      centerZ = liveTarget.pos.z;
+    }
   } else if (liveTarget && liveTarget.alive !== false && finitePoint(liveTarget.pos)) {
     centerX = liveTarget.pos.x;
     centerZ = liveTarget.pos.z;

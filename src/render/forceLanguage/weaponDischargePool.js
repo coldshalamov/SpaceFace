@@ -6,6 +6,31 @@ import { sampleDischargeLifecycle, sampleImpactLifecycle } from './effectLifecyc
 export const DISCHARGE_CAPACITY = 48;
 
 /**
+ * Screen-thickness floor for every strip in this pool, in pixels. Strips are authored in world
+ * units (a bolt-diameter wide), so at the 144 WU chase camera a 0.15 WU ribbon is 1 px and the
+ * muzzle/contact vanishes. The presenter stamps each event with world-units-per-pixel (`pxw`);
+ * the floor only ever thickens, so close zoom keeps its authored cross-section exactly.
+ */
+export const SOURCE_MIN_STRIP_PX = 2.4;
+export const IMPACT_MIN_STRIP_PX = 3.0;
+/** Whole-footprint floors (width x reach, pixels) so a hit/muzzle still reads at the wide camera. */
+export const SOURCE_MIN_WIDTH_PX = 9, SOURCE_MIN_LENGTH_PX = 44;
+export const IMPACT_MIN_WIDTH_PX = 12, IMPACT_MIN_LENGTH_PX = 46;
+
+/**
+ * Working heat of the strips (instance attribute `iPivot.w`). The legacy surface shader multiplies
+ * ALL of its emission by it, so a strip that never sends heat is flat dim pigment: nothing above
+ * the bloom threshold, no hot seat, no glow (technique standard B8). Heat is the radiance dial:
+ * ignition is hot, the compression ring and the cooling fan sit lower so the seat reads as the
+ * brightest thing in the hit.
+ */
+export const SOURCE_HEAT = 0.82;
+export const IMPACT_HEAT = 0.92;
+export const IMPACT_RING_HEAT = 0.58;
+/** Muzzles that are not the player's own run this much cooler so a crowded fight cannot stack its bloom. */
+export const BYSTANDER_SOURCE_HEAT_SCALE = 0.72;
+
+/**
  * §22 A7 — a steady travel speed for the whole flash, then nothing.
  * The fragment advances the bright band by `life * flow * 5` radians. These
  * speeds carry one band out of the bore before a starter flash dies.
@@ -28,6 +53,9 @@ export function dischargeFlowAt(source, age, life) {
  *  the weapon surface language has exactly one owner, one material and one admission budget. */
 export const SURFACE_ROLE = Object.freeze({ SOURCE: 0, IMPACT: 1 });
 export const IMPACT_KIND = Object.freeze({ HULL: 0, SHIELD: 1 });
+
+/** Scratch for the shot-envelope sample feeding descriptor 16 in `_strip`; CPU-serial use only. */
+const FLOW_ENVELOPE = { length: 1, width: 1, opacity: 1 };
 
 const PALE = new THREE.Color(0xb9f4ff);
 const BRASS = new THREE.Color(0xffc17a);
@@ -65,7 +93,7 @@ function impactBeat(variant) {
  *  scorch and light pools remain their own owners. */
 export class WeaponDischargePool {
   constructor(scene,{capacity=DISCHARGE_CAPACITY}={}){
-    this.batch=new SweptSurfaceBatch(scene,{capacity:capacity*8,name:'SF_WeaponDischargeSurfaces'});
+    this.batch=new SweptSurfaceBatch(scene,{capacity:capacity*9,name:'SF_WeaponDischargeSurfaces'});
     this.mesh=this.batch.mesh;this.time=0;this.sequence=0;this.disposed=false;this.dropped=0;
     // Quiet settled flight: update always walked CAP slots + begin/end commit(0).
     // Trust activeCount (spawn ++ / retire -- / dispose clear); picture unchanged when 0.
@@ -74,9 +102,12 @@ export class WeaponDischargePool {
       alive:false,role:SURFACE_ROLE.SOURCE,kind:IMPACT_KIND.HULL,
       age:0,life:0,x:0,y:0,z:0,angle:0,pitch:0,width:0,length:0,opacity:1,
       source:null,variant:null,ownerId:null,targetId:null,attached:false,slant:0,
-      tr:1,tg:1,tb:1,priority:0,seed:0,beat:0,cadence:Infinity,
+      tr:1,tg:1,tb:1,priority:0,seed:0,beat:0,cadence:Infinity,pxw:0,
+      // Retained target-local anchor of an attached impact. x/y/z/angle/pitch hold the DRAWN world pose.
+      lx:0,ly:0,lz:0,langle:0,lpitch:0,heatScale:1,
     }));
-    this.descriptor=new Float32Array(24);
+    this.descriptor=new Float32Array(36);
+    this.heat=IMPACT_HEAT;
     this.envelope={length:1,width:1,opacity:1};
     this.color=BRASS;
     // Impact tint scratch: never mutate the shared family constants through `this.color`.
@@ -108,11 +139,14 @@ export class WeaponDischargePool {
     if(!wasAlive) this.activeCount++;
     slot.x=pose.x;slot.y=pose.y;slot.z=pose.z;slot.angle=Math.atan2(pose.az,pose.ax);
     slot.pitch=Math.atan2(pose.ay||0,Math.hypot(pose.ax,pose.az));
-    slot.width=Math.max(.55,flash.size0);slot.length=Math.max(2.8,flash.size1*2.1);
+    const sp=Number.isFinite(flash.pxw)&&flash.pxw>0?flash.pxw:0;
+    slot.width=Math.max(.55,flash.size0,sp*SOURCE_MIN_WIDTH_PX);slot.length=Math.max(2.8,flash.size1*2.1,sp*SOURCE_MIN_LENGTH_PX);
     const rapid=coalesced?Math.max(0,1-slot.cadence/Math.max(.001,slot.life*.9)):0;
     slot.opacity=Math.min(1,flash.opacity0/1.35)*(1-.22*rapid);
     slot.source=source;slot.variant=recipe.variant;
     slot.ownerId=ownerId;slot.priority=priority;slot.seed=(this.sequence++%17)/17;
+    slot.pxw=Number.isFinite(flash.pxw)&&flash.pxw>0?flash.pxw:0;
+    slot.heatScale=priority>=0.9?1:BYSTANDER_SOURCE_HEAT_SCALE;
     return true;
   }
   /**
@@ -135,7 +169,8 @@ export class WeaponDischargePool {
     slot.x=pose.x;slot.y=pose.y;slot.z=pose.z;
     slot.angle=Math.atan2(pose.az,pose.ax);
     slot.pitch=Math.atan2(pose.ay||0,Math.hypot(pose.ax,pose.az));
-    slot.width=Math.max(.6,flash.size0);slot.length=Math.max(1.6,flash.size1*1.8);
+    const ip=Number.isFinite(flash.pxw)&&flash.pxw>0?flash.pxw:0;
+    slot.width=Math.max(.6,flash.size0,ip*IMPACT_MIN_WIDTH_PX);slot.length=Math.max(1.6,flash.size1*1.8,ip*IMPACT_MIN_LENGTH_PX);
     slot.opacity=Math.min(1,flash.opacity0/1.2);
     slot.source=null;slot.variant=variant;
     slot.targetId=pose.targetId!=null?pose.targetId:null;
@@ -146,21 +181,32 @@ export class WeaponDischargePool {
     slot.tb=Number.isFinite(flash.b)?flash.b:1;
     slot.ownerId=null;slot.priority=priority;slot.seed=(this.sequence++%17)/17;
     slot.beat=0;slot.cadence=Infinity;
+    slot.pxw=Number.isFinite(flash.pxw)&&flash.pxw>0?flash.pxw:0;
+    slot.lx=slot.x;slot.ly=slot.y;slot.lz=slot.z;slot.langle=slot.angle;slot.lpitch=slot.pitch;
+    slot.heatScale=1;
     return true;
   }
   _strip(s,a0,a1,r0,r1,width,type=1,offset=0,lift=0,frontMode=0,phase=-1,axial=0){
     const d=this.descriptor,c=this.color;
     const ca=Math.cos(s.angle),sa=Math.sin(s.angle);
     d[0]=s.x-sa*offset+ca*axial;d[1]=s.y;d[2]=s.z+ca*offset+sa*axial;d[3]=s.angle;
-    d[4]=type;d[5]=a0;d[6]=a1;d[7]=r0;d[8]=r1;d[9]=width;d[10]=lift;d[11]=0;
+    d[4]=type;d[5]=a0;d[6]=a1;d[7]=r0;d[8]=r1;d[9]=Math.max(width,s.pxw*(s.role===SURFACE_ROLE.IMPACT?IMPACT_MIN_STRIP_PX:SOURCE_MIN_STRIP_PX));d[10]=lift;d[11]=0;
     d[12]=c.r;d[13]=c.g;d[14]=c.b;d[15]=this.opacity;
     // INF-009: discharge flow is driven from the shot inside the shot envelope. machined-burst
     // (kinetic default-kit guns) and split-aperture (the starter pulse-bolt coherent family) each
-    // get their own rhythm; every other family keeps the untouched zero path. Reduced flash is
-    // preserved through s.opacity (flash.opacity0 arrives already scaled); reduced motion freezes
-    // transport in-shader via uMotion-scaled vCycle.z, so no lifecycle handling changes here.
-    d[16]=s.role===0?dischargeFlowAt(s.source,s.age,s.life):0;d[17]=phase>=0?phase:s.seed;d[18]=frontMode;d[19]=this.style;
+    // get their own rhythm; every other family keeps the untouched zero path. The steady family
+    // speed (dischargeFlowAt, §22 A7) rides the shot envelope's opacity clock on the effect
+    // clock (s.age): ignition spins the band up, cooling eases it back down, and it lands on
+    // zero exactly when the shot ends — the muzzle is no longer a static shape in an envelope.
+    // Reduced flash is preserved through s.opacity (flash.opacity0 arrives already scaled);
+    // reduced motion freezes transport in-shader via uMotion-scaled vCycle.z, so no lifecycle
+    // handling changes here.
+    const flowEnv=sampleDischargeLifecycle(s.age,s.life,false,FLOW_ENVELOPE).opacity;
+    d[16]=s.role===0?dischargeFlowAt(s.source,s.age,s.life)*s.opacity*flowEnv:0;d[17]=phase>=0?phase:s.seed;d[18]=frontMode;d[19]=this.style;
     d[20]=1;d[21]=1;d[22]=1;d[23]=s.pitch;
+    // iLife / iBehavior / iPivot: the legacy defaults the batch used to fill in, written out so the
+    // working-heat channel (iPivot.w) can ride in the same descriptor.
+    d[24]=0;d[25]=0;d[26]=-1;d[27]=1;d[28]=0;d[29]=0;d[30]=0;d[31]=0;d[32]=0;d[33]=0;d[34]=0;d[35]=this.heat;
     this.batch.add(d);
   }
   /**
@@ -180,7 +226,7 @@ export class WeaponDischargePool {
    * bloom-off frame. Nothing here is drawn at or beyond the contact point.
    */
   _sourceStrips(s,w,length){
-    this.style=3;this.color=BRASS;
+    this.style=3;this.color=BRASS;this.heat=SOURCE_HEAT*s.heatScale;
     const t=Math.min(1,s.age/Math.max(.001,s.life));
     const hand=(s.beat&1)?-1:1;
     if(s.source==='machined-burst'){
@@ -290,6 +336,7 @@ export class WeaponDischargePool {
   }
   _impactStrips(s,w,length){
     const beat=impactBeat(s.variant);
+    this.heat=IMPACT_HEAT;
     this.style=beat.style;
     this.color=this.impactTint.setRGB(s.tr,s.tg,s.tb);
     const lean=Math.max(-1,Math.min(1,s.slant))*.55;
@@ -297,6 +344,10 @@ export class WeaponDischargePool {
     // Contact first: one short hard slit exactly at the surface point. It is the sharp impulse;
     // everything after it is aftermath and must not share its terminal plane.
     this._strip(s,lean*.25,0,.05,length*(beat.style===4?.42:.34),w*(beat.style===4?.10:.15));
+    // Hot seat: the first frames of a hit are a fat, short, lean-aligned bar at the contact, not a
+    // hairline. It is a tapered blade (never a disc or card) and it cools with the same envelope,
+    // so the eye gets one bright anchor to hang the slit, fan and ring on at the chase camera.
+    this._strip(s,lean*.25,0,.04,length*.2,w*(shield?.30:.36),1,0,0,0,-1,0);
     for(let k=0;k<beat.blades;k++){
       const fan=beat.blades===1?0:(k/(beat.blades-1)-.5)*2;
       const reach=(.42+.58*salt(s.seed,k))*beat.reach;
@@ -306,7 +357,9 @@ export class WeaponDischargePool {
     }
     // Partial pressure ring, age-driven outward front — not a full circle, not a bubble.
     const ringWidth=shield?Math.max(beat.ringWidth,.22):beat.ringWidth;
+    this.heat=IMPACT_RING_HEAT;
     this._strip(s,-.85+lean*.4,.85+lean*.4,w*beat.ring*.45,w*beat.ring,ringWidth,0,0,0,1,s.age/s.life);
+    this.heat=IMPACT_HEAT;
     // Shield contact is a designed panel response: crossed seams over the local patch.
     const ribs=shield?Math.max(2,beat.ribs):beat.ribs;
     for(let r=0;r<ribs;r++){
@@ -334,6 +387,10 @@ export class WeaponDischargePool {
         continue;
       }
       if(resolvePose){
+        // An attached impact is resolved FROM its retained target-local anchor every frame. The pose
+        // written back below is the drawn world pose; feeding that into the next resolve would add
+        // the target's position again each frame and fling the contact off the hull.
+        if(s.role===SURFACE_ROLE.IMPACT&&s.attached){s.x=s.lx;s.y=s.ly;s.z=s.lz;s.angle=s.langle;s.pitch=s.lpitch;}
         const pose=resolvePose(s);
         // A missing/dead owner or detached target must not stick a surface in mid-air.
         if(!pose){

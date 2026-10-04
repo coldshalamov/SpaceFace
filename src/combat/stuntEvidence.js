@@ -259,9 +259,16 @@ export function observeContact(a, b, contact, state = activeState) {
         playerOccludedAtRoot=!witnessLineOfSight(state,{id:state.playerId,pos:root.playerPos},thenPos,[state.playerId,source.id,target.id]);
       }
     }
+    // Closing speed is how fast the pair was approaching, not how the solver aimed its
+    // max-force vector. On a sphere that vector can sit tangential to the center line and
+    // project a real strike (~120) down to 0, so a flail kill never clears half cruise.
+    // The contact's pre-solve radial closing is that center-line approach; the force-axis
+    // projection stays as the fallback for contacts that never recorded one.
+    const normalClosing = Math.max(0, (sv.x-tv.x)*axis.x+(sv.z-tv.z)*axis.z);
+    const radialClosing = Number.isFinite(contact.preSolveClosingSpeed) ? Math.max(0, contact.preSolveClosingSpeed) : 0;
     const path = { rootId: root.id, sourceId: source.id, targetId: target.id, sourceLife: sl.id, targetLife: tl.id, playerOccludedAtRoot,
       sourceOccludedAtRoot:sl.id===root.sourceLife?root.sourceOccludedAtRoot:null,
-      tick, edges: influence.edges + 1, usefulDeltaV: useful, closingSpeed: Math.max(0, (sv.x-tv.x)*axis.x+(sv.z-tv.z)*axis.z),
+      tick, edges: influence.edges + 1, usefulDeltaV: useful, closingSpeed: Math.max(normalClosing, radialClosing),
       missDistance,changedCorridor,submaterialSource,submaterialTarget,priorSpeed,normal: axis, sourceVelocity: point(sv), targetVelocity: point(tv),
       momentum: (target.physicsBody?.dynamic === false || ['asteroid','station','planet'].includes(target.type) ? sl.mass : sl.mass*tl.mass/(sl.mass+tl.mass)) * Math.max(0,(sv.x-tv.x)*axis.x+(sv.z-tv.z)*axis.z) };
     record.paths.push(path);
@@ -313,7 +320,15 @@ function segmentSeparation(a,b,c,d) {
   const pointSegment=(p,q,r)=>{const x=r.x-q.x,z=r.z-q.z,len=x*x+z*z,t=len?Math.max(0,Math.min(1,((p.x-q.x)*x+(p.z-q.z)*z)/len)):0;return Math.hypot(p.x-q.x-t*x,p.z-q.z-t*z);};
   return Math.min(pointSegment(a,c,d),pointSegment(b,c,d),pointSegment(c,a,b),pointSegment(d,a,b));
 }
-export function evidenceForConsequence(receipt, state = activeState) {
+/**
+ * Query half of evidenceForConsequence: resolves the same {root,path,contact,previousRoot}
+ * record but returns the LIVE journal objects — for callers that read a few scalars
+ * synchronously and drop the result. Anything that crosses a frame boundary (emit payloads,
+ * deferred consumers) must keep the structuredClone: the journal's nodes/paths arrays are
+ * appended across ticks and a shared record would leak post-emit mutations into a frozen
+ * receipt.
+ */
+export function evidenceForConsequenceLive(receipt, state = activeState) {
   const j = journalFor(state);
   const contact = j?.contacts.get(contactKey(receipt.tick,receipt.targetId,receipt.otherId));
   if (!contact) return null;
@@ -321,7 +336,11 @@ export function evidenceForConsequence(receipt, state = activeState) {
     || (p.sourceId === receipt.targetId&&(p.changedCorridor||p.submaterialSource)&&(['terrain','structure'].includes(receipt.surface)||receipt.otherMass>=150)));
   const root = path && liveRoot(j,path.rootId,receipt.tick);
   if (!root) return null;
-  return structuredClone({ revision:EVIDENCE_REVISION, root, path, contact, previousRoot: root.previousRoot ? liveRoot(j,root.previousRoot,receipt.tick) : null });
+  return { revision:EVIDENCE_REVISION, root, path, contact, previousRoot: root.previousRoot ? liveRoot(j,root.previousRoot,receipt.tick) : null };
+}
+export function evidenceForConsequence(receipt, state = activeState) {
+  const e = evidenceForConsequenceLive(receipt, state);
+  return e && structuredClone(e);
 }
 export function pruneEvidence(state, tick, livesSweepEvery = 1) {
   const j = journalFor(state); if (!j) return;

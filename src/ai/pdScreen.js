@@ -64,12 +64,49 @@ export function resolvePdCharge(self, state, perception = null) {
     }
     if (leader) return leader;
   }
+  // If no squad leader, resolve to best living teammate (leader / capital / anchor / highest mass)
+  if (state && self && self.team != null) {
+    let bestAlly = null;
+    let bestScore = -Infinity;
+    const list = indexedShipLikeScan(state);
+    for (const e of list) {
+      if (!e || !e.alive || e.id === self.id || e.team !== self.team) continue;
+      const eData = e.data || {};
+      const eAi = eData.ai || {};
+      let score = 0;
+      if (eAi.encounterRole === 'leader' || eAi.role === 'leader') score += 1000;
+      if (eData.shipClass === 'capital') score += 500;
+      const mass = Number(e.mass) || Number(eData.derived?.mass) || 0;
+      score += mass;
+      if (score > bestScore) {
+        bestScore = score;
+        bestAlly = e;
+      }
+    }
+    if (bestAlly) return bestAlly;
+  }
   // Perception self formation slot as soft anchor is not an entity; fall back to self (screen self).
   if (perception && perception.self && perception.self.escortTargetId != null) {
     const ent = state && state.entities && state.entities.get(perception.self.escortTargetId);
     if (ent && ent.alive) return ent;
   }
   return self;
+}
+
+/**
+ * Compute the ideal screen position between the escorted charge (ward) and the incoming threat.
+ */
+export function pdScreenPosition(charge, threat, screenDistance = 240) {
+  if (!charge || !charge.pos) return null;
+  if (!threat || !threat.pos) return { x: charge.pos.x, z: charge.pos.z };
+  const dx = threat.pos.x - charge.pos.x;
+  const dz = threat.pos.z - charge.pos.z;
+  const len = Math.hypot(dx, dz);
+  if (len <= 1e-4) return { x: charge.pos.x, z: charge.pos.z };
+  return {
+    x: charge.pos.x + (dx / len) * screenDistance,
+    z: charge.pos.z + (dz / len) * screenDistance,
+  };
 }
 
 /**

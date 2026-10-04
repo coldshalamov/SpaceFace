@@ -23,6 +23,7 @@ import { jumpAbortReceipt } from './jumpNotice.js';
 import { resolveObjectiveHudLayout } from './hud.js';
 import { glyphSvg } from './glyphs.js';
 import { bindAutomationPayoffUi } from './automationPayoff.js';
+import { bindReturningPilotSummary } from './dockArrival.js';
 
 const MAX = RECEIPT_MAX;
 // Receipt kind icons — inline SVG from src/ui/glyphs.js (was text ✓ ✕ ! ¢ ◈, which leaned on
@@ -313,11 +314,19 @@ export function createToasts(ctx) {
   }
 
   bus.on('toast', push);
+  // Session boundary (SF-283): receipts live when a save loads or a new run starts were minted by
+  // the pre-save session — dismiss them rather than letting their TTL finish over the restored
+  // scene. Bound BEFORE the bind*Ui calls below: automationPayoff emits its "while you were away"
+  // receipt on save:loaded, and that new-session receipt must land in the lane AFTER this clear.
+  for (const name of ['save:loaded', 'game:new', 'game:newGame']) {
+    bus.on(name, () => { while (live.length) dismiss(live[live.length - 1]); });
+  }
   bindStuntReceipts(bus);
   bindCombatDenialToasts(bus, () => ctx.state);
   bindJumpDenialToasts(bus, () => ctx.state);
   bindExportRecoveryToasts(bus);
   bindAutomationPayoffUi(bus, () => ctx.state);
+  bindReturningPilotSummary(bus, ctx && ctx.state);
 
   return { push, tick };
 }
@@ -352,6 +361,8 @@ export function formatCombatActionRejectLine(reason) {
   if (raw.startsWith('cooldown:')) return 'Not ready yet';
   if (raw.startsWith('busy:')) return 'Still busy';
   if (raw.startsWith('disabled:')) {
+    const named = disabledActionLine(raw.slice('disabled:'.length));
+    if (named) return named;
     const part = raw.slice('disabled:'.length).replace(/_/g, ' ');
     return part ? `${part} disabled` : 'System disabled';
   }
@@ -384,8 +395,51 @@ export function combatDenialToastSpec(payload) {
     && !reason.startsWith('busy:') && !reason.startsWith('disabled:') && !reason.startsWith('physics_')) {
     return null;
   }
-  const hint = REJECT_HINT[reason] || '';
+  const hint = REJECT_HINT[reason] || disabledActionHint(reason) || '';
   return { text, kind: 'error', ttl: 3.5, hint };
+}
+
+/**
+ * A refused verb names the gate that actually fired.
+ * `capability:*` is a dead part (checked before tags). `tag:dash` and `tag:tether` are a tumble.
+ * `tag:weapon` is a dead battery, a tumble, or cooked guns — the token does not say which.
+ */
+function disabledActionLine(rest) {
+  const [kind, rawName] = String(rest || '').split(':');
+  const name = String(rawName || '').toLowerCase();
+  if (kind === 'capability') {
+    if (name === 'tether') return 'Massline spool out — the rope will not hold';
+    if (name === 'transport_clamp') return 'Clamp out — the load is no longer held';
+    if (name === 'drive') return 'Drive out — the ship is not pushing';
+    if (name === 'weapon') return 'Guns out — the battery is dark';
+    if (name === 'power') return 'Reactor out — the ship is starving';
+    if (name === 'sensor') return 'Sensors aren\'t answering — jammed or out';
+    return '';
+  }
+  if (kind === 'tag') {
+    if (name === 'attach' || name === 'reel') return 'Massline spool out — the rope will not hold';
+    if (name === 'clamp') return 'Clamp out — the load is no longer held';
+    if (name === 'sling') return 'Can\'t throw — the drive or the Massline spool is out';
+    if (name === 'dash') return 'Can\'t dash — the ship is tumbling';
+    if (name === 'tether') return 'Can\'t use the rope — the ship is tumbling';
+    if (name === 'weapon') return 'Guns won\'t answer — out, tumbling, or cooked';
+    if (name === 'burst') return 'Guns won\'t answer — cooked or out';
+    if (name === 'sensor' || name === 'lock') return 'Sensors aren\'t answering — jammed or out';
+    return '';
+  }
+  return '';
+}
+
+function disabledActionHint(reason) {
+  if (!String(reason || '').startsWith('disabled:')) return '';
+  const rest = String(reason).slice('disabled:'.length);
+  if (!disabledActionLine(rest)) return '';
+  const [kind, rawName] = rest.split(':');
+  const name = String(rawName || '').toLowerCase();
+  if (kind === 'tag' && (name === 'dash' || name === 'tether')) return 'Wait until the tumble stops';
+  if (kind === 'tag' && (name === 'weapon' || name === 'burst')) return 'Wait it out, or repair the battery';
+  if (name === 'sensor' || name === 'lock') return 'Wait out the jam, or repair the sensors';
+  return 'Repair it, or wait for the part to come back';
 }
 
 /**

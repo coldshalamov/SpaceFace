@@ -24,7 +24,7 @@
       "nodeName": "SOCKET_Structure_Core",
       "nodePath": [
         0,
-        34
+        36
       ],
       "parentNodeId": "sf.render.nav-buoy.node.sf-m4-helios-nav-spire-root",
       "worldTransform": [
@@ -59,7 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "1b27038b3d5f9c3b8e99641e3e62a3018d9bee0fb05a88e8e16aa24bf0921c47",
+  "contentHash": "e25c3aa437ba7b74b136370a2b30739f1a1f50b69b1b35c7f30899e243430056",
   "dynamicGroups": [
     {
       "id": "sf.render.nav-buoy.node.lod0-hook-nav-port.dynamic",
@@ -107,7 +107,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "33e5e2654e4a089dee9deceb880a7fd01078310faa7a872c335bff81b6d85d0e",
+      "geometryHash": "84f5bbabff8101478a0c62ba4ddfb93ec6f023718b23f151c91911446bb0e17e",
       "id": "sf.render.nav-buoy.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -136,7 +136,7 @@
       "id": "sf.render.nav-buoy.node.lod0-armor.primitive.0",
       "indexCount": 13992,
       "indexed": true,
-      "materialHash": "3b5154ad7ec0ee2263502c49e749f2a8dbe1fd5159df213996c1e629139c80de",
+      "materialHash": "3fdf83f5cb4a7ed64bc4eb10daa7d230674d9a4fe6c89acbc77b5876e62261ae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.nav-buoy.node.lod0-armor",
@@ -186,7 +186,7 @@
       "id": "sf.render.nav-buoy.node.lod0-brushedmetal.primitive.0",
       "indexCount": 144,
       "indexed": true,
-      "materialHash": "bfa183b9b652162d020ab3531b5c19f5c2ddf51261e2b6aec6452397e79d69f4",
+      "materialHash": "18d0ea13c3be0a94dbbd42b5fbd7606e0af20cfa8f54531e2d6316854afd4ce1",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_BrushedMetal",
       "nodeId": "sf.render.nav-buoy.node.lod0-brushedmetal",
@@ -286,7 +286,7 @@
       "id": "sf.render.nav-buoy.node.lod0-hull.primitive.0",
       "indexCount": 7512,
       "indexed": true,
-      "materialHash": "674f214b9b571ec60dc6b3efdfadea784fdec9ba52c8031b1484252ba6e6d9cf",
+      "materialHash": "98b096766a0680120cab62183d970ab98c99a47cde4a9e05aee6028a57c333e3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull",
       "nodeId": "sf.render.nav-buoy.node.lod0-hull",
@@ -336,7 +336,7 @@
       "id": "sf.render.nav-buoy.node.lod0-livery.primitive.0",
       "indexCount": 6192,
       "indexed": true,
-      "materialHash": "e50c2a9f588f0f9a85efade8aa1ac29aee737217c1df77128e003a17166b0896",
+      "materialHash": "ddec89c6afa37c20c7b85d32e3e3b746540a2274f247bfa66d313ad00b507b76",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Livery",
       "nodeId": "sf.render.nav-buoy.node.lod0-livery",
@@ -357,16 +357,66 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2b3eb95791ff8b02b952fe4b047669366315f7752dea640424ad78c6ed0d81b6",
+      "geometryHash": "47176a1d114c544e33baf6d19c69424af3e4483b9c6bb234675786d1715d4cb0",
       "id": "sf.render.nav-buoy.node.lod0-mechanical.primitive.0",
-      "indexCount": 13956,
+      "indexCount": 10212,
       "indexed": true,
-      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Mechanical",
       "nodeId": "sf.render.nav-buoy.node.lod0-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 4620
+      "vertexCount": 3396
+    },
+    {
+      "bounds": {
+        "max": [
+          0.9200415015220642,
+          9.300000190734863,
+          0.9200415015220642
+        ],
+        "min": [
+          -0.9200415015220642,
+          7.300000190734863,
+          -0.9200415015220642
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a81d742e82882badcf9b4ffd7f6a355cd435b5b5f8c514637a138b87db5ffd9f",
+      "id": "sf.render.nav-buoy.node.lod0-motion-nav-buoy-cage-mechanical.primitive.0",
+      "indexCount": 3744,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_NAV_BUOY_CAGE_Mechanical",
+      "nodeId": "sf.render.nav-buoy.node.lod0-motion-nav-buoy-cage-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 1224
+    },
+    {
+      "bounds": {
+        "max": [
+          0.6299999952316284,
+          -2.75670151039958,
+          0.6299999952316284
+        ],
+        "min": [
+          -0.6299999952316284,
+          -2.8432983942329884,
+          -0.6299999952316284
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e27688097ea7addeeb8d9d0b0d248a0ff0d07ee8b34ceebf062dd82814b5261a",
+      "id": "sf.render.nav-buoy.node.lod0-motion-nav-buoy-pulse-lights-cyan.primitive.0",
+      "indexCount": 864,
+      "indexed": true,
+      "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_NAV_BUOY_PULSE_Lights_Cyan",
+      "nodeId": "sf.render.nav-buoy.node.lod0-motion-nav-buoy-pulse-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 264
     },
     {
       "bounds": {
@@ -386,7 +436,7 @@
       "id": "sf.render.nav-buoy.node.lod0-warning.primitive.0",
       "indexCount": 1884,
       "indexed": true,
-      "materialHash": "2dab67b43d63e858cab2dcc0c90f2d49e6bb7d7ce55cb97c2ed20c68d076cd61",
+      "materialHash": "051dfdb6635940b963d81db531ce04a48e21448017b7093a23e3de64d0b3701d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Warning",
       "nodeId": "sf.render.nav-buoy.node.lod0-warning",
@@ -407,16 +457,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7dd58f051dd21b4828d5931d8a50a78376b5a0b1e3c22b40186ad1ce8a64f73c",
+      "geometryHash": "a4fe0525db5f96845642987a90e6999e7753946748bc5085ed1604c5dd5e5b99",
       "id": "sf.render.nav-buoy.node.lod1-armor.primitive.0",
-      "indexCount": 3930,
+      "indexCount": 4380,
       "indexed": true,
-      "materialHash": "3b5154ad7ec0ee2263502c49e749f2a8dbe1fd5159df213996c1e629139c80de",
+      "materialHash": "3fdf83f5cb4a7ed64bc4eb10daa7d230674d9a4fe6c89acbc77b5876e62261ae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor",
       "nodeId": "sf.render.nav-buoy.node.lod1-armor",
       "primitiveIndex": 0,
-      "vertexCount": 1325
+      "vertexCount": 1396
     },
     {
       "bounds": {
@@ -432,16 +482,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5fc77ffd6aadda9383f1d0c0dcf6dd3d163855c6f38a7da938d59835d3ad4b17",
+      "geometryHash": "c9fbbe2f1ec9dff15f4298dc4fd9246b0e1e79c1aa87ed54036e73ce39feab73",
       "id": "sf.render.nav-buoy.node.lod1-beacon-amber.primitive.0",
-      "indexCount": 300,
+      "indexCount": 336,
       "indexed": true,
       "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Beacon_Amber",
       "nodeId": "sf.render.nav-buoy.node.lod1-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 154
+      "vertexCount": 163
     },
     {
       "bounds": {
@@ -461,7 +511,7 @@
       "id": "sf.render.nav-buoy.node.lod1-brushedmetal.primitive.0",
       "indexCount": 144,
       "indexed": true,
-      "materialHash": "bfa183b9b652162d020ab3531b5c19f5c2ddf51261e2b6aec6452397e79d69f4",
+      "materialHash": "18d0ea13c3be0a94dbbd42b5fbd7606e0af20cfa8f54531e2d6316854afd4ce1",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_BrushedMetal",
       "nodeId": "sf.render.nav-buoy.node.lod1-brushedmetal",
@@ -557,41 +607,41 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c1351a1135f84b8855096c486d5f590eb0e69672d947ee3e3542f7c5793b8b99",
+      "geometryHash": "7a4c3a9c31a1eb96c25f2ac86241634d1128ca12dd63d6d3715dc0698978fb3d",
       "id": "sf.render.nav-buoy.node.lod1-hull.primitive.0",
-      "indexCount": 1800,
+      "indexCount": 2088,
       "indexed": true,
-      "materialHash": "674f214b9b571ec60dc6b3efdfadea784fdec9ba52c8031b1484252ba6e6d9cf",
+      "materialHash": "98b096766a0680120cab62183d970ab98c99a47cde4a9e05aee6028a57c333e3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull",
       "nodeId": "sf.render.nav-buoy.node.lod1-hull",
       "primitiveIndex": 0,
-      "vertexCount": 718
+      "vertexCount": 770
     },
     {
       "bounds": {
         "max": [
-          0.7200387716293335,
-          9.620000839233398,
-          0.7200387716293335
+          0.7200384736061096,
+          9.619999885559082,
+          0.7200384140014648
         ],
         "min": [
-          -0.7200387120246887,
+          -0.7200384140014648,
           7.480000019073486,
-          -0.7200387716293335
+          -0.7200384140014648
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a6b9034031310a9fe5d1c973d702b8998219385b816511a5e3ce542d22df317d",
+      "geometryHash": "3d6cc2a1a6ea2af316d817e387c9e03a59b8697b2c5550614eb1709a32fdb5ca",
       "id": "sf.render.nav-buoy.node.lod1-lights-cyan.primitive.0",
-      "indexCount": 588,
+      "indexCount": 744,
       "indexed": true,
       "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Lights_Cyan",
       "nodeId": "sf.render.nav-buoy.node.lod1-lights-cyan",
       "primitiveIndex": 0,
-      "vertexCount": 220
+      "vertexCount": 272
     },
     {
       "bounds": {
@@ -611,7 +661,7 @@
       "id": "sf.render.nav-buoy.node.lod1-livery.primitive.0",
       "indexCount": 1656,
       "indexed": true,
-      "materialHash": "e50c2a9f588f0f9a85efade8aa1ac29aee737217c1df77128e003a17166b0896",
+      "materialHash": "ddec89c6afa37c20c7b85d32e3e3b746540a2274f247bfa66d313ad00b507b76",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Livery",
       "nodeId": "sf.render.nav-buoy.node.lod1-livery",
@@ -621,27 +671,77 @@
     {
       "bounds": {
         "max": [
-          1.2082031965255737,
+          1.2081741094589233,
           10.024195671081543,
-          1.3483428955078125
+          1.3487603664398193
         ],
         "min": [
-          -1.208810806274414,
+          -1.2070058584213257,
           -4.9982428550720215,
-          -1.1401910781860352
+          -1.1397737264633179
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2f5f491205e4014fd078fde90b83415478e45b32fcf9f210f200d16c1f2f8552",
+      "geometryHash": "6a00a2cf481e353c08ac3d1ebbc3fb52874eb4584154988e522d51e419deb9e7",
       "id": "sf.render.nav-buoy.node.lod1-mechanical.primitive.0",
-      "indexCount": 8562,
+      "indexCount": 5988,
       "indexed": true,
-      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Mechanical",
       "nodeId": "sf.render.nav-buoy.node.lod1-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 2737
+      "vertexCount": 1872
+    },
+    {
+      "bounds": {
+        "max": [
+          0.921140193939209,
+          9.300000190734863,
+          0.921140193939209
+        ],
+        "min": [
+          -0.921140193939209,
+          7.300000190734863,
+          -0.921140193939209
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "943894bc6297e60c708d9bad4fc1cfb2839732c55156acc60e6815b4a5280fd7",
+      "id": "sf.render.nav-buoy.node.lod1-motion-nav-buoy-cage-mechanical.primitive.0",
+      "indexCount": 1494,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_NAV_BUOY_CAGE_Mechanical",
+      "nodeId": "sf.render.nav-buoy.node.lod1-motion-nav-buoy-cage-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 646
+    },
+    {
+      "bounds": {
+        "max": [
+          0.6298108100891113,
+          -2.7517737187445164,
+          0.6298108100891113
+        ],
+        "min": [
+          -0.6298108100891113,
+          -2.8514147959649563,
+          -0.6298108100891113
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bead30691e11608f02d285280c07204c1ddeea3d6a6e5828e74a4901265f93be",
+      "id": "sf.render.nav-buoy.node.lod1-motion-nav-buoy-pulse-lights-cyan.primitive.0",
+      "indexCount": 342,
+      "indexed": true,
+      "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_NAV_BUOY_PULSE_Lights_Cyan",
+      "nodeId": "sf.render.nav-buoy.node.lod1-motion-nav-buoy-pulse-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 139
     },
     {
       "bounds": {
@@ -657,16 +757,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "27d26e8c1d6e463394635aef249c0e5d63b9555c9be5774c311f3b0ad12c36bf",
+      "geometryHash": "bd34ec54bde7e24678b899e97cc07f38d9d1a62e330bb52f04966e145668368c",
       "id": "sf.render.nav-buoy.node.lod1-warning.primitive.0",
-      "indexCount": 360,
+      "indexCount": 510,
       "indexed": true,
-      "materialHash": "2dab67b43d63e858cab2dcc0c90f2d49e6bb7d7ce55cb97c2ed20c68d076cd61",
+      "materialHash": "051dfdb6635940b963d81db531ce04a48e21448017b7093a23e3de64d0b3701d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Warning",
       "nodeId": "sf.render.nav-buoy.node.lod1-warning",
       "primitiveIndex": 0,
-      "vertexCount": 194
+      "vertexCount": 218
     },
     {
       "bounds": {
@@ -682,16 +782,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a0a5b15eef24dca96552f077a17b50399eeb7694cc0d80f066ad8c37913d6a1d",
+      "geometryHash": "3d8c80f5f08d7eeb8870b06f5755275a3a6320873f824eb4b01e1dee5a47cba4",
       "id": "sf.render.nav-buoy.node.lod2-armor.primitive.0",
-      "indexCount": 1278,
+      "indexCount": 1629,
       "indexed": true,
-      "materialHash": "3b5154ad7ec0ee2263502c49e749f2a8dbe1fd5159df213996c1e629139c80de",
+      "materialHash": "3fdf83f5cb4a7ed64bc4eb10daa7d230674d9a4fe6c89acbc77b5876e62261ae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Armor",
       "nodeId": "sf.render.nav-buoy.node.lod2-armor",
       "primitiveIndex": 0,
-      "vertexCount": 579
+      "vertexCount": 704
     },
     {
       "bounds": {
@@ -707,16 +807,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "49b0404be8d23d8162856ab1ccf8e494d2fc4c27e65c1f4b48e0949de34cb497",
+      "geometryHash": "e24da98e34c0985b1445b54214c95f009acb524a8edffe3df8b0e307d1606d1f",
       "id": "sf.render.nav-buoy.node.lod2-beacon-amber.primitive.0",
-      "indexCount": 222,
+      "indexCount": 228,
       "indexed": true,
       "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Beacon_Amber",
       "nodeId": "sf.render.nav-buoy.node.lod2-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 133
+      "vertexCount": 137
     },
     {
       "bounds": {
@@ -736,7 +836,7 @@
       "id": "sf.render.nav-buoy.node.lod2-brushedmetal.primitive.0",
       "indexCount": 144,
       "indexed": true,
-      "materialHash": "bfa183b9b652162d020ab3531b5c19f5c2ddf51261e2b6aec6452397e79d69f4",
+      "materialHash": "18d0ea13c3be0a94dbbd42b5fbd7606e0af20cfa8f54531e2d6316854afd4ce1",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_BrushedMetal",
       "nodeId": "sf.render.nav-buoy.node.lod2-brushedmetal",
@@ -746,27 +846,27 @@
     {
       "bounds": {
         "max": [
-          0.3132750988006592,
+          0.3010280728340149,
           9.120000839233398,
-          0.28321000933647156
+          0.3000270128250122
         ],
         "min": [
-          -0.30099305510520935,
-          7.4800004959106445,
-          -0.28321000933647156
+          -0.30102795362472534,
+          7.480000019073486,
+          -0.3000270128250122
         ]
       },
       "drawMode": 4,
-      "geometryHash": "528c4e4ff745098e30bb79e24ff642a9ca6ce26497ed57b0567bb5f35cfdfeba",
+      "geometryHash": "b4b563343bd89f1f5f9c5d8511640bfa6e96ff23a0e1728ed2f567510ef4f87a",
       "id": "sf.render.nav-buoy.node.lod2-canopy.primitive.0",
-      "indexCount": 60,
+      "indexCount": 108,
       "indexed": true,
       "materialHash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
       "materialPipelineKey": "blend",
       "meshName": "LOD2_CANOPY",
       "nodeId": "sf.render.nav-buoy.node.lod2-canopy",
       "primitiveIndex": 0,
-      "vertexCount": 32
+      "vertexCount": 48
     },
     {
       "bounds": {
@@ -832,16 +932,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6b69dd5feb96dfcd1dc448959de0540a4d15dda5bb8d6daf1d27ea4bf873b499",
+      "geometryHash": "accfeee7eaa1d3e166942d3e89bea0d35d0cda9b82a416205b75f5fb46bd801c",
       "id": "sf.render.nav-buoy.node.lod2-hull.primitive.0",
-      "indexCount": 981,
+      "indexCount": 1170,
       "indexed": true,
-      "materialHash": "674f214b9b571ec60dc6b3efdfadea784fdec9ba52c8031b1484252ba6e6d9cf",
+      "materialHash": "98b096766a0680120cab62183d970ab98c99a47cde4a9e05aee6028a57c333e3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull",
       "nodeId": "sf.render.nav-buoy.node.lod2-hull",
       "primitiveIndex": 0,
-      "vertexCount": 440
+      "vertexCount": 488
     },
     {
       "bounds": {
@@ -871,27 +971,27 @@
     {
       "bounds": {
         "max": [
-          0.8837594985961914,
-          4.532529354095459,
-          0.8837594985961914
+          0.8840203881263733,
+          4.533273696899414,
+          0.8840203881263733
         ],
         "min": [
-          -0.8837594985961914,
-          -1.7702562808990479,
-          -0.8837594985961914
+          -0.8840203881263733,
+          -1.7713724374771118,
+          -0.8840203881263733
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3464eb4cd234cfdba4dbb346eb02ee3bb5e77b0e622963a7447208a64fff3fda",
+      "geometryHash": "44aaa1b5b7194d91f072bb28377e6ad43960780e412686aece3c3bb320452bf2",
       "id": "sf.render.nav-buoy.node.lod2-livery.primitive.0",
-      "indexCount": 441,
+      "indexCount": 618,
       "indexed": true,
-      "materialHash": "e50c2a9f588f0f9a85efade8aa1ac29aee737217c1df77128e003a17166b0896",
+      "materialHash": "ddec89c6afa37c20c7b85d32e3e3b746540a2274f247bfa66d313ad00b507b76",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Livery",
       "nodeId": "sf.render.nav-buoy.node.lod2-livery",
       "primitiveIndex": 0,
-      "vertexCount": 227
+      "vertexCount": 294
     },
     {
       "bounds": {
@@ -907,16 +1007,66 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "93a6de98f7618035a57f13c7e89346630a5c396bf8f6af6603fa509c94281677",
+      "geometryHash": "70970771c34373ca41ba784e2de9a477bf8087bfbd9627f1099222f69c270907",
       "id": "sf.render.nav-buoy.node.lod2-mechanical.primitive.0",
-      "indexCount": 4290,
+      "indexCount": 2838,
       "indexed": true,
-      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Mechanical",
       "nodeId": "sf.render.nav-buoy.node.lod2-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 1617
+      "vertexCount": 1012
+    },
+    {
+      "bounds": {
+        "max": [
+          0.9269997477531433,
+          9.3000009059906,
+          0.9269997477531433
+        ],
+        "min": [
+          -0.9269997477531433,
+          7.300000905990601,
+          -0.9269997477531433
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "36ae1bdb9e98fb104a01a92cad9dc32163e5c6302e76ab2f210e9117fb41af6d",
+      "id": "sf.render.nav-buoy.node.lod2-motion-nav-buoy-cage-mechanical.primitive.0",
+      "indexCount": 648,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_NAV_BUOY_CAGE_Mechanical",
+      "nodeId": "sf.render.nav-buoy.node.lod2-motion-nav-buoy-cage-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 344
+    },
+    {
+      "bounds": {
+        "max": [
+          0.6189631223678589,
+          -2.751775611191988,
+          0.6191453337669373
+        ],
+        "min": [
+          -0.6191763877868652,
+          -2.84610141441226,
+          -0.6191453337669373
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2db1c1ecbd1a3323c77b42331099d8a167e0e1d1a3a078970de3cc60b6efd325",
+      "id": "sf.render.nav-buoy.node.lod2-motion-nav-buoy-pulse-lights-cyan.primitive.0",
+      "indexCount": 150,
+      "indexed": true,
+      "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_NAV_BUOY_PULSE_Lights_Cyan",
+      "nodeId": "sf.render.nav-buoy.node.lod2-motion-nav-buoy-pulse-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 69
     },
     {
       "bounds": {
@@ -932,16 +1082,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "70ac2b56b281ca27f5bde18ed42da7d8c70e92b13e6cdeaea96780ef591e474b",
+      "geometryHash": "fd83472439c37f93e56c5382cbd7cdf62d40b8f2dde8c341ce330cf5ac12e954",
       "id": "sf.render.nav-buoy.node.lod2-warning.primitive.0",
-      "indexCount": 138,
+      "indexCount": 147,
       "indexed": true,
-      "materialHash": "2dab67b43d63e858cab2dcc0c90f2d49e6bb7d7ce55cb97c2ed20c68d076cd61",
+      "materialHash": "051dfdb6635940b963d81db531ce04a48e21448017b7093a23e3de64d0b3701d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Warning",
       "nodeId": "sf.render.nav-buoy.node.lod2-warning",
       "primitiveIndex": 0,
-      "vertexCount": 99
+      "vertexCount": 105
     }
   ],
   "hlods": [],
@@ -949,15 +1099,8 @@
   "lods": [],
   "materials": [
     {
-      "hash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
-      "id": "material:1ee807a3355d83d28693fa8c",
-      "name": "Material_Canopy",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "2dab67b43d63e858cab2dcc0c90f2d49e6bb7d7ce55cb97c2ed20c68d076cd61",
-      "id": "material:2dab67b43d63e858cab2dcc0",
+      "hash": "051dfdb6635940b963d81db531ce04a48e21448017b7093a23e3de64d0b3701d",
+      "id": "material:051dfdb6635940b963d81db5",
       "name": "Material_Warning",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -988,16 +1131,9 @@
       ]
     },
     {
-      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
-      "id": "material:35c00bfb4e1adf84176a4a79",
-      "name": "Material_Emissive_Amber",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "3b5154ad7ec0ee2263502c49e749f2a8dbe1fd5159df213996c1e629139c80de",
-      "id": "material:3b5154ad7ec0ee2263502c49",
-      "name": "Material_Armor",
+      "hash": "18d0ea13c3be0a94dbbd42b5fbd7606e0af20cfa8f54531e2d6316854afd4ce1",
+      "id": "material:18d0ea13c3be0a94dbbd42b5",
+      "name": "Material_BrushedMetal",
       "pipelineKey": "opaque:front",
       "textures": [
         {
@@ -1027,9 +1163,23 @@
       ]
     },
     {
-      "hash": "674f214b9b571ec60dc6b3efdfadea784fdec9ba52c8031b1484252ba6e6d9cf",
-      "id": "material:674f214b9b571ec60dc6b3ef",
-      "name": "Material_Hull",
+      "hash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
+      "id": "material:1ee807a3355d83d28693fa8c",
+      "name": "Material_Canopy",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "id": "material:35c00bfb4e1adf84176a4a79",
+      "name": "Material_Emissive_Amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "3fdf83f5cb4a7ed64bc4eb10daa7d230674d9a4fe6c89acbc77b5876e62261ae",
+      "id": "material:3fdf83f5cb4a7ed64bc4eb10",
+      "name": "Material_Armor",
       "pipelineKey": "opaque:front",
       "textures": [
         {
@@ -1066,38 +1216,6 @@
       "textures": []
     },
     {
-      "hash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
-      "id": "material:7dbce0f058ce69aeee64664b",
-      "name": "Material_Mechanical",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_machinery_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
       "hash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
       "id": "material:85add90c89b799ae69ad3e2f",
       "name": "Material_Emissive_Cyan",
@@ -1105,9 +1223,9 @@
       "textures": []
     },
     {
-      "hash": "bfa183b9b652162d020ab3531b5c19f5c2ddf51261e2b6aec6452397e79d69f4",
-      "id": "material:bfa183b9b652162d020ab353",
-      "name": "Material_BrushedMetal",
+      "hash": "98b096766a0680120cab62183d970ab98c99a47cde4a9e05aee6028a57c333e3",
+      "id": "material:98b096766a0680120cab6218",
+      "name": "Material_Hull",
       "pipelineKey": "opaque:front",
       "textures": [
         {
@@ -1144,8 +1262,8 @@
       "textures": []
     },
     {
-      "hash": "e50c2a9f588f0f9a85efade8aa1ac29aee737217c1df77128e003a17166b0896",
-      "id": "material:e50c2a9f588f0f9a85efade8",
+      "hash": "ddec89c6afa37c20c7b85d32e3e3b746540a2274f247bfa66d313ad00b507b76",
+      "id": "material:ddec89c6afa37c20c7b85d32",
       "name": "Material_Accent",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1170,6 +1288,38 @@
         {
           "colorSpace": "linear",
           "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "id": "material:f543c846d70e4889bb87a4e1",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -1717,6 +1867,106 @@
       ]
     },
     {
+      "id": "sf.render.nav-buoy.node.lod0-motion-nav-buoy-cage-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_NAV_BUOY_CAGE_Mechanical",
+      "nodeName": "LOD0_MOTION_NAV_BUOY_CAGE_Mechanical",
+      "nodePath": [
+        0,
+        34,
+        0
+      ],
+      "parentId": "sf.render.nav-buoy.node.motion-nav-buoy-cage",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.nav-buoy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        7.300000190734863,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.nav-buoy.node.lod0-motion-nav-buoy-pulse-lights-cyan",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_NAV_BUOY_PULSE_Lights_Cyan",
+      "nodeName": "LOD0_MOTION_NAV_BUOY_PULSE_Lights_Cyan",
+      "nodePath": [
+        0,
+        35,
+        0
+      ],
+      "parentId": "sf.render.nav-buoy.node.motion-nav-buoy-pulse",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.nav-buoy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -2.799999952316284,
+        0,
+        1
+      ]
+    },
+    {
       "id": "sf.render.nav-buoy.node.lod0-warning",
       "localTransform": [
         1,
@@ -2251,6 +2501,106 @@
         0,
         0,
         0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.nav-buoy.node.lod1-motion-nav-buoy-cage-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_NAV_BUOY_CAGE_Mechanical",
+      "nodeName": "LOD1_MOTION_NAV_BUOY_CAGE_Mechanical",
+      "nodePath": [
+        0,
+        34,
+        1
+      ],
+      "parentId": "sf.render.nav-buoy.node.motion-nav-buoy-cage",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.nav-buoy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        7.300000190734863,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.nav-buoy.node.lod1-motion-nav-buoy-pulse-lights-cyan",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_NAV_BUOY_PULSE_Lights_Cyan",
+      "nodeName": "LOD1_MOTION_NAV_BUOY_PULSE_Lights_Cyan",
+      "nodePath": [
+        0,
+        35,
+        1
+      ],
+      "parentId": "sf.render.nav-buoy.node.motion-nav-buoy-pulse",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.nav-buoy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -2.799999952316284,
         0,
         1
       ]
@@ -2795,6 +3145,106 @@
       ]
     },
     {
+      "id": "sf.render.nav-buoy.node.lod2-motion-nav-buoy-cage-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_NAV_BUOY_CAGE_Mechanical",
+      "nodeName": "LOD2_MOTION_NAV_BUOY_CAGE_Mechanical",
+      "nodePath": [
+        0,
+        34,
+        2
+      ],
+      "parentId": "sf.render.nav-buoy.node.motion-nav-buoy-cage",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.nav-buoy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        7.300000190734863,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.nav-buoy.node.lod2-motion-nav-buoy-pulse-lights-cyan",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_NAV_BUOY_PULSE_Lights_Cyan",
+      "nodeName": "LOD2_MOTION_NAV_BUOY_PULSE_Lights_Cyan",
+      "nodePath": [
+        0,
+        35,
+        2
+      ],
+      "parentId": "sf.render.nav-buoy.node.motion-nav-buoy-pulse",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.nav-buoy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -2.799999952316284,
+        0,
+        1
+      ]
+    },
+    {
       "id": "sf.render.nav-buoy.node.lod2-warning",
       "localTransform": [
         1,
@@ -2839,6 +3289,104 @@
         0,
         0,
         0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.nav-buoy.node.motion-nav-buoy-cage",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        7.300000190734863,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_NAV_BUOY_CAGE",
+      "nodeName": "MOTION_NAV_BUOY_CAGE",
+      "nodePath": [
+        0,
+        34
+      ],
+      "parentId": "sf.render.nav-buoy.node.sf-m4-helios-nav-spire-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.nav-buoy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        7.300000190734863,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.nav-buoy.node.motion-nav-buoy-pulse",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -2.799999952316284,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_NAV_BUOY_PULSE",
+      "nodeName": "MOTION_NAV_BUOY_PULSE",
+      "nodePath": [
+        0,
+        35
+      ],
+      "parentId": "sf.render.nav-buoy.node.sf-m4-helios-nav-spire-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.nav-buoy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -2.799999952316284,
         0,
         1
       ]
@@ -2916,7 +3464,7 @@
       "nodeName": "SOCKET_Structure_Core",
       "nodePath": [
         0,
-        34
+        36
       ],
       "parentId": "sf.render.nav-buoy.node.sf-m4-helios-nav-spire-root",
       "role": "immutable",
@@ -2943,22 +3491,22 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "cc24d8b0e6ab9ba3aa64b131523c2e695ae579f538bcfe3520615433240bb6e7"
+      "sha256": "9406910b24629697adcd5bffd10bf2db7327a0b3471e1b853eb78427abf35813"
     },
     "sourceGlb": {
-      "bytes": 726832,
-      "sha256": "03c6266b74554f1afd139ae9c6cbe43bf0dba5756cfadec9d2f2a3e89a3a0af3",
+      "bytes": 575744,
+      "sha256": "e74a59f113457203ba6b3b9bcc03e0af3148da8be1cc6e0ea0bf471446ef98dd",
       "uri": "place_nav_buoy.glb"
     },
     "sourceManifest": {
-      "bytes": 198942,
-      "sha256": "98a76b502b1e0a29866df412c149715497b8f42b6311838a5fa3837f6d8bac4e",
+      "bytes": 219794,
+      "sha256": "81b413c425531af63fa3f895c51f5be4ba86bec2c3ece4040a0acf26b71ab54f",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1211736,
-    "sha256": "35b9958fc69bf9646429c7be1b25248d1086306e6c4337966fe1a67f1b60f5b1",
+    "bytes": 1071204,
+    "sha256": "094a509ffbaa0fcf8ca9fb60ef2219d7d6afa930ba920f9c98c1bec7a6616ee7",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2966,7 +3514,7 @@
       "center": [
         0,
         2.611999988555908,
-        0.16751140356063843
+        0.16764533519744873
       ],
       "max": [
         1.3789737224578857,
@@ -2976,12 +3524,12 @@
       "min": [
         -1.3789737224578857,
         -5,
-        -1.1401910781860352
+        -1.1399232149124146
       ],
       "size": [
         2.7579474449157715,
         15.223999977111816,
-        2.615404963493347
+        2.6151371002197266
       ]
     },
     "hidden": [
@@ -3004,12 +3552,142 @@
           1,
           0,
           0,
+          7.300000190734863,
+          0,
+          1
+        ],
+        "name": "MOTION_NAV_BUOY_CAGE",
+        "planIndex": 36,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "nav_buoy_cage",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              7.300000190734863
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_NAV_BUOY_CAGE",
+          "spaceface": {
+            "motionGroup": "nav_buoy_cage"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_NAV_BUOY_CAGE",
+            "recordIds": [
+              "sf.render.nav-buoy.node.motion-nav-buoy-cage"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          -2.799999952316284,
+          0,
+          1
+        ],
+        "name": "MOTION_NAV_BUOY_PULSE",
+        "planIndex": 40,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "nav_buoy_pulse",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              -2.799999952316284
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_NAV_BUOY_PULSE",
+          "spaceface": {
+            "motionGroup": "nav_buoy_pulse"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_NAV_BUOY_PULSE",
+            "recordIds": [
+              "sf.render.nav-buoy.node.motion-nav-buoy-pulse"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
           0,
           0,
           1
         ],
         "name": "SOCKET_Structure_Core",
-        "planIndex": 36,
+        "planIndex": 44,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3052,8 +3730,8 @@
       "accent": 3,
       "glass": 3,
       "hull": 7,
-      "mechanical": 6,
-      "signal": 12,
+      "mechanical": 9,
+      "signal": 15,
       "warning": 3
     },
     "materialProfiles": [
@@ -3226,9 +3904,45 @@
         "allowTextures": true,
         "planIndex": 35,
         "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 37,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 38,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 39,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 41,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 42,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 43,
+        "role": "signal"
       }
     ],
-    "nodeCount": 37,
+    "motionBank": {
+      "bytes": 3318,
+      "rigId": "nav_buoy",
+      "sha256": "e440a3b30fe76d27f399a5cc6b664d3434385bd121f7dfa36fd72a04508b3c64",
+      "uri": "assets/ships/motions/nav-buoy.motion.json"
+    },
+    "nodeCount": 45,
     "primitives": [
       {
         "canopy": false,
@@ -4126,13 +4840,181 @@
           "canopy": false,
           "lod": "lod2"
         }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          7.300000190734863,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_NAV_BUOY_CAGE_Mechanical",
+        "planIndex": 37,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          7.300000190734863,
+          0,
+          1
+        ],
+        "name": "LOD1_MOTION_NAV_BUOY_CAGE_Mechanical",
+        "planIndex": 38,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          7.300000190734863,
+          0,
+          1
+        ],
+        "name": "LOD2_MOTION_NAV_BUOY_CAGE_Mechanical",
+        "planIndex": 39,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          -2.799999952316284,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_NAV_BUOY_PULSE_Lights_Cyan",
+        "planIndex": 41,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          -2.799999952316284,
+          0,
+          1
+        ],
+        "name": "LOD1_MOTION_NAV_BUOY_PULSE_Lights_Cyan",
+        "planIndex": 42,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          -2.799999952316284,
+          0,
+          1
+        ],
+        "name": "LOD2_MOTION_NAV_BUOY_PULSE_Lights_Cyan",
+        "planIndex": 43,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
       }
     ],
     "schema": "spaceface.renderPackageRuntime.v1",
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_nav_buoy.glb"
   },
-  "runtimeHash": "58b383f2619b6e8990e24c618189ad6e4d7cb98608e7a30ffdb6d87d8c4d9147",
+  "runtimeHash": "c7af85854efe8adf60954391910ff2e15e2558020e7cfbd317e7807d359193a6",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -4145,7 +5027,7 @@
         "min": [
           -1.3789737224578857,
           -5,
-          -1.1401910781860352
+          -1.1399232149124146
         ]
       },
       "id": "sf.render.nav-buoy.body",
@@ -4161,6 +5043,8 @@
         "sf.render.nav-buoy.node.lod0-lights-cyan",
         "sf.render.nav-buoy.node.lod0-livery",
         "sf.render.nav-buoy.node.lod0-mechanical",
+        "sf.render.nav-buoy.node.lod0-motion-nav-buoy-cage-mechanical",
+        "sf.render.nav-buoy.node.lod0-motion-nav-buoy-pulse-lights-cyan",
         "sf.render.nav-buoy.node.lod0-warning",
         "sf.render.nav-buoy.node.lod1-armor",
         "sf.render.nav-buoy.node.lod1-beacon-amber",
@@ -4172,6 +5056,8 @@
         "sf.render.nav-buoy.node.lod1-lights-cyan",
         "sf.render.nav-buoy.node.lod1-livery",
         "sf.render.nav-buoy.node.lod1-mechanical",
+        "sf.render.nav-buoy.node.lod1-motion-nav-buoy-cage-mechanical",
+        "sf.render.nav-buoy.node.lod1-motion-nav-buoy-pulse-lights-cyan",
         "sf.render.nav-buoy.node.lod1-warning",
         "sf.render.nav-buoy.node.lod2-armor",
         "sf.render.nav-buoy.node.lod2-beacon-amber",
@@ -4183,7 +5069,11 @@
         "sf.render.nav-buoy.node.lod2-lights-cyan",
         "sf.render.nav-buoy.node.lod2-livery",
         "sf.render.nav-buoy.node.lod2-mechanical",
+        "sf.render.nav-buoy.node.lod2-motion-nav-buoy-cage-mechanical",
+        "sf.render.nav-buoy.node.lod2-motion-nav-buoy-pulse-lights-cyan",
         "sf.render.nav-buoy.node.lod2-warning",
+        "sf.render.nav-buoy.node.motion-nav-buoy-cage",
+        "sf.render.nav-buoy.node.motion-nav-buoy-pulse",
         "sf.render.nav-buoy.node.sf-m4-helios-nav-spire-root",
         "sf.render.nav-buoy.node.socket-structure-core"
       ]

@@ -10,7 +10,9 @@ for source plans or live code.
 - `NEXT` / a named `PQ-*`: queue row, exactly one active packet, and
   [`roadmap/00_EXECUTION_PROTOCOL.md`](./roadmap/00_EXECUTION_PROTOCOL.md).
 - Leftover worktrees / unused models: [`ORPHAN_HARVEST_PLAYBOOK.md`](./ORPHAN_HARVEST_PLAYBOOK.md).
-- `INFERENCE N ...`: [`INFERENCE_LANES.md`](./INFERENCE_LANES.md). An OPEN line in
+- `INFERENCE N ...`: [`INFERENCE_LANES.md`](./INFERENCE_LANES.md). Explicit section-development
+  requests use [§0.2](./INFERENCE_LANES.md#02-explicit-section-development-requests--continue-the-existing-area)
+  and the existing FINISH_LANES area. Otherwise an OPEN line in
   [`INFERENCE_IDEAS.md`](./INFERENCE_IDEAS.md) is the grunt assignment — do that line.
   Open feelings are `build_map.md` §23, not this pass. Do not convert autonomous
   production into a PQ or acceptance-infrastructure campaign.

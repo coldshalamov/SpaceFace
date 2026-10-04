@@ -19,6 +19,22 @@ const _glassCache = {
   result: { halfX: 0, halfZ: 0 },
 };
 
+/**
+ * Same normalized-input memo as _glassCache, declared up here because the module-init
+ * TABLE_HEARING_FAR_WU / TABLE_AI_AUTHORITY_WU constants call through it: the render cull
+ * bounds and the sim classify pass both ask every frame, and the answer only moves with
+ * the five terms keyed below. The result is replaced on a miss, never mutated — a
+ * retained return keeps the snapshot semantics the old fresh literal had.
+ */
+const _submitCullCache = {
+  zoom: NaN,
+  fov: NaN,
+  aspect: NaN,
+  tilt: NaN,
+  speed: NaN,
+  result: { glass: { halfX: 0, halfZ: 0 }, runway: 0, halfX: 0, halfZ: 0 },
+};
+
 /** Typical live maxSpeed (engine.topSpeed * SPEED_SCALE) used when state has no ship. */
 export const TABLE_REFERENCE_SPEED_WU = 160;
 
@@ -50,11 +66,22 @@ export const TABLE_AUTHORED_IMMEDIATE_SECONDS = 1.25;
 /**
  * Fastest sustained inbound approach the admission window must anticipate (WU/s).
  * Ship ceilings run engine.topSpeed (~150) x the boost clamp (~2.6) x travel
- * multipliers (~1.4) ~= 550; anything faster is a projectile, which carries no
- * authored mesh. This sizes query discs only — per-candidate closing speed still
- * decides admission.
+ * multipliers (~1.4) ~= 550 — but that model under-covers two real exceeders:
+ * sling-flung hulls exit at 3x combat cruise (SLING_THROW_EXIT_MULT x 320 = ~960
+ * for drive_torch_l traffic), and a shelved row freezes whatever governed its
+ * flight — torch_l's travelCeiling (1120) is the catalog's absolute bound. The
+ * honest closing bound is the composite: powered axial (~1200) carried into an
+ * off-axis sling fling adds the perpendicular throw (~960) — hypot(1200, 960) ≈
+ * 1537, ceil to 1550. Two retained states still exceed that: the tether
+ * slingshot grants speed >= maxSpeed x SLINGSHOT_SPEED_MULT (1.4 x 1200 = 1680
+ * at the torch ceiling), and the authority clamps only control-made speed, so
+ * an impact/sling already above the cap — or a shelved row that froze it — keeps
+ * it. The catalog's honest bound is the slingshot multiplier over the travel
+ * ceiling. Anything faster is a projectile, which carries no authored mesh.
+ * This sizes query discs only — per-candidate closing speed still decides
+ * admission.
  */
-export const TABLE_INBOUND_APPROACH_WU = 600;
+export const TABLE_INBOUND_APPROACH_WU = 1680;
 
 /**
  * Prediction horizon for promote -> decode -> build: the authored decode runway
@@ -379,11 +406,15 @@ export function tableTravelSpeed(state) {
     ? state.entities.get(state.playerId)
     : null;
   const vel = player && player.vel;
+  const vx = Number(vel && vel.x);
+  const vz = Number(vel && vel.z);
   const live = vel
-    ? Math.hypot(Number(vel.x) || 0, Number(vel.z) || 0)
+    ? Math.hypot(Number.isFinite(vx) ? vx : 0, Number.isFinite(vz) ? vz : 0)
     : 0;
-  const maxSpeed = Number(player && player.maxSpeed) || 0;
-  return Math.max(TABLE_REFERENCE_SPEED_WU, live, maxSpeed);
+  const liveSpeed = Number.isFinite(live) ? live : 0;
+  const maxSpeed = Number(player && player.maxSpeed);
+  const ceiling = Number.isFinite(maxSpeed) && maxSpeed > 0 ? maxSpeed : 0;
+  return Math.max(TABLE_REFERENCE_SPEED_WU, liveSpeed, ceiling);
 }
 
 /**
@@ -600,6 +631,11 @@ export function authoredLookaheadSeconds() {
 /**
  * Hidden/submit box: the readable glass plus a short approach runway.
  * Replaces the old max(900, zoom*8) fake-visible margin.
+ *
+ * Memoized on the normalized terms (an omitted/NaN term maps to the same default the math
+ * would use, so it cannot false-miss); see _submitCullCache up top. The function reads
+ * only its parameters (glassHalfExtents/submitRunwayWu are pure), so the key covers
+ * every input — zoom, fov, aspect, tilt, travel speed.
  */
 export function submitCullHalfExtents(
   zoom,
@@ -608,14 +644,35 @@ export function submitCullHalfExtents(
   speed = TABLE_REFERENCE_SPEED_WU,
   tiltDeg = 60,
 ) {
-  const glass = glassHalfExtents(zoom, fovDeg, aspect, tiltDeg);
-  const runway = submitRunwayWu(speed);
-  return {
+  const distance = Number.isFinite(zoom) ? zoom : 88;
+  const fov = Number.isFinite(fovDeg) ? fovDeg : 50;
+  const aspectValue = Number.isFinite(aspect) && aspect > 0 ? aspect : 16 / 9;
+  const tiltDegValue = Number.isFinite(tiltDeg) ? tiltDeg : 60;
+  const travel = Math.max(0, Number(speed) || 0);
+  const speedValue = travel > 0 ? travel : TABLE_REFERENCE_SPEED_WU;
+  if (
+    _submitCullCache.zoom === distance
+    && _submitCullCache.fov === fov
+    && _submitCullCache.aspect === aspectValue
+    && _submitCullCache.tilt === tiltDegValue
+    && _submitCullCache.speed === speedValue
+  ) {
+    return _submitCullCache.result;
+  }
+  const glass = glassHalfExtents(distance, fov, aspectValue, tiltDegValue);
+  const runway = submitRunwayWu(speedValue);
+  _submitCullCache.zoom = distance;
+  _submitCullCache.fov = fov;
+  _submitCullCache.aspect = aspectValue;
+  _submitCullCache.tilt = tiltDegValue;
+  _submitCullCache.speed = speedValue;
+  _submitCullCache.result = {
     glass,
     runway,
     halfX: glass.halfX + runway,
     halfZ: glass.halfZ + runway,
   };
+  return _submitCullCache.result;
 }
 
 export function tableShadowCastRadius(zoom, fovDeg, aspect, tiltDeg = 60) {

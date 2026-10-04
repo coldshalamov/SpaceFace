@@ -8,7 +8,7 @@
 // window creation, fixed-port-for-saves, packaged→bundle root selection.
 // `npm run check:launch-policy` enforces that both launchers share that module.
 const electron = require('electron');
-const { app, BrowserWindow, ipcMain, powerMonitor, dialog } = electron;
+const { app, BrowserWindow, ipcMain, powerMonitor, dialog, screen } = electron;
 const path = require('path');
 // Bytecode-cache the shell's own module graph under userData so launches after the first skip
 // recompiling the main-process modules below. Isolated evidence keeps its cache inside the
@@ -38,6 +38,12 @@ const {
   writePlayerStoreKeysSync,
 } = require('../scripts/lib/playerSaveStore.cjs');
 const { publicBuildInfo, resolveReleaseIdentity } = require('./releaseIdentity.cjs');
+const {
+  WINDOW_STATE_FILE,
+  readWindowStateFile,
+  sanitizeWindowState,
+  writeWindowStateFile,
+} = require('./windowState.cjs');
 const { configureAutoUpdate } = require('./autoUpdate.cjs');
 const steamworks = require('./steamworks.cjs');
 const workshopMods = require('./workshopMods.cjs');
@@ -46,6 +52,9 @@ const workshopMods = require('./workshopMods.cjs');
 // the project root so `npm run electron` and `node server.js 8123` run the same source route even
 // when a stale build/web directory exists from an earlier package build.
 const PROJECT_ROOT = path.join(__dirname, '..');
+// The SpaceFace emblem (assets/brand): taskbar / window icon. Packaged builds embed the exe icon from the electron-builder
+// config; this covers the live window on Linux and the unpackaged run. A missing file leaves Electron's default.
+const APP_ICON = path.join(PROJECT_ROOT, 'assets', 'brand', 'exports', 'spaceface-launcher-256.png');
 const BUNDLE_ROOT = path.join(PROJECT_ROOT, 'build', 'web');
 
 // SAVE PERSISTENCE: the port MUST be fixed. localStorage (where saveSystem.js persists) is keyed by
@@ -661,16 +670,88 @@ function readAppPath(name) {
   catch { return null; }
 }
 
+// ── FB-106: the desktop shell remembers its window ────────────────────────────────────────────
+// One window-state.json under userData: bounds + mode, written on resize/move/mode changes
+// (debounced) and flushed on close. Restored on the next create and validated against the
+// CURRENT displays, so a monitor that went away can never strand the window off-screen.
+// Isolated evidence keeps its launch contract: a throwaway profile, no persistence, and the
+// default fullscreen exactly as before — the launch must not change shape because a probe ran.
+const WINDOW_STATE_SAVE_DEBOUNCE_MS = 600;
+
+function collectDisplayAreas() {
+  try {
+    if (typeof screen.getAllDisplays !== 'function') return [];
+    return screen.getAllDisplays().map((display) => ({
+      bounds: display && display.bounds,
+      workArea: display && display.workArea,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+function captureWindowState(win) {
+  if (!win || win.isDestroyed()) return null;
+  try {
+    const bounds = typeof win.getNormalBounds === 'function' ? win.getNormalBounds() : win.getBounds();
+    const mode = win.isFullScreen() ? 'fullscreen' : win.isMaximized() ? 'maximized' : 'windowed';
+    return {
+      x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height,
+      mode,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function bindWindowStatePersistence(win, windowStatePath) {
+  if (!windowStatePath) return;
+  let saveTimer = null;
+  const flush = () => {
+    if (saveTimer !== null) {
+      try { clearTimeout(saveTimer); } catch { /* ignore */ }
+      saveTimer = null;
+    }
+    // A minimized window's bounds are meaningless; keep the last good ones.
+    if (win.isDestroyed() || win.isMinimized()) return;
+    const state = captureWindowState(win);
+    if (state) writeWindowStateFile(windowStatePath, state);
+  };
+  const schedule = () => {
+    if (saveTimer !== null) return;
+    saveTimer = setTimeout(() => { saveTimer = null; flush(); }, WINDOW_STATE_SAVE_DEBOUNCE_MS);
+    if (saveTimer && typeof saveTimer.unref === 'function') saveTimer.unref();
+  };
+  for (const eventName of ['resize', 'move', 'maximize', 'unmaximize', 'enter-full-screen', 'leave-full-screen']) {
+    win.on(eventName, schedule);
+  }
+  win.on('close', flush);
+}
+
 async function createWindow() {
   installPowerLifecycleListeners();
   // macOS keeps the application process alive after the last window closes. Reuse the one
   // process-owned fixed-origin listener when Dock activation creates a replacement window; a
   // second bind would collide with our own server and strand the player without a window.
   const port = await ensureGameServerPort();
+  // FB-106: restore the remembered window before the renderer loads. Isolated evidence keeps
+  // its throwaway profile and never persists; its fullscreen launch contract is unchanged.
+  const windowStatePath = launchConfig.isolatedEvidence
+    ? null
+    : path.join(app.getPath('userData'), WINDOW_STATE_FILE);
+  const rememberedWindow = windowStatePath
+    ? sanitizeWindowState(readWindowStateFile(windowStatePath), collectDisplayAreas())
+    : null;
   const win = new BrowserWindow({
-    width: 1480, height: 920, minWidth: 1024, minHeight: 640,
-    backgroundColor: '#05070d', title: 'SpaceFace', show: false,
-    fullscreen: !launchConfig.isolatedEvidence,
+    width: rememberedWindow ? rememberedWindow.width : 1480,
+    height: rememberedWindow ? rememberedWindow.height : 920,
+    x: rememberedWindow && rememberedWindow.mode === 'windowed' ? rememberedWindow.x : undefined,
+    y: rememberedWindow && rememberedWindow.mode === 'windowed' ? rememberedWindow.y : undefined,
+    minWidth: 1024, minHeight: 640,
+    backgroundColor: '#05070d', title: 'SpaceFace', show: false, icon: APP_ICON,
+    fullscreen: rememberedWindow
+      ? rememberedWindow.mode === 'fullscreen'
+      : !launchConfig.isolatedEvidence,
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -690,6 +771,9 @@ async function createWindow() {
     },
   });
   const gameUrl = `http://127.0.0.1:${port}/`;
+  // FB-106: a remembered maximized shell comes back maximized; fullscreen already applied above.
+  if (rememberedWindow && rememberedWindow.mode === 'maximized') win.maximize();
+  bindWindowStatePersistence(win, windowStatePath);
   let canonicalLoadCommitted = false;
   let initialCanonicalLoadPending = false;
   installWindowSecurity(win, gameUrl);

@@ -51,6 +51,8 @@ export const SHIPS = [
     bankFactor: 0.55,   // how aggressively the hull rolls into a turn (0..1.2) — lower = less pin-spin
     driveId: 'drive_reaction_m',  // baseline vector reaction drive — momentum-conserving, no hidden drag
     energyCap: 80, energyRegen: 12, collisionRadius: 14, price: 0, buyback: 8000,
+    // FB-062 — the home yard keeps the Hitch line on the slip; other yards do not stock the frame.
+    shopOffers: { station_helios: { price: 0, exclusive: true } },
     // boost: {max, drainRate (while boosting), regenRate (idle), dashImpulse (units), dashCooldown (s)}
     boost: { max: 200, drainRate: 38, regenRate: 22, dashImpulse: 150, dashCooldown: 2.0 },
     slots: { weapon: ['S'], shield: ['S'], engine: ['M'], cargo: ['S'], mining: ['S'], utility: ['S'], thruster: ['S'] },
@@ -75,6 +77,8 @@ export const SHIPS = [
     bankFactor: 0.45,
     driveId: 'drive_reaction_m',  // medium reaction drive — steady miner thrust + RCS
     energyCap: 110, energyRegen: 16, collisionRadius: 16, price: 15000,
+    // FB-062 — Helios discounts the light starter-adjacent line; every other yard lists book price.
+    shopOffers: { station_helios: { price: 12000 } },
     boost: { max: 140, drainRate: 44, regenRate: 16, dashImpulse: 80, dashCooldown: 3.0 },  // miners barely boost — sturdy, not nimble
     slots: { weapon: ['S'], shield: ['S'], engine: ['M'], cargo: ['M'], mining: ['M','M'], utility: ['S'], thruster: ['S'] },
     thrusterId: 'mod_thruster_stock_s',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
@@ -120,6 +124,8 @@ export const SHIPS = [
     bankFactor: 0.35,
     driveId: 'drive_reaction_l',  // large reaction drive — long burns for the loaded hauler
     energyCap: 100, energyRegen: 14, collisionRadius: 18, price: 35000,
+    // FB-062 — the hauler lines are Tethys work; a Mule is only built where the freight slips are.
+    shopOffers: { station_tethys: { price: 32000, exclusive: true } },
     boost: { max: 260, drainRate: 30, regenRate: 30, dashImpulse: 240, dashCooldown: 2.2 },  // strong escape-dash, quick recharge (the archetype)
     // hauler: a rear-facing gun to discourage pursuit while it runs
     slots: { weapon: [{ size:'S', facing:'rear' }], shield: ['M'], engine: ['M'], cargo: ['M','M','M'], mining: [], utility: ['S'], thruster: ['S'] },
@@ -190,6 +196,8 @@ export const SHIPS = [
     bankFactor: 0.30,
     driveId: 'drive_pulse_plate_m',  // pulse-plate drive — discrete high-impulse burns move the armored barge
     energyCap: 240, energyRegen: 26, collisionRadius: 24, price: 130000,
+    // FB-062 — Forge fabricates the barge in-house and sells the run at fabrication cost.
+    shopOffers: { station_forge: { price: 104000 } },
     boost: { max: 120, drainRate: 50, regenRate: 12, dashImpulse: 60, dashCooldown: 4.0 },  // a brick — barely moves, doesn't run
     // slow barge: a turret so it can swat pests while its drill works
     slots: { weapon: [{ size:'M', facing:'turret' }], shield: ['M','M'], engine: ['M'], cargo: ['M','M','M'], mining: ['L','L','L','L'], utility: ['M','M'], thruster: ['M'] },
@@ -213,6 +221,8 @@ export const SHIPS = [
     bankFactor: 0.30,
     driveId: 'drive_torch_l',  // open-cycle torch — sustained axial force is the job; the yard hull is a drive with a frame
     energyCap: 220, energyRegen: 24, collisionRadius: 22, price: 118000, // 22 keeps a travel-ceiling tick (18.67 WU) under the 85%-of-radius tunnelling bound shared with the Bastion; the yard hull is the widest small frame (halfWidth 0.68)
+    // FB-062 — the tug is Forge yard stock, priced as a shop build rather than a brokered hull.
+    shopOffers: { station_forge: { price: 94000 } },
     boost: { max: 160, drainRate: 40, regenRate: 20, dashImpulse: 90, dashCooldown: 3.2 },  // a tug shoves; it does not sprint
     // working hull: one dorsal ring covers the yard; the deep utility bay is the point
     slots: { weapon: [{ size:'M', facing:'turret' }], shield: ['M'], engine: ['M'], cargo: ['S'], mining: [], utility: ['M','M','M'], thruster: ['M'] },
@@ -235,7 +245,7 @@ export const SHIPS = [
     hull: 640, shield: 460, baseShieldRegen: 18, cargo: 450, mass: 80, handling: 1.1,
     outfitSpace: 132, weaponCapacity: 72, engineCapacity: 18, designMass: 172,
     bankFactor: 0.55,
-    driveId: 'drive_torch_l',  // open-cycle torch drive — high sustained axial acceleration for the warship
+    driveId: 'drive_gravimetric_m',  // gravimetric vector drive M — FB-059 warship field drive
     energyCap: 420, energyRegen: 52, collisionRadius: 22, price: 320000,
     boost: { max: 200, drainRate: 36, regenRate: 30, dashImpulse: 120, dashCooldown: 2.4 },  // warship: steady, not flashy
     // corvette: 2 front + 1 broadside gun each side
@@ -260,6 +270,8 @@ export const SHIPS = [
     bankFactor: 0.25,
     driveId: 'drive_reaction_l',  // large reaction drive — the ponderous bulk hauler's long-burn motor
     energyCap: 360, energyRegen: 40, collisionRadius: 30, price: 380000,
+    // FB-062 — an Atlas is poured on the Tethys freight slips; no other yard builds the class.
+    shopOffers: { station_tethys: { price: 355000, exclusive: true } },
     boost: { max: 320, drainRate: 26, regenRate: 36, dashImpulse: 320, dashCooldown: 2.0 },  // the escape-king: huge dash, fast recharge, ponderous otherwise
     // PQ-140.01: keep carrying speed while turning; mass and the real flight solver supply the radius.
     heavyMotion: { minTurnSpeed: 16, turnStartAngle: 0.60, turnCarryForward: 0.15 },
@@ -307,7 +319,7 @@ export const SHIPS = [
     hull: 1100, shield: 820, baseShieldRegen: 22, cargo: 550, mass: 150, handling: 0.95,
     outfitSpace: 188, weaponCapacity: 84, engineCapacity: 18, designMass: 282,
     bankFactor: 0.40,
-    driveId: 'drive_torch_l',  // torch drive — the wall of guns advances under sustained thrust
+    driveId: 'drive_gravimetric_m',  // gravimetric vector drive M — FB-059 gunship heavy field drive
     energyCap: 720, energyRegen: 84, collisionRadius: 26, price: 384000,
     boost: { max: 180, drainRate: 40, regenRate: 24, dashImpulse: 90, dashCooldown: 3.0 },  // a wall of guns that advances, doesn't chase
     // PQ-140.01: a gunship banks through a line change instead of pinning in place.
@@ -332,7 +344,7 @@ export const SHIPS = [
     hull: 1600, shield: 1100, baseShieldRegen: 26, cargo: 1200, mass: 300, handling: 0.7,
     outfitSpace: 248, weaponCapacity: 108, engineCapacity: 18, designMass: 474,
     bankFactor: 0.30,
-    driveId: 'drive_torch_l',  // torch drive — high-acceleration axial thrust for the capital battlecruiser
+    driveId: 'drive_torch_xl',  // capital torch drive XL — FB-059 capital battlecruiser torch variant
     energyCap: 900, energyRegen: 100, collisionRadius: 32, price: 456000,
     boost: { max: 160, drainRate: 42, regenRate: 22, dashImpulse: 70, dashCooldown: 3.2 },
     // PQ-140.01: broad turn commitment makes this hull a navigable obstacle, not a turret.
@@ -358,7 +370,7 @@ export const SHIPS = [
     hull: 3200, shield: 2600, baseShieldRegen: 32, cargo: 2500, mass: 600, handling: 0.6,
     outfitSpace: 360, weaponCapacity: 150, engineCapacity: 18, designMass: 852,
     bankFactor: 0.22,
-    driveId: 'drive_torch_l',  // torch drive — the flagship's enormous axial motor
+    driveId: 'drive_torch_xl',  // capital torch drive XL — FB-059 flagship colossal torch motor
     energyCap: 1600, energyRegen: 160, collisionRadius: 45, price: 720000,
     boost: { max: 140, drainRate: 46, regenRate: 18, dashImpulse: 50, dashCooldown: 3.6 },
     // PQ-140.01: the flagship takes the longest line to change and keeps its wake through it.
@@ -383,7 +395,10 @@ export const SHIPS = [
     // The saucer (design/FLYING_SAUCER_DESIGN.md): a 520-mass exotic hull on the inertialess
     // field drive — right-angle turns, stops on a dime, and enough mass to drag what it bumps
     // or tows like a ragdoll. No heavyMotion: the field never wallows, whatever the load.
-    id: 'ship_saucer', name: 'Saucer', role: 'exotic', tier: 5, requiresTech: 'tech_graviton_drives',
+    // SWARM-06: the Adventure research route is retired — the disc is EARNED, at the Zone 3
+    // boss, and the crossover ledger is the only thing a shipyard checks. `swarmEarned` names
+    // the ledger row; the research tree never lists it again.
+    id: 'ship_saucer', name: 'Saucer', role: 'exotic', tier: 5, swarmEarned: 'hull:ship_saucer',
     hull: 2200, shield: 2600, baseShieldRegen: 30, cargo: 120, mass: 520, handling: 2.2,
     outfitSpace: 240, weaponCapacity: 96, engineCapacity: 18, designMass: 760,
     bankFactor: 0.10,

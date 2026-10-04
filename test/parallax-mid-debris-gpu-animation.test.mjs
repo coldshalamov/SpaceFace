@@ -144,6 +144,39 @@ test('mid-debris shader binding is stable and fails closed if the Three vertex s
   }
 });
 
+test('seating rock surface maps updates band materials and opening packages without waiting for flight update', () => {
+  const scene = new THREE.Scene();
+  const state = makeState({ particleQuality: 'medium', motionReduce: false });
+  const stack = parallaxLayers.init(scene, state, null, state.render.sectorPalette);
+
+  try {
+    assert.equal(parallaxLayers.activeGroups().length, 3, 'exposes the three parallax band groups');
+    const midMesh = findMidMesh(stack);
+    const textureStub = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1);
+    textureStub.needsUpdate = true;
+    const fakeMaps = {
+      baseColor: textureStub,
+      normal: textureStub,
+      orm: textureStub,
+    };
+    stack._seatRockSurfaceMaps(fakeMaps);
+
+    assert.equal(midMesh.material.map, textureStub, 'seating maps assigns baseColor map');
+    assert.equal(midMesh.material.normalMap, textureStub, 'seating maps assigns normalMap');
+    assert.equal(midMesh.material.roughnessMap, textureStub, 'seating maps assigns roughnessMap');
+    assert.equal(midMesh.material.metalnessMap, textureStub, 'seating maps assigns metalnessMap');
+    assert.equal(midMesh.material.aoMap, textureStub, 'seating maps assigns aoMap');
+    assert.ok(midMesh.material.version > 0, 'material version increments for shader relink');
+
+    for (const group of stack.groups) {
+      assert.ok(group.userData.openingSubmissionPackage, 'package stamped on group');
+      assert.equal(group.userData.openingSubmissionPackage.manifest.materialType, 'MeshStandardMaterial');
+    }
+  } finally {
+    parallaxLayers.dispose();
+  }
+});
+
 function findMidMesh(stack) {
   const group = stack.groups.find((candidate) => candidate.userData.layer === 'midDebris');
   assert.ok(group, 'mid-debris group missing');

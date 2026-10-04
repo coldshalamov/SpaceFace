@@ -59,12 +59,13 @@ function nearestSubmittedInstanceMetricsMemoized(chunk, options, submitted, opaq
   const playerZ = Number(options && options.playerZ) || 0;
   const serial = chunk.matrixSerial || 0;
   const memo = chunk.submitPolicyMemo;
-  if (memo
+  const keysMatch = !!(memo
       && memo.serial === serial
       && memo.submitted === submitted
       && memo.opaque === opaque
       && memo.castRadius === (options && options.castRadius)
-      && memo.castRadiusSq === (options && options.castRadiusSq)) {
+      && memo.castRadiusSq === (options && options.castRadiusSq));
+  if (keysMatch) {
     const dx = playerX - memo.playerX;
     const dz = playerZ - memo.playerZ;
     const moved = Math.sqrt(dx * dx + dz * dz);
@@ -74,6 +75,17 @@ function nearestSubmittedInstanceMetricsMemoized(chunk, options, submitted, opaq
       memo.playerZ = playerZ;
       return memo.nearest;
     }
+  }
+  // Slack exhausted with matching memo keys — a displacement-driven recompute walks
+  // every submitted instance. A large same-frame jump (gate seam, dock, teleport)
+  // exhausts every chunk at once; cap these recomputes per call so the whole sector
+  // doesn't re-walk inside one presented frame. Skipped chunks retry next frame —
+  // verdict slack absorbs a frame of staleness. A mismatched/first memo is a
+  // correctness recompute and always runs.
+  const budget = options && options.recomputeBudget;
+  if (memo && keysMatch && budget && typeof budget.remaining === 'number') {
+    if (budget.remaining <= 0) return memo.nearest;
+    budget.remaining -= 1;
   }
   const nearest = nearestSubmittedInstanceMetrics(chunk, playerX, playerZ);
   chunk.submitPolicyMemo = {

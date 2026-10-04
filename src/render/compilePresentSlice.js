@@ -17,6 +17,24 @@ export function collectCompileSubjects(root) {
   return subjects.length ? subjects : [root];
 }
 
+export function collectUniqueCompileSubjects(root, keyFor) {
+  const subjects = collectCompileSubjects(root);
+  if (typeof keyFor !== 'function') return subjects;
+  const seen = new Set();
+  const unique = [];
+  for (const subject of subjects) {
+    const key = keyFor(subject);
+    if (key === null || key === undefined || key === '') {
+      unique.push(subject);
+      continue;
+    }
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(subject);
+  }
+  return unique;
+}
+
 export const COMPILE_PRESENT_SLICE_MS = 4;
 
 export async function compileSubjectsAcrossPresents(subjects, compileOne, yieldFn, options = {}) {
@@ -52,6 +70,14 @@ export function shouldSliceCompileAcrossPresents(options = {}) {
   return options.firstPlayable === true && options.mode === 'flight';
 }
 
+export function shouldSliceFlightAdmission({ mode, firstPlayable, urgent, rootCount } = {}) {
+  return shouldSliceCompileAcrossPresents({
+    mode,
+    firstPlayable,
+    forceWholeBatch: urgent === true && rootCount === 1,
+  });
+}
+
 /**
  * Three's shadowMap.render skips object.visible === false, and InstancedMesh at count 0 is kept
  * hidden until publication. Color compile() still visits those objects; the depth pass does not.
@@ -82,8 +108,13 @@ export function revealSubjectForCompile(subject) {
     // unhides them. Revealing one for a touch/depth pass would upload buffers (e.g. a wreck's
     // merged proc shell) that no presented frame can ever draw.
     if (object.userData && object.userData.authoredReadableFallbackLayer === true) return;
+    // Sprites are drawables too (isDrawable in openingGpuAdmission includes isSprite):
+    // a torn-down sprite whose shared quad reference was nulled reaches the same
+    // WebGLGeometries.get geometry.id read in projectObject, so it takes the same
+    // hide-for-compile path as a null-geometry mesh.
     const requiresGeometry = object.isMesh === true || object.isSkinnedMesh === true
-      || object.isInstancedMesh === true || object.isPoints === true || object.isLine === true;
+      || object.isInstancedMesh === true || object.isPoints === true || object.isLine === true
+      || object.isSprite === true;
     if (requiresGeometry && 'geometry' in object && object.geometry == null) {
       objectState.push({ object, visible: object.visible, frustumCulled: object.frustumCulled });
       object.visible = false;

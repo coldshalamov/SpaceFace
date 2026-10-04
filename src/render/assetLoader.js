@@ -14,14 +14,15 @@ import {
   disposeAssetResidency,
   getAssetResidency,
 } from './assetResidency.js';
-import { activeDecodeClass, deadlineDecodeActive, sharedDecodeTaskBudget, withDeadlineDecodeClass, withVisibleDecodeClass } from './decodeTaskBudget.js';
-import { createRenderPackageLoader, startMeshoptWorkerPool } from './renderPackageLoader.js';
+import { activeDecodeClass, deadlineDecodeActive, DECODE_CLASS_RANK, regradeGltfCompile, scheduleGltfCompile, scheduleGltfParse, sharedDecodeTaskBudget, withDeadlineDecodeClass, withVisibleDecodeClass } from './decodeTaskBudget.js';
+import { createRenderPackageLoader, disposeDecodedResources, startMeshoptWorkerPool } from './renderPackageLoader.js';
 import { loadMotionBank } from './authoredMotion.js';
 import {
   renderPackagePilotForAssetId,
   renderPackagePilotForSourceUrl,
 } from './renderPackageManifest.js';
 import { dedupeGltfTextureSources } from './imageSourceDedupe.js';
+import { createAsyncAdmission } from './asyncAdmission.js';
 
 export const ASSET_AUTHORING_CONTRACT = Object.freeze({
   version: 2,
@@ -90,6 +91,25 @@ export const ASSET_RUNTIME_DECODER_CONTRACT = Object.freeze({
 });
 
 const warned = new Set();
+// Ambient tasks a deadline-or-visible caller joined — their remaining decode posts and their
+// compile tail re-grade to the joiner's class, matching the budget.promote + flag window the
+// join raises. The map carries the class (not just membership) so a visible joiner's tail
+// claims 'visible' rather than capping at 'deadline'.
+const joinedAssetTaskClasses = new WeakMap();
+// Consumers that join a pending shared decode register a liveness predicate here. The
+// compile tail resolves null — skipping genuinely-dead work — only when NO live consumer
+// remains: the creator's owner predicate alone cannot see joiners, and without this an
+// absorbed or superseded creator nulls the task and every live joiner eats 'decode-failed'
+// into the boundary readmission retry arm.
+const taskConsumerPredicates = new WeakMap();
+const consumerPredicatesFor = (task) => {
+  let list = taskConsumerPredicates.get(task);
+  if (!list) { list = []; taskConsumerPredicates.set(task, list); }
+  return list;
+};
+// Keyed by package metadataUrl (string): the pilot path's compile entries are looked up by url,
+// not by task token, so its max-class ledger needs a plain Map.
+const joinedPackageTaskClasses = new Map();
 const WHOLE_SHIP_ACCESSORY_TOKENS = Object.freeze(['antenna', 'decal', 'canopy', 'lens', 'clamp', 'brace', 'identity', 'cockpit']);
 // Warm-purpose decode roles (sector prewarm, decode runway, roster warm, predicts): decodes
 // that speculate on a spawn that has not arrived yet. Shared by the decode-cache retain below
@@ -126,7 +146,8 @@ export class AssetContractError extends Error {
 export function admitAuthoredAssetTask(runtime, cacheKey, createTask) {
   if (!runtime || runtime.retiring) return null;
   if (!runtime.assets.has(cacheKey)) {
-    const task = Promise.resolve().then(createTask);
+    const admission = createAsyncAdmission({ label: `authored-asset:${cacheKey}`, ...runtime.admissionTimers });
+    const task = admission.wait(Promise.resolve().then(() => createTask(admission)));
     runtime.assets.set(cacheKey, task);
     const pendingTasks = runtime.pendingAssetTasks || (runtime.pendingAssetTasks = new Set());
     pendingTasks.add(task);
@@ -140,6 +161,7 @@ export function admitAuthoredAssetTask(runtime, cacheKey, createTask) {
     );
     task.then(
       (value) => {
+        admission.finish();
         pendingTasks.delete(task);
         // A null resolution is the loader's failure contract (loadAuthoredPart catches and
         // resolves null). Keeping that settled task in the cache would poison the URL for the
@@ -148,11 +170,17 @@ export function admitAuthoredAssetTask(runtime, cacheKey, createTask) {
         if (value == null && runtime.assets.get(cacheKey) === task) runtime.assets.delete(cacheKey);
         // A re-admitted task that produced a record supersedes any failure the evicted attempt
         // recorded under this key.
-        else if (value != null && runtime.failures) runtime.failures.delete(cacheKey);
+        else if (value != null && runtime.assets.get(cacheKey) === task && runtime.failures) {
+          runtime.failures.delete(cacheKey);
+        }
       },
-      () => {
+      (error) => {
+        admission.finish();
         pendingTasks.delete(task);
-        if (runtime.assets.get(cacheKey) === task) runtime.assets.delete(cacheKey);
+        if (runtime.assets.get(cacheKey) === task) {
+          if (!runtime.retiring && runtime.failures) runtime.failures.set(cacheKey, error);
+          runtime.assets.delete(cacheKey);
+        }
       },
     );
   }
@@ -196,6 +224,9 @@ export function createAuthoredAssetRuntimeRegistry(runtimeFactory) {
       retirementByRenderer.delete(renderer);
       runtimePromise = Promise.resolve().then(() => runtimeFactory(renderer));
       activeByRenderer.set(renderer, runtimePromise);
+      runtimePromise.catch(() => {
+        if (activeByRenderer.get(renderer) === runtimePromise) activeByRenderer.delete(renderer);
+      });
     }
     return runtimePromise;
   }
@@ -359,37 +390,43 @@ export function configureCspSafeKtx2Loader(ktx2, options = {}) {
     || ASSET_RUNTIME_DECODER_CONTRACT.ktx2TranscoderPath;
   const wasmUrl = options.wasmUrl || `${transcoderPath}basis_transcoder.wasm`;
   let disposed = false;
+  const lifetime = new AbortController();
   // The pool's own width is only a per-decoder cap — a KTX2 burst overlapping a meshopt burst
   // would still field more busy workers than the host has spare cores. Route task intake
   // through the shared cross-decoder budget (FIFO, so the pool's own queue order is unchanged);
   // when KTX2 is the only decoder working it still uses the whole budget. Tasks still queued on
-  // the budget when the loader is disposed return their token and never dispatch, matching the
-  // stock pool's dropped-queue semantics (their callers never settle either way).
+  // the budget when the loader is disposed leave the queue without dispatching. Both queued and
+  // in-flight callers reject, even when a terminated worker never answers.
   const decodeBudget = options.decodeBudget || sharedDecodeTaskBudget();
   const pendingPoolTasks = new Set();
   const pool = ktx2.workerPool;
   if (typeof pool.postMessage === 'function' && pool.spacefaceDecodeBudgetGated !== true) {
     const postTask = pool.postMessage.bind(pool);
     pool.spacefaceDecodeBudgetGated = true;
-    pool.postMessage = (msg, transfer) => decodeBudget.acquire(
-      msg && msg.spacefaceDecodeClass || activeDecodeClass(),
-    ).then((release) => {
-      if (disposed) {
-        release();
-        return new Promise(() => {});
-      }
-      const task = {};
-      task.settle = () => { if (pendingPoolTasks.delete(task)) release(); };
+    pool.postMessage = (msg, transfer) => {
+      const admission = createAsyncAdmission({
+        label: 'ktx2:transcode', signal: lifetime.signal, ...options.admissionTimers,
+      });
+      const task = { admission, release: null };
+      task.settle = () => {
+        if (!pendingPoolTasks.delete(task)) return;
+        if (task.release) task.release();
+        admission.finish();
+      };
       pendingPoolTasks.add(task);
-      let result;
-      try {
-        result = postTask(msg, transfer);
-      } catch (error) {
-        task.settle();
-        throw error;
-      }
-      return Promise.resolve(result).finally(task.settle);
-    });
+      const work = decodeBudget.acquire({
+        decodeClass: msg && msg.spacefaceDecodeClass || activeDecodeClass(),
+        signal: admission.signal,
+      }).then((release) => {
+        if (admission.signal.aborted) {
+          release();
+          admission.assertActive();
+        }
+        task.release = release;
+        return postTask(msg, transfer);
+      });
+      return admission.wait(work).finally(task.settle);
+    };
   }
 
   ktx2.workerSourceURL = workerUrl;
@@ -398,14 +435,21 @@ export function configureCspSafeKtx2Loader(ktx2, options = {}) {
   ktx2.init = function initCspSafeKtx2Transcoder() {
     if (disposed) return Promise.reject(new Error('KTX2 loader has been disposed.'));
     if (!this.transcoderPending) {
-      this.transcoderPending = Promise.resolve().then(async () => {
+      const admission = createAsyncAdmission({
+        label: 'ktx2:transcoder-init', signal: lifetime.signal, ...options.admissionTimers,
+      });
+      const work = Promise.resolve().then(async () => {
         if (typeof fetchImpl !== 'function') throw new Error('KTX2 transcoder requires fetch.');
-        const response = await fetchImpl(wasmUrl, { cache: 'force-cache' });
+        const response = await fetchImpl(wasmUrl, { cache: 'force-cache', signal: admission.signal });
         if (!response || response.ok !== true) {
           throw new Error(`KTX2 transcoder fetch failed: HTTP ${response && response.status || 0} ${wasmUrl}`);
         }
         const binary = await response.arrayBuffer();
-        if (disposed) throw new Error('KTX2 loader was disposed during transcoder initialization.');
+        admission.assertActive();
+        if (this.transcoderPending !== task) {
+          admission.abort('KTX2 initialization was superseded');
+          admission.assertActive();
+        }
         this.transcoderBinary = binary;
         this.workerPool.setWorkerCreator(() => {
           if (typeof WorkerImpl !== 'function') throw new Error('KTX2 transcoder requires Web Workers.');
@@ -416,12 +460,22 @@ export function configureCspSafeKtx2Loader(ktx2, options = {}) {
           return worker;
         });
       });
+      const task = admission.wait(work);
+      this.transcoderPending = task;
+      task.then(
+        () => admission.finish(),
+        () => {
+          admission.finish();
+          if (this.transcoderPending === task) this.transcoderPending = null;
+        },
+      );
     }
     return this.transcoderPending;
   };
   ktx2.dispose = function disposeCspSafeKtx2Transcoder() {
     if (disposed) return;
     disposed = true;
+    lifetime.abort(new Error('KTX2 loader has been disposed.'));
     // Terminated workers never answer, so settle gated tasks here to return their tokens;
     // without this every task in flight at dispose would leak a budget slot.
     for (const task of pendingPoolTasks) task.settle();
@@ -528,24 +582,52 @@ export function createAuthoredAssetLease(renderer, options = {}) {
   });
 }
 
+function authoredConsumerIsActive(options) {
+  if (options.signal?.aborted || options.asyncAdmission?.signal?.aborted) return false;
+  return typeof options.isResidencyOwnerActive !== 'function' || !!options.isResidencyOwnerActive();
+}
+
+function waitForAuthoredConsumer(work, options) {
+  if (options.asyncAdmission) return options.asyncAdmission.wait(work);
+  const signal = options.signal;
+  if (!signal) return work;
+  // Observe the shared decode even if this consumer has already departed. Only the consumer's
+  // wait rejects: a second boundary may still own and need the cached task.
+  const task = Promise.resolve(work);
+  task.catch(() => {});
+  const reason = () => signal.reason || Object.assign(new Error('Authored asset consumer departed.'), {
+    name: 'AbortError',
+  });
+  if (signal.aborted) return Promise.reject(reason());
+  return new Promise((resolve, reject) => {
+    const onAbort = () => { signal.removeEventListener('abort', onAbort); reject(reason()); };
+    signal.addEventListener('abort', onAbort);
+    task.then(
+      (value) => { signal.removeEventListener('abort', onAbort); resolve(value); },
+      (error) => { signal.removeEventListener('abort', onAbort); reject(error); },
+    );
+  });
+}
+
 /**
  * Load and validate one authored GLB part. Failures resolve to null by contract: the caller's
  * procedural part remains authoritative and no entity may disappear because an asset is absent.
  */
 export async function loadAuthoredPart(url, options = {}) {
   const { renderer, slot = null, optional = false } = options;
-  if (!renderer) return null;
+  if (!renderer || !authoredConsumerIsActive(options)) return null;
 
   let runtime;
   try {
-    runtime = await runtimeFor(renderer);
+    runtime = await waitForAuthoredConsumer(runtimeFor(renderer), options);
   } catch (error) {
-    warnOnce('runtime', '[assetLoader] GLTF/KTX2 runtime unavailable; authored parts will use procedural fallbacks', error);
+    if (authoredConsumerIsActive(options)) {
+      warnOnce('runtime', '[assetLoader] GLTF/KTX2 runtime unavailable; authored parts will use procedural fallbacks', error);
+    }
     return null;
   }
 
-  if (runtime.retiring) return null;
-  if (typeof options.isResidencyOwnerActive === 'function' && !options.isResidencyOwnerActive()) return null;
+  if (runtime.retiring || !authoredConsumerIsActive(options)) return null;
 
   // Deadline-class decodes (runway/wave-hull/admission-deadline work) mark the whole fetch +
   // worker-decode window so every task this part posts — prepass, meshopt, KTX2 — is served
@@ -567,14 +649,47 @@ export async function loadAuthoredPart(url, options = {}) {
     ? withVisibleDecodeClass
     : (deadlineClass ? withDeadlineDecodeClass : null);
 
+  const cacheKey = `${url}::${slot || '*'}`;
+  // A deadline caller joining an in-flight ambient task still sits on the player's
+  // deadline: its remaining fetch/meshopt/KTX2 posts read deadlineDecodeActive() at post
+  // time, so refcount the join for the rest of the task's settle — the same idiom the
+  // serial lane already uses, bounded to the joined task's tail.
+  // Only an unsettled join re-grades — a cached task that already resolved has no
+  // queued posts left to promote.
+  const joinedPendingTask = runtime.pendingAssetTasks
+    && runtime.pendingAssetTasks.has(runtime.assets.get(cacheKey))
+    ? runtime.assets.get(cacheKey)
+    : null;
+  const deadlineJoin = deadlineClass && !!joinedPendingTask;
+
   const renderPackagePilot = renderPackagePilotForSourceUrl(url);
   if (renderPackagePilot) {
+    if (deadlineJoin) {
+      // Package-path join: the pilot's admitAuthoredAssetTask dedupes the shared task, but
+      // its already-queued worker posts froze their budget class at enqueue — flush the
+      // ambient tail the same way the GLB lane does. The wrap window the caller raises
+      // around the pilot call covers the task's own tail classification, so a join needs
+      // only the promote, not a second flag wrap.
+      const budget = sharedDecodeTaskBudget();
+      const joinClass = options.admissionVisible === true ? 'visible' : 'deadline';
+      if (budget && typeof budget.promote === 'function') {
+        budget.promote(joinClass);
+      }
+      // The package tail may already sit queued in a lower lane — same re-grade the GLB
+      // lane runs on a join, resolved through the loader's content-hash cache by url.
+      // Retain the strongest join class, not the last: a deadline-only joiner landing after
+      // a visible joiner must not splice the shared tail back into the deadline lane.
+      const prevJoinClass = joinedPackageTaskClasses.get(renderPackagePilot.metadataUrl);
+      if (!(prevJoinClass && (DECODE_CLASS_RANK[prevJoinClass] || 0) >= (DECODE_CLASS_RANK[joinClass] || 0))
+        && runtime.renderPackages && typeof runtime.renderPackages.regradeCompileFor === 'function') {
+        joinedPackageTaskClasses.set(renderPackagePilot.metadataUrl, joinClass);
+        runtime.renderPackages.regradeCompileFor(renderPackagePilot.metadataUrl, joinClass);
+      }
+    }
     return (wrapDecodeClass ? () => wrapDecodeClass(() => loadAuthoredRenderPackagePilot(runtime, renderPackagePilot, url, options))
       : () => loadAuthoredRenderPackagePilot(runtime, renderPackagePilot, url, options))();
   }
   assertSourceRouteAdmitted(url);
-
-  const cacheKey = `${url}::${slot || '*'}`;
   const residency = getAssetResidency(renderer);
   const residencyOwner = options.residencyOwner || runtime.defaultResidencyOwner;
   // An ownerless warm decode has no boundary lifecycle to release its pin — a non-soft role on
@@ -594,29 +709,46 @@ export async function loadAuthoredPart(url, options = {}) {
     return null;
   }
 
-  // A deadline caller joining an in-flight ambient task still sits on the player's
-  // deadline: its remaining fetch/meshopt/KTX2 posts read deadlineDecodeActive() at post
-  // time, so refcount the join for the rest of the task's settle — the same idiom the
-  // serial lane already uses, bounded to the joined task's tail.
-  const deadlineJoin = deadlineClass && runtime.assets.has(cacheKey);
-  const task = admitAuthoredAssetTask(runtime, cacheKey, () => (
+  const task = admitAuthoredAssetTask(runtime, cacheKey, (admission) => (
     (wrapDecodeClass ? () => wrapDecodeClass(() => loadGltfDocument(url, runtime.gltf))
       : () => loadGltfDocument(url, runtime.gltf))()
       .then((gltf) => {
+        if (admission.signal.aborted) disposeDecodedResources(gltf);
+        admission.assertActive();
         // Tier-1 causal count: a full semantic compile of a source GLB into a runtime blueprint.
         const tier1 = tier1CountersForRenderer(renderer);
         if (tier1) tier1.countRuntimeSemanticCompile('source-blueprint-compile', 0);
-        return compileBlueprint(url, gltf, slot, {
-          cacheKey,
-          residency,
-          onEvict() {
-            runtime.assets.delete(cacheKey);
-            runtime.failures.delete(cacheKey);
-          },
-        });
+        // Parse replies resolve in clusters — pace the synchronous compile tail through the
+        // class lanes so a burst can't stack N blueprint builds in one microtask drain. The
+        // tail claims the caller's class; a deadline join on an ambient task promotes it.
+        const compileClass = options.admissionVisible === true
+          ? 'visible'
+          : (joinedAssetTaskClasses.get(task) || (deadlineClass ? 'deadline' : 'ambient'));
+        // Always register a creator predicate: an ownerless warm holds zero joiner
+        // predicates, and without one a compile tail resolves null the moment its last
+        // joiner dies — evicting the shared decode the warm exists to pre-stage. The
+        // composed check keeps real owners exact and defaults ownerless creators live
+        // (aborted signals still read dead).
+        consumerPredicatesFor(task).push(() => authoredConsumerIsActive(options));
+        return scheduleGltfCompile(() => {
+          // Owner departed while the tail queued: compile is the expensive stage — skip it
+          // and let the settled-null path cancel the request below. Joiners deduped onto
+          // this task register their own liveness, so only resolve null when no consumer
+          // remains — a live joiner still wants the record.
+          const consumers = taskConsumerPredicates.get(task);
+          if (consumers && consumers.length > 0 && !consumers.some((isLive) => isLive())) return null;
+          return compileBlueprint(url, gltf, slot, {
+            cacheKey,
+            residency,
+            onEvict() {
+              runtime.assets.delete(cacheKey);
+              runtime.failures.delete(cacheKey);
+            },
+          });
+        }, compileClass, task);
       })
       .catch((error) => {
-        if (!runtime.retiring) {
+        if (!runtime.retiring && !admission.signal.aborted && runtime.assets.get(cacheKey) === task) {
           runtime.failures.set(cacheKey, error);
           if (error instanceof AssetContractError) {
             if (!optional) warnOnce(cacheKey, error.message);
@@ -631,22 +763,55 @@ export async function loadAuthoredPart(url, options = {}) {
     if (request) request.cancel('runtime-retired-before-decode');
     return null;
   }
+  if (joinedPendingTask === task) {
+    // A consumer joining an in-flight task shares its settle — register its liveness so
+    // the compile tail keeps running when the creator's owner departs but a joiner waits.
+    consumerPredicatesFor(task).push(() => authoredConsumerIsActive(options));
+  }
   if (deadlineJoin) {
     // Re-grade waiters still queued at ambient: the joined task's already-posted decodes
     // froze their budget class at enqueue and would otherwise sit behind the whole ambient
     // tail while the mount is on the player's deadline. Promote flushes the tail to deadline
     // (FIFO preserved), matching the flag window the wrap raises for its remaining posts.
     const budget = sharedDecodeTaskBudget();
-    if (budget && typeof budget.promote === 'function') budget.promote('deadline');
+    // Promote to the caller's own class: an admissionVisible joiner's tail must
+    // outrank even deadline waiters, not just ambient.
+    const joinClass = options.admissionVisible === true ? 'visible' : 'deadline';
+    if (budget && typeof budget.promote === 'function') {
+      budget.promote(joinClass);
+    }
+    // Retain the strongest join class, not the last: a deadline-only joiner landing after a
+    // visible joiner must not downgrade the shared tail back into the deadline lane.
+    const prevJoinClass = joinedAssetTaskClasses.get(task);
+    if (!(prevJoinClass && (DECODE_CLASS_RANK[prevJoinClass] || 0) >= (DECODE_CLASS_RANK[joinClass] || 0))) {
+      joinedAssetTaskClasses.set(task, joinClass);
+      // The tail may already sit queued in a lower lane — a join lands while the task is still
+      // pending (unsettled until the compile resolves), so re-grade the queued entry too. A tail
+      // not yet enqueued reads this join's class when it schedules.
+      regradeGltfCompile(task, joinClass);
+    }
     (wrapDecodeClass || withDeadlineDecodeClass)(() => task);
   }
-  const blueprint = await task;
+  const blueprint = await waitForAuthoredConsumer(task, options).catch((error) => {
+    if (!optional && !runtime.retiring && authoredConsumerIsActive(options)) {
+      warnOnce(cacheKey, `[assetLoader] failed to load ${url}; authored admission ended`, error);
+    }
+    return null;
+  });
   if (!blueprint) {
+    // A join that landed inside the dead-tail window (the shared task's compile evaluated
+    // before this consumer's liveness registered) re-admits once through a fresh task —
+    // the evicted cacheKey rebuilds under this consumer's own options instead of failing
+    // the boundary into the readmission retry arm.
+    if (joinedPendingTask === task && authoredConsumerIsActive(options)) {
+      if (request) request.cancel('dead-tail-join');
+      return loadAuthoredPart(url, options);
+    }
     if (request) request.cancel('decode-failed');
     return null;
   }
-  if (request && typeof options.isResidencyOwnerActive === 'function' && !options.isResidencyOwnerActive()) {
-    request.cancel('owner-departed-during-decode');
+  if (!authoredConsumerIsActive(options)) {
+    if (request) request.cancel('owner-departed-during-decode');
     return null;
   }
   if (request && !request.commit()) return null;
@@ -1148,8 +1313,10 @@ export async function loadAuthoredRenderPackagePilot(runtime, pilot, url, option
   const slot = options.slot || null;
   const optional = options.optional === true;
   const cacheKey = `${url}::${slot || '*'}`;
-  const task = admitAuthoredAssetTask(runtime, cacheKey, () => (
+  if (!authoredConsumerIsActive(options) && !runtime.assets.has(cacheKey)) return null;
+  const task = admitAuthoredAssetTask(runtime, cacheKey, (admission) => (
     runtime.renderPackages.load(pilot.metadataUrl, {
+      signal: admission.signal,
       expectedContentHash: pilot.expectedContentHash,
       ...(pilot.flightStaticV3 === true ? { expectedRuntimeHash: pilot.expectedRuntimeHash } : {}),
       // Let the package entry carry this consumer's owner from the commit itself; retaining only
@@ -1165,7 +1332,9 @@ export async function loadAuthoredRenderPackagePilot(runtime, pilot, url, option
       // the byte-pressure race last, mirroring the decode-cache retain.
       residencySoftLease: !options.residencyOwner
         && WARM_PURPOSE_RESIDENCY_ROLE.test(String(options.residencyRole || '')),
+      isResidencyOwnerActive: () => authoredConsumerIsActive(options),
     }).then((renderPackage) => {
+      admission.assertActive();
       // This outer cache is keyed by source URL while the loader evicts by content hash, and a
       // key only refreshes when the same URL is requested again — so a fulfilled task kept every
       // released/evicted package generation pinned by its assembled record for the rest of the
@@ -1178,12 +1347,15 @@ export async function loadAuthoredRenderPackagePilot(runtime, pilot, url, option
           if (runtime.assets.get(cacheKey) === task) runtime.assets.delete(cacheKey);
         });
       }
+      // Owner departed mid-load (the tail's inactive-owner settle): a null is classified by
+      // the caller's isResidencyOwnerActive predicate — it must not stamp a load failure.
+      if (!renderPackage) return null;
       return assembleRenderPackageRecord(renderPackage, url, pilot.assetId, {
         flightStaticV3: pilot.flightStaticV3 === true,
       });
     })
       .catch((error) => {
-        if (!runtime.retiring) {
+        if (!runtime.retiring && !admission.signal.aborted && runtime.assets.get(cacheKey) === task) {
           runtime.failures.set(cacheKey, error);
           if (!optional) warnOnce(cacheKey, `[assetLoader] production render package failed for ${url}`, error);
         }
@@ -1192,19 +1364,22 @@ export async function loadAuthoredRenderPackagePilot(runtime, pilot, url, option
   ));
   if (!task) return null;
 
-  const record = await task;
+  const record = await waitForAuthoredConsumer(task, options).catch((error) => {
+    if (!optional && !runtime.retiring && authoredConsumerIsActive(options)) {
+      warnOnce(cacheKey, `[assetLoader] production render package admission ended for ${url}`, error);
+    }
+    return null;
+  });
   if (!record) return null;
   if (record.renderPackage && (record.renderPackage.evicted === true || record.renderPackage.released === true)) {
     // `renderPackageLoader` evicts by content hash, while this outer cache is keyed by source URL.
     // Every caller that observes the fulfilled stale task must retry; only its exact cache owner may
     // erase it, so a late observer cannot remove a newer re-admission task.
     if (runtime.assets.get(cacheKey) === task) runtime.assets.delete(cacheKey);
-    if (typeof options.isResidencyOwnerActive === 'function' && !options.isResidencyOwnerActive()) {
-      return null;
-    }
+    if (!authoredConsumerIsActive(options)) return null;
     return loadAuthoredRenderPackagePilot(runtime, pilot, url, options);
   }
-  if (typeof options.isResidencyOwnerActive === 'function' && !options.isResidencyOwnerActive()) return null;
+  if (!authoredConsumerIsActive(options)) return null;
   const owner = options.residencyOwner || runtime.defaultResidencyOwner;
   const ownerlessWarm = !options.residencyOwner
     && WARM_PURPOSE_RESIDENCY_ROLE.test(String(options.residencyRole || ''));
@@ -1402,6 +1577,7 @@ function compileBlueprint(url, gltf, expectedSlot, residencyRegistration = null)
   const materialProfile = configureAuthoredMaterialProfiles(scene, {
     assetId: metadata.assetId || fileStem(url),
     bounds: { center: _boundsCenter.toArray(), size: _boundsSize.toArray() },
+    slot: expectedSlot || metadata.slot || null,
   });
   canonicalizeObjectSurfaceProgramKeys(scene);
 
@@ -1601,7 +1777,9 @@ export function bindAuthoredRuntimeTable(url, gltf, expectedSlot, table, plan) {
     const materials = Array.isArray(object.material) ? object.material : (object.material ? [object.material] : []);
     for (const material of materials) {
       if (!material || profiled.has(material)) continue;
-      if (!applyAuthoredMaterialProfile(material, entry.role, { assetId, bounds: table.bounds, allowTextures: entry.allowTextures })) continue;
+      if (!applyAuthoredMaterialProfile(material, entry.role, {
+        assetId, bounds: table.bounds, slot: expectedSlot || metadata.slot || null, allowTextures: entry.allowTextures,
+      })) continue;
       profiled.add(material);
       const effectiveRole = material.userData.spacefaceMaterialRole || entry.role;
       profiledRoles[effectiveRole] = (profiledRoles[effectiveRole] || 0) + 1;
@@ -2044,8 +2222,11 @@ export function hasNonEmptyWholeShipHullBody(hullTriangles) {
 
 export async function loadGltfDocument(url, loader, fetchImpl = globalThis.fetch) {
   if (!isWholeShipUrl(url) || typeof fetchImpl !== 'function' || typeof loader?.parseAsync !== 'function') {
-    const gltf = await loader.loadAsync(url);
-    await dedupeGltfTextureSources(gltf);
+    const gltf = await scheduleGltfParse(() => loader.loadAsync(url));
+    // The dedupe's texture walk + source bookkeeping is synchronous — pace it through the
+    // class lanes so a parse-cluster burst can't stack several walks in one microtask drain.
+    // Its async digests already yield off-main.
+    await scheduleGltfCompile(() => dedupeGltfTextureSources(gltf), activeDecodeClass());
     return gltf;
   }
   // Electron intentionally keeps a stable localhost origin so saves persist. Revalidate whole-ship
@@ -2058,8 +2239,8 @@ export async function loadGltfDocument(url, loader, fetchImpl = globalThis.fetch
   const gltf = parseGlbJson(bytes);
   const errors = validateWholeShipJsonDocument(url, gltf);
   if (errors.length) throw new AssetContractError(url, errors);
-  const parsed = await loader.parseAsync(buffer, assetBasePath(url));
-  await dedupeGltfTextureSources(parsed);
+  const parsed = await scheduleGltfParse(() => loader.parseAsync(buffer, assetBasePath(url)));
+  await scheduleGltfCompile(() => dedupeGltfTextureSources(parsed), activeDecodeClass());
   return parsed;
 }
 

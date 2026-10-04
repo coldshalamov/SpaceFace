@@ -28,6 +28,7 @@ import {
   resolveWeaponRecipe,
 } from './recipes.js';
 import { FIELD_DEFS, FIELD_KINDS, FIELD_MAX_ACTIVE } from '../../data/fields.js';
+import { worldSizeForPixels } from './pixelFloor.js';
 
 const _color = new THREE.Color();
 const _local = { x: 0, z: 0 };
@@ -37,6 +38,20 @@ const _ribbonLookAt = { x: 0, z: 0 };
 const _offset = new THREE.Vector3();
 const _axis = new THREE.Vector3();
 const _invQuat = new THREE.Quaternion();
+const _worldQuat = new THREE.Quaternion();
+
+// Bank and pitch live on the hull child; the root only carries yaw. A mark stored on the
+// root slides off the plate as soon as the ship leans. LOD and refit replace that child.
+function markAnchor(mesh) {
+  const hull = mesh && mesh.userData && mesh.userData.hull;
+  if (!hull || hull.isObject3D !== true) return mesh;
+  let node = hull;
+  while (node) {
+    if (node === mesh) return hull;
+    node = node.parent;
+  }
+  return mesh;
+}
 const NEAR_MISS_RADIUS = 10;
 const FULL_LOD_DISTANCE = 240;
 
@@ -155,7 +170,7 @@ export class WeaponVfxPresenter {
     this.quarks = new QuarksVfxSystem({ scene: this.scene });
     this._quarksSimTime = Number.isFinite(this.state?.simTime) ? this.state.simTime : null;
     this._socketScratch = { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 };
-    this._targetScratch = { x: 0, y: 0, z: 0, nx: 1, ny: 0, nz: 0, attached: false };
+    this._targetScratch = { x: 0, y: 0, z: 0, nx: 1, ny: 0, nz: 0, attached: false, boundKey: null };
     this._targetWorldScratch = { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0, nx: 1, ny: 0, nz: 0 };
     this._surfacePoseScratch = { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 };
     this._scorchPoseScratch = { x: 0, y: 0, z: 0, nx: 1, ny: 0, nz: 0 };
@@ -176,7 +191,12 @@ export class WeaponVfxPresenter {
       profile: 0,
     };
     this._nearMissSpec = { x: 0, y: 0.4, z: 0, radius: 5.5, strength: 0, life: 0.08 };
-    this._flashScratch = { life: 0, size0: 0, size1: 0, opacity0: 0, opacity1: 0, r: 1, g: 1, b: 1 };
+    this._flashScratch = { life: 0, size0: 0, size1: 0, opacity0: 0, opacity1: 0, r: 1, g: 1, b: 1, pxw: 0 };
+    // Camera the surfaces are judged from: a hairline strip that is 1 px at the chase camera is
+    // not an effect. Events stamp `pxw` (world units per screen pixel at the event) so the shared
+    // discharge pool can keep every muzzle and contact strip at a readable on-screen thickness.
+    this._pxCamera = null;
+    this._pxViewportHeight = 1000;
     this._scorchPoseCallback = (slot) => this._resolveScorchPose(slot);
     this._graph = null;
     this._disposed = false;
@@ -231,6 +251,7 @@ export class WeaponVfxPresenter {
     const pose = this._socketPose(ownerId, origin, angle);
     const muzzle = recipe.muzzle;
     const flash = this._flashSpec(muzzle.life, muzzle.width, muzzle.height, 1.35);
+    flash.pxw = this._pixelWorldAt(pose.x, pose.y, pose.z);
     hexColor(muzzle.coreColor, _color);
     // Muzzle and bore are one ignition beat in the source geometry; there is no second
     // stacked card. A missing/dead socket still yields a pose, so the source cannot vanish.
@@ -310,7 +331,7 @@ export class WeaponVfxPresenter {
         Math.max(1, Number(body?.radius) || Number(payload.targetRadius) || 8),
         Number.isFinite(this.state?.simTime) ? this.state.simTime : this.heavyImpacts.time);
       if (!handled) {
-        const impact = this._flashSpec(0.14, 1.6, 2.8, 1.15);
+        const impact = this._flashSpec(0.16, 1.9, 3.3, 1.15);
         this._spawnImpactSurface(captured, IMPACT_KIND.HULL, recipe, impact, nx, nz, ax, az, payload.targetId);
       }
     }
@@ -325,6 +346,8 @@ export class WeaponVfxPresenter {
         nx: captured.nx,
         ny: captured.ny,
         nz: captured.nz,
+        attached: captured.attached === true,
+        boundKey: captured.boundKey,
         width: scorch.size0,
         height: scorch.size1,
         life: scorch.life,
@@ -361,6 +384,17 @@ export class WeaponVfxPresenter {
     return { sparks: !hitShield && recipe.hull.sparks };
   }
 
+  /** World units covered by one screen pixel at (x, y, z); 0 until a camera has been seen. */
+  _pixelWorldAt(x, y, z) {
+    const camera = this._pxCamera;
+    const position = camera && camera.position;
+    if (!position) return 0;
+    const dx = position.x - x, dy = position.y - y, dz = position.z - z;
+    const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    if (!(distance > 0)) return 0;
+    return worldSizeForPixels(distance, 1, camera.fov, this._pxViewportHeight);
+  }
+
   update(dt, context = {}) {
     this.state = context.state || this.state;
     this.helpers = context.helpers || this.helpers;
@@ -372,6 +406,8 @@ export class WeaponVfxPresenter {
     const camera = context.camera;
     const alpha = Number.isFinite(context.interpolationAlpha) ? context.interpolationAlpha : 1;
     const viewportHeight = context.viewportHeight || 1000;
+    this._pxCamera = camera || this._pxCamera;
+    this._pxViewportHeight = viewportHeight;
     const index = this.state && this.state.entityIndex;
     const entities = (index && index.__spacefaceEntityIndexV1 && Array.isArray(index.projectiles))
       ? index.projectiles
@@ -711,32 +747,35 @@ export class WeaponVfxPresenter {
   _captureTargetLocal(targetId, worldX, worldY, worldZ, nx, ny, nz) {
     const mesh = targetId != null ? this._mesh(targetId) : null;
     const out = this._targetScratch;
+    out.boundKey = null;
     if (!mesh) {
       out.x = worldX; out.y = worldY; out.z = worldZ;
       out.nx = nx; out.ny = ny; out.nz = nz; out.attached = false;
       return out;
     }
-    _offset.set(worldX - mesh.position.x, worldY - mesh.position.y, worldZ - mesh.position.z);
-    _invQuat.copy(mesh.quaternion).invert();
-    _offset.applyQuaternion(_invQuat);
+    const anchor = markAnchor(mesh);
+    _offset.set(worldX, worldY, worldZ);
+    anchor.worldToLocal(_offset);
+    anchor.getWorldQuaternion(_worldQuat);
+    _invQuat.copy(_worldQuat).invert();
     _axis.set(nx, ny, nz).applyQuaternion(_invQuat);
     out.x = _offset.x; out.y = _offset.y; out.z = _offset.z;
     out.nx = _axis.x; out.ny = _axis.y; out.nz = _axis.z; out.attached = true;
+    const key = mesh.userData && mesh.userData.sfStableEntityKey;
+    out.boundKey = key != null ? key : null;
     return out;
   }
 
-  /** Scorch marks are retained target-local; the contact normal rotates with the hull. */
+  /** Hull-local mark. A missing anchor returns null so the local offset is never drawn as a world card. */
   _worldFromTargetLocal(slot) {
     const mesh = slot.targetId != null ? this._mesh(slot.targetId) : null;
     const out = this._scorchPoseScratch;
-    if (!mesh) {
-      out.x = slot.localX; out.y = slot.localY; out.z = slot.localZ;
-      out.nx = slot.nx; out.ny = slot.ny; out.nz = slot.nz;
-      return out;
-    }
-    _offset.set(slot.localX, slot.localY, slot.localZ).applyQuaternion(mesh.quaternion);
-    _offset.add(mesh.position);
-    _axis.set(slot.nx, slot.ny, slot.nz).applyQuaternion(mesh.quaternion);
+    if (!mesh) return null;
+    const anchor = markAnchor(mesh);
+    _offset.set(slot.localX, slot.localY, slot.localZ);
+    anchor.localToWorld(_offset);
+    anchor.getWorldQuaternion(_worldQuat);
+    _axis.set(slot.nx, slot.ny, slot.nz).applyQuaternion(_worldQuat);
     out.x = _offset.x; out.y = _offset.y; out.z = _offset.z;
     out.nx = _axis.x; out.ny = _axis.y; out.nz = _axis.z;
     return out;
@@ -754,6 +793,7 @@ export class WeaponVfxPresenter {
     const side = apx * nz - apz * nx;
     pose.slant = Math.atan2(side, Math.max(0.25, -into));
     flash.r = _color.r; flash.g = _color.g; flash.b = _color.b;
+    flash.pxw = this._pixelWorldAt(pose.x, pose.y, pose.z);
     const priority = targetId === (this.state && this.state.playerId) ? 0.9 : 0.4;
     this.discharges.spawnImpact(pose, kind, recipe.variant, flash, priority);
   }
@@ -773,9 +813,11 @@ export class WeaponVfxPresenter {
         out.ax = nx; out.ay = ny; out.az = nz;
         return out;
       }
-      _offset.set(slot.x, slot.y, slot.z).applyQuaternion(mesh.quaternion);
-      _offset.add(mesh.position);
-      _axis.set(nx, ny, nz).applyQuaternion(mesh.quaternion);
+      const anchor = markAnchor(mesh);
+      _offset.set(slot.x, slot.y, slot.z);
+      anchor.localToWorld(_offset);
+      anchor.getWorldQuaternion(_worldQuat);
+      _axis.set(nx, ny, nz).applyQuaternion(_worldQuat);
       out.x = _offset.x; out.y = _offset.y; out.z = _offset.z;
       out.ax = _axis.x; out.ay = _axis.y; out.az = _axis.z;
       return out;
@@ -802,13 +844,36 @@ export class WeaponVfxPresenter {
   }
 
   _resolveScorchPose(slot) {
-    if (slot.targetId == null) {
+    if (!slot.attached || slot.targetId == null) {
       const out = this._scorchPoseScratch;
       out.x = slot.localX; out.y = slot.localY; out.z = slot.localZ;
       out.nx = slot.nx; out.ny = slot.ny; out.nz = slot.nz;
       return out;
     }
+    const mesh = this._mesh(slot.targetId);
+    const foreign = mesh ? this._foreignMarkBinding(mesh, slot) : false;
+    if (!mesh || foreign) {
+      // Transient flashes die with the ship or with a pooled identity change.
+      // A persistent scar stays on the record and is not drawn on the foreign hull.
+      const drop = !slot.persistent && (foreign || this._markEntityGone(slot.targetId));
+      return drop ? false : null;
+    }
     return this._worldFromTargetLocal(slot);
+  }
+
+  _foreignMarkBinding(mesh, slot) {
+    const data = mesh.userData;
+    if (!data) return false;
+    if (data.sfBoundEntityId != null && data.sfBoundEntityId !== slot.targetId) return true;
+    if (slot.boundKey != null && data.sfStableEntityKey != null && data.sfStableEntityKey !== slot.boundKey) return true;
+    return false;
+  }
+
+  _markEntityGone(targetId) {
+    const entities = this.state && this.state.entities;
+    if (!entities || typeof entities.get !== 'function') return false;
+    const body = entities.get(targetId);
+    return !body || body.alive === false;
   }
 
   _mesh(entityId) {
@@ -860,6 +925,8 @@ export class WeaponVfxPresenter {
       nx: captured.nx,
       ny: captured.ny,
       nz: captured.nz,
+      attached: captured.attached === true,
+      boundKey: captured.boundKey,
       width: scorch.size0,
       height: scorch.size1,
       life: scorch.life,
@@ -870,6 +937,41 @@ export class WeaponVfxPresenter {
       b: _color.b,
     });
     return true;
+  }
+
+  // Durable presentation of one gameplay scar. The short hit flash stays a separate slot.
+  retainHullMark(targetId, worldX, worldY, worldZ, nx, ny, nz, scarId = null) {
+    const captured = this._captureTargetLocal(
+      targetId,
+      Number.isFinite(worldX) ? worldX : 0,
+      Number.isFinite(worldY) ? worldY : 0,
+      Number.isFinite(worldZ) ? worldZ : 0,
+      Number.isFinite(nx) ? nx : 0,
+      Number.isFinite(ny) ? ny : 1,
+      Number.isFinite(nz) ? nz : 0,
+    );
+    return this.scorches.spawn({
+      targetId: targetId != null ? targetId : null,
+      localX: captured.x,
+      localY: captured.y,
+      localZ: captured.z,
+      nx: captured.nx,
+      ny: captured.ny,
+      nz: captured.nz,
+      attached: captured.attached === true,
+      boundKey: captured.boundKey,
+      persistent: true,
+      scarId,
+      life: 4,
+      width: 1.6,
+      height: 1.1,
+      opacity: 1,
+      heat: 0.8,
+    });
+  }
+
+  releasePooledTransientMarks(entityId) {
+    return this.scorches.releaseTransient(entityId);
   }
 
   _flashSpec(life, size0, size1, opacity) {
@@ -892,7 +994,7 @@ export class WeaponVfxPresenter {
     this.heavyImpacts.reproject(ox, oz);
     for (const slot of this.scorches.slots) {
       if (!slot.alive) continue;
-      if (slot.targetId != null) continue;
+      if (slot.attached) continue;
       slot.localX += ox;
       slot.localZ += oz;
     }

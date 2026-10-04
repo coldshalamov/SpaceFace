@@ -1427,7 +1427,9 @@ export async function closeSurface(page, surface) {
 
 async function anyVisible(page, selectors) {
   if (!selectors || !selectors.length) return false;
-  return page.evaluate((items) => items.some((selector) => {
+  // Bounded like readUiStatus: a wedged renderer must surface as a named failure, not an
+  // unbounded hang inside a close/visibility check (D117).
+  return withTimeout(page.evaluate((items) => items.some((selector) => {
     const node = document.querySelector(selector);
     if (!node) return false;
     const style = getComputedStyle(node);
@@ -1437,7 +1439,7 @@ async function anyVisible(page, selectors) {
       && style.visibility !== 'hidden'
       && parseFloat(style.opacity || '1') > 0.01
       && rect.width > 4 && rect.height > 4;
-  }), selectors);
+  }), selectors), 10_000, 'the page visibility read');
 }
 
 /**
@@ -1511,7 +1513,9 @@ async function clickControl(page, entry, attempts = 40) {
  * The dock fixture is the same `dock:docked` route check-station-tab-navigation-runtime uses.
  */
 export async function applyFixture(page, name) {
-  const result = await page.evaluate((fixture) => {
+  // Bounded (D117): a fixture push into a renderer whose main thread is on its way out must
+  // fail the surface by name instead of hanging the pass.
+  const result = await withTimeout(page.evaluate((fixture) => {
     const sf = window.SF;
     if (!sf || !sf.bus || !sf.state) return { ok: false, reason: 'SF bus not available' };
     switch (fixture) {
@@ -1550,7 +1554,7 @@ export async function applyFixture(page, name) {
       default:
         return { ok: false, reason: `unknown fixture "${fixture}"` };
     }
-  }, name);
+  }, name), 15_000, `the "${name}" fixture push`).catch((error) => ({ ok: false, reason: error.message }));
   if (!result || !result.ok) {
     return { ok: false, reason: `fixture "${name}": ${(result && result.reason) || 'failed'}` };
   }
@@ -1667,17 +1671,20 @@ async function captureSurfaceScreenshot({
   let budget = null;
   if (BUDGET_PROBE_ACTIVE) {
     const rootHandle = await firstVisibleHandle(page, surface.selectors);
-    await page.evaluate(() => window.__sfBudgetProbe && window.__sfBudgetProbe.reset());
+    // Bounded (D117): a renderer that wedged between the open and this probe would hang the
+    // reset/snapshot round trips forever. Bounded, they surface as this surface's own failure.
+    await withTimeout(page.evaluate(() => window.__sfBudgetProbe && window.__sfBudgetProbe.reset()),
+      15_000, 'the budget probe reset');
     await page.waitForTimeout(BUDGET_SAMPLE_MS);
-    budget = await page.evaluate(() => {
+    budget = await withTimeout(page.evaluate(() => {
       const probe = window.__sfBudgetProbe;
       return probe && typeof probe.snapshot === 'function' ? probe.snapshot() : null;
-    }).catch(() => null);
+    }), 15_000, 'the budget probe snapshot').catch(() => null);
     if (budget && rootHandle) {
       // Count on the RESOLVED handle, not a re-run selector: multi-selector roots (the station
       // panels) re-resolve differently in-document and committed a domNodes: 0 lie once already.
-      budget.domNodes = await rootHandle
-        .evaluate((el) => el.querySelectorAll('*').length + 1)
+      budget.domNodes = await withTimeout(rootHandle
+        .evaluate((el) => el.querySelectorAll('*').length + 1), 10_000, 'the DOM count read')
         .catch(() => null);
     } else if (budget) {
       // A missing DOM root is a named measurement gap, not an empty surface.
@@ -2313,7 +2320,12 @@ async function stabilizeChartScreen(page) {
 }
 
 async function readUiStatus(page) {
-  return page.evaluate(() => {
+  // `page.evaluate` has no timeout of its own. A renderer whose main thread has wedged (D117:
+  // the Crucible refit screen under any non-English locale hangs the page at push) would hang
+  // every later status read forever, and the run would sit silently for hours. Bound it: a hang
+  // surfaces as a named failure on the surface that caused it, the mode pass ends through the
+  // normal close-failure path, and the next mode boots a fresh page.
+  return withTimeout(page.evaluate(() => {
     const sf = window.SF;
     const state = sf && sf.state;
     const uiOwner = sf && sf.registry && typeof sf.registry.get === 'function'
@@ -2325,7 +2337,7 @@ async function readUiStatus(page) {
     const top = sm && typeof sm.top === 'function' ? sm.top() : null;
     const docked = !!(state && state.ui && state.ui.docked);
     return { mode, screenOpen, top, docked };
-  });
+  }), 15_000, 'the page UI status read');
 }
 
 export async function waitForAnyVisible(page, selectors, timeout, description) {

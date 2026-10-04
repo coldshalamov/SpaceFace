@@ -11,6 +11,21 @@ charcoal-violet hulls, muted violet identity bands, running lights driven nearly
 colour, drive glow absent because the place socket whitelist carries no engine socket.
 """
 import forge as F  # noqa: E402  (imported after the ship file inserts the forge dir)
+import os  # noqa: E402
+import sys  # noqa: E402
+
+# The Quiessence ring is BECALMED: dead hulls, cold engines. The base ships these freighters are
+# built on (volatiles_tanker, helios_span, ore_barge) now end their build() with the ANI-38 chassis
+# rig (idle breathing, brace, kick, wag), which would make a dead freighter look alive and would leave
+# a MOTION_ pivot in the GLB with no bank to seal. Switch the rig off for this process (one Blender
+# process builds one body), so the freighters stay still and ship without a motion pivot.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'animations'))
+try:
+    import ANI_38  # noqa: E402
+    ANI_38.build = lambda ship, objects, **kwargs: None
+    ANI_38.bake_ship_banks = lambda *args, **kwargs: None
+except ImportError:  # the rig is optional for this kit
+    pass
 
 # Becalmed finish override. The sector key light gives a dielectric (metal~0.1) paint a fixed
 # pale floor — the white F0 specular picks up the hot amber backdrop no matter how dark the
@@ -22,6 +37,31 @@ import forge as F  # noqa: E402  (imported after the ship file inserts the forge
 # and the beacon, which is the intent.
 for _finish in ('paint', 'paint2', 'stripe', 'hazard'):
     F.FINISHES[_finish] = {**F.FINISHES[_finish], 'metal': 1.0, 'rough': 0.55}
+
+# The base freighters (volatiles_tanker, helios_span, ore_barge) now carry LIT identity trims in
+# their own glow variants (glow_cyan.rust, glow_cyan.helios): neon rings and runway lines that
+# have no place on a becalmed hull, and each would add a draw call and ~3k triangles the family
+# never had. A becalmed hull is not trimmed in light: skip every inherited lit-cyan band, and
+# fold any other lit-cyan variant into the dead (violet-dark) glow_amber the palette below already
+# drives cold, so no new finish ever reaches the exported file.
+_ship_mat = F.Ship.mat
+_band = F.band
+
+
+def _becalmed_mat(self, finish):
+    if finish.startswith('glow_cyan.'):
+        finish = 'glow_amber'
+    return _ship_mat(self, finish)
+
+
+def _becalmed_band(ship, obj_name, point, normal, width, finish, *args, **kwargs):
+    if finish.startswith('glow_cyan.'):
+        return None
+    return _band(ship, obj_name, point, normal, width, finish, *args, **kwargs)
+
+
+F.Ship.mat = _becalmed_mat
+F.band = _becalmed_band
 
 # Becalmed override applied on top of each base freighter's COLORS.
 # paint channels stay in the 0x30-0x90 calibration band; glow nav/amber colours are driven
@@ -74,8 +114,31 @@ def violet_beacon(s, pos, tag=''):
     F.light(s, f'QBeacon{tag}', pos, 'glow_warm.violet', size=0.5)
 
 
+def flatten_motion(s):
+    """The ring is becalmed: strip every motion rig the base ship brought along.
+
+    The bases (volatiles_tanker, helios_span, ore_barge) declare motion groups: the ANI-38 chassis
+    rig, and the ore barge's own claw and gantry rigs. Their parts keep their authored world
+    positions, so removing the tag, the registry and the pivot empties leaves a still, ordinary
+    body with no MOTION_ node to seal a bank for.
+    """
+    import bpy
+    for o in list(s.objects):
+        if o.get('forge_motion'):
+            del o['forge_motion']
+    groups = getattr(s, 'motion_groups', None)
+    if groups is not None:
+        groups.clear()
+    pivots = getattr(s, 'motion_pivots', None)
+    if pivots:
+        for empty in list(pivots.values()):
+            bpy.data.objects.remove(empty, do_unlink=True)
+        pivots.clear()
+
+
 def place_sockets(s, focus=(0.0, 0.0, 0.0)):
     """The new-place socket contract: structure core at the origin, camera focus on the hull."""
+    flatten_motion(s)
     s.socket_names = ['SOCKET_Structure_Core', 'SOCKET_Camera_Focus']
     s.socket('SOCKET_Structure_Core', (0.0, 0.0, 0.0))
     s.socket('SOCKET_Camera_Focus', focus)

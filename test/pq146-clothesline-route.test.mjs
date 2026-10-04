@@ -18,7 +18,7 @@ function body(id,type,x,z,{mass=16,radius=8,hull=100,team=1,vx=0,vz=0,combatSpee
     data:{defId:type==='ship'?'ship_kestrel':null,encounter:{id:'clothesline'}},
     physicsBody:{schemaVersion:1,dynamic,radius,mass:dynamic?mass:1000000,inertiaY:48,ccd:true,revision:0}};
 }
-async function clothesline({pursuerX=-70,rock={x:45,z:-43},slack=false}={}){
+async function clothesline({pursuerX=-65,rock={x:-13,z:-12},slack=false}={}){
   // The intercept gate is 0.3 x the struck hull's governed cruise (0.3 x 210 = 63 transverse),
   // doubled by the ceiling restore from the pre-restore 31.5 tune; the pursuer rides lighter
   // (8 mass against the same 28-mass 110-speed flail) so the swing arc and the crossing
@@ -28,6 +28,14 @@ async function clothesline({pursuerX=-70,rock={x:45,z:-43},slack=false}={}){
   // 2026-09-30: craft-collision decoupling (f70aac37f) moved the intercept one tick later and
   // swung the deflected corridor into the player hull; pursuerX -66 -> -70 walks the corridor
   // back onto the rock (verified across a spread of rock cells, not a knife-edge pin).
+  // 2026-09-30 (same day, eb1869826 solid contacts + per-object materials) reshaped the swing
+  // again: at pursuerX -70 the flail meets the pursuer past the loaded-segment end (the
+  // line-intercept witness needs the crossing ON the segment), so the start moved to -65, which
+  // crosses on the segment. The rock sits at (-13,-12): on the deflected corridor (intercept
+  // t46, terrain kill t56) yet inside the payload's swing radius, so the wrecked pursuer cannot
+  // be re-struck by the orbiting payload and the incident closes without an amendment
+  // (tricks exactly 1, wrecking-ball subtag: sweep 163°, loaded 56 <= 120, closing >= half
+  // the governed cruise). Verified across neighbouring cells; not a knife-edge pin.
   const player=body(0,'ship',0,0,{team:0,mass:400}),payload=body(1,'ship',35,0,{vz:110,mass:28}),pursuer=body(2,'ship',pursuerX,17,{vx:60,hull:40,mass:8,combatSpeed:95});
   const entities=[player,payload,pursuer,body(3,'asteroid',rock.x,rock.z,{radius:14})];
   const state={playerId:0,entities:new Map(entities.map(e=>[e.id,e])),entityList:entities,mode:'flight',tick:0,simTime:0,combat:{},factions:{},settings:{},player:{}};

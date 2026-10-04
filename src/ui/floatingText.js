@@ -7,6 +7,7 @@ import { FACTION_META } from '../data/factions.js';
 import { SALVAGE_RIGHTS_KIND, salvageRightsItemsOf } from '../data/killRewards.js';
 import { SECTORS } from '../data/sectors.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
+import { damageLayer, admitLayerVoice } from '../audio/hitVoice.js';
 import { shouldHideOwnRepDelta } from '../story/endings/publicIdentity.js';
 
 const POOL = 56;
@@ -25,6 +26,19 @@ for (const sec of SECTORS) {
   if (sec.stations) for (const st of sec.stations) STATION_BY_ID[st.id] = st;
 }
 const STYLE_ID = 'sf-floattext-style';
+
+// Kit geometry, ported inline from src/ui/damageIndicators.js so the floating pips and the
+// screen-edge damage indicators are the SAME shapes (ring=shield, diamond outline=armor, solid
+// square=hull) and the crit callout wears the indicator's alert ring — the two systems agree at
+// a glance. One shared svg per pooled node; CSS reveals exactly the shape the spawn class names,
+// so a pooled node swaps meaning by class alone (no per-hit DOM mutation). Drawn marks replace
+// the old '○'/'❯'/'✕'/'◈' unicode stand-ins.
+const FT_MARK_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">'
+  + '<circle class="sf-ft-shape sf-ft-shape-shield" cx="12" cy="12" r="6.4" stroke="currentColor" stroke-width="2.6"/>'
+  + '<path class="sf-ft-shape sf-ft-shape-armor" stroke="currentColor" stroke-width="2.6" d="M12 3.9 L20.1 12 L12 20.1 L3.9 12 Z"/>'
+  + '<rect class="sf-ft-shape sf-ft-shape-hull" x="4.9" y="4.9" width="14.2" height="14.2" fill="currentColor"/>'
+  + '<circle class="sf-ft-shape sf-ft-shape-crit" cx="12" cy="12" r="10.9" stroke="currentColor" stroke-width="1.5"/>'
+  + '</svg>';
 
 /** Direct-to-cargo yield names what the hold took. Loose ore keeps the released quantity. */
 export function miningYieldReportedAmount(payload) {
@@ -84,12 +98,14 @@ export function bindCommsLogToasts(bus) {
 }
 
 // Computed once per receipt, never during the pooled frame update. Keep legacy weak-point copy.
+// The old '◈ ' text prefix is gone: the drawn crit ring (see FT_MARK_SVG) is revealed by the
+// sf-ft--critical class itself, so the callout reads [ring] CRIT · LABEL with no unicode glyph.
 export function weakPointFloatingTextSpec(payload) {
   if (!payload?.pos) return null;
   const critical = payload.critical === true;
   const label = payload.label || 'WEAK POINT';
   return {
-    text: '◈ ' + (critical ? (payload.criticalLabel || 'CRIT') + ' · ' : '') + label,
+    text: (critical ? (payload.criticalLabel || 'CRIT') + ' · ' : '') + label,
     cls: critical ? 'sf-ft--weak sf-ft--critical' : 'sf-ft--weak',
   };
 }
@@ -102,14 +118,22 @@ export function createFloatingText(ctx) {
   const root = document.getElementById('hud') || document.getElementById('ui-root') || document.body;
   root.appendChild(layer);
 
-  // pooled nodes
+  // pooled nodes — each carries a mark span (the shared drawn-shape svg, revealed by class) and
+  // a label span (the words/numerals), so text writes never touch the mark subtree.
   const nodes = [];
   for (let i = 0; i < POOL; i++) {
     const el = document.createElement('div');
     el.className = 'sf-ft';
     el.style.display = 'none';
+    const mark = document.createElement('span');
+    mark.className = 'sf-ft-mark';
+    mark.innerHTML = FT_MARK_SVG;
+    const label = document.createElement('span');
+    label.className = 'sf-ft-text';
+    el.appendChild(mark);
+    el.appendChild(label);
     layer.appendChild(el);
-    nodes.push({ el, alive: false, age: 0, life: 1, x: 0, y: 0, vy: 0, vx: 0,
+    nodes.push({ el, mark, label, alive: false, age: 0, life: 1, x: 0, y: 0, vy: 0, vx: 0,
       targetId: null, entity: null, wx: 0, wz: 0, damage: 0, damageClass: null });
   }
   let head = 0;
@@ -120,14 +144,18 @@ export function createFloatingText(ctx) {
     n.alive = false;
     if (activeCount > 0) activeCount--;
     n.el.style.display = 'none';
+    n.label.textContent = '';
     n._sfHudTransform = '';
     n._sfOpacity = '';
   }
 
   function spawn(text, cls, wx, wz, targetId, opts) {
-    if (!state.settings || state.settings.showDamageNumbers === false
-      || state.settings.gameplay?.damageNumbers === false) return;
     opts = opts || {};
+    // Damage numbers honor their toggle; control receipts (hit pips, counters) are feedback the
+    // control itself owes the pilot and answer to their own keys.
+    if (!opts.controlReceipt && (!state.settings || state.settings.showDamageNumbers === false
+      || state.settings.gameplay?.damageNumbers === false)) return;
+    if (opts.controlReceipt === 'pip' && state.settings?.gameplay?.hitPips === false) return;
     let n = null;
     for (let k = 0; k < POOL; k++) { const idx = (head + k) % POOL; if (!nodes[idx].alive) { n = nodes[idx]; head = (idx + 1) % POOL; break; } }
     if (!n) { n = nodes[head]; head = (head + 1) % POOL; retire(n); }   // steal oldest-ish
@@ -140,8 +168,9 @@ export function createFloatingText(ctx) {
     n.wx = wx; n.wz = wz;
     n.vy = -(opts.vy != null ? opts.vy : 48);      // px/s rise
     n.vx = (Math.random() - 0.5) * 26;
-    n.el.className = 'sf-ft sf-ft--rise ' + cls;
-    n.el.textContent = text;
+    // Control receipts are flat marks — the rise animation belongs to damage numbers.
+    n.el.className = 'sf-ft ' + (opts.controlReceipt === 'pip' ? '' : 'sf-ft--rise ') + cls;
+    n.label.textContent = text;
     n.el.style.display = 'block';
     n.el.style.opacity = '1';
     n.el.style.transform = 'translate3d(0,0,0) translate(-50%,-50%)';
@@ -157,9 +186,35 @@ export function createFloatingText(ctx) {
     if (p.brokeShield || p.kind === 'shield') return 'sf-ft--shield';
     return 'sf-ft--hull';
   }
+  // FB-019: the hit pip is a control receipt, not a damage number — it paints a three-state
+  // layer mark (ring = shield, diamond = armor, solid square = hull; the damageIndicators
+  // geometry, ~10px, drawn via the pooled node's shared svg) at the impact for 120 ms, gated
+  // by the same 40 ms per-target gap the layer voice uses so eye and ear agree. It answers its
+  // own gameplay.hitPips key and stays lit when damage numbers are off. flashReduce holds the
+  // mark longer at lower brightness instead of flashing it.
+  const pipBook = Object.create(null);
   bus.on('combat:damage', (p) => {
+    if (!p) return;
     const amount = Number.isFinite(p?.applied) ? p.applied : Number(p?.amount) || 0;
-    if (!p || amount <= 0 || state.settings?.gameplay?.damageNumbers === false
+    const playerCaused = p.attackerId === state.playerId
+      || (p.provenance && p.provenance.actorId === state.playerId);
+    const onPlayer = p.targetId === state.playerId;
+    if (playerCaused && !onPlayer && p.targetId != null) {
+      const layerWord = damageLayer(p) || (p.brokeShield ? 'shield' : null);
+      if (layerWord && admitLayerVoice(pipBook, p.targetId, layerWord, (state.simTime || 0) * 1000)) {
+        const e = state.entities.get(p.targetId);
+        const wx = e ? e.pos.x : (p.pos && p.pos.x); const wz = e ? e.pos.z : (p.pos && p.pos.z);
+        if (wx != null) {
+          const calm = state.settings?.accessibility?.flashReduce === true;
+          // The shape rides the class (sf-ft--pip-shield/armor/hull reveals the matching drawn
+          // mark); the pip itself carries no words.
+          spawn('', `sf-ft--pip sf-ft--pip-${layerWord}${calm ? ' sf-ft--pip-calm' : ''}`,
+            wx, wz, p.targetId,
+            { life: calm ? 0.18 : 0.12, vy: 0, controlReceipt: 'pip' });
+        }
+      }
+    }
+    if (amount <= 0 || state.settings?.gameplay?.damageNumbers === false
       || state.settings?.showDamageNumbers === false) return;
     const e = p.targetId != null ? state.entities.get(p.targetId) : null;
     const playerHit = p.targetId === state.playerId;
@@ -173,7 +228,7 @@ export function createFloatingText(ctx) {
     for (const n of nodes) {
       if (!e || !n.alive || n.entity !== e || n.damageClass !== cls || n.age > 0.14 || !n.damage) continue;
       n.damage += amount;
-      n.el.textContent = String(Math.round(n.damage));
+      n.label.textContent = String(Math.round(n.damage));
       n.el.className = 'sf-ft sf-ft--rise ' + cls + (n.damage >= 25 ? ' sf-ft--big' : '');
       return;
     }
@@ -273,6 +328,13 @@ export function createFloatingText(ctx) {
     bus.emit('toast', { text: 'Market event ended', kind: 'info', ttl: 3 });
   });
 
+  // Session boundary (SF-283): pooled floats live when a save loads or a new run starts were
+  // minted by the pre-save session — retire them rather than letting them finish their drift
+  // over the restored scene at stale world anchors.
+  for (const name of ['save:loaded', 'game:new', 'game:newGame']) {
+    bus.on(name, () => { for (const n of nodes) retire(n); });
+  }
+
   // Spawn-pop: numbers overshoot from 1.3 -> 1.0 over POP_TIME seconds, then hold 1.0.
   // A cheap ease-out (1 - (1-x)^2) gives a snappy "pop" so hits feel weighty instead of
   // appearing flat at full size. Driven here (not via a CSS keyframe) because the per-frame
@@ -337,6 +399,28 @@ function injectStyle() {
   .sf-ft--rise { animation:sf-ft-rise 220ms ease-out 1; }
   @keyframes sf-ft-rise { from { margin-top:6px; } to { margin-top:0; } }
   .sf-ft--hull { color:#ffd24a; }
+  /* FB-019 hit pips — control receipts, not damage numbers. One drawn mark per layer at the
+     impact: ring for shield work, diamond outline for armor bite, solid square for hull — the
+     damageIndicators geometry, ~10px. Flat marks, no rise. Colors ride the same tokens the
+     damage indicators use (--sf-shield / --sf-warn / --sf-danger), never per-system hexes. */
+  .sf-ft--pip { position:absolute; left:0; top:0; line-height:1;
+    pointer-events:none; text-shadow:0 0 6px rgba(0,0,0,.85); will-change:transform,opacity; }
+  .sf-ft--pip-shield { color:var(--sf-shield, #39d0ff); }
+  .sf-ft--pip-armor { color:var(--sf-warn, #ffb35c); }
+  .sf-ft--pip-hull { color:var(--sf-danger, #ff5c5c); }
+  .sf-ft--pip-calm { opacity:.6; }
+  /* The shared drawn-shape svg every pooled node carries; the spawn class reveals one shape. */
+  .sf-ft-mark { display:none; vertical-align:middle; }
+  .sf-ft-mark > svg { display:block; width:100%; height:100%; }
+  .sf-ft-shape { display:none; }
+  .sf-ft--pip .sf-ft-mark { display:inline-block; width:10px; height:10px; }
+  .sf-ft--pip-armor .sf-ft-mark { width:11px; height:11px; }
+  .sf-ft--pip-shield .sf-ft-shape-shield,
+  .sf-ft--pip-armor .sf-ft-shape-armor,
+  .sf-ft--pip-hull .sf-ft-shape-hull { display:block; }
+  /* Weak-point callout: the indicator's critical alert ring leads the CRIT word. */
+  .sf-ft--critical .sf-ft-mark { display:inline-block; width:12px; height:12px; margin-right:5px; }
+  .sf-ft--critical .sf-ft-shape-crit { display:block; }
   .sf-ft--shield { color:#7fe0ff; font-size:14px; }
   .sf-ft--player { color:#ff5470; font-size:18px; }
   .sf-ft--big { font-size:24px; }

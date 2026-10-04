@@ -431,6 +431,21 @@ export const TELEGRAPH_FORCE_CHANNELS = Object.freeze({
   weapon_charge: 'impulses',
   wake_mines: 'repulsors',
   attach_spool: 'rope',
+  detonator_fuse: 'repulsors',
+  shield_lance: 'impulses',
+  field_spool: 'wells',
+  pd_curtain: 'shields',
+  sensor_ghost: 'impulses',
+  broadside_charge: 'impulses',
+  swarmer_vent: 'impulses',
+  broadside_desperation: 'impulses',
+  pirate_stalk: 'impulses',
+  return_fire_warning: 'impulses',
+  scan_sweep: 'shields',
+  pd_curtain_closing: 'shields',
+  warden_screen_closing: 'shields',
+  attackRun: 'impulses',
+  alphaStrike: 'impulses',
 });
 
 export function forceChannelForTelegraphKind(kind) {

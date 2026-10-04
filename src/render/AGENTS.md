@@ -33,3 +33,5 @@ release/lock/output.
 Authored async admissions use cancellation/deadline scopes. Observe fire-and-forget pipeline
 promises with `observePipelineAdmission` without changing the original rejection for awaited owners.
 Focused lifetime proof: `node --test test/authored-async-liveness.test.mjs test/renderer-owner-lifetime.test.mjs`.
+
+Streaming admission uses visual envelopes and the upcoming camera zoom; first-flight holds must not park approaching authored wrecks/stations. Shadow-depth warm-up owns a private shadow map, and live refresh requests arm both renderer.shadowMap.needsUpdate and light.shadow.needsUpdate. Presentation rebinds restore mesh/view on promoted same-id entities. Focused proofs: test/frame-solid-glass-priority.test.mjs, test/shadow-depth-admission.test.mjs, test/asteroid-pool-rekey.test.mjs.

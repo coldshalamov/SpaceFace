@@ -2,8 +2,8 @@
 # NOW — threads changing the shared checkout
 
 ```yaml
-refreshed: 2026-09-27
-baseCommit: e0dd924dccbf97289bc3930dc7616be7b2a42648
+refreshed: 2026-10-04
+baseCommit: 76f4fe2527e2991510ebf704625bbf5cb439e1c7
 expiresAfterCommits: 10
 expiresAfterDays: 2
 ```
@@ -36,16 +36,20 @@ working. Product status and remaining tasks live in
    means the shared index is stale, not that the file is gone: `git reset -- <paths>`, then publish.
 6. End every task with `RESULT: DONE` or `RESULT: NOT DONE` using the template in
    [`02_REMAINING_WORK.md`](./02_REMAINING_WORK.md). Delete stale rows; Git and receipts own history.
-7. Do not create a worktree by default. Existing worktrees are recovery obligations recorded in
+7. Do not create a worktree by default; if one is unavoidable it is a single `.worktrees/<name>`
+   shared by the whole sitting — port the work back and `git worktree remove --force` in the same
+   turn. Existing worktrees are recovery obligations recorded in
    [`04_WORKTREE_AND_INTEGRATION.md`](./04_WORKTREE_AND_INTEGRATION.md), not current ownership.
+   `git worktree list` shows only the main checkout before you walk away.
 
 ## Active mutation windows
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| Graphics assessment implementation (design/program/GRAPHICS_ASSESSMENT_2026-09-28.md, all sections) | devin-graphics | IN PROGRESS | `src/render/{bloom,renderer,infrastructureMotion,visualOverrides,vfx}.js`, `src/data/sectorVisualProfiles.js`, `tools/blender/**`, `scripts/{fleet-look,flight-look}.mjs`, generated asset outputs via publish (`assets/ships/**`, `assets/incubator/**`, `src/render/renderPackageManifest.js`, `src/data/modelTruthCensus.json`), `design/program/GRAPHICS_ASSESSMENT_2026-09-28.md` | packet A bugs (D97 corner picture, rest-state glow disc, Wreck Cathedral scale, D72 check) → B lighting/surface + C station animation (one fleet republish) → D composition → E models → F effects |
-| INFERENCE catalog batch — 20 units, one line at a time (done: PIC-30, VERB-25; current: WORLD-33 loud mining raises danger) | devin-infer | IN PROGRESS | `src/systems/mining.js`, `src/systems/sectorSim.js`, `test/` new focused test, `design/program/INFERENCE_IDEAS.md`, `design/program/inference-memory.json`, `design/program/NOW.md` | claim line, implement, focused test, ship by pathspec, record, rotate group |
-| pb-ten-lanes workflow — ten §1C board rows (54, 59, 72, 73, 81, 87, 88, 93, 95, 102 claimed; 80 PB-SLICE-E vetoed — live foreign writer on scanner.js/ambushSignatures.js) | pb-ten-lanes | LIVE (claimed 2026-09-28) | `src/systems/traffic.js`, `src/systems/npcJobs.js`, `src/systems/npcJobsRuntime.js`, `src/systems/world.js`, `src/data/sectorActivityPockets.js`, `src/data/laneContacts.js`, `src/systems/cargoCustody.js`, `src/ai/ambientPredation.js`, `src/systems/missions.js`, `src/data/environmentalMachinery.js`, `src/systems/environmentalMachinery.js`, `src/systems/aftermathWrecks.js`, `src/systems/encounterDirector.js`, `src/systems/encounterScripts.js`, `src/systems/salvageActions.js`, `src/data/encounters/346-yard-towout.js`, `src/systems/presentationOrchestrator.js`, `src/systems/stationContacts.js`, `src/systems/worldSiteRuntime.js`, `src/systems/scanReveal.js`, `src/systems/economy.js`, `src/systems/lossLedger.js`, `src/systems/onboarding.js`, `src/ai/director.js`, `src/audio/cuePriorityBus.js`, `src/render/cameraDirector.js`, `src/systems/swarmArena.js`, `src/data/swarmMode.js`, `src/systems/survivalRun.js`, `src/systems/survivalWave.js`, `src/systems/survivalWavePlanner.js`, `src/systems/runSession.js`, `src/ai/specialistPlans.js`, `src/ai/specialistCounterplay.js`, `src/systems/tacticalAI.js`, `src/ai/engagementAuthority.js`, `src/ai/maneuver.js`, `src/ai/shipDecision.js`, `src/systems/aiPorts.js`, `src/data/enemies.js`, `src/systems/bombs.js`, `src/data/bombs.js`, `src/systems/weapons.js`, `src/systems/fields.js`, `src/render/bombPresentation.js`, `src/core/fields/fieldKernel.js`, `src/systems/mines.js`, `src/data/opticStructures.js`, `test/*` new focused tests, new optic-cost probe under `scripts/`, new receipt under `design/program/roadmap/receipts/`, `build_map.md` §1C rows 54/59/72/73/81/87/88/93/95/102, `design/program/NOW.md` | land rows by pathspec, delete landed board rows, release this row |
+| 40-unit packet sitting — ~30 build-map units (open defect ledger, D3 gate adjudication, adoptable board residuals) + ~10 inference rows (parent-landed WAITING + equivalents) — critic/review/fix subagents, no worktrees | devin-packets-oct4 | DONE 2026-10-04 | `design/program/INFERENCE_IDEAS.md`, `design/program/DEMO_READINESS_2026-09-20.md`, `build_map.md`, packet-targeted src/test paths per unit | landed: 9/9 inference rows + ~35 build units; REV-1..5 approved; fixes via FIX-1..6; row releasable after final sweep |
+| Sole-agent cleanup + quiet-host sweep: master-side stale checks repinned and pushed (`e15597892`); soak market-verify hardened (`127197043`); D67 closed (`b231a7f0c`); D24 resoak attempts F+G died at launch — the cook lane starves when two headed system-Chrome probes contend for the GPU (product is bounded/fail-visible, worst ~210 s; contention, not a regression — a lone probe clears in ~46 s); attempt H launched 08:01Z on a quiet host, in flight cycling | devin-sweep-oct3 | IN PROGRESS | `scripts/lib/releaseSoakProbe.mjs`, `scripts/check-gameplay-core.mjs`, `design/program/DEMO_READINESS_2026-09-20.md` §6 | D24 soak verdict → heapsnapshot diff → remove or keep row; then final sync (PRs/tree/master==origin) |
+
+
 
 ## Remaster machine
 

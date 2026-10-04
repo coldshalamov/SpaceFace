@@ -62,7 +62,7 @@ function matrixInHull(mesh, hull, out) {
 // GLB-scene-space — the partRoot scale (targetLength 1.72) normalizes it into hull-local units.
 const SKIN_RAYCAST_MATERIAL = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
 
-function collectHullSkinMesh(hull, hullRecord) {
+function collectHullSkinMesh(hull, hullRecord, scanRoot = null) {
   const soup = [];
   const v = new THREE.Vector3();
   const m = new THREE.Matrix4();
@@ -97,7 +97,10 @@ function collectHullSkinMesh(hull, hullRecord) {
   }
   if (!soup.length) {
     const local = new THREE.Matrix4();
-    hull.traverse((o) => {
+    // scanRoot scopes the soup to the hull record's own instantiated subtree (the authored
+    // body). Fitted mounts bolted on beside it are per-entity and must not feed a bake shared
+    // across hulls. Matrix composition still walks to `hull` so soup units stay hull-local.
+    (scanRoot || hull).traverse((o) => {
       if (!o.isMesh || o.visible === false) return;
       if (o.name && /LOD[12]/i.test(o.name)) return;
       if (o.userData && (o.userData.spacefaceSocket || o.userData.spacefaceRetroHardware)) return;
@@ -134,12 +137,15 @@ function flankSurfaceAt(skinMesh, x, y, side) {
 const skinMeshCache = new WeakMap();
 
 // The finished pack geometry too: seats are raycast against the same skin soup and the profile
-// dimensions are fixed per engine profile, so a (hull record, engine profile, side) pack is one
+// dimensions are fixed per engine profile, so a (hull file, engine profile, side) pack is one
 // deterministic bake. Sharing it means the launch-warm exemplar's stamp uploads the buffers once
 // and every in-round spawn draws resident geometry instead of paying mergeGeometries plus a
-// first-draw bufferData per pack mesh. Disposal-proof like the other shared bakes — a retiring
+// first-draw bufferData per pack mesh. Keyed on the record's stable url identity, not the record
+// object: a byte-pressure evict + re-decode mints a new record object for the same authored file,
+// and the bake is still identical (the soup comes from the same primitives/subtree). Entries are
+// bounded — hulls × profiles × sides — and disposal-proof like the other shared bakes: a retiring
 // hull must not steal the buffers the next spawn still draws.
-const retroPackCache = new WeakMap(); // hullRecord -> Map<key, {geometries, pivot, socket}>
+const retroPackCache = new Map(); // `${recordUrl}|${assetId}` -> Map<key, {geometries, pivot, socket}>
 
 function shareRetroPackGeometry(geometry) {
   geometry.userData = { ...(geometry.userData || {}), spacefaceSharedAsset: true };
@@ -147,8 +153,15 @@ function shareRetroPackGeometry(geometry) {
   return geometry;
 }
 
-/** Add one paired retro assembly to an already normalized flyable hull. Idempotent on rebuild. */
-export function attachRetroMounts(hull, entity, palette = {}, engineUrl = null, hullRecord = null) {
+/**
+ * Add one paired retro assembly to an already normalized flyable hull. Idempotent on rebuild.
+ * `skinRoot` is the hull record's own instantiated subtree — passing it lets package records
+ * (no `primitives`) join the shared bake: the soup then measures only the authored body, so
+ * the seats stay record-determined regardless of this entity's fitted mounts.
+ */
+export function attachRetroMounts(
+  hull, entity, palette = {}, engineUrl = null, hullRecord = null, skinRoot = null,
+) {
   if (!hull || hull.getObjectByName('SOCKET_Retro_Port')) return null;
   const defId = entity?.data?.defId || null;
   const engineProfileId = resolveEngineProfileId({
@@ -200,14 +213,20 @@ export function attachRetroMounts(hull, entity, palette = {}, engineUrl = null, 
   const axisX = Math.cos(splay);
   let skin = null;
   let skinOwned = false;
-  // The pack bake is only shareable when its seats are measured from the record's soup — the
-  // tree-scan fallback skin is per-hull, so that path must keep baking per attach.
-  const packCacheable = !!(hullRecord && Array.isArray(hullRecord.primitives) && hullRecord.primitives.length);
+  // The pack bake is shareable whenever its seats are measured from record-determined soup:
+  // record.primitives, or the record's own instantiated subtree (skinRoot). Without either,
+  // the tree-scan skin walks the whole hull — per-hull fittings included — so that path must
+  // keep baking per attach.
+  const recordPrimitives = !!(
+    hullRecord && Array.isArray(hullRecord.primitives) && hullRecord.primitives.length
+  );
+  const measuredScanRoot = skinRoot && skinRoot.isObject3D ? skinRoot : null;
+  const packCacheable = !!(hullRecord && (recordPrimitives || measuredScanRoot));
   if (packCacheable) {
     if (skinMeshCache.has(hullRecord)) {
       skin = skinMeshCache.get(hullRecord);
     } else {
-      skin = collectHullSkinMesh(hull, hullRecord);
+      skin = collectHullSkinMesh(hull, hullRecord, measuredScanRoot);
       skinMeshCache.set(hullRecord, skin);
     }
   } else {
@@ -221,7 +240,10 @@ export function attachRetroMounts(hull, entity, palette = {}, engineUrl = null, 
     const mouthX = x + 0.05 * axisX;
     const sideName = side < 0 ? 'Port' : 'Starboard';
     const packKey = `${engineProfileId}|${side < 0 ? 'P' : 'S'}`;
-    let packs = packCacheable ? retroPackCache.get(hullRecord) : null;
+    const recordIdentity = packCacheable && (hullRecord.url || hullRecord.assetId)
+      ? `${hullRecord.url || ''}|${hullRecord.assetId || ''}`
+      : null;
+    let packs = recordIdentity ? retroPackCache.get(recordIdentity) : null;
     let baked = packs ? packs.get(packKey) : null;
     // The gimbal pivot stands on the jet axis at the fairing's root — steering the pack swings
     // the mouth around the mount point like a vectored nozzle, and the socket (a pivot child)
@@ -307,11 +329,11 @@ export function attachRetroMounts(hull, entity, palette = {}, engineUrl = null, 
         pivot: [px, py, pz],
         socket: [mouthX + axisX * 0.01 - px, 0, mouthZ + axisZ * 0.01 - pz],
       };
-      if (packCacheable) {
+      if (recordIdentity) {
         baked.geometries = baked.geometries.map(shareRetroPackGeometry);
         if (!packs) {
           packs = new Map();
-          retroPackCache.set(hullRecord, packs);
+          retroPackCache.set(recordIdentity, packs);
         }
         packs.set(packKey, baked);
       }

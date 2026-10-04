@@ -4,10 +4,12 @@ import assert from 'node:assert/strict';
 import {
   claims as claimsBase,
   CLAIM_DEFENSE_WARNING_S,
+  CLAIM_DEFENSE_REPRIEVE_S,
 } from '../src/systems/claims.js';
 import { createSimulation } from '../src/core/sim.js';
 import { encounterDirector } from '../src/systems/encounterDirector.js';
 import { spawnBudget } from '../src/systems/spawnBudget.js';
+import { provenanceLedger } from '../src/systems/provenanceLedger.js';
 
 const FRONTIER = 'sector_io_reach';
 
@@ -262,6 +264,232 @@ test('ignored or unreachable warning falls back once, never double-resolves or d
   h.sys.update(1, h.state);
   assert.equal(h.body.spec.totals.lostU, 70);
   assert.equal(emitted(h, 'claim:defenseResolved').length, 1);
+});
+
+test('an empty store cannot be raided for invented goods (NXI-137)', () => {
+  const h = boot();
+  h.body.spec.store = { input: {}, output: {} };
+  assert.equal(h.sys.beginRaidDefense(h.body.id), false,
+    'no defense contract on an empty site');
+  assert.equal(h.body.spec.defense, null);
+  assert.equal(h.body.spec.totals.lostU, 0, 'nothing was ever there to lose');
+  assert.equal(emitted(h, 'claim:defenseStarted').length, 0, 'no raid is announced for empty stores');
+
+  // A store emptied mid-defense settles the raid with zero loss — the receipt stays honest.
+  const h2 = boot();
+  h2.sys.beginRaidDefense(h2.body.id);
+  h2.body.spec.store = { input: {}, output: {} };
+  h2.body.spec.defense.phase = 'engaged';
+  h2.bus.emit('encounter:resolved', {
+    encounterId: h2.body.spec.defense.encounterId,
+    shape: 'claim_threat', outcome: 'timeout', sectorId: FRONTIER,
+  });
+  assert.equal(h2.body.spec.totals.lostU, 0, 'a timeout on an empty store invents no quantity');
+  assert.equal(emitted(h2, 'claim:defenseResolved').at(-1).payload.lostU, 0,
+    'the settlement receipt reports the real loss: none');
+});
+
+test('a settled raid cannot be re-offered or re-resolved on late arrival (NXI-138)', () => {
+  const h = boot();
+  h.sys.beginRaidDefense(h.body.id);
+  const defense = h.body.spec.defense;
+  defense.phase = 'engaged';
+  const resolved = {
+    encounterId: defense.encounterId, shape: 'claim_threat', outcome: 'timeout', sectorId: FRONTIER,
+  };
+  h.bus.emit('encounter:resolved', resolved);
+  assert.equal(emitted(h, 'claim:defenseResolved').length, 1);
+  assert.equal(h.body.spec.status, 'raided', 'the settled result is what a late arrival sees');
+
+  // The same encounter receipt replayed — late arrival must not re-settle.
+  h.bus.emit('encounter:resolved', resolved);
+  assert.equal(emitted(h, 'claim:defenseResolved').length, 1, 'the settled raid cannot resolve twice');
+  assert.equal(h.body.spec.totals.lostU, 70, 'losses are not re-applied');
+
+  // And the site does not re-invite the same raid while it sits frozen.
+  assert.equal(h.sys.beginRaidDefense(h.body.id), false,
+    'a raided site is not a fresh invitation to the same raid');
+});
+
+test('a terminally refused re-admission hands the raid back to the fallback owner (NXI-139)', () => {
+  const h = boot();
+  h.sys.beginRaidDefense(h.body.id, { attackerCount: 3 });
+  h.body.spec.defense.phase = 'engaged';
+  h.body.spec.defense.requestedAt = h.state.simTime;
+  const snap = h.sys.serialize();
+
+  const refusals = [];
+  const h2 = boot({ director: {
+    // A plan that can never field a squad is not lateness — this refusal is terminal.
+    requestClaimDefense(payload) {
+      refusals.push(payload.encounterId);
+      return { ok: false, reason: 'empty_plan' };
+    },
+  } });
+  h2.sys.deserialize(snap);
+  const restored = h2.state.claims.bodies[0];
+  assert.equal(restored.spec.defense.phase, 'engaged', 'restored defense starts on the physical track');
+
+  // Run the refusal after the original warning deadline is already spent — otherwise
+  // Math.max keeps the old deadline and a missing re-arm would still pass.
+  h2.state.simTime = restored.spec.defense.deadlineAt + 1;
+  h2.sys.update(1, h2.state);
+  assert.equal(refusals.length, 1);
+  assert.equal(restored.spec.defense.phase, 'warning',
+    'a terminal refusal cannot sit in engaged — no resolution event can ever arrive');
+  assert.ok(restored.spec.defense.deadlineAt >= h2.state.simTime + CLAIM_DEFENSE_REPRIEVE_S,
+    'the fallback deadline is re-armed a full reprieve out, not already spent');
+  assert.equal(h2.sys._resumeDefenseIds.has(restored.spec.defense.id), false,
+    'the retry token is consumed — the warning owner now owns the raid');
+
+  // And the fallback owner still resolves the unanswered raid exactly once.
+  h2.state.simTime = restored.spec.defense.deadlineAt + 1;
+  h2.sys.update(1, h2.state);
+  assert.equal(restored.spec.defense, null);
+  assert.equal(restored.spec.totals.lostU, 70, 'the fallback settles the unanswered raid');
+  assert.equal(emitted(h2, 'claim:defenseResolved').length, 1);
+});
+
+test('a late spawn budget keeps retrying without booking a loss (NXI-139)', () => {
+  const h = boot();
+  h.sys.beginRaidDefense(h.body.id, { attackerCount: 3 });
+  h.body.spec.defense.phase = 'engaged';
+  h.body.spec.defense.requestedAt = h.state.simTime;
+  const snap = h.sys.serialize();
+
+  let admit = false;
+  const attempts = [];
+  const h2 = boot({ director: {
+    requestClaimDefense(payload) {
+      attempts.push(h2.state.simTime);
+      return admit
+        ? { ok: true, encounterId: payload.encounterId }
+        : { ok: false, reason: 'spawn_cap' };
+    },
+  } });
+  h2.sys.deserialize(snap);
+  const restored = h2.state.claims.bodies[0];
+
+  for (let i = 0; i < 6; i++) {
+    h2.state.simTime += 1;
+    h2.sys.update(1, h2.state);
+  }
+  assert.deepEqual(attempts, [1001, 1003, 1005], 'a late asset is retried on a bounded cadence');
+  assert.equal(restored.spec.defense.phase, 'engaged',
+    'a transient refusal never disables the physical takeover');
+  assert.equal(restored.spec.totals.lostU, 0, 'no loss is resolved just because the asset is late');
+  assert.equal(emitted(h2, 'claim:defenseResolved').length, 0);
+
+  admit = true;
+  h2.state.simTime += 2;
+  h2.sys.update(1, h2.state);
+  assert.equal(attempts.length, 4);
+  assert.equal(restored.spec.defense.phase, 'engaged');
+  assert.equal(restored.spec.defense.requestedAt, h2.state.simTime,
+    'the committed takeover restamps when admission finally lands');
+  assert.equal(h2.sys._resumeDefenseIds.has(restored.spec.defense.id), false,
+    'a materialized takeover consumes the retry token');
+});
+
+test('a synchronous resolve inside the request consumes the stale retry token once (NXI-139)', () => {
+  const h = boot();
+  h.sys.beginRaidDefense(h.body.id);
+  h.body.spec.defense.phase = 'engaged';
+  // A stale retry marker from a transient refusal before the save — the handoff branch must
+  // clear it alongside the token, not leave it serialized on a warning-phase defense.
+  h.body.spec.defense.retryAt = h.state.simTime - 10;
+  const snap = h.sys.serialize();
+
+  const h2 = boot({ director: {
+    requestClaimDefense(payload) {
+      // The encounter fired and aborted inside admission (no budget at spawn): the resolve
+      // event owns the handoff back to warning — the retry branch must not double-write it.
+      h2.bus.emit('encounter:resolved', {
+        encounterId: payload.encounterId, shape: 'claim_threat',
+        outcome: 'aborted:no_budget', sectorId: FRONTIER,
+      });
+      return { ok: false, reason: 'spawn_failed' };
+    },
+  } });
+  h2.sys.deserialize(snap);
+  const restored = h2.state.claims.bodies[0];
+  // Same discriminating pin: run the abort after the original deadline is spent so only a
+  // real re-arm can put the fallback deadline back in the future.
+  h2.state.simTime = restored.spec.defense.deadlineAt + 1;
+  h2.sys.update(1, h2.state);
+  assert.equal(restored.spec.defense.phase, 'warning', 'the abort event owns the handoff');
+  assert.ok(restored.spec.defense.deadlineAt >= h2.state.simTime + CLAIM_DEFENSE_REPRIEVE_S,
+    'the aborted path already re-armed the fallback deadline a full reprieve out');
+  assert.equal(h2.sys._resumeDefenseIds.has(restored.spec.defense.id), false,
+    'the stale token is retired, not re-armed against a different owner');
+  assert.equal(restored.spec.defense.retryAt, undefined,
+    'the stale retry marker is cleared with the token');
+  assert.equal(restored.spec.totals.lostU, 0, 'an aborted admission books no loss');
+});
+
+test('a defense receipt names the goods actually taken and saved (NXI-140)', () => {
+  const h = boot();
+  h.body.spec.store = {
+    input: { cmdty_ore_iron: 40, cmdty_ore_copper: 10 },
+    output: { cmdty_refined_metals: 8 },
+  };
+  h.sys.beginRaidDefense(h.body.id);
+  const defense = h.body.spec.defense;
+  defense.phase = 'engaged';
+  h.bus.emit('encounter:resolved', {
+    encounterId: defense.encounterId, shape: 'claim_threat', outcome: 'partial', sectorId: FRONTIER,
+  });
+  // partial lossFrac 0.25, floored per good: iron -10, copper -2, metals -2.
+  assert.deepEqual(h.body.spec.store.input, { cmdty_ore_iron: 30, cmdty_ore_copper: 8 });
+  assert.deepEqual(h.body.spec.store.output, { cmdty_refined_metals: 6 });
+  assert.equal(h.body.spec.totals.lostU, 14);
+
+  const receipt = h.body.spec.receipts.at(-1);
+  assert.equal(receipt.kind, 'defense_partial');
+  assert.deepEqual({ ...receipt.data.goodsLost }, {
+    cmdty_ore_iron: 10, cmdty_ore_copper: 2, cmdty_refined_metals: 2,
+  }, 'the receipt names exactly what the raid took');
+  assert.deepEqual({ ...receipt.data.goodsSaved }, {
+    cmdty_ore_iron: 30, cmdty_ore_copper: 8, cmdty_refined_metals: 6,
+  }, 'the receipt names exactly what was saved — a partial loss is not a full warehouse');
+  assert.match(receipt.text, /10u ore iron, 2u ore copper, 2u refined metals taken/);
+  assert.match(receipt.text, /30u ore iron, 8u ore copper, 6u refined metals held/);
+  const resolved = emitted(h, 'claim:defenseResolved').at(-1);
+  assert.deepEqual({ ...resolved.payload.goodsSaved }, { ...receipt.data.goodsSaved });
+  assert.deepEqual({ ...resolved.payload.goodsLost }, { ...receipt.data.goodsLost });
+
+  // A clean hold still reports the whole store saved and nothing taken.
+  const h2 = boot();
+  h2.sys.beginRaidDefense(h2.body.id);
+  const defense2 = h2.body.spec.defense;
+  defense2.phase = 'engaged';
+  h2.bus.emit('encounter:resolved', {
+    encounterId: defense2.encounterId, shape: 'claim_threat', outcome: 'defended', sectorId: FRONTIER,
+  });
+  const receipt2 = h2.body.spec.receipts.at(-1);
+  assert.equal(receipt2.kind, 'defense_defended');
+  assert.deepEqual({ ...receipt2.data.goodsLost }, {});
+  assert.deepEqual({ ...receipt2.data.goodsSaved }, { cmdty_ore_iron: 100 });
+  assert.match(receipt2.text, /stores intact/);
+  assert.equal(h2.body.spec.totals.lostU, 0, 'no goods are invented or shaved to match the text');
+});
+
+test('a settled defense records one ledger consequence, not a detailed node plus a generic twin', () => {
+  const h = boot();
+  const ledger = Object.create(provenanceLedger);
+  ledger.init({ state: h.state, bus: h.bus });
+  h.sys.beginRaidDefense(h.body.id);
+  h.body.spec.defense.phase = 'engaged';
+  h.bus.emit('encounter:resolved', {
+    encounterId: h.body.spec.defense.encounterId, shape: 'claim_threat',
+    outcome: 'timeout', sectorId: FRONTIER,
+  });
+  const chains = (h.state.provenance && h.state.provenance.chains) || [];
+  const nodes = chains.flatMap((chain) => chain.nodes || [])
+    .filter((node) => node && node.bodyId === h.body.id
+      && (node.outcome === 'raided' || node.outcome === 'repelled'));
+  assert.equal(nodes.length, 1, 'the claim:raided echo of a defense settle adds no second node');
+  assert.match(nodes[0].text, /Claim defense timeout/, 'the surviving node is the detailed one');
 });
 
 test('the live director materializes the requested claim set piece at the exact anchor with readable ROE', () => {

@@ -17,10 +17,12 @@
 // the attachment through the same service tetherGameplay uses. The cut itself adds no free speed.
 import { massline2Flag } from '../data/featureFlags.js';
 import { sampleThrowSolution, tetherPairKinematics } from '../combat/tetherFireControl.js';
-import { sampleFieldAcceleration } from '../core/fields/fieldKernel.js';
+import { fieldsRelevantAlongCorridor, sampleFieldAcceleration } from '../core/fields/fieldKernel.js';
+import { fieldBodyProfile, fieldEntityIsPrimed, fieldVelocityTermApplies } from './fields.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { forecastCadenceWindow } from '../combat/masslineReleaseGeometry.js';
 import { resolveThrowWhoosh } from '../audio/masslineInstrument.js';
+import { clearSwingTraceReleasePaint, paintSwingTraceRelease } from '../render/masslineSwingTrace.js';
 
 // --- Dials (design doc §12) -----------------------------------------------------------------
 const SNAP_WINDOW_MS = 90;          // forward-only queue ceiling; 5 fixed ticks at 60 Hz
@@ -29,6 +31,10 @@ const SLING_RELEASE_SPEED_FRACTION = 0; // compatibility export: no free release
 const SLING_MIN_EXIT_SPEED = 25;    // "genuinely moving" bar (mirrors SNAP_CATCH_MIN_SPEED)
 const THROW_MIN_PAYLOAD_SPEED = 25; // don't auto-cut a parked payload — no throw below this
 const AIM_QUERY_RADIUS = 220;       // cursor-aim entity search radius around aimWorld
+// RELEASE-TRUTH C4 — corridor-relevance horizon. Must equal the contact horizon the release
+// solve actually claims (solveCadenceRelease's own 6 s default): a field intersecting that
+// corridor anywhere can bend the claimed contact, so the preview must not call it irrelevant.
+const THROW_FIELD_CORRIDOR_HORIZON_S = 6;
 
 const AIMABLE_TYPES = new Set(['ship', 'drone', 'asteroid', 'station', 'wreck', 'payload']);
 
@@ -106,6 +112,14 @@ export const masslineThrow = {
     this._unsubs = [];
     if (this.bus && typeof this.bus.on === 'function') {
       this._unsubs.push(this.bus.on('tether:cut', (p) => this._onManualCut(p || {})));
+      // PIC-29: the swept ribbon fades in the grade this release already earned. Cleared on the
+      // next latch so the following swing is neutral until it, too, is rated.
+      this._unsubs.push(this.bus.on('tether:releaseRated', (p) => {
+        paintSwingTraceRelease(null, p || {});
+      }));
+      this._unsubs.push(this.bus.on('tether:latched', () => {
+        clearSwingTraceReleasePaint();
+      }));
       this._unsubs.push(this.bus.on('input:worldGestureCancelled', () => this._resetCadenceThrow(this.state)));
       for (const name of ['save:loaded', 'game:new', 'game:started', 'sector:exit', 'sector:enter']) {
         this._unsubs.push(this.bus.on(name, () => this._resetCadenceThrow(this.state)));
@@ -256,25 +270,35 @@ export const masslineThrow = {
     this._executeThrow(state, player, payload, aim, solution, 'snap-manual');
   },
 
-  // Build a pure field-acceleration sampler for the release predictor, or null when no continuous
-  // field is active (so the predictor stays exactly ballistic). The closure reuses scratch objects
-  // — zero allocation per predictor step.
+  // Build a pure field-acceleration sampler for the release predictor, or null when no field
+  // can bend THIS throw (so the predictor stays exactly ballistic — RELEASE-TRUTH C4). The
+  // body profile is production's own (RELEASE-TRUTH C2): fieldBodyProfile is the same record
+  // fields.js hands the kernel every tick, so earned coupling/resistance (combat multipliers
+  // × authored fieldResponseMult, never target selection), boost, hitch, and kinematic status
+  // reach the preview unchanged — and the kernel receives velocity through the same gate
+  // production applies (ships/drones only, never a primed light). The corridor test keeps a
+  // payload-excluded, zero-force, or provably disjoint field out of the solve entirely: an
+  // irrelevant field must not downgrade a six-second ballistic contact to the field window.
   _buildFieldSampler(state, payload) {
     const snapshot = state.fields && Array.isArray(state.fields.snapshot) ? state.fields.snapshot : null;
     if (!snapshot || snapshot.length === 0) return null;
-    const targetId = state.player && state.player.targetId;
-    const profile = {
-      mass: Math.max(0.1, Number.isFinite(payload.physicsBody && payload.physicsBody.mass) ? payload.physicsBody.mass : (Number.isFinite(payload.mass) ? payload.mass : 1)),
-      type: payload.type,
-      team: payload.team,
-      id: payload.id,
-      marked: targetId != null && payload.id === targetId,
+    const profile = fieldBodyProfile(payload, state);
+    profile.primed = fieldEntityIsPrimed(this.registry, state, payload);
+    // The corridor is the ballistic claim being protected: the release solve's full contact
+    // horizon (solveCadenceRelease's own default), not the shorter field-integration window.
+    const horizon = THROW_FIELD_CORRIDOR_HORIZON_S;
+    const end = {
+      x: finite(payload.pos && payload.pos.x) + finite(payload.vel && payload.vel.x) * horizon,
+      z: finite(payload.pos && payload.pos.z) + finite(payload.vel && payload.vel.z) * horizon,
     };
+    const relevant = fieldsRelevantAlongCorridor(snapshot, payload.pos, end, profile);
+    if (relevant.length === 0) return null;
+    const useVelocityTerm = fieldVelocityTermApplies(payload, profile);
     const simTime = state.simTime;
     const pS = { x: 0, z: 0 }, vS = { x: 0, z: 0 }, out = { ax: 0, az: 0 };
     return (px, pz, vx, vz) => {
       pS.x = px; pS.z = pz; vS.x = vx; vS.z = vz;
-      return sampleFieldAcceleration(pS, vS, snapshot, simTime, profile, out);
+      return sampleFieldAcceleration(pS, useVelocityTerm ? vS : null, relevant, simTime, profile, out);
     };
   },
 
@@ -592,9 +616,11 @@ export const masslineThrow = {
     const runtime = ensureThrowSubtree(state);
     const prediction = predictionReceipt(runtime.selfSolution || {});
     const releaseId = `massline:self-sling:${state.tick}:${player.id}`;
+    const earnedBonus = selfSlingBonusDv(speed, this._swing.load, true);
     const receipt = { releaseId, source: 'massline', physicsEarned: true,
       targetId: runtime.selfSolution && runtime.selfSolution.targetId,
-      anchorId: this._swing.anchorId, corrected: false, bonusDv: 0, load: this._swing.load,
+      anchorId: this._swing.anchorId, corrected: false, bonusDv: 0,
+      selfSlingBonusDv: Math.round(earnedBonus), load: this._swing.load,
       exitAngle: Math.atan2(player.vel.z, player.vel.x), exitSpeed: speed, tick: state.tick,
       prediction, impulses: [], releasePosition: { x: finite(player.pos.x), z: finite(player.pos.z) } };
     runtime.lastSelfSling = receipt;

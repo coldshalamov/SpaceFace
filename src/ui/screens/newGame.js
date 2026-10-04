@@ -8,6 +8,7 @@ import { leftoverNewRunLine } from '../../core/newGamePlus.js';
 import { MODULES } from '../../data/modules.js';
 import {
   DEFAULT_STARTER_ID,
+  NEW_GAME,
   NEW_GAME_STARTERS,
   starterById,
 } from '../../data/newGameDefaults.js';
@@ -24,7 +25,7 @@ import { createYardCarousel } from '../orrery/yardCarousel.js';
 import { createHullRing } from '../orrery/hullRing.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 import { hullPosterUrl } from '../hullPosters.js';
-import { injectDeckplate } from '../deckplate/index.js';
+import { dpMark, injectDeckplate } from '../deckplate/index.js';
 import { capPins, platePins, panePins, channelPins, rowPins, wellPins }
   from '../kit/computedMaterial.js';
 
@@ -247,11 +248,10 @@ export function parseUniverseSeed(value) {
   return Number.isSafeInteger(seed) && seed > 0 && seed <= 0xffffffff ? seed : null;
 }
 
-function randomSeedText(ctx) {
+function randomSeedText() {
   // A fresh seed for the "New seed" word. Cosmetic UI randomness (the run's seed is whatever the
   // field says when Launch is pressed), so Math.random is fine here; state.rng belongs to the sim.
-  const rng = ctx && ctx.state && typeof ctx.state.rng === 'function' ? ctx.state.rng : Math.random;
-  return String(1 + Math.floor(rng() * 0xfffffffe));
+  return String(1 + Math.floor(Math.random() * 0xfffffffe));
 }
 
 function readNewGamePlusCandidateAsync(ctx) {
@@ -492,6 +492,23 @@ export const newGameScreen = {
     diffWords.setAttribute('aria-labelledby', diffField.label.id);
     diffWords.classList.add('of-pause');
     for (const b of diffWords.querySelectorAll('.k-word')) railWord(b);
+    // The produced tier insignia (deckplate markPaths `insignia-difficulty-1..4`): one chevron
+    // stack seated beside each word at badge scale — the chevron count carries the tier, the
+    // word carries the name, so the mark stays aria-hidden and the button's name is unchanged.
+    // Beside, not above: the stop-arc is the row's spine and the arc's inner words already hang
+    // over its crest — a taller button would push them into it. The live word's mark lights
+    // (its accent chevron is the lamp) in _setDifficulty, alongside aria-pressed.
+    DIFFICULTIES.forEach(([val], i) => {
+      const b = diffWords.querySelector(`.k-word[data-action="difficulty:${val}"]`);
+      if (!b) return;
+      b.insertAdjacentHTML('afterbegin', dpMark(`insignia-difficulty-${i + 1}`, {
+        size: '18px',
+        lit: val === DEFAULT_DIFFICULTY,
+        className: 'sf-ng-diff-mark',
+      }));
+      const mark = b.querySelector('.sf-ng-diff-mark');
+      if (mark) { mark.style.verticalAlign = '-3px'; mark.style.marginRight = '6px'; }
+    });
     const diffDesc = el('p', 'k-sentence', '');
     diffDesc.id = 'sf-ng-difficulty-desc';
     diffWords.setAttribute('aria-describedby', diffDesc.id);
@@ -561,7 +578,7 @@ export const newGameScreen = {
     const newSeed = el('button', 'k-word k-word--fine', 'New seed');
     newSeed.type = 'button'; newSeed.dataset.action = 'newSeed';
     paintKey(newSeed, 'small');
-    newSeed.addEventListener('click', () => { if (launching) return; seed.value = randomSeedText(ctx); cue('confirm'); });
+    newSeed.addEventListener('click', () => { if (launching) return; seed.value = randomSeedText(ctx); cue('confirm'); this._emitEmbarkSpec(); });
     seedRow.appendChild(seed); seedRow.appendChild(newSeed);
     seedField.wrap.appendChild(seedRow);
     const seedDesc = el('p', 'k-t-fine k-38', ORRERY
@@ -569,6 +586,8 @@ export const newGameScreen = {
       : 'Leave blank for a random universe. The same seed always produces the same contracts and markets.');
     seedDesc.id = 'sf-ng-seed-desc';
     seedField.wrap.appendChild(seedDesc);
+    // A typed seed decides the salted dressing rows — re-arm the embark warm when it changes.
+    seed.addEventListener('input', () => this._emitEmbarkSpec());
     body.appendChild(seedField.wrap);
     body.appendChild(hairline());
 
@@ -839,9 +858,38 @@ export const newGameScreen = {
       setLaunching, unsubStartFailed, unsubLoading, cancelHullRelease, ctx,
       isLaunching: () => launching,
       legacy: () => ({ on: legacyOn, select: legacySelect, candidate: newGamePlusCandidate }),
+      // The embark-speculation seed: typed seeds enumerate exactly; a blank field pre-rolls
+      // a candidate here so the salted dressing rows it warms are the ones the launch rolls.
+      // Drawn through the same rng seam as randomSeedText — the run's seed contract is
+      // unchanged (resetRunState treats a forwarded opts.seed identically to its internal roll).
+      specSeedRoll: parseUniverseSeed(randomSeedText(ctx)),
     };
     this._setStarter(DEFAULT_STARTER.id, { silent: true });
     this._setDifficulty(DEFAULT_DIFFICULTY, { silent: true });
+  },
+
+  // The newGame screen used to be the only embark path with no speculation emit — every
+  // authored decode for the start sector paid inside the loading window. During form dwell
+  // this re-arms the renderer's embark warm: sector recipe + opening cast + starter hull,
+  // with the salted dressing rows once a seed exists (typed or the pre-rolled candidate).
+  _emitEmbarkSpec() {
+    if (!refs || !refs.ctx || !refs.ctx.bus || typeof refs.ctx.bus.emit !== 'function') return;
+    // The arm enumerates the sector def + salted dressing streams and posts ~60–100 warm
+    // requests — running it inside the gesture task drops a menu frame per keystroke.
+    // Coalesce to one deferred emit that reads the field at fire time (not queueMicrotask,
+    // which drains pre-paint): a typed burst arms once, after the gesture.
+    if (this._embarkSpecQueued) return;
+    this._embarkSpecQueued = true;
+    setTimeout(() => {
+      this._embarkSpecQueued = false;
+      if (!refs || !refs.ctx || !refs.ctx.bus || typeof refs.ctx.bus.emit !== 'function') return;
+      const typed = refs.seed ? parseUniverseSeed(refs.seed.value) : null;
+      refs.ctx.bus.emit('game:embarkSpeculation', {
+        sectorId: NEW_GAME.startingSectorId || NEW_GAME.startSectorId || 'sector_helios_prime',
+        seed: typed == null ? refs.specSeedRoll : typed,
+        shipDefId: refs.starter && refs.starter.shipId,
+      });
+    }, 0);
   },
 
   _setStarter(id, { silent = false } = {}) {
@@ -864,6 +912,7 @@ export const newGameScreen = {
     if (this.hull) {
       this.hull.show(starter.shipId, { fittings: starterStageFittings(starter) });
     }
+    this._emitEmbarkSpec();
     syncKeys(refs.starterWords);
   },
 
@@ -879,6 +928,9 @@ export const newGameScreen = {
       b.setAttribute('aria-pressed', String(live));
       // The row's single Tab stop is the live word; the kit's roving focus takes over inside the row.
       b.tabIndex = live ? 0 : -1;
+      // The tier insignia lights with its word: the accent chevron is the mark's lamp.
+      const mark = b.querySelector('.sf-ng-diff-mark');
+      if (mark) mark.classList.toggle('dp-mark--lit', live);
     }
     if (!silent) refs.diff.dispatchEvent(new Event('change', { bubbles: true }));
     syncKeys(refs.diffWords);
@@ -897,7 +949,9 @@ export const newGameScreen = {
     // requires a finite positive number and otherwise randomises, so passing NaN or 0 through
     // would silently mean "random" while looking deliberate.
     const rawSeed = parseUniverseSeed(refs.seed.value);
-    const seedOpt = rawSeed == null ? {} : { seed: rawSeed };
+    // Blank forwards the pre-rolled candidate the embark arm already enumerated for — the
+    // salted dressing rows it warmed are the exact rows this run materializes.
+    const seedOpt = { seed: rawSeed == null ? refs.specSeedRoll : rawSeed };
     const legacy = refs.legacy();
     const newGamePlusOpt = legacy.on && legacy.select && legacy.select.value && legacy.candidate
       ? { newGamePlus: { slot: legacy.candidate.sourceSlot, keepsakeId: legacy.select.value } }
@@ -917,6 +971,7 @@ export const newGameScreen = {
   onShow(ctx) {
     if (!refs) return;
     cue('open');
+    this._emitEmbarkSpec();
     refs.setLaunching(false);
     refs.cancelHullRelease();
     if (this.hull) this.hull.restore();

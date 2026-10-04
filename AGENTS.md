@@ -16,7 +16,7 @@ the named outcome of the job you were given, then stop. Full working agreement:
 
 | Task | Start here |
 |---|---|
-| **No instruction, "next", "go", or "make it better"** | **`build_map.md` §1** — `node scripts/program-dispatch.mjs --next` |
+| **No instruction, "next", "go", or "make it better"** | **`build_map.md` §1C seams** — `node scripts/board-chunks.mjs`, claim a `free` seam, do its open rows. `program-dispatch --next` only when it returns a real packet. A drained queue is the board, not the inference catalog |
 | Program map, "next N" / "what next" | **`build_map.md`**, then `design/program/NOW.md` |
 | Occupied now? | `design/program/NOW.md` + `node scripts/check-now-liveness.mjs` |
 | Long-horizon VM / Blender / cloud agent work | **`design/program/VM_LANES.md`** |
@@ -27,9 +27,10 @@ the named outcome of the job you were given, then stop. Full working agreement:
 | UI/HUD / frontend looks cheap / make the UI A-list / any menu, HUD or screen redesign | **Owned by the ORRERY frontend overhaul lane (owner, 2026-09-26; nuanced 2026-09-27).** The lane owns the *redesign*: do not take lane sessions and do not revive the superseded briefs (`build_map.md` §11/§18/§20, PQ-162…PQ-194) — but **frontend files are not a no-go zone**: when your task needs a file under `src/ui/**` or `styles/**`, edit it — keep the edit minimal, consistent with [`design/frontend/ORRERY.md`](design/frontend/ORRERY.md), verify it, land it by pathspec; the lane reads the diff and works it in when it returns (it runs in stretches and expects foreign diffs). A purely cosmetic frontend impulse your task does not need is one row in the demo defect ledger (§7), never a second designer. Lane status: [`design/frontend/ORRERY_HANDOFF.md`](design/frontend/ORRERY_HANDOFF.md) §2. For the lane: **`docs/UI_VISUAL_ITERATION.md`** — the frontend iteration system. Shoot the real screen over a still (`node scripts/ui-bench.mjs --shot=<id>`), open that PNG yourself, fix what you see, and `--walk` every control on the screens you changed before you call them done. Do not leave stills for a later pass. **Direction: [`design/frontend/ORRERY.md`](design/frontend/ORRERY.md) (owner, 2026-09-22 late) — the one plan for the whole interface: an instrument of light, the Hand, the ORRERY library in `src/ui/orrery/`; screens compose library elements and never hand-roll boxes.** It supersedes FIELD_HARDWARE_PROGRAM, ONE_PHOTOGRAPH and "printed and lit" as direction (their no-material-imitation law stays). Then `src/ui/AGENTS.md` and `styles/AGENTS.md`. **OWNER RULING 2026-09-18:** nothing under `design/frontend/direction/approved/` carries owner authority. The bar: *consistent, high-detail, creative, interactive, non-generic — and the live game currently reads cheap.* The picture you opened is the evidence. |
 | Recurring bug | `docs/COMMON_BUGS.md` |
 | Saw a defect that is not your task | **§7 total-fix mode** — small: fix it now; medium: call a subagent; otherwise one row in the demo defect ledger |
-| INFERENCE / make N missions / throw an agent at the game | copy [`design/program/INFERENCE_GOAL.txt`](design/program/INFERENCE_GOAL.txt). An OPEN line in [`design/program/INFERENCE_IDEAS.md`](design/program/INFERENCE_IDEAS.md) is the assignment. Look, infer, rotate only when that catalog is empty. Detect is a hint, not the task. Law: [`design/program/INFERENCE_LANES.md`](design/program/INFERENCE_LANES.md). Open feelings for a strong pass: `build_map.md` §23 |
+| INFERENCE / make N missions / throw an agent at the game | Explicitly asked to develop a section or fill out the world? Use [`INFERENCE_LANES.md` §0.2](design/program/INFERENCE_LANES.md#02-explicit-section-development-requests--continue-the-existing-area) with the existing [`FINISH_LANES.md`](design/program/FINISH_LANES.md) area; otherwise copy [`design/program/INFERENCE_GOAL.txt`](design/program/INFERENCE_GOAL.txt). For the directed repair loop, an OPEN line in [`design/program/INFERENCE_IDEAS.md`](design/program/INFERENCE_IDEAS.md) is the assignment. Look, infer, rotate only when that catalog is empty. Detect is a hint, not the task. Law: [`design/program/INFERENCE_LANES.md`](design/program/INFERENCE_LANES.md). Open feelings for a strong pass: `build_map.md` §23 |
 | Finish the game / it still looks unfinished / run the fleet | **`design/program/FINISH_THE_GAME.md`** — goal prompt `design/program/FINISH_THE_GAME_GOAL.txt` |
 | Tests/checks | `test/AGENTS.md`, `scripts/AGENTS.md`, or `tools/AGENTS.md` |
+| Clean machine / perf captures / quiet-host work | **[`design/program/QUIET_HOST_PROGRAM.md`](design/program/QUIET_HOST_PROGRAM.md)** — split by owner 2026-10-04: the dedicated clean machine **produces** (`SPACEFACE_QUIET_HOST=1 node scripts/quiet-host-session.mjs --push`, unattended; the runner refuses any other host with exit 2), every other machine **lands** the pushed receipt (`LAND-QUIET-HOST`: apply the row closures it names). Never produce captures on this box; never hunt a historic freeze |
 
 Campaign, feel, hitch, remaster, harvest, and other named doors:
 [`docs/TASK_ROUTER.md`](./docs/TASK_ROUTER.md). Do not sweep `design/`, `.campaign/`, assets,
@@ -65,6 +66,15 @@ The working tree may contain valuable concurrent work that is newer than `HEAD`.
   unrelated edits. `git add -N` new files immediately. Stay on the current branch unless the user
   asked to switch. Push only the owned branch by explicit name. Commit finished owned files as you
   go - do not wait for blanket authorization.
+- **No worktrees - keep one checkout.** Isolate lanes by file and by pathspec commit, never by a
+  second checkout: leftover worktrees and temp copies took 117 GB of this disk on 2026-08-23, and
+  zombie checkouts keep resurfacing (two more on 2026-10-04). If a side checkout is truly
+  unavoidable, the only sanctioned shape is one `.worktrees/<name>` shared by you and every
+  subagent you spawn: port the work back with a pathspec commit, then `git worktree remove
+  --force` it in the same turn you finish - a branch preserves work, a checkout never does. Temp
+  repo copies (~15 GB each) die in-session as well. Before you report done, `git worktree list`
+  shows only the main checkout; a stale worktree you find is yours to salvage-then-drop in the same
+  turn, never to leave for the next sitting.
 - **Commit with exact paths.** `git add -A` and `git commit -a` sweep other lanes' half-finished
   work into your commit; stage only what you changed (`git add -- <paths>`). If a sweep already
   happened, name it in the commit body instead of unpicking it.
@@ -121,6 +131,17 @@ next unit. Ceremony never outranks the game: skip the ritual, keep the build mov
 No human verdict is an execution gate. Older `NEEDS HUMAN` / `owner verdict` / `human review` wording
 means an independent agent review against the named evidence. Only an explicit external action the
 user requested may remain deferred.
+
+**Owner, 2026-10-04 — no playtest gates.** An agent-authored plan step that waits for the user to
+play, test, review, report back, or give feedback is not a plan step; it is a stall, and "here is
+plan A, the user will play it, then we do plan B" is a stopped program. Replace the gate with its
+agentic equivalent and proceed in the same sitting — a scripted route check, the runtime witness,
+one capped session-SHAPE playthrough (`docs/VALIDATION_WORKFLOW.md`), a fixed-seed number, or an
+independent agent review against the named evidence — then keep building. On contact with this
+rule, rewrite the plan: strike the gate, name the substitute, move on. The absence of a user
+session or verdict unblocks nothing and justifies no pause. The only standing exceptions are the
+explicit external actions the user asked for (publish, purchase, sign-up — never a gameplay
+opinion), and the quiet-host session, which is its own program (§1).
 
 ## 5. Live runtime selection
 

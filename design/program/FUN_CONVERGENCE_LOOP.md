@@ -231,7 +231,9 @@ NEXT             the next lowest bar
 
 The owner plays for 45 minutes once a week on a clean build and says whatever they say. That is the
 only human step in the pipeline. An agent (the TRANSLATOR hat) turns the verdict into work without
-asking the owner to adjudicate anything:
+asking the owner to adjudicate anything. The loop never waits for a session: between owner visits
+it runs on agent-found bars by exactly this audit, and the absence of a fresh verdict unblocks
+nothing (owner 2026-10-04: no playtest gates — AGENTS.md §4):
 
 1. **Reproduce it.** Find or write the deterministic scenario that shows the complaint.
 2. **Name the fundamental** in the §A audit format, or say honestly that it could not be found yet.

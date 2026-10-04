@@ -70,7 +70,7 @@ export function selectHitSubsystem(entity, combatant, catalog, hit = {}) {
   const center = { x: 0, z: 0 };
   const penetrations = [];
   for (const subsystemId of Object.keys(combatant.subsystems).sort()) {
-    const def = catalog.subsystems.get(subsystemId);
+    const def = catalog.subsystems.get(subsystemId) || combatant.subsystems[subsystemId].def;
     const entryT = def ? segmentVolumeEntryT(volumeForHit(entity, def), skin, center, radius) : null;
     if (entryT != null) penetrations.push({ id: subsystemId, priority: Number(def.hitPriority) || 0, entryT });
   }
@@ -109,7 +109,7 @@ function volumeForHit(entity, def) {
 function subsystemMatchesAtPoint(entity, combatant, catalog, local) {
   const matches = [];
   for (const subsystemId of Object.keys(combatant.subsystems).sort()) {
-    const def = catalog.subsystems.get(subsystemId);
+    const def = catalog.subsystems.get(subsystemId) || combatant.subsystems[subsystemId].def;
     const volume = volumeForHit(entity, def);
     if (def && volumeContainsPoint(volume, local, entity.radius || 1)) {
       matches.push({ id: subsystemId, priority: Number(def.hitPriority) || 0 });

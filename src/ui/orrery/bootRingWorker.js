@@ -5,11 +5,17 @@ import { createLoadingProgressModel } from '../loadingProgressModel.js';
 export function bootRingWorkerRuntime(makeModel) {
   const model = makeModel();
   let canvas, ctx, scale = 1, timer = null, running = false, reduced = false;
-  let frames = 0, lastReport = 0, epoch = 0;
+  let frames = 0, lastReport = 0, epoch = 0, lastDrawAt = -Infinity;
   const marks = new Set();
+  // Cadence: the main thread forwards its vsync-aligned rAF as 'frame' beats, so the
+  // instrument paints in the same frame the display presents — no 30 fps setTimeout
+  // stepping. The internal timer is only a safety net for throttled/occluded hosts.
+  const beatInterval = () => reduced ? 240 : 14;
+  const netInterval = () => reduced ? 250 : 100;
   function draw() {
     if (!ctx) return;
     const t = performance.now();
+    lastDrawAt = t;
     const f = model.tick(t);
     ctx.setTransform(scale, 0, 0, scale, 0, 0);
     ctx.clearRect(0, 0, 176, 208);
@@ -23,7 +29,7 @@ export function bootRingWorkerRuntime(makeModel) {
         ctx.beginPath(); ctx.arc(88, 88, 60, start, end); ctx.stroke();
       }
       ctx.fillStyle = '#dfeeff'; ctx.beginPath();
-      ctx.arc(88 + 60 * Math.cos(end), 88 + 60 * Math.sin(end), 2.2, 0, Math.PI * 2); ctx.fill();
+      ctx.arc(88 + 64 * Math.cos(end), 88 + 64 * Math.sin(end), 2.2, 0, Math.PI * 2); ctx.fill();
     }
     ctx.strokeStyle = 'rgba(236,230,216,.8)'; ctx.lineWidth = 1;
     for (const mark of marks) {
@@ -39,11 +45,15 @@ export function bootRingWorkerRuntime(makeModel) {
       postMessage({ type: 'sample', shown: f, frames, epoch, at: performance.timeOrigin + t });
     }
   }
+  function pump(minInterval) {
+    if (performance.now() - lastDrawAt < minInterval) return;
+    draw();
+  }
   function loop() {
     timer = null;
     if (!running) return;
-    draw();
-    timer = setTimeout(loop, reduced ? 250 : 1000 / 30);
+    pump(netInterval());
+    timer = setTimeout(loop, netInterval());
   }
   function run() { running = true; if (timer === null) loop(); }
   function stop() { running = false; if (timer !== null) clearTimeout(timer); timer = null; }
@@ -52,7 +62,8 @@ export function bootRingWorkerRuntime(makeModel) {
       if (data.type === 'init') {
         canvas = data.canvas; scale = Math.max(1, Math.min(2, data.dpr || 1));
         canvas.width = Math.round(176 * scale); canvas.height = Math.round(208 * scale);
-        ctx = canvas.getContext('2d', { alpha: true });
+        // desynchronized: present each stroke without an extra compositor buffer swap.
+        ctx = canvas.getContext('2d', { alpha: true, desynchronized: true });
         if (!ctx) throw new Error('2D context unavailable');
         canvas.addEventListener?.('contextlost', () => { stop(); postMessage({ type: 'failed' }); });
         model.report(data.stage || { id: 'boot-modules', progress: 0 }, performance.now());
@@ -68,6 +79,7 @@ export function bootRingWorkerRuntime(makeModel) {
       else if (data.type === 'mark') { marks.add(Math.max(0, Math.min(199, Math.round(Number(data.value) * 200) || 0))); draw(); }
       else if (data.type === 'finish') { model.finish(); run(); }
       else if (data.type === 'motion') { reduced = data.reduced; model.setReduced(reduced); draw(); }
+      else if (data.type === 'frame') { if (running) pump(beatInterval()); }
       else if (data.type === 'pause') stop();
       else if (data.type === 'resume') run();
       else if (data.type === 'destroy') { stop(); close(); }

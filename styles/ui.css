@@ -97,7 +97,14 @@ body.sf-flight-cursor #ui-root,
 body.sf-flight-cursor #hud { cursor: none; }
 #ui-root { position: fixed; inset: 0; z-index: 10; pointer-events: none; font-size: calc(15px * var(--ui-scale)); contain: layout style paint; }
 #ui-root > div { position: absolute; }
-#hud { inset: 0; z-index: 10; transition: opacity .12s ease; contain: layout style paint; }
+/* FB-100: --sf-hud-scale/--sf-hud-opacity (settings.video.hudScale/hudOpacity, applied on the
+   root by applyHudPresentationFromSettings) let the player size and dim the flight HUD without
+   touching global --ui-scale or screen surfaces. font-size composes both scales for em-sized
+   children; opacity sits on this layer only so pause-dim/blowout animation on the element
+   still wins during its transient. */
+#hud { inset: 0; z-index: 10; transition: opacity .12s ease; contain: layout style paint;
+  font-size: calc(15px * var(--ui-scale, 1) * var(--sf-hud-scale, 1));
+  opacity: var(--sf-hud-opacity, 1); }
 #hud.sf-hud--blowout {
   animation: sf-shield-blowout-glitch 400ms steps(2, start) forwards;
 }
@@ -864,7 +871,11 @@ input[type="radio"]:checked::before {
   display: inline-block;
 }
 
-/* In-world target rings */
+/* In-world target rings — the arc-gauge treatment the ORRERY Cluster uses for the same three
+   readings (src/ui/orrery/flightCluster.js: shield = bright phos, armour = quiet hairline,
+   hull = the vital body). Token palette only; the fill dasharray is the quantity, so the rings
+   run at full strength and the hierarchy is carried by weight, not by one flat 0.55 dimmer.
+   The viewBox is 1:1 with CSS pixels, so these widths are true screen weights. */
 .sf-target-arcs {
   position: absolute;
   left: 0;
@@ -876,23 +887,26 @@ input[type="radio"]:checked::before {
   will-change: transform;
 }
 .sf-target-arcs.visible {
-  opacity: 0.55;
+  opacity: 1;
 }
 .sf-target-arcs circle {
   fill: none;
   stroke-linecap: round;
 }
 .sf-arc-shield {
-  stroke: var(--accent);
-  stroke-width: 1.5px;
+  stroke: var(--dp-phos, #dfeeff);
+  stroke-width: 2.5px;
+  opacity: 0.95;
 }
 .sf-arc-armor {
-  stroke: #8fa3bd;
-  stroke-width: 1.5px;
+  stroke: var(--k-bone-38, #8b887e);
+  stroke-width: 1.25px;
+  opacity: 0.85;
 }
 .sf-arc-hull {
-  stroke: #ff7c5c;
-  stroke-width: 1.5px;
+  stroke: var(--dp-ink, #e8e2d4);
+  stroke-width: 2px;
+  opacity: 0.9;
 }
 
 /* Overview Strip */

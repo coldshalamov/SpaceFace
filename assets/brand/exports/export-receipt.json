@@ -1,0 +1,60 @@
+{
+  "sources": {
+    "spaceface-emblem.svg": {
+      "bytes": 3432,
+      "sha256": "bd3404036173f9caa91b2a54a1047fba06e2e2300be33441fc3f9c8153916325"
+    },
+    "spaceface-emblem-flat.svg": {
+      "bytes": 859,
+      "sha256": "8cba26c42b2e4732065f30c90aa65ced32ffff8b3a256f14ae9a3429c74db8ef"
+    },
+    "spaceface-emblem-mono.svg": {
+      "bytes": 723,
+      "sha256": "14f416c2c408183b8064e29a7a064822cea2b7c655d3d039641079476be3276c"
+    },
+    "spaceface-emblem-reverse.svg": {
+      "bytes": 715,
+      "sha256": "d0fb8be53d1942bde138d6edd25f752e779c68117e80dbe42fdd52f83c76236c"
+    },
+    "spaceface-emblem-small.svg": {
+      "bytes": 816,
+      "sha256": "bd8254acf67d9193bef953937eabf31efa48b3f3e2d8b06c73a9e13695b86213"
+    },
+    "spaceface-launcher.svg": {
+      "bytes": 4053,
+      "sha256": "a5578f4c4165c8f11b1558ad98741fdf7a2464f189bbd3ad011e98f1dfbccccd"
+    },
+    "spaceface-favicon.svg": {
+      "bytes": 838,
+      "sha256": "9b90190fa1271c94983acfcfecae2ae547c500695d308324203cb8c9f3a374b6"
+    }
+  },
+  "launcher_png_sizes": [
+    16,
+    20,
+    24,
+    32,
+    40,
+    48,
+    64,
+    128,
+    256,
+    512,
+    1024
+  ],
+  "ico_sizes": [
+    16,
+    20,
+    24,
+    32,
+    40,
+    48,
+    64,
+    128,
+    256
+  ],
+  "small_optical_master_used_through_px": 32,
+  "svg_checks": "XML, allowed elements, unique IDs, internal-only references",
+  "native_file_checks": "ICO all frames decoded and compared byte-for-byte; ICNS largest frame decoded",
+  "scope": "Asset export checks only; not a native launcher or in-game integration test."
+}

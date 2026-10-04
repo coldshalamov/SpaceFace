@@ -16,9 +16,16 @@
 //   Asteroids use a small pool of seeded displacement variants per type (deterministic, bounded)
 //   rather than a unique geometry per rock.
 import * as THREE from 'three';
+import { buildMorrowVisual } from './characters/morrowModel.js';
+import { buildVesperVisual } from './characters/vesperModel.js';
+import { buildBracketVisual } from './characters/bracketModel.js';
+import { buildRavelVisual } from './characters/ravelModel.js';
+import { buildSolsticeVisual } from './characters/solsticeModel.js';
+import { buildRubricVisual } from './characters/rubricModel.js';
 import { modelTruthMountFractions } from '../data/modelTruth.js';
 import { mergeGeometries, mergeVertices, toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
 import { getReadyRockSurfaceTextures, rockSurfaceVariantSpec, ROCK_SURFACE_VARIANTS } from './rockSurfaceLibrary.js';
+import { rockFamilyFor, ROCK_FAMILY_TINT_MIX, ROCK_FAMILY_EMISSIVE_LIFT } from './rockFamilyLibrary.js';
 import {
   COMMON_ROCK_MATERIAL_ROLES,
   COMMON_ROCK_MINERAL_SHEEN,
@@ -47,6 +54,8 @@ import { SHIPS } from '../data/ships.js';
 import { WEAPONS } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
 import { commodityPresentationFor } from '../data/commodities.js';
+import { buildPickupGeometry, pickupShapeForCommodity } from './pickupShapes.js';
+import { PICKUP_ROLE, buildPickupRoleGeometry, pickupRoleForEntity } from './vfx/fragmentFamilies.js';
 import { FACTION_META } from '../data/factions.js';
 import { configureMaterialLibrary } from './materialLibrary.js';
 import { createEnergyMaterial } from './energy/energyMaterials.js';
@@ -61,6 +70,7 @@ import {
   AUTHORED_ADMISSION_RETRY_MAX,
   authoredReadmissionStatus,
   boundaryLiveEntity,
+  carryAdmittedOnceStamp,
   markAuthoredBoundaryForReadmission,
   prepareAuthoredVisualPipelines,
   releaseBoundaryResidency,
@@ -2316,11 +2326,16 @@ function astMaterial(typeId, def, tint, variantIdx = 0) {
   // numbers; this key keeps one cached material per variant.
   const variantSpec = commonSurfaceReady ? rockSurfaceVariantSpec(variantIdx) : null;
   const variantKey = variantSpec ? `:v${ROCK_SURFACE_VARIANTS.indexOf(variantSpec)}` : '';
-  const key = `astmat:${typeId}:${tint || 'def'}${variantKey}${bare ? ':bare' : ''}`;
+  // Metallic / crystalline / exotic rocks wear a generated surface family once its maps have decoded
+  // (rockFamilyLibrary.js); a rock built before then keeps the flat tinted material under its own key.
+  const family = typeId === 'ast_common_rock' ? null : rockFamilyFor(def.variant);
+  const key = `astmat:${typeId}:${tint || 'def'}${variantKey}${bare ? ':bare' : ''}${family ? ':fam' : ''}`;
   return getMaterial(key, () => {
     const commonSurface = commonSurfaceReady;
-    const color = tint != null ? new THREE.Color(tint) : new THREE.Color(def.color);
+    let color = tint != null ? new THREE.Color(tint) : new THREE.Color(def.color);
     if (variantSpec) color.multiply(new THREE.Color(...variantSpec.tint));
+    // The texture carries the surface, so the type colour only tints it rather than multiplying it dark.
+    if (family) color = new THREE.Color(0xffffff).lerp(color, ROCK_FAMILY_TINT_MIX[def.variant] ?? 0.25);
     const skipRoughNoise = !!commonSurface || def.variant === 'crystal' || def.variant === 'ice';
     const rough = skipRoughNoise
       ? null
@@ -2357,8 +2372,9 @@ function astMaterial(typeId, def, tint, variantIdx = 0) {
 
     const material = new THREE.MeshStandardMaterial({
       color,
-      map: commonSurface && commonSurface.baseColor || null,
-      normalMap: commonSurface && commonSurface.normal || null,
+      map: commonSurface && commonSurface.baseColor || family && family.baseColor || null,
+      normalMap: commonSurface && commonSurface.normal || family && family.normal || null,
+      emissiveMap: family && family.emissive || null,
       normalScale: commonSurface
         ? new THREE.Vector2(variantSpec.normalScale, variantSpec.normalScale)
         : new THREE.Vector2(1, 1),
@@ -2370,7 +2386,9 @@ function astMaterial(typeId, def, tint, variantIdx = 0) {
         || (def.variant === 'crystal' ? null : rough),
       metalnessMap: commonSurface && commonSurface.orm || null,
       vertexColors: !!commonSurface,
-      emissive: new THREE.Color(def.emissive), emissiveIntensity: eiBoost,
+      emissive: new THREE.Color(def.emissive),
+      // A glow map confines the glow to the crystals / veins, so the intensity is lifted to keep them readable.
+      emissiveIntensity: family && family.emissive ? Math.min(3.2, eiBoost * ROCK_FAMILY_EMISSIVE_LIFT) : eiBoost,
       flatShading: def.flat,
     });
     if (bare) {
@@ -2645,6 +2663,128 @@ function gateLensMaterial(isWormhole) {
   });
 }
 
+// EVENT HORIZON face — a structured, time-driven construction, not a painted card. The old face
+// was a static radial-gradient canvas (the soft-card read VFX_TECHNIQUE_STANDARD bans for
+// objects); this one carries internal structure AND travelling motion:
+//   - a 3-armed log-spiral fold rosette whose radial phase advances with uTime, so every crest
+//     travels INWARD toward the throat (the mesh swirl infrastructureMotion applies cannot
+//     express radial infall — the two motions compose, and the disc counter-rotates against the
+//     lens disc above for parallax);
+//   - differential rotation: the fold field runs prograde, the dark channel field slow
+//     retrograde, so the combined rosette shears over time instead of spinning as one decal;
+//   - fine counter-drifting filaments and dark channels that cut the glow into arms, so the
+//     face reads as infalling matter, never as a filled soft square.
+// Seam safety: every angular frequency is an integer multiple of theta, so the atan(±π) branch
+// cut is invisible — same guarantee as the lens shader. Instruction set is exactly the lens
+// family (atan/sin/exp/pow/smoothstep/log), which this project already runs on the software
+// rasterizer; `setFactoryPortalRenderMode('canvas')` restores the legacy gradient card if a
+// rasterizer ever refuses the program.
+const GATE_PORTAL_FRAGMENT = `
+  precision highp float;
+  varying vec2 vUv;
+  uniform float uTime;
+  uniform vec3 uColorCore;   // hot throat tone (was the gradient's centre stop)
+  uniform vec3 uColorArm;    // fold / filament mid tone (was the gradient's mid stop)
+  uniform vec3 uColorDeep;   // deep body tone between the folds (was the gradient's outer stop)
+  uniform float uOpacity;    // legacy additive envelope: 0.55 gate / 0.7 wormhole
+  uniform float uIntensity;
+
+  void main() {
+    vec2 p = vUv * 2.0 - 1.0;
+    float r = length(p);
+    if (r > 1.0) discard;
+    float theta = atan(p.y, p.x);
+
+    // Differential rotation: folds prograde, channels slow retrograde.
+    float angF = theta - uTime * 0.50;
+    float angC = theta + uTime * 0.13;
+
+    // Infall: adding uTime to the radial phase moves every crest toward r=0 over time.
+    float fall = uTime * 0.34;
+    float radial = r + fall;
+
+    // Log-spiral fold coordinate (integer angular multiplier keeps the atan seam hidden).
+    float spiralF = angF * 3.0 - 4.6 * log(r + 0.14) + radial * 3.1;
+    // Quasi-organic wobble from two incommensurate seam-safe terms — no hash noise needed.
+    float wob = sin(angF * 2.0 + r * 7.0 - uTime * 0.7) * 0.5
+              + sin(angC * 3.0 - r * 4.0 + uTime * 0.4) * 0.5;
+    float folds = smoothstep(0.10, 0.95, sin(spiralF + wob * 1.4));
+
+    // Fine counter-drifting filaments, strongest mid-disc where the folds read.
+    float fil = smoothstep(0.55, 1.0, sin(angF * 9.0 - 12.6 * log(r + 0.14) + radial * 6.2 - wob * 1.9));
+    float midWeight = smoothstep(0.05, 0.28, r) * smoothstep(1.0, 0.60, r);
+
+    // Dark channels cut the glow into arms so the face never reads as a filled card.
+    float channels = smoothstep(0.40, 0.88, sin(angC * 5.0 + 2.4 * log(r + 0.14) + wob));
+    float channelDark = mix(1.0, 0.20, channels * midWeight);
+
+    // Hot throat keeps the established bright-centre silhouette; slow breath, no strobe.
+    float core = exp(-r * r * 6.0) * (0.86 + 0.14 * sin(uTime * 1.3));
+    float rim = exp(-pow((r - 0.94) * 9.5, 2.0));
+    float rimFade = smoothstep(1.0, 0.80, r);
+
+    float structure = (folds * 0.62 + fil * 0.38) * midWeight * channelDark;
+    vec3 col = mix(uColorDeep, uColorArm, clamp(structure * 1.4, 0.0, 1.0));
+    col = mix(col, uColorCore, clamp(core + rim * 0.5, 0.0, 1.0));
+
+    float a = clamp(core * 0.92 + structure * 0.85 + rim * 0.34, 0.0, 1.0) * rimFade * uOpacity;
+    gl_FragColor = vec4(col * uIntensity, a);
+  }
+`;
+
+// Bench/CI escape hatch: 'shader' (default) builds the animated construction; 'canvas' builds the
+// legacy gradient-card material. Must be set before the first gate is built (the material cache
+// is per type, so a mid-session flip only affects not-yet-built gate types).
+let _portalRenderMode = 'shader';
+export function setFactoryPortalRenderMode(mode) {
+  if (mode === 'shader' || mode === 'canvas') _portalRenderMode = mode;
+}
+
+// One material per portal TYPE (never per gate instance) — the pre-existing cache keys.
+function gatePortalMaterial(isWormhole) {
+  if (_portalRenderMode === 'canvas') return gatePortalFallbackMaterial(isWormhole);
+  return getMaterial(isWormhole ? 'gate:portal:wh' : 'gate:portal', () => {
+    const material = new THREE.ShaderMaterial({
+      name: isWormhole ? 'GatePortalWormhole' : 'GatePortal',
+      uniforms: {
+        uTime: { value: 0 },
+        uColorCore: { value: new THREE.Color(isWormhole ? '#f0c0ff' : '#bff4ff') },
+        uColorArm: { value: new THREE.Color(isWormhole ? '#9030ff' : '#39d0ff') },
+        uColorDeep: { value: new THREE.Color(isWormhole ? '#3a0a4a' : '#0a1830') },
+        uOpacity: { value: isWormhole ? 0.7 : 0.55 },
+        uIntensity: { value: 1 },
+      },
+      vertexShader: GATE_LENS_VERTEX,
+      fragmentShader: GATE_PORTAL_FRAGMENT,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    });
+    configurePlanarAdditiveMaterial(material);
+    return material;
+  });
+}
+
+// Sane fallback: the legacy radial-gradient card, kept verbatim (texture cache keys included) so
+// the gate still renders a full portal face if the shader program is ever unavailable.
+function gatePortalFallbackMaterial(isWormhole) {
+  return getMaterial(isWormhole ? 'gate:portal:wh:canvas' : 'gate:portal:canvas', () => {
+    const tex = getTexture(isWormhole ? 'grad:portal:wh' : 'grad:portal', () => makeGradientTexture({
+      type: 'radial',
+      stops: isWormhole
+        ? [[0, '#f0c0ff'], [0.35, '#9030ff'], [0.7, '#3a0a4a'], [1, '#08000f']]
+        : [[0, '#bff4ff'], [0.4, '#39d0ff'], [1, '#0a1830']],
+    }));
+    const material = new THREE.MeshBasicMaterial({
+      map: tex, transparent: true, opacity: isWormhole ? 0.7 : 0.55,
+      blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+    });
+    configurePlanarAdditiveMaterial(material);
+    return material;
+  });
+}
+
 // Vertical jump gate: a chunky portal you fly THROUGH. The ring plane contains the
 // world Y axis + the radial-in direction (toward sector center), so a ship approaching
 // from the sector center passes cleanly through the opening. Built from primitives +
@@ -2693,25 +2833,22 @@ function buildGate(e, pal) {
   innerRing.scale.setScalar(R);
   orient.add(innerRing);
 
-  // EVENT HORIZON — swirling additive disc filling the opening.
-  const portalMat = getMaterial(isWormhole ? 'gate:portal:wh' : 'gate:portal', () => {
-    const tex = getTexture(isWormhole ? 'grad:portal:wh' : 'grad:portal', () => makeGradientTexture({
-      type: 'radial',
-      stops: isWormhole
-        ? [[0, '#f0c0ff'], [0.35, '#9030ff'], [0.7, '#3a0a4a'], [1, '#08000f']]
-        : [[0, '#bff4ff'], [0.4, '#39d0ff'], [1, '#0a1830']],
-    }));
-    const material = new THREE.MeshBasicMaterial({
-      map: tex, transparent: true, opacity: isWormhole ? 0.7 : 0.55,
-      blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
-    });
-    configurePlanarAdditiveMaterial(material);
-    return material;
-  });
+  // EVENT HORIZON — structured additive disc filling the opening (see GATE_PORTAL_FRAGMENT):
+  // an infalling fold rosette cut by dark channels, time-driven, not a static gradient card.
+  const portalMat = gatePortalMaterial(isWormhole);
   const portal = new THREE.Mesh(
     getGeometry('gate:disc', () => new THREE.CircleGeometry(0.78, 48)),
     portalMat,
   );
+  // Shared-material clock: every gate of a type writes the same uTime (idempotent — the boltMesh
+  // pattern). nowSec() is the presentation sim clock, so the face holds still with the world on
+  // pause/hit-stop. infrastructureMotion owns the reduced-motion decision and maintains
+  // userData.motionScale (same 0.25 convention as the lens). Guarded so the canvas fallback
+  // material (no uniforms) is left untouched.
+  portal.onBeforeRender = () => {
+    const u = portalMat.uniforms;
+    if (u && u.uTime) u.uTime.value = nowSec() * (portalMat.userData.motionScale || 1);
+  };
   portal.scale.setScalar(R);
   orient.add(portal);
 
@@ -3082,18 +3219,31 @@ function buildCreditChip(e) {
 }
 
 function buildPickup(e) {
+  // FB-075: a volatile lot in a pickup body is still the hazard bottle — the silhouette carries
+  // the warning regardless of which spawn path dropped it.
+  if (e.data && (e.data.volatileClass || e.data.volatileLamp)) return buildVolatilePod(e);
   if (e.data && e.data.freightCustodyPod) {
     const canister = buildPayload(e);
     canister.userData.kind = 'pickup';
     canister.userData.interactionKind = 'pickup';
+    canister.userData.pickupRole = PICKUP_ROLE.POD;
     return canister;
   }
-  if (isCreditChipEntity(e)) return buildCreditChip(e);
+  if (isCreditChipEntity(e)) {
+    const chip = buildCreditChip(e);
+    chip.userData.pickupRole = PICKUP_ROLE.CHIP;
+    return chip;
+  }
   const R = e.radius || 2.2;
   const color = commodityColor(e);
   const g = new THREE.Group();
+  // GFX-16: one authored silhouette per commodity category (pickupShapes.js); modules and anything
+  // that is not a known commodity keep the original octahedron.
+  const shapeName = pickupShapeForCommodity(payloadCommodityId(e.data));
   const gem = new THREE.Mesh(
-    getGeometry('pickup:gem', () => new THREE.OctahedronGeometry(1, 0)),
+    shapeName
+      ? getGeometry(`pickup:shape:${shapeName}`, () => buildPickupGeometry(shapeName))
+      : getGeometry('pickup:gem', () => new THREE.OctahedronGeometry(1, 0)),
     getMaterial(`gemmat:${color}`, () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
       color: 0x101014, emissive: new THREE.Color(color), emissiveIntensity: 1.5, metalness: 0.9, roughness: 0.15,
     }), SHARED_MATERIAL_ROLE.HULL)),
@@ -3102,6 +3252,11 @@ function buildPickup(e) {
   gem.material = gem.material.clone();
   g.add(gem);
   g.userData.kind = 'pickup'; g.userData.gem = gem;
+  g.userData.pickupShape = shapeName || 'octahedron';
+  // FB-075: the ore role resolves to the kit's faceted block; other categories keep their own
+  // kit silhouette. The stamp is the inspectable role identity, the geometry stays authored.
+  g.userData.pickupRole = shapeName === 'raw_ore' ? PICKUP_ROLE.ORE
+    : (pickupRoleForEntity(e) || null);
   const ph = (hashId(e.id) % 100) / 100 * Math.PI * 2;
   gem.frustumCulled = false;
   // Emissive glint only — tumble/bob/vortex/intake transforms are owned by
@@ -3645,6 +3800,21 @@ export function instantiatePackagedPrimitives(record, parent, options = {}) {
   // Warmth passes set includeAllLods: a dedicated lod1/lod2 file's primitives carry the
   // non-lod0 tag themselves, and filtering them would warm an empty holder.
   const includeAllLods = options && options.includeAllLods === true;
+  // The flat-primitive mount replays the same decoded package the instance route exposes,
+  // so the boundary stamp belongs here too: the opening census's productionBoundary walk
+  // finds `spacefaceRenderPackage` on descendants, and a packaged body without it reads as
+  // an unprovenanced blocking root (D157). Records decoded outside a render package keep
+  // the asset identity but no verified hash — the gate stays honest for them.
+  if (parent && parent.userData && !parent.userData.spacefaceRenderPackage) {
+    const pkg = record && record.renderPackage || null;
+    const assetId = (pkg && pkg.assetId) || (record && record.assetId) || null;
+    if (assetId) {
+      parent.userData.spacefaceRenderPackage = {
+        assetId,
+        contentHash: (pkg && pkg.contentHash) || null,
+      };
+    }
+  }
   const tmp = new THREE.Matrix4();
   for (const primitive of record && record.primitives || []) {
     if (!primitive || !primitive.geometry || !primitive.material) continue;
@@ -3840,7 +4010,15 @@ function disposeDetachedPackagedGroup(group) {
 }
 
 function attachPackagedBody(root, relativeFile, entity) {
-  if (!root || !relativeFile) return root;
+  if (!root || !relativeFile) {
+    // No packaged file resolved — stamp the terminal identity so the root never sits
+    // 'missing' in front of the readiness gate (same wedge class as buildFallback).
+    if (root) {
+      root.userData.authoredAssetState = 'unavailable';
+      root.userData.authoredVisualRoot = 'none-build-failed';
+    }
+    return root;
+  }
   const url = packagedPartUrl(relativeFile);
   // The packaged file IS the victim's own hull only when the hulk selector chose it —
   // a wreck that fell back to a generic aftermath piece must not be dead-stated. ANI-08
@@ -4020,7 +4198,9 @@ function attachPackagedBody(root, relativeFile, entity) {
         root.userData.authoredAssetState = 'orphaned-before-swap';
         return false;
       }
-      const publicationWait = waitForOpeningGraphPublicationRelease();
+      const publicationWait = waitForOpeningGraphPublicationRelease({
+        entity: boundaryLiveEntity(root, entity) || entity,
+      });
       if (publicationWait) await publicationWait;
       if (!root.parent) {
         releaseBoundaryResidency(renderer, root, 'packaged-body-orphaned-before-publication', mintedAdmissionOptions.admissionEpoch);
@@ -4041,7 +4221,15 @@ function attachPackagedBody(root, relativeFile, entity) {
       // procedural children while this admission was mid-flight.
       hideProceduralChildren(root);
       root.add(packaged);
+      carryAdmittedOnceStamp(packaged, root);
       canonicalizeObjectSurfaceProgramKeys(packaged);
+      // The committed subtree's meshes carry three.js castShadow=false until a policy
+      // traverse covers them; re-syncing here applies the live caster policy in this
+      // continuation instead of at the next unrelated band flip.
+      const packagedShadowSync = mintedAdmissionOptions.syncPackagedBodyShadowPolicy;
+      if (typeof packagedShadowSync === 'function') {
+        try { packagedShadowSync(root, liveEntity || entity); } catch (_) { /* best effort */ }
+      }
       root.userData.hull = packaged;
       root.userData.authoredReadableFallbackRetained = false;
       root.userData.authoredAssetState = 'authored';
@@ -5299,6 +5487,11 @@ function buildFallback(e) {
   root.visible = false;
   root.userData.visualBuildFailed = true;
   root.userData.failedEntityType = e && e.type || 'unknown';
+  // A builder throw on a gate-bound contact would otherwise sit 'missing' forever and
+  // hold flight-ready hostage; stamp the terminal fail-closed identity like
+  // unavailableVisual so the readiness scan releases it.
+  root.userData.authoredAssetState = 'unavailable';
+  root.userData.authoredVisualRoot = 'none-build-failed';
   return root;
 }
 
@@ -5382,7 +5575,47 @@ function laneTrafficVisualEntity(e) {
   };
 }
 
+// FB-075 — volatile cargo reads as a hazard bottle, not another canister: sphere under a
+// containment collar (fragmentFamilies' 'volatile' role recipe), with the class's lamp color
+// carried in the collar material so the warning survives the chase camera.
+const VOLATILE_LAMP_COLOR = Object.freeze({
+  // keyed by class id and by the stamped lamp name — the sim writes both
+  explosive: 0xffb340, corrosive: 0x7dd66a, superdense: 0xa77dff,
+  amber: 0xffb340, green: 0x7dd66a, violet: 0xa77dff, red: 0xff5c4a,
+  default: 0xffb340,
+});
+
+function volatileLampColor(e) {
+  const lamp = e && e.data && (e.data.volatileClass || e.data.volatileLamp);
+  return VOLATILE_LAMP_COLOR[lamp] || VOLATILE_LAMP_COLOR.default;
+}
+
+function buildVolatilePod(e) {
+  const R = Math.max(1, (e && e.radius) || 3);
+  const g = new THREE.Group();
+  const lamp = volatileLampColor(e);
+  const bottle = new THREE.Mesh(
+    getGeometry('pickup:role:volatile', () => buildPickupRoleGeometry(PICKUP_ROLE.VOLATILE)),
+    getMaterial(`payload:volatile:${e.data.volatileClass || 'any'}`, () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+      color: 0x2a2f33, roughness: 0.42, metalness: 0.55,
+      emissive: new THREE.Color(lamp), emissiveIntensity: 0.55,
+    }), SHARED_MATERIAL_ROLE.HULL)),
+  );
+  bottle.name = 'VolatilePod_Bottle';
+  g.add(bottle);
+  g.scale.setScalar(R);
+  g.userData.kind = e && e.type === 'pickup' ? 'pickup' : 'payload';
+  g.userData.interactionKind = g.userData.kind;
+  g.userData.visualLanguage = 'volatile-pressure-bottle';
+  g.userData.pickupRole = PICKUP_ROLE.VOLATILE;
+  g.userData.animated = true;
+  return g;
+}
+
 function buildPayload(e) {
+  // FB-075: a pod carrying a volatile lot is a pressure bottle with a collar, not a canister —
+  // the silhouette is the hazard warning at chase distance.
+  if (e && e.data && (e.data.volatileClass || e.data.volatileLamp)) return buildVolatilePod(e);
   const R = Math.max(1, (e && e.radius) || 3);
   const g = new THREE.Group();
   const commodityId = payloadCommodityId(e && e.data);
@@ -5422,6 +5655,7 @@ function buildPayload(e) {
   g.userData.kind = 'payload';
   g.userData.interactionKind = 'payload';
   g.userData.visualLanguage = 'sealed-cargo-canister';
+  g.userData.pickupRole = PICKUP_ROLE.POD;
   g.userData.animated = true;
   if (presentation) {
     g.userData.commodityPresentationId = presentation.id;
@@ -5453,7 +5687,17 @@ export function invalidateVisualFactoryCaches() {
 }
 
 function stampBuiltVisual(root) {
-  if (root) canonicalizeObjectSurfaceProgramKeys(root);
+  if (root) {
+    canonicalizeObjectSurfaceProgramKeys(root);
+    // Producer-owned marker: every generated visual exits through this stamp, so the opening
+    // census's ensure helper can publish the deterministic leaf recipe as this root's
+    // production boundary (D157). Procedural roots mount no authored byte package, and the
+    // census itself must never synthesize provenance from renderer counters — it only reads
+    // what the producer declared here.
+    if (root.userData && !root.userData.generatedVisualProducer) {
+      root.userData.generatedVisualProducer = 'visual-factory-procedural';
+    }
+  }
   return root;
 }
 
@@ -5462,13 +5706,18 @@ export function createVisualFactory() {
     build(e) {
       try {
         if (!e) return null;
+        if (e.data?.ravelPart) return stampBuiltVisual(buildRavelVisual(e));
+        if (e.data?.bracketPart) return stampBuiltVisual(buildBracketVisual(e));
+        if (e.data?.solsticePart) return stampBuiltVisual(buildSolsticeVisual(e));
+        // RUBRIC: the marker and its paint marks are authored; the filing hull (rubricPart 'hull') is an ordinary wreck.
+        if (e.data?.rubricPart === 'body' || e.data?.rubricPart === 'mark') return stampBuiltVisual(buildRubricVisual(e));
         switch (e.type) {
           case 'ship': return stampBuiltVisual(optimizeStaticBatches(buildShipMesh(e, resolvePalette(e))));
           case 'asteroid': return stampBuiltVisual(freezeStaticPresentation(buildAsteroid(e), { merge: false }));
           case 'station': return stampBuiltVisual(freezeStaticPresentation(attachStationHlod(buildStation(e), e)));
           case 'pickup': return stampBuiltVisual(buildPickup(e));
           case 'projectile': return stampBuiltVisual(buildProjectile(e));
-          case 'drone': return stampBuiltVisual(buildDrone(e));
+          case 'drone': return stampBuiltVisual(e.data?.vesper === true ? buildVesperVisual(e) : e.data?.morrow === true ? buildMorrowVisual(e) : buildDrone(e));
           case 'payload': return stampBuiltVisual(buildPayload(e));
           case 'mine': return stampBuiltVisual(buildMine(e));
           case 'vectormine': return stampBuiltVisual(buildVectorMine(e));

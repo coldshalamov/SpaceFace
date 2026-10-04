@@ -45,7 +45,9 @@ test('first-flight hold admits a readable ship while leaving place and distant s
     await prepareFirstQueuedAuthoredBoundaryForOpening(scene);
     assert.equal(holdAuthoredUpgradeQueueForFirstFlight(scene), true);
     add('place', 'place', 'R0_GLASS');
-    add('distant-ship', 'ship', 'R2_METADATA');
+    // A metadata-tier ship parked on the player's own position is geometrically on the
+    // readable glass — 'distant' must actually be distant for the hold to defer it.
+    add('distant-ship', 'ship', 'R2_METADATA', false, 4000);
     add('beyond-runway-ship', 'ship', 'R1_RUNWAY', false, 900);
     add('far-runway-ship', 'ship', 'R1_RUNWAY', false, 680);
     add('near-runway-ship', 'ship', 'R1_RUNWAY', false, 100);
@@ -111,9 +113,9 @@ test('a slow station cannot occupy the only slot for a first-flight ship contact
     };
     enqueueBoundaryUpgrade(scene, {
       boundary: ship, entity: shipEntity, renderer: {}, options: shipOptions,
-      run: () => {
+      run: (context) => {
         shipStarted = true;
-        shipOptions.onAuthoredPipelineStaged?.();
+        context.options.onAuthoredPipelineStaged();
         return new Promise((resolve) => { finishShip = resolve; });
       },
     });
@@ -152,12 +154,13 @@ test('a slow station cannot occupy the only slot for a first-flight ship contact
   }
 });
 
-test('a non-ship job stalled in flight past the stall bound lets one queued ship pass', async () => {
+test('a non-ship job stalled in flight past the stall bound lets one queued ship pass', async (t) => {
   const scheduled = [];
   const previousRaf = globalThis.requestAnimationFrame;
   const previousWindow = globalThis.window;
   const previousNow = performance.now.bind(performance);
   let fakeNow = 0;
+  t.mock.timers.enable({ apis: ['setTimeout'], now: 0 });
   globalThis.requestAnimationFrame = (callback) => scheduled.push(callback);
   globalThis.window = { SF: { state: {
     mode: 'flight', playerId: 'player',
@@ -186,7 +189,6 @@ test('a non-ship job stalled in flight past the stall bound lets one queued ship
   globalThis.window.SF.state.entities.set('ship', shipEntity);
   let shipStarted = false;
   let dressingStarted = false;
-  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   try {
     // No first-flight hold: steady flight, serial lane, the station goes in flight and never settles.
     enqueueBoundaryUpgrade(scene, {
@@ -215,14 +217,12 @@ test('a non-ship job stalled in flight past the stall bound lets one queued ship
     // it. Poll instead of sleeping a fixed span — the wake timer is real and a starved host may
     // fire it late.
     fakeNow += 121_000;
-    const deadline = Date.now() + 30_000;
-    while (!shipStarted && Date.now() < deadline) {
-      await sleep(250);
-      while (scheduled.length) {
-        scheduled.shift()(0);
-        await new Promise((resolve) => setImmediate(resolve));
-      }
+    t.mock.timers.tick(5_000);
+    for (let i = 0; i < 8 && !shipStarted && scheduled.length; i++) {
+      scheduled.shift()(0);
+      await new Promise((resolve) => setImmediate(resolve));
     }
+    await new Promise((resolve) => setImmediate(resolve));
     assert.equal(shipStarted, true, 'a stalled non-ship hog cannot starve the serial ship lane');
     assert.equal(dressingStarted, false,
       'the freed slot belongs to the queued ship, not to earlier dressing work');
@@ -241,6 +241,74 @@ test('a non-ship job stalled in flight past the stall bound lets one queued ship
   } finally {
     finishStation?.();
     performance.now = previousNow;
+    if (previousRaf === undefined) delete globalThis.requestAnimationFrame;
+    else globalThis.requestAnimationFrame = previousRaf;
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+});
+
+test('first-flight hold admits readable authored contacts of every kind before the +20 release', async () => {
+  const scheduled = [];
+  const previousRaf = globalThis.requestAnimationFrame;
+  const previousWindow = globalThis.window;
+  globalThis.requestAnimationFrame = (callback) => scheduled.push(callback);
+  globalThis.window = { SF: { state: {
+    mode: 'flight',
+    render: { firstPlayableFrameAt: 1, sectorShellAdmission: false },
+    playerId: 'player',
+    entities: new Map([['player', { pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 } }]]),
+  } } };
+  const scene = new THREE.Scene();
+  const started = [];
+  const add = (id, type, tier, submitted = tier === 'R0_GLASS', x = 0, data = {}) => {
+    const boundary = new THREE.Group();
+    boundary.visible = submitted;
+    boundary.userData.authoredAssetState = 'loading';
+    scene.add(boundary);
+    const entity = {
+      id, type, alive: true, mesh: boundary, pos: { x, z: 0 }, vel: { x: 0, z: 0 },
+      activity: { presentationTier: tier },
+      data,
+    };
+    globalThis.window.SF.state.entities.set(id, entity);
+    enqueueBoundaryUpgrade(scene, {
+      boundary, entity, options: {},
+      run: () => { started.push(id); boundary.userData.authoredAssetState = 'authored'; },
+    });
+  };
+
+  try {
+    void enqueueBoundaryUpgrade(scene, { boundary: new THREE.Group() });
+    await prepareFirstQueuedAuthoredBoundaryForOpening(scene);
+    assert.equal(holdAuthoredUpgradeQueueForFirstFlight(scene), true);
+    add('glass-station', 'station', 'R0_GLASS', true, 0, { stationTypeId: 'trade_hub' });
+    add('glass-wreck', 'wreck', 'R0_GLASS');
+    add('runway-wreck', 'wreck', 'R1_RUNWAY', false, 650);
+    add('runway-drone', 'drone', 'R1_RUNWAY', false, 660);
+    add('far-ship', 'ship', 'R2_METADATA', false, 4000);
+    add('far-wreck', 'wreck', 'R2_METADATA', false, 4000);
+    add('artless-place', 'place', 'R0_GLASS');
+    for (let i = 0; i < 8 && scheduled.length; i++) {
+      scheduled.shift()(0);
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+    assert.ok(started.includes('glass-station'),
+      'an on-glass station can never be parked behind the hold');
+    assert.ok(started.includes('glass-wreck'),
+      'an on-glass wreck can never be parked behind the hold');
+    assert.ok(started.includes('runway-wreck'),
+      'a runway wreck inside the admission radius enters during the hold');
+    assert.ok(started.includes('runway-drone'),
+      'a runway drone inside the admission radius enters during the hold');
+    assert.equal(started.includes('far-ship'), false,
+      'a metadata-tier ship stays deferred until the hold releases');
+    assert.equal(started.includes('far-wreck'), false,
+      'a metadata-tier wreck stays deferred until the hold releases');
+    assert.equal(started.includes('artless-place'), false,
+      'a place with no authored asset of its own stays deferred');
+  } finally {
+    resumeAuthoredUpgradeQueueAfterOpening(scene);
     if (previousRaf === undefined) delete globalThis.requestAnimationFrame;
     else globalThis.requestAnimationFrame = previousRaf;
     if (previousWindow === undefined) delete globalThis.window;

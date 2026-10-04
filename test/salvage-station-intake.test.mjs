@@ -91,6 +91,7 @@ test('Forge accepts one conserved NPC scrap lot and player sale moves the same l
       lotId: receipt.lotId,
       commodityId: SCRAP_ID,
       qty: 7,
+      valueCr: 98,
       ignoredCommodityIds: ['cmdty_salvage_electronics'],
     });
     assert.equal(scrap.stock, stockBefore + 7, 'NPC receipt adds only its conserved scrap quantity');

@@ -24,7 +24,7 @@
       "nodeName": "SOCKET_Camera_Focus",
       "nodePath": [
         0,
-        13
+        15
       ],
       "parentNodeId": "sf.render.wasp-production-v1-lod2.node.wasp-production-v1-lod2-root",
       "worldTransform": [
@@ -70,7 +70,7 @@
       "nodeName": "SOCKET_Cargo_Ventral",
       "nodePath": [
         0,
-        14
+        16
       ],
       "parentNodeId": "sf.render.wasp-production-v1-lod2.node.wasp-production-v1-lod2-root",
       "worldTransform": [
@@ -116,7 +116,7 @@
       "nodeName": "SOCKET_Engine_Main",
       "nodePath": [
         0,
-        15
+        17
       ],
       "parentNodeId": "sf.render.wasp-production-v1-lod2.node.wasp-production-v1-lod2-root",
       "worldTransform": [
@@ -162,7 +162,7 @@
       "nodeName": "SOCKET_Mining_Front",
       "nodePath": [
         0,
-        16
+        18
       ],
       "parentNodeId": "sf.render.wasp-production-v1-lod2.node.wasp-production-v1-lod2-root",
       "worldTransform": [
@@ -208,7 +208,7 @@
       "nodeName": "SOCKET_RCS_Port",
       "nodePath": [
         0,
-        17
+        19
       ],
       "parentNodeId": "sf.render.wasp-production-v1-lod2.node.wasp-production-v1-lod2-root",
       "worldTransform": [
@@ -254,7 +254,7 @@
       "nodeName": "SOCKET_RCS_Starboard",
       "nodePath": [
         0,
-        18
+        20
       ],
       "parentNodeId": "sf.render.wasp-production-v1-lod2.node.wasp-production-v1-lod2-root",
       "worldTransform": [
@@ -300,7 +300,7 @@
       "nodeName": "SOCKET_Tether_Massline",
       "nodePath": [
         0,
-        19
+        21
       ],
       "parentNodeId": "sf.render.wasp-production-v1-lod2.node.wasp-production-v1-lod2-root",
       "worldTransform": [
@@ -346,7 +346,7 @@
       "nodeName": "SOCKET_Trail_Main",
       "nodePath": [
         0,
-        20
+        22
       ],
       "parentNodeId": "sf.render.wasp-production-v1-lod2.node.wasp-production-v1-lod2-root",
       "worldTransform": [
@@ -392,7 +392,7 @@
       "nodeName": "SOCKET_Trail_Port",
       "nodePath": [
         0,
-        21
+        23
       ],
       "parentNodeId": "sf.render.wasp-production-v1-lod2.node.wasp-production-v1-lod2-root",
       "worldTransform": [
@@ -438,7 +438,7 @@
       "nodeName": "SOCKET_Trail_Starboard",
       "nodePath": [
         0,
-        22
+        24
       ],
       "parentNodeId": "sf.render.wasp-production-v1-lod2.node.wasp-production-v1-lod2-root",
       "worldTransform": [
@@ -484,7 +484,7 @@
       "nodeName": "SOCKET_Utility_Dorsal",
       "nodePath": [
         0,
-        23
+        25
       ],
       "parentNodeId": "sf.render.wasp-production-v1-lod2.node.wasp-production-v1-lod2-root",
       "worldTransform": [
@@ -530,7 +530,7 @@
       "nodeName": "SOCKET_Weapon_Front",
       "nodePath": [
         0,
-        24
+        26
       ],
       "parentNodeId": "sf.render.wasp-production-v1-lod2.node.wasp-production-v1-lod2-root",
       "worldTransform": [
@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "7f161615a03ce38e13771100158a48ee835209e75eb7372af059a7270741aabb",
+  "contentHash": "d791f8186f2743aecfc295b2f9a9432f77ccf5ad64f14bfb0c7eaec4d8ea91e4",
   "dynamicGroups": [
     {
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-hook-armor-flap-armor.dynamic",
@@ -588,9 +588,9 @@
       "nodeId": "sf.render.wasp-production-v1-lod2.node.lod0-hook-nav-starboard"
     },
     {
-      "id": "sf.render.wasp-production-v1-lod2.node.lod0-hook-secondary-fin-armor.dynamic",
-      "kind": "dynamic-surface",
-      "nodeId": "sf.render.wasp-production-v1-lod2.node.lod0-hook-secondary-fin-armor"
+      "id": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-winglet-p-hook-secondary-fin-armor.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-winglet-p-hook-secondary-fin-armor"
     }
   ],
   "geometry": [
@@ -598,17 +598,17 @@
       "bounds": {
         "max": [
           10.90002155303955,
-          1.7474701404571533,
+          1.7476470470428467,
           8.078171730041504
         ],
         "min": [
           -10.720288276672363,
-          -0.8997262716293335,
+          -0.8995493650436401,
           -8.078171730041504
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e9a3d7cbff4f7edfaea4e28f1d11093fce0937ae4294e70d140ab63517d3d321",
+      "geometryHash": "72a25b15038e4ccb7cdaf0137e402aff48bbea8483741f46b04bfbbe8fb09b05",
       "id": "sf.render.wasp-production-v1-lod2.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -617,32 +617,32 @@
       "meshName": "COLLISION_HULL.002",
       "nodeId": "sf.render.wasp-production-v1-lod2.node.collision-hull",
       "primitiveIndex": 0,
-      "vertexCount": 848
+      "vertexCount": 844
     },
     {
       "bounds": {
         "max": [
-          4.892186641693115,
-          1.7484707832336426,
-          7.897613525390625
+          3.9502506256103516,
+          1.1744440793991089,
+          5.189309597015381
         ],
         "min": [
-          -9.995355606079102,
-          -0.7968202829360962,
-          -7.898134708404541
+          -9.091981887817383,
+          -0.7965981364250183,
+          -5.189309597015381
         ]
       },
       "drawMode": 4,
-      "geometryHash": "38bc729dff549dbdff1665557ae15b39cf859795f79be8882e8b8d5ec8c2b7cb",
+      "geometryHash": "44db34c6e0af7f593e90108fd60a4d18e0321f121d88e1948ce3473f9183ae78",
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-armor.primitive.0",
-      "indexCount": 3303,
+      "indexCount": 2700,
       "indexed": true,
       "materialHash": "290090c68723aa64e419348a27509adb223b987f6d21338b3c56ea5a0dfb693d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor.002",
       "nodeId": "sf.render.wasp-production-v1-lod2.node.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 1120
+      "vertexCount": 874
     },
     {
       "bounds": {
@@ -659,13 +659,13 @@
       },
       "drawMode": 4,
       "geometryHash": "ac391e16d99412d081d2c476f9e375b013fd381de8f41bea0029952dd2929f80",
-      "id": "sf.render.wasp-production-v1-lod2.node.lod0-beacon-amber.primitive.0",
+      "id": "sf.render.wasp-production-v1-lod2.node.lod0-beacon-amber-beacon.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialHash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Beacon_Amber.002",
-      "nodeId": "sf.render.wasp-production-v1-lod2.node.lod0-beacon-amber",
+      "meshName": "LOD0_Beacon_Amber_beacon.002",
+      "nodeId": "sf.render.wasp-production-v1-lod2.node.lod0-beacon-amber-beacon",
       "primitiveIndex": 0,
       "vertexCount": 24
     },
@@ -733,7 +733,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c8188840979ae994aa8a9b5fab69a99299e91286f848df5435e39d62444db2f4",
+      "geometryHash": "e028fcfc35010280aa3eaf15ddfd5c78f6318636a69547cfc290e1d95d30a096",
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-hook-drive-core.primitive.0",
       "indexCount": 144,
       "indexed": true,
@@ -797,52 +797,27 @@
     {
       "bounds": {
         "max": [
-          -6.411214351654053,
-          1.7481791855540045,
-          -4.332105764388223
-        ],
-        "min": [
-          -9.792290687561035,
-          0.7021886823926202,
-          -4.4678977642067474
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "5e4022822df64cb8d37fa306bd648ba0897625a1a80bd733ed9b55c737275f34",
-      "id": "sf.render.wasp-production-v1-lod2.node.lod0-hook-secondary-fin-armor.primitive.0",
-      "indexCount": 84,
-      "indexed": true,
-      "materialHash": "290090c68723aa64e419348a27509adb223b987f6d21338b3c56ea5a0dfb693d",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_HOOK_SECONDARY_FIN_Armor.002",
-      "nodeId": "sf.render.wasp-production-v1-lod2.node.lod0-hook-secondary-fin-armor",
-      "primitiveIndex": 0,
-      "vertexCount": 42
-    },
-    {
-      "bounds": {
-        "max": [
           10.90002155303955,
-          1.149007797241211,
+          1.1491793394088745,
           5.299827575683594
         ],
         "min": [
           -10.000139236450195,
-          -0.8997400403022766,
+          -0.8995684385299683,
           -5.299827575683594
         ]
       },
       "drawMode": 4,
-      "geometryHash": "29284acb8f6a63b81fb0dcfca5b041863ff79a488011acfdea46a54247fb811d",
+      "geometryHash": "dd9a4cf2524b580448112d213f54a93121db20760df640017999e9e12b69210c",
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-hull.primitive.0",
-      "indexCount": 5499,
+      "indexCount": 5559,
       "indexed": true,
       "materialHash": "da148cbaefaecb6182128472d62bfd3ca2b38aa103bde95ec1258e32c644a71a",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull.002",
       "nodeId": "sf.render.wasp-production-v1-lod2.node.lod0-hull",
       "primitiveIndex": 0,
-      "vertexCount": 1523
+      "vertexCount": 1541
     },
     {
       "bounds": {
@@ -858,7 +833,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4c28a022f2571a0af18c4352491f08b286bf19926e70fe3e4bcd3f19dba02f3d",
+      "geometryHash": "b85901d3d5dce7572dfad6265b31b1f321b739730cc902d8e011bbe3893560d1",
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-lights-cyan.primitive.0",
       "indexCount": 705,
       "indexed": true,
@@ -874,56 +849,263 @@
         "max": [
           10.90002155303955,
           0.8749208450317383,
-          8.078171730041504
+          5.174635410308838
         ],
         "min": [
           -10.720288276672363,
           -0.8749208450317383,
-          -8.078171730041504
+          -5.174635410308838
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ce80756d1c880632a847399edde758326b260759fcb7203f7fca05abd4c94191",
+      "geometryHash": "bd6679e3836a5cd82b1786f9ec458781e4a69916a18d9a6cb6200077775c88de",
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-mechanical.primitive.0",
-      "indexCount": 4938,
+      "indexCount": 3639,
       "indexed": true,
       "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Mechanical.002",
       "nodeId": "sf.render.wasp-production-v1-lod2.node.lod0-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 1618
+      "vertexCount": 1169
     },
     {
       "bounds": {
         "max": [
-          8.899595260620117,
-          0.9453623294830322,
-          5.256598472595215
+          6.845832347869873,
+          0.9454470872879028,
+          5.256380081176758
         ],
         "min": [
           -10.720288276672363,
-          -0.8557366728782654,
-          -5.256597995758057
+          -0.855821430683136,
+          -5.2563796043396
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2060c06ca05a3e5f7668b93862eb0daa8c8adca61afa7fbb15a8b17549f663c0",
+      "geometryHash": "b8c2c04f681a66d30a96e8235400791245f177f2cb0c71a35af954490523606f",
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-mechanicaldark.primitive.0",
-      "indexCount": 4581,
+      "indexCount": 4383,
       "indexed": true,
       "materialHash": "8214949ffc1c28fa4a3d3fdbbf0329870ff799e2738678a6d06faf31e01c844b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalDark.002",
       "nodeId": "sf.render.wasp-production-v1-lod2.node.lod0-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 1674
+      "vertexCount": 1633
+    },
+    {
+      "bounds": {
+        "max": [
+          4.891780853271484,
+          0.7162325978279114,
+          3.986781120300293
+        ],
+        "min": [
+          1.5081207752227783,
+          0.3220197856426239,
+          -3.986781120300293
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d45da43317979ca65a797e425be02d848b0dca44dee5e985755c41032a22cd8b",
+      "id": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-guns-armor.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "290090c68723aa64e419348a27509adb223b987f6d21338b3c56ea5a0dfb693d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_WASP_GUNS_Armor.002",
+      "nodeId": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-guns-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 76
+    },
+    {
+      "bounds": {
+        "max": [
+          8.898472547531128,
+          0.69913549721241,
+          3.9291152954101562
+        ],
+        "min": [
+          4.800439238548279,
+          0.40083514153957367,
+          -3.9281258583068848
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "03314179433cc2512a26dc02f56a029b5c22ef22587fc1c1f9f27595b3e8954d",
+      "id": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-guns-mechanical.primitive.0",
+      "indexCount": 669,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_WASP_GUNS_Mechanical.002",
+      "nodeId": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-guns-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 240
+    },
+    {
+      "bounds": {
+        "max": [
+          8.89927887916565,
+          0.69913549721241,
+          3.9291152954101562
+        ],
+        "min": [
+          8.00054144859314,
+          0.40083514153957367,
+          -3.9281258583068848
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "27c996ad448a116529db648141fd226e32330d8cb890da80a00c193beab79ec7",
+      "id": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-guns-mechanicaldark.primitive.0",
+      "indexCount": 309,
+      "indexed": true,
+      "materialHash": "8214949ffc1c28fa4a3d3fdbbf0329870ff799e2738678a6d06faf31e01c844b",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_WASP_GUNS_MechanicalDark.002",
+      "nodeId": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-guns-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 92
+    },
+    {
+      "bounds": {
+        "max": [
+          -5.313957691192627,
+          0.07689188420772552,
+          -5.001017265603878
+        ],
+        "min": [
+          -9.99467658996582,
+          -0.11681075394153595,
+          -7.898271799087524
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "25a141df97f3a8ca46c6a118d6ea17288831d7cb754ef136fdcebd734a7f53b1",
+      "id": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-winglet-p-armor.primitive.0",
+      "indexCount": 162,
+      "indexed": true,
+      "materialHash": "290090c68723aa64e419348a27509adb223b987f6d21338b3c56ea5a0dfb693d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_WASP_WINGLET_P_Armor.002",
+      "nodeId": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-winglet-p-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 59
+    },
+    {
+      "bounds": {
+        "max": [
+          -6.411214351654053,
+          1.7481791855540045,
+          -4.332105764388223
+        ],
+        "min": [
+          -9.792290687561035,
+          0.7021886823926202,
+          -4.4678977642067474
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5e4022822df64cb8d37fa306bd648ba0897625a1a80bd733ed9b55c737275f34",
+      "id": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-winglet-p-hook-secondary-fin-armor.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": "290090c68723aa64e419348a27509adb223b987f6d21338b3c56ea5a0dfb693d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_WASP_WINGLET_P_HOOK_SECONDARY_FIN_Armor.002",
+      "nodeId": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-winglet-p-hook-secondary-fin-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 42
+    },
+    {
+      "bounds": {
+        "max": [
+          -8.100729942321777,
+          0.10864691436290741,
+          -7.821220397949219
+        ],
+        "min": [
+          -10.299532890319824,
+          -0.14876477420330048,
+          -8.078900337219238
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "57b67fb12f23f2fbf112979c2c77d1c4816750590cf89b8ecba6a5d0c612cc8e",
+      "id": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-winglet-p-mechanical.primitive.0",
+      "indexCount": 234,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_WASP_WINGLET_P_Mechanical.002",
+      "nodeId": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-winglet-p-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 83
+    },
+    {
+      "bounds": {
+        "max": [
+          -5.314978122711182,
+          1.7463529855012894,
+          7.897491931915283
+        ],
+        "min": [
+          -9.994950294494629,
+          -0.11738057434558868,
+          4.3321322202682495
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "15d72fc77d6e32c2fef44fa58d98e020eb57c1ef7492423d303b57fcc373a31f",
+      "id": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-winglet-s-armor.primitive.0",
+      "indexCount": 240,
+      "indexed": true,
+      "materialHash": "290090c68723aa64e419348a27509adb223b987f6d21338b3c56ea5a0dfb693d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_WASP_WINGLET_S_Armor.002",
+      "nodeId": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-winglet-s-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 99
+    },
+    {
+      "bounds": {
+        "max": [
+          -8.100625038146973,
+          0.10866118967533112,
+          8.078834056854248
+        ],
+        "min": [
+          -10.299732208251953,
+          -0.14878611266613007,
+          7.821386814117432
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "30dd7a05a5e171b7df9f20912ddf519b1ed3835aeff39823b84aacf03aa74e8c",
+      "id": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-winglet-s-mechanical.primitive.0",
+      "indexCount": 240,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_WASP_WINGLET_S_Mechanical.002",
+      "nodeId": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-winglet-s-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 87
     }
   ],
   "hlods": [],
   "kind": "ship",
   "lods": [],
   "materials": [
+    {
+      "hash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
+      "id": "material:16564286e97aa95590d4d5ec",
+      "name": "Material_Emissive_Amber_beacon",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
     {
       "hash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
       "id": "material:1ee807a3355d83d28693fa8c",
@@ -962,13 +1144,6 @@
           "uri": null
         }
       ]
-    },
-    {
-      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
-      "id": "material:35c00bfb4e1adf84176a4a79",
-      "name": "Material_Emissive_Amber",
-      "pipelineKey": "opaque:front",
-      "textures": []
     },
     {
       "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
@@ -1195,7 +1370,7 @@
       ]
     },
     {
-      "id": "sf.render.wasp-production-v1-lod2.node.lod0-beacon-amber",
+      "id": "sf.render.wasp-production-v1-lod2.node.lod0-beacon-amber-beacon",
       "localTransform": [
         1,
         0,
@@ -1215,8 +1390,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Beacon_Amber",
-      "nodeName": "LOD0_Beacon_Amber",
+      "mergeBoundary": "LOD0_Beacon_Amber_beacon",
+      "nodeName": "LOD0_Beacon_Amber_beacon",
       "nodePath": [
         0,
         2
@@ -1489,55 +1664,6 @@
       ]
     },
     {
-      "id": "sf.render.wasp-production-v1-lod2.node.lod0-hook-secondary-fin-armor",
-      "localTransform": [
-        1.6905381679534912,
-        0,
-        0,
-        0,
-        0,
-        1.6905381679534912,
-        0,
-        0,
-        0,
-        0,
-        1.6905381679534912,
-        0,
-        -8.101752519607544,
-        1.2251839339733124,
-        -4.400001764297485,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_HOOK_SECONDARY_FIN_Armor",
-      "nodeName": "LOD0_HOOK_SECONDARY_FIN_Armor",
-      "nodePath": [
-        0,
-        8
-      ],
-      "parentId": "sf.render.wasp-production-v1-lod2.node.wasp-production-v1-lod2-root",
-      "role": "dynamic",
-      "spatialClusterId": "sf.render.wasp-production-v1-lod2.body",
-      "worldTransform": [
-        1.6905381679534912,
-        0,
-        0,
-        0,
-        0,
-        1.6905381679534912,
-        0,
-        0,
-        0,
-        0,
-        1.6905381679534912,
-        0,
-        -8.101752519607544,
-        1.2251839339733124,
-        -4.400001764297485,
-        1
-      ]
-    },
-    {
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-hull",
       "localTransform": [
         1,
@@ -1562,7 +1688,7 @@
       "nodeName": "LOD0_Hull",
       "nodePath": [
         0,
-        9
+        8
       ],
       "parentId": "sf.render.wasp-production-v1-lod2.node.wasp-production-v1-lod2-root",
       "role": "immutable",
@@ -1611,7 +1737,7 @@
       "nodeName": "LOD0_Lights_Cyan",
       "nodePath": [
         0,
-        10
+        9
       ],
       "parentId": "sf.render.wasp-production-v1-lod2.node.wasp-production-v1-lod2-root",
       "role": "immutable",
@@ -1660,7 +1786,7 @@
       "nodeName": "LOD0_Mechanical",
       "nodePath": [
         0,
-        11
+        10
       ],
       "parentId": "sf.render.wasp-production-v1-lod2.node.wasp-production-v1-lod2-root",
       "role": "immutable",
@@ -1709,7 +1835,7 @@
       "nodeName": "LOD0_MechanicalDark",
       "nodePath": [
         0,
-        12
+        11
       ],
       "parentId": "sf.render.wasp-production-v1-lod2.node.wasp-production-v1-lod2-root",
       "role": "immutable",
@@ -1730,6 +1856,553 @@
         0,
         0,
         0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-guns-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_WASP_GUNS_Armor",
+      "nodeName": "LOD0_MOTION_WASP_GUNS_Armor",
+      "nodePath": [
+        0,
+        12,
+        0
+      ],
+      "parentId": "sf.render.wasp-production-v1-lod2.node.motion-wasp-guns",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-production-v1-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.200000047683716,
+        0.550000011920929,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-guns-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_WASP_GUNS_Mechanical",
+      "nodeName": "LOD0_MOTION_WASP_GUNS_Mechanical",
+      "nodePath": [
+        0,
+        12,
+        1
+      ],
+      "parentId": "sf.render.wasp-production-v1-lod2.node.motion-wasp-guns",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-production-v1-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.200000047683716,
+        0.550000011920929,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-guns-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_WASP_GUNS_MechanicalDark",
+      "nodeName": "LOD0_MOTION_WASP_GUNS_MechanicalDark",
+      "nodePath": [
+        0,
+        12,
+        2
+      ],
+      "parentId": "sf.render.wasp-production-v1-lod2.node.motion-wasp-guns",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-production-v1-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.200000047683716,
+        0.550000011920929,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-winglet-p-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_WASP_WINGLET_P_Armor",
+      "nodeName": "LOD0_MOTION_WASP_WINGLET_P_Armor",
+      "nodePath": [
+        0,
+        13,
+        0
+      ],
+      "parentId": "sf.render.wasp-production-v1-lod2.node.motion-wasp-winglet-p",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-production-v1-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8,
+        0.20000000298023224,
+        -5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-winglet-p-hook-secondary-fin-armor",
+      "localTransform": [
+        1.6905381679534912,
+        0,
+        0,
+        0,
+        0,
+        1.6905381679534912,
+        0,
+        0,
+        0,
+        0,
+        1.6905381679534912,
+        0,
+        -0.10175251960754395,
+        1.0251839309930801,
+        0.5999982357025146,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_WASP_WINGLET_P_HOOK_SECONDARY_FIN_Armor",
+      "nodeName": "LOD0_MOTION_WASP_WINGLET_P_HOOK_SECONDARY_FIN_Armor",
+      "nodePath": [
+        0,
+        13,
+        1
+      ],
+      "parentId": "sf.render.wasp-production-v1-lod2.node.motion-wasp-winglet-p",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.wasp-production-v1-lod2.body",
+      "worldTransform": [
+        1.6905381679534912,
+        0,
+        0,
+        0,
+        0,
+        1.6905381679534912,
+        0,
+        0,
+        0,
+        0,
+        1.6905381679534912,
+        0,
+        -8.101752519607544,
+        1.2251839339733124,
+        -4.400001764297485,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-winglet-p-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_WASP_WINGLET_P_Mechanical",
+      "nodeName": "LOD0_MOTION_WASP_WINGLET_P_Mechanical",
+      "nodePath": [
+        0,
+        13,
+        2
+      ],
+      "parentId": "sf.render.wasp-production-v1-lod2.node.motion-wasp-winglet-p",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-production-v1-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8,
+        0.20000000298023224,
+        -5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-winglet-s-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_WASP_WINGLET_S_Armor",
+      "nodeName": "LOD0_MOTION_WASP_WINGLET_S_Armor",
+      "nodePath": [
+        0,
+        14,
+        0
+      ],
+      "parentId": "sf.render.wasp-production-v1-lod2.node.motion-wasp-winglet-s",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-production-v1-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8,
+        0.20000000298023224,
+        5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-winglet-s-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_WASP_WINGLET_S_Mechanical",
+      "nodeName": "LOD0_MOTION_WASP_WINGLET_S_Mechanical",
+      "nodePath": [
+        0,
+        14,
+        1
+      ],
+      "parentId": "sf.render.wasp-production-v1-lod2.node.motion-wasp-winglet-s",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-production-v1-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8,
+        0.20000000298023224,
+        5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-production-v1-lod2.node.motion-wasp-guns",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.200000047683716,
+        0.550000011920929,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_WASP_GUNS",
+      "nodeName": "MOTION_WASP_GUNS",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.wasp-production-v1-lod2.node.wasp-production-v1-lod2-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-production-v1-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.200000047683716,
+        0.550000011920929,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-production-v1-lod2.node.motion-wasp-winglet-p",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8,
+        0.20000000298023224,
+        -5,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_WASP_WINGLET_P",
+      "nodeName": "MOTION_WASP_WINGLET_P",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.wasp-production-v1-lod2.node.wasp-production-v1-lod2-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-production-v1-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8,
+        0.20000000298023224,
+        -5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-production-v1-lod2.node.motion-wasp-winglet-s",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8,
+        0.20000000298023224,
+        5,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_WASP_WINGLET_S",
+      "nodeName": "MOTION_WASP_WINGLET_S",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.wasp-production-v1-lod2.node.wasp-production-v1-lod2-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-production-v1-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8,
+        0.20000000298023224,
+        5,
         1
       ]
     },
@@ -1758,7 +2431,7 @@
       "nodeName": "SOCKET_Camera_Focus",
       "nodePath": [
         0,
-        13
+        15
       ],
       "parentId": "sf.render.wasp-production-v1-lod2.node.wasp-production-v1-lod2-root",
       "role": "immutable",
@@ -1807,7 +2480,7 @@
       "nodeName": "SOCKET_Cargo_Ventral",
       "nodePath": [
         0,
-        14
+        16
       ],
       "parentId": "sf.render.wasp-production-v1-lod2.node.wasp-production-v1-lod2-root",
       "role": "immutable",
@@ -1856,7 +2529,7 @@
       "nodeName": "SOCKET_Engine_Main",
       "nodePath": [
         0,
-        15
+        17
       ],
       "parentId": "sf.render.wasp-production-v1-lod2.node.wasp-production-v1-lod2-root",
       "role": "immutable",
@@ -1905,7 +2578,7 @@
       "nodeName": "SOCKET_Mining_Front",
       "nodePath": [
         0,
-        16
+        18
       ],
       "parentId": "sf.render.wasp-production-v1-lod2.node.wasp-production-v1-lod2-root",
       "role": "immutable",
@@ -1954,7 +2627,7 @@
       "nodeName": "SOCKET_RCS_Port",
       "nodePath": [
         0,
-        17
+        19
       ],
       "parentId": "sf.render.wasp-production-v1-lod2.node.wasp-production-v1-lod2-root",
       "role": "immutable",
@@ -2003,7 +2676,7 @@
       "nodeName": "SOCKET_RCS_Starboard",
       "nodePath": [
         0,
-        18
+        20
       ],
       "parentId": "sf.render.wasp-production-v1-lod2.node.wasp-production-v1-lod2-root",
       "role": "immutable",
@@ -2052,7 +2725,7 @@
       "nodeName": "SOCKET_Tether_Massline",
       "nodePath": [
         0,
-        19
+        21
       ],
       "parentId": "sf.render.wasp-production-v1-lod2.node.wasp-production-v1-lod2-root",
       "role": "immutable",
@@ -2101,7 +2774,7 @@
       "nodeName": "SOCKET_Trail_Main",
       "nodePath": [
         0,
-        20
+        22
       ],
       "parentId": "sf.render.wasp-production-v1-lod2.node.wasp-production-v1-lod2-root",
       "role": "immutable",
@@ -2150,7 +2823,7 @@
       "nodeName": "SOCKET_Trail_Port",
       "nodePath": [
         0,
-        21
+        23
       ],
       "parentId": "sf.render.wasp-production-v1-lod2.node.wasp-production-v1-lod2-root",
       "role": "immutable",
@@ -2199,7 +2872,7 @@
       "nodeName": "SOCKET_Trail_Starboard",
       "nodePath": [
         0,
-        22
+        24
       ],
       "parentId": "sf.render.wasp-production-v1-lod2.node.wasp-production-v1-lod2-root",
       "role": "immutable",
@@ -2248,7 +2921,7 @@
       "nodeName": "SOCKET_Utility_Dorsal",
       "nodePath": [
         0,
-        23
+        25
       ],
       "parentId": "sf.render.wasp-production-v1-lod2.node.wasp-production-v1-lod2-root",
       "role": "immutable",
@@ -2297,7 +2970,7 @@
       "nodeName": "SOCKET_Weapon_Front",
       "nodePath": [
         0,
-        24
+        26
       ],
       "parentId": "sf.render.wasp-production-v1-lod2.node.wasp-production-v1-lod2-root",
       "role": "immutable",
@@ -2372,45 +3045,45 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "b82051680536820fec4ba71104d619ba0f3502e0ae52239f6a364f105f4c9047"
+      "sha256": "ac04d30f45e51dda623d4e3b1757c182e8d75445d5786bbbea728c353bd95042"
     },
     "sourceGlb": {
-      "bytes": 435008,
-      "sha256": "960d9477f0209d0a7f8d7daf8b5e5711751a2102f0946896dbf003952cff4544",
+      "bytes": 450256,
+      "sha256": "842c0ec53ef32c6a8a7243937c57014a7383a372f6b653608887e3e8e30b4667",
       "uri": "wasp_production_v1_lod2.glb"
     },
     "sourceManifest": {
-      "bytes": 198942,
-      "sha256": "98a76b502b1e0a29866df412c149715497b8f42b6311838a5fa3837f6d8bac4e",
+      "bytes": 219794,
+      "sha256": "81b413c425531af63fa3f895c51f5be4ba86bec2c3ece4040a0acf26b71ab54f",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 589488,
-    "sha256": "1db7398aa916095852963bb310c9843643f23f0a4eedc97be7ea92f7edee76a7",
+    "bytes": 607792,
+    "sha256": "362567c9a2ca859a7985c786e37df4a804d0619193f6950d909348739ad5a882",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         0.08986663818359375,
-        0.424365371465683,
-        0
+        0.42430537351201814,
+        -0.00003314018249511719
       ],
       "max": [
         10.90002155303955,
-        1.7484707832336426,
-        8.078171730041504
+        1.7481791855540045,
+        8.078834056854248
       ],
       "min": [
         -10.720288276672363,
-        -0.8997400403022766,
-        -8.078171730041504
+        -0.8995684385299683,
+        -8.078900337219238
       ],
       "size": [
         21.620309829711914,
-        2.648210823535919,
-        16.156343460083008
+        2.647747624083973,
+        16.157734394073486
       ]
     },
     "hidden": [
@@ -2432,13 +3105,208 @@
           0,
           1,
           0,
+          3.200000047683716,
+          0.550000011920929,
+          0,
+          1
+        ],
+        "name": "MOTION_WASP_GUNS",
+        "planIndex": 14,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "wasp_guns",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              3.200000047683716
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              0.550000011920929
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_WASP_GUNS",
+          "spaceface": {
+            "motionGroup": "wasp_guns"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_WASP_GUNS",
+            "recordIds": [
+              "sf.render.wasp-production-v1-lod2.node.motion-wasp-guns"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -8,
+          0.20000000298023224,
+          -5,
+          1
+        ],
+        "name": "MOTION_WASP_WINGLET_P",
+        "planIndex": 18,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "wasp_winglet_p",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              -8
+            ],
+            [
+              0,
+              1,
+              0,
+              5
+            ],
+            [
+              0,
+              0,
+              1,
+              0.20000000298023224
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_WASP_WINGLET_P",
+          "spaceface": {
+            "motionGroup": "wasp_winglet_p"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_WASP_WINGLET_P",
+            "recordIds": [
+              "sf.render.wasp-production-v1-lod2.node.motion-wasp-winglet-p"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -8,
+          0.20000000298023224,
+          5,
+          1
+        ],
+        "name": "MOTION_WASP_WINGLET_S",
+        "planIndex": 22,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "wasp_winglet_s",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              -8
+            ],
+            [
+              0,
+              1,
+              0,
+              -5
+            ],
+            [
+              0,
+              0,
+              1,
+              0.20000000298023224
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_WASP_WINGLET_S",
+          "spaceface": {
+            "motionGroup": "wasp_winglet_s"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_WASP_WINGLET_S",
+            "recordIds": [
+              "sf.render.wasp-production-v1-lod2.node.motion-wasp-winglet-s"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
           1.8195996284484863,
           0.42500001192092896,
           0,
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 15,
+        "planIndex": 25,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2490,7 +3358,7 @@
           1
         ],
         "name": "SOCKET_Cargo_Ventral",
-        "planIndex": 16,
+        "planIndex": 26,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2542,7 +3410,7 @@
           1
         ],
         "name": "SOCKET_Engine_Main",
-        "planIndex": 17,
+        "planIndex": 27,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2594,7 +3462,7 @@
           1
         ],
         "name": "SOCKET_Mining_Front",
-        "planIndex": 18,
+        "planIndex": 28,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2646,7 +3514,7 @@
           1
         ],
         "name": "SOCKET_RCS_Port",
-        "planIndex": 19,
+        "planIndex": 29,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2698,7 +3566,7 @@
           1
         ],
         "name": "SOCKET_RCS_Starboard",
-        "planIndex": 20,
+        "planIndex": 30,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2750,7 +3618,7 @@
           1
         ],
         "name": "SOCKET_Tether_Massline",
-        "planIndex": 21,
+        "planIndex": 31,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2802,7 +3670,7 @@
           1
         ],
         "name": "SOCKET_Trail_Main",
-        "planIndex": 22,
+        "planIndex": 32,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2854,7 +3722,7 @@
           1
         ],
         "name": "SOCKET_Trail_Port",
-        "planIndex": 23,
+        "planIndex": 33,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2906,7 +3774,7 @@
           1
         ],
         "name": "SOCKET_Trail_Starboard",
-        "planIndex": 24,
+        "planIndex": 34,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2958,7 +3826,7 @@
           1
         ],
         "name": "SOCKET_Utility_Dorsal",
-        "planIndex": 25,
+        "planIndex": 35,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3010,7 +3878,7 @@
           1
         ],
         "name": "SOCKET_Weapon_Front",
-        "planIndex": 26,
+        "planIndex": 36,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3046,8 +3914,8 @@
     "materialProfileRoles": {
       "drive": 1,
       "glass": 1,
-      "hull": 5,
-      "mechanical": 2,
+      "hull": 8,
+      "mechanical": 6,
       "signal": 4
     },
     "materialProfiles": [
@@ -3099,12 +3967,12 @@
       {
         "allowTextures": true,
         "planIndex": 11,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 12,
-        "role": "signal"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -3113,11 +3981,52 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 14,
+        "planIndex": 15,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
         "role": "mechanical"
       }
     ],
-    "nodeCount": 27,
+    "motionBank": {
+      "bytes": 8378,
+      "rigId": "wasp",
+      "sha256": "b62538c381d24be3de52e639cc774a80cfd65d6f59ea79f3e0a7eeca08d36621",
+      "uri": "assets/ships/motions/wasp-production-v1.motion.json"
+    },
+    "nodeCount": 37,
     "primitives": [
       {
         "canopy": false,
@@ -3166,7 +4075,7 @@
           0,
           1
         ],
-        "name": "LOD0_Beacon_Amber",
+        "name": "LOD0_Beacon_Amber_beacon",
         "planIndex": 4,
         "tags": {
           "canopy": false,
@@ -3333,34 +4242,6 @@
       {
         "canopy": false,
         "matrix": [
-          1.6905381679534912,
-          0,
-          0,
-          0,
-          0,
-          1.6905381679534912,
-          0,
-          0,
-          0,
-          0,
-          1.6905381679534912,
-          0,
-          -8.101752519607544,
-          1.2251839339733124,
-          -4.400001764297485,
-          1
-        ],
-        "name": "LOD0_HOOK_SECONDARY_FIN_Armor",
-        "planIndex": 10,
-        "tags": {
-          "canopy": false,
-          "damageRole": "secondary",
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
           1,
           0,
           0,
@@ -3379,7 +4260,7 @@
           1
         ],
         "name": "LOD0_Hull",
-        "planIndex": 11,
+        "planIndex": 10,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -3406,7 +4287,7 @@
           1
         ],
         "name": "LOD0_Lights_Cyan",
-        "planIndex": 12,
+        "planIndex": 11,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -3433,7 +4314,7 @@
           1
         ],
         "name": "LOD0_Mechanical",
-        "planIndex": 13,
+        "planIndex": 12,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -3460,10 +4341,235 @@
           1
         ],
         "name": "LOD0_MechanicalDark",
-        "planIndex": 14,
+        "planIndex": 13,
         "tags": {
           "canopy": false,
           "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          3.200000047683716,
+          0.550000011920929,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_WASP_GUNS_Armor",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          3.200000047683716,
+          0.550000011920929,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_WASP_GUNS_Mechanical",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          3.200000047683716,
+          0.550000011920929,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_WASP_GUNS_MechanicalDark",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -8,
+          0.20000000298023224,
+          -5,
+          1
+        ],
+        "name": "LOD0_MOTION_WASP_WINGLET_P_Armor",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.6905381679534912,
+          0,
+          0,
+          0,
+          0,
+          1.6905381679534912,
+          0,
+          0,
+          0,
+          0,
+          1.6905381679534912,
+          0,
+          -8.101752519607544,
+          1.2251839339733124,
+          -4.400001764297485,
+          1
+        ],
+        "name": "LOD0_MOTION_WASP_WINGLET_P_HOOK_SECONDARY_FIN_Armor",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "damageRole": "secondary",
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -8,
+          0.20000000298023224,
+          -5,
+          1
+        ],
+        "name": "LOD0_MOTION_WASP_WINGLET_P_Mechanical",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -8,
+          0.20000000298023224,
+          5,
+          1
+        ],
+        "name": "LOD0_MOTION_WASP_WINGLET_S_Armor",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -8,
+          0.20000000298023224,
+          5,
+          1
+        ],
+        "name": "LOD0_MOTION_WASP_WINGLET_S_Mechanical",
+        "planIndex": 24,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
         }
       }
     ],
@@ -3471,37 +4577,47 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/wasp_production_v1_lod2.glb"
   },
-  "runtimeHash": "37514fa94e07714f056c921fdb6108997575cfdaddf32e686fd91cb3cc687ef5",
+  "runtimeHash": "f9bc44dc59b7082f421caf19afbbd1a8f418fadeacb2a156a83ad155af98601e",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           10.90002155303955,
-          1.7484707832336426,
-          8.078171730041504
+          1.7481791855540045,
+          8.078834056854248
         ],
         "min": [
           -10.720288276672363,
-          -0.8997400403022766,
-          -8.078171730041504
+          -0.8995684385299683,
+          -8.078900337219238
         ]
       },
       "id": "sf.render.wasp-production-v1-lod2.body",
       "nodeIds": [
         "sf.render.wasp-production-v1-lod2.node.collision-hull",
         "sf.render.wasp-production-v1-lod2.node.lod0-armor",
-        "sf.render.wasp-production-v1-lod2.node.lod0-beacon-amber",
+        "sf.render.wasp-production-v1-lod2.node.lod0-beacon-amber-beacon",
         "sf.render.wasp-production-v1-lod2.node.lod0-canopy",
         "sf.render.wasp-production-v1-lod2.node.lod0-hook-armor-flap-armor",
         "sf.render.wasp-production-v1-lod2.node.lod0-hook-drive-core",
         "sf.render.wasp-production-v1-lod2.node.lod0-hook-nav-port",
         "sf.render.wasp-production-v1-lod2.node.lod0-hook-nav-starboard",
-        "sf.render.wasp-production-v1-lod2.node.lod0-hook-secondary-fin-armor",
         "sf.render.wasp-production-v1-lod2.node.lod0-hull",
         "sf.render.wasp-production-v1-lod2.node.lod0-lights-cyan",
         "sf.render.wasp-production-v1-lod2.node.lod0-mechanical",
         "sf.render.wasp-production-v1-lod2.node.lod0-mechanicaldark",
+        "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-guns-armor",
+        "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-guns-mechanical",
+        "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-guns-mechanicaldark",
+        "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-winglet-p-armor",
+        "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-winglet-p-hook-secondary-fin-armor",
+        "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-winglet-p-mechanical",
+        "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-winglet-s-armor",
+        "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-winglet-s-mechanical",
+        "sf.render.wasp-production-v1-lod2.node.motion-wasp-guns",
+        "sf.render.wasp-production-v1-lod2.node.motion-wasp-winglet-p",
+        "sf.render.wasp-production-v1-lod2.node.motion-wasp-winglet-s",
         "sf.render.wasp-production-v1-lod2.node.socket-camera-focus",
         "sf.render.wasp-production-v1-lod2.node.socket-cargo-ventral",
         "sf.render.wasp-production-v1-lod2.node.socket-engine-main",

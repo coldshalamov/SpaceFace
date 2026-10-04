@@ -19,6 +19,9 @@ import {
   stepPlayerFlight,
 } from '../core/flightDynamics.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
+// FB-095: _diag.tickMs is diagnostics-only — it reads the classified instrumentation clock
+// (perfNow in perfRuntime) so this compatibility owner never touches wall time itself.
+import { perfNow } from '../core/perfRuntime.js';
 import { wrapAngle } from '../core/rng.js';
 import { entityNeedsFlightStep } from '../world/activityRuntime.js';
 import { entityIndexVersion } from '../world/livingWorldViews.js';
@@ -92,7 +95,7 @@ export const flight = {
   },
 
   update(dt, state) {
-    const t0 = nowMs();
+    const t0 = perfNow();
     const player = state.entities.get(state.playerId);
     const dynamicAuthority = usesSg02DynamicAuthority(state);
     if (player && playerFlightSimActive(state, player)) {
@@ -120,7 +123,7 @@ export const flight = {
       if (intent) this.applyIntent(e, intent, dt, { physicsAuthority: dynamicAuthority });
       else this.applyDrag(e, dt, { physicsAuthority: dynamicAuthority });
     }
-    this._diag.tickMs = Math.max(0, nowMs() - t0);
+    this._diag.tickMs = Math.max(0, perfNow() - t0);
     if (player) this._publishDiagnostics(player);
   },
 
@@ -432,10 +435,6 @@ export const flight = {
     this.bus.emit('ship:thrust', P);
   },
 };
-
-function nowMs() {
-  return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
-}
 
 function flightCraftCandidates(state) {
   const index = state && state.entityIndex;

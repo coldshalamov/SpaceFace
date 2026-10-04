@@ -8,8 +8,10 @@
 // shared. Credits/cargo/rep/heat remain with their canonical owners.
 
 import { hash32 } from '../core/rng.js';
-import { segmentHitsProxy } from '../combat/lineOfSight.js';
-import { resolveCollisionProxyManifest } from '../data/collisionProxyManifests.js';
+import { occupantGenerationOf } from '../core/entity.js';
+import { isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
+import { primitiveBlocksSegment, segmentHitsProxy } from '../combat/lineOfSight.js';
+import { proxyWorldPrimitives, proxyScaleFor, resolveCollisionProxyManifest } from '../data/collisionProxyManifests.js';
 import { takeNearWorkSlice } from '../core/activityScheduler.js';
 import { COMMODITIES } from '../data/commodities.js';
 import {
@@ -32,6 +34,7 @@ import {
   pointInsideCustomsWeir,
 } from '../world/customsWeir.js';
 import {
+  IMPOUND_RESTITUTION_CR,
   impoundBillFor,
   isImpoundWorkComplete,
   quoteImpoundBill,
@@ -65,6 +68,7 @@ import {
   collectLivingWorldActors,
   findLivingWorldActor,
   forEachExplicitWitnessMarker,
+  forEachFieldRock,
   forEachJobInteractable,
   forEachLivingWorldActor,
   indexedShipLikeScan,
@@ -96,6 +100,25 @@ function publishSanctuaryQuiet(state, latched) {
   if (!state) return;
   const rt = state.lawSecurityRuntime || (state.lawSecurityRuntime = {});
   rt.sanctuaryQuietLatched = !!latched;
+}
+
+/** Bench A/B: production default ON. Quiet latch skips job-interactable cone census
+ * when no customs scanners and no jettisoned cargo pods remain. Soft-GPU fps not claimed. */
+let CUSTOMS_CONES_EMPTY_QUIET_LATCH = true;
+export function setCustomsConesEmptyQuietLatchForBench(enabled) {
+  CUSTOMS_CONES_EMPTY_QUIET_LATCH = enabled !== false;
+}
+export function getCustomsConesEmptyQuietLatchForBench() {
+  return CUSTOMS_CONES_EMPTY_QUIET_LATCH !== false;
+}
+
+/** Membership rescan while latched (0.5 s @ 60 Hz). */
+const CUSTOMS_CONES_EMPTY_QUIET_RESCAN_TICKS = 30;
+
+function publishCustomsConesQuiet(state, latched) {
+  if (!state) return;
+  const rt = state.lawSecurityRuntime || (state.lawSecurityRuntime = {});
+  rt.customsConesQuietLatched = !!latched;
 }
 
 export const AMBIENT_TOLL_VALUE_FLOOR = 120;
@@ -177,6 +200,17 @@ const LAWFUL_INSPECTION_SETTLED_PATROL_CAP = 12;
 // the same stable reportId the witnessed path would have used.
 const UNREPORTED_KILL_CAP = 24;
 
+// PB-CONS-A / SF-159 verdict escalation window. A kill's cause says HOW the victim died; the
+// recent-harm window says WHETHER the scene was an accident. An isolated contact — a bump, a
+// single thrown hull — stays an accident (the reckless tier). Sustained player-caused harm to
+// the same victim inside the window means the pilot kept at it, so a collision death inside a
+// continued attack is murder, not a traffic mishap. This only re-reads harm the charge path
+// already adjudicates: unprovoked-hit chips still never convict on their own.
+const SUSTAINED_HARM_WINDOW_S = 10;
+const SUSTAINED_HARM_MIN_EVENTS = 3;
+const SUSTAINED_HARM_VICTIM_CAP = 24;
+const SUSTAINED_HARM_EVENT_CAP = 16;
+
 // High-security lawful coverage: a WANTED player lingering in well-policed space eventually draws
 // a reserve patrol even below the bounty band. The exposure clock only runs while wanted AND in a
 // high-sec sector; the post threshold is seeded per (sector, epoch) so the arrival is deterministic
@@ -203,6 +237,7 @@ export const lawSecurity = {
     this._coneScratchScanners = [];
     this._sanctuaryQuiet = null;
     this._sanctuaryWakeSeq = 0;
+    this._customsConesQuiet = null;
     this._nextInspectionTick = 0;
     this._inspectionRebindPasses = 0;
     ensureState(this.state);
@@ -220,16 +255,19 @@ export const lawSecurity = {
     this._onResponderGone = (payload) => {
       this._releaseJobResponsesForEntity(eventEntityId(payload), 'responder_gone');
       this._observeInspectionPatrolGone(payload);
+      this._noteMemorialDestroyed(payload);
     };
     this._onSectorExit = (payload) => {
       this._releaseJobResponsesForSector(payload && payload.sectorId, 'sector_exit');
       this._observeInspectionSectorExit(payload);
+      this._clearHarmWindows(); // victim ids recycle across sectors — history cannot cross the jump
       this._sanctuaryQuiet = null;
     };
     this._onSaveRestoring = () => {
       this._releaseAllJobResponses('save_restoring');
       this._resetInspectionTransient();
       this._resetWeirTransient();
+      this._clearHarmWindows();
       this._sanctuaryQuiet = null;
       this._sanctuaryWakeSeq = 0;
     };
@@ -249,9 +287,18 @@ export const lawSecurity = {
     this._onStolenCargoPodCollect = (payload) => this._handleStolenCargoPodCollect(payload);
     this._onStolenCargoPodLatch = (payload) => this._handleStolenCargoPodLatch(payload);
     this._onKilledAdjudication = (payload) => this._handleKilledAdjudication(payload);
-    this._onWreckScanResolved = (payload) => this._handleWreckCrimeDiscovery(payload, 'wreck_scan');
-    this._onSalvageCompleted = (payload) => this._handleWreckCrimeDiscovery(payload, 'wreck_salvage');
+    this._onWreckScanResolved = (payload) => {
+      this._handleWreckCrimeDiscovery(payload, 'wreck_scan');
+      this._findMemorialByScan(payload);
+    };
+    this._onSalvageCompleted = (payload) => {
+      this._handleWreckCrimeDiscovery(payload, 'wreck_salvage');
+      this._findMemorialByScan(payload);
+    };
     this._onDockedLawfulClearance = (payload) => this._handleDockedLawfulClearance(payload);
+    this._onFineChoice = (payload) => this._chooseFine(payload || {});
+    this._onPlayerSurrender = (payload) => this._beginPlayerSurrender(payload || {});
+    this._onRecordAudit = (payload) => this.auditBuiltRecord(payload || {});
     this._onHeatChanged = () => {
       this._syncWantedWarrant(this.state);
       this._syncHighSecWarrant(this.state, 0);
@@ -286,6 +333,9 @@ export const lawSecurity = {
       this.bus.on('heat:changed', this._onHeatChanged);
       this.bus.on('law:impoundPay', this._onImpoundPay);
       this.bus.on('customs:submit', this._onCustomsSubmit);
+      this.bus.on('law:fineChoice', this._onFineChoice);
+      this.bus.on('law:playerSurrender', this._onPlayerSurrender);
+      this.bus.on('law:audit', this._onRecordAudit);
     }
   },
 
@@ -331,6 +381,20 @@ export const lawSecurity = {
     if (own.reportedIncidents != null) {
       out.reportedIncidents = cloneLawPlain(own.reportedIncidents) || {};
     }
+    // Lazy, same as reportedIncidents: a run that never destroyed a memorial, opened a
+    // composed bill, or settled a fine emits no key.
+    if (own.memorialSites && Object.keys(own.memorialSites).length > 0) {
+      out.memorialSites = cloneLawPlain(own.memorialSites) || {};
+    }
+    if (own.composed && Object.keys(own.composed).length > 0) {
+      out.composed = cloneLawPlain(own.composed) || {};
+    }
+    if (own.fineSettled && Object.keys(own.fineSettled).length > 0) {
+      out.fineSettled = cloneLawPlain(own.fineSettled) || {};
+    }
+    if (own.fineOffer && own.fineOffer.status && own.fineOffer.status !== 'paid') {
+      out.fineOffer = cloneLawPlain(own.fineOffer);
+    }
     return out;
   },
 
@@ -357,11 +421,28 @@ export const lawSecurity = {
     } else if (own.reportedIncidents != null) {
       delete own.reportedIncidents; // a different slot's priced ledger must not bleed into this load
     }
+    if (src.memorialSites != null) own.memorialSites = normalizeMemorialSites(src.memorialSites);
+    else delete own.memorialSites;
+    if (src.composed != null) own.composed = normalizeComposedObligations(src.composed);
+    else delete own.composed;
+    if (src.fineSettled != null) own.fineSettled = normalizeFineSettled(src.fineSettled);
+    else delete own.fineSettled;
+    if (src.fineOffer && typeof src.fineOffer === 'object' && !Array.isArray(src.fineOffer)) {
+      own.fineOffer = cloneLawPlain(src.fineOffer);
+    } else {
+      delete own.fineOffer;
+    }
+    // A surrender hold names live hulls. The owed bill, if accepted, is in `composed`.
+    delete own.playerSurrender;
+    delete own.surrenderRearm;
+    return own;
   },
 
   update(_dt, state) {
     if (state.run?.kind === 'survival' && state.run.phase !== 'inactive') return;
     this._reconcileJobResponses();
+    this._updateFineWork(_dt, state);
+    this._updatePlayerSurrender(_dt, state);
     if (state.mode && state.mode !== 'flight') return;
     this._syncWantedWarrant(state);
     this._syncHighSecWarrant(state, _dt);
@@ -633,6 +714,14 @@ export const lawSecurity = {
       ai.engagementTrigger = 'demand_pending';
       ai.approachTelegraph = String(ai.approachTelegraph || 'hail_and_scan');
       ai.noFireResponseWindowS = Math.max(1, Number(ai.noFireResponseWindowS) || 0);
+      // One passage, one toll. A second hull in the same zone notes the same cause and
+      // does not multiply the bill.
+      this.noteComposedObligation({
+        kind: 'toll',
+        causeId: `passage:${currentSectorId(state)}:${ai.zoneId}`,
+        amountCr: AMBIENT_TOLL_VALUE_FLOOR,
+        label: 'passage toll',
+      });
       return true;
     }
 
@@ -801,6 +890,10 @@ export const lawSecurity = {
     }
 
     if (attacker.id === state.playerId && target.id !== state.playerId) {
+      // SF-159 verdict escalation window: remember the hit. A kill verdict later reads this
+      // bounded recent-harm history to tell an isolated contact (accident) from a continued
+      // attack (murder). Recording is not accusing — chips still never convict on their own.
+      this._noteHarmOnVictim(target.id);
       // Already hostile at first contact: the fight was lawful before it began. The combat
       // receipt carries the FROZEN first-hit truth, so a victim who only turned hostile by
       // retaliating to the player's own first shot still flows through as a crime scene —
@@ -835,6 +928,9 @@ export const lawSecurity = {
     const state = this.state;
     if (!state || !payload) return;
     const ownerId = payload.ownerId ?? payload.attackerId ?? payload.sourceId;
+    if (ownerId != null && state.playerId != null && String(ownerId) === String(state.playerId)) {
+      this._cancelPlayerSurrender('fired');
+    }
     const attacker = entityById(state, ownerId);
     if (!attacker || attacker.alive === false) return;
     const player = entityById(state, state.playerId);
@@ -861,6 +957,67 @@ export const lawSecurity = {
       attacker.id === state.playerId
         ? (isLawful(target) ? 'player_assault' : 'player_piracy')
         : (isLawful(target) ? 'hostile_fire' : 'npc_piracy'));
+  },
+
+  /**
+   * SF-159 — bounded recent-harm history per victim (session-scoped, like `incidents`; a save
+   * boundary or sector hop drops it and the next contact starts a fresh window — the window
+   * degrades toward mercy, never toward a stranger's accusation). Not serialized.
+   */
+  _noteHarmOnVictim(victimId) {
+    const state = this.state;
+    if (!state || victimId == null) return;
+    const own = ensureState(state);
+    if (!own.harmWindows || typeof own.harmWindows !== 'object' || Array.isArray(own.harmWindows)) {
+      own.harmWindows = {};
+    }
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const key = String(victimId);
+    let row = own.harmWindows[key];
+    if (!row) {
+      row = { lastT: now, events: [] };
+      own.harmWindows[key] = row;
+    }
+    row.lastT = now;
+    row.events.push(now);
+    while (row.events.length > SUSTAINED_HARM_EVENT_CAP) row.events.shift();
+    const keys = Object.keys(own.harmWindows);
+    if (keys.length <= SUSTAINED_HARM_VICTIM_CAP) return;
+    // Bounded: evict the stalest victim window, never the row just written.
+    let oldestKey = null;
+    let oldestT = Infinity;
+    for (const k of keys) {
+      const t = own.harmWindows[k] && Number.isFinite(own.harmWindows[k].lastT)
+        ? own.harmWindows[k].lastT
+        : -Infinity;
+      if (t < oldestT) { oldestT = t; oldestKey = k; }
+    }
+    if (oldestKey != null && oldestKey !== key) delete own.harmWindows[oldestKey];
+  },
+
+  /** Player-caused harm events on this victim inside the rolling window; prunes as it reads. */
+  _recentHarmCount(victimId, windowS) {
+    const state = this.state;
+    const own = state && state.lawSecurity;
+    const row = own && own.harmWindows && own.harmWindows[String(victimId)];
+    if (!row || !Array.isArray(row.events)) return 0;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const cutoff = now - Math.max(0, Number(windowS) || 0);
+    let write = 0;
+    for (let i = 0; i < row.events.length; i++) {
+      if (row.events[i] >= cutoff) row.events[write++] = row.events[i];
+    }
+    row.events.length = write;
+    if (row.events.length === 0) {
+      delete own.harmWindows[String(victimId)];
+      return 0;
+    }
+    return row.events.length;
+  },
+
+  _clearHarmWindows() {
+    const own = this.state && this.state.lawSecurity;
+    if (own && own.harmWindows) own.harmWindows = {};
   },
 
   _retaliate(victim, attacker) {
@@ -922,16 +1079,31 @@ export const lawSecurity = {
     if (existing) {
       existing.lastDamageAt = state.simTime || 0;
       existing.victimId = victim.id;
+      existing.victimGeneration = occupantGenerationOf(victim);
       return existing;
     }
+    const stationEntity = entityById(state, jurisdiction.entityId)
+      || stationByPublicId(state, jurisdiction.stationId);
+    const ringAnchor = stationEntity && stationEntity.pos
+      ? stationEntity.pos
+      : (victim && victim.pos) || null;
     const incident = {
       id: `law:${hash32(state.meta && state.meta.seed || 1, jurisdiction.stationId, attacker.id, state.tick | 0).toString(16)}`,
       stationId: jurisdiction.stationId,
       stationEntityId: jurisdiction.entityId,
+      stationGeneration: occupantGenerationOf(entityById(state, jurisdiction.entityId)),
       factionId: jurisdiction.factionId,
       radius: jurisdiction.radius,
       attackerId: attacker.id,
+      attackerGeneration: occupantGenerationOf(attacker),
       victimId: victim.id,
+      victimGeneration: occupantGenerationOf(victim),
+      // The station entity's id can be freed and recycled onto a projectile or traffic ship while
+      // the incident is still open; the disengage ring must not follow the new occupant. Frozen at
+      // open, then updated only from generation-verified occupants (see _updateIncident).
+      ringPos: ringAnchor && Number.isFinite(ringAnchor.x) && Number.isFinite(ringAnchor.z)
+        ? { x: ringAnchor.x, z: ringAnchor.z }
+        : null,
       cause,
       startedAt: state.simTime || 0,
       lastDamageAt: state.simTime || 0,
@@ -950,6 +1122,9 @@ export const lawSecurity = {
     incident.rankFromVictim = jurisdiction.rankFromVictim === true;
     incident.challengeWindowS = policy.challengeWindowS * patrolResponse;
     own.incidents[key] = incident;
+    if (attacker && attacker.id === state.playerId) {
+      for (const other of state.entityList || []) reopenLawFireForNewCause(other, incident.id);
+    }
     this._say('alert', `CONTROL: distress logged. Patrol ETA ${incident.dispatchDelayS.toFixed(2)} seconds.`, `law:distress:${incident.id}`, jurisdiction.factionId);
     this._emit('law:distressRaised', publicIncident(incident));
     this._emit('law:incidentOpened', publicIncident(incident));
@@ -1197,10 +1372,11 @@ export const lawSecurity = {
 
   _respondersFor(incident, victim) {
     const state = this.state;
-    const station = entityById(state, incident.stationEntityId) || stationByPublicId(state, incident.stationId);
+    const station = incidentOccupant(state, incident.stationEntityId, incident.stationGeneration)
+      || stationByPublicId(state, incident.stationId);
     const anchor = incident.rankFromVictim && victim && victim.pos
       ? victim.pos
-      : (station && station.pos || victim && victim.pos);
+      : (station && station.pos || victim && victim.pos || incident.ringPos);
     const actors = collectLivingWorldActors(state);
     const unfilteredCandidates = isLawful(victim) && victim.type === 'ship'
       ? [victim, ...actors]
@@ -1239,7 +1415,7 @@ export const lawSecurity = {
       const reserveOrdinal = Math.max(0, incident.nextReserveOrdinal | 0);
       const pos = reserveArrivalPoint({
         anchor,
-        aggressorPos: entityById(state, incident.attackerId)?.pos,
+        aggressorPos: incidentOccupant(state, incident.attackerId, incident.attackerGeneration)?.pos,
         jurisdictionRadius: incident.radius,
         seed: state.meta && state.meta.seed || 1,
         incidentId: `${incident.id}:${reserveOrdinal}`,
@@ -1396,11 +1572,12 @@ export const lawSecurity = {
     }
     ai.roe = RulesOfEngagement.WEAPONS_FREE;
     const stationPos = incident && (stationByPublicId(state, incident.stationId)?.pos);
-    const victimPos = incident && entityById(state, incident.victimId)?.pos;
+    const victimPos = incident
+      && incidentOccupant(state, incident.victimId, incident.victimGeneration)?.pos;
     const anchor = incident
       ? (incident.rankFromVictim
-        ? (victimPos || responder.pos)
-        : (stationPos || responder.pos))
+        ? (victimPos || incident.ringPos || responder.pos)
+        : (stationPos || incident.ringPos || responder.pos))
       : responder.pos;
     ai.activity = normalizeActivity({
       kind: ActivityKind.ATTACK_RUN,
@@ -1425,9 +1602,22 @@ export const lawSecurity = {
   _updateIncident(key, incident) {
     if (!incident || !['distress', 'responding', 'monitoring'].includes(incident.status)) return;
     const state = this.state;
-    const attacker = entityById(state, incident.attackerId);
-    const victim = entityById(state, incident.victimId);
-    const station = entityById(state, incident.stationEntityId) || stationByPublicId(state, incident.stationId);
+    // Generation-verified resolution: a recycled entity id must not stand in for the attacker,
+    // victim, or station it was recorded for (D118 — a station id recycled onto a live projectile
+    // dragged the disengage ring 2000 WU away and stood the response down mid-assault).
+    const attacker = incidentOccupant(state, incident.attackerId, incident.attackerGeneration);
+    const victim = incidentOccupant(state, incident.victimId, incident.victimGeneration);
+    const station = incidentOccupant(state, incident.stationEntityId, incident.stationGeneration)
+      || stationByPublicId(state, incident.stationId);
+    // The disengage ring anchors at the jurisdiction's last generation-verified position, so a
+    // removed station leaves the ring where the station stood instead of losing it entirely.
+    const liveAnchor = (incident.rankFromVictim && victim && victim.pos)
+      ? victim.pos
+      : (station && station.pos || (victim && victim.pos) || null);
+    if (liveAnchor && Number.isFinite(liveAnchor.x) && Number.isFinite(liveAnchor.z)) {
+      incident.ringPos = { x: liveAnchor.x, z: liveAnchor.z };
+    }
+    const ringOrigin = incidentRingOrigin(incident, victim, station);
     const now = state.simTime || 0;
     let outcome = null;
     if (!attacker || attacker.alive === false) outcome = 'threat_cleared';
@@ -1436,7 +1626,7 @@ export const lawSecurity = {
       && now >= incident.dispatchAt) {
       this._dispatchIncident(incident, victim || station, attacker);
     }
-    else if (station && distance2(attacker.pos, incidentRingOrigin(incident, victim, station)) > Math.pow(incident.radius + RESPONSE_CLEARANCE, 2)
+    else if (ringOrigin && distance2(attacker.pos, ringOrigin) > Math.pow(incident.radius + RESPONSE_CLEARANCE, 2)
       && now - incident.lastDamageAt >= RESPONSE_GRACE_S
       && !(attacker.id === state.playerId && isPlayerWanted(state))) {
       outcome = 'disengaged';
@@ -1498,8 +1688,10 @@ export const lawSecurity = {
         if (incidentId) {
           const inc = ensureState(state).incidents[incidentId]
             || Object.values(ensureState(state).incidents || {}).find((i) => i && i.id === incidentId);
-          const station = inc && (entityById(state, inc.stationEntityId) || stationByPublicId(state, inc.stationId));
+          const station = inc && (incidentOccupant(state, inc.stationEntityId, inc.stationGeneration)
+            || stationByPublicId(state, inc.stationId));
           if (station && station.pos) stationPos = station.pos;
+          else if (inc && inc.ringPos) stationPos = inc.ringPos;
         }
         if (!stationPos && ai.zoneId && ai.zoneId.startsWith('jurisdiction:')) {
           const st = stationByPublicId(state, ai.zoneId.slice('jurisdiction:'.length));
@@ -1647,7 +1839,8 @@ export const lawSecurity = {
         if (!inc || inc.status === 'resolved') return false;
         if (inc.victimAnchor) return false;
         if (inc.attackerId !== killerId) return false;
-        const station = entityById(state, inc.stationEntityId) || stationByPublicId(state, inc.stationId);
+        const station = incidentOccupant(state, inc.stationEntityId, inc.stationGeneration)
+          || stationByPublicId(state, inc.stationId);
         const incSectorId = station?.data?.sectorId || station?.sectorId || (state.world && state.world.currentSectorId);
         if (sectorId && incSectorId && incSectorId !== sectorId) return false;
         const dt = Math.abs(((inc.lastDamageAt != null ? inc.lastDamageAt : inc.startedAt) || 0) - at);
@@ -1663,7 +1856,7 @@ export const lawSecurity = {
   _reconcileWitnessChoice(incident) {
     if (!incident || incident.status === 'resolved') return;
     const state = this.state;
-    const attacker = entityById(state, incident.attackerId);
+    const attacker = incidentOccupant(state, incident.attackerId, incident.attackerGeneration);
 
     const liveResponders = [];
     for (const id of incident.responderIds) {
@@ -1991,6 +2184,8 @@ export const lawSecurity = {
       pos,
       offenderEntityId: request.offenderEntityId,
       radius: LAW_INCIDENT_WITNESS_RADIUS,
+      // The reporting victim's own body (e.g. a robbed station) never occludes its own scene.
+      ignoreEntityIds: [victim && victim.id, request.victimEntityId, request.victimId],
     });
     if (witnesses.length === 0) {
       return this._denyIncidentReport('no_witness', { reportId, kind, causalTick });
@@ -2170,6 +2365,12 @@ export const lawSecurity = {
     const causality = compactKillCausality(payload, state.playerId);
     const collisionKill = causality.cause === KillCause.TERRAIN_COLLISION
       || causality.cause === KillCause.SHIP_COLLISION;
+    // SF-159: a collision kill's verdict reads the recent-harm window. An isolated contact —
+    // a bump, one thrown hull — is an accident and stays at the reckless tier; sustained
+    // player-caused harm inside the window is a continued attack, so the collision death it
+    // ends is murder, not a mishap. Non-collision causes already charge as attacks.
+    const harmEvents = collisionKill ? this._recentHarmCount(payload.id, SUSTAINED_HARM_WINDOW_S) : 0;
+    const sustainedAssault = collisionKill && harmEvents >= SUSTAINED_HARM_MIN_EVENTS;
     const victim = entityById(state, payload.id);
     const victimType = payload.type || (victim && victim.type);
     if (!LAW_KILL_ADJUDICATION_TYPES.has(victimType)) return;
@@ -2203,6 +2404,7 @@ export const lawSecurity = {
       || null;
     const witnesses = lawWitnessesNear(state, {
       pos, offenderEntityId: state.playerId, radius: LAW_KILL_WITNESS_RADIUS,
+      ignoreEntityIds: [payload.id], // the victim's own hull is never its own cover
     }).filter((w) => w.entityId !== payload.id); // the dead cannot testify
     const civilians = civilianKillWitnessesNear(state, pos, state.playerId, witnesses, payload.id);
     const witnessStableIds = directWitnessIds(state, [witnesses, civilians]);
@@ -2211,8 +2413,10 @@ export const lawSecurity = {
     const victimFactionId = (victim && victim.factionId) || payload.factionId || null;
     // Lawful-network victims still charge as lawful_kill when someone saw the act. Collision
     // deaths of ordinary victims charge as reckless_kill — the witnessed outcome is materially
-    // lighter than murder, and the heat owner prices the kind, not this file.
+    // lighter than murder — UNLESS the recent-harm window proves a continued attack, which
+    // prices the full unlawful kill. The heat owner prices the kind, not this file.
     const chargeKind = factionLawful ? 'lawful_kill'
+      : sustainedAssault ? 'unlawful_kill'
       : collisionKill ? 'reckless_kill' : 'unlawful_kill';
 
     // THE ONE WITNESS TRUTH. factions.js consumes this receipt instead of running its own
@@ -2239,6 +2443,8 @@ export const lawSecurity = {
         cause: causality.cause,
         surface: causality.surface,
         playerCaused: causality.playerCaused === true,
+        sustainedAssault: sustainedAssault === true,
+        harmEvents: collisionKill ? harmEvents : null,
         kind: outcome === 'charged' ? chargeKind : null,
         reportId,
         stationId: jurisdiction ? jurisdiction.stationId : null,
@@ -2279,6 +2485,8 @@ export const lawSecurity = {
         kind: chargeKind,
         killCause: causality.cause,
         surface: causality.surface,
+        sustainedAssault: sustainedAssault === true,
+        harmEvents: collisionKill ? harmEvents : null,
         pos: { x: pos.x, z: pos.z },
         causalTick: Number.isInteger(state.tick) && state.tick >= 0 ? state.tick : 0,
         reportId: victimStableId != null ? cleanLawId(`kill:${victimStableId}`) : null,
@@ -2349,6 +2557,8 @@ export const lawSecurity = {
       victimStableId,
       victimClass: payload.victimClass || null,
       killCause: causality.cause,
+      sustainedAssault: sustainedAssault === true,
+      harmEvents: collisionKill ? harmEvents : null,
       causalTick,
       stationId: jurisdiction ? jurisdiction.stationId : null,
       factionId: (jurisdiction && jurisdiction.factionId)
@@ -2372,7 +2582,7 @@ export const lawSecurity = {
       attackerId: state.playerId,
       targetId: payload.id,
       stationId: receipt.stationId,
-      text: `KILL ADJUDICATED — ${factionLawful ? 'lawful victim' : collisionKill ? 'reckless collision kill' : 'non-hostile victim'}; ${witnessStableIds.length} witness${witnessStableIds.length === 1 ? '' : 'es'} on record.`,
+      text: `KILL ADJUDICATED — ${factionLawful ? 'lawful victim' : sustainedAssault ? 'sustained collision attack' : collisionKill ? 'reckless collision kill' : 'non-hostile victim'}; ${witnessStableIds.length} witness${witnessStableIds.length === 1 ? '' : 'es'} on record.`,
     });
     this._emit('law:reportIncidentReceipt', receipt);
     this._lawResponse('crime_validated', {
@@ -2499,6 +2709,8 @@ export const lawSecurity = {
       victimStableId: pending.victimStableId,
       victimClass: pending.victimClass || null,
       killCause: pending.killCause || null,
+      sustainedAssault: pending.sustainedAssault === true,
+      harmEvents: Number.isInteger(pending.harmEvents) ? pending.harmEvents : null,
       causalTick,
       stationId: null,
       factionId: pending.victimFactionId || null,
@@ -2555,7 +2767,11 @@ export const lawSecurity = {
     if (state.run && state.run.kind === 'survival' && state.run.phase !== 'inactive') return;
     const player = state.player;
     const heatValue = player && Number(player.heat) || 0;
-    if (heatValue <= 0) return;
+    if (heatValue <= 0) {
+      // The sheet is clean, so the next warrant at this dock is a new fine.
+      if (state.lawSecurity && state.lawSecurity.fineSettled) state.lawSecurity.fineSettled = {};
+      return;
+    }
     const tier = wantedTierFor(heatValue);
     if (tier !== WANTED_TIER.SCAN && tier !== WANTED_TIER.BOUNTY) return;
     const station = entityById(state, payload.stationId)
@@ -2570,11 +2786,85 @@ export const lawSecurity = {
       || (station.data && station.data.stationId)
       || station.stationId
       || station.id;
-
-    this._lawResponse('fine_assessed', {
-      stationId, fineCr: fine, heatLevel: level, wantedTier: tier,
+    const causeId = `wanted:${String(stationId)}:${tier}`;
+    const own = ensureState(state);
+    if (own.fineSettled && own.fineSettled[causeId]) {
+      this._emit('law:fineAssessed', {
+        stationId, amount: fine, paid: true, choice: own.fineSettled[causeId],
+        alreadySettled: true, heatLevel: level, wantedTier: tier,
+      });
+      return;
+    }
+    this.noteComposedObligation({
+      kind: 'warrant',
+      causeId,
+      amountCr: fine,
+      label: `fine at ${stationId}`,
     });
+    const choice = payload && typeof payload.fineChoice === 'string' ? payload.fineChoice : null;
+    // FB-039 — docking only assesses; the charge is the player's answer, not the berth's act.
+    // The live offer row survives a plain re-dock: 'working' keeps its accrued shift and a
+    // 'left' row re-opens as offered so the next berth can ask again. A different station or
+    // tier always writes a fresh row — the reply resolves the fine actually on the counter.
+    const priorOffer = own.fineOffer && own.fineOffer.causeId === causeId ? own.fineOffer : null;
+    if (!priorOffer || priorOffer.status === 'paid' || priorOffer.status === 'left') {
+      own.fineOffer = {
+        stationId, amount: fine, causeId, status: 'offered', choice: null,
+        heatLevel: level, wantedTier: tier,
+      };
+    }
+
+    if (!choice) {
+      this._lawResponse('fine_assessed', {
+        stationId, fineCr: fine, heatLevel: level, wantedTier: tier,
+      });
+      this._emit('law:fineAssessed', {
+        stationId, amount: fine, paid: false, offer: true,
+        working: own.fineOffer.status === 'working' || undefined,
+        credits, heatLevel: level, wantedTier: tier,
+      });
+      return;
+    }
+    if (choice === 'leave') {
+      own.fineOffer.status = 'left';
+      own.fineOffer.choice = 'leave';
+      this._lawResponse('fine_left', { stationId, fineCr: fine, heatLevel: level, wantedTier: tier });
+      this._emit('law:fineAssessed', {
+        stationId, amount: fine, paid: false, choice: 'leave',
+        heatLevel: level, wantedTier: tier,
+      });
+      this._recordReceipt({
+        cause: 'wanted_fine', outcome: 'fine_left',
+        attackerId: state.playerId, targetId: null, stationId,
+        text: `FINE LEFT ${fine} cr — warrant stands at ${stationId}.`,
+      });
+      return;
+    }
+    if (choice === 'work') {
+      if (own.fineOffer.status !== 'working') {
+        own.fineOffer.status = 'working';
+        own.fineOffer.choice = 'work';
+        own.fineOffer.workS = 0;
+        own.fineOffer.workNeedS = LAW_FINE_WORK_S;
+      }
+      this._lawResponse('fine_work', { stationId, fineCr: fine, heatLevel: level, wantedTier: tier });
+      this._emit('law:fineAssessed', {
+        stationId, amount: fine, paid: false, choice: 'work',
+        heatLevel: level, wantedTier: tier,
+      });
+      this._recordReceipt({
+        cause: 'wanted_fine', outcome: 'fine_work',
+        attackerId: state.playerId, targetId: null, stationId,
+        text: `FINE WORK ${fine} cr — warrant held until the shift is done at ${stationId}.`,
+      });
+      return;
+    }
+    if (choice !== 'pay') return; // an answer the desk does not know leaves the offer standing
+
+    // PAY — the engine re-validates credits on the reply; a short account keeps the offer open
+    // so work or leave still answer it, and nothing is charged for the attempt.
     if (credits < fine) {
+      own.fineOffer.status = 'offered';
       this._lawResponse('fine_unpaid', {
         stationId, fineCr: fine, shortfallCr: fine - credits, heatLevel: level, wantedTier: tier,
       });
@@ -2584,12 +2874,16 @@ export const lawSecurity = {
         text: `FINE ASSESSED ${fine} cr — insufficient funds. Warrant stands.`,
       });
       this._emit('law:fineAssessed', {
-        stationId, amount: fine, paid: false, shortfall: fine - credits,
+        stationId, amount: fine, paid: false, choice: 'pay', shortfall: fine - credits,
         heatLevel: level, wantedTier: tier,
       });
       return;
     }
 
+    if (!own.fineSettled || typeof own.fineSettled !== 'object') own.fineSettled = {};
+    own.fineSettled[causeId] = 'pay';
+    own.fineOffer.status = 'paid';
+    this._markObligationSettled('warrant', causeId);
     this._emit('economy:chargeCredits', {
       amount: fine,
       reason: 'fine:wanted_clearance',
@@ -2598,7 +2892,7 @@ export const lawSecurity = {
     });
     this._emit('heat:clear', { reason: 'station_fine' });
     this._emit('law:fineAssessed', {
-      stationId, amount: fine, paid: true,
+      stationId, amount: fine, paid: true, choice: 'pay',
       heatLevel: level, wantedTier: tier,
     });
     this._lawResponse('fine_paid', {
@@ -2827,6 +3121,25 @@ export const lawSecurity = {
   _updateCustomsScanCones(dt, state) {
     const step = Number(dt);
     if (!(step > 0) || !state) return;
+    // Quiet Ceres / open flight: no customs scanners and no jettisoned pods still paid a
+    // full forEachJobInteractable census (shipLike+stations+wrecks+payloads+pickups) calling
+    // customsScanConeOf every tick. Latch when both bags stay empty; wake on membership,
+    // a live scanner/pod, or 0.5 s rescan. Soft-GPU fps not claimed. Different angle from
+    // held env-machinery far / hazards far / sampleProjectileEvidence surface-cadence.
+    if (CUSTOMS_CONES_EMPTY_QUIET_LATCH !== false) {
+      const membership = entityIndexVersion(state);
+      const tick = state.tick | 0;
+      const quiet = this._customsConesQuiet;
+      if (quiet
+        && membership != null
+        && quiet.membership === membership
+        && ((tick - (quiet.armedTick | 0)) < CUSTOMS_CONES_EMPTY_QUIET_RESCAN_TICKS)) {
+        publishCustomsConesQuiet(state, true);
+        return;
+      }
+    } else if (this._customsConesQuiet) {
+      this._customsConesQuiet = null;
+    }
     // Empty-payloads early-out: pods are only ever `type === 'payload'` entities, so a live
     // index with an empty payloads bucket proves pods.length would end 0 and the join below
     // returns without writes. Same gate as _catchPodsInNets; fixtures without the index keep
@@ -2838,6 +3151,31 @@ export const lawSecurity = {
     if (index && index.__spacefaceEntityIndexV1 && index.ready === true
       && Array.isArray(index.payloads) && index.payloads.length === 0) {
       dwell.clear();
+      // Empty payloads proves pods.length would end 0 — the quiet outcome then hangs on
+      // whether any shipLike carries a scan cone (same test the census applies). Arm or
+      // clear the latch here so the early-skip above keeps meaning over empty worlds.
+      if (CUSTOMS_CONES_EMPTY_QUIET_LATCH !== false) {
+        let scannerFound = false;
+        const ships = index.shipLike;
+        if (Array.isArray(ships)) {
+          for (let i = 0; i < ships.length; i += 1) {
+            if (customsScanConeOf(ships[i])) { scannerFound = true; break; }
+          }
+        }
+        if (!scannerFound) {
+          const membership = entityIndexVersion(state);
+          if (membership != null) {
+            this._customsConesQuiet = { membership, armedTick: state.tick | 0 };
+            publishCustomsConesQuiet(state, true);
+          } else {
+            this._customsConesQuiet = null;
+            publishCustomsConesQuiet(state, false);
+          }
+        } else {
+          this._customsConesQuiet = null;
+          publishCustomsConesQuiet(state, false);
+        }
+      }
       return;
     }
     const pods = this._coneScratchPods || (this._coneScratchPods = []);
@@ -2871,17 +3209,34 @@ export const lawSecurity = {
       if (customsScanConeOf(entity)) scanners.push(entity);
       if (entity.type === 'ship' && entity.collides !== false) occluders.push(entity);
     });
-    if (scanners.length === 0) {
+    if (scanners.length === 0 || pods.length === 0) {
       for (const key of dwell.keys()) dwell.delete(key);
+      if (CUSTOMS_CONES_EMPTY_QUIET_LATCH !== false) {
+        const membership = entityIndexVersion(state);
+        if (membership != null && scanners.length === 0 && pods.length === 0) {
+          this._customsConesQuiet = { membership, armedTick: state.tick | 0 };
+          publishCustomsConesQuiet(state, true);
+        } else {
+          this._customsConesQuiet = null;
+          publishCustomsConesQuiet(state, false);
+        }
+      }
       return;
     }
+    this._customsConesQuiet = null;
+    publishCustomsConesQuiet(state, false);
 
+    const shipViews = this._coneScratchShipViews || (this._coneScratchShipViews = []);
+    shipViews.length = 0;
+    for (let o = 0; o < occluders.length; o++) shipViews.push(lawWitnessOccluderView(occluders[o]));
+    const podIgnore = this._coneScratchPodIgnore || (this._coneScratchPodIgnore = new Set());
     const seen = this._coneScratchSeen || (this._coneScratchSeen = new Set());
     seen.clear();
     for (let s = 0; s < scanners.length; s++) {
       const scanner = scanners[s];
       const cone = customsScanConeOf(scanner);
       if (!cone) continue;
+      const coneObserver = { id: scanner.id, pos: cone.origin };
       for (let p = 0; p < pods.length; p++) {
         const pod = pods[p];
         if (!pod.data) continue;
@@ -2901,15 +3256,9 @@ export const lawSecurity = {
           dwell.delete(key);
           continue;
         }
-        let hidden = false;
-        for (let o = 0; o < occluders.length; o++) {
-          const hull = occluders[o];
-          if (!hull || hull.id === scanner.id || hull.id === pod.id) continue;
-          if (scanLineOccluded(cone.origin, pod.pos, hull)) {
-            hidden = true;
-            break;
-          }
-        }
+        podIgnore.clear();
+        podIgnore.add(pod.id);
+        const hidden = lawWitnessSightBlocked(state, coneObserver, pod.pos, podIgnore, shipViews);
         if (hidden) {
           dwell.delete(key);
           continue;
@@ -4003,6 +4352,411 @@ export const lawSecurity = {
     });
   },
 
+  // PB-CONS-C — a destroyed memorial stays findable by someone who was not there.
+  // Uncertain evidence stays uncertain: no witness means the record does not name a killer.
+  _noteMemorialDestroyed(payload) {
+    const state = this.state;
+    if (!state || !payload) return null;
+    const entity = payload.entity || entityById(state, payload.id ?? payload.entityId);
+    const siteId = memorialSiteId(entity, payload);
+    if (!siteId) return null;
+    const own = ensureState(state);
+    if (!own.memorialSites || typeof own.memorialSites !== 'object' || Array.isArray(own.memorialSites)) {
+      own.memorialSites = {};
+    }
+    const existing = own.memorialSites[siteId];
+    if (existing) return publicMemorial(existing, null);
+    if (Object.keys(own.memorialSites).length >= MEMORIAL_SITE_CAP) return null;
+    const data = entity && entity.data || {};
+    const pos = finiteLawPoint(payload.pos) || finiteLawPoint(entity && entity.pos);
+    const witnesses = pos ? lawWitnessesNear(state, {
+      pos,
+      offenderEntityId: payload.killerId ?? payload.attackerId ?? state.playerId,
+      radius: LAW_INCIDENT_WITNESS_RADIUS,
+      ignoreEntityIds: [entity && entity.id, payload.id, payload.entityId], // the memorial itself
+    }) : [];
+    const witnessed = witnesses.length > 0;
+    const killerId = payload.killerId ?? payload.attackerId ?? null;
+    const row = {
+      siteId,
+      name: memorialName(payload, data, siteId),
+      pos,
+      evidence: witnessed ? 'witnessed' : 'uncertain',
+      namedParty: witnessed && killerId != null ? killerId : null,
+      witnessEntityIds: witnesses.map((w) => w.entityId),
+      destroyedAt: state.simTime || 0,
+      foundBy: [],
+    };
+    own.memorialSites[siteId] = row;
+    this._emit('law:memorialDestroyed', publicMemorial(row, null));
+    return publicMemorial(row, null);
+  },
+
+  _findMemorialByScan(payload) {
+    if (!payload) return null;
+    const siteId = payload.siteId || payload.memorialSiteId || payload.placeId;
+    if (siteId == null) return null;
+    const finderId = payload.finderId ?? payload.scannerId ?? payload.actorId ?? this.state?.playerId;
+    return this.findDestroyedMemorial({ finderId, siteId });
+  },
+
+  findDestroyedMemorial({ finderId = null, siteId = null } = {}) {
+    const id = cleanLawId(siteId == null ? null : String(siteId));
+    const own = this.state && this.state.lawSecurity;
+    const row = id && own && own.memorialSites && own.memorialSites[id];
+    if (!row) return { found: false, siteId: id, evidence: null, finderWasThere: false };
+    const finder = finderId == null ? null : String(finderId);
+    if (finder && !(row.foundBy || []).some((found) => String(found) === finder)) {
+      if (!Array.isArray(row.foundBy)) row.foundBy = [];
+      if (row.foundBy.length < 8) row.foundBy.push(finder);
+    }
+    return publicMemorial(row, finder);
+  },
+
+  // PB-CONS-D / NXB-044 — toll, warrant, and restitution stay separate bills.
+  // The same cause does not stack, and paying one does not clear the others.
+  noteComposedObligation(request = {}) {
+    const state = this.state;
+    if (!state) return { accepted: false, reason: 'no_state' };
+    const kind = request.kind;
+    const causeId = cleanLawId(request.causeId == null ? null : String(request.causeId));
+    if (!OBLIGATION_KINDS.has(kind) || !causeId) return { accepted: false, reason: 'invalid' };
+    const forPerson = typeof request.forPerson === 'string' ? request.forPerson.trim() : '';
+    if (kind === 'restitution' && !forPerson) return { accepted: false, reason: 'unnamed' };
+    const amount = Math.round(Number(request.amountCr));
+    if (!(amount > 0)) return { accepted: false, reason: 'no_amount' };
+    const own = ensureState(state);
+    if (!own.composed || typeof own.composed !== 'object' || Array.isArray(own.composed)) own.composed = {};
+    const key = `${kind}:${causeId}`;
+    const existing = own.composed[key];
+    if (existing) return { accepted: true, duplicate: true, obligation: publicObligation(existing) };
+    if (Object.keys(own.composed).length >= LAW_COMPOSED_CAP) return { accepted: false, reason: 'full' };
+    const row = {
+      key,
+      kind,
+      causeId,
+      forPerson: forPerson || null,
+      label: forPerson ? `${kind} for ${forPerson}` : (typeof request.label === 'string' && request.label.trim() ? request.label.trim() : kind),
+      amountCr: amount,
+      remainingCr: amount,
+      status: 'open',
+      advertisePay: true,
+    };
+    own.composed[key] = row;
+    const obligation = publicObligation(row);
+    this._emit('law:obligationNoted', obligation);
+    return { accepted: true, duplicate: false, obligation };
+  },
+
+  payComposedObligation(request = {}) {
+    const state = this.state;
+    if (!state) return { accepted: false, reason: 'no_state' };
+    const kind = request.kind;
+    const causeId = cleanLawId(request.causeId == null ? null : String(request.causeId));
+    if (!OBLIGATION_KINDS.has(kind) || !causeId) return { accepted: false, reason: 'invalid' };
+    const own = ensureState(state);
+    const row = own.composed && own.composed[`${kind}:${causeId}`];
+    if (!row) return { accepted: false, reason: 'missing' };
+    if (row.status === 'paid' || row.remainingCr <= 0) {
+      return { accepted: false, reason: 'already_paid', obligation: publicObligation(row) };
+    }
+    const requested = Number(request.amountCr);
+    const pay = Number.isFinite(requested) && requested > 0 ? Math.round(requested) : row.remainingCr;
+    if (!(pay > 0)) return { accepted: false, reason: 'no_amount', obligation: publicObligation(row) };
+    const applied = Math.min(pay, row.remainingCr);
+    this._emit('economy:chargeCredits', {
+      amount: applied,
+      reason: `law:${row.kind}`,
+      cause: row.causeId,
+      forPerson: row.forPerson,
+      sink: row.kind,
+    });
+    row.remainingCr -= applied;
+    if (row.remainingCr <= 0) {
+      row.remainingCr = 0;
+      row.status = 'paid';
+      row.advertisePay = false;
+    } else {
+      row.status = 'open';
+      row.advertisePay = true;
+    }
+    const obligation = publicObligation(row);
+    this._emit('law:obligationPaid', obligation);
+    return { accepted: true, appliedCr: applied, obligation };
+  },
+
+  _markObligationSettled(kind, causeId) {
+    const own = this.state && this.state.lawSecurity;
+    const row = own && own.composed && own.composed[`${kind}:${causeId}`];
+    if (!row || row.status === 'paid') return row ? publicObligation(row) : null;
+    row.remainingCr = 0;
+    row.status = 'paid';
+    row.advertisePay = false;
+    const obligation = publicObligation(row);
+    this._emit('law:obligationPaid', obligation);
+    return obligation;
+  },
+
+  composedDisposition() {
+    const own = this.state && this.state.lawSecurity;
+    const rows = own && own.composed && typeof own.composed === 'object' ? Object.values(own.composed) : [];
+    return rows.map((row) => publicObligation(row));
+  },
+
+  restitutionFor(causeId) {
+    const id = cleanLawId(causeId == null ? null : String(causeId));
+    const own = this.state && this.state.lawSecurity;
+    const row = id && own && own.composed && own.composed[`restitution:${id}`];
+    if (!row || !row.forPerson) return null;
+    return {
+      causeId: row.causeId,
+      forPerson: row.forPerson,
+      remainingCr: row.remainingCr,
+      status: row.status,
+      resolves: row.key,
+      globalExoneration: false,
+      promise: `Restitution for ${row.forPerson} — ${row.causeId} only`,
+    };
+  },
+
+  // PB-CONS-E — charges that are not on the record the player built do not stick.
+  auditBuiltRecord(request = {}) {
+    const state = this.state;
+    const subjectId = request.subjectId;
+    const charges = Array.isArray(request.charges) ? request.charges : [];
+    const built = builtRecordEntries(state, subjectId);
+    const before = state && state.lawSecurity && Array.isArray(state.lawSecurity.receipts)
+      ? state.lawSecurity.receipts.length : 0;
+    const results = charges.map((charge) => {
+      const onRecord = chargeOnBuiltRecord(built, charge);
+      return {
+        incidentId: charge && charge.incidentId != null ? charge.incidentId : null,
+        cause: charge && charge.cause != null ? charge.cause : null,
+        onRecord,
+        verdict: onRecord ? 'confirmed' : 'not_on_record',
+      };
+    });
+    const after = state && state.lawSecurity && Array.isArray(state.lawSecurity.receipts)
+      ? state.lawSecurity.receipts.length : 0;
+    const audit = { subjectId: subjectId ?? null, results, invented: after !== before };
+    this._emit('law:recordAudit', audit);
+    return audit;
+  },
+
+  _chooseFine(payload = {}) {
+    const state = this.state;
+    if (!state) return null;
+    const choice = payload.choice || payload.fineChoice;
+    if (choice !== 'pay' && choice !== 'work' && choice !== 'leave') return null;
+    const own = ensureState(state);
+    const offer = own.fineOffer;
+    const stationId = payload.stationId || (offer && offer.stationId);
+    // FB-039 — a reply only resolves the fine actually on the counter. A stale panel (already
+    // paid, a different berth, no open offer at all) is refused, never charged: the handler
+    // re-derives tier and price from current heat before it acts.
+    if (!offer || offer.status === 'paid' || String(offer.stationId) !== String(stationId)) {
+      this._emit('law:fineRefused', { reason: 'no_open_fine', stationId: stationId || null });
+      return { accepted: false, reason: 'no_open_fine' };
+    }
+    return this._handleDockedLawfulClearance({ ...payload, stationId, fineChoice: choice });
+  },
+
+  _updateFineWork(dt, state) {
+    const own = state && state.lawSecurity;
+    const offer = own && own.fineOffer;
+    if (!offer || offer.status !== 'working') return;
+    if (own.fineSettled && own.fineSettled[offer.causeId]) {
+      offer.status = 'paid';
+      return;
+    }
+    const step = Number(dt);
+    if (!(step > 0)) return;
+    offer.workS = (Number(offer.workS) || 0) + step;
+    if (offer.workS + 1e-9 < (Number(offer.workNeedS) || LAW_FINE_WORK_S)) return;
+    if (!own.fineSettled || typeof own.fineSettled !== 'object') own.fineSettled = {};
+    own.fineSettled[offer.causeId] = 'work';
+    offer.status = 'paid';
+    this._markObligationSettled('warrant', offer.causeId);
+    this._emit('heat:clear', { reason: 'station_fine_work' });
+    this._emit('law:fineAssessed', {
+      stationId: offer.stationId,
+      amount: offer.amount,
+      paid: true,
+      choice: 'work',
+      heatLevel: offer.heatLevel,
+      wantedTier: offer.wantedTier,
+    });
+    this._lawResponse('fine_worked', {
+      stationId: offer.stationId, fineCr: offer.amount,
+      heatLevel: offer.heatLevel, wantedTier: offer.wantedTier,
+    });
+  },
+
+  // A surrender at nets/impound opens one priced bill. It does not clear heat.
+  _beginPlayerSurrender(_payload = {}) {
+    const state = this.state;
+    if (!state || state.playerId == null) return { started: false, reason: 'no_state' };
+    const own = ensureState(state);
+    const existing = own.playerSurrender;
+    if (existing && existing.phase === 'holding') {
+      return { started: true, phase: 'holding', priceCr: existing.priceCr, causeId: existing.causeId, already: true };
+    }
+    if (existing && existing.phase === 'accepted') {
+      return { started: true, phase: 'accepted', priceCr: existing.priceCr, causeId: existing.causeId, already: true };
+    }
+    const window = lawfulSurrenderWindow(state);
+    if (!window.ok) {
+      // The refusal voice: an explicit ask always says why. The auto-verb never reaches here —
+      // a physical hold either exists or it does not.
+      this._emit('law:surrenderRefused', { reason: window.reason, tier: window.tier });
+      this._emit('toast', {
+        text: surrenderRefusalLine(window.reason), kind: 'warn', ttl: 3,
+      });
+      return { started: false, reason: window.reason, tier: window.tier };
+    }
+    const tier = window.tier;
+    const responder = window.responder;
+    const priceCr = surrenderPriceCr(state.player);
+    const causeId = `player-surrender:${state.meta && state.meta.seed || 1}`;
+    own.playerSurrender = {
+      phase: 'holding',
+      responderId: responder.id,
+      priceCr,
+      causeId,
+      heldS: 0,
+      tier,
+    };
+    this._emit('law:surrenderHold', { priceCr, causeId, responderId: responder.id, holdS: LAW_SURRENDER_HOLD_S });
+    this._emit('toast', {
+      text: `HEAVE TO — engines cut. Custody accepts in ${LAW_SURRENDER_HOLD_S}s. Fire or move to break.`,
+      kind: 'warn', ttl: 3,
+    });
+    this._lawResponse('surrender_hold', { priceCr, causeId, responderId: responder.id });
+    return { started: true, phase: 'holding', priceCr, causeId, responderId: responder.id };
+  },
+
+  _cancelPlayerSurrender(reason) {
+    const own = this.state && this.state.lawSecurity;
+    const hold = own && own.playerSurrender;
+    if (!hold || hold.phase !== 'holding') return false;
+    hold.phase = 'cancelled';
+    hold.reason = reason;
+    // Suppress the auto-verb until the window actually breaks once — sitting still right after
+    // breaking the hold is the argument, not a new surrender.
+    own.surrenderRearm = true;
+    this._emit('law:surrenderRefused', { reason, priceCr: hold.priceCr, causeId: hold.causeId });
+    this._emit('toast', { text: surrenderRefusalLine(reason), kind: 'warn', ttl: 3 });
+    this._lawResponse('surrender_refused', { reason, priceCr: hold.priceCr });
+    return true;
+  },
+
+  _updatePlayerSurrender(dt, state) {
+    const own = state && state.lawSecurity;
+    let hold = own && own.playerSurrender;
+    // FB-119 — the surrender verb IS the act: engines cut inside a lawful responder's scan cone
+    // while wanted at a custody tier opens the hold. No deck prompt, no key — holding still for
+    // LAW_SURRENDER_HOLD_S under the cone is compliance. An explicit law:playerSurrender intent
+    // reaches the same door with refusal reasons voiced; the auto-verb speaks only in holds.
+    if (!hold || hold.phase === 'cancelled') {
+      if (!state || state.playerId == null) return;
+      if (state.mode && state.mode !== 'flight') return;
+      if (state.ui && state.ui.docked === true) return;
+      if (!lawfulSurrenderWindow(state).ok) {
+        // The window closed — the next deliberate hold is a fresh surrender, not a retry.
+        own.surrenderRearm = false;
+        return;
+      }
+      // A cancelled hold stays cancelled while the window never broke: firing and then simply
+      // sitting still is an argument, not compliance. Leave the cone or spool up once, then the
+      // next stillness counts. The explicit law:playerSurrender ask is always honored.
+      if (hold && own.surrenderRearm === true) return;
+      this._beginPlayerSurrender();
+      hold = own.playerSurrender;
+    }
+    if (!hold || hold.phase !== 'holding') return;
+    const player = entityById(state, state.playerId);
+    if (!player || player.alive === false) {
+      this._cancelPlayerSurrender('no_ship');
+      return;
+    }
+    if (entitySpeed(player) > LAW_SURRENDER_MAX_SPEED) {
+      this._cancelPlayerSurrender('moving');
+      return;
+    }
+    const responder = entityById(state, hold.responderId);
+    if (!responder || responder.alive === false || !playerInLawfulCone(responder, player)) {
+      this._cancelPlayerSurrender('no_responder');
+      return;
+    }
+    const step = Number(dt);
+    if (!(step > 0)) return;
+    hold.heldS = (Number(hold.heldS) || 0) + step;
+    if (hold.heldS + 1e-9 < LAW_SURRENDER_HOLD_S) return;
+    this._acceptPlayerSurrender(hold);
+  },
+
+  _acceptPlayerSurrender(hold) {
+    const state = this.state;
+    if (!hold || hold.phase !== 'holding') return null;
+    hold.phase = 'accepted';
+    const noted = this.noteComposedObligation({
+      kind: 'warrant',
+      causeId: hold.causeId,
+      amountCr: hold.priceCr,
+      label: 'surrender',
+    });
+    const responder = entityById(state, hold.responderId);
+    if (responder && responder.data) {
+      const ai = responder.data.ai || (responder.data.ai = {});
+      ai.roe = RulesOfEngagement.HOLD_FIRE;
+      ai.passive = true;
+      ai.forcePlayerTarget = false;
+      const intent = responder.data.intent || (responder.data.intent = {});
+      intent.fire = false;
+      const combat = responder.data.combat;
+      if (combat && combat.targetId === state.playerId) {
+        combat.targetId = null;
+        combat.lockTarget = null;
+      }
+    }
+    const priceCr = hold.priceCr;
+    for (const other of state.entityList || []) {
+      applyAcceptedSurrenderStandDown(other, { playerId: state.playerId, causeId: hold.causeId });
+    }
+    const obligation = noted && noted.obligation || null;
+    // NXI-055 — describe the stand-down by its accepted disposition. Custody with an open bill
+    // is a suspended stop, not a settled one, and it is never global exoneration: the heat
+    // owner still holds the sheet and new causes reopen engagement on their own record.
+    const disposition = obligation && obligation.status === 'paid' ? 'settled' : 'suspended';
+    this._emit('combat:surrendered', {
+      player: true,
+      accepted: true,
+      entityId: state.playerId,
+      priceCr,
+      causeId: hold.causeId,
+      t: state.simTime || 0,
+    });
+    this._emit('law:surrenderAccepted', {
+      priceCr,
+      causeId: hold.causeId,
+      responderId: hold.responderId,
+      obligation,
+      disposition,
+    });
+    this._emit('toast', {
+      text: disposition === 'settled'
+        ? 'CUSTODY ACCEPTED — the law holds the guns. This lot is already settled on the record.'
+        : obligation
+          ? `CUSTODY ACCEPTED — the law holds the guns. Bill posted: ${priceCr} Cr.`
+          : 'CUSTODY ACCEPTED — the law holds the guns. Custody stands; no new bill could be posted.',
+      kind: 'good', ttl: 4,
+    });
+    this._lawResponse('surrender_accepted', {
+      priceCr, causeId: hold.causeId, disposition, globalExoneration: false,
+    });
+    return { accepted: true, priceCr, causeId: hold.causeId, obligation, disposition };
+  },
+
   destroy() {
     this._releaseAllJobResponses('destroy');
     if (this.bus && typeof this.bus.off === 'function') {
@@ -4030,6 +4784,9 @@ export const lawSecurity = {
       if (this._onHeatChanged) this.bus.off('heat:changed', this._onHeatChanged);
       if (this._onImpoundPay) this.bus.off('law:impoundPay', this._onImpoundPay);
       if (this._onCustomsSubmit) this.bus.off('customs:submit', this._onCustomsSubmit);
+      if (this._onFineChoice) this.bus.off('law:fineChoice', this._onFineChoice);
+      if (this._onPlayerSurrender) this.bus.off('law:playerSurrender', this._onPlayerSurrender);
+      if (this._onRecordAudit) this.bus.off('law:audit', this._onRecordAudit);
     }
     this._onDamage = null;
     this._onFire = null;
@@ -4052,6 +4809,9 @@ export const lawSecurity = {
     this._onHeatChanged = null;
     this._onImpoundPay = null;
     this._onCustomsSubmit = null;
+    this._onFineChoice = null;
+    this._onPlayerSurrender = null;
+    this._onRecordAudit = null;
     if (this._podConeDwell) this._podConeDwell.clear();
   },
 };
@@ -4517,6 +5277,55 @@ function isPirateLike(entity) {
     || words.includes('corsair') || entity.factionId === 'faction_reach';
 }
 
+/** Clear an uncommitted lawful shot. Already-fired ordnance is left where it is. */
+export function applyAcceptedSurrenderStandDown(ship, { playerId = null, causeId = null } = {}) {
+  if (!ship || !ship.data || !ship.data.ai || ship.data.ai.lawful !== true) {
+    return { stoodDown: false, reason: 'not_lawful' };
+  }
+  const ai = ship.data.ai;
+  const combat = ship.data.combat;
+  const intent = ship.data.intent;
+  const engaging = !!(combat && (combat.targetId === playerId || combat.lockTarget === playerId))
+    || !!(intent && intent.fire === true);
+  if (!engaging) return { stoodDown: false, reason: 'not_engaging' };
+  if (ai.stoodDownCause && causeId && ai.stoodDownCause !== causeId) {
+    return { stoodDown: false, reason: 'newer_cause', causeId: ai.stoodDownCause };
+  }
+  ai.roe = 'hold_fire';
+  ai.passive = true;
+  ai.forcePlayerTarget = false;
+  ai.stoodDownCause = causeId || ai.stoodDownCause || null;
+  if (intent) intent.fire = false;
+  if (combat && combat.targetId === playerId) {
+    combat.targetId = null;
+    combat.lockTarget = null;
+  }
+  return { stoodDown: true, causeId: ai.stoodDownCause, projectilesUntouched: true };
+}
+
+/** A later crime uses its own cause. The settled surrender accusation is not reapplied. */
+export function reopenLawFireForNewCause(ship, newCauseId) {
+  const ai = ship && ship.data && ship.data.ai;
+  if (!ai || !ai.stoodDownCause) return { reopened: false, reason: 'not_stood_down' };
+  if (!newCauseId || newCauseId === ai.stoodDownCause) {
+    return { reopened: false, reason: 'same_accusation' };
+  }
+  ai.stoodDownCause = null;
+  ai.passive = false;
+  ai.roe = 'weapons_free';
+  return { reopened: true, causeId: newCauseId };
+}
+
+export function composedRemainingText(composed) {
+  const rows = composed && typeof composed === 'object' ? Object.values(composed) : [];
+  const open = rows.filter((row) => row && row.status !== 'paid' && row.remainingCr > 0);
+  if (!open.length) return 'No open obligations.';
+  return open.map((row) => {
+    const what = row.forPerson ? `${row.kind} for ${row.forPerson}` : `${row.label || row.kind} (${row.causeId})`;
+    return `${what} — ${row.remainingCr} cr`;
+  }).join('; ');
+}
+
 function isLawful(entity) {
   if (!entity) return false;
   const ai = entity.data && entity.data.ai || {};
@@ -4607,11 +5416,22 @@ function sameLawEntityId(a, b) {
 
 function incidentRingOrigin(incident, victim, station) {
   if (incident && incident.rankFromVictim && victim && victim.pos) return victim.pos;
-  return station && station.pos || victim && victim.pos || { x: 0, z: 0 };
+  return station && station.pos || victim && victim.pos || (incident && incident.ringPos) || null;
 }
 
 function entityById(state, id) {
   return id == null || !state || !state.entities || typeof state.entities.get !== 'function' ? null : state.entities.get(id) || null;
+}
+
+// Entity ids recycle through state.freeIds (core/entity.js): an incident-held id can resolve to a
+// projectile or traffic ship one tick after its body was removed. The occupant generation stamped
+// at spawn proves the id still names the same body (same contract as combat/actions.js
+// occupantMismatch: a recorded generation that no longer matches means the original is gone; a null
+// recording — fixture-authored entities — never mismatches).
+function incidentOccupant(state, id, generation) {
+  const entity = entityById(state, id);
+  if (!entity) return null;
+  return generation != null && occupantGenerationOf(entity) !== generation ? null : entity;
 }
 
 function stationByPublicId(state, stationId) {
@@ -4913,6 +5733,14 @@ const LAW_KILL_WITNESS_RADIUS = LAW_INCIDENT_WITNESS_RADIUS;
 /** Lawful dock clearance: assessed fine for the two escapable tiers, real credits, never free. */
 const LAW_DOCK_FINE_BASE_CR = 150;
 const LAW_DOCK_FINE_PER_LEVEL_CR = 100;
+/** Same length as the impound shift: a chosen fine can be worked off instead of paid. */
+const LAW_FINE_WORK_S = 4;
+/** Engines cut, holding still, inside a lawful cone. Surrender is not instant and not free. */
+const LAW_SURRENDER_HOLD_S = 4;
+const LAW_SURRENDER_MAX_SPEED = 0.75;
+const LAW_COMPOSED_CAP = 24;
+const MEMORIAL_SITE_CAP = 16;
+const OBLIGATION_KINDS = new Set(['toll', 'warrant', 'restitution']);
 
 /**
  * The reported-incident ledger, created ONLY on first actual use.
@@ -4958,6 +5786,262 @@ function finiteLawPoint(pos) {
     : null;
 }
 
+// PB-CONS-A / SF-151 — what counts as cover at law ranges. The witness gate asks "could a
+// person there actually see the act": a station bulk, a rock, a hulk — bodies a crime can be
+// hidden behind — block the sightline through the same proxy-aware segment test the customs
+// cone uses (`scanLineOccluded`). Ordinary hulls are deliberately NOT cover here, unlike the
+// 90-WU customs pod cone where a ship hides a pod: at a 450-WU kill radius a passing ship is a
+// sliver, and letting incidental traffic blind every witness would make the charge depend on
+// formation noise rather than on the act itself. `data.sensorBlocking === true` opts a body in.
+const LAW_WITNESS_OCCLUDER_TYPES = new Set(['station', 'asteroid', 'planet', 'wreck', 'debris']);
+
+// One collection + proxy-resolution pass shared by every witness candidate in a query —
+// a witnessed kill evaluates tens of candidates against the same world, so the entity walk,
+// field-rock walk, manifest resolution, and primitive expansion happen once per query
+// instead of once per candidate. The candidate evaluator below mirrors scanLineOccluded
+// verdict-for-verdict on the prepared views.
+//
+// The plan is query-independent (it depends only on the entity set, their poses, and the
+// field rocks), so every witness query in one tick shares one build — a kill that asks both
+// the lawful and the civilian question pays the walk once, and callers that find zero
+// candidates never build it at all (lazy, below). Membership is keyed on tick + map size +
+// index version + rock count: alive/collides flips are re-checked per candidate at eval,
+// spawns and removals change the key, and a new tick rebuilds with fresh poses.
+const LAW_WITNESS_PLAN_MEMO = new WeakMap();
+// A same-tick continuous enter can swap `world.asteroidField` for a field whose rocks array is
+// exactly the same length — count alone would serve the previous sector's prepared rows. The
+// key folds the rocks array's identity (per-instance stamp), not just its length.
+const LAW_WITNESS_ROCKS_ARRAY_IDS = new WeakMap();
+let lawWitnessRocksArrayNextId = 0;
+
+function lawWitnessRocksArrayId(field) {
+  const rocks = field && field.rocks;
+  if (!Array.isArray(rocks)) return -1;
+  let id = LAW_WITNESS_ROCKS_ARRAY_IDS.get(rocks);
+  if (id === undefined) {
+    id = ++lawWitnessRocksArrayNextId;
+    LAW_WITNESS_ROCKS_ARRAY_IDS.set(rocks, id);
+  }
+  return id;
+}
+
+function lawWitnessOccluderPlan(state) {
+  const entities = state && state.entities;
+  const size = entities && typeof entities.size === 'number' ? entities.size : -1;
+  const field = state && state.world && state.world.asteroidField;
+  const rocks = field && Array.isArray(field.rocks) ? field.rocks.length : -1;
+  const key = `${(state && state.tick) | 0}|${size}|${entityIndexVersion(state) ?? 'nv'}|${rocks}:${lawWitnessRocksArrayId(field)}`;
+  const hit = LAW_WITNESS_PLAN_MEMO.get(state);
+  if (hit && hit.key === key) return hit.plan;
+  const plan = buildLawWitnessOccluderPlan(state);
+  LAW_WITNESS_PLAN_MEMO.set(state, { key, plan });
+  return plan;
+}
+
+// Plan rows partition at build, mirroring the lineOfSight twin: physics-fixed occluders
+// (stations, gates, landmarks and any body past the isFixedPhysicsEntity radius threshold)
+// cannot move inside a membership-stable memo, and parked field-resident rocks (vel ~0,
+// liveEntityId null — the only pose writer, the ballistic advance, needs a nonzero vel or an
+// itinerary) are still for the same span. Those bucket by pos±reach once; grid cells near
+// the segment are the only small-reach rows evaluated. Reach beyond the cell size and every
+// mobile row stays in the always-walked lane: a center that moved into the segment ball while
+// its bucket stayed outside is a miss direction nothing downstream re-verifies.
+const LAW_WITNESS_SPATIAL_CELL = 256;
+let lawWitnessPlanQueryStamp = 0;
+
+function lawWitnessPlanRowIsStill(occ) {
+  if (!occ || typeof occ !== 'object') return false;
+  if (occ.fieldResident === true) {
+    if (occ.liveEntityId != null) return false;
+    const vx = occ.vel ? Math.abs(Number(occ.vel.x) || 0) : 0;
+    const vz = occ.vel ? Math.abs(Number(occ.vel.z) || 0) : 0;
+    return vx <= 1e-6 && vz <= 1e-6 && !occ.intent;
+  }
+  return !isDynamicPhysicsBodyEntity(occ);
+}
+
+function lawWitnessPlanInsert(plan, rec) {
+  const occ = rec.occ;
+  const px = occ && occ.pos ? Number(occ.pos.x) : NaN;
+  const pz = occ && occ.pos ? Number(occ.pos.z) : NaN;
+  if (lawWitnessPlanRowIsStill(occ) && Number.isFinite(px) && Number.isFinite(pz)
+      && rec.reach <= LAW_WITNESS_SPATIAL_CELL) {
+    const x0 = Math.floor((px - rec.reach) / LAW_WITNESS_SPATIAL_CELL);
+    const x1 = Math.floor((px + rec.reach) / LAW_WITNESS_SPATIAL_CELL);
+    const z0 = Math.floor((pz - rec.reach) / LAW_WITNESS_SPATIAL_CELL);
+    const z1 = Math.floor((pz + rec.reach) / LAW_WITNESS_SPATIAL_CELL);
+    for (let cx = x0; cx <= x1; cx++) {
+      let row = plan.grid.get(cx);
+      if (!row) { row = new Map(); plan.grid.set(cx, row); }
+      for (let cz = z0; cz <= z1; cz++) {
+        let bucket = row.get(cz);
+        if (!bucket) { bucket = []; row.set(cz, bucket); }
+        bucket.push(rec);
+      }
+    }
+    return;
+  }
+  plan.dynamic.push(rec);
+}
+
+function buildLawWitnessOccluderPlan(state) {
+  const plan = { dynamic: [], grid: new Map() };
+  const entities = state && state.entities;
+  if (entities && typeof entities.values === 'function') {
+    for (const occ of entities.values()) {
+      if (!occ || occ.type === 'asteroid') continue; // every rock is walked by forEachFieldRock
+      if (!LAW_WITNESS_OCCLUDER_TYPES.has(occ.type)
+        && !(occ.data && occ.data.sensorBlocking === true)) continue;
+      lawWitnessPlanInsert(plan, lawWitnessOccluderView(occ));
+    }
+  }
+  forEachFieldRock(state, (rec) => { lawWitnessPlanInsert(plan, lawWitnessOccluderView(rec)); });
+  return plan;
+}
+
+// World-space view memoized per body on the function's exact input space — manifest identity,
+// scale inputs (dockRadius/radius), the raw corridorBearingDeg stamp (approach-framed
+// manifests read it unsnapped), and world pose. The plan's occluders are overwhelmingly
+// static bodies that would otherwise re-derive identical primitive arrays every step.
+const LAW_WITNESS_VIEW_MEMO = new WeakMap();
+
+function lawWitnessOccluderView(occ) {
+  const manifest = (occ && (occ.data || occ.type || occ.physicsBody))
+    ? resolveCollisionProxyManifest(occ)
+    : null;
+  const px = occ && occ.pos && Number.isFinite(occ.pos.x) ? occ.pos.x : 0;
+  const pz = occ && occ.pos && Number.isFinite(occ.pos.z) ? occ.pos.z : 0;
+  const rot = occ && Number.isFinite(occ.rot) ? occ.rot : 0;
+  const radius = Math.max(0, Number(occ && occ.radius) || 0);
+  const bearing = occ && occ.data && Number.isFinite(occ.data.corridorBearingDeg)
+    ? occ.data.corridorBearingDeg
+    : null;
+  const scale = manifest ? proxyScaleFor(occ, manifest) : 0;
+  const hit = LAW_WITNESS_VIEW_MEMO.get(occ);
+  if (hit && hit.manifest === manifest && hit.px === px && hit.pz === pz && hit.rot === rot
+    && hit.radius === radius && hit.bearing === bearing && hit.scale === scale) {
+    return hit.view;
+  }
+  const view = buildLawWitnessOccluderView(occ, manifest);
+  LAW_WITNESS_VIEW_MEMO.set(occ, { manifest, px, pz, rot, radius, bearing, scale, view });
+  return view;
+}
+
+function buildLawWitnessOccluderView(occ, manifest) {
+  if (!manifest) {
+    return { occ, primitives: null, reach: Math.max(0, Number(occ && occ.radius) || 0) };
+  }
+  const primitives = proxyWorldPrimitives(occ, manifest);
+  // Furthest primitive surface from the body's own origin, in the same finite() frame the
+  // primitives were placed — a provable over-cover of every occlusion shape.
+  const px = occ && occ.pos && Number.isFinite(occ.pos.x) ? occ.pos.x : 0;
+  const pz = occ && occ.pos && Number.isFinite(occ.pos.z) ? occ.pos.z : 0;
+  let reach = 0;
+  for (const primitive of primitives) {
+    let extent = 0;
+    if (primitive.kind === 'capsule') {
+      extent = Math.max(
+        Math.hypot(primitive.ax - px, primitive.az - pz),
+        Math.hypot(primitive.bx - px, primitive.bz - pz),
+      ) + Math.max(0, Number(primitive.r) || 0);
+    } else {
+      const body = primitive.kind === 'obb'
+        ? Math.hypot(Number(primitive.hx) || 0, Number(primitive.hz) || 0)
+        : Math.max(0, Number(primitive.r) || 0);
+      extent = Math.hypot(primitive.x - px, primitive.z - pz) + body;
+    }
+    if (extent > reach) reach = extent;
+  }
+  return { occ, primitives, reach };
+}
+
+// One row's full accept chain, verbatim from the flat walk — shared by the dynamic lane and
+// the grid lane so the two-tier eval keeps an identical verdict.
+function lawWitnessRowBlocked(rec, observer, targetPos, ignoredIds, ax, az, bx, bz, mx, mz, halfLen) {
+  const occ = rec.occ;
+  if (!occ || occ.alive === false || occ.collides === false || !occ.pos) return false;
+  if (occ === observer || occ.id === observer.id) return false;
+  if (ignoredIds && ignoredIds.has(occ.id)) return false;
+  // Every surface point of this occluder sits within `reach` of its origin; a center outside
+  // the segment's enclosing ball cannot intersect — identical verdict, no segment math.
+  const dxm = occ.pos.x - mx;
+  const dzm = occ.pos.z - mz;
+  const bound = halfLen + rec.reach;
+  if (dxm * dxm + dzm * dzm > bound * bound) return false;
+  if (rec.primitives) {
+    // segmentHitsProxy's finite guards, preserved verbatim.
+    if (!Number.isFinite(occ.pos.x) || !Number.isFinite(occ.pos.z)
+      || !Number.isFinite(ax) || !Number.isFinite(az)
+      || !Number.isFinite(bx) || !Number.isFinite(bz)) return false;
+    for (const primitive of rec.primitives) {
+      if (primitiveBlocksSegment(observer.pos, targetPos, primitive)) return true;
+    }
+    return false;
+  }
+  // Disc fallback identical to scanLineOccluded's radius path.
+  const r = rec.reach;
+  if (!(r > 0)) return false;
+  const abx = bx - ax;
+  const abz = bz - az;
+  const acx = occ.pos.x - ax;
+  const acz = occ.pos.z - az;
+  const abLen2 = abx * abx + abz * abz;
+  if (!(abLen2 > 1e-8)) {
+    if (Math.hypot(acx, acz) <= r) return true;
+    return false;
+  }
+  let t = (acx * abx + acz * abz) / abLen2;
+  if (t < 0) t = 0;
+  else if (t > 1) t = 1;
+  const dx = ax + abx * t - occ.pos.x;
+  const dz = az + abz * t - occ.pos.z;
+  if (dx * dx + dz * dz <= r * r) return true;
+  return false;
+}
+
+function lawWitnessSightBlocked(state, observer, targetPos, ignoredIds, occluders) {
+  if (!observer || !observer.pos || !targetPos || !occluders) return false;
+  const ax = observer.pos.x;
+  const az = observer.pos.z;
+  const bx = targetPos.x;
+  const bz = targetPos.z;
+  const mx = (ax + bx) * 0.5;
+  const mz = (az + bz) * 0.5;
+  const halfLen = Math.hypot(bx - ax, bz - az) * 0.5;
+  // Flat arrays still serve callers that hand-roll their own occluder list (customs cones).
+  const flat = Array.isArray(occluders) ? occluders : occluders.dynamic;
+  if (flat) {
+    for (const rec of flat) {
+      if (lawWitnessRowBlocked(rec, observer, targetPos, ignoredIds, ax, az, bx, bz, mx, mz, halfLen)) return true;
+    }
+  }
+  const grid = Array.isArray(occluders) ? null : occluders.grid;
+  if (!grid) return false;
+  // Cells overlapped by the segment ball dilated by the cell size — a grid row's bucket span
+  // covers pos±reach with reach <= cell, so any possible blocker's center sits inside this
+  // square and its own cell is visited. Superset of the bound test (lineOfSight twin).
+  const span = halfLen + LAW_WITNESS_SPATIAL_CELL;
+  const gx0 = Math.floor((mx - span) / LAW_WITNESS_SPATIAL_CELL);
+  const gx1 = Math.floor((mx + span) / LAW_WITNESS_SPATIAL_CELL);
+  const gz0 = Math.floor((mz - span) / LAW_WITNESS_SPATIAL_CELL);
+  const gz1 = Math.floor((mz + span) / LAW_WITNESS_SPATIAL_CELL);
+  const stamp = ++lawWitnessPlanQueryStamp;
+  for (let cx = gx0; cx <= gx1; cx++) {
+    const gridRow = grid.get(cx);
+    if (!gridRow) continue;
+    for (let cz = gz0; cz <= gz1; cz++) {
+      const bucket = gridRow.get(cz);
+      if (!bucket) continue;
+      for (const rec of bucket) {
+        if (rec._wq === stamp) continue;
+        rec._wq = stamp;
+        if (lawWitnessRowBlocked(rec, observer, targetPos, ignoredIds, ax, az, bx, bz, mx, mz, halfLen)) return true;
+      }
+    }
+  }
+  return false;
+}
+
 /**
  * Who could see this. There is NO witness owner in the live codebase — jurisdiction
  * (`protectedStationAt`) and responder ranking (`rankLawfulResponders`) exist, witnesses do not — so
@@ -4968,13 +6052,25 @@ function finiteLawPoint(pos) {
  *
  * The marker exists so a facility or authored actor can be a witness without this file learning what
  * a heist is. Sorted by distance then stable id, capped — deterministic and bounded.
+ *
+ * SF-151: "in range" is not "could see". A candidate fully occluded by real cover is blind and
+ * is dropped before it can sign an accusation; the observer's own hull and any caller-ignored
+ * ids (victim, offender) never occlude.
  */
-export function lawWitnessesNear(state, { pos, offenderEntityId = null, radius = LAW_INCIDENT_WITNESS_RADIUS } = {}) {
+export function lawWitnessesNear(state, { pos, offenderEntityId = null, radius = LAW_INCIDENT_WITNESS_RADIUS, ignoreEntityIds = null } = {}) {
   const anchor = finiteLawPoint(pos);
   if (!state || !anchor) return [];
   const limitSq = Math.max(0, Number(radius) || 0) ** 2;
+  const ignoredOccluders = new Set();
+  if (offenderEntityId != null) ignoredOccluders.add(offenderEntityId);
+  if (state.playerId != null) ignoredOccluders.add(state.playerId);
+  if (ignoreEntityIds) {
+    for (const id of ignoreEntityIds) { if (id != null) ignoredOccluders.add(id); }
+  }
   const out = [];
   const seen = new Set();
+  let occluders = null;
+  const occluderPlan = () => occluders || (occluders = lawWitnessOccluderPlan(state));
   const consider = (entity) => {
     if (!entity || !entity.pos) return;
     if (offenderEntityId != null && entity.id === offenderEntityId) return;
@@ -4983,6 +6079,7 @@ export function lawWitnessesNear(state, { pos, offenderEntityId = null, radius =
     if (!isLawful(entity) && entity.data?.lawWitness !== true) return;
     const d2 = distance2(entity.pos, anchor);
     if (d2 > limitSq) return;
+    if (lawWitnessSightBlocked(state, entity, anchor, ignoredOccluders, occluderPlan())) return;
     seen.add(entity.id);
     out.push({
       stableId: String(entity.data?.worldRecordId
@@ -5016,7 +6113,13 @@ function civilianKillWitnessesNear(state, pos, offenderEntityId, alreadyCollecte
   if (!state || !anchor) return [];
   const limitSq = LAW_KILL_WITNESS_RADIUS ** 2;
   const taken = new Set((alreadyCollected || []).map((w) => w.entityId));
+  const ignoredOccluders = new Set();
+  if (offenderEntityId != null) ignoredOccluders.add(offenderEntityId);
+  if (state.playerId != null) ignoredOccluders.add(state.playerId);
+  if (victimEntityId != null) ignoredOccluders.add(victimEntityId);
   const out = [];
+  let occluders = null;
+  const occluderPlan = () => occluders || (occluders = lawWitnessOccluderPlan(state));
   forEachLivingWorldActor(state, (entity) => {
     if (!entity || !entity.pos || entity.alive === false) return;
     if (entity.id === offenderEntityId || entity.id === state.playerId) return;
@@ -5025,6 +6128,8 @@ function civilianKillWitnessesNear(state, pos, offenderEntityId, alreadyCollecte
     if (!isProtectedCivilian(entity)) return;
     const d2 = distance2(entity.pos, anchor);
     if (d2 > limitSq) return;
+    // Civilian eyes obey the same sight rule — a hauler behind a station did not watch it.
+    if (lawWitnessSightBlocked(state, entity, anchor, ignoredOccluders, occluderPlan())) return;
     out.push({
       stableId: String(entity.data?.worldRecordId
         || entity.data?.stationId
@@ -5122,6 +6227,230 @@ function normalizeReportedIncidentLedger(raw) {
     if (typeof receipt.kind !== 'string' || !receipt.kind) continue;
     out[reportId] = receipt;
     if (Object.keys(out).length >= REPORTED_INCIDENT_CAP) break;
+  }
+  return out;
+}
+
+function memorialSiteId(entity, payload) {
+  const data = entity && entity.data || {};
+  const role = `${data.role || ''} ${data.defId || ''} ${data.placeId || ''} ${payload && payload.role || ''}`;
+  const flagged = (payload && (payload.memorial === true || payload.memorialSite === true))
+    || data.memorial === true || data.memorialSite === true || data.memorialHull === true
+    || /memorial/i.test(role);
+  if (!flagged) return null;
+  const raw = (payload && (payload.siteId || payload.memorialSiteId))
+    || data.siteId || data.placeId || data.worldRecordId
+    || (entity && entity.id != null ? `memorial:${entity.id}` : null);
+  return cleanLawId(raw == null ? null : String(raw));
+}
+
+function memorialName(payload, data, siteId) {
+  const raw = (payload && payload.name) || (data && data.name) || siteId;
+  const name = String(raw || siteId).trim();
+  return name.length > 80 ? name.slice(0, 80) : name;
+}
+
+function publicMemorial(row, finderId) {
+  const witnesses = Array.isArray(row.witnessEntityIds) ? row.witnessEntityIds : [];
+  const uncertain = row.evidence !== 'witnessed';
+  const finderWasThere = finderId != null && witnesses.some((id) => String(id) === String(finderId));
+  const name = row.name || row.siteId;
+  return {
+    found: true,
+    siteId: row.siteId,
+    name,
+    evidence: uncertain ? 'uncertain' : 'witnessed',
+    namedParty: uncertain ? null : (row.namedParty ?? null),
+    statement: uncertain
+      ? `${name} was destroyed. Who did it was not seen.`
+      : `${name} was destroyed. ${witnesses.length} witness${witnesses.length === 1 ? '' : 'es'} on the record.`,
+    witnessEntityIds: witnesses.slice(),
+    finderWasThere,
+    foundBy: Array.isArray(row.foundBy) ? row.foundBy.slice() : [],
+  };
+}
+
+function publicObligation(row) {
+  const open = row.status !== 'paid' && row.remainingCr > 0;
+  return {
+    key: row.key,
+    kind: row.kind,
+    causeId: row.causeId,
+    forPerson: row.forPerson || null,
+    label: row.label,
+    amountCr: row.amountCr,
+    remainingCr: row.remainingCr,
+    status: row.status,
+    advertisePay: open,
+    whatFor: row.forPerson
+      ? `${row.kind} for ${row.forPerson}`
+      : `${row.label || row.kind} (${row.causeId})`,
+  };
+}
+
+function surrenderPriceCr(player) {
+  const quoted = quoteImpoundBill(player);
+  return quoted > 0 ? quoted : IMPOUND_RESTITUTION_CR;
+}
+
+// FB-119 — the surrender window in one place. The explicit law:playerSurrender intent turns the
+// same checks into voiced refusals; the auto-verb in _updatePlayerSurrender reads `ok` silently
+// (a physical hold either exists or it does not, and nobody needs a toast for standing fast).
+function lawfulSurrenderWindow(state) {
+  const tier = wantedTierFor(state.player && state.player.heat);
+  if (tier !== WANTED_TIER.NETS && tier !== WANTED_TIER.IMPOUND) {
+    return { ok: false, reason: 'not_in_custody_tier', tier };
+  }
+  const player = entityById(state, state.playerId);
+  if (!player || player.alive === false || !player.pos) {
+    return { ok: false, reason: 'no_ship', tier };
+  }
+  if (entitySpeed(player) > LAW_SURRENDER_MAX_SPEED) {
+    return { ok: false, reason: 'moving', tier };
+  }
+  const responder = lawfulResponderInCone(state, player);
+  if (!responder) return { ok: false, reason: 'no_responder', tier };
+  return { ok: true, tier, player, responder };
+}
+
+function surrenderRefusalLine(reason) {
+  switch (reason) {
+    case 'not_in_custody_tier': return 'SURRENDER REFUSED — the sheet does not reach custody tier. A fine answers for it.';
+    case 'no_ship': return 'SURRENDER REFUSED — no live hull to take.';
+    case 'moving': return 'SURRENDER BROKEN — engines burning. Cut them to be taken.';
+    case 'no_responder': return 'SURRENDER REFUSED — no lawful cone holds you. Nobody to take the guns.';
+    case 'fired': return 'SURRENDER BROKEN — you fired through the hold.';
+    default: return `SURRENDER CLOSED — ${String(reason || 'window gone')}.`;
+  }
+}
+
+function playerInLawfulCone(responder, player) {
+  if (!responder || !player || !responder.pos || !player.pos) return false;
+  const heading = Number.isFinite(responder.rot) ? responder.rot : 0;
+  return pointInScanCone(responder.pos, heading, CUSTOMS_SCAN_RANGE, CUSTOMS_SCAN_HALF_ANGLE, player.pos);
+}
+
+function lawfulResponderInCone(state, player) {
+  let found = null;
+  forEachLivingWorldActor(state, (entity) => {
+    if (found || !entity || entity.id === state.playerId || entity.type === 'station') return;
+    if (!isLawful(entity)) return;
+    if (playerInLawfulCone(entity, player)) found = entity;
+  });
+  return found;
+}
+
+function builtRecordEntries(state, subjectId) {
+  const own = state && state.lawSecurity || {};
+  const out = [];
+  const push = (subject, cause, incidentId) => {
+    if (!sameLawEntityId(subject, subjectId)) return;
+    out.push({
+      cause: cause == null ? null : String(cause),
+      incidentId: incidentId == null ? null : String(incidentId),
+    });
+  };
+  const receipts = Array.isArray(own.receipts) ? own.receipts : [];
+  for (let i = 0; i < receipts.length; i++) {
+    const row = receipts[i];
+    if (!row) continue;
+    push(row.attackerId, row.cause, row.incidentId);
+  }
+  const incidents = own.incidents && typeof own.incidents === 'object' ? Object.values(own.incidents) : [];
+  for (let i = 0; i < incidents.length; i++) {
+    const incident = incidents[i];
+    if (!incident) continue;
+    push(incident.attackerId, incident.cause, incident.id);
+  }
+  const reported = own.reportedIncidents && typeof own.reportedIncidents === 'object'
+    ? Object.values(own.reportedIncidents) : [];
+  for (let i = 0; i < reported.length; i++) {
+    const receipt = reported[i];
+    if (!receipt) continue;
+    const subject = receipt.offenderEntityId != null ? receipt.offenderEntityId : receipt.offenderStableId;
+    push(subject, receipt.kind, receipt.incidentReceiptId || receipt.reportId);
+  }
+  return out;
+}
+
+function chargeOnBuiltRecord(built, charge) {
+  if (!charge) return false;
+  const incidentId = charge.incidentId != null ? String(charge.incidentId) : '';
+  const cause = charge.cause != null ? String(charge.cause) : '';
+  if (!incidentId && !cause) return false;
+  for (let i = 0; i < built.length; i++) {
+    const entry = built[i];
+    if (incidentId) {
+      if (entry.incidentId && entry.incidentId === incidentId) return true;
+      continue;
+    }
+    if (cause && entry.cause === cause) return true;
+  }
+  return false;
+}
+
+function normalizeMemorialSites(raw) {
+  const out = {};
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+  for (const key of Object.keys(raw)) {
+    if (Object.keys(out).length >= MEMORIAL_SITE_CAP) break;
+    const row = raw[key];
+    const siteId = cleanLawId(row && row.siteId);
+    if (!row || siteId == null || siteId !== key) continue;
+    const evidence = row.evidence === 'witnessed' ? 'witnessed' : 'uncertain';
+    out[siteId] = {
+      siteId,
+      name: memorialName(row, null, siteId),
+      pos: finiteLawPoint(row.pos),
+      evidence,
+      namedParty: evidence === 'witnessed' ? (row.namedParty ?? null) : null,
+      witnessEntityIds: Array.isArray(row.witnessEntityIds) ? row.witnessEntityIds.slice(0, LAW_INCIDENT_WITNESS_CAP) : [],
+      destroyedAt: Number(row.destroyedAt) || 0,
+      foundBy: Array.isArray(row.foundBy) ? row.foundBy.slice(0, 8).map((id) => String(id)) : [],
+    };
+  }
+  return out;
+}
+
+function normalizeComposedObligations(raw) {
+  const out = {};
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+  for (const key of Object.keys(raw)) {
+    if (Object.keys(out).length >= LAW_COMPOSED_CAP) break;
+    const row = raw[key];
+    if (!row || typeof row !== 'object') continue;
+    const kind = OBLIGATION_KINDS.has(row.kind) ? row.kind : null;
+    const causeId = cleanLawId(row.causeId == null ? null : String(row.causeId));
+    if (!kind || !causeId || `${kind}:${causeId}` !== key) continue;
+    const forPerson = typeof row.forPerson === 'string' && row.forPerson.trim() ? row.forPerson.trim() : null;
+    if (kind === 'restitution' && !forPerson) continue;
+    const amountCr = Math.round(Number(row.amountCr));
+    if (!(amountCr > 0)) continue;
+    let remainingCr = Math.round(Number(row.remainingCr));
+    if (!Number.isFinite(remainingCr) || remainingCr < 0) remainingCr = amountCr;
+    if (remainingCr > amountCr) remainingCr = amountCr;
+    const paid = row.status === 'paid' || remainingCr === 0;
+    out[key] = {
+      key,
+      kind,
+      causeId,
+      forPerson,
+      label: typeof row.label === 'string' && row.label.trim() ? row.label.trim() : (forPerson ? `${kind} for ${forPerson}` : kind),
+      amountCr,
+      remainingCr: paid ? 0 : remainingCr,
+      status: paid ? 'paid' : 'open',
+      advertisePay: !paid && remainingCr > 0,
+    };
+  }
+  return out;
+}
+
+function normalizeFineSettled(raw) {
+  const out = {};
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+  for (const key of Object.keys(raw)) {
+    const choice = raw[key];
+    if (choice === 'pay' || choice === 'work') out[key] = choice;
   }
   return out;
 }

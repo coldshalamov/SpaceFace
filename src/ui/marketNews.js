@@ -26,6 +26,7 @@ import {
   normalizeKind, fillTemplate,
 } from '../data/newsTemplates.js';
 import { isSurvivalRunLive } from '../systems/adventureMigration.js';
+import { ensureWorldNews, registerWorldBeats } from './worldNewsBeats.js';
 
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const STATION_NAME_BY_ID = new Map();
@@ -224,6 +225,9 @@ export function createMarketNews(ctx) {
   // The encounter director's durable applied-intent ledger remains authoritative across process
   // reloads; save:loaded clears this transient set so a rewind may legitimately settle again.
   const surfacedFreightLossIds = new Set();
+  // Stunt wire (U8): each witnessed episode makes the wire at most once per process. Rewinding
+  // a save may legitimately re-settle it, so this clears on save:loaded like the set above.
+  const surfacedStuntEpisodes = new Set();
 
   function seedOf() {
     return (state.meta && (hash32(state.meta.seed) >>> 0)) || 0;
@@ -278,6 +282,17 @@ export function createMarketNews(ctx) {
   // would replace the authored line with a commodity template and discard provenance metadata.
   function surfacePublished(ev) {
     if (!ev || typeof ev.text !== 'string' || !ev.text.trim()) return null;
+    if (ev.source === 'chronicler') {
+      if (ev.kind === 'chronicler-legend') {
+        const bag = ensureWorldNews(state);
+        const day = Math.floor((state.simTime || 0) / 600);
+        if (bag.legendDay === day) return null;
+        bag.legendDay = day;
+      } else {
+        const evidence = Array.isArray(ev.evidence) ? ev.evidence : [];
+        if (evidence.length === 0 && ev.witnessed !== true) return null;
+      }
+    }
     return commitHeadline(ev.text, ev, { metadata: ev });
   }
 
@@ -386,9 +401,122 @@ export function createMarketNews(ctx) {
   function on(evt, fn) { if (bus && bus.on) { bus.on(evt, fn); subs.push([evt, fn]); } }
 
   on('news:publish', surfacePublished);
+  registerWorldBeats((evt, fn) => {
+    on(evt, (payload) => {
+      const headline = fn(payload);
+      if (!headline || !headline.text || !headline.sourceRef) return null;
+      return surfacePublished({
+        text: headline.text,
+        kind: headline.kind,
+        source: 'world-beat',
+        sourceRef: headline.sourceRef,
+        eventId: headline.sourceRef,
+        stationId: headline.stationId || null,
+      });
+    });
+  }, state);
+  // FB-049 — a stale note escalating to bounty is a cited headline, not a silent ledger move.
+  on('economy:debtEscalated', (p) => {
+    if (!p || !(Number(p.levyCr) > 0)) return null;
+    return surfacePublished({
+      text: `A stale note went to the board: ${Math.round(p.debtCr || 0)} cr owed, +${Math.round(p.levyCr)} cr bounty posted.`,
+      kind: 'debt_escalated',
+      sourceRef: `economy:debtEscalated:${Math.round(Number(p.daysOverdue) || 0)}:${Math.round(Number(p.bountyCr) || 0)}`,
+    });
+  });
   on('freight:loss', surfaceFreightLoss);
   on('pirateRumor:headline', surfacePirateRumor);
   on('uniqueWreck:complicationScheduled', surfaceWreckComplicationRumor);
+  function citeTrafficHeadline(p, kind) {
+    if (!p) return null;
+    const eventId = p.receiptId || p.id || `${kind}:${p.worldRecordId || p.linerId || p.sectorId || 'lane'}:${Number(p.t) || state.simTime || 0}`;
+    const name = p.linerName || p.name || 'A passenger liner';
+    const text = kind === 'passenger_suspended'
+      ? `${name} is suspended. The berth is holding the sailing.`
+      : `${name} filed its receipt${p.outcome ? `: ${p.outcome}` : ''}.`;
+    return commitHeadline(text, {
+      kind,
+      sectorId: p.sectorId || null,
+      eventId,
+      source: kind === 'passenger_suspended' ? 'traffic:passengerLinerSuspended' : 'traffic:passengerLinerReceipt',
+      sourceRef: String(eventId),
+    }, {
+      metadata: {
+        eventId: String(eventId),
+        source: kind === 'passenger_suspended' ? 'traffic:passengerLinerSuspended' : 'traffic:passengerLinerReceipt',
+        sourceRef: String(eventId),
+        sectorId: p.sectorId || null,
+      },
+    });
+  }
+
+  on('traffic:passengerLinerReceipt', (p) => citeTrafficHeadline(p, 'passenger_receipt'));
+  on('traffic:passengerLinerSuspended', (p) => citeTrafficHeadline(p, 'passenger_suspended'));
+  // U8 — THE MARGIN RUNS IT: a rare or legendary physics stunt is witnessed news. Named,
+  // cited, once per episode; ordinary tricks stay receipts, Crucible has its own scoring.
+  on('stunt:trickDetected', (p) => {
+    if (!p || !p.name) return;
+    if (state.run && state.run.kind === 'survival' && state.run.phase !== 'inactive') return;
+    const rarity = String(p.rarity || '');
+    const collateral = Math.max(1, Number(p.modifiers && p.modifiers.collateralCount) || 1);
+    const legendary = rarity === 'legendary';
+    const rare = rarity === 'rare' && collateral >= 2;
+    if (!legendary && !rare) return;
+    const episodeId = String(p.episodeId || '');
+    if (!episodeId || surfacedStuntEpisodes.has(episodeId)) return;
+    surfacedStuntEpisodes.add(episodeId);
+    if (surfacedStuntEpisodes.size > 24) surfacedStuntEpisodes.delete(surfacedStuntEpisodes.values().next().value);
+    const text = legendary
+      ? `WITNESSED: ${p.name} — the whole pocket saw it, and everyone knows whose ship it was.`
+      : `WITNESSED: ${p.name}, ${collateral} hulls caught in it. The witnesses all point at the same pilot.`;
+    surfacePublished({
+      text,
+      kind: 'incidents',
+      source: 'witness-relay',
+      sourceRef: `stunt:${episodeId}`,
+      eventId: `stunt:${episodeId}`,
+    });
+  });
+  on('frontierRumor:resolved', (p) => {
+    if (!p || !p.rumorId || p.type !== 'resolved') return;
+    const eventId = `frontier-resolved:${p.rumorId}`;
+    const payoff = p.kind || p.reason || 'the lead';
+    commitHeadline(`Frontier rumour paid off: ${payoff}.`, {
+      kind: 'frontier_resolved',
+      sectorId: p.sectorId || null,
+      eventId,
+      source: 'frontierRumor:resolved',
+      sourceRef: eventId,
+    }, {
+      metadata: {
+        eventId,
+        source: 'frontierRumor:resolved',
+        sourceRef: eventId,
+        sectorId: p.sectorId || null,
+        payoff,
+      },
+    });
+  });
+  on('npcjobs:minerRelocated', (p) => {
+    if (!p || !p.sectorId) return;
+    const here = state.world && state.world.currentSectorId;
+    if (here && p.sectorId !== here) return;
+    const eventId = `miner-relocated:${p.sectorId}:${Number(p.simTime) || state.simTime || 0}`;
+    commitHeadline(`Miners in ${p.sectorId} moved to a new seam.`, {
+      kind: 'miner_relocated',
+      sectorId: p.sectorId,
+      eventId,
+      source: 'npcjobs:minerRelocated',
+      sourceRef: eventId,
+    }, {
+      metadata: {
+        eventId,
+        source: 'npcjobs:minerRelocated',
+        sourceRef: eventId,
+        sectorId: p.sectorId,
+      },
+    });
+  });
   on('economy:eventStarted', (p) => {
     if (!p) return;
     surface({ type: p.type, stationId: p.stationId, commodityId: p.commodityId, eventId: p.eventId });

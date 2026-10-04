@@ -16,6 +16,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { LOOP_FIXED_DT, startLoop } from '../src/core/loop.js';
+import { syncFocusLossHold } from '../src/core/focusLossHold.js';
 
 function createClock(start = 1000) {
   let now = start;
@@ -140,6 +141,70 @@ test('a stall clears when the renderer recovers', () => {
   // The cumulative count is history and must NOT be reset — it is how a session reports that this
   // happened at all.
   assert.ok(diag.frameErrorCount >= 30, 'cumulative frame errors are history, not state');
+
+  h.controller.stop();
+});
+
+// D111: an owner freeze report (the Nav Beacon screenshot) reads identical to an intentional
+// focus-loss pause — the stall dump must retain the evidence that tells them apart: the loop
+// diagnostics, the simulation closeCauseSite, the time-effects request ledger and the
+// graphics-context state at the frozen moment.
+test('a presentation stall retains loop, sim, time-effects and graphics-context evidence', () => {
+  const h = createHarness({
+    renderUpdate() { throw new Error('draw call exploded'); },
+  });
+  // Arm the focus-loss hold first: a scale-0 'window-focus-loss' request must be listed in the
+  // dump or a paused clock gets misread as a dead one.
+  syncFocusLossHold(h.state, true);
+
+  flushFrames(h, 40);
+  const diag = h.controller.getDiagnostics();
+  assert.equal(diag.presentationStalled, true, 'precondition: stalled');
+
+  const evidence = diag.presentationStallEvidence;
+  assert.ok(evidence && typeof evidence === 'object', 'the stall retains an evidence block');
+  assert.equal(evidence.loop && evidence.loop.presentationStalled, true,
+    'the evidence carries the loop diagnostics snapshot from the frozen moment');
+  assert.ok('closeCauseSite' in evidence,
+    'the simulation closeCauseSite is retained even while null (sim alive, picture dead)');
+  assert.equal(evidence.closeCauseSite, null,
+    'a throwing renderer is not a simulation close — the field discriminates the two');
+  assert.deepEqual(evidence.timeEffectRequests, { 'window-focus-loss': { scale: 0 } },
+    'the time-effects ledger names the focus-loss hold behind a frozen-looking screenshot');
+  assert.ok(evidence.graphicsContext && typeof evidence.graphicsContext === 'object',
+    'graphics-context state is attached');
+  assert.equal(evidence.graphicsContext.renderContextLost, false,
+    'a live render block reports not-lost rather than omitting the field');
+  assert.equal(evidence.graphicsContext.glContextLost, null,
+    'no native renderer on this harness reads as unknown, never fabricated');
+
+  h.controller.stop();
+});
+
+// The field must be a live read of the published renderer flag: the same harness stalling again
+// while state.render.contextLost is set stamps true, never a hardcoded false.
+test('a stall while the published context-lost flag is set reports renderContextLost: true', () => {
+  let broken = true;
+  const h = createHarness({
+    renderUpdate() { if (broken) throw new Error('draw call exploded'); },
+  });
+
+  flushFrames(h, 40);
+  let evidence = h.controller.getDiagnostics().presentationStallEvidence;
+  assert.equal(evidence.graphicsContext.renderContextLost, false, 'precondition: healthy stamp');
+
+  // Clear the stall, set the published flag, and stall again — the re-stamp reads the live flag.
+  broken = false;
+  flushFrames(h, 3);
+  assert.equal(h.controller.getDiagnostics().presentationStalled, false,
+    'a recovered renderer clears the first stall before the second one');
+  h.state.render.contextLost = true;
+  broken = true;
+  flushFrames(h, 40);
+
+  evidence = h.controller.getDiagnostics().presentationStallEvidence;
+  assert.equal(evidence.graphicsContext.renderContextLost, true,
+    'the re-stamp reports the published flag — the field is a live read, not a constant');
 
   h.controller.stop();
 });

@@ -7,7 +7,7 @@ import { damp } from '../core/math.js';
 import { globalToFrame } from '../core/coordinates.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
 import { interpolateGlobalToFrame, readFrameOrigin } from './frameCoordinates.js';
-import { CAMERA_DIRECTOR_COMBAT_MAX_ZOOM, CameraDirectorMode, createCameraDirector } from './cameraDirector.js';
+import { adoptFlybyHandoffDirector, CAMERA_DIRECTOR_COMBAT_MAX_ZOOM, CameraDirectorMode, createCameraDirector } from './cameraDirector.js';
 import { createCameraGlide, resetCameraGlide, stepCameraGlide } from './cameraGlide.js';
 import {
   readOwnedExceptionalSpeed,
@@ -16,7 +16,8 @@ import {
   VL_EXCEPTIONAL_SPEED_RATIO_MAX,
 } from './velocityLanguage.js';
 import { resolveGovernedCombatSpeed } from '../core/flight/propulsionCatalog.js';
-import { traumaFromContact } from './feel.js';
+import { COLLISION_CUE } from '../audio/audioSystem.js';
+import { screenShakeScale, traumaFromContact } from './feel.js';
 import { entityWeaponBlocked } from '../combat/runtime.js';
 import {
   createLatchSpring,
@@ -101,6 +102,73 @@ const LOOKAHEAD_LEAD_SMOOTHING_S = 0.10; // smooth latest-tick velocity against 
 // pair out of the safe frame during a dodge. Combat keeps 0.6 of the lead — 0.30 s of velocity —
 // so the pilot's dodge still reads without the camera abandoning the threat.
 export const ACTIVE_ATTACKER_LOOKAHEAD_SCALE = 0.6;
+// Chase lookAt retain: follow() writes eye then lookAt every frame. Once focus/zoom/kick
+// settle, eye+target are bit-identical and Three Object3D.lookAt still pays
+// updateWorldMatrix + Matrix4.lookAt + setFromRotationMatrix. Cache the base look quat and
+// restore it on unchanged eye/target; roll/shake still post-multiply after. Soft-GPU fps not claimed.
+let CHASE_LOOKAT_RETAIN = true;
+export function setChaseLookAtRetainForBench(enabled) {
+  CHASE_LOOKAT_RETAIN = enabled !== false;
+  return CHASE_LOOKAT_RETAIN;
+}
+export function getChaseLookAtRetainForBench() {
+  return CHASE_LOOKAT_RETAIN !== false;
+}
+
+// Quiet chase drift used to miss lookAt retain every frame: eye/target floats creep
+// by ≪ chase distance, so bit-identical keys never matched in flight (#72 settled-only).
+// Quantize the retain KEY (not the lookAt inputs) to the same 0.25 WU cell as
+// authored-instance / presentation-query / clearance-floor retain. Exact floats still
+// drive Three lookAt on cell change. At typical chase distance (~100–300 WU) a one-cell
+// delay is sub-degree. Soft-GPU fps not claimed.
+const CHASE_LOOKAT_RETAIN_POS_QUANT_WU = 0.25;
+let CHASE_LOOKAT_RETAIN_POS_QUANTIZE = true;
+export function setChaseLookAtRetainPosQuantizeForBench(enabled) {
+  CHASE_LOOKAT_RETAIN_POS_QUANTIZE = enabled !== false;
+  return CHASE_LOOKAT_RETAIN_POS_QUANTIZE;
+}
+export function getChaseLookAtRetainPosQuantizeForBench() {
+  return CHASE_LOOKAT_RETAIN_POS_QUANTIZE !== false;
+}
+function quantizeChaseLookAtRetainPos(value) {
+  if (CHASE_LOOKAT_RETAIN_POS_QUANTIZE === false) return value;
+  const q = CHASE_LOOKAT_RETAIN_POS_QUANT_WU;
+  return Math.round(value / q) * q;
+}
+
+/**
+ * Apply chase look-at. Caller must set cam.position to (eyeX,eyeY,eyeZ) first.
+ * cache bag (per camera): { eyeX, eyeY, eyeZ, targetX, targetZ, baseQuat }.
+ * Retain keys may be quantized (0.25 WU); lookAt always uses exact floats.
+ * Returns true when Three lookAt ran; false when the cached base quat was restored.
+ */
+export function applyChaseLookAt(cam, eyeX, eyeY, eyeZ, targetX, targetZ, cache = null) {
+  if (!cam) return false;
+  const tx = Number.isFinite(targetX) ? targetX : 0;
+  const tz = Number.isFinite(targetZ) ? targetZ : 0;
+  const qEyeX = quantizeChaseLookAtRetainPos(eyeX);
+  const qEyeY = quantizeChaseLookAtRetainPos(eyeY);
+  const qEyeZ = quantizeChaseLookAtRetainPos(eyeZ);
+  const qTx = quantizeChaseLookAtRetainPos(tx);
+  const qTz = quantizeChaseLookAtRetainPos(tz);
+  if (CHASE_LOOKAT_RETAIN && cache && cache.baseQuat
+      && qEyeX === cache.eyeX && qEyeY === cache.eyeY && qEyeZ === cache.eyeZ
+      && qTx === cache.targetX && qTz === cache.targetZ) {
+    cam.quaternion.copy(cache.baseQuat);
+    return false;
+  }
+  cam.lookAt(tx, 0, tz);
+  if (cache) {
+    if (!cache.baseQuat) cache.baseQuat = cam.quaternion.clone();
+    else cache.baseQuat.copy(cam.quaternion);
+    cache.eyeX = qEyeX;
+    cache.eyeY = qEyeY;
+    cache.eyeZ = qEyeZ;
+    cache.targetX = qTx;
+    cache.targetZ = qTz;
+  }
+  return true;
+}
 // Sticky composed-threat hold: dense furballs thrash nearest/active identity every few frames and
 // the composition bias slews between anchors. Hold the current anchor briefly unless a challenger
 // is meaningfully closer or a new active attacker appears.
@@ -170,6 +238,18 @@ export const PHOTO_EXPOSURE_DEFAULT = 1;
 export const PHOTO_EXPOSURE_MIN = 0.35;
 export const PHOTO_EXPOSURE_MAX = 2.2;
 export const PHOTO_FILTERS_DEFAULT = false;
+// FB-085 photo filters: the looks' authored parameters live in ONE place — PHOTO_FILTER_LOOKS in
+// src/render/post/spaceRenderGraph.js, whose first entry is the default — and only the selection
+// half (default id, cycle order) lives here beside the photo-mode state it feeds.
+export const PHOTO_FILTER_LOOK_DEFAULT = 'chrome';
+export const PHOTO_FILTER_LOOK_ORDER = Object.freeze(['chrome', 'warm', 'mono']);
+
+/** The next authored look id in cycle order (photo overlay's Look control). */
+export function cyclePhotoFilterLook(current) {
+  const order = PHOTO_FILTER_LOOK_ORDER;
+  const at = order.indexOf(current);
+  return order[(at + 1 + order.length) % order.length];
+}
 export const PHOTO_PAN_SPEED_WU_S = 90;
 export const PHOTO_MODE_SEED = 15903;
 /** Open the chase frame a little so a store still has air around the hull. */
@@ -210,6 +290,22 @@ export function isPhotoModeActive(state) {
   return !!(state && state.render && state.render.photoMode && state.render.photoMode.active);
 }
 
+/**
+ * FB-085 — push the photo-mode filter truth onto the render graph's grade stage (the stage
+ * itself: src/render/post/spaceRenderGraph.js setPhotoFilters). Reads only; safe when the graph
+ * route is not the live one (no renderGraph published, an older graph, or a probe harness).
+ * Exported for the focused pin (test/fb-photo-filters.test.mjs).
+ */
+export function syncPhotoFilterStage(state) {
+  const graph = state && state.render && state.render.renderGraph;
+  if (!graph || typeof graph.setPhotoFilters !== 'function') return;
+  const photo = state.render.photoMode;
+  graph.setPhotoFilters({
+    enabled: !!(photo && photo.active && photo.filters === true),
+    look: photo && typeof photo.filterLook === 'string' ? photo.filterLook : null,
+  });
+}
+
 export function createPhotoModeState(state, overrides = {}) {
   const cam = state && state.camera;
   const focus = cam && cam.focus;
@@ -221,6 +317,7 @@ export function createPhotoModeState(state, overrides = {}) {
     hideHud: true,
     freeCamera: overrides.freeCamera !== false,
     filters: overrides.filters === true,
+    filterLook: typeof overrides.filterLook === 'string' ? overrides.filterLook : PHOTO_FILTER_LOOK_DEFAULT,
     exposure,
     focusX: focus && Number.isFinite(focus.x) ? focus.x : finiteOr(overrides.focusX, 0),
     focusZ: focus && Number.isFinite(focus.z) ? focus.z : finiteOr(overrides.focusZ, 0),
@@ -372,6 +469,59 @@ export const CAMERA_TRAUMA_TUNING = Object.freeze({
   }),
 });
 
+// FB-084 — the kill camera beat scales with victim weight and agrees with the ear. The tier
+// boundaries are the SAME acoustic-mass law the collision/kill audio resolves (COLLISION_CUE in
+// src/audio/audioSystem.js, imported below — one shared source, so a beat and its sound cannot
+// disagree about the victim). Light kills — the wasp and the throw-weight darts under the law's
+// unknown-mass nominal — get NO beat; medium keeps the authored 0.96x/250 ms kiss verbatim;
+// heavy and capital push deeper and hold longer, the capital hush already being the ear's side
+// of the same tier. The beat is push-zoom + hold only: no translational shake, no hit-stop change.
+export const KILL_BEAT_TUNING = Object.freeze({
+  tiers: Object.freeze({
+    light: Object.freeze({ factor: 0, durationS: 0, holdS: 0 }),
+    // The old one-size kill-cam kiss, kept verbatim as the medium tier.
+    medium: Object.freeze({ factor: -0.04, durationS: 0.25, holdS: 0 }),
+    heavy: Object.freeze({ factor: -0.07, durationS: 0.4, holdS: 0.2 }),
+    capital: Object.freeze({ factor: -0.1, durationS: 0.7, holdS: 0.35 }),
+  }),
+});
+
+/** Cap on the bounded kill-beat trail the camera exposes for probes and tests. */
+export const KILL_BEAT_LOG_CAP = 8;
+
+/** Tier from the victim's acoustic mass — the same boundaries COLLISION_CUE pitches by. */
+export function resolveKillBeatTier(victimMass, capital = false) {
+  if (capital === true) return 'capital';
+  const mass = Number.isFinite(victimMass) && victimMass > 0
+    ? victimMass
+    : COLLISION_CUE.ACOUSTIC_MASS_UNKNOWN;
+  if (mass >= COLLISION_CUE.MASS_HEAVY) return 'capital';
+  if (mass >= COLLISION_CUE.TIER_HEAVY_MASS) return 'heavy';
+  // The light swarm class (wasp 16 through the <=32 throw-weight darts) sits below the law's
+  // unknown-mass nominal; those deaths flicker, they do not beat.
+  if (mass >= COLLISION_CUE.ACOUSTIC_MASS_UNKNOWN) return 'medium';
+  return 'light';
+}
+
+/**
+ * Resolve one kill beat. `victimMass` is the acoustic mass the kill audio ladder keys on;
+ * `opts.capital` forces the capital tier (the feel layer's class/radius capital test). Reduced
+ * motion keeps the hold (a freeze is not vestibular motion) and drops the zoom.
+ */
+export function resolveKillBeat(victimMass, opts = {}) {
+  const tier = resolveKillBeatTier(victimMass, opts.capital === true);
+  const authored = KILL_BEAT_TUNING.tiers[tier];
+  const reducedMotion = opts.reducedMotion === true;
+  return {
+    tier,
+    factor: authored.factor,
+    durationS: authored.durationS,
+    holdS: authored.holdS,
+    reducedMotion,
+    zoom: !reducedMotion && authored.factor < 0,
+  };
+}
+
 /**
  * Distance falloff for a camera shake raised by a WORLD event (a ship dying somewhere) rather than
  * by something happening to the player.
@@ -439,7 +589,8 @@ function isMotionReduced(state) {
 }
 
 export function resolveMasslineReleaseCameraCue(payload, motionReduced = false) {
-  const bonusDv = Math.max(0, finiteOr(payload && payload.bonusDv, 0));
+  const bonusDv = Math.max(0,
+    finiteOr(payload && payload.bonusDv, 0) || finiteOr(payload && payload.selfSlingBonusDv, 0));
   const earned = !!(payload && payload.source === 'massline' && payload.physicsEarned && bonusDv > 0);
   const strength = clamp01(bonusDv / 165);
   return {
@@ -475,6 +626,35 @@ export function applyMasslineReleaseCameraCue(cameraController, state, payload =
     state.render.lastMasslineReleaseCue = receipt;
   }
   return receipt;
+}
+
+// FB-082 — the best moment gets the room. The audio side admits a stunt hush (razor-rated
+// release or slingshot apex, one per STUNT_HUSH_GAP_MS) and stamps the shared camera record
+// with a tick-marked beat the same tick; the chase camera consumes the stamp once — a release
+// push-zoom held for the hush's own envelope. Reduced motion keeps the hush and drops the
+// zoom; the hold is a frozen frame, not vestibular motion, so it rides the killCam precedent
+// and survives reduce. The beat is push-zoom + hold only: no trauma, no particles.
+export const STUNT_HUSH_BEAT_ZOOM = 0.1;
+export const STUNT_HUSH_BEAT_ZOOM_DURATION_S = 0.65;
+// The hush envelope (HUSH.stunt in audioSystem.js): attack 0.35 + hold 0.28 + release 0.45.
+// Audio publishes the total on the beat; this is the fallback when the stamp omits it.
+export const STUNT_HUSH_BEAT_HOLD_S = 1.08;
+// A beat is "the same tick" while the sim clock has not moved more than one tick past it;
+// older stamps are swallowed so a hush can never zoom late.
+export const STUNT_HUSH_BEAT_MAX_AGE_TICKS = 1;
+
+export function resolveStuntHushCameraCue(beat, motionReduced = false) {
+  const admitted = !!(beat && beat.kind === 'stunt' && Number.isFinite(beat.tick));
+  const reduced = motionReduced === true;
+  return {
+    schema: 'spaceface.stuntHushCameraCue.v1',
+    tick: admitted ? Math.trunc(beat.tick) : null,
+    zoom: admitted && !reduced,
+    zoomFactor: admitted && !reduced ? STUNT_HUSH_BEAT_ZOOM : 0,
+    durationS: admitted && !reduced ? STUNT_HUSH_BEAT_ZOOM_DURATION_S : 0,
+    holdS: admitted ? Math.max(0, finiteOr(beat.holdS, STUNT_HUSH_BEAT_HOLD_S)) : 0,
+    reducedMotion: reduced,
+  };
 }
 
 function resolveAimLead(input, player, out = null) {
@@ -636,8 +816,11 @@ export function playerHasActiveAttackerFraming(state, player, sticky = null) {
   for (const e of cameraThreatCandidates(state)) {
     if (e === player) continue;
     if (!isComposableThreatType(e) || e.alive === false || e.hull <= 0 || !e.pos) continue;
+    // Combat lock first: framing only cares about active attackers. Quiet Ceres traffic
+    // pays combatCanShootPlayer (cheap) and skips isHostileToPlayer for the non-lock majority.
+    if (!combatCanShootPlayer(state, e, player)) continue;
     if (!isHostileToPlayer(e, player.team, state)) continue;
-    if (combatCanShootPlayer(state, e, player)) return true;
+    return true;
   }
   return false;
 }
@@ -765,16 +948,21 @@ export function resolveChaseComposition(state, player, focus, view = {}, out = n
   let groupBaseZ = fz;
 
   // Combat composes player + nearest threat instead of only following the player.
+  // Distance + combat-lock before isHostileToPlayer: far non-attackers (the quiet majority)
+  // never pay the scanner hostility walk. Active locks and in-range ambient threats still do.
+  const composeRange2 = THREAT_COMPOSE_RANGE * THREAT_COMPOSE_RANGE;
+  const groupFitRange2 = GROUP_FIT_RANGE_WU * GROUP_FIT_RANGE_WU;
   for (const e of cameraThreatCandidates(state)) {
     if (e === player) continue;
     if (!isComposableThreatType(e) || e.alive === false || e.hull <= 0 || !e.pos) continue;
-    if (!isHostileToPlayer(e, player.team, state)) continue;
     const dx = e.pos.x - player.pos.x;
     const dz = e.pos.z - player.pos.z;
     const d2 = dx * dx + dz * dz;
     const attacksPlayer = combatCanShootPlayer(state, e, player)
       || (leasedTargetId != null && e.id === leasedTargetId);
-    if (attacksPlayer && d2 <= GROUP_FIT_RANGE_WU * GROUP_FIT_RANGE_WU) {
+    if (!attacksPlayer && d2 >= composeRange2) continue;
+    if (!isHostileToPlayer(e, player.team, state)) continue;
+    if (attacksPlayer && d2 <= groupFitRange2) {
       attackersInRange.push(e);
     }
     if (attacksPlayer && d2 < activeAttackerD2) {
@@ -784,7 +972,7 @@ export function resolveChaseComposition(state, player, focus, view = {}, out = n
     } else if (activeAttacker && attacksPlayer && d2 === activeAttackerD2) {
       activeAttackerTied = true;
     }
-    if (d2 < THREAT_COMPOSE_RANGE * THREAT_COMPOSE_RANGE) {
+    if (d2 < composeRange2) {
       nearbyEnemies++;
       if (d2 < nearestThreatD2) {
         nearestThreat = e;
@@ -805,12 +993,14 @@ export function resolveChaseComposition(state, player, focus, view = {}, out = n
     for (const e of state.entities.values()) {
       if (e === player) continue;
       if (!isComposableThreatType(e) || e.alive === false || e.hull <= 0 || !e.pos) continue;
-      if (!isHostileToPlayer(e, player.team, state)) continue;
       const dx = e.pos.x - player.pos.x;
       const dz = e.pos.z - player.pos.z;
       const d2 = dx * dx + dz * dz;
       const attacksPlayer = combatCanShootPlayer(state, e, player)
         || (leasedTargetId != null && e.id === leasedTargetId);
+      // Same prefilter as the primary scan: far non-attackers cannot be the tied winner.
+      if (!attacksPlayer && d2 !== nearestThreatD2 && d2 !== activeAttackerD2) continue;
+      if (!isHostileToPlayer(e, player.team, state)) continue;
       if (activeAttackerTied && !resolvedActive && attacksPlayer && d2 === activeAttackerD2) {
         resolvedActive = e;
       }
@@ -1175,6 +1365,10 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
   let _anchorHoldX = 0;
   let _anchorHoldZ = 0;
   let _anchorHoldValid = false;
+  // Retained chase lookAt base quat — see applyChaseLookAt.
+  const _lookAtCache = {
+    eyeX: NaN, eyeY: NaN, eyeZ: NaN, targetX: NaN, targetZ: NaN, baseQuat: null,
+  };
   let _compositionBiasX = 0;
   let _compositionBiasZ = 0;
   let _contextZoomBias = 0;
@@ -1184,8 +1378,14 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
   // U13 sticky composed-threat bag — keeps dense furball bias from thrashing every frame.
   const _compositionSticky = { id: null, remainS: 0, wasActive: false };
   const cameraDirector = createCameraDirector();
+  adoptFlybyHandoffDirector(cameraDirector);
   let _holdT = 0;
   let _deathCam = false;
+  // FB-084 bounded kill-beat trail (probe/test surface; never read by gameplay).
+  const _killBeatLog = [];
+  // FB-082 stunt-hush beats: last consumed stamp + bounded trail (same surface as the kill log).
+  let _stuntHushTick = -1;
+  const _stuntHushLog = [];
   let _directorFrame = cameraDirector.output;
   const _directorView = {
     followX: 0,
@@ -1243,6 +1443,7 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
     computeOffset(_dynamicZoom);
     cam.position.set(c.focus.x + offset.x, offset.y, c.focus.z + offset.z);
     cam.lookAt(c.focus.x, 0, c.focus.z);
+    _lookAtCache.eyeX = NaN;
     cam.updateMatrixWorld(true);
     _directorFrame = cameraDirector.reset(px, pz, _dynamicZoom);
     _snappedPlayerId = p.id;
@@ -1352,10 +1553,46 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
       _pushZoomRise = 12.0 / d;
       _pushZoomDecay = 4.0 / d;
     },
-    killCam() {
-      // Kill-cam "kiss" (spec2/02 §2): tighten to 0.96x for 250 ms on player kill only.
-      this.pushZoom(-0.04, 0.25);
+    killCam(victimMass, opts = {}) {
+      // FB-084 weight-keyed kill beat: resolveKillBeat maps the victim's acoustic mass (the same
+      // number the kill audio ladder keys) onto the tier table beside CAMERA_TRAUMA_TUNING.
+      // Light kills beat nothing; reduced motion keeps the hold and drops the zoom. No payload
+      // resolves through the unknown-mass law (the conservative medium kiss).
+      const beat = resolveKillBeat(victimMass, {
+        capital: opts.capital === true,
+        reducedMotion: isMotionReduced(state),
+      });
+      if (beat.tier === 'light' || (!beat.zoom && beat.holdS <= 0)) return null;
+      // A hold is a frozen frame, not vestibular motion — deliberately NOT hold()'s reduce gate.
+      if (beat.holdS > 0 && beat.holdS > _holdT) _holdT = beat.holdS;
+      if (beat.zoom) this.pushZoom(beat.factor, beat.durationS);
+      _killBeatLog.push({
+        tier: beat.tier,
+        zoom: beat.zoom === true,
+        holdS: beat.holdS,
+        tick: Number.isFinite(state && state.tick) ? state.tick | 0 : 0,
+      });
+      if (_killBeatLog.length > KILL_BEAT_LOG_CAP) _killBeatLog.shift();
+      return beat;
     },
+    // The bounded kill-beat trail the probe and tests read ("the camera log shows three distinct
+    // kill beats"). Oldest first, at most KILL_BEAT_LOG_CAP entries.
+    killBeatLog() { return _killBeatLog.slice(); },
+    // FB-082 — one admitted stunt hush, one camera beat, the same tick. The audio admission
+    // stamps state.camera.stuntHushBeat; this consumes the stamp once — push-zoom plus a hold
+    // for the hush's own envelope. Same resolve-then-apply seam as killCam: reduced motion
+    // keeps the freeze (not vestibular motion) and drops the zoom. No trauma, no particles.
+    stuntHushBeat(beat) {
+      const cue = resolveStuntHushCameraCue(beat, isMotionReduced(state));
+      if (cue.tick == null || cue.tick === _stuntHushTick) return null;
+      _stuntHushTick = cue.tick;
+      if (cue.holdS > _holdT) _holdT = cue.holdS;
+      if (cue.zoom) this.pushZoom(cue.zoomFactor, cue.durationS);
+      _stuntHushLog.push({ tick: cue.tick, zoom: cue.zoom, holdS: cue.holdS });
+      if (_stuntHushLog.length > KILL_BEAT_LOG_CAP) _stuntHushLog.shift();
+      return cue;
+    },
+    stuntHushLog() { return _stuntHushLog.slice(); },
     // PQ-159.02: freeze chase composition for `durationS` so a rated moment reads. Reduce-motion
     // skips the hold (same vestibular gate as the kick).
     hold(durationS) {
@@ -1393,6 +1630,24 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
           ? Math.max(0, Math.min(1, state.render.interpolationAlpha))
           : 1);
       const photo = state.render && state.render.photoMode;
+      // FB-085: the photo filter stage lives on the render graph; the camera owns the photo-mode
+      // state, so every frame it hands the same truth over. Off (the default and the state after
+      // photo mode exits) is an idempotent no-op on the graph.
+      syncPhotoFilterStage(state);
+      // FB-082: an admitted stunt hush stamps the shared camera record the same tick — consume
+      // the stamp here so the hush and the room land together, once per admission. A stamp
+      // older than the same-tick window is swallowed so a hush can never zoom late.
+      const stuntBeat = c.stuntHushBeat;
+      if (stuntBeat && Number.isFinite(stuntBeat.tick)) {
+        const beatTick = Math.trunc(stuntBeat.tick);
+        const simTick = Number(state.tick);
+        const age = Number.isFinite(simTick) ? Math.abs(simTick - beatTick) : Infinity;
+        if (age <= STUNT_HUSH_BEAT_MAX_AGE_TICKS) {
+          this.stuntHushBeat(stuntBeat);
+        } else if (beatTick > _stuntHushTick) {
+          _stuntHushTick = beatTick;
+        }
+      }
       if (photo && photo.active && photo.freeCamera !== false) {
         stepPhotoFreeCamera(photo, state.input, frameDt);
         c.focus.x = finiteOr(photo.focusX, finiteOr(c.focus.x, 0));
@@ -1405,6 +1660,7 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
         }
         cam.position.set(c.focus.x + offset.x, offset.y, c.focus.z + offset.z);
         cam.lookAt(c.focus.x, 0, c.focus.z);
+        _lookAtCache.eyeX = NaN;
         if (_directorFrame) {
           _directorFrame.mode = CameraDirectorMode.FOLLOW;
           _directorFrame.focusX = c.focus.x;
@@ -1419,6 +1675,11 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
       let bankForLean = 0;
       let playerSpeed = 0;
       let directorOwnsComposition = false;
+      // SF-218: a RECOVER frame is the ended pair lease easing home, not an owning composition.
+      // The chase policy keeps running on top of the ease (see the branch below) so "release near
+      // another threat" hands the picture to the live attacker with the same damped containment a
+      // fight that opens gets, instead of a 0.35 s window at exactly zero containment.
+      let recoverEase = false;
       if (p && p.pos && Number.isFinite(p.pos.x) && Number.isFinite(p.pos.z)) {
         if (_snappedPlayerId !== p.id || !Number.isFinite(c.focus.x) || !Number.isFinite(c.focus.z)) {
           snapToEntity(p);
@@ -1532,14 +1793,50 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
           _directorFrame = cameraDirector.syncFollow(c.focus.x, c.focus.z, _dynamicZoom);
         }
         _directorFrame = cameraDirector.step(frameDt, state, p, _directorView);
+        recoverEase = _directorFrame.mode === CameraDirectorMode.RECOVER;
         directorOwnsComposition = _directorFrame.mode !== CameraDirectorMode.FOLLOW;
-        if (directorOwnsComposition) {
+        if (directorOwnsComposition && !recoverEase) {
           fx = _directorFrame.focusX;
           fz = _directorFrame.focusZ;
           _compositionBiasX = 0;
           _compositionBiasZ = 0;
           _contextZoomBias = 0;
           _contextMinZoom = 0;
+        } else if (recoverEase) {
+          // The director's eased focus stays the base of the frame; the ordinary composition runs
+          // on top of it, seeded AT that focus, so the handover to FOLLOW (whose seed is the same
+          // follow pose the ease lands on) is continuous in both bias and zoom. The bias is slewed
+          // and damped from its carried value — never a cut — and with no threat nearby every term
+          // relaxes to zero, which is bit-identical to the old dead-window behavior.
+          fx = _directorFrame.focusX;
+          fz = _directorFrame.focusZ;
+          _contextZoomCap = _directorView.maxZoom;
+          _compositionFocusScratch.x = fx + frameOrigin.x;
+          _compositionFocusScratch.z = fz + frameOrigin.z;
+          const composition = resolveChaseComposition(
+            state,
+            p,
+            _compositionFocusScratch,
+            _directorView,
+            _compositionScratch,
+            _tetherAnchorScratch,
+            _compositionSticky,
+          );
+          const motionScale = isMotionReduced(state) ? 0.35 : 1;
+          // Keeping an active attacker visible is functional combat framing, not decorative motion.
+          // Reduced motion may soften ambient/tether bias but must not move the actual threat out of
+          // the zoom geometry that was computed to contain it.
+          const compositionScale = composition.hasActiveAttacker ? 1 : motionScale;
+          const desiredBiasX = (composition.x - _compositionFocusScratch.x) * compositionScale;
+          const desiredBiasZ = (composition.z - _compositionFocusScratch.z) * compositionScale;
+          _compositionBiasX = dampSlewed(_compositionBiasX, desiredBiasX, COMPOSITION_BIAS_LERP, COMPOSITION_BIAS_SLEW, frameDt);
+          _compositionBiasZ = dampSlewed(_compositionBiasZ, desiredBiasZ, COMPOSITION_BIAS_LERP, COMPOSITION_BIAS_SLEW, frameDt);
+          _contextZoomBias = damp(_contextZoomBias, (composition.zoomBias || 0) * compositionScale, CONTEXT_ZOOM_LERP, frameDt);
+          // Fight distance eases in and eases out. A one-frame change of who is nearest
+          // must not retarget the zoom; the sticky hold above already keeps the anchor.
+          _contextMinZoom = damp(_contextMinZoom, Math.max(0, finiteOr(composition.minZoom, 0)), CONTEXT_ZOOM_LERP, frameDt);
+          fx += _compositionBiasX;
+          fz += _compositionBiasZ;
         } else {
           _contextZoomCap = _directorView.maxZoom;
           // Seed focus is frame-local; threat/tether biases are pure relative offsets (origin-invariant).
@@ -1733,6 +2030,11 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
         }
       }
       if (!directorOwnsComposition && _contextMinZoom > 0) {
+        // SF-225: a scripted tighten (dock fly-in, kill kiss) multiplies past the containment
+        // floor applied above and cuts the attacker it was holding — at the cap edge the fly-in
+        // pushed a 245 wu attacker from NDC 0.64 settled to 1.0 off-frame. The floor binds every
+        // tightening channel; with no attacker the floor is 0 and the tighten is untouched.
+        targetZoom = Math.max(targetZoom, Math.min(_contextMinZoom, _contextZoomCap));
         targetZoom = Math.min(targetZoom, _contextZoomCap);
       }
       if (holding && !_deathCam) {
@@ -1755,6 +2057,11 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
         // the picture uses. The rate clamp stays on the FOLLOW path, which is where targetZoom
         // can genuinely jump (player scroll, speed zoom).
         _dynamicZoom = finiteOr(_directorFrame.zoom, _dynamicZoom);
+        // RECOVER eases home over the containment floor it is already warming (SF-218), so the
+        // released-into fight's frame starts opening during the ease instead of after it. The
+        // FOLLOW adoption continues from this zoom under the ordinary rate caps — no second
+        // cadence, no governor retune.
+        if (recoverEase) _dynamicZoom = Math.max(_dynamicZoom, _contextMinZoom);
         if (_deathCam && Math.abs(_pushZoom) > 0.0001) _dynamicZoom *= (1 + _pushZoom);
       } else {
         let nextZoom = damp(_dynamicZoom, targetZoom, ZOOM_LERP, frameDt);
@@ -1768,7 +2075,9 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
       // The zoom the picture is opening toward, before damping arrives. Residency
       // prefetches this so the rim of a zoom-out is already built when it lands.
       c.composedZoom = directorOwnsComposition
-        ? finiteOr(_directorFrame && _directorFrame.zoom, _dynamicZoom)
+        ? (recoverEase
+          ? _dynamicZoom
+          : finiteOr(_directorFrame && _directorFrame.zoom, _dynamicZoom))
         : targetZoom;
       // Oversized authored gates can physically surround the chase camera even while the aperture
       // is correctly composed. The director derives a conservative near plane from the mounted
@@ -1819,7 +2128,7 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
         const motionScale = isMotionReduced(state) ? MOTION_REDUCE_SHAKE_SCALE : 1;
         const vl = readVelocityLanguage(state);
         const bandShake = vl && vl.drive && Number.isFinite(vl.drive.shakeScale) ? vl.drive.shakeScale : 1;
-        const shakeScale = motionScale * bandShake;
+        const shakeScale = motionScale * bandShake * screenShakeScale(state && state.settings);
         // Resample the shake noise on a FIXED-RATE accumulator, not once per rendered frame. The
         // amplitude was already frame-rate independent (trauma decays against frameDt above), but the
         // *frequency* was the display refresh rate: the same trauma read as a fast buzz at 144 Hz and
@@ -1879,7 +2188,15 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
         c.clearanceDiag = _glide.diag;
       }
       cam.position.set(camX + dollyX, camY, camZ + dollyZ);
-      cam.lookAt(c.focus.x + c.kickOffset.x, 0, c.focus.z + c.kickOffset.z);
+      applyChaseLookAt(
+        cam,
+        camX + dollyX,
+        camY,
+        camZ + dollyZ,
+        c.focus.x + c.kickOffset.x,
+        c.focus.z + c.kickOffset.z,
+        _lookAtCache,
+      );
       // apply a gentle, damped roll in the camera's local frame — counter to the ship's bank so the
       // view tips into the turn. lookAt() set the quaternion; we post-multiply a local-Z rotation so
       // we never clobber the heading (safe with the no-yaw-follow rule).

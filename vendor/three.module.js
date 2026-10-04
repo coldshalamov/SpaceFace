@@ -53,10 +53,16 @@ Object.defineProperty( Object3D.prototype, 'castShadow', {
 
 // Visits each registered object still rooted under `scene` through a chain of visible
 // ancestors — reproducing the subtree-visibility and scene-membership guarantees that
-// renderObject's recursion got for free.
+// renderObject's recursion got for free. A staging scene carrying
+// userData.sfShadowCastSubset (a Set of the leg's meshes) visits just that subset
+// instead of paying O(#live casters × ancestor hops) of membership skips on the
+// global registry — the drawn set is identical; non-members simply skip earlier.
 function eachShadowCaster( scene, visit ) {
 
-	for ( const object of _shadowCasterRegistry ) {
+	const subset = scene && scene.userData && scene.userData.sfShadowCastSubset;
+	const source = subset instanceof Set ? subset : _shadowCasterRegistry;
+
+	for ( const object of source ) {
 
 		let node = object;
 		while ( node !== scene && node !== null && node.visible !== false ) node = node.parent;

@@ -16,6 +16,7 @@ import { confirm } from '../confirm.js';
 import { BINDINGS } from '../bindings.js';
 import { SECTORS } from '../../data/sectors.js';
 import { MAP_FOCUS, mapHandoffAction, openGalaxyMap } from '../mapAuthority.js';
+import { localizeText } from '../../localization/gameLocalization.js';
 import { coreText } from '../localizedCoreCopy.js';
 import { entitySpanHtml } from '../entityResolver.js';
 import { escapeHtml } from '../comms.js';
@@ -28,6 +29,8 @@ import { createArcRail } from '../orrery/arcRail.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 import { openReplay, forceCloseReplay, REPLAY_LABEL } from './replay.js';
 import { openClips, forceCloseClips, CLIPS_LABEL } from './clips.js';
+import { requestCodexTab } from './codex.js';
+import { writtenEndingArchive } from '../../story/endings/index.js';
 import {
   PHOTO_EXPOSURE_DEFAULT,
   PHOTO_EXPOSURE_MAX,
@@ -35,6 +38,7 @@ import {
   PHOTO_FILTERS_DEFAULT,
   applyPhotoPresentation,
   createPhotoModeState,
+  cyclePhotoFilterLook,
   restorePhotoPresentation,
   isPhotoModeActive,
 } from '../../render/camera.js';
@@ -44,6 +48,7 @@ const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 const PHOTO_HINT_MS = 2000;
 export const PHOTO_LABEL = 'Photo';
 export const ACHIEVEMENTS_LABEL = 'Achievements';
+export const ENDING_ARCHIVE_LABEL = 'Ending Archive';
 export const PHOTO_CAPTURE_LABEL = 'Capture';
 export const PHOTO_STORE_KIND = 'store';
 /** Live store-page stills land here so PQ-159.03 captures are used for the store page. */
@@ -218,6 +223,15 @@ function routeCommitment(state, wp) {
   return { kind: 'nav', objectiveLabel: 'NAV SET', targetSectorName: '' };
 }
 
+/** PRO-05 — Local Map copy with placeholders. en-US matches the old concatenation. */
+export function localMapPauseCopy(key, { place = '', inThisSystem = false } = {}) {
+  const label = localizeText('Local Map ({key})', { key });
+  const hint = inThisSystem
+    ? localizeText('Open Local Map ({key}) for the live marker in this system.', { key })
+    : localizeText('Open Local Map ({key}) for the live marker{place}; no jump route is required.', { key, place });
+  return { label, hint, title: 'Open Local Map' };
+}
+
 export function pauseMapAction(state) {
   const wp = state && state.nav && state.nav.waypoint;
   if (!wp) return null;
@@ -225,14 +239,15 @@ export function pauseMapAction(state) {
   const currentSectorId = state && state.world && state.world.currentSectorId || null;
   if (commitment.kind !== 'inter-system') {
     const place = commitment.targetSectorName ? ' in ' + commitment.targetSectorName : ' in this system';
-    const hint = commitment.kind === 'local'
-      ? 'Open Local Map (' + BINDINGS.localmap.label + ') for the live marker' + place + '; no jump route is required.'
-      : 'Open Local Map (' + BINDINGS.localmap.label + ') for the live marker in this system.';
+    const copy = commitment.kind === 'local'
+      ? localMapPauseCopy(BINDINGS.localmap.label, { place })
+      : localMapPauseCopy(BINDINGS.localmap.label, { inThisSystem: true });
+    const hint = copy.hint;
     // One public map surface: galaxyMap + LOCAL focus (not dual-primary localmap/starmap).
     const handoff = mapHandoffAction({
       focus: MAP_FOCUS.LOCAL,
-      label: 'Local Map (' + BINDINGS.localmap.label + ')',
-      title: 'Open Local Map',
+      label: copy.label,
+      title: copy.title,
       body: hint,
       sectorId: wp.sectorId || currentSectorId || null,
       stationId: wp.stationId || null,
@@ -559,10 +574,20 @@ function renderFlightBrief(ctx) {
 /* ---------- photo mode (Task B §1.7, sheet moment 12, PQ-159.03) ---------- */
 
 let photo = null;
+// FB-085: the pause route owns P (BINDINGS.photo) — the handler lives while this screen is top.
+let pausePhotoKeyHandler = null;
+let pauseRootEl = null;
 
 function photoHintText() {
-  // No photo/pause binding is registered in bindings.js; Esc is the modal-close key uiInput owns.
+  // Esc is the modal-close key uiInput owns; inside photo it returns to this screen.
   return 'Esc to return · WASD pan · wheel zoom · Capture for the store page';
+}
+
+/** True when the keydown is the photo binding's key (the one binding the pause route owns). */
+function isPhotoBindingKey(ev) {
+  const binding = BINDINGS.photo;
+  if (!binding) return false;
+  return ev.key === binding.key || ev.key === binding.label || ev.code === binding.code;
 }
 
 export function photoCaptureFilename(kind = PHOTO_STORE_KIND, now = new Date()) {
@@ -678,6 +703,40 @@ function syncPhotoExposure(ctx, value) {
   }
 }
 
+// FB-085 — the photo overlay owns the authored looks' SELECTION (the grades themselves live in
+// spaceRenderGraph.js PHOTO_FILTER_LOOKS): picking a look flips the filter flag on, and the
+// camera's per-frame sync hands the pair to the render graph. Exported for the focused pin.
+export function setPhotoLook(ctx, lookId) {
+  const state = ctx && ctx.state;
+  const photoState = state && state.render && state.render.photoMode;
+  if (!photoState || !photoState.active || typeof lookId !== 'string') return null;
+  photoState.filters = true;
+  photoState.filterLook = lookId;
+  return photoState.filterLook;
+}
+
+/** Advance the photo look to the next authored one (the overlay's Look control). */
+export function cyclePhotoLook(ctx) {
+  const state = ctx && ctx.state;
+  const photoState = state && state.render && state.render.photoMode;
+  if (!photoState || !photoState.active) return null;
+  return setPhotoLook(ctx, cyclePhotoFilterLook(photoState.filterLook));
+}
+
+/** FB-085 — photo FOV reads/writes the one video.fov setting the chase camera already reads. */
+export function syncPhotoFov(ctx, value) {
+  const state = ctx && ctx.state;
+  if (!state || !state.settings) return null;
+  const next = Math.max(35, Math.min(90, Math.round(Number(value))));
+  if (!Number.isFinite(next)) return null;
+  if (!state.settings.video) state.settings.video = {};
+  state.settings.video.fov = next;
+  if (ctx.bus && typeof ctx.bus.emit === 'function') {
+    ctx.bus.emit('settings:changed', { section: 'video', key: 'fov', source: 'photo' });
+  }
+  return next;
+}
+
 function runPhotoCapture(ctx) {
   const capture = capturePhotoPng(resolvePhotoCanvas(ctx), { kind: PHOTO_STORE_KIND });
   return writePhotoCapture(capture, {
@@ -733,11 +792,34 @@ function enterPhoto(rootEl, ctx) {
   exposure.value = String(PHOTO_EXPOSURE_DEFAULT);
   exposure.setAttribute('aria-label', 'Exposure');
   exposure.addEventListener('input', () => syncPhotoExposure(ctx, exposure.value));
+  // FB-085: the filter flag finally does something — the Look control cycles the three authored
+  // grades (the grade stage itself lives on the render graph; selection lives here).
+  const lookBtn = el('button', 'k-word k-word--fine fh-key fh-key--small', 'Look');
+  lookBtn.type = 'button';
+  lookBtn.setAttribute('aria-label', 'Cycle photo filter look');
+  lookBtn.addEventListener('click', () => {
+    const next = cyclePhotoLook(ctx);
+    if (next) lookBtn.textContent = `Look · ${next}`;
+  });
+  // Photo FOV rides the one video.fov setting the chase camera already reads (settings slider
+  // bounds 35–90); nothing new to persist — the settings route owns it.
+  const fov = document.createElement('input');
+  fov.type = 'range';
+  fov.min = '35';
+  fov.max = '90';
+  fov.step = '1';
+  const currentFov = state && state.settings && state.settings.video && Number(state.settings.video.fov);
+  fov.value = String(Number.isFinite(currentFov) ? Math.round(currentFov) : 50);
+  fov.setAttribute('aria-label', 'Photo field of view');
+  fov.addEventListener('input', () => syncPhotoFov(ctx, fov.value));
   const captureBtn = el('button', 'k-word k-word--fine fh-key fh-key--small', PHOTO_CAPTURE_LABEL);
   captureBtn.type = 'button';
   captureBtn.addEventListener('click', () => runPhotoCapture(ctx));
   bar.appendChild(el('span', 'k-fine', 'Exposure'));
   bar.appendChild(exposure);
+  bar.appendChild(lookBtn);
+  bar.appendChild(el('span', 'k-fine', 'FOV'));
+  bar.appendChild(fov);
   bar.appendChild(captureBtn);
   host.appendChild(hint);
   host.appendChild(bar);
@@ -799,6 +881,7 @@ export const pauseScreen = {
     rootEl.classList.add('screen');
     rootEl.dataset.screen = 'pause';
     delete rootEl.dataset.stamp;
+    pauseRootEl = rootEl;
 
     const { title, briefKicker, briefObjective, briefNext, briefSave, column } = createPauseFrame(rootEl, {
       titleText: coreText('paused'),
@@ -866,6 +949,19 @@ export const pauseScreen = {
     // Clips (PQ-160.01): the auto-clip clip list from the moment detector. Opens over this sheet;
     // Esc or Exit returns. This screen owns presentation only, not export encoding.
     mk(CLIPS_LABEL, () => { forceCloseReplay(); openClips(rootEl, ctx); }, { group: 'Media', bank: true, icon: 'record' });
+    // Ending Archive (B7): once the story owner has filed the written ending
+    // (state.story.writtenFinale — the same record its ui:endingArchiveOpen handler serves), the
+    // manuscript re-opens on demand. The codex deep-links to its Archive tab and the story owner
+    // re-emits `endgame:archive`, so the just-opened codex refreshes to the filed ending.
+    const endingArchive = writtenEndingArchive(ctx && ctx.state && ctx.state.story ? ctx.state.story.writtenFinale : null);
+    // The sheet stays mounted across pause opens, so the row's gate must be re-checkable later:
+    // onShow remounts once if a finale gets filed after this mount.
+    this._endingArchiveAtMount = !!endingArchive;
+    if (endingArchive) mk(ENDING_ARCHIVE_LABEL, () => {
+      requestCodexTab('Archive');
+      nav(ctx, 'pushScreen', 'codex');
+      if (ctx.bus && typeof ctx.bus.emit === 'function') ctx.bus.emit('ui:endingArchiveOpen');
+    }, { group: 'Media', bank: true, icon: 'ledger' });
     // DEV ONLY — Sandbox testing harness (grant weapon now, spawn enemy now, etc.). IS_DEV-gated so
     // it never appears in packaged builds. Same screen as the main-menu Sandbox button.
     if (IS_DEV) mk('Sandbox', () => nav(ctx, 'pushScreen', 'sandbox'), { dev: true, group: 'Dev', bank: true, icon: 'utility' });
@@ -947,6 +1043,7 @@ export const pauseScreen = {
       keysLine.appendChild(el('span', 'dp-etch sf-pause-key-verb', verb));
     };
     keyHint('Esc', 'Resume');
+    keyHint('P', 'Photo');
     keyHint('F5', 'Quick Save');
     keyHint('F9', 'Quick Load');
     // the dial is two levels deep, and the strip says so: up/down steps between the categories on
@@ -996,6 +1093,16 @@ export const pauseScreen = {
 
   onShow(ctx) {
     if (ctx.state.mode === 'flight') ctx.state.mode = 'paused';
+    // The Ending Archive row was gated at mount; a finale filed in a later session of this
+    // mounted sheet must open the row. Remount once on the transition — mount owns the whole
+    // sheet build, and the focus/settle work below lands on the fresh frame.
+    if (!this._endingArchiveAtMount && pauseRootEl) {
+      const finale = ctx && ctx.state && ctx.state.story ? ctx.state.story.writtenFinale : null;
+      if (writtenEndingArchive(finale)) {
+        this._endingArchiveAtMount = true;
+        this.mount(pauseRootEl, ctx);
+      }
+    }
     // The only load reachable from here is F9's 'quick' — start its envelope decode during
     // the pause dwell instead of on the keypress.
     if (ctx.bus && typeof ctx.bus.emit === 'function') {
@@ -1010,6 +1117,22 @@ export const pauseScreen = {
     // The world behind the pause is the live flight picture, not a mount of its own: the frame is
     // ready as soon as the words are (KIT_SPEC §11.7 capture contract).
     if (els && els.title && els.title.parentElement) els.title.parentElement.dataset.kReady = '1';
+    // FB-085: P (BINDINGS.photo) opens photo mode over this screen — capture phase, ahead of the
+    // uiInput route that would read the same press as "open pause" again. The photo overlay's own
+    // Esc route returns here. Photo mode owns the keys while it is up, so a live session ignores it.
+    if (!pausePhotoKeyHandler && typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+      pausePhotoKeyHandler = (ev) => {
+        if (photo || !isPhotoBindingKey(ev)) return;
+        const target = ev.target;
+        const tag = target && typeof target.tagName === 'string' ? target.tagName.toLowerCase() : '';
+        if (tag === 'input' || tag === 'textarea' || (target && target.isContentEditable)) return;
+        ev.preventDefault();
+        if (typeof ev.stopImmediatePropagation === 'function') ev.stopImmediatePropagation();
+        else if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+        if (pauseRootEl) enterPhoto(pauseRootEl, ctx);
+      };
+      window.addEventListener('keydown', pausePhotoKeyHandler, true);
+    }
     this._loadVersion();
     cue('open');
   },
@@ -1023,6 +1146,11 @@ export const pauseScreen = {
   onHide(ctx) {
     // Leaving the stack while in photo mode (a bus-driven exit) must not strand body.k-photo.
     if (photo) exitPhoto(photo.rootEl, ctx);
+    // FB-085: the P route is live only while this screen is top.
+    if (pausePhotoKeyHandler) {
+      window.removeEventListener('keydown', pausePhotoKeyHandler, true);
+      pausePhotoKeyHandler = null;
+    }
     // Replay/Clips are sibling overlays, not stacked screens — they must close with pause.
     forceCloseReplay();
     forceCloseClips();

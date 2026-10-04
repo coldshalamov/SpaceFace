@@ -2,6 +2,55 @@ import { dataState } from './uiPrimitives.js';
 
 const BACKGROUND_IDS = ['hud', 'modal-backdrop', 'screens', 'toasts', 'alerts', 'gl-canvas'];
 
+// The one recovery pane owner, shared by both dead-end classes:
+//  - a quarantined simulation step mid-flight (loop.js onSimulationFailure), and
+//  - a boot-stage failure before any menu exists (main.js showBootError).
+// SFQ-B228: boot failures were a raw stack in #boot-overlay — a cause, but no exit. The pane
+// spec below is parameterized so the same alertdialog carries a named cause and a Retry verb
+// for boot, while the flight-interrupted defaults stay byte-identical for the loop path.
+const FLIGHT_FAILURE_DEFAULTS = Object.freeze({
+  code: 'FLIGHT_INTERRUPTED',
+  headline: 'Flight interrupted',
+  fills: 'The simulation stopped before another frame could be completed.',
+  detail: 'Restart from the main menu to recover. Progress since your last save may be lost.',
+  verbLabel: 'Restart to main menu',
+});
+
+/**
+ * Name a boot-stage failure as a player-facing recovery spec. The boot route's own missing
+ * asset / failed service is the scenario-contract load (main.js loadScenarioContract — a
+ * bounded fetch of `47a.scenario.json`); its message and the platform fetch/timeout error
+ * names are the fingerprint. Everything else is an honest generic startup failure. Neither
+ * class can touch stored saves: no save write happens before the main menu.
+ * @returns {code,headline,fills,detail,verbLabel,message} — pass straight to show().
+ */
+export function describeBootFailure(err) {
+  const raw = err && err.message != null ? String(err.message) : String(err || 'unknown boot failure');
+  const firstLine = raw.split('\n', 1)[0].trim() || 'unknown boot failure';
+  const name = (err && err.name) || '';
+  const contractMissing = /scenario contract/i.test(raw);
+  const fetchShaped = name === 'TimeoutError' || name === 'AbortError'
+    || /failed to fetch|networkerror|load failed|err_|timed? ?out|abort/i.test(raw);
+  if (contractMissing || fetchShaped) {
+    return {
+      code: contractMissing ? 'BOOT_SCENARIO_UNAVAILABLE' : 'BOOT_SERVICE_UNAVAILABLE',
+      headline: 'The opening scenario could not be loaded',
+      fills: 'SpaceFace could not read its scenario data — the file is missing or the network path failed.',
+      detail: 'Your saved games are unaffected. Retry the launch; if it keeps failing, check the game files or connection.',
+      verbLabel: 'Retry',
+      message: firstLine,
+    };
+  }
+  return {
+    code: 'BOOT_FAILED',
+    headline: 'SpaceFace could not finish starting',
+    fills: 'An error stopped startup before the main menu appeared.',
+    detail: 'Your saved games are unaffected. Retry the launch; the technical detail is in the console log.',
+    verbLabel: 'Retry',
+    message: firstLine,
+  };
+}
+
 export function createRuntimeFailurePresenter({ document, host, onRestart } = {}) {
   const view = host || (document && document.defaultView) || globalThis;
   const restart = typeof onRestart === 'function'
@@ -69,12 +118,16 @@ export function createRuntimeFailurePresenter({ document, host, onRestart } = {}
     if (overlay.style) overlay.style.display = 'flex';
     overlay.setAttribute('aria-busy', 'false');
 
+    const spec = failure && typeof failure === 'object' ? failure : {};
     pane = dataState('error', {
-      code: 'FLIGHT_INTERRUPTED',
-      headline: 'Flight interrupted',
-      fills: 'The simulation stopped before another frame could be completed.',
-      detail: 'Restart from the main menu to recover. Progress since your last save may be lost.',
-      verb: { label: 'Restart to main menu', onActivate: restart },
+      code: spec.code || FLIGHT_FAILURE_DEFAULTS.code,
+      headline: spec.headline || FLIGHT_FAILURE_DEFAULTS.headline,
+      fills: spec.fills || FLIGHT_FAILURE_DEFAULTS.fills,
+      detail: spec.detail || FLIGHT_FAILURE_DEFAULTS.detail,
+      verb: {
+        label: spec.verbLabel || FLIGHT_FAILURE_DEFAULTS.verbLabel,
+        onActivate: typeof spec.onActivate === 'function' ? spec.onActivate : restart,
+      },
     });
     pane.classList.add('boot-error');
     pane.setAttribute('role', 'alertdialog');

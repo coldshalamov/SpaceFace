@@ -133,7 +133,7 @@ test('the live cook compiles its touch subjects as one cohort before drawing the
   assert.ok(start >= 0 && end > start);
   const cook = renderer.slice(start, end);
   assert.match(cook,
-    /beginScenePipelineReadinessBatch\(renderer\)[\s\S]*?await cohort\.drain\([\s\S]*?cohort\.close\(\);\s*await Promise\.allSettled\(issued\);\s*cohort\.restoreEntryTarget\(\);[\s\S]*?touch\(subject\)/);
+    /beginScenePipelineReadinessBatch\(renderer\)[\s\S]*?await cohort\.drain\([\s\S]*?cohort\.close\(\);[\s\S]*?Promise\.allSettled\(issued\)[\s\S]*?cohort\.restoreEntryTarget\(\);[\s\S]*?touch\(subject\)/);
   assert.doesNotMatch(cook, /issued\.push\(await /, 'never await a compile inside the cohort issue loop');
 });
 

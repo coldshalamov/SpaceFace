@@ -11,19 +11,16 @@ import test from 'node:test';
 import { createSimulation } from '../src/core/sim.js';
 import { MORAL_TRAPS, trapFitsCargoFamily } from '../src/data/moralTraps.js';
 import { COMMODITY_MORAL_TAGS } from '../src/data/commodityMoralTags.js';
+import { SECTORS } from '../src/data/sectors.js';
 import { missions } from '../src/systems/missions.js';
 import { attachTrap, moralTrapSystem } from '../src/systems/moralTrap.js';
 import { ensureMoralMemory } from '../src/systems/moralMemory.js';
 
 const SEED = 4242;
-const NON_HELIOS_STATIONS = Object.freeze([
-  'station_beltout',
-  'station_forge',
-  'station_veil',
-  'station_smuggler',
-  'station_coalition',
-  'station_tethys',
-]);
+const NON_HELIOS_STATIONS = Object.freeze(
+  SECTORS.flatMap((s) => (s.stations || []).map((st) => st.id))
+    .filter((id) => id !== 'station_helios'),
+);
 
 function boot(seed = SEED) {
   const sim = createSimulation({

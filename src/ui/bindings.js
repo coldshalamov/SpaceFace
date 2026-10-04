@@ -6,7 +6,13 @@
 // out of sync with the actual handler. This is the lightweight "live binding registry" the spec asks
 // for: prompts render from this registry, not from literal key names.
 
-import { GAMEPAD_BUTTON_LABELS, GAMEPAD_DEFAULT_BINDINGS } from '../systems/gamepad.js';
+import {
+  GAMEPAD_BUTTON_LABELS,
+  GAMEPAD_DEFAULT_BINDINGS,
+  GAMEPAD_VERB_ALIASES,
+  gamepadFaceButtonLabel,
+  normalizeGamepadGlyphSet,
+} from '../systems/gamepad.js';
 
 export const BINDINGS = Object.freeze({
   // Default interact/dock action is `E` (spec §15.4 / INTEGRATION_MAP §5). The input handler in
@@ -41,7 +47,36 @@ export const BINDINGS = Object.freeze({
   // sits on Delete — free in flight (the drill screen that owns it there is modal) and reads as
   // "clear this" without costing a letter key.
   dismissVoice: { key: 'Delete', code: 'Delete', label: 'DEL' },
+  // F6 is the second dismiss binding, matched from the voice arbiter's own keydown hook
+  // (voiceDismissBindingMatches/emitVoiceDismissFromBinding) rather than the UI key router —
+  // the router does not own function keys.
+  voiceDismiss: { key: 'F6', code: 'F6', label: 'F6' },
+  // FB-085: photo mode is a sub-state of the pause screen, so the pause route owns P the same
+  // way the UI router owns dock/localmap only where the verb lives. No flight verb claims P
+  // (VERB_BINDINGS moved the deploy row to digits precisely because P is the pause key).
+  photo: { key: 'p', code: 'KeyP', label: 'P' },
 });
+
+/** True when this keydown is the floor-voice dismiss binding and not a chord. */
+export function voiceDismissBindingMatches(ev) {
+  const binding = BINDINGS.voiceDismiss;
+  if (!ev || !binding || binding.shift || binding.ctrl || binding.alt || binding.meta) return false;
+  if (ev.repeat || ev.shiftKey || ev.ctrlKey || ev.altKey || ev.metaKey) return false;
+  const target = ev.target;
+  const tag = target && target.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return false;
+  if (target && target.isContentEditable) return false;
+  const key = ev.key != null ? String(ev.key) : '';
+  const code = ev.code != null ? String(ev.code) : '';
+  return key === binding.key || key.toLowerCase() === String(binding.key).toLowerCase() || code === binding.code;
+}
+
+/** Emit voice:dismiss once when the registered binding matches. Returns whether it emitted. */
+export function emitVoiceDismissFromBinding(bus, ev) {
+  if (!bus || typeof bus.emit !== 'function' || !voiceDismissBindingMatches(ev)) return false;
+  bus.emit('voice:dismiss', { source: 'binding', binding: 'voiceDismiss' });
+  return true;
+}
 
 // --- Device-aware prompt glyphs (PQ-164.01) ----------------------------------------------------
 // The bracket chip follows the last-used input device: ui/input.js owns device arbitration and
@@ -67,6 +102,7 @@ const TOUCH_LABEL_FOR = Object.freeze({
 
 let _promptDevice = 'kbm';
 let _padMap = null;            // resolved gamepad action -> [std button names]
+let _padGlyphSet = 'xb';       // settings.controls.gamepad.glyphSet, pushed by the device arbiter
 let _padCaptureHandler = null; // Settings pad-remap capture (one at a time)
 
 export function setPromptDevice(device) {
@@ -78,6 +114,12 @@ export function getPromptDevice() {
 export function setGamepadPromptBindings(map) {
   _padMap = map || null;
 }
+export function setGamepadGlyphSet(set) {
+  _padGlyphSet = normalizeGamepadGlyphSet(set);
+}
+export function getGamepadGlyphSet() {
+  return _padGlyphSet;
+}
 export function setGamepadCaptureHandler(fn) {
   _padCaptureHandler = typeof fn === 'function' ? fn : null;
 }
@@ -85,11 +127,14 @@ export function getGamepadCaptureHandler() {
   return _padCaptureHandler;
 }
 
-/** Glyph for the first button bound to a gamepad action under the live (or given) map. */
+/** Glyph for the first button bound to a gamepad action under the live (or given) map.
+ *  Keyboard-verb names resolve through GAMEPAD_VERB_ALIASES so 'tether' prints the
+ *  Massline button, never a blank; the face label honors the player's glyph set. */
 export function gamepadGlyphForAction(action, map) {
   const src = map || _padMap || GAMEPAD_DEFAULT_BINDINGS;
-  const name = src && src[action] && src[action][0];
-  return (name && GAMEPAD_BUTTON_LABELS[name]) || '';
+  const padAction = GAMEPAD_VERB_ALIASES[action] || action;
+  const name = src && src[padAction] && src[padAction][0];
+  return (name && (gamepadFaceButtonLabel(name, _padGlyphSet) || GAMEPAD_BUTTON_LABELS[name])) || '';
 }
 
 // Render a bracketed prompt label, e.g. "[ E ] DOCK AT STATION" — or "[ A ]" on a gamepad.

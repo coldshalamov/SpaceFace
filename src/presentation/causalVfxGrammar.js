@@ -239,6 +239,72 @@ export function canonicalCausalFamily(value) {
   return KIND_TO_FAMILY[value.toUpperCase()] || null;
 }
 
+// ---------------------------------------------------------------------------------------------
+// FB-072 — severity is a SHAPE tier (cone → sheet → ring), never a count tier.
+//
+// Recipe families that escalate (tether attach → near-break → break, release good → clean →
+// razor, massline threat → committed blade → counter-tether, cluster detonate → cascade, and
+// the hit → kill player receipt) declare one of these rows as `recipe.shape`. A higher rung
+// reads as a different silhouette and layout at every zoom and under reduced motion, where a
+// particle-count ladder collapses to "fewer dots".
+//
+// The three rows reuse tokens the render side already honours: `reflected-cone` is the aimed
+// impact layout, `mirrored-lip` its unsigned two-sided sibling, `radial` the causal-family
+// full-surround burst. Primitive names come from the same grammar vocabulary (blade / arc /
+// shard).
+// ---------------------------------------------------------------------------------------------
+export const SEVERITY_SHAPE_TIERS = Object.freeze({
+  1: Object.freeze({
+    tier: 1, id: 'cone',
+    silhouette: 'directed-cone', layout: 'reflected-cone', signaturePrimitive: 'blade',
+  }),
+  2: Object.freeze({
+    tier: 2, id: 'sheet',
+    silhouette: 'spread-sheet', layout: 'mirrored-lip', signaturePrimitive: 'arc',
+  }),
+  3: Object.freeze({
+    tier: 3, id: 'ring',
+    silhouette: 'burst-ring', layout: 'radial', signaturePrimitive: 'shard',
+  }),
+});
+
+export function severityShapeTier(tier) {
+  return SEVERITY_SHAPE_TIERS[Math.trunc(Number(tier))] || null;
+}
+
+/**
+ * The FB-072 grammar rule, asserted over a recipe family in the focused test: rows carrying a
+ * declared `shape` tier must differ from each lower tier by silhouette, layout, or signature
+ * primitive — never only by a larger particle/trauma budget. Returns a list of violation
+ * strings (empty when the family is honest).
+ */
+export function shapeTierViolations(familyRows) {
+  const issues = [];
+  const tiers = new Map();
+  for (const row of familyRows || []) {
+    const shape = row && row.shape;
+    if (!shape || !Number.isFinite(shape.tier)) continue;
+    const prev = tiers.get(shape.tier) || { silhouette: shape.silhouette, layout: shape.layout, signaturePrimitive: shape.signaturePrimitive, ids: [] };
+    if (prev.silhouette !== shape.silhouette || prev.layout !== shape.layout
+      || prev.signaturePrimitive !== shape.signaturePrimitive) {
+      issues.push(`${row.id || '?'} tier ${shape.tier} disagrees with ${prev.ids.join('/')}`);
+    }
+    prev.ids.push(row.id || '?');
+    tiers.set(shape.tier, prev);
+  }
+  const ordered = [...tiers.entries()].sort((a, b) => a[0] - b[0]);
+  for (let i = 1; i < ordered.length; i++) {
+    const lower = ordered[i - 1][1];
+    const higher = ordered[i][1];
+    if (higher.silhouette === lower.silhouette
+      && higher.layout === lower.layout
+      && higher.signaturePrimitive === lower.signaturePrimitive) {
+      issues.push(`tier ${ordered[i][0]} shares the tier-${ordered[i - 1][0]} shape outright`);
+    }
+  }
+  return issues;
+}
+
 export function mapCausalKindToFamily(kind) {
   if (kind == null) return null;
   return KIND_TO_FAMILY[String(kind).toUpperCase()] || canonicalCausalFamily(String(kind));
@@ -398,24 +464,23 @@ export function resolveCausalVfxPresentation(family, options = {}) {
   const hero = !!options.hero;
   const palette = forced ? FORCED_COLOUR_ROLES : INSTRUMENT_COLOUR_ROLES;
   const tone = palette[row.colourRole];
-  let blades = reduced ? row.bladesReduced : row.blades;
-  let arcs = reduced ? row.arcsReduced : row.arcs;
-  let shards = reduced ? row.shardsReduced : row.shards;
-  if (capital && id === 'direct' && !reduced) {
-    blades = 12;
-    arcs = 3;
-    shards = 12;
-  } else if (capital && id === 'direct' && reduced) {
-    blades = 7;
-    arcs = 2;
-    shards = 7;
-  }
-  if (hero && !reduced) {
-    if (blades > 0) blades += 1;
-    if (shards > 0) shards += 1;
-  }
+  const blades = reduced ? row.bladesReduced : row.blades;
+  const arcs = reduced ? row.arcsReduced : row.arcs;
+  const shards = reduced ? row.shardsReduced : row.shards;
+  // FB-072 — the capital/hero rungs are SHAPE tiers, not count tiers. A capital breakup reads
+  // as the largest structure parting: same primitive budget as the tier-1 direct burst, but a
+  // distinct silhouette, a plates-parting layout, and the ring-class signature. Hero marks the
+  // silhouette so it too differs from the base rung by shape, never only by count.
+  const capitalTier = capital && id === 'direct';
+  const silhouette = capitalTier
+    ? 'capital-corona'
+    : (hero ? `${row.silhouette}-hero` : row.silhouette);
+  const layout = capitalTier ? 'planar' : row.layout;
+  const signaturePrimitive = capitalTier ? 'plate' : row.signaturePrimitive;
   const intensity = hero ? 1.15 : (reduced ? 0.85 : 1);
-  const lifeScale = reduced ? 0.62 : (row.layout === 'expand' ? 1.35 : (row.layout === 'reverse' ? 1.15 : 1));
+  const lifeScale = reduced
+    ? 0.62
+    : (capitalTier ? 1.5 : (row.layout === 'expand' ? 1.35 : (row.layout === 'reverse' ? 1.15 : 1)));
   return Object.freeze({
     family: id,
     colourRole: row.colourRole,
@@ -423,11 +488,11 @@ export function resolveCausalVfxPresentation(family, options = {}) {
     endColour: tone.endHex,
     color: tone.hex,
     endColor: tone.endHex,
-    silhouette: row.silhouette,
+    silhouette,
     motion: row.motion,
-    sizeBand: row.sizeBand,
-    layout: row.layout,
-    signaturePrimitive: row.signaturePrimitive,
+    sizeBand: capitalTier ? 'broad' : row.sizeBand,
+    layout,
+    signaturePrimitive,
     blades,
     arcs,
     shards,
@@ -436,6 +501,7 @@ export function resolveCausalVfxPresentation(family, options = {}) {
     reduced,
     forcedColors: forced,
     hero,
+    capital: capitalTier,
     intensity,
     lifeScale,
   });
@@ -802,7 +868,7 @@ export function resolveImpactPresentation(rec, options = {}) {
   return {
     eventClass,
     materialId,
-    duration: sheet.duration * (reduced ? 1.1 : 1),
+    duration: sheet.duration * (reduced ? IMPACT_REDUCED_FORM.holdScale : 1),
     exposesInterior: sheet.exposesInterior,
     audioCue: sheet.audioCue,
     materialAudioCue: material.audioCue,
@@ -814,6 +880,14 @@ export function resolveImpactPresentation(rec, options = {}) {
     beats,
   };
 }
+
+/** Reduced motion keeps the silhouette. Light stays, the hold is longer, nothing is deleted. */
+export const IMPACT_REDUCED_FORM = Object.freeze({
+  mode: 'static_shape',
+  lightFloor: 0.1,
+  holdScale: 1.8,
+  vanish: false,
+});
 
 /** Non-colour differences between two impact classes, for review and for the focused test. */
 export function impactClassDistinctions(classA, classB) {

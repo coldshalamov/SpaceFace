@@ -22,7 +22,7 @@ import { createDamageIndicators } from './damageIndicators.js';
 import { buildReducedMotionContactCue } from './reducedMotionInformation.js';
 import { createHudMeta, HUD_META_CSS } from './hudMeta.js';
 import { icon } from './station/icons.js';
-import { glyphSvg } from './glyphs.js';
+import { glyphSvg, hasGlyph } from './glyphs.js';
 import { wantedReasonText } from './wantedReason.js';
 import { formatCount } from './numberFormat.js';
 import { SHIPS } from '../data/ships.js';
@@ -53,7 +53,12 @@ import { adventureDecisionHudLine } from './adventureDecisions.js';
 import { weaponHeatSummary } from './weaponHeat.js';
 import { createPowerRail, readRailModel } from './powerRail.js';
 import { mountOrreryCluster } from './orrery/hudAdapter.js';
+import { arcGauge } from './orrery/instruments.js';
 import { createForkInstrument } from './forkInstrument.js';
+// FB-012 — the flight HUD mounts the stunt callout layer, so a wrecking ball, a clothesline or
+// a tow kill is NAMED in adventure too, not only inside a Crucible run. The layer self-gates:
+// its quiet path renders nothing and drops its frame listener when there is nothing to say.
+import { ensureStuntCallout, releaseStuntCallout } from './stuntCallout.js';
 import { settle as kitSettle, cue as kitCue, reducedMotion as kitReducedMotion } from './kit/index.js';
 import { createThreatHalo } from './threatHalo.js';
 import { targetBracketShape } from './targetBracket.js';
@@ -481,6 +486,108 @@ export function resolveObjectiveEdgePlacement(width, height, player, target, mar
   return result;
 }
 
+/**
+ * FB-065 — a physics contract condition says when it is pending, progressing or broken, in
+ * flight. missions.js already emits the three states from the per-tick evaluator and the
+ * turn-in refusal; the HUD's objective slot is the one consumer. The record is UI-owned
+ * (`state.ui.missionTerms` — never a sim write), keyed by mission id, and bounded by the
+ * active mission list that already owns the slot.
+ */
+export const MISSION_TERM_BROKEN_HOLD_S = 4;
+
+export function noteMissionTermEvent(state, payload, kind) {
+  if (!state || !payload || payload.missionId == null) return null;
+  const ui = state.ui || (state.ui = {});
+  const terms = ui.missionTerms || (ui.missionTerms = {});
+  const missionId = String(payload.missionId);
+  const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+  const label = String(payload.label || 'contract term');
+  if (kind === 'broken') {
+    terms[missionId] = {
+      conditionId: payload.conditionId || null,
+      label,
+      state: 'broken',
+      onBreach: payload.onBreach || null,
+      brokenAt: now,
+    };
+  } else if (kind === 'progress') {
+    const count = Math.max(0, Math.round(Number(payload.count) || 0));
+    const target = Math.max(1, Math.round(Number(payload.target) || 1));
+    terms[missionId] = {
+      conditionId: payload.conditionId || null,
+      label,
+      state: count >= target ? 'satisfied' : 'progress',
+      count,
+      target,
+      at: now,
+    };
+  } else if (kind === 'satisfied') {
+    terms[missionId] = {
+      conditionId: payload.conditionId || null,
+      label,
+      state: 'satisfied',
+      count: 1,
+      target: 1,
+      at: now,
+    };
+  } else {
+    terms[missionId] = {
+      conditionId: payload.conditionId || null,
+      label,
+      state: 'pending',
+      remaining: Math.max(0, Math.round(Number(payload.remaining) || 0)) || null,
+      at: now,
+    };
+  }
+  return terms[missionId];
+}
+
+/**
+ * The state word a live term contributes to the objective line, or null. Pending shows the
+ * term; progress shows the fraction; broken swaps the word and stays for
+ * MISSION_TERM_BROKEN_HOLD_S, then falls silent — the mission itself carries the consequence.
+ */
+export function missionTermWord(state, missionId) {
+  if (!state || missionId == null) return null;
+  const rec = state.ui && state.ui.missionTerms && state.ui.missionTerms[String(missionId)];
+  if (!rec) return null;
+  const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+  if (rec.state === 'broken') {
+    if (now - (Number(rec.brokenAt) || 0) > MISSION_TERM_BROKEN_HOLD_S) return null;
+    return { word: 'BROKEN', text: `TERM BROKEN — ${rec.label}`, tone: 'broken' };
+  }
+  if (rec.state === 'progress') {
+    return {
+      word: `${rec.count}/${rec.target}`,
+      text: `TERM ${rec.label} — ${rec.count}/${rec.target}`,
+      tone: 'progress',
+    };
+  }
+  if (rec.state === 'satisfied') {
+    return { word: 'MET', text: `TERM ${rec.label} — MET`, tone: 'met' };
+  }
+  return { word: 'PENDING', text: `TERM ${rec.label} — PENDING`, tone: 'pending' };
+}
+
+/**
+ * Voice the break once at mission priority (the 'objective' channel, tier 60). 'fail' terms
+ * otherwise only toast; 'forfeit' terms are already voiced by missions' own comms line — so
+ * this announces the unannounced half and never double-speaks a break. The `id` pins one
+ * queue entry per (mission, condition) so a repeated breach can never stack the floor.
+ */
+export function announceTermBreak(bus, payload) {
+  if (!bus || typeof bus.emit !== 'function' || !payload) return false;
+  if (payload.onBreach === 'forfeit') return false;
+  bus.emit('voice:say', {
+    channel: 'objective',
+    kind: 'missionTerm',
+    id: `mission-term-broken:${payload.missionId}:${payload.conditionId || 'term'}`,
+    text: `Contract term broken: ${payload.label || 'standing term'}.`,
+    ttl: 4,
+  });
+  return true;
+}
+
 function mtObjectiveAction(action, wp) {
   const verb = String(action || 'Open the Mission Log').trim();
   // Prefer the physical target label; sector name is the fallback for cross-sector guidance.
@@ -567,7 +674,12 @@ export function flightDestinationSurface(state, command) {
       travel.etaS == null ? '' : travel.etaText,
       deadline,
     );
-    return { show: true, line: readings ? `${action}\n${readings}` : action, urgent };
+    // FB-065: one state word on the same line, never a second line — the objective slot stays
+    // a single line. A broken term also takes the urgent tone for its four-second hold.
+    const term = missionTermWord(state, tracked && tracked.id);
+    if (term) urgent = urgent || term.tone === 'broken';
+    const objectiveLine = term ? `${action} · ${term.text}` : action;
+    return { show: true, line: readings ? `${objectiveLine}\n${readings}` : objectiveLine, urgent };
   }
   if (command.owner === 'navigation') {
     const wp = command.waypoint;
@@ -900,6 +1012,23 @@ const DOCTRINE_TELL_ICON = Object.freeze({
   TETHER: SEMANTIC_PALETTE.warning?.icon || '⚠\uFE0E',
   CHARGE: SEMANTIC_PALETTE.danger?.icon || '⛔\uFE0E',
 });
+// The same tells, drawn: accessibility.js names each palette state's drawn equivalent in its
+// `glyph` column (a station/icons.js name), so the chip renders the mark as an ELEMENT through
+// the shared glyphs.js vocabulary instead of printing a font character. Names are resolved into
+// glyphs.js via this alias; a name with no drawn path in the table falls back to the text icon.
+const DOCTRINE_TELL_GLYPH_ALIAS = Object.freeze({
+  warning: 'warn',       // the drawn triangle-and-bang
+  danger: 'err',         // drawn stop mark — the palette's ⊘ prohibition mark has no path yet
+  target: 'iff_target',
+  info: 'info',
+  chevron: 'iff_ally',
+});
+function tellGlyphName(tellId) {
+  const paletteState = tellId === 'TETHER' ? 'warning' : 'danger';
+  const named = SEMANTIC_PALETTE[paletteState] && SEMANTIC_PALETTE[paletteState].glyph;
+  const name = named && DOCTRINE_TELL_GLYPH_ALIAS[named];
+  return name && hasGlyph(name) ? name : null;
+}
 const TELL_POOL_SIZE = 3;
 const DEFAULT_TELEGRAPH_TICKS = 30;
 const TELL_VISUAL_WIDTH = 240;
@@ -1026,6 +1155,24 @@ function setScaleX(el, value, opts = null) {
   el._sfScaleX = next;
   el.style.transform = `scaleX(${next})`;
 }
+// A vitals row's compact Arc Gauge (ORRERY §6): the library element mounted into the row's
+// existing .sf-bar slot. Same dial convention as the rest of the orrery library — 0 deg is
+// straight up, the 270 deg sweep leaves the foot of the dial open. The gauge's own spring is
+// never driven animated: frame paths feed settled values with { instant: true }, so it stays a
+// pure painter (the hud settle spring is the one animation owner) and costs no rAF of its own.
+const VITAL_ARC_SET = { instant: true };
+function mountVitalArc(barEl) {
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  const svgEl = document.createElementNS(SVGNS, 'svg');
+  svgEl.setAttribute('class', 'orr-svg sf-vital-arc');
+  svgEl.setAttribute('viewBox', '0 0 30 30');
+  svgEl.setAttribute('aria-hidden', 'true');
+  const gauge = arcGauge({ cx: 15, cy: 15, r: 11.5, from: -135, to: 135, width: 3, tone: 'phos' });
+  svgEl.appendChild(gauge.el);
+  barEl.appendChild(svgEl);
+  barEl.classList.add('sf-vital-gauge');
+  return gauge;
+}
 // JS-side last-written cache — never read el.style/dataset (those can themselves dirty or miss).
 function setStyle(el, prop, value) {
   if (!el) return;
@@ -1094,6 +1241,80 @@ function setLagTranslate(el, x, y, opts = null) {
   const cache = el._sfStyle || (el._sfStyle = Object.create(null));
   cache.transform = next;
   el.style.transform = next;
+}
+
+// Restart a one-shot credits chip pulse without `void el.offsetWidth` (forced sync layout).
+// Remove pulse classes now; add the next class on the following animation frame so the
+// browser applies the removal first. A newer pulse bumps `_sfCredPulseToken` and cancels
+// a stale scheduled add. Exported for the portable microbench / focused test.
+const CREDITS_PULSE_CLASSES = ['sf-credits--gain', 'sf-credits--spend'];
+export function restartCreditsChipPulse(chip, pulseClass, schedule = null) {
+  if (!chip || !chip.classList) return false;
+  const next = pulseClass === 'sf-credits--spend' ? 'sf-credits--spend' : 'sf-credits--gain';
+  chip.classList.remove(...CREDITS_PULSE_CLASSES);
+  const token = (chip._sfCredPulseToken = (chip._sfCredPulseToken | 0) + 1);
+  const run = typeof schedule === 'function'
+    ? schedule
+    : (typeof requestAnimationFrame === 'function'
+      ? requestAnimationFrame.bind(globalThis)
+      : (fn) => setTimeout(fn, 0));
+  run(() => {
+    if (chip._sfCredPulseToken !== token) return;
+    chip.classList.add(next);
+  });
+  return true;
+}
+
+/** Portable A/B: count sync layout reads (offsetWidth) for legacy vs no-reflow pulse restart. */
+export function runCreditsPulseReflowAb({ rounds = 2000 } = {}) {
+  let legacyLayouts = 0;
+  let modernLayouts = 0;
+  const mkChip = (counter) => ({
+    classList: {
+      values: new Set(),
+      remove(...xs) { xs.forEach((x) => this.values.delete(x)); },
+      add(...xs) { xs.forEach((x) => this.values.add(x)); },
+      contains(x) { return this.values.has(x); },
+    },
+    get offsetWidth() { counter.n++; return 120; },
+  });
+  const legacyCounter = { n: 0 };
+  const modernCounter = { n: 0 };
+  const legacyChip = mkChip(legacyCounter);
+  const modernChip = mkChip(modernCounter);
+  const queueSchedule = [];
+  const schedule = (fn) => queueSchedule.push(fn);
+
+  const t0 = performance.now();
+  for (let i = 0; i < rounds; i++) {
+    legacyChip.classList.remove('sf-credits--gain', 'sf-credits--spend');
+    void legacyChip.offsetWidth;
+    legacyChip.classList.add(i & 1 ? 'sf-credits--spend' : 'sf-credits--gain');
+  }
+  const legacyMs = performance.now() - t0;
+
+  const t1 = performance.now();
+  for (let i = 0; i < rounds; i++) {
+    restartCreditsChipPulse(modernChip, i & 1 ? 'sf-credits--spend' : 'sf-credits--gain', schedule);
+  }
+  while (queueSchedule.length) queueSchedule.shift()();
+  const modernMs = performance.now() - t1;
+
+  legacyLayouts = legacyCounter.n;
+  modernLayouts = modernCounter.n;
+  const layoutReduction = modernLayouts === 0 && legacyLayouts > 0
+    ? legacyLayouts // treat zero modern reads as full elimination (N→0)
+    : (modernLayouts > 0 ? legacyLayouts / modernLayouts : 1);
+  return {
+    rounds,
+    legacy: { ms: legacyMs, layoutReads: legacyLayouts },
+    modern: { ms: modernMs, layoutReads: modernLayouts },
+    layoutReduction,
+    layoutEliminated: modernLayouts === 0 && legacyLayouts > 0,
+    // Primary KPI: sync layout reads must go to zero. Soft-GPU / Node wall is noise here —
+    // the player-facing win is the ~100 ms early-flight hitch from forced reflow.
+    primary: 'layoutReads',
+  };
 }
 
 function setCssVar(el, name, value) {
@@ -1303,7 +1524,8 @@ function injectTravelTapeStyle() {
   .sf-vtape__brake { display:none; align-items:center; justify-content:center; gap:5px; margin-top:2px;
     padding:2px 0; font-family:var(--k-text); font-size:var(--k-fs-data); color:var(--vt-amber); }
   .sf-vtape--brake .sf-vtape__brake { display:flex; animation:sf-vtape-brake 1s steps(2,end) infinite; }
-  .sf-vtape__brakeglyph { font-size:var(--k-fs-data); }
+  .sf-vtape__brakeglyph { font-size:var(--k-fs-data); display:inline-flex; align-items:center; }
+  .sf-vtape__brakeglyph svg { display:block; }
   @keyframes sf-vtape-brake { 0%,50%{opacity:1;} 51%,100%{opacity:.42;} }
   /* With ORRERY on, the chassis the tape is built into is visibility:hidden — and --on's
      visibility:visible re-shows the tape through it, drawing it across the cluster's ordnance
@@ -1393,6 +1615,11 @@ export function createHud(ctx, alerts) {
   const forkInstrument = createForkInstrument();
   forkInstrument.mount(leftContext);
 
+  // FB-012 — mount the stunt callout layer from the flight HUD path. Adventure now names its
+  // stunts; the Crucible-only score fields stay gated inside the layer itself. Idle-quiet: the
+  // layer's update returns false and stops listening for frames when nothing is on screen.
+  ensureStuntCallout({ state, bus: ctx.bus });
+
   // Lamina: authored hull laminae + a split, globally driven shield envelope.
   // The view reads the same authoritative entity as all other vitals; it owns no simulation state.
   const bars = document.createElement('div');
@@ -1418,6 +1645,14 @@ export function createHud(ctx, alerts) {
     ['heat', 'heat', 'heat'],      // weapon-instance heat (max across p.data.weapons), not WANTED heat
   ];
   const fillEls = {}, numEls = {}, rowEls = {}, barEls = {};
+  // ORRERY §6 Flight: each vitals row is a compact Arc Gauge — the library element the Cluster's
+  // own arcs use (src/ui/orrery/instruments.js), seated in the row's existing gauge slot. The
+  // pinned contract DOM stays underneath: .sf-bar keeps its meter role and aria-valuenow, and
+  // .sf-bar__fill keeps its scaleX transform as the hidden scalar store the frame path and the
+  // headless fixtures pin; the arc painted beside it is the instrument (hudStyles mutes the
+  // plate, segments and fill paint). The hud settle springs stay the one smoothing owner, so
+  // the arcs are fed their settled values and never run a second animation loop.
+  const vitalArcs = {};
   for (const [key, label, mod] of barDefs) {
     const row = document.createElement('div');
     row.className = 'sf-barrow';
@@ -1427,6 +1662,7 @@ export function createHud(ctx, alerts) {
     barEls[key] = row.querySelector('.sf-bar');
     numEls[key] = row.querySelector('.sf-barrow__num');
     rowEls[key] = row;
+    if (barEls[key]) vitalArcs[key] = mountVitalArc(barEls[key]);
   }
   // One instrument cluster (FRONTEND_PROGRAM Wave 1): integrity, vitals and the speed deck are
   // seated in ONE machined chassis with one baseline, instead of three plates that float apart.
@@ -1593,6 +1829,25 @@ export function createHud(ctx, alerts) {
   const mtTime = missionTracker.querySelector('.sf-mt-time');
   const objectiveRecall = createObjectiveRecall();
   if (ctx.bus) {
+    // FB-065 — the three condition states the sim already emits, surfaced on the objective
+    // slot this same tracker owns. Progress never voices; the break voices once at mission
+    // priority (announceTermBreak skips the already-voiced 'forfeit' half).
+    ctx.bus.on('mission:conditionPending', (p) => noteMissionTermEvent(state, p, 'pending'));
+    ctx.bus.on('mission:conditionProgress', (p) => noteMissionTermEvent(state, p, 'progress'));
+    ctx.bus.on('mission:conditionSatisfied', (p) => noteMissionTermEvent(state, p, 'satisfied'));
+    ctx.bus.on('mission:conditionBroken', (p) => {
+      noteMissionTermEvent(state, p, 'broken');
+      announceTermBreak(ctx.bus, p);
+    });
+    // A settled or removed contract stops speaking — stale words must never outlive the job.
+    ctx.bus.on('mission:failed', (p) => {
+      const terms = state.ui && state.ui.missionTerms;
+      if (terms && p && p.missionId != null) delete terms[String(p.missionId)];
+    });
+    ctx.bus.on('mission:completed', (p) => {
+      const terms = state.ui && state.ui.missionTerms;
+      if (terms && p && p.missionId != null) delete terms[String(p.missionId)];
+    });
     ctx.bus.on('hud:recallObjective', () => {
       if (objectiveRecall.dismissed) {
         const restored = recallObjective(objectiveRecall);
@@ -1681,7 +1936,8 @@ export function createHud(ctx, alerts) {
       '<div class="sf-vtape__arclabel mono" data-k="tarclabel"></div>' +
     '</div>' +
     '<div class="sf-vtape__brake" data-k="tbrake" role="alert" aria-live="assertive">' +
-      '<span class="sf-vtape__brakeglyph" aria-hidden="true">▲</span>' +
+      // The drawn warn mark (glyphs.js), not the ▲ font character — same channel as the doctrine tells.
+      '<span class="sf-vtape__brakeglyph" aria-hidden="true">' + glyphSvg('warn', 12) + '</span>' +
       '<span class="mono">BRAKE NOW</span></div>';
   commandDeck.prepend(vtape);
 
@@ -1875,7 +2131,9 @@ export function createHud(ctx, alerts) {
     const keys = Object.keys(items);
     // Slice D: kill loot lives in its own salvage bay, cashed in at the dock (systems/cargo.js).
     const bay = salvageBayReading(state);
-    const bayLine = bay && bay.units > 0 ? `\nSalvage bay: ${bay.used} / ${bay.cap} u (cashed in when you dock)` : '';
+    const bayLine = bay && bay.units > 0
+      ? `\nSalvage bay: ${bay.used} / ${bay.cap} u (cashed in when you dock)${bay.summary ? ` — ${bay.summary}` : ''}`
+      : '';
     if (!keys.length) return `Cargo: ${used} / ${cap} u\nHold is empty${massLine ? '\n' + massLine : ''}${bayLine}`;
     const lines = [`Cargo: ${used} / ${cap} u`];
     if (massLine) lines.push(massLine);
@@ -2069,7 +2327,18 @@ export function createHud(ctx, alerts) {
   arrow.style.display = 'none';
   arrow.setAttribute('role', 'img');
   arrow.setAttribute('aria-label', 'Current objective marker');
-  arrow.innerHTML = '<span class="sf-objarrow__glyph" aria-hidden="true"></span><span class="sf-objarrow__label mono"></span>';
+  // One glyph SVG carrying both states of the goal mark (hudStyles picks by class): the edge cue
+  // is the kit's objective chevron (assets/ui/kit/assets/svg/plates/objective-chevron.svg — the
+  // icon family's notched construction, ported verbatim) riding --sf-arrow-angle; the on-screen
+  // mark is the GOAL diamond in the same light. Shape carries the meaning — diamond = here,
+  // chevron = that way — colour only repeats it, so it survives colour-blind play.
+  arrow.innerHTML =
+    '<svg class="sf-objarrow__glyph" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+      '<path class="sf-objarrow__mark-bloom" d="M12 3.4 20.6 12 12 20.6 3.4 12Z"/>' +
+      '<path class="sf-objarrow__mark" d="M12 3.4 20.6 12 12 20.6 3.4 12Z"/>' +
+      '<path class="sf-objarrow__chev" d="M9 3.8 17.8 12 9 20.2 5.6 16.8 11 12 5.6 7.2Z"/>' +
+    '</svg>' +
+    '<span class="sf-objarrow__label mono"></span>';
   root.appendChild(arrow);
   const arrowLabel = arrow.querySelector('.sf-objarrow__label');
   const firstUse = document.createElement('div');
@@ -2117,22 +2386,33 @@ export function createHud(ctx, alerts) {
 
   // ---- combat HUD: lock-on ring, weapon heat bars, target lock diamond ----
 
-  // Lock-on progress ring (SVG arc near reticle). Shows when a homing weapon is acquiring a lock.
+  // Lock-on instrument (SVG near reticle). Shows when a homing weapon is acquiring a lock.
+  // ORRERY rebuild: the kit's own lock reticle construction (assets/ui/kit/assets/svg/reticle/
+  // reticle-lock.svg — corner brackets that close on a target round a centre pip) carrying the
+  // kit cooldown-ring progress contract (socket-cooldown-ring.svg: full-circumference dasharray,
+  // dashoffset = C·(1−progress), rotate −90) on a graduated scale ring. All strokes, no boxes;
+  // states ride warm bone → paper readings → the Hand amber (hudStyles owns the state tones).
   const lockRing = document.createElement('div');
   lockRing.className = 'sf-lockring';
   const LOCK_R = 30, LOCK_C = Math.PI * 2 * LOCK_R;
+  // Brackets quote the kit reticle-lock arms, rescaled from its 56 grid to this 72 grid
+  // (inset 10→13, arm 8→11): four L-strokes on one path family, never border divs.
   lockRing.innerHTML =
     `<svg viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg">` +
+    `<circle cx="36" cy="36" r="34" class="sf-lockring__scale"/>` +
     `<circle cx="36" cy="36" r="${LOCK_R}" class="sf-lockring__track"/>` +
     `<circle cx="36" cy="36" r="${LOCK_R}" class="sf-lockring__fill" ` +
     `stroke-dasharray="${LOCK_C}" stroke-dashoffset="${LOCK_C}" ` +
     `transform="rotate(-90 36 36)"/>` +
+    `<circle cx="36" cy="36" r="5" class="sf-lockring__pip"/>` +
     `</svg>` +
     `<div class="sf-lockring__brackets" aria-hidden="true">` +
-    `<div class="sf-lockring__bracket sf-lockring__bracket--tl"></div>` +
-    `<div class="sf-lockring__bracket sf-lockring__bracket--tr"></div>` +
-    `<div class="sf-lockring__bracket sf-lockring__bracket--br"></div>` +
-    `<div class="sf-lockring__bracket sf-lockring__bracket--bl"></div>` +
+    `<svg viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg">` +
+    `<path class="sf-lockring__bracket sf-lockring__bracket--tl" d="M13 24 V13 H24"/>` +
+    `<path class="sf-lockring__bracket sf-lockring__bracket--tr" d="M48 13 H59 V24"/>` +
+    `<path class="sf-lockring__bracket sf-lockring__bracket--br" d="M59 48 V59 H48"/>` +
+    `<path class="sf-lockring__bracket sf-lockring__bracket--bl" d="M24 59 H13 V48"/>` +
+    `</svg>` +
     `</div>` +
     `<div class="sf-lockring__label"></div>`;
   root.appendChild(lockRing);
@@ -2227,9 +2507,20 @@ export function createHud(ctx, alerts) {
   // and the centered aim reticle diverge, you can read "facing vs travel" without instruments.
   const proTick = document.createElement('div');
   proTick.className = 'sf-protick';
+  // The wrapper keeps the 8x2 anchor box and its heading rotation (the placement contract is
+  // pinned and quantized); the box itself is no longer the mark — it centres the instrument.
   proTick.style.cssText =
     'position:absolute;left:0;top:0;width:8px;height:2px;margin-left:-4px;margin-top:-1px;' +
-    'background:#d7e6ff;border-radius:1px;opacity:0;pointer-events:none;will-change:transform,opacity;transform-origin:center;';
+    'opacity:0;pointer-events:none;will-change:transform,opacity;transform-origin:center;';
+  // The mark is the kit's twin-tick prograde bracket (assets/ui/kit/assets/svg/reticle/
+  // reticle-pro-tick.svg), ported in HUD voice: a bloom stroke under a core stroke, token
+  // colours (hudStyles). The ticks are laid along the wrapper's X so the gap between them
+  // opens along the velocity vector the wrapper rotates to — the prograde point rides the gap.
+  proTick.innerHTML =
+    '<svg class="sf-protick__svg" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+      '<path class="sf-protick__bloom" d="M3 12h6M15 12h6"/>' +
+      '<path class="sf-protick__tick" d="M3 12h6M15 12h6"/>' +
+    '</svg>';
   root.appendChild(proTick);
   let _proAlpha = 0;   // smooth-damped opacity so it eases in/out, never pops
   // The moving-flight path projects two points every visible frame. Keep both input and output
@@ -2281,10 +2572,34 @@ export function createHud(ctx, alerts) {
     setStyle(wpnHeatsWrap, 'display', 'flex');
   }
 
-  // Target lock diamond — follows the locked target's screen position.
+  // Target lock sigil — follows the locked target's screen position. ORRERY rebuild: the three
+  // shape variants quote the world-space selection sigil's own class emblems
+  // (src/render/selectionSigil.js — hostile hexagram / friendly hexagon rosette / cargo
+  // eight-point star), simplified to DOM scale, so the screen bracket and the world sigil speak
+  // the same geometry. Shape carries the class; colour stays a reinforcement, never the channel.
   const lockDiamond = document.createElement('div');
   lockDiamond.className = 'sf-lockdiamond';
-  lockDiamond.innerHTML = '<div class="sf-lockdiamond__inner"></div>';
+  lockDiamond.innerHTML =
+    '<div class="sf-lockdiamond__inner">' +
+    '<svg viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+    // hostile: two interlocking triangles (the hexagram) inside a twelve-point tick burst
+    '<g class="sf-lockdiamond__emblem sf-lockdiamond__emblem--hostile">' +
+    '<path d="M14 4 5.34 19 22.66 19Z M14 24 22.66 9 5.34 9Z"/>' +
+    '<circle cx="14" cy="14" r="11.5" stroke-dasharray="1.5 1.51"/>' +
+    '</g>' +
+    // friendly: the hexagon rosette — outer hexagon, six spokes, closed counter-phase hub
+    '<g class="sf-lockdiamond__emblem sf-lockdiamond__emblem--friendly">' +
+    '<path d="M14 4 22.66 9 22.66 19 14 24 5.34 19 5.34 9Z"/>' +
+    '<path d="M14 10.2V5.4 M17.29 12.1 21.45 9.7 M17.29 15.9 21.45 18.3 M14 17.8V22.6 M10.71 15.9 6.55 18.3 M10.71 12.1 6.55 9.7"/>' +
+    '<path d="M19.4 14 16.7 18.68 11.3 18.68 8.6 14 11.3 9.32 16.7 9.32Z"/>' +
+    '</g>' +
+    // cargo: two squares at 45 degrees — the eight-point star — around a smaller square hub
+    '<g class="sf-lockdiamond__emblem sf-lockdiamond__emblem--cargo">' +
+    '<path d="M14 4 24 14 14 24 4 14Z"/>' +
+    '<path d="M6.93 6.93H21.07V21.07H6.93Z"/>' +
+    '<path d="M14 8.5 19.5 14 14 19.5 8.5 14Z"/>' +
+    '</g>' +
+    '</svg></div>';
   root.appendChild(lockDiamond);
   // A selected target is projected five times per visible frame: once for the lock diamond, once
   // for the arc center, and once for each of the three arc radii. Keep one center pair and one edge
@@ -2563,7 +2878,8 @@ export function createHud(ctx, alerts) {
       will-change:transform, opacity; opacity:0;
     }
     .sf-tell.is-on { display:inline-flex; opacity:1; }
-    .sf-tell__icon { font-size:var(--k-fs-data); flex:0 0 auto; }
+    .sf-tell__icon { font-size:var(--k-fs-data); flex:0 0 auto; display:inline-flex; align-items:center; }
+    .sf-tell__glyph { display:block; }
     .sf-tell__kind { font-weight:700; font-size:var(--k-fs-data); color:var(--k-red); }
     .sf-tell--TETHER .sf-tell__kind { color:var(--k-signal); }
     .sf-tell__hint { color:var(--k-bone-62); font-size:var(--k-fs-data);
@@ -2641,6 +2957,8 @@ export function createHud(ctx, alerts) {
     slot.announced = '';
     slot.el.classList.remove('is-on', 'is-offscreen', 'is-pulse', 'sf-tell--FLYBY', 'sf-tell--TETHER', 'sf-tell--CHARGE');
     slot.el.hidden = true;
+    slot.iconGlyph = null;
+    slot.iconEl.innerHTML = '';
     setText(slot.iconEl, '');
     setText(slot.kindEl, '');
     setText(slot.hintEl, '');
@@ -2680,7 +2998,18 @@ export function createHud(ctx, alerts) {
     const icon = DOCTRINE_TELL_ICON[tellId] || '⚠';
     slot.el.classList.remove('sf-tell--FLYBY', 'sf-tell--TETHER', 'sf-tell--CHARGE');
     slot.el.classList.add(`sf-tell--${tellId}`);
-    setText(slot.iconEl, icon);
+    // The drawn mark renders as an element (innerHTML with internally-authored markup from
+    // glyphs.js); the text icon stays a textContent write. Labels below remain text either way.
+    const glyphName = tellGlyphName(tellId);
+    if (glyphName) {
+      if (slot.iconGlyph !== glyphName) {
+        slot.iconGlyph = glyphName;
+        slot.iconEl.innerHTML = glyphSvg(glyphName, 12, 'sf-tell__glyph');
+      }
+    } else {
+      slot.iconGlyph = null;
+      setText(slot.iconEl, icon);
+    }
     setText(slot.kindEl, kindLabel);
     setText(slot.hintEl, hint);
     slot.el.hidden = false;
@@ -3974,13 +4303,14 @@ export function createHud(ctx, alerts) {
     }
     if (_credTo !== _credFrom) {
       chipShow('credits');   // money moved — surface the chip
-      // Directional pulse on the readout: income reads mint, spend reads amber. Removing + reflow
-      // restarts the one-shot animation when credits move again before the last pulse finished.
+      // Directional pulse: income mint / spend amber. Restart the one-shot CSS animation by
+      // removing classes this frame and adding on the next animation frame — never force a
+      // synchronous layout read to restart the pulse. Quiet settled profile on master tip
+      // attributed ~104 ms self to a single early-flight refreshCredits that forced reflow.
       const chip = chipEls.credits;
       if (chip) {
-        chip.classList.remove('sf-credits--gain', 'sf-credits--spend');
-        void chip.offsetWidth;
-        chip.classList.add(_credTo > _credFrom ? 'sf-credits--gain' : 'sf-credits--spend');
+        const pulse = _credTo > _credFrom ? 'sf-credits--gain' : 'sf-credits--spend';
+        restartCreditsChipPulse(chip, pulse);
       }
     }
   }
@@ -4799,9 +5129,13 @@ export function createHud(ctx, alerts) {
       return;
     }
 
-    const rShield = targetPixelRadius(tgtAnchor, tgt.radius + 12, center);
-    const rArmor = targetPixelRadius(tgtAnchor, tgt.radius + 9, center);
-    const rHull = targetPixelRadius(tgtAnchor, tgt.radius + 6, center);
+    // The ring set quantizes to whole px (all three projections still run every frame —
+    // they feed the shared lag record; the arcSig contract below counts on it): raw
+    // projected radii write float `r`/viewBox records (`25.80000000000001`) that no
+    // fixture can pin, for a sub-visible gain.
+    const rShield = Math.round(targetPixelRadius(tgtAnchor, tgt.radius + 12, center));
+    const rArmor = Math.round(targetPixelRadius(tgtAnchor, tgt.radius + 9, center));
+    const rHull = Math.round(targetPixelRadius(tgtAnchor, tgt.radius + 6, center));
     
     if (rShield <= 0) {
       setDisplay(targetArcs, false);
@@ -4882,7 +5216,10 @@ export function createHud(ctx, alerts) {
     // A held pilot brake is a third reveal condition: the tape carries the stop vector the brake
     // is buying even with the drive off — ordinary flight braking is exactly when it matters.
     const brakeStop = resolveBrakeStopPreview(p, profile, state.input);
-    const want = active || nearCeiling || !!brakeStop;
+    // A held comms fan or wingman wheel stands exactly where this tape sits; the wheel is the
+    // modal, so the tape yields while it is up instead of poking out from under its edge.
+    const radialHeld = !!(state.ui && (state.ui.commsRadialOpen || state.ui.wingmanRadialOpen));
+    const want = !radialHeld && (active || nearCeiling || !!brakeStop);
 
     // Reveal/retire. The CSS opacity+visibility transition does the easing (and is disabled under
     // prefers-reduced-motion); this tracked value only decides when the element is fully retired
@@ -5103,6 +5440,10 @@ export function createHud(ctx, alerts) {
       setKitBar(barEls.energy, capVisual, capFrac < 0.2 ? 'hot' : 'on');
       setKitBar(barEls.heat, heatVisual, wpnHeat.overheated ? 'hot' : 'on');
       if (barEls.fuel) setKitBar(barEls.fuel, fuelVisual, fuelFrac < 0.25 ? 'hot' : 'on');
+      // The arc gauges read the same settled values the pinned fill drivers just stored.
+      if (vitalArcs.energy) vitalArcs.energy.set(capVisual, VITAL_ARC_SET);
+      if (vitalArcs.heat) vitalArcs.heat.set(heatVisual, VITAL_ARC_SET);
+      if (vitalArcs.fuel) vitalArcs.fuel.set(fuelVisual, VITAL_ARC_SET);
 
       // Phase 3 boost micro-bar: energy fraction; the row is hidden entirely if the ship can't boost.
       // When a dash is ready (cooldown elapsed + enough energy) the bar gets a 'ready' glow.
@@ -5123,6 +5464,7 @@ export function createHud(ctx, alerts) {
         const burning = !!(travelFlag('travelBurn') && state.input && state.input.travelDrive
           && state.input.travelDrive.state === 'engaged');
         setKitBar(barEls.boost, boostVisual, burning ? 'hot' : 'on');
+        if (vitalArcs.boost) vitalArcs.boost.set(boostVisual, VITAL_ARC_SET);
         setClass(fillEls.boost && fillEls.boost.parentElement, 'sf-bar--burn', burning);
         if (slow) setText(numEls.boost, Math.round(bf * 100) + (burning ? ' ⟫' : (dashReady ? ' ▸' : '%')));
       } else if (boostRow) {
@@ -5517,7 +5859,7 @@ export function createHud(ctx, alerts) {
     // their edges, so an arrow that would sit on one steps just inboard of it.
     let edgeX = edgePlacement.x;
     let edgeY = edgePlacement.y;
-    const obstacles = objectiveEdgeObstacles(performance.now());
+    const obstacles = objectiveEdgeObstacles();
     const leftBox = obstacles.left;
     const rightBox = obstacles.right;
     const orreryBox = obstacles.orrery;
@@ -5541,22 +5883,36 @@ export function createHud(ctx, alerts) {
     setStyle(arrow, 'transform', `translate3d(${edgeX}px,${edgeY}px,0)`);
   }
 
-  // Plate boxes for the objective edge arrow, read at most every 500 ms and only while the arrow
-  // rides an edge — one layout read, never per frame.
-  const objectiveEdgeBoxes = { at: -Infinity, left: null, right: null, orrery: null };
+  // Plate boxes for the objective edge arrow. Layout is stable across settled flight; only
+  // refresh on first edge use, resize, or an explicit HUD layout bump — never a 500 ms timer
+  // (that forced sync layout on soft-GPU every half-second while the arrow rode an edge).
+  const objectiveEdgeBoxes = {
+    stale: true,
+    left: null,
+    right: null,
+    orrery: null,
+    orreryEl: null,
+  };
   function plateBox(el) {
     if (!el || !el.isConnected || typeof el.getBoundingClientRect !== 'function') return null;
     const box = el.getBoundingClientRect();
     return box && box.width > 0 && box.height > 0 ? box : null;
   }
-  function objectiveEdgeObstacles(nowMs) {
-    if (nowMs - objectiveEdgeBoxes.at > 500) {
-      objectiveEdgeBoxes.at = nowMs;
-      // with ORRERY on, the old left column is mounted but hidden: its box is not an obstacle
-      objectiveEdgeBoxes.left = orreryCluster ? null : plateBox(leftStack);
-      objectiveEdgeBoxes.right = plateBox(rightDock);
-      objectiveEdgeBoxes.orrery = orreryCluster ? plateBox(orreryCluster.host.querySelector('.orr-cluster')) : null;
-    }
+  function invalidateObjectiveEdgeBoxes() {
+    objectiveEdgeBoxes.stale = true;
+  }
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('resize', invalidateObjectiveEdgeBoxes);
+  }
+  function objectiveEdgeObstacles() {
+    if (!objectiveEdgeBoxes.stale) return objectiveEdgeBoxes;
+    objectiveEdgeBoxes.stale = false;
+    // with ORRERY on, the old left column is mounted but hidden: its box is not an obstacle
+    objectiveEdgeBoxes.left = orreryCluster ? null : plateBox(leftStack);
+    objectiveEdgeBoxes.right = plateBox(rightDock);
+    const orreryEl = orreryCluster ? orreryCluster.host.querySelector('.orr-cluster') : null;
+    objectiveEdgeBoxes.orreryEl = orreryEl;
+    objectiveEdgeBoxes.orrery = orreryCluster ? plateBox(orreryEl) : null;
     return objectiveEdgeBoxes;
   }
 
@@ -5745,6 +6101,9 @@ export function createHud(ctx, alerts) {
         disruptionTimeout = null;
       }
       objectiveHudDrag.destroy();
+      // FB-012 — the flight HUD owns the stunt callout mount; releasing it here mirrors the
+      // Crucible results screen's dispose (the layer re-ensures idempotently on next mount).
+      releaseStuntCallout();
       if (offSlotClaim) offSlotClaim();
       if (offSlotRelease) offSlotRelease();
       clearCargoGaugeSettle(cargoGaugeSettle.used);

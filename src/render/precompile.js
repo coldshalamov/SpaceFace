@@ -88,7 +88,9 @@ function openingScenarioMaterialRecipe(material) {
  * renderer counters or replace a package that the prop already owns.
  */
 export function ensureOpeningGeneratedScenarioPropPackage(root) {
-  if (!root || root.userData?.scenarioAssetRef !== 'asset.slice.civilian_pod') return null;
+  const scenarioPod = !!root && root.userData?.scenarioAssetRef === 'asset.slice.civilian_pod';
+  const generatedVisual = !!root && root.userData?.generatedVisualProducer === 'visual-factory-procedural';
+  if (!scenarioPod && !generatedVisual) return null;
   if (root.userData.openingSubmissionPackage) return root.userData.openingSubmissionPackage;
   const leaves = [];
   root.traverse((object) => {
@@ -127,16 +129,36 @@ export function ensureOpeningGeneratedScenarioPropPackage(root) {
       materials: materials.map(openingScenarioMaterialRecipe),
     });
   });
+  if (scenarioPod) {
+    return stampOpeningSubmissionPackage(root, {
+      schema: 'spaceface.scenario47aGeneratedPropProducer.v1',
+      producer: 'scenario-47a-generated-prop',
+      assetRef: root.userData.scenarioAssetRef,
+      assetId: root.userData.assetId || null,
+      renderContract: openingRecipeValue(root.userData.renderContract || null),
+      leaves,
+    }, {
+      producer: 'scenario-47a-generated-prop',
+      assetId: root.userData.assetId || 'SF_47A_CIVILIAN_POD',
+    });
+  }
+  // Generated factory visuals (D157): the producer marker was set at the factory boundary when
+  // this root was built — see stampBuiltVisual. The leaf recipe is the same recipe contract the
+  // pod publishes, so a mounted beacons/drone/freighter hull proves producer provenance instead
+  // of sitting unverified in the first picture. A root that later mounts an authored packaged
+  // body keeps both boundaries: this recipe describes the procedural substrate, and the
+  // packaged descendant carries its own loader-verified `spacefaceRenderPackage` identity.
   return stampOpeningSubmissionPackage(root, {
-    schema: 'spaceface.scenario47aGeneratedPropProducer.v1',
-    producer: 'scenario-47a-generated-prop',
-    assetRef: root.userData.scenarioAssetRef,
-    assetId: root.userData.assetId || null,
+    schema: 'spaceface.generatedVisualProducerManifest.v1',
+    producer: 'visual-factory-procedural',
+    kind: String(root.userData.kind || ''),
+    visualLanguage: String(root.userData.visualLanguage || ''),
+    interactionKind: String(root.userData.interactionKind || ''),
     renderContract: openingRecipeValue(root.userData.renderContract || null),
     leaves,
   }, {
-    producer: 'scenario-47a-generated-prop',
-    assetId: root.userData.assetId || 'SF_47A_CIVILIAN_POD',
+    producer: 'visual-factory-procedural',
+    assetId: root.userData.assetId || root.name || 'generated-visual-root',
   });
 }
 
@@ -469,7 +491,9 @@ export async function settleOpeningCompositionTail(state, options = {}) {
   const flushPipelineLane = () => {
     if (laneDrain || typeof render.drainPendingPipelineAdmissions !== 'function') return;
     try {
-      laneDrain = Promise.resolve(render.drainPendingPipelineAdmissions())
+      laneDrain = Promise.resolve(render.drainPendingPipelineAdmissions({
+        timeoutMs: Math.min(4000, Math.max(0, deadline - now())),
+      }))
         .catch(() => null)
         .finally(() => { laneDrain = null; });
     } catch { /* the wait below still bounds the settle */ }
@@ -518,7 +542,16 @@ export async function settleOpeningCompositionTail(state, options = {}) {
     flushPipelineLane();
     if (stats && stats.idle === true && residencyPending() === 0) break;
   }
-  if (laneDrain) { try { await laneDrain; } catch { /* best effort */ } }
+  // The tail await of the last lane drain must stay bounded: a wedged compile otherwise
+  // parks here past the budget and (worse) leaves the first-flight hold un-rearmed below.
+  if (laneDrain) {
+    try {
+      await Promise.race([
+        laneDrain,
+        new Promise((resolve) => setTimeout(resolve, Math.min(4000, Math.max(0, deadline - now())))),
+      ]);
+    } catch { /* best effort */ }
+  }
   if (scene && state.mode === 'loading') holdAuthoredUpgradeQueueForFirstFlight(scene);
   const residency = residencyPending();
   return {

@@ -1,9 +1,9 @@
 /* ORRERY instrument refinement. Loaded via intro.css; does not replace the cinematic or logo. */
 #boot-overlay.boot-overlay--orrery .boot-progress-row {
-  position:relative; width:176px; min-width:176px; height:208px; margin-top:12px;
-  display:block; flex:none;
+  position:relative; width:216px; min-width:216px; height:250px; margin-top:12px;
+  display:flex; justify-content:center; align-items:center; flex:none;
 }
-.boot-instrument { position:relative; width:176px; height:208px; isolation:isolate; contain:layout style; }
+.boot-instrument { position:relative; width:176px; height:208px; transform:scale(1.2); transform-origin:center; isolation:isolate; contain:layout style; }
 .boot-instrument .boot-ring { position:absolute; inset:0; width:176px; height:208px; overflow:visible; }
 .boot-instrument .boot-ring-layer { position:absolute; inset:0; width:176px; height:208px; visibility:hidden; pointer-events:none; }
 .boot-instrument--worker .boot-ring-layer { visibility:visible; }

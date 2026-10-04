@@ -2,7 +2,9 @@
 //
 // The radar is a decision instrument, not a miniature screenshot of space. Its primary classes are
 // drawn natively as crisp semantic glyphs; no canvas bloom is used. Shape, fill, outline weight,
-// direction, and scale carry identity before colour does.
+// direction, and scale carry identity before colour does. Contact classes ride the kit's authored
+// silhouettes (assets/ui/kit/assets/radar/radar-glyph-paths.json); the primitives below remain as
+// fallbacks for classes the kit does not name.
 //
 // World projection (fixed chase camera):
 //   bx = C - (entity.x - player.x) / range * R
@@ -16,6 +18,7 @@ import { semanticColor, semanticShape } from './accessibility.js';
 import { canvasFont } from './canvasFonts.js';
 import { solveIntercept } from '../core/flight/flightTelemetry.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
+import { heatZoneInCurrentSector } from '../systems/heat.js';
 import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';
 import { SHIPS } from '../data/ships.js';
 import { prefersReducedMotion } from './effects/effectRuntime.js';
@@ -38,6 +41,7 @@ import { installMapParityBridge } from './map/mapParityBridge.js';
 import { svg as orrSvg, circularText } from './orrery/svg.js';
 import { orbitRing, ring as orrRing, hand as orrHand } from './orrery/instruments.js';
 import { injectOrrery } from './orrery/tokens.js';
+import GLYPHS from '../../assets/ui/kit/assets/radar/radar-glyph-paths.json' with { type: 'json' };
 
 const COMPACT_SIZE = 220;
 const COMPACT_C = COMPACT_SIZE / 2;
@@ -56,17 +60,425 @@ const RADAR_SPATIAL_MIN_ASTEROIDS = 96;
 const RADAR_QUERY_VISIT_RATIO_LIMIT = 0.4;
 const MAX_SEMANTIC_HOSTILES = 32;
 const MAX_SEMANTIC_INFRASTRUCTURE = 20;
+/* Priority dial (owner 2026-10-03): ordinary small traffic resolves only inside the close band —
+   half the radar range — instead of fogging the whole dial. Stations and gates read sector-wide at
+   the rim, hostiles always, and salient ships (selected target, mission targets, named lane
+   contacts, POI anchors, capitals) ignore the band. */
+export const RADAR_TRAFFIC_RANGE_FRACTION = 0.5;
 // Asteroids are cartography, not contacts: the belt renders as a faint density field on a coarse
 // grid, and only the nearest few rocks earn individual dots. Hundreds of blips at 4 km scale read
 // as grey fog that drowns every real signal on the dial.
 const ASTEROID_FIELD_CELLS = 9;
 const ASTEROID_DOT_LIMIT = 14;
 
-/* Deckplate one-accent law (2026-09-18): the radar scope is an instrument of THIS ship, not a
-   multicolor sticker chart. Friendly/faction contacts read as warm bone; the lamp itself is kept for
-   the objective and the selection, and hostile is the lamp driven red. Shape carries role. The keys
+/** Bench A/B: production default ON. Quantized-player + contact-pose still-layer skips contact census. */
+let RADAR_CONTACTS_STILL_LAYER = true;
+export function setRadarContactsStillLayerForBench(enabled) {
+  RADAR_CONTACTS_STILL_LAYER = enabled !== false;
+}
+export function getRadarContactsStillLayerForBench() {
+  return RADAR_CONTACTS_STILL_LAYER !== false;
+}
+
+/** Rescan while contacts still-latched (~0.5 s at 10 Hz radar). */
+const RADAR_CONTACTS_STILL_RESCAN_DRAWS = 5;
+
+export function createRadarContactsStillCache() {
+  return {
+    armed: false,
+    qx: 0,
+    qz: 0,
+    range: 0,
+    targetId: null,
+    sig: 0,
+    hostileCount: 0,
+    infraCount: 0,
+    neutralCount: 0,
+    nearestOffRangeHostile: null,
+    salients: 0,
+    rescanDraws: 0,
+    skipped: false,
+  };
+}
+
+/**
+ * Contact census for radar.draw. When the still-layer latch is armed and the
+ * quantized player pose / range / target / contact-pose signature match, skips
+ * projection + hostility and reuses retained mark lists (picture-identical at
+ * ≤1 wu / ≤1 radar px). `cache` is owned by createRadar (or the microbench).
+ */
+export function censusRadarContactsStillLayer({
+  contacts,
+  player,
+  playerTeam,
+  state,
+  range,
+  rangeSq,
+  metrics,
+  targetId,
+  projectScratch,
+  pushHostileMark,
+  pushInfrastructureMark,
+  pushNeutralMark,
+  hostileMarks,
+  infrastructureMarks,
+  neutralMarks,
+  cache,
+  updateTrailFn = null,
+  maxTrailUpdates = MAX_TRAIL_UPDATES,
+}) {
+  const playerX = player.pos.x;
+  const playerZ = player.pos.z;
+  const radarScale = metrics.radius / range;
+  const trafficRangeSq = rangeSq * RADAR_TRAFFIC_RANGE_FRACTION * RADAR_TRAFFIC_RANGE_FRACTION;
+  const stillQx = Math.round(playerX * radarScale);
+  const stillQz = Math.round(playerZ * radarScale);
+  const stillLayerOn = RADAR_CONTACTS_STILL_LAYER !== false;
+
+  // Cheap player/range/target gate before contact signature walk.
+  const playerStill = stillLayerOn
+    && cache.armed
+    && stillQx === cache.qx
+    && stillQz === cache.qz
+    && range === cache.range
+    && targetId === cache.targetId
+    && cache.rescanDraws > 0;
+
+  // FB-035 — live POI plans ride the mark: the readout's radarKind is the blip class and its
+  // progress sweeps a small arc. state.world.poiReadouts is the single reader path (keyed by
+  // zoneId; the anchor entity carries the stamped link), so no subscriptions reach the census.
+  const poiReadouts = state && state.world && state.world.poiReadouts || null;
+
+  let sig = contacts.length * 1315423911;
+  if (playerStill || !cache.armed) {
+    for (let i = 0; i < contacts.length; i += 1) {
+      const e = contacts[i];
+      if (!e || !e.pos || !e.alive || e === player) continue;
+      const qx = Math.round(e.pos.x);
+      const qz = Math.round(e.pos.z);
+      const qh = Math.round((Number(e.rot) || 0) * 32);
+      const poiBit = e.data && e.data.poiBehavior ? 1 : 0;
+      sig = (Math.imul(sig ^ (e.id >>> 0), 0x01000193) ^ qx ^ (qz << 11) ^ (qh << 3) ^ (e.team | 0) ^ (poiBit << 4)) >>> 0;
+    }
+  }
+
+  const stillHit = playerStill && sig === cache.sig;
+  if (stillHit) {
+    cache.rescanDraws -= 1;
+    cache.skipped = true;
+    hostileMarks.length = cache.hostileCount;
+    infrastructureMarks.length = cache.infraCount;
+    neutralMarks.length = cache.neutralCount;
+    return {
+      skipped: true,
+      hostileCount: cache.hostileCount,
+      salients: cache.salients,
+      nearestOffRangeHostile: cache.nearestOffRangeHostile,
+      trailUpdates: 0,
+    };
+  }
+
+  hostileMarks.length = 0;
+  infrastructureMarks.length = 0;
+  neutralMarks.length = 0;
+  let hostileCount = 0;
+  let salientContactCount = 0;
+  let nearestOffRangeHostile = null;
+  let nearestOffRangeHostileDistanceSq = Infinity;
+  let trailUpdates = 0;
+
+  for (let i = 0; i < contacts.length; i += 1) {
+    const entity = contacts[i];
+    if (!entity || !entity.pos || !entity.alive || entity === player) continue;
+    const dx = entity.pos.x - playerX;
+    const dz = entity.pos.z - playerZ;
+    const distanceSq = dx * dx + dz * dz;
+    const hostile = isHostileToPlayer(entity, playerTeam, state);
+    const station = entity.type === 'station';
+    const gate = station && !!(entity.data && entity.data.isGate);
+    const poiStamped = entity.data && entity.data.poiBehavior;
+    const poi = poiStamped && poiReadouts ? poiReadouts[poiStamped.zoneId] || null : null;
+    if (hostile || station || entity.id === targetId) salientContactCount += 1;
+
+    if (distanceSq > rangeSq) {
+      if (hostile && distanceSq < nearestOffRangeHostileDistanceSq) {
+        nearestOffRangeHostileDistanceSq = distanceSq;
+        nearestOffRangeHostile = entity;
+      }
+      if (station) {
+        const projected = projectRadarPoint(player.pos, entity.pos, range, metrics, projectScratch);
+        if (projected) pushInfrastructureMark(entity, projected, gate, distanceSq, poi);
+      }
+      continue;
+    }
+
+    // Priority dial: ordinary small traffic (unselected, unmissioned, unnamed, non-capital ships
+    // and drones) resolves only inside the close band; everything salient draws sector-wide.
+    if (!hostile && !station) {
+      const contactType = entity.type;
+      if ((contactType === 'ship' || contactType === 'drone')
+        && !isSalientShip(entity, targetId)
+        && distanceSq > trafficRangeSq) continue;
+    }
+
+    const projected = projectRadarPoint(player.pos, entity.pos, range, metrics, projectScratch);
+    if (!projected) continue;
+    const type = entity.type;
+    const wantsTrail = (type === 'ship' || type === 'drone') && trailUpdates < maxTrailUpdates;
+
+    if (hostile) {
+      if (wantsTrail && updateTrailFn) {
+        updateTrailFn(entity);
+        trailUpdates += 1;
+      }
+      hostileCount += 1;
+      pushHostileMark(entity, projected, distanceSq);
+      continue;
+    }
+    if (station) {
+      pushInfrastructureMark(entity, projected, gate, distanceSq, poi);
+      continue;
+    }
+
+    if (wantsTrail && updateTrailFn) {
+      updateTrailFn(entity);
+      trailUpdates += 1;
+    }
+    pushNeutralMark(entity, projected, distanceSq, {
+      heading: entityHeading(entity),
+      type,
+      selected: entity.id === targetId,
+      named: !!(entity.data && entity.data.namedLaneContactId),
+      wantsTrail,
+      poi,
+    });
+  }
+
+  // Recompute sig after walk when player moved (playerStill was false).
+  if (!playerStill) {
+    sig = contacts.length * 1315423911;
+    for (let i = 0; i < contacts.length; i += 1) {
+      const e = contacts[i];
+      if (!e || !e.pos || !e.alive || e === player) continue;
+      const qx = Math.round(e.pos.x);
+      const qz = Math.round(e.pos.z);
+      const qh = Math.round((Number(e.rot) || 0) * 32);
+      const poiBit = e.data && e.data.poiBehavior ? 1 : 0;
+      sig = (Math.imul(sig ^ (e.id >>> 0), 0x01000193) ^ qx ^ (qz << 11) ^ (qh << 3) ^ (e.team | 0) ^ (poiBit << 4)) >>> 0;
+    }
+  }
+
+  cache.armed = true;
+  cache.qx = stillQx;
+  cache.qz = stillQz;
+  cache.range = range;
+  cache.targetId = targetId;
+  cache.sig = sig;
+  cache.hostileCount = hostileMarks.length;
+  cache.infraCount = infrastructureMarks.length;
+  cache.neutralCount = neutralMarks.length;
+  cache.salients = salientContactCount;
+  cache.nearestOffRangeHostile = nearestOffRangeHostile;
+  cache.rescanDraws = RADAR_CONTACTS_STILL_RESCAN_DRAWS;
+  cache.skipped = false;
+
+  return {
+    skipped: false,
+    hostileCount,
+    salients: salientContactCount,
+    nearestOffRangeHostile,
+    trailUpdates,
+  };
+}
+
+
+
+/** Bench A/B: production default ON. Quantized-player still-layer skips asteroid field walk. */
+let RADAR_ASTEROID_STILL_LAYER = true;
+export function setRadarAsteroidStillLayerForBench(enabled) {
+  RADAR_ASTEROID_STILL_LAYER = enabled !== false;
+}
+export function getRadarAsteroidStillLayerForBench() {
+  return RADAR_ASTEROID_STILL_LAYER !== false;
+}
+
+/** Bench A/B: production default ON. drawTrail uses one path/stroke instead of per-segment. */
+let RADAR_DRAW_TRAIL_BATCH = true;
+export function setRadarDrawTrailBatchForBench(enabled) {
+  RADAR_DRAW_TRAIL_BATCH = enabled !== false;
+}
+export function getRadarDrawTrailBatchForBench() {
+  return RADAR_DRAW_TRAIL_BATCH !== false;
+}
+
+/** Rescan while still-latched (~0.5 s at 10 Hz radar). */
+const RADAR_ASTEROID_STILL_RESCAN_DRAWS = 5;
+
+/**
+ * Asteroid field census for radar.draw. When the still-layer latch is armed and the
+ * quantized player pose / range / target / field+index versions match, skips the source
+ * walk and reuses the retained cell counts + near-dot slots (picture-identical at ≤1 px).
+ * `cache` is a retained record owned by createRadar (or the microbench).
+ */
+export function censusRadarAsteroidStillLayer({
+  asteroidSource,
+  player,
+  playerX,
+  playerZ,
+  range,
+  rangeSq,
+  radarScale,
+  center,
+  size,
+  targetId,
+  fieldVersion,
+  indexVersion,
+  entities,
+  fieldCellCounts,
+  nearRockSlots,
+  cache,
+}) {
+  const fieldCellPx = size / ASTEROID_FIELD_CELLS;
+  const stillQx = Math.round(playerX * radarScale);
+  const stillQz = Math.round(playerZ * radarScale);
+  const stillLayerOn = RADAR_ASTEROID_STILL_LAYER !== false;
+  const stillHit = stillLayerOn
+    && cache.armed
+    && stillQx === cache.qx
+    && stillQz === cache.qz
+    && range === cache.range
+    && size === cache.size
+    && targetId === cache.targetId
+    && fieldVersion === cache.fieldVersion
+    && indexVersion === cache.indexVersion
+    && cache.rescanDraws > 0;
+
+  if (stillHit) {
+    cache.rescanDraws -= 1;
+    cache.skipped = true;
+    return {
+      fieldOccupied: cache.fieldOccupied,
+      nearRockCount: cache.nearRockCount,
+      targetAsteroid: cache.targetValid
+        ? (cache.targetOut.x = cache.targetX, cache.targetOut.y = cache.targetY, cache.targetOut)
+        : null,
+      skipped: true,
+    };
+  }
+
+  fieldCellCounts.fill(0);
+  let fieldOccupied = 0;
+  let nearRockCount = 0;
+  let targetAsteroid = null;
+  const get = entities && typeof entities.get === 'function' ? entities.get.bind(entities) : null;
+  // Individual rock dots are close-band detail; the density field stays full-range cartography.
+  const nearBandSq = rangeSq * RADAR_TRAFFIC_RANGE_FRACTION * RADAR_TRAFFIC_RANGE_FRACTION;
+
+  for (let i = 0; i < asteroidSource.length; i += 1) {
+    const entity = asteroidSource[i];
+    if (
+      !entity
+      || !entity.pos
+      || !entity.alive
+      || entity === player
+      || entity.type !== 'asteroid'
+    ) continue;
+    const liveRock = get ? get(entity.id) : null;
+    if (liveRock && liveRock !== entity) continue;
+    if (!liveRock && !entity.fieldResident) continue;
+    const dx = entity.pos.x - playerX;
+    const dz = entity.pos.z - playerZ;
+    const distanceSq = dx * dx + dz * dz;
+    if (distanceSq > rangeSq) continue;
+    const x = center - dx * radarScale;
+    const y = center - dz * radarScale;
+    const gx = Math.max(0, Math.min(ASTEROID_FIELD_CELLS - 1, Math.floor(x / fieldCellPx)));
+    const gy = Math.max(0, Math.min(ASTEROID_FIELD_CELLS - 1, Math.floor(y / fieldCellPx)));
+    const key = gy * ASTEROID_FIELD_CELLS + gx;
+    if (fieldCellCounts[key] === 0) fieldOccupied += 1;
+    fieldCellCounts[key] += 1;
+    if (distanceSq <= nearBandSq) {
+      if (nearRockCount < ASTEROID_DOT_LIMIT) {
+        const slot = nearRockSlots[nearRockCount++];
+        slot.x = x; slot.y = y; slot.distanceSq = distanceSq;
+        for (let k = nearRockCount - 1; k > 0 && nearRockSlots[k].distanceSq < nearRockSlots[k - 1].distanceSq; k--) {
+          const tmp = nearRockSlots[k];
+          nearRockSlots[k] = nearRockSlots[k - 1];
+          nearRockSlots[k - 1] = tmp;
+        }
+      } else if (distanceSq < nearRockSlots[nearRockCount - 1].distanceSq) {
+        const slot = nearRockSlots[nearRockCount - 1];
+        slot.x = x; slot.y = y; slot.distanceSq = distanceSq;
+        for (let k = nearRockCount - 1; k > 0 && nearRockSlots[k].distanceSq < nearRockSlots[k - 1].distanceSq; k--) {
+          const tmp = nearRockSlots[k];
+          nearRockSlots[k] = nearRockSlots[k - 1];
+          nearRockSlots[k - 1] = tmp;
+        }
+      }
+    }
+    if (entity.id === targetId) {
+      if (!cache.targetOut) cache.targetOut = { x: 0, y: 0 };
+      cache.targetOut.x = x;
+      cache.targetOut.y = y;
+      targetAsteroid = cache.targetOut;
+    }
+  }
+
+  cache.qx = stillQx;
+  cache.qz = stillQz;
+  cache.range = range;
+  cache.size = size;
+  cache.targetId = targetId;
+  cache.fieldVersion = fieldVersion;
+  cache.indexVersion = indexVersion;
+  cache.fieldOccupied = fieldOccupied;
+  cache.nearRockCount = nearRockCount;
+  if (targetAsteroid) {
+    cache.targetX = targetAsteroid.x;
+    cache.targetY = targetAsteroid.y;
+    cache.targetValid = true;
+  } else {
+    cache.targetValid = false;
+  }
+  cache.rescanDraws = RADAR_ASTEROID_STILL_RESCAN_DRAWS;
+  cache.armed = true;
+  cache.skipped = false;
+  return {
+    fieldOccupied,
+    nearRockCount,
+    targetAsteroid,
+    skipped: false,
+  };
+}
+
+export function createRadarAsteroidStillCache() {
+  return {
+    armed: false,
+    qx: NaN,
+    qz: NaN,
+    range: NaN,
+    size: 0,
+    targetId: null,
+    fieldVersion: NaN,
+    indexVersion: NaN,
+    fieldOccupied: 0,
+    nearRockCount: 0,
+    targetX: 0,
+    targetY: 0,
+    targetValid: false,
+    targetOut: { x: 0, y: 0 },
+    rescanDraws: 0,
+    skipped: false,
+  };
+}
+
+/* Contact colour, owner ruling 2026-10-03 (supersedes the 2026-09-18 one-accent law): the all-bone
+   scope read as one monochrome wash — the pilot could not tell stations from traffic from wrecks.
+   Class carries hue again, in the accessibility semantic register: allies green, unaligned traffic
+   blue-grey, stations cyan, gates violet, wrecks rust; hostile stays the red lamp and the objective
+   keeps the amber. Shape still carries role — hue is the fast channel, never the only one. The keys
    stay: shipState() uses membership here to decide "friendly". */
-const FRIENDLY_CONTACT = '#d6c8a6';
+const FRIENDLY_CONTACT = TACTICAL_MAP_PALETTE.friendly;
 const FACTION_COLOR = Object.freeze({
   faction_scn: FRIENDLY_CONTACT,
   faction_mts: FRIENDLY_CONTACT,
@@ -84,6 +496,113 @@ const CAPITAL_DEFS = new Set(
     .filter((ship) => (ship.tier != null && ship.tier >= 4) || CAPITAL_ROLES.has(ship.role))
     .map((ship) => ship.id),
 );
+
+// ---- Contact-class silhouettes (kit: assets/ui/kit/assets/radar) ------------------
+// The kit authored twelve Path2D silhouettes explicitly for this canvas (ORRERY §6 promises
+// "contacts as class silhouettes"). Each key is one merged Path2D in a 24x24 box centred on
+// (12,12), nose up — the same pose the fallback primitives use — so it drops into the existing
+// translate / rotate(Math.PI + heading) transform unchanged. Colour keeps carrying stance
+// (hostile red / green friendly / blue-grey neutral — TACTICAL_MAP_PALETTE); shape now carries the
+// contact's class, so
+// the pairing stays colourblind-safe: hostility is still the red fill plus the threat pulse,
+// class is the silhouette. Paths are built once at first paint; the 10 Hz draw path only
+// ever reads them.
+let glyphPathCache = null;
+function glyphPathFor(key) {
+  if (!glyphPathCache) {
+    // Headless tests import this module for its census math — no canvas there.
+    if (typeof Path2D === 'undefined') return null;
+    const cache = new Map();
+    for (const [glyphKey, pathData] of Object.entries(GLYPHS)) {
+      const merged = new Path2D();
+      for (const d of pathData) merged.addPath(new Path2D(d));
+      cache.set(glyphKey, merged);
+    }
+    glyphPathCache = cache;
+  }
+  return glyphPathCache.get(key) || null;
+}
+
+// Traffic/hull role word → silhouette key. Vocabulary from src/systems/scanner.js,
+// src/systems/npcJobsRuntime.js and the roles in src/data/ships.js. Capitals ride the military
+// shield at capital weight; anything unmapped keeps its primitive shape below.
+const SHIP_DEF_ROLE = new Map(SHIPS.map((ship) => [ship.id, String(ship.role || '').toLowerCase()]));
+const ROLE_GLYPH = new Map(Object.entries({
+  // combat small craft
+  fighter: 'fighter', interceptor: 'fighter', starter: 'fighter', multirole: 'fighter',
+  corvette: 'fighter', explorer: 'fighter', exotic: 'fighter', brawler: 'fighter',
+  sniper: 'fighter', swarmer: 'fighter',
+  // industry and bulk
+  hauler: 'freighter', freighter: 'freighter', heavy_hauler: 'freighter',
+  ore_carrier: 'freighter', tug: 'freighter', tender: 'freighter',
+  miner: 'miner', mining: 'miner', mining_barge: 'miner', surveyor: 'miner',
+  // lawful traffic
+  patrol: 'patrol', escort: 'patrol', courier: 'patrol', rescue: 'patrol',
+  // capitals (military shield)
+  gunship: 'patrol', battlecruiser: 'patrol', flagship: 'patrol', carrier: 'patrol', dreadnought: 'patrol',
+  // irregulars
+  pirate: 'pirate', raider: 'pirate', marauder: 'pirate', corsair: 'pirate', outlaw: 'pirate',
+  smuggler: 'pirate', scavenger: 'pirate', salvor: 'pirate',
+}));
+
+function contactGlyphKey(entity) {
+  const type = entity && entity.type;
+  if (type === 'station') return entity.data && entity.data.isGate ? 'gate' : 'station';
+  if (type === 'wreck') return 'wreck';
+  if (type === 'pickup') return 'beacon';
+  if (type === 'payload') return 'freighter';
+  if (type === 'drone') return 'fighter';
+  if (type !== 'ship') return null;
+  const data = entity.data || {};
+  const role = String(
+    data.trafficRole
+    || data.role
+    || data.presentationRole
+    || (data.defId && SHIP_DEF_ROLE.get(data.defId))
+    || (data.ai && data.ai.encounterRole)
+    || '',
+  ).toLowerCase();
+  return ROLE_GLYPH.get(role) || null;
+}
+
+const GLYPH_SCALE_NEUTRAL = 0.5;
+const GLYPH_SCALE_HOSTILE = 0.55;
+
+function drawNeutralSilhouette(g, key, x, y, heading, colour, { selected = false, scale = GLYPH_SCALE_NEUTRAL }) {
+  const path = glyphPathFor(key);
+  if (!path) return false;
+  g.save();
+  g.translate(x, y);
+  if (Number.isFinite(heading)) g.rotate(Math.PI + heading);
+  g.scale(scale, scale);
+  g.globalAlpha = selected ? 1 : 0.8;
+  g.strokeStyle = colour;
+  g.fillStyle = selected ? colour : TACTICAL_MAP_PALETTE.groundPlate;
+  g.lineWidth = (selected ? 1.8 : 1.35) / scale;
+  g.fill(path);
+  g.stroke(path);
+  g.restore();
+  return true;
+}
+
+function drawHostileSilhouette(g, key, x, y, heading, { selected = false, capital = false }) {
+  const path = glyphPathFor(key);
+  if (!path) return false;
+  const scale = GLYPH_SCALE_HOSTILE * (capital ? 1.35 : 1);
+  g.save();
+  g.translate(x, y);
+  if (Number.isFinite(heading)) g.rotate(Math.PI + heading);
+  g.scale(scale, scale);
+  // Threats stay always-filled (grammar law): red fill plus class shape, thin dark edge to stay
+  // crisp over bright scene bleed at the rim.
+  g.fillStyle = TACTICAL_MAP_PALETTE.hostile;
+  g.strokeStyle = selected ? TACTICAL_MAP_PALETTE.ink : 'rgba(5,12,16,0.85)';
+  g.lineWidth = (selected ? 1.4 : 1) / scale;
+  g.fill(path);
+  g.stroke(path);
+  g.restore();
+  return true;
+}
 
 const trailMap = new Map();
 // Retained {x,z} slots for contact trails. updateTrail used to allocate a fresh point and
@@ -139,6 +658,18 @@ function isCapitalContact(entity) {
   return CAPITAL_ROLES.has(String(data.trafficRole || data.role || '').toLowerCase());
 }
 
+/* A ship too important to hide behind the traffic close-band: the locked target, a mission
+   target, a named lane contact, a POI anchor, or a capital hull. */
+function isSalientShip(entity, targetId) {
+  if (!entity || entity.id === targetId) return true;
+  const data = entity.data;
+  if (!data) return false;
+  if (data.missionTargetSlot != null) return true;
+  if (data.namedLaneContactId) return true;
+  if (data.poiBehavior) return true;
+  return isCapitalContact(entity);
+}
+
 function entityHeading(entity) {
   if (entity && Number.isFinite(entity.rot)) return entity.rot;
   const velocity = entity && entity.vel;
@@ -160,7 +691,7 @@ function contactColor(entity, playerTeam, colorblindMode, state) {
     return semanticColor(semanticState, colorblindMode);
   }
   if (semanticState === 'hostile') return TACTICAL_MAP_PALETTE.hostile;
-  if (entity && entity.factionId && FACTION_COLOR[entity.factionId]) return FACTION_COLOR[entity.factionId];
+  if (semanticState === 'friendly') return TACTICAL_MAP_PALETTE.friendly;
   return TACTICAL_MAP_PALETTE.neutral;
 }
 
@@ -204,16 +735,30 @@ function drawTrail(g, entity, playerX, playerZ, scale, center, colour) {
   g.save();
   g.lineWidth = 1;
   g.strokeStyle = colour;
-  for (let i = 1; i < history.length; i += 1) {
-    g.globalAlpha = (i / history.length) * 0.2;
-    const x0 = center - (history[i - 1].x - playerX) * scale;
-    const y0 = center - (history[i - 1].z - playerZ) * scale;
-    const x1 = center - (history[i].x - playerX) * scale;
-    const y1 = center - (history[i].z - playerZ) * scale;
+  if (RADAR_DRAW_TRAIL_BATCH !== false) {
+    // One continuous path, one stroke. Prior per-segment stroke faded 0→0.2; a single mid
+    // alpha keeps the same readable wake without N canvas strokes on the 10 Hz draw path.
+    g.globalAlpha = 0.12;
     g.beginPath();
-    g.moveTo(x0, y0);
-    g.lineTo(x1, y1);
+    for (let i = 0; i < history.length; i += 1) {
+      const x = center - (history[i].x - playerX) * scale;
+      const y = center - (history[i].z - playerZ) * scale;
+      if (i === 0) g.moveTo(x, y);
+      else g.lineTo(x, y);
+    }
     g.stroke();
+  } else {
+    for (let i = 1; i < history.length; i += 1) {
+      g.globalAlpha = (i / history.length) * 0.2;
+      const x0 = center - (history[i - 1].x - playerX) * scale;
+      const y0 = center - (history[i - 1].z - playerZ) * scale;
+      const x1 = center - (history[i].x - playerX) * scale;
+      const y1 = center - (history[i].z - playerZ) * scale;
+      g.beginPath();
+      g.moveTo(x0, y0);
+      g.lineTo(x1, y1);
+      g.stroke();
+    }
   }
   g.restore();
 }
@@ -234,36 +779,46 @@ function drawNeutralContact(g, entity, x, y, heading, colour, {
   playerTeam = null,
   state = null,
 } = {}) {
-  const shape = contactShape(entity, playerTeam, state);
-  const scale = named ? 1.25 : 1;
-  g.save();
-  g.translate(x, y);
-  if (Number.isFinite(heading)) g.rotate(Math.PI + heading);
-  g.globalAlpha = selected ? 1 : 0.8;
-  g.strokeStyle = colour;
-  g.fillStyle = selected ? colour : TACTICAL_MAP_PALETTE.groundPlate;
-  g.lineWidth = selected ? 1.8 : 1.35;
-  if (shape === 'square') {
-    g.beginPath();
-    g.rect(-3.4 * scale, -3.4 * scale, 6.8 * scale, 6.8 * scale);
-  } else if (shape === 'diamond') {
-    g.beginPath();
-    g.moveTo(0, -4 * scale);
-    g.lineTo(3.5 * scale, 0);
-    g.lineTo(0, 4 * scale);
-    g.lineTo(-3.5 * scale, 0);
-    g.closePath();
+  const namedScale = named ? 1.25 : 1;
+  const glyphKey = contactGlyphKey(entity);
+  if (glyphKey) {
+    // Class silhouette: the shape names the contact's trade, the colour names its stance.
+    drawNeutralSilhouette(g, glyphKey, x, y, heading, colour, {
+      selected,
+      scale: GLYPH_SCALE_NEUTRAL * namedScale * (isCapitalContact(entity) ? 1.3 : 1),
+    });
   } else {
-    g.beginPath();
-    g.moveTo(0, -4.5 * scale);
-    g.lineTo(3.5 * scale, 3.4 * scale);
-    g.lineTo(0, 1.3 * scale);
-    g.lineTo(-3.5 * scale, 3.4 * scale);
-    g.closePath();
+    const shape = contactShape(entity, playerTeam, state);
+    const scale = namedScale;
+    g.save();
+    g.translate(x, y);
+    if (Number.isFinite(heading)) g.rotate(Math.PI + heading);
+    g.globalAlpha = selected ? 1 : 0.8;
+    g.strokeStyle = colour;
+    g.fillStyle = selected ? colour : TACTICAL_MAP_PALETTE.groundPlate;
+    g.lineWidth = selected ? 1.8 : 1.35;
+    if (shape === 'square') {
+      g.beginPath();
+      g.rect(-3.4 * scale, -3.4 * scale, 6.8 * scale, 6.8 * scale);
+    } else if (shape === 'diamond') {
+      g.beginPath();
+      g.moveTo(0, -4 * scale);
+      g.lineTo(3.5 * scale, 0);
+      g.lineTo(0, 4 * scale);
+      g.lineTo(-3.5 * scale, 0);
+      g.closePath();
+    } else {
+      g.beginPath();
+      g.moveTo(0, -4.5 * scale);
+      g.lineTo(3.5 * scale, 3.4 * scale);
+      g.lineTo(0, 1.3 * scale);
+      g.lineTo(-3.5 * scale, 3.4 * scale);
+      g.closePath();
+    }
+    g.fill();
+    g.stroke();
+    g.restore();
   }
-  g.fill();
-  g.stroke();
-  g.restore();
 
   if (named) {
     g.save();
@@ -275,6 +830,38 @@ function drawNeutralContact(g, entity, x, y, heading, colour, {
     g.stroke();
     g.restore();
   }
+}
+
+function poiProgressRatio(readout) {
+  if (!readout) return 0;
+  const required = Number(readout.required) || 0;
+  if (required <= 0) return 0;
+  return Math.max(0, Math.min(1, (Number(readout.progress) || 0) / required));
+}
+
+// FB-035 — radarKind rides the mark as the blip class; a planned place gets one shared additive
+// cue (open diamond + small progress arc) in the objective lamp. The glyph underneath keeps its
+// own shape and colour — per-kind restyle belongs to the ORRERY lane.
+function drawPoiClassMark(g, x, y, ratio) {
+  g.save();
+  g.strokeStyle = TACTICAL_MAP_PALETTE.objective;
+  g.globalAlpha = 0.55;
+  g.lineWidth = 1;
+  g.beginPath();
+  g.moveTo(x, y - 8);
+  g.lineTo(x + 8, y);
+  g.lineTo(x, y + 8);
+  g.lineTo(x - 8, y);
+  g.closePath();
+  g.stroke();
+  const sweep = Math.max(0, Math.min(1, Number(ratio) || 0));
+  if (sweep > 0) {
+    g.globalAlpha = 0.9;
+    g.beginPath();
+    g.arc(x, y, 10.5, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * sweep);
+    g.stroke();
+  }
+  g.restore();
 }
 
 function drawHostileEdgeMarker(g, x, y, angle, selected = false) {
@@ -331,10 +918,9 @@ function drawThreatRing(g, metrics, hostileCount, now, reducedMotion) {
 }
 
 function waypointLabel(waypoint) {
-  return sanitizeMapLabel(
-    waypoint && (waypoint.sectorName || waypoint.label || waypoint.mapLabel || 'OBJECTIVE'),
-    20,
-  );
+  const raw = waypoint && (waypoint.sectorName || waypoint.label || waypoint.mapLabel || 'OBJECTIVE');
+  const cleaned = String(raw || '').replace(/\s+\d+\s*(?:wu|WU)?\b/g, '').trim();
+  return sanitizeMapLabel(cleaned || 'OBJECTIVE', 20);
 }
 
 function drawWaypointDiamond(g, cue, now, reducedMotion) {
@@ -535,6 +1121,42 @@ function drawHeatZone(g, zone, playerX, playerZ, scale, center, radius) {
   g.restore();
 }
 
+// Kit sweep geometry (assets/ui/kit/assets/svg/radar/radar-sweep.svg): a short sector trailing
+// the sweep line — bright at the leading edge, falling off across a 45° tail — ported to this
+// canvas as a conic gradient so it scales with the dial. Instrument-grade: the wedge peaks at the
+// same alpha family as the old line, it does not glow. Reduced motion keeps the same wedge frozen
+// at north, exactly where the old static line sat.
+const SWEEP_TRAIL_ANGLE = Math.PI / 4;
+function drawRadarSweep(g, center, radius, angle) {
+  g.save();
+  g.beginPath();
+  g.moveTo(center, center);
+  g.arc(center, center, radius, angle - SWEEP_TRAIL_ANGLE, angle);
+  g.closePath();
+  // Guard on the RETURNED gradient, not just the API: headless canvas stubs answer every
+  // property with a no-op function, so an existence check alone still yields undefined here.
+  let gradient = null;
+  if (typeof g.createConicGradient === 'function') {
+    gradient = g.createConicGradient(angle - SWEEP_TRAIL_ANGLE, center, center);
+  }
+  if (gradient) {
+    gradient.addColorStop(0, 'rgba(232,226,212,0)');
+    gradient.addColorStop(SWEEP_TRAIL_ANGLE / (Math.PI * 2), 'rgba(232,226,212,0.09)');
+    gradient.addColorStop(1, 'rgba(232,226,212,0)');
+    g.fillStyle = gradient;
+  } else {
+    g.fillStyle = 'rgba(232,226,212,0.045)';
+  }
+  g.fill();
+  g.strokeStyle = 'rgba(232,226,212,0.12)';
+  g.lineWidth = 1;
+  g.beginPath();
+  g.moveTo(center, center);
+  g.lineTo(center + Math.cos(angle) * radius, center + Math.sin(angle) * radius);
+  g.stroke();
+  g.restore();
+}
+
 function drawBackground(g, center, radius, { grid = true } = {}) {
   g.clearRect(0, 0, center * 2, center * 2);
   // Dark ground first: every mark on this dial is small, so contrast has to come from the plate.
@@ -568,19 +1190,34 @@ function drawBackground(g, center, radius, { grid = true } = {}) {
     g.stroke();
   }
   for (const fraction of [0.25, 0.5, 1]) {
+    // 4px 20% geometric bloom twin
     g.strokeStyle = fraction === 1
-      ? 'rgba(232,226,212,0.16)'
-      : 'rgba(232,226,212,0.065)';
-    g.lineWidth = fraction === 1 ? 1.25 : 1;
+      ? 'rgba(232,226,212,0.22)'
+      : 'rgba(232,226,212,0.12)';
+    g.lineWidth = fraction === 1 ? 4 : 3;
+    g.beginPath();
+    g.arc(center, center, radius * fraction, 0, Math.PI * 2);
+    g.stroke();
+
+    // core ring
+    g.strokeStyle = fraction === 1
+      ? 'rgba(232,226,212,0.65)'
+      : 'rgba(232,226,212,0.32)';
+    g.lineWidth = fraction === 1 ? 1.5 : 1;
     g.beginPath();
     g.arc(center, center, radius * fraction, 0, Math.PI * 2);
     g.stroke();
   }
   g.strokeStyle = 'rgba(232,226,212,0.08)';
+  const muteR = 18;
   g.beginPath();
   g.moveTo(center, center - radius);
+  g.lineTo(center, center - muteR);
+  g.moveTo(center, center + muteR);
   g.lineTo(center, center + radius);
   g.moveTo(center - radius, center);
+  g.lineTo(center - muteR, center);
+  g.moveTo(center + muteR, center);
   g.lineTo(center + radius, center);
   g.stroke();
   g.restore();
@@ -599,7 +1236,7 @@ function createRadarFrame(size, center, radius) {
     viewBox: `${-FRAME_PAD} ${-FRAME_PAD} ${size + FRAME_PAD * 2} ${size + FRAME_PAD * 2}`,
     'aria-hidden': 'true',
   });
-  root.appendChild(orrRing({ cx: center, cy: center, r: radius + 0.5, tone: 'rest', width: 1, bloom: 4 }));
+  root.appendChild(orrRing({ cx: center, cy: center, r: radius + 0.5, tone: 'hi', width: 1.5, bloom: 5 }));
   root.appendChild(orbitRing({ cx: center, cy: center, r: radius + 5, count: 72, major: 6, len: 3, majorLen: 7, tone: 'rest', drift: -2400, inward: false }).el);
   root.appendChild(orrSvg('path', {
     d: `M ${center - 4.5} ${center - radius - 13} L ${center} ${center - radius - 19} L ${center + 4.5} ${center - radius - 13}`,
@@ -739,6 +1376,8 @@ export function createRadar(ctx) {
   const radarQueryScratch = [];
   const fieldCellCounts = new Uint16Array(ASTEROID_FIELD_CELLS * ASTEROID_FIELD_CELLS);
   const nearRockSlots = Array.from({ length: ASTEROID_DOT_LIMIT }, () => ({ x: 0, y: 0, distanceSq: Infinity }));
+  // Asteroid still-layer cache (see censusRadarAsteroidStillLayer).
+  const asteroidStillCache = createRadarAsteroidStillCache();
   const hostileMarks = [];
   const infrastructureMarks = [];
   // Retained projection + mark slots: projectRadarPoint used to Object.freeze a fresh record
@@ -754,6 +1393,9 @@ export function createRadar(ctx) {
   };
   const hostileMarkPool = [];
   const infrastructureMarkPool = [];
+  const neutralMarkPool = [];
+  const neutralMarks = [];
+  const contactsStillCache = createRadarContactsStillCache();
   function pushHostileMark(entity, projected, distanceSq) {
     let mark = hostileMarkPool[hostileMarks.length];
     if (!mark) {
@@ -766,10 +1408,13 @@ export function createRadar(ctx) {
     mark.distanceSq = distanceSq;
     hostileMarks.push(mark);
   }
-  function pushInfrastructureMark(entity, projected, gate, distanceSq) {
+  function pushInfrastructureMark(entity, projected, gate, distanceSq, poi) {
     let mark = infrastructureMarkPool[infrastructureMarks.length];
     if (!mark) {
-      mark = { entity: null, x: 0, y: 0, gate: false, offRange: false, angle: 0, distanceSq: 0 };
+      mark = {
+        entity: null, x: 0, y: 0, gate: false, offRange: false, angle: 0, distanceSq: 0,
+        poiKind: null, poiProgress: 0,
+      };
       infrastructureMarkPool[infrastructureMarks.length] = mark;
     }
     mark.entity = entity;
@@ -779,7 +1424,32 @@ export function createRadar(ctx) {
     mark.offRange = projected.offRange;
     mark.angle = projected.angle;
     mark.distanceSq = distanceSq;
+    mark.poiKind = poi && poi.radarKind || null;
+    mark.poiProgress = poiProgressRatio(poi);
     infrastructureMarks.push(mark);
+  }
+  function pushNeutralMark(entity, projected, distanceSq, meta) {
+    let mark = neutralMarkPool[neutralMarks.length];
+    if (!mark) {
+      mark = {
+        entity: null, x: 0, y: 0, distanceSq: 0,
+        heading: null, type: '', selected: false, named: false, wantsTrail: false,
+        poiKind: null, poiProgress: 0,
+      };
+      neutralMarkPool[neutralMarks.length] = mark;
+    }
+    mark.entity = entity;
+    mark.x = projected.x;
+    mark.y = projected.y;
+    mark.distanceSq = distanceSq;
+    mark.heading = meta.heading;
+    mark.type = meta.type;
+    mark.selected = meta.selected;
+    mark.named = meta.named;
+    mark.wantsTrail = meta.wantsTrail;
+    mark.poiKind = meta.poi && meta.poi.radarKind || null;
+    mark.poiProgress = poiProgressRatio(meta.poi);
+    neutralMarks.push(mark);
   }
   // Reused option records for the glyph draw calls. The draw functions destructure and read
   // only; nothing retains these between contacts.
@@ -799,6 +1469,8 @@ export function createRadar(ctx) {
     clearAllTrails();
     if (expanded) setExpanded(false);
     markContactsDirty();
+    asteroidStillCache.armed = false;
+    asteroidStillCache.rescanDraws = 0;
   }
 
   if (bus && typeof bus.on === 'function') {
@@ -920,7 +1592,7 @@ export function createRadar(ctx) {
       objectiveKey.dataset.mode = 'objective';
       return;
     }
-    const legend = 'YOU HULL · HOSTILE CHEVRON · DOCK HEX · GATE RINGS';
+    const legend = 'YOU HULL · RED HOSTILE · CYAN STATION · VIOLET GATE · GREEN ALLY · GREY TRAFFIC CLOSE ONLY';
     if (objectiveKey.textContent !== legend) objectiveKey.textContent = legend;
     objectiveKey.removeAttribute('title');
     objectiveKey.dataset.mode = 'legend';
@@ -946,14 +1618,7 @@ export function createRadar(ctx) {
 
     // One crisp sweep line preserves sensor motion without washing the entire instrument in bloom.
     const sweepAngle = reducedMotion ? -Math.PI / 2 : ((now % 3600) / 3600) * Math.PI * 2;
-    g.save();
-    g.strokeStyle = 'rgba(232,226,212,0.12)';
-    g.lineWidth = 1;
-    g.beginPath();
-    g.moveTo(center, center);
-    g.lineTo(center + Math.cos(sweepAngle) * radius, center + Math.sin(sweepAngle) * radius);
-    g.stroke();
-    g.restore();
+    drawRadarSweep(g, center, radius, sweepAngle);
 
     if (!frame) {
       g.save();
@@ -983,18 +1648,25 @@ export function createRadar(ctx) {
       && state.settings.accessibility.colorblindMode
     ) || 'none';
 
-    drawHeatZone(g, state.player && state.player.heatZone, playerX, playerZ, radarScale, center, radius);
+    drawHeatZone(g, heatZoneInCurrentSector(state), playerX, playerZ, radarScale, center, radius);
 
     const rangeRatio = rangeRingRatioForEntity(player, range);
     const weaponRingRadius = radius * rangeRatio;
     g.save();
-    g.strokeStyle = 'rgba(242,185,80,0.13)';
     g.lineWidth = 1;
+    // Graduated two-tone: a major dash plus a minor tick riding each gap, the instrument-grammar
+    // way of making the engagement ring read as a measurement rather than a decorative circle.
+    g.strokeStyle = 'rgba(242,185,80,0.15)';
     g.setLineDash([3, 4]);
     g.beginPath();
     g.arc(center, center, weaponRingRadius, 0, Math.PI * 2);
     g.stroke();
+    g.strokeStyle = 'rgba(242,185,80,0.07)';
+    g.setLineDash([1, 6]);
+    g.lineDashOffset = 4.5;
+    g.stroke();
     g.setLineDash([]);
+    g.lineDashOffset = 0;
     g.restore();
 
     const contacts = contactsFor(player);
@@ -1016,53 +1688,32 @@ export function createRadar(ctx) {
       }
     }
 
-    let targetAsteroid = null;
+    const field = state.world && state.world.asteroidField;
+    const fieldVersion = field && Number.isFinite(field.version) ? field.version : 0;
+    const index = state.entityIndex;
+    const indexVersion = index && index.__spacefaceEntityIndexV1 ? (index.version || 0) : -1;
+    const asteroidCensus = censusRadarAsteroidStillLayer({
+      asteroidSource,
+      player,
+      playerX,
+      playerZ,
+      range,
+      rangeSq,
+      radarScale,
+      center,
+      size,
+      targetId,
+      fieldVersion,
+      indexVersion,
+      entities: state.entities,
+      fieldCellCounts,
+      nearRockSlots,
+      cache: asteroidStillCache,
+    });
+    const fieldOccupied = asteroidCensus.fieldOccupied;
+    const nearRockCount = asteroidCensus.nearRockCount;
+    const targetAsteroid = asteroidCensus.targetAsteroid;
     const fieldCellPx = size / ASTEROID_FIELD_CELLS;
-    fieldCellCounts.fill(0);
-    let fieldOccupied = 0;
-    let nearRockCount = 0;
-    for (let i = 0; i < asteroidSource.length; i += 1) {
-      const entity = asteroidSource[i];
-      if (
-        !entity
-        || !entity.pos
-        || !entity.alive
-        || entity === player
-        || entity.type !== 'asteroid'
-      ) continue;
-      const liveRock = state.entities && state.entities.get && state.entities.get(entity.id);
-      if (liveRock && liveRock !== entity) continue;
-      if (!liveRock && !entity.fieldResident) continue;
-      const dx = entity.pos.x - playerX;
-      const dz = entity.pos.z - playerZ;
-      const distanceSq = dx * dx + dz * dz;
-      if (distanceSq > rangeSq) continue;
-      const x = center - dx * radarScale;
-      const y = center - dz * radarScale;
-      const gx = Math.max(0, Math.min(ASTEROID_FIELD_CELLS - 1, Math.floor(x / fieldCellPx)));
-      const gy = Math.max(0, Math.min(ASTEROID_FIELD_CELLS - 1, Math.floor(y / fieldCellPx)));
-      const key = gy * ASTEROID_FIELD_CELLS + gx;
-      if (fieldCellCounts[key] === 0) fieldOccupied += 1;
-      fieldCellCounts[key] += 1;
-      if (nearRockCount < ASTEROID_DOT_LIMIT) {
-        const slot = nearRockSlots[nearRockCount++];
-        slot.x = x; slot.y = y; slot.distanceSq = distanceSq;
-        for (let k = nearRockCount - 1; k > 0 && nearRockSlots[k].distanceSq < nearRockSlots[k - 1].distanceSq; k--) {
-          const tmp = nearRockSlots[k];
-          nearRockSlots[k] = nearRockSlots[k - 1];
-          nearRockSlots[k - 1] = tmp;
-        }
-      } else if (distanceSq < nearRockSlots[nearRockCount - 1].distanceSq) {
-        const slot = nearRockSlots[nearRockCount - 1];
-        slot.x = x; slot.y = y; slot.distanceSq = distanceSq;
-        for (let k = nearRockCount - 1; k > 0 && nearRockSlots[k].distanceSq < nearRockSlots[k - 1].distanceSq; k--) {
-          const tmp = nearRockSlots[k];
-          nearRockSlots[k] = nearRockSlots[k - 1];
-          nearRockSlots[k - 1] = tmp;
-        }
-      }
-      if (entity.id === targetId) targetAsteroid = { x, y };
-    }
     if (fieldOccupied) {
       g.save();
       g.beginPath();
@@ -1098,107 +1749,104 @@ export function createRadar(ctx) {
     g.restore();
     if (targetAsteroid) drawTargetRing(g, targetAsteroid.x, targetAsteroid.y, center);
 
-    let hostileCount = 0;
-    let salientContactCount = 0;
-    let nearestOffRangeHostile = null;
-    let nearestOffRangeHostileDistanceSq = Infinity;
-    let trailUpdates = 0;
-    hostileMarks.length = 0;
-    infrastructureMarks.length = 0;
+    // Contact still-layer census: when quantized player + contact-pose signature hold,
+    // reuse retained marks (skip projection/hostility). Glyph paint always runs so pickup
+    // pulses and threat rings keep live `now` (picture contract).
+    const contactCensus = censusRadarContactsStillLayer({
+      contacts,
+      player,
+      playerTeam,
+      state,
+      range,
+      rangeSq,
+      metrics,
+      targetId,
+      projectScratch,
+      pushHostileMark,
+      pushInfrastructureMark,
+      pushNeutralMark,
+      hostileMarks,
+      infrastructureMarks,
+      neutralMarks,
+      cache: contactsStillCache,
+      updateTrailFn: updateTrail,
+      maxTrailUpdates: MAX_TRAIL_UPDATES,
+    });
+    const hostileCount = contactCensus.hostileCount;
+    const salientContactCount = contactCensus.salients;
+    const nearestOffRangeHostile = contactCensus.nearestOffRangeHostile;
 
-    // One contact pass: classification, projection, trails, and neutral glyphs. The old second
-    // pass recomputed dx/dz/distance, isHostileToPlayer, and the radar projection for every
-    // in-range contact; mark collection drew nothing, so fusing preserves paint order exactly.
-    for (let i = 0; i < contacts.length; i += 1) {
-      const entity = contacts[i];
-      if (!entity || !entity.pos || !entity.alive || entity === player) continue;
-      const dx = entity.pos.x - playerX;
-      const dz = entity.pos.z - playerZ;
-      const distanceSq = dx * dx + dz * dz;
-      const hostile = isHostileToPlayer(entity, playerTeam, state);
-      const station = entity.type === 'station';
-      const gate = station && !!(entity.data && entity.data.isGate);
-      if (hostile || station || entity.id === targetId) salientContactCount += 1;
-
-      if (distanceSq > rangeSq) {
-        if (hostile && distanceSq < nearestOffRangeHostileDistanceSq) {
-          nearestOffRangeHostileDistanceSq = distanceSq;
-          nearestOffRangeHostile = entity;
-        }
-        if (station) {
-          const projected = projectRadarPoint(player.pos, entity.pos, range, metrics, projectScratch);
-          if (projected) pushInfrastructureMark(entity, projected, gate, distanceSq);
-        }
-        continue;
-      }
-
-      const projected = projectRadarPoint(player.pos, entity.pos, range, metrics, projectScratch);
-      if (!projected) continue;
-      const x = projected.x;
-      const y = projected.y;
+    // Paint trails + neutral glyphs from retained marks (live colour / pulse).
+    for (let i = 0; i < hostileMarks.length; i += 1) {
+      const mark = hostileMarks[i];
+      const entity = mark.entity;
+      if (!entity) continue;
       const type = entity.type;
-      const wantsTrail = (type === 'ship' || type === 'drone') && trailUpdates < MAX_TRAIL_UPDATES;
-
-      if (hostile) {
-        // Trails still paint on the contact pass (priority pass only draws chevrons).
-        // Skip contactColor when this hostile is past the trail budget.
-        if (wantsTrail) {
-          const colour = contactColor(entity, playerTeam, colorblindMode, state);
-          updateTrail(entity);
-          drawTrail(g, entity, playerX, playerZ, radarScale, center, colour);
-          trailUpdates += 1;
-        }
-        hostileCount += 1;
-        pushHostileMark(entity, projected, distanceSq);
-        continue; // drawn in the crisp priority pass below
-      }
-      if (station) {
-        pushInfrastructureMark(entity, projected, gate, distanceSq);
-        continue; // drawn in the glyph pass below
-      }
-
-      const colour = contactColor(entity, playerTeam, colorblindMode, state);
-      if (wantsTrail) {
-        updateTrail(entity);
+      if ((type === 'ship' || type === 'drone') && trailMap.has(entity.id)) {
+        const colour = contactColor(entity, playerTeam, colorblindMode, state);
         drawTrail(g, entity, playerX, playerZ, radarScale, center, colour);
-        trailUpdates += 1;
       }
-
+    }
+    for (let i = 0; i < neutralMarks.length; i += 1) {
+      const mark = neutralMarks[i];
+      const entity = mark.entity;
+      if (!entity) continue;
+      const x = mark.x;
+      const y = mark.y;
+      const type = mark.type;
+      const colour = contactColor(entity, playerTeam, colorblindMode, state);
+      if (mark.wantsTrail || trailMap.has(entity.id)) {
+        drawTrail(g, entity, playerX, playerZ, radarScale, center, colour);
+      }
       if (type === 'pickup') {
         const pulse = reducedMotion ? 0.5 : 0.5 + 0.5 * Math.sin(now * 0.005);
+        const beaconPath = glyphPathFor('beacon');
         g.save();
         g.globalAlpha = 0.7 + 0.3 * pulse;
         g.fillStyle = '#ffd98c';
         g.translate(x, y);
         if (!reducedMotion) g.rotate((now * 0.0008) % (Math.PI * 2));
-        g.beginPath();
-        g.moveTo(0, -4.5);
-        g.lineTo(4, 0);
-        g.lineTo(0, 4.5);
-        g.lineTo(-4, 0);
-        g.closePath();
-        g.fill();
+        if (beaconPath) {
+          g.scale(GLYPH_SCALE_NEUTRAL, GLYPH_SCALE_NEUTRAL);
+          g.fill(beaconPath);
+        } else {
+          g.beginPath();
+          g.moveTo(0, -4.5);
+          g.lineTo(4, 0);
+          g.lineTo(0, 4.5);
+          g.lineTo(-4, 0);
+          g.closePath();
+          g.fill();
+        }
         g.restore();
       } else if (type === 'wreck') {
+        const wreckPath = glyphPathFor('wreck');
         g.save();
-        g.strokeStyle = colour;
+        g.strokeStyle = TACTICAL_MAP_PALETTE.wreck;
         g.lineWidth = 1.5;
-        g.beginPath();
-        g.moveTo(x - 3, y - 3);
-        g.lineTo(x + 3, y + 3);
-        g.moveTo(x - 3, y + 3);
-        g.lineTo(x + 3, y - 3);
-        g.stroke();
+        if (wreckPath) {
+          g.translate(x, y);
+          g.scale(GLYPH_SCALE_NEUTRAL, GLYPH_SCALE_NEUTRAL);
+          g.lineWidth = 1.5 / GLYPH_SCALE_NEUTRAL;
+          g.stroke(wreckPath);
+        } else {
+          g.beginPath();
+          g.moveTo(x - 3, y - 3);
+          g.lineTo(x + 3, y + 3);
+          g.moveTo(x - 3, y + 3);
+          g.lineTo(x + 3, y - 3);
+          g.stroke();
+        }
         g.restore();
       } else {
-        neutralOpts.selected = entity.id === targetId;
-        neutralOpts.named = !!(entity.data && entity.data.namedLaneContactId);
+        neutralOpts.selected = mark.selected;
+        neutralOpts.named = mark.named;
         neutralOpts.playerTeam = playerTeam;
         neutralOpts.state = state;
-        drawNeutralContact(g, entity, x, y, entityHeading(entity), colour, neutralOpts);
+        drawNeutralContact(g, entity, x, y, mark.heading, colour, neutralOpts);
       }
-
-      if (entity.id === targetId) drawTargetRing(g, x, y, center);
+      if (mark.poiKind) drawPoiClassMark(g, x, y, mark.poiProgress);
+      if (mark.selected) drawTargetRing(g, x, y, center);
     }
 
     const swarmQuiet = hostileCount >= SWARM_DENSITY_THRESHOLD;
@@ -1215,7 +1863,13 @@ export function createRadar(ctx) {
       const selected = mark.entity.id === targetId;
       hostileOpts.selected = selected;
       hostileOpts.capital = isCapitalContact(mark.entity);
-      drawHostileGlyph(g, mark.x, mark.y, entityHeading(mark.entity), hostileOpts);
+      const hostileGlyphKey = contactGlyphKey(mark.entity);
+      if (!(hostileGlyphKey
+        && drawHostileSilhouette(g, hostileGlyphKey, mark.x, mark.y, entityHeading(mark.entity), hostileOpts)
+      )) {
+        // Unmapped class keeps the semantic hostile chevron.
+        drawHostileGlyph(g, mark.x, mark.y, entityHeading(mark.entity), hostileOpts);
+      }
       if (selected || !swarmQuiet) {
         drawContactThreatPulse(
           g,
@@ -1246,6 +1900,7 @@ export function createRadar(ctx) {
       } else {
         drawStationGlyph(g, mark.x, mark.y, glyphOpts);
       }
+      if (mark.poiKind) drawPoiClassMark(g, mark.x, mark.y, mark.poiProgress);
       if (mark.entity.id === targetId && !mark.offRange) {
         drawTargetRing(g, mark.x, mark.y, center);
       }
@@ -1356,6 +2011,7 @@ export function createRadar(ctx) {
     const beacons = state.beacons;
     if (Array.isArray(beacons) && beacons.length) {
       const beaconPulse = reducedMotion ? 0.5 : 0.5 + 0.5 * Math.sin(now * 0.006);
+      const beaconGlyph = glyphPathFor('beacon');
       g.save();
       g.strokeStyle = '#ffd24a';
       g.fillStyle = '#ffd24a';
@@ -1372,15 +2028,23 @@ export function createRadar(ctx) {
         if (!projected || projected.offRange) continue;
         g.globalAlpha = 0.5 + beaconPulse * 0.4;
         g.beginPath();
-        g.arc(projected.x, projected.y, 4 + beaconPulse * 2, 0, Math.PI * 2);
+        g.arc(projected.x, projected.y, 5.5 + beaconPulse * 2, 0, Math.PI * 2);
         g.stroke();
-        g.beginPath();
-        g.moveTo(projected.x, projected.y - 2.5);
-        g.lineTo(projected.x + 2.5, projected.y);
-        g.lineTo(projected.x, projected.y + 2.5);
-        g.lineTo(projected.x - 2.5, projected.y);
-        g.closePath();
-        g.fill();
+        if (beaconGlyph) {
+          g.save();
+          g.translate(projected.x, projected.y);
+          g.scale(GLYPH_SCALE_NEUTRAL, GLYPH_SCALE_NEUTRAL);
+          g.fill(beaconGlyph);
+          g.restore();
+        } else {
+          g.beginPath();
+          g.moveTo(projected.x, projected.y - 2.5);
+          g.lineTo(projected.x + 2.5, projected.y);
+          g.lineTo(projected.x, projected.y + 2.5);
+          g.lineTo(projected.x - 2.5, projected.y);
+          g.closePath();
+          g.fill();
+        }
       }
       g.restore();
     }
@@ -1394,7 +2058,7 @@ export function createRadar(ctx) {
 
     const ariaLabel = waypoint
       ? `Local tactical radar. You are the lit centre hull. Objective ${label}, ${formatRadarDistance(cue && cue.distance)}.`
-      : 'Local tactical radar. You are the lit centre hull. Hostiles are red chevrons, stations are pale berth hexagons, and gates are steel double rings.';
+      : 'Local tactical radar. You are the lit centre hull. Hostiles are red class silhouettes, stations are cyan berth hexagons, gates are violet double rings, allied ships are green, and nearby traffic is blue-grey. Distant small traffic stays off the dial.';
     if (ariaLabel !== lastAriaLabel) {
       lastAriaLabel = ariaLabel;
       canvas.setAttribute('aria-label', ariaLabel);
@@ -1403,6 +2067,8 @@ export function createRadar(ctx) {
 
   function invalidate() {
     markContactsDirty();
+    asteroidStillCache.armed = false;
+    asteroidStillCache.rescanDraws = 0;
   }
 
   function destroy() {

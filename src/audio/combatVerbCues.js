@@ -3,6 +3,50 @@
 
 const SILENT = (reason) => Object.freeze({ recipe: 'SILENT', reason });
 
+// One refusal voice and one withdrawal shape. The deny recipe is already a short
+// falling tick (186 → 124 Hz); every refusal row points at that same voice.
+export const REFUSAL_VOICE = 'sfx_massline_deny';
+export const REFUSAL_AMMO_VOICE = 'sfx_refusal_empty';
+export const REFUSAL_TARGET_VOICE = 'sfx_refusal_target';
+export const REFUSAL_SHAPE = 'withdrawal';
+export const REFUSAL_ADMIT_MS = 40;
+
+const AMMO_REASONS = new Set([
+  'ammo', 'no_ammo', 'no_stock', 'nostock', 'not_loaded', 'empty_rack', 'empty',
+  'spent', 'dry', 'out_of_ammo', 'outofammo',
+]);
+const TARGET_REASONS = new Set([
+  'target', 'no_target', 'invalid_target', 'bad_target', 'bad_lock', 'not_a_target',
+]);
+
+/** SF-235 — ammo and invalid-target refusals do not share the generic deny tick. */
+export function refusalReasonClass(reason) {
+  const text = String(reason || '').toLowerCase().replace(/[\s-]+/g, '_');
+  if (!text) return 'generic';
+  if (AMMO_REASONS.has(text)) return 'ammo';
+  if (TARGET_REASONS.has(text)) return 'target';
+  return 'generic';
+}
+
+export function resolveRefusalRecipe(reason) {
+  const klass = refusalReasonClass(reason);
+  if (klass === 'ammo') return REFUSAL_AMMO_VOICE;
+  if (klass === 'target') return REFUSAL_TARGET_VOICE;
+  return REFUSAL_VOICE;
+}
+
+export function refusalCaption(reason) {
+  const klass = refusalReasonClass(reason);
+  if (klass === 'ammo') return 'No ammunition.';
+  if (klass === 'target') return 'No valid target.';
+  return 'Action refused.';
+}
+const REFUSAL_ROW = Object.freeze({
+  recipe: REFUSAL_VOICE,
+  shape: REFUSAL_SHAPE,
+  reason: '',
+});
+
 export const COMBAT_VERB_CUES = Object.freeze({
   fire: 'sfx_wpn_pulse_laser',
   hit: 'sfx_hull_scrape',
@@ -40,7 +84,7 @@ export const PLAYER_ACTION_CUES = Object.freeze({
   'mining:richCoreExposed': 'sfx_mining_impact',
   'mining:richCoreFizzle': 'sfx_hull_scrape',
   'mining:podSplit': SILENT('Pod split is a cargo bookkeeping split.'),
-  'mining:bulkHaulDelivered': 'sfx_ui_confirm',
+  'mining:bulkHaulDelivered': 'sfx_cash_register',
   'mining:bulkRequiresTether': SILENT('The refusal is the missing line, already shown.'),
   'mining:npcExtraction': SILENT('NPC extraction is bookkeeping, not the player\'s tool.'),
 
@@ -63,8 +107,8 @@ export const PLAYER_ACTION_CUES = Object.freeze({
   'world:requestUnfiledJump': SILENT('The request is UI copy, not a world sting.'),
 
   alarm: SILENT('The wanted alarm is the existing heat voice, not a new siren.'),
-  'credits:changed': 'sfx_ui_confirm',
-  payout: 'sfx_ui_confirm',
+  'credits:changed': 'sfx_cash_register',
+  payout: 'sfx_cash_register',
 
   'contactHail:offer': SILENT('The hail is the comms voice line, not a second sting.'),
   'contactHail:response': SILENT('The reply is the comms voice line.'),
@@ -72,6 +116,8 @@ export const PLAYER_ACTION_CUES = Object.freeze({
   'contactHail:clear': SILENT('Clearing a hail is bookkeeping.'),
   'contactHail:handoff': SILENT('The handoff is bookkeeping between comms speakers.'),
   hail: SILENT('The hail is the comms voice line, not a second sting.'),
+  // The NPC's own greeting lands as the bark voice on the same tick.
+  'npc:hailed': SILENT('The hail speaks as its bark; a sting would double the greeting.'),
 
   'tether:latched': 'sfx_tether_latch_lock',
   'tether:attached': 'sfx_tether_latch_lock',
@@ -91,13 +137,28 @@ export const PLAYER_ACTION_CUES = Object.freeze({
   'tether:whipImpact': 'sfx_hull_decompress',
   'tether:whipSnap': 'sfx_tether_crack',
   'tether:snapCatch': 'sfx_tether_latch_lock',
-  'tether:latchDenied': SILENT('A refused latch is silence; the line did not meet.'),
-  'tether:cutDenied': SILENT('A refused cut leaves the line where it is.'),
-  'tether:lineControlDenied': SILENT('A refused reel is the winch not moving.'),
-  'fields:hitchLatched': 'sfx_tether_latch_lock',
+  // FB-013 receipts. The tractor capture lands the same tick as tether:latched, whose latch
+  // lock already speaks it; the coupler's rigid lock is the line's load voice rising. Both
+  // receipts are for the picture and the first-use line.
+  'tether:tractorCapture': SILENT('The same-tick latch lock already speaks the capture.'),
+  'tether:couplerLock': SILENT('The rigid lock reads as the load voice rising, not a new sting.'),
+  'tether:latchDenied': REFUSAL_ROW,
+  'tether:cutDenied': REFUSAL_ROW,
+  'tether:lineControlDenied': REFUSAL_ROW,
+  'massSeed:deployDenied': REFUSAL_ROW,
+  'fields:deployDenied': REFUSAL_ROW,
+  'bombs:denied': REFUSAL_ROW,
+  'beam:denied': REFUSAL_ROW,
+  'countermeasure:denied': REFUSAL_ROW,
+  'fields:hitchLatched': 'sfx_hitch_latch',
+  'cloak:faded': 'sfx_cloak_fade',
+  'cloak:dropped': 'sfx_massline_cloak_off',
+  'massline:releaseCancelled': 'sfx_ui_switch_detent',
+  'weapons:momentumSinkPlanted': 'sfx_vector_mine',
+  'weapons:momentumSinkReleased': 'sfx_ui_drawer_latch',
   'fields:hitchCut': 'sfx_tether_twang',
 
-  'cruise:engaged': SILENT('Cruise engage is the lane-lock voice (travel.cruise.engaged → presentation.travel.lane_lock); a raw boost sting would double it.'),
+  'cruise:engaged': SILENT('Cruise engage is owned by the lane-lock voice (presentation.travel.lane_lock); a boost row would double it.'),
   'cruise:dropped': SILENT('Dropping cruise is the thrust voice falling back.'),
   'cruise:charging': SILENT('Cruise charge is the thrust voice, not a new sting.'),
   'cruise:snared': 'sfx_hull_scrape',
@@ -121,13 +182,20 @@ export const PLAYER_ACTION_CUES = Object.freeze({
   'salvage:cutComplete': 'sfx_mining_impact',
   'salvage:actionRead': SILENT('Reading a salvage action is UI.'),
   'salvage:communicatorFound': SILENT('The find is the comms voice.'),
-  'salvage:completed': 'sfx_ui_confirm',
+  'salvage:completed': 'sfx_cash_register',
   'salvage:fieldVulture': SILENT('An NPC vulture is not the player\'s tool.'),
   'salvage:npcExtraction': SILENT('NPC extraction is bookkeeping.'),
   'salvage:npcUnload': SILENT('NPC unload is bookkeeping.'),
   'salvage:placed': SILENT('Placement is the same cut, already heard when it completes.'),
+  // SF-029 sort-pocket receipts. The sheared clamp speaks as the comms line and the loose rope;
+  // the impact is the warn toast; the delivery plays its scan-resolve cue directly; the loss is
+  // bookkeeping on a job that no longer exists.
+  'salvage:sortSeparated': SILENT('The shear is the comms line and the line going slack.'),
+  'salvage:sortImpact': SILENT('The debris strike is the warn toast on the tow.'),
+  'salvage:sortDelivered': SILENT('The delivery plays its own scan-resolve cue directly.'),
+  'salvage:sortLost': SILENT('Losing a job is the absence of the job, not a sting.'),
   'salvage:reactorBurst': 'sfx_hull_decompress',
-  'salvage:reactorTowedClear': SILENT('The clear is bookkeeping after the tow.'),
+  'salvage:reactorTowedClear': 'sfx_wanted_clear',
   'salvage:reactorVented': 'sfx_hull_stress_groan',
   'salvage:changed': SILENT('Salvage bay fill is a meter, not a sting.'),
   'salvage:bayCashedIn': SILENT('The cash-in already plays sfx_loot_collect.'),
@@ -169,6 +237,11 @@ export const PLAYER_ACTION_CUES = Object.freeze({
   // brake has no bus event at all: the brake's rising-edge bite (sfx_brake_bite) is played
   // directly in audioSystem._updateBrakeHiss, one cue per press. There is no 'brake' verb
   // to map, so no row is added here.
+  // BP-02 weak-point hit: the player's shot landed in the exposed subsystem arc.
+  // VFX + floating text already answer it; this is its one ear owner. A bright lock
+  // tick, not another thud — the combat:damage layer voice owns the impact on the
+  // same tick, so the crit reads as skill on top of the hit, never a doubled hit.
+  'combat:weakPointHit': 'sfx_lock_acquired',
   'player:respawn': 'sfx_respawn_chime',
 });
 
@@ -177,7 +250,7 @@ export const COMBAT_VERB_IDS = Object.freeze(Object.keys(COMBAT_VERB_CUES));
 export function combatVerbCueRow(verbId) {
   const row = PLAYER_ACTION_CUES[verbId] || COMBAT_VERB_CUES[verbId];
   if (!row) return null;
-  if (typeof row === 'string') return { recipe: row, reason: '' };
+  if (typeof row === 'string') return { recipe: row, reason: '', shape: '' };
   return row;
 }
 
@@ -185,4 +258,176 @@ export function combatVerbRecipe(verbId) {
   const row = combatVerbCueRow(verbId);
   if (!row || row.recipe === 'SILENT') return '';
   return row.recipe || '';
+}
+
+// Rows that already have one ear owner. A second subscription would double the voice.
+// Aliases (no ':' and not in this map) are not bus events.
+export const VERB_CUE_OWNED_BY = Object.freeze({
+  'combat:fire': 'audioSystem._onFire',
+  'combat:shove': 'audioSystem combat:shove',
+  'projectile:hit': 'audioSystem._onHit',
+  shieldRestored: 'audioSystem shieldRestored',
+  'mining:start': 'audioSystem._onMiningStart',
+  'mining:tick': 'audioSystem._onMiningTick',
+  'mining:beamLocked': 'mining beam loop (mining:start)',
+  'mining:richCoreChargeStart': 'mining beam loop (mining:start)',
+  'mining:ventReady': 'presentation.mining.vent.ready',
+  'ship:boostStart': 'audioSystem ship:boostStart',
+  'credits:changed': 'audioSystem credits:changed',
+  'tether:latched': 'audioSystem tether:latched',
+  'tether:attached': 'masslineInstrument attach',
+  'tether:broke': 'audioSystem tether:broke',
+  'tether:broken': 'masslineInstrument break',
+  'tether:cut': 'audioSystem tether:cut',
+  'tether:snagged': 'audioSystem tether:snagged',
+  'tether:rebound': 'audioSystem tether:rebound',
+  'tether:released': 'tether:cut / tether:releaseRated',
+  'tether:releaseRated': 'masslineInstrument release',
+  'tether:nearBreak': 'masslineInstrument strain',
+  'tether:latchDenied': 'minimalActionAudio',
+  'tether:cutDenied': 'minimalActionAudio',
+  'cloak:faded': 'audioSystem cloak:faded',
+  'cloak:dropped': 'audioSystem cloak:dropped',
+  'massline:releaseCancelled': 'audioSystem massline:releaseCancelled',
+  'weapons:momentumSinkPlanted': 'audioSystem weapons:momentumSinkPlanted',
+  'weapons:momentumSinkReleased': 'audioSystem weapons:momentumSinkReleased',
+  'cruise:snared': 'audioSystem cruise:snared',
+  'drill:start': 'audioSystem drill:start',
+  'drill:break': 'audioSystem drill:break',
+  'drill:spark': 'audioSystem drill:spark',
+  'drill:yield': 'audioSystem drill:yield',
+  'drill:gasHit': 'audioSystem drill:gasHit',
+  'drill:rockDepleted': 'audioSystem drill:rockDepleted',
+  'drill:scanPulse': 'audioSystem drill:scanPulse',
+  'salvage:cutComplete': 'audioSystem salvage:cutComplete',
+  'salvage:reactorTowedClear': 'salvage._onReactorTowedClear',
+  'dock:docked': 'audioSystem._onDocked',
+  'dock:undocked': 'audioSystem._onUndocked',
+  'bombs:detonated': 'bombs detonation audio cue',
+  'player:respawn': 'audioSystem._onPlayerRespawn',
+});
+
+export const REFUSAL_EVENT_IDS = Object.freeze([
+  'tether:latchDenied',
+  'tether:cutDenied',
+  'tether:lineControlDenied',
+  'massSeed:deployDenied',
+  'fields:deployDenied',
+  'bombs:denied',
+  'beam:denied',
+  'countermeasure:denied',
+]);
+
+/**
+ * Every authored row has exactly one dispatcher: the table, a named owner, an alias, or silence.
+ */
+export function verbCueCoverage() {
+  const rows = [];
+  for (const id of Object.keys(PLAYER_ACTION_CUES)) {
+    const row = combatVerbCueRow(id);
+    if (!row) continue;
+    if (row.recipe === 'SILENT') {
+      rows.push({ id, recipe: 'SILENT', shape: '', dispatcher: 'silent', owner: row.reason });
+      continue;
+    }
+    const owner = VERB_CUE_OWNED_BY[id];
+    if (owner) {
+      rows.push({ id, recipe: row.recipe, shape: row.shape || '', dispatcher: 'owner', owner });
+      continue;
+    }
+    if (!id.includes(':')) {
+      rows.push({ id, recipe: row.recipe, shape: row.shape || '', dispatcher: 'alias', owner: '' });
+      continue;
+    }
+    rows.push({ id, recipe: row.recipe, shape: row.shape || '', dispatcher: 'table', owner: '' });
+  }
+  return rows;
+}
+
+export function verbCueDispatchIds() {
+  const ids = [];
+  for (const row of verbCueCoverage()) {
+    if (row.dispatcher === 'table') ids.push(row.id);
+  }
+  return ids;
+}
+
+/** One refusal per source inside the admission gap. A held key cannot machine-gun the tick. */
+export function admitRefusalVoice(book, sourceId, nowMs, gapMs = REFUSAL_ADMIT_MS) {
+  if (!book || sourceId == null) return false;
+  const now = Number(nowMs);
+  if (!Number.isFinite(now)) return false;
+  const key = String(sourceId);
+  const last = book[key];
+  if (last != null && now - last < gapMs) return false;
+  book[key] = now;
+  return true;
+}
+
+/** Weak-point crit admission: one bright tick per target per burst. Spraying a
+ * capital's exposed arc must read as earned ticks, not a machine-gun. Uses the
+ * sim tick when the payload carries one, else the host's wall clock. */
+export const WEAK_POINT_ADMIT_TICKS = 10;
+
+export function admitWeakPointVoice(book, targetId, nowTick, gapTicks = WEAK_POINT_ADMIT_TICKS) {
+  if (!book || targetId == null) return false;
+  const now = Number(nowTick);
+  if (!Number.isFinite(now)) return false;
+  const key = String(targetId);
+  const last = book[key];
+  if (last != null && now - last < gapTicks) return false;
+  book[key] = now;
+  return true;
+}
+
+export function playAuthoredVerbCue(host, id, payload) {
+  const row = combatVerbCueRow(id);
+  if (!host || !row || row.recipe === 'SILENT' || !row.recipe) return null;
+  if (row.shape === REFUSAL_SHAPE) {
+    const rt = host.rt || (host.rt = {});
+    const book = rt._refusalAdmit || (rt._refusalAdmit = Object.create(null));
+    const now = typeof host._wallClockMs === 'function' ? host._wallClockMs() : 0;
+    const source = payload && (payload.sourceId != null ? payload.sourceId
+      : payload.ownerId != null ? payload.ownerId
+        : payload.targetId != null ? payload.targetId
+          : id);
+    if (!admitRefusalVoice(book, `${id}:${source}`, now)) return null;
+  }
+  if (id === 'combat:weakPointHit') {
+    const rt = host.rt || (host.rt = {});
+    const book = rt._weakPointAdmit || (rt._weakPointAdmit = Object.create(null));
+    const tick = payload && Number.isFinite(payload.tick) ? payload.tick
+      : (host.state && Number.isFinite(host.state.tick) ? host.state.tick
+        : (typeof host._wallClockMs === 'function' ? host._wallClockMs() : NaN));
+    if (!admitWeakPointVoice(book, payload && payload.targetId, tick)) return null;
+  }
+  if (typeof host.play !== 'function') return null;
+  const pos = payload && payload.pos;
+  const recipe = row.shape === REFUSAL_SHAPE
+    ? resolveRefusalRecipe(payload && payload.reason)
+    : row.recipe;
+  const played = host.play(recipe, {
+    gain: row.shape === REFUSAL_SHAPE ? 0.62 : 0.55,
+    refusalSource: row.shape === REFUSAL_SHAPE ? id : undefined,
+    reason: payload && payload.reason,
+    shape: row.shape || '',
+    position: pos && Number.isFinite(pos.x) && Number.isFinite(pos.z) ? pos : null,
+  });
+  if (played && row.shape === REFUSAL_SHAPE && typeof host._emitPresentationCaption === 'function') {
+    host._emitPresentationCaption(refusalCaption(payload && payload.reason), {
+      assertive: true,
+      channel: 'refusal',
+    });
+  }
+  return played;
+}
+
+/** Subscribe every row the table itself authors. Owned rows keep their one existing writer. */
+export function installCombatVerbCueDispatch(host, bus) {
+  const ids = verbCueDispatchIds();
+  if (!bus || typeof bus.on !== 'function') return ids;
+  for (const id of ids) {
+    bus.on(id, (payload) => playAuthoredVerbCue(host, id, payload));
+  }
+  return ids;
 }

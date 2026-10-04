@@ -396,6 +396,100 @@ export function buildBreakawayOffer({ epoch = 0 } = {}) {
   };
 }
 
+// ── SF-143: The Counterweight Job — a lawful gate-watch contract ────────────────────────────────
+//
+// A THIRD authored board row over the same Tethys machinery — NOT a launch variant. The yard gate
+// only opens while a qualifying mass holds its cradle, and the yard tug walks sealed crates through
+// while it does. The contract pays for the hold, per delivered crate: the commitment is a physical
+// change of balance, and an interruption is a real choice between keeping the mechanism open and
+// recovering output — never a hidden timer.
+export const COUNTERWEIGHT_WATCH_TYPE = 'counterweight_watch';
+export const COUNTERWEIGHT_WATCH_SOURCE = 'counterweightContract';
+export const COUNTERWEIGHT_WATCH_TAG = 'counterweight:tethys-yard';
+/** MTS runs the yard — the same faction whose freight the launcher throws. */
+export const COUNTERWEIGHT_WATCH_FACTION_ID = 'faction_mts';
+
+export const COUNTERWEIGHT_WATCH_TUNING = Object.freeze({
+  /**
+   * CANDIDATE 5 minutes. The furthest stage point sits ~600 WU from the cradle; placing ballast at
+   * the authored pace (~140 WU/s reference) plus two 500 WU carries at the tug's 34 WU/s cruise
+   * needs under half of it — the rest is the slack a genuine interruption costs.
+   */
+  windowTicks: 18000,
+  /** Per delivered crate. Two crates = 840 cr of carry pay. */
+  rewardPerLegCr: 420,
+  /** Completion bonus for the whole manifest — smaller than a leg, so partial work stays honest. */
+  completionBonusCr: 260,
+  /**
+   * Which crates must arrive. The scene stages exactly two; `legsRequired` names how many the
+   * contract counts a full manifest as — equal, so losing both crates is a clean failure.
+   */
+  legsRequired: 2,
+  riskTier: 2,
+  /** MTS hands yard work to anyone short of openly hostile. */
+  minRep: -20,
+});
+
+export const COUNTERWEIGHT_CUE_TEXT = Object.freeze({
+  accepted: 'Counterweight watch accepted — the yard gate opens only while a mass holds its cradle',
+  armed: 'Yard armed — hold the cradle and the tug walks the crates through',
+  gate_open: 'Gate committed open — the tug is moving the transfer',
+  gate_lost: 'Balance broken — the gate is coming back down',
+  crate_delivered: 'Transfer crate on the pad — the yard logged it',
+  crate_lost: 'A transfer crate is gone — the manifest is smaller now',
+  crew_lost: 'The yard tug is down — nobody left to walk the crates',
+  pressure: 'Raiders inbound on the yard — the balance or the crates, you can only cover one',
+  complete: 'Whole manifest across — the yard paid the watch',
+  partial: 'Watch over — the yard paid for what actually crossed',
+  expired: 'Watch window closed — the yard logged the crates that made it',
+  abandoned: 'Counterweight watch abandoned — the yard logs what crossed',
+});
+
+/**
+ * Build the counterweight-watch offer. Deterministic like `buildHeistOffer`, so a board refresh,
+ * a save round-trip and a fresh boot all agree on its identity.
+ */
+export function buildCounterweightOffer({ epoch = 0 } = {}) {
+  return {
+    id: 'counterweight_tethys_yard_watch',
+    type: COUNTERWEIGHT_WATCH_TYPE,
+    source: COUNTERWEIGHT_WATCH_SOURCE,
+    stationId: PQ019C_HEIST_STATION_ID,
+    factionId: COUNTERWEIGHT_WATCH_FACTION_ID,
+    heistTag: COUNTERWEIGHT_WATCH_TAG,
+    reward_cr: COUNTERWEIGHT_WATCH_TUNING.rewardPerLegCr * COUNTERWEIGHT_WATCH_TUNING.legsRequired
+      + COUNTERWEIGHT_WATCH_TUNING.completionBonusCr,
+    collateral_cr: 0,
+    riskTier: COUNTERWEIGHT_WATCH_TUNING.riskTier,
+    minRep: COUNTERWEIGHT_WATCH_TUNING.minRep,
+    destStationId: PQ019C_HEIST_STATION_ID,
+    destSectorId: PQ019C_HEIST_SECTOR_ID,
+    distance: 0,
+    // No `duration_s`: the watch window is driven by the mission owner, not expired by the clock.
+    params: {
+      heistTag: COUNTERWEIGHT_WATCH_TAG,
+      windowTicks: COUNTERWEIGHT_WATCH_TUNING.windowTicks,
+      rewardPerLegCr: COUNTERWEIGHT_WATCH_TUNING.rewardPerLegCr,
+      legsRequired: COUNTERWEIGHT_WATCH_TUNING.legsRequired,
+      completionBonusCr: COUNTERWEIGHT_WATCH_TUNING.completionBonusCr,
+      fValue: 1,
+    },
+    title: 'The Counterweight — Yard Watch',
+    brief: 'Hold the transfer-yard gate open on its counterweight while the tug walks two sealed crates through.',
+    summary: 'Keep a qualifying mass settled on the cradle; the yard pays per crate delivered.',
+    description: 'The transfer yard\'s gate is balanced on a cradle: park the ballast block on it — '
+      + 'or any heavy body the cradle accepts — and the door slides clear. While it is open the yard '
+      + 'tug carries its sealed crates to the receiver pad. Lose the balance mid-carry and the carry '
+      + 'holds where it is; lose the tug or a crate and the manifest is smaller. The yard pays for '
+      + 'what actually crosses.',
+    authorization: 'MTS — LOGGED WATCH',
+    adminField: 'MANIFEST 2 CRATES · PAID PER DELIVERY',
+    expiresAtEpoch: null,
+    storyTag: null,
+    epochPosted: epoch,
+  };
+}
+
 /**
  * Mission policy per launch variant: which settlement table applies, whether first possession is a
  * reportable theft, which copy is spoken, and the bounded quality bonus. Absent or unknown variant

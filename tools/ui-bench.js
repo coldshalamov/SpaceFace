@@ -830,7 +830,11 @@ async function finishShot(shot) {
         const button = [...screensEl.querySelectorAll('button')].find((el) => (el.textContent || '').toUpperCase().includes(want));
         button?.click();
       }
-      if (shot.overlay) await openOverlay(shot.overlay);
+      if (shot.overlay) {
+        await openOverlay(shot.overlay);
+        // The live loop keeps ticking the HUD under an open radial (the travel tape yields to it).
+        for (let i = 0; i < 24; i += 1) { try { window.__benchHud?.frame?.(1 / 30); } catch { /* still only */ } }
+      }
     }
   } catch (error) {
     showBroken(shot.screen || shot.id, `mount threw: ${error && error.message ? error.message : String(error)}`);
@@ -963,9 +967,19 @@ async function openOverlay(kind) {
     const contact = {
       id: 7, type: 'ship', alive: true, team: 2, radius: 14,
       pos: { x: 80, y: 0, z: 40 }, vel: { x: 0, y: 0, z: 0 },
-      data: { callsign: 'HAULER 12', trafficRole: 'hauler', ai: { passive: true, archetype: 'fleeing_trader' } },
+      data: {
+        callsign: 'HAULER 12',
+        trafficRole: 'hauler',
+        jobId: 'job_hauler_12',
+        cargoManifest: { lines: [{ commodityId: 'cmdty_fuel_cells', qty: 20 }], totalQty: 20 },
+        ai: { passive: true, archetype: 'fleeing_trader' },
+      },
     };
     state.player.targetId = 7;
+    const activeShip = state.player.ownedShips?.[state.player.activeShipIndex || 0];
+    if (activeShip) {
+      activeShip.fittings = ['wpn_autocannon_s', null, null, null, null, 'mod_cargo_scanner_s', 'mod_thruster_stock_s'];
+    }
     state.entities.set(7, contact);
     if (!state.entityList.some((entity) => entity.id === 7)) state.entityList.push(contact);
     const { createCommsRadial } = await import('../src/ui/commsRadial.js');
@@ -1209,6 +1223,7 @@ function scrollHold(el) {
   const rect = el.getBoundingClientRect();
   for (let node = el.parentElement; node && node !== document.body; node = node.parentElement) {
     const style = styleOf(node);
+    if (style.display === 'contents') continue;
     const scrolls = /auto|scroll/.test(`${style.overflowY} ${style.overflowX}`);
     const clips = /hidden|clip/.test(`${style.overflowY} ${style.overflowX} ${style.overflow}`);
     if (!scrolls && !clips) continue;
@@ -1300,6 +1315,11 @@ function textRuns() {
       if (text.length < 2) continue;
       const host = node.parentElement;
       if (!host || host.closest('#bench-bar, #bench-broken, #bench-intent')) continue;
+      // SVG paint-server subtrees (defs/mask/clipPath/pattern/marker/symbol) never print type on
+      // the page — the orrery's wordcut mask carries a copy of each label to punch a hole for it,
+      // and a Range still hands that copy real boxes, so it must be skipped before it can accuse
+      // the visible label it exists to protect.
+      if (host.closest('defs, mask, clipPath, pattern, marker, symbol')) continue;
       if (fadedOut(host)) continue;
       const style = styleOf(host);
       if (alphaOf(style.color) < 0.06) continue;           // spacing tricks and sr-only labels
@@ -1504,6 +1524,8 @@ function severedType(runs) {
     // Text truncated with an ellipsis is deliberately shortened and SAYS so; the reader can see
     // there is more. That is a content decision, not a panel eating its own copy.
     if (/ellipsis/.test(styleOf(run.host).textOverflow || '')) continue;
+    // An animated continuous marquee ticker (e.g. .orr-mkt-tape) deliberately flows outside its bounds
+    if (run.host.closest && run.host.closest('.orr-mkt-tape, [data-marquee], .marquee')) continue;
     const held = scrollHold(run.host);
     if (!held || held.kind !== "clipped") continue;
     found.push(String.fromCharCode(34) + shortText(run.text) + String.fromCharCode(34) + " is cut off by its own panel");
@@ -1526,6 +1548,18 @@ function deadBoxes() {
       if ((el.innerText || '').trim().length) continue;
       if (el.querySelector('img, svg, canvas, video, picture, input, button')) continue;
       if (el.childElementCount) continue;                  // a track with a fill is a drawn shape
+      // A painted leaf beside drawn media in the same parent is that assembly's coat — the medal
+      // face under a dial's svg — not a hole in the layout.
+      const parent = el.parentElement;
+      if (parent) {
+        let siblingMedia = false;
+        for (const sib of parent.children) {
+          if (sib === el) continue;
+          if ((sib.matches && sib.matches('img, svg, canvas, video, picture'))
+            || (sib.querySelector && sib.querySelector('img, svg, canvas, video, picture'))) { siblingMedia = true; break; }
+        }
+        if (siblingMedia) continue;
+      }
       const style = styleOf(el);
       if (style.backgroundImage !== 'none') continue;      // a plate with art on it is content
       const painted = alphaOf(style.backgroundColor) >= 0.2

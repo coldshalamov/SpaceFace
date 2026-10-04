@@ -11,6 +11,8 @@
 import { validateCombatLabSetup } from '../contracts/combatLabSetupSchema.js';
 import { COMBAT_LAB_STARTER_PACKAGES, COMBAT_LAB_ARENAS } from '../data/combatLabSetups.js';
 import { normalizeSwarmStake } from '../data/swarmStakes.js';
+import { normalizeThreatIds } from '../data/swarmThreats.js';
+import { SWARM_CROSSOVER_CATALOG, swarmCrossoverEarned } from '../data/swarmCrossover.js';
 import { SHIPS } from '../data/ships.js';
 import { buildSlotList } from '../systems/ships.js';
 import { applyWeaponsColdLoadout } from '../systems/survivalMutators.js';
@@ -60,6 +62,7 @@ let lastSetup = null;
 /** Build (and validate) a Crucible setup from a starter package id and a seed. */
 export function crucibleSetupFor({
   starterId, seed, arenaId = CRUCIBLE_ARENA_ID, ruleset = CRUCIBLE_DEFAULT_RULESET, swarmStake = null,
+  startWave = 1, swarmThreats = null,
 } = {}) {
   const starter = COMBAT_LAB_STARTER_PACKAGES.find((entry) => entry.id === starterId)
     || COMBAT_LAB_STARTER_PACKAGES.find(entry => entry.id === CRUCIBLE_DEFAULT_STARTER_ID);
@@ -73,7 +76,9 @@ export function crucibleSetupFor({
     enemyPackageId: 'wasp_flight',
     arenaId,
     seed: normalizeSeed(seed),
-    wave: 1,
+    // SWARM-04: the checkpoint's entry wave. Only a swarm launch reads it; the arc, block
+    // and circuit always open at their authored first wave, so it is carried as schema.
+    wave: Number.isInteger(startWave) && startWave > 1 ? startWave : 1,
   });
   // The ruleset is not part of the closed setup schema, so it travels alongside the validated
   // value where the launch config can pick it up. The stake rides the same way — requestCrucibleRun
@@ -82,6 +87,12 @@ export function crucibleSetupFor({
     result.ruleset = normalizeCrucibleRuleset(ruleset);
     if (result.ruleset === SWARM_RULESET && typeof swarmStake === 'string' && swarmStake) {
       result.value.swarmStake = normalizeSwarmStake(swarmStake);
+    }
+    // SWARM-06: the Threat wager rides beside the setup exactly like the stake — never inside
+    // the closed schema. An empty pick stays absent, so a no-wager launch writes nothing.
+    const threats = normalizeThreatIds(swarmThreats);
+    if (result.ruleset === SWARM_RULESET && threats.length) {
+      result.value.swarmThreats = threats;
     }
   }
   return result;
@@ -96,6 +107,7 @@ export function crucibleSetupFor({
  */
 export function crucibleHullSetupFor({
   hullId, seed, arenaId = CRUCIBLE_ARENA_ID, ruleset = CRUCIBLE_DEFAULT_RULESET, swarmStake = null,
+  startWave = 1, swarmThreats = null,
 } = {}) {
   const shipDef = SHIPS.find((entry) => entry && entry.id === hullId);
   if (!shipDef) return { ok: false, issues: [{ path: 'hullId', message: 'Unknown hull' }] };
@@ -106,12 +118,16 @@ export function crucibleHullSetupFor({
     enemyPackageId: 'wasp_flight',
     arenaId,
     seed: normalizeSeed(seed),
-    wave: 1,
+    wave: Number.isInteger(startWave) && startWave > 1 ? startWave : 1,
   });
   if (result && result.ok && result.value) {
     result.ruleset = normalizeCrucibleRuleset(ruleset);
     if (result.ruleset === SWARM_RULESET && typeof swarmStake === 'string' && swarmStake) {
       result.value.swarmStake = normalizeSwarmStake(swarmStake);
+    }
+    const threats = normalizeThreatIds(swarmThreats);
+    if (result.ruleset === SWARM_RULESET && threats.length) {
+      result.value.swarmThreats = threats;
     }
   }
   return result;
@@ -125,16 +141,29 @@ export function crucibleHullChoices() {
     name: ship.name,
     tier: Number.isInteger(ship.tier) ? ship.tier : 0,
     slotCount: buildSlotList(ship).length,
+    // SWARM-06: a swarmEarned hull (the Saucer) is the crossover ledger's proof, not a kit
+    // lock. Until the ledger carries it the door shows the earn line — the goal in the room —
+    // and refuses the pick, so a bare-hull launch can never hand the earn away for free.
+    swarmEarned: typeof ship.swarmEarned === 'string' && ship.swarmEarned ? ship.swarmEarned : null,
+    earned: !(typeof ship.swarmEarned === 'string' && ship.swarmEarned)
+      || swarmCrossoverEarned(ship.swarmEarned),
+    earnText: (() => {
+      const row = typeof ship.swarmEarned === 'string' && ship.swarmEarned
+        ? SWARM_CROSSOVER_CATALOG.find((entry) => entry.id === ship.swarmEarned)
+        : null;
+      return row && row.blurb ? row.blurb : null;
+    })(),
   })).sort((a, b) => a.tier - b.tier || a.name.localeCompare(b.name));
 }
 
 export function normalizeSeed(seed) {
-  const n = Number(seed);
-  if (!Number.isFinite(n)) return CRUCIBLE_SEED_MIN;
-  const i = Math.trunc(n);
-  if (i < CRUCIBLE_SEED_MIN) return CRUCIBLE_SEED_MIN;
-  if (i > CRUCIBLE_SEED_MAX) return CRUCIBLE_SEED_MAX;
-  return i;
+  if (typeof seed === 'string') {
+    const trimmed = seed.trim();
+    if (!/^-?\d+$/.test(trimmed)) return NaN;
+    seed = Number(trimmed);
+  }
+  if (!Number.isFinite(seed)) return NaN;
+  return Number.isInteger(seed) ? seed : Math.trunc(seed);
 }
 
 /** The ordinary launch config, with the Crucible setup and its ruleset riding along. */
@@ -143,6 +172,8 @@ export function crucibleLaunchConfig(setup, ruleset = CRUCIBLE_DEFAULT_RULESET, 
     survivalSetup: setup,
     survivalRuleset: normalizeCrucibleRuleset(ruleset),
     swarmStake: typeof extras.swarmStake === 'string' ? extras.swarmStake : undefined,
+    swarmThreats: Array.isArray(extras.swarmThreats) ? extras.swarmThreats : undefined,
+    swarmPerks: Array.isArray(extras.swarmPerks) ? extras.swarmPerks : undefined,
     openingLesson: extras.openingLesson === true,
   });
 }
@@ -152,7 +183,11 @@ export function crucibleLaunchConfig(setup, ruleset = CRUCIBLE_DEFAULT_RULESET, 
  * through the real New Game request.
  */
 export function requestCrucibleRun(bus, setup, ruleset = CRUCIBLE_DEFAULT_RULESET) {
-  if (!setup) return false;
+  const candidate = setup && setup.value ? setup.value : setup;
+  if (!candidate || candidate.ok === false) return false;
+  if (!Number.isInteger(candidate.seed) || candidate.seed < CRUCIBLE_SEED_MIN || candidate.seed > CRUCIBLE_SEED_MAX) {
+    return false;
+  }
   const requested = normalizeCrucibleRuleset(ruleset);
   let profile = null;
   if (requested === 'boss_circuit') {
@@ -177,8 +212,15 @@ export function requestCrucibleRun(bus, setup, ruleset = CRUCIBLE_DEFAULT_RULESE
   delete launchSetup.weeklyMutatorId;
   delete launchSetup.ghostHash;
   delete launchSetup.swarmStake;
+  delete launchSetup.swarmThreats;
+  delete launchSetup.swarmPerks;
   // The stake travels beside the setup like the ruleset — never inside the closed schema.
   const swarmStake = typeof setup.swarmStake === 'string' ? normalizeSwarmStake(setup.swarmStake) : null;
+  // SWARM-06: same seam for the Threat wager and an explicit perk pick. The door's perks live
+  // on the profile (runSession reads them at begin); a hand-rolled request may still name
+  // them — normalized against the catalog here and earned-checked again at begin.
+  const swarmThreats = normalizeThreatIds(setup.swarmThreats);
+  const swarmPerks = Array.isArray(setup.swarmPerks) ? setup.swarmPerks.slice() : null;
   if (weeklyMutatorId === 'weapons_cold') {
     launchSetup.loadout = applyWeaponsColdLoadout(launchSetup.loadout);
   }
@@ -191,6 +233,10 @@ export function requestCrucibleRun(bus, setup, ruleset = CRUCIBLE_DEFAULT_RULESE
   if (weeklyMutatorId) lastSetup.weeklyMutatorId = weeklyMutatorId;
   if (ghostHash != null) lastSetup.ghostHash = ghostHash;
   if (swarmStake) lastSetup.swarmStake = swarmStake;
+  // The wager is part of what a retry replays — a threat-less retry of a wagered run would
+  // silently fly an easier room under the same result.
+  if (swarmThreats.length) lastSetup.swarmThreats = swarmThreats.slice();
+  if (swarmPerks && swarmPerks.length) lastSetup.swarmPerks = swarmPerks.slice();
   let openingLesson = false;
   if (resolved === SWARM_RULESET && !dailyDateKey && !weeklyMutatorId && ghostHash == null) {
     try {
@@ -201,7 +247,12 @@ export function requestCrucibleRun(bus, setup, ruleset = CRUCIBLE_DEFAULT_RULESE
       openingLesson = false;
     }
   }
-  requestSandboxGame(bus, crucibleLaunchConfig(launchSetup, resolved, { openingLesson, swarmStake }));
+  requestSandboxGame(bus, crucibleLaunchConfig(launchSetup, resolved, {
+    openingLesson,
+    swarmStake,
+    swarmThreats: swarmThreats.length ? swarmThreats : undefined,
+    swarmPerks: swarmPerks && swarmPerks.length ? swarmPerks : undefined,
+  }));
   return true;
 }
 

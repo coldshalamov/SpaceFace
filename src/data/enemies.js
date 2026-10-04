@@ -28,6 +28,8 @@ export const ENEMY_TYPES = [
     // between passes; rounds stay below the starter's pulse damage and the hull stays fragile.
     weapons: [{ id: 'wpn_pulse_laser_s', dmgOverride: 6, rofOverride: 8 }],
     aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 180, leashRadius: 2200 },
+    physicalClass: 'ammunition',
+    telegraph: { bark: 'warn', line: 'The pack turns as one — the whole swarm burns in together.', cue: 'engine_flare' },
     behavior: 'strafe/orbit, packs of 3-6',
     bountyCr: 120, shipClass: 'fighter',
     loot: {
@@ -44,6 +46,8 @@ export const ENEMY_TYPES = [
     maxSpeed: 126, accel: 84, turnRate: 1.5, collisionRadius: 14, mass: 24,
     weapons: [{ id: 'wpn_railgun_m', dmgOverride: 40, rofOverride: 0.7, projSpeedOverride: 700, rangeOverride: 1100 }],
     aiDoctrine: { defaultActivity: 'reposition', roe: 'weapons_free', preferredRange: 280, leashRadius: 3000 },
+    physicalClass: 'ammunition',
+    telegraph: { bark: 'warn', line: 'A rail lance charging at standoff. Break its line or close under cover.', cue: 'weapon_charge' },
     behavior: 'kite at max range, retreat when closed',
     bountyCr: 260, shipClass: 'fighter',
     loot: {
@@ -71,6 +75,7 @@ export const ENEMY_TYPES = [
     // indiscriminate, so the numbers are the lesson: be somewhere else, or put it somewhere else.
     detonator: { blastRadius: 96, damage: 60, impulse: 520, triggerRange: 56 },
     aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 60, leashRadius: 2600 },
+    physicalClass: 'ammunition',
     telegraph: {
       bark: 'warn',
       line: 'Fuse burning. That dart is a flying bomb — shove it, sling it, or put it down before it arrives.',
@@ -93,6 +98,8 @@ export const ENEMY_TYPES = [
     maxSpeed: 112, accel: 91, turnRate: 1.65, collisionRadius: 20, mass: 70,
     weapons: [{ id: 'wpn_autocannon_m' }, { id: 'wpn_autocannon_m' }, { id: 'wpn_pulse_laser_s' }],
     aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 240, leashRadius: 2400 },
+    physicalClass: 'terrain',
+    telegraph: { bark: 'warn', line: 'The bruiser is squaring its prow for a committed run. Slip the pass and take the flank.', cue: 'engine_flare' },
     counterHint: 'It commits to each pass whole — slip the run and take the flank while it hauls around.',
     behavior: 'close to <250wu, circle-strafe, relentless pursue',
     bountyCr: 520, shipClass: 'gunship',
@@ -113,6 +120,8 @@ export const ENEMY_TYPES = [
     maxSpeed: 133, accel: 63, turnRate: 1.2, collisionRadius: 18, mass: 55,
     weapons: [{ id: 'wpn_flak_turret_s', defensiveOnly: true }],
     aiDoctrine: { defaultActivity: 'transit', roe: 'defensive', preferredRange: 280, leashRadius: 2600 },
+    physicalClass: 'terrain',
+    telegraph: { bark: 'scan', line: 'A hold full of something worth hauling. Pressed, it burns for the lane.', cue: 'engine_flare' },
     behavior: 'flee to nearest station/lane, boost when threatened, shoots only if cornered',
     bountyCr: 0, illegalToKill: true, shipClass: 'frigate',
     loot: {
@@ -137,6 +146,8 @@ export const ENEMY_TYPES = [
       packageId: 'reaver_swarm_screen',
       type: 'wasp_swarmer', count: [1, 2], hullThreshold: 0.3,
     },
+    physicalClass: 'terrain',
+    telegraph: { bark: 'warn', line: 'A pirate hull stalking the lane — it presses, calls the swarm, runs when broken.', cue: 'pirate_stalk' },
     behavior: 'aggressive pursue+attack, calls 1-2 swarmers, flees at <20% hull',
     bountyCr: 340, shipClass: 'gunship',
     loot: {
@@ -160,6 +171,8 @@ export const ENEMY_TYPES = [
     maxSpeed: 147, accel: 119, turnRate: 2.1, collisionRadius: 18, mass: 32,
     weapons: [{ id: 'wpn_autocannon_m' }, { id: 'wpn_plasma_cannon_m', occasional: true }],
     aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 260, leashRadius: 2800 },
+    physicalClass: 'ammunition',
+    telegraph: { bark: 'warn', line: 'The ace is lining a pass. Throw mass at it — do not chase its guns.', cue: 'weapon_charge' },
     behavior: 'mid-tier pirate elite, frontier ambush packs',
     bountyCr: 620, shipClass: 'gunship',
     loot: {
@@ -185,6 +198,8 @@ export const ENEMY_TYPES = [
     // pursuit prow is plated for running down a wanted ship head-on; the stern is exposed
     // for exactly as long as an overshoot takes to come back around.
     directionalArmor: { frontArcDeg: 120, frontMult: 0.65, rearArcDeg: 130, rearMult: 1.25 },
+    physicalClass: 'terrain',
+    telegraph: { bark: 'warn', line: 'Interceptor squaring its plated prow for pursuit. Cross the pass and work the stern.', cue: 'engine_flare' },
     counterHint: 'cross_the_pass_shoot_the_stern_while_it_turns_back',
     behavior: 'lawful patrol; hostile only if player wanted; assists at Trusted+ rep',
     bountyCr: 0, factionLawful: true, shipClass: 'gunship',
@@ -207,18 +222,30 @@ export const ENEMY_TYPES = [
       { id: 'wpn_flak_turret_s',  count: 4, turret: true },
     ],
     aiDoctrine: { defaultActivity: 'reposition', roe: 'weapons_free', preferredRange: 260, leashRadius: 3400 },
+    physicalClass: 'terrain',
     telegraph: {
       bark: 'warn',
       line: 'Iron Maw is rolling broadside. Cross its bow before the batteries align.',
       cue: 'broadside_charge',
     },
     counterHint: 'Cross the bow or stern during the charge; the next salvo shifts to the opposite flank.',
-    subsystems: { turretHp: 300, spawnsSwarmers: true, phases: [0.66, 0.33] },
+    // FB-020: every mount is a destructible turret subsystem — shoot the guns off the rails and
+    // the fight phases on physical mount loss. First edge vents the screen; the last edge is the
+    // desperation battery. The old hull-fraction `phases` table is gone: the health bar no longer
+    // drives the fight, the guns do.
+    subsystems: { turretHp: 300, phaseAtTurretsLost: [4, 10] },
     reinforcements: {
       packageId: 'iron_maw_screen',
-      type: 'wasp_swarmer', count: [2, 4], hullThreshold: 0.5,
+      // The screen vents when the first turret edge falls (4 mounts) — the authored beat —
+      // with the hull threshold kept as the mercy trigger for a hull that bypasses its guns.
+      type: 'wasp_swarmer', count: [2, 4], turretsLostAtLeast: 4, hullThreshold: 0.35,
     },
-    behavior: 'slow fortress, destructible turrets, spawns swarmers, phases at 66%/33%',
+    // FB-020: the bow is an armored plate until the second turret edge tears it — shots inside
+    // the prow arc bank off (bossSurface), and only then does the PROW RIB window open for bonus
+    // damage. The class default (rear reactor vent) would punish the authored counterHint.
+    prowSurface: { arcDeg: 70, material: 'iron_plate' },
+    weakPoint: { label: 'PROW RIB', arcCenter: 0, arcHalfWidth: 0.40, bonusMult: 1.35, hint: 'BOW', opensAtTurretEdge: 2 },
+    behavior: 'slow fortress, destructible turrets, vents swarmers on mount loss, desperation battery at the second edge',
     bountyCr: 12000, shipClass: 'capital',
     loot: {
       creditsRange: [4000, 9000],
@@ -244,6 +271,7 @@ export const ENEMY_TYPES = [
       { id: 'wpn_flak_turret_s', defensiveOnly: true },
     ],
     aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 240, leashRadius: 2500 },
+    physicalClass: 'specialist',
     telegraph: { bark: 'warn', line: 'Wake is salted. Turn now or fly through our work.', cue: 'wake_mines' },
     counterHint: 'cut_tether_or_clear_wake',
     behavior: 'mines the wake, prefers cargo and wrecks over clean kills, breaks when outnumbered',
@@ -261,7 +289,9 @@ export const ENEMY_TYPES = [
     id: 'pd_screen_escort', name: 'Point-Defense Screen', shipId: 'ship_bastion',
     silhouette: 'bruiser_armor', factionId: 'faction_reach',
     aiArchetype: 'brawler', levelRange: [4, 9],
-    combatDoctrineId: 'interceptor_flyby',
+    // FB-018: the screen is the row's identity, not an override table entry — the escort holds
+    // its ward-facing slot in every spawn path, survival waves included.
+    combatDoctrineId: 'escort_screen',
     hull: 200, armor: 55, armorFlat: 2, shield: 80, shieldRegen: 11, shieldRegenCapable: true, cap: 190, capRegen: 24,
     maxSpeed: 100, accel: 80, turnRate: 1.5, collisionRadius: 20, mass: 75,
     weapons: [
@@ -270,6 +300,7 @@ export const ENEMY_TYPES = [
       { id: 'wpn_autocannon_m' },
     ],
     aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 240, leashRadius: 2200 },
+    physicalClass: 'specialist',
     telegraph: { bark: 'warn', line: 'Point-defense curtain spinning up. Hold missiles.', cue: 'pd_curtain' },
     counterHint: 'hold_missiles_use_kinetics_peel_escort',
     behavior: 'screens a leader or wreck claim; shreds missiles and light craft at mid range',
@@ -301,6 +332,8 @@ export const ENEMY_TYPES = [
     // ricochet shot banks off the plate instead of landing; every other contact is the
     // ordinary hull. The boss-surface machinery resolves the verdict per contact.
     prowSurface: { arcDeg: 90, material: 'plate' },
+    physicalClass: 'specialist',
+    telegraph: { bark: 'scan', line: 'Customs sweep resolving. Answer it clean or the plated prow comes aboard.', cue: 'scan_sweep' },
     counterHint: 'bank_shots_off_room_plate_or_attack_the_flanks',
     behavior: 'lawful interdiction cutter; hostile only if wanted or contraband scan fails; assists Trusted+ pilots',
     bountyCr: 0, factionLawful: true, shipClass: 'gunship',
@@ -313,15 +346,25 @@ export const ENEMY_TYPES = [
     id: 'choir_zealot', name: 'Choir Zealot', shipId: 'ship_wasp',
     silhouette: 'drone_swarm', factionId: 'faction_choir',
     aiArchetype: 'swarmer', levelRange: [3, 8],
-    combatDoctrineId: 'interceptor_flyby',
-    hull: 70, armor: 10, armorFlat: 0, shield: 40, shieldRegen: 6, cap: 90, capRegen: 22,
+    // FB-017: not a faster wasp — a guardian. The zealot bodies the lane between its marked
+    // packmate and whatever is pressing it, so a Choir pack reads as screen-plus-strikers,
+    // not more of the same swarm. Hull parity with the wasp keeps the difference behavioral.
+    combatDoctrineId: 'escort_screen',
+    hull: 55, armor: 10, armorFlat: 0, shield: 40, shieldRegen: 6, cap: 90, capRegen: 22,
     maxSpeed: 125, accel: 105, turnRate: 2.5, collisionRadius: 12, mass: 17,
     weapons: [
       { id: 'wpn_pulse_laser_s', dmgOverride: 4, rofOverride: 2.6 },
       { id: 'wpn_missile_rack_m', occasional: true },
     ],
-    aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 200, leashRadius: 2300 },
-    behavior: 'ideological pack fighter; ignores cargo, hunts marked symbols and nonbelievers',
+    aiDoctrine: { defaultActivity: 'screen', roe: 'weapons_free', preferredRange: 200, leashRadius: 2300 },
+    // The dart to the ward's defense runs nose-first: a narrow boarding plate banks clean shots
+    // while it interposes — peel it off the marked hull before working the pack.
+    prowSurface: { arcDeg: 90, material: 'plate' },
+    // A guardian role on a throw-weight hull: mass says ammunition, and the honest counter is
+    // pitching it aside or burning through it to the ward — the role shows in doctrine, not class.
+    physicalClass: 'ammunition',
+    telegraph: { bark: 'warn', line: 'The Choir shields its marked own — the zealot bodies the lane to the ward.', cue: 'engine_flare' },
+    behavior: 'ideological pack guardian; screens the marked ally, darts at whatever breaches it',
     bountyCr: 200, shipClass: 'fighter',
     loot: {
       creditsRange: [30, 90],
@@ -335,14 +378,20 @@ export const ENEMY_TYPES = [
     id: 'quiet_ghost', name: 'Quiet Ghost', shipId: 'ship_wasp',
     silhouette: 'sniper_lance', factionId: 'faction_quiet',
     aiArchetype: 'sniper', levelRange: [4, 10],
-    combatDoctrineId: 'ranged_disengager',
-    hull: 85, armor: 15, armorFlat: 1, shield: 55, shieldRegen: 8, cap: 140, capRegen: 24,
+    // FB-017: the stalker variant — same hull as the lancer, a different problem. It only opens
+    // a firing corridor from beyond the player's lock band and relocates to the opposite flank
+    // after every shot.
+    combatDoctrineId: 'ranged_stalker',
+    hull: 70, armor: 15, armorFlat: 1, shield: 55, shieldRegen: 8, cap: 140, capRegen: 24,
     maxSpeed: 130, accel: 90, turnRate: 1.7, collisionRadius: 13, mass: 22,
     weapons: [
       { id: 'wpn_railgun_m', dmgOverride: 36, rofOverride: 0.65, projSpeedOverride: 720, rangeOverride: 1050 },
       { id: 'wpn_emp_disruptor_m', occasional: true },
     ],
     aiDoctrine: { defaultActivity: 'reposition', roe: 'weapons_free', preferredRange: 620, leashRadius: 3200 },
+    // The stealth work is doctrine, not mass: the body is still throw-weight, and break-lock +
+    // close-under-cover is the counter either way. Ammunition is the honest physical read.
+    physicalClass: 'ammunition',
     telegraph: { bark: 'scan', line: 'Ghost already has the shot.', cue: 'sensor_ghost' },
     counterHint: 'break_lock_close_under_cover',
     behavior: 'low-signature sniper; disengages after first alpha, returns from a new bearing',
@@ -367,6 +416,7 @@ export const ENEMY_TYPES = [
     weapons: [{ id: 'wpn_autocannon_m' }, { id: 'wpn_emp_disruptor_m', occasional: true }],
     aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 260, leashRadius: 2800 },
     rareSpecialist: true,
+    physicalClass: 'specialist',
     telegraph: { bark: 'warn', line: 'Enemy Massline spooling. Displace, break anchor, or outmass it.', cue: 'attach_spool' },
     counterHint: 'displace_break_anchor_or_outmass',
     behavior: 'rare specialist; telegraphs a Massline attach then contests the player line until displaced, broken, or outmassed',
@@ -390,6 +440,7 @@ export const ENEMY_TYPES = [
     maxSpeed: 96, accel: 78, turnRate: 1.4, collisionRadius: 21, mass: 96,
     weapons: [{ id: 'wpn_autocannon_m' }, { id: 'wpn_pulse_laser_s' }],
     aiDoctrine: { defaultActivity: 'screen', roe: 'weapons_free', preferredRange: 150, leashRadius: 2600 },
+    physicalClass: 'specialist',
     telegraph: { bark: 'warn', line: 'Enemy screen deploying. The warden is guarding the pack, not hunting you.', cue: 'engine_flare' },
     counterHint: 'outrange_or_ignore_until_pack_commits',
     behavior: 'plants a screen between the nearest packmate and the pressing threat; darts only when the ward is breached',
@@ -424,6 +475,7 @@ export const ENEMY_TYPES = [
       maxAffected: 12,
       presentationTag: 'environmental',
     },
+    physicalClass: 'specialist',
     telegraph: { bark: 'warn', line: 'Anchor field winding. Break radius or move the hull.', cue: 'field_spool' },
     counterHint: 'kill_or_massline_displace_anchor_leave_radius',
     behavior: 'slow command hull; drags a snare field that breaks when the hull dies or moves with it when thrown',
@@ -474,6 +526,7 @@ export const ENEMY_TYPES = [
     // this stamp still resolves the verdict, but the kernel refuses the bank on a non-reflective
     // receipt — damage, never a fabricated bounce.
     surfaceMaterial: 'plate',
+    physicalClass: 'specialist',
     telegraph: {
       bark: 'warn', cue: 'engine_flare',
       line: 'Foreman committing. Mirror prow sheds head-on fire — cross its charge and work the stern.',
@@ -519,12 +572,86 @@ export const ENEMY_TYPES = [
     // crown the systems side authors as 180° directional armor reads in the room as a collar of
     // mirror plates rotating around the bow. Combat numbers stay untouched by this field.
     bossDressing: { kind: 'forge_crown' },
+    physicalClass: 'specialist',
     telegraph: {
       bark: 'warn', cue: 'engine_flare',
       line: 'Forge Regent takes the furnace. Mirror crown wider than the Foreman — cross the pass and work the stern.',
     },
     counterHint: 'The crown sheds the whole front half. Cross its committed pass and shoot the stern, or bank a shot off the room plate into the exposed back.',
     behavior: 'finale committed ram under the furnace crown; wider mirror plate, sustained furnace beam and the room\'s own system',
+    bountyCr: 0, shipClass: 'gunship',
+    loot: null,
+  },
+  // SWARM-07 B3 — the Brood champions (SWARM_EXPANSION §4 B3). Both are REAL combat entities:
+  // they materialize through the same wave package path as the Foreman and hand their hull to
+  // the authored score the wave owner starts (`capitalBoss:start`). Ordinary brood stay light
+  // bodies in the second population; these two are its named set-pieces. Zero pay and no loot
+  // for the same reason the Foreman and Regent carry none: combat pays d.bountyCr/d.loot without
+  // a run-ownership gate, and a survival boss must not leak campaign economy.
+  //
+  // THE BROOD QUEEN. Not a bigger wasp — the room's mother. She is ponderous until the hunt:
+  // the three egg sacs are her guns AND her weak points (turret mounts, destructible through
+  // the ordinary subsystem machinery — a dead sac goes silent), and the sacs hang off her
+  // stern so the weak arc and the mounts tell one story. Her flood is the brood cohort itself:
+  // her wave's plan fields nothing but mites at full population.
+  {
+    id: 'brood_queen', name: 'Brood Queen', shipId: 'ship_saucer',
+    silhouette: 'drone_swarm', factionId: 'faction_reach',
+    aiArchetype: 'brawler', levelRange: [4, 4],
+    combatDoctrineId: 'pack_pursuit',
+    hull: 900, armor: 140, armorFlat: 2, shield: 0, shieldRegen: 0,
+    cap: 300, capRegen: 30,
+    maxSpeed: 46, accel: 30, turnRate: 1.0, collisionRadius: 34, mass: 520,
+    weapons: [
+      // The three sacs: each turret mount is a destructible subsystem (subsystems.turretHp),
+      // so "break the sacs" is a literal verb — a dead mount goes silent through the ordinary
+      // weaponBankReadiness gate, and she enters her last act spitting nothing.
+      { id: 'wpn_plasma_cannon_m', count: 3, turret: true, dmgOverride: 9, rofOverride: 0.7 },
+    ],
+    aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 260, leashRadius: 2400 },
+    subsystems: { turretHp: 220 },
+    // FB-020 weak-point pattern (the Iron Maw's prow rib), moved to her stern: the egg sacs
+    // hang off the back — her back is the soft part, and the same arc the mounts occupy.
+    weakPoint: {
+      label: 'BROOD SAC', arcCenter: Math.PI, arcHalfWidth: 0.62,
+      bonusMult: 1.55, hint: 'The sacs hang off her stern. Cross the lunge and work her back.',
+    },
+    physicalClass: 'specialist',
+    telegraph: {
+      bark: 'warn', cue: 'pd_curtain',
+      line: 'The broodmother floods the room. Her sacs are the weak points — her own brood is ammunition.',
+    },
+    counterHint: 'The sacs are her guns and her soft arc — cross her committed lunge, work the stern, and feed the flood back to her.',
+    behavior: 'broodmother: floods the room with mites, spits acid fans off three sac mounts, then hunts when the sacs are broken',
+    bountyCr: 0, shipClass: 'gunship',
+    loot: null,
+  },
+  //
+  // THE TENDRIL. A giant segmented worm through the asteroid field — the head is this real
+  // hull (a committed weave that cannot turn mid-pass), and its trailing body is the brood
+  // engine's segment chain: light bodies that follow the head, split when a middle segment
+  // dies, and collapse when the head does. Sling it into itself: feed the weave a rock.
+  {
+    id: 'brood_tendril', name: 'The Tendril', shipId: 'ship_hornet',
+    silhouette: 'drone_swarm', factionId: 'faction_reach',
+    aiArchetype: 'brawler', levelRange: [4, 4],
+    combatDoctrineId: 'brawler_commit',
+    hull: 640, armor: 100, armorFlat: 1, shield: 0, shieldRegen: 0,
+    cap: 260, capRegen: 26,
+    maxSpeed: 95, accel: 60, turnRate: 1.4, collisionRadius: 26, mass: 300,
+    weapons: [
+      // A light sting so the head is never free to ignore you between weaves — the body
+      // trailing it is the real weapon.
+      { id: 'wpn_pulse_laser_s', dmgOverride: 7, rofOverride: 1.6 },
+    ],
+    aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 190, leashRadius: 2400 },
+    physicalClass: 'specialist',
+    telegraph: {
+      bark: 'warn', cue: 'engine_flare',
+      line: 'A worm works the field. It cannot turn mid-weave — put a rock on the line.',
+    },
+    counterHint: 'The weave is committed before it starts — sidestep and feed it a rock; break a middle segment and the body splits and hunts on its own.',
+    behavior: 'segmented worm: committed weave passes with a trailing chain that splits when a mid segment dies and collapses when the head does',
     bountyCr: 0, shipClass: 'gunship',
     loot: null,
   },

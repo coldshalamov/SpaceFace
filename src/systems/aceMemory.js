@@ -36,7 +36,8 @@ import {
   promotedPilotIdentity,
   promotedReturnLine,
 } from '../data/pilotCallsigns.js';
-import { rememberMoralDebt, revealMoralDebt } from './moralMemory.js';
+import { ensureMoralMemory, rememberMoralDebt, revealMoralDebt } from './moralMemory.js';
+import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 import { barkFor } from '../data/barks.js';
 import { pirateDoctrineForEntity, reachCultureDoctrineById } from '../data/pirateDoctrines.js';
 import { planetStatesForSector } from '../data/planetStates.js';
@@ -108,9 +109,19 @@ export const aceMemory = {
       this._planetChallengeResolved(p);
     });
     this._listen('sector:enter', (p) => {
+      // Live GPU + flight + hard enter: defer into the cook's FIFO — the census
+      // drains the same two schedulers under its slice clock in listener order.
+      if (deferSectorEnterMaterialization(this.state, p, this._cookProvider)) return;
       this._scheduleCultureIntro(p);
       this._schedulePlanetChallenges(p);
     });
+    // Census arm: ace challenge scheduling lands inside the sector cook deterministically.
+    // The chunked steps ride the slice clock; the emit listener drains them inline.
+    this._cookProvider = (sector) => this._sectorEnterSteps({
+      sectorId: (sector && sector.id) || sectorOf(this.state),
+    });
+    (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
+      .push(this._cookProvider);
     this._listen('save:loaded', () => {
       this._rearmCultureIntroAfterLoad();
       this._rearmPlanetChallengesAfterLoad();
@@ -124,7 +135,11 @@ export const aceMemory = {
     this._listen('combat:kill', (p) => this._promotedKilled(p));
     this._listen('pirateDisengage:triggered', (p) => this._pirateDisengageTriggered(p));
     this._listen('massline:tumbled', (p) => this._flung(p));
+    // FB-139 — a moral-memory return (the spared pilot coming back angry) is announced
+    // through the ace voice and a cited news line, not only felt through the spawn.
+    this._listen('moralMemory:vengefulReturn', (p) => this._vengefulReturn(p));
     this._recentFlung = new Map();
+    this._vengefulAnnounced = new Set();
   },
 
   newGame() {
@@ -343,6 +358,13 @@ export const aceMemory = {
     this._crossedFaction(lean > 0 ? a : b, 1);
   },
 
+  *_sectorEnterSteps(p) {
+    if (!this._subs || !this._subs.length) return;
+    this._scheduleCultureIntro(p);
+    yield;
+    this._schedulePlanetChallenges(p);
+  },
+
   _scheduleCultureIntro(payload, options = {}) {
     const sectorId = payload && typeof payload === 'object'
       ? payload.sectorId
@@ -354,7 +376,7 @@ export const aceMemory = {
       delete memory.cultureIntros[route.aceId];
       return;
     }
-    const now = nowOf(this.state);
+    const now = nowOf(this.state, payload);
     const existing = memory.cultureIntros[route.aceId];
     if (existing && existing.sectorId === route.sectorId && Number.isFinite(existing.dueAt)) {
       if (existing.status === 'pending') return;
@@ -442,7 +464,7 @@ export const aceMemory = {
     const assignments = planetStatesForSector(sectorId);
     if (!assignments.length) return;
     const memory = ensureMemory(this.state);
-    const now = nowOf(this.state);
+    const now = nowOf(this.state, payload);
     for (const assignment of assignments) {
       const challenge = assignment && assignment.challenge;
       if (!challenge || challenge.trigger !== 'sector:enter') continue;
@@ -558,6 +580,49 @@ export const aceMemory = {
     rec.lastSeenAt = rec.lastFlungAt;
     rec.lastSectorId = sectorOf(this.state, payload);
     this._emitTransition('flung', ace, rec);
+  },
+
+  // FB-139 — a spared pilot returning vengeful gets the remembered-bark voice plus a
+  // news line that names the mercy it answers. The debt record is the proof of the
+  // earlier spare: no debt, no announcement (a first encounter stays silent).
+  _vengefulReturn(payload) {
+    if (!payload || payload.id == null || !this.state) return;
+    const memory = ensureMemory(this.state);
+    const debt = ensureMoralMemory(this.state).debts[String(payload.id)] || null;
+    if (!debt) return;
+    const key = `${payload.id}:${payload.encounterId || ''}`;
+    if (this._vengefulAnnounced && this._vengefulAnnounced.has(key)) return;
+    if (this._vengefulAnnounced) this._vengefulAnnounced.add(key);
+    const ace = resolveAce(payload)
+      || promotedAceForRecord(memory[payload.id])
+      || {
+        id: String(payload.id),
+        name: payload.name || debt.name || String(payload.id),
+        crew: (memory[payload.id] && memory[payload.id].crew) || 'the crew',
+        factionId: debt.factionId || 'faction_reach',
+      };
+    const rec = recordFor(memory, ace);
+    rec.encountered = true;
+    rec.returned = true;
+    rec.lastSeenAt = nowOf(this.state, payload);
+    rec.lastSectorId = sectorOf(this.state, payload);
+    const stance = stanceForRecord(rec);
+    const seed = hash32(seedOf(this.state), ace.id, payload.encounterId || 'vengeful');
+    const line = rememberedBarkFor(ace, rec, stance, seed)
+      || `${ace.name}: you should have finished me.`;
+    this._speakAceLine(ace, line, 'vengeful-return', `aceMemory:${ace.id}:vengeful-return`);
+    const mercy = Number.isInteger(debt.mercyOrdinal)
+      ? `mercy no. ${debt.mercyOrdinal}` : 'a spared debt';
+    const headline = `${ace.name} is back for blood — the lane remembers ${mercy}.`;
+    emit(this.bus, 'news:headline', {
+      headline,
+      text: headline,
+      kind: 'ace-vengeful-return',
+      aceId: ace.id,
+      aceName: ace.name,
+      crew: ace.crew,
+      sectorId: rec.lastSectorId || null,
+    });
   },
 
   _playerKill(payload) {
@@ -1765,7 +1830,13 @@ function seedOf(state) {
 }
 
 function nowOf(state, payload) {
+  // The emit stamps enterSimTime (its own clock) — prefer it so a deferred-cook
+  // delivery and a direct emit delivery stamp identical dueAts. Provider-driven
+  // calls carry no payload; the drain pins the same clock on render._deferredEnterClock.
+  if (payload && Number.isFinite(payload.enterSimTime)) return Number(payload.enterSimTime);
   if (payload && Number.isFinite(payload.t)) return Number(payload.t);
+  const deferredClock = state && state.render && state.render._deferredEnterClock;
+  if (Number.isFinite(deferredClock)) return deferredClock;
   return state && Number.isFinite(state.simTime) ? state.simTime : 0;
 }
 

@@ -103,6 +103,32 @@ export const SWARM_EVENT_BY_ID = Object.freeze({
     field: { kind: 'well', bearing: 'center', radius: 520, strength: 140, falloff: 1.15 },
   }),
 
+  // ── asteroid_mill (SWARM-07 B4): the grind and the seam that pays ──
+  mill_surge: event({
+    id: 'mill_surge', name: 'Mill surge', kind: 'surge', factor: 2.2, windupS: 5, windowS: 11,
+    telegraph: 'MILL SURGE — the seam is about to turn hard',
+  }),
+  seam_burst: event({
+    id: 'seam_burst', name: 'Seam burst', kind: 'pulse', windupS: 4, windowS: 7,
+    telegraph: 'SEAM BURST — the middle is about to give',
+    field: { kind: 'repulsor', bearing: 'center', radius: 420, strength: 190, falloff: 1.3 },
+  }),
+
+  // ── the_hive (SWARM-07 B4): the breath, the walls, the eggs ──
+  spore_breath: event({
+    id: 'spore_breath', name: 'Spore breath', kind: 'surge', factor: 1.9, windupS: 5, windowS: 10,
+    telegraph: 'SPORE BREATH — the hive inhales',
+  }),
+  wall_bloom: event({
+    id: 'wall_bloom', name: 'Wall bloom', kind: 'pulse', windupS: 4, windowS: 9,
+    telegraph: 'WALL BLOOM — the room flexes inward',
+    field: { kind: 'well', bearing: 'center', radius: 480, strength: 160, falloff: 1.2 },
+  }),
+  egg_drift: event({
+    id: 'egg_drift', name: 'Egg drift', kind: 'mines', count: 4, windupS: 5, windowS: 0,
+    telegraph: 'EGG DRIFT — the hive seeds the lane',
+  }),
+
   // ── shared cards — every arena can draw these ──
   mine_drift: event({
     id: 'mine_drift', name: 'Mine drift', kind: 'mines', count: 4, windupS: 5, windowS: 0,
@@ -121,6 +147,8 @@ export const SWARM_EVENT_TABLES = Object.freeze({
   cinder_sluice: Object.freeze(['sluice_surge', 'undertow_snap']),
   cryo_drift: Object.freeze(['freeze_front', 'plate_shatter']),
   storm_lattice: Object.freeze(['relay_arc', 'grid_surge']),
+  asteroid_mill: Object.freeze(['mill_surge', 'seam_burst']),
+  the_hive: Object.freeze(['spore_breath', 'wall_bloom', 'egg_drift']),
 });
 
 /** Cards every room can draw — hazards and salvage are not the arena's law. */

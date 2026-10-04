@@ -10,6 +10,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, 'ships'))
+sys.path.insert(0, os.path.join(HERE, 'animations'))
 
 
 def build_variant(base_name, ship_id, colors, extra=None):
@@ -25,4 +26,11 @@ def build_variant(base_name, ship_id, colors, extra=None):
 def main(base_name, ship_id, colors, extra=None):
     import forge_export as E
     ship = build_variant(base_name, ship_id, colors, extra).finish()
-    E.export_ship(ship, E.fleet_spec(ship_id), preview='--live' not in sys.argv)
+    live = '--live' in sys.argv
+    written = E.export_ship(ship, E.fleet_spec(ship_id), preview=not live)
+    if live and hasattr(ship, 'ani38_bank'):
+        # Variants rebuild the banked hull under their own fleet spec, so the bank's
+        # bindings/rest poses are already theirs — bake it under the variant's key.
+        import ANI_38
+        ANI_38.bake_ship_banks(ship, written,
+                               bank_key=E.fleet_spec(ship_id)['file'].replace('_', '-'))

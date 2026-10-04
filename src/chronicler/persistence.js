@@ -11,7 +11,17 @@ const DETAILS = new Set(['cause', 'playerCaused', 'surface', 'victimClass', 'fac
   'provenanceMissing', 'transition', 'aceId', 'crew', 'count', 'returnTier', 'encounterId',
   'level', 'previousLevel', 'reason', 'tier', 'cleared', 'found', 'outcome', 'missionId',
   'manifestId', 'podCount', 'telegraphS', 'formationId', 'gateTo', 'tollAmount', 'wingShips',
-  'wanted', 'inbound']);
+  'wanted', 'inbound',
+  // Authored-story facts (FB-064): the spoken choice, the filed evidence key, the ledger roster,
+  // and the revocation's subject — each with the human-facing `title`/`note` the recall line reads.
+  'choiceId', 'shapeId', 'key', 'source', 'title', 'note', 'rowCount', 'names',
+  'gateId', 'revocationCount',
+  // Marquee-deed facts: the hull bought, the achievement unlocked, the career ladder completed,
+  // and the marquee stunt trick — same `title`/`note` presentation as the authored-story facts.
+  'defId', 'price', 'achievementId', 'category', 'via', 'retroactive', 'careerId',
+  'trickId', 'episodeId', 'rarity', 'baseScore', 'collateralCount',
+  // News-headline facts: the emitter's own kind of headline (with the shared `title`/`note`).
+  'newsKind']);
 const STORY_KEYS = ['id', 'sequence', 'createdAt', 'updatedAt', 'nodes', 'edges', 'groups',
   'revision', 'signature', 'announcedRevision', 'newsRevision', 'newsAt', 'radioRevision'];
 const COUNTS = ['collisionKills', 'rescues', 'aceDefeats'];
@@ -29,6 +39,12 @@ const EVENT_STAGES = Object.freeze({
   'freight:cargoSpilled': ['spill'], 'encounter:ambientPredationTelegraph': ['predation'],
   'formation:discovered': ['survey'], 'gate:verdict': ['gate'],
   'claim:freightDelivered': ['delivery'],
+  'story:playerChoiceRecorded': ['story'], 'story:vergeEvidenceRecorded': ['story'],
+  'story:kurtzLedger': ['story'], 'story:vergeValeGatesRevoked': ['story'],
+  'ship:purchased': ['story'], 'achievement:unlocked': ['story'],
+  'career:ladder:completed': ['story'], 'stunt:trickDetected': ['story'],
+  // The news record channel: normalize.js files an emitter's own headline on the 'story' stage.
+  'news:headline': ['story'],
 });
 function check(ok, message) { if (!ok) throw new TypeError(`Invalid Chronicler snapshot: ${message}`); }
 function object(value, keys, path) {

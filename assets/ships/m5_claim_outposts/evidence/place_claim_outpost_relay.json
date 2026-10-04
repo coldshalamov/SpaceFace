@@ -7,65 +7,97 @@
   "title": "Trade Relay Claim — material-truth V2",
   "source": "assets/ships/m5_claim_outposts/source/places/place_claim_outpost_relay.glb",
   "blend": "assets/ships/m5_claim_outposts/blender/place_claim_outpost_relay_material_truth_v2.blend",
-  "bytes": 13424076,
+  "bytes": 3189868,
   "lod": {
     "lod0": {
-      "triangles": 62992,
-      "drawGroups": 5,
+      "triangles": 27276,
+      "drawGroups": 13,
       "materials": [
         "Material_Accent",
-        "Material_Glass",
+        "Material_Armor",
+        "Material_Emissive_Amber",
+        "Material_Emissive_Cyan",
+        "Material_Emissive_NavGreen",
+        "Material_Emissive_NavRed",
+        "Material_Emissive_Warm",
         "Material_Hull",
+        "Material_Hull_aged",
+        "Material_Hull_role",
         "Material_Mechanical",
-        "Material_Warm"
+        "Material_MechanicalDark",
+        "Material_Warning"
       ]
     },
     "lod1": {
-      "triangles": 27592,
-      "drawGroups": 5,
+      "triangles": 10910,
+      "drawGroups": 13,
       "materials": [
         "Material_Accent",
-        "Material_Glass",
+        "Material_Armor",
+        "Material_Emissive_Amber",
+        "Material_Emissive_Cyan",
+        "Material_Emissive_NavGreen",
+        "Material_Emissive_NavRed",
+        "Material_Emissive_Warm",
         "Material_Hull",
+        "Material_Hull_aged",
+        "Material_Hull_role",
         "Material_Mechanical",
-        "Material_Warm"
+        "Material_MechanicalDark",
+        "Material_Warning"
       ]
     },
     "lod2": {
-      "triangles": 8384,
-      "drawGroups": 5,
+      "triangles": 4860,
+      "drawGroups": 13,
       "materials": [
         "Material_Accent",
-        "Material_Glass",
+        "Material_Armor",
+        "Material_Emissive_Amber",
+        "Material_Emissive_Cyan",
+        "Material_Emissive_NavGreen",
+        "Material_Emissive_NavRed",
+        "Material_Emissive_Warm",
         "Material_Hull",
+        "Material_Hull_aged",
+        "Material_Hull_role",
         "Material_Mechanical",
-        "Material_Warm"
+        "Material_MechanicalDark",
+        "Material_Warning"
       ]
     }
   },
   "aabb": {
     "min": [
-      -48.8364,
-      -17.6696,
-      -47.9295
+      -41.70000076293945,
+      -42.39116668701172,
+      -11.372177124023438
     ],
     "max": [
-      55.5,
-      37.65,
-      47.9295
+      56.5,
+      42.39116668701172,
+      10.5
     ],
     "size": [
-      104.3364,
-      55.3196,
-      95.859
+      98.20000076293945,
+      84.78233337402344,
+      21.872177124023438
     ]
   },
   "materials": [
     "Material_Accent",
-    "Material_Glass",
+    "Material_Armor",
+    "Material_Emissive_Amber",
+    "Material_Emissive_Cyan",
+    "Material_Emissive_NavGreen",
+    "Material_Emissive_NavRed",
+    "Material_Emissive_Warm",
     "Material_Hull",
+    "Material_Hull_aged",
+    "Material_Hull_role",
     "Material_Mechanical",
-    "Material_Warm"
+    "Material_MechanicalDark",
+    "Material_Warning"
   ],
   "metadata": {
     "contractVersion": 1,
@@ -94,21 +126,21 @@
       "lod1",
       "lod2"
     ],
-    "triangleCount": 62992,
+    "triangleCount": 27276,
     "lodTriangles": {
-      "lod0": 62992,
-      "lod1": 27592,
-      "lod2": 8384
+      "lod0": 27276,
+      "lod1": 10910,
+      "lod2": 4860
     },
     "drawGroupsPerLod": {
-      "lod0": 5,
-      "lod1": 5,
-      "lod2": 5
+      "lod0": 13,
+      "lod1": 13,
+      "lod2": 13
     },
     "lod0AabbSize": [
-      104.3364,
-      55.3196,
-      95.859
+      98.20000076293945,
+      84.78233337402344,
+      21.872177124023438
     ],
     "wiringStatus": "production_source",
     "builder": "tools/blender/build_claim_outpost_relay_material_truth_v2.py",
@@ -132,12 +164,13 @@
     }
   },
   "builtAt": "2026-08-04T07:55:17Z",
-  "sha256": "57f6e1a42d0f1b259aada019e1960d1cbb4f81cbe0aaabfe66ed0248a8e206c9",
+  "sha256": "945d66a35df8d0c2c4b553cb8b5e5653c30fbae07a21cb17563f29f83cd7e005",
   "canonical": "assets/ships/parts/places/place_claim_outpost_relay.glb",
   "acceptedCandidate": {
     "path": "assets/ships/m5_claim_outposts/source_candidates/material_truth_v2/places/place_claim_outpost_relay.glb",
     "sha256": "a8789308e39f733bc6565198b2afee0ba5fd106affc54a22dd7d30e40ac10a7a",
     "visualReview": "assets/ships/m5_claim_outposts/evidence/place_claim_outpost_relay_material_truth_v2/visual_review.json",
     "visualReviewSha256": "48eb3102543a31cab6293ac0bce2ce87b8147662b980482887a679e39eeb39e2"
-  }
+  },
+  "rebased": "2026-10-02: measured fields re-pinned to the fleet v2 plating asset landed by a66c602b4 (open-shell construction; sockets/topology verified by test/pq022-relay-collar-admission.test.mjs)"
 }

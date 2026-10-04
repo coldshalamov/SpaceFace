@@ -96,6 +96,7 @@ import {
   releaseNextFieldOpportunity,
 } from './fieldDepletion.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
+import { chooseLawfulStation, recoveryCostQuote } from '../combat/playerDefeat.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { planZoneSpawns, zoneAt, zoneThreat, zonesForSector } from '../data/sectorZones.js'; // named-zone purposeful spawning (WORLD_OVERHAUL_2_1)
 import {
@@ -179,7 +180,9 @@ import {
   dropDressingSector,
   insertDressingRow,
   getDressingRow,
+  markDressingRowPoseDirty,
 } from '../world/dressingTable.js';
+import { stampSolidDressing } from '../world/solidDressing.js';
 import { requestDecodeRunwayPromote, resetWorldPresentationTables } from '../world/presentationSources.js';
 import {
   materializeAlienEcology,
@@ -192,10 +195,12 @@ import {
   materializeMachineLayer,
   tickMachineLayer,
   machineRouteOpen,
+  handleMachinePickupCollected,
 } from './precursorMachines.js'; // Verge-Layer machine layer (doc 07, AE-090..109): same seam
 import { MACHINE_PROTOCOL_FAULTS } from '../data/precursorMachines.js';
 import { createAlienEcologyState, ensureAlienEcologyState } from '../data/alienEcologyState.js';
 import { removeCargo } from './cargo.js';
+import { Masks } from '../core/entity.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import {
   dropFarActorSector,
@@ -255,6 +260,25 @@ function applySameSectorPlayerRelocation(state, entryPoint) {
 const DEFAULT_WORLD_RADIUS = 4000;
 const EMPTY_ONE_OFF_PARTS = []; // no-cluster one-offs iterate this (no allocation per spawn)
 const BASE_FUEL = 4;            // fuel units per lightyear
+// FB-111 — a wedged hull gets a paid door, not a silent reload. Thrust held, the ship
+// producing no displacement and no speed for STUCK_OFFER_S ⇒ one tow offer per wedge
+// episode. A deliberate brake-hold or a coasting hull never counts: only an engine asked
+// for motion it cannot produce.
+const STUCK_OFFER_S = 8;
+const STUCK_DISPLACEMENT_WU = 3;
+const STUCK_SPEED_EPS_WU_S = 4;
+const TOW_BERTH_CLEARANCE_WU = 140;
+// A wedge rescue is a berth tow, not a hull loss — a small fraction of the recovery quote,
+// floored so a starter hull still owes a real service call-out.
+const TOW_FEE_MIN_CR = 120;
+const TOW_FEE_RECOVERY_FRAC = 0.125;
+
+// Same XZ write combat.js applies at a recovery berth — entity vectors are vec3-capable.
+function setVecXZTow(vec, x, z) {
+  if (!vec) return;
+  if (typeof vec.set === 'function') vec.set(x, 0, z);
+  else { vec.x = x; vec.y = 0; vec.z = z; }
+}
 const BASE_INTERDICT = 0.35;
 const GATE_CHARGE = 3.0;        // s align time for a gate jump
 const GATE_COOLDOWN = 0;
@@ -570,6 +594,9 @@ export const world = {
     bus.on('pallasHiddenCache:choose', (p) => this._onPallasHiddenCacheChoice(p || {}));
     bus.on('pickup:collected', (p) => this._onVestaOreCachePickupCollected(p || {}));
     bus.on('pickup:collected', (p) => this._onPallasHiddenCachePickupCollected(p || {}));
+    // SFQ-B141: a committed pickup receipt is the courier token's custody transfer — the
+    // machine layer settles intercept/stolen on the same receipt cargo's listener wrote.
+    bus.on('pickup:collected', (p) => handleMachinePickupCollected(this, p || {}));
     bus.on('save:restoring', () => {
       this._vestaDecisionSignature = null;
       this._pallasDecisionSignature = null;
@@ -631,6 +658,9 @@ export const world = {
     bus.on('ecology:factionOutcome', (p) => handleAlienEcologyEvent(this, 'ecology:factionOutcome', p));
     bus.on('ecology:evidence', (p) => handleAlienEcologyEvent(this, 'ecology:evidence', p));
     bus.on('ecology:quarantinePulse', (p) => handleAlienEcologyEvent(this, 'ecology:quarantinePulse', p));
+    // FB-111 — the deck's "take the tow" verb lands here; the engine re-validates the wedge
+    // before charging or moving anything, so a stale offer can never tow a free ship.
+    bus.on('world:stuckTowAccept', () => this._executeStuckTow());
     bus.on('pickup:collected', (p) => {
       // cargo's listener (registered earlier) has already written the acceptance receipt, so
       // the objective only fires on a committed, actually-accepted amount of THIS site's pod.
@@ -936,6 +966,13 @@ export const world = {
     const prevSectorId = state.world.currentSectorId || null;
     if (prevSectorId && prevSectorId !== sectorId) {
       this.bus.emit('sector:exit', { sectorId: prevSectorId, continuous, noTeleport });
+      // Bump the epoch NOW: the deferred-enter FIFO holds entries minted under the
+      // outgoing epoch, and the residency collect below yields (enter-pre-emit) — a
+      // hold beat inside that gap would still see the old epoch as live and mint into
+      // the departing sector. A run-scoped monotonic minted at exit keeps every
+      // pre-gap payload dead for the rest of the enter.
+      state.enterSerialSeq = (Number(state.enterSerialSeq) || 0) + 1;
+      state.world.enterSerial = state.enterSerialSeq;
     }
 
     // Discovery overlay bookkeeping (§3.8) — entering reveals the sector + one hop.
@@ -1016,7 +1053,46 @@ export const world = {
       tick: state.tick | 0,
       noTeleport,
     });
-    this.bus.emit('sector:enter', { sectorId, sector, entryPoint, firstVisit, continuous, noTeleport });
+    // A per-emit serial lets replay-suppression (traffic's cook dedupe) distinguish the
+    // sliced re-dispatch of THIS emit from a genuinely new same-sector enter under a
+    // frozen simTime — the replay carries this payload verbatim, a new enter mints +1.
+    // The sequence lives on the state root, not the world record: New Game replaces
+    // state.world wholesale, so a per-world counter restarts at 1 and a pending emit tail
+    // carrying epoch 1 would alias into the fresh world. A run-scoped monotonic keeps every
+    // pre-reset payload mismatched forever. Same-sector enters (no exit emit) still mint
+    // here; sector-changing enters already minted at the exit emit above.
+    if (!(prevSectorId && prevSectorId !== sectorId)) {
+      state.enterSerialSeq = (Number(state.enterSerialSeq) || 0) + 1;
+      state.world.enterSerial = state.enterSerialSeq;
+    }
+    const enterPayload = {
+      sectorId, sector, entryPoint, firstVisit, continuous, noTeleport,
+      enterEpoch: state.world.enterSerial,
+      // Tail-drain listeners run ~1-5 presented frames late (32-listener slice at
+      // 4/frame); state.simTime has advanced by then. Carry the emit's sim time so
+      // stamps that want the enter's own clock don't wobble by the window length.
+      enterSimTime: state.simTime,
+      enterTick: state.tick,
+    };
+    // The shell latch must cover the frames between this emit and the renderer's own
+    // tail-position sector:enter listener — the 32-listener slice drains 4/frame after
+    // the present, so the listener's own arm lands ~5 presented frames late while
+    // _meshReconcileDirty is already armed in-step by the residency mint. The first
+    // presented post-enter frame would otherwise run the departing-cohort dispose
+    // storm unlatched inside the magic frame. Arm at emit time, gated on the cook's
+    // own predicate: a latch the cook can't own (software GPU, recook-keep, continuous,
+    // non-flight) would pin the reconcile evict path shut — those enters keep arming
+    // and releasing through the listener's own path.
+    if (state.render
+      && typeof state.render.sectorEnterCookWillRun === 'function'
+      && state.render.sectorEnterCookWillRun(enterPayload) === true) {
+      state.render.sectorShellAdmission = true;
+      // Epoch-stamp the arm so a listener that never takes the cook path (stale-tail
+      // delivery, keep-GPU flip, sync throw) can tell this emit's latch from a newer
+      // enter's and release only its own.
+      state.render.sectorShellAdmissionSerial = state.world.enterSerial;
+    }
+    this.bus.emit('sector:enter', enterPayload);
     return active;
   },
 
@@ -1695,6 +1771,10 @@ export const world = {
       }
       upsertRecord(bag, captured);
       if (e.data) e.data.worldRecordId = captured.recordId;
+      // Register the stamp with the counted lane — the delete path above registers its clear;
+      // an unregistered write leaves byWorldRecordId/byWorldRecordIdCount missing this carrier,
+      // so every lookup takes the self-heal walk and the lane never bumps.
+      registerEntityWorldRecordId(state && state.entityIndex, e);
     });
     // Match _despawnEntityIds' reverse walk and swap-pop ordering without a second population scan.
     this._destroyEntitiesAtIndices(despawnIndexes);
@@ -1727,6 +1807,7 @@ export const world = {
     const list = recordsForSector(bag, sectorId);
     const liveByRecordId = liveRecordEntityIndex(state);
     const farRecordIds = farActorRecordIdSet(state);
+    const deferredRecordIds = restoreEnvelopeRecordIds(state);
     let spawned = 0;
     let hadCombatHistory = false;
     let spawnedBoss = false;
@@ -1742,9 +1823,11 @@ export const world = {
       // Orrin witness recorder) carry no aftermath marker and still rematerialize.
       if (rec.kind === RECORD_KIND.AFTERMATH && aftermathOwnsMarker(state, rec.markerId)) continue;
       if (!recordShouldRematerialize(rec, tier)) continue;
-      // Exactly-once: never double-spawn a live entity for the same record.
+      // Exactly-once: never double-spawn a live entity for the same record. A corpse still
+      // in the index (alive=false written, lifetimeSweep not yet run) is not a live holder —
+      // treating it as one defers rematerialize a pass and can pin a dead id into enemies.
       const existing = liveByRecordId.get(rec.recordId) || null;
-      if (existing) {
+      if (existing && existing.alive !== false) {
         if (active && (rec.kind === RECORD_KIND.NPC || rec.kind === RECORD_KIND.CONVOY || rec.kind === RECORD_KIND.MISSION_TARGET)) {
           if (active.enemies && !active.enemies.includes(existing.id) && existing.type === 'ship') {
             active.enemies.push(existing.id);
@@ -1755,6 +1838,11 @@ export const world = {
       // A shelved far-actor row already carries this record's live state — respawning here would
       // double the actor (it promotes back to a live entity on approach via tickFarActors).
       if (farRecordIds.has(rec.recordId)) continue;
+      // The restore's persistent envelope already carries this record's live body — the saved
+      // hull respawns later in _restoreChunks and is authoritative. Materializing the record
+      // shell now stands a second hull beside every respawned copy (D136: +1 live carrier per
+      // record per save→load round-trip, each later stamped persistent and re-serialized).
+      if (deferredRecordIds && deferredRecordIds.has(rec.recordId)) continue;
       const ent = this._spawnFromDurableRecord(rec, sectorId);
       if (!ent) continue;
       spawned++;
@@ -1803,7 +1891,8 @@ export const world = {
       if ((++processed & 7) === 0) yield 'reconcile:stale-batch';
       if (rec.recordSource !== 'sector_embodiment' || currentIds.has(rec.recordId)) continue;
       if (rec.outcome === 'destroyed' || rec.outcome === 'defeated') continue;
-      if (liveByRecordId.has(rec.recordId)) continue;
+      const holder = liveByRecordId.get(rec.recordId) || null;
+      if (holder && holder.alive !== false) continue;
       delete bag.byId[rec.recordId];
     }
 
@@ -1865,6 +1954,7 @@ export const world = {
     const budgeted = spec.type === 'ship' && budget && typeof budget.request === 'function';
     if (budgeted && budget.request(1, requester) <= 0) {
       if (rec.kind === RECORD_KIND.MISSION_TARGET || rec.isBoss) {
+        this._noteSpawnWitness('criticalDeferred');
         this.bus.emit('world:criticalSpawnDeferred', {
           kind: rec.isBoss ? 'boss_record' : 'mission_record',
           recordId: rec.recordId || null,
@@ -2138,28 +2228,32 @@ export const world = {
     return false;
   },
 
-  _destroyEntityAtIndex(i) {
+  _destroyEntityAtIndex(i, reason) {
     const state = this.state;
     const list = state.entityList;
     const e = list[i];
     if (!e) return;
     const removeEntity = this.helpers && this.helpers.removeEntity;
-    if (typeof removeEntity === 'function') removeEntity(e.id, { immediate: true, index: i });
+    if (typeof removeEntity === 'function') removeEntity(e.id, { immediate: true, index: i, reason });
     else e.alive = false;
   },
 
   // Batch despawn: one index pass via the core multi-corpse helper; falls back to the
   // per-entity walk when helpers are stubbed (minimal harnesses). Indices are normalized to
-  // highest-first — the reverse-walk order every caller used before.
-  _destroyEntitiesAtIndices(indices) {
+  // highest-first — the reverse-walk order every caller used before. Every caller is a
+  // residency-family teardown, so corpse emits carry reason:'sector_residency' like the
+  // run_reset/save_restore/virtualize tags — a listener that can classify the transition
+  // skips work it would otherwise pay per corpse inside the flush.
+  _destroyEntitiesAtIndices(indices, opts) {
     if (!indices || indices.length === 0) return;
     indices.sort((a, b) => b - a);
+    const reason = opts && opts.reason != null ? opts.reason : 'sector_residency';
     const removeAt = this.helpers && this.helpers.removeEntitiesAtIndices;
     if (typeof removeAt === 'function') {
-      removeAt(indices, { immediate: true });
+      removeAt(indices, { immediate: true, reason });
       return;
     }
-    for (let k = 0; k < indices.length; k++) this._destroyEntityAtIndex(indices[k]);
+    for (let k = 0; k < indices.length; k++) this._destroyEntityAtIndex(indices[k], reason);
   },
 
   /**
@@ -2762,18 +2856,40 @@ export const world = {
         ? poi.activityObjectSlotId
         : null;
       if (activityObjectSlotId) poiData.activityObjectSlotId = activityObjectSlotId;
+      // What the player sees is what the ship hits: an authored landmark (or a POI that
+      // explicitly declares collision) takes a fixed measured-skin body. Target-pinned draws
+      // re-derive the body radius so the skin scale equals the drawn scale exactly
+      // (solidDressing.js). An explicit `collides: false` is a no-presence contract (PQ-020
+      // transit pins) and outranks the landmark default; plain markers stay ghosts.
+      const solidPlan = (poi.collides !== false && (poi.landmark || poi.collides === true))
+        ? stampSolidDressing(poiData, {
+          radius: visualRadius,
+          placeTargetRadius: Number(poiData.placeTargetRadius) || 0,
+        })
+        : null;
+      const spawnRadius = solidPlan ? solidPlan.radius : visualRadius;
       const keepLive = fullPresence
         ? poiMustStayLiveActor(poi, activityObjectSlotId)
         : (!!activityObjectSlotId || poi.collides === true);
       const ent = keepLive
         ? this.helpers.spawnEntity({
           type: 'fx', factionId: poi.factionId || null, pos,
-          radius: visualRadius, mass: 0, collides: !!poi.collides, ttl: Infinity,
+          radius: spawnRadius, mass: 0,
+          collides: solidPlan ? true : !!poi.collides,
+          ...(solidPlan ? {
+            physicsBody: { dynamic: false, material: 'prop' },
+            collisionMask: Masks.STATION,
+          } : {}),
+          ttl: Infinity,
           data: poiData,
         })
         : insertDressingRow(this.state, {
           pos,
-          radius: visualRadius,
+          radius: spawnRadius,
+          ...(solidPlan ? {
+            collides: true,
+            physicsBody: { dynamic: false, material: 'prop' },
+          } : {}),
           homeSectorId: sector.id,
           data: poiData,
         });
@@ -2793,8 +2909,9 @@ export const world = {
       });
 
       // A1/V2 physical Quiessence carriers. H1c still owns the eventual dark-freighter art;
-      // these sector-owned, non-colliding actors give the existing scanner and Band routes real
-      // identities today without introducing combatants, physics bodies, or a parallel signal path.
+      // these sector-owned actors give the existing scanner and Band routes real identities.
+      // They are becalmed hulks the player can see, so they take real measured-skin fixed
+      // bodies (solid below) — no combatants, no signal-path change, but no fly-through either.
       const fleetCount = Math.max(0, Math.min(24, Math.trunc(Number(poi.bandLandmarkFleet) || 0)));
       if (fleetCount > 0 && poi.flavorTargetRef) {
         const hullFleetData = (shipIndex) => ({
@@ -2827,22 +2944,35 @@ export const world = {
             x: pos.x + Math.cos(angle) * ring,
             z: pos.z + Math.sin(angle) * ring,
           };
+          const hullData = hullFleetData(shipIndex);
+          const hullPlan = stampSolidDressing(hullData, { radius: 21, placeTargetRadius: 21 });
+          const hullRadius = hullPlan ? hullPlan.radius : 21;
           const hull = fullPresence
             ? this.helpers.spawnEntity({
               type: 'fx',
               pos: hullPos,
-              radius: 21,
+              radius: hullRadius,
               mass: 0,
-              collides: false,
-              physicsBody: false,
+              ...(hullPlan ? {
+                collides: true,
+                physicsBody: { dynamic: false, material: 'prop' },
+                collisionMask: Masks.STATION,
+              } : {
+                collides: false,
+                physicsBody: false,
+              }),
               ttl: Infinity,
-              data: hullFleetData(shipIndex),
+              data: hullData,
             })
             : insertDressingRow(this.state, {
               pos: hullPos,
-              radius: 21,
+              radius: hullRadius,
+              ...(hullPlan ? {
+                collides: true,
+                physicsBody: { dynamic: false, material: 'prop' },
+              } : {}),
               homeSectorId: sector.id,
-              data: hullFleetData(shipIndex),
+              data: hullData,
             });
           this._stampHomeSector(hull, sector.id);
           active.pois.push({
@@ -2924,6 +3054,11 @@ export const world = {
         ent = findLiveRecordEntity(this.state, recordId);
         if (ent) {
           this._decoratePhysicalOneOff(ent, oneOff, sector, recordId, identityKey);
+        } else if (farActorHoldsWorldRecord(this.state, recordId)) {
+          // A shelved far row already owns this record's body. Minting a second copy here
+          // shelves again on exit — one extra durable row per load cycle (D141). The row
+          // promotes back on approach and this path re-decorates it live next materialize.
+          continue;
         } else {
           const mass = oneOff.physicalBody.mass;
           ent = this.helpers.spawnEntity({
@@ -3151,6 +3286,9 @@ export const world = {
       const ent = (entities && entities.get && entities.get(row.id))
         || getDressingRow(this.state, row.id);
       if (ent) ent.rot += row.spin * dt;
+      // Dormant dressing rows (no live entity) need the journal for the renderer pose
+      // gate; live ids no-op inside the mark. Otherwise the prop freezes at insert yaw.
+      markDressingRowPoseDirty(this.state, row.id);
     }
   },
 
@@ -3407,12 +3545,20 @@ export const world = {
       ...(options.wreckAftermath === true ? { wreckAftermath: true } : {}),
       ...(options.worldOneOff === true ? { worldOneOff: true } : {}),
     };
+    // What the player sees is what the ship hits: census-backed places at or above the
+    // craft-scale floor take a fixed measured-skin body (solidDressing.js). The skin's world
+    // scale tracks the same radius the renderer draws at, so collider == visible model.
+    const solidPlan = stampSolidDressing(data, { radius });
     const spec = {
       pos,
       rot: propRot,
       radius,
       homeSectorId: sector.id,
       data,
+      ...(solidPlan ? {
+        collides: true,
+        physicsBody: { dynamic: false, material: 'prop' },
+      } : {}),
     };
     const ent = activityObjectSlotId
       ? this.helpers.spawnEntity({
@@ -3422,7 +3568,13 @@ export const world = {
         rot: spec.rot,
         radius: spec.radius,
         mass: 0,
-        collides: false,
+        ...(solidPlan ? {
+          collides: true,
+          physicsBody: { dynamic: false, material: 'prop' },
+          collisionMask: Masks.STATION,
+        } : {
+          collides: false,
+        }),
         ttl: Infinity,
         flags: { noInterp: true },
         data,
@@ -3615,6 +3767,7 @@ export const world = {
         ? budget.request(hunters, hunterRequester)
         : hunters;
       if (hunterGrant < hunters) {
+        this._noteSpawnWitness('limited');
         this.bus.emit('world:spawnLimited', {
           kind: 'bounty_hunter', sectorId: sector.id, requested: hunters, granted: hunterGrant,
           reason: 'spawn_cap',
@@ -3640,6 +3793,16 @@ export const world = {
         budget.releaseSome(hunterRequester, hunterGrant - huntersSpawned);
       }
     }
+  },
+
+  // MACH-06: cumulative spawn-authority counters the runtime witness samples. Limited clamps
+  // (spawnLimited) and critical deferrals (criticalSpawnDeferred) counted at emit time — a
+  // saturated scene reads non-zero limited / zero critical without a per-event log.
+  _noteSpawnWitness(key) {
+    const w = this.state && this.state.world;
+    if (!w) return;
+    const bag = w.spawnWitness || (w.spawnWitness = { limited: 0, criticalDeferred: 0 });
+    bag[key] = (bag[key] | 0) + 1;
   },
 
   /**
@@ -3684,6 +3847,7 @@ export const world = {
     const requester = `world:boss:${sector.id}:${bossPoi.id}`;
     if (budget && typeof budget.request === 'function' && budget.request(1, requester) <= 0) {
       if (!rec.bossSpawnDeferred) {
+        this._noteSpawnWitness('criticalDeferred');
         this.bus.emit('world:criticalSpawnDeferred', {
           kind: 'boss', sectorId: sector.id, poiId: bossPoi.id, reason: 'spawn_cap',
         });
@@ -4025,6 +4189,9 @@ export const world = {
 
     const observeTick = (state.tick | 0) % WORLD_OBSERVE_SCAN_TICKS === 0;
     this._tickFrameOrigin(state);
+    // A wedge cannot form inside a charge or the tunnel — and an offer latched just before
+    // either is answered only under the tow's jump-state guard in _executeStuckTow.
+    if (jump.state === 'IDLE' || jump.state === 'COOLDOWN') this._updateStuckWatch(dt, state);
     if (observeTick) this._tickResidency(state);
     this._tickDeferredCriticalSpawns(state);
     this._tickScan(dt, state);
@@ -5106,7 +5273,11 @@ export const world = {
       return false;
     }
     jump._unfiledConfirmed = true;
-    this.bus.emit('jump:unfiledConfirmed', { returnSectorId: UNFILED_JUMP_RETURN });
+    const returnSector = this.state.world.sectors[UNFILED_JUMP_RETURN] || SECTOR_BY_ID.get(UNFILED_JUMP_RETURN);
+    this.bus.emit('jump:unfiledConfirmed', {
+      returnSectorId: UNFILED_JUMP_RETURN,
+      interdictionPool: returnSector ? this._enemyPool(returnSector) : null,
+    });
     return true;
   },
 
@@ -5435,19 +5606,39 @@ export const world = {
       const dx = player.pos.x - z.center.x, dz = player.pos.z - z.center.z;
       if (dx * dx + dz * dz <= z.radius * z.radius) {
         nowInside.add(i);
-        if (!inside.has(i)) this.bus.emit('hazard:enter', { entityId: player.id, zoneType: z.type, intensity: this._hazardEffectiveIntensity(z) });
+        if (!inside.has(i)) {
+          this.bus.emit('hazard:enter', { entityId: player.id, zoneType: z.type, intensity: this._hazardEffectiveIntensity(z) });
+          this._emitHazardPresence(player, z, 'enter');
+        }
         if (z.type === 'radiation') this._applyRadiationTick(player, z, dt, state);
       }
     }
     for (const i of inside) {
       if (!nowInside.has(i)) {
         const z = zones[i];
-        if (z) this.bus.emit('hazard:exit', { entityId: player.id, zoneType: z.type, intensity: this._hazardEffectiveIntensity(z) });
+        if (z) {
+          this.bus.emit('hazard:exit', { entityId: player.id, zoneType: z.type, intensity: this._hazardEffectiveIntensity(z) });
+          this._emitHazardPresence(player, z, 'exit');
+        }
       }
     }
     inside.clear();
     this._hazardSet = nowInside;
     this._hazardNextSet = inside;
+  },
+
+  // WORLD-25: radiation and nebula entry/exit raise the HUD alert line. Damage is unchanged.
+  // Boss aftermath keeps its own hazard:changed shape (reason: 'boss_defeated') and is not an entry.
+  _emitHazardPresence(player, zone, phase) {
+    if (!zone || (zone.type !== 'radiation' && zone.type !== 'nebula')) return;
+    if (!this.bus || typeof this.bus.emit !== 'function') return;
+    this.bus.emit('hazard:changed', {
+      entityId: player && player.id,
+      zoneType: zone.type,
+      hazardId: zone.id || null,
+      phase,
+      intensity: this._hazardEffectiveIntensity(zone),
+    });
   },
 
   // Authored intensity × the vent/roar scale the moving-hazard law stamps each tick (1 for
@@ -5577,6 +5768,127 @@ export const world = {
     const f = this.state.fuel;
     f.current = Math.min(f.max, f.current + amount);
     this.bus.emit('fuel:changed', { current: f.current, max: f.max });
+  },
+
+  // --- FB-111: wedged-hull tow -----------------------------------------------------------
+  // A ship thrusting at full commitment that produces neither speed nor displacement is
+  // wedged on geometry physics will not release — the depenetration impulse keeps solving
+  // and losing. After STUCK_OFFER_S of that, the sector offers one paid tow; the engine
+  // re-validates the wedge on accept so a freed ship can never buy a ride it stopped needing.
+
+  _resetStuckWatch(w, cleared) {
+    const wasOffered = w && w.offered === true;
+    w.s = 0;
+    w.live = false;
+    w.offered = false;
+    w.ax = 0;
+    w.az = 0;
+    if (cleared && wasOffered) this.bus.emit('world:stuckCleared', {});
+  },
+
+  _updateStuckWatch(dt, state) {
+    const w = this._stuckWatch || (this._stuckWatch = { s: 0, live: false, offered: false, ax: 0, az: 0 });
+    const player = state.entities && state.entities.get && state.entities.get(state.playerId);
+    const input = state.input;
+    const thrusting = !!(input && Number(input.moveZ) > 0.2 && input.brake !== true);
+    const docked = !!(state.ui && state.ui.docked === true);
+    if (!player || player.alive === false || docked || !thrusting || !player.pos) {
+      this._resetStuckWatch(w, thrusting === false || docked);
+      return;
+    }
+    const px = Number(player.pos.x) || 0;
+    const pz = Number(player.pos.z) || 0;
+    const speed = Math.hypot(Number(player.vel && player.vel.x) || 0, Number(player.vel && player.vel.z) || 0);
+    if (!w.live) {
+      w.live = true;
+      w.ax = px;
+      w.az = pz;
+      w.s = 0;
+      return;
+    }
+    const drifted = Math.hypot(px - w.ax, pz - w.az);
+    if (drifted > STUCK_DISPLACEMENT_WU || speed > STUCK_SPEED_EPS_WU_S) {
+      // The hull still answers the engine — a grind along a wall is motion, not a wedge.
+      this._resetStuckWatch(w, true);
+      return;
+    }
+    w.s += Math.max(0, Number(dt) || 0);
+    if (w.s >= STUCK_OFFER_S && !w.offered) {
+      w.offered = true;
+      const quote = this._stuckTowQuote(state, player);
+      this.bus.emit('world:stuckTowOffer', {
+        stuckS: w.s,
+        stationId: quote && quote.stationId || null,
+        stationName: quote && quote.stationName || null,
+        quotedCr: quote ? quote.quotedCr : null,
+      });
+    }
+  },
+
+  _stuckTowQuote(state, playerEntity) {
+    const station = chooseLawfulStation(state);
+    if (!station) return null;
+    const player = state.player || {};
+    const index = Math.max(0, Math.floor(Number(player.activeShipIndex) || 0));
+    const owned = Array.isArray(player.ownedShips) ? player.ownedShips[index] : null;
+    const shipId = (owned && owned.defId) || (playerEntity && playerEntity.data && playerEntity.data.defId) || 'ship_kestrel';
+    const q = recoveryCostQuote(shipId, player.insurance || {});
+    const base = q && q.insured ? q.insuredCostCr : q.uninsuredCostCr;
+    return {
+      station,
+      stationId: station.id,
+      stationName: station.name || station.id,
+      quotedCr: Math.max(TOW_FEE_MIN_CR, Math.round((Number(base) || 0) * TOW_FEE_RECOVERY_FRAC)),
+    };
+  },
+
+  _executeStuckTow() {
+    const state = this.state;
+    const w = this._stuckWatch;
+    if (!w || w.offered !== true) return;    // no live offer — a stale deck answer tows nothing
+    const player = state.entities && state.entities.get && state.entities.get(state.playerId);
+    if (!player || player.alive === false || !player.pos) return;
+    if (state.ui && state.ui.docked === true) return;
+    // A live jump owns the sector transition. Mid-tunnel the answer is stale — the wedge it
+    // priced was in the sector already leaving; a charging drive stands down for the tow
+    // instead of both transitions landing on the same hull.
+    const jump = state.jump;
+    if (jump && jump.state === 'JUMPING') { this._resetStuckWatch(w, false); return; }
+    if (jump && jump.state === 'CHARGING') this._abortCharge('tow');
+    const quote = this._stuckTowQuote(state, player);
+    if (!quote || !quote.station) return;
+    const charge = { quotedCr: quote.quotedCr };
+    if (this.bus && this.bus.emit) this.bus.emit('economy:towCharge', charge);
+    const station = quote.station;
+    const currentSectorId = state.world && state.world.currentSectorId;
+    if (station.sectorId && station.sectorId !== currentSectorId && typeof this.enterSector === 'function') {
+      this.enterSector(station.sectorId, {
+        via: 'tow',
+        fromSectorId: currentSectorId || null,
+        placePlayer: true,
+      });
+    }
+    const active = state.world && state.world.activeSector;
+    const record = active && Array.isArray(active.stations)
+      ? active.stations.find((st) => st && (st.stationId || st.id) === station.id)
+      : null;
+    const base = record && record.pos ? record.pos : { x: 0, z: 0 };
+    const px = (Number(base.x) || 0) + TOW_BERTH_CLEARANCE_WU;
+    const pz = Number(base.z) || 0;
+    setVecXZTow(player.pos, px, pz);
+    setVecXZTow(player.vel, 0, 0);
+    if (player.prevPos && typeof player.prevPos.copy === 'function') player.prevPos.copy(player.pos);
+    else if (player.prevPos) setVecXZTow(player.prevPos, px, pz);
+    this._resetStuckWatch(w, false);
+    this.bus.emit('toast', {
+      text: charge.ok === false
+        ? `Towed to ${quote.stationName}`
+        : `Towed to ${quote.stationName} — ${Math.round(charge.chargedCr || 0)}cr`
+          + (charge.debtCr > 0 ? ` + ${Math.round(charge.debtCr)}cr on the note` : ''),
+      kind: charge.debtCr > 0 ? 'warn' : 'success',
+      ttl: 4,
+    });
+    this.bus.emit('dock:docked', { stationId: station.id, via: 'tow' });
   },
 
   // --- jump-drive / scanner / fuel-tank module resolution -----------------------------------
@@ -6798,6 +7110,22 @@ function findLiveRecordEntity(state, recordId) {
   if (!recordId || !state) return null;
   const index = state.entityIndex;
   if (index && index.__spacefaceEntityIndexV1 && index.ready === true) {
+    // Same covered+unambiguous gate liveRecordEntityIndex applies to the whole batch: a
+    // provably-unique row on a total-coverage index answers O(1); anything else keeps the
+    // lane-order walk (first-match priority is part of the contract).
+    const byRecord = index.byWorldRecordId instanceof Map ? index.byWorldRecordId : null;
+    if (byRecord) {
+      const entities = state.entities;
+      const indexedIds = index._indexedIds;
+      const covered = entities && typeof entities.values === 'function'
+        && indexedIds instanceof Set && indexedIds.size === entities.size;
+      const count = index.byWorldRecordIdCount instanceof Map
+        ? (index.byWorldRecordIdCount.get(recordId) || 0) : 1;
+      if (covered && count <= 1) {
+        const e = byRecord.get(recordId);
+        return e && e.alive !== false ? e : null;
+      }
+    }
     return findLiveEntityForRecord(index.shipLike, recordId)
       || findLiveEntityForRecord(index.wrecks, recordId)
       || findLiveEntityForRecord(index.stations, recordId)
@@ -6808,33 +7136,65 @@ function findLiveRecordEntity(state, recordId) {
 
 // Batch record->entity lookup for rematerialize/reconcile passes: per-record scans of up to
 // four index lanes (then a far-actor row walk) cost O(records x entities) inside a single
-// chunked-enter section. One entity walk fixes first-match lane order exactly (shipLike,
-// wrecks, stations, payloads — entityList only when the index is cold, then a full-map pass
-// covers holders no lane indexes).
+// chunked-enter section. byWorldRecordId answers O(1) whenever coverage is total (no
+// bare-map divergence and no duplicate carriers); the rare path falls back to the
+// lane-order walk (shipLike, wrecks, stations, payloads — entityList only when the
+// index is cold, then a full-map pass covers holders no lane indexes).
 function liveRecordEntityIndex(state) {
   const map = new Map();
   const index = state && state.entityIndex;
   const indexReady = index && index.__spacefaceEntityIndexV1 && index.ready === true;
-  const lanes = indexReady
-    ? [index.shipLike, index.wrecks, index.stations, index.payloads]
-    : [state && state.entityList];
-  for (const lane of lanes) {
-    if (!lane) continue;
-    for (const e of lane) {
-      if (!e || !e.alive || !e.data || e.data.worldRecordId == null) continue;
-      if (!map.has(e.data.worldRecordId)) map.set(e.data.worldRecordId, e);
+  // Total-coverage index (W26): every live holder registers its data.worldRecordId stamp,
+  // including the non-lane carriers the old lane-union existed to catch. Only the
+  // bare-map residual (entities Map members the index never saw — poiSignal-rebadged
+  // husks) still needs a scan; when the sets agree the index answer is already total.
+  const byRecord = indexReady && index.byWorldRecordId instanceof Map ? index.byWorldRecordId : null;
+  if (byRecord) {
+    const entities = state.entities;
+    const indexedIds = index._indexedIds;
+    const diverged = entities && typeof entities.values === 'function'
+      && (!indexedIds || indexedIds.size !== entities.size);
+    // First-match priority matters to the .get() consumer (it pushes the winner's id into
+    // active.enemies only for ships). A recordId with >1 live carrier could pick a
+    // different winner by index order than by lane order — rebuild lane-priority then.
+    const countMap = index.byWorldRecordIdCount instanceof Map ? index.byWorldRecordIdCount : null;
+    let ambiguous = false;
+    if (countMap) {
+      for (const n of countMap.values()) {
+        if (n > 1) { ambiguous = true; break; }
+      }
     }
+    if (!diverged && !ambiguous) return byRecord;
+    const lanes = [index.shipLike, index.wrecks, index.stations, index.payloads];
+    for (const lane of lanes) {
+      if (!lane) continue;
+      for (const e of lane) {
+        if (!e || !e.alive || !e.data || e.data.worldRecordId == null) continue;
+        if (!map.has(e.data.worldRecordId)) map.set(e.data.worldRecordId, e);
+      }
+    }
+    if (entities) {
+      for (const e of entities.values()) {
+        if (!e || !e.alive || !e.data || e.data.worldRecordId == null) continue;
+        if (!map.has(e.data.worldRecordId)) map.set(e.data.worldRecordId, e);
+      }
+    }
+    return map;
   }
-  // Lane order keeps first-match priority for duplicate record ids; the entities map then
-  // covers holders no lane indexes (poiSignal-rebadged husks keep data.worldRecordId, plus
-  // bare-map carriers) — otherwise a held record rematerializes a second live body.
-  if (indexReady && state.entities && typeof state.entities.values === 'function') {
-    for (const e of state.entities.values()) {
-      if (!e || !e.alive || !e.data || e.data.worldRecordId == null) continue;
-      if (!map.has(e.data.worldRecordId)) map.set(e.data.worldRecordId, e);
-    }
+  for (const e of state && state.entityList || []) {
+    if (!e || !e.alive || !e.data || e.data.worldRecordId == null) continue;
+    if (!map.has(e.data.worldRecordId)) map.set(e.data.worldRecordId, e);
   }
   return map;
+}
+
+// During a save restore, saveSystem publishes the incoming persistent envelope's worldRecordIds
+// on state (null outside a restore). It is the third carrier class of the exactly-once law:
+// the saved live hull respawns at _restoreChunks step 10, so a record it names must not
+// materialize a shell twin here.
+function restoreEnvelopeRecordIds(state) {
+  const set = state && state.restoreEnvelopeRecordIds;
+  return set instanceof Set ? set : null;
 }
 
 // Far-actor shelved rows carrying a worldRecordId — the same batch surface as the live index.

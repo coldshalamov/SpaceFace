@@ -63,7 +63,7 @@ function testPureClassifierRules() {
 
 function testRoleFallbackCoversCanonicalHulls() {
   const identities = SHIPS.map((ship) => classifyBuildIdentity([], { shipId: ship.id, shipDef: ship }));
-  assert.equal(identities.length, 14, 'all canonical hulls were classified');
+  assert.equal(identities.length, SHIPS.length, 'all canonical hulls were classified');
   assert.equal(identities.every((identity) => identity && identity.id !== 'unknown'), true,
     'no canonical hull falls through to Unknown');
   assert.ok(new Set(identities.map((identity) => identity.id)).size >= 7,

@@ -24,7 +24,7 @@
       "nodeName": "SOCKET_Approach",
       "nodePath": [
         0,
-        31
+        32
       ],
       "parentNodeId": "sf.render.freight-platform.root",
       "worldTransform": [
@@ -70,7 +70,7 @@
       "nodeName": "SOCKET_Crane_Mount",
       "nodePath": [
         0,
-        32
+        33
       ],
       "parentNodeId": "sf.render.freight-platform.root",
       "worldTransform": [
@@ -105,7 +105,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "e98b61f047b530eb4de2f5d6843a76cc8344939680d64f580f3d0de746bc2a03",
+  "contentHash": "73e4d157bf3d9cfb4069733995f8bd85e98b4ba051b14dae5a1de0a9e06a1c9d",
   "dynamicGroups": [
     {
       "id": "sf.render.freight-platform.mesh.lod0-hook-nav-starboard.dynamic",
@@ -138,7 +138,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f8d79b0f28eb488a975b4f478fde344285501773cf7a425cd75dd0cf41cbf515",
+      "geometryHash": "38be813c2ac2fa11d153feb24e9b5b87729eeca5e4589515b4cf3529c5470cbd",
       "id": "sf.render.freight-platform.mesh.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -147,7 +147,7 @@
       "meshName": "COLLISION_HULL",
       "nodeId": "sf.render.freight-platform.mesh.collision-hull",
       "primitiveIndex": 0,
-      "vertexCount": 793
+      "vertexCount": 791
     },
     {
       "bounds": {
@@ -167,7 +167,7 @@
       "id": "sf.render.freight-platform.mesh.lod0-armor.primitive.0",
       "indexCount": 24012,
       "indexed": true,
-      "materialHash": "3b5154ad7ec0ee2263502c49e749f2a8dbe1fd5159df213996c1e629139c80de",
+      "materialHash": "3fdf83f5cb4a7ed64bc4eb10daa7d230674d9a4fe6c89acbc77b5876e62261ae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.freight-platform.mesh.lod0-armor",
@@ -242,7 +242,7 @@
       "id": "sf.render.freight-platform.mesh.lod0-hull-aged.primitive.0",
       "indexCount": 5076,
       "indexed": true,
-      "materialHash": "2d299a521e33418e4ea0177839a0a21ee873f7b7111ce753fca4298cde0c6529",
+      "materialHash": "eb6bbae95702790bb530b9a9b183b944e44e4379df1d81330fc0fd136fd9a95f",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull_aged",
       "nodeId": "sf.render.freight-platform.mesh.lod0-hull-aged",
@@ -267,7 +267,7 @@
       "id": "sf.render.freight-platform.mesh.lod0-hull.primitive.0",
       "indexCount": 564,
       "indexed": true,
-      "materialHash": "674f214b9b571ec60dc6b3efdfadea784fdec9ba52c8031b1484252ba6e6d9cf",
+      "materialHash": "98b096766a0680120cab62183d970ab98c99a47cde4a9e05aee6028a57c333e3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull",
       "nodeId": "sf.render.freight-platform.mesh.lod0-hull",
@@ -317,7 +317,7 @@
       "id": "sf.render.freight-platform.mesh.lod0-livery.primitive.0",
       "indexCount": 288,
       "indexed": true,
-      "materialHash": "c04050ece7eed601368e1e3e6597c97bcc75e751d8c2b9afe4c6f24267f5fbca",
+      "materialHash": "c12264d30e7b2c912f1bfbb9f16d4dd46ece206468223c6161b35f8a93a2d736",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Livery",
       "nodeId": "sf.render.freight-platform.mesh.lod0-livery",
@@ -342,7 +342,7 @@
       "id": "sf.render.freight-platform.mesh.lod0-mechanical.primitive.0",
       "indexCount": 1164,
       "indexed": true,
-      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Mechanical",
       "nodeId": "sf.render.freight-platform.mesh.lod0-mechanical",
@@ -363,16 +363,141 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7b5b64e629a9e705f241220d821ad3dba066721f9abb39634dd821e30359250e",
+      "geometryHash": "5f34ec7f6be4acc1bbc150f1e4747837122d3129e108aedfd79d4dc52b82631f",
       "id": "sf.render.freight-platform.mesh.lod0-mechanicaldark.primitive.0",
-      "indexCount": 732,
+      "indexCount": 1860,
       "indexed": true,
-      "materialHash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
+      "materialHash": "5ef013365e942f1ac873c307ca54a13fa701007aa7b44366c2578f5021f209c3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalDark",
       "nodeId": "sf.render.freight-platform.mesh.lod0-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 358
+      "vertexCount": 710
+    },
+    {
+      "bounds": {
+        "max": [
+          0.7998107075691223,
+          7.600094489753246,
+          4.649999618530273
+        ],
+        "min": [
+          -0.7998107075691223,
+          6.59990531206131,
+          -4.649999618530273
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bc424752a6b11ec64298f1e58464824119f0c98bc20bb290d75b28d2256a44ba",
+      "id": "sf.render.freight-platform.mesh.lod0-motion-freight-bridge-mechanical.primitive.0",
+      "indexCount": 1128,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_FREIGHT_BRIDGE_Mechanical",
+      "nodeId": "sf.render.freight-platform.mesh.lod0-motion-freight-bridge-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 360
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5997253060340881,
+          7.899816870689392,
+          4.599999904632568
+        ],
+        "min": [
+          -0.5997253060340881,
+          7.100183129310608,
+          -4.599999904632568
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8c0b90ab22081070f659628f6e42a73643a32a8492aa82fb54ac9afa604d4282",
+      "id": "sf.render.freight-platform.mesh.lod0-motion-freight-bridge-warning.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "ab17b13dc8559ae23c6f811ce161feb70cde245b1a0b56a5276df68c3fcd4508",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_FREIGHT_BRIDGE_Warning",
+      "nodeId": "sf.render.freight-platform.mesh.lod0-motion-freight-bridge-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 176
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5500214099884033,
+          7.299955770373344,
+          2.6500000953674316
+        ],
+        "min": [
+          -0.5500214099884033,
+          6.700044214725494,
+          1.350000023841858
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "61f3558b69c00ec4f5458a68dc1125bb9d284e4aaa5cb203de7b84ba0e4d9fe3",
+      "id": "sf.render.freight-platform.mesh.lod0-motion-freight-carriage-mechanical.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_FREIGHT_CARRIAGE_Mechanical",
+      "nodeId": "sf.render.freight-platform.mesh.lod0-motion-freight-carriage-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 188
+    },
+    {
+      "bounds": {
+        "max": [
+          0.06723842024803162,
+          6.900000095367432,
+          2.0672384575009346
+        ],
+        "min": [
+          -0.06723837554454803,
+          5.699999809265137,
+          1.932761661708355
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fb04958cfe1c97235fdb77a5baf7a39a42b867c4694e938ef759a352e7ab0839",
+      "id": "sf.render.freight-platform.mesh.lod0-motion-freight-hook-mechanicaldark.primitive.0",
+      "indexCount": 1140,
+      "indexed": true,
+      "materialHash": "5ef013365e942f1ac873c307ca54a13fa701007aa7b44366c2578f5021f209c3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_FREIGHT_HOOK_MechanicalDark",
+      "nodeId": "sf.render.freight-platform.mesh.lod0-motion-freight-hook-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 351
+    },
+    {
+      "bounds": {
+        "max": [
+          0.24262851476669312,
+          5.700007319450378,
+          2.242628574371338
+        ],
+        "min": [
+          -0.24262851476669312,
+          5.299992680549622,
+          1.7573715448379517
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6d9e0df8d767076d27196798f45ccb978c7647e63e248b4d2a49222c7834c26c",
+      "id": "sf.render.freight-platform.mesh.lod0-motion-freight-hook-warning.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "ab17b13dc8559ae23c6f811ce161feb70cde245b1a0b56a5276df68c3fcd4508",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_FREIGHT_HOOK_Warning",
+      "nodeId": "sf.render.freight-platform.mesh.lod0-motion-freight-hook-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 168
     },
     {
       "bounds": {
@@ -392,7 +517,7 @@
       "id": "sf.render.freight-platform.mesh.lod0-warning.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "b346ef27b8bd0571f026a51f92b71837372b5d77cb3b86c4d29f6277ec71629f",
+      "materialHash": "ab17b13dc8559ae23c6f811ce161feb70cde245b1a0b56a5276df68c3fcd4508",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Warning",
       "nodeId": "sf.render.freight-platform.mesh.lod0-warning",
@@ -413,16 +538,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e1724d31ac68334f13b45c86f16bc12b654cdc5e80f1fe13de5a6c4ba6b148dd",
+      "geometryHash": "5d4b5a7c5f0d1f03ba1666410c06ba75444c0371d96b128692547c6ebd41ee74",
       "id": "sf.render.freight-platform.mesh.lod1-armor.primitive.0",
-      "indexCount": 6174,
+      "indexCount": 6240,
       "indexed": true,
-      "materialHash": "3b5154ad7ec0ee2263502c49e749f2a8dbe1fd5159df213996c1e629139c80de",
+      "materialHash": "3fdf83f5cb4a7ed64bc4eb10daa7d230674d9a4fe6c89acbc77b5876e62261ae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor",
       "nodeId": "sf.render.freight-platform.mesh.lod1-armor",
       "primitiveIndex": 0,
-      "vertexCount": 2240
+      "vertexCount": 2246
     },
     {
       "bounds": {
@@ -488,16 +613,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6547e0ba51ed5bc9f1ed62d7df40b9d40887b72921043cb900185a6911fdd642",
+      "geometryHash": "3cfce58bfa825909dea1199b937c4d0fc860772b5ec91a94b07b3ea00469aba1",
       "id": "sf.render.freight-platform.mesh.lod1-hull-aged.primitive.0",
-      "indexCount": 3960,
+      "indexCount": 4080,
       "indexed": true,
-      "materialHash": "2d299a521e33418e4ea0177839a0a21ee873f7b7111ce753fca4298cde0c6529",
+      "materialHash": "eb6bbae95702790bb530b9a9b183b944e44e4379df1d81330fc0fd136fd9a95f",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull_aged",
       "nodeId": "sf.render.freight-platform.mesh.lod1-hull-aged",
       "primitiveIndex": 0,
-      "vertexCount": 1276
+      "vertexCount": 1290
     },
     {
       "bounds": {
@@ -517,7 +642,7 @@
       "id": "sf.render.freight-platform.mesh.lod1-hull.primitive.0",
       "indexCount": 564,
       "indexed": true,
-      "materialHash": "674f214b9b571ec60dc6b3efdfadea784fdec9ba52c8031b1484252ba6e6d9cf",
+      "materialHash": "98b096766a0680120cab62183d970ab98c99a47cde4a9e05aee6028a57c333e3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull",
       "nodeId": "sf.render.freight-platform.mesh.lod1-hull",
@@ -567,7 +692,7 @@
       "id": "sf.render.freight-platform.mesh.lod1-livery.primitive.0",
       "indexCount": 288,
       "indexed": true,
-      "materialHash": "c04050ece7eed601368e1e3e6597c97bcc75e751d8c2b9afe4c6f24267f5fbca",
+      "materialHash": "c12264d30e7b2c912f1bfbb9f16d4dd46ece206468223c6161b35f8a93a2d736",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Livery",
       "nodeId": "sf.render.freight-platform.mesh.lod1-livery",
@@ -592,7 +717,7 @@
       "id": "sf.render.freight-platform.mesh.lod1-mechanical.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Mechanical",
       "nodeId": "sf.render.freight-platform.mesh.lod1-mechanical",
@@ -613,16 +738,141 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5b5caa830cfcb2c1135794f4e668099692c45bf60491bfb81b8b85a4514d29b8",
+      "geometryHash": "6a07167bb0a9f50f46fbd00018a1c8be87590e4245ede9e4a013bdc9dcb0d068",
       "id": "sf.render.freight-platform.mesh.lod1-mechanicaldark.primitive.0",
-      "indexCount": 402,
+      "indexCount": 666,
       "indexed": true,
-      "materialHash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
+      "materialHash": "5ef013365e942f1ac873c307ca54a13fa701007aa7b44366c2578f5021f209c3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MechanicalDark",
       "nodeId": "sf.render.freight-platform.mesh.lod1-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 250
+      "vertexCount": 366
+    },
+    {
+      "bounds": {
+        "max": [
+          0.7977213859558105,
+          7.597015470266342,
+          4.647747993469238
+        ],
+        "min": [
+          -0.7977213859558105,
+          6.602984368801117,
+          -4.647747993469238
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c4bce7035ee8f21ee20069270ca0af43e1d7a0113eee42660c038ca223174084",
+      "id": "sf.render.freight-platform.mesh.lod1-motion-freight-bridge-mechanical.primitive.0",
+      "indexCount": 360,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_FREIGHT_BRIDGE_Mechanical",
+      "nodeId": "sf.render.freight-platform.mesh.lod1-motion-freight-bridge-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 140
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5971426367759705,
+          7.897209018468857,
+          4.597409248352051
+        ],
+        "min": [
+          -0.5971426367759705,
+          7.102515369653702,
+          -4.597409248352051
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e513dc1f43930d55123da5605b995323f45b0f0995b4a0aeb9d505dcfffb2935",
+      "id": "sf.render.freight-platform.mesh.lod1-motion-freight-bridge-warning.primitive.0",
+      "indexCount": 312,
+      "indexed": true,
+      "materialHash": "ab17b13dc8559ae23c6f811ce161feb70cde245b1a0b56a5276df68c3fcd4508",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_FREIGHT_BRIDGE_Warning",
+      "nodeId": "sf.render.freight-platform.mesh.lod1-motion-freight-bridge-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 118
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5484757423400879,
+          7.298574484884739,
+          2.6483113765716553
+        ],
+        "min": [
+          -0.5485060214996338,
+          6.701425999403,
+          1.3515545129776
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "acd2a4b11b671eac5153628f4711d30bb1bbe61b419d454f6c75c688f8b2ba89",
+      "id": "sf.render.freight-platform.mesh.lod1-motion-freight-carriage-mechanical.primitive.0",
+      "indexCount": 222,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_FREIGHT_CARRIAGE_Mechanical",
+      "nodeId": "sf.render.freight-platform.mesh.lod1-motion-freight-carriage-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 88
+    },
+    {
+      "bounds": {
+        "max": [
+          0.06852315366268158,
+          6.898857593536377,
+          2.06862910091877
+        ],
+        "min": [
+          -0.06815000623464584,
+          5.701432704925537,
+          1.9313712567090988
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5922312442872f7d6cc71343e142c3b806388f3d86e949c0237e3eb1a5aa387e",
+      "id": "sf.render.freight-platform.mesh.lod1-motion-freight-hook-mechanicaldark.primitive.0",
+      "indexCount": 276,
+      "indexed": true,
+      "materialHash": "5ef013365e942f1ac873c307ca54a13fa701007aa7b44366c2578f5021f209c3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_FREIGHT_HOOK_MechanicalDark",
+      "nodeId": "sf.render.freight-platform.mesh.lod1-motion-freight-hook-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 124
+    },
+    {
+      "bounds": {
+        "max": [
+          0.24262851476669312,
+          5.700007319450378,
+          2.242628574371338
+        ],
+        "min": [
+          -0.24262851476669312,
+          5.299992680549622,
+          1.7573715448379517
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d19f9987329bdaee32d0a0b1e80c9263231874e66e95d77287b2c8aa83834e6e",
+      "id": "sf.render.freight-platform.mesh.lod1-motion-freight-hook-warning.primitive.0",
+      "indexCount": 402,
+      "indexed": true,
+      "materialHash": "ab17b13dc8559ae23c6f811ce161feb70cde245b1a0b56a5276df68c3fcd4508",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_FREIGHT_HOOK_Warning",
+      "nodeId": "sf.render.freight-platform.mesh.lod1-motion-freight-hook-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 127
     },
     {
       "bounds": {
@@ -642,7 +892,7 @@
       "id": "sf.render.freight-platform.mesh.lod1-warning.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "b346ef27b8bd0571f026a51f92b71837372b5d77cb3b86c4d29f6277ec71629f",
+      "materialHash": "ab17b13dc8559ae23c6f811ce161feb70cde245b1a0b56a5276df68c3fcd4508",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Warning",
       "nodeId": "sf.render.freight-platform.mesh.lod1-warning",
@@ -663,16 +913,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9740f71fb951f892c20b9506af3e229feda6124c5196d7879f08d8e5c6d6d63b",
+      "geometryHash": "0efec2f1d80b8e933fd9170da765c487e136a7b9751622cf23f8cbf5557bbec2",
       "id": "sf.render.freight-platform.mesh.lod2-armor.primitive.0",
-      "indexCount": 2478,
+      "indexCount": 2508,
       "indexed": true,
-      "materialHash": "3b5154ad7ec0ee2263502c49e749f2a8dbe1fd5159df213996c1e629139c80de",
+      "materialHash": "3fdf83f5cb4a7ed64bc4eb10daa7d230674d9a4fe6c89acbc77b5876e62261ae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Armor",
       "nodeId": "sf.render.freight-platform.mesh.lod2-armor",
       "primitiveIndex": 0,
-      "vertexCount": 1073
+      "vertexCount": 1079
     },
     {
       "bounds": {
@@ -742,7 +992,7 @@
       "id": "sf.render.freight-platform.mesh.lod2-hull-aged.primitive.0",
       "indexCount": 1188,
       "indexed": true,
-      "materialHash": "2d299a521e33418e4ea0177839a0a21ee873f7b7111ce753fca4298cde0c6529",
+      "materialHash": "eb6bbae95702790bb530b9a9b183b944e44e4379df1d81330fc0fd136fd9a95f",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull_aged",
       "nodeId": "sf.render.freight-platform.mesh.lod2-hull-aged",
@@ -763,41 +1013,41 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "220894764cfcf3b1c04073f0e293a56234d212b5f2af340f8171653f1889a5b4",
+      "geometryHash": "54f81e0a0d86f1bd3722b4ec43c4b33323c19ddf0dd034b7e8e839cea3bd3111",
       "id": "sf.render.freight-platform.mesh.lod2-hull.primitive.0",
-      "indexCount": 252,
+      "indexCount": 300,
       "indexed": true,
-      "materialHash": "674f214b9b571ec60dc6b3efdfadea784fdec9ba52c8031b1484252ba6e6d9cf",
+      "materialHash": "98b096766a0680120cab62183d970ab98c99a47cde4a9e05aee6028a57c333e3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull",
       "nodeId": "sf.render.freight-platform.mesh.lod2-hull",
       "primitiveIndex": 0,
-      "vertexCount": 82
+      "vertexCount": 104
     },
     {
       "bounds": {
         "max": [
-          11.431291580200195,
-          9.880691528320312,
-          -4.305715560913086
+          11.434233665466309,
+          9.8832426071167,
+          -4.305666923522949
         ],
         "min": [
           -11.483818054199219,
-          9.340804100036621,
-          -5.060997009277344
+          9.340489387512207,
+          -5.0610456466674805
         ]
       },
       "drawMode": 4,
-      "geometryHash": "18a4603f3bd8de3cd243aecf5eb02c48b3b88f1567d827c37821fda7e7ac53c0",
+      "geometryHash": "bce83fecf6e292ee19a54b254ea85e153c74f8ebb9d208285ea97721c3d56c46",
       "id": "sf.render.freight-platform.mesh.lod2-lights-warm.primitive.0",
-      "indexCount": 822,
+      "indexCount": 876,
       "indexed": true,
       "materialHash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Lights_Warm",
       "nodeId": "sf.render.freight-platform.mesh.lod2-lights-warm",
       "primitiveIndex": 0,
-      "vertexCount": 304
+      "vertexCount": 317
     },
     {
       "bounds": {
@@ -817,7 +1067,7 @@
       "id": "sf.render.freight-platform.mesh.lod2-livery.primitive.0",
       "indexCount": 288,
       "indexed": true,
-      "materialHash": "c04050ece7eed601368e1e3e6597c97bcc75e751d8c2b9afe4c6f24267f5fbca",
+      "materialHash": "c12264d30e7b2c912f1bfbb9f16d4dd46ece206468223c6161b35f8a93a2d736",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Livery",
       "nodeId": "sf.render.freight-platform.mesh.lod2-livery",
@@ -842,7 +1092,7 @@
       "id": "sf.render.freight-platform.mesh.lod2-mechanical.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Mechanical",
       "nodeId": "sf.render.freight-platform.mesh.lod2-mechanical",
@@ -863,16 +1113,141 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c9e4442cbd2806d8a3cbc0dda4a54750da67afead6864b3fb5269e7b5ffea605",
+      "geometryHash": "24d0f1309d29e5e70ca3351c8e5a8862930cd6780c28bbeb8106edbed5c940c4",
       "id": "sf.render.freight-platform.mesh.lod2-mechanicaldark.primitive.0",
-      "indexCount": 252,
+      "indexCount": 324,
       "indexed": true,
-      "materialHash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
+      "materialHash": "5ef013365e942f1ac873c307ca54a13fa701007aa7b44366c2578f5021f209c3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MechanicalDark",
       "nodeId": "sf.render.freight-platform.mesh.lod2-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 148
+      "vertexCount": 196
+    },
+    {
+      "bounds": {
+        "max": [
+          0.795703113079071,
+          7.589680008590221,
+          4.645902156829834
+        ],
+        "min": [
+          -0.795703113079071,
+          6.603983581066132,
+          -4.645902633666992
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1f36165d554833a7469d20002a89bcd7b07fe9e8827afc4b8e9eb338c48586f3",
+      "id": "sf.render.freight-platform.mesh.lod2-motion-freight-bridge-mechanical.primitive.0",
+      "indexCount": 168,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_FREIGHT_BRIDGE_Mechanical",
+      "nodeId": "sf.render.freight-platform.mesh.lod2-motion-freight-bridge-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 80
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5946498513221741,
+          7.895248860120773,
+          4.595493316650391
+        ],
+        "min": [
+          -0.5946498513221741,
+          7.105374366044998,
+          -4.595493316650391
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e4e58e2ee05781a4c10632c11263c7742f97e3d00c7e074a685842ef90ac88e7",
+      "id": "sf.render.freight-platform.mesh.lod2-motion-freight-bridge-warning.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "ab17b13dc8559ae23c6f811ce161feb70cde245b1a0b56a5276df68c3fcd4508",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_FREIGHT_BRIDGE_Warning",
+      "nodeId": "sf.render.freight-platform.mesh.lod2-motion-freight-bridge-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 56
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5469284057617188,
+          7.296951055526733,
+          2.647365093231201
+        ],
+        "min": [
+          -0.5454403758049011,
+          6.7026755809783936,
+          1.353073000907898
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6e77bfb1317fc43564f9e1d941d4e19fbc7e900b5ad324742eb70580d19dc09f",
+      "id": "sf.render.freight-platform.mesh.lod2-motion-freight-carriage-mechanical.primitive.0",
+      "indexCount": 96,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_FREIGHT_CARRIAGE_Mechanical",
+      "nodeId": "sf.render.freight-platform.mesh.lod2-motion-freight-carriage-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 45
+    },
+    {
+      "bounds": {
+        "max": [
+          0.06765642762184143,
+          6.898857593536377,
+          2.0677521154284477
+        ],
+        "min": [
+          -0.06740880757570267,
+          5.701432704925537,
+          1.9322483614087105
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "580f264c3fb694a99806c8f14346a309daa0b053391b750ce889cbd86d9f342f",
+      "id": "sf.render.freight-platform.mesh.lod2-motion-freight-hook-mechanicaldark.primitive.0",
+      "indexCount": 150,
+      "indexed": true,
+      "materialHash": "5ef013365e942f1ac873c307ca54a13fa701007aa7b44366c2578f5021f209c3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_FREIGHT_HOOK_MechanicalDark",
+      "nodeId": "sf.render.freight-platform.mesh.lod2-motion-freight-hook-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 64
+    },
+    {
+      "bounds": {
+        "max": [
+          0.24108372628688812,
+          5.697363495826721,
+          2.2411699146032333
+        ],
+        "min": [
+          -0.24117425084114075,
+          5.302175879478455,
+          1.7590885311365128
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d32ddd56bdec76bea1b52230d13415f05f791087b82d655f2621dbf662e7c9e5",
+      "id": "sf.render.freight-platform.mesh.lod2-motion-freight-hook-warning.primitive.0",
+      "indexCount": 156,
+      "indexed": true,
+      "materialHash": "ab17b13dc8559ae23c6f811ce161feb70cde245b1a0b56a5276df68c3fcd4508",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_FREIGHT_HOOK_Warning",
+      "nodeId": "sf.render.freight-platform.mesh.lod2-motion-freight-hook-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 56
     },
     {
       "bounds": {
@@ -892,7 +1267,7 @@
       "id": "sf.render.freight-platform.mesh.lod2-warning.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "b346ef27b8bd0571f026a51f92b71837372b5d77cb3b86c4d29f6277ec71629f",
+      "materialHash": "ab17b13dc8559ae23c6f811ce161feb70cde245b1a0b56a5276df68c3fcd4508",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Warning",
       "nodeId": "sf.render.freight-platform.mesh.lod2-warning",
@@ -905,70 +1280,6 @@
   "lods": [],
   "materials": [
     {
-      "hash": "1596da2f23e2c1dd543b727eff38dc2a870cbbe07f4c4faa7a2dc4f7831c57d0",
-      "id": "material:1596da2f23e2c1dd543b727e",
-      "name": "Material_MechanicalDark",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_machinery_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "2d299a521e33418e4ea0177839a0a21ee873f7b7111ce753fca4298cde0c6529",
-      "id": "material:2d299a521e33418e4ea01778",
-      "name": "Material_Hull_aged",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
       "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
       "id": "material:35c00bfb4e1adf84176a4a79",
       "name": "Material_Emissive_Amber",
@@ -976,8 +1287,8 @@
       "textures": []
     },
     {
-      "hash": "3b5154ad7ec0ee2263502c49e749f2a8dbe1fd5159df213996c1e629139c80de",
-      "id": "material:3b5154ad7ec0ee2263502c49",
+      "hash": "3fdf83f5cb4a7ed64bc4eb10daa7d230674d9a4fe6c89acbc77b5876e62261ae",
+      "id": "material:3fdf83f5cb4a7ed64bc4eb10",
       "name": "Material_Armor",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1008,41 +1319,9 @@
       ]
     },
     {
-      "hash": "674f214b9b571ec60dc6b3efdfadea784fdec9ba52c8031b1484252ba6e6d9cf",
-      "id": "material:674f214b9b571ec60dc6b3ef",
-      "name": "Material_Hull",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
-      "id": "material:7dbce0f058ce69aeee64664b",
-      "name": "Material_Mechanical",
+      "hash": "5ef013365e942f1ac873c307ca54a13fa701007aa7b44366c2578f5021f209c3",
+      "id": "material:5ef013365e942f1ac873c307",
+      "name": "Material_MechanicalDark",
       "pipelineKey": "opaque:front",
       "textures": [
         {
@@ -1079,8 +1358,40 @@
       "textures": []
     },
     {
-      "hash": "b346ef27b8bd0571f026a51f92b71837372b5d77cb3b86c4d29f6277ec71629f",
-      "id": "material:b346ef27b8bd0571f026a51f",
+      "hash": "98b096766a0680120cab62183d970ab98c99a47cde4a9e05aee6028a57c333e3",
+      "id": "material:98b096766a0680120cab6218",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "ab17b13dc8559ae23c6f811ce161feb70cde245b1a0b56a5276df68c3fcd4508",
+      "id": "material:ab17b13dc8559ae23c6f811c",
       "name": "Material_Warning",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1111,8 +1422,8 @@
       ]
     },
     {
-      "hash": "c04050ece7eed601368e1e3e6597c97bcc75e751d8c2b9afe4c6f24267f5fbca",
-      "id": "material:c04050ece7eed601368e1e3e",
+      "hash": "c12264d30e7b2c912f1bfbb9f16d4dd46ece206468223c6161b35f8a93a2d736",
+      "id": "material:c12264d30e7b2c912f1bfbb9",
       "name": "Material_Accent",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1148,6 +1459,70 @@
       "name": "Material_Emissive_NavGreen",
       "pipelineKey": "opaque:front",
       "textures": []
+    },
+    {
+      "hash": "eb6bbae95702790bb530b9a9b183b944e44e4379df1d81330fc0fd136fd9a95f",
+      "id": "material:eb6bbae95702790bb530b9a9",
+      "name": "Material_Hull_aged",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "id": "material:f543c846d70e4889bb87a4e1",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     }
   ],
   "nodes": [
@@ -1642,6 +2017,261 @@
       ]
     },
     {
+      "id": "sf.render.freight-platform.mesh.lod0-motion-freight-bridge-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_FREIGHT_BRIDGE_Mechanical",
+      "nodeName": "LOD0_MOTION_FREIGHT_BRIDGE_Mechanical",
+      "nodePath": [
+        0,
+        31,
+        0
+      ],
+      "parentId": "sf.render.freight-platform.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.freight-platform.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        7.5,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.freight-platform.mesh.lod0-motion-freight-bridge-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_FREIGHT_BRIDGE_Warning",
+      "nodeName": "LOD0_MOTION_FREIGHT_BRIDGE_Warning",
+      "nodePath": [
+        0,
+        31,
+        1
+      ],
+      "parentId": "sf.render.freight-platform.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.freight-platform.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        7.5,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.freight-platform.mesh.lod0-motion-freight-carriage-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_FREIGHT_CARRIAGE_Mechanical",
+      "nodeName": "LOD0_MOTION_FREIGHT_CARRIAGE_Mechanical",
+      "nodePath": [
+        0,
+        31,
+        6,
+        0
+      ],
+      "parentId": "sf.render.freight-platform.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.freight-platform.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        7.199999809265137,
+        2,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.freight-platform.mesh.lod0-motion-freight-hook-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_FREIGHT_HOOK_MechanicalDark",
+      "nodeName": "LOD0_MOTION_FREIGHT_HOOK_MechanicalDark",
+      "nodePath": [
+        0,
+        31,
+        6,
+        3,
+        0
+      ],
+      "parentId": "sf.render.freight-platform.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.freight-platform.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        7,
+        2,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.freight-platform.mesh.lod0-motion-freight-hook-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_FREIGHT_HOOK_Warning",
+      "nodeName": "LOD0_MOTION_FREIGHT_HOOK_Warning",
+      "nodePath": [
+        0,
+        31,
+        6,
+        3,
+        1
+      ],
+      "parentId": "sf.render.freight-platform.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.freight-platform.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        7,
+        2,
+        1
+      ]
+    },
+    {
       "id": "sf.render.freight-platform.mesh.lod0-warning",
       "localTransform": [
         1,
@@ -2128,6 +2758,261 @@
         0,
         0,
         0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.freight-platform.mesh.lod1-motion-freight-bridge-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_FREIGHT_BRIDGE_Mechanical",
+      "nodeName": "LOD1_MOTION_FREIGHT_BRIDGE_Mechanical",
+      "nodePath": [
+        0,
+        31,
+        2
+      ],
+      "parentId": "sf.render.freight-platform.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.freight-platform.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        7.5,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.freight-platform.mesh.lod1-motion-freight-bridge-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_FREIGHT_BRIDGE_Warning",
+      "nodeName": "LOD1_MOTION_FREIGHT_BRIDGE_Warning",
+      "nodePath": [
+        0,
+        31,
+        3
+      ],
+      "parentId": "sf.render.freight-platform.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.freight-platform.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        7.5,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.freight-platform.mesh.lod1-motion-freight-carriage-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_FREIGHT_CARRIAGE_Mechanical",
+      "nodeName": "LOD1_MOTION_FREIGHT_CARRIAGE_Mechanical",
+      "nodePath": [
+        0,
+        31,
+        6,
+        1
+      ],
+      "parentId": "sf.render.freight-platform.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.freight-platform.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        7.199999809265137,
+        2,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.freight-platform.mesh.lod1-motion-freight-hook-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_FREIGHT_HOOK_MechanicalDark",
+      "nodeName": "LOD1_MOTION_FREIGHT_HOOK_MechanicalDark",
+      "nodePath": [
+        0,
+        31,
+        6,
+        3,
+        2
+      ],
+      "parentId": "sf.render.freight-platform.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.freight-platform.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        7,
+        2,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.freight-platform.mesh.lod1-motion-freight-hook-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_FREIGHT_HOOK_Warning",
+      "nodeName": "LOD1_MOTION_FREIGHT_HOOK_Warning",
+      "nodePath": [
+        0,
+        31,
+        6,
+        3,
+        3
+      ],
+      "parentId": "sf.render.freight-platform.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.freight-platform.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        7,
+        2,
         1
       ]
     },
@@ -2622,6 +3507,261 @@
       ]
     },
     {
+      "id": "sf.render.freight-platform.mesh.lod2-motion-freight-bridge-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_FREIGHT_BRIDGE_Mechanical",
+      "nodeName": "LOD2_MOTION_FREIGHT_BRIDGE_Mechanical",
+      "nodePath": [
+        0,
+        31,
+        4
+      ],
+      "parentId": "sf.render.freight-platform.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.freight-platform.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        7.5,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.freight-platform.mesh.lod2-motion-freight-bridge-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_FREIGHT_BRIDGE_Warning",
+      "nodeName": "LOD2_MOTION_FREIGHT_BRIDGE_Warning",
+      "nodePath": [
+        0,
+        31,
+        5
+      ],
+      "parentId": "sf.render.freight-platform.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.freight-platform.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        7.5,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.freight-platform.mesh.lod2-motion-freight-carriage-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_FREIGHT_CARRIAGE_Mechanical",
+      "nodeName": "LOD2_MOTION_FREIGHT_CARRIAGE_Mechanical",
+      "nodePath": [
+        0,
+        31,
+        6,
+        2
+      ],
+      "parentId": "sf.render.freight-platform.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.freight-platform.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        7.199999809265137,
+        2,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.freight-platform.mesh.lod2-motion-freight-hook-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_FREIGHT_HOOK_MechanicalDark",
+      "nodeName": "LOD2_MOTION_FREIGHT_HOOK_MechanicalDark",
+      "nodePath": [
+        0,
+        31,
+        6,
+        3,
+        4
+      ],
+      "parentId": "sf.render.freight-platform.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.freight-platform.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        7,
+        2,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.freight-platform.mesh.lod2-motion-freight-hook-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_FREIGHT_HOOK_Warning",
+      "nodeName": "LOD2_MOTION_FREIGHT_HOOK_Warning",
+      "nodePath": [
+        0,
+        31,
+        6,
+        3,
+        5
+      ],
+      "parentId": "sf.render.freight-platform.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.freight-platform.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        7,
+        2,
+        1
+      ]
+    },
+    {
       "id": "sf.render.freight-platform.mesh.lod2-warning",
       "localTransform": [
         1,
@@ -2667,6 +3807,156 @@
         0,
         0,
         0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.freight-platform.mesh.motion-freight-bridge",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        7.5,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_FREIGHT_BRIDGE",
+      "nodeName": "MOTION_FREIGHT_BRIDGE",
+      "nodePath": [
+        0,
+        31
+      ],
+      "parentId": "sf.render.freight-platform.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.freight-platform.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        7.5,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.freight-platform.mesh.motion-freight-carriage",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -0.3000001907348633,
+        2,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_FREIGHT_CARRIAGE",
+      "nodeName": "MOTION_FREIGHT_CARRIAGE",
+      "nodePath": [
+        0,
+        31,
+        6
+      ],
+      "parentId": "sf.render.freight-platform.mesh.motion-freight-bridge",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.freight-platform.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        7.199999809265137,
+        2,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.freight-platform.mesh.motion-freight-hook",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -0.19999980926513672,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_FREIGHT_HOOK",
+      "nodeName": "MOTION_FREIGHT_HOOK",
+      "nodePath": [
+        0,
+        31,
+        6,
+        3
+      ],
+      "parentId": "sf.render.freight-platform.mesh.motion-freight-carriage",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.freight-platform.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        7,
+        2,
         1
       ]
     },
@@ -2721,22 +4011,22 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "6e8c69b8caf14770383f72bd579d4f9de30b5b6423807b926ffb11c86332b4aa"
+      "sha256": "dbf36020f8c1d8cbbf995a0095ee091b31641fe9d6a6d1bd3bf93df78dcc4175"
     },
     "sourceGlb": {
-      "bytes": 631396,
-      "sha256": "9f25143ba5bce06c0b50bbc1d155fd228e10fdc99fad0401dd012e887cf85d61",
+      "bytes": 530228,
+      "sha256": "8857b8adfa02ffd43b8d0b0bff4b8945b60cf8a53e11fec84658cab585c3e3ab",
       "uri": "place_freight_platform.glb"
     },
     "sourceManifest": {
-      "bytes": 198942,
-      "sha256": "98a76b502b1e0a29866df412c149715497b8f42b6311838a5fa3837f6d8bac4e",
+      "bytes": 219794,
+      "sha256": "81b413c425531af63fa3f895c51f5be4ba86bec2c3ece4040a0acf26b71ab54f",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 987032,
-    "sha256": "54b97ec06ad9b7115b2d793a646bd2ece95b3ad88921a930e080b6260678dee3",
+    "bytes": 945584,
+    "sha256": "e97eab33637aa9084715cde9d00f84db7150214c0a67b544eed69904abbac28e",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2782,12 +4072,207 @@
           1,
           0,
           0,
+          7.5,
+          0,
+          1
+        ],
+        "name": "MOTION_FREIGHT_BRIDGE",
+        "planIndex": 33,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "freight_bridge",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              7.5
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_FREIGHT_BRIDGE",
+          "spaceface": {
+            "motionGroup": "freight_bridge"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_FREIGHT_BRIDGE",
+            "recordIds": [
+              "sf.render.freight-platform.mesh.motion-freight-bridge"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          7.199999809265137,
+          2,
+          1
+        ],
+        "name": "MOTION_FREIGHT_CARRIAGE",
+        "planIndex": 40,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "freight_carriage",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              -2
+            ],
+            [
+              0,
+              0,
+              1,
+              -0.3000001907348633
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_FREIGHT_CARRIAGE",
+          "spaceface": {
+            "motionGroup": "freight_carriage"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_FREIGHT_CARRIAGE",
+            "recordIds": [
+              "sf.render.freight-platform.mesh.motion-freight-carriage"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          7,
+          2,
+          1
+        ],
+        "name": "MOTION_FREIGHT_HOOK",
+        "planIndex": 44,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "freight_hook",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              -0.19999980926513672
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_FREIGHT_HOOK",
+          "spaceface": {
+            "motionGroup": "freight_hook"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_FREIGHT_HOOK",
+            "recordIds": [
+              "sf.render.freight-platform.mesh.motion-freight-hook"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
           1,
           12,
           1
         ],
         "name": "SOCKET_Approach",
-        "planIndex": 33,
+        "planIndex": 51,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -2828,7 +4313,7 @@
           1
         ],
         "name": "SOCKET_Crane_Mount",
-        "planIndex": 34,
+        "planIndex": 52,
         "tags": {
           "socket": true,
           "socketRole": "attachment"
@@ -2853,9 +4338,9 @@
     "materialProfileRoles": {
       "accent": 3,
       "hull": 10,
-      "mechanical": 6,
+      "mechanical": 15,
       "signal": 9,
-      "warning": 3
+      "warning": 9
     },
     "materialProfiles": [
       {
@@ -3012,9 +4497,90 @@
         "allowTextures": true,
         "planIndex": 32,
         "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 34,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 35,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 36,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 37,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 38,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 39,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 41,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 42,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 43,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 45,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 46,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 47,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 48,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 49,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 50,
+        "role": "warning"
       }
     ],
-    "nodeCount": 35,
+    "motionBank": {
+      "bytes": 7959,
+      "rigId": "freight_platform",
+      "sha256": "4467717b0cef046b4ac2da0bc8282194957761e890596ac534463685c7362380",
+      "uri": "assets/ships/motions/freight-platform.motion.json"
+    },
+    "nodeCount": 53,
     "primitives": [
       {
         "canopy": false,
@@ -3828,13 +5394,433 @@
           "canopy": false,
           "lod": "lod2"
         }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          7.5,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_FREIGHT_BRIDGE_Mechanical",
+        "planIndex": 34,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          7.5,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_FREIGHT_BRIDGE_Warning",
+        "planIndex": 35,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          7.5,
+          0,
+          1
+        ],
+        "name": "LOD1_MOTION_FREIGHT_BRIDGE_Mechanical",
+        "planIndex": 36,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          7.5,
+          0,
+          1
+        ],
+        "name": "LOD1_MOTION_FREIGHT_BRIDGE_Warning",
+        "planIndex": 37,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          7.5,
+          0,
+          1
+        ],
+        "name": "LOD2_MOTION_FREIGHT_BRIDGE_Mechanical",
+        "planIndex": 38,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          7.5,
+          0,
+          1
+        ],
+        "name": "LOD2_MOTION_FREIGHT_BRIDGE_Warning",
+        "planIndex": 39,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          7.199999809265137,
+          2,
+          1
+        ],
+        "name": "LOD0_MOTION_FREIGHT_CARRIAGE_Mechanical",
+        "planIndex": 41,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          7.199999809265137,
+          2,
+          1
+        ],
+        "name": "LOD1_MOTION_FREIGHT_CARRIAGE_Mechanical",
+        "planIndex": 42,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          7.199999809265137,
+          2,
+          1
+        ],
+        "name": "LOD2_MOTION_FREIGHT_CARRIAGE_Mechanical",
+        "planIndex": 43,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          7,
+          2,
+          1
+        ],
+        "name": "LOD0_MOTION_FREIGHT_HOOK_MechanicalDark",
+        "planIndex": 45,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          7,
+          2,
+          1
+        ],
+        "name": "LOD0_MOTION_FREIGHT_HOOK_Warning",
+        "planIndex": 46,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          7,
+          2,
+          1
+        ],
+        "name": "LOD1_MOTION_FREIGHT_HOOK_MechanicalDark",
+        "planIndex": 47,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          7,
+          2,
+          1
+        ],
+        "name": "LOD1_MOTION_FREIGHT_HOOK_Warning",
+        "planIndex": 48,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          7,
+          2,
+          1
+        ],
+        "name": "LOD2_MOTION_FREIGHT_HOOK_MechanicalDark",
+        "planIndex": 49,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          7,
+          2,
+          1
+        ],
+        "name": "LOD2_MOTION_FREIGHT_HOOK_Warning",
+        "planIndex": 50,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
       }
     ],
     "schema": "spaceface.renderPackageRuntime.v1",
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_freight_platform.glb"
   },
-  "runtimeHash": "4b2edd7efd8cb1efecfbebf742ee8069f525dba970c5dbb4673c95633be4de8f",
+  "runtimeHash": "edd2716ba7e1ad7e0a495850f4e865ed66c0272222d8b80ad55a2c0403add184",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -3862,6 +5848,11 @@
         "sf.render.freight-platform.mesh.lod0-livery",
         "sf.render.freight-platform.mesh.lod0-mechanical",
         "sf.render.freight-platform.mesh.lod0-mechanicaldark",
+        "sf.render.freight-platform.mesh.lod0-motion-freight-bridge-mechanical",
+        "sf.render.freight-platform.mesh.lod0-motion-freight-bridge-warning",
+        "sf.render.freight-platform.mesh.lod0-motion-freight-carriage-mechanical",
+        "sf.render.freight-platform.mesh.lod0-motion-freight-hook-mechanicaldark",
+        "sf.render.freight-platform.mesh.lod0-motion-freight-hook-warning",
         "sf.render.freight-platform.mesh.lod0-warning",
         "sf.render.freight-platform.mesh.lod1-armor",
         "sf.render.freight-platform.mesh.lod1-beacon-amber",
@@ -3872,6 +5863,11 @@
         "sf.render.freight-platform.mesh.lod1-livery",
         "sf.render.freight-platform.mesh.lod1-mechanical",
         "sf.render.freight-platform.mesh.lod1-mechanicaldark",
+        "sf.render.freight-platform.mesh.lod1-motion-freight-bridge-mechanical",
+        "sf.render.freight-platform.mesh.lod1-motion-freight-bridge-warning",
+        "sf.render.freight-platform.mesh.lod1-motion-freight-carriage-mechanical",
+        "sf.render.freight-platform.mesh.lod1-motion-freight-hook-mechanicaldark",
+        "sf.render.freight-platform.mesh.lod1-motion-freight-hook-warning",
         "sf.render.freight-platform.mesh.lod1-warning",
         "sf.render.freight-platform.mesh.lod2-armor",
         "sf.render.freight-platform.mesh.lod2-beacon-amber",
@@ -3882,7 +5878,15 @@
         "sf.render.freight-platform.mesh.lod2-livery",
         "sf.render.freight-platform.mesh.lod2-mechanical",
         "sf.render.freight-platform.mesh.lod2-mechanicaldark",
+        "sf.render.freight-platform.mesh.lod2-motion-freight-bridge-mechanical",
+        "sf.render.freight-platform.mesh.lod2-motion-freight-bridge-warning",
+        "sf.render.freight-platform.mesh.lod2-motion-freight-carriage-mechanical",
+        "sf.render.freight-platform.mesh.lod2-motion-freight-hook-mechanicaldark",
+        "sf.render.freight-platform.mesh.lod2-motion-freight-hook-warning",
         "sf.render.freight-platform.mesh.lod2-warning",
+        "sf.render.freight-platform.mesh.motion-freight-bridge",
+        "sf.render.freight-platform.mesh.motion-freight-carriage",
+        "sf.render.freight-platform.mesh.motion-freight-hook",
         "sf.render.freight-platform.root"
       ]
     }

@@ -262,12 +262,14 @@ if __name__ == '__main__':
     import forge_export as E
     sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'animations'))
     import ANI_15  # noqa: E402
+    import ANI_19  # noqa: E402
     import motion_bank  # noqa: E402
     ship = build().finish()
     _o = {o.name: o for o in ship.objects}
     ship.ani15_bank = ANI_15.build(ship, {
         'tips': [[_o[f'EmitTip{i}'], _o[f'EmitTipGlow{i}']] for i in range(12)],
     }, source_asset_id=E.fleet_spec(SHIP_ID)['asset_id'])
+    ANI_19.build(ship, None, source_asset_id=None, bank=ship.ani15_bank)
     live = '--live' in sys.argv
     written = E.export_ship(ship, E.fleet_spec(SHIP_ID), preview=not live)
     if live:

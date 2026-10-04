@@ -85,7 +85,7 @@ test('the chooser emits ui:fitModule for hold rows — shipIndex, slot, and inst
   // The dead seam was exactly this: unfit emitted, fit never did. Pin all three payload fields
   // and the wrong-ship discipline on the sibling intents in the same handler.
   assert.ok(/data-fit-inv/.test(src), 'hold rows carry a fit verb');
-  assert.ok(/emit\('ui:fitModule',\s*\{[^}]*shipIndex:\s*viewIdx[^}]*instanceId/s.test(src),
+  assert.ok(/emit\w*\('ui:fitModule',\s*\{[^}]*shipIndex:\s*viewIdx[^}]*instanceId/s.test(src),
     'ui:fitModule carries the viewed hull and the row instanceId');
   assert.ok(/emit\('ui:unfitModule',\s*\{[^}]*shipIndex:\s*viewIdx/s.test(src),
     'ui:unfitModule outfits the viewed hull, not always the active one');
@@ -94,7 +94,7 @@ test('the chooser emits ui:fitModule for hold rows — shipIndex, slot, and inst
   // capture plus the emission proves the same discipline without asserting raw viewIdx.
   assert.ok(/statedShipIndex\s*=\s*viewIdx/.test(src),
     'a buy confirmation captures the viewed hull index at quote time');
-  assert.ok(/emit\('ui:buyModule',\s*\{[^}]*shipIndex:\s*statedShipIndex/s.test(src),
+  assert.ok(/emit\w*\('ui:buyModule',\s*\{[^}]*shipIndex:\s*statedShipIndex/s.test(src),
     'ui:buyModule settles on the hull the confirmation named');
   // Refusals are rendered in words, never silently omitted or left as dead buttons.
   assert.ok(/stationShopOffer\(d,\s*shopStationId\)/.test(src),

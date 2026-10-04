@@ -6,6 +6,7 @@ import { join, relative, resolve } from 'node:path';
 
 import { drawSeeded, hash32 } from '../src/core/rng.js';
 import { DEFAULT_TRACE_EVENTS } from '../src/core/eventTrace.js';
+import { ALLOWED_WALL_TIME_FILES, unclassifiedWallTimeSites } from './lib/wallTimeGuard.mjs';
 import {
   validateEvidenceCorpus,
   validateEvidenceDocument,
@@ -89,6 +90,10 @@ const allowedRandomFiles = new Map([
   // `freeSeed` when done. Programmatic `.value` writes fire no `input` event, so `freeSeed` — the
   // explicit seed that drives the run — never picks up an ambient draw. Cosmetic display only.
   ['src/ui/screens/crucible.js', 'cosmetic seed-counter scramble digits (display only; run seed stays explicit)'],
+  // New Game "New seed" word: `randomSeedText()` draws one suggestion into the seed FIELD.
+  // The src/main.js boot-seed case — the run's seed is whatever the field says when Launch is
+  // pressed, so the raw draw never reaches a sim stream.
+  ['src/ui/screens/newGame.js', 'seed suggestion written to the seed field; run seed stays explicit'],
 ]);
 const randomSites = activeMathRandomSites('src');
 for (const site of randomSites) {
@@ -96,6 +101,23 @@ for (const site of randomSites) {
 }
 for (const rel of allowedRandomFiles.keys()) {
   assert(read('docs/Spec/PHASE0_AUTHORITY_AUDIT.md').includes(rel), `Authority audit must classify ${rel}`);
+}
+
+// FB-095 — wall-clock guard. performance.now()/Date.now() are the same determinism failure class
+// as a Math.random draw: a host-dependent value. Simulation-owner directories must not invoke
+// them directly. Diagnostics that genuinely need wall time read it through perfNow() in
+// src/core/perfRuntime.js — the single classified instrumentation seam. Every classified file
+// carries its written rationale in docs/Spec/PHASE0_AUTHORITY_AUDIT.md (Wall-Clock Catalogue).
+// The scan engine lives in scripts/lib/wallTimeGuard.mjs so the guard is unit-testable.
+const wallTimeSites = unclassifiedWallTimeSites(ROOT);
+for (const site of wallTimeSites) {
+  assert.fail(
+    `Unclassified wall-clock read in simulation owner: ${site.rel}:${site.line} — ` +
+    'use dt/state.simTime, or route diagnostics through perfNow() in src/core/perfRuntime.js',
+  );
+}
+for (const rel of ALLOWED_WALL_TIME_FILES.keys()) {
+  assert(read('docs/Spec/PHASE0_AUTHORITY_AUDIT.md').includes(rel), `Authority audit must classify wall-clock owner ${rel}`);
 }
 
 const a = { rngSeed: hash32(47, 'phase0') };
@@ -204,16 +226,19 @@ for (const type of Object.keys(envelope.phase0ObservedTraceCounts)) {
 assert.equal(envelope.phase0ObservedTraceCounts['combat:fire'], 17, 'expected telemetry should pin observed combat fire count');
 // The accepted 2026-09-04 contact-episode record in the canonical envelope moved hits/damage
 // 6 -> 4 and presentation cues 8 -> 6. The 2026-09-29 record under the landed physics packages
-// (C..F) moved hits/damage 4 -> 1: the scripted aim tape rides the player hull, whose replayed
-// line now drifts a few WU under the stiffened solver, and only the drift-widened wreck sits in
-// the lane. These assertions consume that accepted golden; they do not re-record it.
-assert.equal(envelope.phase0ObservedTraceCounts['projectile:hit'], 1, 'expected telemetry should pin observed projectile hit count');
-assert.equal(envelope.phase0ObservedTraceCounts['combat:damage'], 1, 'expected telemetry should pin observed combat damage count');
+// (C..F) moved hits/damage 4 -> 1. The 2026-09-30 post-D83 solid-contact re-record (eb1869826
+// et al., see the envelope notes) moved hits/damage 1 -> 6 (point-defense answers the missile
+// at the projectile) and presentation cues 4 -> 8. These assertions consume that accepted
+// golden; they do not re-record it.
+assert.equal(envelope.phase0ObservedTraceCounts['projectile:hit'], 6, 'expected telemetry should pin observed projectile hit count');
+assert.equal(envelope.phase0ObservedTraceCounts['combat:damage'], 6, 'expected telemetry should pin observed combat damage count');
 assert.equal(envelope.phase0ObservedTraceCounts['economy:tick'], 2, 'expected telemetry should pin observed economy tick count');
 // 2026-09-25 3d6491e1e (D46) restored the authored 47-A tether warn arc, which adds one presentation cue in the
 // accepted golden (6 -> 7); the pin follows the accepted record, it does not re-record it.
 // 2026-09-29: same physics-package re-record as above — cue and cueApplied track the hit fanout, 7 -> 4.
-assert.equal(envelope.phase0ObservedTraceCounts['presentation:cue'], 4, 'expected telemetry should pin SG-08 presentation cue count');
+// 2026-09-30: post-D83 solid-contact re-record moves cue 4 -> 8 (see envelope notes); the same-day
+// LEGACY_47A_MASSLINE_BREAK re-derivation restores the tether.near_break warning (t234), cue 8 -> 9.
+assert.equal(envelope.phase0ObservedTraceCounts['presentation:cue'], 9, 'expected telemetry should pin SG-08 presentation cue count');
 assert.equal(envelope.phase0ObservedTraceCounts['scenario:loaded'], 1, 'expected telemetry should pin scenario load count');
 assert.equal(envelope.phase0ObservedTraceCounts['scenario:factsInitialized'], 1, 'expected telemetry should pin scenario fact initialization count');
 assert.equal(envelope.phase0ObservedTraceCounts['scenario:actorBindings'], 1, 'expected telemetry should pin scenario actor-binding audit count');
@@ -647,6 +672,10 @@ function assertRejectsMalformedEvidence() {
 }
 
 function activeMathRandomSites(relDir) {
+  return activePatternSites(relDir, MATH_RANDOM_INVOCATION);
+}
+
+function activePatternSites(relDir, pattern) {
   const root = resolve(ROOT, relDir);
   const out = [];
   walk(root, (abs) => {
@@ -657,7 +686,7 @@ function activeMathRandomSites(relDir) {
       const trimmed = lines[i].trim();
       if (trimmed.startsWith('//') || trimmed.startsWith('/*') || trimmed.startsWith('*')) continue;
       const code = lines[i].replace(/\/\/.*$/, '');
-      if (MATH_RANDOM_INVOCATION.test(code)) out.push({ rel, line: i + 1 });
+      if (pattern.test(code)) out.push({ rel, line: i + 1 });
     }
   });
   return out;

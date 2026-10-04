@@ -1695,3 +1695,178 @@ test('the escort link covers the recovered hauler once and plants yard_cover, no
   assert.ok(stories.length >= 1);
   assert.match(stories[stories.length - 1].text, /clean seam shift/);
 });
+
+// SF-086 — a work shift that changes the same place (equivalence pin on the handover itself).
+// The acceptance asks that the pocket hand responsibility over and re-rhythm without spawning a
+// second permanent population: same cast, same berths, a different working rhythm on return.
+// The causal chain is exactly that shift machine — this test pins the part the other rows do
+// not: cycle N resolves, the pocket takes its authored idle gap, and the SAME hulls open the
+// next shift's first act. No entity joins or leaves; identity stays stable across the seam.
+test('SF-086: a resolved shift idles, then the same cast opens the next shift', () => {
+  const { traffic, state, receipts, asteroid, tender, combatKernel } =
+    bootCausalHarness({ simTime: 0, withTenderCombat: true });
+  stepTo(traffic, state, 0);
+  stepUntilRichSeamSeeded(traffic, state);
+  assert.equal(applyCeresMinerWork(traffic, state, asteroid).applied, true,
+    'the authored miner work materializes the load the chain hands down the lane');
+
+  // Run shift 1 to its resolved terminal, keeping the bound pairs together (this timer-only
+  // harness has no flight integrator — the rendezvous proof lives in the dedicated test).
+  let doneAt = null;
+  for (let t = Math.max(60, state.simTime); t <= 924; t += 3) {
+    const { actor: miner } = actorBySlot(state, 'ceres_seam_miner');
+    const { actor: hauler } = actorBySlot(state, 'ceres_refinery_hauler');
+    hauler.pos = { ...miner.pos };
+    const disabledIncident = state.traffic.ceresDisabledHaulerIncident;
+    if (disabledIncident && !['repaired', 'recovered', 'stolen', 'abandoned', 'destroyed', 'failed'].includes(disabledIncident.state)) {
+      const standoff = traffic._ceresTenderServiceStandoff(tender, hauler);
+      tender.pos = { x: hauler.pos.x + standoff, z: hauler.pos.z };
+    }
+    const incident = state.traffic.ceresTenderServiceIncident;
+    if (incident && incident.state !== 'succeeded' && incident.state !== 'failed') {
+      const standoff = traffic._ceresTenderServiceStandoff(tender, miner);
+      tender.pos = { x: miner.pos.x + standoff, z: miner.pos.z };
+    }
+    stepTo(traffic, state, t);
+    state.tick += 1;
+    combatKernel.prePhysics(1 / 60);
+    if ((traffic.getCeresCausalChainSnapshot().cycle | 0) >= 1) { doneAt = t; break; }
+  }
+  assert.ok(doneAt != null, 'shift 1 resolves inside ten minutes of sim time');
+  assert.ok(receipts.some((r) => r.kind === 'cycle_complete' && (r.cycle | 0) >= 1));
+
+  // THE HANDOVER SEAM. Snapshot the whole cast's stable identity and the pocket population —
+  // a second permanent population would show up here as new entities or new world records.
+  const castBefore = state.entityList
+    .map((e) => e && e.data && e.data.worldRecordId)
+    .filter(Boolean).sort();
+  const entityCountBefore = state.entityList.length;
+  const snapAtHandover = traffic.getCeresCausalChainSnapshot();
+  assert.equal(snapAtHandover.cycle | 0, 1);
+  assert.equal(snapAtHandover.active.length, 0, 'the pocket is quiet between shifts');
+  assert.ok(snapAtHandover.nextEligibleAt > state.simTime,
+    'the authored inter-shift gap is real — the rhythm visibly rests');
+
+  // Through the gap: nothing runs early, then the SAME place re-opens its first act.
+  const gapEnd = snapAtHandover.nextEligibleAt;
+  let reopenedAt = null;
+  for (let t = state.simTime; t <= gapEnd + 120; t += 2) {
+    stepTo(traffic, state, t);
+    const snap = traffic.getCeresCausalChainSnapshot();
+    if (t < gapEnd) assert.equal(snap.active.length, 0, 'the gap is an honest idle, not hidden work');
+    if (t >= gapEnd && snap.active.length > 0) { reopenedAt = t; break; }
+  }
+  assert.ok(reopenedAt != null, 'the pocket re-arms on schedule after the authored gap');
+
+  // The re-opened act is the authored opener again — the new shift reads as a new rhythm on
+  // the same stage, and a second probe-line start receipt proves the cycle restarted.
+  const probeStarts = receipts.filter((r) => r.eventId === 'ev_surveyor_probe_line'
+    && r.kind === 'event_start');
+  assert.ok(probeStarts.length >= 2, 'the next shift opens the surveyor line again');
+
+  // Nobody spawned, nobody was replaced: the population is the same hulls under the same
+  // durable identities before and after the shift change.
+  const castAfter = state.entityList
+    .map((e) => e && e.data && e.data.worldRecordId)
+    .filter(Boolean).sort();
+  assert.deepEqual(castAfter, castBefore, 'the shift change hands the same cast, not a new population');
+  assert.equal(state.entityList.length, entityCountBefore, 'no second population materialized');
+});
+
+// SF-090 — a quiet encounter worth watching (equivalence pin on the casualty the cast fixes).
+// The disabled-hauler link is the packet's bounded noncombat sequence: a casualty that only
+// exists because a real conserved handoff was in transit (the incident binds ONLY to a live
+// custody manifest, never a spawned setpiece), a real player window during which the cast
+// waits — help is offered, never required — and then the yard tender takes a genuine control
+// lease and repairs the casualty at standoff. Zero player input resolves it; the world answers
+// with a different rhythm (the patrol escort link) instead of a quest flag. The player-facing
+// branches (RECOVER / STEAL / ABANDON) are owned and pinned by the PQ-048 suite; the generic
+// interrupt-seed divergence is pinned above. What those rows don't pin is the envelope itself:
+// the cast's correction is real, leases a real hull, and completes with nobody watching.
+test('SF-090: the casualty the cast corrects is real, helpable, and resolves unwatched', () => {
+  const {
+    traffic,
+    state,
+    receipts,
+    asteroid,
+    tender,
+    combatKernel,
+    controlClaims,
+  } = bootCausalHarness({ simTime: 0, withTenderCombat: true });
+  assert.ok(combatKernel, 'the recovery link uses the live combat-kernel registry seam');
+
+  // The mistake is downstream of real work: the recovery link cannot open until the patrol
+  // scan link has actually stressed the hauler — no cooldown draw, no random spawn.
+  const def = CERES_CAUSAL_CHAIN.find((entry) => entry.id === 'ev_disabled_hauler_recovery');
+  assert.ok(def, 'the recovery link is authored');
+  assert.deepEqual(def.requires, ['hauler_stressed'],
+    'the casualty must be born from a real work event, not spawned for the scene');
+
+  stepTo(traffic, state, 0);
+  stepUntilRichSeamSeeded(traffic, state);
+  assert.equal(applyCeresMinerWork(traffic, state, asteroid).applied, true,
+    'the conserved load the casualty interrupts is real work output');
+
+  // Drive the same zero-input walk the full-cycle row uses; observe the incident's envelope.
+  let sawWindowOpen = false;
+  let claimDuringWindow = false;
+  let claimAfterWindow = false;
+  let incidentTerminal = null;
+  let escortStarted = false;
+  const responderClaimFor = (incidentId) => [...controlClaims.entries()]
+    .some(([jobId, claimId]) => jobId === `job:${tender.data.worldRecordId}`
+      && claimId === `ceres-disabled-hauler:${incidentId}:responder`);
+  for (let t = Math.max(60, state.simTime); t <= 924; t += 3) {
+    const { actor: miner } = actorBySlot(state, 'ceres_seam_miner');
+    const { actor: hauler } = actorBySlot(state, 'ceres_refinery_hauler');
+    hauler.pos = { ...miner.pos };
+    const incident = state.traffic.ceresDisabledHaulerIncident;
+    if (incident && !['repaired', 'recovered', 'stolen', 'abandoned', 'destroyed', 'failed'].includes(incident.state)) {
+      const standoff = traffic._ceresTenderServiceStandoff(tender, hauler);
+      tender.pos = { x: hauler.pos.x + standoff, z: hauler.pos.z };
+    }
+    const service = state.traffic.ceresTenderServiceIncident;
+    if (service && service.state !== 'succeeded' && service.state !== 'failed') {
+      const standoff = traffic._ceresTenderServiceStandoff(tender, miner);
+      tender.pos = { x: miner.pos.x + standoff, z: miner.pos.z };
+    }
+    stepTo(traffic, state, t);
+    state.tick += 1;
+    combatKernel.prePhysics(1 / 60);
+
+    if (incident) {
+      // While the player's window is open the correction has not been claimed — the cast
+      // genuinely waits; the player may act first, need not, and is never charged a quest.
+      if (t < incident.responseAtSimT) {
+        sawWindowOpen ||= incident.state === 'impair' || incident.state === 'distress';
+        claimDuringWindow ||= responderClaimFor(incident.incidentId);
+      } else {
+        claimAfterWindow ||= responderClaimFor(incident.incidentId);
+      }
+      incidentTerminal ||= ['repaired', 'recovered'].includes(incident.state) ? incident.state : null;
+    }
+    if (receipts.some((r) => r.eventId === 'ev_patrol_escorts_hauler' && r.kind === 'event_start')) {
+      escortStarted = true;
+    }
+    if ((traffic.getCeresCausalChainSnapshot().cycle | 0) >= 1) break;
+  }
+
+  assert.equal(sawWindowOpen, true, 'the casualty opens a real window the player may watch or use');
+  const incident = state.traffic.ceresDisabledHaulerIncident;
+  assert.ok(incident, 'the recovery bound a live incident to the conserved handoff');
+  assert.ok(incident.responseAtSimT > incident.startedAtSimT,
+    'the help window is a real interval, not a zero-width flag');
+  assert.equal(incident.choice, null, 'nobody took ownership — the cast fixed it anyway');
+  assert.equal(claimDuringWindow, false,
+    'the cast waits out the player window instead of pre-empting the encounter');
+  assert.equal(claimAfterWindow, true,
+    'after the window the tender takes a real control lease — correction, not narration');
+  assert.ok(incidentTerminal === 'repaired' || incidentTerminal === 'recovered',
+    `the correction terminalizes with zero player input (got ${incidentTerminal})`);
+  assert.equal(escortStarted, true,
+    'the world answers the correction with a changed rhythm — the escort — not a quest receipt');
+  assert.ok(receipts.some((r) => r.eventId === 'ev_disabled_hauler_recovery' && r.kind === 'event_complete'),
+    'the encounter closes as an authored event');
+  assert.equal(receipts.some((r) => r.kind === 'seed' && r.seeds && r.seeds.aftermath_open === true),
+    false, 'a corrected casualty never opens the aftermath branch');
+});

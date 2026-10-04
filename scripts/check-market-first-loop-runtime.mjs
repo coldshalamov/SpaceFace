@@ -41,7 +41,7 @@ try {
   // it did, intermittently, across five checks. A real GPU HAS the extension (verified), so
   // this is an environment allowance, not a behavioural assertion being loosened. Everything
   // these checks actually assert happens after boot and is untouched.
-  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.ctx, null, { timeout: 30000 });
+  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.ctx, null, { timeout: START_TIMEOUT_MS });
   await waitForVisible(page, '[data-screen="mainMenu"]', 15000, 'main menu');
   assert.equal(await clickButton(page, 'New Game'), true, 'main menu should expose New Game');
   await waitForVisible(page, '[data-screen="newGame"] .sf-ng-route', 10000, 'new-game rail');
@@ -253,7 +253,11 @@ async function startFreshServer() {
 }
 
 function spawnProbeServer(port) {
-  const child = spawn(process.execPath, ['server.js', String(port)], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
+  // An unset store env mounts the real shared save drawer — browser checks run isolated.
+  const child = spawn(process.execPath, ['server.js', String(port)], {
+    cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true,
+    env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '', SPACEFACE_USER_CONTENT_DIR: '' },
+  });
   let output = '';
   const capture = (chunk) => { output = (output + String(chunk)).slice(-4000); };
   child.stdout.on('data', capture);

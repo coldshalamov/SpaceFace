@@ -54,6 +54,7 @@ const READY_STATUSES = new Set([
   'authored',
   'authored-with-cleanup-error',
   'authored-prepared',
+  'same-semantic-fallback',
   'same-semantic-fallback-prepared',
   'shell-ready',
 ]);

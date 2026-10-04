@@ -44,6 +44,13 @@ const GATE_FALLBACK = GATE_BEARINGS.front;
 // Half of one 45-degree gate sector, so bodies from one gate spread but never wander into the next.
 const GATE_SPREAD_RAD = Math.PI / 8;
 const RADIUS_JITTER = 0.18;
+// SWARM-03: clumps, not streams. A Swarm batch lands as ONE throw-shaped group — bodies
+// inside SWARM_CLUMP_RADIUS_WU of the pack centre — so a single impulse charge (blast
+// radius ~105 wu) or one swung body can honestly take three. The gate bearing still
+// decides WHICH side the pack arrives on, and depth jitter keeps the approach read;
+// only the fan inside the batch is gone. Adventure/Crucible waves keep the sector fan.
+export const SWARM_CLUMP_RADIUS_WU = 44;
+const SWARM_CLUMP_DEPTH_JITTER = 0.10;
 
 /** Deterministic per-batch stream. Same run seed + wave + package + batch => same placement. */
 export function batchStreamSeed(seed, wave, packageIndex, batchIndex) {
@@ -56,12 +63,14 @@ export function batchStreamSeed(seed, wave, packageIndex, batchIndex) {
 }
 
 /**
- * Enemy level for a wave. Deterministic and monotone; no HP inflation knob beyond the
- * archetype's own level scaling (§33 forbids HP inflation as the difficulty lever).
+ * Enemy level for a wave. Always 1: §33 forbids HP inflation as the difficulty lever, and
+ * FB-026 moved the arc's curve into composeArcWave package counts, bearings and batch gaps
+ * (survivalActs.js). A level here would multiply hull/armor/shield/damage through
+ * scaleCombatant — the exact knob the arc is not allowed to have.
  */
 export function levelForWave(wave) {
-  const w = Number.isInteger(wave) && wave > 0 ? wave : 1;
-  return 1 + Math.floor((w - 1) / 3);
+  void wave;
+  return 1;
 }
 
 /** Unit bearing for a gate id, falling back to `front` for an unknown id. */
@@ -148,17 +157,36 @@ export function materializeWaveBatch(ctx, request) {
   ));
 
   const spawnedIds = [];
+  // SWARM-03: a swarm batch of 2+ arrives as one clump — same gate, same distance band,
+  // one tight pack instead of the sector fan. Deterministic: the same batch stream draws
+  // the clump centre first, then each body's offset inside it.
+  const clumped = req.swarm === true && granted > 1;
+  let clumpX = 0;
+  let clumpZ = 0;
+  if (clumped) {
+    const clumpAngle = baseAngle + (rng() - 0.5) * GATE_SPREAD_RAD;
+    const clumpDist = distance * (1 + (rng() - 0.5) * 2 * SWARM_CLUMP_DEPTH_JITTER);
+    clumpX = anchor.x + Math.cos(clumpAngle) * clumpDist;
+    clumpZ = anchor.z + Math.sin(clumpAngle) * clumpDist;
+  }
   try {
     for (let i = 0; i < granted; i++) {
-      // Spread deterministically across the gate sector so a six-body batch is an arriving
-      // formation, not a stack of coincident hulls at one point.
-      const lane = granted === 1 ? 0 : (i / (granted - 1)) * 2 - 1;
-      const angle = baseAngle + lane * GATE_SPREAD_RAD + (rng() - 0.5) * GATE_SPREAD_RAD * 0.5;
-      const radius = distance * (1 + (rng() - 0.5) * 2 * RADIUS_JITTER);
-      const pos = {
-        x: anchor.x + Math.cos(angle) * radius,
-        z: anchor.z + Math.sin(angle) * radius,
-      };
+      let pos;
+      if (clumped) {
+        const a = rng() * Math.PI * 2;
+        const r = Math.sqrt(rng()) * SWARM_CLUMP_RADIUS_WU;
+        pos = { x: clumpX + Math.cos(a) * r, z: clumpZ + Math.sin(a) * r };
+      } else {
+        // Spread deterministically across the gate sector so a six-body batch is an arriving
+        // formation, not a stack of coincident hulls at one point.
+        const lane = granted === 1 ? 0 : (i / (granted - 1)) * 2 - 1;
+        const angle = baseAngle + lane * GATE_SPREAD_RAD + (rng() - 0.5) * GATE_SPREAD_RAD * 0.5;
+        const radius = distance * (1 + (rng() - 0.5) * 2 * RADIUS_JITTER);
+        pos = {
+          x: anchor.x + Math.cos(angle) * radius,
+          z: anchor.z + Math.sin(angle) * radius,
+        };
+      }
       const spec = makeEnemySpawnSpec(req.enemyId, level, pos);
       if (!spec) continue;
       spec.data = spec.data || {};
@@ -193,8 +221,39 @@ export function materializeWaveBatch(ctx, request) {
         champion: req.champion === true,
       });
       if (doctrine) spec.data.ai.combatDoctrineId = doctrine;
+      // FB-023 — a hull that patrols lawful space under `lawful_wanted_only` is an ARENA
+      // combatant here: the Crucible has no WANTED axis, so the lawful latch would spawn it
+      // inert. Restamped on the COHORT copy only — the open-route def and its wanted-status
+      // policing are untouched, and engagementAuthority still validates the fight end to end
+      // (motive, trigger, telegraph, response window all still required).
+      if (req.swarm === true && spec.data.ai.lawful === true) {
+        spec.data.ai.lawful = false;
+        spec.data.ai.roe = 'weapons_free';
+        spec.data.ai.motive = 'arena_contract';
+        spec.data.ai.engagementTrigger = 'authorized_hostile_spawn';
+      }
+      // FB-024 — a capital champion's body enters the `capital_boss` doctrine family so the
+      // score's committed-bearing choreography is what it flies if orders ever lapse.
+      if (req.capitalBoss === true) spec.data.missionTag = 'capital_boss';
+      // FB-027 — the champion is a bounty hunter under the crucible's own contract. The stamp
+      // routes it through the SAME trick path a bounty mark runs (bountyHunt's normalize +
+      // startHunterTrickTelegraph): telegraph, counter window, activation, cooldown.
+      if (typeof req.trickId === 'string' && req.trickId) {
+        spec.data.bountyHunt = {
+          role: 'hunter',
+          contractId: typeof req.trickContractId === 'string' && req.trickContractId
+            ? req.trickContractId
+            : `swarm:champion:w${Number.isInteger(req.wave) ? req.wave : 0}`,
+          trickId: req.trickId,
+        };
+        spec.data.contractTargetId = playerId ?? null;
+      }
       spec.data.runWave = Number.isInteger(req.wave) ? req.wave : 0;
       if (typeof req.role === 'string') spec.data.runRole = req.role;
+      // The champion mark travels with the body (SWARM-02): the arcade juice layer and any
+      // later boss surface find the round's boss bodies without re-deriving the wave owner's
+      // requireBoss ledger, exactly like runRole/runWave above.
+      if (req.champion === true) spec.data.swarmChampion = true;
       const bossDressing = lawArenaBossDressing(req.arenaId, req.enemyId, req.role);
       if (bossDressing) spec.data.bossDressing = bossDressing;
       const spawned = helpers.spawnEntity(spec);

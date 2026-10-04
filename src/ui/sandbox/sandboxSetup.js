@@ -15,6 +15,7 @@
 //      applied once; repeated launches reuse the listeners.
 //   3. applySandboxSetup(ctx, config) runs the writers in dependency-safe order.
 
+import { NEW_GAME } from '../../data/newGameDefaults.js';
 import { WEAPONS } from '../../data/weapons.js';
 import { MODULES } from '../../data/modules.js';
 import { TECH_NODES } from '../../data/tech.js';
@@ -35,6 +36,8 @@ import { mulberry32 } from '../../core/rng.js';
 import { validateCombatLabSetup } from '../../contracts/combatLabSetupSchema.js';
 import { SWARM_RULESET } from '../../data/swarmMode.js';
 import { normalizeSwarmStake, swarmStakeFor } from '../../data/swarmStakes.js';
+import { swarmThreatPurseMult } from '../../data/swarmThreats.js';
+import { swarmCheckpointPurseFor, swarmZoneIndexFor } from '../../data/swarmLadder.js';
 import {
   COMBAT_LAB_ARENAS,
   COMBAT_LAB_ENEMY_PACKAGES,
@@ -168,6 +171,14 @@ export function buildSandboxLaunchConfig(baseConfig = {}, overrides = {}) {
       // to the tuned baseline at consume time.
       if (typeof overrides.swarmStake === 'string' && overrides.swarmStake) {
         out.swarmStake = overrides.swarmStake;
+      }
+      // SWARM-06: the Threat wager and an explicit perk pick ride beside the setup on the same
+      // seam — catalog ids only, normalized again at begin against the run's own catalog read.
+      if (Array.isArray(overrides.swarmThreats) && overrides.swarmThreats.length) {
+        out.swarmThreats = overrides.swarmThreats.filter((id) => typeof id === 'string' && id);
+      }
+      if (Array.isArray(overrides.swarmPerks) && overrides.swarmPerks.length) {
+        out.swarmPerks = overrides.swarmPerks.filter((id) => typeof id === 'string' && id);
       }
       if (overrides.openingLesson === true) out.openingLesson = true;
     }
@@ -359,10 +370,31 @@ function gameNewOptionsForSandboxConfig(config) {
     : {};
 }
 
+/**
+ * The sandbox front door used to emit no embark speculation: the picker spent menu dwell
+ * warming nothing, so launch paid a wasted helios bootstrap plus the scenario's sector +
+ * packages inside the loading window. Arm the renderer's embark warm with the config's
+ * target — cfg.sectorId when the scenario retargets the sector, else the NEW_GAME default;
+ * the same payload works for picker hover (real dwell warm) and request time (backstop).
+ */
+export function emitSandboxEmbarkSpeculation(bus, config) {
+  if (!bus || typeof bus.emit !== 'function') return;
+  const cfg = config && typeof config === 'object' ? config : {};
+  const opts = gameNewOptionsForSandboxConfig(cfg);
+  bus.emit('game:embarkSpeculation', {
+    sectorId: typeof cfg.sectorId === 'string' && cfg.sectorId
+      ? cfg.sectorId
+      : (NEW_GAME.startingSectorId || NEW_GAME.startSectorId || 'sector_helios_prime'),
+    seed: Number.isSafeInteger(opts.seed) ? opts.seed : null,
+    shipDefId: typeof cfg.shipId === 'string' ? cfg.shipId : null,
+  });
+}
+
 /** Stash config, then trigger the standard new-game pipeline. The real NEW_GAME world boots with
  *  only a validated deterministic seed; applySandboxSetup mutates it on game:started. */
 export function requestSandboxGame(bus, config) {
   pendingConfig = config || {};
+  emitSandboxEmbarkSpeculation(bus, config);
   bus.emit('game:new', gameNewOptionsForSandboxConfig(config));
 }
 
@@ -385,11 +417,11 @@ export function installSandboxGameStartedHook(bus, ctxRef) {
     }
   };
   bus.on('game:started', handler);
-  // Player-facing Crucible launches are complete before the shared loading gate. Ordinary
-  // sandbox experiments retain their post-start hook and the normal New Game route is a no-op.
-  bus.on('game:scenePrepared', () => {
-    if (pendingConfig?.survivalSetup) handler();
-  });
+  // Player-facing sandbox launches are complete before the shared loading gate: firing at
+  // scenePrepared lands the configured sector + hull + lab package while the veil is up and
+  // before the prepare gates measure, so they grade the sector the player actually enters.
+  // The normal New Game route is a no-op (pendingConfig is null).
+  bus.on('game:scenePrepared', handler);
   // A failed transition never reaches game:started. Clear its staged config here so a later
   // ordinary New Game cannot inherit the abandoned Sandbox request. Repeated failures are benign.
   bus.on('game:startFailed', () => { pendingConfig = null; });
@@ -1151,6 +1183,21 @@ export function applySandboxSetup(ctx, config) {
           swarmStake: launchRuleset === SWARM_RULESET && typeof cfg.swarmStake === 'string'
             ? cfg.swarmStake
             : undefined,
+          // SWARM-06: the wager and the pick ride the begin request — runSession stamps them
+          // onto telemetry (threats normalized to the catalog, perks earned-checked against
+          // the profile). Absent stays absent; a no-wager run writes nothing.
+          threats: launchRuleset === SWARM_RULESET && Array.isArray(cfg.swarmThreats)
+            ? cfg.swarmThreats
+            : undefined,
+          perks: launchRuleset === SWARM_RULESET && Array.isArray(cfg.swarmPerks)
+            ? cfg.swarmPerks
+            : undefined,
+          // SWARM-04: a checkpoint start enters mid-ladder. The schema-validated wave is the
+          // ladder's bought entry point — anything ≤1 is an ordinary opening, so the field
+          // only travels when a checkpoint is actually picked.
+          startWave: launchRuleset === SWARM_RULESET && Number.isInteger(setup.wave) && setup.wave > 1
+            ? setup.wave
+            : undefined,
         });
         // The purse is the difficulty you bought at the door: it lands in the run wallet
         // through the wallet's own award seam, BEFORE the opening armory can spend it — and only
@@ -1159,12 +1206,30 @@ export function applySandboxSetup(ctx, config) {
         // must not credit a foreign wallet.
         if (launchRuleset === SWARM_RULESET) {
           const run = ctx.state && ctx.state.run;
-          const purse = swarmStakeFor(cfg.swarmStake).purse;
+          // SWARM-06: Thin Purse takes its factor off the stake purse before the armory ever
+          // sees it — the wager's own blurb ("the stake purse halves") is the contract.
+          const purse = Math.round(
+            swarmStakeFor(cfg.swarmStake).purse * swarmThreatPurseMult(cfg.swarmThreats));
           if (purse > 0 && run && run.kind === 'survival' && run.phase === 'loadout'
             && run.seed === (setup.seed >>> 0)) {
             ctx.bus.emit('run:awardRequested', {
               credits: purse,
               reason: 'swarm:stake:' + normalizeSwarmStake(cfg.swarmStake),
+            });
+          }
+          // SWARM-04: the checkpoint's purse, "sized to a typical run's purse at that point"
+          // (§6.2). The opening armory needs real money to fit a mid-build — a bought Round 11
+          // with a Round-1 wallet would be a restart in disguise. Same award seam as the stake.
+          const startWave = Number.isInteger(setup.wave) ? setup.wave : 1;
+          const checkpointPurse = startWave > 1
+            ? swarmCheckpointPurseFor(swarmZoneIndexFor(startWave))
+            : 0;
+          const runAfterStake = ctx.state && ctx.state.run;
+          if (checkpointPurse > 0 && runAfterStake && runAfterStake.kind === 'survival'
+            && runAfterStake.phase === 'loadout' && runAfterStake.seed === (setup.seed >>> 0)) {
+            ctx.bus.emit('run:awardRequested', {
+              credits: checkpointPurse,
+              reason: `swarm:checkpoint:w${startWave}`,
             });
           }
         }

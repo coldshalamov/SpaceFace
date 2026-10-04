@@ -228,6 +228,15 @@ function meter(el, label, fraction, maximum, raw, available, absent = false) {
 const HULL_WORDS = { stable:'STABLE', damaged:'DAMAGED', critical:'CRITICAL', destroyed:'DESTROYED', unavailable:'NO DATA' };
 const SHIELD_WORDS = { full:'FULL', online:'ONLINE', charging:'RECHARGING', offline:'OFFLINE', absent:'NOT FITTED', unavailable:'NO DATA' };
 
+/** Bench A/B: production default ON. A settled instrument skips its DOM compare pass. */
+let HULL_INTEGRITY_QUIET_LATCH = true;
+export function setHullIntegrityQuietLatchForBench(enabled) {
+  HULL_INTEGRITY_QUIET_LATCH = enabled !== false;
+}
+export function getHullIntegrityQuietLatchForBench() {
+  return HULL_INTEGRITY_QUIET_LATCH !== false;
+}
+
 /** Feed from the existing HUD frame. Returns the retained model for diagnostics; no per-frame subtree replacement. */
 export function updateShipCondition(host, entity, dt = 0, reducedMotion = false, reducedFlash = false) {
   if (!host) return null;
@@ -241,7 +250,7 @@ export function updateShipCondition(host, entity, dt = 0, reducedMotion = false,
   const s = c.sig || (c.sig = {});
   const rawHull = entity ? entity.hull : undefined;
   const rawShield = entity ? entity.shield : undefined;
-  if (s.on === true
+  if (HULL_INTEGRITY_QUIET_LATCH !== false && s.on === true
     && s.defId === m.defId && s.owner === m.owner
     && s.hullState === m.hullState && s.shieldState === m.shieldState
     && s.motion === m.motion && s.flashes === m.flashes

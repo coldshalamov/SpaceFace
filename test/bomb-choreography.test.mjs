@@ -143,7 +143,9 @@ function openField(t, id = 'bomb_goo') {
   try {
     const bomb = t.drop('bomb_concussion');
     const chunk = t.spawn({ type: 'asteroid', data: { isChunk: true }, pos: { x: bomb.pos.x + 30, z: 0 }, radius: 4 });
-    const rock = t.spawn({ type: 'asteroid', pos: { x: bomb.pos.x + 30, z: 20 }, radius: 4 });
+    // A bare radius-4 asteroid is a dynamic body under the SG-02 substance law (only
+    // landmark/large/authored-static rocks are fixed) — authored staticness is the pin.
+    const rock = t.spawn({ type: 'asteroid', physicsBody: { dynamic: false }, pos: { x: bomb.pos.x + 30, z: 20 }, radius: 4 });
     t.tick(31); t.system.commandDetonate(t.player.id); t.tick(11);
     assert.ok(t.impulses.some(p => p.entityId === chunk.id));
     assert.ok(!t.impulses.some(p => p.entityId === rock.id));

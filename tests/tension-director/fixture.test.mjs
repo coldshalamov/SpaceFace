@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { runScenario } from '../../../fixture/simulation.mjs';
+import { runScenario } from './fixture/simulation.mjs';
 
 test('fixed-seed integrated consumer trace matches across an owner save/restore', async () => {
   const a = await runScenario({ archetype: 'improviser', seed: 4242, seconds: 1800 });

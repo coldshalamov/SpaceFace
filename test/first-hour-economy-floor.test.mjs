@@ -64,15 +64,17 @@ test('the starter floor is an isolated Helios equilibrium, not a commodity repri
     const heliosMarket = econ.ensureMarket(HELIOS);
     const ceresMarket = econ.ensureMarket('station_ceres');
     // Isolation control: Tethys is the other large station with no authored market
-    // factors — copper must price identically there, proving the 0.09 factor is
+    // factors — fuel cells must price identically there, proving the 0.09 factor is
     // iron-at-Helios only (the derived model computes per-commodity equilibria, so
-    // the old literal default-eq pin is dead notation).
+    // the old literal default-eq pin is dead notation). The control must be a
+    // marketTier-0 good: ECON-01 stops higher-tier listings seeding at tier-0 Helios,
+    // so copper ore no longer exists in its book at all.
     const tethysMarket = econ.ensureMarket('station_tethys');
     const largeBaseEq = ECONOMY_PRICE_TUNING.baseEqDefault * ECONOMY_PRICE_TUNING.sizeFactor.L;
     const mediumBaseEq = ECONOMY_PRICE_TUNING.baseEqDefault * ECONOMY_PRICE_TUNING.sizeFactor.M;
 
     assert.equal(heliosMarket[IRON].equilibrium, largeBaseEq * 0.09);
-    assert.equal(heliosMarket.cmdty_ore_copper.equilibrium, tethysMarket.cmdty_ore_copper.equilibrium,
+    assert.equal(heliosMarket.cmdty_fuel_cells.equilibrium, tethysMarket.cmdty_fuel_cells.equilibrium,
       'an unrelated Helios listing keeps the ordinary neutral equilibrium (identical to the control station)');
     assert.equal(ceresMarket[IRON].equilibrium,
       mediumBaseEq * ECONOMY_PRICE_TUNING.roleFactor.consume,

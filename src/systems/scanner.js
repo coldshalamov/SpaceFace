@@ -27,6 +27,18 @@ import {
 } from '../data/pallasHiddenCache.js';
 import { kettleLineSignalCopy } from '../data/kettleLine.js';
 import {
+  applyClueObservation,
+  cloneClueBook,
+  emptyClueBook,
+  normalizeClueBook,
+  shipmentReadingFromReveal,
+} from '../data/scanClues.js';
+import {
+  anomalyRuleLesson,
+  discoveryPlaceCandidates,
+  normalizeDiscoveryMemory,
+} from './scanReveal.js';
+import {
   PLANET_STATE_DEFS,
   PLANET_SIGNAL_RANGE,
   planetSignalAnchor,
@@ -36,15 +48,40 @@ import {
   CONTACT_HAIL_RANGE,
   CONTACT_HAIL_REQUEST_TTL_S,
   CONTACT_HAIL_ACTION_HEAVE_TO,
+  CONTACT_HAIL_ACTION_TOW_ASSIST,
   contactHailAvailability,
   createContactHailOffer,
   createContactHailResponse,
   pirateParleyDemandForHandoff,
+  towAssistBodyFor,
 } from '../data/contactHail.js';
+import { TOW_ASSIST_FEE_CR } from '../data/yardContracts.js';
 import { entityIndexVersion, entityIndexLaneVersion, forEachLivingWorldActor } from '../world/livingWorldViews.js';
 import { makeShipEntitySpec } from './ships.js';
 
 export const SCANNER_CONTACT_RANGE = CONTACT_HAIL_RANGE;
+
+const HAIL_REFUSAL_TEXT = Object.freeze({
+  unresolved_target: 'No contact to hail',
+  stale_target: 'That isn\'t the contact you\'re locked on',
+  dead_target: 'No answer — that contact is gone',
+  unsupported_target: 'That contact doesn\'t take a hail',
+  unsupported_contact: 'That contact doesn\'t take a hail',
+  out_of_reveal_range: 'Too far to hail — close in',
+  parley_expired: 'The demand has already expired',
+});
+
+/** 'out' when the sensor bank is dead, 'jammed' when a status killed the capability, else null. */
+export function playerSensorBlock(state, player) {
+  const book = state && state.combat && state.combat.entities;
+  if (!book || !player || player.id == null) return null;
+  const runtime = book[String(player.id)];
+  if (!runtime) return null;
+  const sensor = runtime.subsystems && runtime.subsystems.subsystem_sensor;
+  if (sensor && sensor.effectiveDisabled === true) return 'out';
+  if (runtime.capabilities && runtime.capabilities.sensor === false) return 'jammed';
+  return null;
+}
 
 const PULSE_COOLDOWN_S = 8;
 const NEAR_SCAN_RADIUS = 1200;
@@ -482,7 +519,11 @@ function anomalyTriangulationDetail(result, config) {
 }
 
 function freshSignalState() {
-  return { schemaVersion: 2, records: {}, completed: {}, receipts: [], triangulations: {}, trackedId: null };
+  return {
+    schemaVersion: 2, records: {}, completed: {}, receipts: [], triangulations: {}, trackedId: null,
+    clues: emptyClueBook(),
+    discoveryMemory: { subjects: {} },
+  };
 }
 
 function ensureSignalState(state) {
@@ -493,6 +534,14 @@ function ensureSignalState(state) {
   if (!own.completed || typeof own.completed !== 'object' || Array.isArray(own.completed)) own.completed = {};
   if (!Array.isArray(own.receipts)) own.receipts = [];
   if (!own.triangulations || typeof own.triangulations !== 'object' || Array.isArray(own.triangulations)) own.triangulations = {};
+  if (!own.clues || typeof own.clues !== 'object' || Array.isArray(own.clues)) own.clues = emptyClueBook();
+  else if (!own.clues.subjects || typeof own.clues.subjects !== 'object' || Array.isArray(own.clues.subjects)) {
+    own.clues.subjects = {};
+  }
+  if (!own.discoveryMemory || typeof own.discoveryMemory !== 'object' || Array.isArray(own.discoveryMemory)
+    || !own.discoveryMemory.subjects || typeof own.discoveryMemory.subjects !== 'object') {
+    own.discoveryMemory = { subjects: {} };
+  }
   return own;
 }
 
@@ -575,6 +624,12 @@ function collectSignalCandidates(state, sectorId, origin, nearby = [], profile =
     if (entity.data && entity.data.requiresTriangulation) continue;
     const kind = signalKindForEntity(entity);
     if (!kind) continue;
+    const revealed = entity.data && entity.data.scanRevealed;
+    const discovery = revealed && revealed.discovery;
+    const shipment = kind === 'ship' ? shipmentReadingFromReveal(revealed) : null;
+    // Trusted traffic keeps the ordinary signature. Only a declared or conflicting
+    // hold reading becomes a clue, so a patrol flyby does not mint shipment memory.
+    const fileShipment = shipment && shipment.observedReading !== 'trusted';
     add({
       id: `signal:entity:${entity.id}`,
       kind,
@@ -583,6 +638,15 @@ function collectSignalCandidates(state, sectorId, origin, nearby = [], profile =
       pos: entity.pos,
       range: profile.nearRadius,
       repeatableScannerSignal: entity.data && entity.data.repeatableScannerSignal === true,
+      ...(discovery ? { discovery } : {}),
+      ...(discovery && discovery.trackable === false ? { trackable: false } : {}),
+      ...(fileShipment ? {
+        observedClaim: shipment.observedClaim,
+        observedReading: shipment.observedReading,
+        observedRelation: shipment.observedRelation,
+        clueKind: shipment.clueKind,
+        clueSubjectId: `manifest:${entity.id}`,
+      } : {}),
     });
   }
 
@@ -623,6 +687,7 @@ function collectSignalCandidates(state, sectorId, origin, nearby = [], profile =
     if (!row || row.sectorId !== sectorId || row.status === 'resolved' || row.status === 'aftermath') continue;
     const kind = signalKindForLivingPoi(row);
     if (!kind || !row.zoneCenter) continue;
+    const shipmentLane = row.familyId === 'convoy_industrial_route';
     add({
       id: `signal:living:${row.behaviorId}`,
       kind,
@@ -630,6 +695,12 @@ function collectSignalCandidates(state, sectorId, origin, nearby = [], profile =
       entityId: null,
       pos: row.zoneCenter,
       range: profile.hiddenPoiRadius,
+      // Public lane sentence only. Contract text, true cargo, and status enums stay off the clue.
+      ...(shipmentLane ? {
+        observedClaim: 'shipment on the industrial lane',
+        clueKind: 'shipment',
+        clueSubjectId: `shipment:${row.behaviorId}`,
+      } : {}),
     });
   }
 
@@ -676,6 +747,8 @@ function collectSignalCandidates(state, sectorId, origin, nearby = [], profile =
         || '').toUpperCase(),
     });
   }
+
+  for (const place of discoveryPlaceCandidates(state, origin, state.simTime || 0, nearby)) add(place);
 
   return [...byId.values()].sort(compareSignalRows);
 }
@@ -724,13 +797,31 @@ function pruneSignalRecords(own) {
 
 function cloneSignalRecord(record) {
   if (!record || typeof record !== 'object') return null;
-  return {
+  const clone = {
     ...record,
     pos: pos2(record.pos),
     triangulation: record.triangulation && typeof record.triangulation === 'object'
       ? { ...record.triangulation }
       : null,
   };
+  if (clone.discovery && typeof clone.discovery === 'object') {
+    clone.discovery = {
+      ...clone.discovery,
+      actionPos: clone.discovery.actionPos ? { ...clone.discovery.actionPos } : null,
+      parts: clone.discovery.parts && typeof clone.discovery.parts === 'object'
+        ? { ...clone.discovery.parts } : null,
+    };
+  }
+  if (record.clue && record.clue.subjectId) {
+    const cloned = cloneClueBook({ subjects: { [record.clue.subjectId]: record.clue } });
+    const subject = cloned.subjects[record.clue.subjectId];
+    clone.clue = subject ? {
+      ...subject,
+      status: 'current',
+      revised: Array.isArray(subject.history) && subject.history.length > 0,
+    } : null;
+  }
+  return clone;
 }
 
 function cloneSignalReceipt(receipt) {
@@ -781,6 +872,8 @@ function cloneSignalState(own) {
     receipts: (own.receipts || []).map(cloneSignalReceipt).filter(Boolean).slice(-SIGNAL_RECEIPT_CAP),
     triangulations,
     trackedId: own.trackedId && records[own.trackedId] && !completed[own.trackedId] ? own.trackedId : null,
+    clues: cloneClueBook(own.clues),
+    discoveryMemory: normalizeDiscoveryMemory(own.discoveryMemory),
   };
 }
 
@@ -817,6 +910,8 @@ function normalizeSignalState(data) {
     .map(cloneSignalReceipt).filter(Boolean).slice(-SIGNAL_RECEIPT_CAP);
   normalized.trackedId = source.trackedId && normalized.records[source.trackedId]
     && !normalized.completed[source.trackedId] ? source.trackedId : null;
+  normalized.clues = normalizeClueBook(source.clues);
+  normalized.discoveryMemory = normalizeDiscoveryMemory(source.discoveryMemory);
   pruneSignalRecords(normalized);
   return normalized;
 }
@@ -864,6 +959,9 @@ export const scanner = {
 
   newGame() {
     this._resetContactHail('new_game');
+    // The pulse cooldown is keyed on absolute simTime; a fresh run restarts the clock at 0,
+    // so a late-run pulse must not keep scanning locked for the whole old timestamp.
+    this._cooldownUntil = 0;
     if (this.state) this.state.signalInvestigation = freshSignalState();
   },
 
@@ -877,9 +975,26 @@ export const scanner = {
     actions.scanPulse = false;
 
     const now = state.simTime || 0;
-    if (now < this._cooldownUntil) return;
-
     const player = state.entities && state.entities.get && state.entities.get(state.playerId);
+    if (player && player.alive) {
+      const block = playerSensorBlock(state, player);
+      if (block) {
+        this.bus.emit('toast', {
+          text: block === 'jammed'
+            ? 'Sensors aren\'t answering — jammed'
+            : 'Sensors out — the board is blind',
+          kind: 'warn',
+          ttl: 1.6,
+        });
+        return;
+      }
+    }
+    if (now < this._cooldownUntil) {
+      const left = Math.max(1, Math.ceil(this._cooldownUntil - now));
+      this.bus.emit('toast', { text: `Scanner recharging — ${left}s`, kind: 'warn', ttl: 1.6 });
+      return;
+    }
+
     if (!player || !player.alive) return;
 
     this._cooldownUntil = now + PULSE_COOLDOWN_S;
@@ -1025,6 +1140,11 @@ export const scanner = {
             simTime: now,
           });
         }
+      } else if (entity.type === 'ship' || entity.type === 'drone') {
+        // FB-121: an ordinary hull's mass class resolves on pulse contact — the target panel
+        // may print ammunition/terrain/specialist only after the hull has been scanned, so
+        // the flag is durable (learned once) rather than the wrecks' transient ping stamp.
+        data.scanned = true;
       }
     }
 
@@ -1248,6 +1368,27 @@ export const scanner = {
         record.status = 'investigated';
         record.trackable = false;
       }
+      this._noteClue(own, candidate, record, now);
+      if (candidate.discovery && candidate.discovery.sentence) {
+        record.discovery = candidate.discovery;
+        if (candidate.discovery.lesson === true) record.discoveryLesson = true;
+        record.detail = candidate.discovery.sentence;
+        if (candidate.discovery.trackable === false) record.trackable = false;
+      } else if (candidate.kind === 'anomaly' && !resonanceSignal && !discoveryCopy) {
+        const player = state.entities && state.entities.get && state.entities.get(state.playerId);
+        const rule = anomalyRuleLesson(player, candidates, candidate.pos, candidate.entityId);
+        if (rule) {
+          record.discovery = {
+            sf: 'SF-171',
+            lesson: false,
+            sentence: rule.sentence,
+            actionPos: null,
+            trackable: true,
+            parts: { 'SF-171': rule },
+          };
+          if (record.detail === signalDetail(candidate.kind, stage)) record.detail = rule.sentence;
+        }
+      }
       own.records[record.id] = record;
       rows.push(record);
     }
@@ -1291,11 +1432,22 @@ export const scanner = {
       });
       return true;
     }
+    if (record.clue && record.clue.revised && record.clue.route) {
+      this.bus.emit('signal:tracked', { ...record, pos: { ...record.pos } });
+      return this._retargetClue(record);
+    }
+    const discovery = record.discovery;
+    const lessonPos = discovery && discovery.lesson === true && discovery.trackable !== false
+      && discovery.actionPos && Number.isFinite(discovery.actionPos.x) && Number.isFinite(discovery.actionPos.z)
+      ? discovery.actionPos : null;
+    const aim = lessonPos || record.pos;
     const course = {
-      pos: { x: record.pos.x, z: record.pos.z },
-      targetEntityId: record.entityId,
+      pos: { x: aim.x, z: aim.z },
+      targetEntityId: lessonPos ? null : record.entityId,
       label: record.classification,
-      reason: `Investigate ${record.classification.toLowerCase()}`,
+      reason: lessonPos && discovery.sentence
+        ? discovery.sentence
+        : `Investigate ${record.classification.toLowerCase()}`,
       waypointKind: 'signal',
       arrivalRadius: SIGNAL_INVESTIGATE_RADIUS,
       autopilot: true,
@@ -1305,17 +1457,64 @@ export const scanner = {
     return true;
   },
 
+  // A later reading of the same shipment or worksite updates only that clue.
+  // The observed claim is filed; hidden cargo on the candidate is not copied.
+  _noteClue(own, candidate, record, now) {
+    if (!own || !candidate || !candidate.observedClaim || !record) return null;
+    if (!own.clues) own.clues = emptyClueBook();
+    const result = applyClueObservation(own.clues, {
+      subjectId: candidate.clueSubjectId || candidate.id,
+      kind: candidate.clueKind || 'shipment',
+      claim: candidate.observedClaim,
+      reading: candidate.observedReading || null,
+      relation: candidate.observedRelation || null,
+      pos: record.pos,
+      at: now,
+    });
+    if (!result || !result.revised || !result.hypothesis) return result;
+    record.detail = result.playerLine || record.detail;
+    record.clue = result.hypothesis;
+    if (own.trackedId === record.id && record.trackable !== false && !own.completed[record.id]) {
+      this._retargetClue(record);
+    }
+    return result;
+  },
+
+  _retargetClue(record) {
+    const route = record && record.clue && record.clue.route;
+    if (!route || !route.pos || !this.bus || typeof this.bus.emit !== 'function') return false;
+    this.bus.emit('ui:setCourse', {
+      pos: { x: route.pos.x, z: route.pos.z },
+      targetEntityId: record.entityId || null,
+      label: route.label || record.classification,
+      reason: route.reason,
+      waypointKind: 'signal',
+      arrivalRadius: SIGNAL_INVESTIGATE_RADIUS,
+      autopilot: true,
+    });
+    return true;
+  },
+
+  _noteHailRefusal(reason) {
+    const text = HAIL_REFUSAL_TEXT[reason];
+    if (!text || !this.bus) return;
+    this.bus.emit('toast', { text, kind: 'warn', ttl: 1.6 });
+  },
+
   _requestContactHail(payload) {
     const state = this.state;
     const availability = contactHailAvailability(state);
     if (!availability.enabled || payload.targetId != null && payload.targetId !== availability.targetId) {
       this._clearContactHail('request_invalid');
+      const reason = !availability.enabled ? availability.reason : 'stale_target';
+      this._noteHailRefusal(reason);
       return false;
     }
     if (availability.kind === 'toll') {
       const demand = pirateParleyDemandForHandoff(availability.parley);
       if (!demand || !(Number(demand.deadlineAt) > Number(state.simTime || 0))) {
         this._clearContactHail('parley_invalid');
+        this._noteHailRefusal('parley_expired');
         return false;
       }
       this._clearContactHail('parley_handoff');
@@ -1367,11 +1566,15 @@ export const scanner = {
     const heaveTo = choice === CONTACT_HAIL_ACTION_HEAVE_TO
       ? this._requestContactHeaveTo(target, availability, { wanted, ai })
       : null;
+    const towAssist = choice === CONTACT_HAIL_ACTION_TOW_ASSIST
+      ? this._requestContactTowAssist(target)
+      : null;
     const response = createContactHailResponse(state, active, payload.choice, {
       wanted,
       weaponsAuthorized: wanted || ai.securityTargetId === state.playerId,
       roe: ai.roe || null,
       heaveTo,
+      towAssist,
     });
     if (!response) return false;
     this._contactHail = null;
@@ -1420,6 +1623,62 @@ export const scanner = {
       };
     }
     return result;
+  },
+
+  // SF-138 — hire the hailed worker to tow the nearest loose body to a sink. The data layer
+  // answers which body; a live mission may claim a specific destination for it (yard berth,
+  // dock ring), otherwise the nearest station is the honest default. The hire fee is billed
+  // by the runtime; whatever the load is worth is settled by whoever owns the destination.
+  _requestContactTowAssist(worker) {
+    const state = this.state;
+    const body = worker ? towAssistBodyFor(state, worker) : null;
+    if (!body) return { granted: false, reason: 'no_load' };
+    const jobApi = this.helpers && this.helpers.npcJobs
+      ? this.helpers.npcJobs
+      : this.registry && this.registry.get && this.registry.get('npcJobsRuntime');
+    if (!jobApi || typeof jobApi.requestTowAssist !== 'function') {
+      return { granted: false, reason: 'no_owner' };
+    }
+    let dest = null;
+    let missionId = null;
+    let deliverW = null;
+    const missionsApi = this.registry && this.registry.get && this.registry.get('missions');
+    if (missionsApi && typeof missionsApi.towAssistDestFor === 'function') {
+      const hint = missionsApi.towAssistDestFor(body.id);
+      if (hint && hint.pos) {
+        dest = hint.pos;
+        missionId = hint.missionId || null;
+        deliverW = Number.isFinite(hint.deliverW) ? hint.deliverW : null;
+      }
+    }
+    if (!dest) dest = this._nearestStationPosTo(body) || { x: body.pos.x, z: body.pos.z };
+    const out = jobApi.requestTowAssist(worker.id, body.id, dest, {
+      holder: 'contactHail',
+      missionId,
+      deliverW,
+      feeCr: TOW_ASSIST_FEE_CR,
+    });
+    // The runtime bills take-what-they-have and records the settled fee — a short tab reads
+    // back the real amount on the line, never the sticker price.
+    if (out && out.granted === true) {
+      return { granted: true, feeCr: Number.isFinite(out.feeCr) ? out.feeCr : TOW_ASSIST_FEE_CR };
+    }
+    return { granted: false, reason: out && out.reason || 'claim_refused' };
+  },
+
+  _nearestStationPosTo(entity) {
+    const entities = this.state && this.state.entities;
+    if (!entities || !entity || !entity.pos) return null;
+    let best = null;
+    let bestD2 = Infinity;
+    for (const e of entities.values()) {
+      if (!e || e.alive === false || e.type !== 'station' || !e.pos) continue;
+      const dx = e.pos.x - entity.pos.x;
+      const dz = e.pos.z - entity.pos.z;
+      const d2 = dx * dx + dz * dz;
+      if (d2 < bestD2) { bestD2 = d2; best = e; }
+    }
+    return best ? { x: best.pos.x, z: best.pos.z } : null;
   },
 
   _updateContactHail(state) {
@@ -1524,6 +1783,7 @@ export const scanner = {
     const state = this.state;
     const own = state && ensureSignalState(state);
     if (!own || !record || own.completed[record.id]) return false;
+    if (record.discovery && record.discovery.lesson === true) return false;
     const receipt = {
       id: `signal-receipt:${record.id}`,
       signalId: record.id,
@@ -1553,6 +1813,9 @@ export const scanner = {
 
   deserialize(data) {
     this._resetContactHail('load');
+    // Transient cooldown is not serialized; the restored clock can be far below the old
+    // deadline, so carry no lockout across a load.
+    this._cooldownUntil = 0;
     this.state.signalInvestigation = normalizeSignalState(data);
   },
 
@@ -1569,6 +1832,7 @@ export const scanner = {
         this.bus.off('dock:docked', this._onContactHailReset);
         this.bus.off('mode:changed', this._onContactHailReset);
       }
+      if (this._onSensorGhostSwarm) this.bus.off('sensorGhost:swarm', this._onSensorGhostSwarm);
     }
     this._contactHail = null;
     this._contactHailAvailability = null;
@@ -1579,6 +1843,7 @@ export const scanner = {
     this._onContactHailRequest = null;
     this._onContactHailChoice = null;
     this._onContactHailReset = null;
+    this._onSensorGhostSwarm = null;
   },
 };
 

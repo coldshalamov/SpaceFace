@@ -30,7 +30,10 @@ The camera is a 60° top-down chase at 144 WU (ship ≈ 170 px wide) with an opt
    value with its chroma deepened, so a saturated mid-dark paint reads rich, not pastel. Look,
    then adjust.
 3. **One identity colour, carried in bands.** Stripes and bands are cut into the geometry with
-   `band()`, so they follow the form and stay crisp at any zoom. No painted-on decals, no text.
+   `band()`, so they follow the form and stay crisp at any zoom. No painted-on decals, no text,
+   **except authored decals** (owner ruling 2026-10-03, see rule 6): a hand-directed or generated
+   image of a real mark (a livery stripe, a hull number, a service stencil, a faction crest) placed
+   deliberately on a decal quad, tinted by the paint colours, never as a noise layer.
 4. **Layered construction.** Panels are raised or recessed (`panel()`, `band(inset, depth)`),
    control surfaces are separate plates with a dark hinge gap, armour sits proud of the skin.
 5. **Light is part of the ship.** Engine cores, red port / green starboard nav lights at the
@@ -43,6 +46,16 @@ The camera is a 60° top-down chase at 144 WU (ship ≈ 170 px wide) with an opt
    near-uniform albedo so it never reads as a checkerboard of tinted tiles. No grain, grime,
    scratches or rust noise: at this camera broadband noise reads as leather. Wear, if a ship
    needs it, is a design element (a patched plate, a scorched nozzle ring), modelled.
+   **Owner ruling 2026-10-03: authored 2D images are allowed where they look better than code.**
+   The ban above is on *broadband procedural noise*, which is what read as leather. Art-directed
+   images are a different thing and are the way to fix "nothing looks used" and the repeating
+   panel grid: a trim sheet of directed wear (coolant streaks, scorch fans, dock rash, chipped
+   paint at edges, oil weeps), a very-low-frequency breakup map that ends the tile repetition,
+   and the livery / stencil decals of rule 3. They are placed (decal quads, or a macro map on
+   chosen parts), never sprayed uniformly. Rules that stay: judge by the real picture at the
+   gameplay camera; no generated lettering (words are set in code from an authored alphabet);
+   generated images stay out of the normal / ORM channels; share the sheets across the fleet
+   (one trim sheet, not one texture per hull) and compress them.
 7. **The finish is lacquer.** The Look ([`docs/visual-assets/LOOK.md`](../../../docs/visual-assets/LOOK.md))
    puts a clear coat on smooth dielectric paint: a sun glint, a mirror of the sky at the limb and a
    coloured rim. It comes from the finish's own roughness and metalness, so a ship gets it by
@@ -86,6 +99,8 @@ absolute metres.
 | `work_lamp(..., lens, halo=True)` | lit front lens only (matte back cap); `halo` adds a lit ring on the lens rim so the lamp reads from overhead |
 | `box(..., rot=(rx, ry, rz), mirror_flip=True)` | tilted box; mirrored copy mirrors the rotation |
 | `uv_scale=k` on `loft`, `plate`, `plate_v`, `box`, `cylinder`, `ring`, `sweep`, `beams`, `boxes`, `truss`, `ladder`, `annulus`, `sphere`, `rock` | per-part UV density: k multiplies the world-locked 4 m tile — use <1 on station-size panels |
+| `stencil.stamp(s, name, [(text, cap_height_m, tracking), ...], (x, y), surface_part, finish)` (`stencil.py`) | hand-cut hero lettering as real geometry in an existing finish: bridged counters, chipped edges, overspray, seeded, conformal to `surface_part` by ray-cast. Reads toward the nose, tops to port. The Hitch wears DIE LAUGHING from here; `test/kestrel-hero-marking.test.mjs` fails if a rebuild drops it |
+| `skin.studs / run / hatch / segments / hit` (`skin.py`) | close-zoom hardware seated on the real skin of a part (fasteners, cable runs, hatch coamings): ray-cast heights, returns points for `beams` / `boxes` / `sweep` - one mesh per class, no new draw |
 | `s.hook_part('HOOK_SECONDARY_X', obj, ...)` | keeps damage parts (shed-first secondary, sensor, armour) as their own meshes |
 | `s.detail = 1` / `2` | parts added while set are dropped at LOD2 / LOD1+ |
 | `s.hook('HOOK_DRIVE_CORE', pos)`, `s.socket(name, pos)` | override default drive / socket positions |

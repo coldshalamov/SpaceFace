@@ -11,6 +11,12 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 import forge as F  # noqa: E402
+import forge_export as E  # noqa: E402
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'animations'))
+import ANI_38  # noqa: E402
+import math  # noqa: E402
+import bpy  # noqa: E402
+from mathutils import Vector  # noqa: E402
 
 SHIP_ID = 'atlas'
 COLORS = {
@@ -26,6 +32,38 @@ COLORS = {
 
 ROWS = (4.1, 0.0, -4.1)      # container stack centres along X
 CY, CW, CL, CH = 2.2, 2.3, 3.7, 1.25   # container centre Y, width, length, height
+
+
+# Close-zoom hero detail (Workflow C): every part is seated on the real skin of the part it sits on,
+# found by dropping a ray onto the built (pre-bevel) mesh, so nothing floats and nothing clips.
+def _hit(name, x, y, z=40.0):
+    o = bpy.data.objects.get(name)
+    ok, loc, nrm, _ = o.ray_cast(Vector((x, y, z)), Vector((0.0, 0.0, -1.0)))
+    return (loc, nrm) if ok else None
+
+
+def _studs(name, pts, nz=0.55, lift=0.05, sink=0.03):
+    """Fastener rods standing on part `name` at plan points, along the skin normal (one mesh via F.beams)."""
+    out = []
+    for x, y in pts:
+        h = _hit(name, x, y)
+        if h and h[1].z > nz:
+            out.append((tuple(h[0] - h[1] * sink), tuple(h[0] + h[1] * lift)))
+    return out
+
+
+def _run(name, pts, lift):
+    """A pipe/cable path hugging part `name`: plan points lifted `lift` above the skin."""
+    zs = [_hit(name, x, y) for x, y in pts]
+    return [(x, y, h[0].z + lift) for (x, y), h in zip(pts, zs) if h]
+
+
+def _hatch(part, cx, cy, sx, sy, lift=0.0):
+    """Access hatch on part: (coaming struts hugging the skin, handle strut)."""
+    c = [(cx - sx / 2, cy - sy / 2), (cx + sx / 2, cy - sy / 2), (cx + sx / 2, cy + sy / 2), (cx - sx / 2, cy + sy / 2)]
+    lp = _run(part, [c[0], c[1], c[2], c[3], c[0]], lift)
+    hp = _run(part, [(cx, cy - sy * 0.22), (cx, cy + sy * 0.22)], 0.045 + lift)
+    return [(lp[i], lp[i + 1]) for i in range(len(lp) - 1)], (hp[0], hp[1])
 
 
 def build():
@@ -102,7 +140,7 @@ def build():
     ped = F.box(s, 'MastFoot', (8.9, 0.0, 1.78), (0.5, 0.5, 0.2), material='gunmetal', bevel=0.02)
     mast = F.cylinder(s, 'Mast', (8.9, 0.0, 1.8), (8.9, 0.0, 2.9), 0.06, 0.035, material='gunmetal', segments=10)
     arm = F.box(s, 'MastArm', (8.9, 0.0, 2.55), (0.1, 1.2, 0.08), material='gunmetal', bevel=0.0)
-    beacon = F.light(s, 'Beacon', (8.9, 0.0, 2.93), 'glow_amber', size=0.16)
+    beacon = F.light(s, 'Beacon', (8.9, 0.0, 2.93), 'glow_amber.beacon', size=0.16)
     s.hook_part('HOOK_SENSOR_MAST', ped, mast, arm, beacon)
 
     # --- docking collar on the spine nose, with three orange clamp jaws -----------------------------
@@ -140,16 +178,59 @@ def build():
         F.box(s, f'SpineLamp{x}', (x, 0.0, 1.22), (0.3, 0.3, 0.14), material='gunmetal', bevel=0.02)
     s.detail = 0
 
+    # --- close-zoom hero detail layer (LOD0 only; finishes this hull already draws) ----------------
+    bpy.context.view_layer.update()
+    s.detail = 2
+    studs, bolts = [], []
+    frames, handles = [], []
+    for i, x in enumerate(ROWS):
+        for side in (1, -1):
+            # one access hatch on each stack-top container, between its two clamp bars
+            fr, hd = _hatch(f'Box{i}{side}1', x, side * CY, 0.62, 0.9)
+            frames += fr
+            handles.append(hd)
+            # clamp bars bolted down where they cross the stack top
+            for e in (-1, 1):
+                bolts += _studs(f'ClampBar{i}{side}{e}', [(x + e * (CL / 2 - 0.35), side * CY * 0.98 + dy) for dy in (-1.0, 0.0, 1.0)])
+    # command cab: roof course bolted, two roof hatches, mullions across the windscreen
+    studs += _studs('Cab', [(x, sg * 0.88) for x in (8.64, 9.3, 9.96) for sg in (1, -1)])
+    for cy in (0.55, -0.55):
+        fr, hd = _hatch('Cab', 9.6, cy, 0.6, 0.5)
+        frames += fr
+        handles.append(hd)
+    mull = []
+    for y in (-0.9, -0.3, 0.3, 0.9):
+        a, b = _hit('Cab', 10.8, y), _hit('Cab', 11.5, y)
+        if a and b:
+            mull.append(((10.8, y, a[0].z + 0.03), (11.5, y, b[0].z + 0.03)))
+    F.beams(s, 'WindscreenMullions', mull, 0.09, material='gunmetal', h=0.07)
+    # drive block lip bolted; docking collar bolt circle
+    studs += _studs('DriveBlock', [(x, sg * 1.55) for x in (-10.5, -8.7) for sg in (1, -1)])
+    studs += _studs('DockCollar', [(6.3 + 0.35 * math.cos(2 * math.pi * k / 6), 0.35 * math.sin(2 * math.pi * k / 6)) for k in range(6)])
+    # propellant tank straps
+    for y in (1.55, -1.55):
+        for x in (-7.9, -6.7):
+            F.cylinder(s, f'TankStrap{y}{x}', (x - 0.05, y, 0.1), (x + 0.05, y, 0.1), 0.81, material='gunmetal', segments=40,
+                       cap=False)
+    F.beams(s, 'HullStuds', studs, 0.11, material='gunmetal')
+    F.beams(s, 'ClampBolts', bolts, 0.12, material='bare')
+    F.beams(s, 'HatchComing', frames, 0.06, material='dark')
+    F.beams(s, 'HatchHandle', handles, 0.05, material='gunmetal')
+    s.detail = 0
+
     # --- lights ------------------------------------------------------------------------------------
     F.light(s, 'NavPort', (-5.6, CY + CW / 2 + 0.34, 1.3), 'glow_red', size=0.2)
     F.light(s, 'NavStarboard', (-5.6, -(CY + CW / 2 + 0.34), 1.3), 'glow_green', size=0.2)
     F.light(s, 'NavPortFwd', (11.0, 1.45, 0.6), 'glow_red', size=0.14)
     F.light(s, 'NavStarboardFwd', (11.0, -1.45, 0.6), 'glow_green', size=0.14)
-    F.light(s, 'BeaconAft', (-9.6, 0.0, 1.66), 'glow_amber', size=0.18)
+    F.light(s, 'BeaconAft', (-9.6, 0.0, 1.66), 'glow_amber.beacon', size=0.18)
+    s.ani38_bank = ANI_38.build(s, list(s.objects), source_asset_id=E.fleet_spec(SHIP_ID)['asset_id'])
     return s
 
 
 if __name__ == '__main__':
-    import forge_export as E
     ship = build().finish()
-    E.export_ship(ship, E.fleet_spec(SHIP_ID), preview='--live' not in sys.argv)
+    live = '--live' in sys.argv
+    written = E.export_ship(ship, E.fleet_spec(SHIP_ID), preview=not live)
+    if live:
+        ANI_38.bake_ship_banks(ship, written, bank_key=E.fleet_spec(SHIP_ID)['file'].replace('_', '-'))

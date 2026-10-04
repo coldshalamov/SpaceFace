@@ -32,6 +32,7 @@ import { installSandboxGameStartedHook } from './sandbox/sandboxSetup.js';
 import { bindSound, bindTemperature } from './kit/index.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
+import { occupantGenerationOf } from '../core/entity.js';
 
 // Clean inline UI art (replaces the captioned reference-sheet .jpg assets that rendered text).
 const RETICLE_SVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;overflow:visible">
@@ -74,6 +75,7 @@ import { createComms } from './comms.js';
 import { mountNemesisComms } from './nemesisComms.js';
 import { createWingmanRadial } from './wingmanRadial.js';
 import { firstBootScreenId, shouldAskMotionPreference } from './accessibility.js';
+import { restoredDefeatIntent } from './screens/gameOver.js';
 
 // id-of-export → { load, export }. Order matters only for nicer console logs.
 // Use literal dynamic-import call sites, not import(path): esbuild can rewrite these to bundled
@@ -140,8 +142,9 @@ const BOOT_SCREEN_EXPORTS = new Set([
 
 // Screens whose mounts stay deferred even during menu dwell: 'station' is a whole app whose
 // open is already masked by the dock ceremony, and 'ship' mounts the shared stage (the second
-// GL context) which is itself shared with the dock shipworks host.
-const SCREEN_PREWARM_DEFER = new Set(['station', 'ship']);
+// GL context) which is itself shared with the dock shipworks host. 'achievements' mounts eager
+// medal-art fetches that page-error preflight checks when generated art is absent.
+const SCREEN_PREWARM_DEFER = new Set(['station', 'ship', 'achievements']);
 
 function yieldPresentationFrame() {
   if (typeof requestAnimationFrame === 'function') {
@@ -321,13 +324,24 @@ function skippedNewerNotice(skippedNewer) {
   return ` Newest save (${saveSlotLabel(skippedNewer.slot)}) was damaged — not loaded.`;
 }
 
-function saveErrorText(payload = {}) {
+export function saveErrorText(payload = {}) {
   return saveErrorReasonText(payload) + skippedNewerNotice(payload.skippedNewer);
 }
 
 function saveErrorReasonText(payload = {}) {
   const slot = saveSlotLabel(payload.slot);
-  switch (payload.reason) {
+  // Write-path receipts pack the verify sub-reason after a colon
+  // ('write_verify_failed:save_size_limit(…)'); match the outer reason first, then let a
+  // known inner reason carry its own actionable message.
+  const rawReason = String(payload.reason || '');
+  const reason = rawReason.split(':', 1)[0];
+  const innerReason = rawReason.indexOf(':') >= 0
+    ? rawReason.slice(rawReason.indexOf(':') + 1).split('(', 1)[0]
+    : '';
+  // _saveTiming receipts carry `trigger` — it separates "the write failed" from
+  // "the file on disk failed to load" for the shared reason names below.
+  const writeAttempt = payload.trigger != null;
+  switch (reason) {
     case 'no_player': return 'Start or load a game before saving';
     case 'no_save': return 'No save found for ' + slot;
     case 'read_failed': return 'Could not read ' + slot;
@@ -347,12 +361,53 @@ function saveErrorReasonText(payload = {}) {
     case 'backup_quota':
     case 'write_failed':
     case 'backup_write_failed':
+      return 'Save storage is full; export a backup';
     case 'write_verify_parse':
     case 'write_verify_failed':
-      return 'Save storage is full; export a backup';
+      if (innerReason === 'save_size_limit' || innerReason === 'import_too_large') {
+        return slot + ' is too large to store — previous save kept';
+      }
+      if (innerReason === 'quota' || innerReason === 'backup_quota') {
+        return 'Save storage is full; export a backup';
+      }
+      return 'Could not verify the ' + slot + ' write — previous save kept';
+    // SF-281 — the write bound refuses rather than truncates, and the refused write leaves
+    // the previous slot generation intact; name both facts so the receipt is actionable.
+    case 'save_size_limit':
+    case 'import_too_large':
+      return writeAttempt
+        ? slot + ' is too large to store — previous save kept'
+        : slot + ' is too large to load';
+    case 'import_depth_limit':
+    case 'import_node_limit':
+    case 'import_collection_limit':
+    case 'import_cycle':
+    case 'import_persistent_entity_limit':
+      return writeAttempt
+        ? 'Save data exceeds storage bounds — previous save kept'
+        : slot + ' is too complex to load';
+    case 'restoring': return 'Could not save ' + slot + ' — a load is in progress';
+    case 'schedule_failed':
+    case 'save_worker_failed':
+    case 'save_worker_timeout':
+    case 'player_capture_churn':
+    case 'save_failed':
+    case 'rollback_failed':
+      return 'Could not finish saving ' + slot + ' — previous save kept';
+    case 'settings_write_failed': return 'Could not save settings';
     case 'export_failed': return 'Export failed for ' + slot;
     case 'visual_gate_failed': return 'Loaded ' + slot + ', but visuals did not finish';
-    case 'load_failed':
+    case 'deferred_transition_failed': return 'Could not finish the sector switch';
+    case 'load_failed': {
+      // SFQ-B228: a failed load fails closed (rollback restored / save untouched) and the
+      // receipt carries the restore cause — say it, plus the way out, instead of a bare
+      // "failed". `region` names the damaged save region when the restore owner annotates it.
+      const detail = (payload && typeof payload.region === 'string' && payload.region)
+        ? 'damaged ' + payload.region + ' data'
+        : (payload && typeof payload.error === 'string' && payload.error ? payload.error : null);
+      if (!detail) return 'Save/load failed for ' + slot;
+      return 'Load failed — ' + detail + '. Your save is untouched; try again, or export a backup from the Save screen.';
+    }
     default:
       return 'Save/load failed for ' + slot;
   }
@@ -391,7 +446,15 @@ function wireSaveFeedback(bus) {
     });
   });
   bus.on('save:error', (payload = {}) => {
-    bus.emit('toast', { text: saveErrorText(payload), kind: 'warn', ttl: 3200 });
+    // A superseded autosave is a cancellation receipt, not a lost save: the slot keeps its
+    // previous generation and a newer route owns the next write. Warning the player here
+    // would cry failure over a deliberate replacement (New Game / Continue boundaries).
+    if (payload && payload.reason === 'superseded') return;
+    // SFQ-B228: a load failure receipt that names its cause also states the way out — give
+    // that sentence time to be read (it is the recovery surface), unlike short write noise.
+    const loadFailureDetail = payload && payload.reason === 'load_failed'
+      && ((typeof payload.error === 'string' && payload.error) || (typeof payload.region === 'string' && payload.region));
+    bus.emit('toast', { text: saveErrorText(payload), kind: 'warn', ttl: loadFailureDetail ? 6000 : 3200 });
   });
 }
 
@@ -771,14 +834,19 @@ export const ui = {
         for (let i = startIndex; i < flightPath.points.length; i++) {
           projectedPoints.push(flightPath.points[i]);
         }
+        // MACH-05 — one reused in/out pair for the whole polyline: per-point literal + result
+        // objects allocated two records for every path point on this overlay refresh.
+        const fpIn = this._flightPathProjIn || (this._flightPathProjIn = { x: 0, y: 0, z: 0 });
+        const fpOut = this._flightPathProjOut || (this._flightPathProjOut = { x: 0, y: 0, onScreen: false });
         const screenPoints = [];
         for (const point of projectedPoints) {
-          const projected = this.helpers.worldToScreen({ x: point.x, y: 0, z: point.z });
+          fpIn.x = point.x; fpIn.y = 0; fpIn.z = point.z;
+          const projected = this.helpers.worldToScreen(fpIn, fpOut);
           if (projected && Number.isFinite(projected.x) && Number.isFinite(projected.y)) {
-            screenPoints.push(projected);
+            screenPoints.push(`${projected.x.toFixed(1)},${projected.y.toFixed(1)}`);
           }
         }
-        const pointsValue = screenPoints.map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(' ');
+        const pointsValue = screenPoints.join(' ');
         if (pointsValue !== lastFlightPathPoints) {
           autoTargetRouteLine.setAttribute('points', pointsValue);
           lastFlightPathPoints = pointsValue;
@@ -890,10 +958,10 @@ export const ui = {
       // The baked clip is a bonus layer over the .cine-bg still: drop the
       // element on any failure and the Ken-Burns still simply remains.
       const cineVideo = cinematic.querySelector('.cine-video');
-      // Function scope, not the `if (cineVideo)` block: mountCinematic's play() error paths call
-      // this too, and a ReferenceError escaping the catch would leave the fence/auto-dismiss
-      // uninstalled — the cinematic could never dismiss.
-      const dropVideo = () => { try { cineVideo && cineVideo.remove(); } catch (_) {} };
+      // Hoisted beside cineVideo: mountCinematic's play() fallback calls this, and a nested
+      // declaration here left it out of scope there (ReferenceError on every autoplay
+      // rejection, which also stranded the clip and its fetch pipeline).
+      const dropVideo = () => { try { if (cineVideo) cineVideo.remove(); } catch (_) {} };
       if (cineVideo) {
         cineVideo.addEventListener('error', dropVideo);
         const cineSource = cineVideo.querySelector('source');
@@ -1320,12 +1388,22 @@ export const ui = {
       this.state.ui.docked = false;
       this.state.ui.dockedStationId = null;
       this.screenManager.closeAll();
+      // closeAll does not emit game:over:dismissed, so the one-shot latch must reset here — a stale
+      // 'already shown' would otherwise swallow the next death's after-action surface.
+      this._gameOverShown = false;
       // Same release as game:started — the Load screen's stage hull is the other Launch-path leak.
       this.screenManager.releaseScreen('newGame');
       this.screenManager.releaseScreen('saveLoad');
       this.screenManager.syncVisibility();
       boardingFence.sync(this.state && this.state.factionPresence && this.state.factionPresence.boarding);
       refreshFlightUI();
+      // SF-285: a save written mid-defeat restores the wreck with its durable defeat intact — the
+      // after-action surface is the only recovery affordance for that hull. Re-present it AFTER
+      // closeAll so the same boundary cannot immediately unmount it.
+      if (restoredDefeatIntent(this.state) && !this._survivalRunLive()) {
+        this._gameOverShown = true;
+        this._pushScreenWhenRegistered('gameOver', 60);
+      }
     });
 
     // register all modal screens (dynamic + per-screen guarded). The Main Menu is shown by the
@@ -1406,9 +1484,6 @@ export const ui = {
     return this._screenRegistrationPromise;
   },
 
-  // Push a screen that may still be in a deferred registration wave: retry until it registers or
-  // give up with a warning. Use for pushes issued from outside the screens themselves (dock,
-  // game-over) so an early lifecycle event never becomes a dead press.
   _warmScreen(id) {
     if (this.screenManager && typeof this.screenManager.prewarm === 'function') {
       this.screenManager.prewarm(id);
@@ -1429,7 +1504,30 @@ export const ui = {
       try {
         while (queue.length) {
           const id = queue.shift();
-          try { this._warmScreen(id); }
+          try {
+            const t0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : 0;
+            try { this.screenManager.prewarm(id); }
+            catch (e) { console.error(`[ui] prewarm("${id}")`, e); }
+            // A mount that already ate the slice (multi-bank template parse, lazy GL) gets
+            // its own frame before the hidden layout pass — the two costs never share a
+            // flight-idle frame even when the mount alone exceeds the budget.
+            const mountedMs = (typeof performance !== 'undefined' && performance.now) ? performance.now() - t0 : 0;
+            if (mountedMs > 6) {
+              await yieldPresentationFrame();
+              if (registrationCycle && !isScreenRegistrationCycleCurrent(registrationCycle)) return;
+            }
+            const tp = (typeof performance !== 'undefined' && performance.now) ? performance.now() : 0;
+            try { this.screenManager.paintWarm(id); }
+            catch (e) { console.error(`[ui] paintWarm("${id}")`, e); }
+            // paintWarm's forced style+layout (void el.offsetHeight) runs untimed — a big screen
+            // can land ~14ms in one flight-idle slice. The trailing yield below is unconditional,
+            // but gate the NEXT warm on the paint's own cost so two heavy screens never chain.
+            const paintMs = (typeof performance !== 'undefined' && performance.now) ? performance.now() - tp : 0;
+            if (paintMs > 6) {
+              await yieldPresentationFrame();
+              if (registrationCycle && !isScreenRegistrationCycleCurrent(registrationCycle)) return;
+            }
+          }
           catch (e) { console.error(`[ui] prewarm("${id}")`, e); }
           await yieldPresentationFrame();
           if (registrationCycle && !isScreenRegistrationCycleCurrent(registrationCycle)) return;
@@ -1441,6 +1539,9 @@ export const ui = {
     })();
   },
 
+  // Push a screen that may still be in a deferred registration wave: retry until it registers or
+  // give up with a warning. Use for pushes issued from outside the screens themselves (dock,
+  // game-over) so an early lifecycle event never becomes a dead press.
   _pushScreenWhenRegistered(id, maxAttempts = 60) {
     const tryOpen = (attempts) => {
       if (this._registeredScreens && this._registeredScreens.has(id)) {
@@ -1680,7 +1781,14 @@ function explicitObjectSelectionAlive(state, targetId) {
   const sel = state.ui && state.ui.objectSelection;
   if (!sel || sel.targetId !== targetId) return false;
   const subject = resolveWorldPresentationEntity(state, targetId);
-  return !!(subject && subject.alive !== false);
+  if (!subject || subject.alive === false) return false;
+  // A recorded pick token that no longer matches the resolved occupant is a recycled id: the
+  // selection named the dead body, not the heir holding its number.
+  const generation = occupantGenerationOf(subject);
+  if (sel.occupantGeneration != null && generation != null && generation !== sel.occupantGeneration) {
+    return false;
+  }
+  return true;
 }
 
 // The hostile the Massline is physically holding, if it is a legal scanner lock. Whenever this
@@ -1702,6 +1810,12 @@ function tetheredHostileLock(player, state) {
 // the entire job of the quiet refresh.
 function isDeliberateNonHostilePick(player, state, entity) {
   if (!player || !entity || entity.alive === false || !entity.pos) return false;
+  // A deliberate pick bound to an occupant token the live body no longer carries is a recycled
+  // id — the player selected the dead body, and the heir does not inherit the pick.
+  const sel = state.ui && state.ui.objectSelection;
+  const generation = occupantGenerationOf(entity);
+  if (sel && sel.targetId === entity.id && sel.occupantGeneration != null && generation != null
+      && generation !== sel.occupantGeneration) return false;
   return !isHostileToPlayer(entity, player.team, state);
 }
 

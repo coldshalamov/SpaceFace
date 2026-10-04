@@ -384,6 +384,64 @@ test('a replaced primitives set on the same authored manifest object rebuilds on
   }
 });
 
+test('in-place canonical identity mutations re-resolve the measured skin', () => {
+  // The measured-proxy cache keyed on the data OBJECT: a hull swap rewrites data.defId in
+  // place on the same object with the old skin stamp intact, and the stale kestrel manifest
+  // came back. The canonical model-truth row is the real identity — every mutable key field
+  // (defId, placeId, stationTypeId, archetypeGlb) must invalidate.
+  const t = bootCore(4251);
+  try {
+    const ship = t.helpers.spawnEntity({
+      type: 'ship', pos: { x: 0, z: 2000 }, radius: 14, collides: true,
+      data: { defId: 'ship_kestrel' },
+    });
+    assert.equal(ship.data.collisionProxy, 'skin:ship_kestrel', 'spawn stamps the kestrel skin');
+    const dataRef = ship.data;
+    assert.equal(resolveCollisionProxyManifest(ship).id, 'skin:ship_kestrel:polygon');
+    ship.data.defId = 'ship_bastion';
+    assert.equal(ship.data, dataRef, 'the data object itself is never replaced');
+    assert.equal(ship.data.collisionProxy, 'skin:ship_kestrel', 'the old skin stamp stays');
+    const bastionManifest = resolveCollisionProxyManifest(ship);
+    assert.equal(bastionManifest.id, 'skin:ship_bastion:polygon', 'defId mutation re-resolves');
+    const freshBastion = resolveCollisionProxyManifest({
+      type: 'ship', radius: 22, collides: true, data: { defId: 'ship_bastion' },
+    });
+    assert.equal(bastionManifest, freshBastion, 'the mutated ship resolves the canonical bastion manifest');
+    assert.equal(resolveCollisionProxyManifest(ship), bastionManifest, 'repeated resolve is stable');
+
+    const pod = t.helpers.spawnEntity({
+      type: 'pod', pos: { x: 0, z: 2400 }, radius: 10, collides: true,
+      data: { placeId: 'place_cargo_pod_standard' },
+    });
+    assert.equal(resolveCollisionProxyManifest(pod).id, 'skin:place_cargo_pod_standard:hull');
+    pod.data.placeId = 'place_dead_hulk';
+    assert.equal(resolveCollisionProxyManifest(pod).id, 'skin:place_dead_hulk:polygon',
+      'placeId mutation re-resolves');
+    assert.equal(resolveCollisionProxyManifest(pod).id, 'skin:place_dead_hulk:polygon',
+      'the re-resolved manifest stays stable');
+
+    const station = t.helpers.spawnEntity({
+      type: 'station', pos: { x: 0, z: 2800 }, radius: 42, collides: true,
+      data: { stationTypeId: 'trade_hub', dockRadius: 90 },
+    });
+    assert.equal(resolveCollisionProxyManifest(station).id, 'skin:place_station_trade_hub');
+    station.data.stationTypeId = 'military';
+    assert.equal(resolveCollisionProxyManifest(station).id, 'skin:place_station_military',
+      'stationTypeId mutation re-resolves');
+
+    const arch = t.helpers.spawnEntity({
+      type: 'station', pos: { x: 400, z: 2800 }, radius: 42, collides: true,
+      data: { archetypeGlb: 'trade_hub', dockRadius: 90 },
+    });
+    assert.equal(resolveCollisionProxyManifest(arch).id, 'skin:place_station_trade_hub');
+    arch.data.archetypeGlb = 'refinery';
+    assert.equal(resolveCollisionProxyManifest(arch).id, 'skin:place_station_refinery',
+      'archetypeGlb mutation re-resolves');
+  } finally {
+    t.cleanup();
+  }
+});
+
 test('expanded skin primitives stay bounded and hull matches census tolerance', () => {
   const manifest = resolveCollisionProxyManifest({ type: 'asteroid', radius: 12, data: { typeId: 'ast_common_rock', collisionProxy: 'skin:ast_common_rock' } });
   assert.ok(manifest);

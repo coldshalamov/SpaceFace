@@ -1,6 +1,7 @@
 import { createWorldObjectPicker } from '../render/worldObjectPicking.js';
 import { createWorldObjectHoverPresentation } from '../render/objectHoverFeedback.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
+import { occupantGenerationOf } from '../core/entity.js';
 import { isBeamTargetEligible, beamRangeFor } from '../systems/mining.js';
 import { initialMouseToolLane } from '../systems/input.js';
 import { interactionDisplayName, interactionProfileForEntity, presentationStatusWord } from '../data/entityInteractionProfiles.js';
@@ -57,6 +58,9 @@ export function applyWorldObjectSelection(state, entity, source) {
     targetId: entity.id,
     source: source || 'pointer',
     stableKey: entity.stableKey != null ? entity.stableKey : entity.id,
+    // The pick binds the occupant, not the number: when the id recycles, a recorded token that
+    // no longer matches the resolved subject tells the sweep the picked body is gone.
+    occupantGeneration: occupantGenerationOf(entity),
   };
   if (state.input) state.input.targetAssistDisabled = false;
   return true;
@@ -81,36 +85,39 @@ export function createWorldObjectInteraction(ctx, screenManager) {
   const unsubs = [];
   let destroyed = false;
 
+  // Canvas bounds are measured once per layout change, not once per pick: a live
+  // getBoundingClientRect forces layout after the previous frame's DOM writes. The record is
+  // refreshed when the observer or a resize/scroll marks it dirty; hosts where no observer can
+  // attach re-measure on every pick so the cached bounds can never go stale.
+  const viewport = { width: 1, height: 1, left: 0, top: 0 };
+  let viewportDirty = true;
+  let viewportObserved = false;
+  let viewportObserver = null;
+
   const picker = createWorldObjectPicker({
     state,
     getCamera: () => state.render && state.render.camera,
     getMeshes: () => state.render && state.render.meshes,
     getScene: () => state.render && state.render.scene,
-    getViewport: () => {
-      if (canvas && typeof canvas.getBoundingClientRect === 'function') {
-        const rect = canvas.getBoundingClientRect();
-        if (rect && rect.width > 0 && rect.height > 0) {
-          return { width: rect.width, height: rect.height, left: rect.left, top: rect.top };
-        }
-      }
-      const w = (typeof innerWidth === 'number' ? innerWidth : 1) || 1;
-      const h = (typeof innerHeight === 'number' ? innerHeight : 1) || 1;
-      return { width: w, height: h, left: 0, top: 0 };
-    },
+    getViewport: () => viewport,
   });
 
   const hoverPresentation = createWorldObjectHoverPresentation(state);
 
   let hoverId = null;
   let hoverEntity = null;
-  let hoverPick = null;
-  let lastPickPt = null;
-  let lastPickAtMs = 0;
   let gestureActive = false;
   let gestureTargetId = null;
   let hoverRootPublished = null;
   let insideCanvas = false;
   let lastPoint = null;
+  // A motionless cursor does not need a full scene re-raycast every frame — the pick walks every
+  // presented leaf (~0.6 ms on the iGPU floor, pure CPU). Repick immediately when the pointer
+  // moved; while it sits still the world under it is re-sampled at ~8 Hz, an imperceptible lag
+  // for hover feedback. Click/gesture picks stay synchronous and are untouched.
+  let repickIdleS = Infinity;
+  let lastRepickX = null;
+  let lastRepickY = null;
   let previewTextKey = '';
 
   let tag = null;
@@ -247,25 +254,35 @@ export function createWorldObjectInteraction(ctx, screenManager) {
     hidePreview();
   }
 
-  // The canvas is a fixed fullscreen surface — cache its offset briefly instead of forcing
-  // a getBoundingClientRect layout read every picked frame.
-  let vpOffsetCache = null;
-  function pickerViewportOffset() {
-    if (canvas && typeof canvas.getBoundingClientRect === 'function') {
-      const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
-      if (!vpOffsetCache || now - vpOffsetCache.at >= 400) {
-        const rect = canvas.getBoundingClientRect();
-        vpOffsetCache = { at: now, left: rect.left || 0, top: rect.top || 0 };
-      }
-      return { left: vpOffsetCache.left, top: vpOffsetCache.top };
+  function refreshViewport() {
+    const rect = (canvas && typeof canvas.getBoundingClientRect === 'function')
+      ? canvas.getBoundingClientRect() : null;
+    if (rect && rect.width > 0 && rect.height > 0) {
+      viewport.width = rect.width;
+      viewport.height = rect.height;
+      viewport.left = rect.left || 0;
+      viewport.top = rect.top || 0;
+    } else {
+      viewport.width = (typeof innerWidth === 'number' ? innerWidth : 1) || 1;
+      viewport.height = (typeof innerHeight === 'number' ? innerHeight : 1) || 1;
+      viewport.left = 0;
+      viewport.top = 0;
     }
-    return { left: 0, top: 0 };
+    viewportDirty = false;
+  }
+
+  function markViewportDirty() {
+    if (destroyed) return;
+    viewportDirty = true;
+    // A layout change can move the body under a motionless cursor — bypass the idle
+    // repick cadence so the next tick re-measures and raycasts fresh.
+    repickIdleS = Infinity;
   }
 
   function pickAt(pt) {
     if (!pt) return null;
-    const vp = pickerViewportOffset();
-    return picker.pick(pt.x - vp.left, pt.y - vp.top);
+    if (viewportDirty || !viewportObserved) refreshViewport();
+    return picker.pick(pt.x - viewport.left, pt.y - viewport.top);
   }
 
   function onRightDown(e) {
@@ -276,6 +293,8 @@ export function createWorldObjectInteraction(ctx, screenManager) {
     if (pt) lastPoint = pt;
     const inp = state.input;
     if (!inp) return;
+    // A deliberate down must see a just-changed layout even before the observer delivers.
+    viewportDirty = true;
     const hit = pickAt(pt);
     inp.worldObjectTargetId = hit && hit.entity ? hit.entity.id : null;
     gestureActive = true;
@@ -333,6 +352,21 @@ export function createWorldObjectInteraction(ctx, screenManager) {
   listen(windowTarget, 'blur', onBlur);
   if (typeof document !== 'undefined') listen(document, 'visibilitychange', onVisibility);
 
+  try {
+    if (canvas && typeof ResizeObserver === 'function') {
+      viewportObserver = new ResizeObserver(markViewportDirty);
+      viewportObserver.observe(canvas);
+      viewportObserved = true;
+    }
+  } catch (_) {
+    try { if (viewportObserver) viewportObserver.disconnect(); } catch (_) {}
+    viewportObserver = null;
+    viewportObserved = false;
+  }
+  listen(windowTarget, 'resize', markViewportDirty);
+  // Scroll does not bubble — the captured listener catches offsets moved by nested scrollers.
+  if (typeof document !== 'undefined') listen(document, 'scroll', markViewportDirty, true);
+
   if (bus && typeof bus.on === 'function') {
     unsubs.push(bus.on('mining:start', (payload) => {
       if (!payload || payload.minerId !== state.playerId) return;
@@ -350,9 +384,18 @@ export function createWorldObjectInteraction(ctx, screenManager) {
 
   function sweepDeadSubjects() {
     const sel = state.ui && state.ui.objectSelection;
-    if (sel && sel.targetId != null && !presentableSubject(state, sel.targetId)) {
-      state.ui.objectSelection = null;
-      if (state.player && state.player.targetId === sel.targetId) state.player.targetId = null;
+    if (sel && sel.targetId != null) {
+      const subject = presentableSubject(state, sel.targetId);
+      // Recycled id: the pick recorded one occupant token and the resolved body carries a
+      // different one — the picked body is dead even though the id still presents. Only a
+      // present-vs-present mismatch proves that; a ledger row without a token stays honest.
+      const generation = subject ? occupantGenerationOf(subject) : null;
+      const recycled = !!(subject && sel.occupantGeneration != null && generation != null
+        && generation !== sel.occupantGeneration);
+      if (!subject || recycled) {
+        state.ui.objectSelection = null;
+        if (state.player && state.player.targetId === sel.targetId) state.player.targetId = null;
+      }
     }
     if (hoverId != null && !presentableSubject(state, hoverId)) setHover(null);
     if (gestureTargetId != null && !presentableSubject(state, gestureTargetId)) {
@@ -430,7 +473,7 @@ export function createWorldObjectInteraction(ctx, screenManager) {
     tag.el.hidden = false;
   }
 
-  function tick() {
+  function tick(dt) {
     if (destroyed) return;
     hoverPresentation.update();
     if (!acceptingInput()) {
@@ -456,20 +499,24 @@ export function createWorldObjectInteraction(ctx, screenManager) {
       const inp = state.input;
       const ps = inp && inp.pointerScreen;
       if (!pt || !ps || !ps.active) {
-        hoverPick = null;
-        lastPickPt = null;
+        repickIdleS = Infinity;
+        lastRepickX = null;
+        lastRepickY = null;
         setHover(null);
       } else {
-        // The full-scene pick only re-runs when the pointer moved or ~11 Hz elapsed —
-        // hover latency stays imperceptible while the per-frame O(scene) walk is skipped
-        // for a still cursor between re-picks.
-        const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
-        if (!lastPickPt || lastPickPt.x !== pt.x || lastPickPt.y !== pt.y || now - lastPickAtMs >= 90) {
-          lastPickAtMs = now;
-          lastPickPt = pt;
-          hoverPick = pickAt(pt);
+        repickIdleS += Number.isFinite(dt) && dt > 0 ? dt : 1 / 60;
+        const moved = lastRepickX == null
+          || Math.abs(pt.x - lastRepickX) > 0.5
+          || Math.abs(pt.y - lastRepickY) > 0.5;
+        // Without a ResizeObserver the cached bounds can lie at any time; only the
+        // observed path may sit out a repick.
+        if (moved || !viewportObserved || repickIdleS >= 0.125) {
+          repickIdleS = 0;
+          lastRepickX = pt.x;
+          lastRepickY = pt.y;
+          const hit = pickAt(pt);
+          setHover(hit && hit.entity ? hit.entity : null);
         }
-        setHover(hoverPick && hoverPick.entity ? hoverPick.entity : null);
       }
     }
     publishHover();
@@ -481,6 +528,10 @@ export function createWorldObjectInteraction(ctx, screenManager) {
     if (destroyed) return;
     destroyed = true;
     cancelGesture('destroy');
+    if (viewportObserver) {
+      try { viewportObserver.disconnect(); } catch (_) {}
+      viewportObserver = null;
+    }
     for (const { target, type, fn, options } of listeners) {
       try { target.removeEventListener(type, fn, options); } catch (_) {}
     }

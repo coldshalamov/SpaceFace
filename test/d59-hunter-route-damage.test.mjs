@@ -80,8 +80,11 @@ test('D59 pay class: standing escalates the bounty mark, the board-local rate pr
 
   // Standing to the top of the ladder (rep >= 400 -> standingWorkTier 4): the offer's own
   // riskTier (spawn strength) must escalate, while the priced tier/risk stay board-local.
+  // Note: at rep 500 the loyalty repBoost multiplies every weight>=3 signature type by 6, so a
+  // trade_hub bounty (weight 2, never boosted) lands on ~5% of epochs — the scan window is
+  // widened past the deterministic hits (first at epoch 45 on this seed).
   ctx.state.factions.faction_scn.rep = 500;
-  const high = scanBountyOffers(ctx, 'station_helios', 20, 24);
+  const high = scanBountyOffers(ctx, 'station_helios', 20, 60);
   assert.ok(high.length > 0, 'helios board must roll a plain bounty offer at high standing');
   for (const offer of high) {
     assert.equal(offer.riskTier, 4, 'the mark itself must escalate with standing');

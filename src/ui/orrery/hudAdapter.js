@@ -11,7 +11,9 @@
 //   energy              p.cap/capMax                      (the live HUD reads cap, not energy)
 //   heat                weaponHeatSummary(p.data.weapons)
 //   speed / reference   |p.vel| · p.maxSpeed
-//   boost               p.boost.energy / p.boost.max
+//   speed ceiling       state.input.travelDrive.ceiling, else resolveTravelCeiling(profile) — the V-MAX the
+//                       travel tape already prints, so the Speed Dial's last blade is the same number
+//   boost               p.boost.energy / p.boost.max · p.flags.boosting (the afterburner is burning)
 //   drift               atan2(vel) − p.rot                 (same frame as playerDefeat.impactDirection)
 //   ordnance            readRailModel(state, simTime)     (slots 1..9, states ready/armed/cooling/…)
 //   tether              masslineInstrumentReadout(tether) + the attached body's mass
@@ -19,6 +21,9 @@ import { weaponHeatSummary } from '../weaponHeat.js';
 import { readRailModel, RAIL_SLOTS, railSlotTip, resolveSlotKeys, resolveSlotLabels, slotDescription } from '../powerRail.js';
 import { masslineInstrumentReadout } from '../hudAttention.js';
 import { SHIPS } from '../../data/ships.js';
+import { resolvePropulsionProfile } from '../../core/flight/propulsionCatalog.js';
+import { resolveTravelCeiling } from '../../core/flight/propulsionKernel.js';
+import { travelFlag } from '../../data/featureFlags.js';
 import { injectOrrery } from './tokens.js';
 import { createFlightCluster } from './flightCluster.js';
 import { applyOrreryHudSkin } from './hudSkin.js';
@@ -80,6 +85,10 @@ export function readOrdnanceModel(state, tracker, bindings) {
     const r = rail[slot.index] || {};
     const st = RAIL_STATE[r.state] || 'ready';
     const entry = { state: st };
+    // SWARM-03: the rail's tactical-live flag rides beside the state so the Cluster can
+    // breathe a key whose verb is real right now (latch in reach, ordnance armed, pack
+    // inside the well) — a cue, not a new surface.
+    if (r.live === true) entry.live = true;
     if (st === 'cooldown') entry.cooldown = tracker ? tracker(slot.index, r) ?? 0 : 0;
     const count = /×(\d+)/.exec(String(r.name || ''));
     if (count) entry.count = Number(count[1]);
@@ -98,9 +107,28 @@ export function readOrdnanceModel(state, tracker, bindings) {
 
 function finite(n, d = 0) { return Number.isFinite(n) ? n : d; }
 
+/** The travel drive as the sim publishes it, or null when the drive axis is off. */
+function travelDriveOf(state) {
+  const drive = travelFlag('travelBurn') && state && state.input ? state.input.travelDrive : null;
+  return drive && typeof drive === 'object' ? drive : null;
+}
+
+/**
+ * The hull's V-MAX: the speed the travel drive tops out at, which is where the Speed Dial ends. 0 when
+ * the drive axis is off (the dial then draws its own overdrive band). Profile resolution allocates, so
+ * the live mount reads this on the HUD's slow clock, never per frame.
+ */
+export function readSpeedCeiling(state, p) {
+  if (!travelFlag('travelBurn')) return 0;
+  const drive = travelDriveOf(state);
+  if (drive && Number.isFinite(drive.ceiling) && drive.ceiling > 0) return drive.ceiling;
+  try { return finite(resolveTravelCeiling(resolvePropulsionProfile(p, state))); } catch { return 0; }
+}
+
 /** The Cluster's model for this frame, from the player entity and state. Pure apart from `tracker`. */
-export function readClusterModel(state, p, { tracker = null, ordnance = null, bindings = null } = {}) {
+export function readClusterModel(state, p, { tracker = null, ordnance = null, bindings = null, speedMax = 0 } = {}) {
   if (!p) return null;
+  const drive = travelDriveOf(state);
   const vx = finite(p.vel && p.vel.x);
   const vz = finite(p.vel && p.vel.z);
   const speed = Math.hypot(vx, vz);
@@ -129,8 +157,11 @@ export function readClusterModel(state, p, { tracker = null, ordnance = null, bi
     armor: finite(p.armorHp), armorMax: finite(p.armorMax, 0),
     energy: finite(p.cap), energyMax: finite(p.capMax, 0),
     heat: finite(heat && heat.frac),
-    speed, speedRef: finite(p.maxSpeed, 180),
+    speed, speedRef: finite(p.maxSpeed, 180), speedMax: finite(speedMax),
     boost: p.boost && p.boost.max > 0 ? Math.max(0, Math.min(1, p.boost.energy / p.boost.max)) : 0,
+    boosting: !!(p.flags && p.flags.boosting),
+    // burning, not recovering: the dial's DRIVE tag and halo belong to a spooling or engaged drive only
+    driveActive: !!(drive && (drive.state === 'spooling' || drive.state === 'engaged')),
     drift,
     ordnance: ordnance || readOrdnanceModel(state, tracker, bindings),
     tether: tetherModel,
@@ -141,6 +172,7 @@ const HOST_CSS = `
 #hud .orr-hud-cluster { position:absolute; left:18px; bottom:24px; z-index:5; pointer-events:none; }
 #hud .orr-hud-cluster .orr-cluster { --orr-cluster-scale:1; }
 @media (max-width:1700px) { #hud .orr-hud-cluster .orr-cluster { --orr-cluster-scale:.82; } }
+@media (max-width:1400px) { #hud .orr-hud-cluster { left:8px; } }
 @media (max-width:1300px) { #hud .orr-hud-cluster .orr-cluster { --orr-cluster-scale:.7; } }
 /* ORRERY owns the bottom-left and the ordnance: the old chassis and rail stay mounted, hidden. */
 #hud[data-hud="orrery"] .sf-leftstack, #hud[data-hud="orrery"] .sf-prail { visibility:hidden !important; pointer-events:none !important; }
@@ -180,12 +212,14 @@ export function mountOrreryCluster(root, state, { bindings = null } = {}) {
   cluster.arrive();
   const tracker = createCooldownTracker();
   let ordnance = null;
+  let ceiling = null;
   return {
     host,
     update(liveState, p, slow) {
       if (!p) return;
       if (slow || !ordnance) ordnance = readOrdnanceModel(liveState, tracker, bindings);
-      const model = readClusterModel(liveState, p, { ordnance });
+      if (slow || ceiling == null) ceiling = readSpeedCeiling(liveState, p);
+      const model = readClusterModel(liveState, p, { ordnance, speedMax: ceiling });
       if (model) cluster.update(model);
     },
     dispose() { cluster.dispose(); host.remove(); removeSkin(); if (root.dataset.hud === 'orrery') delete root.dataset.hud; },

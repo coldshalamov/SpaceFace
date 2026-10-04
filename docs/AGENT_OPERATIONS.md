@@ -103,9 +103,14 @@ They exist so two live agents do not edit the same file; they are not a general 
 ## No worktrees; junctions are grenades
 
 **No worktrees.** Isolate lanes by FILE, not by checkout. Leftover worktrees and temp repo copies
-took **117 GB** of a 1 TB disk on 2026-08-23. If one is truly unavoidable, `git worktree remove
---force` it in the same turn you finish with it. Removing a worktree never loses commits — commit
-uncommitted work to its own branch; the branch is the rescue, not a merge into master.
+took **117 GB** of a 1 TB disk on 2026-08-23, and zombies keep resurfacing (two more on
+2026-10-04). If one is truly unavoidable, the only sanctioned shape is a single `.worktrees/<name>`
+side checkout shared by you and every subagent you spawn: port the work back onto master, then
+`git worktree remove --force` it in the same turn you finish. Removing a worktree never loses
+commits — commit uncommitted work to its own branch; the branch is the rescue, not a merge into
+master. Before you stop, run `git worktree list` — the main checkout is the only entry allowed to
+remain. A stale worktree you find is yours: salvage any dirty hunk onto a branch first, then remove
+it.
 
 **`rm -rf` and PowerShell `Remove-Item -Recurse` follow junctions and destroy the target.** Before
 deleting any directory you did not create file-by-file, list reparse points

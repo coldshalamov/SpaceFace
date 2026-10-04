@@ -31,7 +31,7 @@ import {
 } from '../../contracts/combatLabSetupSchema.js';
 import {
   SCENARIO_PRESETS, SANDBOX_CAMERA_CANDIDATES, SANDBOX_PHYSICS_LOADOUTS,
-  buildSandboxLaunchConfig, requestSandboxGame,
+  buildSandboxLaunchConfig, requestSandboxGame, emitSandboxEmbarkSpeculation,
   giveAndEquipItem, spawnEnemyNow, spawnTargetsNow,
 } from '../sandbox/sandboxSetup.js';
 import { panel, chip, enhanceSelects } from '../uiPrimitives.js';
@@ -56,11 +56,22 @@ function injectStyle() {
   // part of the game's instrument language rather than a foreign devtools panel.
   s.textContent = `
   .screen.sf-sandbox { max-width: 760px; color: var(--sf-paper); font-family: var(--sf-body-face); }
-  /* The stage must be the scroller: as a plain flex child it shrank to the leftover space and its
-     overflow painted UNDER the apron, so the launch bar sliced the scenario cards mid-row and the
-     fine-tune section below the tiles was unreachable. */
-  .sf-sandbox .sf-stage { overflow-y: auto; overflow-x: hidden; padding-right: 6px; }
-  .sf-sandbox .sf-section-h { margin: var(--sp-4) 0 var(--sp-2); color: var(--sf-calm); }
+  .sf-sandbox .sf-stage {
+    padding-right: 6px;
+    padding-bottom: 24px;
+  }
+  .sf-sandbox .sf-apron {
+    position: relative;
+    padding: 16px 0 32px;
+    border-top: 1px solid rgb(236 230 216 / .14);
+  }
+  .sf-sandbox .sf-section-h {
+    margin: var(--sp-4) 0 var(--sp-2);
+    color: rgb(236 230 216 / .75);
+    font-family: var(--dp-face-label, "Archivo");
+    font-size: 12px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase;
+  }
+  .sf-sandbox .sf-section-h::before { display: none !important; }
   .sf-sandbox.sf-menu h1 {
     font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
     letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm);
@@ -323,6 +334,11 @@ export const sandboxScreen = {
       tile.addEventListener('click', () => {
         requestSandboxGame(ctx.bus, buildSandboxLaunchConfig(preset.config, readOverrides()));
       });
+      // Picker dwell is real warm lead: arm the embark warm for the hovered/focused
+      // scenario's sector + hull so launch doesn't decode the scenario inside the window.
+      const armPreset = () => emitSandboxEmbarkSpeculation(ctx.bus, preset.config);
+      tile.addEventListener('pointerenter', armPreset);
+      tile.addEventListener('focusin', armPreset);
       cardGrid.appendChild(tile);
     }
 
@@ -549,6 +565,15 @@ export const sandboxScreen = {
     }
     sectorSel.value = 'sector_helios_prime';
     fine.appendChild(sectorLabel); fine.appendChild(sectorSel);
+
+    // Form edits are dwell time too: the ship/sector the launch button will use is knowable
+    // before the click, so arm the same embark warm the preset tiles get on hover.
+    const armFineTune = () => emitSandboxEmbarkSpeculation(ctx.bus, {
+      sectorId: sectorSel.value || undefined,
+      shipId: shipSel.value || undefined,
+    });
+    shipSel.addEventListener('change', armFineTune);
+    sectorSel.addEventListener('change', armFineTune);
 
     const cameraLabel = el('label', null, 'Camera candidate');
     cameraLabel.htmlFor = 'sf-sandbox-camera';

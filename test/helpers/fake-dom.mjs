@@ -16,6 +16,8 @@ export function fakeDom() {
       dataset: {},
       attributes: {},
       listeners: {},
+      get childNodes() { return this.children; },
+      get firstChild() { return this.children[0] || null; },
       appendChild(child) { child.parentNode = this; this.children.push(child); return child; },
       append(...kids) { for (const k of kids) this.appendChild(k); },
       setAttribute(name, value) { this.attributes[name] = String(value); },
@@ -26,7 +28,7 @@ export function fakeDom() {
       querySelectorAll() { return []; },
       closest() { return null; },
       focus() {},
-      click() { for (const fn of this.listeners.click || []) fn({ target: this }); },
+      click() { for (const fn of this.listeners.click || []) fn({ target: this, preventDefault() {}, stopPropagation() {} }); },
     };
     node.classList = {
       add(...names) { node.className = [...node.className.split(/\s+/), ...names].filter(Boolean).join(' '); },

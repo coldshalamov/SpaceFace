@@ -1,14 +1,27 @@
 // src/data/audioRecipes.js – audio synthesis recipes and music stem definitions.
 // RECIPES: SFX synthesis parameter sets for runtime AudioContext nodes.
 // MUSIC_STEMS: adaptive music stem layer definitions.
-// Pure data, no imports, no three/DOM deps.
+// Pure data, no three/DOM deps.
 //
 // Distortion: a recipe that sets distortionAmount must also set distortionCurve.
 //   'softclip' — pre-QoL cheap clip (amounts authored against that formula)
 //   'tanh'     — analog saturation (amounts authored against the QoL curve)
 // Amounts are not interchangeable across curves.
 
+import { MORROW_AUDIO_RECIPES } from './morrow.js';
+import { VESPER_AUDIO_RECIPES } from './vesper.js';
+import { BRACKET_AUDIO_RECIPES } from './bracket.js';
+import { RAVEL_AUDIO_RECIPES } from './ravel.js';
+import { SOLSTICE_AUDIO_RECIPES } from './solstice.js';
+import { RUBRIC_AUDIO_RECIPES } from './rubric.js';
+
 export const RECIPES = [
+  ...MORROW_AUDIO_RECIPES,
+  ...VESPER_AUDIO_RECIPES,
+  ...BRACKET_AUDIO_RECIPES,
+  ...RAVEL_AUDIO_RECIPES,
+  ...SOLSTICE_AUDIO_RECIPES,
+  ...RUBRIC_AUDIO_RECIPES,
   // --- Engine SFX ---
   {
     id: 'sfx_engine_idle',
@@ -456,6 +469,15 @@ export const RECIPES = [
     filterType: 'lowpass', filterFreq: 720, filterQ: 0.8,
   },
   {
+    // FB-131 — the ghost that slipped the net: the one scan-family voice that falls instead
+    // of rising, so "contact lost" reads as loss in the ear, not another success ping.
+    id: 'sfx_mining_scan_escaped',
+    category: 'mining', type: 'oscillator', wave: 'triangle',
+    baseFreq: 233, freqSweep: [233, 116.5], sweepTimeS: 0.44,
+    gainEnvelope: { attack: 0.01, sustain: 0.05, release: 0.42 },
+    filterType: 'lowpass', filterFreq: 560, filterQ: 1.0,
+  },
+  {
     id: 'sfx_mining_cutter_lock',
     category: 'mining', type: 'noise_burst', noiseColor: 'pink',
     gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.12 },
@@ -738,20 +760,66 @@ export const RECIPES = [
     id: 'sfx_mission_accept',
     category: 'ui',
     type: 'oscillator',
-    baseFreq: 523, freqSweep: [523, 1047], sweepTimeS: 0.18,
-    gainEnvelope: { attack: 0.008, sustain: 0.0, release: 0.18 },
+    baseFreq: 523, freqSweep: [523, 659], sweepTimeS: 0.16,
+    gainEnvelope: { attack: 0.008, sustain: 0.0, release: 0.16 },
     repeatCount: 2, repeatIntervalS: 0.09,
     gainMult: 0.7,
   },
-  // Mission complete — a triumphant major chord arpeggio (the payoff). Slower + warmer than accept.
+  // Mission complete — the same synth voice, resolving downward (a fifth falling home).
   {
     id: 'sfx_mission_complete',
     category: 'ui',
     type: 'oscillator',
-    baseFreq: 659, freqSweep: [659, 988], sweepTimeS: 0.22,
-    gainEnvelope: { attack: 0.01, sustain: 0.0, release: 0.22 },
-    repeatCount: 3, repeatIntervalS: 0.11,
+    baseFreq: 784, freqSweep: [784, 523], sweepTimeS: 0.26,
+    gainEnvelope: { attack: 0.01, sustain: 0.0, release: 0.24 },
+    repeatCount: 2, repeatIntervalS: 0.12,
     gainMult: 0.75,
+  },
+  // Achievement fanfare — a proud rising fifth repeated three times, brighter than the mission
+  // resolve. An unlocked deed is rarer than a finished contract and should sound like it.
+  {
+    id: 'sfx_achievement_fanfare',
+    category: 'ui',
+    type: 'oscillator',
+    baseFreq: 523, freqSweep: [523, 784], sweepTimeS: 0.12,
+    gainEnvelope: { attack: 0.008, sustain: 0.0, release: 0.2 },
+    repeatCount: 3, repeatIntervalS: 0.13,
+    gainMult: 0.62,
+  },
+  // Career promotion — a warm two-step ascent on the triangle voice. Rank is earned over hours,
+  // so the chord lands slower and lower than the mission stingers: acknowledgment, not a blip.
+  {
+    id: 'sfx_promotion_chord',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 392, freqSweep: [392, 587], sweepTimeS: 0.22,
+    gainEnvelope: { attack: 0.02, sustain: 0.04, release: 0.35 },
+    repeatCount: 2, repeatIntervalS: 0.18,
+    gainMult: 0.65,
+  },
+  // Tech researched — two quick high ascents, the lab-report read. Distinct from lock_acquired
+  // (shorter, softer, no combat urgency) so research paying out has its own small voice.
+  {
+    id: 'sfx_tech_researched',
+    category: 'ui',
+    type: 'oscillator',
+    baseFreq: 880, freqSweep: [880, 1175], sweepTimeS: 0.07,
+    gainEnvelope: { attack: 0.004, sustain: 0.0, release: 0.12 },
+    repeatCount: 2, repeatIntervalS: 0.1,
+    gainMult: 0.55,
+  },
+  // Ship purchased — a low warm swell on the hull voice. The biggest credit sink in the game
+  // should sound like heavy machinery settling into your berth, not a menu confirm.
+  {
+    id: 'sfx_ship_purchased',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 196, freqSweep: [196, 262], sweepTimeS: 0.3,
+    gainEnvelope: { attack: 0.03, sustain: 0.08, release: 0.4 },
+    filterType: 'lowpass', filterFreq: 900, filterQ: 0.8,
+    gainMult: 0.7,
   },
   // PQ-146 moment stinger — one material/force accent, 0.45–0.70 s: a low pressure swell that
   // resolves upward a fifth. It follows the physical impact rather than shouting over it, ducks
@@ -902,6 +970,27 @@ export const RECIPES = [
     gainEnvelope: { attack: 0.002, sustain: 0, release: 0.05 },
     filterType: 'lowpass', filterFreq: 640,
     gainMult: 0.62,
+  },
+  // SF-235 — empty chamber: a dry mechanical click, shorter and duller than the generic deny.
+  {
+    id: 'sfx_refusal_empty',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.001, sustain: 0, release: 0.035 },
+    filterType: 'bandpass', filterFreq: 1400, filterQ: 1.4,
+    gainMult: 0.5,
+  },
+  // SF-235 — invalid target: a hollow two-note drop, not the empty click and not the menu fall.
+  {
+    id: 'sfx_refusal_target',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 420, freqSweep: [420, 210], sweepTimeS: 0.09,
+    gainEnvelope: { attack: 0.004, sustain: 0.02, release: 0.12 },
+    filterType: 'bandpass', filterFreq: 700, filterQ: 2.4,
+    gainMult: 0.55,
   },
   // --- Brake bite: a short traction chirp on the brake's rising edge (U7: an onset, not a bed). ---
   {
@@ -1577,6 +1666,17 @@ export const RECIPES = [
     repeatCount: 1,
     repeatIntervalS: 0.04,
   },
+  // Hitch latch is a softer triangle cousin of the massline lock, not a copy of it.
+  {
+    id: 'sfx_hitch_latch',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 262,
+    freqSweep: [262, 174],
+    sweepTimeS: 0.09,
+    gainEnvelope: { attack: 0.004, sustain: 0.02, release: 0.14 },
+  },
   {
     id: 'sfx_tether_latch_body',
     category: 'weapon',
@@ -1919,6 +2019,28 @@ export const RECIPES = [
     filterType: 'lowpass', filterFreq: 420,
     reverbMix: 0.45, reverbDecay: 1.8,
   },
+  // FB-135 — reserve bed: a low held tone on the ambient bus. Not a menu beep.
+  {
+    id: 'sfx_fuel_reserve',
+    category: 'mining',
+    type: 'continuous_oscillator',
+    wave: 'sine',
+    baseFreq: 55,
+    gainEnvelope: { attack: 0.35, sustain: 1, release: 0.4 },
+    filterType: 'lowpass', filterFreq: 180, filterQ: 0.7,
+    gainMult: 0.45,
+  },
+  // FB-135 — empty sting: one falling body, once. Distinct from sfx_ui_alert.
+  {
+    id: 'sfx_fuel_empty',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 196, freqSweep: [196, 73], sweepTimeS: 0.28,
+    gainEnvelope: { attack: 0.008, sustain: 0.04, release: 0.42 },
+    filterType: 'lowpass', filterFreq: 640, filterQ: 0.8,
+    gainMult: 0.8,
+  },
 
   // --- Field deploy voices (CV-EAR) — every field power gets its own one-shot; no more
   // borrowed anomaly swell on the Well and no UI confirm click on force powers. Combat bus.
@@ -1962,6 +2084,41 @@ export const RECIPES = [
     gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.18 },
     filterType: 'bandpass', filterFreq: 700, filterQ: 2.0,
     transientClick: { gain: 0.4 },
+  },
+
+  // --- Field sustain loops (SF-230) — while a field is live it is heard from the source its
+  // force leans toward. Continuous voices; gain/pitch ride the kernel's lifecycle envelope.
+  {
+    // WELL — sustained inward pull: the deploy drop's landing tone held, warbling.
+    id: 'sfx_field_loop_well',
+    category: 'weapon', type: 'continuous_oscillator', wave: 'sine',
+    baseFreq: 46, freqSweep: [46, 40], sweepTimeS: 3.0,
+    gainEnvelope: { attack: 0.25, sustain: 1.0, release: 0.4, peak: 0.3 },
+    filterType: 'lowpass', filterFreq: 220, filterQ: 0.8,
+    lfoRate: 0.7, lfoDepth: 0.16,
+  },
+  {
+    // REPULSOR — sustained outward press: a low filtered pressure bed.
+    id: 'sfx_field_loop_repulsor',
+    category: 'weapon', type: 'continuous_noise', noiseColor: 'pink',
+    gainEnvelope: { attack: 0.2, sustain: 1.0, release: 0.35, peak: 0.26 },
+    filterType: 'bandpass', filterFreq: 480, filterQ: 0.9,
+  },
+  {
+    // CONE — the Sluice held open: the deploy gust sustained as a forward shear.
+    id: 'sfx_field_loop_cone',
+    category: 'weapon', type: 'continuous_noise', noiseColor: 'pink',
+    gainEnvelope: { attack: 0.15, sustain: 1.0, release: 0.3, peak: 0.2 },
+    filterType: 'bandpass', filterFreq: 1200, filterQ: 1.2,
+  },
+  {
+    // SHEET — the scoop sheet sustained: a high thin shimmer along the flight line.
+    id: 'sfx_field_loop_sheet',
+    category: 'weapon', type: 'continuous_oscillator', wave: 'triangle',
+    baseFreq: 480, freqSweep: [480, 520], sweepTimeS: 2.2,
+    gainEnvelope: { attack: 0.2, sustain: 1.0, release: 0.35, peak: 0.18 },
+    filterType: 'bandpass', filterFreq: 900, filterQ: 3.0,
+    lfoRate: 0.5, lfoDepth: 0.1,
   },
 
   // --- Stunt chain voices (CV-EAR slice 3) — the combo the ear can follow.
@@ -2143,6 +2300,17 @@ export const RECIPES = [
     gainMult: 0.55,
   },
   {
+    id: 'sfx_cloak_fade',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 520,
+    freqSweep: [520, 220],
+    sweepTimeS: 0.42,
+    gainEnvelope: { attack: 0.04, sustain: 0.08, release: 0.55 },
+    gainMult: 0.28,
+  },
+  {
     id: 'sfx_massline_cloak_off',
     category: 'ui',
     type: 'noise_filtered',
@@ -2161,6 +2329,51 @@ export const RECIPES = [
     gainEnvelope: { attack: 0.004, sustain: 0.02, release: 0.18 },
     filterType: 'lowpass', filterFreq: 420,
     gainMult: 0.75,
+  },
+  // FB-073 — cargo jettison: pods leaving the hold. Same blunt rear-quarter thud register as the
+  // massline kick (its dash_punch sample binding is shared at rate 0.8), a touch lower and longer
+  // so the read is "mass leaving" rather than "line kicked".
+  {
+    id: 'sfx_cargo_jettison',
+    category: 'engine',
+    type: 'noise_filtered',
+    baseFreq: 84,
+    gainEnvelope: { attack: 0.004, sustain: 0.02, release: 0.22 },
+    filterType: 'lowpass', filterFreq: 400,
+    gainMult: 0.75,
+  },
+  // FB-142 — the planet band verbs. Collector intake: a breath of band-passed air opening on the
+  // skim band — a mouth, not a chime; the off register is the same voice pitched down.
+  {
+    id: 'sfx_planet_collector',
+    category: 'engine',
+    type: 'noise_filtered',
+    baseFreq: 480,
+    gainEnvelope: { attack: 0.025, sustain: 0.06, release: 0.38 },
+    filterType: 'bandpass', filterFreq: 780, filterQ: 1.7,
+    gainMult: 0.6,
+  },
+  // The plunge ring advancing: a low heat growl — atmosphere pressing in, not combustion. The
+  // audio route steps rate/gain per stage, so commit/breakup/descent climb and 'clear' releases.
+  {
+    id: 'sfx_planet_plunge',
+    category: 'engine',
+    type: 'noise_filtered',
+    baseFreq: 130,
+    gainEnvelope: { attack: 0.02, sustain: 0.1, release: 0.5 },
+    filterType: 'lowpass', filterFreq: 460,
+    gainMult: 0.75,
+  },
+  // The recovery burn: a sustained outward shove in the jettison-thud register, longer — burning
+  // out of the well, not kicking a pod.
+  {
+    id: 'sfx_planet_recovery_burn',
+    category: 'engine',
+    type: 'noise_filtered',
+    baseFreq: 105,
+    gainEnvelope: { attack: 0.012, sustain: 0.14, release: 0.42 },
+    filterType: 'lowpass', filterFreq: 440,
+    gainMult: 0.8,
   },
   // Aft rack ejector: short mechanical clack + filtered breath, distinct from detonation.
   // (type was 'noise' — corrected to 'noise_filtered'; intent unchanged.)
@@ -2253,7 +2466,9 @@ export const RECIPES = [
     id: 'sfx_travel_arrival',
     category: 'engine',
     type: 'layered',
-    layers: ['sfx_jump_arrive', 'sfx_travel_arrival_tone', 'sfx_travel_bass_drop'],
+    // The jump whoosh stays its own recipe. Nesting it here never attaches the
+    // jump_arrive sample, so the decompression body was stranded inside the chord.
+    layers: ['sfx_travel_arrival_tone', 'sfx_travel_bass_drop'],
     gainMult: 0.75,
   },
   {
@@ -2530,6 +2745,29 @@ export const RECIPES = [
     gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.08 },
     filterType: 'bandpass', filterFreq: 180, filterQ: 2.5,
   },
+  // SF-232 — a machine that is actually working: slow motor, not the player's mining beam.
+  {
+    id: 'sfx_work_motor',
+    category: 'mining',
+    type: 'continuous_noise',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.2, sustain: 1, release: 0.25 },
+    filterType: 'bandpass', filterFreq: 160, filterQ: 1.6,
+    lfoRate: 2.4, lfoDepth: 0.18,
+    gainMult: 0.4,
+  },
+  // SF-232 — jam / power loss: the motor stalls into a broken pulse.
+  {
+    id: 'sfx_work_jam',
+    category: 'mining',
+    type: 'continuous_oscillator',
+    wave: 'square',
+    baseFreq: 48,
+    gainEnvelope: { attack: 0.04, sustain: 1, release: 0.12 },
+    filterType: 'lowpass', filterFreq: 240, filterQ: 0.8,
+    lfoRate: 6.5, lfoDepth: 0.55,
+    gainMult: 0.32,
+  },
   // Distant traffic context (Helios calm flight only; very quiet).
   {
     id: 'sfx_traffic_blip',
@@ -2611,6 +2849,113 @@ export const RECIPES = [
     baseFreq: 294,
     gainEnvelope: { attack: 0.01, sustain: 0.1, release: 0.32 },
     filterType: 'lowpass', filterFreq: 1100, filterQ: 1.8,
+  },
+  // FB-010 — the transverse snare and the mass seed have voices. Synth recipes on the existing
+  // oscillator/noise families; no samples, no new UI countdown (the seed HUD exists). The seed's
+  // warning-then-collapse is the pair that matters most: it is a timer the player stands on.
+  {
+    // Snare arm: one small mechanical tick as the cross-line's anchors arm.
+    id: 'sfx_snare_arm_tick',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'square',
+    baseFreq: 620,
+    freqSweep: [620, 500],
+    sweepTimeS: 0.03,
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.07 },
+    filterType: 'bandpass', filterFreq: 820, filterQ: 2.6,
+  },
+  {
+    // Snare cut: the tether twang's brighter, tighter cousin for the cross-line's release.
+    id: 'sfx_snare_cut',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 340,
+    freqSweep: [340, 120],
+    sweepTimeS: 0.12,
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.14 },
+    filterType: 'bandpass', filterFreq: 900, filterQ: 3.2,
+    pitchRange: [0.94, 1.06],
+  },
+  {
+    // Seed deploy: the throw's soft falling whistle as the seed travels out.
+    id: 'sfx_massseed_deploy',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 480,
+    freqSweep: [480, 300],
+    sweepTimeS: 0.22,
+    gainEnvelope: { attack: 0.008, sustain: 0.02, release: 0.2 },
+    filterType: 'bandpass', filterFreq: 760, filterQ: 2.2,
+  },
+  {
+    // Seed locking rise: the first half of the lock figure, a tone climbing while the ring seats.
+    id: 'sfx_massseed_lock_rise',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 196,
+    freqSweep: [196, 392],
+    sweepTimeS: 0.4,
+    gainEnvelope: { attack: 0.02, sustain: 0.24, release: 0.1 },
+    filterType: 'lowpass', filterFreq: 1200, filterQ: 1.6,
+  },
+  {
+    // Seed lock chord, low voice: the ring lands with the root under the rise's octave.
+    id: 'sfx_massseed_chord_low',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 196,
+    gainEnvelope: { attack: 0.006, sustain: 0.1, release: 0.3 },
+    filterType: 'lowpass', filterFreq: 760, filterQ: 1.4,
+  },
+  {
+    // Seed lock chord, high voice: the fifth above, so landing reads as resolution not click.
+    id: 'sfx_massseed_chord_high',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 294,
+    gainEnvelope: { attack: 0.008, sustain: 0.08, release: 0.34 },
+    filterType: 'lowpass', filterFreq: 1100, filterQ: 1.8,
+  },
+  {
+    id: 'sfx_massseed_lock_chord',
+    category: 'weapon',
+    type: 'layered',
+    layers: ['sfx_massseed_chord_low', 'sfx_massseed_chord_high'],
+    gainMult: 0.95,
+  },
+  {
+    // Seed warning pulse that quickens: a narrow alarm tone under a fast tremolo with a rising
+    // figure — reads as a countdown the ear can follow, never a menu beep.
+    id: 'sfx_massseed_warning',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'square',
+    baseFreq: 392,
+    freqSweep: [392, 523],
+    sweepTimeS: 0.6,
+    gainEnvelope: { attack: 0.01, sustain: 0.5, release: 0.16 },
+    filterType: 'bandpass', filterFreq: 900, filterQ: 2.4,
+    lfoRate: 8, lfoDepth: 0.72,
+  },
+  {
+    // Seed collapse drop: the floor falls away under the anchored mass — one low drop, then
+    // silence (the despawn is bookkeeping and stays silent).
+    id: 'sfx_massseed_collapse',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 220,
+    freqSweep: [220, 40],
+    sweepTimeS: 0.5,
+    gainEnvelope: { attack: 0.004, sustain: 0.0, release: 0.45 },
+    subBass: 0.5,
+    reverbMix: 0.2, reverbDecay: 0.8,
   },
   // PQ-158.04 — directed synthetic radio voice (sample body + radio recipe).
   {
@@ -2853,6 +3198,30 @@ export const RECIPES = [
     gainEnvelope: { attack: 0.14, sustain: 1.0, release: 0.2, peak: 0.22 },
     filterType: 'lowpass', filterFreq: 190, filterQ: 0.6,
   },
+  // VERB-23: Crisp mechanical ratchet/click for cycling active bomb bay slot
+  {
+    id: 'sfx_bomb_rack_cycle',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.001, decay: 0.03, sustain: 0.0, release: 0.03 },
+    filterType: 'bandpass',
+    filterFreq: 1850,
+    filterQ: 3.5,
+    pitchRange: [0.98, 1.02],
+  },
+  // VERB-23: Heavy mechanical latch click when bomb rack composition changes
+  {
+    id: 'sfx_bomb_rack_change',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.002, decay: 0.05, sustain: 0.0, release: 0.04 },
+    filterType: 'bandpass',
+    filterFreq: 1200,
+    filterQ: 2.2,
+    pitchRange: [0.96, 1.04],
+  },
 ];
 
 // PQ-158.00 — the sample-library hybrid bindings.
@@ -2979,6 +3348,8 @@ export const SAMPLE_BINDINGS = {
   sfx_mining_scan_classified: { id: 'mine_scan', share: 0.5, rate: 0.8 },
   sfx_mining_scan_tracked: { id: 'mine_scan', share: 0.5, rate: 0.62 },
   sfx_mining_scan_investigated: { id: 'mine_scan', share: 0.5, rate: 0.9 },
+  // FB-131: the escape tone borrows the same scan recording, pitched low — one family, one loss.
+  sfx_mining_scan_escaped: { id: 'mine_scan', share: 0.5, rate: 0.5 },
   sfx_scan_pulse: { id: 'mine_scan', share: 0.5, rate: 0.9 },
   sfx_scenario_signal: { id: 'mine_scan', share: 0.5, rate: 1.5 },
 
@@ -3067,6 +3438,8 @@ export const SAMPLE_BINDINGS = {
   sfx_massline_cloak_on: { id: 'massline_cloak', share: 0.6 },
   sfx_massline_cloak_off: { id: 'massline_cloak', share: 0.6, rate: 1.4 },
   sfx_massline_jettison: { id: 'dash_punch', share: 0.5, rate: 0.8 },
+  // FB-073: the cargo jettison voice shares the massline kick's punch recording at the same rate.
+  sfx_cargo_jettison: { id: 'dash_punch', share: 0.5, rate: 0.8 },
   // Aft rack ejector: the massline release recording a register down — ordnance
   // hardware letting go, never a menu detent.
   sfx_massline_bomb_drop: { id: 'massline_release', share: 0.55, rate: 0.8 },

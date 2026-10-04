@@ -80,14 +80,24 @@ Owner, 2026-09-22. Two kinds of agent work this repo.
   **does the line**. The line is already considered. It names the player-visible change,
   the owner, the done check, and what not to invent.
 
-When the catalog has an OPEN line, that line outranks look-then-rotate (§0) and outranks a
-§23 campaign. `N` is how many catalog lines you finish. Take the first OPEN line whose
-paths are not in a live NOW row and not named by another CLAIMED line. The next line is a
-different group (picture, verb, world, instrument, fight, econ, story, law, mach, pro, teach — the seven latter opened by the Fable bank 2026-09-29) when one is free.
+This catalog is the job only when the owner said INFERENCE. An empty `program-dispatch`
+result is not that order. A "do N tasks" sitting claims free seams on `build_map.md` §1C
+and does N open rows there. An OPEN line whose files sit in the seam you claimed is part of
+that row: ship it or mark it already true, and do not count it as one of the N.
+
+For bare INFERENCE or an explicit catalog request (not an explicit section-development
+request under §0.2), when the catalog has an OPEN line, that line outranks
+look-then-rotate (§0) and outranks a §23 campaign. `N` counts new complete production changes from catalog lines.
+Take the first OPEN line whose paths are not in a live NOW row, not named by another CLAIMED
+line, and not inside a seam another agent has claimed on §1C. The next line is a different
+group (picture, verb, world, instrument, fight, econ, story, law, mach, pro, teach — the
+seven latter opened by the Fable bank 2026-09-29) when one is free.
 
 Do not EXPAND a catalog line into a new fantasy, a new system, or a second queue. If the
 live owner already meets the done check, mark the line SHIPPED with "already true" and
-take the next. If the line fights the vision, CUT it with one causal sentence and record
+take the next. Already-true checks, duplicate reconciliation, and status-only edits
+are bookkeeping, not newly built production units; they do not count toward a
+requested production N. If the line fights the vision, CUT it with one causal sentence and record
 `--verdict cut`.
 
 Look-then-rotate is what you do when the catalog has no OPEN line, or the owner named a
@@ -98,6 +108,39 @@ said to.
 `INFERENCE 8` is the same loop with a longer batch. `INFERENCE 3 MISSIONS`
 stays in missions and rotates kinds inside that domain — still by looking,
 not by adding three rows.
+
+## 0.2 Explicit section-development requests — continue the existing area
+
+If the owner asks to take a section, develop an area, or fill out the game/world,
+that intent outranks catalog-first selection even when the request is called
+INFERENCE. Use the relevant existing [`FINISH_LANES.md`](./FINISH_LANES.md) area
+and its current live owners. Do not create another map, queue, or lane. Bare
+INFERENCE and explicit catalog/row requests keep §0.1; named-domain requests
+keep their existing scope unless the owner explicitly asks for area ownership.
+
+At entry, name one bounded slice and its player-visible outcome within that
+area. Read the existing lane and the relevant ledger finding/next action, then
+inspect the ordinary route. Existing rows are the known work, not a ceiling on
+what the named slice needs. Related catalog lines are constituent repairs,
+not separate N credit and not permission to build an unrelated feature.
+
+Design the required experience before limiting it to the current asset kit. Reuse
+is an implementation choice, not a creative ceiling: if an absent hull, creature,
+structure, mechanism or state is necessary, include its authored production and
+live integration in the slice. Check for an equivalent shipped or unintegrated
+asset first; neither automatic reuse nor automatic replacement is the goal.
+
+Finish the named slice through existing owners, including the causal connections
+needed for its outcome. Rotate after the slice is coherent, not between its
+dependent leaves. Stop at the requested outcome or under §7's termination rules;
+never turn area ownership into an unbounded run or invent a session timer.
+One blocked leaf does not end an authorized multi-unit request while eligible
+work remains. If the owner or execution environment ends the session, retain
+incomplete work and name the next action in the existing ledger/owner context.
+An unfinished slice is not counted complete.
+Broader area acceptance remains with the existing lane; it need not hold a
+finished local implementation hostage. Planning-only requests remain planning:
+this route does not grant runtime implementation authority.
 
 ## 1. What `N` means
 
@@ -202,6 +245,12 @@ purely visual leftover doubt.
 
 A failed harness does not automatically become the task. Leave a broader route
 claim `unproven` and keep the production.
+
+Evidence must cover the exact claim and its named boundary cases. Source
+inspection establishes wiring; it does not establish an unobserved player
+lifecycle. Keep `implemented`/`focused_green` for local proof, and retain any
+broader acceptance action with the existing area owner. Do not promote nearby
+unit tests to `accepted` for an ordinary route they did not exercise.
 
 ### 3.4 ROTATE
 
@@ -443,6 +492,7 @@ pick the weakest/stalest domain verifiable by looking, inspect, grade,
 improve one thing completely (build, polish, simplify, optimize, or delete),
 record the row in place, rotate. Inspections die when their paths change
 (§3 staleness law); rows and gaps are capped and update in place (§4
-anti-bloat law). Owner ideas enter at PICK via EXPAND or the capped
-[`INFERENCE_IDEAS.md`](./INFERENCE_IDEAS.md) inbox (raw material, never a
-queue). This section adds memory and intakes; it changes no rule above.
+anti-bloat law). Owner ideas enter at PICK via EXPAND. The directed catalog in
+[`INFERENCE_IDEAS.md`](./INFERENCE_IDEAS.md) follows §0.1; only raw owner notes
+have the capped-inbox treatment. Explicit section-development requests follow
+§0.2. This section adds memory and intakes; it changes no precedence above.

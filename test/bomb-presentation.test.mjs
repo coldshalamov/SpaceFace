@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { BOMB_DRIFT } from '../src/data/bombs.js';
+import { BOMB_DRIFT, bombDef } from '../src/data/bombs.js';
+import { bombSurfaceFalloff } from '../src/combat/bombDynamics.js';
 import { BombPresentationBatch, updateBombPresentation, releaseBombPresentation, bombPresentationStats, BOMB_PRESENTATION_MAX_VERTICES, createBombTelegraphMaterial, createBombPresentationPrecompileMesh } from '../src/render/bombPresentation.js';
 function entity(id = 1, kind = 'bomb_singularity') {
   return { id, alive: true, type: 'bomb', pos: { x: 1000, z: 2000 }, prevPos: { x: 1000, z: 2000 },
@@ -90,6 +91,46 @@ test('reduced motion freezes travelling marks and reduced flash keeps the same d
   const full = b.colors[0]; s.settings.video.flashReduce = true; b.update(s, [e], 1);
   assert.ok(b.colors[0] < full); assert.ok(b.count > 0); b.dispose();
 });
+test('the drawn field edge reaches the real force radius through growth and decay (NXI-194)', () => {
+  // The standing edge ribbons are authored at `def.radius` — the same constant
+  // `bombSurfaceFalloff` uses for force eligibility. The decay envelope modulates strength
+  // and colour, never the boundary. Pin the agreement: emitted geometry must reach the
+  // eligibility radius at ignition AND deep in decay, and not claim range past it.
+  const e = entity(1, 'bomb_singularity');
+  const def = bombDef('bomb_singularity');
+  const s = world([e]);
+  const b = new BombPresentationBatch(s.render.scene);
+
+  // The standing edge ribbons land their outer points at exactly `radius` — count
+  // vertices within 3% of the force radius. (Inflow paths legitimately extend farther:
+  // they show matter arriving at the field, not the force boundary itself.)
+  const edgeVertices = () => {
+    // Emitted positions are frame-relative; the entity sits at frame origin.
+    const cx = e.pos.x - s.world.frameOrigin.x, cz = e.pos.z - s.world.frameOrigin.z;
+    let n = 0;
+    for (let i = 0; i < b.count * 3; i += 3) {
+      const d = Math.hypot(b.positions[i] - cx, b.positions[i + 2] - cz);
+      if (Math.abs(d - def.radius) <= def.radius * 0.03) n++;
+    }
+    return n;
+  };
+
+  // Early in the field (envelope ≈ full strength): the edge marks the full force radius.
+  s.simTime = 0.4; b.update(s, [e], 1);
+  assert.ok(edgeVertices() >= 8, 'the standing edge must mark the force radius at ignition');
+  assert.ok(bombSurfaceFalloff(def.radius - 1, 0, def.radius) > 0,
+    'a body just inside the indicated edge is force-eligible');
+
+  // Deep decay — envelope faded, the boundary must not retreat.
+  s.simTime = 2.6; b.update(s, [e], 1);
+  assert.ok(edgeVertices() >= 8, 'decay must not shrink the indicated edge');
+
+  // Symmetric check: outside the indicated edge there is no force.
+  assert.equal(bombSurfaceFalloff(def.radius + 1, 0, def.radius), 0,
+    'past the radius a point body feels nothing — the edge does not underclaim either');
+  b.dispose();
+});
+
 test('offscreen field bounds are culled before geometry is emitted', () => {
   const e = entity(), s = world([e]); const camera = new THREE.OrthographicCamera(-200, 200, 200, -200, 0.1, 2000);
   camera.position.set(0, 500, 0); camera.up.set(0, 0, -1); camera.lookAt(0, 0, 0); camera.updateMatrixWorld(); s.render.camera = camera;

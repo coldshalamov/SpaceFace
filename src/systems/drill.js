@@ -40,11 +40,13 @@ const ROWS = 45;        // depth (surface at row 0, deeper = rarer/harder)
 const TILE = 40;        // px per tile (render hint; the screen may scale)
 const DRILL_DPS = 8;    // ore-units/sec the player's drill clears (tier 0 baseline)
 const GAS_DAMAGE = 18;  // hull % lost if you drill into a gas pocket (the lesson)
-const GAS_TELL_RADIUS = 2; // tiles — gas is hinted (discolored) within this radius of a cleared tile
+export const GAS_TELL_RADIUS = 2; // tiles — gas is hinted within this radius of a cleared tile
 export const DRILL_ENERGY_MAX = 100;
 export const DRILL_ENERGY_RECOVERY = 28;
 export const DRILL_ENERGY_RESUME = 24;
 export const DRILL_HEAT_COOLING = 36;
+/** Overheat clears at this head temperature. Shared by recovery and the commitment copy. */
+export const DRILL_HEAT_RESUME = 10;
 export const SCAN_RADIUS = 5;
 export const SCAN_COOLDOWN_S = 6;
 export const SCAN_ACTIVE_S = 0.9;
@@ -735,8 +737,265 @@ export function generateDrillField(seed, family = DEFAULT_GEOLOGY_FAMILY) {
 function recoverRig(d, dt) {
   d.drillTemp = Math.max(0, d.drillTemp - DRILL_HEAT_COOLING * dt);
   d.drillEnergy = Math.min(DRILL_ENERGY_MAX, d.drillEnergy + DRILL_ENERGY_RECOVERY * dt);
-  if (d.overheated && d.drillTemp <= 10) d.overheated = false;
+  if (d.overheated && d.drillTemp <= DRILL_HEAT_RESUME) d.overheated = false;
   if (d.energyDepleted && d.drillEnergy >= DRILL_ENERGY_RESUME) d.energyDepleted = false;
+}
+
+export function drillHeatLimitCopy() {
+  return `Drill cooling down — cool the bit. It cuts again once heat falls to ${DRILL_HEAT_RESUME}.`;
+}
+
+export function drillEnergyLimitCopy() {
+  return `Wait for energy — rig capacitor recharging. It resumes at ${DRILL_ENERGY_RESUME}.`;
+}
+
+export function cargoFreeUnits(cargo) {
+  if (!cargo || !(Number(cargo.capVolume) > 0)) return Number.POSITIVE_INFINITY;
+  return Math.max(0, Math.floor(Number(cargo.capVolume) - (Number(cargo.usedVolume) || 0)));
+}
+
+const COMMITMENT_DIRS = Object.freeze([
+  Object.freeze([1, 0]), Object.freeze([-1, 0]),
+  Object.freeze([0, 1]), Object.freeze([0, -1]),
+]);
+const COMMITMENT_FACE = Object.freeze({
+  left: Object.freeze([-1, 0]),
+  right: Object.freeze([1, 0]),
+  up: Object.freeze([0, -1]),
+  down: Object.freeze([0, 1]),
+});
+
+function commitmentBlank() {
+  return { type: null, ore: null, yieldU: null, tierReq: null, risk: null };
+}
+
+function fieldSize(field) {
+  const cols = Array.isArray(field) ? field.length : 0;
+  const rows = cols && Array.isArray(field[0]) ? field[0].length : 0;
+  return { cols, rows };
+}
+
+function cellAt(field, col, row, cols, rows) {
+  if (col < 0 || row < 0 || col >= cols || row >= rows) return null;
+  const column = field[col];
+  return column ? column[row] || null : null;
+}
+
+function isEmptyCell(field, col, row, cols, rows) {
+  const tile = cellAt(field, col, row, cols, rows);
+  return !!tile && tile.type === 'empty';
+}
+
+function clearedNear(field, col, row, cols, rows) {
+  for (let dc = -GAS_TELL_RADIUS; dc <= GAS_TELL_RADIUS; dc++) {
+    for (let dr = -GAS_TELL_RADIUS; dr <= GAS_TELL_RADIUS; dr++) {
+      if (isEmptyCell(field, col + dc, row + dr, cols, rows)) return true;
+    }
+  }
+  return false;
+}
+
+function dilateCleared(field, cols, rows) {
+  const near = new Uint8Array(cols * rows);
+  for (let c = 0; c < cols; c++) {
+    for (let r = 0; r < rows; r++) {
+      if (!isEmptyCell(field, c, r, cols, rows)) continue;
+      for (let dc = -GAS_TELL_RADIUS; dc <= GAS_TELL_RADIUS; dc++) {
+        for (let dr = -GAS_TELL_RADIUS; dr <= GAS_TELL_RADIUS; dr++) {
+          const nc = c + dc;
+          const nr = r + dr;
+          if (nc < 0 || nr < 0 || nc >= cols || nr >= rows) continue;
+          near[nr * cols + nc] = 1;
+        }
+      }
+    }
+  }
+  return near;
+}
+
+/**
+ * What the decision view may say about one cell.
+ * Survey marks and the gas tell are the only evidence. Unscanned ore and yield stay off the result.
+ * This does not close the works-board visibility gate (`isTileSurveyed` stays open for PQ-130).
+ */
+export function drillCellEvidence(field, col, row, nearCleared) {
+  const { cols, rows } = fieldSize(field);
+  const c = Math.trunc(col);
+  const r = Math.trunc(row);
+  if (c < 0 || r < 0 || c >= cols || r >= rows) {
+    return { kind: 'boundary', ...commitmentBlank() };
+  }
+  const tile = cellAt(field, c, r, cols, rows);
+  if (!tile) return { kind: 'unrevealed', ...commitmentBlank() };
+  if (tile.type === 'empty') return { kind: 'open', type: 'empty', ore: null, yieldU: null, tierReq: null, risk: null };
+  if (tile.surveyed) {
+    const vein = tile.type === 'vein' && tile.ore;
+    return {
+      kind: 'known',
+      type: tile.type,
+      ore: vein ? tile.ore : null,
+      yieldU: vein ? Math.max(0, Math.floor(Number(tile.yieldU) || 0)) : null,
+      tierReq: vein ? drillTierReqForOre(tile.ore) : null,
+      risk: tile.risk || null,
+    };
+  }
+  const told = nearCleared
+    ? nearCleared[r * cols + c] === 1
+    : clearedNear(field, c, r, cols, rows);
+  if (tile.type === 'gas' && told) return { kind: 'suspected-gas', ...commitmentBlank() };
+  return { kind: 'unrevealed', ...commitmentBlank() };
+}
+
+/** Cable points that are still open tunnel. A solid or unknown cell is dropped, not drawn through. */
+export function visibleCablePoints(trail, field) {
+  if (!Array.isArray(trail) || !field) return [];
+  const { cols, rows } = fieldSize(field);
+  const out = [];
+  for (const pt of trail) {
+    if (!pt) continue;
+    const col = Math.trunc(pt.col);
+    const row = Math.trunc(pt.row);
+    if (!isEmptyCell(field, col, row, cols, rows)) continue;
+    out.push({ col, row });
+  }
+  return out;
+}
+
+/** Shortest walk back to the surface shaft through empty cells only. Never steps on rock, ore, or gas. */
+export function knownReturnPath(field, col, row) {
+  const { cols, rows } = fieldSize(field);
+  const startCol = Math.trunc(col);
+  const startRow = Math.trunc(row);
+  if (!isEmptyCell(field, startCol, startRow, cols, rows) || cols <= 0 || rows <= 0) return [];
+  const entryCol = Math.floor(cols / 2);
+  const entryRow = 0;
+  const here = { col: startCol, row: startRow };
+  if (!isEmptyCell(field, entryCol, entryRow, cols, rows)) return [here];
+  const start = startRow * cols + startCol;
+  const target = entryRow * cols + entryCol;
+  if (start === target) return [here];
+  const prev = new Int32Array(cols * rows);
+  prev.fill(-2);
+  prev[start] = -1;
+  const queue = new Int32Array(cols * rows);
+  let head = 0;
+  let tail = 0;
+  queue[tail++] = start;
+  let found = false;
+  while (head < tail) {
+    const idx = queue[head++];
+    if (idx === target) { found = true; break; }
+    const c = idx % cols;
+    const r = (idx - c) / cols;
+    for (let i = 0; i < COMMITMENT_DIRS.length; i++) {
+      const nc = c + COMMITMENT_DIRS[i][0];
+      const nr = r + COMMITMENT_DIRS[i][1];
+      if (!isEmptyCell(field, nc, nr, cols, rows)) continue;
+      const next = nr * cols + nc;
+      if (prev[next] !== -2) continue;
+      prev[next] = idx;
+      queue[tail++] = next;
+    }
+  }
+  if (!found) return [here];
+  const path = [];
+  let cur = target;
+  while (cur !== -1) {
+    path.push({ col: cur % cols, row: Math.floor(cur / cols) });
+    cur = prev[cur];
+  }
+  path.reverse();
+  return path;
+}
+
+function neighborIsEmpty(field, col, row, cols, rows) {
+  for (let i = 0; i < COMMITMENT_DIRS.length; i++) {
+    if (isEmptyCell(field, col + COMMITMENT_DIRS[i][0], row + COMMITMENT_DIRS[i][1], cols, rows)) return true;
+  }
+  return false;
+}
+
+/**
+ * The next drilling commitment from facts the pilot already has: surveyed ore, a gas tell,
+ * a tier the bit cannot cut, and the cleared walk home. Unscanned cells contribute nothing —
+ * no ore id, no yield, no promise.
+ */
+export function deriveDrillCommitment(session, opts = {}) {
+  const field = session && session.field;
+  const avatar = session && session.avatar;
+  if (!field || !avatar) return null;
+  const { cols, rows } = fieldSize(field);
+  if (cols <= 0 || rows <= 0) return null;
+  const tier = Math.max(1, Math.trunc(Number(opts.tier) || 1));
+  const cargoFree = opts.cargoFree == null ? Number.POSITIVE_INFINITY : Number(opts.cargoFree);
+  const near = dilateCleared(field, cols, rows);
+  const ac = Math.trunc(avatar.col);
+  const ar = Math.trunc(avatar.row);
+  const face = COMMITMENT_FACE[avatar.faceDir] || COMMITMENT_FACE.down;
+  const fc = ac + face[0];
+  const fr = ar + face[1];
+  const evidence = (fc < 0 || fr < 0 || fc >= cols || fr >= rows)
+    ? { kind: 'boundary', ...commitmentBlank() }
+    : drillCellEvidence(field, fc, fr, near);
+  const facing = {
+    col: fc,
+    row: fr,
+    evidence: evidence.kind,
+    type: evidence.type,
+    ore: evidence.ore,
+    yieldU: evidence.yieldU,
+    tierReq: evidence.tierReq,
+    blocked: evidence.kind === 'known' && evidence.type === 'vein' && (evidence.tierReq || 1) > tier,
+    risk: evidence.risk,
+  };
+  const suspectedGas = [];
+  const veins = [];
+  for (let c = 0; c < cols; c++) {
+    for (let r = 0; r < rows; r++) {
+      const cell = drillCellEvidence(field, c, r, near);
+      if (cell.kind === 'suspected-gas') {
+        suspectedGas.push({ col: c, row: r });
+        continue;
+      }
+      if (cell.kind !== 'known' || cell.type !== 'vein' || !cell.ore) continue;
+      if (!neighborIsEmpty(field, c, r, cols, rows)) continue;
+      veins.push({
+        col: c,
+        row: r,
+        ore: cell.ore,
+        yieldU: cell.yieldU,
+        tierReq: cell.tierReq,
+        blocked: (cell.tierReq || 1) > tier,
+        risk: cell.risk || 'low',
+      });
+    }
+  }
+  veins.sort((a, b) => a.row - b.row || a.col - b.col);
+  const nearby = veins[0] || null;
+  let deeper = veins.length > 1 ? veins[veins.length - 1] : null;
+  if (deeper && nearby && deeper.col === nearby.col && deeper.row === nearby.row) deeper = null;
+  const energyBlocked = !!(session.energyDepleted) || Number(session.drillEnergy) <= 0;
+  const heatBlocked = !!(session.overheated) || Number(session.drillTemp) >= 100;
+  const limit = energyBlocked && heatBlocked ? 'both' : energyBlocked ? 'energy' : heatBlocked ? 'heat' : null;
+  const cargoBlocked = Number.isFinite(cargoFree) && cargoFree <= 0;
+  const depleted = Number.isFinite(session.rockBudget)
+    && session.rockBudget <= 0
+    && Number(session.rockBudgetMax) > 0;
+  const holds = facing.ore ? Math.max(0, Math.floor(Number(facing.yieldU) || 0)) : 0;
+  return {
+    facing,
+    nearby,
+    deeper,
+    suspectedGas,
+    returnPath: knownReturnPath(field, ac, ar),
+    limit,
+    energyResume: DRILL_ENERGY_RESUME,
+    heatResume: DRILL_HEAT_RESUME,
+    cargoFree: Number.isFinite(cargoFree) ? cargoFree : null,
+    cargoBlocked,
+    depleted,
+    cargoGrant: holds > 0 && !facing.blocked && !depleted && !cargoBlocked && !limit,
+  };
 }
 
 function sessionResult(d, reason) {
@@ -1215,12 +1474,16 @@ export const drill = {
         d.boreHold = 0;
         d.avatar.isDrilling = false;
         d.avatar.drillTarget = null;
-        const wasOverheated = d.overheated;
+        const heatBlocked = d.overheated;
+        const energyBlocked = d.energyDepleted;
         recoverRig(d, dt);
         if (d.moveCooldown <= 0) {
+          const parts = [];
+          if (heatBlocked) parts.push(drillHeatLimitCopy());
+          if (energyBlocked) parts.push(drillEnergyLimitCopy());
           this.bus.emit('drill:warn', {
-            text: wasOverheated ? 'Drill cooling down — release the bore.' : 'Rig capacitor recharging — release the bore.',
-            reason: wasOverheated ? 'overheat' : 'capacitor',
+            text: parts.join(' '),
+            reason: heatBlocked ? 'overheat' : 'capacitor',
           });
           d.moveCooldown = 1.0;
         }
@@ -1391,6 +1654,17 @@ export const drill = {
     return { tile, ...extractionTelemetry(tile, this.getDrillDPS()) };
   },
 
+  /** Read-only next commitment. Presentation asks; the fixed step does not scan the field for it. */
+  commitmentView() {
+    const d = this.state && this.state.drill;
+    if (!d || !d.active) return null;
+    const cargo = this.state.player && this.state.player.cargo;
+    return deriveDrillCommitment(d, {
+      tier: this.getDrillTier(),
+      cargoFree: cargoFreeUnits(cargo),
+    });
+  },
+
   update(dt, state) {
     // Kept for registry interface compatibility
   },
@@ -1456,4 +1730,6 @@ export const DRILL_CONST = {
   DRILL_ENERGY_RECOVERY,
   DRILL_ENERGY_RESUME,
   DRILL_HEAT_COOLING,
+  DRILL_HEAT_RESUME,
+  GAS_TELL_RADIUS,
 };

@@ -132,7 +132,7 @@ export const VELOCITY_VECTORING_DEFAULTS = Object.freeze({
 /**
  * Coordinated-turn lead bound, rad (~7 deg). While the vectoring assist is live the nose may lead
  * the velocity vector by at most this much; as the lead is approached, yaw eases onto the rate the
- * drive is actually bending the path — see vectoringTurnBound. The angle is the hull against the
+ * drive is actually bending the path — see assistedTurnBound. The angle is the hull against the
  * trail, not the strafe-offset command the assist steers toward. A 16 deg park left the straight
  * nozzle jet kinked against the arc, and measuring the command let a strafe hide a ~45 deg crab
  * while telemetry read aligned. Twitch at zero slip stays full yaw, turning back toward the path
@@ -430,7 +430,7 @@ function stepReaction(body, input, profile, runtime, environment, dt) {
     accel.x += vectoring.ax;
     accel.z += vectoring.az;
   }
-  const turnBound = vectoringTurnBound(body, input, profile, accel, dt);
+  const turnBound = assistedTurnBound(body, input, profile, accel, dt);
   const yaw = computeYawControl(body, input, profile, dt, turnBound);
   if (vectoring) {
     vectoring.slipRad = turnBound ? turnBound.slip : null;
@@ -528,9 +528,17 @@ function applySpeedGovernor(manualLocal, input, limits, localVelocity, profile, 
   // backward: `err` becomes zero, the governor removes all forward thrust, and the ship can never
   // cross through zero. Reverse travel is not speed spent against the cap — forward thrust is
   // counter-thrust against that motion — so give it enough error to cancel the backward component.
+  // Without vectoring, the main drive itself must bend a commanded turn. At cruise a scalar
+  // speed error used to remove that drive as soon as the hull left its momentum vector; it only
+  // came back after the nose crossed 90 degrees, as a full retro-burn. Use the forward deficit
+  // while still inside the cap, leaving total speed to the physics owner's thrust-only bound.
+  // Above the cap retain the scalar coast law: turning cannot replenish earned overspeed.
+  const forwardDeficit = input.unvectoredCruiseSteering && !input.velocityVectoring && speed <= cap + EPS
+    ? cap - localVelocity.forward
+    : cap - speed;
   const err = localVelocity.forward < -EPS
     ? Math.max(cap, -localVelocity.forward)
-    : cap - speed;
+    : forwardDeficit;
   const responseS = positive(settings.governorResponseS, 0.9);
   // The governor bounds what THRUST may produce. It never spends speed the pilot earned: above
   // the cap the forward command floors at coast (0), never at reverse thrust, unless it is
@@ -842,7 +850,7 @@ function stepTorch(body, input, profile, runtime, environment, dt) {
     accel.x += vectoring.ax;
     accel.z += vectoring.az;
   }
-  const turnBound = vectoringTurnBound(body, input, effective, accel, dt);
+  const turnBound = assistedTurnBound(body, input, effective, accel, dt);
   const yaw = computeYawControl(body, input, profile, dt, turnBound);
   if (vectoring) {
     vectoring.slipRad = turnBound ? turnBound.slip : null;
@@ -1080,11 +1088,12 @@ function vectoringIdle(reason) {
  * nose. Overspeed does not release it either: the bound only limits a yaw command and spends no
  * speed, and pathFollowRate is measured from the real applied accel — so a boost or dash that
  * crosses its own cap keeps the same welded arc instead of snapping the nose free.
- * Opted-out packets stay byte-identical.
+ * Without vectoring, the cruise governor uses the same physical path-follow rate with a wider
+ * 90-degree lead allowance: no extra force, just a held turn that cannot repeatedly retro-burn.
  */
-function vectoringTurnBound(body, input, profile, accel, dt) {
+function assistedTurnBound(body, input, profile, accel, dt) {
   const tuning = input.velocityVectoring;
-  if (!tuning) return null;
+  if (!tuning && !input.unvectoredCruiseSteering) return null;
   const settings = profile.assist || {};
   const deadInput = positive(settings.deadInput, 0.025);
   if (normalizeAssistMode(input.assistMode) !== 'assisted') return null;
@@ -1092,6 +1101,17 @@ function vectoringTurnBound(body, input, profile, accel, dt) {
   if (!(input.throttle > deadInput)) return null;
   const speed = length2(body.vel);
   if (!(speed > positive(settings.deadSpeed, 0.18))) return null;
+  // Unvectored assisted flight still has a cruise governor. Inside its closing-speed window,
+  // let the nose lead freely toward 90 degrees, then follow the turn the real thrusters can
+  // produce. Otherwise held yaw repeatedly puts W behind the momentum vector and burns the
+  // ship to a stop. This adds no vectoring force; releasing W, raw modes and low-speed yaw stay
+  // free. The vectoring assist retains its much tighter authored nose/path weld.
+  if (!tuning) {
+    // Key this to combat cruise, so raising the translation cap with boost cannot release yaw.
+    const cap = positive(profile.combatSpeed, 0);
+    const closingSpeed = positive(profile.mainAccel, 0) * positive(settings.governorResponseS, 0.9);
+    if (!(cap > 0) || speed < Math.max(0, cap - closingSpeed)) return null;
+  }
   const pathHeading = Math.atan2(body.vel.z, body.vel.x);
   const slip = wrapAngle(body.rot - pathHeading);
   if (Math.abs(slip) >= Math.PI / 2) return null;
@@ -1104,7 +1124,7 @@ function vectoringTurnBound(body, input, profile, accel, dt) {
     ? wrapAngle(Math.atan2(body.vel.z + finite(accel && accel.z, 0) * dt, body.vel.x + finite(accel && accel.x, 0) * dt)
       - pathHeading) / dt
     : 0;
-  return { slip, pathFollowRate };
+  return { slip, pathFollowRate, leadRad: tuning ? VECTORING_SLIP_LEAD_RAD : Math.PI / 2 };
 }
 
 /** `true` selects the band defaults without allocating; an object overrides individual keys. */
@@ -1147,14 +1167,15 @@ function computeYawControl(body, input, profile, dt, turnBound = null) {
   // back onto the trail) is never clamped, and a zero turn adds nothing — helm aim stays put.
   if (turnBound && targetYawRate !== 0 && Math.sign(targetYawRate) === Math.sign(turnBound.slip)) {
     const absSlip = Math.abs(turnBound.slip);
+    const leadRad = turnBound.leadRad;
     let bound = targetYawRate;
-    if (absSlip >= VECTORING_SLIP_LEAD_RAD) {
-      const correction = VECTORING_EXCESS_SLIP_GAIN * (absSlip - VECTORING_SLIP_LEAD_RAD);
+    if (absSlip >= leadRad) {
+      const correction = VECTORING_EXCESS_SLIP_GAIN * (absSlip - leadRad);
       bound = turnBound.slip > 0
         ? Math.min(targetYawRate, turnBound.pathFollowRate - correction)
         : Math.max(targetYawRate, turnBound.pathFollowRate + correction);
     } else {
-      const blend = smoothstep(0, VECTORING_SLIP_LEAD_RAD, absSlip);
+      const blend = smoothstep(0, leadRad, absSlip);
       const eased = targetYawRate + (turnBound.pathFollowRate - targetYawRate) * blend;
       bound = turnBound.slip > 0 ? Math.min(targetYawRate, eased) : Math.max(targetYawRate, eased);
     }
@@ -1504,6 +1525,7 @@ function normalizeInput(input = {}, out = null, subs = null) {
   // Velocity-vectoring opt-in (VELOCITY_VECTORING_DEFAULTS). Listed here for the same reason as
   // travelDrive: this object is rebuilt from scratch, so an unlisted key never reaches the step.
   o.velocityVectoring = normalizeVelocityVectoring(input.velocityVectoring, subs && subs.velocityVectoring);
+  o.unvectoredCruiseSteering = input.unvectoredCruiseSteering === true;
   return o;
 }
 

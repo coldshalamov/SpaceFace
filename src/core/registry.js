@@ -12,8 +12,11 @@ import { survivalArena } from '../systems/survivalArena.js';
 import { swarmArena } from '../systems/swarmArena.js';
 import { swarmSupply } from '../systems/swarmSupply.js';
 import { swarmChain } from '../systems/swarmChain.js';
+import { swarmJuice } from '../systems/swarmJuice.js';
+import { swarmElites } from '../systems/swarmElites.js';
 import { survivalRewards } from '../systems/survivalRewards.js';
 import { survivalHud } from '../ui/survivalHud.js';                 // Crucible run readout (DOM-guarded)
+import { swarmJuiceHud } from '../ui/swarmJuiceHud.js';             // Swarm arcade juice layer (DOM-guarded)
 import { crucibleFocus } from '../ui/crucibleFocus.js';             // hides campaign chrome in a run (DOM-guarded)
 import { survivalWave } from '../systems/survivalWave.js';
 import { survivalRun } from '../systems/survivalRun.js';
@@ -81,6 +84,7 @@ import { cloak } from '../systems/cloak.js';                          // §4.2 c
 import { lootShards } from '../systems/lootShards.js';                // §4.3 kill shards over the shipped loot:drop seam
 import { terrainAnchors } from '../systems/terrainAnchors.js';        // §4.4 big-and-few rocks per encounter bubble
 import { jettisonImpulse } from '../systems/jettisonImpulse.js';      // §5.3 cargo dump reaction impulse
+import { volatileExposure } from '../systems/volatileExposure.js';    // NXB-008: exposure-driven volatile load state (shock/heat facts, vent/rupture)
 import { masslineHud } from '../ui/masslineHud.js';                   // M2 surfacing: release indicator + cloak ring + meters (DOM-guarded)
 import { mining } from '../systems/mining.js';
 import { fieldDepletion } from '../systems/fieldDepletion.js';
@@ -131,6 +135,12 @@ import { livingPoiBehaviors } from '../systems/livingPoiBehaviors.js'; // M4 six
 import { pirateRumor } from '../systems/pirateRumor.js';             // BP-13/B12 zone pirate rumors from real events
 import { ambushSignatures } from '../systems/ambushSignatures.js';   // BP-13/B14 passive pre-ambush scan tells
 import { bountyHunt } from '../systems/bountyHunt.js';               // BP-13/B16 neutral bounty hunter contracts
+import { morrow } from '../systems/morrow.js';
+import { vesper } from '../systems/vesper.js';
+import { bracket } from '../systems/bracket.js';
+import { ravel } from '../systems/ravel.js';
+import { solstice } from '../systems/solstice.js';
+import { rubric } from '../systems/rubric.js';
 import { salvage } from '../systems/salvage.js';                     // derelict-field discovery loop
 import { voiceArbiter } from '../ui/voiceArbiter.js';                // "one voice at a time" priority queue (ctx.helpers.voice)
 // BP-11 Sector Atmosphere (Wave 3, design/revamp/detail/A_sector_station.md) — SYSTEMS-only
@@ -150,6 +160,7 @@ import { causeLedger } from '../ui/causeLedger.js';                    // E: "wh
 import { customsPrompt } from '../ui/customsPrompt.js';                // CUSTOMS_MOMENT: scan decision panel (submit/bribe/run) over the shipped runScan
 import { impoundPayPrompt } from '../ui/impoundPayPrompt.js';          // impound clerk counter: pay verb over the shipped _payWantedImpound (choice, not overlap)
 import { moralTrapPrompt } from '../ui/moralTrapPrompt.js';            // moral-trap fork: deck verbs over the shipped moralTrap:choose intent
+import { stuckTowPrompt } from '../ui/stuckTowPrompt.js';              // FB-111: wedged-hull tow offer as deck verbs over world:stuckTowAccept
 import { wreckChoicePrompt } from '../ui/wreckChoicePrompt.js';        // wreck communicator/survivor-pod choices: deck verbs over wreckMission:choose + survivorPod:choose
 import { cargoConscience } from '../ui/cargoConscience.js';            // CARGO_REPUTATION_GLYPH: hold moral-color lean glyph (read-only)
 import { securityReadoutSystem } from '../ui/securityReadout.js';      // SECURITY_RESPONSE_READ: "patrols responding" map line over driver.danger
@@ -392,6 +403,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['survivalWave', survivalWave],
     ['survivalRewards', survivalRewards],
     ['survivalHud', survivalHud],
+    ['swarmJuiceHud', swarmJuiceHud],
     ['crucibleFocus', crucibleFocus],
     ['survivalDraft', survivalDraft],
     ['survivalResults', survivalResults],
@@ -402,6 +414,8 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['swarmArena', swarmArena],
     ['swarmSupply', swarmSupply],
     ['swarmChain', swarmChain],
+    ['swarmJuice', swarmJuice],
+    ['swarmElites', swarmElites],
     ['survivalRun', survivalRun],
     ['voiceArbiter', voiceArbiter],
     ['input', input],
@@ -457,6 +471,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['lootShards', lootShards],
     ['terrainAnchors', terrainAnchors],
     ['jettisonImpulse', jettisonImpulse],
+    ['volatileExposure', volatileExposure],
     ['mining', mining],
     ['fieldDepletion', fieldDepletion],
     ['cargo', cargo],
@@ -497,6 +512,12 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['stationServices', stationServices],
     ['difficultyDirector', difficultyDirector],
     ['gateControlDirector', gateControlDirector],
+    ['morrow', morrow],
+    ['vesper', vesper],
+    ['bracket', bracket],
+    ['ravel', ravel],
+    ['solstice', solstice],
+    ['rubric', rubric],
     ['salvage', salvage],
     ['lossInvestigation', lossInvestigation],
     ['salvageActions', salvageActions],
@@ -542,6 +563,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['customsPrompt', customsPrompt],
     ['impoundPayPrompt', impoundPayPrompt],
     ['moralTrapPrompt', moralTrapPrompt],
+    ['stuckTowPrompt', stuckTowPrompt],
     ['wreckChoicePrompt', wreckChoicePrompt],
     ['cargoConscience', cargoConscience],
     ['securityReadoutSystem', securityReadoutSystem],

@@ -44,6 +44,10 @@ export const AUTHORED_DOCK_RUMORS = Object.freeze({
   station_eunomia: 'Beside the old ledger there is a freight platform still holding a container addressed to a crew that died two contracts ago. Delivered, signed, never collected. The note stays pinned.',
   station_sedna: 'Out near the cadence there is a lane pin that points at nothing — a survey marker for a route the dark never let anyone finish. It still points the way.',
   station_dione_customs: 'Between the gate and the market there is a bulk container neither crew will carry — customs tagged it, the lane crew tagged it back, and now it has two liens and no manifest. It is ropeable. Officially, so are you.',
+  // Trade-signature lead (station trade personalities): heard at the dear end of the cell run.
+  // The claim crews burn fuel cells by mid-shift; Ceres Refinery's crackers over-run the belt.
+  // Names two real stations — buy at the glut, dock back here and sell into the shortage.
+  station_hyperion_claim: 'The crews here burn their cell ration by mid-shift, and the desk still prices the tanks like the pumps run uphill. Back up-lane the Ceres Refinery cracks more cells than its own belt can carry away, and lets them go near scrap. Run an empty rack out through the Ceres gate, fill it at the refinery, and dock it back here — the scale pays without asking what took you so long.',
 });
 
 // PQ-048.11: this is a remembered physical discovery, not a new contact or mission authority.

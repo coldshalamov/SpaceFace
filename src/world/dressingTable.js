@@ -1,6 +1,6 @@
 // Presenter/atlas dressing. POI markers, landmarks, and band props are not combat entities.
 
-import { allocateEntityId, clearEntityRuntime } from '../core/entity.js';
+import { allocateEntityId, clearEntityRuntime, Masks } from '../core/entity.js';
 import { initializePresentationAdmission } from '../core/presentationAdmission.js';
 
 export const DRESSING_TABLE_SCHEMA = 'spaceface.dressingTable.v1';
@@ -15,6 +15,7 @@ export function ensureDressingTable(state) {
   let table = world.dressing;
   if (table && table.schema === DRESSING_TABLE_SCHEMA && Array.isArray(table.rows)) {
     if (!(table.byId instanceof Map)) table.byId = new Map(table.rows.map((row) => [row.id, row]));
+    if (!(table.dirtyPoseIds instanceof Set)) table.dirtyPoseIds = new Set();
     return table;
   }
   table = {
@@ -22,6 +23,7 @@ export function ensureDressingTable(state) {
     version: 0,
     rows: [],
     byId: new Map(),
+    dirtyPoseIds: new Set(),
   };
   world.dressing = table;
   return table;
@@ -64,13 +66,22 @@ export function insertDressingRow(state, spec = {}) {
     pos: { x: finite(spec.pos && spec.pos.x), z: finite(spec.pos && spec.pos.z) },
     rot: finite(spec.rot),
     radius: Math.max(0.5, finite(spec.radius, 10)),
-    collides: false,
+    // Default stays a presentation ghost. Solid dressing rows opt in through their spec
+    // (solidDressing.js census plan): collides plus an authored fixed-body spec; the measured
+    // collider itself rides data.collisionProxy = 'skin:<census row>'.
+    collides: spec.collides === true,
     homeSectorId: spec.homeSectorId || (spec.data && spec.data.homeSectorId) || null,
     data: spec.data && typeof spec.data === 'object' ? spec.data : {},
   };
+  if (row.collides && spec.physicsBody && typeof spec.physicsBody === 'object') {
+    row.physicsBody = { ...spec.physicsBody };
+    // Station-category structure for the projectile-sweep and pair mask gates (physics.js).
+    row.collisionMask = Masks.STATION;
+  }
   initializePresentationAdmission(row);
   table.rows.push(row);
   table.byId.set(id, row);
+  table.dirtyPoseIds.add(id);
   table.version++;
   return row;
 }
@@ -79,6 +90,16 @@ export function getDressingRow(state, id) {
   const table = state && state.world && state.world.dressing;
   if (!table || !table.byId) return null;
   return table.byId.get(id) || null;
+}
+
+/** Journal a pose-affecting write to a live row; the version bump fires the renderer pose gate. */
+export function markDressingRowPoseDirty(state, id) {
+  const table = state && state.world && state.world.dressing;
+  if (!table || !table.byId || !table.byId.has(id)) return false;
+  if (!(table.dirtyPoseIds instanceof Set)) table.dirtyPoseIds = new Set();
+  table.dirtyPoseIds.add(id);
+  table.version++;
+  return true;
 }
 
 export function dropDressingRow(state, id) {

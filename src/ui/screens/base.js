@@ -37,18 +37,18 @@ function injectStyle() {
   --orr-mute:var(--dp-ink-mute, #8f8c80);
   --orr-hand:var(--dp-hand, var(--dp-lamp, #f2b950));
   --orr-danger:var(--dp-danger, #ff5038);
-  --dp-glass:rgb(22 29 40 / .66);
+  --dp-glass:rgb(26 35 48 / .82);
   background:
-    linear-gradient(to bottom, rgb(var(--orr-bone) / .07), rgb(var(--orr-bone) / 0) 24%),
+    linear-gradient(to bottom, rgb(var(--orr-bone) / .09), rgb(var(--orr-bone) / 0) 24%),
     var(--dp-glass);
   -webkit-backdrop-filter:blur(18px) saturate(1.15);
   backdrop-filter:blur(18px) saturate(1.15);
   border:0; border-radius:0; box-shadow:none;
   padding:0; min-width:0; max-width:min(94vw, 1120px);
   overflow:hidden; isolation:isolate; z-index:101;
-  -webkit-mask-image:linear-gradient(to bottom, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%), linear-gradient(to right, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%);
+  -webkit-mask-image:linear-gradient(to bottom, rgb(0 0 0 / .65) 0, #000 16px, #000 calc(100% - 16px), rgb(0 0 0 / .65) 100%), linear-gradient(to right, rgb(0 0 0 / .65) 0, #000 16px, #000 calc(100% - 16px), rgb(0 0 0 / .65) 100%);
   -webkit-mask-composite:source-in;
-  mask-image:linear-gradient(to bottom, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%), linear-gradient(to right, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%);
+  mask-image:linear-gradient(to bottom, rgb(0 0 0 / .65) 0, #000 16px, #000 calc(100% - 16px), rgb(0 0 0 / .65) 100%), linear-gradient(to right, rgb(0 0 0 / .65) 0, #000 16px, #000 calc(100% - 16px), rgb(0 0 0 / .65) 100%);
   mask-composite:intersect;
 }
 #screens .screen.sf-menu.orr-base.orr-base.is-empty {
@@ -841,6 +841,7 @@ function mountBaseLattice(rootEl) {
       }
     };
     repaint();
+    rootEl._orrBaseRepaint = repaint;
     try {
       if (rootEl._orrBaseRO) rootEl._orrBaseRO.disconnect();
     } catch (_) {
@@ -1119,6 +1120,10 @@ export const baseScreen = {
         }
       });
     }
+    // The lattice is decor — data-independent, so it mounts once here (under the hidden
+    // warm, not the open frame) and _render() preserves it across its rebuild clears.
+    // Its ResizeObserver repaints when the screen first lays out.
+    mountBaseLattice(rootEl);
   },
 
   // Arm one survey tick without rebuilding the glass (keys, pointer, walk all land here).
@@ -1184,8 +1189,19 @@ export const baseScreen = {
 
     rootEl.classList.remove('is-claimed');
     rootEl.classList.add('is-empty');
-    rootEl.innerHTML = '';
-    mountBaseLattice(rootEl);
+    // Clear the rebuilt body but preserve the lattice canvas mounted at mount() — a full
+    // remount would re-create the canvas, repaint, and churn a ResizeObserver inside every
+    // open/commit frame for identical decor. The preserved canvas only needs a repaint at
+    // the now-laid-out size (its RO also covers later resizes).
+    const lattice = rootEl._orrBaseCanvas;
+    for (const node of Array.from(rootEl.childNodes)) {
+      if (node !== lattice) node.remove();
+    }
+    if (!lattice || lattice.parentNode !== rootEl) {
+      mountBaseLattice(rootEl);
+    } else if (typeof rootEl._orrBaseRepaint === 'function') {
+      rootEl._orrBaseRepaint();
+    }
     const wrap = document.createElement('div');
     wrap.id = 'sf-base';
 

@@ -8,6 +8,8 @@ import {
 import { FRONTIER_CORE_NEIGHBOR_PATCHES, FRONTIER_SECTORS } from './frontierRegions/index.js';
 import { applyClaimableBodySites } from './claimableBodies.js';
 import { KETTLE_LINE_POIS } from './kettleLine.js';
+import { VESPER } from './vesper.js';
+import { SOLSTICE } from './solstice.js';
 import { applyPlanetStateAssignments } from './planetStates.js';
 import { appendPq019FacilityPois } from './heistFacilities.js';
 // Per ARCHITECTURE §0.8:
@@ -44,6 +46,7 @@ export const SECTOR_PALETTE_CLASSES = {
 const CORE_SECTORS = [
   {
     id: 'sector_helios_prime', name: 'Helios Prime', tier: 0, security: 0.98, charted: true,
+    scenic: true,
     factionId: 'faction_scn', position: { x: 0, y: 0 }, worldRadius: 3500,
     palette: SECTOR_PALETTE_CLASSES.core,
     // Tutorial home sector: NO hostile spawns (enemyDensity 0). A brand-new pilot must not be
@@ -75,6 +78,10 @@ const CORE_SECTORS = [
     hazards: [],
     pois: [
       { id: 'poi_tutorial', type: 'beacon', name: 'Tutorial Beacon' },
+      { id: 'poi_vesper_rehearsal', type: 'anomaly', name: 'Vesper’s Rehearsal',
+        pos: { ...VESPER.anchor }, runtimeOwner: 'vesper', scannerSignalKind: 'anomaly',
+        discoveryPlate: { title: 'SV-3 / Kinetic Choir',
+          body: 'Three loose resonators and a moth-winged survey machine. Scan the conductor; Massline a bell, pull, and release. The chart marks the rehearsal site, not the moving band.' } },
       {
         id: 'poi_memorial',
         type: 'beacon',
@@ -146,8 +153,16 @@ const CORE_SECTORS = [
     neighbors: ['sector_helios_prime', 'sector_tethys_junction', 'sector_pallas_drift'],
     stations: [
       { id: 'station_ceres',   name: 'Ceres Refinery', type: 'refinery', factionId: 'faction_dmc', size: 'M', services: ['trade','refuel','repair','ore_buy','refine'],
+        // The crackers split feed into fuel cells three shifts long — more than the belt burns.
+        // This standing cell surplus changes only the listing's stock equilibrium; the commodity
+        // price curve and every other market stay shared (cheap end of the west-cut cell run).
+        marketEquilibriumFactors: { cmdty_fuel_cells: 2.4 },
         chartNote: 'Refinery row — buys ore dear, sells plates cheap.' },
       { id: 'station_beltout', name: 'Belt Outpost',   type: 'mining',   factionId: 'faction_dmc', size: 'S', services: ['trade','missions','ore_buy'],
+        // Rock crews eat same-shift and the ration skiff never lands enough — a standing
+        // provisions shortage. Same shared curve; only this listing's stock equilibrium moves
+        // (dear end of the Drift Market ration run).
+        marketEquilibriumFactors: { cmdty_food: 0.1 },
         chartNote: 'Rock crews and a scale. Ore moves same-shift; nothing else does.' },
     ],
     fields: [
@@ -175,10 +190,23 @@ const CORE_SECTORS = [
       // and the payoff pod live in that module and its owners.
       ...KETTLE_LINE_POIS,
       { id: 'poi_ceres_closed_refinery', type: 'anomaly', name: 'The Closed Refinery', pos: { x: 1600, z: 1800 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
+      {
+        id: 'poi_solstice_lantern',
+        type: 'anomaly',
+        name: 'The Star Lantern',
+        pos: { ...SOLSTICE.anchor },
+        runtimeOwner: 'solstice',
+        scannerSignalKind: 'anomaly',
+        discoveryPlate: {
+          title: 'SL-9 / The Star Lantern',
+          body: 'An ancient gyroscopic astronomical lantern turning on the cold rim of Ceres Belt. Three floating focus prisms orbit its captive stellar heart. Scan to hail; ride the beam to recharge, or tether the prisms into alignment to ignite the lantern.',
+        },
+      },
     ],
   },
   {
     id: 'sector_tethys_junction', name: 'Tethys Junction', tier: 1, security: 0.65, charted: true,
+    scenic: true,
     factionId: 'faction_mts', position: { x: 3, y: 2 }, worldRadius: 4000,
     palette: SECTOR_PALETTE_CLASSES.core,
     trafficPerMin: 14, enemyDensity: 0.20, enemyLevel: [1, 2],
@@ -234,6 +262,15 @@ const CORE_SECTORS = [
       { id: 'poi_tethys_tally_rack', type: 'derelict', name: 'Held-for-Count Rack', pos: { x: -710, z: -990 }, landmarkGlb: 'place_container_rack', visualRadius: 14 },
       { id: 'poi_tethys_tally_pod', type: 'derelict', name: 'Seized Cargo Pod', pos: { x: -660, z: -1050 }, landmarkGlb: 'place_cargo_pod_standard', visualRadius: 8 },
       { id: 'poi_tethys_tally_light', type: 'beacon', name: 'Count-Face Worklight', pos: { x: -650, z: -950 }, landmarkGlb: 'place_worklight_tower', visualRadius: 8 },
+      // RUBRIC / HM-11 (src/data/rubric.js, src/systems/rubric.js): the Customs Gate's retired hull marker works a
+      // filing it was ordered to mark CLEARED. South of the held-for-count rack, off the inbound queue lane.
+      { id: 'poi_rubric_marking_line', type: 'anomaly', name: 'RUBRIC · The Marking Line',
+        pos: { x: -790, z: -1190 }, runtimeOwner: 'rubric', scannerSignalKind: 'anomaly', dressingExclusionRadius: 180,
+        chartNote: 'A hull marker will not mark a moving hull. Scan to read its work; put a line on the hull and bring it to rest.',
+        discoveryPlate: {
+          title: 'HM-11 / The Marking Line',
+          body: 'A retired Customs Gate stencil drone hangs hull F-41 on a slack line south of the count rack. The hull is filed CLEARED. The drone has painted a different answer beside it. Scan to read its work; it will not mark a moving hull, so put a line on the hull and bring it to rest.',
+        } },
     ],
   },
   {
@@ -245,6 +282,9 @@ const CORE_SECTORS = [
     stations: [
       { id: 'station_forge',  name: 'Forge Foundry', type: 'fab',    factionId: 'faction_dmc',   size: 'M', services: ['trade','shipyard','repair','refine','module_craft'],
         chartNote: 'Plate and fittings out the door. Bring alloy, leave with modules.' },
+      { id: 'station_vesta_outlying_yard', name: 'Forge Outlying Yard', type: 'fab', factionId: 'faction_dmc', size: 'S', services: ['repair','refine'],
+        pos: { x: -820, z: 280 },
+        chartNote: 'The foundry’s outer jig. Plate comes off the line and waits here for a hull.' },
       { id: 'station_depot3', name: 'Refuel Depot',  type: 'mining', factionId: 'faction_choir', size: 'S', services: ['refuel', 'missions'],
         chartNote: 'Pumps for the slag crews, and a posted board. The Choir posts shift work in verses.' },
     ],
@@ -305,6 +345,10 @@ const CORE_SECTORS = [
     neighbors: ['sector_ceres_belt', 'sector_io_reach', 'sector_sker_haven'],
     stations: [
       { id: 'station_drift',    name: 'Drift Market', type: 'trade_hub',   factionId: 'faction_mts',   size: 'M', services: ['trade','refuel','repair','missions'],
+        // The Drift feeds the fringe — every unlisted crew buys rations here, and the intake
+        // keeps overshooting. This standing provisions surplus changes only the listing's stock
+        // equilibrium; the shared price curve turns it into the cheap end of the Belt ration run.
+        marketEquilibriumFactors: { cmdty_food: 2.4 },
         chartNote: 'Open board, thin oversight. Good rates on cargo nobody wants logged.' },
       { id: 'station_smuggler', name: 'Smuggler Den', type: 'blackmarket', factionId: 'faction_quiet', size: 'S', services: ['black_market','missions','refuel'],
         chartNote: 'No manifest, no memory. The Quiet keep the lights on, the records off.' },
@@ -316,6 +360,9 @@ const CORE_SECTORS = [
     ],
     hazards: [ { type: 'nebula', center: { x: 400, z: 600 }, radius: 800, intensity: 0.4 } ],
     pois: [
+      { id: 'poi_ravel', type: 'anomaly', name: 'RAVEL · The Unraveller',
+        pos: { x: -940, z: 620 }, runtimeOwner: 'ravel', scannerSignalKind: 'anomaly',
+        dressingExclusionRadius: 300, chartNote: 'Three borrowed weights. Scan to hail; scan again to challenge.' },
       {
         id: 'poi_pwreck', type: 'wreck', name: 'Pirate Wreckage',
         requiresActiveScan: true, scannerSignalKind: 'salvage', scannerSignalPriority: 96,
@@ -388,7 +435,7 @@ const CORE_SECTORS = [
   },
   {
     id: 'sector_charon_expanse', name: 'Charon Expanse', tier: 2, security: 0.30, charted: true,
-    factionId: 'faction_dmc', position: { x: 2, y: 7 }, worldRadius: 4800,
+    factionId: 'faction_dmc', industries: { refinery: true }, position: { x: 2, y: 7 }, worldRadius: 4800,
     palette: SECTOR_PALETTE_CLASSES.belt,
     trafficPerMin: 4, enemyDensity: 0.50, enemyLevel: [5, 9],
     neighbors: ['sector_vesta_forge', 'sector_io_reach', 'sector_ashfall_reach'],
@@ -477,6 +524,7 @@ const CORE_SECTORS = [
         placeTargetRadius: 150,
         factionId: 'faction_reach',
         scannerSignalKind: 'archive',
+        repeatableScannerSignal: true,
         flavorTargetRef: 'landmark_c13d_skerris_throne',
         dressingExclusionRadius: 170,
         discoveryPlate: {
@@ -494,6 +542,7 @@ const CORE_SECTORS = [
   },
   {
     id: 'sector_veil_nebula', name: 'Veil Nebula', tier: 3, security: 0.12, charted: false,
+    scenic: true, industries: { research: true },
     factionId: 'faction_free', position: { x: 7, y: 9 }, worldRadius: 5200,
     palette: SECTOR_PALETTE_CLASSES.anomaly,
     trafficPerMin: 0, enemyDensity: 0.65, enemyLevel: [8, 12],
@@ -520,6 +569,7 @@ const CORE_SECTORS = [
         },
       },
       { id: 'poi_wormhole', type: 'wormhole', name: 'Wormhole', gatedBy: 'tech:tech_long_range_survey', machineGate: 'route_veil_ashfall' },
+      { id: 'poi_veil_far_sounding', type: 'wormhole', name: 'Far Sounding', pos: { x: 3100, z: -2400 } },
       // Alien Ecology (AE-066) + Verge-Layer structures (AE-101/102/108).
       { id: 'poi_veil_quiet_ice', type: 'anomaly', name: 'Quiet Ice', pos: { x: 900, z: 1500 }, runtimeOwner: 'alienEcology', scannerSignalKind: 'anomaly' },
       { id: 'poi_veil_survey_monolith', type: 'anomaly', name: 'Pale Spire', pos: { x: -1400, z: 600 }, runtimeOwner: 'machineLayer', scannerSignalKind: 'anomaly' },
@@ -531,7 +581,7 @@ const CORE_SECTORS = [
   },
   {
     id: 'sector_ashfall_reach', name: 'Ashfall Reach', tier: 4, security: 0.05, charted: false,
-    factionId: 'faction_vael', position: { x: 4, y: 11 }, worldRadius: 5500,
+    factionId: 'faction_vael', threat: 'vael', position: { x: 4, y: 11 }, worldRadius: 5500,
     palette: SECTOR_PALETTE_CLASSES.anomaly,
     trafficPerMin: 0, enemyDensity: 0.80, enemyLevel: [10, 15],
     neighbors: ['sector_charon_expanse'],
@@ -556,6 +606,7 @@ const CORE_SECTORS = [
         afterBossDefeat: { poiId: 'poi_boss', intensity: 0.35 },
       },
       { type: 'debris',    center: { x: 400, z: 300 }, radius: 800,  intensity: 0.5 },
+      { id: 'hazard_ashfall_slag_yard', type: 'debris', center: { x: 1100, z: -200 }, radius: 640, intensity: 0.45 },
     ],
     pois: [
       {

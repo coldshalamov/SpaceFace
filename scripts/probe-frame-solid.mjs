@@ -122,7 +122,12 @@ try {
   const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
   page.on('pageerror', (error) => consoleErrors.push(`[pageerror] ${String(error).slice(0, 300)}`));
   page.on('console', (msg) => {
-    if (msg.type() === 'error') consoleErrors.push(`[${msg.type()}] ${msg.text().slice(0, 300)}`);
+    if (msg.type() !== 'error') return;
+    // This probe intentionally launches the server with no player store mounted
+    // (SPACEFACE_PLAYER_STORE_DIR=''), so the save mirror's store fetch 404s by design and
+    // falls back to localStorage. Resource-load console noise is not a page defect.
+    if (msg.location()?.url?.includes('__spaceface_player_store')) return;
+    consoleErrors.push(`[${msg.type()}] ${msg.text().slice(0, 300)}`);
   });
   await page.addInitScript((flags) => {
     // CDP inlines console string args whole — one giant log line overflows the pipe

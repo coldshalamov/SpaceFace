@@ -65,6 +65,11 @@ const SHIPPED_WEAPONS = [
     dmg: 4, rof: 8.0, dps: 32, damageType: 'kinetic', energyCost: 1,
     projSpeed: 320, range: 240, tracking: 'auto_turret', turretArcDeg: 180,
     intercepts: true,
+    // FB-018: the flag is real — the PD servo loop in countermeasures.js reads these. One
+    // battery-wide shot per cooldown inside the turret arc, chance per shot, each kill charging
+    // energyCost through the same fields the gun spends when it fires. Not perfect: a fast
+    // salvo outlasts the cadence and a flank/rear shot sits outside the arc.
+    interceptChance: 0.6, interceptCooldownS: 0.5,
     impulsePerHit: 5, tumbleTorque: 0.6, impulseProvenance: 'flak_fragment',
   },
   {

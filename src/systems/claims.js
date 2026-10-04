@@ -63,6 +63,8 @@ import { aceById } from '../data/namedAces.js';
 import { stableRecordId, RECORD_KIND } from '../world/worldRecords.js';
 import { hasActiveSpatialHash } from '../core/spatialQuery.js';
 import { collidesFlipEpoch } from '../world/livingWorldViews.js';
+import { physicsPartitionEpoch } from '../world/activityRuntime.js';
+import { sectorGlobalOrigin } from '../data/sectorCoordinates.js';
 
 // Refinery conversion: 2 ore -> 1 refined material (the "lighter, dearer goods to ship" beat).
 const REFINE_RATIO = 2;
@@ -91,6 +93,18 @@ export const SPEC_DETERRENCE_S = 1200;     // a repelled raid buys 20 min of hal
 export const CLAIM_RAID_ATTACKER_RANGE = Object.freeze([4, 6]);
 export const CLAIM_DEFENSE_WARNING_S = 150; // travel window before off-screen fallback
 export const CLAIM_DEFENSE_ARRIVAL_R = 720; // reach the physical claim, not merely its sector
+// A physical takeover that collapsed after the warning (aborted encounter, or a re-admission
+// refusal that can never commit) re-arms the fallback owner for this long — long enough to be
+// answered again, never long enough to strand the raid without a resolution owner.
+export const CLAIM_DEFENSE_REPRIEVE_S = 45;
+// NXI-139 — re-admission refusals that can never produce a live encounter: the request is
+// malformed, the seeded plan cannot field a squad, the shape/runtime is missing, or no director
+// answers at all. Anything else (wrong sector, a spent spawn budget, a synchronous resolve) is
+// lateness, not impossibility — those keep the durable retry, because a late render/sim asset is
+// never a reason to book the raid's loss.
+const CLAIM_DEFENSE_TERMINAL_REFUSALS = new Set([
+  'invalid_request', 'missing_shape', 'missing_runtime', 'empty_plan', 'no_director',
+]);
 export const CLAIM_TRAVEL_INFRASTRUCTURE_SCHEMA = 'claim_travel_sling_v1';
 const RELAY_LOSS_BASE = 0.05;              // convoy loss floor in unlawful space…
 const RELAY_LOSS_DANGER = 0.25;            // …plus danger scaling, capped:
@@ -98,9 +112,25 @@ const RELAY_LOSS_CAP = 0.35;
 const MAX_RECEIPTS = 8;                    // per-body receipt ring (the ledger's memory)
 const SLING_BODY_CLEARANCE_WU = 160;
 const SLING_STATION_CLEARANCE_WU = 180;
+// Teleporter arrival berth: the same beside-the-station clearance the recovery dock pays.
+const TELEPORT_BERTH_CLEARANCE_WU = 180;
 const SLING_MIN_ROUTE_WU = 520;
 const SLING_LATERAL_OFFSETS_WU = Object.freeze([0, 160, -160, 280, -280]);
 const CLAIM_DAY_SECONDS = 600;
+
+// NXB-036 — station growth ends in a route, not a counter. When player-supplied throughput
+// earns a station the FINAL rung of its ladder, the authority it charters surveys one permanent
+// approach corridor inbound from the sector's freight door (the nearest live gate, else the
+// nearest neighbor sector's bearing) down to the berth the deliveries built. The result is the
+// SAME durable claim_travel_sling_v1 record a claim Throughline writes — one consumed fact for
+// travelLanes, traffic and the chart — except it lives on the station's growth record and no
+// claim status can take it cold: a charted public approach stays live once aligned.
+const GROWTH_ROUTE_ALIGN_S = 20;
+const GROWTH_ROUTE_REACH_WU = 1600;     // ring stands this far out along the approach bearing
+const GROWTH_ROUTE_ANCHOR_CLEARANCE_WU = 300; // never aim a corridor through the anchor door itself
+const GROWTH_ROUTE_CORRIDOR_WU = 240;
+const GROWTH_ROUTE_CEILING_MULT = 1.6;  // charted-lane gain — real, below the claim Throughline's 2×
+const GROWTH_ROUTE_RAMP_MULT = 1.6;
 
 // PQ-170.01 — station growth and depot dependency.
 // A station gains an authored module because of PLAYER-supplied throughput: the sell side of the
@@ -267,6 +297,16 @@ function materialName(id) {
   return String(id || 'material').replace(/^cmdty_/, '').replace(/_/g, ' ');
 }
 
+// NXI-140 — a defense receipt names its real goods, not just a count: "10u ore iron, 2u alloys".
+function goodsDeltaLabel(goods) {
+  const parts = [];
+  for (const id of Object.keys(goods || {})) {
+    const qty = goods[id] || 0;
+    if (qty > 0) parts.push(`${qty}u ${materialName(id)}`);
+  }
+  return parts.join(', ');
+}
+
 function firstMissingModuleMaterial(mod, player) {
   const recipe = mod && mod.materials;
   if (!recipe || typeof recipe !== 'object') return null;
@@ -309,6 +349,19 @@ export function claimDefenseRating(body, bodies = []) {
   return rating;
 }
 
+/** Departed freight is sold, returned, recovered, or explicitly lost. Nothing is invented. */
+export function listedMarketSell(entry) {
+  const listed = Number(entry && entry.lastSell);
+  return Number.isFinite(listed) && listed > 0 ? listed : null;
+}
+
+export function relayFreightLedger(departed, aboard, recoverable = 0) {
+  const left = Math.max(0, Math.floor(Number(departed) || 0));
+  const onHull = Math.max(0, Math.min(left, Math.floor(Number(aboard) || 0)));
+  const recovered = Math.max(0, Math.min(left - onHull, Math.floor(Number(recoverable) || 0)));
+  return { departed: left, aboard: onHull, recoverable: recovered, lost: left - onHull - recovered };
+}
+
 export const claims = {
   name: 'claims',
   // serialize() deep-copies every field it returns — the owned flag keeps saveSystem from
@@ -336,10 +389,17 @@ export const claims = {
       // LAW-09: the raid marker's ignore verb — standing a claim down on purpose settles through
       // the same 'ignored' column the deadline lapse pays.
       this.bus.on('claim:defenseIgnore', (payload) => this._onDefenseIgnore(payload || {}));
+      // FB-132: the flight prompt's other two doors. 'Go' re-affirms the alarm waypoint claims
+      // already owns; 'delegate' spends a same-sector supported depot's patrol rotation early —
+      // the depot answers instead of posting its scheduled beat.
+      this.bus.on('claim:defenseGo', (payload) => this._onDefenseGo(payload || {}));
+      this.bus.on('claim:defenseDelegate', (payload) => this._onDefenseDelegate(payload || {}));
       this.bus.on('aceMemory:transition', (payload) => this._onAceTrophyDefeat(payload || {}));
       // PQ-170.01: a Concord depot rotation resolving (beat elapsed, stood down) schedules the next.
       this.bus.on('encounter:resolved', (payload) => this._onDepotPatrolResolved(payload || {}));
       this.bus.on('encounter:resolved', (payload) => this._onDefenseEncounterResolved(payload || {}));
+      // The chart's raid marker is the emitter. Ignore settles this warning only.
+      this.bus.on('claim:defenseIgnore', (payload) => this._onDefenseIgnore(payload || {}));
       // Physical relay convoys: traffic manifests and routes the carrier hull; claims owns the
       // leg ledger. Manifestation flips the leg onto the physical track; a berth unload settles
       // the sale; a hull kill arrives through the ordinary freight:loss ledger.
@@ -730,8 +790,33 @@ export const claims = {
       this.bus.emit('toast', { text: 'No active teleporter on this body', kind: 'error', ttl: 3 });
       return false;
     }
-    // route through the world system's jump-to-station path if available
-    this.bus.emit('claim:teleportRequest', { bodyId, targetStationId: body.linkedStationId });
+    // The jump is the world system's public same-sector relocation seam (the primitive authored
+    // incidents and boarding holds use): it zeroes velocity, keeps heading, snaps prevPos, and
+    // publishes world:playerRelocated so the render pose re-seeds. The entity index only holds
+    // the current sector, so a linked station in another sector resolves to nothing — refuse
+    // honestly instead of toasting a jump that never happens.
+    const station = this._stationEntity(body.linkedStationId);
+    if (!station || !station.pos) {
+      this.bus.emit('toast', { text: 'Linked station is not in this sector — jump refused', kind: 'error', ttl: 4 });
+      return false;
+    }
+    const world = this.ctx && this.ctx.registry && typeof this.ctx.registry.get === 'function'
+      ? this.ctx.registry.get('world')
+      : null;
+    if (!world || typeof world.relocatePlayerInSector !== 'function') {
+      this.bus.emit('toast', { text: 'No jump lane available — teleporter offline', kind: 'error', ttl: 4 });
+      return false;
+    }
+    // Arrive in a clear berth beside the station, not inside its collision origin — the same
+    // courtesy the recovery dock pays (combat.js RECOVERY_BERTH_CLEARANCE_WU).
+    const moved = world.relocatePlayerInSector(
+      { x: station.pos.x + TELEPORT_BERTH_CLEARANCE_WU, z: station.pos.z },
+      { reason: 'claim_teleporter' },
+    );
+    if (!moved) {
+      this.bus.emit('toast', { text: 'No hull in flight — quantum jump failed', kind: 'error', ttl: 4 });
+      return false;
+    }
     this.bus.emit('toast', { text: 'Quantum jump engaged → ' + (this._stationName(body.linkedStationId) || 'station'), kind: 'info', ttl: 3 });
     return true;
   },
@@ -824,21 +909,30 @@ export const claims = {
   // Blocker-passing bodies the spatial hash cannot cover: hash membership requires
   // e.collides truthy, so a member with collides===undefined/0 still passes
   // _travelInfrastructureStaticBlocker (only ===false fails it) yet never reaches a
-  // queryRadius result. The domain is the blocker domain — entityList minus the six
-  // excluded types — not index.statics. Rebuilt only on index churn or a post-spawn
-  // collides flip, so the per-check walk stays at this small list.
+  // queryRadius result — and a collides-truthy member shelved out of the physics
+  // partition (_physicsPartition ∉ {1,2}) is hash-invisible the same way. The domain
+  // is the blocker domain — entityList minus the six excluded types — not index.statics.
+  // Rebuilt on index churn, a collides flip, or a physics-partition flip (shelf in/out).
   _travelInfrastructureStaticsUncovered() {
     const index = this.state && this.state.entityIndex;
     const version = index && Number.isFinite(index.version) ? index.version : null;
     const epoch = collidesFlipEpoch();
+    const partitionEpoch = physicsPartitionEpoch();
     const cache = this._infraStaticsUncovered
-      || (this._infraStaticsUncovered = { version: -1, epoch: -1, list: [] });
-    if (version === null || cache.version !== version || cache.epoch !== epoch) {
+      || (this._infraStaticsUncovered = { version: -1, epoch: -1, partitionEpoch: -1, list: [] });
+    if (version === null || cache.version !== version || cache.epoch !== epoch
+      || cache.partitionEpoch !== partitionEpoch) {
       cache.version = version == null ? -1 : version;
       cache.epoch = epoch;
+      cache.partitionEpoch = partitionEpoch;
       cache.list.length = 0;
       const list = (this.state && this.state.entityList) || [];
-      for (const e of list) if (e && !e.collides && e.collides !== false) cache.list.push(e);
+      for (const e of list) {
+        if (e && e.collides !== false
+          && (!e.collides || (e._physicsPartition !== 1 && e._physicsPartition !== 2))) {
+          cache.list.push(e);
+        }
+      }
     }
     return cache.list;
   },
@@ -997,12 +1091,26 @@ export const claims = {
   visitTravelInfrastructure(sectorId, visitor) {
     if (typeof visitor !== 'function') return 0;
     let count = 0;
-    for (const body of (this.state.claims && this.state.claims.bodies) || []) {
+    const claims = this.state.claims;
+    for (const body of (claims && claims.bodies) || []) {
       const infrastructure = body && body.infrastructure;
       if (!infrastructure || infrastructure.schema !== CLAIM_TRAVEL_INFRASTRUCTURE_SCHEMA) continue;
       if (sectorId && body.sectorId !== sectorId) continue;
       visitor(infrastructure, body);
       count += 1;
+    }
+    // NXB-036: grown-station approach corridors are the same consumed record, hosted by the
+    // station's growth record rather than a claim body — one seam for every consumer.
+    const growth = claims && claims.stationGrowth;
+    if (growth) {
+      for (const stationId in growth) {
+        const rec = growth[stationId];
+        const route = rec && rec.growthRoute;
+        if (!route || route.schema !== CLAIM_TRAVEL_INFRASTRUCTURE_SCHEMA) continue;
+        if (sectorId && rec.sectorId !== sectorId) continue;
+        visitor(route, this._growthRouteHost(rec));
+        count += 1;
+      }
     }
     return count;
   },
@@ -1064,6 +1172,8 @@ export const claims = {
   // keep the original module behavior (refinery module refines from the player hold); a
   // commissioned body runs its operating identity instead (store-based, physical logistics).
   update(dt, state) {
+    // Grown-station approach corridors tick even when the player owns no claim bodies.
+    this._tickStationGrowthRoutes(state);
     const bodies = state.claims && state.claims.bodies;
     if (!bodies || !bodies.length) return;
     let anySpec = false;
@@ -1114,7 +1224,15 @@ export const claims = {
       this._receipt(body, 'site_recovered', 'Crews back to work after the raid');
     }
     // Upkeep accrues while staffed; a cold (unpaid) site stops accruing until it's paid off.
-    if (spec.status === 'active') spec.upkeepDebt = (spec.upkeepDebt || 0) + (def.upkeepPerMin / 60) * dt;
+    if (spec.status === 'active') {
+      spec.upkeepDebt = (spec.upkeepDebt || 0) + (def.upkeepPerMin / 60) * dt;
+      // A spec can arrive at the tick minimal ({id,status} — a restored stub or a planted
+      // body): heal the store shape once rather than letting every consumer deref a missing
+      // shelf. Mirrors _normalizeSpec's healing contract.
+      const store = spec.store && typeof spec.store === 'object' ? spec.store : (spec.store = {});
+      if (!store.input || typeof store.input !== 'object') store.input = {};
+      if (!store.output || typeof store.output !== 'object') store.output = {};
+    }
     if (def.id === 'spec_refinery') this._tickSpecRefinery(body, def, dt);
     else if (def.id === 'spec_relay') this._tickSpecRelay(body, def, state);
     // spec_bastion has no per-tick production — its work happens in _rollRaids + the ledger.
@@ -1125,19 +1243,23 @@ export const claims = {
   // much output room is left, and whether the site is stalled on material or work
   // it already holds.
   _refineryReadiness(spec, def) {
+    // Pure readout — tolerate a spec whose store has not been materialized yet and report
+    // "nothing held" instead of crashing the tick.
+    const input = (spec.store && spec.store.input) || {};
+    const output = (spec.store && spec.store.output) || {};
     let nextOre = null, nextQty = 0;
     for (const ore of REFINABLE_ORE_IDS) {
-      const have = spec.store.input[ore] || 0;
+      const have = input[ore] || 0;
       if (have >= REFINE_RATIO && have > nextQty) { nextQty = have; nextOre = ore; }
     }
-    const outputRoomU = Math.max(0, def.outputCapU - sumStore(spec.store.output));
+    const outputRoomU = Math.max(0, def.outputCapU - sumStore(output));
     return {
       nextOre,
       outputRoomU,
       working: !!nextOre && outputRoomU > 0,
       // Parked freight or an in-flight partial batch with no whole conversion
       // available is a stall; a never-stocked site simply idles.
-      starved: !nextOre && (sumStore(spec.store.input) > 0 || (spec.acc || 0) > 0),
+      starved: !nextOre && (sumStore(input) > 0 || (spec.acc || 0) > 0),
     };
   },
 
@@ -1281,16 +1403,28 @@ export const claims = {
     if (convoy.saleSettled === true) return;
     convoy.saleSettled = true;
     const economy = this._economyPeer();
-    const unit = economy && economy.priceOf ? economy.priceOf(convoy.destStationId, convoy.goodId, 'sell') : null;
-    if (!(unit > 0)) {
+    const markets = this.state && this.state.economy && this.state.economy.markets;
+    const stationMarket = markets && markets[convoy.destStationId];
+    const entry = stationMarket && stationMarket[convoy.goodId];
+    const listed = listedMarketSell(entry);
+    const unit = listed != null && economy && economy.priceOf
+      ? economy.priceOf(convoy.destStationId, convoy.goodId, 'sell')
+      : null;
+    if (!(listed > 0) || !(unit > 0)) {
       spec.store.input[convoy.goodId] = (spec.store.input[convoy.goodId] || 0) + qty;
-      this._receipt(body, 'convoy_returned', 'No buyer found — freight returned',
-        { goodId: convoy.goodId, qty, destStationId: convoy.destStationId });
+      if (convoy.qtyLedger) convoy.qtyLedger.returned = qty;
+      this._receipt(
+        body,
+        'convoy_returned',
+        listed > 0 ? 'No buyer found — freight returned' : 'No market price — freight held',
+        { goodId: convoy.goodId, qty, destStationId: convoy.destStationId, missingPrice: !(listed > 0) },
+      );
       return;
     }
     // PQ-170.01: a station the player's freight grew keeps less of the sale.
     const saleFee = this._relaySaleFee(def, convoy.destStationId);
     const revenue = Math.round(qty * unit * (1 - saleFee));
+    if (convoy.qtyLedger) convoy.qtyLedger.sold = qty;
     this.bus.emit('economy:grantCredits', { amount: revenue, reason: 'claim_relay_sale' });
     this.bus.emit('economy:applyTradePressure', { stationId: convoy.destStationId, good: convoy.goodId, vol: qty });
     spec.totals.soldTotalCr += revenue;
@@ -1325,12 +1459,25 @@ export const claims = {
     if (!convoy || convoy.convoyId !== payload.convoyId) return;
     if (payload.stationId && convoy.destStationId !== payload.stationId) return;
     spec.convoy = null;
-    const aboard = Math.max(0, Math.min(convoy.qty, Math.floor(Number(payload.qty) || 0)));
+    const ledger = relayFreightLedger(convoy.qty, payload.qty, payload.recoverableQty);
+    const departed = ledger.departed;
+    const aboard = ledger.aboard;
+    const recoverable = ledger.recoverable;
+    const spilled = ledger.lost;
+    if (recoverable > 0) {
+      spec.store.input[convoy.goodId] = (spec.store.input[convoy.goodId] || 0) + recoverable;
+      this._receipt(body, 'convoy_recovered', 'Recovered freight returned to the relay',
+        { goodId: convoy.goodId, qty: recoverable, destStationId: convoy.destStationId });
+    }
+    if (spilled > 0) {
+      spec.totals.lostU += spilled;
+      this._receipt(body, 'convoy_partial_loss', 'Freight that did not arrive and was not recovered is lost',
+        { goodId: convoy.goodId, qty: spilled, destStationId: convoy.destStationId });
+    }
+    convoy.qtyLedger = { departed, sold: 0, returned: 0, recoverable, lost: spilled };
     if (aboard <= 0) {
-      // Berthed with an empty hold — the cargo spilled to pods en route and nobody recovered it.
-      spec.totals.lostU += convoy.qty;
       this._receipt(body, 'convoy_lost', 'Convoy berthed empty — cargo spilled en route',
-        { goodId: convoy.goodId, qty: convoy.qty, destStationId: convoy.destStationId });
+        { goodId: convoy.goodId, qty: spilled, destStationId: convoy.destStationId });
       this.bus.emit('toast', { text: 'Relay convoy arrived empty near ' + body.name, kind: 'warn', ttl: 4 });
       return;
     }
@@ -1504,9 +1651,28 @@ export const claims = {
         // otherwise one wrong-sector/no-budget response would strand this defense forever.
         if (!state.world || state.world.currentSectorId !== body.sectorId) continue;
         if (now < (defense.retryAt || 0)) continue;
-        if (this._requestDefenseEncounter(body, defense, { resume: true })) {
+        const verdict = this._requestDefenseEncounter(body, defense, { resume: true });
+        if (verdict && verdict.ok === true) {
           this._resumeDefenseIds.delete(defense.id);
           delete defense.retryAt;
+        } else if (!body.spec || body.spec.defense !== defense || defense.phase !== 'engaged') {
+          // A resolve/abort emitted synchronously inside the request already moved this raid —
+          // the event owns it now, and the stale retry token goes with it.
+          this._resumeDefenseIds.delete(defense.id);
+          delete defense.retryAt;
+        } else if (verdict && CLAIM_DEFENSE_TERMINAL_REFUSALS.has(verdict.reason)) {
+          // NXI-139 — the physical takeover can never commit. Sitting in 'engaged' would leave
+          // the raid with neither a physical result nor a fallback owner: no resolution event
+          // can arrive for an encounter that was never admitted, and the warning deadline no
+          // longer runs. Hand the raid back to the warning fallback exactly like an aborted
+          // encounter — it re-arms, gets answered again if the player is present, and still
+          // settles 'ignored' on schedule if nobody is.
+          this._resumeDefenseIds.delete(defense.id);
+          delete defense.retryAt;
+          defense.phase = 'warning';
+          defense.requestedAt = null;
+          defense.deadlineAt = Math.max(defense.deadlineAt || 0, now + CLAIM_DEFENSE_REPRIEVE_S);
+          this._setDefenseWaypoint(body, defense);
         } else {
           defense.retryAt = now + 2;
         }
@@ -1542,12 +1708,33 @@ export const claims = {
     let result = null;
     if (director && typeof director.requestClaimDefense === 'function') result = director.requestClaimDefense(payload);
     else this.bus.emit('claim:defenseEncounterRequested', payload);
-    if (!result || result.ok === false) return false;
+    // NXI-139 — the caller needs the admission verdict, not just a yes/no: a refusal reason says
+    // whether the physical takeover can still commit (retry it) or never will (hand the raid
+    // back to the fallback owner). 'engaged' is only ever set after an accepted admission.
+    if (!result || result.ok === false) {
+      return { ok: false, reason: (result && result.reason) || 'no_director' };
+    }
     defense.phase = 'engaged';
     defense.encounterId = result.encounterId || defense.encounterId;
     defense.requestedAt = this.state.simTime || 0;
     this.bus.emit('claim:defenseStarted', { ...payload, encounterId: defense.encounterId });
-    return true;
+    return { ok: true, encounterId: defense.encounterId };
+  },
+
+  _onDefenseIgnore(payload) {
+    const defenseId = payload && payload.defenseId;
+    const bodyId = payload && (payload.bodyId || payload.claimId);
+    if (!defenseId && !bodyId) return false;
+    const bodies = (this.state.claims && this.state.claims.bodies) || [];
+    const body = bodies.find((candidate) => {
+      const defense = candidate && candidate.spec && candidate.spec.defense;
+      if (!defense || defense.phase !== 'warning') return false;
+      if (defenseId && defense.id !== defenseId) return false;
+      if (bodyId && candidate.id !== bodyId) return false;
+      return true;
+    });
+    if (!body) return false;
+    return this._settleDefense(body, 'ignored');
   },
 
   _onDefenseEncounterResolved(payload) {
@@ -1559,27 +1746,89 @@ export const claims = {
     if (String(payload.outcome || '').startsWith('aborted:')) {
       body.spec.defense.phase = 'warning';
       body.spec.defense.requestedAt = null;
-      body.spec.defense.deadlineAt = Math.max(body.spec.defense.deadlineAt || 0, (this.state.simTime || 0) + 45);
+      body.spec.defense.deadlineAt = Math.max(body.spec.defense.deadlineAt || 0, (this.state.simTime || 0) + CLAIM_DEFENSE_REPRIEVE_S);
       this._setDefenseWaypoint(body, body.spec.defense);
       return;
     }
     this._settleDefense(body, payload.outcome || 'timeout');
   },
 
+  /** The body + live warning a defense intent names: claimId (or bodyId) + optional defenseId pin. */
+  _warningDefenseBody(payload) {
+    const body = this._body(payload && (payload.claimId || payload.bodyId));
+    const defense = body && body.spec && body.spec.defense;
+    if (!defense || defense.phase !== 'warning') return null;
+    if (payload && payload.defenseId && payload.defenseId !== defense.id) return null;
+    return { body, defense };
+  },
+
   // LAW-09 — the player may stand a claim down on purpose. Only a live warning may be waived: an
   // engaged defense is already committed, and a stale marker's defenseId no longer matches.
   _onDefenseIgnore(payload) {
-    const body = this._body(payload && payload.claimId);
-    const defense = body && body.spec && body.spec.defense;
-    if (!defense || defense.phase !== 'warning') return false;
-    if (payload && payload.defenseId && payload.defenseId !== defense.id) return false;
-    return this._settleDefense(body, 'ignored');
+    const found = this._warningDefenseBody(payload);
+    if (!found) return false;
+    return this._settleDefense(found.body, 'ignored');
+  },
+
+  // FB-132 — 'go' commits to flying the answer: re-affirm the waypoint the warning set (the
+  // player may have pointed nav elsewhere while the card was up). Claims owns the defense nav.
+  _onDefenseGo(payload) {
+    const found = this._warningDefenseBody(payload);
+    if (!found) return false;
+    this._setDefenseWaypoint(found.body, found.defense);
+    return true;
+  },
+
+  // FB-132 — 'delegate': a supported depot in the threatened sector spends its patrol rotation
+  // early to answer the alarm in the player's place. The depot pays with a delayed next relief;
+  // the defense then settles through the same 'defended' column a won fight would pay. Refusals
+  // always carry a machine-readable reason plus the line the player reads.
+  _onDefenseDelegate(payload) {
+    const found = this._warningDefenseBody(payload);
+    if (!found) return this._refuseDefenseDelegate(payload, 'not_pending');
+    const { body, defense } = found;
+    const depot = this.supportedDepots(body.sectorId)[0] || null;
+    if (!depot) return this._refuseDefenseDelegate(payload, 'no_supported_depot');
+    const ds = depot.depotSupport;
+    const now = this.state.simTime || 0;
+    // The spend: the depot answers now, so its next relief posts a full rotation later than the
+    // cadence already owed — an early rotation burned on the alarm instead of the lane.
+    ds.patrol.nextAt = Math.max(ds.patrol.nextAt || 0, now + DEPOT_PATROL_ROTATION_GAP_S);
+    this._receipt(depot, 'depot_patrol_spent',
+      `Patrol rotation diverted — ${defense.attackerName} answered at ${body.name}`,
+      { claimId: body.id, defenseId: defense.id });
+    this.bus.emit('claim:depotPatrolSpent', {
+      depotId: depot.id, claimId: body.id, defenseId: defense.id,
+      sectorId: body.sectorId, nextPatrolAt: ds.patrol.nextAt,
+      factionId: DEPOT_PATROL_FACTION_ID,
+    });
+    return this._settleDefense(body, 'defended');
+  },
+
+  _refuseDefenseDelegate(payload, reason) {
+    const line = reason === 'no_supported_depot'
+      ? 'No supported depot on this seam — nothing to delegate to.'
+      : 'That alarm has already moved past the window.';
+    if (this.bus && this.bus.emit) {
+      this.bus.emit('claim:defenseDelegateRefused', {
+        claimId: payload && (payload.claimId || payload.bodyId) || null,
+        defenseId: payload && payload.defenseId || null,
+        reason,
+        text: line,
+      });
+      this.bus.emit('toast', { text: line, kind: 'warn', ttl: 4 });
+    }
+    return false;
   },
 
   _settleDefense(body, rawOutcome) {
     const spec = body && body.spec;
     const defense = spec && spec.defense;
     if (!defense) return false;
+    if (!Array.isArray(spec.settledDefenseIds)) spec.settledDefenseIds = [];
+    const defenseKey = String(defense.id || defense.encounterId || '');
+    if (!defenseKey || spec.settledDefenseIds.includes(defenseKey)) return false;
+    spec.settledDefenseIds.push(defenseKey);
     const outcome = ['defended', 'partial', 'retreated', 'timeout', 'destroyed', 'ignored'].includes(rawOutcome)
       ? rawOutcome : 'timeout';
     const settlement = {
@@ -1591,12 +1840,21 @@ export const claims = {
       destroyed: { lossFrac: 0.90, rep: -5, danger: 0.08,  repairMin: 3,   cooldown: SPEC_RAID_COOLDOWN_S * 2 },
     }[outcome];
     let lostU = 0;
+    // NXI-140 — reconcile the store per good and project that same delta into the raid result:
+    // the receipt identifies what the raid actually took and what it actually saved, so a
+    // partial physical loss can never read as a full warehouse held. Nothing is added or
+    // removed to match optimistic text — the maps are the mutation's own record.
+    const goodsLost = Object.create(null);
+    const goodsSaved = Object.create(null);
     for (const bucket of [spec.store.input, spec.store.output]) {
       for (const id of Object.keys(bucket)) {
-        const lost = Math.floor((bucket[id] || 0) * settlement.lossFrac);
+        const have = bucket[id] || 0;
+        const lost = Math.floor(have * settlement.lossFrac);
+        if (have - lost > 0) goodsSaved[id] = (goodsSaved[id] || 0) + (have - lost);
         if (lost <= 0) continue;
         bucket[id] -= lost;
         lostU += lost;
+        goodsLost[id] = (goodsLost[id] || 0) + lost;
         if (bucket[id] <= 0) delete bucket[id];
       }
     }
@@ -1618,18 +1876,26 @@ export const claims = {
       this.bus.emit('faction:repDelta', { factionId: sector.factionId, delta: settlement.rep, reason: `claim_defense:${outcome}` });
     }
     this.bus.emit('sectorsim:impulse', { kind: `claim_defense_${outcome}`, sectorId: body.sectorId, danger: settlement.danger });
+    // The text mirrors the reconciled delta — 'stores intact' is only ever printed when the
+    // delta is genuinely empty; a defended-with-loss would read the real taken/held split.
+    const takenList = goodsDeltaLabel(goodsLost);
+    const heldList = goodsDeltaLabel(goodsSaved);
     const summary = outcome === 'defended'
-      ? `Claim held — ${defense.attackerName} driven off; stores intact.`
-      : `Claim defense ${outcome} — ${lostU}u lost; repair crews assigned.`;
+      ? (lostU <= 0
+        ? `Claim held — ${defense.attackerName} driven off; stores intact.`
+        : `Claim held — ${defense.attackerName} driven off, but the crew lost ${takenList || `${lostU}u`}; ${heldList || 'nothing'} held.`)
+      : `Claim defense ${outcome} — ${lostU}u lost${takenList ? ` (${takenList} taken)` : ''}${heldList ? `; ${heldList} held` : ''}; repair crews assigned.`;
     this._receipt(body, `defense_${outcome}`, summary, {
       defenseId: defense.id, encounterId: defense.encounterId, lostU,
+      goodsLost, goodsSaved,
       repDelta: settlement.rep, dangerDelta: settlement.danger,
     });
     spec.defense = null;
     this._restoreDefenseWaypoint(defense);
     this.bus.emit('claim:defenseResolved', {
       bodyId: body.id, defenseId: defense.id, encounterId: defense.encounterId,
-      sectorId: body.sectorId, outcome, lostU, repDelta: settlement.rep,
+      sectorId: body.sectorId, outcome, lostU, goodsLost, goodsSaved,
+      repDelta: settlement.rep,
       dangerDelta: settlement.danger,
       repairDebtCr: Math.round(((def && def.upkeepPerMin) || 0) * settlement.repairMin),
       text: summary,
@@ -1646,6 +1912,7 @@ export const claims = {
     const remaining = Math.max(0, Math.ceil((defense.deadlineAt || 0) - (this.state.simTime || 0)));
     const waypoint = {
       kind: 'claim_defense', markerKind: 'mission-objective', claimId: body.id, defenseId: defense.id,
+      ignoreDefense: defense.phase === 'warning',
       sectorId: body.sectorId, pos: { x: body.x, z: body.z }, label: `DEFEND ${body.name}`,
       reason: `${defense.attackerName} · ${defense.attackerCount} ships · respond at ${body.name} (${remaining}s)`,
       arrivalRadius: CLAIM_DEFENSE_ARRIVAL_R, deadline_s: defense.deadlineAt,
@@ -2052,6 +2319,10 @@ export const claims = {
       appliedSupplyReceipts: Object.create(null),
       firstSupplyAt: t,
       lastSupplyAt: t,
+      // NXB-036: a route the last survey could not seat stays requested and is retried at every
+      // sector entry; the fabricated corridor itself is the durable travelLanes fact.
+      routeRequested: false,
+      growthRoute: null,
     };
     return rec;
   },
@@ -2137,6 +2408,14 @@ export const claims = {
       source: 'claims',
     });
     this.bus.emit('audio:cue', { id: 'confirm' });
+    // NXB-036: topping out the ladder is the accepted growth event that changes a reachable
+    // route — the station surveys its permanent approach corridor now (or flags it for the
+    // next entry survey when no live endpoint is materialized this tick).
+    const ladder = stationGrowthLadderFor({ type: rec.type });
+    if (rec.rung >= ladder.length && !rec.growthRoute) {
+      rec.routeRequested = true;
+      this._fabricateStationGrowthRoute(rec);
+    }
     return module;
   },
 
@@ -2166,9 +2445,228 @@ export const claims = {
     if (!growth) return 0;
     let stamped = 0;
     for (const stationId in growth) {
-      if (this._stampStationGrowth(growth[stationId])) stamped += 1;
+      const rec = growth[stationId];
+      if (this._stampStationGrowth(rec)) stamped += 1;
+      // NXB-036: every sector entry is a fresh survey — a route the last materialization could
+      // not seat (no live station, obstructed corridor) is tried again, never re-fabricated.
+      if (rec && rec.routeRequested === true && !rec.growthRoute) {
+        this._fabricateStationGrowthRoute(rec);
+      }
     }
     return stamped;
+  },
+
+  /**
+   * NXB-036: where the grown station's corridor begins — the real freight door. Prefer the
+   * nearest non-wormhole gate in the live sector; when the gate table is not materialized
+   * (fabrication fired off a restored save or a test without live gates), the nearest neighbor
+   * sector's global origin gives the same deterministic bearing the gate was laid on.
+   */
+  _growthRouteAnchor(rec, station) {
+    const active = this.state.world && this.state.world.activeSector;
+    if (active && active.id === rec.sectorId && Array.isArray(active.gates)) {
+      let best = null;
+      let bestD = Infinity;
+      for (const gate of active.gates) {
+        if (!gate || gate.wormhole === true || !gate.pos) continue;
+        const gx = Number(gate.pos.x);
+        const gz = Number(gate.pos.z);
+        if (!Number.isFinite(gx) || !Number.isFinite(gz)) continue;
+        const d = (gx - station.pos.x) ** 2 + (gz - station.pos.z) ** 2;
+        if (d < bestD || (d === bestD && best && String(gate.to || '') < String(best.to || ''))) {
+          best = gate;
+          bestD = d;
+        }
+      }
+      if (best) return { x: Number(best.pos.x), z: Number(best.pos.z), kind: 'gate', anchorId: best.to || null };
+    }
+    const sector = SECTOR_BY_ID.get(rec.sectorId);
+    const neighbors = sector && Array.isArray(sector.neighbors) ? sector.neighbors : [];
+    let best = null;
+    let bestD = Infinity;
+    for (const neighborId of neighbors) {
+      const origin = sectorGlobalOrigin(neighborId);
+      const d = (origin.x - station.pos.x) ** 2 + (origin.z - station.pos.z) ** 2;
+      if (d < bestD || (d === bestD && best && String(neighborId) < String(best.id))) {
+        best = { id: neighborId, x: origin.x, z: origin.z };
+        bestD = d;
+      }
+    }
+    return best ? { x: best.x, z: best.z, kind: 'neighbor-bearing', anchorId: best.id } : null;
+  },
+
+  /**
+   * NXB-036: survey + fabricate the station's permanent approach corridor. Idempotent — the
+   * durable record is written once per growth record; a failed survey leaves routeRequested
+   * set so the next entry retries instead of burning the outcome. Emits the same constructed
+   * fact a claim Throughline does so travelLanes/traffic/chart consumers need no second seam.
+   */
+  _fabricateStationGrowthRoute(rec) {
+    if (!rec || rec.growthRoute || rec.routeRequested !== true) return null;
+    const station = this._stationEntity(rec.stationId);
+    if (!station || !station.pos) return null;
+    const anchor = this._growthRouteAnchor(rec, station);
+    if (!anchor) return null;
+    const sx = Number(station.pos.x);
+    const sz = Number(station.pos.z);
+    const dx = anchor.x - sx;
+    const dz = anchor.z - sz;
+    const span = Math.hypot(dx, dz);
+    if (!(span > 0)) return null;
+    const axis = { x: dx / span, z: dz / span };
+    const normal = { x: -axis.z, z: axis.x };
+    // The ring stands on the approach bearing, short of the anchor door but always far enough
+    // out to be a real route rather than a station-radius decoration.
+    const reachWU = Math.min(
+      GROWTH_ROUTE_REACH_WU,
+      Math.max(SLING_MIN_ROUTE_WU + SLING_STATION_CLEARANCE_WU, span - GROWTH_ROUTE_ANCHOR_CLEARANCE_WU),
+    );
+    let route = null;
+    for (const lateral of SLING_LATERAL_OFFSETS_WU) {
+      const from = {
+        x: sx + axis.x * reachWU + normal.x * lateral,
+        z: sz + axis.z * reachWU + normal.z * lateral,
+      };
+      const to = {
+        x: sx + axis.x * SLING_STATION_CLEARANCE_WU + normal.x * lateral,
+        z: sz + axis.z * SLING_STATION_CLEARANCE_WU + normal.z * lateral,
+      };
+      if (!this._travelInfrastructurePointClear(from, null, station)
+        || !this._travelInfrastructurePointClear(to, null, station)
+        || !this._travelInfrastructureCorridorClear(from, to, GROWTH_ROUTE_CORRIDOR_WU, null, station)) {
+        continue;
+      }
+      const routeDx = to.x - from.x;
+      const routeDz = to.z - from.z;
+      const distanceWU = Math.hypot(routeDx, routeDz);
+      if (distanceWU >= SLING_MIN_ROUTE_WU) route = { from, to, distanceWU };
+      if (route) break;
+    }
+    if (!route) return null;
+    let support = null;
+    for (const fraction of [0.55, 0.42, 0.68, 0.3, 0.8]) {
+      const candidate = {
+        x: route.from.x + (route.to.x - route.from.x) * fraction,
+        z: route.from.z + (route.to.z - route.from.z) * fraction,
+      };
+      if (this._travelInfrastructurePointClear(candidate, null, station)) {
+        support = candidate;
+        break;
+      }
+    }
+    if (!support) return null;
+    const builtAt = Number(this.state.simTime) || 0;
+    rec.growthRoute = {
+      schema: CLAIM_TRAVEL_INFRASTRUCTURE_SCHEMA,
+      id: `growth-throughline:${rec.stationId}`,
+      bodyId: null,
+      sectorId: rec.sectorId,
+      name: `${rec.name} Approach Throughline`,
+      stationId: rec.stationId,
+      stage: 'aligning',
+      operational: false,
+      builtAt,
+      alignUntil: builtAt + GROWTH_ROUTE_ALIGN_S,
+      from: { x: route.from.x, z: route.from.z },
+      to: { x: route.to.x, z: route.to.z },
+      support: { x: support.x, z: support.z },
+      distanceWU: route.distanceWU,
+      corridorRadiusWU: GROWTH_ROUTE_CORRIDOR_WU,
+      ceilingMult: GROWTH_ROUTE_CEILING_MULT,
+      rampMult: GROWTH_ROUTE_RAMP_MULT,
+      damagePolicy: 'station_growth',
+      routeKind: 'station_growth',
+      routeRung: rec.rung,
+      anchorKind: anchor.kind,
+      anchorId: anchor.anchorId || null,
+      fabricationReceipt: {
+        receiptId: `station-growth-route:${rec.stationId}`,
+        builtAt,
+        stationId: rec.stationId,
+        costCr: 0,
+        materials: {},
+        rung: rec.rung,
+        throughputU: rec.throughputU,
+      },
+    };
+    rec.routeRequested = false;
+    this.bus.emit('claim:infrastructureConstructed', {
+      bodyId: null,
+      stationId: rec.stationId,
+      infrastructureId: rec.growthRoute.id,
+      stage: 'aligning',
+      routeKind: 'station_growth',
+      distanceWU: rec.growthRoute.distanceWU,
+    });
+    this.bus.emit('news:publish', {
+      text: `${rec.name} charts a permanent approach — the freight corridor your deliveries built now has a ring on it.`,
+      kind: 'station_growth',
+      stationId: rec.stationId,
+      stationName: rec.name,
+      sectorId: rec.sectorId,
+      factionId: rec.factionId,
+      receiptId: rec.growthRoute.fabricationReceipt.receiptId,
+      sourceRef: rec.growthRoute.fabricationReceipt.receiptId,
+      eventId: rec.growthRoute.fabricationReceipt.receiptId,
+      source: 'claims',
+    });
+    if (rec.sectorId === (this.state.world && this.state.world.currentSectorId)) {
+      this.bus.emit('toast', {
+        text: `${rec.name} approach corridor aligning — your freight route is on the charts`,
+        kind: 'good',
+        ttl: 5,
+      });
+    }
+    return rec.growthRoute;
+  },
+
+  /** Growth-route host passed to travel infrastructure consumers (not serialized). */
+  _growthRouteHost(rec) {
+    const hosts = this._growthRouteHosts || (this._growthRouteHosts = new Map());
+    let host = hosts.get(rec.stationId);
+    if (!host || host.sectorId !== rec.sectorId) {
+      host = {
+        id: `station-growth:${rec.stationId}`,
+        sectorId: rec.sectorId,
+        name: rec.name,
+        stationGrowthHost: true,
+      };
+      hosts.set(rec.stationId, host);
+    }
+    return host;
+  },
+
+  /**
+   * NXB-036: a grown station's approach aligns on its own clock — there is no claim
+   * specialization to gate it on. Once active it stays operational (a charted public route
+   * does not go cold); serialize/restore carry stage + operational forward unchanged.
+   */
+  _tickStationGrowthRoutes(state) {
+    const growth = state.claims && state.claims.stationGrowth;
+    if (!growth) return;
+    const now = Number(state.simTime) || 0;
+    const currentSectorId = state.world && state.world.currentSectorId;
+    for (const stationId in growth) {
+      const rec = growth[stationId];
+      const route = rec && rec.growthRoute;
+      if (!route || route.stage !== 'aligning') continue;
+      if (now < (Number(route.alignUntil) || 0)) continue;
+      route.stage = 'active';
+      route.operational = true;
+      this.bus.emit('claim:infrastructureActive', {
+        bodyId: null,
+        stationId: route.stationId,
+        infrastructureId: route.id,
+        routeKind: 'station_growth',
+      });
+      if (route.sectorId === currentSectorId) {
+        this.bus.emit('toast', {
+          text: `Approach Throughline online · ${rec.name || 'station'}`,
+          kind: 'good',
+          ttl: 5,
+        });
+      }
+    }
   },
 
   /** Relay sale fee at a station, less the cut a grown station gives the player's convoys. */
@@ -2240,9 +2738,73 @@ export const claims = {
         firstSupplyAt: Number.isFinite(Number(rec.firstSupplyAt)) ? Number(rec.firstSupplyAt) : 0,
         lastSupplyAt: Number.isFinite(Number(rec.lastSupplyAt)) ? Number(rec.lastSupplyAt) : 0,
       };
+      // NXB-036: the durable route survives restore exactly; a requested-but-unseated survey
+      // stays requested so the next sector entry retries it — including legacy saves that
+      // topped the ladder before the route outcome existed.
+      const growthRoute = this._normalizeGrowthRoute(rec.growthRoute, out[stationId]);
+      out[stationId].growthRoute = growthRoute;
+      out[stationId].routeRequested = growthRoute ? false
+        : (rec.routeRequested === true || rung >= ladder.length);
       any = true;
     }
     return any ? out : null;
+  },
+
+  /** Heal a persisted station-growth approach corridor (same record family as body slings). */
+  _normalizeGrowthRoute(raw, rec) {
+    if (!raw || typeof raw !== 'object' || raw.schema !== CLAIM_TRAVEL_INFRASTRUCTURE_SCHEMA) return null;
+    const point = (value) => value && Number.isFinite(Number(value.x)) && Number.isFinite(Number(value.z))
+      ? { x: Number(value.x), z: Number(value.z) }
+      : null;
+    const from = point(raw.from);
+    const to = point(raw.to);
+    const support = point(raw.support);
+    if (!from || !to || !support) return null;
+    const distanceWU = Math.hypot(to.x - from.x, to.z - from.z);
+    if (!(distanceWU > 0)) return null;
+    const stage = raw.stage === 'active' ? 'active' : 'aligning';
+    const builtAt = Number.isFinite(Number(raw.builtAt)) ? Number(raw.builtAt) : 0;
+    const savedReceipt = raw.fabricationReceipt && typeof raw.fabricationReceipt === 'object'
+      ? raw.fabricationReceipt
+      : {};
+    return {
+      schema: CLAIM_TRAVEL_INFRASTRUCTURE_SCHEMA,
+      id: typeof raw.id === 'string' && raw.id ? raw.id : `growth-throughline:${rec.stationId}`,
+      bodyId: null,
+      sectorId: rec.sectorId,
+      name: typeof raw.name === 'string' && raw.name ? raw.name : `${rec.name} Approach Throughline`,
+      stationId: rec.stationId,
+      stage,
+      // A charted station approach has no claim status to fail — aligned means operational.
+      operational: stage === 'active',
+      builtAt,
+      alignUntil: Number.isFinite(Number(raw.alignUntil)) ? Number(raw.alignUntil) : 0,
+      from,
+      to,
+      support,
+      distanceWU,
+      corridorRadiusWU: Math.max(1, Number(raw.corridorRadiusWU) || GROWTH_ROUTE_CORRIDOR_WU),
+      ceilingMult: Math.max(1, Number(raw.ceilingMult) || GROWTH_ROUTE_CEILING_MULT),
+      rampMult: Math.max(1, Number(raw.rampMult) || GROWTH_ROUTE_RAMP_MULT),
+      damagePolicy: 'station_growth',
+      routeKind: 'station_growth',
+      routeRung: Math.max(0, Math.floor(Number(raw.routeRung) || 0)),
+      anchorKind: raw.anchorKind === 'gate' ? 'gate' : 'neighbor-bearing',
+      anchorId: typeof raw.anchorId === 'string' && raw.anchorId ? raw.anchorId : null,
+      fabricationReceipt: {
+        receiptId: typeof savedReceipt.receiptId === 'string' && savedReceipt.receiptId
+          ? savedReceipt.receiptId
+          : `station-growth-route:${rec.stationId}`,
+        builtAt: Number.isFinite(Number(savedReceipt.builtAt)) ? Number(savedReceipt.builtAt) : builtAt,
+        stationId: rec.stationId,
+        costCr: Math.max(0, Number(savedReceipt.costCr) || 0),
+        materials: savedReceipt.materials && typeof savedReceipt.materials === 'object'
+          ? { ...savedReceipt.materials }
+          : {},
+        rung: Math.max(0, Math.floor(Number(savedReceipt.rung) || 0)),
+        throughputU: Math.max(0, Math.floor(Number(savedReceipt.throughputU) || 0)),
+      },
+    };
   },
 
   // ------------------------------------------------------------------------------------------

@@ -33,6 +33,7 @@ import {
   SWARM_QUOTA_CAP,
   SWARM_WAVE_DURATION_TICKS,
   SWARM_ROSTER,
+  bossPackagesFor,
   swarmBossFor,
   swarmConcurrent,
   swarmCurveIsSane,
@@ -531,8 +532,9 @@ test('the stat curve is pinned at 1, so a deep run ends on execution rather than
   }
   // SWARM_LEVEL_CAP still names the wave at which concurrency and roster max out — not HP.
   assert.equal(swarmFullIntensityWave(), 1 + (SWARM_LEVEL_CAP - 1) * 3);
-  // And the arc keeps its own unbounded curve.
-  assert.ok(levelForWave(60) > SWARM_LEVEL_CAP, 'the authored arc is untouched');
+  // FB-026: the authored arc is under the same law now — its curve is composition, so the arc's
+  // materialization level is flat too.
+  assert.equal(levelForWave(60), 1, 'the authored arc materializes at level 1 as well');
 });
 
 test('everything the mode has is on the table by the full-intensity wave', () => {
@@ -566,7 +568,7 @@ function forceWave(h, wave) {
  */
 function liveBosses(h, wave) {
   const champions = new Set(
-    (swarmBossFor(wave) || { packages: [] }).packages.map((p) => p.enemyId),
+    bossPackagesFor(swarmBossFor(wave)).map((p) => p.enemyId),
   );
   return liveHostiles(h).filter((e) => e.data && champions.has(e.data.lootTableId));
 }
@@ -633,7 +635,7 @@ test('a refused champion remains owed until the spawn budget has room', () => {
   assert.ok(liveBosses(h, 10).length > 0, 'the deferred boss materializes');
 });
 
-test('the champion changes: four different shapes of boss wave, in step with the roster', () => {
+test('the champion changes: every rotation row a different shape of boss wave, in step with the roster', () => {
   const seen = [];
   for (let step = 1; step <= SWARM_BOSS_ROTATION.length; step++) {
     const wave = step * 10;
@@ -641,16 +643,18 @@ test('the champion changes: four different shapes of boss wave, in step with the
     assert.ok(boss, `wave ${wave} has a champion`);
     assert.ok(!seen.includes(boss.id), `wave ${wave} is a boss the player has not fought (${boss.id})`);
     seen.push(boss.id);
-    // Nothing may debut as a champion: every archetype in a boss wave is one the roster has
-    // already introduced as ordinary chaff by then.
+    // Compositional rows never debut a silhouette as champion: every body they field is one the
+    // roster already introduced as ordinary chaff. The capital rows are the authored exception —
+    // the Foreman and the Regent are the scored arc's named set-pieces and the wave IS their
+    // introduction (same carve-out the Dreadnought always had).
     const roster = new Set(swarmRosterFor(wave).map((e) => e.enemyId));
-    for (const pkg of boss.packages) {
-      if (pkg.enemyId === 'dreadnought_boss') continue;
+    for (const pkg of bossPackagesFor(boss)) {
+      if (pkg.enemyId === 'dreadnought_boss' || boss.scoreId) continue;
       assert.ok(roster.has(pkg.enemyId), `${pkg.enemyId} was already met before wave ${wave}`);
     }
     assert.ok(boss.label && boss.line, `${boss.id} names itself`);
   }
-  assert.equal(seen.length, SWARM_BOSS_ROTATION.length, 'all four before any repeat');
+  assert.equal(seen.length, SWARM_BOSS_ROTATION.length, 'the whole rotation before any repeat');
   // And it wraps rather than running out.
   assert.equal(swarmBossFor((SWARM_BOSS_ROTATION.length + 1) * 10).id, SWARM_BOSS_ROTATION[0].id);
   assert.equal(swarmBossFor(7), null, 'an ordinary wave has no champion');

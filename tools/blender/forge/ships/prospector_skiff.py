@@ -10,6 +10,9 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 import forge as F  # noqa: E402
+import forge_export as E  # noqa: E402
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'animations'))
+import ANI_38  # noqa: E402
 
 SHIP_ID = 'prospector_skiff'
 COLORS = {
@@ -118,11 +121,14 @@ def build():
 
     F.light(s, 'NavPort', (-4.6, TY + 0.5, TZ), 'glow_red', size=0.14)
     F.light(s, 'NavStarboard', (-4.6, -TY - 0.5, TZ), 'glow_green', size=0.14)
-    F.light(s, 'Beacon', (-5.25, 0.0, 1.5), 'glow_amber', size=0.16)
+    F.light(s, 'Beacon', (-5.25, 0.0, 1.5), 'glow_amber.beacon', size=0.16)
+    s.ani38_bank = ANI_38.build(s, list(s.objects), source_asset_id=E.fleet_spec(SHIP_ID)['asset_id'])
     return s
 
 
 if __name__ == '__main__':
-    import forge_export as E
     ship = build().finish()
-    E.export_ship(ship, E.fleet_spec(SHIP_ID), preview='--live' not in sys.argv)
+    live = '--live' in sys.argv
+    written = E.export_ship(ship, E.fleet_spec(SHIP_ID), preview=not live)
+    if live:
+        ANI_38.bake_ship_banks(ship, written, bank_key=E.fleet_spec(SHIP_ID)['file'].replace('_', '-'))

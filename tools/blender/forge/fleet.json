@@ -172,6 +172,14 @@
       "part_id": "wholeship_survey_pin",
       "npc_root": "SF_NPCWORK_SURVEY_PIN_ROOT"
     },
+    "stormshift_collector": {
+      "layout": "npc",
+      "file": "ship_stormshift_collector_v01",
+      "asset_id": "SF_STORMSHIFT_COLLECTOR_V01",
+      "part_id": "wholeship_stormshift_collector",
+      "npc_root": "STORMSHIFT_COLLECTOR_ROOT",
+      "note": "Stormshift salvage collector (tools/blender/forge/ships/stormshift_collector.py): low storm jaws, folding ceramic radiator fans, exposed canister saddles — harvest pose open, transit stow narrows the silhouette."
+    },
     "yard_tug": {
       "layout": "npc",
       "file": "yard_tug",
@@ -283,6 +291,48 @@
       "asset_id": "SF_WHOLESHIP_HELIOS_SPAN_REACH",
       "part_id": "wholeship_helios_span_reach",
       "npc_root": "SF_M4_HELIOS_SPAN_REACH_ROOT"
+    },
+    "hornet_scn_interdictor": {
+      "layout": "npc",
+      "file": "hornet_scn_interdictor",
+      "asset_id": "SF_HORNET_SCN_INTERDICTOR",
+      "part_id": "wholeship_hornet_scn_interdictor",
+      "npc_root": "HORNET_SCN_INTERDICTOR_ROOT"
+    },
+    "wasp_quiet_ghost": {
+      "layout": "npc",
+      "file": "wasp_quiet_ghost",
+      "asset_id": "SF_WASP_QUIET_GHOST",
+      "part_id": "wholeship_wasp_quiet_ghost",
+      "npc_root": "WASP_QUIET_GHOST_ROOT"
+    },
+    "ashline_dart_choir": {
+      "layout": "npc",
+      "file": "ashline_dart_choir",
+      "asset_id": "SF_WHOLESHIP_ASHLINE_DART_CHOIR",
+      "part_id": "wholeship_ashline_dart_choir",
+      "npc_root": "SF_M4_ASHLINE_DART_CHOIR_ROOT"
+    },
+    "ashline_lode_vael": {
+      "layout": "npc",
+      "file": "ashline_lode_vael",
+      "asset_id": "SF_WHOLESHIP_ASHLINE_LODE_VAEL",
+      "part_id": "wholeship_ashline_lode_vael",
+      "npc_root": "SF_M4_ASHLINE_LODE_VAEL_ROOT"
+    },
+    "ashline_rig_quiet": {
+      "layout": "npc",
+      "file": "ashline_rig_quiet",
+      "asset_id": "SF_WHOLESHIP_ASHLINE_RIG_QUIET",
+      "part_id": "wholeship_ashline_rig_quiet",
+      "npc_root": "SF_M4_ASHLINE_RIG_QUIET_ROOT"
+    },
+    "helios_cradle_dmc": {
+      "layout": "npc",
+      "file": "helios_cradle_dmc",
+      "asset_id": "SF_WHOLESHIP_HELIOS_CRADLE_DMC",
+      "part_id": "wholeship_helios_cradle_dmc",
+      "npc_root": "SF_M4_HELIOS_CRADLE_DMC_ROOT"
     },
     "massline_express_liner": {
       "layout": "player",

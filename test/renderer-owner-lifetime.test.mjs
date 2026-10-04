@@ -122,13 +122,14 @@ test('a wedged station admission releases the serial lane at the stall bound', a
     pump.clock.now += AUTHORED_ASYNC_DEADLINE_MS;
     pump.fireTimer(5000);
     const firstResult = await firstCompletion;
-    assert.equal(firstResult.status, 'stalled-slot-released');
-    assert.equal(firstResult.error.name, 'TimeoutError');
-    assert.equal(firstResult.error.code, 'AUTHORED_ADMISSION_TIMEOUT',
-      'a watchdog stall aborts through the admission with the deadline verdict');
-    assert.equal(first.boundary.userData.authoredAssetState, 'unavailable',
-      'a timed-out owner stays retriable, never ready');
-    assert.equal(first.boundary.userData.authoredFailureReason, 'admission-deadline');
+    assert.equal(firstResult.status, 'aborted-stalled');
+    assert.equal(firstResult.error, null,
+      'the hog-wake abort carries no admission error — it is a watchdog verdict, not a rejection');
+    assert.equal(first.boundary.userData.authoredAssetState, 'awaiting-authored-admission',
+      'a stall-aborted owner re-requests at its natural rung — retriable, never ready');
+    assert.equal(first.boundary.userData.authoredReadmissionReason, 'upgrade-stall-abort');
+    assert.ok(!first.boundary.userData.authoredUpgradePromise,
+      'the stale completion promise is dropped so the re-request starts a fresh admission');
     pump.flushFrame();
     await flushMicrotasks();
     assert.deepEqual(starts, [1, 2], 'the freed slot admits the queued job');
@@ -566,11 +567,11 @@ test('a timed-out ship admission never publishes its boundary as ready', async (
     pump.clock.now += AUTHORED_ASYNC_DEADLINE_MS + 1000;
     pump.fireTimer(5000);
     const result = await completion;
-    assert.equal(result.error.name, 'TimeoutError');
-    assert.equal(result.error.code, 'AUTHORED_ADMISSION_TIMEOUT');
-    assert.equal(boundary.userData.authoredAssetState, 'unavailable',
-      'a player ship that times out stays retriable — never ready');
-    assert.equal(boundary.userData.authoredFailureReason, 'admission-deadline');
+    assert.equal(result.status, 'aborted-stalled');
+    assert.equal(result.error, null);
+    assert.equal(boundary.userData.authoredAssetState, 'awaiting-authored-admission',
+      'a player ship past the stall bound re-requests at its natural rung — never ready');
+    assert.equal(boundary.userData.authoredReadmissionReason, 'upgrade-stall-abort');
   } finally {
     pump.restore();
   }
@@ -730,6 +731,30 @@ test('a deferred second shadow pass never receives a subject that expired mid-ba
   assert.equal(liveResult, 'compiled');
   assert.deepEqual(shadowPasses, [[expiredSubject, liveSubject], [liveSubject]],
     'the second depth pass uploads or touches only still-active subjects');
+});
+
+test('post-route compiles are observed while cohort owners defer awaiting across presents', async () => {
+  const unhandled = [];
+  const onUnhandled = (reason) => unhandled.push(reason);
+  process.on('unhandledRejection', onUnhandled);
+  try {
+    const disposed = postRouteOwner();
+    disposed.owner._rendererResourcesDisposed = true;
+    const early = disposed.owner._compilePostRoute(POST_PROCESS_ROUTE.NATIVE, {}, {}, {});
+    const stalled = deferred();
+    const fixture = postRouteOwner(() => stalled.promise);
+    const late = fixture.owner._compilePostRoute(POST_PROCESS_ROUTE.NATIVE, {}, {}, {});
+    await flushMicrotasks();
+    fixture.owner.state.render.admissionRunGeneration += 1;
+    stalled.resolve('retired');
+    // Cohort issuance yields to presentation before the owner gathers its promises.
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.deepEqual(unhandled, []);
+    await assert.rejects(early, (error) => error.name === 'AbortError');
+    await assert.rejects(late, (error) => error.name === 'AbortError');
+  } finally {
+    process.removeListener('unhandledRejection', onUnhandled);
+  }
 });
 
 test('an observed background admission rejection stays off the global unhandledRejection', async () => {

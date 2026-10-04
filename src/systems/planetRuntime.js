@@ -76,8 +76,12 @@ function ensureRuntime(state) {
 }
 
 function newShipRecord() {
-  return { region: 'outside', regionRank: 0, r: Infinity, heat: 0, stage: null, stageAt: 0, outwardS: 0, burnNextAt: 0 };
+  return { region: 'outside', regionRank: 0, r: Infinity, heat: 0, stage: null, stageAt: 0, outwardS: 0, burnNextAt: 0, bandFirsts: null };
 }
+
+// Bands that speak the first time a body reaches them (U5): the sling law, the working
+// band, the danger band, and reentry each get exactly one first-contact receipt per body.
+const BAND_FIRST_BANDS = Object.freeze(['sling', 'skim', 'danger', 'reentry']);
 
 export const planetRuntime = {
   name: 'planetRuntime',
@@ -137,6 +141,7 @@ export const planetRuntime = {
     if (state.mode !== 'flight' || dt <= 0) return;
     this._tickShips(dt, state, rt, site);
     this._tickHarvest(dt, state, rt, site);
+    this._tickWorkerHarvest(dt, state, rt, site);
     this._expireAftermath(state, rt);
   },
 
@@ -199,6 +204,12 @@ export const planetRuntime = {
   },
 
   _spawnSlingWitness(state, spawnEntity, center) {
+    // Traffic adopts the original witness slot. It owns the worker's durable identity,
+    // movement and finite manifest; curated hosts without traffic retain the coast witness.
+    const traffic = this.registry?.get?.('traffic');
+    if (typeof traffic?.ensureAnvilWorker === 'function') {
+      return traffic.ensureAnvilWorker(state, spawnEntity, center);
+    }
     const list = state.entityList || [];
     for (let i = 0; i < list.length; i++) {
       const existing = list[i];
@@ -252,7 +263,9 @@ export const planetRuntime = {
       const entity = state.entities && state.entities.get ? state.entities.get(rt.entityId) : null;
       if (entity && entity.alive !== false) entity.alive = false;
       const witness = state.entities && state.entities.get ? state.entities.get(rt.witnessId) : null;
-      if (witness && witness.alive !== false) witness.alive = false;
+      if (witness?.data) witness.data.stormshiftCollectorOn = false;
+      if (witness && witness.alive !== false
+        && witness.data?.itinerary?.kind !== 'anvil_work') witness.alive = false;
       this.bus && this.bus.emit && this.bus.emit('planet:unregistered', { siteId: rt.siteId, why });
     }
     state.planet = defaultRuntime();
@@ -262,6 +275,7 @@ export const planetRuntime = {
 
   _tickShips(dt, state, rt, site) {
     const now = nowOf(state);
+    for (const rec of Object.values(rt.ships)) rec.collectorOn = false;
     const tel = rt.telemetry;
     tel.tracked = 0; tel.inBands = 0;
 
@@ -282,7 +296,7 @@ export const planetRuntime = {
     let tracked = 0;
     for (let i = 0; i < candidates.length && tracked < MAX_TRACKED_SHIPS - 1; i++) {
       const e = candidates[i];
-      if (!e || e.alive === false || e === player) continue;
+      if (!e || e.alive === false || e === player || state.entities.get(e.id) !== e) continue;
       if (e.type !== 'ship' && e.type !== 'drone') continue;
       if (!isDynamicPhysicsBodyEntity(e)) continue;
       const rec = rt.ships[e.id] || (rt.ships[e.id] = newShipRecord());
@@ -316,6 +330,18 @@ export const planetRuntime = {
     }
     const region = rec.region;
     if (rec.regionRank >= PLANET_REGION_RANK.skim) rt.telemetry.inBands++;
+
+    // The band speaks once per body: the first crossing of each authored band emits one
+    // receipt so the dive is answered — what the band is, and what its law is.
+    if (BAND_FIRST_BANDS.includes(region)) {
+      if (!rec.bandFirsts) rec.bandFirsts = {};
+      if (!rec.bandFirsts[region]) {
+        rec.bandFirsts[region] = true;
+        this.bus.emit('planet:bandFirst', {
+          entityId: e.id, siteId: rt.siteId, band: region, isPlayer, t: now,
+        });
+      }
+    }
 
     // Heat: ONE scalar 0..1 (the sheath, the HUD arc and the stage machine all read this number).
     const h = site.heat;
@@ -405,6 +431,7 @@ export const planetRuntime = {
         if (rt.aftermath.length >= MAX_AFTERMATH) rt.aftermath.shift();
         rt.aftermath.push({ x: e.pos.x, z: e.pos.z, at: now, until: now + p.aftermathS });
         this.bus.emit('planet:plungeStage', { id: e.id, stage: 'aftermath', siteId: rt.siteId, isPlayer });
+        this._emitPlanetCue('planet.plunge.stage', e, { sourceEvent: 'planet:plungeStage', stage: 'aftermath' });
       }
     }
     if (prev !== rec.stage && rec.stage !== null) rt.telemetry.burnsRouted += 0; // stages logged via events
@@ -417,6 +444,24 @@ export const planetRuntime = {
     rec.outwardS = 0;
     if (stage !== 'breakup' && stage !== 'descent') rec.burnNextAt = 0; // re-schedule on re-entry
     this.bus.emit('planet:plungeStage', { id: e.id, stage: stage || 'clear', siteId: rt.siteId, isPlayer });
+    this._emitPlanetCue('planet.plunge.stage', e, { sourceEvent: 'planet:plungeStage', stage: stage || 'clear' });
+  },
+
+  // FB-142 — every planet verb ships a composed world cue beside its event (worldCueRecipes'
+  // planet.* variants). One cue, anchored on the working ship, aimed along its motion — never
+  // at the planet centre hundreds of WU below, never a second particle budget.
+  _emitPlanetCue(id, e, extra) {
+    if (!this.bus || typeof this.bus.emit !== 'function' || !e || !e.pos) return;
+    const vx = finite(e.vel && e.vel.x), vz = finite(e.vel && e.vel.z);
+    const a = Math.hypot(vx, vz) > 1 ? Math.atan2(vz, vx) : finite(e.rot);
+    this.bus.emit('presentation:cue', {
+      id,
+      sourceId: e.id,
+      targetId: e.id,
+      position: { x: e.pos.x, z: e.pos.z },
+      direction: { x: Math.cos(a), z: Math.sin(a) },
+      ...(extra || null),
+    });
   },
 
   _routeBurn(state, rt, e, damage) {
@@ -483,6 +528,9 @@ export const planetRuntime = {
     if (burning !== rt.player.recoveryBurn) {
       rt.player.recoveryBurn = burning;
       this.bus.emit('planet:recoveryBurn', { on: burning, siteId: rt.siteId });
+      // The world cue marks the burn onset; the throttled release rides the action recipe's
+      // 'off' variant on the same event, so no second cue is emitted here.
+      if (burning) this._emitPlanetCue('planet.recovery.burn', player, { sourceEvent: 'planet:recoveryBurn' });
     }
   },
 
@@ -505,7 +553,12 @@ export const planetRuntime = {
       actions.toggleSkimCollector = false;
       rec.collectorOn = !rec.collectorOn;
       this.bus.emit('planet:collector', { on: rec.collectorOn, siteId: rt.siteId });
-      this.bus.emit('audio:cue', { id: rec.collectorOn ? 'confirm' : 'ui_deny', gain: 0.5 });
+      // FB-142 — the planet:collector audio route is the single voice (on and off registers);
+      // the skim-intake world cue marks the mouth opening. No second generic audio:cue fires
+      // here — that would stack a menu tone under the authored voice.
+      if (rec.collectorOn) {
+        this._emitPlanetCue('planet.skim.intake', player, { sourceEvent: 'planet:collector' });
+      }
     }
     if (!rec.collectorOn) return;
 
@@ -528,6 +581,46 @@ export const planetRuntime = {
     this._settle(rt, rec, cargoSys, 'pendingRich', site.harvest.commodityRich);
   },
 
+  // One admitted worker uses the SAME physical band and density law as the player.
+  // Fractions are transient atmospheric exposure, not a second cargo ledger. Traffic alone
+  // accepts whole units into the current finite manifest. A ship outside the thermal budget
+  // cannot collect for free, and a stopped/interrupted worker cannot bank a timed yield.
+  _tickWorkerHarvest(dt, state, rt, site) {
+    if (!(Number.isFinite(dt) && dt > 0)) return;
+    const worker = state.entities.get(rt.witnessId);
+    if (worker?.data) worker.data.stormshiftCollectorOn = false;
+    if (!worker || worker.alive === false || !(worker.hull > 0)
+      || worker.data?.anvilSlingWitness !== true
+      || worker.data?.itinerary?.kind !== 'anvil_work'
+      || worker.data.itinerary.phase !== 'collect') return;
+    const rec = rt.ships[worker.id];
+    if (!rec || !this._scratchIds.includes(worker.id)) return;
+    const traffic = this.registry?.get?.('traffic');
+    if (typeof traffic?.acceptAnvilHarvest !== 'function') return;
+    const region = rec.region;
+    if (region !== 'skim' && region !== 'danger') return;
+    const speed = Math.hypot(finite(worker.vel?.x), finite(worker.vel?.z));
+    if (speed < site.harvest.minSpeed) return;
+    rec.collectorOn = true;
+    worker.data.stormshiftCollectorOn = true;
+    const rich = region === 'danger';
+    const key = rich ? 'pendingRich' : 'pendingShallow';
+    const commodityId = rich ? site.harvest.commodityRich : site.harvest.commodityShallow;
+    rec[key] = finite(rec[key]) + speed * dt
+      * (rich ? site.harvest.densityDanger : site.harvest.densitySkim);
+    const whole = Math.floor(rec[key]);
+    if (whole < 1) return;
+    // Discard refused whole units, as the player collector does. No hidden reserve can
+    // appear after unloading or while the intake is closed.
+    rec[key] -= whole;
+    const accepted = traffic.acceptAnvilHarvest(worker, { siteId: site.id, commodityId, qty: whole });
+    const qty = Number.isFinite(accepted) ? Math.max(0, Math.min(whole, Math.floor(accepted))) : 0;
+    if (!qty) return;
+    rec.harvestedUnits = finite(rec.harvestedUnits) + qty;
+    this.bus.emit('planet:npcHarvest', { entityId: worker.id, siteId: site.id, commodityId, qty });
+    this._emitHarvestMotes(rt, rec, commodityId, qty, worker);
+  },
+
   _settle(rt, rec, cargoSys, key, commodityId) {
     const whole = Math.floor(rec[key]);
     if (whole < 1) return;
@@ -538,19 +631,25 @@ export const planetRuntime = {
       rec.harvestedUnits += accepted;
       rt.telemetry.harvestUnits += accepted;
       this.bus.emit('planet:harvest', { commodityId, qty: accepted, siteId: rt.siteId });
+      const ship = this.state && this.state.entities && this.state.entities.get
+        ? this.state.entities.get(this.state.playerId) : null;
+      this._emitPlanetCue('planet.harvest.deposit', ship, { sourceEvent: 'planet:harvest', commodityId });
       this._emitHarvestMotes(rt, rec, commodityId, accepted);
     }
     if (accepted < whole) {
       this.bus.emit('planet:harvestDenied', { commodityId, reason: 'cargo_full', siteId: rt.siteId });
+      const ship = this.state && this.state.entities && this.state.entities.get
+        ? this.state.entities.get(this.state.playerId) : null;
+      this._emitPlanetCue('planet.harvest.denied', ship, { sourceEvent: 'planet:harvestDenied', commodityId });
     }
   },
 
   // Harvest motes (bible §7.1: yield = path × density MADE VISIBLE — bright flecks drifting from
   // the band into the collector). One directional cue per settled batch through the shipped
   // presentation lane (pooled, bounded, flash-reduced automatically) — mote rate IS the yield rate.
-  _emitHarvestMotes(rt, rec, commodityId, qty) {
+  _emitHarvestMotes(rt, rec, commodityId, qty, actor = null) {
     const state = this.state;
-    const player = state.entities.get(state.playerId);
+    const player = actor || state.entities.get(state.playerId);
     if (!player) return;
     const vx = finite(player.vel && player.vel.x), vz = finite(player.vel && player.vel.z);
     const sp = Math.hypot(vx, vz) || 1;

@@ -16,7 +16,9 @@ import bmesh
 from mathutils import Matrix, Vector
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'animations'))
 import forge as F  # noqa: E402
+import ANI_43  # noqa: E402
 
 SHIP_ID = 'place_station_blackmarket'
 COLORS = {
@@ -436,6 +438,8 @@ def build():
     F.cylinder(s, 'SpireMast', (sx0, sy0, z), (sx0, sy0, z + 6.0), 0.3, 0.15, material='gunmetal', segments=8)
     F.beacon(s, 'Beacon', (sx0, sy0, z), size=0.8)
     F.light(s, 'SpireTip', (sx0, sy0, z + 6.0), 'glow_red', size=0.5)
+    # ANI-43: the smuggler's signal yardarm on the mast (new parts; they ride a motion pivot)
+    ANI_43.build_signal(F, s, z)
 
     # --- patched plates on the rock faces: stolen ivory hull panels bolted over breaches ----------
     patches, bolts = [], []
@@ -466,10 +470,23 @@ def build():
     F.cylinder(s, 'StolenDishPost', (-50.0, -4.0, 12.5), (-50.0, -4.0, 15.6), 0.3, material='gunmetal', segments=10)
     F.dish(s, 'StolenDish', (-50.0, -4.0, 15.5), 2.6, 0.9, axis=(0.3, -0.4, 0.86))
     s.detail = 0
+    # ANI-43: signal yardarm and dock clamp jaws ride motion pivots (see animations/ANI_43.py)
+    ANI_43.register(s)
     return s
 
 
 if __name__ == '__main__':
     import forge_export as E
     ship = build().finish()
-    E.export_ship(ship, E.fleet_spec(SHIP_ID), preview='--live' not in sys.argv)
+    spec = E.fleet_spec(SHIP_ID)
+    live = '--live' in sys.argv
+    bank = ANI_43.build(ship, spec['asset_id'])
+    written = E.export_ship(ship, spec, preview=not live)
+    # --live seals the bank against the release GLB (the lead publishes). A preview build skips it
+    # unless SF_BANK_OUT names a scratch folder: the bank is then baked against the preview GLB.
+    # Bank file name = render-package pilot key ('blackmarket'), see scripts/lib/renderPackageRuntimeTable.mjs.
+    scratch = os.environ.get('SF_BANK_OUT')
+    if live or scratch:
+        out_dir = ANI_43.motion_bank.MOTIONS_DIR if live else scratch
+        os.makedirs(out_dir, exist_ok=True)
+        bank.bake([path for path, _tris in written], out_path=os.path.join(out_dir, 'blackmarket.motion.json'))

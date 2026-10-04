@@ -549,7 +549,8 @@ test('loader disposal cancels an in-flight package generation and releases decod
   await decodeStarted;
   assert.equal(loader.dispose('fixture-loader-disposed'), true);
   resolveDecode({ scene: decoded.scene });
-  await assert.rejects(pending, /released before decode completed/i);
+  await assert.rejects(pending, { name: 'AbortError' });
+  await new Promise((resolve) => setImmediate(resolve));
   assert.deepEqual(disposals, { geometry: 1, material: 1, texture: 1 });
   assert.equal(loader.diagnostics().residency.residentAssets, 0);
   await assert.rejects(loader.load(packageMetadata()), /loader has been disposed/i);
@@ -617,6 +618,22 @@ test('source fallback is explicit, diagnostic, and never changes the ordinary pa
   assert.equal(packageRoute.source, null);
   assert.equal(fallbackCount, 1);
   assert.equal(decodeCount, 1);
+});
+
+test('disposing a package load cannot start a replacement source fallback', async () => {
+  let started;
+  const decodeStarted = new Promise((resolve) => { started = resolve; });
+  let fallbackCount = 0;
+  const loader = createRenderPackageLoader({
+    loadGlb: () => { started(); return new Promise(() => {}); },
+    loadSourceFallback: () => { fallbackCount++; return {}; },
+  });
+  const pending = loader.loadWithSourceFallback(packageMetadata());
+  const outcome = assert.rejects(pending, { name: 'AbortError' });
+  await decodeStarted;
+  loader.dispose();
+  await outcome;
+  assert.equal(fallbackCount, 0);
 });
 
 test('loader preserves absolute, rooted, protocol-relative, and parent-relative render URLs', async () => {
@@ -992,6 +1009,33 @@ test('load claims the consumer owner at commit so byte pressure cannot evict a m
   assert.ok(row.roles.includes('current-sector'),
     'the consumer role is pinned synchronously at commit, not after a later continuation');
   assert.ok(row.sectors.includes('sector-test'), 'the consumer sector id is retained');
+  loader.dispose();
+});
+
+test('canceling one consumer leaves a shared decode available without retaining its dead owner', async () => {
+  let started;
+  let finishDecode;
+  const decodeStarted = new Promise((resolve) => { started = resolve; });
+  const residency = createAssetResidencyRegistry();
+  const loader = createRenderPackageLoader({
+    residency,
+    loadGlb: () => { started(); return new Promise((resolve) => { finishDecode = resolve; }); },
+  });
+  const controller = new AbortController();
+  const first = loader.load(packageMetadata(), {
+    signal: controller.signal, residencyOwner: {}, residencyRole: 'canceled-boundary',
+  });
+  const rejected = assert.rejects(first, { name: 'AbortError' });
+  await decodeStarted;
+  const second = loader.load(packageMetadata(), { residencyOwner: {}, residencyRole: 'live-boundary' });
+  controller.abort();
+  await rejected;
+  finishDecode(decodedFixture());
+  const loaded = await second;
+  assert.equal(loaded.evicted, false);
+  const row = residency.diagnostics().assets.find((asset) => asset.key.startsWith('render-package:'));
+  assert.ok(row.roles.includes('live-boundary'));
+  assert.equal(row.roles.includes('canceled-boundary'), false);
   loader.dispose();
 });
 

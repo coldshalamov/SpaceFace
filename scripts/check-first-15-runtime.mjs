@@ -54,8 +54,10 @@ try {
   // headless against this 15,000 ms budget — an 80% margin that any load at all tips over, and
   // it did, intermittently, across five checks. A real GPU HAS the extension (verified), so
   // this is an environment allowance, not a behavioural assertion being loosened. Everything
-  // these checks actually assert happens after boot and is untouched.
-  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.ctx, null, { timeout: 30000 });
+  // these checks actually assert happens after boot and is untouched. Shares START_TIMEOUT_MS:
+  // on a loaded shared host the serial-compile boot has been measured past 56s, so a fixed 30s
+  // dies before boot finishes while asserting nothing.
+  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.ctx, null, { timeout: START_TIMEOUT_MS });
   await waitForVisible(page, '[data-screen="mainMenu"]', 15000, 'main menu');
   await waitForBootOverlayGone(page);
 

@@ -15,6 +15,7 @@ import {
   BINDINGS,
   setPromptDevice,
   setGamepadPromptBindings,
+  setGamepadGlyphSet,
   getGamepadCaptureHandler,
 } from './bindings.js';
 import { resolveActionLabel, selectedWorldSiteTarget } from '../systems/input.js';
@@ -130,6 +131,7 @@ export function createUiInput(ctx, screenManager) {
   let _seenTouchSeq = -1;
   let _lastPromptDevice = 'kbm';
   let _seenPadBindings;
+  let _seenPadGlyphSet;
   function noteDevice(d) {
     _deviceOrder[d] = ++_deviceCounter;
   }
@@ -144,6 +146,14 @@ export function createUiInput(ctx, screenManager) {
     if (custom !== _seenPadBindings) {
       _seenPadBindings = custom;
       setGamepadPromptBindings(resolveGamepadBindings(state && state.settings));
+    }
+    // The face-button register follows the settings address, so a glyph-set switch re-labels
+    // live prompt chips and pad speech the same tick.
+    const glyphSet = state && state.settings && state.settings.controls
+      && state.settings.controls.gamepad ? state.settings.controls.gamepad.glyphSet : undefined;
+    if (glyphSet !== _seenPadGlyphSet) {
+      _seenPadGlyphSet = glyphSet;
+      setGamepadGlyphSet(glyphSet);
     }
     if (dev !== _lastPromptDevice) {
       _lastPromptDevice = dev;
@@ -169,7 +179,11 @@ export function createUiInput(ctx, screenManager) {
   // Emit the dock intent; uiRoot's dock:docked handler owns setting ui.docked + pushing the
   // station hub (single owner of the flight→dock transition, avoids a double-push).
   function doDock() {
+    // A live jump owns the sector transition — docking mid-charge/mid-tunnel would leave the
+    // ui.docked latch on while the jump machine moves the hull into the next sector.
     if (isUiInteractionFenced(state) || !dockInRange || (state.ui && state.ui.docked)) return;
+    const jumpState = state.jump && state.jump.state;
+    if (jumpState === 'CHARGING' || jumpState === 'JUMPING') return;
     const attempt = { stationId: dockStationId };
     // Publish the attempt before deciding so the existing faction-voiced denial surface can explain
     // a refusal. The same pure selector is the command gate; a banner can never be the authority.
@@ -246,6 +260,17 @@ export function createUiInput(ctx, screenManager) {
       const def = screenManager.getActiveScreenDef();
       if (key === 'Escape') {
         ev.preventDefault();
+        // A screen mid-gesture gets first refusal before the generic back/pop (J6): the chart's
+        // laid line / filling hold cancels here, so the first Escape undoes the player's current
+        // intention instead of losing the whole screen. Locked surfaces keep precedence — a
+        // screen that traps ESC (root title, mid-transaction) never receives the refusal.
+        const lockedNow = !!(
+          (screenManager.locked && screenManager.locked()) || (def && def.data && def.data.locked)
+        );
+        if (!lockedNow && def && typeof def.onEscape === 'function') {
+          try { if (def.onEscape(ev, ctx) === true) return; }
+          catch (e) { console.error('[uiInput] screen onEscape error:', e); }
+        }
         closeActiveModal(def);
         return;
       }

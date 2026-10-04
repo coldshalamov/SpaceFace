@@ -564,3 +564,133 @@ test('pickup VFX resolves into the exact winning collector and only legacy recei
   const missing = resolveAdditionalActionVfxReceipt('pickup:collected', { ...base, pickupId: 902, collectorId: 999 }, state);
   assert.equal(missing, null, 'an explicit missing collector cannot fabricate player collection');
 });
+
+test('partial acceptance shrinks every quantity mirror the remainder pod carries', () => {
+  // richLotSource.richQty/lotQty, freightCustodyPod.qty, and salvagePool[commodityId] all
+  // describe the same physical units data.amount counts. A partial collect must shrink all
+  // of them with the remainder or raw readers over-report the residual — the mirror defect
+  // on the NXI-020 residual: richQty stayed at the offered quantity while the pod had
+  // physically shrunk, so the next collection could mis-report provenance the units no
+  // longer had.
+  const stampMirrors = (pickup, tag) => {
+    pickup.data.richLotSource = {
+      lotId: `mirror-lot:${tag}`, provenanceId: `prov:mirror:${tag}`,
+      richQty: 5, lotQty: 5, sourceKind: 'recovered',
+    };
+    pickup.data.freightCustodyPod = { custodyId: `custody:${tag}`, qty: 5 };
+    pickup.data.salvagePool = { [COMMODITY_ID]: 5 };
+  };
+  const assertMirrors = (pickup, tag) => {
+    assert.equal(pickup.data.amount, 3, `${tag}: the physical remainder`);
+    assert.equal(pickup.data.richLotSource.richQty, 3, `${tag}: rich provenance follows the remainder`);
+    assert.equal(pickup.data.richLotSource.lotQty, 3, `${tag}: the lot mirror follows the remainder`);
+    assert.equal(pickup.data.richLotSource.lotId, `mirror-lot:${tag}`, `${tag}: the parent lot id survived`);
+    assert.equal(pickup.data.richLotSource.provenanceId, `prov:mirror:${tag}`, `${tag}: provenance survived`);
+    assert.equal(pickup.data.freightCustodyPod.qty, 3, `${tag}: the custody annotation IS the pod quantity`);
+    assert.equal(pickup.data.freightCustodyPod.custodyId, `custody:${tag}`, `${tag}: custody identity survived`);
+    assert.equal(pickup.data.salvagePool[COMMODITY_ID], 3, `${tag}: the scoop pool cannot credit taken units`);
+  };
+
+  const phys = bootPhysics({ capVolume: 2, amount: 5 });
+  stampMirrors(phys.pickup, 'physics');
+  phys.collect();
+  assert.equal(phys.pickup.alive, true);
+  assert.equal(phys.state.player.cargo.items[COMMODITY_ID], 2);
+  assertMirrors(phys.pickup, 'physics');
+
+  const mine = bootMining({ capVolume: 2, amount: 5 });
+  stampMirrors(mine.pickup, 'mining');
+  mine.collect();
+  assert.equal(mine.pickup.alive, true);
+  assert.equal(mine.state.player.cargo.items[COMMODITY_ID], 2);
+  assertMirrors(mine.pickup, 'mining');
+});
+
+test('mirrors that differ from amount shrink minus-taken, never remainder-set', () => {
+  // The provenance mirrors are fractions of a lot, not the pod's count: with amount 5 and
+  // richQty 3, accepting 2 must leave richQty 1 (3 − 2 taken), not 3 (the remainder).
+  // lotQty drains by the same delta while the custody annotation — which IS the pod's
+  // quantity — takes the remainder itself.
+  const h = bootPhysics({ capVolume: 2, amount: 5 });
+  h.pickup.data.richLotSource = {
+    lotId: 'offset-lot', provenanceId: 'prov:offset', richQty: 3, lotQty: 10,
+    sourceKind: 'recovered',
+  };
+  h.pickup.data.freightCustodyPod = { custodyId: 'custody:offset', qty: 5 };
+  h.pickup.data.salvagePool = { [COMMODITY_ID]: 5 };
+  h.collect();
+  assert.equal(h.state.player.cargo.items[COMMODITY_ID], 2);
+  assert.equal(h.pickup.data.amount, 3, 'the physical remainder');
+  assert.equal(h.pickup.data.richLotSource.richQty, 1, '3 stamped − 2 taken: not remainder-set');
+  assert.equal(h.pickup.data.richLotSource.lotQty, 8, '10 stamped − 2 taken');
+  assert.equal(h.pickup.data.freightCustodyPod.qty, 3, 'custody IS the pod quantity: remainder-set');
+  assert.equal(h.pickup.data.salvagePool[COMMODITY_ID], 3, 'the pool drains the taken delta');
+});
+
+test('frozen mirrors are replaced on data, never mutated in place', () => {
+  // The replace-on-data branch: a pod whose mirror records are frozen keeps the frozen
+  // originals untouched and receives fresh stamped copies — the pod record itself is the
+  // mutable authority the writer swaps through.
+  const h = bootPhysics({ capVolume: 2, amount: 5 });
+  const rich = Object.freeze({
+    lotId: 'frozen-lot', provenanceId: 'prov:frozen', richQty: 5, lotQty: 5,
+    sourceKind: 'recovered',
+  });
+  const custody = Object.freeze({ custodyId: 'custody:frozen', qty: 5 });
+  const pool = Object.freeze({ [COMMODITY_ID]: 5 });
+  h.pickup.data.richLotSource = rich;
+  h.pickup.data.freightCustodyPod = custody;
+  h.pickup.data.salvagePool = pool;
+  h.collect();
+  assert.equal(h.state.player.cargo.items[COMMODITY_ID], 2);
+  assert.equal(h.pickup.data.amount, 3);
+  assert.notEqual(h.pickup.data.richLotSource, rich, 'the frozen lot record is replaced');
+  assert.equal(h.pickup.data.richLotSource.richQty, 3);
+  assert.equal(h.pickup.data.richLotSource.lotQty, 3);
+  assert.equal(rich.richQty, 5, 'the frozen original is untouched');
+  assert.equal(rich.lotQty, 5);
+  assert.notEqual(h.pickup.data.freightCustodyPod, custody, 'the frozen custody record is replaced');
+  assert.equal(h.pickup.data.freightCustodyPod.qty, 3);
+  assert.equal(h.pickup.data.freightCustodyPod.custodyId, 'custody:frozen');
+  assert.equal(custody.qty, 5, 'the frozen original is untouched');
+  assert.notEqual(h.pickup.data.salvagePool, pool, 'the frozen pool is replaced on data');
+  assert.equal(h.pickup.data.salvagePool[COMMODITY_ID], 3);
+  assert.equal(pool[COMMODITY_ID], 5, 'the frozen original is untouched');
+  assert.equal(h.pickup.alive, true);
+});
+
+test('mining payload scoop keeps data.amount in lockstep with the drained pool entry', () => {
+  // Regression for the stale-amount mint: a jettisoned-cargo pod stamps amount and
+  // salvagePool[commodityId] at the same figure. A partial scoop that drains only the
+  // pool leaves amount stale — the volatile-vent reader would then size a split off
+  // units already delivered while the vented child carries the full share.
+  const h = bootMining({ capVolume: 2, amount: 5 });
+  const pod = entity({
+    type: 'payload', pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, radius: 3,
+    data: {
+      kind: 'cargo',
+      commodityId: COMMODITY_ID,
+      amount: 5,
+      freightCustodyPod: { custodyId: 'custody:scoop', qty: 5 },
+      salvagePool: { [COMMODITY_ID]: 5 },
+    },
+  }, 42);
+  h.state.entities.set(pod.id, pod);
+  h.state.entityList.push(pod);
+
+  const collected = mining._collectPayload(pod, h.player);
+  assert.equal(collected, true);
+  assert.equal(h.state.player.cargo.items[COMMODITY_ID], 2);
+  assert.equal(pod.data.salvagePool[COMMODITY_ID], 3, 'the manifest drains by what the hold took');
+  assert.equal(pod.data.amount, 3,
+    'the pod amount follows the drained entry — a stale amount mints units on the vent path');
+  assert.equal(pod.data.freightCustodyPod.qty, 3, 'the custody mirror follows the same drain');
+  assert.equal(pod.alive, true);
+
+  h.state.player.cargo.capVolume = 5;
+  const second = mining._collectPayload(pod, h.player);
+  assert.equal(second, true);
+  assert.equal(pod.data.amount, 0, 'the emptied pod reconciles: 2 + 3 = the spawned 5');
+  assert.equal(pod.alive, false, 'an emptied manifest despawns the body');
+  assert.equal(h.state.player.cargo.items[COMMODITY_ID], 5, 'no units were minted or lost');
+});

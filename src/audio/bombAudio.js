@@ -68,6 +68,13 @@ export const BOMB_CUE_TO_RECIPE = Object.freeze({
   'bombs.anchor.settle': 'sfx_bomb_anchor_settle',
   'combat.status.burning': 'sfx_bomb_thermite_burn',
   'combat.status.goo': 'sfx_bomb_goo_residue',
+  'bombs:cycle': 'sfx_bomb_rack_cycle',
+  'bombs:rackChanged': 'sfx_bomb_rack_change',
+});
+
+export const BOMB_RACK_CUES = Object.freeze({
+  cycle: 'sfx_bomb_rack_cycle',
+  rackChanged: 'sfx_bomb_rack_change',
 });
 
 const FIELD_LOOP_CUES = new Set(
@@ -91,6 +98,70 @@ export function resolveBombDetonationCue(payloadId, trigger) {
   const row = bombAudioCatalog(payloadId);
   if (trigger === 'collapse' && row.collapse) return row.collapse;
   return row.detonate;
+}
+
+// SF-229 — shared bay handling stays on the rack click; each payload's mechanism
+// is the detonate recipe, heard early (arm) and fully (detonate) at different rates.
+const BOMB_FAMILY_RATE = Object.freeze({
+  bomb_frag: 1.28,
+  bomb_concussion: 0.72,
+  bomb_singularity: 0.55,
+  bomb_goo: 0.84,
+  bomb_emp: 1.55,
+  bomb_thermite: 0.64,
+  bomb_scrambler: 1.42,
+  bomb_anchor: 0.48,
+});
+
+const BOMB_PHASE_CAPTION = Object.freeze({
+  release: 'Payload released.',
+  arm: 'Payload arming.',
+  detonate: 'Payload detonated.',
+  destroyed: null,
+});
+
+export function resolveBombPhaseVoice(payloadId, phase) {
+  const id = payloadId && BOMB_AUDIO_CUES[payloadId] ? payloadId : 'bomb_frag';
+  const row = bombAudioCatalog(id);
+  const step = String(phase || '');
+  if (step === 'destroyed' || step === 'spent') {
+    return Object.freeze({
+      play: false, phase: 'destroyed', recipeId: null, rate: 1, gain: 0, caption: null, payloadId: id,
+    });
+  }
+  const family = BOMB_FAMILY_RATE[id] || 1;
+  if (step === 'release' || step === 'dropped') {
+    return Object.freeze({
+      play: true,
+      phase: 'release',
+      recipeId: BOMB_RACK_CUES.cycle,
+      rate: family,
+      gain: 0.42,
+      caption: BOMB_PHASE_CAPTION.release,
+      payloadId: id,
+      mechanism: row.recipeId,
+    });
+  }
+  if (step === 'arm' || step === 'primed' || step === 'armed') {
+    return Object.freeze({
+      play: true,
+      phase: 'arm',
+      recipeId: row.recipeId,
+      rate: Math.round(family * 0.72 * 1000) / 1000,
+      gain: 0.34,
+      caption: BOMB_PHASE_CAPTION.arm,
+      payloadId: id,
+    });
+  }
+  return Object.freeze({
+    play: true,
+    phase: 'detonate',
+    recipeId: row.recipeId,
+    rate: 1,
+    gain: 0.92,
+    caption: BOMB_PHASE_CAPTION.detonate,
+    payloadId: id,
+  });
 }
 
 export function isBombFieldLoopCue(cueId) {
@@ -341,8 +412,35 @@ export function syncBombAudioLoops(host) {
   reconcileLoops(host, collectBombStatusLoopSpecs(host.state, _statusWanted), 'status');
 }
 
+function playBombPhase(host, phase, payload) {
+  if (!host || !payload) return null;
+  const voice = resolveBombPhaseVoice(payload.payloadId, phase);
+  if (!voice.play || typeof host.play !== 'function') return voice.play ? voice : null;
+  const rt = host.rt || (host.rt = {});
+  const book = rt._bombPhaseAdmit || (rt._bombPhaseAdmit = Object.create(null));
+  const key = `${voice.phase}:${payload.bombId != null ? payload.bombId : payload.payloadId}`;
+  if (book[key]) return null;
+  book[key] = true;
+  const played = host.play(voice.recipeId, {
+    gain: voice.gain,
+    rate: voice.rate,
+    position: payload.pos || null,
+    warning: voice.phase === 'arm',
+  });
+  if (played && voice.caption && typeof host._emitPresentationCaption === 'function') {
+    host._emitPresentationCaption(voice.caption, { assertive: voice.phase === 'arm', channel: 'cue' });
+  }
+  return played;
+}
+
 export function bindBombAudio(host, bus) {
   if (!host || !bus || typeof bus.on !== 'function') return;
+  bus.on('bombs:dropped', (payload) => playBombPhase(host, 'release', payload));
+  bus.on('bombs:primed', (payload) => playBombPhase(host, 'arm', payload));
+  bus.on('bombs:armed', (payload) => playBombPhase(host, 'arm', payload));
+  bus.on('bombs:destroyed', (payload) => {
+    if (payload && payload.bombId != null) stopBombFieldLoop(host, payload.bombId);
+  });
   bus.on('bombs:detonated', (payload) => {
     if (!payload) return;
     if (payload.trigger === 'collapse') {
@@ -366,6 +464,17 @@ export function bindBombAudio(host, bus) {
   bus.on('combat:statusExpired', (payload) => {
     if (!payload) return;
     stopLoop(host, bombStatusLoopKey(payload.targetId, payload.statusId));
+  });
+  // VERB-23: Cycling the bomb rack clicks and a changed rack is heard
+  bus.on('bombs:cycle', () => {
+    if (typeof host.play === 'function') {
+      host.play(BOMB_RACK_CUES.cycle, { gain: 0.45 });
+    }
+  });
+  bus.on('bombs:rackChanged', () => {
+    if (typeof host.play === 'function') {
+      host.play(BOMB_RACK_CUES.rackChanged, { gain: 0.55 });
+    }
   });
   host._syncBombAudio = () => syncBombAudioLoops(host);
 }

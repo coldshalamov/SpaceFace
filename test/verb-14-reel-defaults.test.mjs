@@ -101,6 +101,16 @@ test('resolveActionCodes is non-empty in every scheme', () => {
   }
 });
 
+// NXI-217: an explicitly emptied binding is a deliberate unbind — the runtime resolves no codes and
+// the default is not silently restored. Deleting the override restores the scheme default.
+test('an explicit empty binding stays unbound and restores on delete', () => {
+  withInput({ forward: [] }, ({ state }) => {
+    assert.deepEqual(resolveActionCodes(state, 'forward'), [], 'an emptied binding is unbound, not defaulted');
+    delete state.settings.controls.bindings.forward;
+    assert.deepEqual(resolveActionCodes(state, 'forward'), ['KeyW', 'ArrowUp'], 'removing the override restores the default');
+  });
+});
+
 test('a held key drives the winch and releases cleanly', () => {
   withInput(null, ({ win, state, tick }) => {
     tick();

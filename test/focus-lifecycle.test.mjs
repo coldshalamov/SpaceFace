@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { createToasts } from '../src/ui/toasts.js';
 import { createScreenManager } from '../src/ui/screenManager.js';
 import { createGameState } from '../src/core/gameState.js';
+import { enterPhotoMode, exitPhotoMode } from '../src/ui/screens/pause.js';
 
 function installDom() {
   const elements = new Map();
@@ -643,6 +644,38 @@ function makeBus() {
   mgr.pushScreen('emptyStatus');
   assert.equal(emptyRoot.getAttribute('tabindex'), '-1');
   assert.equal(document.activeElement, emptyRoot, 'control-free dialog focuses its root fallback');
+}
+
+// A hidden Photo-mode pause must restore the live presentation on every route out. The pause
+// hook needs the same context as mount/onShow; a bus-driven load/close cannot rely on its button.
+for (const route of ['pushScreen', 'popScreen', 'replaceScreen', 'closeAll', 'releaseScreen', 'destroy']) {
+  installDom();
+  const bus = makeBus();
+  const state = createGameState(18);
+  state.mode = 'flight';
+  const ctx = { state, bus };
+  const mgr = createScreenManager(ctx);
+  let hiddenContext = null;
+  mgr.register({
+    id: 'pause',
+    mount(el) { el.appendChild(document.createElement('button')); },
+    onHide(hookCtx) {
+      hiddenContext = hookCtx;
+      exitPhotoMode(hookCtx && hookCtx.state);
+    },
+  });
+  mgr.register({ id: 'settings', mount(el) { el.appendChild(document.createElement('button')); } });
+  mgr.pushScreen('pause');
+  const exposure = state.settings.video.exposure;
+  enterPhotoMode(state, { exposure: 1.9 });
+  assert.equal(state.render.photoMode.active, true);
+  if (route === 'pushScreen' || route === 'replaceScreen') mgr[route]('settings');
+  else if (route === 'releaseScreen') mgr.releaseScreen('pause');
+  else mgr[route]();
+  assert.equal(hiddenContext === ctx, true, route + ' forwards the screen lifecycle context');
+  assert.equal(state.render.photoMode.active, false, route + ' restores photo presentation');
+  assert.equal(state.settings.video.exposure, exposure, route + ' restores the prior exposure');
+  mgr.destroy();
 }
 
 console.log('focus-lifecycle: toast dismiss/expire + modal pop restore OK');

@@ -42,11 +42,15 @@
 // a prompt that dies without releasing cannot wedge the rail permanently.
 
 import { BOMB_DEFS, BOMB_DRIFT, bombDef } from '../data/bombs.js';
+import { FIELD_DEFS } from '../data/fields.js';
+import { runOwnsReward } from '../combat/rewardEligibility.js';
 import { fhGlyph } from './views/fhGlyphs.js';
 import { repulsionTrapFitted, resolveImpulseChargeCapacity } from '../systems/impulseCharges.js';
 import { cruiseChargeProgress, isCharging, isCruising } from '../systems/cruise.js';
+import { isSwarmRuleset } from '../systems/survivalSwarm.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
 
+export const BAND_DRIVE = 'DRIVE';
 export const BAND_ORDNANCE = 'ORDNANCE';
 export const BAND_FIELDWORK = 'FIELDWORK';
 export const BAND_RIG = 'RIG';
@@ -72,6 +76,11 @@ export const SLOT_STATES = ['ready', 'armed', 'cooling', 'unaffordable', 'locked
 // one write site, and read verbatim by every surface that explains a verb (tier-2 `[data-why]` tips,
 // the ORRERY Cluster's ordnance keys, the rail's own aria/title) — no surface composes its own prose.
 export const RAIL_SLOTS = Object.freeze([
+  // FB-002 slot 0 — the travel-drive latch. It owns no digit (Num Lock/H is the verb, never a
+  // hotbar seat) and no prompt may borrow it; it is the rail's one state socket: the latch's
+  // off/spooling/engaged/cooldown reads where the pilot's eyes already live.
+  { index: 0, band: BAND_DRIVE, action: 'travelBurn', name: 'Burn', glyph: 'rig',
+    description: 'latch the travel drive — a long burn that holds your speed' },
   // Reserved sockets 1–3 stay nameless under their band pill: the band label twelve pixels above
   // already says ORDNANCE, and three stacked "Ordnance" micro-labels truncated to "ORD_" junk.
   { index: 1, band: BAND_ORDNANCE, action: 'chargeThrow', name: 'Charge', glyph: 'munitions',
@@ -102,7 +111,7 @@ export function slotDescription(index) {
   return (slot && slot.description) || '';
 }
 
-const BANDS = [BAND_ORDNANCE, BAND_FIELDWORK, BAND_RIG, BAND_BAY];
+const BANDS = [BAND_DRIVE, BAND_ORDNANCE, BAND_FIELDWORK, BAND_RIG, BAND_BAY];
 
 // Sweep ring geometry. r=13 in a 32-box leaves room for the 1.6 stroke without clipping.
 //
@@ -221,8 +230,9 @@ export function applyClaims(slotState, claims, now) {
     mode = claim.mode || CLAIM_PARTIAL;
     const answers = Array.isArray(claim.answers) ? claim.answers : [];
     const targets = claim.mode === CLAIM_FULL
-      ? out.map((s) => s.index)
-      : (Array.isArray(claim.slots) ? claim.slots : []);
+      // Slot 0 is the drive's state lamp — it owns no answer key and no prompt may borrow it.
+      ? out.map((s) => s.index).filter((i) => i !== 0)
+      : (Array.isArray(claim.slots) ? claim.slots : []).filter((i) => i !== 0);
     targets.forEach((slotIndex, i) => {
       const slot = out.find((s) => s.index === slotIndex);
       if (!slot) return;
@@ -253,6 +263,102 @@ export function applyClaims(slotState, claims, now) {
  * site-scoped state, and a rail that showed it ready in open space would be advertising a key that
  * does nothing. `nowS` is sim seconds, matching the cooldown clocks.
  */
+// ── SWARM-03: the rail answers "why now" (SWARM_EXPANSION §10) ─────────────────────────
+// In a live Swarm run a slot gains `live: true` the moment its verb is tactically real:
+//
+//   2 Blast — armed ordnance is actually on the field (the state already says ARMED; the
+//             pulse is the "a pack is near it" cue — the swarm room always has one)
+//   3 Line  — the massline's own acquisition receipt has a READY hostile on it. The
+//             tether system publishes that candidate every tick; the pulse quotes it
+//             rather than re-deriving range/obstruction rules the latch already owns
+//   5 Well  — a deployed well is holding a pack (≥2 run bodies inside its footprint),
+//             OR a pack is clumped inside one well footprint within deploy range, so
+//             dropping one now would catch them
+//
+// Adventure keeps the quiet rail: the flags are computed only while `liveSwarmRail`
+// holds, so a campaign flight never sees a pulse it did not earn.
+export const SWARM_WELL_PACK_MIN = 2;        // bodies inside a live footprint that make it "holding"
+export const SWARM_WELL_OPPORTUNITY_MIN = 3; // a clump this size is worth a fresh well
+/** The slot a tactically-live verb is on. Exported so tests pin the contract, not the layout. */
+export const SWARM_LIVE_SLOTS = Object.freeze({ blast: 2, line: 3, well: 5 });
+
+function liveSwarmRail(s) {
+  const run = s && s.run;
+  return !!(run && typeof run === 'object' && !Array.isArray(run)
+    && run.kind === 'survival' && run.phase !== 'inactive' && run.phase !== 'ended'
+    && isSwarmRuleset(run.ruleset));
+}
+
+function swarmHostiles(s) {
+  const out = [];
+  const entities = s && s.entities;
+  if (!entities || typeof entities.values !== 'function') return out;
+  for (const e of entities.values()) {
+    if (!e || e.alive === false || !e.pos) continue;
+    if (!runOwnsReward(e)) continue;
+    out.push(e);
+  }
+  return out;
+}
+
+/**
+ * The Line pulse: the massline acquisition receipt (published every tick by
+ * tetherGameplay — "you can see what the Massline will grab before you press") names a
+ * READY candidate that is a run-owned hostile: a body in latch reach you can throw.
+ */
+function swarmLineLive(s) {
+  const selected = s && s.masslineAcquisition && s.masslineAcquisition.selected;
+  if (!selected || selected.status !== 'ready' || selected.targetId == null) return false;
+  const target = s.entities && typeof s.entities.get === 'function'
+    ? s.entities.get(selected.targetId) : null;
+  return !!(target && target.alive !== false && runOwnsReward(target));
+}
+
+/**
+ * The Well pulse: a pack inside the footprint. Two honest readings, both true cues —
+ * a well you already dropped is HOLDING a pack (throw the charge, now), or a pack is
+ * clumped inside one well footprint close enough to catch with a fresh deploy.
+ */
+function swarmWellLive(s, hostiles, player) {
+  const def = FIELD_DEFS && FIELD_DEFS.well;
+  const wellR = Number(def && def.radius) || 190;
+  const deployed = s && s.fields && s.fields.deployed;
+  if (deployed && typeof deployed === 'object') {
+    for (const rec of Object.values(deployed)) {
+      if (!rec || rec.kind !== 'well' || rec.emitterId == null) continue;
+      const emitter = s.entities && typeof s.entities.get === 'function'
+        ? s.entities.get(rec.emitterId) : null;
+      if (!emitter || emitter.alive === false || !emitter.pos) continue;
+      let inside = 0;
+      for (const h of hostiles) {
+        const dx = h.pos.x - emitter.pos.x;
+        const dz = h.pos.z - emitter.pos.z;
+        if (dx * dx + dz * dz <= wellR * wellR) inside += 1;
+      }
+      if (inside >= SWARM_WELL_PACK_MIN) return 'Your well is holding a pack';
+    }
+  }
+  // No deployed well: is there a clump the deploy range can reach? Any hostile with at
+  // least SWARM_WELL_OPPORTUNITY_MIN-1 neighbours inside one footprint is a pack.
+  const reach = Number(def && def.deployRange) || 520;
+  if (player && player.pos) {
+    for (const h of hostiles) {
+      const pdx = h.pos.x - player.pos.x;
+      const pdz = h.pos.z - player.pos.z;
+      if (pdx * pdx + pdz * pdz > reach * reach) continue;
+      let neighbours = 0;
+      for (const other of hostiles) {
+        if (other === h) continue;
+        const dx = other.pos.x - h.pos.x;
+        const dz = other.pos.z - h.pos.z;
+        if (dx * dx + dz * dz <= wellR * wellR) neighbours += 1;
+        if (neighbours >= SWARM_WELL_OPPORTUNITY_MIN - 1) return 'A pack is in well range';
+      }
+    }
+  }
+  return null;
+}
+
 export function readRailModel(state, nowS) {
   const s = state || {};
   const player = s.player || {};
@@ -281,17 +387,43 @@ export function readRailModel(state, nowS) {
     && e.data?.ownerId === s.playerId && e.data?.armed);
 
   const bay = readBombBayModel(s, now);
+  // SWARM-03 — tactical-live flags, swarm runs only. Computed once here so both presenters
+  // (the DOM rail's [data-live] and the ORRERY Cluster's is-live) quote the same answer.
+  const swarm = liveSwarmRail(s);
+  let lineLiveWhy = null;
+  let wellLiveWhy = null;
+  if (swarm) {
+    const hostiles = swarmHostiles(s);
+    if (swarmLineLive(s)) lineLiveWhy = 'Latch is in reach — a body you can throw';
+    wellLiveWhy = swarmWellLive(s, hostiles, hull);
+  }
+  const blastLive = swarm && (armed || bay.armedCount > 0);
   // VERB-16: the 3 s cruise spool is a verb-shelf meter. The rail owns no cruise clock — it
   // reads the cruise system's writer (state.player.cruise) through its query helpers, so the
   // shelf shows the spool rising 0→1 while charging and the engaged state after. ORRERY owns
   // how this paints; this model only makes the numbers reachable on the default route.
   const cruiseProgress = cruiseChargeProgress(s);
   const cruiseState = isCruising(s) ? 'cruising' : (isCharging(s) ? 'charging' : 'off');
+  // FB-002 slot 0 — the travel-drive latch reads its own published kernel record
+  // (state.input.travelDrive, one address, systems/input.js owns the write). The socket is a
+  // state lamp, not an ordnance key: engaged/spooling read armed, the cooldown reads cooling,
+  // and an absent record reads ready like every inert verb.
+  const travelDrive = (s.input && s.input.travelDrive && typeof s.input.travelDrive === 'object')
+    ? s.input.travelDrive : null;
+  const driveState = travelDrive && typeof travelDrive.state === 'string' ? travelDrive.state : 'off';
   return {
     cruiseChargeProgress: cruiseProgress,
     cruiseEngaged: cruiseState === 'cruising',
     cruiseCharging: cruiseState === 'charging',
     cruiseState,
+    0: {
+      state: driveState === 'engaged' || driveState === 'spooling' ? 'armed'
+        : driveState === 'cooldown' ? 'cooling' : 'ready',
+      why: driveState === 'engaged' ? 'Burn engaged — the drive holds your speed'
+        : driveState === 'spooling' ? 'Drive spooling'
+          : driveState === 'cooldown' ? 'Drive cooling'
+            : 'Drive latched off',
+    },
     // The count rides as "x3" so it reads as a quantity; at zero the verb stands alone in the dim
     // empty state ("CHARGE 0" read as a broken label, not as "none left").
     1: { name: `${repulsionTrapFitted(s) ? 'Trap' : 'Charge'}${charges > 0 ? ` ×${charges}` : ''}`,
@@ -299,16 +431,23 @@ export function readRailModel(state, nowS) {
       capacity,
       why: `${chargeWhy} · up to ${capacity}` },
     2: { state: armed || bay.armedCount > 0 ? 'armed' : 'empty',
+      live: blastLive || undefined,
       description: 'Detonate your armed bombs and the armed charge network. Active bomb fields finish normally.',
-      why: armed || bay.armedCount > 0 ? 'Armed — press to detonate' : 'Nothing armed to detonate' },
+      why: blastLive ? 'Armed — the pack is on the field' : armed || bay.armedCount > 0 ? 'Armed — press to detonate' : 'Nothing armed to detonate' },
     3: { state: player.tether?.active ? 'armed' : 'ready',
-      why: player.tether?.active ? 'Line is live' : 'Ready' },
+      live: lineLiveWhy != null || undefined,
+      why: player.tether?.active ? 'Line is live' : (lineLiveWhy || 'Ready') },
     4: seedCd ? { ...seedCd, why: `Recharging — ${Math.ceil(seedCd.cooldownMs / 1000)}s` } : { state: 'ready', why: 'Ready' },
-    5: wellCd ? { ...wellCd, why: `Recharging — ${Math.ceil(wellCd.cooldownMs / 1000)}s` } : { state: 'ready', why: 'Ready' },
+    5: { ...(wellCd || { state: 'ready' }),
+      live: wellCd ? undefined : (wellLiveWhy != null || undefined),
+      why: wellCd ? `Recharging — ${Math.ceil(wellCd.cooldownMs / 1000)}s` : (wellLiveWhy || 'Ready') },
     6: repCd ? { ...repCd, why: `Recharging — ${Math.ceil(repCd.cooldownMs / 1000)}s` } : { state: 'ready', why: 'Ready' },
     7: { state: fields.coneActive ? 'armed' : 'ready',
       why: fields.coneActive ? 'Cone is on' : 'Ready' },
-    8: skimSlotState(s),
+    // SWARM-03: the collector harvests planet bands — there is none in the arena, so the
+    // shelf says so instead of advertising a dead key. The DOM rail already hides the
+    // locked socket under .sf-swarm-flight; the Cluster keeps it as a dim node.
+    8: swarm ? { state: 'locked', why: 'No planet band in the arena' } : skimSlotState(s),
     9: bay,
   };
 }
@@ -428,6 +567,7 @@ function slotMarkup(slot, label) {
     ? `${name}${label ? `, key ${label}` : ''}, ${slot.state}`
     : `${label ? `key ${label}` : 'unbound socket'}, ${slot.state}`;
   return `<button type="button" class="sf-pslot" data-slot="${slot.index}" data-state="${slot.state}"`
+    + ` data-live="${slot.live === true ? 'true' : 'false'}"`
     + ` data-band="${slot.band}" tabindex="-1" aria-label="${escapeRailText(described + (slot.description ? '. ' + slot.description : ''))}" title="${escapeRailText(slot.description || described)}">`
     + `<span class="sf-pslot__key" aria-hidden="true">${capLabel(label) || '·'}</span>`
     + `<span class="sf-pslot__art" aria-hidden="true">${art}</span>`
@@ -472,6 +612,7 @@ export function createPowerRail(options = {}) {
         description: (given.description || slot.description || '')
           + (slot.index === 9 ? ` Cycle: ${cycleLabel}. Detonate: ${labels[2] || 'unbound'}.` : ''),
         why: given.why || '',
+        live: given.live === true,
         state: bound ? (given.state || 'ready') : 'empty',
         cooldownMs: Number(given.cooldownMs) || 0,
         answer: null,
@@ -485,7 +626,7 @@ export function createPowerRail(options = {}) {
     // Signature covers everything that changes pixels EXCEPT cooldown remaining — that animates in
     // CSS, so letting it into the signature would rebuild the DOM every frame and defeat the point.
     const signature = resolved.slots
-      .map((s) => `${s.index}:${s.state}:${s.answer == null ? s.name : `=${s.answer}`}:${labels[s.index]}:${s.glyph}:${s.badge}:${s.description}:${s.why}`)
+      .map((s) => `${s.index}:${s.state}:${s.answer == null ? s.name : `=${s.answer}`}:${labels[s.index]}:${s.glyph}:${s.badge}:${s.description}:${s.why}:${s.live === true ? 'L' : ''}`)
       .join('|');
     if (signature === lastSignature) return;
     lastSignature = signature;

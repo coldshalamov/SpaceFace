@@ -422,8 +422,18 @@ test('route-level idle sleeps production energy; thrust wakes it non-allocating'
   assert.equal(cardPlume.pool.activeCount, 0);
   assert.equal(cardPlume.pool.frameAllocations, 0);
 
-  // Back to idle: production sleeps again instead of pinning the subsystem awake.
+  // Back to idle: production sleeps again instead of pinning the subsystem awake. Slice 1 (thruster
+  // lifecycle): the jet now TAPERS away (about 170 ms) before the gate lets go, instead of being
+  // hard-hidden four frames after the release, so allow a short window - but it must sleep, and it
+  // must sleep promptly.
   player._flightFrame = { throttle: 0 };
+  let slept = -1;
+  for (let f = 0; f < 90; f++) {
+    system.update(1 / 60);
+    if (system.inspect().subsystems.lastFrame.energy === 0) { slept = f + 1; break; }
+  }
+  assert.ok(slept > 4, `the release tapers before the gate sleeps (slept after ${slept} frames)`);
+  assert.ok(slept > 0 && slept <= 45, `and then production sleeps within 0.75 s (${slept} frames)`);
   for (let f = 0; f < 4; f++) system.update(1 / 60);
   const sleepFrame = system.inspect().subsystems.lastFrame;
   assert.equal(sleepFrame.energy, 0, 'returned-to-idle frame must sleep again');

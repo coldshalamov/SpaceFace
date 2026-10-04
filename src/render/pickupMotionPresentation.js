@@ -303,6 +303,9 @@ export function createPickupMotionTracker() {
     if (cyc < 0.10) strobe = Math.exp(-cyc * 60);
     else if (cyc > 0.14 && cyc < 0.24) strobe = Math.exp(-(cyc - 0.14) * 60) * 0.7;
     if (reducedMotion) strobe *= 0.5;
+    // FB-075: a volatile lot's hazard ping kicks hotter — the warning survives the chase camera.
+    const strobeGain = (entity.data && (entity.data.volatileClass || entity.data.volatileLamp))
+      ? 0.058 : 0.035;
 
     // Eject materialize: overshoot ramp on arrival.
     let matMul = 1;
@@ -317,7 +320,7 @@ export function createPickupMotionTracker() {
     }
 
     const scale = targetObj.scale;
-    const s = rec.scaleRatio * matMul * (1 + strobe * 0.035);
+    const s = rec.scaleRatio * matMul * (1 + strobe * strobeGain);
     if (scale && typeof scale.set === 'function') {
       if (alignment > 0) {
         // Squeezed across the throat and drawn out along the approach: the body is being taken

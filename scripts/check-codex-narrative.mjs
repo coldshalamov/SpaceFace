@@ -37,7 +37,7 @@ assert.ok(SHIP.friend && 'callsign' in SHIP.friend && 'debt' in SHIP.friend, 'SH
 
 // COLD_START — the 3 opening comms (Comms tab, always-visible section). Contracted IDs are
 // cold_friend, cold_registry, cold_dockmaster in that order (src/data/narrative.js).
-const COLD_START_IDS = Object.freeze(['cold_friend', 'cold_registry', 'cold_dockmaster']);
+const COLD_START_IDS = Object.freeze(['cold_friend', 'cold_registry', 'cold_dockmaster', 'cold_next_berth']);
 assert.ok(Array.isArray(COLD_START), 'COLD_START must be an array');
 assert.equal(
   COLD_START.length,

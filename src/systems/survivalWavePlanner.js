@@ -31,6 +31,7 @@ import {
   SWARM_WAVE_DURATION_TICKS,
   isSwarmDraftWave,
   isSwarmRefitWave,
+  SWARM_ACT_ROUNDS,
   SWARM_DEBUT_DISTANCE,
   SWARM_DEBUT_TICKS,
   SWARM_MASS_GAP_CLOSE_TICKS,
@@ -39,7 +40,11 @@ import {
   SWARM_MASS_GAP_WALL_DISTANCE,
   SWARM_MASS_GAP_WALL_ROCKS,
   SWARM_FODDER_ROLES,
+  isSwarmBossWave,
   isSwarmMassGapWave,
+  swarmActFor,
+  swarmActIssues,
+  swarmActPackages,
   swarmArenaPhase,
   swarmFodderRoster,
   swarmFreeGateFor,
@@ -54,6 +59,7 @@ import {
   swarmWaveOf,
 } from '../data/swarmMode.js';
 import { swarmStakeFor } from '../data/swarmStakes.js';
+import { normalizeThreatIds, swarmThreatPressureMult } from '../data/swarmThreats.js';
 import { CRUCIBLE_REEF_LAYOUT_ID, CRUCIBLE_SLALOM_WELL_COUNT } from '../data/survivalMutators.js';
 
 // Binding ranges from spaceface.combatLabSetup.v1 (seed 1..0xffffffff, wave 1..999).
@@ -128,7 +134,7 @@ function invalid(issues) {
   return { ok: false, error: WAVE_PLAN_ERROR, issues };
 }
 
-function isCombatLabSeed(value) {
+export function isCombatLabSeed(value) {
   return Number.isInteger(value) && value >= SEED_MIN && value <= SEED_MAX;
 }
 
@@ -196,6 +202,7 @@ function expandSchedule(packages) {
       if (pkg.lesson === true) entry.lesson = true;
       if (pkg.debut === true) entry.debut = true;
       if (pkg.wall === true) entry.wall = true;
+      if (pkg.staged === true) entry.staged = true;
       if (Number.isFinite(pkg.distance)) entry.distance = pkg.distance;
       entries.push(entry);
       remaining -= n;
@@ -361,9 +368,12 @@ export function resolvePlanMode(input) {
  * results screen) keeps working without a swarm-shaped branch of its own. The one addition is
  * `plan.swarm`, the block that describes the reinforcement stream.
  *
- * Completion here is a SIXTY-SECOND CLOCK, not "every scheduled package materialized and every
- * blocking role dead". `requiredPackagesMaterialized` is false and `blockingRoles` is empty
- * on purpose: a swarm wave must never be able to stall on one straggler flying home.
+ * Completion here is a FINITE COHORT — the wave owes `swarm.killTarget` bodies and closes when
+ * every admitted body has resolved, so a fast clear earns the shop early instead of waiting out
+ * a timer, and a living champion holds its round open rather than being abandoned by a clock.
+ * `blockingRoles` stays empty on purpose: no single straggler class gates the wave, the cohort
+ * itself does. `durationTicks` rides the plan only as the fallback envelope for legacy timed
+ * saves replayed through old plans.
  *
  * SF-072 — the room reads the run's build and leans on the roles that TEST it, never the ones
  * that forbid it. A massline build meets more anchors (hulls too heavy to sling carelessly) and
@@ -398,10 +408,16 @@ function biasSwarmRosterForBuild(roster, dominant) {
   return bent ? next : null;
 }
 
-function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake }) {
+function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake, swarmThreats }) {
   const w = swarmWaveOf(wave);
   const list = mutatorList(mutators);
   const stake = swarmStakeFor(swarmStake);
+  // SWARM-06: the Threat wager's room half lands here — Thick Pack multiplies pressure exactly
+  // like a stake leg (concurrency and quota, never stats), and its product with the stake is
+  // what the wave owner paces off. The purse trim lives at launch (the wallet the armory opens
+  // with), the body stamps live in the swarm-elites runtime; this file owns the ROOM.
+  const threats = normalizeThreatIds(swarmThreats);
+  const pressure = stake.pressure * swarmThreatPressureMult(threats);
   const dominant = isPlainObject(buildSummary) && typeof buildSummary.dominant === 'string'
     ? buildSummary.dominant
     : null;
@@ -413,18 +429,32 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake }) 
   // its late heavies turn one side of the room into a corridor the player navigates or breaks.
   // The mutator owns the room outright, so heavies_only suppresses the shape entirely.
   const massGap = !heaviesOnly && isSwarmMassGapWave(w);
-  const fodderRoster = massGap && swarmFodderRoster(w).length > 0 ? swarmFodderRoster(w) : null;
+  // SF-068 — a boss round's reduced swarm is ammunition, not chores: the champion is the work,
+  // so its opening chaff draws from the same light bodies the mass-gap wall feeds — the shapes
+  // the room's berm, mines and pull can actually turn on the boss. heavies_only owns outright.
+  const bossWave = !heaviesOnly && isSwarmBossWave(w);
+  const fodderRoster = (massGap || bossWave) && swarmFodderRoster(w).length > 0
+    ? swarmFodderRoster(w)
+    : null;
   // SF-064 — a specialist's first wave stages one readable arrival: its tell lands alone on its
   // own bearing a beat after the opening burst, before the stream mixes it with other bodies.
   // The debut is a function of the wave number alone — no tutorial state, and later waves field
   // the same archetype through the ordinary roster like everything else.
   const newcomer = swarmNewcomerFor(w);
   const debuting = !!newcomer && w === newcomer.fromWave;
+  // NXB-017 — the three-round act authors the opening recipe outright on its three slots
+  // (waves 25–27 carry no debut, mass-gap or boss flag, so nothing else competes for them).
+  // The mutator owns the room outright: heavies_only suppresses the act exactly like the wall.
+  const act = !heaviesOnly ? swarmActFor(w) : null;
+  if (act) {
+    const actIssues = swarmActIssues(w);
+    if (actIssues.length) return invalid(actIssues);
+  }
   const openingRoster = debuting
     ? (fodderRoster || biasedRoster || swarmRosterFor(w))
       .filter((entry) => entry.enemyId !== newcomer.enemyId)
     : (fodderRoster || biasedRoster || undefined);
-  let packages = swarmOpeningPackages(w, rng, openingRoster);
+  let packages = act ? swarmActPackages(w) : swarmOpeningPackages(w, rng, openingRoster);
   if (debuting) {
     // The debut is one of the wave's bodies, not an extra: hand its seat back from the largest
     // ordinary group so the opening budget stays exactly what the pressure math asked for.
@@ -488,14 +518,14 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake }) 
   // The mutator owns the whole room, debut included: the newcomer's staged arrival still lands
   // alone on its own bearing, but its body joins the heavies like every other package.
   if (heaviesOnly) packages = applyHeaviesOnly(packages);
-  if (stake.pressure !== 1) {
+  if (pressure !== 1) {
     // Pressure scales the opening burst itself, not just the ceiling it fills under: champion
     // bodies are owed exactly as authored (a wing of one is never scaled to zero) and the
     // debut stays one readable arrival, while the chaff groups thin or thicken with the
     // contract. batchSize follows count — in an opening package one batch is one group.
     packages = packages.map((pkg) => (pkg && (pkg.champion === true || pkg.debut === true)
       ? pkg
-      : { ...pkg, count: Math.max(1, Math.round(pkg.count * stake.pressure)), batchSize: Math.max(1, Math.round(pkg.count * stake.pressure)) }));
+      : { ...pkg, count: Math.max(1, Math.round(pkg.count * pressure)), batchSize: Math.max(1, Math.round(pkg.count * pressure)) }));
     // The spawn budget stays the hard authority: an over-asked burst trims its tail packages
     // rather than passing the overflow to dispatch, where a refused batch is dropped not owed.
     let burst = swarmOpeningCount(packages);
@@ -522,17 +552,31 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake }) 
   if (massGapBlock) {
     swarm.massGap = massGapBlock;
     swarm.wallLine = 'A wall is closing on the room — mind the gaps.';
-    // The stream keeps feeding ammunition: fodder share bends up, no role leaves the room.
-    if (!biasedRoster) {
-      swarm.roster = swarmRosterFor(w).map((entry) => ({
-        enemyId: entry.enemyId,
-        role: entry.role,
-        weight: SWARM_FODDER_ROLES.includes(entry.role)
-          ? entry.weight * SWARM_MASS_GAP_FODDER_SCALE
-          : entry.weight,
-        fromWave: entry.fromWave,
-      }));
-    }
+  }
+  if (act) {
+    // NXB-017 — the act block is how the announce names the round's question. Quota,
+    // concurrency, draft and clear law are untouched: the act rewrote the recipe, not the
+    // rules the wave runs under.
+    swarm.act = {
+      id: act.id,
+      round: act.round,
+      rounds: SWARM_ACT_ROUNDS,
+      question: act.question,
+    };
+  }
+  // The ammunition bend is not only the wall's: a boss round's stream keeps feeding light
+  // bodies too (SF-068), so the champion's room never reads as a heavy-escort checklist —
+  // and an act round's stream keeps the loose-mass lesson supplied the same way.
+  // Build pressure still wins when it is live — the read on the run's build outranks either.
+  if ((massGapBlock || bossWave || (act && act.streamBias === 'fodder')) && !biasedRoster) {
+    swarm.roster = swarmRosterFor(w).map((entry) => ({
+      enemyId: entry.enemyId,
+      role: entry.role,
+      weight: SWARM_FODDER_ROLES.includes(entry.role)
+        ? entry.weight * SWARM_MASS_GAP_FODDER_SCALE
+        : entry.weight,
+      fromWave: entry.fromWave,
+    }));
   }
   if (heaviesOnly) {
     swarm.roster = HEAVIES_ONLY_ROSTER.map((entry) => ({
@@ -556,16 +600,19 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake }) 
   // The stake is the swarm's difficulty contract: pressure moves concurrency and the round
   // quota (bodies, never stats), earn moves what a cleared round pays. Concurrency is still
   // clamped under the arena's own cap — a stake can never ask for a room the budget refuses.
-  if (stake.pressure !== 1) {
-    swarm.concurrent = Math.max(1, Math.min(SWARM_SPAWN_CAP, Math.round(swarm.concurrent * stake.pressure)));
+  // The Threat product stacks on the same legs — Thick Pack is one more pressure leg, never a
+  // new kind of math.
+  if (pressure !== 1) {
+    swarm.concurrent = Math.max(1, Math.min(SWARM_SPAWN_CAP, Math.round(swarm.concurrent * pressure)));
     swarm.openingPressure = Math.max(1, Math.min(swarm.concurrent, swarmOpeningCount(packages)));
-    swarm.killTarget = Math.max(1, Math.round(swarm.killTarget * stake.pressure));
-    swarm.rewardReferenceKills = Math.max(1, Math.round(swarm.rewardReferenceKills * stake.pressure));
+    swarm.killTarget = Math.max(1, Math.round(swarm.killTarget * pressure));
+    swarm.rewardReferenceKills = Math.max(1, Math.round(swarm.rewardReferenceKills * pressure));
   }
   // The wave owner paces reinforcement arrivals off the same pressure the packages were
   // scaled by — stamped raw so the pressure curve the stream chases is the contracted one.
-  swarm.pressureScale = stake.pressure;
+  swarm.pressureScale = pressure;
   swarm.stake = stake.id;
+  if (threats.length) swarm.threats = threats.slice();
   const rewards = swarmRewards(w);
   if (stake.earn !== 1) rewards.credits = Math.max(0, Math.round(rewards.credits * stake.earn));
   if (opening > SPAWN_BUDGET_DEFAULT_MAX) {
@@ -580,7 +627,8 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake }) 
     objective: { kind: swarm.boss ? 'boss' : 'resolve_hostiles' },
     packages,
     schedule,
-    arenaPhase: swarmArenaPhase(w),
+    // An authored act round owns its room: the act table's phase wins over the cycle.
+    arenaPhase: (act && act.arenaPhase) || swarmArenaPhase(w),
     rewards,
     draftExpectation: isSwarmRefitWave(w)
       ? { kind: 'refit', choices: null }
@@ -682,13 +730,17 @@ function planFromRecipe({ recipe, seed, wave, act, difficulty, mutators, buildSu
   return decorateWeeklyPlan(plan, mutators);
 }
 
-/** First swarm minute, before the pack. 45 seconds at the 60 Hz sim. */
+/**
+ * First swarm minute, before the pack. 45 seconds at the 60 Hz sim — a CEILING, not a sentence:
+ * the wave owner releases the pack the tick the lesson hull stops being a fight.
+ */
 export const OPENING_LESSON_HOLD_TICKS = 45 * 60;
 
 /**
- * Wave 1 of a first swarm run. The same bodies still arrive — one light hull now, the rest
- * after the hold — so the budget does not grow. A rock and a well ride on the plan for the
- * arena to place. Callers that omit teachOpening never see this.
+ * Wave 1 of a first swarm run. The same bodies still arrive — one light hull now, the rest when
+ * the lesson hull falls or the hold expires, whichever comes first — so the budget does not
+ * grow. A rock and a well ride on the plan for the arena to place. Callers that omit
+ * teachOpening never see this.
  */
 export function applyOpeningLesson(plan) {
   if (!plan || !Array.isArray(plan.packages) || plan.packages.length === 0) return plan;
@@ -777,7 +829,10 @@ function planWaveInner(input) {
   }
 
   const issues = [];
-  const seed = input.seed;
+  let seed = input.seed;
+  if (typeof seed === 'string' && /^-?\d+$/.test(seed.trim())) {
+    seed = Number(seed.trim());
+  }
   const arenaId = input.arenaId;
   const wave = input.wave;
 
@@ -805,6 +860,7 @@ function planWaveInner(input) {
       mutators,
       buildSummary,
       swarmStake: typeof input.swarmStake === 'string' ? input.swarmStake : null,
+      swarmThreats: Array.isArray(input.swarmThreats) ? input.swarmThreats : null,
       rng: mulberry32(wavePlanStreamSeed(seed, arenaId, wave, 0)),
     });
     const finished = input.teachOpening === true && wave === 1 && planned && planned.ok !== false && !planned.error

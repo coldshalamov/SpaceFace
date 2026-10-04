@@ -24,7 +24,10 @@ import { pendingStuntBodyIds } from '../combat/stuntEvidence.js';
 import { pendingProjectileBodyIds } from '../combat/stuntProjectileEvidence.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from '../systems/ships.js';
 import { createTimeEffects } from '../core/timeEffects.js';
+import { beginFocusLossSaveWrite, endFocusLossSaveWrite } from '../core/focusLossHold.js';
+import { stampIronmanLatch } from './ironmanChoice.js';
 import { clearEntityRuntime, worldLedgerHoldsId } from '../core/entity.js';
+import { indexedWorldRecordEntity } from '../world/livingWorldViews.js';
 import {
   buildNewGamePlusCandidate,
   buildNewGamePlusOverlay,
@@ -35,6 +38,7 @@ import { COORDINATE_SCHEMA, applyFrameOrigin, deriveFrameOrigin } from '../core/
 import { isCatchupPresentationSkip } from '../core/catchupPolicy.js';
 import { shouldSkipFullTickSystems } from '../core/presentationFreeze.js';
 import { ORBIT_ASSIST_STRENGTH } from '../core/flight/orbitAssist.js';
+import { HOLD_TO_TOGGLE_ACTIONS } from '../systems/input.js';
 import {
   SAVE_JOURNAL_EVENT,
   acknowledgeSaveSnapshotBoundary,
@@ -51,7 +55,25 @@ import {
   migrateLegacyMasslineBindingProfile,
   readProfileSettings,
 } from '../core/graphicsProfileBootstrap.js';
-import { encodeSavePayload, SAVE_WORKER_SOURCE } from './saveWorker.js';
+import {
+  encodeSavePayload,
+  SAVE_WORKER_SOURCE,
+  isGzippedSaveText,
+  SAVE_GZIP_FORMAT,
+  SAVE_WRITE_MAX_BYTES,
+} from './saveWorker.js';
+import {
+  ACHIEVEMENTS_STORAGE_KEY,
+  parseAchievementBag,
+  saveAchievementBag,
+} from '../systems/achievements.js';
+import {
+  CRUCIBLE_META_STORAGE_KEY,
+  loadCrucibleMeta,
+  mergeCrucibleProfiles,
+  parseCrucibleMeta,
+  saveCrucibleMeta,
+} from '../systems/survivalRecords.js';
 import {
   applySharedStoreKeys,
   collectLocalSharedStoreKeys,
@@ -207,7 +229,11 @@ const TRANSIENT_ENTITY_SAVE_KEYS = new Set([
   'bankVel',
   'activity',
 ]);
-const TRANSIENT_ENTITY_FLAGS = new Set(['boosting', 'noInterp', 'docked']);
+// `boosting` is NOT transient: it is sim state (thrust engaged), and dropping it made a
+// mid-boost save silently kill the burn on restore — the held input could neither continue
+// nor re-edge, which is exactly the desync the 47a reload check reproduces. `noInterp`/`docked`
+// stay transient (presentation latch / re-derived at dock arbitration).
+const TRANSIENT_ENTITY_FLAGS = new Set(['noInterp', 'docked']);
 const TRANSIENT_PLAYER_FLAGS = new Set(['invuln']);
 
 // Save-key → serialize/deserialize plan (§4.5 map). Order is the load/restore order (deps first).
@@ -406,8 +432,9 @@ export const save = {
     // Warm the save worker once at init: Continue and autosave each pay a Blob-URL spawn +
     // worker boot on the load path when a cold worker is created per request. One idle worker
     // kept hot removes the spawn from every later request; run-epoch sweeps retire it and the
-    // checkout lazily rewarms.
-    this._warmSaveWorker = this._createSaveWorker();
+    // checkout lazily rewarms. Guarded like the listener above: a convenience/test context that
+    // mounts init without the system's methods must still boot (its saves spawn lazily instead).
+    this._warmSaveWorker = typeof this._createSaveWorker === 'function' ? this._createSaveWorker() : null;
     this._syncSharedPlayerStore();
   }, 
 
@@ -587,6 +614,12 @@ export const save = {
       ['cargo', () => this._serializeCargo()],
       // Salvage must restore before world enterSector rematerializes an authored wreck. Its own
       // serializer owns the bounded source ledger; save only preserves the dependency order.
+      ['morrow', () => this._callSerialize('morrow') || {}],
+      ['vesper', () => this._callSerialize('vesper') || {}],
+      ['bracket', () => this._callSerialize('bracket') || {}],
+      ['ravel', () => this._callSerialize('ravel') || {}],
+      ['solstice', () => this._callSerialize('solstice') || {}],
+      ['rubric', () => this._callSerialize('rubric') || {}],
       ['salvage', () => this._callSerialize('salvage') || {}],
       // survivorPod rides the same boundary: its promoted/stripped records must be present before
       // enterSector's salvage replan (and the survivorPod promotion listener) runs — otherwise a
@@ -598,10 +631,17 @@ export const save = {
       ['world', () => this._callSerialize('world') || {}],
       ['entities', () => this._serializeEntities()],
       ['combat', () => serializeCombatState(state)],
+      // SG-02 world snapshot (solver warm-start, islands, contacts) — entity scalars alone
+      // cannot rebuild a bit-identical world, and reload determinism hinges on it.
+      ['physics', () => this._callSerialize('physics')],
       // PQ-205.03: the bomb rack (fitted cells, socket count, hangar stock, cooldowns,
       // selection) is owned and serialized by the bombs system. Absent owner → {} →
       // deserialize applies the starter kit (additive default for pre-rack saves).
       ['bombs', () => this._callSerialize('bombs') || {}],
+      // FB-015: bounded system-owned deployable rows (snare anchors, charge plates, tether webs)
+      // — the entities themselves stay transient.
+      ['snares', () => this._callSerialize('masslineSnares')],
+      ['charges', () => this._callSerialize('impulseCharges')],
       ['stunts', () => this._callSerialize('stuntGrammar')],
       ['fields', () => this._callSerialize('fields')],
       ['missions', () => this._callSerialize('missions') || this._serializeMissions()],
@@ -644,6 +684,9 @@ export const save = {
       ['tensionDirector', () => clonePlain(state.tensionDirector || null)],
       ['regionalEcology', () => this._callSerialize('regionalEcology') || clonePlain(state.regionalEcology || {})],
       ['stationServices', () => this._callSerialize('stationServices') || {}],
+      // FB-114: the first-hour rail (rescue/raid/claimed/missing-three) — a save at
+      // rail step N resumes at step N instead of dropping to the returning-pilot path.
+      ['onboarding', () => this._callSerialize('onboarding')],
       ['encounterDirector', () => this._serializeEncounterDirector()],
       ['flight', () => this._serializeFlight()],
       ['nav', () => this._serializeNav()],
@@ -675,6 +718,12 @@ export const save = {
     yield 'serialize:player';
     data.cargo = this._serializeCargo();
     yield 'serialize:cargo';
+    data.morrow = this._callSerialize('morrow') || {};
+    data.vesper = this._callSerialize('vesper') || {};
+    data.bracket = this._callSerialize('bracket') || {};
+    data.ravel = this._callSerialize('ravel') || {};
+    data.solstice = this._callSerialize('solstice') || {};
+    data.rubric = this._callSerialize('rubric') || {};
     data.salvage = this._callSerialize('salvage') || {};
     yield 'serialize:salvage';
     data.survivorPod = this._callSerialize('survivorPod') || {};
@@ -691,8 +740,17 @@ export const save = {
     yield 'serialize:entities';
     data.combat = serializeCombatState(state);
     yield 'serialize:combat';
+    // SG-02 world snapshot: the Rapier solver's private state (contact warm starts, island
+    // sleep) is what entity scalars cannot rebuild — restore adopts it when the backend resets.
+    data.physics = this._callSerialize('physics');
+    yield 'serialize:physics';
     data.bombs = this._callSerialize('bombs') || {};
     yield 'serialize:bombs';
+    // FB-015: deployed massline snares, impulse-charge networks, and live tether webs are a
+    // player investment — bounded system-owned rows, never persistent entity flags.
+    data.snares = this._callSerialize('masslineSnares');
+    data.charges = this._callSerialize('impulseCharges');
+    yield 'serialize:deployables';
     data.stunts = this._callSerialize('stuntGrammar');
     yield 'serialize:stunts';
     data.fields = this._callSerialize('fields');
@@ -761,6 +819,8 @@ export const save = {
     yield 'serialize:regionalEcology';
     data.stationServices = this._callSerialize('stationServices') || {};
     yield 'serialize:stationServices';
+    data.onboarding = this._callSerialize('onboarding');
+    yield 'serialize:onboarding';
     data.encounterDirector = this._serializeEncounterDirector();
     yield 'serialize:encounterDirector';
     data.flight = this._serializeFlight();
@@ -1015,6 +1075,7 @@ export const save = {
     if (settings && settings.gameplay && Object.prototype.hasOwnProperty.call(settings.gameplay, 'runtimeProfile')) {
       delete settings.gameplay.runtimeProfile;
     }
+    stampIronmanLatch(settings, this.state && this.state.simTime);
     return settings;
   },
 
@@ -1072,6 +1133,12 @@ export const save = {
       persistent: out.filter((x) => !x._isPlayer),
       simTime: state.simTime,
       tick: state.tick,
+      // Entity-id allocator state. freeIds order is load-bearing: allocateEntityId pops from
+      // the tail, so a save/continue that resumes with a different recycle list assigns
+      // different ids to the same post-load spawns and the sim hash diverges.
+      freeIds: Array.isArray(state.freeIds) ? state.freeIds.slice() : [],
+      nextEntityId: Number.isSafeInteger(state.nextEntityId) ? state.nextEntityId : null,
+      nextOccupantGeneration: Number.isSafeInteger(state.nextOccupantGeneration) ? state.nextOccupantGeneration : null,
     };
   },
 
@@ -1105,13 +1172,40 @@ export const save = {
    * the shared store so a boot-time merge cannot resurrect them.
    * @returns {number} bytes freed (approximate — measured pre-removal)
    */
-  _evictForQuotaPressure({ includeAutosaveSlot = false } = {}) {
+  _evictForQuotaPressure({ includeAutosaveSlot = false, keepRecoverySlot = null } = {}) {
     const doomed = [];
     let freed = 0;
+    // FB-109 — one rollback always survives a quota pass. The write that triggered eviction is
+    // the freshest slot (its rotation just parked the previous save); when the caller cannot
+    // name one, fall back to the newest recovery-bearing slot the index knows. Never dropping
+    // the newest slot's primary AND recovery in the same pass keeps the end state loadable.
+    let keepRecoveryKey = keepRecoverySlot ? RECOVERY_PREFIX + keepRecoverySlot : null;
+    if (!keepRecoveryKey) {
+      try {
+        const merged = this._slotIndexWithFallback ? this._slotIndexWithFallback() : {};
+        let newestAt = null;
+        for (const slot in merged) {
+          const card = merged[slot];
+          if (!card || card.recoveryAvailable !== true) continue;
+          const at = Date.parse(card.savedAt || '') || 0;
+          if (newestAt == null || at >= newestAt) { newestAt = at; keepRecoveryKey = RECOVERY_PREFIX + slot; }
+        }
+      } catch (_) { /* index unreadable — fall through to the enumerated key below */ }
+    }
     try {
+      const recoveries = [];
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && key.startsWith(RECOVERY_PREFIX)) doomed.push(key);
+        if (key && key.startsWith(RECOVERY_PREFIX)) recoveries.push(key);
+      }
+      // A kept key must name a backup that exists — a stale index card or an already-
+      // sacrificed same-slot copy must not spend the keep on a dead key. Fall back to the
+      // last enumerated key: a deterministic survivor, never an all-or-nothing guess.
+      if (!keepRecoveryKey || !recoveries.includes(keepRecoveryKey)) {
+        keepRecoveryKey = recoveries[recoveries.length - 1] || null;
+      }
+      for (const key of recoveries) {
+        if (key !== keepRecoveryKey) doomed.push(key);
       }
       if (includeAutosaveSlot) doomed.push(LS_PREFIX + AUTOSAVE_SLOT);
       for (const key of doomed) {
@@ -1137,20 +1231,32 @@ export const save = {
     slot = slot || 'quick';
     const reason = options.reason || (slot === AUTOSAVE_SLOT ? 'autosave' : 'manual');
     const autosave = !!options.autosave || slot === AUTOSAVE_SLOT;
+    const started = nowMs();
+    // SFQ-B223: a write inside the restore window would serialize half-restored live state over
+    // the very slot being loaded. requestAutosave already refuses while _restoring; the direct
+    // path must refuse too, before it can supersede a queued autosave or touch a journal.
+    if (this._restoring) {
+      const timing = this._saveTiming({ slot, reason, autosave, started, ok: false, failure: 'restoring' });
+      this._recordSaveTiming(timing);
+      this._emitSaveTimingError(timing);
+      return false;
+    }
     // An explicit manual save supersedes a queued autosave. Its already-scheduled callback carries
     // the old token and becomes a no-op, so the player never pays two back-to-back full writes.
     if (!autosave && this._autosavePending) this._autosavePending = null;
-    const started = nowMs();
     if (!this._hasPlayerEntity()) {
       const timing = this._saveTiming({ slot, reason, autosave, started, ok: false, failure: 'no_player' });
       this._recordSaveTiming(timing);
-      this.bus.emit('save:error', timing);
+      this._emitSaveTimingError(timing);
       return false;
     }
     this.bus.emit('save:started', { slot, reason, autosave });
+    this._noteWritePending(slot, reason, autosave);
     // Establish the save boundary before any serializer reads live state. Manual saves are
     // synchronous; autosaves use the same boundary in their chunked capture below. The journal
     // remains pending until the write succeeds, so a failed save can retry the same facts.
+    beginFocusLossSaveWrite(this.state);
+    try {
     const snapshotBoundary = this._captureSaveSnapshotBoundary();
     let envelope;
     let serializeMs = 0;
@@ -1162,7 +1268,7 @@ export const save = {
       console.error('[save] serialize failed', err);
       const timing = this._saveTiming({ slot, reason, autosave, started, serializeMs, ok: false, failure: 'serialize_failed' });
       this._recordSaveTiming(timing);
-      this.bus.emit('save:error', timing);
+      this._emitSaveTimingError(timing);
       return false;
     }
     const t = nowMs();
@@ -1189,6 +1295,9 @@ export const save = {
     const ok = this._publishSaveResult(slot, envelope, write, timing);
     if (ok) this._acknowledgeSaveSnapshotBoundary(snapshotBoundary);
     return ok;
+    } finally {
+      endFocusLossSaveWrite(this.state);
+    }
   },
 
   _writeSlot(slot, envelope, options = {}) {
@@ -1200,12 +1309,22 @@ export const save = {
     let storageMs = 0;
     let indexMs = 0;
     if (json == null) {
+      // FB-093 — the manual stringify lane carries no worker bound, so the import limit
+      // object asserts here: an oversized envelope fails with a named reason rather than
+      // landing truncated under the quota. Worker encodes bound on their own side.
+      const bound = preflightSaveImport(envelope);
+      if (!bound.ok) {
+        return { ok: false, reason: bound.reason, limit: bound.limit, actual: bound.actual, bytes: 0, stringifyMs, storageMs, indexMs };
+      }
       try {
         const t = nowMs();
         json = JSON.stringify(envelope);
         stringifyMs = nowMs() - t;
       }
       catch (err) { return { ok: false, reason: 'stringify_failed', bytes: 0, stringifyMs, storageMs, indexMs }; }
+      if (json.length > SAVE_WRITE_MAX_BYTES) {
+        return { ok: false, reason: 'save_size_limit', limit: SAVE_WRITE_MAX_BYTES, actual: json.length, bytes: 0, stringifyMs, storageMs, indexMs };
+      }
     }
     const primaryKey = LS_PREFIX + slot;
     const recoveryKey = RECOVERY_PREFIX + slot;
@@ -1267,7 +1386,7 @@ export const save = {
           }
         }
         if (!fitted) {
-          this._evictForQuotaPressure();
+          this._evictForQuotaPressure({ keepRecoverySlot: slot });
           try {
             const t = nowMs();
             localStorage.setItem(primaryKey, json);
@@ -1276,7 +1395,9 @@ export const save = {
           } catch (_) { /* keep escalating */ }
         }
         if (!fitted && slot !== AUTOSAVE_SLOT) {
-          this._evictForQuotaPressure({ includeAutosaveSlot: true });
+          // Dropping the autosave primary keeps its rollback: the newest insurance slot
+          // stays loadable from sf.recovery.autosave after this pass.
+          this._evictForQuotaPressure({ includeAutosaveSlot: true, keepRecoverySlot: AUTOSAVE_SLOT });
           try {
             const t = nowMs();
             localStorage.setItem(primaryKey, json);
@@ -1305,7 +1426,12 @@ export const save = {
       // stale null) must not masquerade as corruption — a real byte mismatch reads identically.
       try { storedRaw = localStorage.getItem(primaryKey); } catch (err) {}
     }
-    const storedPrepared = this._prepareEnvelopeString(storedRaw);
+    // A worker-compressed write cannot re-validate on this sync lane — the byte-exact
+    // re-read above is the corruption gate, and the worker already proved the envelope
+    // before encoding it.
+    const storedPrepared = storedRaw === json && isGzippedSaveText(storedRaw)
+      ? { ok: true }
+      : this._prepareEnvelopeString(storedRaw);
     if (storedRaw !== json || !storedPrepared.ok) {
       try {
         if (previousRaw == null) localStorage.removeItem(primaryKey);
@@ -1429,6 +1555,7 @@ export const save = {
     if (write && write.ok) {
       this.state.save.currentSlot = slot;
       this.state.meta.lastSavedAt = envelope.savedAt;
+      this._noteWriteOutcome(slot, timing);
       if (write.backupCreated) {
         this.bus.emit('save:backup', {
           slot,
@@ -1440,13 +1567,70 @@ export const save = {
       this._queueSharedStoreMirror();
       return true;
     }
-    this.bus.emit('save:error', timing);
+    this._emitSaveTimingError(timing);
     return false;
   },
 
   _recordSaveTiming(timing) {
     const perf = this.state && this.state.perfRuntime;
     if (perf && typeof perf.recordSave === 'function') perf.recordSave(timing);
+  },
+
+  // SF-281 — durable write receipt on state.save. The toast fades; pending/durable/failed must
+  // remain readable on the state record so any surface (pause sheet, save browser, HUD) can
+  // tell "saving now" from "saved" from "save failed" without replaying events. Only real write
+  // outcomes land here: load errors stay on their own save:error payload, and a superseded
+  // autosave is a cancellation — the slot keeps its previous generation, nothing was lost.
+  _noteWritePending(slot, trigger, autosave) {
+    const bag = this.state && this.state.save;
+    if (!bag || typeof bag !== 'object') return;
+    bag.pendingWrite = {
+      slot: slot || 'quick',
+      trigger: trigger || null,
+      autosave: !!autosave,
+      at: nowMs(),
+      simTime: Number.isFinite(this.state.simTime) ? this.state.simTime : null,
+    };
+  },
+
+  _noteWriteOutcome(slot, timing) {
+    const bag = this.state && this.state.save;
+    if (!bag || typeof bag !== 'object' || !timing) return;
+    if (bag.pendingWrite && bag.pendingWrite.slot === slot) bag.pendingWrite = null;
+    const at = nowMs();
+    const simTime = Number.isFinite(this.state.simTime) ? this.state.simTime : null;
+    if (timing.ok) {
+      bag.lastWriteOk = {
+        slot,
+        trigger: timing.trigger || null,
+        autosave: timing.autosave === true,
+        bytes: Number.isFinite(timing.bytes) ? timing.bytes : 0,
+        at,
+        simTime,
+      };
+      bag.lastWriteFailure = null;
+      bag.consecutiveWriteFailures = 0;
+      return;
+    }
+    if (timing.failure === 'superseded') return;
+    bag.lastWriteFailure = {
+      slot,
+      trigger: timing.trigger || null,
+      reason: timing.failure || 'save_failed',
+      autosave: timing.autosave === true,
+      at,
+      simTime,
+    };
+    bag.consecutiveWriteFailures = (Number.isSafeInteger(bag.consecutiveWriteFailures)
+      ? bag.consecutiveWriteFailures : 0) + 1;
+  },
+
+  // Save-error emissions on the write path carry _saveTiming receipts; record the durable
+  // outcome BEFORE subscribers run so a listener that reads state.save inside its save:error
+  // handler sees the settled result rather than a stale pending row.
+  _emitSaveTimingError(timing) {
+    this._noteWriteOutcome(timing && timing.slot, timing);
+    this.bus.emit('save:error', timing);
   },
 
   // Lightweight slot index (§ design/specs/11) so the menu lists slots without parsing big blobs.
@@ -1835,11 +2019,18 @@ export const save = {
           }
         }
         const env = this._prepareEnvelopeMeta(raw);
-        if (!env) continue;
-        // Card straight off the envelope: _prepareEnvelopeMeta already ran the checksum before
-        // migrating in place, so slotMetaFromEnvelope's duplicate re-verify would read the
-        // post-migration bytes and always fail.
-        const meta = slotCardFromEnvelopeData(slot, env, null);
+        if (env) {
+          // Card straight off the envelope: _prepareEnvelopeMeta already ran the checksum before
+          // migrating in place, so slotMetaFromEnvelope's duplicate re-verify would read the
+          // post-migration bytes and always fail.
+          const meta = slotCardFromEnvelopeData(slot, env, null);
+          if (meta) out[slot] = meta;
+          continue;
+        }
+        // A compressed envelope still proves a generation lives here — the index-scan
+        // card keeps the slot discoverable for 'latest' and the title list.
+        const peek = this._peekSaveEnvelope(raw);
+        const meta = peek && peek.ok ? slotMetaFromGzipEnvelope(slot, peek.env) : null;
         if (meta) out[slot] = meta;
       }
     } catch (err) {
@@ -1871,8 +2062,13 @@ export const save = {
           continue;
         }
         const env = this._prepareEnvelopeMeta(raw);
-        if (!env) continue;
-        const meta = slotCardFromEnvelopeData(slot, env, null);
+        if (env) {
+          const meta = slotCardFromEnvelopeData(slot, env, null);
+          if (meta) out[slot] = meta;
+          continue;
+        }
+        const peek = this._peekSaveEnvelope(raw);
+        const meta = peek && peek.ok ? slotMetaFromGzipEnvelope(slot, peek.env) : null;
         if (meta) out[slot] = meta;
       }
     } catch (err) {
@@ -2004,8 +2200,11 @@ export const save = {
     } catch (err) { return null; }
     const primary = this._prepareEnvelopeString(primaryRaw);
     if (primary.ok) return null;
+    // A compressed generation cannot be judged on this sync lane — never skip past it.
+    if (primary.reason === 'compressed_envelope') return null;
     const backup = this._prepareEnvelopeString(backupRaw);
     if (backup.ok) return null;
+    if (backup.reason === 'compressed_envelope') return null;
     return { slot: best, reason: primary.reason || 'no_save', recoveryReason: backup.reason || 'no_backup' };
   },
 
@@ -2189,7 +2388,7 @@ export const save = {
         failure: 'schedule_failed',
       });
       this._recordSaveTiming(timing);
-      this.bus.emit('save:error', timing);
+      this._emitSaveTimingError(timing);
       return false;
     }
   },
@@ -2244,6 +2443,7 @@ export const save = {
     job.generation = ++this._autosaveGeneration;
     job.restoreSequence = this._restoreSequence;
     this.bus.emit('save:started', { slot: AUTOSAVE_SLOT, reason: job.reason, autosave: true });
+    this._noteWritePending(AUTOSAVE_SLOT, job.reason, true);
     if (!this._hasPlayerEntity()) {
       const timing = this._saveTiming({
         slot: AUTOSAVE_SLOT, reason: job.reason, autosave: true, started: job.requestedAt,
@@ -2486,7 +2686,7 @@ export const save = {
 
   _startAutosaveEncoding(job, capture) {
     const setupStarted = workNowMs();
-    const worker = this._trackSaveWorker(this._createSaveWorker());
+    const worker = this._checkoutSaveWorker();
     const setupMs = workNowMs() - setupStarted;
     capture.workerSetupMs += setupMs;
     this._pushAutosaveSlice(capture, 'encode_worker_setup', setupMs);
@@ -2513,8 +2713,7 @@ export const save = {
       encoder.settled = true;
       capture.workerRoundtripMs += Math.max(0, nowMs() - encoder.roundtripStartedAtMs);
       clearTimeout(encoder.timeout);
-      worker.__spacefaceSaveSupersede = null;
-      try { worker.terminate(); } catch (error) {}
+      this._releaseSaveWorker(worker);
       if (this._autosaveJobCurrent(job)) {
         if (fallback && capture.workerAttempts < 2) {
           this._scheduleAutosaveWork(() => this._startAutosaveEncoding(job, capture));
@@ -2526,13 +2725,18 @@ export const save = {
     };
     worker.onmessage = (event) => {
       const message = event && event.data;
+      // A bounded encode that refused its envelope carries a named reason — fall back to the
+      // sync lane with the same data so the reason (not a phantom worker error) is the receipt,
+      // unless the sync lane would write it anyway, in which case the bound IS the answer.
+      if (message && message.id === encoder.id && message.type === 'encoded' && message.ok === false) {
+        return fail(message.reason || 'save_size_limit', false);
+      }
       if (!message || message.id !== encoder.id || message.type !== 'encoded'
         || typeof message.json !== 'string') return fail('save_worker_failed');
       encoder.settled = true;
       capture.workerRoundtripMs += Math.max(0, nowMs() - encoder.roundtripStartedAtMs);
       clearTimeout(encoder.timeout);
-      worker.__spacefaceSaveSupersede = null;
-      try { worker.terminate(); } catch (error) {}
+      this._releaseSaveWorker(worker, { reusable: true });
       if (!this._autosaveJobCurrent(job)) return;
       const envelope = { ...capture.descriptor, checksum: message.checksum, data: capture.data };
       this._beginAutosaveTransaction(job, {
@@ -2670,7 +2874,7 @@ export const save = {
       blockingSlicesMs: [0],
     });
     this._recordSaveTiming(timing);
-    this.bus.emit('save:error', timing);
+    this._emitSaveTimingError(timing);
     return false;
   },
 
@@ -2773,6 +2977,15 @@ export const save = {
     let encoded;
     try { encoded = encodeSavePayload({ descriptor: capture.descriptor, data: capture.data }); }
     catch (error) { return this._failAutosave(job, 'stringify_failed', capture, workNowMs() - started); }
+    // FB-093 — the same write bound the worker lane enforces: an over-limit envelope fails
+    // with the preflight reason instead of landing truncated under the quota.
+    const bound = preflightSaveImport({ data: capture.data });
+    if (!bound.ok) {
+      return this._failAutosave(job, bound.reason, capture, workNowMs() - started);
+    }
+    if (encoded.json.length > SAVE_WRITE_MAX_BYTES) {
+      return this._failAutosave(job, 'save_size_limit', capture, workNowMs() - started);
+    }
     const encodeMs = workNowMs() - started;
     if (encodeMs > AUTOSAVE_HARD_SLICE_MS) {
       capture.slowSerializer = 'sync_encode_fallback';
@@ -2810,9 +3023,17 @@ export const save = {
       const serializeStarted = workNowMs();
       envelope = this.serialize(AUTOSAVE_SLOT);
       serializeMs = workNowMs() - serializeStarted;
+      // FB-093 — one write bound for every lane: over-limit fails, never truncates.
+      const bound = preflightSaveImport(envelope);
+      if (!bound.ok) {
+        return this._failAutosave(job, bound.reason, null, workNowMs() - sliceStarted);
+      }
       const stringifyStarted = workNowMs();
       json = JSON.stringify(envelope);
       stringifyMs = workNowMs() - stringifyStarted;
+      if (json.length > SAVE_WRITE_MAX_BYTES) {
+        return this._failAutosave(job, 'save_size_limit', null, workNowMs() - sliceStarted);
+      }
     } catch (err) {
       console.error('[save] autosave snapshot failed', err);
       const snapshotSliceMs = workNowMs() - sliceStarted;
@@ -2964,6 +3185,24 @@ export const save = {
     return worker;
   },
 
+  // FB-094 — the mirror of checkout: a worker that delivered its real response is quiescent
+  // enough to stay warm for the next request; a superseded/timed-out/errored worker may still
+  // post its stale answer, which the next request would read as its own failure — terminate
+  // instead of pooling it.
+  _releaseSaveWorker(worker, { reusable = false } = {}) {
+    if (!worker) return;
+    worker.__spacefaceSaveSupersede = null;
+    worker.__spacefaceSaveBusy = false;
+    if (reusable && this._warmSaveWorker === worker) return; // already the hot one
+    if (reusable && (!this._warmSaveWorker
+      || !this._activeSaveWorkers || !this._activeSaveWorkers.has(this._warmSaveWorker))) {
+      this._warmSaveWorker = worker; // promote the survivor rather than spawn again
+      return;
+    }
+    try { worker.terminate(); } catch (error) {}
+    if (this._warmSaveWorker === worker) this._warmSaveWorker = null;
+  },
+
   _requestSaveWorker(type, payload, onResult, onFailure, options = {}) {
     const worker = this._checkoutSaveWorker();
     if (!worker) return false;
@@ -2974,21 +3213,8 @@ export const save = {
       if (settled) return;
       settled = true;
       clearTimeout(timeout);
-      worker.__spacefaceSaveSupersede = null;
-      worker.__spacefaceSaveBusy = false;
-      // Only a worker that delivered its real response is quiescent enough to stay warm. A
-      // superseded/timed-out/errored worker may still post its stale answer, which the next
-      // request would read as its own failure — terminate instead of pooling it.
-      const keepWarm = callback === onResult;
-      if (keepWarm && this._warmSaveWorker === worker) {
-        // stays hot for the next request
-      } else if (keepWarm && (!this._warmSaveWorker
-        || !this._activeSaveWorkers || !this._activeSaveWorkers.has(this._warmSaveWorker))) {
-        this._warmSaveWorker = worker; // promote the survivor rather than spawn again
-      } else {
-        try { worker.terminate(); } catch (error) {}
-        if (this._warmSaveWorker === worker) this._warmSaveWorker = null;
-      }
+      // Only a worker that delivered its real response is quiescent enough to stay warm.
+      this._releaseSaveWorker(worker, { reusable: callback === onResult });
       if (typeof options.onRoundtrip === 'function') {
         try { options.onRoundtrip(Math.max(0, nowMs() - roundtripStartedAtMs)); } catch (error) {}
       }
@@ -3140,7 +3366,8 @@ export const save = {
       if (result && result.ok && result.version < CURRENT_VERSION) {
         this._scheduleAutosaveWork(() => {
           const verifyStarted = workNowMs();
-          const prepared = this._prepareEnvelopeString(tx.previousRaw);
+          const peek = this._peekSaveEnvelope(tx.previousRaw);
+          const prepared = peek || this._prepareEnvelopeString(tx.previousRaw);
           const verifyMs = workNowMs() - verifyStarted;
           tx.verifyMs += verifyMs;
           this._pushAutosaveSlice(tx, 'validate_previous_migration', verifyMs);
@@ -3174,7 +3401,10 @@ export const save = {
   _autosaveValidatePreviousSync(job, snapshot, tx) {
     if (!this._autosaveTransactionCurrent(job, snapshot, tx)) return false;
     const started = workNowMs();
-    const prepared = this._prepareEnvelopeString(tx.previousRaw);
+    // A prior compressed generation is a valid previous write: its wrapper meta proves it
+    // without a sync decode the platform cannot run.
+    const peek = this._peekSaveEnvelope(tx.previousRaw);
+    const prepared = peek || this._prepareEnvelopeString(tx.previousRaw);
     const verifyMs = workNowMs() - started;
     tx.verifyMs += verifyMs;
     this._pushAutosaveSlice(tx, 'validate_previous_sync', verifyMs);
@@ -3222,7 +3452,7 @@ export const save = {
       // insurance, so it may never escalate to evicting another slot's primary the way a manual
       // save can. If the recovery sweep is not enough, this cycle's autosave simply fails; the
       // next trigger retries against whatever the manual save left behind.
-      if (error && error.name === 'QuotaExceededError' && this._evictForQuotaPressure() > 0) {
+      if (error && error.name === 'QuotaExceededError' && this._evictForQuotaPressure({ keepRecoverySlot: AUTOSAVE_SLOT }) > 0) {
         try {
           localStorage.setItem(LS_PREFIX + AUTOSAVE_SLOT, snapshot.json);
           const sliceMs = workNowMs() - started;
@@ -3301,7 +3531,11 @@ export const save = {
   _autosaveValidateReadbackSync(job, snapshot, tx, storedRaw) {
     if (!this._autosaveTransactionCurrent(job, snapshot, tx)) return false;
     const started = workNowMs();
-    const prepared = this._prepareEnvelopeString(storedRaw);
+    // A worker-compressed write cannot re-validate on this sync lane; a byte-exact re-read of
+    // the string the worker produced is the corruption gate (the worker bounded it pre-write).
+    const prepared = storedRaw === snapshot.json && isGzippedSaveText(storedRaw)
+      ? { ok: true }
+      : this._prepareEnvelopeString(storedRaw);
     const verifyMs = workNowMs() - started;
     tx.verifyMs += verifyMs;
     this._pushAutosaveSlice(tx, 'validate_readback_sync', verifyMs);
@@ -3505,6 +3739,11 @@ export const save = {
       return this._restorePreparedEnvelope(primary, slot,
         skippedNewer ? { skippedNewer } : undefined);
     }
+    // A compressed envelope cannot decode on this synchronous lane — the worker restore
+    // lane owns it. Keep the caller's bool contract via the async load entry.
+    if (primary.reason === 'compressed_envelope' && typeof this.loadAsync === 'function') {
+      return this.loadAsync(slot);
+    }
 
     // A named load and title Continue both recover from the previous valid generation. Validation
     // happens before any destructive restore, and the corrupt bytes are never rotated over backup.
@@ -3512,6 +3751,9 @@ export const save = {
     try { backupRaw = (typeof localStorage !== 'undefined') ? localStorage.getItem(RECOVERY_PREFIX + slot) : null; }
     catch (err) { /* primary failure below remains the player-facing reason */ }
     const backup = this._prepareEnvelopeString(backupRaw);
+    if (!backup.ok && backup.reason === 'compressed_envelope' && typeof this.loadAsync === 'function') {
+      return this.loadAsync(slot);
+    }
     if (backup.ok) {
       const restored = this._restorePreparedEnvelope(backup, slot, Object.assign(
         { emitError: false, recovered: true }, skippedNewer ? { skippedNewer } : null));
@@ -3580,6 +3822,10 @@ export const save = {
     // proves nothing drifted since it read.
     const specByteHit = !specHit && spec && spec.slot === slot
       && typeof raw === 'string' && spec.raw === raw;
+    // NXI-234: capture the load generation before the worker roundtrip. A restore that
+    // commits first bumps _restoreSequence, so a late-completing prepare cannot pass the
+    // destructive-commit check in _restore/_restoreAsync and overwrite the newer run.
+    const acceptSeq = this._restoreSequence;
     const primaryPromise = ((specHit || specByteHit) ? spec.promise : Promise.resolve(null))
       .then((prepared) => prepared || this._prepareEnvelopeStringAsync(specHit ? spec.raw : raw));
     // Snapshot the outgoing run while the worker decodes the incoming envelope — the capture
@@ -3603,6 +3849,7 @@ export const save = {
       }
       return this._restorePreparedEnvelopeAsync(primary, slot, {
         ...(skippedNewer ? { skippedNewer } : null),
+        acceptSeq,
         rollbackSnapshot,
         rollbackSnapshotError,
       });
@@ -3619,7 +3866,7 @@ export const save = {
       const restored = await this._restorePreparedEnvelopeAsync(backup, slot, Object.assign(
         { emitError: false, recovered: true },
         skippedNewer ? { skippedNewer } : null,
-        { rollbackSnapshot, rollbackSnapshotError }));
+        { acceptSeq, rollbackSnapshot, rollbackSnapshotError }));
       if (restored) {
         let promoted = false;
         try {
@@ -3745,7 +3992,16 @@ export const save = {
         await this._restoreFrameYield();
         const normalized = normalizeRestorableData(data);
         if (!normalized.ok) return { ok: false, reason: normalized.reason };
-        return { ok: true, env, data, version: ver };
+        const preparedResult = { ok: true, env, data, version: ver };
+        // A compressed generation the worker just proved stays readable to every sync
+        // caller downstream (rollback verification, slot cards, NG+ prep).
+        if (isGzippedSaveText(raw)) {
+          try {
+            this._decodedSaveEnvelopes = this._decodedSaveEnvelopes || new Map();
+            this._decodedSaveEnvelopes.set(raw, preparedResult);
+          } catch (err) { /* a cache miss only forces the async lane again */ }
+        }
+        return preparedResult;
       } catch (err) {
         return { ok: false, reason: 'load_failed', error: err };
       }
@@ -3754,6 +4010,11 @@ export const save = {
 
   /** Parse + validate + migrate a raw JSON string, then restore. Shared by load() and import. */
   loadEnvelopeFromString(raw, slot) {
+    // FB-093 — a compressed string cannot decode synchronously; the async lane restores it
+    // with the same save:error/save:loaded contract and resolves to the same bool.
+    if (typeof raw === 'string' && isGzippedSaveText(raw)) {
+      return this._loadEnvelopeFromStringAsync(raw, slot);
+    }
     const prepared = this._prepareEnvelopeString(raw);
     if (!prepared.ok) {
       this.bus.emit('save:error', {
@@ -3764,7 +4025,29 @@ export const save = {
       });
       return false;
     }
+    this._importProfileSideBags(prepared.env, slot);
     return this._restorePreparedEnvelope(prepared, slot);
+  },
+
+  async _loadEnvelopeFromStringAsync(raw, slot) {
+    // NXI-234, same stamp the Continue lane applies: the worker decode spans real frames, and a
+    // newer restore may commit inside that window. A candidate stamped before that commit must
+    // not overwrite the newer run — the guard lives at the destructive boundary so the same
+    // check also fires when this request was queued mid-restore and drained later.
+    const acceptSeq = this._restoreSequence;
+    const prepared = await this._prepareEnvelopeStringAsync(raw);
+    if (!prepared.ok) {
+      if (prepared.reason === 'superseded') return false;
+      this.bus.emit('save:error', {
+        slot,
+        reason: prepared.reason,
+        ...(prepared.limit != null ? { limit: prepared.limit } : {}),
+        ...(prepared.actual != null ? { actual: prepared.actual } : {}),
+      });
+      return false;
+    }
+    this._importProfileSideBags(prepared.env, slot);
+    return this._restorePreparedEnvelope(prepared, slot, { acceptSeq });
   },
 
   /** Validate an already-parsed envelope and restore it (atomic: validate before destructive work). */
@@ -3780,6 +4063,7 @@ export const save = {
       });
       return false;
     }
+    this._importProfileSideBags(prepared.env, slot);
     return this._restorePreparedEnvelope(prepared, slot);
   },
 
@@ -3790,6 +4074,11 @@ export const save = {
     const bytes = saveImportByteLength(raw);
     if (bytes > SAVE_IMPORT_MAX_BYTES) {
       return importLimitFailure('import_too_large', SAVE_IMPORT_MAX_BYTES, bytes);
+    }
+    if (isGzippedSaveText(raw)) {
+      const cached = this._decodedSaveEnvelopes && this._decodedSaveEnvelopes.get(raw);
+      if (cached) return cached;
+      return { ok: false, reason: 'compressed_envelope' };
     }
     let env;
     try { env = JSON.parse(raw); }
@@ -3809,6 +4098,11 @@ export const save = {
     const bytes = saveImportByteLength(raw);
     if (bytes > SAVE_IMPORT_MAX_BYTES) {
       return importLimitFailure('import_too_large', SAVE_IMPORT_MAX_BYTES, bytes);
+    }
+    if (isGzippedSaveText(raw)) {
+      const cached = this._decodedSaveEnvelopes && this._decodedSaveEnvelopes.get(raw);
+      if (cached) return cached;
+      return { ok: false, reason: 'compressed_envelope' };
     }
     let env;
     try { env = JSON.parse(raw); }
@@ -3842,6 +4136,27 @@ export const save = {
     } catch (err) {
       return { ok: false, reason: 'load_failed', error: err };
     }
+  },
+
+  // A gzip-compressed stored envelope. The wrapper carries fmt/version/savedAt/checksum at
+  // top level so card and quota reads never pay a decode; `data` lives in the payload and is
+  // only decodable through the async worker lane (DecompressionStream has no sync form).
+  // `_prepareEnvelopeStringAsync` caches each decoded envelope here keyed on its raw string so
+  // a generation the async lane proved stays readable to every sync caller downstream.
+  _peekSaveEnvelope(raw) {
+    if (typeof raw !== 'string' || !isGzippedSaveText(raw)) return null;
+    let env;
+    try { env = JSON.parse(raw); } catch (_) { return { ok: false, reason: 'parse_failed' }; }
+    if (!env || env.fmt !== SAVE_GZIP_FORMAT || typeof env.payload !== 'string') {
+      return { ok: false, reason: 'bad_format' };
+    }
+    const versionRead = readSaveVersion(env.version);
+    if (!versionRead.ok) return versionRead;
+    return {
+      ok: true,
+      gz: true,
+      env: { fmt: FMT, version: env.version, savedAt: env.savedAt || null, checksum: env.checksum || null },
+    };
   },
 
   _prepareEnvelope(env) {
@@ -3878,6 +4193,30 @@ export const save = {
   _restorePreparedEnvelope(prepared, slot, options = {}) {
     const rollbackAttempt = options.rollback === true;
     if (this._rollbackInProgress && !rollbackAttempt) return false;
+
+    // NXI-234: a request stamped before a newer restore committed is stale — it resolves
+    // handled without touching the newer world. Checked on every entry, including the
+    // deferred re-run below, because the queue only survives until a session closes.
+    if (!rollbackAttempt && options.acceptSeq != null && options.acceptSeq !== this._restoreSequence) {
+      return true;
+    }
+
+    // SFQ-B223: a load arriving inside the restore window defers whole — the deferred call
+    // re-runs this full path, so its rollback snapshot reads the now-restored world instead
+    // of being captured half-restored here and discarded. Rollback restores are internal and
+    // must never defer.
+    if (this._restoring && !rollbackAttempt) {
+      this.deferRunTransition(() => {
+        try {
+          return this._restorePreparedEnvelope(prepared, slot, options);
+        } catch (error) {
+          console.error('[save] deferred restore failed', error);
+          this.bus.emit('save:error', { slot, reason: 'load_failed' });
+          return { restored: false, slot, error: true };
+        }
+      });
+      return true;
+    }
 
     let rollbackSnapshot = null;
     if (!rollbackAttempt && this._hasPlayerEntity()) {
@@ -4035,6 +4374,12 @@ export const save = {
     const rollbackAttempt = options.rollback === true;
     if (this._rollbackInProgress && !rollbackAttempt) return false;
 
+    // NXI-234: the worker prepare is the slow leg — a newer load may have committed while it
+    // ran. Bail before capturing a rollback snapshot over a world this load must not touch.
+    if (!rollbackAttempt && options.acceptSeq != null && options.acceptSeq !== this._restoreSequence) {
+      return true;
+    }
+
     let rollbackSnapshot = null;
     let rollbackSnapshotError = null;
     if (!rollbackAttempt) {
@@ -4168,7 +4513,7 @@ export const save = {
       const marker = { queued: true, stale: true, slot };
       this.deferRunTransition(() => {
         try {
-          return this._restore(data, slot);
+          return this._restore(data, slot, options);
         } catch (error) {
           console.error('[save] deferred restore failed', error);
           this.bus.emit('save:error', { slot, reason: 'load_failed' });
@@ -4176,6 +4521,12 @@ export const save = {
         }
       });
       return marker;
+    }
+
+    // NXI-234: last gate before the destructive session — a request whose captured generation
+    // no longer matches was superseded by a newer committed restore while it waited.
+    if (options.rollback !== true && options.acceptSeq != null && options.acceptSeq !== this._restoreSequence) {
+      return { restored: false, superseded: true, stale: true, slot };
     }
 
     const s = this._openRestoreSession(data, slot, options);
@@ -4198,7 +4549,7 @@ export const save = {
       const marker = { queued: true, stale: true, slot };
       this.deferRunTransition(() => {
         try {
-          return this._restore(data, slot);
+          return this._restore(data, slot, options);
         } catch (error) {
           console.error('[save] deferred restore failed', error);
           this.bus.emit('save:error', { slot, reason: 'load_failed' });
@@ -4206,6 +4557,12 @@ export const save = {
         }
       });
       return marker;
+    }
+
+    // NXI-234: last gate before the destructive session — a request whose captured generation
+    // no longer matches was superseded by a newer committed restore while it waited.
+    if (options.rollback !== true && options.acceptSeq != null && options.acceptSeq !== this._restoreSequence) {
+      return { restored: false, superseded: true, stale: true, slot };
     }
 
     const s = this._openRestoreSession(data, slot, options);
@@ -4298,6 +4655,12 @@ export const save = {
     const timeEffects = createTimeEffects(state); // fixtures may call _restore without init()
     this._beginRestoreSequence();
     const restoreSource = `save:restore:${this._restoreSequence}`;
+    // A sector:enter tail pending at restore start drains during the restore's early yields
+    // while the last live serial still sits on state.world — mint a fresh epoch now so every
+    // pre-restore payload mismatches the enterEpoch guards from the first yield onward (the
+    // world object itself survives deserialize; only its bags are reset).
+    state.enterSerialSeq = (Number(state.enterSerialSeq) || 0) + 1;
+    if (state.world && typeof state.world === 'object') state.world.enterSerial = state.enterSerialSeq;
     this.bus.emit('save:restoring', { slot, source: restoreSource });
     timeEffects.reset();
     timeEffects.set(restoreSource, { scale: 0 });
@@ -4305,6 +4668,20 @@ export const save = {
     // Exposed on state so the renderer's keep-GPU reattach can translate its retained mesh set
     // (keyed by pre-restore ids) onto the freshly spawned ids instead of rebuilding every boundary.
     state.sessionEntityIdRemap = entityIdRemap;
+    // The persistent envelope is authoritative for the durable hulls it carries: publish their
+    // worldRecordIds for the sector regen's rematerialize pass, which would otherwise spawn a
+    // record-shell twin beside every envelope respawn (D136 — each twin then stamps persistent
+    // and the duplicate set re-serializes, compounding every save→load cycle). Cleared in
+    // _closeRestoreSession.
+    const envelopeRecordIds = new Set();
+    const savedPersistentList = data.entities && data.entities.persistent;
+    if (Array.isArray(savedPersistentList)) {
+      for (const saved of savedPersistentList) {
+        const recordId = saved && saved.data && saved.data.worldRecordId;
+        if (recordId != null) envelopeRecordIds.add(recordId);
+      }
+    }
+    state.restoreEnvelopeRecordIds = envelopeRecordIds.size ? envelopeRecordIds : null;
     return {
       data, slot, options, state, timeEffects, restoreSource,
       entityIdRemap, finalizeLoadedGame, transitionToken,
@@ -4345,6 +4722,12 @@ export const save = {
       yield 'player-restored';
       this._restoreCargo(data.cargo);
       yield 'cargo-restored';
+      this._callDeserialize('morrow', data.morrow);
+      this._callDeserialize('vesper', data.vesper);
+      this._callDeserialize('bracket', data.bracket);
+      this._callDeserialize('ravel', data.ravel);
+      this._callDeserialize('solstice', data.solstice);
+      this._callDeserialize('rubric', data.rubric);
       this._callDeserialize('salvage', data.salvage);
       yield 'salvage-restored';
       // Before enterSector: the sector replan re-derives points/entities and the promotion
@@ -4359,6 +4742,9 @@ export const save = {
       yield 'deserialized-factions';
       yield* this._callDeserializeChunked('world', data.world); // sets currentSectorId; does NOT spawn entities
       yield 'deserialized-world';
+      // Stash the SG-02 world snapshot: a fresh backend owner adopts it (boot-load, harness
+      // reset); a live owner keeps its own world and the stash is dropped.
+      this._callDeserialize('physics', data.physics);
       // Regional/POI aftermath must restore before enterSector publishes its gameplay inputs.
       this._callDeserialize('regionalEcology', data.regionalEcology);
       yield 'deserialized-regional-ecology';
@@ -4478,6 +4864,7 @@ export const save = {
         this._reportRestoreProgress(0.20, 'Restoring traffic and contacts');
         yield 'persistent-spawned';
       }
+      this._restoreEntityIdAllocator(data.entities);
 
       // 11. clear stale entity-id references (the saved targets belong to entities that no longer exist).
       this._clearStaleTargets();
@@ -4488,6 +4875,16 @@ export const save = {
       // selection). No entity ids inside — live bomb actors are transient and never persist.
       // Missing key (pre-rack save) leaves the owner to apply its starter-kit default.
       this._callDeserialize('bombs', data.bombs);
+      // FB-015: deployables re-stage after entities + combat attachments — charge plates
+      // respawn with remapped owner/host refs, primed chains rebind to persistent hulls, the
+      // web timer ledger claims its restored attachment ids, and a saved snare holds its
+      // geometry until save:loaded re-stages the anchor line. Old saves without these keys
+      // leave both systems at their natural reset.
+      // The save rows are named data.charges/data.snares; the OWNERS register as
+      // impulseCharges/masslineSnares. Deserialize resolves registry names — passing the
+      // data key looked up nothing and silently dropped every deployed network on load.
+      this._callDeserialize('impulseCharges', data.charges);
+      this._callDeserialize('masslineSnares', data.snares);
       this._reportRestoreProgress(0.21, 'Restoring combat memory');
       yield 'combat-restored';
 
@@ -4548,6 +4945,11 @@ export const save = {
       // graph BEFORE adopting; null/absent starts an empty archive (old saves migrate cleanly).
       yield* this._callDeserializeChunked('chronicler', data.chronicler);
       yield 'chronicler-restored';
+      // FB-114: the first-hour rail restores BEFORE save:loaded so onboarding's handler
+      // can resume the saved beat (restage cast, re-present the line) instead of running
+      // the returning-pilot path. Absent key (pre-rail saves) resets to the pre-begin
+      // baseline — a live session's rail must not bleed into the loaded game.
+      this._callDeserialize('onboarding', data.onboarding);
       // Station-yard service jobs (repair/refuel booked before the save). Restores the parked
       // player block only — NPC client traffic is re-derived from the seeded schedule, and the
       // job stays parked until the player re-docks at that yard (ui.docked clears on load).
@@ -4723,6 +5125,11 @@ export const save = {
     hadPendingRunTransition = !!pendingRunTransition;
     this._pendingRunTransition = null;
     this._restoring = false;
+    // The envelope's record-id deferral is restore-scoped: every rematerialize that could see
+    // it ran inside _restoreChunks (membership enter + residency drain), and a drained newer
+    // route republishes its own set in _openRestoreSession. Clearing must precede the error
+    // paths or a failed restore would suppress record rematerialize for the rest of the run.
+    delete state.restoreEnvelopeRecordIds;
     this._lastAutosaveAt = nowMs(); // don't immediately autosave from the load's own sector:enter
     this._lastAutosavePlaytime = state.meta.playtimeS;
     if (pendingRunTransition) {
@@ -4771,6 +5178,37 @@ export const save = {
     state.tick = Number.isFinite(tick) && tick >= 0 ? Math.floor(tick) : 0;
     state.accumulator = 0;
     state.days = Math.max(0, Math.floor(state.simTime / 600));
+  },
+
+  /**
+   * Restore the entity-id allocator after every respawn has claimed its saved id. freeIds
+   * order is load-bearing (allocateEntityId pops from the tail), so the recycle list is
+   * serialized verbatim and dropped ids that a restore-side spawn meanwhile claimed are
+   * filtered out — allocateEntityId already skips live/ledger-held ids at pop time, this
+   * just keeps the list itself identical to the pre-save one.
+   */
+  _restoreEntityIdAllocator(entities) {
+    const state = this.state;
+    if (!entities || typeof entities !== 'object') return;
+    const live = state.entities instanceof Map ? state.entities : null;
+    const savedFree = Array.isArray(entities.freeIds) ? entities.freeIds : [];
+    const free = [];
+    const seen = new Set();
+    for (const id of savedFree) {
+      if (!Number.isSafeInteger(id) || id < 1 || seen.has(id)) continue;
+      if (live && live.has(id)) continue;
+      if (worldLedgerHoldsId(state.world, id)) continue;
+      seen.add(id);
+      free.push(id);
+    }
+    state.freeIds.length = 0;
+    state.freeIds.push(...free);
+    if (Number.isSafeInteger(entities.nextEntityId) && entities.nextEntityId > 0) {
+      state.nextEntityId = entities.nextEntityId;
+    }
+    if (Number.isSafeInteger(entities.nextOccupantGeneration) && entities.nextOccupantGeneration > 0) {
+      state.nextOccupantGeneration = entities.nextOccupantGeneration;
+    }
   },
 
   // Reconstruction (not live play): assign credits/cargo directly — routing through
@@ -5007,6 +5445,15 @@ export const save = {
       && Object.prototype.hasOwnProperty.call(saveSettings.controls, 'bindings')) {
       restored.controls.bindings = normalizeControlBindings(saveSettings.controls.bindings);
     }
+    // FB-114: the pad override map is an atomic player choice for the same reason —
+    // a deep merge would union the save's chords over whatever the live profile bound,
+    // so a slot that never rebound pad buttons would keep the previous game's map.
+    if (saveSettings && saveSettings.controls && saveSettings.controls.gamepad
+      && Object.prototype.hasOwnProperty.call(saveSettings.controls.gamepad, 'bindings')) {
+      if (!restored.controls.gamepad || typeof restored.controls.gamepad !== 'object'
+        || Array.isArray(restored.controls.gamepad)) restored.controls.gamepad = {};
+      restored.controls.gamepad.bindings = clonePlain(saveSettings.controls.gamepad.bindings);
+    }
     const profile = migrateGameMotionDefault(migrateDefaultMutedAudioProfile(
       migrateLegacyMasslineBindingProfile(this._readProfileSettings()),
     ));
@@ -5016,6 +5463,14 @@ export const save = {
       // injected by old-save migration underneath a newer Space-primary profile.
       if (profile.controls && Object.prototype.hasOwnProperty.call(profile.controls, 'bindings')) {
         restored.controls.bindings = normalizeControlBindings(profile.controls.bindings);
+      }
+      // FB-005: rumble level is profile-scoped and never persisted inside a save slot. The
+      // profile merge normally wins outright; when the profile predates the setting, the save's
+      // copy must not leak through either — the shipped default stands.
+      const profileHaptics = profile.accessibility && profile.accessibility.haptics;
+      if (profileHaptics !== 'off' && profileHaptics !== 'low' && profileHaptics !== 'full'
+        && restored.accessibility) {
+        restored.accessibility.haptics = 'full';
       }
     }
     this.state.settings = restored;
@@ -5156,6 +5611,19 @@ export const save = {
       if (!saved || typeof saved !== 'object') continue;
       const spec = clonePlain(saved);
       delete spec._isPlayer;
+      // One live hull per worldRecordId: an envelope written by a leaking build can hold
+      // several saved copies for one durable record — later copies collapse onto the first
+      // respawned carrier and their saved ids still remap for referents (combat targets,
+      // deployable owner/host refs). The record rematerialize is deferred separately via
+      // state.restoreEnvelopeRecordIds, so the only carrier met here is an earlier copy.
+      const recordId = spec.data && spec.data.worldRecordId;
+      if (recordId != null) {
+        const carrier = indexedWorldRecordEntity(state, recordId);
+        if (carrier && carrier.id !== state.playerId) {
+          if (entityIdRemap && saved.id != null) entityIdRemap.set(String(saved.id), carrier.id);
+          continue;
+        }
+      }
       // Reclaim the saved id when it is still free. entityList order at save time is not id
       // order (dead bodies leave swap-removed holes), so sequential re-allocation silently
       // permutes survivor ids and breaks save→load→continue state parity. The spawn helper
@@ -5295,6 +5763,11 @@ export const save = {
     }
     if (!json) { try { json = JSON.stringify(this.serialize(slot)); } catch (e) { json = null; } }
     if (!json) { this.bus.emit('save:error', { slot, reason: 'export_failed' }); return null; }
+    // FB-104 — the file is the transport for a machine move, so the profile side bags ride
+    // along as a `profile` sibling of the envelope (never inside data: the checksum scope is
+    // unchanged and an older build simply ignores the field). With neither bag stored the
+    // export returns the envelope bytes untouched.
+    json = this._attachProfileToExport(json);
     const date = new Date().toISOString().slice(0, 10);
     const filename = `spaceface_${slot}_${date}.json`;
     try {
@@ -5311,13 +5784,95 @@ export const save = {
     return json;
   },
 
-  /** Import a JSON envelope string: validate + migrate + load (into the import's own slot or 'quick'). */
+  // FB-104 — the two profile-level side bags (achievement ledger, crucible records) sit outside
+  // the save envelope by design, so the export bundle carries them under `profile`. Each rides
+  // as the exact stored JSON object; a missing or unreadable bag is simply absent, and with
+  // neither present the export is the plain envelope byte-for-byte.
+  _profileBundleSection() {
+    const bags = {};
+    for (const [name, key] of [
+      ['achievements', ACHIEVEMENTS_STORAGE_KEY],
+      ['crucibleMeta', CRUCIBLE_META_STORAGE_KEY],
+    ]) {
+      let raw = null;
+      try { raw = (typeof localStorage !== 'undefined') ? localStorage.getItem(key) : null; } catch (err) { raw = null; }
+      if (typeof raw !== 'string' || !raw) continue;
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) bags[name] = parsed;
+      } catch (err) { /* an unparsable bag is omitted rather than exported as garbage */ }
+    }
+    return Object.keys(bags).length ? bags : null;
+  },
+
+  // FB-104 — attach the profile section to whichever JSON the export resolved: a plain envelope
+  // or the gzip wrapper (whose payload stays the plain envelope; the sibling rides on the outer
+  // object and decodeSaveEnvelopeText surfaces it on import).
+  _attachProfileToExport(json) {
+    const profile = this._profileBundleSection();
+    if (!profile || typeof json !== 'string' || !json) return json;
+    try {
+      const parsed = JSON.parse(json);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return json;
+      parsed.profile = profile;
+      return JSON.stringify(parsed);
+    } catch (err) { return json; }
+  },
+
+  // FB-104 — the envelope has already validated when this runs, so each side bag merges into
+  // localStorage additively: the achievement write keeps the earliest unlock stamp and the max
+  // of every counter, and mergeCrucibleProfiles never lowers a record. A hostile or unreadable
+  // bag can forfeit its own transfer; it must never block or corrupt the world load.
+  _importProfileSideBags(env, slot) {
+    const profile = env && typeof env === 'object' ? env.profile : null;
+    if (!profile || typeof profile !== 'object' || Array.isArray(profile)) return;
+    if (typeof localStorage === 'undefined') return;
+    const merged = {};
+    try {
+      if (profile.achievements != null) {
+        const bag = saveAchievementBag(parseAchievementBag(profile.achievements), localStorage);
+        if (bag) merged.achievements = Object.keys(bag.unlocked || {}).length;
+      }
+    } catch (err) { /* the bag forfeits; the world load continues */ }
+    try {
+      if (profile.crucibleMeta != null) {
+        const incoming = parseCrucibleMeta(profile.crucibleMeta);
+        const next = mergeCrucibleProfiles(incoming, loadCrucibleMeta(localStorage));
+        if (saveCrucibleMeta(next, localStorage)) merged.crucibleMeta = true;
+      }
+    } catch (err) { /* the bag forfeits; the world load continues */ }
+    if (!Object.keys(merged).length) return;
+    this.bus.emit('save:profile-imported', { slot, ...merged });
+    // The live achievement ledger folds store keys back in on this signal — the same one a
+    // regular side-bag write emits — so imported medals and records light up without a reload.
+    this.bus.emit('save:store-synced', { ok: true, durableStore: 'local', source: 'import' });
+  },
+
+  // FB-104 — an import without an explicit destination lands in the first empty numbered slot.
+  // 'quick'/'auto' are system-owned and are never the silent answer; numbered slots beyond the
+  // save screen's four remain loadable through listSlots, so a genuinely empty destination
+  // always exists and nothing is ever silently overwritten.
+  _firstEmptyImportSlot() {
+    for (let n = 1; n <= 999; n += 1) {
+      const slot = String(n);
+      let occupied = false;
+      try {
+        occupied = typeof localStorage !== 'undefined'
+          && (localStorage.getItem(LS_PREFIX + slot) != null
+            || localStorage.getItem(RECOVERY_PREFIX + slot) != null);
+      } catch (err) { occupied = false; }
+      if (!occupied) return slot;
+    }
+    return 'quick';
+  },
+
+  /** Import a JSON envelope string: validate + migrate + load into `slot` or the first empty slot. */
   importString(jsonStr, slot) {
-    return this.loadEnvelopeFromString(jsonStr, slot || 'quick');
+    return this.loadEnvelopeFromString(jsonStr, slot || this._firstEmptyImportSlot());
   },
 
   /** Import from a File (FileReader → importString). Calls cb(ok) when done. */
-  importFile(file, cb) {
+  importFile(file, cb, slot) {
     if (!file) { if (cb) cb(false); return; }
     const bytes = Number(file.size);
     if (Number.isFinite(bytes) && bytes > SAVE_IMPORT_MAX_BYTES) {
@@ -5334,7 +5889,13 @@ export const save = {
     }
     if (typeof FileReader === 'undefined') { if (cb) cb(false); return; }
     const reader = new FileReader();
-    reader.onload = () => { const ok = this.importString(String(reader.result || ''), 'quick'); if (cb) cb(ok); };
+    reader.onload = () => {
+      const out = this.importString(String(reader.result || ''), slot);
+      // A compressed import restores through the async lane and reports on resolution; legacy
+      // plain imports keep the synchronous callback contract callers already observe.
+      if (out && typeof out.then === 'function') out.then((ok) => { if (cb) cb(!!ok); });
+      else if (cb) cb(!!out);
+    };
     reader.onerror = () => { this.bus.emit('save:error', { slot: 'import', reason: 'read_failed' }); if (cb) cb(false); };
     reader.readAsText(file);
   },
@@ -5461,7 +6022,9 @@ function roundSaveMs(value) {
   return Number.isFinite(value) ? Math.round(value * 1000) / 1000 : 0;
 }
 
-function readSaveVersion(version, currentVersion = CURRENT_VERSION) {
+// Exported for the migration-ladder proof (test/fb-migration-ladder.test.mjs) — the named
+// rejection contract lives on this one reader.
+export function readSaveVersion(version, currentVersion = CURRENT_VERSION) {
   // `| 0` of 1e308/2^32 is 0, which used to look like a missing version and skip every migration.
   if (!Number.isFinite(version)) return { ok: false, reason: 'bad_format' };
   if (Number.isFinite(currentVersion) && version > currentVersion) return { ok: false, reason: 'newer_version' };
@@ -5472,7 +6035,8 @@ function readSaveVersion(version, currentVersion = CURRENT_VERSION) {
 
 // Run the ordered migration chain from `fromVer` up to CURRENT_VERSION, mutating `data` in place.
 // Returns false if a migration throws (caller aborts the load without touching live state).
-function runMigrations(data, fromVer) {
+// Exported for the migration-ladder proof.
+export function runMigrations(data, fromVer) {
   let v = fromVer | 0;
   let guard = 0;
   while (v < CURRENT_VERSION && guard++ < 64) {
@@ -5517,6 +6081,18 @@ function normalizePlayerSaveRecord(player, savedEntity) {
   }
   if (!Number.isInteger(out.activeShipIndex) || out.activeShipIndex < 0 || out.activeShipIndex >= out.ownedShips.length) {
     out.activeShipIndex = 0;
+  }
+  // FB-057/FB-061 — per-hull fields are absent on old saves and stay absent until written. A
+  // malformed one is dropped, never repaired into fabricated content.
+  for (const ship of out.ownedShips) {
+    if (!ship || typeof ship !== 'object') continue;
+    if (ship.name != null && typeof ship.name !== 'string') delete ship.name;
+    else if (typeof ship.name === 'string' && !ship.name.trim()) delete ship.name;
+    if (ship.cargo != null) {
+      const hold = normalizeParkedHoldSaveRecord(ship.cargo);
+      if (hold) ship.cargo = hold;
+      else delete ship.cargo;
+    }
   }
   const active = out.ownedShips[out.activeShipIndex] || (out.ownedShips[0] = { defId, fittings });
   if (!active.defId) active.defId = defId;
@@ -5564,6 +6140,32 @@ function needsPlayerEntityRepair(saved) {
     && Number.isFinite(saved.hullMax) && saved.hullMax > 0
     && Number.isFinite(saved.capMax) && saved.capMax > 0
     && Array.isArray(data.weapons) && data.weapons.length > 0);
+}
+
+/**
+ * FB-061 — the hold parked aboard a hull that is not flying: { items, richLots, usedVolume,
+ * usedMass }. The cargo owner recomputes its caches at runtime; on load we keep only the pieces
+ * a record legitimately carries and drop the field entirely when nothing valid is inside, so an
+ * old or crafted save cannot smuggle negative or phantom units into a parked hold.
+ */
+function normalizeParkedHoldSaveRecord(cargo) {
+  const out = (cargo && typeof cargo === 'object' && !Array.isArray(cargo)) ? cargo : {};
+  const items = {};
+  for (const [id, qty] of Object.entries(out.items && typeof out.items === 'object' && !Array.isArray(out.items) ? out.items : {})) {
+    const n = Math.floor(Number(qty));
+    if (typeof id === 'string' && id && n > 0) items[id] = n;
+  }
+  out.items = items;
+  if (Array.isArray(out.richLots)) {
+    out.richLots = out.richLots.filter((lot) => lot && typeof lot === 'object'
+      && typeof lot.commodityId === 'string' && Number(lot.qty) > 0);
+  } else {
+    out.richLots = [];
+  }
+  out.usedVolume = Math.max(0, Number(out.usedVolume) || 0);
+  out.usedMass = Math.max(0, Number(out.usedMass) || 0);
+  if (!Object.keys(out.items).length) return null;
+  return out;
 }
 
 function normalizeCargoSaveRecord(cargo) {
@@ -5783,11 +6385,17 @@ function sanitizeEntityFlagsForSave(flags, isPlayer = false) {
   return out;
 }
 
+// Burn-window fields are sim state despite the underscore convention (they decide whether
+// boost thrust exists — a save mid-window must resume inside the same window or the replay
+// diverges). Gesture fields (_boostHoldT, _dashCandidate, _burnActive) stay transient:
+// a double-tap may not span a save, and _burnActive is re-derived every tick anyway.
+const BOOST_SIM_STATE_KEYS = new Set(['_burnT', '_burnCdT', '_boostArmed']);
+
 function sanitizeBoostForSave(boost) {
   if (!boost || typeof boost !== 'object' || Array.isArray(boost)) return clonePlain(boost);
   const out = {};
   for (const k in boost) {
-    if (isUnsafePlainKey(k) || k.charAt(0) === '_') continue;
+    if (isUnsafePlainKey(k) || (k.charAt(0) === '_' && !BOOST_SIM_STATE_KEYS.has(k))) continue;
     const cv = clonePlain(boost[k]);
     if (cv !== undefined) out[k] = cv;
   }
@@ -6357,6 +6965,27 @@ export function slotCardFromEnvelopeData(slot, env, sectorNameOf = null) {
   };
 }
 
+// The gzip wrapper's top-level fields are enough to keep a compressed slot discoverable in
+// index-scan fallbacks — the richer card written at save time still wins while the index lives.
+function slotMetaFromGzipEnvelope(slot, env) {
+  if (!env || typeof env !== 'object' || env.fmt !== FMT) return null;
+  const versionRead = readSaveVersion(env.version);
+  if (!versionRead.ok) return null;
+  return {
+    slot,
+    savedAt: env.savedAt || '',
+    playtimeS: 0,
+    sectorName: '',
+    shipName: '',
+    navObjectiveSummary: '',
+    missionSummary: null,
+    storySummary: null,
+    objectiveSummary: '',
+    version: versionRead.version,
+    gz: true,
+  };
+}
+
 function slotMetaFromEnvelope(slot, env) {
   if (!env || typeof env !== 'object' || env.fmt !== FMT) return null;
   const versionRead = readSaveVersion(env.version);
@@ -6424,6 +7053,10 @@ function sanitizeRestoredSettings(settings) {
   // numbers only on an explicit false. Leaving it undefined is honest; forcing it would let an
   // old save pin Off forever.
   if (typeof s.gameplay.damageNumbers !== 'boolean') delete s.gameplay.damageNumbers;
+  s.gameplay.pauseOnFocusLoss = s.gameplay.pauseOnFocusLoss !== false;
+  if (s.gameplay.ironmanChoiceLocked !== true) delete s.gameplay.ironmanChoiceLocked;
+  if (!s.audio || typeof s.audio !== 'object' || Array.isArray(s.audio)) s.audio = {};
+  s.audio.muteOnFocusLoss = s.audio.muteOnFocusLoss === true;
   // Same hole, quieter failure: a non-numeric autosave interval makes the `intervalS > 0` guard
   // false, so interval autosave stops firing for the rest of the session with no error at all,
   // and the Settings row renders it as '[object Object]'.
@@ -6449,12 +7082,50 @@ function sanitizeRestoredSettings(settings) {
   if (typeof gp.invertY !== 'boolean') gp.invertY = false;
   if (gp.scheme !== 'twinstick' && gp.scheme !== 'drive') gp.scheme = 'drive';
   if (typeof gp.schemeSuggested !== 'boolean') gp.schemeSuggested = false;
+  // FB-004: pad response tuning. 'linear' is the shipped curve; deadzoneRight absent/invalid
+  // inherits the shared deadzone at tick time rather than pinning a stale number here; the
+  // sensitivities normalize to 1 like every other positive-scalar setting.
+  if (gp.curve !== 'linear' && gp.curve !== 'expo') delete gp.curve;
+  if (typeof gp.deadzoneRight !== 'number' || !(gp.deadzoneRight >= 0 && gp.deadzoneRight <= 1)) {
+    delete gp.deadzoneRight;
+  }
+  if (typeof gp.sensitivityAim !== 'number' || !(gp.sensitivityAim > 0)) delete gp.sensitivityAim;
+  if (typeof gp.sensitivityFly !== 'number' || !(gp.sensitivityFly > 0)) delete gp.sensitivityFly;
+  // FB-004: pointer aim tuning rides its own subtree so a pad-less player never carries pad noise.
+  if (!s.controls.mouse || typeof s.controls.mouse !== 'object' || Array.isArray(s.controls.mouse)) {
+    s.controls.mouse = { sensitivity: 1, invertY: false };
+  }
+  const mouse = s.controls.mouse;
+  if (typeof mouse.sensitivity !== 'number' || !(mouse.sensitivity > 0)) mouse.sensitivity = 1;
+  if (typeof mouse.invertY !== 'boolean') mouse.invertY = false;
+  if (!s.accessibility || typeof s.accessibility !== 'object' || Array.isArray(s.accessibility)) {
+    s.accessibility = {};
+  }
+  // FB-005: rumble is its own accessibility axis, never tied to reduce-motion. Profile-scoped.
+  const haptics = s.accessibility.haptics;
+  if (haptics !== 'off' && haptics !== 'low' && haptics !== 'full') s.accessibility.haptics = 'full';
+  // FB-113: hold-to-toggle is a per-verb boolean set; unknown verbs and non-true values drop out.
+  // The verb list is the one input.js publishes — keep this gate in step with it.
+  const htt = s.accessibility.holdToToggle;
+  const httClean = {};
+  if (htt && typeof htt === 'object' && !Array.isArray(htt)) {
+    for (const verb of HOLD_TO_TOGGLE_ACTIONS) if (htt[verb] === true) httClean[verb] = true;
+  }
+  s.accessibility.holdToToggle = httClean;
   // Touch (P1-12): { enabled } where enabled is true/false/null (null = auto-detect on touch devices).
   if (!s.controls.touch || typeof s.controls.touch !== 'object' || Array.isArray(s.controls.touch)) {
     s.controls.touch = { enabled: null };
   }
   const tc = s.controls.touch;
   if (tc.enabled !== true && tc.enabled !== false) tc.enabled = null;
+  // PRO-08: the overlay's own size and thumb placement ride along in the same object. Sanitizing
+  // them here (rather than letting the builder clamp) is what makes the choice survive a reload,
+  // and it keeps a hand-edited save from writing CSS it should not.
+  if (typeof tc.scale !== 'number' || !Number.isFinite(tc.scale) || tc.scale <= 0) delete tc.scale;
+  // Clamp in the slider's own units first, then snap by scaling by 20 and rounding an integer:
+  // 0.05 is not exactly representable, so dividing by it would persist 1.2500000000000002.
+  else tc.scale = Math.round(Math.min(1.6, Math.max(0.8, tc.scale)) * 20) / 20;
+  if (tc.layout !== 'standard' && tc.layout !== 'lefty' && tc.layout !== 'compact') delete tc.layout;
   return s;
 }
 
@@ -6481,6 +7152,7 @@ function profileSettingsSnapshot(settings) {
       damageNumbers: s.gameplay && s.gameplay.damageNumbers,
       stuntMoments: s.gameplay?.stuntMoments==='flow'?'flow':'cinematic',
       velocityVectoring: s.gameplay?.velocityVectoring !== false,
+      pauseOnFocusLoss: s.gameplay?.pauseOnFocusLoss !== false,
     },
   };
 }

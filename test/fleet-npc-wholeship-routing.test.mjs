@@ -11,9 +11,9 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 const HOSTILES = {
   wasp_swarmer: { file: 'wholeships/ashline_dart.glb', assetId: 'SF_WHOLESHIP_ASHLINE_DART' },
-  choir_zealot: { file: 'wholeships/ashline_dart.glb', assetId: 'SF_WHOLESHIP_ASHLINE_DART' },
+  choir_zealot: { file: 'wholeships/ashline_dart_choir.glb', assetId: 'SF_WHOLESHIP_ASHLINE_DART_CHOIR' },
   lancer_sniper: { file: 'wholeships/wasp_production_v1.glb', assetId: 'SF_WASP_PRODUCTION_V1' },
-  quiet_ghost: { file: 'wholeships/wasp_production_v1.glb', assetId: 'SF_WASP_PRODUCTION_V1' },
+  quiet_ghost: { file: 'wholeships/wasp_quiet_ghost.glb', assetId: 'SF_WASP_QUIET_GHOST' },
   bruiser_brawler: { file: 'wholeships/ashline_lode.glb', assetId: 'SF_WHOLESHIP_ASHLINE_LODE' },
   pd_screen_escort: { file: 'wholeships/ashline_lode.glb', assetId: 'SF_WHOLESHIP_ASHLINE_LODE' },
   field_anchor_controller: { file: 'wholeships/ashline_lode.glb', assetId: 'SF_WHOLESHIP_ASHLINE_LODE' },

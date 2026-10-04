@@ -74,10 +74,12 @@ try {
     const file = `${name}.mp4`;
     // Circular 0.5s dissolve: output starts at source .5 and ends on source .5,
     // rather than hard-cutting the feedback/sculpture clocks back to zero.
+    // The intentional grade is baked in, not a runtime filter: crushed-shadow
+    // curve, slight desaturation, corner vignette and temporal film grain.
     // Bound grain-heavy frames with VBV instead of shrinking or skipping the art.
     // 8 Mbit/s stays within Main@3.1 and avoids a 20-30 Mbit/s loading movie.
     encode(['-framerate', String(fps), '-i', resolve(frames, '%04d.png'),
-      '-filter_complex', '[0:v]split=2[a][b];[a]trim=start=0.5,setpts=PTS-STARTPTS[a];[b]trim=end=0.5,setpts=PTS-STARTPTS[b];[a][b]xfade=transition=fade:duration=0.5:offset=17,format=yuv420p[v]',
+      '-filter_complex', "[0:v]split=2[a][b];[a]trim=start=0.5,setpts=PTS-STARTPTS[a];[b]trim=end=0.5,setpts=PTS-STARTPTS[b];[a][b]xfade=transition=fade:duration=0.5:offset=17,curves=master='0/0 0.2/0.15 0.55/0.56 1/0.96',eq=contrast=1.04:saturation=0.93,vignette=angle=PI/4,noise=alls=6:allf=t+u,format=yuv420p[v]",
       '-map', '[v]', '-an', '-c:v', 'libx264', '-preset', 'slow', '-crf', '22',
       '-maxrate', '8M', '-bufsize', '8M', '-profile:v', 'main', '-level:v', '3.1',
       '-g', '48', '-movflags', '+faststart', resolve(out, file)]);
@@ -96,7 +98,7 @@ try {
     inputs[file] = sha256(await readFile(resolve(root, file)));
   }
   await writeFile(resolve(out, 'boot-visualizer.manifest.json'), JSON.stringify({
-    version: 1, method: 'Exact offline frames from unchanged attachIntroSignalRemix; circular 0.5s dissolve; bounded-bitrate native H.264 playback at runtime.',
+    version: 1, method: 'Exact offline frames from unchanged attachIntroSignalRemix; circular 0.5s dissolve; baked shadow-curve/vignette/film-grain grade; bounded-bitrate native H.264 playback at 1.15x at runtime.',
     inputs, outputs,
   }, null, 2) + '\n');
   console.log('[boot-bake] complete', outputs);

@@ -14,6 +14,8 @@ import { collectJournalPresentationEntities } from '../world/presentationSources
 import { resolveFrameCap, stepFrameCapDebtInto } from '../render/adaptiveQuality.js';
 import { shouldSkipFullTickSystems } from './presentationFreeze.js';
 import { PRESENTATION_LISTENER_DRAIN_BUDGET, SECTOR_ENTER_DRAIN_BUDGET, SECTOR_ENTER_LISTENER_BUDGET } from './eventBus.js';
+import { syncFocusLossHold } from './focusLossHold.js';
+import { createTimeEffects } from './timeEffects.js';
 
 // Consecutive failing frames before the loop calls the picture dead. 30 is half a second at 60 Hz:
 // long enough that a single hitch, a context blip or one bad entity cannot trip it, short enough
@@ -173,6 +175,9 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   const visibilityTarget = Object.prototype.hasOwnProperty.call(deps, 'visibilityTarget')
     ? deps.visibilityTarget
     : globalThis.document;
+  const focusTarget = Object.prototype.hasOwnProperty.call(deps, 'focusTarget')
+    ? deps.focusTarget
+    : (typeof globalThis.window !== 'undefined' ? globalThis.window : null);
   const lifecyclePort = Object.prototype.hasOwnProperty.call(deps, 'lifecyclePort')
     ? deps.lifecyclePort
     : globalThis.window?.spacefaceLifecycle;
@@ -240,6 +245,16 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   let lifecycleState = requestedState();
   let restoreTarget = LOOP_LIFECYCLE_STATES.FOREGROUND_VISIBLE;
   let suspended = !isPresentingState(lifecycleState);
+  // Sliced emits exist to bound work inside a presented frame — while nothing is
+  // presenting (boot, loading, hidden) that bound only delays listener work past
+  // its window. Suspension makes emits deliver inline and flushes any parked
+  // tail at the transition; the first call covers a runner minted mid-suspension.
+  const syncEmitSliceSuspension = () => {
+    if (bus && typeof bus.setEmitSliceSuspended === 'function') {
+      bus.setEmitSliceSuspended(suspended);
+    }
+  };
+  syncEmitSliceSuspension();
   let unsubscribeLifecycle = null;
   let lifecycleGeneration = 0;
   let hasCompletedTick = false;
@@ -414,6 +429,14 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
         recordTeardownError('removeVisibilityListener', error, errors);
       }
     }
+    if (focusTarget && typeof focusTarget.removeEventListener === 'function') {
+      try {
+        focusTarget.removeEventListener('blur', onWindowBlur);
+        focusTarget.removeEventListener('focus', onWindowFocus);
+      } catch (error) {
+        recordTeardownError('removeFocusListener', error, errors);
+      }
+    }
     if (inputResumeTarget && typeof inputResumeTarget.removeEventListener === 'function') {
       try {
         inputResumeTarget.removeEventListener('pointerdown', onInputResume, true);
@@ -495,6 +518,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   function enterNonPresenting(next, reason) {
     const wasSuspended = suspended;
     suspended = true;
+    syncEmitSliceSuspension();
     diagnostics.suspended = true;
     diagnostics.restoreTarget = null;
     diagnostics.stepsThisFrame = 0;
@@ -529,6 +553,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
 
     const wasSuspended = suspended;
     suspended = false;
+    syncEmitSliceSuspension();
     diagnostics.suspended = false;
     recordState(LOOP_LIFECYCLE_STATES.RESTORING, reason);
     if (wasSuspended) diagnostics.resumeCount++;
@@ -569,6 +594,16 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     diagnostics.visibilityState = visibilityTarget?.visibilityState || 'unavailable';
     documentHidden = diagnostics.visibilityState === 'hidden';
     synchronizeLifecycle('document-visibility');
+  }
+
+  function onWindowBlur() {
+    if (destroyed) return;
+    try { syncFocusLossHold(state, true); } catch (_) { /* the clock owner reports its own errors */ }
+  }
+
+  function onWindowFocus() {
+    if (destroyed) return;
+    try { syncFocusLossHold(state, false); } catch (_) { /* resume is idempotent */ }
   }
 
   function onInputResume() {
@@ -915,7 +950,17 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
         const ema = prev * 0.9 + dtMs * 0.1;
         if (!state.render) state.render = {};
         state.render.displayHzEmaMs = ema;
-        if (diagnostics.executedFrames > 45) {
+        // Learn the panel's refresh only from a cadence the loop is not itself producing:
+        // a saturated machine reports its own throughput — a starved 60 Hz display reading
+        // ~31 Hz then clamps a user frameCap (60/45) to the ghost rate. Count a streak of
+        // intervals hugging the EMA; any hitch or saturation jitter resets it, so only a
+        // genuinely vsync-locked stretch writes displayHz.
+        const jitter = Math.abs(dtMs - ema);
+        const locked = jitter <= Math.max(0.9, ema * 0.05);
+        state.render.displayHzLockedFrames = locked
+          ? (state.render.displayHzLockedFrames | 0) + 1
+          : 0;
+        if (diagnostics.executedFrames > 45 && state.render.displayHzLockedFrames >= 30) {
           const hz = Math.round(1000 / ema);
           if (hz >= 30 && hz <= 360) state.render.displayHz = hz;
         }
@@ -954,7 +999,6 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
         }
       }
 
-      diagnostics.lastLeftoverMs = Math.max(0, frameBudgetMs - presentationMs);
       // A restore frame's picture is out; settle its accumulator without advancing the clock.
       if (restoring && !destroyed && !suspended) advanceSimulation(frameDt, true, undefined, perf);
       // Sim and picture are both done. The compile drain is offered what TRULY remains of this
@@ -983,9 +1027,16 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       if (sliceBus && typeof sliceBus.drainPresentationTail === 'function') {
         // Fresh measure again (the emit slice spent too): remainMs=0 must not hand the tail
         // an unbounded window — a scaled backlog would drain unbounded inside the frame that
-        // already missed budget. The 0.5 ms floor keeps the queue moving at ~1 listener.
+        // already missed budget. The 0.5 ms floor keeps the queue moving at ~1 listener —
+        // but a kill clump or sector teardown enqueues ~10+ tails per entity at 1–4 ms each,
+        // so a spent frame at the floor trails real choreography for tens of frames. Scale
+        // the floor (not the ceiling) with the backlog, bounded at 2 ms: the queue drains
+        // ~4x faster while an overrun never spends more than that bounded fraction extra.
         const tailMs = Math.max(0, frameBudgetMs - (measureNow() - callbackStart));
-        sliceBus.drainPresentationTail(PRESENTATION_LISTENER_DRAIN_BUDGET, Math.min(4, Math.max(0.5, tailMs)));
+        const tailPending = typeof sliceBus.pendingPresentationCount === 'function'
+          ? sliceBus.pendingPresentationCount() : 0;
+        const tailFloorMs = Math.min(2, 0.5 + Math.max(0, tailPending - 32) / 64);
+        sliceBus.drainPresentationTail(PRESENTATION_LISTENER_DRAIN_BUDGET, Math.min(4, Math.max(tailFloorMs, tailMs)));
       }
       _stepCapArgs.frameDt = 0;
       _stepCapArgs.fixedDt = LOOP_FIXED_DT;
@@ -1013,10 +1064,42 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
         && diagnostics.consecutiveFrameErrors >= PRESENTATION_STALL_FRAMES) {
         diagnostics.presentationStalled = true;
         diagnostics.presentationStallCount++;
+        // D111: a frozen-picture report is only actionable with the frozen moment's evidence
+        // attached — the loop diagnostics, the simulation closeCauseSite (null while the sim
+        // is merely unschedulable rather than dead), the time-effects request ledger (a
+        // 'window-focus-loss' scale-0 hold reads identical to a freeze on a screenshot), and
+        // the graphics-context state — so the report discriminates a stopped scheduler, a
+        // simulation exception, a native stall and an intentional pause.
+        const simDiagnostics = simulationRunner.getDiagnostics?.() || null;
+        let timeEffectRequests = null;
+        try {
+          timeEffectRequests = createTimeEffects(state).describeRequests();
+        } catch (_) { timeEffectRequests = null; }
+        let glContextLost = null;
+        try {
+          const gl = state && state.render && state.render.renderer
+            && typeof state.render.renderer.getContext === 'function'
+            ? state.render.renderer.getContext() : null;
+          glContextLost = gl && typeof gl.isContextLost === 'function' ? gl.isContextLost() : null;
+        } catch (_) { glContextLost = null; }
+        diagnostics.presentationStallEvidence = Object.freeze({
+          loop: { ...diagnostics },
+          simulation: simDiagnostics,
+          closeCauseSite: simDiagnostics && typeof simDiagnostics.closeCauseSite === 'string'
+            ? simDiagnostics.closeCauseSite : null,
+          timeEffectRequests,
+          graphicsContext: {
+            glContextLost,
+            renderContextLost: state && state.render ? state.render.contextLost === true : null,
+            contextRecoveryPending: !!(state && state.render && state.render.contextRecovery
+              && state.render.contextRecovery.pending === true),
+          },
+        });
         console.error('[loop] PRESENTATION STALLED: '
           + `${diagnostics.consecutiveFrameErrors} consecutive frame errors — the 3D canvas is `
           + 'frozen while the loop and HUD keep running. Last error: '
-          + `${diagnostics.lastFrameError}`);
+          + `${diagnostics.lastFrameError}`,
+          diagnostics.presentationStallEvidence);
       }
       notifySimulationFailure();
     } finally {
@@ -1056,6 +1139,10 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
 
   if (visibilityTarget && typeof visibilityTarget.addEventListener === 'function') {
     visibilityTarget.addEventListener('visibilitychange', onVisibilityChange);
+  }
+  if (focusTarget && typeof focusTarget.addEventListener === 'function') {
+    focusTarget.addEventListener('blur', onWindowBlur);
+    focusTarget.addEventListener('focus', onWindowFocus);
   }
   if (inputResumeTarget && typeof inputResumeTarget.addEventListener === 'function') {
     inputResumeTarget.addEventListener('pointerdown', onInputResume, true);

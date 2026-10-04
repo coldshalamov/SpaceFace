@@ -23,26 +23,43 @@
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 
 const BEACON_COST = 250;            // cheap, one-slot
-const BEACON_TTL = 45;              // seconds a beacon lives
+export const BEACON_TTL = 45;         // seconds a beacon lives
 const BEACON_MAX_ACTIVE = 2;        // active-at-once cap
 const LURE_RADIUS = 1800;           // hostiles inside this drift toward the beacon
 const ARRIVE_RADIUS = 220;          // once here they're released (AI resumes → mill / fight)
 const PLAYER_GUARD_RADIUS = 320;    // ships this close to the player keep fighting the player, not lured
 const NODE_SNAP_RADIUS = 1200;      // tag the nearest ore seam within this range as the "rich node"
+// A beacon does not die mid-skirmish: while hostiles remain inside the lure ring, the beacon
+// re-arms ahead of itself (bounded by a hard cap so it can never become permanent). "Mark a
+// rich node" that evaporates before the fight it called for is a tax, not a verb.
+const BEACON_HOLD_ON_INTEREST_S = 30;
+const BEACON_MAX_HOLD_S = BEACON_TTL * 4;
 
 export const beacons = {
   name: 'beacons',
 
   init(ctx) {
+    this.destroy();
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
     if (!Array.isArray(this.state.beacons)) this.state.beacons = [];
     this._lureScratch = [];
     this._nextId = 1;
-    this.bus.on('beacon:deploy', () => this.deploy());
-    // Beacons are transient; a loaded save starts with none.
-    this.bus.on('save:loaded', () => { this.state.beacons = []; });
+    // Unsubscribe-first so a registry/harness re-init cannot stack a second deploy
+    // listener (double deploy, double charge) on the same bus.
+    this._unsubs = [
+      this.bus.on('beacon:deploy', () => this.deploy()),
+      // Beacons are transient; a loaded save starts with none.
+      this.bus.on('save:loaded', () => { this.state.beacons = []; }),
+    ].filter((off) => typeof off === 'function');
+  },
+
+  destroy() {
+    for (const off of this._unsubs || []) {
+      try { off(); } catch (err) { /* cleanup must not throw */ }
+    }
+    this._unsubs = [];
   },
 
   newGame() { this.state.beacons = []; this._nextId = 1; },
@@ -78,10 +95,12 @@ export const beacons = {
       z: player.pos.z - Math.sin(rot) * dropDist,
     };
     const node = this._nearestNode(state, pos);
-    const expireAt = (state.simTime || 0) + BEACON_TTL;
+    const now0 = state.simTime || 0;
+    const expireAt = now0 + BEACON_TTL;
     const rec = {
       id: 'beacon_' + (this._nextId++),
       x: pos.x, z: pos.z,
+      deployedAt: now0,
       expireAt,
       node: node ? node.label : null,
       alive: true,
@@ -115,6 +134,18 @@ export const beacons = {
       const b = list[i];
       if (!b.alive) { list.splice(i, 1); continue; }
       if (now >= b.expireAt) {
+        // Hold while the skirmish is interested: a hostile inside the lure ring re-arms the
+        // beacon ahead of itself, once per tick, up to the hard cap from deployment.
+        const capAt = (b.deployedAt != null ? b.deployedAt : now - BEACON_TTL) + BEACON_MAX_HOLD_S;
+        if (this._skirmishInterested(state, b) && now < capAt) {
+          if (!b.heldOnce) {
+            b.heldOnce = true;
+            this.bus.emit('toast', { text: 'Claim beacon holds — the skirmish is live', kind: 'good', ttl: 2.5 });
+          }
+          b.expireAt = Math.min(now + BEACON_HOLD_ON_INTEREST_S, capAt);
+          this._lure(state, b, player);
+          continue;
+        }
         b.alive = false;
         this._despawnBuoy(b);
         list.splice(i, 1);
@@ -159,6 +190,23 @@ export const beacons = {
     const removeEntity = this.helpers && this.helpers.removeEntity;
     if (typeof removeEntity === 'function') removeEntity(id);
     rec.entityId = null;
+  },
+
+  // Is the skirmish still interested? Any hostile hull (not the player, not a wingman) inside
+  // the lure ring counts — lured, arrived and milling, or actively fighting, all of it is
+  // "someone came for the beacon".
+  _skirmishInterested(state, b) {
+    const fallback = (state.entityIndex && state.entityIndex.ships) || state.entityList;
+    const scratch = this._interestScratch || (this._interestScratch = []);
+    const ships = queryNearbyEntities(state, { x: b.x, z: b.z }, LURE_RADIUS, scratch, fallback);
+    for (const e of ships) {
+      if (!e || !e.alive || !e.pos || e.type !== 'ship' || e.id === state.playerId) continue;
+      if (e.team === 0) continue;
+      if (e.data && e.data.isWingman) continue;
+      const dx = b.x - e.pos.x, dz = b.z - e.pos.z;
+      if (dx * dx + dz * dz <= LURE_RADIUS * LURE_RADIUS) return true;
+    }
+    return false;
   },
 
   // Steer nearby hostiles toward the beacon (intent override), leaving player-engagers alone.

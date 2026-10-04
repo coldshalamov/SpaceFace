@@ -107,16 +107,46 @@ try {
   // tracked mission — was working the whole time. The selector is corrected; every downstream
   // assertion below is unchanged, and the disabled-state check is new so a readiness-gated dossier
   // reports "blocked" rather than silently clicking nothing.
-  const commit = await page.evaluate(() => {
-    const btn = document.querySelector('[data-screen="station"] .sx-dossier [data-accept="handoff_probe_bulk_trade"]')
-      || document.querySelector('[data-screen="station"] [data-accept="handoff_probe_bulk_trade"]');
-    if (!btn) return { found: false };
-    if (btn.disabled) return { found: true, disabled: true, label: (btn.textContent || '').trim() };
-    btn.click();
-    return { found: true, disabled: false };
-  });
-  assert.equal(commit.found, true, 'Contracts dossier should expose an accept-and-bind control for the offer');
-  assert.equal(commit.disabled, false,
+  // The dossier re-renders on board events (the entry-tier writ's epoch refresh among them), so a
+  // single pre-queried click can land on a detached node under runner load. Re-query and click on
+  // a short cadence until the board reports the commit or the window closes.
+  let commit = null;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    commit = await page.evaluate(() => {
+      const btn = document.querySelector('[data-screen="station"] .sx-dossier [data-accept="handoff_probe_bulk_trade"]')
+        || document.querySelector('[data-screen="station"] [data-accept="handoff_probe_bulk_trade"]');
+      if (!btn) return { found: false };
+      if (btn.disabled) return { found: true, disabled: true, label: (btn.textContent || '').trim() };
+      btn.click();
+      return { found: true, disabled: false, connected: btn.isConnected };
+    });
+    if (!commit.found || commit.disabled) break;
+    await page.waitForTimeout(250);
+    const settled = await page.evaluate(() => {
+      const state = window.SF.state;
+      const trackedId = state.ui && state.ui.trackedMissionId;
+      return !!(state.missions.active || []).some((m) => m && m.status === 'active' && m.id === 'handoff_probe_bulk_trade')
+        && trackedId === 'handoff_probe_bulk_trade';
+    });
+    if (settled) break;
+  }
+  // HOLD-COMMIT RACE (probe-robustness, 2026-10-03). A synthetic click on [data-accept] arms the
+  // dossier's assistive-tech auto-hold (450ms + ~260ms retract). On a frame-starved host the hold
+  // fires after this poll window; on a live-frame host it fires inside it — acceptMission then
+  // filters the consumed offer off the board and [data-accept] legitimately disappears. Either
+  // outcome proves the control worked, so a missing button must fall back to the accept's own
+  // evidence (the mission is active + tracked) before asserting.
+  const consumed = !(commit && commit.found) ? await page.evaluate((prev) => {
+    const state = window.SF.state;
+    const active = (state.missions.active || []).filter((m) => m && m.status === 'active');
+    const trackedId = state.ui && state.ui.trackedMissionId;
+    return { grew: active.length > prev, tracked: !!(trackedId && active.some((m) => m.id === trackedId)) };
+  }, before) : { grew: false, tracked: false };
+  assert.equal(
+    (commit && commit.found) || (consumed.grew && consumed.tracked), true,
+    'Contracts dossier should expose an accept-and-bind control for the offer: ' + JSON.stringify({ commit, consumed }),
+  );
+  assert.equal(!!(commit && commit.found && commit.disabled), false,
     'the seeded offer should be route-clear, not readiness-blocked: ' + JSON.stringify(commit));
 
   // Accept + Track continuity: the seeded mission becomes active AND tracked (nav waypoint plotting

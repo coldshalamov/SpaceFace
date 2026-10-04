@@ -4,11 +4,18 @@ Plan read at the chase camera: a narrow olive spine with a blunt cab out front, 
 cargo saddle-pods slung either side of it on straps that run over the spine. Cream lids, hazard
 corners, a rear-facing gun over the one big drive. Blunt, square and dependable.
 """
+import math
 import os
 import sys
 
+import bpy
+from mathutils import Vector
+
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 import forge as F  # noqa: E402
+import forge_export as E  # noqa: E402
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'animations'))
+import ANI_38  # noqa: E402
 
 SHIP_ID = 'mule'
 COLORS = {
@@ -24,6 +31,55 @@ PY = 2.25          # saddle-pod centre line
 POD_X0, POD_X1 = -5.0, 3.5
 POD_W, POD_H = 1.95, 2.0
 RIBS = (-3.1, -0.75, 1.6)
+
+
+def skin_z(x, y, parts):
+    """Top-down ray onto the named parts: the skin height under (x, y). A miss is a design error."""
+    best = None
+    for n in parts:
+        o = bpy.data.objects.get(n)
+        if o is None:
+            continue
+        hit, loc, _, _ = o.ray_cast(Vector((x, y, 60.0)), Vector((0.0, 0.0, -1.0)))
+        if hit and (best is None or loc.z > best):
+            best = loc.z
+    if best is None:
+        raise ValueError(f'detail point ({x:.2f}, {y:.2f}) is off the skin')
+    return best
+
+
+def drape(pts, parts, step=0.2, proud=0.02, h=0.06, closed=False):
+    """A plan-view polyline laid on the skin as beam segments: resampled every `step` m, tops `proud`
+    above the surface, bodies buried (so nothing floats and nothing z-fights)."""
+    pts = list(pts) + ([pts[0]] if closed else [])
+    path = []
+    for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
+        n = max(1, round(math.hypot(x1 - x0, y1 - y0) / step))
+        for i in range(n):
+            x, y = x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n
+            path.append((x, y, skin_z(x, y, parts) + proud - h / 2))
+    x, y = pts[-1]
+    path.append((x, y, skin_z(x, y, parts) + proud - h / 2))
+    return list(zip(path, path[1:]))
+
+
+def rect(cx, cy, sx, sy, ang=0.0):
+    """Closed plan-view rectangle (corner list), yawed `ang` rad about its centre."""
+    c, sn = math.cos(ang), math.sin(ang)
+    return [(cx + c * dx - sn * dy, cy + sn * dx + c * dy)
+            for dx, dy in ((-sx / 2, -sy / 2), (sx / 2, -sy / 2), (sx / 2, sy / 2), (-sx / 2, sy / 2))]
+
+
+def studs(pts, parts, size=0.08, proud=0.045):
+    """Fastener heads sitting on the skin: (centre, size) rows for F.boxes."""
+    return [((x, y, skin_z(x, y, parts) + proud - size / 2), (size, size, size)) for x, y in pts]
+
+
+def glass_w(x, x0, x1, w, peak):
+    """Half-width of a `canopy()` loft at x."""
+    t = (x - x0) / (x1 - x0)
+    k = math.sin(0.5 * math.pi * t / peak) if t <= peak else math.cos(0.5 * math.pi * (t - peak) / (1 - peak))
+    return w * math.sqrt(max(k, 0.02))
 
 
 def build():
@@ -132,7 +188,56 @@ def build():
     s.detail = 0
     F.light(s, 'NavPort', (-4.7, PY + POD_W / 2 + 0.06, 0.75), 'glow_red', size=0.15)
     F.light(s, 'NavStarboard', (-4.7, -PY - POD_W / 2 - 0.06, 0.75), 'glow_green', size=0.15)
-    F.light(s, 'Beacon', (6.0, 0.0, 1.62), 'glow_amber', size=0.14)
+    F.light(s, 'Beacon', (6.0, 0.0, 1.62), 'glow_amber.beacon', size=0.14)
+
+    # --- close-zoom detail layer (LOD0 only; existing finishes, laid on the skin so nothing floats) ---
+    bpy.context.view_layer.update()
+    s.detail = 2
+    # Cargo rails along the outboard edge of every bay, with a post at each end.
+    rails, posts = [], []
+    for (a, b) in bays:
+        y = PY + 0.79
+        rails.append(((a + 0.1, y, 1.06), (b - 0.1, y, 1.06)))
+        posts += [((a + 0.1, y, 1.0), (0.1, 0.1, 0.2)), ((b - 0.1, y, 1.0), (0.1, 0.1, 0.2))]
+    F.beams(s, 'CargoRails', rails, 0.08, 'gunmetal', h=0.08, mirror=True)
+    # A flush handle on each cream lid.
+    lids = []
+    for (a, b) in bays[1:3]:
+        xm = (a + b) / 2
+        lids.append(((xm, PY - 0.52, 1.07), (0.5, 0.12, 0.06)))
+    # Bolt rows on the dark end frames and on the saddle straps.
+    for x in (POD_X0 + 0.06, POD_X1 - 0.06):
+        posts += studs([(x, PY + dy) for dy in (-0.7, -0.25, 0.25, 0.7)], ['EndFrameAft', 'EndFrameFwd'], size=0.12,
+                       proud=0.06)
+    posts += studs([(x, dy) for x in RIBS for dy in (-1.9, -1.2, 1.2, 1.9)], ['Strap0', 'Strap1', 'Strap2'], size=0.12,
+                   proud=0.06)
+    F.boxes(s, 'RailPosts', posts + lids, material='gunmetal', mirror=True)
+    # Outboard pod walls (the face the 60-degree camera sees): a plate seam along the wall, lashing plates under
+    # every bay, and a service hatch with bolts and a handle on each end bay (mirrored to the other pod).
+    yw = PY + POD_W / 2
+    wall, plates = [], []
+    wall.append(((POD_X0 + 0.5, yw + 0.01, -0.3), (POD_X1 - 0.5, yw + 0.01, -0.3)))
+    for (a, b) in bays:
+        plates.append((((a + b) / 2, yw + 0.03, -0.62), (0.34, 0.08, 0.22)))
+    for (a, b) in (bays[0], bays[3]):
+        xm = (a + b) / 2
+        hx, hz = 0.62, 0.34
+        c = [(xm - hx, 0.34 - hz), (xm + hx, 0.34 - hz), (xm + hx, 0.34 + hz), (xm - hx, 0.34 + hz)]
+        for i in range(4):
+            (xa, za), (xb, zb) = c[i], c[(i + 1) % 4]
+            wall.append(((xa, yw + 0.01, za), (xb, yw + 0.01, zb)))
+            plates.append(((xa, yw + 0.025, za), (0.12, 0.07, 0.12)))
+        plates.append(((xm, yw + 0.04, 0.34), (0.5, 0.08, 0.1)))
+    F.beams(s, 'WallSeams', wall, 0.11, 'gunmetal', h=0.11, mirror=True)
+    F.boxes(s, 'WallPlates', plates, material='gunmetal', mirror=True)
+    # Cockpit: gunmetal bows and a rib across the glass.
+    bows = []
+    for bx in (6.15, 6.6, 7.05):
+        gw = glass_w(bx, 5.9, 7.35, 1.05, 0.3) * 0.8
+        bows += drape([(bx, -gw + 2 * gw * i / 8) for i in range(9)], ['Canopy'], step=0.15, proud=0.03, h=0.07)
+    bows += drape([(6.0, 0.0), (7.25, 0.0)], ['Canopy'], step=0.15, proud=0.03, h=0.07)
+    F.beams(s, 'CanopyFrame', bows, 0.08, 'gunmetal', h=0.07)
+    s.detail = 0
 
     # --- damage hooks: rear gun turret and mast shed, dome flickers, bumper plate displaces ------
     _dmg = {o.name: o for o in s.objects}
@@ -141,10 +246,13 @@ def build():
     s.hook_part('HOOK_SECONDARY_MAST', _dmg['Mast_Mast'], _dmg['Mast_Foot'], _dmg['Mast_Tip'])
     s.hook_part('HOOK_SENSOR_DOME', _dmg['Dome'], _dmg['Dome_Lens'])
     s.hook_part('HOOK_ARMOR_BUMPER', _dmg['Bumper'])
+    s.ani38_bank = ANI_38.build(s, list(s.objects), source_asset_id=E.fleet_spec(SHIP_ID)['asset_id'])
     return s
 
 
 if __name__ == '__main__':
-    import forge_export as E
     ship = build().finish()
-    E.export_ship(ship, E.fleet_spec(SHIP_ID), preview='--live' not in sys.argv)
+    live = '--live' in sys.argv
+    written = E.export_ship(ship, E.fleet_spec(SHIP_ID), preview=not live)
+    if live:
+        ANI_38.bake_ship_banks(ship, written, bank_key=E.fleet_spec(SHIP_ID)['file'].replace('_', '-'))

@@ -82,7 +82,7 @@ function screenPosFor(worldX, worldZ, camera) {
 }
 
 function withWorldObjectHarness(fn, opts = {}) {
-  const names = ['window', 'document', 'innerWidth', 'innerHeight', 'addEventListener', 'removeEventListener'];
+  const names = ['window', 'document', 'innerWidth', 'innerHeight', 'addEventListener', 'removeEventListener', 'ResizeObserver'];
   const previous = {};
   for (const name of names) previous[name] = { present: Object.hasOwn(globalThis, name), value: globalThis[name] };
   const flagSnapshot = snapshotFeatureMaps();
@@ -141,6 +141,30 @@ function withWorldObjectHarness(fn, opts = {}) {
   globalThis.innerHeight = VP.height;
   globalThis.addEventListener = win.addEventListener.bind(win);
   globalThis.removeEventListener = win.removeEventListener.bind(win);
+
+  // 'auto' (default) installs a recording fake; 'off' leaves ResizeObserver absent;
+  // 'throwing' makes observe() fail so the interaction must re-measure every pick.
+  const roMode = opts.resizeObserver || 'auto';
+  let roCallback = null;
+  let roDisconnects = 0;
+  let roInstalled = false;
+  if (roMode === 'off') {
+    delete globalThis.ResizeObserver;
+  } else {
+    globalThis.ResizeObserver = class FakeResizeObserver {
+      constructor(cb) { roCallback = cb; }
+      observe() {
+        if (roMode === 'throwing') throw new Error('ResizeObserver.observe failed');
+        roInstalled = true;
+      }
+      disconnect() { roDisconnects += 1; }
+    };
+  }
+  const ro = {
+    get installed() { return roInstalled; },
+    get disconnects() { return roDisconnects; },
+    fire() { if (roCallback) roCallback([]); },
+  };
 
   const state = createGameState(11);
   state.mode = 'flight';
@@ -236,7 +260,7 @@ function withWorldObjectHarness(fn, opts = {}) {
   const pointOn = (entity) => screenPosFor(entity.pos.x, entity.pos.z, camera);
 
   try {
-    return fn({ state, win, doc, canvas, bus, emitted, tick, clickDownAt, clickUp, pointOn, woi, miner, thrower, player, rock, hostile, station, hudEl, host, ctx, advanceUiClock, setModal: (v) => {
+    return fn({ state, win, doc, canvas, bus, emitted, tick, clickDownAt, clickUp, pointOn, woi, miner, thrower, player, rock, hostile, station, hudEl, host, ctx, advanceUiClock, ro, setModal: (v) => {
       modalOpen = v;
       state.ui.screenStack = v ? ['modal'] : [];
     } });
@@ -735,5 +759,195 @@ test('a host without a UI scheduler keeps the deterministic sim-tick hold', () =
     assert.equal(state.input.fireGroup, 2, '19 ticks at 60Hz = the deterministic 0.28s gate');
     assert.equal(state.input.worldObjectTargetId, rock.id);
     clickUp();
+  });
+});
+
+// ---- observed viewport bounds: one record, invalidated by real geometry events ------------
+// Picking must not repeatedly force layout after HUD writes. Bounds share one measured record,
+// while resize, scroll, and deliberate clicks keep targeting aligned with the live canvas.
+// Count only direct woi.tick/pick paths — host input ticks may read the canvas on their own.
+
+function rectCounter(canvas) {
+  const raw = canvas.getBoundingClientRect;
+  const counter = { reads: 0 };
+  canvas.getBoundingClientRect = () => { counter.reads += 1; return raw(); };
+  return counter;
+}
+
+test('observed canvas bounds are measured once per layout change, not once per pick', () => {
+  withWorldObjectHarness(({ state, canvas, woi, pointOn, rock, ro }) => {
+    assert.equal(ro.installed, true, 'precondition: the observer path is live');
+    const counter = rectCounter(canvas);
+    const pt = pointOn(rock);
+    state.input.pointerScreen = { x: pt.x, y: pt.y, active: true };
+    canvas.dispatch('mousemove', { target: canvas, clientX: pt.x, clientY: pt.y });
+    woi.tick(1 / 60);
+    assert.equal(counter.reads, 1, 'the first observed pick measures the canvas exactly once');
+    assert.equal(woi.diagnostics().hoverId, rock.id);
+    counter.reads = 0;
+    for (let i = 0; i < 10; i += 1) woi.tick(1 / 60);
+    assert.equal(counter.reads, 0, 'an unchanged layout reuses the measured record');
+    assert.equal(woi.diagnostics().hoverId, rock.id, 'the cached record still hovers the rock');
+  });
+});
+
+test('cached bounds never freeze the raycast — a moved world target still updates hover', () => {
+  withWorldObjectHarness(({ state, canvas, woi, pointOn, rock, hostile }) => {
+    const pt = pointOn(rock);
+    state.input.pointerScreen = { x: pt.x, y: pt.y, active: true };
+    canvas.dispatch('mousemove', { target: canvas, clientX: pt.x, clientY: pt.y });
+    woi.tick(1 / 60);
+    assert.equal(woi.diagnostics().hoverId, rock.id);
+
+    const over = pointOn(hostile);
+    state.input.pointerScreen.x = over.x;
+    state.input.pointerScreen.y = over.y;
+    woi.tick(1 / 60);
+    assert.equal(woi.diagnostics().hoverId, hostile.id,
+      'a moving cursor still raycasts fresh hits under cached bounds');
+
+    rock.pos.x = 200;
+    rock.pos.z = 200;
+    const root = state.render.meshes.get(rock.id);
+    root.position.set(200, 0, 200);
+    state.render.scene.updateMatrixWorld(true);
+    state.input.pointerScreen.x = pt.x;
+    state.input.pointerScreen.y = pt.y;
+    woi.tick(1 / 60);
+    assert.notEqual(woi.diagnostics().hoverId, rock.id,
+      'a moved body leaves the previously-hovered point');
+  });
+});
+
+test('a resize observer delivery re-measures new canvas bounds', () => {
+  withWorldObjectHarness(({ state, canvas, woi, pointOn, rock, ro }) => {
+    state.input.pointerScreen = { x: 500, y: 400, active: true };
+    canvas.dispatch('mousemove', { target: canvas, clientX: 500, clientY: 400 });
+    woi.tick(1 / 60);
+    assert.equal(woi.diagnostics().hoverId, rock.id, 'precondition: the center hits the rock');
+
+    canvas.getBoundingClientRect = () => ({ left: 0, top: 0, width: 500, height: 400 });
+    state.input.pointerScreen.x = 250;
+    state.input.pointerScreen.y = 200;
+    woi.tick(1 / 60);
+    assert.notEqual(woi.diagnostics().hoverId, rock.id,
+      'without invalidation the stale 1000x800 record misses the new center');
+
+    ro.fire();
+    woi.tick(1 / 60);
+    assert.equal(woi.diagnostics().hoverId, rock.id,
+      'the observer callback re-measures and the 500x400 center selects');
+  });
+});
+
+test('a captured document scroll re-measures moved canvas offsets', () => {
+  withWorldObjectHarness(({ state, canvas, doc, woi, pointOn, rock }) => {
+    state.input.pointerScreen = { x: 500, y: 400, active: true };
+    canvas.dispatch('mousemove', { target: canvas, clientX: 500, clientY: 400 });
+    woi.tick(1 / 60);
+    assert.equal(woi.diagnostics().hoverId, rock.id);
+
+    canvas.getBoundingClientRect = () => ({ left: 100, top: 50, width: 1000, height: 800 });
+    state.input.pointerScreen.x = 600;
+    state.input.pointerScreen.y = 450;
+    woi.tick(1 / 60);
+    assert.notEqual(woi.diagnostics().hoverId, rock.id,
+      'the stale zero offset misses the shifted client point');
+
+    doc.dispatch('scroll');
+    woi.tick(1 / 60);
+    assert.equal(woi.diagnostics().hoverId, rock.id,
+      'scroll invalidates and the refreshed (100,50) offset centers the rock');
+  });
+});
+
+test('a window resize invalidates the cached record', () => {
+  withWorldObjectHarness(({ state, win, canvas, woi, pointOn, rock }) => {
+    state.input.pointerScreen = { x: 500, y: 400, active: true };
+    canvas.dispatch('mousemove', { target: canvas, clientX: 500, clientY: 400 });
+    woi.tick(1 / 60);
+    assert.equal(woi.diagnostics().hoverId, rock.id);
+
+    canvas.getBoundingClientRect = () => ({ left: 0, top: 0, width: 500, height: 400 });
+    state.input.pointerScreen.x = 250;
+    state.input.pointerScreen.y = 200;
+    woi.tick(1 / 60);
+    assert.notEqual(woi.diagnostics().hoverId, rock.id, 'precondition: the stale record misses');
+
+    win.dispatch('resize');
+    woi.tick(1 / 60);
+    assert.equal(woi.diagnostics().hoverId, rock.id,
+      'window resize re-measures and the new center selects');
+  });
+});
+
+test('right-button down re-measures immediately — no invalidation delivery required', () => {
+  withWorldObjectHarness(({ state, canvas, clickDownAt, clickUp, pointOn, rock }) => {
+    const pt = pointOn(rock);
+    clickDownAt(pt.x, pt.y);
+    assert.equal(state.player.targetId, rock.id, 'down on the existing target selects');
+    clickUp();
+    assert.equal(state.player.targetId, rock.id, 'release retains the selection');
+
+    canvas.getBoundingClientRect = () => ({ left: 300, top: 200, width: 1000, height: 800 });
+    clickDownAt(300 + pt.x, 200 + pt.y);
+    assert.equal(state.player.targetId, rock.id,
+      'a down after a silent layout shift still re-measures and lands the rock');
+    clickUp();
+  });
+});
+
+test('a host without a working ResizeObserver re-measures every pick and follows changes', () => {
+  for (const mode of ['off', 'throwing']) {
+    withWorldObjectHarness(({ state, canvas, woi, pointOn, rock, ro }) => {
+      assert.equal(ro.installed, false, `${mode}: no observation is active`);
+      const counter = rectCounter(canvas);
+      const pt = pointOn(rock);
+      state.input.pointerScreen = { x: pt.x, y: pt.y, active: true };
+      canvas.dispatch('mousemove', { target: canvas, clientX: pt.x, clientY: pt.y });
+      woi.tick(1 / 60);
+      woi.tick(1 / 60);
+      assert.equal(counter.reads, 2, `${mode}: every pick re-measures without an observer`);
+      assert.equal(woi.diagnostics().hoverId, rock.id);
+
+      canvas.getBoundingClientRect = () => {
+        counter.reads += 1;
+        return { left: 0, top: 0, width: 500, height: 400 };
+      };
+      state.input.pointerScreen.x = 250;
+      state.input.pointerScreen.y = 200;
+      woi.tick(1 / 60);
+      assert.equal(counter.reads, 3, `${mode}: the changed rect is read on the next pick`);
+      assert.equal(woi.diagnostics().hoverId, rock.id,
+        `${mode}: unobserved picks always follow the real bounds`);
+    }, { resizeObserver: mode });
+  }
+});
+
+test('destroy disconnects the observer once and drops the invalidation listeners', () => {
+  withWorldObjectHarness(({ state, win, doc, canvas, woi, ro, pointOn, rock }) => {
+    const counter = rectCounter(canvas);
+    state.input.pointerScreen = { x: 500, y: 400, active: true };
+    canvas.dispatch('mousemove', { target: canvas, clientX: 500, clientY: 400 });
+    woi.tick(1 / 60);
+    const resizeBefore = win.listenerCount('resize');
+    const scrollBefore = doc.listenerCount('scroll');
+    assert.ok(resizeBefore >= 1, 'the resize listener is installed');
+    assert.ok(scrollBefore >= 1, 'the captured scroll listener is installed');
+    assert.ok(counter.reads >= 1, 'a pick measured the canvas');
+
+    woi.destroy();
+    assert.equal(ro.disconnects, 1, 'the observer is disconnected exactly once');
+    assert.equal(win.listenerCount('resize'), resizeBefore - 1,
+      'the resize listener leaves with destroy (the input host keeps its own)');
+    assert.equal(doc.listenerCount('scroll'), scrollBefore - 1,
+      'the scroll listener leaves with destroy');
+
+    counter.reads = 0;
+    ro.fire();
+    woi.tick(1 / 60);
+    woi.destroy();
+    assert.equal(counter.reads, 0, 'a stale observer delivery after destroy is inert');
+    assert.equal(ro.disconnects, 1, 'a second destroy cannot double-disconnect');
   });
 });

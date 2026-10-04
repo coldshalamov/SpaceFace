@@ -23,7 +23,7 @@ import { isHostileToPlayer } from '../../systems/scanner.js';
 import { sectorSignalFor, effectiveDangerTierFor } from '../../systems/sectorSim.js';
 import { resolveWaypointPresentationPosition } from '../navigationWaypoint.js';
 import { canvasFont, canvasFonts, invalidateCanvasFonts } from '../canvasFonts.js';
-import { drawGlyph } from '../glyphs.js';
+import { drawGlyph, glyphSvg } from '../glyphs.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../../world/livingWorldViews.js';
 import { objectiveText } from './missionLog.js';
 
@@ -45,6 +45,17 @@ export function labelPriority(kind, hostile = false) {
   if (kind === 'hostile' || hostile) return 2;
   if (kind === 'asteroid') return 4;
   return 3;
+}
+
+// FB-035 — the plan's single reader path: the anchor entity carries the stamped zoneId
+// (livingPoiBehaviors writes entity.data.poiBehavior once) and state.world.poiReadouts holds
+// the live row keyed by zoneId, so progress stays fresh with no subscription. An absent stamp
+// or empty bag means the POI is dormant and the marker stays quiet.
+export function poiReadoutForEntity(state, entity) {
+  const stamped = entity && entity.data && entity.data.poiBehavior;
+  if (!stamped || stamped.zoneId == null) return null;
+  const published = state && state.world && state.world.poiReadouts;
+  return (published && published[stamped.zoneId]) || null;
 }
 
 function labelRectsOverlap(a, b, pad) {
@@ -187,6 +198,37 @@ export function pickClickTarget(targets, sx, sy) {
   return best;
 }
 
+// The scan ping is the sweep's answer, not a decoration: the map draws it, the legend names it,
+// so a click on it must set course TO it (named, not a bare "Map fix"). Same contract the
+// scanner readouts teach ("Track the source"): the local map is where tracking is one click.
+// Marks are picked for the CURRENT sector only, exactly like the radar and the galaxy chart.
+export const PING_COURSE_LABEL = 'Unresolved contact';
+
+export function pingOverlayMarks(state, wx, wz) {
+  const marks = [];
+  const sectorId = state && state.world && state.world.currentSectorId;
+  const pings = sectorId && state.world.scanPings && state.world.scanPings[sectorId];
+  if (!Array.isArray(pings)) return marks;
+  for (const ping of pings) {
+    if (!ping || !ping.pos) continue;
+    const x = wx(ping.pos.x);
+    const y = wz(ping.pos.z);
+    marks.push({
+      x, y,
+      target: {
+        sx: x, sy: y, radiusPx: 16,
+        targetEntityId: ping.id,
+        pos: { x: ping.pos.x, z: ping.pos.z },
+        label: PING_COURSE_LABEL,
+        kind: 'ping',
+        arrivalRadius: 44,
+        priority: labelPriority('ping'),
+      },
+    });
+  }
+  return marks;
+}
+
 const LOCALMAP_STYLE = `
 #sf-localmap {
   position: absolute; inset: 0; display: flex; flex-direction: column;
@@ -244,6 +286,9 @@ const LOCALMAP_STYLE = `
   padding: var(--sp-1) var(--sp-2); line-height: 1.5;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
+#sf-localmap .lm-legend .lm-mark { width: 14px; height: 14px; vertical-align: -2px; }
+#sf-localmap .lm-legend .lm-mark--foe { color: var(--sf-foe); }
+#sf-localmap .lm-legend .lm-mark--goal { color: var(--sf-goal); }
 #sf-localmap .lm-routes {
   position: absolute; right: var(--sp-3); top: var(--sp-3); width: 230px; max-height: 60%; overflow-y: auto;
   background: var(--dp-field, color-mix(in srgb, var(--sf-surface) 88%, transparent));
@@ -377,6 +422,26 @@ function intel() {
   return _intel;
 }
 
+// Session-singleton accessor so the deterministic feed path can be driven and read without a
+// mounted screen (focused instrument tests, telemetry probes).
+export function localMapIntel() { return intel(); }
+
+// Legend marks quote the exact shapes the chart above draws — station = filled berth circle,
+// gate = open diamond, contacts = heading triangles (hue is the only hostile/friendly channel,
+// same as the canvas), asteroid = micro dot, scan ping = the shared dashed unknown glyph. Same
+// 24-grid / 1.6-stroke / currentColor grammar as glyphs.js; static strings, safe for innerHTML.
+function lmMarkSvg(inner, cls = 'lm-mark') {
+  return `<svg class="${cls}" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false">${inner}</svg>`;
+}
+const LM_LEGEND_MARKS = {
+  station: lmMarkSvg('<circle cx="12" cy="12" r="7.5" fill="currentColor"/>'),
+  gate: lmMarkSvg('<path d="M12 4 20 12 12 20 4 12Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>'),
+  hostile: glyphSvg('iff_hostile', 14, 'lm-mark lm-mark--foe'),
+  friendly: glyphSvg('iff_hostile', 14, 'lm-mark'),
+  asteroid: lmMarkSvg('<circle cx="12" cy="12" r="4" fill="currentColor"/>'),
+  ping: glyphSvg('unknown', 14, 'lm-mark lm-mark--goal'),
+};
+
 export const localmapScreen = {
   id: 'localmap',
   _ctx: null,
@@ -428,7 +493,7 @@ export const localmapScreen = {
       '<div class="lm-body sf-stage"><canvas></canvas>' +
       '<div class="lm-objective" id="sf-localmap-objective" hidden></div>' +
       '<div class="lm-legend">' +
-        `◆ STATION · ◇ GATE · ▲ HOSTILE · ▲ FRIENDLY · ● ASTEROID · ? SCAN PING · Zoom: [Scroll Wheel]` +
+        `${LM_LEGEND_MARKS.station} STATION · ${LM_LEGEND_MARKS.gate} GATE · ${LM_LEGEND_MARKS.hostile} HOSTILE · ${LM_LEGEND_MARKS.friendly} FRIENDLY · ${LM_LEGEND_MARKS.asteroid} ASTEROID · ${LM_LEGEND_MARKS.ping} SCAN PING · Zoom: [Scroll Wheel]` +
       '</div>' +
       '<div class="lm-routes sf-apron" id="sf-localmap-routes"><h4>Trade Routes</h4><div class="lm-routes-empty">Scan markets at stations to rank routes</div></div>' +
       '</div>';
@@ -448,6 +513,11 @@ export const localmapScreen = {
       const btn = ev.target.closest('[data-act="route-nav"]');
       if (!btn) return;
       applyTradeNavigation(this._ctx, btn.getAttribute('data-destination'), btn.getAttribute('data-commodity'));
+    });
+    // NXI-223: keyboard/pad focus on a wrapped route reveals it once the list's bounds settle.
+    this._routesPanel.addEventListener('focusin', (ev) => {
+      const btn = ev.target && ev.target.closest && ev.target.closest('[data-act="route-nav"]');
+      if (btn) this._scheduleSettledReveal(btn);
     });
     // Auto-fit the canvas to its container (DPI-scaled).
     this._ro = new ResizeObserver(() => this._resize());
@@ -592,6 +662,7 @@ export const localmapScreen = {
     const playerTeam = player.team;
     const consider = (e) => {
       if (!e || !e.alive || e.id === state.playerId) return;
+      const poiReadout = poiReadoutForEntity(state, e);
       if (e.type === 'ship' || e.type === 'drone') {
         m.observeContact({
           id: e.id, type: 'ship', name: e.data && e.data.name || e.role || 'ship',
@@ -602,12 +673,21 @@ export const localmapScreen = {
         m.markLandmark({
           id: e.id, kind: (e.data && e.data.isGate) ? 'gate' : 'station',
           name: e.data && e.data.name || e.name || 'station', pos: e.pos, factionId: e.factionId,
+          metadata: poiReadout ? { poiReadout } : null,
         });
         m.observeContact({ id: e.id, type: 'station', pos: e.pos, radius: e.radius, dockable: true },
           { timeS: now, confidence: 1, source: 'static' });
       } else if (e.type === 'asteroid') {
         m.observeContact({ id: e.id, type: 'asteroid', pos: e.pos, radius: e.radius },
           { timeS: now, confidence: 0.7, source: 'passive' });
+      }
+      // A non-station anchor body (field/POI/asteroid root) is the zone marker for its plan:
+      // it joins the landmarks as a poi-kind mark carrying the live readout.
+      if (poiReadout && e.type !== 'station') {
+        m.markLandmark({
+          id: e.id, kind: 'poi', name: poiReadout.mapLabel || e.name || 'POI',
+          pos: e.pos, factionId: e.factionId, metadata: { poiReadout },
+        });
       }
     };
     for (const e of indexedShipLikeScan(state)) consider(e);
@@ -705,7 +785,53 @@ export const localmapScreen = {
     }
     if (html === this._routesSig) return;
     this._routesSig = html;
+    // NXI-223: a repaint rebuilds every route node, so a focused route loses focus and, once its
+    // long name wraps taller, can sit outside the scrolled viewport. Carry the player's focus
+    // across by route identity and reveal it only after the new markup has laid out — bounds read
+    // before the wrap settles are stale.
+    const focusKey = this._focusedRouteKey();
     panel.innerHTML = html;
+    this._restoreRouteFocus(focusKey);
+  },
+
+  _focusedRouteKey() {
+    try {
+      const panel = this._routesPanel;
+      const doc = panel && panel.ownerDocument;
+      const active = doc && doc.activeElement;
+      if (!active || !active.closest || !panel.contains(active)) return null;
+      const btn = active.closest('[data-act="route-nav"]');
+      if (!btn) return null;
+      return `${btn.getAttribute('data-destination') || ''}|${btn.getAttribute('data-commodity') || ''}`;
+    } catch (_) { return null; }
+  },
+
+  _restoreRouteFocus(key) {
+    if (!key || !this._routesPanel) return;
+    const [dest, comm] = String(key).split('|');
+    let btn = null;
+    for (const cand of this._routesPanel.querySelectorAll('[data-act="route-nav"]')) {
+      if ((cand.getAttribute('data-destination') || '') === dest
+        && (cand.getAttribute('data-commodity') || '') === comm) { btn = cand; break; }
+    }
+    if (!btn) return;
+    try { btn.focus(); } catch (_) { /* a headless host has no focus */ }
+    this._scheduleSettledReveal(btn);
+  },
+
+  // Reveal once the repainted list has actually laid out: two frames — the first lands the new
+  // geometry, the second measures it. scrollIntoView with block:'nearest' is a no-op when the
+  // result is already fully visible.
+  _scheduleSettledReveal(el) {
+    const reveal = () => {
+      try {
+        if (el && el.isConnected !== false && typeof el.scrollIntoView === 'function') {
+          el.scrollIntoView({ block: 'nearest' });
+        }
+      } catch (_) { /* cosmetic */ }
+    };
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => requestAnimationFrame(reveal));
+    else reveal();
   },
 
   _close() {
@@ -807,11 +933,39 @@ export const localmapScreen = {
         priority: target.priority,
         target,
       });
+      // FB-035 — a living plan rides its zone marker: the mapLabel speaks under the name (the
+      // poi-kind landmark's name IS the mapLabel, so only stations/gates need the second line)
+      // and progress sweeps a small arc around the mark. Additive decoration; the mark's own
+      // shape and hue are untouched.
+      const poiReadout = lm.metadata && lm.metadata.poiReadout;
+      if (poiReadout && poiReadout.mapLabel && lm.kind !== 'poi') {
+        labelJobs.push({
+          x, y: y + 13, dx: 8,
+          text: poiReadout.mapLabel,
+          font: canvasFont(500, 11, 'data'),
+          color: roles.calm,
+          priority: target.priority + 0.5,
+          target,
+        });
+      }
       g.save();
       g.fillStyle = roles.calm;
       g.strokeStyle = roles.calm;
       if (isGate) { g.beginPath(); g.moveTo(x, y - 5); g.lineTo(x + 5, y); g.lineTo(x, y + 5); g.lineTo(x - 5, y); g.closePath(); g.stroke(); }
       else { g.beginPath(); g.arc(x, y, 5, 0, Math.PI * 2); g.fill(); }
+      if (poiReadout) {
+        const required = Number(poiReadout.required) || 0;
+        const ratio = required > 0
+          ? Math.max(0, Math.min(1, (Number(poiReadout.progress) || 0) / required))
+          : 0;
+        if (ratio > 0) {
+          g.globalAlpha = 0.9;
+          g.lineWidth = 1.4;
+          g.beginPath();
+          g.arc(x, y, 8, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * ratio);
+          g.stroke();
+        }
+      }
       g.restore();
     }
 
@@ -889,7 +1043,7 @@ export const localmapScreen = {
     }
     g.globalAlpha = 1;
 
-    this._drawScanOverlays(g, state, wx, wz, roles);
+    this._drawScanOverlays(g, state, wx, wz, roles, labelJobs);
 
     // Active waypoint / mission geometry. This uses the same state.nav.waypoint source as the HUD,
     // so the map remains a recovery surface when the tactical radar no longer has nearby dots.
@@ -1025,7 +1179,7 @@ export const localmapScreen = {
     };
   },
 
-  _drawScanOverlays(g, state, wx, wz, roles) {
+  _drawScanOverlays(g, state, wx, wz, roles, labelJobs) {
     const ink = roles || canvasRoles();
     const now = state.simTime || 0;
     for (const e of indexedTypeScan(state, 'asteroids')) {
@@ -1046,15 +1200,23 @@ export const localmapScreen = {
       g.restore();
     }
 
-    const sectorId = state.world && state.world.currentSectorId;
-    const pings = sectorId && state.world.scanPings && state.world.scanPings[sectorId];
-    if (!Array.isArray(pings) || !pings.length) return;
-    for (const ping of pings) {
-      if (!ping || !ping.pos) continue;
-      const x = wx(ping.pos.x), y = wz(ping.pos.z);
+    // The ping is courseable: its mark joins the click targets and the INF-054 label pass, so
+    // clicking the "?" sets course to the ping BY NAME instead of dropping a bare "Map fix".
+    const marks = pingOverlayMarks(state, wx, wz);
+    if (!marks.length) return;
+    for (const { x, y, target } of marks) {
       // Unresolved-contact mark: dashed diamond + "?" glyph from the shared set (was a stroked
       // diamond with a fillText '?' inside — two visual languages for one idea).
       drawGlyph(g, 'unknown', x, y, 16, { color: ink.goal });
+      this._lastClickTargets.push(target);
+      labelJobs.push({
+        x, y, dx: 10,
+        text: target.label,
+        font: canvasFont(500, 13, 'body'),
+        color: ink.goal,
+        priority: target.priority,
+        target,
+      });
     }
   },
 
@@ -1076,11 +1238,22 @@ export const localmapScreen = {
     if (tracked) {
       kicker = 'Tracked Mission';
       title = tracked.title || 'Mission';
-      body = (wp && wp.reason) || missionProgressText(tracked);
+      // NXI-215 — the tracked mission and the commanded course are two different destinations
+      // when the live waypoint was not laid for this mission (a map click, a trade route, a
+      // scanner signal fix). Only the course may read as commanded: the card body stays the
+      // mission's own objective, and the other fix is named as a separate Course line instead
+      // of being folded into the tracked mission's sentence (the old body started from
+      // wp.reason, so both destinations read as the current route at once).
+      const courseServesMission = !!(wp && (wp.missionId || null) === trackedId);
+      body = (courseServesMission && wp && wp.reason) || missionProgressText(tracked);
       if (route) body = appendSentence(body, route.next);
       const remaining = Math.max(0, (tracked.deadline_s || 0) - (state.simTime || 0));
       meta.push({ text: fmtClock(remaining), hot: remaining < 120 });
-      if (wp && wp.sectorName) meta.push({ text: wp.sectorName, hot: !wp.pos });
+      if (courseServesMission) {
+        if (wp && wp.sectorName) meta.push({ text: wp.sectorName, hot: !wp.pos });
+      } else if (wp) {
+        meta.push({ text: 'Course: ' + (wp.label || wp.reason || 'fix'), hot: false });
+      }
     } else if (wp) {
       kicker = wp.onboarding ? 'Tutorial Objective' : wp.kind === 'story' ? 'Story Objective' : wp.kind === 'trade' ? 'Course' : 'Waypoint';
       title = wp.label || wp.reason || 'Waypoint';

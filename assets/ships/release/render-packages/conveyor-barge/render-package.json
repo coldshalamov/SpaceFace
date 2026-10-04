@@ -1,6 +1,420 @@
 {
   "anchors": [
     {
+      "id": "sf.render.conveyor-barge.anchor.socket-barge-bridge",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        44,
+        5.5,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Barge_Bridge",
+      "nodePath": [
+        0,
+        35
+      ],
+      "parentNodeId": "sf.render.conveyor-barge.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        44,
+        5.5,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.anchor.socket-container-aft",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        32,
+        5,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Container_Aft",
+      "nodePath": [
+        0,
+        38
+      ],
+      "parentNodeId": "sf.render.conveyor-barge.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        32,
+        5,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.anchor.socket-container-fore",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        12,
+        5,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Container_Fore",
+      "nodePath": [
+        0,
+        36
+      ],
+      "parentNodeId": "sf.render.conveyor-barge.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        12,
+        5,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.anchor.socket-container-mid",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        22,
+        5,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Container_Mid",
+      "nodePath": [
+        0,
+        37
+      ],
+      "parentNodeId": "sf.render.conveyor-barge.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        22,
+        5,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.anchor.socket-drive-plume",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.5,
+        2.2,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Drive_Plume",
+      "nodePath": [
+        0,
+        40
+      ],
+      "parentNodeId": "sf.render.conveyor-barge.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.5,
+        2.2,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.anchor.socket-emissive",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        26,
+        6.2,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Emissive",
+      "nodePath": [
+        0,
+        39
+      ],
+      "parentNodeId": "sf.render.conveyor-barge.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        26,
+        6.2,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.anchor.socket-status-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        44,
+        0,
+        -7.5,
+        1
+      ],
+      "nodeName": "SOCKET_Status_Port",
+      "nodePath": [
+        0,
+        41
+      ],
+      "parentNodeId": "sf.render.conveyor-barge.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        44,
+        0,
+        -7.5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.anchor.socket-status-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        44,
+        0,
+        7.5,
+        1
+      ],
+      "nodeName": "SOCKET_Status_Starboard",
+      "nodePath": [
+        0,
+        42
+      ],
+      "parentNodeId": "sf.render.conveyor-barge.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        44,
+        0,
+        7.5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.anchor.socket-structure-core",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        33.8525,
+        3.0125,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Structure_Core",
+      "nodePath": [
+        0,
+        34
+      ],
+      "parentNodeId": "sf.render.conveyor-barge.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        33.8525,
+        3.0125,
+        0,
+        1
+      ]
+    },
+    {
       "id": "sf.render.conveyor-barge.anchor.socket-trail-main",
       "kind": "socket",
       "localTransform": [
@@ -59,7 +473,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "c0f04a1e2fdf384421dd6481303da0b13bef51bb1b2e980b07dd690efed32a38",
+  "contentHash": "ff4e21cbb4a100cc7432ff8bbab8fca4ea6ce439111bc5b3fb6aaa7edd3f6e5f",
   "dynamicGroups": [
     {
       "id": "sf.render.conveyor-barge.mesh.lod0-hook-nav-port.dynamic",
@@ -2820,22 +3234,22 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "b9618a373ce14f6beae61b01c21523b18e70e9aed045ec05e107b9846d683cbb"
+      "sha256": "1b47b272f872da4cb30febced3414a3330eea466bad606c6a6bd2f2bde54286b"
     },
     "sourceGlb": {
-      "bytes": 557360,
-      "sha256": "b64f6e65c3e9dea4a60b7d507009088307bfbda8ddf2701cb52ef60cfc2abfc1",
+      "bytes": 559352,
+      "sha256": "3665d4d8b4d443d6b9b6e883394c6ffb9fa365f206dd58acab894eea1b472e0d",
       "uri": "place_conveyor_barge.glb"
     },
     "sourceManifest": {
-      "bytes": 198942,
-      "sha256": "98a76b502b1e0a29866df412c149715497b8f42b6311838a5fa3837f6d8bac4e",
+      "bytes": 219794,
+      "sha256": "81b413c425531af63fa3f895c51f5be4ba86bec2c3ece4040a0acf26b71ab54f",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 813172,
-    "sha256": "73f9235a1a77af275eeef161313b1daf46285e01bb31a0b12c98442e3a1661df",
+    "bytes": 816840,
+    "sha256": "7f666cabf68c090ce78aaa554ba9ebd401d7e25d0fea6f9fdba5ec176128eb57",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2908,6 +3322,393 @@
             "rawNodeName": "SOCKET_Trail_Main",
             "recordIds": [
               "sf.render.conveyor-barge.anchor.socket-trail-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          33.8525,
+          3.0125,
+          0,
+          1
+        ],
+        "name": "SOCKET_Structure_Core",
+        "planIndex": 36,
+        "tags": {
+          "socket": true,
+          "socketRole": "structure_core"
+        },
+        "userData": {
+          "name": "SOCKET_Structure_Core",
+          "role": "structure_core",
+          "spaceface": {
+            "semanticMarker": true,
+            "semanticRole": "structure_core"
+          },
+          "spaceface.semanticRole": "structure_core",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Structure_Core",
+            "recordIds": [
+              "sf.render.conveyor-barge.anchor.socket-structure-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          44,
+          5.5,
+          0,
+          1
+        ],
+        "name": "SOCKET_Barge_Bridge",
+        "planIndex": 37,
+        "tags": {
+          "socket": true,
+          "socketRole": "bridge_zone"
+        },
+        "userData": {
+          "name": "SOCKET_Barge_Bridge",
+          "role": "bridge_zone",
+          "spaceface": {
+            "semanticMarker": true,
+            "semanticRole": "bridge_zone"
+          },
+          "spaceface.semanticRole": "bridge_zone",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Barge_Bridge",
+            "recordIds": [
+              "sf.render.conveyor-barge.anchor.socket-barge-bridge"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          12,
+          5,
+          0,
+          1
+        ],
+        "name": "SOCKET_Container_Fore",
+        "planIndex": 38,
+        "tags": {
+          "socket": true,
+          "socketRole": "container_row"
+        },
+        "userData": {
+          "name": "SOCKET_Container_Fore",
+          "role": "container_row",
+          "spaceface": {
+            "semanticMarker": true,
+            "semanticRole": "container_row"
+          },
+          "spaceface.semanticRole": "container_row",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Container_Fore",
+            "recordIds": [
+              "sf.render.conveyor-barge.anchor.socket-container-fore"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          22,
+          5,
+          0,
+          1
+        ],
+        "name": "SOCKET_Container_Mid",
+        "planIndex": 39,
+        "tags": {
+          "socket": true,
+          "socketRole": "container_row"
+        },
+        "userData": {
+          "name": "SOCKET_Container_Mid",
+          "role": "container_row",
+          "spaceface": {
+            "semanticMarker": true,
+            "semanticRole": "container_row"
+          },
+          "spaceface.semanticRole": "container_row",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Container_Mid",
+            "recordIds": [
+              "sf.render.conveyor-barge.anchor.socket-container-mid"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          32,
+          5,
+          0,
+          1
+        ],
+        "name": "SOCKET_Container_Aft",
+        "planIndex": 40,
+        "tags": {
+          "socket": true,
+          "socketRole": "container_row"
+        },
+        "userData": {
+          "name": "SOCKET_Container_Aft",
+          "role": "container_row",
+          "spaceface": {
+            "semanticMarker": true,
+            "semanticRole": "container_row"
+          },
+          "spaceface.semanticRole": "container_row",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Container_Aft",
+            "recordIds": [
+              "sf.render.conveyor-barge.anchor.socket-container-aft"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          26,
+          6.2,
+          0,
+          1
+        ],
+        "name": "SOCKET_Emissive",
+        "planIndex": 41,
+        "tags": {
+          "socket": true,
+          "socketRole": "emissive"
+        },
+        "userData": {
+          "name": "SOCKET_Emissive",
+          "role": "emissive",
+          "spaceface": {
+            "semanticMarker": true,
+            "semanticRole": "emissive"
+          },
+          "spaceface.semanticRole": "emissive",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Emissive",
+            "recordIds": [
+              "sf.render.conveyor-barge.anchor.socket-emissive"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -2.5,
+          2.2,
+          0,
+          1
+        ],
+        "name": "SOCKET_Drive_Plume",
+        "planIndex": 42,
+        "tags": {
+          "socket": true,
+          "socketRole": "drive_plume"
+        },
+        "userData": {
+          "name": "SOCKET_Drive_Plume",
+          "role": "drive_plume",
+          "spaceface": {
+            "semanticMarker": true,
+            "semanticRole": "drive_plume"
+          },
+          "spaceface.semanticRole": "drive_plume",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Drive_Plume",
+            "recordIds": [
+              "sf.render.conveyor-barge.anchor.socket-drive-plume"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          44,
+          0,
+          -7.5,
+          1
+        ],
+        "name": "SOCKET_Status_Port",
+        "planIndex": 43,
+        "tags": {
+          "socket": true,
+          "socketRole": "status_light"
+        },
+        "userData": {
+          "name": "SOCKET_Status_Port",
+          "role": "status_light",
+          "spaceface": {
+            "semanticMarker": true,
+            "semanticRole": "status_light"
+          },
+          "spaceface.semanticRole": "status_light",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Status_Port",
+            "recordIds": [
+              "sf.render.conveyor-barge.anchor.socket-status-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          44,
+          0,
+          7.5,
+          1
+        ],
+        "name": "SOCKET_Status_Starboard",
+        "planIndex": 44,
+        "tags": {
+          "socket": true,
+          "socketRole": "status_light"
+        },
+        "userData": {
+          "name": "SOCKET_Status_Starboard",
+          "role": "status_light",
+          "spaceface": {
+            "semanticMarker": true,
+            "semanticRole": "status_light"
+          },
+          "spaceface.semanticRole": "status_light",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Status_Starboard",
+            "recordIds": [
+              "sf.render.conveyor-barge.anchor.socket-status-starboard"
             ],
             "schema": "spaceface.renderPackageSemantic.v1"
           },
@@ -3089,7 +3890,7 @@
         "role": "warning"
       }
     ],
-    "nodeCount": 36,
+    "nodeCount": 45,
     "primitives": [
       {
         "canopy": false,
@@ -3966,7 +4767,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_conveyor_barge.glb"
   },
-  "runtimeHash": "12a1180732e0109f7aef6bc3926059825c828cfacff89a922870f0cf422bc068",
+  "runtimeHash": "6a4b304af167f3f4289219ab56427ece4297dfa783fb21a2ada43b552b9ff71c",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

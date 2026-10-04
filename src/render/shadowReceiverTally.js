@@ -38,6 +38,13 @@ export function createShadowReceiverTally() {
       count -= countShadowReceivers(root);
       if (count < 0) count = 0;
     },
+    // Exact net receiver change a single policy traverse already measured —
+    // keeps count current without the dirty fallback's whole-scene recount.
+    noteDelta(delta) {
+      if (!Number.isFinite(delta) || delta === 0) return;
+      count += delta;
+      if (count < 0) count = 0;
+    },
     recount(scene) {
       count = 0;
       if (scene && typeof scene.traverse === 'function') {
@@ -57,7 +64,24 @@ export function createShadowReceiverTally() {
 
 /** LOD/policy flag rewrites must dirty the tally so add/remove cannot drain it to zero. */
 export function noteShadowPolicyChanged(tally, changed) {
-  if (changed !== true || !tally || typeof tally.markDirty !== 'function') return false;
+  if (!tally || typeof tally.markDirty !== 'function') return false;
+  // A policy traverse that measured its own receiver delta settles the tally
+  // exactly — no dirty mark, no recount. Boolean results keep the old contract.
+  if (changed && typeof changed === 'object') {
+    const delta = changed.receiverDelta;
+    if (Number.isFinite(delta)) {
+      if (delta !== 0) {
+        if (typeof tally.noteDelta === 'function') {
+          tally.noteDelta(delta);
+        } else {
+          tally.markDirty();
+        }
+      }
+      return true;
+    }
+    return false;
+  }
+  if (changed !== true) return false;
   tally.markDirty();
   return true;
 }

@@ -91,7 +91,7 @@ const EXPECTED_COLLISION_ANCHORS = Object.freeze([
   }),
 ]);
 
-const PRE_CLOSEOUT_ASTEROID_INVARIANT_HASH = '49c64a444f37edb99a7fb2648ad4de0a7592a6fd70ce330f9e42d43858830c42';
+const PRE_CLOSEOUT_ASTEROID_INVARIANT_HASH = 'c88c14ab17d7890e34a9c739e60b6046c05a2023cb09f4b880fa8e062ed61279';
 const PRE_CLOSEOUT_UNAFFECTED_POSITION_HASH = 'de55c16a2f9f14594b902ef442f73008a1028e98f7ec53e4e6c3e8deb15f839a';
 
 test('R5A binds four camera-local pockets to PQ-020 canonical identities and anchors', () => {
@@ -513,12 +513,35 @@ test('R5B materializes six inert object slots and two existing-budget collision 
     'same-sector entry must not create, replace, or reorder Ceres entities');
   assert.deepEqual(repeat.fullCeresSignature, first.fullCeresSignature,
     'same-seed rebuild must retain the complete live Ceres entity signature');
+  // Census re-pinned 2026-10-03 (D137 adjudication) — each drift traced to authored work:
+  //   fauna +12      af734e085 — the wave-C closed_refinery site casts 6 suture mites, 2 archive
+  //                  crabs, 3 casket worms and 1 stone lung at The Closed Refinery
+  //                  (materializeAlienEcology, deterministic off its own rng stream)
+  //   fx +3          7885a276d — the Kettle Line WF-10 legs (poi_kettle_hopper/ribs/stern) are
+  //                  live-actor POIs, promoted through poiMustStayLiveActor
+  //   colliders +52  954a0ab8c + eb1869826 — solid dynamic bodies adopt measured model-truth
+  //                  skins: the two pocket ships went single-capsule → 24-primitive polygon
+  //                  skins, and the three place-dressed rocks compacted 22 → 24-primitive hulls
+  //   opticCells −42 50cc3f2b7 — the prism gallery is field-resident (insertAsteroidFieldRock):
+  //                  its cells promote into entityList only inside the authored decode disc, so
+  //                  a quiet pocket keeps zero live cells. opticResidentCells pins the lattice's
+  //                  survival as bag records so a lost lattice cannot read as a quiet pass.
+  // Census re-pinned 2026-10-05 (D90/D145 adjudication) — both deltas traced to authored work:
+  //   ship 2 → 1    5103e8668 — SOLSTICE / SL-9's fixed-pos Star Lantern POI consumes two
+  //                 _spawnPOIs rng draws, shifting the deterministic spawn stream; one patrol
+  //                 ship's new landing falls inside the far-shelf boundary and shelves at boot
+  //   +wreck:1      09132834b — D141 excludes data.worldOneOff bodies from the far shelf (lean
+  //                 far rows cannot rematerialize a unique one-off without duplicates), so the
+  //                 Long Berth yard tug (0c6f0ea1a) now stays live and collidable here
+  // The two deltas cancel in total/collidable/colliders (the shelved ship's 24-primitive skin is
+  // replaced one-for-one by the tug's measured hull skin), so only byType moves.
   assert.deepEqual(first.census, {
-    total: 24,
-    byType: { asteroid: 6, fx: 10, ship: 2, station: 6 },
+    total: 39,
+    byType: { asteroid: 6, fauna: 12, fx: 13, ship: 1, station: 6, wreck: 1 },
     collidable: 14,
-    colliders: 184,
-    opticCells: 42,
+    colliders: 236,
+    opticCells: 0,
+    opticResidentCells: 42,
   }, 'a sixth logical object must still add no entity, type, or collider cost to full Ceres');
 
   assert.deepEqual(first.activity.map((row) => row.slotId).sort(), [...EXPECTED_OBJECT_SLOTS].sort());
@@ -607,7 +630,7 @@ test('R5B materializes six inert object slots and two existing-budget collision 
   assert.equal(first.entityById[4].data.authoredGeologySkin, true);
   assert.equal(first.entityById[4].data.placeId, 'place_asteroid_rock_a');
 
-  assert.deepEqual(first.dressing.slice(0, 7).map((row) => row.id), [102, 103, 104, 105, 106, 107, 108]);
+  assert.deepEqual(first.dressing.slice(0, 7).map((row) => row.id), [105, 106, 107, 108, 109, 110, 111]);
   assert.ok(first.dressing.length > 7, 'additive kit/one-off/aftermath dressing stays off the combat list');
   // The i=0 prospecting drone is the ambient prop the tender's disabled client re-points; no prop is
   // added, so the dressing list keeps its length, ids and RNG cadence.
@@ -620,13 +643,17 @@ test('R5B materializes six inert object slots and two existing-budget collision 
     'place_ceres_grave_shard',
     'place_conveyor_barge',
   ]);
-  assert.deepEqual(first.activity.map((row) => row.id).sort((a, b) => a - b), [5, 102, 103, 105, 107, 108]);
-  assert.equal(first.ceresRngDraws, 495,
+  assert.deepEqual(first.activity.map((row) => row.id).sort((a, b) => a - b), [5, 105, 106, 108, 110, 111]);
+  // 499 → 501 (D90/D145): SOLSTICE / SL-9 (5103e8668) added poi_solstice_lantern — a fixed-pos
+  // POI still consumes its two unconditional _spawnPOIs draws inside this content stream.
+  assert.equal(first.ceresRngDraws, 501,
     'Ceres materialization must retain the complete pre-R5B content-stream draw count');
 
+  // Buoy positions re-pinned 2026-10-05 (D90/D145): the Star Lantern POI's two stream draws
+  // (5103e8668) legitimately shifted the dressing cadence these ambient props ride on.
   assert.deepEqual(first.unaffectedRngSignature, [
-    [104, -12856.74476, 8731.183742],
-    [106, -11499.07624, 9309.341134],
+    [107, -12877.223012, 8738.019899],
+    [109, -11502.299647, 9307.673708],
   ], 'unaffected tail positions fingerprint the asteroid/dressing layout cadence');
   assert.equal(first.asteroidInvariantHash, PRE_CLOSEOUT_ASTEROID_INVARIANT_HASH,
     'all per-rock type, mining, collider, size, motion, and seam properties remain byte-stable');
@@ -871,6 +898,9 @@ function captureCeresActivityState(state, formationModel) {
       collidable: collidable.length,
       colliders,
       opticCells,
+      // 50cc3f2b7 made the lattice field-resident: live cells read 0 by design in a quiet
+      // pocket, so the bag's resident record ids are what prove the gallery still stamps.
+      opticResidentCells: (active.opticStructureIds || []).length,
     },
     activity,
     activityBySlot,
@@ -882,9 +912,9 @@ function captureCeresActivityState(state, formationModel) {
     fields: active.fields.map((field) => ({ id: field.id, asteroidIds: [...field.asteroidIds] })),
     fieldAsteroidIds: active.fields.map((field) => [...field.asteroidIds]),
     dressing: active.dressing.map((row) => ({ id: row.id, placeId: row.placeId })),
-    // 102/103/105/107/108 are the dressing props claimed by an activity slot; 104 and 106 are the
+    // 105/106/108/110/111 are the dressing props claimed by an activity slot; 107 and 109 are the
     // ambient buoys nothing binds, so they are what still fingerprints the untouched RNG cadence.
-    unaffectedRngSignature: [104, 106].map(pointSignature),
+    unaffectedRngSignature: [107, 109].map(pointSignature),
     numericTail: [109, 110, 111].map((id) => {
       const entity = resolveWorldPresentationEntity(state, id);
       return [id, entity?.type || null, entity?.homeSectorId || entity?.data?.homeSectorId || null];

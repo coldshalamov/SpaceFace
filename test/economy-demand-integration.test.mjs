@@ -4,6 +4,7 @@ import test from 'node:test';
 import { economy } from '../src/systems/economy.js';
 import { predictPriceCurve } from '../src/systems/economyCycles.js';
 import { COMMODITIES } from '../src/data/commodities.js';
+import { SECTORS } from '../src/data/sectors.js';
 
 function makeBus() {
   const handlers = new Map();
@@ -47,9 +48,22 @@ function boot({ war = true } = {}) {
       marketMemory: {}, tradeLedger: [], tradeLots: {},
     },
     economy: {},
+    // ECON-01 tier-gates listing seeding: cmdty_weapons is marketTier 3 and cmdty_medical is
+    // marketTier 1, so a tier-0 Helios no longer stocks them. The fixture names a developed
+    // Helios Prime (tier 3) through the content registry so the military/med listings exist.
+    content: { sectors: SECTORS.map((s) => (s.id === 'sector_helios_prime' ? { ...s, tier: 3 } : s)) },
     conflicts: { 'faction_reach:faction_scn': { state: war ? 'war' : 'cold', tension: war ? 90 : 0 } },
     sectorSim: { field: sectorField() },
     world: { currentSectorId: 'sector_helios_prime', sectors: { sector_helios_prime: { owner: 'faction_scn' } } },
+    content: {
+      sectors: {
+        sector_helios_prime: {
+          id: 'sector_helios_prime',
+          tier: 3,
+          stations: [{ id: 'station_helios', type: 'trade_hub', size: 'L' }],
+        },
+      },
+    },
     ui: {}, nav: {}, entities: new Map(), entityList: [],
   };
   const econ = { ...economy };
@@ -231,7 +245,7 @@ test('restore reseeds only omitted synthetic histories after authoritative deman
   const originalCycle = original.state.economy.cycles[stationId][commodityId];
   original.econ.seedPriceHistory(originalEntry, def, originalCycle, original.state.simTime);
   const savedWithoutHistory = structuredClone(original.econ.serialize());
-  assert.equal(savedWithoutHistory.markets[stationId][0].length, 6,
+  assert.equal(savedWithoutHistory.markets[stationId][0][6], null,
     'an unobserved market saves no derived chart cache');
 
   const restored = boot({ war: false });

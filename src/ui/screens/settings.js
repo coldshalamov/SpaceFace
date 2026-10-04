@@ -15,11 +15,12 @@ import {
   formatBindingCode,
 } from '../../systems/input.js';
 import {
-  GAMEPAD_BUTTON_LABELS,
   findGamepadBindConflict,
+  gamepadButtonLabels,
   resolveGamepadBindings,
 } from '../../systems/gamepad.js';
 import { massline2Flag } from '../../data/featureFlags.js';
+import { reelRebindText } from '../../systems/masslineInputGrammar.js';
 import { listUserMods, userContentDirLabel } from '../../data/userContent.js';
 import { MASSLINE_BINDING_PROFILE_SPACE } from '../../core/graphicsProfileBootstrap.js';
 import { DEFAULT_BLOOM_STRENGTH } from '../../render/bloom.js';
@@ -33,7 +34,9 @@ import {
 } from '../../render/adaptiveQuality.js';
 import { BINDINGS } from '../bindings.js';
 import { setGamepadCaptureHandler } from '../bindings.js';
-import { LANGUAGE_OPTIONS, gameLocalization, setGameLocale } from '../../localization/gameLocalization.js';
+import { confirm } from '../confirm.js';
+import { ironmanChoiceChange } from '../../save/ironmanChoice.js';
+import { LANGUAGE_OPTIONS, gameLocalization, localizeText, setGameLocale } from '../../localization/gameLocalization.js';
 import {
   ACCESSIBILITY_STATEMENT_ID,
   CHECKLIST_ITEMS,
@@ -45,6 +48,22 @@ import { el, words, settle, cue } from '../kit/index.js';
 // graduated Scales, and a live preview of what the focused row changes beside the list.
 import { injectOrrerySettings, dressSettingsPane, attachSpotlight } from '../orrery/settingsLayouts.js';
 import { createSettingsPreview } from '../orrery/settingsPreview.js';
+// PRO-08: the touch overlay's own vocabulary lives with the overlay, so the Settings rows and the
+// DOM builder can never disagree about what a legal scale or layout is.
+import {
+  TOUCH_LAYOUTS,
+  TOUCH_SCALE_MAX,
+  TOUCH_SCALE_MIN,
+  normalizeTouchLayout,
+  normalizeTouchScale,
+  readTouchOverlayConfig,
+} from '../../systems/touch.js';
+
+const TOUCH_LAYOUT_LABELS = Object.freeze({
+  standard: 'Standard — sticks at both bottom corners',
+  lefty: 'Left-handed — mirrored for a left thumb',
+  compact: 'Compact — pads pulled in for short thumbs',
+});
 
 const SETTINGS_SHEET_ID = 'of-settings-css';
 
@@ -253,10 +272,14 @@ export const REBIND_LABELS = {
 };
 
 // PQ-164.01 pad remap. Every gamepad action is rebindable; labels describe the verb, not the
-// default button (the live resolved map prints the button on the right of each row).
+// default button (the live resolved map prints the button on the right of each row). FB-003 adds
+// the chord layer: every keyboard flight verb has a pad route, and capture accepts a held
+// modifier + a tapped key as a 'mod+key' chord.
 export const GAMEPAD_REBINDABLE = [
   'accept', 'cancel', 'massline', 'dock', 'deployRepulsor', 'fire', 'mine', 'boost', 'brake', 'cycleTarget', 'autoTarget',
   'map', 'codex', 'pause', 'countermeasure', 'travelBurn', 'dropBomb', 'cycleBomb', 'chargeDetonate', 'tabPrev', 'tabNext',
+  'scanPulse', 'cruise', 'bulletTime', 'cloak', 'chargeThrow', 'siteBeam', 'deployMassSeed', 'deployWell',
+  'toggleClearingCone', 'toggleSkimCollector', 'deployBeacon', 'jettisonLot',
 ];
 export const GAMEPAD_REBIND_LABELS = {
   accept: 'Accept',
@@ -280,6 +303,19 @@ export const GAMEPAD_REBIND_LABELS = {
   tabNext: 'Station tab: next',
   dropBomb: 'Bomb bay: drop bomb',
   cycleBomb: 'Bomb bay: cycle payload',
+  // FB-003 chord layer — stock seats live on LB (survey/deploy) and RB (combat-state) chords.
+  scanPulse: 'Scanner pulse',
+  cruise: 'Cruise drive (charge/drop)',
+  bulletTime: 'Bullet time (hold)',
+  cloak: 'Cloak toggle',
+  chargeThrow: 'Impulse charge: throw',
+  siteBeam: 'World Site beam (selected target)',
+  deployMassSeed: 'Anchor Mass Seed: deploy',
+  deployWell: 'Field: deploy attractive Well',
+  toggleClearingCone: 'Field: toggle Clearing Cone',
+  toggleSkimCollector: 'Field: toggle skim collector',
+  deployBeacon: 'Nav beacon: deploy',
+  jettisonLot: 'Cargo: jettison lot',
 };
 
 function controlSchemeFor(settings) {
@@ -306,6 +342,74 @@ function mergedBindingsFor(settings) {
 // Fixed interface keys from the live BINDINGS registry (not rebindable flight codes).
 // Pause is Esc/P (UI-owned, not in BINDINGS). Mission Log is BINDINGS.missionLog on keyboard/touch;
 // gamepad has no direct Mission Log button — Start opens Pause, then choose Mission Log.
+/** PRO-05 — one key the localizer can translate. en-US renders the old concatenation. */
+
+// NXI-003 — the Controls surface reports the input owner's ACCEPTED flight source
+// (resolveMovementOwner → host.movementSource), never a hover, a connectivity guess, or a
+// local device tally. The row is a static display retexted in place by refresh(), so one
+// deliberate device switch flips it once while pointer traffic over this screen cannot move
+// the in-flight source at all (UI targets never count as flight pointer activity — see
+// noteFlightPointer in systems/input.js).
+export const CONTROL_FAMILY_LABELS = Object.freeze({
+  keyboard: 'Keyboard & mouse',
+  gamepad: 'Gamepad',
+  touch: 'Touch',
+});
+
+/**
+ * The accepted control family, or null when no deliberate source has claimed the helm yet.
+ * `ctx.registry.get('input')` is the same seam worldObjectInteraction uses to reach the sim
+ * input system; hosts without it (lab, bench) render '—' rather than guessing from which
+ * devices happen to be connected.
+ */
+export function activeControlFamily(ctx) {
+  const registry = ctx && ctx.registry;
+  const sys = registry && typeof registry.get === 'function' ? registry.get('input') : null;
+  const source = sys && typeof sys.movementSource === 'string' ? sys.movementSource : null;
+  return CONTROL_FAMILY_LABELS[source] ? source : null;
+}
+
+/** Display text for an accepted family (or '—' while none has been accepted). */
+export function controlFamilyLabel(family) {
+  return CONTROL_FAMILY_LABELS[family] || '—';
+}
+
+/**
+ * Retext the mounted Active-input value element only when the accepted family changed —
+ * the whole point of the "once" is that a deliberate source switch writes exactly one new
+ * label, and everything else (hover, repeat refreshes, pad noise) writes nothing.
+ */
+export function syncActiveControlFamily(ctx, valueEl) {
+  const label = controlFamilyLabel(activeControlFamily(ctx));
+  if (valueEl && valueEl.textContent !== label) valueEl.textContent = label;
+  return label;
+}
+export function settingsInUseLabel(action) {
+  return localizeText('In use: {action}', { action: action == null ? '' : action });
+}
+
+export function settingsQualityKeepsNote(keeps, substitutes) {
+  return localizeText('Keeps {keeps}. Substitutes: {substitutes}.', {
+    keeps: keeps == null ? '' : keeps,
+    substitutes: substitutes == null ? '' : substitutes,
+  });
+}
+
+export function settingsPackRestartNote(modsDir) {
+  if (modsDir) {
+    return localizeText('No content packs installed. Drop a pack folder into {dir} and restart.', { dir: modsDir });
+  }
+  return localizeText('No content packs installed.');
+}
+
+export function settingsWorkshopSubscribedNote(count) {
+  return localizeText('Steam Workshop: {count} subscribed item(s). Sync mirrors them into the content directory; a restart loads them.', { count });
+}
+
+export function settingsWorkshopSyncedNote(count) {
+  return localizeText('Workshop sync mirrored {count} pack(s) — restart to load', { count });
+}
+
 export const CONTROL_SHORTCUTS = Object.freeze([
   { label: 'Dock / interact', key: BINDINGS.dock.label, note: 'when prompted' },
   { label: 'Mission Log', key: BINDINGS.missionLog.label, note: 'active + completed contracts; gamepad: Start → Pause → Mission Log' },
@@ -447,6 +551,7 @@ export const settingsScreen = {
     if (!refs) return;
     const pane = refs.pane;
     pane.innerHTML = '';
+    refs.familyValue = null;
     const s = ctx.state.settings;
     const build = paneBuilder(pane);
     currentCtx = ctx;
@@ -461,6 +566,7 @@ export const settingsScreen = {
       const a = s.audio;
       // First control: Mute all, so silence is always one press away.
       rowToggle('Mute all', () => a.muted, (v) => this._set(ctx, 'audio', 'muted', v));
+      rowToggle('Mute when the window loses focus', () => a.muteOnFocusLoss === true, (v) => this._set(ctx, 'audio', 'muteOnFocusLoss', v));
       rowSlider('Master', () => a.master, 0, 1, 0.01, pct, (v, persist) => this._set(ctx, 'audio', 'master', v, persist));
       rowSlider('SFX', () => a.sfx, 0, 1, 0.01, pct, (v, persist) => this._set(ctx, 'audio', 'sfx', v, persist));
       rowSlider('Music', () => a.music, 0, 1, 0.01, pct, (v, persist) => this._set(ctx, 'audio', 'music', v, persist));
@@ -469,6 +575,9 @@ export const settingsScreen = {
       rowSlider('Combat', () => a.combat == null ? 0.7 : a.combat, 0, 1, 0.01, pct, (v, persist) => this._set(ctx, 'audio', 'combat', v, persist));
       rowSlider('UI', () => a.ui == null ? 0.7 : a.ui, 0, 1, 0.01, pct, (v, persist) => this._set(ctx, 'audio', 'ui', v, persist));
       rowSlider('Comms', () => a.comms == null ? 0.7 : a.comms, 0, 1, 0.01, pct, (v, persist) => this._set(ctx, 'audio', 'comms', v, persist));
+      // Voice = the bark/speech gate (barkDirector reads `audio.voice !== 0`): a slider keeps
+      // parity with the bus rows and 0 silences spoken comms without touching their text.
+      rowSlider('Voice', () => a.voice == null ? 1 : a.voice, 0, 1, 0.01, pct, (v, persist) => this._set(ctx, 'audio', 'voice', v, persist));
     } else if (refs.active === 'Video') {
       const vd = s.video;
       // One-click preset: writes the adaptive-quality tier (render scale, particle density, render
@@ -478,7 +587,7 @@ export const settingsScreen = {
         (value) => this._applyPreset(ctx, value));
       const chosen = QUALITY_PRESETS.find((preset) => preset.id === (vd.qualityPreset || DEFAULT_QUALITY_PRESET));
       if (chosen && Array.isArray(chosen.stays) && Array.isArray(chosen.substitutes)) {
-        build.note('Keeps ' + chosen.stays.join(', ') + '. Substitutes: ' + chosen.substitutes.join(', ') + '.');
+        build.note(settingsQualityKeepsNote(chosen.stays.join(', '), chosen.substitutes.join(', ')));
       }
       rowToggle('Bloom', () => vd.bloom, (v) => this._set(ctx, 'video', 'bloom', v));
       // Shadows are a sun-depth pass of nearby ships/rocks/stations so they darken each other.
@@ -522,6 +631,24 @@ export const settingsScreen = {
       // Access row below. It is now a read-only mirror pointing at the home.
       motionEffectsRow(build, s, false);
       rowSlider('Screen Shake', () => vd.screenShake != null ? vd.screenShake : 100, 0, 100, 1, (x) => Math.round(x) + '%', (v, persist) => this._set(ctx, 'video', 'screenShake', v, persist));
+      // SWARM-02: the Swarm arcade layer's own volume. Reduced keeps the words (kills, chains,
+      // boss calls) and drops the motion and hit-stop; Off drops the layer. Reduced motion and
+      // reduced flash already read it down to Reduced for whoever set those.
+      rowSelect('Arcade effects (Swarm)', () => vd.arcadeEffects || 'full',
+        [['full', 'Full'], ['reduced', 'Reduced'], ['off', 'Off']],
+        (v) => this._set(ctx, 'video', 'arcadeEffects', v));
+      // FB-100 parity rows — keys that already drive the picture/mix but had no control, plus
+      // the HUD's own scale/opacity (consumed by #hud as --sf-hud-scale/--sf-hud-opacity,
+      // applied on the root so they compose with UI scale and survive Continue).
+      rowSlider('HUD scale', () => vd.hudScale == null ? 1 : vd.hudScale, 0.75, 1.5, 0.05, pct, (v, persist) => this._set(ctx, 'video', 'hudScale', v, persist));
+      rowSlider('HUD opacity', () => vd.hudOpacity == null ? 1 : vd.hudOpacity, 0.3, 1, 0.05, pct, (v, persist) => this._set(ctx, 'video', 'hudOpacity', v, persist));
+      build.note('Advanced video');
+      rowToggle('Tighter chase camera', () => vd.chaseClose === true, (v) => this._set(ctx, 'video', 'chaseClose', v));
+      rowToggle('Post-processing', () => vd.postFx !== false, (v) => this._set(ctx, 'video', 'postFx', v));
+      rowToggle('Sharpen', () => vd.sharpen === true, (v) => this._set(ctx, 'video', 'sharpen', v));
+      rowSelect('Bloom depth', () => String(vd.bloomLevels == null ? 2 : vd.bloomLevels), [['1', 'Tight'], ['2', 'Full']], (v) => this._set(ctx, 'video', 'bloomLevels', Number(v)));
+      rowSlider('Bloom threshold', () => vd.bloomThreshold == null ? 1 : vd.bloomThreshold, 0.2, 2, 0.05, (x) => x.toFixed(2), (v, persist) => this._set(ctx, 'video', 'bloomThreshold', v, persist));
+      rowSlider('Pixel ratio cap', () => vd.pixelRatioCap == null ? 2 : vd.pixelRatioCap, 0.5, 4, 0.25, (x) => x.toFixed(2) + 'x', (v, persist) => this._set(ctx, 'video', 'pixelRatioCap', v, persist));
       uiScaleRow(build, s, false);
     } else if (refs.active === 'Gameplay') {
       const g = s.gameplay;
@@ -530,7 +657,28 @@ export const settingsScreen = {
       g.physicsBackend = 'rapier-dynamic';
       g.aiBackend = 'sg06-tactical';
       g.flightBackend = 'v3';
-      rowSelect('Difficulty', () => g.difficulty, [['casual', 'Casual'], ['standard', 'Standard'], ['veteran', 'Veteran'], ['ironman', 'Ironman']], (v) => this._set(ctx, 'gameplay', 'difficulty', v));
+      rowSelect('Difficulty', () => g.difficulty, [['casual', 'Casual'], ['standard', 'Standard'], ['veteran', 'Veteran'], ['ironman', 'Ironman']], (v) => {
+        const decision = ironmanChoiceChange(ctx.state, v);
+        if (!decision.ok) {
+          if (ctx.bus) ctx.bus.emit('toast', { text: decision.text, kind: 'error', ttl: 4 });
+          this._render(ctx);
+          return;
+        }
+        if (!decision.needsConfirm) {
+          this._set(ctx, 'gameplay', 'difficulty', v);
+          return;
+        }
+        confirm({
+          title: decision.title,
+          body: decision.body,
+          confirmLabel: v === 'ironman' ? 'Play Ironman' : 'Leave Ironman',
+          danger: v === 'ironman',
+        }).then((ok) => {
+          if (!ok) { this._render(ctx); return; }
+          this._set(ctx, 'gameplay', 'difficulty', v);
+        });
+      });
+      rowToggle('Pause when the window loses focus', () => g.pauseOnFocusLoss !== false, (v) => this._set(ctx, 'gameplay', 'pauseOnFocusLoss', v));
       rowSelect('Stunt moments', () => g.stuntMoments || 'cinematic', [['cinematic', 'Cinematic · brief slowdown'], ['flow', 'Flow · continuous play']], (v) => this._set(ctx, 'gameplay', 'stuntMoments', v));
       rowSelect('Flight model', () => s.controls.flightMode || 'assisted', [['assisted', 'Assisted'], ['drift', 'Drift'], ['newtonian', 'Newtonian']], (v) => this._set(ctx, 'controls', 'flightMode', v));
       rowSelect('Massline orbit assist', () => g.orbitAssistStrength || 'standard', [
@@ -539,6 +687,10 @@ export const settingsScreen = {
         ['light', 'Light'],
         ['off', 'Off'],
       ], (v) => this._set(ctx, 'gameplay', 'orbitAssistStrength', v));
+      // FB-001: the pursuit-slot chase assist. Off by default — an opt-in flight option that
+      // holds a bearing/range slot off a locked moving target; it composes with, and sits
+      // beside, the orbit-assist row above.
+      rowToggle('Pursuit slot assist', () => g.pursuitSlotAssist === true, (v) => this._set(ctx, 'gameplay', 'pursuitSlotAssist', v));
       rowSelect('Auto-target assist', () => g.targetAssistStrength || 'full', [
         ['full', 'Full'],
         ['standard', 'Standard'],
@@ -547,12 +699,20 @@ export const settingsScreen = {
       ], (v) => this._set(ctx, 'gameplay', 'targetAssistStrength', v));
       rowToggle('Velocity vectoring assist', () => g.velocityVectoring !== false, (v) => this._set(ctx, 'gameplay', 'velocityVectoring', v));
       build.note('Turn your drift toward the nose while thrusting. Off leaves momentum unassisted.');
-      if (massline2Flag('enabled')) {
-        rowSelect('Massline release assist', () => g.masslineReleaseAssist || 'arm', [
-          ['arm', 'Auto-release on solution (default)'],
-          ['snap', 'Snap window on manual release'],
-          ['off', 'Off — raw physics'],
-        ], (v) => this._set(ctx, 'gameplay', 'masslineReleaseAssist', v));
+      const masslineFamilyOn = massline2Flag('enabled');
+      const releaseRow = rowSelect('Massline release assist', () => g.masslineReleaseAssist || 'arm', [
+        ['arm', 'Auto-release on solution (default)'],
+        ['snap', 'Snap window on manual release'],
+        ['off', 'Off — raw physics'],
+      ], (v) => { if (masslineFamilyOn) this._set(ctx, 'gameplay', 'masslineReleaseAssist', v); });
+      if (!masslineFamilyOn) {
+        const releaseSelect = releaseRow.querySelector ? releaseRow.querySelector('select') : null;
+        if (releaseSelect) {
+          releaseSelect.disabled = true;
+          releaseSelect.setAttribute('aria-disabled', 'true');
+        }
+        build.note('Massline release assist is unavailable because the Massline family is off.');
+      } else {
         build.note('The release marker reads RELEASE when the timing window opens; motion and color are optional reinforcement.');
       }
       rowSelect('Autosave', () => String(g.autosaveIntervalS), [['0', 'Off'], ['60', '60s'], ['120', '120s'], ['300', '300s']], (v) => this._set(ctx, 'gameplay', 'autosaveIntervalS', parseInt(v, 10)));
@@ -568,9 +728,7 @@ export const settingsScreen = {
       const modsDir = userContentDirLabel();
       build.header('Mods');
       if (!mods.length) {
-        build.note(modsDir
-          ? `No content packs installed. Drop a pack folder into ${modsDir} and restart.`
-          : 'No content packs installed.');
+        build.note(settingsPackRestartNote(modsDir));
       } else {
         if (modsDir) build.note(`Content packs load from ${modsDir}. Restart to pick up changes.`);
         for (const mod of mods) {
@@ -595,7 +753,7 @@ export const settingsScreen = {
         const wsNote = build.note('Steam Workshop: checking…');
         const workshopReady = shell.workshopStatus().then((s) => {
           wsNote.textContent = s && s.available
-            ? `Steam Workshop: ${s.items.length} subscribed item(s). Sync mirrors them into the content directory; a restart loads them.`
+            ? settingsWorkshopSubscribedNote(s.items.length)
             : `Steam Workshop unavailable (${(s && s.reason) || 'unknown'}) — publish and sync need the Steam build.`;
           return !!(s && s.available);
         }).catch(() => {
@@ -616,7 +774,7 @@ export const settingsScreen = {
             ctx.bus.emit('toast', {
               text: res && res.ok === false
                 ? `Workshop sync failed: ${res.error || res.reason || 'unknown'}`
-                : `Workshop sync mirrored ${n} pack(s) — restart to load`,
+                : settingsWorkshopSyncedNote(n),
               kind: 'info', ttl: 5,
             });
           }).catch(() => {});
@@ -653,6 +811,27 @@ export const settingsScreen = {
       rowToggle('Reduce flashing', () => !!ac.flashReduce, (v) => this._set(ctx, 'accessibility', 'flashReduce', v));
       rowToggle('Readable font', () => !!ac.dyslexiaFont, (v) => this._set(ctx, 'accessibility', 'dyslexiaFont', v));
       motionEffectsRow(build, s, true);
+      // FB-005: rumble has its own axis — it is haptic substitution, not motion. A calmer screen
+      // often wants MORE rumble, so this never follows the reduce-motion choice.
+      rowSelect('Controller rumble', () => ac.haptics || 'full',
+        [['off', 'Off'], ['low', 'Low'], ['full', 'Full']],
+        (v) => this._set(ctx, 'accessibility', 'haptics', v));
+      // FB-113: press-to-toggle latches for the hold verbs — a hand that cannot hold a button
+      // still flies the whole ship. Defaults stay off; each verb opts in on its own row.
+      build.header('Hold-to-toggle (press once to hold)');
+      const HOLD_TOGGLE_ROWS = [
+        ['boost', 'Boost / dash'],
+        ['brake', 'Brake / reverse'],
+        ['bulletTime', 'Bullet time'],
+        ['massline', 'Massline hold'],
+        ['reelIn', 'Tether reel in'],
+        ['reelOut', 'Tether reel out'],
+      ];
+      if (!ac.holdToToggle || typeof ac.holdToToggle !== 'object') ac.holdToToggle = {};
+      for (const [verb, label] of HOLD_TOGGLE_ROWS) {
+        rowToggle(label, () => ac.holdToToggle[verb] === true,
+          (v) => this._set(ctx, 'accessibility', 'holdToToggle', { ...ac.holdToToggle, [verb]: v }));
+      }
       rowToggle('Gameplay captions', () => ac.captions !== false, (v) => this._set(ctx, 'accessibility', 'captions', v));
       rowToggle('Audio cues', () => ac.audioCues !== false, (v) => this._set(ctx, 'accessibility', 'audioCues', v));
       const statement = build.note('Accessibility statement: contrast, reduced motion, remap, text scale, assists, and captions are listed below. Every voiced bark is captioned when Gameplay captions is on.');
@@ -678,6 +857,14 @@ export const settingsScreen = {
           this._set(ctx, 'gameplay', 'controlSchemeV2', true);
           this._render(ctx);
         });
+      // NXI-003: which family actually owns the flight controls right now — the input owner's
+      // accepted source, displayed once per deliberate switch. refresh() retexts this row in
+      // place; it is not a control and carries no write path.
+      const familyRow = build.shortcut('Active input', controlFamilyLabel(activeControlFamily(ctx)),
+        'The device that last took the flight controls deliberately.');
+      refs.familyValue = (familyRow && typeof familyRow.querySelector === 'function'
+        ? familyRow.querySelector('.k-t-emph')
+        : null) || (familyRow && familyRow.lastElementChild) || null;
       build.note('Press a flight key to rebind it, then press a new key. Fixed ship/system shortcuts are listed below so you do not have to leave Settings to find them.');
       // Each section builds its own lists in order; the pane is one column.
       this._renderControlsRebind(ctx, pane);
@@ -706,9 +893,45 @@ export const settingsScreen = {
     build.select('Flight scheme', () => gp().scheme === 'twinstick' ? 'twinstick' : 'drive',
       [['drive', 'Drive — left stick steers and throttles'], ['twinstick', 'Twin-stick — left stick drives, right stick aims']],
       (v) => this._set(ctx, 'controls', 'gamepad', { ...gp(), scheme: v }));
+    // FB-004: response tuning. The right stick's deadzone is its own axis — aim jitter should
+    // never force the fly hand wider. 'Expo' softens the stick's center while the edge still
+    // reaches full deflection; the sensitivities scale derived intent, never the raw axes.
+    build.slider('Aim deadzone (right stick)', () => gp().deadzoneRight ?? gp().deadzone,
+      0, 0.5, 0.01, (x) => Math.round(x * 100) + '%',
+      (v, persist) => this._set(ctx, 'controls', 'gamepad', { ...gp(), deadzoneRight: v }, persist));
+    build.select('Stick response curve', () => gp().curve === 'expo' ? 'expo' : 'linear',
+      [['linear', 'Linear — shipped feel'], ['expo', 'Expo — soft center, full edge']],
+      (v) => this._set(ctx, 'controls', 'gamepad', { ...gp(), curve: v }));
+    build.slider('Flight stick sensitivity', () => gp().sensitivityFly ?? 1,
+      0.25, 3, 0.05, (x) => `${Math.round(x * 100)}%`,
+      (v, persist) => this._set(ctx, 'controls', 'gamepad', { ...gp(), sensitivityFly: v }, persist));
+    build.slider('Aim stick sensitivity', () => gp().sensitivityAim ?? 1,
+      0.25, 3, 0.05, (x) => `${Math.round(x * 100)}%`,
+      (v, persist) => this._set(ctx, 'controls', 'gamepad', { ...gp(), sensitivityAim: v }, persist));
+    // FB-002/B117: the face-button register prompts and speech print — the same set the
+    // rebind rows below render, so a switch re-labels both at once.
+    build.select('Button glyphs', () => {
+      const v = gp().glyphSet;
+      return (v === 'ds' || v === 'fh') ? v : 'xb';
+    },
+      [['xb', 'Xbox — A B X Y'], ['ds', 'DualShock — ✕ ◯ □ △'], ['fh', 'Field Hardware — Ⓐ Ⓑ Ⓧ Ⓨ']],
+      (v) => this._set(ctx, 'controls', 'gamepad', { ...gp(), glyphSet: v }));
+    // FB-004: pointer aim gets the same two axes — a sensitivity multiplier on the derived
+    // cursor channel and a Y inversion, both independent of the sticks.
+    if (!s.controls.mouse || typeof s.controls.mouse !== 'object') {
+      s.controls.mouse = { sensitivity: 1, invertY: false };
+    }
+    const mo = () => s.controls.mouse;
+    build.slider('Mouse aim sensitivity', () => mo().sensitivity ?? 1,
+      0.25, 3, 0.05, (x) => `${Math.round(x * 100)}%`,
+      (v, persist) => this._set(ctx, 'controls', 'mouse', { ...mo(), sensitivity: v }, persist));
+    build.toggle('Invert mouse Y (aim)', () => !!mo().invertY,
+      (v) => this._set(ctx, 'controls', 'mouse', { ...mo(), invertY: v }));
     // Matches src/systems/gamepad.js ACTION_MAP + UI route: Start/menu → pause only;
     // Mission Log is chosen from the Pause menu (no direct gamepad missionLog action).
-    build.note('Default layout: left stick fly, right stick aim, RT fire, LT mine, RB boost, LB brake, Y shove, R3 countermeasure, D-pad right bomb, D-pad left cycle bombs, A/Cross Massline, B dock when prompted, X/Square target, D-pad up auto-target (right stick draw-to-fly), View star map, Guide or Pause for the codex, Start → Pause → Mission Log.');
+    // LB is the survey/deploy chord layer, RB the combat-state layer — every row below shows
+    // the live seat, including 'LB + D-Pad Up' style chords.
+    build.note('Default layout: left stick fly, right stick aim, RT fire, LT mine, RB boost, LB brake, Y shove, R3 countermeasure, D-pad right bomb, D-pad left cycle bombs, A/Cross Massline, B dock when prompted, X/Square target, D-pad up auto-target (right stick draw-to-fly), View star map, Guide or Pause for the codex, Start → Pause → Mission Log. Hold LB or RB and tap a second button for the survey/deploy and combat-state verbs (scanner ping, fields, cloak, cruise).');
 
     // PQ-164.01 pad remap: capture-on-press rows, same grammar as the flight keys above — press
     // a word, then press the pad button. Conflict detection honours the designed context shares
@@ -716,8 +939,9 @@ export const settingsScreen = {
     build.header('Gamepad Buttons');
     const padMap = resolveGamepadBindings(s);
     GAMEPAD_REBINDABLE.forEach((action) => {
-      const names = padMap[action] || [];
-      const keyText = names.map((n) => GAMEPAD_BUTTON_LABELS[n] || n).join(' / ') || '—';
+      // Chord names render both halves ('LB + D-Pad Up') through the same label vocabulary the
+      // Help sheet uses — the row must never print a raw 'l1+dUp' at a player.
+      const keyText = gamepadButtonLabels(action, padMap, { glyphSet: gp().glyphSet }).join(' / ') || '—';
       build.key(GAMEPAD_REBIND_LABELS[action] || action, keyText,
         (btn) => this._capturePad(ctx, btn, action, padMap));
     });
@@ -746,6 +970,29 @@ export const settingsScreen = {
     };
     build.choice('Touch controls', [['auto', 'Auto'], ['on', 'On'], ['off', 'Off']], touchMode,
       (mode) => commitTouchValue(mode === 'auto' ? null : mode === 'on'));
+    // PRO-08: size and thumb placement. Both write into the same `controls.touch` object as the
+    // tri-state above and re-apply to a live overlay, so a phone can grow the sticks mid-flight.
+    const commitTouchOverlay = (patch) => {
+      const next = { ...(s.controls.touch || {}), ...patch };
+      const tp = ctx.touch;
+      if (tp && typeof tp.applyOverlayConfig === 'function') {
+        // applyOverlayConfig reads state.settings, so write first and then let the overlay re-read.
+        s.controls.touch = next;
+        tp.applyOverlayConfig();
+      } else {
+        s.controls.touch = next;
+      }
+      ctx.bus.emit('settings:changed', { section: 'controls', key: 'touch', value: next });
+    };
+    build.slider('Touch overlay size',
+      () => readTouchOverlayConfig(s).scale,
+      TOUCH_SCALE_MIN, TOUCH_SCALE_MAX, 0.05,
+      (x) => Math.round(x * 100) + '%',
+      (value) => commitTouchOverlay({ scale: normalizeTouchScale(value) }));
+    build.choice('Touch layout',
+      TOUCH_LAYOUTS.map((id) => [id, TOUCH_LAYOUT_LABELS[id]]),
+      () => readTouchOverlayConfig(s).layout,
+      (mode) => commitTouchOverlay({ layout: normalizeTouchLayout(mode) }));
     // Touch overlay exposes dedicated Dock/Map/Log/Star/Pause buttons (not only flight sticks).
     build.note('Virtual sticks: left = fly, right = aim; buttons = fire, mine, boost, dock, Map, Log (Mission Log), Star, Pause. Auto-enabled on touch devices.');
     // PQ-164.02: one Deck/trackpad row. Gestures write the existing Massline key seams
@@ -782,7 +1029,8 @@ export const settingsScreen = {
     build.break();
     REBINDABLE.forEach((action) => {
       const codes = live[action] || [];
-      const keyText = codes.map((code) => formatBindingCode(code) || '—').join(' / ') || '—';
+      const keyText = reelRebindText(action, codes)
+        || codes.map((code) => formatBindingCode(code) || '—').join(' / ') || '—';
       // `.sf-bind-btn--digit` marks a bare digit key (a hook kept from the legacy chip styling).
       build.key(REBIND_LABELS[action] || action, keyText,
         (btn) => this._capture(ctx, btn, action, live, base),
@@ -836,7 +1084,7 @@ export const settingsScreen = {
       for (const other of REBINDABLE) {
         if (other === action) continue;
         if ((live[other] || []).includes(ev.code)) {
-          btn.textContent = 'In use: ' + (REBIND_LABELS[other] || other);
+          btn.textContent = settingsInUseLabel(REBIND_LABELS[other] || other);
           cue('deny');
           setTimeout(() => done(false), 900);
           return;
@@ -921,7 +1169,7 @@ export const settingsScreen = {
       const others = { ...liveMap, [action]: [] };
       const conflict = findGamepadBindConflict(others, action, stdName);
       if (conflict) {
-        btn.textContent = 'In use: ' + (GAMEPAD_REBIND_LABELS[conflict] || conflict);
+        btn.textContent = settingsInUseLabel(GAMEPAD_REBIND_LABELS[conflict] || conflict);
         cue('deny');
         setTimeout(() => done(false), 900);
         return;
@@ -971,11 +1219,14 @@ export const settingsScreen = {
     cue('close');
     if (this._capturing && this._activeCapture) this._activeCapture(false);
   },
-  // IMPORTANT: must be a no-op. uiRoot.frame() calls screenManager.refreshTop() every ~0.3s for
-  // any open screen; if this rebuilt the DOM it would destroy a slider/select mid-drag (the
-  // "can't drag below 3% / have to keep the mouse on the line" bug). The pane is fully
-  // event-driven — its own controls update their own value labels — so there is nothing to refresh.
-  refresh() {},
+  // IMPORTANT: must never rebuild the DOM. uiRoot.frame() calls screenManager.refreshTop() every
+  // ~0.3s for any open screen; a rebuild would destroy a slider/select mid-drag (the "can't drag
+  // below 3% / have to keep the mouse on the line" bug). The pane is event-driven — its own
+  // controls update their own labels — so the only refresh is the Active-input row's one
+  // textContent, which changes exactly once per deliberate source switch (NXI-003).
+  refresh(ctx) {
+    syncActiveControlFamily(ctx, refs && refs.familyValue);
+  },
   dispose() {
     try { if (refs && refs.preview) refs.preview.dispose(); } catch (e) { /* cosmetic */ }
     try { if (refs && refs.spot) refs.spot.dispose(); } catch (e) { /* cosmetic */ }

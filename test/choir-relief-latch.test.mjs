@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { stepLatchRepair } from '../src/combat/latchRepair.js';
+import { mulberry32 } from '../src/core/rng.js';
 import { createChoirReliefBerth } from '../src/systems/choirReliefBerth.js';
 
 // CR-CHOIR-1: the congregation must see the player's rope, not only the claim menu.
@@ -138,6 +139,8 @@ function berthFixture() {
   const state = {
     meta: { seed: 7 },
     playerId: 'p1',
+    simTime: 0,
+    rng: mulberry32(7),
     world: { currentSectorId: 'sector_helios_prime', records: { byId: {} } },
     entities: new Map([[patient.id, patient], [attendant.id, attendant], [home.id, home]]),
     entityList: [patient, attendant, home],

@@ -40,6 +40,8 @@ import { mulberry32 } from '../core/rng.js';
 import { withBankStone } from '../core/surfaceContact.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { validateRunState } from '../core/runState.js';
+import { createBroodEngine } from './swarmBrood.js';
+import { BROOD_EXPLOSION_EVENTS } from '../data/swarmBrood.js';
 import {
   SWARM_BREATH_SECONDS,
   SWARM_BREATH_TICKS,
@@ -61,6 +63,31 @@ import { CINDER_ARENA_ID } from './cinderSluiceArena.js';
 import { CRYO_ARENA_ID } from './cryoDriftArena.js';
 import { LAGRANGE_ARENA_ID } from './lagrangeCrucible.js';
 import { STORM_ARENA_ID } from './stormLatticeArena.js';
+import {
+  MILL_ARENA_ID,
+  MILL_ORE_CREDITS,
+  MILL_ORE_DOUBLE_CHANCE,
+  MILL_ORE_KIND,
+  MILL_ORE_TTL_S,
+} from './asteroidMillArena.js';
+import {
+  HIVE_ARENA_ID,
+  HIVE_POOL_PERIOD_S,
+  HIVE_SAC_BIRTH_N,
+  HIVE_SAC_COUNT,
+  HIVE_SAC_HULL,
+  HIVE_SAC_MASS_K,
+  HIVE_SAC_PERIOD_S,
+  HIVE_SAC_SIZE,
+  HIVE_SAC_TAG,
+  HIVE_WALL_GROW_S,
+  HIVE_WALL_HULL,
+  HIVE_WALL_RINGS,
+  HIVE_WALL_TAG,
+  hiveSacBerths,
+  hiveStreamSeed,
+  hiveWallRing,
+} from './theHiveArena.js';
 
 /** Marker on every rock this system creates, so teardown and census never touch sector terrain. */
 export const SWARM_DEBRIS_TAG = 'swarmArenaDebris';
@@ -186,6 +213,30 @@ export function debrisLayoutForArena(arenaId) {
       target: 6,
       safeRadius: 120,
       separation: 42,
+    });
+  }
+  // B4 — the Mill's ore seam: the densest band in the catalog. More, closer rocks —
+  // the room the grind turns is made of the bodies it grinds.
+  if (arenaId === MILL_ARENA_ID) {
+    return Object.freeze({
+      id: 'seam',
+      inner: 70,
+      outer: 320,
+      target: 18,
+      safeRadius: 90,
+      separation: 24,
+    });
+  }
+  // B4 — the Hive's rim: almost no ambient field. The room's geometry is its own living
+  // walls; a sparse distant ring keeps the edge reading as flesh, not open space.
+  if (arenaId === HIVE_ARENA_ID) {
+    return Object.freeze({
+      id: 'rim',
+      inner: 260,
+      outer: 430,
+      target: 5,
+      safeRadius: 150,
+      separation: 70,
     });
   }
   return Object.freeze({
@@ -433,7 +484,34 @@ export const swarmArena = {
     this._terrainRetry = false;
     this._lessonRockId = null;
     this._wallWave = 0;
+    // B4 — the Mill's ore ledger (pickupId → credits it pays) and the Hive's living
+    // geometry ({ ring, nextGrowAt, sacs } while the wave's room is alive).
+    this._millOres = new Map();
+    this._hive = null;
     resetSwarmPressureState();
+    // SWARM-07 B1 — the room's second population. The arena hosts the Brood engine: it reads the
+    // live field kernel through the fields owner's read seam, and its kill/wave receipts leave
+    // through the same bus every other swarm consumer listens on.
+    this._brood = createBroodEngine({
+      bus: this.bus,
+      getState: () => this.state,
+      fieldList: () => {
+        const fields = this.registry && this.registry.get ? this.registry.get('fields') : null;
+        return fields && typeof fields.kernelList === 'function' ? fields.kernelList() : null;
+      },
+      // Brood hazards damage the hull through the SAME routed damage owner mines use.
+      routeDamage: (request) => {
+        const helpers = this.helpers;
+        if (helpers && typeof helpers.routeCombatDamage === 'function') {
+          return helpers.routeCombatDamage(request);
+        }
+        const combat = this.registry && this.registry.get ? this.registry.get('combat') : null;
+        if (combat && typeof combat.ensureKernel === 'function') {
+          return combat.ensureKernel().routeDamage(request);
+        }
+        return null;
+      },
+    });
     bindSwarmPressureContext({
       getAlive: () => liveCohortCount(this.state),
       onHoldStart: (p) => this._onPressureHoldStart(p),
@@ -445,7 +523,18 @@ export const swarmArena = {
     this._unsubs.push(this.bus.on('run:waveStarted', (p) => this._onWaveStarted(p)));
     this._unsubs.push(this.bus.on('entity:destroyed', () => this._onPressureDestroyed()));
     this._unsubs.push(this.bus.on('physics:impact', (p) => this._onDebrisImpact(p)));
-    this._unsubs.push(this.bus.on('run:ended', () => this._release('run_ended')));
+    this._unsubs.push(this.bus.on('run:ended', () => {
+      if (this._brood) this._brood.clear('run_ended');
+      this._hiveRelease('run_ended');
+      this._millOres.clear();
+      this._release('run_ended');
+    }));
+    // B4 — the Mill's ore settles into the run wallet through the same collect seam the
+    // supply pod uses: whoever scoops it claims it, but only the pilot's scoop pays.
+    this._unsubs.push(this.bus.on('pickup:collected', (p) => this._onPickupCollected(p)));
+    for (const name of BROOD_EXPLOSION_EVENTS) {
+      this._unsubs.push(this.bus.on(name, (p) => this._brood && this._brood.onExplosion(p)));
+    }
   },
 
   destroy() {
@@ -454,6 +543,10 @@ export const swarmArena = {
     bindSwarmPressureContext(null);
     resetSwarmPressureState();
     this._pressureAlive = null;
+    if (this._brood) this._brood.clear('destroyed');
+    this._hiveRelease('destroyed');
+    if (this._millOres) this._millOres.clear();
+    this._hive = null;
   },
 
   newGame() {
@@ -465,6 +558,9 @@ export const swarmArena = {
     this._terrainRetry = false;
     this._lessonRockId = null;
     this._wallWave = 0;
+    if (this._brood) this._brood.clear('new_game');
+    this._hiveRelease('new_game');
+    if (this._millOres) this._millOres.clear();
     this._releaseWells();
     this._restoreCapacity();
     this._pressureAlive = null;
@@ -475,8 +571,13 @@ export const swarmArena = {
   /** Refresh only after a meaningful drift, at most once per two simulation seconds. */
   update() {
     const state = this.state;
+    // SWARM-07 B1 — the Brood step runs on the same fixed tick as the room's own housekeeping.
+    // The engine re-gates on the live swarm run, the active phase and flight mode itself.
+    if (this._brood) this._brood.step(state);
     const run = liveSwarmRun(state);
     if (!run || run.phase !== 'active' || state.mode !== 'flight') return;
+    // B4 — the Hive breathes on the same fixed tick: walls grow, sacs pulse, acid drips.
+    if (run.arenaId === HIVE_ARENA_ID) this._hiveTick(state, run);
     if ((state.simTime || 0) < (this._nextTerrainCheck || 0)) return;
     this._nextTerrainCheck = (state.simTime || 0) + 2;
     const anchor = playerAnchor(state);
@@ -501,6 +602,10 @@ export const swarmArena = {
     const run = liveSwarmRun(this.state);
     if (!run) return;
     const wave = payload && Number.isInteger(payload.wave) ? payload.wave : run.wave;
+    // SWARM-07 B1 — plan the wave's Brood cohort (spawn happens when the wave goes live).
+    if (this._brood) this._brood.prepareWave(run, wave);
+    // B4 — the old wave's living geometry dies before the new room is even planned.
+    this._hiveRelease('wave_planned');
     this._pressureWave = wave;
     // Consecutive waves of the same run carry remaining hold time and stored pressure.
     // Reset only on a new run's opener; teardown / newGame / run:ended already reset.
@@ -517,7 +622,12 @@ export const swarmArena = {
   },
 
   _onWaveStarted() {
-    if (!liveSwarmRun(this.state)) return;
+    const run = liveSwarmRun(this.state);
+    if (!run) return;
+    // SWARM-07 B1 — the fight goes live; the planned cohort arrives around the pilot.
+    if (this._brood) this._brood.spawnWave(this.state);
+    // B4 — the Hive's room lands with the wave: first wall ring standing, sacs pulsing.
+    if (run.arenaId === HIVE_ARENA_ID) this._hiveInstall(run);
     this._pressureAlive = liveCohortCount(this.state);
   },
 
@@ -676,6 +786,10 @@ export const swarmArena = {
       if (ours) {
         surviving.push(entity.id);
         if (!entity.data) continue;
+        // The Hive's living geometry keeps its own clock: install stamps it, growth
+        // spends it, release ends it. The field's keep-alive refresh must not undo a
+        // wave-planned release — a re-stamped wall would outlive its room by minutes.
+        if (entity.data[HIVE_WALL_TAG] || entity.data[HIVE_SAC_TAG]) continue;
         if (inFight) {
           // Back in the fight after a wobble: cancel the release rather than letting a rock the
           // player has returned to vanish under them.
@@ -854,6 +968,78 @@ export const swarmArena = {
       typeId: TYPE_ID,
       pos: rock.pos ? { x: rock.pos.x, z: rock.pos.z } : null,
     });
+    // B4 — inside the Mill, every break shakes ore loose. The pickup is the room's own
+    // economy: the wave pays the player for breaking the seam, through the same collect
+    // seam the supply pod uses.
+    this._millShake(rock);
+  },
+
+  /**
+   * SWARM-07 B4 — the Asteroid Mill's shaken ore. One or two pickup chunks at the
+   * fracture point, stamped for the room's own ledger so collect pays the run wallet
+   * and only the run wallet. Runs only inside the Mill — every other arena's fracture
+   * is just a fracture.
+   */
+  _millShake(rock) {
+    const state = this.state;
+    const run = state && liveSwarmRun(state);
+    if (!run || run.arenaId !== MILL_ARENA_ID) return;
+    const helpers = this.helpers;
+    if (!helpers || typeof helpers.spawnEntity !== 'function') return;
+    if (!rock || !rock.pos || !Number.isFinite(rock.pos.x) || !Number.isFinite(rock.pos.z)) return;
+    const rng = state && typeof state.rng === 'function' ? state.rng : null;
+    if (!rng) return;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const count = 1 + (rng() < MILL_ORE_DOUBLE_CHANCE ? 1 : 0);
+    const spawned = [];
+    for (let i = 0; i < count; i++) {
+      const angle = rng() * Math.PI * 2;
+      const dist = 6 + rng() * 10;
+      const body = helpers.spawnEntity({
+        type: 'pickup',
+        pos: {
+          x: rock.pos.x + Math.cos(angle) * dist,
+          z: rock.pos.z + Math.sin(angle) * dist,
+        },
+        vel: { x: 0, z: 0 },
+        radius: 5,
+        mass: 0.1,
+        collides: true,
+        data: {
+          kind: MILL_ORE_KIND,
+          amount: MILL_ORE_CREDITS,
+          swarmMillOre: true,
+          despawnAt: now + MILL_ORE_TTL_S,
+        },
+      });
+      const id = body && typeof body === 'object' ? body.id : body;
+      if (id != null) {
+        spawned.push(id);
+        this._millOres.set(id, MILL_ORE_CREDITS);
+      }
+    }
+    if (spawned.length > 0) {
+      this._emit('swarmArena:millOre', {
+        wave: run.wave,
+        fractureId: rock.id,
+        oreIds: spawned,
+        credits: spawned.length * MILL_ORE_CREDITS,
+      });
+    }
+  },
+
+  /**
+   * The ore ledger: collection is physics-contact truth (`pickup:collected`), the pay
+   * rides the run's own award seam. Same collector gate as the supply pod — a drone or
+   * NPC scoop consumes the chunk but never pays the pilot's wallet.
+   */
+  _onPickupCollected(payload) {
+    const id = payload && payload.pickupId;
+    if (id == null || !this._millOres || !this._millOres.has(id)) return;
+    const credits = this._millOres.get(id);
+    this._millOres.delete(id);
+    if (payload.collectorId != null && this.state && payload.collectorId !== this.state.playerId) return;
+    this._emit('run:awardRequested', { credits, reason: 'swarm:millOre' });
   },
 
   /**
@@ -1167,6 +1353,164 @@ export const swarmArena = {
         now + SWARM_DEBRIS_RELEASE_S,
       );
     }
+  },
+
+  // ---- B4: THE HIVE'S LIVING GEOMETRY ----------------------------------------------
+  //
+  // Walls and sacs are tagged debris bodies: they join this._ids, wear and fracture
+  // through SF-067 like every other rock (isChunk keeps a break from spawning remnants),
+  // and release through the same despawnAt deadline — never a hand-delete. What makes
+  // them the Hive is the lifecycle: walls grow shut on a telegraphed cadence, sacs pulse
+  // the wave's own brood reserve and drip acid.
+
+  /**
+   * One living-wall nub or sac body: the debris spec, tagged for the hive's census, and
+   * `isChunk` so a break is a clean death — a broken wall leaves rubble-free space, and
+   * a dead sac does not bud into more sacs.
+   */
+  _spawnHiveRock(x, z, size, rng, now, extraData) {
+    const rockData = { isChunk: true, ...(extraData || {}) };
+    const hull = Number.isFinite(rockData.hiveHull) ? rockData.hiveHull : HIVE_WALL_HULL;
+    delete rockData.hiveHull; // a build parameter, not a data stamp
+    const id = this._spawnDebrisRock(x, z, size, rng, now, rockData);
+    if (id == null) return null;
+    const state = this.state;
+    const entity = state && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(id) : null;
+    if (entity && entity.data) {
+      // Living walls are thinner than monoliths — breakable cover, not terrain.
+      entity.hull = hull;
+      entity.hullMax = hull;
+      entity.data.oreHP = hull;
+      entity.data.oreHPMax = hull;
+      if (entity.data[HIVE_SAC_TAG]) {
+        // A sac is light enough for the massline to pick up — slinging one back into
+        // the brood it was feeding is the counter the room teaches.
+        entity.mass = Math.round(size * size * HIVE_SAC_MASS_K);
+      }
+    }
+    return id;
+  },
+
+  /**
+   * The wave's room lands with the wave: the first wall ring stands (one open lane),
+   * the sacs berth inside it, and the growth clock starts. Seeded on (seed, wave) —
+   * the same room, every replay.
+   */
+  _hiveInstall(run) {
+    const state = this.state;
+    const helpers = this.helpers;
+    if (!state || !helpers || typeof helpers.spawnEntity !== 'function') return;
+    const wave = Number.isInteger(run.wave) ? run.wave : 1;
+    const seed = Number.isInteger(run.seed) ? run.seed : 1;
+    const rng = mulberry32(hiveStreamSeed(seed, wave));
+    const anchor = playerAnchor(state);
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const walls = [];
+    for (const spot of hiveWallRing({ anchor, ring: 0, rng })) {
+      const id = this._spawnHiveRock(spot.x, spot.z, spot.radius, rng, now,
+        { [HIVE_WALL_TAG]: true, hiveRing: 0 });
+      if (id != null) { walls.push(id); this._ids.push(id); }
+    }
+    const sacs = new Map();
+    for (const berth of hiveSacBerths({ anchor, count: HIVE_SAC_COUNT, rng })) {
+      const id = this._spawnHiveRock(berth.x, berth.z, HIVE_SAC_SIZE, rng, now,
+        { [HIVE_SAC_TAG]: true, hiveHull: HIVE_SAC_HULL, tetherPayload: true });
+      if (id != null) {
+        this._ids.push(id);
+        sacs.set(id, {
+          x: berth.x,
+          z: berth.z,
+          nextBirthAt: now + HIVE_SAC_PERIOD_S,
+          nextPoolAt: now + 2,
+          spent: false,
+        });
+      }
+    }
+    this._hive = { wave, ring: 1, nextGrowAt: now + HIVE_WALL_GROW_S, walls, sacs };
+    this._emit('swarm:hiveRoom', { wave, walls: walls.length, sacs: sacs.size });
+  },
+
+  /**
+   * One breath of the hive. Walls grow shut on the cadence (each ring closer in, its gap
+   * turned — a corridor that never lines up with the last); sacs pulse births out of the
+   * wave's own reserve and drip acid; a dead sac bursts into one last pool.
+   */
+  _hiveTick(state, run) {
+    const hive = this._hive;
+    if (!hive) return;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    if (hive.ring < HIVE_WALL_RINGS && now >= hive.nextGrowAt) {
+      const rng = mulberry32((hiveStreamSeed(run && run.seed || 1, hive.wave) ^ (hive.ring * 0x9e3779b9)) >>> 0);
+      const anchor = playerAnchor(state);
+      let added = 0;
+      for (const spot of hiveWallRing({ anchor, ring: hive.ring, rng })) {
+        const id = this._spawnHiveRock(spot.x, spot.z, spot.radius, rng, now,
+          { [HIVE_WALL_TAG]: true, hiveRing: hive.ring });
+        if (id != null) { hive.walls.push(id); this._ids.push(id); added++; }
+      }
+      hive.nextGrowAt = now + HIVE_WALL_GROW_S;
+      this._emit('swarm:hiveGrowth', { wave: hive.wave, ring: hive.ring, added });
+      this._emit('alert', {
+        key: 'swarm-hive-growth',
+        sev: 'warn',
+        text: 'THE WALLS ARE GROWING SHUT — mind the open lane',
+        ttl: 4,
+      });
+      hive.ring += 1;
+    }
+    const brood = this._brood;
+    for (const [id, sac] of hive.sacs) {
+      const entity = state.entities && typeof state.entities.get === 'function'
+        ? state.entities.get(id) : null;
+      if (!entity || entity.alive === false) {
+        // The burst: a sac does not die quietly — its pool stays where it fell.
+        if (brood) brood.hivePool(sac.x, sac.z, 6);
+        this._emit('swarm:hiveSacKilled', { wave: hive.wave, sacId: id });
+        hive.sacs.delete(id);
+        continue;
+      }
+      // The sac rides its live body — it may have been slung since the berth stamped it.
+      if (entity.pos && Number.isFinite(entity.pos.x) && Number.isFinite(entity.pos.z)) {
+        sac.x = entity.pos.x;
+        sac.z = entity.pos.z;
+      }
+      if (!sac.spent && brood && now >= sac.nextBirthAt) {
+        const born = brood.sacRelease(sac.x, sac.z, HIVE_SAC_BIRTH_N);
+        if (born > 0) {
+          sac.nextBirthAt = now + HIVE_SAC_PERIOD_S;
+          this._emit('swarm:hiveBirth', { wave: hive.wave, sacId: id, count: born });
+        } else {
+          // The reserve is dry — the sac quiets into ordinary wall meat.
+          sac.spent = true;
+        }
+      }
+      if (brood && now >= sac.nextPoolAt) {
+        brood.hivePool(sac.x, sac.z);
+        sac.nextPoolAt = now + HIVE_POOL_PERIOD_S;
+      }
+    }
+  },
+
+  /** Living geometry dies the room's way: a despawn deadline on every id it grew. */
+  _hiveRelease(reason) {
+    const hive = this._hive;
+    this._hive = null;
+    if (!hive) return;
+    const state = this.state;
+    const ids = (hive.walls || []).concat(hive.sacs ? [...hive.sacs.keys()] : []);
+    if (state && state.entities && typeof state.entities.get === 'function') {
+      const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+      for (const id of ids) {
+        const entity = state.entities.get(id);
+        if (!entity || !entity.data) continue;
+        entity.data.despawnAt = Math.min(
+          Number.isFinite(entity.data.despawnAt) ? entity.data.despawnAt : Infinity,
+          now + 6,
+        );
+      }
+    }
+    void reason;
   },
 
   _release(reason) {

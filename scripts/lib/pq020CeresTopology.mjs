@@ -116,31 +116,64 @@ export const PQ020_CERES_ADDITIVE_DRESSING_SCHEMA =
 // 190 → 68: the 128 skin primitives on asteroids 4/5/9/36/38/68 became 6 balls). Entity/type
 // census, cathedral census, releaseSha256 and every other assertion are unchanged. Prior digest
 // was c4c49314e678ae40bb122dd2f53edd17b2841d3bcf81f4894d6f351a8e7f3faa.
+// 2026-09-30: re-pinned for solid contact dynamics (eb1869826 "make contacts solid and keep
+// player heading true"): dynamic bodies now adopt measured solid skins via SKIN_DYNAMIC_TYPES,
+// restoring compound collision proxies to the 6 live asteroids (128 primitives) and 2 live ships
+// (48 primitives), growing colliders from 68 (single balls/capsules) to 236 (60 station/gate +
+// 128 asteroid + 48 ship). Entity/type census, cathedral census, releaseSha256 and every other
+// topology assertion are unchanged. Prior digest was 718d39d8123d511762ea7f84901c359088fe1372c55abae632271c8e2eb32544.
+// 2026-10-05: re-pinned after adjudicating D90/D145 — every delta traced to authored work.
+// SOLSTICE / SL-9 (5103e8668) added the Star Lantern (poi_solstice_lantern) → authored pois
+// 9 → 10. _spawnPOIs() draws two rng values per POI even for authored fixed `pos`, so the new
+// POI shifts the deterministic spawn stream: one patrol ship's new landing falls inside the
+// far-shelf boundary, so the live core census drops ship 2 → 1 (entities 38 → 37, collidable
+// 14 → 13, colliders 236 → 212 as its 24-primitive solid skin leaves the live list). The
+// Long Berth yard tug now stays live too — D141 (09132834b) excludes physical worldOneOff
+// bodies from the far shelf because lean far rows strip the identity fields needed to
+// rematerialize them without duplicates — but additive-dressing entities are excluded from
+// this core census, so it moves only the dressing pin below, not this digest's entity counts.
+// Cathedral census 15/15 (14 shelved), all topology/exact-agreement assertions unchanged.
+// Prior digest was b0627637f6ac3f120dc67fb2197c0817165bf3d002dcaf8ca1fcacf9af9028c0.
+// 2026-10-03: re-pinned for the solid-dressing lane (D161 adjudication): Ceres activity
+// objects that re-point dressing props (disabled refinery hull → dead-hulk draw, bait wreck,
+// grave shard, cargo staging pod → barge draw) now take fixed measured-skin bodies, so their
+// census rows gained real colliders. The transit weigh beacon keeps its authored no-presence
+// contract (explicit `collides:false` on poi_ceres_throughline — it stays a non-colliding
+// route marker mid-lane). Entity/type census, cathedral census, releaseSha256 and every
+// topology/exact-agreement assertion are unchanged. Prior digest was
+// 8404e62c8acaa5e75feca22c173c32ee3597254df16ab0f4db176d516cf77e1b.
 export const PQ020_EXPECTED_STRUCTURAL_COST_DIGEST =
-  '718d39d8123d511762ea7f84901c359088fe1372c55abae632271c8e2eb32544';
+  '1e245a850b53c10a7de1cda7ce4caf7cf97685e39f5e1b39e30529c4b15e68a6';
 
 const EXPECTED_ADDITIVE_WORLD_SITE_IDS = Object.freeze([CINDER_SLUICE_SITE_ID]);
+// 2026-10-03 (solid-dressing lane, D161 adjudication): dressing structures the player can see
+// now take fixed measured-skin bodies — the census collider equals the drawn model, sized from
+// modelTruthCensus. Pieces under the craft-scale floor (frag scraps, small pins) stay ghosts.
 const EXPECTED_ADDITIVE_DRESSING_CENSUSES = Object.freeze({
   everydaySpaceKit: Object.freeze({
     entities: 6,
     byType: Object.freeze({ fx: 6 }),
-    collidable: 0,
-    colliders: 0,
+    collidable: 3,
+    colliders: 58,
   }),
   wreckAftermath: Object.freeze({
     entities: 4,
     byType: Object.freeze({ fx: 4 }),
-    collidable: 0,
-    colliders: 0,
+    collidable: 3,
+    colliders: 58,
   }),
-  // PQ-143.02: the strut shrine, the pirate ram, and the eight pod-field shells are the
-  // non-colliding fx dressing. The yard tug is a physical wreck and leaves the fx census when
-  // the far-actor shelf takes it. Excluded from the core structural census.
+  // PQ-143.02: the Long Berth yard tug is an authored physical wreck (0c6f0ea1a). It used to
+  // leave this census whenever the far-actor shelf took it; D141 (09132834b) deliberately
+  // excludes data.worldOneOff bodies from shelving — lean far rows strip the identity fields
+  // needed to rematerialize a unique one-off and re-minted duplicates — so it stays live,
+  // collidable, and carries its 24-primitive measured skin. The strut shrine, the pirate ram,
+  // and the pod-field shells above the craft-scale floor join it as measured-skin solids under
+  // the solid-dressing lane. Still excluded from the core structural census.
   worldOneOff: Object.freeze({
-    entities: 10,
-    byType: Object.freeze({ fx: 10 }),
-    collidable: 0,
-    colliders: 0,
+    entities: 11,
+    byType: Object.freeze({ fx: 10, wreck: 1 }),
+    collidable: 9,
+    colliders: 183,
   }),
 });
 

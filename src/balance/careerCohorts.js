@@ -805,6 +805,46 @@ function pickOwnedWeapon(ctx, preferredIds) {
   return WEAPON_BY_ID.get('wpn_pulse_laser_s') || null;
 }
 
+/**
+ * SF-120 — projection-vs-execution reconciliation. Every loop that recorded a decision-time
+ * quote beside the executed result is compared: a route the model called profitable but the
+ * live market paid below cost is an overstatement (the D80 bug class — the simulation scoring
+ * a success the executable economy never delivered). Drift is measured per-unit on arbitrage
+ * loops and per-lot on contract buys; the summary lands on receipt.reconciliation and feeds
+ * assertCareerReceipt so a systematically overpromising instrument fails the gate instead of
+ * quietly reporting wealth.
+ */
+export function reconcileReceipt(receipt) {
+  const r = {
+    compared: 0, overstated: 0, understated: 0,
+    marginDriftCrSum: 0, worstOverstatePct: 0, worstOverstateLoop: null,
+    buyTotalDriftCrSum: 0, contractBuysCompared: 0,
+  };
+  for (const loop of receipt.loops || []) {
+    if (loop.projMargin != null && loop.realMargin != null) {
+      r.compared += 1;
+      const drift = loop.projMargin - loop.realMargin;
+      r.marginDriftCrSum += drift;
+      const pct = loop.projMargin > 0 ? drift / loop.projMargin : 0;
+      if (pct > r.worstOverstatePct) {
+        r.worstOverstatePct = pct;
+        r.worstOverstateLoop = loop.loop;
+      }
+      if (loop.realMargin <= 0 && loop.projMargin > 0) r.overstated += 1;
+      else if (drift < -loop.projMargin * 0.5) r.understated += 1;
+    }
+    if (loop.projBuyTotal != null && loop.realBuyTotal != null) {
+      r.contractBuysCompared += 1;
+      r.buyTotalDriftCrSum += loop.realBuyTotal - loop.projBuyTotal;
+    }
+  }
+  r.marginDriftCrSum = round2(r.marginDriftCrSum);
+  r.worstOverstatePct = round2(r.worstOverstatePct);
+  r.buyTotalDriftCrSum = round(r.buyTotalDriftCrSum);
+  receipt.reconciliation = r;
+  return r;
+}
+
 function finalizeReceipt(receipt, ctx, costs, budget, horizonS) {
   const shipId = ctx.currentShipId || NEW_GAME.shipId;
   const ship = SHIP_BY_ID.get(shipId);
@@ -816,6 +856,7 @@ function finalizeReceipt(receipt, ctx, costs, budget, horizonS) {
   const elapsedS = round1(ctx.state.simTime);
   const cargoValue = cargoMarketValue(ctx, 'station_helios');
   const equity = shipEquity(shipId);
+  reconcileReceipt(receipt);
   Object.assign(receipt, {
     endingCapital,
     netCredits,
@@ -1257,6 +1298,7 @@ function runHauler(horizonS, options = {}) {
       }
       cargoCreated += buyRes.qty;
       receipt.purchaseSpend += buyRes.total;
+      plan.realBuyTotal = buyRes.total; // SF-120: keep the executed cost beside the projection
       advanceTime(ctx, 8, budget, 'actionS');
       t = ctx.state.simTime;
     }
@@ -1324,6 +1366,10 @@ function runHauler(horizonS, options = {}) {
       cmdtyId: plan.cmdtyId, qty: plan.qty, destStationId: plan.destStationId,
       buyTotal: round(plan.buyTotal), sellTotal: round(sellTotal), bonusCr: round(bonus),
       t: round1(ctx.state.simTime), creditsAfter: ctx.state.player.credits | 0,
+      // SF-120: planned manifest cost vs the executed buy (absent when the manifest was sealed).
+      ...(plan.realBuyTotal != null ? {
+        projBuyTotal: round(plan.buyTotal), realBuyTotal: round(plan.realBuyTotal),
+      } : {}),
     });
     advanceTime(ctx, 8, budget, 'actionS');
     t = ctx.state.simTime;
@@ -1475,6 +1521,11 @@ function runHauler(horizonS, options = {}) {
       buyTotal: buyRes.total, sellTotal: sellRes.total,
       creditsAfter: ctx.state.player.credits | 0, shipId: ctx.currentShipId,
       stockAfterBuy: round1((ctx.state.economy.markets[buyStationId]?.[best.cmdtyId]?.stock) || 0),
+      // SF-120: record what the selection model promised beside what the live executes paid, so a
+      // projection that overstates the lane is measured rather than silently eaten by the loop.
+      projBuy: round2(best.buy), realBuy: round2(buyRes.unitAvg),
+      projSell: round2(best.sell), realSell: round2(sellRes.unitAvg),
+      projMargin: round2(best.margin), realMargin: round2(sellRes.unitAvg - buyRes.unitAvg),
     });
   }
 
@@ -2291,6 +2342,18 @@ export function assertCareerReceipt(receipt, bands = null) {
   // Constraint: unaffordable travel must not silently succeed with zero credits mid-route negatives.
   for (const loop of receipt.loops || []) {
     if (loop.creditsAfter != null && loop.creditsAfter < 0) fails.push(`negative_mid_capital loop=${loop.loop}`);
+  }
+  // SF-120: the comparison instrument is held honest — a decision model that keeps projecting
+  // profitable lanes the live market pays below cost reports misleading success. Occasional
+  // negative realized margins are honest depletion during flight; systematic overpromise fails.
+  const recon = receipt.reconciliation;
+  if (recon && recon.compared > 0) {
+    if (recon.overstated > 0) {
+      warns.push(`projection_overstated ${recon.overstated}/${recon.compared} worst=${recon.worstOverstatePct}@${recon.worstOverstateLoop}`);
+    }
+    if (recon.compared >= 4 && recon.overstated / recon.compared > 0.34) {
+      fails.push(`projection_systematic_overstate ${recon.overstated}/${recon.compared}`);
+    }
   }
   if (receipt.career === 'hunter') {
     if ((receipt.ownedWeapons || []).includes('wpn_autocannon_s') === false) {

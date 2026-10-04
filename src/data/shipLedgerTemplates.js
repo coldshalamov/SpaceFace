@@ -29,6 +29,11 @@ export const SHIP_LEDGER_ENTRY_TYPES = Object.freeze([
   'patch',
   'renown',
   'stunt',
+  // FB-014 — a stunt-minted salvage right and its redemption, kept on the hull's own record.
+  'salvage',
+  // FB-127 — career origin and ladder decisions. {record} is the story owner's fact text
+  // ("hauler was offered and declined"), {career} the career's name; {citation} the fact's cite.
+  'career',
 ]);
 
 export const SHIP_LEDGER_TEMPLATES = deepFreeze({
@@ -108,6 +113,20 @@ export const SHIP_LEDGER_TEMPLATES = deepFreeze({
     '{trick} at {sector}: {ship} {account}. Outcome: {outcome}. Evidence: {evidence}.',
     'Black box: {ship} {account}. Filed as {trick}; outcome: {outcome}. Evidence: {evidence}.',
     'Filed aboard {ship}: {trick}. The pilot {account}. Outcome: {outcome}. Evidence: {evidence}.',
+  ]),
+  // FB-014 — a right minted by a named act, and the act that redeemed it. {rights} is the chit
+  // count, {trick} the act's name, {verb}/{verbPast} minted/redeemed, {ship} the holding hull.
+  salvage: variants('salvage', [
+    '{ship} earned a salvage right off {trick}. {rights} chits on the book, {verbPast}.',
+    'A right was minted aboard {ship}: {trick}. {rights} chits waiting where wrecks are counted.',
+    '{trick} paid {ship} in salvage rights — {rights} chits. The claim stayed claimable.',
+    'The hull holds {rights} salvage chits from {trick}. Nothing spent that was not heard.',
+  ]),
+  career: variants('career', [
+    'Career record: {record}.',
+    'The hull keeps the {career} file: {record}.',
+    'A decision on the road file: {record}.',
+    'Page for {career}: {record}. Filed, not celebrated.',
   ]),
 });
 

@@ -616,7 +616,11 @@ export class PlasmaRibbonPlume {
     this._time += d;
 
     const drive = Math.max(0, Math.min(1.4, (env && env.drive != null ? env.drive : env && env.spool) || 0));
-    if (!nozzle || drive <= 0.002) {
+    // A caller that models the gas itself (the player plume slug) says whether any of it is still
+    // visible; otherwise the old drive gate applies. Either way the hide happens only when the
+    // jet has already run out of length and radiance, never while it is still a body.
+    const live = env && env.live != null ? !!env.live : drive > 0.002;
+    if (!nozzle || !live) {
       this.mesh.visible = false;
       return;
     }

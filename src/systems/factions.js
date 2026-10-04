@@ -124,6 +124,61 @@ function tierOf(rep) {
   return TIERS[TIERS.length - 1].name;
 }
 
+// FB-044 — four named steps cut from the existing nine tiers. Step 1 is Neutral (-29),
+// step 2 is Trusted (150), step 3 is Hero (700). The rep number stays the only standing.
+const RANK_FLOORS = Object.freeze([
+  Object.freeze({ step: 3, min: 700 }),
+  Object.freeze({ step: 2, min: 150 }),
+  Object.freeze({ step: 1, min: -29 }),
+  Object.freeze({ step: 0, min: -1000 }),
+]);
+const DEFAULT_RANK_TITLES = Object.freeze(['Marked', 'Known', 'Trusted', 'Sworn']);
+const RANK_TITLES = Object.freeze({
+  faction_scn: Object.freeze(['Suspect', 'Cleared', 'Trusted', 'Decorated']),
+  faction_mts: Object.freeze(['Drifter', 'Hauler', 'Regular', 'House']),
+  faction_dmc: Object.freeze(['Scab', 'Shift', 'Foreman', 'Charter']),
+  faction_reach: Object.freeze(['Mark', 'Crew', 'Blade', 'Name']),
+  faction_quiet: Object.freeze(['Stranger', 'Known', 'Useful', 'Inside']),
+  faction_vael: Object.freeze(['Prey', 'Noticed', 'Useful', 'Kept']),
+  faction_free: Object.freeze(['Stranger', 'Known', 'Regular', 'Sworn']),
+  faction_choir: Object.freeze(['Unheard', 'Heard', 'In Chorus', 'Kept Note']),
+  faction_archive: Object.freeze(['Unread', 'Filed', 'Cited', 'Kept']),
+  faction_understory: Object.freeze(['Outside', 'Known', 'Carried', 'Root']),
+  faction_helix: Object.freeze(['Noise', 'Sample', 'Instrument', 'Kept']),
+  faction_fulfillment: Object.freeze(['Unlisted', 'Listed', 'Stocked', 'Kept']),
+  faction_pitborn: Object.freeze(['Walk-in', 'Known', 'Regular', 'Yard']),
+  faction_verge_layers: Object.freeze(['Unread', 'Noticed', 'Measured', 'Kept']),
+});
+const RANK_SERVICE_DISCOUNT = 0.1;
+
+/** Named rank for a rep value. Higher rep never yields a lower step. */
+export function rankFromRep(rep, factionId) {
+  const value = Number.isFinite(Number(rep)) ? Number(rep) : 0;
+  let step = 0;
+  for (const row of RANK_FLOORS) {
+    if (value >= row.min) { step = row.step; break; }
+  }
+  const titles = RANK_TITLES[factionId] || DEFAULT_RANK_TITLES;
+  return Object.freeze({
+    step,
+    name: titles[step] || DEFAULT_RANK_TITLES[step],
+    factionId: factionId || null,
+  });
+}
+
+/** Rank read from the live standing record. Does not write rep. */
+export function rankForState(state, factionId) {
+  const rec = state && state.factions ? state.factions[factionId] : null;
+  const rep = rec && Number.isFinite(rec.rep) ? rec.rep : 0;
+  return rankFromRep(rep, factionId);
+}
+
+/** Repair and refuel discount. Zero below the second step, ten percent at and above it. */
+export function rankServiceDiscount(state, factionId) {
+  const rank = rankForState(state, factionId);
+  return rank.step >= 2 ? RANK_SERVICE_DISCOUNT : 0;
+}
+
 /** Diminishing returns near the caps (spec applyDiminish): gains above +150 and losses below
  *  -150 taper to 0.4× near ±1000, so the last stretch is grindy and intentional. */
 function applyDiminish(raw, delta) {
@@ -455,17 +510,38 @@ export const factions = {
     if (soft === 0) return 0;
     const oldTier = rec.tier;
     const oldAggro = rec.aggro;
+    const previousRank = rankFromRep(rec.rep, factionId);
     rec.rep = clampRep(rec.rep + soft);
     rec.tier = tierOf(rec.rep);
     rec.aggro = rec.rep <= AGGRO_THRESHOLD;
     rec.lastDelta = { value: soft, reason, t: state.simTime || 0 };
     this._pushRepHistory(rec, soft, reason);
     const tierChanged = rec.tier !== oldTier;
+    const nextRank = rankFromRep(rec.rep, factionId);
+    const rankChanged = nextRank.name !== previousRank.name;
     if (this.bus) {
       this.bus.emit('faction:repChanged', {
         factionId, delta: soft, reason, newRep: rec.rep, newTier: rec.tier, tierChanged,
+        rankName: nextRank.name, previousRank: previousRank.name, rankChanged, rankStep: nextRank.step,
       });
       if (rec.aggro !== oldAggro) this.bus.emit('faction:aggro', { factionId, isAggro: rec.aggro });
+      // One announcement per crossing. A later tick at the same name does not speak again.
+      if (rankChanged && rec.lastAnnouncedRank !== nextRank.name) {
+        rec.lastAnnouncedRank = nextRank.name;
+        const label = factionLabel(factionId);
+        const sourceRef = `faction:rank:${factionId}:${nextRank.name}`;
+        this.bus.emit('comms:log', {
+          from: label, text: `${label} names you ${nextRank.name}.`, kind: 'rank', sourceRef,
+        });
+        this.bus.emit('news:publish', {
+          text: `${label} names you ${nextRank.name}.`,
+          kind: 'faction_rank',
+          sourceRef,
+          factionId,
+          rankName: nextRank.name,
+          rankStep: nextRank.step,
+        });
+      }
     }
     this._applySpillover(factionId, soft, reason);
     return soft;
@@ -960,11 +1036,15 @@ export function dockAccess(factionId) {
   return 'full';
 }
 
-/** Mission availability gate by minRep (spec missionAvailable). */
+/** Mission availability gate by minRep (spec missionAvailable). A rank step, when authored, is the same gate. */
 export function missionAvailable(mission) {
   if (!mission || !mission.factionId) return true;
   const rec = _state && _state.factions ? _state.factions[mission.factionId] : null;
   const rep = rec ? rec.rep : 0;
+  if (Number.isInteger(mission.minRankStep)) {
+    const rank = rankForState(_state, mission.factionId);
+    if (rank.step < mission.minRankStep) return false;
+  }
   return rep >= (mission.minRep || 0);
 }
 

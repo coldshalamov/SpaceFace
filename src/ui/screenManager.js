@@ -226,6 +226,9 @@ export function createScreenManager(ctx) {
         return rec;
       }
       rec.mounted = true;
+      // Some screens stamp aria-modal='true' as static markup in mount(); the manager owns that
+      // attribute (syncVisibility) — a warmed mount that is not stack top must not keep it.
+      if (stack[stack.length - 1] !== id) el.removeAttribute('aria-modal');
     }
     return rec;
   }
@@ -246,16 +249,43 @@ export function createScreenManager(ctx) {
   function paintWarm(id) {
     const rec = build(id);
     if (!rec || !rec.el || rec.painted) return;
+    // A racing real open owns the element — its open already paid mount+layout,
+    // and the warm's hidden write would fight it.
+    if (stack[stack.length - 1] === id) return;
     rec.painted = true;
     const el = rec.el;
     clearInlineDisplay(el.style);
-    el.style.display = 'flex';
+    // Mirror the display choice syncVisibility makes for a real open — a kit
+    // screen's grid shell must not be clobbered by a flex write.
+    el.style.display = (typeof el.classList?.contains === 'function'
+      && (el.classList.contains('k-screen') || el.classList.contains('dp-frame'))) ? 'grid' : 'flex';
+    // position:fixed keeps the warmed root out of #screens' flex flow — an
+    // in-flow sibling would reflow the visible screen for exactly one frame.
+    el.style.position = 'fixed';
     el.style.visibility = 'hidden';
-    requestAnimationFrame(() => {
-      if (stack[stack.length - 1] === id) return;
-      el.style.visibility = '';
-      hideImportant(el.style);
-    });
+    // The warm must actually render: a display:none subtree (stack empty →
+    // #screens hidden) never enters the render tree, so flip the root to
+    // rendered-but-hidden for this one frame instead of latching a dead
+    // painted stamp that blocks every later warm.
+    const rootHidden = screensRoot && screensRoot.style.display === 'none';
+    if (rootHidden) {
+      screensRoot.style.display = 'flex';
+      screensRoot.style.visibility = 'hidden';
+    }
+    // Force the style+layout pass synchronously, then restore in the same task — an rAF-spanned
+    // warm leaves display:flex/grid on the element for a full frame, and a computed-style probe
+    // (check-new-game-layout modal semantics) can land inside that window.
+    void el.offsetHeight;
+    el.style.visibility = '';
+    el.style.position = '';
+    if (stack[stack.length - 1] !== id) hideImportant(el.style);
+    if (rootHidden && screensRoot) {
+      screensRoot.style.visibility = '';
+      const stillOpen = stack.length > 0
+        || (typeof screensRoot.querySelector === 'function'
+          && !!screensRoot.querySelector('.sf-find--host'));
+      if (!stillOpen) screensRoot.style.display = 'none';
+    }
   }
 
   function syncVisibility() {
@@ -276,6 +306,10 @@ export function createScreenManager(ctx) {
         clearInlineDisplay(rec.el.style);
         rec.el.style.display = (typeof rec.el.classList?.contains === 'function'
           && (rec.el.classList.contains('k-screen') || rec.el.classList.contains('dp-frame'))) ? 'grid' : 'flex';
+        // The top screen is always visibility-clean — a paintWarm frame that
+        // raced this open must not leave its hidden write behind.
+        rec.el.style.visibility = '';
+        rec.el.style.position = '';
         rec.el.removeAttribute('aria-hidden');
         rec.el.setAttribute('aria-modal', 'true');
         rec.el.inert = false;
@@ -479,7 +513,7 @@ export function createScreenManager(ctx) {
     // hide currently-visible top
     const prevId = top();
     const prev = activeDef();
-    if (prev && prev.onHide) { try { prev.onHide(); } catch (e) { console.error(e); } }
+    if (prev && prev.onHide) { try { prev.onHide(ctx); } catch (e) { console.error(e); } }
     if (prevId) captureScroll(prevId, registry.get(prevId));
     const rec = build(id);
     stack.push(id);
@@ -497,7 +531,7 @@ export function createScreenManager(ctx) {
     const closingId = stack[stack.length - 1];
     const closingRec = closingId && registry.get(closingId);
     const closing = activeDef();
-    if (closing && closing.onHide) { try { closing.onHide(); } catch (e) { console.error(e); } }
+    if (closing && closing.onHide) { try { closing.onHide(ctx); } catch (e) { console.error(e); } }
     // Capture AFTER onHide so a screen's own onHide write lands first and this cannot clobber it.
     if (closingId) captureScroll(closingId, closingRec);
 
@@ -538,7 +572,7 @@ export function createScreenManager(ctx) {
   function replaceScreen(id) {
     if (stack.length) {
       const closing = activeDef();
-      if (closing && closing.onHide) { try { closing.onHide(); } catch (e) { console.error(e); } }
+      if (closing && closing.onHide) { try { closing.onHide(ctx); } catch (e) { console.error(e); } }
       stack.pop();
       focusStack.pop();
       clearModalFocus();
@@ -549,7 +583,7 @@ export function createScreenManager(ctx) {
   function closeAll() {
     while (stack.length) {
       const closing = activeDef();
-      if (closing && closing.onHide) { try { closing.onHide(); } catch (e) { console.error(e); } }
+      if (closing && closing.onHide) { try { closing.onHide(ctx); } catch (e) { console.error(e); } }
       stack.pop();
     }
     focusStack.length = 0;
@@ -574,11 +608,15 @@ export function createScreenManager(ctx) {
       if (stacked >= 0) syncVisibility();
       return;
     }
-    if (rec.def.onHide) { try { rec.def.onHide(); } catch (e) { console.error(e); } }
+    if (rec.def.onHide) { try { rec.def.onHide(ctx); } catch (e) { console.error(e); } }
     if (rec.def.dispose) { try { rec.def.dispose(); } catch (e) { console.error(e); } }
     rec.mounted = false;
     if (rec.el && rec.el.parentNode) rec.el.parentNode.removeChild(rec.el);
     rec.el = null;
+    // The warm stamp answered for the dropped element's layout pass — a released screen
+    // that stays prewarm-queued (newGame/saveLoad ride BOOT_SCREEN_EXPORTS) would hit
+    // `painted === true` on every later wave and pay a cold mount+layout at its next open.
+    rec.painted = false;
     if (stacked >= 0) syncVisibility();
   }
 
@@ -684,7 +722,7 @@ export function createScreenManager(ctx) {
     for (const rec of registry.values()) {
       cancelPendingExit(rec);
       if (rec && rec.mounted && rec.def && rec.def.onHide) {
-        try { rec.def.onHide(); } catch (_) {}
+        try { rec.def.onHide(ctx); } catch (_) {}
       }
       if (rec && rec.mounted && rec.def && rec.def.dispose) {
         try { rec.def.dispose(); } catch (_) {}

@@ -81,6 +81,12 @@ export function normalizeField(spec = {}) {
     expireAt: spec.durationS === Infinity ? Infinity : finite(spec.createdAt, 0) + Math.max(0, finite(spec.durationS, 0)),
     // PQ-147.02 — hitch lock (Mass Seed). Zero unless a body is latched to sourceId.
     lockStrength: Math.max(0, finite(spec.lockStrength, 0)),
+    // Velocity of the medium itself. Zero keeps viscosity in the world frame,
+    // bit-identical to fields that never authored a moving frame.
+    frame: {
+      x: finite(spec.frame && spec.frame.x),
+      z: finite(spec.frame && spec.frame.z),
+    },
   };
 }
 
@@ -150,6 +156,9 @@ export function couplingScale(bodyProfile) {
 // spares friendly craft; `filters.types` (if present) whitelists entity types.
 export function fieldAffectsBody(field, bodyProfile) {
   if (!field || !bodyProfile) return false;
+  // Kinematic / non-dynamic bodies keep their scripted motion. Omitted dynamic
+  // stays coupled so existing predictor profiles and heavy dynamic hulls still feel the field.
+  if (bodyProfile.dynamic === false || bodyProfile.kinematic === true) return false;
   const filters = field.filters;
   if (filters) {
     if (Array.isArray(filters.types) && !filters.types.includes(bodyProfile.type)) return false;
@@ -209,6 +218,16 @@ function hitchLockAcceleration(field, x, z, out) {
   o.ax = -dx * inv * a;
   o.az = -dz * inv * a;
   return o;
+}
+
+// Viscosity opposes velocity in the field's own frame (frame 0 is the world).
+// Power against that relative velocity is -c|u|^2, so a stationary medium cannot
+// add kinetic energy through drag alone. Pull and push stay the positional term.
+function viscosityAccel(field, vel, fall) {
+  const frame = field && field.frame;
+  const ux = finite(vel && vel.x) - finite(frame && frame.x);
+  const uz = finite(vel && vel.z) - finite(frame && frame.z);
+  return { x: -ux * field.damping * fall, z: -uz * field.damping * fall };
 }
 
 // Raw (pre-coupling) acceleration vector a single field applies at a world point. Writes into
@@ -271,8 +290,9 @@ export function fieldRawAcceleration(field, x, z, out, vel = null) {
     // At the exact center the radial bearing is undefined, but an authored snare's velocity drag is
     // still well-defined. Plain wells/repulsors keep the old zero-force behavior.
     if (field.damping > 0 && vel) {
-      o.ax = -finite(vel.x) * field.damping * fall;
-      o.az = -finite(vel.z) * field.damping * fall;
+      const drag = viscosityAccel(field, vel, fall);
+      o.ax = drag.x;
+      o.az = drag.z;
     }
     return o;
   }
@@ -283,22 +303,141 @@ export function fieldRawAcceleration(field, x, z, out, vel = null) {
   o.ax = ux * a * sign;
   o.az = uz * a * sign;
   if (field.damping > 0 && vel) {
-    o.ax -= finite(vel.x) * field.damping * fall;
-    o.az -= finite(vel.z) * field.damping * fall;
+    const drag = viscosityAccel(field, vel, fall);
+    o.ax += drag.x;
+    o.az += drag.z;
   }
   return o;
 }
 
+// ── Predictor corridor relevance (RELEASE-TRUTH C4) ─────────────────────────────────────────
+// A field-aware preview only changes a ballistic contact claim when some field can actually
+// apply force along the path the predictor samples. Three kinds of fields cannot:
+//   • payload-excluded — the body's own deployer filter / team / type opts it out;
+//   • zero-force — strength <= 0 contributes no raw acceleration anywhere (damping lives
+//     inside that term), and no hitch lock reaches an unhitched body;
+//   • provably disjoint — its volume never touches the ballistic corridor and never touches
+//     the volume of a field that does (a chain of overlapping fields can ferry a bent path
+//     in, so relevance closes transitively over touching volumes — a field outside every
+//     link is provably unreachable while the read stays corridor-shaped).
+// "Conservative" here means the WHOLE predicted corridor, not the starting point: a field
+// ahead on the lane is relevant even though the payload stands outside it now.
+
+// Conservative bound on a field's reach around its center — the same bound for every kind:
+// radial volumes are disks of `radius`; a cone wedge never exceeds its radius; a scoop sheet
+// extends `radius` along its axis plus `halfWidth` laterally, so radius+halfWidth covers it.
+export function fieldInfluenceRadius(field) {
+  if (!field) return 0;
+  let reach = positive(field.radius, 0);
+  if (field.kind === FIELD_KINDS.SHEET) reach += positive(field.halfWidth, 0);
+  return reach;
+}
+
+function segmentPointDistance(ax, az, bx, bz, px, pz) {
+  const dx = bx - ax, dz = bz - az;
+  const len2 = dx * dx + dz * dz;
+  const t = len2 > 1e-14 ? clamp(((px - ax) * dx + (pz - az) * dz) / len2, 0, 1) : 0;
+  const cx = ax + dx * t, cz = az + dz * t;
+  return Math.hypot(px - cx, pz - cz);
+}
+
+/**
+ * Can this field apply ANY acceleration to this body at all (before position is even asked)?
+ * Same gates production uses inside sampleFieldAcceleration: the coupling pre-filter plus a
+ * nonzero force source — authored strength, or a hitch lock that actually reaches this body.
+ */
+export function fieldCanApplyTo(field, profile) {
+  if (!fieldAffectsBody(field, profile)) return false;
+  if (field.strength > 0) return true;
+  const hitchId = profile && profile.hitchedTo;
+  return field.lockStrength > 0
+    && field.sourceId != null && hitchId != null
+    && String(field.sourceId) === String(hitchId);
+}
+
+/**
+ * The subset of `fields` that can apply force along the ballistic corridor a→b for `profile`
+ * — payload-excluded, zero-force, and provably disjoint fields are dropped. Relevance is a
+ * transitive closure: a field touching the corridor is relevant, and a field touching a
+ * relevant field's volume is relevant too (the first can push the path into the second).
+ * Returns a new array in input order; empty when nothing can bend the path — the caller's
+ * correct response to that is a ballistic preview, not a field solve that cannot see the
+ * full ballistic horizon.
+ *
+ * Residual bound, stated honestly: a body that exits a relevant field with bent velocity can
+ * still fly to a field this closure did not reach. Chasing that spoke needs the live solve;
+ * the frozen-field preview is advisory and the actual release authority never consults it.
+ */
+export function fieldsRelevantAlongCorridor(fields, a, b, profile) {
+  const out = [];
+  if (!Array.isArray(fields) || fields.length === 0 || !a || !b) return out;
+  const ax = finite(a.x), az = finite(a.z), bx = finite(b.x), bz = finite(b.z);
+  const reaches = fields.map(fieldInfluenceRadius);
+  const relevant = new Array(fields.length).fill(false);
+  // Pass 1: fields whose reach envelope intersects the ballistic corridor itself.
+  for (let i = 0; i < fields.length; i++) {
+    const field = fields[i];
+    if (!field || !fieldCanApplyTo(field, profile)) continue;
+    const d = segmentPointDistance(ax, az, bx, bz, finite(field.center && field.center.x), finite(field.center && field.center.z));
+    if (d <= reaches[i]) relevant[i] = true;
+  }
+  // Closure: a field whose volume touches a relevant field's volume can be entered through
+  // it — the corridor is only provably clear of fields outside every link in the chain.
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (let i = 0; i < fields.length; i++) {
+      if (relevant[i]) continue;
+      const field = fields[i];
+      if (!field || !fieldCanApplyTo(field, profile)) continue;
+      const cx = finite(field.center && field.center.x), cz = finite(field.center && field.center.z);
+      for (let j = 0; j < fields.length; j++) {
+        if (!relevant[j]) continue;
+        const other = fields[j];
+        const dx = cx - finite(other.center && other.center.x);
+        const dz = cz - finite(other.center && other.center.z);
+        if (Math.hypot(dx, dz) <= reaches[i] + reaches[j]) { relevant[i] = true; grew = true; break; }
+      }
+    }
+  }
+  for (let i = 0; i < fields.length; i++) if (relevant[i]) out.push(fields[i]);
+  return out;
+}
+
 const _rawScratch = { ax: 0, az: 0 };
+const _fieldOrder = [];
+
+// Id order, stable for equal ids. Already-sorted lists (kernel.list()) keep their
+// index sequence, so the float sum stays bit-identical to the previous convention.
+function fieldSumOrder(fields) {
+  const n = fields.length;
+  _fieldOrder.length = n;
+  for (let i = 0; i < n; i++) _fieldOrder[i] = i;
+  for (let i = 1; i < n; i++) {
+    const idx = _fieldOrder[i];
+    const id = fields[idx] && fields[idx].id != null ? String(fields[idx].id) : '';
+    let j = i - 1;
+    while (j >= 0) {
+      const other = fields[_fieldOrder[j]];
+      const oid = other && other.id != null ? String(other.id) : '';
+      if (oid <= id) break;
+      _fieldOrder[j + 1] = _fieldOrder[j];
+      j--;
+    }
+    _fieldOrder[j + 1] = idx;
+  }
+  return _fieldOrder;
+}
 
 /**
  * PURE predictor seam + per-tick force source. Sum the coupling-scaled acceleration of every field
- * at `pos` for a body, then clamp the total magnitude to FIELD_MAX_ACCEL. `vel` is accepted for
- * signature parity with future velocity-dependent fields (currently unused — fields are positional).
+ * at the same pre-step `pos`/`vel`, then clamp the total magnitude to FIELD_MAX_ACCEL.
+ * Enumeration order does not matter: summation is id-sorted. The result is an acceleration,
+ * never a rewritten body velocity.
  *
  * @param {{x:number,z:number}} pos
  * @param {{x:number,z:number}|null} vel
- * @param {Array} fields          id-sorted snapshot (kernel.list())
+ * @param {Array} fields          field records (sorted here; kernel.list() is already id-sorted)
  * @param {number} simTime        caller sim clock (accepted for parity; math is time-independent)
  * @param {{mass:number,type:string,team:*,fieldResponseMult:number,id:*}} [bodyProfile]
  * @param {{ax:number,az:number}} [out]
@@ -310,11 +449,11 @@ export function sampleFieldAcceleration(pos, vel, fields, simTime, bodyProfile, 
   if (!pos || !Array.isArray(fields) || fields.length === 0) return o;
   const profile = bodyProfile || DEFAULT_PROFILE;
   const couple = couplingScale(profile);
+  const order = fieldSumOrder(fields);
   let sx = 0, sz = 0;
-  // Stable-order summation (fields are id-sorted) keeps the float result identical across runs.
   if (couple > 0) {
-    for (let i = 0; i < fields.length; i++) {
-      const field = fields[i];
+    for (let n = 0; n < order.length; n++) {
+      const field = fields[order[n]];
       if (!fieldAffectsBody(field, profile)) continue;
       fieldRawAcceleration(field, pos.x, pos.z, _rawScratch, vel);
       sx += _rawScratch.ax;
@@ -326,8 +465,8 @@ export function sampleFieldAcceleration(pos, vel, fields, simTime, bodyProfile, 
   // PQ-147.02 — hitch lock is a frame lock. It does not shrug with boost or mass.
   if (profile.hitchedTo != null) {
     const hitchId = String(profile.hitchedTo);
-    for (let i = 0; i < fields.length; i++) {
-      const field = fields[i];
+    for (let n = 0; n < order.length; n++) {
+      const field = fields[order[n]];
       if (!(field.lockStrength > 0)) continue;
       if (field.sourceId == null || String(field.sourceId) !== hitchId) continue;
       hitchLockAcceleration(field, pos.x, pos.z, _lockScratch);
@@ -477,6 +616,12 @@ export function createFieldKernel() {
         if (l > 1e-6) { record.dir.x = dx / l; record.dir.z = dz / l; }
       }
       if (patch.strength != null) record.strength = Math.max(0, finite(patch.strength, record.strength));
+      if (patch.damping != null) record.damping = Math.max(0, finite(patch.damping, record.damping));
+      if (patch.frame) {
+        if (!record.frame) record.frame = { x: 0, z: 0 };
+        record.frame.x = finite(patch.frame.x, record.frame.x);
+        record.frame.z = finite(patch.frame.z, record.frame.z);
+      }
       // geometry mutation does not change ordering, so the id-sorted cache stays valid
       return record;
     },

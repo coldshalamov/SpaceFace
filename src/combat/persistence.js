@@ -1,5 +1,6 @@
 import { COMBAT_SCHEMA_VERSION } from '../data/combatDefs.js';
 import { ensureCombatState, entityKey } from './runtime.js';
+import { occupantGenerationOf } from '../core/entity.js';
 
 export const COMBAT_SAVE_SCHEMA_VERSION = 1;
 
@@ -15,6 +16,11 @@ export function serializeCombatState(state) {
     entities: serializeCombatants(combat, refs),
     actions: serializeActions(combat, refs, savedAttachmentIds),
     attachments,
+    // A save written mid-defeat is legal (the defeated wreck serializes deliberately), so the
+    // after-action receipt is a durable consequence, not session scratch: without it the restored
+    // wreck loses both its recovery plan and combat's re-arm seam, and the player loads into a
+    // dead hull with no reachable resolution. Plain data — clonePlain strips nothing it needs.
+    lastPlayerDefeat: clonePlain(combat && combat.lastPlayerDefeat) || null,
   };
 }
 
@@ -25,14 +31,24 @@ export function restoreCombatState(state, payload, resolveEntityRef) {
   }
 
   const summary = { restoredEntities: 0, restoredAttachments: 0, restoredActions: 0, restoredRequests: 0, dropped: 0 };
+  // Restore runs after the sector's entities are spawned; generation tokens pin the resolved
+  // endpoint ids to those bodies so a later id recycle cannot weld a restored line onto a
+  // different occupant.
+  const entityFor = (id) => state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(id) || null
+    : null;
   restoreCombatants(combat, payload.entities, resolveEntityRef, summary);
-  restoreAttachments(combat, payload.attachments, resolveEntityRef, summary);
-  restoreActions(combat, payload.actions, resolveEntityRef, summary);
+  restoreAttachments(combat, payload.attachments, resolveEntityRef, entityFor, summary);
+  restoreActions(combat, payload.actions, resolveEntityRef, entityFor, summary);
   combat.attachments.nextId = normalizedAttachmentNextId(
     payload.attachments && payload.attachments.nextId,
     combat.attachments.byId,
   );
   combat.statusNextPendingSeq = normalizedStatusNextSeq(payload.statusNextPendingSeq, combat.entities);
+  // The durable defeat receipt restores as data; whether the wreck is still owed recovery is
+  // re-derived by combat's save:loaded boundary against the restored entity's defeated flag —
+  // an absent field (older save) leaves null, never a fabricated receipt.
+  combat.lastPlayerDefeat = clonePlain(payload.lastPlayerDefeat) || null;
   return summary;
 }
 
@@ -82,6 +98,12 @@ function serializeAttachments(combat, refs) {
     delete saved.ownerId;
     delete saved.targetId;
     delete saved.controllerId;
+    // Occupant generations are this-run occupant proofs, not durable identity — the ids they
+    // pin are remapped by resolveEntityRef on restore, and re-stamped there against the bodies
+    // that actually spawned.
+    delete saved.ownerGeneration;
+    delete saved.targetGeneration;
+    delete saved.controllerGeneration;
     delete saved.physicsHandle;
     saved.ownerRef = clonePlain(ownerRef);
     saved.targetRef = clonePlain(targetRef);
@@ -106,6 +128,7 @@ function serializeActions(combat, refs, savedAttachmentIds) {
     if (!actorRef || !target) continue;
     const saved = clonePlain(request);
     delete saved.actorId;
+    delete saved.actorGeneration;
     saved.actorRef = clonePlain(actorRef);
     saved.target = target;
     requests.push(saved);
@@ -120,6 +143,7 @@ function serializeActions(combat, refs, savedAttachmentIds) {
     if (!actorRef || !target) continue;
     const saved = clonePlain(instance);
     delete saved.actorId;
+    delete saved.actorGeneration;
     saved.actorRef = clonePlain(actorRef);
     saved.target = target;
     active.push(saved);
@@ -160,7 +184,7 @@ function restoreCombatants(combat, savedList, resolveEntityRef, summary) {
   }
 }
 
-function restoreAttachments(combat, savedAttachments, resolveEntityRef, summary) {
+function restoreAttachments(combat, savedAttachments, resolveEntityRef, entityFor, summary) {
   const byId = savedAttachments && savedAttachments.byId && typeof savedAttachments.byId === 'object'
     ? savedAttachments.byId
     : {};
@@ -181,6 +205,11 @@ function restoreAttachments(combat, savedAttachments, resolveEntityRef, summary)
     attachment.targetId = targetId;
     if (controllerId != null) attachment.controllerId = controllerId;
     else delete attachment.controllerId;
+    // Re-pin endpoint identity to the bodies that actually spawned this run; serialize strips
+    // these fields, so a restored record gets its proofs from the resolved ids, not the save.
+    attachment.ownerGeneration = occupantGenerationOf(entityFor(ownerId));
+    attachment.targetGeneration = occupantGenerationOf(entityFor(targetId));
+    attachment.controllerGeneration = controllerId != null ? occupantGenerationOf(entityFor(controllerId)) : null;
     attachment.physicsHandle = null;
     attachment.state = 'active';
     attachment.restLength = positiveNumber(attachment.restLength, 0);
@@ -191,7 +220,7 @@ function restoreAttachments(combat, savedAttachments, resolveEntityRef, summary)
   }
 }
 
-function restoreActions(combat, savedActions, resolveEntityRef, summary) {
+function restoreActions(combat, savedActions, resolveEntityRef, entityFor, summary) {
   if (!savedActions || typeof savedActions !== 'object') return;
   combat.actions.nextRequestSeq = positiveInteger(savedActions.nextRequestSeq, 1);
   combat.actions.nextInstanceSeq = positiveInteger(savedActions.nextInstanceSeq, 1);
@@ -203,7 +232,7 @@ function restoreActions(combat, savedActions, resolveEntityRef, summary) {
   }
 
   for (const saved of Array.isArray(savedActions.requests) ? savedActions.requests : []) {
-    const request = restoreActionRecord(saved, resolveEntityRef, combat.attachments.byId);
+    const request = restoreActionRecord(saved, resolveEntityRef, entityFor, combat.attachments.byId);
     if (!request) { summary.dropped++; continue; }
     combat.actions.requests.push(request);
     summary.restoredRequests++;
@@ -213,21 +242,22 @@ function restoreActions(combat, savedActions, resolveEntityRef, summary) {
   const active = Array.isArray(savedActions.active) ? [...savedActions.active] : [];
   active.sort((a, b) => (a && a.seq || 0) - (b && b.seq || 0));
   for (const saved of active) {
-    const instance = restoreActionRecord(saved, resolveEntityRef, combat.attachments.byId);
+    const instance = restoreActionRecord(saved, resolveEntityRef, entityFor, combat.attachments.byId);
     if (!instance) { summary.dropped++; continue; }
     combat.actions.activeByActor[entityKey(instance.actorId)] = instance;
     summary.restoredActions++;
   }
 }
 
-function restoreActionRecord(saved, resolveEntityRef, attachmentsById) {
+function restoreActionRecord(saved, resolveEntityRef, entityFor, attachmentsById) {
   const actorId = resolveEntityRef(saved && saved.actorRef);
   if (actorId == null) return null;
-  const target = restoreTarget(saved && saved.target, resolveEntityRef, attachmentsById);
+  const target = restoreTarget(saved && saved.target, resolveEntityRef, entityFor, attachmentsById);
   if (!target) return null;
   const record = clonePlain(saved);
   delete record.actorRef;
   record.actorId = actorId;
+  record.actorGeneration = occupantGenerationOf(entityFor(actorId));
   record.target = target;
   return record;
 }
@@ -253,7 +283,7 @@ function serializeTarget(target, refs, savedAttachmentIds) {
   return null;
 }
 
-function restoreTarget(target, resolveEntityRef, attachmentsById) {
+function restoreTarget(target, resolveEntityRef, entityFor, attachmentsById) {
   if (!target || target.kind === 'none') return { kind: 'none' };
   if (target.kind === 'entity') {
     const entityId = resolveEntityRef(target.entityRef);
@@ -261,6 +291,7 @@ function restoreTarget(target, resolveEntityRef, attachmentsById) {
     return {
       kind: 'entity',
       entityId,
+      entityGeneration: occupantGenerationOf(entityFor(entityId)),
       sourceSocketId: target.sourceSocketId == null ? null : String(target.sourceSocketId),
       targetSocketId: target.targetSocketId == null ? null : String(target.targetSocketId),
     };

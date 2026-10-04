@@ -36,13 +36,22 @@ test('packaged Electron includes only production shell entry points', () => {
   const packageJson = JSON.parse(read('package.json'));
   assert.deepEqual(packageJson.build.files, [
     'build/web/**',
+    'assets/brand/exports/spaceface-launcher-256.png',
     'electron/main.cjs',
     'electron/preload.cjs',
+    'electron/autoUpdate.cjs',
+    'electron/releaseIdentity.cjs',
+    'electron/workshopMods.cjs',
+    'electron/windowState.cjs',
+    'electron/steamworks.cjs',
+    'electron/steamAchievements.json',
     'scripts/lib/gameServer.cjs',
     'scripts/lib/electronLaunchProtocol.cjs',
     'scripts/lib/playerSaveStore.cjs',
+    'scripts/lib/userContentStore.cjs',
     'scripts/lib/staticCachePolicy.cjs',
     'package.json',
+    'NOTICE',
   ]);
   assert.equal(packageJson.build.files.includes('electron/**'), false);
 });
@@ -78,10 +87,17 @@ test('sandboxed preload remains a one-way lifecycle subscription', () => {
   const outboundIpcCalls = [...preload.matchAll(
     /ipcRenderer\.(send|sendSync|invoke|postMessage)\s*\(\s*([^,)]+?)\s*\)/g,
   )].map(([, method, argument]) => [method, argument.trim()]);
+  // The documented quit channel (fire-and-forget) plus read-only status / request-response queries: build identity, Steam
+  // status, workshop status + sync, perf metrics. Every channel is a named constant; any new one must be added here on review.
   assert.deepEqual(outboundIpcCalls, [
     ['send', 'SHELL_QUIT_CHANNEL'],
     ['send', 'SHELL_QUIT_CHANNEL'],
+    ['invoke', 'SHELL_BUILD_INFO_CHANNEL'],
+    ['invoke', 'SHELL_STEAM_STATUS_CHANNEL'],
+    ['invoke', 'SHELL_WORKSHOP_STATUS_CHANNEL'],
+    ['invoke', 'SHELL_WORKSHOP_SYNC_CHANNEL'],
+    ['invoke', 'SHELL_PERF_METRICS_CHANNEL'],
     ['send', 'SHELL_QUIT_CHANNEL'],
-  ], 'preload may send only the documented quit channel');
+  ], 'preload may only send the quit channel and invoke the reviewed status channels');
   assert.doesNotMatch(preload, /contextBridge\.exposeInMainWorld\([^)]*(?:ipcRenderer|require|process)/s);
 });

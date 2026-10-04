@@ -3,7 +3,7 @@
 export const faction = {
   id: 'faction_helix', name: 'Helix Directorate', short: 'Helix', color: '#8B9CB8',
   personality: 'paper', startingRep: 0,
-  homeSectors: [],
+  homeSectors: ['sector_sedna_dark'],
   controls: ['contract allocation', 'variance audits', 'dock-deny paperwork'],
   fleetClass: 'none',
   relations: { faction_scn: 0.0, faction_mts: 0.0, faction_dmc: 0.0, faction_reach: 0.0, faction_quiet: 0.0, faction_vael: 0.0, faction_free: 0.0, faction_choir: 0.0, faction_understory: 0.0, faction_fulfillment: 0.0, faction_archive: 0.0, faction_pitborn: 0.0, faction_verge_layers: 0.0 },

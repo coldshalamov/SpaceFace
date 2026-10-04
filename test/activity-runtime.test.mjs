@@ -222,11 +222,71 @@ test('tethered payload stays exact after leaving the glass', () => {
   assert.equal(entityNeedsPhysics(chunk), true);
 });
 
+test('broken tether receipt does not pin a far payload', () => {
+  const player = ship(1, 0, { isPlayer: true, team: 0 });
+  const snapped = rock(9, 3000);
+  const live = rock(10, 3000);
+  const state = makeState([player, snapped, live], {
+    combat: {
+      attachments: {
+        byId: {
+          // Dead receipt-ledger records hold no joint and are not serialized on save —
+          // they must not act as residency pins (47a sim-v3 reload divergence, D145).
+          t_dead: { ownerId: 1, targetId: 9, state: 'broken' },
+          t_live: { ownerId: 1, targetId: 10, state: 'active' },
+        },
+      },
+    },
+  });
+  const runtime = ensureActivityClassified(state);
+  assert.notEqual(snapped.activity.simTier, SIM_TIER.S0_EXACT);
+  assert.equal(entityNeedsPhysics(snapped), false);
+  assert.equal(runtime.physicsDynamics.includes(snapped), false);
+  assert.equal(live.activity.simTier, SIM_TIER.S0_EXACT);
+  assert.equal(entityNeedsPhysics(live), true);
+});
+
 test('job-pinned far actor stays exact', () => {
   const player = ship(1, 0, { isPlayer: true, team: 0 });
   const courier = ship(8, 5000, { data: { jobId: 'job_courier_1' } });
   ensureActivityClassified(makeState([player, courier]));
   assert.equal(courier.activity.simTier, SIM_TIER.S0_EXACT);
+});
+
+test('a hull inside a live field keeps its physics body for the field duration', () => {
+  const player = ship(1, 0, { isPlayer: true, team: 0 });
+  const caught = ship(30, 2500, { team: 1 });
+  const spare = ship(31, 2501, { team: 1 });
+  const fieldsRuntime = { affectedIds: new Set([30]) };
+  const state = makeState([player, caught, spare], { fieldsRuntime });
+  const runtime = ensureActivityClassified(state);
+  assert.equal(caught.activity.simTier, SIM_TIER.S0_EXACT);
+  assert.ok(caught.activity.pins.includes('FIELD_DRIVEN'));
+  assert.ok(runtime.physicsDynamics.includes(caught));
+  assert.equal(entityNeedsPhysics(caught), true);
+  // The untouched neighbour stays aggregate — the pin is per-body, not per-field.
+  assert.equal(spare.activity.simTier, SIM_TIER.S4_AGGREGATE);
+  assert.equal(entityNeedsPhysics(spare), false);
+  // When the field lets go (fields clears the set before sampling each tick), the hull
+  // dematerializes once the demotion grace window expires instead of holding a body forever.
+  fieldsRuntime.affectedIds.clear();
+  state.tick = 400;
+  state.simTime = 40;
+  ensureActivityClassified(state);
+  state.tick = 600;
+  state.simTime = 50;
+  ensureActivityClassified(state);
+  assert.notEqual(caught.activity.simTier, SIM_TIER.S0_EXACT);
+  assert.equal(entityNeedsPhysics(caught), false);
+});
+
+test('an authored hunter keeps distance tiers instead of aggregating at spawn', () => {
+  const player = ship(1, 0, { isPlayer: true, team: 0 });
+  const hunter = ship(40, 2500, { team: 1, data: { ai: { huntPlayer: true } } });
+  const ambient = ship(41, 2500, { team: 1 });
+  ensureActivityClassified(makeState([player, hunter, ambient]));
+  assert.notEqual(hunter.activity.simTier, SIM_TIER.S4_AGGREGATE);
+  assert.equal(ambient.activity.simTier, SIM_TIER.S4_AGGREGATE);
 });
 
 test('mined rock keeps remaining ore after leaving and returning', () => {
@@ -572,18 +632,18 @@ test('incremental classify rediscovers a station and a rock the player flies bac
   let runtime = null;
   // The runtime arrays are reused scratch — membership must be sampled inside
   // the step, not from the returned object after later passes overwrite it.
-  let rockStaticAt3000 = false;
+  let rockInPhysicsAt3000 = false;
   let rockGlassAt3000 = false;
   for (const x of [0, 500, 1500, 3000, 3000, 1500, 500, 100, 0]) {
     runtime = step(x);
     if (x === 3000) {
-      rockStaticAt3000 = runtime.physicsStatics.includes(farRock);
+      rockInPhysicsAt3000 = runtime.physicsDynamics.includes(farRock);
       rockGlassAt3000 = runtime.glassIds.has(3);
     }
   }
   assert.equal(runtime.classifyMode, 'incremental');
-  assert.ok(rockStaticAt3000,
-    'the rock under the player at x=3000 must be a physics static');
+  assert.ok(rockInPhysicsAt3000,
+    'the rock under the player at x=3000 must be in physics');
   assert.ok(rockGlassAt3000, 'the rock under the player must be on the glass');
   assert.ok(
     station.activity.simTier === SIM_TIER.S0_EXACT || station.activity.simTier === SIM_TIER.S1_NEAR,

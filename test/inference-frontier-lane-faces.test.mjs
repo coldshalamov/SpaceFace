@@ -1,7 +1,6 @@
 // Frontier lane faces — every traffic-bearing frontier sector carries one named lane
 // contact with a working reason, and the live traffic owner stamps that identity onto a
-// real hull. The four hollow rim sectors (trafficPerMin 0) stay anonymous on purpose:
-// a named contact in empty dark would be a lie the traffic count refutes on arrival.
+// real hull. The rim sectors that used to have no face now have one each.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -25,10 +24,11 @@ const CASES = [
 ];
 
 const HOLLOW_RIM_SECTORS = [
-  'sector_triton_wake',
-  'sector_sedna_dark',
-  'sector_orcus_shadow',
-  'sector_phoebe_echo',
+  { sectorId: 'sector_ashfall_reach', id: 'lane_ashfall_cache_voice' },
+  { sectorId: 'sector_triton_wake', id: 'lane_triton_wake_courier' },
+  { sectorId: 'sector_sedna_dark', id: 'lane_sedna_dark_tanker' },
+  { sectorId: 'sector_orcus_shadow', id: 'lane_orcus_shadow_courier' },
+  { sectorId: 'sector_phoebe_echo', id: 'lane_phoebe_echo_courier' },
 ];
 
 test('frontier faces: each traffic-bearing rim sector has exactly one authored contact and a deterministic pick', () => {
@@ -49,11 +49,12 @@ test('frontier faces: each traffic-bearing rim sector has exactly one authored c
   }
 });
 
-test('frontier faces: the hollow rim sectors stay deliberately anonymous', () => {
-  for (const sectorId of HOLLOW_RIM_SECTORS) {
-    const pool = NAMED_LANE_CONTACTS.filter((x) => x.sectorIds && x.sectorIds.includes(sectorId));
-    assert.equal(pool.length, 0, `${sectorId} runs trafficPerMin 0 — no standing contact where no traffic runs`);
-    assert.equal(pickNamedLaneContact(sectorId, 4242), null);
+test('frontier faces: the hollow rim sectors each have one deterministic face', () => {
+  for (const c of HOLLOW_RIM_SECTORS) {
+    const pool = NAMED_LANE_CONTACTS.filter((x) => x.sectorIds && x.sectorIds.includes(c.sectorId));
+    assert.equal(pool.length, 1, `${c.sectorId} has one named face`);
+    assert.equal(pickNamedLaneContact(c.sectorId, 4242).id, c.id);
+    assert.equal(pickNamedLaneContact(c.sectorId, 4242).id, pickNamedLaneContact(c.sectorId, 4242).id);
   }
 });
 

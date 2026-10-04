@@ -221,8 +221,20 @@ export const FIRST_USE_LINE = Object.freeze({
   masslineHitchhiking: 'Ride, then cut.',
   masslineSelfSling: 'Cut to sling.',
   masslineJettisonImpulse: 'Dump aft to push.',
+  // TEACH-03 — the cadence winch is taught by the first swing that could actually pump,
+  // not by a straight tow that would lie about the gesture.
+  masslineCadenceWinch: 'Swing carries — reel under BOOST to pump.',
+  // TEACH-05 — the mass seed's first deploy names the warning-then-collapse rule it lives
+  // by; the lesson belongs at the deploy, never at the collapse.
+  massSeedDeploy: 'Anchor seed out — it warns, then it folds.',
   masslineBulletTime: 'Hold to stretch time.',
   masslineCloak: 'Coast to stay hidden.',
+  // FB-013 — the four silent heads announce themselves once, on the head's first defining
+  // event (tractor capture, coupler lock, sweep cut, whip snap). Same ≤12-word drill budget.
+  masslineTractor: 'Line holds. Pull it in.',
+  masslineCoupler: 'Coupler locked. You tow as one hull.',
+  masslineSweep: 'Blade across their line.',
+  masslineWhip: 'Let the stretch go.',
   bombPropulsion: 'Drop aft, then detonate.',
   firstBombDrop: 'Bomb away. Clear the blast.',
   firstWellDrop: 'Well deployed. Pull the scrap.',
@@ -270,6 +282,30 @@ export const MISSING_THREE_BEAT_LINES = Object.freeze({
 
 export function missingThreeBeatLine(verbId) {
   return MISSING_THREE_BEAT_LINES[verbId] || '';
+}
+
+// Verb-shelf lines (FB-002 / FB-116). The verbs with no staged beat still get spoken — once each,
+// in the player's own device vocabulary, on the moment the verb matters. Copy lives here; trigger
+// specs live in src/onboarding/verbSpeech.js; systems/onboarding.js owns the moments. Each line
+// embeds the LIVE binding label (keyboard code, pad chord, or nothing on touch) so a rebind can
+// never strand the words. ≤12-word drill budget, binding excluded.
+export const SHELF_VERB_LINES = Object.freeze({
+  travelBurn: 'The burn keeps the speed',
+  chargeThrow: 'A charge is racked',
+  bulletTime: 'The clock widens',
+  cloak: 'The shroud is fitted',
+  deployBeacon: 'The beacon marks the spot',
+  toggleSkimCollector: 'The scoop harvests a band',
+  jettisonLot: 'The lot goes out the back',
+});
+
+export function shelfVerbLine(verbId, bindingLabel) {
+  const what = SHELF_VERB_LINES[verbId];
+  if (!what) return '';
+  const key = String(bindingLabel || '').trim();
+  // A binding that is itself punctuation (Period → '.') must not print a double full stop.
+  if (!key) return `${what}.`;
+  return /[.!?]$/.test(key) ? `${what} — ${key}` : `${what} — ${key}.`;
 }
 
 export function firstUseAttachKind(verbId) {
@@ -364,7 +400,7 @@ export function flightInstrumentRects(width, height) {
   return {
     speedReadout: { x: left, y: bandY, width: speedW, height: 52 },
     weaponName: { x: left + speedW + gap, y: bandY + 10, width: weaponW, height: 28 },
-    dockPrompt: { x: Math.round(w / 2 - 140), y: 18, width: 280, height: 32 },
+    dockPrompt: { x: Math.round(w / 2 - 140), y: 156, width: 280, height: 32 },
   };
 }
 

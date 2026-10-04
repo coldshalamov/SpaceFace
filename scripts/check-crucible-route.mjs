@@ -34,20 +34,33 @@
 //
 //   node scripts/check-crucible-route.mjs
 //   node scripts/check-crucible-route.mjs --verbose
+//   node scripts/check-crucible-route.mjs --headed   a real visible window on the native GPU —
+//                                                  distinguishes native-GPU evidence from
+//                                                  software-GL evidence when a headless run
+//                                                  stalls; the exact cause still needs a
+//                                                  diagnostic, not this flag alone
 import { spawn } from 'node:child_process';
 import { createServer as createNetServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { loadPlaywright } from './lib/load-playwright.mjs';
+import { collectPageIssues } from './lib/browser-issues.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const VERBOSE = process.argv.includes('--verbose');
+// --headed runs the real windowed browser on the host GPU with backgrounding disabled; default
+// stays headless for CI. Headed distinguishes native-GPU evidence from software-GL evidence —
+// a headed failure is not itself proof of a production defect; the exact cause still needs a
+// diagnostic to separate a real stall from a slow render environment.
+const HEADED = process.argv.includes('--headed');
 const SEED = 4242;
 // --full walks to round 10 extraction in Swarm, or the complete 30-wave Gauntlet victory.
 const FULL = process.argv.includes('--full');
 // Which ruleset to walk. Swarm is the default because it is what the main-menu button plays.
 const GAUNTLET = process.argv.includes('--gauntlet');
 const MODE = GAUNTLET ? 'scored' : 'swarm';
-const MODE_VERB = GAUNTLET ? 'Enter the Gauntlet' : 'Launch Swarm';
+// The door's launch word belongs to step two (Ship & kit) and is the ruleset's own voice:
+// the swarm's verb opens the armory, the arc's enters it.
+const MODE_VERB = GAUNTLET ? 'Enter the Gauntlet' : 'Open armory';
 const pw = await loadPlaywright();
 const { chromium } = pw;
 
@@ -78,6 +91,8 @@ async function startServer() {
   const url = `http://127.0.0.1:${port}/`;
   const child = spawn(process.execPath, ['server.js', String(port)], {
     cwd: ROOT, stdio: ['ignore', 'ignore', 'ignore'], windowsHide: true,
+    // An unset store env mounts the real shared save drawer — browser checks run isolated.
+    env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '', SPACEFACE_USER_CONTENT_DIR: '' },
   });
   for (let i = 0; i < 80; i++) {
     if (child.exitCode != null) throw new Error('dev server exited before it was reachable');
@@ -140,51 +155,104 @@ async function killWaveCohort(page) {
 /**
  * Kill N live cohort bodies through the same real damage route, so the check clears at a rate a
  * player could plausibly manage. Vaporising the whole room at once would out-pace the swarm
- * reinforcement stream and then report the emptiness it caused as a defect.
+ * reinforcement stream and then report the emptiness it caused as a defect. Returns the phase and
+ * simTime beside the kill count: one round-trip a pass keeps the check's own CDP traffic off the
+ * starved main thread, and the sim clock is how a frozen fight is told apart from a slow one.
  */
 async function killSome(page, n) {
   return page.evaluate((want) => {
     const st = window.SF.state;
-    const targets = st.entityList
-      .filter((e) => e.alive && e.data && e.data.runCohort === 'survival'
-        && ['ship', 'drone', 'mine', 'station', 'massSeed', 'payload'].includes(e.type))
-      .slice(0, want);
-    for (const target of targets) {
-      const lethal = (target.hull || 0) + (target.shield || 0) + (target.armorHp || 0) + 9999;
-      window.SF.bus.emit('projectile:hit', {
-        targetId: target.id,
-        ownerId: st.playerId,
-        damage: lethal,
-        damageType: 'kinetic',
-        pos: { x: target.pos.x, z: target.pos.z },
-        approach: { x: 1, z: 0 },
-        normal: { x: -1, z: 0 },
-        weaponId: 'wpn_concussion_cannon_m',
-      });
+    const phase = st.run && st.run.phase;
+    let killed = 0;
+    if (phase === 'active') {
+      const targets = st.entityList
+        .filter((e) => e.alive && e.data && e.data.runCohort === 'survival'
+          && ['ship', 'drone', 'mine', 'station', 'massSeed', 'payload'].includes(e.type))
+        .slice(0, want);
+      for (const target of targets) {
+        const lethal = (target.hull || 0) + (target.shield || 0) + (target.armorHp || 0) + 9999;
+        window.SF.bus.emit('projectile:hit', {
+          targetId: target.id,
+          ownerId: st.playerId,
+          damage: lethal,
+          damageType: 'kinetic',
+          pos: { x: target.pos.x, z: target.pos.z },
+          approach: { x: 1, z: 0 },
+          normal: { x: -1, z: 0 },
+          weaponId: 'wpn_concussion_cannon_m',
+        });
+      }
+      killed = targets.length;
     }
-    return targets.length;
+    return { killed, phase, simTime: st.simTime };
   }, n);
 }
 
 async function waitForPhase(page, phase, timeout = 30000) {
+  // Sim-state readiness, not visible pixels: poll on an interval so a stalled rAF cadence
+  // cannot keep an already-true predicate unevaluated.
   await page.waitForFunction(
     (want) => window.SF.state.run && window.SF.state.run.phase === want,
     phase,
-    { timeout },
+    { timeout, polling: 100 },
   );
+}
+
+/**
+ * Swarm's opening stop is the armory, not the arena: the run enters `draft` at wave 0 and waits
+ * on the player's "Launch round N". Click through the real control — the warm hold can leave the
+ * key disabled for a breath while the next wave's program batch links (KNOWN D24/D38/D44), so
+ * wait for it to arm rather than racing the click.
+ */
+async function launchArmoryRound(page, round) {
+  const label = `Launch round ${round}`;
+  try {
+    await page.waitForFunction(
+      () => window.SF.ctx.screenManager.top() === 'crucibleDraft'
+        && window.SF.state.run && window.SF.state.run.phase === 'draft',
+      null, { timeout: 60000 });
+    await page.waitForFunction((wanted) => {
+      const norm = (s) => String(s || '').replace(/\s+/g, ' ').trim();
+      const b = [...document.querySelectorAll('#screens button')]
+        .find((x) => norm(x.textContent).includes(norm(wanted)));
+      return !!b && !b.disabled;
+    }, label, { timeout: 30000 });
+  } catch (err) {
+    // A timeout that only says "waitForFunction" cannot tell a real stall from a relabelled
+    // key or a draft that resolved early — dump what the armory is actually showing.
+    const diag = await page.evaluate(() => ({
+      top: window.SF.ctx.screenManager.top(),
+      phase: window.SF.state.run && window.SF.state.run.phase,
+      wave: window.SF.state.run && window.SF.state.run.wave,
+      warmPending: !!(window.SF.state.render && window.SF.state.render.swarmDeferredWarm
+        && window.SF.state.render.swarmDeferredWarm.pending),
+      buttons: [...document.querySelectorAll('#screens button')]
+        .map((b) => b.textContent.replace(/\s+/g, ' ').trim() + (b.disabled ? ' [disabled]' : '')),
+    })).catch(() => null);
+    throw new Error(`armory round ${round} wait failed: ${err && err.message} · now ${JSON.stringify(diag)}`);
+  }
+  if (!(await clickButton(page, label))) throw new Error(`"${label}" did not click`);
 }
 
 async function main() {
   server = await startServer();
-  browser = await chromium.launch({ headless: true });
+  browser = await chromium.launch({
+    headless: !HEADED,
+    args: HEADED
+      ? ['--disable-renderer-backgrounding', '--disable-background-timer-throttling',
+        '--disable-backgrounding-occluded-windows']
+      : [],
+  });
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
 
-  const pageErrors = [];
-  page.on('pageerror', (err) => pageErrors.push(String(err && err.message || err)));
+  // Shared issue ledger: it already knows the optional unmounted player-store 404, generic
+  // resource-load console twins of HTTP responses, and expected-navigation aborts — CLEAN reads
+  // errorIssues() below rather than a raw pageerror/console bag.
+  const pageIssues = collectPageIssues(page);
+  let loggedErrors = 0;
   page.on('console', (msg) => {
     if (msg.type() !== 'error') return;
-    pageErrors.push(msg.text());
-    if (VERBOSE && pageErrors.length <= 5) console.log('  browser error:', msg.text());
+    if (VERBOSE && loggedErrors++ < 5) console.log('  browser error:', msg.text());
   });
 
   await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded' });
@@ -237,6 +305,12 @@ async function main() {
   await page.waitForTimeout(150);
 
   // ── LAUNCH ──────────────────────────────────────────────────────────────────────────────────
+  // The door is a two-step preparation (Encounter, then Ship & kit): the hull cards and the
+  // launch word live on step two, so a player clicks through "Choose ship & kit" first. The seed
+  // field sits in the step-one disclosure; writing it stays valid either way.
+  if (!(await clickButton(page, 'Choose ship & kit'))) {
+    throw new Error('door continue control ("Choose ship & kit →") did not click');
+  }
   await page.evaluate((seed) => {
     const hull = [...document.querySelectorAll('#screens .sf-crd-hull')]
       .find((b) => b.textContent.includes('Ricochet Runner'))
@@ -247,6 +321,9 @@ async function main() {
   if (!(await clickButton(page, MODE_VERB))) throw new Error(`"${MODE_VERB}" did not click`);
 
   await page.waitForFunction(() => window.SF.state.mode === 'flight', null, { timeout: 90000 });
+  // Swarm launches into its armory (phase `draft`, wave 0) and waits on "Launch round 1";
+  // the Gauntlet's opening phases run themselves straight to active.
+  if (!GAUNTLET) await launchArmoryRound(page, 1);
   await waitForPhase(page, 'active', 60000);
   const launched = await page.evaluate(() => {
     const st = window.SF.state;
@@ -398,19 +475,34 @@ async function main() {
   } else {
     // Clear the finite first cohort through real damage receipts. Early shopping is part of
     // Swarm's loop; neither a lingering boss nor a timer may silently waive the remaining fight.
-    for (let guard = 0; guard < 120; guard++) {
-      const phase = await page.evaluate(() => window.SF.state.run.phase);
-      if (phase === 'draft' || phase === 'ended') break;
-      if (phase === 'active') killed += await killSome(page, 3);
-      await page.waitForTimeout(250);
+    // The stream is sim-tick paced and the fixed-step sim sheds backlog past 4 steps/frame, so a
+    // software-GL host runs the fight in slow motion — bound the wait generously in wall time,
+    // and treat a sim clock that stops while the fight is still active as the real defect it is.
+    const clearDeadline = Date.now() + 480_000;
+    let simLast = null;
+    let simStallSince = null;
+    while (Date.now() < clearDeadline) {
+      const step = await killSome(page, 6);
+      killed += step.killed;
+      if (step.phase === 'draft' || step.phase === 'ended') break;
+      if (simLast == null || step.simTime > simLast) {
+        simLast = step.simTime;
+        simStallSince = null;
+      } else if (step.phase === 'active') {
+        if (simStallSince == null) simStallSince = Date.now();
+        else if (Date.now() - simStallSince > 120_000) break;
+      }
+      await page.waitForTimeout(500);
     }
     const cleared = await page.evaluate(() => ({
       phase: window.SF.state.run.phase, wave: window.SF.state.run.wave, xp: window.SF.state.run.xp,
+      simTime: Math.round(window.SF.state.simTime),
       alive: window.SF.state.entityList.filter(e => e.alive && e.data?.runCohort === 'survival'
         && ['ship', 'drone', 'mine', 'station', 'massSeed', 'payload'].includes(e.type)).length,
     }));
     record('CLEAR', cleared.phase === 'draft' && cleared.wave === 1 && cleared.xp > 0 && cleared.alive === 0,
-      'round 1 resolved: ' + killed + ' scripted kills, ' + cleared.alive + ' survivors, phase ' + cleared.phase);
+      'round 1 resolved: ' + killed + ' scripted kills, ' + cleared.alive + ' survivors, phase '
+      + cleared.phase + ' at sim ' + cleared.simTime + 's');
   }
 
   // ── WALLET ──────────────────────────────────────────────────────────────────────────────────
@@ -439,10 +531,18 @@ async function main() {
   }
 
   // ── ARMORY / DRAFT ────────────────────────────────────────────────────────────────────────
+  // CLEAR saw the phase flip; the screen push rides the same seam but may land a beat later.
+  await page.waitForFunction(
+    () => window.SF.ctx.screenManager.top() === 'crucibleDraft'
+      || window.SF.state.run.phase !== 'draft',
+    null, { timeout: 30000 },
+  ).catch(() => {});
   const offer = await page.evaluate(() => {
     const owner = window.SF.registry.get('survivalDraft');
     const choices = owner.currentOffers();
-    const candidate = choices.find(o => o.available !== false);
+    // The route asserts a FIT: a hull-switch or service counter (kind hull/service, no
+    // slotIndex) buys something the fittings readout cannot express. Pick a fittable offer.
+    const candidate = choices.find(o => o.available !== false && Number.isInteger(o.slotIndex));
     const player = window.SF.state.player;
     return { candidate, count: choices.length, screen: window.SF.ctx.screenManager.top(),
       credits: window.SF.state.run.credits,
@@ -450,8 +550,28 @@ async function main() {
   });
   record('OFFERS', offer.screen === 'crucibleDraft' && (GAUNTLET ? offer.count === 3 : offer.count > 3),
     offer.count + (GAUNTLET ? ' draft choices' : ' purchasable armory choices'));
-  if (!offer.candidate) throw new Error('The first clear must afford a useful purchase');
-  await page.locator('[data-offer-id="' + offer.candidate.id + '"]').click();
+  if (!offer.candidate) throw new Error('The first clear must afford a fittable purchase');
+  // The armory rail clips its fold to whole rows: a mounted card below the clip is not visible,
+  // and Playwright's locator click (a user-level actuation) cannot scroll into a clipped row.
+  // The card's own listener is the same one its digit-key path fires, so dispatch a DOM click.
+  const cardClicked = await page.evaluate((offerId) => {
+    const card = document.querySelector('#screens [data-offer-id="' + offerId + '"]');
+    if (!card) return false;
+    card.click();
+    return true;
+  }, offer.candidate.id);
+  if (!cardClicked) throw new Error('Offer card missing from the armory rail: ' + offer.candidate.id);
+  // The Swarm armory's card click only INSPECTS the offer (the reading pane); the transaction
+  // is the pane's explicit purchase key ("Install · N cr"). The Gauntlet's card is the pick.
+  if (!GAUNTLET) {
+    const buy = page.locator('#screens .orr-armory-purchase');
+    await buy.waitFor({ state: 'visible', timeout: 15000 });
+    await page.waitForFunction(
+      () => { const b = document.querySelector('#screens .orr-armory-purchase'); return b && !b.disabled; },
+      null, { timeout: 15000 },
+    );
+    await page.evaluate(() => document.querySelector('#screens .orr-armory-purchase').click());
+  }
   const purchased = await page.evaluate(() => {
     const p = window.SF.state.player;
     return { credits: window.SF.state.run.credits, phase: window.SF.state.run.phase,
@@ -473,8 +593,11 @@ async function main() {
     if (!(await clickButton(page, 'Back to armory'))) throw new Error('Refit return control missing');
     record('REFIT', await page.evaluate(() => window.SF.ctx.screenManager.top() === 'crucibleDraft'
       && window.SF.state.run.phase === 'draft'), 'strip and refit between rounds; return to armory');
-    if (!(await clickButton(page, 'Launch round 2'))) throw new Error('Next round control missing');
-    await waitForPhase(page, 'active', 30000);
+    await launchArmoryRound(page, 2);
+    // The next round debuts a new archetype; the deferred warm compiles its program batch during
+    // wave_intro, which is seconds on hardware GL and much longer on a serialized SwiftShader
+    // host. Give the same patience the first launch gets.
+    await waitForPhase(page, 'active', 90000);
     const next = await page.evaluate(() => ({ wave: window.SF.state.run.wave, credits: window.SF.state.run.credits }));
     record('SAVE', next.wave === 2 && next.credits === saved, 'unspent ' + saved + ' cr carried to round 2');
   }
@@ -570,18 +693,19 @@ async function main() {
       `phase ${won.phase} wave ${won.wave} · "${won.title}" — ${won.headline} · `
       + `${won.kills} kills, ${won.score} score, ${won.credits} cr, level ${won.level}, `
       + `build: ${won.picks.join('/') || '(none)'} · cleared ${log.join(' ')}`);
-    const noisy = pageErrors.filter(t => !/favicon|KHR_parallel_shader_compile|partsLibrary|opening submission pre-submit gate failed closed/i.test(t));
+    const noisy = pageIssues.errorIssues().map((issue) => issue.text)
+      .filter(t => !/favicon|KHR_parallel_shader_compile|partsLibrary|opening submission pre-submit gate failed closed/i.test(t));
     record('CLEAN', noisy.length === 0, noisy.length ? noisy.slice(0, 3).join(' | ') : 'no uncaught errors');
     // A won run is terminal; the death path below cannot run on the same session.
     return;
   }
 
   // ── RESULTS ─────────────────────────────────────────────────────────────────────────────────
-  await page.waitForFunction(() => window.SF.state.run.phase === 'active', null, { timeout: 40000 });
+  await page.waitForFunction(() => window.SF.state.run.phase === 'active', null, { timeout: 90000 });
   await page.waitForFunction(
     () => window.SF.state.entityList.some((e) => e.alive && e.data && e.data.runCohort === 'survival'
         && ['ship', 'drone', 'mine', 'station', 'massSeed', 'payload'].includes(e.type)),
-    null, { timeout: 30000 },
+    null, { timeout: 60000 },
   );
   // Kill the player through the real damage route so combat builds its real defeat receipt.
   await page.evaluate(() => {
@@ -645,6 +769,8 @@ async function main() {
   // ── RESTART ─────────────────────────────────────────────────────────────────────────────────
   if (!(await clickButton(page, 'Run it again'))) throw new Error('restart button did not click');
   await page.waitForFunction(() => window.SF.state.mode === 'flight', null, { timeout: 90000 });
+  // A restart re-enters Swarm through the same opening armory — dismiss it like the first launch.
+  if (!GAUNTLET) await launchArmoryRound(page, 1);
   await waitForPhase(page, 'active', 60000);
   const restarted = await page.evaluate(() => ({
     seed: window.SF.state.run.seed,
@@ -662,12 +788,13 @@ async function main() {
   // appears identically on the `--gauntlet` walk, which touches none of the swarm code, so it is
   // filtered here rather than left to fail every Crucible run forever. If it ever stops appearing
   // on the Gauntlet path, delete this and investigate.
-  const noisy = pageErrors.filter((t) => !(
+  const errorTexts = pageIssues.errorIssues().map((issue) => issue.text);
+  const noisy = errorTexts.filter((t) => !(
     /favicon|KHR_parallel_shader_compile|partsLibrary/i.test(t)
     || /opening submission pre-submit gate failed closed/i.test(t)
   ));
   record('CLEAN', noisy.length === 0, noisy.length ? noisy.slice(0, 3).join(' | ') : 'no uncaught errors');
-  if (VERBOSE && pageErrors.length) console.log('  page messages:', pageErrors.slice(0, 20));
+  if (VERBOSE && errorTexts.length) console.log('  page messages:', errorTexts.slice(0, 20));
 }
 
 let exitCode = 0;

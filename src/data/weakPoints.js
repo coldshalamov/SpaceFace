@@ -31,9 +31,20 @@ function wrapAngle(a) {
   return a;
 }
 
-/** Weak-point spec for a live ship/drone by its class (data.shipClass || role), or null. Pure. */
+/** Weak-point spec for a live ship/drone by its class (data.shipClass || role), or null. Pure.
+ *  An entity may author its own arc (`data.weakPoint`) — a boss's readable seam differs from the
+ *  class default: the Iron Maw exposes a PROW RIB, so crossing its bow is the rewarded flank. */
 export function weakPointForEntity(e) {
   if (!e || (e.type !== 'ship' && e.type !== 'drone')) return null;
+  const authored = e.data && e.data.weakPoint;
+  if (authored && typeof authored === 'object' && Number.isFinite(authored.arcCenter)) {
+    // FB-020: a window may author the turret-loss edge it opens on — the Iron Maw's PROW RIB is
+    // only exposed once the edge-2 effects tear the bow plate (`data._turretEdge`, written by
+    // the tacticalAI edge applicator).
+    if (Number.isFinite(authored.opensAtTurretEdge)
+      && !((e.data._turretEdge | 0) >= authored.opensAtTurretEdge)) return null;
+    return authored;
+  }
   const cls = (e.data && (e.data.shipClass || e.data.class)) || e.role || '';
   return WEAK_POINTS_BY_CLASS[cls] || null;
 }

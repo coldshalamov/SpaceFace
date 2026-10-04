@@ -50,7 +50,8 @@ test('save scrubs player flight grace but preserves persistent entity gameplay p
   const entities = save.serializeData().entities;
   assert.equal(entities.player.flags.persistent, true);
   assert.equal(entities.player.flags.invuln, undefined, 'player invulnerability is dock/launch runtime grace');
-  assert.equal(entities.player.flags.boosting, undefined);
+  assert.equal(entities.player.flags.boosting, true,
+    'boosting is sim state (thrust engaged) — scrubbing it silently killed a mid-boost burn on restore');
   assert.equal(entities.player.flags.noInterp, undefined);
   assert.equal(entities.player.flags.docked, undefined);
 
@@ -58,7 +59,8 @@ test('save scrubs player flight grace but preserves persistent entity gameplay p
   assert.equal(entities.persistent[0].flags.persistent, true);
   assert.equal(entities.persistent[0].flags.invuln, true,
     'persistent non-player invulnerability is meaningful authored gameplay state');
-  assert.equal(entities.persistent[0].flags.boosting, undefined);
+  assert.equal(entities.persistent[0].flags.boosting, true,
+    'boosting is sim state (thrust engaged) — scrubbing it silently killed a mid-boost burn on restore');
   assert.equal(entities.persistent[0].flags.noInterp, undefined);
   assert.equal(entities.persistent[0].flags.docked, undefined);
 });

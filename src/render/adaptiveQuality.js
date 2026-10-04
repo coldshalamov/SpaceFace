@@ -243,6 +243,47 @@ export function shouldSuggestIntegratedPreset(gpu, video = {}) {
   return preset !== 'integrated';
 }
 
+// --- Software-renderer emergency profile (the one automatic visual reduction) ------------------
+// A CPU backend (SwiftShader/llvmpipe, hardware acceleration off) cannot shade the HDR scene plus
+// bloom composite: the game auto-drops bloom and starts dynres at its established floor, and tells
+// the player how to fix it. This is the ONLY automatic visual reduction — integrated and unknown
+// tiers keep bloom (the integrated preset is opt-in via shouldSuggestIntegratedPreset). The
+// profile is runtime intent only: it carries no settings.video write, so a hardware context after
+// relaunch fully recovers (MACH-04).
+
+export const GPU_TIER_DYNRES_FLOOR = Object.freeze({
+  software: 0.34,
+  integrated: 0.5,
+  default: 0.6,
+});
+
+export function dynResFloorForTier(tier) {
+  if (tier === 'software') return GPU_TIER_DYNRES_FLOOR.software;
+  if (tier === 'integrated') return GPU_TIER_DYNRES_FLOOR.integrated;
+  return GPU_TIER_DYNRES_FLOOR.default;
+}
+
+export const SOFTWARE_RENDERER_TOAST = Object.freeze({
+  text: 'Graphics hardware acceleration appears OFF — the game is rendering in slow software mode. Turn on hardware acceleration in your browser (or run the Desktop launcher) for smooth play.',
+  kind: 'warn',
+  ttl: 14,
+});
+
+/**
+ * The software-context emergency profile, or null. Keys on `gpu.software === true` exactly —
+ * a software-tier string without the flag, and every other tier, returns null so bloom is
+ * disabled for a software context and nothing else.
+ */
+export function softwareRendererEmergencyProfile(gpu) {
+  if (!gpu || gpu.software !== true) return null;
+  return Object.freeze({
+    bloomOff: true,
+    dynFloor: GPU_TIER_DYNRES_FLOOR.software,
+    toast: SOFTWARE_RENDERER_TOAST,
+    toastDelayMs: 1200,
+  });
+}
+
 export const INTEGRATED_PRESET_SUGGESTION = Object.freeze({
   text: 'Integrated GPU detected. Open Settings → Video and try the Integrated GPU preset for a smoother frame rate on this machine.',
   kind: 'info',

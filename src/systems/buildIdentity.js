@@ -5,7 +5,7 @@
 // can render the badge without scanner, target-panel, combat, or module-stat edits.
 import { SHIPS } from '../data/ships.js';
 import { MODULES } from '../data/modules.js';
-import { compactSynergy, synergiesForFittings } from '../data/synergies.js';
+import { compactSynergy, explainSynergy, synergiesForFittings } from '../data/synergies.js';
 import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
@@ -60,7 +60,10 @@ function hasModValue(defs, key) {
   return defs.some((def) => def.mods && def.mods[key] != null);
 }
 
-function makeIdentity(def, basis, synergies = []) {
+function makeIdentity(def, basis, synergies = [], scanned = true, confirmedAt = null) {
+  const notes = synergies
+    .map((row) => explainSynergy(row, basis.modules, { scanned }))
+    .filter(Boolean);
   return Object.freeze({
     id: def.id,
     label: def.label,
@@ -73,7 +76,13 @@ function makeIdentity(def, basis, synergies = []) {
       modules: Object.freeze(basis.modules.slice()),
       matched: Object.freeze((def.matched || []).slice()),
     }),
+    // PB-BUILD-A (SF-133): when the module basis was last verified. Live deep reads carry the
+    // reveal's own stamp; a class-band badge built from remembered fittings carries the
+    // confirmed block's age — never a fresh timestamp on stale knowledge. Top-level, not in
+    // `basis`, so re-verifying an unchanged read does not read as a new identity.
+    confirmedAt: Number.isFinite(confirmedAt) ? confirmedAt : null,
     synergies: Object.freeze(synergies.map(compactSynergy).filter(Boolean)),
+    synergyNotes: Object.freeze(notes),
   });
 }
 
@@ -172,8 +181,20 @@ export function classifyBuildIdentity(input, options = {}) {
   const reveal = options.reveal || null;
   // The badge may only reason over fittings the scan actually disclosed: a
   // class-band contact names the hull role, never the hidden loadout.
-  const fittingsDisclosed = !reveal || reveal.quality === 'full' || reveal.quality === 'deep';
-  const ids = fittingsDisclosed ? moduleIdsForBuild(input) : [];
+  const liveDisclosed = !reveal || reveal.quality === 'full' || reveal.quality === 'deep';
+  // PB-BUILD-A (SF-133): a degraded re-read still carries what the last deep read verified,
+  // while the reveal's `confirmed` block is fresh. The badge reasons over the DATED memory —
+  // never the live hull — so a refit the player has not re-scanned cannot quietly retarget,
+  // and once the confirmed block ages out the badge falls back to role honestly.
+  const confirmed = !liveDisclosed
+    && reveal
+    && reveal.confirmed
+    && Array.isArray(reveal.confirmed.fittings)
+    ? reveal.confirmed
+    : null;
+  const ids = liveDisclosed
+    ? moduleIdsForBuild(input)
+    : confirmed ? sortedUnique(confirmed.fittings) : [];
   const defs = moduleDefs(ids);
   const idSet = new Set(ids);
   const shipDef = options.shipDef || shipDefForEntity(input, options.shipId);
@@ -260,7 +281,11 @@ export function classifyBuildIdentity(input, options = {}) {
     def = roleFallback(role);
   }
 
-  return makeIdentity(def, basis, synergiesForFittings(ids));
+  const scanned = !reveal || reveal.fittingsKnown !== false;
+  const confirmedAt = reveal && reveal.confirmed && Number.isFinite(reveal.confirmed.at)
+    ? reveal.confirmed.at
+    : (liveDisclosed && reveal ? reveal.revealedAt : null);
+  return makeIdentity(def, basis, synergiesForFittings(ids), scanned, confirmedAt);
 }
 
 function sameIdentity(a, b) {

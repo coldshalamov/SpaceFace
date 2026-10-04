@@ -9,7 +9,7 @@ import {
 import { ContactKind, ObjectiveKind } from '../src/ai/contracts.js';
 import { specialistPlanByEnemyId } from '../src/ai/specialistPlans.js';
 import { createAttachmentService, effectiveTetherPolicy } from '../src/combat/attachments.js';
-import { resolveHitstunLaw } from '../src/combat/impulseKernel.js';
+import { HITSTUN_IMPULSE_EVENT, resolveHitstunLaw } from '../src/combat/impulseKernel.js';
 import { createStatusService } from '../src/combat/statuses.js';
 import { readTumbleStatus } from '../src/combat/tumbleStatus.js';
 import { createCombatCatalog, ensureCombatState } from '../src/combat/runtime.js';
@@ -250,13 +250,109 @@ test('a specialist cuts a player bridle and a heavy NPC takes the throw', () => 
   // its Forge Regent crown (PQ-133.07, Foundry wave thirty) are heavy on purpose: both fly the
   // Anchor's 420 kg Bastion body, their "mass and commitment are the fight"
   // (CRUCIBLE_SURVIVAL_MASTER_PLAN.md §15.7), and their waves ask for escorts thrown into them.
+  // SWARM-07 phase B adds two more Brood heavies: the 520 kg Brood Queen (heavier than the
+  // Anchor, so the Anchor-mass proof covers her by the same inverse-mass law) and the 300 kg
+  // Tendril, whose shrug is proven at its own live mass below.
   const heavies = ENEMY_TYPES.filter((row) => Number(row.mass) >= 150);
   assert.deepEqual(
     heavies.map((row) => row.id),
-    ['dreadnought_boss', 'field_anchor_controller', 'mirrorjaw_foreman', 'forge_regent'],
+    ['dreadnought_boss', 'field_anchor_controller', 'mirrorjaw_foreman', 'forge_regent',
+      'brood_queen', 'brood_tendril'],
   );
-  assert.ok(heavies.every((row) => Number(row.mass) >= ANCHOR.mass),
+  assert.ok(heavies.every((row) => row.id === 'brood_tendril' || Number(row.mass) >= ANCHOR.mass),
     'the shrug is proven at the Anchor mass; a lighter live heavy would sit outside that proof');
+  {
+    const TENDRIL = ENEMY_TYPES.find((row) => row.id === 'brood_tendril');
+    const QUEEN = ENEMY_TYPES.find((row) => row.id === 'brood_queen');
+    const previousImpulse = COMBAT_FLAGS.weaponImpulseConsequences;
+    COMBAT_FLAGS.weaponImpulseConsequences = true;
+    assert.equal(QUEEN.mass, 520, 'the Queen stays heavier than the Anchor she inherits the proof from');
+    // The Tendril sits below the Anchor mass, so it is proven at its own live mass through the
+    // same live owners: a 300 kg hull bridled against a 16 kg light keeps the helm (its catch
+    // share sits under the hitstun floor) while the light is yanked. No mass/thrust/weapon
+    // number is retuned; this only reads the live law at the live mass.
+    const tendrilHarness = harness();
+    tendrilHarness.source.vel = { x: 80, z: 0 };
+    tendrilHarness.source.mass = 16;
+    tendrilHarness.source.physicsBody = { dynamic: true, mass: 16 };
+    tendrilHarness.source.data.role = 'fighter';
+    const tendril = entity(13, 'ship', 200, 0, {
+      team: 1,
+      mass: TENDRIL.mass,
+      radius: TENDRIL.collisionRadius,
+      physicsBody: { dynamic: true, mass: TENDRIL.mass },
+      data: {
+        name: TENDRIL.name,
+        lootTableId: TENDRIL.id,
+        ai: { combatDoctrineId: TENDRIL.combatDoctrineId },
+      },
+    });
+    assert.equal(
+      validateTwinBridlePair(
+        tendrilHarness.system, tendrilHarness.state, tendrilHarness.player,
+        tendrilHarness.source, tendril, BRIDLE_DEF,
+      ),
+      null,
+      'a sub-Anchor heavy is still a legal endpoint; ignore is mass, not an admission flag',
+    );
+    tendrilHarness.state.entities.set(tendril.id, tendril);
+    tendrilHarness.state.entityList.push(tendril);
+    const tendrilStatuses = createStatusService({
+      state: tendrilHarness.state,
+      catalog: tendrilHarness.catalog,
+      bus: tendrilHarness.bus,
+      helpers: { combatPhysics: tendrilHarness.physics },
+    });
+    tendrilHarness.system.registry = {
+      get(id) {
+        return id === 'actions' || id === 'combat'
+          ? { kernel: { attachments: tendrilHarness.attachments, catalog: tendrilHarness.catalog, statuses: tendrilStatuses } }
+          : null;
+      },
+    };
+    const tendrilTumble = Object.create(tumbleStates);
+    tendrilTumble.init({
+      state: tendrilHarness.state,
+      bus: tendrilHarness.bus,
+      helpers: { combatPhysics: tendrilHarness.physics },
+      registry: tendrilHarness.system.registry,
+    });
+    try {
+      const impulses = [];
+      const offHitstun = tendrilHarness.bus.on(HITSTUN_IMPULSE_EVENT, (payload) => {
+        impulses.push(payload);
+      });
+      try {
+        step(tendrilHarness, { aim: tendrilHarness.source.pos });
+        step(tendrilHarness, { aim: tendrilHarness.source.pos, latch: true });
+        step(tendrilHarness, { aim: tendril.pos, dt: 0.1 });
+        step(tendrilHarness, { aim: tendril.pos, latch: true });
+      } finally {
+        offHitstun();
+      }
+      const tendrilLine = Object.values(tendrilHarness.state.combat.attachments.byId)
+        .find((entry) => entry.state === 'active');
+      assert.ok(tendrilLine, 'a second press on the Tendril becomes a rope');
+      assert.ok(readTumbleStatus(tendrilHarness.state, tendrilHarness.source), 'the light is yanked');
+      assert.equal(readTumbleStatus(tendrilHarness.state, tendril), null,
+        'the Tendril keeps the helm: its catch share sits under the hitstun floor');
+      const tendrilShare = impulses.find((entry) => entry.victimId === tendril.id);
+      assert.ok(tendrilShare, 'the rope published the Tendril catch share through the live bridle owner');
+      assert.equal(tendrilShare.victimMass, TENDRIL.mass,
+        'the share is computed at the live Tendril mass, not a fixture');
+      const tendrilLaw = resolveHitstunLaw({
+        deltaV: tendrilShare.deltaV,
+        victimCruise: resolveGovernedCombatSpeed(tendril, tendrilHarness.state, 0),
+        attackerMass: tendrilShare.attackerMass,
+        victimMass: tendrilShare.victimMass,
+      });
+      assert.ok(!(tendrilLaw.durationS > 0),
+        `the Tendril share must sit under the hitstun floor at its own mass, got ${tendrilLaw.durationS}s`);
+    } finally {
+      tendrilTumble.destroy();
+      COMBAT_FLAGS.weaponImpulseConsequences = previousImpulse;
+    }
+  }
 
   // --- one ignore: the heavy takes the second latch on the stepped route ----------------------
   const ignore = harness();

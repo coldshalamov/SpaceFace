@@ -14,9 +14,11 @@ import { measuredSkinAllowedFor } from '../data/collisionProxyManifests.js';
 
 // Bench A/B: production default ON. Quiet Ceres keeps short-lived lanes empty; the clocks walk
 // then only re-checks Infinity-ttl movers whose POSE was already published in preStep. Skip the
-// walk when short-lived lanes are empty and no shipLike carries despawnAt. Dirty-wake: any
-// projectile/fx/bomb/charge/pickup/mine/snare/payload on a lane, or a shipLike despawnAt, restores
-// the full clocks path. Different angle from held pose-rematch / sleeping-clocks / compact-skip.
+// walk when short-lived lanes are empty, no shipLike carries despawnAt, and no wreck/asteroid
+// lane holds a finite ttl/despawnAt deadline (C8). Dirty-wake: any projectile/fx/bomb/charge/
+// pickup/mine/snare/payload on a lane, a shipLike despawnAt, or a timed wreck/loose asteroid
+// restores the full clocks path. Different angle from held pose-rematch / sleeping-clocks /
+// compact-skip.
 let LIFETIME_SWEEP_QUIET_CLOCKS_SKIP = true;
 export function setLifetimeSweepQuietClocksSkipForBench(enabled) {
   LIFETIME_SWEEP_QUIET_CLOCKS_SKIP = enabled !== false;
@@ -48,6 +50,29 @@ function shipLikeHasDespawnAt(index) {
   }
   return false;
 }
+
+// C8 (research I): a dynamic wreck or loose asteroid expires through the same clocks walk —
+// a ttl countdown or a data.despawnAt deadline. Its deadline must fail the quiet skip open
+// exactly like a shipLike despawnAt, so expiry never waits for an unrelated projectile to
+// wake a short-lived lane. Settled fields (deadline-free lanes, the common case) cost one
+// bounded lane walk over wrecks+asteroids and keep the skip; no universe scan, no behavior
+// change to lifetime semantics — the clocks path already owned both deadlines.
+function laneHasFiniteDeadline(lane) {
+  if (!lane || lane.length === 0) return false;
+  for (let i = 0; i < lane.length; i++) {
+    const e = lane[i];
+    if (!e || !e.alive) continue;
+    if (e.ttl !== Infinity) return true;
+    if (e.data && e.data.despawnAt != null) return true;
+  }
+  return false;
+}
+
+function timedWreckOrAsteroidDeadline(index) {
+  if (!index || index.__spacefaceEntityIndexV1 !== true || index.ready !== true) return false;
+  return laneHasFiniteDeadline(index.wrecks) || laneHasFiniteDeadline(index.asteroids);
+}
+
 
 const DAY_SECONDS = 600; // 10 sim-minutes per in-game "day" (faction decay/conflict cadence)
 
@@ -417,7 +442,8 @@ export const core = {
     // POSE preStep already published. Skip the walk; dirty publish + corpse compact still run.
     const skipQuietClocks = LIFETIME_SWEEP_QUIET_CLOCKS_SKIP
       && shortLivedClockLanesEmpty(index)
-      && !shipLikeHasDespawnAt(index);
+      && !shipLikeHasDespawnAt(index)
+      && !timedWreckOrAsteroidDeadline(index);
     if (!skipQuietClocks) {
       for (let i = 0; i < clocks.length; i++) {
         const e = clocks[i];
@@ -524,6 +550,7 @@ function ensureEntityIndex(state) {
     spatialStatics: [],
     spatialDynamics: [],
     spatialStaticVersion: 0,
+    spatialDynamicsVersion: 0,
     physicsBodies: [],
     physicsStatics: [],
     physicsDynamics: [],
@@ -598,6 +625,7 @@ function repairEntityIndex(index) {
   if (!Array.isArray(index.spatialStatics)) index.spatialStatics = [];
   if (!Array.isArray(index.spatialDynamics)) index.spatialDynamics = [];
   if (!Number.isFinite(index.spatialStaticVersion)) index.spatialStaticVersion = 0;
+  if (!Number.isFinite(index.spatialDynamicsVersion)) index.spatialDynamicsVersion = 0;
   if (!Array.isArray(index.physicsBodies)) index.physicsBodies = [];
   if (!Array.isArray(index.physicsStatics)) index.physicsStatics = [];
   if (!Array.isArray(index.physicsDynamics)) index.physicsDynamics = [];
@@ -660,6 +688,7 @@ function clearEntityIndex(index) {
   index.collidables.length = 0;
   index.spatialStatics.length = 0;
   index.spatialDynamics.length = 0;
+  index.spatialDynamicsVersion++;
   index.physicsBodies.length = 0;
   index.physicsStatics.length = 0;
   index.physicsDynamics.length = 0;
@@ -687,8 +716,10 @@ function appendEntityIndex(index, e) {
   const movable = isMovableEntity(e);
   if (e.collides) {
     index.collidables.push(e);
+    bumpLaneVersion(index, 'collidables');
     if (movable) {
       index.spatialDynamics.push(e);
+      index.spatialDynamicsVersion++;
     } else {
       index.spatialStatics.push(e);
       index.spatialStaticVersion++;
@@ -875,9 +906,9 @@ function removeEntityIndex(index, e) {
   repairEntityIndex(index);
   if (e.id != null && !index._indexedIds.has(e.id)) return;
   if (e.id != null) index._indexedIds.delete(e.id);
-  removeFromIndexArray(index.collidables, e);
+  if (removeFromIndexArray(index.collidables, e)) bumpLaneVersion(index, 'collidables');
   const removedSpatialStatic = removeFromIndexArray(index.spatialStatics, e);
-  removeFromIndexArray(index.spatialDynamics, e);
+  if (removeFromIndexArray(index.spatialDynamics, e)) index.spatialDynamicsVersion++;
   removeFromIndexArray(index.physicsBodies, e);
   const removedPhysicsStatic = removeFromIndexArray(index.physicsStatics, e);
   removeFromIndexArray(index.physicsDynamics, e);
@@ -1063,8 +1094,9 @@ export function syncEntityTypeLaneMembership(index, e) {
     if (isMovable) {
       if (removeFromIndexArray(index.spatialStatics, e)) index.spatialStaticVersion++;
       index.spatialDynamics.push(e);
+      index.spatialDynamicsVersion++;
     } else {
-      removeFromIndexArray(index.spatialDynamics, e);
+      if (removeFromIndexArray(index.spatialDynamics, e)) index.spatialDynamicsVersion++;
       index.spatialStatics.push(e);
       index.spatialStaticVersion++;
     }
@@ -1153,10 +1185,12 @@ export function syncEntityCollisionIndexMembership(index, e) {
   const present = index.collidables.indexOf(e) !== -1;
   const want = !!e.collides;
   if (want === present) return;
+  bumpLaneVersion(index, 'collidables');
   if (want) {
     index.collidables.push(e);
     if (isMovableEntity(e)) {
       index.spatialDynamics.push(e);
+      index.spatialDynamicsVersion++;
     } else {
       index.spatialStatics.push(e);
       index.spatialStaticVersion++;
@@ -1164,7 +1198,7 @@ export function syncEntityCollisionIndexMembership(index, e) {
   } else {
     removeFromIndexArray(index.collidables, e);
     if (removeFromIndexArray(index.spatialStatics, e)) index.spatialStaticVersion++;
-    removeFromIndexArray(index.spatialDynamics, e);
+    if (removeFromIndexArray(index.spatialDynamics, e)) index.spatialDynamicsVersion++;
   }
   index.version++;
 }
@@ -1188,9 +1222,10 @@ function removeEntitiesFromIndex(index, corpses) {
     indexed++;
   }
   if (indexed === 0) return;
-  removeCorpsesFromIndexArray(index.collidables, removed);
+  index.laneVersions.collidables = (index.laneVersions.collidables || 0)
+    + removeCorpsesFromIndexArray(index.collidables, removed);
   index.spatialStaticVersion += removeCorpsesFromIndexArray(index.spatialStatics, removed);
-  removeCorpsesFromIndexArray(index.spatialDynamics, removed);
+  index.spatialDynamicsVersion += removeCorpsesFromIndexArray(index.spatialDynamics, removed);
   removeCorpsesFromIndexArray(index.physicsBodies, removed);
   index.physicsStaticVersion += removeCorpsesFromIndexArray(index.physicsStatics, removed);
   removeCorpsesFromIndexArray(index.physicsDynamics, removed);

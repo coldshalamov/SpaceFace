@@ -1,0 +1,525 @@
+{
+  "source_name": "SpaceFace_20_Concepts",
+  "source_repo_commit": "1e0cf9499613b7c3acad10f34739278136d3d469",
+  "integration_plan_commit": "bb0074a7bc5463e6e03de7994d28367ebeb7b75f",
+  "nearby_cached_master": "418cfe568",
+  "verified_date": "2026-10-03",
+  "checksum_check": "all listed package files passed SHA-256; no package scripts executed",
+  "files": [
+    {
+      "path": "INDEX.html",
+      "sha256": "efe430ad7732c9a1f35991ec84b6e30c53ea691162c05c19209bdb0d3704f3e6",
+      "bytes": 4789455
+    },
+    {
+      "path": "REPORT.md",
+      "sha256": "a24197dd9c4203ba237f6a88d6e2f4c551eba28938331bd1b8226e4dd3e88ceb",
+      "bytes": 216125
+    },
+    {
+      "path": "REPORT.pdf",
+      "sha256": "d72aef7193353654d0098a419239e8fd71829d2551198a3661634f8c579db74a",
+      "bytes": 3867049
+    },
+    {
+      "path": "SHA256SUMS.txt",
+      "sha256": "a24c2e9695c7ad3fc1a6f05a7ff5b5bd3c55fd755a016cf2a7844eba13e57a6d",
+      "bytes": 9641
+    },
+    {
+      "path": "START_HERE.md",
+      "sha256": "162e70e1355fdf03c320e8968e2b38e9421874fe99ea33a227c269e40ce971bc",
+      "bytes": 4474
+    },
+    {
+      "path": "VALIDATION.md",
+      "sha256": "fb4fe1c7c749056a099b7a70c8508e0327bfdafc15f4e60392510c5315c21c6c",
+      "bytes": 1110
+    },
+    {
+      "path": "art/01_latch_nine.png",
+      "sha256": "1df7b0cd1829303b99dab9bd4de0f115aa05b789ba1e970e68dc1099ef279512",
+      "bytes": 160249
+    },
+    {
+      "path": "art/02_sable_venn.png",
+      "sha256": "66a2d522f7431942684447f096867565efcb2275b061a7f4c4635a2871b83437",
+      "bytes": 192070
+    },
+    {
+      "path": "art/03_tally_3.png",
+      "sha256": "3402e006de4738d130e9dc71d421a260d8ae5237da8904c7dcbd6432b942202d",
+      "bytes": 173268
+    },
+    {
+      "path": "art/04_ilex_seed_ark.png",
+      "sha256": "c9765d0c0900218fd95bcf3d774f23c710fa10bfac98e5740bdd3f9e9cfd366a",
+      "bytes": 214739
+    },
+    {
+      "path": "art/05_red_kite.png",
+      "sha256": "f468005b645d4fab38d33bcd6b7de6cd79eaa1e6b18fbcc14d18823bd0682bb1",
+      "bytes": 155868
+    },
+    {
+      "path": "art/06_towline_table.png",
+      "sha256": "8d01bf524a612c48fd413a6ad780f2c0fbf03faa713180cbc82c8020438ab885",
+      "bytes": 168777
+    },
+    {
+      "path": "art/07_scissorwake.png",
+      "sha256": "ed61f4941fc5be712e439827eef4cc2a62d5dd95b1deeb05c3f02a841ce373a2",
+      "bytes": 160267
+    },
+    {
+      "path": "art/08_kilnback.png",
+      "sha256": "f1f54f261411f9c1c035cccdff337feddc71659db0ee964f959a11978cc47dbb",
+      "bytes": 164030
+    },
+    {
+      "path": "art/09_pallet_jack.png",
+      "sha256": "109cd71992b88d12ad41373f653252147591602d161a41984f86cec9fbaf81e6",
+      "bytes": 155693
+    },
+    {
+      "path": "art/10_mothlight.png",
+      "sha256": "f643d112f1e87d7cfa8317652c9f86d85791926a81a40afa1a4a069912c651d9",
+      "bytes": 148464
+    },
+    {
+      "path": "art/11_tethys_switchyard.png",
+      "sha256": "e999c8e5fc6548514659b1497ab6c445b7bdaccced40782c6792d4a13d1e0966",
+      "bytes": 164049
+    },
+    {
+      "path": "art/12_borrowed_sun.png",
+      "sha256": "5707ccf640d3359b7eb5a9ad04a92372ec29e08243cb66d2cab86ad433b61a62",
+      "bytes": 165096
+    },
+    {
+      "path": "art/13_thimble_door.png",
+      "sha256": "bf2241c5082064bad838666f2593287b71f8e800793d5e8c004a4db899262daa",
+      "bytes": 156090
+    },
+    {
+      "path": "art/14_anvil_storm_orchard.png",
+      "sha256": "a987ca40c2e833965e3585f172460eb43a7b43bdf890646a67312baf4c34ccab",
+      "bytes": 180708
+    },
+    {
+      "path": "art/15_veil_ray_nursery.png",
+      "sha256": "e9f4b01a383c6ed55c1269001f50f2f69665c078a510e0038a13696ab1e0d29a",
+      "bytes": 199967
+    },
+    {
+      "path": "art/16_borrowed_voice.png",
+      "sha256": "3fc802fd3fb04172809154e0c738a9aacb3e4843245d5105b016c59fe0679a1e",
+      "bytes": 153431
+    },
+    {
+      "path": "art/17_open_hand_lock.png",
+      "sha256": "663d1ef9c6176909655dd7f42ff2d5ecf7c620d966db061e727dd91ef424fd4a",
+      "bytes": 168519
+    },
+    {
+      "path": "art/18_last_shift.png",
+      "sha256": "93b7a0f6a2ad78bc18d7e74d295a0315f6e9d5ed8cf62c5e5d450cb7a5cc74d4",
+      "bytes": 156666
+    },
+    {
+      "path": "art/19_pip_and_spanner.png",
+      "sha256": "9071000aa1179b620c618cb168c3273de3cfb8862986edb1e878277cec3dcc86",
+      "bytes": 163193
+    },
+    {
+      "path": "art/20_hundred_hand_mile.png",
+      "sha256": "fa362cb0f44174c2624cbcef84deb1c94a20ca7409047763b5797ea0cce5293c",
+      "bytes": 201503
+    },
+    {
+      "path": "art/ART_PROVENANCE.md",
+      "sha256": "76dcec7b3ed012e1a8ecacf8e6376d55e0a6522d0b097447914407f21cd0d199",
+      "bytes": 1392
+    },
+    {
+      "path": "art/CONTACT_SHEET.jpg",
+      "sha256": "266b244ff3b92717c6c1afc34afffbfaa40bc91cf667c665766892dba0792e4c",
+      "bytes": 507388
+    },
+    {
+      "path": "art/PAINTING_BRIEFS.json",
+      "sha256": "cb17ca1c6ffee66337134fcadae9fd75f816aed9207b32b61f26fa8125e86dc6",
+      "bytes": 22860
+    },
+    {
+      "path": "art/blockouts/01_latch_nine.glb",
+      "sha256": "19e0b91f7dc6b008cfc71fba1b95160caf73ee8b2845f555ec8123e509174352",
+      "bytes": 16612
+    },
+    {
+      "path": "art/blockouts/02_sable_venn.glb",
+      "sha256": "4084914f8770e11bc5571285eed32973d6433afb085477dac7d3b244eadd5dd5",
+      "bytes": 37284
+    },
+    {
+      "path": "art/blockouts/03_tally_3.glb",
+      "sha256": "2e0e3bb28d122498e95ab2e50f764685a6fc6b6da98f78964ec6a45b16f96059",
+      "bytes": 35056
+    },
+    {
+      "path": "art/blockouts/04_ilex_seed_ark.glb",
+      "sha256": "21d441ec6f8adb5a76e5568bb05f043def8ed0995bc8a3f73d63a009995ba3e3",
+      "bytes": 53892
+    },
+    {
+      "path": "art/blockouts/05_red_kite.glb",
+      "sha256": "a8b9905092d3b9f5e4ad576fc20d0559fb253f80d93b5002a9efecedbe33ff67",
+      "bytes": 13340
+    },
+    {
+      "path": "art/blockouts/06_towline_table.glb",
+      "sha256": "7f0df421d0a956699bde60fc0422877dbe5996714cd651763583c03259d44a3a",
+      "bytes": 27692
+    },
+    {
+      "path": "art/blockouts/07_scissorwake.glb",
+      "sha256": "299b345db75579a45eb179df61545841c92aadbd2cdc5aad195b1b2736e35f05",
+      "bytes": 11724
+    },
+    {
+      "path": "art/blockouts/08_kilnback.glb",
+      "sha256": "f8b34e5b13f336f6e9e19c142cb34e21ece6c229308440636bf11cab8f04fc32",
+      "bytes": 17140
+    },
+    {
+      "path": "art/blockouts/09_pallet_jack.glb",
+      "sha256": "bafc5672039f6a53b0befc2d2d5de6c4c164fac37a62476a4975055eae1295ec",
+      "bytes": 13264
+    },
+    {
+      "path": "art/blockouts/10_mothlight.glb",
+      "sha256": "cae39823b010293e9ae038189e29efb139395a717e7f2b9db1ab19afce02138f",
+      "bytes": 22372
+    },
+    {
+      "path": "art/blockouts/11_tethys_switchyard.glb",
+      "sha256": "6ca78374d736c3e8bcd488b3ed51876a6d491cc17d296f1acd31654685368480",
+      "bytes": 40208
+    },
+    {
+      "path": "art/blockouts/12_borrowed_sun.glb",
+      "sha256": "2a7892a43143df60449c6c8d3c0402a25ca641c430d37a8928bc8c6208235c1f",
+      "bytes": 76908
+    },
+    {
+      "path": "art/blockouts/13_thimble_door.glb",
+      "sha256": "510d0026582bec2ecf42d1094896efdb02b1e958c29ec83037b570b52735fa67",
+      "bytes": 17200
+    },
+    {
+      "path": "art/blockouts/14_anvil_storm_orchard.glb",
+      "sha256": "638f1b59c7b05dfdf8aa60a614704752a4c3a89e5e0986d32e3915c3e00e7a68",
+      "bytes": 54980
+    },
+    {
+      "path": "art/blockouts/15_veil_ray_nursery.glb",
+      "sha256": "e4a21ee613d1f8f16e2dbe8dfaefbee72d50cf97c3f5e636cb3908ffedd39721",
+      "bytes": 42440
+    },
+    {
+      "path": "art/blockouts/16_borrowed_voice.glb",
+      "sha256": "272a247e635493d8f17c05ab55a957eb8185fa7a0959517f4993060c4898d738",
+      "bytes": 15624
+    },
+    {
+      "path": "art/blockouts/17_open_hand_lock.glb",
+      "sha256": "8415ab6907576468397a7ef422f74beef76d2263e0613b640cf120908e3954a2",
+      "bytes": 12728
+    },
+    {
+      "path": "art/blockouts/18_last_shift.glb",
+      "sha256": "aa3a14aaac6f091f5f3cbaf887a2a346a060ea6878161cc3f3e6bfe5d121cf0a",
+      "bytes": 18660
+    },
+    {
+      "path": "art/blockouts/19_pip_and_spanner.glb",
+      "sha256": "5c2e0e94004115bbd7569f854f22ea18a1f0ad9ba88fa70a88e9c90f733af932",
+      "bytes": 11480
+    },
+    {
+      "path": "art/blockouts/20_hundred_hand_mile.glb",
+      "sha256": "bf4a0f56ea4a77140d6ab41b69e5dfc6d914ac81ca9e6ae27ed65a8df30e89f8",
+      "bytes": 45636
+    },
+    {
+      "path": "art/blueprints/01_latch_nine.svg",
+      "sha256": "c3f254918fc2728a5a75b2ddc114519e620340f057d3e1b5bd8a18ddf7afacfe",
+      "bytes": 71840
+    },
+    {
+      "path": "art/blueprints/02_sable_venn.svg",
+      "sha256": "0c99b23abacb662c8465b43b8ef13e7d920f2a3db78b5b663f26103167ffdf57",
+      "bytes": 160141
+    },
+    {
+      "path": "art/blueprints/03_tally_3.svg",
+      "sha256": "51938ecc3707b37140f0c5e97f928a023ff788221c8c56f448f3fbfc481246a0",
+      "bytes": 148003
+    },
+    {
+      "path": "art/blueprints/04_ilex_seed_ark.svg",
+      "sha256": "320b00a68d8f3cb58551a3fcb7726ad09ceb9b3eeb7001c6c37c5628e07e8cf5",
+      "bytes": 387129
+    },
+    {
+      "path": "art/blueprints/05_red_kite.svg",
+      "sha256": "b453d22b033f6d292e7416135277950df429dad28f9700b7dd4d4648ac9636b5",
+      "bytes": 49616
+    },
+    {
+      "path": "art/blueprints/06_towline_table.svg",
+      "sha256": "b4b723142302e6c2fd354ae8406e1ece7878a07fa67f02a389b1057fe4803112",
+      "bytes": 137441
+    },
+    {
+      "path": "art/blueprints/07_scissorwake.svg",
+      "sha256": "dfed99226d662105d02451409e800c808deb4631c03ade3f2ff58b699659e015",
+      "bytes": 51853
+    },
+    {
+      "path": "art/blueprints/08_kilnback.svg",
+      "sha256": "b131b4990bb3231a36b2646719e10536690c46bd630fa8fcfbe86f64186f0949",
+      "bytes": 70027
+    },
+    {
+      "path": "art/blueprints/09_pallet_jack.svg",
+      "sha256": "5646543f39c6f9ee7f721aac1ac7b5a4adae951e4b595eaa71f0e24ce15c8204",
+      "bytes": 50068
+    },
+    {
+      "path": "art/blueprints/10_mothlight.svg",
+      "sha256": "f69ebc6262711f373c6ef7c3dfa105cd4ba442b03528f4723ef65baca848dd55",
+      "bytes": 156071
+    },
+    {
+      "path": "art/blueprints/11_tethys_switchyard.svg",
+      "sha256": "9225be030d7065d1809278be4e4d6f70a062bf732936cebf953035eda295b728",
+      "bytes": 158324
+    },
+    {
+      "path": "art/blueprints/12_borrowed_sun.svg",
+      "sha256": "ff842c54ac63c38f964ae5182ce101ce10da90f64d1af8c59f46c8b5cd9108c7",
+      "bytes": 299427
+    },
+    {
+      "path": "art/blueprints/13_thimble_door.svg",
+      "sha256": "c87f6e2bcd6e1a4dda17f9699b07d06e4d6ab5c572acece76742818c407614f2",
+      "bytes": 72252
+    },
+    {
+      "path": "art/blueprints/14_anvil_storm_orchard.svg",
+      "sha256": "dd3ddd47d6a97af5a6c7ffe7ac5d620e64155374507216dbf25d6fb2be1d97d7",
+      "bytes": 277023
+    },
+    {
+      "path": "art/blueprints/15_veil_ray_nursery.svg",
+      "sha256": "a28d2601f6a5fe645b7e98f8f36f55e3803ea8a5e1a4f4d6c66c98bc811865bc",
+      "bytes": 359842
+    },
+    {
+      "path": "art/blueprints/16_borrowed_voice.svg",
+      "sha256": "e7ffdb88a0b1f1c7c7781688d80898e9cd43dc2084a16be3282600de610bcc6b",
+      "bytes": 68271
+    },
+    {
+      "path": "art/blueprints/17_open_hand_lock.svg",
+      "sha256": "459c767ac67b23fd7c4280218769cc49ceb4d4cde8606052861683f7ef99dbd9",
+      "bytes": 31090
+    },
+    {
+      "path": "art/blueprints/18_last_shift.svg",
+      "sha256": "6dbbf86ad05f112deb958a7442ee4feaa8b7df5aa4de58d04b84440ade5145b5",
+      "bytes": 62856
+    },
+    {
+      "path": "art/blueprints/19_pip_and_spanner.svg",
+      "sha256": "044316d283f148d00a619fc96f5e8a9f5de8ad82c86dd9e3cc194f36d4268a43",
+      "bytes": 35099
+    },
+    {
+      "path": "art/blueprints/20_hundred_hand_mile.svg",
+      "sha256": "80c25e9d4bfba41e4737b155af5f17785601f65df134d536c4a6174d35ad89a4",
+      "bytes": 172275
+    },
+    {
+      "path": "concepts/01_latch_nine.md",
+      "sha256": "c83e9c76edc7854621a1ee45cad88fd5dd05260c6444e19cf0fe8ea90bb66f6d",
+      "bytes": 9531
+    },
+    {
+      "path": "concepts/02_sable_venn.md",
+      "sha256": "99db0be95cfe3dd2862fb4f94323da766a699fa9416d882871c2438f7dd86c5d",
+      "bytes": 9424
+    },
+    {
+      "path": "concepts/03_tally_3.md",
+      "sha256": "6014364f62def90fec0b01e7e51a08660ba8796e38529edcbd3808a235c1f89f",
+      "bytes": 8548
+    },
+    {
+      "path": "concepts/04_ilex_seed_ark.md",
+      "sha256": "33910d158c0d0a558b6819721e943c2b3d82c5ec16834731315c2d634528a14e",
+      "bytes": 8903
+    },
+    {
+      "path": "concepts/05_red_kite.md",
+      "sha256": "9af5275557cf8945301b85db999b6859f01860faf9b8b5c0b426e782fa24a404",
+      "bytes": 8781
+    },
+    {
+      "path": "concepts/06_towline_table.md",
+      "sha256": "ed87943c4d6d2394a9f89c56d3fbd7a0f29c7061d437cf7c409aec409d6fef1d",
+      "bytes": 9033
+    },
+    {
+      "path": "concepts/07_scissorwake.md",
+      "sha256": "a8c878b67597e4da4034334bc58dcf821175cd2956a67b5c01310df475d5d2b9",
+      "bytes": 9128
+    },
+    {
+      "path": "concepts/08_kilnback.md",
+      "sha256": "af5b8174acc4e8c0c8a63c38b4c197e4c39eaa348482a7714cb121840af0c495",
+      "bytes": 8743
+    },
+    {
+      "path": "concepts/09_pallet_jack.md",
+      "sha256": "c77fcf7207be41f78f310993d3ed8f3ed0eb4cd7ec20d211b7879f338cc26fd3",
+      "bytes": 8877
+    },
+    {
+      "path": "concepts/10_mothlight.md",
+      "sha256": "bc24163a4af5ed1bb018056b813cea6c1a7a302ec06141c570ca62a1e4973626",
+      "bytes": 8614
+    },
+    {
+      "path": "concepts/11_tethys_switchyard.md",
+      "sha256": "7bc9498bf2921cd6df08e6a2561c7d34b5a19077b5c82e7bb32ade719e944168",
+      "bytes": 9158
+    },
+    {
+      "path": "concepts/12_borrowed_sun.md",
+      "sha256": "38943ff8d59d2b963e123f579669f3d8a3cc6e6e9a420a888e3dd656fc39317c",
+      "bytes": 9187
+    },
+    {
+      "path": "concepts/13_thimble_door.md",
+      "sha256": "9bb15eb618e4d4be520a211fa8512072a77f9c91dce7ac7e2314082d9f82868f",
+      "bytes": 8942
+    },
+    {
+      "path": "concepts/14_anvil_storm_orchard.md",
+      "sha256": "894d155235490f081ce72e416afe59f1144d559b55e479340330cc4aff0e7bb9",
+      "bytes": 8860
+    },
+    {
+      "path": "concepts/15_veil_ray_nursery.md",
+      "sha256": "7e8d9de524ee512d9586ceafa101b37694222d7d91e522a3ab80ee3912fbd3d0",
+      "bytes": 8948
+    },
+    {
+      "path": "concepts/16_borrowed_voice.md",
+      "sha256": "165593639b95503c871d01b6ac9206e9babcdf2fbf0bce5c4c2af0513fad3d10",
+      "bytes": 9378
+    },
+    {
+      "path": "concepts/17_open_hand_lock.md",
+      "sha256": "3ea0f71bd4a3c33e54ef327300a2d72ab743dd5c363e45bee9e14c2ad7ee360c",
+      "bytes": 8726
+    },
+    {
+      "path": "concepts/18_last_shift.md",
+      "sha256": "a14cc64efc359d65c1dc44671e7148fb193db8da9d31c5f5744875bb82d03927",
+      "bytes": 9029
+    },
+    {
+      "path": "concepts/19_pip_and_spanner.md",
+      "sha256": "fc9b56649d76b47e42f7c298fa5efc2f52717efee70f74055a5dbeee23d8e815",
+      "bytes": 9061
+    },
+    {
+      "path": "concepts/20_hundred_hand_mile.md",
+      "sha256": "6ce47602d26359638a834240667ca86890969bc615fe9b6828255721c58b6792",
+      "bytes": 9782
+    },
+    {
+      "path": "data/agent_tasks.json",
+      "sha256": "806967572c0e5fa06a3d273202cbec6e81849b7b608e0d37a5b607a2760dd3dd",
+      "bytes": 132974
+    },
+    {
+      "path": "data/asset_manifest.json",
+      "sha256": "3aed2c858070f2a7f320a31def0c8749a117cabf01628c99a248924ff1f472a3",
+      "bytes": 15763
+    },
+    {
+      "path": "data/concepts.json",
+      "sha256": "9a9aace595e19266472978cb2e83f3b78c3e215109e5061b689aa0e1fe39fc87",
+      "bytes": 151918
+    },
+    {
+      "path": "data/dialogue.json",
+      "sha256": "18687dadb7d2958b91f9e25b9ed9e43ecc13254534a77f8dfa78980456e044cb",
+      "bytes": 50566
+    },
+    {
+      "path": "data/package_validation.json",
+      "sha256": "1bc239c58f86086496223162d82187e5c448462edb3eb75a7854454b2663800c",
+      "bytes": 685
+    },
+    {
+      "path": "production/ASSET_PIPELINE.md",
+      "sha256": "52b9487508202e2f6e40ce6da3477aa83a79fc054c44425004086ce373ef8afe",
+      "bytes": 8389
+    },
+    {
+      "path": "production/INTEGRATION_MAP.md",
+      "sha256": "9ac2c3ae54c0b4220e1f72c68e69cbcca87809b9bc737c9b37c36e225a1bc05d",
+      "bytes": 5046
+    },
+    {
+      "path": "production/REPO_AUDIT.md",
+      "sha256": "52dd54130d1669712e9409d41b43b78c68ea6cded776bd39064f514186767937",
+      "bytes": 6032
+    },
+    {
+      "path": "production/ROADMAP.md",
+      "sha256": "57d6e9112743f7c142308bc6cb960baf662a802ed5c4358a06049e0f2d8ef59b",
+      "bytes": 4054
+    },
+    {
+      "path": "production/SOURCES.md",
+      "sha256": "dc68e9c72bef64e38c8a4c191f22663504cdb066be60ec984e4e9b68f47e02f4",
+      "bytes": 7038
+    },
+    {
+      "path": "production/TEST_PLAN.md",
+      "sha256": "da2399d5d57777dbd782bbebc2509fbfb073087b31b8964a8ad880eed85ae482",
+      "bytes": 4859
+    },
+    {
+      "path": "tools/README.md",
+      "sha256": "0025ffc371b6e2f6eba17aa8ea163a18f87bd4121d5d38bd0079e2739a182ee4",
+      "bytes": 726
+    },
+    {
+      "path": "tools/render_concept_art.py",
+      "sha256": "26b73c8d1ae898b0e77c45d6d279c960c630dfceb4125929c405de53e1487b4f",
+      "bytes": 20492
+    },
+    {
+      "path": "tools/validate_package.py",
+      "sha256": "84aa60a59a08c3035a462f27d4ca724e880ceddc03bb4d32e16aea9d349358c2",
+      "bytes": 4976
+    }
+  ]
+}

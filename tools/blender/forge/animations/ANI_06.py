@@ -23,7 +23,8 @@ Groups:
 Clips:
   serviceArm   hatch opens, arm unfolds and holds its tip just outside (endMode 'hold' —
                parks deployed for as long as the repair job runs)
-  serviceStow  arm folds back inside, hatch closes (endMode 'hold' — a rest-ended stow would
+  serviceStow  arm folds back inside, hatch closes (endMode 'rest' — the last key IS the
+               stowed pose, so evicting lands on identity and frees the channel)
                park and re-expose serviceArm's held pose; holding at rest keeps the arm
                stowed until the next service:started re-deploys it)
 
@@ -105,6 +106,6 @@ def build(ship, parts, source_asset_id, bank=None):
     else:
         bank.events.update(EVENTS)
     bank.clip('serviceArm', 3.6, loop=False, end_mode='hold')
-    bank.clip('serviceStow', 2.9, loop=False, end_mode='hold')
+    bank.clip('serviceStow', 2.9, loop=False, end_mode='rest')
     author(bank)
     return bank

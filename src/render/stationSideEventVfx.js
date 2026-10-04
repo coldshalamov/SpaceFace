@@ -9,6 +9,10 @@ const TAU = Math.PI * 2;
 
 export const STATION_SIDE_EVENT_VFX_CAPACITY = 6;
 
+// FB-076 — each profile also carries the mechanical articulation its named arm/crane/loader
+// hardware performs while the event is live (infrastructureMotion.js writes the pose):
+//   duty: reach-and-return | release-and-return | slide-track | stroke-and-return | sweep
+//   amplitude: peak swing in radians/∝stroke — reduced motion halves it, never flips direction.
 const HAULER_DOCK = Object.freeze({
   id: 'hauler_dock',
   silhouette: 'paired-cargo-rails',
@@ -17,6 +21,7 @@ const HAULER_DOCK = Object.freeze({
   cadenceHz: 6,
   reducedCadenceHz: 2,
   defaultDurationS: 45,
+  arm: Object.freeze({ id: 'arm-reach', duty: 'reach-and-return', amplitude: 0.55 }),
 });
 
 const PATROL_LAUNCH = Object.freeze({
@@ -27,6 +32,7 @@ const PATROL_LAUNCH = Object.freeze({
   cadenceHz: 9,
   reducedCadenceHz: 3,
   defaultDurationS: 60,
+  arm: Object.freeze({ id: 'cradle-swing', duty: 'release-and-return', amplitude: 0.40 }),
 });
 
 const REPAIR_DRONE = Object.freeze({
@@ -37,6 +43,7 @@ const REPAIR_DRONE = Object.freeze({
   cadenceHz: 4,
   reducedCadenceHz: 3,
   defaultDurationS: 90,
+  arm: Object.freeze({ id: 'gantry-slide', duty: 'slide-track', amplitude: 0.45 }),
 });
 
 const CARGO_TRACTOR = Object.freeze({
@@ -47,6 +54,7 @@ const CARGO_TRACTOR = Object.freeze({
   cadenceHz: 6,
   reducedCadenceHz: 2,
   defaultDurationS: 40,
+  arm: Object.freeze({ id: 'loader-stroke', duty: 'stroke-and-return', amplitude: 0.60 }),
 });
 
 const SENSOR_SWEEP = Object.freeze({
@@ -57,6 +65,7 @@ const SENSOR_SWEEP = Object.freeze({
   cadenceHz: 5,
   reducedCadenceHz: 2,
   defaultDurationS: 70,
+  arm: Object.freeze({ id: 'boom-sweep', duty: 'sweep', amplitude: 0.35 }),
 });
 
 const QUIET_DOCK = Object.freeze({
@@ -67,6 +76,7 @@ const QUIET_DOCK = Object.freeze({
   cadenceHz: 5,
   reducedCadenceHz: 2,
   defaultDurationS: 35,
+  arm: Object.freeze({ id: 'arm-reach', duty: 'reach-and-return', amplitude: 0.30 }),
 });
 
 export const STATION_SIDE_EVENT_VFX_PROFILES = Object.freeze({
@@ -80,6 +90,24 @@ export const STATION_SIDE_EVENT_VFX_PROFILES = Object.freeze({
 
 export function resolveStationSideEventVfxProfile(kind) {
   return STATION_SIDE_EVENT_VFX_PROFILES[kind] || null;
+}
+
+/** One dish beat for a live broadcast tic. A quiet broadcaster produces none. */
+export function broadcastDishBeatRecord(payload) {
+  if (!payload || payload.quiet === true || payload.tic == null) return null;
+  const pos = payload.pos;
+  if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return null;
+  const profile = resolveStationSideEventVfxProfile('sensor_sweep');
+  if (!profile) return null;
+  return {
+    kind: 'dish-beat',
+    pattern: 'station:sideEvent',
+    profileId: profile.id,
+    trajectory: profile.trajectory,
+    stationId: payload.stationId || null,
+    tic: payload.tic,
+    pos: { x: pos.x, z: pos.z },
+  };
 }
 
 export function createStationSideEventVfxFrameScratch() {

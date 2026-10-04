@@ -88,8 +88,12 @@ const MODE_CLASSIFY_SCRATCH = {
  * @param {object} sample from sampleThrottleInto
  * @param {number} [boostBlend]
  */
-export function applyContinuumToSample(recipe, mode, sample, boostBlend = 0) {
+export function applyContinuumToSample(recipe, mode, sample, boostBlend = 0, weights = null) {
   const continuum = continuumForRecipe(recipe);
+  // Per-entity blended modes (see integrateModeWeights): the structural multipliers are a
+  // weighted mix of every mode, so a mode flip is a ~0.14 s crossfade instead of a one-frame step
+  // in length (brake x0.42, reverse x0.08).
+  if (weights && continuum) return applyBlendedContinuum(continuum, mode, sample, boostBlend, weights);
   const m = continuum && continuum[mode] ? continuum[mode] : null;
   if (!m) {
     sample.mode = mode || 'accel';
@@ -119,6 +123,90 @@ export function applyContinuumToSample(recipe, mode, sample, boostBlend = 0) {
   }
   sample.mode = mode;
   return sample;
+}
+
+/**
+ * Weighted continuum: the same structural multipliers as the discrete path, mixed by `weights`
+ * (one per DRIVE_MODES entry, summing to 1). With a one-hot weight vector this is exactly the
+ * discrete result. Allocates nothing.
+ */
+function applyBlendedContinuum(continuum, mode, sample, boostBlend, weights) {
+  let lengthMul = 0;
+  let widthMul = 0;
+  let turbMul = 0;
+  let flowMul = 0;
+  let driveMul = 0;
+  let coreBias = 0;
+  for (let i = 0; i < DRIVE_MODES.length; i++) {
+    const w = weights[i];
+    if (!(w > 1e-4)) continue;
+    const m = continuum[DRIVE_MODES[i]];
+    if (!m) {
+      lengthMul += w; widthMul += w; turbMul += w; flowMul += w; driveMul += w;
+    } else if (m.mainSuppressed) {
+      // The same numbers the discrete path applies for a suppressed main drive.
+      lengthMul += w * 0.08; widthMul += w * 0.55; turbMul += w * 0.35; flowMul += w * 0.2;
+      driveMul += w * 0.12;
+    } else {
+      lengthMul += w * (m.lengthMul != null ? m.lengthMul : 1);
+      widthMul += w * (m.widthMul != null ? m.widthMul : 1);
+      turbMul += w * (m.turbulenceMul != null ? m.turbulenceMul : 1);
+      flowMul += w * (m.flowMul != null ? m.flowMul : 1);
+      driveMul += w;
+      if (m.coreBias != null) coreBias += w * m.coreBias;
+    }
+  }
+  sample.length *= lengthMul;
+  sample.width *= widthMul;
+  sample.turbulence *= turbMul;
+  sample.flowSpeed *= flowMul;
+  sample.effectiveDrive *= driveMul;
+  if (coreBias !== 0) sample.coreSheathBalance = Math.max(0.15, sample.coreSheathBalance + coreBias);
+  // Boost structure stays continuous (blend-aware), now scaled by how little of the blend IS boost.
+  if (boostBlend > 0 && continuum.boost) {
+    const b = continuum.boost;
+    const t = Math.max(0, Math.min(1, boostBlend)) * (1 - (weights[BOOST_INDEX] || 0));
+    if (b.lengthMul != null) sample.length *= 1 + (b.lengthMul - 1) * t * 0.35;
+    if (b.flowMul != null) sample.flowSpeed *= 1 + (b.flowMul - 1) * t * 0.35;
+  }
+  sample.mode = mode;
+  return sample;
+}
+
+const BOOST_INDEX = DRIVE_MODES.indexOf('boost');
+const ACCEL_INDEX = DRIVE_MODES.indexOf('accel');
+
+/** Time constant of the drive-mode crossfade, seconds. */
+export const MODE_BLEND_TAU = 0.14;
+
+/**
+ * Advance one entity's mode weights toward the discrete mode `mode`. The weights live on the
+ * entity's own drive state (created once, lazily, so there is no per-frame allocation) and start
+ * one-hot, so a freshly spawned plume never fades in from a blend of nothing. Mutates and returns
+ * the Float32Array.
+ */
+export function integrateModeWeights(state, mode, dt) {
+  let w = state.modeWeights;
+  if (!w) {
+    w = state.modeWeights = new Float32Array(DRIVE_MODES.length);
+    state.modeSeeded = false;
+  }
+  let target = DRIVE_MODES.indexOf(mode);
+  if (target < 0) target = ACCEL_INDEX;
+  if (!state.modeSeeded) {
+    w.fill(0);
+    w[target] = 1;
+    state.modeSeeded = true;
+    return w;
+  }
+  const a = 1 - Math.exp(-Math.max(0, Math.min(0.1, Number.isFinite(dt) ? dt : 0)) / MODE_BLEND_TAU);
+  let sum = 0;
+  for (let i = 0; i < w.length; i++) {
+    w[i] += ((i === target ? 1 : 0) - w[i]) * a;
+    sum += w[i];
+  }
+  if (sum > 1e-6) for (let i = 0; i < w.length; i++) w[i] /= sum;
+  return w;
 }
 
 /**
@@ -206,7 +294,7 @@ export function sampleThrottleInto(recipe, throttle, a11y, out) {
       mode = resolveDriveMode(MODE_CLASSIFY_SCRATCH, recipe);
     }
   }
-  applyContinuumToSample(recipe, mode, out, boostBlend);
+  applyContinuumToSample(recipe, mode, out, boostBlend, flags.modeWeights || null);
   return out;
 }
 
@@ -290,12 +378,54 @@ export function compileDriveRates(recipe, out) {
   return out;
 }
 
+/**
+ * Extra seconds every control jet takes to arrive, ADDED to its family's own recipe attack (so a vector
+ * drive's needle still arrives sooner than an industrial one's puff, by the same margin as authored).
+ *
+ * The recipe attacks are 14-28 ms: at 60 Hz that is one or two presentation ticks, i.e. the jet's first
+ * drawn frame was already 100% of its reach with the collar flash lit (slice 1b, RCS lifecycle). With the
+ * ramp a jet takes ~5 ticks to arrive: first tick a stub, no tick above ~1/3 of its reach.
+ */
+export const IMPULSE_PRESS_RAMP_S = 0.07;
+
+/**
+ * Share of the release during which the packet still holds its whole body (the collar shuts, the head
+ * leaves) before its ROOT starts to leave the nozzle. Small on purpose: the tail has to be spent over
+ * several ticks even for the shortest-release family, so it starts almost at once and eases in.
+ */
+export const IMPULSE_TAPER_START = 0.1;
+
+const IMPULSE_DEFAULT_TIMING = Object.freeze({ attack: 0.03, sustain: 0.05, release: 0.12 });
+
+/**
+ * The ONE timing record an impulse lives and is sampled by: recipe timing with the press ramp added.
+ * The pool's life check, the envelope, the body shape and the event light all read this record, so none
+ * of them can retire an impulse while another is still drawing it (a mismatch there is a hard cut).
+ */
+export function resolveImpulseTiming(recipeTiming, out) {
+  const t = recipeTiming || IMPULSE_DEFAULT_TIMING;
+  out.attack = (t.attack || IMPULSE_DEFAULT_TIMING.attack) + IMPULSE_PRESS_RAMP_S;
+  out.sustain = t.sustain || IMPULSE_DEFAULT_TIMING.sustain;
+  out.release = t.release || IMPULSE_DEFAULT_TIMING.release;
+  out.total = out.attack + out.sustain + out.release;
+  return out;
+}
+
+/**
+ * Pressure envelope of one control-jet impulse at `age` seconds, for a timing record from
+ * resolveImpulseTiming. The attack is a smoothstep (zero slope at ignition): it used to be linear, so the
+ * first tick already carried 76% of the envelope.
+ */
 export function sampleImpulseEnvelope(age, timing) {
   if (age < 0) return 0;
   const a = timing.attack || 0.03;
   const s = timing.sustain || 0.05;
   const r = timing.release || 0.12;
-  if (age < a) return a <= 0 ? 1 : age / a;
+  if (age < a) {
+    if (a <= 0) return 1;
+    const t = age / a;
+    return t * t * (3 - 2 * t);
+  }
   if (age < a + s) return 1;
   if (age < a + s + r) {
     const u = (age - a - s) / Math.max(1e-6, r);
@@ -308,6 +438,36 @@ export function sampleImpulseEnvelope(age, timing) {
     return remain * remain;
   }
   return 0;
+}
+
+/**
+ * The BODY of one control-jet packet, the channel that actually reaches nothing.
+ *
+ * The pressure envelope cannot make a jet go dark: the fragment stage draws `0.55 + 0.9 * envelope` and
+ * the alpha has its own floor, so a card at envelope 0 is still ~26% of its peak brightness. Only
+ * length reaches nothing (the vertex stage collapses a zero-length card), so length is the lifecycle
+ * channel here exactly as it is for the main drive (ribbon/plumeSlug.js, driveEnvelope PLUME_DARK):
+ *
+ *   born   0 -> 1 across the attack: the front runs out of the nozzle, the root stays at the throat.
+ *   taper  1 -> 0 across the release: the FRONT holds where the gas got to and the ROOT leaves the nozzle
+ *          down the jet (the slug detaches and is spent), so a released jet never retracts into its
+ *          nozzle. The caller derives root = reach * born * (1 - taper).
+ *
+ * `born` is the envelope's own attack (one curve, not a parallel one). Writes into and returns `out`.
+ */
+export function sampleImpulseBody(age, timing, out) {
+  const a = timing.attack || 0.03;
+  const s = timing.sustain || 0.05;
+  const r = timing.release || 0.12;
+  out.born = age <= 0 ? 0 : sampleImpulseEnvelope(Math.min(age, a), timing);
+  const u = (age - a - s) / Math.max(1e-6, r);
+  let taper = 1;
+  if (u > IMPULSE_TAPER_START) {
+    const t = Math.min(1, (u - IMPULSE_TAPER_START) / (1 - IMPULSE_TAPER_START));
+    taper = 1 - t * t * (3 - 2 * t);
+  }
+  out.taper = taper;
+  return out;
 }
 
 /**

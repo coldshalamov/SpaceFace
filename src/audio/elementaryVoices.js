@@ -15,7 +15,7 @@ import {
   TETHER_TONE_MOTION_REDUCE,
   TETHER_TONE_RELEASE_S,
   TETHER_TONE_SILENCE,
-  TETHER_TONE_TAUT_PHASES,
+  resolveTetherLineLoad,
 } from './masslineInstrument.js';
 
 /** Existing engine-hum fundamentals. Idle is silent; the others are the authored tiers. */
@@ -48,6 +48,35 @@ function approach(current, target, dt, riseTau, fallTau) {
   const tau = target > from ? riseTau : fallTau;
   if (!(tau > 0)) return target;
   return from + (target - from) * (1 - Math.exp(-dt / tau));
+}
+
+export function readDriveSpeed01(player) {
+  const vel = player && player.vel;
+  const speed = Math.hypot(Number(vel && vel.x) || 0, Number(vel && vel.z) || 0);
+  const derived = player && player.data && player.data.derived;
+  const cap = Number(derived && derived.maxSpeed);
+  if (!(cap > 0) || !Number.isFinite(speed)) return null;
+  return clamp(speed / cap, 0, 1);
+}
+
+/**
+ * Coast, loaded acceleration, and braking are different work, not three volumes.
+ * Pitch drops when throttle is ahead of speed. Braking speaks even at zero throttle.
+ * A missing speed leaves the authored tier fundamental alone.
+ */
+export function engineEffortVoice(tierHz, { throttle = 0, speed01 = null, braking = false } = {}) {
+  const base = Number(tierHz) > 0 ? Number(tierHz) : ENGINE_TIER_HZ.thrust;
+  const thrust = clamp(throttle, 0, 1);
+  if (braking === true && thrust < 0.15) {
+    return { hz: Math.round(base * 0.62 * 100) / 100, gain: 0.35, kind: 'brake' };
+  }
+  const speed = speed01 == null || !Number.isFinite(Number(speed01)) ? thrust : clamp(Number(speed01), 0, 1);
+  const unmet = clamp(thrust - speed, 0, 1);
+  const hz = Math.round(base * (1 - 0.16 * unmet) * 100) / 100;
+  let kind = 'coast';
+  if (thrust >= 0.2 && unmet >= 0.35) kind = 'loaded';
+  else if (thrust >= 0.2) kind = 'free';
+  return { hz, gain: thrust, kind };
 }
 
 /** Load → Hz. The live tether hum: 90 + load * 220. Three loads, three rising pitches. */
@@ -94,14 +123,14 @@ export function readPublishedThrottle(source = {}) {
   return clamp(Math.max(0, physics, pilot, strafe), 0, 1);
 }
 
-/** Taut line only. Slack and a missing tether publish load 0 and playing false. */
-export function readTetherLoad(tether) {
-  const phase = String((tether && tether.phase) || '');
-  const playing = !!(tether && (tether.active === true || TETHER_TONE_TAUT_PHASES.includes(phase)));
-  const raw = playing
-    ? (Number.isFinite(tether.load) ? tether.load : Number(tether.strain) || 0)
-    : 0;
-  return { playing, load: clamp(raw, 0, 1.25) };
+/**
+ * Taut line only. Slack and a missing tether publish load 0 and playing false. FB-079:
+ * the caller's resolved tow mass lifts the read through the same law the legacy hum's
+ * resolveTetherTone uses — one writer (resolveTetherLineLoad), so a heavy tow creaks on
+ * this backend exactly as authored there, and never through a slack line.
+ */
+export function readTetherLoad(tether, towMass) {
+  return resolveTetherLineLoad(tether, towMass);
 }
 
 /**
@@ -115,7 +144,13 @@ export function stepElementaryVoices(state, input = {}) {
   const dt = hold ? 0 : Math.max(0, Number(input.dt) || 0);
   const tier = input.tier || 'idle';
   const command = engineCommand(input.throttle, tier);
-  const engineTarget = THROTTLE_WINDOWS.loudGain * command;
+  const effort = engineEffortVoice(engineTierHz(tier), {
+    throttle: command,
+    speed01: input.speed01,
+    braking: input.braking === true,
+  });
+  let engineTarget = THROTTLE_WINDOWS.loudGain * command;
+  if (effort.kind === 'brake') engineTarget = THROTTLE_WINDOWS.loudGain * effort.gain;
   out.engineGain = approach(
     out.engineGain, engineTarget, dt,
     THROTTLE_WINDOWS.cueRiseTau, THROTTLE_WINDOWS.cueFallTau,
@@ -141,7 +176,7 @@ export function stepElementaryVoices(state, input = {}) {
     ? combineWeaponDuck(input.sidechainDuck, input.priorityDuck)
     : (Number.isFinite(input.duck) ? clamp(input.duck, 0, 1) : 1);
 
-  out.engineHz = engineTierHz(tier);
+  out.engineHz = effort.hz;
   out.ropeHz = ropePitchHz(load);
   out.duck = duck;
   out.heardEngine = out.engineGain * duck;

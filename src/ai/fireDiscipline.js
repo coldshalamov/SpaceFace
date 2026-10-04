@@ -336,9 +336,12 @@ function opticLaneCorpus(entities) {
   let n = 0;
   for (const entity of opticLaneIterable(entities)) {
     if (!splinterBody(entity)) continue;
-    let row = n < bodies.length ? bodies[n] : (spare.length ? spare.pop() : null);
-    if (!row) {
-      row = { x: 0, z: 0, radius: 0, entity: null };
+    let row;
+    if (n < bodies.length) {
+      row = bodies[n];
+    } else {
+      row = spare.length ? spare.pop() : null;
+      if (!row) row = { x: 0, z: 0, radius: 0, entity: null };
       bodies.push(row);
     }
     row.x = entity.pos.x;

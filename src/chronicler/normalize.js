@@ -26,6 +26,11 @@ function point(p) {
   return p && Number.isFinite(p.x) && Number.isFinite(p.z) ? { x: p.x, z: p.z } : null;
 }
 function positive(n) { return typeof n === 'number' && Number.isFinite(n) && n > 0 && n <= MAX_QTY; }
+// An id a human reads aloud: `ship_kestrel` -> "Kestrel", `first_blood` -> "First Blood".
+// Same replace the authored-story cases inline; one helper now that deed ids need it too.
+function properName(value, fallback) {
+  return text(String(value).replace(/[_-]+/g, ' ').replace(/\b\w/g, (ch) => ch.toUpperCase()), fallback);
+}
 function killFacts(p, state) {
   // Match compactKillCausality's precedence. Copy only semantic scalars from presentation;
   // NEVER retain that receipt, its vectors, Three objects, or arbitrary source data.
@@ -310,6 +315,183 @@ export function normalizeFact(event, p, state) {
       f.details = { qty: Math.max(0, finite(p.quantity)), inbound: p.inbound === true,
         kind: text(p.inbound ? 'inbound resupply' : 'outbound haul', 'delivery', 64) };
       f.dedupe = `delivery:${JSON.stringify([bid, p.inbound === true, tick])}`;
+      break;
+    }
+    case 'story:playerChoiceRecorded': {
+      // A dialogue choice is evidence in the speaker's own words. `externalId` mirrors the story
+      // owner's fact id (`choice:<encounter>:<choice>`) so the citation resolves to the same row.
+      const choiceId = id(p.choiceId);
+      if (choiceId === null) return { invalid: true };
+      const encounterId = id(p.encounterId) || 'choice';
+      // Cap the quoted line so the composed `note` stays inside the details-string bound.
+      const line = text(p.line, '', 120);
+      f.stage = 'story';
+      f.actor = identity(state, state.playerId);
+      f.group = `choice:${encounterId}`;
+      f.externalId = `choice:${encounterId}:${choiceId}`;
+      f.details = {
+        kind: 'choice', choiceId, encounterId, shapeId: id(p.shapeId),
+        title: 'A spoken choice',
+        note: line ? `The record holds the pilot's own words — "${line}"` : `Chose ${choiceId}`,
+      };
+      f.dedupe = `story:${f.externalId}`;
+      break;
+    }
+    case 'story:vergeEvidenceRecorded': {
+      const key = id(p.key);
+      if (key === null) return { invalid: true };
+      const keyName = key.replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase();
+      f.stage = 'story';
+      f.actor = identity(state, state.playerId);
+      f.group = 'story:campaign';
+      f.externalId = `verge:${key}`;
+      f.details = {
+        kind: 'verge_evidence', key, source: text(p.source, 'the ship', 96),
+        title: 'Verge evidence filed',
+        note: `The ${keyName} reached the Verge lattice`,
+      };
+      f.dedupe = `story:verge:${key}`;
+      break;
+    }
+    case 'story:kurtzLedger': {
+      // Emitted on every ledger read — revisit or not, it is one fact: the ledger was read.
+      if (!Array.isArray(p.rows) || p.rows.length === 0) return { invalid: true };
+      // Details are strict scalars — the roster rides as one bounded string.
+      const names = p.rows.map((row) => text(row && row.name, '', 48)).filter(Boolean);
+      const namesText = text(names.slice(0, 4).join('; '), '', 192);
+      f.stage = 'story';
+      f.actor = identity(state, state.playerId);
+      f.group = 'story:campaign';
+      f.externalId = 'kurtz:ledger';
+      f.details = {
+        kind: 'kurtz_ledger', rowCount: p.rows.length, names: namesText || null,
+        title: 'The Kurtz ledger',
+        note: namesText ? `The ledger was read — ${namesText}` : 'The ledger was read',
+      };
+      f.dedupe = 'story:kurtz:ledger';
+      break;
+    }
+    case 'story:vergeValeGatesRevoked': {
+      const gateId = id(p.id) || 'vale_gates';
+      const subjectId = id(p.subject);
+      f.stage = 'story';
+      f.actor = { id: null, key: 'verge', player: false, name: 'the Verge lattice' };
+      f.subject = {
+        id: subjectId, key: subjectId, player: false,
+        name: text(p.subject, 'director vale').replace(/_/g, ' ').replace(/\b\w/g, (ch) => ch.toUpperCase()),
+      };
+      f.group = 'story:campaign';
+      f.externalId = `verge:revocation:${gateId}`;
+      f.details = {
+        kind: 'verge_revocation', gateId,
+        source: text(p.source, 'verge', 96),
+        revocationCount: Math.max(0, finite(p.revocationCount)),
+        title: 'Gate access revoked',
+        note: `The Verge lattice sealed ${f.subject.name} out of the gates`,
+      };
+      f.dedupe = `story:verge:revocation:${gateId}`;
+      break;
+    }
+    case 'ship:purchased': {
+      // One fact per hull id, ever — re-buying a hull already in the ledger dedupes, a different
+      // hull is a new beat. Emitted by ships.js with { defId, price } (grant purchases price 0).
+      const defId = id(p.defId);
+      if (defId === null) return { invalid: true };
+      const price = Math.max(0, finite(p.price));
+      f.stage = 'story';
+      f.actor = identity(state, state.playerId);
+      f.subject = { id: defId, key: `hull:${defId}`, player: false,
+        name: text(p.name || p.defName, properName(defId.replace(/^ship_/, ''), 'a new hull')) };
+      f.group = `deed:ship:${defId}`;
+      f.details = { kind: 'ship_purchase', defId, price, title: 'A new hull',
+        note: price > 0
+          ? `Commissioned the ${f.subject.name} for ${price} credits`
+          : `Commissioned the ${f.subject.name} from the shipyard's fabricators` };
+      f.dedupe = `deed:ship:${defId}`;
+      break;
+    }
+    case 'achievement:unlocked': {
+      // Emitted by achievements.js with the achievement def: { id, name, category, at, via,
+      // retroactive }. Retroactive/merged unlocks are still true, so they record; the id dedupes.
+      const achievementId = id(p.id);
+      if (achievementId === null) return { invalid: true };
+      const name = text(p.name, properName(achievementId, achievementId));
+      f.stage = 'story';
+      f.actor = identity(state, state.playerId);
+      f.subject = { id: achievementId, key: `achievement:${achievementId}`, player: false, name };
+      f.group = `deed:achievement:${achievementId}`;
+      f.details = { kind: 'achievement', achievementId,
+        category: text(p.category) || null, via: text(p.via) || null,
+        retroactive: p.retroactive === true,
+        title: name, note: `Unlocked the "${name}" achievement` };
+      f.dedupe = `deed:achievement:${achievementId}`;
+      break;
+    }
+    case 'career:ladder:completed': {
+      // Emitted by ladderShared.js with { careerId, receiptId, nonBinding, simTime }. One ladder
+      // completion per career, ever; the receipt rides as the fact's externalId (a receipt ref).
+      const careerId = id(p.careerId);
+      if (careerId === null) return { invalid: true };
+      f.stage = 'story';
+      f.externalId = id(p.receiptId);
+      f.actor = identity(state, state.playerId);
+      f.subject = { id: careerId, key: `career:${careerId}`, player: false,
+        name: properName(careerId, careerId) };
+      f.group = `deed:ladder:${careerId}`;
+      f.details = { kind: 'ladder_complete', careerId,
+        title: `${f.subject.name} ladder`,
+        note: `Completed the ${f.subject.name} career ladder` };
+      f.dedupe = `deed:ladder:${careerId}`;
+      break;
+    }
+    case 'stunt:trickDetected': {
+      // Anti-spam law: only marquee tricks are facts — a legendary feat outright, a rare one only
+      // when it caught other hulls in it (the same gate the witnessed-news consumer applies).
+      // Uncommon/common tricks and unepisoded detections are filtered noise, not facts.
+      const episodeId = id(p.episodeId);
+      const trickId = id(p.trickId);
+      const rarity = p.rarity === 'legendary' || p.rarity === 'rare' ? p.rarity : null;
+      const collateral = Math.max(1, finite(p.modifiers && p.modifiers.collateralCount, 1));
+      if (!rarity || (rarity === 'rare' && collateral < 2) || episodeId === null || trickId === null) {
+        return null;
+      }
+      const name = text(p.name, properName(trickId, trickId));
+      f.stage = 'story';
+      f.actor = identity(state, p.actorId ?? state.playerId);
+      f.subject = { id: trickId, key: `stunt:${trickId}`, player: false, name };
+      f.group = `deed:stunt:${episodeId}`;
+      f.details = { kind: 'stunt', trickId, episodeId, rarity,
+        baseScore: Math.max(0, finite(p.baseScore)), collateralCount: collateral,
+        title: name,
+        note: rarity === 'legendary'
+          ? `${name} — a legendary feat the whole pocket witnessed`
+          : `${name} — a rare feat that caught ${collateral} hulls in it` };
+      f.dedupe = `deed:stunt:${episodeId}`;
+      break;
+    }
+    case 'news:headline': {
+      // The record channel. marketNews re-broadcasts every committed ticker line on this same
+      // event — those echoes carry a `source` ('news:publish', 'freight_causality', …) and must
+      // not double-record. An emitter's own line has no source. A citation — receipt/event id or
+      // a domain id — pins the fact to the same key the emitter would cite; a bare line falls
+      // back to its own text so a repeated identical headline records once.
+      if (id(p.source) !== null) return null;
+      const headline = text(p.headline || p.text, '', 160);
+      if (!headline) return { invalid: true };
+      const newsKind = id(p.kind) || 'news';
+      const citation = f.externalId
+        || id(p.markerId) || id(p.aceId) || id(p.profileId) || id(p.sourceId)
+        || id(p.intentId) || id(p.freighterKey)
+        || (id(p.fieldId) ? `${id(p.fieldId)}:${id(p.activityObjectSlotId) || ''}` : null)
+        || (id(p.sectorId) && id(p.zoneId) ? `${id(p.sectorId)}:${id(p.zoneId)}:${id(p.reason) || ''}` : null)
+        || text(headline, '', 96);
+      f.stage = 'story';
+      f.actor = { id: null, key: 'news', player: false, name: 'the wires' };
+      f.group = `newsheadline:${newsKind}`;
+      f.details = { kind: 'news_headline', newsKind,
+        title: properName(newsKind, 'A headline'),
+        note: headline };
+      f.dedupe = `newsHeadline:${newsKind}:${citation}`;
       break;
     }
     default: return null;

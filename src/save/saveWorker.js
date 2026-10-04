@@ -3,11 +3,96 @@ import { fnv1a } from './checksum.js';
 const encodeSessions = new Map();
 const validationSessions = new Map();
 
+// FB-093 — write-side bound mirrors the import limit object: same byte ceiling, one law.
+export const SAVE_WRITE_MAX_BYTES = 12 * 1024 * 1024;
+export const SAVE_GZIP_FORMAT = 'spaceface-save-gz';
+
 export function encodeSavePayload({ descriptor, data } = {}) {
   const dataJson = JSON.stringify(data);
   const checksum = fnv1a(dataJson);
   const envelope = { ...(descriptor || {}), checksum, data };
   return { json: JSON.stringify(envelope), checksum };
+}
+
+// A stored string can be a legacy plain envelope or a gzip wrapper — the wrapper keeps
+// fmt/version/savedAt/checksum top-level so slot cards and quota reads stay synchronous;
+// only `data` lives inside the compressed payload. Detection needs no decode.
+export function isGzippedSaveText(raw) {
+  if (typeof raw !== 'string' || raw.length < 16 || raw.charCodeAt(0) !== 123) return false;
+  // The wrapper writes fmt first — gate on the head of the string so multi-MB legacy
+  // saves never pay a full scan. The decode path re-parses authoritatively.
+  return raw.slice(0, 96).indexOf('"' + SAVE_GZIP_FORMAT + '"') !== -1;
+}
+
+function bytesToBase64(bytes) {
+  let binary = '';
+  const CHUNK = 0x8000;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(binary);
+}
+
+function base64ToBytes(text) {
+  const binary = atob(text);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+async function gzipText(json) {
+  const stream = new Blob([json]).stream()
+    .pipeThrough(new CompressionStream('gzip'));
+  const buffer = await new Response(stream).arrayBuffer();
+  return bytesToBase64(new Uint8Array(buffer));
+}
+
+async function gunzipText(payload) {
+  const bytes = base64ToBytes(payload);
+  const stream = new Blob([bytes]).stream()
+    .pipeThrough(new DecompressionStream('gzip'));
+  return await new Response(stream).text();
+}
+
+export function saveGzipAvailable() {
+  return typeof CompressionStream === 'function'
+    && typeof DecompressionStream === 'function'
+    && typeof Blob === 'function' && typeof btoa === 'function' && typeof atob === 'function';
+}
+
+// Wrap an encoded envelope JSON string into the stored gzip form. The wrapper is itself JSON:
+// compression markers and card metadata stay legible without a decode pass.
+export async function gzipEnvelopeJson(json) {
+  const env = JSON.parse(json);
+  const payload = await gzipText(json);
+  return JSON.stringify({
+    fmt: SAVE_GZIP_FORMAT,
+    gz: 1,
+    version: env.version,
+    savedAt: env.savedAt || null,
+    checksum: env.checksum || null,
+    payload,
+  });
+}
+
+// Decode a stored string to the inner envelope JSON text (identity for legacy plain saves).
+// FB-104 — an export bundle may carry the profile side bags as a `profile` sibling on the outer
+// wrapper (the compressed payload stays the plain envelope); the field passes through untouched
+// so the import lane can merge it after the envelope validates.
+export async function decodeSaveEnvelopeText(raw) {
+  if (!isGzippedSaveText(raw)) return { ok: true, text: raw };
+  let outer;
+  try { outer = JSON.parse(raw); } catch (error) { return { ok: false, reason: 'parse_failed' }; }
+  if (!outer || outer.fmt !== SAVE_GZIP_FORMAT || typeof outer.payload !== 'string') {
+    return { ok: false, reason: 'bad_format' };
+  }
+  if (!saveGzipAvailable()) return { ok: false, reason: 'gz_unsupported' };
+  try {
+    const text = await gunzipText(outer.payload);
+    return outer.profile != null ? { ok: true, text, profile: outer.profile } : { ok: true, text };
+  } catch (error) {
+    return { ok: false, reason: 'gz_decode_failed' };
+  }
 }
 
 function readSaveVersion(version, currentVersion) {
@@ -42,6 +127,32 @@ export function validateSaveJson(raw, currentVersion) {
   };
 }
 
+// Gzip-aware twin: stored compressed envelopes decode inside the worker first. The sync
+// validateSaveJson above stays for callers that only ever see plain text.
+export async function validateSaveJsonAsync(raw, currentVersion) {
+  const decoded = await decodeSaveEnvelopeText(raw);
+  if (!decoded.ok) return { ok: false, reason: decoded.reason };
+  return validateSaveJson(decoded.text, currentVersion);
+}
+
+// Write-side encode with the import limit object applied pre-write and gzip inside the
+// worker when the platform supports it. Over-limit saves fail with the preflight reason —
+// never a silent truncated write.
+export async function encodeSavePayloadFinal({ descriptor, data } = {}) {
+  const encoded = encodeSavePayload({ descriptor, data });
+  const preflight = preflightSaveImport(JSON.parse(encoded.json));
+  if (!preflight.ok) return { ok: false, reason: preflight.reason, limit: preflight.limit, actual: preflight.actual };
+  if (encoded.json.length > SAVE_WRITE_MAX_BYTES) {
+    return { ok: false, reason: 'save_size_limit', limit: SAVE_WRITE_MAX_BYTES, actual: encoded.json.length };
+  }
+  if (saveGzipAvailable()) {
+    try {
+      return { ok: true, json: await gzipEnvelopeJson(encoded.json), checksum: encoded.checksum, gz: true };
+    } catch (error) { /* fall through to the legacy plain write */ }
+  }
+  return { ok: true, json: encoded.json, checksum: encoded.checksum, gz: false };
+}
+
 /**
  * Full load-lane prepare in the worker: parse, format/version check, checksum, and the player
  * sanity reads a title Continue used to run synchronously on the main thread. The returned
@@ -66,6 +177,21 @@ export function restorePrepareSaveJson(raw, currentVersion) {
   const preflight = preflightSaveImport(envelope);
   if (!preflight.ok) return preflight;
   return { ok: true, version: versionRead.version, env: envelope, preflighted: true };
+}
+
+// Gzip-aware twin for the painted Continue lane: compressed envelopes decode inside the
+// worker, then take the identical prepare path.
+export async function restorePrepareSaveJsonAsync(raw, currentVersion) {
+  const decoded = await decodeSaveEnvelopeText(raw);
+  if (!decoded.ok) return { ok: false, reason: decoded.reason };
+  const prepared = restorePrepareSaveJson(decoded.text, currentVersion);
+  // FB-104 — a compressed export bundle carries its profile side bags on the outer wrapper;
+  // attach them to the prepared envelope so the main-thread merge runs the same way a plain
+  // import does (the field crosses postMessage inside the env clone).
+  if (prepared.ok && decoded.profile != null && prepared.env && typeof prepared.env === 'object') {
+    prepared.env.profile = decoded.profile;
+  }
+  return prepared;
 }
 
 // Full-envelope graph bound in the worker so the multi-MB walk never reaches the main thread.
@@ -131,8 +257,26 @@ export function preflightSaveImport(value) {
 
 export function handleSaveWorkerRequest(message) {
   const request = message || {};
+  return handleSaveWorkerRequestCore(request, { asyncFinal: false });
+}
+
+// Async protocol twin of handleSaveWorkerRequest: bounded+compressed encodes and gzip-aware
+// validates/prepares. The sync export stays for harnesses that simulate the worker inline.
+export function handleSaveWorkerRequestAsync(message) {
+  const request = message || {};
+  return handleSaveWorkerRequestCore(request, { asyncFinal: true });
+}
+
+function handleSaveWorkerRequestCore(request, { asyncFinal } = {}) {
   if (request.type === 'restore_prepare') {
     const started = workerNow();
+    const done = (result) => ({ id: request.id, type: 'restored_prepare', result, workerCpuMs: workerNow() - started });
+    if (asyncFinal) {
+      return Promise.resolve().then(() => restorePrepareSaveJsonAsync(
+        request.payload && request.payload.raw,
+        request.payload && request.payload.currentVersion,
+      )).then(done, () => done({ ok: false, reason: 'load_failed' }));
+    }
     let result;
     try {
       result = restorePrepareSaveJson(
@@ -142,7 +286,7 @@ export function handleSaveWorkerRequest(message) {
     } catch (error) {
       result = { ok: false, reason: 'load_failed' };
     }
-    return { id: request.id, type: 'restored_prepare', result, workerCpuMs: workerNow() - started };
+    return done(result);
   }
   if (request.type === 'restore_prepare_meta') {
     const started = workerNow();
@@ -182,12 +326,11 @@ export function handleSaveWorkerRequest(message) {
     validationSessions.delete(request.id);
     if (!session) return { id: request.id, type: 'error', reason: 'missing_validate_session' };
     const started = workerNow();
-    return {
-      id: request.id,
-      type: 'validated',
-      result: validateSaveJson(session.chunks.join(''), session.currentVersion),
-      workerCpuMs: workerNow() - started,
-    };
+    const done = (result) => ({ id: request.id, type: 'validated', result, workerCpuMs: workerNow() - started });
+    if (asyncFinal) {
+      return validateSaveJsonAsync(session.chunks.join(''), session.currentVersion).then(done);
+    }
+    return done(validateSaveJson(session.chunks.join(''), session.currentVersion));
   }
   if (request.type === 'encode_begin') {
     encodeSessions.set(request.id, { descriptor: request.payload && request.payload.descriptor || {}, data: {} });
@@ -204,22 +347,26 @@ export function handleSaveWorkerRequest(message) {
     encodeSessions.delete(request.id);
     if (!session) return { id: request.id, type: 'error', reason: 'missing_encode_session' };
     const started = workerNow();
-    const encoded = encodeSavePayload(session);
-    return { id: request.id, type: 'encoded', ...encoded, workerCpuMs: workerNow() - started };
+    const done = (encoded) => ({ id: request.id, type: 'encoded', ...encoded, workerCpuMs: workerNow() - started });
+    if (asyncFinal) return encodeSavePayloadFinal(session).then(done);
+    return done(encodeSavePayload(session));
   }
   if (request.type === 'encode') {
     const started = workerNow();
-    const encoded = encodeSavePayload(request.payload);
-    return { id: request.id, type: 'encoded', ...encoded, workerCpuMs: workerNow() - started };
+    const done = (encoded) => ({ id: request.id, type: 'encoded', ...encoded, workerCpuMs: workerNow() - started });
+    if (asyncFinal) return encodeSavePayloadFinal(request.payload).then(done);
+    return done(encodeSavePayload(request.payload));
   }
   if (request.type === 'validate') {
     const started = workerNow();
-    return {
-      id: request.id,
-      type: 'validated',
-      result: validateSaveJson(request.payload && request.payload.raw, request.payload && request.payload.currentVersion),
-      workerCpuMs: workerNow() - started,
-    };
+    const done = (result) => ({ id: request.id, type: 'validated', result, workerCpuMs: workerNow() - started });
+    if (asyncFinal) {
+      return validateSaveJsonAsync(
+        request.payload && request.payload.raw,
+        request.payload && request.payload.currentVersion,
+      ).then(done);
+    }
+    return done(validateSaveJson(request.payload && request.payload.raw, request.payload && request.payload.currentVersion));
   }
   return { id: request.id, type: 'error', reason: 'unknown_request' };
 }
@@ -251,6 +398,88 @@ function encodeSavePayload(input) {
   const dataJson = JSON.stringify(data);
   const checksum = fnv1a(dataJson);
   return { json: JSON.stringify(Object.assign({}, descriptor || {}, { checksum, data })), checksum };
+}
+var SAVE_WRITE_MAX_BYTES = ${SAVE_WRITE_MAX_BYTES};
+var SAVE_GZIP_FORMAT = 'spaceface-save-gz';
+function saveGzipAvailable() {
+  return typeof CompressionStream === 'function'
+    && typeof DecompressionStream === 'function'
+    && typeof Blob === 'function' && typeof btoa === 'function' && typeof atob === 'function';
+}
+function bytesToBase64(bytes) {
+  var binary = '';
+  var CHUNK = 0x8000;
+  for (var i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(binary);
+}
+function base64ToBytes(text) {
+  var binary = atob(text);
+  var bytes = new Uint8Array(binary.length);
+  for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+function gzipText(json) {
+  var stream = new Blob([json]).stream().pipeThrough(new CompressionStream('gzip'));
+  return new Response(stream).arrayBuffer().then(function (buffer) {
+    return bytesToBase64(new Uint8Array(buffer));
+  });
+}
+function gunzipText(payload) {
+  var stream = new Blob([base64ToBytes(payload)]).stream().pipeThrough(new DecompressionStream('gzip'));
+  return new Response(stream).text();
+}
+function isGzippedSaveText(raw) {
+  return typeof raw === 'string' && raw.length >= 16 && raw.charCodeAt(0) === 123
+    && raw.slice(0, 96).indexOf('"spaceface-save-gz"') !== -1;
+}
+function gzipEnvelopeJson(json) {
+  var env = JSON.parse(json);
+  return gzipText(json).then(function (payload) {
+    return JSON.stringify({
+      fmt: SAVE_GZIP_FORMAT, gz: 1, version: env.version,
+      savedAt: env.savedAt || null, checksum: env.checksum || null, payload: payload,
+    });
+  });
+}
+function decodeSaveEnvelopeText(raw) {
+  if (!isGzippedSaveText(raw)) return Promise.resolve({ ok: true, text: raw });
+  var outer;
+  try { outer = JSON.parse(raw); } catch (error) { return Promise.resolve({ ok: false, reason: 'parse_failed' }); }
+  if (!outer || outer.fmt !== SAVE_GZIP_FORMAT || typeof outer.payload !== 'string') {
+    return Promise.resolve({ ok: false, reason: 'bad_format' });
+  }
+  if (!saveGzipAvailable()) return Promise.resolve({ ok: false, reason: 'gz_unsupported' });
+  return gunzipText(outer.payload).then(function (text) {
+    // FB-104 — profile side bags ride on the outer wrapper of a compressed export bundle.
+    return outer.profile != null ? { ok: true, text: text, profile: outer.profile } : { ok: true, text: text };
+  }, function () {
+    return { ok: false, reason: 'gz_decode_failed' };
+  });
+}
+// FB-093 — bounded, worker-side compressed encode: the import limit object applies pre-write;
+// over-limit saves fail with a named reason, never a silent truncated write. Plain JSON stays
+// the fallback when the platform lacks CompressionStream.
+function encodeSavePayloadFinal(input) {
+  var encoded;
+  try { encoded = encodeSavePayload(input); }
+  catch (error) { return Promise.resolve({ ok: false, reason: 'stringify_failed' }); }
+  var envelope;
+  try { envelope = JSON.parse(encoded.json); } catch (error) { return Promise.resolve({ ok: false, reason: 'stringify_failed' }); }
+  var bound = preflightSaveImport(envelope);
+  if (!bound.ok) return Promise.resolve({ ok: false, reason: bound.reason, limit: bound.limit, actual: bound.actual });
+  if (encoded.json.length > SAVE_WRITE_MAX_BYTES) {
+    return Promise.resolve({ ok: false, reason: 'save_size_limit', limit: SAVE_WRITE_MAX_BYTES, actual: encoded.json.length });
+  }
+  if (!saveGzipAvailable()) {
+    return Promise.resolve({ ok: true, json: encoded.json, checksum: encoded.checksum, gz: false });
+  }
+  return gzipEnvelopeJson(encoded.json).then(function (json) {
+    return { ok: true, json: json, checksum: encoded.checksum, gz: true };
+  }, function () {
+    return { ok: true, json: encoded.json, checksum: encoded.checksum, gz: false };
+  });
 }
 function readSaveVersion(version, currentVersion) {
   if (!Number.isFinite(version)) return { ok: false, reason: 'bad_format' };
@@ -293,6 +522,26 @@ function restorePrepareSaveJson(raw, currentVersion) {
   var preflight = preflightSaveImport(envelope);
   if (!preflight.ok) return preflight;
   return { ok: true, version: versionRead.version, env: envelope, preflighted: true };
+}
+// Gzip-aware twins: stored compressed envelopes decode inside the worker first, then run the
+// identical validate/prepare path on the inner plain JSON.
+function validateSaveJsonAsync(raw, currentVersion) {
+  return decodeSaveEnvelopeText(raw).then(function (decoded) {
+    if (!decoded.ok) return { ok: false, reason: decoded.reason };
+    return validateSaveJson(decoded.text, currentVersion);
+  });
+}
+function restorePrepareSaveJsonAsync(raw, currentVersion) {
+  return decodeSaveEnvelopeText(raw).then(function (decoded) {
+    if (!decoded.ok) return { ok: false, reason: decoded.reason };
+    var prepared = restorePrepareSaveJson(decoded.text, currentVersion);
+    // FB-104 — surface the bundle's profile side bags on the prepared envelope so the main
+    // thread merges them after validation, the same as a plain-text import.
+    if (prepared.ok && decoded.profile != null && prepared.env && typeof prepared.env === 'object') {
+      prepared.env.profile = decoded.profile;
+    }
+    return prepared;
+  });
 }
 var PREFLIGHT_MAX_DEPTH = 64;
 var PREFLIGHT_MAX_NODES = 200000;
@@ -381,11 +630,13 @@ self.addEventListener('message', function (event) {
       self.__saveValidationSessions.delete(request.id);
       if (!session) throw new Error('missing_validate_session');
       const started = now();
-      self.postMessage({
-        id: request.id,
-        type: 'validated',
-        result: validateSaveJson(session.chunks.join(''), session.currentVersion),
-        workerCpuMs: now() - started,
+      validateSaveJsonAsync(session.chunks.join(''), session.currentVersion).then(function (result) {
+        self.postMessage({
+          id: request.id,
+          type: 'validated',
+          result: result,
+          workerCpuMs: now() - started,
+        });
       });
       return;
     }
@@ -404,53 +655,63 @@ self.addEventListener('message', function (event) {
       self.__saveEncodeSessions.delete(request.id);
       if (!session) throw new Error('missing_encode_session');
       const started = now();
-      self.postMessage(Object.assign({ id: request.id, type: 'encoded' }, encodeSavePayload(session), {
-        workerCpuMs: now() - started,
-      }));
+      encodeSavePayloadFinal(session).then(function (encoded) {
+        self.postMessage(Object.assign({ id: request.id, type: 'encoded' }, encoded, {
+          workerCpuMs: now() - started,
+        }));
+      });
       return;
     }
     if (request.type === 'restore_prepare' || request.type === 'restore_prepare_meta') {
       var startedPrepare = now();
-      var prepared;
-      try {
-        prepared = restorePrepareSaveJson(
-          request.payload && request.payload.raw,
-          request.payload && request.payload.currentVersion,
-        );
-      } catch (error) {
-        prepared = { ok: false, reason: 'load_failed' };
-      }
-      // Meta lane: verdict only — the multi-MB envelope clone must not cross postMessage for a
-      // slot nobody will load.
-      if (request.type === 'restore_prepare_meta'
-          && prepared && typeof prepared === 'object' && prepared.env !== undefined) {
-        var meta = {};
-        for (var mk in prepared) {
-          if (mk !== 'env') meta[mk] = prepared[mk];
+      restorePrepareSaveJsonAsync(
+        request.payload && request.payload.raw,
+        request.payload && request.payload.currentVersion,
+      ).then(function (prepared) {
+        var result = prepared;
+        // Meta lane: verdict only — the multi-MB envelope clone must not cross postMessage for a
+        // slot nobody will load.
+        if (request.type === 'restore_prepare_meta'
+            && prepared && typeof prepared === 'object' && prepared.env !== undefined) {
+          var meta = {};
+          for (var mk in prepared) {
+            if (mk !== 'env') meta[mk] = prepared[mk];
+          }
+          result = meta;
         }
-        prepared = meta;
-      }
-      self.postMessage({
-        id: request.id,
-        type: 'restored_prepare',
-        result: prepared,
-        workerCpuMs: now() - startedPrepare,
+        self.postMessage({
+          id: request.id,
+          type: 'restored_prepare',
+          result: result,
+          workerCpuMs: now() - startedPrepare,
+        });
+      }, function () {
+        self.postMessage({
+          id: request.id,
+          type: 'restored_prepare',
+          result: { ok: false, reason: 'load_failed' },
+          workerCpuMs: now() - startedPrepare,
+        });
       });
       return;
     }
     const started = now();
     if (request.type === 'encode') {
-      self.postMessage(Object.assign({ id: request.id, type: 'encoded' }, encodeSavePayload(request.payload), {
-        workerCpuMs: now() - started,
-      }));
+      encodeSavePayloadFinal(request.payload).then(function (encoded) {
+        self.postMessage(Object.assign({ id: request.id, type: 'encoded' }, encoded, {
+          workerCpuMs: now() - started,
+        }));
+      });
       return;
     }
     if (request.type === 'validate') {
-      self.postMessage({
-        id: request.id,
-        type: 'validated',
-        result: validateSaveJson(request.payload && request.payload.raw, request.payload && request.payload.currentVersion),
-        workerCpuMs: now() - started,
+      validateSaveJsonAsync(request.payload && request.payload.raw, request.payload && request.payload.currentVersion).then(function (result) {
+        self.postMessage({
+          id: request.id,
+          type: 'validated',
+          result: result,
+          workerCpuMs: now() - started,
+        });
       });
       return;
     }
@@ -465,8 +726,11 @@ if (typeof WorkerGlobalScope !== 'undefined'
   && self instanceof WorkerGlobalScope) {
   self.addEventListener('message', (event) => {
     try {
-      const response = handleSaveWorkerRequest(event.data);
-      if (response) self.postMessage(response);
+      Promise.resolve(handleSaveWorkerRequestAsync(event.data)).then((response) => {
+        if (response) self.postMessage(response);
+      }).catch(() => {
+        self.postMessage({ id: event.data && event.data.id, type: 'error', reason: 'worker_failed' });
+      });
     }
     catch (error) {
       self.postMessage({ id: event.data && event.data.id, type: 'error', reason: 'worker_failed' });

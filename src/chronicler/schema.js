@@ -57,11 +57,27 @@ export const FACT_EVENTS = Object.freeze([
   'formation:discovered', 'gate:verdict', 'claim:freightDelivered',
   // An opt-in producer contract, NOT an assertion that stock cargo/economy already emit it.
   'chronicler:provenance',
+  // Authored-story batch: emitted by the story owner when a player choice is recorded, a Verge
+  // evidence item lands, the Kurtz ledger is read, or the lattice revokes Vale's gates. These
+  // are the receipts that turn the campaign into evidence the Chronicler can cite.
+  'story:playerChoiceRecorded', 'story:vergeEvidenceRecorded',
+  'story:kurtzLedger', 'story:vergeValeGatesRevoked',
+  // Marquee-deed batch: the player's own big beats, all live emitters in the current tree — a
+  // new hull (ships.js), an achievement (achievements.js), a completed career ladder
+  // (ladderShared.js), and a stunt trick (stuntGrammar.js, gated to marquee rarity in
+  // normalize.js so routine tricks stay receipts). Recorded on the existing 'story' stage.
+  'ship:purchased', 'achievement:unlocked', 'career:ladder:completed', 'stunt:trickDetected',
+  // News-record batch: `news:headline` is the system-side record channel (the player surface is
+  // `news:publish`). aceMemory, aftermathWrecks, custodyConsequences, e1EncounterRuntime,
+  // nemesisSignals, and pirateRumor all emit it. marketNews re-broadcasts committed ticker lines
+  // on the same event — normalize filters those echoes on `source` so only an emitter's own
+  // line becomes a fact.
+  'news:headline',
 ]);
 export const STAGES = Object.freeze([
   'kill', 'aftermath', 'binding', 'salvage', 'recovered', 'sold', 'law',
   'ace', 'rescue', 'wanted', 'scan', 'reactor', 'trade', 'cause', 'remedy',
-  'spill', 'predation', 'survey', 'gate', 'delivery',
+  'spill', 'predation', 'survey', 'gate', 'delivery', 'story',
 ]);
 export const REF_KINDS = Object.freeze(['death', 'marker', 'wreck', 'receipt', 'cause']);
 export const COUNTERS = Object.freeze([

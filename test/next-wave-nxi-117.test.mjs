@@ -6,6 +6,7 @@ import { getDerivedStats } from '../src/systems/ships.js';
 import { handlingProfileForShip } from '../src/ui/panels/handlingProfile.js';
 import {
   estimateAtCargoBasis,
+  governedYawRateFor,
   shipCapabilityVerbs,
   turnRecordText,
 } from '../src/systems/shipCapabilities.js';
@@ -42,8 +43,10 @@ test('NXI-117: an empty hold is not labeled as a loaded turn', () => {
   assert.equal(loaded.tow.massT, loadedVerbs.tow.massT);
   assert.equal(loaded.slam.speedWuPerS, loadedVerbs.slam.speedWuPerS);
   assert.equal(loaded.line.speedWuPerS, loadedVerbs.line.speedWuPerS);
-  assert.equal(empty.turnRate, emptyDerived.turnRate);
-  assert.equal(loaded.turnRate, loadedDerived.turnRate);
+  // The estimate's rate is the kernel yaw ceiling the radius is divided out of (NXB-030),
+  // not the legacy spec field — the same number both hold bases quote.
+  assert.equal(empty.turnRate, governedYawRateFor(emptyDerived));
+  assert.equal(loaded.turnRate, governedYawRateFor(loadedDerived));
 
   const emptyProfile = handlingProfileForShip(HULL, { player: hold(0), fittings: [] });
   const loadedProfile = handlingProfileForShip(HULL, { player: hold(40), fittings: [] });
@@ -56,7 +59,7 @@ test('NXI-117: an empty hold is not labeled as a loaded turn', () => {
   assert.equal(emptyRecord.includes('loaded hold'), false);
   assert.equal(loadedRecord.includes('cargo aboard'), true);
   assert.equal(loadedRecord.includes('empty hold'), false);
-  assert.equal(emptyRecord.startsWith(String(Math.round(emptyDerived.turnRate * 100) / 100)), true);
+  assert.equal(emptyRecord.startsWith(String(Math.round(governedYawRateFor(emptyDerived) * 100) / 100)), true);
 });
 
 test('NXI-117: a loaded hold asked as empty is not relabeled empty', () => {

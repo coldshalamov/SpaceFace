@@ -23,6 +23,14 @@
 //  14  D-pad left      -> UI nav left; cycle bomb-bay payload
 //  15  D-pad right     -> UI nav right; drop bomb
 //  16  Home / Guide    -> codex / journal (moved off Y; see GAMEPAD_DEFAULT_BINDINGS)
+//
+// FB-003 chord layer: the solo buttons above leave a dozen flight verbs keyboard-only. Holding
+// LB or RB and tapping a d-pad/face button is a second "shifted" layer — LB hosts survey and
+// deploy verbs under the brake hand, RB hosts combat-state verbs under the boost hand. A chord
+// name is '<modifier>+<button>' and lives in GAMEPAD_DEFAULT_BINDINGS like any other binding:
+// resolvable, rebindable, and labeled by the help sheet with every button it holds. While a
+// chord's KEY is held inside an active chord its solo verb is suppressed for the hold; the
+// modifier's own verb (brake/boost) keeps working — chords are additive, not a mode.
 
 const STD = {
   accept: 0,
@@ -43,6 +51,27 @@ const STD = {
   dRight: 15,
   home: 16,
 };
+
+/**
+ * A chord binding is '<modifier>+<button>' — both names standard buttons, modifier first. It is
+ * the ONE name shape that is not itself a button index: the action layer evaluates it as
+ * "modifier held while button edges", and the solo verb on the button is suppressed for the
+ * hold so a chord never double-fires its key. Returns [modifier, button] or null.
+ */
+export function parseGamepadChord(name) {
+  if (typeof name !== 'string') return null;
+  const at = name.indexOf('+');
+  if (at <= 0 || at === name.length - 1 || name.indexOf('+', at + 1) !== -1) return null;
+  const mod = name.slice(0, at);
+  const key = name.slice(at + 1);
+  if (STD[mod] == null || STD[key] == null || mod === key) return null;
+  return [mod, key];
+}
+
+/** True for a standard button name or a well-formed chord name. */
+export function isGamepadButtonName(name) {
+  return STD[name] != null || parseGamepadChord(name) != null;
+}
 
 // An action can be bound to multiple physical buttons (e.g. accept also fires in flight).
 // This is the default map; Settings may overlay player remaps (PQ-164.01) stored at
@@ -79,6 +108,25 @@ export const GAMEPAD_DEFAULT_BINDINGS = Object.freeze({
   dropBomb: Object.freeze(['dRight']),
   cycleBomb: Object.freeze(['dLeft']),
   chargeDetonate: Object.freeze(['dDown']), // flight only; UI navigation remains modal-owned
+  // FB-003 — the chord layer. Hold LB or RB and tap the second button; the modifier's own verb
+  // keeps working (you can brake while pinging), and the chorded button's solo verb is held off
+  // only while that button is down — releasing it re-arms the solo on the next press. LB is the
+  // survey/deploy layer (the brake hand steadies the ship for deliberate work); RB is the
+  // combat-state layer (the boost hand picks the fighting mode). autoFire needs no slot —
+  // D-pad up is already autoTarget/draw-to-fly — and reel is the left stick while the Massline
+  // line-control owns the axis. Every verb is rebindable under Settings → Controls.
+  scanPulse: Object.freeze(['l1+dUp']),           // LB layer: scanner ping, "look up"
+  deployMassSeed: Object.freeze(['l1+dDown']),    // LB layer: set the anchor seed, "plant it"
+  deployWell: Object.freeze(['l1+dLeft']),        // LB layer: pull field, left hand shape
+  toggleClearingCone: Object.freeze(['l1+dRight']),// LB layer: the snowplow, right hand shape
+  toggleSkimCollector: Object.freeze(['l1+alt']), // LB+Y: the harvest tool under the brake hand
+  siteBeam: Object.freeze(['l1+action']),         // LB+X: the contextual world-site beam
+  bulletTime: Object.freeze(['r1+dUp']),          // RB layer: time dilation, "slow up"
+  cloak: Object.freeze(['r1+dDown']),             // RB layer: cloak engages, "drop out of sight"
+  chargeThrow: Object.freeze(['r1+dLeft']),       // RB layer: throw a plate behind the charge
+  cruise: Object.freeze(['r1+dRight']),           // RB layer: the long-burn state, rightward = forward
+  deployBeacon: Object.freeze(['r1+view']),       // RB+View: mark the claim while running
+  jettisonLot: Object.freeze(['r1+home']),        // RB+Guide: dump the hold lot while running
   // The hull burst (Gravity Bumper / Fire Lance / Grip Bumper) has no pad verb (owner principle
   // 2026-09-30): the fitted boost upgrade rides the boost button itself, fired by the hullBurst
   // system polling the player's boost flag. There is nothing to bind.
@@ -144,6 +192,36 @@ export const GAMEPAD_DUAL_LABELS = Object.freeze({
   home: 'Guide',
 });
 
+// FB-117 glyph sets — the face-button vocabulary a prompt prints. 'xb' is the stock Xbox
+// spelling (GAMEPAD_BUTTON_LABELS); 'ds' is the DualShock symbol register; 'fh' is the
+// Field Hardware filled-letter register, the same filled-glyph language the Power Rail
+// speaks (src/ui/views/fhGlyphs.js). Only the four face buttons differ across sets —
+// shoulders, sticks, the D-pad and the menu pair read the same on every pad, so they
+// fall through to the stock label. The set lives at settings.controls.gamepad.glyphSet;
+// readers pass it through the { glyphSet } option on gamepadButtonLabels.
+export const GAMEPAD_DS_FACE_LABELS = Object.freeze({
+  accept: '✕',
+  cancel: '◯',
+  action: '□',
+  alt: '△',
+});
+export const GAMEPAD_FH_FACE_LABELS = Object.freeze({
+  accept: 'Ⓐ',
+  cancel: 'Ⓑ',
+  action: 'Ⓧ',
+  alt: 'Ⓨ',
+});
+export const GAMEPAD_GLYPH_SETS = Object.freeze(['xb', 'ds', 'fh']);
+const FACE_LABEL_SETS = Object.freeze({ ds: GAMEPAD_DS_FACE_LABELS, fh: GAMEPAD_FH_FACE_LABELS });
+export function normalizeGamepadGlyphSet(set) {
+  return set === 'ds' || set === 'fh' ? set : 'xb';
+}
+/** The face-button label under the player's glyph set; non-face names keep the stock register. */
+export function gamepadFaceButtonLabel(name, glyphSet) {
+  const set = FACE_LABEL_SETS[normalizeGamepadGlyphSet(glyphSet)];
+  return (set && set[name]) || GAMEPAD_BUTTON_LABELS[name] || '';
+}
+
 /**
  * Every standard button name bound to `action`, in binding order, with unknown names dropped.
  *
@@ -157,18 +235,43 @@ export const GAMEPAD_DUAL_LABELS = Object.freeze({
  */
 export function gamepadButtonNames(action, map) {
   const list = map && map[action];
-  return Array.isArray(list) ? list.filter(name => GAMEPAD_BUTTON_LABELS[name]) : [];
+  return Array.isArray(list) ? list.filter(isGamepadButtonName) : [];
+}
+
+/** Player text for one binding name — a chord prints every button it holds. `glyphSet`
+ *  overrides the face-button spelling ('ds' symbols, 'fh' filled letters); 'dual' keeps its
+ *  stock Xbox/PlayStation register and loses only when a face set is explicitly chosen. */
+function gamepadButtonLabel(name, dual, glyphSet) {
+  const chord = parseGamepadChord(name);
+  const label = (btn) => {
+    const set = normalizeGamepadGlyphSet(glyphSet);
+    if (set !== 'xb') return gamepadFaceButtonLabel(btn, set);
+    return dual ? GAMEPAD_DUAL_LABELS[btn] || GAMEPAD_BUTTON_LABELS[btn] : GAMEPAD_BUTTON_LABELS[btn];
+  };
+  if (!chord) return label(name);
+  return `${label(chord[0])} + ${label(chord[1])}`;
 }
 
 /**
  * `gamepadButtonNames` mapped to player text. `dual` selects the Xbox/PlayStation register used by
  * the stock Help sheet; a remapped map prints the short glyph, which is the same register the
- * Settings remap row shows, so the two screens agree after a rebind.
+ * Settings remap row shows, so the two screens agree after a rebind. `glyphSet` ('xb'|'ds'|'fh')
+ * picks the face-button family the prompt prints — Settings → Controls owns the choice.
  */
-export function gamepadButtonLabels(action, map, { dual = false } = {}) {
-  return gamepadButtonNames(action, map)
-    .map(name => (dual ? GAMEPAD_DUAL_LABELS[name] || GAMEPAD_BUTTON_LABELS[name] : GAMEPAD_BUTTON_LABELS[name]));
+export function gamepadButtonLabels(action, map, { dual = false, glyphSet = 'xb' } = {}) {
+  return gamepadButtonNames(action, map).map(name => gamepadButtonLabel(name, dual, glyphSet));
 }
+
+// FB-003: keyboard flight verbs whose pad route is a differently-named channel rather than a
+// binding of their own. The rope verb rides the Massline button; draw-to-fly is the auto-target
+// toggle; reel is the left stick while the Massline's line-control owns the axis. The help/test
+// coverage check reads this so a named route is a route, not a hand-waved "the stick does it".
+export const GAMEPAD_VERB_ALIASES = Object.freeze({
+  tether: 'massline',
+  autoFire: 'autoTarget',
+  reelIn: 'lineControl',
+  reelOut: 'lineControl',
+});
 
 // --- Remapping (PQ-164.01) -------------------------------------------------------------------
 // A button may serve two actions only when their contexts are disjoint — a modal-only verb
@@ -195,6 +298,20 @@ const PAD_ACTION_CONTEXT = Object.freeze({
   massline: 'flight',
   deployRepulsor: 'flight',
   dock: 'flight',
+  // FB-003 chord-layer verbs are all flight-only: a modal owns the stick and the bumpers, so no
+  // chord may reach through a screen.
+  scanPulse: 'flight',
+  deployMassSeed: 'flight',
+  deployWell: 'flight',
+  toggleClearingCone: 'flight',
+  toggleSkimCollector: 'flight',
+  siteBeam: 'flight',
+  bulletTime: 'flight',
+  cloak: 'flight',
+  chargeThrow: 'flight',
+  cruise: 'flight',
+  deployBeacon: 'flight',
+  jettisonLot: 'flight',
   cancel: 'modal',
   tabPrev: 'modal',
   tabNext: 'modal',
@@ -250,7 +367,7 @@ export function resolveGamepadBindings(settings) {
     const names = Array.isArray(raw) ? raw : [raw];
     const out = [];
     for (const n of names) {
-      if (typeof n === 'string' && STD[n] != null && !out.includes(n)) out.push(n);
+      if (typeof n === 'string' && isGamepadButtonName(n) && !out.includes(n)) out.push(n);
     }
     return out;
   };
@@ -281,16 +398,46 @@ export function resolveGamepadBindings(settings) {
 
 const DEFAULT_DEADZONE = 0.12;
 
-// --- Haptics (PQ-164.03) ---------------------------------------------------------------------------
+// --- Haptics (PQ-164.03 + FB-005) ------------------------------------------------------------------
 // Line tension, slams and boost are carried on the pad's rumble motors. Intensity is a function of
 // the momentum in play: a loaded Massline, an impact and a boost all read stronger the faster the
-// player (or the struck body) is moving. Reduce-motion silences every channel — haptics are
-// vestibular, so the accessibility flag that kills camera shake kills rumble too.
+// player (or the struck body) is moving. Rumble has its OWN accessibility axis
+// (settings.accessibility.haptics: 'off' | 'low' | 'full') — reduce-motion is vestibular and no
+// longer silences it: a calmer screen often wants more haptic substitution, not less.
 export const HAPTIC_REF_MOMENTUM = 120;    // WU/s where momentum-scaled rumble is full
 export const HAPTIC_SLAM_REF_DP = 8000;    // physics impulse at a full-intensity slam
 export const HAPTIC_RUMBLE_MS = 120;       // actuator effect duration; refreshed each active tick
 export const HAPTIC_SLAM_DECAY_TICKS = 18; // ~0.3 s pulse at 60 Hz, decayed on sim ticks
 const HAPTIC_BOOST_FLOOR = 0.30;           // a boost at a standstill still hums
+
+// FB-005: discrete per-verb pulses. Each is a one-shot {strong, weak, ms} profile layered over the
+// continuous channels — a latch "clicks" differently than a cut "twang" differently than a razor
+// release "snap". The pulse table keys are the bus event names; release grades pulse by band.
+// At most one pulse may be live and a fresh one must wait HAPTIC_PULSE_MIN_GAP_TICKS (~80 ms) —
+// a chain of explosions does not turn the pad into a continuous buzz.
+export const HAPTIC_PULSE_MIN_GAP_TICKS = 5; // ~83 ms at 60 Hz — never more than ~12 pulses/s
+export const HAPTIC_VERB_PULSES = Object.freeze({
+  'tether:latched':       { strong: 0.45, weak: 0.30, ms: 90 },
+  'tether:cut':           { strong: 0.25, weak: 0.55, ms: 70 },
+  'massline:snareCaught': { strong: 0.80, weak: 0.95, ms: 150 },
+  'charge:detonated':     { strong: 0.90, weak: 0.65, ms: 170 },
+  'cloak:engaged':        { strong: 0.15, weak: 0.45, ms: 110 },
+  // FB-009 — the two Massline edges that reached every other sense but the pad. A hostile
+  // blade severing one of the player's lines is a warning jolt; the whip's stored snap is a crack.
+  'massline:playerLineCut': { strong: 0.55, weak: 0.35, ms: 120 },
+  'tether:whipSnap':        { strong: 0.70, weak: 0.30, ms: 100 },
+});
+// Release grading band → pulse. A razor release is a whipcrack; a messy one a low thud.
+export const HAPTIC_RELEASE_PULSES = Object.freeze({
+  razor: { strong: 0.50, weak: 1.00, ms: 180 },
+  clean: { strong: 0.40, weak: 0.70, ms: 130 },
+  good:  { strong: 0.30, weak: 0.50, ms: 100 },
+  messy: { strong: 0.20, weak: 0.25, ms: 60 },
+});
+
+export function normalizeHapticLevel(v) {
+  return v === 'off' || v === 'low' ? v : 'full';
+}
 
 function clamp01(v) {
   const n = Number(v);
@@ -304,29 +451,40 @@ function round4(v) {
 
 /**
  * Pure haptic frame. `momentum` is world units/s; `lineLoad` and `slam` are already 0..1
- * (line load from tetherGameplay.computeTetherLoad, slam from the physics impulse). Returns the
- * per-channel intensity plus the dual-rumble motor split (strong = low-freq/left, weak =
- * high-freq/right). Reduce-motion returns an all-zero, disabled frame before anything is scaled.
+ * (line load from tetherGameplay.computeTetherLoad, slam from the physics impulse). `haptics` is
+ * the accessibility level ('off' | 'low' | 'full'); `pulse` is an optional one-shot
+ * {strong, weak} magnitudes object layered over the continuous channels. Returns the per-channel
+ * intensity plus the dual-rumble motor split (strong = low-freq/left, weak = high-freq/right).
+ * 'off' returns an all-zero, disabled frame before anything is scaled; 'low' halves both motors.
  */
 export function computeHapticFrame(input = {}) {
-  if (input.reduceMotion === true) {
-    return { enabled: false, reduceMotion: true, momentum: 0, line: 0, slam: 0, boost: 0, weak: 0, strong: 0 };
+  const level = normalizeHapticLevel(input.haptics);
+  if (level === 'off') {
+    return {
+      enabled: false, haptics: 'off',
+      momentum: 0, line: 0, slam: 0, boost: 0, weak: 0, strong: 0, pulse: null,
+    };
   }
+  const motor = level === 'low' ? 0.5 : 1;
   const momentum = clamp01(Number(input.momentum) / HAPTIC_REF_MOMENTUM);
   const line = input.lineActive && input.lineLoad > 0 ? clamp01(input.lineLoad) : 0;
   const boost = input.boost ? clamp01(HAPTIC_BOOST_FLOOR + (1 - HAPTIC_BOOST_FLOOR) * momentum) : 0;
   const slam = clamp01(input.slam);
-  const strong = Math.max(line, slam, boost * 0.5);
-  const weak = Math.max(boost, slam * 0.8, line * 0.5);
+  const pulse = input.pulse && (clamp01(input.pulse.strong) > 0 || clamp01(input.pulse.weak) > 0)
+    ? { strong: clamp01(input.pulse.strong), weak: clamp01(input.pulse.weak) }
+    : null;
+  const strong = Math.max(line, slam, boost * 0.5, pulse ? pulse.strong : 0);
+  const weak = Math.max(boost, slam * 0.8, line * 0.5, pulse ? pulse.weak : 0);
   return {
     enabled: true,
-    reduceMotion: false,
+    haptics: level,
     momentum: round4(momentum),
     line: round4(line),
     slam: round4(slam),
     boost: round4(boost),
-    weak: round4(clamp01(weak)),
-    strong: round4(clamp01(strong)),
+    pulse,
+    weak: round4(clamp01(weak * motor)),
+    strong: round4(clamp01(strong * motor)),
   };
 }
 
@@ -341,6 +499,55 @@ function applyDeadzone(v, d) {
   if (a < d) return 0;
   const sign = v < 0 ? -1 : 1;
   return sign * ((a - d) / (1 - d));
+}
+
+// --- Response curves (FB-004) ------------------------------------------------------------------
+// Curves apply ONLY to derived intents (turn/move/aim) inside input.js — never to the published
+// gp.axes, which stay the deadzoned raw truth the input contract guarantees. 'linear' with
+// sensitivity 1 reproduces the shipped numbers exactly; 'expo' blends a cubic term in so the
+// center of the stick is soft while the edge still reaches full deflection.
+export const GAMEPAD_AXIS_CURVES = Object.freeze(['linear', 'expo']);
+const PAD_EXPO_BLEND = 0.55; // cubic share of the expo response — soft center, unchanged edge
+
+export function normalizePadCurve(curve) {
+  return curve === 'expo' ? 'expo' : 'linear';
+}
+
+export function normalizePadSensitivity(v) {
+  return Number.isFinite(v) && v > 0 ? v : 1;
+}
+
+/** Shape one normalized axis by the response curve, then scale by sensitivity and clamp to ±1. */
+export function shapePadAxis(value, curve = 'linear', sensitivity = 1) {
+  const x = Number(value) || 0;
+  const shaped = curve === 'expo'
+    ? x * (1 - PAD_EXPO_BLEND) + x * x * x * PAD_EXPO_BLEND
+    : x;
+  const y = shaped * normalizePadSensitivity(sensitivity);
+  return y < -1 ? -1 : (y > 1 ? 1 : y);
+}
+
+/**
+ * Shape a stick vector (aim and the twin-stick drive): the curve reshapes the magnitude so the
+ * direction the pilot pointed survives untouched. For 'linear' the magnitude is passed through
+ * unclamped so diagonal stick values reproduce the shipped numbers exactly; each component is
+ * clamped to ±1 only after shaping, so a high sensitivity saturates a channel without skewing
+ * an unsaturated partner.
+ */
+export function shapePadVector(x, y, curve = 'linear', sensitivity = 1) {
+  const mag = Math.hypot(Number(x) || 0, Number(y) || 0);
+  if (!(mag > 1e-4)) return { x: 0, y: 0 };
+  const unit = Math.min(1, mag);
+  const shapedMag = curve === 'expo'
+    ? unit * (1 - PAD_EXPO_BLEND) + unit * unit * unit * PAD_EXPO_BLEND
+    : mag;
+  const k = (shapedMag * normalizePadSensitivity(sensitivity)) / mag;
+  const sx = x * k;
+  const sy = y * k;
+  return {
+    x: sx < -1 ? -1 : (sx > 1 ? 1 : sx),
+    y: sy < -1 ? -1 : (sy > 1 ? 1 : sy),
+  };
 }
 
 const PAD_SLOT_LIMIT = 8;
@@ -507,7 +714,14 @@ function beginPadGesture(gp, pad, edgeName, dz) {
   gp._inheritedButtons = inherited;
   const prev = gp._prev || (gp._prev = {});
   for (const key in prev) prev[key] = false;
+  // A live chord's hold does not ride the swap; a deliberate re-press on the new pad re-arms it.
+  gp._chordHeld = Object.create(null);
+  gp._chordConsumed = Object.create(null);
   if (Array.isArray(gp._pressQueue)) gp._pressQueue.length = 0;
+  // NXI-004: a half-formed remap gesture is cached input from the losing generation — a
+  // modifier still pending here must not chord with the new pad's presses under it.
+  if (gp._captureGesture) gp._captureGesture.length = 0;
+  gp._captureSpent = null;
   gp._suppressEdgesOnce = false;
   gp._sawDisconnect = false;
   gp.helmGestureEdge = true;
@@ -558,9 +772,45 @@ export function createGamepad(ctx) {
       : p.impulse;
     registerSlam(momentum);
   };
+
+  // FB-005: per-verb one-shot pulses. Tether events are player-authored by construction (the
+  // player owns the rope the event describes); the snare is the player's deployed anchor; the
+  // cloak is the player's module. charge:detonated is shared with NPC ordnance (detonator
+  // darts, sympathetic cook-offs), so only the player's own verb triggers — manual detonation
+  // and the proximity trap — earn a pulse; everything else stays silent.
+  let pulseTicks = 0;
+  let pulseGapTicks = 0;
+  let pulseSpec = null;
+  // `gp` is declared below; listeners can only fire after createGamepad returns it.
+  const startPulse = (spec, event) => {
+    if (!spec || pulseGapTicks > 0) return false; // ≤ one pulse per ~80 ms, by sim ticks
+    pulseSpec = { strong: spec.strong, weak: spec.weak };
+    pulseTicks = Math.max(1, Math.round((Number(spec.ms) || 60) * 60 / 1000));
+    pulseGapTicks = HAPTIC_PULSE_MIN_GAP_TICKS;
+    gp._lastVerbPulse = event;
+    return true;
+  };
+  const CHARGE_PLAYER_TRIGGERS = new Set(['manual', 'proximity']);
   if (bus && typeof bus.on === 'function') {
     bus.on('physics:impact', onImpact, { presentation: true });
     bus.on('combat:collisionConsequence', onImpact);
+    bus.on('tether:latched', () => startPulse(HAPTIC_VERB_PULSES['tether:latched'], 'tether:latched'));
+    bus.on('tether:cut', () => startPulse(HAPTIC_VERB_PULSES['tether:cut'], 'tether:cut'));
+    bus.on('tether:releaseRated', (p) => {
+      startPulse(HAPTIC_RELEASE_PULSES[(p && p.classification) || 'messy']
+        || HAPTIC_RELEASE_PULSES.messy, 'tether:releaseRated');
+    });
+    bus.on('massline:snareCaught', () => startPulse(HAPTIC_VERB_PULSES['massline:snareCaught'], 'massline:snareCaught'));
+    bus.on('charge:detonated', (p) => {
+      if (p && CHARGE_PLAYER_TRIGGERS.has(p.trigger)) {
+        startPulse(HAPTIC_VERB_PULSES['charge:detonated'], 'charge:detonated');
+      }
+    });
+    bus.on('cloak:engaged', () => startPulse(HAPTIC_VERB_PULSES['cloak:engaged'], 'cloak:engaged'));
+    // FB-009: the cut-BY-an-NPC edge is the player's own line dying under them; the whip snap
+    // is the player's own stored release. Both pulse through the same one-live-pulse gate.
+    bus.on('massline:playerLineCut', () => startPulse(HAPTIC_VERB_PULSES['massline:playerLineCut'], 'massline:playerLineCut'));
+    bus.on('tether:whipSnap', () => startPulse(HAPTIC_VERB_PULSES['tether:whipSnap'], 'tether:whipSnap'));
   }
 
   const gp = {
@@ -582,9 +832,11 @@ export function createGamepad(ctx) {
     /** Diagnostic only — do not use for aim/helm selection. */
     lastActiveMs: 0,
 
-    // PQ-164.03: last resolved haptic frame (pure data; the actuator is driven from tick).
-    haptics: { enabled: true, reduceMotion: false, momentum: 0, line: 0, slam: 0, boost: 0, weak: 0, strong: 0 },
+    // PQ-164.03 + FB-005: last resolved haptic frame (pure data; the actuator is driven from
+    // tick). `haptics` is the accessibility level; `pulse` is the live one-shot spec or null.
+    haptics: { enabled: true, haptics: 'full', momentum: 0, line: 0, slam: 0, boost: 0, weak: 0, strong: 0, pulse: null },
     _hapticActive: false,
+    _lastVerbPulse: null,
 
     axes: {
       leftX: 0,
@@ -635,6 +887,9 @@ export function createGamepad(ctx) {
         {};
       const enabled = cfg.enabled !== false;
       const dz = typeof cfg.deadzone === 'number' ? cfg.deadzone : DEFAULT_DEADZONE;
+      // FB-004: the right stick's deadzone is its own axis — aim jitter should never force the
+      // fly hand to absorb a wider center than it wants. Absent inherits the shared value.
+      const dzRight = typeof cfg.deadzoneRight === 'number' ? cfg.deadzoneRight : dz;
       const invertY = !!cfg.invertY;
 
       const padList = (enabled && typeof navigator !== 'undefined' && navigator.getGamepads)
@@ -689,8 +944,8 @@ export function createGamepad(ctx) {
 
       this.axes.leftX = applyDeadzone(pad.axes[0] || 0, dz);
       this.axes.leftY = applyDeadzone(pad.axes[1] || 0, dz);
-      this.axes.rightX = applyDeadzone(pad.axes[2] || 0, dz);
-      this.axes.rightY = applyDeadzone(pad.axes[3] || 0, dz) * (invertY ? -1 : 1);
+      this.axes.rightX = applyDeadzone(pad.axes[2] || 0, dzRight);
+      this.axes.rightY = applyDeadzone(pad.axes[3] || 0, dzRight) * (invertY ? -1 : 1);
       this.axes.l2 = Math.max(0, pad.buttons[6] ? pad.buttons[6].value : 0);
       this.axes.r2 = Math.max(0, pad.buttons[7] ? pad.buttons[7].value : 0);
       this.id = pad.id || this.id || 'gamepad';
@@ -705,23 +960,112 @@ export function createGamepad(ctx) {
       }
 
       // PQ-164.01: resolved binding map, rebuilt only when the stored override object changes.
+      // The chord index rides the same cache so a remap swaps the shifted layer with it. The
+      // chords check matters on a stock profile: `source` initializes to `undefined`, the same
+      // value an override-free `cfg.bindings` reports, so without it the index would stay
+      // unbuilt and the whole shifted layer silent.
       const customBindings = cfg.bindings;
-      if (this._mapCache.source !== customBindings) {
+      if (this._mapCache.source !== customBindings || !this._mapCache.chords) {
         this._mapCache.source = customBindings;
         this._mapCache.map = resolveGamepadBindings(live && live.settings);
+        const chords = {};
+        for (const action in this._mapCache.map) {
+          for (const n of this._mapCache.map[action]) {
+            const parts = parseGamepadChord(n);
+            if (parts) chords[n] = { mod: parts[0], key: parts[1] };
+          }
+        }
+        this._mapCache.chords = chords;
+        this._chordConsumed = {};
       }
       const actionMap = this._mapCache.map;
+      const chordDefs = this._mapCache.chords || (this._mapCache.chords = {});
+
+      // Sample every standard button once — the press queue, the chord layer and the action
+      // loop all read the same snapshot this tick.
+      const downNow = this._downNow || (this._downNow = Object.create(null));
+      for (const name in STD) downNow[name] = buttonDown(pad, name);
+
+      // FB-003 chord layer. A chord completes when its KEY edges while its MODIFIER is held —
+      // press order matters: key-first means the solo verb was already live and stays live.
+      // While a chorded key is held its solo binding is suppressed for the hold (consumed), so
+      // "LB + D-pad up" is a scan ping and never an auto-target; releasing the key re-arms the
+      // solo for the next press. prevButtons still holds last tick's snapshot here.
+      const prevButtons = this._prevButtons;
+      const chordHeld = this._chordHeld || (this._chordHeld = Object.create(null));
+      const consumed = this._chordConsumed || (this._chordConsumed = Object.create(null));
+      for (const name in chordDefs) {
+        const c = chordDefs[name];
+        const complete = downNow[c.mod] && downNow[c.key] && !prevButtons[c.key];
+        if (downNow[c.mod] && downNow[c.key]) {
+          chordHeld[name] = complete || chordHeld[name] === true;
+        } else {
+          chordHeld[name] = false;
+        }
+        if (complete) consumed[c.key] = true;
+      }
+      for (const key in consumed) {
+        if (!downNow[key]) delete consumed[key];
+      }
 
       // Raw button edges for the remap capture — recorded for every standard button, bound or
-      // not, so an unbound button can still be offered to the capture handler.
-      const prevButtons = this._prevButtons;
+      // not, so an unbound button can still be offered to the capture handler. In captureMode the
+      // press becomes a GESTURE (FB-003): a lone button commits on release, while an edge landing
+      // on a held button completes a '<modifier>+<button>' chord — without this the modifier's
+      // own edge would always reach the capture handler before the key it is meant to shift.
+      const capture = this.captureMode === true;
+      const gesture = capture
+        ? (this._captureGesture || (this._captureGesture = []))
+        : null;
+      const spent = capture
+        ? (this._captureSpent || (this._captureSpent = Object.create(null)))
+        : null;
+      if (!capture && this._captureGesture) {
+        this._captureGesture.length = 0;
+        this._captureSpent = null;
+      }
       for (const name in STD) {
-        const idx = STD[name];
-        const b = pad.buttons && pad.buttons[idx];
-        const pressed = !!(b && (b.pressed || b.value > 0.5));
-        if (pressed && !prevButtons[name]) {
-          if (this._pressQueue.length < 8) this._pressQueue.push(name);
-          this.lastButton = name;
+        const pressed = downNow[name];
+        const was = prevButtons[name];
+        if (!capture) {
+          if (pressed && !was) {
+            if (this._pressQueue.length < 8) this._pressQueue.push(name);
+            this.lastButton = name;
+          }
+        } else if (pressed && !was) {
+          if (!spent[name]) {
+            if (gesture.length > 0) {
+              const mod = gesture.shift();
+              const chord = `${mod}+${name}`;
+              spent[mod] = true;
+              spent[name] = true;
+              if (this._pressQueue.length < 8) this._pressQueue.push(chord);
+              this.lastButton = chord;
+            } else {
+              // Another unspent button already down is the chord's modifier — press order is
+              // the truth a gesture capture commits to.
+              let mod = null;
+              for (const other in STD) {
+                if (other !== name && downNow[other] && !spent[other]) { mod = other; break; }
+              }
+              if (mod) {
+                const chord = `${mod}+${name}`;
+                spent[mod] = true;
+                spent[name] = true;
+                if (this._pressQueue.length < 8) this._pressQueue.push(chord);
+                this.lastButton = chord;
+              } else {
+                gesture.push(name);
+              }
+            }
+          }
+        } else if (!pressed && was) {
+          if (gesture.length && gesture[0] === name) {
+            gesture.length = 0;
+            if (this._pressQueue.length < 8) this._pressQueue.push(name);
+            this.lastButton = name;
+          }
+          delete spent[name];
         }
         prevButtons[name] = pressed;
       }
@@ -739,6 +1083,12 @@ export function createGamepad(ctx) {
         let held = false;
         let value = 0;
         for (const n of names) {
+          if (consumed[n]) continue; // this button is held inside a live chord — solo stays quiet
+          if (chordDefs[n]) {
+            // A chord binding reports held while the completed chord is held.
+            if (chordHeld[n]) held = true;
+            continue;
+          }
           const btn = readButton(pad, n);
           if (!btn) continue;
           if (btn.pressed) held = true;
@@ -806,15 +1156,25 @@ export function createGamepad(ctx) {
       this._stepHaptics(pad, live, cfg);
     },
 
-    // PQ-164.03: resolve the frame from live momentum/tether/boost and the latched slam pulse, then
-    // drive the pad. Reduce-motion (or a disabled `controls.gamepad.haptics`) yields an inert frame
-    // and resets the motors; the frame is always recorded on `this.haptics` for inspection.
+    // PQ-164.03 + FB-005: resolve the frame from live momentum/tether/boost, the latched slam
+    // pulse and any live verb pulse, then drive the pad. Haptics are owned by
+    // `settings.accessibility.haptics` ('off' | 'low' | 'full') — independent of reduce-motion;
+    // the legacy `controls.gamepad.haptics === false` kill-switch still forces 'off'. An 'off'
+    // level yields an inert frame and resets the motors; the frame is always recorded on
+    // `this.haptics` for inspection.
     _stepHaptics(pad, live, cfg) {
-      const reduceMotion = !!(live && live.settings && live.settings.video
-        && live.settings.video.motionReduce);
-      const disabled = !!(cfg && cfg.haptics === false);
+      const access = live && live.settings && live.settings.accessibility;
+      const level = (cfg && cfg.haptics === false)
+        ? 'off'
+        : normalizeHapticLevel(access && access.haptics);
       const slam = slamTicks > 0 ? slamPeak * (slamTicks / HAPTIC_SLAM_DECAY_TICKS) : 0;
       if (slamTicks > 0) slamTicks -= 1;
+      if (pulseGapTicks > 0) pulseGapTicks -= 1;
+      const pulse = pulseTicks > 0 ? pulseSpec : null;
+      if (pulseTicks > 0) {
+        pulseTicks -= 1;
+        if (pulseTicks <= 0) pulseSpec = null;
+      }
 
       const player = live && live.entities && typeof live.entities.get === 'function'
         ? live.entities.get(live.playerId)
@@ -829,7 +1189,8 @@ export function createGamepad(ctx) {
         lineLoad: tether ? tether.load : 0,
         boost: !!(this.actions.boost && this.actions.boost.held),
         slam,
-        reduceMotion: reduceMotion || disabled,
+        pulse,
+        haptics: level,
       });
       this.haptics = frame;
       this._applyHaptics(pad, frame);
@@ -888,8 +1249,17 @@ export function createGamepad(ctx) {
       for (const key in prev) delete prev[key];
       const prevButtons = this._prevButtons || (this._prevButtons = {});
       for (const key in prevButtons) delete prevButtons[key];
+      this._chordHeld = Object.create(null);
+      this._chordConsumed = Object.create(null);
       if (Array.isArray(this._pressQueue)) this._pressQueue.length = 0;
       else this._pressQueue = [];
+      // NXI-004: same rejection inside a remap capture — a pending modifier or spent mark
+      // sampled from the lost connection must not survive into the next device's sample.
+      if (this._captureGesture) this._captureGesture.length = 0;
+      this._captureSpent = null;
+      pulseTicks = 0;
+      pulseGapTicks = 0;
+      pulseSpec = null;
       this.lastButton = null;
       this._wasActive = false;
     },

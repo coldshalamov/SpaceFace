@@ -31,6 +31,7 @@ import { hullPosterUrl } from '../hullPosters.js';
 
 const SLOT_COUNT = 5;        // quick + 4 manual slots shown
 const LS_PREFIX = 'sf.save.';
+const RECOVERY_PREFIX = 'sf.recovery.';
 const COUNT_WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve'];
 const ACE_MEMORY_META = new Set([
   'schemaVersion', 'news', 'activeReturns', 'cultureIntros', 'planetChallenges', 'playerStyle', 'aces',
@@ -238,8 +239,14 @@ function readSlots(ctx) {
         if (!k || !k.startsWith(LS_PREFIX)) continue;
         const slot = k.slice(LS_PREFIX.length);
         if (slot === 'index') continue;
+        // sf.save.* also carries deletion tombstones and side-channel records (achievements,
+        // crucible meta) — only a real save envelope may claim a slot row.
         let meta = null;
-        try { const env = JSON.parse(localStorage.getItem(k)); meta = env && (env.meta || { savedAt: env.savedAt, playtimeS: env.playtimeS }); } catch (e) {}
+        try {
+          const env = JSON.parse(localStorage.getItem(k));
+          if (!env || env.fmt !== 'spaceface-save') continue;
+          meta = env.meta || { savedAt: env.savedAt, playtimeS: env.playtimeS };
+        } catch (e) { continue; }
         out[slot] = meta || {};
       }
     }
@@ -436,12 +443,16 @@ export function shouldOfferNewGameShortcut(meta, saveAllowed) {
   return !isOccupied(meta) && !saveAllowed;
 }
 
-/** The save's hull id (the index stores the def id under shipName); the starter when a save has none. */
+/** The save's hull id (the index stores the def id under shipName); the starter when a save has
+ * none — or names a hull this build no longer ships: saves outlive the catalog, and the stage can
+ * only draw a def it can resolve (the readable label stays the save's own via shipLabel). */
 function slotShipId(meta, player) {
   const fromPlayer = activeOwnedShip(player) && activeOwnedShip(player).defId;
-  if (typeof fromPlayer === 'string' && /^ship_/.test(fromPlayer)) return fromPlayer;
+  if (typeof fromPlayer === 'string' && /^ship_/.test(fromPlayer) && SHIP_NAME_BY_ID.has(fromPlayer)) {
+    return fromPlayer;
+  }
   const id = meta && typeof meta.shipName === 'string' && /^ship_/.test(meta.shipName) ? meta.shipName : null;
-  return id || NEW_GAME.shipId;
+  return (id && SHIP_NAME_BY_ID.has(id)) ? id : NEW_GAME.shipId;
 }
 
 function unwrapSaveData(input) {
@@ -835,6 +846,22 @@ export const saveLoadScreen = {
       if (refs) this._render(ctx);
       if (this.hull.hasMount()) this.hull.activate(ctx);
     });
+    // SFQ-B228: a restore that fails before the start transition emits save:error, not
+    // game:startFailed — the shell lifts (loadingPresenter) but this screen kept the load
+    // latched and its stage hull released. Reset the same way so the slot is retryable now,
+    // not after the next full remount. Only load-shaped receipts qualify; write-path quota
+    // noise while the screen is open must not touch the stage.
+    const unsubLoadFailed = ctx.bus.on('save:error', (payload = {}) => {
+      const reason = payload && payload.reason;
+      if (reason !== 'load_failed' && reason !== 'restore_prepare_failed') return;
+      if (!loadRequested) return;
+      loadRequested = false;
+      cancelHullRelease();
+      if (!this.hull) return;
+      if (this.hull.restore() && refs) refs.shownShipId = null;
+      if (refs) this._render(ctx);
+      if (this.hull.hasMount()) this.hull.activate(ctx);
+    });
     // The slot list re-reads the store the moment it changes, not on the next periodic tick.
     const unsubSynced = ctx.bus.on('save:store-synced', () => { if (refs) this._render(ctx); });
     const unsubValidated = ctx.bus.on('save:slotsValidated', () => { if (refs) this._render(ctx); });
@@ -869,7 +896,7 @@ export const saveLoadScreen = {
       caption, shipName, portrait, scars, titles, rapSheet, grudge,
       objective, credits, fine, actions, facts,
       selected: null, shownShipId: null, ids: [], slots: {},
-      cancelHullRelease, unsubLoading, unsubStartFailed, unsubSynced, unsubValidated, unsubCompleted,
+      cancelHullRelease, unsubLoading, unsubStartFailed, unsubLoadFailed, unsubSynced, unsubValidated, unsubCompleted,
       markLoadRequested: () => { loadRequested = true; },
       clearLoadRequest: () => { loadRequested = false; },
     };
@@ -1257,7 +1284,23 @@ export const saveLoadScreen = {
       let deleted = false;
       if (sys && typeof sys.deleteSlot === 'function') { try { sys.deleteSlot(id); deleted = true; } catch (e) {} }
       if (!deleted) {
-        try { if (typeof localStorage !== 'undefined') { localStorage.removeItem(LS_PREFIX + id); deleted = true; } } catch (e) {}
+        // Bare-storage fallback: removing only the primary leaves the recovery copy and the index
+        // row behind, and the deleted slot resurrects on the next render/Continue scan.
+        try {
+          if (typeof localStorage !== 'undefined') {
+            localStorage.removeItem(LS_PREFIX + id);
+            localStorage.removeItem(RECOVERY_PREFIX + id);
+            const idxRaw = localStorage.getItem(LS_PREFIX + 'index');
+            if (idxRaw) {
+              const idx = JSON.parse(idxRaw);
+              if (idx && typeof idx === 'object' && !Array.isArray(idx)) {
+                delete idx[id];
+                localStorage.setItem(LS_PREFIX + 'index', JSON.stringify(idx));
+              }
+            }
+            deleted = true;
+          }
+        } catch (e) {}
       }
       ctx.bus.emit('toast', { text: deleted ? slotLabel(id) + ' deleted' : 'Delete failed', kind: deleted ? 'info' : 'warn', ttl: 2500 });
       this._render(ctx);
@@ -1401,6 +1444,7 @@ export const saveLoadScreen = {
       refs.cancelHullRelease();
       try { refs.unsubLoading(); } catch (e) { /* bus already gone */ }
       try { refs.unsubStartFailed(); } catch (e) { /* bus already gone */ }
+      try { refs.unsubLoadFailed(); } catch (e) { /* bus already gone */ }
       try { refs.unsubSynced(); } catch (e) { /* bus already gone */ }
       try { refs.unsubValidated(); } catch (e) { /* bus already gone */ }
       try { refs.unsubCompleted(); } catch (e) { /* bus already gone */ }

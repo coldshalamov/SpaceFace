@@ -19,10 +19,13 @@
 // card modules, now thin) normalize payloads and call offerDecision/updateDecision/resolveDecision;
 // receipts go through the bus 'toast' event and are filtered by the receipt lane's admission.
 //
-// Styling: styles/prompt-deck.css consumes the glass-register tokens that hudStyles.js already
-// defines on :root (owner directive 2026-09-14). No backdrop-filter — flight perf floor,
-// FIELD_HARDWARE_PROGRAM §7. Motion goes through kit/motion settle (which itself honours
-// sf-reduce-motion); no idle rAF: the deck is ticked once from uiRoot's existing frame.
+// Styling: styles/prompt-deck.css consumes the Deckplate token root (--dp-*) — game faces, warm
+// bone at rest, the lamp for act-on (ORRERY §3). A timed decision carries its countdown as a
+// compact Arc Gauge beside the headline (ORRERY §3.2: a quantity is an arc; §6: decisions carry a
+// countdown arc), fed the same deadline fraction the seconds text reads. No backdrop-filter —
+// flight perf floor, FIELD_HARDWARE_PROGRAM §7. Motion goes through kit/motion settle (which
+// itself honours sf-reduce-motion); no idle rAF: the deck is ticked once from uiRoot's existing
+// frame, and the arc is a pure painter (settled values only).
 //
 // Sim clock only: deadlines, TTLs and countdowns read state.simTime. The deck NEVER pauses or
 // fakes a producer's deadline — a decision whose producer is silent past its deadline is
@@ -35,6 +38,8 @@
 // static import keeps that contract while closing the async-import window below.
 
 import { settle, reducedMotion } from './kit/motion.js';
+import { arcGauge } from './orrery/instruments.js';
+import { injectOrrery } from './orrery/tokens.js';
 
 const FULL_SLOTS = 2;          // full glass frames on the ladder before collapse to chips
 const EXPIRY_GRACE_S = 2.5;    // display-expire grace after a passed deadline (producer may still resolve)
@@ -151,6 +156,9 @@ export function createPromptDeck(ctx = {}) {
   const state = ctx.state || {};
   const bus = ctx.bus;
   if (!doc || !doc.createElement) return inertDeck();
+  // The countdown arc draws with the orrery library's stroke classes (.orr-core/.orr-phos/…);
+  // injection is idempotent, so the deck can mount wherever uiRoot starts it.
+  try { injectOrrery(doc); } catch (_) { /* the text countdown stays the honest fallback */ }
 
   const host = doc.getElementById('ui-root') || doc.body;
   const root = doc.createElement('div');
@@ -256,6 +264,27 @@ export function createPromptDeck(ctx = {}) {
     entry.flagEl.className = 'sf-prompt__flag';
     head.append(entry.senderEl, entry.flagEl);
 
+    // The countdown is an arc, not a bar (ORRERY §3.2/§6): a compact 270° dial riding the head,
+    // swept by the same deadline fraction the seconds text reads. Pure painter — settled values
+    // only, so it adds no rAF of its own to the flight frame. Environments without SVG
+    // construction (headless harnesses) keep the text countdown via the null gauge below.
+    entry.clockEl = null;
+    entry.clockGauge = null;
+    try {
+      const clockSvg = doc.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      clockSvg.setAttribute('class', 'orr-svg sf-prompt__clock');
+      clockSvg.setAttribute('viewBox', '0 0 30 30');
+      clockSvg.setAttribute('aria-hidden', 'true');
+      // SVG elements do not reflect the `hidden` IDL property to the attribute — toggle the
+      // attribute itself, the only thing the [hidden] CSS rule can see.
+      clockSvg.setAttribute('hidden', '');
+      const gauge = arcGauge({ cx: 15, cy: 15, r: 11.5, from: -135, to: 135, width: 3, tone: 'phos', ghost: false, head: true });
+      clockSvg.appendChild(gauge.el);
+      entry.clockEl = clockSvg;
+      entry.clockGauge = gauge;
+      head.appendChild(clockSvg);
+    } catch (_) { entry.clockEl = null; entry.clockGauge = null; }
+
     entry.headlineEl = doc.createElement('h3');
     entry.headlineEl.className = 'sf-prompt__headline';
     entry.headlineEl.id = titleId;
@@ -287,6 +316,9 @@ export function createPromptDeck(ctx = {}) {
     entry.flagEl.hidden = !spec.statusFlag;
     setText(entry.headlineEl, spec.headline || spec.id);
     entry.lastCountdown = null;
+    // A producer re-asserting with a moved deadline re-bases the arc's full sweep.
+    entry.arcDeadlineAt = null;
+    entry.arcSpan = 0;
     renderCountdown(entry);
     entry.contentEl.replaceChildren(...(spec.content ? [spec.content] : []));
     renderChoices(entry);
@@ -341,6 +373,29 @@ export function createPromptDeck(ctx = {}) {
       setText(entry.detailEl, nextText);
       entry.detailEl.classList.toggle('sf-prompt__detail--urgent',
         hasLiveChoices && Number.isFinite(spec.deadlineAt) && spec.deadlineAt - simNow() <= COUNTDOWN_URGENT_S);
+    }
+    // The countdown arc (ORRERY §3.2/§6): visible only for timed decisions with live choices,
+    // swept by the same deadline fraction the seconds text reads — arc and number can never
+    // disagree. Urgent window turns the arc to the threat tone, matching the detail line.
+    if (entry.clockEl && entry.clockGauge) {
+      const timed = hasLiveChoices && Number.isFinite(spec.deadlineAt);
+      // attribute, not the IDL property — SVGElement does not reflect `hidden` (see buildFrame).
+      // Written only on change: the flight HUD writes DOM only when something differs.
+      if (entry.clockShown !== timed) {
+        entry.clockShown = timed;
+        if (timed) entry.clockEl.removeAttribute('hidden');
+        else entry.clockEl.setAttribute('hidden', '');
+      }
+      if (timed) {
+        const now = simNow();
+        if (entry.arcDeadlineAt !== spec.deadlineAt) {
+          entry.arcDeadlineAt = spec.deadlineAt;
+          entry.arcSpan = Math.max(0.5, spec.deadlineAt - now);
+        }
+        const frac = Math.max(0, Math.min(1, (spec.deadlineAt - now) / entry.arcSpan));
+        entry.clockGauge.set(frac, { instant: true });
+        entry.clockGauge.setTone(spec.deadlineAt - now <= COUNTDOWN_URGENT_S ? 'threat' : 'phos');
+      }
     }
   }
 
@@ -578,6 +633,7 @@ export function createPromptDeck(ctx = {}) {
         spec: normalized,
         seq: ++seqCounter,
         frameEl: null, chipEl: null, highlightIndex: null, lastCountdown: null,
+        arcDeadlineAt: null, arcSpan: 0, clockShown: null,
       };
       entry.frameEl = buildFrame(entry);
       renderFrame(entry);
@@ -646,6 +702,7 @@ export function createPromptDeck(ctx = {}) {
     const entry = entries.get(id);
     if (!entry) return false;
     entries.delete(id);
+    if (entry.clockGauge && typeof entry.clockGauge.dispose === 'function') entry.clockGauge.dispose();
     // Resolved/expired cards get a short exit slide instead of a pop-out; the frame stays mounted
     // for the transition window so layout() is not re-run per frame. Reduced motion removes
     // instantly — the state change is already unambiguous via the card disappearing.

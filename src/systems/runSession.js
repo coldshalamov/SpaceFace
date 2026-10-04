@@ -10,7 +10,11 @@ import {
   runLevelForXp,
   validateRunState,
 } from '../core/runState.js';
+import { migrateHangar, purseBonusFor } from '../data/swarmHangar.js';
 import { normalizeSwarmStake, swarmStakeFor } from '../data/swarmStakes.js';
+import { normalizePerkLoadout } from '../data/swarmPerks.js';
+import { normalizeThreatIds } from '../data/swarmThreats.js';
+import { crucibleEarnedPerkIds, loadCrucibleMeta } from './survivalRecords.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
 
 const OUTCOME_SET = new Set(RUN_OUTCOMES);
@@ -93,13 +97,42 @@ export const runSession = {
     const next = createRunState({ kind, ruleset, seed });
     next.phase = 'loadout';
     if (request && request.arenaId != null) next.arenaId = request.arenaId;
+    // SWARM-04: a checkpoint start. The phase machine plans `run.wave + 1`, so the run's
+    // counter parks on the wave BEFORE the bought entry point — a start at Round 11 means
+    // wave sits at 10 until the first plan lands. Swarm only: the arc, the block and the
+    // circuit always open at their authored first wave.
+    const startWave = Number.isInteger(request && request.startWave) ? request.startWave : 0;
+    if (isSwarmRuleset(ruleset) && startWave > 1) {
+      next.wave = startWave - 1;
+      if (!next.telemetry || typeof next.telemetry !== 'object') next.telemetry = {};
+      next.telemetry.startWave = startWave;
+    }
     // The swarm stake rides telemetry (schema-free, run-lifelong, never serialized): the wave
     // planner reads it to scale pressure, and the results surface reads it to say what the
     // run cost. Absent means the tuned baseline — the door only sends it for swarm runs.
     if (request && typeof request.swarmStake === 'string') {
       next.telemetry.swarmStake = normalizeSwarmStake(request.swarmStake);
     }
-    this._commitRun(next, 'run:started', {
+    if (next.kind === 'survival') {
+      if (!next.telemetry || typeof next.telemetry !== 'object') next.telemetry = {};
+      const profile = loadCrucibleMeta();
+      next.telemetry.hangar = migrateHangar(profile && profile.hangar);
+      // SWARM-06: the Threat wager and the perk loadout ride telemetry the same way the stake
+      // does — schema-free, run-lifelong, never serialized. Threats normalize against the
+      // catalog so a door or a hand-rolled request can never name a wager that does not exist.
+      // Perks come off the profile's stored pick (a request may override it — sandbox drives
+      // and tests slot honestly), earned-checked against the same derived earns the door read.
+      if (isSwarmRuleset(ruleset)) {
+        const threats = normalizeThreatIds(request && request.threats);
+        if (threats.length) next.telemetry.threats = threats;
+        const earned = crucibleEarnedPerkIds(profile);
+        const pick = request && Array.isArray(request.perks) ? request.perks
+          : (profile && profile.perks && profile.perks.loadout);
+        const perks = normalizePerkLoadout(pick, earned);
+        if (perks.length) next.telemetry.perks = perks;
+      }
+    }
+    const committed = this._commitRun(next, 'run:started', {
       schemaVersion: next.schemaVersion,
       kind: next.kind,
       ruleset: next.ruleset,
@@ -107,6 +140,14 @@ export const runSession = {
       phase: next.phase,
       openingLesson: request && request.openingLesson === true,
     });
+    // The war chest pays the run wallet only. A stake or anything else that already funded
+    // this run keeps the purse; adventure credits are never touched.
+    if (!committed || next.kind !== 'survival') return;
+    const live = this._liveRun();
+    if (!live || live.credits !== 0) return;
+    const hangar = (live.telemetry && live.telemetry.hangar) || next.telemetry.hangar;
+    const bonus = purseBonusFor(hangar);
+    if (bonus > 0) this.award({ credits: bonus, reason: 'hangar_war_chest' });
   },
 
   transition(request) {

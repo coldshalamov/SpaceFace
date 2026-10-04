@@ -17,7 +17,13 @@ import test from 'node:test';
 import * as THREE from 'three';
 
 import { createPipelineAdmissionTracker } from '../src/render/pipelineReadiness.js';
-import { hoistDeadlineGlassMeshBuilds, render } from '../src/render/renderer.js';
+import {
+  compilePipelineSubject,
+  hoistDeadlineGlassMeshBuilds,
+  preparePipelineSubjectResidency,
+  promoteOnGlassPipelineLatch,
+  render,
+} from '../src/render/renderer.js';
 import * as partsLibrary from '../src/render/partsLibrary.js';
 import { PRESENTATION_TIER } from '../src/world/activityClassification.js';
 
@@ -117,6 +123,85 @@ test('pipeline admission: urgent re-request folds a queued ambient admission of 
   assert.equal(resumed.length, 1, 'the armed ambient beat stays armed but has nothing left');
 });
 
+test('pipeline latch promotion: a measured on-glass pending root re-fires urgent and folds its queued ambient admission', async () => {
+  // D38 — asteroid 30 sat 14 frames hidden behind `pipelinesPending` on R0_GLASS: its compile
+  // was queued ambient before the rock crossed the glass, and no lane re-graded it. The submit
+  // pass now re-fires the latched root at the deadline class; the tracker folds the still-queued
+  // ambient entry into the urgent run so both latches settle on one link.
+  const { tracker, order, resumed, gates } = makeTracker();
+  tracker.resumeAutoFlush();
+
+  const mesh = { userData: { pipelinesPending: true }, name: 'asteroid-30' };
+  const owner = {
+    state: {
+      render: {
+        compileObjectPipelines: (subject, options) => tracker.compile(subject, options),
+      },
+    },
+  };
+
+  // Ambient admission queued while the rock was still off-glass.
+  const ambient = tracker.compile(mesh);
+  assert.equal(tracker.queuedCount, 1);
+
+  // The submit pass measures the latch on the live glass and promotes it.
+  assert.equal(promoteOnGlassPipelineLatch(owner, mesh), true);
+  assert.equal(tracker.queuedCount, 0,
+    'the still-queued ambient entry folds into the urgent run instead of waiting FIFO');
+
+  await Promise.resolve();
+  assert.equal(gates.length, 1, 'one link serves both the ambient latch and the promotion');
+  assert.deepEqual(order[0].subjects, [mesh]);
+
+  // A second promote while the urgent run is outstanding joins it — no duplicate link.
+  assert.equal(promoteOnGlassPipelineLatch(owner, mesh), true);
+  assert.equal(gates.length, 1, 'the outstanding urgent run is joined, never duplicated');
+  assert.equal(resumed.length, 1, 'the ambient beat stays armed but has nothing left');
+
+  gates[0].resolve({ compiled: 'urgent' });
+  assert.deepEqual(await ambient, { compiled: 'urgent' });
+});
+
+test('pipeline latch promotion: only a latched root re-fires, and only through a live compile port', () => {
+  const calls = [];
+  const owner = {
+    state: {
+      render: {
+        compileObjectPipelines: (subject, options) => {
+          calls.push({ subject, options });
+          return Promise.resolve({ skipped: false });
+        },
+      },
+    },
+  };
+  const latched = { userData: { pipelinesPending: true } };
+  assert.equal(promoteOnGlassPipelineLatch(owner, latched), true);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].options.urgent, true,
+    'the caller measured the glass — urgency is explicit, not re-derived');
+  assert.equal(calls[0].options.joinOutstanding, true,
+    'an outstanding urgent admission is joined, not recompiled');
+
+  const unlatched = { userData: {} };
+  assert.equal(promoteOnGlassPipelineLatch(owner, unlatched), false,
+    'a root with no pending latch never queues a promotion admission');
+  assert.equal(calls.length, 1);
+
+  assert.equal(promoteOnGlassPipelineLatch({ state: { render: {} } }, latched), false,
+    'no compile port means no promotion (pre-setup render state)');
+  assert.equal(calls.length, 1);
+
+  const throwing = {
+    state: {
+      render: {
+        compileObjectPipelines: () => { throw new Error('stale owner'); },
+      },
+    },
+  };
+  assert.equal(promoteOnGlassPipelineLatch(throwing, latched), false,
+    'a refused promotion reports false and retries next frame instead of throwing in the submit walk');
+});
+
 test('pipeline admission: urgent compiles join an in-flight or already-urgent admission, never duplicate', async () => {
   const { tracker, order, resumed, gates } = makeTracker();
   tracker.resumeAutoFlush();
@@ -169,11 +254,13 @@ test('mesh-build drain hoists a body that reached the glass behind FIFO backlog'
     _meshBuildQueue: ['a1', g1, 'a2', g2, 'a3'],
     _meshBuildQueueHead: 0,
   };
-  assert.equal(hoistDeadlineGlassMeshBuilds(owner), true);
+  // The return is the deadline-glass work count in the tail (callers gate a refused
+  // late-present drain on "does glass work exist", not "did the partition permute").
+  assert.equal(hoistDeadlineGlassMeshBuilds(owner), 2);
   assert.deepEqual(owner._meshBuildQueue, [g1, g2, 'a1', 'a2', 'a3'],
     'on-glass ids drain ahead of the whole off-glass backlog');
-  assert.equal(hoistDeadlineGlassMeshBuilds(owner), false,
-    'an already-partitioned tail reports nothing to hoist');
+  assert.equal(hoistDeadlineGlassMeshBuilds(owner), 2,
+    'an already-partitioned tail still reports its queued glass work');
 
   // Entries before the queue head are never touched.
   const done = mk('done', R3);
@@ -184,7 +271,7 @@ test('mesh-build drain hoists a body that reached the glass behind FIFO backlog'
     _meshBuildQueue: [done, 'a4', g3],
     _meshBuildQueueHead: 1,
   };
-  assert.equal(hoistDeadlineGlassMeshBuilds(owner2), true);
+  assert.equal(hoistDeadlineGlassMeshBuilds(owner2), 1);
   assert.deepEqual(owner2._meshBuildQueue, [done, g3, 'a4'],
     'consumed history stays ahead of the drain head');
 });
@@ -253,6 +340,56 @@ test('mesh-build drain admits a hoisted on-glass body inside a refused late-pres
     ['ambient-1', 'ambient-2'],
     'ambient backlog stays queued behind the hoisted glass build',
   );
+});
+
+test('live mesh builds send on-glass pipelines to the urgent lane and discard stale render callbacks', async () => {
+  const frames = [];
+  const priorRaf = globalThis.requestAnimationFrame;
+  const priorScheduler = globalThis.scheduler;
+  globalThis.requestAnimationFrame = (callback) => { frames.push(callback); return frames.length; };
+  globalThis.scheduler = { postTask: (callback) => Promise.resolve().then(callback) };
+  try {
+    const calls = [];
+    const state = {
+      mode: 'flight', simTime: 10, entities: new Map(), entityList: [],
+      render: {
+        firstPlayableFrameAt: 1, lastPresentDtMs: 0,
+        compileObjectPipelines: (root, options) => { calls.push({ root, options }); },
+      },
+    };
+    const makeOwner = (id) => {
+      const entity = { id, type: 'wreck', alive: true, pos: { x: 5000, z: 5000 }, rot: 0,
+        radius: 20, data: {}, activity: { presentationTier: R0 } };
+      state.entities.set(id, entity);
+      return {
+        state, scene: new THREE.Scene(), _initialMeshReconcileComplete: true,
+        _meshBuildLateSkips: 0, _meshBuildQueue: [id], _meshBuildQueueHead: 0,
+        _meshBuildQueuedIds: new Set([id]), _meshes: new Map(), _meshesVersion: 0,
+        vf: { build: () => new THREE.Group() }, _bindPresentationMesh() {},
+        _frameMembrane: { toLocal: (pos, out) => Object.assign(out, pos) },
+      };
+    };
+    const owner = makeOwner('glass');
+    assert.equal(render._drainMeshBuildQueue.call(owner, 1), 1);
+    assert.equal(calls.length, 0, 'pipeline work waits until after the displayed frame');
+    frames.shift()(0);
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].options?.urgent, true,
+      'a body already on camera must not wait behind ambient pipeline admissions');
+
+    const staleOwner = makeOwner('stale');
+    assert.equal(render._drainMeshBuildQueue.call(staleOwner, 1), 1);
+    state.render = { ...state.render, compileObjectPipelines: () => assert.fail('stale build reached a replacement renderer') };
+    frames.shift()(0);
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(calls.length, 1);
+  } finally {
+    if (priorRaf === undefined) delete globalThis.requestAnimationFrame;
+    else globalThis.requestAnimationFrame = priorRaf;
+    if (priorScheduler === undefined) delete globalThis.scheduler;
+    else globalThis.scheduler = priorScheduler;
+  }
 });
 
 test('authored upgrade queue: an R0_GLASS owner is admitted ahead of target, hostile and ambient work', async () => {
@@ -462,11 +599,19 @@ test('residencyOptionsForBoundary marks an on-glass boundary urgent on compile a
     ambientBoundary.userData.presentationEntityId = ambientEntity.id;
     const ambientOptions = partsLibrary.residencyOptionsForBoundary(ambientEntity, ambientBoundary, {});
     await ambientOptions.prepareAuthoredPipelines(ambientBoundary);
-    assert.equal(compileCalls.at(-1).options, undefined,
+    const ambientCompileOptions = compileCalls.at(-1).options;
+    assert.notEqual(ambientCompileOptions && ambientCompileOptions.urgent, true,
       'an off-glass boundary keeps the ambient lane');
+    assert.equal(typeof ambientCompileOptions.isActive, 'function',
+      'an off-glass boundary compile still carries the owner lifetime guard');
+    assert.equal(ambientCompileOptions.isActive(ambientBoundary), true,
+      'the lifetime guard answers true while its render owner is live');
     await ambientOptions.prepareAuthoredGpuResidency(ambientBoundary, { isResidencyOwnerActive: () => true });
     assert.equal(residencyCalls.at(-1).options.unSliced, false,
       'an off-glass boundary keeps the sliced ambient residency chain');
+    runtimeState.render = {};
+    assert.equal(ambientCompileOptions.isActive(ambientBoundary), false,
+      'the lifetime guard answers false once its captured render owner is stale');
   } finally {
     if (previousWindow === undefined) delete globalThis.window;
     else globalThis.window = previousWindow;
@@ -512,4 +657,154 @@ test('authored GPU gate reports its sub-phase timings without changing admission
   // No hooks (preview/test harness): still skipped, no timing surface promised.
   const skipped = await partsLibrary.prepareAuthoredVisualPipelines(root, {});
   assert.equal(skipped.skipped, true);
+});
+
+test('pipeline residency: the first chained prepare forwards urgency and joins pending work', async () => {
+  const prepared = [];
+  const pending = new Map();
+  const tracker = {
+    pendingFor(subject) {
+      return pending.get(subject) || null;
+    },
+    prepare(subject, options) {
+      prepared.push({ subject, options });
+      const gate = Promise.resolve(options);
+      pending.set(subject, gate);
+      return gate;
+    },
+  };
+  const subject = { name: 'residency-subject' };
+  let live = true;
+  const admissionOptions = { isActive: (s) => live === true && s === subject };
+
+  const urgentPromise = preparePipelineSubjectResidency(tracker, subject, admissionOptions, true);
+  assert.equal(prepared.length, 1, 'no pending entry means one real prepare call');
+  assert.equal(prepared[0].options.unSliced, true,
+    'urgent residency rides the unSliced upload lane');
+  assert.equal(typeof prepared[0].options.isActive, 'function',
+    'the lifetime guard stays callable');
+  assert.equal(prepared[0].options.isActive(subject), true,
+    'the live owner is active');
+  live = false;
+  assert.equal(prepared[0].options.isActive(subject), false,
+    'a stale owner is rejected by the same guard');
+  await urgentPromise;
+
+  const ambientSubject = { name: 'ambient-subject' };
+  await preparePipelineSubjectResidency(tracker, ambientSubject, {}, false);
+  assert.equal(prepared.length, 2);
+  assert.equal(prepared[1].options.unSliced, false,
+    'ambient residency stays on the sliced upload lane');
+  assert.equal(prepared[1].options.isActive, undefined,
+    'no lifetime guard forwards as undefined');
+
+  const held = { name: 'held-subject' };
+  const shared = Promise.resolve('joined');
+  pending.set(held, shared);
+  const joined = preparePipelineSubjectResidency(tracker, held, { isActive: () => true }, true);
+  assert.equal(joined, shared, 'a pending entry is joined, not re-prepared');
+  assert.equal(prepared.length, 2, 'joining never calls prepare twice');
+});
+
+test('an urgent pipeline admission reaches the batch as a lone urgent subject', async () => {
+  const batches = [];
+  const tracker = createPipelineAdmissionTracker((subjects, options) => {
+    batches.push({ count: subjects.length, urgent: options && options.urgent === true });
+    return Promise.resolve({ ok: true });
+  }, { quietMs: 0, maxWaitMs: 10 });
+
+  await tracker.compile({ name: 'on-glass' }, { urgent: true });
+  assert.equal(batches.length, 1);
+  assert.equal(batches[0].count, 1,
+    'urgent admission serializes as a single-subject batch — the whole-root branch applies');
+  assert.equal(batches[0].urgent, true, 'the urgent flag reaches the compile batch');
+
+  await Promise.all([tracker.compile({ name: 'a' }), tracker.compile({ name: 'b' })]);
+  const ambient = batches.slice(1);
+  assert.equal(ambient.length, 1, 'ambient compiles still coalesce into one batch');
+  assert.equal(ambient[0].count, 2);
+  assert.equal(ambient[0].urgent, false,
+    'ambient batches carry no urgent flag — they keep the sliced lane');
+});
+
+test('pipeline admission selection: an on-glass explicit admission rides the urgent lane', async () => {
+  const { tracker, order, resumed, gates } = makeTracker();
+  tracker.resumeAutoFlush();
+
+  const ambient = { name: 'ambient' };
+  const glass = { name: 'on-glass-explicit' };
+  const cA = tracker.compile(ambient);
+  assert.equal(tracker.queuedCount, 1);
+
+  const guard = (subject) => subject === glass;
+  const options = { explicit: true, skipSharedBatch: true, isActive: guard };
+  const cG = compilePipelineSubject(tracker, glass, options, true);
+  await Promise.resolve();
+
+  assert.equal(gates.length, 1, 'the urgent link is invoked immediately on the tail');
+  assert.deepEqual(order[0].subjects, [glass],
+    'urgent outranks explicit: the subject serializes alone instead of folding the ambient queue');
+  assert.equal(order[0].options.urgent, true);
+  assert.equal(order[0].options.explicit, true,
+    'caller-supplied fields survive the urgent wrap');
+  assert.equal(order[0].options.skipSharedBatch, true);
+  assert.equal(order[0].options.isActive, guard,
+    'the lifetime guard forwards verbatim');
+  assert.equal(tracker.queuedCount, 1, 'ambient work is untouched by the urgent link');
+
+  gates[0].resolve({ urgent: true });
+  assert.deepEqual(await cG, { urgent: true });
+
+  const beat = resumed.shift();
+  assert.equal(typeof beat, 'function', 'the ambient batch still needs its own scheduled beat');
+  beat();
+  await Promise.resolve();
+  assert.equal(gates.length, 2);
+  gates[1].resolve({ ok: true });
+  await cA;
+});
+
+test('pipeline admission selection: off-glass explicit and ambient keep their lanes', async () => {
+  const { tracker, order, gates } = makeTracker();
+  tracker.resumeAutoFlush();
+
+  const ambient = { name: 'ambient' };
+  const explicitSubject = { name: 'off-glass-explicit' };
+  const cA = tracker.compile(ambient);
+  assert.equal(tracker.queuedCount, 1);
+
+  const options = { explicit: true, skipSharedBatch: true, isActive: () => true };
+  const cE = compilePipelineSubject(tracker, explicitSubject, options, false);
+  await Promise.resolve();
+  assert.equal(gates.length, 1,
+    'an off-glass explicit admission folds the queued ambient set into its own link');
+  assert.deepEqual(order[0].subjects, [explicitSubject, ambient]);
+  gates[0].resolve({ folded: true });
+  assert.deepEqual(await cE, { folded: true });
+  assert.deepEqual(await cA, { folded: true });
+
+  const calls = [];
+  const mock = {
+    compile(subject, opts) { calls.push({ method: 'compile', opts }); return Promise.resolve(); },
+    compileExplicit(subject, opts) { calls.push({ method: 'compileExplicit', opts }); return Promise.resolve(); },
+  };
+  const ambientOptions = { isActive: () => true };
+  compilePipelineSubject(mock, ambient, ambientOptions, false);
+  assert.equal(calls[0].method, 'compile', 'ambient stays on the plain compile lane');
+  assert.strictEqual(calls[0].opts, ambientOptions,
+    'ambient admission forwards the same options object');
+
+  const explicitOptions = { explicit: true, isActive: () => true };
+  compilePipelineSubject(mock, explicitSubject, explicitOptions, false);
+  assert.equal(calls[1].method, 'compileExplicit',
+    'a non-urgent explicit admission keeps the fold lane');
+  assert.strictEqual(calls[1].opts, explicitOptions);
+
+  const urgentOptions = { explicit: true, isActive: () => true };
+  compilePipelineSubject(mock, explicitSubject, urgentOptions, true);
+  assert.equal(calls[2].method, 'compile', 'urgent wins over explicit');
+  assert.equal(calls[2].opts.urgent, true);
+  assert.equal(calls[2].opts.explicit, true);
+  assert.notStrictEqual(calls[2].opts, urgentOptions,
+    'the urgent wrap copies rather than mutating the caller options');
 });

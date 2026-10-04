@@ -26,6 +26,9 @@ import { entityIndexVersion, entityIndexLaneVersion } from '../world/livingWorld
 import { fittedModuleDefs } from '../core/fittedModules.js';
 import { addCargo, removeCargo } from './cargo.js';
 import { commodityIsBiohazard } from '../data/commodities.js';
+import { spawnJettisonedCargoPod } from './lootShards.js';
+import { evaluateReceiverAcceptance, commitReceiverAcceptance } from './worldSiteRuntime.js';
+import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 
 // AE-129 (K-table): a salvaged handshake transponder halves the protocol hold window —
 // the machines read your compliance twice as fast.
@@ -479,33 +482,17 @@ export function tickMachineLayer(world, dt) {
       case 'courier': {
         // AE-236 (I09): shuttles a protocol token between the sector's machine sites —
         // in a single-site sector it runs legs between its siblings' anchors instead.
-        const targets = sites.filter((s) => s.siteId !== m.siteId)
-          .map((s) => world._toGlobal({ x: s.center.x, z: s.center.z }, sectorId));
-        for (const sib of machines) {
-          if (sib !== e && sib.data.machine.siteId === m.siteId && sib.data.machine.anchor) {
-            targets.push(sib.data.machine.anchor);
-          }
-        }
+        // SFQ-B141: the token is a physical pod in the frame's custody — see
+        // tickCourierToken. Approach alone moves nothing into the player's hold.
+        const targets = courierRouteTargets(world, e, m, sites, machines, sectorId);
         if (!targets.length) break;
         const legIdx = Math.floor(m.t / kind.routePeriodS) % targets.length;
-        const lg = targets[legIdx];
+        const lg = targets[legIdx].pos;
         const desired = Math.atan2(lg.z - e.pos.z, lg.x - e.pos.x);
         e.rot = angleLerp(e.rot, desired, Math.min(1, kind.turnRate * dt));
         e.pos.x += Math.cos(e.rot) * kind.speed * dt;
         e.pos.z += Math.sin(e.rot) * kind.speed * dt;
-        if (player && player.pos && !m.intercepted
-          && dist2(e.pos.x, e.pos.z, player.pos.x, player.pos.z) < 160 * 160) {
-          m.intercepted = true;
-          addCargo(state, 'cmdty_gate_handshake', 1, 'courier_intercept');
-          world.bus.emit('comms:log', {
-            from: 'Courier frame', kind: 'machine',
-            text: 'TOKEN JETTISONED — ROUTE AUTHORITY INSTRUMENT IN YOUR HOLD.',
-          });
-          world.bus.emit('ecology:evidence', { id: 'L06', sectorId });
-          const sRec = machineSiteRec(state, m.siteId);
-          sRec.setpieces = sRec.setpieces || {};
-          sRec.setpieces.N08 = true;
-        }
+        tickCourierToken(world, e, m, kind, targets[0], now);
         break;
       }
       case 'conservator': {
@@ -663,6 +650,300 @@ export function tickMachineLayer(world, dt) {
       default: break;
     }
   }
+}
+
+// ── Courier token (SFQ-B141) ──────────────────────────────────────────────────────────────
+// The route mail is a real body in space: a jettisoned-cargo pod carrying source custody
+// (ownerId = the courier frame), a route (originId -> destinationId), and recipient
+// acceptance through the world-site receiver ledger — never an addCargo on approach.
+// The durable token record lives on the machine-site row inside ae.machineSites (save-
+// carried), so rematerialization re-bodies the same token once and a settled token never
+// re-mints. The player's hold is written only by a committed pickup:collected receipt.
+
+const COURIER_TOKEN_COMMODITY = 'cmdty_gate_handshake';
+const COURIER_TOKEN_RETURN_R = 320; // bring the held token home inside this radius
+const COURIER_TOKEN_OPEN = new Set(['in_transit', 'loose']);
+
+function courierRouteTargets(world, e, m, sites, machines, sectorId) {
+  const targets = [];
+  for (const s of sites) {
+    if (s.siteId === m.siteId) continue;
+    targets.push({
+      pos: world._toGlobal({ x: s.center.x, z: s.center.z }, sectorId),
+      siteId: s.siteId,
+    });
+  }
+  for (const sib of machines) {
+    if (sib !== e && sib.data.machine.siteId === m.siteId && sib.data.machine.anchor) {
+      targets.push({ pos: sib.data.machine.anchor, siteId: m.siteId });
+    }
+  }
+  return targets;
+}
+
+function findCourierTokenPod(state, tokenId) {
+  for (const e of state.entityList || []) {
+    if (!e || e.alive === false || !e.data) continue;
+    const stamp = e.data.machineToken;
+    if (stamp && stamp.tokenId === tokenId) return e;
+  }
+  return null;
+}
+
+/** Mint or resume the durable token record on the site row. One per site, ever. */
+function courierTokenRec(state, siteId, dest, now) {
+  const sRec = machineSiteRec(state, siteId);
+  if (!sRec.courierToken) {
+    sRec.courierToken = {
+      tokenId: `machine-token:${siteId}`,
+      receiptId: `machine-courier:${siteId}`,
+      status: 'in_transit',
+      originSiteId: siteId,
+      destSiteId: dest.siteId,
+      destPos: { x: dest.pos.x, z: dest.pos.z },
+      mintedAt: now,
+      lastPodPos: null,
+    };
+  }
+  return sRec.courierToken;
+}
+
+/** Body the token if no live pod carries its stamp — exactly one body per tokenId. */
+function ensureCourierTokenBody(world, e, token) {
+  const state = world.state;
+  const existing = findCourierTokenPod(state, token.tokenId);
+  if (existing) return existing;
+  const spawnPos = token.status === 'loose' && token.lastPodPos
+    ? token.lastPodPos
+    : e.pos;
+  const pod = spawnJettisonedCargoPod(state, {
+    commodityId: COURIER_TOKEN_COMMODITY,
+    amount: 1,
+    pos: { x: spawnPos.x, z: spawnPos.z },
+    vel: { x: 0, z: 0 },
+    radius: 5,
+    ownerId: e.id,
+    ownerName: 'Courier frame',
+    factionId: 'verge_layers',
+    originId: token.originSiteId,
+    destinationId: token.destSiteId,
+  }, world.helpers);
+  if (!pod) return null;
+  pod.data = pod.data || {};
+  pod.data.machineToken = {
+    tokenId: token.tokenId,
+    siteId: token.originSiteId,
+    originSiteId: token.originSiteId,
+    destSiteId: token.destSiteId,
+  };
+  pod.data.name = 'Route authority token';
+  pod.data.scanLabel = 'ROUTE AUTHORITY TOKEN — VERGE MAIL';
+  return pod;
+}
+
+/** The recipient site accepts the pod through the world-site receiver ledger — once. */
+function settleCourierTokenDelivery(world, token, pod, now) {
+  const state = world.state;
+  const dRec = machineSiteRec(state, token.destSiteId);
+  if (!dRec.courierReceiver) {
+    dRec.courierReceiver = { capacity: 1, stored: 0, acceptedReceipts: {} };
+  }
+  const contact = evaluateReceiverAcceptance({
+    commodityId: COURIER_TOKEN_COMMODITY,
+    quantity: 1,
+    capacity: dRec.courierReceiver.capacity,
+    stored: dRec.courierReceiver.stored,
+    entered: true,
+    relativeSpeed: 0,
+    open: true,
+  });
+  const commit = commitReceiverAcceptance(dRec.courierReceiver, contact, token.receiptId);
+  dRec.courierReceiver = commit.ledger;
+  if (!commit.committed && !commit.duplicate) return false; // refused — try again next tick
+  token.status = 'delivered';
+  token.deliveredAt = now;
+  if (pod) pod.alive = false;
+  const dest = MACHINE_SITES[token.destSiteId];
+  world.bus.emit('comms:log', {
+    from: dest ? dest.name : 'Verge lattice', kind: 'machine',
+    text: commit.duplicate
+      ? 'ROUTE MAIL RECEIPT ALREADY ON FILE. CUSTODY CHAIN CLOSED.'
+      : 'ROUTE MAIL ACCEPTED. CUSTODY TRANSFER COMPLETE.',
+  });
+  world.bus.emit('machine:tokenDelivered', {
+    siteId: token.destSiteId, tokenId: token.tokenId, receiptId: token.receiptId,
+    duplicate: commit.duplicate === true,
+  });
+  // The receiver visibly takes custody: an authored intake cue at the acceptance point
+  // (sfx_dock_capture = the physical "guide takes hold" sound) so the player hears the
+  // handoff settle, not just reads a comm line.
+  world.bus.emit('audio:cue', {
+    id: 'presentation.dock.capture',
+    position: { x: pod ? pod.pos.x : token.destPos.x, z: pod ? pod.pos.z : token.destPos.z },
+  });
+  return true;
+}
+
+/** An intercepted token can still be returned: the recipient accepts the held unit. */
+function tickCourierTokenReturn(world, token, now) {
+  const state = world.state;
+  const player = state.playerId != null && state.entities
+    ? state.entities.get(state.playerId) : null;
+  if (!player || !player.pos) return;
+  if (dist2(player.pos.x, player.pos.z, token.destPos.x, token.destPos.z)
+      > COURIER_TOKEN_RETURN_R * COURIER_TOKEN_RETURN_R) return;
+  const cargo = state.player && state.player.cargo;
+  if (!cargo || !cargo.items || !(cargo.items[COURIER_TOKEN_COMMODITY] > 0)) return;
+  const dRec = machineSiteRec(state, token.destSiteId);
+  if (!dRec.courierReceiver) {
+    dRec.courierReceiver = { capacity: 1, stored: 0, acceptedReceipts: {} };
+  }
+  const contact = evaluateReceiverAcceptance({
+    commodityId: COURIER_TOKEN_COMMODITY,
+    quantity: 1,
+    capacity: dRec.courierReceiver.capacity,
+    stored: dRec.courierReceiver.stored,
+    entered: true,
+    relativeSpeed: 0,
+    open: true,
+  });
+  const commit = commitReceiverAcceptance(dRec.courierReceiver, contact, token.receiptId);
+  dRec.courierReceiver = commit.ledger;
+  if (!commit.committed && !commit.duplicate) return;
+  // The cargo owner writes the unit out only after the receiver commits — no commit, no loss.
+  if (removeCargo(state, COURIER_TOKEN_COMMODITY, 1) < 1) return;
+  token.status = 'delivered';
+  token.deliveredAt = now;
+  const dest = MACHINE_SITES[token.destSiteId];
+  world.bus.emit('comms:log', {
+    from: dest ? dest.name : 'Verge lattice', kind: 'machine',
+    text: 'LATE DELIVERY ACCEPTED. CUSTODY CHAIN CLOSED.',
+  });
+  // A late return IS a delivery: same receiver commit, same consequence event, same intake
+  // cue — so downstream consumers (and the player's ears) cannot tell a late handoff from
+  // a clean one except by the comm line that says so.
+  world.bus.emit('machine:tokenDelivered', {
+    siteId: token.destSiteId, tokenId: token.tokenId, receiptId: token.receiptId,
+    duplicate: commit.duplicate === true,
+  });
+  world.bus.emit('audio:cue', {
+    id: 'presentation.dock.capture',
+    position: { x: token.destPos.x, z: token.destPos.z },
+  });
+}
+
+function tickCourierToken(world, e, m, kind, dest, now) {
+  const state = world.state;
+  const token = courierTokenRec(state, m.siteId, dest, now);
+  token.readyAt = token.readyAt != null ? token.readyAt : now + (kind.mailDwellS || 0);
+
+  if (!COURIER_TOKEN_OPEN.has(token.status)) {
+    // Terminal custody — but an intercepted token can still come home through the hold.
+    if (token.status === 'intercepted') tickCourierTokenReturn(world, token, now);
+    return;
+  }
+
+  // Adopt or re-body the token pod. The durable record is the token; the entity is its
+  // body — rematerialization scans by stamp first, so one tokenId never mints a second pod.
+  let pod = m.tokenPodId != null && state.entities ? state.entities.get(m.tokenPodId) : null;
+  if (pod && pod.alive === false) {
+    // The body we were holding died without a custody receipt (hull loss, not collection):
+    // observed destruction is a real outcome — the mail is gone, no re-mint.
+    token.status = 'lost';
+    token.lastPodPos = { x: pod.pos.x, z: pod.pos.z };
+    m.tokenPodId = null;
+    world.bus.emit('comms:log', {
+      from: 'Courier frame', kind: 'machine',
+      text: 'ROUTE MAIL DESTROYED IN TRANSIT. THE SITE FILES A LOSS.',
+    });
+    return;
+  }
+  if (!pod || !pod.data || !pod.data.machineToken
+      || pod.data.machineToken.tokenId !== token.tokenId) {
+    pod = findCourierTokenPod(state, token.tokenId);
+    m.tokenPodId = pod ? pod.id : null;
+  }
+  if (!pod) {
+    pod = ensureCourierTokenBody(world, e, token);
+    m.tokenPodId = pod ? pod.id : null;
+    if (!pod) return;
+  }
+
+  if (token.status === 'in_transit') {
+    // Custody ride: the frame tows the pod at its trailing edge. A knock or a tether pull
+    // past the stray radius drops custody — the mail becomes loose cargo in real space.
+    const strayR = kind.strayR || 220;
+    if (dist2(pod.pos.x, pod.pos.z, e.pos.x, e.pos.z) > strayR * strayR) {
+      token.status = 'loose';
+      token.lastPodPos = { x: pod.pos.x, z: pod.pos.z };
+      m.tokenPodId = null;
+      world.bus.emit('comms:log', {
+        from: 'Courier frame', kind: 'machine',
+        text: 'ROUTE MAIL ADRIFT. CUSTODY OPEN.',
+      });
+      return;
+    }
+    const back = e.rot + Math.PI;
+    const carryR = (e.radius || 10) + (pod.radius || 5) + 2;
+    pod.pos.x = e.pos.x + Math.cos(back) * carryR;
+    pod.pos.z = e.pos.z + Math.sin(back) * carryR;
+    if (pod.vel) { pod.vel.x = 0; pod.vel.z = 0; }
+    pod.data.machineCarriedBy = e.id;
+  } else {
+    token.lastPodPos = { x: pod.pos.x, z: pod.pos.z };
+    if (pod.data) delete pod.data.machineCarriedBy;
+  }
+
+  // Recipient acceptance: whoever brings the body inside the intake radius after the
+  // signing dwell — the frame, a drift, or a towed return — closes the custody chain once.
+  const deliverR = kind.deliverR || 240;
+  if (now >= token.readyAt
+      && dist2(pod.pos.x, pod.pos.z, token.destPos.x, token.destPos.z) <= deliverR * deliverR) {
+    settleCourierTokenDelivery(world, token, pod, now);
+  }
+}
+
+/**
+ * Custody resolution rides the canonical pickup:collected receipt (world.js binds it after
+ * cargo's acceptance write). The receipt is the custody transfer — never a parallel hold
+ * write. Only a committed accept settles the token; a full-hold rejection leaves it riding.
+ */
+export function handleMachinePickupCollected(world, payload) {
+  const state = world && world.state;
+  if (!state || !payload) return false;
+  const pod = payload.pickupId != null && state.entities
+    ? state.entities.get(payload.pickupId) : null;
+  const stamp = pod && pod.data && pod.data.machineToken;
+  if (!stamp || typeof stamp.tokenId !== 'string') return false;
+  if (successfulPickupAmount(payload) <= 0) return false;
+  const siteId = typeof stamp.siteId === 'string' ? stamp.siteId : stamp.originSiteId;
+  if (typeof siteId !== 'string' || !siteId) return false;
+  const sRec = machineSiteRec(state, siteId);
+  const token = sRec.courierToken;
+  if (!token || token.tokenId !== stamp.tokenId || !COURIER_TOKEN_OPEN.has(token.status)) {
+    return false;
+  }
+  const byPlayer = payload.collectorId === state.playerId;
+  token.status = byPlayer ? 'intercepted' : 'stolen';
+  token.settledBy = payload.collectorId != null ? payload.collectorId : null;
+  token.settledAt = Number(state.simTime) || 0;
+  const sectorId = (MACHINE_SITES[token.originSiteId] || {}).sectorId
+    || (state.world && state.world.currentSectorId);
+  if (byPlayer) {
+    world.bus.emit('comms:log', {
+      from: 'Courier frame', kind: 'machine',
+      text: 'ROUTE MAIL INTERCEPTED — ROUTE AUTHORITY INSTRUMENT IN YOUR HOLD.',
+    });
+    world.bus.emit('ecology:evidence', { id: 'L06', sectorId });
+    sRec.setpieces = sRec.setpieces || {};
+    sRec.setpieces.N08 = true;
+  } else {
+    world.bus.emit('comms:log', {
+      from: 'Courier frame', kind: 'machine',
+      text: 'ROUTE MAIL LOST TO A THIRD PARTY. CUSTODY CHAIN BROKEN.',
+    });
+  }
+  return true;
 }
 
 // Machine scan labels escalate with protocol state (AE-097).

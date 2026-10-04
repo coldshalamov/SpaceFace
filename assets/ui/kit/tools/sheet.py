@@ -43,13 +43,22 @@ def build(files: list[pathlib.Path], out: pathlib.Path, cols: int = 6,
     loaded = {p: Image.open(p).convert("RGBA") for _, group in rows for p in group}
     row_boxes = []
     for name, group in rows:
+        # a column is as wide as its widest asset OR its filename label, whichever is
+        # larger — narrow instruments (lights/, scroll thumbs) used to print labels
+        # that ran into their neighbours and made the sheet unreadable
         cw = max((loaded[p].width for p in group), default=0)
+        lw = max((label.getlength(re.sub(r"@2x$", "", p.stem)) for p in group), default=0)
+        cw = max(cw, int(lw) + 1)
         ch = max((loaded[p].height for p in group), default=0)
         row_boxes.append((name, group, cw, ch))
 
     head_h = 56 if title else 0
     width = pad * 2 + max(
         (len(g) * (cw + gap) - gap for _n, g, cw, _ch in row_boxes), default=400)
+    if title:
+        # the folder title outranks the 640 px floor: it clipped on single-column
+        # folders (radar/, sockets/, badges/) whose rows never filled the sheet
+        width = max(width, pad * 2 + int(head.getlength(title.upper())) + 1)
     width = max(width, 640)
     height = head_h + pad * 2 + sum(ch + label_h + gap + (22 if n else 0)
                                     for n, _g, _cw, ch in row_boxes)

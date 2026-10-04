@@ -9,12 +9,17 @@ import { marketFrameHtml } from '../../views/stationFrames.js';
 // is pinned from this module; buy/sell stay the same verbs.
 import { COMMODITIES, commodityPresentationFor } from '../../../data/commodities.js';
 import { canLaunderSalvageAtStation } from '../../../data/salvageLegality.js';
+import { FACTION_LABELS } from '../../../data/encounters.js';
+import { volatileClassOf } from '../../../data/commodityVolatileClasses.js';
+import { fragileCargoGlyphFor } from '../../../systems/fragileCargo.js';
 import { injectOrreryMarket, qtyFromDialPoint, setQtyDial } from '../../orrery/marketLayouts.js';
 import { dressLampKey } from '../../orrery/lampKey.js';
 import { rollTo } from '../../orrery/text.js';
 import { arcD, polar } from '../../orrery/svg.js';
 import { SECTORS } from '../../../data/sectors.js';
-import { isUnsellableCargo, reservedCargoQty, sellableCargoQty } from '../../../systems/cargo.js';
+import { isUnsellableCargo, releasableContractUnits, reservedCargoQuantity, sellableCargoQuantity } from '../../../systems/cargo.js';
+import { compareDockedFreight, formatFreightComparison } from '../../../systems/economy.js';
+import { partialDeliverySettlement } from '../../../systems/missions.js';
 import { predictPriceCurve, regimeLabel } from '../../../systems/economyCycles.js';
 import { escapeHtml } from '../../comms.js';
 import { entitySpanHtml } from '../../entityResolver.js';
@@ -24,6 +29,7 @@ import { mountDataState } from '../../uiPrimitives.js';
 import { renderAdBoardNotice } from '../adBoard.js';
 import { marketQuoteValue, presentMarketDrivers } from '../../marketDriverPresenter.js';
 import { presentCommodityIntel, presentInspectorRows } from '../../marketIntelPresenter.js';
+import { starvedNeedLine } from '../../worldNewsBeats.js';
 // Trade-route intel + course plotting reuse the canonical market logic (same waypoint/ui:setCourse
 // contract the legacy panel used) — never re-derive routes or nav here.
 import { computeBestTrades, applyTradeNavigation, formatRouteCard } from '../../market/tradeLogic.js';
@@ -219,6 +225,71 @@ export function legalityRole(legal) {
   return 'calm';
 }
 
+/**
+ * The tracked contract's delivery line for the quote stage. NXI-111 / NXB-028: a short
+ * manifest is a real settlement on recorded terms, not a failure — so before the pilot
+ * commits to the dock, the line names the units the berth will actually sign for and what
+ * they pay, instead of letting a short (or sealed-out) hold read as the full-contract
+ * reward. Deliverable units are counted the owner's way: a sealed manifest draws only its
+ * own reservation, loose freight only unsealed stock. Pure over state — the view-model
+ * behind the .sx-mkt-tracked line rendered by marketQuoteHtml.
+ */
+export function trackedCargoGuidance(state, cmdtyId, commodityName) {
+  const trackedId = state && state.ui && state.ui.trackedMissionId;
+  const active = (state && state.missions && state.missions.active) || [];
+  const mission = trackedId ? active.find((entry) => entry && entry.id === trackedId) : null;
+  const missionCmdty = mission && ((mission.cargo && mission.cargo.commodityId)
+    || (mission.params && mission.params.cmdtyId));
+  if (!mission || !missionCmdty || missionCmdty !== cmdtyId) {
+    return { state: 'missing', text: `Buy ${commodityName} here to load your job.` };
+  }
+  const requested = Math.max(1, Math.floor(Number(
+    (mission.cargo && mission.cargo.qty) || (mission.params && mission.params.qty) || 1,
+  ) || 1));
+  const held = heldQty(state, cmdtyId);
+  const destination = mission.destinationName || mission.destName
+    || (mission.params && (mission.params.destinationName || mission.params.destName))
+    || mission.destStationId || mission.destSectorId || 'the marked destination';
+  // A delivery contract that cannot fill its manifest settles the deliverable fraction —
+  // say so, with the owner's own numbers (accepted quantity, recorded-terms payment).
+  const isDelivery = mission.type === 'cargo_delivery';
+  const settlement = isDelivery ? partialDeliverySettlement(mission, state) : null;
+  if (settlement) {
+    const shortfall = Math.max(0, Math.floor(Number(settlement.shortfallUnits) || 0));
+    const fullCr = Math.max(0, Math.round(Number(mission.reward_cr) || 0));
+    return {
+      state: 'partial',
+      text: `Delivers ${fmt(settlement.deliverQty)} of ${fmt(settlement.needQty)}u as held — the dock pays ${fmt(settlement.payCr)} cr, not the full ${fmt(fullCr)} cr. Load ${fmt(shortfall)}u more to settle in full.`,
+    };
+  }
+  let aboard = held >= requested;
+  let remaining = Math.max(0, requested - held);
+  let sealedElsewhere = 0;
+  if (isDelivery) {
+    const sealed = mission.preloadedCargo === true;
+    const need = sealed && mission.params && mission.params.sealedRemaining != null
+      ? Math.max(0, Math.floor(Number(mission.params.sealedRemaining) || 0))
+      : requested;
+    const releasable = sealed
+      ? Math.max(0, Math.floor(Number(releasableContractUnits(state, mission)) || 0))
+      : sellableCargoQuantity(state, cmdtyId);
+    const deliverable = Math.min(need, releasable);
+    aboard = deliverable >= need;
+    remaining = Math.max(0, need - deliverable);
+    sealedElsewhere = Math.max(0, held - deliverable);
+  }
+  if (aboard) {
+    return {
+      state: 'aboard',
+      text: `Cargo is aboard — undock and follow nav to ${destination}.`,
+    };
+  }
+  return {
+    state: 'missing',
+    text: `Load ${fmt(remaining)}u more ${commodityName} before undocking${sealedElsewhere > 0 ? ` — ${fmt(sealedElsewhere)}u aboard is sealed to other contracts` : ''}.`,
+  };
+}
+
 
 function stationId(state) { return state && state.ui && state.ui.dockedStationId; }
 
@@ -383,6 +454,106 @@ export function marketLaunderLedgerHtml(state) {
       rowKV('Papers washed', `${fmt(units)} u · ${names.join(', ')}`) +
       rowKV(`Cut paid (${fmt((Number(receipt.cutFrac) || 0) * 100)}%)`, `${fmt(receipt.cut)} cr`, 'loss') +
     `</ul></section>`;
+}
+
+// ── Held-lot disposition (NXI-019 custody / NXI-031 condition) ──────────────────────
+// The sell detail is the freight's last handover before settlement. Two identical commodities
+// can sit in the hold under different custody: units bought or mined are simply yours, while
+// units collected out of a convoy's open freight custody are still somebody's manifest until
+// the record closes. The durable ledger the parent custody work persists
+// (state.encounterDirector.stats.openFreightCustodies) carries exactly the disposition facts —
+// whose freight it was, how many units are already in your hold, and whether the law accepted
+// a report. A closed custody leaves the ledger entirely, so the wording only ever claims
+// "custody open"; silence means settled, never "clean".
+
+const FREIGHT_CUSTODY_MAX_ROWS = 2;
+
+function openFreightCustodyRecords(state, commodityId) {
+  const dir = state && state.encounterDirector;
+  const list = dir && dir.stats && dir.stats.openFreightCustodies;
+  if (!Array.isArray(list)) return [];
+  const out = [];
+  for (const envelope of list) {
+    const record = envelope && (envelope.record || envelope);
+    if (!record || typeof record !== 'object' || record.terminal === true) continue;
+    if (record.commodityId !== commodityId) continue;
+    if (!(Math.floor(Number(record.playerCollectedQty) || 0) > 0)) continue;
+    out.push(record);
+  }
+  out.sort((a, b) => String(a.custodyId || '').localeCompare(String(b.custodyId || '')));
+  return out;
+}
+
+function freightOwnerWord(record) {
+  const faction = record && FACTION_LABELS[record.legalOwnerFactionId];
+  if (faction) return `${faction} freight`;
+  if (record && record.legalOwnerKind === 'civilian') return 'civilian freight';
+  return "another owner's freight";
+}
+
+/** Custody disposition rows for the selected held lot — pure read, sell-side only.
+ * `playerCollectedQty` is the record's own aggregate (a partial collect leaves its pod live,
+ * so per-pod sums undercount it); the pod lineage only tells whether a lawful carrier's units
+ * could be among them, which decides the wording — the legally worse claim wins. Units are
+ * fungible, so every count is bounded by what the hold actually carries. */
+export function heldFreightCustodyRows(state, commodityId, held) {
+  let aboard = Math.max(0, Math.floor(Number(held) || 0));
+  if (!commodityId || aboard <= 0) return [];
+  const rows = [];
+  for (const record of openFreightCustodyRecords(state, commodityId)) {
+    if (rows.length >= FREIGHT_CUSTODY_MAX_ROWS || aboard <= 0) break;
+    const units = Math.min(Math.max(0, Math.floor(Number(record.playerCollectedQty) || 0)), aboard);
+    if (!(units > 0)) continue;
+    aboard -= units;
+    const pods = Array.isArray(record.pods) ? record.pods : [];
+    const lawfulLineage = pods.some((pod) => pod && pod.custodySourceKind === 'lawful_carrier');
+    const raiderLineage = pods.some((pod) => pod && pod.custodySourceKind === 'hostile_raider');
+    const owner = freightOwnerWord(record);
+    if (record.lawTheftIncidentReceiptId) {
+      rows.push({ text: `up to ${units} u aboard is reported ${owner} — the take is on the warrant ledger` });
+    } else if (lawfulLineage) {
+      rows.push({ text: `up to ${units} u aboard is still ${owner} — custody open, no report logged` });
+    } else if (raiderLineage) {
+      rows.push({ text: `up to ${units} u aboard was recovered from raiders — yours to settle` });
+    } else {
+      rows.push({ text: `up to ${units} u aboard traces to an open freight claim` });
+    }
+  }
+  return rows;
+}
+
+// The held state is the truth the pod record cannot reach: cargo in the hold is intact by
+// definition (exposure lives on the world pod and dies with it; fragile cracks spill at the
+// knock). The label therefore names the class hazard — what a spilled pod does — and says the
+// riding lot is stable. A hazard state, never a fuse (NXI-031).
+const VOLATILE_HELD_WORDS = Object.freeze({
+  explosive: 'explosive class — stable while it rides; a knocked or burning pod cooks off',
+  corrosive: 'corrosive class — stable while it rides; a breached pod bites the hull',
+  superdense: 'superdense class — dead mass aboard; stable while it rides',
+  cryogenic: 'cryogenic class — stable while it rides; a hard slam flashes it off',
+});
+
+/** Condition rows for the selected held lot: hazard class and handling, never a countdown. */
+export function heldShipmentConditionRows(commodityId) {
+  const rows = [];
+  const klass = volatileClassOf(commodityId);
+  if (klass && VOLATILE_HELD_WORDS[klass.id]) rows.push({ text: VOLATILE_HELD_WORDS[klass.id] });
+  if (fragileCargoGlyphFor(commodityId)) {
+    rows.push({ text: 'fragile — hard impacts crack units' });
+  }
+  return rows;
+}
+
+/** The disposition sentence for the selected sell lot, or '' when nothing is aboard —
+ * a sold-out selection never keeps a hazard label for cargo it no longer carries. */
+export function sellDispositionText(state, commodityId, held) {
+  if (!(Math.floor(Number(held) || 0) > 0)) return '';
+  const parts = [];
+  for (const row of heldFreightCustodyRows(state, commodityId, held)) parts.push(row.text);
+  for (const row of heldShipmentConditionRows(commodityId)) parts.push(row.text);
+  if (!parts.length) return '';
+  const sentence = parts.join(' · ');
+  return `${sentence.charAt(0).toUpperCase()}${sentence.slice(1)}.`;
 }
 
 // unit prices — station BUY (what you pay) / SELL (what station pays you)
@@ -600,35 +771,6 @@ export function createMarketScreen(ctx) {
     return cid || null;
   }
 
-  function trackedCargoGuidance(state, cmdtyId, commodityName) {
-    const trackedId = state && state.ui && state.ui.trackedMissionId;
-    const active = (state && state.missions && state.missions.active) || [];
-    const mission = trackedId ? active.find((entry) => entry && entry.id === trackedId) : null;
-    const missionCmdty = mission && ((mission.cargo && mission.cargo.commodityId)
-      || (mission.params && mission.params.cmdtyId));
-    if (!mission || !missionCmdty || missionCmdty !== cmdtyId) {
-      return { state: 'missing', text: `Buy ${commodityName} here to load your job.` };
-    }
-    const requested = Math.max(1, Math.floor(Number(
-      (mission.cargo && mission.cargo.qty) || (mission.params && mission.params.qty) || 1,
-    ) || 1));
-    const held = heldQty(state, cmdtyId);
-    if (held >= requested) {
-      const destination = mission.destinationName || mission.destName
-        || (mission.params && (mission.params.destinationName || mission.params.destName))
-        || mission.destStationId || mission.destSectorId || 'the marked destination';
-      return {
-        state: 'aboard',
-        text: `Cargo is aboard — undock and follow nav to ${destination}.`,
-      };
-    }
-    const remaining = requested - held;
-    return {
-      state: 'missing',
-      text: `Load ${remaining}u more ${commodityName} before undocking.`,
-    };
-  }
-
   function tradedList(state) {
     const table = marketTable(state);
     const ids = table ? Object.keys(table) : COMMODITIES.map((c) => c.id);
@@ -663,11 +805,14 @@ export function createMarketScreen(ctx) {
       def: row.def,
       route,
     });
-    return presentInspectorRows(view).filter((intelRow) => {
+    const rows = presentInspectorRows(view).filter((intelRow) => {
       if (intelRow.id === 'age' || intelRow.id === 'conf' || intelRow.id === 'kvl') return true;
       if (intelRow.id === 'cargo') return mode === 'buy' && qty >= 1;
       return (intelRow.id === 'margin' || intelRow.id === 'route') && !!route;
     });
+    const starved = starvedNeedLine(state, sid, row.id);
+    if (starved) rows.push({ id: 'starved', label: 'NEED', value: starved });
+    return rows;
   }
 
   function selectedTradeQuote(state, row, quantity = qty) {
@@ -694,8 +839,7 @@ export function createMarketScreen(ctx) {
   }
 
   function tradeQuantityLimit(state, row) {
-    if (mode === 'sell' && row && isUnsellableCargo(state, row.id)) return 0;
-    if (mode === 'sell') return sellableCargoQty(state, row.id);
+    if (mode === 'sell' && row) return sellableCargoQuantity(state, row.id);
     const free = holdFree(state);
     const volume = Number(row.def.volPerU) > 0 ? Number(row.def.volPerU) : 1;
     const stock = Math.max(0, Math.floor(Number(row.entry && row.entry.stock) || 0) - 1);
@@ -707,9 +851,13 @@ export function createMarketScreen(ctx) {
   // arc must describe no sale of it, including after Fewer or More. NXB-025:
   // the pin binds the sealed count — units free of the reservation still dial.
   function pinSealedSellQuantity(state, id = selectedId) {
-    if (mode === 'sell' && id && reservedCargoQty(state, id) > 0) {
-      qty = Math.min(qty, sellableCargoQty(state, id));
+    if (mode === 'sell' && id && reservedCargoQuantity(state, id) > 0) {
+      qty = Math.min(qty, sellableCargoQuantity(state, id));
     }
+  }
+
+  function sellOpeningQuantity(state, id) {
+    return sellableCargoQuantity(state, id);
   }
 
   function openTradeMode(nextMode, state, options = {}) {
@@ -725,7 +873,7 @@ export function createMarketScreen(ctx) {
     if (mode === 'sell' && rows.length) {
       const held = rows.find((r) => heldQty(state, r.id) > 0) || rows[0];
       selectedId = held.id;
-      qty = heldQty(state, held.id);
+      qty = sellOpeningQuantity(state, held.id);
       pinSealedSellQuantity(state, held.id);
     } else {
       qty = 1;
@@ -818,7 +966,7 @@ export function createMarketScreen(ctx) {
     }
     dressRows();
     if (!changed) return;
-    qty = mode === 'sell' ? heldQty(ctx.state || {}, id) : 1;
+    qty = mode === 'sell' ? sellOpeningQuantity(ctx.state || {}, id) : 1;
     pinSealedSellQuantity(ctx.state || {}, id);
     const state = ctx.state || {};
     renderStage(state); renderConsole(state);
@@ -1023,7 +1171,10 @@ export function createMarketScreen(ctx) {
     stageEl.setAttribute('aria-labelledby', `sx-market-tab-${r.id}`);
     stageEl.setAttribute('aria-label', def.name);
     stageEl.setAttribute('aria-describedby', 'sx-market-driver-summary');
-    quoteEl.innerHTML = marketQuoteHtml({ id: r.id, name: def.name, category: def.category, legal,
+    const dispositionText = mode === 'sell' ? sellDispositionText(state, r.id, heldQty(state, r.id)) : '';
+    quoteEl.innerHTML = (dispositionText
+      ? `<p class="k-sentence sx-mkt-disposition" data-disposition="sell">${escapeHtml(dispositionText)}</p>`
+      : '') + marketQuoteHtml({ id: r.id, name: def.name, category: def.category, legal,
       titleHtml: entitySpanHtml('commodity:' + r.id, escapeHtml(def.name)), mode, buy, sell, avg,
       demandWord: demandWord(demand), driversSummary: drivers.accessibleSummary, drivers: drivers.primary, hist, trackedGuidance,
       producedBy: def.producedBy, consumedBy: def.consumedBy, stationType: resolveDockStationType(state),
@@ -1377,8 +1528,11 @@ export function createMarketScreen(ctx) {
         intelRow.tone === 'good' ? 'gain' : (intelRow.tone === 'danger' || intelRow.tone === 'warn' ? 'loss' : ''))).join('');
     // Priority matters: with no quote yet (qty 0, or nothing affordable) creditReady is false by
     // construction, and checking it first blamed credits on first paint of a stockless market.
-    const sealedHold = mode === 'sell' && isUnsellableCargo(state, r.id);
+    const freeSell = mode === 'sell' ? sellableCargoQuantity(state, r.id) : 0;
+    const sealedUnits = mode === 'sell' ? reservedCargoQuantity(state, r.id) : 0;
+    const sealedHold = mode === 'sell' && isUnsellableCargo(state, r.id) && freeSell <= 0;
     const note = sealedHold ? 'Sealed contract cargo cannot be sold'
+      : sealedUnits > 0 ? `${sealedUnits} u sealed on contract — sell limit is ${freeSell} u`
       : maxQty < 1 ? (mode === 'buy' ? 'Not enough credits, stock, or hold space.' : 'Nothing to sell here.')
       : qty < 1 ? ''
       : qty > maxQty ? 'This quantity exceeds available stock or hold space.'
@@ -1434,13 +1588,20 @@ export function createMarketScreen(ctx) {
   function renderRoutes(state) {
     let trades = [];
     try { trades = computeBestTrades(state, stationId(state)) || []; } catch (_) { trades = []; }
-    const rows = trades.slice(0, 3).map((t) => {
+    const rows = trades.slice(0, 3).map((t, index) => {
       const dest = STATION_NAME.get(t.destStation) || t.destStation;
       const card = formatRouteCard(t);
+      let comparison = '';
+      if (index === 0) {
+        try {
+          const freight = compareDockedFreight(state, stationId(state), t);
+          comparison = freight ? ` · ${formatFreightComparison(freight)}` : '';
+        } catch (_) { comparison = ''; }
+      }
       return (
         `<li class="k-row k-row--static sx-route-row">` +
           `<span class="sx-route-row__body"><span class="k-row__name sx-route-row__t">${entitySpanHtml('commodity:' + t.cmdtyId, escapeHtml(t.cmdtyName || t.cmdtyId))} → ${entitySpanHtml('station:' + t.destStation, escapeHtml(dest))}</span>` +
-            `<span class="k-row__sub">${escapeHtml(card.sub)}</span></span>` +
+            `<span class="k-row__sub">${escapeHtml(card.sub + comparison)}</span></span>` +
           `<span class="k-row__num sx-route-row__s${t.loadProfit > 0 ? ' k-good' : ''}">${escapeHtml(card.profitText)}</span>` +
           `<button type="button" ${stationControlAttrs('set-course')} class="k-word k-word--fine sx-lead__go" data-course="${escapeHtml(t.cmdtyId)}" data-dest="${escapeHtml(t.destStation)}">${stationControlLabel('set-course')}</button>` +
         `</li>`
@@ -1580,11 +1741,8 @@ export function createMarketScreen(ctx) {
       let tradeQty = Math.max(0, Math.floor(Number(qty) || 0));
       if (tradeQty <= 0) return;
       const tradeState = ctx.state || {};
-      if (mode === 'sell') {
-        const free = sellableCargoQty(tradeState, selectedId);
-        if (free <= 0) return;
-        tradeQty = Math.min(tradeQty, free);
-      }
+      if (mode === 'sell' && reservedCargoQuantity(tradeState, selectedId) > 0
+        && tradeQty > sellableCargoQuantity(tradeState, selectedId)) return;
       const quotedRow = tradedList(tradeState).find((row) => row.id === selectedId) || null;
       const freshQuote = quotedRow ? selectedTradeQuote(tradeState, quotedRow, tradeQty) : null;
       const decision = marketGoDecision({

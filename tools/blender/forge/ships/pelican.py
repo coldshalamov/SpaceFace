@@ -9,8 +9,14 @@ import math
 import os
 import sys
 
+import bpy
+from mathutils import Vector
+
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 import forge as F  # noqa: E402
+import forge_export as E  # noqa: E402
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'animations'))
+import ANI_38  # noqa: E402
 
 SHIP_ID = 'pelican'
 COLORS = {
@@ -21,6 +27,67 @@ COLORS = {
     'dark': '#121417',
     'glow_cyan.bill': '#ff7a1e',  # the bill's rim, lit in the identity orange
 }
+
+
+def skin_z(x, y, parts, strict=True):
+    """Top-down ray onto the named parts: the skin height under (x, y). A miss is a design error."""
+    best = None
+    for n in parts:
+        o = bpy.data.objects.get(n)
+        if o is None:
+            continue
+        hit, loc, _, _ = o.ray_cast(Vector((x, y, 60.0)), Vector((0.0, 0.0, -1.0)))
+        if hit and (best is None or loc.z > best):
+            best = loc.z
+    if best is None and strict:
+        raise ValueError(f'detail point ({x:.2f}, {y:.2f}) is off the skin')
+    return best
+
+
+def drape(pts, parts, step=0.2, proud=0.02, h=0.06, closed=False):
+    """A plan-view polyline laid on the skin as beam segments: resampled every `step` m, tops `proud`
+    above the surface, bodies buried (so nothing floats and nothing z-fights)."""
+    pts = list(pts) + ([pts[0]] if closed else [])
+    path = []
+    for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
+        n = max(1, round(math.hypot(x1 - x0, y1 - y0) / step))
+        for i in range(n):
+            x, y = x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n
+            path.append((x, y, skin_z(x, y, parts) + proud - h / 2))
+    x, y = pts[-1]
+    path.append((x, y, skin_z(x, y, parts) + proud - h / 2))
+    return list(zip(path, path[1:]))
+
+
+def rect(cx, cy, sx, sy, ang=0.0):
+    """Closed plan-view rectangle (corner list), yawed `ang` rad about its centre."""
+    c, sn = math.cos(ang), math.sin(ang)
+    return [(cx + c * dx - sn * dy, cy + sn * dx + c * dy)
+            for dx, dy in ((-sx / 2, -sy / 2), (sx / 2, -sy / 2), (sx / 2, sy / 2), (-sx / 2, sy / 2))]
+
+
+def studs(pts, parts, size=0.08, proud=0.045):
+    """Fastener heads sitting on the skin: (centre, size) rows for F.boxes."""
+    return [((x, y, skin_z(x, y, parts) + proud - size / 2), (size, size, size)) for x, y in pts]
+
+
+def dome_edge(x, dome, hull, y_max=1.4, step=0.03):
+    """Lateral station where `dome` sinks below `hull`: the line a blister rises out of the skin."""
+    y = 0.0
+    while y < y_max:
+        a = skin_z(x, y, [dome], strict=False)
+        b = skin_z(x, y, [hull], strict=False)
+        if a is None or (b is not None and a <= b + 0.004):
+            return y
+        y += step
+    return y_max
+
+
+def glass_w(x, x0, x1, w, peak):
+    """Half-width of a `canopy()` loft at x."""
+    t = (x - x0) / (x1 - x0)
+    k = math.sin(0.5 * math.pi * t / peak) if t <= peak else math.cos(0.5 * math.pi * (t - peak) / (1 - peak))
+    return w * math.sqrt(max(k, 0.02))
 
 
 def jaw_y(x):
@@ -165,15 +232,60 @@ def build():
     F.light(s, 'NavStarboard', (-5.2, -PY - 0.72, 0.0), 'glow_green')
     F.light(s, 'Beacon', (-3.9, 0.0, 1.62), 'glow_amber', size=0.13)
 
+    # --- close-zoom detail layer (LOD0 only; existing finishes, laid on the skin so nothing floats) ---
+    bpy.context.view_layer.update()
+    s.detail = 2
+    # Cockpit: a dark coaming where the canopy rises out of the roof, gunmetal bows and a centre rib on the glass.
+    xs = [-0.45 + 0.15 * i for i in range(12)]
+    ring = [(x, dome_edge(x, 'Canopy', 'Body')) for x in xs]
+    ring = [(x, y) for x, y in ring if y > 0.12]
+    loop = [(x, y) for x, y in ring] + [(x, -y) for x, y in reversed(ring)]
+    F.beams(s, 'Coaming', drape(loop, ['Body', 'Canopy'], step=0.15, proud=0.03, h=0.08, closed=True), 0.12, 'dark',
+            h=0.08)
+    bows = []
+    for bx in (-0.1, 0.4, 0.85):
+        gw = glass_w(bx, -0.6, 1.25, 1.15, 0.55) * 0.82
+        bows += drape([(bx, -gw + 2 * gw * i / 8) for i in range(9)], ['Canopy'], step=0.15, proud=0.03, h=0.07)
+    bows += drape([(-0.4, 0.0), (1.05, 0.0)], ['Canopy'], step=0.15, proud=0.03, h=0.07)
+    F.beams(s, 'CanopyFrame', bows, 0.08, 'gunmetal', h=0.07)
+    # Roof hatch: a steel rim round the raised panel with bolts, two hinge blocks aft and a flush handle forward.
+    gasket = drape(rect(-1.7, 0.0, 2.4, 1.8), ['Body'], step=0.25, proud=0.03, h=0.08, closed=True)
+    F.beams(s, 'HatchRim', gasket, 0.12, 'gunmetal', h=0.08)
+    bolts = studs([(-1.7 + dx, dy) for dx in (-1.0, 0.0, 1.0) for dy in (-0.74, 0.74)], ['Body'], size=0.12,
+                  proud=0.07)
+    bolts += studs([(-2.55, 0.25), (-2.55, -0.25)], ['Body'], size=0.2, proud=0.09)
+    bolts += studs([(-0.62, 0.0)], ['Body'], size=0.2, proud=0.09)
+    # Strap bolts down the middle of the orange body band and each pod band.
+    bolts += studs([(-3.6, yy) for yy in (-1.5, -1.05, -0.6, 0.6, 1.05, 1.5)], ['Body'], size=0.1, proud=0.05)
+    bolts += studs([(-4.1, 2.35 + dy) for dy in (-0.5, -0.25, 0.0, 0.25, 0.5)], ['Pod'], size=0.1, proud=0.05)
+    bolts += studs([(-4.1, -2.35 + dy) for dy in (-0.5, -0.25, 0.0, 0.25, 0.5)], ['Pod_M'], size=0.1, proud=0.05)
+    # Bolt row along the flanks of the hood.
+    bolts += studs([(1.15 + 0.45 * i, yy) for i in range(5) for yy in (-0.98, 0.98)], ['Mandible'], size=0.1,
+                   proud=0.05)
+    # Ore sieve across the mouth: gunmetal bars on the dark floor, floor-edge rivet rows and plate seams.
+    bars = []
+    for y in (-0.4, -0.2, 0.0, 0.2, 0.4):
+        bars.append(((5.8, y, -0.61), (1.5, 0.1, 0.08)))
+    floor_seams = [((x, 0.0, -0.62), (0.07, 1.7, 0.05)) for x in (5.05, 6.65)]
+    rivets = studs([(2.1 + 0.55 * i, yy) for i in range(9) for yy in (-0.84, 0.84)], ['JawFloor'], size=0.1,
+                   proud=0.05)
+    F.boxes(s, 'SieveBars', bars + rivets, material='gunmetal')
+    F.boxes(s, 'FloorSeams', floor_seams, material='dark')
+    F.boxes(s, 'HatchBolts', bolts, material='gunmetal')
+    s.detail = 0
+
     # --- damage hooks: mast sheds, dome flickers, port hip plate displaces ----------------------
     _dmg = {o.name: o for o in s.objects}
     s.hook_part('HOOK_SECONDARY_MAST', _dmg['Mast_Mast'], _dmg['Mast_Foot'], _dmg['Mast_Tip'])
     s.hook_part('HOOK_SENSOR_DOME', _dmg['Dome'], _dmg['Dome_Lens'])
     s.hook_part('HOOK_ARMOR_HIP', _dmg['Hip'])
+    s.ani38_bank = ANI_38.build(s, list(s.objects), source_asset_id=E.fleet_spec(SHIP_ID)['asset_id'])
     return s
 
 
 if __name__ == '__main__':
-    import forge_export as E
     ship = build().finish()
-    E.export_ship(ship, E.fleet_spec(SHIP_ID), preview='--live' not in sys.argv)
+    live = '--live' in sys.argv
+    written = E.export_ship(ship, E.fleet_spec(SHIP_ID), preview=not live)
+    if live:
+        ANI_38.bake_ship_banks(ship, written, bank_key=E.fleet_spec(SHIP_ID)['file'].replace('_', '-'))

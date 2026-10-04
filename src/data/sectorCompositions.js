@@ -178,6 +178,160 @@ export const SECTOR_COMPOSITIONS = freeze({
       f_ash_2: { motif: 'fan', angleDeg: 26, thickness: 0.21, aperture: [0.28, 0.17] },
     },
   },
+  sector_nyx_march: {
+    ...DEFAULTS,
+    name: 'The Unlogged Gate',
+    focus: 'station_nyx_march',
+    intent: 'Unequal islands screen the fence. Freight arrives without a lane mark.',
+    motif: 'islands',
+    dressingAngleDeg: 18,
+    fields: {
+      f_nyx_1: { motif: 'islands', angleDeg: 18, thickness: 0.19, aperture: [0.28, 0.16] },
+    },
+  },
+  sector_hyperion_cut: {
+    ...DEFAULTS,
+    name: 'The Open Cut',
+    focus: 'station_hyperion_cut',
+    intent: 'Strata face the refinery. The working throat stays empty so the cut reads as a job.',
+    motif: 'strata',
+    dressingAngleDeg: 40,
+    fields: {
+      f_hyperion_1: { motif: 'strata', axisDeg: 40, thickness: 0.16, aperture: [0.34, 0.17] },
+    },
+  },
+  sector_kepler_scar: {
+    ...DEFAULTS,
+    name: 'The Capsized Wake',
+    focus: 'station_kepler_scar',
+    intent: 'A broken fan points at the bazaar under the scar. The opening is a choice, not a funnel.',
+    motif: 'fan',
+    dressingAngleDeg: -70,
+    fields: {
+      f_kepler_1: { motif: 'fan', axisDeg: -70, thickness: 0.18, aperture: [0.30, 0.16] },
+    },
+  },
+  sector_orcus_shadow: {
+    ...DEFAULTS,
+    name: 'The Dim Plinth',
+    focus: 'station_orcus_shadow',
+    intent: 'A narrow crescent keeps one lee. The rest of the shadow stays unread.',
+    motif: 'crescent',
+    dressingAngleDeg: 96,
+    fields: {
+      f_orcus_1: { motif: 'crescent', openingDeg: 70, thickness: 0.17, aperture: [0.32, 0.20] },
+    },
+  },
+  sector_rhea_cinder: {
+    ...DEFAULTS,
+    name: 'The Scorched Throat',
+    focus: 'station_rhea_cinder',
+    intent: 'Short strata down the claim approach. Heat sits in the rock, not in a second drag term.',
+    motif: 'strata',
+    dressingAngleDeg: 12,
+    fields: {
+      f_rhea_1: { motif: 'strata', axisDeg: 12, thickness: 0.15, aperture: [0.36, 0.16] },
+    },
+  },
+  sector_haumea_rift: {
+    ...DEFAULTS,
+    name: 'The Ice Fissure',
+    focus: 'station_haumea_rift',
+    intent: 'A rift motif splits the ice. The observatory sits in the gap, not under the mass.',
+    motif: 'rift',
+    dressingAngleDeg: -16,
+    fields: {
+      f_haumea_1: { motif: 'rift', angleDeg: -16, thickness: 0.14, aperture: [0.38, 0.22] },
+    },
+  },
+  sector_eris_margin: {
+    ...DEFAULTS,
+    name: 'The Unmanifested Bank',
+    focus: 'station_eris_margin',
+    intent: 'Two unequal islands hide the fence from the Ashfall approach.',
+    motif: 'islands',
+    dressingAngleDeg: 150,
+    fields: {
+      f_eris_1: { motif: 'islands', angleDeg: 22, thickness: 0.2, aperture: [0.26, 0.16] },
+    },
+  },
+  sector_phoebe_echo: {
+    ...DEFAULTS,
+    name: 'The Broken Song',
+    focus: 'station_phoebe_echo',
+    intent: 'An incomplete caustic around the shrine. The echo is a gap, not a ring.',
+    motif: 'rift',
+    dressingAngleDeg: 64,
+    fields: {
+      f_phoebe_1: { motif: 'rift', angleDeg: 28, thickness: 0.13, aperture: [0.4, 0.22] },
+    },
+  },
+  sector_nereid_shoal: {
+    ...DEFAULTS,
+    name: 'The Ice Cut',
+    focus: 'station_nereid',
+    intent: 'A braid of ice and common rock leaves a channel to the waystation scale.',
+    motif: 'braid',
+    dressingAngleDeg: -8,
+    fields: {
+      f_nereid_1: { motif: 'braid', thickness: 0.14, aperture: [0.35, 0.16] },
+    },
+  },
+  sector_proteus_well: {
+    ...DEFAULTS,
+    name: 'The Well Mouth',
+    focus: 'station_proteus',
+    intent: 'A crescent lee at the well. The funnel stays off the docking face.',
+    motif: 'crescent',
+    dressingAngleDeg: 128,
+    fields: {
+      f_proteus_1: { motif: 'crescent', openingDeg: 96, thickness: 0.18, aperture: [0.3, 0.2] },
+    },
+  },
+  sector_triton_wake: {
+    ...DEFAULTS,
+    name: 'The Wake Line',
+    focus: 'station_triton',
+    intent: 'Long strata down the wake. Sensors are dim; the arrangement does not add drag.',
+    motif: 'strata',
+    dressingAngleDeg: -48,
+    fields: {
+      f_triton_1: { motif: 'strata', axisDeg: -48, thickness: 0.14, aperture: [0.37, 0.18] },
+    },
+  },
+  sector_eunomia_gulf: {
+    ...DEFAULTS,
+    name: 'The License Bank',
+    focus: 'station_eunomia',
+    intent: 'Islands of wreck plate around the fence. Salvage has cover without a wall.',
+    motif: 'islands',
+    dressingAngleDeg: 44,
+    fields: {
+      f_eunomia_1: { motif: 'islands', angleDeg: 36, thickness: 0.19, aperture: [0.27, 0.16] },
+    },
+  },
+  sector_sedna_dark: {
+    ...DEFAULTS,
+    name: 'The Dark Post',
+    focus: 'station_sedna',
+    intent: 'A thin crescent and a wide dark. One lee, then nothing.',
+    motif: 'crescent',
+    dressingAngleDeg: 160,
+    fields: {
+      f_sedna_1: { motif: 'crescent', openingDeg: 60, thickness: 0.16, aperture: [0.33, 0.2] },
+    },
+  },
+  sector_dione_lane: {
+    ...DEFAULTS,
+    name: 'The Cleared Lane',
+    focus: 'station_dione',
+    intent: 'A braid wide enough for a convoy. Customs sits on the bank, not in the throat.',
+    motif: 'braid',
+    dressingAngleDeg: 6,
+    fields: {
+      f_dione_1: { motif: 'braid', thickness: 0.12, aperture: [0.4, 0.15] },
+    },
+  },
 });
 
 /** Unknown/untuned sectors are deliberately identity transforms, not copy-pasted art direction. */

@@ -21,10 +21,12 @@ try {
   server = await startFreshServer();
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });
-  const issues = collectPageIssues(page);
+  const issues = collectPageIssues(page, { playerStoreMounted: false });
 
   await page.goto(withDebugFlight(server.baseUrl), { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.eventTrace, null, { timeout: 15000 });
+  // Boot liveness on a contended runner: cooperative startup yields, so the SF surface can take
+  // tens of seconds to appear. AUTHORED_START_TIMEOUT_MS budgets the wait without asserting boot speed.
+  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.eventTrace, null, { timeout: AUTHORED_START_TIMEOUT_MS });
   await page.evaluate(() => {
     window.SF.eventTrace.clear();
     window.SF.bus.emit('game:new', { name: '47-A Live Cold Open Check', seed: 47 });
@@ -44,7 +46,7 @@ try {
   await page.waitForFunction(
     () => window.SF.eventTrace.snapshot().some((record) => record.type === 'presentation:cueApplied'),
     null,
-    { timeout: 20000 },
+    { timeout: AUTHORED_START_TIMEOUT_MS },
   );
 
   const report = await page.evaluate(({ scenarioId, scenarioPath }) => {
@@ -187,10 +189,20 @@ try {
       const splash = document.querySelector('.sf-firstrun-splash');
       if (splash) splash.remove();
     });
+    // The opening re-asserts its tracked objective (84420c421 pins an entry-tier writ for fresh
+    // operators, and the story nav refresh reinstalls the waypoint on onboarding finish), so a
+    // one-time field clear races the installer. Let the opening settle, then re-clear through
+    // the same fields before waiting out the held-line drip.
+    await page.waitForTimeout(3000);
+    await page.evaluate(() => {
+      const state = window.SF.state;
+      if (state.nav) state.nav.waypoint = null;
+      if (state.ui) state.ui.trackedMissionId = null;
+    });
     await page.waitForFunction(
       () => /Kestrel, that pulse is the job/i.test(document.body.textContent || ''),
       null,
-      { timeout: 60000 },
+      { timeout: AUTHORED_START_TIMEOUT_MS },
     );
   }
   const kesslerCommsEventuallyVisible = await page.evaluate(
@@ -251,7 +263,7 @@ function spawnProbeServer(port) {
     cwd: ROOT,
     // server.js mounts the real save drawer by default; a browser test server must boot
     // with the store explicitly unmounted so the check can never touch real saves.
-    env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '' },
+    env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '', SPACEFACE_USER_CONTENT_DIR: '' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let output = '';

@@ -36,6 +36,8 @@
 
 import { SPAWN_BUDGET_DEFAULT_MAX, SPAWN_BUDGET_HARD_MAX } from './survivalActs.js';
 import { ENEMY_TYPES } from './enemies.js';
+import { CAPITAL_BOSS_ENCOUNTERS } from './encounters/capital-boss.js';
+import { hunterTrickById } from './hunterTricks.js';
 
 export const SWARM_RULESET = 'swarm';
 export const SWARM_SCHEMA_VERSION = 2;
@@ -285,8 +287,10 @@ const GATES = Object.freeze(['nw', 'ne', 'se', 'sw', 'front', 'rear', 'diagonal_
  * `weight` is a spawn share once unlocked. `role` is the plan role the body carries, which is what
  * the results screen and the arena's dominant-gate read use.
  *
- * patrol_lawman, customs_cutter and mule_trader are deliberately absent for the same reason the arc
- * omits them: the first two spawn INERT without a wanted level, and the third is illegal to kill.
+ * FB-023: patrol_lawman and customs_cutter join the clock — the Crucible has no WANTED axis,
+ * so waveMaterialization restamps a lawful hull as an arena combatant (arena contract,
+ * weapons-free) instead of letting it spawn inert behind `lawful_wanted_only`. mule_trader
+ * stays absent: it is a fleeing_trader (alwaysFlee, defensiveOnly) marked illegalToKill.
  */
 export const SWARM_ROSTER = Object.freeze([
   { enemyId: 'wasp_swarmer', role: 'mass', fromWave: 1, weight: 10, name: 'Wasp Swarmer' },
@@ -298,9 +302,19 @@ export const SWARM_ROSTER = Object.freeze([
   { enemyId: 'detonator_dart', role: 'pressure', fromWave: 5, weight: 4, name: 'Detonator Dart' },
   { enemyId: 'mine_layer_jackal', role: 'disruptor', fromWave: 6, weight: 2, name: 'Mine-Layer Jackal' },
   { enemyId: 'lancer_sniper', role: 'reach', fromWave: 8, weight: 3, name: 'Lancer Sniper' },
+  // The warden is the roster's bodyguard: it picks a packmate and screens it, so the pack
+  // stops reading as disposable chaff exactly when the rooms start throwing it.
+  { enemyId: 'warden_escort', role: 'support', fromWave: 9, weight: 2, name: 'Warden Escort' },
   { enemyId: 'corsair_raider', role: 'elite', fromWave: 10, weight: 3, name: 'Corsair Raider' },
+  // The cutter's interdiction kit (EMP on occasion, plated prow) is a specialist problem,
+  // not fodder — it arrives as a disruptor, after the room has taught dodging as a verb.
+  // (Wave 13, not 12: the ghost already owns that debut — one new silhouette at a time.)
+  { enemyId: 'customs_cutter', role: 'disruptor', fromWave: 13, weight: 2, name: 'Customs Cutter' },
   { enemyId: 'quiet_ghost', role: 'reach', fromWave: 12, weight: 2, name: 'Quiet Ghost' },
   { enemyId: 'pd_screen_escort', role: 'support', fromWave: 14, weight: 2, name: 'Point-Defense Screen' },
+  // The lawman is the roster's duelist: plated enough to shrug the throw answer, committed
+  // enough to keep pressing while the rest of the pack cycles.
+  { enemyId: 'patrol_lawman', role: 'elite', fromWave: 15, weight: 2, name: 'Patrol Lawman' },
   { enemyId: 'tether_control_raider', role: 'control', fromWave: 16, weight: 2, name: 'Tether-Control Raider' },
   { enemyId: 'bruiser_brawler', role: 'anchor', fromWave: 18, weight: 2, name: 'Bruiser Brawler' },
   { enemyId: 'field_anchor_controller', role: 'anchor', fromWave: 22, weight: 2, name: 'Anchor Controller' },
@@ -327,15 +341,23 @@ export function swarmDoctrineStamp(enemyId, { swarm = false, champion = false } 
  * It was the same Dreadnought, forever. Wave 10 and wave 90 were the same fight with bigger
  * numbers, which is the exact failure the authored arc was careful to avoid inside its own ten.
  *
- * There is only one hull in the game built as a boss, so the other three entries are not weaker
- * bosses — they are a different SHAPE of problem made from archetypes the roster already has. A
- * wing of three raiders is a target-priority fight. The Anvil is two brawlers you cannot shake
- * behind a screen that eats your missiles. The Choir is three snipers you have to close on while
- * something holds you in place. Each one is beaten by a different half of your build.
+ * FB-024: two rows are not compositions at all — they are AUTHORED CAPITAL SCORES fielded as
+ * one hull. `enemyId`+`scoreId` (instead of `packages`) materialize a single capital elite and
+ * hand the fight to `capitalBossEncounters`, so wave twenty is the Foreman's committed charge
+ * and wave thirty is the Regent's wider crown — the same bosses the scored arc teaches, arrived
+ * at by the roster clock. They recur inside the rotation, so the comp room stays varied past
+ * wave forty.
  *
- * ORDER MATTERS: the rotation is walked in step with the roster clock, so every archetype a boss
- * wave fields is one the player has already met as ordinary chaff. Nothing here introduces a
- * silhouette for the first time as a champion.
+ * A compositional row may also carry `trickId` (FB-027): each champion body materialized for
+ * it is stamped as a bounty hunter of the crucible's own contract, so the champion telegraphs
+ * and counter-windows through the exact verb path a bounty hunter uses. Capital rows carry no
+ * trick — the score's own beats already telegraph and expose counter windows, and a hunter
+ * verb that re-aimed or moved the hull would lie against the committed shot.
+ *
+ * ORDER MATTERS: the compositional rows are walked in step with the roster clock, so every
+ * archetype they field is one the player has already met as ordinary chaff — nothing debuts a
+ * silhouette as a champion. The two capital rows are the deliberate exception: the Foreman and
+ * the Regent are the scored arc's named set-pieces, and the boss wave IS their introduction.
  */
 export const SWARM_BOSS_ROTATION = Object.freeze([
   {
@@ -343,13 +365,31 @@ export const SWARM_BOSS_ROTATION = Object.freeze([
     label: "Dreadnought 'Iron Maw'",
     line: 'A capital hull is on the field. Throw the pack into the flank berm.',
     room: 'flank_berm',
+    trickId: 'pd-curtain',
     packages: [{ enemyId: 'dreadnought_boss', count: 1, role: 'elite' }],
+  },
+  {
+    id: 'mirrorjaw_foreman',
+    label: 'Mirrorjaw Foreman',
+    line: 'The Foreman commits on a bearing. Cross the pass — the prow sheds head-on fire.',
+    room: 'mirror_lane',
+    enemyId: 'mirrorjaw_foreman',
+    scoreId: 'capital_boss_foreman',
+  },
+  {
+    id: 'forge_regent',
+    label: 'Forge Regent',
+    line: 'The furnace wears a crown. Cross the pass; the whole front half is plate.',
+    room: 'crown_furnace',
+    enemyId: 'forge_regent',
+    scoreId: 'capital_boss_regent',
   },
   {
     id: 'corsair_wing',
     label: 'Corsair Wing',
     line: 'Three raider aces, flying as one. One bank catches the wing.',
     room: 'wing_bank',
+    trickId: 'phase-jammer',
     packages: [{ enemyId: 'corsair_raider', count: 3, role: 'elite', sameGate: true }],
   },
   {
@@ -357,6 +397,7 @@ export const SWARM_BOSS_ROTATION = Object.freeze([
     label: 'The Anvil',
     line: 'Shove the screen. The brawlers are what it was covering.',
     room: 'screen_wall',
+    trickId: 'shield-turtle',
     packages: [
       { enemyId: 'pd_screen_escort', count: 2, role: 'support', gateBias: 'near' },
       { enemyId: 'bruiser_brawler', count: 2, role: 'anchor', gateBias: 'far', distance: 240 },
@@ -367,18 +408,53 @@ export const SWARM_BOSS_ROTATION = Object.freeze([
     label: 'The Quiet Choir',
     line: 'Close while the anchor holds you. The ghosts do not chase.',
     room: 'hold_close',
+    trickId: 'sensor-ghost',
     packages: [
       { enemyId: 'quiet_ghost', count: 3, role: 'reach', gateBias: 'far', distance: 280 },
       { enemyId: 'field_anchor_controller', count: 1, role: 'anchor', gateBias: 'near' },
     ],
   },
+  // SWARM-07 B3 — the Brood champions, deep in the rotation. Same `enemyId`+`scoreId`
+  // contract as the Foreman/Regent rows: one real hull materialized through the wave's
+  // ordinary package path, then handed to its authored score. The Queen's wave fields the
+  // flood itself (swarmBroodPlan reads her id and fields nothing but mites); the Tendril's
+  // body is the brood engine's segment chain behind the head.
+  {
+    id: 'brood_queen',
+    label: 'Brood Queen',
+    line: 'The broodmother floods the room. Break her sacs — her own brood is ammunition.',
+    room: 'brood_nest',
+    enemyId: 'brood_queen',
+    scoreId: 'capital_boss_brood_queen',
+  },
+  {
+    id: 'brood_tendril',
+    label: 'The Tendril',
+    line: 'A worm works the field. It cannot turn mid-weave — put a rock on the line.',
+    room: 'coil_field',
+    enemyId: 'brood_tendril',
+    scoreId: 'capital_boss_tendril',
+  },
 ]);
+
+/** The one-hull package a capital champion row implies when it carries no explicit packages. */
+export function bossPackagesFor(boss) {
+  if (boss && Array.isArray(boss.packages)) return boss.packages;
+  if (boss && typeof boss.enemyId === 'string') {
+    return [{ enemyId: boss.enemyId, count: 1, role: 'elite' }];
+  }
+  return [];
+}
 
 const BOSS_ROOM_NOTES = Object.freeze({
   flank_berm: 'a flank berm — throw the swarm into it',
+  mirror_lane: 'a mirrored lane — cross the committed pass, work the stern',
+  crown_furnace: 'the furnace wears a crown — the middle shoves, the rim is plate to bank off',
   wing_bank: 'bank stone on the wing\'s bearing',
   screen_wall: 'a screen wall between you and the brawlers',
   hold_close: 'the room holds you; close on the ghosts',
+  brood_nest: 'the nest pulls toward the sacs — cover to break the flood, rocks to throw back',
+  coil_field: 'the weave field — a slow cross-breeze, and rocks to feed the committed pass',
 });
 
 export function bossRoomNote(room) {
@@ -533,7 +609,10 @@ export function swarmEligibleEnemyIds(wave) {
   for (const entry of swarmRosterFor(w)) ids.add(entry.enemyId);
   const boss = swarmBossFor(w);
   if (boss) {
-    for (const pkg of boss.packages || []) {
+    // bossPackagesFor, not boss.packages: the capital champion rows carry `enemyId` and no
+    // `packages` key, so reading the field directly made the Foreman/Regent (and the new Brood
+    // champions) invisible to the launch/dwell prewarm — hulls the wave does field, missed.
+    for (const pkg of bossPackagesFor(boss)) {
       if (pkg && pkg.enemyId) ids.add(pkg.enemyId);
     }
   }
@@ -559,9 +638,17 @@ export function swarmCatalogIssues() {
     check(`swarmRoster[${i}].enemyId`, entry && entry.enemyId);
   });
   SWARM_BOSS_ROTATION.forEach((boss, i) => {
-    (boss.packages || []).forEach((pkg, j) => {
+    bossPackagesFor(boss).forEach((pkg, j) => {
       check(`bossRotation[${i}].packages[${j}].enemyId`, pkg && pkg.enemyId);
     });
+    // A capital champion's score id must name a shipped encounter — the wave owner hands the
+    // spawned hull to `capitalBossEncounters` by that id, and a typo is a boss that never wakes.
+    if (boss && boss.scoreId != null && !Object.hasOwn(CAPITAL_BOSS_ENCOUNTERS, boss.scoreId)) {
+      issues.push({ path: `bossRotation[${i}].scoreId`, message: `unknown scoreId ${JSON.stringify(boss.scoreId)}` });
+    }
+    if (boss && boss.trickId != null && !hunterTrickById(boss.trickId)) {
+      issues.push({ path: `bossRotation[${i}].trickId`, message: `unknown trickId ${JSON.stringify(boss.trickId)}` });
+    }
   });
   return issues;
 }
@@ -621,6 +708,184 @@ export function swarmWallPickFor(wave, excludeId) {
     if (best) return best;
   }
   return null;
+}
+
+// ── NXB-017 — the three-round act, waves 25–27 ───────────────────────────────────────────────
+// The bank specifies individual good rounds; the act composes three adjacent slots into one
+// legible escalation: exploit a body, protect the opportunity, then apply the learned
+// interaction under combined pressure. Waves 25–27 are the first quiet window past the roster
+// clock — every archetype is legal, and no debut, mass-gap or boss flag fires — and the phase
+// cycle happens to hand each round the room its question asks for. So the act authors there
+// instead of adding a mode: the same pure planner, the same quota/concurrency budgets, the
+// same finite cohort. An act round only rewrites the opening recipe and the stream's bias;
+// gates, timing, quota, draft and clear law all stay the wave's own.
+//
+//   r1 loose_plate    — LOOSE MASS VS AN EXPOSED HULL. Throw-class fodder on three bearings
+//                       and loose-plate rock drifting on the sag are ammunition; the bruiser
+//                       that commits alone a beat later is the exposed target. Guns cannot
+//                       shove a terrain-class hull — the room's mass is the lever.
+//   r2 furnace_active — THE SPECIALIST CONTESTS THE USE. A tether raider stages alone on its
+//                       own bearing (the same readable beat a debut uses) and fights the
+//                       player for the line r1 taught, while the lit furnace shoves the
+//                       centre off the stand-and-throw spot.
+//   r3 shutter_slow   — THE LEARNED INTERACTION UNDER COMBINED PRESSURE. The anchor (mass
+//                       420) and the specialist return on one bearing while the whole room
+//                       leans. The anchor's snare well bites only across its telegraphed
+//                       commit; its recovery leg is the counter-window, and the lean drags
+//                       the hull exactly then.
+function freezeDeep(value) {
+  if (!value || typeof value !== 'object') return value;
+  if (Array.isArray(value)) {
+    for (const item of value) freezeDeep(item);
+  } else {
+    for (const key of Object.keys(value)) freezeDeep(value[key]);
+  }
+  return Object.freeze(value);
+}
+
+export const SWARM_ACT_ID = 'mooring_line';
+export const SWARM_ACT_ROUNDS = 3;
+/** Staged act bodies land on the same readable beat a debut uses — alone, a little far out. */
+export const SWARM_ACT_STAGED_TICKS = SWARM_DEBUT_TICKS;
+export const SWARM_ACT_STAGED_DISTANCE = SWARM_DEBUT_DISTANCE;
+
+/**
+ * Authored opening recipes by wave. `gateIndex` walks this wave's gate ring; 'free' takes the
+ * first bearing no earlier package uses; 'same' shares the previous package's gate — the r3
+ * pair arrives as one event. `staged` marks a body the wave owes like a debut: refused seats
+ * are re-queued, never dropped.
+ */
+export const SWARM_ACT = freezeDeep({
+  25: {
+    id: SWARM_ACT_ID,
+    round: 1,
+    arenaPhase: 'loose_plate',
+    question: 'One hull commits alone through the loose rock — the room is full of mass that is not yours yet.',
+    streamBias: 'fodder',
+    packages: freezeDeep([
+      { enemyId: 'wasp_swarmer', count: 7, gateIndex: 0, atTick: 0 },
+      { enemyId: 'choir_zealot', count: 6, gateIndex: 2, atTick: 12 },
+      { enemyId: 'reaver_pirate', count: 5, gateIndex: 4, atTick: 24 },
+      { enemyId: 'bruiser_brawler', count: 1, gate: 'free', atTick: SWARM_ACT_STAGED_TICKS, distance: SWARM_ACT_STAGED_DISTANCE, staged: true },
+    ]),
+  },
+  26: {
+    id: SWARM_ACT_ID,
+    round: 2,
+    arenaPhase: 'furnace_active',
+    question: 'Something else wants the other end of the line — and the middle of the room is lit.',
+    streamBias: 'fodder',
+    packages: freezeDeep([
+      { enemyId: 'wasp_swarmer', count: 6, gateIndex: 0, atTick: 0 },
+      { enemyId: 'detonator_dart', count: 5, gateIndex: 1, atTick: 12 },
+      { enemyId: 'reaver_pirate', count: 4, gateIndex: 2, atTick: 24 },
+      { enemyId: 'choir_zealot', count: 3, gateIndex: 3, atTick: 36 },
+      { enemyId: 'tether_control_raider', count: 1, gate: 'free', atTick: SWARM_ACT_STAGED_TICKS, distance: SWARM_ACT_STAGED_DISTANCE, staged: true },
+    ]),
+  },
+  27: {
+    id: SWARM_ACT_ID,
+    round: 3,
+    arenaPhase: 'shutter_slow',
+    question: 'The anchor bites only when it means it — its own cycle is the opening.',
+    streamBias: 'fodder',
+    packages: freezeDeep([
+      { enemyId: 'wasp_swarmer', count: 6, gateIndex: 0, atTick: 0 },
+      { enemyId: 'reaver_pirate', count: 5, gateIndex: 2, atTick: 12 },
+      { enemyId: 'choir_zealot', count: 5, gateIndex: 4, atTick: 24 },
+      { enemyId: 'field_anchor_controller', count: 1, gate: 'free', atTick: SWARM_ACT_STAGED_TICKS + 60, distance: SWARM_ACT_STAGED_DISTANCE + 30, staged: true },
+      // The r2 specialist rides the anchor's bearing — the contest and the anchor arrive as
+      // one event instead of two lectures.
+      { enemyId: 'tether_control_raider', count: 1, gate: 'same', atTick: SWARM_ACT_STAGED_TICKS + 60, distance: SWARM_ACT_STAGED_DISTANCE + 30, staged: true },
+    ]),
+  },
+});
+
+/** The authored act round for this wave, or null on an ordinary generated wave. */
+export function swarmActFor(wave) {
+  const w = swarmWaveOf(wave);
+  return SWARM_ACT[w] || null;
+}
+
+/**
+ * NXI-066 — does an authored act round stay inside the wave's own contract? Issues, empty when
+ * honest. An act may only field bodies the wave's roster has already unlocked (no early
+ * debuts stealing a later wave's tell), must hold its burst inside the shared spawn budget,
+ * and must keep the opening lane useful: distinct bearings for its groups, never every gate.
+ */
+export function swarmActIssues(wave, act = SWARM_ACT[swarmWaveOf(wave)]) {
+  const w = swarmWaveOf(wave);
+  if (!act) return [];
+  const issues = [];
+  if (!Array.isArray(act.packages) || act.packages.length === 0) {
+    issues.push({ path: 'packages', message: `act wave ${w} authors no packages` });
+    return issues;
+  }
+  let total = 0;
+  const used = [];
+  for (const spec of act.packages) {
+    const entry = SWARM_ROSTER.find((r) => r.enemyId === (spec && spec.enemyId));
+    if (!entry) {
+      issues.push({ path: 'packages', message: `act wave ${w} fields unknown enemy '${spec && spec.enemyId}'` });
+      continue;
+    }
+    if (entry.fromWave > w) {
+      issues.push({ path: 'packages', message: `act wave ${w} fields '${entry.enemyId}' before its wave-${entry.fromWave} unlock` });
+    }
+    const count = Number(spec && spec.count);
+    if (!Number.isInteger(count) || count < 1) {
+      issues.push({ path: 'packages', message: `act wave ${w} package '${entry.enemyId}' has no legal count` });
+    } else {
+      total += count;
+    }
+    // NXI-065 — resolve the gate the way the planner will, then check the lane survives.
+    const gate = spec.gate === 'free'
+      ? swarmFreeGateFor(w, used)
+      : spec.gate === 'same'
+        ? (used.length ? used[used.length - 1] : swarmGateFor(w, 0))
+        : swarmGateFor(w, Number.isInteger(spec.gateIndex) ? spec.gateIndex : used.length);
+    used.push(gate);
+  }
+  if (total > SPAWN_BUDGET_DEFAULT_MAX) {
+    issues.push({ path: 'packages', message: `act wave ${w} scheduled population ${total} exceeds budget ${SPAWN_BUDGET_DEFAULT_MAX}` });
+  }
+  if (new Set(used).size >= GATES.length) {
+    issues.push({ path: 'packages', message: `act wave ${w} blocks every gate — no opening lane survives` });
+  }
+  return issues;
+}
+
+/**
+ * Resolve an authored act round into plan `packages` — the same shape `swarmOpeningPackages`
+ * returns, so every downstream consumer (schedule, dispatch, owed-body law) sees one contract.
+ * Roles come from the canonical roster, never the act table.
+ */
+export function swarmActPackages(wave) {
+  const w = swarmWaveOf(wave);
+  const act = SWARM_ACT[w];
+  if (!act) return [];
+  const used = [];
+  return act.packages.map((spec, index) => {
+    const entry = SWARM_ROSTER.find((r) => r.enemyId === spec.enemyId);
+    const gateGroup = spec.gate === 'free'
+      ? swarmFreeGateFor(w, used)
+      : spec.gate === 'same'
+        ? (used.length ? used[used.length - 1] : swarmGateFor(w, 0))
+        : swarmGateFor(w, Number.isInteger(spec.gateIndex) ? spec.gateIndex : index);
+    used.push(gateGroup);
+    const count = Math.max(1, spec.count | 0);
+    return {
+      atTick: Number.isInteger(spec.atTick) ? spec.atTick : 0,
+      gateGroup,
+      role: entry ? entry.role : 'pressure',
+      enemyId: spec.enemyId,
+      count,
+      batchSize: count,
+      batchGapTicks: 0,
+      ...(spec.staged === true ? { staged: true } : {}),
+      ...(Number.isFinite(spec.distance) ? { distance: spec.distance } : {}),
+    };
+  });
 }
 
 /**
@@ -719,7 +984,7 @@ export function swarmOpeningPackages(wave, rng, roster) {
     // Every champion body carries `champion: true` all the way into the schedule, so the wave owner
     // can owe a WING as easily as it owes one Dreadnought without knowing any enemy ids.
     const wingGate = swarmGateFor(w, 0);
-    boss.packages.forEach((pkg, index) => {
+    bossPackagesFor(boss).forEach((pkg, index) => {
       const gateGroup = pkg.sameGate
         ? wingGate
         : pkg.gateBias === 'near'
@@ -745,7 +1010,7 @@ export function swarmOpeningPackages(wave, rng, roster) {
   // More bearings as the wave count climbs: at ten on you it is two doors, at thirty it is four.
   const groups = swarmOpeningGroupCount(w);
   const bossBodies = boss
-    ? boss.packages.reduce((sum, pkg) => sum + pkg.count, 0)
+    ? bossPackagesFor(boss).reduce((sum, pkg) => sum + pkg.count, 0)
     : 0;
   let left = Math.max(2, opening - bossBodies);
   for (let g = 0; g < groups && left > 0; g++) {
@@ -826,6 +1091,13 @@ export function swarmPlanBlock(wave) {
     bossLabel: boss ? boss.label : null,
     bossLine: boss ? boss.line : null,
     bossRoom: boss ? boss.room : null,
+    // FB-024/FB-027 — the champion's fight machinery: `bossScoreId` (a capital score the wave
+    // owner hands the champion's body to when it lands) or `bossTrickId` (the hunter trick every
+    // champion body telegraphs through the ordinary bounty path). Capital rows carry the former,
+    // compositional rows the latter; never both.
+    bossEnemyId: boss && typeof boss.enemyId === 'string' ? boss.enemyId : null,
+    bossScoreId: boss && typeof boss.scoreId === 'string' ? boss.scoreId : null,
+    bossTrickId: boss && typeof boss.trickId === 'string' ? boss.trickId : null,
     draftAfter: isSwarmDraftWave(w),
     refitAfter: isSwarmRefitWave(w),
     reinforceGapTicks: SWARM_REINFORCE_GAP_TICKS,

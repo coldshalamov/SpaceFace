@@ -111,6 +111,8 @@ export function createExhaustLag(opts = {}) {
      * @param {number} p.nowS current flow-clock time
      * @param {number} p.tipAgeS age of the gas at the tip: how far back memory reaches
      * @param {number} p.jetLength current jet length in world units
+     * @param {number} [p.rootOffset] WU the spine's first station stands aft of the nozzle (a
+     *   detached slug has left the throat; 0 keeps the root exactly on the bell, as always)
      * @param {number} p.maxBendRad soft cap on the root-to-tip bend
      * @returns {number} absolute bend at the tip, radians (0 when straight)
      */
@@ -126,6 +128,8 @@ export function createExhaustLag(opts = {}) {
       let z = Number(p.z) || 0;
       let dirX = Math.cos(headHeading);
       let dirZ = Math.sin(headHeading);
+      const root = Math.max(0, Number(p.rootOffset) || 0);
+      if (root > 0) { x += dirX * root; z += dirZ * root; }
       out[0] = x; out[1] = y; out[2] = z; out[3] = 0;
       let tipBend = 0;
       // Fewer than two samples is no history at all: return the straight spine rather than

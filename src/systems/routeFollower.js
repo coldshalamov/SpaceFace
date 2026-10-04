@@ -148,6 +148,17 @@ function resolveLegTarget(atlas, fromSectorId, toSectorId, isFinal) {
  * produced by world's Dijkstra (`world.js:2157-2168`), so leg ORDER is inherited, never recomputed —
  * re-planning here would be a second route planner competing with the shipped one.
  */
+function playerDriveOut(state) {
+  const player = state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : null;
+  const book = state && state.combat && state.combat.entities;
+  if (!book || !player || player.id == null) return false;
+  const runtime = book[String(player.id)];
+  const drive = runtime && runtime.subsystems && runtime.subsystems.subsystem_drive;
+  return !!(drive && drive.effectiveDisabled === true);
+}
+
 function decomposeRoute(route, atlas) {
   const source = route && Array.isArray(route.legs) ? route.legs : [];
   const legs = [];
@@ -391,10 +402,18 @@ export const routeFollower = {
     const route = nav.route;
     if (!route || !Array.isArray(route.legs) || !route.legs.length) {
       this._emit('nav:routeExecutorDenied', { reason: 'no-route' });
+      this._emit('toast', { text: 'Plot a route first', kind: 'warn', ttl: 1.6 });
       return null;
     }
 
     const existing = nav.executor;
+    if (playerDriveOut(state)) {
+      if (existing && existing.engaged === true) this.interrupt('drive-out');
+      this._emit('nav:routeExecutorDenied', { reason: 'drive-out' });
+      this._emit('toast', { text: 'Drive out — the route can\'t hold', kind: 'warn', ttl: 1.6 });
+      return null;
+    }
+
     const resumable = existing
       && Array.isArray(existing.legs)
       && existing.legs.length
@@ -414,6 +433,7 @@ export const routeFollower = {
     const legs = decomposeRoute(route, this._atlas);
     if (!legs.length) {
       this._emit('nav:routeExecutorDenied', { reason: 'undecomposable-route' });
+      this._emit('toast', { text: 'That route has no flyable leg', kind: 'warn', ttl: 1.6 });
       return null;
     }
     const destination = legs[legs.length - 1].toSectorId;
@@ -464,6 +484,11 @@ export const routeFollower = {
     const executor = nav.executor;
     if (!executor) return;                                     // gate 3: plotted but never engaged
     if (executor.engaged !== true) return;                     // gate 4: engage is a separate act
+    if (playerDriveOut(state)) {
+      this.interrupt('drive-out');
+      this._emit('toast', { text: 'Drive out — the route can\'t hold', kind: 'warn', ttl: 1.6 });
+      return;
+    }
     // ── everything past this line runs only for an explicitly engaged route ──
 
     const legs = Array.isArray(executor.legs) ? executor.legs : [];
@@ -724,10 +749,16 @@ export const routeFollower = {
     this.interrupt(`gate-${reason}`, { detail: reason });
   },
 
-  _onSectorEnter({ sectorId }) {
+  _onSectorEnter({ sectorId, enterEpoch }) {
     const nav = this.state && this.state.nav;
     const executor = nav && nav.executor;
     if (!nav || !sectorId) return;
+
+    // A queued-tail delivery (cap-overflow force-drain) carries the departed enter's epoch —
+    // its sectorId-keyed mutations would retire live nav waypoints and slice legs for the
+    // sector the player already left. Epochless synthetic payloads always run.
+    if (enterEpoch != null && this.state.world
+        && this.state.world.enterSerial != null && enterEpoch !== this.state.world.enterSerial) return;
 
     this._retireArrivedGateWaypoint(sectorId);
 

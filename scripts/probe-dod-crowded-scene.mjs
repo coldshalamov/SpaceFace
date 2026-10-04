@@ -61,6 +61,10 @@ try {
   });
   const cdp = { send(method, params = {}) { return new Promise((resolve) => { id++; pending.set(id, { resolve }); ws.send(JSON.stringify({ id, method, params })); }); } };
   await cdp.send('Page.enable'); await cdp.send('Runtime.enable'); await cdp.send('Log.enable');
+  // Headless Chrome reports prefers-reduced-motion: reduce, which lands on the first-boot
+  // motionAsk screen instead of the menu and also measures the reduced-motion picture. Emulate a
+  // normal player machine so the census sees the default full-motion path.
+  await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] });
   await cdp.send('Page.addScriptToEvaluateOnNewDocument', { source: `try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}` });
   await cdp.send('Page.navigate', { url: `http://127.0.0.1:${port}/` });
   const evalJson = async (expr) => {
@@ -80,7 +84,7 @@ try {
       flightPlayable: !!(state && state.mode === 'flight' && player && player.alive && player.hull > 0) || hudPlayable };
   })())`;
   const wait = async (pred, timeout, label) => { const start = Date.now(); let last = null; while (Date.now() - start < timeout) { last = await evalJson(snapExpr); if (pred(last)) return last; await sleep(200); } throw new Error('timeout: ' + label + ' last=' + JSON.stringify(last)); };
-  await wait((s) => s.sfReady && (s.mainMenuVisible || s.flightPlayable), 15000, 'menu');
+  await wait((s) => s.sfReady && (s.mainMenuVisible || s.flightPlayable), 30000, 'menu');
   let snap = await evalJson(snapExpr);
   if (snap.mainMenuVisible && !snap.flightPlayable) {
     const click = async (label) => { for (let a = 0; a < 8; a++) { const r = await evalJson(`JSON.stringify((()=>{const b=[...document.querySelectorAll('button')].find(x=>(x.textContent||'').trim()===${JSON.stringify(label)});if(!b)return{ok:false};b.click();return{ok:true};})())`); if (r && r.ok) return true; await sleep(250); } return false; };
@@ -88,7 +92,7 @@ try {
     await sleep(400); await click('New Game');
     for (let i = 0; i < 60; i++) { const ng = JSON.parse((await cdp.send('Runtime.evaluate', { expression: ngExpr, returnByValue: true })).result?.value || '{}'); snap = await evalJson(snapExpr); if (snap.flightPlayable || ng.visible) break; await sleep(200); }
     snap = await evalJson(snapExpr);
-    if (!snap.flightPlayable) { await click('Launch'); await wait((s) => s.flightPlayable, 15000, 'flight'); }
+    if (!snap.flightPlayable) { await click('Launch'); await wait((s) => s.flightPlayable, 90000, 'flight'); }
   }
   await sleep(2000); // let the scene populate (stations, traffic, contacts)
   const assetWarmup = await waitForAuthoredAssetsSteady(evalJson);

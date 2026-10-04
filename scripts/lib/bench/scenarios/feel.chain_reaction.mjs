@@ -204,6 +204,13 @@ async function runChainArm(seed, { eventTrace }) {
       hullId: LIGHT_HULL_ID, pos: { ...pos }, rot: Math.PI / 2, team: 1,
     }));
     const clusterIds = new Set(cluster.map((e) => e.id));
+    // The cast is a hostile picket the player is about to attack — combat-postured, so the
+    // activity gate keeps their bodies to the physics rim instead of shelving the outermost
+    // hulls as anonymous aggregate population (a bodiless hull silently reads every slam as 0).
+    for (const e of [carrier, ...cluster]) {
+      const data = e.data || (e.data = {});
+      (data.ai || (data.ai = {})).combatant = true;
+    }
 
     // Nobody in the cluster is flying: every metre any of them moves after the shove was given to
     // them by the room. Zero intent is written explicitly, not left to chance.
@@ -378,6 +385,11 @@ async function runWellArm(seed, { eventTrace }) {
     const state = host.state;
     const a = host.spawnShip({ hullId: LIGHT_HULL_ID, pos: { ...WELL_BODY_POS[0] }, rot: 0, team: 1 });
     const b = host.spawnShip({ hullId: LIGHT_HULL_ID, pos: { ...WELL_BODY_POS[1] }, rot: 0, team: 1 });
+    // Same contract as the chain arm: these hulls are the player's targets, not ambient traffic.
+    for (const e of [a, b]) {
+      const data = e.data || (e.data = {});
+      (data.ai || (data.ai = {})).combatant = true;
+    }
     const park = () => {
       for (const e of [a, b]) {
         const data = e.data || (e.data = {});

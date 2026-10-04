@@ -11,6 +11,12 @@ import {
   uniqueAdmissionUnits,
   withOnlySubjectsDrawable,
 } from '../src/render/openingGpuAdmission.js';
+import {
+  createPackageDetachManifest,
+  detachPackageTexture,
+  isPackageTextureDetached,
+  resetPackageDetachManifestsForTests,
+} from '../src/render/packageCpuDetach.js';
 import { openingCompileIssueKey } from '../src/render/renderer.js';
 import { revealSubjectWithAncestors } from '../src/render/compilePresentSlice.js';
 
@@ -49,6 +55,64 @@ test('compile issue key distinguishes onBeforeCompile bodies a sampled fingerpri
   const meshC = new THREE.Mesh(geo, matC);
   assert.equal(openingCompileIssueKey(meshA), openingCompileIssueKey(meshC),
     'identical patch bodies share the issue signature');
+});
+
+test('compile issue key covers the r184 object/geometry program flags, not just names', () => {
+  const mat = new THREE.MeshStandardMaterial();
+  const box = () => new THREE.BoxGeometry();
+
+  const geoRGB = box();
+  geoRGB.setAttribute('color', new THREE.BufferAttribute(new Float32Array(72), 3));
+  const geoRGBA = box();
+  geoRGBA.setAttribute('color', new THREE.BufferAttribute(new Float32Array(96), 4));
+  const vertexColored = new THREE.MeshStandardMaterial({ vertexColors: true });
+  assert.notEqual(
+    openingCompileIssueKey(new THREE.Mesh(geoRGB, vertexColored)),
+    openingCompileIssueKey(new THREE.Mesh(geoRGBA, vertexColored)),
+    'vertexAlphas splits on color.itemSize 4, so attribute keys carry itemSize');
+
+  const morph1 = box();
+  morph1.morphAttributes.position = [new THREE.BufferAttribute(new Float32Array(72), 3)];
+  const morph2 = box();
+  morph2.morphAttributes.position = [
+    new THREE.BufferAttribute(new Float32Array(72), 3),
+    new THREE.BufferAttribute(new Float32Array(72), 3),
+  ];
+  assert.notEqual(
+    openingCompileIssueKey(new THREE.Mesh(morph1, mat)),
+    openingCompileIssueKey(new THREE.Mesh(morph2, mat)),
+    'morphTargetsCount rides the key — a 1-target and 2-target morph link separately');
+
+  assert.notEqual(
+    openingCompileIssueKey(new THREE.Mesh(box(), mat)),
+    openingCompileIssueKey(new THREE.InstancedMesh(box(), mat, 4)),
+    'instancing is a different program from a direct draw');
+
+  const instPlain = new THREE.InstancedMesh(box(), mat, 4);
+  const instColor = new THREE.InstancedMesh(box(), mat, 4);
+  instColor.setColorAt(0, new THREE.Color(1, 0, 0));
+  assert.notEqual(
+    openingCompileIssueKey(instPlain), openingCompileIssueKey(instColor),
+    'instancingColor is a program flag');
+
+  const instMorph = new THREE.InstancedMesh(box(), mat, 4);
+  instMorph.morphTexture = new THREE.DataTexture(new Uint8Array(4), 1, 1);
+  assert.notEqual(
+    openingCompileIssueKey(instPlain), openingCompileIssueKey(instMorph),
+    'instancingMorph is a program flag');
+
+  const batchedPlain = new THREE.BatchedMesh(4, 256, 256, mat);
+  const batchedColor = new THREE.BatchedMesh(4, 256, 256, mat);
+  batchedColor._colorsTexture = new THREE.DataTexture(new Uint8Array(16), 1, 1);
+  assert.notEqual(
+    openingCompileIssueKey(batchedPlain), openingCompileIssueKey(batchedColor),
+    'batchingColor is a program flag');
+
+  const twin = new THREE.Mesh(box(), mat);
+  assert.equal(openingCompileIssueKey(twin), openingCompileIssueKey(new THREE.Mesh(box(), mat)),
+    'genuinely identical signatures still share the issue key');
+  assert.equal(openingCompileIssueKey({ isMesh: true }), null,
+    'an unkeyable subject stays null and therefore never dedupes');
 });
 
 test('family customProgramCacheKey values do not collapse distinct maps into one opening program', () => {
@@ -459,6 +523,112 @@ test('a batched admission can touch in groups: same order, one yield per group',
   assert.deepEqual(result.results.map((entry) => entry.compiled),
     ['compiled:a', 'compiled:b', 'compiled:c', 'compiled:d', 'compiled:e']);
   assert.ok(result.timing && Number.isFinite(result.timing.touchMs), 'the step reports where its time went');
+});
+
+test('a cohort rehydrates a cpu-detached texture its touch would force-upload, before the draw', async () => {
+  // D150: packageCpuDetach empties a resident texture's mipmaps after the residency stamp; a
+  // later bind whose properties record lacks the upload stamp (a dedupe-shared Source bound
+  // under a different upload-cache key, or a record recreated after dispose) re-enters three's
+  // uploadTexture and reads mipmaps[0] on the empty array. The admission driver re-attaches
+  // just those payloads once per cohort — every touch must bind real bytes.
+  resetPackageDetachManifestsForTests();
+  const freshTexture = () => {
+    const texture = new THREE.CompressedTexture(
+      [{ data: new Uint8Array(2048), width: 4, height: 4 }],
+      4, 4, THREE.RGBAFormat,
+    );
+    texture.name = 'forge_panel_albedo';
+    texture.needsUpdate = true; // a decoded texture reaches the uploader with version > 0
+    return texture;
+  };
+  const texture = freshTexture();
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial({ map: texture }));
+
+  let decodes = 0;
+  createPackageDetachManifest(
+    {
+      assetId: 'fixture.admission-detach',
+      contentHash: 'a'.repeat(64),
+      renderUrl: 'https://fixtures.test/render.glb',
+      resources: [texture],
+    },
+    {
+      redecode: async () => {
+        decodes += 1;
+        const root = new THREE.Group();
+        root.add(new THREE.Mesh(
+          new THREE.BoxGeometry(),
+          new THREE.MeshStandardMaterial({ map: freshTexture() }),
+        ));
+        return { scene: root };
+      },
+      collectResources: (root) => {
+        const found = [];
+        root.traverse((object) => {
+          for (const material of [object.material].flat().filter(Boolean)) {
+            for (const value of Object.values(material)) {
+              if (value && value.isTexture) found.push(value);
+            }
+          }
+        });
+        return found;
+      },
+    },
+  );
+  assert.equal(detachPackageTexture(texture), true, 'payload released after the proven upload');
+  assert.equal(texture.mipmaps.length, 0);
+
+  // The renderer's texture-properties map: no record for this texture, so its next bind
+  // re-enters the uploader (three's setTexture2D gate).
+  const renderer = { properties: new Map() };
+  const touchSeesBytes = () => {
+    assert.ok(texture.mipmaps.length > 0,
+      'the touch must bind real bytes — the detach mirror was re-attached first');
+    return { skipped: false };
+  };
+
+  // Unbatched route: census runs before the compile+touch interleave.
+  const unbatched = await admitOpeningUnitsAcrossSlices({
+    subjects: [mesh],
+    renderer,
+    compileOne: () => Promise.resolve(null),
+    touchOne: touchSeesBytes,
+    yieldToMain: async () => {},
+  });
+  assert.equal(unbatched.results.length, 1);
+  assert.equal(decodes, 1, 'one re-decode refilled the manifest');
+  assert.equal(isPackageTextureDetached(texture), false, 'rehydrate cleared the detached entry');
+
+  // Batched route: the census runs after the readiness drain, still before the touch loop.
+  assert.equal(detachPackageTexture(texture), true, 're-detached for the batched pass');
+  const batched = await admitOpeningUnitsAcrossSlices({
+    subjects: [mesh],
+    renderer,
+    beginReadinessBatch: () => ({
+      async drain() { return { contextLost: false }; },
+      close() {},
+    }),
+    compileOne: () => Promise.resolve('compiled'),
+    touchOne: touchSeesBytes,
+    yieldToMain: async () => {},
+  });
+  assert.equal(batched.touched, 1);
+  assert.equal(decodes, 2, 'the batched path rehydrates before touching too');
+
+  // A still-stamped detached texture binds its live GPU copy — no re-decode, no refill.
+  assert.equal(detachPackageTexture(texture), true);
+  renderer.properties.set(texture, { __version: texture.version });
+  const stamped = await admitOpeningUnitsAcrossSlices({
+    subjects: [mesh],
+    renderer,
+    compileOne: () => Promise.resolve(null),
+    touchOne: () => ({ skipped: false }),
+    yieldToMain: async () => {},
+  });
+  assert.equal(stamped.results.length, 1);
+  assert.equal(decodes, 2, 'no rehydrate when the upload stamp still holds');
+  assert.equal(isPackageTextureDetached(texture), true, 'stayed released');
+  resetPackageDetachManifestsForTests();
 });
 
 test('opening compile primes shadows, bakes env cardinality, and slices exact-target touches', async () => {

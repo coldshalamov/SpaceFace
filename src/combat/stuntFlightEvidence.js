@@ -52,12 +52,16 @@ function threatCandidatesFor(state) {
   return cache.list;
 }
 // Near-body history candidates have the same shape: pos/vel/collides-stable subset latched
-// on the index version plus the collides-flip epoch — post-spawn `collides` writes bump no
-// lane, so without it a flipped body keeps its stale membership until the next spawn sweep.
-// The cheap volatile checks (pos/vel alive/deleted) stay per tick.
+// on the collidables lane version plus the collides-flip epoch — post-spawn `collides`
+// writes that skip syncEntityCollisionIndexMembership bump no lane, so without the epoch a
+// flipped body keeps its stale membership until the next spawn sweep. -1 (index unready)
+// falls back to the whole-version contract. The cheap volatile checks (pos/vel alive/
+// deleted) stay per tick.
+const NEAR_BODY_LANES = ['collidables'];
 const _nearBodyCandidates = { version: null, epoch: -1, source: null, list: [] };
 function nearBodyCandidatesFor(state) {
-  const version = entityIndexVersion(state);
+  const laneVersion = entityIndexLaneVersion(state, NEAR_BODY_LANES);
+  const version = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
   const epoch = collidesFlipEpoch();
   const cache = _nearBodyCandidates;
   if (version == null || cache.version !== version || cache.epoch !== epoch

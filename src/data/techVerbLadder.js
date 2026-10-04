@@ -80,12 +80,21 @@ export const FOLDED_TECH_NODES = Object.freeze([
   }),
 ]);
 
-/** Strict leftover: no ship and no module. */
-export const STRICT_STAT_ONLY_IDS = Object.freeze([
-  'tech_drone_swarm',
-  'tech_autonomous_fleets',
-  'tech_outpost_charter',
+/**
+ * FB-053 — unlock keys that are themselves live verbs even though they name no ship or module:
+ * a second drone off one bay (extraDronePerBay), hiring an NPC trader (npcTraderHiring), and
+ * raising a depot/battery on a claimed body (outpostConstruction). A node carrying any of these
+ * is a verb under strict classification. droneTierCap stays a stat — a cap bump alone is not a
+ * thing you can do.
+ */
+export const VERB_UNLOCK_KEYS = Object.freeze([
+  'extraDronePerBay',
+  'npcTraderHiring',
+  'outpostConstruction',
 ]);
+
+/** Strict leftover: no ship, no module, and no verb unlock key. Empty as of FB-053. */
+export const STRICT_STAT_ONLY_IDS = Object.freeze([]);
 
 /**
  * Broad leftover: hull-license-only ships, plus two modules that only enlarge
@@ -97,12 +106,6 @@ export const BROAD_PASSIVE_IDS = Object.freeze([
 ]);
 
 export const STAT_ONLY_JUSTIFICATIONS = Object.freeze({
-  tech_drone_swarm:
-    'No ship or module. Raises droneTierCap and extraDronePerBay on the bay unlocked at drone_control. Folding into drone_control would collapse the tier ladder bay tests pin. Keep until a distinct swarm chassis exists.',
-  tech_autonomous_fleets:
-    'No ship or module. Hire-trader flag plus a tier cap. Hiring is a menu, not a field verb. Folding into drone_swarm would bury the hire behind a cap bump.',
-  tech_outpost_charter:
-    'No ship or module. Outpost-construction flag plus a tier cap. Placement is not yet a field verb on the default route. Folding into fleets would bury a late flag.',
   tech_industrial_mining:
     'Hull license only (Ironback). Same mining verb as the starter laser, on a barge. Not folded: ships.js keys the hull to this id (ships.js is out of this write set).',
   tech_strike_craft:
@@ -146,10 +149,10 @@ const VERBS = Object.freeze({
   tech_long_range_survey: 'Fly the Ranger; open a wormhole',
   tech_tractor_systems: 'Tow, whip, or couple a body; magnet salvage; flail a tow; fly the Hawser tug',
   tech_drone_control: 'Launch a drone from a bay',
-  tech_drone_swarm: 'More drones / higher tier (no new chassis)',
-  tech_autonomous_fleets: 'Hire an NPC trader (menu, not a field verb)',
+  tech_drone_swarm: 'Fly a second drone off one bay',
+  tech_autonomous_fleets: 'Hire an NPC trader to fly your routes',
   tech_nanofabrication: 'Repair with nanobots',
-  tech_outpost_charter: 'Plant an outpost flag (not yet a field verb)',
+  tech_outpost_charter: 'Raise a depot or battery on a claimed body',
 });
 
 function list(value) {
@@ -161,13 +164,24 @@ export function nodeUnlocksShipOrModule(node) {
   return list(unlocks.ships).length + list(unlocks.modules).length > 0;
 }
 
+/**
+ * FB-053 — a node is a verb when it unlocks a ship/module OR carries a verb unlock key with a
+ * live consumer (see VERB_UNLOCK_KEYS). The three logistics nodes moved here; droneTierCap by
+ * itself still counts for nothing.
+ */
+export function nodeUnlocksVerb(node) {
+  if (nodeUnlocksShipOrModule(node)) return true;
+  const unlocks = node && node.unlocks ? node.unlocks : {};
+  return VERB_UNLOCK_KEYS.some((key) => unlocks[key] != null && unlocks[key] !== false && unlocks[key] !== 0);
+}
+
 export function isHullLicenseOnly(node) {
   const unlocks = node && node.unlocks ? node.unlocks : {};
   return list(unlocks.ships).length > 0 && list(unlocks.modules).length === 0;
 }
 
 export function classifyTechNode(node, mode = 'strict') {
-  if (!nodeUnlocksShipOrModule(node)) return 'stat-only';
+  if (!nodeUnlocksVerb(node)) return 'stat-only';
   if (mode === 'broad' && (isHullLicenseOnly(node) || BROAD_PASSIVE_IDS.includes(node.id))) {
     return 'stat-only';
   }

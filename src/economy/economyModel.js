@@ -168,6 +168,9 @@ export const MISSION_WORK = deepFreeze({
   passenger_transport:{ taskS:120, legs:1 }, recon_scan:{ taskS:150, legs:2 },
   tow_recovery:{ taskS:220, legs:2 }, demolition:{ taskS:190, legs:2 },
   rescue_under_fire:{ taskS:240, legs:2 },
+  // FB-066 — the gate course lives in the board's own sector (one leg, no destination travel);
+  // taskS is the gate-to-gate record pace the band table already prices.
+  race:{ taskS:80, legs:1 },
   authored_set_piece:{ taskS:300, legs:2 }, capital_boss:{ taskS:480, legs:2 },
 });
 
@@ -178,15 +181,15 @@ export const MISSION_ORDER = deepFreeze([
 
 // Desired workload shares (not an index keyed to an accidental MISSION_TYPES ordering).
 export const STATION_WORK = deepFreeze({
-  mining:{ cargo_delivery:3,bulk_trade:2,bounty_hunt:1,mining_quota:4,salvage_retrieval:3,escort:1,patrol_clear:1,passenger_transport:1,recon_scan:2,tow_recovery:4,demolition:2,rescue_under_fire:1 },
-  refinery:{ cargo_delivery:4,bulk_trade:4,bounty_hunt:1,mining_quota:2,salvage_retrieval:4,escort:1,patrol_clear:1,passenger_transport:1,recon_scan:1,tow_recovery:3,demolition:1,rescue_under_fire:1 },
-  fab:{ cargo_delivery:3,bulk_trade:3,bounty_hunt:1,mining_quota:1,salvage_retrieval:3,escort:1,patrol_clear:1,passenger_transport:1,recon_scan:2,tow_recovery:2,demolition:4,rescue_under_fire:1 },
-  trade_hub:{ cargo_delivery:4,bulk_trade:4,bounty_hunt:2,mining_quota:1,salvage_retrieval:2,escort:3,patrol_clear:1,smuggling_run:1,passenger_transport:3,recon_scan:2,tow_recovery:2,demolition:1,rescue_under_fire:1 },
-  military:{ cargo_delivery:1,bulk_trade:1,bounty_hunt:4,salvage_retrieval:2,escort:3,patrol_clear:4,passenger_transport:1,recon_scan:3,tow_recovery:1,demolition:2,rescue_under_fire:3 },
-  research:{ cargo_delivery:2,bulk_trade:1,bounty_hunt:1,mining_quota:1,salvage_retrieval:3,escort:1,patrol_clear:1,passenger_transport:1,recon_scan:4,tow_recovery:1,demolition:1,rescue_under_fire:2 },
-  blackmarket:{ cargo_delivery:2,bulk_trade:1,bounty_hunt:3,mining_quota:1,salvage_retrieval:3,escort:1,patrol_clear:2,smuggling_run:4,passenger_transport:1,recon_scan:2,tow_recovery:2,demolition:2,rescue_under_fire:2 },
-  bounty_board:{ cargo_delivery:1,bounty_hunt:7,salvage_retrieval:5,escort:1,patrol_clear:5,smuggling_run:1,recon_scan:3 },
-  contracts_hub:{ cargo_delivery:5,bulk_trade:4,bounty_hunt:2,salvage_retrieval:1,escort:5,patrol_clear:3,smuggling_run:1,passenger_transport:3,recon_scan:3 },
+  mining:{ cargo_delivery:3,bulk_trade:2,bounty_hunt:1,mining_quota:4,salvage_retrieval:3,escort:1,patrol_clear:1,passenger_transport:1,recon_scan:2,tow_recovery:4,demolition:2,rescue_under_fire:1,race:1 },
+  refinery:{ cargo_delivery:4,bulk_trade:4,bounty_hunt:1,mining_quota:2,salvage_retrieval:4,escort:1,patrol_clear:1,passenger_transport:1,recon_scan:1,tow_recovery:3,demolition:1,rescue_under_fire:1,race:1 },
+  fab:{ cargo_delivery:3,bulk_trade:3,bounty_hunt:1,mining_quota:1,salvage_retrieval:3,escort:1,patrol_clear:1,passenger_transport:1,recon_scan:2,tow_recovery:2,demolition:4,rescue_under_fire:1,race:1 },
+  trade_hub:{ cargo_delivery:4,bulk_trade:4,bounty_hunt:2,mining_quota:1,salvage_retrieval:2,escort:3,patrol_clear:1,smuggling_run:1,passenger_transport:3,recon_scan:2,tow_recovery:2,demolition:1,rescue_under_fire:1,race:2 },
+  military:{ cargo_delivery:1,bulk_trade:1,bounty_hunt:4,salvage_retrieval:2,escort:3,patrol_clear:4,passenger_transport:1,recon_scan:3,tow_recovery:1,demolition:2,rescue_under_fire:3,race:0 },
+  research:{ cargo_delivery:2,bulk_trade:1,bounty_hunt:1,mining_quota:1,salvage_retrieval:3,escort:1,patrol_clear:1,passenger_transport:1,recon_scan:4,tow_recovery:1,demolition:1,rescue_under_fire:2,race:1 },
+  blackmarket:{ cargo_delivery:2,bulk_trade:1,bounty_hunt:3,mining_quota:1,salvage_retrieval:3,escort:1,patrol_clear:2,smuggling_run:4,passenger_transport:1,recon_scan:2,tow_recovery:2,demolition:2,rescue_under_fire:2,race:1 },
+  bounty_board:{ cargo_delivery:1,bounty_hunt:7,salvage_retrieval:5,escort:1,patrol_clear:5,smuggling_run:1,recon_scan:3,race:1 },
+  contracts_hub:{ cargo_delivery:5,bulk_trade:4,bounty_hunt:2,salvage_retrieval:1,escort:5,patrol_clear:3,smuggling_run:1,passenger_transport:3,recon_scan:3,race:2 },
 });
 
 /** Solve the periodic book, independent of currency units. */
@@ -266,11 +269,11 @@ export function deriveEconomyTables(model = ECONOMY_MODEL) {
   }
   const riskMult=c.successProbability.map((prob,i) => rounded((1+c.riskWagePremium[i])*c.successProbability[0]/prob));
   const offerMix = {}, offerMixByTier = {};
-  const procedural = [...MISSION_ORDER,'tow_recovery','demolition','rescue_under_fire'];
+  const procedural = [...MISSION_ORDER,'tow_recovery','demolition','rescue_under_fire','race'];
   for (const [profile,weights] of Object.entries(STATION_WORK)) {
     offerMix[profile]=Object.fromEntries(procedural.map(type=>[type,weights[type]||0]));
     offerMixByTier[profile]=model.phases.map((_,tier)=>Object.fromEntries(procedural.map(type=> {
-      const specialized=['escort','patrol_clear','tow_recovery','demolition','rescue_under_fire','recon_scan'].includes(type);
+      const specialized=['escort','patrol_clear','tow_recovery','demolition','rescue_under_fire','recon_scan','race'].includes(type);
       return [type, rounded((weights[type]||0)*(specialized ? 1+tier*0.20 : 1),3)];
     })));
   }

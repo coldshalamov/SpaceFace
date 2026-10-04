@@ -714,6 +714,39 @@ const SHIPPED_MODULES = [
     id: 'mod_storm_carom', name: 'Storm Carom', slotType: 'utility', size: 'S', tier: 4, mass: 6, price: 96000,
     requiresTech: 'tech_ricochet_ballistics', energyDraw: 6, legality: 'restricted',
   },
+  // ── FACTION EXCLUSIVES — standing-gated hardware (`exclusivity: { factionId, minRep }`). The
+  // owning faction fits these only at Allied standing (rep ≥ 400, the tier systems/factions.js
+  // names at min 400): ships.isUnlocked answers the standing ledger, the research tree plays no
+  // part, and no station rack bypasses the gate — faction yards do not stock rivals' exclusives.
+  // The buy price still quotes through the normal standing-discount path. Every `mods` key below
+  // is one the derived-stats fold in systems/ships.js actually reads.
+  {
+    // CONCORD SANCTION SPOOL — the Navy's own tow line, one step past the Industrial Spool
+    // (tetherSpoolMult 4 vs 3; the fold takes the strongest fitted spool).
+    id: 'mod_sanction_spool', name: 'Concord Sanction Spool', slotType: 'utility', size: 'M', tier: 4,
+    mass: 14, price: 88000, energyDraw: 6,
+    exclusivity: { factionId: 'faction_scn', minRep: 400 },
+    mods: { tetherSpoolMult: 4 },
+  },
+  {
+    // COLLECTIVE DEEP-SCOOP — the miners' pickup reach. The freeflight ore scoop resolves
+    // max(floor 800, derived.magnetRange) in systems/mining.js, so a bigger radius is ore taken
+    // at a pass — a wired physical fact, not a catalog promise.
+    id: 'mod_deep_scoop_array_m', name: 'Deep-Scoop Array M', slotType: 'utility', size: 'M', tier: 4,
+    mass: 10, price: 82000, energyDraw: 5,
+    exclusivity: { factionId: 'faction_dmc', minRep: 400 },
+    mods: { magnetRange: 2000 },
+  },
+  {
+    // REACH SPLITBURNER — the smugglers' door out. The afterburner envelope keys are
+    // capability ratings (strongest fitted burner wins) that land in derived.boost and drive the
+    // boost cap in systems/flightV3.js: hotter, longer, and back on the pipe sooner than the
+    // stock Afterburner M (0.40 / 4 s / 12 s).
+    id: 'mod_splitburner_m', name: 'Reach Splitburner M', slotType: 'utility', size: 'M', tier: 4,
+    mass: 7, price: 86000, energyDraw: 12,
+    exclusivity: { factionId: 'faction_reach', minRep: 400 },
+    mods: { boostTopSpeedPct: 0.55, boostDurS: 6, boostCdS: 10 },
+  },
 ];
 
 // ─────────────────────────────── user content (PQ-172.00) ───────────────────────────────
@@ -825,9 +858,9 @@ const MODULE_AIR_SENTENCE = Object.freeze({
   mod_market_data_s: 'Streams live exchange quotes from every station in this sector while you fly it.',
   mod_triangulation_suite_s: 'Closes an anomaly fix in two scans instead of three.',
   mod_shield_hardener_m: 'The same hit takes less out of the hull.',
-  mod_afterburner_m: 'You carry its mass. It does not change the boost you fly.',
+  mod_afterburner_m: 'Hold boost for a four-second burn: much faster, then the drive needs twelve seconds before it lights again.',
   mod_repair_nanobots_m: 'The hull knits itself back together between fights.',
-  unique_knitbots: 'Heals the hull a little faster between fights than the stock nanobots.',
+  unique_knitbots: 'Heals the hull a little faster between fights than the stock nanobots, and knits parked drones back to strength.',
   mod_tractor_beam_m: 'Picks up ore and wrecks without stopping on them.',
   unique_tideline_tractor: 'Picks up a whole wreck, from farther out than a stock tractor.',
   unique_no_cut_filament: 'A taut swing cuts a hostile line.',
@@ -894,6 +927,9 @@ const MODULE_AIR_SENTENCE = Object.freeze({
   mod_cryo_gyros: 'Two orbiting nodes freeze whatever passes close.',
   mod_herald_fan: 'The volley spreads wider and runs a little hotter. The damage does not change.',
   mod_storm_carom: 'A bounced hit storms through ionized targets. A direct hit cannot jump.',
+  mod_sanction_spool: 'Concord yards fit this spool only for captains the Navy trusts at its back.',
+  mod_deep_scoop_array_m: 'The Collective fits this scoop for crews who bring the whole ring home.',
+  mod_splitburner_m: 'The Reach fits this burner for its runners: a hotter, longer burn, back on the pipe sooner.',
 });
 
 function attachAirSentences(list) {

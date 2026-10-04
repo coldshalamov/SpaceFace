@@ -16,6 +16,7 @@ import { combatFlag, massline2Flag } from '../data/featureFlags.js';
 import { lineSweepContact } from './masslineImpacts.js';
 import { isHostileToPlayer } from './scanner.js';
 import { createTetherWebs } from '../combat/tetherWebs.js';
+import { playerTetherSpoolOut } from './tetherGameplay.js';
 
 export const TRANSVERSE_SNARE_DEF_ID = 'attachment_transverse_snare';
 export const TRANSVERSE_SNARE_HEAD_ID = 'transverse_snare';
@@ -109,6 +110,7 @@ export const masslineSnares = {
     this.helpers = ctx.helpers || {};
     this.registry = ctx.registry || null;
     this._deployment = null;
+    this._pendingRestoredDeployment = null;
     this._preview = resolveTransverseSnarePreview(
       { pos: { x: 0, z: 0 }, rot: 0 },
       { x: PREVIEW_MIN_RANGE, z: 0 },
@@ -124,11 +126,17 @@ export const masslineSnares = {
     this.helpers.masslineSnares = this._api;
     this._lifecycleUnsubs = typeof this.bus?.on === 'function'
       ? [
-          this.bus.on('sector:exit', () => this._clearDeployment('sector_exit')),
-          this.bus.on('sector:enter', () => this._clearDeployment('sector_enter')),
+          // FB-015 — during a save restore (`mode === 'loading'`) the outgoing deployment's
+          // anchor/sentinel ids may already name freshly materialized sector entities, so the
+          // boundary clear is bookkeeping only: no cuts, no kills. Outside a restore the
+          // outgoing bodies are genuinely dead and the eager cleanup stays.
+          this.bus.on('sector:exit', () => this._clearDeployment('sector_exit',
+            this.state?.mode !== 'loading', this.state?.mode !== 'loading')),
+          this.bus.on('sector:enter', () => this._clearDeployment('sector_enter',
+            this.state?.mode !== 'loading', this.state?.mode !== 'loading')),
           this.bus.on('game:new', () => this._clearDeployment('new_game')),
           this.bus.on('game:started', () => this._clearDeployment('game_started')),
-          this.bus.on('save:loaded', () => this._clearDeployment('save_loaded', false, false)),
+          this.bus.on('save:loaded', () => this._onSaveLoaded()),
         ]
       : [];
   },
@@ -204,6 +212,12 @@ export const masslineSnares = {
         this._mirror(state, deployment, null, 'deploying');
         return;
       }
+      // The press was accepted a tick ago. If the spool died in that wait, do not lay the line.
+      if (playerTetherSpoolOut(state, player)) {
+        this._deny(state, 'spool_out');
+        this._clearDeployment('spool_out', false);
+        return;
+      }
       const created = attachments.create({
         defId: TRANSVERSE_SNARE_DEF_ID,
         ownerId: source.id,
@@ -219,7 +233,9 @@ export const masslineSnares = {
         return;
       }
       deployment.attachmentId = created.attachment.id;
-      deployment.armedAt = now + SNARE_ARM_S;
+      // FB-015 — a redeployed save arrives with its arm countdown already elapsed or mid-count;
+      // only a fresh deployment starts the arming delay here.
+      if (!Number.isFinite(deployment.armedAt)) deployment.armedAt = now + SNARE_ARM_S;
       this.bus?.emit('massline:snareArmed', {
         attachmentId: deployment.attachmentId,
         sourceId: source.id,
@@ -498,6 +514,185 @@ export const masslineSnares = {
     });
   },
 
+  // ── FB-015: a deployed snare and its webs survive a save ──────────────────────────────────
+  // The anchors and hazard sentinel are transient entities (never flagged persistent — the
+  // capture table stays bounded); the serialized record keeps their geometry and the arm/expiry
+  // clocks, and _onSaveLoaded re-stages them after the sector rebuilds. The snare's own
+  // attachment record cannot restore (its endpoints are transient anchors, always dropped) —
+  // the rebuilt deployment recreates it through the normal one-tick attach path instead.
+  serialize() {
+    const state = this.state;
+    const webs = this._webs && typeof this._webs.serializeLinks === 'function'
+      ? this._webs.serializeLinks()
+      : [];
+    const d = this._deployment;
+    if (!d || !state) return { version: 1, deployment: null, webs };
+    const caught = d.caughtId != null ? entity(state, d.caughtId) : null;
+    const caughtSaveId = caught && caught.flags && caught.flags.persistent ? String(caught.id) : null;
+    if (d.caughtId != null) {
+      // Mid-catch the second anchor is already dead and the line is re-bound keptAnchor→victim;
+      // there is no two-anchor trap to fall back to, so a catch on a transient hull dies with it.
+      if (!caughtSaveId) return { version: 1, deployment: null, webs };
+      const keptAnchor = entity(state, d.sourceId);
+      if (!keptAnchor || keptAnchor.alive === false) return { version: 1, deployment: null, webs };
+      return {
+        version: 1,
+        deployment: {
+          id: String(d.id),
+          mode: 'caught',
+          source: { x: keptAnchor.pos.x, z: keptAnchor.pos.z },
+          target: null,
+          armedAt: Number.isFinite(d.armedAt) ? d.armedAt : null,
+          expiresAt: Number.isFinite(d.expiresAt) ? d.expiresAt : null,
+          caughtSaveId,
+        },
+        webs,
+      };
+    }
+    const anchorA = entity(state, d.anchorAId);
+    const anchorB = entity(state, d.anchorBId);
+    if (!anchorA || !anchorB || anchorA.alive === false || anchorB.alive === false) {
+      return { version: 1, deployment: null, webs };
+    }
+    return {
+      version: 1,
+      deployment: {
+        id: String(d.id),
+        mode: 'armed',
+        source: { x: anchorA.pos.x, z: anchorA.pos.z },
+        target: { x: anchorB.pos.x, z: anchorB.pos.z },
+        // Absolute simTime values — the restore clock lands the same numbers.
+        armedAt: Number.isFinite(d.armedAt) ? d.armedAt : null,
+        expiresAt: Number.isFinite(d.expiresAt) ? d.expiresAt : null,
+        caughtSaveId: null,
+      },
+      webs,
+    };
+  },
+
+  deserialize(d) {
+    const payload = d && typeof d === 'object' ? d : {};
+    // The web timer ledger binds onto the restored attachment ids now; save:loaded's boundary
+    // clear then keeps exactly these links and cuts every snarl record it cannot account for.
+    if (this._webs && typeof this._webs.restoreLinks === 'function') {
+      this._webs.restoreLinks(Array.isArray(payload.webs) ? payload.webs : []);
+    }
+    const saved = payload.deployment;
+    const caught = saved && saved.mode === 'caught';
+    this._pendingRestoredDeployment = saved && saved.source && (caught || saved.target)
+      ? {
+        id: String(saved.id || `snare_restored_${this.state && this.state.tick | 0}`),
+        mode: caught ? 'caught' : 'armed',
+        source: { x: Number(saved.source.x) || 0, z: Number(saved.source.z) || 0 },
+        target: saved.target ? { x: Number(saved.target.x) || 0, z: Number(saved.target.z) || 0 } : null,
+        armedAt: Number.isFinite(saved.armedAt) ? saved.armedAt : Infinity,
+        expiresAt: Number.isFinite(saved.expiresAt) ? saved.expiresAt : null,
+        caughtSaveId: saved.caughtSaveId != null ? String(saved.caughtSaveId) : null,
+      }
+      : null;
+  },
+
+  _onSaveLoaded() {
+    const saved = this._pendingRestoredDeployment;
+    this._pendingRestoredDeployment = null;
+    if (saved && this._redeploySaved(saved)) return;
+    this._clearDeployment('save_loaded', false, false);
+  },
+
+  _redeploySaved(saved) {
+    const state = this.state;
+    const player = entity(state, state.playerId);
+    const spawn = this.helpers && this.helpers.spawnEntity;
+    if (!state || !player || typeof spawn !== 'function') return false;
+    const now = nowOf(state);
+    if (saved.expiresAt != null && now >= saved.expiresAt) return false; // died inside the save gap
+    const remaining = saved.expiresAt != null ? Math.max(0.5, saved.expiresAt - now) : SNARE_TTL_S;
+    const caughtId = saved.caughtSaveId ? resolveSavedEntityId(state, saved.caughtSaveId) : null;
+    const victim = caughtId != null ? entity(state, caughtId) : null;
+    if (saved.mode === 'caught') {
+      if (!victim) return false;
+      const anchor = spawn(snareAnchorSpec(saved.source, player, saved.id, 'A'));
+      if (!anchor) return false;
+      anchor.ttl = remaining + 1;
+      this._deployment = {
+        id: saved.id,
+        anchorAId: anchor.id,
+        anchorBId: null,
+        sourceId: anchor.id,
+        targetId: victim.id,
+        sentinelId: null,
+        attachmentId: null,
+        caughtId: victim.id,
+        spawnTick: state.tick,
+        armedAt: saved.armedAt,
+        expiresAt: saved.expiresAt != null ? saved.expiresAt : now + SNARE_TTL_S,
+      };
+      this._mirror(state, this._deployment, null, 'caught');
+      return true;
+    }
+    const source = spawn(snareAnchorSpec(saved.source, player, saved.id, 'A'));
+    const target = spawn(snareAnchorSpec(saved.target, player, saved.id, 'B'));
+    if (source) source.ttl = remaining + 1;
+    if (target) target.ttl = remaining + 1;
+    const center = {
+      x: (saved.source.x + saved.target.x) / 2,
+      z: (saved.source.z + saved.target.z) / 2,
+    };
+    const sentinel = spawn({
+      type: 'masslineSnare',
+      _noMesh: true,
+      pos: { x: center.x, z: center.z },
+      vel: { x: 0, z: 0 },
+      radius: SNARE_AI_HAZARD_RADIUS,
+      mass: 0,
+      hull: 1,
+      hullMax: 1,
+      collides: true,
+      collisionMask: 0,
+      physicsBody: false,
+      team: player.team,
+      ownerId: player.id,
+      ttl: remaining,
+      data: {
+        kind: 'transverse_snare_hazard',
+        deploymentId: saved.id,
+        sourceId: source && source.id,
+        targetId: target && target.id,
+        segmentHalfLength: SNARE_HALF_LENGTH,
+      },
+    });
+    if (!source || !target) {
+      if (source) source.alive = false;
+      if (target) target.alive = false;
+      if (sentinel) sentinel.alive = false;
+      return false;
+    }
+    this._deployment = {
+      id: saved.id,
+      anchorAId: source.id,
+      anchorBId: target.id,
+      sourceId: source.id,
+      // A caught victim that resolved through the remap retakes the line; otherwise the trap
+      // rebuilds anchor-to-anchor and resumes its crossing scan.
+      targetId: victim ? victim.id : target.id,
+      sentinelId: sentinel && sentinel.id,
+      attachmentId: null,
+      caughtId: victim ? victim.id : null,
+      spawnTick: state.tick,
+      armedAt: saved.armedAt,
+      expiresAt: saved.expiresAt != null ? saved.expiresAt : now + SNARE_TTL_S,
+    };
+    this._mirror(state, this._deployment, null, victim ? 'caught' : 'deploying');
+    this.bus?.emit('massline:snareDeployed', {
+      deploymentId: saved.id,
+      sourceId: source.id,
+      targetId: this._deployment.targetId,
+      expiresAt: this._deployment.expiresAt,
+      restored: true,
+    });
+    return true;
+  },
+
   _mirror(state, deployment, attachment, phase) {
     const mirror = ensureRemoteMirror(state);
     mirror.active = true;
@@ -654,6 +849,25 @@ function clearRemoteMirror(state, reason = null) {
 function killEntity(state, id) {
   const target = id == null ? null : entity(state, id);
   if (target) target.alive = false;
+}
+
+// FB-015 — a saved endpoint id only refers to bodies combat persistence can name: the player
+// and flags.persistent hulls. It re-resolves through the restore's sessionEntityIdRemap; a
+// non-persistent endpoint is honestly gone (no id recycling across the boundary).
+function resolveSavedEntityId(state, savedId) {
+  if (savedId == null) return null;
+  const remap = state && state.sessionEntityIdRemap;
+  if (remap && typeof remap.get === 'function') {
+    const mapped = remap.get(String(savedId));
+    return mapped == null ? null : mapped;
+  }
+  // Harness restores that never opened a remap keep numeric ids verbatim; save ids are
+  // String()-ified, so coerce back to the map's key shape.
+  const key = Number.isFinite(Number(savedId)) ? Number(savedId) : savedId;
+  const direct = state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(key)
+    : null;
+  return direct && direct.alive !== false ? key : null;
 }
 
 function entity(state, id) {

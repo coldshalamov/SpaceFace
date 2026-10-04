@@ -81,8 +81,7 @@ export const terrainAnchors = {
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
-    const seed = (ctx.state.meta && ctx.state.meta.seed) || 1;
-    this._rng = ctx.helpers.mulberry32(ctx.helpers.hash32(seed, 'terrainAnchors'));
+    this._resetRunRandom();
     this._unsubs = [];
     if (this.bus && typeof this.bus.on === 'function') {
       this._unsubs.push(this.bus.on('encounter:telegraph', (p) => this._onTelegraph(p || {})));
@@ -101,6 +100,17 @@ export const terrainAnchors = {
   destroy() {
     for (const off of this._unsubs || []) { if (typeof off === 'function') off(); }
     this._unsubs = [];
+  },
+
+  newGame() {
+    this._resetRunRandom();
+  },
+
+  // A retained system must start the new run's stream at the same point as a fresh
+  // instance. Continue and ordinary wave/sector transitions keep their current stream.
+  _resetRunRandom() {
+    const seed = (this.state.meta && this.state.meta.seed) || 1;
+    this._rng = this.helpers.mulberry32(this.helpers.hash32(seed, 'terrainAnchors'));
   },
 
   update() {},
@@ -212,6 +222,17 @@ export const terrainAnchors = {
       spawnAnchor(dx, dz, size);
       placed++;
     }
+    // NXI-076 — replenishment is explained only when a real replacement is admitted: adopting
+    // surviving in-bubble anchors is ownership bookkeeping, not new geometry, so the receipt
+    // fires on `spawned > 0` alone and carries how much was already standing.
+    if (placed > 0 && this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('terrainAnchors:replenished', {
+        encounterId: payload.encounterId || null,
+        kind: payload.kind || null,
+        spawned: placed,
+        alreadyPresent: present,
+      });
+    }
   },
 
   _onResolved(payload) {
@@ -225,6 +246,11 @@ export const terrainAnchors = {
       if (index < 0) continue;
       data.terrainAnchorEncounterIds.splice(index, 1);
       if (!data.terrainAnchorEncounterIds.length) {
+        // NXB-019 — a preparation interval releases ownership, not the body: the rock keeps its
+        // authored TTL and exactly the transform the player left it with. The next wave's
+        // telegraph re-adopts in-bubble survivors; destroyed cover refills through the same
+        // authored top-up, so a round's affordance is never silently restored or silently lost.
+        if (payload.retainAnchors === true) continue;
         // VERB-07 — the opening fight's rocks survive until the player leaves the
         // neighbourhood: no aftermath clamp, and any earlier clamp lifts. Ordinary
         // encounter anchors still take the 45-second sweep.

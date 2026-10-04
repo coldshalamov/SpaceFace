@@ -9,6 +9,7 @@ import {
   SUBSYSTEM_DEFS,
 } from '../data/combatDefs.js';
 import { ensureCombatTrace } from './trace.js';
+import { registerTurretSubsystems } from './turretSubsystems.js';
 
 export function createCombatCatalog(overrides = {}) {
   const actions = overrides.actions || ACTION_DEFS;
@@ -214,6 +215,10 @@ function createCombatantRuntime(entity, profile, catalog, previous) {
       lastDamageTick: old && Number.isInteger(old.lastDamageTick) ? old.lastDamageTick : -1,
     };
   }
+
+  // FB-020: an entity authoring subsystems.turretHp carries each turret mount as a real
+  // destructible subsystem — the phase machine reads mount loss, never hull fraction.
+  registerTurretSubsystems(entity, runtime, previous);
 
   for (const socket of (profile && profile.sockets) || []) {
     runtime.sockets[socket.id] = {

@@ -1,17 +1,23 @@
 import { entityLocalPointToWorld, socketLocalPosition, socketWorldPosition, worldPointToEntityLocal } from './geometry.js';
 import { ensureCombatant, entityKey } from './runtime.js';
 import { appendCombatTrace } from './trace.js';
+import { occupantGenerationOf } from '../core/entity.js';
 import { createMasslineRuntime, stepMassline } from '../core/constraints/masslineController.js';
 import { SIM_DT } from '../core/sim.js';
 import { massline2Flag } from '../data/featureFlags.js';
 
 // Production action_attach envelope. Its ordinary endpoints share the fail-closed durability
 // contract; only 47-A's explicitly marked false-mass spindle uses this legacy break envelope.
-// The 140/90 tuning is the authored 47-A contract: the scenario's measured peak tension (~119)
-// must cross the 75% near-break warning (105) without reaching the break (140), so the line
-// groans under the false mass and holds. The +25% production-def retune (175/112.5) pushed the
-// warning band above the authored load and silently removed tether.near_break from the trace.
-const LEGACY_47A_MASSLINE_BREAK = Object.freeze({ maxTension: 140, maxImpulse: 90, graceTicks: 1 });
+// The tuning is the authored 47-A contract: the scenario's measured peak tension must cross the
+// 75% near-break warning without reaching the break, so the line groans under the false mass and
+// holds. The original 140/90 envelope bracketed the 2026-07 measured peak (~119, ratio 0.85);
+// the +25% production-def retune (175/112.5) pushed the warning band above the authored load and
+// silently removed tether.near_break from the trace, which is why 140 was restored.
+// 2026-09-30 eb1869826 (per-object physics materials, solid contacts) reshaped the tow and the
+// measured peak dropped to ~69 (ratio unchanged in kind, load halved). The envelope is
+// re-derived to the new measured peak at the same 0.85 proportion: 81 breaks where the old
+// physics needed 140, the 75% warning (60.75) fires again, and the line still holds (69 < 81).
+const LEGACY_47A_MASSLINE_BREAK = Object.freeze({ maxTension: 81, maxImpulse: 90, graceTicks: 1 });
 const STANDARD_TETHER_STRENGTH_REVISION = 2;
 const STANDARD_TETHER_PAYOUT_REVISION = 1;
 const BROKEN_ATTACHMENT_HISTORY_LIMIT = 128;
@@ -62,11 +68,22 @@ const SPECIALIZED_TETHER_HEADS = Object.freeze({
   twin_bridle: Object.freeze({ flag: 'masslineHeadTwinBridle', spring: Object.freeze({}) }),
 });
 
+// One fail-closed bound for every tether rating lane — live spool/reel multipliers and the
+// persisted-policy rebase below share it so they cannot drift. An unbounded multiplier moves
+// the joint hundreds of WU in one tick (teleport + solver destabilization); authored ratings
+// max-fold at 1.8x, so only corrupt data ever reaches the cap.
+const TETHER_RATING_MULT_MIN = 1;
+const TETHER_RATING_MULT_MAX = 6;
+
+function clampTetherRatingMult(raw) {
+  return typeof raw === 'number' && Number.isFinite(raw) && raw > 0
+    ? Math.max(TETHER_RATING_MULT_MIN, Math.min(TETHER_RATING_MULT_MAX, raw))
+    : TETHER_RATING_MULT_MIN;
+}
+
 function standardTetherSpoolMultiplier(owner) {
   const raw = owner && owner.data && owner.data.derived && owner.data.derived.tetherSpoolMult;
-  return typeof raw === 'number' && Number.isFinite(raw) && raw > 0
-    ? Math.max(1, Math.min(6, raw))
-    : 1;
+  return clampTetherRatingMult(raw);
 }
 
 function baseTetherMaxLength(def) {
@@ -109,9 +126,10 @@ export function effectiveTetherPolicy(def, owner, features = null) {
     };
   }
   const rawReel = owner && owner.data && owner.data.derived && owner.data.derived.tetherReelRateMult;
-  const reelMult = typeof rawReel === 'number' && Number.isFinite(rawReel) && rawReel > 0
-    ? Math.max(1, rawReel)
-    : 1;
+  // Fail-closed symmetric with the spool cap above (1..6): an unbounded reel multiplier lets a
+  // stacked/load-derived mult move the joint hundreds of WU in one tick, which reads as a teleport
+  // and destabilizes the solver. Ships max-fold reel at 1.8x today; the cap binds only corrupt data.
+  const reelMult = clampTetherRatingMult(rawReel);
   const policy = {
     break: effectiveTetherBreak(def, owner),
     reelRate: baseReelRate * reelMult,
@@ -145,7 +163,7 @@ export function rebasePersistedTetherPolicy(def, policy) {
       Number(savedBreak.maxImpulse) / PREVIOUS_STANDARD_TETHER_BREAK.maxImpulse,
       Number(savedBreak.maxYank) / PREVIOUS_STANDARD_TETHER_BREAK.maxYank,
     ].filter((value) => Number.isFinite(value) && value > 0);
-    const savedRating = Math.max(1, Math.min(6, ratios.length ? Math.max(...ratios) : 1));
+    const savedRating = clampTetherRatingMult(ratios.length ? Math.max(...ratios) : 1);
     rebased = {
       ...rebased,
       break: {
@@ -162,7 +180,7 @@ export function rebasePersistedTetherPolicy(def, policy) {
   const baseMaxLength = baseTetherMaxLength(def);
   if (baseMaxLength > 0) {
     const savedMaxLength = rebased.maxLength;
-    const maximumSupportedLength = baseMaxLength * 6;
+    const maximumSupportedLength = baseMaxLength * TETHER_RATING_MULT_MAX;
     const validSavedLength = typeof savedMaxLength === 'number'
       && Number.isFinite(savedMaxLength)
       && savedMaxLength >= baseMaxLength
@@ -174,6 +192,24 @@ export function rebasePersistedTetherPolicy(def, policy) {
         ...rebased,
         maxLength: normalizedMaxLength,
         payoutRevision: STANDARD_TETHER_PAYOUT_REVISION,
+      };
+    }
+  }
+  // The reel-rate snapshot has the same persisted hole payout had: a save written before the
+  // multiplier clamp (a48a898fc) carries an unbounded rate that survives Continue forever — and
+  // no revision bump marks it, so the implied multiplier re-derives unconditionally through the
+  // same fail-closed bound. In-envelope snapshots pass through bitwise, keeping the rebase an
+  // identity no-op for current saves; malformed or out-of-envelope rates fold to base..cap.
+  const baseReelRate = Number.isFinite(def.reelRate) && def.reelRate > 0 ? def.reelRate : null;
+  if (baseReelRate != null) {
+    const impliedMult = Number(rebased.reelRate) / baseReelRate;
+    const withinEnvelope = Number.isFinite(impliedMult)
+      && impliedMult >= TETHER_RATING_MULT_MIN
+      && impliedMult <= TETHER_RATING_MULT_MAX;
+    if (!withinEnvelope) {
+      rebased = {
+        ...rebased,
+        reelRate: baseReelRate * clampTetherRatingMult(impliedMult),
       };
     }
   }
@@ -329,6 +365,15 @@ export function createAttachmentService(context) {
       targetId: target.id,
       ...(controller ? { controllerId: controller.id } : {}),
       ...(typeof (spec && spec.controlMode) === 'string' ? { controlMode: spec.controlMode } : {}),
+      // Occupant-generation stamps pin each endpoint to the body that held the id at create
+      // time. Entity ids recycle through freeIds, so a bare numeric id can name a replacement
+      // one tick later; these tokens are what let the orphan sweep and deferred destruction
+      // receipts distinguish "the endpoint is gone" from "the id moved to a new occupant".
+      // Null means the body was never stamped (fixture-authored) — treated as unprovable, so
+      // pre-fixtures and legacy records keep their existing id-only behavior.
+      ownerGeneration: occupantGenerationOf(owner),
+      targetGeneration: occupantGenerationOf(target),
+      controllerGeneration: controller ? occupantGenerationOf(controller) : null,
       sourceSocketId: sourceSocket.id,
       targetSocketId: targetSocket.id,
       sourceAnchorLocal: requestedSourceWorld
@@ -521,10 +566,13 @@ export function createAttachmentService(context) {
       const controller = attachment.controllerId == null ? null : entity(attachment.controllerId);
       // Orphaned = the entity is GONE (despawned) or explicitly dead (alive === false). An entity
       // without an `alive` field (harness stubs, minimal records) is NOT an orphan — only a
-      // positive death signal or a missing record may break a line.
-      const ownerLost = !owner || owner.alive === false;
-      const targetLost = !target || target.alive === false;
-      const controllerLost = attachment.controllerId != null && (!controller || controller.alive === false);
+      // positive death signal or a missing record may break a line. A recorded generation that
+      // no longer matches the live occupant is the same kind of loss: the id was recycled and
+      // the body this record binds is gone even though a replacement sits in the map.
+      const ownerLost = !owner || owner.alive === false || occupantMismatch(owner, attachment.ownerGeneration);
+      const targetLost = !target || target.alive === false || occupantMismatch(target, attachment.targetGeneration);
+      const controllerLost = attachment.controllerId != null
+        && (!controller || controller.alive === false || occupantMismatch(controller, attachment.controllerGeneration));
       if (!ownerLost && !targetLost && !controllerLost) continue;
       // Owner death is an endpoint loss, not a target loss — keep the reason inside the
       // recognized endpoint vocabulary so cues/labels stay honest about which side died.
@@ -569,7 +617,18 @@ export function createAttachmentService(context) {
       const def = catalog.attachments.get(attachment.defId);
       if (!def) { pending++; continue; }
       const result = createPhysicsAttachment(attachment, def);
-      if (!result.ok) { pending++; continue; }
+      if (!result.ok) {
+        // endpoint_stale is terminal, not retryable: the id still maps to a live occupant but
+        // it is a different body than this record binds. Break it now — next tick's orphan
+        // sweep would catch it anyway, but leaving it active for a tick lets reconcile and
+        // telemetry treat the replacement as the line's endpoint in the meantime.
+        if (result.reason === 'endpoint_stale') {
+          breakAttachment(attachment, 'endpoint_lost', attachment.controllerId ?? attachment.ownerId);
+          continue;
+        }
+        pending++;
+        continue;
+      }
       attachment.physicsHandle = serializableHandle(result.physicsHandle);
       recreated++;
       appendCombatTrace(state.combat, state.tick, 'attachment.physicsReconciled', {
@@ -599,6 +658,7 @@ export function createAttachmentService(context) {
     }
     const previous = {
       ownerId: attachment.ownerId,
+      ownerGeneration: attachment.ownerGeneration,
       sourceSocketId: attachment.sourceSocketId,
       sourceAnchorLocal: attachment.sourceAnchorLocal && { ...attachment.sourceAnchorLocal },
     };
@@ -614,12 +674,14 @@ export function createAttachmentService(context) {
       return fail('physics_transfer_cut_failed', error);
     }
     attachment.ownerId = toOwnerId;
+    attachment.ownerGeneration = occupantGenerationOf(nextOwner);
     attachment.sourceSocketId = nextSocket.id;
     attachment.sourceAnchorLocal = socketLocalPosition(nextOwner, nextSocket);
     attachment.physicsHandle = null;
     const rebound = createPhysicsAttachment(attachment, def);
     if (!rebound.ok) {
       attachment.ownerId = previous.ownerId;
+      attachment.ownerGeneration = previous.ownerGeneration;
       attachment.sourceSocketId = previous.sourceSocketId;
       attachment.sourceAnchorLocal = previous.sourceAnchorLocal;
       const rollback = createPhysicsAttachment(attachment, def);
@@ -713,6 +775,9 @@ export function createAttachmentService(context) {
     attachment.defId = nextDef.id;
     attachment.ownerId = nextOwner.id;
     attachment.targetId = nextTarget.id;
+    attachment.ownerGeneration = occupantGenerationOf(nextOwner);
+    attachment.targetGeneration = occupantGenerationOf(nextTarget);
+    attachment.controllerGeneration = nextController ? occupantGenerationOf(nextController) : null;
     if (nextController) attachment.controllerId = nextController.id;
     else delete attachment.controllerId;
     if (typeof spec.controlMode === 'string') attachment.controlMode = spec.controlMode;
@@ -985,6 +1050,14 @@ export function createAttachmentService(context) {
     const target = entity(attachment.targetId);
     if (!owner || !owner.alive) return { ok: false, reason: 'owner_missing' };
     if (!target || !target.alive || target.id === owner.id) return { ok: false, reason: 'target_missing' };
+    // A recorded generation that no longer matches the live occupant means the endpoint id was
+    // recycled: the body this record binds is gone and a different occupant owns the number.
+    // Recreating physics for it would weld the line onto the replacement — fail closed so
+    // reconcilePhysics breaks the record instead of resurrecting it on the wrong body.
+    if (occupantMismatch(owner, attachment.ownerGeneration)
+        || occupantMismatch(target, attachment.targetGeneration)) {
+      return { ok: false, reason: 'endpoint_stale' };
+    }
     const ownerRuntime = ensureCombatant(state, owner, catalog);
     const targetRuntime = ensureCombatant(state, target, catalog);
     const sourceSocket = selectSocket(ownerRuntime, def.sourceSocketTags, attachment.sourceSocketId, owner.id, attachment.id);
@@ -1122,6 +1195,9 @@ function attachmentRebindSnapshot(attachment) {
     defId: attachment.defId,
     ownerId: attachment.ownerId,
     targetId: attachment.targetId,
+    ownerGeneration: attachment.ownerGeneration ?? null,
+    targetGeneration: attachment.targetGeneration ?? null,
+    controllerGeneration: attachment.controllerGeneration ?? null,
     controllerId: attachment.controllerId ?? null,
     controlMode: attachment.controlMode || null,
     sourceSocketId: attachment.sourceSocketId,
@@ -1196,6 +1272,29 @@ function pruneBrokenAttachmentHistory(byId) {
 
 function finiteOrZero(value) {
   return Number.isFinite(value) ? value : 0;
+}
+
+/**
+ * A recorded occupant generation proves which body an id named when the record was written.
+ * Mismatch = the id was recycled and a different occupant holds it now — the record is stale.
+ * A null recording (fixture-authored endpoints, legacy records) cannot prove identity, so it
+ * never mismatches: unprovable stays unprovable rather than guessing either way.
+ */
+function occupantMismatch(entity, recordedGeneration) {
+  return recordedGeneration != null && occupantGenerationOf(entity) !== recordedGeneration;
+}
+
+/**
+ * Does this record bind `generation` of `entityId`? Kernel-side destruction receipts are
+ * deferred and ids recycle, so when the id already belongs to a replacement occupant this is
+ * the check that separates the dead body's lines (break them) from the replacement's (keep).
+ * Returns false when either side cannot prove identity — never claim a binding on a guess.
+ */
+export function attachmentBindsOccupant(attachment, entityId, generation) {
+  if (!attachment || generation == null) return false;
+  return (attachment.ownerId === entityId && attachment.ownerGeneration === generation)
+    || (attachment.targetId === entityId && attachment.targetGeneration === generation)
+    || (attachment.controllerId === entityId && attachment.controllerGeneration === generation);
 }
 
 function entitySuppressesMasslineAutoBreak(value) {

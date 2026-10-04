@@ -98,8 +98,11 @@ function familyFor(sector, zones) {
   const industry = count('mining_belt') + count('refinery_approach');
   const trade = count('trade_lane') + count('border_checkpoint') + count('patrol_corridor') + count('civilian_core');
   if (sector.security >= 0.80) return 'civic_core';
+  // A dominant outlaw heart publishes as predation even where anomalous pockets intrude inside it
+  // (Sker Haven: four appended machine-ecology sites inside authored Reach outlaw/ambush space).
+  if (outlaw >= 2) return 'outlaw_predation';
   if (count('anomaly_deep') >= 2 || (anomaly >= 2 && sector.security < 0.22)) return 'anomaly_research';
-  if (outlaw >= 2 || (outlaw >= 1 && sector.security < 0.11)) return 'outlaw_predation';
+  if (outlaw >= 1 && sector.security < 0.11) return 'outlaw_predation';
   if (industry >= 2) return 'industrial_belt';
   if (count('derelict_field') || count('colony')) return 'salvage_frontier';
   if (trade >= 2) return 'trade_corridor';

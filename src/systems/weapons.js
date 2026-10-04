@@ -24,6 +24,8 @@ import {
 } from '../combat/impulseKernel.js';
 import { isHostileToPlayer } from './scanner.js';
 import { cloakHidesEntityFrom } from './cloak.js';
+import { lockLineageSuppressed } from './countermeasures.js';
+import { targetIdentityGeneration } from '../ai/perception.js';
 import { combatFlag, massline2Flag } from '../data/featureFlags.js';
 import {
   aimTrueProjectileVelocity, solveTetherLeadSolution, solutionToleranceRad, orbitalConstraintState,
@@ -113,6 +115,15 @@ const CLOAK_SEEKER_RESIDUAL = 0.25;      // fraction of authored turnRate left o
 // Player-facing weapon recharge pacing — cap/heat recover ~15% faster than the baseline authored
 // rates so burst-and-recharge stays tactical without long dead-air waits.
 const WEAPON_RECHARGE_MULT = 1.15;
+
+/** Combat heatDissipation (overheat status is 0.35). A missing multiplier stays full rate. */
+function weaponHeatDissipScale(state, entity) {
+  const book = state && state.combat && state.combat.entities;
+  if (!book || !entity || entity.id == null) return 1;
+  const runtime = book[String(entity.id)];
+  const value = runtime && runtime.multipliers && runtime.multipliers.heatDissipation;
+  return Number.isFinite(value) ? Math.max(0, value) : 1;
+}
 const WEAPON_VENT_S = 2 / WEAPON_RECHARGE_MULT;
 const WEAPON_VENT_DUMP = 1.6 * WEAPON_RECHARGE_MULT;
 
@@ -503,6 +514,7 @@ export const weapons = {
           if (autoTarget && autoTarget.alive && autoTarget.pos) forcedTarget = autoTarget;
         }
       }
+      if (!(state.input && state.input.fire)) this._releasePlayerOrdnanceNotices(player);
       const aimAngle = tetherGate
         ? tetherGate.angle
         : (Number.isFinite(state.input.aimAngle) ? state.input.aimAngle : player.rot);
@@ -517,8 +529,9 @@ export const weapons = {
           : (state.player.targetId != null ? state.player.targetId : null);
       }
       this._serviceShip(player, firing, /*isPlayer*/ true, dt, state, aimAngle, forcedTarget, tetherGate);
-    } else if (state.player && state.player.gunTargetId != null) {
-      state.player.gunTargetId = null;
+    } else {
+      if (player && !(state.input && state.input.fire)) this._releasePlayerOrdnanceNotices(player);
+      if (state.player && state.player.gunTargetId != null) state.player.gunTargetId = null;
     }
     const ships = (state.entityIndex && (state.entityIndex.weaponShips || state.entityIndex.ships))
       || state.entityList;
@@ -580,6 +593,7 @@ export const weapons = {
         firing = !!state.input.fire;
         if (state.input.actions?.tetherFire) firing = false;
       }
+      if (!(state.input && state.input.fire)) this._releasePlayerOrdnanceNotices(player);
       let tetherGate = null;
       const fireControl = massline2Flag('fireControl');
       if (fireControl) {
@@ -613,8 +627,9 @@ export const weapons = {
           ? state.player.targetId
           : null;
       }
-    } else if (state.player && state.player.gunTargetId != null) {
-      state.player.gunTargetId = null;
+    } else {
+      if (player && !(state.input && state.input.fire)) this._releasePlayerOrdnanceNotices(player);
+      if (state.player && state.player.gunTargetId != null) state.player.gunTargetId = null;
     }
 
     // beamsIdle — prev/current empty; emit is a no-op Set walk
@@ -634,7 +649,7 @@ export const weapons = {
           const def = this._byId.get(w.defId) || {};
           if (w._cooldown > 0) w._cooldown = Math.max(0, w._cooldown - dt);
           const baseDissip = w.heatDissip != null ? w.heatDissip : (def.heatDissip || 0);
-          const dissip = baseDissip * WEAPON_RECHARGE_MULT;
+          const dissip = baseDissip * WEAPON_RECHARGE_MULT * weaponHeatDissipScale(state, player);
           if (w._heat > 0 && dissip > 0) w._heat = Math.max(0, w._heat - dissip * dt);
         }
         this._tickVent(player, dt, state);
@@ -657,7 +672,7 @@ export const weapons = {
           const def = this._byId.get(w.defId) || {};
           if (w._cooldown > 0) w._cooldown = Math.max(0, w._cooldown - dt);
           const baseDissip = w.heatDissip != null ? w.heatDissip : (def.heatDissip || 0);
-          const dissip = baseDissip * WEAPON_RECHARGE_MULT;
+          const dissip = baseDissip * WEAPON_RECHARGE_MULT * weaponHeatDissipScale(state, e);
           if (w._heat > 0 && dissip > 0) w._heat = Math.max(0, w._heat - dissip * dt);
         }
         // Forced-vent lockout (player only) — see WEAPON_VENT_S. Runs after the normal cooldown so a
@@ -780,6 +795,7 @@ export const weapons = {
     const ws = e.data && e.data.weapons;
     const combat = e.data && e.data.combat;
     if (!ws || !combat) return;
+    const tgt = this._resolveTarget(e);
     // Does this ship carry any lock-requiring weapon that is open this tick? An `occasional`
     // rack is ignored while its window is closed so the incoming-lock warning re-arms per
     // actual launch window instead of crying wolf between volleys.
@@ -788,6 +804,13 @@ export const weapons = {
       const def = this._byId.get(w.defId) || {};
       const tracking = w.tracking || def.tracking;
       if (tracking === 'homing' && this._mountRoleOpen(e, w, def, state)) {
+        // A lock is a launch solution. An unreachable rack must neither warn/interdict the
+        // player nor lend its shorter observation window to a longer-range torpedo mount.
+        const range = w.range != null ? w.range : def.range;
+        if (tgt && Number.isFinite(range)) {
+          const dx = tgt.pos.x - e.pos.x, dz = tgt.pos.z - e.pos.z;
+          if (range < 0 || dx * dx + dz * dz > range * range) continue;
+        }
         needsLock = true;
         const lt = w.lockTimeS != null ? w.lockTimeS : def.lockTimeS;
         if (lt != null) lockTimeS = Math.min(lockTimeS, lt);
@@ -797,22 +820,23 @@ export const weapons = {
     // for racks that author no time — starting there silently ignored slower authored locks.
     if (!Number.isFinite(lockTimeS)) lockTimeS = 1.2;
     if (!needsLock) { combat.lockProgress = 0; combat.lockTarget = null; combat.lockTargetGeneration = null; return; }
-    const tgt = this._resolveTarget(e);
     // Cloak interplay (flag massline2.cloak): a target dark to THIS shooter cannot grow a lock and
     // bleeds a held one over CLOAK_LOCK_DROP_S — a bounded hold, not a snap. Inside the ring (or
     // under a scanner burn) the lock behaves exactly as before. One gate, player and NPC alike.
     const darkened = !!tgt && cloakHidesEntityFrom(state, e, tgt);
+    if (tgt && lockLineageSuppressed(combat, tgt.id, state.simTime)) {
+      combat.lockProgress = 0;
+      combat.lockTarget = null;
+      return;
+    }
     if (tgt && !darkened && this._inLockCone(e, tgt)) {
-      // Entity ids recycle: if the resolved target is a NEW occupant of the id this lock was
-      // built on, the stale lineage cannot hand its progress over — the fresh body starts at 0.
-      if (combat.lockTarget === tgt.id
-          && combat.lockTargetGeneration != null
-          && tgt.occupantGeneration != null
-          && combat.lockTargetGeneration !== tgt.occupantGeneration) {
+      const ident = targetIdentityGeneration(tgt);
+      if (combat.lockTarget !== tgt.id || (combat.lockTargetGeneration != null && combat.lockTargetGeneration !== ident)) {
+        if (combat.lockTarget != null) combat.lockGeneration = (combat.lockGeneration | 0) + 1;
         combat.lockProgress = 0;
       }
       combat.lockTarget = tgt.id;
-      combat.lockTargetGeneration = tgt.occupantGeneration != null ? tgt.occupantGeneration : null;
+      combat.lockTargetGeneration = ident;
       combat.lockProgress = Math.min(1, (combat.lockProgress || 0) + dt / Math.max(0.05, lockTimeS));
     } else {
       // lock decays when target leaves the cone / is gone / went dark — a darkened target bleeds
@@ -871,19 +895,10 @@ export const weapons = {
       const d = p.data;
       if (!d || d.kind !== 'missile') continue;
       if (!d.armed) { d.armed = true; }
-      let decoy = missileDecoyAim(d);
+      const decoy = missileDecoyAim(d);
       let tgt = decoy ? null : (d.targetId != null ? this.helpers.getEntity(d.targetId) : null);
-      // A recycled id is not the lineage this round locked: when the occupant generation moved on,
-      // the seeker adopts the chaff vocabulary on its own last course — still a physical round that
-      // collides and TTLs normally, but it can never re-home onto the new body under the old id.
-      if (!decoy && tgt && d.targetGeneration != null
-          && tgt.occupantGeneration != null && tgt.occupantGeneration !== d.targetGeneration) {
-        const heading = Number.isFinite(p.rot) ? p.rot : Math.atan2(p.vel.z, p.vel.x);
-        d.diverted = true;
-        d.divertPos = { x: p.pos.x + Math.cos(heading) * 400, z: p.pos.z + Math.sin(heading) * 400 };
-        tgt = null;
-        decoy = missileDecoyAim(d);
-      }
+      // A recycled entity id is not yesterday's target. The round stays a physical body.
+      if (tgt && !guidanceAcceptsTarget(d, tgt)) tgt = null;
       // Cloak interplay (flag massline2.cloak): a target dark to THIS seeker bleeds its tracking
       // quality — turn authority scales down over CLOAK_SEEKER_DROP_S (ECM-style bleed on
       // data.turnRate), then the round adopts the chaff vocabulary: diverted onto a divertPos
@@ -1032,8 +1047,18 @@ export const weapons = {
     const cap = typeof e.cap === 'number' ? e.cap : (e.data.derived && e.data.derived.cap) || 0;
     let capLeft = cap;
     if (aimAngle == null) aimAngle = e.rot;
+    const combatRuntime = combatRuntimeOf(state, e);
+    let disabledMounts = 0;
+    let liveMounts = 0;
     for (const w of ws) {
       const def = this._byId.get(w.defId) || {};
+      const bank = weaponBankReadiness(w, combatRuntime);
+      if (bank.disabled) {
+        disabledMounts += 1;
+        if (def.emergentPrimitive) clearEmergentRay(state, e.id);
+        continue;
+      }
+      liveMounts += 1;
       if (!this._mountRoleOpen(e, w, def, state, forceTarget, fireGate)) {
         // A sustained emergent ray opened by this mount would leak into world.ray forever if the
         // role gate simply skips its service — _serviceEmergent's !firing branch is the only
@@ -1059,6 +1084,7 @@ export const weapons = {
     }
     // write the drained capacitor back (cap pool is ours to spend; regen is combat's, §0.6 note)
     if (typeof e.cap === 'number') e.cap = capLeft;
+    if (isPlayer && firing && disabledMounts > 0 && liveMounts === 0) this._noteGunsOut();
   },
 
   // Emergent primitives spend no capacitor and no heat, so they cannot vent-lock or starve
@@ -1093,6 +1119,8 @@ export const weapons = {
     const heatMax = w.heatMax != null ? w.heatMax : def.heatMax || Infinity;
     const range = w.range != null ? w.range : def.range || 0;
     const overheated = (w._heat || 0) >= heatMax;
+    if (!overheated) w._overheatTold = false;
+    else if (firing && e.id === state.playerId) this._noteWeaponOverheat(w);
     let beamAim = aimAngle;
     const arcadeTarget = fireGate?.target || forceTarget;
     const arcadeAim = arcadeGunTarget(e, arcadeTarget, state);
@@ -1109,6 +1137,10 @@ export const weapons = {
     }
     if (arcadeAim) beamAim = this._arcadeMountAngle(e, w, arcadeTarget, 0);
     const canFire = firing && !solutionBlocked && !overheated && capLeft >= energyCost * dt;
+    if (e.id === state.playerId && firing && !solutionBlocked && !overheated
+      && energyCost > 0 && capLeft < energyCost * dt) {
+      this._noteCapacitorEmpty();
+    }
     if (!canFire) {
       // Heat already dissipates once in `_tickWeapons`. A second idle pass made beams cool twice
       // as fast as projectile mounts.
@@ -1179,6 +1211,41 @@ export const weapons = {
     }
   },
 
+  _noteWeaponOverheat(w) {
+    if (!w || w._overheatTold) return;
+    w._overheatTold = true;
+    if (this.bus) this.bus.emit('toast', { text: 'Weapon overheated', kind: 'warn', ttl: 1.6 });
+  },
+
+  /**
+   * One capacitor line for the whole ship, per trigger hold. A passed energy check must not
+   * re-arm it — the next mount, or the next round of the same hold, would speak again.
+   * Vent and cruise force `firing` false while the button is still down; only a real release
+   * (`state.input.fire` clear) drops the latch, including on the quiet idle skip.
+   */
+  _noteCapacitorEmpty() {
+    if (this._playerCapEmptyTold) return;
+    this._playerCapEmptyTold = true;
+    if (this.bus) this.bus.emit('toast', { text: 'Capacitor empty', kind: 'warn', ttl: 1.6 });
+  },
+
+  _noteGunsOut() {
+    if (this._playerGunsOutTold) return;
+    this._playerGunsOutTold = true;
+    if (this.bus) this.bus.emit('toast', { text: 'Guns out — the battery is dark', kind: 'warn', ttl: 1.6 });
+  },
+
+  _releasePlayerOrdnanceNotices(player) {
+    this._playerCapEmptyTold = false;
+    this._playerGunsOutTold = false;
+    const ws = player && player.data && player.data.weapons;
+    if (!ws) return;
+    for (let i = 0; i < ws.length; i++) {
+      const w = ws[i];
+      if (w) w._mineBankTold = false;
+    }
+  },
+
   // Projectile weapon: gate on cooldown/cap/heat (+lock/+arc), spawn a projectile, emit combat:fire.
   _serviceProjectileWeapon(e, w, def, isPlayer, capLeft, dt, state, aimAngle, forceTarget, fireGate = null) {
     const pilotAim = isPlayer && state.settings?.gameplay?.controlScheme === 'pilot';
@@ -1186,11 +1253,10 @@ export const weapons = {
     if (this._releaseMomentumSinkIfReady(e, w, def, state)) return capLeft;
 
     const energyCost = w.energyCost != null ? w.energyCost : def.energyCost || 0;
-    if (capLeft < energyCost) return capLeft;
-
     // Prefer instance heat when authored (ships.makeWeaponRuntime copies heatPerShot → heat).
     // Treat heatMax as inactive when there is no positive heat cost so default heatMax:100 on
-    // non-heat weapons cannot invent a false lockout path.
+    // non-heat weapons cannot invent a false lockout path. Heat speaks before an empty capacitor:
+    // a cooked gun cannot fire even after the cap recovers.
     const heatPerShot = (() => {
       if (w.heat != null && Number.isFinite(w.heat) && w.heat > 0) return w.heat;
       if (def.heatPerShot != null && Number.isFinite(def.heatPerShot)) return def.heatPerShot;
@@ -1198,7 +1264,15 @@ export const weapons = {
     })();
     const heatMaxRaw = w.heatMax != null ? w.heatMax : (def.heatMax != null ? def.heatMax : Infinity);
     const heatMax = heatPerShot > 0 && Number.isFinite(heatMaxRaw) && heatMaxRaw > 0 ? heatMaxRaw : Infinity;
-    if ((w._heat || 0) >= heatMax) return capLeft;            // overheated
+    if ((w._heat || 0) >= heatMax) {
+      if (isPlayer) this._noteWeaponOverheat(w);
+      return capLeft;            // overheated
+    }
+    w._overheatTold = false;
+    if (capLeft < energyCost) {
+      if (isPlayer && energyCost > 0) this._noteCapacitorEmpty();
+      return capLeft;
+    }
 
     const tracking = w.tracking || def.tracking || 'fixed';
     const isMissile = tracking === 'homing';
@@ -1235,8 +1309,14 @@ export const weapons = {
     if (isMissile) {
       // Missiles require a lock before launch.
       const combat = e.data && e.data.combat;
-      const locked = combat && combat.lockTarget != null && (combat.lockProgress || 0) >= 1;
+      const locked = combat && tgt && combat.lockTarget === tgt.id && (combat.lockProgress || 0) >= 1
+        && (combat.lockTargetGeneration == null || combat.lockTargetGeneration === targetIdentityGeneration(tgt));
       if (!tgt || !locked) return capLeft;
+      const range = w.range != null ? w.range : def.range;
+      if (Number.isFinite(range)) {
+        const dx = tgt.pos.x - e.pos.x, dz = tgt.pos.z - e.pos.z;
+        if (range < 0 || dx * dx + dz * dz > range * range) return capLeft;
+      }
       dir = Math.atan2(tgt.pos.z - e.pos.z, tgt.pos.x - e.pos.x);
     } else if (isTurret) {
       if (!tgt) return capLeft;
@@ -1431,9 +1511,9 @@ export const weapons = {
     }
     if (isMissile) {
       data.targetId = tgt ? tgt.id : null;
-      // The seeker locked ONE occupant of this id — ids recycle, so the generation rides with the
-      // round and a stale lineage can never re-home onto the new body that inherits the number.
-      data.targetGeneration = tgt && tgt.occupantGeneration != null ? tgt.occupantGeneration : null;
+      data.targetGeneration = tgt ? targetIdentityGeneration(tgt) : null;
+      data.lockGeneration = e.data && e.data.combat ? (e.data.combat.lockGeneration | 0) : 0;
+      data.lockShooterId = e.id;
       data.turnRate = w.turnRate != null ? w.turnRate : def.turnRate || 0;
       data.projSpeed = projSpeed;
       // accelerate from launch speed to projSpeed over the projectile's flight
@@ -1555,19 +1635,30 @@ export const weapons = {
     if (!combatFlag('weaponImpulseConsequences')) return capLeft;
     if ((w._cooldown || 0) > 0) return capLeft;
     const energyCost = w.energyCost != null ? w.energyCost : def.energyCost || 0;
-    if (capLeft < energyCost) return capLeft;
     const heatPerShot = (w.heat != null && Number.isFinite(w.heat) && w.heat > 0) ? w.heat
       : (Number.isFinite(def.heatPerShot) ? def.heatPerShot : 0);
     const heatMaxRaw = w.heatMax != null ? w.heatMax : (def.heatMax != null ? def.heatMax : Infinity);
     const heatMax = heatPerShot > 0 && Number.isFinite(heatMaxRaw) && heatMaxRaw > 0 ? heatMaxRaw : Infinity;
-    if ((w._heat || 0) >= heatMax) return capLeft;
+    if ((w._heat || 0) >= heatMax) {
+      if (isPlayer) this._noteWeaponOverheat(w);
+      return capLeft;
+    }
+    w._overheatTold = false;
+    if (capLeft < energyCost) {
+      if (isPlayer && energyCost > 0) this._noteCapacitorEmpty();
+      return capLeft;
+    }
     // Active-mine cap: refuse to deploy past mineMaxActive (the oldest is NOT auto-culled — the pilot
     // must let mines resolve, so placement stays deliberate rather than a spammed field).
     const maxActive = Math.max(1, def.mineMaxActive || 3);
     if (this._countOwnerVectorMines(state, e.id, def.deployKind || 'vector_mine') >= maxActive) {
-      if (isPlayer && this.bus) this.bus.emit('toast', { text: 'Mine bank full', kind: 'warn', ttl: 1.5 });
+      if (isPlayer && !w._mineBankTold && this.bus) {
+        w._mineBankTold = true;
+        this.bus.emit('toast', { text: 'Mine bank full', kind: 'warn', ttl: 1.5 });
+      }
       return capLeft;
     }
+    w._mineBankTold = false;
 
     capLeft -= energyCost;
     if (heatPerShot) {
@@ -1977,6 +2068,38 @@ export function solveLeadAngle(shooter, tgt, projSpeed) {
   const aimx = px + tv.x * t;
   const aimz = pz + tv.z * t;
   return Math.atan2(aimz, aimx);
+}
+
+/** A missile may finish its old solution. It may not adopt a body that reused the target id. */
+export function guidanceAcceptsTarget(data, target) {
+  if (!data || !target) return false;
+  if (data.targetGeneration == null) return true;
+  return targetIdentityGeneration(target) === data.targetGeneration;
+}
+
+export function weaponBankReadiness(mount, runtime) {
+  const subsystemId = (mount && mount.subsystemId) || 'subsystem_weapon';
+  const subsystems = runtime && runtime.subsystems;
+  const sub = subsystems && subsystems[subsystemId];
+  const disabled = !!(sub && (sub.effectiveDisabled === true || sub.destroyed === true));
+  const cooling = !!mount && (mount._cooldown || 0) > 0;
+  const heatMax = mount && Number.isFinite(mount.heatMax) && mount.heatMax > 0 ? mount.heatMax : null;
+  const hot = heatMax != null && (mount._heat || 0) >= heatMax;
+  const ready = !disabled && !cooling && !hot;
+  return {
+    subsystemId,
+    disabled,
+    ready,
+    advertised: disabled ? 'disabled' : (ready ? 'ready' : 'not_ready'),
+  };
+}
+
+function combatRuntimeOf(state, entity) {
+  const bag = state && state.combat && state.combat.entities;
+  // Numeric keys coerce inside the dictionary lookup — String(id) would allocate
+  // a boxed key per weapon-tick per ship for the same answer.
+  if (bag && entity && entity.id != null && bag[entity.id]) return bag[entity.id];
+  return (entity && entity.data && entity.data.combatRuntime) || null;
 }
 
 function missileDecoyAim(d) {

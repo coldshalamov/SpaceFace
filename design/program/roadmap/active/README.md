@@ -94,7 +94,7 @@ evidence triggers are proved.
 | [`PQ-046.md`](../retired/PQ-046.md) | land five coherent high-leverage vision unlocks through inference expansion, cold review, and ordinary-route proof | integrated and retired through five leaf receipts at focused-green scope; parent ordinary-route visual acceptance remains unclaimed |
 | [`PQ-048.md`](../retired/PQ-048.md) | deliver twenty new inference-to-convergence player outcome packages in four composed tranches | integrated and retired through 20 exact leaf receipts and four composed tranches at focused-green scope; ordinary headed portfolio route remains unproven |
 | [`PQ-049.md`](./PQ-049.md) | build and accept a distinct civic Massline express-liner through DCC, release, render-package, runtime-map, and natural-route leaves | new express-only identity; first DCC candidate leaf is ready, later leaves are dependency-gated; parent remains unproven |
-| [`PQ-050.md`](./PQ-050.md) | remaster every live flyable ship except Hitch, one ship per leaf, under the MTX technique contract | Hitch frozen; ledger required; factory loft+boxes cannot close a leaf; first ready is Hornet |
+| [`PQ-050.md`](../retired/PQ-050.md) | remaster every live flyable ship except Hitch, one ship per leaf, under the MTX technique contract | integrated and retired 2026-10-03: all 22 leaves judged KEEP at the shipping camera; receipt `receipts/PQ-050-ACCEPT-REPORT.md`; Hitch untouched |
 | [`PQ-129.md`](./PQ-129.md) | name every hitch on the live path, then remove compose/compile/upload/admission bricks without quality cuts | `--id PQ-129`; Wave A measure; Wave B ready after the classifier; Wave C planned |
 | [`PQ-130.md`](./PQ-130.md) | put the player inside the asteroid; HUD is ugly and too big | `--id PQ-130`; theater/dashboard first; vanilla CSS shrink is a fail |
 | [`PQ-191.md`](../retired/PQ-191.md) | RETIRED 2026-09-10 — standing review ceremony removed by owner direction; play-and-fix happens on request, inside the asking unit | — |
@@ -115,17 +115,17 @@ PQ-049 is active for the formerly retained `GFX-MASSLINE-EXPRESS-LINER` outcome.
 `ready` / `unproven`; only `PQ-049.01` is dispatchable, with source/release, render-package,
 express-mapping, and route/G7 leaves dependency-gated behind it.
 
-PQ-050 is active for `GFX-FLEET-REMASTER-HITCHPLUS`. Its parent is `ready` / `unproven`; only
-`PQ-050.01` (Hornet) is dispatchable. Each later leaf is the next single ship, gated on the
-previous ship being finished and wired. Hitch stays frozen.
+PQ-050 retired 2026-10-03: all 22 fleet-remaster leaves judged KEEP at the shipping camera and
+flipped done under `GFX-FLEET-REMASTER-HITCHPLUS`. Receipt: `receipts/PQ-050-ACCEPT-REPORT.md`.
+Hitch stayed untouched.
 
 PQ-129 is active for `PERF-HITCH-CAMPAIGN`. Its parent is `ready` / `unproven` / `leaf_required`.
-Ordinary `--next` still returns fleet remaster. Hitching work is `node scripts/program-dispatch.mjs --id PQ-129`.
+Hitching work is `node scripts/program-dispatch.mjs --id PQ-129`.
 Wave A (`.01`–`.03`) names every >32 ms frame. Wave B (`.04`–`.10`) is ready after the classifier.
 Wave C (`.11`–`.18`) stays `planned` until hitch count is halved.
 
 PQ-130 is active for `ASTEROID-WORKS-PLAYFIELD`. Its parent is `ready` / `unproven` /
-`leaf_required`. Ordinary `--next` still returns fleet remaster. Mining-minigame
+`leaf_required`. Mining-minigame
 work is `node scripts/program-dispatch.mjs --id PQ-130`. First claimable leaf is
 `.01` Theater: the mine is the screen and the HUD is a dashboard, not a shorter
 website. Vanilla collapse (campaign §3) cannot close a leaf. Waves 1–4 are out of

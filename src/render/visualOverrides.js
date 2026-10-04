@@ -20,7 +20,7 @@ import {
   GENERIC_TOW_PACKAGED_PROP,
   SCENARIO_47A_PACKAGED_PROPS,
 } from '../data/scenarios/47aLiveScene.js';
-import { modelTruthRow } from '../data/modelTruth.js';
+import { modelTruthRow, modelTruthRowForEntity } from '../data/modelTruth.js';
 import {
   admissionOwnerInactive,
   authoredReadmissionStatus,
@@ -28,6 +28,7 @@ import {
   buildAuthoredCargoCapsule,
   buildAuthoredPlaceProp,
   buildAuthoredStationArchetype,
+  carryAdmittedOnceStamp,
   enqueueBoundaryUpgrade,
   markAuthoredBoundaryForReadmission,
   prepareAuthoredVisualPipelines,
@@ -35,6 +36,7 @@ import {
   staleAuthoredRunVerdict,
   requiresProductionWholeShipForEntity,
   residencyOptionsForBoundary,
+  residencyRegistryForStandInRecord,
   waitForOpeningGraphPublicationRelease,
   wrapShipWithAuthoredParts,
 } from './partsLibrary.js';
@@ -303,6 +305,16 @@ function lodStandInFor(entity, record, target = null) {
     group.add(mesh);
   }
   if (!group.children.length) return null;
+  // Live-residency borrow: record.residency.state was stamped once at decode and never flips,
+  // so byte eviction can dispose these shared buffers mid-pending while the stand-in keeps
+  // drawing them (a re-upload inside the presented frame). Retain the record against the
+  // stand-in group's own lifecycle — 'removed' self-releases, and the detached-owner sweep
+  // covers a substrate detached with the marker still parented inside.
+  const borrowKey = record.residency && record.residency.key;
+  const borrowRegistry = residencyRegistryForStandInRecord(record);
+  if (borrowKey && borrowRegistry && typeof borrowRegistry.retain === 'function') {
+    borrowRegistry.retain(borrowKey, group, { role: 'resolving-stand-in' });
+  }
   // Preview the commit's transform, not the authored frame: place/station bodies recenter the
   // record's bounds-center onto X,Z origin (payloads/packaged all three axes) and station
   // commits can yaw the approach channel — a stand-in drawn at authored offset snaps sideways
@@ -393,27 +405,31 @@ export function installBoundaryResolvingMarker(boundary, entity, options = {}) {
   // Z/Y-dominant records (spindle worst) the octahedron proportions under-cover its
   // silhouette, so union per axis with the record's scaled bounds where census covers
   // the armed file.
-  const recordHalf = boundaryStandInScaledHalf(data, entity);
-  const half = [
-    Math.max(markerX * 0.5, recordHalf ? recordHalf[0] : 0),
-    Math.max(markerX * (0.3 / 3.4), recordHalf ? recordHalf[1] : 0),
-    Math.max(markerX * 0.25, recordHalf ? recordHalf[2] : 0),
-  ];
+  const markerHalf = [markerX * 0.5, markerX * (0.3 / 3.4), markerX * 0.25];
+  // The stand-in previews the committed frame (recenter + approach yaw): its drawn box is
+  // the record's scaled bounds rotated by the armed yaw about a possibly-displaced center,
+  // not the unrotated authored box — a square yaw-armed record can outgrow an axis by ~41%.
+  const stand = boundaryStandInDrawnEnvelope(data, entity);
   const existing = data.visualBounds;
-  if (existing && Array.isArray(existing.size)) {
-    const center = Array.isArray(existing.center) ? existing.center : [0, 0, 0];
-    const nextCenter = [0, 0, 0];
-    const nextSize = [0, 0, 0];
-    for (let i = 0; i < 3; i++) {
-      const lo = Math.min((Number(center[i]) || 0) - (Number(existing.size[i]) || 0) / 2, -half[i]);
-      const hi = Math.max((Number(center[i]) || 0) + (Number(existing.size[i]) || 0) / 2, half[i]);
-      nextCenter[i] = (lo + hi) / 2;
-      nextSize[i] = hi - lo;
+  const hasExisting = !!(existing && Array.isArray(existing.size));
+  const existingCenter = hasExisting && Array.isArray(existing.center) ? existing.center : null;
+  const nextCenter = [0, 0, 0];
+  const nextSize = [0, 0, 0];
+  for (let i = 0; i < 3; i++) {
+    let lo = -markerHalf[i];
+    let hi = markerHalf[i];
+    if (stand) {
+      lo = Math.min(lo, stand.center[i] - stand.half[i]);
+      hi = Math.max(hi, stand.center[i] + stand.half[i]);
     }
-    data.visualBounds = { center: nextCenter, size: nextSize };
-  } else {
-    data.visualBounds = { center: [0, 0, 0], size: [half[0] * 2, half[1] * 2, half[2] * 2] };
+    if (hasExisting) {
+      lo = Math.min(lo, (Number(existingCenter ? existingCenter[i] : 0) || 0) - (Number(existing.size[i]) || 0) / 2);
+      hi = Math.max(hi, (Number(existingCenter ? existingCenter[i] : 0) || 0) + (Number(existing.size[i]) || 0) / 2);
+    }
+    nextCenter[i] = (lo + hi) / 2;
+    nextSize[i] = hi - lo;
   }
+  data.visualBounds = { center: nextCenter, size: nextSize };
   return data.wantsBoundaryResolvingMarker === true ? data : null;
 }
 
@@ -516,13 +532,13 @@ function boundaryStandInDrawnX(data, target) {
 }
 
 /**
- * Half-extents the resident same-identity stand-in actually draws for this arm: the
- * census row's authored bounds scaled by the same factor lodStandInFor applies
- * (entityScale / sourceLength). Returns null when the armed file sits outside the
- * census or the target carries no scaleable basis — callers then keep the octahedron
- * proportions per axis, as before.
+ * The stand-in's actual drawn box in boundary-local space: the census row's authored bounds
+ * scaled by the factor lodStandInFor applies, then folded through the committed-frame arms
+ * (recenter shifts the drawn center; approach yaw rotates half-extents and sweeps a
+ * non-recentered center about the boundary origin). Returns { half, center } or null when
+ * the armed file sits outside the census or the target carries no scaleable basis.
  */
-function boundaryStandInScaledHalf(data, entity) {
+function boundaryStandInDrawnEnvelope(data, entity) {
   const file = data && data.boundaryResolvingStandInFile;
   if (typeof file !== 'string' || !file) return null;
   const row = modelTruthRow(file.replace(/^.*\//, '').replace(/\.glb$/i, ''));
@@ -538,11 +554,44 @@ function boundaryStandInScaledHalf(data, entity) {
   else if (Number.isFinite(target.x)) entityScale = target.x;
   if (!Number.isFinite(entityScale) || !(entityScale > 0)) return null;
   const factor = entityScale / sourceLength;
-  return [
+  const half = [
     (Number(size[0]) || 0) * factor * 0.5,
     (Number(size[1]) || 0) * factor * 0.5,
     (Number(size[2]) || 0) * factor * 0.5,
   ];
+  const bc = row.bounds && row.bounds.center;
+  const cx = (Array.isArray(bc) ? Number(bc[0]) || 0 : 0) * factor;
+  const cy = (Array.isArray(bc) ? Number(bc[1]) || 0 : 0) * factor;
+  const cz = (Array.isArray(bc) ? Number(bc[2]) || 0 : 0) * factor;
+  // lodStandInFor's frame order: translate by -center·scale for armed recenter axes, then
+  // rotation.y about the (translated) group origin — equivalent net geometry for the box.
+  let c0x = cx;
+  let c0y = cy;
+  let c0z = cz;
+  if (target.recenter === 'xz') { c0x = 0; c0z = 0; }
+  else if (target.recenter === 'xyz') { c0x = 0; c0y = 0; c0z = 0; }
+  const yaw = Number.isFinite(target.yawDeg) && target.yawDeg !== 0 ? target.yawDeg * (Math.PI / 180) : 0;
+  const rotated = yaw === 0
+    ? { half, center: [c0x, c0y, c0z] }
+    : {
+      half: [
+        half[0] * Math.abs(Math.cos(yaw)) + half[2] * Math.abs(Math.sin(yaw)),
+        half[1],
+        half[0] * Math.abs(Math.sin(yaw)) + half[2] * Math.abs(Math.cos(yaw)),
+      ],
+      center: [c0x * Math.cos(yaw) + c0z * Math.sin(yaw), c0y, -c0x * Math.sin(yaw) + c0z * Math.cos(yaw)],
+    };
+  // syncResolvingMarker copies the hull's live bank/pitch onto the marker each frame, so a
+  // ship stand-in's drawn box leans its Y extent into XZ beyond this yaw-only stamp — the
+  // cull union is radial anyway, so widen X/Z to the rotation-invariant bound.
+  if (entity && entity.type === 'ship') {
+    rotated.half = [
+      Math.hypot(rotated.half[0], rotated.half[1]),
+      rotated.half[1],
+      Math.hypot(rotated.half[2], rotated.half[1]),
+    ];
+  }
+  return rotated;
 }
 
 /**
@@ -556,10 +605,28 @@ export function detachBoundaryResolvingMarker(boundary) {
   delete data.wantsBoundaryResolvingMarker;
   delete data.boundaryResolvingMarkerEntity;
   const marker = data.resolvingMarker;
-  if (!marker) return false;
-  if (marker.parent) marker.parent.remove(marker);
-  delete data.resolvingMarker;
-  return true;
+  let detached = false;
+  if (marker) {
+    if (marker.parent) marker.parent.remove(marker);
+    delete data.resolvingMarker;
+    detached = true;
+  }
+  // Publish-time invariant: no authoredResolvingMarker node may survive an authored commit.
+  // The tracked field covers the normal case — this walk purges a tagged straggler whose
+  // link to `data.resolvingMarker` was lost (e.g. marker reparented under another root).
+  if (typeof boundary.traverse === 'function') {
+    const orphans = [];
+    boundary.traverse((node) => {
+      if (node !== boundary && node.userData && node.userData.authoredResolvingMarker === true) {
+        orphans.push(node);
+      }
+    });
+    for (const node of orphans) {
+      if (node.parent) node.parent.remove(node);
+      detached = true;
+    }
+  }
+  return detached;
 }
 
 /**
@@ -688,10 +755,19 @@ function directAuthoredAdmissionSubstrate(entity, standInRecord = null, resolveR
   // with the substrate when the authored body swaps in.
   {
     const r = Math.max(4, Number.isFinite(entity && entity.radius) ? entity.radius : 6);
-    root.userData.visualBounds = {
-      center: [0, 0, 0],
-      size: [r * WHOLE_SHIP_STAND_IN_TARGET_LENGTH, r * 0.6, r * 1.7],
-    };
+    const size = [r * WHOLE_SHIP_STAND_IN_TARGET_LENGTH, r * 0.6, r * 1.7];
+    // Union the measured hull axes at the committed X basis — the fixed margins under-cover
+    // Z/Y-dominant hulls (ship_saucer commits ~1.81r on Z, ~0.62r on Y).
+    const row = modelTruthRowForEntity(entity);
+    const rowSize = row && row.bounds && row.bounds.size;
+    const sourceLength = rowSize && Number(rowSize[0]);
+    if (rowSize && sourceLength > 0) {
+      const factor = (r * WHOLE_SHIP_STAND_IN_TARGET_LENGTH) / sourceLength;
+      size[0] = Math.max(size[0], (Number(rowSize[0]) || 0) * factor);
+      size[1] = Math.max(size[1], (Number(rowSize[1]) || 0) * factor);
+      size[2] = Math.max(size[2], (Number(rowSize[2]) || 0) * factor);
+    }
+    root.userData.visualBounds = { center: [0, 0, 0], size };
   }
   root.userData.renderContract = {
     assetBoundary: 'resident authored identity admission substrate',
@@ -784,6 +860,21 @@ function isLod0Primitive(primitive) {
 }
 
 function instantiatePackagedPrimitives(record, parent) {
+  // The flat-primitive mount replays the same decoded package the instance route stamps on
+  // its root — publish the same `spacefaceRenderPackage` boundary here so the opening
+  // census's productionBoundary walk does not read a mounted packaged prop as an
+  // unprovenanced blocking root (D157). A record with no render package keeps the asset
+  // identity but no verified hash, and the gate stays honest for it.
+  if (parent && parent.userData && !parent.userData.spacefaceRenderPackage) {
+    const pkg = record && record.renderPackage || null;
+    const assetId = (pkg && pkg.assetId) || (record && record.assetId) || null;
+    if (assetId) {
+      parent.userData.spacefaceRenderPackage = {
+        assetId,
+        contentHash: (pkg && pkg.contentHash) || null,
+      };
+    }
+  }
   for (const primitive of record && record.primitives || []) {
     if (!primitive || !primitive.geometry || !primitive.material) continue;
     if (!isLod0Primitive(primitive)) continue;
@@ -1021,7 +1112,10 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
         root.userData.authoredAssetState = 'orphaned-before-swap';
         return false;
       }
-      const publicationWait = waitForOpeningGraphPublicationRelease();
+      const publicationWait = waitForOpeningGraphPublicationRelease({
+        ...mintedAdmissionOptions,
+        entity: liveEntity || entity,
+      });
       if (publicationWait) await publicationWait;
       if (!root.parent) {
         releaseBoundaryResidency(renderer, root, 'packaged-prop-orphaned-before-publication', mintedAdmissionOptions.admissionEpoch);
@@ -1041,12 +1135,20 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
       detachBoundaryResolvingMarker(root);
       hideProceduralPropDrawables(root);
       root.add(packaged);
+      carryAdmittedOnceStamp(packaged, root);
       // The detached prepare compiled/touched `packaged`; attached-state keys can still differ
       // (owner chain, final visibility). One exact-target re-touch here pays any residual link
       // inside this continuation instead of the first presented bloom pass.
       const touch = mintedAdmissionOptions.touchAuthoredExactTarget;
       if (typeof touch === 'function') {
         try { touch(packaged); } catch (error) { reportVisualWarning(options, '[visualOverrides] packaged publish touch failed', error); }
+      }
+      // Same commit seam as the exact-target touch: the added subtree's meshes carry
+      // three.js castShadow=false until a policy traverse covers them, so the live
+      // caster policy re-syncs here instead of at the next unrelated band flip.
+      const packagedShadowSync = mintedAdmissionOptions.syncPackagedBodyShadowPolicy;
+      if (typeof packagedShadowSync === 'function') {
+        try { packagedShadowSync(root, liveEntity || entity, packaged); } catch (_) { /* best effort */ }
       }
       root.userData.hull = packaged;
       root.userData.authoredAssetState = 'authored';

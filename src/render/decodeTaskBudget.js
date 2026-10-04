@@ -23,34 +23,142 @@ export function resolveDecodeTaskBudgetLimit(hardwareConcurrency) {
  * FIFO semaphore with deadline classes. `acquire(decodeClass)` resolves a `release` function;
  * release returns the token to the next waiter — 'visible' waiters before 'deadline' waiters
  * before 'ambient' ones, FIFO within each class — or to `available`. Releasing is
- * idempotent-free — callers must invoke a release exactly once, so wrap tasks so settle paths
- * release exactly one token.
+ * idempotent per lease, so a stale completion cannot return another task's token.
+ * `acquire({ decodeClass, signal })` also lets a retired queued owner leave the gate.
  *
  * Three classes: a 'visible' decode (spawn already at the glass — tGlass below the urgent
  * threshold) never waits behind runway work that still has seconds of slack; a 'deadline'
  * decode (decode-runway / wave-hull / admission-deadline work) never waits behind a queued
  * ambient warm; ambient fairness is preserved because the higher classes are rare and capped.
  */
+export const DECODE_CLASS_RANK = Object.freeze({ ambient: 0, deadline: 1, visible: 2 });
+
+// Cross-lane pace ledger: the frame-paced slicers (compose driver, compile drain) each guard
+// only their own budget — a busy frame would otherwise carry the SUM of every slicer's budget
+// in paced main-thread JS. Slicers report their measured slice spend here; a slicer that runs
+// later in the same frame window can read what the frame has already spent and stand down for
+// the frame instead of stacking its budget on top.
+//
+// The wallet is keyed on the present boundary, not a wall-clock window: an 8ms
+// anchor re-mints a fresh wallet per >8ms frame, so the effective budget scaled
+// with frame length — worst exactly on the heavy frames the ledger exists for.
+// A lazily-armed rAF pump bumps the epoch each displayed frame; spend minted
+// under an older epoch is invisible to this frame's readers. Headless hosts
+// (no rAF) keep the legacy 8ms wall-clock window — there are no presents to key.
+const PACE_FRAME_WINDOW_MS = 8;
+const paceNow = (typeof performance !== 'undefined' && typeof performance.now === 'function')
+  ? () => performance.now()
+  : () => Date.now();
+let paceFrameStartedAt = -Infinity;
+let paceFrameSpentMs = 0;
+let paceFrameEpoch = 0;
+let paceSpentEpoch = -1;
+let pacePumpArmed = false;
+// Last pump fire in wall-clock ms: a hidden/occluded window freezes the epoch
+// while paced spend keeps accumulating — beyond this age the wallet re-keys on
+// the 8ms window instead of reading permanently over-budget. 250ms sits above
+// the worst honest presented frame (a 4fps hitch) so ordinary slow frames keep
+// epoch-keyed isolation while a genuinely starved pump still falls back.
+let pacePumpFiredAt = 0;
+const PACE_EPOCH_STALE_MS = 250;
+
+function paceEpochNow() {
+  // Only a real browser frame loop keys the epoch — headless/test hosts that stub
+  // globalThis.requestAnimationFrame (often microtask-driven) would either hang the
+  // pump's self-re-arm chain or freeze the epoch and livelock paced drains. No
+  // `window` means no presents, so the wall-clock window below is the right key.
+  if (typeof window !== 'object' || typeof window.requestAnimationFrame !== 'function') return -1;
+  if (!pacePumpArmed) {
+    pacePumpArmed = true;
+    const pump = () => {
+      paceFrameEpoch += 1;
+      pacePumpFiredAt = paceNow();
+      window.requestAnimationFrame(pump);
+    };
+    window.requestAnimationFrame(pump);
+  }
+  if (paceNow() - pacePumpFiredAt > PACE_EPOCH_STALE_MS) return -1;
+  return paceFrameEpoch;
+}
+
+export function notePacedFrameSpend(ms) {
+  const epoch = paceEpochNow();
+  if (epoch >= 0) {
+    if (paceSpentEpoch !== epoch) {
+      paceSpentEpoch = epoch;
+      paceFrameSpentMs = 0;
+    }
+    paceFrameSpentMs += Math.max(0, Number(ms) || 0);
+    return;
+  }
+  const t = paceNow();
+  if (t - paceFrameStartedAt >= PACE_FRAME_WINDOW_MS) {
+    paceFrameStartedAt = t;
+    paceFrameSpentMs = 0;
+  }
+  paceFrameSpentMs += Math.max(0, Number(ms) || 0);
+}
+
+export function pacedFrameSpend() {
+  const epoch = paceEpochNow();
+  if (epoch >= 0) return paceSpentEpoch === epoch ? paceFrameSpentMs : 0;
+  const t = paceNow();
+  return (t - paceFrameStartedAt < PACE_FRAME_WINDOW_MS) ? paceFrameSpentMs : 0;
+}
+
 export function createDecodeTaskBudget(limit) {
+  if (!Number.isFinite(limit) || limit <= 0) throw new RangeError('Decode budget limit must be finite and positive');
   const size = Math.max(1, Math.floor(limit));
   let available = size;
   const waiters = [];
-  const release = () => {
+  const returnToken = () => {
     let idx = waiters.findIndex((w) => w.decodeClass === 'visible');
     if (idx < 0) idx = waiters.findIndex((w) => w.decodeClass === 'deadline');
     if (idx < 0) idx = waiters.length ? 0 : -1;
     const next = idx >= 0 ? waiters.splice(idx, 1)[0] : null;
-    if (next) next.resolve(release);
+    if (next) {
+      next.detach();
+      next.resolve(newLease());
+    }
     else available += 1;
   };
-  const acquire = (decodeClass) => {
+  const newLease = () => {
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      returnToken();
+    };
+  };
+  const abortError = (signal) => {
+    const reason = signal.reason;
+    if (reason instanceof Error && reason.name === 'AbortError') return reason;
+    const error = new Error(reason == null ? 'Decode owner became inactive' : String(reason));
+    error.name = 'AbortError';
+    return error;
+  };
+  const acquire = (options) => {
+    const signal = options && typeof options === 'object' ? options.signal : null;
+    const decodeClass = typeof options === 'string' ? options : options && options.decodeClass;
+    if (signal && signal.aborted) return Promise.reject(abortError(signal));
     if (available > 0) {
       available -= 1;
-      return Promise.resolve(release);
+      return Promise.resolve(newLease());
     }
-    return new Promise((resolve) => { waiters.push({ decodeClass, resolve }); });
+    return new Promise((resolve, reject) => {
+      const onAbort = () => {
+        const index = waiters.indexOf(waiter);
+        if (index < 0) return;
+        waiters.splice(index, 1);
+        waiter.detach();
+        reject(abortError(signal));
+      };
+      const waiter = { decodeClass, resolve, detach: () => signal && signal.removeEventListener('abort', onAbort) };
+      waiters.push(waiter);
+      if (signal) signal.addEventListener('abort', onAbort, { once: true });
+    });
   };
-  const CLASS_RANK = { ambient: 0, deadline: 1, visible: 2 };
+  const CLASS_RANK = DECODE_CLASS_RANK;
   /**
    * Re-grade every queued waiter strictly below `decodeClass` up to it, preserving FIFO.
    * A demand-joiner (a mount joining a task that posted decodes ambient) can't name the
@@ -133,6 +241,153 @@ export function withVisibleDecodeClass(fn) {
     settle();
     throw error;
   }
+}
+
+// Main-thread GLTF scene-graph construction has no worker offload: the budget above caps
+// in-flight worker decodes, but each token releases when the worker returns — so a roster
+// warm that posts many decodes can land every parseAsync continuation in one display frame.
+// Pace parse STARTS through a per-frame FIFO: at most GLTF_PARSE_FRAME_LIMIT begin per
+// animation frame, the rest begin on later frames. Decode order and resolution values are
+// unchanged; only the start instant moves. Headless hosts (no rAF) run immediately — there
+// are no frames to protect.
+const GLTF_PARSE_FRAME_LIMIT = 2;
+const gltfParsePending = [];
+let gltfParseDrainScheduled = false;
+
+// A hidden or occluded tab can starve rAF for the whole load, wedging every
+// queued drain behind the never-firing arm until an outer timeout bounces it.
+// Dual-arm with a short timer: under real frames rAF wins and the drain runs
+// where it always did; starved hosts converge at timer cadence.
+function armFrameDrain(callback) {
+  let fired = false;
+  const fire = () => {
+    if (fired) return;
+    fired = true;
+    callback();
+  };
+  requestAnimationFrame(fire);
+  setTimeout(fire, 48);
+}
+
+function drainGltfParseQueue() {
+  const batch = gltfParsePending.splice(0, GLTF_PARSE_FRAME_LIMIT);
+  for (const task of batch) {
+    Promise.resolve().then(task.fn).then(task.resolve, task.reject);
+  }
+  // The tail must keep draining without a new push — re-arm while items remain
+  // (the flag stays latched so pushes during the drain just enqueue).
+  if (gltfParsePending.length) armFrameDrain(drainGltfParseQueue);
+  else gltfParseDrainScheduled = false;
+}
+
+export function scheduleGltfParse(fn) {
+  if (typeof requestAnimationFrame !== 'function') return Promise.resolve().then(fn);
+  return new Promise((resolve, reject) => {
+    gltfParsePending.push({ fn, resolve, reject });
+    if (gltfParseDrainScheduled) return;
+    gltfParseDrainScheduled = true;
+    armFrameDrain(drainGltfParseQueue);
+  });
+}
+
+// The symmetric hazard sits one stage later: worker/parse replies resolve in clusters, so a
+// burst's blueprint compiles — synchronous scene traverse + geometry prep + material policy —
+// ran back-to-back inside a single microtask drain. Pace compile tails through per-class
+// FIFO lanes (visible > deadline > ambient, mirroring the decode budget) capped per frame;
+// the caller's promise stays open until its compile drains. Cached blueprints never reach
+// this path (the admit layer resolves before createTask), so the fast path is untouched.
+//
+// The cap is a time box, not a count: compiles range sub-ms greebles to multi-ms hulls, so a
+// count floor starved small-part bursts ~2-5x below the frame budget while two heavy compiles
+// could still share a frame. Tasks run synchronously inside the drain so the measured cost is
+// the compile itself — one heavy task may exceed the budget exactly as it did before, the
+// minimum is one task per frame, and the per-frame worst case stays budget + one compile.
+const GLTF_COMPILE_FRAME_MS = 4;
+/** The per-frame paced-work budget every slicer drains against (`pacedFrameSpend`). */
+export const PACED_FRAME_BUDGET_MS = GLTF_COMPILE_FRAME_MS;
+const gltfCompilePending = { visible: [], deadline: [], ambient: [] };
+// token -> { entry, lane } for entries still queued — a joiner re-grades a task whose tail
+// already enqueued at a lower class (mirrors budget.promote's queued-waiter re-grade).
+const gltfCompileEntries = new WeakMap();
+let gltfCompileDrainScheduled = false;
+// Frames skipped in a row because another paced slicer already spent the frame's JS budget.
+// Aging prevents a perpetual visible/deadline stream from starving compile tails forever —
+// after the cap the drain runs one entry minimum per frame like before.
+let gltfCompileFramesSkipped = 0;
+const GLTF_COMPILE_MAX_SKIPPED_FRAMES = 2;
+
+function gltfCompileLaneFor(decodeClass) {
+  return decodeClass === 'visible' ? gltfCompilePending.visible
+    : decodeClass === 'deadline' ? gltfCompilePending.deadline
+      : gltfCompilePending.ambient;
+}
+
+function drainGltfCompileQueue() {
+  const now = (typeof performance !== 'undefined' && typeof performance.now === 'function')
+    ? () => performance.now()
+    : () => Date.now();
+  // Another paced slicer already ate the frame's JS budget — yield this frame rather than
+  // stack a second slice on top. The aging cap keeps a busy visible/deadline stream from
+  // starving ambient compile tails indefinitely.
+  if (pacedFrameSpend() >= GLTF_COMPILE_FRAME_MS && gltfCompileFramesSkipped < GLTF_COMPILE_MAX_SKIPPED_FRAMES) {
+    gltfCompileFramesSkipped += 1;
+    armFrameDrain(drainGltfCompileQueue);
+    return;
+  }
+  gltfCompileFramesSkipped = 0;
+  const start = now();
+  let ran = 0;
+  while (ran === 0 || now() - start < GLTF_COMPILE_FRAME_MS) {
+    let task = null;
+    for (const lane of [gltfCompilePending.visible, gltfCompilePending.deadline, gltfCompilePending.ambient]) {
+      if (lane.length) { task = lane.shift(); break; }
+    }
+    if (!task) break;
+    ran += 1;
+    try { task.resolve(task.fn()); } catch (error) { task.reject(error); }
+  }
+  notePacedFrameSpend(now() - start);
+  const pending = gltfCompilePending.visible.length
+    || gltfCompilePending.deadline.length
+    || gltfCompilePending.ambient.length;
+  // Same re-arm contract as the parse drain: the tail must keep draining without a new push.
+  if (pending) armFrameDrain(drainGltfCompileQueue);
+  else gltfCompileDrainScheduled = false;
+}
+
+export function scheduleGltfCompile(fn, decodeClass, token) {
+  if (typeof requestAnimationFrame !== 'function') return Promise.resolve().then(fn);
+  return new Promise((resolve, reject) => {
+    const lane = gltfCompileLaneFor(decodeClass);
+    const entry = { fn, resolve, reject };
+    lane.push(entry);
+    if (token) gltfCompileEntries.set(token, { entry, lane });
+    if (gltfCompileDrainScheduled) return;
+    gltfCompileDrainScheduled = true;
+    armFrameDrain(drainGltfCompileQueue);
+  });
+}
+
+/**
+ * Re-grade a queued compile tail to `decodeClass` when a live joiner outranks the class the
+ * tail enqueued under. The entry moves to the HEAD of the target lane: its owner is already
+ * on the player's deadline, strictly ahead of earlier same-class speculative work. A drained
+ * entry returns false — the caller's class map still covers any tail not yet enqueued.
+ */
+export function regradeGltfCompile(token, decodeClass) {
+  const rec = gltfCompileEntries.get(token);
+  if (!rec) return false;
+  const target = gltfCompileLaneFor(decodeClass);
+  if (rec.lane === target) return true;
+  const idx = rec.lane.indexOf(rec.entry);
+  if (idx === -1) {
+    gltfCompileEntries.delete(token);
+    return false;
+  }
+  rec.lane.splice(idx, 1);
+  target.unshift(rec.entry);
+  rec.lane = target;
+  return true;
 }
 
 let shared = null;

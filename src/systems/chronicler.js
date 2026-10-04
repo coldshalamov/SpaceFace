@@ -10,6 +10,21 @@ import { buildStoryView, semanticSignature, rankViews, recallText } from '../chr
 import { restoreMemory, restoreMemoryChunked } from '../chronicler/persistence.js';
 import { createChroniclerVoiceBridge } from '../chronicler/voiceBridge.js';
 
+// ── FB-090 owner-local quiet latch ─────────────────────────────────────────────
+// Bench A/B: production default ON. The chronicler's own wake schedule is the authority:
+// `m.pending` non-empty (a fact event landed) or `now >= _nextWake` (a publication came due)
+// are the only things that give update() real work. Otherwise the tick can only write
+// `m.clock = now` and run an empty splice, so we keep the clock write — it is persisted state
+// and must stay byte-identical — and skip the batch/publish/schedule tail. Wakes ride the
+// existing seams: capture() extends pending, _adopt()/deserialize() reset _nextWake to 0.
+let CHRONICLER_QUIET_LATCH = true;
+export function setChroniclerQuietLatchForBench(enabled) {
+  CHRONICLER_QUIET_LATCH = enabled !== false;
+}
+export function getChroniclerQuietLatchForBench() {
+  return CHRONICLER_QUIET_LATCH !== false;
+}
+
 function priority(f) {
   if (['recovered', 'sold', 'law', 'remedy'].includes(f.stage)) return 100;
   if (['ace', 'rescue', 'wanted'].includes(f.stage)) return 80;
@@ -69,9 +84,14 @@ export function createChronicler(options = {}) {
         context: 'dock', stationId: p?.stationId,
         sectorId: p?.sectorId || this._state.world?.currentSectorId,
       }));
-      this._listen('sector:enter', p => this.requestRecall({
-        context: 'sector', sectorId: p?.sectorId || p?.id || this._state.world?.currentSectorId,
-      }));
+      this._listen('sector:enter', p => {
+        // A stale queued tail would burn the recall cooldown on the departed sector.
+        if (p?.enterEpoch != null && this._state.world
+            && this._state.world.enterSerial != null && p.enterEpoch !== this._state.world.enterSerial) return;
+        this.requestRecall({
+          context: 'sector', sectorId: p?.sectorId || p?.id || this._state.world?.currentSectorId,
+        });
+      });
       // Presentation adapter: old-story radio offers ride the band channel, station/sector
       // recollections ride comms — through the arbiter when one exists. helpers is held by
       // reference, so a voice attaching later still works; the bridge guards per-offer and
@@ -149,6 +169,18 @@ export function createChronicler(options = {}) {
       try {
         const m = this._memory;
         m.clock = now;
+        // FB-090 quiet latch: pending empty AND no publication due ⇒ the tail below is a proven
+        // no-op except the (identical) empty splice and `return 0`. The clock write above is kept
+        // so persisted memory advances exactly as the unlatched path would leave it.
+        if (CHRONICLER_QUIET_LATCH !== false
+            && m.pending.length === 0
+            && now < this._nextWake) {
+          const rt = state.chroniclerRuntime || (state.chroniclerRuntime = {});
+          rt.quietLatched = true;
+          return 0;
+        }
+        const rt = state.chroniclerRuntime || (state.chroniclerRuntime = {});
+        rt.quietLatched = false;
         const batch = m.pending.splice(0, m.config.factsPerUpdate);
         if (batch.length) {
           // ingestBatch returns the post-merge ids of stories whose (nodes, edges, statuses)

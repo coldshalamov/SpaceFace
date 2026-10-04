@@ -9,8 +9,11 @@ import {
   barkFor,
   historyBarkFor,
   hullRecognitionBarkFor,
+  lawStepBarkFor,
   pursuitBarkFor,
+  rivalScavengerLineFor,
   surrenderBarkFor,
+  trafficRoleHail,
   witnessCrimeBarkFor,
 } from '../data/barks.js';
 import { aceTrophyBarkFor } from '../data/conflictReactions.js';
@@ -27,7 +30,7 @@ import { hash32 } from '../core/rng.js';
 import { isHostileToPlayer } from './scanner.js';
 import { getOccupationalSilhouetteRule } from '../data/occupationalSilhouettes.js';
 import { shouldOwnerThink } from '../core/activityScheduler.js';
-import { tableSimAuthorityWuFromState } from '../render/tabletopPolicy.js';
+import { shouldDrawTableVfx, tableLookAtDelta, tableSimAuthorityWuFromState, tableVfxDrawWuFromState } from '../render/tabletopPolicy.js';
 import { ensureActivityClassified } from '../world/activityRuntime.js';
 import { entityIndexVersion, entityIndexLaneVersion, forEachLivingWorldActor, indexedShipLikeOrEntitiesScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { activeHullIdentity } from '../data/hullIdentity.js';
@@ -42,6 +45,37 @@ const PLAYER_TEAM = 0;
 export const POST_COMBAT_SILENCE_S = 8.0;
 export const AMBIENT_BASE_GAP_S = 12.0;
 export const AMBIENT_GAP_STEP_S = 12.0;
+
+/** One line in the contestant's register. Null when the event is not a contest. */
+export function npcCounterplayBark(payload) {
+  if (!payload || payload.actorId == null) return null;
+  const role = payload.role === 'ace' ? 'ace' : 'specialist';
+  const text = role === 'ace'
+    ? 'Ace on your line. Cutting it.'
+    : 'Specialist on your line. Cutting it.';
+  return { role, text, actorId: payload.actorId };
+}
+
+/** At most one contest bark per ambient gap. */
+/** One departing line per disengage. Null when the event has no attacker. */
+export function harasserDepartingBark(payload) {
+  if (!payload || payload.attackerId == null) return null;
+  return {
+    attackerId: payload.attackerId,
+    text: 'Breaking off. This chase is going nowhere.',
+  };
+}
+
+export function admitNpcCounterplayBark(host, payload, now) {
+  const bark = npcCounterplayBark(payload);
+  if (!bark || !host) return null;
+  const t = Number(now) || 0;
+  if (host._npcCounterplayAt != null && t - host._npcCounterplayAt < AMBIENT_GAP_STEP_S) return null;
+  host._npcCounterplayAt = t;
+  if (!Array.isArray(host._npcCounterplayBarks)) host._npcCounterplayBarks = [];
+  host._npcCounterplayBarks.push(bark);
+  return bark;
+}
 export const AMBIENT_QUIET_STEP_S = 60.0;
 export const AMBIENT_MAX_GAP_S = 60.0;
 export const BODY_NEAR_MISS_RADIUS_WU = 70;
@@ -99,6 +133,85 @@ export function nearMissBodyNoun(body) {
 export function nearMissBarkText(source, body) {
   const motion = source === 'throw' ? 'thrown' : 'loose';
   return `That ${motion} ${nearMissBodyNoun(body)} nearly hit us. Clear the lane!`;
+}
+
+/** A crew inside this of a spill pod is the one that watched it. Farther hulls did not. */
+export const SPILL_NOTICE_WATCH_WU = 280;
+
+const SPILL_NOTICE_LINES = Object.freeze([
+  'Cargo in the lane. Somebody lost a hold.',
+  'Spill on the glass. Watch the pods.',
+  'That hold just opened itself. Keep clear.',
+]);
+
+export function spillNoticeKey(payload) {
+  if (!payload) return null;
+  const pods = Array.isArray(payload.podIds) ? payload.podIds.map((id) => String(id)).join(',') : '';
+  if (payload.encounterId == null && payload.custodyId == null && !pods) return null;
+  return `${payload.encounterId ?? ''}|${payload.custodyId ?? ''}|${pods}`;
+}
+
+export function spillNoticeBarkText(seed, hullId) {
+  const index = hash32(seed == null ? 0 : seed, 'spillNotice', String(hullId ?? ''));
+  return SPILL_NOTICE_LINES[index % SPILL_NOTICE_LINES.length];
+}
+
+/** Nearest living ship inside the watch, never the player and never a hull that missed the spill. */
+export function noticingHullForSpill(state, payload) {
+  if (!state || !payload) return null;
+  const pods = [];
+  const ids = Array.isArray(payload.podIds) ? payload.podIds : [];
+  for (let i = 0; i < ids.length; i++) {
+    const pod = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(ids[i])
+      : null;
+    if (pod && pod.alive !== false && pod.pos) pods.push(pod);
+  }
+  if (!pods.length) return null;
+  const limit = SPILL_NOTICE_WATCH_WU * SPILL_NOTICE_WATCH_WU;
+  let best = null;
+  let bestD = limit;
+  for (const entity of indexedShipLikeOrEntitiesScan(state)) {
+    if (!entity || entity.alive === false || entity.type !== 'ship' || !entity.pos) continue;
+    if (entity.id === state.playerId) continue;
+    let nearest = Infinity;
+    for (let i = 0; i < pods.length; i++) {
+      const dx = entity.pos.x - pods[i].pos.x;
+      const dz = entity.pos.z - pods[i].pos.z;
+      const d2 = dx * dx + dz * dz;
+      if (d2 < nearest) nearest = d2;
+    }
+    if (nearest > limit) continue;
+    if (nearest < bestD || (nearest === bestD && best && entity.id < best.id)) {
+      best = entity;
+      bestD = nearest;
+    }
+  }
+  return best;
+}
+
+/**
+ * The live `traffic:richSeamHelpReserved` emit does not name a helper. It only fires
+ * from the player's HELP answer (`source: 'contact_hail'`). An explicit helper id
+ * must be the player; anyone else is not hailed.
+ */
+export function playerIsRichSeamHelp(state, payload) {
+  if (!state || !payload) return false;
+  const named = payload.helperId != null ? payload.helperId
+    : payload.reservedHelperId != null ? payload.reservedHelperId
+      : payload.helpId != null ? payload.helpId
+        : null;
+  if (named != null) return named === state.playerId;
+  return payload.source === 'contact_hail' && payload.targetId != null;
+}
+
+export function richSeamHelpHailText() {
+  return 'You are the help. I am taking the hot cut. Stay with the seam.';
+}
+
+export function emptyLoadKey(payload) {
+  if (!payload || payload.haulerJobId == null) return null;
+  return `${payload.haulerJobId}|${payload.simTime ?? ''}|${payload.sectorId ?? ''}`;
 }
 
 // PQ-142.01 hull recognition. `design/VISION.md` Part II: the ship earns "a reputation by hull —
@@ -275,6 +388,12 @@ export const barkDirector = {
     this._barkWakeSeq = 0;
     this._onEntitySpawnedBark = (payload) => {
       const entity = payload && payload.entity;
+      // core recycles entity ids; a new occupant must not inherit the previous actor's
+      // said/lastSituation receipt cache or its first warnings go silently deduped.
+      const id = entity && entity.id != null ? entity.id : payload && payload.id;
+      const cache = id != null && this.state && this.state.barkDirector
+        && this.state.barkDirector.entities;
+      if (cache && cache[String(id)]) delete cache[String(id)];
       if (!isBarkQuietWakeCandidate(entity)) return;
       this.noteBarkWake();
     };
@@ -319,7 +438,35 @@ export const barkDirector = {
     this._onHeatWantedCrossed = (payload) => this._speakWantedCrossing(payload || {});
     this._onBountyCooled = (payload) => this._speakBountyCooled(payload || {});
     this._onCustodyAcknowledged = (payload) => this._speakCustodyAcknowledged(payload || {});
+    this._onLawFineAssessed = (payload) => this._speakLawStep('law:fineAssessed', payload || {});
+    this._onLawSanctuaryWithdrawal = (payload) => this._speakLawStep('law:sanctuaryWithdrawal', payload || {});
+    this._onLawResponseDeferred = (payload) => this._speakLawStep('law:responseDeferred', payload || {});
+    this._onLawIncidentResolved = (payload) => this._speakLawStep('law:incidentResolved', payload || {});
+    this._onLawWarrantReleased = (payload) => this._speakLawStep('law:wantedWarrantReleased', payload || {});
+    this._onLawDistressRaised = (payload) => this._speakLawStep('law:distressRaised', payload || {});
     this._onCounterHintSpawn = (payload) => this._teachCounterHint(payload && payload.entity);
+    // The wreck-field rival cutter speaks its race (aftermathWrecks ecology): the claim when
+    // its first cut lands, the yield when a pressed hull jettisons half its take, and the
+    // departure that names what it got away with. One line each, per cutter.
+    this._onRivalCut = (payload) => {
+      const entity = this._rivalCutterFrom(payload);
+      if (!entity) return;
+      this._speakEventLine(entity, 'rival-claim', 'wreckEcology:scavenged',
+        (_f, i) => rivalScavengerLineFor('claim', i));
+    };
+    this._onRivalPressured = (payload) => {
+      const entity = this._rivalCutterFrom(payload);
+      if (!entity) return;
+      this._speakEventLine(entity, 'rival-pressured', 'wreckEcology:rivalPressured',
+        (_f, i) => rivalScavengerLineFor('pressured', i));
+    };
+    this._onRivalDeparted = (payload) => {
+      if (!payload || !(Number(payload.holdQty) > 0)) return;
+      const entity = this._rivalCutterFrom(payload);
+      if (!entity) return;
+      this._speakEventLine(entity, 'rival-departed', 'wreckEcology:departed',
+        (_f, i) => rivalScavengerLineFor('departed', i));
+    };
     this._onFulfillmentProvoked = (payload) => this._speakFulfillmentProvoked(payload || {});
     this._onAdministrativeRouting = (payload) => this._speakAdministrativeRouting(payload || {});
     if (this.bus && typeof this.bus.on === 'function') {
@@ -341,22 +488,70 @@ export const barkDirector = {
       this.bus.on('law:dispatchStarted', this._onLawDispatchStarted);
       this.bus.on('law:wantedWarrantPosted', this._onLawWarrantPosted);
       this.bus.on('law:wantedCheckpointPosted', this._onLawCheckpointPosted);
+      this.bus.on('wreckEcology:scavenged', this._onRivalCut);
+      this.bus.on('wreckEcology:rivalPressured', this._onRivalPressured);
+      this.bus.on('wreckEcology:departed', this._onRivalDeparted);
       this.bus.on('law:reportIncidentReceipt', this._onLawReportReceipt);
       this.bus.on('encounter:patrolIntervened', this._onPatrolIntervened);
       this.bus.on('harasser:disengaged', this._onHarasserDisengaged);
       this.bus.on('bounty:cooled', this._onBountyCooled);
       this.bus.on('law:custodyAcknowledged', this._onCustodyAcknowledged);
+      // FB-040 — the law step receipts read back in the lawful register, one line each,
+      // through the same bark-channel arbiter slot every other law voice spends.
+      this.bus.on('law:fineAssessed', this._onLawFineAssessed);
+      this.bus.on('law:sanctuaryWithdrawal', this._onLawSanctuaryWithdrawal);
+      this.bus.on('law:responseDeferred', this._onLawResponseDeferred);
+      this.bus.on('law:incidentResolved', this._onLawIncidentResolved);
+      this.bus.on('law:wantedWarrantReleased', this._onLawWarrantReleased);
+      this.bus.on('law:distressRaised', this._onLawDistressRaised);
       this.bus.on('factionPresence:fulfillmentProvoked', this._onFulfillmentProvoked);
       this.bus.on('factionPresence:administrativeRouting', this._onAdministrativeRouting);
       this.bus.on('heat:changed', this._onHeatWantedCrossed);
       this.bus.on('tether:released', this._onBodyReleased);
+      this._onSpillNoticed = (payload) => this._speakSpillNotice(payload || {});
+      this._onLoadEmpty = (payload) => this._speakEmptyLoad(payload || {});
+      this._onRichSeamHelp = (payload) => this._speakRichSeamHelp(payload || {});
+      this.bus.on('traffic:spillNoticed', this._onSpillNoticed);
+      this.bus.on('npcjobs:loadEmpty', this._onLoadEmpty);
+      this.bus.on('traffic:richSeamHelpReserved', this._onRichSeamHelp);
+      this._onNpcCounterplay = (payload) => {
+        const bark = admitNpcCounterplayBark(this, payload, this.state && this.state.simTime);
+        const voice = this.helpers && this.helpers.voice;
+        if (bark && voice && typeof voice.say === 'function') {
+          voice.say({ channel: 'bark', text: bark.text, kind: bark.role, ttl: 3, id: bark.actorId });
+        }
+      };
+      this.bus.on('massline:npcCounterplay', this._onNpcCounterplay);
+      this._onHarasserDisengaged = (payload) => {
+        const bark = harasserDepartingBark(payload);
+        if (!bark) return;
+        const voice = this.helpers && this.helpers.voice;
+        if (voice && typeof voice.say === 'function') {
+          voice.say({ channel: 'bark', text: bark.text, kind: 'departing', ttl: 3, id: bark.attackerId });
+        }
+        if (!Array.isArray(this._harasserDepartures)) this._harasserDepartures = [];
+        this._harasserDepartures.push(bark);
+      };
+      this.bus.on('harasser:disengaged', this._onHarasserDisengaged);
       this.bus.on(HITSTUN_IMPULSE_EVENT, this._onBodyShoved);
       this.bus.on('physics:impact', this._onBodyImpact, { presentation: true });
     }
   },
 
   newGame() {
-    if (this.state) this.state.barkDirector = freshState();
+    if (this.state) {
+      this.state.barkDirector = freshState();
+      // Ephemeral absolute-simTime deadlines must not carry into the fresh clock — the
+      // save-load path already runs this same reset for near-miss bodies and voice/danger.
+      this._onStuntLoad?.();
+    }
+    this._npcCounterplayAt = null;
+    if (Array.isArray(this._npcCounterplayBarks)) this._npcCounterplayBarks.length = 0;
+    if (Array.isArray(this._harasserDepartures)) this._harasserDepartures.length = 0;
+    this._spillNoticeKeys = null;
+    this._emptyLoadKeys = null;
+    this._richSeamHelpKeys = null;
+    this.noteBarkWake();
   },
 
   /** External wake when bark-relevant activity is stamped without a membership bump. */
@@ -450,6 +645,16 @@ export const barkDirector = {
     return this._speak(entity, situation, reason, payload);
   },
 
+  // The wreck-field cutter owns the rivalry voice: resolve the ecology scavenger from any of
+  // its lifecycle events, or this observer has nothing to say.
+  _rivalCutterFrom(payload) {
+    if (!payload || !this.state) return null;
+    const entity = this.state.entities && this.state.entities.get
+      && this.state.entities.get(payload.entityId);
+    if (!entity || !entity.data || entity.data.wreckEcologyRole !== 'scavenger') return null;
+    return entity;
+  },
+
   _speak(entity, situation, reason, extra = null) {
     if (!BARK_SET.has(situation) || !entity || !this.state) return false;
     const state = this.state;
@@ -479,12 +684,8 @@ export const barkDirector = {
     const voice = this.helpers && this.helpers.voice;
     if (!voice || typeof voice.say !== 'function') return false;
 
-    rec.lastSituation = situation;
-    rec.said[situation] = true;
-    rec.lastSpokenAt = state.simTime || 0;
-    rec.history.push({ situation, reason, t: rec.lastSpokenAt, text });
-    if (rec.history.length > 8) rec.history.shift();
-
+    // A refused voice request must not consume the situation — mark the slot only
+    // after acceptance, the same carve-out _speakEventLine already uses.
     const accepted = voice.say({
       channel: 'bark',
       text,
@@ -493,18 +694,22 @@ export const barkDirector = {
       id: `barkDirector:${entityId}:${situation}`,
       factionId,
     });
-    if (accepted) {
-      this._emit('barkDirector:voice', {
-        entityId: entity.id,
-        situation,
-        reason,
-        text,
-        factionId,
-        t: rec.lastSpokenAt,
-        ...(extra ? { source: extra.sourceEvent || null } : {}),
-      });
-    }
-    return !!accepted;
+    if (!accepted) return false;
+    rec.lastSituation = situation;
+    rec.said[situation] = true;
+    rec.lastSpokenAt = state.simTime || 0;
+    rec.history.push({ situation, reason, t: rec.lastSpokenAt, text });
+    if (rec.history.length > 8) rec.history.shift();
+    this._emit('barkDirector:voice', {
+      entityId: entity.id,
+      situation,
+      reason,
+      text,
+      factionId,
+      t: rec.lastSpokenAt,
+      ...(extra ? { source: extra.sourceEvent || null } : {}),
+    });
+    return true;
   },
 
   // ── Law radio cadence: heat, pursuit, and witnesses speak ────────────────────────────────
@@ -564,6 +769,67 @@ export const barkDirector = {
     // No _speak fallback: the corpus always resolves, and a re-emitted event must not spend
     // the hull's 'warn' situation on a moment it already announced.
     return this._speakEventLine(patrol, 'law-intervention', 'encounter:patrolIntervened', pursuitBarkFor, payload);
+  },
+
+  // FB-040 — the law's own receipts read back in the lawful register. Each event resolves a
+  // locus and a one-shot dedupe key in `lawStepRead`; the line only voices when the player
+  // could hear it — docked at the assessed berth, named by the warrant, or inside hail range
+  // of the act. A lawful hull in earshot carries the line; the control desk says it when no
+  // lawful hull is close enough to own the radio. Same bark channel, same arbiter gap — the
+  // receipts spend the one voice slot like every other law bark.
+  _speakLawStep(eventName, payload) {
+    const state = this.state;
+    if (!state || !payload) return false;
+    const text = lawStepBarkFor(eventName);
+    if (!text) return false;
+    const step = lawStepRead(state, eventName, payload);
+    if (!step || !step.witnessed) return false;
+    const own = ensureState(state);
+    if (!own.lawStepSaid || typeof own.lawStepSaid !== 'object' || Array.isArray(own.lawStepSaid)) {
+      own.lawStepSaid = {};
+    }
+    if (own.lawStepSaid[step.key]) return false;
+    const voice = this.helpers && this.helpers.voice;
+    if (!voice || typeof voice.say !== 'function') return false;
+    const speaker = step.anchor
+      ? nearestEntityWhere(state, step.anchor, LAW_BARK_RADIUS_WU, isLawfulVoice)
+      : null;
+    const factionId = (speaker && factionFor(speaker)) || payload.factionId || 'faction_scn';
+    // A refused say must not burn the receipt — mark the slot only after acceptance, the same
+    // carve-out _speak and _speakEventLine already use.
+    const accepted = voice.say({
+      channel: 'bark',
+      text,
+      kind: 'barkDirector',
+      ttl: VOICE_TTL_S,
+      id: `lawStep:${step.key}`,
+      factionId,
+    });
+    if (!accepted) return false;
+    // Truthy record: simTime can legitimately be 0 at sim start, and a falsy value would let
+    // the receipt restate itself on the next emission.
+    own.lawStepSaid[step.key] = { t: Number(state.simTime) || 0 };
+    // Bounded: evict the oldest readback — receipt keys never accumulate without bound.
+    const saidKeys = Object.keys(own.lawStepSaid);
+    if (saidKeys.length > 64) {
+      let oldest = null;
+      let oldestT = Infinity;
+      for (const key of saidKeys) {
+        const t = Number(own.lawStepSaid[key] && own.lawStepSaid[key].t);
+        if (Number.isFinite(t) && t < oldestT) { oldestT = t; oldest = key; }
+      }
+      if (oldest != null) delete own.lawStepSaid[oldest];
+    }
+    this._emit('barkDirector:voice', {
+      entityId: speaker ? speaker.id : null,
+      situation: 'law-step',
+      reason: eventName,
+      text,
+      factionId,
+      t: Number(state.simTime) || 0,
+      source: payload.id || payload.incidentId || payload.contractId || payload.stationId || null,
+    });
+    return true;
   },
 
   _speakWantedCrossing(payload) {
@@ -737,10 +1003,7 @@ export const barkDirector = {
     const text = lineFor(factionId, index);
     const voice = this.helpers && this.helpers.voice;
     if (!voice || typeof voice.say !== 'function') return false;
-    rec.said[situation] = true;
-    rec.lastSpokenAt = state.simTime || 0;
-    rec.history.push({ situation, reason, t: rec.lastSpokenAt, text });
-    if (rec.history.length > 8) rec.history.shift();
+    // A refused say must not burn the one line. Mark the slot only after acceptance.
     const accepted = voice.say({
       channel: 'bark',
       text,
@@ -749,18 +1012,21 @@ export const barkDirector = {
       id: `barkDirector:${entityId}:${situation}`,
       factionId,
     });
-    if (accepted) {
-      this._emit('barkDirector:voice', {
-        entityId: entity.id,
-        situation,
-        reason,
-        text,
-        factionId,
-        t: rec.lastSpokenAt,
-        ...(extra ? { source: extra.sourceEvent || extra.incidentReceiptId || null } : {}),
-      });
-    }
-    return !!accepted;
+    if (!accepted) return false;
+    rec.said[situation] = true;
+    rec.lastSpokenAt = state.simTime || 0;
+    rec.history.push({ situation, reason, t: rec.lastSpokenAt, text });
+    if (rec.history.length > 8) rec.history.shift();
+    this._emit('barkDirector:voice', {
+      entityId: entity.id,
+      situation,
+      reason,
+      text,
+      factionId,
+      t: rec.lastSpokenAt,
+      ...(extra ? { source: extra.sourceEvent || extra.incidentReceiptId || null } : {}),
+    });
+    return true;
   },
 
   /**
@@ -1113,15 +1379,21 @@ export const barkDirector = {
   },
 
   // A neutral hauler/mining barge drifting inside pass range earns one friendly transponder
-  // chirp plus its deep foghorn. Once per contact — the shared bark record is the gate.
+  // chirp plus its deep foghorn. A tourist liner uses its own register, not that freighter hail.
+  // The Grandee (363) gets her own voice too — a famous ship sounds famous. Once per contact.
   _hailPassingTraffic(entity, state, player) {
     if (!entity || !player || !player.pos || !entity.pos || entity === player) return false;
     if (!eligibleShip(entity, state)) return false;
-    if (!PASS_HAIL_ROLES.has(occupationalRoleOf(entity))) return false;
+    const trafficRole = String(entity.data && entity.data.trafficRole || '').toLowerCase();
+    const tourist = trafficRole === 'tourist';
+    const grandee = !!(entity.data && entity.data.laneGrandee === true);
+    if (!tourist && !grandee && !PASS_HAIL_ROLES.has(occupationalRoleOf(entity))) return false;
     if (isHostileToPlayer(entity, PLAYER_TEAM, state)) return false;
     const dx = entity.pos.x - player.pos.x;
     const dz = entity.pos.z - player.pos.z;
     if (dx * dx + dz * dz > PASS_HAIL_RANGE_SQ) return false;
+    if (grandee) return this._speakGrandeeHail(entity);
+    if (tourist) return this._speakTouristHail(entity);
     const accepted = this._speak(entity, 'patrol-greeting', 'pass-by');
     if (accepted && this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit('audio:cue', {
@@ -1129,8 +1401,182 @@ export const barkDirector = {
         position: { x: entity.pos.x, z: entity.pos.z },
         gain: 0.8,
       });
+      // The hailing hull answers visibly: banked ships rock their wings.
+      this.bus.emit('npc:hailed', { entityId: entity.id, simTime: state.simTime });
     }
     return !!accepted;
+  },
+
+  _speakTouristHail(entity) {
+    return this._speakRegisterHail(entity, 'tourist', 'tourist-hail', 'touristHail');
+  },
+
+  // 363 — the Grandee hails a passing pilot in her own register, once per contact.
+  _speakGrandeeHail(entity) {
+    return this._speakRegisterHail(entity, 'grandee', 'grandee-hail', 'grandeeHail');
+  },
+
+  _speakRegisterHail(entity, register, situation, salt) {
+    const state = this.state;
+    if (!state || !entity) return false;
+    const own = ensureState(state);
+    const entityId = String(entity.id);
+    const rec = own.entities[entityId] || (own.entities[entityId] = freshEntityRecord(entity));
+    if (rec.said[situation]) return false;
+    if (this._isSuppressed(entity, 'patrol-greeting', rec)) return false;
+    const seed = state.meta && state.meta.seed;
+    const index = hash32(seed == null ? 0 : seed, salt, entityId);
+    const picked = trafficRoleHail(register, index);
+    if (!picked || picked.register !== register) return false;
+    const voice = this.helpers && this.helpers.voice;
+    if (!voice || typeof voice.say !== 'function') return false;
+    const factionId = factionFor(entity);
+    const accepted = voice.say({
+      channel: 'bark',
+      text: picked.text,
+      kind: 'barkDirector',
+      ttl: VOICE_TTL_S,
+      id: `barkDirector:${entityId}:${situation}`,
+      factionId,
+      register: picked.register,
+    });
+    if (!accepted) return false;
+    const now = state.simTime || 0;
+    rec.said[situation] = true;
+    rec.lastSituation = situation;
+    rec.lastSpokenAt = now;
+    rec.history.push({ situation, reason: 'pass-by', t: now, text: picked.text, register });
+    if (rec.history.length > 8) rec.history.shift();
+    this._emit('barkDirector:voice', {
+      entityId: entity.id, situation, reason: 'pass-by',
+      text: picked.text, factionId, register, t: now,
+    });
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('npc:hailed', { entityId: entity.id, simTime: now, register });
+    }
+    return true;
+  },
+
+  _markNoticeKey(bagName, key) {
+    if (!key) return false;
+    if (!this[bagName]) this[bagName] = new Set();
+    if (this[bagName].has(key)) return false;
+    this[bagName].add(key);
+    return true;
+  },
+
+  _speakSpillNotice(payload) {
+    const state = this.state;
+    if (!state || !payload) return null;
+    if (state.mode && state.mode !== 'flight') return null;
+    const key = spillNoticeKey(payload);
+    if (!key) return null;
+    const now = Number(state.simTime) || 0;
+    const own = ensureState(state);
+    const ambient = ambientRecord(own, currentSectorId(state));
+    const window = ambientWindow(ambient, now, payload.t);
+    if (!window.ok) return null;
+    if (this._spillNoticeKeys && this._spillNoticeKeys.has(key)) return null;
+    const hull = noticingHullForSpill(state, payload);
+    if (!hull) return null;
+    const text = spillNoticeBarkText(state.meta && state.meta.seed, hull.id);
+    const voice = this.helpers && this.helpers.voice;
+    if (!voice || typeof voice.say !== 'function') return null;
+    const factionId = factionFor(hull);
+    const accepted = voice.say({
+      channel: 'bark',
+      text,
+      kind: 'spillNotice',
+      ttl: VOICE_TTL_S,
+      id: `barkDirector:${hull.id}:spill-notice`,
+      factionId,
+      register: 'spill-notice',
+    });
+    if (!accepted) return null;
+    if (!this._markNoticeKey('_spillNoticeKeys', key)) return null;
+    noteAmbientBark(ambient, now, window.gap, hull.id);
+    const receipt = {
+      entityId: hull.id, text, noticeKey: key, t: now, gap: window.gap, register: 'spill-notice', factionId,
+    };
+    this._emit('barkDirector:voice', receipt);
+    return receipt;
+  },
+
+  _speakEmptyLoad(payload) {
+    const state = this.state;
+    if (!state || !payload) return null;
+    if (state.mode && state.mode !== 'flight') return null;
+    const key = emptyLoadKey(payload);
+    if (!key) return null;
+    const hauler = haulerForEmptyLoad(state, payload);
+    if (!hauler || !hullOnGlass(state, hauler)) return null;
+    const now = Number(state.simTime) || 0;
+    const own = ensureState(state);
+    const ambient = ambientRecord(own, payload.sectorId || currentSectorId(state));
+    const window = ambientWindow(ambient, now, payload.simTime);
+    if (!window.ok) return null;
+    if (this._emptyLoadKeys && this._emptyLoadKeys.has(key)) return null;
+    const seed = state.meta && state.meta.seed;
+    const index = hash32(seed == null ? 0 : seed, 'emptyLoad', key);
+    const picked = trafficRoleHail('hauler', index);
+    if (!picked || picked.register !== 'hauler') return null;
+    const voice = this.helpers && this.helpers.voice;
+    if (!voice || typeof voice.say !== 'function') return null;
+    const factionId = factionFor(hauler);
+    const accepted = voice.say({
+      channel: 'bark',
+      text: picked.text,
+      kind: 'emptyLoad',
+      ttl: VOICE_TTL_S,
+      id: `barkDirector:${hauler.id}:hauler-empty`,
+      factionId,
+      register: picked.register,
+    });
+    if (!accepted) return null;
+    if (!this._markNoticeKey('_emptyLoadKeys', key)) return null;
+    noteAmbientBark(ambient, now, window.gap, hauler.id);
+    const receipt = {
+      entityId: hauler.id, text: picked.text, loadKey: key, t: now, gap: window.gap,
+      register: 'hauler', factionId,
+    };
+    this._emit('barkDirector:voice', receipt);
+    return receipt;
+  },
+
+  _speakRichSeamHelp(payload) {
+    const state = this.state;
+    if (!state || !payload) return null;
+    if (state.mode && state.mode !== 'flight') return null;
+    if (!playerIsRichSeamHelp(state, payload)) return null;
+    const minerId = payload.targetId != null ? payload.targetId : payload.reservedById;
+    const miner = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(minerId)
+      : null;
+    if (!miner || miner.alive === false || miner.id === state.playerId) return null;
+    const key = String(payload.reservationId || payload.opportunityId || payload.requestId || minerId);
+    if (this._richSeamHelpKeys && this._richSeamHelpKeys.has(key)) return null;
+    const voice = this.helpers && this.helpers.voice;
+    if (!voice || typeof voice.say !== 'function') return null;
+    const text = richSeamHelpHailText();
+    const factionId = factionFor(miner);
+    const accepted = voice.say({
+      channel: 'bark',
+      text,
+      kind: 'richSeamHelp',
+      ttl: VOICE_TTL_S,
+      id: `barkDirector:${miner.id}:rich-seam-help`,
+      factionId,
+      register: 'miner',
+      to: state.playerId,
+    });
+    if (!accepted) return null;
+    if (!this._markNoticeKey('_richSeamHelpKeys', key)) return null;
+    const now = Number(state.simTime) || 0;
+    const receipt = {
+      entityId: miner.id, text, t: now, factionId, register: 'miner', to: state.playerId,
+    };
+    this._emit('barkDirector:voice', receipt);
+    return receipt;
   },
 
   _isSuppressed(entity, situation, rec) {
@@ -1292,13 +1738,24 @@ export const barkDirector = {
       if (this._onHarasserDisengaged) this.bus.off('harasser:disengaged', this._onHarasserDisengaged);
       if (this._onBountyCooled) this.bus.off('bounty:cooled', this._onBountyCooled);
       if (this._onCustodyAcknowledged) this.bus.off('law:custodyAcknowledged', this._onCustodyAcknowledged);
+      if (this._onLawFineAssessed) this.bus.off('law:fineAssessed', this._onLawFineAssessed);
+      if (this._onLawSanctuaryWithdrawal) this.bus.off('law:sanctuaryWithdrawal', this._onLawSanctuaryWithdrawal);
+      if (this._onLawResponseDeferred) this.bus.off('law:responseDeferred', this._onLawResponseDeferred);
+      if (this._onLawIncidentResolved) this.bus.off('law:incidentResolved', this._onLawIncidentResolved);
+      if (this._onLawWarrantReleased) this.bus.off('law:wantedWarrantReleased', this._onLawWarrantReleased);
+      if (this._onLawDistressRaised) this.bus.off('law:distressRaised', this._onLawDistressRaised);
       if (this._onCounterHintSpawn) this.bus.off('entity:spawned', this._onCounterHintSpawn);
       if (this._onFulfillmentProvoked) this.bus.off('factionPresence:fulfillmentProvoked', this._onFulfillmentProvoked);
       if (this._onAdministrativeRouting) this.bus.off('factionPresence:administrativeRouting', this._onAdministrativeRouting);
       if (this._onHeatWantedCrossed) this.bus.off('heat:changed', this._onHeatWantedCrossed);
       if (this._onBodyReleased) this.bus.off('tether:released', this._onBodyReleased);
+      if (this._onNpcCounterplay) this.bus.off('massline:npcCounterplay', this._onNpcCounterplay);
+      if (this._onHarasserDisengaged) this.bus.off('harasser:disengaged', this._onHarasserDisengaged);
       if (this._onBodyShoved) this.bus.off(HITSTUN_IMPULSE_EVENT, this._onBodyShoved);
       if (this._onBodyImpact) this.bus.off('physics:impact', this._onBodyImpact);
+      if (this._onSpillNoticed) this.bus.off('traffic:spillNoticed', this._onSpillNoticed);
+      if (this._onLoadEmpty) this.bus.off('npcjobs:loadEmpty', this._onLoadEmpty);
+      if (this._onRichSeamHelp) this.bus.off('traffic:richSeamHelpReserved', this._onRichSeamHelp);
     }
     this._onEntitySpawnedBark = null;
     this._onFlee = null;
@@ -1319,12 +1776,24 @@ export const barkDirector = {
     this._onHeatWantedCrossed = null;
     this._onBountyCooled = null;
     this._onCustodyAcknowledged = null;
+    this._onLawFineAssessed = null;
+    this._onLawSanctuaryWithdrawal = null;
+    this._onLawResponseDeferred = null;
+    this._onLawIncidentResolved = null;
+    this._onLawWarrantReleased = null;
+    this._onLawDistressRaised = null;
     this._onCounterHintSpawn = null;
     this._onFulfillmentProvoked = null;
     this._onAdministrativeRouting = null;
     this._onBodyReleased = null;
     this._onBodyShoved = null;
     this._onBodyImpact = null;
+    this._onSpillNoticed = null;
+    this._onLoadEmpty = null;
+    this._onRichSeamHelp = null;
+    this._spillNoticeKeys = null;
+    this._emptyLoadKeys = null;
+    this._richSeamHelpKeys = null;
     if (this._bodyNearMisses) this._bodyNearMisses.clear();
     this._bodyNearMisses = null;
     this._barkQuiet = null;
@@ -1676,6 +2145,127 @@ function stationNameFor(stationId) {
   return null;
 }
 
+// ── FB-040 law-step witness resolution ───────────────────────────────────────────────────────
+// The readback rule the packet pins: a receipt only voices when the player could plausibly have
+// heard it — docked at the assessed berth, named by the warrant or the incident, or inside the
+// same hail radius the other law barks use. Each event also resolves a one-shot dedupe key so a
+// re-emitted receipt cannot restate itself.
+
+function entityAt(state, id) {
+  if (id == null || !state || !state.entities || typeof state.entities.get !== 'function') return null;
+  return state.entities.get(id) || state.entities.get(Number(id)) || null;
+}
+
+function finitePos(pos) {
+  return pos && Number.isFinite(pos.x) && Number.isFinite(pos.z) ? pos : null;
+}
+
+// Stations resolve by public id through the entity index first, then a living-actor scan —
+// same lookup precedent as lawSecurity's stationByPublicId, read-only here.
+function stationPosFor(state, stationId) {
+  if (stationId == null || !state) return null;
+  const indexed = state.entityIndex && state.entityIndex.byStationId;
+  if (indexed && typeof indexed.get === 'function') {
+    const hit = indexed.get(stationId);
+    if (hit && finitePos(hit.pos)) return hit.pos;
+  }
+  let found = null;
+  const scan = (entity) => {
+    if (found || !entity || entity.type !== 'station') return;
+    const id = (entity.data && entity.data.stationId) || entity.stationId || entity.id;
+    if (String(id) === String(stationId) && finitePos(entity.pos)) found = entity.pos;
+  };
+  const entities = state.entities;
+  if (entities && typeof entities.values === 'function') {
+    for (const entity of entities.values()) scan(entity);
+  }
+  if (!found && Array.isArray(state.entityList)) {
+    for (const entity of state.entityList) scan(entity);
+  }
+  return found;
+}
+
+function lawStepAnchorPos(state, payload) {
+  if (!payload) return null;
+  const direct = finitePos(payload.victimAnchor)
+    || finitePos(payload.pos)
+    || finitePos(payload.anchor);
+  if (direct) return direct;
+  const victim = entityAt(state, payload.victimId);
+  if (victim && finitePos(victim.pos)) return victim.pos;
+  const attacker = entityAt(state, payload.attackerId);
+  if (attacker && finitePos(attacker.pos)) return attacker.pos;
+  const station = stationPosFor(state, payload.stationId);
+  if (station) return station;
+  const target = entityAt(state, payload.targetId);
+  if (target && finitePos(target.pos)) return target.pos;
+  const hunter = entityAt(state, payload.hunterId);
+  if (hunter && finitePos(hunter.pos)) return hunter.pos;
+  return null;
+}
+
+function lawStepRead(state, eventName, payload) {
+  const player = entityAt(state, state && state.playerId);
+  const playerPos = player && finitePos(player.pos);
+  const inRange = (pos) => {
+    if (!playerPos || !pos) return false;
+    const dx = pos.x - playerPos.x;
+    const dz = pos.z - playerPos.z;
+    return dx * dx + dz * dz <= LAW_BARK_RADIUS_WU * LAW_BARK_RADIUS_WU;
+  };
+  switch (eventName) {
+    // The assessment lands on the player's own dock receipt — docked at the berth is always
+    // witnessed. The settled echo on a later re-dock is not new information.
+    case 'law:fineAssessed': {
+      if (payload.alreadySettled === true) return null;
+      if (payload.offer !== true && payload.paid !== true) return null;
+      const outcome = payload.paid === true ? 'paid' : 'offer';
+      return {
+        witnessed: true,
+        anchor: stationPosFor(state, payload.stationId) || playerPos,
+        key: `fine:${payload.stationId}:${outcome}`,
+      };
+    }
+    case 'law:distressRaised':
+    case 'law:incidentResolved': {
+      const anchor = lawStepAnchorPos(state, payload);
+      const named = payload.attackerId === state.playerId
+        || payload.victimId === state.playerId;
+      if (!named && !inRange(anchor)) return null;
+      return { witnessed: true, anchor, key: `${eventName}:${payload.id}` };
+    }
+    case 'law:sanctuaryWithdrawal': {
+      const anchor = lawStepAnchorPos(state, payload);
+      const named = payload.targetId === state.playerId;
+      if (!named && !inRange(anchor)) return null;
+      return {
+        witnessed: true,
+        anchor,
+        key: `sanctuary:${payload.attackerId}:${payload.targetId != null ? payload.targetId : ''}`,
+      };
+    }
+    case 'law:responseDeferred': {
+      const anchor = stationPosFor(state, payload.stationId) || lawStepAnchorPos(state, payload);
+      if (!inRange(anchor)) return null;
+      return { witnessed: true, anchor, key: `deferred:${payload.incidentId}` };
+    }
+    case 'law:wantedWarrantReleased': {
+      const anchor = lawStepAnchorPos(state, payload);
+      // The released warrant was posted on the player — its release is their receipt — or the
+      // hunter standing down is close enough to watch.
+      const named = payload.targetId === state.playerId;
+      if (!named && !inRange(anchor)) return null;
+      return {
+        witnessed: true,
+        anchor: anchor || playerPos,
+        key: `warrantReleased:${payload.contractId || payload.hunterId || 'warrant'}`,
+      };
+    }
+    default:
+      return null;
+  }
+}
+
 // WORLD-28: Fulfillment register lines come from hulls still carrying the route tag. A
 // provoked route may hold several — iterate so the first hull with an unspent slot speaks.
 function fulfillmentRouteHulls(state, routeId) {
@@ -1759,6 +2349,50 @@ function ambientGap(rec, now) {
   const quietAge = Math.max(0, now - (Number(rec.quietSince) || 0));
   const steps = Math.floor(quietAge / AMBIENT_QUIET_STEP_S);
   return Math.min(AMBIENT_MAX_GAP_S, AMBIENT_BASE_GAP_S + steps * AMBIENT_GAP_STEP_S);
+}
+
+/** The bark is inside the ambient gap when the notice is not older than that gap. */
+function ambientWindow(ambient, now, eventT) {
+  const gap = ambientGap(ambient, now);
+  const t = Number.isFinite(Number(eventT)) ? Number(eventT) : now;
+  return { gap, ok: now - t <= gap && t - now <= gap };
+}
+
+function noteAmbientBark(ambient, now, gap, entityId) {
+  ambient.lastAt = now;
+  ambient.lastGap = gap;
+  ambient.lastEntityId = entityId;
+  const next = now + gap;
+  if (!(Number(ambient.nextAt) > next)) ambient.nextAt = next;
+}
+
+const _barkGlassScratch = { x: 0, z: 0 };
+
+function hullOnGlass(state, entity) {
+  if (!state || !entity || entity.alive === false || !entity.pos) return false;
+  const player = state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : null;
+  const drawWu = tableVfxDrawWuFromState(state);
+  const delta = tableLookAtDelta(state, player && player.pos, entity.pos, _barkGlassScratch);
+  return shouldDrawTableVfx(delta.x, delta.z, drawWu);
+}
+
+function haulerForEmptyLoad(state, payload) {
+  const jobId = payload && payload.haulerJobId;
+  if (jobId == null || !state) return null;
+  const byId = state.npcJobs && state.npcJobs.byId;
+  const entry = byId && byId[jobId];
+  if (!entry) return null;
+  const kind = entry.kind || (entry.job && entry.job.kind);
+  if (kind !== 'hauler') return null;
+  const entity = entry.entityId != null && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(entry.entityId)
+    : null;
+  if (!entity || entity.alive === false || entity.type !== 'ship') return null;
+  const role = String(entity.data && (entity.data.trafficRole || entity.data.role) || '').toLowerCase();
+  if (role && role !== 'hauler' && role !== 'heavy') return null;
+  return entity;
 }
 
 function rememberSuppressed(own, entity, situation, now, until, reason) {

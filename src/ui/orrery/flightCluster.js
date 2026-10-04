@@ -3,10 +3,9 @@
 // Everything in the bottom-left radiates from a single centre, like an orrery:
 //   · the hull's own plan view, as instrument light, at the pivot;
 //   · the ring stack — shield (segmented), armour (hairline), hull — with a swatch legend in the gap;
-//   · SPEED on the upper-left arc, a 1 px ticked Scale with a floating gem cursor and the reference
-//     tick, directly under its huge thin numeral — the Scale is a colour instrument: asleep in bone
-//     at rest, phos in flight, ice above the reference (the envelope is engraved into the face as a
-//     faint ice band past the ref tick); BOOST a 3 px charge arc just inside it;
+//   · SPEED on the upper-left: the Speed Dial (speedDial.js) — a 240 degree sweep of lit blades with the
+//     numeral at its pivot, a reference gate, a needle and wake, BOOST as the charge arc inside it. Its
+//     colour is the speed's story: bone asleep, phos reading, ice at the gate, blue-shift above it;
 //   · energy and heat on the lower-left flank, each read at its arc end;
 //   · the heading track over the nose with a velocity pip (where the ship is really going);
 //   · the ORDNANCE CRESCENT wrapping the right side: collapsed groups as small nodes, the armed group
@@ -21,7 +20,11 @@ import { svg, arcD, polar, circularText, ticksD } from './svg.js';
 import { arcGauge, orbitRing, ring } from './instruments.js';
 import { createSpring } from './motion.js';
 import { createCounter } from './text.js';
+import { createSpeedDial, SPEED_DIAL } from './speedDial.js';
 import { hullPosterUrl } from '../hullPosters.js';
+
+// The colour phase is decided by the displayed reading (speedDial.js owns it; the contract is pinned here).
+export { speedPhase } from './speedDial.js';
 
 const STYLE_ID = 'sf-orrery-cluster-style';
 const ICON_ROOT = new URL('../../../assets/ui/kit/icons/48/', import.meta.url).href;
@@ -30,13 +33,13 @@ const W = 760;
 const H = 540;
 const P = Object.freeze({ x: 250, y: 350 });
 const R = Object.freeze({
-  hull: 104, armor: 113, shield: 123, orbit: 145, heading: 154, flank: 170, boost: 164, speed: 177,
+  hull: 104, armor: 113, shield: 123, orbit: 145, heading: 154, flank: 170, rim: 177,
   crescent: 262, payload: 318,
 });
+// The Speed Dial's pivot: the upper-left of the canvas, clear of the ring stack and the tether.
+const DIAL_AT = Object.freeze({ x: 122, y: 134 });
 const GAUGE_FROM = 225;
 const GAUGE_TO = 495;
-const SPEED_FROM = 282;   // zero, on the left
-const SPEED_TO = 350;     // full, up under the numeral
 const KEY_R = 20;
 const NODE_R = 14;
 const STEP_KEY = 14;
@@ -51,10 +54,9 @@ const CSS = `
    a tight halo of the void, so a label stays legible over a bright foundry floor or a sunlit hull */
 .orr-cluster__keytag, .orr-cluster__speedfoot, .orr-cluster__read, .orr-cluster__legend, .orr-cluster__payload, .orr-cluster__count {
   text-shadow:0 0 1px rgb(3 4 7 / .95), 0 0 3px rgb(3 4 7 / .85), 0 0 9px rgb(3 4 7 / .6); }
-/* small type gets its own pool of shadow, sized to the words, not the block */
-.orr-cluster__keytag::before, .orr-cluster__speedfoot > .orr-label::before { content:""; position:absolute; inset:-9px -16px; z-index:-1; pointer-events:none;
-  background:radial-gradient(closest-side, rgb(3 4 7 / .7), rgb(3 4 7 / .5) 72%, transparent); }
-.orr-cluster__speedfoot > .orr-label { position:relative; }
+/* small type gets its own pool of shadow, sized to the words, not the block — hugging the text */
+.orr-cluster__keytag::before { content:""; position:absolute; inset:-4px -8px; z-index:-1; pointer-events:none;
+  background:radial-gradient(closest-side, rgb(3 4 7 / .75), rgb(3 4 7 / .45) 60%, transparent); }
 .orr-cluster .orr-soft::before { content:""; position:absolute; inset:-18px -26px; z-index:-1; pointer-events:none;
   background:radial-gradient(closest-side, rgb(3 4 7 / .72), rgb(3 4 7 / .38) 55%, transparent); }
 .orr-cluster__legend { position:absolute; left:${P.x - 62}px; top:${P.y + 68}px; width:124px; display:grid; grid-template-columns:16px auto 1fr; column-gap:7px; row-gap:4px; align-items:center; }
@@ -62,40 +64,44 @@ const CSS = `
 .orr-cluster__legend b { font-family:var(--dp-face-numeral); font-weight:520; font-size:13px; color:var(--dp-phos, #dfeeff); font-variant-numeric:tabular-nums; text-align:right; }
 .orr-cluster__legend b.is-hull { font-weight:300; font-size:26px; line-height:.9; }
 .orr-cluster__legend b.is-hull i { font-style:normal; font-size:12px; font-weight:500; color:var(--dp-ink-dim, #b7b4a6); margin-left:1px; }
-.orr-cluster__legend .orr-label { font-size:max(10px, calc(10px / var(--orr-cluster-scale, 1))); }
+.orr-cluster__legend .orr-label { font-size:max(12px, calc(12px / var(--orr-cluster-scale, 1))); }
 .orr-cluster__legend .is-critical, .orr-cluster__legend .is-critical i { color:var(--dp-danger, #ff5038); }
 .orr-cluster__read { position:absolute; display:flex; flex-direction:column; gap:3px; }
 .orr-cluster__read .orr-value { font-size:15px; }
-.orr-cluster__speed { position:absolute; left:22px; top:18px; display:flex; flex-direction:column; gap:8px; }
-.orr-cluster__speed .orr-numeral { font-size:104px; font-weight:250; line-height:.8; text-shadow:0 0 18px rgb(0 0 0 / .55); }
-/* the numeral's phase is the speed's colour story: asleep in dim bone, reading in phos,
-   above reference in ice (the colour data-in-motion wears — ORRERY §3.3) */
-.orr-cluster__speed .orr-numeral.is-rest { color:var(--dp-ink-dim, #b7b4a6); }
-.orr-cluster__speed .orr-numeral.is-over { color:var(--dp-ice, #8fcbff); }
-.orr-cluster__speedfoot { display:flex; gap:12px; align-items:baseline; }
-.orr-cluster__speedstate { font-size: 12px; letter-spacing:.18em; color:var(--dp-ink-dim, #b7b4a6); }
-.orr-cluster__speedstate.is-ice { color:var(--dp-ice, #8fcbff); }
-.orr-cluster__speedfoot b { font-family:var(--dp-face-numeral); font-weight:520; font-size:12px; color:var(--dp-ink, #e8e2d4); margin-left:4px; letter-spacing:.02em; }
 .orr-cluster__key { position:absolute; width:48px; height:48px; margin:-24px 0 0 -24px;
   /* the one part of the Cluster that answers the cursor: a verb key is hoverable and focusable so
      its tier-2 [data-why] reveal can fire (shared whyReveal.js mechanism). A click fires nothing —
      the press is the key — so the click still falls through to the flight input underneath. */
   pointer-events:auto; }
 .orr-cluster__key svg { position:absolute; inset:0; width:48px; height:48px; overflow:visible; }
-.orr-cluster__icon { position:absolute; left:50%; top:50%; width:20px; height:20px; margin:-10px 0 0 -10px; background:currentColor;
-  -webkit-mask:var(--orr-icon) center / contain no-repeat; mask:var(--orr-icon) center / contain no-repeat; color:var(--dp-ink, #e8e2d4); opacity:.9; }
+.orr-cluster__icon { position:absolute; left:50%; top:50%; width:22px; height:22px; margin:-11px 0 0 -11px; background:currentColor;
+  -webkit-mask:var(--orr-icon) center / contain no-repeat; mask:var(--orr-icon) center / contain no-repeat; color:var(--dp-ink, #e8e2d4); opacity:1.0; }
 .orr-cluster__key.is-node .orr-cluster__icon { width:14px; height:14px; margin:-7px 0 0 -7px; opacity:.66; }
 .orr-cluster__key.is-armed .orr-cluster__icon { color:var(--dp-hand-hot, #ffd98c); opacity:1; }
+/* Verbs that feel loaded: armed key exhales a slow transform-only breath */
+.orr-cluster__key.is-armed { animation: orr-key-armed-breath 2.4s ease-in-out infinite; }
+@keyframes orr-key-armed-breath { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+/* SWARM-03: a tactically-live verb breathes — the key warms and exhales so "why now"
+   reads at a glance (latch in reach, ordnance armed, a pack inside the well). */
+.orr-cluster__key.is-live .orr-cluster__icon { color:var(--dp-hand, #f2b950); animation:orr-key-live 1.15s ease-in-out infinite; }
+.orr-cluster__key.is-live .orr-cluster__keytag b { color:var(--dp-hand-hot, #ffd98c); }
+@keyframes orr-key-live { 0%,100% { opacity:1; } 50% { opacity:.5; } }
 .orr-cluster__key.is-cooldown .orr-cluster__icon { opacity:.5; }
 .orr-cluster__key.is-locked .orr-cluster__icon, .orr-cluster__key.is-empty .orr-cluster__icon { opacity:.24; }
-/* labels hold a 10 px floor on screen whatever the cluster's scale */
-.orr-cluster__keytag { position:absolute; top:50%; transform:translateY(-50%); white-space:nowrap; font-size:max(10px, calc(10px / var(--orr-cluster-scale, 1))); }
-.orr-cluster__key:not(.is-node) .orr-cluster__keytag { left:${24 + KEY_R + 10}px; }
-.orr-cluster__key.is-node .orr-cluster__keytag { left:${24 + NODE_R + 9}px; color:var(--dp-ink-dim, #b7b4a6); }
+/* labels hold a 12 px floor on screen whatever the cluster's scale */
+.orr-cluster__keytag { position:absolute; top:50%; transform:translateY(-50%); white-space:nowrap; font-size:max(12px, calc(12px / var(--orr-cluster-scale, 1))); font-weight:500; }
+.orr-cluster__key:not(.is-node) .orr-cluster__keytag { left:${24 + KEY_R + 10}px; color:rgb(232 226 212 / .88); }
+.orr-cluster__key.is-node .orr-cluster__keytag { left:${24 + NODE_R + 9}px; color:rgb(232 226 212 / .92); }
 .orr-cluster__keytag b { font-weight:700; color:var(--dp-ink, #e8e2d4); margin-left:6px; letter-spacing:.08em; }
-.orr-cluster__key.is-armed .orr-cluster__keytag { color:var(--dp-hand, #f2b950); }
-.orr-cluster__key.is-armed .orr-cluster__keytag b { color:var(--dp-hand-hot, #ffd98c); }
+.orr-cluster__key.is-node .orr-cluster__keytag b { font-weight:500; color:rgb(232 226 212 / .70); }
+.orr-cluster__key.is-armed .orr-cluster__keytag { color:var(--dp-hand, #f2b950); font-weight:600; }
+.orr-cluster__key.is-armed .orr-cluster__keytag b { color:var(--dp-hand-hot, #ffd98c); font-weight:700; }
 .orr-cluster__key.is-locked .orr-cluster__keytag, .orr-cluster__key.is-empty .orr-cluster__keytag { opacity:.55; }
+@media (max-width: 1400px) {
+  .orr-cluster__key:not(.is-node) .orr-cluster__keytag { left:${24 + KEY_R + 6}px; }
+  .orr-cluster__key.is-node .orr-cluster__keytag { left:${24 + NODE_R + 5}px; }
+  .orr-cluster__keytag::before { inset:-2px -5px; }
+}
 .orr-cluster__count { position:absolute; left:50%; top:50%; transform:translate(17px, 11px); font-family:var(--dp-face-numeral); font-weight:700; font-size: 12px; color:var(--dp-phos, #dfeeff); }
 .orr-cluster__payload { position:absolute; display:flex; flex-direction:column; gap:3px; white-space:nowrap; }
 .orr-cluster__payload .orr-counter { font-family:var(--dp-face-numeral); font-weight:320; font-size:26px; color:var(--dp-phos, #dfeeff); }
@@ -107,7 +113,7 @@ const CSS = `
 .orr-cluster.is-arriving .orr-cluster__glyph { animation:orr-glyph-in 900ms var(--dp-ease-out) both; }
 @keyframes orr-glyph-in { from { opacity:0; transform:scale(.92); } to { opacity:1; transform:none; } }
 .orr-cluster.is-arriving .orr-cluster__fade, .orr-cluster.is-arriving .orr-cluster__key { animation:orr-rise 460ms var(--dp-ease-out) both; animation-delay:var(--orr-delay, 0ms); }
-html.sf-reduce-motion .orr-cluster *, html.sf-reduce-motion .orr-cluster__pulse { animation:none !important; }
+html.sf-reduce-motion .orr-cluster *, html.sf-reduce-motion .orr-cluster__pulse, html.sf-reduce-motion .orr-cluster__key.is-armed { animation:none !important; }
 `;
 
 function injectStyle(doc = globalThis.document) {
@@ -125,18 +131,6 @@ const el = (tag, cls, text) => {
   return node;
 };
 
-/**
- * The speed Scale's colour phase, pure so the contract is testable without DOM. The phase is
- * decided against the DISPLAYED (rounded) reading, so the colour can never disagree with the
- * numeral: 'rest' when the numeral reads 0, 'over' when it rounds above the reference
- * (ice — beyond the hull's reference envelope), else 'flight'.
- */
-export function speedPhase(speed, ref) {
-  const s = Math.max(0, Number(speed) || 0);
-  const r = Number(ref) || 180;
-  if (Math.round(s) === 0) return 'rest';
-  return Math.round(s) > Math.round(r) ? 'over' : 'flight';
-}
 const at = (r, deg) => polar(P.x, P.y, r, deg);
 const place = (node, x, y) => { node.style.left = `${x}px`; node.style.top = `${y}px`; };
 const f1 = (n) => n.toFixed(1);
@@ -224,7 +218,7 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
   const energyVal = el('b', 'orr-value');
   energyRead.append(el('span', 'orr-label', 'Energy'), energyVal);
   const [enx, eny] = at(R.flank + 12, 274);
-  // seated just under the boost arc's lower end, so the label never touches either arc
+  // seated just under the energy arc's lower end, so the label never touches the arc
   place(energyRead, 22, eny - 17);
   const heatRead = el('div', 'orr-cluster__read orr-cluster__fade orr-soft');
   const heatVal = el('b', 'orr-value');
@@ -232,59 +226,13 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
   const [htx, hty] = at(R.flank + 12, 198);
   place(heatRead, htx - 70, hty - 14);
 
-  // ---- upper-left: the speed Scale under its numeral, boost inside ------------------------------------
-  // The Scale (library element 8) as a colour instrument. Its phases are the reading (§3.3):
-  //   rest — the instrument asleep, bone and dim, until the hull moves;
-  //   flight — the phos reading, needle riding the rail;
-  //   above reference — ice, the one colour data-in-motion may wear: beyond the hull's
-  //   reference the fill, needle and numeral all go ice. The envelope itself is engraved into
-  //   the face as a faint ice band from the reference tick to the arc's end, so the zone you
-  //   can enter is visible before you enter it. Red stays threat-only; amber stays the Hand's.
-  s.appendChild(svg('path', { d: arcD(P.x, P.y, R.speed, SPEED_FROM, SPEED_TO), class: 'orr-core orr-faint', 'stroke-width': 1 }));
-  const overZone = svg('path', { d: '', class: 'orr-core orr-ice', 'stroke-width': 2.4, opacity: '.14', 'stroke-linecap': 'butt' });
-  s.appendChild(overZone);
-  const tickParts = [];
-  for (let i = 0; i <= 20; i += 1) {
-    const a = SPEED_FROM + (SPEED_TO - SPEED_FROM) * (i / 20);
-    const [x0, y0] = at(R.speed + 2, a);
-    const [x1, y1] = at(R.speed + (i % 5 === 0 ? 9 : 5), a);
-    tickParts.push(`M ${f1(x0)} ${f1(y0)} L ${f1(x1)} ${f1(y1)}`);
-  }
-  s.appendChild(svg('path', { d: tickParts.join(' '), class: 'orr-core orr-rest', 'stroke-width': 1 }));
-  const speedArc = arcGauge({ cx: P.x, cy: P.y, r: R.speed, from: SPEED_FROM, to: SPEED_TO, width: 2.4, tone: 'phos', track: 'faint', ghost: false, head: false });
-  s.appendChild(speedArc.el);
-  // the needle: a gem riding the rail, bloom under a core, that changes metal with the phase
-  const speedCursor = svg('g');
-  const cursorBloom = svg('path', { d: '', class: 'orr-bloom orr-phos', 'stroke-width': 5, 'stroke-linejoin': 'miter', fill: 'none' });
-  const cursorCore = svg('path', { d: '', class: 'orr-core orr-phos', 'stroke-width': 1.6, 'stroke-linejoin': 'miter', fill: 'none' });
-  speedCursor.append(cursorBloom, cursorCore);
-  s.appendChild(speedCursor);
-  const setSpeedCursor = (a) => {
-    const [ox, oy] = at(R.speed + 5.5, a);
-    const [lx, ly] = at(R.speed, a - 2.4);
-    const [ix, iy] = at(R.speed - 5.5, a);
-    const [rx, ry] = at(R.speed, a + 2.4);
-    const d = `M ${f1(ox)} ${f1(oy)} L ${f1(lx)} ${f1(ly)} L ${f1(ix)} ${f1(iy)} L ${f1(rx)} ${f1(ry)} Z`;
-    cursorBloom.setAttribute('d', d);
-    cursorCore.setAttribute('d', d);
-  };
-  const refTick = svg('path', { d: '', class: 'orr-core orr-hi', 'stroke-width': 1.6 });
-  s.appendChild(refTick);
-  const boost = arcGauge({ cx: P.x, cy: P.y, r: R.boost, from: SPEED_FROM, to: SPEED_TO, width: 3, tone: 'phos', track: 'faint', ghost: false, head: false });
-  s.appendChild(boost.el);
-  // boost is named by engraving along its own arc, so the label can never collide with a flank read
-  s.appendChild(circularText(P.x, P.y, R.boost - 10, 'BOOST', { startDeg: 298, size: 9, className: 'orr-micro orr-micro--hi' }));
-
-  const speedBlock = el('div', 'orr-cluster__speed orr-cluster__fade orr-soft');
-  const speedVal = el('b', 'orr-numeral');
-  const speedFoot = el('div', 'orr-cluster__speedfoot');
-  const refVal = el('b');
-  const refLab = el('span', 'orr-label', 'Ref');
-  refLab.appendChild(refVal);
-  const speedState = el('span', 'orr-label orr-cluster__speedstate');
-  speedState.hidden = true;
-  speedFoot.append(el('span', 'orr-label', 'Speed · wu/s'), speedState, refLab);
-  speedBlock.append(speedVal, speedFoot);
+  // ---- upper-left: the Speed Dial ------------------------------------------------------------------
+  // A library element (speedDial.js), seated clear of the ring stack and the tether. It owns the speed
+  // numeral, the reference gate, the needle and the boost charge arc; its tint is the speed's colour
+  // story (ORRERY §3.3): bone asleep, phos reading, ice at the gate, blue-shift above it. Red stays
+  // threat-only and amber stays the Hand's.
+  const dial = createSpeedDial();
+  place(dial.el, DIAL_AT.x - SPEED_DIAL.size / 2, DIAL_AT.y - SPEED_DIAL.size / 2);
 
   // ---- legend in the gap ---------------------------------------------------------------------------
   const legend = el('div', 'orr-cluster__legend orr-cluster__fade');
@@ -319,7 +267,7 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
   hand.append(armGhost, armBloom, armLine, armPip, weightDot, hub);
   s.appendChild(hand);
   const handSpring = createSpring({ value: 40, preset: 'swing', onUpdate: (deg) => {
-    const [a0x, a0y] = at(R.speed + 12, deg);
+    const [a0x, a0y] = at(R.rim + 12, deg);
     const [a1x, a1y] = at(R.crescent - KEY_R - 5, deg);
     const [g0x, g0y] = at(-R.orbit - 4, deg);
     const [g1x, g1y] = at(-R.shield - 6, deg);
@@ -353,11 +301,12 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     k.setAttribute('aria-label', tip ? tip.replace(/\n/g, '. ') : `${label}${sub ? `, key ${sub}` : ''}`);
     const ks = svg('svg', { viewBox: '-24 -24 48 48', class: 'orr-svg' });
     const r0 = node ? NODE_R : KEY_R;
-    ks.appendChild(svg('circle', { r: r0, class: 'orr-core orr-rest', 'stroke-width': 1, fill: 'rgb(5 7 10 / .34)' }));
+    const bloomTwin = svg('circle', { r: r0, class: 'orr-bloom orr-bone', 'stroke-width': 5, opacity: '.20', fill: 'none' });
+    const coreCircle = svg('circle', { r: r0, class: 'orr-core orr-rest', 'stroke-width': 1.5, fill: 'rgb(5 7 10 / .34)' });
     const cd = svg('path', { d: arcD(0, 0, r0 + 3.5, 0, 360), class: 'orr-core orr-phos', 'stroke-width': node ? 1.6 : 2, pathLength: 1, 'stroke-dasharray': '0 1', 'stroke-linecap': 'butt', opacity: '.8' });
     const armedB = svg('circle', { r: r0, class: 'orr-bloom orr-hand', 'stroke-width': 6, fill: 'none', opacity: 0 });
     const armed = svg('circle', { r: r0, class: 'orr-core orr-hand', 'stroke-width': 1.5, fill: 'none', opacity: 0 });
-    ks.append(cd, armedB, armed);
+    ks.append(bloomTwin, coreCircle, cd, armedB, armed);
     k.appendChild(ks);
     const ic = el('span', 'orr-cluster__icon');
     ic.style.setProperty('--orr-icon', `url("${ICON_ROOT}icon-${icon}.svg")`);
@@ -417,7 +366,7 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
   payload.style.visibility = 'hidden';
   const massCounter = createCounter(massEl, { format: (n) => `${Math.round(n)} T` });
 
-  root.append(energyRead, heatRead, speedBlock, legend, payload);
+  root.append(dial.el, energyRead, heatRead, legend, payload);
 
   // ---- update --------------------------------------------------------------------------------------
   const last = {};
@@ -441,42 +390,11 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     if (changed('energy', Math.round(energyF * 1000))) { energy.set(energyF); energyVal.textContent = String(Math.round(Number(d.energy) || 0)); }
     const heatF = Math.max(0, Math.min(1, Number(d.heat) || 0));
     if (changed('heat', Math.round(heatF * 1000))) { heat.set(heatF); heat.setTone(heatF > 0.75 ? 'threat' : 'hi'); heatVal.textContent = `${Math.round(heatF * 100)}%`; }
-    const ref = Number(d.speedRef) || 180;
-    const max = Number(d.speedMax) || ref * 1.25;
-    const speed = Math.max(0, Number(d.speed) || 0);
-    const speedChanged = changed('speed', Math.round(speed));
-    if (speedChanged) {
-      speedVal.textContent = String(Math.round(speed));
-      const fr = Math.min(1, speed / max);
-      speedArc.set(fr);
-      setSpeedCursor(SPEED_FROM + (SPEED_TO - SPEED_FROM) * fr);
-    }
-    const refChanged = changed('ref', ref);
-    if (refChanged) {
-      refVal.textContent = String(Math.round(ref));
-      const a = SPEED_FROM + (SPEED_TO - SPEED_FROM) * Math.min(1, ref / max);
-      const [r0x, r0y] = at(R.speed - 4, a);
-      const [r1x, r1y] = at(R.speed + 13, a);
-      refTick.setAttribute('d', `M ${f1(r0x)} ${f1(r0y)} L ${f1(r1x)} ${f1(r1y)}`);
-      overZone.setAttribute('d', arcD(P.x, P.y, R.speed, a, SPEED_TO));
-    }
-    // the phase IS the colour: asleep / reading / beyond the reference envelope. Re-tint only on
-    // a crossing, so a settled frame writes nothing and the scale never flickers at a boundary.
-    if (speedChanged || refChanged) {
-      const phase = speedPhase(speed, ref);
-      if (changed('speedPhase', phase)) {
-        const tone = phase === 'over' ? 'ice' : 'phos';
-        speedArc.setTone(tone);
-        cursorBloom.setAttribute('class', `orr-bloom orr-${tone}`);
-        cursorCore.setAttribute('class', `orr-core orr-${tone}`);
-        speedVal.classList.toggle('is-rest', phase === 'rest');
-        speedVal.classList.toggle('is-over', phase === 'over');
-        speedState.textContent = phase === 'rest' ? 'AT REST' : phase === 'over' ? 'ABOVE REF' : '';
-        speedState.hidden = phase === 'flight';
-        speedState.classList.toggle('is-ice', phase === 'over');
-      }
-    }
-    if (changed('boost', Math.round((Number(d.boost) || 0) * 100))) boost.set(Number(d.boost) || 0);
+    // speed and boost live in the Speed Dial; it keeps its own change detection, so a settled frame
+    // writes nothing. `speedMax` is the travel drive's ceiling (V-MAX), the dial's last blade.
+    dial.update({
+      speed: d.speed, ref: d.speedRef, max: d.speedMax, boost: d.boost, boosting: d.boosting === true, drive: d.driveActive === true,
+    });
     if (Number.isFinite(d.drift) && changed('drift', Math.round(d.drift))) {
       driftPip.setAttribute('transform', `rotate(${Math.max(-40, Math.min(40, d.drift))} ${P.x} ${P.y})`);
     }
@@ -498,10 +416,12 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
       if (sk.slot) {
         const st = slotStates[sid(sk.slot)] || {};
         const state = st.state || 'ready';
+        const live = st.live === true;
         // write only what changed: a settled HUD frame must not dirty the SVG
-        if (sk.state !== state) {
+        if (sk.state !== state || sk.live !== live) {
           sk.state = state;
-          sk.el.className = `orr-cluster__key is-${state}`;
+          sk.live = live;
+          sk.el.className = `orr-cluster__key is-${state}${live ? ' is-live' : ''}`;
           sk.armed.setAttribute('opacity', state === 'armed' ? '1' : '0');
           sk.armedB.setAttribute('opacity', state === 'armed' ? '.26' : '0');
         }
@@ -555,7 +475,8 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
 
   function arrive() {
     root.classList.add('is-arriving');
-    [speedBlock, energyRead, heatRead, legend, payload].forEach((node, i) => node.style.setProperty('--orr-delay', `${160 + i * 50}ms`));
+    [dial.el, energyRead, heatRead, legend, payload].forEach((node, i) => node.style.setProperty('--orr-delay', `${160 + i * 50}ms`));
+    dial.arrive();
     setTimeout(() => root.classList.remove('is-arriving'), 1500);
   }
 
@@ -564,7 +485,7 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     update,
     arrive,
     dispose() {
-      for (const g of [shield, armor, hull, energy, heat, speedArc, boost, strain]) g.dispose();
+      for (const g of [shield, armor, hull, energy, heat, strain, dial]) g.dispose();
       handSpring.stop();
       for (const sk of sockets) sk.spring.stop();
     },

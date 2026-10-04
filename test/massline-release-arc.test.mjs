@@ -153,6 +153,51 @@ test('reduced-motion and reduced-flash freeze cadence while retaining the qualit
   );
 });
 
+test('released annulus freezes to the captured release frame while the live target moves on (NXI-197)', () => {
+  const scratch = createMasslineReleaseArcScratch();
+  // The capture site stamps where the target entity stood at the release moment; the
+  // live entity then keeps flying. Post-release the annulus is history, not tracking.
+  const liveTarget = { id: 77, alive: true, pos: { x: 900, z: -100 }, radius: 19 };
+  const released = releaseInput({
+    classification: 'clean',
+    predictor: null,
+    releaseTarget: {
+      kind: 'entity', source: 'release-target', targetId: 77,
+      pos: { x: 500, z: 200 }, radius: 19,
+    },
+    liveTarget,
+  });
+  const plan = resolveMasslineReleaseArcPlan(scratch.plan, released);
+  assert.equal(plan.visible, true);
+  assert.equal(plan.stage, 'released');
+  assert.equal(plan.centerX, 500, 'the frozen release point owns the post-release center');
+  assert.equal(plan.centerZ, 200);
+
+  liveTarget.pos.x = -40;
+  liveTarget.pos.z = 1110;
+  const later = resolveMasslineReleaseArcPlan(scratch.plan, released);
+  assert.equal(later.centerX, 500, 'a still-moving entity must not drag the recorded cue');
+  assert.equal(later.centerZ, 200);
+
+  // Neighbouring success: pre-release still tracks the live target, and a released
+  // record with no frozen point still falls back to the live entity.
+  const approaching = resolveMasslineReleaseArcPlan(scratch.plan, releaseInput({
+    liveTarget: { id: 77, alive: true, pos: { x: -40, z: 1110 }, radius: 19 },
+  }));
+  assert.equal(approaching.stage, 'approaching');
+  assert.equal(approaching.centerX, -40);
+  assert.equal(approaching.centerZ, 1110);
+
+  const noFrozenPoint = resolveMasslineReleaseArcPlan(scratch.plan, releaseInput({
+    classification: 'good',
+    predictor: null,
+    releaseTarget: { kind: 'entity', targetId: 77, pos: null, radius: 0 },
+    liveTarget: { id: 77, alive: true, pos: { x: 33, z: 66 }, radius: 19 },
+  }));
+  assert.equal(noFrozenPoint.centerX, 33);
+  assert.equal(noFrozenPoint.centerZ, 66);
+});
+
 test('invalid predictor/target/rating fails closed and clears the preallocated draw range', () => {
   const scratch = createMasslineReleaseArcScratch();
   const valid = releaseInput({ classification: 'good' });

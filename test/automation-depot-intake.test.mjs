@@ -166,6 +166,9 @@ test('PQ-177.07 untraded and mission-locked standing-order deliveries fail witho
     preloadedCargo: true,
     params: { cmdtyId: ORE },
   }];
+  // NXB-025: the seal binds held units — with an empty hold nothing is reserved, so the
+  // fixture must put the contract ore aboard for the lock to engage.
+  addCargo(state, ORE, 6);
   const locked = econ.quoteAutomationIntake(STATION, ORE, 6);
   assert.equal(locked.ok, false);
   assert.equal(locked.reason, 'mission_cargo_locked');

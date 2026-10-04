@@ -32,8 +32,29 @@ const PLACE_ID = 'place_landmark_wreck_cathedral';
 // dropped their measured `skin:` manifests for single ball colliders (colliders 190 → 68).
 // Entity/type census, cathedral census and releaseSha256 unchanged. Prior digest
 // c4c49314e678ae40bb122dd2f53edd17b2841d3bcf81f4894d6f351a8e7f3faa.
+// Re-pinned 2026-09-30 for solid contact dynamics (eb1869826 "make contacts solid and keep
+// player heading true"): dynamic bodies adopt measured solid skins via SKIN_DYNAMIC_TYPES,
+// restoring compound collision proxies to 6 live asteroids (128 primitives) and 2 live ships
+// (48 primitives), taking colliders 68 → 236. Prior digest
+// 718d39d8123d511762ea7f84901c359088fe1372c55abae632271c8e2eb32544.
+// Re-pinned 2026-10-05 for the D90/D145 adjudication: SOLSTICE / SL-9 (5103e8668) added the
+// Star Lantern POI (authored pois 9 → 10); _spawnPOIs draws two rng values per POI even with a
+// fixed pos, so the deterministic spawn stream shifted and one patrol ship now lands inside the
+// far-shelf boundary (ship 2 → 1, entities 38 → 37, collidable 14 → 13, colliders 236 → 212).
+// Prior digest b0627637f6ac3f120dc67fb2197c0817165bf3d002dcaf8ca1fcacf9af9028c0.
+// Re-pinned 2026-10-04 for the D83 adjudication — the drift is the solid-dressing lane
+// (309deb2f7 "physics: solid dressing — every visible structure takes its measured collider",
+// the D161 adjudication), which re-derived the library pin and the dressing censuses but left
+// this file's duplicated pin stale. Six re-pointed Ceres activity-object structures (dead-hulk
+// draw, bait wreck, grave shard, cargo staging pod → barge, and kin) now carry fixed
+// measured-skin bodies in the core census: collidable 13 → 19, colliders 212 → 329 (+117
+// primitives). The additive dressing groups gained their adopted skins the same way
+// (everydaySpaceKit 0 → 58, wreckAftermath 0 → 58, worldOneOff 24 → 183 colliders). Entity/type
+// census (37), authored counts, cathedral census (15/15, 14 shelved) and releaseSha256 are all
+// unchanged — verified against the live receipt, which the standalone check passes.
+// Prior digest 8404e62c8acaa5e75feca22c173c32ee3597254df16ab0f4db176d516cf77e1b.
 const EXPECTED_STRUCTURAL_COST_DIGEST =
-  '718d39d8123d511762ea7f84901c359088fe1372c55abae632271c8e2eb32544';
+  '1e245a850b53c10a7de1cda7ce4caf7cf97685e39f5e1b39e30529c4b15e68a6';
 
 function pocket(receipt, id) {
   const value = receipt.topology.pockets.find((candidate) => candidate.id === id);
@@ -151,18 +172,27 @@ test('PQ-020 structural-cost fingerprint is deterministic and headed-only fields
   // PR #170: the Closed Refinery colony adds 12 fauna bodies to the live core census
   // (23 → 35); they are not collider-backed, so `collidable` stays at 14.
   // The Kettle Line (WF-10) adds three drift-trail POIs whose markers are live fx (35 → 38, fx 9 → 12).
+  // SOLSTICE / SL-9 (5103e8668) added a fixed-pos POI whose two _spawnPOIs rng draws shifted the
+  // deterministic spawn stream: one patrol ship now lands inside the far-shelf boundary and is a
+  // far-actor row at boot instead of a live body (38 → 37, ship 2 → 1, collidable 14 → 13).
+  // The solid-dressing lane (309deb2f7, D161) then gave six re-pointed Ceres activity-object
+  // structures their fixed measured-skin bodies — same entities, now collidable (13 → 19).
   assert.deepEqual(first.structuralCost.entities, {
-    total: 38,
-    byType: { asteroid: 6, fauna: 12, fx: 12, ship: 2, station: 6 },
-    collidable: 14,
+    total: 37,
+    byType: { asteroid: 6, fauna: 12, fx: 12, ship: 1, station: 6 },
+    collidable: 19,
   });
   // Colliders went 14 → 66 with the compound-collision rollout, then kept moving as measured
   // skins and authored rebuilds changed proxy primitive counts (66 → 108 prism gallery,
   // 108 → 184 Forge wave, 184 → 190 the packet-8 pack releases). Package E (b7b499263) made the
   // six non-landmark asteroids dynamic, so they left the measured-skin eligibility list and
-  // collide as single balls (190 → 68). The count tracks sanctioned asset/physics work, not
-  // topology — the digest pin above is the canary.
-  assert.equal(first.structuralCost.colliders, 68);
+  // collide as single balls (190 → 68). Solid contact dynamics (eb1869826) then restored compound
+  // skins to solid dynamic bodies via SKIN_DYNAMIC_TYPES (68 → 236: 60 stations/gates + 128
+  // asteroid primitives + 48 ship primitives). The count tracks sanctioned asset/physics work,
+  // not topology — the digest pin above is the canary. The Solstice rng shift then parked one
+  // of the two live ships on the far shelf, taking its 24-primitive skin with it (236 → 212),
+  // and the solid-dressing lane added the six structures' measured skins (212 → 329).
+  assert.equal(first.structuralCost.colliders, 329);
   assert.equal(first.structuralCost.worldSite.siteId, SITE_ID);
   assert.equal(first.structuralCost.worldSite.materializedEntities, 15);
   assert.equal(first.structuralCost.worldSite.shelvedEntities, 14);
@@ -204,31 +234,36 @@ test('PQ-020 structural-cost fingerprint is deterministic and headed-only fields
   assert.deepEqual(first.additiveDressing.groupIds, [
     'everydaySpaceKit', 'worldOneOff', 'wreckAftermath',
   ]);
-  // The Long Berth yard tug became a physical wreck body (0c6f0ea1a) and leaves the
-  // fx dressing census whenever the far-actor shelf takes it, so the authored dressing
-  // total is 20 fx entities rather than 21.
+  // The Long Berth yard tug is an authored physical wreck body (0c6f0ea1a). D141 (09132834b)
+  // keeps worldOneOff bodies out of the far-actor shelf — a lean far row would strip the
+  // identity fields the unique one-off needs to rematerialize exactly once — so it now stays
+  // live here as one collidable wreck carrying a 24-primitive measured skin.
+  // The solid-dressing lane (309deb2f7, D161) then gave every visible dressing structure its
+  // measured collider — the strut shrine, pirate ram, pod-field shells and kit pieces above the
+  // craft-scale floor joined the yard tug as fixed measured-skin solids (totals collidable
+  // 1 → 15, colliders 24 → 299). Pieces under the floor stay ghosts.
   assert.deepEqual(first.additiveDressing.totals, {
-    entities: 20,
-    byType: { fx: 20 },
-    collidable: 0,
-    colliders: 0,
+    entities: 21,
+    byType: { fx: 20, wreck: 1 },
+    collidable: 15,
+    colliders: 299,
   });
   assert.equal(first.additiveDressing.ambiguousEntities, 0);
   assert.deepEqual(first.additiveDressing.groups, [
     {
       id: 'everydaySpaceKit',
       dataFlag: 'everydaySpaceKit',
-      live: { entities: 6, byType: { fx: 6 }, collidable: 0, colliders: 0 },
+      live: { entities: 6, byType: { fx: 6 }, collidable: 3, colliders: 58 },
     },
     {
       id: 'worldOneOff',
       dataFlag: 'worldOneOff',
-      live: { entities: 10, byType: { fx: 10 }, collidable: 0, colliders: 0 },
+      live: { entities: 11, byType: { fx: 10, wreck: 1 }, collidable: 9, colliders: 183 },
     },
     {
       id: 'wreckAftermath',
       dataFlag: 'wreckAftermath',
-      live: { entities: 4, byType: { fx: 4 }, collidable: 0, colliders: 0 },
+      live: { entities: 4, byType: { fx: 4 }, collidable: 3, colliders: 58 },
     },
   ]);
 

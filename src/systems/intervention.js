@@ -16,6 +16,7 @@
 // story" law. Never writes credits, cargo, or rep (single-writer §0.6); never rolls its own losses.
 
 import { drawSeeded, hash32 } from '../core/rng.js';
+import { deferSectorEnterMaterialization, deferredEnterNow, deferredEnterProviderInFlight } from '../core/sectorEnterDefer.js';
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 
 const MAX_ACTIVE = 4;        // cap concurrent interventions so a mass-loss event doesn't spam wrecks
@@ -68,7 +69,17 @@ export const intervention = {
     // The trigger: an automation asset was lost. Spawn salvage + raise the alert.
     this.bus.on('automation:assetLost', (p) => this._onAssetLost(p));
     // Cross-sector honesty: a logged site materializes when the player arrives.
-    this.bus.on('sector:enter', () => this._materializePendings());
+    // Live GPU + flight + hard enter: defer into the cook's FIFO — the census
+    // drains the same _materializePendings call under its slice clock in
+    // listener order instead of synchronously inside the emit.
+    this.bus.on('sector:enter', (p) => {
+      if (deferSectorEnterMaterialization(this.state, p, this._cookProvider)) return;
+      this._materializePendings();
+    });
+    // Census arm: logged sites materialize inside the sector cook deterministically.
+    this._cookProvider = () => this._materializePendingsSteps();
+    (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
+      .push(this._cookProvider);
   },
 
   _onAssetLost(p) {
@@ -125,17 +136,51 @@ export const intervention = {
   },
 
   _materializePendings() {
+    // Sync lane (emit listener, update sweep): drain the chunked steps inline —
+    // the census drive holds the same generator across its slices. While the
+    // FIFO holds this provider's live entry, the inline run would be a second
+    // driver on the same mutable pendingInterventions array — defer to it.
+    if (deferredEnterProviderInFlight(this.state, this._cookProvider)) return;
+    for (const _ of this._materializePendingsSteps()) { /* inline */ }
+  },
+
+  *_materializePendingsSteps() {
     const state = this.state;
     const current = state.world && state.world.currentSectorId;
     if (!current) return;
     const pendings = state.pendingInterventions || [];
-    for (let i = pendings.length - 1; i >= 0; i--) {
-      const rec = pendings[i];
-      if (!rec || rec.sectorId !== current) continue;
-      if ((state.interventions || []).length >= MAX_ACTIVE) return;
-      const spawned = this._spawnSite({ ...rec, arrived: true });
-      if (spawned) pendings.splice(i, 1);
-      else break; // no player/spawner in this harness — keep the log, don't spin
+    // Drain to a fixpoint: a pending logged while this generator is suspended
+    // lands past the bound cursor, so a single backwards walk never visits it —
+    // the emit-era inline drain re-walked and caught it. Re-walk only while a
+    // pass consumed at least one record (each splice shrinks the list, so the
+    // fixpoint terminates); a failed spawn still returns immediately.
+    for (;;) {
+      let progressed = false;
+      for (let i = pendings.length - 1; i >= 0; i--) {
+        yield;
+        const rec = pendings[i];
+        if (!rec || rec.sectorId !== current) continue;
+        if ((state.interventions || []).length >= MAX_ACTIVE) {
+          this._noteInterventionCap(rec);
+          return;
+        }
+        const spawned = this._spawnSite({ ...rec, arrived: true });
+        if (spawned) { pendings.splice(i, 1); progressed = true; }
+        else return; // no player/spawner in this harness — keep the log, don't spin
+      }
+      if (!progressed) return;
+    }
+  },
+
+  _noteInterventionCap(rec) {
+    if (!rec || rec.capTold) return;
+    rec.capTold = true;
+    if (this.bus) {
+      this.bus.emit('toast', {
+        text: 'Recovery sites are full — finish one before the next wreck appears',
+        kind: 'warn',
+        ttl: 4,
+      });
     }
   },
 
@@ -160,7 +205,9 @@ export const intervention = {
     const wreck = this.helpers.spawnEntity({
       type: 'wreck', pos, radius: 8, mass: 1e6,
       hull: 1, hullMax: 1,
-      physicsBody: { shape: 'capsule' },
+      // SFQ-B025: the authored 1e6 dead-mass is the body's own mass — normalization must not
+      // substitute the ~51-mass wreck-density value for an intended immovable hulk.
+      physicsBody: { shape: 'capsule', mass: 1e6 },
       data: {
         parentType: job.kind || 'asset',
         proportions: WRECK_COLLIDER_PROPORTIONS,
@@ -182,7 +229,7 @@ export const intervention = {
       jumper: null,
       value: job.value,
       recoverable: poolTotal(pool),
-      t: state.simTime || 0,
+      t: deferredEnterNow(state) || 0,
     };
     if (job.cause === 'raided') rec.guardId = this._spawnGuard(rec, pos);
     rec.jumper = this._spawnJumper(rec, pos);

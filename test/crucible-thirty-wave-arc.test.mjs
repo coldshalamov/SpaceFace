@@ -78,7 +78,13 @@ test('same seed replays the same thirty waves; a different seed does not', () =>
   assert.notDeepEqual(a.map(fightOf), other.map(fightOf), 'a different seed must change fight content, not just plan ids');
 });
 
-test('acts change composition, not raw body count, against the template wave', () => {
+test('acts re-ask the wave honestly — same bodies, tighter cadence, never grown elites', () => {
+  // FB-026 (honest pressure): the same wave's question returns with the SAME bodies on
+  // new bearings with tighter batch cadence — never more bodies, never grown elites.
+  // The law that survives is the elite clause — a hunt or a boss fields the hull it was
+  // authored with — plus the spawn-cap ceiling. Body parity IS the contract.
+  const eliteCount = (pkgs) => (pkgs || []).filter((p) => p.role === 'elite')
+    .reduce((n, p) => n + (Number.isInteger(p.count) ? p.count : 0), 0);
   for (let wave = 1; wave <= SURVIVAL_ARC_LENGTH; wave++) {
     const template = templateWaveOf(wave);
     const composed = planWave({ seed: SEED, arenaId: ARENA, wave });
@@ -91,8 +97,12 @@ test('acts change composition, not raw body count, against the template wave', (
     });
     assert.ok(isPlan(composed), `wave ${wave}`);
     assert.ok(isPlan(baseline), `template ${template}`);
-    assert.equal(bodyCount(composed.packages), bodyCount(baseline.packages), `wave ${wave} body count`);
-    assert.equal(peakConcurrentDemand(composed.packages), peakConcurrentDemand(baseline.packages));
+    assert.equal(bodyCount(composed.packages), bodyCount(baseline.packages),
+      `wave ${wave} fields the template's bodies — pressure is cadence, not count`);
+    assert.equal(eliteCount(composed.packages), eliteCount(baseline.packages),
+      `wave ${wave} elite hulls never grow`);
+    assert.ok(peakConcurrentDemand(composed.packages) <= SPAWN_BUDGET_DEFAULT_MAX,
+      `wave ${wave} growth stays inside the cap`);
     if (wave > 10) {
       const composedGaps = composed.packages.map((pkg) => pkg.batchGapTicks);
       const baselineGaps = baseline.packages.map((pkg) => pkg.batchGapTicks);
@@ -137,6 +147,13 @@ test('the wave-20 system event is on the plan exactly once in the arc', () => {
   assert.equal(plans[19].objective.kind, 'system_event');
   assert.equal(plans[29].systemEvent.id, 'forge_regent_crown');
   assert.equal(plans[29].objective.kind, 'boss');
+  // The event waves re-ask their template with the same bodies plus the wave-20 escort
+  // overlay (which splits a mass package into escorts, count-neutral): the elite hull is
+  // untouched and the extra door is the authored support/mass role.
+  const eliteCount = (pkgs) => (pkgs || []).filter((p) => p.role === 'elite')
+    .reduce((n, p) => n + (Number.isInteger(p.count) ? p.count : 0), 0);
+  assert.equal(eliteCount(plans[19].packages), eliteCount(plans[9].packages));
+  assert.equal(eliteCount(plans[29].packages), eliteCount(plans[9].packages));
   assert.equal(bodyCount(plans[19].packages), bodyCount(plans[9].packages));
   assert.equal(bodyCount(plans[29].packages), bodyCount(plans[9].packages));
 });

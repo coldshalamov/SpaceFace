@@ -363,12 +363,32 @@ try {
       phase = 'flight';
       record('LAUNCH', true, 'flight mode entered');
     } catch (err) {
-      const detail = await page.evaluate(() => ({
-        mode: window.SF?.state?.mode,
-        start: window.__playableStart,
-        screens: [...document.querySelectorAll('[data-screen]')]
-          .filter(e => getComputedStyle(e).display !== 'none').map(e => e.dataset.screen),
-      })).catch(() => null);
+      const detail = await page.evaluate(async (verbose) => {
+        const state = window.SF?.state;
+        const detail = {
+          mode: state?.mode,
+          start: window.__playableStart,
+          screens: [...document.querySelectorAll('[data-screen]')]
+            .filter(e => getComputedStyle(e).display !== 'none').map(e => e.dataset.screen),
+        };
+        if (!verbose || !state) return detail;
+        const { authoredCriticalVisualReadiness, describeAuthoredUpgradeQueue } =
+          await import('/src/render/partsLibrary.js');
+        detail.readiness = authoredCriticalVisualReadiness(state);
+        const scene = state.render?.scene;
+        detail.queue = describeAuthoredUpgradeQueue(scene);
+        detail.jobs = scene?.userData?.authoredUpgradeDiagnostics?.jobs || [];
+        detail.critical = [detail.readiness.playerId, detail.readiness.startingHubId]
+          .map((id) => {
+            const entity = state.entities.get(id);
+            const data = entity?.mesh?.userData || {};
+            return { id, name: entity?.mesh?.name,
+              status: data.authoredAssetState, failure: data.authoredFailureReason,
+              readmission: data.authoredReadmissionReason, phase: data.authoredPreparePhase,
+              upgrading: !!data.authoredUpgradePromise };
+          });
+        return detail;
+      }, VERBOSE).catch(() => null);
       record('LAUNCH', false, `never entered flight — ${err.message} — ${JSON.stringify(detail)}`);
     }
   } else {
@@ -499,10 +519,18 @@ try {
 
     if (roundTrip && saved) {
       let loaded = false;
+      // Declared outside the try: the catch below names the stage the load died in.
+      let continueStage = 'harness-reload';
       try {
+        // Name the sub-stage in the failure line. A bare "did not return to flight" cannot
+        // distinguish "the reloaded page never evaluated its module graph (window.SF absent)"
+        // from "Continue's own load gates never released" — the 2026-09-30 capture was the
+        // first kind and sat unconfirmed because the error did not say where it died.
         phase = 'harness-reload';
         await page.reload({ waitUntil: 'domcontentloaded', timeout: 180000 });
+        continueStage = 'boot-graph (window.SF)';
         await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 60000 });
+        continueStage = 'main-menu';
         await page.waitForFunction(() => {
           const el = document.querySelector('[data-screen="mainMenu"]');
           return el && getComputedStyle(el).display !== 'none';
@@ -511,9 +539,11 @@ try {
         // Press the real Continue button. mainMenu.js:254 reads the save index and emits
         // game:load with the latest slot; firing the event directly would skip the index lookup,
         // which is itself a place this can break.
+        continueStage = 'continue-click';
         const clicked = await clickButton(page, 'Continue');
         if (!clicked) throw new Error('Continue button absent or disabled after saving');
         phase = 'launch';
+        continueStage = 'load-gates→flight';
         await page.waitForFunction(() => {
           const st = window.SF.state;
           const p = st && st.entities && st.entities.get(st.playerId);
@@ -524,7 +554,7 @@ try {
         loaded = true;
         record('CONTINUE', true, 'loaded the save back into flight');
       } catch (err) {
-        record('CONTINUE', false, 'Continue did not return to flight: ' + err.message);
+        record('CONTINUE', false, `Continue did not return to flight (stage: ${continueStage}): ` + err.message);
       }
       if (loaded) await assertPlayable(page, '~LOAD');
       else for (const step of ['PILOT', 'HULL', 'WORLD', 'CONTROLS']) record(step + '~LOAD', false, 'skipped (Continue failed)');

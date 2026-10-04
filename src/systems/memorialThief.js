@@ -1,9 +1,18 @@
 // A scavenger that tries to lift the Candle Fleet sample pod before the player does.
-// uniqueWrecks owns the durable outcome; npcJobs flies the hull when present.
+// uniqueWrecks owns this object. It is not a system id and it has no clock of its own:
+// uniqueWrecks.sync/killed are the only ticks. npcJobs flies the hull when present.
+
 import { makeShipEntitySpec } from './ships.js';
 import { isSurvivalRunLive } from './adventureMigration.js';
 import { indexedWorldRecordEntity } from '../world/livingWorldViews.js';
 import { HELIOS_ROPE_CACHE } from '../data/worldOneOffs.js';
+
+/** Declared sub-object. Not registered, so the manifest identity payload stays put. */
+export const MEMORIAL_THIEF_DECLARATION = Object.freeze({
+  owner: 'uniqueWrecks',
+  systemId: null,
+  independentTick: false,
+});
 
 const SECTOR = 'sector_helios_prime';
 const CACHE_ID = HELIOS_ROPE_CACHE.id;

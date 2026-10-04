@@ -216,8 +216,10 @@ function assertStrictNoop(state, emitted, startCount, label) {
 test('v1 cadence matches the first authored ten-wave block', () => {
   assert.equal(SURVIVAL_RUN_WAVE_COUNT, WAVE_COUNT);
   assert.equal(SURVIVAL_REFIT_EVERY, REFIT_EVERY);
-  assert.equal(SURVIVAL_ARENA_INTRO_TICKS, 1);
-  assert.equal(SURVIVAL_WAVE_INTRO_TICKS, 1);
+  // FB-025: the intros are real windows now — 2 s for the arena, 1.5 s per wave — with
+  // survivalAnnounce owning the completion emit and these constants as the machine's floor.
+  assert.equal(SURVIVAL_ARENA_INTRO_TICKS, 120);
+  assert.equal(SURVIVAL_WAVE_INTRO_TICKS, 90);
   assert.equal(SURVIVAL_CLEANUP_TICKS, 180);
   assert.equal(BOSS_CLEANUP_TICKS, 240);
 });

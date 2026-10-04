@@ -9,7 +9,7 @@ import { COMMODITIES } from '../data/commodities.js';
 import { MISSION_TUNING } from '../data/missions.js';
 import { SECTORS } from '../data/sectors.js';
 import { SERVICE_PRICES, quote } from '../systems/economy.js';
-import { predictPriceCurve } from '../systems/economyCycles.js';
+import { evaluateTwoLegItinerary, predictPriceCurve } from '../systems/economyCycles.js';
 import { missionPreflight } from './missionPreflight.js';
 import { applyTradeNavigation, computeBestTrades } from './market/tradeLogic.js';
 
@@ -250,6 +250,18 @@ function listHaulDecision(state, stationId) {
     if (!best || profit > best.profit) best = { trade, units, profit, buy };
   }
   if (!best) return null;
+  const cargo = state.player && state.player.cargo;
+  const cargoFree = cargo && Number(cargo.capVolume) > 0
+    ? Math.max(0, Number(cargo.capVolume) - (Number(cargo.usedVolume) || 0))
+    : best.units;
+  const plan = evaluateTwoLegItinerary({
+    credits: creditsOf(state),
+    cargoFree,
+    leg1: { qty: best.units, unitCr: best.buy, unitVolume: 1, stock: best.units },
+    leg2: { qty: best.units },
+  });
+  if (!(plan.leg1Taken > 0)) return null;
+  best = { ...best, units: plan.leg1Taken };
   const name = best.trade.cmdtyName || commodityName(best.trade.cmdtyId);
   const dest = stationName(best.trade.destStation);
   const cost = Math.round(best.units * best.buy);
@@ -262,7 +274,7 @@ function listHaulDecision(state, stationId) {
       {
         id: 'haul',
         label: `Haul to ${dest}`,
-        tradeoff: `Buy ${best.units} for ${cost.toLocaleString('en-US')} cr and set course for ${dest}. The remembered margin is ${best.profit.toLocaleString('en-US')} cr if the bid holds.`,
+        tradeoff: `Buy ${best.units} for ${cost.toLocaleString('en-US')} cr and set course for ${dest}. The later price is an estimate, not a guaranteed arrival.`,
         stake: `haul:${cost}:${best.profit}`,
         viable: true,
         effect: {

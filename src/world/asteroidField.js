@@ -23,6 +23,7 @@ export function ensureAsteroidField(state) {
   let field = world.asteroidField;
   if (field && field.schema === ASTEROID_FIELD_SCHEMA && Array.isArray(field.rocks)) {
     if (!(field.byId instanceof Map)) field.byId = new Map(field.rocks.map((row) => [row.id, row]));
+    if (!(field.dirtyPoseIds instanceof Set)) field.dirtyPoseIds = new Set();
     if (!(field.grid instanceof Map)) rebuildGrid(field);
     return field;
   }
@@ -31,10 +32,36 @@ export function ensureAsteroidField(state) {
     version: 0,
     rocks: [],
     byId: new Map(),
+    dirtyPoseIds: new Set(),
     grid: new Map(),
+    // Ledger-collect walk markers (presentationSources sizes the rock query disc
+    // from these): high-water dormant-row |vel| and the lowest lastExactT among
+    // rows that ever carried drift, so a shelved rock's stored↔ballistic pos gap
+    // stays covered by the walk disc. Conservative both ways — never decrease.
+    maxRockSpeed: 0,
+    minDriftRockLastExactT: null,
   };
   world.asteroidField = field;
   return field;
+}
+
+// High-water drift markers for the ledger walk disc. Called wherever a field row
+// gains or refreshes vel (insert, ballistic catch-up). A row that slows keeps the
+// older, larger marker — that only ever widens the query disc, so it stays a safe
+// superset of the rows the collect verdict can admit.
+function noteFieldRockMotion(field, rec) {
+  if (!field || !rec) return;
+  const vx = finite(rec.vel && rec.vel.x);
+  const vz = finite(rec.vel && rec.vel.z);
+  const speed = (vx !== 0 || vz !== 0) ? Math.hypot(vx, vz) : 0;
+  if (!(speed > 0)) return;
+  if (!(Number.isFinite(field.maxRockSpeed) && field.maxRockSpeed >= speed)) {
+    field.maxRockSpeed = speed;
+  }
+  if (!Number.isFinite(field.minDriftRockLastExactT)
+    || rec.lastExactT < field.minDriftRockLastExactT) {
+    field.minDriftRockLastExactT = rec.lastExactT;
+  }
 }
 
 export function shouldKeepLiveAsteroid(options = {}) {
@@ -137,6 +164,8 @@ export function insertAsteroidFieldRock(state, spec = {}) {
   field.rocks.push(rec);
   field.byId.set(id, rec);
   gridAdd(field, rec);
+  field.dirtyPoseIds.add(id);
+  noteFieldRockMotion(field, rec);
   field.version++;
   return rec;
 }
@@ -150,30 +179,47 @@ export function getAsteroidFieldRock(state, id) {
 export function queryAsteroidField(state, pos, radius, out = []) {
   out.length = 0;
   const field = state && state.world && state.world.asteroidField;
-  if (!field || !pos || !(radius > 0)) return out;
+  if (!field || !pos || !Number.isFinite(radius) || !(radius > 0)) return out;
+  const grid = field.grid;
+  if (!grid || grid.size === 0) return out;
   const x = finite(pos.x);
   const z = finite(pos.z);
   const r = radius;
-  const r2 = r * r;
   const minC = Math.floor((x - r) / ASTEROID_FIELD_CELL);
   const maxC = Math.floor((x + r) / ASTEROID_FIELD_CELL);
   const minR = Math.floor((z - r) / ASTEROID_FIELD_CELL);
   const maxR = Math.floor((z + r) / ASTEROID_FIELD_CELL);
+  const inspectBucket = (bucket) => {
+    if (!bucket) return;
+    for (let i = 0; i < bucket.length; i++) {
+      const rec = bucket[i];
+      if (!rec || rec.alive === false || rec.liveEntityId != null || !rec.pos) continue;
+      const dx = rec.pos.x - x;
+      const dz = rec.pos.z - z;
+      const reach = r + finite(rec.radius);
+      // reach >= r always (rec.radius >= 0.5), so a second d2 <= r*r branch is dead.
+      if (dx * dx + dz * dz <= reach * reach) out.push(rec);
+    }
+  };
+  const cellSpan = (maxC - minC + 1) * (maxR - minR + 1);
+  if (!Number.isSafeInteger(minC) || !Number.isSafeInteger(maxC)
+      || !Number.isSafeInteger(minR) || !Number.isSafeInteger(maxR)
+      || !Number.isFinite(cellSpan) || cellSpan > grid.size) {
+    const keys = [];
+    for (const key of grid.keys()) {
+      const cx = Math.floor(key / CELL_KEY_STRIDE) - CELL_KEY_OFFSET;
+      const cz = (key % CELL_KEY_STRIDE) - CELL_KEY_OFFSET;
+      if (cx >= minC && cx <= maxC && cz >= minR && cz <= maxR) keys.push(key);
+    }
+    keys.sort((a, b) => a - b);
+    for (let i = 0; i < keys.length; i++) inspectBucket(grid.get(keys[i]));
+    return out;
+  }
   for (let cx = minC; cx <= maxC; cx++) {
     // Numeric key, same encoding as cellKey(): (cx + OFFSET) * STRIDE + (cz + OFFSET).
     const rowBase = (cx + CELL_KEY_OFFSET) * CELL_KEY_STRIDE + CELL_KEY_OFFSET;
     for (let cz = minR; cz <= maxR; cz++) {
-      const bucket = field.grid && field.grid.get(rowBase + cz);
-      if (!bucket) continue;
-      for (let i = 0; i < bucket.length; i++) {
-        const rec = bucket[i];
-        if (!rec || rec.alive === false || rec.liveEntityId != null || !rec.pos) continue;
-        const dx = rec.pos.x - x;
-        const dz = rec.pos.z - z;
-        const reach = r + finite(rec.radius);
-        const d2 = dx * dx + dz * dz;
-        if (d2 <= reach * reach || d2 <= r2) out.push(rec);
-      }
+      inspectBucket(grid.get(rowBase + cz));
     }
   }
   return out;
@@ -205,12 +251,13 @@ export function dropAsteroidFieldSector(state, sectorId) {
   return dropped;
 }
 
-function catchUpFieldRock(rec, simTime) {
+function catchUpFieldRock(field, rec, simTime) {
   if (!rec) return rec;
   const toT = Number.isFinite(simTime) ? simTime : 0;
   const fromT = Number.isFinite(rec.lastExactT) ? rec.lastExactT : toT;
   if (!(toT > fromT)) {
     rec.lastExactT = toT;
+    noteFieldRockMotion(field, rec);
     return rec;
   }
   const advanced = advanceResourceBody({
@@ -229,6 +276,9 @@ function catchUpFieldRock(rec, simTime) {
     rec.angVel = finite(advanced.angVel, rec.angVel);
   }
   rec.lastExactT = toT;
+  if (field && field.dirtyPoseIds instanceof Set) field.dirtyPoseIds.add(rec.id);
+  noteFieldRockMotion(field, rec);
+  if (field && Number.isFinite(field.version)) field.version++;
   return rec;
 }
 
@@ -292,7 +342,7 @@ export function promoteAsteroidFieldRock(state, id, helpers, reason = 'promote')
     : null;
   if (!spawn) return null;
   const simTime = Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0) / 60;
-  catchUpFieldRock(rec, simTime);
+  catchUpFieldRock(ensureAsteroidField(state), rec, simTime);
   const data = rec.data && typeof rec.data === 'object' ? { ...rec.data } : {};
   delete data.fieldResident;
   const optic = isOpticRockData(data);
