@@ -348,7 +348,44 @@ export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camer
   // release). Every caller passes content roots/leaves, never an owner boundary.
   const parked = [];
   const cullable = new Set();
+  // D102: a drawable whose geometry is gone (torn down or never committed while an
+  // admission was queued) reaches Three's WebGLGeometries.get, which reads
+  // geometry.id unconditionally and throws. Hide those nodes for the draw and
+  // name them in the receipt with subject/geometry provenance — never draw them
+  // into the native call. Sim state, materials, and geometry are untouched.
+  const geometryless = [];
+  const hiddenForTouch = [];
+  for (const item of subjects) {
+    const nodes = [];
+    if (typeof item.traverse === 'function') item.traverse((node) => nodes.push(node));
+    else nodes.push(item);
+    for (const node of nodes) {
+      if (!isDrawable(node) || node.visible === false) continue;
+      if (!node.geometry || node.geometry.id == null) {
+        geometryless.push({
+          subject: objectLabel(item),
+          object: objectLabel(node),
+          reason: 'null-geometry',
+        });
+        hiddenForTouch.push(node);
+      }
+    }
+  }
+  const drawableSubjects = subjects.filter(
+    (item) => {
+      const nodes = [];
+      if (typeof item.traverse === 'function') item.traverse((node) => nodes.push(node));
+      else nodes.push(item);
+      return nodes.some((node) => isDrawable(node) && !hiddenForTouch.includes(node) && node.visible !== false);
+    },
+  );
+  const drawn = [];
   try {
+    for (const node of hiddenForTouch) {
+      if (!hiddenForTouch.saved) hiddenForTouch.saved = new Map();
+      if (!hiddenForTouch.saved.has(node)) hiddenForTouch.saved.set(node, node.visible);
+      node.visible = false;
+    }
     for (const item of subjects) {
       if (item === lightingScene) continue;
       let underScene = false;
@@ -382,15 +419,31 @@ export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camer
     for (const node of cullable) node.frustumCulled = false;
     renderer.autoClear = false;
     if (typeof renderer.setRenderTarget === 'function') renderer.setRenderTarget(renderTarget || null);
-    withOnlySubjectsDrawable(lightingScene, subjects, () => {
-      for (const item of subjects) {
-        if (typeof item.updateMatrixWorld === 'function') item.updateMatrixWorld(true);
-      }
-      renderer.render(lightingScene, camera);
-    });
-    return { skipped: false, subjects: subjects.length };
+    if (drawableSubjects.length > 0) {
+      withOnlySubjectsDrawable(lightingScene, drawableSubjects, () => {
+        for (const item of drawableSubjects) {
+          if (typeof item.updateMatrixWorld === 'function') item.updateMatrixWorld(true);
+        }
+        renderer.render(lightingScene, camera);
+      });
+      drawn.push(...drawableSubjects.map((item) => objectLabel(item)));
+    }
+    return {
+      skipped: drawableSubjects.length === 0,
+      subjects: subjects.length,
+      drawn: drawn.length,
+      drawnSubjects: drawn,
+      skippedSubjects: geometryless.length,
+      skippedNullGeometry: geometryless,
+      reason: drawableSubjects.length === 0 ? 'null-geometry' : undefined,
+    };
   } finally {
     for (const node of cullable) node.frustumCulled = true;
+    if (hiddenForTouch.saved instanceof Map) {
+      for (const [node, wasVisible] of hiddenForTouch.saved) {
+        try { node.visible = wasVisible; } catch (_) { /* teardown race: node already disposed */ }
+      }
+    }
     // Last-in-first-out: a list holding both an ancestor and its descendant parks them in
     // order, so unwinding in reverse keeps each reparent consistent with the one before it.
     for (let i = parked.length - 1; i >= 0; i--) {
