@@ -27,7 +27,7 @@ import {
   resolveDockAnchor,
 } from '../data/collisionProxyManifests.js';
 import { queuePhysicsImpulse, resolvePhysicsBodySpec } from './physicsAuthority.js';
-import { rapierRuntimeBlocked } from './rapierCompatRuntime.js';
+import { rapierRuntimeBlocked, rapierRuntimeBlockedRemainingMs } from './rapierCompatRuntime.js';
 // FB-095: tickMs is diagnostics-only, so it reads the classified instrumentation clock in
 // perfRuntime (perfNow) rather than touching wall time from a simulation owner.
 import { perfNow } from './perfRuntime.js';
@@ -360,12 +360,26 @@ export const physics = {
       // even though a live owner absorbed the load boundary first.
       this._pendingSg02Snapshot = options.sg02Snapshot;
     }
+    const initTimeoutMs = Number.isFinite(options.initTimeoutMs)
+      ? Math.max(0, options.initTimeoutMs)
+      : SG02_INIT_PREPARE_TIMEOUT_MS;
+    // An explicit prepare is bounded by user action — a backoff residual short enough
+    // to fit inside the init envelope is worth waiting out so the prepare mints a real
+    // attempt instead of fast-answering `false` on a skipped mint. Per-tick callers
+    // still see the refusal via rapierRuntimeBlocked (that's what the window exists for).
+    if (!this._sg02Init && !this._sg02 && !reset) {
+      const remainingMs = rapierRuntimeBlockedRemainingMs();
+      if (remainingMs > 0 && remainingMs <= initTimeoutMs) {
+        const sg02TokenAtDefer = this._sg02Token;
+        await new Promise((resolve) => { setTimeout(resolve, remainingMs + 1); });
+        // A concurrent prepare minted while this one waited out the window — the
+        // fresher call owns the race, so this stale tail steps aside.
+        if (sg02TokenAtDefer !== this._sg02Token) return false;
+      }
+    }
     if (reset) this._disableSg02DynamicAuthority();
     this._updateSg02DynamicAuthority(0, state);
     if (this._sg02Init) {
-      const initTimeoutMs = Number.isFinite(options.initTimeoutMs)
-        ? Math.max(0, options.initTimeoutMs)
-        : SG02_INIT_PREPARE_TIMEOUT_MS;
       let timer = null;
       const sg02TokenAtPrepare = this._sg02Token;
       const settled = await Promise.race([

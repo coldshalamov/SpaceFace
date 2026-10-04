@@ -26,7 +26,7 @@ import { attachAuthoredMotionDriver, bindInstanceMotion } from './authoredMotion
 import { lampShareToken } from './lampBus.js';
 import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
 import { armCallbackAfterPresent } from './compilePresentSlice.js';
-import { notePacedFrameSpend } from './decodeTaskBudget.js';
+import { notePacedFrameSpend, pacedFrameSpend, PACED_FRAME_BUDGET_MS } from './decodeTaskBudget.js';
 import { createAsyncAdmission, AUTHORED_ASYNC_DEADLINE_MS } from './asyncAdmission.js';
 import {
   TABLE_BAND,
@@ -6263,7 +6263,8 @@ function paceOpeningPublicationResume(render, gatePromise) {
 function driveOpeningPublicationResume(render, queue) {
   // Bounded idle wait: a saturated postTask queue must not starve the drain — a
   // parked commit tail would otherwise hold its release through the freeze window.
-  armCallbackAfterPresent(() => {
+  armCallbackAfterPresent(async () => {
+    let spentMs = 0;
     for (let i = 0; i < OPENING_PUBLICATION_RESUME_BATCH && queue.length > 0; i += 1) {
       const next = queue.shift();
       if (next && typeof next.resolve === 'function') {
@@ -6284,6 +6285,18 @@ function driveOpeningPublicationResume(render, queue) {
           });
         } else {
           next.resolve();
+          // The resumed tail's first slice runs as a queued microtask — yield once so
+          // it lands, then stop the batch when the frame is already spent (both by the
+          // tail's own measured cost and by the shared paced ledger) instead of
+          // stacking N compose slices + sync prefixes into one post-present task.
+          if (queue.length > 0) {
+            const measuredAt = (typeof performance !== 'undefined' && performance.now)
+              ? performance.now() : Date.now();
+            await Promise.resolve();
+            spentMs += ((typeof performance !== 'undefined' && performance.now)
+              ? performance.now() : Date.now()) - measuredAt;
+            if (spentMs >= PACED_FRAME_BUDGET_MS || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
+          }
         }
       }
     }

@@ -241,6 +241,8 @@ export function scheduleGltfParse(fn) {
 // the compile itself — one heavy task may exceed the budget exactly as it did before, the
 // minimum is one task per frame, and the per-frame worst case stays budget + one compile.
 const GLTF_COMPILE_FRAME_MS = 4;
+/** The per-frame paced-work budget every slicer drains against (`pacedFrameSpend`). */
+export const PACED_FRAME_BUDGET_MS = GLTF_COMPILE_FRAME_MS;
 const gltfCompilePending = { visible: [], deadline: [], ambient: [] };
 // token -> { entry, lane } for entries still queued — a joiner re-grades a task whose tail
 // already enqueued at a lower class (mirrors budget.promote's queued-waiter re-grade).

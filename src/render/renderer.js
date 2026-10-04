@@ -245,6 +245,7 @@ import {
   allowRealtimeShadowCast,
   invalidateShadowCasterPolicy,
   shadowCasterPolicyDirty,
+  shadowCasterPolicyDirtySeq,
   noteRealtimeShadowCasterPose,
   shouldNoteRealtimeShadowCasterPose,
   SHADOW_MAP_SIZE,
@@ -1795,6 +1796,14 @@ function drainDespawnDisposeQueue(owner, budgetMs = DESPAWN_DISPOSE_BUDGET_MS) {
   const now = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
     ? performance.now() : Date.now());
   const deadline = now() + Math.max(0, Number(budgetMs) || 0);
+  // Backlog-scaled count: the fixed cap binds before the ms deadline on cheap disposes,
+  // so a kill-burst backlog retained GL linearly (~200 ms at ~100 corpses). Scaling the
+  // count like drainPresentationTail caps the backlog at ~4 drains while the deadline
+  // still bounds what one frame spends.
+  const limit = Math.max(
+    DESPAWN_DISPOSE_DRAIN_MAX,
+    Math.ceil((queue.length - owner._despawnDisposeHead) / 4),
+  );
   let drained = 0;
   while (owner._despawnDisposeHead < queue.length) {
     const m = queue[owner._despawnDisposeHead];
@@ -1803,7 +1812,7 @@ function drainDespawnDisposeQueue(owner, budgetMs = DESPAWN_DISPOSE_BUDGET_MS) {
     // this drain belongs to a new owner — disposing its tree would strip live prepared work.
     if (m && m.parent == null) disposeObject(m);
     drained += 1;
-    if (drained >= DESPAWN_DISPOSE_DRAIN_MAX || now() > deadline) break;
+    if (drained >= limit || now() > deadline) break;
   }
   if (owner._despawnDisposeHead >= queue.length) {
     queue.length = 0;
@@ -18714,6 +18723,7 @@ export const render = {
       this._meshes.delete(id);
       this._meshesVersion += 1;
       noteShadowMeshRemoved(this, old);
+      this._queueAssetResidencyDiagnosticsPublish();
     }
     const m = this.vf.build(e);
     if (!m) return;
@@ -21027,14 +21037,20 @@ export const render = {
     const opts = this._shadowPolicyOptions(entity, root);
     const band = shadowCasterBand(root);
     const queued = !!(this._pendingDepthStageRoots && this._pendingDepthStageRoots.has(root));
-    const selfDirty = !!(root.userData && root.userData[STAGE_SELF_DIRTY_KEY]);
+    const dirtySeq = shadowCasterPolicyDirtySeq(root);
+    const stampedSeq = (root.userData && typeof root.userData[STAGE_SELF_DIRTY_KEY] === 'number')
+      ? root.userData[STAGE_SELF_DIRTY_KEY] : -1;
+    // The stamp records the invalidation generation our own bookkeeping produced —
+    // a genuine re-dirty landing while the root waits queued bumps the generation
+    // past the stamp, so the collect re-runs and the fresh meshes join the withhold.
+    const selfDirty = stampedSeq >= 0 && dirtySeq === stampedSeq;
     // The signature walk runs on first withhold only: a queued band<1 root is already
     // withheld whole-tree (its collect returns the identical unstaged set every frame
     // until the arm lands — pure burn), and a queued band-1 root re-collects only on a
     // genuine policy dirty, not our own post-withhold invalidation.
     const unstaged = (opts.allowCast === true && this._shadowSettingOn === true
         && this.renderer && this.scene && this._keyLight
-        && (band !== 1 ? !queued : (shadowCasterPolicyDirty(root) && !selfDirty)))
+        && (band !== 1 ? !queued : (dirtySeq > stampedSeq && dirtySeq > 0)))
       ? collectUnstagedShadowCasters(this.renderer, [root], this.scene, this._shadowCensusForFrame())
       : null;
     let syncOpts = opts;
@@ -21047,7 +21063,15 @@ export const render = {
       syncOpts = { ...opts, allowCast: false };
     } else if (band === 1 && selfDirty && queued && this._withheldDepthCasters) {
       const cached = this._withheldDepthCasters.get(root);
-      if (cached) withheldMeshes = [...cached];
+      if (cached) {
+        // Policy state is already exactly what the first withhold left — the dirty bit
+        // stays set so the arm's restore re-runs the full sync, but paying the O(subtree)
+        // traverse here every frame was pure burn. Re-stamp the withheld flags only.
+        for (const mesh of cached) {
+          if (mesh) mesh.castShadow = false;
+        }
+        return false;
+      }
     }
     const changed = syncShadowCasterPolicy(root, lodLevel, syncOpts);
     if (withheldMeshes && withheldMeshes.length > 0) {
@@ -21057,12 +21081,20 @@ export const render = {
       if (unstaged && unstaged.length > 0) {
         const cache = this._withheldDepthCasters
           || (this._withheldDepthCasters = new Map());
-        cache.set(root, new Set(withheldMeshes));
+        // A genuine re-collect inside the queue window unions with the withheld set —
+        // the first withhold's meshes still wait for the same arm.
+        const existing = cache.get(root);
+        if (existing) {
+          for (const mesh of withheldMeshes) existing.add(mesh);
+        } else {
+          cache.set(root, new Set(withheldMeshes));
+        }
       }
       // The arm's restore re-runs identical opts — re-dirty so its traverse can't
-      // early-out on the state this sync just stamped.
+      // early-out on the state this sync just stamped, and stamp the generation so
+      // only a *subsequent* invalidation re-collects.
       invalidateShadowCasterPolicy(root);
-      root.userData[STAGE_SELF_DIRTY_KEY] = true;
+      root.userData[STAGE_SELF_DIRTY_KEY] = shadowCasterPolicyDirtySeq(root);
       this._queueShadowDepthStage(root, lodLevel, entity);
     }
     return changed;
@@ -21099,7 +21131,9 @@ export const render = {
   // arm slices a few roots, stages them, restores their policies, and re-arms while
   // the queue holds more. Roots a slice never reaches keep their withheld cast flag.
   _armDepthStage() {
-    void yieldAfterPresent().then(() => {
+    // idleBoundMs 48 — withheld casters stay dark while the queue waits; an unbounded
+    // background-priority arm could starve the whole drain for seconds under load.
+    armCallbackAfterPresent(() => {
       const pending = this._pendingDepthStageRoots;
       if (!pending || pending.size === 0) {
         this._pendingDepthStageRoots = null;
@@ -21217,7 +21251,7 @@ export const render = {
         this._depthStageScheduled = false;
         this._killDepthStageSession();
       }
-    });
+    }, { idleBoundMs: 48 });
   },
 
   // Session teardown: the staging scene parks cloned lights + a renderBufferDirect
@@ -21248,9 +21282,33 @@ export const render = {
       // root slices across presents, nearest-first, identical restore semantics.
       const pending = this._pendingDepthStageRoots
         || (this._pendingDepthStageRoots = new Map());
+      // Withhold like the promotion path — a queued caster that keeps castShadow=true
+      // draws its unlinked depth variant on the first presented shadow refresh while
+      // it waits for the arm. The arm's restore loop already clears every flag.
+      const byRoot = new Map();
       for (const mesh of unstaged) {
         const root = shadowPolicyRootOf(mesh, scene);
-        if (root) pending.set(root, { lodLevel: null, entity: null });
+        if (!root) continue;
+        let set = byRoot.get(root);
+        if (!set) {
+          set = new Set();
+          byRoot.set(root, set);
+        }
+        set.add(mesh);
+      }
+      for (const [root, meshes] of byRoot) {
+        for (const mesh of meshes) mesh.castShadow = false;
+        const cache = this._withheldDepthCasters
+          || (this._withheldDepthCasters = new Map());
+        const existing = cache.get(root);
+        if (existing) {
+          for (const mesh of meshes) existing.add(mesh);
+        } else {
+          cache.set(root, meshes);
+        }
+        invalidateShadowCasterPolicy(root);
+        root.userData[STAGE_SELF_DIRTY_KEY] = shadowCasterPolicyDirtySeq(root);
+        pending.set(root, { lodLevel: null, entity: null });
       }
       if (pending.size > 0 && this._depthStageScheduled !== true) {
         this._depthStageScheduled = true;

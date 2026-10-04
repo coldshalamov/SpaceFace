@@ -32,7 +32,7 @@ export function loadRapierCompatRuntime({
 } = {}) {
   if (!rapierRuntimePromise) {
     const now = Date.now();
-    if (rapierRuntimeFailures > 0 && now - rapierRuntimeLastFailureAt > RAPIER_INIT_FAILURE_DECAY_MS) {
+    if (rapierRuntimeFailures > 0 && now - rapierRuntimeLastFailureAt >= RAPIER_INIT_FAILURE_DECAY_MS) {
       rapierRuntimeFailures = 0;
       rapierRuntimeLastError = null;
     }
@@ -69,6 +69,12 @@ export function loadRapierCompatRuntime({
 export function rapierRuntimeBlocked() {
   return rapierRuntimeFailures >= RAPIER_INIT_FAILURES_BEFORE_BACKOFF
     && Date.now() < rapierRuntimeBlockedUntil;
+}
+
+/** Milliseconds left in the refusal window — 0 when init accepts a new attempt. */
+export function rapierRuntimeBlockedRemainingMs() {
+  if (rapierRuntimeFailures < RAPIER_INIT_FAILURES_BEFORE_BACKOFF) return 0;
+  return Math.max(0, rapierRuntimeBlockedUntil - Date.now());
 }
 
 export function createRapierCspFunctionConstructor(globalObject = globalThis) {

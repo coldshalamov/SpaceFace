@@ -145,8 +145,18 @@ export function shadowCasterPolicyDirty(root) {
 /** Mark a changed hierarchy/material set for one shadow-policy refresh at its current LOD. */
 export function invalidateShadowCasterPolicy(root) {
   if (!root || typeof root.traverse !== 'function') return false;
-  policyState(root).dirty = true;
+  const state = policyState(root);
+  state.dirty = true;
+  // The generation lets a caller distinguish its own bookkeeping invalidate from a
+  // genuine hierarchy/material change landing while it holds the root's policy.
+  state.dirtySeq = (state.dirtySeq || 0) + 1;
   return true;
+}
+
+/** Monotonic invalidation generation — 0 when the root has never been dirtied. */
+export function shadowCasterPolicyDirtySeq(root) {
+  const state = root && root.userData ? root.userData[POLICY_STATE] : null;
+  return (state && state.dirtySeq) || 0;
 }
 
 function writeCasterPose(target, root) {
