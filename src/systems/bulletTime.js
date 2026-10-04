@@ -155,7 +155,7 @@ export const bulletTime = {
   update(dt, state) {
     const runtime = ensureBulletTime(state);
     this._updateMomentPulse(state);
-    if (!massline2Flag('bulletTime') || state.mode !== 'flight') {
+    if (!massline2Flag('bulletTime', state.runtime && state.runtime.features) || state.mode !== 'flight') {
       if (runtime.active) this._disengage(false);
       // Meter recovers even while the flag path idles so a menu detour is never punished.
       runtime.energy = Math.min(1, runtime.energy + BT_RECHARGE_PER_S * Math.max(0, dt));
@@ -165,7 +165,10 @@ export const bulletTime = {
     const held = !!(state.input && state.input.actions && state.input.actions.bulletTime);
     const step = Math.max(0, Number(dt) || 0);
 
-    if (!held) this._requireRelease = false;
+    if (!held) {
+      this._requireRelease = false;
+      this._emptyTold = false;
+    }
 
     if (runtime.active) {
       if (!held) {
@@ -175,12 +178,23 @@ export const bulletTime = {
         this.timeEffects.set(TIME_SOURCE, BT_REQUEST);
         if (runtime.energy <= 0) {
           this._requireRelease = true;
+          this._emptyTold = true;
           this._disengage(false);
+          if (this.bus) this.bus.emit('toast', { text: 'Bullet time spent', kind: 'warn', ttl: 1.6 });
         }
       }
     } else {
       runtime.energy = Math.min(1, runtime.energy + BT_RECHARGE_PER_S * step);
-      if (held && !this._requireRelease && runtime.energy >= BT_MIN_ENGAGE) this._engage(state);
+      if (held && !this._requireRelease && runtime.energy >= BT_MIN_ENGAGE) {
+        this._emptyTold = false;
+        this._engage(state);
+      } else if (held && !this._requireRelease && !this._emptyTold) {
+        // This press is a refusal. Recharge must not turn the same hold into an engage
+        // while the refill line is still up.
+        this._emptyTold = true;
+        this._requireRelease = true;
+        if (this.bus) this.bus.emit('toast', { text: 'Bullet time spent — let it refill', kind: 'warn', ttl: 1.6 });
+      }
     }
   },
 
