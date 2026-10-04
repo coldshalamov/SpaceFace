@@ -124,10 +124,13 @@ export function lastMoveCause({ state, stationId, commodity, entry } = {}) {
       if (ev && (!newest || Number(ev.startT) >= Number(newest.startT))) newest = ev;
     }
     if (newest) {
+      // commodityId verbatim: a market-wide '*' event reads "the market" here exactly as it
+      // does on the ticker — substituting the viewed listing would pick a different template
+      // variant and mis-attribute a station-wide move to one good.
       const headline = generateHeadline({
         type: newest.type,
         stationId: newest.stationId || stationId,
-        commodityId: newest.commodityId === '*' ? (commodity && commodity.id) : newest.commodityId,
+        commodityId: newest.commodityId,
         eventId: newest.id,
       }, { seed });
       if (headline) return Object.freeze({ text: `Last move: ${headline}`, eventId: String(newest.id) });

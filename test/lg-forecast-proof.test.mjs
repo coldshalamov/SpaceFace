@@ -7,15 +7,17 @@
 // Fixed seed 4242: markets, cycles and the spontaneous event stream are deterministic.
 
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import { createSimulation } from '../src/core/sim.js';
+import { hash32 } from '../src/core/rng.js';
 import { COMMODITIES } from '../src/data/commodities.js';
 import { SECTORS } from '../src/data/sectors.js';
 import { economy } from '../src/systems/economy.js';
 import { predictPriceCurve } from '../src/systems/economyCycles.js';
 import { lastMoveCause } from '../src/ui/marketDriverPresenter.js';
-import { createMarketNews, tickerEventRef } from '../src/ui/marketNews.js';
+import { createMarketNews, generateHeadline, tickerEventRef } from '../src/ui/marketNews.js';
 import { marketQuoteHtml } from '../src/ui/views/marketPresentation.js';
 
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
@@ -68,10 +70,16 @@ test('the cone stores the band it quotes and the event ids that moved the price 
     const onListing = new Set((state.economy.markets[sid][cid].eventMods || []).map((m) => m.eventId));
     for (const id of curve.eventIds) assert.ok(onListing.has(id), `cone event id ${id} is on the listing`);
 
-    econ.injectEvent({ type: 'shortage', stationId: sid, commodityId: cid, duration: 900 });
+    const ev = econ.injectEvent({ type: 'shortage', stationId: sid, commodityId: cid, duration: 900 });
     const moved = predictPriceCurve(state, sid, cid);
-    assert.ok(moved.eventIds.length >= 1, 'an event-moved listing names its movers');
+    assert.ok(moved.eventIds.includes(ev.id), 'the cone names the event that just moved it');
     for (const id of moved.eventIds) assert.match(id, /^evt_/, 'event ids are the sim event ids');
+
+    // Empty cone keeps the same named-prop shape as a live one.
+    const empty = predictPriceCurve(state, sid, 'cmdty_not_a_commodity');
+    assert.equal(empty.length, 0);
+    assert.equal(empty.band, null);
+    assert.deepEqual([...empty.eventIds], []);
   } finally { release(); }
 });
 
@@ -90,7 +98,38 @@ test('the market screen prints one line tracing the last move to its cause (' + 
     const ev = econ.injectEvent({ type: 'shortage', stationId: sid, commodityId: cid, duration: 900 });
     const cause = lastMoveCause({ state, stationId: sid, commodity: def, entry });
     assert.equal(cause.eventId, ev.id, 'the line traces the newest moving event');
-    assert.ok(cause.text.startsWith('Last move: '), 'sentence form');
+    assert.equal(
+      cause.text,
+      `Last move: ${generateHeadline(
+        { type: ev.type, stationId: sid, commodityId: cid, eventId: ev.id },
+        { seed: hash32(state.meta.seed) >>> 0 },
+      )}`,
+      'the cause line speaks the same words the ticker does',
+    );
+
+    // A market-wide '*' event must not be re-attributed to the viewed listing — the line
+    // names "the market" in the identical words the ticker would.
+    const evStar = econ.injectEvent({ type: 'boom', stationId: sid, commodityId: '*', duration: 900 });
+    const starCause = lastMoveCause({ state, stationId: sid, commodity: def, entry });
+    assert.equal(starCause.eventId, evStar.id);
+    assert.equal(
+      starCause.text,
+      `Last move: ${generateHeadline(
+        { type: evStar.type, stationId: sid, commodityId: '*', eventId: evStar.id },
+        { seed: hash32(state.meta.seed) >>> 0 },
+      )}`,
+      'a station-wide event keeps its market-wide wording',
+    );
+
+    // The default-route screen must actually call the read model — pin the wiring by source.
+    const screenSrc = readFileSync(
+      new URL('../src/ui/station/screens/market.js', import.meta.url), 'utf8',
+    );
+    assert.match(
+      screenSrc,
+      /lastMoveCause\(\{ state, stationId: sid/,
+      'the market screen computes the cause line for the viewed listing',
+    );
 
     const html = marketQuoteHtml({
       id: cid, name: def.name, category: def.category, legal: def.legality || 'legal',
@@ -122,6 +161,7 @@ test('a reader of the cone out-earns a non-reader by at least 30 % over a seeded
       for (let i = 0; i < curve.length; i++) {
         if (curve[i].mid < curve[loIdx].mid) loIdx = i;
       }
+      hiIdx = loIdx;
       for (let i = loIdx + 1; i < curve.length; i++) {
         if (curve[i].mid > curve[hiIdx].mid) hiIdx = i;
       }
@@ -156,14 +196,20 @@ test('a reader of the cone out-earns a non-reader by at least 30 % over a seeded
       naiveNet += naive * QTY;
       if (reader > 0) wins++;
     }
+    // "Out-earns by >= 30 %": when the blind basket profits, the reader must take at least
+    // 1.3x; when it loses, the reader must bank at least 30 % of what the blind hour
+    // forfeited — a bound that still bites, not a ratio that any positive number satisfies.
     const edge = naiveNet !== 0
       ? (readerNet - naiveNet) / Math.abs(naiveNet)
       : (readerNet > 0 ? Infinity : 0);
+    const outEarnsByThirty = naiveNet > 0
+      ? readerNet >= naiveNet * 1.3
+      : readerNet >= Math.abs(naiveNet) * 0.30;
     assert.ok(readerNet > 0,
       `reader earned: ${readerNet} cr over ${plans.length} trades (${wins} wins)`);
-    assert.ok(edge >= 0.30,
-      `reader out-earns non-reader by >= 30 %: edge ${(edge * 100).toFixed(1)} % `
-      + `(reader ${readerNet} cr vs non-reader ${naiveNet} cr across ${plans.length} identical trades)`);
+    assert.ok(outEarnsByThirty,
+      `reader out-earns non-reader by >= 30 %: reader ${readerNet} cr vs non-reader ${naiveNet} cr `
+      + `across ${plans.length} identical trades (edge ${(edge * 100).toFixed(1)} %)`);
   } finally { release(); }
 });
 

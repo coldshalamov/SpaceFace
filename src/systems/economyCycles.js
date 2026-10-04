@@ -610,7 +610,15 @@ export function predictPriceCurve(state, stationId, cmdtyId, steps = 24, stepS =
   const market = econ && econ.markets && econ.markets[stationId];
   const entry = market && market[cmdtyId];
   const def = CMDTY_BY_ID.get(cmdtyId);
-  if (!entry || !def) return [];
+  if (!entry || !def) {
+    // Same named-prop shape as the normal path: callers can read .band/.eventIds/.statedRate
+    // on any return value. Named props do not survive JSON/spread — never persist this array.
+    const empty = [];
+    empty.statedRate = FORECAST_CONE_STATED_RATE;
+    empty.band = null;
+    empty.eventIds = Object.freeze([]);
+    return empty;
+  }
   const cycle = getCycle(state, stationId, cmdtyId, null, state.simTime || 0);
   const frozenStock = Number(entry.stock);
   const stockMid = listingStockMid(def, entry, frozenStock);
@@ -637,7 +645,9 @@ export function predictPriceCurve(state, stationId, cmdtyId, steps = 24, stepS =
   out.statedRate = FORECAST_CONE_STATED_RATE;
   // LG-FORECAST-PROOF (row 279): the cone is falsifiable. `band` is the envelope it quotes
   // at its horizon — what a reader holds it to at arrival — and `eventIds` are the live sim
-  // event ids whose mods moved this price (the same ids economy stamps on the listing).
+  // event ids whose mods sit on this listing (the same ids economy stamps on it): equilibrium/
+  // drift fields move the cone's mid and band, spread-only fields move the quotes the player
+  // pays. Named props do not survive JSON/spread — never persist this array.
   const lastPoint = out.length ? out[out.length - 1] : null;
   out.band = lastPoint
     ? Object.freeze({ lo: lastPoint.lo, hi: lastPoint.hi, t: lastPoint.t, statedRate: FORECAST_CONE_STATED_RATE })

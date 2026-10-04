@@ -469,7 +469,7 @@ export function marketQuoteHtml({ id, name, category, legal = 'legal', titleHtml
     <p class="k-sentence sx-mkt-essay" id="sx-market-driver-summary">${escapeHtml(driversSummary)}</p>
     ${chainHtml}
     ${coneReadoutHtml({ regime, quoteAge, quoteSource, survey })}
-    ${cause && cause.text ? `<p class="k-sentence sx-mkt-cause" data-cause-event="${escapeHtml(cause.eventId || '')}">${escapeHtml(cause.text)}</p>` : ''}
+    ${cause && cause.text ? `<p class="k-sentence sx-mkt-cause"${cause.eventId ? ` data-cause-event="${escapeHtml(cause.eventId)}"` : ''}>${escapeHtml(cause.text)}</p>` : ''}
     ${buildChart(hist, avg, `sxmkt-${String(id).replace(/[^a-zA-Z0-9_-]/g, '_')}`, name, { forecast: forecastPts, now, buy, sell })}
     ${chartKeyHtml(forecastPts.length > 0, origins, statedRate)}
     ${readoutsHtml({ buy, sell, avg, demandWord })}
