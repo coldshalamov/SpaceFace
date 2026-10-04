@@ -238,6 +238,16 @@ const NPC_TOW_PHASES = new Set([
   NPC_JOB_PHASE.APPROACH,
   NPC_JOB_PHASE.UNLOAD,
 ]);
+// The kernel models a tug job's stationary phases at route[0], which IS the booked body's own
+// position (see traffic._buildJobSpec 'tug') — but nothing in the route ever moves a physical
+// hull there. A hull adopted mid-flight, or knocked off the berth after assignment, would hold
+// wherever it happened to be until the transit leg flew it to the yard, leaving the attach
+// range gate permanently unreachable. Until the line attaches the tug deadheads to the body at
+// a bounded workaday speed — the authored job.speed is the tow speed (20 WU/s would outlast the
+// whole phase window from a sector-edge adoption) — then brakes beside it, well inside
+// NPC_TOW_MAX_RANGE_WU so the occupational-line scan resolves.
+const NPC_TOW_APPROACH_SPEED_WU = 90;
+const NPC_TOW_APPROACH_HOLD_WU = 200;
 const NPC_LINE_CONTROL_MODE = 'npc_tow';
 // Salvors keep the tractor on through the haul home so the wreck is visibly wrangled, not
 // teleported into the hold. Sweepers only stretch the whip while they are on the rock.
@@ -4328,6 +4338,40 @@ export const npcJobsRuntime = {
 
     const physicalTarget = this._livingAdventureWorkTarget(entry, entity);
     if (physicalTarget) { this._driveLivingAdventureWorker(entry, entity, physicalTarget); return; }
+
+    // A tug's only honest destination while the line is still off is the body it came for — not
+    // the authored route's yard leg. Once the coupler is on, the ordinary controller below flies
+    // the route and the attachment law carries the load.
+    if (isTugJob(entry, entity) && entry.towAttachmentId == null) {
+      const data = entity.data;
+      const bookedId = (data && data.towTargetId != null && data.towTargetId !== '')
+        ? data.towTargetId
+        : (job.payload && job.payload.towTargetId != null && job.payload.towTargetId !== ''
+          ? job.payload.towTargetId : null);
+      const body = bookedId != null && this.state.entities
+        ? this.state.entities.get(bookedId)
+        : null;
+      if (body && body.pos && body.alive !== false && entity.pos) {
+        const dx = body.pos.x - entity.pos.x;
+        const dz = body.pos.z - entity.pos.z;
+        const dist = Math.hypot(dx, dz);
+        const aim = Math.atan2(dz, dx);
+        if (dist <= NPC_TOW_APPROACH_HOLD_WU) {
+          // Beside the load: park it. A bare hold would keep whatever ambient drift carried the
+          // hull here and let it slide back out of the attach radius before the scan fires.
+          this._writeIntent(entity, 0, 0, false, aim, true);
+          return;
+        }
+        const profile = resolvePropulsionProfile(entity, this.state);
+        const governedSpeed = Math.max(1, finite(profile && profile.combatSpeed, 1));
+        const deadInput = Math.max(0, finite(profile && profile.assist && profile.assist.deadInput, 0.025));
+        const approachSpeed = Math.min(governedSpeed, NPC_TOW_APPROACH_SPEED_WU);
+        const throttle = clamp(Math.max(approachSpeed / governedSpeed, deadInput + 0.001), 0, 1);
+        const brake = dist <= NPC_TOW_APPROACH_HOLD_WU + approachSpeed * 2;
+        this._writeIntent(entity, 0, brake ? 0 : throttle, false, aim, brake);
+        return;
+      }
+    }
 
     if (phase === NPC_JOB_PHASE.TRANSIT || phase === NPC_JOB_PHASE.RETURN) {
       const planned = routePosition(job);
