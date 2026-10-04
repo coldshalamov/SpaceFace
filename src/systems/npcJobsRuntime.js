@@ -3254,8 +3254,10 @@ export const npcJobsRuntime = {
       missionId: missionId != null ? String(missionId) : null,
       // The fee is billed up-front below and the live lease is session-transient (same law as
       // `control`), so the save envelope carries this: a PAID hire interrupted by a reload must
-      // refund or report — never vanish silently with the fee gone.
-      feeCr: feeCr > 0 ? Math.round(feeCr) : 0,
+      // refund or report — never vanish silently with the fee gone. It is settled below to what
+      // the charge ACTUALLY moved — the reload refund pays this back, so it must never name
+      // money a clamped charge could not have collected.
+      feeCr: 0,
       phase: 'approach',
       // The destination owner may name a wider settle ring than the default drop — a mission
       // berth counts at ITS radius, so the assist and the contract cross the same boundary.
@@ -3264,15 +3266,27 @@ export const npcJobsRuntime = {
       timeoutS: Math.max(5, finite(timeoutS, TOW_ASSIST_TIMEOUT_S)),
     };
     if (feeCr > 0 && this.bus && typeof this.bus.emit === 'function') {
-      try {
-        this.bus.emit('economy:chargeCredits', {
-          amount: Math.round(feeCr),
-          reason: 'tow_assist',
-          label: 'TOW ASSIST',
-        });
-      } catch { /* the hire stands; a failed charge event retries nowhere by design */ }
+      // Take-what-they-have — the same settlement rule economy's own service:stuck_tow uses:
+      // the charge writer clamps at zero, so bill only up to the live balance, then reconcile
+      // the recorded fee to the charge's real delta (the emit is synchronous, so the post-emit
+      // balance is the truth). A quoted fee that never moved would let the save seam print
+      // credits on every reload.
+      const creditsBefore = Math.max(0, Math.round(finite(state.player && state.player.credits, 0)));
+      const billedCr = Math.min(Math.round(feeCr), creditsBefore);
+      if (billedCr > 0) {
+        try {
+          this.bus.emit('economy:chargeCredits', {
+            amount: billedCr,
+            reason: 'tow_assist',
+            label: 'TOW ASSIST',
+          });
+        } catch { /* the hire stands; a failed charge event retries nowhere by design */ }
+        const settledCr = creditsBefore
+          - Math.max(0, Math.round(finite(state.player && state.player.credits, 0)));
+        entry.towAssist.feeCr = Math.min(billedCr, Math.max(0, settledCr));
+      }
     }
-    return { granted: true, jobId, claimId: cleanClaim, targetId: targetEntityId };
+    return { granted: true, jobId, claimId: cleanClaim, targetId: targetEntityId, feeCr: entry.towAssist.feeCr };
   },
 
   towAssistState(jobId) {

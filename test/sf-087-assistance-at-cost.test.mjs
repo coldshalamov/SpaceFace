@@ -13,6 +13,7 @@ import assert from 'node:assert/strict';
 import { createSimulation } from '../src/core/sim.js';
 import { physics } from '../src/core/physics.js';
 import { combat } from '../src/systems/combat.js';
+import { economy } from '../src/systems/economy.js';
 import { npcJobsRuntime } from '../src/systems/npcJobsRuntime.js';
 import { NPC_JOB_PHASE, NPC_JOB_KIND } from '../src/systems/npcJobs.js';
 
@@ -25,15 +26,15 @@ function haulerSpec(o = {}) {
   return { kind: NPC_JOB_KIND.HAULER, route: ROUTE, sectorId: 'sector_a',
     speed: 100, commissionS: 0.5, departS: 0.5, approachS: 0.5, loadS: 0.5, unloadS: 0.5, dwellS: 0.5, ...o };
 }
-async function boot() {
+async function boot({ credits = 500 } = {}) {
   const sim = createSimulation({
     seed: 41,
-    systems: [physics, combat, npcJobsRuntime],
+    systems: [economy, physics, combat, npcJobsRuntime],
     updateOrder: [npcJobsRuntime, physics, combat],
   });
   sim.state.mode = 'flight';
   sim.state.world = { currentSectorId: 'sector_a', sectors: {} };
-  sim.state.player = { heat: 0 };
+  sim.state.player = { heat: 0, credits };
   sim.state.settings.gameplay.physicsBackend = 'rapier-dynamic';
   await sim.registry.get('physics').prepareBackend(sim.state);
   return sim;
@@ -180,6 +181,59 @@ test('a mid-hire save/Continue reports the dropped tow and refunds the fee', asy
     assert.equal(grants[0].reason, 'refund:tow_assist');
     assert.ok(toasts.some((t) => /150cr/.test(t)),
       `the refund says what it paid back — saw: ${JSON.stringify(toasts)}`);
+  } finally {
+    dispose(sim);
+  }
+});
+
+test('a hire on a short tab records only what was actually paid — save/load cannot print credits', async () => {
+  const sim = await boot({ credits: 50 });
+  try {
+    const { e, jobId } = worker(sim);
+    const rt = sim.registry.get('npcJobsRuntime');
+    const lost = [];
+    sim.bus.on('npcJobs:towAssistLost', (p) => lost.push(p));
+
+    const load = body(sim, 120, 0);
+    const hire = rt.requestTowAssist(e.id, load.id, { x: 1500, z: 0 }, { holder: 'contactHail', feeCr: 150 });
+    assert.equal(hire.granted, true, 'take-what-they-have: the hire still stands on a short tab');
+    assert.equal(hire.feeCr, 50, 'the recorded fee is the money that moved, not the quote');
+    assert.equal(sim.state.player.credits, 0, 'the real writer took all 50 — there was no more to take');
+
+    const saved = rt.serialize();
+    assert.equal(saved.byId[jobId].towAssist.feeCr, 50, 'the save envelope carries the paid fee');
+    rt.deserialize(saved);
+    sim.bus.emit('save:loaded', { source: 'test' });
+    assert.equal(lost.length, 1, 'the dropped hire is still reported');
+    assert.equal(lost[0].refundedCr, 50, 'the refund is what was paid, never the billed quote');
+    assert.equal(sim.state.player.credits, 50, 'save/load is net-zero — no credits printed');
+  } finally {
+    dispose(sim);
+  }
+});
+
+test('a hire on an empty tab bills nothing and a save/load refunds nothing', async () => {
+  const sim = await boot({ credits: 0 });
+  try {
+    const { e, jobId } = worker(sim);
+    const rt = sim.registry.get('npcJobsRuntime');
+    const charges = [];
+    sim.bus.on('economy:chargeCredits', (p) => charges.push(p));
+    const grants = [];
+    sim.bus.on('economy:grantCredits', (p) => grants.push(p));
+
+    const load = body(sim, 120, 0);
+    const hire = rt.requestTowAssist(e.id, load.id, { x: 1500, z: 0 }, { holder: 'contactHail', feeCr: 150 });
+    assert.equal(hire.granted, true, 'the crew still tows — the bill simply has nothing to take');
+    assert.equal(hire.feeCr, 0);
+    assert.equal(charges.length, 0, 'no zero-credit charge fiction is emitted');
+
+    const saved = rt.serialize();
+    assert.equal(saved.byId[jobId].towAssist.feeCr, 0, 'a free hire leaves no refundable record');
+    rt.deserialize(saved);
+    sim.bus.emit('save:loaded', { source: 'test' });
+    assert.equal(grants.length, 0, 'nothing was paid, so nothing is refunded — the exploit is dead');
+    assert.equal(sim.state.player.credits, 0);
   } finally {
     dispose(sim);
   }

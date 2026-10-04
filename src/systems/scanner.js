@@ -1658,7 +1658,11 @@ export const scanner = {
       deliverW,
       feeCr: TOW_ASSIST_FEE_CR,
     });
-    if (out && out.granted === true) return { granted: true, feeCr: TOW_ASSIST_FEE_CR };
+    // The runtime bills take-what-they-have and records the settled fee — a short tab reads
+    // back the real amount on the line, never the sticker price.
+    if (out && out.granted === true) {
+      return { granted: true, feeCr: Number.isFinite(out.feeCr) ? out.feeCr : TOW_ASSIST_FEE_CR };
+    }
     return { granted: false, reason: out && out.reason || 'claim_refused' };
   },
 
