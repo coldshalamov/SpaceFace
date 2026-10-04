@@ -1879,7 +1879,7 @@ export const mining = {
     const now = (state && state.simTime) || 0;
     spawnDebrisCachePods(this.bus, wreck, cache, now);
     this.bus.emit('toast', {
-      text: 'The beam cracked a sealed cache in the debris!',
+      text: 'The beam cracked a sealed cache in the debris.',
       kind: 'good', ttl: 4,
     });
     this.bus.emit('scan:debrisCache', {

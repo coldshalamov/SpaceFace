@@ -6022,7 +6022,7 @@ _stepAnimation(now) {
         <div class="gm-ins-row"><span>Exploration</span><span class="gm-ins-row-val">${exploration.percent == null ? 'No authored sites' : `${exploration.percent}% · ${exploration.found}/${exploration.total} sites`}</span></div>
       </div>
       <div class="gm-ins-section">
-        <div class="gm-ins-note">Confidence decays with time since survey. Re-scan a sector to refresh what the chart is willing to assert about it.</div>
+        <div class="gm-ins-note">Confidence fades with time since survey. Re-scan a sector to refresh it.</div>
       </div>
       ${rumorRows}
       ${vestaRows}
@@ -6846,7 +6846,7 @@ _stepAnimation(now) {
     if (shapes.length === 2 && shapes[0] === shapes[1]) {
       rows.push('<div class="gm-ins-note">Both objectives choose the same path here — cheapest is also shortest.</div>');
     }
-    rows.push(`<div class="gm-ins-note">${escapeMapHtml(target.note)} Selecting an alternative re-plots the route. It does not engage it — plot and engage stay separate acts.</div>`);
+    rows.push(`<div class="gm-ins-note">${escapeMapHtml(target.note)} Selecting an alternative re-plots the route without engaging it.</div>`);
     return rows.join('');
   },
 

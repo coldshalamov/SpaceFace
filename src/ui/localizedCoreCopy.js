@@ -8,7 +8,7 @@ export const LOCALIZED_CORE_COPY = Object.freeze({
   settings: { label: 'Settings' },
   signalArchive: { label: 'Signal Archive' },
   continueSummary: { label: 'Continue: {summary}' },
-  noSave: { label: 'No save found - New Game opens Contract 47-A in Helios.' },
+  noSave: { label: 'No save found — New Game opens Contract 47-A in Helios.' },
   pilotName: { label: 'Pilot name' },
   difficulty: { label: 'Difficulty' },
   firstMinutes: { label: 'First 15 minutes' },

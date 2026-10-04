@@ -251,7 +251,7 @@ export const intervention = {
     this.bus.emit('toast', {
       text: arrived
         ? `Recovery site: your lost ${rec.kind}'s wreck. ${causeLine} (${rec.recoverable}u recoverable).`
-        : `${kindLabel} lost! ${causeLine} (${rec.recoverable}u recoverable).`,
+        : `${kindLabel} lost. ${causeLine} (${rec.recoverable}u recoverable).`,
       kind: 'warn',
       ttl: 6,
     });
@@ -365,7 +365,7 @@ export const intervention = {
       jumper.announced = true;
       jumper.stripAt = now + JUMPER_STRIP_S;
       this.bus.emit('toast', {
-        text: 'A claim-jumper is stripping your wreck — hurry or spook it off!',
+        text: 'A claim-jumper is stripping your wreck — hurry or spook it off.',
         kind: 'warn', ttl: 5,
       });
       return;
@@ -417,14 +417,14 @@ export const intervention = {
     if (!jumper.ripAnnounced) {
       jumper.ripAnnounced = true;
       this.bus.emit('toast', {
-        text: 'The tether shakes cargo loose — hold the line!',
+        text: 'The tether shakes cargo loose — hold the line.',
         kind: 'good', ttl: 4,
       });
     }
     if (jumper.phase === 'stripping' || jumper.phase === 'inbound') {
       jumper.phase = 'fled';
       this.bus.emit('toast', {
-        text: 'The jumper bolts with your line on — run it down!',
+        text: 'The jumper bolts with your line on — run it down.',
         kind: 'warn', ttl: 4,
       });
     }
@@ -454,7 +454,7 @@ export const intervention = {
     }
     this.bus.emit('toast', {
       text: drop > 0
-        ? 'The claim-jumper spooks and drops part of its take!'
+        ? 'The claim-jumper spooks and drops part of its take.'
         : 'The claim-jumper spooks off before it could strip anything.',
       kind: 'good', ttl: 4,
     });

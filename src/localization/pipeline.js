@@ -26,7 +26,7 @@ const PHRASES = Object.freeze({
   'Settings': L('Ajustes', 'Réglages', 'Einstellungen', 'Configurações'),
   'Signal Archive': L('Archivo de señales', 'Archive des signaux', 'Signalarchiv', 'Arquivo de sinais'),
   'Continue: {summary}': L('Continuar: {summary}', 'Continuer : {summary}', 'Fortsetzen: {summary}', 'Continuar: {summary}'),
-  'No save found - New Game opens Contract 47-A in Helios.': L(
+  'No save found — New Game opens Contract 47-A in Helios.': L(
     'No hay partida — Nueva partida abre el Contrato 47-A en Helios.',
     'Aucune sauvegarde — Nouvelle partie ouvre le Contrat 47-A à Helios.',
     'Kein Spielstand — Neues Spiel öffnet Vertrag 47-A in Helios.',

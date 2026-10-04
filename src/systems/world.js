@@ -4047,7 +4047,7 @@ export const world = {
     const price = surveyDataPrice(sector);
     const credits = (this.state.player && this.state.player.credits) | 0;
     if (credits < price) {
-      this.bus.emit('toast', { text: `Survey data costs ${price.toLocaleString('en-US')} CR`, kind: 'warn', ttl: 3 });
+      this.bus.emit('toast', { text: `Survey data costs ${price.toLocaleString('en-US')} cr`, kind: 'warn', ttl: 3 });
       return false;
     }
 
@@ -4092,7 +4092,7 @@ export const world = {
     if (charge) {
       const credits = Math.max(0, Math.floor(Number(this.state.player && this.state.player.credits) || 0));
       if (credits < offer.price) {
-        this.bus.emit('toast', { text: `Rumor card costs ${offer.price.toLocaleString('en-US')} CR`, kind: 'warn', ttl: 3 });
+        this.bus.emit('toast', { text: `Rumor card costs ${offer.price.toLocaleString('en-US')} cr`, kind: 'warn', ttl: 3 });
         return false;
       }
       this.bus.emit('economy:chargeCredits', { amount: offer.price, reason: `frontier-rumor:${offer.id}` });

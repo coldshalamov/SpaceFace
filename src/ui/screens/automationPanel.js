@@ -1455,7 +1455,7 @@ export const automationScreen = {
               <span>deploy ${deploymentPill(deployment)}</span>
               ${fs.hullPct != null ? `<span>hull ${Math.round(fs.hullPct * 100)}% ${miniBar(fs.hullPct)}</span>` : ''}
             </div>
-            <div class="au-note">${escapeHtml(deployment.detail)} Escort protects you now and can guard automation assets as the fleet layer expands.</div>
+            <div class="au-note">${escapeHtml(deployment.detail)} An escort guards you now and can guard your automation assets later.</div>
           </div>
           <button class="au-order" data-act="orderEscort" data-ref="${automationRecordRefAttr(fs.id, fs.defId)}" data-kind="fleet">Escort</button>
           <button class="au-order" data-act="orderMine" data-ref="${automationRecordRefAttr(fs.id, fs.defId)}" data-kind="fleet">Mine</button>

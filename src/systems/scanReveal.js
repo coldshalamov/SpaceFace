@@ -212,8 +212,8 @@ export const scanReveal = {
     if (this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit('toast', {
         text: via === 'beam'
-          ? 'The beam cracked a sealed cache in the debris!'
-          : `Sealed cache in the debris — ${specs.length} pods exposed!`,
+          ? 'The beam cracked a sealed cache in the debris.'
+          : `Sealed cache in the debris — ${specs.length} pods exposed.`,
         kind: 'good', ttl: 4,
       });
       this.bus.emit('scan:debrisCache', {

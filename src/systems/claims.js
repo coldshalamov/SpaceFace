@@ -1614,6 +1614,7 @@ export const claims = {
     });
     this.bus.emit('claim:defenseWarning', {
       bodyId: body.id,
+      bodyName: body.name,
       defenseId,
       encounterId: defense.encounterId,
       sectorId: body.sectorId,

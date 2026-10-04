@@ -407,7 +407,7 @@ async function confirmMarketPurchase(ctx, stationId, cmdtyId, qty, opts = {}) {
     : '\n\nCargo pays when you sell it into demand or use it for a contract or manufacturing.';
   return confirm({
     title: 'Confirm purchase',
-    body: 'Buy ' + qty + ' ' + name + ' for ' + Math.round(total).toLocaleString() + ' CR?' + routeLine,
+    body: 'Buy ' + qty + ' ' + name + ' for ' + Math.round(total).toLocaleString() + ' cr?' + routeLine,
     confirmLabel: 'Buy',
     danger: bigShare,
   });

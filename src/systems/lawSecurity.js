@@ -64,6 +64,7 @@ import {
 import { scaleBySector } from '../data/sectorPhysical.js';
 import { RECORD_KIND, stableRecordId } from '../world/worldRecords.js';
 import { requestActivityReclassify } from '../world/activityRuntime.js';
+import { SECTORS } from '../data/sectors.js';
 import {
   collectLivingWorldActors,
   findLivingWorldActor,
@@ -2799,7 +2800,7 @@ export const lawSecurity = {
       kind: 'warrant',
       causeId,
       amountCr: fine,
-      label: `fine at ${stationId}`,
+      label: `fine at ${stationDisplayName(stationId)}`,
     });
     const choice = payload && typeof payload.fineChoice === 'string' ? payload.fineChoice : null;
     // FB-039 — docking only assesses; the charge is the player's answer, not the berth's act.
@@ -2836,7 +2837,7 @@ export const lawSecurity = {
       this._recordReceipt({
         cause: 'wanted_fine', outcome: 'fine_left',
         attackerId: state.playerId, targetId: null, stationId,
-        text: `FINE LEFT ${fine} cr — warrant stands at ${stationId}.`,
+        text: `FINE LEFT ${fine} cr — warrant stands at ${stationDisplayName(stationId)}.`,
       });
       return;
     }
@@ -2855,7 +2856,7 @@ export const lawSecurity = {
       this._recordReceipt({
         cause: 'wanted_fine', outcome: 'fine_work',
         attackerId: state.playerId, targetId: null, stationId,
-        text: `FINE WORK ${fine} cr — warrant held until the shift is done at ${stationId}.`,
+        text: `FINE WORK ${fine} cr — warrant held until the shift is done at ${stationDisplayName(stationId)}.`,
       });
       return;
     }
@@ -2901,7 +2902,7 @@ export const lawSecurity = {
     this._recordReceipt({
       cause: 'wanted_fine', outcome: 'fine_paid',
       attackerId: state.playerId, targetId: null, stationId,
-      text: `FINE PAID ${fine} cr — warrant cleared at ${stationId}.`,
+      text: `FINE PAID ${fine} cr — warrant cleared at ${stationDisplayName(stationId)}.`,
     });
   },
 
@@ -4747,7 +4748,7 @@ export const lawSecurity = {
       text: disposition === 'settled'
         ? 'CUSTODY ACCEPTED — the law holds the guns. This lot is already settled on the record.'
         : obligation
-          ? `CUSTODY ACCEPTED — the law holds the guns. Bill posted: ${priceCr} Cr.`
+          ? `CUSTODY ACCEPTED — the law holds the guns. Bill posted: ${priceCr} cr.`
           : 'CUSTODY ACCEPTED — the law holds the guns. Custody stands; no new bill could be posted.',
       kind: 'good', ttl: 4,
     });
@@ -6456,3 +6457,13 @@ function normalizeFineSettled(raw) {
 }
 
 export default lawSecurity;
+
+// Receipts name the berth, not its id. An id that does not resolve is printed as given.
+let stationNamesById = null;
+function stationDisplayName(stationId) {
+  if (!stationNamesById) {
+    stationNamesById = new Map();
+    for (const sector of SECTORS) for (const station of (sector.stations || [])) stationNamesById.set(station.id, station.name);
+  }
+  return stationNamesById.get(stationId) || String(stationId);
+}

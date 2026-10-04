@@ -141,9 +141,9 @@ function testStarmapWarOverlayReadsSectorSignal() {
       'tooltip reports dominant influence percentage'],
     [/Object\.entries\(signal\.influence \|\| \{\}\)[\s\S]*sm-influence-row[\s\S]*sm-bar/,
       'sidebar renders sorted influence bars from sectorSignalFor'],
-    [/factionColor\(signal\.ownerId\)[\s\S]*owner \$\{escapeHtml\(factionName\(signal\.ownerId\)\)\}/,
+    [/factionColor\(signal\.ownerId\)[\s\S]*owner \$\{entitySpanHtml\('faction:' \+ signal\.ownerId, escapeHtml\(factionName\(signal\.ownerId\)\)\)\}/,
       'sidebar displays runtime owner separately from dominant influence'],
-    [/Driven by \$\{escapeHtml\(driverLabel\(signal\.driver\.influence\)\)\}\. Low margin raises conflict tension; the factions system remains the territory owner\./,
+    [/Driven by \$\{escapeHtml\(driverLabel\(signal\.driver\.influence\)\)\}\. Low margin raises conflict tension\. It does not change who owns the sector\./,
       'sidebar explains the conflict tension boundary and single writer'],
   ];
   for (const [pattern, label] of checks) {

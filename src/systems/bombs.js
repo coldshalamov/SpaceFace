@@ -693,7 +693,7 @@ export const bombs = {
           // A live bomb means the empty latch must not re-arm until the bay drains.
           this._bombsQuiet = null;
         } else {
-          this.bus.emit('toast', { text: 'Bomb rack empty — re-arm at a station shipworks.', kind: 'info', ttl: 1.6 });
+          this.bus.emit('toast', { text: 'Bomb rack empty — rearm at a station shipworks.', kind: 'info', ttl: 1.6 });
         }
       }
     }
@@ -707,7 +707,7 @@ export const bombs = {
     const loaded = loadedCells(rt);
     if (!loaded.length) {
       this.bus.emit('bombs:denied', { reason: 'empty_rack' });
-      this.bus.emit('toast', { text: 'Bomb rack empty — re-arm at a station shipworks.', kind: 'info', ttl: 1.6 });
+      this.bus.emit('toast', { text: 'Bomb rack empty — rearm at a station shipworks.', kind: 'info', ttl: 1.6 });
       return null;
     }
     const index = loaded.findIndex((c) => c.id === rt.selectedId);
