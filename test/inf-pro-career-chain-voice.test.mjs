@@ -2,15 +2,18 @@
 //
 // Weakness found by looking (2026-10-04): a repeatable career chain went dark at the exact moments
 // a player needs steering. Missions' settlement debrief is generic per mission type, and
-// careerContracts emitted only machine receipts (`sectorsim:impulse`, `careerContract:consequence`)
-// that no UI consumes — so nothing said where the NEXT leg posts, that a failed leg re-posts at its
-// home board, or that clearing the chain moved the sector. The catalog authors all three sentences;
-// this pins the settlement voice that now carries them, on seed 4242.
+// careerContracts' settlement was machine-only: `sectorsim:impulse` feeds sectorSim and the world
+// fold (src/systems/sectorSim.js:122, src/systems/world.js:650), but `careerContract:consequence`
+// and `careerContract:completed` have zero listeners in src/, and no UI consumes any of the three —
+// so nothing said where the NEXT leg posts, that a failed leg re-posts at its home board, or that
+// clearing the chain moved the sector. The catalog authors all three sentences; this pins the
+// settlement voice that now carries them, on seed 4242.
 //
 // Player-facing law under test:
 //   • one `comms:popup` per settled leg, in the chain's own channel (sender = contract title);
 //   • mid-chain success names the leg count and the next leg's title AND board station;
-//   • failure carries the stage's authored recovery copy verbatim plus the re-post board;
+//   • failure carries the stage's authored recovery copy verbatim, adding the mechanical re-post
+//     board only when the authored sentence does not already name the station;
 //   • chain close carries the authored sector consequence and the reopen station;
 //   • nothing else moves: the impulse, receipt, consequence and completed events are unchanged,
 //     a double settle stays silent, and the voice is deterministic (no Math.random / Date.now).
@@ -140,7 +143,7 @@ test('seed 4242: a mid-chain leg settle names the leg count, the next leg, and i
   sys.destroy();
 }));
 
-test('seed 4242: a failed leg carries the authored recovery copy verbatim and names the re-post board', () => guarded(() => {
+test('seed 4242: a failed leg whose recovery copy already names the board renders it verbatim, no appended stutter', () => guarded(() => {
   const state = baseState();
   const bus = new Bus();
   const sys = { ...careerContracts };
@@ -149,6 +152,8 @@ test('seed 4242: a failed leg carries the authored recovery copy verbatim and na
 
   const def = REPEATABLE_CAREER_CONTRACTS.find((entry) => entry.id === 'hauler_wreck_reclamation');
   const stage = def.stages[0];
+  assert.ok(stage.recoveryText.includes('Reach Station'),
+    'the fixture holds: this authored recovery line already names the re-post place');
   boardAcceptComplete(bus, 'station_reach', 'm_voice_fail', false);
 
   const lines = popups(bus);
@@ -156,9 +161,32 @@ test('seed 4242: a failed leg carries the authored recovery copy verbatim and na
   const line = lines[0];
   assert.equal(line.sender, def.title);
   assert.equal(line.category, 'trap', 'a failure lands in the alert lane, like the debrief it follows');
-  assert.ok(line.text.startsWith(stage.recoveryText),
-    'the catalog authored a recovery sentence for this exact moment — it renders verbatim');
-  assert.match(line.text, /The failed leg re-posts at Reach Station\./);
+  assert.equal(line.text, stage.recoveryText,
+    'the catalog authored a recovery sentence for this exact moment — verbatim, and said once');
+  const run = ensureCareerContractState(state).runs[def.id];
+  assert.equal(run.status, 'recovering');
+  assert.equal(run.attempt, 1);
+  sys.destroy();
+}));
+
+test('seed 4242: a failed leg whose recovery copy does not name the board gets the mechanical re-post line', () => guarded(() => {
+  const state = baseState();
+  const bus = new Bus();
+  const sys = { ...careerContracts };
+  sys.init({ state, bus });
+  autoBoard(bus);
+
+  const def = REPEATABLE_CAREER_CONTRACTS.find((entry) => entry.id === 'hauler_relief_circuit');
+  const stage = def.stages[0];
+  assert.ok(!stage.recoveryText.includes('Helios Station'),
+    'the fixture holds: this authored recovery line never names the board station');
+  boardAcceptComplete(bus, 'station_helios', 'm_voice_fail2', false);
+
+  const lines = popups(bus);
+  assert.equal(lines.length, 1);
+  const line = lines[0];
+  assert.equal(line.category, 'trap');
+  assert.equal(line.text, `${stage.recoveryText} The failed leg re-posts at Helios Station.`);
   const run = ensureCareerContractState(state).runs[def.id];
   assert.equal(run.status, 'recovering');
   assert.equal(run.attempt, 1);

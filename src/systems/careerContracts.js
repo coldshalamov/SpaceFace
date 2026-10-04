@@ -462,11 +462,17 @@ export const careerContracts = {
       });
       return;
     }
-    const board = stationNameFor(settledStage.boardStationId) || 'its home board';
+    // The catalog's recovery copy usually names the re-post place in its own words ("the tow leg
+    // re-posts at Reach Station"); appending the board again right after that reads as a stutter.
+    // The mechanical pointer joins only when the authored sentence does not already name it.
+    const board = stationNameFor(settledStage.boardStationId);
+    const rePost = board && !String(settledStage.recoveryText).includes(board)
+      ? ` The failed leg re-posts at ${board}.`
+      : '';
     this.bus.emit('comms:popup', {
       sender: def.title,
       factionId: def.actor.factionId,
-      text: `${settledStage.recoveryText} The failed leg re-posts at ${board}.`,
+      text: settledStage.recoveryText + rePost,
       category: 'trap',
       ttl: 7,
     });
