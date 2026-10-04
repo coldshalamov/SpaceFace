@@ -821,7 +821,7 @@ export const barkDirector = {
     return true;
   },
 
-// ── Law radio cadence: heat, pursuit, and witnesses speak ────────────────────────────────
+  // ── Law radio cadence: heat, pursuit, and witnesses speak ────────────────────────────────
   //
   // The law layer emits receipts, not voices — these listeners give each law action leg an
   // audible line from the live entity that owns it. None of them move gameplay state; they
@@ -869,13 +869,15 @@ export const barkDirector = {
     if (!(Number(payload.witnessCount) > 0)) return false;
     const witness = this._resolveReceiptWitness(payload);
     if (!witness) return false;
-    // The first response names the crime. Kill receipts keep the homicide register;
-    // property kinds (payload_theft — the door every theft owner reports through) voice
-    // the theft sibling corpus, so a scooped pod near a patrol is not called a murder.
-    // An absent kind keeps the historical kill register.
-    const lineFor = typeof payload.kind === 'string' && /_kill$/.test(payload.kind)
-      ? witnessCrimeBarkFor
-      : witnessTheftBarkFor;
+    // The first response names the crime. The receipt's single theft fact decides the
+    // register, in positive form: validatedWitnessedTheft (the one fact the heat owner is
+    // allowed to act on — every accepted theft receipt carries it, lawSecurity's kill and
+    // discovered receipts carry false) voices the theft sibling corpus, so a scooped pod
+    // near a patrol is not called a murder. Any other receipt — today the kill kinds,
+    // tomorrow any kind not yet imagined — keeps the historical homicide register.
+    const lineFor = payload.validatedWitnessedTheft === true
+      ? witnessTheftBarkFor
+      : witnessCrimeBarkFor;
     return this._speakEventLine(witness, 'witness-crime', 'law:reportIncidentReceipt', lineFor, payload);
   },
 

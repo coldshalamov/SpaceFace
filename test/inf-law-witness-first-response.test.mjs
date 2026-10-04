@@ -117,6 +117,24 @@ test('a witnessed kill receipt keeps the homicide register (unchanged)', () => {
     `kill receipt must keep the homicide register, got: "${h.says[0].text}"`);
 });
 
+test('a future receipt kind without the theft fact fails safe to the homicide register', () => {
+  const h = makeHarness();
+  h.add({ id: 33, type: 'ship', team: 2, factionId: 'faction_scn', x: 20, z: 0 });
+  h.bus.emit('law:reportIncidentReceipt', theftReceipt({
+    incidentReceiptId: 'law:incident:inflaw4242x',
+    reportId: 'inflaw4242:assault',
+    kind: 'assault', // a kind the current code has never issued
+    payloadStableId: 'hauler_4242x',
+    witnessCount: 1,
+    witnessStableIds: ['entity:33'],
+    validatedWitnessedTheft: false,
+    validatedCrime: true,
+  }));
+  assert.equal(h.says.length, 1, 'the first response speaks once');
+  assert.ok(WITNESS_CRIME_BARKS.faction_scn.includes(h.says[0].text),
+    `an unknown kind must not inherit theft lines, got: "${h.says[0].text}"`);
+});
+
 test('a discovered receipt (zero recorded eyes) voices no witness line', () => {
   const h = makeHarness();
   // A lawful voice sits in radius — without the gate it would be handed a false
