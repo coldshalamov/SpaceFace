@@ -112,6 +112,9 @@ export function mountBootRing(document, overlay) {
     frame = null;
     if (disposed || !running || document.hidden) return;
     paint(t);
+    // Forward the vsync beat: the worker paints in-step with presentation instead
+    // of free-running on its own timer, so the needle sweeps without visible hops.
+    if (workerReady) worker?.post({ type: 'frame' });
     frame = host.requestAnimationFrame?.(loop) ?? null;
   }
   function pauseClock() {
