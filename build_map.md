@@ -527,7 +527,6 @@ rows carry commits and focused suites. NXI-024's evidence was re-anchored on its
 
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
-| 14 | D83 | pq020 Ceres structural-cost digest drift — adjudicate semantically, then re-derive the pin | FIX | CLAIMED devin-graphics |
 | 16 | D24 | Renderer resource residency — fix landed `4365769c6`; 40-cycle uncontended soak owed | FIX | PARKED needs quiet host |
 | 17 | D54 | Hero landmarks: dark-freighter place model, Anvil well-edge, ×30 Wreck Cathedral draw scale | ART | CLAIMED devin-graphics |
 | 18 | D72 | Pelican starter hull is blockout-grade | ART | CLAIMED devin-graphics |
