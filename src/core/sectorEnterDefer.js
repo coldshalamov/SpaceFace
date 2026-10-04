@@ -34,6 +34,12 @@
 // the census splice. Draining inline here would run the fresh cohort against
 // the departing sector arg inside the emit — then the census splice would find
 // the queue empty and run every registered provider a second time anyway.
+import {
+  notePacedFrameSpend,
+  pacedFrameSpend,
+  PACED_FRAME_BUDGET_MS,
+} from '../render/decodeTaskBudget.js';
+
 export function dropDeadDeferredEnterEntries(state) {
   const render = state && state.render;
   const queue = render && Array.isArray(render.deferredEnterMaterializers)
@@ -139,9 +145,14 @@ export function drainDeferredEnterSlice(state, sector, budgetMs, holdEpoch) {
   }
   const now = (typeof performance !== 'undefined' && typeof performance.now === 'function')
     ? () => performance.now() : () => Date.now();
-  const deadline = now() + Math.max(0, Number(budgetMs) || 0);
+  const startedAt = now();
+  const deadline = startedAt + Math.max(0, Number(budgetMs) || 0);
   let steps = 0;
-  while (queue.length && (steps === 0 || now() < deadline)) {
+  // The caller's budgetMs plus the shared paced ledger — a frame that already
+  // spent its paced budget doesn't also get this drain's wallet. `steps === 0`
+  // preserves the drain's min-1-step progress guarantee either way.
+  while (queue.length && (steps === 0 || (now() < deadline
+      && pacedFrameSpend() < PACED_FRAME_BUDGET_MS))) {
     const entry = queue[0];
     if (entry && entry.epoch != null && holdEpoch != null && entry.epoch !== holdEpoch) break;
     if (!entry.iterator) {
@@ -175,6 +186,7 @@ export function drainDeferredEnterSlice(state, sector, budgetMs, holdEpoch) {
     if (entry.done) queue.shift();
     steps += 1;
   }
+  if (steps > 0) notePacedFrameSpend(now() - startedAt);
   return steps;
 }
 // True while the deferred-enter queue holds this provider live under the

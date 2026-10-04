@@ -2111,8 +2111,13 @@ export function serviceRenderMeshResidency(owner, frameDt) {
           }
           break;
         }
-        if (now() - reconcileSliceStart >= 4) break;
+        // Private 4ms clock plus the shared paced ledger — a frame that already
+        // spent its paced budget doesn't get this slicer's whole wallet too.
+        // The check sits post-step so every frame still advances ≥1 pass.
+        if (now() - reconcileSliceStart >= 4
+            || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
       }
+      if (owner._reconcileIter) notePacedFrameSpend(now() - reconcileSliceStart);
     }
     // A reconcile frame used to return before draining, so every poll cadence spent
     // a whole build budget on bookkeeping and queued work waited a frame per poll.
@@ -2154,8 +2159,10 @@ export function serviceRenderMeshResidency(owner, frameDt) {
           }
           break;
         }
-        if (now() - pollSliceStart >= 4) break;
+        if (now() - pollSliceStart >= 4
+            || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
       }
+      if (owner._residencyPollIter) notePacedFrameSpend(now() - pollSliceStart);
     }
     if (owner._meshBuildQueueHead < owner._meshBuildQueue.length) owner._drainPendingMeshBuilds();
     return 'poll';
@@ -2528,7 +2535,8 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
           throw err;
         }
         if (step.done) { done = true; break; }
-        if (now() - started >= sliceMs) break;
+        if (now() - started >= sliceMs
+            || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
       }
       if (!done) break;
     }
@@ -2570,7 +2578,8 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
     }
     const commitBounded = owner._holdExemptCommitList.length > 16;
     while (owner._holdExemptEnqueueIter) {
-      if (commitBounded && now() - commitStarted >= commitSliceMs) break;
+      if (commitBounded && (now() - commitStarted >= commitSliceMs
+          || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) break;
       let step;
       try {
         step = owner._holdExemptEnqueueIter.next();
@@ -2587,7 +2596,8 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
       owner._holdExemptKickIter = kickDecodeRunwayAssetsSteps(owner, owner._holdExemptCommitList);
     }
     while (owner._holdExemptKickIter) {
-      if (commitBounded && now() - commitStarted >= commitSliceMs) break;
+      if (commitBounded && (now() - commitStarted >= commitSliceMs
+          || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) break;
       let step;
       try {
         step = owner._holdExemptKickIter.next();
@@ -2602,7 +2612,8 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
     owner._holdExemptCommitList = null;
     owner._holdExemptCommitEpoch = null;
     owner._holdExemptCommitExempt = null;
-    if (now() - started >= sliceMs) break;
+    if (now() - started >= sliceMs
+        || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
     // A completed cycle that queued nothing and started no decode is a converged
     // world: reminting the ~5-12 ms collect inside this beat just re-pays the
     // spatial refill and journal walk until the hold ends.
@@ -2615,13 +2626,15 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
     // can't land the unbounded grid query inside this beat; the next beat's mint
     // refills under a fresh clock.
     warmNearbyLedgerRows(state, { tolerateMiss: true });
-    if (now() - started >= sliceMs) break;
+    if (now() - started >= sliceMs
+        || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
     owner._holdExemptCollectOut = [];
     iterator = collectMeshPresentationEntitiesChunked(
       state, owner._holdExemptCollectOut, { tolerateMiss: true });
     owner._holdExemptCollectIter = iterator;
     owner._holdExemptCollectEpoch = liveEpoch;
   }
+  notePacedFrameSpend(now() - started);
   return enqueued;
 }
 
@@ -18536,6 +18549,9 @@ export const render = {
         startedAtMs,
         nowMs: now(),
         itemsDone: built,
+        // A frame that already spent its paced budget doesn't also get this
+        // drain's whole private wallet — minItems still guarantees progress.
+        usePacedLedger: true,
       })) break;
       const id = this._meshBuildQueue[this._meshBuildQueueHead++];
       this._meshBuildQueuedIds.delete(id);
@@ -18726,6 +18742,9 @@ export const render = {
     } else if (this._meshBuildQueueHead > 64) {
       this._meshBuildQueue = this._meshBuildQueue.slice(this._meshBuildQueueHead);
       this._meshBuildQueueHead = 0;
+    }
+    if (built > 0 || now() - startedAtMs > 0) {
+      notePacedFrameSpend(now() - startedAtMs);
     }
     return built;
   },

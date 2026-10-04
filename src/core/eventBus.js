@@ -6,6 +6,12 @@
 // enterSector, leftover presentation listeners drain after present. Default budget 0
 // keeps every emit fully synchronous (tests, boot, Continue).
 
+import {
+  notePacedFrameSpend,
+  pacedFrameSpend,
+  PACED_FRAME_BUDGET_MS,
+} from '../render/decodeTaskBudget.js';
+
 export const SECTOR_ENTER_LISTENER_BUDGET = 32;
 export const SECTOR_ENTER_DRAIN_BUDGET = 4;
 // Presentation-tier listeners (bus.on(event, fn, { presentation: true })): burst events like
@@ -295,6 +301,7 @@ export function createBus() {
     const deadline = Number.isFinite(maxMs) && maxMs > 0
       ? performance.now() + maxMs
       : Infinity;
+    const drainStart = performance.now();
     let ran = 0;
     while (emitSlice === slice && ran < limit && slice.index < slice.fns.length) {
       const fn = slice.fns[slice.index];
@@ -302,8 +309,11 @@ export function createBus() {
       ran += 1;
       try { fn(slice.payload, slice.event); }
       catch (err) { console.error(`[bus] handler error for "${slice.event}":`, err); }
-      if (performance.now() >= deadline) break;
+      // The caller's deadline plus the shared paced ledger — a frame that already
+      // spent its paced budget doesn't also get this drain's whole wallet.
+      if (performance.now() >= deadline || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
     }
+    if (ran > 0) notePacedFrameSpend(performance.now() - drainStart);
     if (emitSlice === slice && slice.index >= slice.fns.length) {
       emitSlice = null;
       if (pendingSlicedEmits.length) {
@@ -344,6 +354,7 @@ export function createBus() {
     const deadline = Number.isFinite(maxMs) && maxMs > 0
       ? performance.now() + maxMs
       : Infinity;
+    const drainStart = performance.now();
     let ran = 0;
     // Bounded interleave: strict priority let a sustained destroyed burst starve the
     // cosmetic lane for the burst's whole duration. After PRIORITY_INTERLEAVE consecutive
@@ -367,8 +378,9 @@ export function createBus() {
       try { fn(head.payload, head.event); }
       catch (err) { console.error(`[bus] presentation handler error for "${head.event}":`, err); }
       if (head.index >= head.fns.length) recyclePresentationSlice(queue.shift());
-      if (performance.now() >= deadline) break;
+      if (performance.now() >= deadline || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
     }
+    if (ran > 0) notePacedFrameSpend(performance.now() - drainStart);
     return ran;
   }
 
