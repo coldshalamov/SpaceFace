@@ -7167,6 +7167,11 @@ function admitNextUpgradeJob(state) {
     const timedOut = error && error.name === 'TimeoutError';
     const cancelled = job.admission.signal.aborted || error && error.name === 'AbortError';
     job.admission.abort(error);
+    // D48: the admission deadline firing is exactly the recurrence the defect ledger asks
+    // evidence for — stamp the in-flight prepare phase, asset/root identity, renderer
+    // generation, elapsed wall time and graphics-context state beside the verdict. Additive
+    // only: a watchdog-sealed diagnostic keeps its seal and still gains the evidence block.
+    if (timedOut) stampAdmissionTimeoutEvidence(job, diagnostic);
     // A diagnostic the watchdog already closed (stall verdict, owner-inactive settle) is a
     // sealed record — the abandoned run's late rejection must not overwrite it, the same way
     // the abortedStalled guard below keeps its boundary state off the replacement owner's.
@@ -7363,6 +7368,59 @@ function recordAdmissionSlice(startedAtMs, hitchOwner = null) {
       && typeof perf.recordRenderWork === 'function') {
     perf.recordRenderWork(hitchOwner, elapsedMs);
   }
+}
+
+// D48 evidence contract (DEMO_READINESS §6): when the authored admission deadline trips, the
+// diagnostic must retain enough to tell a rejected bounded job from a native main-thread stall —
+// the prepare phase in flight, the asset/root identity, the renderer generation, elapsed wall
+// time, and the graphics-context state at the moment the deadline fired. Additive by design so
+// it can also enrich a diagnostic the stall watchdog already sealed.
+function stampAdmissionTimeoutEvidence(job, diagnostic) {
+  if (!diagnostic || diagnostic.timeoutEvidence) return;
+  const boundary = job && job.boundary;
+  const boundaryData = boundary && boundary.userData;
+  const timings = boundaryData ? boundaryData.__admissionPhaseTimings : null;
+  // Phases stamp `${phase}Ms` on completion, serially (decode → compose → pipeline → commit);
+  // the first key without a stamp is the phase the deadline caught in flight. No timings object
+  // at all means the run never reached the decode gate (queue setup / prefetch window).
+  let preparePhase = 'pre-decode';
+  if (timings) {
+    preparePhase = 'post-commit';
+    for (const phase of ADMISSION_PHASE_KEYS) {
+      if (!Number.isFinite(Number(timings[`${phase}Ms`]))) { preparePhase = phase; break; }
+    }
+  }
+  const live = authoredRuntimeState();
+  const render = live && live.render;
+  const renderer = job && job.renderer;
+  let glContextLost = null;
+  try {
+    const gl = renderer && typeof renderer.getContext === 'function' ? renderer.getContext() : null;
+    glContextLost = gl && typeof gl.isContextLost === 'function' ? gl.isContextLost() : null;
+  } catch {
+    glContextLost = null;
+  }
+  const startedAtMs = Number.isFinite(diagnostic.startedAtMs) ? diagnostic.startedAtMs : monotonicNow();
+  diagnostic.timeoutEvidence = {
+    preparePhase,
+    authoredAssetState: boundaryData ? boundaryData.authoredAssetState || null : null,
+    phaseTimingsMs: timings ? { ...timings } : null,
+    assetUrls: [...((job && job.assetUrls) || [])],
+    root: boundary ? {
+      name: boundary.name || null,
+      uuid: boundary.uuid || null,
+      type: boundary.type || null,
+    } : null,
+    rendererGeneration: render && render.admissionRunGeneration != null
+      ? render.admissionRunGeneration : null,
+    elapsedMs: Math.round(Math.max(0, monotonicNow() - startedAtMs)),
+    graphicsContext: {
+      glContextLost,
+      renderContextLost: render ? render.contextLost === true : null,
+      contextRecoveryPending: !!(render && render.contextRecovery
+        && render.contextRecovery.pending === true),
+    },
+  };
 }
 
 function beginUpgradeDiagnostic(state, job) {
