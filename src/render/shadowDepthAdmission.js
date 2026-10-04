@@ -252,7 +252,7 @@ export function collectUnstagedShadowCasters(renderer, subjects, lightingScene) 
   return unstaged;
 }
 
-function markCastersDepthStaged(renderer, casting, lightingScene) {
+function markCastersDepthStaged(renderer, casting, lightingScene, drawnDepthObjects = null) {
   if (!renderer || !casting || casting.length === 0) return;
   let staged = _stagedDepthSignatures.get(renderer);
   if (!staged) {
@@ -261,6 +261,11 @@ function markCastersDepthStaged(renderer, casting, lightingScene) {
   }
   const lightSig = lightCensusSignature(lightingScene);
   for (const caster of casting) {
+    // Only signatures whose depth draw the pass actually observed: a caster outside the
+    // shadow camera's ortho contributes no link, so marking it would certify readiness
+    // never proved — when it later enters the live ortho its variant links inside a
+    // presented frame. Under-marking only re-runs the cheap rescan.
+    if (drawnDepthObjects && !drawnDepthObjects.has(caster)) continue;
     for (const signature of casterDepthSignatures(caster, lightSig)) staged.add(signature);
   }
 }
@@ -350,6 +355,7 @@ export function compileShadowDepthPipelines(options = {}) {
   const programCacheKeys = new Set();
   const drawnNames = new Set();
   const drawnKeys = new Set();
+  const drawnDepthObjects = new Set();
   let renderedMaterials = 0;
   let missingProgramBindings = 0;
   const originalRenderBufferDirect = typeof renderer.renderBufferDirect === 'function'
@@ -363,8 +369,9 @@ export function compileShadowDepthPipelines(options = {}) {
       // Shadow-pass draws call renderBufferDirect with scene=null (WebGLShadowMap.renderObject);
       // the color pass passes the staging scene. Count only depth draws for staging proof.
       const depthDraw = args[1] == null;
-      if (depthDraw && drawn && typeof drawn.name === 'string' && drawn.name) {
-        drawnNames.add(drawn.name);
+      if (depthDraw && drawn) {
+        drawnDepthObjects.add(drawn);
+        if (typeof drawn.name === 'string' && drawn.name) drawnNames.add(drawn.name);
       }
       const material = args[3];
       let program = null;
@@ -426,7 +433,7 @@ export function compileShadowDepthPipelines(options = {}) {
     shadowMap.needsUpdate = true;
     if (stagedKeyLight.shadow) stagedKeyLight.shadow.needsUpdate = true;
     renderer.render(staging, camera);
-    markCastersDepthStaged(renderer, casting, lightingScene);
+    markCastersDepthStaged(renderer, casting, lightingScene, drawnDepthObjects);
     const programBindingFailures = [];
     if (casting.length > 0 && !originalRenderBufferDirect) {
       programBindingFailures.push(`shadow-depth:${casting.length}:render-buffer-direct-unavailable`);

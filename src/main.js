@@ -773,7 +773,16 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
             .then(() => physicsSystem.prepareBackend(state, { reset: true }));
         }
         try {
-          return await physicsPrep;
+          // Same outer bound the Continue gate runs (main.js ~1052): prepareBackend's
+          // internal init race only bounds one leg — a wedge anywhere else inside it
+          // would hold the loading shell forever.
+          return await Promise.race([
+            physicsPrep,
+            new Promise((_, reject) => setTimeout(
+              () => reject(new Error('physics backend preparation timed out after 20000ms')),
+              20000,
+            )),
+          ]);
         } catch (error) {
           console.warn('[startup] physics backend preparation failed', error);
           return false;
@@ -865,7 +874,12 @@ function startLoadingGatePulse(bus, runTransitionGuard, transitionToken, transit
   let lastText = null;
   const emit = () => {
     try {
-      if (!runTransitionGuard.isCurrent(transitionToken)) return;
+      if (!runTransitionGuard.isCurrent(transitionToken)) {
+        // A leaked pulse (its gate threw before stop ran) must not outlive the
+        // transition — self-clear instead of waking every 500 ms forever.
+        clearInterval(timer);
+        return;
+      }
       const detail = detailOf();
       if (detail == null || detail === lastText) return;
       lastText = detail;
@@ -934,8 +948,12 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
       return elapsed > 8000 ? 'Still loading the saved sector' : 'Bringing the saved sector back with its ships intact';
     });
     const gateStartedMs = nowMs();
-    const libraryReady = await waitForAuthoredPartLibrary(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS);
-    stopLibraryPulse();
+    let libraryReady;
+    try {
+      libraryReady = await waitForAuthoredPartLibrary(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS);
+    } finally {
+      stopLibraryPulse();
+    }
     if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
     if (!libraryReady) {
       throw new Error('Authored ship asset library did not preload after save load; refusing to enter flight with procedural fallback ships.');
@@ -958,13 +976,17 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
         ? `Placing ships and stations — ${pending} still staging`
         : 'Placing ships and stations before you arrive';
     });
-    const visualsReady = await waitForInitialAuthoredVisualsWithRetry(
-      state,
-      INITIAL_AUTHORED_VISUAL_TIMEOUT_MS,
-      () => runTransitionGuard.isCurrent(transitionToken),
-      bus,
-    );
-    stopVisualsPulse();
+    let visualsReady;
+    try {
+      visualsReady = await waitForInitialAuthoredVisualsWithRetry(
+        state,
+        INITIAL_AUTHORED_VISUAL_TIMEOUT_MS,
+        () => runTransitionGuard.isCurrent(transitionToken),
+        bus,
+      );
+    } finally {
+      stopVisualsPulse();
+    }
     if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
     if (!visualsReady) {
       throw new Error('Loaded authored ship visuals did not become ready; refusing to enter flight with procedural fallback ships.');

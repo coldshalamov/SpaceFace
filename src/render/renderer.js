@@ -2466,6 +2466,11 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
     abandonHoldExemptCollect(owner);
     iterator = null;
   }
+  const now = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now() : Date.now());
+  // Mint before the first refill: the spatial ledger query is the collect's biggest
+  // single step — debited inside this beat's slice instead of stacked off-clock.
+  const started = now();
   if (!iterator && !owner._holdExemptCommitList) {
     // The spatial refill inside the ctx is the collect's biggest single step —
     // run it as this beat's own step before minting the iterator.
@@ -2475,9 +2480,6 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
     owner._holdExemptCollectIter = iterator;
     owner._holdExemptCollectEpoch = liveEpoch;
   }
-  const now = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
-    ? performance.now() : Date.now());
-  const started = now();
   let enqueued = 0;
   for (;;) {
     // The cycle's work counts come from each iterator's return value — the
@@ -2537,7 +2539,15 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
     const commitBounded = owner._holdExemptCommitList.length > 16;
     while (owner._holdExemptEnqueueIter) {
       if (commitBounded && now() - commitStarted >= commitSliceMs) break;
-      const step = owner._holdExemptEnqueueIter.next();
+      let step;
+      try {
+        step = owner._holdExemptEnqueueIter.next();
+      } catch (err) {
+        // Same abandon as the collect pump: a throwing step must not leave a dead
+        // generator parked on the owner to be misread as done next beat.
+        abandonHoldExemptCommit(owner);
+        throw err;
+      }
       if (step.done) { cycleEnqueued = step.value || 0; owner._holdExemptEnqueueIter = null; }
     }
     if (owner._holdExemptEnqueueIter) break;
@@ -2546,7 +2556,13 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
     }
     while (owner._holdExemptKickIter) {
       if (commitBounded && now() - commitStarted >= commitSliceMs) break;
-      const step = owner._holdExemptKickIter.next();
+      let step;
+      try {
+        step = owner._holdExemptKickIter.next();
+      } catch (err) {
+        abandonHoldExemptCommit(owner);
+        throw err;
+      }
       if (step.done) { cycleKickStarted = step.value || 0; owner._holdExemptKickIter = null; }
     }
     if (owner._holdExemptKickIter) break;
@@ -2563,6 +2579,9 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
     // becoming exempt just after a commit waits a full beat plus a walk before its
     // enqueue/kick lands — several times coarser than the pre-sliced cadence.
     warmNearbyLedgerRows(state);
+    // The refill itself may have spent the remainder — mint fresh on the next beat
+    // rather than push the walk's head start off-clock.
+    if (now() - started >= sliceMs) break;
     owner._holdExemptCollectOut = [];
     iterator = collectMeshPresentationEntitiesChunked(state, owner._holdExemptCollectOut);
     owner._holdExemptCollectIter = iterator;
@@ -15979,9 +15998,13 @@ export const render = {
       ? swarmRosterShipExemplarSpecs(`${specPrefix}ship:`, { enemyIds: launchEligibility })
       : [];
     if (profile === 'crucible' && swarmScoped) {
-      this._swarmWarmCoveredEnemyIds = new Set(launchEligibility);
-      // Keep the marked list on the warm so a throwing begin can unmark exactly
-      // the rows it stamped — the deferred lane skips whatever the ledger names.
+      // The ledger ref-counts coverage (id -> owner count): a second begin unions into
+      // the same rows instead of replacing them, so a still-live earlier warm keeps its
+      // claim and a failed begin unmarks only what it stamped on top.
+      const covered = this._swarmWarmCoveredEnemyIds || (this._swarmWarmCoveredEnemyIds = new Map());
+      for (const enemyId of launchEligibility) covered.set(enemyId, (covered.get(enemyId) || 0) + 1);
+      // Keep the stamped list on the warm so a throwing begin can unmark exactly
+      // the rows it counted — the deferred lane skips whatever the ledger names.
       warm.coveredEnemyIds = launchEligibility;
     }
     // The player hull joins the set: its live entity only spawns at the flight transition,
@@ -16192,8 +16215,13 @@ export const render = {
       // them as already-warmed and would never rebuild what a failed begin dropped.
       // coveredEnemyIds is a Set (swarmEligibleEnemyIds) — iterate it directly; an
       // Array.isArray gate never fires and pins every stamped row as covered for the run.
+      // The ledger ref-counts: only drop the row when this warm held the last claim on it.
       if (warm.coveredEnemyIds && this._swarmWarmCoveredEnemyIds) {
-        for (const enemyId of warm.coveredEnemyIds) this._swarmWarmCoveredEnemyIds.delete(enemyId);
+        for (const enemyId of warm.coveredEnemyIds) {
+          const count = this._swarmWarmCoveredEnemyIds.get(enemyId) || 0;
+          if (count > 1) this._swarmWarmCoveredEnemyIds.set(enemyId, count - 1);
+          else this._swarmWarmCoveredEnemyIds.delete(enemyId);
+        }
       }
       warm.building = false;
       root.userData.warmBuilding = false;
@@ -16756,18 +16784,22 @@ export const render = {
     if (!run || run.kind !== 'survival' || run.ruleset !== SWARM_RULESET) return null;
     if (run.phase === 'ended' || run.phase === 'victory' || run.phase === 'inactive') return null;
     if (!Number.isInteger(nextWave) || nextWave < 2) return null;
-    if (!(this._swarmWarmCoveredEnemyIds instanceof Set)) {
+    if (!(this._swarmWarmCoveredEnemyIds instanceof Map)) {
       // No launch warm ran this session (mid-run restore off the cook path): every hull the
       // cleared waves could field already spawned — and linked — in the rounds played, so the
       // ledger starts at current-wave eligibility and the batch below takes only newcomers.
-      this._swarmWarmCoveredEnemyIds = new Set(swarmEligibleEnemyIds(run.wave || 1));
+      this._swarmWarmCoveredEnemyIds = new Map(
+        [...swarmEligibleEnemyIds(run.wave || 1)].map((enemyId) => [enemyId, 1]),
+      );
     }
     const fresh = [...swarmEligibleEnemyIds(nextWave)]
       .filter((enemyId) => !this._swarmWarmCoveredEnemyIds.has(enemyId));
     if (fresh.length === 0) return null;
     // Mark before building: a second trigger (cleanup -> draft -> wavePlanned) must not
     // double-queue the same exemplars. A build that throws unmarks so the next dwell retries.
-    for (const enemyId of fresh) this._swarmWarmCoveredEnemyIds.add(enemyId);
+    for (const enemyId of fresh) {
+      this._swarmWarmCoveredEnemyIds.set(enemyId, (this._swarmWarmCoveredEnemyIds.get(enemyId) || 0) + 1);
+    }
     const freshSet = new Set(fresh);
 
     const warm = { root: new THREE.Group(), pendingAttachments: [], building: true };
@@ -16794,7 +16826,11 @@ export const render = {
       return settled;
     };
     const unmark = () => {
-      for (const enemyId of fresh) this._swarmWarmCoveredEnemyIds.delete(enemyId);
+      for (const enemyId of fresh) {
+        const count = this._swarmWarmCoveredEnemyIds.get(enemyId) || 0;
+        if (count > 1) this._swarmWarmCoveredEnemyIds.set(enemyId, count - 1);
+        else this._swarmWarmCoveredEnemyIds.delete(enemyId);
+      }
     };
 
     try {
