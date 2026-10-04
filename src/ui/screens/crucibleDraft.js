@@ -1276,7 +1276,9 @@ export const crucibleDraftScreen = {
       const demo = el('button', 'orr-armory-reading__demo-word');
       demo.type = 'button';
       demo.textContent = offer.demoed ? 'On trial' : 'Demo — fly it one round';
-      demo.disabled = offer.demoed === true;
+      // A locked fitting (standing / research / swarm-earned) refuses the trial fit the same
+      // way it refuses the sale — the word stays honest by staying off until the gate clears.
+      demo.disabled = offer.demoed === true || offer.locked != null;
       demo.addEventListener('click', () => {
         context.bus.emit('run:draftPickRequested', { offerId: offer.id, demo: true });
         this.refresh(context);

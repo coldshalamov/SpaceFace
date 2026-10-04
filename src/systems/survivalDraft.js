@@ -55,7 +55,7 @@ import {
   verbBuildFamily,
 } from '../data/runModifiers.js';
 import { WEAPONS } from '../data/weapons.js';
-import { buildSlotList, fits, getDerivedStats } from './ships.js';
+import { buildSlotList, fits, getDerivedStats, defLockReasonText } from './ships.js';
 import { swarmHullPrice } from '../data/swarmCatalog.js';
 import {
   brokerMultiplier,
@@ -208,6 +208,7 @@ export const survivalDraft = {
           && this._trials instanceof Map
           && this._trials.get(offer.slotIndex)?.defId === offer.defId));
     if (!run || !isSwarmRuleset(run.ruleset) || !this._draftInput) return offers;
+    const ships = this._ships();
     // Preserve the stock, but re-evaluate fitting targets after each purchase. Two offers may
     // initially want the same empty slot; the second purchase must see the new loadout.
     const loadout = this._activeLoadout();
@@ -232,24 +233,36 @@ export const survivalDraft = {
       const legal = !!current || demoed;
       const price = offer.kind === EVOLUTION_OFFER_KIND ? offer.price : swarmPurchasePrice(offer.defId);
       const replaces = (current || offer).replaces ?? null;
+      // The fitting authority's lock ledger — standing, research, swarm-earned — refuses at
+      // Install even when the slot and the wallet are fine. Read it up front, in the same order
+      // moduleFitBlocker does (slot first), so the card never sells what the click refunds.
+      const def = MODULE_DEF_BY_ID.get(offer.defId);
+      const locked = def && ships && typeof ships.isUnlocked === 'function' && !ships.isUnlocked(def)
+        ? defLockReasonText(def) : null;
       return { ...offer, ...(current || {}), price, purchased, demoed, replaces,
         replacesName: replaces ? fittingName(replaces) : null,
         held: !!(this._locked && this._locked.id === offer.id),
         lockedIn: !!(this._lockedInto && this._lockedInto.has(offer.id)),
-        available: !purchased && legal && price != null && run.credits >= price,
-        unavailableReason: purchased ? 'Fitted' : !legal ? 'No compatible slot' :
-          run.credits < price ? `Save ${price - run.credits} more cr` : null };
+        locked,
+        available: !purchased && legal && !locked && price != null && run.credits >= price,
+        unavailableReason: purchased ? 'Fitted' : !legal ? 'No compatible slot' : locked
+          || (run.credits < price ? `Save ${price - run.credits} more cr` : null) };
     });
     const shown = new Set(rows.map((row) => row.id));
     for (const entry of this._evolutionOffers(loadout)) {
       if (shown.has(entry.id)) continue;
       const purchased = this._purchased?.has(entry.id) === true;
+      const evoDef = MODULE_DEF_BY_ID.get(entry.defId);
+      const evoLocked = evoDef && ships && typeof ships.isUnlocked === 'function' && !ships.isUnlocked(evoDef)
+        ? defLockReasonText(evoDef) : null;
       rows.push({ ...entry, purchased,
         demoed: Number.isInteger(entry.slotIndex) && this._trials?.get(entry.slotIndex)?.defId === entry.defId,
         held: !!(this._locked && this._locked.id === entry.id),
         lockedIn: !!(this._lockedInto && this._lockedInto.has(entry.id)),
-        available: !purchased && run.credits >= entry.price,
-        unavailableReason: purchased ? 'Fitted' : run.credits < entry.price ? `Save ${entry.price - run.credits} more cr` : null });
+        locked: evoLocked,
+        available: !purchased && !evoLocked && run.credits >= entry.price,
+        unavailableReason: purchased ? 'Fitted' : evoLocked
+          || (run.credits < entry.price ? `Save ${entry.price - run.credits} more cr` : null) });
     }
     // Hull and service rows never come out of offerDraft's slot legality — each carries its own
     // live check, re-read on every refresh so a weld stops offering once the hull is sound and a

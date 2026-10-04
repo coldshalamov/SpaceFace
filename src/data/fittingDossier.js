@@ -15,6 +15,8 @@ import { SHIPS } from './ships.js';
 import { SURVIVAL_EVOLUTIONS } from './survivalEvolutions.js';
 import { ATTACK_TRAIT_BY_ID } from './attackTraits.js';
 import { FACTION_META } from './factions.js';
+import { techDisplayName } from './tech.js';
+import { SWARM_CROSSOVER_CATALOG } from './swarmCrossover.js';
 import { FITTING_MEDIA_IDS } from './fittingMediaManifest.js';
 
 const WEAPON_BY_ID = new Map(WEAPONS.map((d) => [d.id, d]));
@@ -695,11 +697,31 @@ function deadZero(value) {
   return !!m && parseFloat(m[1]) === 0;
 }
 
+/**
+ * Locked hardware reads as purchasable until the click refuses it — name the gate
+ * up front, same convention as the service counter's Gate. Standing, research, and
+ * the swarm crossover ledger all lock a fitting the same way.
+ */
+function pushGateChips(def, push) {
+  if (def.exclusivity && typeof def.exclusivity === 'object') {
+    const exMeta = FACTION_META.find((f) => f && f.id === def.exclusivity.factionId);
+    push('Gate', `Requires Allied — ${(exMeta && (exMeta.name || exMeta.short)) || 'its faction'}`);
+  }
+  if (typeof def.requiresTech === 'string' && def.requiresTech) {
+    push('Gate', `Research required — ${techDisplayName(def.requiresTech)}`);
+  }
+  if (typeof def.swarmEarned === 'string' && def.swarmEarned) {
+    const row = SWARM_CROSSOVER_CATALOG.find((entry) => entry && entry.id === def.swarmEarned);
+    push('Gate', `Earned in Swarm — ${(row && row.blurb) || 'a crossover ledger unlock'}`);
+  }
+}
+
 /** Weapon spec chips. */
 const TRACKING_LABEL = { fixed: 'Fixed', auto_turret: 'Auto-turret', hitscan: 'Hitscan', homing: 'Homing', deploy: 'Deployed' };
 function weaponStats(def) {
   const out = [];
   const push = (label, value) => { if (value != null && value !== '' && !deadZero(value)) out.push({ label, value }); };
+  pushGateChips(def, push);
   push('Damage', num(def.dmg));
   push('Type', def.damageType ? String(def.damageType).replace(/^\w/, (c) => c.toUpperCase()) : null);
   push('DPS', num(def.dps, 1));
@@ -747,12 +769,7 @@ function moduleStats(def) {
   const push = (label, value) => { if (value != null && value !== '' && !deadZero(value)) out.push({ label, value }); };
   const m = def.mods || {};
   const evo = SURVIVAL_EVOLUTIONS.find((e) => e.defId === def.id);
-  // Rep-exclusive hardware reads as purchasable until the click refuses it — name
-  // the standing requirement up front, same convention as the service counter's Gate.
-  if (def.exclusivity && typeof def.exclusivity === 'object') {
-    const exMeta = FACTION_META.find((f) => f && f.id === def.exclusivity.factionId);
-    push('Gate', `Requires Allied — ${(exMeta && (exMeta.name || exMeta.short)) || 'its faction'}`);
-  }
+  pushGateChips(def, push);
   push('Synthesis', evo
     ? evo.consumes.map((id) => MODULE_BY_ID.get(id)?.name || id).join(' + ')
     : null);
