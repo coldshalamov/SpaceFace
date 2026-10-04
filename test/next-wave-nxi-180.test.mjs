@@ -110,7 +110,10 @@ test('counterexamples: scanner courses, stale clues, clue-less pulses, and repea
   assert.equal(signalCourse.reason, 'Investigate vessel signature', 'a non-mission course is untouched');
 
   // A mission course with an OLD superseded clue re-pulsed: observedAt ≠ scannedAt → no change.
+  // (Tracked, so these counterexamples discriminate the observedAt/clue gates, not the
+  // tracked-mission gate.)
   const wp = missionCourse();
+  state.ui.trackedMissionId = 'm_delivery';
   state.nav.waypoint = wp;
   bus.emit('signal:scanResults', {
     sectorId: 'sector_helios_prime',
@@ -161,4 +164,66 @@ test('a stale-fix observation qualifies through the parent intercept advice', ()
   assert.match(wp.reason, /Stale fix/, 'the suggestion names the changed circumstance');
   assert.match(wp.reason, /intercept/i);
   assert.equal(state.ui.trackedMissionId, 'm_delivery', 'still the same tracked job — nothing accepted behind the player');
+});
+
+test('a course parked for an UNTRACKED mission is never rewritten for unrelated evidence', () => {
+  const sim = boot();
+  const { state, bus } = sim;
+  // The tracked selection is mission A; the parked course belongs to active-but-untracked
+  // mission B (reachable via _trackedOrFirstActiveMission). The clue concerns neither job.
+  state.ui.trackedMissionId = 'm_delivery';
+  const parked = missionCourse();
+  parked.missionId = 'm_parked_other';
+  parked.reason = 'Deliver 6u Nickel Ore to the yard';
+  state.nav.waypoint = parked;
+  state.missions.active = [
+    { id: 'm_delivery', status: 'active', title: 'Haul the sample' },
+    { id: 'm_parked_other', status: 'active', title: 'Yard run' },
+  ];
+  const parkedBefore = JSON.stringify(parked);
+
+  bus.emit('signal:scanResults', {
+    sectorId: 'sector_helios_prime',
+    scannedAt: 70,
+    signals: [revisedClue({
+      subjectId: 'manifest:77',
+      scannedAt: 70,
+      reason: 'Contradicted reading — inspect the hold directly.',
+    })],
+  });
+  assert.equal(JSON.stringify(parked), parkedBefore,
+    'an untracked job\'s parked course is untouched — the evidence concerns the tracked objective, not it');
+  assert.equal(parked.reason, 'Deliver 6u Nickel Ore to the yard');
+
+  // Same scene with NO tracked selection at all: no course may claim the evidence.
+  const untracked = missionCourse();
+  state.ui.trackedMissionId = null;
+  state.nav.waypoint = untracked;
+  bus.emit('signal:scanResults', {
+    sectorId: 'sector_helios_prime',
+    scannedAt: 71,
+    signals: [revisedClue({
+      subjectId: 'manifest:78',
+      scannedAt: 71,
+      reason: 'Contradicted reading — inspect the hold directly.',
+    })],
+  });
+  assert.equal(untracked.reason, 'Deliver 12u Iron Ore to Berth 3',
+    'with nothing tracked, no suggestion sentence is rewritten');
+
+  // (b) The matching case still rewrites: tracking the parked job re-parks its course and
+  // makes it the affected suggestion.
+  state.ui.trackedMissionId = 'm_parked_other';
+  state.nav.waypoint = parked;
+  bus.emit('signal:scanResults', {
+    sectorId: 'sector_helios_prime',
+    scannedAt: 72,
+    signals: [revisedClue({
+      subjectId: 'manifest:79',
+      scannedAt: 72,
+      reason: 'Stale fix — intercept the last sighting on this bearing.',
+    })],
+  });
+  assert.equal(parked.reason, 'Stale fix — intercept the last sighting on this bearing.',
+    'once the job is the tracked one, its own course is the affected suggestion');
 });

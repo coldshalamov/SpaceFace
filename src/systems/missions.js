@@ -5700,15 +5700,20 @@ export const missions = {
 
   // NXI-180 — a revised observation qualifies only the course it concerns. When a scan stales
   // out or contradicts a filed clue (NXB-045's book keeps the superseded reading), the LIVE
-  // course — if missions authored it for a tracked job — has its suggestion sentence re-qualified
-  // through the clue's route advice, so the old advice does not keep sending the player at a
-  // bearing the evidence has already revised. Unrelated tracked jobs, board rows, and the
-  // tracked-mission selection are untouched, and nothing is auto-accepted: no accept/track call
-  // sits on this path. A scanner-laid signal course (no missionId) stays the scanner's to move.
+  // course — when missions authored it for the TRACKED job — has its suggestion sentence
+  // re-qualified through the clue's route advice, so the old advice does not keep sending the
+  // player at a bearing the evidence has already revised. The gate is the same navigation-
+  // versus-tracking check the local map draws (NXI-215): the waypoint's missionId must be the
+  // tracked mission's id, so a course parked for an active-but-untracked job (reachable via
+  // _trackedOrFirstActiveMission) is never rewritten for evidence it has no relation to.
+  // Unrelated tracked jobs, board rows, and the tracked-mission selection are untouched, and
+  // nothing is auto-accepted: no accept/track call sits on this path. A scanner-laid signal
+  // course (no missionId) stays the scanner's to move.
   _onClueRouteRevision(payload) {
     const state = this.state;
     const wp = state && state.nav && state.nav.waypoint;
-    if (!wp || !wp.missionId) return false;
+    const trackedId = state && state.ui && state.ui.trackedMissionId;
+    if (!wp || !wp.missionId || wp.missionId !== trackedId) return false;
     const signals = payload && Array.isArray(payload.signals) ? payload.signals : [];
     const scannedAt = Number(payload && payload.scannedAt);
     let clue = null;
