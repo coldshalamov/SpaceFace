@@ -4977,6 +4977,38 @@ export const traffic = {
       rec.farActorId = null;
       return;
     }
+    this._readoptPromotedTraffic(p);
+  },
+
+  /**
+   * A traffic hull can promote from the far table with no roster record at all: a boot-time
+   * enter shelves her before the enter's roster rebuilds finish, and a rebuild that keeps
+   * only live entities drops her row. The lean far row keeps data.ai (so the NXI-165 contact
+   * id and the express itinerary survive) but not the live contact stamps, and no stepper
+   * owns a recordless hull — she promotes anonymous and parked. Re-adoption through the same
+   * path a save takes restores the record (motion/freight) and the express route; the contact
+   * identity is re-stamped AFTER adoption so the callsign wins the scanner label back,
+   * matching the fixture's stamp order (durable → route → contact).
+   */
+  _readoptPromotedTraffic(p) {
+    if (!p || p.trafficRole == null) return;
+    const sectorId = this.state.world && this.state.world.currentSectorId;
+    if (!sectorId) return;
+    const ent = this.state.entities && this.state.entities.get(p.id);
+    if (!ent || ent.alive === false || ent.isPlayer || ent.type !== 'ship') return;
+    const d = ent.data || (ent.data = {});
+    if (d.trafficRole !== p.trafficRole) return;
+    const home = ent.homeSectorId || d.homeSectorId || d.sectorId;
+    if (home && home !== sectorId) return;
+    // Slot-owned cast hulls recover through their own materializer, never generic adoption.
+    if (d.activityActorSlotId || d.ceresActivityCast || d.authoredActivityCast) return;
+    this._adoptRematerializedTraffic(sectorId, this._sectorStations());
+    const contactId = d.ai && typeof d.ai.namedLaneContactId === 'string'
+      ? d.ai.namedLaneContactId : null;
+    if (!contactId) return;
+    const contact = NAMED_LANE_CONTACTS.find((c) => c && c.id === contactId);
+    if (contact) this._stampNamedLaneContact(ent, contact);
+    else delete d.ai.namedLaneContactId;
   },
 
   _pruneDead() {
