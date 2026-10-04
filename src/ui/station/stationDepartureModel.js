@@ -3,6 +3,7 @@
 // the Undock tile's READY/CHECK/RISK summary, the Departure Check chips, and the 3-step
 // Getting Started handoff. Live consumers import this module directly.
 import { COMMODITIES } from '../../data/commodities.js';
+import { projectCargoCustody } from '../sim/custodyProjection.js';
 import { prettyType } from './stationHubFormatters.js';
 import { stationTabLabel } from './stationHubModel.js';
 import { activeMissionCount } from './stationMissionModel.js';
@@ -139,13 +140,26 @@ function departureCargoChip(state) {
   const free = Math.max(0, cap - safeUsed);
   const freeFrac = free / cap;
   const kind = free <= 0.1 ? 'bad' : (freeFrac < 0.18 ? 'warn' : 'ok');
+  const sealed = sealedHoldLine(state);
   return {
     kind,
     label: 'Hold',
-    text: fmtDepartUnits(free) + 'u free',
+    text: fmtDepartUnits(free) + 'u free' + (sealed ? ' · ' + sealed : ''),
     targetTab: 'market',
     actionLabel: kind === 'ok' ? 'Open Market to review cargo' : 'Open Market to sell cargo',
   };
+}
+
+/** Sealed contract freight, from the custody projection. Empty when the whole hold is yours. */
+export function sealedHoldLine(state) {
+  const projection = projectCargoCustody(state);
+  const parts = [];
+  for (const lot of projection.lots) {
+    if (!lot || lot.custody !== 'hold' || !(lot.qty > lot.sellableQty)) continue;
+    const name = String(lot.commodityId || '').replace(/^cmdty_/, '').replace(/_/g, ' ');
+    parts.push(`${lot.sellableQty} of ${lot.qty} ${name} yours to sell`);
+  }
+  return parts.join('; ');
 }
 
 function departureFuelChip(state) {
