@@ -1,0 +1,1 @@
+NEW N4 controlled correction of N3 visible growth bands. Retain readable compressed root folds and N2 continuous ridge. Reorient baked growth to the actual longitudinal anatomy UV direction, with tapered narrow unequal courses and reduced amplitude. Retain three shared maps/materials and unchanged shape envelope. Not recovered Surface3 and not art/runtime promoted.
