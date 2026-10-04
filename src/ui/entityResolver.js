@@ -28,6 +28,7 @@ import { BODY_MODULES } from '../data/claimableBodies.js';
 import { aceById, knownAces } from '../data/namedAces.js';
 import { stuntDossierForNetwork } from '../combat/stuntWitnesses.js';
 import { airSentenceForId } from './ship/fitReadout.js';
+import { handlingBandModel } from './ship/shipBandModels.js';
 
 export const ENTITY_TYPES = Object.freeze([
   'faction', 'commodity', 'station', 'hull', 'module', 'captain', 'sector', 'contract',
@@ -317,10 +318,13 @@ function hullDossier(state, id) {
     { k: 'Price', v: creditText(s.price), tone: 'goal', num: true },
   ];
   const lines = [];
-  // Mass and handling are why it flies the way it does — J2's band. Stated as the fact, not a verb;
-  // handlingProfile owns the roster-relative reading and this must not contradict it.
   if (s.mass != null) lines.push({ label: 'Mass', text: String(s.mass) });
-  if (s.handling != null) lines.push({ label: 'Handling', text: String(s.handling) });
+  // The same sentences the fit screen prints, so a hull you open before you pay
+  // does not contradict the yard.
+  const band = handlingBandModel({ shipId: id, fittings: [], player: null });
+  if (band && band.crestSentence) lines.push({ label: 'Flies', text: band.crestSentence });
+  const brake = band && Array.isArray(band.bars) ? band.bars.find((row) => row.id === 'brake') : null;
+  if (brake && brake.why) lines.push({ label: 'Stops', text: brake.why });
   return { kicker: 'Hull · tier ' + String(s.tier ?? '?'), facts, lines, links: [], route: { screen: 'ship', focus: 'hull:' + id } };
 }
 
