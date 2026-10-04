@@ -213,26 +213,31 @@ test('seed 4242: combat and builder runs carry the named verb through intro, cha
     runBeat4(h, run);
     const legs = Math.max(1, { patrol: 2, traders: 3, free: 2 }[run.branch] - 1);
     runBeat5(h, run);
-    // Finish any remaining authored legs on the live board to reach B6.
+    // Finish any remaining authored legs on the live board to reach B6 — each leg's
+    // offer still names the verb.
     for (let leg = 0; leg < legs && h.state.story.beatIndex === 5; leg++) {
       const board = h.missions.ensureBoard(run.chainStationId);
       const step = h.state.story.chainProgress + 1;
       const tag = `campaign47a:b5:${run.branch}:${step}`;
       const offer = board.slots.find((row) => row.storyTag === tag);
       if (!offer) break;
+      assert.equal(offer.params.physicalVerb, run.verbs[5], `${label} leg ${step} names its verb`);
       assert.equal(h.missions.acceptMission(offer.id), true);
       const mission = h.state.missions.active.find((row) => row.storyTag === tag);
       completePhysically(h, mission);
     }
     assert.equal(h.state.story.beatIndex, 6, `${label} run reaches Empire Seed`);
     runBeat6(h, run);
-    // B7: the run's climax operation posts with its own named verb through the same seam.
+    // B7: the deployed seed asset is what opens the run's climax operation — the flag
+    // the deploy wrote is the offer's own key, not a test literal.
+    const assetId = h.state.story.flags.empire_seed_asset_id;
+    assert.ok(assetId, `${label} seed asset id is on record`);
     const op = buildMissionBoardContract(7, {
       seed: SEED,
       epoch: 0,
       branch: run.branch,
       elroyOutcome: run.elroyOutcome,
-      assetId: 'drone_run_1',
+      assetId,
     });
     assert.ok(op, `${label} Deep Reach op is offered`);
     assert.equal(op.params.headlineVerb, run.verbs[7], `${label} climax names its verb`);

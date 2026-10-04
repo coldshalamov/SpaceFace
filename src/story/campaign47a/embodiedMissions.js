@@ -3,7 +3,11 @@
 // encounterDirector owns encounters, and aftermathWrecks owns battle residue.
 
 import { hash32 } from '../../core/rng.js';
-import { PQ032_BEAT_SET_PIECES } from '../../data/missions.js';
+import {
+  BRANCH_HEADLINE_VERBS as LIVE_BRANCH_HEADLINE_VERBS,
+  PQ032_BEAT_SET_PIECES,
+  STORY_BEATS,
+} from '../../data/missions.js';
 import {
   BRANCH_CHAIN,
   BRANCH_FACTION,
@@ -574,28 +578,45 @@ export function validateEmbodiedMissions() {
     }
   }
   // LG-SPINE-HEADLINES — all 8 beats name a physical verb a player performs, resolved
-  // per run for the branch-dependent beats and held in parity with the canonical table.
+  // per run for the branch-dependent beats. Parity is checked against the live spine
+  // (STORY_BEATS / live BRANCH_HEADLINE_VERBS), not the sidecar mirror alone: a literal
+  // mirror compared to itself can never drift.
   for (const def of EMBODIED_MISSIONS) {
     const canonical = CAMPAIGN_BEATS[def.beat];
+    const live = STORY_BEATS[def.beat];
     if (def.beat === 7) {
       for (const branch of BRANCH_IDS) {
         const op = DEEP_REACH_CLIMAX[branch];
         if (!op || !op.headlineVerb) errors.push(`B7: ${branch} climax verb missing`);
         if (!canonical.headlineVerbs || canonical.headlineVerbs[branch] !== (op && op.headlineVerb)) {
-          errors.push(`B7: ${branch} headline verb drift`);
+          errors.push(`B7: ${branch} canonical headline verb drift`);
+        }
+        if (!live.headlineVerbs || live.headlineVerbs[branch] !== (op && op.headlineVerb)) {
+          errors.push(`B7: ${branch} live headline verb drift`);
         }
       }
     } else if (def.headlineVerbs) {
       for (const branch of BRANCH_IDS) {
         if (!def.headlineVerbs[branch]) errors.push(`B${def.beat}: ${branch} headline verb missing`);
+        if (LIVE_BRANCH_HEADLINE_VERBS[branch] !== def.headlineVerbs[branch]) {
+          errors.push(`B${def.beat}: ${branch} live headline verb drift`);
+        }
         if (!canonical.headlineVerbs || canonical.headlineVerbs[branch] !== def.headlineVerbs[branch]) {
-          errors.push(`B${def.beat}: ${branch} headline verb drift`);
+          errors.push(`B${def.beat}: ${branch} canonical headline verb drift`);
+        }
+        if (!live.headlineVerbs || live.headlineVerbs[branch] !== def.headlineVerbs[branch]) {
+          errors.push(`B${def.beat}: ${branch} live table headline verb drift`);
         }
       }
     } else if (!def.headlineVerb) {
       errors.push(`B${def.beat}: headline verb missing`);
-    } else if (canonical.headlineVerb !== def.headlineVerb) {
-      errors.push(`B${def.beat}: canonical headline verb drift`);
+    } else {
+      if (canonical.headlineVerb !== def.headlineVerb) {
+        errors.push(`B${def.beat}: canonical headline verb drift`);
+      }
+      if (live.headlineVerb !== def.headlineVerb) {
+        errors.push(`B${def.beat}: live headline verb drift`);
+      }
     }
   }
   const b3 = embodiedMissionAt(3);
