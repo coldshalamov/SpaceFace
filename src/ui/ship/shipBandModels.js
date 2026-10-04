@@ -688,9 +688,23 @@ export function capabilityBandModel({ derived, state, fittings = [] }) {
  */
 function leadFromTow(tow) {
   const hullName = tow && tow.hullName ? String(tow.hullName) : null;
+  if (hullName) {
+    return {
+      value: 'can tow',
+      word: withArticle(hullName),
+      why: (tow && tow.why) || (tow && tow.verb) || '',
+    };
+  }
+  if (tow && tow.coversRoster) {
+    return {
+      value: 'can tow',
+      word: 'any hull',
+      why: (tow && tow.why) || (tow && tow.verb) || '',
+    };
+  }
   return {
-    value: hullName ? 'can tow' : 'no tow',
-    word: hullName ? `a ${hullName}` : 'too loaded',
+    value: 'no tow',
+    word: 'too loaded',
     why: (tow && tow.why) || (tow && tow.verb) || '',
   };
 }

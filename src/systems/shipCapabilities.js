@@ -20,7 +20,8 @@
 import { ATTACHMENT_DEFS } from '../data/combatDefs.js';
 import { MODULES } from '../data/modules.js';
 import { SHIPS } from '../data/ships.js';
-import { PLAYER_TRANSLATION_RESPONSIVENESS } from '../core/flight/propulsionCatalog.js';
+import { PLAYER_TRANSLATION_RESPONSIVENESS, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
+import { createPropulsionRuntime, stepPropulsion } from '../core/flight/propulsionKernel.js';
 import {
   HEAVY_AS_TERRAIN_MASS,
   TERRAIN_CRUMPLE_LAW,
@@ -180,44 +181,94 @@ export function towClassMassFor(derived) {
   return Math.max(0, force / TOW_UNDER_WAY_ACCEL - self);
 }
 
-/** Partner masses whose coupled accel stays within 20% of the under-way bar. */
-export function towMatchBandFor(derived) {
-  const force = playerTowForceFor(derived);
+const TOW_PICK_CACHE = new WeakMap();
+const TOW_SAMPLE_DT = 1 / 60;
+
+/**
+ * Speed of a coupled tow after the under-way window, on the player flight tick.
+ * The drive force is whatever stepPropulsion emits for the tug's own mass. That
+ * force accelerates tug + load. Speed is fed back so a governor sees the tow,
+ * not a ship nailed to the origin. Peak thrust after a torch finishes spooling
+ * is not this number — the window is 1.5 s, and a spool that ends at 2.8 s has
+ * not arrived yet.
+ */
+export function underwayTowSpeed(derived, loadMass) {
   const self = towSelfMass(derived);
-  if (!(force > 0) || !(self > 0)) return null;
-  return {
-    minMass: force / (TOW_UNDER_WAY_ACCEL * 1.2) - self,
-    maxMass: force / (TOW_UNDER_WAY_ACCEL * 0.8) - self,
+  const load = Math.max(0, finite(loadMass, 0));
+  if (!(self > 0)) return 0;
+  const entity = { id: 'tow-predict', isPlayer: true, mass: self, data: { derived } };
+  const profile = resolvePropulsionProfile(entity, { playerId: 'tow-predict', seed: 4242 });
+  const body = {
+    pos: { x: 0, z: 0 },
+    vel: { x: 0, z: 0 },
+    rot: 0,
+    angVel: 0,
+    mass: self,
+    inertia: Math.max(1, self),
+    radius: 14,
   };
+  let runtime = createPropulsionRuntime(profile);
+  let speed = 0;
+  const ticks = Math.max(1, Math.round(CAPABILITY_LAW.towUnderWaySeconds / TOW_SAMPLE_DT));
+  const coupled = self + load;
+  for (let i = 0; i < ticks; i += 1) {
+    body.vel.x = speed;
+    body.vel.z = 0;
+    const step = stepPropulsion({
+      dt: TOW_SAMPLE_DT,
+      body,
+      input: { throttle: 1, assistMode: 'assisted' },
+      profile,
+      runtime,
+    });
+    runtime = step.runtime;
+    speed += (finite(step.force.x, 0) / coupled) * TOW_SAMPLE_DT;
+    if (speed < 0) speed = 0;
+  }
+  return speed;
 }
 
-/** Heaviest roster hull a live tow of this fit holds within 20% of the under-way bar.
- *  A fit with no spare class (the bar already belongs to its own mass) names nothing,
- *  even when a light hull would limp along inside the slow edge of the band. */
-export function towableHullFor(derived) {
-  if (!(towClassMassFor(derived) > 0)) return null;
-  const band = towMatchBandFor(derived);
-  if (!band) return null;
+function towPickFor(derived) {
+  const key = derived && derived.propulsion;
+  if (key && typeof key === 'object') {
+    const hit = TOW_PICK_CACHE.get(key);
+    if (hit) return hit;
+  }
+  const target = CAPABILITY_LAW.towUnderWaySpeed;
   let best = null;
-  for (const shipDef of SHIPS) {
-    const m = finite(shipDef.mass, 0);
-    if (!(m > 0) || m < band.minMass || m > band.maxMass) continue;
-    if (!best || m > finite(best.mass, 0) || (m === finite(best.mass, 0) && shipDef.id < best.id)) best = shipDef;
+  let heaviest = null;
+  let heaviestSpeed = 0;
+  if (towClassMassFor(derived) > 0) {
+    for (const shipDef of SHIPS) {
+      const m = finite(shipDef.mass, 0);
+      if (!(m > 0)) continue;
+      const speed = underwayTowSpeed(derived, m);
+      if (!heaviest || m > finite(heaviest.mass, 0)) {
+        heaviest = shipDef;
+        heaviestSpeed = speed;
+      }
+      if (Math.abs(speed - target) / target > 0.2) continue;
+      if (!best || m > finite(best.mass, 0) || (m === finite(best.mass, 0) && shipDef.id < best.id)) {
+        best = shipDef;
+      }
+    }
   }
-  return best;
+  const pick = {
+    hull: best,
+    coversRoster: !best && !!heaviest && heaviestSpeed >= target * 0.8,
+  };
+  if (key && typeof key === 'object') TOW_PICK_CACHE.set(key, pick);
+  return pick;
 }
 
-/** True when every roster hull is easier than the bar, so naming one would miss it by more than 20%. */
+/** Heaviest roster hull a 1.5 s player tow holds within 20% of 60 WU/s. */
+export function towableHullFor(derived) {
+  return towPickFor(derived).hull;
+}
+
+/** True when even the heaviest roster hull is under way inside the 1.5 s window. */
 export function towCoversRoster(derived) {
-  if (towableHullFor(derived)) return false;
-  const band = towMatchBandFor(derived);
-  if (!band) return false;
-  let heaviest = 0;
-  for (const shipDef of SHIPS) {
-    const m = finite(shipDef.mass, 0);
-    if (m > heaviest) heaviest = m;
-  }
-  return heaviest > 0 && heaviest < band.minMass;
+  return towPickFor(derived).coversRoster;
 }
 
 /** The heaviest ROSTER hull at or under `massT`, so the sentence can name a ship the player knows. */

@@ -23,9 +23,11 @@ import { createPropulsionRuntime, stepPropulsion } from '../src/core/flight/prop
 
 const SEED = 4242;
 const DT = 1 / 60;
-const BAR = CAPABILITY_LAW.towUnderWaySpeed / CAPABILITY_LAW.towUnderWaySeconds;
+const WINDOW_S = CAPABILITY_LAW.towUnderWaySeconds;
+const TARGET_SPEED = CAPABILITY_LAW.towUnderWaySpeed;
 
-function kernelTowAccel(tugId, loadMass) {
+/** Independent of underwayTowSpeed: a 1.5 s assisted hold, speed kept, force shared with the load. */
+function towSpeedAtWindow(tugId, loadMass) {
   const derived = getDerivedStats(tugId, [], null);
   const self = derived.operationalMass || derived.mass || 0;
   const entity = { id: 'pilot', isPlayer: true, mass: self, data: { derived } };
@@ -38,28 +40,28 @@ function kernelTowAccel(tugId, loadMass) {
     rot: 0,
     angVel: 0,
     mass: self,
-    inertia: 90,
+    inertia: Math.max(1, self),
     radius: 14,
   };
   let runtime = createPropulsionRuntime(profile);
-  let best = 0;
-  // Hold speed at rest so a spooling drive can reach commanded thrust without the
-  // governor eating it. The force is whatever stepPropulsion emits.
-  for (let i = 0; i < 300; i += 1) {
-    body.vel.x = 0;
+  let speed = 0;
+  const ticks = Math.max(1, Math.round(WINDOW_S / DT));
+  const coupled = self + loadMass;
+  for (let i = 0; i < ticks; i += 1) {
+    body.vel.x = speed;
     body.vel.z = 0;
     const step = stepPropulsion({
       dt: DT,
       body,
-      input: { throttle: 1, assistMode: 'newtonian' },
+      input: { throttle: 1, assistMode: 'assisted' },
       profile,
       runtime,
     });
     runtime = step.runtime;
-    const force = Math.hypot(step.force.x, step.force.z);
-    if (force > best) best = force;
+    speed += (Number(step.force.x) || 0) / coupled * DT;
+    if (speed < 0) speed = 0;
   }
-  return best / (self + loadMass);
+  return speed;
 }
 
 test('predictions carry tow class off the live tow law (seed 4242)', () => {
@@ -78,7 +80,7 @@ test('the crest uses an before a vowel hull', () => {
   assert.equal(towSentence({ towCoversRoster: true }), 'Can tow anything on the roster.');
 });
 
-test('seed 4242: the named hull, towed on the flight kernel, lands within 20%', () => {
+test('seed 4242: a 1.5 s tow of the named hull lands within 20% of 60 WU/s', () => {
   let vowelCrest = false;
   const heaviest = SHIPS.reduce((best, ship) => (ship.mass > best.mass ? ship : best));
   for (const ship of SHIPS) {
@@ -97,11 +99,11 @@ test('seed 4242: the named hull, towed on the flight kernel, lands within 20%', 
     if (name) {
       assert.equal(verbs.tow.verb, `Can tow ${withArticle(name)}`);
       assert.equal(verbs.tow.hullId, named.id);
-      const achieved = kernelTowAccel(ship.id, named.mass);
-      const err = Math.abs(achieved - BAR) / BAR;
+      const speed = towSpeedAtWindow(ship.id, named.mass);
+      const err = Math.abs(speed - TARGET_SPEED) / TARGET_SPEED;
       assert.ok(
         err <= 0.2,
-        `${ship.id} towing ${named.id}: kernel ${achieved.toFixed(2)} WU/s^2 vs bar ${BAR} (${(err * 100).toFixed(1)}%)`,
+        `${ship.id} towing ${named.id}: ${speed.toFixed(1)} WU/s after ${WINDOW_S} s vs ${TARGET_SPEED} (${(err * 100).toFixed(1)}%)`,
       );
       if (/^[AEIOU]/i.test(name)) {
         vowelCrest = true;
@@ -109,10 +111,10 @@ test('seed 4242: the named hull, towed on the flight kernel, lands within 20%', 
       }
     } else if (model.profile.predictions.towCoversRoster) {
       assert.equal(verbs.tow.verb, 'Can tow anything on the roster');
-      const achieved = kernelTowAccel(ship.id, heaviest.mass);
+      const speed = towSpeedAtWindow(ship.id, heaviest.mass);
       assert.ok(
-        achieved > BAR * 1.2,
-        `${ship.id} says the roster is easy, but towing ${heaviest.id} made ${achieved.toFixed(2)} vs bar ${BAR}`,
+        speed >= TARGET_SPEED * 0.8,
+        `${ship.id} says any hull is under way, but ${heaviest.id} made ${speed.toFixed(1)} WU/s in ${WINDOW_S} s`,
       );
     }
   }
