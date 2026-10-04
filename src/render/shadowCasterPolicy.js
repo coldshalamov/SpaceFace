@@ -261,8 +261,19 @@ export function syncShadowCasterPolicy(root, lodLevel = null, options = null) {
     if ((object.receiveShadow === true) !== next) receiverDelta += next ? 1 : -1;
     object.receiveShadow = next;
   };
+  // Callers at an attach seam need the subtree's minted-flag count as mounted
+  // (before this traverse's rewrites) — measure it inside this walk instead of
+  // letting them re-traverse. Counts non-mesh objects like countShadowReceivers.
+  const preCountRoot = options && options.preCountRoot;
+  let preReceiverCount = 0;
   configureRealtimeCanopyMaterials(root);
   root.traverse((object) => {
+    if (preCountRoot && object && object.receiveShadow === true) {
+      for (let p = object; p; p = p.parent) {
+        if (p === preCountRoot) { preReceiverCount += 1; break; }
+        if (p === root) break;
+      }
+    }
     if (!object.isMesh) return;
     if (!object.visible) {
       object.castShadow = false;
@@ -302,6 +313,7 @@ export function syncShadowCasterPolicy(root, lodLevel = null, options = null) {
 
   if (options && options.out && typeof options.out === 'object') {
     options.out.receiverDelta = receiverDelta;
+    if (preCountRoot) options.out.preReceiverCount = preReceiverCount;
   }
   if (state.castBand !== nextCastBand) state.pose = null;
   state.dirty = false;

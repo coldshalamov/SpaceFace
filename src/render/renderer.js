@@ -297,7 +297,7 @@ import {
   shouldRunEntityClosures,
   viewHalfExtents,
 } from './entityViewSyncBand.js';
-import { createShadowReceiverTally, noteShadowPolicyChanged } from './shadowReceiverTally.js';
+import { countShadowReceivers, createShadowReceiverTally, noteShadowPolicyChanged } from './shadowReceiverTally.js';
 import {
   applyEntityMeshVisibility,
   isAuthoredPendingStatus,
@@ -6023,17 +6023,22 @@ const SHADOW_DEPTH_PASS_NODE_CAP = 4096;
 
 // Swarm warm coverage stays claimed only on a terminal outcome: the kick
 // demonstrably produced the warmed family ('authored*', a semantic fallback, a
-// settled procedural body) or proved the asset unavailable/refusably-terminal —
-// 'unavailable' claimed on purpose (a genuinely missing GLB must not re-decode
-// every dwell) and 'invalid-upgrade-request' means the request itself was
-// malformed so a retry resolves identically. Every other settle — refusal
-// classes, lifecycle aborts, stall verdicts, statuses minted after this list —
-// means the row never warmed, so it releases toward a bounded re-warm instead of
-// pinning coverage on the in-round compose the warm exists to pre-pay.
+// settled procedural body) or proved the request itself terminally malformed —
+// 'invalid-upgrade-request' means a retry resolves identically. 'unavailable' is
+// NOT claimed: loadPart resolves null for every swallowed class (transient
+// decode/fetch failures and the warm's own deadline killing its consumers mint
+// the same verdict as a genuinely missing GLB), so claiming it pins coverage on
+// an archetype that never warmed for the whole run. Releasing it re-kicks at
+// the bounded retry cadence instead — the boundary vocabulary already treats
+// 'unavailable' as retry-eligible (AUTHORED_ADMISSION_RETRY_MAX), and a truly
+// absent file's re-kick is a fast fetch failure, not a decode. Every other
+// settle — refusal classes, lifecycle aborts, stall verdicts, statuses minted
+// after this list — means the row never warmed, so it releases toward a bounded
+// re-warm instead of pinning coverage on the in-round compose the warm exists
+// to pre-pay.
 const SWARM_WARM_CLAIMED_OUTCOMES = new Set([
   'completed',
   'shell-ready',
-  'unavailable',
   'procedural-settled',
   'invalid-upgrade-request',
 ]);
@@ -7268,11 +7273,11 @@ export function publishPreparedSectorBoundary(record, options = {}) {
       if (options.meshes?.get(id) === boundary) options.meshes.delete(id);
     } catch (cleanupError) { rollbackErrors.push(cleanupError); }
     clearEntityMeshReference(entity, boundary);
-    // The boundary's flags were counted while mounted — subtract them exactly
-    // instead of forcing a whole-scene recount on the rollback path.
+    // The boundary mounts un-noted by design (its receivers are covered by the publish
+    // recount), and the rollback can run before or after that recount — only a recount
+    // re-derives the subtree's tally exactly, never a fixed subtract.
     try {
-      if (options.noteShadowMeshRemoved) options.noteShadowMeshRemoved(boundary);
-      else options.markShadowReceiversDirty?.();
+      options.markShadowReceiversDirty?.();
     }
     catch (cleanupError) { rollbackErrors.push(cleanupError); }
     if (rollbackErrors.length) {
@@ -7310,9 +7315,7 @@ export async function disposePreparedSectorBoundary(record, options = {}) {
   await attempt(() => options.disposePreparedBoundary?.(boundary));
   await attempt(() => options.disposeBoundaryObject?.(boundary));
   await attempt(() => clearEntityMeshReference(record.entity, boundary));
-  await attempt(() => (options.noteShadowMeshRemoved
-    ? options.noteShadowMeshRemoved(boundary)
-    : options.markShadowReceiversDirty?.()));
+  await attempt(() => options.markShadowReceiversDirty?.());
   if (cleanupErrors.length) {
     throw new AggregateError(cleanupErrors, `Prepared boundary ${id} cleanup failed`);
   }
@@ -8446,14 +8449,17 @@ export const render = {
         if (target) {
           // Exact receiver bookkeeping at the swap seam — no recount: the
           // detached fallback's flags were counted while mounted; the incoming
-          // subtree's minted flags count now (measured before the sync rewrites
-          // them), and the checked sync's own traverse delta settles its rewrites.
+          // subtree's minted flags count now (the checked sync measures them
+          // inside its own traverse via preCountRoot, before its rewrites), and
+          // the checked sync's receiverDelta settles the rewrites themselves.
           if (fallback) this._noteShadowMeshRemoved?.(fallback);
-          if (root) this._noteShadowMeshAdded?.(root);
           invalidateShadowCasterPolicy(target);
           const lodLevel = target.userData && target.userData.lod
             ? target.userData.lod.level : null;
-          const swapPolicy = this._syncShadowCasterPolicyChecked(target, lodLevel, entity);
+          const swapPolicy = this._syncShadowCasterPolicyChecked(
+            target, lodLevel, entity, root ? { preCountRoot: root } : null);
+          if (root) this._noteShadowMeshAdded?.(
+            root, swapPolicy ? swapPolicy.preReceiverCount : null);
           if (swapPolicy) {
             this._shadowMapDirty = true;
             if (!noteShadowPolicyChanged(this._shadowReceiverTally, swapPolicy)) {
@@ -9159,18 +9165,6 @@ export const render = {
         if (paceBootQueue) await paceBootQueue();
         if (!lifecycle.isActive()) return;
         syncVisiblePointLightBudget(scene, state.settings && state.settings.video);
-        compileShadowDepthPipelines({
-          renderer,
-          light: this._keyLight,
-          camera: cam.obj,
-          subjects: [],
-          forceEnable: this._shadowSettingOn === true,
-          THREE,
-          captureObjectHome,
-          restoreObjectHome,
-          lightingScene: scene,
-          stagingName: 'SF_BootShadowMapPrime',
-        });
         // VFX init() runs after renderer.init() returns. A 140 ms wait can finish
         // first and leave count-0 combat pools for the first menu bloom.
         const vfxWaitStarted = typeof performance !== 'undefined' && typeof performance.now === 'function'
@@ -10662,18 +10656,6 @@ export const render = {
       // Env/light/shadow cardinality is part of the driver key. Bake before capture, not here:
       // replacing scene.environment after the opening plan is frozen fails the first-draw gate.
       syncVisiblePointLightBudget(scene, state.settings && state.settings.video);
-      compileShadowDepthPipelines({
-        renderer,
-        light: this._keyLight,
-        camera: cam.obj,
-        subjects: [],
-        forceEnable: this._shadowSettingOn === true,
-        THREE,
-        captureObjectHome,
-        restoreObjectHome,
-        lightingScene: scene,
-        stagingName: 'SF_OpeningShadowMapPrime',
-      });
       // The content-hash-bound set drives the global deletion: A-B is deferred, while the exact
       // opening key set (including the measured opening-only misses) is compiled once for this
       // first picture. No broad authored root is admitted a second time.
@@ -13597,19 +13579,6 @@ export const render = {
       // Exact first-picture leaves are already compiled. Predicted sector probes stay color-only
       // with a hard budget. Do not release admission-await until after this drain, or overlapping
       // authored compiles keep the pending set non-empty and the startup gate times out.
-      // Allocate the shadow map before those color compiles so physical keys include numDirLightShadows.
-      compileShadowDepthPipelines({
-        renderer,
-        light: this._keyLight,
-        camera: cam.obj,
-        subjects: [],
-        forceEnable: this._shadowSettingOn === true,
-        THREE,
-        captureObjectHome,
-        restoreObjectHome,
-        lightingScene: scene,
-        stagingName: 'SF_PostOpeningShadowMapPrime',
-      });
       syncVisiblePointLightBudget(scene, state.settings && state.settings.video);
       const sector = this._pendingPostOpeningSector;
       this._pendingPostOpeningSector = null;
@@ -14310,8 +14279,13 @@ export const render = {
       this._syncPostOptions();
       if (p.key === 'shadows' || p.key == null) {
         const shadowSettingWasOff = this._shadowSettingOn !== true;
-        this._shadowSettingOn = vd.shadows !== false;
-        this._markShadowReceiversDirty();
+        const nextShadowSetting = vd.shadows !== false;
+        const shadowSettingChanged = this._shadowSettingOn !== nextShadowSetting;
+        this._shadowSettingOn = nextShadowSetting;
+        // A whole-settings re-emit carrying no shadows delta must not mark the
+        // receiver tally — the next resolve pays a whole-scene recount inside a
+        // presented frame for zero flag changes.
+        if (shadowSettingChanged) this._markShadowReceiversDirty();
         this._ensureKeyLightShadows();
         if (shadowSettingWasOff && this._shadowSettingOn === true) this._stageShadowDepthOnSettingEnable();
         this._syncShadowMapEnabled();
@@ -16317,17 +16291,24 @@ export const render = {
         if (typeof ship.userData?.requestAuthoredUpgrade === 'function') {
           const entry = { id: spec.id, boundary: ship, result: undefined };
           warm.boundaryKicks.push(entry);
-          const kick = track(requestAuthoredUpgrade(ship, renderer, scene, {
+          const enemyId = spec.data && spec.data.lootTableId;
+          const kickShip = (attempt) => track(requestAuthoredUpgrade(ship, renderer, scene, {
             residencyRole: decodeRole,
             sectorId,
-            upgradeJobKey: `${specPrefix}job:${spec.id}`,
+            upgradeJobKey: `${specPrefix}job:${spec.id}${attempt > 0 ? `:r${attempt}` : ''}`,
             isResidencyOwnerActive: () => warm.building === true,
-          }), `ship:${spec.id}`);
+          }), `ship:${spec.id}${attempt > 0 ? `:r${attempt}` : ''}`);
+          const kick = kickShip(0);
           kick.then((result) => {
             entry.result = result;
-            unmarkOnRetriableOutcome(result, spec.data && spec.data.lootTableId);
+            unmarkOnRetriableOutcome(result, enemyId);
           });
           warm.pendingAttachments.push(kick);
+          // Retriable outcomes get one same-window re-kick inside finish() —
+          // the deferred lane's two-strike contract, which this launch warm
+          // predates (its kicks used to release with no retry).
+          (warm.retriableKicks || (warm.retriableKicks = []))
+            .push({ entry, enemyId, kick: kickShip });
         }
       } catch (error) {
         console.warn('[render] crucible warm ship build failed', spec && spec.id, error);
@@ -16352,21 +16333,25 @@ export const render = {
         // Same boundary hook the live kill triggers — attachPackagedBody's admission stages
         // the packaged group detached, preps its pipelines, then mounts under the warm root.
         if (typeof hulk.userData?.requestAuthoredUpgrade === 'function') {
-          const hulkKick = track(
+          const hulkEnemyId = spec && spec.data
+            && spec.data.hulkVisual && spec.data.hulkVisual.lootTableId;
+          const kickHulk = (attempt) => track(
             hulk.userData.requestAuthoredUpgrade(renderer, scene, {
               residencyRole: decodeRole,
               sectorId,
               isResidencyOwnerActive: () => warm.building === true,
             }),
-            `hulk:${spec.id}`,
+            `hulk:${spec.id}${attempt > 0 ? `:r${attempt}` : ''}`,
           );
+          const hulkEntry = { id: `hulk:${spec.id}`, boundary: hulk, result: undefined };
+          const hulkKick = kickHulk(0);
           hulkKick.then((result) => {
-            unmarkOnRetriableOutcome(
-              result,
-              spec && spec.data && spec.data.hulkVisual && spec.data.hulkVisual.lootTableId,
-            );
+            hulkEntry.result = result;
+            unmarkOnRetriableOutcome(result, hulkEnemyId);
           });
           warm.pendingAttachments.push(hulkKick);
+          (warm.retriableKicks || (warm.retriableKicks = []))
+            .push({ entry: hulkEntry, enemyId: hulkEnemyId, kick: kickHulk });
         }
       } catch (error) {
         console.warn('[render] crucible warm hulk build failed', spec && spec.id, error);
@@ -16771,6 +16756,48 @@ export const render = {
         ),
         new Promise((resolve) => setTimeout(resolve, decodeWaitMs)),
       ]);
+    }
+    // Deferred-lane parity: kicks that settled retriable inside the window released
+    // their coverage row mid-settle — one bounded re-kick pass before the building
+    // flag drains, or the archetype's first round-1 spawn pays the in-round compose
+    // the warm exists to kill. The re-mark rides coveredMap directly (the
+    // failed-marks guard already owns the first strike); a second retriable settle
+    // releases the row for the next dwell — two strikes. Undefined results are
+    // kicks still in flight past the deadline — they keep their own settle path.
+    const reKickBudget = Math.max(0, Math.min(budgetLeft() - 8000, 15000));
+    const covered = warm.coveredMap;
+    if (reKickBudget > 0 && covered && Array.isArray(warm.retriableKicks)) {
+      const reKicks = [];
+      for (const { entry, enemyId, kick: reKick } of warm.retriableKicks) {
+        const status = entry.result && typeof entry.result === 'object'
+          ? entry.result.status : entry.result;
+        if (status === undefined || enemyId == null || swarmWarmOutcomeClaims(status)) continue;
+        covered.set(enemyId, (covered.get(enemyId) || 0) + 1);
+        const reKickResult = reKick(1);
+        if (!reKickResult || typeof reKickResult.then !== 'function') {
+          const count = covered.get(enemyId) || 0;
+          if (count > 1) covered.set(enemyId, count - 1);
+          else covered.delete(enemyId);
+          continue;
+        }
+        reKickResult.then((result) => {
+          entry.result = result;
+          const settled = result && typeof result === 'object' ? result.status : result;
+          if (!swarmWarmOutcomeClaims(settled)) {
+            const count = covered.get(enemyId) || 0;
+            if (count > 1) covered.set(enemyId, count - 1);
+            else covered.delete(enemyId);
+          }
+        });
+        reKicks.push(reKickResult);
+        warm.pendingAttachments.push(reKickResult);
+      }
+      if (reKicks.length) {
+        await Promise.race([
+          Promise.allSettled(reKicks),
+          new Promise((resolve) => setTimeout(resolve, reKickBudget)),
+        ]);
+      }
     }
 
     // The warm set: every blueprint the runtime has decoded — live entities' plans, the
@@ -17471,15 +17498,23 @@ export const render = {
   _parkBoundedWarmRoots() {
     let roots = 0;
     let nodes = 0;
+    // The detach+measure runs inside presented flight frames — debit the paced
+    // ledger so the frame's other slicers back off around the spend.
+    const parkStartedAt = (typeof performance !== 'undefined' && typeof performance.now === 'function')
+      ? performance.now() : Date.now();
     for (const root of this._rosterPrewarmRoots || []) {
       // Still-building roots keep their mount: a parked boundary fails
       // boundaryBelongsToScene and its queued attach/upgrade jobs drop silently.
       if (!isBoundedWarmRoot(root) || !root.parent
           || (root.userData && root.userData.warmBuilding === true)) continue;
       try {
-        root.traverse(() => { nodes += 1; });
+        // One walk feeds both the diagnostic node count and the receiver tally's
+        // exact settle — the tally's own recount would re-traverse the same subtree.
+        const measure = { nodes: 0 };
+        const receivers = countShadowReceivers(root, measure);
+        nodes += measure.nodes;
         root.parent.remove(root);
-        this._noteShadowMeshRemoved?.(root);
+        this._noteShadowMeshRemoved?.(root, receivers);
         roots += 1;
         // Diagnostics only: probes audit which program keys the warm compiled; parked roots are
         // off the scene graph, so they are published here instead of found by a scene walk.
@@ -17491,6 +17526,11 @@ export const render = {
       } catch (error) {
         console.warn('[render] bounded warm root park failed', root.name, error);
       }
+    }
+    if (roots > 0) {
+      notePacedFrameSpend(
+        ((typeof performance !== 'undefined' && typeof performance.now === 'function')
+          ? performance.now() : Date.now()) - parkStartedAt);
     }
     return { roots, nodes };
   },
@@ -21373,7 +21413,7 @@ export const render = {
    * `shadowCasterBand(root) !== 1` — the promotion class — so same-band per-frame
    * syncs never pay the signature walk.
    */
-  _syncShadowCasterPolicyChecked(root, lodLevel, entity) {
+  _syncShadowCasterPolicyChecked(root, lodLevel, entity, extra = null) {
     const opts = this._shadowPolicyOptions(entity, root);
     const band = shadowCasterBand(root);
     const dirtySeq = shadowCasterPolicyDirtySeq(root);
@@ -21384,7 +21424,17 @@ export const render = {
     // exactly that compare. Parked roots stamp castBand=0 on their next sync,
     // so without this early unpark the band!==1 collect gate can never open
     // and a re-dirtied parked root would wedge withheld forever.
-    if (parkedEntry && dirtySeq > parkedEntry.seq) {
+    let parkedRelease = false;
+    if (parkedEntry && dirtySeq > parkedEntry.seq) parkedRelease = true;
+    else if (parkedEntry && parkedEntry.lightSig != null
+        && parkedEntry.lightSig !== this._shadowCensusForFrame()) parkedRelease = true;
+    else if (parkedEntry && parkedEntry.oqX != null && this._keyLight && this._keyLight.target) {
+      const cell = (this._shadowOrthoExtent || 1) / 2;
+      const t = this._keyLight.target.position;
+      if (Math.round(t.x / cell) !== parkedEntry.oqX
+          || Math.round(t.z / cell) !== parkedEntry.oqZ) parkedRelease = true;
+    }
+    if (parkedRelease) {
       parkedMap.delete(root);
       if (root.userData) delete root.userData.sfDepthUndrawableCycles;
     }
@@ -21492,7 +21542,8 @@ export const render = {
       }
     }
     const receiverOut = { receiverDelta: 0 };
-    const changed = syncShadowCasterPolicy(root, lodLevel, { ...syncOpts, out: receiverOut });
+    const changed = syncShadowCasterPolicy(
+      root, lodLevel, { ...syncOpts, ...(extra || {}), out: receiverOut });
     if (withheldMeshes && withheldMeshes.length > 0) {
       for (const mesh of withheldMeshes) {
         if (mesh) mesh.castShadow = false;
@@ -21527,7 +21578,11 @@ export const render = {
     }
     // Callers settling the receiver tally need the traverse's own measured delta —
     // carry it on the result instead of a boolean so truthiness checks still work.
-    return changed === true ? { changed: true, receiverDelta: receiverOut.receiverDelta } : false;
+    return changed === true ? {
+      changed: true,
+      receiverDelta: receiverOut.receiverDelta,
+      preReceiverCount: receiverOut.preReceiverCount,
+    } : false;
   },
 
 
@@ -21590,6 +21645,8 @@ export const render = {
         return;
       }
       this._depthStageLedgerSkips = 0;
+      let slice = null;
+      let restoreIdx = -1;
       try {
       const renderer = this.renderer;
       const scene = this.scene;
@@ -21632,7 +21689,7 @@ export const render = {
       // The per-arm cost is the near-fixed ceremony — drain the remainder in one arm and
       // halve big bursts instead of paying ceil(N/8) ceremonies over that many frames.
       const cap = Math.min(32, Math.max(8, Math.ceil(entries.length / 2)));
-      const slice = [];
+      slice = [];
       for (const [root, entry] of entries) {
         if (slice.length >= cap) break;
         slice.push([root, entry]);
@@ -21756,7 +21813,7 @@ export const render = {
       // root permanently shadowless.
       const restoreDeadline = armNow() + SHADOW_DEPTH_ARM_RESTORE_MS;
       let restored = 0;
-      let restoreIdx = -1;
+      restoreIdx = -1;
       for (restoreIdx = 0; restoreIdx < slice.length; restoreIdx++) {
         const [root, entry] = slice[restoreIdx];
         if (!root || !root.parent) {
@@ -21795,11 +21852,20 @@ export const render = {
             // syncs in the meantime.
             const cycles = ((root.userData && root.userData.sfDepthUndrawableCycles) || 0) + 1;
             if (root.userData) root.userData.sfDepthUndrawableCycles = cycles;
+            const parkedTarget = this._keyLight && this._keyLight.target
+              ? this._keyLight.target.position : null;
+            const parkedCell = (this._shadowOrthoExtent || 1) / 2;
             parkedMap.set(root, {
               // The +stamp%32 staggers same-arm cohorts: identical cadences used
               // to expire in one pass and stack every parked collect there.
               lodLevel, entity, seq: shadowCasterPolicyDirtySeq(root),
               recheck: (96 + (this._parkedRecheckStamp % 32)) * Math.min(8, 1 << (cycles - 1)),
+              // The park verdict is census- and ortho-local: a light re-signing or
+              // the shadow box drifting over the root can flip drawability without
+              // ever bumping dirtySeq — both unpark below.
+              lightSig: this._shadowCensusForFrame(),
+              oqX: parkedTarget ? Math.round(parkedTarget.x / parkedCell) : null,
+              oqZ: parkedTarget ? Math.round(parkedTarget.z / parkedCell) : null,
             });
             // The leftover meshes stay withheld across the park; every other
             // caster falls through to the restore below so staged siblings stop
@@ -21861,23 +21927,27 @@ export const render = {
           break;
         }
       }
-      for (let i = restoreIdx; i < slice.length; i++) {
-        if (i < 0) break;
-        const [root, entry] = slice[i];
-        if (root && root.parent) {
-          pending.set(root, entry);
-        } else if (root) {
-          if (root.userData) {
-            root.userData[STAGE_SELF_DIRTY_KEY] = false;
-            delete root.userData.sfDepthUndrawableCycles;
-          }
-          if (this._withheldDepthCasters) this._withheldDepthCasters.delete(root);
-        }
-      }
-      // The arm's whole cost lands adjacent to the next presented frame — debit
-      // the shared paced ledger so the frame's slicers see the spend.
-      notePacedFrameSpend(armNow() - armStartedAt);
       } finally {
+        // Requeue whatever the restore loop never reached — a throw mid-slice
+        // can't orphan withheld members (the slice already dropped their pending
+        // slots at build; without this they stay dark until an unrelated dirty).
+        if (Array.isArray(slice)) {
+          for (let i = Math.max(restoreIdx, 0); i < slice.length; i++) {
+            const [root, entry] = slice[i];
+            if (root && root.parent) {
+              pending.set(root, entry);
+            } else if (root) {
+              if (root.userData) {
+                root.userData[STAGE_SELF_DIRTY_KEY] = false;
+                delete root.userData.sfDepthUndrawableCycles;
+              }
+              if (this._withheldDepthCasters) this._withheldDepthCasters.delete(root);
+            }
+          }
+        }
+        // The arm's whole cost lands adjacent to the next presented frame — debit
+        // the shared paced ledger so the frame's slicers see the spend, throw or not.
+        notePacedFrameSpend(armNow() - armStartedAt);
         // The re-arm lives in finally: a throw mid-slice must not leave
         // _depthStageScheduled === true with live pending entries — the queue
         // would wedge permanently and withheld casters stay dark forever.
@@ -21917,9 +21987,33 @@ export const render = {
       // + staged-set probes for the whole scene here is pure click latency. The
       // mark-check twin also keeps already-staged casters out of the withhold:
       // enabling the map used to drop every linked caster's shadow for the drain.
+      const toggleBudget = { remaining: SHADOW_DEPTH_PASS_NODE_CAP };
       const unstaged = collectUnstagedShadowCastersFlag(
-        [scene], this._shadowCensusForFrame());
-      if (unstaged === UNSTAGED_COLLECT_OVER_COVER || unstaged.length === 0) return;
+        [scene], this._shadowCensusForFrame(), toggleBudget);
+      if (unstaged === UNSTAGED_COLLECT_OVER_COVER) {
+        // The walk outran the click budget mid-scene — a partial set can't be
+        // trusted for per-mesh withhold. Queue the scene's top-level roots so the
+        // arm's deadline-bounded per-root collects re-derive the real unstaged
+        // sets (queued roots withhold whole-subtree at their next sync).
+        const pending = this._pendingDepthStageRoots
+          || (this._pendingDepthStageRoots = new Map());
+        for (const child of scene.children) {
+          if (child && child.parent === scene && !pending.has(child)) {
+            const entityId = child.userData && child.userData.entityId;
+            const resolvedEntity = (entityId != null && this.state && this.state.entities)
+              ? this.state.entities.get(entityId) : null;
+            const lodLevel = (child.userData && child.userData.lod && child.userData.lod.level)
+              || 'lod0';
+            pending.set(child, { lodLevel, entity: resolvedEntity || null });
+          }
+        }
+        if (pending.size > 0 && this._depthStageScheduled !== true) {
+          this._depthStageScheduled = true;
+          this._armDepthStage();
+        }
+        return;
+      }
+      if (unstaged.length === 0) return;
       // The whole-scene toggle used to pay one synchronous reparent+census+compile
       // inside the settings handler — an unbounded stall on a presented frame for a
       // busy sector. Route the same stage through the arm queue instead: bounded
@@ -21978,14 +22072,20 @@ export const render = {
   // them makes the next noteAdded/noteRemoved call diverge from the scene —
   // and count clamps at 0, so an under-count silently freezes shadow-map
   // refreshes until an unrelated recount heals it.
-  _noteShadowMeshAdded(root) {
-    if (this._shadowReceiverTally) this._shadowReceiverTally.noteAdded(root);
-    else this._shadowReceiversDirty = true;
+  _noteShadowMeshAdded(root, measuredReceivers = null) {
+    if (this._shadowReceiverTally) {
+      if (Number.isFinite(measuredReceivers)) this._shadowReceiverTally.noteDelta(measuredReceivers);
+      else this._shadowReceiverTally.noteAdded(root);
+    } else this._shadowReceiversDirty = true;
   },
 
-  _noteShadowMeshRemoved(root) {
-    if (this._shadowReceiverTally) this._shadowReceiverTally.noteRemoved(root);
-    else this._shadowReceiversDirty = true;
+  _noteShadowMeshRemoved(root, measuredReceivers = null) {
+    if (this._shadowReceiverTally) {
+      // A caller that already walked the subtree settles exactly — paying the
+      // tally's second countShadowReceivers traverse just re-measures the same set.
+      if (Number.isFinite(measuredReceivers)) this._shadowReceiverTally.noteDelta(-measuredReceivers);
+      else this._shadowReceiverTally.noteRemoved(root);
+    } else this._shadowReceiversDirty = true;
   },
 
   _markShadowReceiversDirty() {

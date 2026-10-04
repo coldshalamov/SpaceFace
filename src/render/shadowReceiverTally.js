@@ -5,18 +5,21 @@
 // on the same frames that already built meshes. The tally is exact when callers report
 // add/remove; recount() is the dirty fallback.
 
-export function countShadowReceivers(root) {
+export function countShadowReceivers(root, out = null) {
   if (!root) return 0;
   let receivers = 0;
+  let nodes = 1;
   if (root.receiveShadow === true) receivers += 1;
   const children = root.children;
-  if (!children || children.length === 0) return receivers;
-  if (typeof root.traverse === 'function' && children.length) {
+  if (children && children.length && typeof root.traverse === 'function') {
+    // traverse visits root itself, so the node count restarts at 0 here.
+    nodes = 0;
     root.traverse((object) => {
+      nodes += 1;
       if (object && object !== root && object.receiveShadow === true) receivers += 1;
     });
-    return receivers;
   }
+  if (out) out.nodes = nodes;
   return receivers;
 }
 

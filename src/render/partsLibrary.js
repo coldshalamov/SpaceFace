@@ -2771,6 +2771,13 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
   // Preserve the public inspection surface used by diagnostics/checks while making lifecycle hooks
   // indirect through `active`, so the renderer never needs to know that a payload was replaced.
   Object.assign(boundary.userData, fallbackRoot.userData || {});
+  // Per-root shadow bookkeeping is scoped to the subtree it was minted on —
+  // copying it onto the boundary would let the wrong root answer the checked
+  // sync's dirty/stamp/park reads and double-count the tally notes seam.
+  delete boundary.userData.__spacefaceShadowCasterPolicyV1;
+  delete boundary.userData.__spacefaceDepthStageSelfDirty;
+  delete boundary.userData.sfDepthUndrawableCycles;
+  delete boundary.userData.shadowMeshNotes;
   boundary.userData.kind = 'ship';
   boundary.userData.authoredAssetState = 'awaiting-authored-admission';
   boundary.userData.authoredAssetMode = releaseMode ? 'release' : 'dev';
@@ -3544,6 +3551,11 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
   fallbackRoot.visible = false;
   boundary.add(fallbackRoot);
   Object.assign(boundary.userData, fallbackRoot.userData || {});
+  // Same per-root shadow bookkeeping strip as the ship boundary above.
+  delete boundary.userData.__spacefaceShadowCasterPolicyV1;
+  delete boundary.userData.__spacefaceDepthStageSelfDirty;
+  delete boundary.userData.sfDepthUndrawableCycles;
+  delete boundary.userData.shadowMeshNotes;
   boundary.userData.kind = 'station';
   boundary.userData.placeId = placeId;
   boundary.userData.archetypeGlb = entity.data && entity.data.archetypeGlb || placeId;
@@ -13762,6 +13774,8 @@ function createInstanceChunk(scene, pool, ordinal, options = {}) {
     mesh.userData.spacefacePackageAdmissionPending = true;
   } else {
     scene.add(mesh);
+    const notes = scene.userData && scene.userData.shadowMeshNotes;
+    if (notes && typeof notes.added === 'function') notes.added(mesh);
   }
   return chunk;
 }
@@ -13871,9 +13885,10 @@ function finalizeRetiredInstanceChunk(state, pool, chunk, admission) {
   }
   if (chunk.meshRemoved !== true) {
     attempt(() => {
+      const wasMounted = chunk.mesh.parent != null;
       chunk.mesh.removeFromParent();
       const notes = chunk.scene.userData && chunk.scene.userData.shadowMeshNotes;
-      if (notes && typeof notes.removed === 'function') notes.removed(chunk.mesh);
+      if (wasMounted && notes && typeof notes.removed === 'function') notes.removed(chunk.mesh);
       chunk.meshRemoved = true;
     });
   }
