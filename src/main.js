@@ -194,9 +194,17 @@ async function boot() {
       // restored world exactly as before.
       if (typeof physicsSystem.hasResolvedSg02Owner === 'function'
           && physicsSystem.hasResolvedSg02Owner()) return;
-      earlyContinuePhysicsPrep = Promise.resolve()
+      const prep = Promise.resolve()
         .then(() => physicsSystem.prepareBackend(state));
-      earlyContinuePhysicsPrep.catch(() => {});
+      earlyContinuePhysicsPrep = prep;
+      // A stale settle (the SG-02 token guard's false, or a rejection) must not
+      // latch: clear it so the next envelope kick re-mints instead of the gate
+      // inheriting a verdict from a dead authority.
+      prep.then((verdict) => {
+        if (verdict !== true && earlyContinuePhysicsPrep === prep) earlyContinuePhysicsPrep = null;
+      }, () => {
+        if (earlyContinuePhysicsPrep === prep) earlyContinuePhysicsPrep = null;
+      });
     };
     // Speculative prepare fires during menu dwell — WASM bring-up reads no envelope data,
     // so it can overlap the dwell instead of serializing inside the Continue gate.
@@ -923,13 +931,17 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
   // save:envelopePrepared may already have started it at envelope decode (payload.physicsPrep)
   // — adopt that promise so a restore-time bring-up is never paid twice.
   let continuePhysicsPrep = payload.physicsPrep || null;
-  if (!continuePhysicsPrep) {
-    const physicsSystem = registry.get('physics');
-    if (physicsSystem && typeof physicsSystem.prepareBackend === 'function') {
-      continuePhysicsPrep = Promise.resolve()
-        .then(() => physicsSystem.prepareBackend(state));
-      continuePhysicsPrep.catch(() => {});
-    }
+  const physicsSystem = registry.get('physics');
+  if (physicsSystem && typeof physicsSystem.prepareBackend === 'function') {
+    // A spec-armed prep can go stale before adoption: a New Game attempt between
+    // the envelope kick and this Continue bumps _sg02Token and disposes the
+    // authority it resolved against, so the inherited verdict no longer describes
+    // the backend the gate is checking. Re-validate at adoption — a fresh non-reset
+    // prepare is idempotent (joins _sg02Init mid-settle, re-mints only when torn
+    // down); never {reset:true} — that would dispose a live owner mid-restore.
+    continuePhysicsPrep = Promise.resolve(continuePhysicsPrep)
+      .then(() => physicsSystem.prepareBackend(state), () => physicsSystem.prepareBackend(state));
+    continuePhysicsPrep.catch(() => {});
   }
   try {
     bus.emit('game:loadingProgress', {
