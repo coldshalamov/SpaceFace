@@ -6461,6 +6461,7 @@ export function residencyOptionsForBoundary(entity, boundary, renderer) {
   const touch = capturePort('touchSubjectExactTarget');
   const residency = capturePort('prepareAuthoredGpuResidency');
   const present = capturePort('yieldToNextPresent');
+  const packagedShadowSync = capturePort('syncPackagedBodyShadowPolicy');
   const data = entity && entity.data || {};
   const sectorId = data.sectorId || entity && entity.homeSectorId
     || liveState && liveState.world && liveState.world.currentSectorId
@@ -6501,6 +6502,9 @@ export function residencyOptionsForBoundary(entity, boundary, renderer) {
       : null,
     touchAuthoredExactTarget: touch
       ? (root) => touch.call(root)
+      : null,
+    syncPackagedBodyShadowPolicy: packagedShadowSync
+      ? (root, entity) => packagedShadowSync.call(root, entity)
       : null,
     prepareAuthoredGpuResidency: residency
       ? async (root, admissionOptions = {}) => {

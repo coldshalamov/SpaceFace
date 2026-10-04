@@ -308,11 +308,21 @@ function _nearbyLedgerRowsContext(state, opts = null) {
   const ridesDisc = hasLiveDisc
     && (toleration === true || (toleration === 'covered' && coveredByDisc));
   if (!meshSpatialKeyMatches(state, walkX, walkZ, walkRadius) && !ridesDisc) {
-    _meshWalkOrigin.x = walkX;
-    _meshWalkOrigin.z = walkZ;
-    queryAsteroidField(state, _meshWalkOrigin, walkRadius, _meshRockScratch);
-    queryFarActors(state, _meshWalkOrigin, walkRadius, _meshFarScratch);
-    rememberMeshSpatialKey(state, walkX, walkZ, walkRadius);
+    if (toleration === true && !hasLiveDisc) {
+      // A loose-tolerance remint with no live disc means the field/far objects were
+      // swapped (or never minted): a refill here pays the unbounded grid query inside
+      // the beat remainder, and the stale scratches describe a dead field. Serve an
+      // empty row set for this beat — the next clean-start mint refills under the
+      // strict 'covered' gate on a fresh clock.
+      _meshRockScratch.length = 0;
+      _meshFarScratch.length = 0;
+    } else {
+      _meshWalkOrigin.x = walkX;
+      _meshWalkOrigin.z = walkZ;
+      queryAsteroidField(state, _meshWalkOrigin, walkRadius, _meshRockScratch);
+      queryFarActors(state, _meshWalkOrigin, walkRadius, _meshFarScratch);
+      rememberMeshSpatialKey(state, walkX, walkZ, walkRadius);
+    }
   }
   const pvx = finite(player.vel && player.vel.x);
   const pvz = finite(player.vel && player.vel.z);

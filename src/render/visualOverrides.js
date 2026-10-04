@@ -1125,6 +1125,13 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
       if (typeof touch === 'function') {
         try { touch(packaged); } catch (error) { reportVisualWarning(options, '[visualOverrides] packaged publish touch failed', error); }
       }
+      // Same commit seam as the exact-target touch: the added subtree's meshes carry
+      // three.js castShadow=false until a policy traverse covers them, so the live
+      // caster policy re-syncs here instead of at the next unrelated band flip.
+      const packagedShadowSync = mintedAdmissionOptions.syncPackagedBodyShadowPolicy;
+      if (typeof packagedShadowSync === 'function') {
+        try { packagedShadowSync(root, liveEntity || entity); } catch (_) { /* best effort */ }
+      }
       root.userData.hull = packaged;
       root.userData.authoredAssetState = 'authored';
       // The resolving marker's envelope stamp was only correct while pending: the committed

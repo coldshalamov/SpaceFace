@@ -10117,6 +10117,17 @@ export const render = {
       });
     };
     state.render.pendingAuthoredGpuResidency = () => gpuResidencyAdmissions.pendingCount;
+    state.render.syncPackagedBodyShadowPolicy = (root, entity = null) => {
+      // A packaged body mounts its subtree inside an async continuation, so no mount-path
+      // or band-flip traverse covers the new meshes until much later. Invalidate + checked
+      // sync now: the wrapper's withhold/stage machinery owns any promotion the swap
+      // introduces, so an unstaged depth signature never draws cold in a presented frame.
+      if (!root) return;
+      invalidateShadowCasterPolicy(root);
+      const lodLevel = root.userData && root.userData.lod ? root.userData.lod.level : null;
+      this._syncShadowCasterPolicyChecked(root, lodLevel, entity);
+      this._shadowReceiversDirty = true;
+    };
     state.render.drainAfterPresentCompile = (options = {}) => {
       const leftoverMs = Number(options && options.leftoverMs);
       if (Number.isFinite(leftoverMs) && leftoverMs < 2) return null;
@@ -14084,9 +14095,11 @@ export const render = {
       const vd = state.settings.video;
       this._syncPostOptions();
       if (p.key === 'shadows' || p.key == null) {
+        const shadowSettingWasOff = this._shadowSettingOn !== true;
         this._shadowSettingOn = vd.shadows !== false;
         this._markShadowReceiversDirty();
         this._ensureKeyLightShadows();
+        if (shadowSettingWasOff && this._shadowSettingOn === true) this._stageShadowDepthOnSettingEnable();
         this._syncShadowMapEnabled();
       }
       // dynamicResolution flips the graph-route gate (renderGraphDynResBlocked), so the buffer
@@ -21038,6 +21051,35 @@ export const render = {
         } catch (_) { /* restore is best-effort */ }
       }
     });
+  },
+
+  _stageShadowDepthOnSettingEnable() {
+    // Cast promotions applied while the map was off could neither withhold nor stage
+    // (both paths gate on the setting), so their depth signatures were never observed.
+    // Stage the genuinely-unstaged ones inside this handler — before the map re-enables
+    // — or the first presented shadow refresh links every one of them in-frame.
+    const renderer = this.renderer;
+    const scene = this.scene;
+    const camera = this.cam && this.cam.obj;
+    if (!renderer || !scene || !camera || !this._keyLight) return;
+    try {
+      const unstaged = collectUnstagedShadowCasters(renderer, [scene], scene);
+      if (unstaged.length === 0) return;
+      compileShadowDepthPipelines({
+        renderer,
+        light: this._keyLight,
+        camera,
+        subjects: unstaged,
+        forceEnable: true,
+        THREE,
+        captureObjectHome,
+        restoreObjectHome,
+        lightingScene: scene,
+        stagingName: 'SF_ShadowEnableDepthAdmission',
+      });
+    } catch (error) {
+      console.warn('[render] shadow-enable depth stage failed', error);
+    }
   },
 
   _noteShadowMeshAdded(root) {
