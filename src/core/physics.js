@@ -15,6 +15,7 @@ import {
   pickupAcceptanceRetryBlocks,
   resolvePickupAcceptance,
   setPickupAcceptanceRetry,
+  writePickupRemainder,
 } from './pickupAcceptance.js';
 import { pickupCustodyAllowsCollector } from './pickupCustody.js';
 import { combatFlag } from '../data/featureFlags.js';
@@ -480,7 +481,7 @@ export const physics = {
       pk.alive = false;
     } else if (acceptance.accepted > 0) {
       pk.data = pk.data || {};
-      pk.data.amount = acceptance.rejected;
+      writePickupRemainder(pk.data, acceptance.rejected);
     }
     if (acceptance.rejected > 0) {
       pk.data = pk.data || {};

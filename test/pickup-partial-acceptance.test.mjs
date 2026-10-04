@@ -564,3 +564,44 @@ test('pickup VFX resolves into the exact winning collector and only legacy recei
   const missing = resolveAdditionalActionVfxReceipt('pickup:collected', { ...base, pickupId: 902, collectorId: 999 }, state);
   assert.equal(missing, null, 'an explicit missing collector cannot fabricate player collection');
 });
+
+test('partial acceptance shrinks every quantity mirror the remainder pod carries', () => {
+  // richLotSource.richQty/lotQty, freightCustodyPod.qty, and salvagePool[commodityId] all
+  // describe the same physical units data.amount counts. A partial collect must shrink all
+  // of them with the remainder or raw readers over-report the residual — the mirror defect
+  // on the NXI-020 residual: richQty stayed at the offered quantity while the pod had
+  // physically shrunk, so the next collection could mis-report provenance the units no
+  // longer had.
+  const stampMirrors = (pickup, tag) => {
+    pickup.data.richLotSource = {
+      lotId: `mirror-lot:${tag}`, provenanceId: `prov:mirror:${tag}`,
+      richQty: 5, lotQty: 5, sourceKind: 'recovered',
+    };
+    pickup.data.freightCustodyPod = { custodyId: `custody:${tag}`, qty: 5 };
+    pickup.data.salvagePool = { [COMMODITY_ID]: 5 };
+  };
+  const assertMirrors = (pickup, tag) => {
+    assert.equal(pickup.data.amount, 3, `${tag}: the physical remainder`);
+    assert.equal(pickup.data.richLotSource.richQty, 3, `${tag}: rich provenance follows the remainder`);
+    assert.equal(pickup.data.richLotSource.lotQty, 3, `${tag}: the lot mirror follows the remainder`);
+    assert.equal(pickup.data.richLotSource.lotId, `mirror-lot:${tag}`, `${tag}: the parent lot id survived`);
+    assert.equal(pickup.data.richLotSource.provenanceId, `prov:mirror:${tag}`, `${tag}: provenance survived`);
+    assert.equal(pickup.data.freightCustodyPod.qty, 3, `${tag}: the custody annotation IS the pod quantity`);
+    assert.equal(pickup.data.freightCustodyPod.custodyId, `custody:${tag}`, `${tag}: custody identity survived`);
+    assert.equal(pickup.data.salvagePool[COMMODITY_ID], 3, `${tag}: the scoop pool cannot credit taken units`);
+  };
+
+  const phys = bootPhysics({ capVolume: 2, amount: 5 });
+  stampMirrors(phys.pickup, 'physics');
+  phys.collect();
+  assert.equal(phys.pickup.alive, true);
+  assert.equal(phys.state.player.cargo.items[COMMODITY_ID], 2);
+  assertMirrors(phys.pickup, 'physics');
+
+  const mine = bootMining({ capVolume: 2, amount: 5 });
+  stampMirrors(mine.pickup, 'mining');
+  mine.collect();
+  assert.equal(mine.pickup.alive, true);
+  assert.equal(mine.state.player.cargo.items[COMMODITY_ID], 2);
+  assertMirrors(mine.pickup, 'mining');
+});

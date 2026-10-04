@@ -93,6 +93,8 @@ test('NXI-020: a partially-delivered recovered shipment keeps its name on the re
   assert.equal(h.pod.data.richLotSource.lotId, 'spill-lot:4242', 'the parent lot id survived');
   assert.equal(h.pod.data.richLotSource.provenanceId, 'prov:raid-spill',
     'the provenance id survived the split');
+  assert.equal(h.pod.data.richLotSource.richQty, 7,
+    'the rich mirror holds only the units still physically present: 12 offered − 5 accepted');
 
   // The accepted side is identifiable as the same shipment too, not a generic lot.
   const lot = (h.state.player.cargo.richLots || []).find((row) => row.lotId === 'spill-lot:4242');

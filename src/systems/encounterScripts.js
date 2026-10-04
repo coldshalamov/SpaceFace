@@ -42,6 +42,7 @@ import { buildEncounterCausality } from '../world/encounterCausality.js';
 import { bumpCollidesFlipEpoch } from '../world/livingWorldViews.js';
 import { syncEntityCollisionIndexMembership } from '../core/coreSystem.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { writePickupRemainder } from '../core/pickupAcceptance.js';
 
 // ── shared tuning ─────────────────────────────────────────────────────────────────────────────────
 const TOLL_PAY_DIST = 520;        // brake inside this of the toll leader to hand over the toll
@@ -1714,11 +1715,12 @@ function collectFreightPod(d, live, state, payload) {
       if (!entity) return false;
       record.playerCollectedQty += accepted;
       pod.qty = rejected;
-      entity.data.freightCustodyPod.qty = rejected;
+      // The annotation on data.freightCustodyPod is a mirror of the same remainder — both
+      // branches write it through writePickupRemainder (frozen-safe), never in place.
       if (typeof d.resizeFreightPickup === 'function') {
         d.resizeFreightPickup(entity, record.commodityId, rejected);
       } else {
-        entity.data.amount = rejected;
+        writePickupRemainder(entity.data, rejected);
       }
       if (typeof d.reportFreightTheft === 'function') d.reportFreightTheft(live, record, pod, entity);
       publishFreightCustody(d, live, record, 'player_partially_collected');

@@ -19,6 +19,7 @@ import {
   pointInsideAperture,
   pointInsideApertureMouth,
 } from '../src/data/environmentalMachinery.js';
+import { createBus } from '../src/core/eventBus.js';
 import { environmentalMachinery } from '../src/systems/environmentalMachinery.js';
 import {
   commitReceiverAcceptance,
@@ -136,6 +137,61 @@ test('NXI-023: the real aperture consumer kisses the lip without delivering, the
     environmentalMachinery._publishApertureIndustry({ simTime: 6 }, { phase: 'open', occupied: false });
     assert.equal(environmentalMachinery._industryLedger.stored, 4, 'the lip body never double-books');
   } finally {
+    environmentalMachinery._industryLedger = priorLedger;
+    environmentalMachinery._industrySiteResult = priorResult;
+    environmentalMachinery._apertureLastOccupant = priorOccupant;
+    environmentalMachinery._apertureDeliveryCandidate = priorDelivery;
+  }
+});
+
+test('NXI-023: the lip verdict reaches the pilot on the existing receipt line, once per change', () => {
+  // Player-facing path proof: src/ui/toasts.js renders `toast` bus events as the receipt
+  // lane every refusal/acceptance shares. Stamping body.data.scanSentence was never the
+  // visible surface — no consumer read it. The graze and the later entry must each emit
+  // exactly one receipt, and a re-publish with the same verdict must not re-announce.
+  const bus = createBus();
+  const toasts = [];
+  bus.on('toast', (payload) => toasts.push({ ...payload }));
+
+  const priorBus = environmentalMachinery.bus;
+  const priorLedger = environmentalMachinery._industryLedger;
+  const priorResult = environmentalMachinery._industrySiteResult;
+  const priorOccupant = environmentalMachinery._apertureLastOccupant;
+  const priorDelivery = environmentalMachinery._apertureDeliveryCandidate;
+  try {
+    environmentalMachinery.bus = bus;
+    environmentalMachinery._industryLedger = null;
+    environmentalMachinery._industrySiteResult = null;
+    environmentalMachinery._apertureLastOccupant = null;
+    const body = {
+      id: 'lip-load-4242',
+      type: 'pickup',
+      alive: true,
+      pos: aperturePoint(-25, 10),   // inside the intake volume, outside the mouth
+      vel: { x: 6, z: 0 },
+      radius: 5,
+      data: { amount: 4, commodityId: 'cmdty_ore_iron', cargoClass: 'ore' },
+    };
+    environmentalMachinery._apertureDeliveryCandidate = body;
+
+    // THE GRAZE — one warning receipt on the shared toast line.
+    environmentalMachinery._publishApertureIndustry({ simTime: 4 }, { phase: 'open', occupied: false });
+    assert.equal(toasts.length, 1, 'the graze reports once');
+    assert.equal(toasts[0].text, 'The load kissed the lip. It did not enter.');
+    assert.equal(toasts[0].kind, 'warn', 'a refusal reads as a warning receipt');
+
+    // THE HELD LOAD — the same verdict is already the body's stamp: no repeat.
+    environmentalMachinery._publishApertureIndustry({ simTime: 4.5 }, { phase: 'open', occupied: false });
+    assert.equal(toasts.length, 1, 'an unchanged verdict never re-announces itself');
+
+    // THE ENTRY — the verdict moved, so the new fact reports once as a success receipt.
+    body.pos = aperturePoint(0, 0);
+    environmentalMachinery._publishApertureIndustry({ simTime: 5 }, { phase: 'open', occupied: false });
+    assert.equal(toasts.length, 2, 'the moved verdict reports its own line');
+    assert.equal(toasts[1].text, 'Accepted 4 cmdty_ore_iron.');
+    assert.equal(toasts[1].kind, 'success');
+  } finally {
+    environmentalMachinery.bus = priorBus;
     environmentalMachinery._industryLedger = priorLedger;
     environmentalMachinery._industrySiteResult = priorResult;
     environmentalMachinery._apertureLastOccupant = priorOccupant;

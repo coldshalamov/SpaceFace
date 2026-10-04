@@ -54,6 +54,7 @@ import {
   weatherVolumesForSector,
 } from '../data/environmentalMachinery.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { writePickupRemainder } from '../core/pickupAcceptance.js';
 import { NEAR_EXIT_PAD_WU } from '../world/activityClassification.js';
 import {
   choosePowerPriority,
@@ -835,7 +836,7 @@ export const environmentalMachinery = {
         const data = candidate.data;
         if (data && !Object.isFrozen(data)) {
           const left = Math.max(0, Math.floor(Number(data.amount) || 0) - committed.acceptedQty);
-          data.amount = left;
+          writePickupRemainder(data, left);
           if (left <= 0 && (candidate.type === 'pickup' || candidate.type === 'payload')) {
             candidate.alive = false;
           }
@@ -912,6 +913,18 @@ export const environmentalMachinery = {
     if (candidate && candidate.data && !Object.isFrozen(candidate.data)
       && contact.scanSentence && candidate.data.scanSentence !== contact.scanSentence) {
       candidate.data.scanSentence = contact.scanSentence;
+      // The mouth's verdict is a fact the pilot can act on — a receipt line, not an
+      // instrument or a second voice. It rides the same `toast` channel every other
+      // refusal/acceptance already uses, and only on a change: the body's stamp doubles
+      // as the dedupe latch, so a held load reports once and a retried load reports
+      // again only when the verdict itself moves.
+      if (this.bus && typeof this.bus.emit === 'function') {
+        this.bus.emit('toast', {
+          text: contact.scanSentence,
+          kind: contact.reason ? 'warn' : 'success',
+          ttl: 4,
+        });
+      }
     }
   },
 

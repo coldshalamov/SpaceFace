@@ -38,6 +38,7 @@
 
 import { hash32 } from '../core/rng.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { writePickupRemainder } from '../core/pickupAcceptance.js';
 import { isJettisonedCargoPod, spawnJettisonedCargoPod, EXPLOSIVE_SLAM_CLOSING_SPEED, EXPLOSIVE_BLAST_RADIUS } from './lootShards.js';
 import { volatileClassOf } from '../data/commodityVolatileClasses.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
@@ -455,19 +456,13 @@ export const volatileExposure = {
       lastHeatAt: now,
       lastVentAt: -Infinity,
     };
-    pod.data.amount = amount - ventQty;
     // The scoop path for payload bodies drains data.salvagePool FIRST (mining._collectPayload)
     // and only falls back to data.amount when no pool exists — spawnJettisonedCargoPod stamped
     // the pool at the FULL jettisoned quantity, so the split must reduce BOTH or a scooped
-    // parent would credit the pre-vent quantity on top of the vented child (P1 fix). Key
-    // deletion at zero mirrors the pool's own drain convention; an emptied pool hands the
-    // remaining data.amount back to the ordinary amount-branch scoop instead of stranding it.
-    const pool = pod.data.salvagePool;
-    if (pool && typeof pool === 'object' && pod.data.commodityId != null) {
-      const remaining = Math.max(0, (Number(pool[pod.data.commodityId]) || 0) - ventQty);
-      if (remaining > 0) pool[pod.data.commodityId] = remaining;
-      else delete pool[pod.data.commodityId];
-    }
+    // parent would credit the pre-vent quantity on top of the vented child (P1 fix). The
+    // shared remainder writer shrinks every quantity mirror the pod carries — pool, rich
+    // provenance, custody annotation — by the same delta.
+    writePickupRemainder(pod.data, amount - ventQty);
     rec.vents = (Math.floor(rec.vents) || 0) + 1;
     rec.ventedUnits = (Math.floor(rec.ventedUnits) || 0) + ventQty;
     rec.lastVentAt = now;
