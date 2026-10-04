@@ -273,7 +273,7 @@ export const REBIND_LABELS = {
   dropBomb: 'Bomb bay: drop bomb',
   cycleBomb: 'Bomb bay: cycle payload',
   // Labels mirror the pad grid's names for the same verbs (one verb, one name across devices).
-  countermeasure: 'Countermeasure (chaff / ECM)',
+  countermeasure: 'Countermeasure',
   toggleSkimCollector: 'Field: toggle skim collector',
   deployBeacon: 'Nav beacon: deploy',
   jettisonLot: 'Cargo: jettison lot',

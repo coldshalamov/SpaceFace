@@ -2,9 +2,11 @@
 //
 // The first-hour rail deliberately names TOOLS, never keys ("Lines name the tool, never the key
 // — bindings are rebindable", hudAttention.js). Help is therefore the at-need answer to "which
-// key is that" — the pad sheet already listed every pad verb, but the keyboard sheet listed 24
-// of the 32 live flight actions. Seven bound verbs (scanPulse, siteBeam, cruise, deployBeacon,
-// bulletTime, cloak, jettisonLot) appeared nowhere on it, so a keyboard pilot who opened Help at
+// key is that" — the pad sheet already listed every pad verb, but the keyboard sheet listed only
+// 24 of the 31 listable flight actions (of DEFAULT_BINDINGS' 32 keys, fire is the mouse and is
+// listed; autopursuit is the retired empty field). Seven bound verbs (scanPulse, siteBeam,
+// cruise, deployBeacon, bulletTime, cloak, jettisonLot) appeared nowhere on it, so a keyboard
+// pilot who opened Help at
 // the seam beat's "Pulse the scanner." moment found no scanner anywhere (Settings had it; Help
 // is where a player looks). Same-shape precedent: G15 (test/help-flight-verbs.test.mjs) fixed
 // travelBurn/chargeThrow/chargeDetonate for exactly "I press keys and I don't know what they
