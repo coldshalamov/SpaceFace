@@ -50,7 +50,9 @@ export const BOMB_DRIFT = Object.freeze({
 // (src/data/weapons.js: impulsePerHit + tumbleTorque). A radial blast loads the facing surface,
 // so the direct torque arm is only what the hull's own shape leaves off the blast axis; the cap
 // exists so the worst off-axis case (elongated colliders, off-center sampling) stays authored
-// rather than physical. 0 is a deliberate opt-out, not an omission.
+// rather than physical. 0 is a deliberate opt-out, not an omission. Kinematic (physicsBody:false)
+// fauna take blast damage but publish no hitstun event — _publishHitstun fires only inside the
+// blastShoveEligible branch — coherent because their motion is ecology-drive-owned.
 //
 // Economy fields (PQ-205.03) — this file is the single data source for ordnance pricing:
 //   price        — credits per unit in station outfitting (bought into hangar stock).
