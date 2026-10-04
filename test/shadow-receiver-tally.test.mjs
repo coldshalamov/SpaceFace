@@ -91,6 +91,29 @@ test('a policy refresh marks the tally dirty so the next resolve recounts live f
   assert.equal(tally.resolve(scene), 0);
 });
 
+test('a policy traverse carrying its measured delta settles the tally with no recount', () => {
+  const tally = createShadowReceiverTally();
+  const ship = mesh(true, [mesh(true)]);
+  const scene = mesh(false, [ship]);
+  tally.noteAdded(ship);
+  tally.recount(scene);
+  assert.equal(tally.dirty, false);
+  // A cast-only change reports receiverDelta 0 — the tally must not dirty.
+  assert.equal(noteShadowPolicyChanged(tally, { changed: true, receiverDelta: 0 }), true);
+  assert.equal(tally.dirty, false, 'a zero delta must not trigger the whole-scene recount');
+  assert.equal(tally.resolve(scene), 2);
+  // A real receiver flip is debited exactly — still no dirty mark.
+  ship.receiveShadow = false;
+  assert.equal(noteShadowPolicyChanged(tally, { changed: true, receiverDelta: -1 }), true);
+  assert.equal(tally.dirty, false);
+  assert.equal(tally.count, 1);
+  assert.equal(tally.resolve(scene), 1);
+  // A result without a delta falls back to the dirty recount contract.
+  assert.equal(noteShadowPolicyChanged(tally, { changed: true }), false);
+  assert.equal(noteShadowPolicyChanged(tally, true), true);
+  assert.equal(tally.dirty, true);
+});
+
 test('live LOD shadow policy refresh dirties the receiver tally', async () => {
   const { readFile } = await import('node:fs/promises');
   const source = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');

@@ -252,17 +252,26 @@ export function syncShadowCasterPolicy(root, lodLevel = null, options = null) {
     return false;
   }
 
+  // Sum the receiveShadow flips this traverse writes so callers can debit an
+  // incremental receiver tally instead of paying a whole-scene recount for what
+  // is almost always a cast-only change (withholds/band flips write castShadow
+  // only, so the delta is 0).
+  let receiverDelta = 0;
+  const noteReceiver = (object, next) => {
+    if ((object.receiveShadow === true) !== next) receiverDelta += next ? 1 : -1;
+    object.receiveShadow = next;
+  };
   configureRealtimeCanopyMaterials(root);
   root.traverse((object) => {
     if (!object.isMesh) return;
     if (!object.visible) {
       object.castShadow = false;
-      object.receiveShadow = false;
+      noteReceiver(object, false);
       return;
     }
     if (object.userData && object.userData.spacefaceNoShadow) {
       object.castShadow = false;
-      object.receiveShadow = false;
+      noteReceiver(object, false);
       return;
     }
     if (object.userData && object.userData.sharedContactShadow) {
@@ -288,9 +297,12 @@ export function syncShadowCasterPolicy(root, lodLevel = null, options = null) {
     // Far / low-LOD roots keep receiveShadow so entering the local box looks correct immediately,
     // but they do not enter the directional shadow-map caster set.
     object.castShadow = allowCast && opaqueReceiver;
-    object.receiveShadow = opaqueReceiver;
+    noteReceiver(object, opaqueReceiver);
   });
 
+  if (options && options.out && typeof options.out === 'object') {
+    options.out.receiverDelta = receiverDelta;
+  }
   if (state.castBand !== nextCastBand) state.pose = null;
   state.dirty = false;
   state.lodLevel = nextLodLevel;

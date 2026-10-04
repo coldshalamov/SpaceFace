@@ -19305,11 +19305,17 @@ export const render = {
       if (typeName === 'ship' || typeName === 'station' || typeName === 'place') {
         // entity may be null for a world-record row; the retained stand-in keeps the old
         // `{ type: typeName }` verdict (non-player, distance-checked) without the allocation.
-        if (this._syncShadowCasterPolicyChecked(mesh, lodLevel, entity || _shadowFallbackEntity)) {
+        const policyResult = this._syncShadowCasterPolicyChecked(mesh, lodLevel, entity || _shadowFallbackEntity);
+        if (policyResult) {
           shadowPolicyRefreshed = true;
           shadowPolicyRefreshes++;
-          noteShadowPolicyChanged(this._shadowReceiverTally, true);
-          this._markShadowReceiversDirty();
+          // The caster set changed so the map re-renders — but receiveShadow only
+          // moves on visible/material/userData flips, which the traverse summed
+          // itself. A zero delta settles the tally with no whole-scene recount.
+          this._shadowMapDirty = true;
+          if (!noteShadowPolicyChanged(this._shadowReceiverTally, policyResult)) {
+            this._shadowReceiversDirty = true;
+          }
         }
       }
 
@@ -21160,9 +21166,13 @@ export const render = {
     if (parked && parkedEntry) {
       parkedEntry.recheck = (parkedEntry.recheck || 0) - 1;
       if (parkedEntry.recheck <= 0) {
-        // Re-arm under the same spread the mint used — a same-arm parked cohort
-        // expires staggered instead of stacking its collects into one sync.
-        parkedEntry.recheck = 96 + (parkedMap.size % 32);
+        // Re-arm on a per-stamp counter — size%32 reads identically for every
+        // root expiring in one pass, which re-synchronized the cohort it was
+        // meant to stagger. The recheck cadence is a best-effort backstop for
+        // silent drawability flips, not a correctness deadline, so the spread
+        // is free to be arbitrary.
+        this._parkedRecheckStamp = (this._parkedRecheckStamp || 0) + 1;
+        parkedEntry.recheck = 96 + (this._parkedRecheckStamp % 32);
         parkedRecheck = true;
       }
     }
@@ -21240,7 +21250,8 @@ export const render = {
         return false;
       }
     }
-    const changed = syncShadowCasterPolicy(root, lodLevel, syncOpts);
+    const receiverOut = { receiverDelta: 0 };
+    const changed = syncShadowCasterPolicy(root, lodLevel, { ...syncOpts, out: receiverOut });
     if (withheldMeshes && withheldMeshes.length > 0) {
       for (const mesh of withheldMeshes) {
         if (mesh) mesh.castShadow = false;
@@ -21273,7 +21284,9 @@ export const render = {
       if (parked && this._parkedDepthStageRoots) this._parkedDepthStageRoots.delete(root);
       this._queueShadowDepthStage(root, lodLevel, entity);
     }
-    return changed;
+    // Callers settling the receiver tally need the traverse's own measured delta —
+    // carry it on the result instead of a boolean so truthiness checks still work.
+    return changed === true ? { changed: true, receiverDelta: receiverOut.receiverDelta } : false;
   },
 
 
@@ -21522,11 +21535,12 @@ export const render = {
           if (allOffered) {
             const parkedMap = this._parkedDepthStageRoots
               || (this._parkedDepthStageRoots = new Map());
+            this._parkedRecheckStamp = (this._parkedRecheckStamp || 0) + 1;
             parkedMap.set(root, {
-              // The +size%32 staggers same-arm cohorts: identical cadences used
+              // The +stamp%32 staggers same-arm cohorts: identical cadences used
               // to expire in one pass and stack every parked collect there.
               lodLevel, entity, seq: shadowCasterPolicyDirtySeq(root),
-              recheck: 96 + (parkedMap.size % 32),
+              recheck: 96 + (this._parkedRecheckStamp % 32),
             });
             continue;
           }

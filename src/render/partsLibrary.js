@@ -6282,7 +6282,7 @@ function driveOpeningPublicationResume(render, queue) {
   // Bounded idle wait: a saturated postTask queue must not starve the drain — a
   // parked commit tail would otherwise hold its release through the freeze window.
   armCallbackAfterPresent(async () => {
-    let spentMs = 0;
+    const entrySpend = pacedFrameSpend();
     for (let i = 0; i < OPENING_PUBLICATION_RESUME_BATCH && queue.length > 0; i += 1) {
       const next = queue.shift();
       if (next && typeof next.resolve === 'function') {
@@ -6307,17 +6307,21 @@ function driveOpeningPublicationResume(render, queue) {
           // macrotask yield lets the whole chain land before the batch decides,
           // so the measured window actually contains the commit cost it spaces
           // (a bare microtask hop saw only the resolution, ~µs, and the brake
-          // could not see the N commit tails it stacked per arm). The ledger
-          // debit tells sibling slicers the frame is spent too.
+          // could not see the N commit tails it stacked per arm).
           if (queue.length > 0) {
             const measuredAt = (typeof performance !== 'undefined' && performance.now)
               ? performance.now() : Date.now();
+            const ledgerBefore = pacedFrameSpend();
             await new Promise((resolveYield) => { setTimeout(resolveYield, 0); });
             const elapsed = ((typeof performance !== 'undefined' && performance.now)
               ? performance.now() : Date.now()) - measuredAt;
-            spentMs += elapsed;
-            notePacedFrameSpend(elapsed);
-            if (spentMs >= PACED_FRAME_BUDGET_MS || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
+            // The commit tail debits itself through the paced ledger inside
+            // this same window — charging elapsed again double-counts it and
+            // halves the intended drain. Only the hop's non-debiting residue
+            // (resolve noise, unrelated main-thread work) needs the charge.
+            const residual = elapsed - (pacedFrameSpend() - ledgerBefore);
+            if (residual > 0) notePacedFrameSpend(residual);
+            if (pacedFrameSpend() - entrySpend >= PACED_FRAME_BUDGET_MS) break;
           }
         }
       }
