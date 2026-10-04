@@ -342,7 +342,9 @@ export function compileShadowDepthPipelines(options = {}) {
   // Query-side unstaged checks read the light census off the LIVE scene. The mark must
   // take the same census here — before the reparent loop strips every non-key light into
   // staging — or staged.has() can never hit and every later pass re-runs the ceremony.
-  const markLightSig = lightingScene ? lightCensusSignature(lightingScene) : '';
+  const markLightSig = typeof options.lightSigOverride === 'string'
+    ? options.lightSigOverride
+    : (lightingScene ? lightCensusSignature(lightingScene) : '');
   if (typeof renderer.render !== 'function' || !camera
       || typeof captureObjectHome !== 'function' || typeof restoreObjectHome !== 'function') {
     return { skipped: true, reason: 'shadow depth compiler unavailable', subjects: 0 };

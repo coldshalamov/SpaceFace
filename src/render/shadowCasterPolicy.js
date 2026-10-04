@@ -136,6 +136,12 @@ export function shadowCastAxisDistance(meshPos, playerLocalX, playerLocalZ) {
   );
 }
 
+/** True when the root's policy record is marked for a refresh (mesh/material set changed). */
+export function shadowCasterPolicyDirty(root) {
+  const state = root && root.userData ? root.userData[POLICY_STATE] : null;
+  return !!(state && state.dirty);
+}
+
 /** Mark a changed hierarchy/material set for one shadow-policy refresh at its current LOD. */
 export function invalidateShadowCasterPolicy(root) {
   if (!root || typeof root.traverse !== 'function') return false;

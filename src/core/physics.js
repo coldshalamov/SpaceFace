@@ -27,6 +27,7 @@ import {
   resolveDockAnchor,
 } from '../data/collisionProxyManifests.js';
 import { queuePhysicsImpulse, resolvePhysicsBodySpec } from './physicsAuthority.js';
+import { rapierRuntimeBlocked } from './rapierCompatRuntime.js';
 // FB-095: tickMs is diagnostics-only, so it reads the classified instrumentation clock in
 // perfRuntime (perfNow) rather than touching wall time from a simulation owner.
 import { perfNow } from './perfRuntime.js';
@@ -1261,6 +1262,9 @@ export const physics = {
       return;
     }
     if (!this._rapierInit) {
+      // Init is in failure backoff — retry when the window expires instead of
+      // minting a doomed attempt (and its warn) every tick.
+      if (rapierRuntimeBlocked()) return;
       const token = ++this._rapierToken;
       this._rapierInit = import('./rapierCollisionWorld.js')
         .then((m) => m.createRapierCollisionWorld())

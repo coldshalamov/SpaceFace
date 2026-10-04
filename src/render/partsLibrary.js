@@ -6246,6 +6246,31 @@ function entityOnDeadlineGlass(entity, state) {
   }) === TABLE_BAND.GLASS;
 }
 
+// A release resolves every parked commit continuation in one microtask flush — each tail
+// then runs its traverses back-to-back inside a single task. Pace the resumes: callers
+// queue in arrival order and a few continue per presented frame.
+const OPENING_PUBLICATION_RESUME_BATCH = 4;
+
+function paceOpeningPublicationResume(render) {
+  const queue = render._openingPublicationResumeQueue
+    || (render._openingPublicationResumeQueue = []);
+  return new Promise((resolve) => {
+    queue.push(resolve);
+    if (queue.length === 1) driveOpeningPublicationResume(render, queue);
+  });
+}
+
+function driveOpeningPublicationResume(render, queue) {
+  armCallbackAfterPresent(() => {
+    for (let i = 0; i < OPENING_PUBLICATION_RESUME_BATCH && queue.length > 0; i += 1) {
+      const next = queue.shift();
+      if (typeof next === 'function') next();
+    }
+    if (queue.length > 0) driveOpeningPublicationResume(render, queue);
+    else render._openingPublicationResumeQueue = null;
+  });
+}
+
 export function waitForOpeningGraphPublicationRelease(options = {}) {
   const render = authoredRuntimeState()?.render;
   if (options.expectedRender && options.expectedRender !== render) {
@@ -6286,10 +6311,12 @@ export function waitForOpeningGraphPublicationRelease(options = {}) {
       throw error;
     }
   };
-  const released = waitForAuthoredAdmission(Promise.resolve(wait.call(render)).then((value) => {
-    assertGateOwnerCurrent();
-    return value;
-  }), options);
+  const released = waitForAuthoredAdmission(Promise.resolve(wait.call(render)).then((value) => (
+    paceOpeningPublicationResume(render).then(() => {
+      assertGateOwnerCurrent();
+      return value;
+    })
+  )), options);
   if (!entity || !postFirstPicture) return released;
   let settled = false;
   return new Promise((resolve, reject) => {

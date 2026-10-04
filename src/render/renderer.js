@@ -244,6 +244,7 @@ import { installDomInstrumentation } from '../ui/domInstrumentation.js';
 import {
   allowRealtimeShadowCast,
   invalidateShadowCasterPolicy,
+  shadowCasterPolicyDirty,
   noteRealtimeShadowCasterPose,
   shouldNoteRealtimeShadowCasterPose,
   SHADOW_MAP_SIZE,
@@ -18668,7 +18669,9 @@ export const render = {
     if (old) {
       this._unbindPresentationMesh(id, old);
       this.scene.remove(old);
-      disposeObject(old);
+      // Same traverse+dispose class as a despawn corpse — ride the bounded per-frame
+      // drain instead of paying the GL tail inside the appearanceChanged emit.
+      this._despawnDisposeQueue.push(old);
       this._meshes.delete(id);
       this._meshesVersion += 1;
       noteShadowMeshRemoved(this, old);
@@ -20984,15 +20987,39 @@ export const render = {
   _syncShadowCasterPolicyChecked(root, lodLevel, entity) {
     const opts = this._shadowPolicyOptions(entity, root);
     let syncOpts = opts;
+    let withheldMeshes = null;
     let withholdCast = false;
-    if (opts.allowCast === true && shadowCasterBand(root) !== 1
-        && this._shadowSettingOn === true && this.renderer && this.scene && this._keyLight
-        && collectUnstagedShadowCasters(this.renderer, [root], this.scene, this._shadowCensusForFrame()).length > 0) {
-      syncOpts = { ...opts, allowCast: false };
-      withholdCast = true;
+    const band = shadowCasterBand(root);
+    // The signature walk is affordable on the promotion class (band !== 1) and on a
+    // dirty in-band policy (a swap minted fresh meshes); a clean same-band sync keeps
+    // the fast path and never pays the collect.
+    const unstaged = (opts.allowCast === true && this._shadowSettingOn === true
+        && this.renderer && this.scene && this._keyLight
+        && (band !== 1 || shadowCasterPolicyDirty(root)))
+      ? collectUnstagedShadowCasters(this.renderer, [root], this.scene, this._shadowCensusForFrame())
+      : null;
+    if (unstaged && unstaged.length > 0) {
+      if (band !== 1) {
+        syncOpts = { ...opts, allowCast: false };
+        withholdCast = true;
+      } else {
+        // In-band: a mesh added under an already-casting root would otherwise link its
+        // depth variant inside this presented frame. Withhold only the unstaged casters
+        // — already-staged siblings keep casting (no blink).
+        withheldMeshes = unstaged;
+      }
     }
     const changed = syncShadowCasterPolicy(root, lodLevel, syncOpts);
-    if ((changed || withholdCast) && opts.allowCast === true) {
+    if (withheldMeshes) {
+      for (const mesh of withheldMeshes) {
+        if (mesh) mesh.castShadow = false;
+      }
+      // The arm's restore re-runs identical opts — re-dirty so its traverse can't
+      // early-out on the state this sync just stamped.
+      invalidateShadowCasterPolicy(root);
+    }
+    if ((withholdCast || (withheldMeshes !== null && withheldMeshes.length > 0))
+        && opts.allowCast === true) {
       this._queueShadowDepthStage(root, lodLevel, entity);
     }
     return changed;
@@ -21039,17 +21066,32 @@ export const render = {
       const renderer = this.renderer;
       const scene = this.scene;
       const camera = this.cam && this.cam.obj;
-      const slice = [];
+      // Slice by visible impact — nearest the shadow ortho's center stages first, so a
+      // station arriving behind off-ortho stragglers does not wait frames for its shadow.
+      const px = this._framePlayerLocalX || 0;
+      const pz = this._framePlayerLocalZ || 0;
+      const entries = [];
       for (const [root, entry] of pending) {
-        if (slice.length >= 8) break;
         if (root && root.parent) {
-          slice.push([root, entry]);
-          pending.delete(root);
+          entries.push([root, entry]);
         } else {
           // Detached before staging: nothing to restore or mark — a re-mount runs the
           // checked policy sync again and re-queues if still unstaged.
           pending.delete(root);
         }
+      }
+      entries.sort((a, b) => (
+        shadowCastAxisDistance(a[0].position, px, pz)
+        - shadowCastAxisDistance(b[0].position, px, pz)
+      ));
+      // The per-arm cost is the near-fixed ceremony — drain the remainder in one arm and
+      // halve big bursts instead of paying ceil(N/8) ceremonies over that many frames.
+      const cap = Math.min(32, Math.max(8, Math.ceil(entries.length / 2)));
+      const slice = [];
+      for (const [root, entry] of entries) {
+        if (slice.length >= cap) break;
+        slice.push([root, entry]);
+        pending.delete(root);
       }
       const sliceRoots = slice.map(([root]) => root);
       if (this._shadowSettingOn === true && renderer && scene && camera && this._keyLight
@@ -21058,7 +21100,9 @@ export const render = {
           // Coalesced promotions share one stage; roots whose signatures were already
           // marked (opening/admission staged them under the same light census) are
           // filtered so the ceremony only pays for genuinely unlinked depth variants.
-          const unstaged = collectUnstagedShadowCasters(renderer, sliceRoots, scene);
+          // Both census walks ride the per-pass memo instead of re-traversing the scene.
+          const lightSig = this._shadowCensusForFrame();
+          const unstaged = collectUnstagedShadowCasters(renderer, sliceRoots, scene, lightSig);
           if (unstaged.length > 0) {
             compileShadowDepthPipelines({
               renderer,
@@ -21070,6 +21114,7 @@ export const render = {
               captureObjectHome,
               restoreObjectHome,
               lightingScene: scene,
+              lightSigOverride: lightSig,
               stagingName: 'SF_ShadowPromoteDepthAdmission',
             });
           }

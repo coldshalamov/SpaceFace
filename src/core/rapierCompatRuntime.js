@@ -50,6 +50,12 @@ export function loadRapierCompatRuntime({
   return rapierRuntimePromise;
 }
 
+/** True while init is refusing attempts inside the failure backoff window. */
+export function rapierRuntimeBlocked() {
+  return rapierRuntimeFailures >= RAPIER_INIT_FAILURES_BEFORE_BACKOFF
+    && Date.now() < rapierRuntimeBlockedUntil;
+}
+
 export function createRapierCspFunctionConstructor(globalObject = globalThis) {
   return function RapierCspFunctionConstructor(...parameters) {
     const source = parameters.length === 1 ? String(parameters[0]).trim().replace(/;$/, '') : '';
