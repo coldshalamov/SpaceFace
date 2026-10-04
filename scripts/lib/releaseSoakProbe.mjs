@@ -2458,6 +2458,13 @@ async function exerciseMarketRoundtrip(page) {
       const remainMs = Math.max(500, deadline - Date.now());
       landed = await page.waitForFunction(verifyFn, before, { timeout: Math.min(3_000, remainMs) }).then(() => true, () => false);
     }
+    // A click that outran its pBound timeout still reaches the handler and commits a beat after
+    // the attempts loop gives up (warmup-3's sell landed exactly that way). One trailing verify
+    // window catches the commit instead of reporting a dead row.
+    if (!landed && Date.now() < walkDeadline) {
+      landed = await page.waitForFunction(verifyFn, before, { timeout: Math.min(4_000, Math.max(500, walkDeadline - Date.now())) })
+        .then(() => true, () => false);
+    }
     return landed ? { commodityId: id, before } : null;
   };
   // Walk register rows the way a pilot does: select each and try the commit until one
@@ -2494,13 +2501,22 @@ async function exerciseMarketRoundtrip(page) {
     if (!c || !(c.capVolume > 0)) return null;
     return c.capVolume - (c.usedVolume || 0);
   }), 4_000, null);
-  const BUY_VERIFY = ({ commodityId, credits, owned }) => {
+  // Verify against the durable trade event first: a GO click dispatched right at its protocol
+  // timeout still reaches the handler and commits a beat later — past the per-attempt window —
+  // while the cargo read sits exactly where the snapshot left it. The economy:tradeCompleted tap
+  // is the same commit the pilot sees; a fresh event at/after the snapshot instant is the leg
+  // landing, regardless of which attempt's click carried it.
+  const BUY_VERIFY = ({ commodityId, credits, owned, at }) => {
     const s = window.SF?.state;
-    return Number(s?.player?.credits) < credits
-      && Number(s?.player?.cargo?.items?.[commodityId] || 0) > owned;
+    return (Number(s?.player?.credits) < credits
+      && Number(s?.player?.cargo?.items?.[commodityId] || 0) > owned)
+      || (window.__SOAK_TRADE_EVENTS__ || []).some((e) =>
+        e.kind === 'completed' && e.side === 'buy' && e.commodityId === commodityId && e.at >= at);
   };
-  const SELL_VERIFY = ({ commodityId, owned }) =>
-    Number(window.SF?.state?.player?.cargo?.items?.[commodityId] || 0) < owned;
+  const SELL_VERIFY = ({ commodityId, owned, at }) =>
+    Number(window.SF?.state?.player?.cargo?.items?.[commodityId] || 0) < owned
+    || (window.__SOAK_TRADE_EVENTS__ || []).some((e) =>
+      e.kind === 'completed' && e.side === 'sell' && e.commodityId === commodityId && e.at >= at);
   // Long soaks bleed the bid-ask spread on every roundtrip and in-flight pickups can
   // overfill the hold far past cap (a fresh approach scoops 300+ ore) — credits and
   // free space are not guaranteed. Try the buy leg first; when no buyable row
@@ -2608,6 +2624,7 @@ async function readTradeSnapshot(page, commodityId) {
     commodityId: id,
     credits: Number(window.SF?.state?.player?.credits || 0),
     owned: Number(window.SF?.state?.player?.cargo?.items?.[id] || 0),
+    at: Date.now(),
   }), commodityId);
 }
 
