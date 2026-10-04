@@ -291,8 +291,12 @@ export const story = {
       s.trapNextAtS = (state.simTime || 0) + 5;
       this._fireEligibleTraps();
     }
-    if ((s.charNextAtS || 0) <= (state.simTime || 0)) {
-      s.charNextAtS = (state.simTime || 0) + CHARACTER_INTERRUPT_POLL_S;
+    // Character-interrupt poll clock is INSTANCE state (like _lastTutorialSayS), never state.story:
+    // the 47a authoritative hash snapshots state.story (simSnapshot.js), so per-tick bookkeeping
+    // here must not persist. Lazy init mirrors the traps' deserialize heal (first poll at +5s).
+    if (this._charNextAtS == null) this._charNextAtS = (state.simTime || 0) + CHARACTER_INTERRUPT_POLL_S;
+    if (this._charNextAtS <= (state.simTime || 0)) {
+      this._charNextAtS = (state.simTime || 0) + CHARACTER_INTERRUPT_POLL_S;
       this._fireCharacterInterrupts();
     }
     void dt;
@@ -2162,7 +2166,6 @@ export const story = {
       s.narrativeCalmUntilS = 0;
       s.ambientNextAtS = 0;
       s.trapNextAtS = (state.simTime || 0) + 5;
-      s.charNextAtS = (state.simTime || 0) + CHARACTER_INTERRUPT_POLL_S;
       s.valeMilestones = { conflictFlip: null };
       s.conflictReaction = normalizeConflictReactionState();
       s.verge = createVergeStoryState();
