@@ -25,6 +25,17 @@ The normal runtime branch does not enable the new Brood wave/behavior/geometry/p
 
 The current common Forge dependencies match the pinned upstream byte-for-byte. The source seal verifies against the installed dedicated source inputs. Source geometry/physics matching is useful evidence, but is not visual acceptance. The historical first-three body geometry is explicitly labeled historical; its rejected art is not imported as an accepted replacement. Jaw presentation for A6 is static-rest; animated collider correspondence remains open.
 
+## Current full-production failure — 3 October 2026, 23:52 UTC
+
+The frozen current composition's direct 935-input normal production test completed
+with source-closure SHA-256 `3c2fbd2b28c02d9e74014047a961babbd749872b6f50a959ee514a4e07f83273` at
+85,000 ticks but remained in `pads` instead of `secured`. The original plate and native
+identity remained valid; no native failure was reported. Save/Continue was not reached.
+This is a real current-source acceptance failure, not an external process termination.
+Ceres normal-route acceptance is red on this composition. Preserve safe-hold behavior;
+do not widen timeouts, teleport cargo or substitute the older successful d31c8014 run.
+The continuation remains explicitly unfinished WIP while this failure is diagnosed.
+
 ## Evidence and its boundary
 
 Tests were run as successive source compositions were assembled. A predecessor green run does not certify later source changes.
@@ -52,3 +63,10 @@ Use the registered workflow steps and the focused tests next to each owner. Do n
 6. Repeat affected tests after every later source/asset overlay and refresh only the selected census/provenance rows whose exact inputs changed
 
 No remote publication, merge or deployment was performed by the local composer. Publish only exact changed-path packets onto the full pinned repository, never the sparse synthetic local Git root.
+
+## Newer-master save-semantics caveat
+
+This draft deliberately remains pinned to `dc142c0108ce7663bc03574349623c3fda1033fa`.
+Newer master changes `b144f226` and `d5ea3fa1` alter live-save semantics and must be
+reconciled by exact owner/content before any merge or final acceptance. This WIP
+publication does not overwrite master or claim compatibility with those newer changes.

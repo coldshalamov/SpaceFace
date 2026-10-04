@@ -1,0 +1,184 @@
+{
+  "schema": "spaceface.currentNormalProofResult.v1",
+  "status": "FAILED_GAMEPLAY_ASSERTION",
+  "upstreamBase": "dc142c0108ce7663bc03574349623c3fda1033fa",
+  "publicationManifestSha256": "703db6edda9be6f35ba838aede9f03da491e36c4851c9f44134f5e6a4bfba007",
+  "sourceClosure": {
+    "hash": "3c2fbd2b28c02d9e74014047a961babbd749872b6f50a959ee514a4e07f83273",
+    "files": 935,
+    "unchanged": true
+  },
+  "command": "node --max-old-space-size=192 --max-semi-space-size=4 --unhandled-rejections=strict test/ceres-workfleet-production-cycle.test.mjs",
+  "actualExecArgv": [
+    "--max-old-space-size=192",
+    "--max-semi-space-size=4",
+    "--unhandled-rejections=strict"
+  ],
+  "budgetLabelCaveat": "The test receipt hardcodes oldSpaceBudgetMiB256; actualExecArgv establishes actual192/4 execution. No source/assertion/timeout/golden was changed.",
+  "seed": 48,
+  "profile": "production",
+  "evidenceClass": "production-manifest",
+  "selectedSlots": {
+    "aiSlot": "tacticalAI",
+    "flightSlot": "flight",
+    "aiBackend": "sg06-tactical",
+    "flightBackend": "v3"
+  },
+  "backend": "rapier-dynamic",
+  "tick": 85000,
+  "actualPhase": "pads",
+  "expectedPhase": "secured",
+  "phaseStartedTick": 59518,
+  "originalBodyRetained": true,
+  "nativeFailure": null,
+  "continueAttempted": false,
+  "job": {
+    "id": "job:ceres:second_measure:long_plate",
+    "worker": "ceres:second_measure:breaker",
+    "section": "world_site_ceres_second_measure/payload/long_plate",
+    "head": "ceres:second_measure:cutter_head",
+    "cradle": "ceres:second_measure:section_cradle",
+    "phase": "pads",
+    "phaseTick": 59518,
+    "updatedTick": 85000,
+    "index": 5,
+    "sequence": 0,
+    "mountId": "att_000003",
+    "blockedReason": null,
+    "towId": null,
+    "extractionMisalignedSince": null,
+    "receiverId": "att_000005"
+  },
+  "payload": {
+    "status": "released",
+    "worldObjectId": "world_site_ceres_second_measure/payload/long_plate",
+    "settledReceiptId": null,
+    "motion": {
+      "pos": {
+        "x": -13136.000122070312,
+        "z": 9513.388549804688
+      },
+      "vel": {
+        "x": -0.014183455146849155,
+        "z": 0.044879138469696045
+      },
+      "rot": 1.546782004941466e-05,
+      "angVel": 5.7684697821969166e-05
+    },
+    "remainingHull": 1000,
+    "remainingPool": {}
+  },
+  "hardware": [
+    {
+      "id": 509,
+      "worldRecordId": "ceres:second_measure:breaker",
+      "role": "breaker",
+      "mass": 3200,
+      "hull": 1800,
+      "pos": {
+        "x": -13138.034790039062,
+        "z": 9291.994750976562
+      },
+      "vel": {
+        "x": 0.020873697474598885,
+        "z": 0.003149460069835186
+      },
+      "rot": 1.5708652459944639,
+      "slide": 0,
+      "blocked": false
+    },
+    {
+      "id": 510,
+      "worldRecordId": "ceres:second_measure:section_cradle",
+      "role": "cradle",
+      "mass": 6000,
+      "hull": 2400,
+      "pos": {
+        "x": -13138,
+        "z": 9512
+      },
+      "vel": {
+        "x": 0,
+        "z": 0
+      },
+      "rot": 0,
+      "slide": 0.9444444444444421,
+      "blocked": true,
+      "blocker": "world_site_ceres_second_measure/payload/long_plate"
+    },
+    {
+      "id": 511,
+      "worldRecordId": "ceres:second_measure:cutter_head",
+      "role": "cutterHead",
+      "mass": 60,
+      "hull": 120,
+      "pos": {
+        "x": -13168.055847167969,
+        "z": 9253.994506835938
+      },
+      "vel": {
+        "x": 0.014205859042704105,
+        "z": -0.0010939848143607378
+      },
+      "rot": 1.5708645716217986,
+      "slide": 0
+    }
+  ],
+  "phases": [
+    {
+      "tick": 1,
+      "phase": "head_out"
+    },
+    {
+      "tick": 3214,
+      "phase": "head_cut"
+    },
+    {
+      "tick": 3456,
+      "phase": "head_retract"
+    },
+    {
+      "tick": 6667,
+      "phase": "tow_attach"
+    },
+    {
+      "tick": 6668,
+      "phase": "extract"
+    },
+    {
+      "tick": 21307,
+      "phase": "seat"
+    },
+    {
+      "tick": 33444,
+      "phase": "loaded"
+    },
+    {
+      "tick": 52783,
+      "phase": "receiver"
+    },
+    {
+      "tick": 52784,
+      "phase": "unshoe"
+    },
+    {
+      "tick": 54938,
+      "phase": "withdraw"
+    },
+    {
+      "tick": 59518,
+      "phase": "pads"
+    }
+  ],
+  "rawReceiptSha256": "0296a47b0e7d1bed5b8e7d1f198f042f530ba34daafe77adf06dcb7abd52b7bb",
+  "testOutputSha256": "e87f599c99380810bd27c707cf8c9e5504e340f044e817ba061beac1feb7e1ba",
+  "priorExecution": {
+    "oldSpaceMiB": 256,
+    "nurseryMiB": 8,
+    "exitCode": 137,
+    "lastLoggedTick": 12000,
+    "lastLoggedPhase": "extract",
+    "cause": "unconfirmed external termination; not this gameplay failure"
+  },
+  "nextStep": "Reduce terminal receiver/plate state to a focused native/controller regression; preserve physical envelope, original identity, retention tolerances and85000tick bound."
+}
