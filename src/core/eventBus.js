@@ -69,6 +69,11 @@ export function createBus() {
   // Sliced emits that arrived while a predecessor tail still lived past its
   // wall-clock cap — started in order when that tail finishes.
   const pendingSlicedEmits = [];
+  // The frame-loop owner suspends slicing while no presented frame exists to
+  // protect (loading, hidden, suspended): slicing's only purpose is to bound a
+  // task inside a frame, so while suspended emits deliver inline and anything
+  // already parked flushes at the transition.
+  let emitSliceSuspended = false;
   // Bumped by clear(): a flush mid-stack that captured its batch pre-teardown must not deliver
   // the rest of it into listeners bound on the new bus.
   let generation = 0;
@@ -268,12 +273,42 @@ export function createBus() {
   }
 
   function emit(event, payload) {
-    const budget = sliceBudgets.get(event) | 0;
+    const budget = emitSliceSuspended ? 0 : sliceBudgets.get(event) | 0;
     if (budget > 0 && (event === 'sector:enter' || event === 'save:loaded')) {
       startEmitSlice(event, payload, budget);
       return;
     }
     emitAll(event, payload);
+  }
+
+  // Non-presenting tasks have no frame deadline to overrun, so unlike
+  // drainEmitSlice this ignores the paced ledger and runs each tail to
+  // completion — the point is to finish before the caller's task ends.
+  function flushSlicedEmits() {
+    let guard = 0;
+    while (emitSlice || pendingSlicedEmits.length) {
+      if (guard++ > 64) break; // a listener that keeps re-emitting can't wedge the flush
+      if (emitSlice) {
+        const slice = emitSlice;
+        while (emitSlice === slice && slice.index < slice.fns.length) {
+          const fn = slice.fns[slice.index];
+          slice.index += 1;
+          try { fn(slice.payload, slice.event); }
+          catch (err) { console.error(`[bus] handler error for "${slice.event}":`, err); }
+        }
+        if (emitSlice === slice) emitSlice = null;
+        else break; // clear() or a re-entrant sliced emit swapped the global — stop here
+      }
+      if (pendingSlicedEmits.length) {
+        const next = pendingSlicedEmits.shift();
+        emitAll(next.event, next.payload);
+      }
+    }
+  }
+
+  function setEmitSliceSuspended(suspended) {
+    emitSliceSuspended = suspended === true;
+    if (emitSliceSuspended) flushSlicedEmits();
   }
 
   function setEmitSliceBudget(event, budget) {
@@ -446,6 +481,7 @@ export function createBus() {
   return {
     on, off, once, emit, queue, flush, clear,
     setEmitSliceBudget, drainEmitSlice, pendingEmitSliceCount,
+    setEmitSliceSuspended, flushSlicedEmits,
     claimPresentationDrain, drainPresentationTail, pendingPresentationCount,
     setPayloadSnapshot,
     _listeners: listeners,

@@ -6010,6 +6010,26 @@ const SHADOW_DEPTH_PASS_COLLECT_CAP = 8;
 // outruns it aborts and over-covers the same way.
 const SHADOW_DEPTH_PASS_NODE_CAP = 4096;
 
+// Swarm warm coverage rows release only on *retriable* outcomes: a cancelled,
+// readmission-marked, or errored exemplar kick never composed its program
+// family, so the next armory dwell must retry the archetype instead of its
+// first live spawn paying the in-round compose + program link. 'unavailable'
+// stays claimed on purpose — a genuinely missing GLB must not re-decode every
+// dwell — and 'invalid-upgrade-request' means the request itself was malformed,
+// so a retry resolves identically. Successful or terminal states keep coverage.
+const SWARM_WARM_RETRIABLE_OUTCOMES = new Set([
+  'fallback-after-error',
+  'awaiting-authored-admission',
+  'stalled-slot-released',
+  'cancelled-before-load',
+  'cancelled-before-queue',
+  'cancelled-after-decode',
+  'orphaned-before-swap',
+  'orphaned-after-pipeline-compile',
+  'regrade-evict-cooloff',
+  'deferred-arena-dressing',
+]);
+
 // Nearest ancestor that owns a shadow-caster policy record (same userData key as
 // shadowCasterPolicy.js), else the direct scene child — the granularity the arm's
 // per-root collect/restore machinery works at.
@@ -7233,7 +7253,12 @@ export function publishPreparedSectorBoundary(record, options = {}) {
       if (options.meshes?.get(id) === boundary) options.meshes.delete(id);
     } catch (cleanupError) { rollbackErrors.push(cleanupError); }
     clearEntityMeshReference(entity, boundary);
-    try { options.markShadowReceiversDirty?.(); }
+    // The boundary's flags were counted while mounted — subtract them exactly
+    // instead of forcing a whole-scene recount on the rollback path.
+    try {
+      if (options.noteShadowMeshRemoved) options.noteShadowMeshRemoved(boundary);
+      else options.markShadowReceiversDirty?.();
+    }
     catch (cleanupError) { rollbackErrors.push(cleanupError); }
     if (rollbackErrors.length) {
       throw new AggregateError([error, ...rollbackErrors], `Prepared boundary ${id} rollback failed`, {
@@ -7270,7 +7295,9 @@ export async function disposePreparedSectorBoundary(record, options = {}) {
   await attempt(() => options.disposePreparedBoundary?.(boundary));
   await attempt(() => options.disposeBoundaryObject?.(boundary));
   await attempt(() => clearEntityMeshReference(record.entity, boundary));
-  await attempt(() => options.markShadowReceiversDirty?.());
+  await attempt(() => (options.noteShadowMeshRemoved
+    ? options.noteShadowMeshRemoved(boundary)
+    : options.markShadowReceiversDirty?.()));
   if (cleanupErrors.length) {
     throw new AggregateError(cleanupErrors, `Prepared boundary ${id} cleanup failed`);
   }
@@ -8399,13 +8426,25 @@ export const render = {
       admissionStandInRecord: (entity) => residentWholeShipStandInRecord(entity, { renderer: this.renderer }),
       // Boundary seats (stations/place roots/capsules/packaged props) resolve by file through
       // the same residency sources; registered once below since wraps never see this.renderer.
-      onAuthoredAssetSwap: ({ boundary, root, entity } = {}) => {
+      onAuthoredAssetSwap: ({ boundary, root, entity, fallback } = {}) => {
         const target = boundary || root;
         if (target) {
+          // Exact receiver bookkeeping at the swap seam — no recount: the
+          // detached fallback's flags were counted while mounted; the incoming
+          // subtree's minted flags count now (measured before the sync rewrites
+          // them), and the checked sync's own traverse delta settles its rewrites.
+          if (fallback) this._noteShadowMeshRemoved(fallback);
+          if (root) this._noteShadowMeshAdded(root);
           invalidateShadowCasterPolicy(target);
           const lodLevel = target.userData && target.userData.lod
             ? target.userData.lod.level : null;
-          this._syncShadowCasterPolicyChecked(target, lodLevel, entity);
+          const swapPolicy = this._syncShadowCasterPolicyChecked(target, lodLevel, entity);
+          if (swapPolicy) {
+            this._shadowMapDirty = true;
+            if (!noteShadowPolicyChanged(this._shadowReceiverTally, swapPolicy)) {
+              this._shadowReceiversDirty = true;
+            }
+          }
         }
         if (target && entity && entity.id === state.playerId && this._livingHullPresentation) {
           this._livingHullPresentation.attach(target);
@@ -8415,7 +8454,6 @@ export const render = {
             entity,
           );
         }
-        this._shadowReceiversDirty = true;
       },
     });
     setBoundaryStandInResolver(
@@ -9417,6 +9455,7 @@ export const render = {
           ),
           releaseAsteroid: (id) => releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id),
           markShadowReceiversDirty: () => { this._markShadowReceiversDirty(); },
+          noteShadowMeshRemoved: (boundary) => { this._noteShadowMeshRemoved(boundary); },
         });
       },
       disposeBoundary: (record) => {
@@ -9443,6 +9482,9 @@ export const render = {
           },
           markShadowReceiversDirty: () => {
             if (rendererGenerationIsActive()) this._markShadowReceiversDirty();
+          },
+          noteShadowMeshRemoved: (boundary) => {
+            if (rendererGenerationIsActive()) this._noteShadowMeshRemoved(boundary);
           },
         });
       },
@@ -10250,16 +10292,25 @@ export const render = {
       });
     };
     state.render.pendingAuthoredGpuResidency = () => gpuResidencyAdmissions.pendingCount;
-    state.render.syncPackagedBodyShadowPolicy = (root, entity = null) => {
+    state.render.syncPackagedBodyShadowPolicy = (root, entity = null, addedSubtree = null) => {
       // A packaged body mounts its subtree inside an async continuation, so no mount-path
       // or band-flip traverse covers the new meshes until much later. Invalidate + checked
       // sync now: the wrapper's withhold/stage machinery owns any promotion the swap
       // introduces, so an unstaged depth signature never draws cold in a presented frame.
       if (!root) return;
+      // Exact receiver bookkeeping — the grafted subtree was never tallied, so its
+      // minted flags count as a pre-sync add and the traverse's own delta settles
+      // the rewrites. No whole-scene recount on a per-package commit path.
+      if (addedSubtree) this._noteShadowMeshAdded(addedSubtree);
       invalidateShadowCasterPolicy(root);
       const lodLevel = root.userData && root.userData.lod ? root.userData.lod.level : null;
-      this._syncShadowCasterPolicyChecked(root, lodLevel, entity);
-      this._shadowReceiversDirty = true;
+      const packagedPolicy = this._syncShadowCasterPolicyChecked(root, lodLevel, entity);
+      if (packagedPolicy) {
+        this._shadowMapDirty = true;
+        if (!noteShadowPolicyChanged(this._shadowReceiverTally, packagedPolicy)) {
+          this._shadowReceiversDirty = true;
+        }
+      }
     };
     state.render.drainAfterPresentCompile = (options = {}) => {
       const leftoverMs = Number(options && options.leftoverMs);
@@ -16172,7 +16223,32 @@ export const render = {
       // Keep the stamped list on the warm so a throwing begin can unmark exactly
       // the rows it counted — the deferred lane skips whatever the ledger names.
       warm.coveredEnemyIds = launchEligibility;
+      // The marks landed on THIS Map instance — late async settles decrement it,
+      // not whatever map a later run mints (the deferred lane carries the same
+      // captured-map contract).
+      warm.coveredMap = covered;
     }
+    const unmarkWarmCoverage = (enemyId) => {
+      // Idempotent per warm: the coverage ledger ref-counts, and a ship kick's
+      // failure plus its derived hulk kick's failure release the row only once.
+      const coveredNow = warm.coveredMap;
+      const failedCoverage = warm.failedCoverageMarks
+        || (warm.failedCoverageMarks = new Set());
+      if (enemyId == null || !coveredNow || failedCoverage.has(enemyId)) return;
+      failedCoverage.add(enemyId);
+      const count = coveredNow.get(enemyId) || 0;
+      if (count > 1) coveredNow.set(enemyId, count - 1);
+      else coveredNow.delete(enemyId);
+    };
+    // A kick that settles a retriable outcome never warmed the family — release
+    // the coverage row so the next armory dwell retries the archetype instead
+    // of its first live spawn paying the in-round compose + program link.
+    const unmarkOnRetriableOutcome = (result, enemyId) => {
+      const status = result && typeof result === 'object' ? result.status : result;
+      if (status == null || SWARM_WARM_RETRIABLE_OUTCOMES.has(status)) {
+        unmarkWarmCoverage(enemyId);
+      }
+    };
     // The player hull joins the set: its live entity only spawns at the flight transition,
     // so without an exemplar its authored compose (the GLTFKit_ship_wasp cluster) runs inside
     // the round. The enemy roster never reaches the defId-resolved wasp file — hostiles map
@@ -16206,7 +16282,10 @@ export const render = {
             upgradeJobKey: `${specPrefix}job:${spec.id}`,
             isResidencyOwnerActive: () => warm.building === true,
           }), `ship:${spec.id}`);
-          kick.then((result) => { entry.result = result; });
+          kick.then((result) => {
+            entry.result = result;
+            unmarkOnRetriableOutcome(result, spec.data && spec.data.lootTableId);
+          });
           warm.pendingAttachments.push(kick);
         }
       } catch (error) {
@@ -16215,16 +16294,7 @@ export const render = {
         // stamped (once — a shared hulk file's failure doesn't double-decrement the
         // same warm's claim) so a later deferred warm retries the archetype instead of
         // its first live spawn paying the in-round compose + program link.
-        const failedEnemyId = spec && spec.data && spec.data.lootTableId;
-        const coveredNow = this._swarmWarmCoveredEnemyIds;
-        const failedCoverage = warm.failedCoverageMarks
-          || (warm.failedCoverageMarks = new Set());
-        if (failedEnemyId != null && coveredNow && !failedCoverage.has(failedEnemyId)) {
-          failedCoverage.add(failedEnemyId);
-          const count = coveredNow.get(failedEnemyId) || 0;
-          if (count > 1) coveredNow.set(failedEnemyId, count - 1);
-          else coveredNow.delete(failedEnemyId);
-        }
+        unmarkWarmCoverage(spec && spec.data && spec.data.lootTableId);
       }
     }
     // A kill's dead hulk is the victim's own authored hull under the 'place' slot — a second
@@ -16241,30 +16311,28 @@ export const render = {
         // Same boundary hook the live kill triggers — attachPackagedBody's admission stages
         // the packaged group detached, preps its pipelines, then mounts under the warm root.
         if (typeof hulk.userData?.requestAuthoredUpgrade === 'function') {
-          warm.pendingAttachments.push(track(
+          const hulkKick = track(
             hulk.userData.requestAuthoredUpgrade(renderer, scene, {
               residencyRole: decodeRole,
               sectorId,
               isResidencyOwnerActive: () => warm.building === true,
             }),
             `hulk:${spec.id}`,
-          ));
+          );
+          hulkKick.then((result) => {
+            unmarkOnRetriableOutcome(
+              result,
+              spec && spec.data && spec.data.hulkVisual && spec.data.hulkVisual.lootTableId,
+            );
+          });
+          warm.pendingAttachments.push(hulkKick);
         }
       } catch (error) {
         console.warn('[render] crucible warm hulk build failed', spec && spec.id, error);
         // Same per-spec unmark as the ship exemplars — a roster hulk's authored attach
         // would otherwise stay claimed-and-unwarmed until the first in-round kill.
-        const failedEnemyId = spec && spec.data
-          && spec.data.hulkVisual && spec.data.hulkVisual.lootTableId;
-        const coveredNow = this._swarmWarmCoveredEnemyIds;
-        const failedCoverage = warm.failedCoverageMarks
-          || (warm.failedCoverageMarks = new Set());
-        if (failedEnemyId != null && coveredNow && !failedCoverage.has(failedEnemyId)) {
-          failedCoverage.add(failedEnemyId);
-          const count = coveredNow.get(failedEnemyId) || 0;
-          if (count > 1) coveredNow.set(failedEnemyId, count - 1);
-          else coveredNow.delete(failedEnemyId);
-        }
+        unmarkWarmCoverage(spec && spec.data
+          && spec.data.hulkVisual && spec.data.hulkVisual.lootTableId);
       }
     }
     // Approach-triggered authored upgrades: place/poi/wr: component boundaries only start their
@@ -17018,6 +17086,10 @@ export const render = {
     const coveredMap = this._swarmWarmCoveredEnemyIds;
 
     const warm = { root: new THREE.Group(), pendingAttachments: [], building: true };
+    // Index-aligned with pendingAttachments: the enemyId each exemplar kick's
+    // coverage row belongs to, so a settle that resolved retriable can release
+    // exactly the row it stamped (null entries cover non-kick attachments).
+    const pendingAttachmentEnemyIds = [];
     const root = warm.root;
     root.name = `SF_SwarmDeferredWarm_w${nextWave}`;
     root.visible = false;
@@ -17091,6 +17163,7 @@ export const render = {
               overlapAuthoredPipelineCompile: true,
               upgradeJobKey: `deferred-warm:job:${spec.id}:w${witness}`,
             }), `ship:${spec.id}:w${witness}`));
+            pendingAttachmentEnemyIds.push(spec.data && spec.data.lootTableId);
           }
         }
       }
@@ -17110,6 +17183,9 @@ export const render = {
               }),
               `hulk:${spec.id}`,
             ));
+            pendingAttachmentEnemyIds.push(
+              spec && spec.data && spec.data.hulkVisual && spec.data.hulkVisual.lootTableId,
+            );
           }
         } catch (error) {
           console.warn('[render] deferred swarm warm hulk build failed', spec && spec.id, error);
@@ -17130,6 +17206,21 @@ export const render = {
     // then the (file x palette) subjects mint exactly like finish() does, then the whole root
     // runs the mid-flight admission chain — compile, residency upload, exact-target touch.
     const done = Promise.allSettled(warm.pendingAttachments)
+      .then((outcomes) => {
+        // Coverage only counts what the kick actually warmed: release rows whose
+        // exemplar attach settled a retriable outcome so the next dwell retries
+        // them (same contract as the launch warm's per-kick unmark). unmarkEnemy
+        // is per-warm idempotent, so the ship kick and its derived hulk kick
+        // release one shared row once.
+        for (let i = 0; i < outcomes.length; i += 1) {
+          const result = outcomes[i] && outcomes[i].status === 'fulfilled'
+            ? outcomes[i].value : null;
+          const status = result && typeof result === 'object' ? result.status : result;
+          if (status == null || SWARM_WARM_RETRIABLE_OUTCOMES.has(status)) {
+            unmarkEnemy(pendingAttachmentEnemyIds[i]);
+          }
+        }
+      })
       .then(() => this._mintDeferredPaletteSubjects(root, freshSet, sectorId))
       .then(() => (
         state.render && typeof state.render.compileObjectPipelines === 'function'
@@ -21254,6 +21345,9 @@ export const render = {
         // Policy state is already exactly what the first withhold left — the dirty bit
         // stays set so the arm's restore re-runs the full sync, but paying the O(subtree)
         // traverse here every frame was pure burn. Re-stamp the withheld flags only.
+        // Soundness rests on every subtree attach/detach under this root bumping
+        // dirtySeq through an invalidate seam (whole-ship LOD swapTo included) —
+        // a silent attach would dodge the re-collect and cast with a stale set.
         for (const mesh of cached) {
           if (mesh) mesh.castShadow = false;
         }
@@ -21359,6 +21453,7 @@ export const render = {
         return;
       }
       this._depthStageLedgerSkips = 0;
+      try {
       const renderer = this.renderer;
       const scene = this.scene;
       const camera = this.cam && this.cam.obj;
@@ -21494,14 +21589,17 @@ export const render = {
           console.warn('[render] shadow-promote depth stage failed', error);
         }
       }
-      // A capped leg leaves un-marked casters under the slice: the per-root collect
+      // A leg leaves un-marked casters under the slice: the per-root collect
       // results recorded above tell which roots still own unstaged meshes — each
       // mesh's mark tuple re-proves its CURRENT discriminant (covers the just-staged
       // marks plus any mid-slice drift) with zero re-walks, so roots still holding
       // unmarked casters keep their queue slot instead of restoring casters whose
-      // depth variant never linked.
+      // depth variant never linked. Uncapped legs run this too: a mesh the leg
+      // offered but never marked (draw-throw, undrawable-forever) must not have
+      // its cast flag restored unproven — restoring it links the depth variant
+      // inside the next presented shadow refresh, the cold link this prevents.
       let leftoverByRoot = null;
-      if (legCapped === true && unstagedByRoot) {
+      if (unstagedByRoot) {
         for (const [root, meshes] of unstagedByRoot) {
           let set = null;
           for (const mesh of meshes) {
@@ -21563,7 +21661,25 @@ export const render = {
         if (root.userData) root.userData[STAGE_SELF_DIRTY_KEY] = shadowCasterPolicyDirtySeq(root);
         if (this._withheldDepthCasters) this._withheldDepthCasters.delete(root);
         try {
-          syncShadowCasterPolicy(root, lodLevel, this._shadowPolicyOptions(entity, root));
+          // The restore's own traverse measures its receiveShadow flips — feed
+          // them to the incremental tally like the checked sync does, or subtree
+          // churn between withhold and restore silently drifts the count (an
+          // under-count reaching 0 freezes the shadow refresh until an unrelated
+          // dirty triggers a recount).
+          const restoreOut = { receiverDelta: 0 };
+          const restoreChanged = syncShadowCasterPolicy(root, lodLevel, {
+            ...this._shadowPolicyOptions(entity, root),
+            out: restoreOut,
+          });
+          if (restoreChanged) {
+            this._shadowMapDirty = true;
+            if (!noteShadowPolicyChanged(this._shadowReceiverTally, {
+              changed: true,
+              receiverDelta: restoreOut.receiverDelta,
+            })) {
+              this._shadowReceiversDirty = true;
+            }
+          }
         } catch (_) { /* restore is best-effort */ }
         restored += 1;
         // Restores requeue under the same deadline rule as the collect: staged
@@ -21586,12 +21702,17 @@ export const render = {
       // The arm's whole cost lands adjacent to the next presented frame — debit
       // the shared paced ledger so the frame's slicers see the spend.
       notePacedFrameSpend(armNow() - armStartedAt);
-      if (pending.size > 0) {
-        this._armDepthStage();
-      } else {
-        this._pendingDepthStageRoots = null;
-        this._depthStageScheduled = false;
-        this._killDepthStageSession();
+      } finally {
+        // The re-arm lives in finally: a throw mid-slice must not leave
+        // _depthStageScheduled === true with live pending entries — the queue
+        // would wedge permanently and withheld casters stay dark forever.
+        if (pending.size > 0) {
+          this._armDepthStage();
+        } else {
+          this._pendingDepthStageRoots = null;
+          this._depthStageScheduled = false;
+          this._killDepthStageSession();
+        }
       }
     }, { idleBoundMs: 48 });
   },
@@ -21674,6 +21795,11 @@ export const render = {
     }
   },
 
+  // The tally contract: every scene add/remove of a subtree carrying minted
+  // receiveShadow flags must route through these (or a dirty mark). Skipping
+  // them makes the next noteAdded/noteRemoved call diverge from the scene —
+  // and count clamps at 0, so an under-count silently freezes shadow-map
+  // refreshes until an unrelated recount heals it.
   _noteShadowMeshAdded(root) {
     if (this._shadowReceiverTally) this._shadowReceiverTally.noteAdded(root);
     else this._shadowReceiversDirty = true;

@@ -56,9 +56,11 @@ let paceSpentEpoch = -1;
 let pacePumpArmed = false;
 // Last pump fire in wall-clock ms: a hidden/occluded window freezes the epoch
 // while paced spend keeps accumulating — beyond this age the wallet re-keys on
-// the 8ms window instead of reading permanently over-budget.
+// the 8ms window instead of reading permanently over-budget. 250ms sits above
+// the worst honest presented frame (a 4fps hitch) so ordinary slow frames keep
+// epoch-keyed isolation while a genuinely starved pump still falls back.
 let pacePumpFiredAt = 0;
-const PACE_EPOCH_STALE_MS = 64;
+const PACE_EPOCH_STALE_MS = 250;
 
 function paceEpochNow() {
   // Only a real browser frame loop keys the epoch — headless/test hosts that stub

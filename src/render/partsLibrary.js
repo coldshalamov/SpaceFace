@@ -25,6 +25,7 @@ import { getAssetResidency } from './assetResidency.js';
 import { attachAuthoredMotionDriver, bindInstanceMotion } from './authoredMotion.js';
 import { lampShareToken } from './lampBus.js';
 import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
+import { invalidateShadowCasterPolicy } from './shadowCasterPolicy.js';
 import { armCallbackAfterPresent } from './compilePresentSlice.js';
 import { notePacedFrameSpend, pacedFrameSpend, PACED_FRAME_BUDGET_MS } from './decodeTaskBudget.js';
 import { createAsyncAdmission, AUTHORED_ASYNC_DEADLINE_MS } from './asyncAdmission.js';
@@ -3294,7 +3295,7 @@ function commitAuthoredCargoCapsuleBoundary(
     }
     boundary.userData.authoredAssetState = 'authored';
     if (typeof options.onSwap === 'function') {
-      try { options.onSwap({ boundary, root: authored.root, authoredRoot: authored.root, entity, authoredParts: authored.authoredParts }); }
+      try { options.onSwap({ boundary, root: authored.root, authoredRoot: authored.root, entity, authoredParts: authored.authoredParts, fallback: fallbackRoot }); }
       catch (error) { console.warn('[partsLibrary] cargo swap observer failed', error); }
     }
     setPresentationAdmission(entity, PRESENTATION_ADMISSION.ready);
@@ -4164,7 +4165,7 @@ function commitAuthoredPlaceBoundary(
     }
     boundary.userData.authoredAssetState = 'authored';
     if (typeof options.onSwap === 'function') {
-      try { options.onSwap({ boundary, root: authored.root, authoredRoot: authored.root, entity: admissionEntity, authoredParts: authored.authoredParts }); }
+      try { options.onSwap({ boundary, root: authored.root, authoredRoot: authored.root, entity: admissionEntity, authoredParts: authored.authoredParts, fallback: fallbackRoot }); }
       catch (error) { console.warn('[partsLibrary] place swap observer failed', error); }
     }
     setPresentationAdmission(admissionEntity, PRESENTATION_ADMISSION.ready);
@@ -6275,6 +6276,10 @@ const OPENING_PUBLICATION_RESUME_ESCALATE_MS = 2000;
 // The batch scales with backlog: a long-throttled tab accrues far more resumes than
 // a live window, and ≤4/present pays them out over seconds of late commits.
 const OPENING_PUBLICATION_RESUME_MAX_BATCH = 16;
+// Frames an already-spent frame may defer the drain before it must arm anyway —
+// the same skip-aging bound the depth-stage arm keeps so a permanently-busy
+// frame stream can't starve the queue indefinitely.
+const OPENING_PUBLICATION_RESUME_MAX_SKIPS = 2;
 
 function paceOpeningPublicationResume(render, gatePromise, parkedAt) {
   const queue = render._openingPublicationResumeQueue
@@ -6295,6 +6300,17 @@ function driveOpeningPublicationResume(render, queue) {
   // Bounded idle wait: a saturated postTask queue must not starve the drain — a
   // parked commit tail would otherwise hold its release through the freeze window.
   armCallbackAfterPresent(async () => {
+    // The resumed commit tails tolerate deferral (they already waited on the
+    // publication release), so an already-spent frame defers the whole arm —
+    // bounded by the same skip-aging contract the depth-stage arm keeps, so a
+    // permanently-busy frame stream can't starve the drain either.
+    if (pacedFrameSpend() >= PACED_FRAME_BUDGET_MS
+        && (render._openingPublicationResumeSkips | 0) < OPENING_PUBLICATION_RESUME_MAX_SKIPS) {
+      render._openingPublicationResumeSkips = (render._openingPublicationResumeSkips | 0) + 1;
+      driveOpeningPublicationResume(render, queue);
+      return;
+    }
+    render._openingPublicationResumeSkips = 0;
     const entrySpend = pacedFrameSpend();
     const batchLimit = Math.min(
       OPENING_PUBLICATION_RESUME_MAX_BATCH,
@@ -6410,8 +6426,13 @@ export function waitForOpeningGraphPublicationRelease(options = {}) {
   // instead of handing a commit license into the middle of the next hold.
   released = released.then(async (value) => {
     for (;;) {
+      // The gate object is re-armed per freeze — the captured `wait` may mint a
+      // gate scoped to the old freeze and return an already-settled promise
+      // while a newer freeze holds the window. Re-fetch the live method (with
+      // the same guard the first call used) so the check reads the current gate.
       const liveGate = render.openingGraphPublicationFrozen === true
-        ? wait.call(render) : null;
+        && typeof render.waitForOpeningGraphPublicationRelease === 'function'
+        ? render.waitForOpeningGraphPublicationRelease.call(render) : null;
       if (!liveGate) return value;
       await awaitGate(liveGate);
     }
@@ -8850,12 +8871,20 @@ export function installWholeShipLodFamilyController(boundary, entity, setActive,
     const next = roots[level];
     if (!next) return false;
     const prev = roots[activeLevel];
+    let shadowTreeChanged = false;
     if (prev && prev !== next) {
       prev.visible = false;
-      if (prev.parent === boundary) boundary.remove(prev);
+      if (prev.parent === boundary) { boundary.remove(prev); shadowTreeChanged = true; }
     }
     next.visible = true;
-    if (next.parent !== boundary) boundary.add(next);
+    if (next.parent !== boundary) { boundary.add(next); shadowTreeChanged = true; }
+    if (shadowTreeChanged) {
+      // A retained-root swap is the one live subtree attach that bypasses every
+      // other invalidate seam — a band-1 root queued for depth staging would
+      // otherwise trust its stale withheld set (the dirtySeq is how the checked
+      // sync tells genuine re-dirt from the arm's own withhold stamp).
+      invalidateShadowCasterPolicy(boundary);
+    }
     if (typeof setActive === 'function') setActive(next);
     // setActive → syncActiveSurface points boundary.userData.lod at the incoming root's own
     // resolver, which holds whatever level it last resolved — fresh roots wake at lod0. Seed it
@@ -9135,7 +9164,7 @@ async function commitAuthoredBoundary(
     boundary.userData.authoredAssetState = 'authored';
     setPresentationAdmission(entity, PRESENTATION_ADMISSION.ready);
     if (typeof options.onSwap === 'function') {
-      try { options.onSwap({ boundary, root: authored.root, authoredRoot: authored.root, entity, authoredParts: authored.authoredParts }); }
+      try { options.onSwap({ boundary, root: authored.root, authoredRoot: authored.root, entity, authoredParts: authored.authoredParts, fallback: fallbackRoot }); }
       catch (error) { console.warn('[partsLibrary] authored swap callback failed', error); }
     }
     return true;
