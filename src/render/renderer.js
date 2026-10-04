@@ -2473,10 +2473,15 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
   const started = now();
   if (!iterator && !owner._holdExemptCommitList) {
     // The spatial refill inside the ctx is the collect's biggest single step —
-    // run it as this beat's own step before minting the iterator.
-    warmNearbyLedgerRows(state);
+    // run it as this beat's own step before minting the iterator. 'covered' rides
+    // the stamped disc only when it version-matches and contains the walk disc
+    // wholesale (a true superset — the same rows, zero drift); a quantized-cell
+    // wobble inside one beat then skips the dominant unbounded term while real
+    // movement still refills here, debited to this beat's clock.
+    warmNearbyLedgerRows(state, { tolerateMiss: 'covered' });
     owner._holdExemptCollectOut = [];
-    iterator = collectMeshPresentationEntitiesChunked(state, owner._holdExemptCollectOut);
+    iterator = collectMeshPresentationEntitiesChunked(
+      state, owner._holdExemptCollectOut, { tolerateMiss: 'covered' });
     owner._holdExemptCollectIter = iterator;
     owner._holdExemptCollectEpoch = liveEpoch;
   }
@@ -2515,7 +2520,11 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
     // Small exempt sets still drain inline: their commit is a few ms of fixed pick/kick
     // overhead, not the 10-30 ms list walks the slice exists for.
     const commitStarted = now();
-    const commitSliceMs = Math.max(sliceMs - (commitStarted - started), Math.min(2, sliceMs));
+    // The guaranteed floor only exists while the collect stayed inside its own
+    // slice — when it overspent, forcing ≥2 ms of commit would push the beat past
+    // the bound; the parked iterators resume next beat instead.
+    const commitFloorMs = (commitStarted - started < sliceMs) ? Math.min(2, sliceMs) : 0;
+    const commitSliceMs = Math.max(sliceMs - (commitStarted - started), commitFloorMs);
     if (!owner._holdExemptCommitList) {
       const out = owner._holdExemptCollectOut || [];
       abandonHoldExemptCollect(owner);
@@ -16255,7 +16264,12 @@ export const render = {
       // Array.isArray gate never fires and pins every stamped row as covered for the run.
       // The ledger ref-counts: only drop the row when this warm held the last claim on it.
       if (warm.coveredEnemyIds && this._swarmWarmCoveredEnemyIds) {
+        const failedMarks = warm.failedCoverageMarks;
         for (const enemyId of warm.coveredEnemyIds) {
+          // A per-spec failure already returned this warm's claim — skipping it
+          // here keeps a co-claiming warm's row intact instead of decrementing
+          // twice into its claim.
+          if (failedMarks && failedMarks.has(enemyId)) continue;
           const count = this._swarmWarmCoveredEnemyIds.get(enemyId) || 0;
           if (count > 1) this._swarmWarmCoveredEnemyIds.set(enemyId, count - 1);
           else this._swarmWarmCoveredEnemyIds.delete(enemyId);
@@ -16441,7 +16455,9 @@ export const render = {
     // stamped so a retried begin (or the deferred lane) can re-warm those archetypes
     // instead of skipping them for the rest of the run.
     if (warm.coveredEnemyIds && this._swarmWarmCoveredEnemyIds instanceof Map) {
+      const failedMarks = warm.failedCoverageMarks;
       for (const enemyId of warm.coveredEnemyIds) {
+        if (failedMarks && failedMarks.has(enemyId)) continue;
         const count = this._swarmWarmCoveredEnemyIds.get(enemyId) || 0;
         if (count > 1) this._swarmWarmCoveredEnemyIds.set(enemyId, count - 1);
         else this._swarmWarmCoveredEnemyIds.delete(enemyId);
@@ -20939,53 +20955,87 @@ export const render = {
    * mount-time pass landing inside it), its depth variant must link somewhere other than the
    * live shadow pass — a post-release joiner's ortho entry used to link it inside the first
    * presented shadow refresh. Queue a deferred micro-stage; the signature gate keeps it to
-   * only roots with genuinely unlinked variants.
+   * only roots with genuinely unlinked variants. A band promotion whose depth
+   * signature was never staged must NOT flip castShadow inside this frame — the
+   * flip re-mints the shadow pose and the same frame's dirty refresh would draw
+   * the unlinked variant live (the stage resolves only after the next present, so
+   * it cannot beat that draw). Withhold the cast flag until the stage marks the
+   * signature; the stage's completion re-sync restores the live policy. Gated on
+   * `shadowCasterBand(root) !== 1` — the promotion class — so same-band per-frame
+   * syncs never pay the signature walk.
    */
   _syncShadowCasterPolicyChecked(root, lodLevel, entity) {
     const opts = this._shadowPolicyOptions(entity, root);
-    const changed = syncShadowCasterPolicy(root, lodLevel, opts);
-    if (changed && opts.allowCast === true) this._queueShadowDepthStage(root);
+    let syncOpts = opts;
+    let withholdCast = false;
+    if (opts.allowCast === true && shadowCasterBand(root) !== 1
+        && this._shadowSettingOn === true && this.renderer && this.scene && this._keyLight
+        && collectUnstagedShadowCasters(this.renderer, [root], this.scene).length > 0) {
+      syncOpts = { ...opts, allowCast: false };
+      withholdCast = true;
+    }
+    const changed = syncShadowCasterPolicy(root, lodLevel, syncOpts);
+    if ((changed || withholdCast) && opts.allowCast === true) {
+      this._queueShadowDepthStage(root, lodLevel, entity);
+    }
     return changed;
   },
 
-  _queueShadowDepthStage(root) {
+
+  _queueShadowDepthStage(root, lodLevel = null, entity = null) {
     if (!root || this._shadowSettingOn !== true) return;
     const pending = this._pendingDepthStageRoots
-      || (this._pendingDepthStageRoots = new Set());
-    pending.add(root);
+      || (this._pendingDepthStageRoots = new Map());
+    pending.set(root, { lodLevel, entity });
     if (this._depthStageScheduled === true) return;
     this._depthStageScheduled = true;
     void yieldAfterPresent().then(() => {
       this._depthStageScheduled = false;
-      const roots = this._pendingDepthStageRoots;
+      const pending = this._pendingDepthStageRoots;
       this._pendingDepthStageRoots = null;
-      if (!roots || roots.size === 0) return;
+      if (!pending || pending.size === 0) return;
       const renderer = this.renderer;
       const scene = this.scene;
       const camera = this.cam && this.cam.obj;
-      if (this._shadowSettingOn !== true || !renderer || !scene || !camera || !this._keyLight) {
-        return;
+      if (this._shadowSettingOn === true && renderer && scene && camera && this._keyLight) {
+        try {
+          // Coalesced promotions share one stage; roots whose signatures were already
+          // marked (opening/admission staged them under the same light census) are
+          // filtered so the ceremony only pays for genuinely unlinked depth variants.
+          const roots = [];
+          for (const root of pending.keys()) {
+            if (root && root.parent) roots.push(root);
+          }
+          const unstaged = roots.length > 0
+            ? collectUnstagedShadowCasters(renderer, roots, scene) : [];
+          if (unstaged.length > 0) {
+            compileShadowDepthPipelines({
+              renderer,
+              light: this._keyLight,
+              camera,
+              subjects: unstaged,
+              forceEnable: false,
+              THREE,
+              captureObjectHome,
+              restoreObjectHome,
+              lightingScene: scene,
+              stagingName: 'SF_ShadowPromoteDepthAdmission',
+            });
+          }
+        } catch (error) {
+          console.warn('[render] shadow-promote depth stage failed', error);
+        }
       }
-      try {
-        // Coalesced promotions share one stage; roots whose signatures were already
-        // marked (opening/admission staged them under the same light census) are
-        // filtered so the ceremony only pays for genuinely unlinked depth variants.
-        const unstaged = collectUnstagedShadowCasters(renderer, [...roots], scene);
-        if (unstaged.length === 0) return;
-        compileShadowDepthPipelines({
-          renderer,
-          light: this._keyLight,
-          camera,
-          subjects: unstaged,
-          forceEnable: false,
-          THREE,
-          captureObjectHome,
-          restoreObjectHome,
-          lightingScene: scene,
-          stagingName: 'SF_ShadowPromoteDepthAdmission',
-        });
-      } catch (error) {
-        console.warn('[render] shadow-promote depth stage failed', error);
+      // Re-apply the live cast policy on every queued root: promotions whose cast
+      // flag was withheld pending this stage restore now — staged roots enter the
+      // cast band on already-linked depth programs; if the stage was skipped the
+      // restore lands the original promotion semantics rather than leaving the
+      // root permanently shadowless.
+      for (const [root, { lodLevel, entity }] of pending) {
+        if (!root || !root.parent) continue;
+        try {
+          syncShadowCasterPolicy(root, lodLevel, this._shadowPolicyOptions(entity, root));
+        } catch (_) { /* restore is best-effort */ }
       }
     });
   },

@@ -287,8 +287,27 @@ function _nearbyLedgerRowsContext(state, opts = null) {
   const walkZ = (Math.floor(unionZ / ASTEROID_FIELD_CELL) + 0.5) * ASTEROID_FIELD_CELL;
   const radiusPad = Math.ceil(ASTEROID_FIELD_CELL * Math.SQRT1_2);
   const walkRadius = Math.ceil((scanRadius + legSpan / 2 + radiusPad) / 500) * 500;
-  if (!meshSpatialKeyMatches(state, walkX, walkZ, walkRadius)
-      && (!opts || opts.tolerateMiss !== true)) {
+  const toleration = opts && opts.tolerateMiss;
+  const world = state && state.world;
+  const field = world && world.asteroidField;
+  const far = world && world.farActors;
+  // A ride is only possible off a disc stamped for THIS state and its CURRENT
+  // field/far objects — otherwise the scratches hold no usable rows at all and
+  // tolerating a miss would starve the collect instead of debiting a refill.
+  const hasLiveDisc = _meshSpatialKey.state === state
+    && _meshSpatialKey.field === field
+    && _meshSpatialKey.far === far;
+  // 'covered' is the strict form: the stamped disc must version-match AND fully
+  // contain the needed walk disc — a true superset, so the stale scratch answers
+  // the same rows the refill would (no subset drift). Anything weaker refills.
+  const coveredByDisc = hasLiveDisc
+    && _meshSpatialKey.fieldVersion === (field && Number.isFinite(field.version) ? field.version : 0)
+    && _meshSpatialKey.farVersion === (far && Number.isFinite(far.version) ? far.version : 0)
+    && Math.hypot(_meshSpatialKey.originX - walkX, _meshSpatialKey.originZ - walkZ)
+        + walkRadius <= _meshSpatialKey.radius;
+  const ridesDisc = hasLiveDisc
+    && (toleration === true || (toleration === 'covered' && coveredByDisc));
+  if (!meshSpatialKeyMatches(state, walkX, walkZ, walkRadius) && !ridesDisc) {
     _meshWalkOrigin.x = walkX;
     _meshWalkOrigin.z = walkZ;
     queryAsteroidField(state, _meshWalkOrigin, walkRadius, _meshRockScratch);
