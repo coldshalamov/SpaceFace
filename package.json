@@ -169,6 +169,7 @@
     "check:massline:release-feedback": "node scripts/check-massline-release-feedback.mjs",
     "check:massline:lab": "node --test test/massline-control-lab.test.mjs && node scripts/massline-control-lab.mjs --matrix --self-check",
     "check:massline:load": "node scripts/check-massline-load.mjs",
+    "check:massline:tension-estimate": "node scripts/check-massline-tension-estimate.mjs",
     "check:massline:snapcatch": "node scripts/check-massline-snapcatch.mjs",
     "check:massline:reelpump": "node scripts/check-massline-reelpump.mjs",
     "check:massline:target-scoring": "node scripts/check-massline-target-scoring.mjs",

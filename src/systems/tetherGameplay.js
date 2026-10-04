@@ -142,7 +142,8 @@ const LOAD_BASE_BY_PHASE = Object.freeze({ slack: 0, capture: 0.35, loaded: 0.55
 // breaking threshold, never invented from line length or phase. Only the DISPLAYED number is
 // smoothed: fast attack so a climb toward the envelope is readable inside the 15-tick (250 ms)
 // warning lease the authority grants, slower release so the bar does not chatter. The physical
-// inputs and tether.strain are never smoothed, rescaled, or written by this.
+// inputs and tether.strain are never smoothed, rescaled, or written by this (scale contract:
+// the SCALE WARNING inside _emitStrain below).
 const ESTIMATE_ATTACK_TAU_S = 0.09;
 const ESTIMATE_RELEASE_TAU_S = 0.35;
 // Authored payloads and loose pickups are sensor bodies: they intentionally do not collide, so the
@@ -3286,7 +3287,10 @@ export function stepTensionEstimate(prev, raw, dt) {
 // the max of the tension, impulse and yank legs against the live break policy — real constraint
 // load vs real breaking threshold. Read-only mirror of that formula: no policy is decided here,
 // no attachment field is written, and a leg with no threshold contributes 0 rather than a fake
-// overload. Same degrade chain _emitStrain has always used for the tension threshold.
+// overload. Same degrade chain _emitStrain has always used for the tension threshold. Unlike the
+// authority's near-break check this omits the break-grace and automaticMasslineBreakAllowed gates
+// (src/combat/attachments.js), so the display may warn a few ticks before the authority may break
+// — deliberate: the display leads, it never lags a real approach.
 function constraintLoadRatio(attachment, policy, def) {
   const tensionLimit = positive(
     (policy && policy.maxTension) || (def && (def.breakTension || (def.break && def.break.maxTension))),
