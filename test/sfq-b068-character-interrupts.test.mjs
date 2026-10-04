@@ -85,7 +85,7 @@ test('with the fact absent the interruption never fires and stays eligible for w
 });
 
 test('while a higher-priority voice holds the channel the interrupt is suppressed, then re-queued onto the floor', () => {
-  const { state, comms, surfaced, helpers } = harness();
+  const { state, comms, surfaced, helpers, s } = harness();
   giveSample(state);
   // A life-critical danger voice (priority 110 > story 100) takes and holds the floor.
   helpers.voice.say({
@@ -97,11 +97,41 @@ test('while a higher-priority voice holds the channel the interrupt is suppresse
   assert.equal(heard(comms, 'char_kessler_sample_aboard').length, 1, 'the line was voiced into arbitration');
   const said = surfaced.filter((e) => e.id === 'char_kessler_sample_aboard');
   assert.equal(said.length, 0, 'suppressed — the character never covers an imminent threat');
+  assert.equal(s.seenComms.char_kessler_sample_aboard, undefined,
+    'enqueue does not spend the once-per-save — the player has not heard it yet');
   assert.ok(voiceArbiter.queue.pending.some((e) => e.id === 'char_kessler_sample_aboard'),
     're-queued behind the higher-priority voice, not dropped');
   tick(state, 4); // the danger ttl expires; the interrupt is still inside its own ttl
   const late = surfaced.filter((e) => e.id === 'char_kessler_sample_aboard');
   assert.equal(late.length, 1, 'the re-queued interruption takes the floor when the danger clears');
+  assert.equal(s.seenComms.char_kessler_sample_aboard, true, 'only a surfaced line is spent as heard');
+});
+
+test('an interrupt stale-dropped unheard behind a long danger is re-armed and heard once, later', () => {
+  const { state, comms, surfaced, helpers, s } = harness();
+  giveSample(state);
+  // A danger voice that outlasts the interrupt's queued ttl (7s): the arbiter will drop the
+  // queued line unheard. The contract: it is NOT spent — the poll re-voices the still-true fact
+  // at the next opportunity, and the line is heard exactly once, when a floor finally frees.
+  helpers.voice.say({
+    channel: 'alert', priority: DANGER_PRIORITY, kind: 'danger', ttl: 20,
+    id: 'b068_long_danger', text: 'DANGER: SUSTAINED BOMBARDMENT — CLEAR THE LANE',
+  });
+  tick(state, 1); // fire #1 under the danger floor
+  assert.equal(heard(comms, 'char_kessler_sample_aboard').length, 1);
+  tick(state, 10); // past the queued ttl — the arbiter stale-drops the line unheard
+  assert.equal(surfaced.filter((e) => e.id === 'char_kessler_sample_aboard').length, 0,
+    'never surfaced while the danger holds');
+  assert.equal(s.seenComms.char_kessler_sample_aboard, undefined, 'a dropped line is not spent');
+  assert.ok(heard(comms, 'char_kessler_sample_aboard').length >= 2,
+    'the poll re-arms the unheard line and re-voices the still-true fact');
+  tick(state, 12); // past the danger ttl — the next opportunity arrives
+  assert.equal(surfaced.filter((e) => e.id === 'char_kessler_sample_aboard').length, 1,
+    'spoken exactly once — the first clear floor');
+  assert.equal(s.seenComms.char_kessler_sample_aboard, true, 'heard once, now spent');
+  tick(state, 12); // more polls with the fact still holding
+  assert.equal(surfaced.filter((e) => e.id === 'char_kessler_sample_aboard').length, 1,
+    'heard exactly once — never again');
 });
 
 test('a fight holds the narrative channel: the poll waits without spending the line, the lull presents it', () => {

@@ -159,6 +159,9 @@ export const story = {
     // player instead of dying on the bus. Tone changes only update the registry.
     bus.on('ambientComms:register', (p) => this._onAmbientCommsRegister(p || {}));
     bus.on('ambientComms:toneChanged', (p) => this._onAmbientCommsToneChanged(p || {}));
+    // The arbiter's surface receipt is what spends a character interrupt's once-per-save (SFQ-B068):
+    // queued-then-dropped lines stay eligible; only a line the player actually heard is seen.
+    bus.on('voice:surface', (p) => this._onCharInterruptSurfaced(p || {}));
     // ── An encounter's vultured winner turning on the player deserves a warning line. ─────────
     bus.on('encounter:winnerHostile', (p) => this._onEncounterWinnerHostile(p || {}));
     // When the first-hour tutorial finishes (spec2/03), release the cold-start voice it deferred.
@@ -462,25 +465,55 @@ export const story = {
   // so the same fact can earn the line on a later tick (re-queue by poll, never by wall clock).
   // Once voiced, the line routes through _fireComms → helpers.voice, so the LIVE voice arbiter —
   // not this system — decides whether it takes the floor or queues behind a higher-priority voice
-  // (danger > story). At most one character interrupt per poll keeps voices from stacking.
+  // (danger > story). seenComms is marked only when the arbiter actually SURFACES the line
+  // (voice:surface), never at enqueue time: a queued interrupt the arbiter stale-drops behind a
+  // louder voice is re-armed by the poll and spoken at the next opportunity, so once-per-save
+  // means HEARD once. Pending bookkeeping is instance state — the 47a authoritative hash
+  // snapshots state.story (simSnapshot.js) and must not drift. At most one character interrupt
+  // per poll keeps voices from stacking.
   _fireCharacterInterrupts() {
     const state = this.state;
     const s = state.story;
     if (!s) return;
     if (this._onboardingActive() && this._recentTutorialLine(8)) return;
     if ((Number(state.simTime) || 0) < (s.narrativeCalmUntilS || 0)) return;
+    const pending = this._pendingCharInterrupts || (this._pendingCharInterrupts = new Map());
+    const now = Number(state.simTime) || 0;
+    for (const [id, expireAtS] of pending) {
+      if (now >= expireAtS) pending.delete(id); // unheard past its window — eligible to speak again
+    }
     for (const def of CHARACTER_INTERRUPTS) {
       if (s.seenComms && s.seenComms[def.id]) continue;
+      if (pending.has(def.id)) continue; // voiced, awaiting the arbiter's floor decision
       let ok = false;
       try { ok = !!def.cond(state); } catch (e) { ok = false; }
       if (!ok) continue;
-      s.seenComms[def.id] = true;
-      this._fireComms({
+      const ttl = def.ttl || 7;
+      const voiced = this._fireComms({
         id: def.id, sender: def.sender, text: def.text,
-        category: 'personal', ttl: def.ttl || 7, persist: false,
+        category: 'personal', ttl, persist: false,
       });
+      if (voiced && voiced._viaVoice) {
+        // Handed to the arbiter — heard-status arrives via voice:surface. The window mirrors the
+        // arbiter's queued-staleness ttl (+1s of step slack); past it the line re-arms.
+        pending.set(def.id, now + ttl + 1);
+      } else {
+        // No arbiter on this route (headless/popup-feed only): the feed WAS the presentation.
+        s.seenComms[def.id] = true;
+      }
       return; // one character voice per poll; the arbiter owns the rest of the ordering
     }
+  },
+
+  // The arbiter surfaced a spoken line. A character interrupt that reached the floor has been
+  // heard: spend its once-per-save now (covers surfaces that arrive after the pending window too).
+  _onCharInterruptSurfaced({ id } = {}) {
+    if (!id || typeof id !== 'string' || !id.startsWith('char_')) return;
+    const s = this.state && this.state.story;
+    if (!s) return;
+    if (this._pendingCharInterrupts) this._pendingCharInterrupts.delete(id);
+    s.seenComms = s.seenComms || {};
+    s.seenComms[id] = true;
   },
 
   _fireCommsById(commsId) {
@@ -523,6 +556,7 @@ export const story = {
     // "not for you" chatter is unmarked and still fills the feed as the designed channel texture.
     if (said) p._viaVoice = true;
     this.bus.emit('comms:popup', p);
+    return p; // callers (character interrupts) read _viaVoice to know the arbiter took the line
   },
 
   _sayStoryLine(text, ttl = 6) {
