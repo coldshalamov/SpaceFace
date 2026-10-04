@@ -356,6 +356,19 @@ export const collisionConsequences = {
     _impulseArg.provenance = hitProvenance;
     _impulseArg.tick = tick;
     publishHitstunImpulse(this.bus, _impulseArg);
+    // SFQ-B183 — the signed throw read. physics:impact normals are published oriented aId→bId on
+    // both physics backends (contactNormalInto on custom; the capture-time re-orientation on
+    // rapier-dynamic), so the way this contact THREW the victim is +normal when the victim is
+    // body b and −normal when it is body a. That sign is real receipt information, not a guess.
+    // It stays OFF the presentation receipt when the axis is genuinely unsigned (zero-length
+    // normal) or the pair roles are unknown — the hole is honest, and presentation keeps its
+    // mirrored two-sided read instead of a fabricated direction (standard rule E2).
+    const throwSign = target.id === payload.bId ? 1 : target.id === payload.aId ? -1 : 0;
+    const throwNormalX = finite(receipt.normal && receipt.normal.x);
+    const throwNormalZ = finite(receipt.normal && receipt.normal.z);
+    const signedThrow = throwSign !== 0 && (throwNormalX !== 0 || throwNormalZ !== 0)
+      ? Object.freeze({ x: throwNormalX * throwSign, z: throwNormalZ * throwSign })
+      : null;
     const helmLossSeconds = helmLossFromTumbleStatus(readTumbleStatus(state, target), tick);
     const closingSpeed = closingSpeedFromImpact(payload);
     if (isSlamFractureCandidate(target, closingSpeed)) {
@@ -393,6 +406,7 @@ export const collisionConsequences = {
       }
       this.bus.emit('combat:collisionConsequence', Object.freeze({
         ...receipt,
+        ...(signedThrow ? { throwDir: signedThrow } : {}),
         stuntEvidence: evidenceForConsequenceLive(receipt, state),
         targetName: life?.name,
         victimLife: { lifeId: target.data?.stuntThreat?.lifeId ?? life?.id,
@@ -694,6 +708,10 @@ function craftContactKey(tick, aId, bId) {
 function snapshotContactPayload(payload, tick) {
   const snap = {
     tick,
+    // The pair order rides along: the snapshot's normal is oriented aId→bId, and the deferred
+    // resolve signs the victim's throw against exactly these ids (SFQ-B183).
+    aId: payload && payload.aId != null ? payload.aId : null,
+    bId: payload && payload.bId != null ? payload.bId : null,
     pos: Object.freeze({
       x: finite(payload && payload.pos && payload.pos.x),
       z: finite(payload && payload.pos && payload.pos.z),

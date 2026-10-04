@@ -101,7 +101,7 @@ import {
   statusAttachedAccessibility,
 } from './statusAttachedVfx.js';
 import { addShieldContact } from './weapons/shieldContacts.js';
-import { impactAxisAngle, impactRead } from './combat/impactRead.js';
+import { collisionThrowRead, impactAxisAngle, impactRead } from './combat/impactRead.js';
 import {
   collisionDisplayDeltaV,
   collisionImpactLight,
@@ -4459,8 +4459,17 @@ export const vfx = {
     let nz = p && p.normal && Number(p.normal.z);
     if (!Number.isFinite(nx) || !Number.isFinite(nz) || Math.hypot(nx, nz) < 1e-6) {
       const approach = p && p.approach;
-      nx = approach && Number.isFinite(approach.x) ? -approach.x : 1;
+      nx = approach && Number.isFinite(approach.x) ? -approach.x : 0;
       nz = approach && Number.isFinite(approach.z) ? -approach.z : 0;
+    }
+    if (!Number.isFinite(nx) || !Number.isFinite(nz) || Math.hypot(nx, nz) < 1e-6) {
+      // SFQ-B183 — the packet carries no measured direction (a DoT, a field tick). The receipt's
+      // own contact point relative to the struck body is the honest placement hint; an invented
+      // +X is not. When even that is degenerate the axis stays zero and the read draws unaimed.
+      if (tgt && tgt.pos && p && p.pos) {
+        nx = Number(p.pos.x) - Number(tgt.pos.x);
+        nz = Number(p.pos.z) - Number(tgt.pos.z);
+      }
     }
     const normalLength = Math.hypot(nx, nz) || 1;
     nx /= normalLength;
@@ -4569,7 +4578,12 @@ export const vfx = {
         'hull', Math.max(1.2, ((tgt && tgt.radius) || 6) * 0.3), _impactOpts,
       );
       if (!breached) {
-        this._impactParticleCone(pos.x, pos.z, hitRead.shapeId === 'hull-cone' ? impulseAngle : normalAngle, 0.95, 9, 24,
+        // The impulse-axis cone only when the axis is genuinely signed; an unsigned hit falls
+        // back to the contact-normal angle (itself guarded above) instead of a fabricated +X.
+        const coneAngle = hitRead.shapeId === 'hull-cone' && hitRead.signed
+          ? impulseAngle
+          : normalAngle;
+        this._impactParticleCone(pos.x, pos.z, coneAngle, 0.95, 9, 24,
           Math.max(3, Math.round(5 * (this._burst || 1))), 0.48, 0.78,
           '#ffb36a', '#3a1710', 1.2);
       }
@@ -10733,9 +10747,18 @@ export const vfx = {
     req.y = NaN;
     req.classId = 'ordinary';
     req.radius = Math.max(2, Number(victim && victim.radius) || 6);
-    req.dirX = Math.cos(axisAngle);
-    req.dirZ = Math.sin(axisAngle);
-    req.hasDir = 0;
+    // SFQ-B183 — a signed throw rides the burst's directional channel (hasDir = 1); the unsigned
+    // axis keeps the unoriented read, exactly as before.
+    const reqThrow = collisionThrowRead(p);
+    if (reqThrow.signed) {
+      req.dirX = reqThrow.x;
+      req.dirZ = reqThrow.z;
+      req.hasDir = 1;
+    } else {
+      req.dirX = Math.cos(axisAngle);
+      req.dirZ = Math.sin(axisAngle);
+      req.hasDir = 0;
+    }
     req.velX = victim && victim.vel && Number.isFinite(victim.vel.x) ? victim.vel.x : 0;
     req.velY = victim && victim.vel && Number.isFinite(victim.vel.y) ? victim.vel.y : 0;
     req.velZ = victim && victim.vel && Number.isFinite(victim.vel.z) ? victim.vel.z : 0;
@@ -10773,6 +10796,13 @@ export const vfx = {
       this._composeImpact(
         p.pos.x, 0.2, p.pos.z, seatNx, 0, seatNz, false, seatSeverity, 'hull', 1.6, _impactOpts,
       );
+      // SFQ-B183 — a signed throw names which way the contact THREW the hull. The mirrored
+      // composition above stays the two-body compression read (E2: two bodies met, no outward
+      // side); this additive fan draws only the thrown side at the receipt contact point, so the
+      // shove's displacement has a visible cause before the drift begins. Unsigned receipts draw
+      // nothing here — no direction, no fan.
+      const seatThrow = collisionThrowRead(p);
+      if (seatThrow.signed) this._spawnCollisionThrowSpray(p, seatThrow);
       // Keep receipt admission/audio and the separate physical debris event. Geometry
       // now maps body extent and closing speed, never dimensionless camera trauma.
       if (p.control === 'tumble') {
@@ -10807,10 +10837,16 @@ export const vfx = {
     const axisX = Math.cos(axisAngle), axisZ = Math.sin(axisAngle);
     const tx = -axisZ, tz = axisX;
     const terrain = p.surface === 'terrain';
-    // No signed causal direction exists at this rung. Opposed compression bars and tangent fans
-    // present the receipted contact axis without pretending either normal half is outward.
+    // SFQ-B183 — the axis stays the presentation spine. Without a signed throw, the opposed bars
+    // and tangent fans present the receipted contact axis without pretending either normal half
+    // is outward. With one, the fan collapses to the thrown side: the spray names the direction
+    // the hull was actually thrown, and nothing is drawn on the unthrown half.
+    const fallbackThrow = collisionThrowRead(p);
+    const sides = fallbackThrow.signed
+      ? [Math.sign(Math.cos(fallbackThrow.angle) * axisX + Math.sin(fallbackThrow.angle) * axisZ) || 1]
+      : [-1, 1];
     const puffsPerSide = reduced ? 1 : (hard ? 3 : 2);
-    for (const side of [-1, 1]) {
+    for (const side of sides) {
       this._spawnSprite(SPR_FLASH,
         pos.x + axisX * side * 0.08 * authoredScale, 0,
         pos.z + axisZ * side * 0.08 * authoredScale,
@@ -10882,6 +10918,48 @@ export const vfx = {
         axisX, 0.4, axisZ,
         reduced ? 8 : 16,
       );
+    }
+    return true;
+  },
+
+  // SFQ-B183 — the one-sided displacement read, shared by the seat and fallback rungs of
+  // _onCollisionConsequence. Streaks and dust leave ALONG the signed throw, anchored at the
+  // receipt contact point; reduced motion shortens travel and keeps the counts. Never called
+  // for an unsigned receipt — no throw, no fan.
+  _spawnCollisionThrowSpray(p, throwRead) {
+    if (!this._scene || !p || !p.pos || !throwRead || !throwRead.signed) return false;
+    const acc = resolveVfxAccessibilityProfile(this.state && this.state.settings);
+    const reduced = acc.flashOpacityScale < 1;
+    const pos = p.pos;
+    const serial = this._collisionPatternSerial(p);
+    const terrain = p.surface === 'terrain';
+    const tx = -throwRead.z, tz = throwRead.x;
+    const streaks = reduced ? 1 : 2;
+    for (let k = 0; k < streaks; k++) {
+      const spread = explosionPatternSigned(serial, 'throw', k, 41) * 0.38;
+      const angle = throwRead.angle + spread;
+      const cx = Math.cos(angle), cz = Math.sin(angle);
+      this._spawnProjectileTrailStreak(
+        pos.x + cx * 0.08, 0.18, pos.z + cz * 0.08,
+        reduced ? 0.26 : 0.4,
+        (reduced ? 0.07 : 0.1) * 1.2,
+        (reduced ? 2.4 : 4.4) * 1.2,
+        (reduced ? 0.3 : 0.58) * acc.flashOpacityScale,
+        terrain ? '#f0d0a0' : '#d4e6f5',
+        cx * (reduced ? 5 : 11), cz * (reduced ? 5 : 11),
+        cx, cz,
+      );
+    }
+    const puffs = reduced ? 1 : 3;
+    for (let k = 0; k < puffs; k++) {
+      const spread = (k - (puffs - 1) * 0.5) * 0.42;
+      const vx = throwRead.x * 12 + tx * spread * 12;
+      const vz = throwRead.z * 12 + tz * spread * 12;
+      this._spawnSprite(SPR_PUFF,
+        pos.x + throwRead.x * 0.12, 0.05, pos.z + throwRead.z * 0.12,
+        0.5, 1.4, 3.6,
+        0.4 * acc.flashOpacityScale, 0.0, terrain ? '#c9a878' : '#aac4e0', vx, vz,
+        1.8, Math.atan2(vz, vx));
     }
     return true;
   },

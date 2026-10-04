@@ -2162,7 +2162,18 @@ export class Sg02DynamicBodyOwner {
       }
       const existing = byB.get(b.entity.id);
       const impulse = Math.min((existing && existing.impulse || 0) + boundedImpulse, cap);
-      const normal = normalizePlanarDirection(direction);
+      // SFQ-B183 — the receipt normal is published oriented aId→bId, the same convention the
+      // custom backend's contactNormalInto already guarantees (and that hullScars.js and feel.js
+      // document: "the solver pushes body b along +normal"). Rapier's maxForceDirection follows
+      // the event's own collider order, which is unrelated to the sorted pair, so without this
+      // re-orientation the sign is a solver-internal artifact and no consumer may sign a throw
+      // against it. nAB (computed above from the pair kinematics) is the positional a→b axis;
+      // the flip keeps the solver's true normal direction and fixes only which half it names.
+      // A degenerate axis (co-located kinematics) stays unflipped — nothing honest to sign.
+      const rawNormal = normalizePlanarDirection(direction);
+      const normal = rawNormal.x * nABx + rawNormal.z * nABz < 0
+        ? { x: -rawNormal.x, z: -rawNormal.z }
+        : rawNormal;
       const isPlayerReceipt = (a.entity && a.entity.isPlayer === true) || (b.entity && b.entity.isPlayer === true);
       const receipt = {
         schemaVersion: 1,
