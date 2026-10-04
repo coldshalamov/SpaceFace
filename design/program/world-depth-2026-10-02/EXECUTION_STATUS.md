@@ -1,6 +1,17 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Local maturation system — 4 October 2026
+
+The owner authorized continued cloud groundwork plus local expansion/improvement and adversarial
+review/fix on this open PR. Start at [REVIEW_SYSTEM](REVIEW_SYSTEM.md) and its
+[item ledger](REVIEW_LEDGER.json): 45 cloud commits, all 1,007 current PR-delta paths plus inherited
+named art, and all twenty concepts are inventoried. Inventory is not inspection or acceptance;
+no production item is newly completed by this setup. The ledger includes the latest published
+Latch successor2 while retaining earlier attempts. Local lanes update the item they actually
+improved. Cloud continues the current chunks below; completed local sources are reconciled by
+content, never replaced with a historical snapshot. Older results remain source-scoped history.
+
 ## Current handoff — 2026-10-04 20:50 UTC
 
 Read this section first. Historical sections below retain source-bound evidence, not current acceptance. Finish active chunks, inspect current PR commits/paths/owners, and never overwrite other agents' work. The user is arranging additional reviewers and model improvements on this same PR.
@@ -14,7 +25,10 @@ Read this section first. Historical sections below retain source-bound evidence,
 
 ### Shared maker/reviewer loop
 
-The collaborating reviewer is setting up its own review/fix log on this PR. Link and adopt that format when it appears; do not create a competing dispatch queue. The PR conversation handoff and Latch successor2 `PUBLICATION.md` already describe this two-stage loop.
+The collaborating reviewer has added [REVIEW_SYSTEM](REVIEW_SYSTEM.md) and the shared
+[item ledger](REVIEW_LEDGER.json). Use that format for maker handoffs and local expansion/adversarial
+fixes; do not create a competing dispatch queue. The PR conversation handoff and Latch successor2
+`PUBLICATION.md` describe the same two-stage loop.
 
 1. **Maker attempt:** name the exact source revision and paths, intended player experience, what was attempted and why, actual images/tests, rejected directions, known weaknesses and the specific review request. Mark this as ready for review, not final acceptance.
 2. **Reviewer/fix:** preserve the reviewer's findings, log entries and corrective commits. Coordinate exact active paths so maker and reviewer do not edit the same item independently. A later maker revision links the finding it answers and records the fresh evidence; it never silently replaces the reviewer's work.
@@ -126,13 +140,13 @@ before publication and rerun affected checks after content reconciliation.
 Native continuation is cross-cutting work. **P02 remains Stormshift interception and the reopened
 delivery leg**; native save/reload fixes never establish P02 completion.
 
-### SF20-19 and the unresolved source-plan choice
+### SF20-19 — original scope continues
 
 Pip & Spanner's bounded menu candidate, authored bodies and receipt/callback tests exist locally.
-They are held from publication while the separately discovered Playfield First v2 replacement choice
-is unresolved. The original twenty-concept ZIP must remain intact. A newer report claiming to
-supersede it is not by itself authorization to discard or replace the user's requested scope.
-Continue compatible Brood, Ceres, stability and provenance work meanwhile.
+The historical publication hold is superseded by IMPLEMENTATION's current work-chunk contract:
+Playfield First v2 is unadopted reference and does not block original Pip & Spanner. Continue that
+original concept when its chunk is due, preserving active Latch/Ceres/Mite work. The original
+twenty-concept ZIP stays intact; a newer proposal does not replace the owner's requested scope.
 
 The actual menu owner is still `src/systems/survivalDraft.js`, with `run:draftPickRequested`,
 `run:spent`, `run:spendRejected`, `run:shopPurchased` and `service:completed` semantics. `swarmSupply`
@@ -140,7 +154,7 @@ is not a second menu economy. Existing `createVisualArmory`, `createHullSchemati
 and `equipmentSvg` composition remains the intended UI seam. Retain paused presentation clocks,
 authoritative receipts, stale-image rejection and close/reopen ownership. The independent fixes for
 optimistic false-success notices and stale hull-image callbacks can proceed without adopting the
-held crew feature. Actual screen/control and GPU acceptance are not established by its unit tests.
+crew feature. Actual screen/control and GPU acceptance are not established by its unit tests.
 
 ## What is actually established
 
@@ -155,7 +169,7 @@ held crew feature. Actual screen/control and GPU acceptance are not established 
 | Native failure recovery overlay | Reviewed separately | Ten discriminating cases plus 177 existing targeted cases pass. Clears stale failure receipts after successful publication and prevents absent-body retry resurrection; final composed proof remains necessary |
 | Splitter ordinary-route mechanics | Source candidate passes | Actual 29-piece A6 body, parent plus three finite cells, conservation, attribution, real hit/dodge/shove/cover tests; wave 17 and retained Retry pass. Broad candidate 255 cases and final budget-only focused 79 cases pass. Resident first-frame and installed assets remain open |
 | Mite M7 | Static/cold-import candidate frozen | 3,456 / 1,482 / 978 triangles; all 87 distinct action fractions checked at all LODs within 0.12 WU geometry bounds. Nine-batch/1,000-triangle far-tier proposal and actual GPU/Look remain unaccepted; five-draw material proposal is separate |
-| Splitter A6/v12 art | Bounded static/LOD review accepted | 53,460 / 35,530 / 23,016 triangles; closed topology, rigid diagnostic jaw endpoints, mouth clearances and cell bind poses verified. Diagnostic jaw motion is not implemented runtime animation; GPU cost remains open |
+| Splitter A6/v12 art | Earlier static/LOD pass superseded by owner rejection | Historical 53,460 / 35,530 / 23,016 triangles and topology/pose checks do not establish art quality. Editable candidate requires redesign; diagnostic jaw motion is not implemented runtime animation |
 | Charger / Spitter / Leecher | Charger rebuilding; others pending | Preserve actual role/body/attack contracts and improve original anatomy through visual iteration. Do not publish rejected old art as an accepted source-only behavior prerequisite |
 | Ceres normal production cycle | Frozen candidate pass | Source closure `d31c801413aa63954e561f27678529e22d288aafecef2edd7dca74e157b84dd1` retained original 1,800-mass cargo, secured at tick 63,698 and through actual Continue at 63,938. This does not certify current rebased source or disturbed seed 47 |
 | Ceres disturbed recovery | Implementation and evidence in progress | Real ambient impacts displaced carrier/head/cargo. Safe return and 8 WU plate reacquisition have bounded evidence; repeated impacts and early full-envelope continuation remain under verification |

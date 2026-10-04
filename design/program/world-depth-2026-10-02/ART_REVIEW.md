@@ -21,15 +21,18 @@ three machinery sheets; no real-game material or animation acceptance is implied
 
 The verdicts below are preserved diagnoses of the **original audited candidates**, not blanket
 rejections of their later replacements. Read [current execution status](EXECUTION_STATUS.md) before
-starting a new rebuild. As of 3 October 2026, Mite M7 and Splitter A6/v12 passed bounded static/LOD
-visual review. Preserve those accepted-direction sources; do not restart their design from the old
-rejection merely because this historical audit remains in the repo. Installed runtime appearance,
-resident first-frame behavior and measured GPU cost are still separate open gates.
+starting a new rebuild. Earlier agent-only static/LOD passes for Mite M7 and Splitter A6/v12 were
+superseded by the owner's rejection above. Preserve their editable sources for diagnosis, not as
+accepted art. The later Mite N4 recovery candidate is a separate, uninstalled study; R28 direction
+approval is permission to build a candidate, not acceptance of N4. Inspect that current candidate
+before changing it. Installed runtime appearance and first-frame behavior remain unverified here;
+target-device performance belongs to the dedicated quiet-host program.
 
 The Charger rebuild is active. Spitter, Leecher, the remaining P14 roster and colony terrain remain
 unfinished. At the original audit, three distinct Splitter anatomy studies were required before
 secondary detail; that study-and-review stage has since been completed. New visual corrections must
-identify a concrete current-source defect and preserve already accepted work.
+identify a concrete current-source defect and preserve useful existing work. Study completion does
+not reverse the owner's rejection or establish professional model quality.
 
 Machinery revisions remain concrete work under P01–P03, alongside their functional integration.
 Preserve stronger existing forms rather than applying one blanket rebuild to every model.

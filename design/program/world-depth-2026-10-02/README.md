@@ -16,6 +16,10 @@ implementing agent within the brief; do not ask the owner to approve every name,
 
 ## Read only what the task needs
 
+For continued cloud groundwork and local professional expansion/review, start at
+[REVIEW_SYSTEM](REVIEW_SYSTEM.md) and [REVIEW_LEDGER](REVIEW_LEDGER.json). The ledger tracks
+individual deliverables and their commit/path provenance; logged work is not completed work.
+
 | Need | Document | Existing owner |
 |---|---|---|
 | Implement the complete authorized feature set in small packets | [Implementation roster](IMPLEMENTATION.md) | Existing build-map/FINISH owners; one PR integration coordinator |
