@@ -167,6 +167,15 @@ const CLOSE_CALL_SPEED_WU = 40;
 const CLOSE_CALL_HOLD_S = 2.5;
 const CLOSE_CALL_COOLDOWN_S = 30;
 const CLOSE_CALL_PHASES = new Set([NPC_JOB_PHASE.WORK, NPC_JOB_PHASE.LOAD, NPC_JOB_PHASE.UNLOAD]);
+// SF-082: a fleeing worker must not resume blind into a hostile parked on the stop it was
+// flying to — that is flee→resume→flee flapping, not a choice. When the remembered threat is
+// still alive and inside the guard ring of the pending stop, the job falls back to the nearest
+// earlier waypoint OUTSIDE the ring (the berth it came from — never deeper past the guns), or
+// hunkers in place when no stop is safe, and cries for help on a bounded cadence. Cargo and
+// routeIndex are untouched: the exact prior leg resumes the tick the lane clears.
+const ROUTE_GUARD_WU = RESUME_RADIUS + 60;
+const ROUTE_HOLD_ARRIVE_WU = 60;
+const ROUTE_HOLD_DISTRESS_S = 60;
 // One barge in the Helios starter field. The shift is a slice of the job's own WORK phase:
 // long enough for the live beam to bite, short enough that it stops while the rock is still a rock.
 const HELIOS_STARTER_SECTOR_ID = 'sector_helios_prime';
@@ -4458,6 +4467,28 @@ export const npcJobsRuntime = {
         || entry.kind === NPC_JOB_KIND.SURVEYOR;
       const isCarrying = entry.violenceSlow === true
         || !!(entity.data?.cargoManifest?.totalQty > 0);
+      // SF-082: a held fallback point outranks blind away-flee while the remembered threat is
+      // off the hull — motor to the chosen stop and sit on it. A threat back inside the flee
+      // ring re-takes ordinary away-flee; the reconcile owns choosing and clearing the hold.
+      const rh = entry.routeHold;
+      if (rh && Number.isFinite(rh.x)) {
+        const rhThreat = rh.threatId != null && this.state.entities
+          ? this.state.entities.get(rh.threatId) : null;
+        const threatNear = rhThreat && rhThreat.pos
+          && (rhThreat.pos.x - entity.pos.x) * (rhThreat.pos.x - entity.pos.x)
+            + (rhThreat.pos.z - entity.pos.z) * (rhThreat.pos.z - entity.pos.z)
+            <= FLEE_RADIUS * FLEE_RADIUS;
+        if (!threatNear) {
+          const dx = rh.x - entity.pos.x;
+          const dz = rh.z - entity.pos.z;
+          if (dx * dx + dz * dz > ROUTE_HOLD_ARRIVE_WU * ROUTE_HOLD_ARRIVE_WU) {
+            this._writeIntent(entity, 0, 1, false, Math.atan2(dz, dx), false);
+          } else {
+            this._writeIntent(entity, 0, 0, false, entity.rot || 0, true);
+          }
+          return;
+        }
+      }
       const hold = entry.violenceHold === true || (isWorker && !isCarrying && entry.threatId == null);
       if (hold) {
         this._writeIntent(entity, 0, 0, false, entity.rot || 0, true);
@@ -5458,6 +5489,14 @@ export const npcJobsRuntime = {
         return;
       }
       if (violenceActive) return;
+      // SF-082: the self-radius is clear but the remembered threat may still be parked on the
+      // stop this leg was flying to — resuming then is flying straight back into the trap.
+      const blocker = this._routeThreatBlocker(entry);
+      if (blocker) {
+        this._holdForRouteThreat(entry, blocker, now);
+        return;
+      }
+      entry.routeHold = null;
       resume(job);
       // INF-073: the threat is gone and the worker returns — acknowledge the rescue once.
       for (const [jobId, candidate] of Object.entries(this._byId())) {
@@ -5477,6 +5516,89 @@ export const npcJobsRuntime = {
     if (!entity || entity.alive === false || entity.type !== 'ship') return false;
     if (entity.team === 1) return eligibleActiveHostile(entity);
     return entity.id === this.state?.playerId && isPlayerWanted(this.state);
+  },
+
+  /**
+   * SF-082: the remembered threat is off the hull's resume ring — but is a hostile parked on
+   * the stop this job would resume into? Any live job threat within the guard ring of the
+   * pending stop closes the leg (not just the one that first interrupted — a second pirate on
+   * the dock is the same trap). A patrol's route IS the fight, so it is exempt.
+   */
+  _routeThreatBlocker(entry) {
+    const job = entry && entry.job;
+    if (!job || job.corrupt || job.kind === NPC_JOB_KIND.PATROL) return null;
+    let idx = job.routeIndex;
+    const prior = job.preInterruptPhase;
+    if (prior === NPC_JOB_PHASE.TRANSIT || prior === NPC_JOB_PHASE.RETURN) idx += 1;
+    const wp = Array.isArray(job.route) ? job.route[idx] : null;
+    if (!wp || !wp.pos) return null;
+    return this._stopContestedBy(wp.pos);
+  },
+
+  /** The nearest live job threat within the route-guard ring of a stop, or null when clear. */
+  _stopContestedBy(pos) {
+    if (!pos || !this.state.entities) return null;
+    let best = null;
+    let bestD2 = ROUTE_GUARD_WU * ROUTE_GUARD_WU;
+    for (const entity of this.state.entities.values()) {
+      if (!this._isJobThreat(entity) || !entity.pos) continue;
+      const dx = entity.pos.x - pos.x;
+      const dz = entity.pos.z - pos.z;
+      const d2 = dx * dx + dz * dz;
+      if (d2 <= bestD2) { bestD2 = d2; best = entity; }
+    }
+    return best;
+  },
+
+  /**
+   * SF-082: choose and hold ONE safer continuation. The fallback is the nearest authored stop
+   * at or behind the interrupted leg that sits outside the threat ring — falling back the way
+   * it came, never pushing deeper past the guns — or, when no stop is safe, the hull's own
+   * position. While held, the job cries for help on a bounded cadence: a real position, a real
+   * cause, and a player who can end the wait by removing the threat. Route and manifest are
+   * never mutated, so clearing the lane resumes the exact interrupted leg.
+   */
+  _holdForRouteThreat(entry, threat, now) {
+    const job = entry.job;
+    const hull = entry.entityId != null && this.state.entities
+      ? this.state.entities.get(entry.entityId) : null;
+    if (!entry.routeHold || entry.routeHold.threatId !== threat.id) {
+      let px = hull && hull.pos ? hull.pos.x : 0;
+      let pz = hull && hull.pos ? hull.pos.z : 0;
+      let best = null;
+      let bestD2 = Infinity;
+      const lastIdx = Math.min(job.routeIndex, (job.route ? job.route.length : 1) - 1);
+      for (let i = lastIdx; i >= 0; i--) {
+        const wp = job.route[i];
+        if (!wp || !wp.pos) continue;
+        if (this._stopContestedBy(wp.pos)) continue; // contested by ANY hostile, not just this one
+        const hd2 = (wp.pos.x - px) * (wp.pos.x - px) + (wp.pos.z - pz) * (wp.pos.z - pz);
+        if (hd2 < bestD2) { bestD2 = hd2; best = wp; }
+      }
+      if (best) { px = best.pos.x; pz = best.pos.z; }
+      entry.routeHold = {
+        threatId: threat.id, x: px, z: pz,
+        label: best && typeof best.label === 'string' ? best.label : null,
+        since: now, distressT: -Infinity,
+      };
+    }
+    if (now - entry.routeHold.distressT >= ROUTE_HOLD_DISTRESS_S) {
+      entry.routeHold.distressT = now;
+      const kindLabel = { miner: 'Miner', hauler: 'Hauler', salvor: 'Salvor', tender: 'Tender', courier: 'Courier', patrol: 'Patrol' }[job.kind] || 'Crew';
+      const where = entry.routeHold.label ? `at ${entry.routeHold.label}` : 'where I sit';
+      if (this.bus && typeof this.bus.emit === 'function') {
+        try {
+          this.bus.emit('toast', { text: `${kindLabel}: Lane's still hot — holding ${where} until it clears.`, kind: 'warn', ttl: 4 });
+          this.bus.emit('npcjobs:distress', {
+            jobId: job.id, kind: job.kind, sectorId: entry.sectorId || null,
+            threatId: threat.id,
+            pos: hull && hull.pos ? { x: hull.pos.x, z: hull.pos.z } : null,
+            hold: { x: entry.routeHold.x, z: entry.routeHold.z },
+            simTime: now,
+          });
+        } catch { /* advisory only */ }
+      }
+    }
   },
 
   _threatResultWithWantedPlayer(request) {
