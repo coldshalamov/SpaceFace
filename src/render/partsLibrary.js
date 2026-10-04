@@ -2585,6 +2585,10 @@ const REFUSAL_TRIGGER_REARM_DELAY_MS = 1000;
 const REFUSAL_TRIGGER_PACED_STATUSES = new Set([
   'deferred-arena-dressing',
   'invalid-upgrade-request',
+  // A sustained marginal graze reposts guaranteed-refused enqueues every rendered
+  // frame: the repost never lands in the domain the repost cap counts, so this
+  // pace is the only break on the ping-pong.
+  'regrade-evict-cooloff',
 ]);
 function scheduleRefusalTriggerRearm(status, arm) {
   if (!REFUSAL_TRIGGER_PACED_STATUSES.has(status)) { arm(); return; }
@@ -10269,7 +10273,7 @@ async function buildComposedShipAsync(entity, library, scene, ownerBoundary, opt
   let step = steps.next();
   while (!step.done) {
     const sliceMs = now() - sliceStarted;
-    if (sliceMs >= frameBudgetMs()) {
+    if (sliceMs >= frameBudgetMs() || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) {
       // Report the slice's cost before yielding: other frame-paced slicers (the compile drain)
       // read the ledger later this frame and stand down instead of stacking their own budget.
       notePacedFrameSpend(sliceMs);

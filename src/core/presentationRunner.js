@@ -810,6 +810,9 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       diagnostics.lastPresentMs = presentationMs;
       perf.recordPresentationFrame?.(presentationMs);
     }
+    if (presentationAccepted && typeof deps.onPresented === 'function') {
+      try { deps.onPresented(); } catch { /* the paint-freshness hook is best-effort */ }
+    }
     // P7: the first presented frame whose completed tick consumed a newer input command is that
     // command's photon. The stamp arrived wall-timed at the input boundary; the subtraction is
     // measurement only and never enters sim state.

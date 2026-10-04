@@ -4088,10 +4088,12 @@ function attachPackagedBody(root, relativeFile, entity) {
       ...requestOptions,
     }).then(async (record) => {
       if (!record || !root.parent) {
-        if (!record && staleAuthoredRunVerdict(root, mintedAdmissionOptions)) return false;
+        if (!record && staleAuthoredRunVerdict(root, mintedAdmissionOptions)) {
+          return { status: 'stale-verdict-superseded' };
+        }
         root.userData.authoredAssetState = record ? 'orphaned-before-swap' : 'unavailable';
         if (!record) restorePackagedBodyFallback(root, 'packaged-body-load-missed');
-        return false;
+        return { status: record ? 'orphaned-before-swap' : 'unavailable' };
       }
       const packaged = new THREE.Group();
       packaged.name = `${root.userData.kind || 'entity'}_PackagedBody`;
@@ -4136,10 +4138,12 @@ function attachPackagedBody(root, relativeFile, entity) {
       }
       if (!packaged.children.length) instantiatePackagedPrimitives(record, packaged);
       if (!packaged.children.length) {
-        if (staleAuthoredRunVerdict(root, mintedAdmissionOptions)) return false;
+        if (staleAuthoredRunVerdict(root, mintedAdmissionOptions)) {
+          return { status: 'stale-verdict-superseded' };
+        }
         root.userData.authoredAssetState = 'unavailable';
         restorePackagedBodyFallback(root, 'packaged-body-empty');
-        return false;
+        return { status: 'unavailable' };
       }
       if (motionControllers.length) attachAuthoredMotionDriver(root, liveEntity, motionControllers);
       // ANI-08: hull:fractured fires at spawn — long before this packaged body's async
@@ -4183,20 +4187,20 @@ function attachPackagedBody(root, relativeFile, entity) {
         if (ownerInactive) {
           if (root.parent) {
             markAuthoredBoundaryForReadmission(root, 'packaged-body-owner-inactive');
-          } else {
-            root.userData.authoredAssetState = 'unavailable';
+            return { status: 'awaiting-authored-admission' };
           }
-        } else {
           root.userData.authoredAssetState = 'unavailable';
-          restorePackagedBodyFallback(root, 'packaged-body-pipeline-failed');
-          console.warn('[visualFactory] packaged body pipeline admission failed', error);
+          return { status: 'orphaned-before-swap' };
         }
-        return false;
+        root.userData.authoredAssetState = 'unavailable';
+        restorePackagedBodyFallback(root, 'packaged-body-pipeline-failed');
+        console.warn('[visualFactory] packaged body pipeline admission failed', error);
+        return { status: 'fallback-after-error' };
       }
       if (!root.parent) {
         releaseBoundaryResidency(renderer, root, 'packaged-body-orphaned-after-compile', mintedAdmissionOptions.admissionEpoch);
         root.userData.authoredAssetState = 'orphaned-before-swap';
-        return false;
+        return { status: 'orphaned-before-swap' };
       }
       const publicationWait = waitForOpeningGraphPublicationRelease({
         entity: boundaryLiveEntity(root, entity) || entity,
@@ -4205,7 +4209,7 @@ function attachPackagedBody(root, relativeFile, entity) {
       if (!root.parent) {
         releaseBoundaryResidency(renderer, root, 'packaged-body-orphaned-before-publication', mintedAdmissionOptions.admissionEpoch);
         root.userData.authoredAssetState = 'orphaned-before-swap';
-        return false;
+        return { status: 'orphaned-before-swap' };
       }
       // Same stale-run guard the cargo/place/ship commits carry: a run parked at the
       // publication wait while its boundary re-admitted under a newer epoch must not mount
@@ -4215,7 +4219,7 @@ function attachPackagedBody(root, relativeFile, entity) {
           || (typeof mintedAdmissionOptions.isAbortedStalledAdmission === 'function' && mintedAdmissionOptions.isAbortedStalledAdmission())
           || admissionOwnerInactive(mintedAdmissionOptions, liveEntity)) {
         disposeDetachedPackagedGroup(packaged);
-        return false;
+        return { status: 'stale-verdict-superseded' };
       }
       // Re-hide in case a retained fallback (or a retry already in flight) re-showed the
       // procedural children while this admission was mid-flight.
@@ -4236,14 +4240,16 @@ function attachPackagedBody(root, relativeFile, entity) {
       root.userData.authoredVisualRoot = record.assetId || url;
       return true;
     }).catch((error) => {
-      if (staleAuthoredRunVerdict(root, mintedAdmissionOptions)) return false;
+      if (staleAuthoredRunVerdict(root, mintedAdmissionOptions)) {
+        return { status: 'stale-verdict-superseded' };
+      }
       if (root.parent && admissionOwnerInactive(null, entity, error)) {
         markAuthoredBoundaryForReadmission(root, 'packaged-body-owner-inactive');
-      } else {
-        root.userData.authoredAssetState = 'unavailable';
-        restorePackagedBodyFallback(root, 'packaged-body-load-error');
+        return { status: 'awaiting-authored-admission' };
       }
-      return false;
+      root.userData.authoredAssetState = 'unavailable';
+      restorePackagedBodyFallback(root, 'packaged-body-load-error');
+      return { status: root.parent ? 'fallback-after-error' : 'orphaned-before-swap' };
     });
     root.userData.authoredUpgradePromise = completion;
     return completion;

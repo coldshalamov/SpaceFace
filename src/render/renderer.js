@@ -6021,25 +6021,29 @@ const SHADOW_DEPTH_PASS_COLLECT_CAP = 8;
 // outruns it aborts and over-covers the same way.
 const SHADOW_DEPTH_PASS_NODE_CAP = 4096;
 
-// Swarm warm coverage rows release only on *retriable* outcomes: a cancelled,
-// readmission-marked, or errored exemplar kick never composed its program
-// family, so the next armory dwell must retry the archetype instead of its
-// first live spawn paying the in-round compose + program link. 'unavailable'
-// stays claimed on purpose — a genuinely missing GLB must not re-decode every
-// dwell — and 'invalid-upgrade-request' means the request itself was malformed,
-// so a retry resolves identically. Successful or terminal states keep coverage.
-const SWARM_WARM_RETRIABLE_OUTCOMES = new Set([
-  'fallback-after-error',
-  'awaiting-authored-admission',
-  'stalled-slot-released',
-  'cancelled-before-load',
-  'cancelled-before-queue',
-  'cancelled-after-decode',
-  'orphaned-before-swap',
-  'orphaned-after-pipeline-compile',
-  'regrade-evict-cooloff',
-  'deferred-arena-dressing',
+// Swarm warm coverage stays claimed only on a terminal outcome: the kick
+// demonstrably produced the warmed family ('authored*', a semantic fallback, a
+// settled procedural body) or proved the asset unavailable/refusably-terminal —
+// 'unavailable' claimed on purpose (a genuinely missing GLB must not re-decode
+// every dwell) and 'invalid-upgrade-request' means the request itself was
+// malformed so a retry resolves identically. Every other settle — refusal
+// classes, lifecycle aborts, stall verdicts, statuses minted after this list —
+// means the row never warmed, so it releases toward a bounded re-warm instead of
+// pinning coverage on the in-round compose the warm exists to pre-pay.
+const SWARM_WARM_CLAIMED_OUTCOMES = new Set([
+  'completed',
+  'shell-ready',
+  'unavailable',
+  'procedural-settled',
+  'invalid-upgrade-request',
 ]);
+const swarmWarmOutcomeClaims = (status) => {
+  if (status === true) return true;
+  if (typeof status !== 'string') return false;
+  return SWARM_WARM_CLAIMED_OUTCOMES.has(status)
+    || status.startsWith('authored')
+    || status.startsWith('same-semantic-fallback');
+};
 
 // Nearest ancestor that owns a shadow-caster policy record (same userData key as
 // shadowCasterPolicy.js), else the direct scene child — the granularity the arm's
@@ -16260,7 +16264,7 @@ export const render = {
     // of its first live spawn paying the in-round compose + program link.
     const unmarkOnRetriableOutcome = (result, enemyId) => {
       const status = result && typeof result === 'object' ? result.status : result;
-      if (status == null || SWARM_WARM_RETRIABLE_OUTCOMES.has(status)) {
+      if (!swarmWarmOutcomeClaims(status)) {
         unmarkWarmCoverage(enemyId);
       }
     };
@@ -17105,6 +17109,12 @@ export const render = {
     // coverage row belongs to, so a settle that resolved retriable can release
     // exactly the row it stamped (null entries cover non-kick attachments).
     const pendingAttachmentEnemyIds = [];
+    // Same alignment: the closure that re-runs THAT kick's own boundary through the
+    // same request for the single bounded same-dwell retry below.
+    const pendingAttachmentRetries = [];
+    // Per-id tally of retry-minted coverage claims so the catch-unmark below
+    // releases exactly what this warm stamped (one per fresh mark + one per retry).
+    const retryMintCounts = new Map();
     const root = warm.root;
     root.name = `SF_SwarmDeferredWarm_w${nextWave}`;
     root.visible = false;
@@ -17137,7 +17147,45 @@ export const render = {
       if (count > 1) coveredMap.set(enemyId, count - 1);
       else coveredMap.delete(enemyId);
     };
-    const unmark = () => { for (const enemyId of fresh) unmarkEnemy(enemyId); };
+    const unmark = () => {
+      for (const enemyId of fresh) {
+        unmarked.add(enemyId);
+        const count = coveredMap.get(enemyId) || 0;
+        const mine = 1 + (retryMintCounts.get(enemyId) || 0);
+        if (count > mine) coveredMap.set(enemyId, count - mine);
+        else coveredMap.delete(enemyId);
+      }
+    };
+    // A kick that released its row gets one same-dwell retry: re-arm its exemplar
+    // boundary (a readmission state, or the bounded transient-failure retry mark)
+    // and re-run the same request under the same track() bookkeeping. The re-mark
+    // lands at dispatch; a second retriable settle decrements exactly that claim —
+    // each retry carries its own allowance, so exemplars sharing an enemyId can't
+    // double-release the shared row.
+    const makeDeferredWarmKickRetry = (boundary, enemyId, kick) => () => {
+      if (!warm.building || !root.parent || !boundary || !boundary.parent) return null;
+      if (!authoredReadmissionStatus(boundary.userData && boundary.userData.authoredAssetState)) {
+        retryFailedAuthoredAdmission(boundary);
+      }
+      if (!authoredReadmissionStatus(boundary.userData && boundary.userData.authoredAssetState)) {
+        return null;
+      }
+      const reKick = kick(1);
+      if (!reKick || typeof reKick.then !== 'function') return null;
+      coveredMap.set(enemyId, (coveredMap.get(enemyId) || 0) + 1);
+      retryMintCounts.set(enemyId, (retryMintCounts.get(enemyId) || 0) + 1);
+      let settled = false;
+      reKick.then((result) => {
+        const status = result && typeof result === 'object' ? result.status : result;
+        if (!settled && !swarmWarmOutcomeClaims(status)) {
+          settled = true;
+          const count = coveredMap.get(enemyId) || 0;
+          if (count > 1) coveredMap.set(enemyId, count - 1);
+          else coveredMap.delete(enemyId);
+        }
+      });
+      return reKick;
+    };
     // Sync and async failure share one teardown: a stranded mounted root with
     // warmBuilding stuck is skipped by every park sweep forever, its decode leases stay
     // pinned live for the run, and the same-named retry keeps stacking subtrees.
@@ -17170,15 +17218,18 @@ export const render = {
           ship.visible = false;
           root.add(ship);
           if (typeof ship.userData?.requestAuthoredUpgrade === 'function') {
-            warm.pendingAttachments.push(track(requestAuthoredUpgrade(ship, renderer, scene, {
+            const kickShip = (attempt) => track(requestAuthoredUpgrade(ship, renderer, scene, {
               residencyRole: 'crucible-roster-warm',
               sectorId,
               deferPackagePoolActivation: false,
               deferBoundaryPublication: true,
               overlapAuthoredPipelineCompile: true,
-              upgradeJobKey: `deferred-warm:job:${spec.id}:w${witness}`,
-            }), `ship:${spec.id}:w${witness}`));
-            pendingAttachmentEnemyIds.push(spec.data && spec.data.lootTableId);
+              upgradeJobKey: `deferred-warm:job:${spec.id}:w${witness}${attempt > 0 ? `:r${attempt}` : ''}`,
+            }), `ship:${spec.id}:w${witness}${attempt > 0 ? `:r${attempt}` : ''}`);
+            warm.pendingAttachments.push(kickShip(0));
+            const shipEnemyId = spec.data && spec.data.lootTableId;
+            pendingAttachmentEnemyIds.push(shipEnemyId);
+            pendingAttachmentRetries.push(makeDeferredWarmKickRetry(ship, shipEnemyId, kickShip));
           }
         }
       }
@@ -17191,16 +17242,18 @@ export const render = {
           hulk.visible = false;
           root.add(hulk);
           if (typeof hulk.userData?.requestAuthoredUpgrade === 'function') {
-            warm.pendingAttachments.push(track(
+            const kickHulk = (attempt) => track(
               hulk.userData.requestAuthoredUpgrade(renderer, scene, {
                 residencyRole: 'crucible-roster-warm',
                 sectorId,
               }),
-              `hulk:${spec.id}`,
-            ));
-            pendingAttachmentEnemyIds.push(
-              spec && spec.data && spec.data.hulkVisual && spec.data.hulkVisual.lootTableId,
+              `hulk:${spec.id}${attempt > 0 ? `:r${attempt}` : ''}`,
             );
+            warm.pendingAttachments.push(kickHulk(0));
+            const hulkEnemyId = spec && spec.data
+              && spec.data.hulkVisual && spec.data.hulkVisual.lootTableId;
+            pendingAttachmentEnemyIds.push(hulkEnemyId);
+            pendingAttachmentRetries.push(makeDeferredWarmKickRetry(hulk, hulkEnemyId, kickHulk));
           }
         } catch (error) {
           console.warn('[render] deferred swarm warm hulk build failed', spec && spec.id, error);
@@ -17227,14 +17280,30 @@ export const render = {
         // them (same contract as the launch warm's per-kick unmark). unmarkEnemy
         // is per-warm idempotent, so the ship kick and its derived hulk kick
         // release one shared row once.
+        const releasedRetries = [];
         for (let i = 0; i < outcomes.length; i += 1) {
           const result = outcomes[i] && outcomes[i].status === 'fulfilled'
             ? outcomes[i].value : null;
           const status = result && typeof result === 'object' ? result.status : result;
-          if (status == null || SWARM_WARM_RETRIABLE_OUTCOMES.has(status)) {
+          if (!swarmWarmOutcomeClaims(status)) {
             unmarkEnemy(pendingAttachmentEnemyIds[i]);
+            if (pendingAttachmentEnemyIds[i] != null && pendingAttachmentRetries[i]) {
+              releasedRetries.push(pendingAttachmentRetries[i]);
+            }
           }
         }
+        // One bounded same-dwell pass: a released row otherwise re-warms only at the
+        // NEXT wave's dwell, so the current wave's first spawn still pays the pop-in
+        // the warm exists to kill. Re-mark the row before re-kicking (a concurrent
+        // trigger must not double-queue it); a second retriable settle releases it
+        // again and stops — two strikes is the next dwell's signal.
+        if (!releasedRetries.length || !warm.building) return null;
+        const reKicks = [];
+        for (const retry of releasedRetries) {
+          const reKick = retry();
+          if (reKick) reKicks.push(reKick);
+        }
+        return reKicks.length ? Promise.allSettled(reKicks) : null;
       })
       .then(() => this._mintDeferredPaletteSubjects(root, freshSet, sectorId))
       .then(() => (
