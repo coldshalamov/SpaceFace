@@ -81,7 +81,12 @@ try {
     // alpha evidence scanner validates every record under .devshots/alpha/ (M0-EVIDENCE).
     schema: 'spaceface.alphaEvidence.v1',
     taskId: 'm6-localization-reachability',
-    worktreeId: `${execFileSync('git', ['branch', '--show-current'], { cwd: ROOT, encoding: 'utf8' }).trim() || 'detached'}@${execFileSync('git', ['rev-parse', '--short=8', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim()}+dirty`,
+    worktreeId: (() => {
+      const branch = execFileSync('git', ['branch', '--show-current'], { cwd: ROOT, encoding: 'utf8' }).trim() || 'detached';
+      const rev = execFileSync('git', ['rev-parse', '--short=8', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim();
+      const dirty = execFileSync('git', ['status', '--porcelain'], { cwd: ROOT, encoding: 'utf8' }).trim() ? '+dirty' : '';
+      return `${branch}@${rev}${dirty}`;
+    })(),
     route: 'canonical root -> main menu (qps-ploc) -> New Game (difficulty/starter stops unclipped) -> Launch -> flight HUD -> pause -> settings/help/saveLoad/missionLog/galaxyMap/codex/gameOver',
     viewport: { width: 1280, height: 720 },
     runtime: { kind: 'browser', gpu: await browser.version() },
@@ -97,23 +102,18 @@ try {
       { name: `localized DOM bridge installed and broad (textNodes ${bridge.textNodes})`, status: 'pass' },
     ],
     artifacts: screenshots.map((file) => {
-      const bytes = readFileSync(`${OUT}/${file}`);
+      const bytes = readFileSync(`${OUT}${file}`);
       return {
         kind: 'screenshot',
-        path: relativeFile(`${OUT}/${file}`),
+        path: relativeFile(`${OUT}${file}`),
         sha256: createHash('sha256').update(bytes).digest('hex'),
       };
     }),
     notes: [
       'Every pseudo-locale (qps-ploc) surface asserts: pseudo copy exposed, zero horizontal clips, zero English DOM leaks, no document widening.',
-      'ok/locale/defaultLocale/bridge/surfaces detail follows after the record keys.',
+      ...surfaces.map((s) => `${s.id}@${s.viewport.width}x${s.viewport.height} pseudo=${s.pseudoCount} clips=0 leaks=${(s.englishLeaks || []).length}`),
+      `defaultLocale en-US; bridge textNodes ${bridge.textNodes}`,
     ],
-    ok: true,
-    locale: 'qps-ploc',
-    defaultLocale: 'en-US',
-    bridge,
-    surfaces,
-    screenshots,
   };
   writeFileSync(`${OUT}/evidence.json`, `${JSON.stringify(evidence, null, 2)}\n`);
 
@@ -124,7 +124,9 @@ try {
 }
 
 function relativeFile(absPath) {
-  return absPath.slice(ROOT.length + 1).replaceAll('\\', '/');
+  // ROOT carries its trailing separator (fileURLToPath of a directory URL), so slice at
+  // ROOT.length — +1 would eat the leading dot of '.devshots'.
+  return absPath.slice(ROOT.length).replaceAll('\\', '/');
 }
 
 async function waitForScreen(id) {
@@ -195,13 +197,35 @@ async function assertVisiblePseudoSurface(id) {
         if (!(text.startsWith('⟦') && text.endsWith('⟧'))) englishLeaks.push(text.slice(0, 120));
       }
     }
+    // A second clip channel the box metric cannot see: a control severed by an ancestor's
+    // overflow:clip|hidden reports scrollWidth === clientWidth while its ink is cut. Reachable
+    // scroll (auto|scroll) is not a clip — only a hard clip bounds the element.
+    const clipBounds = (el) => {
+      for (let a = el.parentElement; a && a !== document.body; a = a.parentElement) {
+        const st = getComputedStyle(a);
+        if (st.overflowX !== 'clip' && st.overflowX !== 'hidden') continue;
+        const ar = a.getBoundingClientRect();
+        return {
+          left: ar.left + (parseFloat(st.borderLeftWidth) || 0),
+          right: ar.right - (parseFloat(st.borderRightWidth) || 0),
+        };
+      }
+      return null;
+    };
+    const clipped = visible.filter((el) => {
+      if (el.scrollWidth > el.clientWidth + 1) return true;
+      const b = clipBounds(el);
+      if (!b) return false;
+      const r = el.getBoundingClientRect();
+      return r.right > b.right + 1 || r.left < b.left - 1;
+    });
     return {
       locale: document.documentElement.dataset.locale,
       lang: document.documentElement.lang,
       id: screenId,
       screen: rect && { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom },
       pseudoCount: visible.filter((el) => (el.textContent || '').includes('⟦')).length,
-      clipped: visible.filter((el) => el.scrollWidth > el.clientWidth + 1).map((el) => el.textContent.trim()),
+      clipped: clipped.map((el) => el.textContent.trim()),
       englishLeaks,
       horizontalOverflow: document.documentElement.scrollWidth > innerWidth,
       viewport: { width: innerWidth, height: innerHeight },

@@ -58,6 +58,9 @@ const ALPHA_VIEWPORT_KEYS = new Set(['width', 'height']);
 const ALPHA_RUNTIME_KEYS = new Set(['kind', 'gpu']);
 const ALPHA_CHECK_KEYS = new Set(['name', 'status']);
 const ALPHA_ARTIFACT_KEYS = new Set(['kind', 'path']);
+// Optional artifact integrity hash: producers that stamp byte hashes keep them; the m3 record
+// has carried them since it landed. Absent stays legal (a {kind,path} report artifact is valid).
+const ALPHA_ARTIFACT_OPTIONAL_KEYS = new Set(['sha256']);
 const ALPHA_CAPTURE_KINDS = new Set(['browser', 'electron', 'blender', 'synthetic']);
 const ALPHA_RUNTIME_KINDS = new Set(['browser', 'electron', 'node', 'blender']);
 const ALPHA_INPUT_SOURCES = new Set(['keyboard-mouse', 'gamepad', 'touch', 'public-intents', 'fixture']);
@@ -193,10 +196,14 @@ function validateAlphaArtifacts(artifacts, issues, file) {
       addIssue(issues, file, itemPath, 'type', 'artifact must be an object');
       return;
     }
-    validateKnownKeys(artifact, ALPHA_ARTIFACT_KEYS, itemPath, issues, file);
+    validateKnownKeys(artifact, new Set([...ALPHA_ARTIFACT_KEYS, ...ALPHA_ARTIFACT_OPTIONAL_KEYS]), itemPath, issues, file);
     requireKeys(artifact, ALPHA_ARTIFACT_KEYS, itemPath, issues, file);
     requireEnum(artifact.kind, ALPHA_ARTIFACT_KINDS, `${itemPath}.kind`, issues, file);
     validateArtifactPath(artifact.path, `${itemPath}.path`, issues, file);
+    if (artifact.sha256 != null
+      && (typeof artifact.sha256 !== 'string' || !/^[0-9a-f]{64}$/.test(artifact.sha256))) {
+      addIssue(issues, file, `${itemPath}.sha256`, 'hash', 'sha256 must be a 64-character lowercase sha256 hex string');
+    }
   });
 }
 
