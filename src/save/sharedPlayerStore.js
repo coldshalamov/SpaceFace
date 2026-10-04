@@ -40,6 +40,42 @@ let storeRouteAbsent = false;
 
 export function resetSharedPlayerStoreMemoForTests() {
   storeRouteAbsent = false;
+  _lastAcceptedStoreWrite = null;
+  _sharedStoreWriteChain = Promise.resolve();
+  _sharedStoreWriteInFlight = false;
+}
+
+// ── Accepted-generation ledger (NXI-236) ─────────────────────────────────────────────────────
+// The store applies per-key last-writer-wins, so two pushes in flight can otherwise settle in
+// either order — an older patch landing last would write the older snapshot over the newer one
+// and every later read would label that older envelope the latest successful save. Regular
+// pushes therefore settle strictly in request order (one in-flight PUT at a time), and the
+// accepted-generation ledger names the newest envelope stamp this module has actually seen the
+// store accept, monotonically: an older completion can never relabel the latest success.
+//
+// A keepalive-eligible push (a dying page's page-outliving guarantee) still fires immediately —
+// it cannot wait behind an in-flight mirror flush. Those patches raced unordered before this
+// ledger existed; the monotonic check keeps them from dragging the accepted-generation label
+// backwards even when one lands after a newer queued write.
+let _sharedStoreWriteChain = Promise.resolve();
+let _sharedStoreWriteInFlight = false;
+let _lastAcceptedStoreWrite = null;
+
+export function sharedPlayerStoreLastAcceptedWrite() {
+  return _lastAcceptedStoreWrite ? { ..._lastAcceptedStoreWrite } : null;
+}
+
+function noteAcceptedStoreWrite(patch) {
+  let acceptedAt = 0;
+  for (const value of Object.values(patch || {})) {
+    if (typeof value !== 'string') continue;
+    const time = envelopeTime(value);
+    if (time > acceptedAt) acceptedAt = time;
+  }
+  if (!_lastAcceptedStoreWrite || acceptedAt >= _lastAcceptedStoreWrite.acceptedAt) {
+    _lastAcceptedStoreWrite = { ok: true, acceptedAt };
+  }
+  return _lastAcceptedStoreWrite;
 }
 
 export function isSharedPlayerStoreKey(key) {
@@ -292,8 +328,8 @@ export async function fetchSharedPlayerStore() {
   }
 }
 
-export async function pushSharedPlayerStore(keys, { keepalive = false } = {}) {
-  if (!sharedPlayerStoreAvailable() || typeof fetch !== 'function') return false;
+export function pushSharedPlayerStore(keys, { keepalive = false } = {}) {
+  if (!sharedPlayerStoreAvailable() || typeof fetch !== 'function') return Promise.resolve(false);
   const patch = {};
   const deletions = new Map();
   let count = 0;
@@ -323,22 +359,47 @@ export async function pushSharedPlayerStore(keys, { keepalive = false } = {}) {
       }
     }
   }
-  if (count === 0) return true;
-  if (storeRouteAbsent) return false;
-  try {
-    const body = JSON.stringify({ keys: patch });
-    const response = await fetch(SHARED_PLAYER_STORE_PATH, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body,
-      signal: AbortSignal.timeout(SHARED_STORE_TIMEOUT_MS),
-      // The budget is measured in UTF-8 bytes (non-ASCII names encode wider than .length), and
-      // the encoder only runs when the guarantee was actually requested.
-      keepalive: keepalive && new TextEncoder().encode(body).byteLength <= KEEPALIVE_BODY_BUDGET_BYTES,
-    });
-    if (response.status === 404) storeRouteAbsent = true;
-    return response.ok;
-  } catch {
-    return false;
+  if (count === 0) return Promise.resolve(true);
+  if (storeRouteAbsent) return Promise.resolve(false);
+  const body = JSON.stringify({ keys: patch });
+  // The budget is measured in UTF-8 bytes (non-ASCII names encode wider than .length), and the
+  // encoder only runs when the guarantee was actually requested.
+  let byteLength = 0;
+  try { byteLength = new TextEncoder().encode(body).byteLength; } catch { byteLength = body.length; }
+  const carriesKeepalive = keepalive === true && byteLength <= KEEPALIVE_BODY_BUDGET_BYTES;
+  const attempt = async () => {
+    try {
+      const response = await fetch(SHARED_PLAYER_STORE_PATH, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+        signal: AbortSignal.timeout(SHARED_STORE_TIMEOUT_MS),
+        keepalive: carriesKeepalive,
+      });
+      if (response.status === 404) storeRouteAbsent = true;
+      if (response.ok) noteAcceptedStoreWrite(patch);
+      return response.ok;
+    } catch {
+      return false;
+    }
+  };
+  if (carriesKeepalive) {
+    // A dying page cannot wait behind an in-flight mirror flush — fire now (unordered, as
+    // before); the monotonic ledger below keeps an older late completion from relabeling.
+    return attempt();
   }
+  // Serialized: one in-flight PUT at a time, settled in request order, so an older patch can
+  // never land after a newer one and out-argue it on the last-writer-wins store. An uncontended
+  // push still starts synchronously (the deadline request must be visible to the caller before
+  // the first await — the hung-store pin in player-save-store.test.mjs).
+  if (!_sharedStoreWriteInFlight) {
+    _sharedStoreWriteInFlight = true;
+    const run = attempt();
+    const release = () => { _sharedStoreWriteInFlight = false; };
+    _sharedStoreWriteChain = run.then(release, release);
+    return run;
+  }
+  const settled = _sharedStoreWriteChain.then(attempt, attempt);
+  _sharedStoreWriteChain = settled.then(() => {}, () => {});
+  return settled;
 }
