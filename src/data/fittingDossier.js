@@ -842,7 +842,9 @@ function moduleStats(def) {
   push('Scan range', m.scanRangeMult != null ? `×${num(m.scanRangeMult, 2)}` : null);
   push('Anomaly fix', m.anomalyPingReduction != null ? `−${m.anomalyPingReduction} scan` : null);
   push('Bio scan', m.bioScanTier != null ? `+${m.bioScanTier} tier` : null);
-  push('Capture survival', m.captureSurvivalMult != null ? `×${num(m.captureSurvivalMult, 2)}` : null);
+  // captureSurvivalMult is a >0 enable gate in alienEcology — capture is deterministic,
+  // no survival roll exists, so the number renders as a flag rather than a rate.
+  push('Live capture', m.captureSurvivalMult != null && m.captureSurvivalMult > 0 ? 'rigged' : null);
   push('Rich core', m.richCoreRingPctBonus != null ? `+${pct(m.richCoreRingPctBonus)}` : null);
   push('Survey RP', m.scanRpBonus != null ? `+${num(m.scanRpBonus)}` : null);
   push('Scan detection', m.scannerCloak != null ? `−${pct(m.scannerCloak)}` : null);
