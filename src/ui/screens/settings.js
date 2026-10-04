@@ -237,7 +237,10 @@ const DEFAULT_BINDINGS = INPUT_DEFAULTS.BINDINGS;
 // new-profile Massline primary and F remains its permanent alias.
 export const REBINDABLE = ['forward', 'reverse', 'yawLeft', 'yawRight', 'strafeLeft', 'strafeRight', 'boost', 'autoFire',
   'brake', 'siteBeam', 'tether', 'chargeThrow', 'chargeDetonate', 'scanPulse', 'cruise', 'reelIn', 'reelOut',
-  'dropBomb', 'cycleBomb', 'bulletTime', 'cloak', 'travelBurn', 'deployMassSeed', 'deployWell', 'deployRepulsor', 'toggleClearingCone'];
+  'dropBomb', 'cycleBomb', 'bulletTime', 'cloak', 'travelBurn', 'deployMassSeed', 'deployWell', 'deployRepulsor', 'toggleClearingCone',
+  // The rest of the live bound verbs: rebindable in data (input.js VERB_BINDINGS) but until now
+  // with no row here — "rebindable in data but no row is not rebindable to a player" (below).
+  'countermeasure', 'toggleSkimCollector', 'deployBeacon', 'jettisonLot'];
 export const REBIND_LABELS = {
   forward: 'Throttle up',
   reverse: 'Throttle down (reverse)',
@@ -269,6 +272,11 @@ export const REBIND_LABELS = {
   toggleClearingCone: 'Field: toggle Clearing Cone',
   dropBomb: 'Bomb bay: drop bomb',
   cycleBomb: 'Bomb bay: cycle payload',
+  // Labels mirror the pad grid's names for the same verbs (one verb, one name across devices).
+  countermeasure: 'Countermeasure (chaff / ECM)',
+  toggleSkimCollector: 'Field: toggle skim collector',
+  deployBeacon: 'Nav beacon: deploy',
+  jettisonLot: 'Cargo: jettison lot',
 };
 
 // PQ-164.01 pad remap. Every gamepad action is rebindable; labels describe the verb, not the
