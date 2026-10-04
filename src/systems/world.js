@@ -167,6 +167,7 @@ import {
 import { bumpCollidesFlipEpoch, entityIndexLaneVersion, forEachLivingWorldActor, indexedShipLikeScan, indexedTypeScan, registerEntityWorldRecordId } from '../world/livingWorldViews.js';
 import { syncEntityCollisionIndexMembership, syncEntityTypeLaneMembership } from '../core/coreSystem.js';
 import { presentationEntityIdForCourseTarget } from '../ui/navigationWaypoint.js';
+import { captureEntitySelection, liveEntityById } from '../ui/sim/stableSelection.js';
 import {
   dropAsteroidFieldSector,
   insertAsteroidFieldRock,
@@ -5326,6 +5327,7 @@ export const world = {
         reason: payload.reason || label,
         pos,
       };
+      let stableTarget = null;
       if (targetEntityId != null) {
         this.state.nav.waypoint.targetEntityId = targetEntityId;
         // INF-056: the course aimed at a live body, so bind the presentation id too — flight
@@ -5335,6 +5337,12 @@ export const world = {
         // whitelist drops the field, so a loaded waypoint falls back to pos the same way.
         const presentationEntityId = presentationEntityIdForCourseTarget(this.state.entities, targetEntityId);
         if (presentationEntityId != null) this.state.nav.waypoint.presentationEntityId = presentationEntityId;
+        // SF-244: the armed course outlives the commit instant and the core recycles entity
+        // ids — stamp what the id meant so a later holder resolves closed (autopilot falls
+        // back to the fix) instead of redirecting the burn onto an unrelated body.
+        const bound = liveEntityById(this.state, targetEntityId);
+        stableTarget = bound ? captureEntitySelection(bound) : null;
+        if (stableTarget) this.state.nav.waypoint.stable = stableTarget;
       }
       // A physical gate is a local position with an inter-sector completion condition. Preserve the
       // destination identity so navigation can retire the old-sector marker only after authoritative
@@ -5348,6 +5356,7 @@ export const world = {
         arrivalRadius,
         status: 'armed',
       };
+      if (stableTarget) this.state.nav.autopilot.stable = stableTarget;
       this.bus.emit('nav:waypoint', this.state.nav.waypoint);
       this.bus.emit('nav:autopilot', this.state.nav.autopilot);
       return this.state.nav.autopilot;

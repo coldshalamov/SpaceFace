@@ -54,7 +54,7 @@ import { injectOrreryStation, setVitalDial, vitalDialSvg, vitalValueHtml } from 
 import { injectOrreryStationTabs } from '../orrery/stationTabsLayouts.js';
 import { createStationRow } from '../orrery/stopDial.js';
 import { AMMO_BATCH as MUNITIONS_LOAD } from './serviceQuotes.js';
-import { tradeClearedReceipt } from './tradeReceipt.js';
+import { tradeClearedReceipt, TRADE_EXPECTATION_KEY } from './tradeReceipt.js';
 
 const STATION_REC = new Map();
 for (const sec of SECTORS) for (const s of (sec.stations || [])) STATION_REC.set(s.id, { station: s, sector: sec });
@@ -773,6 +773,14 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     navigate(destination, request.options && typeof request.options === 'object' ? request.options : {});
   });
 
+  subscribe('economy:tradeFailed', () => {
+    // A refused execute emits no tradeCompleted, so the market's confirmed-terms stamp would
+    // outlive its trade — and simTime is frozen while docked, so the stamp's TTL never ages it
+    // out. A later unstamped settle (an adventure decision on the same screen) must not borrow
+    // confirmation it never made; the slot dies with the refusal.
+    const s = state();
+    if (s && s.ui) s.ui[TRADE_EXPECTATION_KEY] = null;
+  });
   subscribe('economy:tradeCompleted', (p = {}) => {
     // SF-241: the receipt reads what settled through tradeTruth against the terms the market
     // confirmed — a partial fill says "6 of the 10 confirmed", a full fill reports agreement.

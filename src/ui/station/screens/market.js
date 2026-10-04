@@ -1792,6 +1792,13 @@ export function createMarketScreen(ctx) {
           };
         }
         ctx.bus.emit(mode === 'buy' ? 'ui:buy' : 'ui:sell', decision.payload);
+        // The trade chain is synchronous: a still-set stamp means the emit produced neither a
+        // settle nor a refusal (the bus swallows a listener's throw). simTime is frozen while
+        // docked so the TTL cannot age it out — drop it here or the next same-lot settle would
+        // borrow a confirmation it never made.
+        if (tradeState.ui && tradeState.ui[TRADE_EXPECTATION_KEY]) {
+          tradeState.ui[TRADE_EXPECTATION_KEY] = null;
+        }
         ctx.bus.emit('audio:cue', { id: 'ui_click' });
       }
       deferRefresh(80, true, true);

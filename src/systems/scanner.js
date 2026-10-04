@@ -58,8 +58,27 @@ import {
 import { TOW_ASSIST_FEE_CR } from '../data/yardContracts.js';
 import { entityIndexVersion, entityIndexLaneVersion, forEachLivingWorldActor } from '../world/livingWorldViews.js';
 import { makeShipEntitySpec } from './ships.js';
+import {
+  captureEntitySelection,
+  liveEntityById,
+  resolveEntitySelection,
+} from '../ui/sim/stableSelection.js';
 
 export const SCANNER_CONTACT_RANGE = CONTACT_HAIL_RANGE;
+
+/**
+ * The live body a signal record still points at. A record written with `entityStable` resolves
+ * through the identity stamp — a recycled id can never satisfy it — and returns the CURRENT
+ * instance (a durable target rebinds after an instance swap). Pre-stamp saves and non-entity
+ * signals fall back to the legacy bare-id resolve, dead holders included nowhere.
+ */
+function recordEntity(state, record) {
+  if (!record) return null;
+  if (record.entityStable) {
+    try { return resolveEntitySelection(state, record.entityStable); } catch { return null; }
+  }
+  return liveEntityById(state, record.entityId);
+}
 
 const HAIL_REFUSAL_TEXT = Object.freeze({
   unresolved_target: 'No contact to hail',
@@ -644,6 +663,13 @@ function collectSignalCandidates(state, sectorId, origin, nearby = [], profile =
     const range = Math.max(1, Number(candidate.range) || NEAR_SCAN_RADIUS);
     if (distance > range) return;
     const row = { ...candidate, distance, range, pos: pos2(candidate.pos) };
+    // Stamp what the entityId means at record time — a signal record can outlive the body,
+    // and the free-id pool reissues ids; the stamp is the record's proof of WHICH holder.
+    if (row.entityId != null && row.entityStable == null) {
+      const bound = liveEntityById(state, row.entityId);
+      const stable = bound ? captureEntitySelection(bound) : null;
+      if (stable) row.entityStable = stable;
+    }
     const previous = byId.get(row.id);
     if (!previous || row.distance < previous.distance) byId.set(row.id, row);
   };
@@ -1297,6 +1323,7 @@ export const scanner = {
             sourceKind: candidate.kind,
             sourceId: candidate.sourceId || null,
             entityId: candidate.entityId || null,
+            entityStable: candidate.entityStable || null,
             signalPriority: candidate.signalPriority || 0,
             // Before the fix, this is the pilot's sample origin—not the hidden target position.
             pos: pos2(origin),
@@ -1339,6 +1366,7 @@ export const scanner = {
         sourceKind: candidate.kind,
         sourceId: candidate.sourceId || null,
         entityId: candidate.entityId || null,
+        entityStable: candidate.entityStable || null,
         signalPriority: candidate.signalPriority || 0,
         pos: pos2(candidate.pos),
         classification: signalClassLabel(candidate.kind, stage),
@@ -1476,9 +1504,12 @@ export const scanner = {
       && discovery.actionPos && Number.isFinite(discovery.actionPos.x) && Number.isFinite(discovery.actionPos.z)
       ? discovery.actionPos : null;
     const aim = lessonPos || record.pos;
+    // Emit the entity the record still proves it means — a dead or recycled holder binds
+    // nothing and the course keeps the honest recorded fix instead of a stranger's hull.
+    const holder = lessonPos ? null : recordEntity(state, record);
     const course = {
       pos: { x: aim.x, z: aim.z },
-      targetEntityId: lessonPos ? null : record.entityId,
+      targetEntityId: holder ? holder.id : null,
       label: record.classification,
       reason: lessonPos && discovery.sentence
         ? discovery.sentence
@@ -1518,9 +1549,10 @@ export const scanner = {
   _retargetClue(record) {
     const route = record && record.clue && record.clue.route;
     if (!route || !route.pos || !this.bus || typeof this.bus.emit !== 'function') return false;
+    const holder = recordEntity(this.state, record);
     this.bus.emit('ui:setCourse', {
       pos: { x: route.pos.x, z: route.pos.z },
-      targetEntityId: record.entityId || null,
+      targetEntityId: holder ? holder.id : null,
       label: route.label || record.classification,
       reason: route.reason,
       waypointKind: 'signal',
@@ -1792,7 +1824,7 @@ export const scanner = {
     if (record.sectorId && sectorId && record.sectorId !== sectorId) return;
     const player = state.entities && state.entities.get && state.entities.get(state.playerId);
     if (!player || !player.alive || !player.pos) return;
-    const target = record.entityId && state.entities && state.entities.get && state.entities.get(record.entityId);
+    const target = recordEntity(state, record);
     const pos = target && target.pos || record.pos;
     if (!pos) return;
     record.pos = pos2(pos);

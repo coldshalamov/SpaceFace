@@ -19,6 +19,11 @@ import {
   resolveCourseTarget,
   resolveGalaxyMapPrimaryAction,
 } from '../src/ui/galaxyMap.js';
+import { world } from '../src/systems/world.js';
+import { scanner } from '../src/systems/scanner.js';
+import { resolveAutopilotTarget } from '../src/systems/flightV3.js';
+import { resolveWaypointPresentationPosition } from '../src/ui/navigationWaypoint.js';
+import { captureEntitySelection } from '../src/ui/sim/stableSelection.js';
 
 const SEED = 4242;
 const ROOT = join(import.meta.dirname, '..');
@@ -168,6 +173,72 @@ test('PB-285: unstamped marks keep bare-id behaviour and a dead durable closes',
   assert.equal(resolveCourseEntityId(state, selected), null);
 });
 
+test('PB-285: an armed course stamps its bind — a mid-burn recycle chases the fix, not the new hull', () => {
+  const state = boot();
+  const pirate = spawn(state, hostileMule(7));
+  const system = { ...world, state, bus: { emit() {} }, computeRoute() { return null; } };
+  system._onSetCourse({ pos: { x: 60, z: 40 }, targetEntityId: 7, label: 'Kestrel raider' });
+
+  assert.ok(state.nav.waypoint.stable, 'the waypoint stamps what the id meant');
+  assert.ok(state.nav.autopilot.stable, 'the armed burn stamps what the id meant');
+
+  // While the pirate lives, the burn tracks it and the instruments read the same body.
+  assert.equal(resolveAutopilotTarget(state, state.nav.autopilot).entity, pirate);
+  const shown = resolveWaypointPresentationPosition(state, state.nav.waypoint);
+  assert.deepEqual({ x: shown.x, z: shown.z }, { x: 60, z: 40 });
+
+  // It dies; the pool reissues id 7 onto an unrelated ore mule far away.
+  pirate.alive = false;
+  spawn(state, {
+    id: 7, type: 'ship', alive: true,
+    pos: { x: 900, y: 0, z: 900 }, vel: { x: 0, y: 0, z: 0 }, rot: 0,
+    factionId: 'vagrant_combine',
+    data: { name: 'Unrelated skiff', role: 'hauler', kind: 'mule' },
+  });
+
+  // The stamp answers closed: the burn falls back to the authored fix, the instruments to the
+  // waypoint pos — neither follows the recycler.
+  const target = resolveAutopilotTarget(state, state.nav.autopilot);
+  assert.equal(target.entity, null, 'the recycled holder is never chased');
+  assert.deepEqual({ x: target.x, z: target.z }, { x: 60, z: 40 });
+  const after = resolveWaypointPresentationPosition(state, state.nav.waypoint);
+  assert.deepEqual({ x: after.x, z: after.z }, { x: 60, z: 40 });
+});
+
+test('PB-285: a signal record emits the body it still proves, never a stale or recycled id', () => {
+  const state = boot();
+  const pirate = spawn(state, hostileMule(7));
+  const emitted = [];
+  const sys = { ...scanner, state, bus: { emit: (name, payload) => emitted.push({ name, payload }) } };
+  const own = state.signalInvestigation || (state.signalInvestigation = { records: {}, completed: {}, receipts: [], triangulations: {}, clues: { subjects: {} } });
+  const record = own.records['sig:1'] = {
+    id: 'sig:1',
+    pos: { x: 60, z: 40 },
+    classification: 'HOSTILE SHIP',
+    entityId: 7,
+    entityStable: captureEntitySelection(pirate),
+  };
+
+  // The live holder binds — the course follows the proven body, not the raw stored id.
+  sys._armSignalInvestigation(record);
+  let course = emitted.filter((e) => e.name === 'ui:setCourse').pop().payload;
+  assert.equal(course.targetEntityId, 7);
+
+  // The holder dies and the pool reissues the id — the record emits no bind rather than aim
+  // the pilot at a stranger under the pirate's label.
+  pirate.alive = false;
+  spawn(state, {
+    id: 7, type: 'ship', alive: true,
+    pos: { x: 900, y: 0, z: 900 }, vel: { x: 0, y: 0, z: 0 }, rot: 0,
+    factionId: 'vagrant_combine',
+    data: { name: 'Unrelated skiff', role: 'hauler', kind: 'mule' },
+  });
+  sys._armSignalInvestigation(record);
+  course = emitted.filter((e) => e.name === 'ui:setCourse').pop().payload;
+  assert.equal(course.targetEntityId, null);
+  assert.deepEqual(course.pos, { x: 60, z: 40 }, 'the recorded fix stays the honest aim');
+});
+
 test('PB-285: the live route consumes the model — draw reconciles, every commit gates', () => {
   const src = readFileSync(join(ROOT, 'src/ui/galaxyMap.js'), 'utf8');
   const draw = src.slice(src.indexOf('_draw() {'));
@@ -188,4 +259,19 @@ test('PB-285: the live route consumes the model — draw reconciles, every commi
   assert.ok(src.includes('stable: p.stable || null'), 'system point targets carry the stamp');
   assert.ok(src.includes('stable: captureEntitySelection(e)'), 'markers stamp the live entity at build time');
   assert.ok(src.includes("from './sim/stableSelection.js'"), 'the screen consumes the sim model, not a reimplementation');
+
+  // The armed course is gated for its whole life, not just the commit instant: the owner
+  // stamps the bind, flight and every instrument resolve through it.
+  const worldSrc = readFileSync(join(ROOT, 'src/systems/world.js'), 'utf8');
+  assert.ok(worldSrc.includes('captureEntitySelection(') && worldSrc.includes('waypoint.stable'),
+    'the course owner stamps the bind it arms');
+  const flightSrc = readFileSync(join(ROOT, 'src/systems/flightV3.js'), 'utf8');
+  assert.ok(flightSrc.includes('resolveEntitySelection(state, autopilot.stable)'),
+    'the burn re-proves its bind every tick instead of trusting the raw id');
+  const wpSrc = readFileSync(join(ROOT, 'src/ui/navigationWaypoint.js'), 'utf8');
+  assert.ok(wpSrc.includes('waypoint.stable'),
+    'HUD/radar/map instruments share the stamped bind');
+  const scanSrc = readFileSync(join(ROOT, 'src/systems/scanner.js'), 'utf8');
+  assert.ok(scanSrc.includes('entityStable') && scanSrc.includes('recordEntity('),
+    'signal records stamp at write and validate at emit — no stale id rides out');
 });

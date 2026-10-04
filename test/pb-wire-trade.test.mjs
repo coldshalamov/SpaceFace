@@ -60,14 +60,14 @@ function makeEconomy(state, emitted) {
 }
 
 /** The expectation the screen stamps — mirrors market.js's emit path field-for-field. */
-function stampExpectation(state, { qty, side = 'sell', total = null }) {
+function stampExpectation(state, { qty, side = 'sell', total = null, stationId = 'station_test' }) {
   const lastReceipt = latestTradeReceipt(state);
   state.ui[TRADE_EXPECTATION_KEY] = {
     commodityId: CMDTY,
     side,
     qty,
     total,
-    stationId: 'station_test',
+    stationId,
     afterSequence: lastReceipt ? lastReceipt.tradeSequence : 0,
     atSimTime: Number(state.simTime) || 0,
   };
@@ -186,20 +186,42 @@ test('PB-286: a stale stamp past its window is debris, not context', () => {
   assert.equal(state.ui[TRADE_EXPECTATION_KEY], null);
 });
 
-test('PB-286: the live route consumes the model — market stamps, stationApp projects', () => {
+test('PB-286: a stamp from a different station or the future cannot describe this settle', () => {
+  const state = makeState({ holdQty: 6 });
+  const emitted = [];
+  const system = makeEconomy(state, emitted);
+  // A stamped station that is not the settle's station rejects outright — even when the event
+  // omits its own station — and a stamp dated after the settle's clock is not this trade.
+  stampExpectation(state, { qty: 10, side: 'sell', total: 100, stationId: 'station_elsewhere' });
+  system.execute('station_test', CMDTY, 'sell', 4);
+  let receipt = tradeClearedReceipt(state, { ...completed(emitted), stationId: 'station_test' });
+  assert.equal(receipt.line, `SOLD 4u ${CMDTY_NAME}`, 'foreign-station stamp falls back');
+  stampExpectation(state, { qty: 10, side: 'sell', total: 100 });
+  state.ui[TRADE_EXPECTATION_KEY].atSimTime = state.simTime + 3600;
+  system.execute('station_test', CMDTY, 'sell', 2);
+  receipt = tradeClearedReceipt(state, completed(emitted));
+  assert.equal(receipt.line, `SOLD 2u ${CMDTY_NAME}`, 'a future-dated stamp falls back');
+});
+
+test('PB-286: the live route consumes the model — market stamps, stationApp projects, refusal clears', () => {
   const marketSrc = readFileSync(join(ROOT, 'src/ui/station/screens/market.js'), 'utf8');
-  assert.ok(marketSrc.includes('TRADE_EXPECTATION_KEY'),
-    'the market screen stamps the confirmed terms before emitting');
-  assert.ok(marketSrc.includes('latestTradeReceipt'),
-    'the stamp pins the ledger sequence so the projection reads only this settle');
   const emitIdx = marketSrc.indexOf("ctx.bus.emit(mode === 'buy' ? 'ui:buy' : 'ui:sell'");
-  assert.ok(marketSrc.lastIndexOf('TRADE_EXPECTATION_KEY', emitIdx) > -1,
-    'the stamp lands before the ui:buy/ui:sell emit it describes');
+  // Assert the WRITE, not the import: the assignment with its terms must precede the emit.
+  const writeIdx = marketSrc.lastIndexOf('ui[TRADE_EXPECTATION_KEY] = {', emitIdx);
+  assert.ok(writeIdx > -1, 'the market screen assigns the confirmed terms before emitting');
+  const write = marketSrc.slice(writeIdx, emitIdx);
+  assert.ok(write.includes('qty: decision.payload.qty'), 'the stamp carries the confirmed quantity');
+  assert.ok(write.includes('afterSequence:'), 'the stamp pins the ledger sequence for this settle');
+  assert.ok(marketSrc.includes('latestTradeReceipt'),
+    'the pinned sequence comes from the economy ledger');
 
   const appSrc = readFileSync(join(ROOT, 'src/ui/station/stationApp.js'), 'utf8');
   const handler = appSrc.slice(appSrc.indexOf("subscribe('economy:tradeCompleted'"));
   assert.ok(handler.includes('tradeClearedReceipt('),
     'the TRADE CLEARED receipt derives through the tradeReceipt presenter');
+  const failed = appSrc.slice(appSrc.indexOf("subscribe('economy:tradeFailed'"));
+  assert.ok(failed.includes('ui[TRADE_EXPECTATION_KEY] = null'),
+    'a refused execute kills the stamp — docked simTime never ages it out');
   assert.ok(appSrc.includes("from './tradeReceipt.js'"), 'stationApp consumes the presenter');
   assert.ok(readFileSync(join(ROOT, 'src/ui/station/tradeReceipt.js'), 'utf8').includes('projectTradeOutcome'),
     'the presenter reads through projectTradeOutcome — the ledger, not the display');

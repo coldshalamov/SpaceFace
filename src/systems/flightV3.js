@@ -40,6 +40,7 @@ import {
   resolveDockAnchor,
 } from '../data/collisionProxyManifests.js';
 import { entityNeedsFlightStep } from '../world/activityRuntime.js';
+import { resolveEntitySelection } from '../ui/sim/stableSelection.js';
 
 // Coordinated banking: roll follows the ACTUAL turn state (yaw rate × forward speed), not the
 // stick. A ship carving at speed rolls into the turn like an aircraft; the same ship pivoting
@@ -1357,7 +1358,11 @@ export function resolveAutopilotTarget(state, autopilot) {
   if (!state || !autopilot) return null;
   const id = autopilot.targetEntityId;
   let entity = null;
-  if (id != null && state.entities && typeof state.entities.get === 'function') {
+  if (autopilot.stable) {
+    // SF-244: the course owner stamped what the bind meant at arm time — a recycled id
+    // resolves closed and the burn falls back to the fix, never onto the new holder.
+    entity = resolveEntitySelection(state, autopilot.stable);
+  } else if (id != null && state.entities && typeof state.entities.get === 'function') {
     entity = state.entities.get(id);
     if (!entity && typeof id === 'string') {
       const numeric = Number(id);

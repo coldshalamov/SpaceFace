@@ -2261,6 +2261,9 @@ export function reconcileMapSelection(state, target) {
   if (target.id === target.stable.entityId) next.id = entity.id;
   if (target.targetEntityId === target.stable.entityId) next.targetEntityId = entity.id;
   if (entity.pos) { next.x = entity.pos.x; next.z = entity.pos.z; }
+  // resolveCourseTarget prefers a carried coursePos over x/z — a stale fix would outrank the
+  // rebound position, so the rebind clears it rather than committing to where the body WAS.
+  if (next.coursePos) delete next.coursePos;
   return next;
 }
 

@@ -44,10 +44,9 @@ export function takeTradeExpectation(state, p) {
   if (expectation.commodityId !== (p && p.commodityId)) return null;
   const side = expectation.side === 'sell' ? 'sell' : 'buy';
   if (p && p.side != null && side !== p.side) return null;
-  if (expectation.stationId != null && p && p.stationId != null
-    && String(expectation.stationId) !== String(p.stationId)) return null;
-  const ageS = Math.abs((Number(state && state.simTime) || 0) - (Number(expectation.atSimTime) || 0));
-  if (!(ageS <= EXPECTATION_TTL_S)) return null;
+  if (expectation.stationId != null && String(expectation.stationId) !== String(p && p.stationId)) return null;
+  const ageS = (Number(state && state.simTime) || 0) - (Number(expectation.atSimTime) || 0);
+  if (!(ageS >= 0 && ageS <= EXPECTATION_TTL_S)) return null;
   return expectation;
 }
 

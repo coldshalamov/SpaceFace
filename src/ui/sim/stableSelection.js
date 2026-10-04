@@ -111,7 +111,7 @@ function entityIterable(state) {
   return null;
 }
 
-function liveEntityById(state, id) {
+export function liveEntityById(state, id) {
   if (id == null || !state || !state.entities || typeof state.entities.get !== 'function') return null;
   let entity = state.entities.get(id);
   if (!entity && typeof id === 'string') {
