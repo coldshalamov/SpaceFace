@@ -71,8 +71,8 @@ export const FITTING_DOSSIER = Object.freeze({
     tip: 'The default answer to "what do I put on a medium hardpoint".',
   },
   wpn_bank_stream_m: {
-    detail: 'A ribbon of light pellets — each hit is a scratch, but the stream never stops, and every pellet shoves and twists what it lands on.',
-    tip: 'Hose a hull and the stream sands it off its line — the tumble does as much work as the damage.',
+    detail: 'A ribbon of light pellets — one hit is a scratch, but fourteen a second keeps the weight coming: the target slides and spins under the hose.',
+    tip: 'The damage is the least of it — the tumble turns a fighting hull into a drifting one.',
   },
   wpn_autocannon_m: {
     detail: 'Heavy armor-chewing slugs in a continuous stream. Honest damage on plated hulls, real knockback on light ones.',
@@ -722,7 +722,7 @@ function weaponStats(def) {
   const out = [];
   const push = (label, value) => { if (value != null && value !== '' && !deadZero(value)) out.push({ label, value }); };
   pushGateChips(def, push);
-  push('Damage', num(def.dmg));
+  push('Damage', num(def.dmg, 1));
   push('Type', def.damageType ? String(def.damageType).replace(/^\w/, (c) => c.toUpperCase()) : null);
   push('DPS', num(def.dps, 1));
   push('Rate', def.rof != null ? `${num(def.rof, 1)}/s` : null);
@@ -733,7 +733,8 @@ function weaponStats(def) {
   push('Splash', num(def.splashDmg));
   push('Splash radius', num(def.splashRadius));
   push('Impulse', num(def.impulsePerHit));
-  push('Tumble', num(def.tumbleTorque));
+  // tumbleTorque runs 0.05..35 — dp=2 so small real values don't round to 0/1 lies.
+  push('Tumble', num(def.tumbleTorque, 2));
   push('Spread', def.spreadDeg != null ? `${num(def.spreadDeg, 1)}°` : null);
   push('Pierce', def.armorPierce != null ? pct(def.armorPierce) : null);
   push('Homing turn', def.tracking === 'homing' && def.turnRate != null ? `×${num(def.turnRate, 1)}` : null);
@@ -753,9 +754,9 @@ function weaponStats(def) {
   push('Arcs', def.emergentChain ? `${num(def.emergentChain.count)} · R${num(def.emergentChain.range)}` : null);
   push('Bounces', def.emergentBounces != null ? num(def.emergentBounces) : null);
   push('Generations', def.lineageGenerationMax != null ? num(def.lineageGenerationMax) : null);
-  push('Heat', def.heatPerShot != null ? `${num(def.heatPerShot)}/shot` : (def.heatPerSec != null ? `${num(def.heatPerSec)}/s` : null));
+  push('Heat', def.heatPerShot != null ? `${num(def.heatPerShot, 1)}/shot` : (def.heatPerSec != null ? `${num(def.heatPerSec, 1)}/s` : null));
   push('Cooling', def.heatDissip != null ? `${num(def.heatDissip)}/s` : null);
-  push('Energy', def.energyCost != null ? `${num(def.energyCost)}${def.continuous ? '/s' : '/shot'}` : null);
+  push('Energy', def.energyCost != null ? `${num(def.energyCost, 1)}${def.continuous ? '/s' : '/shot'}` : null);
   push('Mass', num(def.mass));
   push('Statuses', (def.statuses || []).map((s) => String(s.id || s)
     .replace(/^status_/, '').replace(/_/g, ' ')
@@ -796,7 +797,7 @@ function moduleStats(def) {
   }
   push('Shield', m.shieldFlat != null ? `+${num(m.shieldFlat)}` : null);
   push('Shield regen', m.shieldRegenFlat != null ? `+${num(m.shieldRegenFlat)}/s` : null);
-  push('Top speed', m.topSpeed != null ? num(m.topSpeed) : null);
+  push('Top speed', m.topSpeed != null ? num(m.topSpeed, 1) : null);
   push('Accel', m.accelMult != null && m.accelMult !== 1 ? `×${num(m.accelMult, 2)}` : null);
   push('Turn', m.turnMult != null && m.turnMult !== 1 ? `×${num(m.turnMult, 2)}` : null);
   push('Strafe', m.strafeMult != null && m.strafeMult !== 1 ? `×${num(m.strafeMult, 2)}` : null);
@@ -836,7 +837,7 @@ function moduleStats(def) {
   push('Rare ore', def.rareOreChance != null ? pct(def.rareOreChance) : null);
   push('Ore flow', def.directToCargo === true ? 'straight to cargo' : null);
   push('Mass', num(def.mass));
-  push('Energy draw', def.energyDraw != null ? `${num(def.energyDraw)}/s` : null);
+  push('Energy draw', def.energyDraw != null ? `${num(def.energyDraw, 1)}/s` : null);
   push('Charge rack', m.impulseChargeCapacity != null ? `${m.impulseChargeCapacity} charges` : null);
   push('Loot range', m.lootMagnetRange != null ? num(m.lootMagnetRange) : null);
   push('Scan range', m.scanRangeMult != null ? `×${num(m.scanRangeMult, 2)}` : null);
