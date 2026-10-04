@@ -257,6 +257,15 @@ export function shouldVirtualizeFarActor(entity, state) {
   // promoted shell and hides the shelved copy from the materializer's live-entity dedup —
   // every load minted a twin anchored to the same permanent record (D141).
   if (data.worldOneOff === true) return false;
+  // An authored salvage wreck is bound to `state.salvage.points` by entity id — the lean far row
+  // drops salvagePointId/loot/salvagePool/salvageAction, so shelving strips the point's binding
+  // permanently and `_entityForPoint` can never re-resolve the promoted shell (D143).
+  if (data.salvagePointId != null) return false;
+  // The same for the authored-field ecology (scavenger/squatter slots): the roster references the
+  // hull by id and the lean row drops wreckFieldId, so a shelved resident comes back unbound and
+  // the jobs runtime's scavenger adoption can never claim it (D143). Only `salvage:`-keyed
+  // authored fields pin — aftermath-marker ecology stays virtualizable by design.
+  if (typeof data.wreckFieldId === 'string' && data.wreckFieldId.startsWith('salvage:')) return false;
   if (data.activityActorSlotId || data.wingman || data.role === 'wingman') return false;
   if (flags.tethered || data.tethered) return false;
   if (state.player && state.player.tether && state.player.tether.targetId === entity.id) return false;
