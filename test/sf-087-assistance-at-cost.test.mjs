@@ -141,6 +141,50 @@ test('an already-claimed body cannot be re-hired out from under its owner', asyn
   }
 });
 
+test('a mid-hire save/Continue reports the dropped tow and refunds the fee', async () => {
+  const sim = await boot();
+  try {
+    const { e, jobId, entry } = worker(sim);
+    const rt = sim.registry.get('npcJobsRuntime');
+    const grants = [];
+    sim.bus.on('economy:grantCredits', (p) => grants.push(p));
+    const lost = [];
+    sim.bus.on('npcJobs:towAssistLost', (p) => lost.push(p));
+    const toasts = [];
+    sim.bus.on('toast', (p) => toasts.push(String(p && p.text)));
+
+    const load = body(sim, 120, 0);
+    const hire = rt.requestTowAssist(e.id, load.id, { x: 1500, z: 0 }, { holder: 'contactHail', feeCr: 150 });
+    assert.equal(hire.granted, true);
+    steps(sim, 30);
+    assert.equal(entry.towAssist.phase, 'tow', 'mid-hire: the line is attached and towing');
+
+    const saved = rt.serialize();
+    assert.ok(saved.byId[jobId].towAssist, 'the live hire leaves a record on the save');
+    assert.equal(saved.byId[jobId].towAssist.feeCr, 150, 'the billed fee is on the record');
+
+    rt.deserialize(saved);
+    const restored = rt._byId()[jobId];
+    assert.ok(restored && restored.job, 'the job itself survives the reload');
+    assert.equal(restored.towAssist ?? null, null, 'the lease stays session-transient by design');
+
+    // The honest answer lands on save:loaded — after every owner has restored — never before.
+    assert.equal(lost.length, 0, 'deserialize alone reports nothing yet');
+    sim.bus.emit('save:loaded', { source: 'test' });
+    assert.equal(lost.length, 1, 'the dropped hire is reported, not vanished');
+    assert.equal(lost[0].jobId, jobId);
+    assert.equal(lost[0].reason, 'save_reload');
+    assert.equal(lost[0].refundedCr, 150);
+    assert.equal(grants.length, 1, 'the fee comes back through the same economy seam that billed it');
+    assert.equal(grants[0].amount, 150);
+    assert.equal(grants[0].reason, 'refund:tow_assist');
+    assert.ok(toasts.some((t) => /150cr/.test(t)),
+      `the refund says what it paid back — saw: ${JSON.stringify(toasts)}`);
+  } finally {
+    dispose(sim);
+  }
+});
+
 test('an assist that runs too long reports the loss and hands the route back', async () => {
   const sim = await boot();
   try {
