@@ -1,0 +1,28 @@
+{
+  "schema": "spaceface.splitter-affordability-supplement.v1",
+  "status": "review-only; no runtime default activation",
+  "patchSHA256": "e46186c917283c27e4b13125f737a6e5251e49d961130b1250555e7df0e1603c",
+  "files": [
+    {
+      "path": "test/brood-splitter-affordability.test.mjs",
+      "beforeSHA256": null,
+      "afterSHA256": "04ffa3599345a56b12cca2dec3f6a3cb557d1f618fa4b90c68ec23e024280841"
+    }
+  ],
+  "dependencies": [
+    {
+      "path": "splitter-runtime-packet/final-candidate-v1/manifest.json",
+      "sha256": "372aa9b0c2ca2027fce181b1b91886827b15a131561fbfe8f5e516e31ce02419"
+    },
+    {
+      "path": "brood-current-source-rebase/splitter-roster-supplement/splitter-roster-closure.patch",
+      "sha256": "10e2819dec417db5f9b4ce9e1441c728bbc4f4f5e9220bd93e98aafc8abdfe15"
+    }
+  ],
+  "tests": {
+    "pass": 47,
+    "fail": 0,
+    "command": "node --test test/brood-splitter-affordability.test.mjs test/swarm-specialist-debut.test.mjs test/combat-doctrines.test.mjs"
+  },
+  "sourcePinSHA256": "d6fe70bc6440f4b0f8698a599623d1878a970edcc4ac62de0d1c8363d8931ba6"
+}
