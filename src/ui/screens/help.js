@@ -230,6 +230,17 @@ export function controlSections(state) {
       ['Deploy Repulsor (drops at ship; shoves bodies outward)', 'deployRepulsor'],
       ['Toggle Clearing Cone (forward gravitic snowplow; toggle on/off)', 'toggleClearingCone'],
       ['Open a scoop sheet and harvest by grazing a planet band', 'toggleSkimCollector'],
+      // The keyboard sheet is COMPLETE: every live rebindable flight verb gets a row, same as the
+      // pad sheet. These seven shipped bound (scanPulse KeyC is the scanner verb the first-hour
+      // seam beat orders: "Pulse the scanner.") but were listed only on the pad sheet — a keyboard
+      // pilot who opened Help at the scanner moment found no answer anywhere.
+      ['Scanner pulse (reveals contacts and bright seams)', 'scanPulse'],
+      ['World Site beam (selected target)', 'siteBeam'],
+      ['Cruise drive (charge/drop)', 'cruise'],
+      ['Bullet time (hold)', 'bulletTime'],
+      ['Cloak toggle', 'cloak'],
+      ['Deploy nav beacon (open space)', 'deployBeacon'],
+      ['Jettison cargo lot', 'jettisonLot'],
       ['Drop bomb (releases at ship velocity; payload from the bomb bay)', 'dropBomb'],
       ['Cycle bomb-bay payload', 'cycleBomb'],
       ['Throw impulse charge (sticks where it lands; detonate later)', 'chargeThrow'],
