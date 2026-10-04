@@ -840,6 +840,11 @@ function buildHud(doc) {
         const c0 = clusterPoint(250, 350);
         // outside the speed scale's ticks and the heading track's chevron
         if (c0 && k) circles.push({ x: c0.x, y: c0.y, r: 192 * k });
+        // the Speed Dial is a circle too, read from its own rendered face: a box would be dropped whenever the
+        // aim point (the ring stack's top) sits within its padding, which it does
+        const face = frame.querySelector('.orr-speeddial__face');
+        const fb = face && face.getBoundingClientRect ? face.getBoundingClientRect() : null;
+        if (fb && fb.width) circles.push({ x: fb.left + fb.width / 2, y: fb.top + fb.height / 2, r: fb.width / 2 + 34 * k });   // out to the REF and ceiling labels
       }
       return { boxes, circles };
     },
