@@ -247,16 +247,17 @@ export function arcRailGeometry(W, H, count, { span = null, pivotY = 0.56, gaps 
  * cannot fit whole stays whole (it clips, as before; a tenth stop is worse).
  * Pure: pass it the rows list and the first-pass geometry; it answers the seated list.
  */
-export function splitGroupedRowsForWidth(all, W, geo, headText) {
+export function splitGroupedRowsForWidth(all, W, geo, headText, headSizeGuess = 18) {
   const maxAnchorX = geo && geo.anchors && geo.anchors.length
     ? Math.max(...geo.anchors.map((a) => a.x)) : 0;
   const runway = W - maxAnchorX - 24;
   if (!(runway > 0)) return all;
-  // head legend estimate before it is mounted: the seating code's own fallback is
-  // length * headSize * 0.86; 21 px is a mid head size, so this errs slightly wide.
+  // head legend estimate before it is mounted: the seat pass measures getComputedTextLength at
+  // the resolved head size (~.95 em per cap with the legend's letter-spacing); guess at the last
+  // pass's size — it converges on the next build and the 24px runway margin covers the first.
   // headText answers the word the legend will draw (a carried localization); the English key
   // is the fallback, so a first pass still plans against something real.
-  const headW = (g) => String((typeof headText === 'function' && headText(g)) || g).length * 18;
+  const headW = (g) => String((typeof headText === 'function' && headText(g)) || g).length * Math.max(18, headSizeGuess * 0.95);
   const lineW = (g, items) => 30 + headW(g) + items.reduce((s, li) => s + (li && li.offsetWidth || 120) + 22, -22);
   const spareStops = Math.max(0, 9 - all.length);
   let spent = 0;
@@ -371,6 +372,10 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
   // pinning the last locale's word.
   const headTextByGroup = new Map();
   let headTextLocale = '';
+  // the list the last build actually seated: after a width split a group's continuation rows are
+  // stops of their own, so every interaction that indexes rows (hover, keys, heads, rest) must
+  // read this — rows() would merge the chunks back and point the Hand one stop early (REV-D136.1)
+  let seatedRows = [];
   const ruleRest = `orr-rule-rest-${++ruleSeq}`;
   const ruleLit = `orr-rule-lit-${ruleSeq}`;
 
@@ -472,12 +477,13 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
     // width and split the overruns into consecutive rows that share the head name — the dial
     // simply carries one more stop per split, the way a chapter continues over the page.
     if (grouped) {
-      const seated = splitGroupedRowsForWidth(all, W, geo, (g) => headTextByGroup.get(g));
+      const seated = splitGroupedRowsForWidth(all, W, geo, (g) => headTextByGroup.get(g), headSize);
       if (seated !== all) {
         all = seated;
         geo = arcRailGeometry(W, H, all.length, { span, pivotY, gaps, place });
       }
     }
+    seatedRows = all;
     layer.setAttribute('viewBox', `0 0 ${W} ${H}`);
     layer.textContent = '';
     const { pivot, re, ri, angles } = geo;
@@ -800,7 +806,7 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
     return list.querySelector('.dp-lit__item--primary') || null;
   };
 
-  const indexOf = (node) => rows().findIndex((row) => row.items.some((li) => li.contains(node)));
+  const indexOf = (node) => seatedRows.findIndex((row) => row.items.some((li) => li.contains(node)));
   // ── the CATEGORY is a control ────────────────────────────────────────────────────────────
   // A head (its name, its rule, the air between) is its own target on a grouped dial. Reaching for
   // a category lifts its whole run of verbs, swings the Hand to its stop and focuses that row's
@@ -809,7 +815,7 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
   const rowButtons = (row) => row.items.map((li) => li.querySelector('button') || li);
   const headOf = (node) => (node && typeof node.closest === 'function' ? node.closest('.orr-arcrail__head') : null);
   const liftRow = (index) => {
-    for (const row of rows()) for (const li of row.items) {
+    for (const row of seatedRows) for (const li of row.items) {
       if (index >= 0 && li.dataset.row === String(index)) li.setAttribute('data-head-hover', '');
       else li.removeAttribute('data-head-hover');
     }
@@ -818,7 +824,7 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
     const head = headOf(e.target);
     if (!head) return;
     const i = Number(head.getAttribute('data-row'));
-    const row = rows()[i];
+    const row = seatedRows[i];
     if (!row) return;
     liftRow(i);
     const first = rowButtons(row)[0];
@@ -837,14 +843,14 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
   const onHeadDown = (e) => {
     const head = headOf(e.target);
     if (!head) return;
-    const row = rows()[Number(head.getAttribute('data-row'))];
+    const row = seatedRows[Number(head.getAttribute('data-row'))];
     const first = row && rowButtons(row)[0];
     if (!first) return;
     e.preventDefault();
     if (doc.activeElement !== first) { try { first.focus({ preventScroll: true }); } catch (_) { first.focus(); } }
   };
   const restIndex = () => {
-    const all = rows();
+    const all = seatedRows;
     const current = all.findIndex((row) => row.items.some((li) => li.querySelector('[aria-current="true"], .dp-lit__item--primary')));
     return current >= 0 ? current : 0;
   };
@@ -873,7 +879,7 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
   const onKey = (e) => {
     if (!grouped || !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
     const active = doc.activeElement;
-    const all = rows();
+    const all = seatedRows;
     const ri0 = active ? indexOf(active) : -1;
     if (ri0 < 0) return;
     const buttons = rowButtons;
@@ -1028,6 +1034,7 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
       root.remove();
       wake(null);
       heads = [];
+      seatedRows = [];
       host.classList.remove('orr-arcrail-host', 'orr-arcrail-host--dense', 'orr-arcrail-host--grouped',
         'orr-arcrail-host--stacked', 'orr-arcrail-host--arriving');
       if (frame && home && host.parentNode === frame) home.insertBefore(host, homeNext);

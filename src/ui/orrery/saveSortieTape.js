@@ -122,6 +122,7 @@ export function createSortieTape({ host, onScrub = null } = {}) {
   let model = { lengthS: null, events: [], killLabel: '' };
   let geo = null;
   let cursor = 0;
+  let emptyTextObs = null;
   /** each event's word above the channel, where it had room */
   const labelFor = new Map();
   let litLabel = null;
@@ -187,6 +188,8 @@ export function createSortieTape({ host, onScrub = null } = {}) {
     }
     host.removeAttribute('aria-disabled');
     read.hidden = false;
+    // the empty label is gone with this pass's staticG wipe — stop watching the detached node
+    if (emptyTextObs) { emptyTextObs.disconnect(); emptyTextObs = null; }
     // ticks: a major every minute that leaves ~70px between labels, minors between
     const L = model.lengthS;
     const steps = [10, 30, 60, 120, 300, 600, 900, 1800, 3600];
@@ -373,7 +376,6 @@ export function createSortieTape({ host, onScrub = null } = {}) {
   host.addEventListener('click', onClick);
   host.addEventListener('keydown', onKey);
   let ro = null;
-  let emptyTextObs = null;
   if (typeof ResizeObserver === 'function') { ro = new ResizeObserver(() => draw()); ro.observe(host); }
 
   return {

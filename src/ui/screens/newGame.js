@@ -20,7 +20,7 @@ import { coreText } from '../localizedCoreCopy.js';
 import { el, words, settle, cue } from '../kit/index.js';
 import { dressLampKey } from '../orrery/lampKey.js';
 import { createStageHull } from './stageHull.js';
-import { createStopScale, createStopArc, createTurntable } from '../orrery/stopDial.js';
+import { createStopScale } from '../orrery/stopDial.js';
 import { createYardCarousel } from '../orrery/yardCarousel.js';
 import { createHullRing } from '../orrery/hullRing.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
@@ -516,12 +516,10 @@ export const newGameScreen = {
     diffField.wrap.appendChild(diff);
     diffField.wrap.appendChild(diffDesc);
     body.appendChild(diffField.wrap);
-    // ORRERY: difficulty is a four-stop scale with the amber index.
-    // difficulty as a four-stop scale with the Hand (ORRERY 6); it fills the form column with an
-    // instrument. The scale spaces its stations from the measured word widths (D34), so a longer
-    // localization widens the ruler instead of clipping or stacking the middle labels — the fixed-
-    // geometry arc could not (D136).
-    if (ORRERY) this._diffDial = createStopScale({ row: diffWords, width: 340 });
+    // ORRERY: difficulty is a four-stop scale with the amber index, stood on end — the form
+    // column is narrower than four grown names on one line, so the ruler stacks a station per
+    // line and every word keeps the column's whole width (D136).
+    if (ORRERY) this._diffDial = createStopScale({ row: diffWords, width: 340, axis: 'y' });
     body.appendChild(hairline());
 
     // Arrow bridges for the Tab-invisible starter row: Down from the pilot name or Up from the
@@ -999,6 +997,7 @@ export const newGameScreen = {
   refresh() {},
   dispose() {
     if (refs && refs.cancelHullRelease) refs.cancelHullRelease();
+    if (this._diffDial) { this._diffDial.dispose(); this._diffDial = null; }
     if (this._starterDial) { this._starterDial.dispose(); this._starterDial = null; }
     if (this.hull) { this.hull.dispose(); this.hull = null; }
     if (this._hullRing) { this._hullRing.dispose(); this._hullRing = null; }

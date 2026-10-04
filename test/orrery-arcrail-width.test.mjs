@@ -15,8 +15,11 @@ const geo = (x) => ({ anchors: [{ x }] });
 const W = 1280;
 const G = geo(300);
 const RUNWAY = W - 300 - 24; // 956
-const headW = (g) => String(g).length * 18;
-const lineW = (g, items) => 30 + headW(g) + items.reduce((s, l) => s + l.offsetWidth + 22, -22);
+// The seated-line bound, checked at the authored WORST case rather than the helper's own guess:
+// the head size caps at 26 px and the legend's letter-spacing puts a cap near .95 em — so a plan
+// that fits at ~25 px/cap survives any head the dial can actually engrave.
+const worstHeadW = (g) => String(g).length * 25;
+const lineW = (g, items) => 30 + worstHeadW(g) + items.reduce((s, l) => s + l.offsetWidth + 22, -22);
 
 test('a fitting grouped dial passes through untouched', () => {
   const rows = [row(null, [li(160)]), row('Game', [li(120), li(90), li(80)]), row('Ship', [li(150), li(110)])];
@@ -85,5 +88,12 @@ test('the real pause geometry leaves the split rows inside the dial', () => {
   const out = splitGroupedRowsForWidth([row(null, [li(160)]), row('Ship', items), row('Exit', [li(140)])], 1280, g);
   assert.equal(out.length, 4);
   const g2 = arcRailGeometry(1280, 720, out.length, { span: 56, place: (w, h) => ({ pivot: { x: 72, y: 396 }, re: 216, centerDeg: 90 }) });
-  assert.equal(g2.anchors.length, 4, 'the second-pass geometry carries every seated row');
+  // the real end-to-end claim: against the second-pass geometry's own anchors, every seated line —
+  // head at authored worst case plus its verbs — lands inside the dial's runway
+  for (let i = 0; i < out.length; i += 1) {
+    const a = g2.anchors[i];
+    assert.ok(a, 'every seated row owns a stop');
+    assert.ok(lineW(out[i].group, out[i].items) <= 1280 - a.x - 24,
+      `row ${i} (${out[i].group}) seats inside the runway from anchor ${Math.round(a.x)}`);
+  }
 });

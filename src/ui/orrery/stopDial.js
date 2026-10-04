@@ -50,6 +50,9 @@ html.sf-reduce-motion .orr-turntable__art { transition:none; }
   background:center / contain no-repeat; transition:opacity .2s linear, transform .32s var(--dp-ease-out, ease-out), filter .2s linear; }
 .orr-stopscale__art.is-on { opacity:1; transform:translate(-50%, -50%) scale(1.14); filter:drop-shadow(0 0 12px rgb(223 238 255 / .4)); }
 html.sf-reduce-motion .orr-stopscale__art { transition:none; }
+/* the ruler stood on end: same scale, stations down a column — a pick-one whose words cannot
+   share one line (a grown locale's four names past a form column's edge) still reads (D136) */
+.orr-stopscale--y > .orr-stopscale__row > li { transform:none; text-align:left; }
 .orr-turntable--carousel > .orr-turntable__row > li, .orr-turntable--carousel > .orr-turntable__art { transition:left .55s cubic-bezier(.2,.9,.25,1), top .55s cubic-bezier(.2,.9,.25,1), opacity .35s ease, transform .55s cubic-bezier(.2,.9,.25,1); }
 .orr-turntable--carousel > .orr-turntable__art { transform:translateX(-50%) scale(.7); transform-origin:50% 100%; opacity:.55; }
 .orr-turntable--carousel > .orr-turntable__art.is-on { opacity:0; transform:translateX(-50%) scale(.7); }
@@ -70,16 +73,22 @@ function injectStyle(doc) {
  * @param {number} [o.width]         scale width in px
  * @param {Object<string,string>} [o.art]  per-button produced art: data-action -> image url
  * @param {number} [o.artSize]       art size in px
+ * @param {string} [o.axis]          'x' (default) seats the stations along a horizontal ruler;
+ *                                   'y' stands the ruler on its end — the stations stack, so a
+ *                                   pick-one in a narrow column keeps every word whole
  */
-export function createStopScale({ row, width = 460, art = null, artSize = 72 } = {}) {
+export function createStopScale({ row, width = 460, art = null, artSize = 72, axis = 'x' } = {}) {
   const doc = (row && row.ownerDocument) || globalThis.document;
   if (!row || !doc || typeof doc.createElementNS !== 'function' || !row.parentNode) {
     return { el: null, update() {}, dispose() {} };
   }
   injectOrrery();
   injectStyle(doc);
-  const hasArt = !!art;
+  const vertical = axis === 'y';
+  const hasArt = !!art && !vertical;
   const ruleY = hasArt ? artSize + 26 : 16;
+  // a vertical scale's ruler is a fixed inset from the left; the words stand to its right
+  const ruleX = 18;
   // room under the ruler for a word and its one-line sub (a row without subs needs less)
   const hasSub = !!row.querySelector('.k-word-sub, .dp-menu__note, .dp-lit__note');
   const H = ruleY + (hasSub ? 56 : 40);
@@ -87,7 +96,7 @@ export function createStopScale({ row, width = 460, art = null, artSize = 72 } =
   const minGap = 22;
   const minPad = 12;
   const wrap = doc.createElement('div');
-  wrap.className = 'orr-stopscale';
+  wrap.className = vertical ? 'orr-stopscale orr-stopscale--y' : 'orr-stopscale';
   wrap.style.setProperty('--orr-scale-w', `${width}px`);
   wrap.style.setProperty('--orr-scale-h', `${H}px`);
   row.parentNode.insertBefore(wrap, row);
@@ -123,7 +132,32 @@ export function createStopScale({ row, width = 460, art = null, artSize = 72 } =
     return { W, xs };
   }
 
-  let xs = [width / 2];
+  // the same measure stood on end: each station's measured height stacks the words with one beat
+  // of air, the wrap's height is what the words need — a long word can never crowd a sibling or
+  // run the ruler past the column (D136)
+  function stationYs() {
+    const lis = items();
+    const n = Math.max(1, lis.length);
+    const hs = lis.map((li) => Math.max(0, li.offsetHeight || 0));
+    const avail = (wrap.parentNode && wrap.parentNode.clientWidth) || 0;
+    const W = avail > 0 ? Math.min(width, avail) : width;
+    if (hs.some((h) => h <= 0)) {
+      return { W, H: n * 34 + minPad * 2, ys: Array.from({ length: n }, (_, i) => minPad + 17 + i * 34) };
+    }
+    const sumH = hs.reduce((a, h) => a + h, 0);
+    const beat = 12;
+    const H = sumH + beat * (n - 1) + minPad * 2;
+    const ys = [];
+    let y = minPad;
+    for (let i = 0; i < n; i++) {
+      y += hs[i] / 2;
+      ys.push(y);
+      y += hs[i] / 2 + (i + 1 < n ? beat : 0);
+    }
+    return { W, H, ys };
+  }
+
+  let xs = [vertical ? 30 : width / 2];
   let stationTicks = [];
   const arts = [];
   const bloom = svg('path', { d: '', class: 'orr-bloom orr-hand', 'stroke-width': 7, opacity: '.22' });
@@ -131,16 +165,23 @@ export function createStopScale({ row, width = 460, art = null, artSize = 72 } =
   const beadBloom = svg('circle', { r: 7, fill: 'var(--dp-hand, #f2b950)', opacity: '.22' });
   const bead = svg('circle', { r: 3.4, fill: 'var(--dp-hand-hot, #ffd98c)' });
   const top = ruleY - 16;
-  const paint = (x) => {
-    blade.setAttribute('d', `M ${(x - 2).toFixed(1)} ${ruleY} L ${x.toFixed(1)} ${top} L ${(x + 2).toFixed(1)} ${ruleY} Z`);
-    bloom.setAttribute('d', `M ${x.toFixed(1)} ${ruleY} L ${x.toFixed(1)} ${top}`);
-    for (const b of [bead, beadBloom]) { b.setAttribute('cx', x.toFixed(1)); b.setAttribute('cy', String(ruleY)); }
-  };
+  const paint = vertical
+    ? (v) => {
+      blade.setAttribute('d', `M ${ruleX} ${(v - 2).toFixed(1)} L ${ruleX + 16} ${v.toFixed(1)} L ${ruleX} ${(v + 2).toFixed(1)} Z`);
+      bloom.setAttribute('d', `M ${ruleX} ${v.toFixed(1)} L ${ruleX + 16} ${v.toFixed(1)}`);
+      for (const b of [bead, beadBloom]) { b.setAttribute('cx', String(ruleX)); b.setAttribute('cy', v.toFixed(1)); }
+    }
+    : (x) => {
+      blade.setAttribute('d', `M ${(x - 2).toFixed(1)} ${ruleY} L ${x.toFixed(1)} ${top} L ${(x + 2).toFixed(1)} ${ruleY} Z`);
+      bloom.setAttribute('d', `M ${x.toFixed(1)} ${ruleY} L ${x.toFixed(1)} ${top}`);
+      for (const b of [bead, beadBloom]) { b.setAttribute('cx', x.toFixed(1)); b.setAttribute('cy', String(ruleY)); }
+    };
   const spring = createSpring({ value: xs[0], preset: { k: 300, c: 25 }, onUpdate: paint });
 
   // the ruler: a line of light, fine graduations, a heavier tick at each station — rebuilt
   // whenever a relayout moves the stations
   function layout() {
+    if (vertical) { layoutY(); return; }
     const geo = stationXs();
     xs = geo.xs;
     wrap.style.setProperty('--orr-scale-w', `${geo.W}px`);
@@ -163,6 +204,41 @@ export function createStopScale({ row, width = 460, art = null, artSize = 72 } =
       li.style.left = `${xs[i].toFixed(1)}px`;
       li.style.top = `${ruleY + 14}px`;
       if (arts[i]) arts[i].style.left = `${xs[i].toFixed(1)}px`;
+    });
+    current = -1;
+    update({ instant: true });
+  }
+
+  // the ruler stood on end: ticks run out of a vertical line of light, the Hand points into the
+  // word, and each word keeps the whole column to write itself on — nothing shares a line, so
+  // nothing can collide or sever (D136)
+  function layoutY() {
+    const geo = stationYs();
+    xs = geo.ys;
+    wrap.style.setProperty('--orr-scale-w', `${geo.W}px`);
+    wrap.style.setProperty('--orr-scale-h', `${geo.H}px`);
+    face.setAttribute('viewBox', `0 0 ${geo.W} ${geo.H}`);
+    face.textContent = '';
+    const y0 = Math.max(2, xs[0] - 14);
+    const y1 = Math.min(geo.H - 2, xs[xs.length - 1] + 14);
+    face.appendChild(svg('path', { d: `M ${ruleX} ${y0.toFixed(1)} L ${ruleX} ${y1.toFixed(1)}`, class: 'orr-core orr-rest', 'stroke-width': 1 }));
+    const fine = [];
+    for (let y = y0 + 4; y < y1; y += 8) fine.push(`M ${ruleX} ${y.toFixed(1)} L ${ruleX + 4} ${y.toFixed(1)}`);
+    face.appendChild(svg('path', { d: fine.join(' '), class: 'orr-core orr-faint', 'stroke-width': 1 }));
+    stationTicks = xs.map((y) => {
+      const t = svg('path', { d: `M ${ruleX - 6} ${y.toFixed(1)} L ${ruleX + 8} ${y.toFixed(1)}`, class: 'orr-core orr-hi', 'stroke-width': 1.5 });
+      face.appendChild(t);
+      return t;
+    });
+    face.append(bloom, blade, beadBloom, bead);
+    // a word gets the rest of the column after the ruler; an extreme single token wraps rather
+    // than painting into the next column
+    const maxW = Math.max(60, geo.W - ruleX - 26 - 6);
+    items().forEach((li, i) => {
+      const h = li.offsetHeight || 30;
+      li.style.left = `${ruleX + 26}px`;
+      li.style.top = `${(xs[i] - h / 2).toFixed(1)}px`;
+      li.style.maxWidth = `${maxW}px`;
     });
     current = -1;
     update({ instant: true });
