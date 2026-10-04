@@ -20,7 +20,8 @@ const OUT = new URL('../../.devshots/residency/', import.meta.url);
 await mkdir(OUT, { recursive: true });
 const { chromium } = await loadPlaywright();
 
-// key: how the page recognises the character's bodies; cohort: how many it mints.
+const SAMPLE_SIM_SECONDS = 8;
+// cohort: how many bodies the character's system mints.
 const TARGETS = [
   { name: 'vesper', sector: 'sector_helios_prime', cohort: 4, here: true },
   { name: 'bracket', sector: 'sector_helios_prime', cohort: 5, here: true },
@@ -93,14 +94,18 @@ try {
     const exit = await page.evaluate(async () => { try { const m = await import('/src/world/farActorTable.js'); return m.farActorTableRadius(window.SF.state).exit; } catch { return null; } });
     const first = await snapshot(target.name);
     const spawnedBefore = await page.evaluate(() => window.__spawned.length);
-    const timeline = [first];
-    for (let i = 0; i < 14; i++) { await page.waitForTimeout(1000); timeline.push(await snapshot(target.name)); }
+    // Sample on the SIM clock, not the wall clock: a loaded host runs far fewer than 60 sim-s per 60 wall-s, and the
+    // old thrash needed whole seconds of sim time (the owner census runs once a sim-second) to show itself.
+    const timeline = [first], wallStart = Date.now();
+    while (timeline.at(-1).t - first.t < SAMPLE_SIM_SECONDS && Date.now() - wallStart < 240_000) {
+      await page.waitForTimeout(1000); timeline.push(await snapshot(target.name));
+    }
     const last = timeline.at(-1), simSpan = +(last.t - first.t).toFixed(1);
     const shelved = await page.evaluate(ids => window.__shelved.filter(x => ids.includes(x.id)), first.ids);
     const respawned = await page.evaluate(([n, who]) => window.__spawned.slice(n).filter(x => x.who === who), [spawnedBefore, target.name]);
     report.characters[target.name] = { sector: target.sector, exitRadius: exit, nearest: first.nearest, ids: first.ids, simSpan, shelved, respawned, farRows: last.farRows };
     assert.equal(first.sector, target.sector, `${target.name}: pilot is in ${target.sector}`);
-    assert.ok(simSpan >= 5, `${target.name}: the sample window ran ${simSpan}s of sim time`);
+    assert.ok(simSpan >= SAMPLE_SIM_SECONDS, `${target.name}: the sample window ran ${simSpan}s of sim time (wanted ${SAMPLE_SIM_SECONDS})`);
     assert.deepEqual(timeline.map(x => x.ids.join()).filter((v, i, a) => v !== a[0]), [], `${target.name}: the same bodies the whole time`);
     assert.deepEqual(shelved, [], `${target.name}: never shelved`);
     assert.deepEqual(respawned, [], `${target.name}: never re-minted after the first census`);
