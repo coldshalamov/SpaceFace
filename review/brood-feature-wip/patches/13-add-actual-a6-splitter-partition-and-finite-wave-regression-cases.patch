@@ -1,0 +1,1992 @@
+diff --git a/test/brood-splitter-attribution.test.mjs b/test/brood-splitter-attribution.test.mjs
+new file mode 100644
+index 0000000..dcc7357
+--- /dev/null
++++ b/test/brood-splitter-attribution.test.mjs
+@@ -0,0 +1,101 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { recordImpulseProvenance, holdImpulseProvenance, readRecentImpulseProvenance, readRecentImpulseProvenanceHistory, inheritMaterialImpulseProvenance } from '../src/combat/impulseKernel.js';
++import { bindStuntEvidence, unbindStuntEvidence, observeAppliedImpulse } from '../src/combat/stuntEvidence.js';
++const actor = (id, mass = 42) => ({
++  id,
++  occupantGeneration: id,
++  alive: true,
++  type: 'ship',
++  mass,
++  radius: 5,
++  hull: 36,
++  hullMax: 36,
++  pos: {
++    x: 0,
++    z: 0
++  },
++  vel: {
++    x: 20,
++    z: 0
++  },
++  rot: 0,
++  data: {
++    runCohort: 'survival',
++    runWave: 17
++  },
++  physicsBody: {
++    mass
++  }
++});
++test('three cells and one-body fallback keep original attribution clocks without additional stunt roots', () => {
++  const player = actor(10, 24),
++    parent = actor(11),
++    parts = [actor(12, 30), actor(13, 6), actor(14, 6)],
++    corpse = actor(15);
++  const state = {
++    tick: 20,
++    simTime: 20 / 60,
++    playerId: 10,
++    run: {
++      seed: 17
++    },
++    entities: new Map([player, parent, ...parts, corpse].map(e => [e.id, e])),
++    entityList: [player, parent, ...parts, corpse]
++  };
++  const journal = bindStuntEvidence(state);
++  try {
++    const root = observeAppliedImpulse(parent, {
++      x: 0,
++      z: 0
++    }, {
++      x: 20,
++      z: 0
++    }, {
++      actorId: 10,
++      weaponId: 'wpn_mass_driver'
++    }, 20, 'weapon_hit', state);
++    assert.ok(root);
++    recordImpulseProvenance(parent, {
++      actorId: 10,
++      weaponId: 'wpn_mass_driver',
++      tag: 'weapon_hit',
++      appliedTick: 20,
++      magnitude: 840
++    });
++    holdImpulseProvenance(parent, 260, 20, 20);
++    const sequence = journal.sequence;
++    for (const part of parts) assert.equal(inheritMaterialImpulseProvenance(parent, part, part.mass / 42, 20), true);
++    const copies = parts.map(p => readRecentImpulseProvenance(p, 20));
++    assert.equal(copies.reduce((n, p) => n + p.magnitude, 0), 840);
++    for (const p of copies) {
++      assert.equal(p.actorId, 10);
++      assert.equal(p.appliedTick, 20);
++      assert.equal(p.holdUntilTick, 260);
++    }
++    assert.equal(inheritMaterialImpulseProvenance(parent, corpse, 1, 20), true);
++    assert.deepEqual(readRecentImpulseProvenance(corpse, 20), readRecentImpulseProvenance(parent, 20));
++    assert.equal(journal.roots.size, 1);
++    assert.equal(journal.sequence, sequence, 'partition is neither a new impulse nor a new scoring edge');
++    for (const part of parts) assert.equal(readRecentImpulseProvenance(part, 261), null, 'original hold expiry is unchanged');
++  } finally {
++    unbindStuntEvidence(state);
++  }
++});
++test('recycled source or child life cannot relabel previous material attribution', () => {
++  const parent = actor(20),
++    child = actor(21);
++  recordImpulseProvenance(parent, {
++    actorId: 10,
++    tag: 'weapon_hit',
++    appliedTick: 10,
++    magnitude: 90
++  });
++  assert.equal(inheritMaterialImpulseProvenance(parent, child, .5, 10), true);
++  child.occupantGeneration++;
++  assert.equal(readRecentImpulseProvenance(child, 10), null);
++  assert.deepEqual(readRecentImpulseProvenanceHistory(child, 10), []);
++  parent.occupantGeneration++;
++  assert.equal(inheritMaterialImpulseProvenance(parent, child, .5, 10), false);
++  assert.equal(inheritMaterialImpulseProvenance(parent, 1, .5, 10), false);
++});
+diff --git a/test/brood-splitter-counterplay.test.mjs b/test/brood-splitter-counterplay.test.mjs
+new file mode 100644
+index 0000000..e0f8872
+--- /dev/null
++++ b/test/brood-splitter-counterplay.test.mjs
+@@ -0,0 +1,95 @@
++import { BroodContactRuntime, advanceBroodAttack } from '../src/combat/broodContact.js';
++import { createBus } from '../src/core/eventBus.js';
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { combat, makeEnemySpawnSpec } from '../src/systems/combat.js';
++import { queuePhysicsImpulse } from '../src/core/physicsAuthority.js';
++import { tumbleStates } from '../src/systems/tumbleStates.js';
++import { bootRealPath, writeRealPathInput } from '../scripts/lib/bench/realPath.mjs';
++import { validateAIComponentContinuation } from '../src/ai/continuation.js';
++async function runCharge({ sidestep = false, rock = false, shove = false, role = 'brood_charger', distance = 155 } = {}) {
++  const host = await bootRealPath({ seed: 714, systems: ['tacticalAI', 'actions', 'flightV3', 'aiPorts', tumbleStates,
++    'collisionConsequences', 'physics', combat], hulls: [{ hullId: 'ship_kestrel', pos: { x: 0, z: 0 }, rot: 0, isPlayer: true }] });
++  const spec = makeEnemySpawnSpec(role, 1, { x: -distance, z: 0 });
++  spec.data.ai.forcePlayerTarget = true; spec.data.ai.huntPlayer = true;
++  spec.data.ai.moraleImmune = true; spec.data.ai.surrenderImmune = true;
++  spec.data.runCohort = 'survival'; spec.data.combat.targetId = host.player.id;
++  spec.data.ai.activity = { ...spec.data.ai.activity, targetId: host.player.id };
++  const actor = host.runtime.spawn(spec), phases = [], impacts = [], contacts = [];
++  host.bus.on('brood:phase', p => phases.push({ phase: p.phase, tick: p.tick, pos: { ...actor.pos }, line: p.attackLine }));
++  host.bus.on('physics:impact', p => impacts.push(structuredClone(p)));
++  host.bus.on('brood:contact', p => contacts.push(p));
++  let cover = null;
++  let pushed = false, startedDodge = false;
++  const initial = { hull: host.player.hull, shield: host.player.shield, actorHull: actor.hull };
++  let maxSpeed = 0, minDistance = Infinity, maxPlayerHeading = 0, captured = new Set();
++  try {
++    host.step(420, { before: () => {
++      const a = actor.data.broodAttack;
++      if (rock && !cover && a?.phase === 'windup') cover = host.spawnObstacle({pos:{x:actor.pos.x/2,z:0},radius:8,mass:800});
++      if (sidestep && a?.phase === 'windup' && host.state.tick - a.phaseStartedTick >= 12) startedDodge = true;
++      writeRealPathInput(host.state, { moveX: startedDodge ? 1 : 0 });
++      if (shove && !pushed && a?.phase === 'commit') { queuePhysicsImpulse(actor, { x: 0, y: 0, z: actor.mass * 85 }); pushed = true; }
++    }, after: () => {
++      const phase = actor.data.broodAttack?.phase;
++      if (phase && !captured.has(phase)) {
++        const stack = host.runtime.getSystem('tacticalAI').stack;
++        assert.equal(validateAIComponentContinuation('doctrine', stack.combatDoctrine.serializeContinuation()), true);
++        assert.equal(validateAIComponentContinuation('maneuver', stack.maneuver.serializeContinuation()), true);
++        captured.add(phase);
++      }
++      maxPlayerHeading = Math.max(maxPlayerHeading, Math.abs(host.player.rot));
++      maxSpeed = Math.max(maxSpeed, Math.hypot(actor.vel.x, actor.vel.z));
++      minDistance = Math.min(minDistance, Math.hypot(actor.pos.x-host.player.pos.x, actor.pos.z-host.player.pos.z));
++      if (phases.some(p => p.phase === 'recovery') || !actor.alive) return false;
++    } });
++    let postHitSteerDistance = null;
++    if (contacts.length) {
++      const z = host.player.pos.z;
++      host.step(45, { before: () => writeRealPathInput(host.state, { moveX: 1 }) });
++      postHitSteerDistance = Math.abs(host.player.pos.z - z);
++    }
++    if (shove) host.step(60, { before: () => writeRealPathInput(host.state, {}) });
++    return { phases, impacts, contacts, pushed, initial, actorId:actor.id, coverId:cover?.id, actorHull: actor.hull, actorAlive: actor.alive,
++      postHitSteerDistance, maxPlayerHeading, finalPos: { ...actor.pos }, playerPos: { ...host.player.pos }, maxSpeed, minDistance, proof: host.proof() };
++  } finally { host.dispose(); }
++}
++
++
++for(const role of ['brood_splitter','brood_splitter_axial']) test(`${role} real A6 contact has a visible response window, sidestep and physical redirect`, async()=>{
++  const options={role,distance:role==='brood_splitter'?120:90};
++  const hit=await runCharge(options),dodge=await runCharge({...options,sidestep:true}),shove=await runCharge({...options,shove:true}),cover=await runCharge({...options,rock:true});
++  console.log('Splitter counterplay',JSON.stringify({role,...Object.fromEntries(Object.entries({hit,dodge,shove,cover}).map(([k,r])=>[k,{phases:r.phases.map(p=>[p.phase,p.tick]),contacts:r.contacts.length,actorAlive:r.actorAlive,actorHull:r.actorHull,finalPos:r.finalPos,playerPos:r.playerPos,maxSpeed:r.maxSpeed}]))}));
++  for(const r of [hit,dodge,shove]) {
++    assert.equal(r.proof.sg02Ready,true);
++    assert.ok(r.phases.some(p=>p.phase==='windup'));
++    assert.ok(r.phases.some(p=>p.phase==='commit'));
++    assert.ok(r.phases.some(p=>p.phase==='recovery') || !r.actorAlive,'contact death also terminates the finite attack');
++  }
++  assert.equal(hit.contacts.length,1);
++  assert.equal(dodge.contacts.length,0);
++  assert.equal(shove.contacts.length,0);
++  assert.ok(Math.abs(shove.finalPos.z)>20);
++  assert.equal(cover.contacts.length,0,'locked target takes no remote bite through intervening matter');
++  assert.ok(cover.impacts.some(p=>(p.aId===cover.actorId&&p.bId===cover.coverId)||(p.bId===cover.actorId&&p.aId===cover.coverId)),'intervening cover meets the actual native body');
++  assert.ok(cover.actorHull<cover.initial.actorHull||!cover.actorAlive,'cover remains physically consequential');
++});
++
++test('pre-existing tumble/disable prevents a bite, but the same native collision may cause a new tumble',()=>{
++  for(const mode of ['old_collision','new_weapon','new_collision','disabled','recovering']) {
++    const actor={...makeEnemySpawnSpec('brood_splitter',1,{x:0,z:0}),id:2,occupantGeneration:2,alive:true};
++    const player={id:1,occupantGeneration:1,alive:true,team:0,pos:{x:50,z:0}};
++    const state={tick:60,simTime:1,mode:'flight',playerId:1,entityList:[actor,player],entities:new Map([[1,player],[2,actor]]),combat:{entities:{2:{statuses:{},pendingStatuses:[]}}}};
++    let hits=0;
++    const runtime=new BroodContactRuntime({state,bus:createBus(),ensureKernel:()=>({routeDamage:()=>{hits++;return {ok:true};}})});
++    actor.data.broodAttack=advanceBroodAttack(null,{role:'brood_splitter',entityId:2,tick:0,self:actor,target:player});
++    actor.data.broodAttack=advanceBroodAttack(actor.data.broodAttack,{role:'brood_splitter',entityId:2,tick:36,self:actor,target:player});
++    if(mode==='disabled') actor.data.disabled=true;
++    else if(mode==='recovering') actor.data.recoveringUntil=2;
++    else state.combat.entities[2].pendingStatuses.push({id:'status_tumbling',applyTick:mode==='old_collision'?10:60,data:{kind:mode==='new_weapon'?'weapon_tumble':'collision_tumble',startedAt:mode==='old_collision'?1/6:1}});
++    const impact={aId:2,bId:1,tick:60,consequenceKernelVersion:1,impulse:200,pos:{x:5,z:0}};
++    runtime.onImpact(impact);runtime.onImpact(impact);
++    assert.equal(hits,mode==='new_collision'?1:0,mode);
++    runtime.destroy();
++  }
++});
+diff --git a/test/brood-splitter-death-presentation.test.mjs b/test/brood-splitter-death-presentation.test.mjs
+new file mode 100644
+index 0000000..68629f4
+--- /dev/null
++++ b/test/brood-splitter-death-presentation.test.mjs
+@@ -0,0 +1,30 @@
++// CPU routing proof only. Real-camera art and audible mix still need presentation review.
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { vfx } from '../src/render/vfx.js';
++import { audio } from '../src/audio/audioSystem.js';
++
++test('material handoff keeps kill feedback without a reactor blast or duplicate debris', () => {
++  const calls = [];
++  const receipt = { id: 2, killerId: 1, type: 'ship', materialTransferred: true, pos: {x:2,z:3} };
++  const visual = { _emitJuiceCue: (...args) => calls.push(['cue', ...args]),
++    _scheduleDetonation: () => calls.push(['blast']), state: { entities:new Map() } };
++  vfx._onKilled.call(visual, receipt);
++  assert.equal(calls.length, 1); assert.equal(calls[0][0], 'cue');
++  const sounds=[];
++  const sound = { rt: {ctx:{currentTime:0}}, state:{playerId:1,simTime:1},
++    _applyPriorityCue: p=>sounds.push(['priority',p.id]), play:id=>sounds.push(['sound',id]) };
++  audio._onKilled.call(sound, receipt);
++  assert.deepEqual(sounds.map(p=>p[1]), ['combat.player.kill','sfx_ambient_rock_calve']);
++});
++
++test('expired source material is silently retired, while ordinary wreck destruction remains', () => {
++  let blasts=0;
++  const visual={_scene:{},_explode:()=>blasts++};
++  const sound={play:()=>blasts++};
++  const receipt={id:3,type:'wreck',entity:{data:{splitterResidue:true}}};
++  vfx._onDestroyed.call(visual,receipt); audio._onDestroyed.call(sound,receipt);
++  assert.equal(blasts,0);
++  vfx._onDestroyed.call(visual,{id:4,type:'wreck'}); audio._onDestroyed.call(sound,{id:4,type:'wreck'});
++  assert.equal(blasts,2);
++});
+diff --git a/test/brood-splitter-lifecycle.test.mjs b/test/brood-splitter-lifecycle.test.mjs
+new file mode 100644
+index 0000000..7c2965e
+--- /dev/null
++++ b/test/brood-splitter-lifecycle.test.mjs
+@@ -0,0 +1,577 @@
++import { recordImpulseProvenance, holdImpulseProvenance, readRecentImpulseProvenance } from '../src/combat/impulseKernel.js';
++import { bindStuntEvidence, unbindStuntEvidence, observeAppliedImpulse } from '../src/combat/stuntEvidence.js';
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { queuePhysicsImpulse } from '../src/core/physicsAuthority.js';
++import { tumbleStates } from '../src/systems/tumbleStates.js';
++import { bootRealPath, writeRealPathInput } from '../scripts/lib/bench/realPath.mjs';
++import { combat, makeEnemySpawnSpec } from '../src/systems/combat.js';
++import { spawnBudget } from '../src/systems/spawnBudget.js';
++import { survivalWave } from '../src/systems/survivalWave.js';
++import { survivalRewards } from '../src/systems/survivalRewards.js';
++import { aftermathWrecks } from '../src/systems/aftermathWrecks.js';
++import { mining } from '../src/systems/mining.js';
++import { materializeWaveBatch } from '../src/systems/waveMaterialization.js';
++import { createRunState } from '../src/core/runState.js';
++import { scalarHitToDamagePacket } from '../src/combat/damage.js';
++import { broodBodyContract } from '../src/data/broodBodies.js';
++import { save } from '../src/save/saveSystem.js';
++import { splitterRemainingTissue } from '../src/combat/broodSplitter.js';
++const DT = 1 / 60;
++const req = {
++  ownerId: 'survival-wave:17',
++  enemyId: 'brood_splitter',
++  level: 1,
++  count: 1,
++  gateGroup: 'front',
++  seed: 927,
++  wave: 17,
++  packageIndex: 0,
++  batchIndex: 0,
++  role: 'pressure',
++  swarm: true
++};
++async function boot(extra = []) {
++  assert.ok(broodBodyContract('brood_splitter')?.splitterCells, 'requires the reviewed real anatomy contract, never a runtime fixture');
++  const h = await bootRealPath({
++    seed: 927,
++    systems: [spawnBudget, 'actions', ...extra, 'physics', combat],
++    hulls: [{
++      hullId: 'ship_kestrel',
++      isPlayer: true,
++      pos: {
++        x: 0,
++        z: 0
++      }
++    }]
++  });
++  h.state.run = {
++    ...createRunState({
++      kind: 'survival',
++      ruleset: 'swarm',
++      seed: 927
++    }),
++    phase: 'active',
++    wave: 17,
++    arenaId: 'helios_core'
++  };
++  h.state.world.currentSectorId = null;
++  return h;
++}
++function materialize(h, count = 1) {
++  return materializeWaveBatch({
++    state: h.state,
++    helpers: h.runtime.getHelpers()
++  }, {
++    ...req,
++    count
++  });
++}
++function hit(h, e, damage, options = {}) {
++  return h.withFeatures(() => h.runtime.getSystem('combat').ensureKernel().routeDamage({
++    attackerId: h.player.id,
++    targetId: e.id,
++    packet: scalarHitToDamagePacket({
++      damage,
++      damageType: 'kinetic',
++      ...options
++    }),
++    origin: {
++      kind: 'weapon',
++      id: 'test_lethal'
++    }
++  }));
++}
++function children(h, parent) {
++  return h.state.entityList.filter(e => e.alive && e.data?.splitterChild?.familyId === parent.data.splitterFamily.id);
++}
++function startFamilyWave(h) {
++  const wave = h.runtime.getSystem('survivalWave');
++  h.bus.emit('run:wavePlanned', {
++    wave: 17,
++    plan: {
++      ok: true,
++      schedule: [{
++        ...req,
++        atTick: 0,
++        debut: true
++      }],
++      swarm: {
++        killTarget: 4,
++        concurrent: 3,
++        reinforceGapTicks: 24,
++        roster: [{
++          enemyId: 'wasp_swarmer',
++          role: 'mass',
++          fromWave: 1,
++          weight: 10
++        }]
++      },
++      completionRules: {
++        blockingRoles: ['pressure']
++      }
++    }
++  });
++  h.bus.emit('run:waveStarted', {
++    wave: 17
++  });
++  return wave;
++}
++test('all 41 occupancies keep all-or-none three-seat families inside the unchanged cap40', async () => {
++  const h = await boot();
++  try {
++    const budget = h.runtime.getSystem('spawnBudget').api;
++    budget.setMax(40);
++    for (let occupied = 0; occupied <= 40; occupied++) {
++      budget.reset();
++      budget.request(occupied, 'survival-wave:occupied');
++      const receipt = materialize(h, 1);
++      assert.equal(receipt.admitted, occupied <= 37 ? 1 : 0, `occupancy ${occupied}`);
++      assert.equal(budget.current(), occupied + (occupied <= 37 ? 3 : 0));
++      if (receipt.admitted) {
++        const e = h.state.entities.get(receipt.spawnedIds[0]);
++        assert.equal(e.data.splitterFamily.parentLife, e.occupantGeneration);
++        e.alive = false;
++      }
++    }
++  } finally {
++    h.dispose();
++  }
++});
++for (const damage of [36, 48, 72, 100000]) test(`effective lethal damage ${damage} consumes finite tissue and never creates a duplicate corpse`, async () => {
++  const h = await boot([aftermathWrecks, mining]);
++  try {
++    const receipt = materialize(h);
++    assert.equal(receipt.admittedLives, 4);
++    const parent = h.state.entities.get(receipt.spawnedIds[0]);
++    h.step(1);
++    let kills = 0;
++    h.bus.on('entity:killed', p => {
++      if (p.id === parent.id) kills++;
++    });
++    const result = hit(h, parent, damage);
++    assert.ok(result.ok);
++    assert.equal(parent.alive, false);
++    const parts = children(h, parent);
++    assert.equal(parts.length, 3);
++    assert.ok(parts.every(e => !e.data.splitterFamily));
++    assert.equal(kills, 1);
++    const expected = splitterRemainingTissue(parent, {
++      result
++    });
++    assert.ok(Math.abs(parts.reduce((n, e) => n + (e.type === 'ship' ? e.hull : 0), 0) - expected) < 1e-8);
++    assert.ok(Math.abs(parts.reduce((n, e) => n + e.physicsBody.mass, 0) - 42) < 1e-7);
++    assert.equal(h.state.entityList.filter(e => e.alive && e.type === 'wreck').length, expected > 0 ? 0 : 3, 'no whole parent wreck or companion shard');
++    assert.equal(h.runtime.getSystem('spawnBudget').api.current(), expected > 0 ? 3 : 0);
++    h.runtime.getSystem('combat').kill(parent, h.player.id, {
++      result
++    });
++    assert.equal(kills, 1);
++    assert.equal(children(h, parent).length, 3);
++    for (const e of parts.filter(e => e.type === 'ship')) hit(h, e, 1000);
++    assert.equal(children(h, parent).filter(e => e.type === 'ship').length, 0, 'cells never recursively split');
++    assert.ok(h.state.entityList.filter(e => e.alive && e.type === 'wreck').length <= 3, 'cell death keeps its exact material, not a shard burst');
++  } finally {
++    h.dispose();
++  }
++});
++test('last-parent synchronous kill cannot clear before descendants; cancellation never asks for filler', async () => {
++  for (const overkill of [false, true]) {
++    const h = await boot([survivalWave, survivalRewards]);
++    try {
++      const wave = startFamilyWave(h);
++      const parent = [...wave._cohort.values()][0].entity;
++      h.step(1);
++      assert.equal(wave._plannedBodies, 4);
++      assert.equal(wave._admittedTotal, 4);
++      const clears = [];
++      h.bus.on('run:waveCleared', p => clears.push(p));
++      h.bus.on('entity:killed', p => {
++        if (p.id === parent.id) wave._checkCleared(h.state.run);
++      });
++      hit(h, parent, overkill ? 1000 : 36);
++      assert.equal(wave._cohort.size, overkill ? 0 : 3);
++      assert.equal(clears.length, overkill ? 1 : 0);
++      if (!overkill) {
++        for (const e of children(h, parent)) hit(h, e, 1000);
++        wave._checkCleared(h.state.run);
++      }
++      assert.equal(clears.length, 1);
++      assert.equal(clears[0].admitted, 4);
++      assert.equal(clears[0].killed, overkill ? 1 : 4);
++      assert.equal(clears[0].cancelled, overkill ? 3 : 0);
++      assert.equal(Object.keys(h.state.stunts.rewards.deaths).length, 1, 'one parent entitlement for the whole family');
++    } finally {
++      h.dispose();
++    }
++  }
++});
++test('unreserved old/manual parent retains one full-mass authored corpse and no descendant debt', async () => {
++  const h = await boot([aftermathWrecks, mining]);
++  try {
++    const parent = h.runtime.spawn(makeEnemySpawnSpec('brood_splitter', 1, {
++      x: 90,
++      z: 0
++    }));
++    h.step(1);
++    hit(h, parent, 36);
++    const corpses = h.state.entityList.filter(e => e.alive && e.type === 'wreck');
++    assert.equal(corpses.length, 1);
++    assert.equal(corpses[0].physicsBody.mass, 42);
++    assert.deepEqual(corpses[0].physicsBody.collisionProxyManifest, parent.physicsBody.collisionProxyManifest);
++    assert.equal(h.state.entityList.some(e => e.alive && e.data?.splitterChild), false);
++    assert.equal(h.runtime.getSystem('spawnBudget').api.current(), 0);
++  } finally {
++    h.dispose();
++  }
++});
++test('ephemeral save/Continue teardown cannot retain a family reservation or replay stale receipt', async () => {
++  const h = await boot([survivalWave]);
++  try {
++    const wave = startFamilyWave(h),
++      parent = [...wave._cohort.values()][0].entity;
++    assert.equal(save._campaignSaveSuppressed.call({
++      state: h.state
++    }), true, 'active scored runs never overwrite Adventure Continue');
++    h.bus.emit('save:restoring', {});
++    assert.equal(wave._cohort.size, 0);
++    assert.equal(h.runtime.getSystem('spawnBudget').api.current(), 0);
++    h.state.entities.delete(parent.id);
++    const count = h.state.entityList.length;
++    h.runtime.getSystem('combat').kill(parent, h.player.id, {});
++    assert.equal(h.state.entityList.length, count, 'stale object cannot produce a corpse after restore');
++  } finally {
++    h.dispose();
++  }
++});
++test('split residue uses the ordinary eight-wreck arena cap, then expires on the existing clock', async () => {
++  const h = await boot([aftermathWrecks, mining]);
++  try {
++    const budget = h.runtime.getSystem('spawnBudget').api;
++    budget.setMax(40);
++    const parents = materialize(h, 13).spawnedIds.map(id => h.state.entities.get(id));
++    assert.equal(parents.length, 13);
++    assert.equal(budget.current(), 39);
++    h.step(1);
++    for (const parent of parents) {
++      hit(h, parent, 1000);
++      assert.ok(h.state.entityList.filter(e => e.alive && e.type === 'wreck').length <= 8);
++      assert.ok(budget.current() <= 40);
++    }
++    assert.equal(budget.current(), 0);
++    h.step(1100);
++    assert.equal(h.state.entityList.filter(e => e.alive && e.data?.splitterResidue).length, 0);
++  } finally {
++    h.dispose();
++  }
++});
++test('inherited burning spends the lethal pulse once and preserves one finite dose across children', async () => {
++  const h = await boot();
++  try {
++    const parent = h.state.entities.get(materialize(h).spawnedIds[0]);
++    h.step(1);
++    hit(h, parent, 35);
++    const kernel = h.runtime.getSystem('combat').ensureKernel(),
++      rt = kernel.initializeEntity(parent);
++    kernel.statuses.schedule(parent, rt, {
++      id: 'status_burning',
++      applyTick: h.state.tick,
++      durationTicks: 120
++    }, {
++      attackerId: h.player.id
++    });
++    let splitTick = null;
++    h.bus.on('brood:partitioned', () => {
++      splitTick = h.state.tick;
++    });
++    h.step(40, {
++      after: () => parent.alive === false ? false : undefined
++    });
++    assert.ok(splitTick != null);
++    const parts = children(h, parent).filter(e => e.type === 'ship');
++    assert.equal(parts.length, 3);
++    const statuses = parts.map(e => h.state.combat.entities[e.id].statuses.status_burning);
++    assert.ok(statuses.every(s => s.nextPeriodicTick > splitTick));
++    assert.ok(Math.abs(statuses.reduce((n, s) => n + s.inheritedDamageShare, 0) - 1) < 1e-8);
++    const before = parts.reduce((n, e) => n + e.hull, 0);
++    const due = Math.min(...statuses.map(s => s.nextPeriodicTick));
++    while (h.state.tick < due - 1) h.step(1);
++    assert.equal(parts.reduce((n, e) => n + e.hull, 0), before);
++    h.step(2);
++    const loss = before - parts.reduce((n, e) => n + e.hull, 0);
++    assert.ok(loss > 0 && loss <= 4.001, `one inherited thermal dose, got ${loss}`);
++  } finally {
++    h.dispose();
++  }
++});
++test('nonlethal tissue spending remains finite even if the joined hull is repaired externally', async () => {
++  const h = await boot();
++  try {
++    const parent = h.state.entities.get(materialize(h).spawnedIds[0]);
++    h.step(1);
++    hit(h, parent, 30);
++    assert.equal(parent.data.splitterFamily.tissueRemaining, 42);
++    parent.hull = 36; // simulate a permitted repair writer; this may repair binding, never invent tissue
++    hit(h, parent, 30);
++    assert.equal(parent.data.splitterFamily.tissueRemaining, 12);
++    hit(h, parent, 6);
++    const parts = children(h, parent);
++    assert.ok(Math.abs(parts.reduce((n, e) => n + e.hull, 0) - 6) < 1e-7);
++  } finally {
++    h.dispose();
++  }
++});
++test('actual native cover impact partitions only after the solve and never double-steps new children', async () => {
++  const h = await boot(['collisionConsequences']);
++  try {
++    const receipt = materializeWaveBatch({
++      state: h.state,
++      helpers: h.runtime.getHelpers()
++    }, {
++      ...req,
++      distance: 85,
++      gateGroup: 'diagonal_b'
++    });
++    const parent = h.state.entities.get(receipt.spawnedIds[0]);
++    h.spawnObstacle({
++      pos: {
++        x: parent.pos.x + 65,
++        z: parent.pos.z
++      },
++      radius: 22,
++      mass: 720
++    });
++    h.step(1);
++    queuePhysicsImpulse(parent, {
++      x: 42 * 160,
++      z: 0
++    });
++    let result = null,
++      atBirth = null;
++    h.bus.on('brood:partitioned', p => {
++      if (p.parent !== parent) return;
++      result = p;
++      atBirth = p.children.map(e => ({
++        id: e.id,
++        x: e.pos.x,
++        z: e.pos.z
++      }));
++      assert.equal(h.runtime.getSystem('physics')._sg02._partitionStepActive, false);
++    });
++    h.step(180, {
++      after: () => {
++        if (result) {
++          for (const row of atBirth) {
++            const e = h.state.entities.get(row.id);
++            assert.equal(e.pos.x, row.x);
++            assert.equal(e.pos.z, row.z);
++          }
++          return false;
++        }
++      }
++    });
++    assert.ok(result, 'the real cover collision must cause the parent death');
++    assert.equal(parent.alive, false);
++    assert.ok(!h.runtime.getSystem('physics')._sg02.records.has(parent.id));
++    assert.equal(result.children.length, 3);
++    assert.ok(Math.abs(result.children.reduce((n, e) => n + e.physicsBody.mass, 0) - 42) < 1e-7);
++    h.step(1);
++    assert.ok(result.children.some(e => e.alive && atBirth.some(r => r.id === e.id && (r.x !== e.pos.x || r.z !== e.pos.z))));
++  } finally {
++    h.dispose();
++  }
++});
++test('connected ordinary player fire defeats the admitted parent and finite pursuing children', async () => {
++  const h = await boot(['tacticalAI', 'flightV3', 'aiPorts', tumbleStates, 'collisionConsequences', 'weapons', survivalWave, survivalRewards, aftermathWrecks, mining]);
++  try {
++    const wave = startFamilyWave(h);
++    const parent = [...wave._cohort.values()][0].entity;
++    let split = 0,
++      shots = 0;
++    const phases = new Set();
++    h.bus.on('brood:partitioned', p => {
++      if (p.parent === parent) split++;
++    });
++    h.bus.on('combat:fire', p => {
++      if (p.ownerId === h.player.id) shots++;
++    });
++    h.bus.on('brood:phase', p => phases.add(p.phase));
++    h.step(1800, {
++      before: () => {
++        const target = [...wave._cohort.values()].map(row => row.entity).find(e => e.alive);
++        if (target) {
++          const speed = h.player.data.weapons?.find(w => w.projSpeed > 0)?.projSpeed || 500;
++          const lead = Math.hypot(target.pos.x - h.player.pos.x, target.pos.z - h.player.pos.z) / speed;
++          h.state.input.aimWorld = {
++            x: target.pos.x + target.vel.x * lead,
++            z: target.pos.z + target.vel.z * lead
++          };
++        }
++        const aim = h.state.input.aimWorld;
++        h.state.input.aimAngle = aim ? Math.atan2(aim.z - h.player.pos.z, aim.x - h.player.pos.x) : h.player.rot;
++        let error = h.state.input.aimAngle - h.player.rot;
++        while (error > Math.PI) error -= 2 * Math.PI;
++        while (error < -Math.PI) error += 2 * Math.PI;
++        writeRealPathInput(h.state, {
++          fire: !!target && Math.abs(error) < .12,
++          turnIntent: Math.max(-1, Math.min(1, error * 2)),
++          brake: true
++        });
++      },
++      after: () => wave._cleared ? false : undefined
++    });
++    console.log('ENCOUNTER_DIAG', JSON.stringify({
++      tick: h.state.tick,
++      split,
++      shots,
++      player: {
++        pos: h.player.pos,
++        hull: h.player.hull,
++        alive: h.player.alive
++      },
++      cohort: [...wave._cohort.values()].map(r => ({
++        id: r.entity.id,
++        body: r.entity.data.broodBodyId,
++        pos: r.entity.pos,
++        hull: r.entity.hull,
++        alive: r.entity.alive,
++        phase: r.entity.data.broodAttack?.phase
++      })),
++      phases: [...phases]
++    }));
++    assert.equal(split, 1);
++    assert.ok(shots > 0, 'ordinary weapon owner emitted real projectiles');
++    assert.equal(wave._cleared, true);
++    assert.equal(wave._admittedTotal, 4);
++    assert.equal(wave._resolved + wave._cancelledBodies, 4);
++    assert.ok(h.player.alive);
++    assert.ok(phases.has('windup') || phases.has('approach'), 'ordinary force-driven doctrine ran during the encounter');
++    console.log('Splitter connected encounter', JSON.stringify({
++      tick: h.state.tick,
++      shots,
++      split,
++      killed: wave._resolved,
++      cancelled: wave._cancelledBodies,
++      playerHull: h.player.hull,
++      phases: [...phases]
++    }));
++  } finally {
++    h.dispose();
++  }
++});
++test('a refused child binding retires all family seats and preserves one authored corpse', async () => {
++  const h = await boot([survivalWave]);
++  try {
++    const wave = startFamilyWave(h),
++      parent = [...wave._cohort.values()][0].entity;
++    h.step(1);
++    const budget = h.runtime.getSystem('spawnBudget').api,
++      bind = budget.bindEntity;
++    let attempted = 0;
++    budget.bindEntity = (...args) => ++attempted === 2 ? false : bind(...args);
++    hit(h, parent, 36);
++    assert.equal(budget.current(), 0);
++    assert.equal(wave._cohort.size, 0);
++    assert.equal(wave._cancelledBodies, 3);
++    const corpses = h.state.entityList.filter(e => e.alive && e.type === 'wreck');
++    assert.equal(corpses.length, 1);
++    assert.equal(corpses[0].physicsBody.mass, 42);
++    assert.equal(h.state.entityList.filter(e => e.alive && e.data?.splitterChild).length, 0);
++  } finally {
++    h.dispose();
++  }
++});
++
++function nativeMaterialTotals(owner, entities) {
++  const result = { mass: 0, px: 0, pz: 0, angular: 0, energy: 0, cx: 0, cz: 0, colliders: 0 };
++  for (const entity of entities) {
++    const record = owner.records.get(entity.id), body = record.body;
++    const mass = body.mass(), com = body.worldCom(), velocity = body.linvel();
++    const spin = -body.angvel().y, inertia = body.principalInertia().y;
++    result.mass += mass; result.px += mass * velocity.x; result.pz += mass * velocity.z;
++    result.cx += mass * com.x; result.cz += mass * com.z;
++    result.angular += inertia * spin + mass * (com.x * velocity.z - com.z * velocity.x);
++    result.energy += .5 * mass * (velocity.x ** 2 + velocity.z ** 2) + .5 * inertia * spin ** 2;
++    result.colliders += record.colliders.length;
++  }
++  result.cx /= result.mass; result.cz /= result.mass;
++  return result;
++}
++
++for (const moving of [false, true]) test(`real A6 material keeps native mass, COM, momentum and energy at ${moving ? 'rotating' : 'rest'} rupture`, async () => {
++  const h = await boot();
++  try {
++    const parent = h.state.entities.get(materialize(h).spawnedIds[0]);
++    parent.rot = -.73; parent.angVel = moving ? -1.7 : 0;
++    parent.vel.x = moving ? 28 : 0; parent.vel.z = moving ? -15 : 0;
++    h.step(1);
++    const owner = h.runtime.getSystem('physics')._sg02;
++    const before = nativeMaterialTotals(owner, [parent]);
++    assert.equal(before.colliders, 29);
++    hit(h, parent, 36);
++    const parts = children(h, parent);
++    const after = nativeMaterialTotals(owner, parts);
++    assert.equal(after.colliders, 29, 'exact material primitives change ownership, not shape or count');
++    for (const key of ['mass', 'px', 'pz', 'angular', 'energy', 'cx', 'cz']) {
++      assert.ok(Math.abs(after[key] - before[key]) < .04, `${key}: ${before[key]} -> ${after[key]}`);
++    }
++    if (!moving) {
++      h.step(12);
++      assert.ok(nativeMaterialTotals(owner, parts).energy < 1e-6, 'a resting family does not get a solver/explosion kick');
++    }
++  } finally { h.dispose(); }
++});
++
++test('same-step admission and death can partition before the first ordinary native sync', async () => {
++  const h = await boot();
++  try {
++    const parent = h.state.entities.get(materialize(h).spawnedIds[0]);
++    hit(h, parent, 36);
++    assert.equal(children(h, parent).length, 3);
++    const owner = h.runtime.getSystem('physics')._sg02;
++    assert.equal(owner.records.has(parent.id), false);
++    assert.equal(nativeMaterialTotals(owner, children(h, parent)).colliders, 29);
++  } finally { h.dispose(); }
++});
++
++for (const reserved of [true, false]) test(`actual ${reserved ? 'three-cell handoff' : 'unreserved one-body fallback'} preserves provenance with one reward entitlement`, async () => {
++  const h = await boot([survivalRewards]);
++  try {
++    const journal = bindStuntEvidence(h.state);
++    let parent;
++    if (reserved) parent = h.state.entities.get(materialize(h).spawnedIds[0]);
++    else {
++      const spec = makeEnemySpawnSpec('brood_splitter', 1, {x:-50,z:0});
++      spec.data.runCohort='survival'; spec.data.runWave=17;
++      parent=h.runtime.spawn(spec);
++    }
++    h.step(1);
++    const tick=h.state.tick, awards=[];
++    h.bus.on('run:awardRequested', p=>awards.push(p));
++    const root=observeAppliedImpulse(parent,{x:0,z:0},{x:20,z:0},{actorId:h.player.id,weaponId:'wpn_mass_driver'},tick,'weapon_hit',h.state);
++    assert.ok(root);
++    recordImpulseProvenance(parent,{actorId:h.player.id,weaponId:'wpn_mass_driver',tag:'weapon_hit',appliedTick:tick,magnitude:840});
++    holdImpulseProvenance(parent,tick+260,tick,tick);
++    const roots=journal.roots.size;
++    hit(h,parent,36);
++    const parts=reserved ? children(h,parent) : h.state.entityList.filter(e=>e.alive&&e.data?.splitterResidue);
++    assert.equal(parts.length,reserved?3:1);
++    const inherited=parts.map(e=>readRecentImpulseProvenance(e,tick));
++    assert.ok(Math.abs(inherited.reduce((n,p)=>n+p.magnitude,0)-840)<1e-9);
++    for(const p of inherited) {
++      assert.equal(p.appliedTick,tick); assert.equal(p.holdUntilTick,tick+260); assert.equal(p.actorId,h.player.id);
++    }
++    for(const child of parts.filter(e=>e.type==='ship')) {
++      assert.equal(child.data.stuntThreat.threatClass,'none');
++      hit(h,child,1000);
++      h.runtime.getSystem('combat').kill(child,h.player.id);
++    }
++    h.runtime.getSystem('combat').kill(parent,h.player.id);
++    assert.equal(Object.keys(h.state.stunts.rewards.entitlements).length,1);
++    assert.equal(awards.filter(p=>p.reason==='kill').length,1);
++    assert.equal(journal.roots.size,roots,'handoff and cell death never create another player impulse root');
++    const residues=h.state.entityList.filter(e=>e.alive&&e.data?.splitterResidue);
++    assert.equal(residues.length,reserved?3:1);
++    assert.ok(Math.abs(residues.reduce((n,e)=>n+readRecentImpulseProvenance(e,tick).magnitude,0)-840)<1e-9);
++  } finally { unbindStuntEvidence(h.state); h.dispose(); }
++});
+diff --git a/test/brood-splitter-lod-continuity.test.mjs b/test/brood-splitter-lod-continuity.test.mjs
+new file mode 100644
+index 0000000..d98fa5b
+--- /dev/null
++++ b/test/brood-splitter-lod-continuity.test.mjs
+@@ -0,0 +1,26 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { createLodState } from '../src/render/lod.js';
++import { createBroodPartitionLodOwner } from '../src/render/broodPartitionLod.js';
++const entity=(id,role='brood_splitter')=>({id,occupantGeneration:id,data:{broodBodyId:role}});
++const visual=(level='lod0')=>{const lod=createLodState();lod.adopt(level,10);return{lod,authoredVisualRoot:'authored-root'};};
++test('first authored child frame retains parent LOD2; later projected child size uses ordinary hysteresis',()=>{
++ const owner=createBroodPartitionLodOwner(),parent=entity(1),p=visual('lod2');
++ assert.equal(owner.resolve(parent,p,10),'lod2');
++ const children=[entity(2,'brood_splitter_axial'),entity(3,'brood_splitter_port'),entity(4,'brood_splitter_starboard')];
++ assert.equal(owner.handoff({parent,children}),true);
++ for(const child of children){const c=visual();c.authoredVisualRoot='none-pending-admission';
++  assert.equal(owner.resolve(child,c,200),'lod0','pending marker cannot consume material continuity');
++  c.authoredVisualRoot='authored-root';assert.equal(owner.resolve(child,c,200),'lod2');
++  assert.equal(owner.resolve(child,c,200),'lod1');assert.equal(owner.resolve(child,c,200),'lod0');
++ }
++ assert.equal(owner.handoff({parent,children}),false,'duplicate receipt cannot re-arm LOD birth');
++});
++test('one-body corpse keeps its presented tier, while stale/recycled lives cannot reuse it',()=>{
++ const owner=createBroodPartitionLodOwner(),parent=entity(1),p=visual('lod1');owner.resolve(parent,p,80);
++ const corpse=entity(2);assert.equal(owner.handoff({parent,corpse}),true);assert.equal(owner.resolve(corpse,visual(),10),'lod1');
++ const next=entity(3),child=entity(4,'brood_splitter_port');owner.resolve(next,visual('lod2'),10);owner.handoff({parent:next,children:[child]});
++ child.occupantGeneration++;assert.equal(owner.resolve(child,visual(),10),'lod1','fresh resolver makes its ordinary first transition');
++ const stale=entity(5);owner.resolve(stale,visual('lod2'),10);stale.occupantGeneration++;assert.equal(owner.handoff({parent:stale,children:[child]}),false);
++ assert.equal(createBroodPartitionLodOwner().handoff({parent,corpse}),false,'new renderer owner has no previous scene memory');
++});
+diff --git a/test/brood-splitter-native.test.mjs b/test/brood-splitter-native.test.mjs
+new file mode 100644
+index 0000000..348223e
+--- /dev/null
++++ b/test/brood-splitter-native.test.mjs
+@@ -0,0 +1,711 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { createSg02DynamicBodyOwner } from '../src/core/sg02DynamicBodyOwner.js';
++import { queuePhysicsImpulse, queuePhysicsTorqueImpulse, writePhysicsControl, writePhysicsBodyResponse } from '../src/core/physicsAuthority.js';
++import { validateBodyPartition, partitionKinematics } from '../src/core/bodyPartition.js';
++// EXPLICIT SYNTHETIC PHYSICS FIXTURE. These circles are not Splitter art or production proxies.
++const centers = [{
++    x: -4,
++    z: 0
++  }, {
++    x: 3,
++    z: -3
++  }, {
++    x: 3,
++    z: 3
++  }],
++  masses = [18, 12, 12],
++  inertias = [9, 6, 6];
++const com = {
++  x: 0,
++  z: 0
++};
++const I = inertias.reduce((n, v, i) => n + v + masses[i] * (centers[i].x ** 2 + centers[i].z ** 2), 0);
++function actor(id, center, mass, inertia) {
++  return {
++    id,
++    occupantGeneration: id,
++    type: 'ship',
++    alive: true,
++    collides: true,
++    mass,
++    radius: 1,
++    pos: {
++      x: 100,
++      z: 90
++    },
++    vel: {
++      x: 31,
++      z: -17
++    },
++    rot: .67,
++    angVel: 1.9,
++    flags: {},
++    data: {},
++    physicsBody: {
++      schemaVersion: 1,
++      dynamic: true,
++      shape: 'ball',
++      radius: 1,
++      mass,
++      inertiaY: inertia,
++      centerOfMass: center,
++      material: 'ship',
++      ccd: true,
++      revision: 0
++    }
++  };
++}
++const close = (a, b, e = 1e-3) => assert.ok(Math.abs(a - b) < e, `${a} != ${b}`);
++function totals(owner, entities, origin) {
++  let M = 0,
++    Px = 0,
++    Pz = 0,
++    L = 0,
++    E = 0,
++    Cx = 0,
++    Cz = 0;
++  for (const e of entities) {
++    const r = owner.records.get(e.id),
++      m = r.body.mass(),
++      p = r.body.worldCom(),
++      v = r.body.linvel(),
++      w = -r.body.angvel().y,
++      iv = r.body.principalInertia().y;
++    M += m;
++    Px += m * v.x;
++    Pz += m * v.z;
++    Cx += m * p.x;
++    Cz += m * p.z;
++    L += iv * w + m * ((p.x - origin.x) * v.z - (p.z - origin.z) * v.x);
++    E += .5 * m * (v.x * v.x + v.z * v.z) + .5 * iv * w * w;
++  }
++  return {
++    M,
++    Px,
++    Pz,
++    L,
++    E,
++    Cx: Cx / M,
++    Cz: Cz / M
++  };
++}
++for (const motion of ['rest', 'translation', 'spin', 'negative_spin', 'queued', 'native_impulse', 'rebase']) test(`native partition conserves material at ${motion}`, async () => {
++  const owner = await createSg02DynamicBodyOwner({
++    publishTelemetry: false
++  });
++  try {
++    const parent = actor(1, com, 42, I);
++    if (motion === 'rest') {
++      parent.vel = {
++        x: 0,
++        z: 0
++      };
++      parent.angVel = 0;
++    }
++    if (motion === 'translation') parent.angVel = 0;
++    if (motion === 'negative_spin') parent.angVel = -2.4;
++    if (motion === 'rebase') {
++      parent.pos = {
++        x: 100100,
++        z: -89910
++      };
++      owner.setFrameOrigin({
++        x: 99900,
++        z: -90000
++      }, 6);
++    }
++    owner.syncFromEntities([parent]);
++    if (motion === 'rebase') owner.setFrameOrigin({
++      x: 100000,
++      z: -90000
++    }, 7);
++    if (motion === 'native_impulse') owner.applyImpulse({
++      entityId: 1,
++      impulse: {
++        x: 70,
++        z: 40
++      },
++      point: {
++        x: parent.pos.x + 5,
++        z: parent.pos.z + 3
++      }
++    });
++    if (motion === 'queued') {
++      queuePhysicsImpulse(parent, {
++        x: 42,
++        z: -84
++      });
++      queuePhysicsTorqueImpulse(parent, {
++        y: 22
++      });
++    }
++    const before = totals(owner, [parent], {
++      x: 0,
++      z: 0
++    });
++    const parts = centers.map((center, i) => ({
++      center,
++      entity: actor(i + 2, {
++        x: 0,
++        z: 0
++      }, masses[i], inertias[i]),
++      yaw: i === 0 ? Math.PI : 0
++    }));
++    parent.alive = false;
++    const receipt = owner.partitionBody({
++      parent,
++      parts
++    });
++    assert.ok(receipt);
++    assert.equal(owner.records.size, 3);
++    assert.equal(owner.records.has(parent.id), false);
++    const after = totals(owner, parts.map(p => p.entity), {
++      x: 0,
++      z: 0
++    });
++    close(after.M, before.M);
++    close(after.Cx, before.Cx, .03);
++    close(after.Cz, before.Cz, .03);
++    if (motion !== 'queued') {
++      close(after.Px, before.Px, .004);
++      close(after.Pz, before.Pz, .004);
++      close(after.L, before.L, motion === 'rebase' ? 10 : .1);
++      close(after.E, before.E, .02);
++    } else {
++      close(after.Px, before.Px + 42, .004);
++      close(after.Pz, before.Pz - 84, .004);
++    }
++    for (const p of parts) {
++      const expected = partitionKinematics(receipt.source, p.center, p.yaw);
++      close(p.entity.pos.x, expected.pos.x);
++      close(p.entity.pos.z, expected.pos.z);
++      close(p.entity.vel.x, expected.vel.x);
++      close(p.entity.vel.z, expected.vel.z);
++    }
++    assert.equal(owner.partitionBody({
++      parent,
++      parts
++    }), false, 'receipt replay cannot partition the same child ids twice');
++    const snapshot = owner.exportWorldSnapshot();
++    assert.ok(snapshot);
++    const resumed = await createSg02DynamicBodyOwner({
++      publishTelemetry: false
++    });
++    try {
++      const es = structuredClone(parts.map(p => p.entity));
++      assert.equal(resumed.adoptWorldSnapshot(snapshot, es), true);
++      assert.equal(resumed.records.size, 3);
++    } finally {
++      resumed.dispose();
++    }
++  } finally {
++    owner.dispose();
++  }
++});
++test('partition validation rejects invented mass or inertia before mutation', () => {
++  const parent = actor(1, com, 42, I),
++    parts = centers.map((center, i) => ({
++      center,
++      spec: actor(i + 2, {
++        x: 0,
++        z: 0
++      }, masses[i], inertias[i]).physicsBody
++    }));
++  assert.equal(validateBodyPartition(parent.physicsBody, parts), true);
++  parts[0].spec.mass++;
++  assert.equal(validateBodyPartition(parent.physicsBody, parts), false);
++});
++test('native construction failure rolls back staging, leaving exactly one parent material body', async () => {
++  const owner = await createSg02DynamicBodyOwner({
++    publishTelemetry: false
++  });
++  try {
++    const parent = actor(1, com, 42, I);
++    owner.syncFromEntities([parent]);
++    parent.alive = false;
++    const parts = centers.map((center, i) => ({
++      center,
++      entity: actor(i + 2, {
++        x: 0,
++        z: 0
++      }, masses[i], inertias[i])
++    }));
++    const original = owner._createRecord.bind(owner);
++    let count = 0;
++    owner._createRecord = (...args) => {
++      if (++count === 2) throw Error('injected native construction failure');
++      return original(...args);
++    };
++    assert.equal(owner.partitionBody({
++      parent,
++      parts
++    }), false);
++    assert.equal(owner.records.size, 1);
++    assert.equal(owner.world.bodies.len(), 1);
++    assert.equal(owner._colliderOwners.size, 1);
++    owner._createRecord = original;
++    const corpse = {
++      ...structuredClone(parent),
++      id: 6,
++      occupantGeneration: 6,
++      type: 'wreck',
++      alive: true
++    };
++    assert.ok(owner.partitionBody({
++      parent,
++      parts: [{
++        center: {
++          x: 0,
++          z: 0
++        },
++        entity: corpse
++      }]
++    }));
++    assert.equal(owner.records.size, 1);
++    close(owner.records.get(6).body.mass(), 42);
++  } finally {
++    owner.dispose();
++  }
++});
++test('native solve guard rejects mutation while the fixed-step body iterator is active', async () => {
++  const owner = await createSg02DynamicBodyOwner({
++    publishTelemetry: false
++  });
++  try {
++    const parent = actor(1, com, 42, I);
++    owner.syncFromEntities([parent]);
++    parent.alive = false;
++    const parts = centers.map((center, i) => ({
++      center,
++      entity: actor(i + 2, {
++        x: 0,
++        z: 0
++      }, masses[i], inertias[i])
++    }));
++    owner._partitionStepActive = true;
++    assert.equal(owner.partitionBody({
++      parent,
++      parts
++    }), false);
++    assert.equal(owner.records.size, 1);
++    owner._partitionStepActive = false;
++    assert.ok(owner.partitionBody({
++      parent,
++      parts
++    }));
++  } finally {
++    owner.dispose();
++  }
++});
++test('off-center source COM and coincident cover never invoke the spawn-placement ladder', async () => {
++  const owner = await createSg02DynamicBodyOwner({
++    publishTelemetry: false
++  });
++  try {
++    const parent = actor(1, {
++      x: 2,
++      z: -1
++    }, 42, I);
++    parent.rot = -.9;
++    owner.syncFromEntities([parent]);
++    const parts = centers.map((center, i) => ({
++      center: {
++        x: center.x + 2,
++        z: center.z - 1
++      },
++      entity: actor(i + 2, {
++        x: 0,
++        z: 0
++      }, masses[i], inertias[i])
++    }));
++    const expected = partitionKinematics({
++      ...parent,
++      centerOfMass: {
++        x: 2,
++        z: -1
++      }
++    }, parts[0].center);
++    const cover = actor(99, {
++      x: 0,
++      z: 0
++    }, 10000, 300);
++    cover.type = 'station';
++    cover.physicsBody.dynamic = false;
++    cover.pos = {
++      ...expected.pos
++    };
++    owner.syncFromEntities([parent, cover]);
++    const before = totals(owner, [parent], {
++      x: 0,
++      z: 0
++    });
++    parent.alive = false;
++    assert.ok(owner.partitionBody({
++      parent,
++      parts
++    }));
++    close(parts[0].entity.pos.x, cover.pos.x);
++    close(parts[0].entity.pos.z, cover.pos.z);
++    const after = totals(owner, parts.map(p => p.entity), {
++      x: 0,
++      z: 0
++    });
++    for (const key of ['M', 'Px', 'Pz', 'L', 'E', 'Cx', 'Cz']) close(after[key], before[key], .04);
++  } finally {
++    owner.dispose();
++  }
++});
++test('partition cuts loaded elastic attachment without spending its stored release impulse', async () => {
++  const owner = await createSg02DynamicBodyOwner({
++    publishTelemetry: false
++  });
++  try {
++    const parent = actor(1, com, 42, I),
++      anchor = actor(99, {
++        x: 0,
++        z: 0
++      }, 100, 80);
++    anchor.pos = {
++      x: 30,
++      z: 90
++    };
++    owner.syncFromEntities([parent, anchor]);
++    assert.ok(owner.createAttachment({
++      attachmentId: 'loaded-tissue-line',
++      ownerId: 99,
++      targetId: 1,
++      defId: 'test_whip',
++      sourceAnchorLocal: {
++        x: 0,
++        y: 0,
++        z: 0
++      },
++      targetAnchorLocal: {
++        x: 0,
++        y: 0,
++        z: 0
++      },
++      restLength: 60,
++      break: {
++        maxTension: 100000,
++        maxImpulse: 100000,
++        maxYank: 100000
++      },
++      spring: {
++        K: 260,
++        zeta: .2,
++        captureS: .35,
++        maxStretchRatio: 2
++      }
++    }));
++    const attachment = owner.attachments.get('loaded-tissue-line');
++    attachment.springState.lastStoredEnergy = 800;
++    const before = totals(owner, [parent], {
++      x: 0,
++      z: 0
++    });
++    parent.alive = false;
++    const parts = centers.map((center, i) => ({
++      center,
++      entity: actor(i + 2, {
++        x: 0,
++        z: 0
++      }, masses[i], inertias[i])
++    }));
++    assert.ok(owner.partitionBody({
++      parent,
++      parts
++    }));
++    assert.equal(owner.attachments.size, 0);
++    const after = totals(owner, parts.map(p => p.entity), {
++      x: 0,
++      z: 0
++    });
++    close(after.Px, before.Px, .005);
++    close(after.Pz, before.Pz, .005);
++    close(after.E, before.E, .025);
++  } finally {
++    owner.dispose();
++  }
++});
++test('parent motor is cancelled at death; pending impulses are applied once and never replay next step', async () => {
++  const owner = await createSg02DynamicBodyOwner({
++    publishTelemetry: false
++  });
++  try {
++    const parent = actor(1, com, 42, I);
++    parent.angVel = 0;
++    owner.syncFromEntities([parent]);
++    const before = totals(owner, [parent], {
++      x: 0,
++      z: 0
++    });
++    writePhysicsControl(parent, {
++      force: {
++        x: 42000,
++        z: 0
++      },
++      torque: {
++        y: 900
++      },
++      maxSpeed: 10
++    });
++    queuePhysicsImpulse(parent, {
++      x: 42,
++      z: 0
++    });
++    parent.alive = false;
++    const parts = centers.map((center, i) => ({
++      center,
++      entity: actor(i + 2, {
++        x: 0,
++        z: 0
++      }, masses[i], inertias[i])
++    }));
++    assert.ok(owner.partitionBody({
++      parent,
++      parts
++    }));
++    const once = totals(owner, parts.map(p => p.entity), {
++      x: 0,
++      z: 0
++    });
++    close(once.Px, before.Px + 42, .01);
++    owner.step(1 / 60);
++    const next = totals(owner, parts.map(p => p.entity), {
++      x: 0,
++      z: 0
++    });
++    close(next.Px, once.Px, .02);
++    close(next.Pz, once.Pz, .02);
++  } finally {
++    owner.dispose();
++  }
++});
++test('existing uniform response-mass status preserves effective native mass and momentum at handoff', async () => {
++  const owner = await createSg02DynamicBodyOwner({
++    publishTelemetry: false
++  });
++  try {
++    const parent = actor(1, com, 42, I);
++    owner.syncFromEntities([parent]);
++    writePhysicsBodyResponse(parent, {
++      massScale: 1.8,
++      inertiaScale: 1.8
++    });
++    owner.step(1 / 60);
++    const before = totals(owner, [parent], {
++      x: 0,
++      z: 0
++    });
++    parent.alive = false;
++    const parts = centers.map((center, i) => ({
++      center,
++      entity: actor(i + 2, {
++        x: 0,
++        z: 0
++      }, masses[i], inertias[i])
++    }));
++    assert.ok(owner.partitionBody({
++      parent,
++      parts
++    }));
++    const after = totals(owner, parts.map(p => p.entity), {
++      x: 0,
++      z: 0
++    });
++    for (const key of ['M', 'Px', 'Pz', 'L', 'E']) close(after[key], before[key], .1);
++  } finally {
++    owner.dispose();
++  }
++});
++test('null/malformed child records refuse before native commands or attachments mutate', async () => {
++  const owner = await createSg02DynamicBodyOwner({
++    publishTelemetry: false
++  });
++  try {
++    const parent = actor(1, com, 42, I);
++    owner.syncFromEntities([parent]);
++    parent.alive = false;
++    queuePhysicsImpulse(parent, {
++      x: 42,
++      z: 0
++    });
++    const before = totals(owner, [parent], {
++      x: 0,
++      z: 0
++    });
++    for (const parts of [null, [], new Array(3), [null], [{}], [{
++      entity: null
++    }], [{
++      entity: actor(2, com, 1, 1),
++      center: {
++        x: NaN,
++        z: 0
++      }
++    }]]) assert.equal(owner.partitionBody({
++      parent,
++      parts
++    }), false);
++    close(totals(owner, [parent], {
++      x: 0,
++      z: 0
++    }).Px, before.Px);
++    const corpse = {
++      ...structuredClone(parent),
++      id: 8,
++      occupantGeneration: 8,
++      alive: true,
++      type: 'wreck'
++    };
++    assert.ok(owner.partitionBody({
++      parent,
++      parts: [{
++        entity: corpse,
++        center: {
++          x: 0,
++          z: 0
++        }
++      }]
++    }));
++    close(totals(owner, [corpse], {
++      x: 0,
++      z: 0
++    }).Px, before.Px + 42, .01);
++  } finally {
++    owner.dispose();
++  }
++});
++test('incompatible response inertia refusal retains accepted impulse/status and a usable one-body fallback', async () => {
++  const owner = await createSg02DynamicBodyOwner({
++    publishTelemetry: false
++  });
++  try {
++    const parent = actor(1, com, 42, I),
++      anchor = actor(99, com, 100, 80);
++    anchor.pos = {
++      x: 30,
++      z: 90
++    };
++    owner.syncFromEntities([parent, anchor]);
++    assert.ok(owner.createAttachment({
++      attachmentId: 'failed-partition-whip',
++      ownerId: 99,
++      targetId: 1,
++      defId: 'test_whip',
++      sourceAnchorLocal: {
++        x: 0,
++        y: 0,
++        z: 0
++      },
++      targetAnchorLocal: {
++        x: 0,
++        y: 0,
++        z: 0
++      },
++      restLength: 60,
++      break: {
++        maxTension: 100000,
++        maxImpulse: 100000,
++        maxYank: 100000
++      },
++      spring: {
++        K: 260,
++        zeta: .2,
++        captureS: .35,
++        maxStretchRatio: 2
++      }
++    }));
++    writePhysicsBodyResponse(parent, {
++      massScale: 8,
++      inertiaScale: .25
++    });
++    owner.step(1 / 60);
++    owner.attachments.get('failed-partition-whip').springState.lastStoredEnergy = 800;
++    const before = totals(owner, [parent], {
++      x: 0,
++      z: 0
++    });
++    queuePhysicsImpulse(parent, {
++      x: 42,
++      z: -21
++    });
++    parent.alive = false;
++    const parts = centers.map((center, i) => ({
++      center,
++      entity: actor(i + 2, {
++        x: 0,
++        z: 0
++      }, masses[i], inertias[i])
++    }));
++    const initial = parts.map(p => structuredClone(p.entity));
++    assert.equal(owner.partitionBody({
++      parent,
++      parts
++    }), false);
++    assert.equal(owner.records.size, 2);
++    assert.equal(owner.world.bodies.len(), 2);
++    assert.equal(owner.attachments.size, 0);
++    for (let i = 0; i < parts.length; i++) assert.deepEqual(parts[i].entity.pos, initial[i].pos);
++    close(parent.vel.x, owner.records.get(1).body.linvel().x);
++    close(totals(owner, [parent], {
++      x: 0,
++      z: 0
++    }).Px, before.Px + 42, .01);
++    const corpse = {
++      ...structuredClone(parent),
++      id: 8,
++      occupantGeneration: 8,
++      alive: true,
++      type: 'wreck'
++    };
++    assert.ok(owner.partitionBody({
++      parent,
++      parts: [{
++        entity: corpse,
++        center: {
++          x: 0,
++          z: 0
++        }
++      }]
++    }));
++    const after = totals(owner, [corpse], {
++      x: 0,
++      z: 0
++    });
++    close(after.M, before.M, .01);
++    close(after.Px, before.Px + 42, .01);
++    close(after.Pz, before.Pz - 21, .01);
++  } finally {
++    owner.dispose();
++  }
++});
++test('refused parent removal cannot leak already-staged native child records', async () => {
++  const owner = await createSg02DynamicBodyOwner({
++    publishTelemetry: false
++  });
++  try {
++    const parent = actor(1, com, 42, I);
++    owner.syncFromEntities([parent]);
++    parent.alive = false;
++    const parts = centers.map((center, i) => ({
++      center,
++      entity: actor(i + 2, {
++        x: 0,
++        z: 0
++      }, masses[i], inertias[i])
++    }));
++    const remove = owner._removeRecord.bind(owner);
++    owner._removeRecord = (id, rec) => id === parent.id ? false : remove(id, rec);
++    assert.equal(owner.partitionBody({
++      parent,
++      parts
++    }), false);
++    assert.equal(owner.records.size, 1);
++    assert.equal(owner.world.bodies.len(), 1);
++    assert.equal(owner._colliderOwners.size, 1);
++  } finally {
++    owner.dispose();
++  }
++});
+diff --git a/test/brood-splitter-residue-clock.test.mjs b/test/brood-splitter-residue-clock.test.mjs
+new file mode 100644
+index 0000000..6c3def4
+--- /dev/null
++++ b/test/brood-splitter-residue-clock.test.mjs
+@@ -0,0 +1,78 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { createSimulation, SIM_DT } from '../src/core/sim.js';
++test('finite material residue expires in an otherwise empty quiet-clock arena', () => {
++  const sim = createSimulation({
++    seed: 902
++  });
++  sim.state.mode = 'flight';
++  const player = sim.spawn({
++    type: 'ship',
++    isPlayer: true,
++    pos: {
++      x: 0,
++      z: 0
++    }
++  });
++  sim.state.playerId = player.id;
++  const residue = sim.spawn({
++    type: 'wreck',
++    pos: {
++      x: 100,
++      z: 0
++    },
++    ttl: .08,
++    data: {
++      splitterResidue: true
++    }
++  });
++  for (let i = 0; i < 9; i++) sim.step(SIM_DT);
++  assert.equal(sim.state.entities.has(residue.id), false);
++});
++test('untimed/persistent wrecks remain resident and pause freezes finite wreck clocks', () => {
++  const sim = createSimulation({
++    seed: 904
++  });
++  sim.state.mode = 'flight';
++  const player = sim.spawn({
++    type: 'ship',
++    isPlayer: true,
++    pos: {
++      x: 0,
++      z: 0
++    }
++  });
++  sim.state.playerId = player.id;
++  const persistent = sim.spawn({
++    type: 'wreck',
++    pos: {
++      x: 300,
++      z: 0
++    },
++    data: {
++      markerId: 'durable_wreck'
++    }
++  });
++  const finite = sim.spawn({
++    type: 'wreck',
++    pos: {
++      x: 100,
++      z: 0
++    },
++    ttl: .1,
++    data: {
++      splitterResidue: true
++    }
++  });
++  sim.state.ui.screenStack = ['pause'];
++  const time = sim.state.simTime;
++  for (let i = 0; i < 100; i++) sim.step(SIM_DT);
++  assert.equal(sim.state.simTime, time);
++  assert.equal(finite.ttl, .1);
++  assert.equal(persistent.ttl, Infinity);
++  sim.state.ui.screenStack = [];
++  for (let i = 0; i < 9; i++) sim.step(SIM_DT);
++  assert.equal(sim.state.entities.has(finite.id), false);
++  assert.equal(sim.state.entities.get(persistent.id), persistent);
++  assert.equal(persistent.ttl, Infinity);
++});
+diff --git a/test/brood-splitter-retained-retry.test.mjs b/test/brood-splitter-retained-retry.test.mjs
+new file mode 100644
+index 0000000..34dd2e3
+--- /dev/null
++++ b/test/brood-splitter-retained-retry.test.mjs
+@@ -0,0 +1,178 @@
++// Node-safe production factory integration proof with an experienced-player launch config.
++// It covers retained-instance reset postconditions and seeded absolute Brood spawn replay. It does
++// not claim clicked UI, staged loading, DOM, or GPU evidence. Lethal
++// hits are injected through combat.onHit to test wave ownership quickly, not to
++// claim a player completed these fights or to replace contact-attack physics tests.
++import test from 'node:test';
++import {createHash} from 'node:crypto';
++import assert from 'node:assert/strict';
++import {createGameState} from '../src/core/gameState.js';
++import {createAuthoritativeRuntime} from '../src/runtime/createAuthoritativeRuntime.js';
++import {makeShipEntitySpec} from '../src/systems/ships.js';
++import {crucibleHullSetupFor,crucibleLaunchConfig,requestCrucibleRun,buildCrucibleRetryRequest,clearCrucibleSetup} from '../src/ui/crucibleLaunch.js';
++import {SWARM_RULESET,SWARM_ROSTER} from '../src/data/swarmMode.js';
++import {swarmStakeFor} from '../src/data/swarmStakes.js';
++import {applySandboxSetup} from '../src/ui/sandbox/sandboxSetup.js';
++import {SURVIVAL_COHORT_TAG} from '../src/systems/waveMaterialization.js';
++import {clearEntityRuntime} from '../src/core/entity.js';
++import {resetFreshRunSystems} from '../src/core/runReset.js';
++import {snapshotFeatureMaps,applyFeatureConfigToMaps,restoreFeatureMaps} from '../src/data/featureFlags.js';
++import {broodBodyContract,broodCollisionManifest} from '../src/data/broodBodies.js';
++const DT=1/60,SEED=4242;
++const life=e=>`${e.id}:${e.occupantGeneration}`;
++// Match realPath.mjs: backend construction and out-of-step gameplay actions must
++// hold the selected runtime's feature maps, including across asynchronous setup.
++// The runtime itself scopes init/step only; unwrapped callbacks see legacy defaults.
++async function withRuntimeFeatures(runtime,run){
++ const previous=snapshotFeatureMaps();applyFeatureConfigToMaps(runtime.config.features);
++ try{return await run();}finally{restoreFeatureMaps(previous);}
++}
++async function boot(setup, retained=null){
++ const runtime=retained || createAuthoritativeRuntime({profileId:'production',nodeSafeOnly:true,seed:setup.seed});
++ return withRuntimeFeatures(runtime,async()=>{
++ const state=runtime.state;state.mode='loading';state.ui.screenStack=[];
++ const requests=[];runtime.bus.on('game:new',p=>requests.push(p));
++ assert.equal(requestCrucibleRun(runtime.bus,setup,SWARM_RULESET),true);
++ assert.equal(requests.length,1,'validated door requests one new game');
++ runtime.getSystem('ships').buyShip({defId:setup.hullId,setActive:true,grant:true});
++ const player=runtime.spawn(makeShipEntitySpec(setup.hullId,{isPlayer:true,player:state.player,pos:{x:0,z:0}}));
++ state.playerId=player.id;
++ const events={arrivals:[],plans:[],clears:[],kills:[],drafts:[]};
++ runtime.bus.on('run:wavePlanned',p=>events.plans.push(structuredClone(p)));
++ runtime.bus.on('run:waveMaterialized',p=>events.arrivals.push({...p}));
++ runtime.bus.on('run:waveCleared',p=>{events.clears.push({...p});console.log('Brood retained wave cleared',p.wave??p.runWave,'tick',state.tick);});
++ runtime.bus.on('run:draftOffered',p=>events.drafts.push({wave:p.wave,count:p.offers.length}));
++ runtime.bus.on('entity:killed',p=>{
++  const e=state.entities.get(p.id);if(e?.data?.runCohort===SURVIVAL_COHORT_TAG)
++   events.kills.push({life:life(e),wave:state.run.wave,enemyId:e.data.lootTableId,bounty:p.bountyCr});
++ });
++ applySandboxSetup({state,bus:runtime.bus,registry:{get:n=>runtime.getSystem(n)},helpers:runtime.getHelpers()},
++  crucibleLaunchConfig(setup,SWARM_RULESET,{openingLesson:false,swarmStake:'contender'}));
++ assert.equal(state.run.credits,swarmStakeFor('contender').purse);
++ assert.equal(state.run.phase,'draft');assert.equal(state.run.wave,0);
++ const ready=await runtime.getSystem('physics').prepareBackend(state,{reset:true});
++ assert.equal(ready,true,'real native backend is ready');
++ const owner=runtime.getSystem('physics')._sg02;
++ assert.equal(runtime.config.features.combat.weaponImpulseConsequences,true);
++ assert.equal(owner.captureContactImpacts,true,'native construction uses production contact flags');
++ assert.ok(owner._eventQueue,'production native owner has an actual contact event queue');
++ console.log('Brood retained native configuration',JSON.stringify({profileId:runtime.config.profileId,features:runtime.config.features,captureContactImpacts:owner.captureContactImpacts,eventQueueReady:!!owner._eventQueue}));
++ runtime.bus.emit('game:started',{});runtime.bus.flush();state.mode='flight';
++ return{runtime,state,player,events};
++ });
++}
++function buyOpeningModule(h){
++ const draft=h.runtime.getSystem('survivalDraft');
++ const offer=draft.currentOffers().find(o=>o.id==='cat_mod_gravity_bumper_s'&&o.available);
++ assert.ok(offer,'real opening armory offers an affordable fitting on the selected bare hull');
++ const before=h.state.run.credits,campaign=h.state.player.credits;
++ h.runtime.bus.emit('run:draftPickRequested',{offerId:offer.id});
++ assert.equal(h.state.run.credits,before-offer.price);
++ assert.equal(h.state.player.credits,campaign,'run purchase cannot debit the campaign');
++ const fitting=h.state.player.ownedShips[h.state.player.activeShipIndex].fittings[offer.slotIndex];
++ assert.equal(typeof fitting==='string'?fitting:fitting?.defId,offer.defId);
++ h.runtime.bus.emit('run:draftPickRequested',{offerId:offer.id});
++ assert.equal(h.state.run.credits,before-offer.price,'the same fitting request cannot pay twice');
++}
++function walk(h){
++ const {runtime,state,events}=h,seen=new Set(),brood=[],nativeTape=[];
++ buyOpeningModule(h);
++ const campaignCredits=state.player.credits;
++ for(let n=0;n<18000&&state.run.wave<18;n++){
++  if(state.run.phase==='refit')runtime.bus.emit('run:refitClosed',{});
++  if(state.run.phase==='draft')runtime.bus.emit('run:draftPickRequested',{offerId:null});
++  for(const enemy of [...state.entityList]){
++   if(!enemy.alive||enemy.type!=='ship'||enemy.data?.runCohort!==SURVIVAL_COHORT_TAG)continue;
++   const key=life(enemy);
++   if(!seen.has(key)){
++    seen.add(key);
++    if(enemy.data.broodBodyId){
++     const body=broodBodyContract(enemy.data.broodBodyId);assert.ok(body);
++     assert.equal(enemy.type,'ship');assert.equal(enemy.data.defId,body.id);
++     assert.equal(enemy.data.enemyTypeId,body.id);assert.equal(enemy.mass,body.mass);assert.equal(enemy.radius,body.radius);
++     assert.equal(enemy.physicsBody.collisionProxyManifest.id,broodCollisionManifest(body.id).id);
++     assert.equal(enemy.data.weapons?.length||0,body.id==='brood_spitter'?1:0,'only Spitter carries its biological emitter');
++     assert.deepEqual(enemy.data.fittings,[],'Brood never inherit human fittings');
++     brood.push({wave:state.run.wave,enemyId:body.id,x:enemy.pos.x,z:enemy.pos.z});
++    }
++   }
++   const request={targetId:enemy.id,ownerId:state.playerId,damage:100000,damageType:'kinetic',pos:{...enemy.pos}};
++   runtime.getSystem('combat').onHit(request);runtime.getSystem('combat').onHit(request);
++  }
++  if(n%300===0)console.log('Brood retained checkpoint',state.tick,state.run.wave,state.run.phase,'entities',state.entityList.length);
++  runtime.step(DT);
++  nativeTape.push(createHash('sha256').update(JSON.stringify(runtime.getSystem('physics')._sg02.quantizedSnapshot({liveOnly:true}))).digest('hex'));
++  assert.ok(runtime.getSystem('spawnBudget').api.current()<=40,'all reserved slots stay within the hard cap');
++  assert.ok(state.spawnBudget.entityOwners.size<=40,'bound live owners stay within the hard cap');
++  assert.notEqual(state.run.phase,'ended','the ownership fixture must not silently lose its player');
++ }
++ assert.equal(state.run.wave,18,'normal wave owner reaches the next round');
++ assert.equal(state.run.phase,'wave_intro');
++ assert.deepEqual(events.clears.map(e=>e.wave??e.runWave),Array.from({length:17},(_,i)=>i+1));
++ assert.equal(events.kills.length,seen.size,'every observed occupant emits exactly one kill receipt');
++ assert.equal(state.player.credits,campaignCredits,'combat and round rewards leave the campaign wallet unchanged');
++ for(const clear of events.clears){
++  assert.equal(clear.killed,events.kills.filter(e=>e.wave===clear.wave).length);
++  assert.equal(clear.admitted,clear.killed+(clear.cancelled||0));assert.equal(clear.survivors,0);
++  assert.equal(clear.completionKind,'cohort');assert.equal(clear.starved,false);
++ }
++ assert.equal(new Set(events.kills.map(e=>e.life)).size,events.kills.length,'one death receipt per actual occupant life');
++ assert.ok(events.kills.every(e=>e.bounty===0),'run bodies do not mint campaign bounties');
++ for(const [wave,id] of [[3,'brood_mite'],[7,'brood_charger'],[11,'brood_spitter'],[17,'brood_splitter']]){
++  const plan=events.plans.find(p=>p.wave===wave).plan;
++  const debut=plan.schedule.find(e=>e.debut&&e.enemyId===id);assert.ok(debut);
++  const arrival=events.arrivals.find(e=>e.wave===wave&&e.enemyId===id&&e.admitted>0);
++  assert.ok(arrival,`${id} actually materializes in its authored debut wave`);
++  assert.equal(arrival.gateGroup,debut.gateGroup);assert.equal(arrival.atTick,debut.atTick);
++  assert.ok(brood.some(e=>e.wave===wave&&e.enemyId===id));
++ }
++ assert.deepEqual(events.drafts.map(d=>d.wave),Array.from({length:18},(_,i)=>i));
++ return{brood,nativeTape,arrivals:structuredClone(events.arrivals),clears:events.clears.map(e=>({wave:e.wave??e.runWave,killed:e.killed})),wallet:state.run.credits};
++}
++test('four Brood debuts traverse seventeen production waves, purchase, clears and retained-instance absolute spawn Retry without ID aliasing',async()=>{
++ assert.ok(broodBodyContract('brood_splitter')?.splitterCells,'normal-route proof requires real sealed geometry');
++ const setup=crucibleHullSetupFor({hullId:'ship_hornet',seed:SEED,swarmStake:'contender'}).value;
++ const h=await boot(setup);let first,retry;
++ try{
++  await withRuntimeFeatures(h.runtime,async()=>{
++  first=walk(h);retry=buildCrucibleRetryRequest();assert.equal(retry.ruleset,SWARM_RULESET);assert.equal(retry.setup.seed,SEED);
++  // Reset with genuinely live ownership, rather than only an empty between-wave ledger.
++  for(let n=0;n<1200&&h.runtime.getSystem('survivalWave')._cohort.size===0;n++)h.runtime.step(DT);
++  assert.ok(h.state.entityList.some(e=>e.alive&&e.data?.runCohort===SURVIVAL_COHORT_TAG));
++  assert.ok(h.runtime.getSystem('survivalWave')._cohort.size>0);
++  assert.ok(h.runtime.getSystem('spawnBudget').api.current()>0);
++  h.runtime.bus.emit('run:endRequested',{outcome:'aborted',reason:'fixture-retry',tick:h.state.tick});
++  h.runtime.bus.flush();assert.equal(h.state.run.phase,'ended');
++  // Mirror main.startNewGame's entity teardown before its canonical system reset.
++  // resetFreshRunSystems alone deliberately does not own the world's entity list.
++  for(const e of [...h.state.entityList]){
++   clearEntityRuntime(e);
++   h.runtime.bus.emit('entity:destroyed',{id:e.id,type:e.type,pos:{x:e.pos.x,z:e.pos.z},radius:e.radius,factionId:e.factionId});
++  }
++  h.state.entities.clear();h.state.entityList.length=0;h.state.freeIds.length=0;h.state.nextEntityId=1;h.state.playerId=0;
++  // Node-safe equivalent of main.startNewGame's exact state reset, retaining every system.
++  const fresh=createGameState(retry.setup.seed);
++  for(const key of ['meta','rng','input','bounds','spatialHash','player','run','combat','economy','factions','conflicts','missions','scenario','story','world','jump','fuel','nav','automation','crafting','sectorSim','aiEncounter','interventions','interventionMeta','drill','claims','traffic','save'])h.state[key]=fresh[key];
++  h.state.tick=0;h.state.simTime=0;h.state.days=0;h.state.accumulator=0;
++  resetFreshRunSystems(h.runtime.registry||{get:n=>h.runtime.getSystem(n)});h.runtime.bus.emit('game:newGame',{seed:retry.setup.seed});h.runtime.bus.flush();
++  assert.equal(h.state.run.phase,'inactive');
++  assert.equal(h.runtime.getSystem('survivalWave')._cohort.size,0);
++  assert.equal(h.state.entityList.some(e=>e.alive&&e.data?.runCohort===SURVIVAL_COHORT_TAG),false);
++  assert.equal(h.runtime.getSystem('spawnBudget').api.current(),0);
++  assert.equal(h.state.spawnBudget.reservations.size,0);
++  assert.equal(h.state.spawnBudget.entityOwners.size,0);
++  const instances=['combat','physics','tacticalAI','survivalWave'].map(n=>h.runtime.getSystem(n));
++  const again=await boot(retry.setup,h.runtime);
++  assert.deepEqual(['combat','physics','tacticalAI','survivalWave'].map(n=>again.runtime.getSystem(n)),instances);
++  const next=walk(again);
++  // Canonical terrain, travel-lane and bounty resets must preserve the full spawn
++  // trajectory, as well as finite ownership, seeded admission and the run purse.
++  assert.deepEqual(next.arrivals,first.arrivals,'retained Retry preserves seeded admission schedule');
++  assert.deepEqual(next.clears,first.clears,'retained Retry preserves finite quota and one-life accounting');
++  assert.equal(next.wallet,first.wallet);
++  assert.deepEqual(next.brood,first.brood,'retained Retry preserves every absolute Brood spawn position');
++  assert.deepEqual(next.nativeTape,first.nativeTape,'retained Retry preserves every quantized native position, velocity and yaw');
++  });
++ }finally{h.runtime.dispose();clearCrucibleSetup();}
++ assert.equal(SWARM_ROSTER.filter(e=>!e.enemyId.startsWith('brood_')).length,15,'existing roster preserved');
++});
+diff --git a/test/brood-splitter-seventeen-wave-route.test.mjs b/test/brood-splitter-seventeen-wave-route.test.mjs
+new file mode 100644
+index 0000000..ca93418
+--- /dev/null
++++ b/test/brood-splitter-seventeen-wave-route.test.mjs
+@@ -0,0 +1,142 @@
++// Node-safe production factory integration proof with an experienced-player launch config.
++// It covers entity/system reset postconditions and fresh-factory replay, not retained-runtime
++// retry, staged UI loading, DOM, or GPU evidence. Lethal
++// hits are injected through combat.onHit to test wave ownership quickly, not to
++// claim a player completed these fights or to replace contact-attack physics tests.
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import {createAuthoritativeRuntime} from '../src/runtime/createAuthoritativeRuntime.js';
++import {makeShipEntitySpec} from '../src/systems/ships.js';
++import {crucibleHullSetupFor,crucibleLaunchConfig,requestCrucibleRun,buildCrucibleRetryRequest,clearCrucibleSetup} from '../src/ui/crucibleLaunch.js';
++import {SWARM_RULESET,SWARM_ROSTER} from '../src/data/swarmMode.js';
++import {swarmStakeFor} from '../src/data/swarmStakes.js';
++import {applySandboxSetup} from '../src/ui/sandbox/sandboxSetup.js';
++import {SURVIVAL_COHORT_TAG} from '../src/systems/waveMaterialization.js';
++import {clearEntityRuntime} from '../src/core/entity.js';
++import {resetFreshRunSystems} from '../src/core/runReset.js';
++import {broodBodyContract,broodCollisionManifest} from '../src/data/broodBodies.js';
++const DT=1/60,SEED=4242;
++const life=e=>`${e.id}:${e.occupantGeneration}`;
++async function boot(setup){
++ const runtime=createAuthoritativeRuntime({profileId:'production',nodeSafeOnly:true,seed:setup.seed});
++ const state=runtime.state;state.mode='loading';state.ui.screenStack=[];
++ const requests=[];runtime.bus.on('game:new',p=>requests.push(p));
++ assert.equal(requestCrucibleRun(runtime.bus,setup,SWARM_RULESET),true);
++ assert.equal(requests.length,1,'validated door requests one new game');
++ runtime.getSystem('ships').buyShip({defId:setup.hullId,setActive:true,grant:true});
++ const player=runtime.spawn(makeShipEntitySpec(setup.hullId,{isPlayer:true,player:state.player,pos:{x:0,z:0}}));
++ state.playerId=player.id;await runtime.getSystem('physics').prepareBackend(state);
++ const events={arrivals:[],plans:[],clears:[],kills:[],drafts:[]};
++ runtime.bus.on('run:wavePlanned',p=>events.plans.push(structuredClone(p)));
++ runtime.bus.on('run:waveMaterialized',p=>events.arrivals.push({...p}));
++ runtime.bus.on('run:waveCleared',p=>events.clears.push({...p}));
++ runtime.bus.on('run:draftOffered',p=>events.drafts.push({wave:p.wave,count:p.offers.length}));
++ runtime.bus.on('entity:killed',p=>{
++  const e=state.entities.get(p.id);if(e?.data?.runCohort===SURVIVAL_COHORT_TAG)
++   events.kills.push({life:life(e),wave:state.run.wave,enemyId:e.data.lootTableId,bounty:p.bountyCr});
++ });
++ applySandboxSetup({state,bus:runtime.bus,registry:{get:n=>runtime.getSystem(n)},helpers:runtime.getHelpers()},
++  crucibleLaunchConfig(setup,SWARM_RULESET,{openingLesson:false,swarmStake:'contender'}));
++ assert.equal(state.run.credits,swarmStakeFor('contender').purse);
++ assert.equal(state.run.phase,'draft');assert.equal(state.run.wave,0);state.mode='flight';
++ return{runtime,state,player,events};
++}
++function buyOpeningModule(h){
++ const draft=h.runtime.getSystem('survivalDraft');
++ const offer=draft.currentOffers().find(o=>o.id==='cat_mod_gravity_bumper_s'&&o.available);
++ assert.ok(offer,'real opening armory offers an affordable fitting on the selected bare hull');
++ const before=h.state.run.credits,campaign=h.state.player.credits;
++ h.runtime.bus.emit('run:draftPickRequested',{offerId:offer.id});
++ assert.equal(h.state.run.credits,before-offer.price);
++ assert.equal(h.state.player.credits,campaign,'run purchase cannot debit the campaign');
++ const fitting=h.state.player.ownedShips[h.state.player.activeShipIndex].fittings[offer.slotIndex];
++ assert.equal(typeof fitting==='string'?fitting:fitting?.defId,offer.defId);
++ h.runtime.bus.emit('run:draftPickRequested',{offerId:offer.id});
++ assert.equal(h.state.run.credits,before-offer.price,'the same fitting request cannot pay twice');
++}
++function walk(h){
++ const {runtime,state,events}=h,seen=new Set(),brood=[];
++ buyOpeningModule(h);
++ const campaignCredits=state.player.credits;
++ for(let n=0;n<18000&&state.run.wave<18;n++){
++  if(state.run.phase==='refit')runtime.bus.emit('run:refitClosed',{});
++  if(state.run.phase==='draft')runtime.bus.emit('run:draftPickRequested',{offerId:null});
++  for(const enemy of [...state.entityList]){
++   if(!enemy.alive||enemy.type!=='ship'||enemy.data?.runCohort!==SURVIVAL_COHORT_TAG)continue;
++   const key=life(enemy);
++   if(!seen.has(key)){
++    seen.add(key);
++    if(enemy.data.broodBodyId){
++     const body=broodBodyContract(enemy.data.broodBodyId);assert.ok(body);
++     assert.equal(enemy.type,'ship');assert.equal(enemy.data.defId,body.id);
++     assert.equal(enemy.data.enemyTypeId,body.id);assert.equal(enemy.mass,body.mass);assert.equal(enemy.radius,body.radius);
++     assert.equal(enemy.physicsBody.collisionProxyManifest.id,broodCollisionManifest(body.id).id);
++     assert.equal(enemy.data.weapons?.length||0,body.id==='brood_spitter'?1:0,'only Spitter carries its biological emitter');
++     assert.deepEqual(enemy.data.fittings,[],'Brood never inherit human fittings');
++     brood.push({wave:state.run.wave,enemyId:body.id,x:enemy.pos.x,z:enemy.pos.z});
++    }
++   }
++   const request={targetId:enemy.id,ownerId:state.playerId,damage:100000,damageType:'kinetic',pos:{...enemy.pos}};
++   runtime.getSystem('combat').onHit(request);runtime.getSystem('combat').onHit(request);
++  }
++  runtime.step(DT);
++  assert.ok(runtime.getSystem('spawnBudget').api.current()<=40,'all reserved slots stay within the hard cap');
++  assert.ok(state.spawnBudget.entityOwners.size<=40,'bound live owners stay within the hard cap');
++  assert.notEqual(state.run.phase,'ended','the ownership fixture must not silently lose its player');
++ }
++ assert.equal(state.run.wave,18,'normal wave owner reaches the next round');
++ assert.equal(state.run.phase,'wave_intro');
++ assert.deepEqual(events.clears.map(e=>e.wave??e.runWave),Array.from({length:17},(_,i)=>i+1));
++ assert.equal(events.kills.length,seen.size,'every observed occupant emits exactly one kill receipt');
++ assert.equal(state.player.credits,campaignCredits,'combat and round rewards leave the campaign wallet unchanged');
++ for(const clear of events.clears){
++  assert.equal(clear.killed,events.kills.filter(e=>e.wave===clear.wave).length);
++  assert.equal(clear.admitted,clear.killed+(clear.cancelled||0));assert.equal(clear.survivors,0);
++  assert.equal(clear.completionKind,'cohort');assert.equal(clear.starved,false);
++ }
++ assert.equal(new Set(events.kills.map(e=>e.life)).size,events.kills.length,'one death receipt per actual occupant life');
++ assert.ok(events.kills.every(e=>e.bounty===0),'run bodies do not mint campaign bounties');
++ for(const [wave,id] of [[3,'brood_mite'],[7,'brood_charger'],[11,'brood_spitter'],[17,'brood_splitter']]){
++  const plan=events.plans.find(p=>p.wave===wave).plan;
++  const debut=plan.schedule.find(e=>e.debut&&e.enemyId===id);assert.ok(debut);
++  const arrival=events.arrivals.find(e=>e.wave===wave&&e.enemyId===id&&e.admitted>0);
++  assert.ok(arrival,`${id} actually materializes in its authored debut wave`);
++  assert.equal(arrival.gateGroup,debut.gateGroup);assert.equal(arrival.atTick,debut.atTick);
++  assert.ok(brood.some(e=>e.wave===wave&&e.enemyId===id));
++ }
++ assert.deepEqual(events.drafts.map(d=>d.wave),Array.from({length:18},(_,i)=>i));
++ return{brood,arrivals:structuredClone(events.arrivals),clears:events.clears.map(e=>({wave:e.wave??e.runWave,killed:e.killed})),wallet:state.run.credits};
++}
++test('four Brood debuts traverse seventeen production waves, purchase, clears and fresh-factory same-seed replay without ID aliasing',async()=>{
++ assert.ok(broodBodyContract('brood_splitter')?.splitterCells,'normal-route proof requires real sealed geometry');
++ const setup=crucibleHullSetupFor({hullId:'ship_hornet',seed:SEED,swarmStake:'contender'}).value;
++ const h=await boot(setup);let first,retry;
++ try{
++  first=walk(h);retry=buildCrucibleRetryRequest();assert.equal(retry.ruleset,SWARM_RULESET);assert.equal(retry.setup.seed,SEED);
++  // Reset with genuinely live ownership, rather than only an empty between-wave ledger.
++  for(let n=0;n<1200&&h.runtime.getSystem('survivalWave')._cohort.size===0;n++)h.runtime.step(DT);
++  assert.ok(h.state.entityList.some(e=>e.alive&&e.data?.runCohort===SURVIVAL_COHORT_TAG));
++  assert.ok(h.runtime.getSystem('survivalWave')._cohort.size>0);
++  assert.ok(h.runtime.getSystem('spawnBudget').api.current()>0);
++  h.runtime.bus.emit('run:endRequested',{outcome:'aborted',reason:'fixture-retry',tick:h.state.tick});
++  h.runtime.bus.flush();assert.equal(h.state.run.phase,'ended');
++  // Mirror main.startNewGame's entity teardown before its canonical system reset.
++  // resetFreshRunSystems alone deliberately does not own the world's entity list.
++  for(const e of [...h.state.entityList]){
++   clearEntityRuntime(e);
++   h.runtime.bus.emit('entity:destroyed',{id:e.id,type:e.type,pos:{x:e.pos.x,z:e.pos.z},radius:e.radius,factionId:e.factionId});
++  }
++  h.state.entities.clear();h.state.entityList.length=0;h.state.freeIds.length=0;h.state.nextEntityId=1;h.state.playerId=0;
++  resetFreshRunSystems(h.runtime.registry||{get:n=>h.runtime.getSystem(n)});h.runtime.bus.flush();
++  assert.equal(h.state.run.phase,'inactive');
++  assert.equal(h.runtime.getSystem('survivalWave')._cohort.size,0);
++  assert.equal(h.state.entityList.some(e=>e.alive&&e.data?.runCohort===SURVIVAL_COHORT_TAG),false);
++  assert.equal(h.runtime.getSystem('spawnBudget').api.current(),0);
++  assert.equal(h.state.spawnBudget.reservations.size,0);
++  assert.equal(h.state.spawnBudget.entityOwners.size,0);
++ }finally{h.runtime.dispose();}
++ const again=await boot(retry.setup);
++ try{assert.deepEqual(walk(again),first,'same validated retry preserves deterministic arrival trace and wallet');}
++ finally{again.runtime.dispose();clearCrucibleSetup();}
++ assert.equal(SWARM_ROSTER.filter(e=>!e.enemyId.startsWith('brood_')).length,15,'existing roster preserved');
++});

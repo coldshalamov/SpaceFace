@@ -1,0 +1,265 @@
+diff --git a/src/core/physicsAuthority.js b/src/core/physicsAuthority.js
+index ba0c231..b28732b 100644
+--- a/src/core/physicsAuthority.js
++++ b/src/core/physicsAuthority.js
+@@ -12,6 +12,10 @@ export const PHYSICS_TELEMETRY_SCHEMA_VERSION = 1;
+ export const PHYSICS_BODY_RESPONSE_LIMITS = Object.freeze({ minScale: 0.25, maxScale: 8 });
+ 
+ const COMMANDS = new WeakMap();
++// Queue identity is the occupant life, not just the reusable JavaScript object. Keep these
++// stamps off the published command records and refresh them only when a new queue is created.
++const COMMAND_LIVES = new WeakMap();
++const CONTINUATION_LIVES = new WeakMap();
+ const TELEMETRY = new WeakMap();
+ // Exceptional native construction failures are process-local, never save authority. Most
+ // callers need no native-ready protocol; only a failed live replacement closes this gate.
+@@ -30,7 +34,6 @@ export function physicsBodyNativeReady(entity) {
+   const failure=entity && NATIVE_BODY_FAILURES.get(entity);
+   return !failure || failure.life!==entity.occupantGeneration;
+ }
+-
+ const AUTHORITY_CACHE = new WeakMap();
+ const NORMALIZED_BODY_CACHE = new WeakMap();
+ const RESOLVED_BODY_CACHE = new WeakMap();
+@@ -114,6 +117,11 @@ export function queueProjectileContinuation(entity, continuation = {}) {
+   const yaw = Number(continuation.yaw);
+   if (!Number.isFinite(vx) || !Number.isFinite(vz) || !Number.isFinite(yaw)) return false;
+   let record = PROJECTILE_CONTINUATIONS.get(entity);
++  if (record && !sameQueuedLife(entity, CONTINUATION_LIVES.get(entity))) {
++    PROJECTILE_CONTINUATIONS.delete(entity);
++    CONTINUATION_LIVES.delete(entity);
++    record = null;
++  }
+   if (!record) {
+     record = {
+       schemaVersion: PHYSICS_COMMAND_SCHEMA_VERSION,
+@@ -123,6 +131,7 @@ export function queueProjectileContinuation(entity, continuation = {}) {
+       offset: { x: 0, z: 0 },
+     };
+     PROJECTILE_CONTINUATIONS.set(entity, record);
++    CONTINUATION_LIVES.set(entity, queuedLife(entity));
+   } else {
+     CONSUMED_CONTINUATIONS.delete(record);
+   }
+@@ -163,6 +172,11 @@ export function queueProjectileContinuation(entity, continuation = {}) {
+ export function consumeProjectileContinuation(entity) {
+   if (!entity || typeof entity !== 'object') return null;
+   const record = PROJECTILE_CONTINUATIONS.get(entity) || null;
++  if (record && !sameQueuedLife(entity, CONTINUATION_LIVES.get(entity))) {
++    PROJECTILE_CONTINUATIONS.delete(entity);
++    CONTINUATION_LIVES.delete(entity);
++    return null;
++  }
+   if (!record || CONSUMED_CONTINUATIONS.has(record)) return null;
+   CONSUMED_CONTINUATIONS.add(record);
+   return record;
+@@ -175,17 +189,170 @@ export function consumeProjectileContinuation(entity) {
+  */
+ export function consumePhysicsCommand(entity) {
+   const command = COMMANDS.get(entity) || null;
++  if (command && !sameQueuedLife(entity, COMMAND_LIVES.get(entity))) {
++    discardCommandStorage(entity);
++    return null;
++  }
+   if (!command || CONSUMED_COMMANDS.has(command)) return null;
+   CONSUMED_COMMANDS.add(command);
+   return command;
+ }
+ 
++/** Read-only pending-command observation; portable saves do not use this API. */
++export const PHYSICS_PENDING_SCHEMA_VERSION = 1;
++const MAX_PENDING_ENTRIES = 4096;
++const MAX_PENDING_IMPULSES = 4096;
++const MAX_PENDING_TOTAL_IMPULSES = 16384;
++
++/** Copy pending queues without consuming, re-arming, or exposing retained pooled records.
++ * The caller must capture this in the same synchronous task as its entity/native snapshot.
++ * Missing occupant generations or unsupported evidence fail eligibility instead of losing data.
++ */
++export function capturePhysicsCommands(state) {
++  pendingState(state);
++  const entries = [];
++  let totalImpulses = 0;
++  for (const entity of state.entities.values()) {
++    if (!entity || entity.alive === false) continue;
++    const command = sameQueuedLife(entity, COMMAND_LIVES.get(entity)) ? COMMANDS.get(entity) : null;
++    const continuation = sameQueuedLife(entity, CONTINUATION_LIVES.get(entity))
++      ? PROJECTILE_CONTINUATIONS.get(entity) : null;
++    const pending = command && !CONSUMED_COMMANDS.has(command) ? command : null;
++    const bounce = continuation && !CONSUMED_CONTINUATIONS.has(continuation) ? continuation : null;
++    if (!pending && !bounce) continue;
++    if (pending) {
++      totalImpulses += pending.impulses.length + pending.torqueImpulses.length;
++      if (totalImpulses > MAX_PENDING_TOTAL_IMPULSES) pendingError('total impulse limit');
++    }
++    pendingLife(entity);
++    if (state.entities.get(entity.id) !== entity) pendingError('entity binding');
++    entries.push({ id: entity.id, generation: entity.occupantGeneration,
++      command: pending ? copyPendingCommand(pending, state.tick, true) : null,
++      continuation: bounce ? copyPendingBounce(bounce, state.tick) : null,
++      mirror: bounce ? continuationMirror(entity) : null });
++    if (entries.length > MAX_PENDING_ENTRIES) pendingError('entry limit');
++  }
++  return { schemaVersion: PHYSICS_PENDING_SCHEMA_VERSION, tick: state.tick, entries };
++}
++
++function pendingError(reason) { throw new TypeError(`Physics command continuation: ${reason}`); }
++function pendingId(value) { return Number.isSafeInteger(value) && value > 0; }
++function pendingTick(value, tick) { return Number.isSafeInteger(value) && value >= 0 && value <= tick; }
++function pendingState(state) {
++  if (!state || !(state.entities instanceof Map) || !pendingTick(state.tick, state.tick)) pendingError('state');
++}
++function pendingLife(entity) {
++  if (!entity || !pendingId(entity.id) || !pendingId(entity.occupantGeneration)) pendingError('entity life');
++}
++function pendingKeys(value, allowed) {
++  if (!value || typeof value !== 'object' || Array.isArray(value)
++    || ![Object.prototype, null].includes(Object.getPrototypeOf(value))
++    || Reflect.ownKeys(value).some(key => !allowed.includes(key)
++      || !Object.prototype.hasOwnProperty.call(Object.getOwnPropertyDescriptor(value, key), 'value')))
++    pendingError('malformed fields');
++}
++function pendingArray(value, limit) {
++  if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype || value.length > limit
++    || Reflect.ownKeys(value).length !== value.length + 1) pendingError('array limit or holes');
++  for (let i = 0; i < value.length; i++) {
++    if (!Object.prototype.hasOwnProperty.call(Object.getOwnPropertyDescriptor(value, String(i)) || {}, 'value'))
++      pendingError('array entry');
++  }
++}
++function pendingNumber(value) {
++  if (!Number.isFinite(value)) pendingError('non-finite number');
++  return value;
++}
++function pendingString(value) {
++  if (typeof value !== 'string' || value.length > 256) pendingError('string');
++  return value;
++}
++function pendingVector(value, axes = ['x', 'y', 'z']) {
++  pendingKeys(value, axes);
++  return Object.fromEntries(axes.map(axis => [axis, pendingNumber(value[axis])]));
++}
++function copyPendingEvidence(value) {
++  if (value == null) return null;
++  if (typeof value === 'string') return pendingString(value);
++  const fields = ['schemaVersion', 'kind', 'source', 'tag', 'actorId', 'weaponId', 'attachmentId',
++    'payloadId', 'appliedTick', 'rating', 'targetId', 'victimId', 'partnerId', 'phase', 'field'];
++  pendingKeys(value, fields);
++  const out = {};
++  for (const key of Reflect.ownKeys(value)) {
++    const item = value[key];
++    if (key === 'field' && item != null) {
++      pendingKeys(item, ['id', 'ownerId', 'x', 'z', 'radius']);
++      out.field = {};
++      for (const name of ['id', 'ownerId', 'x', 'z', 'radius']) {
++        const part = item[name];
++        out.field[name] = part === null && (name === 'id' || name === 'ownerId') ? null
++          : typeof part === 'string' && (name === 'id' || name === 'ownerId') ? pendingString(part) : pendingNumber(part);
++      }
++    } else out[key] = item === null ? null : typeof item === 'string' ? pendingString(item) : pendingNumber(item);
++  }
++  return out;
++}
++function copyPendingImpulse(value, tick, live) {
++  pendingKeys(value, ['x', 'y', 'z', 'provenance', 'tick', 'kind']);
++  const out = { x: pendingNumber(value.x), y: pendingNumber(value.y), z: pendingNumber(value.z) };
++  for (const key of ['provenance', 'tick', 'kind']) {
++    if (!(key in value) || (live && value[key] === undefined)) continue;
++    if (key === 'tick') { if (!pendingTick(value.tick, tick)) pendingError('impulse tick'); out.tick = value.tick; }
++    else out[key] = key === 'provenance' ? copyPendingEvidence(value[key]) : pendingString(value[key]);
++  }
++  return out;
++}
++function copyPendingCommand(value, tick, live = false) {
++  pendingKeys(value, ['schemaVersion', 'control', 'impulses', 'torqueImpulses', 'bodyResponse']);
++  if (value.schemaVersion !== PHYSICS_COMMAND_SCHEMA_VERSION) pendingError('command schema');
++  const out = { schemaVersion: value.schemaVersion, control: null, impulses: [], torqueImpulses: [], bodyResponse: null };
++  if (value.control !== null) {
++    const c = value.control;
++    pendingKeys(c, ['schemaVersion', 'mode', 'force', 'torque', 'authority', 'source', 'maxSpeed']);
++    if (c.schemaVersion !== PHYSICS_COMMAND_SCHEMA_VERSION) pendingError('control schema');
++    pendingKeys(c.authority, ['forward', 'reverse', 'strafe', 'yaw']);
++    const authority = {};
++    for (const key of ['forward', 'reverse', 'strafe', 'yaw']) {
++      const n = pendingNumber(c.authority[key]);
++      if (n < 0 || n > 1) pendingError('authority range');
++      authority[key] = n;
++    }
++    // null is the explicit JSON representation of an unlimited speed ceiling.
++    const unlimited = live ? c.maxSpeed === Infinity : c.maxSpeed === null;
++    if (!unlimited && !(pendingNumber(c.maxSpeed) > 0)) pendingError('speed ceiling');
++    out.control = { schemaVersion: c.schemaVersion, mode: pendingString(c.mode), force: pendingVector(c.force),
++      torque: pendingVector(c.torque), authority, source: pendingString(c.source), maxSpeed: unlimited ? null : c.maxSpeed };
++  }
++  for (const key of ['impulses', 'torqueImpulses']) {
++    pendingArray(value[key], MAX_PENDING_IMPULSES);
++    out[key] = value[key].map(v => copyPendingImpulse(v, tick, live));
++  }
++  if (value.bodyResponse !== null) {
++    pendingKeys(value.bodyResponse, ['massScale', 'inertiaScale']);
++    out.bodyResponse = {};
++    for (const key of ['massScale', 'inertiaScale']) {
++      const n = pendingNumber(value.bodyResponse[key]);
++      if (n < PHYSICS_BODY_RESPONSE_LIMITS.minScale || n > PHYSICS_BODY_RESPONSE_LIMITS.maxScale) pendingError('body response range');
++      out.bodyResponse[key] = n;
++    }
++  }
++  return out;
++}
++function copyPendingBounce(value, tick) {
++  pendingKeys(value, ['schemaVersion', 'velocity', 'yaw', 'tick', 'offset']);
++  if (value.schemaVersion !== PHYSICS_COMMAND_SCHEMA_VERSION || !pendingTick(value.tick, tick)) pendingError('continuation schema or tick');
++  return { schemaVersion: value.schemaVersion, velocity: pendingVector(value.velocity, ['x', 'z']),
++    yaw: pendingNumber(value.yaw), tick: value.tick, offset: pendingVector(value.offset, ['x', 'z']) };
++}
++function continuationMirror(entity) {
++  return { pos: entity.pos ? { x: pendingNumber(entity.pos.x), z: pendingNumber(entity.pos.z) } : null,
++    vel: { x: pendingNumber(entity.vel?.x), z: pendingNumber(entity.vel?.z) }, rot: pendingNumber(entity.rot) };
++}
+ export function clearPhysicsAuthority(entity) {
+   if (!entity || typeof entity !== 'object') return;
+-  COMMANDS.delete(entity);
+-  CONTROL_RECORDS.delete(entity);
+-  BODY_RESPONSE_RECORDS.delete(entity);
++  discardCommandStorage(entity);
+   PROJECTILE_CONTINUATIONS.delete(entity);
++  CONTINUATION_LIVES.delete(entity);
+   TELEMETRY.delete(entity);
+   AUTHORITY_CACHE.delete(entity);
+   NORMALIZED_BODY_CACHE.delete(entity);
+@@ -447,8 +614,27 @@ function normalizePhysicsBodyResponseInto(out, response = {}) {
+   return out;
+ }
+ 
++function queuedLife(entity) {
++  return { id: entity.id, generation: entity.occupantGeneration };
++}
++
++function sameQueuedLife(entity, life) {
++  return !!life && life.id === entity.id && life.generation === entity.occupantGeneration;
++}
++
++function discardCommandStorage(entity) {
++  COMMANDS.delete(entity);
++  COMMAND_LIVES.delete(entity);
++  CONTROL_RECORDS.delete(entity);
++  BODY_RESPONSE_RECORDS.delete(entity);
++}
++
+ function commandFor(entity) {
+   let command = COMMANDS.get(entity);
++  if (command && !sameQueuedLife(entity, COMMAND_LIVES.get(entity))) {
++    discardCommandStorage(entity);
++    command = null;
++  }
+   if (!command) {
+     command = {
+       schemaVersion: PHYSICS_COMMAND_SCHEMA_VERSION,
+@@ -458,6 +644,7 @@ function commandFor(entity) {
+       bodyResponse: null,
+     };
+     COMMANDS.set(entity, command);
++    COMMAND_LIVES.set(entity, queuedLife(entity));
+     return command;
+   }
+   if (CONSUMED_COMMANDS.has(command)) {

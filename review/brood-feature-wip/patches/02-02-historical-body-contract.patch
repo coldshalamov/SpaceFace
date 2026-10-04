@@ -1,0 +1,382 @@
+diff --git a/src/data/broodBodies.js b/src/data/broodBodies.js
+new file mode 100644
+index 0000000..7635623
+--- /dev/null
++++ b/src/data/broodBodies.js
+@@ -0,0 +1,376 @@
++// P14 Brood: original animals, never Vethari hull-infection or recoloured ships.
++// One pure X/Y-up/Z asset/physics contract. The concave nose is intentional;
++// neither collision nor lower LODs may replace it with a convex envelope.
++const freeze = value => {
++  if (value && typeof value === 'object' && !Object.isFrozen(value)) {
++    Object.values(value).forEach(freeze); Object.freeze(value);
++  }
++  return value;
++};
++const capsule = (id,ax,az,bx,bz,r) => ({id,kind:'capsule',ax,az,bx,bz,r,
++  ...(id.endsWith('_scute')?{surfaceSlackWU:.4}:{})});
++const socket = (position, forward, role) => ({position, forward, role});
++const rig = (id,pivot,foldRadians,support) => ({
++  id, node:`MOTION_${id.toUpperCase()}`, pivot, axis:'x', foldRadians, support,
++  collisionAuthority:'fixed-solid-scute',
++});
++const shared = {
++  schema:'spaceface.broodBody.v1', sourceScale:1,
++  coordinates:{forward:'+X',up:'+Y',starboard:'+Z',unit:'WU'},
++  identity:'Brood independent living organism',
++  materialFamily:'brood-carapace-v1',
++  materialFinishes:['carapace','chitin','membrane','glow_brood'],
++  productionCap:40, densityProbes:[100,200,400],
++};
++const build = (id,values) => ({...shared, enemyId:id, id,
++  assetId:`SF_${id.toUpperCase()}_V01`, partId:`wholeship_${id}_v01`,
++  file:`wholeships/${id}_v01.glb`, ...values,
++});
++export const BROOD_BODY_CONTRACTS = freeze({
++  brood_mite:build('brood_mite',{
++    idea:'Three pearl lobes, split bite', mass:22, radius:7.1,
++    centerOfMass:[-.7,0,0], bounds:{min:[-6,-1,-5],max:[6,2.3,5]},
++    collision:{kind:'bounded-compound', neverUseConvexHull:true, units:'WU',outlineErrorMaxWU:.12,
++      primitives:[capsule('dorsal_lobe',-3.15,0,-.8,0,2.15),
++        capsule('port_jaw',-.2,-1.7,2.5,-2.4,1.15),
++        capsule('port_fang',2.7,-2.4,5.6,-1.6,.4),
++        capsule('starboard_jaw',-.2,1.7,2.5,2.4,1.15),
++        capsule('starboard_fang',2.7,2.4,5.6,1.6,.4),
++        capsule('port_scute',-1.5,-2.2,-5.3,-3.5,.7),
++        capsule('starboard_scute',-1.5,2.2,-5.3,3.5,.7)],
++      yMin:-.65,yMax:.08},
++    clearVolumes:[{id:'jaw_split',min:[2.0,-4,-.65],max:[6.6,4,.65]}],
++    sockets:{
++      SOCKET_BROOD_CONTACT_PORT:socket([6,0,-1.6],[1,0,0],'contact'),
++      SOCKET_BROOD_CONTACT_STARBOARD:socket([6,0,1.6],[1,0,0],'contact'),
++      SOCKET_BROOD_TETHER_DORSAL:socket([-.7,1.86,0],[0,1,0],'attachment'),
++      SOCKET_BROOD_SIGNAL:socket([.8,.58,0],[1,0,0],'vfx'),
++    },
++    motion:{rigs:[rig('mite_membrane_port',[-3,.18,-2.45],.3,'port_scute'),
++      rig('mite_membrane_starboard',[-3,.18,2.45],-.3,'starboard_scute')],
++      poses:{approach:0,windup:1,attack:.1,recovery:.6},
++      timings:{windup:.5,attack:.8,recovery:.8},
++      description:'Paired membrane vanes fold above fixed solid lower scutes; contact jaws never animate'},
++    budget:{trianglesByLod:[3500,1600,900],drawsByLod:[6,6,6],rigidPivots:2,materialCount:4},
++    fragments:{maxActive:3,lifetimeSeconds:1.6,physics:'pooled-cosmetic-no-extra-damage',
++      groups:['dorsal_lobe','port_lobe','starboard_lobe']},
++  }),
++  brood_charger:build('brood_charger',{
++    idea:'Forked shield, contracting segmented abdomen', mass:90, radius:13,
++    centerOfMass:[1.3,0,0], bounds:{min:[-10,-1.6,-9],max:[11,3.6,9]},
++    collision:{kind:'bounded-compound', neverUseConvexHull:true, units:'WU',outlineErrorMaxWU:.12,
++      primitives:[capsule('abdomen_keel',-7.5,0,1,0,2.4),
++        {id:'neck_shield',kind:'obb',x:1.7,z:0,hx:1.6,hz:6.15,rot:0},
++        capsule('port_prong',2.4,-5.9,6.4,-6,2),
++        capsule('port_fang',6.5,-6,10.35,-3.8,.65),
++        capsule('starboard_prong',2.4,5.9,6.4,6,2),
++        capsule('starboard_fang',6.5,6,10.35,3.8,.65),
++        capsule('port_scute',-3.2,-3.1,-7.6,-5.8,1.1),
++        capsule('starboard_scute',-3.2,3.1,-7.6,5.8,1.1)],
++      yMin:-1.05,yMax:.12},
++    clearVolumes:[{id:'head_fork',min:[3.65,-6,-1.1],max:[11.8,6,1.1]}],
++    sockets:{
++      SOCKET_BROOD_CONTACT_PORT:socket([11,0,-3.8],[1,0,0],'contact'),
++      SOCKET_BROOD_CONTACT_STARBOARD:socket([11,0,3.8],[1,0,0],'contact'),
++      SOCKET_BROOD_TETHER_DORSAL:socket([1.3,2.1,0],[0,1,0],'attachment'),
++      SOCKET_BROOD_SIGNAL:socket([3.15,.78,0],[1,0,0],'vfx'),
++    },
++    motion:{rigs:[rig('charger_paddle_port',[-5.3,.25,-4.25],.42,'port_scute'),
++      rig('charger_paddle_starboard',[-5.3,.25,4.25],-.42,'starboard_scute'),
++      {id:'charger_abdomen',node:'MOTION_CHARGER_ABDOMEN',pivot:[-2,.4,0],axis:'x',
++       translation:[.8,0,0],support:'abdomen_keel',collisionAuthority:'fixed-solid-keel'}],
++      poses:{approach:0,windup:1,attack:.08,recovery:.65},
++      timings:{windup:.75,attack:2.4,recovery:1.4},
++      description:'Upper abdominal plates telescope over a continuous solid keel; inner paddle vanes fold over fixed scutes'},
++    budget:{trianglesByLod:[6000,2600,1500],drawsByLod:[7,7,7],rigidPivots:3,materialCount:4},
++    fragments:{maxActive:4,lifetimeSeconds:2.2,physics:'pooled-cosmetic-no-extra-damage',
++      groups:['head_port','head_starboard','abdomen','paddle_pair']},
++  }),
++  brood_spitter:build('brood_spitter',{
++    "idea": "Horseshoe cradle, recoiling pressure sac",
++    "mass": 30,
++    "radius": 9,
++    "centerOfMass": [
++      -1.5,
++      0,
++      0
++    ],
++    "bounds": {
++      "min": [
++        -7,
++        -1.2,
++        -5.5
++      ],
++      "max": [
++        6.4,
++        3.1,
++        5.5
++      ]
++    },
++    "collision": {
++      "kind": "bounded-compound",
++      "neverUseConvexHull": true,
++      "units": "WU",
++      "outlineErrorMaxWU": 0.12,
++      "primitives": [
++        {
++          "id": "pressure_keel",
++          "kind": "capsule",
++          "ax": -3,
++          "az": 0,
++          "bx": -0.6,
++          "bz": 0,
++          "r": 3.4
++        },
++        {
++          "id": "port_carapace",
++          "kind": "capsule",
++          "ax": -3.6,
++          "az": -3.1,
++          "bx": 0.4,
++          "bz": -3.3,
++          "r": 1.15
++        },
++        {
++          "id": "starboard_carapace",
++          "kind": "capsule",
++          "ax": -3.6,
++          "az": 3.1,
++          "bx": 0.4,
++          "bz": 3.3,
++          "r": 1.15
++        },
++        {
++          "id": "pursed_throat",
++          "kind": "capsule",
++          "ax": 1.2,
++          "az": 0,
++          "bx": 5.5,
++          "bz": 0,
++          "r": 0.9
++        },
++        {
++          "id": "port_swimming_lobe",
++          "kind": "capsule",
++          "ax": -2.8,
++          "az": -3.8,
++          "bx": -5.1,
++          "bz": -4.7,
++          "r": 0.75
++        },
++        {
++          "id": "starboard_swimming_lobe",
++          "kind": "capsule",
++          "ax": -2.8,
++          "az": 3.8,
++          "bx": -5.1,
++          "bz": 4.7,
++          "r": 0.75
++        },
++        {
++          "id": "dorsal_saddle",
++          "kind": "obb",
++          "x": 0.7,
++          "z": 0,
++          "hx": 0.65,
++          "hz": 0.6,
++          "rot": 0
++        }
++      ],
++      "yMin": -0.7,
++      "yMax": 0.08
++    },
++    "clearVolumes": [
++      {
++        "id": "port_mouth_clearance",
++        "min": [
++          2.55,
++          -4,
++          -4.5
++        ],
++        "max": [
++          6.8,
++          4,
++          -1.4
++        ]
++      },
++      {
++        "id": "starboard_mouth_clearance",
++        "min": [
++          2.55,
++          -4,
++          1.4
++        ],
++        "max": [
++          6.8,
++          4,
++          4.5
++        ]
++      }
++    ],
++    "sockets": {
++      "SOCKET_BROOD_CONTACT_MOUTH": {
++        "position": [
++          6.4,
++          0,
++          0
++        ],
++        "forward": [
++          1,
++          0,
++          0
++        ],
++        "role": "contact"
++      },
++      "SOCKET_BROOD_PROJECTILE_MOUTH": {
++        "position": [
++          6.4,
++          0,
++          0
++        ],
++        "forward": [
++          1,
++          0,
++          0
++        ],
++        "role": "projectile"
++      },
++      "SOCKET_BROOD_TETHER_DORSAL": {
++        "position": [
++          0.7,
++          1.8,
++          0
++        ],
++        "forward": [
++          0,
++          1,
++          0
++        ],
++        "role": "attachment"
++      },
++      "SOCKET_BROOD_SIGNAL": {
++        "position": [
++          4.6,
++          0.5,
++          0
++        ],
++        "forward": [
++          1,
++          0,
++          0
++        ],
++        "role": "vfx"
++      }
++    },
++    "motion": {
++      "rigs": [
++        {
++          "id": "spitter_pressure_sac",
++          "node": "MOTION_SPITTER_PRESSURE_SAC",
++          "pivot": [
++            -2.5,
++            0.4,
++            0
++          ],
++          "axis": "y",
++          "translation": [
++            0,
++            0.85,
++            0
++          ],
++          "support": "pressure_keel",
++          "collisionAuthority": "fixed-solid-keel"
++        },
++        {
++          "id": "spitter_upper_plates",
++          "node": "MOTION_SPITTER_UPPER_PLATES",
++          "pivot": [
++            -2,
++            0.6,
++            0
++          ],
++          "axis": "y",
++          "translation": [
++            0,
++            0.5,
++            0
++          ],
++          "support": "pressure_keel",
++          "collisionAuthority": "fixed-solid-keel"
++        },
++        {
++          "id": "spitter_mouth_folds",
++          "node": "MOTION_SPITTER_MOUTH_FOLDS",
++          "pivot": [
++            4.5,
++            0.3,
++            0
++          ],
++          "axis": "x",
++          "translation": [
++            -0.35,
++            0.25,
++            0
++          ],
++          "support": "pursed_throat",
++          "collisionAuthority": "fixed-solid-throat"
++        }
++      ],
++      "poses": {
++        "approach": 0.35,
++        "windup": 1,
++        "attack": 0,
++        "recovery": 0.2
++      },
++      "timings": {
++        "windup": 0.8,
++        "attack": 0.016666666666666666,
++        "recovery": 1.5
++      },
++      "description": "Upper pressure membrane inflates inside a split horseshoe cradle then collapses after one recoil pulse; upper scutes and pursed mouth folds move above fixed honest contact anatomy"
++    },
++    "budget": {
++      "trianglesByLod": [
++        4500,
++        2200,
++        1100
++      ],
++      "drawsByLod": [
++        7,
++        7,
++        7
++      ],
++      "rigidPivots": 3,
++      "materialCount": 4
++    },
++    "fragments": {
++      "maxActive": 3,
++      "lifetimeSeconds": 1.8,
++      "physics": "pooled-cosmetic-no-extra-damage",
++      "groups": [
++        "pressure_sac",
++        "horseshoe_carapace",
++        "mouth_lobes"
++      ]
++    }
++  }),
++});
++export const BROOD_BODY_IDS = freeze(Object.keys(BROOD_BODY_CONTRACTS));
++export const broodBodyContract = id => BROOD_BODY_CONTRACTS[id] || null;
++
++// Canonical collisionProxyManifests shape, shared by native/contact/LOS/tether.
++// Geometry is authored once in WU above; conversion never fits a convex hull.
++export const BROOD_COLLISION_MANIFESTS = freeze(Object.fromEntries(BROOD_BODY_IDS.map(id=>{
++  const body=BROOD_BODY_CONTRACTS[id], scale=body.radius;
++  const primitives=body.collision.primitives.map(p=>{
++    const result={id:p.id,kind:p.kind};
++    for(const key of p.kind==='capsule'?['ax','az','bx','bz','r']:['x','z','hx','hz']) result[key]=p[key]/scale;
++    if(p.kind==='obb') result.angleDeg=p.rot*180/Math.PI;
++    return result;
++  });
++  return [id,{schemaVersion:1,id:`brood:${id}:v1`,referenceRadius:'radius',
++    flags:{collides:true,renderable:false,targetable:false,radarVisible:false},
++    primitives,broodBodyId:id,neverUseConvexHull:true,
++    silhouetteBound:body.collision.outlineErrorMaxWU/scale}];
++})));
++export const broodCollisionManifest = id => BROOD_COLLISION_MANIFESTS[id] || null;

@@ -1,0 +1,162 @@
+--- /dev/null
++++ b/test/brood-resident-cells.test.mjs
+@@ -0,0 +1,104 @@
++import { BROOD_SPLITTER_BODIES } from '../src/data/broodSplitterBodies.js';
++import { admitBroodVisualMetadata, bindBroodModelFromRecord, BROOD_SPLITTER_SOURCE_SEAL } from '../src/render/broodVisualContract.js';
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import * as THREE from 'three';
++import { createBroodResidentCellOwner } from '../src/render/broodResidentCells.js';
++import { createAssetResidencyRegistry } from '../src/render/assetResidency.js';
++import { createLodState } from '../src/render/lod.js';
++const ids=['brood_splitter_axial','brood_splitter_port','brood_splitter_starboard'];
++function fixture(){
++ const entity=(id,body,pos={x:0,z:0},rot=0)=>({id,alive:true,occupantGeneration:id,data:{broodBodyId:body},pos,rot});
++ const parent=entity(1,'brood_splitter',{x:100,z:40},.7);
++ const children=ids.map((id,i)=>entity(i+2,id,{x:100+i*3,z:40-i*2},.7+i*.1));
++ parent.data.splitterFamily={schema:1,id:'test-family',parentLife:1};parent.data.splitterMaterialTransferred=true;
++ children.forEach((e,i)=>e.data.splitterChild={familyId:'test-family',parentLife:1,ordinal:i});
++ const state={entities:new Map([parent,...children].map(e=>[e.id,e]))};
++ const scene=new THREE.Scene(),root=new THREE.Group();root.position.set(100,0,40);root.rotation.y=-.7;scene.add(root);
++ const lod=createLodState();lod.adopt('lod2',10);root.userData={lod,broodResidentLife:1,authoredVisualRoot:'authored-root',assetId:'source-test-only'};
++ const body={...BROOD_SPLITTER_BODIES.brood_splitter,sourceSealSchema:'spaceface.broodSourceSeal.v2',sourceSha256:BROOD_SPLITTER_SOURCE_SEAL,geometryContractSha256:'7cab7c2b83d3a7baf57b68fb41f66296f90557ee10b11d75e85e2c3588b2a70f'};
++ const proof=admitBroodVisualMetadata(body.assetId,body);
++ assert.equal(bindBroodModelFromRecord(root,parent,{assetId:body.assetId,url:body.file,metadata:{broodMaterialContract:proof}}),true);
++
++ const nodes=[],disposed=[];
++ const material=new THREE.MeshStandardMaterial();material.addEventListener('dispose',()=>disposed.push('material'));
++ for(let cell=0;cell<3;cell++)for(let tier=0;tier<3;tier++){
++  const geometry=new THREE.BoxGeometry(1,.4,1);geometry.addEventListener('dispose',()=>disposed.push(`g${cell}${tier}`));
++  const n=new THREE.Mesh(geometry,material);n.position.set(cell*3,.4+cell,tier*.1);n.userData.spacefaceTags={broodCell:ids[cell],lod:`lod${tier}`};n.visible=tier===2;root.add(n);nodes.push(n);
++ }
++ root.updateWorldMatrix(true,true);
++ const matrices=nodes.map(n=>n.matrixWorld.clone());
++ const registry=createAssetResidencyRegistry({now:()=>0});const meshes=new Map([[parent,root]]);
++ const retire=(r,why)=>{scene.remove(r);r.userData.releaseAuthoredAssetResidency?.(why);};
++ let refused=null;
++ const owner=createBroodResidentCellOwner({state,residency:registry,lookupMesh:e=>meshes.get(e),ready:()=>true,toLocal:p=>p,
++  bind(e,r){if(e===refused)return false;meshes.set(e,r);scene.add(r);return true;},
++  unbind(e,r){if(meshes.get(e)===r)meshes.delete(e);scene.remove(r);},retire});
++ return {parent,children,state,scene,root,nodes,matrices,registry,owner,meshes,disposed,retire,refuse:e=>refused=e};
++}
++test('resident parent material transfers at exact world pose with parent tier and one resource owner per cell',()=>{
++ const f=fixture();f.parent.alive=false;
++ assert.equal(f.owner.prepare({parent:f.parent,children:f.children}),true);
++ assert.equal(f.root.children.length,0,'only existing cell surfaces moved, no second shell remains');
++ f.scene.remove(f.root);f.registry.releaseOwner(f.root,'parent-disappeared');
++ assert.equal(f.disposed.length,0,'parent retirement cannot dispose descendant resources');
++ assert.equal(f.owner.flush(),3);
++ for(let i=0;i<f.nodes.length;i++){f.scene.updateMatrixWorld(true);const a=f.nodes[i].matrixWorld.elements,b=f.matrices[i].elements;assert.ok(a.every((v,k)=>Math.abs(v-b[k])<1e-9));}
++ for(const child of f.children){const root=f.meshes.get(child);assert.equal(root.userData.lod.level,'lod2');assert.ok(root.children.every(n=>n.visible===(n.userData.spacefaceTags.lod==='lod2')));root.userData.updateLod('lod1');assert.ok(root.children.every(n=>n.visible===(n.userData.spacefaceTags.lod==='lod1')));}
++ for(const child of f.children){f.retire(f.meshes.get(child),'child-retired');f.retire(f.meshes.get(child),'duplicate-retirement');}
++ assert.equal(f.disposed.filter(x=>x==='material').length,1);assert.equal(f.disposed.length,10);
++ assert.equal(f.owner.prepare({parent:f.parent,children:f.children}),false);
++});
++test('partial publication refuses the whole first frame and retries without new geometry or leaked ownership',()=>{
++ const f=fixture();f.parent.alive=false;f.owner.prepare({parent:f.parent,children:f.children});f.refuse(f.children[1]);
++ assert.equal(f.owner.flush(),0);assert.ok(f.children.every(e=>!f.meshes.has(e)));assert.equal(f.owner.pendingCount(),3);assert.equal(f.disposed.length,0);
++ f.refuse(null);assert.equal(f.owner.flush(),3);assert.equal(f.owner.pendingCount(),0);
++ for(const e of f.children)f.retire(f.meshes.get(e),'done');f.registry.releaseOwner(f.root,'done');
++ assert.equal(f.disposed.length,10);
++});
++test('stale occupants and Retry/context-loss resets retire pending leases without binding wrong lives',()=>{
++ for(const mode of ['recycle','retry','context_loss']){const f=fixture();f.parent.alive=false;f.owner.prepare({parent:f.parent,children:f.children});f.scene.remove(f.root);f.registry.releaseOwner(f.root,'dead-parent');
++  if(mode==='recycle'){for(const e of f.children)e.occupantGeneration++;assert.equal(f.owner.flush(),0);}
++  else {if(mode==='context_loss')f.registry.handleContextLost();f.owner.reset(mode);f.owner.reset(mode);}
++  assert.equal(f.owner.pendingCount(),0);assert.ok(f.children.every(e=>!f.meshes.has(e)));
++  if(mode!=='context_loss')assert.equal(f.disposed.length,10);
++ }
++});
++test('foreign live parents and original source cache references remain valid until their own retirement',()=>{
++ const f=fixture(),foreign={};let cacheReleases=0;
++ const resources=[...new Set(f.nodes.flatMap(n=>[n.geometry,n.material]))];
++ f.registry.registerAsset('existing-shared-source',resources);
++ f.registry.retain('existing-shared-source',f.root,{role:'current-sector'});
++ f.registry.retain('existing-shared-source',foreign,{role:'current-sector'});
++ f.root.userData.releaseAuthoredAssetResidency=()=>{cacheReleases++;};
++ f.parent.alive=false;assert.equal(f.owner.prepare({parent:f.parent,children:f.children}),true);
++ f.scene.remove(f.root);f.root.userData.releaseAuthoredAssetResidency('parent-removed');
++ assert.equal(cacheReleases,0);assert.equal(f.owner.flush(),3);
++ for(const e of f.children)f.retire(f.meshes.get(e),'child-retired');
++ assert.equal(cacheReleases,1);assert.equal(f.disposed.length,0,'unrelated source owner still draws every shared GPU resource');
++ f.registry.releaseOwner(foreign,'foreign-retired');assert.equal(f.disposed.length,10);
++});
++
++test('copied tags, stale source models and unrelated child families cannot transfer or acquire leases',()=>{
++ for(const fault of ['copied-root','live-parent','wrong-family','wrong-ordinal','recycled-parent']){
++  const f=fixture();f.parent.alive=false;
++  if(fault==='copied-root'){const forged=f.root.clone(true);f.meshes.set(f.parent,forged);}
++  if(fault==='live-parent')f.parent.alive=true;
++  if(fault==='wrong-family')f.children[0].data.splitterChild.familyId='unrelated';
++  if(fault==='wrong-ordinal')f.children[0].data.splitterChild.ordinal=2;
++  if(fault==='recycled-parent')f.parent.occupantGeneration++;
++  const before=f.registry.diagnostics();
++  assert.equal(f.owner.prepare({parent:f.parent,children:f.children}),false,fault);
++  assert.equal(f.root.children.length,9);assert.equal(f.owner.pendingCount(),0);assert.deepEqual(f.registry.diagnostics(),before);
++ }
++});
++test('admission failure retains an exact usable parent and releases every staged reference',()=>{
++ const f=fixture();f.parent.alive=false;const retain=f.registry.retain;
++ // Registry methods are frozen; supply a narrow delegated adapter to the same real registry.
++ let calls=0;const adapter={...f.registry,retain(...args){if(++calls===5)throw new Error('injected admission refusal');return retain(...args);}};
++ const owner=createBroodResidentCellOwner({state:f.state,residency:adapter,lookupMesh:e=>f.meshes.get(e),ready:()=>true,toLocal:p=>p,
++  bind:()=>{throw new Error('must not bind');},unbind:()=>{},retire:f.retire});
++ assert.equal(owner.prepare({parent:f.parent,children:f.children}),false);assert.equal(f.root.children.length,9);assert.equal(owner.pendingCount(),0);assert.equal(f.disposed.length,0);
++ f.scene.remove(f.root);f.registry.releaseOwner(f.root,'failed-parent-retired');
++ assert.equal(f.registry.diagnostics().residentAssets,0);
++});
+--- /dev/null
++++ b/test/brood-resident-source.test.mjs
+@@ -0,0 +1,27 @@
++// Sealed source geometry through real loader-table and batch owners. CPU proof, not a GPU claim.
++import test from 'node:test';import assert from 'node:assert/strict';import path from 'node:path';
++import * as THREE from 'three';
++import { splitterSourceGraph } from './lib/splitterV12Graph.mjs';
++import { deriveAuthoredRuntimeTable,bindAuthoredRuntimeTable } from '../src/render/assetLoader.js';
++import { composeBroodMaterialForProbe } from '../src/render/partsLibrary.js';
++import { broodModelForRoot } from '../src/render/broodVisualContract.js';
++import { broodCellBatchKey } from '../src/render/broodCellIdentity.js';
++const dir=process.env.BROOD_V12_SOURCE_DIR||'assets/ships/parts/wholeships';
++test('exact v12 raw source survives canonical runtime tables and final cell-separated batching',async()=>{
++ const file=path.join(dir,'brood_splitter_v01.glb'),g=await splitterSourceGraph(file);
++ assert.equal(g.sha256,'6bf7ef85ab3d4a13e0d73e9dfa03bcdc476efeae268807eec12c7a2b25b9d9d1');
++ const url='assets/ships/parts/wholeships/brood_splitter_v01.glb';
++ const table=deriveAuthoredRuntimeTable(g.scene,{url,slot:'hull',assetId:'SF_BROOD_SPLITTER_V01'});
++ assert.equal(table.primitives.length,36);assert.ok(table.primitives.every(p=>p.tags.broodCell&&p.tags.broodContractId==='brood_splitter'));
++ const plan={entries:[]};g.scene.traverse(source=>plan.entries.push({source}));
++ const record=bindAuthoredRuntimeTable(url,{scene:g.scene,asset:g.asset},'hull',JSON.parse(JSON.stringify(table)),plan);
++ const composed=composeBroodMaterialForProbe(record);assert.ok(broodModelForRoot(composed.root,composed.entity));
++ const cells=new Map();composed.root.traverse(n=>{if(n.isMesh&&n.userData.spacefaceTags?.broodCell){const key=n.userData.spacefaceTags.broodCell;let rows=cells.get(key);if(!rows){rows=[];cells.set(key,rows);}rows.push(n);assert.equal(n.userData.keepSeparate,true);}});
++ assert.equal(cells.size,3);for(const rows of cells.values())assert.deepEqual(new Set(rows.map(n=>n.userData.spacefaceTags.lod)),new Set(['lod0','lod1','lod2']));
++ console.log('v12 canonical composed cells',JSON.stringify([...cells].map(([id,rows])=>({id,meshes:rows.length,triangles:rows.reduce((s,n)=>s+(n.geometry.index?.count||n.geometry.attributes.position.count)/3,0)}))));
++});
++test('unrelated copied part tags retain ordinary batching and cannot mint a sealed runtime identity',()=>{
++ const scene=new THREE.Group(),part=new THREE.Group();part.name='PART_SPLITTER_PORT';scene.add(part);const mesh=new THREE.Mesh(new THREE.BoxGeometry(),new THREE.MeshStandardMaterial());mesh.name='LOD0_FOREIGN';part.add(mesh);
++ const table=deriveAuthoredRuntimeTable(scene,{assetId:'UNRELATED',slot:'hull'});
++ assert.equal(table.primitives[0].tags.broodCell,undefined);assert.equal(broodCellBatchKey('ordinary',{broodCell:'brood_splitter_port'}),'ordinary');
++});
+--- /dev/null
++++ b/test/lib/splitterV12Graph.mjs
+@@ -0,0 +1,22 @@
++import * as THREE from 'three';
++import { NodeIO } from '@gltf-transform/core';
++import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
++import { readFileSync } from 'node:fs';
++import { createHash } from 'node:crypto';
++const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
++export async function splitterSourceGraph(file){
++ const bytes=readFileSync(file),json=JSON.parse(bytes.subarray(20,20+bytes.readUInt32LE(12)));
++ const doc=await new NodeIO().registerExtensions(ALL_EXTENSIONS).read(file);
++ const materials=new Map(),textures=new Map();
++ const texture=t=>{if(!t)return null;if(!textures.has(t)){const q=new THREE.Texture();q.name=t.getName();q.userData.sourceImageSha256=sha(t.getImage());textures.set(t,q);}return textures.get(t);};
++ const material=m=>{if(!m)return new THREE.MeshStandardMaterial({name:'non-render-helper'});if(!materials.has(m)){const color=m.getBaseColorFactor();const q=new THREE.MeshStandardMaterial({name:m.getName(),color:new THREE.Color(...color.slice(0,3)),opacity:color[3],roughness:m.getRoughnessFactor(),metalness:m.getMetallicFactor(),map:texture(m.getBaseColorTexture()),normalMap:texture(m.getNormalTexture()),roughnessMap:texture(m.getMetallicRoughnessTexture()),metalnessMap:texture(m.getMetallicRoughnessTexture())});q.userData=m.getExtras();materials.set(m,q);}return materials.get(m);};
++ const names={POSITION:'position',NORMAL:'normal',TEXCOORD_0:'uv',TEXCOORD_1:'uv1',COLOR_0:'color',TANGENT:'tangent'};
++ const node=n=>{let object;const primitives=n.getMesh()?.listPrimitives()||[];
++  if(primitives.length>1)throw new Error('graph fixture requires the sealed one-material-per-node source');
++  if(primitives.length){const p=primitives[0],g=new THREE.BufferGeometry();for(const sem of p.listSemantics()){const attr=p.getAttribute(sem);if(names[sem])g.setAttribute(names[sem],new THREE.BufferAttribute(attr.getArray().slice(),attr.getElementSize(),attr.getNormalized()));}if(p.getIndices())g.setIndex(new THREE.BufferAttribute(p.getIndices().getArray().slice(),1));object=new THREE.Mesh(g,material(p.getMaterial()));}
++  else object=new THREE.Group();
++  object.name=n.getName();object.userData=structuredClone(n.getExtras());new THREE.Matrix4().fromArray(n.getMatrix()).decompose(object.position,object.quaternion,object.scale);
++  for(const child of n.listChildren())object.add(node(child));return object;};
++ const src=doc.getRoot().listScenes()[0],scene=new THREE.Group();scene.name=src.getName();scene.userData=structuredClone(src.getExtras());for(const n of src.listChildren())scene.add(node(n));
++ scene.updateMatrixWorld(true);return {scene,asset:json.asset,sha256:sha(bytes),bytes:bytes.length};
++}

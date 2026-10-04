@@ -1,0 +1,2544 @@
+diff --git a/src/ai/combatDoctrine.js b/src/ai/combatDoctrine.js
+index 139f228..f91a25b 100644
+--- a/src/ai/combatDoctrine.js
++++ b/src/ai/combatDoctrine.js
+@@ -1,3 +1,5 @@
++import { advanceBroodAttack, BROOD_ATTACK_PROFILES } from '../combat/broodContact.js';
++import { captureAIComponent, prepareAIComponent } from './continuation.js';
+ // M1.5 readable combat doctrines. Pure deterministic transient records: no world root, RNG stream,
+ // wall clock, action execution, physics mutation, or presentation ownership lives here.
+ import {
+@@ -18,6 +20,9 @@ import { capitalOpeningAnnouncement, resolveCapitalOpening } from '../combat/sub
+ export const CombatDoctrineId = Object.freeze({
+   INTERCEPTOR_FLYBY: 'interceptor_flyby',
+   BRAWLER_COMMIT: 'brawler_commit',
++  BROOD_SPIT: 'brood_spit',
++  BROOD_CHARGE: 'brood_charge',
++  BROOD_LUNGE: 'brood_lunge',
+   TETHER_CONTROL_RAIDER: 'tether_control_raider',
+   FIELD_ANCHOR_CONTROLLER: 'field_anchor_controller',
+   RANGED_DISENGAGER: 'ranged_disengager',
+@@ -32,6 +37,8 @@ export const CombatDoctrineId = Object.freeze({
+   SHIELD_BREAKER: 'shield_breaker',
+   DETONATOR_RUN: 'detonator_run',
+ });
++
++function isBroodDoctrine(id) { return id === CombatDoctrineId.BROOD_CHARGE || id === CombatDoctrineId.BROOD_LUNGE || id === CombatDoctrineId.BROOD_SPIT; }
+ 
+ export const DOCTRINE_TELEGRAPH_TICKS = 30;
+ 
+@@ -261,6 +268,9 @@ function escortWard(perception, self) {
+ }
+ 
+ export class CombatDoctrineRuntime {
++  serializeContinuation() { return captureAIComponent('doctrine', this); }
++  prepareContinuation(data, context) { return prepareAIComponent('doctrine', this, data, context); }
++
+   constructor({ seed = 1 } = {}) {
+     this.seed = (Number(seed) >>> 0) || 1;
+     this.byEntity = new Map();
+@@ -280,16 +290,19 @@ export class CombatDoctrineRuntime {
+       this.byEntity.delete(entityId);
+       return null;
+     }
+-    const target = selectDoctrineTarget(doctrineId, perception);
++    let target = selectDoctrineTarget(doctrineId, perception);
+     let record = this.byEntity.get(entityId);
+     if (conditionalHostilityActor(perception) && !target && !(record && record.targetId != null)) {
+       this.byEntity.delete(entityId);
+       return null;
+     }
++    if (isBroodDoctrine(doctrineId) && record?.broodAttack?.phase !== 'approach' && record?.targetId != null) {
++      target = perception.contacts.find(contact => contact.id === record.targetId) || null;
++    }
+     const self = perception && perception.self || null;
+     const factionBehavior = normalizeFactionBehaviorProfile(self && self.factionBehavior);
+     const flightProfile = flightProfileFor(doctrineId, self);
+-    if (!record || record.doctrineId !== doctrineId || record.targetId !== (target && target.id) ||
++    if (!record || record.doctrineId !== doctrineId || (record.targetId !== (target && target.id) && !isBroodDoctrine(doctrineId)) ||
+       record.flightProfile !== flightProfile) {
+       record = makeRecord(this.seed, tick, entityId, doctrineId, target && target.id, flightProfile);
+       this.byEntity.set(entityId, record);
+@@ -299,6 +312,11 @@ export class CombatDoctrineRuntime {
+     record.outcome = null;
+     record.fallbackRearmed = false;
+     record.telegraphStartedTick = null;
++
++    if (isBroodDoctrine(doctrineId)) {
++      updateBroodAttackDoctrine(record, tick, self, target);
++      return snapshot(record, target, directive, null, self);
++    }
+ 
+     if (!target) {
+       enter(record, initialPhase(doctrineId), tick, null);
+@@ -452,6 +470,7 @@ export function applyCombatDoctrineToSelection(selected, doctrine) {
+       formationLocked: corridor ? false : doctrine.formationLocked,
+       breakFormation: corridor ? true : !doctrine.formationLocked,
+       attackLine: doctrine.attackLine || null,
++      broodAttack: doctrine.broodAttack || null,
+       crossingLane: (doctrine.doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY &&
+           (doctrine.phase === 'engine_flare' || doctrine.phase === 'strike'))
+         || (doctrine.phase === 'commit' && (doctrine.doctrineId === CombatDoctrineId.BRAWLER_COMMIT
+@@ -490,6 +509,28 @@ function updateInterceptor(record, tick, self, target, distance, dispatched = fa
+   } else if (record.phase === 'reform' && age >= INTERCEPTOR_REFORM_TICKS) {
+     advanceCycle(record, tick, 'ingress');
+   }
++}
++
++function updateBroodAttackDoctrine(record, tick, self, target) {
++  const previous = record.broodAttack;
++  const active = previous?.phase === 'windup' || previous?.phase === 'commit';
++  const interrupted = !!(self?.tumbling || self?.recovering ||
++    (active && self?.broodAttackInterruptedTick >= previous.phaseStartedTick));
++  const role = record.doctrineId === CombatDoctrineId.BROOD_LUNGE ? 'brood_mite' : record.doctrineId === CombatDoctrineId.BROOD_SPIT ? 'brood_spitter' : 'brood_charger';
++  const attack = advanceBroodAttack(previous, { role, entityId: record.entityId,
++    tick, self, target, interrupted });
++  if (!attack) return;
++  record.broodAttack = attack;
++  record.targetId = attack.targetId ?? target?.id ?? record.targetId;
++  if (attack !== previous) {
++    record.phase = attack.phase;
++    record.phaseStartedTick = attack.phaseStartedTick;
++    record.phaseChangedTick = tick;
++    record.telegraphStartedTick = attack.phase === 'windup' ? tick : null;
++    record.telegraph = attack.phase === 'windup'
++      ? Object.freeze({ kind: record.doctrineId, durationTicks: BROOD_ATTACK_PROFILES[role].windupTicks, startedTick: tick }) : null;
++  }
++  record.fireWindow = role === 'brood_spitter' && attack.phase === 'commit';
+ }
+ 
+ function updateBrawler(record, tick, self, target, distance) {
+@@ -1207,7 +1248,7 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
+   // leaves both the hull line and the volley stale.
+   const aimCommitted = (phase === 'charge_cue' || phase === 'fire_window')
+     && Number.isFinite(record.aimCommitBearing);
+-  const faceAngle = aimCommitted ? record.aimCommitBearing : null;
++  let faceAngle = aimCommitted ? record.aimCommitBearing : null;
+   let maneuverKind = ManeuverKind.INTERCEPT;
+   let preferredRange = 180;
+   let allowedActionId = null;
+@@ -1215,7 +1256,13 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
+   let maneuverTargetId = target ? target.id : record.targetId;
+   let lateralSign = record.side;
+   let faceTarget = false;
+-  if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY || doctrineId === CombatDoctrineId.BRAWLER_COMMIT) {
++  if (isBroodDoctrine(doctrineId)) {
++    maneuverKind = ManeuverKind.INTERCEPT;
++    preferredRange = doctrineId === CombatDoctrineId.BROOD_SPIT ? 260 : 0;
++    if (doctrineId === CombatDoctrineId.BROOD_SPIT && phase === 'commit') allowedActionId = 'action_burst';
++    lateralSign = 0;
++    faceAngle = (phase === 'windup' || phase === 'commit') ? record.broodAttack?.attackLine?.heading : null;
++  } else if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY || doctrineId === CombatDoctrineId.BRAWLER_COMMIT) {
+     const brawler = doctrineId === CombatDoctrineId.BRAWLER_COMMIT || record.flightProfile === 'brawler_commit';
+     formationLocked = phase === 'ingress' || phase === 'reform';
+     lateralSign = phase === 'ingress' || phase === 'reform' ? 0 : record.side;
+@@ -1451,6 +1498,7 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
+     turretEdge: record.turretEdge || 0,
+     fireWindow: !!record.fireWindow,
+     ramAuthorized: record.ramAuthorized === true,
++    broodAttack: record.broodAttack || null,
+     phaseChanged: !!target && record.phaseChangedTick === record.lastTick,
+     formationLocked,
+     maneuverTargetId,
+@@ -1479,6 +1527,9 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
+ export function attackLineFor(record, self) {
+   if (!self || !self.pos) return null;
+   const phase = record && record.phase;
++  if (isBroodDoctrine(record?.doctrineId)) {
++    return phase === 'windup' || phase === 'commit' ? record.broodAttack?.attackLine || null : null;
++  }
+   const active = phase === 'strike' || phase === 'engine_flare'
+     || phase === 'commit' || phase === 'fire_window' || phase === 'charge_cue';
+   if (!active) return null;
+@@ -1609,6 +1660,7 @@ function bandScore(value, ordered) {
+ }
+ 
+ function initialPhase(doctrineId) {
++  if (isBroodDoctrine(doctrineId)) return 'approach';
+   if (doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) return 'flank';
+   if (doctrineId === CombatDoctrineId.RANGED_DISENGAGER
+     || doctrineId === CombatDoctrineId.RANGED_STALKER) return 'outer_standoff';
+@@ -1623,6 +1675,7 @@ function initialPhase(doctrineId) {
+ }
+ 
+ function flightProfileFor(doctrineId, self) {
++  if (isBroodDoctrine(doctrineId)) return doctrineId;
+   if (doctrineId === CombatDoctrineId.BRAWLER_COMMIT) return 'brawler_commit';
+   if (doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE
+     || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_TOLLMAN
+diff --git a/src/ai/continuation.js b/src/ai/continuation.js
+new file mode 100644
+index 0000000..8d67542
+--- /dev/null
++++ b/src/ai/continuation.js
+@@ -0,0 +1,1399 @@
++import { stableId } from './contracts.js';
++// Portable, bounded tactical continuation. Only explicitly named semantic fields are captured.
++// Runtime objects, ports, traces and scratch collections never cross this boundary.
++export const TACTICAL_CONTINUATION_VERSION = 1;
++export const TACTICAL_CONTINUATION_LIMITS = Object.freeze({
++  actors: 512,
++  squads: 256,
++  contacts: 8192,
++  nodes: 100000,
++  bytes: 4 * 1024 * 1024
++});
++export function continuationError(reason) {
++  const e = new Error(`tactical_continuation_${reason}`);
++  e.code = e.message;
++  throw e;
++}
++const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
++const plain = o => o && typeof o === 'object' && (Object.getPrototypeOf(o) === Object.prototype || Object.getPrototypeOf(o) === null);
++let captureBudget = null;
++export function withTacticalCaptureBudget(capture) {
++  const previous = captureBudget;
++  captureBudget = {
++    nodes: 0
++  };
++  try {
++    return capture();
++  } finally {
++    captureBudget = previous;
++  }
++}
++export function copyContinuationValue(value, budget = captureBudget || {
++  nodes: 0
++}, depth = 0) {
++  if (++budget.nodes > TACTICAL_CONTINUATION_LIMITS.nodes || depth > 24) continuationError('node_limit');
++  if (value == null || typeof value === 'boolean') return value;
++  if (typeof value === 'string') {
++    if (value.length > 4096) continuationError('string_limit');
++    return value;
++  }
++  if (typeof value === 'number') {
++    if (Number.isNaN(value)) continuationError('nan');
++    return Number.isFinite(value) ? value : {
++      $number: value > 0 ? 'Infinity' : '-Infinity'
++    };
++  }
++  if (Array.isArray(value)) {
++    if (value.length > 8192) continuationError('array_limit');
++    return value.map(v => copyContinuationValue(v, budget, depth + 1));
++  }
++  if (!plain(value)) continuationError('non_plain_value');
++  const out = {};
++  for (const key of Object.keys(value)) {
++    if (['__proto__', 'constructor', 'prototype'].includes(key)) continuationError('unsafe_key');
++    out[key] = copyContinuationValue(value[key], budget, depth + 1);
++  }
++  return out;
++}
++export function readContinuationValue(value, budget = {
++  nodes: 0
++}, depth = 0) {
++  if (++budget.nodes > TACTICAL_CONTINUATION_LIMITS.nodes || depth > 24) continuationError('node_limit');
++  if (plain(value) && own(value, '$number')) {
++    if (Object.keys(value).length !== 1 || !['Infinity', '-Infinity'].includes(value.$number)) continuationError('number');
++    return value.$number === 'Infinity' ? Infinity : -Infinity;
++  }
++  if (value == null || typeof value === 'boolean') return value;
++  if (typeof value === 'number') {
++    if (!Number.isFinite(value)) continuationError('number');
++    return value;
++  }
++  if (typeof value === 'string') {
++    if (value.length > 4096) continuationError('string_limit');
++    return value;
++  }
++  if (Array.isArray(value)) {
++    if (value.length > 8192) continuationError('array_limit');
++    return value.map(v => readContinuationValue(v, budget, depth + 1));
++  }
++  if (!plain(value)) continuationError('non_plain_value');
++  const out = {};
++  for (const key of Object.keys(value)) {
++    if (['__proto__', 'constructor', 'prototype'].includes(key)) continuationError('unsafe_key');
++    out[key] = readContinuationValue(value[key], budget, depth + 1);
++  }
++  return out;
++}
++export function continuationRecord(value, fields, reading = false) {
++  if (!value || typeof value !== 'object' || Array.isArray(value)) continuationError('record');
++  if (reading && Object.keys(value).some(k => !fields.includes(k))) continuationError('unknown_field');
++  const out = {};
++  for (const key of fields) if (own(value, key) && value[key] !== undefined) out[key] = (reading ? readContinuationValue : copyContinuationValue)(value[key]);
++  return out;
++}
++export function continuationRows(value, limit = 512) {
++  if (!Array.isArray(value) || value.length > limit) continuationError('rows');
++  const seen = new Set();
++  for (const row of value) {
++    if (!Array.isArray(row) || row.length !== 2 || seen.has(row[0])) continuationError('row');
++    seen.add(row[0]);
++  }
++  return value;
++}
++export function continuationPacket(value, fields) {
++  if (!plain(value) || value.version !== 1 || Object.keys(value).some(k => !['version', ...fields].includes(k))) continuationError('version');
++  return value;
++}
++export function remapContinuationRef(value, context) {
++  return value == null ? null : context.bindEntity(value);
++}
++export function remapContinuationFields(value, fields, context) {
++  if (!value) return value;
++  for (const key of fields) if (own(value, key) && value[key] != null) value[key] = remapContinuationRef(value[key], context);
++  return value;
++}
++// A tactical target may be an entity or an explicitly observed attachment. The restore
++// binding owns that distinction; string/number shape alone never grants attachment identity.
++export function remapContinuationTargets(value, fields, context) {
++  if (!value) return value;
++  for (const key of fields) if (own(value, key) && value[key] != null) {
++    value[key] = context.bindTarget ? context.bindTarget(value[key]) : context.bindEntity(value[key]);
++  }
++  return value;
++}
++export function copyManeuver(value, context = null, reading = false) {
++  const out = continuationRecord(value, ['version', 'entityId', 'tick', 'kind', 'forceLocal', 'torqueYaw', 'boost', 'brake', 'targetHeading', 'horizonTicks', 'trajectory', 'reason'], reading);
++  if (context) {
++    // A loaded Brood life must announce a new attack before it can thrust an old pass.
++    // Keep only inert motor intent until the new doctrine/cohort tick; other pilots replay exactly.
++    if (reading && context.resolveEntity?.(value.entityId)?.data?.broodBodyId) {
++      out.forceLocal = { forward: 0, right: 0 }; out.torqueYaw = 0; out.boost = false; out.brake = false;
++    }
++    remapContinuationFields(out, ['entityId'], context);
++  }
++  return out;
++}
++export function remapPerception(value, context) {
++  if (!value) return value;
++  if (value.self) {
++    const old = value.self.id;
++    remapContinuationFields(value.self, ['id'], context);
++    if (value.self.occupantGeneration != null) value.self.occupantGeneration = context.destinationGeneration(old);
++    if (value.self.activity) remapContinuationFields(value.self.activity, ['targetId'], context);
++  }
++  if (Array.isArray(value.contacts)) value.contacts = value.contacts.map(c => remapContact(c, context)).filter(Boolean);
++  if (Array.isArray(value.events)) for (const e of value.events) remapContinuationFields(e, ['sourceId', 'targetId'], context);
++  return value;
++}
++export function remapContact(contact, context) {
++  if (!contact) return null;
++  // Tether contacts are semantic attachment IDs, not entity IDs. Their endpoints still bind.
++  if (contact.kind === 'tether') {
++    contact.id = context.bindAttachment?.(contact) ?? null;
++    if (contact.id == null) return null;
++  } else if (contact.id != null) {
++    contact.id = context.bindEntity(contact.id);
++    if (contact.id == null) return null;
++  }
++  remapContinuationFields(contact, ['ownerId'], context);
++  if (contact.targetId != null) contact.targetId = context.bindEntity(contact.targetId);
++  return contact;
++}
++export function remapDirective(value, context) {
++  if (!value) return value;
++  remapContinuationFields(value, ['entityId', 'memberId', 'leaderId'], context);
++  remapContinuationTargets(value, ['focusTargetId', 'targetId'], context);
++  if (value.objective) remapContinuationTargets(value.objective, ['targetId'], context);
++  if (value.enemyMind) remapContinuationFields(value.enemyMind, ['entityId', 'targetId', 'chargeId'], context);
++  if (value.leader) remapContinuationFields(value.leader, ['id'], context);
++  return value;
++}
++export function remapDecision(value, context) {
++  if (!value) return value;
++  remapContinuationFields(value, ['entityId'], context);
++  if (value.entityId == null) return null;
++  if ((value.combatDoctrine?.doctrineId === 'brood_charge' || value.combatDoctrine?.doctrineId === 'brood_lunge' || value.combatDoctrine?.doctrineId === 'brood_spit') || value.action?.maneuver?.broodAttack) return null;
++  remapDirective(value.directive, context);
++  if (value.perception) remapPerception(value.perception, context);
++  if (value.selected) remapContinuationTargets(value.selected, ['targetId'], context);
++  if (value.behavior) remapContinuationTargets(value.behavior, ['targetId'], context);
++  if (value.action) {
++    remapContinuationFields(value.action, ['entityId'], context);
++    remapContinuationTargets(value.action, ['targetId'], context);
++    if (value.action.maneuver) remapContinuationTargets(value.action.maneuver, ['targetId'], context);
++  }
++  if (value.enemyMind) remapContinuationFields(value.enemyMind, ['entityId', 'targetId', 'chargeId'], context);
++  if (value.maneuver) remapContinuationFields(value.maneuver, ['entityId'], context);
++  if (value.combatDoctrine) remapContinuationFields(value.combatDoctrine, ['entityId', 'targetId', 'actionTargetId', 'custodyTargetId'], context);
++  return value;
++}
++
++/** Accept only mappings created from an actual saved entity record by this restore transaction. */
++export function createTacticalRestoreBindings(payload, state, entityIdRemap, savedRecords) {
++  const rows = payload?.actors;
++  if (!Array.isArray(rows) || rows.length > 512) continuationError('actor_limit');
++  const savedActorCount = rows.length;
++  const records = new Map((savedRecords || []).filter(Boolean).map(e => [String(e.id), e]));
++  const bindings = new Map(),
++    destinations = new Set();
++  for (const row of rows) {
++    const identity = continuationRecord(row, ['id', 'generation', 'worldRecordId', 'bodyLifeId'], true);
++    if (row.id == null || bindings.has(String(row.id))) continuationError('actor_identity');
++    const saved = records.get(String(row.id));
++    const destId = entityIdRemap?.get(String(row.id));
++    const entity = destId == null ? null : state.entities.get(destId);
++    if (!saved || !entity || entity.alive === false) continue;
++    if (row.worldRecordId != null && (saved.data?.worldRecordId !== row.worldRecordId || entity.data?.worldRecordId !== row.worldRecordId)) continue;
++    if (row.bodyLifeId != null && (saved.data?.bodyLifeId !== row.bodyLifeId || entity.data?.bodyLifeId !== row.bodyLifeId)) continue;
++    if (destinations.has(entity)) continuationError('duplicate_destination');
++    destinations.add(entity);
++    bindings.set(String(row.id), {
++      row: identity,
++      entity,
++      generation: entity.occupantGeneration
++    });
++  }
++  const binding = id => {
++    const b = bindings.get(String(id));
++    return b && b.entity.alive !== false && state.entities.get(b.entity.id) === b.entity && b.entity.occupantGeneration === b.generation ? b : null;
++  };
++  const attachmentRefs = new Map();
++  const currentAttachment = ref => ref && ref.attachment.state === 'active'
++    && state.combat?.attachments?.byId?.[ref.id] === ref.attachment
++    && binding(ref.oldOwner)?.entity === ref.owner && binding(ref.oldTarget)?.entity === ref.target
++    && ref.attachment.ownerId === ref.owner.id && ref.attachment.targetId === ref.target.id;
++  const bindAttachment = contact => {
++    const id = contact?.id;
++    if (contact?.kind !== 'tether' || id == null) return null;
++    if (!attachmentRefs.has(id)) {
++      const owner = binding(contact.ownerId)?.entity;
++      const target = binding(contact.targetId)?.entity;
++      const byId = state.combat?.attachments?.byId;
++      const attachment = byId && own(byId, id) ? byId[id] : null;
++      const ref = { id, attachment, owner, target, oldOwner: contact.ownerId, oldTarget: contact.targetId };
++      attachmentRefs.set(id, !bindings.has(String(id)) && contact.attachmentId === id
++        && attachment?.id === id && owner && target && currentAttachment(ref) ? ref : null);
++    }
++    const ref = attachmentRefs.get(id);
++    // Conflicting saved observations cannot rebind an attachment to a different pair of lives.
++    if (!ref || contact.attachmentId !== id || contact.ownerId !== ref.oldOwner || contact.targetId !== ref.oldTarget) {
++      attachmentRefs.set(id, null);
++      return null;
++    }
++    return currentAttachment(ref) ? id : null;
++  };
++  return {
++    tick: state.tick,
++    simTime: state.simTime,
++    bindEntity: id => binding(id)?.entity.id ?? null,
++    bindAttachment,
++    targetKind: id => attachmentRefs.has(id) ? 'attachment' : binding(id) ? 'entity' : null,
++    bindTarget: id => attachmentRefs.has(id)
++      ? (currentAttachment(attachmentRefs.get(id)) ? id : null) : binding(id)?.entity.id ?? null,
++    resolveEntity: id => binding(id)?.entity ?? null,
++    savedGeneration: id => binding(id)?.row.generation ?? null,
++    destinationGeneration: id => binding(id)?.generation ?? null,
++    bindingReport: () => ({ savedActors: savedActorCount, boundActors: bindings.size, omittedActors: savedActorCount - bindings.size }),
++    assertCurrent() {
++      for (const b of bindings.values()) if (!binding(b.row.id)) continuationError('stale_binding');
++      for (const ref of attachmentRefs.values()) if (ref && !currentAttachment(ref)) continuationError('stale_attachment');
++    }
++  };
++}
++/** Called only after whole-envelope validation, before any target-bearing owner prepares. */
++export function prepareTacticalTargetBindings(data, context) {
++  if (!data.stack || !context.bindAttachment) return;
++  for (const [, memory] of data.stack.components.memory.rows) {
++    for (const [, contact] of memory.contacts) if (contact.kind === 'tether') context.bindAttachment(contact);
++  }
++  for (const [, perception] of data.stack.perceptionCache) {
++    for (const contact of perception.contacts) if (contact.kind === 'tether') context.bindAttachment(contact);
++  }
++}
++export function captureTacticalActors(state) {
++  const out = [];
++  for (const entity of state.entities.values()) {
++    if (!entity || entity.alive === false) continue;
++    out.push({
++      id: entity.id,
++      generation: entity.occupantGeneration ?? null,
++      worldRecordId: entity.data?.worldRecordId ?? null,
++      bodyLifeId: entity.data?.bodyLifeId ?? null
++    });
++    if (out.length > 512) continuationError('actor_limit');
++  }
++  return out;
++}
++const DIRECTOR_FIELDS = 'phase phaseTick pressure targetPressure reinforcementBudget reinforcementCooldown narrativeCooldown beatIndex breatherActive breatherTicks breatherHoldTicks breatherCooldown lastReinforceTick lastDecision'.split(' ');
++const MANEUVER_FIELDS = 'stationaryTicks clearUntilTick lastKind lastRequest lastTick smoothedForward smoothedRight smoothedTorqueYaw lastReflex retreatDeadlockTicks invalidRetreatUntil blockedRetreatX blockedRetreatZ lastRetreatSampleTick lastHeading lastHeadingTick lastRot lastRotTick'.split(' ');
++const DOCTRINE_FIELDS = 'doctrineId flightProfile phase phaseStartedTick phaseChangedTick targetId actionTargetId cycle bossStage side telegraph telegraphStartedTick fireWindow outcome closestDistance flightPoint ramAuthorized preferredRange aimCommitBearing broodAttack fallbackArmed custodyTargetId lastTick seed entityId fallbackRearmed openingCue openingOpen openingTransitionId turretEdge _cachePhase _cachePosX _cachePosZ _cacheRot _cachedAttackLine'.split(' ');
++const BEHAVIOR_FIELDS = 'actionId targetId startedTick utility status handle maneuver lastReason blockedContext blockedRetries blockedRetryAtTick lastTraceSignature'.split(' ');
++const SELF_FIELDS = 'id team pos vel rot radius planarRadius hullFraction moraleImmune arenaPursuit energyFraction heatFraction disabled tumbling recovering broodAttackInterruptedTick broodAttackReadyTick tethered capabilities subsystemFractions activity roe combatDoctrineId factionBehavior aimProjectileSpeed ramAuthorized woundedFallbackSpent turretPhaseEdges turretsLost operationalMassBand mobilityBand cargoBand tetherabilityBand occupantGeneration alive'.split(' ');
++const CONTACT_FIELDS = 'id occupantGeneration kind team classification pos vel radius planarRadius alive valid visible confidence threat hostile targetId ownerId attachmentId sourceSocketId targetSocketId ownedBySelf exposed tethered disabled objectiveValue massClass operationalMassBand mobilityBand cargoBand tetherabilityBand tags firstSeenTick lastSeenTick observedConfidence ageTicks'.split(' ');
++export function captureAIComponent(kind, owner) {
++  if (kind === 'director') return {
++    version: 1,
++    state: continuationRecord(owner.state, DIRECTOR_FIELDS)
++  };
++  if (owner.byEntity.size > 512) continuationError('actor_limit');
++  if (kind === 'perception') {
++    let count = 0;
++    for (const memory of owner.byEntity.values()) {
++      count += memory.contacts.size;
++      if (count > 8192) continuationError('contact_limit');
++    }
++  }
++  if (kind === 'perception') return {
++    version: 1,
++    rows: [...owner.byEntity].map(([id, m]) => [id, {
++      tick: m.tick,
++      revision: m.revision,
++      self: continuationRecord(m.self, SELF_FIELDS),
++      events: copyContinuationValue(m.events),
++      contacts: [...m.contacts].map(([key, c]) => [key, continuationRecord(c, CONTACT_FIELDS)])
++    }])
++  };
++  const fields = kind === 'maneuver' ? MANEUVER_FIELDS : kind === 'doctrine' ? DOCTRINE_FIELDS : BEHAVIOR_FIELDS;
++  return {
++    version: 1,
++    rows: [...owner.byEntity].map(([id, row]) => {
++      const out = continuationRecord(row, fields);
++      if (kind === 'maneuver') {
++        out.collisionPasses = [...row.collisionPasses].map(([k, v]) => [k, copyContinuationValue(v)]);
++        out.reflex = {
++          ...continuationRecord(row.reflex, ['burst', 'lastHull']),
++          cooldowns: row.reflex.cooldowns ? [...row.reflex.cooldowns] : null,
++          seenAllies: row.reflex.seenAllies ? [...row.reflex.seenAllies] : null
++        };
++      }
++      return [id, out];
++    })
++  };
++}
++export function prepareAIComponent(kind, owner, data, context) {
++  validateAIComponentContinuation(kind, data);
++  if (kind === 'director') {
++    continuationPacket(data, ['state']);
++    const state = continuationRecord(data.state, DIRECTOR_FIELDS, true);
++    if (!Number.isFinite(state.phaseTick) || state.phaseTick < 0) continuationError('director_clock');
++    return () => {
++      owner.state = state;
++    };
++  }
++  continuationPacket(data, ['rows']);
++  const map = new Map();
++  let contacts = 0;
++  for (const [old, row] of continuationRows(data.rows)) {
++    const id = context.bindEntity(old);
++    if (id == null) continue;
++    if (kind === 'perception') {
++      continuationRecord(row, ['tick', 'revision', 'self', 'events', 'contacts'], true);
++      const self = continuationRecord(row.self, SELF_FIELDS, true);
++      remapPerception({
++        self
++      }, context);
++      if (self.id == null) continue;
++      const remembered = new Map();
++      for (const [, raw] of continuationRows(row.contacts, 8192)) {
++        if (++contacts > 8192) continuationError('contact_limit');
++        const c = remapContact(continuationRecord(raw, CONTACT_FIELDS, true), context);
++        if (c) remembered.set(`${c.kind}|${stableId(c.id)}`, c);
++      }
++      const events = readContinuationValue(row.events);
++      for (const e of events) remapContinuationFields(e, ['sourceId', 'targetId'], context);
++      map.set(id, {
++        tick: row.tick,
++        revision: row.revision,
++        self,
++        events,
++        contacts: remembered,
++        snapshotContacts: [],
++        snapshot: {
++          tick: row.tick,
++          self,
++          contacts: [],
++          events,
++          revision: row.revision
++        }
++      });
++      continue;
++    }
++    if (kind === 'doctrine' && (row.doctrineId === 'brood_charge' || row.doctrineId === 'brood_lunge' || row.doctrineId === 'brood_spit')) continue;
++    if (kind === 'behavior' && row.maneuver?.broodAttack) continue;
++    const fields = kind === 'maneuver' ? MANEUVER_FIELDS : kind === 'doctrine' ? DOCTRINE_FIELDS : BEHAVIOR_FIELDS;
++    const out = continuationRecord(row, kind === 'maneuver' ? [...fields, 'collisionPasses', 'reflex'] : fields, true);
++    if (kind === 'maneuver') {
++      out.reflex = continuationRecord(row.reflex, ['burst', 'lastHull', 'cooldowns', 'seenAllies'], true);
++      out.reflex.cooldowns = out.reflex.cooldowns ? new Map(continuationRows(out.reflex.cooldowns)) : null;
++      out.reflex.seenAllies = out.reflex.seenAllies ? new Map(continuationRows(out.reflex.seenAllies).map(([k, v]) => [context.bindEntity(k), v]).filter(([k]) => k != null)) : null;
++      out.collisionPasses = new Map();
++      for (const [other, v] of continuationRows(row.collisionPasses, 8192)) {
++        const dest = context.bindEntity(other);
++        if (dest != null) out.collisionPasses.set(dest, readContinuationValue(v));
++      }
++      if (out.lastRequest) out.lastRequest = copyManeuver(row.lastRequest, context, true);
++    } else if (kind === 'doctrine') remapContinuationFields(out, ['entityId', 'targetId', 'actionTargetId', 'custodyTargetId'], context);else {
++      const originalTarget = out.targetId;
++      remapContinuationTargets(out, ['targetId'], context);
++      if (out.maneuver) remapContinuationTargets(out.maneuver, ['targetId'], context);
++      if (out.blockedContext && originalTarget !== out.targetId) {
++        // BehaviorExecutor owns this five-part key: action, target, tactic, objective, reason.
++        // Only its target slot is an entity reference; catalog/intent text stays unchanged.
++        const parts = out.blockedContext.split('|');
++        if (parts[1] === String(originalTarget ?? '')) {
++          parts[1] = String(out.targetId ?? '');
++          out.blockedContext = parts.join('|');
++        } else {
++          out.blockedContext = null;
++          out.blockedRetries = 0;
++          out.blockedRetryAtTick = null;
++        }
++      }
++      if (originalTarget !== out.targetId) delete out.lastTraceSignature;
++      if (originalTarget != null && out.targetId == null || out.handle != null
++        && !context.validateAction?.(id, out.handle, out.actionId, out.targetId, context.targetKind?.(originalTarget))) {
++        out.actionId = null;
++        out.handle = null;
++        out.maneuver = null;
++        out.status = 'cancelled';
++      }
++    }
++    map.set(id, out);
++  }
++  return () => {
++    owner.byEntity = map;
++    if (kind === 'maneuver') owner.contactIndexes = new WeakMap();
++  };
++}
++const SQUAD_FIELDS = 'id doctrine faction formation formationSpacing formationBound factionBehavior currentTactic tacticSinceTick focusTargetId formationHeading leaderOccupantGeneration withdrawalCommit'.split(' ');
++export function captureSquadContinuation(owner) {
++  if (owner.squads.size > 256 || owner.acceptedLeaderGeneration.size > 256) continuationError('squad_limit');
++  for (const squad of owner.squads.values()) if (squad.members.length > 512) continuationError('actor_limit');
++  for (const leaders of owner.acceptedLeaderGeneration.values()) if (leaders.size > 512) continuationError('actor_limit');
++  return {
++    version: 1,
++    rows: [...owner.squads].map(([id, s]) => [id, {
++      ...continuationRecord(s, SQUAD_FIELDS),
++      members: copyContinuationValue(s.members),
++      roles: [...s.roles],
++      composition: {
++        grammarId: s.composition.grammarId,
++        twist: s.composition.twist,
++        roles: [...s.composition.roles]
++      },
++      breakUntil: [...s.breakUntil],
++      breakReason: [...s.breakReason],
++      lastDirectives: [...s.lastDirectives].map(([k, v]) => [k, copyContinuationValue(v)])
++    }]),
++    leaders: [...owner.acceptedLeaderGeneration].map(([s, m]) => [s, [...m]])
++  };
++}
++export function prepareSquadContinuation(owner, data, context) {
++  validateAIComponentContinuation('squad', data);
++  continuationPacket(data, ['rows', 'leaders']);
++  const squads = new Map(),
++    leaders = new Map();
++  for (const [s, rows] of continuationRows(data.leaders, 256)) {
++    const map = new Map();
++    for (const [old, g] of continuationRows(rows)) {
++      const id = context.bindEntity(old);
++      if (id != null && g === context.savedGeneration(old)) map.set(id, context.destinationGeneration(old));
++    }
++    leaders.set(s, map);
++  }
++  for (const [key, raw] of continuationRows(data.rows, 256)) {
++    const s = continuationRecord(raw, [...SQUAD_FIELDS, 'members', 'roles', 'composition', 'breakUntil', 'breakReason', 'lastDirectives'], true);
++    const oldLeader = s.members[0]?.id;
++    s.members = s.members.map(m => ({
++      ...m,
++      id: context.bindEntity(m.id)
++    })).filter(m => m.id != null);
++    if (!s.members.length) continue;
++    remapContinuationTargets(s, ['focusTargetId'], context);
++    if (s.leaderOccupantGeneration != null) s.leaderOccupantGeneration = s.leaderOccupantGeneration === context.savedGeneration(oldLeader) ? context.destinationGeneration(oldLeader) : null;
++    if (s.withdrawalCommit) {
++      const old = s.withdrawalCommit.anchorLeaderId;
++      remapContinuationFields(s.withdrawalCommit, ['wardId', 'coverId', 'anchorLeaderId'], context);
++      s.withdrawalCommit.anchorLeaderGeneration = context.destinationGeneration(old);
++      if (s.withdrawalCommit.wardId == null) s.withdrawalCommit = null;
++    }
++    const mapRows = rows => new Map(continuationRows(rows).map(([id, v]) => [context.bindEntity(id), v]).filter(([id]) => id != null));
++    s.roles = mapRows(s.roles);
++    s.breakUntil = mapRows(s.breakUntil);
++    s.breakReason = mapRows(s.breakReason);
++    s.lastDirectives = mapRows(s.lastDirectives);
++    for (const d of s.lastDirectives.values()) remapDirective(d, context);
++    s.composition.roles = mapRows(s.composition.roles);
++    Object.assign(s, {
++      perceptionsScratch: [],
++      contactMergeScratch: new Map(),
++      contactsScratch: [],
++      tacticCandidatesScratch: [],
++      capabilityScratch: new Set(),
++      targetAssignmentsScratch: new Map(),
++      targetLoadScratch: new Map(),
++      hostileTargetsScratch: [],
++      assignmentMembersScratch: []
++    });
++    squads.set(key, s);
++  }
++  return () => {
++    owner.squads = squads;
++    owner.acceptedLeaderGeneration = leaders;
++  };
++}
++const FRAME_FIELDS = 'id recipeId seed position velocity heading angularVelocity pathProgress phase phaseStartedTick shapeId morphFromId morphToId morphU spacingScale integrity integrityMin successorPolicy commandId leaderLostTick railDirX railDirZ railLocked reformHeading cycle morphAborted passComplete sockets lastTarget strikeStartedTick extendStartedTick reformStartedTick passTick committedPeak'.split(' ');
++const COHORT_FIELDS = 'id recipeId shape seed bornTick originGate targetId flowPath phase phaseStartedTick densityTarget speedBand disruption reformPolicy position velocity heading angularVelocity integrity integrityMin lastTarget lastCost predicted liveCount laneCount cruise spacing'.split(' ');
++const MEMBER_FIELDS = 'id socket role token laneId laneSide alive pos vel rot radius hullFraction slot slotError slotReady tracking disrupted disruptedUntil coast rejoinTick fireAuthorized faceTarget speedFraction breakFormation live plan lane along arcIndex memberIndex shapeSlot shapeError neighborCount lastRelV ammunition lateralError'.split(' ');
++export function captureChoreography(kind, owner) {
++  const map = kind === 'frames' ? owner.frames : owner.cohorts;
++  if (map.size > 256) continuationError('squad_limit');
++  let members = 0;
++  for (const group of map.values()) {
++    members += group.members.size;
++    if (members > 512) continuationError('actor_limit');
++  }
++  return {
++    version: 1,
++    lastTick: owner.lastTick,
++    rows: [...map].map(([id, f]) => [id, {
++      ...continuationRecord(f, kind === 'frames' ? FRAME_FIELDS : COHORT_FIELDS),
++      members: [...f.members].map(([id, m]) => [id, continuationRecord(m, MEMBER_FIELDS)])
++    }])
++  };
++}
++export function prepareChoreography(kind, owner, data, context) {
++  validateAIComponentContinuation(kind, data);
++  continuationPacket(data, ['lastTick', 'rows']);
++  if (!Number.isInteger(data.lastTick) || data.lastTick > context.tick) continuationError('choreography_clock');
++  const lastTick = data.lastTick;
++  const map = new Map(),
++    byEntity = new Map();
++  for (const [id, raw] of continuationRows(data.rows, 256)) {
++    const f = continuationRecord(raw, [...(kind === 'frames' ? FRAME_FIELDS : COHORT_FIELDS), 'members'], true);
++    f.members = new Map();
++    remapContinuationFields(f, ['commandId', 'targetId'], context);
++    if (f.lastTarget) remapContinuationFields(f.lastTarget, ['id'], context);
++    if (f.sockets) for (const socket of ['lead', 'left', 'right', 'rear']) if (f.sockets[socket] != null) f.sockets[socket] = context.bindEntity(f.sockets[socket]);
++    for (const [old, row] of continuationRows(raw.members)) {
++      const dest = context.bindEntity(old);
++      if (dest == null) continue;
++      const m = continuationRecord(row, MEMBER_FIELDS, true);
++      m.id = dest;
++      if (kind !== 'frames') m.entity = context.resolveEntity(old);
++      if (m.plan) {
++        if (m.plan.broodAttack) m.plan.broodAttack = null;
++        remapContinuationFields(m.plan, ['targetId'], context);
++        m.plan.slot = m.slot;
++        m.plan.live = m.live;
++        byEntity.set(dest, {
++          [kind === 'frames' ? 'squadId' : 'cohortId']: id,
++          plan: m.plan
++        });
++      }
++      f.members.set(dest, m);
++    }
++    if (f.members.size) map.set(id, f);
++  }
++  return () => {
++    owner[kind === 'frames' ? 'frames' : 'cohorts'] = map;
++    owner.byEntity = byEntity;
++    owner.lastTick = lastTick;
++  };
++}
++
++// ── Strict semantic validation (save input only; no owner or world mutations) ──
++// Portable copying is not validation. Every nested object admitted below has an
++// explicit shape, and encoded infinities are accepted only at owner sentinel fields.
++const CV_MAX = Number.MAX_SAFE_INTEGER;
++const cvFail = path => continuationError(`semantic:${path}`);
++const cvNumber = (value, path) => {
++  if (!Number.isFinite(value) || Math.abs(value) > 1e12) cvFail(path);
++};
++const cvNonnegative = (value, path) => {
++  cvNumber(value, path);
++  if (value < 0) cvFail(path);
++};
++const cvInteger = (value, path) => {
++  if (!Number.isSafeInteger(value) || value < 0 || value > CV_MAX) cvFail(path);
++};
++const cvClock = (value, path) => {
++  if (!Number.isSafeInteger(value) || value < -1) cvFail(path);
++};
++const cvUnit = (value, path) => {
++  cvNumber(value, path);
++  if (value < 0 || value > 1) cvFail(path);
++};
++const cvControl = (value, path) => {
++  cvNumber(value, path);
++  if (value < -1 || value > 1) cvFail(path);
++};
++const cvBool = (value, path) => {
++  if (typeof value !== 'boolean') cvFail(path);
++};
++const cvText = (value, path) => {
++  if (typeof value !== 'string' || value.length > 4096) cvFail(path);
++};
++const cvId = (value, path) => {
++  if (typeof value === 'number') cvInteger(value, path);else if (typeof value !== 'string' || !value.length || value.length > 256) cvFail(path);
++};
++const cvNullable = check => (value, path) => {
++  if (value !== null) check(value, path);
++};
++const cvEnum = words => {
++  const values = new Set(words.split(' '));
++  return (value, path) => {
++    if (!values.has(value)) cvFail(path);
++  };
++};
++const cvSentinel = (check, sentinel) => (value, path) => {
++  if (plain(value) && Object.keys(value).length === 1 && value.$number === sentinel) return;
++  check(value, path);
++};
++const cvNegClock = cvSentinel(cvClock, '-Infinity');
++const cvDistance = cvSentinel(cvNonnegative, 'Infinity');
++const cvList = (check, limit = 512) => (value, path) => {
++  if (!Array.isArray(value) || value.length > limit) cvFail(path);
++  value.forEach((entry, index) => check(entry, `${path}[${index}]`));
++};
++const cvRecord = (schema, required = []) => (value, path) => {
++  if (!plain(value) || Array.isArray(value)) cvFail(path);
++  for (const key of Object.keys(value)) {
++    if (!own(schema, key)) cvFail(`${path}.${key}`);
++    schema[key](value[key], `${path}.${key}`);
++  }
++  for (const key of required) if (!own(value, key)) cvFail(`${path}.${key}:required`);
++};
++const cvRows = (check, limit = 512, keyCheck = cvId) => (value, path) => {
++  if (!Array.isArray(value) || value.length > limit) cvFail(path);
++  const seen = new Set();
++  value.forEach((row, index) => {
++    const rowPath = `${path}[${index}]`;
++    if (!Array.isArray(row) || row.length !== 2) cvFail(rowPath);
++    keyCheck(row[0], `${rowPath}.key`);
++    const key = String(row[0]);
++    if (seen.has(key)) cvFail(`${rowPath}.duplicate`);
++    seen.add(key);
++    check(row[1], `${rowPath}.value`, row[0]);
++  });
++};
++const cvFields = (words, check) => Object.fromEntries(words.split(' ').filter(Boolean).map(key => [key, check]));
++const cvVec = cvRecord({
++  x: cvNumber,
++  z: cvNumber
++}, ['x', 'z']);
++const cvSlot = cvRecord({
++  x: cvNumber,
++  z: cvNumber,
++  vx: cvNumber,
++  vz: cvNumber,
++  heading: cvNumber
++}, ['x', 'z', 'vx', 'vz']);
++const cvStrings = cvList(cvText, 128);
++const cvIds = cvList(cvId);
++const cvPhase = cvEnum('respite build peak retreat');
++const cvManeuverKind = cvEnum('hold intercept orbit screen formation approach_socket escape_tether cut_tether retreat clear_deadlock');
++const cvContactKind = cvEnum('ship projectile tether objective hazard waypoint');
++const cvRole = cvEnum('leader striker screen tug thief support');
++const cvDoctrine = cvEnum('interceptor_flyby brawler_commit brood_charge brood_lunge brood_spit tether_control_raider field_anchor_controller ranged_disengager ranged_stalker capital_broadside capital_broadside_tollman capital_broadside_ala escort_screen swarm_pack pack_pursuit mine_layer_wake shield_breaker detonator_run');
++const cvDoctrinePhase = cvEnum('windup recovery anchor_hold approach attach_window breakaway broadside_approach broadside_charge broadside_fire broadside_shift charge_cue close commit control disengage engine_flare escape extend field_spool fire_window flank fuse_cue ingress lance lance_cue mine_drop outer_standoff peel press recover reform regroup relocate reset retreat screen_approach screen_deploy screen_hold shield_dart spool_cue strike wake_cue');
++const cvStatus = cvEnum('idle requested queued running active completed failed cancelled blocked interrupted');
++const cvFaction = cvRecord({
++  pursuitCommitment: cvUnit,
++  preferredRange: cvNonnegative,
++  liveFormation: cvEnum('line ring wedge'),
++  retreatHullFraction: cvUnit,
++  combatDoctrineId: cvDoctrine,
++  disableThenRun: cvBool,
++  firstFire: cvBool,
++  firstFireAgainst: cvStrings,
++  firstFireCondition: cvNullable(cvText),
++  stationDefenseAggression: cvUnit,
++  disableChance: cvUnit,
++  destroyTarget: cvBool,
++  fixedRoute: cvBool
++}, ['pursuitCommitment', 'preferredRange', 'liveFormation', 'retreatHullFraction', 'combatDoctrineId', 'disableThenRun', 'firstFire', 'firstFireAgainst', 'stationDefenseAggression', 'disableChance', 'destroyTarget']);
++const cvActivity = cvRecord({
++  kind: cvEnum('loiter patrol_route transit scan_approach hail_hold attack_run reposition screen disengage return_to_anchor flee'),
++  reason: cvText,
++  anchor: cvNullable(cvVec),
++  leashRadius: cvNonnegative,
++  preferredRange: cvNonnegative,
++  startedTick: cvClock,
++  deadlineTick: cvNullable(cvClock),
++  targetId: cvNullable(cvId),
++  routeId: cvNullable(cvText),
++  encounterId: cvNullable(cvText)
++}, ['kind', 'reason', 'anchor', 'leashRadius', 'preferredRange', 'startedTick', 'deadlineTick', 'targetId', 'routeId', 'encounterId']);
++const cvBands = {
++  operationalMassBand: cvEnum('light medium heavy capital'),
++  mobilityBand: cvEnum('low medium high'),
++  cargoBand: cvEnum('empty light valuable rich'),
++  tetherabilityBand: cvEnum('poor fair good excellent')
++};
++const cvSelf = cvRecord({
++  id: cvId,
++  team: cvNullable(cvId),
++  pos: cvVec,
++  vel: cvVec,
++  rot: cvNumber,
++  radius: cvNonnegative,
++  planarRadius: cvNonnegative,
++  ...cvFields('hullFraction energyFraction heatFraction', cvUnit),
++  ...cvFields('moraleImmune arenaPursuit disabled tumbling recovering tethered ramAuthorized woundedFallbackSpent alive', cvBool),
++  capabilities: cvStrings,
++  subsystemFractions: (value, path) => {
++    if (!plain(value) || Object.keys(value).length > 64) cvFail(path);
++    for (const [key, fraction] of Object.entries(value)) {
++      cvId(key, path);
++      cvUnit(fraction, `${path}.${key}`);
++    }
++  },
++  activity: cvNullable(cvActivity),
++  roe: cvEnum('hold_fire defensive lawful_wanted_only weapons_free'),
++  combatDoctrineId: cvNullable(cvDoctrine),
++  factionBehavior: cvNullable(cvFaction),
++  aimProjectileSpeed: cvNullable(cvNonnegative),
++  turretPhaseEdges: cvList(cvNonnegative, 64),
++  turretsLost: cvInteger,
++  occupantGeneration: cvId,
++  broodAttackReadyTick: cvClock,
++  broodAttackInterruptedTick: cvClock,
++  ...cvBands
++}, ['id', 'pos', 'vel', 'rot', 'radius', 'hullFraction', 'capabilities']);
++const cvOccupantGeneration = (value, path) => { if (!Number.isSafeInteger(value) || value < 1) cvFail(path); };
++const cvContact = cvRecord({
++  id: cvId,
++  occupantGeneration: cvNullable(cvOccupantGeneration),
++  kind: cvContactKind,
++  team: cvNullable(cvId),
++  classification: cvText,
++  pos: cvVec,
++  vel: cvVec,
++  radius: cvNonnegative,
++  planarRadius: cvNonnegative,
++  ...cvFields('alive valid visible ownedBySelf exposed tethered disabled', cvBool),
++  ...cvFields('confidence threat observedConfidence', cvUnit),
++  hostile: cvNullable(cvBool),
++  ...cvFields('targetId ownerId attachmentId sourceSocketId targetSocketId', cvNullable(cvId)),
++  objectiveValue: cvNonnegative,
++  massClass: cvNonnegative,
++  ...cvBands,
++  tags: cvStrings,
++  ...cvFields('firstSeenTick lastSeenTick ageTicks', cvInteger)
++}, ['id', 'kind', 'pos', 'vel', 'radius', 'alive', 'confidence']);
++const cvEvent = cvRecord({
++  type: cvText,
++  sourceId: cvNullable(cvId),
++  targetId: cvNullable(cvId),
++  magnitude: cvNumber,
++  tags: cvStrings
++}, ['type', 'sourceId', 'targetId', 'magnitude', 'tags']);
++const cvPerception = cvRecord({
++  tick: cvInteger,
++  revision: cvInteger,
++  self: cvNullable(cvSelf),
++  contacts: cvList(cvContact, 8192),
++  events: cvList(cvEvent, 8192)
++}, ['tick', 'self', 'contacts', 'events']);
++const cvAttackLine = cvRecord({
++  origin: cvVec,
++  heading: cvNumber,
++  dir: cvVec,
++  range: cvNonnegative,
++  halfWidth: cvNonnegative,
++  cueStartedTick: cvInteger, life: cvId, targetLife: cvNullable(cvOccupantGeneration)
++}, ['origin', 'heading', 'dir', 'range', 'halfWidth']);
++const cvBroodAttack = cvRecord({
++  role: cvEnum('brood_mite brood_charger brood_spitter'), life: cvId, targetLife: cvNullable(cvOccupantGeneration),
++  phase: cvEnum('approach windup commit recovery'), phaseStartedTick: cvInteger, sampledTick: cvInteger,
++  endsAtTick: cvNullable(cvInteger), cueStartedTick: cvInteger, cycle: cvInteger,
++  attackId: cvNullable(cvText), targetId: cvNullable(cvId), attackLine: cvNullable(cvAttackLine),
++  outcome: cvNullable(cvText),
++}, ['role', 'life', 'phase', 'phaseStartedTick']);
++const cvIntent = cvRecord({
++  kind: cvManeuverKind,
++  targetId: cvNullable(cvId),
++  preferredRange: cvNonnegative,
++  formationSlot: cvNullable(cvVec),
++  formationVelocity: cvVec,
++  formationBound: cvNonnegative,
++  ...cvFields('squadCorridor faceTarget ramAuthorized formationLocked crossingLane enemyMindOwned', cvBool),
++  breakFormation: cvNullable(cvBool),
++  reason: cvText,
++  flightPoint: cvNullable(cvVec),
++  lateralSign: cvControl,
++  faceAngle: cvNullable(cvNumber),
++  broodAttack: cvNullable(cvBroodAttack),
++  attackLine: cvNullable(cvAttackLine)
++}, ['kind', 'targetId']);
++const cvManeuver = cvRecord({
++  version: (value, path) => {
++    if (value !== 1) cvFail(path);
++  },
++  entityId: cvId,
++  tick: cvInteger,
++  kind: cvManeuverKind,
++  forceLocal: cvRecord({
++    forward: cvControl,
++    right: cvControl
++  }, ['forward', 'right']),
++  torqueYaw: cvControl,
++  boost: cvBool,
++  brake: cvBool,
++  targetHeading: cvNumber,
++  horizonTicks: (value, path) => {
++    cvInteger(value, path);
++    if (value < 1 || value > 240) cvFail(path);
++  },
++  trajectory: cvList(cvRecord({
++    tick: cvInteger,
++    x: cvNumber,
++    z: cvNumber
++  }, ['tick', 'x', 'z']), 8),
++  reason: cvText
++}, ['version', 'entityId', 'tick', 'kind', 'forceLocal', 'torqueYaw', 'boost', 'brake', 'targetHeading', 'horizonTicks', 'trajectory', 'reason']);
++const cvMind = cvRecord({
++  tick: cvInteger,
++  entityId: cvId,
++  squadId: cvNullable(cvId),
++  serial: cvInteger,
++  verb: cvText,
++  phase: cvText,
++  reason: cvText,
++  targetId: cvNullable(cvId),
++  chargeId: cvNullable(cvId),
++  goal: cvVec,
++  maneuverKind: cvManeuverKind,
++  ...cvFields('faceTarget ownManeuver fireAllowed emergency', cvBool),
++  ...cvFields('fear confidence', cvUnit),
++  ...cvFields('startedAt phaseAt tellUntil validUntil', cvNonnegative)
++}, ['entityId', 'serial', 'verb', 'phase', 'targetId', 'goal', 'maneuverKind', 'fireAllowed', 'validUntil']);
++const cvObjective = cvRecord({
++  kind: cvEnum('hold engage focus screen tug steal counter_tether_cut counter_tether_overload retreat reform'),
++  targetId: cvNullable(cvId),
++  reason: cvText,
++  targetObserved: cvBool,
++  flightPoint: cvVec,
++  cue: cvNullable(cvText)
++}, ['kind', 'targetId', 'reason']);
++const cvFormation = cvRecord({
++  kind: cvEnum('line ring wedge'),
++  slot: cvVec,
++  velocity: cvVec,
++  bound: cvNonnegative,
++  breakFormation: cvNullable(cvBool),
++  breakReason: cvNullable(cvText)
++}, ['kind', 'slot', 'velocity', 'bound', 'breakFormation']);
++const cvDirective = cvRecord({
++  tick: cvInteger,
++  squadId: cvId,
++  memberId: cvId,
++  entityId: cvId,
++  combatDoctrineId: cvNullable(cvDoctrine),
++  factionBehavior: cvNullable(cvFaction),
++  role: cvRole,
++  wingRole: cvNullable(cvText),
++  twist: cvNullable(cvText),
++  tactic: cvText,
++  focusTargetId: cvNullable(cvId),
++  objective: cvObjective,
++  formation: cvFormation,
++  enemyMind: cvMind,
++  leaderId: cvNullable(cvId),
++  targetId: cvNullable(cvId)
++}, ['tick', 'squadId', 'memberId', 'objective', 'formation']);
++const cvDoctrineOutput = cvRecord({
++  doctrineId: cvDoctrine,
++  flightProfile: cvText,
++  phase: cvDoctrinePhase,
++  phaseStartedTick: cvInteger,
++  ...cvFields('targetId actionTargetId maneuverTargetId directiveTargetId custodyTargetId', cvNullable(cvId)),
++  cycle: cvInteger,
++  side: cvControl,
++  lateralSign: cvControl,
++  faceTarget: cvBool,
++  faceAngle: cvNullable(cvNumber),
++  aimCommit: cvNullable(cvRecord({
++    bearing: cvNumber,
++    capRad: cvNonnegative
++  }, ['bearing', 'capRad'])),
++  telegraph: cvNullable(cvRecord({
++    kind: cvText,
++    durationTicks: cvInteger,
++    startedTick: cvInteger
++  }, ['kind', 'durationTicks', 'startedTick'])),
++  ...cvFields('telegraphStarted fireWindow ramAuthorized phaseChanged formationLocked openingOpen fallbackSpent fallbackRearmed', cvBool),
++  ...cvFields('bossStage turretEdge', cvInteger),
++  flightPoint: cvNullable(cvVec),
++  ...cvFields('openingCue openingTransitionId allowedActionId outcome contestKind', cvNullable(cvText)),
++  maneuverKind: cvManeuverKind,
++  preferredRange: cvNonnegative,
++  broodAttack: cvNullable(cvBroodAttack),
++  attackLine: cvNullable(cvAttackLine)
++}, ['doctrineId', 'phase', 'targetId', 'fireWindow', 'maneuverKind']);
++const cvBehaviorOutput = cvRecord({
++  tick: cvInteger,
++  entityId: cvId,
++  decision: cvText,
++  reason: cvText,
++  actionId: cvNullable(cvId),
++  targetId: cvNullable(cvId),
++  status: cvStatus,
++  maneuver: cvNullable(cvIntent)
++}, ['tick', 'entityId', 'decision', 'reason', 'actionId', 'targetId', 'status', 'maneuver']);
++const cvDecision = cvRecord({
++  tick: cvInteger,
++  entityId: cvId,
++  squadId: cvId,
++  directive: cvDirective,
++  action: cvBehaviorOutput,
++  maneuver: cvManeuver,
++  combatDoctrine: cvNullable(cvDoctrineOutput),
++  enemyMind: cvMind
++}, ['entityId', 'squadId', 'directive', 'action', 'maneuver', 'combatDoctrine']);
++const cvMember = cvRecord({
++  id: cvId,
++  preferredRole: cvNullable(cvText),
++  capabilities: cvStrings,
++  combatDoctrineId: cvNullable(cvDoctrine),
++  factionBehavior: cvNullable(cvFaction),
++  role: cvRole
++}, ['id', 'preferredRole', 'capabilities', 'combatDoctrineId', 'factionBehavior']);
++const cvVersion = (value, path) => {
++  if (value !== 1) cvFail(path);
++};
++const cvPacket = (fields, required = Object.keys(fields)) => cvRecord({
++  version: cvVersion,
++  ...fields
++}, ['version', ...required]);
++const cvDirectorState = cvRecord({
++  phase: cvPhase,
++  ...cvFields('phaseTick reinforcementBudget reinforcementCooldown narrativeCooldown beatIndex breatherTicks breatherHoldTicks breatherCooldown', cvInteger),
++  pressure: cvUnit,
++  targetPressure: cvUnit,
++  breatherActive: cvBool,
++  lastReinforceTick: cvNullable(cvInteger),
++  lastDecision: cvText
++}, DIRECTOR_FIELDS);
++const cvReflex = cvRecord({
++  burst: cvNullable(cvRecord({
++    kind: cvEnum('volley_jink hit_weave brake_check pounce scatter_loss marked_weave simmer'),
++    startTick: cvInteger,
++    untilTick: cvInteger,
++    side: cvControl,
++    amp: cvNonnegative
++  }, ['kind', 'startTick', 'untilTick', 'side', 'amp'])),
++  lastHull: cvUnit,
++  cooldowns: cvNullable(cvRows(cvInteger, 128, cvText)),
++  seenAllies: cvNullable(cvRows(cvBool))
++}, ['burst', 'lastHull', 'cooldowns', 'seenAllies']);
++const cvManeuverState = cvRecord({
++  ...cvFields('stationaryTicks retreatDeadlockTicks', cvInteger),
++  ...cvFields('clearUntilTick invalidRetreatUntil lastTick', cvClock),
++  lastKind: cvManeuverKind,
++  lastRequest: cvNullable(cvManeuver),
++  ...cvFields('smoothedForward smoothedRight smoothedTorqueYaw', cvControl),
++  lastReflex: cvNullable(cvText),
++  ...cvFields('blockedRetreatX blockedRetreatZ lastHeading lastRot', cvNumber),
++  ...cvFields('lastRetreatSampleTick lastHeadingTick lastRotTick', cvNullable(cvClock)),
++  collisionPasses: cvRows(cvRecord({
++    forwardX: cvNumber,
++    forwardZ: cvNumber,
++    pointX: cvNumber,
++    pointZ: cvNumber,
++    untilTick: cvInteger
++  }, ['forwardX', 'forwardZ', 'pointX', 'pointZ', 'untilTick']), 8192),
++  reflex: cvReflex
++}, ['stationaryTicks', 'clearUntilTick', 'lastKind', 'lastRequest', 'lastTick', 'smoothedForward', 'smoothedRight', 'smoothedTorqueYaw', 'collisionPasses', 'reflex']);
++const cvDoctrineState = cvRecord({
++  doctrineId: cvDoctrine,
++  flightProfile: cvText,
++  phase: cvDoctrinePhase,
++  ...cvFields('phaseStartedTick phaseChangedTick cycle bossStage lastTick seed turretEdge', cvInteger),
++  ...cvFields('targetId actionTargetId custodyTargetId', cvNullable(cvId)),
++  entityId: cvId,
++  side: cvControl,
++  telegraph: cvNullable(cvRecord({
++    kind: cvText,
++    durationTicks: cvInteger,
++    startedTick: cvInteger
++  }, ['kind', 'durationTicks', 'startedTick'])),
++  telegraphStartedTick: cvNullable(cvInteger),
++  ...cvFields('fireWindow ramAuthorized fallbackArmed fallbackRearmed openingOpen', cvBool),
++  outcome: cvNullable(cvText),
++  closestDistance: cvDistance,
++  flightPoint: cvNullable(cvVec),
++  preferredRange: cvNullable(cvNonnegative),
++  aimCommitBearing: cvNullable(cvNumber),
++  broodAttack: cvNullable(cvBroodAttack),
++  ...cvFields('openingCue openingTransitionId _cachePhase', cvNullable(cvText)),
++  ...cvFields('_cachePosX _cachePosZ _cacheRot', cvNullable(cvNumber)),
++  _cachedAttackLine: cvNullable(cvAttackLine)
++}, ['doctrineId', 'flightProfile', 'phase', 'phaseStartedTick', 'phaseChangedTick', 'targetId', 'cycle', 'side', 'fireWindow', 'closestDistance', 'lastTick', 'seed', 'entityId']);
++const cvBehaviorState = cvRecord({
++  actionId: cvNullable(cvId),
++  targetId: cvNullable(cvId),
++  startedTick: cvNegClock,
++  utility: cvUnit,
++  status: cvStatus,
++  handle: cvNullable(cvId),
++  maneuver: cvNullable(cvIntent),
++  lastReason: cvText,
++  blockedContext: cvNullable(cvText),
++  blockedRetries: cvInteger,
++  blockedRetryAtTick: cvNullable(cvClock),
++  lastTraceSignature: cvText
++}, ['actionId', 'targetId', 'startedTick', 'utility', 'status', 'handle', 'maneuver', 'lastReason', 'blockedContext', 'blockedRetries', 'blockedRetryAtTick']);
++const cvSquad = cvRecord({
++  id: cvId,
++  doctrine: cvText,
++  faction: cvText,
++  formation: cvEnum('line ring wedge'),
++  formationSpacing: cvNonnegative,
++  formationBound: cvNonnegative,
++  factionBehavior: cvNullable(cvFaction),
++  currentTactic: cvNullable(cvText),
++  tacticSinceTick: cvNegClock,
++  focusTargetId: cvNullable(cvId),
++  formationHeading: cvNullable(cvNumber),
++  leaderOccupantGeneration: cvNullable(cvId),
++  members: cvList(cvMember),
++  roles: cvRows(cvRole),
++  composition: cvRecord({
++    grammarId: cvNullable(cvText),
++    twist: cvNullable(cvText),
++    roles: cvRows(cvText)
++  }, ['grammarId', 'twist', 'roles']),
++  breakUntil: cvRows(cvInteger),
++  breakReason: cvRows(cvText),
++  lastDirectives: cvRows(cvDirective),
++  withdrawalCommit: cvNullable(cvRecord({
++    wardId: cvId,
++    coverId: cvNullable(cvId),
++    corridor: cvVec,
++    sinceTick: cvInteger,
++    stillSince: cvInteger,
++    lastDist: cvNonnegative,
++    replans: cvInteger,
++    announce: cvBool,
++    anchorLeaderId: cvId,
++    anchorLeaderGeneration: cvNullable(cvId)
++  }, ['wardId', 'coverId', 'corridor', 'sinceTick', 'stillSince', 'lastDist', 'replans', 'announce', 'anchorLeaderId', 'anchorLeaderGeneration']))
++}, ['id', 'doctrine', 'faction', 'formation', 'members', 'roles', 'composition', 'currentTactic', 'tacticSinceTick', 'focusTargetId', 'breakUntil', 'breakReason', 'lastDirectives']);
++const cvLive = cvRecord({
++  pos: cvVec,
++  vel: cvVec,
++  rot: cvNumber,
++  radius: cvNonnegative,
++  hullFraction: cvUnit
++}, ['pos', 'vel', 'rot', 'radius', 'hullFraction']);
++const cvLastTarget = cvRecord({
++  occupantGeneration: cvNullable(cvOccupantGeneration),
++  id: cvNullable(cvId),
++  x: cvNumber,
++  z: cvNumber,
++  vx: cvNumber,
++  vz: cvNumber,
++  radius: cvNonnegative
++}, ['id', 'x', 'z', 'vx', 'vz', 'radius']);
++const cvChoreoPhase = cvEnum('ingress telegraph commit strike extend reform recover stream press');
++const cvPlan = cvRecord({
++  squadId: cvId,
++  recipeId: cvText,
++  tick: cvInteger,
++  phase: cvChoreoPhase,
++  role: cvText,
++  socket: cvNullable(cvText),
++  token: cvNullable(cvText),
++  laneId: cvNullable(cvId),
++  laneSide: cvControl,
++  integrity: cvUnit,
++  ...cvFields('morphAborted faceTarget fireAuthorized coast disrupted ammunition breakFormation usedSpatialHash', cvBool),
++  slot: cvSlot,
++  slotVel: cvVec,
++  bound: cvNonnegative,
++  speedFraction: cvNonnegative,
++  targetId: cvNullable(cvId),
++  slotError: cvNonnegative,
++  shapeError: cvNonnegative,
++  rejoinTick: cvNullable(cvClock),
++  live: cvLive,
++  neighborCount: cvInteger,
++  queryMode: cvText,
++  broodAttack: cvNullable(cvBroodAttack),
++  reason: cvText
++}, ['squadId', 'recipeId', 'tick', 'phase', 'slot', 'slotVel', 'bound', 'fireAuthorized', 'targetId', 'live']);
++const cvChoreoMember = cvRecord({
++  id: cvId,
++  socket: cvNullable(cvText),
++  role: cvText,
++  token: cvNullable(cvText),
++  laneId: cvNullable(cvId),
++  laneSide: cvControl,
++  ...cvFields('alive slotReady tracking disrupted coast fireAuthorized faceTarget breakFormation ammunition', cvBool),
++  pos: cvVec,
++  vel: cvVec,
++  rot: cvNumber,
++  radius: cvNonnegative,
++  hullFraction: cvUnit,
++  slot: cvSlot,
++  ...cvFields('slotError speedFraction shapeError lastRelV lateralError', cvNonnegative),
++  disruptedUntil: cvClock,
++  rejoinTick: cvNullable(cvClock),
++  live: cvLive,
++  plan: cvNullable(cvPlan),
++  ...cvFields('lane along arcIndex memberIndex neighborCount', cvInteger),
++  shapeSlot: cvSlot
++}, ['id', 'alive', 'pos', 'vel', 'rot', 'radius', 'hullFraction', 'slot', 'slotError', 'disruptedUntil', 'coast', 'live', 'plan']);
++const cvChoreoCommon = {
++  id: cvId,
++  recipeId: cvText,
++  seed: cvInteger,
++  position: cvVec,
++  velocity: cvVec,
++  heading: cvNumber,
++  angularVelocity: cvNumber,
++  phase: cvChoreoPhase,
++  phaseStartedTick: cvInteger,
++  integrity: cvUnit,
++  integrityMin: cvUnit,
++  lastTarget: cvLastTarget,
++  members: cvRows(cvChoreoMember)
++};
++const cvFrame = cvRecord({
++  ...cvChoreoCommon,
++  recipeId: cvEnum('interceptor_scissors standoff_gunline pincer_sweep'),
++  phase: cvEnum('ingress telegraph commit strike extend reform recover'),
++  pathProgress: cvNumber,
++  shapeId: cvText,
++  morphFromId: cvText,
++  morphToId: cvText,
++  morphU: cvUnit,
++  spacingScale: cvNonnegative,
++  successorPolicy: cvText,
++  commandId: cvNullable(cvId),
++  leaderLostTick: cvNullable(cvClock),
++  railDirX: cvNumber,
++  railDirZ: cvNumber,
++  railLocked: cvBool,
++  reformHeading: cvNumber,
++  cycle: cvInteger,
++  morphAborted: cvBool,
++  passComplete: cvBool,
++  sockets: cvRecord(cvFields('lead left right rear', cvNullable(cvId)), ['lead', 'left', 'right', 'rear']),
++  ...cvFields('strikeStartedTick extendStartedTick reformStartedTick passTick', cvNullable(cvClock)),
++  committedPeak: cvInteger
++}, [...FRAME_FIELDS, 'members']);
++const cvCost = cvRecord({
++  ...cvFields('members neighborQueries neighborVisits maxNeighbors', cvInteger),
++  usedSpatialHash: cvBool,
++  allPairs: cvBool,
++  queryMode: cvText
++}, ['members', 'neighborQueries', 'neighborVisits', 'maxNeighbors', 'usedSpatialHash', 'allPairs', 'queryMode']);
++const cvCohort = cvRecord({
++  ...cvChoreoCommon,
++  recipeId: cvEnum('fodder_river fodder_crescent brood_mite_river'),
++  phase: cvEnum('stream press reform'),
++  shape: cvEnum('river crescent'),
++  bornTick: cvInteger,
++  originGate: cvVec,
++  targetId: cvNullable(cvId),
++  flowPath: cvRecord(cvFields('ax az bx bz width dirX dirZ', cvNumber), ['ax', 'az', 'bx', 'bz', 'width', 'dirX', 'dirZ']),
++  densityTarget: cvNonnegative,
++  speedBand: cvRecord({
++    min: cvNonnegative,
++    max: cvNonnegative
++  }, ['min', 'max']),
++  disruption: cvRecord({
++    count: cvInteger,
++    until: cvClock
++  }, ['count', 'until']),
++  reformPolicy: cvText,
++  lastCost: cvCost,
++  predicted: cvVec,
++  liveCount: cvInteger,
++  laneCount: cvInteger,
++  cruise: cvNonnegative,
++  spacing: cvNonnegative
++}, ['id', 'recipeId', 'shape', 'seed', 'bornTick', 'originGate', 'targetId', 'flowPath', 'phase', 'phaseStartedTick', 'densityTarget', 'speedBand', 'disruption', 'reformPolicy', 'position', 'velocity', 'heading', 'angularVelocity', 'integrity', 'integrityMin', 'lastTarget', 'lastCost', 'predicted', 'members']);
++const cvDirectorCommand = cvRecord({
++  type: cvEnum('hold phase order_retreat request_reinforcement narrative_beat'),
++  phase: cvPhase,
++  reason: cvText,
++  packageId: cvNullable(cvText),
++  budgetRemaining: cvInteger,
++  beatIndex: cvInteger
++}, ['type']);
++const cvDirectorOutput = cvRecord({
++  tick: cvInteger,
++  phase: cvPhase,
++  pressure: cvUnit,
++  targetPressure: cvUnit,
++  reinforcementBudget: cvInteger,
++  breather: cvBool,
++  command: cvDirectorCommand
++}, ['tick', 'phase', 'pressure', 'targetPressure', 'reinforcementBudget', 'breather', 'command']);
++const cvTelemetry = cvRecord({
++  ...cvFields('reports hostileContacts actionableContacts tetherThreats', cvInteger),
++  ...cvFields('visibleThreat actionableThreat friendlyDisabledFraction friendlyLowHullFraction recentDamage objectiveProgress', cvUnit)
++}, ['reports', 'hostileContacts', 'visibleThreat', 'actionableThreat', 'actionableContacts', 'friendlyDisabledFraction', 'friendlyLowHullFraction', 'tetherThreats', 'recentDamage', 'objectiveProgress']);
++const cvSquadOutput = cvRecord({
++  squadId: cvId,
++  tick: cvInteger,
++  tactic: cvText,
++  focusTargetId: cvNullable(cvId),
++  directives: cvList(cvDirective)
++}, ['squadId', 'tick', 'tactic', 'focusTargetId', 'directives']);
++const cvLastResult = cvPacket({
++  tick: cvInteger,
++  director: cvDirectorOutput,
++  telemetry: cvTelemetry,
++  squads: cvList(cvSquadOutput, 256),
++  decisions: cvList(cvDecision)
++});
++function validateContinuationGraph(data) {
++  let nodes = 0;
++  const active = new Set();
++  const visit = (value, depth) => {
++    if (++nodes > TACTICAL_CONTINUATION_LIMITS.nodes || depth > 24) continuationError('node_limit');
++    if (value === null || typeof value === 'boolean') return;
++    if (typeof value === 'number') {
++      if (!Number.isFinite(value)) continuationError('number');
++      return;
++    }
++    if (typeof value === 'string') {
++      if (value.length > 4096) continuationError('string_limit');
++      return;
++    }
++    if (!plain(value) && !Array.isArray(value)) continuationError('non_plain_value');
++    if (active.has(value)) continuationError('cycle');
++    if (Array.isArray(value) && value.length > 8192) continuationError('array_limit');
++    active.add(value);
++    for (const key of Object.keys(value)) {
++      if (['__proto__', 'prototype', 'constructor'].includes(key)) continuationError('unsafe_key');
++      if (key.length > 256) continuationError('string_limit');
++      visit(value[key], depth + 1);
++    }
++    active.delete(value);
++  };
++  visit(data, 0);
++  if (new TextEncoder().encode(JSON.stringify(data)).byteLength > TACTICAL_CONTINUATION_LIMITS.bytes) continuationError('byte_limit');
++}
++const cvIdentityRow = check => (value, path, id) => {
++  check(value, path);
++  if (own(value, 'entityId') && String(value.entityId) !== String(id)) cvFail(`${path}.entity_identity`);
++  if (own(value, 'id') && String(value.id) !== String(id)) cvFail(`${path}.identity`);
++};
++function cvComponentSchemas() {
++  let contactCount = 0;
++  const memoryRow = (value, path, id) => {
++    cvRecord({
++      tick: cvInteger,
++      revision: cvInteger,
++      self: cvSelf,
++      events: cvList(cvEvent, 8192),
++      contacts: cvRows((contact, contactPath) => {
++        if (++contactCount > TACTICAL_CONTINUATION_LIMITS.contacts) continuationError('contact_limit');
++        cvContact(contact, contactPath);
++        if (!own(contact, 'firstSeenTick') || !own(contact, 'lastSeenTick') || !own(contact, 'observedConfidence') || contact.firstSeenTick > contact.lastSeenTick) cvFail(`${contactPath}.memory_clock`);
++      }, 8192, cvText)
++    }, ['tick', 'revision', 'self', 'events', 'contacts'])(value, path);
++    if (String(value.self.id) !== String(id)) cvFail(`${path}.self_identity`);
++  };
++  const componentRows = check => cvPacket({
++    rows: cvRows(check)
++  });
++  const choreography = check => (value, path) => {
++    cvPacket({
++      lastTick: cvClock,
++      rows: cvRows(cvIdentityRow(check), 256)
++    })(value, path);
++    for (const [, group] of value.rows) {
++      for (const [id, member] of group.members) {
++        if (String(member.id) !== String(id)) cvFail(`${path}.member_identity`);
++        if (member.plan && (member.plan.squadId !== group.id || member.plan.recipeId !== group.recipeId)) cvFail(`${path}.plan_identity`);
++      }
++    }
++  };
++  return {
++    perception: componentRows(memoryRow),
++    director: cvPacket({
++      state: cvDirectorState
++    }),
++    squad: cvPacket({
++      rows: cvRows(cvIdentityRow(cvSquad), 256),
++      leaders: cvRows(cvRows(cvNullable(cvId)), 256)
++    }),
++    behavior: componentRows(cvBehaviorState),
++    maneuver: componentRows(cvManeuverState),
++    doctrine: componentRows(cvIdentityRow(cvDoctrineState)),
++    frames: choreography(cvFrame),
++    cohorts: choreography(cvCohort),
++    actionWindows: componentRows(cvRecord({
++      signature: cvText,
++      readyTick: cvInteger,
++      threatId: cvText
++    }, ['signature', 'readyTick', 'threatId']))
++  };
++}
++
++/** Each independently callable owner restore has the same validation as the host. */
++export function validateAIComponentContinuation(kind, data) {
++  validateContinuationGraph(data);
++  const check = cvComponentSchemas()[kind];
++  if (!check) cvFail('component_kind');
++  check(data, kind);
++  return true;
++}
++
++/** Validate the complete tactical envelope before any component preparation or admission. */
++export function validateAIContinuationPayload(data) {
++  validateContinuationGraph(data);
++  const actor = cvRecord({
++    id: cvId,
++    generation: cvNullable(cvId),
++    worldRecordId: cvNullable(cvId),
++    bodyLifeId: cvNullable(cvId)
++  }, ['id', 'generation', 'worldRecordId', 'bodyLifeId']);
++  const runtime = cvRecord({
++    lastDecisionTick: cvNullable(cvClock),
++    lastOwnershipRefreshTick: cvNullable(cvClock),
++    lastManeuvers: cvList(cvManeuver),
++    decisionEntityIds: cvIds
++  }, ['lastDecisionTick', 'lastOwnershipRefreshTick', 'lastManeuvers', 'decisionEntityIds']);
++  const schemas = cvComponentSchemas();
++  const components = cvRecord({
++    memory: schemas.perception,
++    director: schemas.director,
++    commander: schemas.squad,
++    executor: schemas.behavior,
++    maneuver: schemas.maneuver,
++    combatDoctrine: schemas.doctrine,
++    squadFrames: cvNullable(schemas.frames),
++    fodderCohorts: cvNullable(schemas.cohorts),
++    actionWindows: cvNullable(schemas.actionWindows)
++  }, ['memory', 'director', 'commander', 'executor', 'maneuver', 'combatDoctrine', 'squadFrames', 'fodderCohorts', 'actionWindows']);
++  const stack = cvPacket({
++    lastTick: cvClock,
++    memberCursor: cvInteger,
++    components,
++    perceptionCache: cvRows((value, path, id) => {
++      cvPerception(value, path);
++      if (value.self && String(value.self.id) !== String(id)) cvFail(`${path}.self_identity`);
++    }),
++    decisions: cvRows(cvIdentityRow(cvDecision)),
++    lastResult: cvNullable(cvLastResult)
++  });
++  cvPacket({
++    tick: cvInteger,
++    seed: cvInteger,
++    actors: cvList(actor),
++    runtime,
++    stack: cvNullable(stack),
++    ownership: cvPacket({
++      candidates: cvRows(cvId),
++      targets: cvRows(cvRecord({
++        owners: cvIds,
++        waiting: cvIds
++      }, ['owners', 'waiting']))
++    })
++  })(data, 'tactical');
++  const actors = new Map();
++  for (const row of data.actors) {
++    const id = String(row.id);
++    if (actors.has(id)) cvFail('tactical.actors.duplicate');
++    actors.set(id, row);
++  }
++  for (const tick of [data.runtime.lastDecisionTick, data.runtime.lastOwnershipRefreshTick, data.stack?.lastTick]) {
++    if (tick != null && tick > data.tick) cvFail('tactical.future_clock');
++  }
++  if (data.stack) {
++    // A previous occupant's refusal token cannot be translated into fresh authority.
++    // The actor manifest was captured from the current world; disagreeing memory takes
++    // the explicit cold path instead of laundering an old life through an id remap.
++    const assertLife = (id, generation, path) => {
++      const actor = actors.get(String(id));
++      if (generation != null && actor?.generation != null && generation !== actor.generation) cvFail(`${path}.stale_generation`);
++    };
++    const checkSelf = (self, path) => {
++      if (self) assertLife(self.id, self.occupantGeneration, path);
++    };
++    for (const [id, memory] of data.stack.components.memory.rows) checkSelf(memory.self, `memory.${id}`);
++    for (const [id, memory] of data.stack.perceptionCache) checkSelf(memory.self, `perceptionCache.${id}`);
++    for (const [id, squad] of data.stack.components.commander.rows) {
++      assertLife(squad.members[0]?.id, squad.leaderOccupantGeneration, `squad.${id}.leader`);
++      if (squad.withdrawalCommit) {
++        assertLife(squad.withdrawalCommit.anchorLeaderId, squad.withdrawalCommit.anchorLeaderGeneration, `squad.${id}.withdrawal`);
++      }
++    }
++    for (const [squadId, leaders] of data.stack.components.commander.leaders) {
++      for (const [id, generation] of leaders) assertLife(id, generation, `squad.${squadId}.acceptedLeader`);
++    }
++    for (const key of ['squadFrames', 'fodderCohorts']) {
++      const component = data.stack.components[key];
++      if (component && component.lastTick > data.tick) cvFail(`tactical.${key}.future_clock`);
++    }
++  }
++  return true;
++}
+diff --git a/src/ai/contracts.js b/src/ai/contracts.js
+index a9aae84..a1d93e5 100644
+--- a/src/ai/contracts.js
++++ b/src/ai/contracts.js
+@@ -308,6 +308,8 @@ function normalizeSelf(value, entityId) {
+     disabled: !!value.disabled,
+     tumbling: value.tumbling === true,
+     recovering: value.recovering === true,
++    ...(Number.isSafeInteger(value.broodAttackReadyTick) && value.broodAttackReadyTick >= 0 ? { broodAttackReadyTick: value.broodAttackReadyTick } : {}),
++    broodAttackInterruptedTick: Number.isSafeInteger(value.broodAttackInterruptedTick) && value.broodAttackInterruptedTick >= 0 ? value.broodAttackInterruptedTick : -1,
+     tethered: !!value.tethered,
+     capabilities: Object.freeze(Array.isArray(value.capabilities) ? [...new Set(value.capabilities)].sort() : []),
+     subsystemFractions: Object.freeze(isPlainObject(value.subsystemFractions) ? { ...value.subsystemFractions } : {}),
+@@ -342,6 +344,7 @@ function normalizeContact(value) {
+   if (!value || typeof value !== 'object' || value.id == null || typeof value.kind !== 'string') return null;
+   return Object.freeze({
+     id: value.id,
++    occupantGeneration: Number.isSafeInteger(value.occupantGeneration) && value.occupantGeneration > 0 ? value.occupantGeneration : null,
+     kind: value.kind,
+     team: value.team == null ? null : value.team,
+     classification: typeof value.classification === 'string' ? value.classification : 'unknown',
+@@ -413,7 +416,7 @@ function normalizeRoeView(value) {
+ 
+ function normalizeDoctrineIdView(value) {
+   const id = String(value || '');
+-  return ['interceptor_flyby', 'brawler_commit', 'tether_control_raider', 'ranged_disengager',
++  return ['brood_charge', 'brood_lunge', 'brood_spit', 'interceptor_flyby', 'brawler_commit', 'tether_control_raider', 'ranged_disengager',
+     'field_anchor_controller', 'capital_broadside', 'escort_screen', 'pack_pursuit'].includes(id)
+     ? id
+     : null;
+diff --git a/src/ai/engagementAuthority.js b/src/ai/engagementAuthority.js
+index 483ef8c..42c864f 100644
+--- a/src/ai/engagementAuthority.js
++++ b/src/ai/engagementAuthority.js
+@@ -1,3 +1,4 @@
++import { continuationPacket, continuationRows, continuationRecord, continuationError } from './continuation.js';
+ import { normalizeCombatDoctrineId } from './combatDoctrine.js';
+ import { normalizeFactionBehaviorProfile } from './factionBehavior.js';
+ import {
+@@ -36,6 +37,7 @@ const DOCTRINE_FIRE_PHASES = Object.freeze({
+   // advertised gun window (combatDoctrine enter() sets fireWindow on the same phase). Missing this
+   // key fail-closed every live brawler shot even while the snapshot said the guns were hot.
+   brawler_commit: new Set(['commit']),
++  brood_spit: new Set(['commit']),
+   ranged_disengager: new Set(['fire_window']),
+   tether_control_raider: new Set(),
+   // The anchor's guns are live only while it is committed to its drag-field hold. Its authored
+@@ -827,3 +829,26 @@ function allowed() {
+ function denied(reason) {
+   return { ok: false, reason };
+ }
++
++// Only this owner can publish the first-session admission state. References rebind to restored lives.
++export function serializeAttackerOwnershipContinuation(state) {
++  const runtime = FIRST_SESSION_OWNERSHIP.get(state);
++  return { version: 1, candidates: runtime ? [...runtime.candidateTargetByActor] : [],
++    targets: runtime ? [...runtime.byTarget].map(([id,row]) => [id,{owners:row.owners.slice(),waiting:row.waiting.slice()}]) : [] };
++}
++export function prepareAttackerOwnershipContinuation(state, data, context) {
++  continuationPacket(data, ['candidates','targets']);
++  const runtime = { candidateTargetByActor:new Map(), byTarget:new Map() };
++  for(const [old,target] of continuationRows(data.candidates)) {
++    const actorId=context.bindEntity(old),targetId=context.bindEntity(target);
++    if(actorId!=null&&targetId!=null&&ownershipEligible(state,context.resolveEntity(old),context.resolveEntity(target)))runtime.candidateTargetByActor.set(actorId,targetId);
++  }
++  for(const [old,row] of continuationRows(data.targets)) {
++    const targetId=context.bindEntity(old);if(targetId==null)continue;
++    const value=continuationRecord(row,['owners','waiting'],true);
++    if(!Array.isArray(value.owners)||!Array.isArray(value.waiting)||value.owners.length>512||value.waiting.length>512)continuationError('ownership_rows');
++    const valid=ids=>ids.map(id=>context.bindEntity(id)).filter(id=>id!=null&&runtime.candidateTargetByActor.get(id)===targetId);
++    runtime.byTarget.set(targetId,{owners:valid(value.owners),waiting:valid(value.waiting)});
++  }
++  return ()=>{FIRST_SESSION_OWNERSHIP.set(state,runtime);};
++}
+diff --git a/src/ai/fodderCohort.js b/src/ai/fodderCohort.js
+index a5c372f..e0d2d8d 100644
+--- a/src/ai/fodderCohort.js
++++ b/src/ai/fodderCohort.js
+@@ -1,3 +1,5 @@
++import { advanceBroodAttack } from '../combat/broodContact.js';
++import { captureChoreography, prepareChoreography } from './continuation.js';
+ // Cheap fodder cohort: a loose moving frame with shared flow, local separation,
+ // and a visible physics-coast after player impulses. Planning only — no position
+ // or velocity writes. Members track desired state through the canonical actuator.
+@@ -87,6 +89,9 @@ export function createFodderCohortDirector({ seed = 1 } = {}) {
+ }
+ 
+ export class FodderCohortDirector {
++  serializeContinuation() { return captureChoreography('cohorts',this); }
++  prepareContinuation(data,context) { return prepareChoreography('cohorts',this,data,context); }
++
+   constructor(seed = 1) {
+     this.seed = seed >>> 0;
+     this.cohorts = new Map();
+@@ -513,6 +518,7 @@ function resolveTarget(group, members, targetLookup, cohort) {
+   const entity = id != null && typeof targetLookup === 'function' ? targetLookup(id) : null;
+   if (entity && entity.pos) {
+     cohort.lastTarget.id = entity.id;
++    cohort.lastTarget.occupantGeneration = Number.isSafeInteger(entity.occupantGeneration) && entity.occupantGeneration > 0 ? entity.occupantGeneration : null;
+     cohort.lastTarget.x = finite(entity.pos.x);
+     cohort.lastTarget.z = finite(entity.pos.z);
+     cohort.lastTarget.vx = finite(entity.vel && entity.vel.x);
+@@ -969,6 +975,13 @@ function steerMembers(director, cohort, recipe, target, tick, dt, state, mutatio
+ 
+   for (const rec of cohort.members.values()) {
+     if (!rec.alive) continue;
++    if (rec.entity?.data?.broodBodyId === 'brood_mite') {
++      const previous = rec.entity.data.broodAttack;
++      const active = previous?.phase === 'windup' || previous?.phase === 'commit';
++      rec.entity.data.broodAttack = advanceBroodAttack(previous, { role: 'brood_mite', entityId: rec.id, life: rec.entity.occupantGeneration ?? 0, tick,
++        self: rec, target: target?.id != null ? { id: target.id, occupantGeneration: target.occupantGeneration, pos: target } : null,
++        interrupted: rec.coast || (active && rec.entity.data.broodAttackInterruptedTick >= previous.phaseStartedTick) });
++    }
+     cost.members++;
+     local.members++;
+     if (noSep) {
+@@ -1333,6 +1346,7 @@ function publishPlans(director, cohort, recipe, tick) {
+     plan.usedSpatialHash = director.lastCost.usedSpatialHash;
+     plan.queryMode = director.lastCost.queryMode;
+     plan.reason = `fodder_cohort:${cohort.recipeId}:${cohort.phase}`;
++    plan.broodAttack = rec.entity?.data?.broodBodyId === 'brood_mite' ? rec.entity.data.broodAttack || null : null;
+     director.byEntity.set(rec.id, { cohortId: cohort.id, plan });
+   }
+ }
+diff --git a/src/ai/maneuver.js b/src/ai/maneuver.js
+index f868505..879fed5 100644
+--- a/src/ai/maneuver.js
++++ b/src/ai/maneuver.js
+@@ -1,3 +1,5 @@
++import { BROOD_ATTACK_PROFILES } from '../combat/broodContact.js';
++import { captureAIComponent, prepareAIComponent } from './continuation.js';
+ import {
+   deriveEnemyMotionScale,
+   ENEMY_MOTION_IDENTITY_SCALE,
+@@ -220,6 +222,9 @@ const ZERO_VEL = Object.freeze({ x: 0, z: 0 });
+ const EMPTY_TRAJECTORY = Object.freeze([]);
+ 
+ export class ManeuverPlanner {
++  serializeContinuation() { return captureAIComponent('maneuver', this); }
++  prepareContinuation(data, context) { return prepareAIComponent('maneuver', this, data, context); }
++
+   constructor({ seed = 1, trace = null, config = {} } = {}) {
+     this.seed = seed >>> 0;
+     this.trace = trace;
+@@ -294,8 +299,12 @@ export class ManeuverPlanner {
+     // Tactical Enemy Mind waypoints take locomotion ownership explicitly. Authored formations
+     // remain in charge for unmodified pilots and ordinary hull-doctrine PRESS behavior.
+     const mindOwned = behavior && behavior.maneuver && behavior.maneuver.enemyMindOwned === true;
+-    const choreo = !mindOwned && this.squadFrames ? this.squadFrames.planFor(entityId) : null;
+-    const selfPose = choreo && choreo.live ? overlaySelf(self, choreo.live) : self;
++    let choreo = !mindOwned && this.squadFrames ? this.squadFrames.planFor(entityId) : null;
++    const cohortLive = choreo?.live;
++    const broodAttack = choreo?.broodAttack || behavior?.maneuver?.broodAttack || null;
++    // Cheap mites keep shared flow/separation/coast; only a bounded authored lunge owns the motor.
++    if (broodAttack && broodAttack.phase !== 'approach' && !choreo?.coast) choreo = null;
++    const selfPose = cohortLive ? overlaySelf(self, cohortLive) : self;
+     const baseIntent = behavior && behavior.maneuver ? behavior.maneuver : {
+       kind: ManeuverKind.HOLD,
+       targetId: null,
+@@ -305,7 +314,11 @@ export class ManeuverPlanner {
+       breakFormation: directive.formation.breakFormation,
+       reason: 'no_behavior_intent',
+     };
+-    let intent = choreo ? applyChoreographyIntent(baseIntent, choreo, selfPose) : baseIntent;
++    const rawIntent = broodAttack ? { ...baseIntent, broodAttack, breakFormation: true } : baseIntent;
++    let intent = choreo ? applyChoreographyIntent(rawIntent, choreo, selfPose) : rawIntent;
++    const broodProjectile = BROOD_ATTACK_PROFILES[broodAttack?.role]?.delivery === 'projectile';
++    const broodCommitted = broodAttack?.phase === 'commit' && !broodProjectile && BROOD_ATTACK_PROFILES[broodAttack.role];
++    const broodCoast = !!broodAttack && (broodAttack.phase === 'windup' || broodAttack.phase === 'recovery' || (broodProjectile && broodAttack.phase === 'commit'));
+     const contacts = Array.isArray(perception.contacts) ? perception.contacts : [];
+     const contactIndex = this.contactIndexing ? this._contactIndexFor(perception) : null;
+     const target = intent.targetId == null
+@@ -349,7 +362,12 @@ export class ManeuverPlanner {
+       massBand: selfPose.operationalMassBand,
+     });
+     let desired;
+-    if (choreo && choreo.coast) {
++    if (broodCoast) {
++      desired = coastHold(selfPose);
++    } else if (broodCommitted) {
++      const dir = broodAttack.attackLine.dir;
++      desired = { x: dir.x, z: dir.z, arrivalDistance: Infinity, contactSeek: true };
++    } else if (choreo && choreo.coast) {
+       desired = coastHold(selfPose);
+     } else if (choreo) {
+       const cap = this.config.interceptSpeed * (Number.isFinite(choreo.speedFraction) ? choreo.speedFraction : 0.8);
+@@ -367,7 +385,7 @@ export class ManeuverPlanner {
+     // ARE the reaction. Reflexes shape the desired point, never write the thruster
+     // request directly, and never bypass ROE or fire authority.
+     let reflex = null;
+-    if (!choreo && !mindOwned && reflexAllowedForIntent(intent.kind)) {
++    if (!broodAttack && !choreo && !mindOwned && reflexAllowedForIntent(intent.kind)) {
+       reflex = evaluateReflexes(this.seed, {
+         entityId,
+         tick,
+@@ -384,13 +402,13 @@ export class ManeuverPlanner {
+     }
+     if (desired.obstacleAvoidance === true) reflex = null; // a rock in the dodge cone owns the hull
+ 
+-    if (!(choreo && choreo.coast)) {
++    if (!broodCommitted && !broodCoast && !(choreo && choreo.coast)) {
+       desired = applyFriendlySeparation(desired, selfPose, contactSource.ships, this.config, this.workCounters, contactIndex ? 'indexed' : 'legacy');
+       if (!choreo) {
+         desired = applyShipCollisionAvoidance(desired, selfPose, contactSource.ships, intent, this.seed, entityId, tick, runtime, this.config, this.workCounters, contactIndex ? 'indexed' : 'legacy', target);
+       }
+     }
+-    desired = applyObstacleAvoidance(desired, selfPose, contactSource.obstacles, intent, this.config, this.workCounters, contactIndex ? 'indexed' : 'legacy');
++    if (!broodCommitted && !broodCoast) desired = applyObstacleAvoidance(desired, selfPose, contactSource.obstacles, intent, this.config, this.workCounters, contactIndex ? 'indexed' : 'legacy');
+     const speed = Math.hypot(selfPose.vel.x, selfPose.vel.z);
+     const commanded = Math.hypot(desired.x, desired.z);
+     const intentionalHold = intent.kind === ManeuverKind.HOLD && formationDistance <= this.config.arrivalRadius;
+@@ -462,7 +480,10 @@ export class ManeuverPlanner {
+     // faceAngle: the nose rides that bearing through the window, so a dodged target cannot pull
+     // the line back onto itself. A reflex dodge still drops the override — hull integrity beats
+     // commitment.
+-    const facingUnit = !(reflex && reflex.dropAim) && Number.isFinite(intent.faceAngle)
++    const broodHeading = broodAttack?.attackLine?.heading;
++    const facingUnit = (broodAttack?.phase === 'windup' || broodCommitted) && Number.isFinite(broodHeading)
++      ? { x: Math.cos(broodHeading), z: Math.sin(broodHeading) }
++      : !(reflex && reflex.dropAim) && Number.isFinite(intent.faceAngle)
+       ? { x: Math.cos(intent.faceAngle), z: Math.sin(intent.faceAngle) }
+       : intent.faceTarget === true && target && !(reflex && reflex.dropAim)
+         ? unit2(target.pos.x - selfPose.pos.x, target.pos.z - selfPose.pos.z, desiredUnit.x, desiredUnit.z)
+@@ -547,7 +568,13 @@ export class ManeuverPlanner {
+       rawRight = 0;
+     }
+ 
+-    const emergencyManeuver = desired.obstacleAvoidance || kind === ManeuverKind.RETREAT || kind === ManeuverKind.ESCAPE_TETHER;
++    if (broodCommitted) {
++      // Forward propulsion only: no cross-track servo cancels an earned lateral shove.
++      rawForward = velocityAlongDesired < broodCommitted.speed ? Math.max(0, forwardDot) : 0;
++      rawRight = 0;
++    } else if (broodCoast) { rawForward = 0; rawRight = 0; }
++
++    const emergencyManeuver = broodCoast || desired.obstacleAvoidance || kind === ManeuverKind.RETREAT || kind === ManeuverKind.ESCAPE_TETHER;
+     const rawTorqueYaw = choreo && choreo.coast && !desired.obstacleAvoidance
+       ? 0
+       : yawRateTorqueFor(angleError, measuredWy, headingRate, kind, this.config, hullScale);
+@@ -562,7 +589,7 @@ export class ManeuverPlanner {
+     const boostWanted = ((kind === ManeuverKind.RETREAT || kind === ManeuverKind.ESCAPE_TETHER || kind === ManeuverKind.CLEAR_DEADLOCK) &&
+       speed < envelope.maxSpeed * 0.85 && Math.abs(angleError) < 0.78)
+       || (reflex != null && reflex.boost === true && Math.abs(angleError) < 0.9);
+-    const boost = boostWanted && !desired.obstacleAvoidance && !(reflex && reflex.simmer)
++    const boost = !broodAttack && boostWanted && !desired.obstacleAvoidance && !(reflex && reflex.simmer)
+       && selfPose.energyFraction >= this.config.minBoostEnergyFraction && selfPose.heatFraction <= this.config.maxBoostHeatFraction;
+     const slotSpeed = choreo && choreo.slotVel
+       ? Math.hypot(choreo.slotVel.x || 0, choreo.slotVel.z || 0)
+@@ -570,16 +597,19 @@ export class ManeuverPlanner {
+     // crossingLane strips the arrival brake (a committed charge/flyby pass must not slow into
+     // its own run point), but defensive reflexes still beat commitment: reflex.brake fires only
+     // on an imminent closing contact, the same exception dropAim takes against faceAngle.
+-    const brake = desired.obstacleBrake || (choreo && choreo.coast
++    const brake = !broodCommitted && !broodCoast && (desired.obstacleBrake || (choreo && choreo.coast
+       ? false
+       : (intent.crossingLane ? speedLimited : (speedLimited || closingLimited)) || (reflex != null && reflex.brake === true) || (!desired.contactSeek && !(choreo && slotSpeed > 12) && (kind === ManeuverKind.HOLD || kind === ManeuverKind.FORMATION) &&
+-        arrival < slowRadius && speed > Math.max(4, arrival / 2)));
++        arrival < slowRadius && speed > Math.max(4, arrival / 2))));
+     const trajectory = this.includeTrajectory
+       ? buildTrajectory(selfPose, desiredUnit, speed, tick, this.config.trajectoryHorizonTicks, envelope.maxSpeed)
+       : EMPTY_TRAJECTORY;
+     const request = makeThrusterRequest(entityId, tick, {
+       kind,
+-      forceLocal: { forward: smooth.forward, right: smooth.right },
++      forceLocal: {
++        forward: broodCoast || (broodCommitted && velocityAlongDesired >= broodCommitted.speed) ? 0 : smooth.forward,
++        right: broodCoast || broodCommitted ? 0 : smooth.right,
++      },
+       torqueYaw: smooth.torqueYaw,
+       boost,
+       brake,
+diff --git a/src/ai/perception.js b/src/ai/perception.js
+index bd19d11..8b01e8f 100644
+--- a/src/ai/perception.js
++++ b/src/ai/perception.js
+@@ -1,6 +1,10 @@
++import { captureAIComponent, prepareAIComponent } from './continuation.js';
+ import { TraceLayer, distance2, normalizeSensorFrame, saturate, stableId } from './contracts.js';
+ 
+ export class PerceptionMemory {
++  serializeContinuation() { return captureAIComponent('perception', this); }
++  prepareContinuation(data, context) { return prepareAIComponent('perception', this, data, context); }
++
+   constructor({ memoryTicks = 300, confidenceFloor = 0.08, trace = null, freezeResults = true } = {}) {
+     if (!Number.isInteger(memoryTicks) || memoryTicks < 1) throw new RangeError('memoryTicks must be positive');
+     this.memoryTicks = memoryTicks;
+@@ -85,6 +89,7 @@ export class PerceptionMemory {
+       if (confidence < this.confidenceFloor) continue;
+       contacts.push(freeze({
+         id: contact.id,
++        occupantGeneration: contact.occupantGeneration ?? null,
+         kind: contact.kind,
+         team: contact.team,
+         classification: contact.classification,
+diff --git a/src/combat/broodContact.js b/src/combat/broodContact.js
+new file mode 100644
+index 0000000..2872eb8
+--- /dev/null
++++ b/src/combat/broodContact.js
+@@ -0,0 +1,150 @@
++// Brood attack state and the narrow contact-damage adapter. Movement stays in the AI actuator;
++// only an actual native impact can spend an attack. Ordinary player terrain immunity is untouched.
++import { scalarHitToDamagePacket } from './damage.js';
++
++import { BROOD_ATTACK_PROFILES } from '../data/broodAttackProfiles.js';
++export { BROOD_ATTACK_PROFILES } from '../data/broodAttackProfiles.js';
++export function broodRole(entity) {
++  const id = entity?.data?.broodBodyId;
++  return BROOD_ATTACK_PROFILES[id] ? id : null;
++}
++
++// Pure tick-driven state machine shared by the charged body and cheap cohort member.
++export function advanceBroodAttack(previous, { role, entityId, tick, self, target, interrupted = false, life = self?.occupantGeneration ?? 0 }) {
++  const profile = BROOD_ATTACK_PROFILES[role];
++  if (!profile || !self?.pos || !Number.isInteger(tick)) return null;
++  let attack = previous?.life === life ? previous : { role, life, endsAtTick: null, phase: 'approach', phaseStartedTick: tick, cycle: 0, attackId: null, targetId: null, attackLine: null };
++  const transition = (phase, fields = {}) => ({ ...attack, phase, phaseStartedTick: tick,
++    endsAtTick: phase === 'approach' ? null : tick + profile[`${phase}Ticks`], ...fields });
++  const age = tick - attack.phaseStartedTick;
++  const targetLife = Number.isSafeInteger(target?.occupantGeneration) && target.occupantGeneration > 0 ? target.occupantGeneration : null;
++  if ((attack.phase === 'windup' || attack.phase === 'commit') && attack.targetLife !== targetLife) {
++    return transition('recovery', { outcome: 'target_life_changed' });
++  }
++  if (!target?.pos || target.alive === false || interrupted) {
++    if (attack.phase !== 'recovery') return transition('recovery', { outcome: interrupted ? 'interrupted' : 'target_lost' });
++    return attack;
++  }
++  if (attack.phase === 'approach') {
++    // Do not announce a release that the shared engagement response window must refuse.
++    if (profile.delivery === 'projectile' && tick + profile.windupTicks < (self.broodAttackReadyTick || 0)) return attack;
++    const dx = target.pos.x - self.pos.x, dz = target.pos.z - self.pos.z;
++    const distance = Math.hypot(dx, dz);
++    if (distance > profile.range) return attack;
++    const heading = distance > 1e-6 ? Math.atan2(dz, dx) : (self.rot || 0);
++    const attackLine = Object.freeze({
++      origin: Object.freeze({ x: self.pos.x, z: self.pos.z }), heading,
++      dir: Object.freeze({ x: Math.cos(heading), z: Math.sin(heading) }),
++      // The cue is the bounded swept lane for this motor window, not an arbitrary long ray.
++      range: profile.delivery === 'projectile' ? profile.range : profile.speed * profile.commitTicks / 60
++        + Math.max(0, (self.vel?.x || 0) * Math.cos(heading) + (self.vel?.z || 0) * Math.sin(heading)) * profile.windupTicks / 60,
++      halfWidth: self.radius || 8,
++      cueStartedTick: tick, life, targetLife,
++    });
++    return transition('windup', { targetId: target.id, targetLife, attackLine, cueStartedTick: tick,
++      attackId: `${role}:${entityId}:${life}:${tick}:${attack.cycle}`, outcome: null });
++  }
++  if (attack.phase === 'windup' && age >= profile.windupTicks) return transition('commit');
++  if (attack.phase === 'commit' && age >= profile.commitTicks) return transition('recovery', { outcome: 'pass_complete' });
++  if (attack.phase === 'recovery' && age >= profile.recoveryTicks) {
++    return transition('approach', { cycle: attack.cycle + 1, attackId: null, attackLine: null, targetId: null, outcome: null });
++  }
++  return attack;
++}
++
++export class BroodContactRuntime {
++  constructor(host) {
++    this.host = host;
++    this.reset();
++    const bus = host.bus;
++    this.off = [
++      bus.on('ai:doctrinePhase', p => this.onPhase(p)),
++      bus.on('physics:impact', p => this.onImpact(p)),
++      ...['game:started', 'game:newGame', 'save:loaded', 'run:ended'].map(event => bus.on(event, () => this.reset())),
++    ];
++  }
++  reset() {
++    this.spent = new WeakMap(); this.published = new WeakMap();
++    for (const entity of this.host.state?.entityList || []) if (broodRole(entity)) {
++      delete entity.data.broodAttack;
++      delete entity.data.broodShot;
++      for (const weapon of entity.data.weapons || []) delete weapon._broodSpentAttack;
++      delete entity.data.broodAttackInterruptedTick;
++    }
++  }
++  destroy() { for (const off of this.off || []) if (typeof off === 'function') off(); this.off = []; this.reset(); }
++  onPhase(p) {
++    const state = this.host.state;
++    if (!p || p.tick !== state.tick || !['approach', 'windup', 'commit', 'recovery'].includes(p.phase)) return;
++    const role = p.doctrineId === 'brood_charge' ? 'brood_charger' : p.doctrineId === 'brood_lunge' ? 'brood_mite' : p.doctrineId === 'brood_spit' ? 'brood_spitter' : null;
++    if (!role) return;
++    const entity = state.entities.get(p.entityId);
++    if (!entity || entity.alive === false || broodRole(entity) !== role
++      || !Number.isSafeInteger(entity.occupantGeneration) || entity.occupantGeneration < 1) return;
++    const previous = entity.data.broodAttack;
++    if (p.attackLine && p.attackLine.life !== (entity.occupantGeneration ?? 0)) return;
++    if (p.attackLine && (!Number.isSafeInteger(p.attackLine.targetLife) || p.attackLine.targetLife < 1
++      || state.entities.get(p.targetId)?.occupantGeneration !== p.attackLine.targetLife)) return;
++    if (p.phase !== 'windup' && (!previous || previous.phase === 'approach') && p.phase !== 'approach') return;
++    if (previous && p.tick < previous.phaseStartedTick) return;
++    const cueStartedTick = p.attackLine?.cueStartedTick ?? previous?.cueStartedTick;
++    if (p.phase === 'windup' && cueStartedTick !== p.tick) return;
++    if (p.phase === 'commit' && (previous?.phase !== 'windup'
++      || !Number.isSafeInteger(cueStartedTick)
++      || p.tick - cueStartedTick < BROOD_ATTACK_PROFILES[role].windupTicks)) return;
++    if (p.phase === 'windup' || p.phase === 'approach') delete entity.data.broodShot;
++    entity.data.broodAttack = { role, life: entity.occupantGeneration ?? 0, phase: p.phase, phaseStartedTick: p.tick,
++      endsAtTick: p.phase === 'approach' ? null : p.tick + BROOD_ATTACK_PROFILES[role][`${p.phase}Ticks`],
++      targetId: p.targetId, targetLife: p.attackLine?.targetLife ?? previous?.targetLife ?? null, attackLine: p.attackLine || previous?.attackLine || null,
++      cueStartedTick, attackId: cueStartedTick == null ? null : `${role}:${entity.id}:${entity.occupantGeneration ?? 0}:${cueStartedTick}` };
++  }
++  publish() {
++    for (const entity of this.host.state.entityList || []) {
++      if (!entity || entity.alive === false || !broodRole(entity)) continue;
++      const attack = entity.data.broodAttack;
++      if (!attack) continue;
++      if (attack.role === 'brood_spitter') {
++        const target = this.host.state.entities.get(attack.targetId);
++        if (attack.life !== entity.occupantGeneration || (attack.targetId != null
++          && (!target || target.alive === false || target.occupantGeneration !== attack.targetLife))) {
++          delete entity.data.broodAttack; delete entity.data.broodShot; continue;
++        }
++      }
++      attack.sampledTick = this.host.state.tick;
++      if (this.published.get(entity) === attack) continue;
++      this.published.set(entity, attack);
++      this.host.bus.emit('brood:phase', { entityId: entity.id, ...attack, tick: this.host.state.tick });
++    }
++  }
++  onImpact(p) {
++    const state = this.host.state;
++    if (!p || state.mode !== 'flight' || p.tick !== state.tick || p.consequenceKernelVersion !== 1
++      || !(Number(p.impulse ?? p.dp) > 0)) return null;
++    const a = state.entities.get(p.aId), b = state.entities.get(p.bId);
++    if (!a || !b || a === b || a.alive === false || b.alive === false) return null;
++    return this.contact(a, b, p) || this.contact(b, a, p);
++  }
++  contact(actor, target, impact) {
++    const role = broodRole(actor), attack = actor.data?.broodAttack;
++    if (!role || BROOD_ATTACK_PROFILES[role].delivery === 'projectile' || !attack || !Number.isSafeInteger(attack.life) || attack.life < 1
++      || attack.life !== actor.occupantGeneration || attack.phase !== 'commit' || !attack.attackId
++      || !Number.isSafeInteger(attack.phaseStartedTick) || impact.tick < attack.phaseStartedTick
++      || impact.tick - attack.phaseStartedTick >= BROOD_ATTACK_PROFILES[role].commitTicks
++      || actor.data.broodAttackInterruptedTick >= attack.phaseStartedTick
++      || this.spent.get(actor) === attack.attackId) return null;
++    // Any real collision spends this pass, including cover and other bodies. No proximity fuse.
++    this.spent.set(actor, attack.attackId);
++    actor.data.broodAttackInterruptedTick = impact.tick;
++    if (!Number.isSafeInteger(attack.targetLife) || attack.targetLife < 1 || target.occupantGeneration !== attack.targetLife
++      || target.id !== attack.targetId || target.id !== this.host.state.playerId
++      || actor.team === target.team || this.host.playerIsDockProtected?.()) return null;
++    const packet = scalarHitToDamagePacket({ damage: BROOD_ATTACK_PROFILES[role].damage,
++      damageType: 'kinetic', pos: impact.pos, source: { kind: 'brood_contact', weaponId: role } });
++    // Native contact already exchanged momentum. This packet must never supply a second impulse.
++    const result = this.host.ensureKernel().routeDamage({ attackerId: actor.id, targetId: target.id,
++      packet, origin: { kind: 'brood_contact', id: role } });
++    if (result?.ok) this.host.bus.emit('brood:contact', { entityId: actor.id, targetId: target.id,
++      attackId: attack.attackId, role, tick: impact.tick, pos: impact.pos, damage: BROOD_ATTACK_PROFILES[role].damage });
++    return result;
++  }
++}
+diff --git a/src/combat/broodProjectile.js b/src/combat/broodProjectile.js
+new file mode 100644
+index 0000000..0ad38ba
+--- /dev/null
++++ b/src/combat/broodProjectile.js
+@@ -0,0 +1,51 @@
++// Biological emission policy; the ordinary weapon service still owns spawning and packets.
++import { isRecovering, isTumbling } from './tumbleStatus.js';
++import { physicsBodyNativeReady } from '../core/physicsAuthority.js';
++import { resolveCollisionProxyManifest } from '../data/collisionProxyManifests.js';
++import { sweepCollisionProxyInto } from '../core/collisionProxySweep.js';
++import { broodBodyContract } from '../data/broodBodies.js';
++import { BROOD_ATTACK_PROFILES } from '../data/broodAttackProfiles.js';
++
++export function isBroodProjectile(entity, weapon) {
++  return entity?.data?.broodBodyId === 'brood_spitter' && weapon?.defId === 'wpn_brood_glob';
++}
++export function broodProjectileMouth(entity) {
++  const socket = broodBodyContract(entity?.data?.broodBodyId)?.sockets.SOCKET_BROOD_PROJECTILE_MOUTH;
++  if (!socket || !entity?.pos || !Number.isFinite(entity.rot)) return null;
++  const [x, y, z] = socket.position, c = Math.cos(entity.rot), s = Math.sin(entity.rot);
++  return { x: entity.pos.x + c*x - s*z, y, z: entity.pos.z + s*x + c*z };
++}
++export function broodProjectileReady(entity, weapon, state) {
++  if (!isBroodProjectile(entity, weapon) || entity.alive === false || state.entities.get(entity.id) !== entity
++    || isTumbling(state, entity) || isRecovering(state, entity)) return false;
++  const attack = entity.data.broodAttack, profile = BROOD_ATTACK_PROFILES.brood_spitter;
++  const target = attack && state.entities.get(attack.targetId);
++  return !!(attack?.phase === 'commit' && attack.attackId && attack.role === 'brood_spitter'
++    && Number.isSafeInteger(attack.life) && attack.life > 0 && attack.life === entity.occupantGeneration
++    && target?.alive !== false && target?.occupantGeneration === attack.targetLife
++    && Number.isSafeInteger(attack.targetLife) && attack.targetLife > 0
++    && state.tick >= attack.phaseStartedTick && state.tick < attack.phaseStartedTick + profile.commitTicks
++    && state.tick - attack.cueStartedTick >= profile.windupTicks
++    && !(entity.data.broodAttackInterruptedTick >= attack.phaseStartedTick)
++    && weapon._broodSpentAttack !== attack.attackId);
++}
++
++// Sweep the actual glob disc from body origin to mouth. Use the same compound narrow phase
++// as projectile physics, including initial overlap and rounded corners, never a point ray.
++export function broodMouthClear(state, source, mouth, radius) {
++  const hit = {};
++  for (const body of state.entities.values()) {
++    if (!body?.alive || !body.collides || body === source || body.type === 'projectile'
++      || !physicsBodyNativeReady(body) || !body.pos) continue;
++    const manifest = body.shield > 0 ? null : resolveCollisionProxyManifest(body);
++    if (manifest) {
++      if (sweepCollisionProxyInto(hit, body, manifest, source.pos, mouth, radius)) return false;
++    } else {
++      const dx = mouth.x-source.pos.x, dz = mouth.z-source.pos.z, length2 = dx*dx+dz*dz;
++      const t = length2 ? Math.max(0, Math.min(1, ((body.pos.x-source.pos.x)*dx+(body.pos.z-source.pos.z)*dz)/length2)) : 0;
++      const r = Math.max(0, body.physicsBody?.radius ?? body.radius ?? 0) + radius;
++      if (Math.hypot(body.pos.x-source.pos.x-t*dx, body.pos.z-source.pos.z-t*dz) <= r) return false;
++    }
++  }
++  return true;
++}
+diff --git a/src/combat/geometry.js b/src/combat/geometry.js
+index cbcc468..7980cd5 100644
+--- a/src/combat/geometry.js
++++ b/src/combat/geometry.js
+@@ -1,3 +1,4 @@
++import { broodBodyContract } from '../data/broodBodies.js';
+ import { modelTruthHitVolume } from '../data/modelTruth.js';
+ 
+ export function worldPointToEntityLocal(entity, worldPoint) {
+@@ -83,6 +84,12 @@ export function socketWorldPosition(entity, socket) {
+ }
+ 
+ export function socketLocalPosition(entity, socket) {
++  const body = broodBodyContract(entity?.data?.broodBodyId);
++  if (body && entity.data.defId === body.id && entity.data.enemyTypeId === body.id
++    && socket?.id === 'socket_hull') {
++    const point = body.sockets.SOCKET_BROOD_TETHER_DORSAL.position;
++    return { x: point[0], z: point[2] };
++  }
+   const local = pair(socket && socket.localPos, 0, 0);
+   const scale = Math.max(0.000001, Number(entity && entity.radius) || 1);
+   return { x: local[0] * scale, z: local[1] * scale };
+diff --git a/src/data/broodAttackProfiles.js b/src/data/broodAttackProfiles.js
+new file mode 100644
+index 0000000..bf75518
+--- /dev/null
++++ b/src/data/broodAttackProfiles.js
+@@ -0,0 +1,6 @@
++// Pure shared timing and reach contract; renderer imports must not load combat mutation owners.
++export const BROOD_ATTACK_PROFILES = Object.freeze({
++  brood_spitter: Object.freeze({ range: 300, preferredRange: 260, windupTicks: 48, commitTicks: 1, recoveryTicks: 90, speed: 220, damage: 18, delivery: 'projectile', recoilImpulse: 210 }),
++  brood_mite: Object.freeze({ range: 55, windupTicks: 30, commitTicks: 48, recoveryTicks: 48, speed: 105, damage: 12 }),
++  brood_charger: Object.freeze({ range: 160, windupTicks: 45, commitTicks: 144, recoveryTicks: 84, speed: 96, damage: 30 }),
++});
+diff --git a/src/data/enemies.js b/src/data/enemies.js
+index 9fd2c99..7cb02b3 100644
+--- a/src/data/enemies.js
++++ b/src/data/enemies.js
+@@ -582,4 +582,39 @@ export const ENEMY_TYPES = [
+     bountyCr: 0, shipClass: 'gunship',
+     loot: null,
+   },
++  {
++    id: 'brood_spitter', name: 'Brood Spitter', broodBodyId: 'brood_spitter',
++    silhouette: 'brood_spitter', factionId: null, aiArchetype: 'sniper',
++    levelRange: [1, 1], combatDoctrineId: 'brood_spit',
++    hull: 70, armor: 8, armorFlat: 0, shield: 0, shieldRegen: 0, cap: 40, capRegen: 10,
++    combatSpeed: 65, maxSpeed: 85, accel: 45, turnRate: 1.1, collisionRadius: 9, mass: 30,
++    weapons: [{ id: 'wpn_brood_glob' }], physicalClass: 'ammunition', shipClass: 'drone',
++    aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 260, leashRadius: 2200 },
++    telegraph: { cue: 'brood_spit' }, counterHint: 'move_after_inflation_or_close_during_refill',
++    bountyCr: 190, loot: { creditsRange: [35, 65], drops: [] },
++  },
++  // Brood are organisms, separate from Adventure's Vethari and from pilot hull ancestry.
++  {
++    id: 'brood_mite', name: 'Brood Mite', broodBodyId: 'brood_mite',
++    silhouette: 'brood_mite', factionId: null, aiArchetype: 'swarmer',
++    levelRange: [1, 1], combatDoctrineId: 'brood_lunge', cohortRecipe: 'brood_mite_river',
++    hull: 36, armor: 4, armorFlat: 0, shield: 0, shieldRegen: 0, cap: 40, capRegen: 10,
++    combatSpeed: 105, maxSpeed: 115, accel: 100, turnRate: 2.2, collisionRadius: 7.1, mass: 22,
++    weapons: [], physicalClass: 'ammunition', shipClass: 'drone',
++    aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 60, leashRadius: 2200 },
++    telegraph: { cue: 'brood_lunge' }, counterHint: 'shove_or_throw_the_lunging_body_into_cover',
++    bountyCr: 100, loot: { creditsRange: [15, 40], drops: [] },
++  },
++  {
++    id: 'brood_charger', name: 'Brood Charger', broodBodyId: 'brood_charger',
++    silhouette: 'brood_charger', factionId: null, aiArchetype: 'brawler',
++    levelRange: [1, 1], combatDoctrineId: 'brood_charge',
++    hull: 160, armor: 24, armorFlat: 1, shield: 0, shieldRegen: 0, cap: 60, capRegen: 10,
++    combatSpeed: 150, maxSpeed: 150, accel: 95, turnRate: 1.65, collisionRadius: 13, mass: 90,
++    weapons: [], physicalClass: 'terrain', shipClass: 'gunship',
++    aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 180, leashRadius: 2200 },
++    telegraph: { cue: 'brood_charge' }, counterHint: 'sidestep_the_locked_lane_or_shove_the_body_into_cover',
++    bountyCr: 340, loot: { creditsRange: [70, 130], drops: [] },
++  },
++
+ ];
+diff --git a/src/data/squadChoreography.js b/src/data/squadChoreography.js
+index a053a01..34011d4 100644
+--- a/src/data/squadChoreography.js
++++ b/src/data/squadChoreography.js
+@@ -333,7 +333,14 @@ export const FODDER_CRESCENT_RECIPE = Object.freeze({
+   ...FODDER_COAST,
+ });
+ 
++export const BROOD_MITE_COHORT_RECIPE = Object.freeze({
++  ...FODDER_RIVER_RECIPE, id: 'brood_mite_river', cruiseSpeed: 62,
++  speedBand: Object.freeze({ min: 38, max: 76 }), densityTarget: 30,
++  laneSpacing: 30, alongSpacing: 30, corridorWidth: 105, separationRadius: 30,
++});
++
+ export const COHORT_RECIPES = Object.freeze({
++  [BROOD_MITE_COHORT_RECIPE.id]: BROOD_MITE_COHORT_RECIPE,
+   [COHORT_RECIPE_RIVER]: FODDER_RIVER_RECIPE,
+   [COHORT_RECIPE_CRESCENT]: FODDER_CRESCENT_RECIPE,
+ });
+diff --git a/src/data/swarmMode.js b/src/data/swarmMode.js
+index bbed5b1..4f0d064 100644
+--- a/src/data/swarmMode.js
++++ b/src/data/swarmMode.js
+@@ -295,12 +295,14 @@ const GATES = Object.freeze(['nw', 'ne', 'se', 'sw', 'front', 'rear', 'diagonal_
+ export const SWARM_ROSTER = Object.freeze([
+   { enemyId: 'wasp_swarmer', role: 'mass', fromWave: 1, weight: 10, name: 'Wasp Swarmer' },
+   { enemyId: 'reaver_pirate', role: 'pressure', fromWave: 2, weight: 6, name: 'Reaver Pirate' },
++  { enemyId: 'brood_mite', role: 'mass', fromWave: 3, weight: 5, name: 'Brood Mite' },
+   { enemyId: 'choir_zealot', role: 'mass', fromWave: 4, weight: 7, name: 'Choir Zealot' },
+   // The dart joins one wave after the zealot pack: by round five the room is crowded enough
+   // that "the hull running at you IS the ordnance" stays legible instead of being lost noise.
+   // Light enough to sling, fuse-lit on approach, and it pops where it dies either way.
+   { enemyId: 'detonator_dart', role: 'pressure', fromWave: 5, weight: 4, name: 'Detonator Dart' },
+   { enemyId: 'mine_layer_jackal', role: 'disruptor', fromWave: 6, weight: 2, name: 'Mine-Layer Jackal' },
++  { enemyId: 'brood_charger', role: 'pressure', fromWave: 7, weight: 2, name: 'Brood Charger' },
+   { enemyId: 'lancer_sniper', role: 'reach', fromWave: 8, weight: 3, name: 'Lancer Sniper' },
+   // The warden is the roster's bodyguard: it picks a packmate and screens it, so the pack
+   // stops reading as disposable chaff exactly when the rooms start throwing it.
+@@ -310,6 +312,7 @@ export const SWARM_ROSTER = Object.freeze([
+   // not fodder — it arrives as a disruptor, after the room has taught dodging as a verb.
+   // (Wave 13, not 12: the ghost already owns that debut — one new silhouette at a time.)
+   { enemyId: 'customs_cutter', role: 'disruptor', fromWave: 13, weight: 2, name: 'Customs Cutter' },
++  { enemyId: 'brood_spitter', role: 'reach', fromWave: 11, weight: 2, name: 'Brood Spitter' },
+   { enemyId: 'quiet_ghost', role: 'reach', fromWave: 12, weight: 2, name: 'Quiet Ghost' },
+   { enemyId: 'pd_screen_escort', role: 'support', fromWave: 14, weight: 2, name: 'Point-Defense Screen' },
+   // The lawman is the roster's duelist: plated enough to shrug the throw answer, committed
+diff --git a/src/data/weapons.js b/src/data/weapons.js
+index fff8433..fc8cf42 100644
+--- a/src/data/weapons.js
++++ b/src/data/weapons.js
+@@ -341,6 +341,16 @@ const SHIPPED_WEAPONS = [
+     purchasable: false, unique: true, salvageOnly: true,
+     attackTraits: ['mod_bank_shot', 'mod_bank_relay'],
+   },
++  {
++    // A biological emitter, never an equippable gun or human hardpoint.
++    id: 'wpn_brood_glob', name: 'Brood Glob', biologicalBodyId: 'brood_spitter', purchasable: false, salvageOnly: false,
++    dmg: 18, rof: 1, damageType: 'kinetic', energyCost: 0,
++    projSpeed: 220, range: 300, tracking: 'fixed', spreadDeg: 0,
++    // Nominal carrier momentum: the ordinary ghost projectile is mass 0.1 at 220 WU/s.
++    // Launch counterstroke is separately authored; the damage port owns this one impact.
++    impulsePerHit: 22, tumbleTorque: 0, impulseProvenance: 'brood_glob_impact',
++    statuses: [{ id: 'status_goo', stacks: 1 }],
++  },
+   ...EMERGENT_WEAPON_DEFS,
+ ];
+ 
+diff --git a/src/systems/aiFireIntent.js b/src/systems/aiFireIntent.js
+index ec691fc..f0c45d9 100644
+--- a/src/systems/aiFireIntent.js
++++ b/src/systems/aiFireIntent.js
+@@ -156,6 +156,17 @@ export function applyAIFiringIntent(decision, state) {
+     return;
+   }
+ 
++  const biological = e.data?.broodBodyId === 'brood_spitter' && combatDoctrine?.doctrineId === 'brood_spit';
++  if (biological) {
++    combat.targetId = targetId;
++    combat.aimCommit = null;
++    intent.fire = true;
++    intent.aimAngle = e.rot;
++    intent.fireBlockReason = null;
++    intent.fireBlockerId = null;
++    ai.lastAggressionTrace = aggressionTrace(decision, state, targetId, ai);
++    return;
++  }
+   let aimAngle = leadAngleFor(e, target, data.weapons);
+   combat.targetId = targetId;
+   combat.pdScreen = pdActor;
+diff --git a/src/systems/aiPorts.js b/src/systems/aiPorts.js
+index d23731f..7837001 100644
+--- a/src/systems/aiPorts.js
++++ b/src/systems/aiPorts.js
+@@ -970,6 +970,8 @@ function sensorSelf(state, entity, capabilities = capabilitiesFor(state, entity)
+     // INF-027: post-tumble stabilization reads off the same frame, so tactics can tell a
+     // recovering helm (disrupted thrust, silent guns) from a fully re-engaged one.
+     recovering: isRecovering(state, entity),
++    ...(entity.data?.broodBodyId === 'brood_spitter' ? { broodAttackReadyTick: (activity?.startedTick || 0) + Math.ceil(Math.max(1, ai.noFireResponseWindowS || 1) * 60) } : {}),
++    broodAttackInterruptedTick: entity.data?.broodBodyId ? entity.data.broodAttackInterruptedTick ?? -1 : -1,
+     tethered: attachmentsFor(attachmentIndex, entity.id).length > 0,
+     capabilities,
+     subsystemFractions: subsystemFractionView,
+@@ -1175,6 +1177,7 @@ function pruneCloakTrackLedger(ledger, now) {
+ function makeSensorContactRecord() {
+   return {
+     id: null,
++    occupantGeneration: null,
+     kind: null,
+     team: null,
+     classification: null,
+@@ -1215,6 +1218,7 @@ function ensureSensorContactRecord(records, index) {
+ /** Fill a retained contact record from a cached base + observer-relative fields (no object spread). */
+ function fillSensorContact(out, base, confidence, threat, hostile) {
+   out.id = base.id;
++  out.occupantGeneration = base.occupantGeneration;
+   out.kind = base.kind;
+   out.team = base.team;
+   out.classification = base.classification;
+@@ -1394,6 +1398,7 @@ function buildContactBase(state, other, runtime, attachmentIndex, kind, freeze,
+     : tagsFor(other, runtime, freeze);
+   return {
+     id: other.id,
++    occupantGeneration: Number.isSafeInteger(other.occupantGeneration) && other.occupantGeneration > 0 ? other.occupantGeneration : null,
+     kind,
+     team: other.team == null ? null : other.team,
+     classification: classificationFor(other),
+diff --git a/src/systems/combat.js b/src/systems/combat.js
+index b9f10b3..938e722 100644
+--- a/src/systems/combat.js
++++ b/src/systems/combat.js
+@@ -1,6 +1,8 @@
+ // combat system: the damage pipeline (shield→armor→hull), shield/cap regen, death + loot +
+ // player respawn, and enemy spawn builders. Consumes projectile:hit from physics (ARCHITECTURE §2.3
+ // step 8, §4.4). Single source of health mutation for ships/stations/drones.
++import { broodBodyContract, broodCollisionManifest } from '../data/broodBodies.js';
++import { BroodContactRuntime } from '../combat/broodContact.js';
+ import { WEAPONS } from '../data/weapons.js';
+ import { KillCause, KillSurface } from '../combat/killCausality.js';
+ import { ENEMY_TYPES } from '../data/enemies.js';
+@@ -161,9 +163,10 @@ export function scaleCombatant(def, level) {
+ // C1: floor for enemy direct-fire projectile speed (WU/s) — keeps shots readable on screen.
+ const ENEMY_PROJ_SPEED_FLOOR = 380;
+ 
+-function enemyWeaponTemplateKey(w) {
++function enemyWeaponTemplateKey(w, broodBodyId) {
+   return [
+     w.id,
++    broodBodyId ?? '',
+     w.turret === true ? 1 : 0,
+     w.dmgOverride ?? '',
+     w.rofOverride ?? '',
+@@ -174,10 +177,10 @@ function enemyWeaponTemplateKey(w) {
+   ].join('|');
+ }
+ 
+-function resolveEnemyWeapon(w, slotIndex) {
++function resolveEnemyWeapon(w, slotIndex, broodBodyId = null) {
+   const base = WPN.get(w.id);
+   if (!base) return null;
+-  const templateKey = enemyWeaponTemplateKey(w);
++  const templateKey = enemyWeaponTemplateKey(w, broodBodyId);
+   let template = weaponTemplateCache.get(templateKey);
+   if (template) {
+     enemySpawnRepeatWork.weaponTemplateHits += 1;
+@@ -186,20 +189,21 @@ function resolveEnemyWeapon(w, slotIndex) {
+     // Phase 2 hardpoint fields: enemy ships have no per-hull facing data, so default front + the
+     // standard fixed-gun gimbal arc (they gimbal toward their AI lead angle, like the player does).
+     // An enemy entry may force a turret mount via w.turret:true (e.g. capital boss broadside beams).
++    const biological = base.biologicalBodyId === broodBodyId && !!broodBodyId;
+     const isTurret = base.tracking === 'auto_turret' || !!w.turret;
+     const isHoming = base.tracking === 'homing';
+     const facing = isTurret ? 'turret' : 'front';
+-    const gimbalArc = isTurret ? (base.turretArcDeg || 180) * Math.PI / 180
++    const gimbalArc = biological ? 0 : isTurret ? (base.turretArcDeg || 180) * Math.PI / 180
+       : (isHoming ? Math.PI : 22 * Math.PI / 180);
+     template = {
+       ...base, defId: w.id,
+       facing, facingAngle: facing === 'turret' ? 0 : 0, gimbalArc,
+-      muzzleOffset: [0.8, 0],
++      muzzleOffset: biological ? null : [0.8, 0],
+       dmg: w.dmgOverride ?? base.dmg,
+       rof: w.rofOverride ?? base.rof,
+       // C1 engagement scale: enemy direct-fire projectiles fly at >= 380 WU/s so a shot crosses the
+       // visible frame in well under a second. Homing and deployed ordnance keep authored speeds.
+-      projSpeed: (isHoming || base.tracking === 'deploy')
++      projSpeed: (biological || isHoming || base.tracking === 'deploy')
+         ? (w.projSpeedOverride ?? base.projSpeed)
+         : Math.max(ENEMY_PROJ_SPEED_FLOOR, w.projSpeedOverride ?? base.projSpeed),
+       range: w.rangeOverride ?? base.range,
+@@ -227,6 +231,32 @@ function resolveEnemyWeapon(w, slotIndex) {
+ // Weapon capacitor regen boost for the player — same ~15% faster recharge as weapons.js heat pacing.
+ const WEAPON_CAP_REGEN_MULT = 1.15;
+ 
++// A Brood body has its own physical identity. Do not let an unknown SHIPS id silently
++// inherit Kestrel/Wasp fittings, propulsion, or measured collision geometry.
++function makeBroodBodySpec(def, pos, factionId) {
++  const body = broodBodyContract(def.broodBodyId);
++  const [cx, cy, cz] = body.centerOfMass;
++  const width = body.bounds.max[0] - body.bounds.min[0];
++  const depth = body.bounds.max[2] - body.bounds.min[2];
++  const inertiaY = body.mass * (width * width + depth * depth) / 12;
++  const attachmentPoints = Object.fromEntries(Object.entries(body.sockets).map(([id, socket]) => {
++    const [x, y, z] = socket.position; return [id, { x, y, z }];
++  }));
++  attachmentPoints.massline = attachmentPoints.SOCKET_BROOD_TETHER_DORSAL;
++  const propulsion = { combatSpeed: def.combatSpeed, maxSpeed: def.maxSpeed,
++    mainAccel: def.accel, reverseAccel: def.accel * 0.55, strafeAccel: def.accel * 0.6,
++    yawAccel: def.turnRate * 3, yawRate: def.turnRate, boostMult: 1, boostSpeedMult: 1 };
++  return { type: 'ship', team: 1, factionId, pos, rot: 0, radius: def.collisionRadius,
++    mass: def.mass, thrust: def.accel, turnRate: def.turnRate, maxSpeed: def.maxSpeed,
++    combatSpeed: def.combatSpeed, propulsion, drag: 0,
++    physicsBody: { schemaVersion: 1, shape: 'capsule', mass: body.mass, radius: body.radius, inertiaY,
++      centerOfMass: { x: cx, y: cy, z: cz }, dynamic: true, ccd: true, material: 'ship', revision: 0,
++      collisionProxyManifest: broodCollisionManifest(def.broodBodyId), attachmentPoints },
++    data: { defId: def.id, enemyTypeId: def.id, broodBodyId: def.broodBodyId,
++      weapons: [], fittings: [], derived: { mass: def.mass, radius: def.collisionRadius, propulsion },
++      combat: { targetId: null, lockTarget: null, lockProgress: 0 }, factionId, team: 1 } };
++}
++
+ export function makeEnemySpawnSpec(enemyTypeId, level, pos, opts = {}) {
+   let def = ENEMY.get(enemyTypeId);
+   if (!def) {
+@@ -243,9 +273,11 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos, opts = {}) {
+   // by team/archetype/context in scanner.isHostileToPlayer, never by factionId. Precedence:
+   //   caller override (a zone's owning faction) > archetype's own faction > lawful/hostile fallback.
+   // The old code tagged EVERY hostile as faction_vael, so a Crimson Reach pirate read as a green alien.
+-  const factionId = opts.factionId || def.factionId || (def.factionLawful ? 'faction_scn' : 'faction_reach');
++  const factionId = def.broodBodyId ? null : opts.factionId || def.factionId || (def.factionLawful ? 'faction_scn' : 'faction_reach');
+   const factionBehavior = factionBehaviorForCombatSpawn(factionId, opts);
+-  const spec = makeShipEntitySpec(def.shipId, { team: 1, factionId, pos, ai: { archetype: def.aiArchetype } });
++  const spec = def.broodBodyId
++    ? makeBroodBodySpec(def, pos, factionId)
++    : makeShipEntitySpec(def.shipId, { team: 1, factionId, pos, ai: { archetype: def.aiArchetype } });
+   spec.hull = spec.hullMax = s.hull;
+   spec.armorHp = spec.armorMax = s.armor;
+   spec.armorFlat = def.armorFlat || 0;
+@@ -275,7 +307,7 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos, opts = {}) {
+   if (def.turnRate) spec.turnRate = def.turnRate;
+   if (def.collisionRadius) spec.radius = def.collisionRadius;
+   if (def.mass) spec.mass = def.mass;
+-  spec.drag = spec.drag || 1.25;
++  spec.drag = def.broodBodyId ? 0 : spec.drag || 1.25;
+   // Expand weapon entries by their declared count so a boss that lists {id,count:4} actually gets 4
+   // independent weapon instances (each with its own cooldown/heat), not 1. (Phase-2 audit fix.)
+   const ws = [];
+@@ -284,7 +316,7 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos, opts = {}) {
+     for (const w of (def.weapons || [])) {
+       const n = Math.max(1, w.count || 1);
+       for (let k = 0; k < n; k++) {
+-        const rw = resolveEnemyWeapon(w, idx++);
++        const rw = resolveEnemyWeapon(w, idx++, def.broodBodyId);
+         if (rw) ws.push(rw);
+       }
+     }
+@@ -336,6 +368,7 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos, opts = {}) {
+       ? Math.max(MIN_AI_RESPONSE_WINDOW_S, opts.noFireResponseWindowS)
+       : Math.max(MIN_AI_RESPONSE_WINDOW_S, DOCTRINE_TELEGRAPH_TICKS / 60),
+   };
++  if (def.cohortRecipe) spec.data.ai.cohortRecipe = def.cohortRecipe;
+   const doctrine = defaultDoctrineFor(def, pos, opts.startedTick);
+   spec.data.ai.activity = doctrine.activity;
+   spec.data.ai.roe = doctrine.roe;
+@@ -670,6 +703,8 @@ export const combat = {
+     this.state = ctx.state; this.bus = ctx.bus; this.helpers = ctx.helpers;
+     this.registry = ctx.registry || null;
+     this.kernel = getCombatKernel(ctx, { onKill: (target, killerId, lethal) => this.kill(target, killerId, lethal) });
++    this._broodContact?.destroy();
++    this._broodContact = new BroodContactRuntime(this);
+     this._pendingPlayerRecovery = null;
+     this._recoveryInFlight = false;
+     this._beamCandidateScratch = [];
+@@ -724,6 +759,8 @@ export const combat = {
+     ctx.bus.on('debug:invulnerable', (p) => { wakeQuiet(); setLabInvulnerable(this.state, p || {}); });
+   },
+ 
++  destroy() { this._broodContact?.destroy(); this._broodContact = null; },
++
+   // Transitional adapter: authored projectile/beam packets are routed directly; older scalar hit
+   // producers still pass through the legacy bridge until their emitters migrate.
+   onHit({ targetId, ownerId, damage, damageType, pos, penetration = 0, impulse = null, heat = 0, statuses = [], damagePacket = null, packet = null, weaponId = null, origin = null }) {
+@@ -1262,6 +1299,7 @@ export const combat = {
+   },
+ 
+   update(dt, state) {
++    this._broodContact?.publish();
+     ensureCombatRuntime(this);
+     resetCombatDiagnostics(this._diag);
+     state.combatRuntime = state.combatRuntime || {};
+diff --git a/src/systems/waveMaterialization.js b/src/systems/waveMaterialization.js
+index 4a49139..790bc10 100644
+--- a/src/systems/waveMaterialization.js
++++ b/src/systems/waveMaterialization.js
+@@ -205,6 +205,11 @@ export function materializeWaveBatch(ctx, request) {
+       // Cohort stamp travels with the body. Reward owners read it off the victim rather than
+       // asking a global "is a run live?" question that would also capture ambient traffic.
+       spec.data.runCohort = SURVIVAL_COHORT_TAG;
++      if (req.enemyId === 'brood_mite') {
++        spec.data.ai.cohortRecipe = 'brood_mite_river';
++        spec.data.ai.cohortId = `brood_mites:${req.seed}:${req.wave}:${req.gateGroup}`;
++        spec.data.ai.cohortGate = { x: pos.x, z: pos.z };
++      }
+       // Adventure's opening wasps use a softened teaching gun. Arena packs get a
+       // readable pulse burst that can threaten a stationary pilot, without hidden damage.
+       if (req.enemyId === 'wasp_swarmer') {
+diff --git a/src/systems/weapons.js b/src/systems/weapons.js
+index eb19133..87a19c0 100644
+--- a/src/systems/weapons.js
++++ b/src/systems/weapons.js
+@@ -7,6 +7,8 @@
+ // while firing and push a transient ray into state.combat.beams; their DAMAGE is combat's job,
+ // not ours. We emit ONLY combat:fire (+ combat:beamStop on release). Damage application and
+ // projectile:hit/combat:damage are owned by physics + combat.
++import { broodMouthClear, broodProjectileMouth, broodProjectileReady, isBroodProjectile } from '../combat/broodProjectile.js';
++import { BROOD_ATTACK_PROFILES } from '../data/broodAttackProfiles.js';
+ import { WEAPONS } from '../data/weapons.js';
+ import {
+   modelTruthBoltRadius,
+@@ -1227,6 +1229,8 @@ export const weapons = {
+ 
+   // Projectile weapon: gate on cooldown/cap/heat (+lock/+arc), spawn a projectile, emit combat:fire.
+   _serviceProjectileWeapon(e, w, def, isPlayer, capLeft, dt, state, aimAngle, forceTarget, fireGate = null) {
++    const biological = isBroodProjectile(e, w);
++    if (biological && !broodProjectileReady(e, w, state)) return capLeft;
+     const pilotAim = isPlayer && state.settings?.gameplay?.controlScheme === 'pilot';
+     if ((w._cooldown || 0) > 0) return capLeft;
+     if (this._releaseMomentumSinkIfReady(e, w, def, state)) return capLeft;
+@@ -1342,6 +1346,16 @@ export const weapons = {
+     const heatScale = spec && spec.costs && Number.isFinite(spec.costs.heatScale) ? spec.costs.heatScale : 1;
+     const heatCost = heatPerShot * heatScale;
+ 
++    // A lodged mouth spends the biological attempt without teleporting a glob through cover.
++    if (biological) {
++      w._broodSpentAttack = e.data.broodAttack.attackId;
++      const mouth = broodProjectileMouth(e);
++      if (!mouth || !broodMouthClear(state, e, mouth, modelTruthBoltRadius(e))) {
++        this.bus.emit('brood:shotBlocked', { entityId: e.id, attackId: w._broodSpentAttack, tick: state.tick });
++        return capLeft;
++      }
++    }
++
+     // --- commit: spend cap + heat, set cooldown ---
+     capLeft -= energyCost;
+     if (heatCost) {
+@@ -1357,7 +1371,17 @@ export const weapons = {
+     // consume missile lock so each missile needs a fresh lock
+     if (isMissile && e.data.combat) { e.data.combat.lockProgress = 0; }
+ 
+-    this._emitProjectileVolley(e, w, def, dir, tgt, isMissile, state, spec);
++    const emitted = biological
++      ? this._spawnProjectile(e, w, def, dir, null, false, state)
++      : this._emitProjectileVolley(e, w, def, dir, tgt, isMissile, state, spec);
++    if (biological && !emitted) return capLeft;
++    if (biological) {
++      const recoil = BROOD_ATTACK_PROFILES.brood_spitter.recoilImpulse;
++      queuePhysicsImpulse(e, { x: -Math.cos(dir) * recoil, y: 0, z: -Math.sin(dir) * recoil });
++      e.data.broodShot = { attackId: w._broodSpentAttack, life: e.occupantGeneration,
++        targetLife: e.data.broodAttack.targetLife, tick: state.tick };
++      this.bus.emit('brood:spit', { entityId: e.id, ...e.data.broodShot, dir, recoil });
++    }
+ 
+     const origin = this._muzzle(e, w, dir);
+     this.bus.emit('combat:fire', {
+@@ -1447,7 +1471,7 @@ export const weapons = {
+     // bullets INHERIT the shooter's full velocity too — weighty strafing runs at the cost of aim-true
+     // fire. A deliberate feel inversion kept behind a default-off flag so the golden (and normal play)
+     // are unchanged; enable it only for playtesting.
+-    const vel = (isMissile || combatFlag('momentumInherit'))
++    const vel = (isBroodProjectile(e, w) || isMissile || combatFlag('momentumInherit'))
+       ? { x: cf * launchSpeed + e.vel.x, z: sf * launchSpeed + e.vel.z }
+       : aimTrueProjectileVelocity(dir, launchSpeed, e.vel);
+ 
+@@ -1540,6 +1564,7 @@ export const weapons = {
+         });
+       }
+     }
++    return spawned;
+   },
+ 
+   _onAttackHit(payload) {
+@@ -1951,6 +1976,7 @@ export const weapons = {
+ 
+   // The round leaves the weapon socket. Aim, spread, and lead change the heading only.
+   _muzzle(e, w, _dir) {
++    if (isBroodProjectile(e, w)) return broodProjectileMouth(e);
+     const origin = modelTruthShotOrigin(e, w);
+     if (origin) return { x: origin.x, z: origin.z, y: origin.y || 0 };
+     return {

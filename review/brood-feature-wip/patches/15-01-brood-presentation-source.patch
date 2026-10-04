@@ -1,0 +1,748 @@
+diff --git a/src/data/modelTruthMounts.js b/src/data/modelTruthMounts.js
+index 5a76018..fdc4e0f 100644
+--- a/src/data/modelTruthMounts.js
++++ b/src/data/modelTruthMounts.js
+@@ -102,6 +102,7 @@ export function weaponSocketNameForSlot(row, slotIndex) {
+ }
+ 
+ export function shotWorldFromRow(row, entity, slotIndex) {
++  if (row?.id === 'brood_spitter') return socketWorldFromRow(row, entity, 'SOCKET_BROOD_PROJECTILE_MOUTH');
+   const name = weaponSocketNameForSlot(row, slotIndex);
+   if (!name) return null;
+   return socketWorldFromRow(row, entity, name);
+@@ -176,7 +177,8 @@ export function measuredHardpointFromRow(row, entity) {
+ }
+ 
+ export function ropeEndFromRow(row, entity) {
+-  return socketWorldFromRow(row, entity, 'SOCKET_Tether_Massline')
++  return socketWorldFromRow(row, entity, 'SOCKET_BROOD_TETHER_DORSAL')
++    || socketWorldFromRow(row, entity, 'SOCKET_Tether_Massline')
+     || socketWorldFromRow(row, entity, 'SOCKET_Tether')
+     || measuredHardpointFromRow(row, entity);
+ }
+diff --git a/src/render/actionVfx.js b/src/render/actionVfx.js
+index 2d4659c..9153e74 100644
+--- a/src/render/actionVfx.js
++++ b/src/render/actionVfx.js
+@@ -1,3 +1,4 @@
++import { broodCueStillCurrent, broodPhaseDuration, BROOD_CUE_CAPACITY, BROOD_CUE_SURFACES } from './broodVisuals.js';
+ // Receipted action responses share one bounded surface batch and transported mesh matter.
+ // Source/contact ownership lives here; reusable physical constructions live in actionPrimitives.
+ import * as THREE from 'three';
+@@ -9,6 +10,8 @@ import { presentedAnchorXZ, presentedAnchorRot } from './presentedAnchor.js';
+ import { readFrameOrigin } from './frameCoordinates.js';
+ import { modelTruthNozzleOrigin, modelTruthPlumeSocketName, modelTruthSocketWorld } from '../data/modelTruth.js';
+ 
++const ORDINARY_ACTION_CAPACITY=32;
++const ACTION_SURFACE_CAPACITY=256+BROOD_CUE_CAPACITY*BROOD_CUE_SURFACES;
+ const recipe=(verb,color,life=.65,extra={})=>Object.freeze({verb,life,
+   primitive:actionPrimitiveForVerb(verb),continuous:verb==='repair'||verb==='transfer',...extra,
+   color:new THREE.Color(color)});
+@@ -80,7 +83,7 @@ function localOffset(pos,body,out,prefix){
+ 
+ export class ActionVfx {
+   constructor(scene,toLocal=null){
+-    this.batch=new SweptSurfaceBatch(scene,{capacity:256,name:'SF_ActionAnswers',fieldVolume:true});
++    this.batch=new SweptSurfaceBatch(scene,{capacity:ACTION_SURFACE_CAPACITY,name:'SF_ActionAnswers',fieldVolume:true});
+     this.mesh=this.batch.mesh;this.toLocal=toLocal;
+     this.particles=new ForceParticleFlow(this.mesh,{capacity:192});
+     this.particleOptions={reducedMotion:false,reducedFlash:false};
+@@ -88,17 +91,20 @@ export class ActionVfx {
+     this.anchor={x:0,z:0};this.origin={x:0,z:0};this.socketWorld=new THREE.Vector3();
+     this.bodyBounds=new THREE.Box3();this.bodyCenter=new THREE.Vector3();
+     this.time=0;this.serial=0;this.live=0;this.disposed=false;
+-    this.slots=Array.from({length:32},()=>({alive:false,event:null,kind:null,id:null,sourceId:null,attached:false,born:0,last:0,
++    this.slots=Array.from({length:ORDINARY_ACTION_CAPACITY+BROOD_CUE_CAPACITY},(_,index)=>({
++      broodReserved:index>=ORDINARY_ACTION_CAPACITY,alive:false,event:null,kind:null,id:null,sourceId:null,attached:false,born:0,last:0,
+       x:0,y:0,z:0,sx:0,sz:0,radius:1,angle:0,angleOffset:0,seed:0,recipe:null,particlePulse:-1,
+       tx:0,tz:0,ox:0,oz:0,target:null,source:null,socket:null,sourceSocket:null,hasSource:false,
+-      provenance:'none',sourceProvenance:'none'}));
++      provenance:'none',sourceProvenance:'none',broodCue:false,broodLife:null,broodAttackId:null,
++      broodPhaseStartedTick:0,broodRange:0,broodHalfWidth:0,broodTarget:null,broodTargetLife:null}));
+   }
+   emit(name,p={},state={}){
+     if(this.disposed)return false;
+     p=resolveAdditionalActionVfxReceipt(name,p,state);if(!p)return false;
++    if(p.broodCue)name='brood:phase';
+     const entry=ACTION_VFX_RECIPES[name];if(!entry)return false;
+     const selectedRecipe=entry.variants?.[p.kind]??entry;
+-    const recipe=name==='ai:telegraph'?{...selectedRecipe,life:Math.max(.25,Math.min(4,finite(p.durationTicks,90)/60+.1))}:selectedRecipe;
++    const recipe=p.broodCue?{...selectedRecipe,life:broodPhaseDuration(p.broodAttack.role,p.broodAttack.phase)/60}:name==='ai:telegraph'?{...selectedRecipe,life:Math.max(.25,Math.min(4,finite(p.durationTicks,90)/60+.1))}:selectedRecipe;
+     const id=p.targetId??p.victimId??p.entityId??p.shipId??p.podId??p.asteroidId??p.mineId??p.wreckId??p.ownerId??p.sourceId??p.aId;
+     const target=entity(state,id);
+     const sourceId=p.sourceId??p.ownerId??p.actorId??p.byId??p.minerId??p.netId
+@@ -109,22 +115,34 @@ export class ActionVfx {
+     if(!valid(pos))return false;
+     const now=finite(state.simTime);
+     let slot=null;
+-    for(const s of this.slots)if(s.event===name&&s.kind===(p.kind??null)&&s.id===id&&s.alive){slot=s;break;}
+-    if(slot&&now-slot.last<.14)return false;
+-    if(!slot)for(const s of this.slots)if(!s.alive){slot=s;break;}
++    for(const s of this.slots)if(s.event===name&&(p.broodCue||s.kind===(p.kind??null))&&s.id===id&&s.alive){slot=s;break;}
++    if(p.broodCue && slot && slot.target===target && slot.broodLife===p.broodAttack.life
++      && slot.broodAttackId===p.broodAttack.attackId && slot.kind===p.kind
++      && slot.broodPhaseStartedTick===p.broodAttack.phaseStartedTick)return false;
++    if(slot&&!p.broodCue&&now-slot.last<.14)return false;
++    if(!slot)for(const s of this.slots)if(!s.alive&&s.broodReserved===(p.broodCue===true)){slot=s;break;}
+     if(!slot)return false;
+     const sustained=slot.alive&&recipe.continuous;
+     if(!slot.alive)this.live++;
+     slot.alive=true;slot.event=name;slot.kind=p.kind??null;slot.id=id;slot.sourceId=sourceId;slot.recipe=recipe;
+     slot.target=target;slot.source=source;slot.socket=slot.sourceSocket=null;
++    slot.broodCue=p.broodCue===true;
+     slot.attached=!!target&&(!contact||p.attachToTarget===true)&&recipe.verb!=='grind';
+     if(!sustained){slot.born=now;slot.particlePulse=-1;slot.seed=salt(String(id)+':'+name+':'+(p.kind??'')+':'+(++this.serial)+':'+Math.round(now*1000));}
++    if(slot.broodCue){
++      const attack=p.broodAttack;
++      slot.born=now-(state.tick-attack.phaseStartedTick)/60;
++      slot.broodLife=attack.life;slot.broodAttackId=attack.attackId;
++      slot.broodTarget=p.broodTarget;slot.broodTargetLife=p.broodTarget.occupantGeneration;
++      slot.broodPhaseStartedTick=attack.phaseStartedTick;
++      slot.broodRange=attack.attackLine.range;slot.broodHalfWidth=attack.attackLine.halfWidth;
++    }
+     slot.last=now;slot.radius=Math.max(2.5,Math.min(24,finite(target?.radius,finite(p.radius,5))));
+     if(recipe.verb==='arm')slot.radius=Math.max(6,slot.radius*1.5);
+     if(recipe.verb==='shove')slot.radius=Math.max(8,Math.min(24,finite(p.blastRadius,100)*.14));
+     const heading=valid(p.direction)?p.direction:valid(p.dir)?p.dir:valid(p.normal)?p.normal:null;
+     this.anchor.y=0;
+-    slot.angle=heading?Math.atan2(heading.z,heading.x):Math.hypot(finite(target?.vel?.x),finite(target?.vel?.z))>1
++    slot.angle=slot.broodCue?p.broodAttack.attackLine.heading:heading?Math.atan2(heading.z,heading.x):Math.hypot(finite(target?.vel?.x),finite(target?.vel?.z))>1
+       ?Math.atan2(target.vel.z,target.vel.x):finite(target?.rot,finite(source?.rot));
+     slot.provenance=contact?'receipt':target?'body':'field';
+     // A real source socket is kept as an object, so rotation and authored offsets follow the
+@@ -209,6 +227,7 @@ export class ActionVfx {
+     return true;
+   }
+   _follow(s,state){
++    if(s.broodCue)return; // A shoved body leaves the promised lane; the lane never follows it.
+     const alpha=finite(state.render?.interpolationAlpha,1);
+     const target=entity(state,s.id);
+     if(s.attached&&target===s.target&&target?.alive!==false&&valid(target?.pos)){
+@@ -246,6 +265,7 @@ export class ActionVfx {
+     readFrameOrigin(state,this.origin);this.batch.begin(now,reduced,flash);this.live=0;
+     for(const s of this.slots){
+       if(!s.alive)continue;
++      if(s.broodCue&&!broodCueStillCurrent(s,state)){s.alive=false;continue;}
+       const since=now-(s.recipe.continuous?s.last:s.born);
+       if(since>=s.recipe.life){s.alive=false;continue;}
+       this.live++;this._follow(s,state);this.composer.render(s,now,reduced,flash);
+@@ -254,8 +274,11 @@ export class ActionVfx {
+   }
+   inspect(){return {schema:'spaceface.action-primitives.v1',time:this.time,active:this.live,
+     surfaces:this.batch.count,particles:this.particles.live,capacity:this.slots.length,
++    ordinaryCapacity:ORDINARY_ACTION_CAPACITY,broodCapacity:BROOD_CUE_CAPACITY,surfaceCapacity:ACTION_SURFACE_CAPACITY,
+     instances:this.slots.filter(s=>s.alive).map(s=>({event:s.event,kind:s.kind,id:s.id,sourceId:s.sourceId,
+       primitive:s.recipe.primitive,provenance:s.provenance,sourceProvenance:s.sourceProvenance,
++      broodAttackId:s.broodCue?s.broodAttackId:null,broodLife:s.broodCue?s.broodLife:null,
++      phase:s.broodCue?s.kind:null,range:s.broodCue?s.broodRange:null,halfWidth:s.broodCue?s.broodHalfWidth:null,
+       born:s.born,last:s.last,x:s.x,y:s.y,z:s.z,sx:s.sx,sz:s.sz,angle:s.angle}))};}
+   reproject(dx,dz){this.batch.reproject(dx,dz);this.particles.reproject(dx,dz);}
+   clear(){for(const s of this.slots)s.alive=false;this.live=0;this.particles.clear();this.batch.begin(this.time);this.batch.end();}
+diff --git a/src/render/authoredMotion.js b/src/render/authoredMotion.js
+index a4e0431..23bc595 100644
+--- a/src/render/authoredMotion.js
++++ b/src/render/authoredMotion.js
+@@ -1,4 +1,5 @@
+ import { ceresWorkfleetRole, createCeresWorkfleetMotionDriver, createCeresWorkfleetPropulsionDriver } from './ceresWorkfleetVisuals.js';
++import { isBroodBody, createBroodMotionDriver } from './broodVisuals.js';
+ // Authored-motion driver (ANI-00): connects a bound motion bank to sim time and gameplay events.
+ //
+ // The contracts layer (motionBank.js) stays simulation-free; this module is the ship-side glue:
+@@ -98,7 +99,9 @@ export function attachAuthoredMotionDriver(root, entity, controllers) {
+   const live = (controllers || []).filter(Boolean);
+   const workfleetRole=ceresWorkfleetRole(entity);
+   const workfleet=!!workfleetRole;
+-  if (!root || (!live.length && !workfleet)) return null;
++  const brood = isBroodBody(entity);
++  if (!root || (!live.length && !workfleet && !brood)) return null;
++  const broodMotion = brood ? createBroodMotionDriver(root, entity) : null;
+   const updateWorkfleet=workfleet?createCeresWorkfleetMotionDriver(root,entity):null;
+   const propulsion=workfleet?createCeresWorkfleetPropulsionDriver(root,entity):null;
+   const priorDriveUpdate=root.userData.updateDriveState;
+@@ -121,6 +124,7 @@ export function attachAuthoredMotionDriver(root, entity, controllers) {
+   const activate = (liveEntity = entity) => {
+     if (registered || retired) return false;
+     if (propulsion && !propulsion.activate(liveEntity)) return false;
++    if (broodMotion && !broodMotion.activate(liveEntity)) return false;
+     registered = true;
+     registry.set(entityId, new Set(live));
+     for (const key of [liveEntity?.data?.siteId, liveEntity?.data?.siteBeacon]) {
+@@ -144,6 +148,7 @@ export function attachAuthoredMotionDriver(root, entity, controllers) {
+       if(priorDriveUpdate)root.userData.updateDriveState=priorDriveUpdate;
+       else delete root.userData.updateDriveState;
+     }
++    broodMotion?.dispose();
+     for (const key of registered ? [entityId, ...aliasKeys] : []) {
+       const set = registry.get(key);
+       if (set) {
+@@ -188,6 +193,8 @@ export function attachAuthoredMotionDriver(root, entity, controllers) {
+     for (const controller of live) controller.update(simNow, a11y);
+     updatePhysical?.(liveEntity, a11y);
+ 
++    // Biological articulation follows sampled simulation ticks, never dock wall time.
++    broodMotion?.update(liveEntity, a11y);
+   };
+   root.userData.authoredMotionEvent = function authoredMotionEvent(type, payload, simNow) {
+     for (const controller of live) controller.handleEvent?.(type, payload, simNow);
+diff --git a/src/render/broodVisuals.js b/src/render/broodVisuals.js
+new file mode 100644
+index 0000000..5906fae
+--- /dev/null
++++ b/src/render/broodVisuals.js
+@@ -0,0 +1,169 @@
++// Exact Brood anatomy and attack receipts. Presentation never owns damage, motion or targeting.
++import { BROOD_BODY_CONTRACTS } from '../data/broodBodies.js';
++import { BROOD_ATTACK_PROFILES } from '../data/broodAttackProfiles.js';
++
++// Presentation reserve follows the existing production cap; stress probes do not raise it.
++export const BROOD_CUE_CAPACITY = Math.max(...Object.values(BROOD_BODY_CONTRACTS).map(body => body.productionCap));
++export const BROOD_CUE_SURFACES = 6;
++const point = p => p && Number.isFinite(p.x) && Number.isFinite(p.z);
++const clamp = n => Math.max(0, Math.min(1, n));
++const smooth = n => { const t = clamp(n); return t * t * (3 - 2 * t); };
++export function broodVisualBody(entity) {
++  const id = entity?.data?.broodBodyId;
++  return Object.hasOwn(BROOD_BODY_CONTRACTS, id) ? BROOD_BODY_CONTRACTS[id] : null;
++}
++export function isBroodBody(entity) { return !!broodVisualBody(entity); }
++export function broodPhaseDuration(role, phase) {
++  return BROOD_ATTACK_PROFILES[role]?.[`${phase}Ticks`] || 0;
++}
++
++// A body/life pair is the authority, never the event alone. Returning the current record is
++// allocation-free; callers that retain a visual copy must retain its life and locked line too.
++export function readBroodAttack(entity, tick = entity?.data?.broodAttack?.sampledTick) {
++  const body = broodVisualBody(entity), attack = entity?.data?.broodAttack;
++  if (!body || entity.alive === false || !attack || attack.role !== body.id
++    || !Number.isSafeInteger(entity.occupantGeneration) || attack.life !== entity.occupantGeneration
++    || !Number.isSafeInteger(tick) || !Number.isSafeInteger(attack.phaseStartedTick)
++    || tick < attack.phaseStartedTick) return null;
++  if (attack.phase === 'approach') return attack;
++  const duration = broodPhaseDuration(body.id, attack.phase);
++  if (!duration || tick >= attack.phaseStartedTick + duration) return null;
++  if (attack.phase === 'recovery') return attack;
++  const line = attack.attackLine;
++  if (typeof attack.attackId !== 'string' || !attack.attackId || line?.life !== attack.life
++    || !Number.isSafeInteger(attack.cueStartedTick) || line.cueStartedTick !== attack.cueStartedTick
++    || !Number.isSafeInteger(attack.targetLife) || attack.targetLife <= 0 || line.targetLife !== attack.targetLife
++    || attack.cueStartedTick > attack.phaseStartedTick || !point(line.origin) || !point(line.dir)
++    || !Number.isFinite(line.heading) || !(line.range > 0) || !Number.isFinite(line.range)
++    || !(line.halfWidth > 0) || !Number.isFinite(line.halfWidth)
++    || Math.abs(Math.hypot(line.dir.x, line.dir.z) - 1) > 1e-5
++    || Math.abs(Math.cos(line.heading) - line.dir.x) > 1e-5
++    || Math.abs(Math.sin(line.heading) - line.dir.z) > 1e-5
++    || entity.data.broodAttackInterruptedTick >= attack.phaseStartedTick) return null;
++  return attack;
++}
++
++export function resolveBroodAttackCue(name, payload, state) {
++  const entity = state.entities?.get?.(payload?.entityId);
++  const attack = readBroodAttack(entity, state.tick);
++  if (!attack || BROOD_ATTACK_PROFILES[attack.role]?.delivery === 'projectile'
++    || (attack.phase !== 'windup' && attack.phase !== 'commit')) return null;
++  // Projectile anatomy telegraphs pressure, never a fixed corridor that promises its flight path.
++  if (name === 'brood:phase') {
++    if (payload.life !== attack.life || payload.attackId !== attack.attackId
++      || payload.phase !== attack.phase || payload.phaseStartedTick !== attack.phaseStartedTick) return null;
++  } else if (name === 'ai:telegraph') {
++    if (attack.phase !== 'windup' || !['brood_charge', 'brood_lunge'].includes(payload.kind)
++      || payload.attackLine?.life !== attack.life
++      || payload.attackLine?.cueStartedTick !== attack.cueStartedTick) return null;
++  } else return null;
++  if (Number.isSafeInteger(payload.tick) && (payload.tick > state.tick || payload.tick < attack.phaseStartedTick)) return null;
++  const target = state.entities?.get?.(attack.targetId);
++  if (!target || target.alive === false || target.occupantGeneration !== attack.targetLife) return null;
++  const line = attack.attackLine;
++  // Ignore event coordinates. Only the accepted, current-life world lane is allowed to draw.
++  return { entityId: entity.id, sourceId: entity.id, targetId: entity.id,
++    kind: attack.phase, broodCue: true, broodAttack: attack, broodTarget: target,
++    pos: { x: line.origin.x, z: line.origin.z }, direction: line.dir, attachToTarget: false };
++}
++
++export function broodCueStillCurrent(slot, state) {
++  const entity = state.entities?.get?.(slot.id);
++  if (entity !== slot.target || entity?.occupantGeneration !== slot.broodLife) return false;
++  const attack = readBroodAttack(entity, state.tick), line = attack?.attackLine;
++  const target = state.entities?.get?.(attack?.targetId);
++  return !!(target && target === slot.broodTarget && target.occupantGeneration === slot.broodTargetLife
++    && target.occupantGeneration === attack?.targetLife && target.alive !== false && attack?.attackId === slot.broodAttackId
++    && attack.phase === slot.kind && attack.phaseStartedTick === slot.broodPhaseStartedTick
++    && line.origin.x === slot.x && line.origin.z === slot.z && line.heading === slot.angle
++    && line.range === slot.broodRange && line.halfWidth === slot.broodHalfWidth);
++}
++
++function inside(root, mesh) {
++  for (let node = root; node; node = node.parent) if (node === mesh) return true;
++  return false;
++}
++export function broodPoseFraction(entity, reducedMotion = false) {
++  const body = broodVisualBody(entity), attack = readBroodAttack(entity);
++  if (!body) return 0;
++  const poses = body.motion.poses;
++  if (BROOD_ATTACK_PROFILES[body.id]?.delivery === 'projectile') {
++    const rest = poses.approach;
++    if (!attack || attack.phase === 'approach' || !Number.isSafeInteger(attack.cueStartedTick)
++      || typeof attack.attackId !== 'string' || !attack.attackId) return rest;
++    const age = attack.sampledTick - attack.phaseStartedTick;
++    const shot = entity.data.broodShot;
++    const fired = shot?.attackId === attack.attackId && shot.life === attack.life
++      && shot.targetLife === attack.targetLife && Number.isSafeInteger(shot.tick)
++      && shot.tick >= attack.cueStartedTick + broodPhaseDuration(body.id, 'windup')
++      && shot.tick <= attack.sampledTick
++      && shot.tick < attack.cueStartedTick + broodPhaseDuration(body.id, 'windup') + broodPhaseDuration(body.id, 'commit');
++    if (fired) {
++      const sinceShot = attack.sampledTick - shot.tick;
++      if (reducedMotion) return poses.attack + (rest - poses.attack) * smooth(sinceShot / broodPhaseDuration(body.id, 'recovery'));
++      if (sinceShot < 4) return poses.windup + (poses.attack - poses.windup) * smooth(sinceShot / 4);
++      return poses.attack + (rest - poses.attack) * smooth((sinceShot - 4) / (broodPhaseDuration(body.id, 'recovery') - 4));
++    }
++    if (attack.phase === 'windup') return reducedMotion ? poses.windup
++      : rest + (poses.windup - rest) * smooth(age / broodPhaseDuration(body.id, 'windup'));
++    if (attack.phase === 'commit') return poses.windup; // A phase is not proof of an emitted glob.
++    const inflated = rest + (poses.windup - rest) * smooth((attack.phaseStartedTick - attack.cueStartedTick) / broodPhaseDuration(body.id, 'windup'));
++    return reducedMotion ? rest : inflated + (rest - inflated) * smooth(age / broodPhaseDuration(body.id, 'recovery'));
++  }
++  if (!attack || attack.phase === 'approach') return 0;
++  if (reducedMotion) return attack.phase === 'commit' ? poses.attack : poses[attack.phase];
++  const age = attack.sampledTick - attack.phaseStartedTick;
++  if (attack.phase === 'windup') return poses.windup * smooth(age / broodPhaseDuration(body.id, 'windup'));
++  if (attack.phase === 'commit') return poses.windup + (poses.attack - poses.windup) * smooth(age / 8);
++  // Recovery unloads the paddles, then rests; no oscillation can look like another strike.
++  if (age < 8) return poses.attack + (poses.recovery - poses.attack) * smooth(age / 8);
++  return poses.recovery * (1 - smooth((age - 8) / (broodPhaseDuration(body.id, 'recovery') - 8)));
++}
++
++export function createBroodMotionDriver(root, entity) {
++  const body = broodVisualBody(entity);
++  if (!root || !body) return null;
++  const byName = new Map(body.motion.rigs.map(rig => [rig.node, rig]));
++  const found = new Set(), joints = [];
++  root.traverse(node => {
++    const rig = byName.get(node.name);
++    if (!rig) return;
++    found.add(rig.node);
++    joints.push({ node, rig, position: node.position.clone(), quaternion: node.quaternion.clone() });
++  });
++  if (found.size !== byName.size) throw new Error(`Brood ${body.id} is missing a sealed anatomical motion pivot`);
++  const id = entity.id, life = entity.occupantGeneration;
++  let owner = entity, activated = entity.deferAuthoredMotionRegistration !== true, disposed = false;
++  const pose = fraction => {
++    for (const { node, rig, position, quaternion } of joints) {
++      node.position.copy(position); node.quaternion.copy(quaternion);
++      if (rig.translation) {
++        node.position.x += rig.translation[0] * fraction;
++        node.position.y += rig.translation[1] * fraction;
++        node.position.z += rig.translation[2] * fraction;
++      } else {
++        // All sealed folds are local X rigid hinges over fixed collision-bearing scutes.
++        const half = (rig.foldRadians || 0) * fraction / 2, s = Math.sin(half), c = Math.cos(half);
++        node.quaternion.set(quaternion.x*c + quaternion.w*s, quaternion.y*c + quaternion.z*s,
++          quaternion.z*c - quaternion.y*s, quaternion.w*c - quaternion.x*s);
++      }
++      node.updateMatrix();
++    }
++  };
++  const update = (liveEntity, a11y) => {
++    const valid = !disposed && activated && liveEntity === owner && owner.alive !== false
++      && owner.occupantGeneration === life && broodVisualBody(owner) === body && inside(root, owner.mesh);
++    pose(valid ? broodPoseFraction(owner, !!(a11y?.reducedMotion || a11y?.motionReduce)) : 0);
++  };
++  const activate = liveEntity => {
++    if (disposed) return false;
++    if (activated) return liveEntity === owner && owner.occupantGeneration === life;
++    if (!liveEntity || liveEntity.deferAuthoredMotionRegistration === true || liveEntity.alive === false
++      || liveEntity.id !== id || !Number.isSafeInteger(life) || liveEntity.occupantGeneration !== life
++      || broodVisualBody(liveEntity) !== body || !inside(root, liveEntity.mesh)) return false;
++    pose(0); owner = liveEntity; activated = true; return true;
++  };
++  // Neither materials nor geometries are cloned: each body only retains its two/three transforms.
++  pose(0);
++  return { update, activate, dispose() { disposed = true; pose(0); }, joints };
++}
+diff --git a/src/render/vfx.js b/src/render/vfx.js
+index 77a6ff4..f1ad85a 100644
+--- a/src/render/vfx.js
++++ b/src/render/vfx.js
+@@ -1,3 +1,4 @@
++import { isBroodBody } from './broodVisuals.js';
+ // VFX system (ARCHITECTURE §2.4, §4.4; design/specs/10). A purely-cosmetic presentation layer.
+ // It owns a pooled GPU shard cloud, folded impulse sheets, baked density-film transients and
+ // a sorted normal-blended smoke bucket, and is
+@@ -3543,6 +3544,9 @@ export const vfx = {
+   },
+ 
+   _onFire(p) {
++    // The solid biological projectile and its pressure-sac collapse express the spit.
++    // Never fall through to a human ballistic muzzle flash, including replayed receipts.
++    if (p?.weaponId === 'wpn_brood_glob') return;
+     if (!this._scene) return;
+     let origin = (p.from && typeof p.from.x === 'number')
+       ? p.from
+@@ -3761,6 +3765,9 @@ export const vfx = {
+       if (!this._projectileBodies) this._projectileBodies = createProjectileBodies();
+       stopProjectileBody(this._projectileBodies, p.projectileId);
+     }
++    // Glob contact retires the solid matter; status_goo owns attached biological residue.
++    // The generic kinetic path would add metal quarks, a ricochet and a firearm hit flash.
++    if (p?.weaponId === 'wpn_brood_glob') return;
+     if (!this._scene) return;
+     const pos = this._posFrom(p, p.targetId);
+     if (!pos) return;
+@@ -10930,6 +10937,7 @@ export const vfx = {
+   // presents — never writes sim state, never uses wall-clock for lifetime.
+   // Lifetime: state.tick / startTick / deadlineTick so pause/tab render frames cannot burn the window.
+   _onAiTelegraph(p) {
++    if (isBroodBody(this._ent(p?.entityId))) return; // The world-space Brood corridor owns this tell.
+     this._emitJuiceCue('ai.telegraph', p, 1);
+     if (!this._scene) return;
+     if (p && (p.kind === 'engine_flare' || p.kind === 'attach_spool' || p.kind === 'weapon_charge')) return;
+@@ -11354,6 +11362,7 @@ export const vfx = {
+   },
+ 
+   _onAiFlee(p) {
++    if (isBroodBody(this._ent(p?.entityId))) return;
+     this._emitJuiceCue('ai.flee', p, 1);
+   },
+ 
+@@ -11640,6 +11649,7 @@ export const vfx = {
+    * last fleet endFrame (trails run before energy in the frame; sticky avoids dual draw).
+    */
+   _usesProductionThruster(e) {
++    if (isBroodBody(e)) return false;
+     if (isCeresWorkfleetPropulsion(e)) return true;
+     if (!e || e.type !== 'ship') return false;
+     if (e.id === this.state.playerId) return true;
+@@ -11681,7 +11691,7 @@ export const vfx = {
+   },
+ 
+   _emitReverseNozzleTrail(e, role, strength) {
+-    if (!this._scene || !e || !(strength > 0)) return;
++    if (!this._scene || !e || isBroodBody(e) || !(strength > 0)) return;
+     if (!reverseNeedleEmissionAllowed(this._usesProductionThruster(e))) return;
+     // Production reverse is the player bow pair. Everyone else gets one swept sheet
+     // per bow, or silence when the pool cannot admit them. No flash, no needle.
+@@ -11690,7 +11700,7 @@ export const vfx = {
+ 
+   _onBoost(p, on) {
+     const e = this._ent(p && p.shipId);
+-    if (!e || !this._scene) return;
++    if (!e || !this._scene || isBroodBody(e)) return;
+     if (this._usesProductionThruster(e)) return;
+     if (on) {
+       // Boost ignition: a tight rear-nozzle kick, not a ship-sized bloom.
+@@ -11724,7 +11734,7 @@ export const vfx = {
+   // flash, no HUD word-pop. Distinct from sustained boost (whiter core, longer rear streak, punch).
+   _onDash(p) {
+     const e = this._ent(p && p.shipId);
+-    if (!e || !this._scene) return;
++    if (!e || !this._scene || isBroodBody(e)) return;
+     // Latch for the plume's one-shot supernova. The drive envelope consumes and clears it on the next
+     // frame it is read, so a dash fires exactly one flare regardless of frame pacing.
+     if (e.id === this.state?.playerId) this._plumeDashPending = true;
+@@ -11770,7 +11780,7 @@ export const vfx = {
+   // cue-free: maneuvering puffs and death beats are continuous vocabulary, not scored
+   // moments, so they never touch _emitJuiceCue or cue-count contracts.
+   _onShipRcsPulse(p) {
+-    if (!this._scene || !p) return;
++    if (!this._scene || !p || isBroodBody(this._ent(p.shipId))) return;
+     if (!Number.isFinite(p.x) || !Number.isFinite(p.z)) return;
+     // The production RCS path is player-only: skip the player when it serves them, so
+     // player and NPCs share this seam without double-puffing (legacy-mode player included).
+@@ -11871,7 +11881,7 @@ export const vfx = {
+     const result = out || (this._trailSpawnScratch = { particles: 0, streaks: 0 });
+     result.particles = 0;
+     result.streaks = 0;
+-    if (!this._scene || !e) return result;
++    if (!this._scene || !e || isBroodBody(e)) return result;
+     if (this._usesProductionThruster(e)) return result;
+     const drive = Math.max(0, Math.min(1.35, Number.isFinite(throttle) ? throttle : 0));
+     if (drive <= 0.03) return result;
+@@ -13170,7 +13180,7 @@ export const vfx = {
+       || this._energyJetsFading(energy)
+     )) return true;
+     const player = this.state.entities && this.state.entities.get(this.state.playerId);
+-    if (player && player.alive && player.type === 'ship' && !isCeresWorkfleetPropulsion(player) && this._usesProductionThruster(player)) {
++    if (player && player.alive && player.type === 'ship' && !isCeresWorkfleetPropulsion(player) && !isBroodBody(player) && this._usesProductionThruster(player)) {
+       const actuators = this._actuatorsFor(player);
+       if (actuators && (
+         Math.abs(actuators.lateral || 0) > 0.001
+@@ -13204,7 +13214,7 @@ export const vfx = {
+     if (list) {
+       for (let i = 0; i < list.length; i++) {
+         const e = list[i];
+-        if (!e || !e.alive || e.type !== 'ship' || isCeresWorkfleetPropulsion(e)) continue;
++        if (!e || !e.alive || e.type !== 'ship' || (isCeresWorkfleetPropulsion(e) || isBroodBody(e))) continue;
+         if (player && e.id === player.id) continue;
+         if (e.flags && e.flags.docked) continue;
+         if (e.flags && e.flags.boosting) return true;
+@@ -13261,7 +13271,7 @@ export const vfx = {
+     // Activity-gated, never "alive ship = awake": the idle-sleep invariant requires the energy
+     // subsystem to do zero work when no ship is thrusting (master semantics, fleet-extended).
+     const player = this.state.entities && this.state.entities.get(this.state.playerId);
+-    if (player && player.alive && player.type === 'ship' && !isCeresWorkfleetPropulsion(player) && this._usesProductionThruster(player)) {
++    if (player && player.alive && player.type === 'ship' && !isCeresWorkfleetPropulsion(player) && !isBroodBody(player) && this._usesProductionThruster(player)) {
+       const actuators = this._actuatorsFor(player);
+       if (actuators && (
+         Math.abs(actuators.lateral || 0) > 0.001
+@@ -13288,7 +13298,7 @@ export const vfx = {
+     if (list) {
+       for (let i = 0; i < list.length; i++) {
+         const e = list[i];
+-        if (!e || !e.alive || e.type !== 'ship' || isCeresWorkfleetPropulsion(e)) continue;
++        if (!e || !e.alive || e.type !== 'ship' || (isCeresWorkfleetPropulsion(e) || isBroodBody(e))) continue;
+         if (player && e.id === player.id) continue;
+         if (e.flags && e.flags.docked) continue;
+         const d = this._engineDriveFor(e);
+@@ -13603,6 +13613,7 @@ export const vfx = {
+       for (const entity of ribbonCandidates) {
+         if (!entity || !entity.alive) continue;
+         if (entity.type !== 'ship' && entity.type !== 'drone') continue;
++        if (isBroodBody(entity)) continue;
+         if (player && entity.id === player.id) continue;
+         if (entity.flags && entity.flags.docked) continue;
+         const dx = ((entity.pos && entity.pos.x) || 0) - originX;
+@@ -13885,7 +13896,7 @@ export const vfx = {
+     // Phase 1 — reclaim persistent slots only (no stale-slot reuse).
+     // Player hero exhaust is the unified plasma stream (not continuous card plume).
+     // Keep the fleet slot for RCS ownership, but write zero continuous-plume sockets/drive.
+-    if (player && player.alive && player.type === 'ship' && !isCeresWorkfleetPropulsion(player)) {
++    if (player && player.alive && player.type === 'ship' && !isCeresWorkfleetPropulsion(player) && !isBroodBody(player)) {
+       const profileId = this._engineProfileIdFor(player);
+       const ship = fleet.retainShip(player.id, profileId, true);
+       if (ship) {
+@@ -13926,7 +13937,7 @@ export const vfx = {
+     // budget here: retainShip would return null anyway, but tier resolution is not free.
+     for (let i = 0; i < list.length; i++) {
+       const e = list[i];
+-      if (!e || !e.alive || e.type !== 'ship' || isCeresWorkfleetPropulsion(e)) continue;
++      if (!e || !e.alive || e.type !== 'ship' || (isCeresWorkfleetPropulsion(e) || isBroodBody(e))) continue;
+       if (player && e.id === player.id) continue;
+       if (e.flags && e.flags.docked) continue;
+       if (!fleet.hadEntity(e.id)) continue;
+@@ -13947,7 +13958,7 @@ export const vfx = {
+     // Phase 2 — only true newcomers (!hadEntity) after every survivor had a retain chance.
+     // Each candidate is tier-resolved in exactly one phase (no double screen-check cost).
+     fleet.beginAdmitPhase();
+-    if (player && player.alive && player.type === 'ship' && !isCeresWorkfleetPropulsion(player) && !fleet.hasEntity(player.id)) {
++    if (player && player.alive && player.type === 'ship' && !isCeresWorkfleetPropulsion(player) && !isBroodBody(player) && !fleet.hasEntity(player.id)) {
+       const profileId = this._engineProfileIdFor(player);
+       const ship = fleet.admitShip(player.id, profileId, true);
+       if (ship) {
+@@ -13978,7 +13989,7 @@ export const vfx = {
+     }
+     for (let i = 0; i < list.length; i++) {
+       const e = list[i];
+-      if (!e || !e.alive || e.type !== 'ship' || isCeresWorkfleetPropulsion(e)) continue;
++      if (!e || !e.alive || e.type !== 'ship' || (isCeresWorkfleetPropulsion(e) || isBroodBody(e))) continue;
+       if (player && e.id === player.id) continue;
+       if (e.flags && e.flags.docked) continue;
+       if (fleet.hadEntity(e.id)) continue;
+@@ -14172,7 +14183,7 @@ export const vfx = {
+   },
+ 
+   _updateProductionRcs(player, dt, a11y) {
+-    if (isCeresWorkfleetPropulsion(player)) {
++    if ((isCeresWorkfleetPropulsion(player) || isBroodBody(player))) {
+       this._energy?.retroVolume?.reset();
+       this._energy?.rcsSystem?.reset();
+       return;
+@@ -14569,7 +14580,7 @@ export const vfx = {
+         cruise: 0, reverse: 0, retroOnly: false, brake: 0,
+       };
+     }
+-    if (!e || isCeresWorkfleetPropulsion(e)) {
++    if (!e || (isCeresWorkfleetPropulsion(e) || isBroodBody(e))) {
+       out.drive = 0; out.throttle = 0; out.speed = 0; out.speedDrive = 0; out.boost = 0;
+       out.cruise = 0; out.reverse = 0; out.retroOnly = false; out.brake = 0;
+       out.dashFired = false;
+@@ -15521,7 +15532,7 @@ export const vfx = {
+       if (bodyRec && (bodyRec.reset || bodyRec.stopped)) continue;
+       const data = e.data || EMPTY_PROJECTILE_DATA;
+       const recipe = resolveWeaponRecipe(data.weaponId, data);
+-      if (recipeUsesRibbonWake(recipe)) continue;
++      if (recipe.family === 'biological' || recipeUsesRibbonWake(recipe)) continue;
+       const prof = resolveProjectileTrailProfile(data.weaponId, data);
+       const plan = buildProjectileTrailSpawnPlan(prof, e, burst, this._projectileTrailPlanScratch);
+       if (plan.skip) continue;
+@@ -15791,7 +15802,7 @@ export const vfx = {
+         this._retireRibbonTrail(e.id, !isPlayer);
+         continue;
+       }
+-      if (isCeresWorkfleetPropulsion(e)) {this._retireRibbonTrail(e.id, true);continue;}
++      if ((isCeresWorkfleetPropulsion(e) || isBroodBody(e))) {this._retireRibbonTrail(e.id, true);continue;}
+       const driveInfo = this._engineDriveFor(e);
+       const speed = Math.hypot((e.vel && e.vel.x) || 0, (e.vel && e.vel.z) || 0);
+       if (speed < 4 && driveInfo.drive < 0.04) {
+diff --git a/src/render/vfx/actionEventRecipes.js b/src/render/vfx/actionEventRecipes.js
+index 32c5afe..4039371 100644
+--- a/src/render/vfx/actionEventRecipes.js
++++ b/src/render/vfx/actionEventRecipes.js
+@@ -1,3 +1,4 @@
++import { isBroodBody, resolveBroodAttackCue } from '../broodVisuals.js';
+ import { successfulPickupAmount } from '../../core/pickupAcceptance.js';
+ import { WORLD_CUE_ACTION_RECIPE, resolveWorldCueReceipt } from './worldCueRecipes.js';
+ 
+@@ -12,6 +13,12 @@ export { SURVIVOR_POD_RETIRE };
+ // cosmetic only: never discover collisions, change a body, or fabricate a successful action.
+ export const ADDITIONAL_ACTION_VFX_RECIPES = Object.freeze({
+   'presentation:cue': WORLD_CUE_ACTION_RECIPE,
++  // Two bounded world-lane shoulders, fed only by an accepted current-life attack.
++  'brood:phase': {verb:'brood-lane',primitive:'broodCorridor',color:0xd29c74,life:2,continuous:false,
++    variants:{
++      windup:{verb:'brood-lane',primitive:'broodCorridor',color:0xd29c74},
++      commit:{verb:'brood-lane',primitive:'broodCorridor',color:0xef7955},
++    }},
+   'ai:telegraph': {verb:'command',primitive:'induction',color:0xf4b484,life:1.6,continuous:false,
+     variants:{
+       engine_flare:{verb:'ignition',primitive:'compression',color:0xeac891,life:1.6},
+@@ -147,8 +154,10 @@ const copyPoint = p => ({x:p.x,z:p.z});
+ 
+ export function resolveAdditionalActionVfxReceipt(name,p,state) {
+   if(name==='presentation:cue')return resolveWorldCueReceipt(p,state);
++  if(name==='brood:phase' || (name==='ai:telegraph' && ['brood_charge','brood_lunge'].includes(p?.kind)))
++    return resolveBroodAttackCue(name,p,state);
+   if(name==='ai:telegraph'||name==='ai:flee'){
+-    const source=body(state,p.entityId);if(!point(source?.pos)||source.alive===false)return null;
++    const source=body(state,p.entityId);if(!point(source?.pos)||source.alive===false||isBroodBody(source))return null;
+     if(name==='ai:telegraph'&&!['engine_flare','attach_spool','weapon_charge','detonator_fuse','shield_lance','wake_mines','field_spool','pd_curtain','sensor_ghost','broadside_charge','swarmer_vent','broadside_desperation','pirate_stalk','scan_sweep','return_fire_warning','attackRun','alphaStrike'].includes(p.kind))return null;
+     const aft=name==='ai:flee'||p.kind==='engine_flare';
+     const a=(source.rot||0)+(aft?Math.PI:0),r=source.radius||6;
+diff --git a/src/render/vfx/actionPrimitives.js b/src/render/vfx/actionPrimitives.js
+index 316e598..2f6c37b 100644
+--- a/src/render/vfx/actionPrimitives.js
++++ b/src/render/vfx/actionPrimitives.js
+@@ -1,7 +1,7 @@
+ import { SweptSurfaceBatch, SURFACE_FLOATS } from '../forceLanguage/sweptSurfaceBatch.js';
+ 
+ export const ACTION_PRIMITIVES = Object.freeze({
+-  compression: 1, connection: 2, deposition: 3, pressure: 4, induction: 5, capture: 6,
++  compression: 1, connection: 2, deposition: 3, pressure: 4, induction: 5, capture: 6, broodCorridor: 7,
+ });
+ const BY_VERB = Object.freeze({ ignition: 'compression', vent: 'compression',
+   transfer: 'connection', latch: 'connection', cut: 'connection',
+@@ -74,11 +74,16 @@ vec3 actionPoint(float t,float v){
+     p.z+=sign(cos(curl))*pow(abs(cos(curl)),.65)*width;
+     p.y=sign(sin(curl))*pow(abs(sin(curl)),.65)*lift;
+     p.y+=sin(t*8.0-age*3.0+phase)*lift*.20*belly;
+-  }else{
++  }else if(kind<6.5){
+     // Closed angular clamp members have a load-bearing back and bright teeth.
+     p.z+=bow*(.5-.5*cos(t*PI));
+     p.z+=sign(cos(curl))*pow(abs(cos(curl)),.38)*width;
+     p.y=sign(sin(curl))*pow(abs(sin(curl)),.38)*lift;
++  }else{
++    // Brood's locked lane has substantial keeled shoulders. Their cross-section never
++    // oscillates across the promised corridor; only low-radiance internal load travels.
++    p.z+=sign(cos(curl))*pow(abs(cos(curl)),.55)*width;
++    p.y=sign(sin(curl))*pow(abs(sin(curl)),.55)*lift;
+   }
+   p.z+=iBehavior.z;
+   float c=cos(iOrigin.w),s=sin(iOrigin.w);
+@@ -137,6 +142,9 @@ void main(){
+     edge=1.0;
+     float knot=pow(wave(t*19.0-time*7.0+phase),5.0);
+     hot=crest*(.38+1.7*knot);body*=.62;dark=band(v,.30);
++  }else if(kind>6.5){
++    edge=1.0;body=.58;dark=band(v,.33)*.38;
++    hot=.12+.16*band(abs(v)-.6,.22)*wave(t*11.0-time*1.5+phase);
+   }else if(kind>5.5){
+     edge=1.0;body=.35;dark=.6;
+     hot=(band(v-.72,.15)+band(v+.72,.15))*(.32+wave(t*18.0-time*3.0+phase));
+@@ -217,6 +225,29 @@ export class ActionPrimitiveComposer {
+     const family=s.recipe.primitive||actionPrimitiveForVerb(verb);
+     const cutoff=s.recipe.continuous?clamp((progress-.50)*2.2)-.1:clamp((progress-.62)*2.9)-.1;
+     const feed=clamp(age/(.10+s.seed*.07));
++    if(s.broodCue){
++      // The full boundary exists at onset, with no expanding invented damage region.
++      // Windup's paired notches gather inwards; commit's teeth point down the same lane.
++      // Recovery is retired by the owner before reaching this composition. Six surfaces,
++      // no particles, lights or body-specific materials, and no follow-target bearing.
++      const half=s.broodHalfWidth,length=s.broodRange;
++      const width=Math.min(1.25,half*.16),height=width*.55;
++      const commit=s.kind==='commit',opacity=(flash?.62:.83);
++      for(let side=-1;side<=1;side+=2){
++        this._piece(7,s.x,s.z,a,0,length,width,height,0,side*(half-width),0,seed+side,
++          opacity,1,-.1,commit?.70:.35);
++        for(let i=0;i<2;i++){
++          const progress=clamp(age/life),at=commit?.28+i*.40:.20+i*.46;
++          const drift=reduced?0:(commit?progress*.10:(1-smooth(progress))*.045);
++          const from=length*Math.min(.85,at+drift),extent=Math.min(half*.8,length*.08);
++          const x=s.x+Math.cos(a)*from-Math.sin(a)*side*(half-width*2.3);
++          const z=s.z+Math.sin(a)*from+Math.cos(a)*side*(half-width*2.3);
++          this._piece(7,x,z,a-side*(commit?.58:1.05),0,extent,width*.82,height*1.35,0,0,0,
++            seed+i+side,opacity*(commit?.98:.72),1,-.1,commit?.80:.40);
++        }
++      }
++      return;
++    }
+     if((s.event==='ai:telegraph'&&s.kind==='engine_flare')||s.event==='ai:flee'){
+       // Supplied parcels leave the drive separately. Cutting supply stops NEW
+       // packets; the existing folds continue aft and erode at different ages.
+diff --git a/src/render/visualFactory.js b/src/render/visualFactory.js
+index 3c81c9a..85c9e40 100644
+--- a/src/render/visualFactory.js
++++ b/src/render/visualFactory.js
+@@ -3275,6 +3275,33 @@ function buildPickup(e) {
+ function buildProjectile(e) {
+   const R = e.radius || 0.7;
+   const wid = (e.data && e.data.weaponId) || '';
++  if (wid === 'wpn_brood_glob') {
++    const glob = new THREE.Group();
++    glob.name = 'ProjectileBroodGlob';
++    // One closed wet membrane, pinched into unequal lobes. All vertices remain inside the
++    // simulation sweep radius; neither a long luminous tracer nor extra floating droplets.
++    const geometry = getGeometry('proj:brood:glob', () => {
++      const geo = new THREE.SphereGeometry(1, 24, 16), positions = geo.attributes.position;
++      for (let i = 0; i < positions.count; i++) {
++        const x = positions.getX(i), y = positions.getY(i), z = positions.getZ(i);
++        const longitude = Math.atan2(z, x);
++        const lobe = .86 + .10 * Math.cos(longitude * 3 + y * 1.3) * (1 - y*y);
++        positions.setXYZ(i, x*lobe, y*(.83 + .10*x), z*lobe);
++      }
++      geo.computeVertexNormals(); geo.computeBoundingSphere();
++      return geo;
++    });
++    const material = getMaterial('proj:brood:membrane', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
++      // At the default 50-degree chase camera the solid core is only ~6px.
++      // A steady biological glow feeds existing bloom without inflating collision-sized matter.
++      color: 0xd9e886, emissive: 0xc8ed88, emissiveIntensity: 2.0,
++      roughness: .24, metalness: 0,
++    }), SHARED_MATERIAL_ROLE.HULL));
++    const membrane = new THREE.Mesh(geometry, material);
++    membrane.name = 'BroodGlobWetMembrane'; membrane.scale.setScalar(R);
++    glob.add(membrane); glob.userData.kind = 'projectile'; glob.userData.variant = 'brood-glob';
++    return glob;
++  }
+   const presentation = resolveWeaponPresentationFamily(wid, e.data || null);
+   const isMissile = presentation.family === 'missile';
+   // Hot neon bolt colors — pushed more saturated than the originals so energy weapons read as plasma
+diff --git a/src/render/weapons/recipes.js b/src/render/weapons/recipes.js
+index 8081451..d7f81a2 100644
+--- a/src/render/weapons/recipes.js
++++ b/src/render/weapons/recipes.js
+@@ -723,7 +723,17 @@ const DRIVER_SLUG = Object.freeze({
+   hull: Object.freeze({ scorch: true, scorchLife: 4.75, surface: true, sparks: true, sparkScale: 1.1 }),
+ });
+ 
++// Biological matter uses its solid pooled factory mesh, with no gun flare, casing or tracer.
++const BROOD_GLOB = Object.freeze({
++  ...MINE, family: 'biological', variant: 'brood-glob',
++  muzzle: Object.freeze({ ...MINE.muzzle, coreColor: '#d9e886', accentColor: '#607d37', lightColor: '#b4ce6c' }),
++  flight: Object.freeze({ ...MINE.flight, mode: FLIGHT_MODE.MESH }),
++  hull: Object.freeze({ ...MINE.hull, surface: false, sparks: false, sparkScale: 0 }),
++  shield: Object.freeze({ ...MINE.shield, surface: false, haze: 0 }),
++});
++
+ const RECIPES_BY_VARIANT = Object.freeze({
++  'brood-glob': BROOD_GLOB,
+   'pulse-bolt': PULSE,
+   'thermal-bolt': THERMAL,
+   autocannon: AUTOCANNON,
+@@ -748,6 +758,7 @@ const RECIPES_BY_VARIANT = Object.freeze({
+ });
+ 
+ export function resolveWeaponRecipe(weaponId, weaponData = null) {
++  if (weaponId === 'wpn_brood_glob') return BROOD_GLOB;
+   const presentation = resolveWeaponPresentationFamily(weaponId, weaponData);
+   return RECIPES_BY_VARIANT[presentation.variant] || AUTOCANNON;
+ }

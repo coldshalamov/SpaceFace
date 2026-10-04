@@ -1,0 +1,71 @@
+diff --git a/test/brood-source-presentation.test.mjs b/test/brood-source-presentation.test.mjs
+index 5ebeb1a..d082ac7 100644
+--- a/test/brood-source-presentation.test.mjs
++++ b/test/brood-source-presentation.test.mjs
+@@ -53,7 +53,7 @@ function releaseGraph(root) {
+   for (const mat of materials) mat.dispose();
+ }
+ 
+-for (const role of Object.keys(BROOD_BODY_CONTRACTS).filter(role => BROOD_ATTACK_PROFILES[role]?.delivery !== 'projectile')) test(`${role}: locked lane survives player sidestep and a shoved/rotated source`, () => {
++for (const role of ['brood_mite', 'brood_charger']) test(`${role}: locked lane survives player sidestep and a shoved/rotated source`, () => {
+   const f = fixture(role), out = new ActionVfx(new THREE.Scene());
+   try {
+     assert.ok(out.emit('brood:phase', receipt(f), f.state)); out.update(f.state);
+@@ -204,7 +204,7 @@ test('ordinary actions and all production-cap Brood attacks have independent res
+   }
+ });
+ 
+-for (const role of Object.keys(BROOD_BODY_CONTRACTS).filter(role => BROOD_ATTACK_PROFILES[role]?.delivery !== 'projectile')) test(`${role}: anatomy uses sampled phase, all LOD pivots and immutable shared material`, () => {
++for (const role of ['brood_mite', 'brood_charger']) test(`${role}: anatomy uses sampled phase, all LOD pivots and immutable shared material`, () => {
+   const f = fixture(role), material = new THREE.MeshStandardMaterial(), root = syntheticGraph(f.body, material);
+   f.source.mesh = root;
+   const detach = attachAuthoredMotionDriver(root, f.source, []), rest = poses(root);
+@@ -339,3 +339,48 @@ test('real Rapier bus keeps the visible promise fixed through sidestep and exter
+     assert.equal(host.proof().sg02Ready, true);
+   } finally { off?.(); out.dispose(); host.dispose(); }
+ });
++
++
++// A6/v12 intentionally keeps the parent and all three cells at the authored rest pose.
++// Source-level lifetime/cue coverage must not invent animated jaw pivots for static anatomy.
++for (const bodyId of ['brood_splitter', 'brood_splitter_axial', 'brood_splitter_port', 'brood_splitter_starboard']) {
++  test(`${bodyId}: approved static-rest contract stays still through real attack phases`, () => {
++    const body = BROOD_BODY_CONTRACTS[bodyId];
++    assert.ok(body, 'actual A6/v12 body is registered');
++    assert.deepEqual(body.motion.rigs, [], 'no moving collider correspondence is approved');
++    const role = bodyId === 'brood_splitter' ? bodyId : 'brood_splitter_cell';
++    const profile = BROOD_ATTACK_PROFILES[role];
++    const root = syntheticGraph(body);
++    const source = { id: bodyId, alive: true, type: 'ship', occupantGeneration: 23,
++      pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0, radius: body.radius,
++      mesh: root, data: { broodBodyId: bodyId } };
++    const target = { id: 'static-target', alive: true, occupantGeneration: 24,
++      pos: { x: profile.range * .65, z: 0 }, vel: { x: 0, z: 0 }, radius: 4 };
++    const state = { tick: 100, simTime: 100/60, entities: new Map([[source.id, source], [target.id, target]]) };
++    const transforms = () => { const values = []; root.traverse(node => values.push(
++      [node.name, ...node.position.toArray(), ...node.quaternion.toArray(), ...node.scale.toArray()])); return values; };
++    const rest = transforms();
++    const detach = attachAuthoredMotionDriver(root, source, []);
++    assert.equal(typeof detach, 'function');
++    const cues = new ActionVfx(new THREE.Scene());
++    const phases = [];
++    try {
++      for (const offset of [0, profile.windupTicks, profile.windupTicks + profile.commitTicks]) {
++        state.tick = 100 + offset; state.simTime = state.tick/60;
++        source.data.broodAttack = advanceBroodAttack(source.data.broodAttack,
++          { role, entityId: source.id, tick: state.tick, self: source, target });
++        source.data.broodAttack.sampledTick = state.tick;
++        phases.push(source.data.broodAttack.phase);
++        root.userData.updateAuthoredMotion(source, state.simTime, {});
++        root.userData.updateAuthoredMotion(source, state.simTime + 999, { reducedMotion: true });
++        assert.deepEqual(transforms(), rest, 'neither sim nor wall time animates unapproved geometry');
++        cues.emit('brood:phase', { entityId: source.id, ...source.data.broodAttack, tick: state.tick }, state);
++        cues.update(state);
++        assert.equal(cues.mesh.count, source.data.broodAttack.phase === 'recovery' ? 0 : 6);
++      }
++      assert.deepEqual(phases, ['windup', 'commit', 'recovery']);
++      source.alive = false; root.userData.updateAuthoredMotion(source, state.simTime, {});
++      assert.deepEqual(transforms(), rest);
++    } finally { detach(); cues.dispose(); releaseGraph(root); }
++  });
++}

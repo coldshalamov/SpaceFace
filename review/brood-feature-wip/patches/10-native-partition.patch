@@ -1,0 +1,210 @@
+diff --git a/src/core/bodyPartition.js b/src/core/bodyPartition.js
+new file mode 100644
+index 0000000..56cc21a
+--- /dev/null
++++ b/src/core/bodyPartition.js
+@@ -0,0 +1,63 @@
++// Authoritative rigid decomposition. Cells describe material that already exists in the parent.
++// Centers are child source origins in parent-local coordinates. Anatomical cells are COM-rebased;
++// the one-body destruction fallback retains the original nonzero local COM.
++export function validateBodyPartition(parentSpec, parts) {
++  if (!parentSpec?.dynamic || !Array.isArray(parts) || !parts.length || parts.length > 3) return false;
++  const p = parentSpec.centerOfMass || {
++    x: 0,
++    y: 0,
++    z: 0
++  };
++  let mass = 0,
++    x = 0,
++    z = 0,
++    inertia = 0;
++  for (const part of parts) {
++    const s = part?.spec,
++      c = part?.center;
++    if (!s?.dynamic || !c || ![c.x, c.z, part.yaw ?? 0, s.mass, s.inertiaY].every(Number.isFinite) || !(s.mass > 0) || !(s.inertiaY > 0)) return false;
++    const a = part.yaw ?? 0,
++      cc = s.centerOfMass || {
++        x: 0,
++        z: 0
++      };
++    const qx = c.x + Math.cos(a) * cc.x - Math.sin(a) * cc.z,
++      qz = c.z + Math.sin(a) * cc.x + Math.cos(a) * cc.z;
++    mass += s.mass;
++    x += s.mass * qx;
++    z += s.mass * qz;
++    inertia += s.inertiaY + s.mass * ((qx - p.x) ** 2 + (qz - p.z) ** 2);
++  }
++  const near = (a, b) => Math.abs(a - b) <= Math.max(1, Math.abs(b)) * 1e-6;
++  return near(mass, parentSpec.mass) && near(x / mass, p.x) && near(z / mass, p.z) && near(inertia, parentSpec.inertiaY);
++}
++export function partitionKinematics(parent, center, yaw = 0, childCom = {
++  x: 0,
++  z: 0
++}) {
++  const rot = parent.rot,
++    c = Math.cos(rot),
++    s = Math.sin(rot);
++  const px = c * center.x - s * center.z,
++    pz = s * center.x + c * center.z;
++  const com = parent.centerOfMass || {
++    x: 0,
++    z: 0
++  };
++  const qx = center.x + Math.cos(yaw) * childCom.x - Math.sin(yaw) * childCom.z - com.x;
++  const qz = center.z + Math.sin(yaw) * childCom.x + Math.cos(yaw) * childCom.z - com.z;
++  const rx = c * qx - s * qz,
++    rz = s * qx + c * qz;
++  return {
++    pos: {
++      x: parent.pos.x + px,
++      z: parent.pos.z + pz
++    },
++    vel: {
++      x: parent.vel.x - parent.angVel * rz,
++      z: parent.vel.z + parent.angVel * rx
++    },
++    rot: rot + yaw,
++    angVel: parent.angVel
++  };
++}
+diff --git a/src/core/sg02DynamicBodyOwner.js b/src/core/sg02DynamicBodyOwner.js
+index 8938a5c..89f82a5 100644
+--- a/src/core/sg02DynamicBodyOwner.js
++++ b/src/core/sg02DynamicBodyOwner.js
+@@ -1,3 +1,4 @@
++import { validateBodyPartition, partitionKinematics } from './bodyPartition.js';
+ import { convexProxyColliderDesc } from './convexProxyGeometry.js';
+ import { planarProxyPrismHalfHeight, planarProxyObbHalfHeight } from './planarProxyGeometry.js';
+ export { planarProxyPrismHalfHeight, planarProxyObbHalfHeight } from './planarProxyGeometry.js';
+@@ -260,6 +261,7 @@ export function createSg02CombatPhysicsPort(owner) {
+   }
+   return Object.freeze({
+     applyImpulse(input) { return owner.applyImpulse(input); },
++    partitionBody(input) { return owner.partitionBody(input); },
+     applyTorqueImpulse(input) { return owner.applyTorqueImpulse(input); },
+     createAttachment(input) { return owner.createAttachment(input); },
+     setAttachmentReel(input) { return owner.setAttachmentReel(input); },
+@@ -968,7 +970,8 @@ export class Sg02DynamicBodyOwner {
+     this._simTick = Number.isFinite(simTick) ? Math.max(0, Math.trunc(simTick)) : null;
+     this.accumulator = prospectiveTotal;
+     while (this.accumulator + 1e-12 >= this.fixedDt) {
+-      this._stepFixed();
++      this._partitionStepActive = true;
++      try { this._stepFixed(); } finally { this._partitionStepActive = false; }
+       this.accumulator -= this.fixedDt;
+     }
+     return this.diagnostics();
+@@ -1031,6 +1034,95 @@ export class Sg02DynamicBodyOwner {
+     this._reboundEntityIds.clear();
+   }
+ 
++  // Called synchronously by the death owner between damage and its kill receipt. Rapier is
++  // never stepping here. Partition poses are inherited material positions, never spawn slots.
++  partitionBody({ parent, parts } = {}) {
++    if (this._partitionStepActive || !parent || parent.id==null || parent.alive !== false || !Array.isArray(parts)
++      || !parts.length || parts.length>3 || Array.from(parts).some(p=>!p || typeof p!=='object'
++        || !p.entity || typeof p.entity!=='object' || p.entity.id==null || !p.entity.pos || !p.entity.vel || !p.center)) return false;
++    const parentSpec = resolvePhysicsBodySpec(parent);
++    const prepared = parts.map(p => ({ ...p, spec: resolvePhysicsBodySpec(p.entity) }));
++    if (!validateBodyPartition(parentSpec, prepared)
++      || prepared.some(p => !p.entity || p.entity.alive === false || p.entity === parent
++        || this.records.has(p.entity.id))
++      || new Set(prepared.map(p => p.entity.id)).size !== prepared.length) return false;
++    let rec = this.records.get(parent.id);
++    if (rec && rec.entity !== parent) return false;
++    // An admitted body may be lethally hit before its first fixed physics step.
++    if (!rec) rec = this._syncRecord(parent, parentSpec);
++    if (!rec) return false;
++    // A death cut is not a player release: it must not spend stored elastic-whip energy.
++    for (const a of [...this.attachments.values()]) if (a.owner===rec || a.target===rec)
++      this.cutAttachment({attachmentId:a.id,reason:'body_partition'});
++    const command = consumePhysicsCommand(parent);
++    // Instantaneous commands belong to this material and are spent exactly once. The dead
++    // parent's unintegrated motor force is cancelled, like every other killed actuator.
++    if (command) {
++      if (command.bodyResponse) { this._applyBodyResponse(rec,command.bodyResponse); rec.body.recomputeMassPropertiesFromColliders?.(); }
++      this._applyCommand(rec, { impulses: command.impulses, torqueImpulses: command.torqueImpulses });
++    }
++    const pose = rec.body.translation(), v = rec.body.linvel();
++    const yaw = wrapAngle(yawFromQuat(rec.body.rotation()));
++    const global = frameToGlobal(pose, this._frameOrigin, {});
++    const source = {pos:global,vel:{x:v.x,z:v.z},rot:yaw,angVel:-rec.body.angvel().y,
++      centerOfMass:parentSpec.centerOfMass};
++    // Capture the accepted lethal impulse too: applyImpulse updates native motion immediately,
++    // while the entity's mirror otherwise lags until the next physics step.
++    this._syncEntityFromKinematics(rec, {x:pose.x,z:pose.z,vx:v.x,vz:v.z,yaw,wy:source.angVel});
++    const mirrors=prepared.map(({entity})=>({entity,pos:{...entity.pos},vel:{...entity.vel},
++      rot:entity.rot,angVel:entity.angVel,prevPos:entity.prevPos&&{...entity.prevPos},prevRot:entity.prevRot}));
++    const restoreChildMirrors=()=>{for(const m of mirrors){Object.assign(m.entity.pos,m.pos);Object.assign(m.entity.vel,m.vel);
++      m.entity.rot=m.rot;m.entity.angVel=m.angVel;if(m.entity.prevPos&&m.prevPos)Object.assign(m.entity.prevPos,m.prevPos);m.entity.prevRot=m.prevRot;}};
++    for (const part of prepared) {
++      const value = partitionKinematics(source, part.center, part.yaw, part.spec.centerOfMass);
++      Object.assign(part.entity.pos,value.pos); Object.assign(part.entity.vel,value.vel);
++      part.entity.rot=value.rot; part.entity.angVel=value.angVel;
++      if (part.entity.prevPos) Object.assign(part.entity.prevPos,value.pos);
++      part.entity.prevRot=value.rot;
++    }
++    // Effective response properties (e.g. existing status matter) are decomposed using the
++    // same parallel-axis law. Material mass stays authored; no status can invent a split kick.
++    const massScale=rec.effectiveMass/parentSpec.mass;
++    const ownInertia=prepared.reduce((sum,p)=>sum+p.spec.inertiaY,0);
++    const orbital=parentSpec.inertiaY-ownInertia;
++    const inertiaScale=(rec.effectiveInertiaY-orbital*massScale)/ownInertia;
++    // Death-only semantics: already accepted impulses/status response and destruction cuts
++    // stay on the usable parent if decomposition is rejected. They are NOT replayed by the
++    // subsequent one-body corpse fallback; only unpublished child mirrors are rolled back.
++    if (!(massScale>=.25 && massScale<=8 && inertiaScale>=.25 && inertiaScale<=8)) {restoreChildMirrors();return false;}
++    const nativeBefore=new Set(); this.world.forEachRigidBody(body=>nativeBefore.add(body.handle));
++    const created=[];
++    const rollback=()=>{
++      // Use the ordinary remover for every completed staged record so owner-specific maps
++      // (including Ceres articulation/rebuild caches) follow their canonical cleanup route.
++      for(const next of created)this._removeRecord(next.entity.id,next);
++      const bodies=[];this.world.forEachRigidBody(body=>{if(!nativeBefore.has(body.handle))bodies.push(body);});
++      for(const body of bodies){for(let i=0;i<body.numColliders();i++)this._colliderOwners.delete(body.collider(i).handle);this.world.removeRigidBody(body);}
++      restoreChildMirrors();
++    };
++    try {
++      for (const part of prepared) {
++        const next=this._createRecord(part.entity,part.spec,null,{preservePartitionPose:true});
++        created.push(next);
++        this._applyBodyResponse(next,{massScale,inertiaScale});
++        next.body.recomputeMassPropertiesFromColliders?.();
++        this._applyCcdGate(next,part.entity);
++        this._syncEntityFromKinematics(next,this._enforcePlane(next));
++        if (part.entity.prevPos) Object.assign(part.entity.prevPos,part.entity.pos);
++        part.entity.prevRot=part.entity.rot;
++      }
++    } catch (_) {
++      // Nothing was published. Keep the exact parent and remove all staged bodies, including
++      // a createCollider failure before _createRecord could return its record.
++      rollback();
++      return false;
++    }
++    if (!this._removeRecord(parent.id,rec)) {rollback();return false;}
++    for(const next of created){this.records.set(next.entity.id,next);this.dynamicRecords.add(next);}
++    return { schema:1, parentLife:parent.occupantGeneration, mass:parentSpec.mass,
++      inertiaY:parentSpec.inertiaY, parts:prepared.map(p=>p.entity.id), source };
++  }
++
+   applyImpulse(input = {}) {
+     const rec = this.records.get(input.entityId);
+     if (!rec || !rec.spec.dynamic) return false;
+@@ -2058,7 +2150,7 @@ export class Sg02DynamicBodyOwner {
+     }
+   }
+ 
+-  _createRecord(entity, spec, replacing = null) {
++  _createRecord(entity, spec, replacing = null, options = {}) {
+     const R = this.RAPIER;
+     assertAuthoredCollisionProxyManifest(entity);
+     const proxyManifest = proxyManifestForBody(entity, spec);
+@@ -2074,7 +2166,7 @@ export class Sg02DynamicBodyOwner {
+     // segment must keep its authored line. The writeback to entity.pos is required — pose
+     // resync reads entity.pos as authored truth, so an unmirrored nudge would be reverted on
+     // the next sync for dt=0 init, noInterp, sleep-eligible, and static records alike.
+-    if (!material.ghost && entity.pos
++    if (!options.preservePartitionPose && !material.ghost && entity.pos
+       && Number.isFinite(entity.pos.x) && Number.isFinite(entity.pos.z)) {
+       const slotted = this._resolveCoincidentSpawnSlot(posX, posZ, entity, spec, replacing);
+       if (slotted !== posX) {

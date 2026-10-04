@@ -1,0 +1,943 @@
+diff --git a/src/combat/lineOfSight.js b/src/combat/lineOfSight.js
+index 75309d6..5c854cb 100644
+--- a/src/combat/lineOfSight.js
++++ b/src/combat/lineOfSight.js
+@@ -1,3 +1,4 @@
++import { sweepConvexProxyInto } from '../core/convexProxyGeometry.js';
+ import { ceresWorkfleetSlideRole } from '../data/ceresWorkfleetArticulation.js';
+ import { physicsBodyNativeReady } from '../core/physicsAuthority.js';
+ // Segment-vs-body line-of-sight primitives shared by the PQ-146 observers. Leaf module: reads
+@@ -32,6 +33,7 @@ function segmentIntersects(a,b,c,d) {
+   return cross(a,b,c)*cross(a,b,d)<=0&&cross(c,d,a)*cross(c,d,b)<=0;
+ }
+ export function primitiveBlocksSegment(a, b, p) {
++  if (p.kind === 'convex') return sweepConvexProxyInto({}, p.vertices, a, b);
+   if (p.kind === 'circle' && p.r > 0 && pointSegmentDistance(p, a, b) < p.r) return true;
+   if (p.kind === 'obb' && crossesBox(a, b, p)) return true;
+   if (p.kind === 'capsule') {
+@@ -89,7 +91,9 @@ function occluderReach(entity, manifest) {
+   }
+   for (const p of local) {
+     let extent = 0;
+-    if (p.kind === 'capsule') {
++    if (p.kind === 'convex') {
++      extent = Math.max(...p.vertices.map(([x,z]) => Math.hypot(x,z)));
++    } else if (p.kind === 'capsule') {
+       extent = Math.max(
+         Math.hypot(Number(p.ax) || 0, Number(p.az) || 0),
+         Math.hypot(Number(p.bx) || 0, Number(p.bz) || 0),
+@@ -187,7 +191,8 @@ function witnessPlanInsert(plan, rec) {
+   const entity = rec.occ;
+   const px = entity && entity.pos ? Number(entity.pos.x) : NaN;
+   const pz = entity && entity.pos ? Number(entity.pos.z) : NaN;
+-  if (!isDynamicPhysicsBodyEntity(entity) && !ceresWorkfleetSlideRole(entity) && Number.isFinite(px) && Number.isFinite(pz)
++  if (!isDynamicPhysicsBodyEntity(entity) && !ceresWorkfleetSlideRole(entity)
++      && !entity.physicsBody?.collisionProxyManifest && Number.isFinite(px) && Number.isFinite(pz)
+       && rec.reach <= WITNESS_SPATIAL_CELL) {
+     const x0 = Math.floor((px - rec.reach) / WITNESS_SPATIAL_CELL);
+     const x1 = Math.floor((px + rec.reach) / WITNESS_SPATIAL_CELL);
+@@ -238,7 +243,7 @@ function witnessOccluderPlan(state) {
+ function witnessRowBlocks(rec, observer, ignored, observerPos, destination, mx, mz, halfLen) {
+   const entity = rec.occ;
+   if(!entity?.alive||!entity.collides||entity.id===observer.id||ignored.includes(entity.id)||!point(entity.pos))return false;
+-  if (ceresWorkfleetSlideRole(entity)) rec.reach = occluderBodyView(entity).reach;
++  if (ceresWorkfleetSlideRole(entity) || entity.physicsBody?.collisionProxyManifest) rec.reach = occluderBodyView(entity).reach;
+   const dxm = entity.pos.x - mx, dzm = entity.pos.z - mz;
+   const bound = halfLen + rec.reach;
+   if (dxm * dxm + dzm * dzm > bound * bound) return false;
+diff --git a/src/core/collisionProxySweep.js b/src/core/collisionProxySweep.js
+index 8d558dd..a0242a8 100644
+--- a/src/core/collisionProxySweep.js
++++ b/src/core/collisionProxySweep.js
+@@ -1,3 +1,4 @@
++import { sweepConvexProxyInto } from './convexProxyGeometry.js';
+ import { physicsBodyNativeReady } from './physicsAuthority.js';
+ // Projectile-disc narrow phase over the same resolved world primitives as Rapier/LOS.
+ // This is a query only: the projectile owner retains filtering, ordering and damage receipts.
+@@ -46,6 +47,7 @@ function frame(p) {
+   return { x: p.x, z: p.z, c: Math.cos(p.rot), s: Math.sin(p.rot), hx: p.hx, hz: p.hz };
+ }
+ function primitiveEntry(p, a, b, radius) {
++  if (p.kind === 'convex') { const hit = {}; return sweepConvexProxyInto(hit, p.vertices, a, b, radius) ? hit.t : Infinity; }
+   const dx = b.x - a.x, dz = b.z - a.z;
+   if (p.kind === 'circle') return circleEntry(a.x, a.z, dx, dz, p.x, p.z, p.r + radius);
+   const f = frame(p), x = a.x - f.x, z = a.z - f.z;
+@@ -98,6 +100,7 @@ export function sweepCollisionProxyInto(out, entity, manifest, start, end, radiu
+   out.x = start.x + (end.x - start.x) * t;
+   out.z = start.z + (end.z - start.z) * t;
+   let nx, nz;
++  if (solid.kind === 'convex') return sweepConvexProxyInto(out, solid.vertices, start, end, Math.max(0, radius));
+   if (solid.kind === 'circle') {
+     nx = out.x - solid.x; nz = out.z - solid.z;
+   } else {
+diff --git a/src/core/convexProxyGeometry.js b/src/core/convexProxyGeometry.js
+new file mode 100644
+index 0000000..6870e0c
+--- /dev/null
++++ b/src/core/convexProxyGeometry.js
+@@ -0,0 +1,108 @@
++// Bounded authored convex XZ subparts. Never hull-fit across separate pieces: gaps
++// and concavities belong to the union, while each piece is strictly convex.
++import { sweepConvexHullInto } from './convexHullQuery.js';
++import { planarProxyPrismHalfHeight } from './planarProxyGeometry.js';
++
++export const MAX_CONVEX_PROXY_VERTICES = 12;
++export const MAX_PROXY_COORDINATE = 1e6;
++// Conservative supported native envelope, not a proof of every larger/aspect-ratio
++// shape. Rapier's absolute convex-contact tolerances miss sub-centimeter pieces.
++// Reject them rather than inflate geometry; exact XZ sweeps remain ray authority.
++export const MIN_NATIVE_CONVEX_PROXY_WIDTH_WU = 0.01;
++export function convexProxyMinimumWidth(vertices) {
++  let width = Infinity;
++  for (let i = 0; i < vertices.length; i++) {
++    const a = vertices[i], b = vertices[(i + 1) % vertices.length];
++    const dx = b[0] - a[0], dz = b[1] - a[1];
++    let support = 0;
++    for (const p of vertices) support = Math.max(support, Math.abs(dx * (p[1] - a[1]) - dz * (p[0] - a[0])));
++    width = Math.min(width, support / Math.hypot(dx, dz));
++  }
++  return width;
++}
++const cross = (a, b, p) => (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]);
++
++/** Reject before copying; canonical CCW winding and start make identities stable. */
++export function normalizeConvexProxyVertices(vertices) {
++  if (!Array.isArray(vertices) || vertices.length < 3 || vertices.length > MAX_CONVEX_PROXY_VERTICES) {
++    throw new RangeError('convex requires 3..12 vertices');
++  }
++  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
++  for (const v of vertices) {
++    if (!Array.isArray(v) || v.length !== 2 || !v.every(n => Number.isFinite(n) && Math.abs(n) <= MAX_PROXY_COORDINATE)) {
++      throw new RangeError('convex coordinates must be finite bounded [x,z] pairs');
++    }
++    minX = Math.min(minX, v[0]); maxX = Math.max(maxX, v[0]);
++    minZ = Math.min(minZ, v[1]); maxZ = Math.max(maxZ, v[1]);
++  }
++  const extent = Math.max(maxX - minX, maxZ - minZ);
++  const epsilon = 64 * Number.EPSILON * extent * extent;
++  const turn = cross(vertices[0], vertices[1], vertices[2]);
++  if (!(Math.abs(turn) > epsilon)) throw new RangeError('degenerate convex piece');
++  const winding = Math.sign(turn);
++  for (let i = 0; i < vertices.length; i++) {
++    const a = vertices[i], b = vertices[(i + 1) % vertices.length];
++    for (let j = 0; j < vertices.length; j++) {
++      if (j === i || j === (i + 1) % vertices.length) continue;
++      if (!(winding * cross(a, b, vertices[j]) > epsilon)) throw new RangeError('nonconvex or degenerate convex piece');
++    }
++  }
++  const out = vertices.map(v => [v[0] === 0 ? 0 : v[0], v[1] === 0 ? 0 : v[1]]);
++  if (winding < 0) out.reverse();
++  let first = 0;
++  for (let i = 1; i < out.length; i++) if (out[i][0] < out[first][0] || (out[i][0] === out[first][0] && out[i][1] < out[first][1])) first = i;
++  return out.slice(first).concat(out.slice(0, first));
++}
++
++function convexProxyPoints(vertices) { return vertices.map(([x, z]) => ({ x, z })); }
++
++/** Normalize numerical query scale only; preserve the authored XZ polygon exactly. */
++export function sweepConvexProxyInto(out, vertices, start, end, radius = 0) {
++  if (!Array.isArray(vertices) || vertices.length < 3 || vertices.length > MAX_CONVEX_PROXY_VERTICES) { out.hit = false; return false; }
++  const origin = vertices[0];
++  let scale = 0;
++  for (const [x, z] of vertices) scale = Math.max(scale, Math.abs(x - origin[0]), Math.abs(z - origin[1]));
++  if (!(scale > 0) || !Number.isFinite(scale)) { out.hit = false; return false; }
++  const local = p => ({ x: (p.x - origin[0]) / scale, z: (p.z - origin[1]) / scale });
++  const hull = vertices.map(([x, z]) => local({ x, z }));
++  const hit = sweepConvexHullInto(out, hull, local(start), local(end), radius / scale);
++  if (hit) { out.x = start.x + (end.x - start.x) * out.t; out.z = start.z + (end.z - start.z) * out.t; }
++  return hit === true;
++}
++
++export function convexProxyDistance(point, vertices) {
++  let inside = true, best = Infinity;
++  // Expanded vertices are canonical CCW; world transforms preserve winding.
++  for (let i = 0; i < vertices.length; i++) {
++    const a = vertices[i], b = vertices[(i + 1) % vertices.length];
++    const dx = b[0] - a[0], dz = b[1] - a[1], px = point.x - a[0], pz = point.z - a[1];
++    if (dx * pz - dz * px < 0) inside = false;
++    const t = Math.max(0, Math.min(1, (px * dx + pz * dz) / (dx * dx + dz * dz)));
++    best = Math.min(best, Math.hypot(px - dx * t, pz - dz * t));
++  }
++  return inside ? -best : best;
++}
++
++/** Validate float32 projection too: underflow/collapse must never silently drop a piece. */
++export function convexProxyColliderDesc(R, vertices, scale) {
++  if (!(scale > 0) || !Number.isFinite(scale) || typeof R.ColliderDesc.convexHull !== 'function') throw new RangeError('unsupported convex proxy scale or native runtime');
++  const canonical = normalizeConvexProxyVertices(vertices);
++  if (convexProxyMinimumWidth(canonical) * scale < MIN_NATIVE_CONVEX_PROXY_WIDTH_WU * (1 - 64 * Number.EPSILON)) {
++    throw new RangeError('convex native support width is below 0.01 WU');
++  }
++  const projected = normalizeConvexProxyVertices(canonical.map(([x, z]) => [Math.fround(x * scale), Math.fround(z * scale)]));
++  // Permit float32 rounding of the exact boundary, but never a materially thinner
++  // projected polygon caused by cancellation at a large authored local offset.
++  if (convexProxyMinimumWidth(projected) < MIN_NATIVE_CONVEX_PROXY_WIDTH_WU * (1 - 16 * 2 ** -23)) {
++    throw new RangeError('convex native float32 support width is below 0.01 WU');
++  }
++  const verts = convexProxyPoints(projected), halfY = planarProxyPrismHalfHeight(verts, 1);
++  const points = new Float32Array(verts.length * 6);
++  for (let i = 0; i < verts.length; i++) for (let side = 0; side < 2; side++) {
++    const j = (i + side * verts.length) * 3;
++    points[j] = verts[i].x; points[j + 1] = side ? -halfY : halfY; points[j + 2] = verts[i].z;
++  }
++  const desc = R.ColliderDesc.convexHull(points);
++  if (!desc) throw new RangeError('native convex proxy construction failed');
++  return desc;
++}
+diff --git a/src/core/physics.js b/src/core/physics.js
+index 987134d..bc57db3 100644
+--- a/src/core/physics.js
++++ b/src/core/physics.js
+@@ -27,6 +27,7 @@ import {
+ } from '../world/activityRuntime.js';
+ import {
+   proxyScaleFor,
++  proxyOuterRadiusWu,
+   resolveCollisionProxyManifest,
+   resolveDockAnchor,
+ } from '../data/collisionProxyManifests.js';
+@@ -90,10 +91,11 @@ function opticSplinterHitsOwner(proj) {
+   return opticGenerationOf(proj) > 0;
+ }
+ 
+-// Compact physical hulls may extend beyond their nominal gameplay radius. Keep
++// Compact hulls and authored convex subparts may exceed nominal gameplay radius. Keep
+ // the circle conservative for admission only; the shared exact query owns contact.
+ function projectileProxyRadius(entity, manifest) {
+   let radius = Number.isFinite(entity.radius) ? Math.max(0, entity.radius) : 0;
++  if (manifest?.primitives?.some(p => p.kind === 'convex')) radius = Math.max(radius, proxyOuterRadiusWu(manifest, entity));
+   if (!Array.isArray(manifest?.compactHull)) return radius;
+   const scale = proxyScaleFor(entity, manifest);
+   for (const p of manifest.compactHull) {
+diff --git a/src/core/rapierCollisionWorld.js b/src/core/rapierCollisionWorld.js
+index 4294370..c1a3c63 100644
+--- a/src/core/rapierCollisionWorld.js
++++ b/src/core/rapierCollisionWorld.js
+@@ -1,3 +1,5 @@
++import { convexProxyColliderDesc } from './convexProxyGeometry.js';
++import { planarProxyObbHalfHeight } from './planarProxyGeometry.js';
+ // Optional Rapier collision observer backend.
+ //
+ // This adapter builds simple 2.5D sphere bodies for live collidable entities so Rapier can be
+@@ -10,6 +12,7 @@ export const PHYSICS_RUNTIME_SCHEMA_VERSION = 1;
+ 
+ import {
+   expandProxyPrimitives,
++  assertAuthoredCollisionProxyManifest,
+   proxyScaleFor,
+   resolveCollisionProxyManifest,
+ } from '../data/collisionProxyManifests.js';
+@@ -39,20 +42,12 @@ export async function createRapierCollisionWorld() {
+       let rec = bodies.get(e.id);
+       const ccdEnabled = wantsCcd(e);
+       const dynamic = wantsDynamic(e);
+-      if (!rec || rec.dynamic !== dynamic) {
++      if (!rec || rec.dynamic !== dynamic || rec.manifest !== resolveCollisionProxyManifest(e)
++          || rec.revision !== e.physicsBody?.revision || rec.radius !== e.radius) {
++        const next = createRecord(e, dynamic, ccdEnabled);
+         if (rec) removeRecord(rec);
+-        rec = createRecord(e, dynamic, ccdEnabled);
++        rec = next;
+         bodies.set(e.id, rec);
+-      } else if (Math.abs(rec.radius - e.radius) > 0.001) {
+-        if (Array.isArray(rec.colliders) && rec.colliders.length > 1) {
+-          // Compound proxy records cannot retune a single radius — rebuild the static set.
+-          removeRecord(rec);
+-          rec = createRecord(e, dynamic, ccdEnabled);
+-          bodies.set(e.id, rec);
+-        } else if (typeof rec.collider.setRadius === 'function') rec.collider.setRadius(e.radius);
+-        else if (typeof rec.collider.setShape === 'function') rec.collider.setShape(new RAPIER.Ball(e.radius));
+-        rec.radius = e.radius;
+-        rec.queryShape = new RAPIER.Ball(e.radius);
+       }
+       if (rec.ccdEnabled !== ccdEnabled) {
+         if (typeof rec.body.enableCcd === 'function') rec.body.enableCcd(ccdEnabled);
+@@ -112,6 +107,7 @@ export async function createRapierCollisionWorld() {
+   return { syncFromEntities, step, diagnostics, dispose };
+ 
+   function createRecord(e, dynamic, ccdEnabled) {
++    assertAuthoredCollisionProxyManifest(e);
+     const desc = (dynamic ? RAPIER.RigidBodyDesc.dynamic() : RAPIER.RigidBodyDesc.fixed())
+       .setTranslation(finite(e.pos && e.pos.x), 0, finite(e.pos && e.pos.z))
+       .setRotation(observerQuatFromYaw(e.rot))
+@@ -121,7 +117,6 @@ export async function createRapierCollisionWorld() {
+         .setLinvel(finite(e.vel && e.vel.x), 0, finite(e.vel && e.vel.z))
+         .setAngvel({ x: 0, y: -finite(e.angVel), z: 0 });
+     }
+-    const body = world.createRigidBody(desc);
+     const proxyManifest = resolveCollisionProxyManifest(e);
+     const isCraft = e.type === 'ship' || e.type === 'drone';
+     const colliderDescs = proxyManifest
+@@ -129,9 +124,12 @@ export async function createRapierCollisionWorld() {
+       : (isCraft
+         ? [buildObserverCraftCapsuleColliderDesc(e)]
+         : [buildObserverBallColliderDesc(e.radius)]);
+-    const colliders = colliderDescs.map((colliderDesc) => world.createCollider(colliderDesc, body));
++    const body = world.createRigidBody(desc);
++    let colliders;
++    try { colliders = colliderDescs.map(colliderDesc => world.createCollider(colliderDesc, body)); }
++    catch (error) { world.removeRigidBody(body); throw error; }
+     const collider = colliders[0];
+-    return { body, collider, colliders, radius: e.radius, queryShape: new RAPIER.Ball(e.radius), ccdEnabled, dynamic };
++    return { body, collider, colliders, manifest: proxyManifest, revision: e.physicsBody?.revision, radius: e.radius, queryShape: new RAPIER.Ball(e.radius), ccdEnabled, dynamic };
+   }
+ 
+   function buildObserverCraftCapsuleColliderDesc(entity) {
+@@ -170,7 +168,9 @@ export async function createRapierCollisionWorld() {
+     const descs = [];
+     for (const primitive of primitives) {
+       let desc = null;
+-      if (primitive.kind === 'circle') {
++      if (primitive.kind === 'convex') {
++        desc = convexProxyColliderDesc(RAPIER, primitive.vertices, scale);
++      } else if (primitive.kind === 'circle') {
+         desc = RAPIER.ColliderDesc.ball(Math.max(0.01, primitive.r * scale))
+           .setTranslation(primitive.x * scale, 0, primitive.z * scale);
+       } else if (primitive.kind === 'capsule') {
+@@ -188,13 +188,13 @@ export async function createRapierCollisionWorld() {
+         const angle = (Number.isFinite(primitive.angleDeg) ? primitive.angleDeg : 0) * (Math.PI / 180);
+         desc = RAPIER.ColliderDesc.cuboid(
+           Math.max(0.01, primitive.hx * scale),
+-          Math.max(0.01, primitive.hx * scale),
++          planarProxyObbHalfHeight(Math.max(0.01, primitive.hx * scale), Math.max(0.01, primitive.hz * scale)),
+           Math.max(0.01, primitive.hz * scale),
+         )
+           .setTranslation(primitive.x * scale, 0, primitive.z * scale)
+           .setRotation({ x: 0, y: -Math.sin(angle / 2), z: 0, w: Math.cos(angle / 2) });
+       }
+-      if (!desc) continue;
++      if (!desc) throw new RangeError('unsupported collision proxy primitive');
+       desc.setSensor(false).setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
+       if (RAPIER.ActiveCollisionTypes && RAPIER.ActiveCollisionTypes.ALL != null) {
+         desc.setActiveCollisionTypes(RAPIER.ActiveCollisionTypes.ALL);
+diff --git a/src/core/sg02DynamicBodyOwner.js b/src/core/sg02DynamicBodyOwner.js
+index e0191f8..8938a5c 100644
+--- a/src/core/sg02DynamicBodyOwner.js
++++ b/src/core/sg02DynamicBodyOwner.js
+@@ -1,3 +1,4 @@
++import { convexProxyColliderDesc } from './convexProxyGeometry.js';
+ import { planarProxyPrismHalfHeight, planarProxyObbHalfHeight } from './planarProxyGeometry.js';
+ export { planarProxyPrismHalfHeight, planarProxyObbHalfHeight } from './planarProxyGeometry.js';
+ // SG-02 dynamic body owner.
+@@ -19,6 +20,7 @@ import {
+ } from './physicsAuthority.js';
+ import {
+   MAX_PROXY_PRIMITIVES,
++  assertAuthoredCollisionProxyManifest,
+   expandProxyPrimitives,
+   isCompoundSkinDynamicEligible,
+   proxyScaleFor,
+@@ -2058,6 +2060,10 @@ export class Sg02DynamicBodyOwner {
+ 
+   _createRecord(entity, spec, replacing = null) {
+     const R = this.RAPIER;
++    assertAuthoredCollisionProxyManifest(entity);
++    const proxyManifest = proxyManifestForBody(entity, spec);
++    const preparedProxyDescs = proxyManifest ? buildCompoundProxyColliderDescs(R, entity, proxyManifest,
++      contactMaterialFor(entity, spec), spec, this.captureContactImpacts, this.world.integrationParameters) : null;
+     const local = globalToFrame(entity.pos, this._frameOrigin, this._frameScratch);
+     let posX = local.x;
+     const posZ = local.z;
+@@ -2117,7 +2123,6 @@ export class Sg02DynamicBodyOwner {
+     const pooled = ghostPoolKey ? this._takePooledGhostBody(ghostPoolKey) : null;
+     let body;
+     let colliders;
+-    let proxyManifest = null;
+     try {
+       if (pooled) {
+         body = pooled.body;
+@@ -2129,10 +2134,9 @@ export class Sg02DynamicBodyOwner {
+         body.setEnabled(true);
+       } else {
+         body = this.world.createRigidBody(desc);
+-        proxyManifest = proxyManifestForBody(entity, spec);
+         let colliderDescs;
+         if (proxyManifest) {
+-          colliderDescs = buildCompoundProxyColliderDescs(this.RAPIER, entity, proxyManifest, material, spec, this.captureContactImpacts, this.world.integrationParameters);
++          colliderDescs = preparedProxyDescs;
+         } else if (spec.shape === 'capsule' || (!spec.shape && (entity.type === 'ship' || entity.type === 'drone'))) {
+           colliderDescs = [buildCraftCapsuleColliderDesc(this.RAPIER, entity, spec, material, this.captureContactImpacts)];
+         } else {
+@@ -4472,7 +4476,9 @@ function buildCompoundProxyColliderDescs(R, entity, manifest, material, spec, ca
+   const descs = [];
+   for (const primitive of primitives) {
+     let desc = null;
+-    if (primitive.kind === 'circle') {
++    if (primitive.kind === 'convex') {
++      desc = convexProxyColliderDesc(R, primitive.vertices, scale);
++    } else if (primitive.kind === 'circle') {
+       desc = R.ColliderDesc.ball(Math.max(0.01, primitive.r * scale))
+         .setTranslation(primitive.x * scale, 0, primitive.z * scale);
+     } else if (primitive.kind === 'capsule') {
+@@ -4497,7 +4503,7 @@ function buildCompoundProxyColliderDescs(R, entity, manifest, material, spec, ca
+         .setTranslation(primitive.x * scale, 0, primitive.z * scale)
+         .setRotation(quatFromYaw(finite(primitive.angleDeg) * (Math.PI / 180)));
+     }
+-    if (!desc) continue;
++    if (!desc) throw new RangeError('unsupported collision proxy primitive');
+     desc.setDensity(0);
+     applyColliderContactMaterial(R, desc, material);
+     if (typeof desc.setCollisionGroups === 'function') {
+diff --git a/src/data/collisionProxyManifests.js b/src/data/collisionProxyManifests.js
+index 9645986..e7906ae 100644
+--- a/src/data/collisionProxyManifests.js
++++ b/src/data/collisionProxyManifests.js
+@@ -1,3 +1,5 @@
++export { MAX_CONVEX_PROXY_VERTICES } from '../core/convexProxyGeometry.js';
++import { normalizeConvexProxyVertices, convexProxyDistance, sweepConvexProxyInto, MAX_PROXY_COORDINATE } from '../core/convexProxyGeometry.js';
+ // Collision proxy manifests — data-driven compound planar collision proxies (PQ-008 / SF-08 → F18).
+ //
+ // Today every station/wreck body is a single ColliderDesc.ball unrelated to the visible mesh, so
+@@ -49,7 +51,7 @@ export const COLLISION_PROXY_FLAGS = Object.freeze({
+ export const MAX_PROXY_PRIMITIVES = 32;
+ 
+ /** Primitive kinds the physics authority knows how to register. */
+-export const COLLISION_PROXY_KINDS = Object.freeze(['circle', 'capsule', 'obb', 'chain']);
++export const COLLISION_PROXY_KINDS = Object.freeze(['circle', 'capsule', 'obb', 'chain', 'convex']);
+ 
+ const DEG = Math.PI / 180;
+ 
+@@ -272,6 +274,15 @@ export function measuredSkinAllowedFor(entity) {
+   return isCompoundSkinDynamicEligible(entity);
+ }
+ 
++/** Native owners call this before creating or replacing any body. Invalid authored
++ * geometry is never replaced by a gameplay-radius ball or a partial compound. */
++export function assertAuthoredCollisionProxyManifest(entity) {
++  const authored = entity?.physicsBody?.collisionProxyManifest;
++  if (authored == null) return;
++  const result = validateCollisionProxyManifest({ ...authored, flags: COLLISION_PROXY_FLAGS });
++  if (!result.ok) throw new RangeError(`invalid authored collision proxy: ${result.issues.join('; ')}`);
++}
++
+ function authoredProxyManifest(entity) {
+   const body = entity && entity.physicsBody;
+   const authored = body && body.collisionProxyManifest;
+@@ -348,7 +359,8 @@ function resolveMeasuredProxyManifest(entity, id, declared) {
+ }
+ 
+ function compactSkinManifest(entity, manifest) {
+-  if (manifest.opening || !isDynamicPhysicsBodyEntity(entity)) return manifest;
++  if (manifest.opening || manifest.neverUseConvexHull || manifest.primitives?.some(p => p.kind === 'convex')
++      || !isDynamicPhysicsBodyEntity(entity)) return manifest;
+   const key = manifest.id;
+   let resolved = DYNAMIC_SKIN_CACHE.get(key);
+   if (resolved === undefined) {
+@@ -375,6 +387,7 @@ export function collisionProxyIdForStation(stationId) {
+ 
+ /** Normalized → wu scale for an entity. */
+ export function proxyScaleFor(entity, manifest) {
++  if (manifest.referenceRadius === 'world') return 1;
+   const data = entity && entity.data || {};
+   const reference = manifest.referenceRadius === 'dockRadius' ? data.dockRadius : null;
+   return positive(reference, positive(entity && entity.radius, 1));
+@@ -411,17 +424,20 @@ export function expandProxyPrimitives(manifest, options = {}) {
+   const frameDeg = manifest.frame === 'approach'
+     ? wrapDeg(approachBearingDeg(manifest, options, corridorDeg))
+     : 0;
++  const authored = validateProxyPrimitiveInputs(manifest);
+   const out = [];
+   const ceresRole = ceresWorkfleetSlideRole(options.entity, manifest);
+-  for (const primitive of manifest.primitives || []) {
+-    if (out.length >= MAX_PROXY_PRIMITIVES) break;
++  for (const primitive of authored) {
+     if (primitive.kind === 'chain') {
+       expandChain(primitive, corridorDeg, out);
+-    } else if (primitive.kind === 'circle' || primitive.kind === 'capsule' || primitive.kind === 'obb') {
+-      out.push(ceresRole ? poseCeresWorkfleetPrimitive(primitive, ceresRole, ceresWorkfleetSlide(options.entity))
++    } else if (primitive.kind === 'convex') {
++      pushProxy(out, { ...primitive, vertices: normalizeConvexProxyVertices(primitive.vertices) });
++    } else {
++      pushProxy(out, ceresRole ? poseCeresWorkfleetPrimitive(primitive, ceresRole, ceresWorkfleetSlide(options.entity))
+             : { ...primitive });
+     }
+   }
++  if (!out.length) throw new RangeError('proxy expansion contains no solid pieces');
+   if (frameDeg !== 0) rotateProxyPrimitives(out, frameDeg * DEG);
+   return out;
+ }
+@@ -440,7 +456,9 @@ function rotateProxyPrimitives(primitives, rad) {
+   const c = Math.cos(rad);
+   const s = Math.sin(rad);
+   for (const primitive of primitives) {
+-    if (primitive.kind === 'circle' || primitive.kind === 'obb') {
++    if (primitive.kind === 'convex') {
++      primitive.vertices = primitive.vertices.map(([x,z]) => [c*x-s*z, s*x+c*z]);
++    } else if (primitive.kind === 'circle' || primitive.kind === 'obb') {
+       const x = finite(primitive.x);
+       const z = finite(primitive.z);
+       primitive.x = c * x - s * z;
+@@ -473,6 +491,8 @@ export function proxyWorldPrimitives(entity, manifest) {
+   const px = finite(entity && entity.pos && entity.pos.x);
+   const pz = finite(entity && entity.pos && entity.pos.z);
+   return local.map((primitive) => {
++    if (primitive.kind === 'convex') return { kind: 'convex', id: primitive.id || null,
++      vertices: primitive.vertices.map(([x,z]) => [px + (c*x-s*z)*scale, pz + (s*x+c*z)*scale]) };
+     if (primitive.kind === 'circle') {
+       const x = primitive.x * scale;
+       const z = primitive.z * scale;
+@@ -552,7 +572,8 @@ export function hullEnvelopeWu(entity) {
+ }
+ 
+ /** Radial extent of a normalized proxy primitive from the manifest origin. */
+-function proxyPrimitiveRadialExtent(primitive) {
++export function proxyPrimitiveRadialExtent(primitive) {
++  if (primitive.kind === 'convex') return Math.max(...primitive.vertices.map(([x,z]) => Math.hypot(x,z)));
+   if (primitive.kind === 'circle') {
+     return Math.hypot(finite(primitive.x), finite(primitive.z)) + finite(primitive.r);
+   }
+@@ -854,21 +875,7 @@ export function validateCollisionProxyManifest(manifest) {
+   if (flags.renderable !== false) issues.push('flags.renderable must be false');
+   if (flags.targetable !== false) issues.push('flags.targetable must be false');
+   if (flags.radarVisible !== false) issues.push('flags.radarVisible must be false');
+-  const primitives = manifest.primitives || [];
+-  if (!Array.isArray(primitives) || !primitives.length) issues.push('primitives required');
+-  const expanded = expandProxyPrimitives(manifest);
+-  if (expanded.length > MAX_PROXY_PRIMITIVES) {
+-    issues.push(`expanded primitive count ${expanded.length} exceeds bound ${MAX_PROXY_PRIMITIVES}`);
+-  }
+-  for (const primitive of primitives) {
+-    if (!COLLISION_PROXY_KINDS.includes(primitive.kind)) issues.push(`unknown kind ${primitive.kind}`);
+-    if (primitive.kind === 'circle' && !(primitive.r > 0)) issues.push('circle r > 0 required');
+-    if (primitive.kind === 'capsule' && !(primitive.r > 0)) issues.push('capsule r > 0 required');
+-    if (primitive.kind === 'obb' && !(primitive.hx > 0 && primitive.hz > 0)) issues.push('obb hx/hz > 0 required');
+-    if (primitive.kind === 'chain' && !(primitive.radius > 0 && primitive.circleR > 0 && primitive.count >= 3)) {
+-      issues.push('chain radius/circleR/count invalid');
+-    }
+-  }
++  try { expandProxyPrimitives(manifest); } catch (error) { issues.push(error.message); }
+   if (manifest.docking) {
+     const d = manifest.docking;
+     if (!(d.corridor && d.corridor.mouthRadius > 0)) issues.push('docking.corridor.mouthRadius required');
+@@ -886,15 +893,43 @@ export function validateCollisionProxyManifest(manifest) {
+ // internals
+ // -----------------------------------------------------------------------------------------------
+ 
++function pushProxy(out, primitive) {
++  if (out.length >= MAX_PROXY_PRIMITIVES) throw new RangeError(`expanded primitive count exceeds bound ${MAX_PROXY_PRIMITIVES}`);
++  out.push(primitive);
++}
++
++// A fixed scan budget allows valid chain gaps without trusting unbounded counts.
++export const MAX_PROXY_CHAIN_SAMPLES = 4096;
++function validateProxyPrimitiveInputs(manifest) {
++  const list = manifest.primitives;
++  if (!Array.isArray(list) || !list.length || list.length > MAX_PROXY_PRIMITIVES) throw new RangeError('primitives require 1..32 authored pieces');
++  if (list.some(p => p?.kind === 'convex') && (manifest.compactHull || manifest.planarPolygon)) throw new RangeError('convex subparts cannot carry a whole-body hull override');
++  const bounded = n => Number.isFinite(n) && Math.abs(n) <= MAX_PROXY_COORDINATE;
++  for (const p of list) {
++    if (!p || !COLLISION_PROXY_KINDS.includes(p.kind)) throw new RangeError('unknown proxy kind');
++    if (p.kind === 'convex') { normalizeConvexProxyVertices(p.vertices); continue; }
++    const keys = p.kind === 'circle' ? ['x','z','r'] : p.kind === 'capsule' ? ['ax','az','bx','bz','r'] : p.kind === 'obb' ? ['x','z','hx','hz'] : ['radius','circleR'];
++    if (!keys.every(k => bounded(p[k]))) throw new RangeError(`${p.kind} requires finite bounded geometry`);
++    if (p.kind === 'obb' ? !(p.hx > 0 && p.hz > 0) : p.kind === 'chain' ? !(p.radius > 0 && p.circleR > 0) : !(p.r > 0)) throw new RangeError(`${p.kind} requires positive dimensions`);
++    if (p.angleDeg !== undefined && !bounded(p.angleDeg)) throw new RangeError('invalid proxy angle');
++    if (p.kind === 'chain') {
++      if (!Number.isInteger(p.count) || p.count < 3 || p.count > MAX_PROXY_CHAIN_SAMPLES) throw new RangeError('chain sample count exceeds bounded integer range');
++      if (p.minorRadius !== undefined && (!bounded(p.minorRadius) || p.minorRadius <= 0)) throw new RangeError('invalid chain minorRadius');
++      if (p.gap && (!(p.gap.at === 'corridor' || bounded(p.gap.bearingDeg)) || !Number.isFinite(p.gap.halfWidthDeg) || p.gap.halfWidthDeg < 0 || p.gap.halfWidthDeg > 180)) throw new RangeError('invalid chain gap');
++    }
++  }
++  return list;
++}
++
+ function expandChain(primitive, corridorDeg, out) {
+-  const count = Math.max(3, Math.trunc(primitive.count));
++  const count = primitive.count;
+   const minor = Number.isFinite(primitive.minorRadius) ? primitive.minorRadius : null;
+   const gap = primitive.gap && primitive.gap.at === 'corridor'
+     ? { bearing: corridorDeg, halfWidthDeg: finite(primitive.gap.halfWidthDeg, 0) }
+     : (primitive.gap && Number.isFinite(primitive.gap.bearingDeg)
+       ? { bearing: primitive.gap.bearingDeg, halfWidthDeg: finite(primitive.gap.halfWidthDeg, 0) }
+       : null);
+-  for (let i = 0; i < count && out.length < MAX_PROXY_PRIMITIVES; i++) {
++  for (let i = 0; i < count; i++) {
+     const deg = (i / count) * 360;
+     if (gap && Math.abs(wrapDeg180(deg - gap.bearing)) < gap.halfWidthDeg) continue;
+     const a = deg * DEG;
+@@ -902,7 +937,7 @@ function expandChain(primitive, corridorDeg, out) {
+     // semi-minor perpendicular. Circle positions follow the ellipse; radii stay circular (coarse).
+     const rx = minor ? Math.cos(a) * primitive.radius : Math.cos(a) * primitive.radius;
+     const rz = minor ? Math.sin(a) * minor : Math.sin(a) * primitive.radius;
+-    out.push({
++    pushProxy(out, {
+       kind: 'circle',
+       id: `${primitive.id || 'chain'}-${i}`,
+       chain: primitive.id || null,
+@@ -979,7 +1014,9 @@ function sampleFootprint(manifest, corridorDeg, options = {}) {
+ function sampleProxyBoundaries(proxies) {
+   const samples = [];
+   for (const primitive of proxies) {
+-    if (primitive.kind === 'circle') {
++    if (primitive.kind === 'convex') {
++      for (const [x,z] of primitive.vertices) samples.push({x,z});
++    } else if (primitive.kind === 'circle') {
+       for (let deg = 0; deg < 360; deg += 15) {
+         const a = deg * DEG;
+         samples.push({ x: primitive.x + Math.cos(a) * primitive.r, z: primitive.z + Math.sin(a) * primitive.r });
+@@ -1022,6 +1059,7 @@ function distanceToProxySet(point, proxies) {
+ 
+ /** Signed distance from point to primitive SURFACE (negative inside). */
+ export function distanceToProxy(point, primitive) {
++  if (primitive.kind === 'convex') return convexProxyDistance(point, primitive.vertices);
+   if (primitive.kind === 'circle') {
+     return Math.hypot(point.x - primitive.x, point.z - primitive.z) - primitive.r;
+   }
+@@ -1100,6 +1138,7 @@ function berthLineBlocked(manifest, entity, pos, berth) {
+ 
+ function segmentBlockedByPrimitive(a, b, primitive) {
+   if (!primitive) return false;
++  if (primitive.kind === 'convex') return sweepConvexProxyInto({}, primitive.vertices, a, b);
+   if (primitive.kind === 'circle') {
+     return primitive.r > 0 && distanceToSegment(primitive, a, b) < primitive.r;
+   }
+diff --git a/src/data/modelTruth.js b/src/data/modelTruth.js
+index c7bf973..9901088 100644
+--- a/src/data/modelTruth.js
++++ b/src/data/modelTruth.js
+@@ -119,6 +119,7 @@ export function modelTruthSkinPrimitives(entity) {
+   const px = entity && entity.pos ? Number(entity.pos.x) || 0 : 0;
+   const pz = entity && entity.pos ? Number(entity.pos.z) || 0 : 0;
+   return local.map((primitive) => {
++    if (primitive.kind === 'convex') return {...primitive, vertices:primitive.vertices.map(([x,z]) => [px+c*x-s*z,pz+s*x+c*z])};
+     if (primitive.kind === 'circle') {
+       return { ...primitive, x: px + c * primitive.x - s * primitive.z, z: pz + s * primitive.x + c * primitive.z };
+     }
+@@ -298,6 +299,7 @@ export function modelTruthSlideOutside(entities, x, z, margin = CAMERA_NEAR_MARG
+       const dist = Math.hypot(dx, dz);
+       const angle = dist > 1e-6 ? Math.atan2(dz, dx) : 0;
+       const local = primitives.map((primitive) => {
++        if (primitive.kind === 'convex') return {...primitive, vertices:primitive.vertices.map(([x,z]) => [x-ex,z-ez])};
+         if (primitive.kind === 'circle') return { ...primitive, x: primitive.x - ex, z: primitive.z - ez };
+         if (primitive.kind === 'capsule') {
+           return {
+diff --git a/src/data/modelTruthMath.js b/src/data/modelTruthMath.js
+index 2a20b8e..68277ff 100644
+--- a/src/data/modelTruthMath.js
++++ b/src/data/modelTruthMath.js
+@@ -1,3 +1,4 @@
++import { normalizeConvexProxyVertices, convexProxyDistance, sweepConvexProxyInto } from '../core/convexProxyGeometry.js';
+ // Pure model-truth geometry. No Three.js, no file IO. The census and the sim readers
+ // both use these functions so a measured outline and a collider cannot drift apart.
+ 
+@@ -184,6 +185,7 @@ export function obbContains(x, z, primitive) {
+ 
+ export function primitiveContains(x, z, primitive) {
+   if (!primitive) return false;
++  if (primitive.kind === 'convex') return convexProxyDistance({x,z}, primitive.vertices) <= 0;
+   if (primitive.kind === 'circle') return circleContains(x, z, primitive);
+   if (primitive.kind === 'capsule') return capsuleContains(x, z, primitive);
+   if (primitive.kind === 'obb') return obbContains(x, z, primitive);
+@@ -267,7 +269,11 @@ export function colliderRadiusAt(angle, primitives, maxRadius) {
+   let outer = 0;
+   let needsSample = false;
+   for (const primitive of primitives || []) {
+-    if (primitive.kind === 'circle') {
++    if (primitive.kind === 'convex') {
++      const reach = Math.max(...primitive.vertices.map(([x,z]) => Math.hypot(x,z))) * 2;
++      const from = {x:directionX*reach,z:directionZ*reach}, hit = {};
++      if (sweepConvexProxyInto(hit, primitive.vertices, from, {x:0,z:0})) outer = Math.max(outer, reach*(1-hit.t));
++    } else if (primitive.kind === 'circle') {
+       outer = Math.max(outer, rayCircleOuter(directionX, directionZ, primitive));
+     } else if (primitive.kind === 'capsule') {
+       outer = Math.max(outer, rayCapsuleOuter(directionX, directionZ, primitive));
+@@ -638,6 +644,8 @@ export function buildPlanarSkin(slice, options) {
+ 
+ export function scaleProxyPrimitives(localPrimitives, scale) {
+   return (localPrimitives || []).map((primitive) => {
++    if (primitive.kind === 'convex') return {kind:'convex', id:primitive.id || null,
++      vertices:normalizeConvexProxyVertices(primitive.vertices).map(([x,z]) => [x*scale,z*scale])};
+     if (primitive.kind === 'circle') {
+       return {
+         kind: 'circle',
+@@ -691,7 +699,9 @@ export function measuredProportions(worldPoints, entityRadius) {
+ function hullSupportSamples(primitives) {
+   const points = [];
+   for (const primitive of primitives || []) {
+-    if (primitive.kind === 'circle') {
++    if (primitive.kind === 'convex') {
++      for (const [x,z] of primitive.vertices) points.push({x,z});
++    } else if (primitive.kind === 'circle') {
+       points.push({ x: primitive.x, z: primitive.z });
+       for (let k = 0; k < 8; k += 1) {
+         const a = (k / 8) * Math.PI * 2;
+diff --git a/src/systems/lawSecurity.js b/src/systems/lawSecurity.js
+index 04ff11e..2013829 100644
+--- a/src/systems/lawSecurity.js
++++ b/src/systems/lawSecurity.js
+@@ -5927,7 +5927,9 @@ function buildLawWitnessOccluderView(occ, manifest) {
+   let reach = 0;
+   for (const primitive of primitives) {
+     let extent = 0;
+-    if (primitive.kind === 'capsule') {
++    if (primitive.kind === 'convex') {
++      extent = Math.max(...primitive.vertices.map(([x,z]) => Math.hypot(x-px,z-pz)));
++    } else if (primitive.kind === 'capsule') {
+       extent = Math.max(
+         Math.hypot(primitive.ax - px, primitive.az - pz),
+         Math.hypot(primitive.bx - px, primitive.bz - pz),
+diff --git a/test/collision-proxy-manifest.test.mjs b/test/collision-proxy-manifest.test.mjs
+index 7e0786a..3dfad90 100644
+--- a/test/collision-proxy-manifest.test.mjs
++++ b/test/collision-proxy-manifest.test.mjs
+@@ -151,8 +151,8 @@ test('Helios expansion is bounded, pinned, and only produces registrable kinds',
+ test('the expansion cap holds even under an adversarial chain count', () => {
+   const manifest = clone(HELIOS);
+   manifest.primitives = [{ kind: 'chain', id: 'huge', radius: 1, circleR: 0.1, count: 500 }];
+-  const expanded = expandProxyPrimitives(manifest, {});
+-  assert.equal(expanded.length, MAX_PROXY_PRIMITIVES, 'expansion is hard-capped, never more');
++  assert.throws(() => expandProxyPrimitives(manifest, {}), /exceeds bound/);
++  assert.equal(validateCollisionProxyManifest(manifest).ok, false, 'overflow is rejected rather than silently truncated');
+   assert.equal(MAX_PROXY_PRIMITIVES, 32, 'the registered bound itself is pinned');
+ });
+ 
+diff --git a/test/convex-collision-proxy.test.mjs b/test/convex-collision-proxy.test.mjs
+new file mode 100644
+index 0000000..789a75f
+--- /dev/null
++++ b/test/convex-collision-proxy.test.mjs
+@@ -0,0 +1,237 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { normalizeConvexProxyVertices, convexProxyColliderDesc, MAX_CONVEX_PROXY_VERTICES } from '../src/core/convexProxyGeometry.js';
++import { COLLISION_PROXY_FLAGS, COLLISION_PROXY_MANIFESTS, MAX_PROXY_PRIMITIVES, expandProxyPrimitives,
++  validateCollisionProxyManifest, proxyWorldPrimitives, proxyOuterRadiusWu, distanceToProxy } from '../src/data/collisionProxyManifests.js';
++import { sweepCollisionProxyInto } from '../src/core/collisionProxySweep.js';
++import { segmentHitsProxy, witnessLineOfSight } from '../src/combat/lineOfSight.js';
++import { scaleProxyPrimitives, primitiveContains, colliderRadiusAt, convexPlanarHull } from '../src/data/modelTruthMath.js';
++import { createSg02DynamicBodyOwner } from '../src/core/sg02DynamicBodyOwner.js';
++import { createRapierCollisionWorld } from '../src/core/rapierCollisionWorld.js';
++import { loadRapierCompatRuntime } from '../src/core/rapierCompatRuntime.js';
++import { physicsBodyNativeReady, resolvePhysicsBodySpec } from '../src/core/physicsAuthority.js';
++
++const R = await loadRapierCompatRuntime();
++const box = (id, x0, x1, z0, z1) => ({id,kind:'convex',vertices:[[x0,z0],[x1,z0],[x1,z1],[x0,z1]]});
++const jaws = [box('port',-2,3,-2,-1),box('starboard',-2,3,1,2),box('back',-3,-2,-2,2)];
++function manifest(primitives=jaws, more={}) { return {schemaVersion:1,id:'convex-jaws',referenceRadius:'world',flags:COLLISION_PROXY_FLAGS,primitives,...more}; }
++function entity(m=manifest(), more={}) { return {id:1,type:'ship',alive:true,collides:true,isPlayer:true,radius:4,mass:22,
++  pos:{x:0,z:0},vel:{x:0,z:0},rot:0,angVel:0,data:{},physicsBody:{schemaVersion:1,shape:'ball',radius:4,mass:22,inertiaY:40,
++    centerOfMass:{x:-.7,z:0},dynamic:true,revision:0,useMeasuredSkin:false,collisionProxyManifest:m},...more}; }
++const near=(a,b,tolerance=1e-5)=>assert.ok(Math.abs(a-b)<=tolerance,`${a} != ${b}`);
++const localToWorld=(e,p,scale=1)=>({x:e.pos.x+(Math.cos(e.rot)*p.x-Math.sin(e.rot)*p.z)*scale,z:e.pos.z+(Math.sin(e.rot)*p.x+Math.cos(e.rot)*p.z)*scale});
++
++// Arrays with huge declared lengths exercise the preflight bound without allocating elements.
++test('bounded canonical normalization rejects malformed, nonconvex, degenerate and overlarge inputs',()=>{
++  assert.equal(MAX_PROXY_PRIMITIVES,32);assert.equal(MAX_CONVEX_PROXY_VERTICES,12);
++  const canonical=[[-1,-1],[1,-1],[1,1],[-1,1]];
++  assert.deepEqual(normalizeConvexProxyVertices([[1,1],[1,-1],[-1,-1],[-1,1]]),canonical);
++  const bad=[null,{},[],[[0,0],[1,1]],new Array(2**30),[[0,0],[1,0],[1,1],[0,1],[0,0]],
++    [[0,0],[1,0],[2,0]],[[0,0],[2,0],[1,.1],[2,2],[0,2]],[[0,0],[2,2],[0,2],[2,0]],
++    [[0,0],[1,0],[0,NaN]],[[0,0],[1,0],[0,Infinity]],[[0,0],[1e7,0],[0,1]],
++    [[0,0,0],[1,0],[0,1]],[[0,0],['1',0],[0,1]],[[0,0],[1,0],[2,0],[2,1],[0,1]]];
++  assert.equal(validateCollisionProxyManifest(manifest(jaws,{compactHull:[{x:0,z:0},{x:5,z:0},{x:0,z:5}]})).ok,false);
++  for(const vertices of bad){const m=manifest([{kind:'convex',vertices}]);assert.equal(validateCollisionProxyManifest(m).ok,false);assert.throws(()=>expandProxyPrimitives(m));}
++  for(const primitives of [null,{},new Array(2**30),Array(33).fill(jaws[0]),[{kind:'future'}],[null],
++    [{kind:'circle',x:0,z:0,r:Infinity}],[{kind:'obb',x:NaN,z:0,hx:1,hz:1}],
++    [{kind:'chain',radius:1,circleR:.1,count:Infinity}],[{kind:'chain',radius:1,circleR:.1,count:3.1}],
++    [{kind:'chain',radius:1,circleR:.1,count:500,gap:{bearingDeg:0,halfWidthDeg:Infinity}}]]){
++    assert.equal(validateCollisionProxyManifest(manifest(primitives)).ok,false);assert.throws(()=>expandProxyPrimitives(manifest(primitives)));
++  }
++});
++
++test('overflow is rejected as a whole; valid chain gaps still count after expansion',()=>{
++  const chain={kind:'chain',id:'ring',radius:1,circleR:.05,count:40,gap:{bearingDeg:0,halfWidthDeg:100}};
++  assert.ok(expandProxyPrimitives(manifest([chain])).length<32);
++  assert.throws(()=>expandProxyPrimitives(manifest([{...chain,gap:null}])),/exceeds bound/);
++  assert.throws(()=>expandProxyPrimitives(manifest([...Array(31).fill(jaws[0]),{...chain,count:4,gap:null}])),/exceeds bound/);
++  for(const m of Object.values(COLLISION_PROXY_MANIFESTS)) assert.equal(validateCollisionProxyManifest(m).ok,true);
++});
++
++test('approach/body yaw, translation and scale preserve parent-local vertices and jaw gaps',()=>{
++  const input=manifest(jaws,{referenceRadius:'radius',frame:'approach',frameBearingDeg:90});
++  const before=structuredClone(input),e=entity(input,{radius:2,rot:.37,pos:{x:40,z:-50}});
++  const world=proxyWorldPrimitives(e,input),local=expandProxyPrimitives(input,{entity:e});
++  assert.deepEqual(input,before,'normalization/rotation cannot mutate authoring');
++  for(let i=0;i<world.length;i++)for(let j=0;j<world[i].vertices.length;j++){
++    const p=localToWorld(e,{x:local[i].vertices[j][0],z:local[i].vertices[j][1]},2);
++    near(world[i].vertices[j][0],p.x);near(world[i].vertices[j][1],p.z);
++  }
++  near(proxyOuterRadiusWu(input,e),Math.sqrt(13)*2);
++  assert.equal(world.length,3);
++});
++
++test('native rays, sweeps, LOS, witness broadphase and census agree across scale/yaw with a real jaw gap',async()=>{
++  for(const scale of [.1,1,10000])for(const yaw of [0,.61,Math.PI/2]){
++    const m=manifest(jaws,{referenceRadius:'radius'}),e=entity(m,{radius:scale,rot:yaw,pos:{x:20*scale,z:-10*scale}});
++    const owner=await createSg02DynamicBodyOwner();
++    try{
++      owner.syncFromEntities([e]);const rec=owner.records.get(e.id);assert.ok(rec);assert.equal(rec.colliders.length,3);
++      near(rec.body.mass(),22);near(rec.body.localCom().x,-.7);near(rec.body.principalInertia().y,40);
++      for(const [z,expected] of [[0,false],[1.5,true],[-1.5,true],[2.5,false]]){
++        const a=localToWorld(e,{x:5,z},scale),b=localToWorld(e,{x:-1,z},scale),out={};
++        assert.equal(sweepCollisionProxyInto(out,e,m,a,b,0),expected,`sweep ${scale}/${yaw}/${z}`);
++        assert.equal(segmentHitsProxy(e,a,b),expected);
++        const length=Math.hypot(b.x-a.x,b.z-a.z),ray=new R.Ray({x:a.x,y:0,z:a.z},{x:(b.x-a.x)/length,y:0,z:(b.z-a.z)/length});
++        const hits=rec.colliders.map(c=>c.castRay(ray,length,true)).filter(t=>t!=null&&t>=0).map(t=>t/length);
++        assert.equal(hits.length>0,expected,`native ${scale}/${yaw}/${z}`);
++        if(expected)near(out.t,Math.min(...hits),3e-5);
++        const observer={id:99,pos:a};
++        assert.equal(witnessLineOfSight({entities:new Map([[e.id,e]])},observer,b),!expected);
++      }
++      const scaled=scaleProxyPrimitives(jaws,scale);
++      assert.equal(primitiveContains(0,0,scaled[0]),false);
++      assert.equal(primitiveContains(0,-1.5*scale,scaled[0]),true);
++      near(colliderRadiusAt(Math.PI,scaled,4*scale),3*scale,scale*1e-6);
++      assert.ok(convexPlanarHull(scaled).length>=3);
++      const normalized=expandProxyPrimitives(m);near(distanceToProxy({x:0,z:0},normalized[0]),1);
++    }finally{owner.dispose();}
++  }
++});
++
++test('static observer uses the same convex descriptors, yaw and gap as production',async()=>{
++  const original=R.World.prototype.createCollider;let native;
++  R.World.prototype.createCollider=function(...args){native=this;return original.apply(this,args);};
++  const observer=await createRapierCollisionWorld();
++  try{
++    const m=manifest(jaws,{referenceRadius:'radius'}),e=entity(m,{type:'station',radius:2,rot:.48,pos:{x:30,z:20}});
++    observer.syncFromEntities([e]);assert.equal(observer.diagnostics().colliders,3);
++    for(const [z,expected] of [[0,false],[1.5,true]]){
++      const a=localToWorld(e,{x:5,z},2),b=localToWorld(e,{x:-1,z},2),ray=new R.Ray({x:a.x,y:0,z:a.z},{x:b.x-a.x,y:0,z:b.z-a.z});let hit=false;
++      native.forEachCollider(c=>{const toi=c.castRay(ray,1,true);hit ||= toi!=null&&toi>=0;const v=c.vertices();assert.ok(Math.abs(v[1])>2);});
++      assert.equal(hit,expected);assert.equal(segmentHitsProxy(e,a,b),expected);
++    }
++    const count=native.bodies.len();e.physicsBody.collisionProxyManifest=manifest([...jaws,{kind:'convex',vertices:[[0,0],[1,0],[2,0]]}]);e.physicsBody.revision++;
++    assert.throws(()=>observer.syncFromEntities([e]),/invalid authored/);assert.equal(native.bodies.len(),count);assert.equal(native.colliders.len(),3);
++  }finally{observer.dispose();R.World.prototype.createCollider=original;}
++});
++
++test('malformed/native-unsupported convex never creates a partial native body or silently falls back',async()=>{
++  const owner=await createSg02DynamicBodyOwner();let creates=0;const original=owner.world.createRigidBody.bind(owner.world);
++  owner.world.createRigidBody=(...args)=>{creates++;return original(...args);};
++  try{
++    const bad=entity(manifest([...jaws,{kind:'convex',vertices:[[0,0],[1,0],[2,0]]}]));
++    owner.syncFromEntities([bad]);assert.equal(creates,0);assert.equal(owner.records.size,0);assert.equal(owner.world.bodies.len(),0);assert.equal(owner.world.colliders.len(),0);assert.equal(physicsBodyNativeReady(bad),false);
++    assert.throws(()=>convexProxyColliderDesc({ColliderDesc:{}},jaws[0].vertices,1),/unsupported/);
++    assert.throws(()=>convexProxyColliderDesc(R,jaws[0].vertices,1e100));
++    const collapsed=box('collapsed',100000,100000.001,0,1);
++    assert.throws(()=>owner._createRecord(entity(manifest([collapsed])),resolvePhysicsBodySpec(entity(manifest([collapsed])))),/degenerate|nonconvex|support width/);
++    assert.equal(creates,0);
++  }finally{owner.dispose();}
++});
++
++test('schema3 attests exact convex native shape and source identity before atomic adoption',async()=>{
++  const e=entity(manifest(jaws,{sourceSHA256:'original-source'})),a=await createSg02DynamicBodyOwner(),b=await createSg02DynamicBodyOwner();
++  try{
++    a.syncFromEntities([e]);const saved=a.exportWorldSnapshot();assert.equal(saved.schema,3);
++    assert.equal(b.adoptWorldSnapshot(saved,[structuredClone(e)]),true);
++    const old=b.world;
++    for(const change of [c=>c.physicsBody.collisionProxyManifest.sourceSHA256='changed-source',
++      c=>c.physicsBody.collisionProxyManifest.primitives[0].vertices[0][0]-=.2,
++      c=>c.physicsBody.collisionProxyManifest.primitives.push({kind:'future'})]){
++      const incoming=structuredClone(e);change(incoming);assert.equal(b.adoptWorldSnapshot(saved,[incoming]),false);assert.equal(b.world,old);assert.equal(b.records.size,1);
++    }
++    const forged=structuredClone(saved);forged.nativeGeometryRevision='old-shallow';assert.equal(b.adoptWorldSnapshot(forged,[structuredClone(e)]),false);assert.equal(b.world,old);
++    // Even an envelope exported after a native-only shape alteration must reject
++    // against independently constructed authored geometry, never certify the bytes.
++    a.records.get(1).colliders[0].setShape(R.ColliderDesc.cuboid(.2,.2,.2).shape);
++    assert.equal(b.adoptWorldSnapshot(a.exportWorldSnapshot(),[structuredClone(e)]),false);assert.equal(b.world,old);
++  }finally{a.dispose();b.dispose();}
++});
++
++test('exact canonical sweeps preserve fraction, normal, ordering and jaw clearance even below native scale floor',()=>{
++  for(const scale of [1e-8,.0001,.001,1,1e4]){
++    const m=manifest([box('far',-2,-1,-1,1),box('near',2,3,-1,1)],{referenceRadius:'radius'}),e=entity(m,{radius:scale,rot:.42});
++    const a=localToWorld(e,{x:5,z:0},scale),b=localToWorld(e,{x:-5,z:0},scale),out={};
++    assert.equal(sweepCollisionProxyInto(out,e,m,a,b,.1*scale),true);near(out.t,.19,1e-10);near(out.nx,Math.cos(e.rot));near(out.nz,Math.sin(e.rot));
++    const gap=manifest(jaws,{referenceRadius:'radius'}),g=entity(gap,{radius:scale,rot:.42});
++    assert.equal(sweepCollisionProxyInto({},g,gap,localToWorld(g,{x:5,z:0},scale),localToWorld(g,{x:0,z:0},scale),.1*scale),false);
++  }
++});
++
++test('both native owners enforce the support-width floor after scaling without inflation or partial creation',async()=>{
++  for(const width of [.009999,.01,.010001])for(const aspect of [1,10,100])for(const yaw of [0,.37,Math.PI/2]){
++    // Rotate the authored polygon too, independently of the body yaw.
++    const p=box('floor',-aspect/2,aspect/2,-.5,.5),c=Math.cos(.23),s=Math.sin(.23);
++    p.vertices=p.vertices.map(([x,z])=>[c*x-s*z,s*x+c*z]);
++    const m=manifest([p],{referenceRadius:'radius'}),e=entity(m,{radius:width,rot:yaw});
++    const owner=await createSg02DynamicBodyOwner(),observer=await createRapierCollisionWorld();
++    try{
++      owner.syncFromEntities([e]);
++      if(width<.01){
++        assert.equal(owner.records.size,0);assert.equal(owner.world.bodies.len(),0);assert.equal(owner.world.colliders.len(),0);
++        assert.throws(()=>observer.syncFromEntities([structuredClone(e)]),/support width/);assert.equal(observer.diagnostics().bodies,0);assert.equal(observer.diagnostics().colliders,0);
++      }else{
++        assert.equal(owner.records.size,1);observer.syncFromEntities([structuredClone(e)]);assert.equal(observer.diagnostics().colliders,1);
++        const vertices=owner.records.get(1).collider.vertices();
++        const canonical=normalizeConvexProxyVertices(p.vertices);
++        for(let i=0;i<canonical.length;i++){
++          near(vertices[i*3],Math.fround(canonical[i][0]*width),1e-7);near(vertices[i*3+2],Math.fround(canonical[i][1]*width),1e-7);
++        }
++      }
++    }finally{owner.dispose();observer.dispose();}
++  }
++});
++
++test('native support-depth convex contact stops a projectile beside an open jaw across supported scales',()=>{
++  for(const scale of [.01,1,10000])for(const z of [0,1.5]){
++    const world=new R.World({x:0,y:0,z:0});world.integrationParameters.lengthUnit=scale;world.timestep=1/60;
++    try{
++      const fixed=world.createRigidBody(R.RigidBodyDesc.fixed());
++      for(const p of jaws)world.createCollider(convexProxyColliderDesc(R,p.vertices,scale),fixed);
++      const body=world.createRigidBody(R.RigidBodyDesc.dynamic().setTranslation(5*scale,0,z*scale)
++        .enabledTranslations(true,false,true).enabledRotations(false,true,false).setLinvel(-10*scale,0,0).setCcdEnabled(true));
++      world.createCollider(R.ColliderDesc.ball(.1*scale).setRestitution(0),body);
++      for(let i=0;i<30;i++)world.step();
++      if(z===0)assert.ok(Math.abs(body.translation().x/scale)<1e-4,'jaw gap blocked');
++      else assert.ok(body.translation().x/scale>3,'passed through solid convex jaw');
++      assert.equal(body.translation().y,0);assert.equal(body.linvel().y,0);
++    }finally{world.free();}
++  }
++});
++
++test('actual source-bound Splitter29 and Mite24 subparts pass Brood conversion and both native owners',async()=>{
++  const {readFileSync}=await import('node:fs');
++  const {normalizeBroodCollisionPrimitives}=await import('../src/data/broodBodies.js');
++  const proposals=JSON.parse(readFileSync(new URL('./fixtures/convex-proxies/brood-source-pieces.json',import.meta.url)));
++  for(const proposal of proposals){
++    assert.equal(proposal.primitives.length,proposal.id==='splitter'?29:24);
++    assert.match(proposal.sourceSHA256,/^[0-9a-f]{64}$/);assert.match(proposal.proposalSHA256,/^[0-9a-f]{64}$/);
++    const normalized=normalizeBroodCollisionPrimitives(proposal.primitives,7.1);
++    const m=manifest(normalized,{id:`source:${proposal.id}`,referenceRadius:'radius',sourceSHA256:proposal.sourceSHA256});
++    const e=entity(m,{radius:7.1}),owner=await createSg02DynamicBodyOwner(),observer=await createRapierCollisionWorld();
++    try{
++      assert.equal(validateCollisionProxyManifest(m).ok,true);owner.syncFromEntities([e]);observer.syncFromEntities([structuredClone(e)]);
++      assert.equal(owner.records.get(1).colliders.length,proposal.primitives.length);assert.equal(observer.diagnostics().colliders,proposal.primitives.length);
++      const roundtrip=proxyWorldPrimitives(e,m);
++      for(let i=0;i<roundtrip.length;i++)assert.deepEqual(roundtrip[i].vertices.map(v=>v.map(n=>+n.toFixed(8))),normalizeConvexProxyVertices(proposal.primitives[i].vertices).map(v=>v.map(n=>+n.toFixed(8))));
++      assert.equal(owner.exportWorldSnapshot().schema,3);
++    }finally{owner.dispose();observer.dispose();}
++  }
++  assert.throws(()=>normalizeBroodCollisionPrimitives(new Array(2**30),1));
++});
++
++test('all committed census primitive sets remain valid without truncation or schema migration',async()=>{
++  const {readFileSync}=await import('node:fs');
++  const census=JSON.parse(readFileSync(new URL('../src/data/modelTruthCensus.json',import.meta.url)));
++  let sets=0;
++  for(const row of census.rows)for(const value of Object.values(row))if(value && Array.isArray(value.primitives)){
++    const m=manifest(value.primitives);assert.equal(validateCollisionProxyManifest(m).ok,true,row.id);
++    assert.equal(expandProxyPrimitives(m).length,value.primitives.length,row.id);sets++;
++  }
++  assert.ok(sets>0);
++});
++
++test('a fixed authored convex revision invalidates LOS reach and native snapshot geometry',async()=>{
++  const e=entity(manifest([box('first',-1,1,-1,1)]),{type:'station'});e.physicsBody.dynamic=false;
++  const state={entities:new Map([[1,e]])},observer={id:99,pos:{x:100,z:-5}},end={x:100,z:5};
++  const owner=await createSg02DynamicBodyOwner(),target=await createSg02DynamicBodyOwner();
++  try{
++    owner.syncFromEntities([e]);const saved=owner.exportWorldSnapshot();
++    assert.equal(witnessLineOfSight(state,observer,end),true);
++    e.physicsBody.collisionProxyManifest=manifest([box('extended',90,110,-1,1)]);e.physicsBody.revision++;
++    owner.syncFromEntities([e]);assert.equal(witnessLineOfSight(state,observer,end),false);
++    assert.equal(segmentHitsProxy(e,observer.pos,end),true);
++    assert.equal(target.adoptWorldSnapshot(saved,[structuredClone(e)]),false);assert.equal(target.records.size,0);
++  }finally{owner.dispose();target.dispose();}
++});
+diff --git a/test/fixtures/convex-proxies/brood-source-pieces.json b/test/fixtures/convex-proxies/brood-source-pieces.json
+new file mode 100644
+index 0000000..c3aaf84
+--- /dev/null
++++ b/test/fixtures/convex-proxies/brood-source-pieces.json
+@@ -0,0 +1 @@
++[{"id":"splitter","sourceSHA256":"a9371077b518747467bfef18b7f95bb9bfc85644936451dd2d2c832989b2870e","proposalSHA256":"a95f0b41799fad82768985fab8a19506fcd7ff104d449417071353832fe6b85b","primitives":[{"id":"axial_convex_01","kind":"convex","vertices":[[0.3,1.275],[-2.69,-0.675],[-1.69,-0.855],[-0.285,-1.0],[-0.18,-0.945]]},{"id":"axial_convex_02","kind":"convex","vertices":[[-2.69,-0.675],[-0.18,0.935],[-0.285,0.99],[-1.69,0.845],[-2.69,0.665],[-2.8,0.625],[-3.41,0.375],[-3.865,0.02],[-3.855,-0.05],[-3.65,-0.225],[-3.22,-0.475]]},{"id":"axial_convex_03","kind":"convex","vertices":[[0.52,-1.42987805],[0.52,1.41987805],[0.44,1.375],[0.3,1.275],[-0.18,-0.945],[0.44,-1.385]]},{"id":"axial_convex_04","kind":"convex","vertices":[[-0.285,0.99],[-1.725,1.67],[-1.69,0.845]]},{"id":"axial_convex_05","kind":"convex","vertices":[[-1.725,-1.68],[-0.285,-1.0],[-1.69,-0.855]]},{"id":"axial_convex_06","kind":"convex","vertices":[[-0.89,1.885],[-1.87,1.885],[-1.725,1.67],[-0.285,0.99],[-0.525,1.45]]},{"id":"axial_convex_07","kind":"convex","vertices":[[-1.725,-1.68],[-1.86662791,-1.89],[-0.8858046,-1.89],[-0.525,-1.46],[-0.285,-1.0]]},{"id":"axial_convex_08","kind":"convex","vertices":[[2.3,1.205],[2.63,1.205],[1.93,2.025]]},{"id":"axial_convex_09","kind":"convex","vertices":[[2.3,-1.215],[2.19,-1.085],[2.02,-1.115]]},{"id":"axial_convex_10","kind":"convex","vertices":[[0.52,1.41987805],[0.52,-1.42987805],[0.85,-1.615],[1.53,-1.805],[1.835,-1.09],[1.9,1.015],[1.93,2.025],[0.85,1.605]]},{"id":"axial_convex_11","kind":"convex","vertices":[[2.38,0.695],[2.38,-0.705],[2.82,-0.575],[3.41,-0.315],[3.515,-0.19],[3.515,0.18],[3.44,0.285],[2.82,0.565]]},{"id":"axial_convex_12","kind":"convex","vertices":[[1.835,-1.09],[2.38,-0.705],[2.38,0.695],[1.9,1.015]]},{"id":"axial_convex_13","kind":"convex","vertices":[[1.83,-1.995],[2.06,-2.065],[2.31,-2.065],[2.6,-1.975],[2.83,-1.845],[3.06,-1.655],[3.435,-1.19],[3.885,-0.31],[3.83,-0.325],[2.63,-1.215]]},{"id":"axial_convex_14","kind":"convex","vertices":[[2.31,2.055],[1.93,2.025],[2.63,1.205],[3.83,0.315],[3.885,0.3],[3.435,1.18],[3.125,1.58],[2.7,1.915]]},{"id":"axial_convex_15","kind":"convex","vertices":[[1.835,-1.09],[1.53,-1.805],[1.83,-1.995],[2.63,-1.215],[2.02,-1.115]]},{"id":"axial_convex_16","kind":"convex","vertices":[[1.93,2.025],[1.85,1.095],[2.18,1.075],[2.3,1.205]]},{"id":"port_convex_01","kind":"convex","vertices":[[-0.61,-2.015],[-3.79,-2.175],[-2.56,-3.175],[-2.21,-3.335],[-1.83,-3.445],[-1.32,-3.435],[-1.11,-3.375],[0.38,-2.755],[0.455,-2.66],[0.365,-2.49],[0.11,-2.225],[-0.13,-2.085]]},{"id":"port_convex_02","kind":"convex","vertices":[[0.24,-2.695],[-3.52,-2.355],[-3.435,-2.53],[-3.195,-2.76],[-2.56,-3.175],[-1.11,-3.375],[0.195,-3.0]]},{"id":"port_convex_03","kind":"convex","vertices":[[-2.56,-3.175],[-3.195,-2.76],[-3.52,-2.865],[-3.715,-3.02],[-3.895,-3.3],[-3.885,-3.41],[-3.81,-3.475],[-3.5,-3.625],[-3.24,-3.605],[-2.98,-3.505],[-2.72,-3.335]]},{"id":"port_convex_04","kind":"convex","vertices":[[-3.05,-2.215],[-0.91,-2.045],[-0.90236842,-1.89],[-2.0325,-1.89],[-2.73,-2.045]]},{"id":"port_convex_05","kind":"convex","vertices":[[-3.72,-2.185],[-3.755,-2.22],[-3.7,-2.265],[-3.52,-2.355],[0.24,-2.695]]},{"id":"port_convex_06","kind":"convex","vertices":[[0.195,-3.0],[-1.11,-3.375],[-0.81,-3.495],[-0.27,-3.525],[0.02,-3.425],[0.365,-3.15],[0.415,-3.07],[0.35,-2.975]]},{"id":"starboard_convex_01","kind":"convex","vertices":[[-3.52,2.345],[-3.05,2.205],[-0.945,1.96],[-0.52,2.015],[-0.13,2.075],[0.11,2.215],[0.365,2.48],[0.455,2.65],[0.38,2.745],[-3.185,2.75],[-3.435,2.51]]},{"id":"starboard_convex_02","kind":"convex","vertices":[[-3.65,2.995],[0.24,2.685],[0.195,2.99],[-1.11,3.365],[-1.32,3.425],[-1.83,3.435]]},{"id":"starboard_convex_03","kind":"convex","vertices":[[0.455,2.65],[-3.8,3.475],[-3.885,3.4],[-3.895,3.33],[-3.71,3.005],[-3.52,2.855],[-3.34,2.775],[-3.185,2.75]]},{"id":"starboard_convex_04","kind":"convex","vertices":[[-3.79,2.165],[-3.33,2.155],[0.455,2.65],[-3.52,2.345],[-3.7,2.255],[-3.755,2.21]]},{"id":"starboard_convex_05","kind":"convex","vertices":[[-3.855,3.38],[-3.65,2.995],[-2.56,3.165],[-2.72,3.325],[-2.98,3.495],[-3.24,3.595],[-3.5,3.615],[-3.8,3.475]]},{"id":"starboard_convex_06","kind":"convex","vertices":[[-2.0775,1.89],[-0.90794118,1.89],[-0.945,1.96],[-3.05,2.205],[-2.73,2.035]]},{"id":"starboard_convex_07","kind":"convex","vertices":[[-1.11,3.365],[0.195,2.99],[0.35,2.965],[0.415,3.06],[0.365,3.14],[0.02,3.415],[-0.27,3.515],[-0.85,3.475]]}]},{"id":"mite","sourceSHA256":"c5507e3d6eb5012a4bd9b496f3bdd38d71c01c41c5cc3d4e325e3e9e29c60d9a","proposalSHA256":"02dee48836ad542476276648b4bde2949d2b782d18220ffcdcfd7d175a589ce4","primitives":[{"id":"abdominal_shell_01","kind":"convex","vertices":[[-0.7,-1.358842],[-0.7,1.358842],[-1.26256,1.87072],[-1.86288,2.17584],[-2.55,2.31],[-3.49512,2.05864],[-3.939281,1.73024],[-5.3,0.04],[-3.72,-1.92],[-3.02064,-2.24208],[-2.08912,-2.24896],[-1.26256,-1.87072]],"proposalDerivation":"abdomen"},{"id":"thoracic_saddle_01","kind":"convex","vertices":[[-0.7,1.358842],[-0.7,-1.358842],[0.14,-1.72],[0.8,-1.6],[1.082422,-1.445859],[1.85,-0.72],[1.987596,-0.443168],[1.980383,0.482941],[1.85,0.72],[1.082422,1.445859],[0.8,1.6],[0.14,1.72]],"proposalDerivation":"thorax"},{"id":"port_chelicera_01","kind":"convex","vertices":[[1.325695,-1.436043],[1.325695,-2.753661],[1.700069,-2.859735],[2.884078,-3.050966],[2.884078,-2.197974]],"proposalDerivation":"port_jawab"},{"id":"port_chelicera_02","kind":"convex","vertices":[[2.884078,-2.197974],[2.884078,-3.050966],[3.433048,-3.006179],[3.66327,-2.952613],[3.66327,-2.27335]],"proposalDerivation":"port_jawbaa"},{"id":"port_chelicera_03","kind":"convex","vertices":[[5.221653,-2.046299],[5.999156,-1.59406],[5.588195,-1.607089],[5.221653,-1.742793]],"proposalDerivation":"port_jawbbb"},{"id":"port_locomotor_01","kind":"convex","vertices":[[-4.884968,-4.040477],[-4.884968,-3.791605],[-5.002889,-3.791605],[-5.154249,-4.168415]],"proposalDerivation":"port_finaaaaaa"},{"id":"port_locomotor_02","kind":"convex","vertices":[[-4.042617,-2.661175],[-4.042617,-3.956419],[-3.532303,-3.929099],[-3.318065,-3.86761],[-2.919484,-3.680455],[-2.919484,-2.486545],[-3.492881,-2.467876],[-3.702378,-2.507477],[-3.914838,-2.584976]],"proposalDerivation":"port_finab"},{"id":"port_locomotor_03","kind":"convex","vertices":[[-2.455129,-2.339218],[-1.423062,-2.339218],[-1.230823,-2.231788],[-0.673216,-1.682019],[-1.346784,-0.997981],[-1.936149,-1.568844],[-2.258063,-1.991094]],"proposalDerivation":"port_finbb"},{"id":"port_foreleg_01","kind":"convex","vertices":[[-0.522329,-2.844818],[-1.669122,-3.323903],[-0.522329,-3.149798]],"proposalDerivation":"port_forelega"},{"id":"port_foreleg_02","kind":"convex","vertices":[[-0.522329,-2.844818],[-0.522329,-3.149798],[-0.215216,-3.047349],[0.100957,-2.874188],[0.408936,-2.63983],[0.536659,-2.490683],[0.626219,-2.293314],[0.626035,-2.24878],[0.122072,-2.24878]],"proposalDerivation":"port_forelegba"},{"id":"starboard_chelicera_01","kind":"convex","vertices":[[1.325695,1.436043],[2.884078,2.197974],[2.884078,3.050966],[2.665975,3.035207],[1.530427,2.817335],[1.325695,2.753661]],"proposalDerivation":"starboard_jawab"},{"id":"starboard_chelicera_02","kind":"convex","vertices":[[2.884078,2.197974],[3.66327,2.27335],[3.66327,2.952613],[3.105334,3.047024],[2.884078,3.050966]],"proposalDerivation":"starboard_jawbaa"},{"id":"starboard_chelicera_03","kind":"convex","vertices":[[5.221653,2.046299],[5.221653,1.742793],[5.588195,1.607089],[6.000844,1.60594]],"proposalDerivation":"starboard_jawbbb"},{"id":"starboard_locomotor_01","kind":"convex","vertices":[[-5.002889,3.791605],[-4.884968,3.791605],[-4.884968,4.040477],[-5.165751,4.157732]],"proposalDerivation":"starboard_finaababa"},{"id":"starboard_locomotor_02","kind":"convex","vertices":[[-4.042617,3.956419],[-4.042617,2.661175],[-3.914838,2.584976],[-3.702378,2.507477],[-3.492881,2.467876],[-2.919484,2.486545],[-2.919484,3.680455],[-3.418655,3.905354],[-3.780427,3.950381]],"proposalDerivation":"starboard_finab"},{"id":"starboard_locomotor_03","kind":"convex","vertices":[[-1.423062,2.339218],[-2.455129,2.339218],[-2.258063,1.991094],[-1.792837,1.408178],[-1.346784,0.997981],[-0.673216,1.682019],[-1.116978,2.141498]],"proposalDerivation":"starboard_finba"},{"id":"starboard_foreleg_01","kind":"convex","vertices":[[-0.522329,2.844818],[-0.522329,3.149798],[-1.670439,3.318049]],"proposalDerivation":"starboard_forelega"},{"id":"starboard_foreleg_02","kind":"convex","vertices":[[-0.522329,3.149798],[-0.522329,2.844818],[0.122072,2.24878],[0.626035,2.24878],[0.626219,2.293314],[0.536659,2.490683],[0.408936,2.63983],[0.100957,2.874188],[-0.215216,3.047349]],"proposalDerivation":"starboard_forelegbb"},{"id":"port_chelicera_04","kind":"convex","vertices":[[5.221653,-2.046299],[5.221653,-1.742793],[3.66327,-2.27335],[3.66327,-2.952613],[4.103683,-2.785856],[4.967201,-2.259225]],"proposalDerivation":"port_jawbab_port_jawbba"},{"id":"starboard_chelicera_04","kind":"convex","vertices":[[3.66327,2.27335],[5.221653,1.742793],[5.221653,2.046299],[4.570095,2.522659],[4.103683,2.785856],[3.66327,2.952613]],"proposalDerivation":"starboard_jawbab_starboard_jawbba"},{"id":"gnathal_girdle_01","kind":"convex","vertices":[[1.325695,-2.753661],[1.325695,2.753661],[0.122072,2.24878],[-0.234997,1.652238],[-0.234997,-1.652238],[0.122072,-2.24878]],"proposalDerivation":"starboard_jawaa_port_jawaa_port_forelegbb_starboard_forelegba"},{"id":"pelvic_girdle_01","kind":"convex","vertices":[[-2.171273,3.090199],[-2.171273,-3.090199],[-1.895012,-2.845201],[-1.423062,-2.339218],[-1.423062,2.339218],[-2.023885,2.972722]],"proposalDerivation":"starboard_finbbbabb_port_finbabbba_port_finbabba_starboard_finbbbaa_port_finbaba_starboard_finbbbb_port_finbabbbb_starboard_finbbbaba"},{"id":"starboard_locomotor_04","kind":"convex","vertices":[[-4.884968,4.040477],[-5.002889,3.791605],[-4.872796,3.554732],[-4.392963,2.961113],[-4.042617,2.661175],[-2.455129,2.339218],[-2.171273,2.339218],[-2.171273,3.090199],[-2.40666,3.368773],[-2.618662,3.522839],[-2.919484,3.680455],[-4.042617,3.956419]],"proposalDerivation":"starboard_finaababb_starboard_finaabb_starboard_finbba_starboard_finaaa_starboard_finaabaa"},{"id":"port_locomotor_04","kind":"convex","vertices":[[-2.455129,-2.339218],[-4.042617,-2.661175],[-4.248075,-2.817823],[-4.767332,-3.40856],[-5.002889,-3.791605],[-4.884968,-4.040477],[-4.042617,-3.956419],[-2.919484,-3.680455],[-2.618662,-3.522839],[-2.40666,-3.368773],[-2.171273,-3.090199],[-2.171273,-2.339218]],"proposalDerivation":"port_finaaaaab_port_finaaab_port_finbaa_port_finaaaab_port_finaab"}]}]

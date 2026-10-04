@@ -1,0 +1,708 @@
+--- a/src/render/renderer.js
++++ b/src/render/renderer.js
+@@ -1,3 +1,5 @@
++import { createBroodResidentCellOwner } from './broodResidentCells.js';
++import { createBroodPartitionLodOwner } from './broodPartitionLod.js';
+ import { bindMachineryPresentation, machineryPresentationPlace, machineryRequestedPresentation, invalidateMachineryPresentation } from '../core/machineryPresentation.js';
+ import { ceresWorkfleetRole } from './ceresWorkfleetVisuals.js';
+ import { createAsyncAdmission } from './asyncAdmission.js';
+@@ -3618,6 +3620,7 @@
+   const renderer = owner && owner.renderer;
+   if (!state || state.mode !== 'flight' || !renderer || !renderer.domElement) return;
+   if (!entity || entity.alive === false || entity.isPlayer === true) return;
++  if(owner._broodResidentCells?.has(entity))return;
+   if (entityHomeSectorMismatch(entity, state)) return;
+   const pending = owner._decodeRunwayPrefetchIds || (owner._decodeRunwayPrefetchIds = new Set());
+   if (pending.has(entity.id)) return;
+@@ -7779,6 +7782,9 @@
+   owner._asteroidInstancePool = null;
+   owner._livingHullPresentation = null;
+   owner._crucibleGhostPresentation = null;
++  owner._broodResidentCells?.reset('renderer-disposed');
++  owner._broodResidentCells = null;
++  owner._broodPartitionLod = null;
+   owner._assetResidency = null;
+   owner._sectorBoundaryPreparations = null;
+   owner._incomingSectorPrewarm = null;
+@@ -8269,6 +8275,7 @@
+         // its dead handles through the lost generation's managers (the v6 Electron delete storm).
+         stashStaleWebGlDisposeProvenance(preparedPoolResources.provenance);
+         if (this._assetResidency) this._assetResidency.handleContextLost();
++        this._broodResidentCells?.reset('webgl-context-lost');
+         retireAppearanceGpuGeneration(this, 'webgl-context-lost');
+         // The restored WebGL context has a fresh driver program cache. Drop only our JS-side
+         // admission receipts here; the detached warmup graph belongs to the lost context and must
+@@ -8939,6 +8946,36 @@
+     try { this.collisionDebug = createCollisionDebug(this); }
+     catch (err) { console.warn('[render] collision debug unavailable:', err); this.collisionDebug = null; }
+     this._meshes = new Map(); // entityId -> Object3D
++    this._broodPartitionLod = createBroodPartitionLodOwner();
++    this._broodResidentCells = createBroodResidentCellOwner({
++      state, residency:this._assetResidency,
++      lookupMesh:entity=>this._meshes?.get(entity.id),
++      ready:root=>root.userData?.authoredVisualRoot==='authored-root' && !hasUnresidentGeometry(root)
++        && root.userData.geometryPending!==true && root.userData.pipelinesPending!==true,
++      toLocal:pos=>this._frameMembrane.toLocal(pos,{}),
++      bind:(entity,root)=>{
++        this.scene.add(root);
++        if(this._bindPresentationMesh(entity,root)===false)return false;
++        this._meshes.set(entity.id,root);this._meshesVersion++;
++        return true;
++      },
++      unbind:(entity,root)=>{
++        this._unbindPresentationMesh(entity.id,root);clearEntityMeshReference(entity,root);
++        if(this._meshes.get(entity.id)===root){this._meshes.delete(entity.id);this._meshesVersion++;}
++        this.scene.remove(root);
++      },
++      retire:(root)=>{this.scene.remove(root);disposeObject(root);},
++    });
++    // Reference transfer is synchronous bookkeeping, not a delayed cosmetic tail. The renderer
++    // publishes the retained cells only after the completed-tick entity handles are available.
++    const transferBroodMaterial=payload=>{
++      this._broodPartitionLod.handoff(payload);
++      this._broodResidentCells.prepare(payload);
++    };
++    onBus('brood:partitioned',transferBroodMaterial);
++    onBus('brood:partitionFailed',transferBroodMaterial);
++    for(const event of ['game:new','save:restoring','run:ended'])onBus(event,()=>this._broodResidentCells.reset(event));
++
+     // Bumped on every _meshes set/delete so cameraClearanceFloorAt can rebuild its structural
+     // sublist only when the map actually mutates instead of scanning it every frame.
+     this._meshesVersion = 0;
+@@ -17288,6 +17325,7 @@
+       mesh.userData.spacefaceProgramKeyStamp = mesh.userData.authoredVisualRoot || '';
+     }
+     mesh.userData.presentationEntityId = entity.id;
++    if(entity.data?.broodBodyId?.startsWith('brood_splitter'))mesh.userData.broodResidentLife=entity.occupantGeneration;
+     mesh.userData.sfStableEntityKey = stableMeshKeyForEntity(entity);
+     // Fresh bind must re-apply LOD even if a prior owner left the same band stamp.
+     mesh.userData._appliedLodLevel = undefined;
+@@ -19129,7 +19167,7 @@
+       );
+       if (userData.lod && userData.updateLod) {
+         lodChecked++;
+-        lodLevel = isPlayer ? 'lod0' : userData.lod.resolve(projectedPx);
++        lodLevel = isPlayer ? 'lod0' : (this._broodPartitionLod?.resolve(entity,userData,projectedPx) ?? userData.lod.resolve(projectedPx));
+         // Retain: same hysteresis band ⇒ updateLod is a no-op for picture. Asteroid/station
+         // paths otherwise re-traverse detail surfaces every frame; ships already self-retain.
+         if (SYNC_ENTITY_LOD_RETAIN === false || userData._appliedLodLevel !== lodLevel) {
+@@ -19777,6 +19815,7 @@
+       : null;
+     if (publication && publication.rebuilt) this._rebindPresentationMeshes();
+     else if (publication) this._bindPublishedPresentationMeshes(publication);
++    if(!this._contextLost)this._broodResidentCells?.flush();
+ 
+     if (this._snapshotFence && this._presentationWorld) {
+       const packed = packPresentationWorldToFence(
+@@ -20082,6 +20121,7 @@
+     const publication = this._presentationPublisher.consume(presentationFrame);
+     if (publication.rebuilt) this._rebindPresentationMeshes();
+     else this._bindPublishedPresentationMeshes(publication);
++    if(!this._contextLost)this._broodResidentCells?.flush();
+     // PresentationRunner publishes a caller-owned completed-tick record, not the tick number
+     // itself. Its sequence is the immutable simulation publication boundary; falling back to the
+     // live state tick is only for the legacy/no-runner path.
+--- a/src/render/partsLibrary.js
++++ b/src/render/partsLibrary.js
+@@ -1,3 +1,6 @@
++import { bindBroodModelFromRecord, inheritBroodModelProof } from './broodVisualContract.js';
++import { BROOD_BODY_CONTRACTS, broodCollisionManifest } from '../data/broodBodies.js';
++import { broodCellBatchKey } from './broodCellIdentity.js';
+ import { recordCeresWorkfleetAuthoredSource } from '../core/machineryPresentation.js';
+ import { installCeresCradleLayoutGuard } from './ceresCradleLayoutVisuals.js';
+ import { ceresWorkfleetCatalogRows, ceresWorkfleetRole, isCeresWorkfleetPlace, ceresWorkfleetPlaceFile, ceresWorkfleetPlaceTransform, CERES_BREAKER_ASSET, CERES_BREAKER_FILE, CERES_BREAKER_NORMALIZED_SCALE } from './ceresWorkfleetVisuals.js';
+@@ -1185,6 +1188,7 @@
+  * Helios Lark/Span/Cradle stay on courier/hauler/miner. */
+ export function requiresProductionWholeShipForEntity(entity) {
+   if (ceresWorkfleetRole(entity) === 'breaker') return true;
++  if (broodBodyForEntity(entity)) return true;
+   if (!entity || entity.type !== 'ship' || !entity.data) return false;
+   const data = entity.data;
+   // hullDefId is the far-actor table's canonical ship-def alias (leanIdentityData): a hull
+@@ -1645,6 +1649,9 @@
+ //   choir_zealot                   Ascendant Choir plum/magenta dart (the Reach dart keeps its sodium)
+ //   warden_escort                  Vael teal lode (the Reach bruisers keep the oxide lode)
+ const WHOLE_SHIP_FILE_BY_HOSTILE_ID = Object.freeze({
++  brood_mite: BROOD_BODY_CONTRACTS.brood_mite.file,
++  brood_charger: BROOD_BODY_CONTRACTS.brood_charger.file,
++  brood_spitter: BROOD_BODY_CONTRACTS.brood_spitter.file,
+   wasp_swarmer: 'wholeships/ashline_dart.glb',
+   choir_zealot: 'wholeships/ashline_dart_choir.glb',
+   lancer_sniper: 'wholeships/wasp_production_v1.glb',
+@@ -1662,6 +1669,9 @@
+   mule_trader: 'wholeships/helios_span.glb',
+ });
+ const WHOLE_SHIP_ASSET_ID_BY_HOSTILE_ID = Object.freeze({
++  brood_mite: BROOD_BODY_CONTRACTS.brood_mite.assetId,
++  brood_charger: BROOD_BODY_CONTRACTS.brood_charger.assetId,
++  brood_spitter: BROOD_BODY_CONTRACTS.brood_spitter.assetId,
+   wasp_swarmer: 'SF_WHOLESHIP_ASHLINE_DART',
+   choir_zealot: 'SF_WHOLESHIP_ASHLINE_DART_CHOIR',
+   lancer_sniper: 'SF_WASP_PRODUCTION_V1',
+@@ -1999,10 +2009,18 @@
+   };
+ }
+ 
+-/** Source-origin fit shared by raw and packaged Ceres hull composition. */
++/** Source-origin placement shared by raw and packaged hull composition. */
+ export function wholeShipHullPlacement(record) {
+-  const scale = record.assetId === CERES_BREAKER_ASSET ? CERES_BREAKER_NORMALIZED_SCALE : null;
++  const brood = Object.values(BROOD_BODY_CONTRACTS).find(body => body.assetId === record.assetId);
++  const scale = brood ? brood.sourceScale / brood.radius
++    : record.assetId === CERES_BREAKER_ASSET ? CERES_BREAKER_NORMALIZED_SCALE : null;
+   return { position: [0, 0, 0], targetLength: scale == null ? 1.72 : record.bounds.size[0] * scale, label: 'Hull' };
++}
++
++// Exact biological identities only. A loose silhouette or faction never selects an organism.
++function broodBodyForEntity(entity) {
++  const data = entity?.data;
++  return BROOD_BODY_CONTRACTS[data?.broodBodyId || data?.enemyTypeId || data?.lootTableId || data?.defId] || null;
+ }
+ 
+ /** Pure presentation selection hook used by composition and focused asset checks. */
+@@ -2011,6 +2029,8 @@
+     return liveWholeShipSelection(CERES_BREAKER_FILE, CERES_BREAKER_ASSET, 'ceres_breaker');
+   }
+   const data = entity && entity.data || {};
++  const brood = broodBodyForEntity(entity);
++  if (brood) return liveWholeShipSelection(brood.file, brood.assetId, brood.id);
+   const hostileId = String(data.lootTableId || '');
+   const hostileFile = WHOLE_SHIP_FILE_BY_HOSTILE_ID[hostileId];
+   if (hostileFile) {
+@@ -2190,12 +2210,13 @@
+       alive: true,
+       id: enemy.id,
+       radius: enemy.collisionRadius,
+-      data: { defId: enemy.shipId, silhouette: enemy.silhouette, lootTableId: enemy.id },
++      data: { defId: enemy.broodBodyId || enemy.shipId, broodBodyId: enemy.broodBodyId, silhouette: enemy.silhouette, lootTableId: enemy.id },
+     }, { requiredWholeShip: true });
++    const brood = BROOD_BODY_CONTRACTS[enemy.broodBodyId];
+     add({
+       id: enemy.id,
+       family: 'enemy-hull',
+-      file: selection && selection.file || null,
++      file: brood?.file || selection && selection.file || null,
+       lodFamily: (selection && selection.lodFamily) || null,
+       fit: 'ship',
+       entityRadius: enemy.collisionRadius,
+@@ -2204,6 +2225,12 @@
+       silhouette: enemy.silhouette || null,
+       solid: true,
+       packagedLive: !!(selection && selection.file),
++      ...(brood ? {
++        fit: 'authored-origin', placeScale: brood.sourceScale,
++        colliderKind: 'compound', colliderId: broodCollisionManifest(brood.id).id,
++        compoundPrimitivesWU: brood.collision.primitives, authoredBodyContract: brood,
++        referenceState: 'approach', opening: brood.clearVolumes[0].id,
++      } : {}),
+     });
+   }
+ 
+@@ -9572,6 +9599,7 @@
+   const authoredParts = [...selected.values()].filter(Boolean);
+   if (!authoredParts.length) return null;
+ 
++  const biologicalBody = broodBodyForEntity(entity);
+   const palette = paletteFor(entity);
+   const visualSeed = flightVisualSeed(entity, palette);
+   const loadoutFingerprint = computeLoadoutFingerprint({
+@@ -9805,11 +9833,11 @@
+   }
+   } // end !wholeShip — complete production bodies own their visible weapon/pod/gear/greeble roles
+ 
+-  if (!bindings.navLights.length) {
++  if (!biologicalBody && !bindings.navLights.length) {
+     ownerLocalFallbackRoots.push(buildFallbackNavLights(hull, materials, bindings));
+   }
+-  ensureStandardSockets(hull);
+-  if (!ceresWorkfleetRole(entity)) attachRetroMounts(hull, entity, palette, selected.get('engine')?.url, hullRecord);
++  if (!biologicalBody) ensureStandardSockets(hull);
++  if (!biologicalBody && !ceresWorkfleetRole(entity)) attachRetroMounts(hull, entity, palette, selected.get('engine')?.url, hullRecord);
+ 
+   // PQ-176.04 — VISIBLE BUILDS. Fitted hardware rides the authored SOCKET_* contract so a refit
+   // reads on the hull: budget-heavy modules bolt on, whole-ship bodies sprout the guns actually
+@@ -9900,6 +9928,7 @@
+   synchronizeSecondaryDrives(primaryDrive, bindings);
+   installAuthoredLod(root, bindings, safetyCore, authoredHullLevels, wholeShip);
+   root.userData.updateLod('lod0');
++  if(hullRecord)bindBroodModelFromRecord(root,entity,hullRecord);
+   // ANI-00: mount the authored-motion driver beside the damage/drive closures the renderer
+   // already calls per frame. Detachment rides the disposeObject userData-callback grammar.
+   attachAuthoredMotionDriver(root, entity, bindings.authoredMotions);
+@@ -10333,6 +10362,7 @@
+     if (object.material) object.material = cloneFlightTemplateMaterials(object.material, materials);
+   });
+   clearFlightTemplateDynamicUserData(templateRoot);
++  inheritBroodModelProof(sourceRoot,templateRoot);
+   return templateRoot;
+ }
+ 
+@@ -10620,6 +10650,7 @@
+   synchronizeSecondaryDrives(primaryDrive, bindings);
+   installAuthoredLod(root, bindings, safetyCore, new Set(entry.authoredHullLevels || EMPTY_ARRAY), entry.wholeShip === true);
+   root.userData.updateLod('lod0');
++  inheritBroodModelProof(entry.root,root,entity);
+   attachAuthoredMotionDriver(root, entity, bindings.authoredMotions);
+   if (entry.producerManifest) {
+     stampOpeningSubmissionPackage(root, entry.producerManifest, {
+@@ -11647,7 +11678,7 @@
+ 
+ function dedicatedBatchKey(primitive) {
+   const tags = primitive.tags || {};
+-  return [
++  return broodCellBatchKey([
+     'dedicated',
+     materialBatchSignature(primitive.material),
+     geometryBatchSignature(primitive.geometry),
+@@ -11656,7 +11687,7 @@
+     authoredSurfaceTintRole(tags, primitive.material),
+     tags.drive || '',
+     matrixBatchSignature(tags.driveAnchorMatrix),
+-  ].join('|');
++  ].join('|'), tags);
+ }
+ 
+ function clonePrimitiveTags(tags) {
+@@ -11667,14 +11698,14 @@
+ 
+ function pooledBatchKey(primitive) {
+   const tags = primitive.tags || {};
+-  return [
++  return broodCellBatchKey([
+     materialBatchSignature(primitive.material),
+     geometryBatchSignature(primitive.geometry),
+     tags.lod || 'always',
+     authoredSurfaceTintRole(tags, primitive.material),
+     tags.damageRole || '',
+     tags.instance === false ? 'unique' : 'pooled',
+-  ].join('|');
++  ].join('|'), tags);
+ }
+ 
+ function geometryBatchSignature(geometry) {
+@@ -11816,18 +11847,18 @@
+ 
+ function staticBatchKey(material, primitive) {
+   const tags = primitive && primitive.tags || {};
+-  return [
++  return broodCellBatchKey([
+     materialBatchSignature(material),
+     tags.lod || 'always',
+     tags.damageRole || '',
+-  ].join('|');
++  ].join('|'), tags);
+ }
+ 
+ function staticBatchGroupKey(tags = {}) {
+-  return [
++  return broodCellBatchKey([
+     tags.lod || 'always',
+     tags.damageRole || '',
+-  ].join('|');
++  ].join('|'), tags);
+ }
+ 
+ function staticBatchLeafCacheKey(entry, tags) {
+@@ -12171,6 +12202,7 @@
+   const partUrls = [...new Set((urls || []).filter(Boolean))];
+   mesh.userData = {
+     spacefaceStaticBatch: true,
++    ...(tags.broodCell ? { keepSeparate: true } : {}),
+     spacefaceStaticBatchMaterials: materials.length,
+     spacefacePartUrl: partUrls[0],
+     spacefacePartUrls: partUrls,
+@@ -12735,7 +12767,7 @@
+     type: 'ship',
+     team: 1,
+     factionId: def.factionId,
+-    radius: 8,
++    radius: BROOD_BODY_CONTRACTS[def.broodBodyId]?.radius || 8,
+     pos: { x: 0, y: 0, z: 0 },
+     prevPos: { x: 0, y: 0, z: 0 },
+     vel: { x: 0, y: 0, z: 0 },
+@@ -12744,7 +12776,8 @@
+     flags: {},
+     data: {
+       lootTableId: def.id,
+-      defId: def.shipId,
++      defId: def.broodBodyId || def.shipId,
++      ...(def.broodBodyId ? { broodBodyId: def.broodBodyId, enemyTypeId: def.id } : {}),
+       silhouette: def.silhouette,
+       shipClass: def.shipClass,
+     },
+@@ -14888,7 +14921,12 @@
+   return null;
+ }
+ 
++function isBroodMaterial(material) {
++  return !!BROOD_BODY_CONTRACTS[material?.userData?.forgeShip];
++}
++
+ function resolveCanonicalHullMaterial(material, tintToken) {
++  if (isBroodMaterial(material)) return material;
+   if (!material) return material;
+   const name = String(material.name || '');
+   if (!isMaplessSharedHullName(name)) return material;
+@@ -14901,7 +14939,7 @@
+   const canonical = findCanonicalTexturedHullMaterial(tint);
+   if (!canonical) return;
+   for (const [key, material] of sharedMaterialVariants.entries()) {
+-    if (material === canonical) continue;
++    if (material === canonical || isBroodMaterial(material)) continue;
+     const name = String(material.name || '');
+     if (!isMaplessSharedHullName(name)) continue;
+     sharedMaterialVariants.set(key, canonical);
+@@ -14921,7 +14959,7 @@
+     let changed = false;
+     for (let i = 0; i < materials.length; i++) {
+       const material = materials[i];
+-      if (!material || material === canonical) continue;
++      if (!material || material === canonical || isBroodMaterial(material)) continue;
+       const name = String(material.name || '');
+       if (!isMaplessSharedHullName(name)) continue;
+       materials[i] = canonical;
+@@ -15197,6 +15235,8 @@
+ }
+ 
+ function paletteFor(entity) {
++  // Stable neutral share key, with no human faction/paint override of biological finishes.
++  if (broodBodyForEntity(entity)) return { hull: '#ffffff', accent: '#ffffff', thruster: '#ffffff', dark: '#ffffff' };
+   const faction = entity.factionId && FACTION_PALETTES[entity.factionId];
+   let base;
+   if (faction) {
+@@ -15420,3 +15460,19 @@
+       === texturedHullAlt.userData.spacefaceProgramFamily,
+   };
+ }
++
++
++/** CPU admission probe: invokes the same raw/package composition and batch owners as play.
++ * This does not certify GPU residency, shader compilation or the default-camera picture. */
++export function composeBroodMaterialForProbe(record) {
++  const body=Object.values(BROOD_BODY_CONTRACTS).find(b=>b.assetId===record?.assetId);
++  if(!body||!record.metadata?.broodMaterialContract)throw new Error('sealed Brood model required');
++  const entity={id:'brood-material-probe',occupantGeneration:1,type:'ship',alive:true,team:1,
++    radius:body.radius,mass:body.mass,hull:36,hullMax:36,shield:0,pos:{x:0,z:0},vel:{x:0,z:0},rot:0,
++    data:{defId:body.id,broodBodyId:body.id,enemyTypeId:body.id,weapons:[],fittings:[]}};
++  const scene=new THREE.Scene(),owner=new THREE.Group();scene.add(owner);
++  const library=new Map(SHIP_ASSEMBLY_SLOTS.map(slot=>[slot,slot==='hull'?[record]:[]]));
++  const iterator=composedShipSteps(entity,library,scene,owner,{requiredWholeShip:true});
++  let step;do{step=iterator.next();}while(!step.done);
++  return {entity,root:step.value.root,composed:step.value,scene};
++}
+--- a/src/render/assetLoader.js
++++ b/src/render/assetLoader.js
+@@ -1,3 +1,5 @@
++import { admitBroodVisualMetadata, validatedBroodCellTags } from './broodVisualContract.js';
++import { broodCellFromPartName } from './broodCellIdentity.js';
+ // Runtime authored-asset boundary for SpaceFace ship parts.
+ //
+ // This module deliberately owns transport, caching and authoring validation — not composition.
+@@ -1762,7 +1764,7 @@
+     node.geometry = prepareHullLayoutGeometry(node.geometry, matrix, assetId);
+     const material = entry.canopy ? makeCanopyMaterial(node.material) : node.material;
+     if (entry.canopy) node.material = material;
+-    const tags = Object.freeze(reviveRuntimeTags(entry.tags));
++    const tags = Object.freeze(validatedBroodCellTags(reviveRuntimeTags(entry.tags),metadata.broodMaterialContract));
+     node.userData = { ...(node.userData || {}), spacefacePartUrl: url, spacefaceTags: tags };
+     return Object.freeze({
+       key: `${url}#${node.uuid}`,
+@@ -1776,7 +1778,7 @@
+ 
+   const markers = (table.markers || []).map((entry) => {
+     const node = nodeAt(entry, 'marker');
+-    const tags = Object.freeze(reviveRuntimeTags(entry.tags));
++    const tags = Object.freeze(validatedBroodCellTags(reviveRuntimeTags(entry.tags),metadata.broodMaterialContract));
+     node.userData = { ...(node.userData || {}), ...entry.userData, spacefacePartUrl: url, spacefaceTags: tags };
+     return Object.freeze({
+       name: entry.name,
+@@ -1854,6 +1856,7 @@
+   const url = options.url || '';
+   const slot = options.slot || null;
+   const legacyPart = options.legacyPart === true;
++  const broodMaterialContract=admitBroodVisualMetadata(options.assetId||scene.userData?.spacefaceAsset?.assetId,scene.userData?.broodBody);
+ 
+   scene.updateMatrixWorld(true);
+   _inverseRoot.copy(scene.matrixWorld).invert();
+@@ -1890,7 +1893,7 @@
+         name: node.name || `Primitive_${primitives.length}`,
+         canopy,
+         matrix: _relative.toArray(),
+-        tags: serializeRuntimeTags(buildPrimitiveTags(tags, { legacyPart }, canopy)),
++        tags: serializeRuntimeTags(buildPrimitiveTags(tags, { legacyPart, broodMaterialContract }, canopy)),
+       });
+     } else if (isContractMarker(node, tags)) {
+       const markerTags = {
+@@ -2022,7 +2025,10 @@
+     gltf.parser && gltf.parser.json && gltf.parser.json.asset && gltf.parser.json.asset.extras,
+   ];
+   const raw = { ...(sources.find((v) => v && typeof v === 'object') || {}) };
+-  return normalizeAssetMetadata(raw, gltf, expectedSlot);
++  const meta=normalizeAssetMetadata(raw,gltf,expectedSlot);
++  const body=scene.userData?.broodBody||gltf.asset?.extras?.broodBody||gltf.parser?.json?.asset?.extras?.broodBody;
++  const receipt=admitBroodVisualMetadata(meta.assetId,body);
++  return receipt?{...meta,broodMaterialContract:receipt}:meta;
+ }
+ 
+ function normalizeAssetMetadata(raw, gltf, expectedSlot) {
+@@ -2381,7 +2387,7 @@
+ 
+ function buildPrimitiveTags(tags, metadata, canopy) {
+   const next = {
+-    ...cleanRuntimeTags(tags),
++    ...validatedBroodCellTags(cleanRuntimeTags(tags), metadata.broodMaterialContract),
+     lod: tags.lod || (metadata.legacyPart === true ? 'lod0' : undefined),
+     canopy,
+   };
+@@ -2414,6 +2420,8 @@
+   const data = node.userData || {};
+   const sf = data.spaceface && typeof data.spaceface === 'object' ? data.spaceface : {};
+   const name = String(node.name || '').toUpperCase().replace(/[\s-]+/g, '_');
++  const broodCell = broodCellFromPartName(name);
++  if (broodCell) tags.broodCell = broodCell;
+ 
+   const lodMatch = /^LOD([012])(?:_|$)/.exec(name);
+   if (lodMatch) tags.lod = `lod${lodMatch[1]}`;
+--- /dev/null
++++ b/src/render/broodResidentCells.js
+@@ -0,0 +1,159 @@
++import { broodModelForRoot, bindResidentBroodModel, validBroodMaterialLineage } from './broodVisualContract.js';
++import * as THREE from 'three';
++import { createLodState } from './lod.js';
++const CELL_IDS = new Set(['brood_splitter_axial','brood_splitter_port','brood_splitter_starboard']);
++const MATERIAL_IDS = new Set(['brood_splitter',...CELL_IDS]);
++const sameLife = (e,life) => e && e.occupantGeneration === life && e.alive !== false;
++const isMaterial = e => e && MATERIAL_IDS.has(e.data?.broodBodyId) && Number.isSafeInteger(e.occupantGeneration) && e.occupantGeneration>0 && Number.isFinite(e.pos?.x) && Number.isFinite(e.pos?.z);
++const TEXTURES = ['map','normalMap','bumpMap','roughnessMap','metalnessMap','aoMap','emissiveMap','alphaMap','lightMap','envMap'];
++function resourcesFor(nodes) {
++  const resources=new Set();
++  for(const node of nodes){resources.add(node.geometry);
++    for(const material of Array.isArray(node.material)?node.material:[node.material]){
++      if(!material)continue;resources.add(material);
++      for(const key of TEXTURES)if(material[key]?.isTexture)resources.add(material[key]);
++    }
++  }
++  return [...resources];
++}
++function bodyPose(entity,toLocal,scale=new THREE.Vector3(1,1,1),sourceRoot=null) {
++  const p=toLocal(entity.pos),rotation=sourceRoot?.rotation;
++  return new THREE.Matrix4().compose(new THREE.Vector3(p.x,0,p.z),
++    new THREE.Quaternion().setFromEuler(new THREE.Euler(rotation?.x||0,-(entity.rot||0),rotation?.z||0,'XYZ')),scale);
++}
++
++/** Already-admitted material changes render owners without decoding, cloning GPU buffers or
++ * creating new shaders. Per-renderer pending work is bounded by the existing drawn bodies;
++ * assetResidency remains the only resource reference/disposal authority. */
++export function createBroodResidentCellOwner({state,residency,lookupMesh,ready,bind,unbind,retire,toLocal}) {
++  const pending=new Map(),seen=new WeakMap();
++  let generation=0;
++  function prepare(payload) {
++    const parent=payload?.parent;
++    if(!isMaterial(parent)||parent.alive!==false||parent.data?.splitterMaterialTransferred!==true||state.entities.get(parent.id)!==parent||seen.get(parent)===parent.occupantGeneration)return false;
++    const source=lookupMesh(parent)||pending.get(parent)?.root;
++    if(!source || !broodModelForRoot(source,parent) || source.userData?.broodResidentLife!==parent.occupantGeneration || (!pending.has(parent)&&!ready(source)))return false;
++    const children=payload.children||(payload.corpse?[payload.corpse]:[]);
++    if(!Array.isArray(children)||!children.length||children.length>3
++      ||children.some(e=>!isMaterial(e)||!sameLife(e,e.occupantGeneration)||state.entities.get(e.id)!==e)
++      ||new Set(children).size!==children.length || !validBroodMaterialLineage(parent,children))return false;
++    const leaves=[];
++    source.updateWorldMatrix(true,true);
++    source.traverse(node=>{
++      if(node.isMesh&&CELL_IDS.has(node.userData?.spacefaceTags?.broodCell))leaves.push(node);
++    });
++    if(!leaves.length||leaves.some(n=>n.isSkinnedMesh||n.isInstancedMesh||n.isBatchedMesh||n.morphTargetInfluences?.length))return false;
++    const whole=children.length===1&&children[0].data.broodBodyId===parent.data.broodBodyId;
++    if(!whole&&(children.length!==3||new Set(children.map(e=>e.data.broodBodyId)).size!==3
++      ||children.some(e=>!CELL_IDS.has(e.data.broodBodyId))))return false;
++    // Existing shared caches keep their own resource authority. Retain the parent's real
++    // asset keys, and only register owner-local resources here; never make a last child
++    // dispose a shared batch still drawn by an unrelated parent.
++    const ownable=new Set(resourcesFor(leaves).filter(r=>r.userData?.spacefaceSharedAsset!==true));
++    const sourceOwners=[],sourceReleases=[];
++    source.traverse(node=>{sourceOwners.push(node);const fn=node.userData?.releaseAuthoredAssetResidency;
++      if(typeof fn==='function')sourceReleases.push({node,fn});});
++    const sourceKeys=residency.visibilityKeysForOwners?.(sourceOwners)||[];
++    const sourceInverse=source.matrixWorld.clone().invert();
++    const parentPose=bodyPose(parent,toLocal,source.scale,source);
++    const level=source.userData.lod?.level||'lod0',px=source.userData.lod?.lastPx;
++    const staged=[], sourceLeases=[];const transaction={},group={};
++    let committed=false,sourceHooksDetached=false;
++    try {
++      for(const entity of children){
++        const nodes=whole?leaves:leaves.filter(n=>n.userData.spacefaceTags.broodCell===entity.data.broodBodyId);
++        if(!nodes.length||!['lod0','lod1','lod2'].every(l=>nodes.some(n=>n.userData.spacefaceTags.lod===l)))throw new Error('missing material tier');
++        const root=new THREE.Group();root.name=`BroodMaterial_${entity.id}_${entity.occupantGeneration}`;
++        if(!bindResidentBroodModel(source,root,entity))throw new Error('unbound source model');
++        const pose=bodyPose(entity,toLocal);pose.decompose(root.position,root.quaternion,root.scale);root.updateMatrix();
++        const inverse=pose.clone().invert();
++        const records=nodes.map(node=>({node,parent:node.parent,index:node.parent.children.indexOf(node),
++          position:node.position.clone(),quaternion:node.quaternion.clone(),scale:node.scale.clone(),matrix:node.matrix.clone(),auto:node.matrixAutoUpdate,
++          target:inverse.clone().multiply(parentPose).multiply(sourceInverse).multiply(node.matrixWorld)}));
++        const key=`brood-material:${source.uuid}:${parent.occupantGeneration}:${entity.id}:${entity.occupantGeneration}`;
++        // The canonical request owns registration from its first instant. Failure cannot leave
++        // an unclaimed asset or dispose a surface still owned by the usable source boundary.
++        residency.reviveOwner?.(source);
++        const admission=residency.beginRequest(key,source,{role:'current-sector'});
++        try {
++          residency.registerAsset(key,resourcesFor(nodes).filter(r=>ownable.has(r)),{metadata:{kind:'resident-material-handoff',sourceAssetId:source.userData.assetId||null}});
++          if(!admission.commit())throw new Error('source material lease refused');
++        } catch(error){admission.cancel('source-material-refused');throw error;}
++        sourceLeases.push(key);
++        if(!residency.retain(key,transaction,{role:'current-sector'}))throw new Error('material lease refused');
++        const lod=createLodState();lod.adopt(level,px);
++        let released=false;
++        root.userData={authoredVisualRoot:'authored-root',broodResidentMaterial:true,broodResidentLife:entity.occupantGeneration,spacefaceGeometryResident:true,
++          geometryPending:false,pipelinesPending:false,lod,assetId:source.userData.assetId,
++          residentMaterialSource:{bodyId:parent.data.broodBodyId,cellId:entity.data.broodBodyId,parentLife:parent.occupantGeneration,childLife:entity.occupantGeneration},
++          updateLod(next){for(const node of nodes){const tag=node.userData.spacefaceTags?.lod;node.visible=!tag||tag===next;}},
++          releaseAuthoredAssetResidency(reason){if(released)return 0;released=true;return residency.releaseOwner(root,reason||'brood-material-retired');}};
++        const lease={};
++        const keys=[...new Set([key,...sourceKeys])];
++        staged.push({entity,life:entity.occupantGeneration,root,records,generation,group,keys,lease});
++        for(const reference of keys){
++          if(!residency.retain(reference,lease,{role:'current-sector'}))throw new Error('pending material lease refused');
++          if(!residency.retain(reference,root,{role:'current-sector'}))throw new Error('child material lease refused');
++        }
++      }
++      // Template/cache instance references cannot end with the now-empty parent boundary.
++      // Fork that exact reference until the last transferred material owner is retired.
++      let remaining=staged.length;
++      const releaseSource=()=>{if(--remaining!==0)return;for(const {fn} of sourceReleases){try{fn('resident-material-last-owner');}catch(_){/* Continue releasing the other exact source leases. */}}};
++      for(const row of staged){const release=row.root.userData.releaseAuthoredAssetResidency;let done=false;
++        row.root.userData.releaseAuthoredAssetResidency=reason=>{if(done)return 0;done=true;const result=release(reason);if(committed)releaseSource();return result;};}
++      for(const {node} of sourceReleases)node.userData.releaseAuthoredAssetResidency=()=>0;
++      sourceHooksDetached=true;
++      // No source node moves before all bodies/tiers/resource references have been admitted.
++      for(const row of staged)for(const rec of row.records){row.root.add(rec.node);rec.target.decompose(rec.node.position,rec.node.quaternion,rec.node.scale);rec.node.matrix.copy(rec.target);rec.node.matrixAutoUpdate=false;}
++      for(const row of staged){row.root.userData.updateLod(level);pending.set(row.entity,row);}
++      const previous=pending.get(parent);
++      if(previous){pending.delete(parent);previous.root.userData.releaseAuthoredAssetResidency('material-transferred-again');residency.releaseOwner(previous.lease,'material-transferred-again');}
++      for(const key of sourceLeases)residency.release(key,source,'material-ownership-transferred');
++      seen.set(parent,parent.occupantGeneration);
++      residency.releaseOwner(transaction,'material-transaction-committed');
++      committed=true;return true;
++    }catch(error){
++      if(sourceHooksDetached)for(const {node,fn} of sourceReleases)node.userData.releaseAuthoredAssetResidency=fn;
++      for(const row of staged)pending.delete(row.entity);
++      for(const row of staged){for(const rec of row.records)if(rec.node.parent!==rec.parent){rec.parent.add(rec.node);rec.node.position.copy(rec.position);rec.node.quaternion.copy(rec.quaternion);rec.node.scale.copy(rec.scale);rec.node.matrix.copy(rec.matrix);rec.node.matrixAutoUpdate=rec.auto;}
++        row.root.userData.releaseAuthoredAssetResidency?.('material-transaction-refused');residency.releaseOwner(row.lease,'material-transaction-refused');}
++      residency.releaseOwner(transaction,'material-transaction-refused');
++      return false;
++    }
++  }
++  function flush(){
++    let count=0;
++    const groups=new Set([...pending.values()].map(row=>row.group));
++    for(const group of groups){
++      const rows=[];
++      for(const [entity,row] of pending){
++        if(row.group!==group)continue;
++        if(row.generation!==generation||!sameLife(entity,row.life)||state.entities.get(entity.id)!==entity){
++          pending.delete(entity);retire(row.root,'stale-material-life');residency.releaseOwner(row.lease,'stale-material-life');continue;
++        }
++        const existing=lookupMesh(entity);
++        if(existing&&existing!==row.root){pending.delete(entity);retire(row.root,'material-already-presented');residency.releaseOwner(row.lease,'material-already-presented');continue;}
++        rows.push(row);
++      }
++      // Binding all siblings is a single first-frame publication. A refused member unwinds
++      // every already-bound sibling before drawing and retries the retained material later.
++      const bound=[];let accepted=true;
++      for(const row of rows){
++        residency.reviveOwner?.(row.root);for(const key of row.keys)residency.retain(key,row.root,{role:'current-sector'});
++        try{if(bind(row.entity,row.root)===false)accepted=false;}catch(_){accepted=false;}
++        if(!accepted){unbind(row.entity,row.root);break;}bound.push(row);
++      }
++      if(!accepted){for(const row of bound)unbind(row.entity,row.root);continue;}
++      for(const row of bound){pending.delete(row.entity);residency.releaseOwner(row.lease,'material-visible');count++;}
++    }
++    return count;
++  }
++  function reset(reason='material-owner-reset'){
++    generation++;
++    for(const row of pending.values()){retire(row.root,reason);residency.releaseOwner(row.lease,reason);}
++    pending.clear();
++  }
++  const has=entity=>{const row=pending.get(entity),root=lookupMesh(entity);return !!(row&&sameLife(entity,row.life)||root?.userData.broodResidentMaterial&&root.userData.residentMaterialSource?.childLife===entity?.occupantGeneration);};
++  return Object.freeze({prepare,flush,reset,has,pendingCount:()=>pending.size});
++}
+--- /dev/null
++++ b/src/render/broodCellIdentity.js
+@@ -0,0 +1,13 @@
++import { BROOD_SPLITTER_SOURCE_SEAL } from './broodVisualContract.js';
++// Authored material-cell identity, independent of collision or simulation allocation.
++const CELL_NAMES = Object.freeze({
++  PART_SPLITTER_AXIAL: 'brood_splitter_axial',
++  PART_SPLITTER_PORT: 'brood_splitter_port',
++  PART_SPLITTER_STARBOARD: 'brood_splitter_starboard',
++});
++const CELL_IDS = new Set(Object.values(CELL_NAMES));
++export function broodCellFromPartName(name) { return CELL_NAMES[name] || null; }
++export function broodCellBatchKey(key, tags) {
++  const id = tags?.broodCell;
++  return CELL_IDS.has(id) && tags?.broodSourceSeal===BROOD_SPLITTER_SOURCE_SEAL && (tags?.broodContractId==='brood_splitter'||tags?.broodContractId===id) ? `${key}|material-cell:${id}` : key;
++}
+--- /dev/null
++++ b/src/render/broodVisualContract.js
+@@ -0,0 +1,62 @@
++import { BROOD_SPLITTER_BODIES } from '../data/broodSplitterBodies.js';
++// Frozen A6/v12 source receipts. These are model admission identities, never physics authority.
++export const BROOD_SPLITTER_SOURCE_SEAL = '56caeb6efbf38d414ef57817b9a0cdc488ca3a2ed0b204cb6c41717644ab4b13';
++const GEOMETRY = Object.freeze({
++  brood_splitter:'7cab7c2b83d3a7baf57b68fb41f66296f90557ee10b11d75e85e2c3588b2a70f',
++  brood_splitter_axial:'af05851820f74f3d59d85c72f7d28d5f6360d8822318d5eb9a5e02823dd4218b',
++  brood_splitter_port:'8e36fbb4045266e9d29f297f4f77dc91c2ff48cefa0a34896d70c03b39dc5fe5',
++  brood_splitter_starboard:'97036f2222328e07dad607a74b9eb56f008128b8dde361fe0fa35e8d6c9ddf31',
++});
++const receipts=new WeakSet(),roots=new WeakMap();
++const stable=value=>Array.isArray(value)?'['+value.map(stable).join(',')+']':value&&typeof value==='object'
++  ?'{'+Object.keys(value).sort().map(k=>JSON.stringify(k)+':'+stable(value[k])).join(',')+'}':JSON.stringify(value);
++export function admitBroodVisualMetadata(assetId,body){
++  const expected=BROOD_SPLITTER_BODIES[body?.id];
++  if(!expected||assetId!==expected.assetId||body.assetId!==assetId
++    ||body.sourceSealSchema!=='spaceface.broodSourceSeal.v2'||body.sourceSha256!==BROOD_SPLITTER_SOURCE_SEAL
++    ||body.geometryContractSha256!==GEOMETRY[body.id])return null;
++  for(const key of Object.keys(expected))if(stable(body[key])!==stable(expected[key]))return null;
++  const receipt=Object.freeze({bodyId:body.id,assetId,sourceSeal:body.sourceSha256,geometryContract:body.geometryContractSha256});
++  receipts.add(receipt);return receipt;
++}
++export function validatedBroodCellTags(tags,receipt){
++  if(!tags.broodCell)return tags;
++  const valid=receipts.has(receipt)&&(
++    receipt.bodyId==='brood_splitter'?BROOD_SPLITTER_BODIES.brood_splitter.splitterCells.some(c=>c.bodyId===tags.broodCell)
++      :receipt.bodyId===tags.broodCell);
++  if(valid)return {...tags,broodContractId:receipt.bodyId,broodSourceSeal:receipt.sourceSeal};
++  const clean={...tags};delete clean.broodCell;delete clean.broodContractId;delete clean.broodSourceSeal;return clean;
++}
++export function bindBroodModelFromRecord(root,entity,record){
++  const receipt=record?.metadata?.broodMaterialContract;
++  if(!root||!receipts.has(receipt)||record.assetId!==receipt.assetId||entity?.data?.broodBodyId!==receipt.bodyId
++    ||!String(record.url||'').split(/[?#]/)[0].endsWith(BROOD_SPLITTER_BODIES[receipt.bodyId].file))return false;
++  roots.set(root,receipt);return true;
++}
++export function broodModelForRoot(root,entity){
++  let receipt=roots.get(root);
++  if(!receipt)root?.traverse?.(node=>{if(!receipt)receipt=roots.get(node);});
++  return receipt&&(!entity||receipt.bodyId===entity.data?.broodBodyId)?receipt:null;
++}
++export function inheritBroodModelProof(source,target,entity=null){
++  const receipt=broodModelForRoot(source);
++  if(!receipt||!target||entity&&entity.data?.broodBodyId!==receipt.bodyId)return false;
++  roots.set(target,receipt);return true;
++}
++export function bindResidentBroodModel(source,target,entity){
++  const from=broodModelForRoot(source),id=entity?.data?.broodBodyId,body=BROOD_SPLITTER_BODIES[id];
++  if(!from||!body||!target||from.bodyId!==id&&!(from.bodyId==='brood_splitter'&&BROOD_SPLITTER_BODIES.brood_splitter.splitterCells.some(c=>c.bodyId===id)))return false;
++  const receipt=Object.freeze({bodyId:id,assetId:body.assetId,sourceSeal:from.sourceSeal,geometryContract:GEOMETRY[id],residentSource:from.bodyId});
++  receipts.add(receipt);roots.set(target,receipt);return true;
++}
++export function validBroodMaterialLineage(parent,children){
++  if(children.length===1&&children[0].data?.broodBodyId===parent.data?.broodBodyId){
++    const corpse=children[0],life=corpse.data?.splitterCorpse;
++    return corpse.data?.splitterResidue===true&&life?.sourceId===parent.id&&life.sourceLife===parent.occupantGeneration;
++  }
++  const family=parent.data?.splitterFamily,cells=BROOD_SPLITTER_BODIES.brood_splitter.splitterCells;
++  return parent.data?.broodBodyId==='brood_splitter'&&family?.schema===1&&family?.parentLife===parent.occupantGeneration
++    &&children.length===3&&children.every((child,i)=>child.data?.broodBodyId===cells[i].bodyId
++      &&child.data?.splitterChild?.ordinal===i&&child.data.splitterChild.parentLife===parent.occupantGeneration
++      &&child.data.splitterChild.familyId===family.id);
++}
