@@ -2,13 +2,23 @@
 // Quiet-host consolidated session runner — the executable half of
 // design/program/QUIET_HOST_PROGRAM.md (read that file for the consumer law).
 //
-// One clean machine, one batch, sequential — never two headed probes at once (the GPU
-// contention that killed D24 soak attempts F+G). Every step names the row it closes, the
-// fix it validates, or the loop it feeds. Raw output lands in .devshots/ (gitignored);
-// the committed artifact is the receipt the runner prints a skeleton for.
+// Producer/consumer split (owner 2026-10-04): the dedicated clean machine PRODUCES
+// evidence; every other machine only CONSUMES landed receipts. This runner is the
+// producer's whole job and refuses to run anywhere else — on the shared dev box it
+// exits 2 with instructions, so an agent that tries it locally stops instead of
+// taking contaminated readings or starving the GPU.
+//
+//   SPACEFACE_QUIET_HOST=1 node scripts/quiet-host-session.mjs           # session + local report
+//   SPACEFACE_QUIET_HOST=1 node scripts/quiet-host-session.mjs --push    # + receipt committed & pushed
+//   node scripts/quiet-host-session.mjs --list                           # steps + consumers (safe anywhere)
+//
+// Sequential by design — never two headed probes at once (the GPU contention that
+// killed D24 soak attempts F+G). Raw output lands in .devshots/ (gitignored); the
+// committed artifact is the receipt --push writes into roadmap/receipts/.
 
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 
@@ -82,12 +92,15 @@ const STEPS = [
   },
 ];
 
+const argv = process.argv.slice(2);
 const only = (() => {
-  const flag = process.argv.find((a) => a.startsWith('--only='));
+  const flag = argv.find((a) => a.startsWith('--only='));
   return flag ? flag.slice('--only='.length).split(',').map((s) => s.trim()) : null;
 })();
-const dryRun = process.argv.includes('--dry-run');
-const listOnly = process.argv.includes('--list');
+const dryRun = argv.includes('--dry-run');
+const listOnly = argv.includes('--list');
+const doPush = argv.includes('--push');
+const allowContended = argv.includes('--allow-contended');
 
 if (listOnly || dryRun) {
   console.log('Quiet-host session steps (design/program/QUIET_HOST_PROGRAM.md):\n');
@@ -101,13 +114,35 @@ if (listOnly || dryRun) {
   process.exit(0);
 }
 
+// The gate: producers run only on the machine that declares itself the quiet host.
+// This is what stops a local agent from "just running the soak" on the busy box.
+if (process.env.SPACEFACE_QUIET_HOST !== '1' && !allowContended) {
+  console.error(
+    'REFUSED — quiet-host steps may not run on this machine.\n\n' +
+    'The dev box runs agents around the clock; readings taken here are noise and headed\n' +
+    'probes starve each other (the F+G lesson). This runner is for the ONE dedicated\n' +
+    'clean machine, where it runs unattended:\n\n' +
+    '  SPACEFACE_QUIET_HOST=1 node scripts/quiet-host-session.mjs --push\n\n' +
+    'If you are an agent on a shared/busy machine: stop here. Your quiet-host task is to\n' +
+    'LAND evidence, not produce it — read the latest\n' +
+    'design/program/roadmap/receipts/QUIET-HOST-SESSION-*.md and apply the row closures it\n' +
+    'names (design/program/QUIET_HOST_PROGRAM.md §0). Pass --allow-contended only if a human\n' +
+    'explicitly accepted contaminated readings for this run.',
+  );
+  process.exit(2);
+}
+
+function git(args) {
+  return spawnSync('git', args, { encoding: 'utf8' });
+}
+
 const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 const outDir = path.join('.devshots', 'quiet-host', stamp);
 mkdirSync(outDir, { recursive: true });
 const report = [];
 let failures = 0;
 
-function runOne(step, cmd) {
+function runOne(cmd) {
   return new Promise((resolve) => {
     const started = Date.now();
     const child = spawn(cmd.argv[0], cmd.argv.slice(1), {
@@ -122,7 +157,12 @@ function runOne(step, cmd) {
   });
 }
 
-console.log(`Quiet-host session — output dir: ${outDir}\n`);
+const headShort = git(['rev-parse', '--short', 'HEAD']).stdout?.trim() || 'unknown';
+const cpu = os.cpus()[0]?.model ?? 'unknown cpu';
+const hostLine = `${os.platform()} · ${os.arch()} · ${cpu} · ${Math.round(os.totalmem() / 2 ** 30)} GB · tree ${headShort}`;
+
+console.log(`Quiet-host session — host: ${hostLine}`);
+console.log(`Output dir: ${outDir}\n`);
 for (const step of STEPS) {
   if (only && !only.includes(step.id)) continue;
   console.log(`\n=== ${step.id.toUpperCase()} — ${step.title} ===`);
@@ -135,7 +175,7 @@ for (const step of STEPS) {
   const results = [];
   for (const cmd of step.commands) {
     console.log(`$ ${cmd.argv.join(' ')}`);
-    const r = await runOne(step, cmd);
+    const r = await runOne(cmd);
     results.push({ command: cmd.argv.join(' '), exit: r.code, seconds: Math.round(r.ms / 1000) });
     console.log(`  exit ${r.code} (${Math.round(r.ms / 1000)}s)`);
     if (r.code !== 0) failures += 1;
@@ -149,21 +189,71 @@ for (const step of STEPS) {
   });
 }
 
-const lines = [
-  `# Quiet-host session ${stamp}`,
+const verdictBlanks = {
+  qh1: 'heap diff flat? (flat → close D24; slope → name residual fix)',
+  qh2: '30m ___ s / 90m ___ s (datum → close D85)',
+  qh3: 'screencast gap ___ ms or none (none → close D131)',
+  qh4: 'paired claims recorded (→ close rows 61, open 65)',
+  qh5: 'envelope result (→ close row 62)',
+  qh6: 'defects found on the played path → rows (none → close row 66)',
+  qh7: 'bugs found → new ledger rows (witness report path)',
+  qh8: 'fps / frames>33ms p95 / top CPU payers (→ D130 baseline)',
+};
+
+const receipt = [
+  `# QUIET-HOST-SESSION-${stamp}`,
   '',
-  `Failures: ${failures} · Report log: ${outDir}`,
+  `Host: ${hostLine} · Session log: .devshots/quiet-host/${stamp}/ · Failures: ${failures}`,
   '',
-  '| Step | Status | Runs (exit / s) | Consumer |',
-  '|---|---|---|---|',
-  ...report.map((r) => `| ${r.id.toUpperCase()} | ${r.status} | ${(r.runs ?? []).map((c) => `${c.command} → ${c.exit} / ${c.seconds}s`).join('<br>') || '—'} | ${r.consumer} |`),
+  'Produced by the quiet machine (SPACEFACE_QUIET_HOST=1). This receipt is the evidence a',
+  'landing sitting consumes — it applies the row closures named below. No local machine',
+  're-runs these steps (QUIET_HOST_PROGRAM.md §0).',
   '',
-  'Next: fill the receipt template in design/program/QUIET_HOST_PROGRAM.md §5, save it as',
-  'design/program/roadmap/receipts/QUIET-HOST-SESSION-<date>.md, and delete every row this',
-  'session closed in the same commit. Raw captures stay in .devshots/ (gitignored).',
+  '| Step | Status | Runs (exit / s) | Verdict to record | Consumer |',
+  '|---|---|---|---|---|',
+  ...report.map((r) => {
+    const runs = (r.runs ?? []).map((c) => `${c.command} → ${c.exit} / ${c.seconds}s`).join('<br>') || '—';
+    return `| ${r.id.toUpperCase()} | ${r.status} | ${runs} | ${verdictBlanks[r.id] ?? ''} | ${r.consumer} |`;
+  }),
+  '',
+  '## Landing checklist (the local task — LAND-QUIET-HOST)',
+  '',
+  '1. Fill every "verdict to record" cell from the session log in .devshots/quiet-host/.',
+  '2. Apply the closures: delete the ledger/board rows this receipt names (pathspec commit)',
+  '   — including negative results; a clean no-finding still closes its step\'s row.',
+  '3. Route QH-8 baselines into the D130 change-loop note; flip board rows 61/62/66 as their',
+  '   steps resolve.',
+  '4. Raw captures stay in .devshots/ (gitignored) — numbers in this receipt are the record.',
 ];
+
 const reportPath = path.join(outDir, 'REPORT.md');
-writeFileSync(reportPath, lines.join('\n') + '\n');
+writeFileSync(reportPath, receipt.join('\n') + '\n');
 console.log(`\nReport written: ${reportPath}`);
-console.log('Now write the committed receipt (QUIET_HOST_PROGRAM.md §5) and close the rows it served.');
+
+if (!doPush) {
+  console.log('Re-run with --push (on the quiet machine) to write this as the committed receipt and push it.');
+  process.exit(failures === 0 ? 0 : 1);
+}
+
+const receiptPath = path.join('design', 'program', 'roadmap', 'receipts', `QUIET-HOST-SESSION-${stamp.slice(0, 10)}.md`);
+mkdirSync(path.dirname(receiptPath), { recursive: true });
+writeFileSync(receiptPath, receipt.join('\n') + '\n');
+
+const add = git(['add', '--', receiptPath]);
+if (add.status !== 0) {
+  console.error(`git add failed:\n${add.stderr}`);
+  process.exit(1);
+}
+const commit = git(['commit', '-m', `quiet-host: session receipt ${stamp.slice(0, 10)} (produced on the clean machine)`]);
+if (commit.status !== 0) {
+  console.error(`git commit failed (receipt left on disk at ${receiptPath}):\n${commit.stderr}`);
+  process.exit(1);
+}
+const push = git(['push', 'origin', 'master']);
+if (push.status !== 0) {
+  console.error(`git push failed — the receipt is committed locally, push by hand:\n${push.stderr}`);
+  process.exit(1);
+}
+console.log(`\nReceipt pushed: ${receiptPath}`);
+console.log('Next (any machine): claim LAND-QUIET-HOST — apply the row closures this receipt names.');
 process.exit(failures === 0 ? 0 : 1);

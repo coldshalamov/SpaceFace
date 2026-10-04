@@ -11,6 +11,25 @@ are not work and are no longer planned anywhere.
 This file is the only plan for clean-machine work. Nothing requiring a quiet host is scattered
 across the board anymore: board rows point here (§1C rows 61, 62, 66 → QH-4, QH-5, QH-6).
 
+## 0. Producers and consumers — how two machines cooperate
+
+The program is split so that a separate machine can do *all* of it, and this machine never has a
+reason to try:
+
+- **The quiet machine only produces.** It runs the session unattended and pushes one artifact:
+  the receipt. `--push` writes the filled receipt into `design/program/roadmap/receipts/`,
+  pathspec-commits it, and pushes `master`. No judgment is required on that machine — verdict
+  cells are filled in by the landing step.
+- **Every other machine only consumes.** Local sittings never execute QH steps. Their entire
+  quiet-host task is **LAND-QUIET-HOST**: read the newest `QUIET-HOST-SESSION-*.md` receipt,
+  fill its verdict cells from the session log, delete the ledger/board rows it names (including
+  negative results), and route QH-8 baselines into the D130 loop. The evidence is already laid
+  down and already connected to the tasks — landing it is minutes of work, not captures.
+- **The gate is mechanical, not advisory.** The runner exits 2 on any machine that has not set
+  `SPACEFACE_QUIET_HOST=1` (override only with explicit `--allow-contended`). An agent that
+  tries to "just run the soak" on this box gets a hard stop naming the landing task instead.
+  No other step of this program is dispatchable to a busy machine.
+
 ## 1. The consumer law — what makes a capture work
 
 A result may be collected only if it does one of these, with the consumer named before running:
@@ -31,13 +50,18 @@ Run on the dedicated machine, top to bottom, **one probe at a time** — two hea
 probes contending for one GPU is what killed the D24 soak attempts F and G. Harnesses
 deprioritize themselves (PQ-210.06 law); browser servers must set `SPACEFACE_PLAYER_STORE_DIR=''`
 or use `createGameServer` without `playerStoreDir` so the real save drawer is never mounted.
-The thin runner does the ordering and the report:
+The thin runner does the ordering, the report, and the receipt:
 
 ```text
-node scripts/quiet-host-session.mjs --list      # steps + consumers
-node scripts/quiet-host-session.mjs             # full session, fail-visible
-node scripts/quiet-host-session.mjs --only=qh1,qh6
+node scripts/quiet-host-session.mjs --list      # steps + consumers (safe on any machine)
+SPACEFACE_QUIET_HOST=1 node scripts/quiet-host-session.mjs --push   # the real run, on the quiet machine only
+SPACEFACE_QUIET_HOST=1 node scripts/quiet-host-session.mjs --only=qh1,qh6 --push
 ```
+
+Without the `SPACEFACE_QUIET_HOST=1` marker the runner refuses (exit 2) with the landing-task
+instructions — that refusal is the enforcement of §0. On Windows PowerShell:
+`$env:SPACEFACE_QUIET_HOST='1'` first. One-time machine setup: clone, `npm ci`, set the marker,
+run. That is the whole installation.
 
 | # | Step | Runs | Consumer |
 |---|---|---|---|
@@ -55,8 +79,10 @@ verdicts, row deletions, and any baseline tables other sittings will cite.
 
 ## 3. Where results go, and who uses them
 
-- **Receipt:** `design/program/roadmap/receipts/QUIET-HOST-SESSION-<date>.md` (template §5) —
-  committed the same turn, with every closed row deleted in that same commit.
+- **Receipt:** `design/program/roadmap/receipts/QUIET-HOST-SESSION-<date>.md` — written and
+  pushed by the quiet machine's `--push` run (template §5). The landing sitting then deletes
+  every row the receipt closes **in its own pathspec commit**, so the closure commit and the
+  evidence commit are both clean and reviewable.
 - **The performance loop (D130):** QH-8 baselines are the "before"; each optimization sitting
   re-runs the same fixture as its "after" on this machine when available, or on the focused
   fixture everywhere.
@@ -99,7 +125,7 @@ Host: <hardware, OS, GPU> · Tree: <commit, clean?> · Session log: .devshots/qu
 | QH-7 | | bugs found → rows | new ledger rows |
 | QH-8 | | fps / p95 / top payers | D130 baseline receipt (this file §baselines) |
 
-Closed this commit: <ledger/board row ids>
+Closures for LAND-QUIET-HOST: <ledger/board row ids, one per step verdict>
 Baselines: <tables other sittings cite>
 ```
 
