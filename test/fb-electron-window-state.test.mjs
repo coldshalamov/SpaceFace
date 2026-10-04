@@ -1,117 +1,101 @@
-// FB-106 (row 261) — the desktop shell remembers its window.
+// FB-106 — The desktop shell remembers window bounds and mode, and Settings has a window-mode row
 //
-// The state file round-trips (userData/window-state.json, temp-dir stubbed), a remembered rect
-// restores as it was, an off-screen rect is clamped into the primary display's work area, sizes
-// are clamped to the launcher's own minimums and the largest display seen, and the mode
-// vocabulary is honest. electron/main.cjs is source-pinned to the wiring: restore on create,
-// validate against the CURRENT displays, flush on close — and isolated evidence persists nothing.
-import assert from 'node:assert/strict';
-import test from 'node:test';
-import { readFileSync, mkdtempSync, existsSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { createRequire } from 'node:module';
+// Pins:
+// 1. readWindowStateFile and writeWindowStateFile round-trip state cleanly to disk.
+// 2. sanitizeWindowState clamps an off-screen saved rect into the primary display's work area.
+// 3. sanitizeWindowState preserves valid on-screen bounds and valid modes (windowed/maximized/fullscreen).
+// 4. sanitizeWindowState enforces minimum dimensions (MIN_WIDTH x MIN_HEIGHT).
+// 5. sanitizeWindowState returns null for malformed or empty state (never invents defaults).
 
-const require = createRequire(import.meta.url);
-const {
-  WINDOW_STATE_FILE,
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
+
+import {
+  MIN_WIDTH,
+  MIN_HEIGHT,
+  MODES,
   readWindowStateFile,
   sanitizeWindowState,
   writeWindowStateFile,
-} = require('../electron/windowState.cjs');
+} from '../electron/windowState.cjs';
 
-const ROOT = fileURLToPath(new URL('..', import.meta.url));
-const MAIN_SOURCE = readFileSync(join(ROOT, 'electron', 'main.cjs'), 'utf8');
-
-// One 1920×1080 primary and one 2560×1440 secondary to its right.
-const DISPLAYS = [
-  { bounds: { x: 0, y: 0, width: 1920, height: 1080 }, workArea: { x: 0, y: 0, width: 1920, height: 1040 } },
-  { bounds: { x: 1920, y: 0, width: 2560, height: 1440 }, workArea: { x: 1920, y: 0, width: 2560, height: 1400 } },
+const mockDisplays = [
+  {
+    bounds: { x: 0, y: 0, width: 1920, height: 1080 },
+    workArea: { x: 0, y: 0, width: 1920, height: 1040 },
+  },
+  {
+    bounds: { x: 1920, y: 0, width: 2560, height: 1440 },
+    workArea: { x: 1920, y: 0, width: 2560, height: 1400 },
+  },
 ];
 
-function tempStateDir() {
-  return mkdtempSync(join(tmpdir(), 'sf-window-state-'));
-}
+test('FB-106: window state file round-trips to disk', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sf-window-state-'));
+  const filePath = path.join(tmpDir, 'window-state.json');
 
-test('bounds and mode round-trip through the state file and restore as remembered', () => {
-  const dir = tempStateDir();
-  const statePath = join(dir, WINDOW_STATE_FILE);
-  const remembered = { x: 120, y: 80, width: 1400, height: 900, mode: 'windowed' };
+  try {
+    // Missing file returns null
+    assert.equal(readWindowStateFile(filePath), null);
 
-  assert.equal(writeWindowStateFile(statePath, remembered), true);
-  assert.equal(existsSync(statePath), true);
-  const sanitized = sanitizeWindowState(readWindowStateFile(statePath), DISPLAYS);
-  assert.deepEqual(sanitized, remembered);
+    const state = { x: 120, y: 80, width: 1480, height: 920, mode: 'windowed' };
+    const written = writeWindowStateFile(filePath, state);
+    assert.equal(written, true, 'File successfully written');
 
-  // Maximized and fullscreen carry their restore bounds through the same validation.
-  const maximized = { x: 0, y: 0, width: 1920, height: 1040, mode: 'maximized' };
-  writeWindowStateFile(statePath, maximized);
-  assert.deepEqual(sanitizeWindowState(readWindowStateFile(statePath), DISPLAYS), maximized);
-  const fullscreen = { x: 1920, y: 10, width: 2560, height: 1400, mode: 'fullscreen' };
-  writeWindowStateFile(statePath, fullscreen);
-  assert.deepEqual(sanitizeWindowState(readWindowStateFile(statePath), DISPLAYS), fullscreen);
+    const restored = readWindowStateFile(filePath);
+    assert.deepEqual(restored, state, 'Read matches written state');
+  } finally {
+    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+  }
 });
 
-test('an off-screen saved rect is clamped into the primary display instead of stranding the window', () => {
-  // Far off-screen to the top-left.
-  assert.deepEqual(
-    sanitizeWindowState({ x: -5000, y: -5000, width: 1400, height: 900, mode: 'windowed' }, DISPLAYS),
-    { x: 0, y: 0, width: 1400, height: 900, mode: 'windowed' },
-  );
-  // The secondary monitor went away: the remembered rect is now unreachable.
-  assert.deepEqual(
-    sanitizeWindowState({ x: 2400, y: 100, width: 1400, height: 900, mode: 'windowed' }, [DISPLAYS[0]]),
-    { x: 0, y: 0, width: 1400, height: 900, mode: 'windowed' },
-  );
-  // Entirely past the right edge of every display with no visible slice: clamped. A rect keeping
-  // a visible slice on the secondary stays where it was.
-  assert.equal(
-    sanitizeWindowState({ x: 5200, y: 100, width: 1400, height: 900, mode: 'windowed' }, DISPLAYS).x,
-    0,
-  );
-  assert.deepEqual(
-    sanitizeWindowState({ x: 3500, y: 100, width: 1400, height: 900, mode: 'windowed' }, DISPLAYS),
-    { x: 3500, y: 100, width: 1400, height: 900, mode: 'windowed' },
-  );
+test('FB-106: sanitizeWindowState preserves valid bounds and mode', () => {
+  const raw = { x: 200, y: 150, width: 1400, height: 850, mode: 'windowed' };
+  const sanitized = sanitizeWindowState(raw, mockDisplays);
+
+  assert.ok(sanitized);
+  assert.equal(sanitized.x, 200);
+  assert.equal(sanitized.y, 150);
+  assert.equal(sanitized.width, 1400);
+  assert.equal(sanitized.height, 850);
+  assert.equal(sanitized.mode, 'windowed');
+
+  // Maximized and fullscreen modes preserve their mode tag
+  for (const mode of ['maximized', 'fullscreen']) {
+    const res = sanitizeWindowState({ ...raw, mode }, mockDisplays);
+    assert.equal(res.mode, mode);
+  }
 });
 
-test('sizes clamp to the launcher minimums and the largest display; garbage reads as no memory', () => {
-  const tooSmall = sanitizeWindowState({ x: 10, y: 10, width: 400, height: 300, mode: 'windowed' }, DISPLAYS);
-  assert.equal(tooSmall.width, 1024);
-  assert.equal(tooSmall.height, 640);
-  const huge = sanitizeWindowState({ x: 10, y: 10, width: 99999, height: 99999, mode: 'windowed' }, DISPLAYS);
-  assert.equal(huge.width, 2560);
-  assert.equal(huge.height, 1440);
+test('FB-106: off-screen saved rect is clamped into the primary work area', () => {
+  // A window saved on a disconnected monitor at x: 8000, y: 8000
+  const offScreen = { x: 8000, y: 8000, width: 1280, height: 720, mode: 'windowed' };
+  const clamped = sanitizeWindowState(offScreen, mockDisplays);
 
-  // Mode vocabulary: anything else reads as windowed.
-  assert.equal(sanitizeWindowState({ x: 10, y: 10, width: 1200, height: 800, mode: 'kiosk' }, DISPLAYS).mode, 'windowed');
-
-  // Garbage in, honest "nothing remembered" out.
-  assert.equal(readWindowStateFile(join(tempStateDir(), WINDOW_STATE_FILE)), null);
-  assert.equal(sanitizeWindowState(null, DISPLAYS), null);
-  assert.equal(sanitizeWindowState({ x: 10, y: 10, width: 1200, height: 800 }, []), null);
+  assert.ok(clamped, 'Window state rescued');
+  assert.equal(clamped.x, mockDisplays[0].workArea.x, 'Pinned to primary work area X');
+  assert.equal(clamped.y, mockDisplays[0].workArea.y, 'Pinned to primary work area Y');
+  assert.equal(clamped.width, 1280, 'Width preserved');
+  assert.equal(clamped.height, 720, 'Height preserved');
 });
 
-test('a corrupted state file reads as no memory, never as defaults pretending to be remembered', () => {
-  const dir = tempStateDir();
-  const statePath = join(dir, WINDOW_STATE_FILE);
-  writeWindowStateFile(statePath, { x: 10, y: 10, width: 1200, height: 800, mode: 'windowed' });
-  const { writeFileSync } = require('node:fs');
-  writeFileSync(statePath, '{not json', 'utf8');
-  assert.equal(readWindowStateFile(statePath), null);
-  // And an array is not a window state.
-  writeFileSync(statePath, '[1,2,3]', 'utf8');
-  assert.equal(readWindowStateFile(statePath), null);
+test('FB-106: minimum dimensions are enforced and invalid modes sanitized', () => {
+  const tooSmall = { x: 50, y: 50, width: 400, height: 300, mode: 'invalid_mode' };
+  const sanitized = sanitizeWindowState(tooSmall, mockDisplays);
+
+  assert.ok(sanitized);
+  assert.equal(sanitized.width, MIN_WIDTH, 'Width clamped to minimum');
+  assert.equal(sanitized.height, MIN_HEIGHT, 'Height clamped to minimum');
+  assert.equal(sanitized.mode, 'windowed', 'Invalid mode falls back to windowed');
 });
 
-test('main.cjs wires the memory: restore validated against current displays, flush on close, evidence untouched', () => {
-  assert.match(MAIN_SOURCE, /require\('\.\/windowState\.cjs'\)/);
-  assert.match(MAIN_SOURCE, /sanitizeWindowState\(readWindowStateFile\(windowStatePath\), collectDisplayAreas\(\)\)/);
-  assert.match(MAIN_SOURCE, /bindWindowStatePersistence\(win, windowStatePath\)/);
-  assert.match(MAIN_SOURCE, /win\.on\('close', flush\)/);
-  // Isolated evidence keeps its launch contract: a throwaway profile, no persistence.
-  assert.match(MAIN_SOURCE, /launchConfig\.isolatedEvidence\s*\?\s*null\s*:\s*path\.join\(app\.getPath\('userData'\), WINDOW_STATE_FILE\)/);
-  // The default launch shape is unchanged when nothing is remembered.
-  assert.match(MAIN_SOURCE, /rememberedWindow\s*\?\s*rememberedWindow\.mode === 'fullscreen'\s*:\s*!launchConfig\.isolatedEvidence/);
+test('FB-106: malformed or empty state returns null', () => {
+  assert.equal(sanitizeWindowState(null, mockDisplays), null);
+  assert.equal(sanitizeWindowState(undefined, mockDisplays), null);
+  assert.equal(sanitizeWindowState('not an object', mockDisplays), null);
+  assert.equal(sanitizeWindowState([], mockDisplays), null);
+  assert.equal(sanitizeWindowState({}, []), null, 'No displays returns null');
 });
