@@ -136,6 +136,15 @@ const DRILL_APPROACH_TIMEOUT_S = 8;
 // answer about whether that ratio can actually culminate in automatic failure.
 const LOAD_STRAIN_GAIN = 2.5;
 const LOAD_BASE_BY_PHASE = Object.freeze({ slack: 0, capture: 0.35, loaded: 0.55, overload: 0.9 });
+// SFQ-B026 — the actionable tension estimate. The raw input is the SAME three-leg comparison the
+// attachment authority's break decision reads (lastTension/lastImpulse/lastYank vs the live
+// breakPolicy, src/combat/attachments.js updateTelemetryAndBreak) — real constraint load vs real
+// breaking threshold, never invented from line length or phase. Only the DISPLAYED number is
+// smoothed: fast attack so a climb toward the envelope is readable inside the 15-tick (250 ms)
+// warning lease the authority grants, slower release so the bar does not chatter. The physical
+// inputs and tether.strain are never smoothed, rescaled, or written by this.
+const ESTIMATE_ATTACK_TAU_S = 0.09;
+const ESTIMATE_RELEASE_TAU_S = 0.35;
 // Authored payloads and loose pickups are sensor bodies: they intentionally do not collide, so the
 // collidable-only spatial hash cannot be their sole acquisition source.
 const NON_COLLIDING_ACQUISITION_TYPES = new Set(['payload', 'pickup']);
@@ -182,6 +191,7 @@ export const tetherGameplay = {
     this._fieldTargetScratch = [];
     this._candidateSeen = new Set();
     this._active = null;
+    this._tensionEstimate = 0;
     this._lastStrainT = -Infinity;
     this._noRelatchUntil = -Infinity;
     this._pendingCut = null;
@@ -448,7 +458,7 @@ export const tetherGameplay = {
         if (this._drillApproachSettled(attachments, player, target)) this._completeDrillApproach(state);
         else this._queueDrillApproachAssist(attachments, player, target, dt);
       }
-      this._emitStrain(attachments, state);
+      this._emitStrain(attachments, state, dt);
       const att = attachments.get(this._active.attachmentId);
       const phase = this._phaseFor(state, att, dt, this._lastStrainRatio || 0);
       const attDef = attachmentDef(kernel, att && att.defId || this._active.type);
@@ -1574,15 +1584,25 @@ export const tetherGameplay = {
     if (!reelHeld && this._reelStrength < 0.01) this._reelStrength = 0;
   },
 
-  _emitStrain(attachments, state) {
+  _emitStrain(attachments, state, dt) {
     if (!this._active) return;
     const now = Number.isFinite(state.simTime) ? state.simTime : state.tick / 60;
-    if (now - this._lastStrainT < STRAIN_EVENT_INTERVAL_S) return;
     const attachment = attachments.get(this._active.attachmentId);
-    if (!attachment || attachment.state !== 'active') return;
+    const policy = attachment && typeof attachments.breakPolicy === 'function'
+      ? attachments.breakPolicy(attachment.id)
+      : null;
     const kernel = combatKernel(this);
-    const def = attachmentDef(kernel, attachment.defId);
-    const policy = typeof attachments.breakPolicy === 'function' ? attachments.breakPolicy(attachment.id) : null;
+    const def = attachment ? attachmentDef(kernel, attachment.defId) : null;
+    // SFQ-B026: the displayed estimate steps EVERY tick off the real three-leg load, so an
+    // approach to the envelope is continuous; the strain event below keeps its 5 Hz cadence and
+    // its tension-only ratio untouched.
+    this._tensionEstimate = stepTensionEstimate(
+      this._tensionEstimate,
+      attachment && attachment.state === 'active' ? constraintLoadRatio(attachment, policy, def) : 0,
+      dt,
+    );
+    if (!attachment || attachment.state !== 'active') return;
+    if (now - this._lastStrainT < STRAIN_EVENT_INTERVAL_S) return;
     const threshold = positive(
       (policy && policy.maxTension) || (def && (def.breakTension || (def.break && def.break.maxTension))),
       0,
@@ -2446,6 +2466,10 @@ export const tetherGameplay = {
     t.restLength = restLength || 0;
     t.phase = t.active ? normalizePhase(phase) : 'slack';
     t.load = t.active ? computeTetherLoad(t.phase, t.strain) : 0;
+    // SFQ-B026 — the smoothed display read of real constraint load vs break threshold. A gone line
+    // clears it with the rest of its mirror; consumers degrade to strain when the field is absent.
+    t.tensionEstimate = t.active ? Math.min(2, Math.max(0, finite(this._tensionEstimate, 0))) : 0;
+    if (!t.active) this._tensionEstimate = 0;
     t.attachmentId = this._active ? this._active.attachmentId : null;
     t.lineControl = !!(t.active && command && command.lineControl);
     t.lineLengthRate = t.lineControl ? finite(lineLengthCommand, 0) : 0;
@@ -3243,6 +3267,37 @@ export function computeTetherLoad(phase, strain) {
   const base = LOAD_BASE_BY_PHASE[normalizePhase(phase)] || 0;
   const s = Number.isFinite(strain) && strain > 0 ? strain : 0;
   return clamp(Math.max(s * LOAD_STRAIN_GAIN, base), 0, 1);
+}
+
+// SFQ-B026 — display smoothing ONLY. Fast attack (a climb toward the envelope is readable inside
+// the authority's 15-tick warning lease), slower release (the bar does not chatter, and slack
+// decays to an exact 0). The physical inputs this was computed from are never smoothed.
+export function stepTensionEstimate(prev, raw, dt) {
+  const from = Number.isFinite(prev) && prev > 0 ? prev : 0;
+  const target = Number.isFinite(raw) && raw > 0 ? raw : 0;
+  const step = Number.isFinite(dt) && dt > 0 ? Math.min(dt, 0.25) : 0;
+  if (!(step > 0)) return from;
+  const tau = target > from ? ESTIMATE_ATTACK_TAU_S : ESTIMATE_RELEASE_TAU_S;
+  const next = from + (target - from) * (1 - Math.exp(-step / tau));
+  return next < 1e-4 ? 0 : next;
+}
+
+// The authority's own near-break comparison (src/combat/attachments.js updateTelemetryAndBreak):
+// the max of the tension, impulse and yank legs against the live break policy — real constraint
+// load vs real breaking threshold. Read-only mirror of that formula: no policy is decided here,
+// no attachment field is written, and a leg with no threshold contributes 0 rather than a fake
+// overload. Same degrade chain _emitStrain has always used for the tension threshold.
+function constraintLoadRatio(attachment, policy, def) {
+  const tensionLimit = positive(
+    (policy && policy.maxTension) || (def && (def.breakTension || (def.break && def.break.maxTension))),
+    0,
+  );
+  const impulseLimit = positive((policy && policy.maxImpulse) || (def && def.break && def.break.maxImpulse), 0);
+  const yankLimit = positive((policy && policy.maxYank) || (def && def.break && def.break.maxYank), 0);
+  const tensionLeg = tensionLimit > 0 ? Math.max(0, finite(attachment.lastTension)) / tensionLimit : 0;
+  const impulseLeg = impulseLimit > 0 ? Math.max(0, finite(attachment.lastImpulse)) / impulseLimit : 0;
+  const yankLeg = yankLimit > 0 ? Math.max(0, finite(attachment.lastYank)) / yankLimit : 0;
+  return Math.min(2, Math.max(tensionLeg, impulseLeg, yankLeg));
 }
 
 // CADENCE release rating reads the current pair, before cut authority clears its mirror.
