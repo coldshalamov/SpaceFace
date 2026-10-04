@@ -210,8 +210,17 @@ test('B011 diagonal reversal tracks the curve with no displacement jump', () => 
   // Sweep the knob from (+r,0) through the +diag to (-r,0): the reversal path a real chase
   // flies. Magnitude must fall and rise along the curve, never spike above the rim value.
   let peak = 0;
-  let previous = Infinity;
+  let previous = null;
   const steps = 40;
+  // The REAL continuity bound: the shaped curve m(t)=t^1.16 on t=(raw-df)/(1-df) has slope
+  // m'(raw) = exponent/(1-df) * t^(exponent-1), maximized at the rim (t=1), and this sweep's
+  // raw step is at most hypot(2/steps, 0.7*PI/steps) — the arc's own sampling grid. By the
+  // mean value theorem consecutive samples may differ by at most slope x step; anything
+  // larger is a displacement jump, not the curve.
+  const deadzoneFraction = Math.min(DYNAMIC_FLIGHT_STICK_TUNING.deadzonePx, radius * 0.35) / radius;
+  const maxCurveSlope = DYNAMIC_FLIGHT_STICK_TUNING.responseExponent / (1 - deadzoneFraction);
+  const maxRawStep = Math.hypot(2 / steps, 0.7 * Math.PI / steps);
+  const maxStepDelta = maxCurveSlope * maxRawStep;
   for (let i = 0; i <= steps; i += 1) {
     const x = radius * (1 - (2 * i) / steps);
     const y = radius * 0.7 * Math.sin((i / steps) * Math.PI);
@@ -220,8 +229,11 @@ test('B011 diagonal reversal tracks the curve with no displacement jump', () => 
     recordDynamicFlightStick(probe, x, y, w, h);
     const vector = projectDynamicFlightStick(probe, w, h);
     peak = Math.max(peak, vector.magnitude);
-    assert.ok(vector.magnitude <= previous + 1e-9 || vector.magnitude >= previous - 1e-9,
-      'no discontinuity along the reversal');
+    if (previous !== null) {
+      const stepDelta = Math.abs(vector.magnitude - previous);
+      assert.ok(stepDelta <= maxStepDelta + 1e-9,
+        `no displacement jump along the reversal (|d| ${stepDelta.toFixed(4)} > curve bound ${maxStepDelta.toFixed(4)})`);
+    }
     previous = vector.magnitude;
     assert.ok(vector.magnitude <= 1 + 1e-9, 'bounded by the rim');
   }
