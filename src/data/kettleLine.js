@@ -18,6 +18,8 @@
 // Determinism: authored positions, no RNG, no wall time. Tells derive from the authored leg
 // geometry, so the same save always reads the same bearing.
 
+import { playerBearingHyphen } from '../core/playerCompass.js';
+
 export const KETTLE_LINE = Object.freeze({
   schemaVersion: 1,
   sectorId: 'sector_ceres_belt',
@@ -122,12 +124,9 @@ export function kettleLineLegFor(sourceId) {
   return LEG_BY_POI_ID.get(String(sourceId || '')) || null;
 }
 
-const OCTANT_NAMES = Object.freeze(['east', 'north-east', 'north', 'north-west', 'west', 'south-west', 'south', 'south-east']);
-
 function octantFor(dx, dz) {
-  // Compass wording only; shares the convention of the frontier rumor bearing (z+ reads south).
-  const angle = Math.atan2(-dz, dx);
-  return OCTANT_NAMES[(Math.round(angle / (Math.PI / 4)) + 8) % 8];
+  // Player compass: −z is north. Same function as the frontier rumor card.
+  return playerBearingHyphen(dx, dz);
 }
 
 /**

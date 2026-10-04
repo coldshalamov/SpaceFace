@@ -22,6 +22,7 @@
 //   gate tolls and never writes credits/cargo/rep directly. Radiation is environmental damage
 //   routed through the combat kernel (shield then hull); isolated ticks fall back to the same
 //   vitals order and may kill.
+import { playerBearingLetter } from '../core/playerCompass.js';
 import { SECTORS, SECTOR_PALETTE_CLASSES, dangerIndex, surveyDataPrice } from '../data/sectors.js';
 import { FACTION_META } from '../data/factions.js';
 import { separateSkinOverlaps } from '../data/modelTruth.js';
@@ -333,12 +334,9 @@ for (const sector of SECTORS) {
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 
-// Screen-space compass for scan text (XZ plane: +x = East, +z = South).
-const COMPASS_POINTS = ['E', 'SE', 'S', 'SW', 'W', 'NW', 'N', 'NE'];
+// Screen-space compass for scan text. Player north is −z (playerCompass.js).
 function compassLabel(dx, dz) {
-  const tau = Math.PI * 2;
-  const angle = ((Math.atan2(dz, dx) % tau) + tau) % tau;
-  return COMPASS_POINTS[Math.round(angle / (Math.PI / 4)) % 8];
+  return playerBearingLetter(dx, dz);
 }
 
 /** Squared distance from a global pose to a sector's galactic origin (membership hysteresis). */

@@ -297,8 +297,9 @@ export const KILL_MACHINE_BY_ID = Object.freeze(Object.fromEntries(
 ));
 
 // F13 — one cracker in the Helios starter claim. Same shove-into-an-anvil law as the
-// Ceres mouths. It faces south, out of the rock cluster, so it does not hunt the pilot
-// who is mining the middle. The jaw mesh is place_crusher_module, spawned by the adapter.
+// Ceres mouths. It stands north of the rock cluster and faces north (player compass:
+// −z is north; rot −π/2 aims the mouth at −z), out of the cluster, so it does not hunt
+// the pilot who is mining the middle. The jaw mesh is place_crusher_module, spawned by the adapter.
 export const STARTER_FIELD_SECTOR_ID = 'sector_helios_prime';
 export const STARTER_FIELD_ID = 'f_helios_starter';
 export const STARTER_FIELD_MACHINE = buildKillMachine({
@@ -326,7 +327,8 @@ export const STARTER_FIELD_MACHINE = buildKillMachine({
   }],
 });
 
-// CR-FEED — one scrap baler in Sker Haven's open water, south-south-east of the Bazaar, outside
+// CR-FEED — one scrap baler in Sker Haven's open water, north of the Bazaar (player
+// compass: −z is north; the site is north of station_sker), outside
 // every authored zone and clear of the gate-camp, the Press-Gang seams, and the Skerris Throne.
 // Where the Ceres and Helios mouths drive a directional cone or sheet down a lane, the baler is
 // a compactor: its intake is a WELL centred
@@ -341,7 +343,7 @@ export const SKER_SCRAP_BALER = buildKillMachine({
   sectorId: SKER_SCRAP_BALER_SECTOR_ID,
   // Nudged 180 WU west of the original (-200,-1400) site: alien-ecology cycle 2 appended
   // zone_sker_red_snow (center 400,-1800 r=780) and zone_sker_harvest_deep after the baler
-  // was sited, and the old spot sat 59 WU inside Red Snow's rim. Still south-south-east of the
+  // was sited, and the old spot sat 59 WU inside Red Snow's rim. Still north of the
   // Bazaar, still in open water — >=120 WU clear of every station, gate, zone, field,
   // hazard, and POI in the sector.
   localPos: { x: -350, z: -1300 },
@@ -406,7 +408,7 @@ export const RIFT_FISSURE_CRACKER = buildKillMachine({
 // bite, calm is the safe window. None of these is a damage aura.
 // ───────────────────────────────────────────────────────────────────────────────────────────────
 
-// VESTA FORGE - the foundry shear. A double shear stands on the south approach to the works: two
+// VESTA FORGE - the foundry shear. A double shear stands on the north-east approach to the works: two
 // slag rams close from both ends onto one shear bar at the throat. Its rot runs along the inbound
 // leg from the Helios gate so the jaws close ACROSS a ship crossing the approach, which is the
 // whole read: not a mouth you fly into, a pair of jaws that meet where you are.
@@ -416,7 +418,7 @@ export const VESTA_SHEAR_JAWS = buildKillMachine({
   hazardType: 'debris',
   placeId: 'place_ore_sorter',
   sectorId: VESTA_SHEAR_SECTOR_ID,
-  // South approach to the works: clear of both stations (975 WU to Depot Three), both belts
+  // North-east approach to the works (player compass, −z north): clear of both stations (975 WU to Depot Three), both belts
   // (946 WU off the radiation volume, 1388 off the storm lane), the ore winnow at f_vesta_3, the
   // dead freighter, and the runaway ladle on the foundry apron.
   localPos: { x: 250, z: -1000 },
@@ -759,7 +761,7 @@ export const VESTA_ORE_WINNOW = Object.freeze({
   fieldId: 'f_vesta_3',
   localPos: freezeVec(120, 980),
   globalPos: WINNOW_POS,
-  // East is clear of the foundry and of the storm sheet to the south-east.
+  // East is clear of the foundry (west of the throat) and of the storm sheet to the north-east.
   dir: freezeVec(1, 0),
   cycle: Object.freeze({ gatherS: 5, warningS: 2, dischargeS: 3, calmS: 6 }),
   fields: Object.freeze([
@@ -777,7 +779,7 @@ export const VESTA_ORE_WINNOW = Object.freeze({
   ]),
   // Existing kit mouths flank the working lane; nothing plugs the projectile exit.
   furniture: Object.freeze([-1, 1].map((side) => Object.freeze({
-    id: `vesta_winnow_bank_${side < 0 ? 'south' : 'north'}`,
+    id: `vesta_winnow_bank_${side < 0 ? 'north' : 'south'}`,
     placeId: 'place_conveyor_truss',
     pos: freezeVec(WINNOW_POS.x - 30, WINNOW_POS.z + side * 76),
     rot: 0, radius: 18,

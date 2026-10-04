@@ -4,6 +4,7 @@
 // an approximate global_v1 search circle. World owns purchased/resolved records; bar and map code
 // consume the pure offer/read helpers here.
 
+import { playerBearingLetter } from '../core/playerCompass.js';
 import { hash32 } from '../core/rng.js';
 import { sectorLocalToGlobalForSector } from './sectorCoordinates.js';
 import { SECTORS } from './sectors.js';
@@ -230,9 +231,8 @@ function candidateStillUnknown(state, candidate) {
 }
 
 function octantFor(point) {
-  const angle = Math.atan2(-finite(point && point.z), finite(point && point.x));
-  const names = ['E', 'NE', 'N', 'NW', 'W', 'SW', 'S', 'SE'];
-  return names[(Math.round(angle / (Math.PI / 4)) + 8) % 8];
+  // Player compass: −z is north, same function as the scan line and the chart.
+  return playerBearingLetter(finite(point && point.x), finite(point && point.z));
 }
 
 function offerCopy(candidate, radius) {

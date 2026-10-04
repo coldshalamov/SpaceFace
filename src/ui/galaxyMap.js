@@ -1,3 +1,4 @@
+import { playerBearingLetter } from '../core/playerCompass.js';
 import { navigationFrameHtml } from './views/navigationFrame.js';
 import { CSS } from './views/navigationStyles.js';
 import { bindMapMarkup, MAP_CONTROLS, mapControlAttrs, mapControlLabel } from './map/mapControlMap.js';
@@ -10538,13 +10539,8 @@ function mutedZoneColor(hex, amount = 0.45) {
 
 /** Octant bearing for disambiguating same-named gates on the survey table (N/NE/E…). */
 function compassOctant(dx, dz) {
-  if (!Number.isFinite(dx) || !Number.isFinite(dz)) return '';
-  // North is -Z, matching the chart rather than the world: `sz()` maps world +Z to increasing screen
-  // y, so -Z is the top of the table and that is the bearing a pilot reads as "north" here.
-  const angle = Math.atan2(dx, -dz);
-  const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
-  const idx = Math.round(((angle + Math.PI * 2) % (Math.PI * 2)) / (Math.PI / 4)) % 8;
-  return dirs[idx];
+  // North is −z: the chart's sz() maps world +z to increasing screen y, so −z is the top.
+  return playerBearingLetter(dx, dz);
 }
 
 /**
