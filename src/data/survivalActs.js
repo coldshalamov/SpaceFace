@@ -204,6 +204,7 @@ function applyActPressure(packages, act) {
   // step; one-shot arrivals (gap 0) keep their authored schedule — the wave's shape, not
   // its headcount, carries the act.
   for (const pkg of next) {
+    if (pkg.role === 'elite') continue;
     if (!Number.isInteger(pkg.batchGapTicks) || pkg.batchGapTicks <= 0) continue;
     // applyDifficulty runs downstream of this composer and tightens 15 ticks per act step,
     // so the floor here reserves that headroom: act II leaves ≥30 (final ≥15), act III

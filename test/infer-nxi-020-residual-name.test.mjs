@@ -34,8 +34,11 @@ function harness({ capVolume = 5 } = {}) {
   state.player.cargo = { items: {}, usedVolume: 0, usedMass: 0, capVolume, capMass: 999 };
   // The recovered shipment: one physical body with a name, a world record, a
   // custody stamp and a provenance lot — the fields a "same shipment" is told by.
+  // Shape note: production physics contact-collects only type 'pickup' bodies
+  // (isLivePickup, physics.js) — manifest 'payload' bodies collect through the
+  // mining._collectPayload scoop path instead, so the pod wears the honest type.
   const pod = {
-    id: 2, type: 'payload', alive: true, collides: true,
+    id: 2, type: 'pickup', alive: true, collides: true,
     pos: { x: 4, z: 0 }, vel: { x: 0, z: 0 }, radius: 3, mass: 8,
     data: {
       kind: 'cargo',
@@ -93,6 +96,8 @@ test('NXI-020: a partially-delivered recovered shipment keeps its name on the re
   assert.equal(h.pod.data.richLotSource.lotId, 'spill-lot:4242', 'the parent lot id survived');
   assert.equal(h.pod.data.richLotSource.provenanceId, 'prov:raid-spill',
     'the provenance id survived the split');
+  assert.equal(h.pod.data.richLotSource.richQty, 7,
+    'the rich mirror holds only the units still physically present: 12 offered − 5 accepted');
 
   // The accepted side is identifiable as the same shipment too, not a generic lot.
   const lot = (h.state.player.cargo.richLots || []).find((row) => row.lotId === 'spill-lot:4242');

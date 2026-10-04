@@ -414,6 +414,27 @@ export const SWARM_BOSS_ROTATION = Object.freeze([
       { enemyId: 'field_anchor_controller', count: 1, role: 'anchor', gateBias: 'near' },
     ],
   },
+  // SWARM-07 B3 — the Brood champions, deep in the rotation. Same `enemyId`+`scoreId`
+  // contract as the Foreman/Regent rows: one real hull materialized through the wave's
+  // ordinary package path, then handed to its authored score. The Queen's wave fields the
+  // flood itself (swarmBroodPlan reads her id and fields nothing but mites); the Tendril's
+  // body is the brood engine's segment chain behind the head.
+  {
+    id: 'brood_queen',
+    label: 'Brood Queen',
+    line: 'The broodmother floods the room. Break her sacs — her own brood is ammunition.',
+    room: 'brood_nest',
+    enemyId: 'brood_queen',
+    scoreId: 'capital_boss_brood_queen',
+  },
+  {
+    id: 'brood_tendril',
+    label: 'The Tendril',
+    line: 'A worm works the field. It cannot turn mid-weave — put a rock on the line.',
+    room: 'coil_field',
+    enemyId: 'brood_tendril',
+    scoreId: 'capital_boss_tendril',
+  },
 ]);
 
 /** The one-hull package a capital champion row implies when it carries no explicit packages. */
@@ -432,6 +453,8 @@ const BOSS_ROOM_NOTES = Object.freeze({
   wing_bank: 'bank stone on the wing\'s bearing',
   screen_wall: 'a screen wall between you and the brawlers',
   hold_close: 'the room holds you; close on the ghosts',
+  brood_nest: 'the nest pulls toward the sacs — cover to break the flood, rocks to throw back',
+  coil_field: 'the weave field — a slow cross-breeze, and rocks to feed the committed pass',
 });
 
 export function bossRoomNote(room) {
@@ -586,7 +609,10 @@ export function swarmEligibleEnemyIds(wave) {
   for (const entry of swarmRosterFor(w)) ids.add(entry.enemyId);
   const boss = swarmBossFor(w);
   if (boss) {
-    for (const pkg of boss.packages || []) {
+    // bossPackagesFor, not boss.packages: the capital champion rows carry `enemyId` and no
+    // `packages` key, so reading the field directly made the Foreman/Regent (and the new Brood
+    // champions) invisible to the launch/dwell prewarm — hulls the wave does field, missed.
+    for (const pkg of bossPackagesFor(boss)) {
       if (pkg && pkg.enemyId) ids.add(pkg.enemyId);
     }
   }

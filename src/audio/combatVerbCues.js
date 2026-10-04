@@ -237,6 +237,11 @@ export const PLAYER_ACTION_CUES = Object.freeze({
   // brake has no bus event at all: the brake's rising-edge bite (sfx_brake_bite) is played
   // directly in audioSystem._updateBrakeHiss, one cue per press. There is no 'brake' verb
   // to map, so no row is added here.
+  // BP-02 weak-point hit: the player's shot landed in the exposed subsystem arc.
+  // VFX + floating text already answer it; this is its one ear owner. A bright lock
+  // tick, not another thud — the combat:damage layer voice owns the impact on the
+  // same tick, so the crit reads as skill on top of the hit, never a doubled hit.
+  'combat:weakPointHit': 'sfx_lock_acquired',
   'player:respawn': 'sfx_respawn_chime',
 });
 
@@ -359,6 +364,22 @@ export function admitRefusalVoice(book, sourceId, nowMs, gapMs = REFUSAL_ADMIT_M
   return true;
 }
 
+/** Weak-point crit admission: one bright tick per target per burst. Spraying a
+ * capital's exposed arc must read as earned ticks, not a machine-gun. Uses the
+ * sim tick when the payload carries one, else the host's wall clock. */
+export const WEAK_POINT_ADMIT_TICKS = 10;
+
+export function admitWeakPointVoice(book, targetId, nowTick, gapTicks = WEAK_POINT_ADMIT_TICKS) {
+  if (!book || targetId == null) return false;
+  const now = Number(nowTick);
+  if (!Number.isFinite(now)) return false;
+  const key = String(targetId);
+  const last = book[key];
+  if (last != null && now - last < gapTicks) return false;
+  book[key] = now;
+  return true;
+}
+
 export function playAuthoredVerbCue(host, id, payload) {
   const row = combatVerbCueRow(id);
   if (!host || !row || row.recipe === 'SILENT' || !row.recipe) return null;
@@ -371,6 +392,14 @@ export function playAuthoredVerbCue(host, id, payload) {
         : payload.targetId != null ? payload.targetId
           : id);
     if (!admitRefusalVoice(book, `${id}:${source}`, now)) return null;
+  }
+  if (id === 'combat:weakPointHit') {
+    const rt = host.rt || (host.rt = {});
+    const book = rt._weakPointAdmit || (rt._weakPointAdmit = Object.create(null));
+    const tick = payload && Number.isFinite(payload.tick) ? payload.tick
+      : (host.state && Number.isFinite(host.state.tick) ? host.state.tick
+        : (typeof host._wallClockMs === 'function' ? host._wallClockMs() : NaN));
+    if (!admitWeakPointVoice(book, payload && payload.targetId, tick)) return null;
   }
   if (typeof host.play !== 'function') return null;
   const pos = payload && payload.pos;

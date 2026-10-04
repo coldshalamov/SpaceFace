@@ -198,6 +198,37 @@ export function pickClickTarget(targets, sx, sy) {
   return best;
 }
 
+// The scan ping is the sweep's answer, not a decoration: the map draws it, the legend names it,
+// so a click on it must set course TO it (named, not a bare "Map fix"). Same contract the
+// scanner readouts teach ("Track the source"): the local map is where tracking is one click.
+// Marks are picked for the CURRENT sector only, exactly like the radar and the galaxy chart.
+export const PING_COURSE_LABEL = 'Unresolved contact';
+
+export function pingOverlayMarks(state, wx, wz) {
+  const marks = [];
+  const sectorId = state && state.world && state.world.currentSectorId;
+  const pings = sectorId && state.world.scanPings && state.world.scanPings[sectorId];
+  if (!Array.isArray(pings)) return marks;
+  for (const ping of pings) {
+    if (!ping || !ping.pos) continue;
+    const x = wx(ping.pos.x);
+    const y = wz(ping.pos.z);
+    marks.push({
+      x, y,
+      target: {
+        sx: x, sy: y, radiusPx: 16,
+        targetEntityId: ping.id,
+        pos: { x: ping.pos.x, z: ping.pos.z },
+        label: PING_COURSE_LABEL,
+        kind: 'ping',
+        arrivalRadius: 44,
+        priority: labelPriority('ping'),
+      },
+    });
+  }
+  return marks;
+}
+
 const LOCALMAP_STYLE = `
 #sf-localmap {
   position: absolute; inset: 0; display: flex; flex-direction: column;
@@ -1012,7 +1043,7 @@ export const localmapScreen = {
     }
     g.globalAlpha = 1;
 
-    this._drawScanOverlays(g, state, wx, wz, roles);
+    this._drawScanOverlays(g, state, wx, wz, roles, labelJobs);
 
     // Active waypoint / mission geometry. This uses the same state.nav.waypoint source as the HUD,
     // so the map remains a recovery surface when the tactical radar no longer has nearby dots.
@@ -1148,7 +1179,7 @@ export const localmapScreen = {
     };
   },
 
-  _drawScanOverlays(g, state, wx, wz, roles) {
+  _drawScanOverlays(g, state, wx, wz, roles, labelJobs) {
     const ink = roles || canvasRoles();
     const now = state.simTime || 0;
     for (const e of indexedTypeScan(state, 'asteroids')) {
@@ -1169,15 +1200,23 @@ export const localmapScreen = {
       g.restore();
     }
 
-    const sectorId = state.world && state.world.currentSectorId;
-    const pings = sectorId && state.world.scanPings && state.world.scanPings[sectorId];
-    if (!Array.isArray(pings) || !pings.length) return;
-    for (const ping of pings) {
-      if (!ping || !ping.pos) continue;
-      const x = wx(ping.pos.x), y = wz(ping.pos.z);
+    // The ping is courseable: its mark joins the click targets and the INF-054 label pass, so
+    // clicking the "?" sets course to the ping BY NAME instead of dropping a bare "Map fix".
+    const marks = pingOverlayMarks(state, wx, wz);
+    if (!marks.length) return;
+    for (const { x, y, target } of marks) {
       // Unresolved-contact mark: dashed diamond + "?" glyph from the shared set (was a stroked
       // diamond with a fillText '?' inside — two visual languages for one idea).
       drawGlyph(g, 'unknown', x, y, 16, { color: ink.goal });
+      this._lastClickTargets.push(target);
+      labelJobs.push({
+        x, y, dx: 10,
+        text: target.label,
+        font: canvasFont(500, 13, 'body'),
+        color: ink.goal,
+        priority: target.priority,
+        target,
+      });
     }
   },
 

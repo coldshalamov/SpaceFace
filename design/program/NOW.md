@@ -36,16 +36,19 @@ working. Product status and remaining tasks live in
    means the shared index is stale, not that the file is gone: `git reset -- <paths>`, then publish.
 6. End every task with `RESULT: DONE` or `RESULT: NOT DONE` using the template in
    [`02_REMAINING_WORK.md`](./02_REMAINING_WORK.md). Delete stale rows; Git and receipts own history.
-7. Do not create a worktree by default. Existing worktrees are recovery obligations recorded in
+7. Do not create a worktree by default; if one is unavoidable it is a single `.worktrees/<name>`
+   shared by the whole sitting — port the work back and `git worktree remove --force` in the same
+   turn. Existing worktrees are recovery obligations recorded in
    [`04_WORKTREE_AND_INTEGRATION.md`](./04_WORKTREE_AND_INTEGRATION.md), not current ownership.
+   `git worktree list` shows only the main checkout before you walk away.
 
 ## Active mutation windows
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| 40-unit packet sitting — ~30 build-map units (open defect ledger, D3 gate adjudication, adoptable board residuals) + ~10 inference rows (parent-landed WAITING + equivalents) — critic/review/fix subagents, no worktrees | devin-packets-oct4 | IN PROGRESS | `design/program/INFERENCE_IDEAS.md`, `design/program/DEMO_READINESS_2026-09-20.md`, `build_map.md`, packet-targeted src/test paths per unit | research/critic packets → implementer subagents by pathspec → reviewer subagents → status updates |
+| 40-unit packet sitting — ~30 build-map units (open defect ledger, D3 gate adjudication, adoptable board residuals) + ~10 inference rows (parent-landed WAITING + equivalents) — critic/review/fix subagents, no worktrees | devin-packets-oct4 | DONE 2026-10-04 | `design/program/INFERENCE_IDEAS.md`, `design/program/DEMO_READINESS_2026-09-20.md`, `build_map.md`, packet-targeted src/test paths per unit | landed: 9/9 inference rows + ~35 build units; REV-1..5 approved; fixes via FIX-1..6; row releasable after final sweep |
 | Sole-agent cleanup + quiet-host sweep: master-side stale checks repinned and pushed (`e15597892`); soak market-verify hardened (`127197043`); D67 closed (`b231a7f0c`); D24 resoak attempts F+G died at launch — the cook lane starves when two headed system-Chrome probes contend for the GPU (product is bounded/fail-visible, worst ~210 s; contention, not a regression — a lone probe clears in ~46 s); attempt H launched 08:01Z on a quiet host, in flight cycling | devin-sweep-oct3 | IN PROGRESS | `scripts/lib/releaseSoakProbe.mjs`, `scripts/check-gameplay-core.mjs`, `design/program/DEMO_READINESS_2026-09-20.md` §6 | D24 soak verdict → heapsnapshot diff → remove or keep row; then final sync (PRs/tree/master==origin) |
-| Bullet-time, boost, travel-burn, afterburner, and mining-beam refusal lines | grok-oct3 | IN PROGRESS | `src/systems/bulletTime.js`, `test/infer-bullet-time-empty.test.mjs`, `src/systems/flightV3.js`, `test/infer-boost-spent-toast.test.mjs`, `test/infer-travel-burn-spent.test.mjs`, `test/infer-afterburner-window.test.mjs`, `src/systems/mining.js`, `test/infer-beam-refusal.test.mjs`, `src/systems/cruise.js`, `test/infer-cruise-hit-drop.test.mjs` | cruise hit and snare lines reviewed |
+
 
 
 ## Remaster machine

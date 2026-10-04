@@ -1036,6 +1036,9 @@ export const npcJobsRuntime = {
       // Leases do not survive save/load by design — re-request after Continue when the
       // drive is still down so a mid-dispatch save cannot strand the player silently.
       this.bus.on('save:loaded', () => this._onSaveLoadedYardCheck());
+      // SF-138: nor do paid tow hires — settle each one queued by deserialize (refund +
+      // lost report) on this same post-restore seam.
+      this.bus.on('save:loaded', () => this._reportDroppedTowAssists());
       // PQ-195.04: the local consequence. Berth Three's stalled worker resumes (or runs its reduced
       // repair shuttle) on the receiver's OWN committed handoff receipt — never a timer or a cue.
       this.bus.on('heist:receiverCommitted', (receipt) => this._onBerthHandoff(receipt || {}));
@@ -3224,6 +3227,9 @@ export const npcJobsRuntime = {
     if (!entry || !jobId) return { granted: false, reason: 'no_job' };
     if (!entry.job || !TOW_ASSIST_KINDS.has(entry.job.kind)) return { granted: false, reason: 'not_a_mover' };
     if (entry.towAssist) return { granted: false, reason: 'already_hired' };
+    // SF-087: a panicking worker cannot take the job — the hire must never silently override
+    // the flee reflex. The refusal is legible ('under_threat') and lapses with the reflex.
+    if (entry.job.phase === NPC_JOB_PHASE.FLEE) return { granted: false, reason: 'under_threat' };
     const target = targetEntityId != null && entities ? entities.get(targetEntityId) : null;
     // Same towability gate the tug's own job uses: a real loose cargo body, never scenery.
     if (!isTowableCargoTarget(target)) return { granted: false, reason: 'not_towable' };
@@ -3242,8 +3248,16 @@ export const npcJobsRuntime = {
     entry.towAssist = {
       claimId: cleanClaim,
       targetId: targetEntityId,
+      // The stable join for the restore report — the numeric id above is dead after a load.
+      targetWorldRecordId: (target.data && target.data.worldRecordId) || null,
       destPos: { x: Number(destPos.x), z: Number(destPos.z) },
       missionId: missionId != null ? String(missionId) : null,
+      // The fee is billed up-front below and the live lease is session-transient (same law as
+      // `control`), so the save envelope carries this: a PAID hire interrupted by a reload must
+      // refund or report — never vanish silently with the fee gone. It is settled below to what
+      // the charge ACTUALLY moved — the reload refund pays this back, so it must never name
+      // money a clamped charge could not have collected.
+      feeCr: 0,
       phase: 'approach',
       // The destination owner may name a wider settle ring than the default drop — a mission
       // berth counts at ITS radius, so the assist and the contract cross the same boundary.
@@ -3252,15 +3266,27 @@ export const npcJobsRuntime = {
       timeoutS: Math.max(5, finite(timeoutS, TOW_ASSIST_TIMEOUT_S)),
     };
     if (feeCr > 0 && this.bus && typeof this.bus.emit === 'function') {
-      try {
-        this.bus.emit('economy:chargeCredits', {
-          amount: Math.round(feeCr),
-          reason: 'tow_assist',
-          label: 'TOW ASSIST',
-        });
-      } catch { /* the hire stands; a failed charge event retries nowhere by design */ }
+      // Take-what-they-have — the same settlement rule economy's own service:stuck_tow uses:
+      // the charge writer clamps at zero, so bill only up to the live balance, then reconcile
+      // the recorded fee to the charge's real delta (the emit is synchronous, so the post-emit
+      // balance is the truth). A quoted fee that never moved would let the save seam print
+      // credits on every reload.
+      const creditsBefore = Math.max(0, Math.round(finite(state.player && state.player.credits, 0)));
+      const billedCr = Math.min(Math.round(feeCr), creditsBefore);
+      if (billedCr > 0) {
+        try {
+          this.bus.emit('economy:chargeCredits', {
+            amount: billedCr,
+            reason: 'tow_assist',
+            label: 'TOW ASSIST',
+          });
+        } catch { /* the hire stands; a failed charge event retries nowhere by design */ }
+        const settledCr = creditsBefore
+          - Math.max(0, Math.round(finite(state.player && state.player.credits, 0)));
+        entry.towAssist.feeCr = Math.min(billedCr, Math.max(0, settledCr));
+      }
     }
-    return { granted: true, jobId, claimId: cleanClaim, targetId: targetEntityId };
+    return { granted: true, jobId, claimId: cleanClaim, targetId: targetEntityId, feeCr: entry.towAssist.feeCr };
   },
 
   towAssistState(jobId) {
@@ -3405,6 +3431,52 @@ export const npcJobsRuntime = {
     }
     if (entry.control && entry.control.claimId === assist.claimId) {
       this.releaseControl(jobId, assist.claimId);
+    }
+  },
+
+  // A hire that was live at save time does not resume after load (its lease names live hulls,
+  // same law as `control`), but the fee was already billed — refund it through the economy
+  // writer and report the drop on the same seam `_finishTowAssist` uses, so a mid-hire
+  // save/Continue can never lose the paid service silently.
+  _reportDroppedTowAssists() {
+    const pending = this._pendingTowAssistReports;
+    this._pendingTowAssistReports = null;
+    if (!Array.isArray(pending) || !pending.length || this.state == null) return;
+    for (const dropped of pending) {
+      const refundedCr = dropped.feeCr > 0 ? Math.round(dropped.feeCr) : 0;
+      // The numeric targetId saved with the hire is dead after a load; re-resolve the stable
+      // record id so a mission owner still hears about the load it actually lost.
+      const target = dropped.targetWorldRecordId != null
+        ? indexedWorldRecordEntity(this.state, dropped.targetWorldRecordId) : null;
+      // Same suppression as _finishTowAssist: a mission-owned hire whose contract already
+      // settled is a CLOSED outcome — the owning system's receipt is the only verdict.
+      const missionStillActive = dropped.missionId != null
+        && ((this.state.missions && this.state.missions.active) || []).some((m) => (
+          m && m.status === 'active' && String(m.id) === String(dropped.missionId)
+        ));
+      const suppressLost = dropped.missionId != null && !missionStillActive;
+      if (!this.bus || typeof this.bus.emit !== 'function') continue;
+      try {
+        if (refundedCr > 0) {
+          this.bus.emit('economy:grantCredits', { amount: refundedCr, reason: 'refund:tow_assist' });
+        }
+        if (!suppressLost) {
+          this.bus.emit('npcJobs:towAssistLost', {
+            jobId: dropped.jobId,
+            targetId: target && target.alive !== false ? target.id : null,
+            missionId: dropped.missionId,
+            reason: 'save_reload',
+            refundedCr,
+          });
+        }
+        if (refundedCr > 0) {
+          this.bus.emit('toast', {
+            text: `Hired tow never made the run — ${refundedCr}cr back on the tab.`,
+            kind: 'info',
+            ttl: 4,
+          });
+        }
+      } catch { /* advisory */ }
     }
   },
 
@@ -5245,6 +5317,22 @@ export const npcJobsRuntime = {
     // owns its casualty end to end; a second responder would be a second owner of one story.
     // Other causal stamps are handoff choreography, not service — they do not block.
     if (casualty.data && CREW_RESPONSE_YIELD_CAUSAL_EVENTS.has(casualty.data.ceresCausalEventId)) return;
+    // The cue stamp only exists while its chain link is live; the incident records are the
+    // durable ownership truth and can exist before or without it. Match the casualty's stable
+    // identity so a scripted disable can never have the tender claimed out from under its own
+    // responder window — the incident then fails 'responder_control_refused' and the casualty
+    // sits broken forever while a stolen tender idles on a response that resolves nothing.
+    const casualtyWorldId = casualty.data && casualty.data.worldRecordId;
+    const trafficState = this.state.traffic;
+    if (casualtyWorldId && trafficState) {
+      const disabledIncident = trafficState.ceresDisabledHaulerIncident;
+      if (disabledIncident && disabledIncident.outcome == null
+        && disabledIncident.haulerWorldRecordId === casualtyWorldId) return;
+      const serviceIncident = trafficState.ceresTenderServiceIncident;
+      if (serviceIncident && serviceIncident.state !== 'succeeded'
+        && serviceIncident.state !== 'failed'
+        && serviceIncident.minerWorldRecordId === casualtyWorldId) return;
+    }
     const casualtyJobId = this._jobIdForEntity(p.targetId);
     if (casualtyJobId == null) return;
     const casualtyEntry = this._byId()[casualtyJobId];
@@ -5867,6 +5955,16 @@ export const npcJobsRuntime = {
         // is trivially 0 across any reload.
         lastAdvanceSimT: finite(entry.lastAdvanceSimT, 0),
       };
+      // SF-138: a live tow hire does NOT resume after load either (it rides the same dropped
+      // lease) — but the fee was already billed, so the save must carry enough to settle the
+      // account on restore: `_reportDroppedTowAssists` refunds and reports it on save:loaded.
+      if (entry.towAssist) {
+        out.byId[jobId].towAssist = {
+          missionId: entry.towAssist.missionId || null,
+          feeCr: finite(entry.towAssist.feeCr, 0),
+          targetWorldRecordId: entry.towAssist.targetWorldRecordId || null,
+        };
+      }
     }
     const couriers = this.state.npcJobs && this.state.npcJobs.siteCouriers;
     if (couriers && typeof couriers === 'object' && !Array.isArray(couriers) && Object.keys(couriers).length) {
@@ -5903,6 +6001,9 @@ export const npcJobsRuntime = {
     // Session-transient, same law as aftermathWrecks.lastAmbientNewsAt: a rewind to an earlier
     // save must not inherit a future timestamp that would suppress freight_short news for hours.
     this._shortRunNewsAt = {};
+    // SF-138: dropped paid hires queued by the record walk below are reported once, on
+    // save:loaded — a stale list must never double-refund across two restores.
+    this._pendingTowAssistReports = [];
     forEachLivingWorldActor(this.state, (entity) => {
       if (entity.data && typeof entity.data.jobId === 'string'
         && entity.data.jobId.startsWith('job:')) {
@@ -5941,6 +6042,19 @@ export const npcJobsRuntime = {
         towTargetRef: null,
         towNextScanSimT: 0,
       };
+      // A hire live at save time does not come back: the lease it rode is deliberately dropped
+      // (see serialize). Queue the honest settlement — refund + report on save:loaded, where
+      // every listener owner is already restored.
+      const dropped = saved.towAssist;
+      if (dropped && typeof dropped === 'object') {
+        this._pendingTowAssistReports.push({
+          jobId,
+          missionId: typeof dropped.missionId === 'string' ? dropped.missionId : null,
+          feeCr: finite(Number(dropped.feeCr), 0),
+          targetWorldRecordId: dropped.targetWorldRecordId != null
+            ? dropped.targetWorldRecordId : null,
+        });
+      }
       yield 'npcjobs-job';
     }
     this.state.npcJobs = { byId, siteCouriers: {}, lots: {}, surveyMarks: {}, revision: 0 };

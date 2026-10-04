@@ -650,7 +650,7 @@ test('AO and zero/off bloom skip their pass families without skipping presentati
     'AO off renders the world once and performs no normal override pass');
   assert.equal(renders.length, 2, 'scene plus canonical composite remain');
   assert.deepEqual(graph.diagnostics().passFamilies,
-    { scene: 1, normal: 0, ao: 0, bloom: 0, distortion: 0, composite: 1 });
+    { scene: 1, normal: 0, ao: 0, bloom: 0, distortion: 0, composite: 1, photoGrade: 0 });
 
   renders.length = 0;
   graph.setOptions({ bloom: true, bloomStrength: 0 });

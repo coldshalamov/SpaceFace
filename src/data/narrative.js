@@ -634,3 +634,45 @@ function declinedAll(s, choiceIds) {
 
 // Re-export the condition helpers so the story system can also call them directly if needed.
 export const COND = { hasContraband, inHighSecurity, sectorDwellS, inSector, noActiveMissions, fullLoad, hasCargo, declinedAll };
+
+// ── Character interrupts (SFQ-B068) ─────────────────────────────────────────────────────────
+// Named characters who call the player BECAUSE an observable world/mission fact holds —
+// recognition and local stakes, not lore radio. The story system polls this catalog (same shape
+// as COMMS.traps) and voices through the one-voice arbiter: while a higher-priority voice holds
+// the floor the interruption queues behind it, and is dropped unspoken if it goes stale. Each
+// entry fires at most once per save (seenComms). cond(state) must be a pure read of state.
+// Senders are characters who already speak in COMMS above — no invented roster.
+export const CHARACTER_INTERRUPTS = Object.freeze([
+  {
+    // Recognition: the sealed 47-A sample is aboard and its shelf is still empty.
+    id: 'char_kessler_sample_aboard',
+    sender: 'TYCHO RELAY — PRIVATE QUEUE',
+    text: 'KESSLER: THE ASSAY SAMPLE IS ON YOUR MANIFEST AND THE BAY 7 SHELF IS STILL EMPTY. MOVE IT BEFORE THE VARIANCE FILE GROWS A SECOND PAGE.',
+    ttl: 7,
+    cond: (s) => !!(s.story && (s.story.beatIndex | 0) >= 1) && hasCargo(s, 'cmdty_47a_assay_sample'),
+  },
+  {
+    // Recognition + local stakes: the since-first-launch fragment does not scan in a patrolled sector.
+    id: 'char_kessler_composite_quiet',
+    sender: 'TYCHO RELAY — PRIVATE QUEUE',
+    text: 'KESSLER: THAT COMPOSITE HAS BEEN IN YOUR HOLD SINCE FIRST LAUNCH. IT DOES NOT SCAN HERE EITHER. DO NOT MAKE IT SOMEONE\u2019S PROBLEM.',
+    ttl: 7,
+    cond: (s) => inHighSecurity(s) && sectorDwellS(s) > 45 && hasCargo(s, THREAD_B_FRAGMENT_ID),
+  },
+  {
+    // Local stakes: a full hold in a patrolled sector is the audit machine's favorite shape.
+    id: 'char_vale_full_hold',
+    sender: 'D. VALE / ADMIN / PRIORITY',
+    text: 'VALE: A FULL HOLD THROUGH A PATROLLED SECTOR READS AS A CONFESSION WITH A MANIFEST ATTACHED. SPLIT IT OR SIGN FOR IT.',
+    ttl: 7,
+    cond: (s) => fullLoad(s) && inHighSecurity(s),
+  },
+  {
+    // Recognition: Concord notoriety (the same observable fact that flips the HUD meta-arc early).
+    id: 'char_orrin_notoriety',
+    sender: 'WARRANT ORRIN',
+    text: 'ORRIN: YOUR FILE CROSSED MY DESK TWICE THIS CYCLE. THE INSPECTION LOTTERY IS NOT A LOTTERY ANYMORE.',
+    ttl: 8,
+    cond: (s) => !!(s.factions && s.factions.faction_scn && (s.factions.faction_scn.rep || 0) <= -100),
+  },
+]);

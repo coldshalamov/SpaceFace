@@ -57,6 +57,76 @@ test('a press during cooldown names the wait, once per hold', () => {
   assert.match(texts(events)[1], /^Afterburner cooling — \d+s$/);
 });
 
+test('a disarmed press during cooldown still names the wait', () => {
+  const { sys, events } = flight();
+  sys._prevBoost = false;
+  const hull = ship({
+    energy: 32, _burnT: 0, _burnCdT: 11.5, _burnActive: false, _boostArmed: false,
+    dashImpulse: 80, dashCost: 28,
+  });
+  assert.equal(sys._stepPlayerBoost(hull, true, 1 / 60, { playerId: 1 }), false);
+  assert.equal(hull.boost.energy, 4);
+  assert.deepEqual(texts(events), ['Afterburner cooling — 12s']);
+  assert.equal(events.some((event) => event.name === 'ship:boostPreKick'), true);
+});
+
+test('a dash refusal during cooldown does not add the cooling line', () => {
+  const { sys, events } = flight();
+  sys._prevBoost = false;
+  const hull = ship({
+    energy: 80, _burnT: 0, _burnCdT: 11.5, _burnActive: false,
+    dashImpulse: 80, dashCost: 28, dashCdT: 2,
+  });
+  sys._stepPlayerBoost(hull, true, 1 / 60, { playerId: 1 });
+  sys._stepPlayerBoost(hull, true, 1 / 60, { playerId: 1 });
+  assert.deepEqual(texts(events), ['Boost recharging — 2s']);
+  assert.equal(events.some((event) => event.name === 'ship:boostPreKick'), false);
+});
+
+test('the cooling line arrives once the dash wait is over', () => {
+  const { sys, events } = flight();
+  sys._dashSpokeThisHold = true;
+  const hull = ship({
+    energy: 80, _burnT: 0, _burnCdT: 11.5, _burnActive: false, dashCdT: 0.01,
+  });
+  sys._stepPlayerBoost(hull, true, 0.02, { playerId: 1 });
+  assert.deepEqual(texts(events), ['Afterburner cooling — 12s']);
+});
+
+test('an empty dash during cooldown does not add cooling on the next frame', () => {
+  const { sys, events } = flight();
+  sys._prevBoost = false;
+  const hull = ship({
+    energy: 16, regenRate: 18, _burnT: 0, _burnCdT: 12, _burnActive: false, _boostArmed: false,
+    dashImpulse: 80, dashCost: 28,
+  });
+  sys._stepPlayerBoost(hull, true, 1 / 60, { playerId: 1 });
+  sys._stepPlayerBoost(hull, true, 1 / 60, { playerId: 1 });
+  assert.ok(hull.boost.energy > 1);
+  assert.deepEqual(texts(events), ['Boost empty']);
+});
+
+test('a dash that empties the tank does not add cooling on the next frame', () => {
+  const { sys, events } = flight();
+  sys._prevBoost = false;
+  const hull = ship({
+    energy: 29, regenRate: 40, _burnT: 0, _burnCdT: 12, _burnActive: false,
+    dashImpulse: 80, dashCost: 28,
+  });
+  sys._stepPlayerBoost(hull, true, 1 / 60, { playerId: 1 });
+  sys._stepPlayerBoost(hull, true, 1 / 60, { playerId: 1 });
+  assert.ok(hull.boost.energy > 1);
+  assert.deepEqual(texts(events), ['Boost spent']);
+});
+
+test('a window that ends on an empty tank does not add a second line', () => {
+  const { sys, events } = flight();
+  const hull = ship({ energy: 0.4 });
+  sys._stepPlayerBoost(hull, true, 1 / 60, { playerId: 1 });
+  assert.equal(hull.boost._burnT, 0);
+  assert.deepEqual(texts(events), ['Boost spent']);
+});
+
 test('a window that ends with the key up stays quiet', () => {
   const { sys, events } = flight();
   const hull = ship();

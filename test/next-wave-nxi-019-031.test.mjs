@@ -144,7 +144,7 @@ test('NXI-031: each volatile class speaks its own hazard; superdense never claim
 test('NXI-031: fragile handling shows; an ordinary stack stays silent', () => {
   assert.match(sellDispositionText({}, 'cmdty_art', 2), /fragile — hard impacts crack units/i);
   assert.equal(sellDispositionText({}, 'cmdty_ore_iron', 2), '');
-  const rows = heldShipmentConditionRows({}, 'cmdty_scrap_metal');
+  const rows = heldShipmentConditionRows('cmdty_scrap_metal');
   assert.deepEqual(rows, []);
 });
 

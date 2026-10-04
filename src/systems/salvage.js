@@ -82,6 +82,16 @@ const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 
 const BASE_PRICE_BY_ID = new Map((COMMODITIES || []).map((row) => [row.id, Math.max(0, Math.floor(Number(row.basePrice) || 0))]));
 
+// D130 structural counter (headless/quantum safe): how many entities the fallback
+// salvage-point walk visited on its last call. Runtime-only on the system instance —
+// never on state.salvage, so read-path lookups cannot drift the save payload/goldens.
+function noteSalvagePointScanVisits(sys, visited) {
+  if (!sys || typeof sys !== 'object') return;
+  try {
+    ((sys._rt && typeof sys._rt === 'object') ? sys._rt : (sys._rt = {})).lastPointScanVisits = visited | 0;
+  } catch (_) { /* transient probe field only */ }
+}
+
 export const salvage = {
   name: 'salvage',
 
@@ -233,12 +243,35 @@ export const salvage = {
       const entity = entities.get(point.entityId);
       if (entity && entity.alive !== false) return entity;
     }
-    if (!entities || typeof entities.values !== 'function') return null;
-    for (const entity of entities.values()) {
+    // Salvage-point fallback: bound the walk to the live index buckets that can
+    // carry a salvagePointId — wrecks (husk/debris/cradle), payloads (sort-pocket
+    // core), and fx (POI recovery markers) — or, when the index is not ready, a
+    // single entityList pass. One pass either way: per-type scans in the cold path
+    // would re-walk the same fat list three times.
+    let visited = 0;
+    const consider = (entity) => {
+      visited += 1;
       const data = entity && entity.data;
-      if (entity && entity.alive !== false && data && data.salvagePointId === wantedPointId
-        && (!wantedSourceKey || data.salvageSourceKey === wantedSourceKey)) return entity;
+      return entity && entity.alive !== false && data && data.salvagePointId === wantedPointId
+        && (!wantedSourceKey || data.salvageSourceKey === wantedSourceKey) ? entity : null;
+    };
+    const index = this.state && this.state.entityIndex;
+    const indexReady = !!(index && index.__spacefaceEntityIndexV1 && index.ready === true);
+    let scanLists = indexReady
+      ? [index.wrecks, index.payloads, index.fx].filter((list) => Array.isArray(list))
+      : [];
+    // No-arg bucket: indexedTypeScan falls back to the fat entityList (single pass).
+    if (scanLists.length === 0) scanLists = [indexedTypeScan(this.state)];
+    for (const list of scanLists) {
+      for (let i = 0; i < list.length; i++) {
+        const hit = consider(list[i]);
+        if (hit) {
+          noteSalvagePointScanVisits(this, visited);
+          return hit;
+        }
+      }
     }
+    noteSalvagePointScanVisits(this, visited);
     return null;
   },
 

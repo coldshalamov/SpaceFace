@@ -5466,13 +5466,21 @@ function mergeQueuedJobOptions(queuedJob, request) {
 // lives on each boundary's own userData.
 function carryAdmissionEpochToJoinedJob(joinedJob, request) {
   const incomingEpoch = request && request.options && request.options.admissionEpoch;
-  const target = joinedJob && joinedJob.options;
-  if (incomingEpoch != null && target && Object.isExtensible(target)) {
-    // Never downgrade: a re-enqueued request can carry an epoch minted before the boundary's
-    // latest re-mark (e.g. a byKey-deferred joiner resuming its original bag after the
-    // boundary re-admitted). Writing it would strand the job — the strict-equality commit
-    // guards would drop the live run's only committer.
-    target.admissionEpoch = Math.max(Number(target.admissionEpoch) || 0, incomingEpoch);
+  if (incomingEpoch == null || !joinedJob) return;
+  // An in-flight job's options were rebuilt at admit — the caller's request bag lives on
+  // requestOptions and must carry the same epoch or anything still reading it (a re-enqueued
+  // request, the joiner-mint bookkeeping) sees a stale counter.
+  const bags = joinedJob.requestOptions && joinedJob.requestOptions !== joinedJob.options
+    ? [joinedJob.options, joinedJob.requestOptions]
+    : [joinedJob.options];
+  for (const target of bags) {
+    if (target && Object.isExtensible(target)) {
+      // Never downgrade: a re-enqueued request can carry an epoch minted before the boundary's
+      // latest re-mark (e.g. a byKey-deferred joiner resuming its original bag after the
+      // boundary re-admitted). Writing it would strand the job — the strict-equality commit
+      // guards would drop the live run's only committer.
+      target.admissionEpoch = Math.max(Number(target.admissionEpoch) || 0, incomingEpoch);
+    }
   }
 }
 
@@ -7241,6 +7249,11 @@ function admitNextUpgradeJob(state) {
     && jobStillNeeded(state, owner)
     && (typeof requestedOwnerActive !== 'function' || requestedOwnerActive() === true);
   job.isAdmissionOwnerActive = isOwnerActive;
+  // The rebuild below severs job.options from the caller's request bag (queued jobs shared the
+  // identity — mergeQueuedJobOptions wrote through it). Keep the request bag reachable so a
+  // same-boundary join's carryAdmissionEpochToJoinedJob still lands the newest epoch on the
+  // bag the caller may re-use, not only on the run's internal bag.
+  job.requestOptions = requestedOptions;
   job.options = {
     ...requestedOptions,
     asyncAdmission: job.admission,
@@ -7310,8 +7323,12 @@ function admitNextUpgradeJob(state) {
     return run();
   });
   job.admission.wait(work).then((value) => {
-    assertAuthoredVisualPreparationActive(job.options, 'after-queued-upgrade');
+    // The receipt carries what the run actually produced even when the owner went stale
+    // mid-flight — a joiner parked on this completion must still see the compose it waited
+    // on. The assert below still drives the stale-owner bookkeeping (residency release,
+    // readmission marking) through the catch; it must not erase the delivered result.
     result = value;
+    assertAuthoredVisualPreparationActive(job.options, 'after-queued-upgrade');
     if (diagnostic.endedAtMs == null) {
       diagnostic.status = job.boundary && job.boundary.userData
         ? job.boundary.userData.authoredAssetState || 'completed'

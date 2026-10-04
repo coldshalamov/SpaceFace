@@ -326,8 +326,8 @@ export const STARTER_FIELD_MACHINE = buildKillMachine({
   }],
 });
 
-// CR-FEED — one scrap baler in Sker Haven's open water, south-west of the Bazaar, outside every
-// authored zone and clear of the gate-camp, the Press-Gang seams, and the Skerris Throne.
+// CR-FEED — one scrap baler in Sker Haven's open water, south-south-east of the Bazaar, outside
+// every authored zone and clear of the gate-camp, the Press-Gang seams, and the Skerris Throne.
 // Where the Ceres and Helios mouths drive a directional cone or sheet down a lane, the baler is
 // a compactor: its intake is a WELL centred
 // on the anvil itself, so it gathers loose mass from every bearing and slams it into the press.
@@ -339,7 +339,12 @@ export const SKER_SCRAP_BALER = buildKillMachine({
   hazardType: 'debris',
   placeId: 'place_crusher_module',
   sectorId: SKER_SCRAP_BALER_SECTOR_ID,
-  localPos: { x: -200, z: -1400 },
+  // Nudged 180 WU west of the original (-200,-1400) site: alien-ecology cycle 2 appended
+  // zone_sker_red_snow (center 400,-1800 r=780) and zone_sker_harvest_deep after the baler
+  // was sited, and the old spot sat 59 WU inside Red Snow's rim. Still south-south-east of the
+  // Bazaar, still in open water — >=120 WU clear of every station, gate, zone, field,
+  // hazard, and POI in the sector.
+  localPos: { x: -350, z: -1300 },
   rot: 0.95,
   phaseOffsetS: 6,
   hazardRadius: 130,

@@ -96,7 +96,7 @@ export const CLAIM_DEFENSE_ARRIVAL_R = 720; // reach the physical claim, not mer
 // A physical takeover that collapsed after the warning (aborted encounter, or a re-admission
 // refusal that can never commit) re-arms the fallback owner for this long — long enough to be
 // answered again, never long enough to strand the raid without a resolution owner.
-const CLAIM_DEFENSE_REPRIEVE_S = 45;
+export const CLAIM_DEFENSE_REPRIEVE_S = 45;
 // NXI-139 — re-admission refusals that can never produce a live encounter: the request is
 // malformed, the seeded plan cannot field a squad, the shape/runtime is missing, or no director
 // answers at all. Anything else (wrong sector, a spent spawn budget, a synchronous resolve) is
@@ -1659,6 +1659,7 @@ export const claims = {
           // A resolve/abort emitted synchronously inside the request already moved this raid —
           // the event owns it now, and the stale retry token goes with it.
           this._resumeDefenseIds.delete(defense.id);
+          delete defense.retryAt;
         } else if (verdict && CLAIM_DEFENSE_TERMINAL_REFUSALS.has(verdict.reason)) {
           // NXI-139 — the physical takeover can never commit. Sitting in 'engaged' would leave
           // the raid with neither a physical result nor a fallback owner: no resolution event

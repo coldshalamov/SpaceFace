@@ -71,7 +71,7 @@ export const FOREMAN = freezeDeep({
         packet: packet({ kinetic: 20 }), expose: THROW_WINDOW,
         counter: 'Both flanks rake, but prow and stern stay open — read the sweep and cross behind the charge.' }),
       beat({ id: 'last_charge', title: 'LAST COMMIT', cue: 'maw.last_port',
-        requires: ['drive'], trackTicks: 48, tellTicks: 126, activeTicks: 36, recoverTicks: 216,
+        requires: ['drive'], trackTicks: 36, tellTicks: 126, activeTicks: 36, recoverTicks: 216,
         motion: { forward: 0.9, brake: false },
         shapes: [lane(0, 28, 580, 48, 0, 'target')], packet: packet({ kinetic: 24 }),
         expose: THROW_WINDOW,

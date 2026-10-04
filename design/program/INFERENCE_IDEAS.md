@@ -586,8 +586,6 @@ When a dependency lands, open its eligible child rows here in the same commit. D
 
 | Id | Date | Thread | Paths |
 |---|---|---|---|
-| INST-33 | 2026-09-28 | infer-audio-01 | `src/audio/audioSystem.js`, `src/data/audioRecipes.js` |
-| INST-34 | 2026-09-28 | infer-audio-01 | `src/audio/audioSystem.js`, `src/data/audioRecipes.js` |
 
 ## SHIPPED
 

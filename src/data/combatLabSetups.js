@@ -278,4 +278,20 @@ export const COMBAT_LAB_ARENAS = freezeDeep([
     sectorId: 'sector_tethys_junction',
     spawnPos: { x: -640, z: -1180 },
   },
+  // SWARM-07 B4 — the Mill is an ore seam out in the belt's own territory, far enough
+  // from the Ceres rooms that its dense rock band is the only geometry in frame.
+  {
+    id: 'asteroid_mill',
+    label: 'Asteroid Mill',
+    sectorId: 'sector_ceres_belt',
+    spawnPos: { x: 1400, z: 900 },
+  },
+  // SWARM-07 B4 — the Hive grows in a quiet pocket of Vesta space: no stations, no
+  // gates, nothing living except the room itself.
+  {
+    id: 'the_hive',
+    label: 'The Hive',
+    sectorId: 'sector_vesta_forge',
+    spawnPos: { x: -1100, z: -450 },
+  },
 ]);

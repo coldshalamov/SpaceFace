@@ -91,7 +91,9 @@ test('brood catalog is lawful: mite present, telegraphs shaped, population insid
     for (const part of plan) assert.ok(part.count > 0);
   }
   assert.equal(swarmBroodPopulation(1), SWARM_BROOD_MIN);
-  assert.equal(swarmBroodPopulation(400), SWARM_BROOD_MAX);
+  // The curve tops out exactly at FULL_WAVE — wave 21 is past the boss-wave discount's
+  // reach, so the unbent ceiling reads here. (Wave 400 is a boss wave: 0.4 × 400.)
+  assert.equal(swarmBroodPopulation(21), SWARM_BROOD_MAX);
 });
 
 test('engine census: the cap holds and spawn honours it', () => {
@@ -391,7 +393,7 @@ test('the swarmArena host plans, spawns, steps and clears the tier', () => {
     h.bus.emit('run:waveStarted', { wave: 2 });
     assert.ok(h.state.swarmBrood, 'the engine published its view on the state');
     assert.ok(h.state.swarmBrood.aliveCount >= SWARM_BROOD_MIN);
-    assert.equal(h.state.swarmBrood.schema, 'spaceface.swarmBrood.v2');
+    assert.equal(h.state.swarmBrood.schema, 'spaceface.swarmBrood.v4');
     h.state.simTime += DT;
     swarmArena.update();
     assert.ok(h.state.swarmBrood.aliveCount > 0, 'one tick stepped the flock');

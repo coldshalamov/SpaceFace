@@ -5218,11 +5218,22 @@ export function receiptReportsContextLost(receipt) {
   return false;
 }
 
+// renderer._contextLost is the authored truth for "the GL context is lost or mid-restore".
+// state.render.contextLost mirrors it for readers that can only see state — pipelineReadiness,
+// the runtime witness, and the D48/D111 stall/admission evidence blocks. Every mutation of the
+// private flag writes through this one seam so the published flag cannot silently drift from it
+// (an unwired field that always reports false is worse than an honest absence).
+function publishContextLostState(owner, lost) {
+  owner._contextLost = lost === true;
+  const render = owner && owner.state && owner.state.render;
+  if (render) render.contextLost = owner._contextLost;
+}
+
 export async function runWebGlContextRestoreRebuild(owner, recovery, rebuild) {
   if (!owner || !recovery || typeof rebuild !== 'function') {
     throw new TypeError('context restore rebuild requires owner, recovery state, and rebuild callback');
   }
-  owner._contextLost = true;
+  publishContextLostState(owner, true);
   recovery.pending = true;
   try {
     const receipt = await rebuild();
@@ -5233,7 +5244,7 @@ export async function runWebGlContextRestoreRebuild(owner, recovery, rebuild) {
       throw new Error((lost && lost.reason) || 'context lost during restored GPU rebuild');
     }
   } catch (error) {
-    owner._contextLost = true;
+    publishContextLostState(owner, true);
     recovery.lastError = String(error && error.message ? error.message : error);
     const retries = Number(recovery.retryCount) || 0;
     const canRetry = retries < CONTEXT_RESTORE_MAX_RETRIES
@@ -5264,7 +5275,7 @@ export async function runWebGlContextRestoreRebuild(owner, recovery, rebuild) {
   recovery.retryCount = 0;
   recovery.forcedNewContext = false;
   recovery.terminal = false;
-  owner._contextLost = false;
+  publishContextLostState(owner, false);
   // Authored boundaries that published while pending was set queued their exact-target
   // touch instead of linking into the dead context. Drain them synchronously — before this
   // tick ends and any presented frame can draw those roots cold against the fresh cache.
@@ -8500,7 +8511,7 @@ export const render = {
     // through its fresh property/cache set. Disposing or rebuilding those objects during the context
     // transition is both unnecessary and unsafe: stale handles can be deleted through the new GL
     // context, producing INVALID_OPERATION warnings and avoidable asset churn.
-    this._contextLost = false;
+    publishContextLostState(this, false);
     this._contextRecovery = {
       losses: 0,
       restores: 0,
@@ -8517,7 +8528,7 @@ export const render = {
         if (this._contextLost) return;
         this._contextRestoreReceipt?.cancel?.();
         this._contextRestoreReceipt = null;
-        this._contextLost = true;
+        publishContextLostState(this, true);
         this._sessionLiveSectorCookedId = null;
         if (state.render) state.render.sessionLiveSectorCookedId = null;
         this._authoredPreparationEpoch++;
@@ -15546,12 +15557,16 @@ export const render = {
     if (!lifecycle) return false;
     const destroyed = lifecycle.destroy();
     if (!destroyed && this._rendererResourcesDisposed === true) return false;
-    for (; this._despawnDisposeHead < this._despawnDisposeQueue.length; this._despawnDisposeHead++) {
-      const queued = this._despawnDisposeQueue[this._despawnDisposeHead];
-      if (queued && queued.parent == null) disposeObject(queued);
+    // The deferred-corpse queue only exists once init reaches its allocation — a renderer torn
+    // down mid-init (or a facade owner in tests) must still destroy cleanly.
+    if (Array.isArray(this._despawnDisposeQueue)) {
+      for (; this._despawnDisposeHead < this._despawnDisposeQueue.length; this._despawnDisposeHead++) {
+        const queued = this._despawnDisposeQueue[this._despawnDisposeHead];
+        if (queued && queued.parent == null) disposeObject(queued);
+      }
+      this._despawnDisposeQueue.length = 0;
+      this._despawnDisposeHead = 0;
     }
-    this._despawnDisposeQueue.length = 0;
-    this._despawnDisposeHead = 0;
     disposeRendererOwnedResources(this, { contextLost: this._contextLost === true });
     globalShipMicroMotion.unbindEvents();
     globalAsteroidMotion.unbindEvents();
@@ -22309,11 +22324,9 @@ export const render = {
     const capturedPass = route === POST_PROCESS_ROUTE.GRAPH ? (this._renderGraph || null)
       : route === POST_PROCESS_ROUTE.BLOOM ? (this.bloom || null)
         : null;
-    if ((route === POST_PROCESS_ROUTE.GRAPH || route === POST_PROCESS_ROUTE.BLOOM)
-        && capturedPass === null
-        && this._selectPostRoute() !== POST_PROCESS_ROUTE.NATIVE) {
-      return Promise.reject(abortError());
-    }
+    // A sibling post route staying live while the captured one was disposed must not abort the
+    // warm either: the native screen-target compile still populates the shared program cache
+    // the surviving route renders from (D102).
     const isActive = options && options.isActive;
     const ownerActive = () => (
       this._rendererResourcesDisposed !== true && !!this.renderer

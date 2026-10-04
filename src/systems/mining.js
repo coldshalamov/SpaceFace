@@ -36,6 +36,7 @@ import {
   pickupAcceptanceRetryBlocks,
   resolvePickupAcceptance,
   setPickupAcceptanceRetry,
+  writePickupRemainder,
 } from '../core/pickupAcceptance.js';
 import { presentationAllowsPlayerFacingAction } from '../core/presentationAdmission.js';
 import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
@@ -94,6 +95,24 @@ export const BULK_CORE_RADIUS_FRAC = 0.58; // parent radii — reads as oversize
 export const BULK_CORE_MASS_FRAC = 0.6;    // parent mass; strictly lighter than the rock you just
                                            // tethered, so this cannot load a line harder than the
                                            // parent already could (Massline stays unbreakable).
+const BEAM_REFUSAL_TEXT = Object.freeze({
+  'no-target': 'The beam has nothing to take',
+  'rock-mined-out': 'That rock is mined out',
+  'worked-out': 'Nothing left to take',
+  'not-alive': 'The beam lost that target',
+  'no-cuttable-component': 'Nothing to cut on that',
+  'wrong-type': 'The beam won\'t take that',
+  'mined-out': 'Nothing left to take',
+  'beam-locked': 'That body is locked to the site',
+  'hull-intact': 'Nothing to repair there',
+  'insufficient-resources': 'Need scrap or credits to weld',
+  'invalid-receiver': 'Can\'t send the load there',
+  'no-cargo': 'No cargo to transfer',
+  'presentation-unavailable': 'The beam won\'t work that',
+  'operation-unavailable': 'That job isn\'t open',
+  'operation-no-progress': 'The beam isn\'t moving that',
+});
+
 const PICKUP_RADIUS = 2.2;      // wu collectible radius
 const PICKUP_COLLECT_PAD = 14;  // ship-radius pad for scoop contact (generous so flybys don't miss)
 const PICKUP_TTL = 90;          // s before an uncollected pickup despawns
@@ -265,6 +284,11 @@ export const mining = {
     const player = state.entities.get(state.playerId);
     const firing = !!player && player.alive && !player.flags.docked
       && state.mode === 'flight' && state.input.fireGroup === 2;
+    if (!firing) {
+      this._beamRefusalTold = null;
+      this._beamSpentThisHold = false;
+      this._emptyBeamTicks = 0;
+    }
 
     let beam = null;
     if (player) beam = this._beamRuntime(player);
@@ -352,9 +376,25 @@ export const mining = {
     return beam;
   },
 
+  _noteBeamRefusal(reason) {
+    const text = BEAM_REFUSAL_TEXT[reason];
+    if (!text || !this.bus || this._beamRefusalTold === reason) return;
+    this._beamRefusalTold = reason;
+    this.bus.emit('toast', { text, kind: 'warn', ttl: 1.6 });
+  },
+
   _runPlayerBeam(player, beam, dt, state) {
     const target = this._acquireTarget(player, beam.range, state);
-    if (!target) { this._stopBeam(); return; }
+    if (!target) {
+      this._stopBeam();
+      if (!this._beamSpentThisHold) {
+        this._emptyBeamTicks = (this._emptyBeamTicks || 0) + 1;
+        if (this._emptyBeamTicks >= 2) this._noteBeamRefusal('no-target');
+      }
+      return;
+    }
+    this._emptyBeamTicks = 0;
+    this._beamSpentThisHold = false;
 
     // F12: the same beam, aimed at a jettisoned cargo pod, cracks it open — it never reaches the
     // verb resolver (pods are not mined), never consumes ammo, and never gains a lockout.
@@ -392,6 +432,7 @@ export const mining = {
 
     if (!resolved.ok) {
       this.bus.emit('beam:denied', { minerId: player.id, targetId: target.id, verb: resolved.verb, reason: resolved.reason });
+      this._noteBeamRefusal(resolved.reason);
       return;
     }
 
@@ -438,6 +479,7 @@ export const mining = {
         minerId: player.id, targetId: target.id, verb: component && component.verb || 'extract',
         reason: 'presentation-unavailable',
       });
+      this._noteBeamRefusal('presentation-unavailable');
       return { ok: false, duplicate: false, reason: 'presentation-unavailable', moved: 0 };
     }
     // A completed component advertises no verb or operation (its authored work is a durable
@@ -454,6 +496,7 @@ export const mining = {
         verb: component.verb || 'extract',
         reason,
       });
+      this._noteBeamRefusal(reason);
       return { ok: false, duplicate: false, reason, moved: 0 };
     }
     if (!completedOffer && (!component || !component.verb || !component.operationId)
@@ -464,6 +507,7 @@ export const mining = {
         verb: component && component.verb || 'extract',
         reason: 'operation-unavailable',
       });
+      this._noteBeamRefusal('operation-unavailable');
       return { ok: false, reason: 'operation-unavailable' };
     }
 
@@ -496,6 +540,7 @@ export const mining = {
         verb: component.verb,
         reason: result.reason || 'operation-no-progress',
       });
+      this._noteBeamRefusal(result.reason || 'operation-no-progress');
       return result;
     }
 
@@ -975,6 +1020,10 @@ export const mining = {
       this.bus.emit('asteroid:destroyed', { id: ast.id, typeId: d.typeId || (def && def.id), pos: { x: ast.pos.x, z: ast.pos.z } });
       d.respawnAt = state.simTime + ((def && def.respawnSec) || 90); // world reads this to repopulate
       ast.alive = false;
+      if (minerId === state.playerId && this._lockTargetId === ast.id) {
+        this._beamSpentThisHold = true;
+        this._noteBeamRefusal('rock-mined-out');
+      }
       d.depletedAtT = Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0);
     }
     persistTouchedResourceBody(state, ast);
@@ -1389,8 +1438,10 @@ export const mining = {
     const data = payloadEntity.data || {};
     let collectedAny = false;
     if (data.salvagePool && typeof data.salvagePool === 'object' && Object.keys(data.salvagePool).length > 0) {
-      const pool = data.salvagePool;
-      for (const [commodityId, qty] of Object.entries(pool)) {
+      // The drain writes through data.salvagePool itself each pass — the shared remainder
+      // writer replaces a frozen pool object on data, so a reference captured before the
+      // loop could go stale mid-manifest.
+      for (const [commodityId, qty] of Object.entries(data.salvagePool)) {
         const requested = finiteWholePickupAmount(qty);
         if (requested <= 0) continue;
         const eventPayload = {
@@ -1410,11 +1461,38 @@ export const mining = {
         const acceptance = resolvePickupAcceptance(eventPayload, requested);
         if (acceptance.accepted > 0) {
           collectedAny = true;
-          pool[commodityId] = acceptance.rejected;
-          if (acceptance.rejected <= 0) delete pool[commodityId];
+          if (commodityId === data.commodityId && !Object.isFrozen(data)
+            && finiteWholePickupAmount(data.amount) === requested) {
+            // The pool entry IS the pod's own quantity stamp — the jettisoned-cargo
+            // contract stamps amount and salvagePool[commodityId] at the same figure.
+            // Route the remainder through the shared writer so data.amount follows the
+            // drain with every other mirror (custody, rich lot). A pool-only write
+            // leaves amount stale, and the volatile-vent reader would then size a
+            // split off units already delivered — a net unit mint. A frozen pod record
+            // cannot take a remainder at all, so it keeps the direct pool write too.
+            writePickupRemainder(data, acceptance.rejected);
+          } else {
+            // Manifest entries data.amount does not track — multi-commodity pools
+            // carry no pod amount at all, and writePickupRemainder would mint one and
+            // skip the drain — keep the direct pool write, replacing a frozen pool on
+            // data under the remainder writer's own convention.
+            const live = data.salvagePool;
+            if (live && typeof live === 'object') {
+              if (Object.isFrozen(live)) {
+                const next = { ...live };
+                if (acceptance.rejected > 0) next[commodityId] = acceptance.rejected;
+                else delete next[commodityId];
+                data.salvagePool = next;
+              } else {
+                live[commodityId] = acceptance.rejected;
+                if (acceptance.rejected <= 0) delete live[commodityId];
+              }
+            }
+          }
         }
       }
-      if (Object.keys(pool).length === 0) {
+      const remainingPool = data.salvagePool && typeof data.salvagePool === 'object' ? data.salvagePool : {};
+      if (Object.keys(remainingPool).length === 0) {
         payloadEntity.alive = false;
         clearPickupAcceptanceRetry(data);
       }
@@ -1653,7 +1731,7 @@ export const mining = {
     // Consume the pod before spawning so no observer can see the split source alive twice.
     pod.alive = false;
     data.salvagePool = {};
-    data.amount = 0;
+    writePickupRemainder(data, 0);
     // Site bookkeeping: the pool moved onto the spilled pickups; the durable record reads
     // empty until the payload capture folds live spills back into remainingPool.
     this._syncWorldSiteRemainingPool(data);
@@ -1690,6 +1768,10 @@ export const mining = {
         d.salvagePool = {};
         d._salvaged = true;
         wreck.alive = false;
+        if (source && (source.extracted || !(source.remainingQty > 0))) {
+          this._beamSpentThisHold = true;
+          this._noteBeamRefusal('worked-out');
+        }
         this._stopBeam();
         return;
       }
@@ -1768,6 +1850,10 @@ export const mining = {
       // here means the player did recover cargo (vs an untouched wreck despawning).
       d._salvaged = true;
       wreck.alive = false;
+      if (remaining <= 0) {
+        this._beamSpentThisHold = true;
+        this._noteBeamRefusal('worked-out');
+      }
       this._stopBeam();
     }
   },
@@ -2319,10 +2405,19 @@ export const mining = {
         wallet: pickup.data.wallet || null,
       } : {}),
       ...(pickup.data.richLotSource ? {
-        richLotSource: {
-          ...pickup.data.richLotSource,
-          richQty: Math.min(requested, Math.max(0, Math.floor(Number(pickup.data.richLotSource.richQty) || 0))),
-        },
+        richLotSource: (() => {
+          const source = pickup.data.richLotSource;
+          const stamped = { ...source };
+          // Clamp only the provenance quantity fields the source actually carries.
+          // Vesta/Pallas cache lots stamp lotQty alone — injecting richQty: 0 would
+          // shadow lotQty in cargo's reader (richQty != null wins) and silently drop
+          // the lot's provenance on the mining collection path.
+          for (const key of ['richQty', 'lotQty']) {
+            if (stamped[key] == null) continue;
+            stamped[key] = Math.min(requested, Math.max(0, Math.floor(Number(stamped[key]) || 0)));
+          }
+          return stamped;
+        })(),
       } : {}),
       ...(pickup.data.worldSiteId ? {
         worldSiteId: pickup.data.worldSiteId,
@@ -2338,7 +2433,7 @@ export const mining = {
       pickup.alive = false;
       clearPickupAcceptanceRetry(pickup.data);
     } else {
-      if (acceptance.accepted > 0) pickup.data.amount = acceptance.rejected;
+      if (acceptance.accepted > 0) writePickupRemainder(pickup.data, acceptance.rejected);
       const ownerRetryAt = Number(payload.acceptanceRetryAt);
       setPickupAcceptanceRetry(
         pickup.data,
