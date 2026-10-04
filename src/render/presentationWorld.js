@@ -153,7 +153,11 @@ export function createPresentationWorld(options = {}) {
   // O(1) count of slots with any PRESENTATION_DIRTY bit. The zero-dirty query
   // retain (presentationQueries) uses this to skip the cull walk on quiet ticks
   // without scanning masks.
+  // dirtySlots is a dense parallel list (length == dirtyCount) so pose-dirty
+  // retain walks only dirty rows instead of scanning every active slot's mask.
   let dirtyCount = 0;
+  let dirtySlots = new Uint32Array(0);
+  let dirtyPositions = new Int32Array(0);
 
   const world = {
     capacity: 0,
@@ -222,6 +226,7 @@ export function createPresentationWorld(options = {}) {
     world.typeCodes = growTyped(world.typeCodes, Uint16Array, capacity);
     world.flags = growTyped(world.flags, Uint8Array, capacity);
     world.dirtyMasks = growTyped(world.dirtyMasks, Uint8Array, capacity);
+    dirtyPositions = growTyped(dirtyPositions, Int32Array, capacity, INVALID_INDEX);
     world.radii = growTyped(world.radii, Float64Array, capacity);
     world.prevX = growTyped(world.prevX, Float64Array, capacity);
     world.prevY = growTyped(world.prevY, Float64Array, capacity);
@@ -501,20 +506,47 @@ export function createPresentationWorld(options = {}) {
     return changed;
   }
 
+  function ensureDirtySlotsCapacity(needed) {
+    if (needed <= dirtySlots.length) return;
+    let cap = dirtySlots.length || 16;
+    while (cap < needed) cap <<= 1;
+    dirtySlots = growTyped(dirtySlots, Uint32Array, cap);
+  }
+
+  function noteDirtySlot(slot) {
+    ensureDirtySlotsCapacity(dirtyCount + 1);
+    dirtyPositions[slot] = dirtyCount;
+    dirtySlots[dirtyCount++] = slot;
+  }
+
+  function noteCleanSlot(slot) {
+    const position = dirtyPositions[slot];
+    if (position < 0 || position >= dirtyCount) {
+      dirtyPositions[slot] = INVALID_INDEX;
+      return;
+    }
+    const last = dirtyCount - 1;
+    const lastSlot = dirtySlots[last];
+    dirtySlots[position] = lastSlot;
+    dirtyPositions[lastSlot] = position;
+    dirtyPositions[slot] = INVALID_INDEX;
+    dirtyCount = last;
+  }
+
   function markDirtyBits(slot, bits) {
     if (!bits) return;
     const prev = world.dirtyMasks[slot];
     const next = prev | bits;
     if (prev === next) return;
-    if (prev === 0) dirtyCount++;
+    if (prev === 0) noteDirtySlot(slot);
     world.dirtyMasks[slot] = next;
   }
 
   function writeDirtyMask(slot, next) {
     const prev = world.dirtyMasks[slot];
     if (prev === next) return;
-    if (prev === 0 && next !== 0) dirtyCount++;
-    else if (prev !== 0 && next === 0) dirtyCount--;
+    if (prev === 0 && next !== 0) noteDirtySlot(slot);
+    else if (prev !== 0 && next === 0) noteCleanSlot(slot);
     world.dirtyMasks[slot] = next;
   }
 
@@ -890,6 +922,11 @@ export function createPresentationWorld(options = {}) {
 
   Object.defineProperty(world, 'dirtyCount', {
     get() { return dirtyCount; },
+    enumerable: true,
+    configurable: true,
+  });
+  Object.defineProperty(world, 'dirtySlots', {
+    get() { return dirtySlots; },
     enumerable: true,
     configurable: true,
   });
