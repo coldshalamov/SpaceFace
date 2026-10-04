@@ -1,6 +1,40 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Active work log — 4 October 2026
+
+Read IMPLEMENTATION.md and this log before work. If a chunk is active, continue it
+through its stated outcome before selecting another. Small commits record progress
+inside a chunk; they are not chunk completion. Do not restart planning or abandon an
+unfinished owner because a reminder or another packet arrives.
+
+| Current chunk | Owner | Verified evidence / boundary | Next operation |
+|---|---|---|---|
+| Usable Ceres workfleet delivery, including disturbances and Save/Continue | Ceres simulation and receiver owner | Exact 935-input receiver/recovery composition secured at 57,710 and actual Continue at 57,950; 77 focused cases pass. Seed 47 short commissioning and moving-load rendezvous controls remain red. No full visual/GPU acceptance | Publish exact reviewed receiver packet, then finish remaining disturbance/moving-load and actual visual integration gates without widening physics or timing |
+| Finished Mite asset and gameplay consumer | Mite art and presentation owners | Earlier M7 and original R4 sources/reviews are preserved; shown art remains user-rejected. A Blender study is not a finished asset | Continue primary anatomy redesign, then authored LOD, truthful collision/motion and actual game-camera consumer proof before calling the chunk complete |
+| Authored Latch tender with truthful guidance and normal recovery loop | Latch implementation/model owner | Current work remains review WIP; a dead-actor commit defect is under correction. No final model or end-to-end acceptance claim | Finish actor-lifetime correction, authored tender, guidance, dock/return/recovery and Save/Continue as one usable feature |
+| Native/master compatibility for the active delivery chunk | Native save/integration owner | Frozen subset has115 scoped passes, six reload points and20 repeats; lifetime gate open. Review-only until next composed cohort passes | Reconcile pinned master and receiver source, close exact lifetime gate, then verify before runtime activation |
+
+Publication checkpoint: draft PR #221 contains the original ZIP/all 103 files, original
+twenty-concept scope, editable rejected-art handoffs, current runtime WIP and review
+patches. Commit 1c927e55 is the prior verified checkpoint; the current follow-up sequence is:
+- Splitter affordability `f879ebe5`, resident package/evidence `51afa780`
+- Original frozen R4 art archive `91dc5b11`, native compatibility review `127a445f`
+- Receiver/recovery runtime `beddc391`, exact current evidence `f54d10be`
+
+The original R4 render_prototype.py was recovered byte-for-byte from the sealed
+source ZIP because the active local path had advanced; its frozen manifest hash
+was preserved. No later R13 source was substituted. Normal receiver success above is bound
+to source closure 8f395671706bfaf8fdb1320541e47c58b19d043d7f8dc1770fe5bc8dc0b536a5;
+it supersedes the older normal failure only for that exact repaired composition.
+
+All 20 original SF20 concepts remain the authorized scope and are not completed.
+Continue original Pip/Spanner when its chunk is due; optional Playfield First v2 is
+unadopted reference, not a blocker or replacement. Do not preempt active Latch for it.
+Publication and draft-branch master synchronization are authorized; no merge into
+master or deployment. Reconcile exact owners before applying newer source. Preserve
+historical technical evidence below without restamping it as current acceptance.
+
 ## Owner visual verdict — 3 October 2026, 23:21 UTC
 
 The owner rejected the quality of the shown models again. Any earlier agent static/LOD pass below
