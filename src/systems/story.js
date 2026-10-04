@@ -37,6 +37,7 @@ import {
   COMMS, GRAFFITI, BEAT_CONTENT, POST_SPINE_BEAT_CONTENT, KURTZ,
   COLD_START, ENDING_AIRLOCK_GRAFFITI, ENDING_RETURN_ACK, ENDING_STATION_ACK,
   HELIOS_BAY7, STORY_ENTRY_CONTACT, THREAD_B_FRAGMENT_ID,
+  CHARACTER_INTERRUPTS,
 } from '../data/narrative.js';
 import {
   ORRIN_WITNESS_CONTACT_ID,
@@ -123,6 +124,9 @@ const AMBIENT_MAX_S = 90;
 // Phase 3 ambient cools to one every 2–4 min (the channel has gone quiet; the system stopped needing to talk).
 const AMBIENT_MIN_S_P3 = 120;
 const AMBIENT_MAX_S_P3 = 240;
+// Character interrupts (SFQ-B068) poll at this cadence; conds are steady-state observable facts,
+// so a poll that holds off simply catches the same fact on a later tick (eligibility survives).
+const CHARACTER_INTERRUPT_POLL_S = 5;
 
 export const story = {
   name: 'story',
@@ -287,6 +291,10 @@ export const story = {
       s.trapNextAtS = (state.simTime || 0) + 5;
       this._fireEligibleTraps();
     }
+    if ((s.charNextAtS || 0) <= (state.simTime || 0)) {
+      s.charNextAtS = (state.simTime || 0) + CHARACTER_INTERRUPT_POLL_S;
+      this._fireCharacterInterrupts();
+    }
     void dt;
 
     // Phase-2 early trigger (HUD-META-ARC note #2): the manifest self-correction should also begin
@@ -440,6 +448,34 @@ export const story = {
       this._fireComms({
         id: key, sender: def.sender, text: def.text, category: 'trap', ttl: 8, persist: false, note: def.note,
       });
+    }
+  },
+
+  // SFQ-B068 — character interrupts. A named character calls the player because an observable
+  // world/mission fact holds (def.cond over state — cargo aboard, sector security, dwell, rep).
+  // Hold-off law mirrors the rest of the overlay: while the tutorial owns the one-voice channel,
+  // or a fight owns the narrative calm window, the poll holds off WITHOUT marking the line seen,
+  // so the same fact can earn the line on a later tick (re-queue by poll, never by wall clock).
+  // Once voiced, the line routes through _fireComms → helpers.voice, so the LIVE voice arbiter —
+  // not this system — decides whether it takes the floor or queues behind a higher-priority voice
+  // (danger > story). At most one character interrupt per poll keeps voices from stacking.
+  _fireCharacterInterrupts() {
+    const state = this.state;
+    const s = state.story;
+    if (!s) return;
+    if (this._onboardingActive() && this._recentTutorialLine(8)) return;
+    if ((Number(state.simTime) || 0) < (s.narrativeCalmUntilS || 0)) return;
+    for (const def of CHARACTER_INTERRUPTS) {
+      if (s.seenComms && s.seenComms[def.id]) continue;
+      let ok = false;
+      try { ok = !!def.cond(state); } catch (e) { ok = false; }
+      if (!ok) continue;
+      s.seenComms[def.id] = true;
+      this._fireComms({
+        id: def.id, sender: def.sender, text: def.text,
+        category: 'personal', ttl: def.ttl || 7, persist: false,
+      });
+      return; // one character voice per poll; the arbiter owns the rest of the ordering
     }
   },
 
@@ -2126,6 +2162,7 @@ export const story = {
       s.narrativeCalmUntilS = 0;
       s.ambientNextAtS = 0;
       s.trapNextAtS = (state.simTime || 0) + 5;
+      s.charNextAtS = (state.simTime || 0) + CHARACTER_INTERRUPT_POLL_S;
       s.valeMilestones = { conflictFlip: null };
       s.conflictReaction = normalizeConflictReactionState();
       s.verge = createVergeStoryState();
