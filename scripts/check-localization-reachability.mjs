@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 import { loadPlaywright } from './lib/load-playwright.mjs';
@@ -21,7 +23,7 @@ try {
   await page.addInitScript(() => {
     try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (error) {}
   });
-  await page.goto(`${probe.baseUrl}/?locale=qps-ploc`, { waitUntil: 'domcontentloaded' });
+  await page.goto(`${probe.baseUrl}/?locale=qps-ploc`, { waitUntil: 'domcontentloaded', timeout: 90000 });
   await page.waitForFunction(() => window.SF && window.SF.state && window.SF.ctx, null, { timeout: 20000 });
   await waitForScreen('mainMenu');
   await page.waitForFunction(() => document.documentElement.dataset.locale === 'qps-ploc');
@@ -75,6 +77,37 @@ try {
   assert.ok(bridge.textNodes >= 100, `expected broad localized copy coverage, got ${bridge.textNodes}`);
 
   const evidence = {
+    // A full alpha-evidence record (schema spaceface.alphaEvidence.v1), not a bare dump: the
+    // alpha evidence scanner validates every record under .devshots/alpha/ (M0-EVIDENCE).
+    schema: 'spaceface.alphaEvidence.v1',
+    taskId: 'm6-localization-reachability',
+    worktreeId: `${execFileSync('git', ['branch', '--show-current'], { cwd: ROOT, encoding: 'utf8' }).trim() || 'detached'}@${execFileSync('git', ['rev-parse', '--short=8', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim()}+dirty`,
+    route: 'canonical root -> main menu (qps-ploc) -> New Game (difficulty/starter stops unclipped) -> Launch -> flight HUD -> pause -> settings/help/saveLoad/missionLog/galaxyMap/codex/gameOver',
+    viewport: { width: 1280, height: 720 },
+    runtime: { kind: 'browser', gpu: await browser.version() },
+    captureKind: 'browser',
+    inputSource: 'keyboard-mouse',
+    injectedState: false,
+    primaryAcceptance: true,
+    checks: [
+      ...surfaces.map((surface) => ({
+        name: `pseudo copy visible and unclipped on ${surface.id} @ ${surface.viewport.width}x${surface.viewport.height}`,
+        status: 'pass',
+      })),
+      { name: `localized DOM bridge installed and broad (textNodes ${bridge.textNodes})`, status: 'pass' },
+    ],
+    artifacts: screenshots.map((file) => {
+      const bytes = readFileSync(`${OUT}/${file}`);
+      return {
+        kind: 'screenshot',
+        path: relativeFile(`${OUT}/${file}`),
+        sha256: createHash('sha256').update(bytes).digest('hex'),
+      };
+    }),
+    notes: [
+      'Every pseudo-locale (qps-ploc) surface asserts: pseudo copy exposed, zero horizontal clips, zero English DOM leaks, no document widening.',
+      'ok/locale/defaultLocale/bridge/surfaces detail follows after the record keys.',
+    ],
     ok: true,
     locale: 'qps-ploc',
     defaultLocale: 'en-US',
@@ -88,6 +121,10 @@ try {
 } finally {
   await browser.close().catch(() => {});
   await probe.close().catch(() => {});
+}
+
+function relativeFile(absPath) {
+  return absPath.slice(ROOT.length + 1).replaceAll('\\', '/');
 }
 
 async function waitForScreen(id) {

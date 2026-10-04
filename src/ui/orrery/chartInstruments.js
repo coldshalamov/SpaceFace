@@ -849,14 +849,17 @@ export function createZoomLever(group) {
     if (!(gr.width > 0) || !words.length) return;
     const pad = 16;
     const H = gr.height + 14;
-    face.setAttribute('viewBox', `${-pad} 0 ${f2(gr.width + pad * 2)} ${f2(H)}`);
+    // a grown locale keeps the same cradle, but the svg's own box and its right tail stay inside
+    // the group's box — a drawn bleed past the box is exactly what a horizontal-overflow gate sees
+    const tight = doc.documentElement.getAttribute('data-locale') !== 'en-US';
+    face.setAttribute('viewBox', `${-pad} 0 ${f2(gr.width + (tight ? pad : pad * 2))} ${f2(H)}`);
     face.style.left = `${-pad}px`;
-    face.style.width = `${gr.width + pad * 2}px`;
+    face.style.width = `${gr.width + (tight ? pad : pad * 2)}px`;
     face.style.height = `${H}px`;
     centers = words.map((b) => { const r = b.getBoundingClientRect(); return r.left - gr.left + r.width / 2; });
     ruleY = gr.height + 5;
     x0 = -pad + 2;
-    x1 = gr.width + pad - 2;
+    x1 = tight ? gr.width - 2 : gr.width + pad - 2;
     base.textContent = '';
     base.appendChild(svg('path', { d: `M ${f2(x0)} ${f2(ruleY)} L ${f2(x1)} ${f2(ruleY)}`, class: 'orr-band', style: '--orr-w-band:8px; --orr-band-a:.34' }));
     base.appendChild(svg('path', { d: `M ${f2(x0)} ${f2(ruleY)} L ${f2(x1)} ${f2(ruleY)}`, class: 'orr-edge', style: '--orr-edge-a:.62' }));

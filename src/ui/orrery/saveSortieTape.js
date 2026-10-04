@@ -162,8 +162,23 @@ export function createSortieTape({ host, onScrub = null } = {}) {
     playedBand.setAttribute('stroke-width', f(6 * k));
     if (empty()) {
       for (const p of [playedBloom, playedBand, playedCore]) p.setAttribute('d', 'M 0 0');
-      staticG.appendChild(Object.assign(svg('text', { x: f((x0 + x1) / 2), y: bandTop - 12, 'text-anchor': 'middle', class: 'orr-tape__empty' }),
-        { textContent: 'NO FLIGHT RECORD FOR THIS SORTIE' }));
+      const emptyText = Object.assign(svg('text', { x: f((x0 + x1) / 2), y: bandTop - 12, 'text-anchor': 'middle', class: 'orr-tape__empty' }),
+        { textContent: 'NO FLIGHT RECORD FOR THIS SORTIE' });
+      staticG.appendChild(emptyText);
+      // a grown locale's label lands after the text is first drawn — bind the drawn text to the
+      // band's own ends and re-bind whenever its copy is rewritten
+      const capEmptyText = () => {
+        const maxW = Math.max(120, x1 - x0);
+        const drawn = emptyText.getComputedTextLength ? emptyText.getComputedTextLength() : 0;
+        if (drawn > maxW) emptyText.setAttribute('textLength', f(maxW));
+        else emptyText.removeAttribute('textLength');
+      };
+      capEmptyText();
+      if (typeof MutationObserver === 'function') {
+        if (emptyTextObs) emptyTextObs.disconnect();
+        emptyTextObs = new MutationObserver(capEmptyText);
+        emptyTextObs.observe(emptyText, { characterData: true, childList: true, subtree: true });
+      }
       read.hidden = true;
       host.setAttribute('aria-disabled', 'true');
       stopsLayer.textContent = '';
@@ -358,6 +373,7 @@ export function createSortieTape({ host, onScrub = null } = {}) {
   host.addEventListener('click', onClick);
   host.addEventListener('keydown', onKey);
   let ro = null;
+  let emptyTextObs = null;
   if (typeof ResizeObserver === 'function') { ro = new ResizeObserver(() => draw()); ro.observe(host); }
 
   return {
@@ -374,6 +390,7 @@ export function createSortieTape({ host, onScrub = null } = {}) {
     layout: draw,
     dispose() {
       if (ro) ro.disconnect();
+      if (emptyTextObs) { emptyTextObs.disconnect(); emptyTextObs = null; }
       host.removeEventListener('pointerdown', onDown);
       host.removeEventListener('pointermove', onMove);
       host.removeEventListener('pointerup', onUp);
