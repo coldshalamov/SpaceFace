@@ -100,7 +100,9 @@ try {
       }
       return emit(name, payload);
     };
-    if (s.onboarding) s.onboarding.startedAt = (Number(s.simTime) || 0) - 1000;
+    // A pilot at Tethys is past the tutorial: the arbiter lets ONLY tutorial and danger lines hold the floor while onboarding is
+    // active, and a scripted pilot never finishes it. Mark it finished (and the opening window long gone), as a real run would.
+    if (s.onboarding) { s.onboarding.startedAt = (Number(s.simTime) || 0) - 1000; s.onboarding.finished = true; s.onboarding.active = false; }
   });
   await page.waitForTimeout(3000);
   const farParts = await page.evaluate(() => window.SF.state.entityList.filter(e => e?.alive && e.data?.rubricPart).length);
@@ -236,7 +238,7 @@ try {
       const arb = window.SF.registry.get('voiceArbiter'), q = arb && arb.queue, now = arb && arb._now ? arb._now() : null;
       const row = e => e && ({ id: e.id, channel: e.channel, priority: e.priority, text: String(e.text).slice(0, 60), ttlMs: e.ttlMs, enqueuedAt: e.enqueuedAt, expireAt: e.expireAt });
       return { toasts: window.__toasts.slice(-10), surfaced: window.__surfaced.slice(-10), arbiterNowMs: now, active: row(q && q.active), queued: q && q._items ? q._items.map(row) : null,
-        onboarding: window.SF.state.onboarding ? JSON.parse(JSON.stringify(window.SF.state.onboarding)).constructor === Object ? { startedAt: window.SF.state.onboarding.startedAt, teaching: window.SF.state.onboarding.teaching ?? null, step: window.SF.state.onboarding.step ?? null } : null : null };
+        onboarding: window.SF.state.onboarding ? { startedAt: window.SF.state.onboarding.startedAt, active: window.SF.state.onboarding.active, finished: window.SF.state.onboarding.finished } : null };
     });
     throw new Error('the hello never reached the screen within 45 simulated seconds of the real scan');
   }
