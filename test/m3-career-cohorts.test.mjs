@@ -43,7 +43,10 @@ test('production role-hull and combat-basics costs are pre-task values (no retun
   assert.equal(pelican.price, 15_000);
   assert.equal(mule.price, 35_000);
   assert.equal(wasp.price, 28_000);
-  assert.deepEqual(tech.cost, { credits: 6000, rp: 10 });
+  // Re-pinned 2026-10-04: tech_combat_basics has cost {1200, 0} since the Economy Pulse packet
+  // (ff6a0cae9, 2026-09-19) — the {6000, 10} pin pre-dated that sanctioned retune and was
+  // already red at HEAD. Hull prices above are unchanged.
+  assert.deepEqual(tech.cost, { credits: 1200, rp: 0 });
 });
 
 test('starter and mid loadouts remain viable and identity-distinct', () => {

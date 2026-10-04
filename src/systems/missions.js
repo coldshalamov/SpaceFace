@@ -2824,6 +2824,22 @@ export const missions = {
       const offer = this._rollOffer(typeId, info, rng, epoch, i, { anchor: anchored });
       if (offer) offers.push(offer);
     }
+    // D85: a bounty-capable board that is not a dedicated writ wall can still open an epoch whose
+    // rolled writs all landed above the Neutral band — rep-gating a sub-Accepted operator out of
+    // every bounty on the board (the held-out hunter seeds died exactly here). Pin one entry
+    // writ through the same anchored-roll clamp the writ walls use. It rides the head so the
+    // bulk-haul/intro unshifts below cannot truncate it off a full board, it never stacks behind
+    // a rolled low-risk writ, and it retires the epoch the faction Accepts the player.
+    const neutralMaxRisk = missionStandingGateForMinRep(0).maxRisk;
+    if (
+      offerMixWeight(weights, 'bounty_hunt') > 0
+      && this._repOf(info.factionId) < 30
+      && !offers.some((o) => o && o.type === 'bounty_hunt'
+        && (Number(o.riskTier) || 0) <= neutralMaxRisk)
+    ) {
+      const entryWrit = this._rollOffer('bounty_hunt', info, rng, epoch, S, { anchor: true });
+      if (entryWrit) offers.unshift(entryWrit);
+    }
     const bulkHaul = this._rollBulkHaulOffer(info, rng, epoch, 'bulk');
     if (bulkHaul) {
       offers.unshift(bulkHaul);
