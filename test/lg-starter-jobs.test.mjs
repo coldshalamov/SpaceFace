@@ -95,11 +95,11 @@ test('seed 4242 each starter flies its chain to payout and the other fits are re
     assert.ok(fittings.includes(job.requiredModule), `${starter.id} woke up with ${job.requiredModule}`);
     let paid = 0;
     for (const step of job.steps) {
-      const offers = h.missionsSys._generateOffers(info, step.step);
-      const offer = starterOffer(offers, job.id, step.step);
+      const board = h.missionsSys.ensureBoard(info.id);
+      assert.ok(board && Array.isArray(board.slots), 'Helios keeps an ordinary board');
+      const offer = starterOffer(board.slots, job.id, step.step);
       assert.ok(offer, `${starter.id} step ${step.step} is on the Helios board`);
       assert.equal(offer.reward_cr, step.rewardCr);
-      h.state.missions.boards[info.id] = { refreshEpoch: 0, slots: offers };
       assert.equal(h.missionsSys.acceptMission(offer.id), true, `${starter.id} accepts step ${step.step}`);
       const mission = h.state.missions.active.find((row) => row.params && row.params.starterStep === step.step);
       assert.ok(mission, 'the step is active');

@@ -1859,8 +1859,9 @@ export const missions = {
       const megaHeistChanged = this._syncMegaHeistOffers(info, board, epoch);
       const capitalChanged = this._syncCapitalBossOffer(info, board, epoch);
       const shortageChanged = this._syncShortageOffers(board);
+      const starterChanged = this._syncStarterJobOffer(info, board);
       if (storyChanged || setPieceChanged || heistChanged || breakawayChanged
-        || counterweightChanged || yardChanged || authoredChanged || megaHeistChanged || capitalChanged || shortageChanged) {
+        || counterweightChanged || yardChanged || authoredChanged || megaHeistChanged || capitalChanged || shortageChanged || starterChanged) {
         this.bus.emit('mission:updated', { missionId: null, stationId });
       }
       return board;
@@ -2902,6 +2903,15 @@ export const missions = {
     offer.destSectorId = info.sectorId;
     offers.unshift(offer);
     if (offers.length > cap) offers.length = cap;
+  },
+
+  /** Keep the starter's next opening step on a board that has not rolled its epoch yet.
+   *  Completing step 1 must not wait out the refresh clock before step 2 is posted. */
+  _syncStarterJobOffer(info, board) {
+    if (!info || info.id !== 'station_helios' || !board || !Array.isArray(board.slots)) return false;
+    const before = board.slots.length;
+    this._injectStarterJob(info, board.slots, before + 1);
+    return board.slots.length !== before;
   },
 
   /** Real-calendar day bucket for the featured mark — the only wall-clock read on the missions
