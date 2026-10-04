@@ -18,10 +18,14 @@ import { FIRST_HOUR_AUDIO_SIGNATURES } from '../src/audio/audioSystem.js';
 import {
   MASSLINE_INSTRUMENT_SEED,
   MASSLINE_INSTRUMENT_EVENTS,
+  MASSLINE_HUM_BASE_HZ,
+  MASSLINE_HUM_STRAIN_HZ,
   MASSLINE_RECIPES,
   masslineEventsAreDistinct,
   resolveMasslineInstrument,
   resolveTetherTone,
+  TETHER_TONE_GAIN_BASE,
+  TETHER_TONE_GAIN_SPAN,
   TETHER_TONE_SILENCE,
   TETHER_TONE_ATTACK_S,
   TETHER_TONE_RELEASE_S,
@@ -114,6 +118,13 @@ test(`seed ${SEED}: latch, tension, safe release and break are four distinct aut
   assert.equal(broken.distinctFrom, 'release');
   assert.equal(release.distinctFrom, 'break');
 
+  // Routing-level non-doubling: a messy release hands playback to the 158.06 snap owner (the
+  // minimal-action verb), so exactly one of the two leaves sounds per release event.
+  const messy = resolveMasslineInstrument({ event: 'release', payload: { classification: 'messy' } });
+  assert.equal(messy.play, false, 'a messy release must not fire the release voice itself');
+  assert.equal(messy.playbackOwnedByExisting, true, 'the snap owner owns the messy leaf');
+  assert.equal(release.playbackOwnedByExisting, false, 'a clean release sounds on the instrument');
+
   console.log(`[sfq-b192] seed=${SEED} routes=${recipeIds.join(' | ')}`);
   console.log(`[sfq-b192] bindings=${bindingIds.join(' | ')} captions=${captions.join(' | ')}`);
 });
@@ -146,11 +157,13 @@ test(`seed ${SEED}: tension is a continuous layer tracking the constraint load, 
     assert.equal(tone.rampS, TETHER_TONE_ATTACK_S);
     assert.ok(tone.rampS > 0, 'attack is a smoothing ramp, not a click');
     // Cap: the layer's loudness is bounded by its authored gain law, however loaded the line.
-    assert.ok(tone.gain <= 0.006 + 0.13 + 1e-9, `gain stays under the authored span (got ${tone.gain})`);
+    assert.ok(tone.gain <= TETHER_TONE_GAIN_BASE + TETHER_TONE_GAIN_SPAN + 1e-9,
+      `gain stays under the authored span (got ${tone.gain})`);
     prev = tone;
   }
   // Rising tension must actually be audible as rising: the walk's ends are far apart.
-  assert.ok(prev.hz > 90 + 220 * 0.5, 'a loaded line sits high in the hum range');
+  assert.ok(prev.hz > MASSLINE_HUM_BASE_HZ + MASSLINE_HUM_STRAIN_HZ * 0.5,
+    'a loaded line sits high in the hum range');
 
   // Silence returns when the line is gone: a slack line is exactly silent, with the fast
   // release ramp so silence lands within a tick.
