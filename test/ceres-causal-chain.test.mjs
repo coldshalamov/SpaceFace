@@ -1772,3 +1772,101 @@ test('SF-086: a resolved shift idles, then the same cast opens the next shift', 
   assert.deepEqual(castAfter, castBefore, 'the shift change hands the same cast, not a new population');
   assert.equal(state.entityList.length, entityCountBefore, 'no second population materialized');
 });
+
+// SF-090 — a quiet encounter worth watching (equivalence pin on the casualty the cast fixes).
+// The disabled-hauler link is the packet's bounded noncombat sequence: a casualty that only
+// exists because a real conserved handoff was in transit (the incident binds ONLY to a live
+// custody manifest, never a spawned setpiece), a real player window during which the cast
+// waits — help is offered, never required — and then the yard tender takes a genuine control
+// lease and repairs the casualty at standoff. Zero player input resolves it; the world answers
+// with a different rhythm (the patrol escort link) instead of a quest flag. The player-facing
+// branches (RECOVER / STEAL / ABANDON) are owned and pinned by the PQ-048 suite; the generic
+// interrupt-seed divergence is pinned above. What those rows don't pin is the envelope itself:
+// the cast's correction is real, leases a real hull, and completes with nobody watching.
+test('SF-090: the casualty the cast corrects is real, helpable, and resolves unwatched', () => {
+  const {
+    traffic,
+    state,
+    receipts,
+    asteroid,
+    tender,
+    combatKernel,
+    controlClaims,
+  } = bootCausalHarness({ simTime: 0, withTenderCombat: true });
+  assert.ok(combatKernel, 'the recovery link uses the live combat-kernel registry seam');
+
+  // The mistake is downstream of real work: the recovery link cannot open until the patrol
+  // scan link has actually stressed the hauler — no cooldown draw, no random spawn.
+  const def = CERES_CAUSAL_CHAIN.find((entry) => entry.id === 'ev_disabled_hauler_recovery');
+  assert.ok(def, 'the recovery link is authored');
+  assert.deepEqual(def.requires, ['hauler_stressed'],
+    'the casualty must be born from a real work event, not spawned for the scene');
+
+  stepTo(traffic, state, 0);
+  stepUntilRichSeamSeeded(traffic, state);
+  assert.equal(applyCeresMinerWork(traffic, state, asteroid).applied, true,
+    'the conserved load the casualty interrupts is real work output');
+
+  // Drive the same zero-input walk the full-cycle row uses; observe the incident's envelope.
+  let sawWindowOpen = false;
+  let claimDuringWindow = false;
+  let claimAfterWindow = false;
+  let incidentTerminal = null;
+  let escortStarted = false;
+  const responderClaimFor = (incidentId) => [...controlClaims.entries()]
+    .some(([jobId, claimId]) => jobId === `job:${tender.data.worldRecordId}`
+      && claimId === `ceres-disabled-hauler:${incidentId}:responder`);
+  for (let t = Math.max(60, state.simTime); t <= 924; t += 3) {
+    const { actor: miner } = actorBySlot(state, 'ceres_seam_miner');
+    const { actor: hauler } = actorBySlot(state, 'ceres_refinery_hauler');
+    hauler.pos = { ...miner.pos };
+    const incident = state.traffic.ceresDisabledHaulerIncident;
+    if (incident && !['repaired', 'recovered', 'stolen', 'abandoned', 'destroyed', 'failed'].includes(incident.state)) {
+      const standoff = traffic._ceresTenderServiceStandoff(tender, hauler);
+      tender.pos = { x: hauler.pos.x + standoff, z: hauler.pos.z };
+    }
+    const service = state.traffic.ceresTenderServiceIncident;
+    if (service && service.state !== 'succeeded' && service.state !== 'failed') {
+      const standoff = traffic._ceresTenderServiceStandoff(tender, miner);
+      tender.pos = { x: miner.pos.x + standoff, z: miner.pos.z };
+    }
+    stepTo(traffic, state, t);
+    state.tick += 1;
+    combatKernel.prePhysics(1 / 60);
+
+    if (incident) {
+      // While the player's window is open the correction has not been claimed — the cast
+      // genuinely waits; the player may act first, need not, and is never charged a quest.
+      if (t < incident.responseAtSimT) {
+        sawWindowOpen ||= incident.state === 'impair' || incident.state === 'distress';
+        claimDuringWindow ||= responderClaimFor(incident.incidentId);
+      } else {
+        claimAfterWindow ||= responderClaimFor(incident.incidentId);
+      }
+      incidentTerminal ||= ['repaired', 'recovered'].includes(incident.state) ? incident.state : null;
+    }
+    if (receipts.some((r) => r.eventId === 'ev_patrol_escorts_hauler' && r.kind === 'event_start')) {
+      escortStarted = true;
+    }
+    if ((traffic.getCeresCausalChainSnapshot().cycle | 0) >= 1) break;
+  }
+
+  assert.equal(sawWindowOpen, true, 'the casualty opens a real window the player may watch or use');
+  const incident = state.traffic.ceresDisabledHaulerIncident;
+  assert.ok(incident, 'the recovery bound a live incident to the conserved handoff');
+  assert.ok(incident.responseAtSimT > incident.startedAtSimT,
+    'the help window is a real interval, not a zero-width flag');
+  assert.equal(incident.choice, null, 'nobody took ownership — the cast fixed it anyway');
+  assert.equal(claimDuringWindow, false,
+    'the cast waits out the player window instead of pre-empting the encounter');
+  assert.equal(claimAfterWindow, true,
+    'after the window the tender takes a real control lease — correction, not narration');
+  assert.ok(incidentTerminal === 'repaired' || incidentTerminal === 'recovered',
+    `the correction terminalizes with zero player input (got ${incidentTerminal})`);
+  assert.equal(escortStarted, true,
+    'the world answers the correction with a changed rhythm — the escort — not a quest receipt');
+  assert.ok(receipts.some((r) => r.eventId === 'ev_disabled_hauler_recovery' && r.kind === 'event_complete'),
+    'the encounter closes as an authored event');
+  assert.equal(receipts.some((r) => r.kind === 'seed' && r.seeds && r.seeds.aftermath_open === true),
+    false, 'a corrected casualty never opens the aftermath branch');
+});
