@@ -5855,6 +5855,11 @@ function firstFlightClosingToward(entity, player, live) {
   const relativeZ = playerVel.z - entityVel.z;
   return (dx * relativeX + dz * relativeZ) / distance > 0;
 }
+// The hold's own runway reach is narrower than the steady-state authored prefetch radius:
+// the opening admits the contacts about to become readable (~700 WU at the reference
+// table speed), while the wider prefetch horizon exists to pre-warm the decode pipeline.
+// A refactor that fused the two radii let rim-band ambient work outrank true contacts.
+const FIRST_FLIGHT_SHIP_ADMISSION_RADIUS_WU = 700;
 function firstFlightReadableShipJob(job) {
   const live = authoredRuntimeState();
   const render = live && live.render;
@@ -5871,7 +5876,7 @@ function firstFlightReadableShipJob(job) {
     // not. The frustum center-point helper can say false while its marker is already drawn.
     && (entityIsOnReadableGlass(entity) || entity.mesh?.visible === true
       || (entity.activity?.presentationTier === PRESENTATION_TIER.R1_RUNWAY
-        && ((runwayDistance !== null && runwayDistance <= authoredPrefetchRadius(tableTravelSpeed(live)))
+        && ((runwayDistance !== null && runwayDistance <= FIRST_FLIGHT_SHIP_ADMISSION_RADIUS_WU)
           || (firstFlightClosingToward(entity, player, live)
             && willEntityEnterAuthoredUpgradeRunway(entity, live, {
               // The normal ladder admits the same contact the moment its surface crosses the
@@ -5883,9 +5888,11 @@ function firstFlightReadableShipJob(job) {
 }
 
 // Same readable-glass test as the ship variant but type-agnostic: during the handoff
-// hold an on-glass station/place/capsule job is also a literal hole in the picture
+// hold an on-glass station/wreck/place job is also a literal hole in the picture
 // (PQ-193.12 forbids drawing its procedural fallback), so it earns the pass behind any
-// readable ship rather than waiting out the whole ~20s hold.
+// readable ship rather than waiting out the whole ~20s hold. The owner must still be a
+// recognized authored contact — an artless place has nothing to draw, so deferring it
+// costs the opening frame nothing while its decode work yields to real contacts.
 function firstFlightReadableGlassJob(job) {
   const live = authoredRuntimeState();
   const render = live && live.render;
@@ -5893,7 +5900,7 @@ function firstFlightReadableGlassJob(job) {
   return !!(live && live.mode === 'flight' && render
     && Number.isFinite(render.firstPlayableFrameAt)
     && render.sectorShellAdmission !== true
-    && entity && entity.alive !== false
+    && entity && firstFlightReadableContactKind(entity) && entity.alive !== false
     && (entityIsOnReadableGlass(entity) || entity.mesh?.visible === true));
 }
 
@@ -6110,7 +6117,13 @@ function abortStalledOrInactiveUpgradeJobs(state) {
     if (job.lifecycle !== 'in-flight' || !job.admission || job.admission.signal.aborted) continue;
     if (!job.isAdmissionOwnerActive()) {
       job.admission.abort('Authored visual preparation owner became inactive');
-    } else {
+    } else if (jobIsStalledInFlight(job, now)) {
+      // The stall verdict closes the job's 'running' diagnostic on schedule — an aborted
+      // job's completion settles 'aborted-stalled' while its record keeps the watchdog
+      // verdict, and a still-live job stalls only the record, never healthy in-flight work.
+      if (job.upgradeDiagnostic && job.upgradeDiagnostic.status === 'running') {
+        job.upgradeDiagnostic.status = 'stalled-slot-released';
+      }
       finishUpgradeDiagnostic(state, job, job.upgradeDiagnostic);
       const bound = entityIsOnReadableGlass(job.entity)
         ? AUTHORED_UPGRADE_GLASS_STALL_BYPASS_MS
@@ -6872,7 +6885,8 @@ function scheduleNextUpgradeFrame(state) {
     return;
   }
   if (state.firstFlightHandoffHold === true
-      && !state.jobs.some(firstFlightReadableGlassJob)) {
+      && !state.jobs.some((job) => firstFlightReadableGlassJob(job)
+        || firstFlightReadableShipJob(job))) {
     scheduleHeldShipWake(state);
     // The hold does not freeze in-flight jobs — a hog stalled through the hold still needs its
     // diagnostic closed on schedule.
@@ -6898,7 +6912,8 @@ function scheduleNextUpgradeFrame(state) {
   scheduleUpgradeFrame(() => {
     if (state.retired || state.frameScheduleToken !== token || state.openingHandoffHold === true) return;
     if (state.firstFlightHandoffHold === true
-        && !state.jobs.some(firstFlightReadableGlassJob)) {
+        && !state.jobs.some((job) => firstFlightReadableGlassJob(job)
+          || firstFlightReadableShipJob(job))) {
       state.frameScheduled = false;
       scheduleHeldShipWake(state);
       armStalledHogWake(state);
@@ -7134,9 +7149,14 @@ function admitNextUpgradeJob(state) {
     const timedOut = error && error.name === 'TimeoutError';
     const cancelled = job.admission.signal.aborted || error && error.name === 'AbortError';
     job.admission.abort(error);
-    diagnostic.status = timedOut ? 'stalled-slot-released'
-      : cancelled ? 'awaiting-authored-admission' : 'fallback-after-error';
-    diagnostic.error = error && error.message ? error.message : String(error);
+    // A diagnostic the watchdog already closed (stall verdict, owner-inactive settle) is a
+    // sealed record — the abandoned run's late rejection must not overwrite it, the same way
+    // the abortedStalled guard below keeps its boundary state off the replacement owner's.
+    if (diagnostic.endedAtMs == null) {
+      diagnostic.status = timedOut ? 'stalled-slot-released'
+        : cancelled ? 'awaiting-authored-admission' : 'fallback-after-error';
+      diagnostic.error = error && error.message ? error.message : String(error);
+    }
     // A retired queue may already have a fresh job for this same mounted boundary. Its old
     // failure cannot release the new owner's residency or overwrite the new publication.
     if (job.abortedStalled === true) {

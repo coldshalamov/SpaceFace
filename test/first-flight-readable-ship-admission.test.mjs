@@ -45,7 +45,9 @@ test('first-flight hold admits a readable ship while leaving place and distant s
     await prepareFirstQueuedAuthoredBoundaryForOpening(scene);
     assert.equal(holdAuthoredUpgradeQueueForFirstFlight(scene), true);
     add('place', 'place', 'R0_GLASS');
-    add('distant-ship', 'ship', 'R2_METADATA');
+    // A metadata-tier ship parked on the player's own position is geometrically on the
+    // readable glass — 'distant' must actually be distant for the hold to defer it.
+    add('distant-ship', 'ship', 'R2_METADATA', false, 4000);
     add('beyond-runway-ship', 'ship', 'R1_RUNWAY', false, 900);
     add('far-runway-ship', 'ship', 'R1_RUNWAY', false, 680);
     add('near-runway-ship', 'ship', 'R1_RUNWAY', false, 100);
