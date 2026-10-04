@@ -5112,6 +5112,13 @@ function restoreObjectHome(home) {
   const object = home && home.object;
   if (!object) return;
   const parent = home.parent;
+  // Reparenting never re-dirties on its own: a staging pass consumed
+  // matrixWorldNeedsUpdate under the identity root, and the vendored
+  // updateMatrixWorld skips clean frozen subtrees — without the flag a
+  // mount-frozen node renders at its local transform as world position until
+  // something else touches it. Also covers the detached case: an orphan
+  // carries the dirty flag into whatever home it next lands in.
+  object.matrixWorldNeedsUpdate = true;
   if (!parent) {
     if (object.parent) object.parent.remove(object);
     return;
@@ -18831,6 +18838,10 @@ export const render = {
       if (!m || !m.position) continue;
       m.position.x += dx;
       m.position.z += dz;
+      // Mount-frozen roots never recompose — the per-frame walk skips clean
+      // frozen subtrees, so the origin shift must dirty the local matrix here
+      // or the root renders displaced by exactly (dx,dz) until its next seat.
+      if (m.matrixAutoUpdate === false) m.updateMatrix();
     }
     // Hazard zone discs/rings are render-owned local anchors (not rebuilt every frame).
     if (this._hazardVisuals && this._hazardVisuals.length) {
