@@ -254,6 +254,9 @@ export const story = {
     bus.on('scan:completed', (p) => this._onPostEndingSignal('scan:completed', p || {}));
     bus.on('scan:completed', (p) => this._onHeliosBay7ScanPulse(p || {}));
     bus.on('signal:scanResults', (p) => this._onHeliosBay7ScanPulse(p || {}));
+    // NXI-179 — a revised clue reading gets a story response that explains the change and keeps
+    // the earlier sighting on record, instead of the detail line silently rewriting itself.
+    bus.on('signal:scanResults', (p) => this._onSignalClueRevision(p || {}));
     // UI intent: player opened/took/dropped the ledger with the Kurtz figure.
     bus.on('ui:kurtzInteract', (p) => this._onKurtzInteract(p || {}));
     bus.on('ui:heliosBay7Scan', () => this._onHeliosBay7Scan());
@@ -1737,6 +1740,57 @@ export const story = {
     this._armHeliosBay7(s, state.world && state.world.currentSectorId);
     if (!s.flags || !s.flags.helios_bay7_available || s.flags.helios_bay7_scanned) return;
     if (this._heliosBay7NearPlayer(state)) this._onHeliosBay7Scan();
+  },
+
+  // =========================================================================================
+  // CLUE REVISION — the story answer when evidence moves (NXI-179 on NXB-045's clue book).
+  // =========================================================================================
+  // A later scan can stale out or contradict a filed clue. The scanner already rewrites the
+  // signal panel's detail line; this response says WHY in the story voice, ONCE per actual
+  // revision: circumstances changed (stale fix) or the evidence conflicts (contradicted
+  // manifest), and the first sighting is named as still on file rather than silently deleted.
+  // A duplicate pulse (same claim, same fix) mints no revision and no line; the next genuine
+  // revision speaks again under its own stamp.
+  _onSignalClueRevision(payload) {
+    const s = this.state && this.state.story;
+    if (!s) return false;
+    const signals = payload && Array.isArray(payload.signals) ? payload.signals : [];
+    const scannedAt = Number(payload && payload.scannedAt);
+    let revised = null;
+    for (const row of signals) {
+      const clue = row && row.clue;
+      if (!clue || !Array.isArray(clue.history) || !clue.history.length) continue;
+      // Only a reading filed by THIS pulse speaks. A superseded clue from an earlier scan
+      // (history already present, observedAt in the past) already had its line.
+      if (Number.isFinite(scannedAt) && Number(clue.observedAt) !== scannedAt) continue;
+      revised = clue;
+      break;
+    }
+    if (!revised) return false;
+    this._ensureState();
+    const prior = revised.history[revised.history.length - 1];
+    const stale = prior && prior.status === 'stale';
+    const claim = String(revised.claim || 'the sighting').replace(/\s+/g, ' ').trim().slice(0, 80);
+    const first = prior && prior.claim
+      ? String(prior.claim).replace(/\s+/g, ' ').trim().slice(0, 80)
+      : '';
+    const commsId = `clue_revision_${revised.subjectId}_${revised.observedAt}`;
+    if (s.seenComms[commsId]) return false;
+    s.seenComms[commsId] = true;
+    const kept = first
+      ? ` The first reading ("${first}") stays on file.`
+      : ' The earlier reading stays on file.';
+    this._fireComms({
+      id: commsId,
+      sender: 'SIGNAL LOG',
+      text: stale
+        ? `SIGNAL LOG: circumstances changed — "${claim}" reads differently this pass. The earlier fix went stale; it stays on file, not struck.${first ? '' : kept}`
+        : `SIGNAL LOG: the evidence conflicts — a later reading contradicts the first on "${claim}".${kept}`,
+      category: 'story',
+      ttl: 8,
+      persist: false,
+    });
+    return true;
   },
 
   // =========================================================================================
