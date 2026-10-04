@@ -509,7 +509,15 @@ inference line is folded into that seam. It is not the next task by itself.
 | 17 | D54 | Hero landmarks: dark-freighter place model, Anvil well-edge, ×30 Wreck Cathedral draw scale | ART | CLAIMED devin-graphics |
 | 18 | D72 | Pelican starter hull is blockout-grade | ART | CLAIMED devin-graphics |
 
-### C. vm-drop imports — ~133 DONE packages await import (`VM_LANES.md`, `IMPORT_DIGEST/report.md`)
+### C. vm-drop imports — code stack drained 2026-10-03 (`VM_LANES.md`, `IMPORT_DIGEST/report.md`)
+
+Full-folder audit 2026-10-03: of 176 patch-bearing folders, 31 were already applied byte-exact and
+~139 already landed with drifted context — the only genuinely unlanded packages were the
+presentation-query retain pair, the hud credits reflow, and the chase-lookAt retain pair, all
+imported 2026-10-03 (`3fc3f3782`, `076e827ee`, `2d29e1ebf`, `c2f8ffccb`, `dcb99c562`; the
+presentation pair carries a minimal `dirtyCount`/`dirtySlots` slice of the unlanded
+`snapshot-fence-*` prerequisites — if those are imported later, skip the world-side counter hunks).
+Remaining folders: HOLDs and the 9 `*-chase` REVISEs only.
 
 Remote work is finished and verified `git apply --cached`-clean; importing = apply one folder's
 `patches/`, run the check the folder names, pathspec-commit, update `IMPORT_DIGEST`. Take folders
