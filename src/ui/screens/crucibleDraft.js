@@ -967,7 +967,10 @@ export const crucibleDraftScreen = {
       if (!category) continue;
       button.setAttribute('aria-pressed', String(category === this._category));
       // How much stock each word holds: the armory scrolls, and the count is what says so.
-      const count = category === 'All' ? offers.length : offers.filter((offer) => categoryFor(offer) === category).length;
+      // The flying hull rides the "In the cradle —" line, never the rail — counting it would
+      // promise one more card than any tab can show.
+      const count = category === 'All' ? offers.filter((offer) => !offer._flying).length
+        : offers.filter((offer) => !offer._flying && categoryFor(offer) === category).length;
       const label = shop ? `${category} ${count}` : category;
       if (button.dataset.label !== label) {
         button.dataset.label = label;
