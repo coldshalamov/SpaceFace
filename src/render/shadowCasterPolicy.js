@@ -136,11 +136,27 @@ export function shadowCastAxisDistance(meshPos, playerLocalX, playerLocalZ) {
   );
 }
 
+/** True when the root's policy record is marked for a refresh (mesh/material set changed). */
+export function shadowCasterPolicyDirty(root) {
+  const state = root && root.userData ? root.userData[POLICY_STATE] : null;
+  return !!(state && state.dirty);
+}
+
 /** Mark a changed hierarchy/material set for one shadow-policy refresh at its current LOD. */
 export function invalidateShadowCasterPolicy(root) {
   if (!root || typeof root.traverse !== 'function') return false;
-  policyState(root).dirty = true;
+  const state = policyState(root);
+  state.dirty = true;
+  // The generation lets a caller distinguish its own bookkeeping invalidate from a
+  // genuine hierarchy/material change landing while it holds the root's policy.
+  state.dirtySeq = (state.dirtySeq || 0) + 1;
   return true;
+}
+
+/** Monotonic invalidation generation — 0 when the root has never been dirtied. */
+export function shadowCasterPolicyDirtySeq(root) {
+  const state = root && root.userData ? root.userData[POLICY_STATE] : null;
+  return (state && state.dirtySeq) || 0;
 }
 
 function writeCasterPose(target, root) {
@@ -236,20 +252,37 @@ export function syncShadowCasterPolicy(root, lodLevel = null, options = null) {
     return false;
   }
 
+  // Sum the receiveShadow flips this traverse writes so callers can debit an
+  // incremental receiver tally instead of paying a whole-scene recount for what
+  // is almost always a cast-only change (withholds/band flips write castShadow
+  // only, so the delta is 0).
+  let receiverDelta = 0;
+  const noteReceiver = (object, next) => {
+    if ((object.receiveShadow === true) !== next) receiverDelta += next ? 1 : -1;
+    object.receiveShadow = next;
+  };
   configureRealtimeCanopyMaterials(root);
   root.traverse((object) => {
     if (!object.isMesh) return;
     if (!object.visible) {
       object.castShadow = false;
-      object.receiveShadow = false;
+      noteReceiver(object, false);
       return;
     }
     if (object.userData && object.userData.spacefaceNoShadow) {
       object.castShadow = false;
-      object.receiveShadow = false;
+      noteReceiver(object, false);
       return;
     }
     if (object.userData && object.userData.sharedContactShadow) {
+      object.castShadow = false;
+      return;
+    }
+    if (object.userData && object.userData.authoredReadableFallbackLayer === true) {
+      // The procedural fallback layer is excluded from every depth-staging
+      // collector, so its depth variant can never link — casting it would mint
+      // the program inside a presented frame (the cold link the arm exists to
+      // prevent). Receiving stays live so the fallback reads normally.
       object.castShadow = false;
       return;
     }
@@ -264,9 +297,12 @@ export function syncShadowCasterPolicy(root, lodLevel = null, options = null) {
     // Far / low-LOD roots keep receiveShadow so entering the local box looks correct immediately,
     // but they do not enter the directional shadow-map caster set.
     object.castShadow = allowCast && opaqueReceiver;
-    object.receiveShadow = opaqueReceiver;
+    noteReceiver(object, opaqueReceiver);
   });
 
+  if (options && options.out && typeof options.out === 'object') {
+    options.out.receiverDelta = receiverDelta;
+  }
   if (state.castBand !== nextCastBand) state.pose = null;
   state.dirty = false;
   state.lodLevel = nextLodLevel;

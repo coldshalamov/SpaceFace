@@ -557,6 +557,17 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
     seen.add(subject);
     ordered.push(subject);
   }
+  // An empty unit set has nothing to compile or touch — skip the batch-open/drain/
+  // allSettled/close ceremony entirely rather than paying it per call.
+  if (ordered.length === 0) {
+    return {
+      skipped: true,
+      subjects: 0,
+      materials: Number(units.materialCount) || 0,
+      geometries: Number(units.geometryCount) || 0,
+      results: [],
+    };
+  }
   // Without a readiness batch this stays exactly as it was: compile a unit, touch it, yield, next.
   // With one, the shape changes to issue-all / drain-once / touch-all. That matters because
   // `renderer.compile()` under KHR_parallel_shader_compile costs microseconds and only STARTS the

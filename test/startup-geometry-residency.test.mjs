@@ -693,10 +693,12 @@ test('the poll re-hoists queued builds whose deadline moved inside the urgent wi
   const drainIndex = RENDERER_SOURCE.indexOf('stats.built = this._drainMeshBuildQueue', pollStart);
   assert.ok(drainIndex > pollStart, 'the poll must drain builds after enqueueing');
   const between = RENDERER_SOURCE.slice(pollStart, drainIndex);
-  assert.match(between, /pendingBuilds\[write\+\+\]\s*=\s*urgentNow\[i\]/,
+  assert.match(between, /pendingBuilds\[write\+\+\]\s*=\s*urgentNow\[i\]\.entry/,
     'the already-queued tail must be repartitioned, not just newly enqueued candidates');
-  assert.match(between, /entityTimeToGlassSeconds\(entity, env, state\) <= TABLE_BUILD_URGENT_SECONDS/,
+  assert.match(between, /seconds <= TABLE_BUILD_URGENT_SECONDS/,
     'the hoist must re-grade on fresh verdicts at the same urgent deadline as the enqueue tiers');
+  assert.match(between, /urgentNow\.sort\(\(a, b\) => a\.seconds - b\.seconds\)/,
+    'the urgent prefix must drain nearest-deadline-first, not enqueue FIFO');
 });
 
 // The exempt set only changes on sim ticks and spawn events; a full entity scan every display

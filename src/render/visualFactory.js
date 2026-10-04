@@ -4223,6 +4223,13 @@ function attachPackagedBody(root, relativeFile, entity) {
       root.add(packaged);
       carryAdmittedOnceStamp(packaged, root);
       canonicalizeObjectSurfaceProgramKeys(packaged);
+      // The committed subtree's meshes carry three.js castShadow=false until a policy
+      // traverse covers them; re-syncing here applies the live caster policy in this
+      // continuation instead of at the next unrelated band flip.
+      const packagedShadowSync = mintedAdmissionOptions.syncPackagedBodyShadowPolicy;
+      if (typeof packagedShadowSync === 'function') {
+        try { packagedShadowSync(root, liveEntity || entity); } catch (_) { /* best effort */ }
+      }
       root.userData.hull = packaged;
       root.userData.authoredReadableFallbackRetained = false;
       root.userData.authoredAssetState = 'authored';

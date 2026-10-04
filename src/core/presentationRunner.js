@@ -245,6 +245,16 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   let lifecycleState = requestedState();
   let restoreTarget = LOOP_LIFECYCLE_STATES.FOREGROUND_VISIBLE;
   let suspended = !isPresentingState(lifecycleState);
+  // Sliced emits exist to bound work inside a presented frame — while nothing is
+  // presenting (boot, loading, hidden) that bound only delays listener work past
+  // its window. Suspension makes emits deliver inline and flushes any parked
+  // tail at the transition; the first call covers a runner minted mid-suspension.
+  const syncEmitSliceSuspension = () => {
+    if (bus && typeof bus.setEmitSliceSuspended === 'function') {
+      bus.setEmitSliceSuspended(suspended);
+    }
+  };
+  syncEmitSliceSuspension();
   let unsubscribeLifecycle = null;
   let lifecycleGeneration = 0;
   let hasCompletedTick = false;
@@ -508,6 +518,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   function enterNonPresenting(next, reason) {
     const wasSuspended = suspended;
     suspended = true;
+    syncEmitSliceSuspension();
     diagnostics.suspended = true;
     diagnostics.restoreTarget = null;
     diagnostics.stepsThisFrame = 0;
@@ -542,6 +553,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
 
     const wasSuspended = suspended;
     suspended = false;
+    syncEmitSliceSuspension();
     diagnostics.suspended = false;
     recordState(LOOP_LIFECYCLE_STATES.RESTORING, reason);
     if (wasSuspended) diagnostics.resumeCount++;

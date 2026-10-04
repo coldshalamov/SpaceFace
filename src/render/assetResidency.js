@@ -184,6 +184,10 @@ export function createAssetResidencyRegistry(options = {}) {
       onEvict: typeof registration.onEvict === 'function' ? registration.onEvict : null,
       registeredAtMs: now(),
       lastReleaseAtMs: now(),
+      // Demand recency for the warm-class eviction order: a file re-decoding after
+      // an eviction cycle must not sort next-evictable just because its previous
+      // lease released most recently — claim time outranks release time there.
+      lastWarmClaimAtMs: now(),
       // Encoded package bytes are a CPU/cache concern. They are deliberately kept separate from
       // GPU residency: a compressed .glb on disk is not a valid estimate for decoded buffers or
       // driver texture allocations.
@@ -258,6 +262,8 @@ export function createAssetResidencyRegistry(options = {}) {
       if (existingMetadata.decodeWarm === true && metadata.decodeServed === true) {
         existingMetadata.decodeWarm = false;
         existingMetadata.decodeServed = true;
+        // A boundary-scoped serve claiming a warm lease is a fresh demand signal.
+        entry.lastWarmClaimAtMs = now();
       }
       return false;
     }
@@ -272,6 +278,7 @@ export function createAssetResidencyRegistry(options = {}) {
       else if (tier === 'R2_METADATA' || tier === 'R3_UNLOADED') ownerMetadata.role = 'evictable';
     }
     entry.owners.set(owner, ownerMetadata);
+    entry.lastWarmClaimAtMs = now();
     state.assets.add(entry);
     emit('asset-retained', {
       key: entry.key,
@@ -540,7 +547,15 @@ export function createAssetResidencyRegistry(options = {}) {
     candidates.sort((a, b) => (
       softEvictionLeaseWeight(a) - softEvictionLeaseWeight(b)
         || entryCorridorRank(a) - entryCorridorRank(b)
-        || a.lastReleaseAtMs - b.lastReleaseAtMs
+        // Within the warm lease class (weight 1) release recency anti-correlates
+        // with demand — an interleaved approach wave's file keeps being the
+        // newest release, so newest-first evicts the one file being re-decoded
+        // while the genuinely stale cohort never drains. Demand recency is the
+        // honest order: oldest last-claimed evicts first; every other class keeps
+        // the oldest-idle LRU.
+        || (softEvictionLeaseWeight(a) === 1
+          ? a.lastWarmClaimAtMs - b.lastWarmClaimAtMs
+          : a.lastReleaseAtMs - b.lastReleaseAtMs)
     ));
   }
 

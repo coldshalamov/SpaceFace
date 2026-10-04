@@ -6,7 +6,9 @@ import * as THREE from 'three';
 import {
   armAdmissionShadows,
   collectShadowCastSubjects,
+  collectUnstagedShadowCasters,
   compileShadowDepthPipelines,
+  createShadowDepthStagingSession,
   disposeAdmissionShadowResources,
 } from '../src/render/shadowDepthAdmission.js';
 import { scheduleRealtimeShadowRefresh } from '../src/render/shadowPresentCadence.js';
@@ -308,6 +310,12 @@ function stagedShadowRig() {
   light.name = 'key';
   scene.add(light);
   scene.add(light.target);
+  // A second, permanently-mounted light: the live census is l2|f0 while the reparent
+  // loop strips the main scene to the key alone (l1|f0) — the mark/query census split
+  // a single-light rig could never expose.
+  const pool = new THREE.PointLight(0xffffff, 1);
+  pool.name = 'pool';
+  scene.add(pool);
   const liveMap = { name: 'live-shadow-map' };
   const liveMatrix = { name: 'live-shadow-matrix' };
   light.shadow.map = liveMap;
@@ -337,7 +345,9 @@ function stagedShadowRig() {
         dispose() { this.disposed = true; },
       };
       staged.shadow.matrix = { name: 'admission-shadow-matrix' };
-      renderer.renderBufferDirect({}, {}, {}, { properties: { currentProgram: { cacheKey: 'depth' } } }, hull, null);
+      // args[1] = null mirrors the real shadow pass (WebGLShadowMap draws with scene=null);
+      // a non-null scene would read as a color draw and the caster would never mark.
+      renderer.renderBufferDirect({}, null, {}, { properties: { currentProgram: { cacheKey: 'depth' } } }, hull, null);
     },
   };
   return { scene, light, liveMap, liveMatrix, hull, renderer, stagedLights, stagedMapsBeforeWrite };
@@ -510,6 +520,22 @@ test('shadow depth admission restores renderer flags and live maps when the dept
   assert.equal(rig.hull.parent, rig.scene, 'staged caster home restored on throw');
 });
 
+test('staged depth signatures dedup under the live light census', () => {
+  const rig = stagedShadowRig();
+  const result = compileShadowDepthPipelines(admissionOptions(rig));
+  assert.equal(result.skipped, false);
+  // The mark's census must equal the query's (the live scene): marks stamped under the
+  // stripped post-reparent census could never match a live-census lookup, so every later
+  // collect would re-report staged casters and re-pay the ceremony.
+  assert.equal(collectUnstagedShadowCasters(rig.renderer, [rig.hull], rig.scene).length, 0);
+  // A never-staged caster still collects — the gate only suppresses linked signatures.
+  const fresh = new THREE.Mesh();
+  fresh.castShadow = true;
+  fresh.name = 'fresh';
+  rig.scene.add(fresh);
+  assert.equal(collectUnstagedShadowCasters(rig.renderer, [fresh], rig.scene).length, 1);
+});
+
 test('a pending live shadow refresh survives an interleaved private admission pass', () => {
   const rig = stagedShadowRig();
   rig.light.shadow.autoUpdate = true;
@@ -528,4 +554,54 @@ test('a pending live shadow refresh survives an interleaved private admission pa
   assert.equal(rig.renderer.shadowMap.autoUpdate, false);
   assert.equal(rig.light.shadow.map, rig.liveMap, 'live shadow map identity preserved');
   assert.equal(rig.light.shadow.matrix, rig.liveMatrix, 'live shadow matrix preserved');
+});
+
+test('staging session pays the census warm once and slices stage without re-ceremony', () => {
+  const hullA = { isMesh: true, castShadow: true, name: 'hullA', parent: { children: [] } };
+  hullA.parent.children.push(hullA);
+  const hullB = { isMesh: true, castShadow: true, name: 'hullB', parent: { children: [] } };
+  hullB.parent.children.push(hullB);
+  const restored = [];
+  const renderTypes = [];
+  const renderer = {
+    shadowMap: {
+      enabled: true,
+      needsUpdate: false,
+      render(lights, staging) {
+        renderTypes.push({ lights: lights.map((l) => l.name), children: staging.children.map((c) => c.name) });
+      },
+    },
+    render(staging) {
+      if (renderer.shadowMap.enabled === false) { renderTypes.push({ census: true }); return; }
+      renderer.shadowMap.render(staging.children.filter((c) => c.castShadow === true), staging, null);
+    },
+    getRenderTarget() { return null; },
+    setRenderTarget() {},
+    properties: { get: (material) => material && material.properties || {} },
+    renderBufferDirect() {},
+  };
+  const light = { name: 'key', castShadow: true, shadow: { needsUpdate: false } };
+  const liveScene = { fog: null, traverse(fn) { fn(light); } };
+  const session = createShadowDepthStagingSession({
+    renderer, light, camera: { name: 'chase' },
+    lightingScene: liveScene, THREE: mockThree(),
+    captureObjectHome: (object) => ({ object }),
+    restoreObjectHome(home) { restored.push(home.object.name); },
+    lightSig: 'l1|f0',
+  });
+  assert.ok(session, 'session minted under a live renderer');
+  assert.equal(session.lightSig, 'l1|f0');
+  assert.equal(renderTypes.length, 1, 'one census warm render at create');
+  assert.equal(renderTypes[0].census, true);
+  session.slice([hullA]);
+  session.slice([hullB]);
+  assert.equal(renderTypes.length, 3, 'each slice renders once — no further census');
+  assert.ok(renderTypes[1].children.includes('hullA'));
+  assert.ok(renderTypes[2].children.includes('hullB'));
+  const report = session.close();
+  assert.equal(session.slice([hullA]).skipped, true, 'a closed session reports skipped');
+  session.close();
+  assert.equal(report.subjects, 0, 'mock has no depth draws recorded');
+  assert.equal(renderer.shadowMap.needsUpdate, false);
+  assert.deepEqual(restored, ['hullA', 'hullB']);
 });

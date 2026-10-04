@@ -182,8 +182,12 @@ async function boot() {
     // authority is never re-armed under the running sim. finalizeLoadedGame adopts the
     // promise below (and kicks itself if this lane never ran).
     let earlyContinuePhysicsPrep = null;
+    let earlyContinueKickPending = false;
     const kickEarlyContinuePhysicsPrep = () => {
-      if (earlyContinuePhysicsPrep) return;
+      // An emit landing while a doomed prep pends skips its re-mint; flag it so the
+      // settle-clear re-kicks instead of waiting on the next emit or finalize.
+      if (earlyContinuePhysicsPrep) { earlyContinueKickPending = true; return; }
+      earlyContinueKickPending = false;
       if (state.mode === 'flight') return;
       const physicsSystem = registry.get('physics');
       if (!physicsSystem || typeof physicsSystem.prepareBackend !== 'function') return;
@@ -194,9 +198,20 @@ async function boot() {
       // restored world exactly as before.
       if (typeof physicsSystem.hasResolvedSg02Owner === 'function'
           && physicsSystem.hasResolvedSg02Owner()) return;
-      earlyContinuePhysicsPrep = Promise.resolve()
+      const prep = Promise.resolve()
         .then(() => physicsSystem.prepareBackend(state));
-      earlyContinuePhysicsPrep.catch(() => {});
+      earlyContinuePhysicsPrep = prep;
+      // A stale settle (the SG-02 token guard's false, or a rejection) must not
+      // latch: clear it so the next envelope kick re-mints instead of the gate
+      // inheriting a verdict from a dead authority. A skipped emit then re-kicks
+      // immediately rather than serializing its fresh prepare inside the gate.
+      const settleClear = () => {
+        if (earlyContinuePhysicsPrep === prep) earlyContinuePhysicsPrep = null;
+        if (earlyContinueKickPending && !earlyContinuePhysicsPrep) kickEarlyContinuePhysicsPrep();
+      };
+      prep.then((verdict) => {
+        if (verdict !== true) settleClear();
+      }, settleClear);
     };
     // Speculative prepare fires during menu dwell — WASM bring-up reads no envelope data,
     // so it can overlap the dwell instead of serializing inside the Continue gate.
@@ -246,6 +261,7 @@ async function boot() {
     helpers.finalizeLoadedGame = (payload) => {
       const inherited = earlyContinuePhysicsPrep;
       earlyContinuePhysicsPrep = null;
+      earlyContinueKickPending = false;
       return finalizeLoadedGame(
         state,
         bus,
@@ -670,7 +686,7 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
         // from a prior run's entity objects survives into the new world. The catch marker
         // only suppresses the unhandled-rejection window before waitForPhysics awaits it.
         physicsPrep = Promise.resolve()
-          .then(() => physicsSystem.prepareBackend(state, { reset: true }));
+          .then(() => physicsSystem.prepareBackend(state, { reset: true, initTimeoutMs: 20000 }));
         physicsPrep.catch(() => {});
       }
       const saveSystem = registry.get('save');
@@ -776,10 +792,19 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
           const physicsSystem = registry.get('physics');
           if (!physicsSystem || typeof physicsSystem.prepareBackend !== 'function') return true;
           physicsPrep = Promise.resolve()
-            .then(() => physicsSystem.prepareBackend(state, { reset: true }));
+            .then(() => physicsSystem.prepareBackend(state, { reset: true, initTimeoutMs: 20000 }));
         }
         try {
-          return await physicsPrep;
+          // Same outer bound the Continue gate runs (main.js ~1052): prepareBackend's
+          // internal init race only bounds one leg — a wedge anywhere else inside it
+          // would hold the loading shell forever.
+          return await Promise.race([
+            physicsPrep,
+            new Promise((_, reject) => setTimeout(
+              () => reject(new Error('physics backend preparation timed out after 20000ms')),
+              20000,
+            )),
+          ]);
         } catch (error) {
           console.warn('[startup] physics backend preparation failed', error);
           return false;
@@ -871,7 +896,12 @@ function startLoadingGatePulse(bus, runTransitionGuard, transitionToken, transit
   let lastText = null;
   const emit = () => {
     try {
-      if (!runTransitionGuard.isCurrent(transitionToken)) return;
+      if (!runTransitionGuard.isCurrent(transitionToken)) {
+        // A leaked pulse (its gate threw before stop ran) must not outlive the
+        // transition — self-clear instead of waking every 500 ms forever.
+        clearInterval(timer);
+        return;
+      }
       const detail = detailOf();
       if (detail == null || detail === lastText) return;
       lastText = detail;
@@ -915,13 +945,18 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
   // save:envelopePrepared may already have started it at envelope decode (payload.physicsPrep)
   // — adopt that promise so a restore-time bring-up is never paid twice.
   let continuePhysicsPrep = payload.physicsPrep || null;
-  if (!continuePhysicsPrep) {
-    const physicsSystem = registry.get('physics');
-    if (physicsSystem && typeof physicsSystem.prepareBackend === 'function') {
-      continuePhysicsPrep = Promise.resolve()
-        .then(() => physicsSystem.prepareBackend(state));
-      continuePhysicsPrep.catch(() => {});
-    }
+  const physicsSystem = registry.get('physics');
+  if (physicsSystem && typeof physicsSystem.prepareBackend === 'function') {
+    // A spec-armed prep can go stale before adoption: a New Game attempt between
+    // the envelope kick and this Continue bumps _sg02Token and disposes the
+    // authority it resolved against, so the inherited verdict no longer describes
+    // the backend the gate is checking. Re-validate at adoption — a fresh non-reset
+    // prepare is idempotent (joins _sg02Init mid-settle, re-mints only when torn
+    // down); never {reset:true} — that would dispose a live owner mid-restore.
+    continuePhysicsPrep = Promise.resolve(continuePhysicsPrep)
+      .then(() => physicsSystem.prepareBackend(state, { initTimeoutMs: 20000 }),
+        () => physicsSystem.prepareBackend(state, { initTimeoutMs: 20000 }));
+    continuePhysicsPrep.catch(() => {});
   }
   try {
     bus.emit('game:loadingProgress', {
@@ -940,8 +975,12 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
       return elapsed > 8000 ? 'Still loading the saved sector' : 'Bringing the saved sector back with its ships intact';
     });
     const gateStartedMs = nowMs();
-    const libraryReady = await waitForAuthoredPartLibrary(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS);
-    stopLibraryPulse();
+    let libraryReady;
+    try {
+      libraryReady = await waitForAuthoredPartLibrary(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS);
+    } finally {
+      stopLibraryPulse();
+    }
     if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
     if (!libraryReady) {
       throw new Error('Authored ship asset library did not preload after save load; refusing to enter flight with procedural fallback ships.');
@@ -964,13 +1003,17 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
         ? `Placing ships and stations — ${pending} still staging`
         : 'Placing ships and stations before you arrive';
     });
-    const visualsReady = await waitForInitialAuthoredVisualsWithRetry(
-      state,
-      INITIAL_AUTHORED_VISUAL_TIMEOUT_MS,
-      () => runTransitionGuard.isCurrent(transitionToken),
-      bus,
-    );
-    stopVisualsPulse();
+    let visualsReady;
+    try {
+      visualsReady = await waitForInitialAuthoredVisualsWithRetry(
+        state,
+        INITIAL_AUTHORED_VISUAL_TIMEOUT_MS,
+        () => runTransitionGuard.isCurrent(transitionToken),
+        bus,
+      );
+    } finally {
+      stopVisualsPulse();
+    }
     if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
     if (!visualsReady) {
       throw new Error('Loaded authored ship visuals did not become ready; refusing to enter flight with procedural fallback ships.');
@@ -1040,12 +1083,36 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
     {
       // Same D26 gate as New Game: the loaded world must enter flight only after the
       // SG-02 authority exists. No reset — save:loaded already rebound the retained
-      // player record; the promise kicked at function top just resolves here.
+      // player record; the promise kicked at function top just resolves here. This
+      // gate needs the same pulse loop New Game runs under 'physics-authority' —
+      // an un-pulsed await reads as a frozen shell while a slow WASM bring-up
+      // settles, and an unbounded one freezes the transition forever on a wedge.
       if (continuePhysicsPrep) {
-        const physicsReady = await continuePhysicsPrep;
-        if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
-        if (physicsReady === false) {
-          throw new Error('The dynamic physics backend did not initialize after save load; refusing to enter flight frozen in place.');
+        const stopPhysicsPulse = startGatePulse('physics-authority', 0.94, 'Preparing flight dynamics',
+          () => 'Waking the flight authority');
+        try {
+          // The prepare has overlapped the whole GPU chain by now — whatever is
+          // still outstanding 20 s later is a wedged bring-up, not a slow one.
+          // A rejected prepare used to fold into the same false as a timeout —
+          // capture its reason so the readiness error carries the real cause
+          // instead of an opaque wedge.
+          let physicsPrepError = null;
+          const physicsReady = await Promise.race([
+            continuePhysicsPrep.catch((err) => { physicsPrepError = err || null; return false; }),
+            new Promise((resolve) => setTimeout(() => resolve(false), 20000)),
+          ]);
+          if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
+          if (physicsReady === false) {
+            const readinessError = new GameStartReadinessError(
+              'PHYSICS_BACKEND_UNAVAILABLE',
+              'physics-authority',
+              'The dynamic physics backend did not initialize after save load; refusing to enter flight frozen in place.',
+            );
+            if (physicsPrepError != null) readinessError.cause = physicsPrepError;
+            throw readinessError;
+          }
+        } finally {
+          stopPhysicsPulse();
         }
       }
     }
