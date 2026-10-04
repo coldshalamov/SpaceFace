@@ -869,7 +869,11 @@ function ensureCapacity(pool, bucket, required, rebuild = false) {
   bucket.mesh = mesh;
   bucket.capacity = capacity;
   pool.dirty = true;
-  if (pool.scene) pool.scene.add(mesh);
+  if (pool.scene) {
+    pool.scene.add(mesh);
+    const notes = pool.scene.userData && pool.scene.userData.shadowMeshNotes;
+    if (notes && typeof notes.added === 'function') notes.added(mesh);
+  }
   // The instanced program variant this mesh needs has never been linked when the mesh is new:
   // without the admission latch its first visible draw links it inside the presented pass.
   if (typeof pool.onMeshCreated === 'function') {
@@ -893,7 +897,11 @@ function disposeOwnedInstanceMesh(mesh, dynamicBufferOwner, scene) {
   else if (mesh.instanceMatrix && typeof mesh.instanceMatrix.dispose === 'function') {
     mesh.instanceMatrix.dispose();
   }
-  if (mesh.parent === scene) scene.remove(mesh);
+  if (mesh.parent === scene) {
+    scene.remove(mesh);
+    const notes = scene.userData && scene.userData.shadowMeshNotes;
+    if (notes && typeof notes.removed === 'function') notes.removed(mesh);
+  }
   if (mesh.instanceMatrix && typeof mesh.instanceMatrix.dispose === 'function' && dynamicBufferOwner) {
     mesh.instanceMatrix.dispose();
   }

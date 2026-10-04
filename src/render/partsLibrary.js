@@ -6666,7 +6666,7 @@ export function residencyOptionsForBoundary(entity, boundary, renderer) {
       ? (root) => touch.call(root)
       : null,
     syncPackagedBodyShadowPolicy: packagedShadowSync
-      ? (root, entity) => packagedShadowSync.call(root, entity)
+      ? (root, entity, addedSubtree) => packagedShadowSync.call(root, entity, addedSubtree)
       : null,
     prepareAuthoredGpuResidency: residency
       ? async (root, admissionOptions = {}) => {
@@ -8864,13 +8864,19 @@ export function installWholeShipLodFamilyController(boundary, entity, setActive,
     pendingLevel = null;
     transitionPromise = null;
     boundary.userData.wholeShipLodTransitionPromise = null;
+    const shadowNotes = boundary.userData && boundary.userData.shadowMeshNotes;
+    let detachedAny = false;
     for (const level of Object.keys(roots)) {
       const root = roots[level];
       const composed = retainedComposed.get(level) || null;
       delete roots[level];
       retainedComposed.delete(level);
       if (!root) continue;
-      if (root.parent === boundary) boundary.remove(root);
+      if (root.parent === boundary) {
+        boundary.remove(root);
+        if (shadowNotes && typeof shadowNotes.removed === 'function') shadowNotes.removed(root);
+        detachedAny = true;
+      }
       if (composed) {
         releaseComposedRetained(composed);
       } else {
@@ -8883,6 +8889,13 @@ export function installWholeShipLodFamilyController(boundary, entity, setActive,
     if (committedAuthored && committedAuthored.root === fresh) {
       retainedComposed.set('lod0', committedAuthored);
     }
+    if (detachedAny) {
+      // Stale retained roots carried withheld depth-stage bookkeeping keyed on a
+      // subtree that just left — the dirtySeq bump forces the next collect to
+      // re-derive the withheld set against the live hierarchy instead of
+      // re-forcing flags on meshes that no longer exist.
+      invalidateShadowCasterPolicy(boundary);
+    }
     activeLevel = 'lod0';
     boundary.userData.wholeShipLodActiveLevel = 'lod0';
     return !!fresh;
@@ -8893,12 +8906,21 @@ export function installWholeShipLodFamilyController(boundary, entity, setActive,
     if (!next) return false;
     const prev = roots[activeLevel];
     let shadowTreeChanged = false;
+    const shadowNotes = boundary.userData && boundary.userData.shadowMeshNotes;
     if (prev && prev !== next) {
       prev.visible = false;
-      if (prev.parent === boundary) { boundary.remove(prev); shadowTreeChanged = true; }
+      if (prev.parent === boundary) {
+        boundary.remove(prev);
+        if (shadowNotes && typeof shadowNotes.removed === 'function') shadowNotes.removed(prev);
+        shadowTreeChanged = true;
+      }
     }
     next.visible = true;
-    if (next.parent !== boundary) { boundary.add(next); shadowTreeChanged = true; }
+    if (next.parent !== boundary) {
+      boundary.add(next);
+      if (shadowNotes && typeof shadowNotes.added === 'function') shadowNotes.added(next);
+      shadowTreeChanged = true;
+    }
     if (shadowTreeChanged) {
       // A retained-root swap is the one live subtree attach that bypasses every
       // other invalidate seam — a band-1 root queued for depth staging would
@@ -13313,12 +13335,18 @@ function activatePackageSlotsTransaction(chunk, slots, options = {}) {
     }
     if (options.publishTarget === true && !chunk.mesh.parent) {
       chunk.scene.add(chunk.mesh);
+      const notes = chunk.scene.userData && chunk.scene.userData.shadowMeshNotes;
+      if (notes && typeof notes.added === 'function') notes.added(chunk.mesh);
       published = true;
     }
     for (const slot of liveSlots) slot.activateProxy = null;
     return true;
   } catch (error) {
-    if (published || chunk.mesh.parent === chunk.scene) chunk.mesh.removeFromParent();
+    if (published || chunk.mesh.parent === chunk.scene) {
+      chunk.mesh.removeFromParent();
+      const notes = chunk.scene.userData && chunk.scene.userData.shadowMeshNotes;
+      if (notes && typeof notes.removed === 'function') notes.removed(chunk.mesh);
+    }
     for (let index = proxySnapshots.length - 1; index >= 0; index--) {
       const snapshot = proxySnapshots[index];
       snapshot.object.isMesh = snapshot.isMesh;
@@ -13844,6 +13872,8 @@ function finalizeRetiredInstanceChunk(state, pool, chunk, admission) {
   if (chunk.meshRemoved !== true) {
     attempt(() => {
       chunk.mesh.removeFromParent();
+      const notes = chunk.scene.userData && chunk.scene.userData.shadowMeshNotes;
+      if (notes && typeof notes.removed === 'function') notes.removed(chunk.mesh);
       chunk.meshRemoved = true;
     });
   }

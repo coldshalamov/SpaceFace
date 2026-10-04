@@ -4232,7 +4232,7 @@ function attachPackagedBody(root, relativeFile, entity) {
       // continuation instead of at the next unrelated band flip.
       const packagedShadowSync = mintedAdmissionOptions.syncPackagedBodyShadowPolicy;
       if (typeof packagedShadowSync === 'function') {
-        try { packagedShadowSync(root, liveEntity || entity); } catch (_) { /* best effort */ }
+        try { packagedShadowSync(root, liveEntity || entity, packaged); } catch (_) { /* best effort */ }
       }
       root.userData.hull = packaged;
       root.userData.authoredReadableFallbackRetained = false;

@@ -8448,8 +8448,8 @@ export const render = {
           // detached fallback's flags were counted while mounted; the incoming
           // subtree's minted flags count now (measured before the sync rewrites
           // them), and the checked sync's own traverse delta settles its rewrites.
-          if (fallback) this._noteShadowMeshRemoved(fallback);
-          if (root) this._noteShadowMeshAdded(root);
+          if (fallback) this._noteShadowMeshRemoved?.(fallback);
+          if (root) this._noteShadowMeshAdded?.(root);
           invalidateShadowCasterPolicy(target);
           const lodLevel = target.userData && target.userData.lod
             ? target.userData.lod.level : null;
@@ -8847,6 +8847,16 @@ export const render = {
     { const i = new Image(); i.src = 'assets/cinematics/C-INTRO-01.jpg'; }
 
     this.renderer = renderer; this.scene = scene; this.cam = cam; this.spaceBg = spaceBg; this.vf = vf;
+    if (scene && scene.userData) {
+      // Scene-level injection seam: pool and chunk composition code outside
+      // renderer scope (asteroid instance pool, packaged instance chunks) adds
+      // and removes receiver-carrying meshes against this scene — note them so
+      // churn can't drift the incremental tally.
+      scene.userData.shadowMeshNotes = {
+        added: (subtree) => this._noteShadowMeshAdded?.(subtree),
+        removed: (subtree) => this._noteShadowMeshRemoved?.(subtree),
+      };
+    }
     if (this._crucibleGhostPresentation) this._crucibleGhostPresentation.attach(scene);
     // The nozzle-cooldown PointLight is part of the scene's visible light COUNT, which three bakes
     // into every material's program key. Mounting it lazily on first slipstream activity raised the
@@ -9470,7 +9480,7 @@ export const render = {
           ),
           releaseAsteroid: (id) => releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id),
           markShadowReceiversDirty: () => { this._markShadowReceiversDirty(); },
-          noteShadowMeshRemoved: (boundary) => { this._noteShadowMeshRemoved(boundary); },
+          noteShadowMeshRemoved: (boundary) => { this._noteShadowMeshRemoved?.(boundary); },
         });
       },
       disposeBoundary: (record) => {
@@ -9499,7 +9509,7 @@ export const render = {
             if (rendererGenerationIsActive()) this._markShadowReceiversDirty();
           },
           noteShadowMeshRemoved: (boundary) => {
-            if (rendererGenerationIsActive()) this._noteShadowMeshRemoved(boundary);
+            if (rendererGenerationIsActive()) this._noteShadowMeshRemoved?.(boundary);
           },
         });
       },
@@ -10316,7 +10326,7 @@ export const render = {
       // Exact receiver bookkeeping — the grafted subtree was never tallied, so its
       // minted flags count as a pre-sync add and the traverse's own delta settles
       // the rewrites. No whole-scene recount on a per-package commit path.
-      if (addedSubtree) this._noteShadowMeshAdded(addedSubtree);
+      if (addedSubtree) this._noteShadowMeshAdded?.(addedSubtree);
       invalidateShadowCasterPolicy(root);
       const lodLevel = root.userData && root.userData.lod ? root.userData.lod.level : null;
       const packagedPolicy = this._syncShadowCasterPolicyChecked(root, lodLevel, entity);
@@ -12713,6 +12723,7 @@ export const render = {
           asteroidLeafWarmRoot = buildAsteroidLeafWarmGroup();
           asteroidLeafWarmRoot.visible = false;
           scene.add(asteroidLeafWarmRoot);
+          this._noteShadowMeshAdded?.(asteroidLeafWarmRoot);
           addFirstFlightBufferRoot(asteroidLeafWarmRoot);
           // In _rosterPrewarmRoots so the bare→PBR upgrade sweep reaches it if the rock
           // surface library lands after this build — a leaf group left on bare materials
@@ -12761,7 +12772,10 @@ export const render = {
       }
       if (crucibleWarm && crucibleWarm.root) {
         crucibleWarmRoot = crucibleWarm.root;
-        scene.add(crucibleWarmRoot);
+        if (crucibleWarmRoot.parent !== scene) {
+          scene.add(crucibleWarmRoot);
+          this._noteShadowMeshAdded?.(crucibleWarmRoot);
+        }
         addFirstFlightBufferRoot(crucibleWarmRoot);
         // Stays mounted hidden for the run — _releaseSurvivalRosterPrewarm tears the root
         // down at run end, and the bare→PBR sweep reaches it via _rosterPrewarmRoots.
@@ -13090,6 +13104,7 @@ export const render = {
         // This temporary root belongs to this invocation even when the live owner changed.
         if (asteroidLeafWarmRoot && asteroidLeafWarmRoot.parent === scene) {
           scene.remove(asteroidLeafWarmRoot);
+          this._noteShadowMeshRemoved?.(asteroidLeafWarmRoot);
         }
       }
     };
@@ -14179,7 +14194,7 @@ export const render = {
         // tail is presentation-only — the corpse is already off-scene — so it queues for the
         // bounded per-frame drain instead of hitching the whole despawn into one task.
         this._despawnDisposeQueue.push(m);
-        this._noteShadowMeshRemoved(m);
+        this._noteShadowMeshRemoved?.(m);
         this._queueAssetResidencyDiagnosticsPublish();
       }
     }, { presentation: true });
@@ -15768,6 +15783,7 @@ export const render = {
         boundary.userData = boundary.userData || {};
         boundary.userData.rosterPrewarm = spec.id;
         this.scene.add(boundary);
+        this._noteShadowMeshAdded?.(boundary);
         this._rosterPrewarmRoots.push(boundary);
         try {
           const admitted = requestAuthoredUpgrade(boundary, this.renderer, this.scene, {
@@ -15857,6 +15873,7 @@ export const render = {
         mesh.visible = false;
         mesh.position.set(0, 0, 0);
         this.scene.add(mesh);
+        this._noteShadowMeshAdded?.(mesh);
         this._rosterPrewarmRoots.push(mesh);
         const settled = compilePipelines(mesh).catch((error) => {
           console.warn('[render] survival roster projectile warm failed', weaponId, error);
@@ -15879,6 +15896,7 @@ export const render = {
       const leafWarm = buildAsteroidLeafWarmGroup();
       leafWarm.visible = false;
       this.scene.add(leafWarm);
+      this._noteShadowMeshAdded?.(leafWarm);
       this._rosterPrewarmRoots.push(leafWarm);
       const leafSettled = compilePipelines(leafWarm).catch((error) => {
         console.warn('[render] asteroid leaf-variant warm failed', error);
@@ -15939,6 +15957,7 @@ export const render = {
     root.name = 'SF_RosterPrewarm_PartCatalog';
     root.visible = false;
     scene.add(root);
+    this._noteShadowMeshAdded?.(root);
     this._rosterPartCatalogRoot = root;
     const catalogProgress = { total: uniqueFiles.length, loaded: 0, holders: 0, compiles: 0 };
     if (state && state.render) state.render.rosterCatalogProgress = catalogProgress;
@@ -16159,7 +16178,10 @@ export const render = {
     // Mount immediately: queue-lane boundary requests refuse detached roots
     // (boundaryBelongsToScene), and the ship kicks below run through that check. The caller
     // re-adds the root after begin() returns — re-adding to the same parent is a no-op.
-    if (root.parent !== scene) scene.add(root);
+    if (root.parent !== scene) {
+      scene.add(root);
+      this._noteShadowMeshAdded?.(root);
+    }
     const sectorId = (state && state.world && state.world.currentSectorId) || null;
     // The '-decode-runway' suffix rides both classifiers: WARM_PURPOSE_RESIDENCY_ROLE
     // ('runway') keeps the soft-lease/evict-last warm accounting, and the deadline regex
@@ -16514,7 +16536,10 @@ export const render = {
       const prewarmIndex = Array.isArray(prewarmRoots) ? prewarmRoots.indexOf(root) : -1;
       if (prewarmIndex >= 0) prewarmRoots.splice(prewarmIndex, 1);
       try {
-        if (root.parent) root.parent.remove(root);
+        if (root.parent) {
+          root.parent.remove(root);
+          this._noteShadowMeshRemoved?.(root);
+        }
         if (!disposePreparedAuthoredBoundary(root)) disposeObject(root);
       } catch (_) { /* teardown is best-effort */ }
       return null;
@@ -16602,7 +16627,10 @@ export const render = {
         deferFleetDecodes: openingProfile,
       });
       if (!warm || !warm.root) return;
-      if (warm.root.parent !== scene) scene.add(warm.root);
+      if (warm.root.parent !== scene) {
+        scene.add(warm.root);
+        this._noteShadowMeshAdded?.(warm.root);
+      }
       this._rosterPrewarmRoots.push(warm.root);
       this._earlyCrucibleWarm = warm;
     } catch (error) {
@@ -16631,7 +16659,10 @@ export const render = {
         profile: 'crucible',
       });
       if (!warm || !warm.root) return;
-      if (warm.root.parent !== scene) scene.add(warm.root);
+      if (warm.root.parent !== scene) {
+        scene.add(warm.root);
+        this._noteShadowMeshAdded?.(warm.root);
+      }
       this._rosterPrewarmRoots.push(warm.root);
       this._earlyCrucibleWarm = warm;
       this._earlyCrucibleWarmMenu = true;
@@ -16701,7 +16732,10 @@ export const render = {
     const index = list.indexOf(root);
     if (index >= 0) list.splice(index, 1);
     try {
-      if (root.parent) root.parent.remove(root);
+      if (root.parent) {
+        root.parent.remove(root);
+        this._noteShadowMeshRemoved?.(root);
+      }
       if (this._contextLost === true) return;
       if (!disposePreparedAuthoredBoundary(root)) disposeObject(root);
     } catch (_) { /* teardown is best-effort */ }
@@ -17123,7 +17157,10 @@ export const render = {
     root.userData.rosterPrewarm = 'deferred-warm';
     // Still building (see the bounded-warm tag above): parked boundaries reject queued jobs.
     root.userData.warmBuilding = true;
-    if (root.parent !== scene) scene.add(root);
+    if (root.parent !== scene) {
+      scene.add(root);
+      this._noteShadowMeshAdded?.(root);
+    }
     this._rosterPrewarmRoots.push(root);
     const sectorId = (state.world && state.world.currentSectorId) || null;
     const track = (promise, label = 'deferred-warm') => {
@@ -17195,7 +17232,10 @@ export const render = {
       const prewarmRoots = this._rosterPrewarmRoots;
       const prewarmIndex = Array.isArray(prewarmRoots) ? prewarmRoots.indexOf(root) : -1;
       if (prewarmIndex >= 0) prewarmRoots.splice(prewarmIndex, 1);
-      if (root.parent) root.parent.remove(root);
+      if (root.parent) {
+        root.parent.remove(root);
+        this._noteShadowMeshRemoved?.(root);
+      }
     };
 
     try {
@@ -17439,6 +17479,7 @@ export const render = {
       try {
         root.traverse(() => { nodes += 1; });
         root.parent.remove(root);
+        this._noteShadowMeshRemoved?.(root);
         roots += 1;
         // Diagnostics only: probes audit which program keys the warm compiled; parked roots are
         // off the scene graph, so they are published here instead of found by a scene walk.
@@ -17474,7 +17515,10 @@ export const render = {
     for (const root of roots) {
       if (!root) continue;
       try {
-        if (root.parent) root.parent.remove(root);
+        if (root.parent) {
+          root.parent.remove(root);
+          this._noteShadowMeshRemoved?.(root);
+        }
         // A lost context already owns those buffers: detach the root but never invoke the
         // old context's disposers (the same abandon contract the rest of teardown obeys).
         if (this._contextLost === true) continue;
@@ -17889,6 +17933,13 @@ export const render = {
     }
     mesh.userData.presentationEntityId = entity.id;
     mesh.userData.sfStableEntityKey = stableMeshKeyForEntity(entity);
+    // Injection seam for composition paths outside renderer scope (partsLibrary's
+    // whole-ship LOD swap/family refresh) that attach and detach live subtrees:
+    // minted receivers must stay tallied or the count drifts per composition.
+    mesh.userData.shadowMeshNotes = {
+      added: (subtree) => this._noteShadowMeshAdded?.(subtree),
+      removed: (subtree) => this._noteShadowMeshRemoved?.(subtree),
+    };
     // Fresh bind must re-apply LOD even if a prior owner left the same band stamp.
     mesh.userData._appliedLodLevel = undefined;
     // A bound root that has not yet entered the visible set gets no pose writes, so the
@@ -21335,6 +21386,7 @@ export const render = {
     // and a re-dirtied parked root would wedge withheld forever.
     if (parkedEntry && dirtySeq > parkedEntry.seq) {
       parkedMap.delete(root);
+      if (root.userData) delete root.userData.sfDepthUndrawableCycles;
     }
     const parked = !!(parkedMap && parkedMap.has(root));
     const queued = !!(this._pendingDepthStageRoots && this._pendingDepthStageRoots.has(root)) || parked;
@@ -21415,6 +21467,7 @@ export const render = {
       // below restores live cast flags under current policy.
       parkedMap.delete(root);
       if (this._withheldDepthCasters) this._withheldDepthCasters.delete(root);
+      if (root.userData) delete root.userData.sfDepthUndrawableCycles;
     } else if (overCovered) {
       // Over the pass cap: withhold the whole subtree now. The stamped band-0 is
       // the same state queued parked roots carry — subsequent syncs early-out on
@@ -21564,7 +21617,10 @@ export const render = {
         for (const [root] of this._parkedDepthStageRoots) {
           if (!root || !root.parent) {
             this._parkedDepthStageRoots.delete(root);
-            if (root.userData) root.userData[STAGE_SELF_DIRTY_KEY] = false;
+            if (root.userData) {
+              root.userData[STAGE_SELF_DIRTY_KEY] = false;
+              delete root.userData.sfDepthUndrawableCycles;
+            }
             if (this._withheldDepthCasters) this._withheldDepthCasters.delete(root);
           }
         }
@@ -21707,12 +21763,16 @@ export const render = {
           // Detached mid-arm: nothing to restore — drop the bookkeeping a
           // remount must not inherit (the arm-start sweeps only cover pending
           // and parked, and slice members already left pending).
-          if (root && root.userData) root.userData[STAGE_SELF_DIRTY_KEY] = false;
+          if (root && root.userData) {
+            root.userData[STAGE_SELF_DIRTY_KEY] = false;
+            delete root.userData.sfDepthUndrawableCycles;
+          }
           if (root && this._withheldDepthCasters) this._withheldDepthCasters.delete(root);
           continue;
         }
         const { lodLevel, entity } = entry;
         const leftover = leftoverByRoot && leftoverByRoot.get(root);
+        let reforceLeftover = null;
         if (leftover) {
           // Every still-unmarked mesh was offered to this arm's leg and came back
           // unmarked — the stage can't draw it (undrawable-forever: geometry-less,
@@ -21728,22 +21788,43 @@ export const render = {
             const parkedMap = this._parkedDepthStageRoots
               || (this._parkedDepthStageRoots = new Map());
             this._parkedRecheckStamp = (this._parkedRecheckStamp || 0) + 1;
+            // Consecutive undrawable re-parks back the recheck cadence off
+            // geometrically — a forever-unmarkable leftover still gets re-offered
+            // on each recheck (a mesh drifting inside the key-light ortho
+            // self-heals), it just stops burning a collect+offer every ~100
+            // syncs in the meantime.
+            const cycles = ((root.userData && root.userData.sfDepthUndrawableCycles) || 0) + 1;
+            if (root.userData) root.userData.sfDepthUndrawableCycles = cycles;
             parkedMap.set(root, {
               // The +stamp%32 staggers same-arm cohorts: identical cadences used
               // to expire in one pass and stack every parked collect there.
               lodLevel, entity, seq: shadowCasterPolicyDirtySeq(root),
-              recheck: 96 + (this._parkedRecheckStamp % 32),
+              recheck: (96 + (this._parkedRecheckStamp % 32)) * Math.min(8, 1 << (cycles - 1)),
             });
+            // The leftover meshes stay withheld across the park; every other
+            // caster falls through to the restore below so staged siblings stop
+            // sitting dark for the park's whole lifetime.
+            reforceLeftover = leftover;
+          } else {
+            pending.set(root, { lodLevel, entity });
             continue;
           }
-          pending.set(root, { lodLevel, entity });
-          continue;
         }
         // The arm's own whole-slice collect covered every dirty to this instant —
         // stamp the live generation so the checked sync doesn't re-collect this
         // root every presented frame (writing false left stampedSeq=-1 forever).
         if (root.userData) root.userData[STAGE_SELF_DIRTY_KEY] = shadowCasterPolicyDirtySeq(root);
-        if (this._withheldDepthCasters) this._withheldDepthCasters.delete(root);
+        if (this._withheldDepthCasters) {
+          if (reforceLeftover) {
+            // The cached re-stamp must keep only the unmarkable set — re-forcing
+            // the whole withheld cohort would undo the restore for the staged
+            // siblings this park now frees.
+            this._withheldDepthCasters.set(root, new Set(reforceLeftover));
+          } else {
+            this._withheldDepthCasters.delete(root);
+          }
+        }
+        if (!reforceLeftover && root.userData) delete root.userData.sfDepthUndrawableCycles;
         try {
           // The restore's own traverse measures its receiveShadow flips — feed
           // them to the incremental tally like the checked sync does, or subtree
@@ -21765,6 +21846,13 @@ export const render = {
             }
           }
         } catch (_) { /* restore is best-effort */ }
+        if (reforceLeftover) {
+          // Only the meshes this arm proved undrawable stay dark — restoring
+          // them would link their depth variant inside a presented refresh.
+          for (const mesh of reforceLeftover) {
+            if (mesh) mesh.castShadow = false;
+          }
+        }
         restored += 1;
         // Restores requeue under the same deadline rule as the collect: staged
         // roots left over stay withheld one more arm — never a cold link.
@@ -21779,7 +21867,10 @@ export const render = {
         if (root && root.parent) {
           pending.set(root, entry);
         } else if (root) {
-          if (root.userData) root.userData[STAGE_SELF_DIRTY_KEY] = false;
+          if (root.userData) {
+            root.userData[STAGE_SELF_DIRTY_KEY] = false;
+            delete root.userData.sfDepthUndrawableCycles;
+          }
           if (this._withheldDepthCasters) this._withheldDepthCasters.delete(root);
         }
       }
@@ -21823,9 +21914,12 @@ export const render = {
     try {
       // Flag-only collect inside the click task — the signature-bearing recollect
       // runs per-slice in the arms anyway, so paying per-material signature strings
-      // + staged-set probes for the whole scene here is pure click latency.
-      const unstaged = collectPotentialShadowCastSubjects([scene]);
-      if (unstaged.length === 0) return;
+      // + staged-set probes for the whole scene here is pure click latency. The
+      // mark-check twin also keeps already-staged casters out of the withhold:
+      // enabling the map used to drop every linked caster's shadow for the drain.
+      const unstaged = collectUnstagedShadowCastersFlag(
+        [scene], this._shadowCensusForFrame());
+      if (unstaged === UNSTAGED_COLLECT_OVER_COVER || unstaged.length === 0) return;
       // The whole-scene toggle used to pay one synchronous reparent+census+compile
       // inside the settings handler — an unbounded stall on a presented frame for a
       // busy sector. Route the same stage through the arm queue instead: bounded
