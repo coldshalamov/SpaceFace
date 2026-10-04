@@ -102,6 +102,46 @@ const LOOKAHEAD_LEAD_SMOOTHING_S = 0.10; // smooth latest-tick velocity against 
 // pair out of the safe frame during a dodge. Combat keeps 0.6 of the lead — 0.30 s of velocity —
 // so the pilot's dodge still reads without the camera abandoning the threat.
 export const ACTIVE_ATTACKER_LOOKAHEAD_SCALE = 0.6;
+// Chase lookAt retain: follow() writes eye then lookAt every frame. Once focus/zoom/kick
+// settle, eye+target are bit-identical and Three Object3D.lookAt still pays
+// updateWorldMatrix + Matrix4.lookAt + setFromRotationMatrix. Cache the base look quat and
+// restore it on unchanged eye/target; roll/shake still post-multiply after. Soft-GPU fps not claimed.
+let CHASE_LOOKAT_RETAIN = true;
+export function setChaseLookAtRetainForBench(enabled) {
+  CHASE_LOOKAT_RETAIN = enabled !== false;
+  return CHASE_LOOKAT_RETAIN;
+}
+export function getChaseLookAtRetainForBench() {
+  return CHASE_LOOKAT_RETAIN !== false;
+}
+
+/**
+ * Apply chase look-at. Caller must set cam.position to (eyeX,eyeY,eyeZ) first.
+ * cache bag (per camera): { eyeX, eyeY, eyeZ, targetX, targetZ, baseQuat }.
+ * Returns true when Three lookAt ran; false when the cached base quat was restored.
+ */
+export function applyChaseLookAt(cam, eyeX, eyeY, eyeZ, targetX, targetZ, cache = null) {
+  if (!cam) return false;
+  const tx = Number.isFinite(targetX) ? targetX : 0;
+  const tz = Number.isFinite(targetZ) ? targetZ : 0;
+  if (CHASE_LOOKAT_RETAIN && cache && cache.baseQuat
+      && eyeX === cache.eyeX && eyeY === cache.eyeY && eyeZ === cache.eyeZ
+      && tx === cache.targetX && tz === cache.targetZ) {
+    cam.quaternion.copy(cache.baseQuat);
+    return false;
+  }
+  cam.lookAt(tx, 0, tz);
+  if (cache) {
+    if (!cache.baseQuat) cache.baseQuat = cam.quaternion.clone();
+    else cache.baseQuat.copy(cam.quaternion);
+    cache.eyeX = eyeX;
+    cache.eyeY = eyeY;
+    cache.eyeZ = eyeZ;
+    cache.targetX = tx;
+    cache.targetZ = tz;
+  }
+  return true;
+}
 // Sticky composed-threat hold: dense furballs thrash nearest/active identity every few frames and
 // the composition bias slews between anchors. Hold the current anchor briefly unless a challenger
 // is meaningfully closer or a new active attacker appears.
@@ -1297,6 +1337,10 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
   let _anchorHoldX = 0;
   let _anchorHoldZ = 0;
   let _anchorHoldValid = false;
+  // Retained chase lookAt base quat — see applyChaseLookAt.
+  const _lookAtCache = {
+    eyeX: NaN, eyeY: NaN, eyeZ: NaN, targetX: NaN, targetZ: NaN, baseQuat: null,
+  };
   let _compositionBiasX = 0;
   let _compositionBiasZ = 0;
   let _contextZoomBias = 0;
@@ -1371,6 +1415,7 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
     computeOffset(_dynamicZoom);
     cam.position.set(c.focus.x + offset.x, offset.y, c.focus.z + offset.z);
     cam.lookAt(c.focus.x, 0, c.focus.z);
+    _lookAtCache.eyeX = NaN;
     cam.updateMatrixWorld(true);
     _directorFrame = cameraDirector.reset(px, pz, _dynamicZoom);
     _snappedPlayerId = p.id;
@@ -1587,6 +1632,7 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
         }
         cam.position.set(c.focus.x + offset.x, offset.y, c.focus.z + offset.z);
         cam.lookAt(c.focus.x, 0, c.focus.z);
+        _lookAtCache.eyeX = NaN;
         if (_directorFrame) {
           _directorFrame.mode = CameraDirectorMode.FOLLOW;
           _directorFrame.focusX = c.focus.x;
@@ -2114,7 +2160,15 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
         c.clearanceDiag = _glide.diag;
       }
       cam.position.set(camX + dollyX, camY, camZ + dollyZ);
-      cam.lookAt(c.focus.x + c.kickOffset.x, 0, c.focus.z + c.kickOffset.z);
+      applyChaseLookAt(
+        cam,
+        camX + dollyX,
+        camY,
+        camZ + dollyZ,
+        c.focus.x + c.kickOffset.x,
+        c.focus.z + c.kickOffset.z,
+        _lookAtCache,
+      );
       // apply a gentle, damped roll in the camera's local frame — counter to the ship's bank so the
       // view tips into the turn. lookAt() set the quaternion; we post-multiply a local-Z rotation so
       // we never clobber the heading (safe with the no-yaw-follow rule).
