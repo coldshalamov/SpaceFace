@@ -180,3 +180,31 @@ test('a presentation stall retains loop, sim, time-effects and graphics-context 
 
   h.controller.stop();
 });
+
+// The field must be a live read of the published renderer flag: the same harness stalling again
+// while state.render.contextLost is set stamps true, never a hardcoded false.
+test('a stall while the published context-lost flag is set reports renderContextLost: true', () => {
+  let broken = true;
+  const h = createHarness({
+    renderUpdate() { if (broken) throw new Error('draw call exploded'); },
+  });
+
+  flushFrames(h, 40);
+  let evidence = h.controller.getDiagnostics().presentationStallEvidence;
+  assert.equal(evidence.graphicsContext.renderContextLost, false, 'precondition: healthy stamp');
+
+  // Clear the stall, set the published flag, and stall again — the re-stamp reads the live flag.
+  broken = false;
+  flushFrames(h, 3);
+  assert.equal(h.controller.getDiagnostics().presentationStalled, false,
+    'a recovered renderer clears the first stall before the second one');
+  h.state.render.contextLost = true;
+  broken = true;
+  flushFrames(h, 40);
+
+  evidence = h.controller.getDiagnostics().presentationStallEvidence;
+  assert.equal(evidence.graphicsContext.renderContextLost, true,
+    'the re-stamp reports the published flag — the field is a live read, not a constant');
+
+  h.controller.stop();
+});

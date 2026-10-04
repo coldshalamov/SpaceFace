@@ -219,6 +219,35 @@ test('context restore stays draw-gated through rebuild and remains gated after a
   assert.equal(recovery.generation, 8);
 });
 
+test('state.render.contextLost mirrors the private flag through the rebuild cycle', async () => {
+  // D48/D111 evidence, pipelineReadiness and the runtime witness all read the PUBLISHED field;
+  // it must track the renderer's real _contextLost or every one of those readers reports a
+  // fabricated "not lost" during an actual loss.
+  const owner = { _contextLost: false, state: { render: {} } };
+  const recovery = { restores: 0, generation: 0, pending: false, lastError: null };
+
+  let publishedDuringRebuild = null;
+  const success = await runWebGlContextRestoreRebuild(owner, recovery, async () => {
+    publishedDuringRebuild = owner.state.render.contextLost;
+    await Promise.resolve();
+  });
+
+  assert.equal(success.ok, true);
+  assert.equal(publishedDuringRebuild, true,
+    'the published flag reports lost while the rebuild is in flight');
+  assert.equal(owner._contextLost, false);
+  assert.equal(owner.state.render.contextLost, false,
+    'a completed restore clears the published flag alongside the private one');
+
+  const failure = await runWebGlContextRestoreRebuild(owner, recovery, async () => {
+    throw new Error('rebuild exploded');
+  });
+  assert.equal(failure.ok, false);
+  assert.equal(owner.state.render.contextLost, true,
+    'a terminal rebuild failure keeps the published flag set — the context is still lost');
+  assert.equal(recovery.terminal, true);
+});
+
 test('a successful rebuild drains exact-target touches queued while recovery was pending', async () => {
   const owner = { _contextLost: true };
   const touched = [];

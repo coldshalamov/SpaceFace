@@ -74,6 +74,36 @@ test('D48: admission timeout stamps prepare phase, root identity, generation, el
       'a job with no renderer reports unknown rather than fabricating GL state');
     assert.equal(evidence.graphicsContext.renderContextLost, false);
     assert.equal(evidence.graphicsContext.contextRecoveryPending, false);
+
+    // The field is a live read of the published renderer flag, not a constant: a second job
+    // timed out while state.render.contextLost is set must stamp true.
+    const station2 = new THREE.Group();
+    station2.name = 'aux-hub:9';
+    scene.add(station2);
+    let finishStation2;
+    enqueueBoundaryUpgrade(scene, {
+      boundary: station2,
+      entity: { id: 'station2', type: 'station', alive: true, mesh: station2 },
+      options: {},
+      run: () => new Promise((resolve) => { finishStation2 = resolve; }),
+    });
+    globalThis.window.SF.state.render.contextLost = true;
+    scheduled.shift()(0);
+    await new Promise((resolve) => setImmediate(resolve));
+    fakeNow += 121_000;
+    t.mock.timers.tick(121_000);
+    for (let i = 0; i < 8 && scheduled.length; i++) {
+      scheduled.shift()(0);
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+    await new Promise((resolve) => setImmediate(resolve));
+    const record2 = diagnostics.jobs.find((j) => j.entityId === 'station2');
+    assert.ok(record2 && record2.timeoutEvidence,
+      'the second timed-out job leaves its own evidence block');
+    assert.equal(record2.timeoutEvidence.graphicsContext.renderContextLost, true,
+      'a stamp while the published flag is set reports lost, never a fabricated false');
+    globalThis.window.SF.state.render.contextLost = false;
+    finishStation2?.();
   } finally {
     finishStation?.();
     resumeAuthoredUpgradeQueueAfterOpening(scene);
