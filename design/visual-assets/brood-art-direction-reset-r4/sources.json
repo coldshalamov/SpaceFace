@@ -1,0 +1,80 @@
+{
+  "note": "Local inspected source snapshots; no unverified HEAD/current-remote claim. Repository document paths are the suffix following the snapshot directory.",
+  "sources": [
+    {
+      "role": "rejected_mite",
+      "inspectedPath": "brood-mite-redesign/candidate-m7/review/mite-m7-matched-lod-review.png",
+      "sha256": "875fc3af204e50142548787a772c03cf1d5fe512bbb6c0ee469d44b19c218810"
+    },
+    {
+      "role": "rejected_splitter",
+      "inspectedPath": "brood-redesign/production-a6/review-v12/v12-matched-close-comparison.png",
+      "sha256": "a5fb50afb3f31555e7313de880bd23cb5f43f2f72e8bfe20fe2d68e9b22f568e"
+    },
+    {
+      "role": "rejected_charger",
+      "inspectedPath": "brood-charger-redesign/study-c5/c3-c5-checkpoint.png",
+      "sha256": "5f1eda42fcc66d6d71a170497f76c114a2ad912f93a4a56bf4d396079383f009"
+    },
+    {
+      "role": "established_models",
+      "inspectedPath": "spaceface-art-audit/sheets/01-brood-vs-established.png",
+      "sha256": "b29b2572c834aed9fd666fccb19caf75589760a1cac3a602f668ab2e8b5db8c4"
+    },
+    {
+      "role": "machinery",
+      "inspectedPath": "spaceface-art-audit/sheets/02-machinery-1.png",
+      "sha256": "b7e0d48dc196dbf1e0196d552ed3125941e0e4b75b87d661c6087e1c68946834"
+    },
+    {
+      "role": "ceres_context",
+      "inspectedPath": "spaceface-art-audit/sheets/06-ceres-context.png",
+      "sha256": "99313a2d2bdc52593dd7087de28d377f2213106af579e67699239044053a3b93"
+    },
+    {
+      "role": "mite_contract",
+      "inspectedPath": "brood-mite-redesign/contracts/frozen-mite-contract.json",
+      "sha256": "251e3a1864891277835c736a18b1aeee38eb56c61a4820109ede375f63f3a485"
+    },
+    {
+      "role": "mite_motion",
+      "inspectedPath": "brood-mite-redesign/contracts/frozen-mite-motion.json",
+      "sha256": "a3f50bf6c71d105e0cb6d9e4c48e2082e866a590d1de64907ee2550813c42053"
+    },
+    {
+      "role": "repo_snapshot_AGENTS.md",
+      "inspectedPath": "ceres-keeper-source-visibility/AGENTS.md",
+      "sha256": "82b50724f74461d581395071ba4562e60ea2822219de84baca2c9e56a365f475"
+    },
+    {
+      "role": "repo_snapshot_docs/visual-assets/README.md",
+      "inspectedPath": "ceres-keeper-source-visibility/docs/visual-assets/README.md",
+      "sha256": "c42112a2afbca152ec893f2982eeb6ab037358dfcf691a0fc9f992181a839b26"
+    },
+    {
+      "role": "repo_snapshot_docs/visual-assets/LOOK.md",
+      "inspectedPath": "ceres-keeper-source-visibility/docs/visual-assets/LOOK.md",
+      "sha256": "58ecd08858ca7f55c9c484a93565f56316798571f0fe552a4479ffe51e691f63"
+    },
+    {
+      "role": "repo_snapshot_tools/blender/forge/FORGE.md",
+      "inspectedPath": "ceres-keeper-source-visibility/tools/blender/forge/FORGE.md",
+      "sha256": "6e218e690168ddf68a457915c4eedfffb6f9aa5a115a0940713c737186fc9b7e"
+    },
+    {
+      "role": "repo_snapshot_design/program/GRAPHICS_PROGRAM.md",
+      "inspectedPath": "ceres-keeper-source-visibility/design/program/GRAPHICS_PROGRAM.md",
+      "sha256": "e7d66c61bcebf66b67c4b3379922417928b474d22a4b7cf6be185ce6a6864d8e"
+    },
+    {
+      "role": "repo_snapshot_design/swarm/SWARM_EXPANSION.md",
+      "inspectedPath": "ceres-keeper-source-visibility/design/swarm/SWARM_EXPANSION.md",
+      "sha256": "df4588357e3307bec7ffb2b617b45d08ff0a10639b53ae2dffe39a80deb62d97"
+    },
+    {
+      "role": "repo_snapshot_design/program/world-depth-2026-10-02/ASSET_FAMILIES.md",
+      "inspectedPath": "ceres-keeper-source-visibility/design/program/world-depth-2026-10-02/ASSET_FAMILIES.md",
+      "sha256": "c725dc843a910552901187859663cad14473f695e56359613780483b3881ca6c"
+    }
+  ]
+}

@@ -1,0 +1,173 @@
+{
+  "status": "REFERENCE_AND_UNFINISHED_DESIGN_STUDY_ONLY",
+  "runtimeChanges": false,
+  "selectedPrototype": "R4",
+  "selectedConcept": "lamellar shear Mite",
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 2985,
+      "sha256": "343233f3cf0ef3360c37d52fa41d6e65c2502eb7e24385666d92d1b1aa6e5dc0"
+    },
+    {
+      "path": "BUILD_BRIEF.md",
+      "bytes": 10532,
+      "sha256": "7ea1ed3e448d43cc8305c2e1ba5b79dc7dca6c23b4da404caeda329e3cb4a0d6"
+    },
+    {
+      "path": "REVIEW.md",
+      "bytes": 4540,
+      "sha256": "3b07a2959a1859d397f52050a4849981cc016dec8bed7041d0bd68d1b6bc12ee"
+    },
+    {
+      "path": "sources.json",
+      "bytes": 3594,
+      "sha256": "1f441290549695b3f20b286cfbfa8f911b84436d5c0a09346e0a18ac138ee408"
+    },
+    {
+      "path": "reference/mite-lamellar-shear-concept.png",
+      "bytes": 1713493,
+      "sha256": "ba34db4640fecc49f1b49bb8e4ea0e0f2306e9b70f4de65798b6af432d2a3af3"
+    },
+    {
+      "path": "reference/GENERATED_REFERENCE.md",
+      "bytes": 708,
+      "sha256": "daf2d8e1e609582ee2ab4cf3ba2cc97f1ef6db89726c9f1d8bcf10df2eff69b0"
+    },
+    {
+      "path": "reference/prompt.txt",
+      "bytes": 3390,
+      "sha256": "00023eaea076a9bfd6f5fbd1197d5720f8fac12174a665c2fa5254518102cdbe"
+    },
+    {
+      "path": "prototype/mite-lamellar-r4.blend",
+      "bytes": 1555956,
+      "sha256": "00159c46a7d9aef5b315d5b8077050a34e6d600ac0f1d269cbe3185d964ffac9"
+    },
+    {
+      "path": "prototype/mite-lamellar-r4.glb",
+      "bytes": 443408,
+      "sha256": "db47472d89da31f3126445add35bc023b510b0fbaf74f2cd4495d8817166232a"
+    },
+    {
+      "path": "prototype/prototype-facts-r4.json",
+      "bytes": 621,
+      "sha256": "04227d730b7b4fda89a77e9e6459ac091eb5378bb8950936ede23ed43104180b"
+    },
+    {
+      "path": "review/mite-r4-neutral-and-scale-review.png",
+      "bytes": 946321,
+      "sha256": "91df64b44f3cdf0830f092ebff9b07cbb69df37383e999470b99a08530de6f9f"
+    },
+    {
+      "path": "review/mite-r4-material-clay-pair.png",
+      "bytes": 232916,
+      "sha256": "89d6373222318a74d80f0210959359136f1be90fb65320ca2a0c754110636ef1"
+    },
+    {
+      "path": "review/mite-lamellar-r4-render-receipt.json",
+      "bytes": 954,
+      "sha256": "182e62f71d9c54568308e0e5147fa31fb11e6cad23465a17793bf1c529951f4c"
+    },
+    {
+      "path": "review/scale-method.json",
+      "bytes": 359,
+      "sha256": "0634be41cd1c714ebfd1a5d04bdb27c06174215f7c1dd4d7e7126ba79dfde692"
+    },
+    {
+      "path": "source/build_lamellar_mite.py",
+      "bytes": 10912,
+      "sha256": "9c0c81f52fdb9b7beac36d3a94bd52969c601c6ac2fa2cbe9b8b738abd4d377b"
+    },
+    {
+      "path": "source/build_lamellar_mite_r2.py",
+      "bytes": 11345,
+      "sha256": "723f1d0400e9441eb6bc71ceb4c80f3984d5977285bdfc7e937ae1815d94dbab"
+    },
+    {
+      "path": "source/build_lamellar_mite_r3.py",
+      "bytes": 13148,
+      "sha256": "1fd61b233a012c36e6fd6da72279d39f4ca11f6ebc55e48225a5bcb9d5c93470"
+    },
+    {
+      "path": "source/build_lamellar_mite_r4.py",
+      "bytes": 11583,
+      "sha256": "cb4f50186b6e13ba9fb17275f4d7da733f0be029ef955c704f962de61a04f3e5"
+    },
+    {
+      "path": "source/make_review_sheet.py",
+      "bytes": 3383,
+      "sha256": "dd40bd5a3442901ddbda9e65800fb2d695fcf7e149b7f69055903b5cfc4e2c89"
+    },
+    {
+      "path": "source/render_prototype.py",
+      "bytes": 3519,
+      "sha256": "d785875258fe91b3aae56773e6f58e107ec20762a08782c6967032f3ecac23a6"
+    },
+    {
+      "path": "review/mite-lamellar-r4-clay-chase60.png",
+      "bytes": 478743,
+      "sha256": "cf0ef96f8eb8235f5a86992a8a18738855b7c9cdf680bb769cd0e35f380f64db"
+    },
+    {
+      "path": "review/mite-lamellar-r4-clay-jawroot.png",
+      "bytes": 545917,
+      "sha256": "94cd59b1496bb7b5bf541b85d52184fbd38d3ff8dc6dc18729bc1a2e2763027f"
+    },
+    {
+      "path": "review/mite-lamellar-r4-clay-side.png",
+      "bytes": 365794,
+      "sha256": "c4683c9c45459514e992aafccbe732b38f1eb11535fef1ff6fea99ba4670d846"
+    },
+    {
+      "path": "review/mite-lamellar-r4-clay-threequarter.png",
+      "bytes": 436667,
+      "sha256": "93271c7e1a3ef9908d90d6817375e8d09f5c718e9ad33efb7cf61dfc7f9b6d5e"
+    },
+    {
+      "path": "review/mite-lamellar-r4-clay-top.png",
+      "bytes": 502064,
+      "sha256": "a0288817fdaa5d5a6e9a5daeb5db55bd78265f8fab63fbc66a0a4316e940f1f1"
+    },
+    {
+      "path": "review/mite-lamellar-r4-material-chase60.png",
+      "bytes": 661383,
+      "sha256": "ba39d6c84a11f0156429231db6f0a9a2436a0e87fd93c19d11cb3ec455acd641"
+    },
+    {
+      "path": "review/mite-lamellar-r4-material-jawroot.png",
+      "bytes": 845520,
+      "sha256": "d5e2433d06b67150d7440effc8ab2f8279d773c7c2b88bf5c6493e079726b2be"
+    },
+    {
+      "path": "review/mite-lamellar-r4-material-side.png",
+      "bytes": 433029,
+      "sha256": "2c8f1677f7d89606cbaf359125c388b829a21c689e4613853152281cb79dd5b4"
+    },
+    {
+      "path": "review/mite-lamellar-r4-material-threequarter.png",
+      "bytes": 555797,
+      "sha256": "fbf59f0c3e31756c9bd602f4e26f9ca64629055a1ebe7ec85a5b2bbd9991e570"
+    },
+    {
+      "path": "review/mite-lamellar-r4-material-top.png",
+      "bytes": 707268,
+      "sha256": "1f080134b7b13c8098c71cdca80a23abf468ccfbc4996aa97f0d96163408f5e3"
+    },
+    {
+      "path": "review/mite-lamellar-r1-material-threequarter.png",
+      "bytes": 639590,
+      "sha256": "c064f5fe5ec3fde7dcf8002aebbbd26a4619c1c168ae567068830dd4e6118b3e"
+    },
+    {
+      "path": "review/mite-lamellar-r2-material-threequarter.png",
+      "bytes": 634059,
+      "sha256": "b08995773de4c09f9541b79e9d3e1e3cd4087527d80cf49c5043f34767534af2"
+    },
+    {
+      "path": "review/mite-lamellar-r3-material-threequarter.png",
+      "bytes": 636173,
+      "sha256": "f4e8d02707f64473a7bc0b0e2e9dbefb6782f912985af7f83001407def903c5f"
+    }
+  ]
+}

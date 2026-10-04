@@ -1,0 +1,24 @@
+{
+  "source": "prototype/mite-lamellar-r4.glb",
+  "sha256": "db47472d89da31f3126445add35bc023b510b0fbaf74f2cd4495d8817166232a",
+  "renderer": "Blender Cycles 4.3 CPU",
+  "scriptSha256": "d785875258fe91b3aae56773e6f58e107ec20762a08782c6967032f3ecac23a6",
+  "actualGameLook": false,
+  "input": "Cold import of exact exported GLB",
+  "clayIsActualGeometry": true,
+  "colorGrade": "AgX",
+  "renders": [
+    "mite-lamellar-r4-material-top.png",
+    "mite-lamellar-r4-material-chase60.png",
+    "mite-lamellar-r4-material-threequarter.png",
+    "mite-lamellar-r4-material-jawroot.png",
+    "mite-lamellar-r4-material-side.png",
+    "mite-lamellar-r4-clay-top.png",
+    "mite-lamellar-r4-clay-chase60.png",
+    "mite-lamellar-r4-clay-threequarter.png",
+    "mite-lamellar-r4-clay-jawroot.png",
+    "mite-lamellar-r4-clay-side.png"
+  ],
+  "camera": "orthographic comparison, chase is 60 degrees; not actual perspective game camera",
+  "orthographicWidth": 13.6
+}
