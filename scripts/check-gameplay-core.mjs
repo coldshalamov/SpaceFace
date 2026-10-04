@@ -1338,7 +1338,11 @@ function checkSg02ProductionSyncUsesActivityBodyLayers() {
     physics._sg02 = previous || null;
   }
   assert.equal(calls.length, 1, 'SG-02 production sync should call the layered body sync path');
-  assert.equal(calls[0].statics, activity.physicsStatics, 'SG-02 production sync should pass the classified fixed body layer');
+  // dressingStaticLayerFor folds non-entity dressing rows onto the classified static layer, so the
+  // sync receives a derived array — membership is the durable contract, reference is not.
+  for (const body of activity.physicsStatics) {
+    assert(calls[0].statics.includes(body), 'SG-02 production sync should pass the classified fixed body layer');
+  }
   assert.equal(calls[0].dynamics, activity.physicsDynamics, 'SG-02 production sync should pass the classified dynamic body layer');
   assert.equal(calls[0].version, activity.physicsStaticVersion, 'SG-02 production sync should pass the activity static invalidation version');
   assert.equal(calls[0].ordered, null, 'SG-02 production sync should not pass retired legacy ordered entity arrays');
@@ -1806,6 +1810,7 @@ function checkTrafficUsesEntityIndexesForStationsAndAsteroids() {
   }
   state.entityIndex = {
     __spacefaceEntityIndexV1: true,
+    ready: true,
     dockStations: [station],
     stations: [station, gate],
     gates: [gate],
@@ -2193,13 +2198,15 @@ function checkSaveScrubsTransientFlightState() {
   assert.equal(savedPlayer.physicsBody.thrusters[0].health, 0.5, 'save should keep dynamic thruster damage state');
   assert.equal(savedPlayer.flags.persistent, true, 'save should keep persistent entity flags');
   assert.equal(savedPlayer.flags.invuln, undefined, 'save should drop transient player dock/launch protection');
-  assert.equal(savedPlayer.flags.boosting, undefined, 'save should drop transient sustained boost flag');
+  assert.equal(savedPlayer.flags.boosting, true,
+    'save should keep the sustained boost flag — dropping it silently killed a mid-boost burn on restore (47a reload)');
   assert.equal(savedPlayer.flags.noInterp, undefined, 'save should drop transient interpolation flag');
   assert.equal(savedPlayer.boost.energy, 63, 'save should keep public boost resource state');
   assert.equal(savedPlayer.boost.dashCdT, 0.75, 'save should keep public boost cooldown state');
   assert.equal(savedPlayer.boost._boostHoldT, undefined, 'save should drop private boost hold timer');
   assert.equal(savedPlayer.boost._dashCandidate, undefined, 'save should drop private dash gesture state');
-  assert.equal(savedPlayer.boost._boostArmed, undefined, 'save should drop private boost edge state');
+  assert.equal(savedPlayer.boost._boostArmed, true,
+    'save should keep _boostArmed — burn-window fields are sim state; dropping them diverges a mid-window restore');
   assert.equal(savedPlayer.prevPos, undefined, 'save should drop interpolation position history');
   assert.equal(savedPlayer.prevRot, undefined, 'save should drop interpolation rotation history');
   assert.equal(savedPlayer.bank, undefined, 'save should drop decorative bank pose');
@@ -3491,26 +3498,37 @@ function checkInsuredRespawnUsesStationRefundAndCargoLoss() {
     capMax: 110,
   };
   state.entities.set(player.id, player);
+  state.combat = {};
   const events = [];
 
   combat.state = state;
   combat.bus = { emit: (event, payload) => events.push({ event, payload }) };
+  combat._pendingPlayerRecovery = null;
+  combat._recoveryInFlight = false;
 
-  combat.respawnPlayer(player, 99);
+  // The respawn seam is the recovery pipeline: beginPlayerDefeat arms the latch from the
+  // after-action receipt, recoverPendingPlayer commits the plan at the berth.
+  assert.equal(combat.beginPlayerDefeat(player, { cause: 'test', source: 'unit' }), true,
+    'a recoverable defeat should arm the recovery latch');
+  const recovery = combat.recoverPendingPlayer({});
+  assert.equal(recovery && recovery.ok, true, 'recovery should commit the plan at the berth');
 
   const respawn = events.find((e) => e.event === 'player:respawn');
-  const refund = events.find((e) => e.event === 'economy:grantCredits' && e.payload.reason === 'insurance:respawn');
-  assert(respawn, 'insured death should emit player:respawn');
-  assert(refund, 'insured respawn should emit an insurance refund credit event');
-  assert.equal(respawn.payload.stationId, 'station_helios', 'insured respawn should use the last insured station');
-  assert.equal(respawn.payload.refundCr, 14200, 'insured respawn should report the net insurance refund');
-  assert.equal(refund.payload.amount, 14200, 'insurance refund should route through economy');
+  const charge = events.find((e) => e.event === 'economy:chargeCredits' && e.payload.reason === 'recovery:deductible');
+  assert(respawn, 'insured defeat should emit player:respawn');
+  assert(charge, 'insured recovery should charge the deductible through economy');
+  assert.equal(respawn.payload.stationId, 'station_helios', 'insured recovery should use the last insured station');
+  // insured → quoted cost is the 500cr deductible, clamped to the 100cr on hand.
+  assert.equal(charge.payload.amount, 100, 'deductible should clamp to available credits');
+  assert.equal(respawn.payload.costCr, 100, 'respawn receipt should report the charged recovery cost');
   assert.equal(respawn.payload.cargoLost, true, 'insured respawn should report cargo loss');
   assert.equal(respawn.payload.cargoLostQty, 3, 'insured respawn should report lost cargo units');
   assert.equal(state.player.cargo.items.cmdty_ore_iron, 3, 'respawn should lose half of iron cargo');
   assert.equal(state.player.cargo.items.cmdty_ice_water, 2, 'respawn should lose half of ice cargo');
-  assert.equal(player.pos.x, 320, 'respawn should move player to the last station x position');
+  // Recovery berths beside the station, clear of its collision origin (RECOVERY_BERTH_CLEARANCE_WU = 140).
+  assert.equal(player.pos.x, 460, 'respawn should berth the player clear of the station');
   assert.equal(player.pos.z, -80, 'respawn should move player to the last station z position');
+  assert.equal(player.alive, true, 'recovery should revive the player hull');
   assert.equal(player.hull, player.hullMax, 'respawn should restore hull');
   assert.equal(player.shield, player.shieldMax, 'respawn should restore shield');
   assert.equal(player.cap, player.capMax, 'respawn should restore capacitor');
@@ -3570,18 +3588,42 @@ function checkRespawnUsesReachableSectorStationWhenLastDockIsElsewhere() {
   state.entities.set(liveStation.id, liveStation);
   state.entityList.push(player, liveStation);
   state.entityIndex = { byStationId: new Map([[liveStation.data.stationId, liveStation]]), stations: [liveStation] };
+  state.combat = {};
   const events = [];
+  const hops = [];
 
   combat.state = state;
   combat.bus = { emit: (event, payload) => events.push({ event, payload }) };
+  combat._pendingPlayerRecovery = null;
+  combat._recoveryInFlight = false;
+  // The remembered insured station lives in another sector — recovery reaches it through a real
+  // world hop (via: 'recovery'), which is how the plan stays honest about where the berth is.
+  combat.registry = {
+    get: (name) => (name === 'world' ? {
+      enterSector(sectorId, opts) {
+        hops.push({ sectorId, opts });
+        state.world.currentSectorId = sectorId;
+        state.world.activeSector = {
+          stations: [{ stationId: 'station_helios', pos: { x: 320, z: -80 } }],
+        };
+        return true;
+      },
+    } : null),
+  };
 
-  combat.respawnPlayer(player, 99);
+  assert.equal(combat.beginPlayerDefeat(player, { cause: 'test', source: 'unit' }), true,
+    'a recoverable defeat should arm the recovery latch');
+  const recovery = combat.recoverPendingPlayer({});
+  assert.equal(recovery && recovery.ok, true, 'recovery should commit the plan at the berth');
 
   const respawn = events.find((e) => e.event === 'player:respawn');
   assert(respawn, 'normal death should emit player:respawn');
-  assert.equal(respawn.payload.stationId, 'station_tethys', 'respawn should not report an unreachable previous-sector station');
-  assert.equal(player.pos.x, -240, 'respawn should use the current sector live station x position');
-  assert.equal(player.pos.z, 510, 'respawn should use the current sector live station z position');
+  assert.equal(respawn.payload.stationId, 'station_helios', 'insured recovery should use the remembered lawful station');
+  assert.equal(hops.length, 1, 'cross-sector recovery should hop the world exactly once');
+  assert.equal(hops[0].sectorId, 'sector_helios_prime', 'the hop should target the remembered station sector');
+  assert.equal(hops[0].opts && hops[0].opts.via, 'recovery', 'the hop should be tagged as a recovery transfer');
+  assert.equal(player.pos.x, 460, 'respawn should berth beside the recovered station, clear of its origin');
+  assert.equal(player.pos.z, -80, 'respawn should use the recovered station z position');
   assert.equal(player.vel.x, 0, 'respawn should clear stale ship velocity');
   assert.equal(player.vel.z, 0, 'respawn should clear stale ship velocity');
 }
@@ -3740,9 +3782,11 @@ function checkRefuelServiceOnlyChargesAffordableFuel() {
 
   economy.handleService({ type: 'refuel', amount: 60 });
 
-  assert.equal(poorState.player.credits, 5, 'unaffordable refuel should not charge below one fuel unit');
-  assert.equal(poorState.fuel.current, 40, 'unaffordable refuel should not change fuel');
-  assert(poorEvents.some((e) => e.event === 'toast' && e.payload.kind === 'error'), 'unaffordable refuel should notify the player');
+  // FB-101: a broke pilot is not stranded — the berth files the emergency reserve (8u) as debt
+  // instead of charging credits or refusing the fill outright.
+  assert.equal(poorState.player.credits, 5, 'unaffordable refuel should not charge credits');
+  assert.equal(poorState.fuel.current, 48, 'unaffordable refuel should grant the filed emergency reserve');
+  assert(poorEvents.some((e) => e.event === 'toast' && e.payload.kind === 'warn' && /Emergency fuel/.test(e.payload.text)), 'emergency refuel should warn the player about the filed debt');
 }
 
 function checkInsuranceUsesDockedStationId() {
@@ -5986,13 +6030,14 @@ function checkCountermeasuresInterceptMissiles() {
   }
 
   // AI auto-deploy: a countermeasure-equipped NPC should react to a ship locking onto it without
-  // scanning the full world entity list.
+  // scanning the full world entity list. The lock *break* is lineage-gated: it only fires while a
+  // live missile is inbound on the deployer, so a bare lock spends the charge but holds the lock.
   {
     const ctx = boot([]);
     ctx.player.data.combat.lockTarget = 2;
     ctx.player.data.combat.lockProgress = 0.9;
     ctx.attacker.data.fittings = ['mod_chaff_dispenser_m'];
-    ctx.missile.data.targetId = 99;
+    ctx.missile.data.targetId = 2; // the player's missile is inbound on the deployer
     countermeasures.update(0.016, ctx.state);
     assert.ok(ctx.attacker.data.cm && ctx.attacker.data.cm.effect,
       'AI ship should auto-deploy a countermeasure when another ship is locking it');
@@ -6021,7 +6066,13 @@ function checkCountermeasureEffectsUseSpatialProjectileQueries() {
       cm: {
         cooldownT: 0,
         effectT: 1,
-        effect: { cfg: { kind: 'ecm', radius: 120, turnRateMult: 0 }, decoyId: null },
+        // ECM answers the defeated lineage, not the whole radius: the jam applies only to the
+        // seeker that inherited the broken solution (the loose inbound round, id 2).
+        effect: {
+          cfg: { kind: 'ecm', radius: 120, turnRateMult: 0 },
+          decoyId: null,
+          lineage: { shooterId: 9, targetId: 1, generation: 0, targetGeneration: null, progress: 1, missileId: 2 },
+        },
       },
     },
   };

@@ -336,7 +336,7 @@ units; open the door below only when the owner names the campaign.
   order in §1.2; acceptance leaves that need a headed machine you do not have are recorded `unproven`
   and skipped, never stalled on.
 - **Non-Hitch flyable fleet remaster** → `--id PQ-050` and its packet
-  [`PQ-050.md`](./design/program/roadmap/active/PQ-050.md), which owns the chase-camera law, the
+  [`PQ-050.md`](./design/program/roadmap/retired/PQ-050.md), which owns the chase-camera law, the
   technique contract, the review workflow and the one-ship-at-a-time rule. Hitch stays frozen.
   A factory loft with boxes, a zoomed gray crop, or a seat nobody can see from the chase camera
   does not close a ship.

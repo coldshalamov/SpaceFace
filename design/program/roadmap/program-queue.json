@@ -2377,7 +2377,7 @@
       "id": "PQ-050",
       "priority": 50,
       "title": "Non-Hitch flyable fleet remaster to Hitch-plus",
-      "state": "done",
+      "state": "integrated",
       "canonical": [
         "GFX-FLEET-REMASTER-HITCHPLUS"
       ],
@@ -2393,7 +2393,7 @@
         "assets/ships/fleet_remaster_v1/HITCH_QUALITY_FLOOR.md",
         "docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md",
         "docs/visual-assets/MODEL_ADVERSARIAL_REVIEW_WORKFLOW.md",
-        "design/program/roadmap/active/PQ-050.md"
+        "design/program/roadmap/retired/PQ-050.md"
       ],
       "checks": [
         "npm run check:baseline",
@@ -2406,7 +2406,10 @@
         "matched-hitch-stills",
         "independent-visual-review"
       ],
-      "brief": "DONE 2026-10-03 - all 22 remaster leaves judged KEEP at the shipping camera and flipped done. Evidence: fleet-look chase/inspect/top per body (.devshots/accept-fleet, accept-roles, accept-pq050b); flight-look in-world authored resolution for all 12 player hulls (.devshots/accept-flight); gates green: parts-manifest 6187 ok/0 fail, fleet player+NPC wholeship routing PASS, live-ship package coverage 7/7. Verdict table: design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md. Original brief: Bring every live flyable player and NPC ship except Hitch/Kestrel to 2026 A-list construction. One leaf is one ship under ADVANCED_MODEL_TECHNIQUE_CONTRACT.md and MODEL_ADVERSARIAL_REVIEW_WORKFLOW.md: five-plus full-job cycles, three valid full-model stills, three subagent reviews that list obvious defects, implement all revises, cleanup old stills, then wire only that ship. A factory loft, tinted shared sheet, or zoomed gray crop cannot close a leaf. Hitch stays untouched."
+      "brief": "DONE 2026-10-03 - all 22 remaster leaves judged KEEP at the shipping camera and flipped done. Evidence: fleet-look chase/inspect/top per body (.devshots/accept-fleet, accept-roles, accept-pq050b); flight-look in-world authored resolution for all 12 player hulls (.devshots/accept-flight); gates green: parts-manifest 6187 ok/0 fail, fleet player+NPC wholeship routing PASS, live-ship package coverage 7/7. Verdict table: design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md. Original brief: Bring every live flyable player and NPC ship except Hitch/Kestrel to 2026 A-list construction. One leaf is one ship under ADVANCED_MODEL_TECHNIQUE_CONTRACT.md and MODEL_ADVERSARIAL_REVIEW_WORKFLOW.md: five-plus full-job cycles, three valid full-model stills, three subagent reviews that list obvious defects, implement all revises, cleanup old stills, then wire only that ship. A factory loft, tinted shared sheet, or zoomed gray crop cannot close a leaf. Hitch stays untouched.",
+      "integratedCommit": "085d8f0c6,de5e72e7d,fa53cdcde,985980a05",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md",
+      "receipt": "design/program/roadmap/receipts/PQ-050-ACCEPT-REPORT.md"
     },
     {
       "id": "PQ-129",

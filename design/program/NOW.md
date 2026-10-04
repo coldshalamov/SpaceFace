@@ -2,8 +2,8 @@
 # NOW — threads changing the shared checkout
 
 ```yaml
-refreshed: 2026-10-03
-baseCommit: 0d9dc433a
+refreshed: 2026-10-04
+baseCommit: 76f4fe2527e2991510ebf704625bbf5cb439e1c7
 expiresAfterCommits: 10
 expiresAfterDays: 2
 ```
@@ -44,6 +44,7 @@ working. Product status and remaining tasks live in
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
 | Sole-agent cleanup + demo-polish sweep: tree drained, worktrees removed, PRs resolved; adopted stale foreign packets landed; D157/D155/D160 ledger rows fixed+pushed; K1 faction_fulfillment EMP fixed (first-session cap candidacy, `5f4f84245`); field-driven bodies stay resident (FIELD_DRIVEN pin + huntPlayer/forcePlayerTarget combat posture + chain-reaction bench cast posture, `534fccb7d`); D67 closed — the "market-tab hang" was harness rAF starvation on the event-rendered docked page, fixed by real frame keepalive + CSP-safe selector waits (`b231a7f0c`), check-station-tabs green; D24 resoak attempt E relaunching on the fixed harness | devin-sweep-oct3 | IN PROGRESS | `design/program/DEMO_READINESS_2026-09-20.md` §6 as rows fix, `build_map.md` open rows, whatever focused tests each fix needs | D24 resoak verdict → remove or keep row; then final sync (PRs/tree/master==origin) |
+| Bullet-time empty meter, boost cut-out, travel-burn spent, afterburner window lines | grok-oct3 | IN PROGRESS | `src/systems/bulletTime.js`, `test/infer-bullet-time-empty.test.mjs`, `src/systems/flightV3.js`, `test/infer-boost-spent-toast.test.mjs`, `test/infer-travel-burn-spent.test.mjs`, `test/infer-afterburner-window.test.mjs` | review afterburner window lines |
 
 ## Remaster machine
 
