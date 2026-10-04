@@ -200,7 +200,20 @@ test('clearing the hangar jam resumes the same waiting worker once', () => {
     environmentalMachinery._publishApertureIndustry({ simTime: 4 }, { phase: 'open', occupied: false });
     assert.equal(environmentalMachinery._industryLedger.worker.stage, 'resume-delivery');
     assert.equal(environmentalMachinery._industryLedger.salvage.interactable, true);
+    // NXI-091 — the waiting worker resumes at its real next stage: its own held
+    // shipment is consumed by the reopened intake, not replaced by a manufactured load.
+    const haulerLoad = {
+      id: 'hauler-7-load', alive: true,
+      pos: aperturePoint(0, 0), vel: { x: 0, z: 0 }, radius: 5,
+      data: { amount: 4, commodityId: 'cmdty_ore_iron', cargoClass: 'ore' },
+    };
+    environmentalMachinery._apertureDeliveryCandidate = haulerLoad;
+    const storedBefore = environmentalMachinery._industryLedger.stored;
     environmentalMachinery._publishApertureIndustry({ simTime: 5 }, { phase: 'open', occupied: false });
+    assert.equal(haulerLoad.data.amount, 0, 'the resumed worker delivered its own held units');
+    assert.equal(environmentalMachinery._industryLedger.stored, storedBefore + 4,
+      'the receiver consumed the waiting shipment, not a new manufactured load');
+    environmentalMachinery._publishApertureIndustry({ simTime: 6 }, { phase: 'open', occupied: false });
     assert.equal(environmentalMachinery._industryLedger.sorting.status, 'cleared');
     assert.equal(environmentalMachinery._industryLedger.sorting.receipts['occupancy-cleared'].ok, true);
   } finally {
