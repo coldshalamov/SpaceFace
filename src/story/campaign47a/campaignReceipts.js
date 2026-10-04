@@ -44,6 +44,7 @@ export function buildStepProgressReceipt({
   stepsComplete = false,
   simTime = 0,
   attempt = 0,
+  physicalVerb = null,
 }) {
   const def = beatDefAt(beatIndex);
   const id = receiptId('step_progress', {
@@ -61,6 +62,7 @@ export function buildStepProgressReceipt({
     beatId: def ? def.id : null,
     stepId,
     signal,
+    physicalVerb: physicalVerb || null,
     completedSteps: completedSteps.slice(),
     stepsComplete: !!stepsComplete,
     attempt,
@@ -71,6 +73,7 @@ export function buildStepProgressReceipt({
           beatIndex,
           stepId,
           signal,
+          physicalVerb: physicalVerb || null,
           completedSteps: completedSteps.slice(),
           stepsComplete: !!stepsComplete,
           atSimTime: Number(simTime) || 0,
@@ -80,6 +83,7 @@ export function buildStepProgressReceipt({
         beatIndex,
         stepId,
         signal,
+        physicalVerb: physicalVerb || null,
         stepsComplete: !!stepsComplete,
         atSimTime: Number(simTime) || 0,
       }),
@@ -97,6 +101,7 @@ export function buildBranchIntroAcceptReceipt({
   factionId = null,
   simTime = 0,
   attempt = 0,
+  physicalVerb = null,
 }) {
   const id = receiptId('branch_intro_accept', {
     branch: branch || '',
@@ -114,6 +119,7 @@ export function buildBranchIntroAcceptReceipt({
     missionType,
     storyTag,
     factionId,
+    physicalVerb: physicalVerb || null,
     attempt,
     intents: [
       campaignReceiptIntent('branch_intro_accept', {
@@ -122,6 +128,7 @@ export function buildBranchIntroAcceptReceipt({
         missionType,
         storyTag,
         factionId,
+        physicalVerb: physicalVerb || null,
         atSimTime: Number(simTime) || 0,
       }),
     ],
@@ -139,6 +146,7 @@ export function buildChainProgressReceipt({
   simTime = 0,
   attempt = 0,
   missionType = null,
+  physicalVerb = null,
 }) {
   const id = receiptId('chain_progress', {
     branch: branch || '',
@@ -158,6 +166,7 @@ export function buildChainProgressReceipt({
     chainTarget,
     complete: !!complete,
     missionType,
+    physicalVerb: physicalVerb || null,
     attempt,
     intents: [
       campaignReceiptIntent('chain_progress', {
@@ -167,6 +176,7 @@ export function buildChainProgressReceipt({
         chainTarget,
         complete: !!complete,
         missionType,
+        physicalVerb: physicalVerb || null,
         atSimTime: Number(simTime) || 0,
       }),
     ],

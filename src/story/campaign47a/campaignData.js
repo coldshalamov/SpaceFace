@@ -56,6 +56,20 @@ export const BRANCH_CHAIN = Object.freeze({
   free: Object.freeze({ missionType: 'smuggling_run', count: 2, label: 'Smuggling legs' }),
 });
 
+/** Headline verb each branch's live intro/chain work performs (matches missions MISSION_TYPE_PHYSICAL_VERB). */
+export const BRANCH_HEADLINE_VERBS = Object.freeze({
+  patrol: 'clear',
+  traders: 'deliver',
+  free: 'run',
+});
+
+/** Headline verb each branch's Deep Reach climax op performs (matches embodiedMissions DEEP_REACH_CLIMAX; the validator asserts parity). */
+export const DEEP_REACH_HEADLINE_VERBS = Object.freeze({
+  patrol: 'jam',
+  traders: 'knock',
+  free: 'tow',
+});
+
 /**
  * Embodied B0–B7 step recipes keyed to the observed canonical beatIndex.
  * Steps are ordered AND requirements (not OR, no synthetic primarySignal).
@@ -66,6 +80,7 @@ export const CAMPAIGN_BEATS = Object.freeze([
     beat: 0,
     id: 'cold_start',
     title: 'Cold Start',
+    headlineVerb: 'mine',
     objective: 'Sample the 47-A mass discrepancy, then dock at Helios.',
     steps: Object.freeze([
       Object.freeze({
@@ -175,6 +190,7 @@ export const CAMPAIGN_BEATS = Object.freeze([
     beat: 4,
     id: 'pick_a_side',
     title: 'Pick a Side',
+    headlineVerbs: BRANCH_HEADLINE_VERBS,
     objective: 'Complete the faction intro selected by the Elroy outcome.',
     steps: Object.freeze([
       Object.freeze({
@@ -206,6 +222,7 @@ export const CAMPAIGN_BEATS = Object.freeze([
     beat: 5,
     id: 'proving_ground',
     title: 'Proving Ground',
+    headlineVerbs: BRANCH_HEADLINE_VERBS,
     objective: 'Finish the branch mission chain.',
     steps: Object.freeze([
       Object.freeze({
@@ -230,6 +247,7 @@ export const CAMPAIGN_BEATS = Object.freeze([
     beat: 6,
     id: 'empire_seed',
     title: 'Empire Seed',
+    headlineVerb: 'deploy',
     objective: 'Deploy a drone, then assign the program selected by the Elroy outcome.',
     steps: Object.freeze([
       Object.freeze({
@@ -254,6 +272,7 @@ export const CAMPAIGN_BEATS = Object.freeze([
     beat: 7,
     id: 'deep_reach',
     title: 'The Deep Reach',
+    headlineVerbs: DEEP_REACH_HEADLINE_VERBS,
     objective: 'Use the Empire Seed in Ashfall, then meet the ending gates.',
     /** B7 only observes the live gate/advance — no sidecar completion authority. */
     steps: Object.freeze([]),

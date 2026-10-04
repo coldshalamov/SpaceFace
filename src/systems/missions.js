@@ -66,6 +66,7 @@ import {
   STORY_BRANCH_INTROS,
   STORY_BRANCH_INTRO_MIN_REP,
   STORY_BRANCH_INTRO_TAG,
+  MISSION_TYPE_PHYSICAL_VERB,
   SET_PIECE_MISSIONS,
   WRECK_BOUND_SET_PIECE_OBJECTIVES,
   offerMixWeight,
@@ -2984,6 +2985,11 @@ export const missions = {
 
     // Per-type params (quota qty, target strength, scan count, commodity, …) + cargo value.
     const params = this._rollParams(typeId, info, dest, riskTier, rng);
+    // LG-SPINE-HEADLINES — the live intro/chain types name the physical verb they ask the
+    // player to perform, the same field the authored set-piece types stamp inline.
+    if (!params.physicalVerb && MISSION_TYPE_PHYSICAL_VERB[typeId]) {
+      params.physicalVerb = MISSION_TYPE_PHYSICAL_VERB[typeId];
+    }
 
     // The writ wall names a person at a place: generated single-mark bounties carry a
     // deterministic storyTarget (seeded by offer id — never an rng draw, so every other rolled
@@ -10933,6 +10939,7 @@ export const missions = {
       missionType: m.type,
       branch: story.branch,
       chainProgress: nextProgress,
+      physicalVerb: m.params && m.params.physicalVerb || null,
     }, this.state.simTime || 0);
     if (!observed || !observed.ok) return;
     story.chainProgress = nextProgress;
@@ -10978,6 +10985,7 @@ export const missions = {
       factionId: inst.factionId,
       branch,
       storyBranch: branch,
+      physicalVerb: inst.params && inst.params.physicalVerb || null,
     }, this.state.simTime || 0);
     if (!observed || !observed.ok || !isBeatStepsComplete(this.state, 4)) return;
     inst.storyTag = STORY_BRANCH_INTRO_TAG;

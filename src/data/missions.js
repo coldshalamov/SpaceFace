@@ -172,6 +172,22 @@ export const STORY_BRANCH_INTROS = [
   },
 ];
 
+/**
+ * The physical verb a generated mission of this type asks the player to perform —
+ * stamped onto offer params so boards, step records, and campaign receipts name the
+ * same action the authored set-piece types already name inline in _rollParams.
+ */
+export const MISSION_TYPE_PHYSICAL_VERB = Object.freeze({
+  bulk_trade: 'deliver',
+  patrol_clear: 'clear',
+  smuggling_run: 'run',
+});
+
+/** Headline verb each live branch's intro/chain work performs (derived, never duplicated). */
+export const BRANCH_HEADLINE_VERBS = Object.freeze(Object.fromEntries(
+  STORY_BRANCH_INTROS.map((intro) => [intro.branch, MISSION_TYPE_PHYSICAL_VERB[intro.type]]),
+));
+
 export const MISSION_TYPES = [
   {
     type: 'cargo_delivery', riskTierRange: [0, 4], chainable: true,
@@ -2319,6 +2335,7 @@ export function validateOfferHistoryMix(mix = OFFER_HISTORY_MIX, types = MISSION
 // single persistent actionable line (onboarding waypoint reason: "Contract 47-A: thrust to the beacon.").
 export const STORY_BEATS = [
   { beat: 0, id: 'cold_start',     objective: 'Contract 47-A: sample the 12.4t mass discrepancy, dock Helios. Payment withheld. Status pending.',
+    headlineVerb: 'mine',
     reward: { credits: 400, rp: 4, rep: { faction: 'home', amount: 5 }, unlock: 'mod_mining_laser_s' }, introduces: 'mining', next: 1 },
   { beat: 1, id: 'honest_work',    objective: 'Knock the variance tower — wrecking-ball contract. Swing mass through it, or cut it down.',
     headlineVerb: 'knock', setPiece: 'wrecking-ball contract', physicalType: 'demolition', authoredSetPieceId: 'wrecking_ball',
@@ -2330,12 +2347,17 @@ export const STORY_BEATS = [
     headlineVerb: 'tow', setPiece: 'long tow', physicalType: 'tow_recovery', authoredSetPieceId: 'long_tow',
     reward: { credits: 1000, milestone: 'cargo+20u' }, introduces: 'long_tow', next: 4 },
   { beat: 4, id: 'pick_a_side',    objective: 'Complete the faction intro selected by the Elroy outcome.',
+    headlineVerbs: BRANCH_HEADLINE_VERBS,
     reward: { credits: 1200, rep: { chosen: 15, opposing: -10 } }, introduces: 'factions', next: 5 },
   { beat: 5, id: 'proving_ground', objective: 'Complete your faction chain: MTS trade runs, SCN patrol clears, or Free Captain smuggling jobs.',
+    headlineVerbs: BRANCH_HEADLINE_VERBS,
     reward: { credits: 2500, unlock: 'module_unlock' }, introduces: 'chaining+passive_preview', next: 6 },
   { beat: 6, id: 'empire_seed',    objective: 'Deploy a drone, then assign the program selected by the Elroy outcome.',
+    headlineVerb: 'deploy',
     reward: { credits: 3000, unlock: 'passive_income' }, introduces: 'passive_income', next: 7 },
   { beat: 7, id: 'deep_reach',     objective: 'The Deep Reach climax: run the blockade, siege the tower, or tow the evidence, then review final dispositions.',
+    // Matches embodiedMissions DEEP_REACH_CLIMAX per-branch ops; the validator asserts parity.
+    headlineVerbs: { patrol: 'jam', traders: 'knock', free: 'tow' },
     reward: { credits: 5000, unlock: 'newgame_plus' }, introduces: 'endgame', next: null },
 ];
 
