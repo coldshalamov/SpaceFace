@@ -367,7 +367,10 @@ export const physics = {
     // to fit inside the init envelope is worth waiting out so the prepare mints a real
     // attempt instead of fast-answering `false` on a skipped mint. Per-tick callers
     // still see the refusal via rapierRuntimeBlocked (that's what the window exists for).
-    if (!this._sg02Init && !this._sg02 && !reset) {
+    // Reset prepares wait too: in this state (`!_sg02Init && !_sg02`) the reset's
+    // _disableSg02DynamicAuthority is a pure no-op — no live authority, no token bump —
+    // so the exclusion only bought an instant PHYSICS_BACKEND_UNAVAILABLE bounce.
+    if (!this._sg02Init && !this._sg02) {
       const remainingMs = rapierRuntimeBlockedRemainingMs();
       if (remainingMs > 0 && remainingMs <= initTimeoutMs) {
         const sg02TokenAtDefer = this._sg02Token;

@@ -171,7 +171,11 @@ function materialCanCastShadow(material) {
   return true;
 }
 
-function collectPotentialShadowCastSubjects(roots) {
+// Exported for the settings OFF→ON path: a flag-only whole-scene enumeration
+// that skips the signature-string mints + staged-set probes
+// collectUnstagedShadowCasters pays per caster — the arm's per-slice recollect
+// re-derives the genuinely-unstaged set anyway.
+export function collectPotentialShadowCastSubjects(roots) {
   const list = Array.isArray(roots) ? roots : [roots];
   const casting = [];
   const seen = new Set();
@@ -236,6 +240,35 @@ export function lightCensusSignature(lightingScene) {
   return `${fogKey}|${parts.join('|')}`;
 }
 
+// The variant substring's inputs are ~9 primitive reads — intern it per material
+// so repeat collects on the same casters don't re-alloc the discriminant string
+// every slice. A mutation that changes any input re-mints under the new bits.
+const _depthVariantCache = new WeakMap();
+function casterDepthVariant(material) {
+  const bits = [
+    material.alphaTest > 0 ? 1 : 0,
+    material.alphaTest > 0 && material.map ? 1 : 0,
+    material.alphaTest > 0 && material.alphaMap ? 1 : 0,
+    material.displacementMap && material.displacementScale !== 0 ? 1 : 0,
+    material.alphaToCoverage === true ? 1 : 0,
+    material.clipShadows === true ? 1 : 0,
+    material.side == null ? 0 : material.side,
+    material.shadowSide == null ? 0 : material.shadowSide,
+  ];
+  const cached = _depthVariantCache.get(material);
+  if (cached && cached.bits.every((bit, i) => bit === bits[i])) return cached.variant;
+  const variant = `a${bits[0]}`
+    + `m${bits[1]}`
+    + `x${bits[2]}`
+    + `d${bits[3]}`
+    + `c${bits[4]}`
+    + `p${bits[5]}`
+    + `s${bits[6]}`
+    + `h${bits[7]}`;
+  _depthVariantCache.set(material, { bits, variant });
+  return variant;
+}
+
 function casterDepthSignatures(caster, lightSig) {
   const kind = caster.isSkinnedMesh === true ? 'sk'
     : (caster.isInstancedMesh === true ? 'in' : 'me');
@@ -256,15 +289,7 @@ function casterDepthSignatures(caster, lightSig) {
     // mutation that swaps which depth program links (alphaTest gating map/alphaMap,
     // displacement, alphaToCoverage, clipShadows, side/shadowSide winding) re-keys the
     // signature so the caster re-stages instead of linking cold in a presented frame.
-    const alphaTestOn = material.alphaTest > 0;
-    const variant = `a${alphaTestOn ? 1 : 0}`
-      + `m${alphaTestOn && material.map ? 1 : 0}`
-      + `x${alphaTestOn && material.alphaMap ? 1 : 0}`
-      + `d${material.displacementMap && material.displacementScale !== 0 ? 1 : 0}`
-      + `c${material.alphaToCoverage === true ? 1 : 0}`
-      + `p${material.clipShadows === true ? 1 : 0}`
-      + `s${material.side == null ? 0 : material.side}`
-      + `h${material.shadowSide == null ? 0 : material.shadowSide}`;
+    const variant = casterDepthVariant(material);
     signatures.push(`${material.uuid}|${kind}|${morph}${custom}|ly:${layerMask}|${variant}|${lightSig}`);
   }
   return signatures;

@@ -335,6 +335,7 @@ import {
 } from './latePipelineAdmission.js';
 import {
   armAdmissionShadows,
+  collectPotentialShadowCastSubjects,
   collectUnstagedShadowCasters,
   compileShadowDepthPipelines,
   createShadowDepthStagingSession,
@@ -375,7 +376,12 @@ import {
   redundantDirectSpecimen,
   shouldDeferPipelineAutoFlush,
 } from './pipelineAutoFlushPolicy.js';
-import { resolveDecodeTaskBudgetLimit } from './decodeTaskBudget.js';
+import {
+  notePacedFrameSpend,
+  pacedFrameSpend,
+  PACED_FRAME_BUDGET_MS,
+  resolveDecodeTaskBudgetLimit,
+} from './decodeTaskBudget.js';
 import {
   GOVERNOR_CPU_RESIDENCY_BYTE_CEILING,
   GOVERNOR_RESIDENCY_BYTE_CEILING,
@@ -1795,11 +1801,15 @@ function drainDespawnDisposeQueue(owner, budgetMs = DESPAWN_DISPOSE_BUDGET_MS) {
   if (!queue || owner._despawnDisposeHead >= queue.length) return 0;
   const now = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
     ? performance.now() : Date.now());
-  const deadline = now() + Math.max(0, Number(budgetMs) || 0);
+  // A spent paced window skips this drain entirely — the corpses keep one more
+  // frame rather than stacking a fresh slice on a frame that's already over.
+  if (pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) return 0;
+  const startedAt = now();
+  const deadline = startedAt + Math.max(0, Number(budgetMs) || 0);
   // Backlog-scaled count: the fixed cap binds before the ms deadline on cheap disposes,
   // so a kill-burst backlog retained GL linearly (~200 ms at ~100 corpses). Scaling the
-  // count like drainPresentationTail caps the backlog at ~4 drains while the deadline
-  // still bounds what one frame spends.
+  // count quarters the remaining backlog per drain (~14 drains for 600) while the
+  // deadline still bounds what one frame spends.
   const limit = Math.max(
     DESPAWN_DISPOSE_DRAIN_MAX,
     Math.ceil((queue.length - owner._despawnDisposeHead) / 4),
@@ -1814,6 +1824,7 @@ function drainDespawnDisposeQueue(owner, budgetMs = DESPAWN_DISPOSE_BUDGET_MS) {
     drained += 1;
     if (drained >= limit || now() > deadline) break;
   }
+  if (drained > 0) notePacedFrameSpend(now() - startedAt);
   if (owner._despawnDisposeHead >= queue.length) {
     queue.length = 0;
     owner._despawnDisposeHead = 0;
@@ -5938,6 +5949,13 @@ const STAGE_SELF_DIRTY_KEY = '__spacefaceDepthStageSelfDirty';
 // the leg by meshes so a station-family burst can't stack ~2000 draws inside one
 // post-present task. Roots owning un-staged remainder meshes stay queued.
 const SHADOW_DEPTH_ARM_MESH_CAP = 128;
+// The arm's non-render work is wall-clock capped too: collect subtree walks and
+// per-root restores used to run to completion inside one post-present task, so a
+// 32-root slice could hand the next presented frame ~15-20ms at once. Each phase
+// gets its own window and requeues whatever it didn't reach; min-1 progress per
+// arm keeps the drain moving.
+const SHADOW_DEPTH_ARM_COLLECT_MS = 4;
+const SHADOW_DEPTH_ARM_RESTORE_MS = 4;
 
 // Nearest ancestor that owns a shadow-caster policy record (same userData key as
 // shadowCasterPolicy.js), else the direct scene child — the granularity the arm's
@@ -21052,7 +21070,8 @@ export const render = {
   _syncShadowCasterPolicyChecked(root, lodLevel, entity) {
     const opts = this._shadowPolicyOptions(entity, root);
     const band = shadowCasterBand(root);
-    const queued = !!(this._pendingDepthStageRoots && this._pendingDepthStageRoots.has(root));
+    const parked = !!(this._parkedDepthStageRoots && this._parkedDepthStageRoots.has(root));
+    const queued = !!(this._pendingDepthStageRoots && this._pendingDepthStageRoots.has(root)) || parked;
     const dirtySeq = shadowCasterPolicyDirtySeq(root);
     const stampedSeq = (root.userData && typeof root.userData[STAGE_SELF_DIRTY_KEY] === 'number')
       ? root.userData[STAGE_SELF_DIRTY_KEY] : -1;
@@ -21060,10 +21079,11 @@ export const render = {
     // a genuine re-dirty landing while the root waits queued bumps the generation
     // past the stamp, so the collect re-runs and the fresh meshes join the withhold.
     const selfDirty = stampedSeq >= 0 && dirtySeq === stampedSeq;
-    // The signature walk runs on first withhold only: a queued band<1 root is already
-    // withheld whole-tree (its collect returns the identical unstaged set every frame
-    // until the arm lands — pure burn), and a queued band-1 root re-collects only on a
-    // genuine policy dirty, not our own post-withhold invalidation.
+    // The signature walk runs on first withhold only: a queued (or parked) band<1
+    // root is already withheld whole-tree (its collect returns the identical unstaged
+    // set every frame until the arm lands — pure burn), and a queued band-1 root
+    // re-collects only on a genuine policy dirty, not our own post-withhold
+    // invalidation.
     const unstaged = (opts.allowCast === true && this._shadowSettingOn === true
         && this.renderer && this.scene && this._keyLight
         && (band !== 1 ? !queued : (dirtySeq > stampedSeq && dirtySeq > 0)))
@@ -21083,6 +21103,12 @@ export const render = {
       withheldMeshes = unstaged;
     } else if (band !== 1 && queued) {
       syncOpts = { ...opts, allowCast: false };
+    } else if (band === 1 && parked && unstaged !== null && unstaged.length === 0) {
+      // A parked root's fresh re-collect came back empty — every caster is marked
+      // (or gone), so the withheld set is stale. Release the park; the normal sync
+      // below restores live cast flags under current policy.
+      this._parkedDepthStageRoots.delete(root);
+      if (this._withheldDepthCasters) this._withheldDepthCasters.delete(root);
     } else if (band === 1 && selfDirty && queued && this._withheldDepthCasters) {
       const cached = this._withheldDepthCasters.get(root);
       if (cached) {
@@ -21117,6 +21143,8 @@ export const render = {
       // only a *subsequent* invalidation re-collects.
       invalidateShadowCasterPolicy(root);
       root.userData[STAGE_SELF_DIRTY_KEY] = shadowCasterPolicyDirtySeq(root);
+      // Fresh unstaged meshes — a parked root's park no longer describes it.
+      if (parked && this._parkedDepthStageRoots) this._parkedDepthStageRoots.delete(root);
       this._queueShadowDepthStage(root, lodLevel, entity);
     }
     return changed;
@@ -21182,6 +21210,12 @@ export const render = {
           if (this._withheldDepthCasters) this._withheldDepthCasters.delete(root);
         }
       }
+      // Detached parked roots can't wake or restore — drop their records here.
+      if (this._parkedDepthStageRoots) {
+        for (const [root] of this._parkedDepthStageRoots) {
+          if (!root || !root.parent) this._parkedDepthStageRoots.delete(root);
+        }
+      }
       entries.sort((a, b) => (
         shadowCastAxisDistance(a[0].position, px, pz)
         - shadowCastAxisDistance(b[0].position, px, pz)
@@ -21196,7 +21230,13 @@ export const render = {
         pending.delete(root);
       }
       const sliceRoots = slice.map(([root]) => root);
+      const armStartedAt = (typeof performance !== 'undefined' && typeof performance.now === 'function')
+        ? performance.now() : Date.now();
+      const armNow = () => (typeof performance !== 'undefined' && typeof performance.now === 'function')
+        ? performance.now() : Date.now();
       let legCapped = false;
+      let legSet = null;
+      let lightSig = '';
       if (this._shadowSettingOn === true && renderer && scene && camera && this._keyLight
           && sliceRoots.length > 0) {
         try {
@@ -21206,8 +21246,25 @@ export const render = {
           // Fresh census at arm time — the arm runs between passes via
           // armCallbackAfterPresent, so the _viewSyncSeq memo can serve a sig
           // minted before a light add/remove landed; the session keys on it.
-          const lightSig = lightCensusSignature(scene);
-          const unstaged = collectUnstagedShadowCasters(renderer, sliceRoots, scene, lightSig);
+          lightSig = lightCensusSignature(scene);
+          // Per-root collect under a wall-clock deadline: one fat subtree used to
+          // push the whole arm past the post-present budget. Roots the deadline
+          // skipped requeue still-withheld; min-1 root keeps the drain honest.
+          const collectDeadline = armStartedAt + SHADOW_DEPTH_ARM_COLLECT_MS;
+          const unstaged = [];
+          let collected = 0;
+          while (collected < sliceRoots.length) {
+            const found = collectUnstagedShadowCasters(
+              renderer, [sliceRoots[collected]], scene, lightSig);
+            for (const mesh of found) unstaged.push(mesh);
+            collected += 1;
+            if (collected < sliceRoots.length && collected >= 2 && armNow() >= collectDeadline) break;
+          }
+          if (collected < sliceRoots.length) {
+            const skipped = slice.splice(collected);
+            for (const [root, entry] of skipped) pending.set(root, entry);
+            sliceRoots.length = collected;
+          }
           if (unstaged.length > 0) {
             // Cap the leg by casters, not roots: one private render pays the whole
             // slice's caster count atomically — a fat station cohort would stack
@@ -21216,6 +21273,7 @@ export const render = {
             // them before their variant links).
             legCapped = unstaged.length > SHADOW_DEPTH_ARM_MESH_CAP;
             const leg = legCapped ? unstaged.slice(0, SHADOW_DEPTH_ARM_MESH_CAP) : unstaged;
+            legSet = new Set(leg);
             // Arms within one drain share a staging session: the reparent/census/
             // lights warm is a fixed per-arm cost, so a burst of N promotions used
             // to pay it N times. The session keys on the live light census — a sig
@@ -21266,13 +21324,20 @@ export const render = {
       // A capped leg leaves un-marked casters under the slice: re-collect to find
       // which roots still own unstaged meshes and keep them queued — restoring
       // them now would un-withhold meshes whose depth variant never linked.
-      let leftoverRoots = null;
+      // Reuses the arm's own census sig — a second whole-scene traverse here
+      // would mint the identical key.
+      let leftoverByRoot = null;
       if (legCapped === true && renderer && scene && this._keyLight) {
-        const leftover = collectUnstagedShadowCasters(
-          renderer, sliceRoots, scene, lightCensusSignature(scene));
+        const leftover = collectUnstagedShadowCasters(renderer, sliceRoots, scene, lightSig);
         for (const mesh of leftover) {
           const root = shadowPolicyRootOf(mesh, scene);
-          if (root) (leftoverRoots || (leftoverRoots = new Set())).add(root);
+          if (!root) continue;
+          let set = leftoverByRoot && leftoverByRoot.get(root);
+          if (!set) {
+            set = [];
+            (leftoverByRoot || (leftoverByRoot = new Map())).set(root, set);
+          }
+          set.push(mesh);
         }
       }
       // Re-apply the live cast policy on the staged slice: promotions whose cast
@@ -21280,9 +21345,31 @@ export const render = {
       // cast band on already-linked depth programs; if the stage was skipped the
       // restore lands the original promotion semantics rather than leaving the
       // root permanently shadowless.
-      for (const [root, { lodLevel, entity }] of slice) {
+      const restoreDeadline = armNow() + SHADOW_DEPTH_ARM_RESTORE_MS;
+      let restored = 0;
+      let restoreIdx = -1;
+      for (restoreIdx = 0; restoreIdx < slice.length; restoreIdx++) {
+        const [root, entry] = slice[restoreIdx];
         if (!root || !root.parent) continue;
-        if (leftoverRoots && leftoverRoots.has(root)) {
+        const { lodLevel, entity } = entry;
+        const leftover = leftoverByRoot && leftoverByRoot.get(root);
+        if (leftover) {
+          // Every still-unmarked mesh was offered to this arm's leg and came back
+          // unmarked — the stage can't draw it (undrawable-forever: geometry-less,
+          // unreadable layer, material-invisible). Parking stops the
+          // collect→slice→draw-nothing→recollect spin; flags stay withheld so the
+          // cold-link contract holds, and a dirtySeq bump unparks via the checked
+          // sync's normal collect path.
+          let allOffered = legSet !== null;
+          for (const mesh of leftover) {
+            if (!legSet.has(mesh)) { allOffered = false; break; }
+          }
+          if (allOffered) {
+            const parkedMap = this._parkedDepthStageRoots
+              || (this._parkedDepthStageRoots = new Map());
+            parkedMap.set(root, { lodLevel, entity, seq: shadowCasterPolicyDirtySeq(root) });
+            continue;
+          }
           pending.set(root, { lodLevel, entity });
           continue;
         }
@@ -21294,7 +21381,22 @@ export const render = {
         try {
           syncShadowCasterPolicy(root, lodLevel, this._shadowPolicyOptions(entity, root));
         } catch (_) { /* restore is best-effort */ }
+        restored += 1;
+        // Restores requeue under the same deadline rule as the collect: staged
+        // roots left over stay withheld one more arm — never a cold link.
+        if (restored >= 1 && restoreIdx + 1 < slice.length && armNow() >= restoreDeadline) {
+          restoreIdx += 1;
+          break;
+        }
       }
+      for (let i = restoreIdx; i < slice.length; i++) {
+        if (i < 0) break;
+        const [root, entry] = slice[i];
+        if (root && root.parent) pending.set(root, entry);
+      }
+      // The arm's whole cost lands adjacent to the next presented frame — debit
+      // the shared paced ledger so the frame's slicers see the spend.
+      notePacedFrameSpend(armNow() - armStartedAt);
       if (pending.size > 0) {
         this._armDepthStage();
       } else {
@@ -21325,7 +21427,10 @@ export const render = {
     const camera = this.cam && this.cam.obj;
     if (!renderer || !scene || !camera || !this._keyLight) return;
     try {
-      const unstaged = collectUnstagedShadowCasters(renderer, [scene], scene);
+      // Flag-only collect inside the click task — the signature-bearing recollect
+      // runs per-slice in the arms anyway, so paying per-material signature strings
+      // + staged-set probes for the whole scene here is pure click latency.
+      const unstaged = collectPotentialShadowCastSubjects([scene]);
       if (unstaged.length === 0) return;
       // The whole-scene toggle used to pay one synchronous reparent+census+compile
       // inside the settings handler — an unbounded stall on a presented frame for a
