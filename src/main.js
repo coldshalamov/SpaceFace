@@ -143,7 +143,8 @@ async function boot() {
       isEntityJournaled: entityIsJournaled,
     });
     const loadingPresenter = createLoadingPresenter({ document, bus, state });
-    const failurePresenter = createRuntimeFailurePresenter({ document });
+    // SFQ-B228: the same instance showBootError uses — one pane owner over #boot-overlay.
+    const failurePresenter = bootRecoveryPresenter();
     bus.emit('game:loadingProgress', { id: 'boot-contract', progress: .18, ceiling: .20,
       label: 'Preparing flight systems', detail: 'Reading the opening scenario' });
     const contract = await contractPromise;
@@ -1394,12 +1395,20 @@ function resetRunState(state, opts = {}) {
 // dump a raw stack into the overlay — a cause, but no exit: a dead screen. The recovery pane
 // owner (runtimeFailurePresenter) renders instead: named cause + Retry, saves untouched.
 // The raw stack stays the fallback (and always reaches the console for devtools).
-let bootFailurePresenter = null;
+// One presenter instance is shared by both dead-end classes — boot()'s flight-interrupted
+// path and this boot-error path — because two instances over #boot-overlay would stack
+// capture-phase keydown listeners and orphan the first instance's destroy path.
+let bootFailurePresenterInstance = null;
+function bootRecoveryPresenter() {
+  if (!bootFailurePresenterInstance) {
+    bootFailurePresenterInstance = createRuntimeFailurePresenter({ document });
+  }
+  return bootFailurePresenterInstance;
+}
 function showBootError(err) {
   console.error('[boot]', err);
   try {
-    if (!bootFailurePresenter) bootFailurePresenter = createRuntimeFailurePresenter({ document });
-    if (bootFailurePresenter.show(describeBootFailure(err))) return;
+    if (bootRecoveryPresenter().show(describeBootFailure(err))) return;
   } catch (paneError) {
     console.error('[boot] recovery pane failed; falling back to raw boot error', paneError);
   }

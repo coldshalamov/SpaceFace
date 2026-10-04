@@ -149,11 +149,15 @@ test('a corrupted optional region fails closed, names its cause, and leaves the 
     reason: 'load_failed',
     rollback: 'restored',
     error: 'synthetic bandRadio restore failure',
+    region: 'bandRadio',
   });
 
   // The UI recovery surface states the cause AND the way out (retry / export / menu).
+  // The restore walk's region annotation upgrades the cause to 'damaged <region> data'
+  // instead of the raw internal error string.
   const text = saveErrorText(errors[0].payload);
-  assert.match(text, /synthetic bandRadio restore failure/, 'the named cause reaches the player');
+  assert.match(text, /damaged bandRadio data/, 'the named region reaches the player');
+  assert.doesNotMatch(text, /synthetic/, 'the raw internal string stays off the player surface');
   assert.match(text, /untouched/, 'the receipt states the save was not destroyed');
   assert.match(text, /try again/, 'retry is offered');
   assert.match(text, /export a backup/, 'export is offered');

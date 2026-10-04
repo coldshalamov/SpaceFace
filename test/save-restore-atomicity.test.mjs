@@ -165,6 +165,8 @@ test('mutating deserialize failure rolls back the target load and returns false'
     reason: 'load_failed',
     rollback: 'restored',
     error: 'synthetic economy restore failure',
+    // SFQ-B228: the restore walk names the region whose deserialize threw.
+    region: 'economy',
   });
 });
 
@@ -183,6 +185,8 @@ test('rollback failure is fail-closed and does not recursively retry rollback', 
     reason: 'load_failed',
     rollback: 'failed',
     error: 'synthetic economy restore failure',
+    // SFQ-B228: the restore walk names the region whose deserialize threw.
+    region: 'economy',
     rollbackError: 'synthetic economy restore failure',
   });
   assert.equal(harness.events.filter((event) => event.name === 'save:loaded').length, 0,

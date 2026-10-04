@@ -4324,6 +4324,8 @@ export const save = {
           reason: 'load_failed',
           rollback: rollbackAttempt ? 'failed' : 'not_needed',
           error: restoreErrorMessage(err),
+          // SFQ-B228: the damaged save region, when the restore walk could name one.
+          ...(err && err.region ? { region: err.region } : null),
         });
       }
       return null;
@@ -4347,6 +4349,8 @@ export const save = {
         reason: 'load_failed',
         rollback: rollbackError ? 'failed' : 'restored',
         error: restoreErrorMessage(err),
+        // SFQ-B228: the damaged save region, when the restore walk could name one.
+        ...(err && err.region ? { region: err.region } : null),
         // INF-091: a failed Continue-load still names the dead newer slot it resolved past.
         ...(options.skippedNewer ? { skippedNewer: options.skippedNewer } : null),
       };
@@ -5484,10 +5488,21 @@ export const save = {
     }
   },
 
+  // SFQ-B228: the restore walk is the only place that knows which region's data refused to
+  // come back, so a throwing deserialize is annotated with `.region` before it propagates.
+  // The load still fails closed exactly as before — the annotation only upgrades the
+  // recovery receipt's cause from a raw internal string to 'damaged <region> data'
+  // (uiRoot saveErrorText). Never swallowed here.
   _callDeserialize(name, data) {
     const sys = this.registry && this.registry.get && this.registry.get(name);
     if (sys && typeof sys.deserialize === 'function') {
-      sys.deserialize(data);
+      try {
+        sys.deserialize(data);
+      } catch (err) {
+        const error = (err instanceof Error) ? err : new Error(String(err));
+        error.region = name;
+        throw error;
+      }
     }
   },
 
@@ -5496,7 +5511,13 @@ export const save = {
   *_callDeserializeChunked(name, data) {
     const sys = this.registry && this.registry.get && this.registry.get(name);
     if (sys && typeof sys.deserializeChunked === 'function') {
-      yield* sys.deserializeChunked.call(sys, data);
+      try {
+        yield* sys.deserializeChunked.call(sys, data);
+      } catch (err) {
+        const error = (err instanceof Error) ? err : new Error(String(err));
+        error.region = name;
+        throw error;
+      }
       return;
     }
     this._callDeserialize(name, data);
