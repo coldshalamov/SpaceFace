@@ -905,13 +905,12 @@ export function serviceDossier(offer) {
     detail: authored.detail,
     tip: authored.tip,
     stats: Object.freeze(stats),
-    media: null,
   });
 }
 
 /**
  * The dossier for one defId (weapon, module or hull).
- * Returns { defId, name, kind, detail, tip, stats, media } or null for an unknown id.
+ * Returns { defId, name, kind, detail, tip, stats } or null for an unknown id.
  */
 export function dossierFor(defId) {
   if (typeof defId !== 'string' || !defId) return null;
@@ -930,6 +929,5 @@ export function dossierFor(defId) {
     detail: authored.detail || def.sentence || '',
     tip: authored.tip || '',
     stats: Object.freeze(stats),
-    media: kind === 'hull' ? null : fittingMedia(defId),
   });
 }

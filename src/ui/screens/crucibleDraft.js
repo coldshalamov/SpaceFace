@@ -1355,7 +1355,7 @@ export const crucibleDraftScreen = {
     // available box and keep the bottom fade, which earns its keep again on the cut.
     this._railClipped = edge > 0;
     if (rowH && edge < rowH) { edge = avail; this._railClipped = false; }
-    if (edge > 0) cards.style.setProperty('max-height', `${Math.ceil(edge)}px`, 'important');
+    if (edge > 0) cards.style.setProperty('max-height', `${Math.floor(edge)}px`, 'important');
     this._syncRailClipFade();
     // The fold moved: the rail's thumb and first–last count re-read the new box.
     this._syncRailScale();

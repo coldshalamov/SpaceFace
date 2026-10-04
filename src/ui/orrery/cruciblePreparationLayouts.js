@@ -323,6 +323,16 @@ ${D} .k-foot .orr-prep-continue:active, ${D} .k-foot .orr-key--hazard:active { t
  /* upstream's cradle status line costs the pane ~30px at this size — reclaim it
     from the pane's own padding so the fold still carries name + 'when it pays' */
  ${A} .orr-armory-reading.orr-armory-reading { padding:6px 2px 6px 16px !important; }
+ /* the rail starves at this band's narrow end: the stage is ~180px while filters
+    alone run ~110 — pack the search onto the tab row, drop the per-tab counts,
+    and trade the card's padding for a full row of offers before the fold */
+ ${A} .sf-cru-filters { gap:2px 10px !important; padding-bottom:6px !important; }
+ ${A} .sf-cru-filters > button { min-height:26px !important; padding:3px 0 !important; }
+ ${A} .sf-cru-filters .sf-cru-count { display:none !important; }
+ ${A} .sf-cru-filters > .sf-cru-search[type=search] { flex:1 1 140px !important; order:0 !important; width:auto !important; min-width:130px; min-height:32px !important; margin-top:0 !important; }
+ ${A} .sf-cru-card.sf-cru-card { min-height:64px !important; padding:6px 4px 6px 10px !important; }
+ ${A} .sf-cru-card > .orr-equipment-glyph { width:44px; height:44px; }
+ ${A} .orr-rail-divider { margin:8px 0 2px 10px !important; }
  ${A} .orr-armory-item { height:120px; min-height:104px; }
  ${A} .orr-armory-item > .orr-equipment-glyph { width:96px; height:96px; }
  ${A} .orr-armory-reading__jig { height:120px !important; min-height:104px; }
