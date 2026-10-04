@@ -680,7 +680,7 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
         // from a prior run's entity objects survives into the new world. The catch marker
         // only suppresses the unhandled-rejection window before waitForPhysics awaits it.
         physicsPrep = Promise.resolve()
-          .then(() => physicsSystem.prepareBackend(state, { reset: true }));
+          .then(() => physicsSystem.prepareBackend(state, { reset: true, initTimeoutMs: 20000 }));
         physicsPrep.catch(() => {});
       }
       const saveSystem = registry.get('save');
@@ -786,7 +786,7 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
           const physicsSystem = registry.get('physics');
           if (!physicsSystem || typeof physicsSystem.prepareBackend !== 'function') return true;
           physicsPrep = Promise.resolve()
-            .then(() => physicsSystem.prepareBackend(state, { reset: true }));
+            .then(() => physicsSystem.prepareBackend(state, { reset: true, initTimeoutMs: 20000 }));
         }
         try {
           // Same outer bound the Continue gate runs (main.js ~1052): prepareBackend's
@@ -948,7 +948,8 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
     // prepare is idempotent (joins _sg02Init mid-settle, re-mints only when torn
     // down); never {reset:true} — that would dispose a live owner mid-restore.
     continuePhysicsPrep = Promise.resolve(continuePhysicsPrep)
-      .then(() => physicsSystem.prepareBackend(state), () => physicsSystem.prepareBackend(state));
+      .then(() => physicsSystem.prepareBackend(state, { initTimeoutMs: 20000 }),
+        () => physicsSystem.prepareBackend(state, { initTimeoutMs: 20000 }));
     continuePhysicsPrep.catch(() => {});
   }
   try {

@@ -6268,12 +6268,25 @@ function entityOnDeadlineGlass(entity, state) {
 // then runs its traverses back-to-back inside a single task. Pace the resumes: callers
 // queue in arrival order and a few continue per presented frame.
 const OPENING_PUBLICATION_RESUME_BATCH = 4;
+// A waiter re-parked under consecutive freezes pays a whole gate per hop — past this
+// parked age it head-inserts on the next requeue so it wins the first inter-freeze
+// window instead of trailing the arrival order again.
+const OPENING_PUBLICATION_RESUME_ESCALATE_MS = 2000;
+// The batch scales with backlog: a long-throttled tab accrues far more resumes than
+// a live window, and ≤4/present pays them out over seconds of late commits.
+const OPENING_PUBLICATION_RESUME_MAX_BATCH = 16;
 
-function paceOpeningPublicationResume(render, gatePromise) {
+function paceOpeningPublicationResume(render, gatePromise, parkedAt) {
   const queue = render._openingPublicationResumeQueue
     || (render._openingPublicationResumeQueue = []);
   return new Promise((resolve) => {
-    queue.push({ resolve, gate: gatePromise });
+    const entry = {
+      resolve,
+      gate: gatePromise,
+      firstArmedAt: Number.isFinite(parkedAt) ? parkedAt : Date.now(),
+    };
+    if (Date.now() - entry.firstArmedAt >= OPENING_PUBLICATION_RESUME_ESCALATE_MS) queue.unshift(entry);
+    else queue.push(entry);
     if (queue.length === 1) driveOpeningPublicationResume(render, queue);
   });
 }
@@ -6283,7 +6296,11 @@ function driveOpeningPublicationResume(render, queue) {
   // parked commit tail would otherwise hold its release through the freeze window.
   armCallbackAfterPresent(async () => {
     const entrySpend = pacedFrameSpend();
-    for (let i = 0; i < OPENING_PUBLICATION_RESUME_BATCH && queue.length > 0; i += 1) {
+    const batchLimit = Math.min(
+      OPENING_PUBLICATION_RESUME_MAX_BATCH,
+      Math.max(OPENING_PUBLICATION_RESUME_BATCH, Math.ceil(queue.length / 8)),
+    );
+    for (let i = 0; i < batchLimit && queue.length > 0; i += 1) {
       const next = queue.shift();
       if (next && typeof next.resolve === 'function') {
         // The entry parked under an already-released gate: when a newer freeze
@@ -6298,7 +6315,13 @@ function driveOpeningPublicationResume(render, queue) {
           liveGatePromise.then(() => {
             const requeue = render._openingPublicationResumeQueue
               || (render._openingPublicationResumeQueue = []);
-            requeue.push(next);
+            // An aged waiter's requeue head-inserts so a long freeze chain cannot
+            // keep it trailing fresh arrivals through every inter-freeze window.
+            if (Date.now() - next.firstArmedAt >= OPENING_PUBLICATION_RESUME_ESCALATE_MS) {
+              requeue.unshift(next);
+            } else {
+              requeue.push(next);
+            }
             if (requeue.length === 1) driveOpeningPublicationResume(render, requeue);
           });
         } else {
@@ -6371,9 +6394,10 @@ export function waitForOpeningGraphPublicationRelease(options = {}) {
       throw error;
     }
   };
+  const parkedAt = Date.now();
   const gatePromise = wait.call(render);
   const awaitGate = (gate) => waitForAuthoredAdmission(Promise.resolve(gate).then((value) => (
-    paceOpeningPublicationResume(render, gate).then(() => {
+    paceOpeningPublicationResume(render, gate, parkedAt).then(() => {
       assertGateOwnerCurrent();
       return value;
     })
@@ -6392,7 +6416,7 @@ export function waitForOpeningGraphPublicationRelease(options = {}) {
       await awaitGate(liveGate);
     }
   });
-  if (!entity || !postFirstPicture) return released;
+  if (!entity) return released;
   let settled = false;
   return new Promise((resolve, reject) => {
     const finish = (fn, arg) => {
@@ -6426,7 +6450,10 @@ export function waitForOpeningGraphPublicationRelease(options = {}) {
         return;
       }
       if (render.openingGraphPublicationFrozen !== true
-          || entityOnDeadlineGlass(entity, authoredRuntimeState())) {
+          // firstPlayableFrameAt may mint while this wait is parked — the glass
+          // bypass reads it lazily so a pre-picture park still gains the exit.
+          || (Number.isFinite(render.firstPlayableFrameAt)
+            && entityOnDeadlineGlass(entity, authoredRuntimeState()))) {
         finish(resolve, undefined);
         return;
       }
@@ -10157,7 +10184,18 @@ const COMPOSE_FRAME_MS_URGENT = 12;
 
 function composeYield() {
   if (typeof globalThis.requestAnimationFrame === 'function') {
-    return new Promise((resolve) => globalThis.requestAnimationFrame(() => resolve()));
+    return new Promise((resolve) => {
+      // rAF wins under real frames; a starved rAF (hidden/occluded tab) converges
+      // the slice cadence on the timer instead of parking the compose mid-build.
+      let fired = false;
+      const fire = () => {
+        if (fired) return;
+        fired = true;
+        resolve();
+      };
+      globalThis.requestAnimationFrame(fire);
+      setTimeout(fire, 48);
+    });
   }
   return Promise.resolve();
 }

@@ -18596,7 +18596,17 @@ export const render = {
         // A frame that already spent its paced budget doesn't also get this
         // drain's whole private wallet — minItems still guarantees progress.
         usePacedLedger: true,
-      })) break;
+      })) {
+        // Under a saturated ledger each call examines ~1 row, so deadline-glass
+        // work buried behind a skip prefix otherwise waits ~prefix-length calls.
+        // Hoist it once per drain — ordering only; later calls still bound the
+        // builds through this same slice check.
+        if (!hoistedDeadlineBuilds) {
+          hoistedDeadlineBuilds = true;
+          hoistDeadlineGlassMeshBuilds(this, glassVerdictMemo);
+        }
+        break;
+      }
       const id = this._meshBuildQueue[this._meshBuildQueueHead++];
       examined += 1;
       this._meshBuildQueuedIds.delete(id);

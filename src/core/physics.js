@@ -135,6 +135,7 @@ export const physics = {
     this._rapierToken = 0;
     this._sg02 = null;
     this._sg02Init = null;
+    this._sg02InitArmedAt = 0;
     this._sg02Token = 0;
     this._pendingSg02Snapshot = null;
     this._sg02CombatPhysics = createDeferredSg02CombatPhysicsPort(this);
@@ -363,6 +364,14 @@ export const physics = {
     const initTimeoutMs = Number.isFinite(options.initTimeoutMs)
       ? Math.max(0, options.initTimeoutMs)
       : SG02_INIT_PREPARE_TIMEOUT_MS;
+    // Waits that attach to a pending init get the init's remaining envelope, not
+    // a fresh window: a promise already past its own bound is treated as dead
+    // instead of re-paying the full timeout on a stale capture.
+    const sg02InitJoinMs = () => {
+      const armedAt = this._sg02InitArmedAt;
+      if (!Number.isFinite(armedAt) || armedAt <= 0) return initTimeoutMs;
+      return Math.max(0, initTimeoutMs - (Date.now() - armedAt));
+    };
     // An explicit prepare is bounded by user action — a backoff residual short enough
     // to fit inside the init envelope is worth waiting out so the prepare mints a real
     // attempt instead of fast-answering `false` on a skipped mint. Per-tick callers
@@ -385,7 +394,7 @@ export const physics = {
             let adoptTimer = null;
             const adopted = await Promise.race([
               Promise.resolve(this._sg02Init).then(() => true, () => true),
-              new Promise((resolve) => { adoptTimer = setTimeout(() => resolve(false), initTimeoutMs); }),
+              new Promise((resolve) => { adoptTimer = setTimeout(() => resolve(false), sg02InitJoinMs()); }),
             ]);
             if (adoptTimer !== null) clearTimeout(adoptTimer);
             if (!adopted) return false;
@@ -407,7 +416,7 @@ export const physics = {
         let settleTimer = null;
         await Promise.race([
           Promise.resolve(this._sg02Init).then(() => true, () => true),
-          new Promise((resolve) => { settleTimer = setTimeout(() => resolve(false), initTimeoutMs); }),
+          new Promise((resolve) => { settleTimer = setTimeout(() => resolve(false), sg02InitJoinMs()); }),
         ]);
         if (settleTimer !== null) clearTimeout(settleTimer);
       }
@@ -419,7 +428,9 @@ export const physics = {
       const sg02TokenAtPrepare = this._sg02Token;
       const settled = await Promise.race([
         Promise.resolve(this._sg02Init).then(() => true, () => true),
-        new Promise((resolve) => { timer = setTimeout(() => resolve(false), initTimeoutMs); }),
+        // A mint issued by this call keeps the full bring-up envelope even when
+        // the caller plumbed a shorter budget for the joins above.
+        new Promise((resolve) => { timer = setTimeout(() => resolve(false), SG02_INIT_PREPARE_TIMEOUT_MS); }),
       ]);
       if (timer !== null) clearTimeout(timer);
       // A retry/reset that landed during the wait owns the authority now: this stale
@@ -606,6 +617,7 @@ export const physics = {
           return null;
         });
       this._sg02Init = init;
+      this._sg02InitArmedAt = Date.now();
     }
 
     if (!this._sg02) {
@@ -760,6 +772,7 @@ export const physics = {
     if (this._sg02 && typeof this._sg02.dispose === 'function') this._sg02.dispose();
     this._sg02 = null;
     this._sg02Init = null;
+    this._sg02InitArmedAt = 0;
     this._diag.sg02Ready = false;
     this._diag.sg02Bodies = 0;
     this._diag.sg02DynamicBodies = 0;

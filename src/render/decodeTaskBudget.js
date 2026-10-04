@@ -54,6 +54,11 @@ let paceFrameSpentMs = 0;
 let paceFrameEpoch = 0;
 let paceSpentEpoch = -1;
 let pacePumpArmed = false;
+// Last pump fire in wall-clock ms: a hidden/occluded window freezes the epoch
+// while paced spend keeps accumulating — beyond this age the wallet re-keys on
+// the 8ms window instead of reading permanently over-budget.
+let pacePumpFiredAt = 0;
+const PACE_EPOCH_STALE_MS = 64;
 
 function paceEpochNow() {
   // Only a real browser frame loop keys the epoch — headless/test hosts that stub
@@ -65,10 +70,12 @@ function paceEpochNow() {
     pacePumpArmed = true;
     const pump = () => {
       paceFrameEpoch += 1;
+      pacePumpFiredAt = paceNow();
       window.requestAnimationFrame(pump);
     };
     window.requestAnimationFrame(pump);
   }
+  if (paceNow() - pacePumpFiredAt > PACE_EPOCH_STALE_MS) return -1;
   return paceFrameEpoch;
 }
 
@@ -245,6 +252,21 @@ const GLTF_PARSE_FRAME_LIMIT = 2;
 const gltfParsePending = [];
 let gltfParseDrainScheduled = false;
 
+// A hidden or occluded tab can starve rAF for the whole load, wedging every
+// queued drain behind the never-firing arm until an outer timeout bounces it.
+// Dual-arm with a short timer: under real frames rAF wins and the drain runs
+// where it always did; starved hosts converge at timer cadence.
+function armFrameDrain(callback) {
+  let fired = false;
+  const fire = () => {
+    if (fired) return;
+    fired = true;
+    callback();
+  };
+  requestAnimationFrame(fire);
+  setTimeout(fire, 48);
+}
+
 function drainGltfParseQueue() {
   const batch = gltfParsePending.splice(0, GLTF_PARSE_FRAME_LIMIT);
   for (const task of batch) {
@@ -252,7 +274,7 @@ function drainGltfParseQueue() {
   }
   // The tail must keep draining without a new push — re-arm while items remain
   // (the flag stays latched so pushes during the drain just enqueue).
-  if (gltfParsePending.length) requestAnimationFrame(drainGltfParseQueue);
+  if (gltfParsePending.length) armFrameDrain(drainGltfParseQueue);
   else gltfParseDrainScheduled = false;
 }
 
@@ -262,7 +284,7 @@ export function scheduleGltfParse(fn) {
     gltfParsePending.push({ fn, resolve, reject });
     if (gltfParseDrainScheduled) return;
     gltfParseDrainScheduled = true;
-    requestAnimationFrame(drainGltfParseQueue);
+    armFrameDrain(drainGltfParseQueue);
   });
 }
 
@@ -307,7 +329,7 @@ function drainGltfCompileQueue() {
   // starving ambient compile tails indefinitely.
   if (pacedFrameSpend() >= GLTF_COMPILE_FRAME_MS && gltfCompileFramesSkipped < GLTF_COMPILE_MAX_SKIPPED_FRAMES) {
     gltfCompileFramesSkipped += 1;
-    requestAnimationFrame(drainGltfCompileQueue);
+    armFrameDrain(drainGltfCompileQueue);
     return;
   }
   gltfCompileFramesSkipped = 0;
@@ -327,7 +349,7 @@ function drainGltfCompileQueue() {
     || gltfCompilePending.deadline.length
     || gltfCompilePending.ambient.length;
   // Same re-arm contract as the parse drain: the tail must keep draining without a new push.
-  if (pending) requestAnimationFrame(drainGltfCompileQueue);
+  if (pending) armFrameDrain(drainGltfCompileQueue);
   else gltfCompileDrainScheduled = false;
 }
 
@@ -340,7 +362,7 @@ export function scheduleGltfCompile(fn, decodeClass, token) {
     if (token) gltfCompileEntries.set(token, { entry, lane });
     if (gltfCompileDrainScheduled) return;
     gltfCompileDrainScheduled = true;
-    requestAnimationFrame(drainGltfCompileQueue);
+    armFrameDrain(drainGltfCompileQueue);
   });
 }
 
