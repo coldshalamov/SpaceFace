@@ -817,7 +817,9 @@ function updateRanged(record, tick, self, target, distance) {
     // any closing speed on the hull would otherwise pin it in retreat forever — one volley, then
     // a kite chase that never fights again. The hatch re-arms the cycle so a lazy chase is
     // answered with a fresh telegraphed volley; a hard press (>55) still trips the closing
-    // interrupt each cycle and keeps the hull running.
+    // interrupt each cycle and keeps the hull running. Authored floor, unchanged: inside
+    // RANGED_PRESS_FLOOR_WU the interrupt fires regardless of press, so a point-blank chase
+    // (distance < 140) still pins the panic leg — outside this doctrine's volley envelope by design.
     if ((distance >= 520 && press < 10) || age >= RANGED_RETREAT_MAX_TICKS) {
       enter(record, 'outer_standoff', tick, null);
     }

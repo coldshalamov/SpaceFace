@@ -1,16 +1,23 @@
 // INF-fight: the ranged disengager's panic leg is bounded — a pressed patrol re-commits.
 //
-// Weakness found by looking (seed 4242, ordinary route): the Concord patrol / Lancer sniper
-// doctrine (ranged_disengager) breaks off on the closing interrupt and its only authored exit
-// demanded `distance >= 520 && press < 10` — the player must fully ease off. Any sustained
-// closing speed pinned the hull in retreat forever: one telegraphed volley, then a kite chase
-// where the enemy never turns to fight again. Every sibling egress leg carries a max-tick
-// clock (INTERCEPTOR_EXTEND_MAX law, src/ai/combatDoctrine.js); the ranged retreat now has
+// Weakness found by looking (seed 4242, ordinary route): ranged_disengager is the majority
+// patrol doctrine — 10 of the 14 authored faction profiles fly it (src/data/factionDoctrines.js,
+// including faction_scn, the starter-station Concord patrol) plus the lancer_sniper archetype.
+// It breaks off on the closing interrupt and its only authored exit demanded
+// `distance >= 520 && press < 10` — the player must fully ease off. Any sustained closing speed
+// pinned the hull in retreat forever: one telegraphed volley, then a kite chase where the enemy
+// never turns to fight again. Every sibling egress leg carries a max-tick clock
+// (INTERCEPTOR_EXTEND_MAX law, src/ai/combatDoctrine.js); the ranged retreat now has
 // RANGED_RETREAT_MAX_TICKS too.
 //
+// Authored boundary the clock does NOT lift: inside RANGED_PRESS_FLOOR_WU (140 WU) the closing
+// interrupt fires regardless of press speed, so a point-blank chase still pins the panic leg —
+// that floor is outside the doctrine's legal volley envelope by design (pinned in scenario F).
+//
 // Pinned here on fixed seed 4242: volley → panic leg under a lazy chase → bounded leg ends →
-// fresh telegraphed volley (the fight resumes), while a HARD press (>55 WU/s) still keeps the
-// hull running with guns dark — pressing hard remains the real counterplay.
+// fresh telegraphed volley (the fight resumes), while a HARD press (>55 WU/s) or a point-blank
+// chase (<140 WU) still keeps the hull running with guns dark — pressing hard remains the real
+// counterplay.
 
 import assert from 'node:assert/strict';
 
@@ -90,6 +97,7 @@ const update = (runtime, tick, frame) => runtime.update({
 const standoff = () => perception([shipContact(1, { x: 620, mobilityBand: 'low', threat: 0.95 })]);
 const lazyChase = () => perception([shipContact(1, { x: 400, vx: -30, mobilityBand: 'low', threat: 0.95 })]);
 const hardChase = () => perception([shipContact(1, { x: 400, vx: -90, mobilityBand: 'low', threat: 0.95 })]);
+const pointBlank = () => perception([shipContact(1, { x: 120, mobilityBand: 'low', threat: 0.95 })]);
 const chargeIn = () => perception([shipContact(1, { x: 180, vx: -90, mobilityBand: 'low', threat: 0.95 })]);
 
 {
@@ -152,5 +160,26 @@ const chargeIn = () => perception([shipContact(1, { x: 180, vx: -90, mobilityBan
       `hard press must deny the re-commit; got ${result.phase} at tick ${tick}`);
     assert.equal(result.fireWindow, false, 'no volley while the press is hard');
     assert.equal(result.telegraph, null, 'no telegraph while the press is hard');
+  }
+}
+
+{
+  // F — the authored panic floor the clock does not lift: distance < RANGED_PRESS_FLOOR_WU
+  // (140) trips the closing interrupt regardless of press speed, so a point-blank chase with
+  // ZERO closing speed still pins the panic leg. Outside the volley envelope by design.
+  const runtime = new CombatDoctrineRuntime({ seed: SEED });
+  update(runtime, 0, standoff);
+  update(runtime, 45, standoff);
+  update(runtime, 75, standoff);
+  update(runtime, 93, standoff);
+  update(runtime, 111, standoff);
+  let result = update(runtime, 112, chargeIn);
+  assert.equal(result.phase, 'retreat');
+  for (let tick = 113; tick <= 512; tick++) {
+    result = update(runtime, tick, pointBlank);
+    assert.ok(result.phase === 'retreat' || result.phase === 'outer_standoff',
+      `point-blank chase must keep the panic leg pinned; got ${result.phase} at tick ${tick}`);
+    assert.equal(result.fireWindow, false, 'no volley from inside the panic floor');
+    assert.equal(result.telegraph, null, 'no telegraph from inside the panic floor');
   }
 }
