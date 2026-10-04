@@ -574,7 +574,7 @@ ship stills (all REVISE — awaiting new remote candidates).
 | 52 | CR-TEXTURE-1 | Per-sector surprise coverage — each named place gets one reachable one-off (rumor or skyline) | BUILD | DONE — 19 one-offs cover the 19 uncovered named sectors; every non-starter sector has an authored bar lead at its own station (Charon rides the Expanse lead); 6 ropeable bodies; receipt: design/program/roadmap/receipts/CR-TEXTURE-1-SECTOR-SURPRISE.md; 9/9 focused, 34/34 adjacent, review PASS |
 | 53 | OPTIC-OFFENSE | Offensive half of optic fields: enemies kite pursuers across fuses / bank shots off mirrors (defensive half landed) | BUILD | DONE 2026-09-29 — bank planner + gimbal-cone slew gate, 9/9 focused incl. swept-bolt proof, 42/42 AI-fire, 97/97 optic adjacent (`receipts/OPTIC-OFFENSE-BANK-SHOT.md`) |
 | 55 | SEAM-BASE | `combat:baseDestroyed` — dockless station-typed bases (`data.baseKind`, team-1 hostile) are real destructible bodies; combat emits the event on kill, economy + sectorSim consequences land, 358 THE PRESS CAMP fields the first one | BUILD | DONE 2026-09-28 — seam closed end-to-end, no UI needed (`receipts/SEAM-BASE-DESTRUCTIBLE-BASES.md`, 9/9 focused + 76/76 encounter batch) |
-| 56 | SEAM-UI | §1B UI-producer seams (setShipAppearance, kurtzInteract, heliosBay7Scan, endingArchiveOpen, factionPresenceService, claim:defenseIgnore) — UI halves are ORRERY's; sim-side gaps may be taken | BUILD | CLAIMED ORRERY-adjacent |
+| 56 | SEAM-UI | §1B UI-producer seams (setShipAppearance, kurtzInteract, heliosBay7Scan, endingArchiveOpen, factionPresenceService, claim:defenseIgnore) — UI halves are ORRERY's; sim-side gaps may be taken | BUILD | VERIFIED 2026-10-04 sim-side closed — all six listeners are live; five have real UI emitters (shipworks→ships, barContacts→story, pause→story, serviceQuotes→factionPresence, encounterChoicePrompt/galaxyMap→claims). `ui:heliosBay7Scan` is a dead alias (zero emitters; listener story.js:262) but the Bay 7 beat is reachable without it — `scan:completed`/`signal:scanResults` pulse + the 320 WU proximity tick + the Kessler bar rumor (helios-bay7-scan 4/4). A real UI emitter for the alias is ORRERY's call, not a sim gap |
 | 57 | PQ-129.11–.17 | Hitch deferred leaves (7): submit tighten, rigid opaque batching, canopy/plume lanes, tiny-fighter LOD, off-table AI sleep, cheaper bloom, autosave off display callback — take lowest first | BUILD | DONE 2026-10-03 — .15/.16/.17 already shipped w/ receipts (activity-scheduler 8/8 + tactical-ai cadence 5/5 green; autosave off rAF); .14 LOD mechanism live (138/286 pkgs), wasp hull LOD asset is Forge work; .11–.13 legally deferred on headed-census gate |
 
 ### E. Acceptance — implemented things awaiting their bar (queue + §25)
@@ -883,6 +883,19 @@ shipped, so their J1/J6 and P04 residuals moved to §K rows 276/277; §K rows re
 | 275 | RELEASE-TRUTH | [Research H](design/program/research-2026-10-02/ADMITTED_REPAIRS.md#h-physical-previews-describe-the-actual-release--c1-c2-c4): actual-body/relevant-field forecasts and neutral untargeted release feedback; preserve live forces and cut authority | FIX | DONE 2026-10-03 — C1 missed-window cue now requires a valid attempted solution so untargeted lawful throws/cuts stay neutral while aimed misses still speak once; C2 preview builds its body profile from production's own fieldBodyProfile/fieldEntityIsPrimed/fieldVelocityTermApplies so earned coupling/resistance/boost/hitch/primed semantics match and target selection no longer fakes 'marked'; C4 fieldsRelevantAlongCorridor covers the whole predicted corridor (payload-excluded/zero-force/disjoint fields dropped, chain closure kept) so an irrelevant field can't collapse a ~6 s ballistic contact while an ahead-field still bends the read honestly (02a846590); tests fields-predictor 14/14 + massline-release-predictor 16/16 + check-massline-release-feedback OK + adjacent massline/fields/tether sweep 565/573 (8 fails all foreign lanes: ships collider, vfx direction-lock, fieldDepletion deserialize) |
 | 276 | MAP-INTENT | [Research C](design/program/research-2026-10-02/ADMITTED_REPAIRS.md#c-current-map-intention-and-cancellation--j1-j6): current galaxy-map query selection + first-Escape cancellation (J1/J6), minimal functional UI extension | FIX | DONE 2026-10-03 — query-stamped current-visible result commits only; blank/no-match/consumed clears the list (J1); screens get first-refusal `onEscape` before generic back, the chart cancels line/hold without committing or popping (J6); locked precedence preserved (736ab7df7, devin-sweep-oct2); tests map-intent-j1-j6, map-hud-kit + input suites green |
 | 277 | CONTRACT-IDENTITY | [Research E](design/program/research-2026-10-02/ADMITTED_REPAIRS.md#e-commit-the-exact-contract-held--p04): exact Contracts completed-hold identity (P04), minimal functional UI extension | FIX | DONE 2026-10-03 — a completed hold captures mission id + stated terms at fire and the drain commits only while that exact offer stands on those terms; a detached key never falls through to the repainted dossier, selection/context change, hide and dispose retire the pending commit, an unchanged repainted offer still accepts once (e7b4e09b7, devin-sweep-oct2); tests contract-hold-identity-p04 + station suites green |
+
+### L. THE LONG GAME — first decomposition (lane L-LONGGAME sitting 1, 2026-10-04)
+
+Lane checklist: FINISH_LANES.md §8 (PQ-032/142/152/155/156/170/172/176–178/195, PQ-208 verb keys, PQ-209.02) against §17 bars M1–M6. Each row is one seam's write set with a done-when in player units. Prior owner named per row.
+
+| # | ID | Work | Kind | Status |
+|---|---|---|---|---|
+| 278 | LG-TOW-PREDICT | Fit screen predicts tow class before you pay (M2): `handlingProfileForShip().predictions` gains `towClassMassT` + named heaviest towable roster hull, read off the live tow law (`shipCapabilities.towClassMassFor`), same derived block the bars read. Prior owner: PQ-176.03 fit sentences. Done when: predicted tow class matches a live tow of that hull within 20 % on seed 4242, and the fit screen names the hull. | BUILD | OPEN |
+| 279 | LG-FORECAST-PROOF | The market forecast cone is falsifiable (M4): each cone stores its quoted band + the sim event ids that moved the price, and the market screen prints one line tracing the last move to its cause. Prior owner: economy forecast band. Done when: on seed 4242 a reader of the cone out-earns a non-reader by ≥ 30 % over a seeded hour and every ticker line names its event. | BUILD | OPEN |
+| 280 | LG-STARTER-JOBS | Three starters are three jobs (F10/PQ-156): each starter hull ships an authored opening contract chain that only its fit can run cleanly, accepted from the ordinary board on the default route. Prior owner: onboarding/new-game defaults. Done when: a stranger flies each starter's chain to payout with no flag or debug key. | BUILD | OPEN |
+| 281 | LG-SPINE-HEADLINES | Every story beat has a physical headline verb (M5/PQ-032): beats that are text-only gain a staged physical action (tow, deliver, scan, survive) wired through the live `headlineVerb` mission seam. Prior owner: story beat content. Done when: all 8 beats each name a verb a player performs, reachable by a combat-only and a builder run on seed 4242. | BUILD | OPEN |
+| 282 | LG-SHIP-PORTRAIT | The load screen reads your ship's history back (M6): scars, repairs, titles and the named grudge render as one portrait block from the living-hull + title + ace-memory owners. Prior owner: save portrait fields. Done when: a scarred, titled, grudge-holding save shows all four lines with zero invented entries. | BUILD | OPEN |
+| 283 | LG-VERB-CURVE | A new verb every hour for ten hours (B8/PQ-155): the verb-unlock curve is a data table keyed to hours 1–10 with each unlock wired to its live verb key (PQ-208), surfaced once in the fit/tech screen. Prior owner: tech/unlock catalog. Done when: a fixed-seed ten-hour reference route meets 10 distinct verbs, each usable the hour it unlocks. | BUILD | OPEN |
 
 ## 2. Product north star
 
@@ -5380,8 +5393,20 @@ fixture already passes, skip.
 
 > **Rows G1, G3, G5, G7, G8, G12, G13 and G14 (what the flight HUD and the screens show) are CLAIMED
 > 2026-09-26 by the ORRERY frontend overhaul lane** — do not take them; the lane lands them in the
-> HUD pass ([`design/frontend/ORRERY.md`](./design/frontend/ORRERY.md) + [`design/frontend/OVERHAUL_PLAN_2026-09-25.md`](./design/frontend/OVERHAUL_PLAN_2026-09-25.md)). The other G-rows (sound, impact shape, the objective key, throttle
-> audio, module numbers, bound-key prompts) stay open.
+> HUD pass ([`design/frontend/ORRERY.md`](./design/frontend/ORRERY.md) + [`design/frontend/OVERHAUL_PLAN_2026-09-25.md`](./design/frontend/OVERHAUL_PLAN_2026-09-25.md)).
+>
+> **The non-ORRERY G-rows are verified landed (2026-10-04)** — each exists in code with a green
+> fixture: G2 `tether:latchDenied` routes to the `sfx_massline_deny` voice (combatVerbCues →
+> minimalActionAudio; `wave-g2-latch-deny-cue`); G4 `offscreenShooterMarker` (`src/ui/threatHalo.js:315`)
+> drives the offscreen `sf-tell` directional chip — a screen-edge *marker*, not an arc: edge arcs are
+> rejected by the non-diegetic HUD law (`hud.js:1913`; `wave-g4-offscreen-threat`); G6 impulse impacts
+> pick cone/sheet families off the hit axis with shield-vs-hull shape ids (`vfx.js` `hitRead.shapeId`;
+> `vfx-impulse-cone`); G9 `recallObjective` is bound and live (`bindings.js:42` → `input.js:359` →
+> `hud.js:1851` → `objectiveRecall.js`; `wave-g9-objective-recall`); G10 CV-EAR-1 engine voices answer
+> throttle inside the authored windows (`throttleAnswer.js` + `audioSystem.js`; `wave-g10-throttle-answer`,
+> `cv-ear-1-elementary-voices`); G11 `fb-module-dead-fields` walks advertised card stats against live
+> consumers; G15 prompts resolve the live binding (`promptLabel` `bindings.js:141`, `shelfVerbLine`
+> `hudAttention.js:302`; `help-gamepad-rebind`). Wave G has no open non-ORRERY rows.
 
 `PQ-155.04` already owns in-flight mining skill. A clean aim pays more ore than a sloppy aim, at
 least 2× on the same rock. That gradient is yield. The starter beam still never locks. A vent
