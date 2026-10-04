@@ -28,7 +28,7 @@ test('encounter pending squads warm through the roster decode lane inside the de
 
 test('the pending-squad warm runs on the residency poll beside sector prewarm', () => {
   assert.match(rendererSrc,
-    /updatePredictedSectorPrewarm\(this\);\s*\r?\n\s*warmEncounterPendingDecode\(this\);/,
+    /updatePredictedSectorPrewarm\(this\);\s*\r?\n\s*(?:yield;\s*\r?\n\s*)?warmEncounterPendingDecode\(this\);/,
     'warmEncounterPendingDecode must be wired beside updatePredictedSectorPrewarm');
 });
 

@@ -1044,17 +1044,23 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
         try {
           // The prepare has overlapped the whole GPU chain by now — whatever is
           // still outstanding 20 s later is a wedged bring-up, not a slow one.
+          // A rejected prepare used to fold into the same false as a timeout —
+          // capture its reason so the readiness error carries the real cause
+          // instead of an opaque wedge.
+          let physicsPrepError = null;
           const physicsReady = await Promise.race([
-            continuePhysicsPrep.catch(() => false),
+            continuePhysicsPrep.catch((err) => { physicsPrepError = err || null; return false; }),
             new Promise((resolve) => setTimeout(() => resolve(false), 20000)),
           ]);
           if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
           if (physicsReady === false) {
-            throw new GameStartReadinessError(
+            const readinessError = new GameStartReadinessError(
               'PHYSICS_BACKEND_UNAVAILABLE',
               'physics-authority',
               'The dynamic physics backend did not initialize after save load; refusing to enter flight frozen in place.',
             );
+            if (physicsPrepError != null) readinessError.cause = physicsPrepError;
+            throw readinessError;
           }
         } finally {
           stopPhysicsPulse();

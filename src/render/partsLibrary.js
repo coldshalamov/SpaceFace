@@ -6160,8 +6160,14 @@ function abortStalledUpgradeJob(state, job) {
   cleanupQueuedJob(state, job);
   // The abandoned run may sit on a decoder task that will never settle — every later request
   // deduping onto it wedges identically. Drop the unfinished task entries (and the boundary's
-  // pending requests on them) so the readmission decodes fresh.
-  dropWedgedAuthoredTasks(job.renderer, authoredUpgradeAssetUrls(job), job.boundary);
+  // pending requests on them) so the readmission decodes fresh. Union the mint-stamped list
+  // with a fresh plan derivation: ship decodes re-derive the plan at task start (identity can
+  // mutate mid-flight), so the wedged url::slot may sit under urls the mint list no longer names.
+  authoredPlanMemo.delete(job);
+  const partRoot = isReleaseAssetMode(job && job.options || {}) ? PART_RELEASE_ROOT : PART_ROOT;
+  const dropUrls = new Set(authoredUpgradeAssetUrls(job));
+  for (const file of Object.values(authoredUpgradePlan(job)).flat()) dropUrls.add(`${partRoot}${file}`);
+  dropWedgedAuthoredTasks(job.renderer, [...dropUrls], job.boundary);
   const abortCount = (Number(job.boundary && job.boundary.userData.stallAbortCount) || 0) + 1;
   if (job.boundary && job.boundary.userData) job.boundary.userData.stallAbortCount = abortCount;
   if (job.boundary && job.boundary.parent && abortCount <= AUTHORED_UPGRADE_STALL_ABORT_LIMIT) {

@@ -333,6 +333,7 @@ import {
 } from './latePipelineAdmission.js';
 import {
   armAdmissionShadows,
+  collectUnstagedShadowCasters,
   compileShadowDepthPipelines,
   disposeAdmissionShadowResources,
 } from './shadowDepthAdmission.js';
@@ -2394,7 +2395,6 @@ function abandonHoldExemptCommit(owner) {
   owner._holdExemptCommitList = null;
   owner._holdExemptCommitEpoch = null;
   owner._holdExemptCommitExempt = null;
-  owner._holdExemptEnqueueBefore = 0;
 }
 
 // Close any in-flight sliced residency poll — its collected rows belong to a
@@ -2454,6 +2454,9 @@ function residencyPruneSweepDue(owner) {
 function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
   const state = owner && owner.state;
   if (!owner || !state || !owner._meshes || !owner._meshBuildQueuedIds || !owner._meshBuildQueue) return 0;
+  // Once per invocation: parked commit iterators read this stamp across yields to spot
+  // resumes landing under a newer beat (their minted snapshot needs a refresh then).
+  owner._holdExemptBeatStamp = (owner._holdExemptBeatStamp || 0) + 1;
   const liveEpoch = state.world && state.world.enterSerial != null ? state.world.enterSerial : null;
   if (owner._holdExemptCommitEpoch != null && owner._holdExemptCommitEpoch !== liveEpoch) {
     abandonHoldExemptCommit(owner);
@@ -2502,12 +2505,15 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
     // The commit (enqueue + decode kick) used to run synchronously on the beat that
     // completed the collect — two more whole-list walks paid inside one presented
     // frame. Both phases now drive chunked iterators persisted on the owner. The
-    // commit keeps its own per-invocation clock: sharing the collect's clock would
-    // starve it whenever the collect spends the whole slice (a heavy-sector hold
-    // would never land a single exempt build or decode kick). Small exempt sets
-    // still drain inline: their commit is a few ms of fixed pick/kick overhead, not
-    // the 10-30 ms list walks the slice exists for.
+    // commit keeps its own clock: sharing the collect's would starve it whenever the
+    // collect spends the whole slice (a heavy-sector hold would never land a single
+    // exempt build or decode kick). It is not a second full slice though — the budget
+    // is the beat's remainder plus a small guaranteed floor so a completing beat caps
+    // near sliceMs+floor instead of stacking collect+commit+remint into ~3 clocks.
+    // Small exempt sets still drain inline: their commit is a few ms of fixed pick/kick
+    // overhead, not the 10-30 ms list walks the slice exists for.
     const commitStarted = now();
+    const commitSliceMs = Math.max(sliceMs - (commitStarted - started), Math.min(2, sliceMs));
     if (!owner._holdExemptCommitList) {
       const out = owner._holdExemptCollectOut || [];
       abandonHoldExemptCollect(owner);
@@ -2530,7 +2536,7 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
     }
     const commitBounded = owner._holdExemptCommitList.length > 16;
     while (owner._holdExemptEnqueueIter) {
-      if (commitBounded && now() - commitStarted >= sliceMs) break;
+      if (commitBounded && now() - commitStarted >= commitSliceMs) break;
       const step = owner._holdExemptEnqueueIter.next();
       if (step.done) { cycleEnqueued = step.value || 0; owner._holdExemptEnqueueIter = null; }
     }
@@ -2539,7 +2545,7 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
       owner._holdExemptKickIter = kickDecodeRunwayAssetsSteps(owner, owner._holdExemptCommitList);
     }
     while (owner._holdExemptKickIter) {
-      if (commitBounded && now() - commitStarted >= sliceMs) break;
+      if (commitBounded && now() - commitStarted >= commitSliceMs) break;
       const step = owner._holdExemptKickIter.next();
       if (step.done) { cycleKickStarted = step.value || 0; owner._holdExemptKickIter = null; }
     }
@@ -2589,6 +2595,10 @@ function queueOrRequestAuthoredUpgrade(owner, entity, mesh, state, scan = null) 
     void yieldAfterPresent().then(() => {
       if (!subject || !subject.parent) return;
       if (!subject.userData || typeof subject.userData.requestAuthoredUpgrade !== 'function') return;
+      // The entity itself may have gone irrelevant during the yield (killed mid-frame, or
+      // its sector entered the pending-prewarm exclusion) — re-grade before posting
+      // serial-lane decode+compose for a subject that can never present it.
+      if (!canRequestAuthoredUpgrade(entity, state, owner && owner._authoredSectorPrewarmPendingId)) return;
       // The deferred re-check runs across at least one yielded frame — re-derive the live
       // camera terms rather than grading on the scan minted at pass head.
       requestAuthoredUpgrade(subject, owner.renderer, owner.scene,
@@ -3419,31 +3429,67 @@ function* kickDecodeRunwayAssetsSteps(owner, entities) {
   if (!state || state.mode !== 'flight' || !renderer || !renderer.domElement) return 0;
   const pending = owner._decodeRunwayPrefetchIds || (owner._decodeRunwayPrefetchIds = new Set());
   const list = Array.isArray(entities) ? entities : [];
-  const env = renderAdmissionEnv(state);
-  const travelSpeedWu = tableTravelSpeed(state);
-  const decodePad = approachDistanceWu(TABLE_SUBMIT_APPROACH_SECONDS, travelSpeedWu);
-  // Per-walk memo: the evaluate pass re-samples the same rows when it starts them.
-  const secondsMemo = new Map();
-  const decodeSeconds = (entity) => {
-    const id = entity && entity.id;
-    if (id != null && secondsMemo.has(id)) return secondsMemo.get(id);
-    const v = entityTimeToGlassSeconds(entity, env, state, TABLE_DECODE_RUNWAY_SECONDS, decodePad);
-    if (id != null) secondsMemo.set(id, v);
-    return v;
-  };
-  // Player-anchored twin: rows the collect disc unioned in on the player leg would
-  // otherwise never satisfy the runway horizon until the focus finishes crawling over.
-  const envPlayer = playerAnchoredAdmissionEnv(state, env);
-  const secondsPlayerMemo = new Map();
-  const decodeSecondsPlayer = envPlayer
-    ? (entity) => {
+  // The runway snapshot below mints at generator start; a pick parked across beat
+  // invocations resumes with a snapshot that no longer describes the world (travel
+  // toggles, camera/lookAt drift). The driver bumps _holdExemptBeatStamp once per
+  // invocation — refresh the env/memos when a resume lands under a newer stamp so
+  // crossing rows grade against live terms instead of the mint-time read.
+  let env;
+  let travelSpeedWu;
+  let decodePad;
+  let secondsMemo;
+  let decodeSeconds;
+  let envPlayer;
+  let secondsPlayerMemo;
+  let decodeSecondsPlayer;
+  let runwayCtx;
+  const refreshRunwaySnapshot = () => {
+    env = renderAdmissionEnv(state);
+    travelSpeedWu = tableTravelSpeed(state);
+    decodePad = approachDistanceWu(TABLE_SUBMIT_APPROACH_SECONDS, travelSpeedWu);
+    // Per-walk memo: the evaluate pass re-samples the same rows when it starts them.
+    secondsMemo = new Map();
+    decodeSeconds = (entity) => {
       const id = entity && entity.id;
-      if (id != null && secondsPlayerMemo.has(id)) return secondsPlayerMemo.get(id);
-      const v = entityTimeToGlassSeconds(entity, envPlayer, state, TABLE_DECODE_RUNWAY_SECONDS, decodePad);
-      if (id != null) secondsPlayerMemo.set(id, v);
+      if (id != null && secondsMemo.has(id)) return secondsMemo.get(id);
+      const v = entityTimeToGlassSeconds(entity, env, state, TABLE_DECODE_RUNWAY_SECONDS, decodePad);
+      if (id != null) secondsMemo.set(id, v);
       return v;
-    }
-    : null;
+    };
+    // Player-anchored twin: rows the collect disc unioned in on the player leg would
+    // otherwise never satisfy the runway horizon until the focus finishes crawling over.
+    envPlayer = playerAnchoredAdmissionEnv(state, env);
+    secondsPlayerMemo = new Map();
+    decodeSecondsPlayer = envPlayer
+      ? (entity) => {
+        const id = entity && entity.id;
+        if (id != null && secondsPlayerMemo.has(id)) return secondsPlayerMemo.get(id);
+        const v = entityTimeToGlassSeconds(entity, envPlayer, state, TABLE_DECODE_RUNWAY_SECONDS, decodePad);
+        if (id != null) secondsPlayerMemo.set(id, v);
+        return v;
+      }
+      : null;
+    // Per-walk ctx for the authored-runway grade: every term below is
+    // entity-independent but used to re-derive per pick (travel/prefetch/immediate/
+    // lookahead/glass + the look-at origin). env.glassR is the same prefetch-zoom
+    // corner the policy's own camera block computes.
+    const ctxPlayer = playerEntityForRenderState(state)
+      || (state.entityList || []).find((e) => e && e.id === state.playerId)
+      || null;
+    const ctxLookOrigin = tableLookAtOrigin(state, ctxPlayer && ctxPlayer.pos, _authoredRunwayLookOrigin);
+    runwayCtx = {
+      player: ctxPlayer,
+      env,
+      travel: travelSpeedWu,
+      prefetch: authoredPrefetchRadius(travelSpeedWu),
+      immediate: authoredImmediateRadius(travelSpeedWu),
+      lookahead: authoredLookaheadSeconds(),
+      glass: env.glassR,
+      lookOriginX: ctxLookOrigin.x,
+      lookOriginZ: ctxLookOrigin.z,
+    };
+  };
+  refreshRunwaySnapshot();
   const waveMemo = new Map();
   const waveFor = (entity) => {
     const id = entity && entity.id;
@@ -3452,24 +3498,13 @@ function* kickDecodeRunwayAssetsSteps(owner, entities) {
     if (id != null) waveMemo.set(id, v);
     return v;
   };
-  // Per-walk ctx for the authored-runway grade: every term below is
-  // entity-independent but used to re-derive per pick (travel/prefetch/immediate/
-  // lookahead/glass + the look-at origin). env.glassR is the same prefetch-zoom
-  // corner the policy's own camera block computes.
-  const ctxPlayer = playerEntityForRenderState(state)
-    || (state.entityList || []).find((e) => e && e.id === state.playerId)
-    || null;
-  const ctxLookOrigin = tableLookAtOrigin(state, ctxPlayer && ctxPlayer.pos, _authoredRunwayLookOrigin);
-  const runwayCtx = {
-    player: ctxPlayer,
-    env,
-    travel: travelSpeedWu,
-    prefetch: authoredPrefetchRadius(travelSpeedWu),
-    immediate: authoredImmediateRadius(travelSpeedWu),
-    lookahead: authoredLookaheadSeconds(),
-    glass: env.glassR,
-    lookOriginX: ctxLookOrigin.x,
-    lookOriginZ: ctxLookOrigin.z,
+  // A resume under a newer driver beat refreshes the runway snapshot before the next
+  // evaluate/start grades a row on mint-time terms (see the stamp comment above).
+  let kickBeatStampSeen = owner._holdExemptBeatStamp || 0;
+  const refreshOnNewerBeat = () => {
+    if (owner._holdExemptBeatStamp === kickBeatStampSeen) return;
+    kickBeatStampSeen = owner._holdExemptBeatStamp || 0;
+    refreshRunwaySnapshot();
   };
   // Prefer planned wave hulls so spawn-cohort decode finishes before a rim pop, then
   // the earliest glass deadline. Starts are capped by the shared decode budget
@@ -3480,7 +3515,10 @@ function* kickDecodeRunwayAssetsSteps(owner, entities) {
     ? navigator.hardwareConcurrency
     : 4;
   const decodeCap = beltTailDecodeConcurrency(decodeCores, resolveDecodeTaskBudgetLimit(decodeCores));
-  const ordered = yield* pickDecodeRunwayCandidatesSteps(list, (entity, key) => {
+  // Manual delegation (not yield*): each driver .next() round-trips through this frame so
+  // a resume landing under a newer beat stamp refreshes the runway snapshot before the
+  // pick's next evaluate grades a crossing row on mint-time terms.
+  const pickIter = pickDecodeRunwayCandidatesSteps(list, (entity, key) => {
     if (!entity || entity.alive === false) return false;
     if (entityHomeSectorMismatch(entity, state)) return false;
     // Cheap O(1) guards first — the packaged-file resolver chain below is the
@@ -3522,6 +3560,13 @@ function* kickDecodeRunwayAssetsSteps(owner, entities) {
     key.seconds = effective;
     return true;
   }, decodeCap);
+  let pickStep = pickIter.next();
+  while (!pickStep.done) {
+    yield pickStep.value;
+    refreshOnNewerBeat();
+    pickStep = pickIter.next();
+  }
+  const ordered = pickStep.value;
   // The decode runway warms the LIBRARY half only — a mounted substrate would otherwise
   // still run compose+compile+upload at admission pick, which is the dominant marker-on-glass
   // interval for inbound traffic. Its boundary upgrade job is the same job relevance would
@@ -3581,6 +3626,7 @@ function* kickDecodeRunwayAssetsSteps(owner, entities) {
       });
     }
     yield;
+    refreshOnNewerBeat();
   }
   return started;
 }
@@ -13535,18 +13581,24 @@ export const render = {
         } catch (error) {
           console.warn('[render] post-opening rescan compile failed', error);
         }
-        compileShadowDepthPipelines({
-          renderer,
-          light: this._keyLight,
-          camera: cam.obj,
-          subjects: rescanDelta,
-          forceEnable: this._shadowSettingOn === true,
-          THREE,
-          captureObjectHome,
-          restoreObjectHome,
-          lightingScene: scene,
-          stagingName: 'SF_PostOpeningRescanShadowDepth',
-        });
+        // The depth leg used to pay the whole-scene staging ceremony on every non-empty
+        // delta — a join trickle then re-linked the same material set per pass. Only
+        // casters whose depth-variant signature was never staged under the live light
+        // census still need the ceremony; a repeat pass over the same set skips it.
+        if (collectUnstagedShadowCasters(renderer, rescanDelta, scene).length > 0) {
+          compileShadowDepthPipelines({
+            renderer,
+            light: this._keyLight,
+            camera: cam.obj,
+            subjects: rescanDelta,
+            forceEnable: this._shadowSettingOn === true,
+            THREE,
+            captureObjectHome,
+            restoreObjectHome,
+            lightingScene: scene,
+            stagingName: 'SF_PostOpeningRescanShadowDepth',
+          });
+        }
       }
       // A rescan request still armed at the pass cap means a joiner's cohort was
       // never swept — stamping released over it would compile that cohort cold at
@@ -16138,7 +16190,9 @@ export const render = {
       console.warn('[render] crucible roster warm begin failed', error);
       // Unmark the coverage rows this begin stamped — the deferred lane treats
       // them as already-warmed and would never rebuild what a failed begin dropped.
-      if (Array.isArray(warm.coveredEnemyIds) && this._swarmWarmCoveredEnemyIds) {
+      // coveredEnemyIds is a Set (swarmEligibleEnemyIds) — iterate it directly; an
+      // Array.isArray gate never fires and pins every stamped row as covered for the run.
+      if (warm.coveredEnemyIds && this._swarmWarmCoveredEnemyIds) {
         for (const enemyId of warm.coveredEnemyIds) this._swarmWarmCoveredEnemyIds.delete(enemyId);
       }
       warm.building = false;

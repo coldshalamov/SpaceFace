@@ -197,6 +197,74 @@ function collectPotentialShadowCastSubjects(roots) {
   return casting;
 }
 
+// Depth-variant readiness: signatures of casters this ceremony already staged, per
+// renderer. A caster whose signature is recorded already links the exact depth program
+// the stage would mint (same material params + object kind, same light census + fog
+// terms baked into three's program key), so join-trickle rescans and successive
+// admission legs can skip re-paying the whole-scene staging for the same set. A light
+// census change mints a different signature and re-stages rather than trusting a stale
+// read; a material-less stub records nothing (there is no program to link).
+const _stagedDepthSignatures = new WeakMap();
+
+function lightCensusSignature(lightingScene) {
+  if (!lightingScene || typeof lightingScene.traverse !== 'function') return 'l0|f0';
+  let lights = 0;
+  lightingScene.traverse((object) => { if (object && object.isLight === true) lights += 1; });
+  return `l${lights}|${lightingScene.fog ? 'f1' : 'f0'}`;
+}
+
+function casterDepthSignatures(caster, lightSig) {
+  const kind = caster.isSkinnedMesh === true ? 'sk'
+    : (caster.isInstancedMesh === true ? 'in' : 'me');
+  const geometry = caster.geometry;
+  const morph = geometry && geometry.morphAttributes && Object.keys(geometry.morphAttributes).length > 0
+    ? 'm1' : 'm0';
+  const custom = caster.customDepthMaterial && caster.customDepthMaterial.uuid
+    ? `|cdm:${caster.customDepthMaterial.uuid}` : '';
+  const materials = Array.isArray(caster.material) ? caster.material : [caster.material];
+  const signatures = [];
+  for (const material of materials) {
+    if (!material || !material.uuid) continue;
+    signatures.push(`${material.uuid}|${kind}|${morph}${custom}|${lightSig}`);
+  }
+  return signatures;
+}
+
+/**
+ * Casters under `subjects` whose depth variant was never staged under the live light
+ * census. The caller pays the staging ceremony only when this returns non-empty; a
+ * pass whose casters are all recorded skips it outright. Material identity is keyed by
+ * uuid, so a mesh re-minted with a different material (attach job, skin swap) reports
+ * unstaged again — a false 'ready' is the in-round depth-link brick, never trusted.
+ */
+export function collectUnstagedShadowCasters(renderer, subjects, lightingScene) {
+  const casting = collectPotentialShadowCastSubjects(subjects);
+  if (casting.length === 0) return [];
+  const staged = _stagedDepthSignatures.get(renderer);
+  if (!staged || staged.size === 0) return casting;
+  const lightSig = lightCensusSignature(lightingScene);
+  const unstaged = [];
+  for (const caster of casting) {
+    const signatures = casterDepthSignatures(caster, lightSig);
+    if (signatures.length === 0) continue;
+    if (signatures.some((signature) => !staged.has(signature))) unstaged.push(caster);
+  }
+  return unstaged;
+}
+
+function markCastersDepthStaged(renderer, casting, lightingScene) {
+  if (!renderer || !casting || casting.length === 0) return;
+  let staged = _stagedDepthSignatures.get(renderer);
+  if (!staged) {
+    staged = new Set();
+    _stagedDepthSignatures.set(renderer, staged);
+  }
+  const lightSig = lightCensusSignature(lightingScene);
+  for (const caster of casting) {
+    for (const signature of casterDepthSignatures(caster, lightSig)) staged.add(signature);
+  }
+}
+
 export function compileShadowDepthPipelines(options = {}) {
   const renderer = options.renderer;
   const light = options.light;
@@ -358,6 +426,7 @@ export function compileShadowDepthPipelines(options = {}) {
     shadowMap.needsUpdate = true;
     if (stagedKeyLight.shadow) stagedKeyLight.shadow.needsUpdate = true;
     renderer.render(staging, camera);
+    markCastersDepthStaged(renderer, casting, lightingScene);
     const programBindingFailures = [];
     if (casting.length > 0 && !originalRenderBufferDirect) {
       programBindingFailures.push(`shadow-depth:${casting.length}:render-buffer-direct-unavailable`);
