@@ -446,6 +446,18 @@ export const swarmArena = {
         const fields = this.registry && this.registry.get ? this.registry.get('fields') : null;
         return fields && typeof fields.kernelList === 'function' ? fields.kernelList() : null;
       },
+      // Brood hazards damage the hull through the SAME routed damage owner mines use.
+      routeDamage: (request) => {
+        const helpers = this.helpers;
+        if (helpers && typeof helpers.routeCombatDamage === 'function') {
+          return helpers.routeCombatDamage(request);
+        }
+        const combat = this.registry && this.registry.get ? this.registry.get('combat') : null;
+        if (combat && typeof combat.ensureKernel === 'function') {
+          return combat.ensureKernel().routeDamage(request);
+        }
+        return null;
+      },
     });
     bindSwarmPressureContext({
       getAlive: () => liveCohortCount(this.state),

@@ -45,9 +45,11 @@ export function swarmBroodPopulation(wave) {
 }
 
 /**
- * The roster clock — one new silhouette at a time, the FB-023 pattern. B1 lands the Mite (the
- * whole tier arrives with the mode); B2 adds the family attack language behind the same clock.
- * `weight` is a composition share once unlocked; role names the problem the family poses.
+ * The roster clock — one new silhouette at a time, the FB-023 pattern. B1 landed the Mite (the
+ * whole tier arrives with the mode); B2 adds the family attack language behind the same clock:
+ * Spitters lob marked acid arcs, Chargers line-telegraph a committed dash, Leechers latch and
+ * slow until a wall scrape sheds them. `weight` is a composition share once unlocked; role
+ * names the problem the family poses.
  */
 export const SWARM_BROOD_FAMILIES = Object.freeze([
   {
@@ -69,6 +71,60 @@ export const SWARM_BROOD_FAMILIES = Object.freeze([
     counter: 'They flock and dive. Sweep them with the room.',
     bodyColor: [0.62, 0.30, 0.16],
     bodyEmissive: [0.55, 0.14, 0.05],
+  },
+  {
+    id: 'spitter',
+    name: 'Spitter',
+    role: 'reach',
+    fromWave: 3,
+    weight: 3,
+    radius: 3.4,
+    mass: 14,
+    hull: 14,
+    speed: 30,
+    turn: 3.4,
+    credits: 2,
+    score: 25,
+    telegraph: { bark: 'warn', line: 'A spitter arcs acid — the marker is where it lands.', cue: 'weapon_charge' },
+    counter: 'It lobs acid. Dodge the marker, work the throw.',
+    bodyColor: [0.18, 0.46, 0.22],
+    bodyEmissive: [0.10, 0.34, 0.10],
+  },
+  {
+    id: 'charger',
+    name: 'Charger',
+    role: 'pressure',
+    fromWave: 7,
+    weight: 3,
+    radius: 3.8,
+    mass: 26,
+    hull: 22,
+    speed: 36,
+    turn: 2.6,
+    credits: 2,
+    score: 30,
+    telegraph: { bark: 'warn', line: 'The charger squares up — the line is its committed pass.', cue: 'engine_flare' },
+    counter: 'It lines a dash. Sidestep — feed it a rock.',
+    bodyColor: [0.50, 0.16, 0.16],
+    bodyEmissive: [0.40, 0.06, 0.04],
+  },
+  {
+    id: 'leecher',
+    name: 'Leecher',
+    role: 'control',
+    fromWave: 11,
+    weight: 2,
+    radius: 3.0,
+    mass: 10,
+    hull: 9,
+    speed: 54,
+    turn: 4.4,
+    credits: 2,
+    score: 22,
+    telegraph: { bark: 'warn', line: 'The leecher wants your hull — it drags until you shed it.', cue: 'pd_curtain' },
+    counter: 'It latches and slows you. Scrape a wall to shed it.',
+    bodyColor: [0.36, 0.20, 0.52],
+    bodyEmissive: [0.22, 0.10, 0.38],
   },
 ]);
 
@@ -111,16 +167,18 @@ export function swarmBroodPlan(wave, rng) {
   const base = roster[0];
   let left = total;
   const out = [];
+  // Specialist families stay specialists: their whole budget is at most 40% of the room, so
+  // the mite floor is at least half the room at every wave — the tier stays a swarm.
+  let budget = Math.min(left - Math.ceil(total * 0.5), Math.round(total * 0.4));
   let weightSum = 0;
   for (let i = 1; i < roster.length; i++) weightSum += Math.max(0.001, roster[i].weight);
-  for (let i = roster.length - 1; i >= 1; i--) {
+  for (let i = 1; i < roster.length && budget > 0; i++) {
     const entry = roster[i];
-    const share = Math.max(0.001, entry.weight) / Math.max(weightSum, 1);
-    // Specialist families stay specialists: a readable pack, never half the room.
-    const count = Math.min(left, Math.max(4, Math.round(total * share)));
-    if (count > 0) {
-      out.push({ id: entry.id, count });
-      left -= count;
+    const take = Math.min(budget, Math.max(4, Math.round(budget * Math.max(0.001, entry.weight) / weightSum)));
+    if (take > 0) {
+      out.push({ id: entry.id, count: take });
+      budget -= take;
+      left -= take;
     }
   }
   out.push({ id: base.id, count: left });
@@ -209,6 +267,45 @@ export const BROOD_PLAYER_RAM_SPEED = 12;
 
 /** Explosion receipts the engine listens to (the shared blast seams, mines/darts included). */
 export const BROOD_EXPLOSION_EVENTS = Object.freeze(['charge:detonated', 'bombs:detonated', 'detonator:detonated']);
+
+// --- B2 attack language: authored windows, all dodgeable by construction --------------------
+//
+// Every attack speaks BEFORE it lands (FB-016/017): the spitter paints its marker for the whole
+// windup, the charger draws its line for the whole windup, and the leecher's shed verb is a
+// physical move the player already owns. Windows are data, so tests pin the dodge budget.
+
+/** Spitter: how far it lobs from, how often, and how long the marker leads the splash. */
+export const BROOD_SPITTER_LOB_RANGE = 210;
+export const BROOD_SPITTER_COOLDOWN_S = 3.4;
+export const BROOD_SPITTER_WINDUP_S = 0.8;
+export const BROOD_SPITTER_LOB_SPEED = 95;
+export const BROOD_SPITTER_SPLASH_RADIUS = 26;
+export const BROOD_SPITTER_SPLASH_DAMAGE = 12;
+export const BROOD_SPITTER_POOL_TTL_S = 2.5;
+export const BROOD_SPITTER_POOL_DPS = 7;
+export const BROOD_SPITTER_POOL_RADIUS = 18;
+export const BROOD_LOB_MAX = 24;
+export const BROOD_POOL_MAX = 12;
+
+/** Charger: the telegraphed committed pass. */
+export const BROOD_CHARGER_WINDUP_S = 0.7;
+export const BROOD_CHARGER_DASH_SPEED = 210;
+export const BROOD_CHARGER_DASH_MAX_S = 1.0;
+export const BROOD_CHARGER_RECOVER_S = 0.9;
+export const BROOD_CHARGER_SLAM_DAMAGE = 10;
+export const BROOD_CHARGER_RANGE = 260;
+/** The shove a landed charger pass applies to the hull, in wu/s of Δv at the player's mass. */
+export const BROOD_CHARGER_SHOVE_DV = 46;
+
+/** Leecher: latch, brake, and the shed verb. */
+export const BROOD_LEECHER_LATCH_RANGE = 11;
+/** Braking acceleration applied to a latched host, wu/s². */
+export const BROOD_LEECHER_BRAKE_ACCEL = 46;
+/** A wall scrape at least this fast sheds every latched leecher. */
+export const BROOD_SHED_SPEED = 8;
+
+/** The damage channel brood hazards burn on (acid reads thermal in the damage model). */
+export const BROOD_PLASMA_TYPE = 'thermal';
 
 /** The state subtree the engine publishes its live buffers under (never saved, never snapshotted). */
 export const SWARM_BROOD_STATE_KEY = 'swarmBrood';

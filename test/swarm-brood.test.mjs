@@ -391,7 +391,7 @@ test('the swarmArena host plans, spawns, steps and clears the tier', () => {
     h.bus.emit('run:waveStarted', { wave: 2 });
     assert.ok(h.state.swarmBrood, 'the engine published its view on the state');
     assert.ok(h.state.swarmBrood.aliveCount >= SWARM_BROOD_MIN);
-    assert.equal(h.state.swarmBrood.schema, 'spaceface.swarmBrood.v1');
+    assert.equal(h.state.swarmBrood.schema, 'spaceface.swarmBrood.v2');
     h.state.simTime += DT;
     swarmArena.update();
     assert.ok(h.state.swarmBrood.aliveCount > 0, 'one tick stepped the flock');
