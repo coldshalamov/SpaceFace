@@ -170,6 +170,15 @@ test('seed 4242: a scan lead and a rumor card use the same letters', () => {
     ['oneoff_open_hand', 'station_nereid', 'NE', /^North-east of the market/],
     ['oneoff_double_take', 'station_proteus', 'NE', /^North-east of here/],
   ];
+  const veil = SECTOR_ANCHORS.sector_veil_nebula;
+  const veilStation = veil.stations.find((row) => row.id === 'station_veil');
+  const storm = veil.fields.find((row) => row.id === 'f_veil_1');
+  const shrine = WORLD_ONE_OFFS.find((row) => row.id === 'oneoff_surge_shrine');
+  const shrineX = veilStation.pos.x + shrine.offsetLocal.x;
+  const shrineZ = veilStation.pos.z + shrine.offsetLocal.z;
+  assert.equal(playerBearingName(shrineX - storm.center.x, shrineZ - storm.center.z), 'south');
+  assert.match(AUTHORED_DOCK_RUMORS.station_veil, /south of the storm/);
+
   for (const [propId, stationId, letter, pattern] of spoken) {
     const prop = WORLD_ONE_OFFS.find((row) => row.id === propId);
     assert.ok(prop, propId);

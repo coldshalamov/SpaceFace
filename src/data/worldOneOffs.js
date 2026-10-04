@@ -354,8 +354,8 @@ export const WORLD_ONE_OFFS = Object.freeze([
     placeId: 'place_comms_array',
     sectorId: 'sector_veil_nebula',
     anchor: { type: 'station', id: 'station_veil' },
-    // station_veil (420, -1120) + this = (-240, -720): inside the fog's north-west reaches,
-    // off the approach to the storm lane.
+    // station_veil (420, -1120) + this = (-240, -720): south of the fog and the storm
+    // lane at (-280, 640). +z is north, so this flank is the bottom of the flight view.
     offsetLocal: Object.freeze({ x: -660, z: 400 }),
     rot: 2.4,
     spin: 0.15,

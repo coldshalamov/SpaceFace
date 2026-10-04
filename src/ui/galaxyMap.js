@@ -10539,7 +10539,8 @@ function mutedZoneColor(hex, amount = 0.45) {
 
 /** Octant bearing for disambiguating same-named gates on the survey table (N/NE/E…). */
 function compassOctant(dx, dz) {
-  // North is +z. sz() subtracts z, so +z is the top of the table, the same side as the flight view.
+  // Flight north is +z (screen up). This table's sz() adds z, so the mark sits
+  // toward the bottom of the chart. The letter stays the flight word.
   return playerBearingLetter(dx, dz);
 }
 
