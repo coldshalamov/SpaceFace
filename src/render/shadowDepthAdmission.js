@@ -274,14 +274,14 @@ export function collectUnstagedShadowCasters(renderer, subjects, lightingScene) 
   return unstaged;
 }
 
-function markCastersDepthStaged(renderer, casting, lightingScene, drawnDepthObjects = null, camera = null) {
+function markCastersDepthStaged(renderer, casting, lightingScene, drawnDepthObjects = null, camera = null, lightSigOverride = undefined) {
   if (!renderer || !casting || casting.length === 0) return;
   let staged = _stagedDepthSignatures.get(renderer);
   if (!staged) {
     staged = new Set();
     _stagedDepthSignatures.set(renderer, staged);
   }
-  const lightSig = lightCensusSignature(lightingScene);
+  const lightSig = typeof lightSigOverride === 'string' ? lightSigOverride : lightCensusSignature(lightingScene);
   for (const caster of casting) {
     // Only signatures whose depth draw the pass actually observed: marking a caster
     // that never drew would certify readiness never proved — when its material mutates
@@ -339,6 +339,10 @@ export function compileShadowDepthPipelines(options = {}) {
       if (object && object.isLight === true && object !== light) stagedLights.push(object);
     });
   }
+  // Query-side unstaged checks read the light census off the LIVE scene. The mark must
+  // take the same census here — before the reparent loop strips every non-key light into
+  // staging — or staged.has() can never hit and every later pass re-runs the ceremony.
+  const markLightSig = lightingScene ? lightCensusSignature(lightingScene) : '';
   if (typeof renderer.render !== 'function' || !camera
       || typeof captureObjectHome !== 'function' || typeof restoreObjectHome !== 'function') {
     return { skipped: true, reason: 'shadow depth compiler unavailable', subjects: 0 };
@@ -462,7 +466,7 @@ export function compileShadowDepthPipelines(options = {}) {
     shadowMap.needsUpdate = true;
     if (stagedKeyLight.shadow) stagedKeyLight.shadow.needsUpdate = true;
     renderer.render(staging, camera);
-    markCastersDepthStaged(renderer, casting, lightingScene, drawnDepthObjects, camera);
+    markCastersDepthStaged(renderer, casting, lightingScene, drawnDepthObjects, camera, markLightSig);
     const programBindingFailures = [];
     if (casting.length > 0 && !originalRenderBufferDirect) {
       programBindingFailures.push(`shadow-depth:${casting.length}:render-buffer-direct-unavailable`);

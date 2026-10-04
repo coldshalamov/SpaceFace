@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import {
   armAdmissionShadows,
   collectShadowCastSubjects,
+  collectUnstagedShadowCasters,
   compileShadowDepthPipelines,
   disposeAdmissionShadowResources,
 } from '../src/render/shadowDepthAdmission.js';
@@ -308,6 +309,12 @@ function stagedShadowRig() {
   light.name = 'key';
   scene.add(light);
   scene.add(light.target);
+  // A second, permanently-mounted light: the live census is l2|f0 while the reparent
+  // loop strips the main scene to the key alone (l1|f0) — the mark/query census split
+  // a single-light rig could never expose.
+  const pool = new THREE.PointLight(0xffffff, 1);
+  pool.name = 'pool';
+  scene.add(pool);
   const liveMap = { name: 'live-shadow-map' };
   const liveMatrix = { name: 'live-shadow-matrix' };
   light.shadow.map = liveMap;
@@ -337,7 +344,9 @@ function stagedShadowRig() {
         dispose() { this.disposed = true; },
       };
       staged.shadow.matrix = { name: 'admission-shadow-matrix' };
-      renderer.renderBufferDirect({}, {}, {}, { properties: { currentProgram: { cacheKey: 'depth' } } }, hull, null);
+      // args[1] = null mirrors the real shadow pass (WebGLShadowMap draws with scene=null);
+      // a non-null scene would read as a color draw and the caster would never mark.
+      renderer.renderBufferDirect({}, null, {}, { properties: { currentProgram: { cacheKey: 'depth' } } }, hull, null);
     },
   };
   return { scene, light, liveMap, liveMatrix, hull, renderer, stagedLights, stagedMapsBeforeWrite };
@@ -508,6 +517,22 @@ test('shadow depth admission restores renderer flags and live maps when the dept
   assert.equal(rig.light.shadow.map, rig.liveMap, 'live shadow map identity preserved on throw');
   assert.equal(rig.light.shadow.matrix, rig.liveMatrix, 'live shadow matrix preserved on throw');
   assert.equal(rig.hull.parent, rig.scene, 'staged caster home restored on throw');
+});
+
+test('staged depth signatures dedup under the live light census', () => {
+  const rig = stagedShadowRig();
+  const result = compileShadowDepthPipelines(admissionOptions(rig));
+  assert.equal(result.skipped, false);
+  // The mark's census must equal the query's (the live scene): marks stamped under the
+  // stripped post-reparent census could never match a live-census lookup, so every later
+  // collect would re-report staged casters and re-pay the ceremony.
+  assert.equal(collectUnstagedShadowCasters(rig.renderer, [rig.hull], rig.scene).length, 0);
+  // A never-staged caster still collects — the gate only suppresses linked signatures.
+  const fresh = new THREE.Mesh();
+  fresh.castShadow = true;
+  fresh.name = 'fresh';
+  rig.scene.add(fresh);
+  assert.equal(collectUnstagedShadowCasters(rig.renderer, [fresh], rig.scene).length, 1);
 });
 
 test('a pending live shadow refresh survives an interleaved private admission pass', () => {
