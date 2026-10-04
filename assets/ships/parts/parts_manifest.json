@@ -6988,7 +6988,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_hornet",
       "tris": 16076,
-      "bytes": 1167784,
+      "bytes": 1167952,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -7004,16 +7004,17 @@
       "sockets": [
         "SOCKET_Camera_Focus",
         "SOCKET_Cargo_Ventral",
-        "SOCKET_Engine_Main",
+        "SOCKET_Engine_Port",
+        "SOCKET_Engine_Starboard",
         "SOCKET_Mining_Front",
         "SOCKET_RCS_Port",
         "SOCKET_RCS_Starboard",
         "SOCKET_Tether_Massline",
-        "SOCKET_Trail_Main",
         "SOCKET_Trail_Port",
         "SOCKET_Trail_Starboard",
         "SOCKET_Utility_Dorsal",
-        "SOCKET_Weapon_Front"
+        "SOCKET_Weapon_Port",
+        "SOCKET_Weapon_Starboard"
       ],
       "mount": "origin",
       "bounds": {
@@ -8433,7 +8434,7 @@
       "priority": "P1",
       "file": "wholeships/hornet_scn_interdictor.glb",
       "tris": 23197,
-      "bytes": 1584748,
+      "bytes": 1584780,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -8449,16 +8450,17 @@
       "sockets": [
         "SOCKET_Camera_Focus",
         "SOCKET_Cargo_Ventral",
-        "SOCKET_Engine_Main",
+        "SOCKET_Engine_Port",
+        "SOCKET_Engine_Starboard",
         "SOCKET_Mining_Front",
         "SOCKET_RCS_Port",
         "SOCKET_RCS_Starboard",
         "SOCKET_Tether_Massline",
-        "SOCKET_Trail_Main",
         "SOCKET_Trail_Port",
         "SOCKET_Trail_Starboard",
         "SOCKET_Utility_Dorsal",
-        "SOCKET_Weapon_Front"
+        "SOCKET_Weapon_Port",
+        "SOCKET_Weapon_Starboard"
       ],
       "mount": "origin",
       "bounds": {

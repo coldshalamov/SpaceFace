@@ -9827,7 +9827,7 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
   if (!bindings.navLights.length) {
     ownerLocalFallbackRoots.push(buildFallbackNavLights(hull, materials, bindings));
   }
-  ensureStandardSockets(hull);
+  ensureStandardSockets(hull, hullRecord);
   attachRetroMounts(hull, entity, palette, selected.get('engine')?.url, hullRecord, hullPartRoot);
 
   // PQ-176.04 — VISIBLE BUILDS. Fitted hardware rides the authored SOCKET_* contract so a refit
@@ -15207,11 +15207,16 @@ function getFallbackNavLightGeometry() {
   return fallbackNavLightGeometry;
 }
 
-function ensureStandardSockets(hull) {
+function ensureStandardSockets(hull, hullRecord) {
   const found = new Set();
   hull.traverse((object) => {
     if (object.userData && object.userData.spacefaceSocket) found.add(object.name);
   });
+  // SFQ-B172: an integrated forge hull models its own hardware. A weapon/engine/trail station
+  // its body omits is an authored fact (twin pod guns, close-coupled twin drives), not a missing
+  // default — fabricating a generic centerline one would pin muzzle, plume and wake anchors to a
+  // point off the modeled hardware. Kit hulls still get every default station.
+  const integrated = hullIntegratesHardpoints(hullRecord);
   const sockets = [
     ['SOCKET_Weapon_Front', [0.84, 0.0, 0], 'weapon', [1, 0, 0]],
     ['SOCKET_Mining_Front', [0.82, -0.08, 0], 'mining', [1, 0, 0]],
@@ -15222,7 +15227,9 @@ function ensureStandardSockets(hull) {
     ['SOCKET_Camera_Focus', [0.08, 0.08, 0], 'camera', [1, 0, 0]],
   ];
   for (const [name, position, role, forward] of sockets) {
-    if (!found.has(name)) kit.addSocket(hull, name, position, role, forward);
+    if (found.has(name)) continue;
+    if (integrated && (name === 'SOCKET_Weapon_Front' || name === 'SOCKET_Engine_Main' || name === 'SOCKET_Trail_Main')) continue;
+    kit.addSocket(hull, name, position, role, forward);
   }
 }
 
