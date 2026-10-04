@@ -85,6 +85,10 @@ const APERTURE_MOUTH_QUERY = (() => {
 const APERTURE_OCCUPANT_SCRATCH = [];
 const KILL_COLLATERAL_SCRATCH = [];
 const EMPTY_LIST = [];
+// Verdict-flap embargo (L-2): a load dancing on the lip can re-derive a refusal sentence
+// every few ticks. Warnings throttle to this sim-time gap; a committed delivery's success
+// line is a booked fact and always speaks.
+const APERTURE_WARN_TOAST_GAP_S = 3;
 
 function apertureDeliveryBody(entity) {
   if (!entity || entity.alive === false || !entity.pos) return false;
@@ -194,6 +198,7 @@ export const environmentalMachinery = {
     this._apertureLastPhase = null;
     this._apertureLastOccupant = null;
     this._apertureDeliveryCandidate = null;
+    this._apertureLastWarnToastAt = null;
     this._industryLedger = null;
     this._industrySiteResult = null;
     this._killCollateral = new Map();
@@ -829,9 +834,11 @@ export const environmentalMachinery = {
       lot: data.lot || null,
       payloadPos: candidate && candidate.pos,
     });
+    let committedDelivery = false;
     if (candidate && candidate.id != null) {
       const committed = commitReceiverAcceptance(ledger, contact, candidate.id);
       if (committed.committed) {
+        committedDelivery = true;
         ledger = committed.ledger;
         const data = candidate.data;
         if (data && !Object.isFrozen(data)) {
@@ -918,10 +925,25 @@ export const environmentalMachinery = {
       // refusal/acceptance already uses, and only on a change: the body's stamp doubles
       // as the dedupe latch, so a held load reports once and a retried load reports
       // again only when the verdict itself moves.
-      if (this.bus && typeof this.bus.emit === 'function') {
+      //
+      // A success sentence announces a delivery, so it may ride the channel only when
+      // the ledger actually committed one — a duplicate remainder re-entering the mouth
+      // re-derives "Accepted N" from its shrunken amount while commitReceiverAcceptance
+      // refuses the repeat receipt, and announcing it would report units that never
+      // moved. Refusals state a fact regardless, but a flapping verdict cannot retell
+      // a warning more often than the embargo allows.
+      const toastKind = contact.reason ? 'warn' : 'success';
+      const now = simTimeOf(state);
+      const lastWarnAt = Number.isFinite(this._apertureLastWarnToastAt)
+        ? this._apertureLastWarnToastAt
+        : -Infinity;
+      const warnFlap = toastKind === 'warn' && (now - lastWarnAt) < APERTURE_WARN_TOAST_GAP_S;
+      if ((contact.successCredit !== true || committedDelivery) && !warnFlap
+        && this.bus && typeof this.bus.emit === 'function') {
+        if (toastKind === 'warn') this._apertureLastWarnToastAt = now;
         this.bus.emit('toast', {
           text: contact.scanSentence,
-          kind: contact.reason ? 'warn' : 'success',
+          kind: toastKind,
           ttl: 4,
         });
       }

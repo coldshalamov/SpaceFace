@@ -64,8 +64,14 @@ export function successfulPickupAmount(payload, requestedAmount) {
 //     Key deletion at zero mirrors the pool's own drain convention.
 // Mirrors are mutated in place when mutable and replaced on data when frozen — the pod's
 // own record is authoritative either way.
+// Precondition: `data` itself must be writable — amount is reassigned and a frozen mirror
+// is swapped through it. A frozen pod record cannot take a remainder; rather than throw
+// mid-tick the writer leaves it untouched and reports the stamped amount back, and the
+// caller's collector keeps the body alive (the aperture commit path already guards on
+// !Object.isFrozen(data) before calling).
 export function writePickupRemainder(data, remainder) {
   if (!data || typeof data !== 'object') return 0;
+  if (Object.isFrozen(data)) return Math.max(0, Math.floor(Number(data.amount) || 0));
   const left = Math.max(0, Math.floor(Number(remainder) || 0));
   const before = Math.max(0, Math.floor(Number(data.amount) || 0));
   const taken = Math.max(0, before - left);

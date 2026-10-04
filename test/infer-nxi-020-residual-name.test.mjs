@@ -34,8 +34,11 @@ function harness({ capVolume = 5 } = {}) {
   state.player.cargo = { items: {}, usedVolume: 0, usedMass: 0, capVolume, capMass: 999 };
   // The recovered shipment: one physical body with a name, a world record, a
   // custody stamp and a provenance lot — the fields a "same shipment" is told by.
+  // Shape note: production physics contact-collects only type 'pickup' bodies
+  // (isLivePickup, physics.js) — manifest 'payload' bodies collect through the
+  // mining._collectPayload scoop path instead, so the pod wears the honest type.
   const pod = {
-    id: 2, type: 'payload', alive: true, collides: true,
+    id: 2, type: 'pickup', alive: true, collides: true,
     pos: { x: 4, z: 0 }, vel: { x: 0, z: 0 }, radius: 3, mass: 8,
     data: {
       kind: 'cargo',

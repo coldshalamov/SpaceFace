@@ -158,11 +158,13 @@ test('NXI-023: the lip verdict reaches the pilot on the existing receipt line, o
   const priorResult = environmentalMachinery._industrySiteResult;
   const priorOccupant = environmentalMachinery._apertureLastOccupant;
   const priorDelivery = environmentalMachinery._apertureDeliveryCandidate;
+  const priorWarnAt = environmentalMachinery._apertureLastWarnToastAt;
   try {
     environmentalMachinery.bus = bus;
     environmentalMachinery._industryLedger = null;
     environmentalMachinery._industrySiteResult = null;
     environmentalMachinery._apertureLastOccupant = null;
+    environmentalMachinery._apertureLastWarnToastAt = null;
     const body = {
       id: 'lip-load-4242',
       type: 'pickup',
@@ -196,5 +198,129 @@ test('NXI-023: the lip verdict reaches the pilot on the existing receipt line, o
     environmentalMachinery._industrySiteResult = priorResult;
     environmentalMachinery._apertureLastOccupant = priorOccupant;
     environmentalMachinery._apertureDeliveryCandidate = priorDelivery;
+    environmentalMachinery._apertureLastWarnToastAt = priorWarnAt;
+  }
+});
+
+test('NXI-023: a refused repeat delivery cannot announce Accepted on the receipt line', () => {
+  // L-1: the receiver's commit dedupe files one receipt per body id — a second load on
+  // the same hull re-derives "Accepted N" from its fresh amount while
+  // commitReceiverAcceptance refuses the repeat receipt. The success line may ride the
+  // channel only when the ledger actually booked the delivery.
+  const bus = createBus();
+  const toasts = [];
+  bus.on('toast', (payload) => toasts.push({ ...payload }));
+
+  const priorBus = environmentalMachinery.bus;
+  const priorLedger = environmentalMachinery._industryLedger;
+  const priorResult = environmentalMachinery._industrySiteResult;
+  const priorOccupant = environmentalMachinery._apertureLastOccupant;
+  const priorDelivery = environmentalMachinery._apertureDeliveryCandidate;
+  const priorWarnAt = environmentalMachinery._apertureLastWarnToastAt;
+  try {
+    environmentalMachinery.bus = bus;
+    environmentalMachinery._industryLedger = null;
+    environmentalMachinery._industrySiteResult = null;
+    environmentalMachinery._apertureLastOccupant = null;
+    environmentalMachinery._apertureLastWarnToastAt = null;
+    const body = {
+      id: 'repeat-hull-4242',
+      type: 'ship',   // a hauler survives its own delivery — the same id on the next run
+      alive: true,
+      pos: aperturePoint(0, 0),   // inside the mouth
+      vel: { x: 2, z: 0 },
+      radius: 5,
+      data: { amount: 4, commodityId: 'cmdty_ore_iron', cargoClass: 'ore' },
+    };
+    environmentalMachinery._apertureDeliveryCandidate = body;
+
+    // First entry: the receiver books the load and announces it once.
+    environmentalMachinery._publishApertureIndustry({ simTime: 10 }, { phase: 'open', occupied: false });
+    assert.equal(toasts.length, 1);
+    assert.equal(toasts[0].text, 'Accepted 4 cmdty_ore_iron.');
+    assert.equal(toasts[0].kind, 'success');
+    assert.equal(environmentalMachinery._industryLedger.stored, 4);
+    assert.equal(body.data.amount, 0);
+
+    // Second run on the same hull id: the ledger refuses the repeat receipt. The verdict
+    // still computes "Accepted 3" from the new amount — but no delivery happened, so no
+    // success line may leave the channel.
+    body.data.amount = 3;
+    environmentalMachinery._publishApertureIndustry({ simTime: 11 }, { phase: 'open', occupied: false });
+    assert.equal(environmentalMachinery._industryLedger.stored, 4, 'the refused repeat stores nothing');
+    assert.equal(body.data.amount, 3, 'the refused units stay with the carrier');
+    assert.equal(toasts.length, 1, 'no success line for a delivery that did not happen');
+    assert.equal(body.data.scanSentence, 'Accepted 3 cmdty_ore_iron.',
+      'the verdict stamp still moves — the latch, not the announcement, carries it');
+  } finally {
+    environmentalMachinery.bus = priorBus;
+    environmentalMachinery._industryLedger = priorLedger;
+    environmentalMachinery._industrySiteResult = priorResult;
+    environmentalMachinery._apertureLastOccupant = priorOccupant;
+    environmentalMachinery._apertureDeliveryCandidate = priorDelivery;
+    environmentalMachinery._apertureLastWarnToastAt = priorWarnAt;
+  }
+});
+
+test('NXI-023: a flapping refusal verdict cannot retell a warning inside the embargo', () => {
+  // L-2: a load dancing on the mouth edge re-derives a different refusal each few ticks,
+  // and the stamp latch alone would announce every transition. Warning lines throttle to
+  // the embargo gap; a committed delivery's success is a booked fact and always speaks.
+  const bus = createBus();
+  const toasts = [];
+  bus.on('toast', (payload) => toasts.push({ ...payload }));
+
+  const priorBus = environmentalMachinery.bus;
+  const priorLedger = environmentalMachinery._industryLedger;
+  const priorResult = environmentalMachinery._industrySiteResult;
+  const priorOccupant = environmentalMachinery._apertureLastOccupant;
+  const priorDelivery = environmentalMachinery._apertureDeliveryCandidate;
+  const priorWarnAt = environmentalMachinery._apertureLastWarnToastAt;
+  try {
+    environmentalMachinery.bus = bus;
+    environmentalMachinery._industryLedger = null;
+    environmentalMachinery._industrySiteResult = null;
+    environmentalMachinery._apertureLastOccupant = null;
+    environmentalMachinery._apertureLastWarnToastAt = null;
+    const lipPos = aperturePoint(-25, 10);
+    const outPos = { x: lipPos.x + 4000, z: lipPos.z + 4000 };
+    const body = {
+      id: 'flap-load-4242',
+      type: 'pickup',
+      alive: true,
+      pos: { ...lipPos },
+      vel: { x: 6, z: 0 },
+      radius: 5,
+      data: { amount: 4, commodityId: 'cmdty_ore_iron', cargoClass: 'ore' },
+    };
+    environmentalMachinery._apertureDeliveryCandidate = body;
+
+    // First refusal: announced once.
+    environmentalMachinery._publishApertureIndustry({ simTime: 20 }, { phase: 'open', occupied: false });
+    assert.equal(toasts.length, 1);
+    assert.equal(toasts[0].kind, 'warn');
+
+    // The verdict moves — inside the embargo each new refusal is stamped but not told.
+    body.pos = { ...outPos };
+    environmentalMachinery._publishApertureIndustry({ simTime: 20.5 }, { phase: 'open', occupied: false });
+    body.pos = { ...lipPos };
+    environmentalMachinery._publishApertureIndustry({ simTime: 21 }, { phase: 'open', occupied: false });
+    body.pos = { ...outPos };
+    environmentalMachinery._publishApertureIndustry({ simTime: 21.5 }, { phase: 'open', occupied: false });
+    assert.equal(toasts.length, 1, 'verdict flap inside the embargo stays off the receipt line');
+
+    // Past the embargo a moved verdict speaks again — the pilot still hears a load in
+    // trouble, just not at contact frequency.
+    body.pos = { ...lipPos };
+    environmentalMachinery._publishApertureIndustry({ simTime: 24 }, { phase: 'open', occupied: false });
+    assert.equal(toasts.length, 2, 'the embargo releases a moved verdict after the gap');
+    assert.equal(toasts[1].kind, 'warn');
+  } finally {
+    environmentalMachinery.bus = priorBus;
+    environmentalMachinery._industryLedger = priorLedger;
+    environmentalMachinery._industrySiteResult = priorResult;
+    environmentalMachinery._apertureLastOccupant = priorOccupant;
+    environmentalMachinery._apertureDeliveryCandidate = priorDelivery;
+    environmentalMachinery._apertureLastWarnToastAt = priorWarnAt;
   }
 });

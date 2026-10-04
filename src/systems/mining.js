@@ -1438,8 +1438,10 @@ export const mining = {
     const data = payloadEntity.data || {};
     let collectedAny = false;
     if (data.salvagePool && typeof data.salvagePool === 'object' && Object.keys(data.salvagePool).length > 0) {
-      const pool = data.salvagePool;
-      for (const [commodityId, qty] of Object.entries(pool)) {
+      // The drain writes through data.salvagePool itself each pass — the shared remainder
+      // writer replaces a frozen pool object on data, so a reference captured before the
+      // loop could go stale mid-manifest.
+      for (const [commodityId, qty] of Object.entries(data.salvagePool)) {
         const requested = finiteWholePickupAmount(qty);
         if (requested <= 0) continue;
         const eventPayload = {
@@ -1459,11 +1461,38 @@ export const mining = {
         const acceptance = resolvePickupAcceptance(eventPayload, requested);
         if (acceptance.accepted > 0) {
           collectedAny = true;
-          pool[commodityId] = acceptance.rejected;
-          if (acceptance.rejected <= 0) delete pool[commodityId];
+          if (commodityId === data.commodityId && !Object.isFrozen(data)
+            && finiteWholePickupAmount(data.amount) === requested) {
+            // The pool entry IS the pod's own quantity stamp — the jettisoned-cargo
+            // contract stamps amount and salvagePool[commodityId] at the same figure.
+            // Route the remainder through the shared writer so data.amount follows the
+            // drain with every other mirror (custody, rich lot). A pool-only write
+            // leaves amount stale, and the volatile-vent reader would then size a
+            // split off units already delivered — a net unit mint. A frozen pod record
+            // cannot take a remainder at all, so it keeps the direct pool write too.
+            writePickupRemainder(data, acceptance.rejected);
+          } else {
+            // Manifest entries data.amount does not track — multi-commodity pools
+            // carry no pod amount at all, and writePickupRemainder would mint one and
+            // skip the drain — keep the direct pool write, replacing a frozen pool on
+            // data under the remainder writer's own convention.
+            const live = data.salvagePool;
+            if (live && typeof live === 'object') {
+              if (Object.isFrozen(live)) {
+                const next = { ...live };
+                if (acceptance.rejected > 0) next[commodityId] = acceptance.rejected;
+                else delete next[commodityId];
+                data.salvagePool = next;
+              } else {
+                live[commodityId] = acceptance.rejected;
+                if (acceptance.rejected <= 0) delete live[commodityId];
+              }
+            }
+          }
         }
       }
-      if (Object.keys(pool).length === 0) {
+      const remainingPool = data.salvagePool && typeof data.salvagePool === 'object' ? data.salvagePool : {};
+      if (Object.keys(remainingPool).length === 0) {
         payloadEntity.alive = false;
         clearPickupAcceptanceRetry(data);
       }
@@ -2376,10 +2405,19 @@ export const mining = {
         wallet: pickup.data.wallet || null,
       } : {}),
       ...(pickup.data.richLotSource ? {
-        richLotSource: {
-          ...pickup.data.richLotSource,
-          richQty: Math.min(requested, Math.max(0, Math.floor(Number(pickup.data.richLotSource.richQty) || 0))),
-        },
+        richLotSource: (() => {
+          const source = pickup.data.richLotSource;
+          const stamped = { ...source };
+          // Clamp only the provenance quantity fields the source actually carries.
+          // Vesta/Pallas cache lots stamp lotQty alone — injecting richQty: 0 would
+          // shadow lotQty in cargo's reader (richQty != null wins) and silently drop
+          // the lot's provenance on the mining collection path.
+          for (const key of ['richQty', 'lotQty']) {
+            if (stamped[key] == null) continue;
+            stamped[key] = Math.min(requested, Math.max(0, Math.floor(Number(stamped[key]) || 0)));
+          }
+          return stamped;
+        })(),
       } : {}),
       ...(pickup.data.worldSiteId ? {
         worldSiteId: pickup.data.worldSiteId,
