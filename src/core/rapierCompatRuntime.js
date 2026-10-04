@@ -11,6 +11,8 @@ const RAPIER_GLOBAL_GETTER_SOURCE = 'return this';
 let rapierRuntimePromise = null;
 let rapierRuntimeFailures = 0;
 let rapierRuntimeBlockedUntil = 0;
+let rapierRuntimeLastFailureAt = 0;
+let rapierRuntimeLastError = null;
 
 // A deterministically-failed init (missing wasm, CSP, a broken worker import) re-pays
 // the whole WASM bootstrap on every caller mint — per-tick physics re-prepares would
@@ -20,6 +22,9 @@ let rapierRuntimeBlockedUntil = 0;
 const RAPIER_INIT_FAILURES_BEFORE_BACKOFF = 2;
 const RAPIER_INIT_BACKOFF_STEP_MS = 15000;
 const RAPIER_INIT_BACKOFF_CAP_MS = 120000;
+// A failure older than the longest backoff window can't count toward a "consecutive"
+// streak — transient faults hours apart must not eventually trigger the refusal.
+const RAPIER_INIT_FAILURE_DECAY_MS = RAPIER_INIT_BACKOFF_CAP_MS;
 
 export function loadRapierCompatRuntime({
   importModule = () => import('@dimforge/rapier3d-compat'),
@@ -27,20 +32,30 @@ export function loadRapierCompatRuntime({
 } = {}) {
   if (!rapierRuntimePromise) {
     const now = Date.now();
+    if (rapierRuntimeFailures > 0 && now - rapierRuntimeLastFailureAt > RAPIER_INIT_FAILURE_DECAY_MS) {
+      rapierRuntimeFailures = 0;
+      rapierRuntimeLastError = null;
+    }
     if (rapierRuntimeFailures >= RAPIER_INIT_FAILURES_BEFORE_BACKOFF && now < rapierRuntimeBlockedUntil) {
+      const cause = rapierRuntimeLastError && rapierRuntimeLastError.message
+        ? `; last error: ${rapierRuntimeLastError.message}`
+        : '';
       return Promise.reject(new Error(
-        `Rapier runtime init in failure backoff (${rapierRuntimeFailures} consecutive failures)`,
+        `Rapier runtime init in failure backoff (${rapierRuntimeFailures} consecutive failures)${cause}`,
       ));
     }
     rapierRuntimePromise = initializeRapierCompatRuntime({ importModule, globalObject }).then(
       (runtime) => {
         rapierRuntimeFailures = 0;
         rapierRuntimeBlockedUntil = 0;
+        rapierRuntimeLastError = null;
         return runtime;
       },
       (error) => {
         rapierRuntimePromise = null;
         rapierRuntimeFailures += 1;
+        rapierRuntimeLastFailureAt = Date.now();
+        rapierRuntimeLastError = error;
         rapierRuntimeBlockedUntil = Date.now()
           + Math.min(rapierRuntimeFailures * RAPIER_INIT_BACKOFF_STEP_MS, RAPIER_INIT_BACKOFF_CAP_MS);
         throw error;

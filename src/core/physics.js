@@ -508,7 +508,9 @@ export const physics = {
   _updateSg02DynamicAuthority(dt, state) {
     this._disableRapierBackend();
     this._diag.backend = 'rapier-dynamic';
-    if (!this._sg02Init && !this._sg02) {
+    // Init is in failure backoff — retry when the window expires instead of
+    // minting a doomed attempt (and its warn) every tick.
+    if (!this._sg02Init && !this._sg02 && !rapierRuntimeBlocked()) {
       const token = ++this._sg02Token;
       const init = createSg02DynamicBodyOwner({
         mode: 'rapier-dynamic',
