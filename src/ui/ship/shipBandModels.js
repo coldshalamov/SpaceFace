@@ -9,10 +9,11 @@ import {
   livingHullGrimeAt,
   normalizeLivingHull,
 } from '../../core/livingHull.js';
+import { resolvePropulsionProfile } from '../../core/flight/propulsionCatalog.js';
+import { createPropulsionRuntime, stepPropulsion } from '../../core/flight/propulsionKernel.js';
 import { getDerivedStats } from '../../systems/ships.js';
 import { shipCapabilityVerbs, withArticle } from '../../systems/shipCapabilities.js';
 import { handlingProfileForShip } from '../panels/handlingProfile.js';
-import { stopDistanceEstimate } from '../panels/massDelta.js';
 import { describeTechNodeReadiness } from '../screens/techTree.js';
 import {
   moduleSentencesForFittings,
@@ -265,23 +266,90 @@ function handlingSentence(profile, derived, emptyDerived) {
   return clauses.join(' ');
 }
 
+const BRAKE_STOP_CACHE = new WeakMap();
+const BRAKE_SAMPLE_DT = 1 / 60;
+const BRAKE_SAMPLE_CAP_TICKS = 60 * 20;
+
 /**
- * Stop distance from the LIVE propulsion profile the kernel resolves: governed speed squared over
- * twice the braking acceleration.
+ * Metres a held assisted brake uses from fight speed.
  *
- * The compatibility flight model's own estimate reads its legacy `maxSpeed` and `reverseAccel`,
- * both of which move with the old drag term — so it says a nine-hundred-tonne freighter pulls up in
- * two metres, which is the opposite of what the ship does and the opposite of what the sentence
- * beside it says. `stopDistanceEstimate` stays exactly as it is for the mass-delta readout that
- * pins it; the words a player reads come off the profile they actually fly.
+ * v²/2a is not this. The pilot brake is a proportional null, clamped to the brake the drive
+ * can actually spend. A torch that is already at fight speed is spooled; cutting the throttle
+ * to brake lets that spool die, and the stop is neither the cold-torch distance nor the
+ * closed-form preview that pretends the main drive stays fully lit. A sail whose speed does
+ * not fall does not get a made-up distance. The mass-delta arrival estimator stays on its own.
  */
 function liveStopDistance(derived) {
-  const p = derived && derived.propulsion;
-  if (!p) return Math.max(0, stopDistanceEstimate(derived && derived.flightModel));
-  const speed = finite(p.combatSpeed, finite(p.maxSpeed, 0));
-  const brake = finite(p.reverseAccel, finite(p.maxBrakeAccel, finite(p.rcsReverseAccel, 0)));
-  if (!(speed > 0) || !(brake > 0)) return Math.max(0, stopDistanceEstimate(derived && derived.flightModel));
-  return (speed * speed) / (2 * brake);
+  const key = derived && derived.propulsion;
+  if (key && typeof key === 'object') {
+    const hit = BRAKE_STOP_CACHE.get(key);
+    if (hit != null) return hit;
+  }
+  const metres = heldBrakeStopMetres(derived);
+  if (key && typeof key === 'object') BRAKE_STOP_CACHE.set(key, metres);
+  return metres;
+}
+
+function heldBrakeStopMetres(derived) {
+  const self = finite(derived && derived.operationalMass, finite(derived && derived.mass, 0));
+  if (!(self > 0)) return 0;
+  const entity = { id: 'stop-predict', isPlayer: true, mass: self, data: { derived } };
+  const profile = resolvePropulsionProfile(entity, { playerId: 'stop-predict', seed: 4242 });
+  if (!profile) return 0;
+  const speed0 = finite(profile.combatSpeed, finite(profile.maxSpeed, 0));
+  if (!(speed0 > 0)) return 0;
+  const dead = finite(profile.assist && profile.assist.deadSpeed, 0.18);
+  let runtime = createPropulsionRuntime(profile);
+  const body = {
+    pos: { x: 0, z: 0 },
+    vel: { x: 0, z: 0 },
+    rot: 0,
+    angVel: 0,
+    mass: self,
+    inertia: Math.max(1, self),
+    radius: 14,
+  };
+  if (profile.family === 'torch') {
+    let speed = 0;
+    for (let i = 0; i < 60 * 4; i += 1) {
+      body.vel.x = Math.min(speed, speed0);
+      body.vel.z = 0;
+      const step = stepPropulsion({
+        dt: BRAKE_SAMPLE_DT,
+        body,
+        input: { throttle: 1, assistMode: 'assisted' },
+        profile,
+        runtime,
+      });
+      runtime = step.runtime;
+      speed += (finite(step.force && step.force.x, 0) / self) * BRAKE_SAMPLE_DT;
+      if (speed < 0) speed = 0;
+      const spool = step.telemetry && step.telemetry.spool;
+      if (spool >= 0.98) break;
+    }
+  }
+  let speed = speed0;
+  let dist = 0;
+  let ticks = 0;
+  while (speed > dead && ticks < BRAKE_SAMPLE_CAP_TICKS) {
+    body.vel.x = speed;
+    body.vel.z = 0;
+    const step = stepPropulsion({
+      dt: BRAKE_SAMPLE_DT,
+      body,
+      input: { throttle: 0, brake: true, assistMode: 'assisted' },
+      profile,
+      runtime,
+    });
+    runtime = step.runtime;
+    const v0 = speed;
+    speed += (finite(step.force && step.force.x, 0) / self) * BRAKE_SAMPLE_DT;
+    if (speed < 0) speed = 0;
+    dist += ((v0 + speed) / 2) * BRAKE_SAMPLE_DT;
+    ticks += 1;
+  }
+  if (!(speed <= dead)) return 0;
+  return dist;
 }
 
 function agilityWhy({ shipDef, derived, dryDerived, bareDerived }) {
