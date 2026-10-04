@@ -212,6 +212,53 @@ test('pod freight lifts a starving leg across the threshold and retires the boar
   assert.ok(econ.priceOf(YARD, ORE, 'sell') > 0, 'the market stays sane after the intake');
 });
 
+// ── 2b. The sale banks only what the destination actually buys (critic round) ────────────────
+
+test('a good the destination does not trade banks nothing and rides back to the buffer', () => {
+  const h = boot();
+  const { econ, market, siteSys, site } = h;
+  const UNLISTED = 'cmdty_gem_diamond'; // marketTier 4 — above Ceres' tier-1 book (asserted below)
+  assert.equal(market[UNLISTED], undefined,
+    'precondition: the diamond is not listed at Ceres on seed 4242');
+  starveLeg(market, ORE, 0.1);
+  const ironPriceBefore = quotedSell(econ, market, YARD, ORE);
+  const ironBefore = market[ORE].stock;
+
+  // Mixed pod: ore the refinery buys, diamonds it has no listing for.
+  const { sealed } = sealPod({ siteSys, site, state: h.state, cargo: { [ORE]: 20, [UNLISTED]: 2 } });
+  assert.equal(sealed.ok, true, 'the seal settles');
+  assert.equal(sealed.receipt.quantity, 20, 'the receipt sells only the traded units');
+  assert.equal(sealed.receipt.returned, 2, 'the receipt names the units that rode back');
+  const expectedGross = Math.round(20 * ironPriceBefore * SITE_BALANCE.podSalvageMult);
+  assert.equal(sealed.receipt.realisedTotal, expectedGross,
+    'the unlisted good is outside the gross — no basePrice mint for a market with no listing');
+  assert.equal(site.stats.exportedU, 20, 'exported units count only the sold units');
+  assert.equal(site.exportBuffer[UNLISTED], 2, 'the diamonds are back in the launch buffer');
+  assert.equal(site.exportBuffer[ORE], undefined, 'the sold ore is not in the buffer');
+  assert.equal(market[ORE].stock, ironBefore + 20, 'the sold ore landed unit for unit');
+  assert.equal(shipmentQty(site, '_pod'), 0, 'the pod retired with its full custody debited');
+  const delivered = h.events.filter((e) => e.name === 'cargo:delivered');
+  assert.equal(delivered.length, 1, 'freight facts cover exactly the sold goods');
+  assert.equal(delivered[0].payload.commodityId, ORE);
+  assert.equal(passiveGross(h), expectedGross, 'credits bank only the traded sale');
+
+  // An all-unlisted pod is a handoff that banks and lands nothing — the lot comes home.
+  const passiveBefore = h.passive.length;
+  const eventsBefore = h.events.length;
+  const laneBack = sealPod({ siteSys, site, state: h.state, cargo: { [UNLISTED]: 3 } });
+  assert.equal(laneBack.sealed.ok, true, 'the handoff still settles (nothing vanished)');
+  assert.equal(laneBack.sealed.receipt.quantity, 0, 'nothing sold');
+  assert.equal(laneBack.sealed.receipt.returned, 3, 'everything rode back');
+  assert.equal(laneBack.sealed.receipt.realisedTotal, 0, 'nothing banked');
+  assert.equal(site.exportBuffer[UNLISTED], 5, 'the whole lot is back in the buffer');
+  assert.equal(h.passive.length, passiveBefore, 'no credits moved');
+  assert.equal(h.events.length, eventsBefore, 'no freight fact moved');
+});
+
+function passiveGross(h) {
+  return h.passive.reduce((sum, call) => sum + call.gross, 0);
+}
+
 // ── 3. Counterexamples: the intake is exactly as honest as the sale ─────────────────────────
 
 test('a lost pod, a destination-less pod, and a duplicate seal each land nothing extra', () => {
