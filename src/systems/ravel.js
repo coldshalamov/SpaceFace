@@ -18,7 +18,7 @@ export function ravelEntitySpec(part = 'core', index = 0, memory = freshRavelMem
     flags:{invuln:true},
     physicsBody:{dynamic:!core,shape:'ball',radius,mass,useMeasuredSkin:false,material:'debris',ccd:true,
       contact:{friction:0.15,restitution:0.2,linearDamping:0.08,angularDamping:0.3}},
-    data:{ravelPart:part,ravelIndex:index,identityKey:core?C.id:`${C.id}:spool:${index}`,
+    data:{ravelPart:part,ravelIndex:index,authoredCharacter:C.id,identityKey:core?C.id:`${C.id}:spool:${index}`,
       ai:{passive:true},homeSectorId:C.sectorId,callsign:C.callsign,
       scanLabel:core?'RAVEL · scan twice to challenge':`Counterweight ${index+1} · pull beyond outer teeth`,
       scannerSignalKind:'anomaly',visualRadius:core?300:11,

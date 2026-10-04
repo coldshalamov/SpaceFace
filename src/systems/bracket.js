@@ -25,7 +25,7 @@ export function bracketEntitySpec(part, center = C.anchor, memory = freshBracket
       useMeasuredSkin: false, material: 'debris', ccd: true, impactDamageScale: 0,
       contact: { friction: 0.08, restitution: ball || bumper ? 0.88 : 0.45,
         angularDamping: 0.6 } },
-    data: { bracketPart: part, homeSectorId: C.sectorId, identityKey: `${C.id}:${part}`,
+    data: { bracketPart: part, authoredCharacter: C.id, homeSectorId: C.sectorId, identityKey: `${C.id}:${part}`,
       ai: { passive: true }, visualRadius: keeper ? 22 : part === 'post-left' ? 120 : radius + 4,
       scanLabel: keeper ? 'BRACKET · scan to play scrapball' : 'Scrapball court',
       scannerSignalKind: 'anomaly', bracketPose: {} },

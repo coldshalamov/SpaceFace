@@ -61,6 +61,7 @@ export function solsticeEntitySpec(part = 'core', index = 0, memory = freshSolst
     data: {
       solsticePart: part,
       solsticeIndex: index,
+      authoredCharacter: C.id,
       identityKey: isCore ? C.id : `${C.id}:${part}:${index}`,
       homeSectorId: C.sectorId,
       callsign: C.callsign,

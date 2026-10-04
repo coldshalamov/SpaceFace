@@ -211,7 +211,11 @@ label). It reads `state.aftermathWrecks` markers' wreck clones and never writes 
 - **The other forty filings:** "Forty filings uncorrected. I can only mark what stops." Hulls in other sectors
   are future content: the marker only exists in Tethys, by design.
 - **Other characters and the far-actor table:** the thrash described in §7 is a property of the world, not of
-  Rubric. Characters anchored far from where the pilot arrives (Solstice in Ceres, Ravel in Pallas) mint their parts
-  from a once-a-second census the same way; see the follow-up filed from this work.
+  Rubric. Solstice, Ravel, Vesper and Bracket mint their parts from the same once-a-second census and were shelved
+  and re-minted the same way for any pilot arriving from a gate. They are fixed by one stamp, `data.authoredCharacter`,
+  that `shouldVirtualizeFarActor` honours (`test/character-far-actor-residency.test.mjs`, real-game check
+  `scripts/characters/check-residency-live.mjs`). Rubric keeps its own distance streaming because it is cheaper to
+  not exist at all than to keep a paint-mark entity resident across a sector. A new character whose system
+  spawns bodies from a census should stamp `data.authoredCharacter` on every body.
 - **Ship paint reward:** the Shipworks rack is an ungated swatch list; a "Red Lead" paint would not be a reward
   without UI gating owned by the ORRERY lane.

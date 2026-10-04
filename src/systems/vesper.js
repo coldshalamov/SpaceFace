@@ -21,7 +21,7 @@ export function vesperEntitySpec(memory = freshVesperMemory(), index = -1) {
     physicsBody: { dynamic: true, shape: 'ball', radius: bell ? C.bellRadius : C.radius,
       mass: bell ? C.bellMass : C.mass, useMeasuredSkin: false, material: 'debris', ccd: true,
       contact: { friction: 0.12, restitution: bell ? 0.48 : 0.18, linearDamping: 0.015, angularDamping: 0.3 } },
-    data: { vesper: true, vesperBell: index, identityKey: bell ? `${C.id}_bell_${index}` : C.id,
+    data: { vesper: true, vesperBell: index, authoredCharacter: C.id, identityKey: bell ? `${C.id}_bell_${index}` : C.id,
       callsign: bell ? C.names[index] : C.callsign, ai: { passive: true }, masslineTetherable: true,
       homeSectorId: C.sectorId, scannerSignalKind: bell ? 'salvage' : 'anomaly',
       scanLabel: bell ? `Loose resonator · ${C.names[index]}` : 'Vesper · kinetic choir',
