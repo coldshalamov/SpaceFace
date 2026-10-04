@@ -498,15 +498,6 @@ function stationRecordFor(state, stationId) {
   return activeSectorStations(state).find((station) => stationRecordId(station) === stationId) || null;
 }
 
-function firstActiveStationId(state) {
-  for (const station of activeSectorStations(state)) {
-    const stationId = stationRecordId(station);
-    if (stationId) return stationId;
-  }
-  const live = firstLiveStation(state);
-  return live && live.data && live.data.stationId || null;
-}
-
 function liveStationFor(state, stationId) {
   if (!state || !stationId) return null;
   const index = state.entityIndex;
@@ -520,17 +511,6 @@ function liveStationFor(state, stationId) {
     if (entity && entity.alive !== false && entity.type === 'station' && entity.data && entity.data.stationId === stationId) {
       return entity;
     }
-  }
-  return null;
-}
-
-function firstLiveStation(state) {
-  if (!state) return null;
-  const stations = state.entityIndex && Array.isArray(state.entityIndex.stations)
-    ? state.entityIndex.stations
-    : state.entityList || [];
-  for (const entity of stations) {
-    if (entity && entity.alive !== false && entity.type === 'station' && entity.data && entity.data.stationId) return entity;
   }
   return null;
 }
@@ -1175,15 +1155,6 @@ export const combat = {
       ? this.state.entities.get(this.state.playerId)
       : null;
     return !!(player && player.flags && player.flags.docked) || !!(this.state && this.state.ui && this.state.ui.docked);
-  },
-
-  respawnStationId() {
-    const player = this.state && this.state.player;
-    const ins = player && player.insurance;
-    if (ins && ins.lastStationId && (stationRecordFor(this.state, ins.lastStationId) || liveStationFor(this.state, ins.lastStationId))) {
-      return ins.lastStationId;
-    }
-    return firstActiveStationId(this.state);
   },
 
   respawnPosition(stationId) {
