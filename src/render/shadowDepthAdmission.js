@@ -164,6 +164,7 @@ export function collectShadowCastSubjects(roots) {
 // one opaque, depth-writing material, minus the explicit never-cast markers.
 function materialCanCastShadow(material) {
   if (!material) return true; // stubs/no-material meshes: assume castable so tests still collect them
+  if (material.visible === false) return false; // the shadow pass skips invisible materials — no depth program ever links
   if (material.transparent === true) return false;
   if (material.depthWrite === false) return false;
   if (material.opacity != null && material.opacity < 1) return false;
@@ -181,6 +182,10 @@ function collectPotentialShadowCastSubjects(roots) {
       || object.isInstancedMesh === true;
     if (!drawable) return;
     seen.add(object);
+    // Geometry-less stubs can never draw — revealSubjectForCompile hides them, the pass
+    // skips them, and marking them would only pin an unstaged entry that re-collects
+    // under every later delta. A mesh that gains geometry later collects then.
+    if ('geometry' in object && object.geometry == null) return;
     const ud = object.userData || {};
     if (ud.spacefaceNoShadow === true
       || ud.sharedContactShadow === true
@@ -222,10 +227,27 @@ function casterDepthSignatures(caster, lightSig) {
   const custom = caster.customDepthMaterial && caster.customDepthMaterial.uuid
     ? `|cdm:${caster.customDepthMaterial.uuid}` : '';
   const materials = Array.isArray(caster.material) ? caster.material : [caster.material];
+  const layerMask = caster.layers && Number.isFinite(caster.layers.mask) ? caster.layers.mask : 1;
   const signatures = [];
   for (const material of materials) {
     if (!material || !material.uuid) continue;
-    signatures.push(`${material.uuid}|${kind}|${morph}${custom}|${lightSig}`);
+    // Invisible materials mint no depth program — no signature either, so a later
+    // visibility flip produces a fresh unstaged signature instead of inheriting a mark.
+    if (material.visible === false) continue;
+    // Variant discriminants mirror getDepthMaterial's clone rules: a post-stage
+    // mutation that swaps which depth program links (alphaTest gating map/alphaMap,
+    // displacement, alphaToCoverage, clipShadows, side/shadowSide winding) re-keys the
+    // signature so the caster re-stages instead of linking cold in a presented frame.
+    const alphaTestOn = material.alphaTest > 0;
+    const variant = `a${alphaTestOn ? 1 : 0}`
+      + `m${alphaTestOn && material.map ? 1 : 0}`
+      + `x${alphaTestOn && material.alphaMap ? 1 : 0}`
+      + `d${material.displacementMap && material.displacementScale !== 0 ? 1 : 0}`
+      + `c${material.alphaToCoverage === true ? 1 : 0}`
+      + `p${material.clipShadows === true ? 1 : 0}`
+      + `s${material.side == null ? 0 : material.side}`
+      + `h${material.shadowSide == null ? 0 : material.shadowSide}`;
+    signatures.push(`${material.uuid}|${kind}|${morph}${custom}|ly:${layerMask}|${variant}|${lightSig}`);
   }
   return signatures;
 }
@@ -252,7 +274,7 @@ export function collectUnstagedShadowCasters(renderer, subjects, lightingScene) 
   return unstaged;
 }
 
-function markCastersDepthStaged(renderer, casting, lightingScene, drawnDepthObjects = null) {
+function markCastersDepthStaged(renderer, casting, lightingScene, drawnDepthObjects = null, camera = null) {
   if (!renderer || !casting || casting.length === 0) return;
   let staged = _stagedDepthSignatures.get(renderer);
   if (!staged) {
@@ -261,11 +283,18 @@ function markCastersDepthStaged(renderer, casting, lightingScene, drawnDepthObje
   }
   const lightSig = lightCensusSignature(lightingScene);
   for (const caster of casting) {
-    // Only signatures whose depth draw the pass actually observed: a caster outside the
-    // shadow camera's ortho contributes no link, so marking it would certify readiness
-    // never proved — when it later enters the live ortho its variant links inside a
-    // presented frame. Under-marking only re-runs the cheap rescan.
-    if (drawnDepthObjects && !drawnDepthObjects.has(caster)) continue;
+    // Only signatures whose depth draw the pass actually observed: marking a caster
+    // that never drew would certify readiness never proved — when its material mutates
+    // into a drawable state its variant would link inside a presented frame. The one
+    // undrawn class the signature can express is a layer-set mismatch vs the stage
+    // camera (the pass tests object.layers against the live camera's layers): that
+    // attempted state is marked under its mask term and a layer flip re-keys it.
+    // Anything else undrawn stays unmarked — under-marking only re-runs the cheap rescan.
+    if (drawnDepthObjects && !drawnDepthObjects.has(caster)) {
+      const layerMiss = camera && camera.layers && caster.layers
+        && !caster.layers.test(camera.layers);
+      if (!layerMiss) continue;
+    }
     for (const signature of casterDepthSignatures(caster, lightSig)) staged.add(signature);
   }
 }
@@ -433,7 +462,7 @@ export function compileShadowDepthPipelines(options = {}) {
     shadowMap.needsUpdate = true;
     if (stagedKeyLight.shadow) stagedKeyLight.shadow.needsUpdate = true;
     renderer.render(staging, camera);
-    markCastersDepthStaged(renderer, casting, lightingScene, drawnDepthObjects);
+    markCastersDepthStaged(renderer, casting, lightingScene, drawnDepthObjects, camera);
     const programBindingFailures = [];
     if (casting.length > 0 && !originalRenderBufferDirect) {
       programBindingFailures.push(`shadow-depth:${casting.length}:render-buffer-direct-unavailable`);

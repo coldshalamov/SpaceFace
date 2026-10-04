@@ -241,7 +241,11 @@ const _ledgerCollectOrigin = { x: 0, z: 0 };
 // Shared prefix for the sync + chunked ledger collects: player/origin/disc resolution,
 // the (possibly memoized) grid-walk refill, and every loop constant. Returns null on the
 // early-outs so both drains short-circuit identically.
-function _nearbyLedgerRowsContext(state) {
+// `opts.tolerateMiss` lets a caller ride the previous disc's scratch when the spatial
+// key flips — the per-row verdicts below filter against the live origin, so a stale
+// disc under-collects (a subset) but never mis-collects; the next non-tolerating
+// call refills.
+function _nearbyLedgerRowsContext(state, opts = null) {
   const player = state && state.entities && typeof state.entities.get === 'function'
     ? state.entities.get(state.playerId)
     : null;
@@ -283,7 +287,8 @@ function _nearbyLedgerRowsContext(state) {
   const walkZ = (Math.floor(unionZ / ASTEROID_FIELD_CELL) + 0.5) * ASTEROID_FIELD_CELL;
   const radiusPad = Math.ceil(ASTEROID_FIELD_CELL * Math.SQRT1_2);
   const walkRadius = Math.ceil((scanRadius + legSpan / 2 + radiusPad) / 500) * 500;
-  if (!meshSpatialKeyMatches(state, walkX, walkZ, walkRadius)) {
+  if (!meshSpatialKeyMatches(state, walkX, walkZ, walkRadius)
+      && (!opts || opts.tolerateMiss !== true)) {
     _meshWalkOrigin.x = walkX;
     _meshWalkOrigin.z = walkZ;
     queryAsteroidField(state, _meshWalkOrigin, walkRadius, _meshRockScratch);
@@ -395,8 +400,8 @@ function appendNearbyLedgerRows(state, out) {
 // before any yield — slicing can't bound inside a step. Drivers call this as
 // their own step before minting the chunked iterator so the refill lands
 // between slice boundaries; the generator's ctx call then serves from the memo.
-export function warmNearbyLedgerRows(state) {
-  _nearbyLedgerRowsContext(state);
+export function warmNearbyLedgerRows(state, opts = null) {
+  _nearbyLedgerRowsContext(state, opts);
 }
 
 // Chunked twin: yields per row so the sector cook can drive the ledger walks across its
@@ -430,12 +435,12 @@ export function collectMeshPresentationEntities(state, out = []) {
 
 // Chunked twin of the pair — the sector cook's collect seam drives this under its slice
 // clock instead of paying the whole journal + ledger walk inside one task.
-export function* collectMeshPresentationEntitiesChunked(state, out = []) {
+export function* collectMeshPresentationEntitiesChunked(state, out = [], opts = null) {
   // Mint the ledger ctx (and freeze the scratch row set) up front: the journal
   // walk can span several slices, and a quantized-cell crossing mid-walk would
   // otherwise land the memo-miss refill — the unbounded grid query the warm
   // exists to hoist — inside a next() step.
-  const ctx = _nearbyLedgerRowsContext(state);
+  const ctx = _nearbyLedgerRowsContext(state, opts);
   const rocks = ctx ? _meshRockScratch.slice() : null;
   const fars = ctx ? _meshFarScratch.slice() : null;
   yield* collectJournalPresentationEntitiesChunked(state, out);

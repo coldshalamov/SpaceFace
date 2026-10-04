@@ -366,11 +366,16 @@ export const physics = {
         ? Math.max(0, options.initTimeoutMs)
         : SG02_INIT_PREPARE_TIMEOUT_MS;
       let timer = null;
+      const sg02TokenAtPrepare = this._sg02Token;
       const settled = await Promise.race([
         Promise.resolve(this._sg02Init).then(() => true, () => true),
         new Promise((resolve) => { timer = setTimeout(() => resolve(false), initTimeoutMs); }),
       ]);
       if (timer !== null) clearTimeout(timer);
+      // A retry/reset that landed during the wait owns the authority now: this stale
+      // tail must not run an out-of-schedule step, drain the new owner's contact
+      // receipts early, or stomp its runtime diagnostics.
+      if (sg02TokenAtPrepare !== this._sg02Token) return false;
       if (!settled) {
         console.warn('[physics] SG-02 dynamic authority init did not settle within'
           + ` ${Math.round(initTimeoutMs)} ms; startup fails closed to a retryable state instead of`

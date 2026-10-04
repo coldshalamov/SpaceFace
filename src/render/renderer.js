@@ -2577,13 +2577,16 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
     if (cycleEnqueued === 0 && cycleKickStarted === 0) break;
     // Remint the next collect inside this beat's remaining slice: without it a row
     // becoming exempt just after a commit waits a full beat plus a walk before its
-    // enqueue/kick lands — several times coarser than the pre-sliced cadence.
-    warmNearbyLedgerRows(state);
-    // The refill itself may have spent the remainder — mint fresh on the next beat
-    // rather than push the walk's head start off-clock.
+    // enqueue/kick lands — several times coarser than the pre-sliced cadence. The
+    // remint tolerates a memo-miss (rides the previous disc's scratch — a coverage
+    // subset the per-row live-origin filters still guard) so a quantized-cell flip
+    // can't land the unbounded grid query inside this beat; the next beat's mint
+    // refills under a fresh clock.
+    warmNearbyLedgerRows(state, { tolerateMiss: true });
     if (now() - started >= sliceMs) break;
     owner._holdExemptCollectOut = [];
-    iterator = collectMeshPresentationEntitiesChunked(state, owner._holdExemptCollectOut);
+    iterator = collectMeshPresentationEntitiesChunked(
+      state, owner._holdExemptCollectOut, { tolerateMiss: true });
     owner._holdExemptCollectIter = iterator;
     owner._holdExemptCollectEpoch = liveEpoch;
   }
@@ -8260,7 +8263,7 @@ export const render = {
           invalidateShadowCasterPolicy(target);
           const lodLevel = target.userData && target.userData.lod
             ? target.userData.lod.level : null;
-          syncShadowCasterPolicy(target, lodLevel, this._shadowPolicyOptions(entity, target));
+          this._syncShadowCasterPolicyChecked(target, lodLevel, entity);
         }
         if (target && entity && entity.id === state.playerId && this._livingHullPresentation) {
           this._livingHullPresentation.attach(target);
@@ -9210,7 +9213,7 @@ export const render = {
           attachContactShadow(boundary, entity);
           const lodLevel = boundary.userData && boundary.userData.lod
             ? boundary.userData.lod.level : null;
-          syncShadowCasterPolicy(boundary, lodLevel, this._shadowPolicyOptions(entity, boundary));
+          this._syncShadowCasterPolicyChecked(boundary, lodLevel, entity);
         }
         boundary.visible = false;
         scene.add(boundary);
@@ -13522,18 +13525,25 @@ export const render = {
           };
         }
       }
-      const depth = compileShadowDepthPipelines({
-        renderer,
-        light: this._keyLight,
-        camera: cam.obj,
-        subjects: [...openingSubjects, ...lateCandidates],
-        forceEnable: this._shadowSettingOn === true,
-        THREE,
-        captureObjectHome,
-        restoreObjectHome,
-        lightingScene: scene,
-        stagingName: 'SF_PostOpeningShadowDepthAdmission',
-      });
+      // Same signature gate as the rescan leg: a post-opening re-arm whose casters
+      // were all staged in an earlier pass skips the whole-set staging ceremony
+      // (each join re-arm used to re-pay it regardless of coverage).
+      const depthSubjects = [...openingSubjects, ...lateCandidates];
+      const unstagedDepthSubjects = collectUnstagedShadowCasters(renderer, depthSubjects, scene);
+      const depth = unstagedDepthSubjects.length > 0
+        ? compileShadowDepthPipelines({
+          renderer,
+          light: this._keyLight,
+          camera: cam.obj,
+          subjects: unstagedDepthSubjects,
+          forceEnable: this._shadowSettingOn === true,
+          THREE,
+          captureObjectHome,
+          restoreObjectHome,
+          lightingScene: scene,
+          stagingName: 'SF_PostOpeningShadowDepthAdmission',
+        })
+        : { skipped: true, reason: 'no unstaged shadow casters', subjects: 0 };
       // Unlatch-into-join: a caller that joined this pass in flight needed a cohort
       // the first collection minted too early (attach jobs, decoded exemplar subtrees,
       // pool chunks landing mid-pass). Re-collect the delta, compile + depth it once,
@@ -13604,12 +13614,13 @@ export const render = {
         // delta — a join trickle then re-linked the same material set per pass. Only
         // casters whose depth-variant signature was never staged under the live light
         // census still need the ceremony; a repeat pass over the same set skips it.
-        if (collectUnstagedShadowCasters(renderer, rescanDelta, scene).length > 0) {
+        const unstagedRescanDelta = collectUnstagedShadowCasters(renderer, rescanDelta, scene);
+        if (unstagedRescanDelta.length > 0) {
           compileShadowDepthPipelines({
             renderer,
             light: this._keyLight,
             camera: cam.obj,
-            subjects: rescanDelta,
+            subjects: unstagedRescanDelta,
             forceEnable: this._shadowSettingOn === true,
             THREE,
             captureObjectHome,
@@ -16045,6 +16056,20 @@ export const render = {
         }
       } catch (error) {
         console.warn('[render] crucible warm ship build failed', spec && spec.id, error);
+        // A failed exemplar must not stay coverage-claimed: decrement the row its spec
+        // stamped (once — a shared hulk file's failure doesn't double-decrement the
+        // same warm's claim) so a later deferred warm retries the archetype instead of
+        // its first live spawn paying the in-round compose + program link.
+        const failedEnemyId = spec && spec.data && spec.data.lootTableId;
+        const coveredNow = this._swarmWarmCoveredEnemyIds;
+        const failedCoverage = warm.failedCoverageMarks
+          || (warm.failedCoverageMarks = new Set());
+        if (failedEnemyId != null && coveredNow && !failedCoverage.has(failedEnemyId)) {
+          failedCoverage.add(failedEnemyId);
+          const count = coveredNow.get(failedEnemyId) || 0;
+          if (count > 1) coveredNow.set(failedEnemyId, count - 1);
+          else coveredNow.delete(failedEnemyId);
+        }
       }
     }
     // A kill's dead hulk is the victim's own authored hull under the 'place' slot — a second
@@ -16072,6 +16097,19 @@ export const render = {
         }
       } catch (error) {
         console.warn('[render] crucible warm hulk build failed', spec && spec.id, error);
+        // Same per-spec unmark as the ship exemplars — a roster hulk's authored attach
+        // would otherwise stay claimed-and-unwarmed until the first in-round kill.
+        const failedEnemyId = spec && spec.data
+          && spec.data.hulkVisual && spec.data.hulkVisual.lootTableId;
+        const coveredNow = this._swarmWarmCoveredEnemyIds;
+        const failedCoverage = warm.failedCoverageMarks
+          || (warm.failedCoverageMarks = new Set());
+        if (failedEnemyId != null && coveredNow && !failedCoverage.has(failedEnemyId)) {
+          failedCoverage.add(failedEnemyId);
+          const count = coveredNow.get(failedEnemyId) || 0;
+          if (count > 1) coveredNow.set(failedEnemyId, count - 1);
+          else coveredNow.delete(failedEnemyId);
+        }
       }
     }
     // Approach-triggered authored upgrades: place/poi/wr: component boundaries only start their
@@ -16801,6 +16839,11 @@ export const render = {
       this._swarmWarmCoveredEnemyIds.set(enemyId, (this._swarmWarmCoveredEnemyIds.get(enemyId) || 0) + 1);
     }
     const freshSet = new Set(fresh);
+    // The marks below landed on THIS Map instance — unmark must decrement it, not
+    // whatever map a later run mints (a stale settle after run:ended otherwise throws
+    // on the nulled field, and after a new run's re-mint it would drop the new run's
+    // rows).
+    const coveredMap = this._swarmWarmCoveredEnemyIds;
 
     const warm = { root: new THREE.Group(), pendingAttachments: [], building: true };
     const root = warm.root;
@@ -16825,12 +16868,27 @@ export const render = {
       }
       return settled;
     };
-    const unmark = () => {
-      for (const enemyId of fresh) {
-        const count = this._swarmWarmCoveredEnemyIds.get(enemyId) || 0;
-        if (count > 1) this._swarmWarmCoveredEnemyIds.set(enemyId, count - 1);
-        else this._swarmWarmCoveredEnemyIds.delete(enemyId);
-      }
+    const unmarked = new Set();
+    const unmarkEnemy = (enemyId) => {
+      // Idempotent per warm: this warm stamped each enemyId at most once, so a ship
+      // failure plus its derived hulk's failure decrement the row only once.
+      if (enemyId == null || unmarked.has(enemyId)) return;
+      unmarked.add(enemyId);
+      const count = coveredMap.get(enemyId) || 0;
+      if (count > 1) coveredMap.set(enemyId, count - 1);
+      else coveredMap.delete(enemyId);
+    };
+    const unmark = () => { for (const enemyId of fresh) unmarkEnemy(enemyId); };
+    // Sync and async failure share one teardown: a stranded mounted root with
+    // warmBuilding stuck is skipped by every park sweep forever, its decode leases stay
+    // pinned live for the run, and the same-named retry keeps stacking subtrees.
+    const teardown = () => {
+      warm.building = false;
+      root.userData.warmBuilding = false;
+      const prewarmRoots = this._rosterPrewarmRoots;
+      const prewarmIndex = Array.isArray(prewarmRoots) ? prewarmRoots.indexOf(root) : -1;
+      if (prewarmIndex >= 0) prewarmRoots.splice(prewarmIndex, 1);
+      if (root.parent) root.parent.remove(root);
     };
 
     try {
@@ -16843,9 +16901,13 @@ export const render = {
           let ship = null;
           try { ship = this.vf.build(spec); } catch (error) {
             console.warn('[render] deferred swarm warm ship build failed', spec && spec.id, error);
+            unmarkEnemy(spec && spec.data && spec.data.lootTableId);
             break;
           }
-          if (!ship) break;
+          if (!ship) {
+            unmarkEnemy(spec && spec.data && spec.data.lootTableId);
+            break;
+          }
           ship.visible = false;
           root.add(ship);
           if (typeof ship.userData?.requestAuthoredUpgrade === 'function') {
@@ -16879,21 +16941,16 @@ export const render = {
           }
         } catch (error) {
           console.warn('[render] deferred swarm warm hulk build failed', spec && spec.id, error);
+          unmarkEnemy(spec && spec.data && spec.data.hulkVisual && spec.data.hulkVisual.lootTableId);
         }
       }
     } catch (error) {
       console.warn('[render] deferred swarm warm build failed', error);
       unmark();
-      // A sync-throw skips the settle chain below: drop the build tag and detach so
-      // the half-built root doesn't sit mounted+invisible+unparkable until run end.
-      warm.building = false;
-      root.userData.warmBuilding = false;
-      // The detached root must leave the prewarm census too — a dead subtree kept in the
-      // list gets re-collected by every post-opening rescan sweep until run end.
-      const prewarmRoots = this._rosterPrewarmRoots;
-      const prewarmIndex = Array.isArray(prewarmRoots) ? prewarmRoots.indexOf(root) : -1;
-      if (prewarmIndex >= 0) prewarmRoots.splice(prewarmIndex, 1);
-      if (root.parent) root.parent.remove(root);
+      // A sync-throw skips the settle chain below: detach the half-built root so it
+      // doesn't sit mounted+invisible+unparkable until run end (and leave the prewarm
+      // census — a dead subtree kept in the list is re-collected by every rescan).
+      teardown();
       return null;
     }
 
@@ -16919,7 +16976,10 @@ export const render = {
         console.warn('[render] deferred swarm warm compile failed', error);
         // Coverage only counts what actually compiled: unmark so the next dwell (or the
         // wavePlanned fallback) retries the batch instead of leaving its links in-round.
+        // The half-built root detaches too — otherwise the next dwell rebuilds the same
+        // name on top of it, stacking hidden subtrees + duplicate warm work per retry.
         unmark();
+        teardown();
       })
       .then(() => {
         warm.building = false;
@@ -18438,7 +18498,7 @@ export const render = {
       if (e.type === 'ship' || e.type === 'station') {
         attachContactShadow(m, e);
         const lodLevel = m.userData && m.userData.lod ? m.userData.lod.level : null;
-        syncShadowCasterPolicy(m, lodLevel, this._shadowPolicyOptions(e, m));
+        this._syncShadowCasterPolicyChecked(m, lodLevel, e);
       }
       e.mesh = m; e.view = { root: m };
       this._meshes.set(e.id, m);
@@ -18586,7 +18646,7 @@ export const render = {
     if (e.type === 'ship' || e.type === 'station') {
       attachContactShadow(m, e);
       const lodLevel = m.userData && m.userData.lod ? m.userData.lod.level : null;
-      syncShadowCasterPolicy(m, lodLevel, this._shadowPolicyOptions(e, m));
+      this._syncShadowCasterPolicyChecked(m, lodLevel, e);
     }
     e.mesh = m; e.view = { root: m };
     this._meshes.set(id, m);
@@ -19052,7 +19112,7 @@ export const render = {
       if (typeName === 'ship' || typeName === 'station' || typeName === 'place') {
         // entity may be null for a world-record row; the retained stand-in keeps the old
         // `{ type: typeName }` verdict (non-player, distance-checked) without the allocation.
-        if (syncShadowCasterPolicy(mesh, lodLevel, this._shadowPolicyOptions(entity || _shadowFallbackEntity, mesh))) {
+        if (this._syncShadowCasterPolicyChecked(mesh, lodLevel, entity || _shadowFallbackEntity)) {
           shadowPolicyRefreshed = true;
           shadowPolicyRefreshes++;
           noteShadowPolicyChanged(this._shadowReceiverTally, true);
@@ -20862,6 +20922,62 @@ export const render = {
     _allowCastScratch.castBand = shadowCasterBand(mesh);
     out.allowCast = allowRealtimeShadowCast(_allowCastScratch);
     return out;
+  },
+
+  /**
+   * Policy sync + promotion hook: when a root's cast membership flips on (ortho entry or a
+   * mount-time pass landing inside it), its depth variant must link somewhere other than the
+   * live shadow pass — a post-release joiner's ortho entry used to link it inside the first
+   * presented shadow refresh. Queue a deferred micro-stage; the signature gate keeps it to
+   * only roots with genuinely unlinked variants.
+   */
+  _syncShadowCasterPolicyChecked(root, lodLevel, entity) {
+    const opts = this._shadowPolicyOptions(entity, root);
+    const changed = syncShadowCasterPolicy(root, lodLevel, opts);
+    if (changed && opts.allowCast === true) this._queueShadowDepthStage(root);
+    return changed;
+  },
+
+  _queueShadowDepthStage(root) {
+    if (!root || this._shadowSettingOn !== true) return;
+    const pending = this._pendingDepthStageRoots
+      || (this._pendingDepthStageRoots = new Set());
+    pending.add(root);
+    if (this._depthStageScheduled === true) return;
+    this._depthStageScheduled = true;
+    void yieldAfterPresent().then(() => {
+      this._depthStageScheduled = false;
+      const roots = this._pendingDepthStageRoots;
+      this._pendingDepthStageRoots = null;
+      if (!roots || roots.size === 0) return;
+      const renderer = this.renderer;
+      const scene = this.scene;
+      const camera = this.cam && this.cam.obj;
+      if (this._shadowSettingOn !== true || !renderer || !scene || !camera || !this._keyLight) {
+        return;
+      }
+      try {
+        // Coalesced promotions share one stage; roots whose signatures were already
+        // marked (opening/admission staged them under the same light census) are
+        // filtered so the ceremony only pays for genuinely unlinked depth variants.
+        const unstaged = collectUnstagedShadowCasters(renderer, [...roots], scene);
+        if (unstaged.length === 0) return;
+        compileShadowDepthPipelines({
+          renderer,
+          light: this._keyLight,
+          camera,
+          subjects: unstaged,
+          forceEnable: false,
+          THREE,
+          captureObjectHome,
+          restoreObjectHome,
+          lightingScene: scene,
+          stagingName: 'SF_ShadowPromoteDepthAdmission',
+        });
+      } catch (error) {
+        console.warn('[render] shadow-promote depth stage failed', error);
+      }
+    });
   },
 
   _noteShadowMeshAdded(root) {
