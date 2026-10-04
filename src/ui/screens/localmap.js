@@ -1199,11 +1199,22 @@ export const localmapScreen = {
     if (tracked) {
       kicker = 'Tracked Mission';
       title = tracked.title || 'Mission';
-      body = (wp && wp.reason) || missionProgressText(tracked);
+      // NXI-215 — the tracked mission and the commanded course are two different destinations
+      // when the live waypoint was not laid for this mission (a map click, a trade route, a
+      // scanner signal fix). Only the course may read as commanded: the card body stays the
+      // mission's own objective, and the other fix is named as a separate Course line instead
+      // of being folded into the tracked mission's sentence (the old body started from
+      // wp.reason, so both destinations read as the current route at once).
+      const courseServesMission = !!(wp && (wp.missionId || null) === trackedId);
+      body = (courseServesMission && wp && wp.reason) || missionProgressText(tracked);
       if (route) body = appendSentence(body, route.next);
       const remaining = Math.max(0, (tracked.deadline_s || 0) - (state.simTime || 0));
       meta.push({ text: fmtClock(remaining), hot: remaining < 120 });
-      if (wp && wp.sectorName) meta.push({ text: wp.sectorName, hot: !wp.pos });
+      if (courseServesMission) {
+        if (wp && wp.sectorName) meta.push({ text: wp.sectorName, hot: !wp.pos });
+      } else if (wp) {
+        meta.push({ text: 'Course: ' + (wp.label || wp.reason || 'fix'), hot: false });
+      }
     } else if (wp) {
       kicker = wp.onboarding ? 'Tutorial Objective' : wp.kind === 'story' ? 'Story Objective' : wp.kind === 'trade' ? 'Course' : 'Waypoint';
       title = wp.label || wp.reason || 'Waypoint';
