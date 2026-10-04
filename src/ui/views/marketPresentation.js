@@ -402,17 +402,17 @@ export function saleLineHtml({ sell, saleQty, saleQuote }) {
       const attrs = `data-sale-line data-sale-qty="${q}" data-sale-credits="${net}" data-sale-gross="${gross}" data-sale-travel="${travel}" data-sale-operating="${operating}" data-sale-net="${net}"`;
       // A cost that is zero is not a cost: the line only itemises what actually comes off the sale.
       if (!travel && !operating) {
-        return `<p class="k-sentence sx-mkt-sale" ${attrs}>Sell ${fmt(q)} u → ${fmt(gross)} cr${partial}</p>`;
+        return `<p class="k-sentence sx-mkt-sale" ${attrs}>If sold: ${fmt(q)} u → ${fmt(gross)} cr${partial}</p>`;
       }
       const costs = (travel ? ` − ${fmt(travel)} cr travel` : '') + (operating ? ` − ${fmt(operating)} cr operating` : '');
-      return `<p class="k-sentence sx-mkt-sale" ${attrs}>Sell ${fmt(q)} u → ${fmt(gross)} cr after slippage${costs} = ${fmt(net)} cr net${partial}</p>`;
+      return `<p class="k-sentence sx-mkt-sale" ${attrs}>If sold: ${fmt(q)} u → ${fmt(gross)} cr after slippage${costs} = ${fmt(net)} cr net${partial}</p>`;
     }
-    return `<p class="k-sentence sx-mkt-sale" data-sale-line data-sale-qty="${q}" data-sale-credits="${gross}">Sell ${fmt(q)} × ${fmt(avg)} cr = ${fmt(gross)} cr${partial}</p>`;
+    return `<p class="k-sentence sx-mkt-sale" data-sale-line data-sale-qty="${q}" data-sale-credits="${gross}">If sold: ${fmt(q)} × ${fmt(avg)} cr = ${fmt(gross)} cr${partial}</p>`;
   }
   const unit = Number(sell);
   if (!Number.isFinite(unit)) return '';
   const credits = Math.round(unit * qty);
-  return `<p class="k-sentence sx-mkt-sale" data-sale-line data-sale-qty="${qty}" data-sale-credits="${credits}">Sell ${fmt(qty)} × ${fmt(unit)} cr = ${fmt(credits)} cr</p>`;
+  return `<p class="k-sentence sx-mkt-sale" data-sale-line data-sale-qty="${qty}" data-sale-credits="${credits}">If sold: ${fmt(qty)} × ${fmt(unit)} cr = ${fmt(credits)} cr</p>`;
 }
 
 function chartKeyHtml(hasForecast, origins, statedRate) {
