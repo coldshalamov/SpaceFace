@@ -1340,14 +1340,22 @@ export const crucibleDraftScreen = {
     }
     const origin = cards.getBoundingClientRect().top;
     let edge = 0;
+    let rowH = 0;
     for (const child of cards.children) {
       if (typeof child.getBoundingClientRect !== 'function') continue;
-      const bottom = child.getBoundingClientRect().bottom - origin;
+      const rect = child.getBoundingClientRect();
+      if (!rowH && child.classList && child.classList.contains('sf-cru-card')) rowH = rect.height;
+      const bottom = rect.bottom - origin;
       if (bottom <= avail - 4) edge = bottom;
       else break;
     }
-    if (edge > 0) cards.style.setProperty('max-height', `${Math.ceil(edge)}px`, 'important');
+    // The whole-row fold degenerates under one card row: when the stage leaves less
+    // than a full offer, clipping to the last whole child leaves a divider slit plus
+    // dead space — a (nearly) whole card still invites the scroll. Fall back to the
+    // available box and keep the bottom fade, which earns its keep again on the cut.
     this._railClipped = edge > 0;
+    if (rowH && edge < rowH) { edge = avail; this._railClipped = false; }
+    if (edge > 0) cards.style.setProperty('max-height', `${Math.ceil(edge)}px`, 'important');
     this._syncRailClipFade();
     // The fold moved: the rail's thumb and first–last count re-read the new box.
     this._syncRailScale();

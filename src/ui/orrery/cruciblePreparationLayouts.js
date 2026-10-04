@@ -327,7 +327,7 @@ ${D} .k-foot .orr-prep-continue:active, ${D} .k-foot .orr-key--hazard:active { t
  ${A} .orr-armory-item > .orr-equipment-glyph { width:96px; height:96px; }
  ${A} .orr-armory-reading__jig { height:120px !important; min-height:104px; }
  ${A} .orr-armory-reading__verb { margin:0 0 2px !important; line-height:1.3 !important; }
- ${A} .orr-armory-reading__name { font-size:20px !important; margin:2px 0 4px !important; }
+ ${A} .orr-armory-reading__name { font-size:20px !important; margin:0 0 2px !important; }
  /* words before the media band: what it IS reads before what it looks like */
  ${A} .orr-armory-reading__main { display:flex !important; flex-direction:column !important; }
  ${A} .orr-armory-reading__words { order:-1; }
@@ -339,10 +339,12 @@ ${D} .k-foot .orr-prep-continue:active, ${D} .k-foot .orr-key--hazard:active { t
  ${A} .orr-armory-reading__name { order:-2 !important; }
  ${A} .orr-armory-reading__tip { order:-1 !important; }
  ${A} .orr-armory-reading__blurb, ${A} .orr-armory-reading__act { line-height:1.38 !important; }
+ /* 'when it pays' previously cleared this fold by ~1px — the block margins carry
+    the headroom so the decision line survives font-metric or title-height drift. */
  ${A} .orr-armory-reading__blurb, ${A} .orr-armory-reading__act,
- ${A} .orr-armory-reading__tip, ${A} .orr-armory-reading__detail { margin:0 0 4px !important; }
+ ${A} .orr-armory-reading__tip, ${A} .orr-armory-reading__detail { margin:0 0 3px !important; }
  /* compress the docked band so Install still pins above the fold */
- ${A} .orr-armory-reading__foot { margin-top:4px !important; padding-top:4px !important; }
+ ${A} .orr-armory-reading__foot { margin-top:2px !important; padding-top:2px !important; }
  ${A} .orr-armory-reading__budget { margin:0 0 6px !important; }
  ${A} .orr-armory-budget { height:40px !important; width:auto !important; }
  ${A} .orr-armory-reading__foot .orr-armory-reading__demo { margin:0 0 4px !important; }
