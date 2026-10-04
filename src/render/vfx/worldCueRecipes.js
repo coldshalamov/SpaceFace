@@ -217,11 +217,16 @@ export function admitRichSeamGlint(state, payload = {}) {
   return record;
 }
 
-/** field:richSeamWorked ends the one live glint. */
+/** field:richSeamWorked / field:richSeamMissed ends the one live glint. */
 export function endRichSeamGlint(state, payload = {}) {
   const presentation = state && state.presentation;
   const rec = presentation && presentation.richSeamGlint;
   if (!rec || rec.ended === true) return null;
+  // Only ONE glint is ever live, and several seams may hold open records — a resolution
+  // receipt that names a different seam must not kill this one. A payload carrying no
+  // seam identity (legacy emits) keeps the old unconditional end.
+  const key = seamKey(payload);
+  if (key !== ':' && rec.key && key !== rec.key) return null;
   rec.ended = true;
   const rock = seamRock(state, { ...payload, asteroidId: rec.targetId })
     || (rec.targetId != null && state.entities && state.entities.get && state.entities.get(rec.targetId));

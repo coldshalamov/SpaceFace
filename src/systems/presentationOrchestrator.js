@@ -18,6 +18,7 @@ import {
   requestCombatActionAudio,
 } from '../audio/minimalActionAudio.js';
 import { bindAttackCausalBus } from '../combat/attackHit.js';
+import { endRichSeamGlint } from '../render/vfx/worldCueRecipes.js';
 
 export const PRESENTATION_ORCHESTRATOR_SCHEMA_VERSION = 1;
 
@@ -218,6 +219,7 @@ export const presentationOrchestrator = {
       this.bus.on('cargo:full', (payload) => this._onMiningCargoFull(payload || {})),
       this.bus.on('fieldDepletion:changed', (payload) => this._onMiningFieldAftermath(payload || {})),
       this.bus.on('field:regrown', (payload) => this._onMiningFieldRegrown(payload || {})),
+      this.bus.on('field:richSeamMissed', (payload) => this._onRichSeamMissed(payload || {})),
       this.bus.on('drill:warn', (payload) => this._onMiningDrillWarning(payload || {})),
       this.bus.on('drill:start', () => { this._drillContactBand = null; }),
       this.bus.on('drill:scanPulse', (payload) => this._onMiningDrillScan(payload || {})),
@@ -1253,6 +1255,38 @@ export const presentationOrchestrator = {
       magnitude: Math.max(1, Number(payload.rocks) || 1),
       sequence: 'regrowth',
       tags: ['regrowth', band, payload.sectorId].filter(Boolean),
+    });
+  },
+
+  /**
+   * A rich seam expired unclaimed, or its NPC reservation collapsed (owner_lost /
+   * owner_invalidated). The live glint on its rock is now a lie — end it (worked seams end on
+   * field:richSeamWorked). An in-sector miss is also player-visible: the bright ore reads
+   * ordinary now. The line records on news:headline for the chronicler and publishes once —
+   * cited — for the ticker; a miss in another sector is world bookkeeping, not news.
+   */
+  _onRichSeamMissed(payload) {
+    endRichSeamGlint(this.state, payload);
+    const sectorId = payload.sectorId || null;
+    const currentSectorId = this.state && this.state.world && this.state.world.currentSectorId;
+    if (sectorId && currentSectorId && sectorId !== currentSectorId) return;
+    if (!this.bus || typeof this.bus.emit !== 'function') return;
+    const headline = 'The bright seam went cold — its ore reads ordinary rock now.';
+    const stamp = Math.round(Number(payload.resolvedAtT) || Number(this.state && this.state.simTime) || 0);
+    const eventId = `richSeam:missed:${payload.fieldId || ''}:${payload.activityObjectSlotId || ''}:${stamp}`;
+    this.bus.emit('news:headline', {
+      headline, text: headline, kind: 'rich-seam-missed',
+      sectorId, fieldId: payload.fieldId || null,
+      activityObjectSlotId: payload.activityObjectSlotId || null,
+      reason: payload.reason || null,
+      eventId,
+    });
+    this.bus.emit('news:publish', {
+      // `source` is load-bearing twice: it cites the emit on the ticker record, and it marks
+      // marketNews's re-broadcast as an echo so the chronicler's record filter drops it (the
+      // direct headline above already holds the fact).
+      id: eventId, text: headline, kind: 'rich-seam-missed', sectorId,
+      source: 'field:richSeamMissed',
     });
   },
 

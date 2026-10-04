@@ -67,6 +67,12 @@ export const FACT_EVENTS = Object.freeze([
   // (ladderShared.js), and a stunt trick (stuntGrammar.js, gated to marquee rarity in
   // normalize.js so routine tricks stay receipts). Recorded on the existing 'story' stage.
   'ship:purchased', 'achievement:unlocked', 'career:ladder:completed', 'stunt:trickDetected',
+  // News-record batch: `news:headline` is the system-side record channel (the player surface is
+  // `news:publish`). aceMemory, aftermathWrecks, custodyConsequences, e1EncounterRuntime,
+  // nemesisSignals, and pirateRumor all emit it. marketNews re-broadcasts committed ticker lines
+  // on the same event — normalize filters those echoes on `source` so only an emitter's own
+  // line becomes a fact.
+  'news:headline',
 ]);
 export const STAGES = Object.freeze([
   'kill', 'aftermath', 'binding', 'salvage', 'recovered', 'sold', 'law',
