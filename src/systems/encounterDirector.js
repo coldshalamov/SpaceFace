@@ -49,6 +49,7 @@ import {
 import { hash32, mulberry32 } from '../core/rng.js';
 import { bumpCollidesFlipEpoch, indexedShipLikeOrEntitiesScan, indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { syncEntityCollisionIndexMembership } from '../core/coreSystem.js';
+import { writePickupRemainder } from '../core/pickupAcceptance.js';
 import { zonesForSector, zoneAt, zoneThreat } from '../data/sectorZones.js';
 import { ZONE_CERES_THROUGHLINE } from '../data/authoredPlaces.js';
 import {
@@ -1523,7 +1524,7 @@ export const encounterDirector = {
     entity.mass = physical.bodyMass;
     entity.radius = physical.radius;
     const data = entity.data || (entity.data = {});
-    data.amount = amount;
+    writePickupRemainder(data, amount);
     data.freightCargoPhysics = physical;
     return true;
   },
