@@ -9,7 +9,7 @@ import {combat} from '../src/systems/combat.js';import {asteroidSites} from '../
 import {npcJobsRuntime} from '../src/systems/npcJobsRuntime.js';import {traffic} from '../src/systems/traffic.js';import {world} from '../src/systems/world.js';
 import {CERES_WORKFLEET_CONTRACT as C} from '../src/data/ceresWorkfleet.js';
 import {ceresWorkfleetHardwareSpec,reconcileCeresWorkfleetPresentation,ceresWorkfleetWorldPose as worldPose,
- ceresWorkfleetReceiverTransferReady} from '../src/systems/ceresWorkfleet.js';
+ ceresWorkfleetReceiverTransferReady,stepCeresWorkfleet} from '../src/systems/ceresWorkfleet.js';
 import {captureEntityRecord,spawnSpecFromRecord} from '../src/world/worldRecords.js';import {save} from '../src/save/saveSystem.js';
 import {serializeCombatState} from '../src/combat/persistence.js';
 const clone=v=>JSON.parse(JSON.stringify(v));
@@ -73,4 +73,79 @@ test('receiver release gate rejects unsettled and laterally drifting cargo witho
  for(const mutate of [h=>h.section.pos.x+=1.1,h=>h.section.rot+=.004,h=>h.section.vel.x=.011,h=>h.section.vel.z=.06,h=>h.section.angVel=.001,h=>h.breaker.vel.x=.06,h=>h.breaker.pos.x+=.6]){
   const h=create();mutate(h);const before=clone(h);assert.equal(ceresWorkfleetReceiverTransferReady(h.breaker,h.section),false);assert.deepEqual(clone(h),before);
  }
+});
+
+function receiverSlackWire() {
+ const sample=JSON.parse(readFileSync(new URL('./fixtures/ceres-handoff/current935-receiver-slack.json',import.meta.url),'utf8'));
+ const wire=initialWire();wire.tick=sample.tick;wire.simTime=sample.tick/60;
+ wire.sites.worldById[C.siteId].payloads.long_plate.motion={pos:{x:sample.section.pos.x,z:sample.section.pos.z},vel:{x:sample.section.vel.x,z:sample.section.vel.z},rot:sample.section.rot,angVel:sample.section.angVel};
+ const roles=new Map([[sample.section.id,'section']]);
+ for(const observed of sample.hardware){
+  const role=observed.role;roles.set(observed.id,role);const spec=ceresWorkfleetHardwareSpec(role);
+  Object.assign(spec,{pos:{x:observed.pos.x,z:observed.pos.z},vel:{x:observed.vel.x,z:observed.vel.z},rot:observed.rot,angVel:observed.angVel});
+  spec.data.ceresWorkfleetSlide=observed.slide;spec.data.itinerary.ceresWorkfleet.slide=observed.slide;
+  const rec=captureEntityRecord({id:observed.id,...spec},{sectorId:C.sectorId,tick:sample.tick});wire.records.byId[rec.recordId]=rec;wire.records.order.push(rec.recordId);
+ }
+ const byId={};for(const line of sample.lines){const row=clone(line);row.ownerRef=refs(roles.get(row.ownerId));row.targetRef=refs(roles.get(row.targetId));delete row.ownerId;delete row.targetId;delete row.controllerId;byId[row.id]=row;}
+ wire.combat={attachments:{byId}};Object.assign(wire.jobs.ceresWorkfleet,{phase:'pads',phaseTick:59518,index:C.route.loadedLegs.length,
+  mountId:sample.lines.find(l=>roles.get(l.ownerId)==='cutterHead').id,towId:null,receiverId:sample.lines.find(l=>roles.get(l.ownerId)==='cradle').id});
+ return wire;
+}
+const receiverError=h=>Math.hypot(h.b.section.pos.x-h.b.cradle.pos.x,h.b.section.pos.z-h.b.cradle.pos.z);
+function stepReceiverWinch(h){
+ const line=h.service.get(h.job().receiverId),before=line.restLength;
+ h.sim.step();
+ assert.ok(line.restLength>=6.5,'existing socket and keeper geometry set the physical rest-length floor');
+ assert.ok(before-line.restLength<=1/60+1e-12,'take-up uses the existing1WU/s winch, never an instantaneous rest-length snap');
+ assert.equal(h.b.section.mass,1800);assert.equal(h.physics._sg02.records.get(h.b.section.id)?.entity,h.b.section);
+}
+test('receiver takes up measured post-field slack through repeated typed Saves without minting custody or repairing motion',async()=>{
+ const prior=snapshotFeatureMaps();applyFeatureConfigToMaps(PRODUCTION_FEATURES);let h;
+ try{
+  h=await restore(receiverSlackWire());assert.ok(receiverError(h)>2);
+  const receiverId=h.job().receiverId;let maxTension=0;
+  for(let i=0;i<2400&&h.job().phase!=='secured';i++){
+   stepReceiverWinch(h);maxTension=Math.max(maxTension,h.service.get(receiverId).lastTension||0);
+   if([8,17,40].includes(i)){
+    const before=clone(pose(h.b.section)),wire=capture(h),length=h.service.get(receiverId).restLength;
+    h.close();h=await restore(wire);assert.deepEqual(clone(pose(h.b.section)),before,'Save restores real pose and momentum unchanged');
+    assert.equal(h.job().receiverId,receiverId);assert.equal(h.service.get(receiverId).restLength,length);
+   }
+  }
+  assert.equal(h.job().phase,'secured');assert.ok(receiverError(h)<=2);assert.equal(h.service.get(receiverId).restLength,6.5);
+  assert.ok(maxTension<400,'regression control remains a small physical take-up under the unchanged clamp law');
+  for(let i=0;i<1200;i++)stepReceiverWinch(h);
+  assert.equal(h.job().phase,'secured');assert.ok(receiverError(h)<=2);
+ }finally{h?.close();restoreFeatureMaps(prior);}
+});
+test('foreign pad obstruction stalls receiver take-up and removing it resumes the same original line',async()=>{
+ const prior=snapshotFeatureMaps();applyFeatureConfigToMaps(PRODUCTION_FEATURES);let h;
+ try{
+  h=await restore(receiverSlackWire());
+  const obstacle=h.sim.spawn({type:'wreck',team:0,pos:{x:h.b.cradle.pos.x-35.5,z:h.b.cradle.pos.z},radius:.5,mass:100,hull:100,collides:true,
+   data:{worldRecordId:'test:receiver-obstruction',missionPinned:true},physicsBody:{schemaVersion:1,dynamic:false,radius:.5,mass:100,shape:'ball',useMeasuredSkin:false,material:'wreck'}});
+  const id=h.job().receiverId;for(let i=0;i<4;i++)stepReceiverWinch(h);
+  const stopped=h.service.get(id).restLength;
+  for(let i=0;i<240;i++)stepReceiverWinch(h);
+  assert.equal(h.job().phase,'pads');assert.equal(h.job().blockedReason,'receiver-seating-obstructed',JSON.stringify({slide:h.b.cradle.data.ceresWorkfleetSlide,blocker:h.b.cradle.data.ceresWorkfleetSlideBlocker,obstacle:{id:obstacle.id,alive:obstacle.alive,pos:obstacle.pos,body:obstacle.physicsBody,native:!!h.physics._sg02.records.get(obstacle.id)},rest:h.service.get(id).restLength}));assert.equal(h.service.get(id).restLength,stopped);
+  assert.ok(receiverError(h)>2);assert.equal(obstacle.hull,100);
+  obstacle.alive=false;
+  for(let i=0;i<2400&&h.job().phase!=='secured';i++)stepReceiverWinch(h);
+  assert.equal(h.job().phase,'secured');assert.equal(h.job().receiverId,id);assert.ok(receiverError(h)<=2);
+ }finally{h?.close();restoreFeatureMaps(prior);}
+});
+test('cut or stale receiver custody never creates a replacement or runs the winch',async()=>{
+ const prior=snapshotFeatureMaps();applyFeatureConfigToMaps(PRODUCTION_FEATURES);
+ try{for(const mode of ['cut','stale-target','lost-cradle']){
+  const h=await restore(receiverSlackWire());try{
+   const id=h.job().receiverId,line=h.service.get(id),length=line.restLength,count=Object.keys(h.state.combat.attachments.byId).length;
+   if(mode==='cut')h.service.cut(id,h.b.cradle.id,'receiver-endpoint-break');
+   else if(mode==='stale-target'){line.targetGeneration++;stepCeresWorkfleet(h.owner,1/60);assert.equal(line.restLength,length,'direct job tick rejects stale endpoint before native retirement');}
+   else {h.b.cradle.hull=0;h.b.cradle.alive=false;}
+   for(let i=0;i<120;i++)h.sim.step();
+   assert.equal(Object.keys(h.state.combat.attachments.byId).length,count,mode);
+   assert.equal(line.restLength,length,mode);assert.notEqual(h.job().phase,'secured',mode);
+   assert.equal(h.b.section.mass,1800);
+  }finally{h.close();}
+ }}finally{restoreFeatureMaps(prior);}
 });

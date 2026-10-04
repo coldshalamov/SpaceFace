@@ -71,6 +71,6 @@ export function ceresWorkfleetRecordHasCustody(record) {
   const custody=record.itinerary.ceresWorkfleet.custody;
   return custody?.jobId==='job:ceres:second_measure:long_plate'&&custody.worker===C.identities.worker
     &&custody.head===C.identities.cutterHead&&custody.cradle===C.identities.cradle&&custody.section===C.identities.payload
-    &&custody.active===true&&(custody.phase==='paused'?typeof custody.attachmentId==='string'&&custody.attachmentId.length>0: ['head_dock','head_out','head_cut','head_retract','tow_attach','extract','seat','loaded',
+    &&custody.active===true&&(custody.phase==='paused'?typeof custody.attachmentId==='string'&&custody.attachmentId.length>0: ['head_dock','head_out','head_cut','head_retract','tow_attach','reacquire','extract','seat','loaded',
       'receiver','unshoe','withdraw','pads','secured','recover_turn','recover_approach','recover_seat','recover_return_turn','recover_return'].includes(custody.phase));
 }

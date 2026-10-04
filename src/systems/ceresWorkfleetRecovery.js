@@ -99,9 +99,18 @@ const quat=a=>({x:0,y:-Math.sin(a/2),z:0,w:Math.cos(a/2)});
 // Each rotating interval is enclosed by the midpoint box plus the exact maximum
 // angular chord displacement of any corner. Translation is a continuous native cast.
 // This deliberately over-approximates curved sweeps; it never shrinks authored collision.
-export function ceresWorkfleetRecoveryClear(native,state,b,from,to,{loaded=false,sectionOnly=false,ignoreSection=false}={}){
- if(!native||!finite(from)||!finite(to)||!insideWork(from,boxesFor(loaded))||!insideWork(to,boxesFor(loaded)))return {ok:false,reason:'work-envelope'};
- const own=new Set([b.breaker,b.cutterHead,...(loaded||sectionOnly||ignoreSection)?[b.section]:[]]),parts=sectionOnly?C.existing.section.boxes.map(box=>({box,local:{x:0,z:0,rot:0}})):boxesFor(loaded);
+export function ceresWorkfleetRecoveryClear(native,state,b,from,to,{loaded=false,sectionOnly=false,ignoreSection=false,headOnly=false,headTarget=null}={}){
+ let parts=headOnly?C.assets.cutterHead.boxes.map(box=>({box,local:{x:0,z:0,rot:0}})):sectionOnly?C.existing.section.boxes.map(box=>({box,local:{x:0,z:0,rot:0}})):boxesFor(loaded);
+ if(headTarget){
+  // Enclose the complete detached-head route in the actual carrier frame. This is
+  // query-only conservative support, not a replacement physical collider.
+  const frame=at(b.breaker),c=Math.cos(frame.rot),s=Math.sin(frame.rot),local=p=>({x:(p.x-frame.x)*c+(p.z-frame.z)*s,z:-(p.x-frame.x)*s+(p.z-frame.z)*c});
+  const a=local(b.cutterHead.pos),z=local(headTarget),r=C.assets.cutterHead.radius;
+  const minX=Math.min(a.x,z.x)-r,maxX=Math.max(a.x,z.x)+r,minZ=Math.min(a.z,z.z)-r,maxZ=Math.max(a.z,z.z)+r;
+  parts=[...parts.filter(p=>!p.head),{box:{id:'actual-head-route',center:{x:(minX+maxX)/2,z:(minZ+maxZ)/2},size:{x:maxX-minX,z:maxZ-minZ}},local:{x:0,z:0,rot:0}}];
+ }
+ if(!native||!finite(from)||!finite(to)||!insideWork(from,parts)||!insideWork(to,parts))return {ok:false,reason:'work-envelope'};
+ const own=new Set(headOnly?[b.cutterHead]:[b.breaker,b.cutterHead,...(loaded||sectionOnly||ignoreSection)?[b.section]:[]]);
  for(const e of [b.breaker,b.cutterHead,b.section]){const rec=native.records.get(e?.id);if(!e||rec?.entity!==e||rec.body.isEnabled()===false)return {ok:false,reason:'native-life-unresolved'};}
  const radius=Math.max(...parts.map(({box,local,head,section})=>Math.hypot(local.x||0,local.z||0)+Math.hypot(box.center.x,box.center.z)+Math.hypot(box.size.x/2,box.size.z/2)+(head?1+2*C.assets.cutterHead.radius*Math.sin(.04/2):section?1+2*C.existing.section.radius*Math.sin(.006/2):0)));
  const cx=(from.x+to.x)/2,cz=(from.z+to.z)/2,reach=distance(from,to)/2+radius;
@@ -140,4 +149,67 @@ export function ceresWorkfleetRecoveryClear(native,state,b,from,to,{loaded=false
   }
  }
  return {ok:true};
+}
+
+// Reacquisition is an empty-carrier approach after the original section has really
+// been released. It does not change initial commissioning or seating tolerances.
+export const CERES_REACQUIRE_LIMITS=Object.freeze({retryTicks:120,speed:.5,accel:.1,angularSpeed:.015,angularAccel:.01,settleSeconds:30});
+const MAX_LOCAL_RETURN_TICKS=Math.ceil(((CERES_RECOVERY_LIMITS.workRadius+Math.hypot(C.route.breakerWorkPose.x,C.route.breakerWorkPose.z))/CERES_REACQUIRE_LIMITS.speed+Math.PI/CERES_REACQUIRE_LIMITS.angularSpeed+CERES_REACQUIRE_LIMITS.settleSeconds)*1.5*60);
+const sourceOffset={x:C.route.breakerWorkPose.x-C.existing.section.mountedPose.x,
+ z:C.route.breakerWorkPose.z-C.existing.section.mountedPose.z,rot:wrap(C.route.breakerWorkPose.rot-C.existing.section.mountedPose.rot)};
+export const ceresWorkfleetReacquireStage=section=>compose(at(section),sourceOffset);
+export function ceresWorkfleetReacquireReturnBudget(b,tick){
+ const stage=ceresWorkfleetReacquireStage(b.section),speed=Math.hypot(b.breaker.vel.x,b.breaker.vel.z);
+ if(distance(at(b.breaker),stage)+speed*speed/(2*CERES_REACQUIRE_LIMITS.accel)<=CERES_RECOVERY_LIMITS.maxApproach)return null;
+ const work=world(C.route.breakerWorkPose),seconds=speed/CERES_REACQUIRE_LIMITS.accel
+  +(distance(at(b.breaker),work)+speed*speed/(2*CERES_REACQUIRE_LIMITS.accel))/CERES_REACQUIRE_LIMITS.speed
+  +Math.abs(wrap(work.rot-b.breaker.rot))/CERES_REACQUIRE_LIMITS.angularSpeed+CERES_REACQUIRE_LIMITS.settleSeconds;
+ return {schemaVersion:1,startedTick:tick,deadlineTick:tick+Math.min(MAX_LOCAL_RETURN_TICKS,Math.ceil(seconds*1.5*60))};
+}
+export function restoreCeresWorkfleetReacquireReturnBudget(raw){
+ return raw?.schemaVersion===1&&Number.isSafeInteger(raw.startedTick)&&Number.isSafeInteger(raw.deadlineTick)&&raw.startedTick>=0
+  &&raw.deadlineTick>raw.startedTick&&raw.deadlineTick-raw.startedTick<=MAX_LOCAL_RETURN_TICKS
+  ?{schemaVersion:1,startedTick:raw.startedTick,deadlineTick:raw.deadlineTick}:null;
+}
+export function planCeresWorkfleetReacquire(b,tick){
+ const {breaker,section}=b;if(!breaker||!section||!finite(at(breaker))||!finite(at(section)))return {reason:'invalid-pose'};
+ const start=at(breaker),plate=at(section),capture=ceresWorkfleetReacquireStage(section),kind=distance(start,capture)>CERES_RECOVERY_LIMITS.maxApproach?'return-to-work':'approach';
+ const stage=kind==='return-to-work'?world(C.route.breakerWorkPose):capture,turn={...start,rot:stage.rot};
+ if(breaker.data?.ceresWorkfleetSlide!==0)return {reason:'shoes-not-open'};
+ if(![start,turn,stage].every(p=>insideWork(p,boxesFor(false)))
+  ||!C.existing.section.boxes.every(box=>[-1,1].every(x=>[-1,1].every(z=>distance(point(plate,{x:box.center.x+x*box.size.x/2,z:box.center.z+z*box.size.z/2}),C.sitePlacement.pos)<=CERES_RECOVERY_LIMITS.workRadius))))return {reason:'outside-local-work-envelope'};
+ const seconds=distance(start,stage)/CERES_REACQUIRE_LIMITS.speed+Math.abs(wrap(stage.rot-start.rot))/CERES_REACQUIRE_LIMITS.angularSpeed+CERES_REACQUIRE_LIMITS.settleSeconds;
+ const driftBudget=(C.assets.breaker.clearVolumes.open[0].z[1]-C.assets.breaker.clearVolumes.open[0].z[0]-C.existing.section.dimensions.x)/4;
+ const tipRadius=Math.hypot(C.existing.section.dimensions.x/2,C.existing.section.dimensions.z/2);
+ if(kind==='approach'&&(Math.hypot(section.vel.x,section.vel.z)*seconds+Math.abs(section.angVel||0)*seconds*tipRadius>driftBudget))return {reason:'cargo-moving'};
+ const duration=Math.ceil(seconds*1.5*60);if(duration>(kind==='return-to-work'?MAX_LOCAL_RETURN_TICKS:CERES_RECOVERY_LIMITS.maxTicks))return {reason:'route-time-budget'};
+ return {plan:{schemaVersion:1,kind,startedTick:tick,deadlineTick:tick+duration,start,plate,turn,stage,leg:'turn'}};
+}
+export function restoreCeresWorkfleetReacquire(raw){
+ const kind=raw?.kind??'approach';if(!['approach','return-to-work'].includes(kind))return null;
+ if(!raw||raw.schemaVersion!==1||!Number.isSafeInteger(raw.startedTick)||!Number.isSafeInteger(raw.deadlineTick)||raw.startedTick<0
+  ||raw.deadlineTick<=raw.startedTick||raw.deadlineTick-raw.startedTick>(kind==='return-to-work'?MAX_LOCAL_RETURN_TICKS:CERES_RECOVERY_LIMITS.maxTicks)||!['turn','approach'].includes(raw.leg))return null;
+ if(!['start','plate','turn','stage'].every(key=>finite(raw[key])))return null;
+ const stage=kind==='return-to-work'?world(C.route.breakerWorkPose):compose(raw.plate,sourceOffset);
+ if(distance(raw.stage,stage)>1e-6||Math.abs(wrap(raw.stage.rot-stage.rot))>1e-6||distance(raw.turn,raw.start)>1e-6
+  ||Math.abs(wrap(raw.turn.rot-stage.rot))>1e-6||(kind==='approach'&&distance(raw.start,stage)>CERES_RECOVERY_LIMITS.maxApproach)
+  ||![raw.start,raw.turn,raw.stage].every(p=>insideWork(p,boxesFor(false))))return null;
+ return {schemaVersion:1,kind,startedTick:raw.startedTick,deadlineTick:raw.deadlineTick,start:{...raw.start},plate:{...raw.plate},turn:{...raw.turn},stage:{...raw.stage},leg:raw.leg};
+}
+
+// An authored dock can end on a real solid face. Approach only a prefix certified
+// clear by the same native compound query; the job still tests the original pose.
+export function ceresWorkfleetHeadClearPrefix(native,state,b,from,to){
+ const check=ceresWorkfleetRecoveryClear(native,state,b,from,to,{headOnly:true});
+ if(check.ok)return {ok:true,pose:to,complete:true};
+ if(check.reason!=='obstructed')return check;
+ if(!ceresWorkfleetRecoveryClear(native,state,b,from,from,{headOnly:true}).ok)return check;
+ // A near-flush head may translate safely before there is room to rotate.
+ // Serializing those motions avoids inflating a rotation envelope into the dock.
+ const translated={...to,rot:from.rot};
+ const translation=ceresWorkfleetRecoveryClear(native,state,b,from,translated,{headOnly:true});
+ if(translation.ok)return {ok:true,pose:translated,complete:false};
+ let lo=0,hi=1;const at=t=>({x:from.x+(to.x-from.x)*t,z:from.z+(to.z-from.z)*t,rot:from.rot});
+ for(let i=0;i<8;i++){const mid=(lo+hi)/2;if(ceresWorkfleetRecoveryClear(native,state,b,from,at(mid),{headOnly:true}).ok)lo=mid;else hi=mid;}
+ return lo>0?{ok:true,pose:at(lo),complete:false,blocker:check.blocker}:check;
 }
