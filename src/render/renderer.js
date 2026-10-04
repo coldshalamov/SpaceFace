@@ -5980,6 +5980,19 @@ const SHADOW_DEPTH_ARM_MESH_CAP = 128;
 // arm keeps the drain moving.
 const SHADOW_DEPTH_ARM_COLLECT_MS = 4;
 const SHADOW_DEPTH_ARM_RESTORE_MS = 4;
+// The arm is also the largest paced-adjacent task in the machinery — when a
+// presented frame's JS budget is already spent, the arm defers a frame rather
+// than stack its ceremony on top (withheld casters already tolerate delay:
+// that is the withhold contract). An aging cap mirroring the glTF compile
+// drain's keeps a permanently-busy frame stream from starving the drain.
+const SHADOW_DEPTH_LEDGER_MAX_SKIPS = 2;
+// One collect is one subtree walk — a mass ortho-entry or packaged burst can
+// re-dirty tens of roots in a single entity-view pass and pay one walk each
+// inside the presented frame. Past the cap the sync over-covers: withhold the
+// whole subtree via allowCast:false (the same band-0 stamp queued parked roots
+// carry, free to re-stamp while dirty) and let the arm's own collect re-derive
+// the genuinely-unstaged set behind the frame.
+const SHADOW_DEPTH_PASS_COLLECT_CAP = 8;
 
 // Nearest ancestor that owns a shadow-caster policy record (same userData key as
 // shadowCasterPolicy.js), else the direct scene child — the granularity the arm's
@@ -21141,10 +21154,22 @@ export const render = {
     // re-collects only on a genuine policy dirty, not our own post-withhold
     // invalidation. The collect is the flag twin — per-mesh mark tuples discriminate
     // staged-vs-unstaged with zero signature mints inside the presented frame.
-    const unstaged = (opts.allowCast === true && this._shadowSettingOn === true
+    const collectGate = (opts.allowCast === true && this._shadowSettingOn === true
         && this.renderer && this.scene && this._keyLight
-        && (parkedRecheck || (band !== 1 ? !queued : (dirtySeq > stampedSeq && dirtySeq > 0))))
-      ? collectUnstagedShadowCastersFlag([root], this._shadowCensusForFrame())
+        && (parkedRecheck || (band !== 1 ? !queued : (dirtySeq > stampedSeq && dirtySeq > 0))));
+    // Bound the collects one pass pays: a mass ortho-entry or packaged burst can
+    // re-dirty tens of roots in one presented frame and each collect is a subtree
+    // walk. Past the cap the root over-covers below instead of paying the walk.
+    const collectSeq = this._viewSyncSeq || 0;
+    if (this._depthCollectPassSeq !== collectSeq) {
+      this._depthCollectPassSeq = collectSeq;
+      this._depthCollectPassCount = 0;
+    }
+    const overCovered = collectGate
+      && (this._depthCollectPassCount | 0) >= SHADOW_DEPTH_PASS_COLLECT_CAP;
+    const unstaged = (collectGate && !overCovered)
+      ? (this._depthCollectPassCount = (this._depthCollectPassCount | 0) + 1,
+        collectUnstagedShadowCastersFlag([root], this._shadowCensusForFrame()))
       : null;
     // The collect evaluated this generation — stamp it even when empty so an
     // unstageable dirty (or a post-arm band-1 root) doesn't re-pay the whole-subtree
@@ -21164,6 +21189,12 @@ export const render = {
       // below restores live cast flags under current policy.
       parkedMap.delete(root);
       if (this._withheldDepthCasters) this._withheldDepthCasters.delete(root);
+    } else if (overCovered) {
+      // Over the pass cap: withhold the whole subtree now. The stamped band-0 is
+      // the same state queued parked roots carry — subsequent syncs early-out on
+      // identical opts while the queued arm re-derives the genuinely-unstaged set
+      // and its restore re-enables the staged remainder behind the frame.
+      syncOpts = { ...opts, allowCast: false };
     } else if (band !== 1 && queued) {
       syncOpts = { ...opts, allowCast: false };
     } else if (band === 1 && selfDirty && queued && this._withheldDepthCasters) {
@@ -21201,6 +21232,13 @@ export const render = {
       invalidateShadowCasterPolicy(root);
       root.userData[STAGE_SELF_DIRTY_KEY] = shadowCasterPolicyDirtySeq(root);
       // Fresh unstaged meshes — a parked root's park no longer describes it.
+      if (parked && this._parkedDepthStageRoots) this._parkedDepthStageRoots.delete(root);
+      this._queueShadowDepthStage(root, lodLevel, entity);
+    }
+    if (overCovered) {
+      // Join the same drain the precise withhold rides — no per-mesh set: the
+      // arm's collect derives it, and the restore's castBand 0→1 change means
+      // its identical-opts traverse can't early-out (no invalidate needed).
       if (parked && this._parkedDepthStageRoots) this._parkedDepthStageRoots.delete(root);
       this._queueShadowDepthStage(root, lodLevel, entity);
     }
@@ -21254,6 +21292,19 @@ export const render = {
         this._killDepthStageSession();
         return;
       }
+      // The ceremony below is the largest paced-adjacent task in the machinery:
+      // census traverse + session mint + a private shadow render + restore, all
+      // landing adjacent to the next present. When this frame's JS budget is
+      // already spent, defer a frame — withheld casters tolerate the delay (that
+      // is the withhold contract). The aging cap mirrors the glTF compile drain's
+      // so a permanently-busy frame stream can't starve the drain.
+      if (pacedFrameSpend() >= PACED_FRAME_BUDGET_MS
+          && (this._depthStageLedgerSkips | 0) < SHADOW_DEPTH_LEDGER_MAX_SKIPS) {
+        this._depthStageLedgerSkips = (this._depthStageLedgerSkips | 0) + 1;
+        this._armDepthStage();
+        return;
+      }
+      this._depthStageLedgerSkips = 0;
       const renderer = this.renderer;
       const scene = this.scene;
       const camera = this.cam && this.cam.obj;
