@@ -108,8 +108,13 @@ export function revealSubjectForCompile(subject) {
     // unhides them. Revealing one for a touch/depth pass would upload buffers (e.g. a wreck's
     // merged proc shell) that no presented frame can ever draw.
     if (object.userData && object.userData.authoredReadableFallbackLayer === true) return;
+    // Sprites are drawables too (isDrawable in openingGpuAdmission includes isSprite):
+    // a torn-down sprite whose shared quad reference was nulled reaches the same
+    // WebGLGeometries.get geometry.id read in projectObject, so it takes the same
+    // hide-for-compile path as a null-geometry mesh.
     const requiresGeometry = object.isMesh === true || object.isSkinnedMesh === true
-      || object.isInstancedMesh === true || object.isPoints === true || object.isLine === true;
+      || object.isInstancedMesh === true || object.isPoints === true || object.isLine === true
+      || object.isSprite === true;
     if (requiresGeometry && 'geometry' in object && object.geometry == null) {
       objectState.push({ object, visible: object.visible, frustumCulled: object.frustumCulled });
       object.visible = false;
