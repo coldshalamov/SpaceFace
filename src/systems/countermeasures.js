@@ -489,11 +489,13 @@ export const countermeasures = {
 
     if (stock != null) cm.stock = stock - 1;
 
-    // One deploy breaks one eligible lineage. A building lock with nothing in the air,
-    // and every other shooter who already has a missile, keep their solutions.
+    // One deploy answers one eligible lineage. A building lock with nothing in the air,
+    // and every other shooter who already has a missile, keep their solutions. The answer may
+    // be a round whose lock the launch already spent — the deploy still diverts that missile;
+    // `brokenLockShipId` only ever names a lock that was actually there and got broken.
     const breakPct = cfg.lockBreakPct != null ? cfg.lockBreakPct : 1.0;
-    const brokenLineage = breakOneLockLineage(this.state, e, breakPct);
-    const brokenLockShipId = brokenLineage ? brokenLineage.shooterId : null;
+    const answered = breakOneLockLineage(this.state, e, breakPct);
+    const brokenLockShipId = answered && answered.brokeLock ? answered.lineage.shooterId : null;
 
     // Spawn the timed effect. Chaff and the decoy buoy create a point seekers divert to (not a
     // live entity — weapons._steerHoming homes on divertPos); the decoy's point is the buoy and
@@ -507,7 +509,7 @@ export const countermeasures = {
       decoyId,
       originX: decoy ? decoy.x : e.pos.x,
       originZ: decoy ? decoy.z : e.pos.z,
-      lineage: brokenLineage,
+      lineage: answered ? answered.lineage : null,
     };
     cm.effectT = cfg.durationS;
     cm.cooldownT = cfg.cooldownS;
@@ -585,6 +587,7 @@ export const countermeasures = {
 
 function inboundMissiles(state, targetId) {
   const owned = new Set();
+  const ownedList = [];
   const loose = [];
   const list = (state.entityIndex && state.entityIndex.projectiles) || state.entityList || [];
   for (const p of list) {
@@ -592,10 +595,10 @@ function inboundMissiles(state, targetId) {
     const d = p.data;
     if (!d || d.kind !== 'missile' || d.targetId !== targetId) continue;
     const owner = d.ownerId != null ? d.ownerId : p.ownerId;
-    if (owner != null) owned.add(owner);
+    if (owner != null) { owned.add(owner); ownedList.push(p); }
     else loose.push(p);
   }
-  return { owned, loose };
+  return { owned, ownedList, loose };
 }
 
 function lockObservationCurrent(shooter, target) {
@@ -642,16 +645,25 @@ export function selectLockLineage(state, deployer) {
     }
   }
   if (best) return best;
-  const loose = inbound.loose.slice().sort((a, b) => String(a.id).localeCompare(String(b.id)))[0];
-  if (!loose) return null;
-  const data = loose.data || {};
+  // THE ROUND IS THE LINEAGE. weapons.js consumes the shooter's lock the moment a missile
+  // leaves the tube ("each missile needs a fresh lock"), and a dead shooter holds nothing at
+  // all — yet the live round still names its owner, its lock generation and the target
+  // generation it was fired at. With no live-lock shooter selectable, a deploy used to spend
+  // itself as pure theater: the puff fired, the cooldown ran, and the answering state matched
+  // nothing, so the missile that triggered it flew straight through the countermeasure.
+  // Anchor the lineage on the live round itself — the same construction the loose-round branch
+  // always used, extended to owned rounds.
+  const anchor = inbound.loose.concat(inbound.ownedList)
+    .sort((a, b) => String(a.id).localeCompare(String(b.id)))[0];
+  if (!anchor) return null;
+  const data = anchor.data || {};
   return {
-    shooterId: data.ownerId != null ? data.ownerId : loose.id,
+    shooterId: data.ownerId != null ? data.ownerId : anchor.id,
     targetId: deployer.id,
     generation: data.lockGeneration | 0,
     targetGeneration: data.targetGeneration != null ? data.targetGeneration : targetIdentityGeneration(deployer),
     progress: 1,
-    missileId: loose.id,
+    missileId: anchor.id,
   };
 }
 
@@ -667,13 +679,20 @@ export function missileMatchesLineage(data, lineage, projectile) {
   return true;
 }
 
+/**
+ * Answers ONE lineage: breaks the shooter's lock when one is there to break, and always
+ * returns the selected lineage so the deploy's timed effect can answer the round in the air.
+ * `brokeLock` is false when the lineage was anchored on the round itself (the launch already
+ * consumed the shooter's lock, or the shooter is dead) — the deploy still diverts the missile;
+ * it just does not claim a broken lock it did not break.
+ */
 function breakOneLockLineage(state, deployer, breakPct) {
   const lineage = selectLockLineage(state, deployer);
   if (!lineage) return null;
   for (const other of countermeasureShipCandidates(state)) {
     if (!other || other.id !== lineage.shooterId) continue;
     const oc = other.data && other.data.combat;
-    if (!oc || oc.lockTarget !== deployer.id) return null;
+    if (!other.alive || !oc || oc.lockTarget !== deployer.id) return { lineage, brokeLock: false };
     oc.lockBroken = {
       shooterId: other.id,
       targetId: deployer.id,
@@ -691,9 +710,9 @@ function breakOneLockLineage(state, deployer, breakPct) {
     if (Array.isArray(other.data.perceptionContacts)) {
       other.data.perceptionContacts = suppressDefeatedLock(other.data.perceptionContacts, lineage);
     }
-    return lineage;
+    return { lineage, brokeLock: true };
   }
-  return lineage;
+  return { lineage, brokeLock: false };
 }
 
 function projectilesNear(state, pos, radius, out) {

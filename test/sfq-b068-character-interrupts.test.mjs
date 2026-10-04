@@ -34,6 +34,9 @@ function harness(seed = 4242) {
   story.init({ state, bus, registry: { get: () => null }, helpers });
   voiceArbiter.init({ state, bus, helpers });
   state.simTime = OPENING_INSTRUCTION_WINDOW_S + 10;
+  // Arm the interrupt poll clock as a warmed session (the lazy +5s grace is boot behavior,
+  // not part of these pins) so a due poll fires on the first update tick.
+  story._charNextAtS = 0;
   return { state, bus, comms, surfaced, helpers, s: state.story };
 }
 

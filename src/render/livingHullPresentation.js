@@ -136,21 +136,42 @@ function createTallyMarkTexture() {
   const width = GRAFFITI_WIDTH;
   const height = GRAFFITI_HEIGHT;
   const data = new Uint8Array(width * height * 4);
-  const stroke = Math.max(3, Math.round(height / 22));
-  const cuts = [0.28, 0.5, 0.72];
-  for (const cut of cuts) {
-    const x0 = Math.round(width * cut);
-    for (let y = Math.round(height * 0.22); y < Math.round(height * 0.78); y++) {
-      const x = x0 + Math.round((y / height) * width * 0.015);
-      for (let dx = 0; dx < stroke; dx++) {
-        const px = x + dx;
-        if (px < 0 || px >= width) continue;
-        const i = (y * width + px) * 4;
-        data[i] = 255;
-        data[i + 1] = 255;
-        data[i + 2] = 255;
-        data[i + 3] = 255;
+  // ONE painted stroke per atlas — each tally instance is a single kill mark, so the stroke must
+  // fill the plane's own aspect. The old atlas baked three 12px hairlines across 1024px and each
+  // instance squeezed it onto a 0.03-unit plane: one mark was ~0.025 px wide at the default chase
+  // camera (144 WU zoom, 50° FOV) and alphaTest dropped the mip-faded rest, so a fought hull
+  // carried no visible tally at all. A stroke here covers ~72% of the atlas width, which lands
+  // ~2.4 px wide on the Hitch (radius 14) at chase zoom and ~6 px at chase-close.
+  let seed = 0x2f5f8a3d;
+  const rand = () => {
+    seed = Math.imul(seed ^ (seed >>> 15), 2246822519) >>> 0;
+    seed = Math.imul(seed ^ (seed >>> 13), 3266489917) >>> 0;
+    return ((seed ^ (seed >>> 16)) & 0xff) / 255;
+  };
+  const yTop = Math.round(height * 0.12);
+  const yBot = Math.round(height * 0.88);
+  const rimPx = Math.max(4, Math.round(height * 0.02));
+  for (let y = yTop; y <= yBot; y += 1) {
+    const t = (y - yTop) / (yBot - yTop);
+    const taper = 0.62 + 0.38 * Math.sin(Math.PI * Math.min(1, t * 1.15));
+    const half = width * 0.36 * taper;
+    const cx = width * 0.5 + (rand() - 0.5) * width * 0.012;
+    const x0 = Math.round(cx - half);
+    const x1 = Math.round(cx + half);
+    for (let x = Math.max(0, x0); x <= Math.min(width - 1, x1); x += 1) {
+      const edge = Math.min(x - x0, x1 - x);
+      const i = (y * width + x) * 4;
+      if (edge >= rimPx && rand() > 0.05) {
+        data[i] = 235;
+        data[i + 1] = 208;
+        data[i + 2] = 158;
+      } else {
+        // Dark chipped rim, the graffiti's own ink — keeps the stroke readable on pale paint.
+        data[i] = 46;
+        data[i + 1] = 30;
+        data[i + 2] = 22;
       }
+      data[i + 3] = 255;
     }
   }
   const texture = new THREE.DataTexture(data, width, height, THREE.RGBAFormat);
@@ -190,13 +211,18 @@ function prepareStaticInstances(mesh, transforms, scratch) {
 
 function tallyTransforms() {
   const transforms = [];
+  // Chase-distance paint: one stroke ~0.42 x 1.65 WU on a radius-14 hull — a 2.4 px mark at the
+  // default chase zoom, ~6 px at chase-close, instead of the sub-pixel hairlines this grid used
+  // to stamp. Gates keep paint separation (0.39 WU gaps in a gate, 0.17 WU between gate rows);
+  // the field hugs the flat mid-deck (z centers 0.06/0.175/0.29, x 0.14 aft-ward) — the forward
+  // outboard rows used to run past the nose taper and read as floating off the hull.
   for (let i = 0; i < LIVING_HULL_KILL_TALLY_MAX; i += 1) {
     const row = Math.floor(i / 5);
     const col = i % 5;
     transforms.push({
-      position: [0.18 - col * 0.045, 0.372 + row * 0.002, 0.13 + row * 0.075],
+      position: [0.14 - col * 0.058, 0.372 + row * 0.002, 0.06 + row * 0.115],
       rotation: [-Math.PI / 2, 0, (col === 4 && row < 2) ? -0.55 : 0],
-      scale: [0.018, 0.11, 1],
+      scale: [0.03, 0.118, 1],
     });
   }
   return transforms;
@@ -269,7 +295,9 @@ export function createLivingHullPresentation(options = {}) {
     roughness: 0.92,
     metalness: 0,
     map: tallyMark,
-    alphaTest: tallyMark ? 0.45 : 0,
+    // 0.28, not 0.45: a 2-3 px mark averages ~46% alpha through the mip chain, and the old
+    // 0.45 gate is what erased the surviving fragments at chase distance.
+    alphaTest: tallyMark ? 0.28 : 0,
     side: THREE.DoubleSide,
   }), SHARED_MATERIAL_ROLE.HULL));
   const patchMaterial = stampSharedMaterialRole(new THREE.MeshStandardMaterial({

@@ -324,7 +324,7 @@ function skippedNewerNotice(skippedNewer) {
   return ` Newest save (${saveSlotLabel(skippedNewer.slot)}) was damaged — not loaded.`;
 }
 
-function saveErrorText(payload = {}) {
+export function saveErrorText(payload = {}) {
   return saveErrorReasonText(payload) + skippedNewerNotice(payload.skippedNewer);
 }
 
@@ -398,7 +398,16 @@ function saveErrorReasonText(payload = {}) {
     case 'export_failed': return 'Export failed for ' + slot;
     case 'visual_gate_failed': return 'Loaded ' + slot + ', but visuals did not finish';
     case 'deferred_transition_failed': return 'Could not finish the sector switch';
-    case 'load_failed':
+    case 'load_failed': {
+      // SFQ-B228: a failed load fails closed (rollback restored / save untouched) and the
+      // receipt carries the restore cause — say it, plus the way out, instead of a bare
+      // "failed". `region` names the damaged save region when the restore owner annotates it.
+      const detail = (payload && typeof payload.region === 'string' && payload.region)
+        ? 'damaged ' + payload.region + ' data'
+        : (payload && typeof payload.error === 'string' && payload.error ? payload.error : null);
+      if (!detail) return 'Save/load failed for ' + slot;
+      return 'Load failed — ' + detail + '. Your save is untouched; try again, or export a backup from the Save screen.';
+    }
     default:
       return 'Save/load failed for ' + slot;
   }
@@ -441,7 +450,11 @@ function wireSaveFeedback(bus) {
     // previous generation and a newer route owns the next write. Warning the player here
     // would cry failure over a deliberate replacement (New Game / Continue boundaries).
     if (payload && payload.reason === 'superseded') return;
-    bus.emit('toast', { text: saveErrorText(payload), kind: 'warn', ttl: 3200 });
+    // SFQ-B228: a load failure receipt that names its cause also states the way out — give
+    // that sentence time to be read (it is the recovery surface), unlike short write noise.
+    const loadFailureDetail = payload && payload.reason === 'load_failed'
+      && ((typeof payload.error === 'string' && payload.error) || (typeof payload.region === 'string' && payload.region));
+    bus.emit('toast', { text: saveErrorText(payload), kind: 'warn', ttl: loadFailureDetail ? 6000 : 3200 });
   });
 }
 

@@ -123,3 +123,7 @@ At each stage, play the connected route rather than merely summing component pas
 5. The existing owners/ledger identify actual completion and any approved scope revisions; these documents do not create another ongoing catalog to polish forever
 
 The mature target remains ambitious because substantial new art and behavior are ordinary work, not exceptional rewards unlocked only after all cheap fixes are exhausted. Finite packets make that ambition deliverable without confusing a production probe, a nice thumbnail or one excellent local district with the finished game.
+
+## Twenty-concept production amendment
+
+The user-authorized [twenty-concept amendment](TWENTY_CONCEPT_AMENDMENT.md) adds all SF20-01–SF20-20 to these existing P00–P21 owners. It preserves the original source history, consolidates 125 proposed leaves into coherent delivery families, and strengthens visual acceptance without creating another queue or approving held decisions. Read it before commissioning overlapping characters, machinery or encounters.

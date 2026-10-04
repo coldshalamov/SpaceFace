@@ -846,6 +846,22 @@ export const saveLoadScreen = {
       if (refs) this._render(ctx);
       if (this.hull.hasMount()) this.hull.activate(ctx);
     });
+    // SFQ-B228: a restore that fails before the start transition emits save:error, not
+    // game:startFailed — the shell lifts (loadingPresenter) but this screen kept the load
+    // latched and its stage hull released. Reset the same way so the slot is retryable now,
+    // not after the next full remount. Only load-shaped receipts qualify; write-path quota
+    // noise while the screen is open must not touch the stage.
+    const unsubLoadFailed = ctx.bus.on('save:error', (payload = {}) => {
+      const reason = payload && payload.reason;
+      if (reason !== 'load_failed' && reason !== 'restore_prepare_failed') return;
+      if (!loadRequested) return;
+      loadRequested = false;
+      cancelHullRelease();
+      if (!this.hull) return;
+      if (this.hull.restore() && refs) refs.shownShipId = null;
+      if (refs) this._render(ctx);
+      if (this.hull.hasMount()) this.hull.activate(ctx);
+    });
     // The slot list re-reads the store the moment it changes, not on the next periodic tick.
     const unsubSynced = ctx.bus.on('save:store-synced', () => { if (refs) this._render(ctx); });
     const unsubValidated = ctx.bus.on('save:slotsValidated', () => { if (refs) this._render(ctx); });
@@ -880,7 +896,7 @@ export const saveLoadScreen = {
       caption, shipName, portrait, scars, titles, rapSheet, grudge,
       objective, credits, fine, actions, facts,
       selected: null, shownShipId: null, ids: [], slots: {},
-      cancelHullRelease, unsubLoading, unsubStartFailed, unsubSynced, unsubValidated, unsubCompleted,
+      cancelHullRelease, unsubLoading, unsubStartFailed, unsubLoadFailed, unsubSynced, unsubValidated, unsubCompleted,
       markLoadRequested: () => { loadRequested = true; },
       clearLoadRequest: () => { loadRequested = false; },
     };
@@ -1428,6 +1444,7 @@ export const saveLoadScreen = {
       refs.cancelHullRelease();
       try { refs.unsubLoading(); } catch (e) { /* bus already gone */ }
       try { refs.unsubStartFailed(); } catch (e) { /* bus already gone */ }
+      try { refs.unsubLoadFailed(); } catch (e) { /* bus already gone */ }
       try { refs.unsubSynced(); } catch (e) { /* bus already gone */ }
       try { refs.unsubValidated(); } catch (e) { /* bus already gone */ }
       try { refs.unsubCompleted(); } catch (e) { /* bus already gone */ }

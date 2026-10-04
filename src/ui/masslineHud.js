@@ -860,6 +860,17 @@ function writeMasslineHudFields(fields, state, player) {
     strain = Math.round(finite(raw) * 50) / 50;
   }
   fields[index++] = strain;
+  // SFQ-B026: the LINE pill's displayed value — the display-smoothed real load-vs-break-threshold
+  // estimate, quantized like strain so the signature rolls with visible bar steps, not per-tick
+  // smoothing noise.
+  let tensionEstimate = 0;
+  if (playerState.tether && playerState.tether.active) {
+    const rawEstimate = Number.isFinite(playerState.tether.tensionEstimate)
+      ? playerState.tether.tensionEstimate
+      : finite(playerState.masslineTelemetry && playerState.masslineTelemetry.tensionEstimate);
+    tensionEstimate = Math.round(finite(rawEstimate) * 50) / 50;
+  }
+  fields[index++] = tensionEstimate;
   // FB-006 — the RIDE chip repaints when the state flips or the measured figures move a step.
   const rideMirror = playerState.tether && playerState.tether.ride;
   fields[index++] = !!(rideMirror && rideMirror.active === true);
@@ -1836,18 +1847,27 @@ export const masslineHud = {
     const strain = active
       ? (Number.isFinite(tether.strain) ? tether.strain : finite(telemetry && telemetry.strain))
       : 0;
+    // SFQ-B026: the pill displays the display-smoothed estimate of REAL constraint load vs the
+    // live break envelope — the same three legs the break authority reads, not tension alone — so
+    // a pilot can release, reel, or ease thrust before a failure lands. A save or fixture without
+    // the field degrades to the physical strain read exactly as before.
+    const shown = active
+      ? (Number.isFinite(tether.tensionEstimate)
+        ? tether.tensionEstimate
+        : (telemetry && Number.isFinite(telemetry.tensionEstimate) ? telemetry.tensionEstimate : strain))
+      : 0;
     const now = finite(state && state.simTime);
     const prev = this._lineLoad || null;
-    const trend = prev && now > prev.t ? (strain - prev.strain) / Math.max(1e-3, now - prev.t) : 0;
-    const warned = resolveLineLoadWarning(strain, trend, !!(prev && prev.warned));
-    this._lineLoad = { strain, t: now, warned };
+    const trend = prev && now > prev.t ? (shown - prev.strain) / Math.max(1e-3, now - prev.t) : 0;
+    const warned = resolveLineLoadWarning(shown, trend, !!(prev && prev.warned));
+    this._lineLoad = { strain: shown, t: now, warned };
     const share = resolveTetherShareHud(state && state.player && state.player.remoteMassline);
-    const showStrain = (active && strain > 0.02) || !!share;
+    const showStrain = (active && shown > 0.02) || !!share;
     setStyle(dom.strainPill, 'display', showStrain ? 'flex' : 'none');
     if (showStrain) {
-      const bar = share && !(strain > 0.02)
+      const bar = share && !(shown > 0.02)
         ? Math.max(share.source, share.target)
-        : strain;
+        : shown;
       setStyle(dom.strainFill, 'transform', `scaleX(${clamp01(bar)})`);
       setClass(dom.strainPill, 'ml2-warn', warned && !share);
       const label = share ? share.text : 'LINE';
@@ -1856,7 +1876,7 @@ export const masslineHud = {
         ? `Load split ${share.text}`
         : warned
           ? `Massline line load high and ${trend > 0 ? 'rising' : 'holding'} — ease the turn before it breaks`
-          : `Massline line load ${Math.round(clamp01(strain) * 100)} percent`);
+          : `Massline line load ${Math.round(clamp01(shown) * 100)} percent`);
     } else if (prev && prev.warned) {
       setClass(dom.strainPill, 'ml2-warn', false);
       if (dom.strainText && dom.strainText.textContent !== 'LINE') dom.strainText.textContent = 'LINE';

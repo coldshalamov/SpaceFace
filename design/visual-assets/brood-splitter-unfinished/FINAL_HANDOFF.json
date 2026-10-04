@@ -1,0 +1,20 @@
+{
+  "schema": "spaceface.splitterA6Handoff.v12",
+  "status": "frozen after bounded static/LOD visual acceptance",
+  "reviewManifest": "production-a6/review-v12/V12_FINAL_REVIEW_MANIFEST.json",
+  "reviewManifestSHA256": "30496babf3a513663665d1213587f2c811350d5d84ef1e7f5a7b4fc8c218d8a4",
+  "sourcePackage": "production-a6/package-v12",
+  "bodyMap": "production-a6/contracts/brood-splitter-body-map-v12.json",
+  "bodyMapSHA256": "5ecea300388c13b524887cfb6aed837d01a7d054a0e77c0380d021577ba5e541",
+  "sourceSealSHA256": "56caeb6efbf38d414ef57817b9a0cdc488ca3a2ed0b204cb6c41717644ab4b13",
+  "assetReceipt": "production-a6/package-v12/evidence/source-export-receipt.json",
+  "optimizedReceipt": "production-a6/package-v12/evidence/gltf-transform-receipt.json",
+  "noFurtherGeometryEdits": true,
+  "runtimePresentation": "static-rest; authored diagnostic jaw poses only",
+  "remainingGates": [
+    "first-visible runtime admission/LOD binding",
+    "actual runtime camera/material appearance",
+    "target-GPU cost/residency",
+    "normal release publication"
+  ]
+}

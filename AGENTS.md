@@ -132,6 +132,17 @@ No human verdict is an execution gate. Older `NEEDS HUMAN` / `owner verdict` / `
 means an independent agent review against the named evidence. Only an explicit external action the
 user requested may remain deferred.
 
+**Owner, 2026-10-04 — no playtest gates.** An agent-authored plan step that waits for the user to
+play, test, review, report back, or give feedback is not a plan step; it is a stall, and "here is
+plan A, the user will play it, then we do plan B" is a stopped program. Replace the gate with its
+agentic equivalent and proceed in the same sitting — a scripted route check, the runtime witness,
+one capped session-SHAPE playthrough (`docs/VALIDATION_WORKFLOW.md`), a fixed-seed number, or an
+independent agent review against the named evidence — then keep building. On contact with this
+rule, rewrite the plan: strike the gate, name the substitute, move on. The absence of a user
+session or verdict unblocks nothing and justifies no pause. The only standing exceptions are the
+explicit external actions the user asked for (publish, purchase, sign-up — never a gameplay
+opinion), and the quiet-host session, which is its own program (§1).
+
 ## 5. Live runtime selection
 
 | Slot | Live | Compatibility path |

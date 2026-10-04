@@ -45,6 +45,13 @@ export const BOMB_DRIFT = Object.freeze({
 // the damage packet through the one damage router. `field` payloads persist as a volume instead
 // of resolving instantly — see src/systems/bombs.js `_detonate`/`_tickField`.
 //
+// `tumbleTorque` (SFQ-B035) is the supported-torque cap the blast hands the physics authority
+// alongside the surface contact point — the same authoring convention as weapons
+// (src/data/weapons.js: impulsePerHit + tumbleTorque). A radial blast loads the facing surface,
+// so the direct torque arm is only what the hull's own shape leaves off the blast axis; the cap
+// exists so the worst off-axis case (elongated colliders, off-center sampling) stays authored
+// rather than physical. 0 is a deliberate opt-out, not an omission.
+//
 // Economy fields (PQ-205.03) — this file is the single data source for ordnance pricing:
 //   price        — credits per unit in station outfitting (bought into hangar stock).
 //   magazine     — units one fitted rack socket holds; fitting loads up to this from stock.
@@ -71,6 +78,7 @@ export const BOMB_DEFS = Object.freeze({
     triggerRadius: 44,
     radius: 96,
     impulse: 420,          // ≈13 wu/s on a pelican — the corpse flies, the target dies
+    tumbleTorque: 50,      // torpedo-detonation class (wpn_torpedo: 320 impulse, 48 cap)
     damage: 30,            // the damage verb of the bay; explosive channel split 65/35
     damageType: 'explosive',
     statuses: [],
@@ -96,6 +104,7 @@ export const BOMB_DEFS = Object.freeze({
     triggerRadius: 52,
     radius: 130,
     impulse: 1800,         // ≈56 wu/s on a pelican at contact; heavies shrug by mass
+    tumbleTorque: 110,     // the room-clearing verb tumbles with the shove it pays for
     damage: 0,
     damageType: 'explosive',
     statuses: [],
@@ -125,6 +134,7 @@ export const BOMB_DEFS = Object.freeze({
     damage: 0,
     damageType: 'plasma',
     statuses: [],
+    tumbleTorque: 0,       // a symmetric gravity well: the collapse snap stays a clean radial snap
     field: Object.freeze({
       kind: 'singularity',
       durationS: 2.8,
@@ -166,6 +176,7 @@ export const BOMB_DEFS = Object.freeze({
     damage: 6,             // the splat itself stings once; the verb is the status
     damageType: 'kinetic',
     statuses: [{ id: 'status_goo', stacks: 2 }],
+    tumbleTorque: 0,       // no blast shove, no spin — the cloud is the verb
     field: Object.freeze({
       kind: 'goo',
       dragPerS: 2.4,       // central relative speed: 9% after 1s; edge resistance tapers
@@ -195,6 +206,7 @@ export const BOMB_DEFS = Object.freeze({
     triggerRadius: 46,
     radius: 72,
     impulse: 120,          // a static crackle shoves nothing; this is a nudge, not a throw
+    tumbleTorque: 8,       // the crackle cannot spin a hull — sub-bank_stream cap
     damage: 26,            // 'emp' channel: pure ion, subsystemShare does the routing
     damageType: 'emp',
     subsystemShare: 0.85,
@@ -221,6 +233,7 @@ export const BOMB_DEFS = Object.freeze({
     triggerRadius: 44,
     radius: 104,
     impulse: 260,
+    tumbleTorque: 22,      // missile-detonation class splash (wpn_missile: 150/22)
     damage: 20,
     damageType: 'thermal',
     statuses: [{ id: 'status_burning', stacks: 2 }],
@@ -246,6 +259,7 @@ export const BOMB_DEFS = Object.freeze({
     radius: 82,
     impulse: 520,
     tangentRatio: 0.8,     // rotate the shove vector, preserving its magnitude
+    tumbleTorque: 80,      // destabilize is the verb: the highest spin cap in the bay
     damage: 4,
     damageType: 'kinetic',
     statuses: [{ id: 'status_tumbling', stacks: 1 }],
@@ -270,6 +284,7 @@ export const BOMB_DEFS = Object.freeze({
     triggerRadius: 44,
     radius: 88,
     impulse: 180,
+    tumbleTorque: 12,      // the caught hull wallows, it does not pirouette (pinned ×6 mass)
     damage: 10,
     damageType: 'kinetic',
     statuses: [{ id: 'status_pinned', stacks: 1 }],
