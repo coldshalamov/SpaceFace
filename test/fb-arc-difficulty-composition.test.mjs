@@ -120,6 +120,13 @@ test('an authored elite keeps its authored count — the cadence moves around it
   assert.equal(eliteCount(planFor(30)), 1, 'the finale still fields ONE elite');
   assert.equal(bodyTotal(planFor(30)), bodyTotal(planFor(10)),
     'and the room around it is the same bodies, asked faster and wider');
+  const eliteInput = [{
+    atTick: 0, gateGroup: 'front', role: 'elite', enemyId: 'mirrorjaw_foreman',
+    count: 1, batchSize: 1, batchGapTicks: 90,
+  }];
+  const eliteBase = { packages: eliteInput, blockingRoles: ['elite'], arenaPhase: 'idle', objective: { kind: 'resolve_hostiles' } };
+  assert.equal(composeArcWave({ ...eliteBase, wave: 21 }).packages[0].batchGapTicks, 90,
+    'act pressure never tightens the elite cadence');
 });
 
 test('a live survival run is exempt from the damage profile in both directions', () => {
