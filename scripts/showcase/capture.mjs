@@ -423,7 +423,13 @@ async function runItem(id, spec) {
     // Requiring all of them would fail specs that list optional secondaries (a
     // weapon that damages AND sometimes tumbles may legitimately land only damage).
     // The strict 'this exact thing happened' contract lives on `must`/`stat`/`mods`.
-    const evOk = evList.length ? evList.some((e) => (ev.counts[e] || 0) > 0) : true;
+    // A weapon spec's combat:damage entry must be attributed: ambient hostile guns emit
+    // the same event, so the unqualified count can pass on foreign-weapon samples. The
+    // harness keeps a per-weaponId shadow counter; the spec's own id is the match.
+    const evOk = evList.length ? evList.some((e) => {
+      const key = e === 'combat:damage' && id.startsWith('wpn_') ? `combat:damage:${id}` : e;
+      return (ev.counts[key] || 0) > 0;
+    }) : true;
     // `must` pins the signature event: an item may not pass on ambient damage/toasts alone.
     // Any demo whose whole point is pulling the trigger must show a discharge — a clip
     // that proves `ev` on collision noise alone is a silent clip shipped to the store.

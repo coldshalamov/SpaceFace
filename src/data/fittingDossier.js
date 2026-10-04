@@ -71,8 +71,8 @@ export const FITTING_DOSSIER = Object.freeze({
     tip: 'The default answer to "what do I put on a medium hardpoint".',
   },
   wpn_bank_stream_m: {
-    detail: 'A ribbon of light projectiles that ricochet off stone and hull alike. Each pellet is weak — the stream is the point.',
-    tip: 'Shoot around corners. A wall between you and the pack is a firing angle, not cover.',
+    detail: 'A ribbon of light pellets — each hit is a scratch, but the stream never stops, and every pellet shoves and twists what it lands on.',
+    tip: 'Hose a hull and the stream sands it off its line — the tumble does as much work as the damage.',
   },
   wpn_autocannon_m: {
     detail: 'Heavy armor-chewing slugs in a continuous stream. Honest damage on plated hulls, real knockback on light ones.',
@@ -159,8 +159,8 @@ export const FITTING_DOSSIER = Object.freeze({
     tip: 'Push a hull off a ledge or into traffic — collision damage does the rest.',
   },
   tool_polarity_inverter: {
-    detail: 'Inverts the target\'s massline coupling — a hull you\'re towing gets repelled instead of dragged.',
-    tip: 'Flip a tow into a launch: the tethered body shoots away under its own stored momentum.',
+    detail: 'A charge-tagging bolt: each hull it marks takes the opposite charge of the last — opposites drag together until they collide, likes push apart.',
+    tip: 'Alternate the tags down a pack and the pairs drag into each other — the collision bill is theirs, not yours.',
   },
   tool_viscosity_field: {
     detail: 'A projector that thickens the space around the target — its engines fight twice as hard for half the speed.',
@@ -171,16 +171,16 @@ export const FITTING_DOSSIER = Object.freeze({
     tip: 'Hold the beam steady and the prism sweeps the field for you.',
   },
   tool_thruster_hijacker: {
-    detail: 'Overrides the target\'s thrust vector — it accelerates in the direction you choose, not theirs.',
-    tip: 'Shove a hostile into a wall or into the middle of its own pack.',
+    detail: 'Grabs the target\'s thrusters — a live hull spins at triple its own turn rate; a dead hulk keeps burning along its own nose and rams whatever it meets.',
+    tip: 'Spin the live ones out of the firing line — or tag a hulk and let it power into the pack on its own drive.',
   },
   tool_seismic_gong: {
     detail: 'A concussive ring that detonates on impact — the blast staggers every hull in reach.',
     tip: 'The get-off-me answer when a swarm has settled onto your tail.',
   },
   tool_quantum_sympathy: {
-    detail: 'Links two hulls entangled at the quantum layer — damage done to one bleeds into the other.',
-    tip: 'Mark the toughest hull; every hit on the swarm counts twice.',
+    detail: 'Links two hulls — every shove and twist delivered to one arrives on the other. Momentum sympathy, not damage.',
+    tip: 'Link the pack\'s heavy to anything you can push — one impulse moves two hulls.',
   },
   // ---- shields ---------------------------------------------------------------
   mod_shield_booster_s: {
@@ -205,7 +205,7 @@ export const FITTING_DOSSIER = Object.freeze({
     tip: 'Speed is its own defense; a hull that outruns the pack never gets swarmed.',
   },
   mod_engine_warp_l: {
-    detail: 'The long-run drive: much faster travel between fights, without changing how you handle inside one.',
+    detail: 'The long-run drive: much faster travel between fights, with a harder launch and a firmer turn inside one.',
     tip: 'On a large hull it is the difference between arriving and arriving first.',
   },
   // ---- thrusters --------------------------------------------------------------
@@ -273,7 +273,7 @@ export const FITTING_DOSSIER = Object.freeze({
     tip: 'Drop it while you run; the missile spends its fuel on a ghost.',
   },
   mod_heat_lure_s: {
-    detail: 'A charge-thrown beacon that burns hotter than your reactor — predators and missiles chase the lie.',
+    detail: 'A charge-thrown beacon that burns hotter than your reactor — heat-hunting predators chase the lie.',
     tip: 'Throw it behind you on the way out and the pack follows the wrong scent.',
   },
   mod_pds_servo_s: {
@@ -294,15 +294,15 @@ export const FITTING_DOSSIER = Object.freeze({
     tip: 'Pays when the hull you catch is the payload — ram with it, shield the nose, or haul it home.',
   },
   mod_gravity_bumper_s_mk2: {
-    detail: 'The boost wedge that hurls whatever the nose meets — rank two holds the cone open longer, reaches farther, and lands the throw harder.',
-    tip: 'Same play — get there faster, stay longer, throw harder.',
+    detail: 'The boost wedge that hurls whatever the nose meets — rank two reaches farther and lands the throw harder.',
+    tip: 'Same play — get there faster, throw farther.',
   },
   mod_fire_lance_s_mk2: {
-    detail: 'The second-rank lance — the burn window holds longer and the flame bites hotter.',
-    tip: 'A bigger window to run the prow through the pack.',
+    detail: 'The second-rank lance — same burn, a fifth farther ahead of the nose.',
+    tip: 'A longer probe to run the prow through the pack.',
   },
   mod_grip_bumper_s_mk2: {
-    detail: 'The catch wedge — the first light hull inside the cone sticks to the prow until the boost lets go; rank two reaches farther and holds on longer.',
+    detail: 'The catch wedge — the first light hull inside the cone sticks to the prow until the boost lets go; rank two reaches farther, so the catch lands sooner.',
     tip: 'Catch a hull early and carry it through the whole pack.',
   },
   // ---- massline / tether --------------------------------------------------------
@@ -540,7 +540,7 @@ export const FITTING_DOSSIER = Object.freeze({
     tip: 'The bank that hunts: shoot the wall and the pack catches the turn.',
   },
   mod_piercing_core: {
-    detail: 'The shot keeps flying through the hull it hits — the next body in line takes the same round. Rank three pierces three deep.',
+    detail: 'The shot keeps flying through the hull it hits — the next body in line takes the same round.',
     tip: 'For the tight pack: one pull hits the hull behind the hull you aimed at.',
   },
   mod_forked_core: {
@@ -778,7 +778,8 @@ function moduleStats(def) {
   // only say Mass and Energy draw.
   const trait = ATTACK_TRAIT_BY_ID[def.id];
   if (trait) {
-    if (trait.maxRank > 1) push('Rank', `up to ${trait.maxRank}`);
+    // No 'Rank' chip: every swarm offer confers rank 1 and there is no rank-up path —
+    // naming trait.maxRank here would promise a rank this shelf never sells.
     for (const s of Array.isArray(trait.stack) ? trait.stack : []) {
       if (!s || (s.mode === 'mul' && s.perRank === 1)) continue;
       const spec = TRAIT_STACK_CHIPS[s.target];

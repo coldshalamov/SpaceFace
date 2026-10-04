@@ -89,6 +89,13 @@ async function installShowcaseApi(page) {
           if (ev === 'combat:fire' && p && p.ownerId === sf.state.playerId) {
             evCounts['combat:fire:player'] = (evCounts['combat:fire:player'] || 0) + 1;
           }
+          // combat:damage carries weaponId but the raw count is weapon-agnostic — ambient
+          // hostile guns damage the same targets the demo does, so a weapon record can pass
+          // on foreign-weapon samples. The shadow counter keeps one number per weaponId.
+          if (ev === 'combat:damage' && p && typeof p.weaponId === 'string' && p.weaponId) {
+            const key = `combat:damage:${p.weaponId}`;
+            evCounts[key] = (evCounts[key] || 0) + 1;
+          }
           if (!evWatch[ev]) evWatch[ev] = [];
           if (evWatch[ev].length < 8) evWatch[ev].push({ c, p: summarizePayload(p) });
         });
