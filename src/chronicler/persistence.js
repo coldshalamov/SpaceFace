@@ -19,7 +19,9 @@ const DETAILS = new Set(['cause', 'playerCaused', 'surface', 'victimClass', 'fac
   // Marquee-deed facts: the hull bought, the achievement unlocked, the career ladder completed,
   // and the marquee stunt trick — same `title`/`note` presentation as the authored-story facts.
   'defId', 'price', 'achievementId', 'category', 'via', 'retroactive', 'careerId',
-  'trickId', 'episodeId', 'rarity', 'baseScore', 'collateralCount']);
+  'trickId', 'episodeId', 'rarity', 'baseScore', 'collateralCount',
+  // News-headline facts: the emitter's own kind of headline (with the shared `title`/`note`).
+  'newsKind']);
 const STORY_KEYS = ['id', 'sequence', 'createdAt', 'updatedAt', 'nodes', 'edges', 'groups',
   'revision', 'signature', 'announcedRevision', 'newsRevision', 'newsAt', 'radioRevision'];
 const COUNTS = ['collisionKills', 'rescues', 'aceDefeats'];
@@ -41,6 +43,8 @@ const EVENT_STAGES = Object.freeze({
   'story:kurtzLedger': ['story'], 'story:vergeValeGatesRevoked': ['story'],
   'ship:purchased': ['story'], 'achievement:unlocked': ['story'],
   'career:ladder:completed': ['story'], 'stunt:trickDetected': ['story'],
+  // The news record channel: normalize.js files an emitter's own headline on the 'story' stage.
+  'news:headline': ['story'],
 });
 function check(ok, message) { if (!ok) throw new TypeError(`Invalid Chronicler snapshot: ${message}`); }
 function object(value, keys, path) {
