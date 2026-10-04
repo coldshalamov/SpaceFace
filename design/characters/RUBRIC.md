@@ -102,6 +102,12 @@ has negative controls so it cannot rot into a rubber stamp.
 Ambient testimony only fires after the pilot has sat quietly nearby for a full minute, never on top of
 another line, and never at the start of an encounter.
 
+**Delivery is a receipt, not a queue entry.** The game's one-voice arbiter queues a line against the sim clock and
+drops it unspoken if a longer alert holds the floor past the line's ttl; in Tethys the Customs "OFFICIAL DENIAL" alert
+(priority 80) does exactly that, which silently ate the first hello in the real-game run. The marker therefore keeps a
+small delivery record for its story lines, clears a line when the arbiter announces it took the floor (`voice:surface`),
+and otherwise re-offers it, never forcing the floor, at most twice more and only while the pilot is within earshot.
+
 ## 6. How it reads a wreck (the truth composer)
 
 `truthFacts()` reads what the sim recorded about a wreck: the aftermath marker clone (`data.aftermath`:
@@ -178,9 +184,9 @@ label). It reads `state.aftermathWrecks` markers' wreck clones and never writes 
 
 ## 10. Verification
 
-- `test/rubric.test.mjs` (29): wiring, voice lint, memory fuzz, entity legality, scope, scan consent,
+- `test/rubric.test.mjs` (30): wiring, voice lint, memory fuzz, entity legality, scope, scan consent,
   truth composer, priorities, smear, spin, danger, death, save round-trip, last layer, ambient timing,
-  **streaming with hysteresis**, the far-actor reach limit, twin cleanup, determinism, budget, and
+  **streaming with hysteresis**, the far-actor reach limit, twin cleanup, line re-offer behind a busy floor, determinism, budget, and
   **two real-Rapier proofs**: left alone it waits and marks nothing; with a line on F-41 braked to rest,
   the mark takes.
 - `test/rubric-model.test.mjs` (16): authored stamp (no "still staging"), readiness gate, pause, IK reach to the strike
@@ -189,8 +195,9 @@ label). It reads `state.aftermathWrecks` markers' wreck clones and never writes 
   renderer): real first encounter, every pose, every skin. Playable bench: `tools/rubric/bench.html`.
 - `node scripts/characters/check-rubric-live.mjs` boots the **real game**: New Game, a real gate jump into Tethys,
   nothing minted for a far pilot, one marker/hull/mark on approach and stable over time, the marker drawn by the
-  authored model and projected inside the live camera frame, a **real C key press** answered by the marker, and the
-  save round-trip, with zero page and shader errors. Caveat: the renderer holds non-essential meshes back while its
+  authored model and (once the camera has glided in) projected inside the live camera frame, a **real C key press**
+  answered by the marker with its hello taking the one-voice floor (`voice:surface`), no law, heat or damage event
+  involving any Rubric part, and the save round-trip, with zero page and shader errors. Caveat: the renderer holds non-essential meshes back while its
   sector-entry window is open, and on a GPU-less host that window can last minutes, so the check asserts the paint
   mark *builds* through the real factory always and *is drawn* whenever the window has closed (it did in the
   recorded run). The live headless pictures are chunky for every object in the scene, so the bench is the visual
