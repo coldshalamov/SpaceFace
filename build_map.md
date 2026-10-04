@@ -988,7 +988,6 @@ Lane checklist: FINISH_LANES.md §8 (PQ-032/142/152/155/156/170/172/176–178/19
 |---|---|---|---|---|
 | 280 | LG-STARTER-JOBS | Three starters are three jobs (F10/PQ-156): each starter hull ships an authored opening contract chain that only its fit can run cleanly, accepted from the ordinary board on the default route. Prior owner: onboarding/new-game defaults. Done when: a stranger flies each starter's chain to payout with no flag or debug key. | BUILD | OPEN |
 | 281 | LG-SPINE-HEADLINES | Every story beat has a physical headline verb (M5/PQ-032): beats that are text-only gain a staged physical action (tow, deliver, scan, survive) wired through the live `headlineVerb` mission seam. Prior owner: story beat content. Done when: all 8 beats each name a verb a player performs, reachable by a combat-only and a builder run on seed 4242. | BUILD | OPEN |
-| 283 | LG-VERB-CURVE | A new verb every hour for ten hours (B8/PQ-155): the verb-unlock curve is a data table keyed to hours 1–10 with each unlock wired to its live verb key (PQ-208), surfaced once in the fit/tech screen. Prior owner: tech/unlock catalog. Done when: a fixed-seed ten-hour reference route meets 10 distinct verbs, each usable the hour it unlocks. | BUILD | OPEN |
 
 ## 2. Product north star
 

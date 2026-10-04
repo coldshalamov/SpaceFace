@@ -11,6 +11,7 @@
 
 import { NEW_GAME } from './newGameDefaults.js';
 import { TECH_NODES } from './tech.js';
+import { MODULES } from './modules.js';
 import { STORY_BEATS } from './missions.js';
 import { RESEARCH_GRANTS } from './researchGrants.js';
 
@@ -517,4 +518,72 @@ export function assertCommittedLadder(ladder = TECH_VERB_LADDER) {
     errors.push('15-minute wish constant drifted');
   }
   return { ok: errors.length === 0, errors, firstUpgrade: FIRST_UPGRADE };
+}
+
+const MODULE_BY_ID = new Map(MODULES.map((mod) => [mod.id, mod]));
+
+/**
+ * LG-VERB-CURVE (row 283). Ten distinct PQ-208 verb keys, one per hour of a
+ * reference route. Each key sits on a module the named tech node unlocks, and
+ * the node's honest ladder hour is at or before the route hour, so the verb is
+ * usable when that hour arrives. Seed 4242 does not reshuffle this table: the
+ * ladder is derived from authored costs, not from rng.
+ */
+export const HOUR_VERB_CURVE = Object.freeze([
+  Object.freeze({ hour: 1, nodeId: 'tech_drive_tuning', moduleId: 'mod_jump_drive_m', verbKey: 'jumpDriveTier', label: 'Jump' }),
+  Object.freeze({ hour: 2, nodeId: 'tech_drive_tuning', moduleId: 'mod_cloak_mk2', verbKey: 'cloakBaseRadius', label: 'Cloak' }),
+  Object.freeze({ hour: 3, nodeId: 'tech_drive_tuning', moduleId: 'mod_swing_drive_m', verbKey: 'swingDrive', label: 'Swing a line' }),
+  Object.freeze({ hour: 4, nodeId: 'tech_tractor_systems', moduleId: 'mod_tractor_beam_m', verbKey: 'masslineHeadId', label: 'Tow' }),
+  Object.freeze({ hour: 5, nodeId: 'tech_tractor_systems', moduleId: 'mod_loot_magnet_s', verbKey: 'lootMagnetRange', label: 'Magnet salvage' }),
+  Object.freeze({ hour: 6, nodeId: 'tech_tractor_systems', moduleId: 'mod_mass_flail_rig_m', verbKey: 'towFlail', label: 'Flail a tow' }),
+  Object.freeze({ hour: 7, nodeId: 'tech_tractor_systems', moduleId: 'mod_grip_bumper_s', verbKey: 'hullBurst', label: 'Bumper hurl' }),
+  Object.freeze({ hour: 8, nodeId: 'tech_impulse_ballistics', moduleId: 'mod_charge_vector_rack', verbKey: 'impulseChargeCapacity', label: 'Throw a charge' }),
+  Object.freeze({ hour: 9, nodeId: 'tech_drone_control', moduleId: 'mod_drone_bay_l', verbKey: 'droneBay', label: 'Launch a drone' }),
+  Object.freeze({ hour: 10, nodeId: 'tech_fire_control', moduleId: 'mod_pds_servo_s', verbKey: 'pointDefense', label: 'Point defense' }),
+]);
+
+function moduleCarriesVerbKey(mod, verbKey) {
+  if (!mod || !verbKey) return false;
+  if (mod[verbKey] != null) return true;
+  return !!(mod.mods && mod.mods[verbKey] != null);
+}
+
+/** One line the research screen prints under its title. */
+export function hourVerbCurveLine(curve = HOUR_VERB_CURVE) {
+  return curve.map((row) => `${row.hour} ${row.label}`).join(' · ');
+}
+
+/**
+ * Why a curve row would not be usable on the reference route. Empty when the
+ * live node still unlocks the module, the module still carries the verb key,
+ * and the honest ladder hour is at or before the route hour.
+ */
+export function hourVerbCurveGaps(curve = HOUR_VERB_CURVE, ladder = TECH_VERB_LADDER, nodes = TECH_NODES) {
+  const gaps = [];
+  const hours = new Set();
+  const keys = new Set();
+  const byNode = new Map(nodes.map((node) => [node.id, node]));
+  const byHour = new Map(ladder.map((row) => [row.nodeId, row.hour]));
+  for (const row of curve) {
+    if (hours.has(row.hour)) gaps.push(`hour ${row.hour} repeated`);
+    hours.add(row.hour);
+    if (keys.has(row.verbKey)) gaps.push(`verb ${row.verbKey} repeated`);
+    keys.add(row.verbKey);
+    const node = byNode.get(row.nodeId);
+    const modules = node && node.unlocks && node.unlocks.modules;
+    if (!node || !Array.isArray(modules) || !modules.includes(row.moduleId)) {
+      gaps.push(`${row.nodeId} does not unlock ${row.moduleId}`);
+    }
+    if (!moduleCarriesVerbKey(MODULE_BY_ID.get(row.moduleId), row.verbKey)) {
+      gaps.push(`${row.moduleId} does not carry ${row.verbKey}`);
+    }
+    const honest = byHour.get(row.nodeId);
+    if (!(typeof honest === 'number' && honest <= row.hour)) {
+      gaps.push(`${row.verbKey} honest hour ${honest} is after route hour ${row.hour}`);
+    }
+  }
+  for (let hour = 1; hour <= 10; hour += 1) {
+    if (!hours.has(hour)) gaps.push(`missing hour ${hour}`);
+  }
+  return gaps;
 }

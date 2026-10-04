@@ -19,7 +19,7 @@ import { createConstellation } from '../orrery/constellation.js';
 import { injectConstellationScreens, legendStarSvg } from '../orrery/constellationLayouts.js';
 import { rollTo, decrypt } from '../orrery/text.js';
 import { TECH_NODES } from '../../data/tech.js';
-import { verbForNodeId } from '../../data/techVerbLadder.js';
+import { hourVerbCurveLine, verbForNodeId } from '../../data/techVerbLadder.js';
 import { SHIPS } from '../../data/ships.js';
 import { MODULES } from '../../data/modules.js';
 import { WEAPONS } from '../../data/weapons.js';
@@ -234,6 +234,9 @@ export const techTreeScreen = {
     head.appendChild(heading);
     const branchLine = el('p', 'k-t-emph k-62 con-sub', 'Select a node');
     head.appendChild(branchLine);
+    const curveLine = el('p', 'k-t-fine con-curve', hourVerbCurveLine());
+    curveLine.dataset.hourVerbCurve = '1';
+    head.appendChild(curveLine);
     rootEl.appendChild(head);
 
     // .k-corner — credits, research points, unlocked n/N as three thin readings.
