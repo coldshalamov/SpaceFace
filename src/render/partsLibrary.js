@@ -359,6 +359,7 @@ let fallbackPlaceGeometry = null;
 let fallbackStationCoreGeometry = null;
 let fallbackStationRingGeometry = null;
 let fallbackStationSparGeometry = null;
+let boundsProxyGeometry = null;
 
 // Runtime slots mirror assets/ships/parts/parts_manifest.json. Only list files that are actually
 // vendored; missing slots fall back procedurally instead of producing browser 404s.
@@ -5339,8 +5340,25 @@ function getFallbackStationSparGeometry() {
   return fallbackStationSparGeometry;
 }
 
+// Hidden bounds/debug proxy: identical on every composed hull, so one shared box uploads once
+// and the residency census stamps a single resident buffer for the whole fleet. Both shared
+// flags ride on it (owner-local sets check spacefaceSharedFallback, teardown traversals check
+// spacefaceSharedAsset) and dispose is a no-op — a retiring hull must never kill it.
+function getBoundsProxyGeometry() {
+  if (!boundsProxyGeometry) {
+    boundsProxyGeometry = markSharedFallbackGeometry(new THREE.BoxGeometry(1.8, 0.72, 1.18));
+    boundsProxyGeometry.userData.spacefaceSharedAsset = true;
+    boundsProxyGeometry.dispose = () => {};
+  }
+  return boundsProxyGeometry;
+}
+
+// Shared fallbacks are module-lifetime objects: owner-local sets skip them by flag and any
+// teardown path that disposes blind (flight-template finalize included) hits the no-op —
+// a retiring owner or evicted template must never take a shared buffer down with it.
 function markSharedFallbackGeometry(geometry) {
   geometry.userData = { ...(geometry.userData || {}), spacefaceSharedFallback: true };
+  geometry.dispose = () => {};
   return geometry;
 }
 
@@ -9590,8 +9608,9 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
   };
 
   yield;
+  let hullPartRoot = null;
   if (hullRecord) {
-    instantiatePart(hullRecord, hull, {
+    hullPartRoot = instantiatePart(hullRecord, hull, {
       position: [0, 0, 0], targetLength: 1.72, label: 'Hull',
     }, palette, scene, ownerBoundary, bindings, mutableMaterials, staticBatches);
     noteUsed('hull', hullRecord);
@@ -9734,7 +9753,7 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
     ownerLocalFallbackRoots.push(buildFallbackNavLights(hull, materials, bindings));
   }
   ensureStandardSockets(hull);
-  attachRetroMounts(hull, entity, palette, selected.get('engine')?.url, hullRecord);
+  attachRetroMounts(hull, entity, palette, selected.get('engine')?.url, hullRecord, hullPartRoot);
 
   // PQ-176.04 — VISIBLE BUILDS. Fitted hardware rides the authored SOCKET_* contract so a refit
   // reads on the hull: budget-heavy modules bolt on, whole-ship bodies sprout the guns actually
@@ -9838,7 +9857,7 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
   // Hidden geometry gives object-space tools/debuggers useful bounds even though opaque authored
   // surfaces are rendered by scene-level instance pools rather than as children of this root.
   const boundsProxy = new THREE.Mesh(
-    new THREE.BoxGeometry(1.8, 0.72, 1.18),
+    getBoundsProxyGeometry(),
     new THREE.MeshBasicMaterial({ visible: false })
   );
   boundsProxy.name = 'GLTFKit_BoundsProxy';
@@ -9846,7 +9865,7 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
   boundsProxy.userData.keepSeparate = true;
   hull.add(boundsProxy);
 
-  const ownerLocalGeometries = new Set([boundsProxy.geometry]);
+  const ownerLocalGeometries = new Set();
   const ownerLocalMaterials = new Set([
     ...builtFallbackMaterials,
     ...mutableMaterials.values(),
@@ -10237,17 +10256,28 @@ function createFlightTemplateRoot(sourceRoot) {
     object.userData = sanitizeFlightTemplateUserData(object.userData);
     object.userData.spacefaceFlightTemplatePath = (objectPathFromRoot(templateRoot, object) || []).join('/');
     if (object.geometry) {
-      let geometry = geometries.get(object.geometry);
-      if (!geometry) {
-        geometry = typeof object.geometry.clone === 'function' ? object.geometry.clone() : object.geometry;
-        geometry.userData = {
-          ...(geometry.userData || {}),
-          spacefaceFlightTemplateGeometry: true,
-          spacefaceSharedAsset: true,
-        };
-        geometries.set(object.geometry, geometry);
+      // Fleet-shared bakes (retro packs, bounds proxy, other spacefaceSharedAsset geometry) are
+      // immutable and disposal-proofed by construction — the template must alias them. Cloning
+      // one made every template's instances draw unique buffers, which is exactly the +29s
+      // Retro_*/BoundsProxy upload burst the D160 witness measured at wave materialization.
+      const shared = object.geometry.userData
+        && (object.geometry.userData.spacefaceSharedAsset === true
+          || object.geometry.userData.spacefaceSharedFallback === true);
+      if (shared) {
+        geometries.set(object.geometry, object.geometry);
+      } else {
+        let geometry = geometries.get(object.geometry);
+        if (!geometry) {
+          geometry = typeof object.geometry.clone === 'function' ? object.geometry.clone() : object.geometry;
+          geometry.userData = {
+            ...(geometry.userData || {}),
+            spacefaceFlightTemplateGeometry: true,
+            spacefaceSharedAsset: true,
+          };
+          geometries.set(object.geometry, geometry);
+        }
+        object.geometry = geometry;
       }
-      object.geometry = geometry;
     }
     if (object.material) object.material = cloneFlightTemplateMaterials(object.material, materials);
   });
@@ -10790,6 +10820,14 @@ export function runFlightRootTemplateCacheProbe() {
   );
   mesh.userData.spacefaceStaticBatch = true;
   hull.add(mesh);
+  // A fleet-shared bake (retro-pack geometry, bounds proxy): the template must alias it, not
+  // clone it — cloned shared geometry re-uploads per template at first draw.
+  const sharedGeometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+  sharedGeometry.userData.spacefaceSharedAsset = true;
+  sharedGeometry.dispose = () => {};
+  const sharedMesh = new THREE.Mesh(sharedGeometry, new THREE.MeshStandardMaterial({ color: 0x445566 }));
+  sharedMesh.name = 'Probe_SharedBake';
+  hull.add(sharedMesh);
   const entry = createFlightRootTemplateEntry({
     root: source,
     bindings: createBindings(),
@@ -10813,10 +10851,12 @@ export function runFlightRootTemplateCacheProbe() {
   const second = instantiateFlightRootTemplate(entry, entity, 'probe', 'probe', 1);
   const firstMesh = first && first.root.getObjectByName(mesh.name);
   const secondMesh = second && second.root.getObjectByName(mesh.name);
+  const firstShared = first && first.root.getObjectByName('Probe_SharedBake');
   const result = {
     distinctRoots: !!first && !!second && first.root !== second.root,
     sharedGeometry: !!firstMesh && !!secondMesh && firstMesh.geometry === secondMesh.geometry,
     distinctMaterials: !!firstMesh && !!secondMesh && firstMesh.material !== secondMesh.material,
+    sharedBakeAliased: !!firstShared && firstShared.geometry === sharedGeometry,
     reboundHooks: !!first && typeof first.root.userData.updateLod === 'function'
       && typeof first.root.userData.updateDamageState === 'function',
   };
