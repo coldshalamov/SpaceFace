@@ -100,7 +100,7 @@ export const FITTING_DOSSIER = Object.freeze({
   },
   wpn_torpedo_l: {
     detail: 'A long-range homing torpedo with a fat warhead. Slow to lock, slower to fly, devastating on arrival.',
-    tip: 'Fire from deep range and let it run — it out-reaches everything on the field.',
+    tip: 'Fire from deep range and let it run — it keeps tracking where a straight shot runs out.',
   },
   wpn_siege_lance_l: {
     detail: 'A fixed spinal slug — the hardest single hit in the catalog, at extreme range.',
@@ -615,8 +615,8 @@ export const HULL_DOSSIER = Object.freeze({
   ship_atlas: { detail: 'A capital freighter — six L cargo bays, the biggest hold on the shelf.', tip: 'For the run that is really a logistics operation.' },
   ship_ranger: { detail: 'A long-range skirmisher — three guns and four L utility bays for the scanner/stealth kit.', tip: 'For the ghost run that wants to see before it is seen.' },
   ship_warden: { detail: 'A heavy patrol hull — four L guns and a shield that takes a hit.', tip: 'For the capital build that wants to be the wall.' },
-  ship_colossus: { detail: 'Six L guns and five L utility bays — the full combat platform.', tip: 'For the run that wants every toy at once.' },
-  ship_leviathan: { detail: 'The biggest thing on the shelf — eight L guns and a small fleet\'s worth of utility.', tip: 'For the run that wants to be the boss.' },
+  ship_colossus: { detail: 'Five L guns and five L utility bays — the full combat platform.', tip: 'For the run that wants every toy at once.' },
+  ship_leviathan: { detail: 'The biggest thing on the shelf — seven L guns and a small fleet\'s worth of utility.', tip: 'For the run that wants to be the boss.' },
   ship_saucer: { detail: 'A shield-heavy capital — the survivability pick over raw volume.', tip: 'For the run that wants to outlast the swarm, not outgun it.' },
 });
 
