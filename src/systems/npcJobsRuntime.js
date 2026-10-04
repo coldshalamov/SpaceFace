@@ -130,6 +130,16 @@ const NPC_MINER_CADENCE_DEPLETION_START = 0.04;
 const NPC_MINER_FIELD_RETARGET_INTERVAL_S = 1;
 const NPC_MINER_BASE_WORK_S = 30;
 const NPC_MINER_THIN_WORK_S = 54;
+// SF-078: a surveyor's WORK completion is a real measurement — the marks it stopped at
+// leave bounded readings (field, position, depletion, age) in a per-sector ledger. The
+// next mining shift consumes them: a fresh mark that found a workable field ranks that
+// field ahead of unsurveyed ground when a miner relocates. Marks age out, a field that
+// is live-exhausted is refused no matter what the mark once read, and a mark in empty
+// space records nothing — reports must age honestly, never mint a strike.
+const NPC_SURVEY_MARK_RANGE_WU = 1400;
+const NPC_SURVEY_MARK_FIELDS_PER_STOP = 2;
+const NPC_SURVEY_MARK_FRESH_S = 420;
+const NPC_SURVEY_MARK_LEDGER_MAX = 24;
 // One barge in the Helios starter field. The shift is a slice of the job's own WORK phase:
 // long enough for the live beam to bite, short enough that it stops while the rock is still a rock.
 const HELIOS_STARTER_SECTOR_ID = 'sector_helios_prime';
@@ -1059,10 +1069,17 @@ export const npcJobsRuntime = {
       || Array.isArray(state.npcJobs.lots)) {
       state.npcJobs.lots = {};
     }
+    // SF-078: the survey ledger. A bounded FIFO list per sector of what surveyors measured —
+    // durable knowledge, so it persists like the lot ledger.
+    if (!state.npcJobs.surveyMarks || typeof state.npcJobs.surveyMarks !== 'object'
+      || Array.isArray(state.npcJobs.surveyMarks)) {
+      state.npcJobs.surveyMarks = {};
+    }
     return state.npcJobs;
   },
   _byId() { return this._ensureState().byId; },
   _lots() { return this._ensureState().lots; },
+  _surveyMarks() { return this._ensureState().surveyMarks; },
   _invalidateJobIds() {
     this._jobIdsDirty = true;
     this._goneIndexDirty = true;
@@ -1104,6 +1121,12 @@ export const npcJobsRuntime = {
     if (entry.job?.payload?.choirRelief === true) return;
     const lots = this._lots();
     const now = Number(this.state && this.state.simTime) || 0;
+    // SF-078: a surveyor's WORK completion IS the measurement — the mark it stopped at
+    // gets read against live field rocks, and whatever the sweep found enters the ledger.
+    if (intent.event === 'npcjobs:work' && intent.kind === NPC_JOB_KIND.SURVEYOR) {
+      this._recordSurveyorMeasurement(intent, sectorId, now);
+      return;
+    }
     if (intent.event === 'npcjobs:unload' && intent.kind === NPC_JOB_KIND.MINER) {
       const loop = entry && entry.job ? entry.job.loopCount | 0 : 0;
       const posted = { lotId: `lot:${intent.jobId}:l${loop}`, kind: 'ore', postedBy: intent.jobId, postedAt: now, sectorId };
@@ -1137,6 +1160,76 @@ export const npcJobsRuntime = {
         this._publishShortRunNews(intent, entry, sectorId, now);
       }
     }
+  },
+
+  /**
+   * SF-078: write a surveyor's completed measurement stop into the sector's bounded mark
+   * ledger. The stop's position is the completed waypoint (`intent.pos`); whatever field
+   * rocks sit inside its sweep radius are measured — position and live depletion, latest
+   * reading per field wins, empty ground records nothing. Advisory like the lot ledger:
+   * a ledger failure must not corrupt the record the kernel just wrote.
+   */
+  _recordSurveyorMeasurement(intent, sectorId, now) {
+    const pos = intent && intent.pos;
+    if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return;
+    // Nearest live rock per field inside the sweep — one mark per field, not per rock.
+    const nearestByField = new Map();
+    forEachFieldRock(this.state, (asteroid) => {
+      if (!asteroid || asteroid.alive === false || !asteroid.pos) return;
+      const data = asteroid.data || {};
+      if (data.siteAnchored || data.respawnAt != null) return;
+      const fieldId = cleanFieldId(data.fieldId);
+      if (!fieldId) return;
+      const dx = asteroid.pos.x - pos.x;
+      const dz = asteroid.pos.z - pos.z;
+      const d2 = dx * dx + dz * dz;
+      if (d2 > NPC_SURVEY_MARK_RANGE_WU * NPC_SURVEY_MARK_RANGE_WU) return;
+      const held = nearestByField.get(fieldId);
+      if (held && held.d2 <= d2) return;
+      nearestByField.set(fieldId, { asteroid, fieldId, d2 });
+    });
+    if (!nearestByField.size) return;
+    const found = [...nearestByField.values()].sort((a, b) => (a.d2 - b.d2)
+      || (a.fieldId < b.fieldId ? -1 : a.fieldId > b.fieldId ? 1 : 0));
+    const marks = this._surveyMarks();
+    const list = marks[sectorId] || (marks[sectorId] = []);
+    const measured = [];
+    for (const hit of found.slice(0, NPC_SURVEY_MARK_FIELDS_PER_STOP)) {
+      const mark = {
+        fieldId: hit.fieldId,
+        asteroidId: hit.asteroid.id,
+        pos: { x: hit.asteroid.pos.x, z: hit.asteroid.pos.z },
+        depletion: this._fieldDepletionValue(hit.fieldId),
+        measuredAt: now,
+        jobId: intent.jobId || null,
+      };
+      const at = list.findIndex((row) => row && row.fieldId === mark.fieldId);
+      if (at >= 0) list.splice(at, 1);
+      list.push(mark);
+      measured.push(mark);
+      if (this.bus && typeof this.bus.emit === 'function') {
+        this.bus.emit('npcjobs:surveyMarked', {
+          jobId: mark.jobId, sectorId, fieldId: mark.fieldId,
+          pos: mark.pos, depletion: mark.depletion, measuredAt: mark.measuredAt,
+          waypointId: intent.waypointId || intent.field || null, simTime: now,
+        });
+      }
+    }
+    while (list.length > NPC_SURVEY_MARK_LEDGER_MAX) list.shift();
+    return measured;
+  },
+
+  /** The latest mark for a field still young enough to steer a work choice. */
+  _freshSurveyMark(sectorId, fieldId, now) {
+    const list = this._surveyMarks()[sectorId];
+    if (!Array.isArray(list)) return null;
+    for (let i = list.length - 1; i >= 0; i--) {
+      const mark = list[i];
+      if (!mark || mark.fieldId !== fieldId) continue;
+      const age = now - finite(mark.measuredAt, -Infinity);
+      return age >= 0 && age <= NPC_SURVEY_MARK_FRESH_S ? mark : null;
+    }
+    return null;
   },
 
   // INF: the destination berth of an empty run says the chain broke. The job's dest waypoint
@@ -3369,11 +3462,14 @@ export const npcJobsRuntime = {
         oldAsteroidId: oldAsteroid && oldAsteroid.id,
         anchor,
         jobId,
+        sectorId: entry.sectorId || currentSector,
       });
       if (!target) {
         blocked = true;
         continue;
       }
+      const toFieldId = cleanFieldId(target.data && target.data.fieldId);
+      const mark = this._freshSurveyMark(entry.sectorId || currentSector, toFieldId, simT);
       const waypoint = field.waypoint;
       waypoint.id = `field:${target.id}`;
       waypoint.label = 'Fresh Belt';
@@ -3390,13 +3486,18 @@ export const npcJobsRuntime = {
           jobId,
           minerId: entry.entityId == null ? null : entry.entityId,
           fromFieldId: fieldId,
-          toFieldId: cleanFieldId(target.data && target.data.fieldId),
+          toFieldId,
           fromAsteroidId: oldAsteroid && oldAsteroid.id,
           toAsteroidId: target.id,
           sectorId: currentSector,
           depletion: pending && pending.depletion != null ? pending.depletion : this._fieldDepletionValue(fieldId),
           simTime: simT,
           reason: pending && pending.reason || 'field_depleted',
+          // SF-078: when a fresh survey mark steered the choice, say so on the wire — the
+          // relocation names the reading it followed instead of looking like a prewritten move.
+          surveyMark: mark
+            ? { fieldId: mark.fieldId, depletion: mark.depletion, measuredAt: mark.measuredAt }
+            : null,
         });
       }
     }
@@ -3468,8 +3569,9 @@ export const npcJobsRuntime = {
     return clamp(finite(rec && rec.depletion, 0), 0, 1);
   },
 
-  _selectFreshMinerFieldTarget({ oldFieldId, oldAsteroidId, anchor, jobId }) {
+  _selectFreshMinerFieldTarget({ oldFieldId, oldAsteroidId, anchor, jobId, sectorId = null }) {
     const seed = (this.state.meta && this.state.meta.seed) || 1;
+    const now = finite(this.state && this.state.simTime, 0);
     const ax = anchor && Number.isFinite(anchor.x) ? anchor.x : 0;
     const az = anchor && Number.isFinite(anchor.z) ? anchor.z : 0;
     const candidates = [];
@@ -3484,23 +3586,33 @@ export const npcJobsRuntime = {
       if (depletion >= NPC_MINER_SEAM_EXHAUSTED_DEPLETION) return;
       const dx = asteroid.pos.x - ax;
       const dz = asteroid.pos.z - az;
+      // SF-078: a fresh survey mark is the crew's best reading of the field — measured
+      // ground outranks unsurveyed ground, and marks rank by what they read.
+      const mark = this._freshSurveyMark(sectorId, fieldId, now);
       candidates.push({
         asteroid,
         depletion,
+        surveyed: mark ? mark.depletion : null,
         d2: dx * dx + dz * dz,
         fieldId,
         tie: hash32(seed, 'miner-field-retarget', oldFieldId, jobId, fieldId, asteroid.id),
       });
     });
     if (!candidates.length) return null;
-    candidates.sort((a, b) => (a.depletion - b.depletion)
+    candidates.sort((a, b) => ((a.surveyed == null) - (b.surveyed == null))
+      || ((a.surveyed ?? a.depletion) - (b.surveyed ?? b.depletion))
       || (a.d2 - b.d2)
       || (a.fieldId < b.fieldId ? -1 : a.fieldId > b.fieldId ? 1 : 0)
       || (a.tie - b.tie)
       || String(a.asteroid.id).localeCompare(String(b.asteroid.id)));
-    const spread = Math.min(4, candidates.length);
+    // The four-rock spread keeps barges off one face — but when fresh marks exist the
+    // shift relocates onto measured ground, so the spread pool is the surveyed head only.
+    const pool = candidates.some((c) => c.surveyed != null)
+      ? candidates.filter((c) => c.surveyed != null)
+      : candidates;
+    const spread = Math.min(4, pool.length);
     const index = hash32(seed, 'miner-field-retarget-spread', oldFieldId, jobId) % spread;
-    return candidates[index].asteroid;
+    return pool[index].asteroid;
   },
 
   // ── Helios starter field: one miner, one rock, the live beam ────────────────────────────
@@ -5439,6 +5551,12 @@ export const npcJobsRuntime = {
     if (lots && typeof lots === 'object' && !Array.isArray(lots) && Object.keys(lots).length) {
       out.lots = JSON.parse(JSON.stringify(lots));
     }
+    // SF-078: survey marks are durable knowledge — a Continue restores what the sweep
+    // already measured; the same freshness window decides whether it still steers work.
+    const marks = this.state.npcJobs && this.state.npcJobs.surveyMarks;
+    if (marks && typeof marks === 'object' && !Array.isArray(marks) && Object.keys(marks).length) {
+      out.surveyMarks = JSON.parse(JSON.stringify(marks));
+    }
     return out;
   },
 
@@ -5498,7 +5616,7 @@ export const npcJobsRuntime = {
       };
       yield 'npcjobs-job';
     }
-    this.state.npcJobs = { byId, siteCouriers: {}, lots: {}, revision: 0 };
+    this.state.npcJobs = { byId, siteCouriers: {}, lots: {}, surveyMarks: {}, revision: 0 };
     this._invalidateJobIds();
     if (data && data.siteCouriers && typeof data.siteCouriers === 'object' && !Array.isArray(data.siteCouriers)) {
       this.state.npcJobs.siteCouriers = JSON.parse(JSON.stringify(data.siteCouriers));
@@ -5515,6 +5633,28 @@ export const npcJobsRuntime = {
           postedAt: Number.isFinite(Number(lot.postedAt)) ? Number(lot.postedAt) : 0,
           sectorId,
         };
+      }
+    }
+    // SF-078: restore survey marks, dropping malformed rows (a corrupt mark is dropped,
+    // never resurrected — same fail-safe as corrupt job records and lots above).
+    if (data && data.surveyMarks && typeof data.surveyMarks === 'object' && !Array.isArray(data.surveyMarks)) {
+      for (const [sectorId, rows] of Object.entries(data.surveyMarks)) {
+        if (!sectorId || !Array.isArray(rows)) continue;
+        const list = [];
+        for (const row of rows) {
+          if (!row || typeof row !== 'object' || typeof row.fieldId !== 'string' || !row.fieldId) continue;
+          if (!row.pos || !Number.isFinite(Number(row.pos.x)) || !Number.isFinite(Number(row.pos.z))) continue;
+          if (!Number.isFinite(Number(row.depletion)) || !Number.isFinite(Number(row.measuredAt))) continue;
+          list.push({
+            fieldId: row.fieldId,
+            asteroidId: row.asteroidId != null ? row.asteroidId : null,
+            pos: { x: Number(row.pos.x), z: Number(row.pos.z) },
+            depletion: clamp(finite(Number(row.depletion), 0), 0, 1),
+            measuredAt: Number(row.measuredAt),
+            jobId: typeof row.jobId === 'string' ? row.jobId : null,
+          });
+        }
+        if (list.length) this.state.npcJobs.surveyMarks[sectorId] = list.slice(-NPC_SURVEY_MARK_LEDGER_MAX);
       }
     }
     this._threatQueries?.reset();
