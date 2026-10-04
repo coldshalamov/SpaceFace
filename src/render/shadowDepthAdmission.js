@@ -175,11 +175,15 @@ function materialCanCastShadow(material) {
 // that skips the signature-string mints + staged-set probes
 // collectUnstagedShadowCasters pays per caster — the arm's per-slice recollect
 // re-derives the genuinely-unstaged set anyway.
-export function collectPotentialShadowCastSubjects(roots) {
+export function collectPotentialShadowCastSubjects(roots, nodeBudget = null) {
   const list = Array.isArray(roots) ? roots : [roots];
   const casting = [];
   const seen = new Set();
   const visit = (object) => {
+    // Traverse cost, not caster count: one fat packaged subtree could pay an
+    // unbounded walk inside the presented frame, so callers pass a shared
+    // {remaining} budget the walk debits per visited node.
+    if (nodeBudget && (nodeBudget.remaining -= 1) < 0) throw _walkBudgetAbort;
     if (!object || seen.has(object)) return;
     const drawable = object.isMesh === true
       || object.isSkinnedMesh === true
@@ -286,9 +290,21 @@ export function casterDepthMarkCurrent(caster, lightSig) {
  * paying signature mints + staged-Set probes per caster. The arm re-collects with the
  * full signature path at its own deadline — this is only the withhold decision.
  */
-export function collectUnstagedShadowCastersFlag(roots, lightSig) {
-  const casting = collectPotentialShadowCastSubjects(roots);
-  if (casting.length === 0) return casting;
+// Returned by collectUnstagedShadowCastersFlag when the shared node budget ran
+// out mid-walk: the caller over-covers (whole-subtree withhold) instead of
+// trusting a partial unstaged set — the arm's collect re-derives for real.
+export const UNSTAGED_COLLECT_OVER_COVER = 'sfUnstagedCollectOverCover';
+const _walkBudgetAbort = new Error('sf-shadow-collect-node-budget');
+
+export function collectUnstagedShadowCastersFlag(roots, lightSig, nodeBudget = null) {
+  let casting;
+  try {
+    casting = collectPotentialShadowCastSubjects(roots, nodeBudget);
+  } catch (error) {
+    if (error === _walkBudgetAbort) return UNSTAGED_COLLECT_OVER_COVER;
+    throw error;
+  }
+  if (casting === UNSTAGED_COLLECT_OVER_COVER || casting.length === 0) return casting;
   const unstaged = [];
   for (const caster of casting) {
     // A caster that cannot mint a signature (no material uuid, or every material

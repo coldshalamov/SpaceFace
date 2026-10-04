@@ -343,6 +343,7 @@ import {
   createShadowDepthStagingSession,
   disposeAdmissionShadowResources,
   lightCensusSignature,
+  UNSTAGED_COLLECT_OVER_COVER,
 } from './shadowDepthAdmission.js';
 import { preloadRockSurfaceLibrary } from './rockSurfaceLibrary.js';
 import { preloadRockFamilyLibrary } from './rockFamilyLibrary.js';
@@ -1797,6 +1798,10 @@ function reattachAuthoredReadmission(owner, entity, mesh, state) {
 // mass-despawn hitch — and it spreads across frames instead of landing in one sim step.
 const DESPAWN_DISPOSE_DRAIN_MAX = 8;
 const DESPAWN_DISPOSE_BUDGET_MS = 2;
+// Sustained busy frames can't defer GL reclaim forever: after this many skipped
+// drains the lane runs its bounded min-item slice anyway — same aging contract
+// the glTF compile drain and the depth arm already carry.
+const DESPAWN_DISPOSE_LEDGER_MAX_SKIPS = 2;
 
 function drainDespawnDisposeQueue(owner, budgetMs = DESPAWN_DISPOSE_BUDGET_MS) {
   const queue = owner && owner._despawnDisposeQueue;
@@ -1805,7 +1810,14 @@ function drainDespawnDisposeQueue(owner, budgetMs = DESPAWN_DISPOSE_BUDGET_MS) {
     ? performance.now() : Date.now());
   // A spent paced window skips this drain entirely — the corpses keep one more
   // frame rather than stacking a fresh slice on a frame that's already over.
-  if (pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) return 0;
+  // The aging cap mirrors the other paced lanes' so a permanently-busy stretch
+  // can't starve corpse/GL reclaim indefinitely.
+  if (pacedFrameSpend() >= PACED_FRAME_BUDGET_MS
+      && (owner._despawnDisposeLedgerSkips | 0) < DESPAWN_DISPOSE_LEDGER_MAX_SKIPS) {
+    owner._despawnDisposeLedgerSkips = (owner._despawnDisposeLedgerSkips | 0) + 1;
+    return 0;
+  }
+  owner._despawnDisposeLedgerSkips = 0;
   const startedAt = now();
   const deadline = startedAt + Math.max(0, Number(budgetMs) || 0);
   // Backlog-scaled count: the fixed cap binds before the ms deadline on cheap disposes,
@@ -5993,6 +6005,10 @@ const SHADOW_DEPTH_LEDGER_MAX_SKIPS = 2;
 // carry, free to re-stamp while dirty) and let the arm's own collect re-derive
 // the genuinely-unstaged set behind the frame.
 const SHADOW_DEPTH_PASS_COLLECT_CAP = 8;
+// The walk itself is also bounded — the root cap can't see a single fat
+// subtree, so all collects in a pass share this node budget; a subtree that
+// outruns it aborts and over-covers the same way.
+const SHADOW_DEPTH_PASS_NODE_CAP = 4096;
 
 // Nearest ancestor that owns a shadow-caster policy record (same userData key as
 // shadowCasterPolicy.js), else the direct scene child — the granularity the arm's
@@ -21144,7 +21160,9 @@ export const render = {
     if (parked && parkedEntry) {
       parkedEntry.recheck = (parkedEntry.recheck || 0) - 1;
       if (parkedEntry.recheck <= 0) {
-        parkedEntry.recheck = 96;
+        // Re-arm under the same spread the mint used — a same-arm parked cohort
+        // expires staggered instead of stacking its collects into one sync.
+        parkedEntry.recheck = 96 + (parkedMap.size % 32);
         parkedRecheck = true;
       }
     }
@@ -21164,13 +21182,26 @@ export const render = {
     if (this._depthCollectPassSeq !== collectSeq) {
       this._depthCollectPassSeq = collectSeq;
       this._depthCollectPassCount = 0;
+      this._depthCollectNodesLeft = SHADOW_DEPTH_PASS_NODE_CAP;
     }
-    const overCovered = collectGate
-      && (this._depthCollectPassCount | 0) >= SHADOW_DEPTH_PASS_COLLECT_CAP;
-    const unstaged = (collectGate && !overCovered)
-      ? (this._depthCollectPassCount = (this._depthCollectPassCount | 0) + 1,
-        collectUnstagedShadowCastersFlag([root], this._shadowCensusForFrame()))
-      : null;
+    let overCovered = collectGate
+      && ((this._depthCollectPassCount | 0) >= SHADOW_DEPTH_PASS_COLLECT_CAP
+        || (this._depthCollectNodesLeft | 0) <= 0);
+    let unstaged = null;
+    if (collectGate && !overCovered) {
+      this._depthCollectPassCount = (this._depthCollectPassCount | 0) + 1;
+      const nodeBudget = { remaining: this._depthCollectNodesLeft | 0 };
+      const found = collectUnstagedShadowCastersFlag(
+        [root], this._shadowCensusForFrame(), nodeBudget);
+      this._depthCollectNodesLeft = nodeBudget.remaining;
+      if (found === UNSTAGED_COLLECT_OVER_COVER) {
+        // The walk outran the shared node budget mid-traverse — a partial set
+        // can't be trusted, so over-cover exactly like the root-cap overflow.
+        overCovered = true;
+      } else {
+        unstaged = found;
+      }
+    }
     // The collect evaluated this generation — stamp it even when empty so an
     // unstageable dirty (or a post-arm band-1 root) doesn't re-pay the whole-subtree
     // walk every frame. A later invalidate bumps past the stamp and recollects.
@@ -21467,7 +21498,14 @@ export const render = {
       let restoreIdx = -1;
       for (restoreIdx = 0; restoreIdx < slice.length; restoreIdx++) {
         const [root, entry] = slice[restoreIdx];
-        if (!root || !root.parent) continue;
+        if (!root || !root.parent) {
+          // Detached mid-arm: nothing to restore — drop the bookkeeping a
+          // remount must not inherit (the arm-start sweeps only cover pending
+          // and parked, and slice members already left pending).
+          if (root && root.userData) root.userData[STAGE_SELF_DIRTY_KEY] = false;
+          if (root && this._withheldDepthCasters) this._withheldDepthCasters.delete(root);
+          continue;
+        }
         const { lodLevel, entity } = entry;
         const leftover = leftoverByRoot && leftoverByRoot.get(root);
         if (leftover) {
@@ -21485,7 +21523,10 @@ export const render = {
             const parkedMap = this._parkedDepthStageRoots
               || (this._parkedDepthStageRoots = new Map());
             parkedMap.set(root, {
-              lodLevel, entity, seq: shadowCasterPolicyDirtySeq(root), recheck: 96,
+              // The +size%32 staggers same-arm cohorts: identical cadences used
+              // to expire in one pass and stack every parked collect there.
+              lodLevel, entity, seq: shadowCasterPolicyDirtySeq(root),
+              recheck: 96 + (parkedMap.size % 32),
             });
             continue;
           }
@@ -21511,7 +21552,12 @@ export const render = {
       for (let i = restoreIdx; i < slice.length; i++) {
         if (i < 0) break;
         const [root, entry] = slice[i];
-        if (root && root.parent) pending.set(root, entry);
+        if (root && root.parent) {
+          pending.set(root, entry);
+        } else if (root) {
+          if (root.userData) root.userData[STAGE_SELF_DIRTY_KEY] = false;
+          if (this._withheldDepthCasters) this._withheldDepthCasters.delete(root);
+        }
       }
       // The arm's whole cost lands adjacent to the next presented frame — debit
       // the shared paced ledger so the frame's slicers see the spend.
