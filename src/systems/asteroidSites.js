@@ -2408,12 +2408,40 @@ export const asteroidSites = {
       result.receipt.loss = 0;
       result.receipt.credited = result.receipt.credited | 0;
       if (!result.duplicate) {
+        // The goods land where the sale claims to sell — before the stats row so a reader of the
+        // receipt already finds the intake committed. Duplicate seals re-land nothing.
+        this._landPodFreight(pod);
         site.stats.grossCr += realisedTotal;
         site.stats.exportedU += units;
         site.stats.creditedCr += result.receipt.credited;
       }
     }
     return result;
+  },
+
+  /**
+   * The courier handoff is a REAL delivery (INF-econ, WF-06): each good in the pod lands in the
+   * destination market through the canonical freight fact (cargo:delivered → economy
+   * applyFreightDelivery — deduped by receiptId, stock write, shortageRelieved cue). The sale
+   * above was priced at the pre-intake quote; the NEXT pod prices against the market this one
+   * fed, so sustained site output moves the price it sells at instead of minting credits
+   * against a market that never saw a unit. No station ("sold to the freight lane") has no
+   * market to feed and lands nothing. Lost pods never reach here.
+   */
+  _landPodFreight(pod) {
+    // A stable receiptId is what makes the intake deduped rather than replayable; a pod without
+    // one is a restore artifact that was never priced against a market — land nothing.
+    if (!pod || !pod.stationId || typeof pod.intentId !== 'string' || !pod.intentId) return;
+    for (const goodId of Object.keys(pod.cargo || {}).sort()) {
+      const qty = Math.floor(Number(pod.cargo[goodId]) || 0);
+      if (qty <= 0) continue;
+      this.bus.emit('cargo:delivered', {
+        commodityId: goodId,
+        qty,
+        stationId: pod.stationId,
+        receiptId: `${pod.intentId}:${goodId}`,
+      });
+    }
   },
 
   _salePrice(stationId, goodId) {
