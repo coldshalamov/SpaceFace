@@ -733,6 +733,30 @@ test('a deferred second shadow pass never receives a subject that expired mid-ba
     'the second depth pass uploads or touches only still-active subjects');
 });
 
+test('post-route compiles are observed while cohort owners defer awaiting across presents', async () => {
+  const unhandled = [];
+  const onUnhandled = (reason) => unhandled.push(reason);
+  process.on('unhandledRejection', onUnhandled);
+  try {
+    const disposed = postRouteOwner();
+    disposed.owner._rendererResourcesDisposed = true;
+    const early = disposed.owner._compilePostRoute(POST_PROCESS_ROUTE.NATIVE, {}, {}, {});
+    const stalled = deferred();
+    const fixture = postRouteOwner(() => stalled.promise);
+    const late = fixture.owner._compilePostRoute(POST_PROCESS_ROUTE.NATIVE, {}, {}, {});
+    await flushMicrotasks();
+    fixture.owner.state.render.admissionRunGeneration += 1;
+    stalled.resolve('retired');
+    // Cohort issuance yields to presentation before the owner gathers its promises.
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.deepEqual(unhandled, []);
+    await assert.rejects(early, (error) => error.name === 'AbortError');
+    await assert.rejects(late, (error) => error.name === 'AbortError');
+  } finally {
+    process.removeListener('unhandledRejection', onUnhandled);
+  }
+});
+
 test('an observed background admission rejection stays off the global unhandledRejection', async () => {
   const unhandled = [];
   const onUnhandled = (reason) => unhandled.push(reason);
