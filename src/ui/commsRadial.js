@@ -918,6 +918,9 @@ export function createCommsRadial(ctx) {
     try { freqMorph.dispose(); } catch (_) {}
     fan.remove();
     deck.remove();
+    // A torn-down fan must not leave the held-open flag set, or the velocity tape stays
+    // suppressed on this state object with nothing left to clear it.
+    if (state.ui) state.ui.commsRadialOpen = false;
   }
 
   return { tick, destroy, openDeck };

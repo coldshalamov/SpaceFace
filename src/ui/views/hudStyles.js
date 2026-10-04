@@ -3022,6 +3022,7 @@ export function injectHudCss() {
     animation:sf-toast-decay var(--sf-toast-ttl, 4s) linear forwards; }
   @keyframes sf-toast-decay { to { transform:scaleX(0); } }
   html.sf-reduce-motion .sf-toast__decay { display:none; }
+  @media (prefers-reduced-motion: reduce) { .sf-toast__decay { display:none; } }
 
   /* ══ ORRERY §6 Flight — the vitals rows are compact Arc Gauges ════════════════════════════
      Each row keeps its contract DOM: .sf-bar stays the meter (role, aria-valuenow) and

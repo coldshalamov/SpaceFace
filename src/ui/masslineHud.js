@@ -2173,6 +2173,15 @@ function previewStatusCopy(status, reason) {
     || r === 'attachment_authority_unavailable' || r === 'authority_unavailable') {
     return 'LINE FAILED';
   }
+  // Attachments create-fail reasons that used to read as a generic UNAVAILABLE.
+  if (r === 'target_missing' || r === 'endpoint_stale') return 'ENDPOINT LOST';
+  if (r === 'owner_missing' || r === 'controller_missing') return 'CANNOT LATCH';
+  if (r === 'physics_port_unavailable' || r === 'source_socket_unavailable'
+    || r === 'target_socket_unavailable' || r === 'physics_create_rejected'
+    || r === 'physics_create_failed' || r === 'spawn_authority_unavailable'
+    || r === 'endpoint_spawn_failed') {
+    return 'LINE FAILED';
+  }
   // SFQ-B021 — the ineligible classes name themselves instead of a generic UNAVAILABLE.
   if (r === 'site-machinery') return 'MACHINE, NOT CARGO';
   if (r === 'scripted-body') return 'SCRIPTED MOTION';
