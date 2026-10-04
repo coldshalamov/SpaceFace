@@ -1,0 +1,72 @@
+TAP version 13
+# (node:13) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+# --import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/audit-loader.mjs", pathToFileURL("./")); register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/audit-loader.mjs", pathToFileURL("./"));'
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# { forceTicks: 9, visibleTicks: 9 }
+# {
+#   angles: [ 1.3089969389957472, 0.5958333333333342, 0.5200000000000007 ],
+#   rest: [
+#     [ 'StarboardRim', 'HingeA', 'StarboardStrake' ],
+#     [ 'StarboardRim', 'HingeB', 'StarboardStrake' ],
+#     [ 'StarboardRim', 'HingeC', 'StarboardStrake' ]
+#   ],
+#   end: [
+#     [ 'StarboardRim', 'HingeA', 'StarboardStrake' ],
+#     [ 'StarboardRim', 'HingeB', 'StarboardStrake' ],
+#     [ 'StarboardRim', 'HingeC', 'StarboardStrake' ]
+#   ]
+# }
+# Subtest: registry phase ordering publishes the previous witnessed firing after the next submission
+ok 1 - registry phase ordering publishes the previous witnessed firing after the next submission
+  ---
+  duration_ms: 78.043779
+  type: 'test'
+  ...
+# Subtest: cleanup does not replace a later foreign control command
+ok 2 - cleanup does not replace a later foreign control command
+  ---
+  duration_ms: 3.036104
+  type: 'test'
+  ...
+# Subtest: full accepted paddle travel does not enter a new fixed hull slab
+ok 3 - full accepted paddle travel does not enter a new fixed hull slab
+  ---
+  duration_ms: 28.031151
+  type: 'test'
+  ...
+# Subtest: equal-valued foreign native force is not proof of Latch actuation
+ok 4 - equal-valued foreign native force is not proof of Latch actuation
+  ---
+  duration_ms: 2.369641
+  type: 'test'
+  ...
+# (node:14) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+# --import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/audit-loader.mjs", pathToFileURL("./")); register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/audit-loader.mjs", pathToFileURL("./"));'
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: failed native integration cannot certify the pending firing
+ok 5 - failed native integration cannot certify the pending firing
+  ---
+  duration_ms: 61.226363
+  type: 'test'
+  ...
+# Subtest: a subsequent native tick with no Latch command extinguishes the old accepted receipt
+ok 6 - a subsequent native tick with no Latch command extinguishes the old accepted receipt
+  ---
+  duration_ms: 12.664996
+  type: 'test'
+  ...
+# Subtest: both signed yaw offsets receive socket-derived restoring moments
+ok 7 - both signed yaw offsets receive socket-derived restoring moments
+  ---
+  duration_ms: 5.644784
+  type: 'test'
+  ...
+1..7
+# tests 7
+# suites 0
+# pass 7
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 569.51329

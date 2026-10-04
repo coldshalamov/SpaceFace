@@ -1,0 +1,55 @@
+✔ Ceres measurement uses explicit native compounds at the runtime source origin (7.819884ms)
+✔ current unrelated catalog fits are retained while the seven Ceres assets keep exactly scale two (3.17354ms)
+✔ Forge role coverage requires every textured material and never pardons an unclassified sibling (0.757869ms)
+ Particle system powered by three.quarks. https://quarks.art/
+✔ only three exact Ceres identities join the three existing Stormshift families (7.366628ms)
+✔ saved readiness, requested tags, staged roots and mismatched GLB sources never admit a cold body (10.05247ms)
+✔ source/release GLB URLs normalize exactly and mutable boundary metadata cannot relabel receipts (5.744693ms)
+[partsLibrary] authored place admission failed; no substitute visual published Error: injected compile failure
+    at prepareAuthoredPipelines (file:///workspace/scratch/d2415e46e35b/recovery-latch-20261004/normal-route-v2/test/ceres-workfleet-admission.test.mjs:208:38)
+    at prepareAuthoredVisualPipelines (file:///workspace/scratch/d2415e46e35b/recovery-latch-20261004/normal-route-v2/src/render/partsLibrary.js:8154:44)
+    at completeAdmission (file:///workspace/scratch/d2415e46e35b/recovery-latch-20261004/normal-route-v2/src/render/partsLibrary.js:4040:13)
+    at upgradePlaceBoundary (file:///workspace/scratch/d2415e46e35b/recovery-latch-20261004/normal-route-v2/src/render/partsLibrary.js:4110:10)
+[render] appearance replacement retained previous visual 1 Error: injected cold compilation failure
+    at TestContext.<anonymous> (file:///workspace/scratch/d2415e46e35b/recovery-latch-20261004/normal-route-v2/test/ceres-workfleet-admission.test.mjs:288:41)
+    at async Test.run (node:internal/test_runner/test:1389:7)
+    at async Test.processPendingSubtests (node:internal/test_runner/test:960:7)
+[render] appearance replacement retained previous visual 2 Error: injected cold compilation failure
+    at TestContext.<anonymous> (file:///workspace/scratch/d2415e46e35b/recovery-latch-20261004/normal-route-v2/test/ceres-workfleet-admission.test.mjs:288:41)
+    at async Test.run (node:internal/test_runner/test:1389:7)
+    at async Test.processPendingSubtests (node:internal/test_runner/test:960:7)
+[render] appearance replacement retained previous visual 3 Error: injected cold compilation failure
+    at TestContext.<anonymous> (file:///workspace/scratch/d2415e46e35b/recovery-latch-20261004/normal-route-v2/test/ceres-workfleet-admission.test.mjs:288:41)
+    at async Test.run (node:internal/test_runner/test:1389:7)
+    at async Test.processPendingSubtests (node:internal/test_runner/test:960:7)
+✔ actual cradle place publication waits for delayed GPU and both initial renderer latches (61.819855ms)
+✔ actual cutterHead place publication waits for delayed GPU and both initial renderer latches (6.715842ms)
+✔ actual place compile cannot publish requested Ceres identity (4.638563ms)
+✔ actual place wrong-source cannot publish requested Ceres identity (2.201114ms)
+✔ offscreen eviction retains exact admitted hardware; context failure and browser disposal revoke it (3.700554ms)
+✔ reused objects, render generations and cold restore revoke both exact identity and indirect child actions (1.057327ms)
+✔ existing single traffic reconciliation invokes both bounded owners once per tick (0.938849ms)
+✔ native failure closes headless and browser work, target, projectile and LOS readers without replacing authored shapes (8.359309ms)
+✔ all three exact families retry failed offscreen builds through one existing renderer poll (6.383152ms)
+✔ delayed breaker GPU publication cannot authorize a stale generation, object or same-object life (2.159662ms)
+✔ foreign effective proxy, scale and mass cannot acquire the authored Ceres receipt (1.504569ms)
+✔ real Continue restores Ceres identities and hardware recipes without saved browser readiness (136.377601ms)
+✔ Ceres cold admission withdraws real native attachment endpoints and resumes the same line only after exact readmission (5.770192ms)
+✔ actual breaker whole-ship wrapper publishes the selected hull source through repeated composition (33.377986ms)
+✔ breaker actual renderer snapshot replacement activates only its published current-life propulsion (4.48372ms)
+✔ cutterHead actual renderer snapshot replacement activates only its published current-life propulsion (2.678651ms)
+✔ actual LOD2 renderer submission clears a cutter throat on zero consumed force despite decorative sleep (4.443571ms)
+✔ normalized physics bodies and resolved specs are identity-stable while unchanged (1.872895ms)
+✔ body replacement and revision changes invalidate only the affected caches (0.596327ms)
+✔ owned control keeps public command shape and issues a nonserializable unforgeable receipt (2.639347ms)
+✔ a same-source same-value later write revokes ownership, independent of strings and equality (0.225018ms)
+✔ cancel removes only its still-pending control and keeps foreign impulses and torque impulses (0.253691ms)
+✔ consumed, reincarnated, changed-spec and cleared-authority receipts cannot cancel fresh ownership (0.546251ms)
+ℹ tests 29
+ℹ suites 0
+ℹ pass 29
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1683.015209

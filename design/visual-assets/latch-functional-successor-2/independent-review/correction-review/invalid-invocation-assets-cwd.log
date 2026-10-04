@@ -1,0 +1,203 @@
+TAP version 13
+# (node:17) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+# --import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./")); register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./"));'
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: correction: unrelated actor with copied Latch tags cannot mark owned destruction
+ok 1 - correction: unrelated actor with copied Latch tags cannot mark owned destruction
+  ---
+  duration_ms: 88.754981
+  type: 'test'
+  ...
+# Subtest: correction: replacement object under exactly the same id and generation cannot become owned death
+ok 2 - correction: replacement object under exactly the same id and generation cannot become owned death
+  ---
+  duration_ms: 6.352385
+  type: 'test'
+  ...
+# Subtest: correction: reused object in a later generation cannot inherit prior destruction ownership
+ok 3 - correction: reused object in a later generation cannot inherit prior destruction ownership
+  ---
+  duration_ms: 6.551084
+  type: 'test'
+  ...
+# Subtest: correction: late old kill after sector exit cannot destroy a returning actor
+ok 4 - correction: late old kill after sector exit cannot destroy a returning actor
+  ---
+  duration_ms: 15.197795
+  type: 'test'
+  ...
+# Subtest: correction: disabled owned death is immediate and idempotent; cold scene actor death is also remembered
+ok 5 - correction: disabled owned death is immediate and idempotent; cold scene actor death is also remembered
+  ---
+  duration_ms: 9.179492
+  type: 'test'
+  ...
+# (node:18) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+# --import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./")); register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./"));'
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: correction: hidden parent suppresses mouths and pooled plumes, visibility restoration resumes same current receipt
+not ok 6 - correction: hidden parent suppresses mouths and pooled plumes, visibility restoration resumes same current receipt
+  ---
+  duration_ms: 1.195596
+  type: 'test'
+  location: '/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/independent-visibility-restore.test.mjs:3:1'
+  failureType: 'testCodeFailure'
+  error: "ENOENT: no such file or directory, open 'assets/ships/render-packages/pilots.json'"
+  code: 'ENOENT'
+  stack: |-
+    Object.openSync (node:fs:622:18)
+    Object.readFileSync (node:fs:488:35)
+    read (file:///workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/package-fixture.mjs:7:82)
+    packageFixture (file:///workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/package-fixture.mjs:9:10)
+    fixture (file:///workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/presentation-fixture.mjs:5:42)
+    TestContext.<anonymous> (file:///workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/independent-visibility-restore.test.mjs:3:147)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1382:25)
+    Test.start (node:internal/test_runner/test:1242:17)
+    startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17)
+  ...
+# Subtest: correction: hidden root and scene both suppress, then valid source visibility restores without reallocating owned materials
+not ok 7 - correction: hidden root and scene both suppress, then valid source visibility restores without reallocating owned materials
+  ---
+  duration_ms: 0.212109
+  type: 'test'
+  location: '/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/independent-visibility-restore.test.mjs:4:1'
+  failureType: 'testCodeFailure'
+  error: "ENOENT: no such file or directory, open 'assets/ships/render-packages/pilots.json'"
+  code: 'ENOENT'
+  stack: |-
+    Object.openSync (node:fs:622:18)
+    Object.readFileSync (node:fs:488:35)
+    read (file:///workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/package-fixture.mjs:7:82)
+    packageFixture (file:///workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/package-fixture.mjs:9:10)
+    fixture (file:///workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/presentation-fixture.mjs:5:42)
+    TestContext.<anonymous> (file:///workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/independent-visibility-restore.test.mjs:4:156)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1382:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+    Test.postRun (node:internal/test_runner/test:1522:19)
+  ...
+# Subtest: correction: restoring visibility after same-object new generation cannot revive the old visual lease
+not ok 8 - correction: restoring visibility after same-object new generation cannot revive the old visual lease
+  ---
+  duration_ms: 0.180451
+  type: 'test'
+  location: '/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/independent-visibility-restore.test.mjs:5:1'
+  failureType: 'testCodeFailure'
+  error: "ENOENT: no such file or directory, open 'assets/ships/render-packages/pilots.json'"
+  code: 'ENOENT'
+  stack: |-
+    Object.openSync (node:fs:622:18)
+    Object.readFileSync (node:fs:488:35)
+    read (file:///workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/package-fixture.mjs:7:82)
+    packageFixture (file:///workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/package-fixture.mjs:9:10)
+    fixture (file:///workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/presentation-fixture.mjs:5:42)
+    TestContext.<anonymous> (file:///workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/independent-visibility-restore.test.mjs:5:133)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1382:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+    Test.postRun (node:internal/test_runner/test:1522:19)
+  ...
+# (node:19) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+# --import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./")); register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./"));'
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# DISABLED_DEATH_CONSEQUENCE {"afterKill":{"saved":{"met":true,"cleanArrivals":0,"incidentIds":[],"destroyed":true},"budget":0,"ownedActorRetained":false},"afterContinue":{"freshActor":false,"budget":0,"destroyed":true}}
+# Subtest: independent: disabled actor death consequence across JSON semantic Continue
+ok 9 - independent: disabled actor death consequence across JSON semantic Continue
+  ---
+  duration_ms: 96.765492
+  type: 'test'
+  ...
+# (node:30) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+# --import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./")); register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./"));'
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: independent: post-observation player damage refuses clean recognition despite ordinary docking
+ok 10 - independent: post-observation player damage refuses clean recognition despite ordinary docking
+  ---
+  duration_ms: 126.760995
+  type: 'test'
+  ...
+# Subtest: independent: native observation gap cannot reuse the previous approach certificate
+ok 11 - independent: native observation gap cannot reuse the previous approach certificate
+  ---
+  duration_ms: 12.955156
+  type: 'test'
+  ...
+# Subtest: independent: sector removal is not death; retired native life loses all leases and budget is released
+ok 12 - independent: sector removal is not death; retired native life loses all leases and budget is released
+  ---
+  duration_ms: 6.062349
+  type: 'test'
+  ...
+# Subtest: independent: repeated runtime reinitialization leaves one materializer and destroys every actor/slot on close
+ok 13 - independent: repeated runtime reinitialization leaves one materializer and destroys every actor/slot on close
+  ---
+  duration_ms: 12.521744
+  type: 'test'
+  ...
+# Subtest: independent: actual killed actor remains destroyed when the service has been disabled
+ok 14 - independent: actual killed actor remains destroyed when the service has been disabled
+  ---
+  duration_ms: 4.821695
+  type: 'test'
+  ...
+# Subtest: independent: scene de-admission removes native actor before the next physics integration
+ok 15 - independent: scene de-admission removes native actor before the next physics integration
+  ---
+  duration_ms: 5.201175
+  type: 'test'
+  ...
+# (node:31) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+# --import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./")); register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./"));'
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: independent: hiding the entity root withdraws isolated pooled plumes
+not ok 16 - independent: hiding the entity root withdraws isolated pooled plumes
+  ---
+  duration_ms: 1.190829
+  type: 'test'
+  location: '/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/independent-presentation.test.mjs:6:1'
+  failureType: 'testCodeFailure'
+  error: "ENOENT: no such file or directory, open 'assets/ships/render-packages/pilots.json'"
+  code: 'ENOENT'
+  stack: |-
+    Object.openSync (node:fs:622:18)
+    Object.readFileSync (node:fs:488:35)
+    read (file:///workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/package-fixture.mjs:7:82)
+    packageFixture (file:///workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/package-fixture.mjs:9:10)
+    fixture (file:///workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/independent-presentation.test.mjs:5:42)
+    TestContext.<anonymous> (file:///workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/independent-presentation.test.mjs:6:101)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1382:25)
+    Test.start (node:internal/test_runner/test:1242:17)
+    startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17)
+  ...
+# Subtest: independent: root replacement and material disposal restore every original material exactly once
+not ok 17 - independent: root replacement and material disposal restore every original material exactly once
+  ---
+  duration_ms: 0.394442
+  type: 'test'
+  location: '/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/independent-presentation.test.mjs:7:1'
+  failureType: 'testCodeFailure'
+  error: "ENOENT: no such file or directory, open 'assets/ships/render-packages/pilots.json'"
+  code: 'ENOENT'
+  stack: |-
+    Object.openSync (node:fs:622:18)
+    Object.readFileSync (node:fs:488:35)
+    read (file:///workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/package-fixture.mjs:7:82)
+    packageFixture (file:///workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/package-fixture.mjs:9:10)
+    fixture (file:///workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/independent-presentation.test.mjs:5:42)
+    TestContext.<anonymous> (file:///workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/independent-presentation.test.mjs:7:129)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1382:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+    Test.postRun (node:internal/test_runner/test:1522:19)
+  ...
+1..17
+# tests 17
+# suites 0
+# pass 12
+# fail 5
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 994.092574

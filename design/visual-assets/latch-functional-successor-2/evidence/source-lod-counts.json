@@ -1,0 +1,14 @@
+{
+  "LOD0": {
+    "triangles": 24040,
+    "primitives": 31
+  },
+  "LOD1": {
+    "triangles": 9606,
+    "primitives": 31
+  },
+  "LOD2": {
+    "triangles": 3414,
+    "primitives": 31
+  }
+}

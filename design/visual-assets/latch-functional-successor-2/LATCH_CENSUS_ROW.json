@@ -1,0 +1,698 @@
+{
+  "bounds": {
+    "center": [
+      -0.950227,
+      0.659953,
+      1.323971
+    ],
+    "max": [
+      8.2,
+      2.119898,
+      8.15
+    ],
+    "min": [
+      -10.100453,
+      -0.799992,
+      -5.502058
+    ],
+    "size": [
+      18.300453,
+      2.91989,
+      13.652058
+    ]
+  },
+  "bytes": 879144,
+  "collider": {
+    "authoredClearVolumesPreserved": true,
+    "compoundBoxesWU": [
+      {
+        "center": {
+          "x": -0.5,
+          "y": -0.25,
+          "z": 0
+        },
+        "id": "Keel",
+        "size": {
+          "x": 12,
+          "y": 1.1,
+          "z": 4.3
+        }
+      },
+      {
+        "center": {
+          "x": -0.7,
+          "y": 0.42,
+          "z": -0.5
+        },
+        "id": "BayFloor",
+        "size": {
+          "x": 8.4,
+          "y": 0.38,
+          "z": 7.5
+        }
+      },
+      {
+        "center": {
+          "x": -0.7,
+          "y": 1.18,
+          "z": -4.4
+        },
+        "id": "PortRim",
+        "size": {
+          "x": 9.4,
+          "y": 1.6,
+          "z": 1.15
+        }
+      },
+      {
+        "center": {
+          "x": -0.7,
+          "y": 1.18,
+          "z": 3.6
+        },
+        "id": "StarboardRim",
+        "size": {
+          "x": 9.4,
+          "y": 1.6,
+          "z": 1.25
+        }
+      },
+      {
+        "center": {
+          "x": -5.05,
+          "y": 1.18,
+          "z": -0.4
+        },
+        "id": "AftRim",
+        "size": {
+          "x": 1.1,
+          "y": 1.6,
+          "z": 7.15
+        }
+      },
+      {
+        "center": {
+          "x": 3.65,
+          "y": 1.18,
+          "z": -0.4
+        },
+        "id": "ForeRim",
+        "size": {
+          "x": 1,
+          "y": 1.6,
+          "z": 7.15
+        }
+      },
+      {
+        "center": {
+          "x": -6.9,
+          "y": -0.05,
+          "z": 0
+        },
+        "id": "AftDriveBridge",
+        "size": {
+          "x": 3.5,
+          "y": 1.2,
+          "z": 4.9
+        }
+      },
+      {
+        "center": {
+          "x": -7.5,
+          "y": 0.1,
+          "z": -2.35
+        },
+        "id": "PortDrive",
+        "size": {
+          "x": 3.9,
+          "y": 1.55,
+          "z": 1.35
+        }
+      },
+      {
+        "center": {
+          "x": -7.5,
+          "y": 0.1,
+          "z": 2.35
+        },
+        "id": "StarboardDrive",
+        "size": {
+          "x": 3.9,
+          "y": 1.55,
+          "z": 1.35
+        }
+      },
+      {
+        "center": {
+          "x": 5.2,
+          "y": -0.02,
+          "z": 0
+        },
+        "id": "ForeShoulder",
+        "size": {
+          "x": 2.1,
+          "y": 1.35,
+          "z": 3.8
+        }
+      },
+      {
+        "center": {
+          "x": 6.65,
+          "y": -0.08,
+          "z": 0
+        },
+        "id": "OpticalBow",
+        "size": {
+          "x": 1.7,
+          "y": 1.1,
+          "z": 3
+        }
+      },
+      {
+        "center": {
+          "x": 7.8,
+          "y": -0.16,
+          "z": 0
+        },
+        "id": "Nose",
+        "size": {
+          "x": 0.8,
+          "y": 0.78,
+          "z": 1.65
+        }
+      },
+      {
+        "center": {
+          "x": -3.4,
+          "y": 1.12,
+          "z": 4.18
+        },
+        "id": "HingeA",
+        "size": {
+          "x": 1.55,
+          "y": 0.6,
+          "z": 1.65
+        }
+      },
+      {
+        "center": {
+          "x": -0.5,
+          "y": 1.12,
+          "z": 4.18
+        },
+        "id": "HingeB",
+        "size": {
+          "x": 1.55,
+          "y": 0.6,
+          "z": 1.65
+        }
+      },
+      {
+        "center": {
+          "x": 2.4,
+          "y": 1.12,
+          "z": 4.18
+        },
+        "id": "HingeC",
+        "size": {
+          "x": 1.55,
+          "y": 0.6,
+          "z": 1.65
+        }
+      },
+      {
+        "center": {
+          "x": -0.6,
+          "y": 0.55,
+          "z": -5.1
+        },
+        "id": "PortStrake",
+        "size": {
+          "x": 8.1,
+          "y": 0.7,
+          "z": 0.48
+        }
+      },
+      {
+        "center": {
+          "x": -0.6,
+          "y": 0.4,
+          "z": 4.3
+        },
+        "id": "StarboardStrake",
+        "size": {
+          "x": 8.1,
+          "y": 0.55,
+          "z": 0.45
+        }
+      },
+      {
+        "center": {
+          "x": -6.1,
+          "y": 0.18,
+          "z": -3
+        },
+        "id": "DriveBracePort",
+        "size": {
+          "x": 1.2,
+          "y": 1.2,
+          "z": 1.2
+        }
+      },
+      {
+        "center": {
+          "x": -6.1,
+          "y": 0.18,
+          "z": 3
+        },
+        "id": "DriveBraceStbd",
+        "size": {
+          "x": 1.2,
+          "y": 1.2,
+          "z": 1.2
+        }
+      },
+      {
+        "center": {
+          "x": -9.7,
+          "y": 0.81,
+          "z": -2.35
+        },
+        "id": "DriveCage_port_top",
+        "size": {
+          "x": 0.8,
+          "y": 0.18,
+          "z": 1.6
+        }
+      },
+      {
+        "center": {
+          "x": -9.7,
+          "y": -0.61,
+          "z": -2.35
+        },
+        "id": "DriveCage_port_bottom",
+        "size": {
+          "x": 0.8,
+          "y": 0.18,
+          "z": 1.6
+        }
+      },
+      {
+        "center": {
+          "x": -9.7,
+          "y": 0.1,
+          "z": -1.64
+        },
+        "id": "DriveCage_port_left",
+        "size": {
+          "x": 0.8,
+          "y": 1.25,
+          "z": 0.18
+        }
+      },
+      {
+        "center": {
+          "x": -9.7,
+          "y": 0.1,
+          "z": -3.06
+        },
+        "id": "DriveCage_port_right",
+        "size": {
+          "x": 0.8,
+          "y": 1.25,
+          "z": 0.18
+        }
+      },
+      {
+        "center": {
+          "x": -9.7,
+          "y": 0.81,
+          "z": 2.35
+        },
+        "id": "DriveCage_stbd_top",
+        "size": {
+          "x": 0.8,
+          "y": 0.18,
+          "z": 1.6
+        }
+      },
+      {
+        "center": {
+          "x": -9.7,
+          "y": -0.61,
+          "z": 2.35
+        },
+        "id": "DriveCage_stbd_bottom",
+        "size": {
+          "x": 0.8,
+          "y": 0.18,
+          "z": 1.6
+        }
+      },
+      {
+        "center": {
+          "x": -9.7,
+          "y": 0.1,
+          "z": 3.06
+        },
+        "id": "DriveCage_stbd_left",
+        "size": {
+          "x": 0.8,
+          "y": 1.25,
+          "z": 0.18
+        }
+      },
+      {
+        "center": {
+          "x": -9.7,
+          "y": 0.1,
+          "z": 1.64
+        },
+        "id": "DriveCage_stbd_right",
+        "size": {
+          "x": 0.8,
+          "y": 1.25,
+          "z": 0.18
+        }
+      },
+      {
+        "center": {
+          "x": -3.5,
+          "y": 0.7,
+          "z": -5.33
+        },
+        "id": "PortControlSeat_aft",
+        "size": {
+          "x": 0.55,
+          "y": 0.55,
+          "z": 0.26
+        }
+      },
+      {
+        "center": {
+          "x": 2.6,
+          "y": 0.7,
+          "z": -5.33
+        },
+        "id": "PortControlSeat_fore",
+        "size": {
+          "x": 0.55,
+          "y": 0.55,
+          "z": 0.26
+        }
+      },
+      {
+        "center": {
+          "x": -3.4,
+          "y": 1.65,
+          "z": 6.15
+        },
+        "id": "paddle-a",
+        "size": {
+          "x": 1.05,
+          "y": 0.32,
+          "z": 4
+        }
+      },
+      {
+        "center": {
+          "x": -0.5,
+          "y": 1.65,
+          "z": 6.15
+        },
+        "id": "paddle-b",
+        "size": {
+          "x": 1.05,
+          "y": 0.32,
+          "z": 4
+        }
+      },
+      {
+        "center": {
+          "x": 2.4,
+          "y": 1.65,
+          "z": 6.15
+        },
+        "id": "paddle-c",
+        "size": {
+          "x": 1.05,
+          "y": 0.32,
+          "z": 4
+        }
+      }
+    ],
+    "coverageMetric": "all-visible-vertices-to-native-XZ-compound",
+    "coverageWu": 0.047062,
+    "gapWu": 0.047062,
+    "id": "latch-nine:reconstructed-v1",
+    "kind": "compound",
+    "outline": [
+      10.417783,
+      10.565907,
+      7.303036,
+      7.058616,
+      5.435891,
+      5.303301,
+      4.976247,
+      6.150268,
+      6.345838,
+      5.70664,
+      6.516437,
+      8.235622,
+      8.23557,
+      6.518812,
+      5.188487,
+      5.90462,
+      8.588116,
+      8.417532,
+      8.188652,
+      8.954583,
+      6.495932,
+      6.819248,
+      10.565514,
+      10.419397
+    ],
+    "overTolerance": false,
+    "referenceState": "rest",
+    "sourceCompoundParity": true,
+    "stickWu": null,
+    "throatSealed": false,
+    "toleranceWu": 2,
+    "worstSize": null
+  },
+  "drawOffset": [
+    0,
+    0,
+    0
+  ],
+  "drawScale": 1,
+  "family": "latch-nine",
+  "forwardAxis": "+X",
+  "frozenMesh": false,
+  "gameplay": {
+    "ballFactor": null,
+    "colliderId": "latch-nine:reconstructed-v1",
+    "colliderKind": "compound",
+    "dockRadius": null,
+    "entityRadius": 13,
+    "proportions": null,
+    "sizes": null
+  },
+  "id": "place_latch_nine",
+  "lod": {
+    "lod0": true,
+    "lod1": true,
+    "lod2": true,
+    "outlineDeltaWu": {},
+    "overTolerance": false,
+    "toleranceWu": 4
+  },
+  "materials": [
+    {
+      "additive": false,
+      "alphaMode": "OPAQUE",
+      "depthWrite": true,
+      "doubleSided": false,
+      "name": "Material_Armor",
+      "role": "opaqueHull"
+    },
+    {
+      "additive": false,
+      "alphaMode": "OPAQUE",
+      "depthWrite": true,
+      "doubleSided": false,
+      "name": "Material_BrushedMetal",
+      "role": "opaqueHull"
+    },
+    {
+      "additive": false,
+      "alphaMode": "OPAQUE",
+      "depthWrite": false,
+      "doubleSided": false,
+      "name": "Material_Emissive_Amber",
+      "role": "emissive"
+    },
+    {
+      "additive": false,
+      "alphaMode": "OPAQUE",
+      "depthWrite": false,
+      "doubleSided": false,
+      "name": "Material_Emissive_NavGreen",
+      "role": "emissive"
+    },
+    {
+      "additive": false,
+      "alphaMode": "OPAQUE",
+      "depthWrite": false,
+      "doubleSided": false,
+      "name": "Material_Emissive_NavRed",
+      "role": "emissive"
+    },
+    {
+      "additive": false,
+      "alphaMode": "OPAQUE",
+      "depthWrite": false,
+      "doubleSided": false,
+      "name": "Material_Emissive_Warm",
+      "role": "emissive"
+    },
+    {
+      "additive": false,
+      "alphaMode": "OPAQUE",
+      "depthWrite": true,
+      "doubleSided": false,
+      "name": "Material_Hull",
+      "role": "opaqueHull"
+    },
+    {
+      "additive": false,
+      "alphaMode": "OPAQUE",
+      "depthWrite": true,
+      "doubleSided": false,
+      "name": "Material_Mechanical",
+      "role": "opaqueHull"
+    },
+    {
+      "additive": false,
+      "alphaMode": "OPAQUE",
+      "depthWrite": true,
+      "doubleSided": false,
+      "name": "Material_MechanicalDark",
+      "role": "opaqueHull"
+    },
+    {
+      "additive": false,
+      "alphaMode": "OPAQUE",
+      "depthWrite": false,
+      "doubleSided": false,
+      "name": "Material_Thruster",
+      "role": "emissive"
+    },
+    {
+      "additive": false,
+      "alphaMode": "OPAQUE",
+      "depthWrite": true,
+      "doubleSided": false,
+      "name": "Material_Warning",
+      "role": "opaqueHull"
+    }
+  ],
+  "measuredProportions": null,
+  "meshHash": null,
+  "meshes": 93,
+  "nodes": 106,
+  "note": null,
+  "opening": null,
+  "pivot": [
+    0,
+    0,
+    0
+  ],
+  "proposedSkin": null,
+  "reasons": [],
+  "shell": {
+    "boundaryEdges": 1374,
+    "inwardFaceFraction": 0.411,
+    "silhouetteRadius": 10.565907,
+    "sliceY": 0
+  },
+  "sockets": [
+    {
+      "name": "SOCKET_LATCH_MAIN_PORT",
+      "position": [
+        -10.07,
+        0.1,
+        -2.35
+      ]
+    },
+    {
+      "name": "SOCKET_LATCH_MAIN_STBD",
+      "position": [
+        -10.07,
+        0.1,
+        2.35
+      ]
+    },
+    {
+      "name": "SOCKET_LATCH_PORT_AFT",
+      "position": [
+        -3.5,
+        0.7,
+        -5.46
+      ]
+    },
+    {
+      "name": "SOCKET_LATCH_PORT_FORE",
+      "position": [
+        2.6,
+        0.7,
+        -5.46
+      ]
+    },
+    {
+      "name": "SOCKET_LATCH_REVERSE_PORT",
+      "position": [
+        7.5,
+        0.12,
+        -1.23
+      ]
+    },
+    {
+      "name": "SOCKET_LATCH_REVERSE_STBD",
+      "position": [
+        7.5,
+        0.12,
+        1.23
+      ]
+    },
+    {
+      "name": "SOCKET_LATCH_STBD_AFT",
+      "position": [
+        -4.25,
+        0.55,
+        4.53
+      ]
+    },
+    {
+      "name": "SOCKET_LATCH_STBD_FORE",
+      "position": [
+        3.2,
+        0.55,
+        4.53
+      ]
+    }
+  ],
+  "solid": true,
+  "source": "glb",
+  "status": "green",
+  "tasteBudget": null,
+  "triangles": 37060,
+  "unmeasuredHitVolumes": [],
+  "url": "assets/ships/release/parts/places/place_latch_nine.glb",
+  "worldSize": [
+    18.300453,
+    2.91989,
+    13.652058
+  ]
+}

@@ -1,0 +1,30 @@
+--- a/src/systems/latchNine.js
++++ b/src/systems/latchNine.js
+@@ -44,7 +44,7 @@
+         if(this.state.latchNine?.phase==='ACKNOWLEDGE'){if(clean)this._service.recordCleanArrival(clean);this._arrivalVerifier.finishArrival();}
+       });
+       on('entity:killed', payload => {
+-        if (payload?.id === this._tender?.id) { this._recordTenderDestruction(); this._sync(); }
++        if (payload?.id === this._tenderOwner?.entity?.id || payload?.id === this._tender?.id) { this._recordTenderDestruction(); this._sync(); }
+       });
+       on('law:incidentOpened', payload => {
+         const player=this.state.entities?.get(this.state.playerId),id=payload?.id;
+@@ -78,12 +78,14 @@
+       if (this.state) this.state.latchNine = this._service.readout;
+     },
+     _recordTenderDestruction() {
+-      const tender = this._tender;
++      // Spawn ownership survives disabled/cold presentation; current control eligibility does not.
++      const tender = this._tenderOwner?.entity || this._tender;
++      const life = this._tenderOwner?.entity ? this._tenderOwner.life : this._tenderLife;
+       if (this._departing || !tender || this.state.entities?.get(tender.id) !== tender
+-        || tender.occupantGeneration !== this._tenderLife
++        || tender.occupantGeneration !== life
+         || !(tender.hull <= 0)
+-        || (this._destroyedLife?.tender === tender && this._destroyedLife.life === this._tenderLife)) return;
+-      this._destroyedLife = { tender, life: this._tenderLife };
++        || (this._destroyedLife?.tender === tender && this._destroyedLife.life === life)) return;
++      this._destroyedLife = { tender, life };
+       this._service.markDestroyed();
+     },
+     _sync({ committedDock = false, motorDt = 0 } = {}) {

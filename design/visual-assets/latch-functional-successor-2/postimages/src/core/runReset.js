@@ -1,0 +1,77 @@
+// Canonical fresh-run system reset order. Keeping this outside main.js makes the real New Game
+// transition directly testable and prevents additive systems from depending on imaginary events.
+export const FRESH_RUN_SYSTEMS = Object.freeze([
+  // runSession first: New Game must clear the run envelope before any content owner rebuilds.
+  // Keeping this on FRESH_RUN_SYSTEMS makes that transition directly testable (the purpose of this file).
+  'runSession',
+  // survivalWave holds the previous run's wave cohort and budget owners. Clear it with the
+  // envelope, before spawnBudget wipes the ledger it reserved from.
+  'survivalWave',
+  // survivalArena holds the room it installed for the last wave; New Game must clear it.
+  'survivalArena',
+  'survivalRewards',
+  'survivalDraft',
+  'survivalResults',
+  // Clear the global live-ship ledger before world or any content owner rematerializes a fresh run.
+  'spawnBudget',
+  // Release old lawful response claims and attacker identities before their NPC jobs are discarded.
+  'lawSecurity',
+  // Clear virtual jobs before world or traffic can rematerialize a same-worldRecordId actor.
+  'npcJobsRuntime',
+  // Clear durable extraction records before world entry replans authored salvage sources.
+  'salvage',
+  // Encounter-cover placement and spin use a private per-run stream. Reset it before
+  // world/encounter owners can rematerialize content on a retained New Game instance.
+  'terrainAnchors',
+  // Lane carriers are ephemeral exact-life bindings, not durable numeric entity IDs.
+  'travelLanes',
+  // Ambient contract scheduling is run-local even when no hunter currently exists.
+  'bountyHunt',
+  'world',
+  'regionalEcology',
+  'factions',
+  'economy',
+  'automation',
+  'intervention',
+  'sectorSim',
+  'missions',
+  'postEndingReplay',
+  'aiEncounter',
+  'crafting',
+  'traffic',
+  'drill',
+  'claims',
+  'beacons',
+  'aceMemory',
+  'lossLedger',
+  'factionPresence',
+  'titles',
+  'fragileCargo',
+  'fieldDepletion',
+  'wingMorale',
+  'lossInvestigation',
+  'careerContracts',
+  'cloak',
+  // Scanner pulse cooldown keys on absolute simTime and signal investigation state persists
+  // on state.signalInvestigation — both must clear before the fresh run's clock restarts.
+  'scanner',
+  // Bark receipts/suppression are keyed per entity id and per run; a fresh run must not
+  // inherit the previous run's said-latches on recycled ids.
+  'barkDirector',
+  'latchNine',
+  // Session-scoped advisory watches hold per-entry latches keyed on entity ids that New Game
+  // recycles — a stale latch could suppress the first legitimate bark of the next run.
+  'noFireAdvisory',
+  'hazardHints',
+]);
+
+export function resetFreshRunSystems(registry, options = {}) {
+  if (!registry || typeof registry.get !== 'function') return true;
+  const afterEach = typeof options.afterEach === 'function' ? options.afterEach : null;
+  for (const name of FRESH_RUN_SYSTEMS) {
+    const system = registry.get(name);
+    if (system && typeof system.newGame === 'function') system.newGame();
+    if (afterEach && afterEach(name, system) === false) return false;
+  }
+  return true;
+}

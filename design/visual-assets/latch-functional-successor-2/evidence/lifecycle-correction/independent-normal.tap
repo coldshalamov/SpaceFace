@@ -1,0 +1,49 @@
+TAP version 13
+# (node:17) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+# --import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("../latch-lifecycle-correction-overlay/overlay-loader.mjs", pathToFileURL("./")); register("../latch-lifecycle-correction-overlay/overlay-loader.mjs", pathToFileURL("./"));'
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: independent: post-observation player damage refuses clean recognition despite ordinary docking
+ok 1 - independent: post-observation player damage refuses clean recognition despite ordinary docking
+  ---
+  duration_ms: 60.840925
+  type: 'test'
+  ...
+# Subtest: independent: native observation gap cannot reuse the previous approach certificate
+ok 2 - independent: native observation gap cannot reuse the previous approach certificate
+  ---
+  duration_ms: 9.730999
+  type: 'test'
+  ...
+# Subtest: independent: sector removal is not death; retired native life loses all leases and budget is released
+ok 3 - independent: sector removal is not death; retired native life loses all leases and budget is released
+  ---
+  duration_ms: 4.512874
+  type: 'test'
+  ...
+# Subtest: independent: repeated runtime reinitialization leaves one materializer and destroys every actor/slot on close
+ok 4 - independent: repeated runtime reinitialization leaves one materializer and destroys every actor/slot on close
+  ---
+  duration_ms: 12.966814
+  type: 'test'
+  ...
+# Subtest: independent: actual killed actor remains destroyed when the service has been disabled
+ok 5 - independent: actual killed actor remains destroyed when the service has been disabled
+  ---
+  duration_ms: 2.499538
+  type: 'test'
+  ...
+# Subtest: independent: scene de-admission removes native actor before the next physics integration
+ok 6 - independent: scene de-admission removes native actor before the next physics integration
+  ---
+  duration_ms: 2.554601
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 451.44757

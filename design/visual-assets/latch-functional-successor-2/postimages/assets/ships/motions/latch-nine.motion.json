@@ -1,0 +1,200 @@
+{
+  "schema": "spaceface.rigidMotionBank.v1",
+  "rigId": "latch_nine_native_paddles",
+  "sourceAssetId": "SF_PLACE_LATCH_NINE",
+  "sourceGlbSha256": "9f50438e1576c6a61375584f48ce941635c49cd4b67769cbb1b67fdd1029d4d5",
+  "fps": 60,
+  "bindings": [
+    {
+      "id": "latch_paddle_a",
+      "node": "MOTION_LATCH_PADDLE_A",
+      "parent": null,
+      "restPose": {
+        "translation": [
+          -3.4000000953674316,
+          1.649999976158142,
+          4.349999904632568
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "id": "latch_paddle_b",
+      "node": "MOTION_LATCH_PADDLE_B",
+      "parent": null,
+      "restPose": {
+        "translation": [
+          -0.5,
+          1.649999976158142,
+          4.349999904632568
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "id": "latch_paddle_c",
+      "node": "MOTION_LATCH_PADDLE_C",
+      "parent": null,
+      "restPose": {
+        "translation": [
+          2.4000000953674316,
+          1.649999976158142,
+          4.349999904632568
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "id": "latch_shutter",
+      "node": "MOTION_LATCH_SHUTTER",
+      "parent": null,
+      "restPose": {
+        "translation": [
+          1.649999976158142,
+          1.399999976158142,
+          -1.850000023841858
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ]
+    }
+  ],
+  "clips": [
+    {
+      "name": "source_rest_pose",
+      "durationS": 0.016666666666666666,
+      "loop": false,
+      "endMode": "hold",
+      "channels": [
+        {
+          "group": "latch_paddle_a",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "group": "latch_paddle_b",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "group": "latch_paddle_c",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "group": "latch_shutter",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        }
+      ]
+    }
+  ],
+  "simulationAuthority": "Native Latch paddle angles; presentation applies after the rest-only bank. No renderer motor clock."
+}

@@ -1,0 +1,137 @@
+[
+  {
+    "name": "LOD2_HOOK_LATCH_THRUSTER_STBD_AFT_glow_drive",
+    "gap": 0.0670581597529237,
+    "point": [
+      -4.25,
+      0.550000011920929,
+      4.5920581597529235
+    ]
+  },
+  {
+    "name": "LOD2_HOOK_LATCH_THRUSTER_REVERSE_PORT_glow_drive",
+    "gap": 0.06206166576537664,
+    "point": [
+      7.562061665765377,
+      0.11999999731779099,
+      -1.2300000190734863
+    ]
+  },
+  {
+    "name": "LOD2_HOOK_LATCH_THRUSTER_REVERSE_STBD_glow_drive",
+    "gap": 0.06206166576537664,
+    "point": [
+      7.562061665765377,
+      0.11999999731779099,
+      1.2300000190734863
+    ]
+  },
+  {
+    "name": "LOD2_HOOK_LATCH_THRUSTER_PORT_AFT_glow_drive",
+    "gap": 0.062061469448828954,
+    "point": [
+      -3.5,
+      0.699999988079071,
+      -5.522061469448829
+    ]
+  },
+  {
+    "name": "LOD2_HOOK_LATCH_THRUSTER_PORT_FORE_glow_drive",
+    "gap": 0.062061469448828954,
+    "point": [
+      2.5999999046325684,
+      0.699999988079071,
+      -5.522061469448829
+    ]
+  },
+  {
+    "name": "LOD0_HOOK_LATCH_THRUSTER_STBD_AFT_glow_drive",
+    "gap": 0.033000546895641664,
+    "point": [
+      -4.25,
+      0.47735490460763685,
+      4.5580005468956415
+    ]
+  },
+  {
+    "name": "LOD0_HOOK_LATCH_THRUSTER_STBD_FORE_glow_drive",
+    "gap": 0.03300052535087303,
+    "point": [
+      3.2629181386577812,
+      0.513673737078193,
+      4.558000525350873
+    ]
+  },
+  {
+    "name": "LOD1_HOOK_LATCH_THRUSTER_STBD_AFT_glow_drive",
+    "gap": 0.03209163112254618,
+    "point": [
+      -4.2708241374637055,
+      0.4722888220999266,
+      4.557091631122546
+    ]
+  },
+  {
+    "name": "LOD1_HOOK_LATCH_THRUSTER_STBD_FORE_glow_drive",
+    "gap": 0.031936649747323104,
+    "point": [
+      3.2569984351065386,
+      0.6069882675072904,
+      4.556936649747323
+    ]
+  },
+  {
+    "name": "LOD0_HOOK_LATCH_THRUSTER_PORT_AFT_glow_drive",
+    "gap": 0.028000353689495827,
+    "point": [
+      -3.5,
+      0.6273550372709451,
+      -5.488000353689496
+    ]
+  },
+  {
+    "name": "LOD0_HOOK_LATCH_THRUSTER_PORT_FORE_glow_drive",
+    "gap": 0.028000353689495827,
+    "point": [
+      2.5999999046325684,
+      0.6273550372709451,
+      -5.488000353689496
+    ]
+  },
+  {
+    "name": "LOD0_HOOK_LATCH_THRUSTER_REVERSE_PORT_glow_drive",
+    "gap": 0.02800031464482411,
+    "point": [
+      7.528000314644824,
+      0.08367372573592036,
+      -1.167081933747328
+    ]
+  },
+  {
+    "name": "LOD0_HOOK_LATCH_THRUSTER_REVERSE_STBD_glow_drive",
+    "gap": 0.02800031464482411,
+    "point": [
+      7.528000314644824,
+      0.08367372573592036,
+      1.2929181043996447
+    ]
+  },
+  {
+    "name": "LOD1_HOOK_LATCH_THRUSTER_REVERSE_PORT_glow_drive",
+    "gap": 0.02721227782529978,
+    "point": [
+      7.5272122778253,
+      0.0992063020931424,
+      -1.1524004538387973
+    ]
+  },
+  {
+    "name": "LOD1_HOOK_LATCH_THRUSTER_PORT_AFT_glow_drive",
+    "gap": 0.02710991696426912,
+    "point": [
+      -3.47683538144263,
+      0.7775995602795653,
+      -5.487109916964269
+    ]
+  }
+]

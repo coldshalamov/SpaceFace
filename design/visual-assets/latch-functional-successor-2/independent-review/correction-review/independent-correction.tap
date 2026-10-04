@@ -1,0 +1,129 @@
+TAP version 13
+# (node:13) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+# --import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./")); register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./"));'
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: correction: unrelated actor with copied Latch tags cannot mark owned destruction
+ok 1 - correction: unrelated actor with copied Latch tags cannot mark owned destruction
+  ---
+  duration_ms: 99.246305
+  type: 'test'
+  ...
+# Subtest: correction: replacement object under exactly the same id and generation cannot become owned death
+ok 2 - correction: replacement object under exactly the same id and generation cannot become owned death
+  ---
+  duration_ms: 4.887635
+  type: 'test'
+  ...
+# Subtest: correction: reused object in a later generation cannot inherit prior destruction ownership
+ok 3 - correction: reused object in a later generation cannot inherit prior destruction ownership
+  ---
+  duration_ms: 4.841065
+  type: 'test'
+  ...
+# Subtest: correction: late old kill after sector exit cannot destroy a returning actor
+ok 4 - correction: late old kill after sector exit cannot destroy a returning actor
+  ---
+  duration_ms: 11.743633
+  type: 'test'
+  ...
+# Subtest: correction: disabled owned death is immediate and idempotent; cold scene actor death is also remembered
+ok 5 - correction: disabled owned death is immediate and idempotent; cold scene actor death is also remembered
+  ---
+  duration_ms: 9.142449
+  type: 'test'
+  ...
+# (node:14) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+# --import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./")); register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./"));'
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: correction: hidden parent suppresses mouths and pooled plumes, visibility restoration resumes same current receipt
+ok 6 - correction: hidden parent suppresses mouths and pooled plumes, visibility restoration resumes same current receipt
+  ---
+  duration_ms: 219.070047
+  type: 'test'
+  ...
+# Subtest: correction: hidden root and scene both suppress, then valid source visibility restores without reallocating owned materials
+ok 7 - correction: hidden root and scene both suppress, then valid source visibility restores without reallocating owned materials
+  ---
+  duration_ms: 53.630955
+  type: 'test'
+  ...
+# Subtest: correction: restoring visibility after same-object new generation cannot revive the old visual lease
+ok 8 - correction: restoring visibility after same-object new generation cannot revive the old visual lease
+  ---
+  duration_ms: 60.329031
+  type: 'test'
+  ...
+# (node:15) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+# --import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./")); register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./"));'
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# DISABLED_DEATH_CONSEQUENCE {"afterKill":{"saved":{"met":true,"cleanArrivals":0,"incidentIds":[],"destroyed":true},"budget":0,"ownedActorRetained":false},"afterContinue":{"freshActor":false,"budget":0,"destroyed":true}}
+# Subtest: independent: disabled actor death consequence across JSON semantic Continue
+ok 9 - independent: disabled actor death consequence across JSON semantic Continue
+  ---
+  duration_ms: 74.420832
+  type: 'test'
+  ...
+# (node:26) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+# --import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./")); register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./"));'
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: independent: post-observation player damage refuses clean recognition despite ordinary docking
+ok 10 - independent: post-observation player damage refuses clean recognition despite ordinary docking
+  ---
+  duration_ms: 98.7775
+  type: 'test'
+  ...
+# Subtest: independent: native observation gap cannot reuse the previous approach certificate
+ok 11 - independent: native observation gap cannot reuse the previous approach certificate
+  ---
+  duration_ms: 8.062787
+  type: 'test'
+  ...
+# Subtest: independent: sector removal is not death; retired native life loses all leases and budget is released
+ok 12 - independent: sector removal is not death; retired native life loses all leases and budget is released
+  ---
+  duration_ms: 3.588022
+  type: 'test'
+  ...
+# Subtest: independent: repeated runtime reinitialization leaves one materializer and destroys every actor/slot on close
+ok 13 - independent: repeated runtime reinitialization leaves one materializer and destroys every actor/slot on close
+  ---
+  duration_ms: 7.065788
+  type: 'test'
+  ...
+# Subtest: independent: actual killed actor remains destroyed when the service has been disabled
+ok 14 - independent: actual killed actor remains destroyed when the service has been disabled
+  ---
+  duration_ms: 2.691835
+  type: 'test'
+  ...
+# Subtest: independent: scene de-admission removes native actor before the next physics integration
+ok 15 - independent: scene de-admission removes native actor before the next physics integration
+  ---
+  duration_ms: 3.636805
+  type: 'test'
+  ...
+# (node:32) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+# --import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./")); register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./"));'
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# HIDDEN_ROOT_RESULT {"emitted":0,"active":0,"lit":[]}
+# Subtest: independent: hiding the entity root withdraws isolated pooled plumes
+ok 16 - independent: hiding the entity root withdraws isolated pooled plumes
+  ---
+  duration_ms: 181.526513
+  type: 'test'
+  ...
+# Subtest: independent: root replacement and material disposal restore every original material exactly once
+ok 17 - independent: root replacement and material disposal restore every original material exactly once
+  ---
+  duration_ms: 47.789567
+  type: 'test'
+  ...
+1..17
+# tests 17
+# suites 0
+# pass 17
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1181.387638

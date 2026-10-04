@@ -1,0 +1,18 @@
+{
+  "assets/ships/parts/parts_manifest.json": {
+    "selectedMatches": true,
+    "unrelatedMembershipAndOrderPreserved": false
+  },
+  "assets/ships/release/release_manifest.json": {
+    "selectedMatches": true,
+    "unrelatedMembershipAndOrderPreserved": true
+  },
+  "assets/ships/render-packages/pilots.json": {
+    "selectedMatches": true,
+    "unrelatedMembershipAndOrderPreserved": true
+  },
+  "tools/blender/forge/fleet.json": {
+    "selectedMatches": true,
+    "unrelatedMembershipAndOrderPreserved": true
+  }
+}

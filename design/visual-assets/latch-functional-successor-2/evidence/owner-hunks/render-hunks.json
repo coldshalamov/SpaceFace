@@ -1,0 +1,32 @@
+[
+  {
+    "path": "src/render/authoredMotion.js",
+    "preimageSha256": "965542456c1428109f27f487294af13f56abc3ebca838623b46c5cf1f7c07ef6",
+    "postimageSha256": "dea93312340d51b473615e26f30a8238b4a269f43f91b4cc3e60aa47b937df11",
+    "patch": "authoredMotion.js.patch"
+  },
+  {
+    "path": "src/render/partsLibrary.js",
+    "preimageSha256": "8bc5328c26a43cc40fccc70871d8ed7d2bacf240a55b152b9847e7486e551037",
+    "postimageSha256": "0a9607f409657491ed9d8114545236759103b6044bef6e17fc7346dedfca4621",
+    "patch": "partsLibrary.js.patch"
+  },
+  {
+    "path": "src/render/vfx.js",
+    "preimageSha256": "823f736c2e6a407c3ac40401a105da179abdb38f53164e69f0ed248caef65c9f",
+    "postimageSha256": "f34eadbb8c7ba9852900c72bafc48cac12086b0b8da894a3097ead7a6dfe9da0",
+    "patch": "vfx.js.patch"
+  },
+  {
+    "path": "src/render/visualFactory.js",
+    "preimageSha256": "1fabc8d8323680272c4ec9a2cdcee67f9b3ede272ba0f1b9bc3630b2f52a3bd1",
+    "postimageSha256": "cd1a2e4662d6aff8296d5dea075712384b3a8eb9f38ccf4189d345a8493c6ad2",
+    "patch": "visualFactory.js.patch"
+  },
+  {
+    "path": "src/render/visualOverrides.js",
+    "preimageSha256": "3b5fdba72f49b4bcaaa5a04c2eba5cb5bf5345469979f2858c34cb4016bb9c63",
+    "postimageSha256": "8223a58ebe35abd3d1f4be5819b79726dfb7b072bef6edeb5ae85c3c19f06b0f",
+    "patch": "visualOverrides.js.patch"
+  }
+]

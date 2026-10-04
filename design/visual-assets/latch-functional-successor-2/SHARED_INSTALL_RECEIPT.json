@@ -1,0 +1,250 @@
+{
+  "sourceMapSha256": "c9c3874779683519131ca6a97aa806a21ad049b172469095e4e9eae401eabf5e",
+  "files": [
+    {
+      "path": "src/core/dockAccess.js",
+      "preimage": null,
+      "postimage": "1bb2b8a09c8dc53c076ec3dbb83c2234191e303fdfe7e6b26aceb198d838cfea"
+    },
+    {
+      "path": "src/core/dockIntent.js",
+      "preimage": null,
+      "postimage": "e12a5477196f0df0726e230e4834bb23976944ba8646397b1464ca469e4d3828"
+    },
+    {
+      "path": "src/core/dockRange.js",
+      "preimage": null,
+      "postimage": "62045dc6fe72da7668f835f682bf17b3ef64504d73bf6c47e00b7c8bbcf279fc"
+    },
+    {
+      "path": "src/core/latchNineArrivalEvidence.js",
+      "preimage": null,
+      "postimage": "935e9dbd25e2c9ea6fd74524964c85b358da143e6d49450a47bb12c0068ec27d"
+    },
+    {
+      "path": "src/core/latchNineMaterialization.js",
+      "preimage": null,
+      "postimage": "fdeac9bb1df435accab98946f67287de69c9a8278670f90083d77f61ee85f0fd"
+    },
+    {
+      "path": "src/core/latchNineNative.js",
+      "preimage": null,
+      "postimage": "96bdee8d8606e94fa71e623076d716ad4272215cb505504ebd3917d141834514"
+    },
+    {
+      "path": "src/core/machineryPresentation.js",
+      "preimage": "6419451f5089b17e99d858d5e7d2d4fcfffda8c206aac1a3da493e56d570c213",
+      "postimage": "e2352de0066ea6cab312646eb821359851ab50a7742d7b4d7d4c37e6c4266ebc"
+    },
+    {
+      "path": "src/core/physicsAuthority.js",
+      "preimage": "3ea19212a16ed19a8b513256bb538695755fd666222698e0f1d273cc38d207b5",
+      "postimage": "8862ce0c90391d6310a7dc38bd32544280b8e96367e45da9e9a91a93f81446ac"
+    },
+    {
+      "path": "src/core/registry.js",
+      "preimage": "a407657b9ed25bbad6f2173f4d24822748f3692f54909d16b25176b0ab3db1e7",
+      "postimage": "aa621b420a85982ac321a08344a98801d67ee2f0f4d09e2629d10263e5cdb9c3"
+    },
+    {
+      "path": "src/core/runReset.js",
+      "preimage": "991f246a7be808c4f1b6c3402626a5cd7c476c5c274d67b8d28fe93548665631",
+      "postimage": "0407a27b03dd0340476d83e0044a4cfcc62614881c5feeb716fdc0a4be55c4fc"
+    },
+    {
+      "path": "src/core/sg02DynamicBodyOwner.js",
+      "preimage": "e3632be9a0bea7550ec48f1ed8b544aeac6c0fecc7f1529bb7e898af1adc1f0c",
+      "postimage": "fae40b23b14a223b8475f2e2b51a1d19674bc8c18684ab5bb9030a7760cc35ca"
+    },
+    {
+      "path": "src/data/latchNine.js",
+      "preimage": null,
+      "postimage": "a19397801609635753c8a58e710bdba8de7805fb874466ac36e016dbd8e375d6"
+    },
+    {
+      "path": "src/data/latchNineBody.js",
+      "preimage": null,
+      "postimage": "7f3ed67012d86d4d0724e1e6db7d8bd7500c2780a0a24536263e938689298369"
+    },
+    {
+      "path": "src/data/latchNineGeometry.js",
+      "preimage": null,
+      "postimage": "17e2452065b470393020d96bb678e6fdfe9fab5fcc080744414c2ee02fe96982"
+    },
+    {
+      "path": "src/data/latchNineGuidance.js",
+      "preimage": null,
+      "postimage": "90b367dde9cd1e4189ed83fcfc2b83203e076e930c4d16fb504aaafdeab1d531"
+    },
+    {
+      "path": "src/data/latchNineIdentity.js",
+      "preimage": null,
+      "postimage": "74ca44ff7d1c30a6b646fbab2efec27ec8ca0fa34777379b1c31e9402780d83d"
+    },
+    {
+      "path": "src/runtime/authoritativeSystemManifest.js",
+      "preimage": "78f39e7d93bad76f7e8ac07aa0f75b15b08d8426864eb39244e78964e6f90db2",
+      "postimage": "ad515690656ee13541078e253475aa522492bf428da4c7a07bdc305e71d03444"
+    },
+    {
+      "path": "src/runtime/nodeSystemFactoryTable.js",
+      "preimage": "089f4bdf002d5ecf5779777c7cc1115d172bb7bd4f83377293b22df324e3c4e1",
+      "postimage": "85954d5945435abc1fef4c01f6af5cb5dd8cb0b6c1b46e01122bc7b181606809"
+    },
+    {
+      "path": "src/save/saveSystem.js",
+      "preimage": "0dbd4d9e51ea42074696d0f9d0a40abb195d7a311c5c15315819a90421a91434",
+      "postimage": "bad7488a1c868c04d06d0bc57da3869ae096626afd9747cb359ea641aa5fe790"
+    },
+    {
+      "path": "src/systems/latchNine.js",
+      "preimage": null,
+      "postimage": "92829583512ab1fc4910cfc49cc6fe47961f457c2bafe3f9f239f8e2921f7339"
+    },
+    {
+      "path": "src/systems/latchNinePropulsion.js",
+      "preimage": null,
+      "postimage": "0b91328d1f9ba5276048f6c99e607168a9862fa805651c5f8ac3dc006943583a"
+    },
+    {
+      "path": "src/systems/latchNineService.js",
+      "preimage": null,
+      "postimage": "d3ed00ece3949274d4add2d09af74f4a40243bad4e4b7d537e3ed9768215cd74"
+    },
+    {
+      "path": "src/systems/latchNineTender.js",
+      "preimage": null,
+      "postimage": "c6641f672811f65eb51ff09cee03aa7f93ea4233966fbf350f0faa5e78887d83"
+    },
+    {
+      "path": "src/systems/stationBroadcast.js",
+      "preimage": "e5ad991506e36062d239d7dd2ec896f16fdadf4cb05451c7d58c35de6fcb4649",
+      "postimage": "21a6394d742688ca21734349c1d2dcf110ac62a36d0a34e38ba0f051aeab7539"
+    },
+    {
+      "path": "src/systems/world.js",
+      "preimage": "ce3693ee06d8fc929b8c8e1d4d4f691ea7973f8c738620e0250c6e843ed26ca3",
+      "postimage": "0628f7bc59af995bd2f1bd492a74eb607be28e5dcc70c16144228bfe83b1747a"
+    },
+    {
+      "path": "src/ui/dockDenyBanner.js",
+      "preimage": "ebc200a48d55f1d783a52fe13fbc9ce43957dc2058fa5fe2b2e5c503a2bb422d",
+      "postimage": "1e1e1388a08e8cf00b64bae45e838f750a090bcd3738c8e8e063230aaab0faaf"
+    },
+    {
+      "path": "src/ui/dockStateCommit.js",
+      "preimage": null,
+      "postimage": "adc05ab92713b1ee2f538856e4dff6bdcfc09c59dc4c994b027b9214097861d5"
+    },
+    {
+      "path": "src/ui/input.js",
+      "preimage": "2f4929054d6cddb4c9370bc26c132ab0159e7fa5ed765dc07bde9ab763350377",
+      "postimage": "88dfc4ed5133e34985f674cc48edd97b11d2bbb5ee1c8ee1ed4b3317c479175d"
+    },
+    {
+      "path": "src/ui/uiRoot.js",
+      "preimage": "74e834c0fb6d6a76d70d6b12557a755c1c2d00f421bf63f819014186075fec03",
+      "postimage": "e5678eb639cb25904cc22b6f8ae0602f006434c74354cf30f0e4ea2284ac49a8"
+    },
+    {
+      "path": "test/dock-intent-live-command.test.mjs",
+      "preimage": null,
+      "postimage": "47f3b8f59af33be175f4163d73f970f3a42fd8d2917d0ec2a7f8313d3ecdf918"
+    },
+    {
+      "path": "test/latch-nine-guidance-consumer.test.mjs",
+      "preimage": null,
+      "postimage": "1b6da285557298eb9f9d431e7a07b7c58c59500f245fccb256e4e1256bf333e3"
+    },
+    {
+      "path": "test/latch-nine-normal-route.test.mjs",
+      "preimage": null,
+      "postimage": "e786012a370d14611f31303cb45c347f5ccaa36a0585ee4d9e94e2d3c2b71b2b"
+    },
+    {
+      "path": "test/latch-nine-package-presentation.test.mjs",
+      "preimage": null,
+      "postimage": "5d8b8688513ed3861851e7128acaa9b5ff3bde934f6d4a18b8fff7efffd5f73f"
+    },
+    {
+      "path": "test/latch-nine-reconstruction.test.mjs",
+      "preimage": null,
+      "postimage": "169a195fa57d376933ea502082794f0ca0329ae1d568aa816ba6ca37a5177de4"
+    },
+    {
+      "path": "test/latch-nine-runtime.test.mjs",
+      "preimage": null,
+      "postimage": "a16565da5904a22733f26de12438c9d2b191ed2ef1ffb80fa4afd05e0d5caab0"
+    },
+    {
+      "path": "test/latch-nine-service.test.mjs",
+      "preimage": null,
+      "postimage": "e406112fb0b3856559280c16341fc2a1d1dd1829140a4ccc107707376563f7ba"
+    },
+    {
+      "path": "test/physics-owned-control.test.mjs",
+      "preimage": null,
+      "postimage": "0749d5099bdb0a2569bda6b883535aaa0ba4b9df103b18bf63aa0b609dbdc34a"
+    },
+    {
+      "path": "test/place-release-builder-contract.test.mjs",
+      "preimage": "ec422ed064a0887d0a52827d33767c1f1bd8ad417c6e2b730950f92054324c98",
+      "postimage": "3dcd2d0f663481932177f33011b8fe096342512c2219865496f7595ad4d284eb"
+    },
+    {
+      "path": "assets/ships/forge/sources/latch_nine/LatchNine.blend",
+      "preimage": null,
+      "postimage": "afe83637489433940091e6cc925c2e7a4f2679874d3974e46db2b7670fa29b59"
+    },
+    {
+      "path": "assets/ships/forge/sources/latch_nine/latch-nine.geometry.json",
+      "preimage": null,
+      "postimage": "7fad2ac6456385005a5a9bea33058a835a3475ae9697fe7776bd66bb8ce9f5e7"
+    },
+    {
+      "path": "assets/ships/motions/latch-nine.motion.json",
+      "preimage": null,
+      "postimage": "8ba58c6625848f7e5fba6c2700b41300c0d83c4152ee9a87ab8c8e7e9745e261"
+    },
+    {
+      "path": "assets/ships/parts/places/place_latch_nine.glb",
+      "preimage": null,
+      "postimage": "9f50438e1576c6a61375584f48ce941635c49cd4b67769cbb1b67fdd1029d4d5"
+    },
+    {
+      "path": "assets/ships/release/parts/places/place_latch_nine.glb",
+      "preimage": null,
+      "postimage": "c3550bccf5ff6c191008619616f68e2e22ff01f8be8bb19a9c4e1d3fd380b80c"
+    },
+    {
+      "path": "assets/ships/release/render-packages/latch-nine/render-package.json",
+      "preimage": null,
+      "postimage": "6b69220641f1b7ff6b85aade7b65c0e586e2be2f26443ba396e3fe5b9af6176e"
+    },
+    {
+      "path": "assets/ships/release/render-packages/latch-nine/render.glb",
+      "preimage": null,
+      "postimage": "61fe8328cfefa1e7e979c4461fe3aac2715ed5cdb6d62dc839c7a55880b8dd99"
+    },
+    {
+      "path": "scripts/build-place-release-assets.mjs",
+      "preimage": "d8ab97f9ba98e84b56eaa6fd4283148ee7152989a5d86e6dff34f5685e8ca961",
+      "postimage": "e9b9d068b916b4c1165710588a4b687d60f7b96df0e46ca21c0653d3da132ec3"
+    },
+    {
+      "path": "scripts/lib/modelTruthAuthoredCompound.mjs",
+      "preimage": "bd03c4baadeb1ed397bb27d4493e28494c7c3bc6c06fb7cc384ed46f5de083cd",
+      "postimage": "b54a202800e5506dae856f2b9d3debe9f467bb6ff55d3d169ef30a7b5423ad37"
+    },
+    {
+      "path": "scripts/model-truth-census.mjs",
+      "preimage": "8f518ca6755ebdde8bf3b5161fb03a446d3f689d449eae26bf8d89e9d048f0fa",
+      "postimage": "140b9028ca440e7dc8b2077d71f4f35ae25e9394a1aa91eaa97a5da2dfe3feab"
+    },
+    {
+      "path": "tools/blender/forge/ships/latch_nine.py",
+      "preimage": null,
+      "postimage": "cebeae06c0f6dac9ac971f26cd16c68b1be258cec2ae3820a653319fc2dbda0a"
+    }
+  ]
+}

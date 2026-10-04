@@ -1,0 +1,434 @@
+Blender 4.3.2
+Read blend: "/workspace/scratch/d2415e46e35b/recovery-latch-20261004/normal-route-v2/assets/ships/forge/sources/latch_nine/LatchNine.blend"
+Fra:1 Mem:20.37M (Peak 20.37M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Keel
+Fra:1 Mem:22.39M (Peak 22.39M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ServiceBeacon_Dome
+Fra:1 Mem:22.44M (Peak 22.44M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ServiceBeacon_Base
+Fra:1 Mem:22.49M (Peak 22.49M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BayFloor
+Fra:1 Mem:22.49M (Peak 22.49M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StbdNav
+Fra:1 Mem:22.50M (Peak 22.50M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortNav
+Fra:1 Mem:22.51M (Peak 22.51M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | RCSCore_STBD_AFT
+Fra:1 Mem:22.53M (Peak 22.53M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortRim
+Fra:1 Mem:22.52M (Peak 22.53M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | RCSMount_STBD_AFT
+Fra:1 Mem:22.60M (Peak 22.60M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardRim
+Fra:1 Mem:22.63M (Peak 22.63M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | AftRim
+Fra:1 Mem:22.63M (Peak 22.63M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | RCSCore_STBD_FORE
+Fra:1 Mem:22.66M (Peak 22.66M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ForeRim
+Fra:1 Mem:22.67M (Peak 22.67M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | RCSMount_STBD_FORE
+Fra:1 Mem:22.74M (Peak 22.74M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | AftDriveBridge
+Fra:1 Mem:22.73M (Peak 22.74M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | RCSCore_PORT_AFT
+Fra:1 Mem:22.77M (Peak 22.77M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | RCSMount_PORT_AFT
+Fra:1 Mem:22.82M (Peak 22.82M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortDrive
+Fra:1 Mem:22.82M (Peak 22.82M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | RCSCore_PORT_FORE
+Fra:1 Mem:22.85M (Peak 22.85M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | RCSMount_PORT_FORE
+Fra:1 Mem:22.88M (Peak 22.88M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardDrive
+Fra:1 Mem:22.90M (Peak 22.90M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | RCSCore_REVERSE_STBD
+Fra:1 Mem:22.92M (Peak 22.92M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ForeShoulder
+Fra:1 Mem:22.94M (Peak 22.94M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | RCSMount_REVERSE_STBD
+Fra:1 Mem:22.95M (Peak 22.95M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | OpticalBow
+Fra:1 Mem:23.02M (Peak 23.02M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | RCSCore_REVERSE_PORT
+Fra:1 Mem:23.03M (Peak 23.03M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Nose
+Fra:1 Mem:23.04M (Peak 23.04M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | RCSMount_REVERSE_PORT
+Fra:1 Mem:23.09M (Peak 23.09M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | HingeA
+Fra:1 Mem:23.13M (Peak 23.13M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | MAIN_PORT
+Fra:1 Mem:23.12M (Peak 23.13M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | HingeB
+Fra:1 Mem:23.13M (Peak 23.13M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | MainDriveMAIN_PORT
+Fra:1 Mem:23.22M (Peak 23.22M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | HingeC
+Fra:1 Mem:23.26M (Peak 23.26M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortStrake
+Fra:1 Mem:23.26M (Peak 23.26M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | MAIN_STBD
+Fra:1 Mem:23.28M (Peak 23.28M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | MainDriveMAIN_STBD
+Fra:1 Mem:23.30M (Peak 23.30M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardStrake
+Fra:1 Mem:23.38M (Peak 23.38M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | DriveBracePort
+Fra:1 Mem:23.36M (Peak 23.38M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ForeRibs1
+Fra:1 Mem:23.39M (Peak 23.39M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ForeRibs-1
+Fra:1 Mem:23.38M (Peak 23.39M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BayFasteners
+Fra:1 Mem:23.38M (Peak 23.39M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | DriveBraceStbd
+Fra:1 Mem:23.51M (Peak 23.51M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | DriveCage_port_top
+Fra:1 Mem:23.78M (Peak 23.78M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | DriveCage_port_bottom
+Fra:1 Mem:23.91M (Peak 23.91M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | DriveCage_port_left
+Fra:1 Mem:23.93M (Peak 23.93M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | DriveCage_port_right
+Fra:1 Mem:23.97M (Peak 23.97M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | DriveCage_stbd_top
+Fra:1 Mem:24.13M (Peak 24.13M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | DriveCage_stbd_bottom
+Fra:1 Mem:24.16M (Peak 24.16M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | DriveCage_stbd_left
+Fra:1 Mem:24.18M (Peak 24.18M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | DriveCage_stbd_right
+Fra:1 Mem:24.53M (Peak 24.53M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortControlSeat_aft
+Fra:1 Mem:24.55M (Peak 24.55M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortControlSeat_fore
+Fra:1 Mem:24.58M (Peak 24.58M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | RimSegmentPort-3.6
+Fra:1 Mem:24.61M (Peak 24.61M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | RimSegmentPort-0.7
+Fra:1 Mem:24.38M (Peak 24.61M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | RimSegmentPort2.1
+Fra:1 Mem:24.34M (Peak 24.61M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BayRibs
+Fra:1 Mem:24.37M (Peak 24.61M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | OccupationBand
+Fra:1 Mem:24.53M (Peak 24.61M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | HingeAxle_a
+Fra:1 Mem:24.81M (Peak 24.81M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SignalBlade_a
+Fra:1 Mem:24.86M (Peak 24.86M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BladeInset_a
+Fra:1 Mem:24.81M (Peak 24.86M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BladeWitness_a
+Fra:1 Mem:24.73M (Peak 24.86M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | OpticalSlit
+Fra:1 Mem:24.75M (Peak 24.86M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BladeSpine_a
+Fra:1 Mem:24.76M (Peak 24.86M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | OpticalShutter
+Fra:1 Mem:24.81M (Peak 24.86M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ShutterCross2.52
+Fra:1 Mem:24.81M (Peak 24.86M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BladeCross_a0.05
+Fra:1 Mem:24.86M (Peak 24.86M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ShutterCross-0.92
+Fra:1 Mem:24.89M (Peak 24.89M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ShutterFrame2.35
+Fra:1 Mem:24.93M (Peak 24.93M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ShutterFrame0.95
+Fra:1 Mem:24.95M (Peak 24.95M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | OpticalCarriage
+Fra:1 Mem:25.00M (Peak 25.00M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PistonMount-0.92.98
+Fra:1 Mem:25.01M (Peak 25.01M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | HingeAxle_b
+Fra:1 Mem:25.10M (Peak 25.10M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PistonMount-0.9-2.35
+Fra:1 Mem:25.14M (Peak 25.14M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SignalBlade_b
+Fra:1 Mem:25.13M (Peak 25.14M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Piston-0.9
+Fra:1 Mem:25.23M (Peak 25.23M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BladeInset_b
+Fra:1 Mem:25.25M (Peak 25.25M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Ram-0.9
+Fra:1 Mem:25.26M (Peak 25.26M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BladeWitness_b
+Fra:1 Mem:25.30M (Peak 25.30M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BladeSpine_b
+Fra:1 Mem:25.35M (Peak 25.35M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BladeCross_b0.05
+Fra:1 Mem:25.37M (Peak 25.37M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | LinearRail-0.9
+Fra:1 Mem:25.37M (Peak 25.37M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BladeCross_b-2.83
+Fra:1 Mem:25.42M (Peak 25.42M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | HingeAxle_c
+Fra:1 Mem:25.42M (Peak 25.42M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PistonMount-3.152.98
+Fra:1 Mem:25.50M (Peak 25.50M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PistonMount-3.15-2.35
+Fra:1 Mem:25.55M (Peak 25.55M) | Time:00:00.03 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Piston-3.15
+Fra:1 Mem:25.58M (Peak 25.58M) | Time:00:00.03 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SignalBlade_c
+Fra:1 Mem:25.59M (Peak 25.59M) | Time:00:00.03 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Ram-3.15
+Fra:1 Mem:25.69M (Peak 25.69M) | Time:00:00.03 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BladeInset_c
+Fra:1 Mem:25.68M (Peak 25.69M) | Time:00:00.03 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | LinearRail-3.15
+Fra:1 Mem:25.72M (Peak 25.72M) | Time:00:00.03 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BladeWitness_c
+Fra:1 Mem:25.74M (Peak 25.74M) | Time:00:00.03 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BladeCross_c-2.83
+Fra:1 Mem:25.73M (Peak 25.74M) | Time:00:00.03 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BladeSpine_c
+Fra:1 Mem:25.80M (Peak 25.80M) | Time:00:00.03 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BladeCross_c0.05
+Fra:1 Mem:25.80M (Peak 25.80M) | Time:00:00.03 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Initializing
+Fra:1 Mem:25.47M (Peak 25.80M) | Time:00:00.03 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Images | Loading forge_panel_albedo.png
+Fra:1 Mem:25.47M (Peak 25.80M) | Time:00:00.03 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Images | Loading forge_machinery_normal.png
+Fra:1 Mem:30.49M (Peak 31.48M) | Time:00:00.03 | Mem:1.00M, Peak:1.00M | Scene, ViewLayer | Updating Images | Loading forge_machinery_orm.png
+Fra:1 Mem:31.49M (Peak 32.50M) | Time:00:00.04 | Mem:2.00M, Peak:2.00M | Scene, ViewLayer | Updating Images | Loading forge_machinery_albedo.png
+Fra:1 Mem:40.49M (Peak 42.50M) | Time:00:00.04 | Mem:3.00M, Peak:3.00M | Scene, ViewLayer | Updating Images | Loading forge_panel_normal.png
+Fra:1 Mem:36.49M (Peak 44.50M) | Time:00:00.05 | Mem:7.00M, Peak:7.00M | Scene, ViewLayer | Updating Images | Loading forge_panel_orm.png
+Fra:1 Mem:36.97M (Peak 48.50M) | Time:00:00.06 | Mem:15.00M, Peak:15.00M | Scene, ViewLayer | Waiting for render to start
+Fra:1 Mem:36.97M (Peak 48.50M) | Time:00:00.06 | Mem:15.00M, Peak:15.00M | Scene, ViewLayer | Loading render kernels (may take a few minutes the first time)
+Fra:1 Mem:36.97M (Peak 48.50M) | Time:00:00.06 | Mem:15.00M, Peak:15.00M | Scene, ViewLayer | Updating Scene
+Fra:1 Mem:36.97M (Peak 48.50M) | Time:00:00.06 | Mem:15.00M, Peak:15.00M | Scene, ViewLayer | Updating Shaders
+Fra:1 Mem:37.06M (Peak 48.50M) | Time:00:00.06 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Procedurals
+Fra:1 Mem:37.06M (Peak 48.50M) | Time:00:00.06 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Background
+Fra:1 Mem:37.06M (Peak 48.50M) | Time:00:00.06 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Camera
+Fra:1 Mem:37.06M (Peak 48.50M) | Time:00:00.06 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Meshes Flags
+Fra:1 Mem:37.06M (Peak 48.50M) | Time:00:00.06 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Objects
+Fra:1 Mem:37.06M (Peak 48.50M) | Time:00:00.06 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Objects | Copying Transformations to device
+Fra:1 Mem:37.08M (Peak 48.50M) | Time:00:00.06 | Mem:15.03M, Peak:15.03M | Scene, ViewLayer | Updating Objects | Applying Static Transformations
+Fra:1 Mem:37.08M (Peak 48.50M) | Time:00:00.06 | Mem:15.03M, Peak:15.03M | Scene, ViewLayer | Updating Particle Systems
+Fra:1 Mem:37.08M (Peak 48.50M) | Time:00:00.06 | Mem:15.03M, Peak:15.03M | Scene, ViewLayer | Updating Particle Systems | Copying Particles to device
+Fra:1 Mem:37.08M (Peak 48.50M) | Time:00:00.06 | Mem:15.03M, Peak:15.03M | Scene, ViewLayer | Updating Meshes
+Fra:1 Mem:37.45M (Peak 48.50M) | Time:00:00.06 | Mem:15.03M, Peak:15.03M | Scene, ViewLayer | Updating Mesh | Computing attributes
+Fra:1 Mem:39.19M (Peak 48.50M) | Time:00:00.06 | Mem:15.04M, Peak:15.04M | Scene, ViewLayer | Updating Mesh | Copying Attributes to device
+Fra:1 Mem:39.16M (Peak 48.50M) | Time:00:00.06 | Mem:16.74M, Peak:16.74M | Scene, ViewLayer | Updating Scene BVH | Building
+Fra:1 Mem:39.16M (Peak 48.50M) | Time:00:00.06 | Mem:16.74M, Peak:16.74M | Scene, ViewLayer | Updating Scene BVH | Building BVH
+Fra:1 Mem:39.16M (Peak 48.50M) | Time:00:00.06 | Mem:17.47M, Peak:17.47M | Scene, ViewLayer | Updating Scene BVH | Building BVH 0%
+Fra:1 Mem:39.16M (Peak 48.50M) | Time:00:00.07 | Mem:18.35M, Peak:19.09M | Scene, ViewLayer | Updating Scene BVH | Copying BVH to device
+Fra:1 Mem:39.16M (Peak 48.50M) | Time:00:00.07 | Mem:18.35M, Peak:19.09M | Scene, ViewLayer | Updating Mesh | Computing normals
+Fra:1 Mem:40.11M (Peak 48.50M) | Time:00:00.07 | Mem:18.35M, Peak:19.09M | Scene, ViewLayer | Updating Mesh | Copying Mesh to device
+Fra:1 Mem:40.11M (Peak 48.50M) | Time:00:00.07 | Mem:19.30M, Peak:19.30M | Scene, ViewLayer | Updating Objects Flags
+Fra:1 Mem:40.11M (Peak 48.50M) | Time:00:00.07 | Mem:19.30M, Peak:19.30M | Scene, ViewLayer | Updating Primitive Offsets
+Fra:1 Mem:40.11M (Peak 48.50M) | Time:00:00.07 | Mem:19.30M, Peak:19.30M | Scene, ViewLayer | Updating Images
+Fra:1 Mem:40.11M (Peak 48.50M) | Time:00:00.07 | Mem:19.30M, Peak:19.30M | Scene, ViewLayer | Updating Camera Volume
+Fra:1 Mem:40.11M (Peak 48.50M) | Time:00:00.07 | Mem:19.30M, Peak:19.30M | Scene, ViewLayer | Updating Lookup Tables
+Fra:1 Mem:40.11M (Peak 48.50M) | Time:00:00.07 | Mem:19.39M, Peak:19.39M | Scene, ViewLayer | Updating Lights
+Fra:1 Mem:40.11M (Peak 48.50M) | Time:00:00.07 | Mem:19.39M, Peak:19.39M | Scene, ViewLayer | Updating Lights | Computing tree
+Fra:1 Mem:40.47M (Peak 48.50M) | Time:00:00.07 | Mem:19.75M, Peak:19.75M | Scene, ViewLayer | Updating Integrator
+Fra:1 Mem:40.47M (Peak 48.50M) | Time:00:00.07 | Mem:19.75M, Peak:19.75M | Scene, ViewLayer | Updating Film
+Fra:1 Mem:40.48M (Peak 48.50M) | Time:00:00.07 | Mem:19.67M, Peak:19.75M | Scene, ViewLayer | Updating Lookup Tables
+Fra:1 Mem:40.48M (Peak 48.50M) | Time:00:00.07 | Mem:19.75M, Peak:19.75M | Scene, ViewLayer | Updating Baking
+Fra:1 Mem:40.48M (Peak 48.50M) | Time:00:00.07 | Mem:19.75M, Peak:19.75M | Scene, ViewLayer | Updating Device | Writing constant memory
+Fra:1 Mem:40.48M (Peak 48.50M) | Time:00:00.07 | Mem:19.75M, Peak:19.75M | Scene, ViewLayer | Sample 0/40
+Fra:1 Mem:85.12M (Peak 85.12M) | Time:00:00.97 | Remaining:00:35.09 | Mem:64.40M, Peak:64.40M | Scene, ViewLayer | Sample 1/40
+Fra:1 Mem:85.12M (Peak 85.12M) | Time:00:21.90 | Remaining:00:04.63 | Mem:64.40M, Peak:64.40M | Scene, ViewLayer | Sample 33/40
+Fra:1 Mem:104.96M (Peak 144.63M) | Time:00:26.75 | Mem:64.40M, Peak:64.40M | Scene, ViewLayer | Sample 40/40
+Fra:1 Mem:104.96M (Peak 144.63M) | Time:00:26.75 | Mem:64.40M, Peak:64.40M | Scene, ViewLayer | Finished
+Saved: '/workspace/scratch/d2415e46e35b/recovery-latch-20261004/normal-route-v2-evidence/previews/latch-close.png'
+Time: 00:27.06 (Saving: 00:00.29)
+
+Fra:1 Mem:22.90M (Peak 22.90M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Keel
+Fra:1 Mem:22.93M (Peak 22.93M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BayFloor
+Fra:1 Mem:22.96M (Peak 22.96M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ServiceBeacon_Dome
+Fra:1 Mem:22.96M (Peak 22.96M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortRim
+Fra:1 Mem:23.01M (Peak 23.01M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ServiceBeacon_Base
+Fra:1 Mem:23.03M (Peak 23.03M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardRim
+Fra:1 Mem:23.06M (Peak 23.06M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StbdNav
+Fra:1 Mem:23.05M (Peak 23.06M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | AftRim
+Fra:1 Mem:23.06M (Peak 23.06M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortNav
+Fra:1 Mem:23.07M (Peak 23.07M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | RCSCore_STBD_AFT
+Fra:1 Mem:23.10M (Peak 23.10M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | RCSMount_STBD_AFT
+Fra:1 Mem:23.10M (Peak 23.10M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ForeRim
+Fra:1 Mem:23.16M (Peak 23.16M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | AftDriveBridge
+Fra:1 Mem:23.16M (Peak 23.16M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | RCSCore_STBD_FORE
+Fra:1 Mem:23.19M (Peak 23.19M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | RCSMount_STBD_FORE
+Fra:1 Mem:23.19M (Peak 23.19M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortDrive
+Fra:1 Mem:23.25M (Peak 23.25M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardDrive
+Fra:1 Mem:23.25M (Peak 23.25M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | RCSCore_PORT_AFT
+Fra:1 Mem:23.28M (Peak 23.28M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | RCSMount_PORT_AFT
+Fra:1 Mem:23.29M (Peak 23.29M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ForeShoulder
+Fra:1 Mem:23.34M (Peak 23.34M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | OpticalBow
+Fra:1 Mem:23.34M (Peak 23.34M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | RCSCore_PORT_FORE
+Fra:1 Mem:23.37M (Peak 23.37M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | RCSMount_PORT_FORE
+Fra:1 Mem:23.37M (Peak 23.37M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Nose
+Fra:1 Mem:23.43M (Peak 23.43M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | HingeA
+Fra:1 Mem:23.42M (Peak 23.43M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | RCSCore_REVERSE_STBD
+Fra:1 Mem:23.46M (Peak 23.46M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | RCSMount_REVERSE_STBD
+Fra:1 Mem:23.48M (Peak 23.48M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | HingeB
+Fra:1 Mem:23.51M (Peak 23.51M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | RCSCore_REVERSE_PORT
+Fra:1 Mem:23.50M (Peak 23.51M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | HingeC
+Fra:1 Mem:23.55M (Peak 23.55M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | RCSMount_REVERSE_PORT
+Fra:1 Mem:23.57M (Peak 23.57M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortStrake
+Fra:1 Mem:23.60M (Peak 23.60M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | MAIN_PORT
+Fra:1 Mem:23.59M (Peak 23.60M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardStrake
+Fra:1 Mem:23.59M (Peak 23.60M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | MainDriveMAIN_PORT
+Fra:1 Mem:23.69M (Peak 23.69M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | DriveBracePort
+Fra:1 Mem:23.69M (Peak 23.69M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | MAIN_STBD
+Fra:1 Mem:23.68M (Peak 23.69M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | DriveBraceStbd
+Fra:1 Mem:23.71M (Peak 23.71M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | MainDriveMAIN_STBD
+Fra:1 Mem:23.76M (Peak 23.76M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | DriveCage_port_top
+Fra:1 Mem:23.78M (Peak 23.78M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | DriveCage_port_bottom
+Fra:1 Mem:23.78M (Peak 23.78M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ForeRibs1
+Fra:1 Mem:23.81M (Peak 23.81M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ForeRibs-1
+Fra:1 Mem:23.83M (Peak 23.83M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BayFasteners
+Fra:1 Mem:23.88M (Peak 23.88M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | DriveCage_port_left
+Fra:1 Mem:24.00M (Peak 24.00M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | DriveCage_port_right
+Fra:1 Mem:24.20M (Peak 24.20M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | DriveCage_stbd_top
+Fra:1 Mem:24.26M (Peak 24.26M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | DriveCage_stbd_bottom
+Fra:1 Mem:24.42M (Peak 24.42M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | DriveCage_stbd_left
+Fra:1 Mem:24.45M (Peak 24.45M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | DriveCage_stbd_right
+Fra:1 Mem:24.30M (Peak 24.45M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortControlSeat_aft
+Fra:1 Mem:24.75M (Peak 24.75M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortControlSeat_fore
+Fra:1 Mem:24.82M (Peak 24.82M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | RimSegmentPort-3.6
+Fra:1 Mem:24.84M (Peak 24.84M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | RimSegmentPort-0.7
+Fra:1 Mem:24.86M (Peak 24.86M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | RimSegmentPort2.1
+Fra:1 Mem:24.89M (Peak 24.89M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | OccupationBand
+Fra:1 Mem:24.91M (Peak 24.91M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | HingeAxle_a
+Fra:1 Mem:24.96M (Peak 24.96M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SignalBlade_a
+Fra:1 Mem:24.69M (Peak 24.96M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BayRibs
+Fra:1 Mem:24.67M (Peak 24.96M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BladeInset_a
+Fra:1 Mem:24.84M (Peak 24.96M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BladeWitness_a
+Fra:1 Mem:24.93M (Peak 24.96M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BladeSpine_a
+Fra:1 Mem:24.95M (Peak 24.96M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BladeCross_a0.05
+Fra:1 Mem:25.11M (Peak 25.11M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BladeCross_a-2.83
+Fra:1 Mem:25.13M (Peak 25.13M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | HingeAxle_b
+Fra:1 Mem:25.18M (Peak 25.18M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SignalBlade_b
+Fra:1 Mem:25.07M (Peak 25.18M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | OpticalSlit
+Fra:1 Mem:25.11M (Peak 25.18M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | OpticalShutter
+Fra:1 Mem:25.12M (Peak 25.18M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BladeInset_b
+Fra:1 Mem:25.13M (Peak 25.18M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ShutterCross2.52
+Fra:1 Mem:25.16M (Peak 25.18M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BladeWitness_b
+Fra:1 Mem:25.17M (Peak 25.18M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ShutterCross-0.92
+Fra:1 Mem:25.17M (Peak 25.18M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BladeSpine_b
+Fra:1 Mem:25.22M (Peak 25.22M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ShutterFrame2.35
+Fra:1 Mem:25.22M (Peak 25.22M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BladeCross_b0.05
+Fra:1 Mem:25.27M (Peak 25.27M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ShutterFrame0.95
+Fra:1 Mem:25.28M (Peak 25.28M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BladeCross_b-2.83
+Fra:1 Mem:25.31M (Peak 25.31M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | OpticalCarriage
+Fra:1 Mem:25.32M (Peak 25.32M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | HingeAxle_c
+Fra:1 Mem:25.38M (Peak 25.38M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PistonMount-0.92.98
+Fra:1 Mem:25.43M (Peak 25.43M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PistonMount-0.9-2.35
+Fra:1 Mem:25.42M (Peak 25.43M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SignalBlade_c
+Fra:1 Mem:25.46M (Peak 25.46M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Piston-0.9
+Fra:1 Mem:25.52M (Peak 25.52M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BladeInset_c
+Fra:1 Mem:25.51M (Peak 25.52M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Ram-0.9
+Fra:1 Mem:25.59M (Peak 25.59M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BladeWitness_c
+Fra:1 Mem:25.60M (Peak 25.60M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BladeSpine_c
+Fra:1 Mem:25.59M (Peak 25.60M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | LinearRail-0.9
+Fra:1 Mem:25.63M (Peak 25.63M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BladeCross_c0.05
+Fra:1 Mem:25.64M (Peak 25.64M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PistonMount-3.152.98
+Fra:1 Mem:25.68M (Peak 25.68M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BladeCross_c-2.83
+Fra:1 Mem:25.68M (Peak 25.68M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PistonMount-3.15-2.35
+Fra:1 Mem:25.71M (Peak 25.71M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | LinearRail-3.15
+Fra:1 Mem:25.72M (Peak 25.72M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Piston-3.15
+Fra:1 Mem:25.79M (Peak 25.79M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Ram-3.15
+Fra:1 Mem:25.80M (Peak 25.80M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Initializing
+Fra:1 Mem:25.47M (Peak 25.80M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Images | Loading forge_panel_albedo.png
+Fra:1 Mem:30.49M (Peak 31.48M) | Time:00:00.01 | Mem:1.00M, Peak:1.00M | Scene, ViewLayer | Updating Images | Loading forge_machinery_orm.png
+Fra:1 Mem:31.49M (Peak 32.50M) | Time:00:00.02 | Mem:2.00M, Peak:2.00M | Scene, ViewLayer | Updating Images | Loading forge_machinery_albedo.png
+Fra:1 Mem:40.49M (Peak 42.50M) | Time:00:00.02 | Mem:3.00M, Peak:3.00M | Scene, ViewLayer | Updating Images | Loading forge_panel_normal.png
+Fra:1 Mem:36.49M (Peak 44.50M) | Time:00:00.02 | Mem:7.00M, Peak:7.00M | Scene, ViewLayer | Updating Images | Loading forge_panel_orm.png
+Fra:1 Mem:36.97M (Peak 48.50M) | Time:00:00.04 | Mem:15.00M, Peak:15.00M | Scene, ViewLayer | Waiting for render to start
+Fra:1 Mem:36.97M (Peak 48.50M) | Time:00:00.04 | Mem:15.00M, Peak:15.00M | Scene, ViewLayer | Loading render kernels (may take a few minutes the first time)
+Fra:1 Mem:36.97M (Peak 48.50M) | Time:00:00.04 | Mem:15.00M, Peak:15.00M | Scene, ViewLayer | Updating Scene
+Fra:1 Mem:36.97M (Peak 48.50M) | Time:00:00.04 | Mem:15.00M, Peak:15.00M | Scene, ViewLayer | Updating Shaders
+Fra:1 Mem:37.06M (Peak 48.50M) | Time:00:00.04 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Procedurals
+Fra:1 Mem:37.06M (Peak 48.50M) | Time:00:00.04 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Background
+Fra:1 Mem:37.06M (Peak 48.50M) | Time:00:00.04 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Camera
+Fra:1 Mem:37.06M (Peak 48.50M) | Time:00:00.04 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Meshes Flags
+Fra:1 Mem:37.06M (Peak 48.50M) | Time:00:00.04 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Objects
+Fra:1 Mem:37.06M (Peak 48.50M) | Time:00:00.04 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Objects | Copying Transformations to device
+Fra:1 Mem:37.08M (Peak 48.50M) | Time:00:00.04 | Mem:15.03M, Peak:15.03M | Scene, ViewLayer | Updating Objects | Applying Static Transformations
+Fra:1 Mem:37.08M (Peak 48.50M) | Time:00:00.04 | Mem:15.03M, Peak:15.03M | Scene, ViewLayer | Updating Particle Systems
+Fra:1 Mem:37.08M (Peak 48.50M) | Time:00:00.04 | Mem:15.03M, Peak:15.03M | Scene, ViewLayer | Updating Particle Systems | Copying Particles to device
+Fra:1 Mem:37.08M (Peak 48.50M) | Time:00:00.04 | Mem:15.03M, Peak:15.03M | Scene, ViewLayer | Updating Meshes
+Fra:1 Mem:37.45M (Peak 48.50M) | Time:00:00.04 | Mem:15.03M, Peak:15.03M | Scene, ViewLayer | Updating Mesh | Computing attributes
+Fra:1 Mem:39.19M (Peak 48.50M) | Time:00:00.04 | Mem:15.04M, Peak:15.04M | Scene, ViewLayer | Updating Mesh | Copying Attributes to device
+Fra:1 Mem:39.16M (Peak 48.50M) | Time:00:00.04 | Mem:16.74M, Peak:16.74M | Scene, ViewLayer | Updating Scene BVH | Building
+Fra:1 Mem:39.16M (Peak 48.50M) | Time:00:00.04 | Mem:16.74M, Peak:16.74M | Scene, ViewLayer | Updating Scene BVH | Building BVH
+Fra:1 Mem:39.16M (Peak 48.50M) | Time:00:00.04 | Mem:17.47M, Peak:17.47M | Scene, ViewLayer | Updating Scene BVH | Building BVH 0%
+Fra:1 Mem:39.16M (Peak 48.50M) | Time:00:00.04 | Mem:18.35M, Peak:19.09M | Scene, ViewLayer | Updating Scene BVH | Copying BVH to device
+Fra:1 Mem:39.16M (Peak 48.50M) | Time:00:00.04 | Mem:18.35M, Peak:19.09M | Scene, ViewLayer | Updating Mesh | Computing normals
+Fra:1 Mem:40.11M (Peak 48.50M) | Time:00:00.04 | Mem:18.35M, Peak:19.09M | Scene, ViewLayer | Updating Mesh | Copying Mesh to device
+Fra:1 Mem:40.11M (Peak 48.50M) | Time:00:00.04 | Mem:19.30M, Peak:19.30M | Scene, ViewLayer | Updating Objects Flags
+Fra:1 Mem:40.11M (Peak 48.50M) | Time:00:00.04 | Mem:19.30M, Peak:19.30M | Scene, ViewLayer | Updating Primitive Offsets
+Fra:1 Mem:40.11M (Peak 48.50M) | Time:00:00.04 | Mem:19.30M, Peak:19.30M | Scene, ViewLayer | Updating Images
+Fra:1 Mem:40.11M (Peak 48.50M) | Time:00:00.04 | Mem:19.30M, Peak:19.30M | Scene, ViewLayer | Updating Camera Volume
+Fra:1 Mem:40.11M (Peak 48.50M) | Time:00:00.04 | Mem:19.30M, Peak:19.30M | Scene, ViewLayer | Updating Lookup Tables
+Fra:1 Mem:40.11M (Peak 48.50M) | Time:00:00.04 | Mem:19.39M, Peak:19.39M | Scene, ViewLayer | Updating Lights
+Fra:1 Mem:40.11M (Peak 48.50M) | Time:00:00.04 | Mem:19.39M, Peak:19.39M | Scene, ViewLayer | Updating Lights | Computing tree
+Fra:1 Mem:40.47M (Peak 48.50M) | Time:00:00.04 | Mem:19.75M, Peak:19.75M | Scene, ViewLayer | Updating Integrator
+Fra:1 Mem:40.47M (Peak 48.50M) | Time:00:00.04 | Mem:19.75M, Peak:19.75M | Scene, ViewLayer | Updating Film
+Fra:1 Mem:40.48M (Peak 48.50M) | Time:00:00.04 | Mem:19.67M, Peak:19.75M | Scene, ViewLayer | Updating Lookup Tables
+Fra:1 Mem:40.48M (Peak 48.50M) | Time:00:00.04 | Mem:19.75M, Peak:19.75M | Scene, ViewLayer | Updating Baking
+Fra:1 Mem:40.48M (Peak 48.50M) | Time:00:00.04 | Mem:19.75M, Peak:19.75M | Scene, ViewLayer | Updating Device | Writing constant memory
+Fra:1 Mem:40.48M (Peak 48.50M) | Time:00:00.04 | Mem:19.75M, Peak:19.75M | Scene, ViewLayer | Sample 0/40
+Fra:1 Mem:85.12M (Peak 85.12M) | Time:00:00.67 | Remaining:00:24.57 | Mem:64.40M, Peak:64.40M | Scene, ViewLayer | Sample 1/40
+Fra:1 Mem:104.96M (Peak 144.63M) | Time:00:21.69 | Mem:64.40M, Peak:64.40M | Scene, ViewLayer | Sample 40/40
+Fra:1 Mem:104.96M (Peak 144.63M) | Time:00:21.69 | Mem:64.40M, Peak:64.40M | Scene, ViewLayer | Finished
+Saved: '/workspace/scratch/d2415e46e35b/recovery-latch-20261004/normal-route-v2-evidence/previews/latch-rear.png'
+Time: 00:21.87 (Saving: 00:00.17)
+
+Fra:1 Mem:22.90M (Peak 22.90M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Keel
+Fra:1 Mem:22.93M (Peak 22.93M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BayFloor
+Fra:1 Mem:22.96M (Peak 22.96M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ServiceBeacon_Dome
+Fra:1 Mem:22.96M (Peak 22.96M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortRim
+Fra:1 Mem:23.01M (Peak 23.01M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ServiceBeacon_Base
+Fra:1 Mem:23.01M (Peak 23.01M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardRim
+Fra:1 Mem:23.07M (Peak 23.07M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | AftRim
+Fra:1 Mem:23.06M (Peak 23.07M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StbdNav
+Fra:1 Mem:23.07M (Peak 23.07M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortNav
+Fra:1 Mem:23.09M (Peak 23.09M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | RCSCore_STBD_AFT
+Fra:1 Mem:23.10M (Peak 23.10M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ForeRim
+Fra:1 Mem:23.09M (Peak 23.10M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | RCSMount_STBD_AFT
+Fra:1 Mem:23.16M (Peak 23.16M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | AftDriveBridge
+Fra:1 Mem:23.18M (Peak 23.18M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | RCSCore_STBD_FORE
+Fra:1 Mem:23.18M (Peak 23.18M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortDrive
+Fra:1 Mem:23.17M (Peak 23.18M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | RCSMount_STBD_FORE
+Fra:1 Mem:23.25M (Peak 23.25M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardDrive
+Fra:1 Mem:23.25M (Peak 23.25M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | RCSCore_PORT_AFT
+Fra:1 Mem:23.26M (Peak 23.26M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | RCSMount_PORT_AFT
+Fra:1 Mem:23.27M (Peak 23.27M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ForeShoulder
+Fra:1 Mem:23.34M (Peak 23.34M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | OpticalBow
+Fra:1 Mem:23.34M (Peak 23.34M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | RCSCore_PORT_FORE
+Fra:1 Mem:23.37M (Peak 23.37M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | RCSMount_PORT_FORE
+Fra:1 Mem:23.36M (Peak 23.37M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Nose
+Fra:1 Mem:23.43M (Peak 23.43M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | HingeA
+Fra:1 Mem:23.42M (Peak 23.43M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | RCSCore_REVERSE_STBD
+Fra:1 Mem:23.46M (Peak 23.46M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | RCSMount_REVERSE_STBD
+Fra:1 Mem:23.47M (Peak 23.47M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | HingeB
+Fra:1 Mem:23.52M (Peak 23.52M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | HingeC
+Fra:1 Mem:23.55M (Peak 23.55M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortStrake
+Fra:1 Mem:23.56M (Peak 23.56M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | RCSCore_REVERSE_PORT
+Fra:1 Mem:23.57M (Peak 23.57M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardStrake
+Fra:1 Mem:23.58M (Peak 23.58M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | RCSMount_REVERSE_PORT
+Fra:1 Mem:23.62M (Peak 23.62M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | DriveBracePort
+Fra:1 Mem:23.63M (Peak 23.63M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | MAIN_PORT
+Fra:1 Mem:23.63M (Peak 23.63M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | DriveBraceStbd
+Fra:1 Mem:23.66M (Peak 23.66M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | MainDriveMAIN_PORT
+Fra:1 Mem:23.71M (Peak 23.71M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | DriveCage_port_top
+Fra:1 Mem:23.77M (Peak 23.77M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | DriveCage_port_bottom
+Fra:1 Mem:23.77M (Peak 23.77M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | MAIN_STBD
+Fra:1 Mem:23.78M (Peak 23.78M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | MainDriveMAIN_STBD
+Fra:1 Mem:23.78M (Peak 23.78M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | DriveCage_port_left
+Fra:1 Mem:23.86M (Peak 23.86M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | DriveCage_port_right
+Fra:1 Mem:23.87M (Peak 23.87M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ForeRibs1
+Fra:1 Mem:23.86M (Peak 23.87M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | DriveCage_stbd_top
+Fra:1 Mem:23.86M (Peak 23.87M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ForeRibs-1
+Fra:1 Mem:23.89M (Peak 23.89M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BayFasteners
+Fra:1 Mem:23.96M (Peak 23.96M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | DriveCage_stbd_bottom
+Fra:1 Mem:24.07M (Peak 24.07M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | DriveCage_stbd_left
+Fra:1 Mem:24.27M (Peak 24.27M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | DriveCage_stbd_right
+Fra:1 Mem:24.33M (Peak 24.33M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortControlSeat_aft
+Fra:1 Mem:24.49M (Peak 24.49M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortControlSeat_fore
+Fra:1 Mem:24.52M (Peak 24.52M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | RimSegmentPort-3.6
+Fra:1 Mem:24.54M (Peak 24.54M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | RimSegmentPort-0.7
+Fra:1 Mem:24.65M (Peak 24.65M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | RimSegmentPort2.1
+Fra:1 Mem:24.89M (Peak 24.89M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | OccupationBand
+Fra:1 Mem:24.91M (Peak 24.91M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | HingeAxle_a
+Fra:1 Mem:24.96M (Peak 24.96M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SignalBlade_a
+Fra:1 Mem:25.00M (Peak 25.00M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BladeInset_a
+Fra:1 Mem:25.03M (Peak 25.03M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BladeWitness_a
+Fra:1 Mem:25.04M (Peak 25.04M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BladeSpine_a
+Fra:1 Mem:25.06M (Peak 25.06M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BladeCross_a0.05
+Fra:1 Mem:24.77M (Peak 25.06M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BladeCross_a-2.83
+Fra:1 Mem:24.78M (Peak 25.06M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BayRibs
+Fra:1 Mem:24.77M (Peak 25.06M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | HingeAxle_b
+Fra:1 Mem:25.05M (Peak 25.06M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SignalBlade_b
+Fra:1 Mem:25.22M (Peak 25.22M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BladeInset_b
+Fra:1 Mem:25.25M (Peak 25.25M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BladeWitness_b
+Fra:1 Mem:25.25M (Peak 25.25M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BladeSpine_b
+Fra:1 Mem:25.28M (Peak 25.28M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BladeCross_b0.05
+Fra:1 Mem:25.18M (Peak 25.28M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BladeCross_b-2.83
+Fra:1 Mem:25.17M (Peak 25.28M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | OpticalSlit
+Fra:1 Mem:25.18M (Peak 25.28M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | OpticalShutter
+Fra:1 Mem:25.18M (Peak 25.28M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | HingeAxle_c
+Fra:1 Mem:25.29M (Peak 25.29M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ShutterCross2.52
+Fra:1 Mem:25.28M (Peak 25.29M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SignalBlade_c
+Fra:1 Mem:25.27M (Peak 25.29M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ShutterCross-0.92
+Fra:1 Mem:25.37M (Peak 25.37M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ShutterFrame2.35
+Fra:1 Mem:25.38M (Peak 25.38M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BladeInset_c
+Fra:1 Mem:25.39M (Peak 25.39M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ShutterFrame0.95
+Fra:1 Mem:25.43M (Peak 25.43M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BladeWitness_c
+Fra:1 Mem:25.43M (Peak 25.43M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | OpticalCarriage
+Fra:1 Mem:25.44M (Peak 25.44M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BladeSpine_c
+Fra:1 Mem:25.49M (Peak 25.49M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PistonMount-0.92.98
+Fra:1 Mem:25.49M (Peak 25.49M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BladeCross_c0.05
+Fra:1 Mem:25.53M (Peak 25.53M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PistonMount-0.9-2.35
+Fra:1 Mem:25.53M (Peak 25.53M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | BladeCross_c-2.83
+Fra:1 Mem:25.58M (Peak 25.58M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Piston-0.9
+Fra:1 Mem:25.58M (Peak 25.58M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | LinearRail-3.15
+Fra:1 Mem:25.64M (Peak 25.64M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Ram-3.15
+Fra:1 Mem:25.65M (Peak 25.65M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Ram-0.9
+Fra:1 Mem:25.73M (Peak 25.73M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Piston-3.15
+Fra:1 Mem:25.73M (Peak 25.73M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | LinearRail-0.9
+Fra:1 Mem:25.76M (Peak 25.76M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PistonMount-3.15-2.35
+Fra:1 Mem:25.76M (Peak 25.76M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PistonMount-3.152.98
+Fra:1 Mem:25.80M (Peak 25.80M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Initializing
+Fra:1 Mem:25.47M (Peak 25.80M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Images | Loading forge_panel_albedo.png
+Fra:1 Mem:25.47M (Peak 25.80M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Images | Loading forge_machinery_normal.png
+Fra:1 Mem:30.49M (Peak 31.48M) | Time:00:00.01 | Mem:1.00M, Peak:1.00M | Scene, ViewLayer | Updating Images | Loading forge_machinery_orm.png
+Fra:1 Mem:39.49M (Peak 41.50M) | Time:00:00.02 | Mem:2.00M, Peak:2.00M | Scene, ViewLayer | Updating Images | Loading forge_machinery_albedo.png
+Fra:1 Mem:40.49M (Peak 41.50M) | Time:00:00.02 | Mem:3.00M, Peak:3.00M | Scene, ViewLayer | Updating Images | Loading forge_panel_normal.png
+Fra:1 Mem:36.49M (Peak 44.50M) | Time:00:00.02 | Mem:7.00M, Peak:7.00M | Scene, ViewLayer | Updating Images | Loading forge_panel_orm.png
+Fra:1 Mem:36.97M (Peak 48.50M) | Time:00:00.03 | Mem:15.00M, Peak:15.00M | Scene, ViewLayer | Waiting for render to start
+Fra:1 Mem:36.97M (Peak 48.50M) | Time:00:00.04 | Mem:15.00M, Peak:15.00M | Scene, ViewLayer | Loading render kernels (may take a few minutes the first time)
+Fra:1 Mem:36.97M (Peak 48.50M) | Time:00:00.04 | Mem:15.00M, Peak:15.00M | Scene, ViewLayer | Updating Scene
+Fra:1 Mem:36.97M (Peak 48.50M) | Time:00:00.04 | Mem:15.00M, Peak:15.00M | Scene, ViewLayer | Updating Shaders
+Fra:1 Mem:37.06M (Peak 48.50M) | Time:00:00.04 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Procedurals
+Fra:1 Mem:37.06M (Peak 48.50M) | Time:00:00.04 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Background
+Fra:1 Mem:37.06M (Peak 48.50M) | Time:00:00.04 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Camera
+Fra:1 Mem:37.06M (Peak 48.50M) | Time:00:00.04 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Meshes Flags
+Fra:1 Mem:37.06M (Peak 48.50M) | Time:00:00.04 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Objects
+Fra:1 Mem:37.06M (Peak 48.50M) | Time:00:00.04 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Objects | Copying Transformations to device
+Fra:1 Mem:37.08M (Peak 48.50M) | Time:00:00.04 | Mem:15.03M, Peak:15.03M | Scene, ViewLayer | Updating Objects | Applying Static Transformations
+Fra:1 Mem:37.08M (Peak 48.50M) | Time:00:00.04 | Mem:15.03M, Peak:15.03M | Scene, ViewLayer | Updating Particle Systems
+Fra:1 Mem:37.08M (Peak 48.50M) | Time:00:00.04 | Mem:15.03M, Peak:15.03M | Scene, ViewLayer | Updating Particle Systems | Copying Particles to device
+Fra:1 Mem:37.08M (Peak 48.50M) | Time:00:00.04 | Mem:15.03M, Peak:15.03M | Scene, ViewLayer | Updating Meshes
+Fra:1 Mem:37.45M (Peak 48.50M) | Time:00:00.04 | Mem:15.03M, Peak:15.03M | Scene, ViewLayer | Updating Mesh | Computing attributes
+Fra:1 Mem:39.19M (Peak 48.50M) | Time:00:00.04 | Mem:15.04M, Peak:15.04M | Scene, ViewLayer | Updating Mesh | Copying Attributes to device
+Fra:1 Mem:39.16M (Peak 48.50M) | Time:00:00.04 | Mem:16.74M, Peak:16.74M | Scene, ViewLayer | Updating Scene BVH | Building
+Fra:1 Mem:39.16M (Peak 48.50M) | Time:00:00.04 | Mem:16.74M, Peak:16.74M | Scene, ViewLayer | Updating Scene BVH | Building BVH
+Fra:1 Mem:39.16M (Peak 48.50M) | Time:00:00.04 | Mem:17.47M, Peak:17.47M | Scene, ViewLayer | Updating Scene BVH | Building BVH 0%
+Fra:1 Mem:39.16M (Peak 48.50M) | Time:00:00.04 | Mem:18.35M, Peak:19.09M | Scene, ViewLayer | Updating Scene BVH | Copying BVH to device
+Fra:1 Mem:39.16M (Peak 48.50M) | Time:00:00.04 | Mem:18.35M, Peak:19.09M | Scene, ViewLayer | Updating Mesh | Computing normals
+Fra:1 Mem:40.11M (Peak 48.50M) | Time:00:00.04 | Mem:18.35M, Peak:19.09M | Scene, ViewLayer | Updating Mesh | Copying Mesh to device
+Fra:1 Mem:40.11M (Peak 48.50M) | Time:00:00.04 | Mem:19.30M, Peak:19.30M | Scene, ViewLayer | Updating Objects Flags
+Fra:1 Mem:40.11M (Peak 48.50M) | Time:00:00.04 | Mem:19.30M, Peak:19.30M | Scene, ViewLayer | Updating Primitive Offsets
+Fra:1 Mem:40.11M (Peak 48.50M) | Time:00:00.04 | Mem:19.30M, Peak:19.30M | Scene, ViewLayer | Updating Images
+Fra:1 Mem:40.11M (Peak 48.50M) | Time:00:00.04 | Mem:19.30M, Peak:19.30M | Scene, ViewLayer | Updating Camera Volume
+Fra:1 Mem:40.11M (Peak 48.50M) | Time:00:00.04 | Mem:19.30M, Peak:19.30M | Scene, ViewLayer | Updating Lookup Tables
+Fra:1 Mem:40.11M (Peak 48.50M) | Time:00:00.04 | Mem:19.39M, Peak:19.39M | Scene, ViewLayer | Updating Lights
+Fra:1 Mem:40.11M (Peak 48.50M) | Time:00:00.04 | Mem:19.39M, Peak:19.39M | Scene, ViewLayer | Updating Lights | Computing tree
+Fra:1 Mem:40.47M (Peak 48.50M) | Time:00:00.05 | Mem:19.75M, Peak:19.75M | Scene, ViewLayer | Updating Integrator
+Fra:1 Mem:40.47M (Peak 48.50M) | Time:00:00.05 | Mem:19.75M, Peak:19.75M | Scene, ViewLayer | Updating Film
+Fra:1 Mem:40.48M (Peak 48.50M) | Time:00:00.05 | Mem:19.67M, Peak:19.75M | Scene, ViewLayer | Updating Lookup Tables
+Fra:1 Mem:40.48M (Peak 48.50M) | Time:00:00.05 | Mem:19.75M, Peak:19.75M | Scene, ViewLayer | Updating Baking
+Fra:1 Mem:40.48M (Peak 48.50M) | Time:00:00.05 | Mem:19.75M, Peak:19.75M | Scene, ViewLayer | Updating Device | Writing constant memory
+Fra:1 Mem:40.48M (Peak 48.50M) | Time:00:00.05 | Mem:19.75M, Peak:19.75M | Scene, ViewLayer | Sample 0/40
+Fra:1 Mem:85.12M (Peak 85.12M) | Time:00:00.96 | Remaining:00:35.50 | Mem:64.40M, Peak:64.40M | Scene, ViewLayer | Sample 1/40
+Fra:1 Mem:85.12M (Peak 85.12M) | Time:00:25.33 | Remaining:00:05.36 | Mem:64.40M, Peak:64.40M | Scene, ViewLayer | Sample 33/40
+Fra:1 Mem:104.96M (Peak 144.63M) | Time:00:30.54 | Mem:64.40M, Peak:64.40M | Scene, ViewLayer | Sample 40/40
+Fra:1 Mem:104.96M (Peak 144.63M) | Time:00:30.54 | Mem:64.40M, Peak:64.40M | Scene, ViewLayer | Finished
+Saved: '/workspace/scratch/d2415e46e35b/recovery-latch-20261004/normal-route-v2-evidence/previews/latch-chase.png'
+Time: 00:30.72 (Saving: 00:00.18)
+
+LATCH_SOURCE_PREVIEWS_COMPLETE
+
+Blender quit

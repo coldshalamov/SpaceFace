@@ -1,0 +1,20 @@
+[
+  {
+    "path": "src/core/physicsAuthority.js",
+    "preimageSha256": "3ea19212a16ed19a8b513256bb538695755fd666222698e0f1d273cc38d207b5",
+    "postimageSha256": "8862ce0c90391d6310a7dc38bd32544280b8e96367e45da9e9a91a93f81446ac",
+    "patch": "physicsAuthority.js.patch"
+  },
+  {
+    "path": "src/core/sg02DynamicBodyOwner.js",
+    "preimageSha256": "e3632be9a0bea7550ec48f1ed8b544aeac6c0fecc7f1529bb7e898af1adc1f0c",
+    "postimageSha256": "fae40b23b14a223b8475f2e2b51a1d19674bc8c18684ab5bb9030a7760cc35ca",
+    "patch": "sg02DynamicBodyOwner.js.patch"
+  },
+  {
+    "path": "src/core/physics.js",
+    "preimageSha256": "60bd69d3af050840d5c30e9dd9cf4738af0a87ae6e3b0c06ec950f69e8f61881",
+    "postimageSha256": "9313009ad16af21e18813110b0cbd0b9c549e89e2c1a3484480cca75cddeaf3c",
+    "patch": "physics.js.patch"
+  }
+]

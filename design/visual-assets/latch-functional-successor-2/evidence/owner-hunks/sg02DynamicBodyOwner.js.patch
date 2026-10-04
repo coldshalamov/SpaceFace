@@ -1,0 +1,63 @@
+--- a/src/core/sg02DynamicBodyOwner.js
++++ b/src/core/sg02DynamicBodyOwner.js
+@@ -6,10 +6,12 @@
+ // `rapier-dynamic` backend. Flight/combat write membrane commands; this owner consumes them,
+ // steps real Rapier dynamic bodies, and mirrors the post-solve state back to entities.
+ 
++import { stepLatchNative } from './latchNineNative.js';
+ import { stepCeresWorkfleetSlides, syncCeresWorkfleetColliders } from './ceresWorkfleetArticulation.js';
+ import { ceresWorkfleetSlideRole } from '../data/ceresWorkfleetArticulation.js';
+ import {
+   consumePhysicsCommand,
++  takeConsumedPhysicsControlReceipt,
+   consumeProjectileContinuation,
+   markPhysicsBodyNativeFailure,
+   clearPhysicsBodyNativeFailure,
+@@ -853,6 +855,8 @@
+       appliedTorque: zero3(),
+       controlForce: zero3(),
+       controlTorque: zero3(),
++      _ownedControlReceipt: null,
++      _ownedControlReceiptTick: -1,
+       // Rapier's user_force/user_torque accumulators persist across world.step() and are
+       // captured by takeSnapshot(): the restored body can carry the last step's stale force,
+       // which the baseline clears via resetBodyForces at the top of the next _stepFixed.
+@@ -1345,10 +1349,13 @@
+       stepCeresWorkfleetSlides(this, rec, this.fixedDt, collisionPairsForm, coincidentSpineForCollider);
+     }
+     for (const rec of this.dynamicRecords) {
++      stepLatchNative(this, rec, this.fixedDt, collisionPairsForm, coincidentSpineForCollider);
+       setZero3(rec.appliedForce);
+       setZero3(rec.appliedTorque);
+       setZero3(rec.controlForce);
+       setZero3(rec.controlTorque);
++      rec._ownedControlReceipt = null;
++      rec._ownedControlReceiptTick = -1;
+       rec.maxSpeed = Infinity;
+       rec._tumbling = false;
+       const command = consumePhysicsCommand(rec.entity);
+@@ -1364,7 +1371,14 @@
+       if (rec._forcesDirty === true || rec._sleepAllowed !== false) resetBodyForces(rec.body);
+       rec._forcesDirty = false;
+       this._applyBodyResponse(rec, command && command.bodyResponse);
+-      if (command) this._applyCommand(rec, command);
++      if (command) {
++        const ownedReceipt = takeConsumedPhysicsControlReceipt(rec.entity, command);
++        this._applyCommand(rec, command);
++        // A receipt belongs to this exact native record/body. The future tick prevents
++        // presentation if world.step fails before the force was actually integrated.
++        rec._ownedControlReceipt = ownedReceipt;
++        rec._ownedControlReceiptTick = ownedReceipt ? this.tick + 1 : -1;
++      }
+       if (continuation) this._applyProjectileContinuation(rec, continuation);
+     }
+ 
+@@ -2232,6 +2246,8 @@
+       appliedTorque: zero3(),
+       controlForce: zero3(),
+       controlTorque: zero3(),
++      _ownedControlReceipt: null,
++      _ownedControlReceiptTick: -1,
+       expected: { vx: 0, vz: 0, wy: 0, yaw: 0, x: 0, z: 0 },
+       // Mirror of the body's stored f32 translation so _maybeResyncBodyPose can compare without
+       // allocating a Rapier vector each sync; refreshed at every setTranslation site.

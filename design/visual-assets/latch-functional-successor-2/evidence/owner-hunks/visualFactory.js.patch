@@ -1,0 +1,15 @@
+--- a/src/render/visualFactory.js
++++ b/src/render/visualFactory.js
+@@ -1,3 +1,4 @@
++import { isLatchActor } from './latchNineVisuals.js';
+ import { isCeresWorkfleetPlace, ceresWorkfleetPlaceFile } from './ceresWorkfleetVisuals.js';
+ import { CERES_SHIPBREAK_FILES, isCeresShipbreakSection } from './ceresShipbreakVisuals.js';
+ // Builds Three.js meshes for entities from primitives, deterministic procedural maps, and visual
+@@ -5703,6 +5704,7 @@
+     build(e) {
+       try {
+         if (!e) return null;
++        if(isLatchActor(e)){const root=new THREE.Group();root.name='LatchNineAuthoredPending';return root;}
+         if (e.data?.ravelPart) return stampBuiltVisual(buildRavelVisual(e));
+         if (e.data?.bracketPart) return stampBuiltVisual(buildBracketVisual(e));
+         if (e.data?.solsticePart) return stampBuiltVisual(buildSolsticeVisual(e));

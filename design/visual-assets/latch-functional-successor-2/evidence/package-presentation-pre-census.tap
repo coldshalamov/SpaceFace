@@ -1,0 +1,30 @@
+✔ canonical compiled Latch package presents only exact consumed native actuation and withdraws on scene loss (267.671315ms)
+✖ real place publication records the compiled Latch source independently of Ceres metadata (243.051995ms)
+✔ source certificate, current native compound and every rendered LOD agree without relaxing coverage (9.873065ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 2
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 967.612197
+
+✖ failing tests:
+
+test at test/latch-nine-package-presentation.test.mjs:27:2
+✖ real place publication records the compiled Latch source independently of Ceres metadata (243.051995ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  false !== true
+  
+      at TestContext.<anonymous> (file:///workspace/scratch/d2415e46e35b/recovery-latch-20261004/normal-route-v2/test/latch-nine-package-presentation.test.mjs:31:239)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

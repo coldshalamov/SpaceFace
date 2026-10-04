@@ -1,0 +1,21 @@
+{
+  "selected": [
+    "latch-nine"
+  ],
+  "changes": [
+    {
+      "key": "latch-nine",
+      "before": {
+        "releaseSha256": "9ea77dee5d292bfdfb131bd00d33a62042a9ed4ba4d544dcf1efd86368b3e37f",
+        "releaseBytes": 875564,
+        "sceneRoot": true
+      },
+      "after": {
+        "releaseSha256": "e58bcef5ed46d17813359dab9e8946f6c274bee3fc5c4604e1c0e79bf1692a84",
+        "releaseBytes": 878720,
+        "sceneRoot": true
+      }
+    }
+  ],
+  "written": true
+}

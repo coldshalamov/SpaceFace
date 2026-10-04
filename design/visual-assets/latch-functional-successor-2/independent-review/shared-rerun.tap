@@ -1,0 +1,214 @@
+TAP version 13
+# (node:12) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+# --import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/audit-loader.mjs", pathToFileURL("./")); register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/audit-loader.mjs", pathToFileURL("./"));'
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: Ceres measurement uses explicit native compounds at the runtime source origin
+ok 1 - Ceres measurement uses explicit native compounds at the runtime source origin
+  ---
+  duration_ms: 7.525459
+  type: 'test'
+  ...
+# Subtest: current unrelated catalog fits are retained while the seven Ceres assets keep exactly scale two
+ok 2 - current unrelated catalog fits are retained while the seven Ceres assets keep exactly scale two
+  ---
+  duration_ms: 4.860124
+  type: 'test'
+  ...
+# Subtest: Forge role coverage requires every textured material and never pardons an unclassified sibling
+ok 3 - Forge role coverage requires every textured material and never pardons an unclassified sibling
+  ---
+  duration_ms: 0.320732
+  type: 'test'
+  ...
+# (node:13) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+# --import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/audit-loader.mjs", pathToFileURL("./")); register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/audit-loader.mjs", pathToFileURL("./"));'
+# (Use `node --trace-warnings ...` to show where the warning was created)
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: only three exact Ceres identities join the three existing Stormshift families
+ok 4 - only three exact Ceres identities join the three existing Stormshift families
+  ---
+  duration_ms: 7.044978
+  type: 'test'
+  ...
+# Subtest: saved readiness, requested tags, staged roots and mismatched GLB sources never admit a cold body
+ok 5 - saved readiness, requested tags, staged roots and mismatched GLB sources never admit a cold body
+  ---
+  duration_ms: 9.091903
+  type: 'test'
+  ...
+# Subtest: source/release GLB URLs normalize exactly and mutable boundary metadata cannot relabel receipts
+ok 6 - source/release GLB URLs normalize exactly and mutable boundary metadata cannot relabel receipts
+  ---
+  duration_ms: 5.25006
+  type: 'test'
+  ...
+# [partsLibrary] authored place admission failed; no substitute visual published Error: injected compile failure
+#     at prepareAuthoredPipelines (file:///workspace/scratch/d2415e46e35b/recovery-latch-20261004/normal-route-v2/test/ceres-workfleet-admission.test.mjs:208:38)
+#     at prepareAuthoredVisualPipelines (file:///workspace/scratch/d2415e46e35b/recovery-latch-20261004/normal-route-v2/src/render/partsLibrary.js:8156:44)
+#     at completeAdmission (file:///workspace/scratch/d2415e46e35b/recovery-latch-20261004/normal-route-v2/src/render/partsLibrary.js:4040:13)
+#     at upgradePlaceBoundary (file:///workspace/scratch/d2415e46e35b/recovery-latch-20261004/normal-route-v2/src/render/partsLibrary.js:4110:10)
+# [render] appearance replacement retained previous visual 1 Error: injected cold compilation failure
+#     at TestContext.<anonymous> (file:///workspace/scratch/d2415e46e35b/recovery-latch-20261004/normal-route-v2/test/ceres-workfleet-admission.test.mjs:288:41)
+#     at async Test.run (node:internal/test_runner/test:1389:7)
+#     at async Test.processPendingSubtests (node:internal/test_runner/test:960:7)
+# [render] appearance replacement retained previous visual 2 Error: injected cold compilation failure
+#     at TestContext.<anonymous> (file:///workspace/scratch/d2415e46e35b/recovery-latch-20261004/normal-route-v2/test/ceres-workfleet-admission.test.mjs:288:41)
+#     at async Test.run (node:internal/test_runner/test:1389:7)
+#     at async Test.processPendingSubtests (node:internal/test_runner/test:960:7)
+# [render] appearance replacement retained previous visual 3 Error: injected cold compilation failure
+#     at TestContext.<anonymous> (file:///workspace/scratch/d2415e46e35b/recovery-latch-20261004/normal-route-v2/test/ceres-workfleet-admission.test.mjs:288:41)
+#     at async Test.run (node:internal/test_runner/test:1389:7)
+#     at async Test.processPendingSubtests (node:internal/test_runner/test:960:7)
+# Subtest: actual cradle place publication waits for delayed GPU and both initial renderer latches
+ok 7 - actual cradle place publication waits for delayed GPU and both initial renderer latches
+  ---
+  duration_ms: 64.532984
+  type: 'test'
+  ...
+# Subtest: actual cutterHead place publication waits for delayed GPU and both initial renderer latches
+ok 8 - actual cutterHead place publication waits for delayed GPU and both initial renderer latches
+  ---
+  duration_ms: 5.712265
+  type: 'test'
+  ...
+# Subtest: actual place compile cannot publish requested Ceres identity
+ok 9 - actual place compile cannot publish requested Ceres identity
+  ---
+  duration_ms: 4.277969
+  type: 'test'
+  ...
+# Subtest: actual place wrong-source cannot publish requested Ceres identity
+ok 10 - actual place wrong-source cannot publish requested Ceres identity
+  ---
+  duration_ms: 2.095729
+  type: 'test'
+  ...
+# Subtest: offscreen eviction retains exact admitted hardware; context failure and browser disposal revoke it
+ok 11 - offscreen eviction retains exact admitted hardware; context failure and browser disposal revoke it
+  ---
+  duration_ms: 3.705889
+  type: 'test'
+  ...
+# Subtest: reused objects, render generations and cold restore revoke both exact identity and indirect child actions
+ok 12 - reused objects, render generations and cold restore revoke both exact identity and indirect child actions
+  ---
+  duration_ms: 0.891009
+  type: 'test'
+  ...
+# Subtest: existing single traffic reconciliation invokes both bounded owners once per tick
+ok 13 - existing single traffic reconciliation invokes both bounded owners once per tick
+  ---
+  duration_ms: 0.741475
+  type: 'test'
+  ...
+# Subtest: native failure closes headless and browser work, target, projectile and LOS readers without replacing authored shapes
+ok 14 - native failure closes headless and browser work, target, projectile and LOS readers without replacing authored shapes
+  ---
+  duration_ms: 6.413338
+  type: 'test'
+  ...
+# Subtest: all three exact families retry failed offscreen builds through one existing renderer poll
+ok 15 - all three exact families retry failed offscreen builds through one existing renderer poll
+  ---
+  duration_ms: 6.223362
+  type: 'test'
+  ...
+# Subtest: delayed breaker GPU publication cannot authorize a stale generation, object or same-object life
+ok 16 - delayed breaker GPU publication cannot authorize a stale generation, object or same-object life
+  ---
+  duration_ms: 1.973305
+  type: 'test'
+  ...
+# Subtest: foreign effective proxy, scale and mass cannot acquire the authored Ceres receipt
+ok 17 - foreign effective proxy, scale and mass cannot acquire the authored Ceres receipt
+  ---
+  duration_ms: 1.189247
+  type: 'test'
+  ...
+# Subtest: real Continue restores Ceres identities and hardware recipes without saved browser readiness
+ok 18 - real Continue restores Ceres identities and hardware recipes without saved browser readiness
+  ---
+  duration_ms: 146.220869
+  type: 'test'
+  ...
+# Subtest: Ceres cold admission withdraws real native attachment endpoints and resumes the same line only after exact readmission
+ok 19 - Ceres cold admission withdraws real native attachment endpoints and resumes the same line only after exact readmission
+  ---
+  duration_ms: 5.792004
+  type: 'test'
+  ...
+# Subtest: actual breaker whole-ship wrapper publishes the selected hull source through repeated composition
+ok 20 - actual breaker whole-ship wrapper publishes the selected hull source through repeated composition
+  ---
+  duration_ms: 28.730227
+  type: 'test'
+  ...
+# Subtest: breaker actual renderer snapshot replacement activates only its published current-life propulsion
+ok 21 - breaker actual renderer snapshot replacement activates only its published current-life propulsion
+  ---
+  duration_ms: 4.001343
+  type: 'test'
+  ...
+# Subtest: cutterHead actual renderer snapshot replacement activates only its published current-life propulsion
+ok 22 - cutterHead actual renderer snapshot replacement activates only its published current-life propulsion
+  ---
+  duration_ms: 2.476402
+  type: 'test'
+  ...
+# Subtest: actual LOD2 renderer submission clears a cutter throat on zero consumed force despite decorative sleep
+ok 23 - actual LOD2 renderer submission clears a cutter throat on zero consumed force despite decorative sleep
+  ---
+  duration_ms: 3.848524
+  type: 'test'
+  ...
+# (node:14) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+# --import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/audit-loader.mjs", pathToFileURL("./")); register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/audit-loader.mjs", pathToFileURL("./"));'
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: normalized physics bodies and resolved specs are identity-stable while unchanged
+ok 24 - normalized physics bodies and resolved specs are identity-stable while unchanged
+  ---
+  duration_ms: 1.205231
+  type: 'test'
+  ...
+# Subtest: body replacement and revision changes invalidate only the affected caches
+ok 25 - body replacement and revision changes invalidate only the affected caches
+  ---
+  duration_ms: 0.478008
+  type: 'test'
+  ...
+# (node:20) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+# --import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/audit-loader.mjs", pathToFileURL("./")); register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/audit-loader.mjs", pathToFileURL("./"));'
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: owned control keeps public command shape and issues a nonserializable unforgeable receipt
+ok 26 - owned control keeps public command shape and issues a nonserializable unforgeable receipt
+  ---
+  duration_ms: 2.667759
+  type: 'test'
+  ...
+# Subtest: a same-source same-value later write revokes ownership, independent of strings and equality
+ok 27 - a same-source same-value later write revokes ownership, independent of strings and equality
+  ---
+  duration_ms: 0.173841
+  type: 'test'
+  ...
+# Subtest: cancel removes only its still-pending control and keeps foreign impulses and torque impulses
+ok 28 - cancel removes only its still-pending control and keeps foreign impulses and torque impulses
+  ---
+  duration_ms: 0.183485
+  type: 'test'
+  ...
+# Subtest: consumed, reincarnated, changed-spec and cleared-authority receipts cannot cancel fresh ownership
+ok 29 - consumed, reincarnated, changed-spec and cleared-authority receipts cannot cancel fresh ownership
+  ---
+  duration_ms: 0.457567
+  type: 'test'
+  ...
+1..29
+# tests 29
+# suites 0
+# pass 29
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2603.344706

@@ -1,0 +1,55 @@
+(node:16) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("../latch-lifecycle-correction-overlay/overlay-loader.mjs", pathToFileURL("./")); register("../latch-lifecycle-correction-overlay/overlay-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ disabled owned death persists immediately and releases the exact budget on event (62.888128ms)
+✔ matching foreign textual tags and death do not destroy the owned service (6.097955ms)
+✔ replacement under a recycled id cannot be consumed as the owned death (6.830947ms)
+✔ same object in a new generation cannot inherit the old owned death (6.317905ms)
+(node:17) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("../latch-lifecycle-correction-overlay/overlay-loader.mjs", pathToFileURL("./")); register("../latch-lifecycle-correction-overlay/overlay-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ normal materializer creates one source-origin physical actor and binds one exact spawn-budget slot (87.950138ms)
+✔ ordinary approach guidance does not manufacture clearance; actual berth commit acknowledges once and return can acknowledge again (8.291125ms)
+✔ sector exit releases the exact actor and slot; return rematerializes a fresh native life (7.335324ms)
+✔ cold semantic restore removes the old runtime body, restores only four fields and does not replay acknowledgement (6.586568ms)
+✔ destroyed/disabled Latch leaves ordinary docking authority usable and does not respawn a destroyed body (4.109797ms)
+✔ native-observed clean docking recognizes once; stale or replayed commits cannot add arrivals (12.222959ms)
+✔ only same-life law-owner player incidents enter the bounded idempotent memory (4.349547ms)
+✔ browser source admission and scene detach fail physical colliders closed without borrowing ready strings (5.167456ms)
+(node:18) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("../latch-lifecycle-correction-overlay/overlay-loader.mjs", pathToFileURL("./")); register("../latch-lifecycle-correction-overlay/overlay-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ canonical compiled Latch package presents only exact consumed native actuation and withdraws on scene loss (223.055465ms)
+LATCH_COMPOSED_CPU_COUNTS {"lod0":{"visibleMeshCandidates":25,"triangles":24040},"lod1":{"visibleMeshCandidates":25,"triangles":9606},"lod2":{"visibleMeshCandidates":25,"triangles":3414}}
+✔ real place publication records the compiled Latch source independently of Ceres metadata (243.17401ms)
+✔ source certificate, current native compound and every rendered LOD agree without relaxing coverage (10.6527ms)
+(node:20) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("../latch-lifecycle-correction-overlay/overlay-loader.mjs", pathToFileURL("./")); register("../latch-lifecycle-correction-overlay/overlay-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ missing real authored model keeps production service unpromoted without a fallback (2.017212ms)
+✔ admission rejects red/foreign art, static or sensor bodies, stale identity and duplicate tenders (1.255637ms)
+✔ post-commit event observes both UI fields, even when service initialized before uiRoot (1.342518ms)
+✔ paused keepalive finishes one ACK without advancing sim time or moving a body (0.596847ms)
+✔ raw or wrong-identity post-commit messages cannot manufacture an ACK (0.305799ms)
+✔ denial during docked pause cancels acknowledgement immediately (0.512441ms)
+✔ new tender or player lifetime cannot inherit an armed arrival even when the object is reused (0.506211ms)
+✔ physical service-box displacement exposes recovery while leaving bodies untouched (0.367993ms)
+✔ canonical killed body persists destroyed, but a stale/unrelated kill does not (0.337848ms)
+✔ real Save capture plan and sync/async section generator save only semantic fields (1.480946ms)
+✔ real restore prefix calls the owner before sector entry and completed arrival never replays (1.072432ms)
+✔ fresh-run owner list resets destroyed/met without rediscovering a stale old-world body (0.274523ms)
+✔ sector lifecycle and teardown discard active/stale observers without duplicate listeners (0.389175ms)
+✔ production order, reset, browser and Node lookup and docked keepalive seams are wired (1.113263ms)
+✔ old-player dock:docked through the real commit helper cannot dock or acknowledge the new player (0.301523ms)
+✔ legacy untagged docking remains usable but cannot gain Latch ACK on a later keepalive (0.229555ms)
+✔ same ID and generation on a fresh restored object cannot authenticate an old dock intent (0.33215ms)
+✔ cloning/serializing a receipt preserves ordinary compatibility but cannot forge recognition (0.184167ms)
+✔ same actor cannot reuse a dock receipt across sector entry or target object replacement (0.196696ms)
+ℹ tests 34
+ℹ suites 0
+ℹ pass 34
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1425.955284
