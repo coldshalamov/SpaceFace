@@ -24,7 +24,8 @@ Read build_map.md section 1 and do exactly what it says: node scripts/program-di
   `node scripts/program-dispatch.mjs --next/--ready/--id`. The queue is unchanged.
 - **"Do the next N tasks" / batch parallel work** → the numbered board in
   `build_map.md` §1C — one OPEN row per agent, lowest first (queue drained 2026-09-27).
-  Prompt B below.
+  Prompt B below; for many agents running the same prompt and a development-over-capture
+  ladder (ledger rows, board rows, lane decomposition), Prompt D below.
 - **Spend inference making the game better** — say `INFERENCE` (no spec) to
   look at play and rotate real weaknesses, or `INFERENCE 3 MISSIONS` to stay
   in a domain → copy [`INFERENCE_GOAL.txt`](./INFERENCE_GOAL.txt). Law:
@@ -61,6 +62,57 @@ For N rows: start N threads, one BOARD prompt each — or give one agent
 `TRIAGE_2026-09-28.md`. A packet already satisfied closes as already-satisfied; a CHECK packet
 reproduces its boundary before building. Rows sharing a seam tag are serial inside that seam —
 one live NOW row per seam.
+
+## Prompt D — a batch development push (twenty units, default)
+
+For "push the development the equivalent of 20 tasks" with many agents working at once. This is
+the collective-gobble prompt: every agent runs the same loop on a different unit and they
+collectively drain what remains. It leans on root `AGENTS.md` §3 for the whole concurrency
+contract (NOW rows, liveness, pathspec commits, foreign-hunk preservation) instead of repeating
+it. Development over capture: the machine will be loud with N agents, so no capture work.
+
+```text
+BATCH 20 — push development by landing twenty units, one at a time, alongside the other agents
+already working in this checkout. Governing law first: root AGENTS.md — especially §3 (shared
+tree: NOW.md rows, check-now-liveness, pathspec commits, preserve foreign hunks, merge
+collisions by content, never revert another agent's work) — plus build_map.md §1C and
+design/program/NOW.md. Those carry the concurrency contract; this prompt only adds the loop and
+the count.
+
+Pick ONE unit at a time, development over capture, in this priority order:
+1. An open row in the demo defect ledger (design/program/DEMO_READINESS_2026-09-20.md §6).
+2. An OPEN numbered row on the board (build_map.md §1C; node scripts/board-chunks.mjs) —
+   includes the §L Long Game rows 278-283.
+3. A lane sitting (design/program/FINISH_LANES.md): decompose one admitted outcome — the lane's
+   counted surface, or the Alpha/Depth tables in design/program/02_REMAINING_WORK.md — into an
+   exact row with a done-when in player units, then land it. Missing code or assets is work to
+   build, not a blocker; an empty queue is never a stopping condition.
+One unit = one ledger/board row closed, or one lane row you decomposed and landed. Reading,
+review, discussion, and capture do not count toward the twenty.
+
+The loop, per unit: claim the exact paths in a NOW.md row before the first edit (check foreign
+rows' liveness first — a stale row is adoptable: finish its work, never restart or revert it) →
+read the source the row names → finish the outcome wired on the default route, pinned by a
+focused test on a fixed seed → commit chunks as you go by exact pathspec → after landing, spawn
+one fresh subagent to adversarially review the diff (does it do what the row says; does any test
+pin the wrong thing) and fix or justify what it finds → delete the board/ledger row in the
+landing commit (ledger rows never leave any other way), release the NOW row, write the RESULT:
+DONE receipt from 02_REMAINING_WORK.md → take the next unit. If two agents collide on one hunk,
+merge by content and keep both changes.
+
+Off-limits: quiet-host producer steps (scripts/quiet-host-session.mjs refuses non-quiet hosts —
+no perf captures and no stills-as-proof from this box; perf work is a code-judgment change-loop
+on a focused fixture, measurement only as the receipt of a change), ORRERY's UI redesign lane,
+design/program/vm-drop/, and owner phase-gated work (SWARM-08+, L-RELEASE). The INFERENCE
+catalog is empty — fold small wiring into the row you are already doing. Small unrelated bugs
+you meet: fix them in the same sitting (AGENTS.md §7 total-fix mode).
+
+Stop when twenty units are closed or you are told to stop. Final report: one line per unit —
+id, commit, proof — then anything you left open and why.
+```
+
+Start N threads with the same prompt; they self-distribute through NOW.md rows and liveness.
+Fewer than twenty is a valid ask — change the count in the first line.
 
 ## Prompt A0 — INFERENCE (think, complete, rotate)
 
