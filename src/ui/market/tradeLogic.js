@@ -7,6 +7,7 @@
 // right intel panel, and an expanded canvas price history & prediction chart.
 import { COMMODITIES } from '../../data/commodities.js';
 import { economyBaseEqForSize, economySpotPriceForRole } from '../../systems/economy.js';
+import { massLoadFactor } from '../../systems/ships.js';
 import { stationSurchargeWaiverActive } from '../../systems/factions.js';
 import { confirm } from '../confirm.js';
 import { escapeHtml } from '../comms.js';
@@ -489,6 +490,30 @@ export function applyTradeNavigation(ctx, stationId, cmdtyId) {
   ctx.bus.emit('audio:cue', { id: 'ui_click' });
 }
 
+/**
+ * SFQ-B084 route preflight: what the planned load WEIGHS and the handling it buys, forecast
+ * through the one honest carrier — cargo.usedMass -> derived operational mass ->
+ * MASS_LOAD_LAW (ships.js) — the same law the flight kernel feels. Volume stays the only
+ * capacity; this reads the projected load factor, it never gates the load. Null when the
+ * hull or its derived block is not reachable (headless/legacy callers): the card then simply
+ * carries no mass phrase, like every other optional field.
+ */
+function loadHandlingForecast(state, def, units) {
+  if (!(units > 0)) return null;
+  const massPerU = def && Number.isFinite(def.massPerU) && def.massPerU > 0 ? def.massPerU : 0;
+  if (!(massPerU > 0)) return null;
+  const entity = state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : null;
+  const data = (entity && entity.data) || {};
+  const derived = data.derived || null;
+  const operationalMass = derived && Number.isFinite(derived.operationalMass) ? derived.operationalMass : 0;
+  if (!data.defId || !(operationalMass > 0)) return null;
+  const loadMassT = Math.round(units * massPerU * 10) / 10;
+  const load = massLoadFactor(data.defId, operationalMass + units * massPerU);
+  return { loadMassT, thrustPct: Math.max(0, Math.round((1 - load) * 100)) };
+}
+
 function tradeRunCapacity(state, def, buyHere, margin) {
   const player = (state && state.player) || {};
   const cargo = player.cargo || {};
@@ -507,6 +532,9 @@ function tradeRunCapacity(state, def, buyHere, margin) {
   }
   // INF-085: name the binding constraint so the card can state its cargo limit.
   const loadBound = loadUnits <= 0 ? 'none' : (holdUnits <= affordableUnits ? 'hold' : 'credits');
+  // SFQ-B084: the heavy-freight half of the same forecast — tonnes aboard and the thrust the
+  // mass law will take from the flown accelerations at that load.
+  const massForecast = loadHandlingForecast(state, def, loadUnits);
   return {
     holdUnits,
     affordableUnits,
@@ -515,6 +543,7 @@ function tradeRunCapacity(state, def, buyHere, margin) {
     loadCost: Math.round(loadUnits * buyHere),
     loadProfit: Math.round(loadUnits * margin),
     loadVolume: Math.round(loadUnits * vol * 10) / 10,
+    ...(massForecast ? { loadMassT: massForecast.loadMassT, loadThrustPct: massForecast.thrustPct } : {}),
     loadReason,
   };
 }
@@ -535,12 +564,20 @@ export function formatRouteCard(trade) {
   const bound = trade && trade.loadBound === 'credits'
     ? 'credits bind'
     : `hold fits ${Math.max(0, Math.floor(Number(trade && trade.holdUnits) || 0))} u`;
+  // SFQ-B084: the handling cost of the load, forecast before purchase. The tonnes ride the
+  // same cargo.usedMass carrier the flight kernel feels; a penalty-free load prints the mass
+  // alone (a full hold of feathers reads full volume, full thrust).
+  const massT = Number(trade && trade.loadMassT);
+  const thrustPct = Number(trade && trade.loadThrustPct);
+  const mass = massT > 0
+    ? ` · +${massT.toLocaleString('en-US')} t` + (thrustPct > 0 ? ` → -${Math.round(thrustPct)}% thrust` : '')
+    : '';
   const intel = (trade && trade.intelLabel) || 'unknown intel';
   const demand = trade && trade.destinationDemand && trade.destinationDemand.label
     ? ` · ${trade.destinationDemand.label}` : '';
   return {
     units,
-    sub: `${units} u · cost ${cost.toLocaleString('en-US')} · buy ${buy.toLocaleString('en-US')} → sell ${sell.toLocaleString('en-US')} · ${intel} · ${bound}${demand}`,
+    sub: `${units} u · cost ${cost.toLocaleString('en-US')} · buy ${buy.toLocaleString('en-US')} → sell ${sell.toLocaleString('en-US')} · ${intel} · ${bound}${mass}${demand}`,
     profitText: net > 0 ? `+${net.toLocaleString('en-US')} cr` : '—',
   };
 }
