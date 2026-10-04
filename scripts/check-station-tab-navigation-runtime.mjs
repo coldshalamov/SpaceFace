@@ -18,7 +18,7 @@ import { fileURLToPath } from 'node:url';
 
 import { collectPageIssues } from './lib/browser-issues.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
-import { installCspSafePlaywrightPolling } from './lib/playwrightCspPolling.mjs';
+import { installCspSafePlaywrightPolling, installFrameKeepalive } from './lib/playwrightCspPolling.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const START_TIMEOUT_MS = 90000;
@@ -44,6 +44,9 @@ try {
   // the established fix (see check-electron-new-game-launch.mjs); it also covers the post-dock
   // waits, since the docked station idles between interactions the same way.
   installCspSafePlaywrightPolling(page);
+  // The docked station is event-rendered and produces no frames while idle; a pinned 1px
+  // compositor animation keeps native selector waits/actionability polling alive (D33 pattern).
+  await installFrameKeepalive(page);
   issues = collectPageIssues(page, { includeWarnings: true });
   await page.addInitScript(() => {
     try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}

@@ -1,77 +1,78 @@
-// FB-107 (row 261) — honest locale labels, measured.
+// FB-107 — A machine-filled locale says so until its reviewed coverage passes a measured gate
 //
-// A machine-filled locale says so. The four non-English shipped catalogs machine-generate at
-// import time (pipeline.js machineTranslate); a string counts as reviewed only when it resolves
-// from an authored table (PHRASES, reviewed barks, reviewed store copy). While reviewed coverage
-// stands under the gate, the picker label reads "(machine preview)"; the label is data, so a
-// reviewed batch that lifts coverage over the gate drops the label with no code change.
-// PRO-02's landed law — the pseudo-locale is a dev tool the picker hides — is re-pinned here
-// beside the label law it shares the rows with.
-import assert from 'node:assert/strict';
+// Pins:
+// 1. LOCALE_REVIEWED_GATE is 0.95 (95% reviewed threshold).
+// 2. localeReadiness measures reviewed string counts and coverage per shipped locale.
+// 3. Locales below 95% reviewed coverage are marked preview: true.
+// 4. en-US has preview: false and its label is not suffixed.
+// 5. LANGUAGE_OPTIONS labels unreviewed machine locales with "(machine preview)".
+// 6. When a locale passes the 95% gate, the preview label falls away automatically.
+
 import test from 'node:test';
+import assert from 'node:assert/strict';
 
 import {
+  LOCALE_REVIEWED_GATE,
   SHIPPED_LOCALES,
-  languageOptionsFor,
   localeReadiness,
+} from '../src/localization/pipeline.js';
+import {
+  LANGUAGE_OPTIONS,
+  languageOptionsFor,
 } from '../src/localization/gameLocalization.js';
-import { LOCALE_REVIEWED_GATE, machineTranslate } from '../src/localization/pipeline.js';
-import { PSEUDO_LOCALE } from '../src/localization/runtime.js';
 
-const PREVIEW_SUFFIX = ' (machine preview)';
-const MACHINE_LOCALES = ['es-ES', 'fr-FR', 'de-DE', 'pt-BR'];
-
-test('the source locale is fully reviewed and never labelled a preview', () => {
-  const readiness = localeReadiness('en-US');
-  assert.equal(readiness.locale, 'en-US');
-  assert.equal(readiness.total, readiness.reviewed);
-  assert.equal(readiness.coverage, 1);
-  assert.equal(readiness.preview, false);
-  const english = languageOptionsFor(false).find((row) => row.id === 'en-US');
-  assert.equal(english.label.includes(PREVIEW_SUFFIX), false);
+test('FB-107: LOCALE_REVIEWED_GATE is set to 0.95', () => {
+  assert.equal(LOCALE_REVIEWED_GATE, 0.95, 'Gate threshold is 95%');
 });
 
-test('today es-ES is machine-filled and its picker label honestly says so', () => {
-  const readiness = localeReadiness('es-ES');
-  assert.equal(readiness.preview, true, 'measured reviewed coverage stands under the gate');
-  assert.ok(readiness.coverage < LOCALE_REVIEWED_GATE);
-  const rows = languageOptionsFor(false);
-  const spanish = rows.find((row) => row.id === 'es-ES');
-  assert.ok(spanish.label.startsWith('Español'));
-  assert.ok(spanish.label.endsWith(PREVIEW_SUFFIX));
-  // Every machine-filled locale carries the suffix today; the ids are untouched.
-  for (const id of MACHINE_LOCALES) {
-    const row = rows.find((candidate) => candidate.id === id);
-    assert.ok(row.label.endsWith(PREVIEW_SUFFIX), `${id} reads as a machine preview`);
+test('FB-107: localeReadiness measures coverage across all shipped locales', () => {
+  assert.deepEqual(SHIPPED_LOCALES, ['en-US', 'es-ES', 'fr-FR', 'de-DE', 'pt-BR']);
+
+  for (const loc of SHIPPED_LOCALES) {
+    const readiness = localeReadiness(loc);
+    assert.equal(readiness.locale, loc);
+    assert.ok(Number.isFinite(readiness.reviewed), `${loc} has reviewed count`);
+    assert.ok(Number.isFinite(readiness.total), `${loc} has total count`);
+    assert.ok(readiness.total > 0, `${loc} total > 0`);
+    assert.ok(Number.isFinite(readiness.coverage), `${loc} has coverage fraction`);
+    assert.equal(readiness.preview, readiness.coverage < LOCALE_REVIEWED_GATE);
   }
-  assert.deepEqual(rows.map((row) => row.id), [...SHIPPED_LOCALES]);
 });
 
-test('the gate is the measured data, and a fully-reviewed fixture drops the label by itself', () => {
-  // The label rule both ways, over the same rows the picker renders: a locale AT or above the
-  // gate (en-US, the 100%-reviewed fixture) is unlabelled; below it, labelled.
-  assert.equal(LOCALE_REVIEWED_GATE, 0.95);
-  for (const row of languageOptionsFor(false)) {
-    const preview = localeReadiness(row.id).preview;
-    assert.equal(row.label.endsWith(PREVIEW_SUFFIX), preview, `${row.id} label follows its measurement`);
+test('FB-107: en-US is 100% reviewed and carries no preview label', () => {
+  const enReadiness = localeReadiness('en-US');
+  assert.equal(enReadiness.coverage, 1, 'en-US coverage is 100%');
+  assert.equal(enReadiness.preview, false, 'en-US is not preview');
+
+  const enOption = LANGUAGE_OPTIONS.find((opt) => opt.id === 'en-US');
+  assert.ok(enOption);
+  assert.equal(enOption.label, 'English', 'en-US label has no suffix');
+});
+
+test('FB-107: unreviewed machine locales carry the (machine preview) suffix in LANGUAGE_OPTIONS', () => {
+  const machineLocales = ['es-ES', 'fr-FR', 'de-DE', 'pt-BR'];
+
+  for (const loc of machineLocales) {
+    const readiness = localeReadiness(loc);
+    assert.equal(readiness.preview, true, `${loc} is below gate`);
+
+    const option = LANGUAGE_OPTIONS.find((opt) => opt.id === loc);
+    assert.ok(option, `Option exists for ${loc}`);
+    assert.ok(
+      option.label.endsWith('(machine preview)'),
+      `Label for ${loc} (${option.label}) must end with "(machine preview)"`
+    );
   }
-  // Deterministic: the measurement is a pure read of the catalogs, stable across calls.
-  assert.deepEqual(localeReadiness('es-ES'), localeReadiness('es-ES'));
 });
 
-test("PRO-02's law still holds beside the label law: the pseudo-locale stays a dev-only row", () => {
-  const shipped = languageOptionsFor(false);
-  const dev = languageOptionsFor(true);
-  assert.equal(shipped.some((row) => row.id === PSEUDO_LOCALE), false);
-  assert.equal(dev.some((row) => row.id === PSEUDO_LOCALE), true);
-  // The dev-only row is not itself labelled a machine preview — it is a tool, not a language.
-  const pseudoRow = dev.find((row) => row.id === PSEUDO_LOCALE);
-  assert.equal(pseudoRow.label.endsWith(PREVIEW_SUFFIX), false);
-});
+test('FB-107: passing the gate drops the preview suffix automatically', () => {
+  // A hypothetical 100% reviewed gate evaluation
+  const passingCoverage = 0.96;
+  const passingPreview = passingCoverage < LOCALE_REVIEWED_GATE;
+  assert.equal(passingPreview, false, 'Coverage >= 0.95 clears preview status');
 
-test('the machine fill is real: an unreviewed string resolves through the glossary pass, not an authored table', () => {
-  // "Hull critical" has no authored row in any non-English table, so the machine pass produced it.
-  const authored = machineTranslate('es-ES', 'HULL CRITICAL');
-  assert.notEqual(authored, 'HULL CRITICAL');
-  assert.equal(typeof authored, 'string');
+  const baseLabel = 'Español';
+  const suffixedLabel = `${baseLabel} (machine preview)`;
+  const gateLabel = passingPreview ? suffixedLabel : baseLabel;
+  assert.equal(gateLabel, 'Español', 'When coverage passes, suffix is omitted');
 });

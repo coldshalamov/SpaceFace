@@ -130,6 +130,52 @@ const NPC_MINER_CADENCE_DEPLETION_START = 0.04;
 const NPC_MINER_FIELD_RETARGET_INTERVAL_S = 1;
 const NPC_MINER_BASE_WORK_S = 30;
 const NPC_MINER_THIN_WORK_S = 54;
+// SF-078: a surveyor's WORK completion is a real measurement — the marks it stopped at
+// leave bounded readings (field, position, depletion, age) in a per-sector ledger. The
+// next mining shift consumes them: a fresh mark that found a workable field ranks that
+// field ahead of unsurveyed ground when a miner relocates. Marks age out, a field that
+// is live-exhausted is refused no matter what the mark once read, and a mark in empty
+// space records nothing — reports must age honestly, never mint a strike.
+const NPC_SURVEY_MARK_RANGE_WU = 1400;
+const NPC_SURVEY_MARK_FIELDS_PER_STOP = 2;
+const NPC_SURVEY_MARK_FRESH_S = 420;
+const NPC_SURVEY_MARK_LEDGER_MAX = 24;
+// SF-080: a berth-class stop ('home:', 'origin:', 'dest:', 'yard:', 'berth:', 'client:') is one
+// physical dock — one job hull works it at a time. A job arriving inside the apron while the
+// berth is claimed holds at a lane-side queue point OUTSIDE the approach corridor, in stable
+// arrival order (first-in-apron, then jobId), for at most a legitimate wait; after that it
+// proceeds rather than letting a dead holder starve the pocket. The queue is intent-only —
+// nothing is emitted at the player, so crossing the lane never builds an invisible wall, and
+// pausing the kernel clock while held keeps the ship's unload honest (no work at distance).
+const NPC_BERTH_CLASS = /^(?:home|origin|dest|yard|berth|client):/;
+const NPC_BERTH_QUEUE_ZONE_WU = 420;
+const NPC_BERTH_OCCUPY_RADIUS_WU = 320;
+const NPC_BERTH_HOLD_OFFSET_WU = 130;
+const NPC_BERTH_HOLD_STACK_WU = 55;
+const NPC_BERTH_HOLD_TIMEOUT_S = 60;
+const NPC_BERTH_OCCUPY_PHASES = new Set([
+  NPC_JOB_PHASE.COMMISSION, NPC_JOB_PHASE.DEPART, NPC_JOB_PHASE.APPROACH,
+  NPC_JOB_PHASE.WORK, NPC_JOB_PHASE.LOAD, NPC_JOB_PHASE.UNLOAD, NPC_JOB_PHASE.HOLD,
+]);
+// SF-081: a close call is not a crime. A fast hull crossing a worker's bench gets ONE braced
+// beat — the job clock pauses while the crew braces, one restrained line per worker per
+// cooldown, and nothing else: no heat, no flee, no violence escalation counters. A distant or
+// gentle pass triggers nothing; actually hitting the worker or its load stays on the
+// damage/protest path below, which is what keeps annoyance and crime different things.
+const CLOSE_CALL_RADIUS_WU = 150;
+const CLOSE_CALL_SPEED_WU = 40;
+const CLOSE_CALL_HOLD_S = 2.5;
+const CLOSE_CALL_COOLDOWN_S = 30;
+const CLOSE_CALL_PHASES = new Set([NPC_JOB_PHASE.WORK, NPC_JOB_PHASE.LOAD, NPC_JOB_PHASE.UNLOAD]);
+// SF-082: a fleeing worker must not resume blind into a hostile parked on the stop it was
+// flying to — that is flee→resume→flee flapping, not a choice. When the remembered threat is
+// still alive and inside the guard ring of the pending stop, the job falls back to the nearest
+// earlier waypoint OUTSIDE the ring (the berth it came from — never deeper past the guns), or
+// hunkers in place when no stop is safe, and cries for help on a bounded cadence. Cargo and
+// routeIndex are untouched: the exact prior leg resumes the tick the lane clears.
+const ROUTE_GUARD_WU = RESUME_RADIUS + 60;
+const ROUTE_HOLD_ARRIVE_WU = 60;
+const ROUTE_HOLD_DISTRESS_S = 60;
 // One barge in the Helios starter field. The shift is a slice of the job's own WORK phase:
 // long enough for the live beam to bite, short enough that it stops while the rock is still a rock.
 const HELIOS_STARTER_SECTOR_ID = 'sector_helios_prime';
@@ -1059,10 +1105,17 @@ export const npcJobsRuntime = {
       || Array.isArray(state.npcJobs.lots)) {
       state.npcJobs.lots = {};
     }
+    // SF-078: the survey ledger. A bounded FIFO list per sector of what surveyors measured —
+    // durable knowledge, so it persists like the lot ledger.
+    if (!state.npcJobs.surveyMarks || typeof state.npcJobs.surveyMarks !== 'object'
+      || Array.isArray(state.npcJobs.surveyMarks)) {
+      state.npcJobs.surveyMarks = {};
+    }
     return state.npcJobs;
   },
   _byId() { return this._ensureState().byId; },
   _lots() { return this._ensureState().lots; },
+  _surveyMarks() { return this._ensureState().surveyMarks; },
   _invalidateJobIds() {
     this._jobIdsDirty = true;
     this._goneIndexDirty = true;
@@ -1104,6 +1157,12 @@ export const npcJobsRuntime = {
     if (entry.job?.payload?.choirRelief === true) return;
     const lots = this._lots();
     const now = Number(this.state && this.state.simTime) || 0;
+    // SF-078: a surveyor's WORK completion IS the measurement — the mark it stopped at
+    // gets read against live field rocks, and whatever the sweep found enters the ledger.
+    if (intent.event === 'npcjobs:work' && intent.kind === NPC_JOB_KIND.SURVEYOR) {
+      this._recordSurveyorMeasurement(intent, sectorId, now);
+      return;
+    }
     if (intent.event === 'npcjobs:unload' && intent.kind === NPC_JOB_KIND.MINER) {
       const loop = entry && entry.job ? entry.job.loopCount | 0 : 0;
       const posted = { lotId: `lot:${intent.jobId}:l${loop}`, kind: 'ore', postedBy: intent.jobId, postedAt: now, sectorId };
@@ -1137,6 +1196,76 @@ export const npcJobsRuntime = {
         this._publishShortRunNews(intent, entry, sectorId, now);
       }
     }
+  },
+
+  /**
+   * SF-078: write a surveyor's completed measurement stop into the sector's bounded mark
+   * ledger. The stop's position is the completed waypoint (`intent.pos`); whatever field
+   * rocks sit inside its sweep radius are measured — position and live depletion, latest
+   * reading per field wins, empty ground records nothing. Advisory like the lot ledger:
+   * a ledger failure must not corrupt the record the kernel just wrote.
+   */
+  _recordSurveyorMeasurement(intent, sectorId, now) {
+    const pos = intent && intent.pos;
+    if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return;
+    // Nearest live rock per field inside the sweep — one mark per field, not per rock.
+    const nearestByField = new Map();
+    forEachFieldRock(this.state, (asteroid) => {
+      if (!asteroid || asteroid.alive === false || !asteroid.pos) return;
+      const data = asteroid.data || {};
+      if (data.siteAnchored || data.respawnAt != null) return;
+      const fieldId = cleanFieldId(data.fieldId);
+      if (!fieldId) return;
+      const dx = asteroid.pos.x - pos.x;
+      const dz = asteroid.pos.z - pos.z;
+      const d2 = dx * dx + dz * dz;
+      if (d2 > NPC_SURVEY_MARK_RANGE_WU * NPC_SURVEY_MARK_RANGE_WU) return;
+      const held = nearestByField.get(fieldId);
+      if (held && held.d2 <= d2) return;
+      nearestByField.set(fieldId, { asteroid, fieldId, d2 });
+    });
+    if (!nearestByField.size) return;
+    const found = [...nearestByField.values()].sort((a, b) => (a.d2 - b.d2)
+      || (a.fieldId < b.fieldId ? -1 : a.fieldId > b.fieldId ? 1 : 0));
+    const marks = this._surveyMarks();
+    const list = marks[sectorId] || (marks[sectorId] = []);
+    const measured = [];
+    for (const hit of found.slice(0, NPC_SURVEY_MARK_FIELDS_PER_STOP)) {
+      const mark = {
+        fieldId: hit.fieldId,
+        asteroidId: hit.asteroid.id,
+        pos: { x: hit.asteroid.pos.x, z: hit.asteroid.pos.z },
+        depletion: this._fieldDepletionValue(hit.fieldId),
+        measuredAt: now,
+        jobId: intent.jobId || null,
+      };
+      const at = list.findIndex((row) => row && row.fieldId === mark.fieldId);
+      if (at >= 0) list.splice(at, 1);
+      list.push(mark);
+      measured.push(mark);
+      if (this.bus && typeof this.bus.emit === 'function') {
+        this.bus.emit('npcjobs:surveyMarked', {
+          jobId: mark.jobId, sectorId, fieldId: mark.fieldId,
+          pos: mark.pos, depletion: mark.depletion, measuredAt: mark.measuredAt,
+          waypointId: intent.waypointId || intent.field || null, simTime: now,
+        });
+      }
+    }
+    while (list.length > NPC_SURVEY_MARK_LEDGER_MAX) list.shift();
+    return measured;
+  },
+
+  /** The latest mark for a field still young enough to steer a work choice. */
+  _freshSurveyMark(sectorId, fieldId, now) {
+    const list = this._surveyMarks()[sectorId];
+    if (!Array.isArray(list)) return null;
+    for (let i = list.length - 1; i >= 0; i--) {
+      const mark = list[i];
+      if (!mark || mark.fieldId !== fieldId) continue;
+      const age = now - finite(mark.measuredAt, -Infinity);
+      return age >= 0 && age <= NPC_SURVEY_MARK_FRESH_S ? mark : null;
+    }
+    return null;
   },
 
   // INF: the destination berth of an empty run says the chain broke. The job's dest waypoint
@@ -3369,11 +3498,14 @@ export const npcJobsRuntime = {
         oldAsteroidId: oldAsteroid && oldAsteroid.id,
         anchor,
         jobId,
+        sectorId: entry.sectorId || currentSector,
       });
       if (!target) {
         blocked = true;
         continue;
       }
+      const toFieldId = cleanFieldId(target.data && target.data.fieldId);
+      const mark = this._freshSurveyMark(entry.sectorId || currentSector, toFieldId, simT);
       const waypoint = field.waypoint;
       waypoint.id = `field:${target.id}`;
       waypoint.label = 'Fresh Belt';
@@ -3390,13 +3522,18 @@ export const npcJobsRuntime = {
           jobId,
           minerId: entry.entityId == null ? null : entry.entityId,
           fromFieldId: fieldId,
-          toFieldId: cleanFieldId(target.data && target.data.fieldId),
+          toFieldId,
           fromAsteroidId: oldAsteroid && oldAsteroid.id,
           toAsteroidId: target.id,
           sectorId: currentSector,
           depletion: pending && pending.depletion != null ? pending.depletion : this._fieldDepletionValue(fieldId),
           simTime: simT,
           reason: pending && pending.reason || 'field_depleted',
+          // SF-078: when a fresh survey mark steered the choice, say so on the wire — the
+          // relocation names the reading it followed instead of looking like a prewritten move.
+          surveyMark: mark
+            ? { fieldId: mark.fieldId, depletion: mark.depletion, measuredAt: mark.measuredAt }
+            : null,
         });
       }
     }
@@ -3468,8 +3605,9 @@ export const npcJobsRuntime = {
     return clamp(finite(rec && rec.depletion, 0), 0, 1);
   },
 
-  _selectFreshMinerFieldTarget({ oldFieldId, oldAsteroidId, anchor, jobId }) {
+  _selectFreshMinerFieldTarget({ oldFieldId, oldAsteroidId, anchor, jobId, sectorId = null }) {
     const seed = (this.state.meta && this.state.meta.seed) || 1;
+    const now = finite(this.state && this.state.simTime, 0);
     const ax = anchor && Number.isFinite(anchor.x) ? anchor.x : 0;
     const az = anchor && Number.isFinite(anchor.z) ? anchor.z : 0;
     const candidates = [];
@@ -3484,23 +3622,33 @@ export const npcJobsRuntime = {
       if (depletion >= NPC_MINER_SEAM_EXHAUSTED_DEPLETION) return;
       const dx = asteroid.pos.x - ax;
       const dz = asteroid.pos.z - az;
+      // SF-078: a fresh survey mark is the crew's best reading of the field — measured
+      // ground outranks unsurveyed ground, and marks rank by what they read.
+      const mark = this._freshSurveyMark(sectorId, fieldId, now);
       candidates.push({
         asteroid,
         depletion,
+        surveyed: mark ? mark.depletion : null,
         d2: dx * dx + dz * dz,
         fieldId,
         tie: hash32(seed, 'miner-field-retarget', oldFieldId, jobId, fieldId, asteroid.id),
       });
     });
     if (!candidates.length) return null;
-    candidates.sort((a, b) => (a.depletion - b.depletion)
+    candidates.sort((a, b) => ((a.surveyed == null) - (b.surveyed == null))
+      || ((a.surveyed ?? a.depletion) - (b.surveyed ?? b.depletion))
       || (a.d2 - b.d2)
       || (a.fieldId < b.fieldId ? -1 : a.fieldId > b.fieldId ? 1 : 0)
       || (a.tie - b.tie)
       || String(a.asteroid.id).localeCompare(String(b.asteroid.id)));
-    const spread = Math.min(4, candidates.length);
+    // The four-rock spread keeps barges off one face — but when fresh marks exist the
+    // shift relocates onto measured ground, so the spread pool is the surveyed head only.
+    const pool = candidates.some((c) => c.surveyed != null)
+      ? candidates.filter((c) => c.surveyed != null)
+      : candidates;
+    const spread = Math.min(4, pool.length);
     const index = hash32(seed, 'miner-field-retarget-spread', oldFieldId, jobId) % spread;
-    return candidates[index].asteroid;
+    return pool[index].asteroid;
   },
 
   // ── Helios starter field: one miner, one rock, the live beam ────────────────────────────
@@ -3827,7 +3975,21 @@ export const npcJobsRuntime = {
         && ![NPC_JOB_PHASE.TRANSIT, NPC_JOB_PHASE.RETURN].includes(entry.job.phase)
         && (Math.hypot(entity.pos.x - physicalTarget.pos.x, entity.pos.z - physicalTarget.pos.z) > physicalTarget.reach
           || Math.hypot(entity.vel?.x || 0, entity.vel?.z || 0) > 8);
-      if (step > 0 && !approachingSeam && !holdingForArrival && entry.job.phase !== NPC_JOB_PHASE.COMPLETE) {
+      // SF-080: a queued berth wait is the same class of bounded physical hold — the hull waits
+      // out the line at a real position, so the kernel clock waits with it (no work at distance).
+      // Leased hulls keep their clock: their owner drives, we never gate a controller's route.
+      if (claimedBeforeAdvance) {
+        entry.berthHold = false;
+        entry.berthHoldPoint = null;
+      } else {
+        this._updateBerthHold(entry, entity, simT);
+      }
+      // SF-081: a close pass at a working bench braces the crew — a bounded work pause, not a
+      // threat interrupt (that lives on the damage/proximity seams and stays untouched here).
+      if (!claimedBeforeAdvance) this._updateCloseCall(entry, entity, simT);
+      const braced = !claimedBeforeAdvance && entry.closeCallUntil != null && simT < entry.closeCallUntil;
+      if (step > 0 && !approachingSeam && !holdingForArrival && !entry.berthHold && !braced
+        && entry.job.phase !== NPC_JOB_PHASE.COMPLETE) {
         advance(entry.job, step, this._sink);
       }
 
@@ -4305,6 +4467,28 @@ export const npcJobsRuntime = {
         || entry.kind === NPC_JOB_KIND.SURVEYOR;
       const isCarrying = entry.violenceSlow === true
         || !!(entity.data?.cargoManifest?.totalQty > 0);
+      // SF-082: a held fallback point outranks blind away-flee while the remembered threat is
+      // off the hull — motor to the chosen stop and sit on it. A threat back inside the flee
+      // ring re-takes ordinary away-flee; the reconcile owns choosing and clearing the hold.
+      const rh = entry.routeHold;
+      if (rh && Number.isFinite(rh.x)) {
+        const rhThreat = rh.threatId != null && this.state.entities
+          ? this.state.entities.get(rh.threatId) : null;
+        const threatNear = rhThreat && rhThreat.pos
+          && (rhThreat.pos.x - entity.pos.x) * (rhThreat.pos.x - entity.pos.x)
+            + (rhThreat.pos.z - entity.pos.z) * (rhThreat.pos.z - entity.pos.z)
+            <= FLEE_RADIUS * FLEE_RADIUS;
+        if (!threatNear) {
+          const dx = rh.x - entity.pos.x;
+          const dz = rh.z - entity.pos.z;
+          if (dx * dx + dz * dz > ROUTE_HOLD_ARRIVE_WU * ROUTE_HOLD_ARRIVE_WU) {
+            this._writeIntent(entity, 0, 1, false, Math.atan2(dz, dx), false);
+          } else {
+            this._writeIntent(entity, 0, 0, false, entity.rot || 0, true);
+          }
+          return;
+        }
+      }
       const hold = entry.violenceHold === true || (isWorker && !isCarrying && entry.threatId == null);
       if (hold) {
         this._writeIntent(entity, 0, 0, false, entity.rot || 0, true);
@@ -4374,6 +4558,27 @@ export const npcJobsRuntime = {
     }
 
     if (phase === NPC_JOB_PHASE.TRANSIT || phase === NPC_JOB_PHASE.RETURN) {
+      // SF-080: berth held → ease onto the queue point and wait there; the leg resumes the
+      // moment right-of-way returns, from exactly where the hull parked.
+      if (entry.berthHold === true && entry.berthHoldPoint) {
+        const hp = entry.berthHoldPoint;
+        const dxh = hp.x - entity.pos.x;
+        const dzh = hp.z - entity.pos.z;
+        const dh = Math.hypot(dxh, dzh);
+        const aimH = dh > 0.01 ? Math.atan2(dzh, dxh) : (entity.rot || 0);
+        if (dh <= 14) {
+          this._writeIntent(entity, 0, 0, false, aimH, true);
+          return;
+        }
+        const hProfile = resolvePropulsionProfile(entity, this.state);
+        const governed = Math.max(1, finite(hProfile && hProfile.combatSpeed, 1));
+        const deadInput = Math.max(0, finite(hProfile && hProfile.assist && hProfile.assist.deadInput, 0.025));
+        const hSpeed = Math.min(job.speed || 35, 24);
+        const throttle = clamp(Math.max(hSpeed / governed, deadInput + 0.001), 0, 1);
+        const brake = dh <= hSpeed * ROUTE_BRAKE_WINDOW_S;
+        this._writeIntent(entity, 0, brake ? 0 : throttle, false, aimH, brake);
+        return;
+      }
       const planned = routePosition(job);
       const target = this._targetWaypointPos(job);
       if (planned && target) {
@@ -4434,6 +4639,12 @@ export const npcJobsRuntime = {
         return;
       }
     }
+    // SF-081: the braced worker visibly halts — bleed residual drift and stay on the bench.
+    const ccNow = finite(this.state && this.state.simTime, 0);
+    if (entry.closeCallUntil != null && ccNow < entry.closeCallUntil) {
+      this._writeIntent(entity, 0, 0, false, entity.rot || 0, true);
+      return;
+    }
     // Stationary phases (commission / depart / approach / work / load / unload / hold): hold position.
     this._writeIntent(entity, 0, 0, false, entity.rot || 0);
   },
@@ -4447,6 +4658,143 @@ export const npcJobsRuntime = {
       if (wp && wp.pos) return { x: wp.pos.x, z: wp.pos.z };
     }
     return null;
+  },
+
+  /**
+   * SF-080: physical berth right-of-way. Recomputed each tick for materialized, unclaimed jobs.
+   * A job in TRANSIT/RETURN whose target is a berth-class waypoint and which is inside the apron
+   * either owns the approach or waits at a queue point. Claims: another job parked in a stationary
+   * phase at that same waypoint id owns the berth outright; failing that, the earliest apron
+   * contender (berthWaitSince, then jobId) does. Waits are bounded — after the timeout the hull
+   * proceeds anyway, so a dead or leased-out holder cannot deadlock the pocket.
+   */
+  _updateBerthHold(entry, entity, now) {
+    entry.berthHold = false;
+    entry.berthHoldPoint = null;
+    const job = entry.job;
+    if (!job || job.corrupt || !entity || !entity.pos) return;
+    const phase = job.phase;
+    if (phase !== NPC_JOB_PHASE.TRANSIT && phase !== NPC_JOB_PHASE.RETURN) {
+      entry.berthWaitSince = null;
+      return;
+    }
+    const desc = describeMaterialization(job);
+    const targetId = desc && desc.targetId;
+    if (typeof targetId !== 'string' || !NPC_BERTH_CLASS.test(targetId)) {
+      entry.berthWaitSince = null;
+      return;
+    }
+    const wp = Array.isArray(job.route) ? job.route.find((w) => w && w.id === targetId) : null;
+    if (!wp || !wp.pos) { entry.berthWaitSince = null; return; }
+    const dx = wp.pos.x - entity.pos.x;
+    const dz = wp.pos.z - entity.pos.z;
+    if (dx * dx + dz * dz > NPC_BERTH_QUEUE_ZONE_WU * NPC_BERTH_QUEUE_ZONE_WU) {
+      // Outside the apron: fly the leg, the corridor is still open.
+      entry.berthWaitSince = null;
+      return;
+    }
+    if (Number.isFinite(entry.berthYieldUntil)) {
+      if (now < entry.berthYieldUntil) return; // a legitimate wait already spent; divert through
+      entry.berthYieldUntil = null;
+    }
+    if (!Number.isFinite(entry.berthWaitSince)) entry.berthWaitSince = now;
+
+    let occupier = null;
+    const contenders = [];
+    const byId = this._byId();
+    for (const otherId of Object.keys(byId)) {
+      if (otherId === job.id) continue;
+      const other = byId[otherId];
+      if (!other || !other.job || other.job.corrupt || other.entityId == null) continue;
+      const otherEntity = this.state.entities && this.state.entities.get(other.entityId);
+      if (!otherEntity || otherEntity.alive === false || !otherEntity.pos) continue;
+      const otherJob = other.job;
+      const atWp = Array.isArray(otherJob.route) ? otherJob.route[otherJob.routeIndex] : null;
+      if (NPC_BERTH_OCCUPY_PHASES.has(otherJob.phase)
+        && atWp && atWp.id === targetId && atWp.pos) {
+        const odx = atWp.pos.x - otherEntity.pos.x;
+        const odz = atWp.pos.z - otherEntity.pos.z;
+        if (odx * odx + odz * odz <= NPC_BERTH_OCCUPY_RADIUS_WU * NPC_BERTH_OCCUPY_RADIUS_WU) {
+          if (!occupier) occupier = other; // a hull is physically on the berth — no tie to break
+          continue;
+        }
+      }
+      const oPhase = otherJob.phase;
+      if ((oPhase === NPC_JOB_PHASE.TRANSIT || oPhase === NPC_JOB_PHASE.RETURN)
+        && Number.isFinite(other.berthWaitSince)) {
+        const oDesc = describeMaterialization(otherJob);
+        if (oDesc && oDesc.targetId === targetId) contenders.push(other);
+      }
+    }
+    // I am always in my own queue ordering — the rank below is my place in line whether the
+    // berth itself is occupied or not.
+    contenders.push(entry);
+    if (contenders.length > 1) {
+      contenders.sort((a, b) => (a.berthWaitSince - b.berthWaitSince)
+        || String(a.job.id).localeCompare(String(b.job.id)));
+    }
+    const holder = occupier || contenders[0];
+    if (holder === entry && !occupier) return; // right-of-way: the approach is mine
+
+    if (now - entry.berthWaitSince > NPC_BERTH_HOLD_TIMEOUT_S) {
+      // A legitimate wait was spent: divert through rather than deadlock on a dead holder.
+      entry.berthYieldUntil = now + NPC_BERTH_HOLD_TIMEOUT_S;
+      entry.berthWaitSince = null;
+      return;
+    }
+    // Queue point: stand off the berth on the waiter's own side, one lateral step per place
+    // in line — visible separation, no collision body, no corridor block.
+    const rank = Math.max(0, contenders.indexOf(entry));
+    const bx = wp.pos.x;
+    const bz = wp.pos.z;
+    let nx = entity.pos.x - bx;
+    let nz = entity.pos.z - bz;
+    const len = Math.hypot(nx, nz) || 1;
+    nx /= len;
+    nz /= len;
+    entry.berthHoldPoint = {
+      x: bx + nx * NPC_BERTH_HOLD_OFFSET_WU - nz * rank * NPC_BERTH_HOLD_STACK_WU,
+      z: bz + nz * NPC_BERTH_HOLD_OFFSET_WU + nx * rank * NPC_BERTH_HOLD_STACK_WU,
+      berthId: targetId,
+    };
+    entry.berthHold = true;
+  },
+
+  /**
+   * SF-081: a fast hull crossing a working bench triggers one braced beat — the work clock
+   * pauses while the crew braces, and one restrained protest per worker per cooldown. The
+   * scan is gated to the stationary work acts (WORK/LOAD/UNLOAD): a hull mid-route is already
+   * moving and has nothing to brace for. Proximity alone never raises heat, never flees, and
+   * never touches the player-damage escalation counters.
+   */
+  _updateCloseCall(entry, entity, now) {
+    if (!entry || !entry.job || entry.job.corrupt) return;
+    if (!CLOSE_CALL_PHASES.has(entry.job.phase)) return;
+    if (Number.isFinite(entry.closeCallCooldownUntil) && now < entry.closeCallCooldownUntil) return;
+    const playerId = this.state && this.state.playerId;
+    const player = playerId != null && this.state.entities
+      ? this.state.entities.get(playerId) : null;
+    if (!player || player.alive === false || !player.pos || !entity.pos) return;
+    const dx = entity.pos.x - player.pos.x;
+    const dz = entity.pos.z - player.pos.z;
+    const d2 = dx * dx + dz * dz;
+    if (d2 > CLOSE_CALL_RADIUS_WU * CLOSE_CALL_RADIUS_WU) return;
+    const rvx = (player.vel && player.vel.x || 0) - (entity.vel && entity.vel.x || 0);
+    const rvz = (player.vel && player.vel.z || 0) - (entity.vel && entity.vel.z || 0);
+    const relSpeed = Math.hypot(rvx, rvz);
+    if (relSpeed < CLOSE_CALL_SPEED_WU) return;
+    entry.closeCallUntil = now + CLOSE_CALL_HOLD_S;
+    entry.closeCallCooldownUntil = now + CLOSE_CALL_COOLDOWN_S;
+    const kindLabel = { miner: 'Miner', hauler: 'Hauler', salvor: 'Salvor', tender: 'Tender', courier: 'Courier', patrol: 'Patrol' }[entry.job.kind] || 'Crew';
+    if (this.bus && typeof this.bus.emit === 'function') {
+      try {
+        this.bus.emit('toast', { text: `${kindLabel}: Watch your wash — I'm on a bench here!`, kind: 'warn', ttl: 3 });
+        this.bus.emit('npcjobs:closeCall', {
+          jobId: entry.job.id, kind: entry.job.kind, sectorId: entry.sectorId || null,
+          distance: Math.sqrt(d2), relSpeed, simTime: now,
+        });
+      } catch { /* advisory only */ }
+    }
   },
 
   // ── threat / flee ─────────────────────────────────────────────────────────────────────────────
@@ -5141,6 +5489,14 @@ export const npcJobsRuntime = {
         return;
       }
       if (violenceActive) return;
+      // SF-082: the self-radius is clear but the remembered threat may still be parked on the
+      // stop this leg was flying to — resuming then is flying straight back into the trap.
+      const blocker = this._routeThreatBlocker(entry);
+      if (blocker) {
+        this._holdForRouteThreat(entry, blocker, now);
+        return;
+      }
+      entry.routeHold = null;
       resume(job);
       // INF-073: the threat is gone and the worker returns — acknowledge the rescue once.
       for (const [jobId, candidate] of Object.entries(this._byId())) {
@@ -5160,6 +5516,89 @@ export const npcJobsRuntime = {
     if (!entity || entity.alive === false || entity.type !== 'ship') return false;
     if (entity.team === 1) return eligibleActiveHostile(entity);
     return entity.id === this.state?.playerId && isPlayerWanted(this.state);
+  },
+
+  /**
+   * SF-082: the remembered threat is off the hull's resume ring — but is a hostile parked on
+   * the stop this job would resume into? Any live job threat within the guard ring of the
+   * pending stop closes the leg (not just the one that first interrupted — a second pirate on
+   * the dock is the same trap). A patrol's route IS the fight, so it is exempt.
+   */
+  _routeThreatBlocker(entry) {
+    const job = entry && entry.job;
+    if (!job || job.corrupt || job.kind === NPC_JOB_KIND.PATROL) return null;
+    let idx = job.routeIndex;
+    const prior = job.preInterruptPhase;
+    if (prior === NPC_JOB_PHASE.TRANSIT || prior === NPC_JOB_PHASE.RETURN) idx += 1;
+    const wp = Array.isArray(job.route) ? job.route[idx] : null;
+    if (!wp || !wp.pos) return null;
+    return this._stopContestedBy(wp.pos);
+  },
+
+  /** The nearest live job threat within the route-guard ring of a stop, or null when clear. */
+  _stopContestedBy(pos) {
+    if (!pos || !this.state.entities) return null;
+    let best = null;
+    let bestD2 = ROUTE_GUARD_WU * ROUTE_GUARD_WU;
+    for (const entity of this.state.entities.values()) {
+      if (!this._isJobThreat(entity) || !entity.pos) continue;
+      const dx = entity.pos.x - pos.x;
+      const dz = entity.pos.z - pos.z;
+      const d2 = dx * dx + dz * dz;
+      if (d2 <= bestD2) { bestD2 = d2; best = entity; }
+    }
+    return best;
+  },
+
+  /**
+   * SF-082: choose and hold ONE safer continuation. The fallback is the nearest authored stop
+   * at or behind the interrupted leg that sits outside the threat ring — falling back the way
+   * it came, never pushing deeper past the guns — or, when no stop is safe, the hull's own
+   * position. While held, the job cries for help on a bounded cadence: a real position, a real
+   * cause, and a player who can end the wait by removing the threat. Route and manifest are
+   * never mutated, so clearing the lane resumes the exact interrupted leg.
+   */
+  _holdForRouteThreat(entry, threat, now) {
+    const job = entry.job;
+    const hull = entry.entityId != null && this.state.entities
+      ? this.state.entities.get(entry.entityId) : null;
+    if (!entry.routeHold || entry.routeHold.threatId !== threat.id) {
+      let px = hull && hull.pos ? hull.pos.x : 0;
+      let pz = hull && hull.pos ? hull.pos.z : 0;
+      let best = null;
+      let bestD2 = Infinity;
+      const lastIdx = Math.min(job.routeIndex, (job.route ? job.route.length : 1) - 1);
+      for (let i = lastIdx; i >= 0; i--) {
+        const wp = job.route[i];
+        if (!wp || !wp.pos) continue;
+        if (this._stopContestedBy(wp.pos)) continue; // contested by ANY hostile, not just this one
+        const hd2 = (wp.pos.x - px) * (wp.pos.x - px) + (wp.pos.z - pz) * (wp.pos.z - pz);
+        if (hd2 < bestD2) { bestD2 = hd2; best = wp; }
+      }
+      if (best) { px = best.pos.x; pz = best.pos.z; }
+      entry.routeHold = {
+        threatId: threat.id, x: px, z: pz,
+        label: best && typeof best.label === 'string' ? best.label : null,
+        since: now, distressT: -Infinity,
+      };
+    }
+    if (now - entry.routeHold.distressT >= ROUTE_HOLD_DISTRESS_S) {
+      entry.routeHold.distressT = now;
+      const kindLabel = { miner: 'Miner', hauler: 'Hauler', salvor: 'Salvor', tender: 'Tender', courier: 'Courier', patrol: 'Patrol' }[job.kind] || 'Crew';
+      const where = entry.routeHold.label ? `at ${entry.routeHold.label}` : 'where I sit';
+      if (this.bus && typeof this.bus.emit === 'function') {
+        try {
+          this.bus.emit('toast', { text: `${kindLabel}: Lane's still hot — holding ${where} until it clears.`, kind: 'warn', ttl: 4 });
+          this.bus.emit('npcjobs:distress', {
+            jobId: job.id, kind: job.kind, sectorId: entry.sectorId || null,
+            threatId: threat.id,
+            pos: hull && hull.pos ? { x: hull.pos.x, z: hull.pos.z } : null,
+            hold: { x: entry.routeHold.x, z: entry.routeHold.z },
+            simTime: now,
+          });
+        } catch { /* advisory only */ }
+      }
+    }
   },
 
   _threatResultWithWantedPlayer(request) {
@@ -5439,6 +5878,12 @@ export const npcJobsRuntime = {
     if (lots && typeof lots === 'object' && !Array.isArray(lots) && Object.keys(lots).length) {
       out.lots = JSON.parse(JSON.stringify(lots));
     }
+    // SF-078: survey marks are durable knowledge — a Continue restores what the sweep
+    // already measured; the same freshness window decides whether it still steers work.
+    const marks = this.state.npcJobs && this.state.npcJobs.surveyMarks;
+    if (marks && typeof marks === 'object' && !Array.isArray(marks) && Object.keys(marks).length) {
+      out.surveyMarks = JSON.parse(JSON.stringify(marks));
+    }
     return out;
   },
 
@@ -5498,7 +5943,7 @@ export const npcJobsRuntime = {
       };
       yield 'npcjobs-job';
     }
-    this.state.npcJobs = { byId, siteCouriers: {}, lots: {}, revision: 0 };
+    this.state.npcJobs = { byId, siteCouriers: {}, lots: {}, surveyMarks: {}, revision: 0 };
     this._invalidateJobIds();
     if (data && data.siteCouriers && typeof data.siteCouriers === 'object' && !Array.isArray(data.siteCouriers)) {
       this.state.npcJobs.siteCouriers = JSON.parse(JSON.stringify(data.siteCouriers));
@@ -5515,6 +5960,28 @@ export const npcJobsRuntime = {
           postedAt: Number.isFinite(Number(lot.postedAt)) ? Number(lot.postedAt) : 0,
           sectorId,
         };
+      }
+    }
+    // SF-078: restore survey marks, dropping malformed rows (a corrupt mark is dropped,
+    // never resurrected — same fail-safe as corrupt job records and lots above).
+    if (data && data.surveyMarks && typeof data.surveyMarks === 'object' && !Array.isArray(data.surveyMarks)) {
+      for (const [sectorId, rows] of Object.entries(data.surveyMarks)) {
+        if (!sectorId || !Array.isArray(rows)) continue;
+        const list = [];
+        for (const row of rows) {
+          if (!row || typeof row !== 'object' || typeof row.fieldId !== 'string' || !row.fieldId) continue;
+          if (!row.pos || !Number.isFinite(Number(row.pos.x)) || !Number.isFinite(Number(row.pos.z))) continue;
+          if (!Number.isFinite(Number(row.depletion)) || !Number.isFinite(Number(row.measuredAt))) continue;
+          list.push({
+            fieldId: row.fieldId,
+            asteroidId: row.asteroidId != null ? row.asteroidId : null,
+            pos: { x: Number(row.pos.x), z: Number(row.pos.z) },
+            depletion: clamp(finite(Number(row.depletion), 0), 0, 1),
+            measuredAt: Number(row.measuredAt),
+            jobId: typeof row.jobId === 'string' ? row.jobId : null,
+          });
+        }
+        if (list.length) this.state.npcJobs.surveyMarks[sectorId] = list.slice(-NPC_SURVEY_MARK_LEDGER_MAX);
       }
     }
     this._threatQueries?.reset();

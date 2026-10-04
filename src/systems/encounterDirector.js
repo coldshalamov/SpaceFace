@@ -3270,13 +3270,33 @@ export function planEncountersDay(seed, sectorId, dayIndex, zones, ecologyState 
 
   // Nominal spacing: keep planned onsets ≥45 s apart (the runtime gate enforces the real law).
   // An authored earlyDelayS window is a hard promise — the bump may never push it past its hi.
+  // When a pinned item cannot slide later far enough to clear its predecessor, the unwindowed
+  // predecessors yield instead: pull the contiguous run ending at i-1 earlier (preserving
+  // order and the ≥45 s gaps) so the authored onset stays inside its promised window rather
+  // than silently landing <45 s behind another beat.
+  const delayWindow = (it) => {
+    const enc = (encounterCatalog || ENCOUNTERS)[it.shapeId];
+    return enc && Array.isArray(enc.earlyDelayS) && enc.earlyDelayS.length === 2 ? enc.earlyDelayS : null;
+  };
   out.sort((a, b) => a.delay - b.delay || a.encounterId.localeCompare(b.encounterId));
   for (let i = 1; i < out.length; i++) {
-    if (out[i].delay - out[i - 1].delay < 45) {
-      const enc = (encounterCatalog || ENCOUNTERS)[out[i].shapeId];
-      const win = enc && Array.isArray(enc.earlyDelayS) && enc.earlyDelayS.length === 2 ? enc.earlyDelayS : null;
-      const bumped = out[i - 1].delay + 45;
-      out[i].delay = win ? Math.min(bumped, win[1]) : bumped;
+    if (out[i].delay - out[i - 1].delay >= 45) continue;
+    const win = delayWindow(out[i]);
+    const bumped = out[i - 1].delay + 45;
+    if (!win || bumped <= win[1]) {
+      out[i].delay = bumped;
+      continue;
+    }
+    // The pinned item cannot move later — the preceding run yields earlier, each pulled item
+    // keeping ≥45 s ahead of the next. A pinned predecessor yields only down to its own
+    // window's lo; an impossible calendar (two windows that cannot coexist) surfaces as the
+    // residual <45 s pair the spacing contract already names, not a silently moved promise.
+    for (let j = i - 1; j >= 0; j--) {
+      const need = out[j + 1].delay - 45;
+      if (out[j].delay <= need) break;
+      const jWin = delayWindow(out[j]);
+      out[j].delay = jWin ? Math.max(need, jWin[0]) : Math.max(0, need);
+      if (out[j].delay > need) break;
     }
   }
   return out;

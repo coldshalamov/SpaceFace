@@ -23,6 +23,7 @@ test('flight root template hits reuse geometry but rebind per-instance state', (
     distinctRoots: true,
     sharedGeometry: true,
     distinctMaterials: true,
+    sharedBakeAliased: true,
     reboundHooks: true,
     geometryDisposedOnce: true,
   });

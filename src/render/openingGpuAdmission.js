@@ -348,7 +348,98 @@ export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camer
   // release). Every caller passes content roots/leaves, never an owner boundary.
   const parked = [];
   const cullable = new Set();
+  // D102: a keep-member drawable whose geometry is gone (torn down, or never
+  // committed while its admission was queued) still reaches Three's
+  // WebGLGeometries.get — projectObject runs WebGLObjects.update (which reads
+  // geometry.id) before it ever tests material.visible, so hiding the node via
+  // its MATERIAL cannot prevent the throw; only object.visible === false makes
+  // the traversal skip it. Hiding the node is therefore mandatory — but hiding
+  // its subtree is not, since a null-geometry node can sit on the subject's own
+  // ancestor chain or inside its subtree, and every keep member must stay
+  // drawable for the touch to admit anything. Each such node's children are
+  // moved to the nearest visible in-scene ancestor (or the scene itself for a
+  // detached keep root) through direct children-array edits — no add()/remove(),
+  // so no 'removed'/'added' events fire and residency owners see no boundary
+  // churn — the node itself is hidden for the draw, and all of it is restored
+  // in finally. Sim state, materials, and geometry are untouched.
+  const geometryless = [];
+  {
+    const seen = new Set();
+    const mark = (node, subject) => {
+      if (!node || seen.has(node)) return;
+      seen.add(node);
+      if (!isDrawable(node) || node.visible === false) return;
+      const geometry = node.geometry;
+      if (geometry != null && geometry.id != null) return;
+      geometryless.push({
+        node,
+        subject: objectLabel(subject),
+        object: objectLabel(node),
+        reason: 'null-geometry',
+      });
+    };
+    for (const item of subjects) {
+      if (typeof item.traverse === 'function') item.traverse((node) => mark(node, item));
+      else mark(item, item);
+      for (let p = item && item.parent; p; p = p.parent) mark(p, item);
+    }
+  }
+  const geometrylessNodes = new Set(geometryless.map((row) => row.node));
+  const isUnderScene = (node) => {
+    for (let p = node; p; p = p.parent) if (p === lightingScene) return true;
+    return false;
+  };
+  // The nearest ancestor that projectObject can still reach. Ancestors of keep
+  // members are keep members too, so a visible in-scene ancestor is never hidden
+  // by the keep pass below; a fully detached keep chain roots at the scene.
+  const spliceHostFor = (node) => {
+    for (let p = node.parent; p; p = p.parent) {
+      if (p.visible !== false && isUnderScene(p)) return p;
+    }
+    return lightingScene;
+  };
+  const depthOf = (node) => {
+    let depth = 0;
+    for (let p = node && node.parent; p; p = p.parent) depth += 1;
+    return depth;
+  };
+  // A subject still owes its draw when any subtree member can draw; a subject
+  // whose only drawables are geometryless has nothing to admit.
+  const drawableSubjects = subjects.filter((item) => {
+    const nodes = [];
+    if (typeof item.traverse === 'function') item.traverse((node) => nodes.push(node));
+    else nodes.push(item);
+    return nodes.some((node) => (
+      isDrawable(node) && !geometrylessNodes.has(node) && node.visible !== false
+    ));
+  });
+  const childSplices = [];
+  const hiddenForTouch = new Map();
+  const drawn = [];
   try {
+    // Shallowest-first so a nested null-geometry node is re-seated before its own
+    // children are moved; the finally below restores deepest-first.
+    const orderedGeometryless = geometryless.slice()
+      .sort((a, b) => depthOf(a.node) - depthOf(b.node));
+    for (const row of orderedGeometryless) {
+      const node = row.node;
+      const host = spliceHostFor(node);
+      const children = Array.isArray(node.children) ? node.children.slice() : [];
+      const splice = { node, host: null, children };
+      if (children.length > 0 && host && Array.isArray(host.children)) {
+        splice.host = host;
+        // Seat the children where the node itself sat so sibling order is
+        // otherwise preserved; the keep pass decides their visibility by node.
+        const at = host === node.parent ? host.children.indexOf(node) : -1;
+        for (const child of children) child.parent = host;
+        node.children.length = 0;
+        if (at >= 0) host.children.splice(at, 0, ...children);
+        else host.children.push(...children);
+      }
+      childSplices.push(splice);
+      hiddenForTouch.set(node, node.visible);
+      node.visible = false;
+    }
     for (const item of subjects) {
       if (item === lightingScene) continue;
       let underScene = false;
@@ -382,13 +473,24 @@ export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camer
     for (const node of cullable) node.frustumCulled = false;
     renderer.autoClear = false;
     if (typeof renderer.setRenderTarget === 'function') renderer.setRenderTarget(renderTarget || null);
-    withOnlySubjectsDrawable(lightingScene, subjects, () => {
-      for (const item of subjects) {
-        if (typeof item.updateMatrixWorld === 'function') item.updateMatrixWorld(true);
-      }
-      renderer.render(lightingScene, camera);
-    });
-    return { skipped: false, subjects: subjects.length };
+    if (drawableSubjects.length > 0) {
+      withOnlySubjectsDrawable(lightingScene, drawableSubjects, () => {
+        for (const item of drawableSubjects) {
+          if (typeof item.updateMatrixWorld === 'function') item.updateMatrixWorld(true);
+        }
+        renderer.render(lightingScene, camera);
+      });
+      drawn.push(...drawableSubjects.map((item) => objectLabel(item)));
+    }
+    return {
+      skipped: drawableSubjects.length === 0,
+      subjects: subjects.length,
+      drawn: drawn.length,
+      drawnSubjects: drawn,
+      skippedSubjects: geometryless.length,
+      skippedNullGeometry: geometryless.map(({ node, ...row }) => row),
+      reason: drawableSubjects.length === 0 ? 'null-geometry' : undefined,
+    };
   } finally {
     for (const node of cullable) node.frustumCulled = true;
     // Last-in-first-out: a list holding both an ancestor and its descendant parks them in
@@ -407,6 +509,27 @@ export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camer
       } else if (typeof lightingScene.remove === 'function') {
         lightingScene.remove(item);
       }
+    }
+    // Splice restore runs after the parked restore (a parked subject could itself be a
+    // spliced child — the park returns it to the recorded host first). Deepest-first,
+    // the inverse of the shallow-first seating above, and only for children still under
+    // the recorded host: a child re-parented by something else during the draw keeps
+    // its new parent instead of being forced back.
+    for (let i = childSplices.length - 1; i >= 0; i--) {
+      const { node, host, children } = childSplices[i];
+      if (!host || !Array.isArray(host.children) || !Array.isArray(node.children)) continue;
+      for (const child of children) {
+        if (child.parent !== host) continue;
+        const at = host.children.indexOf(child);
+        if (at >= 0) host.children.splice(at, 1);
+        child.parent = node;
+      }
+      for (const child of children) {
+        if (child.parent === node && !node.children.includes(child)) node.children.push(child);
+      }
+    }
+    for (const [node, wasVisible] of hiddenForTouch) {
+      try { node.visible = wasVisible; } catch (_) { /* teardown race: node already disposed */ }
     }
     renderer.autoClear = previousAutoClear;
     if (typeof renderer.setRenderTarget === 'function') {

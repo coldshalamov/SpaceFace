@@ -210,6 +210,8 @@ export const cloak = {
       // that happens with no button.
       if (reason === 'depleted') {
         this.bus.emit('toast', { text: 'Cloak depleted', kind: 'warn', ttl: 1.6 });
+      } else if (reason === 'fired') {
+        this.bus.emit('toast', { text: 'Cloak dropped — you fired', kind: 'warn', ttl: 1.6 });
       }
     }
   },
@@ -251,6 +253,9 @@ export const cloak = {
           Number.isFinite(runtime.radius) ? runtime.radius : 0,
           CLOAK_SCAN_BURN_RADIUS,
         );
+        if (this.bus) {
+          this.bus.emit('toast', { text: 'Cloak burned — your scan lit you up', kind: 'warn', ttl: 1.6 });
+        }
       }
       if (this.bus) {
         this.bus.emit('cloak:burned', {

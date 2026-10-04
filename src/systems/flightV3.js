@@ -328,26 +328,7 @@ export const flightV3 = {
       input.unvectoredCruiseSteering = vectoringSetting === false
         && !(autopilot && autopilot.active)
         && !(tether && tether.active === true);
-      if (travelFlag('travelBurn') && input.travelDrive && input.travelDrive.state === 'engaged') {
-        const energyBefore = finiteNonNeg(entity.boost && entity.boost.energy, 0);
-        if (!(energyBefore > 0)) {
-          // The input system consumes this one-shot request next tick and owns the actual
-          // Engaged -> Cooldown transition. Suppress the local kernel input now so depletion
-          // cannot buy one free burn tick while the latch catches up.
-          requestTravelBurnDepletion(state);
-          input.travelDrive = travelDriveCooldownInput(input.travelDrive);
-        } else {
-          const spent = Math.min(energyBefore, travelBurnCost(entity.boost, dt));
-          entity.boost.energy = Math.max(0, energyBefore - spent);
-          if (!(entity.boost.energy > 0)) {
-            // A partial final payment is still honored, but the exhausted tick must not
-            // contribute an engaged kernel cap. Input consumes the request next tick; this local
-            // copy keeps the current simulation honest until then.
-            requestTravelBurnDepletion(state);
-            input.travelDrive = travelDriveCooldownInput(input.travelDrive);
-          }
-        }
-      }
+      debitTravelBurn(this, entity, input, dt, state);
     }
 
     const body = bodySnapshotInto(entity, profile, _stepBody);
@@ -505,15 +486,21 @@ export const flightV3 = {
     // after it dies does burnCdS start gating the next light. The energy capacitor below still
     // applies inside the window.
     if (boost._burnCdT > 0) boost._burnCdT = Math.max(0, boost._burnCdT - dt);
+    let burnerJustSpent = false;
     if (boost._burnT > 0) {
+      const live = boost._burnActive === true;
       boost._burnT = Math.max(0, boost._burnT - dt);
-      if (boost._burnT <= 0) boost._burnCdT = boost.burnCdS;
+      if (boost._burnT <= 0) {
+        boost._burnCdT = boost.burnCdS;
+        burnerJustSpent = live;
+      }
     }
 
     const controlsBlocked = !!(state.ui && state.ui.screenStack && state.ui.screenStack.length);
     const suppressBoost = !!this._suppressBoostUntilRelease;
     const boostHeld = !!rawBoostHeld && !suppressBoost;
     const boostWasHeld = !!this._prevBoost;
+    let dashSpoken = false;
     if (boostHeld && !boostWasHeld && !opts.suppressDash) {
       // Press edge: fire the dash immediately and arm the acceleration-overshoot window (~0.2 s).
       // Holding past this point is just boost. The pre-kick event carries the 80 ms anticipation
@@ -525,13 +512,38 @@ export const flightV3 = {
           this.bus.emit('ship:boostPreKick', { shipId: e.id, windowS: BOOST_PREKICK_S });
         }
       }
-      this._triggerDash(e, boost, state);
+      const dashed = this._triggerDash(e, boost, state);
+      if (!dashed && boost.dashImpulse > 0) dashSpoken = true;
+      else if (dashed && boost.energy <= 1) {
+        // The dash already spent the tank under the sustain floor. Disarm now, or regen
+        // on this same hold climbs back through `energy > 1` and the burn relights.
+        boost._boostArmed = false;
+        if (!travelBurnEngaged(state) && this.bus && typeof this.bus.emit === 'function') {
+          this.bus.emit('toast', { text: 'Boost spent', kind: 'warn', ttl: 1.6 });
+        }
+      }
     }
     if (!rawBoostHeld && suppressBoost && !controlsBlocked) this._suppressBoostUntilRelease = false;
     this._prevBoost = boostHeld;
+    if (!boostHeld) this._burnerCoolTold = false;
+    if (burnerJustSpent && boostHeld) {
+      this._burnerCoolTold = true;
+      if (this.bus && typeof this.bus.emit === 'function') {
+        this.bus.emit('toast', { text: 'Afterburner spent', kind: 'warn', ttl: 1.6 });
+      }
+    }
 
-    // Sustained boost with hysteresis gating (cut-out at 0, re-arm at 35%).
+    // Sustained boost with hysteresis gating (cut-out at the energy>1 floor, re-arm at 35%).
     if (!('_boostArmed' in boost)) boost._boostArmed = true;
+    // Travel burn debits this same tank after the boost step. A hold can arrive already
+    // under the floor while still armed; regen would otherwise relight it for one frame.
+    if (boostHeld && boost.max > 0 && boost._boostArmed && boost.energy <= 1) {
+      boost._boostArmed = false;
+      // Travel burn debits this tank after the boost step and already said so.
+      if (!dashSpoken && !this._travelSpentTold && !travelBurnEngaged(state) && this.bus && typeof this.bus.emit === 'function') {
+        this.bus.emit('toast', { text: 'Boost spent', kind: 'warn', ttl: 1.6 });
+      }
+    }
     const burnerFitted = boost.burnDurS > 0;
     let boosting = false;
     if (boostHeld && boost.max > 0) {
@@ -539,10 +551,24 @@ export const flightV3 = {
         // With a burner fitted, boost only exists inside a lit window; light it when the
         // cooldown has elapsed. Without one the capacitor governs alone, exactly as before.
         if (burnerFitted && boost._burnT <= 0 && boost._burnCdT <= 0) boost._burnT = boost.burnDurS;
-        if (!burnerFitted || boost._burnT > 0) {
+        if (burnerFitted && boost._burnT <= 0 && boost._burnCdT > 0 && !this._burnerCoolTold) {
+          this._burnerCoolTold = true;
+          if (this.bus && typeof this.bus.emit === 'function') {
+            const left = Math.max(1, Math.ceil(boost._burnCdT));
+            this.bus.emit('toast', { text: `Afterburner cooling — ${left}s`, kind: 'warn', ttl: 1.6 });
+          }
+        } else if (!burnerFitted || boost._burnT > 0) {
           boosting = true;
           boost.energy = Math.max(0, boost.energy - boost.drainRate * dt);
-          if (boost.energy <= 0) boost._boostArmed = false;   // cut out; must regen to re-arm
+          // The sustain gate is `energy > 1`. A 60 Hz drain is smaller than that gap, so the
+          // tank stops inside (0, 1] and used to stay armed — the hold relit as soon as regen
+          // crossed 1. Cut out on the same floor. A dash refusal already spoke this tick.
+          if (boost.energy <= 1) {
+            boost._boostArmed = false;
+            if (!dashSpoken && !travelBurnEngaged(state) && this.bus && typeof this.bus.emit === 'function') {
+              this.bus.emit('toast', { text: 'Boost spent', kind: 'warn', ttl: 1.6 });
+            }
+          }
         }
       }
     } else if (boost.energy > boost.max * 0.35) {
@@ -897,10 +923,47 @@ function finiteNonNeg(value, fallback) {
   return Number.isFinite(value) ? Math.max(0, value) : fallback;
 }
 
+function travelBurnEngaged(state) {
+  const drive = state && state.input && state.input.travelDrive;
+  return !!(travelFlag('travelBurn') && drive && drive.state === 'engaged');
+}
+
 /** Cost for one engaged Travel Burn tick. The fitted boost drain is the sole authored rate. */
 export function travelBurnCost(boost, dt) {
   const rate = finiteNonNeg(boost && boost.drainRate, 0);
   return rate * TRAVEL_BURN_DRAIN_MULT * Math.max(0, finite(dt, 0));
+}
+
+/** Travel burn spends the boost tank after the boost step. An empty tank drops the latch. */
+export function debitTravelBurn(host, entity, input, dt, state) {
+  const drive = input && input.travelDrive;
+  const engaged = travelFlag('travelBurn')
+    && drive && drive.state === 'engaged';
+  if (!engaged) {
+    host._travelSpentTold = false;
+    return;
+  }
+  const energyBefore = finiteNonNeg(entity.boost && entity.boost.energy, 0);
+  let empty = !(energyBefore > 0);
+  if (!empty) {
+    const spent = Math.min(energyBefore, travelBurnCost(entity.boost, dt));
+    entity.boost.energy = Math.max(0, energyBefore - spent);
+    empty = !(entity.boost.energy > 0);
+  }
+  if (!empty) return;
+  // The input system consumes this one-shot request next tick and owns the actual
+  // Engaged -> Cooldown transition. Suppress the local kernel input now so depletion
+  // cannot buy one free burn tick while the latch catches up. A partial final payment
+  // is still honored above; the exhausted tick must not contribute an engaged kernel cap.
+  requestTravelBurnDepletion(state);
+  input.travelDrive = travelDriveCooldownInput(input.travelDrive);
+  if (host._travelSpentTold) return;
+  host._travelSpentTold = true;
+  // The boost hold reads this latch next tick and does not add "Boost spent" for the
+  // same empty tank.
+  if (host.bus && typeof host.bus.emit === 'function') {
+    host.bus.emit('toast', { text: 'Travel burn spent', kind: 'warn', ttl: 1.6 });
+  }
 }
 
 function requestTravelBurnDepletion(state) {

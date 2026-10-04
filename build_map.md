@@ -336,7 +336,7 @@ units; open the door below only when the owner names the campaign.
   order in §1.2; acceptance leaves that need a headed machine you do not have are recorded `unproven`
   and skipped, never stalled on.
 - **Non-Hitch flyable fleet remaster** → `--id PQ-050` and its packet
-  [`PQ-050.md`](./design/program/roadmap/active/PQ-050.md), which owns the chase-camera law, the
+  [`PQ-050.md`](./design/program/roadmap/retired/PQ-050.md), which owns the chase-camera law, the
   technique contract, the review workflow and the one-ship-at-a-time rule. Hitch stays frozen.
   A factory loft with boxes, a zoomed gray crop, or a seat nobody can see from the chase camera
   does not close a ship.
@@ -527,8 +527,6 @@ rows carry commits and focused suites. NXI-024's evidence was re-anchored on its
 
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
-| 14 | D83 | pq020 Ceres structural-cost digest drift — adjudicate semantically, then re-derive the pin | FIX | CLAIMED devin-graphics |
-| 15 | D67 | Market-tab dispatch hang — not reproduced; one quiet-host sweep owed before delete | FIX | PARKED needs quiet host |
 | 16 | D24 | Renderer resource residency — fix landed `4365769c6`; 40-cycle uncontended soak owed | FIX | PARKED needs quiet host |
 | 17 | D54 | Hero landmarks: dark-freighter place model, Anvil well-edge, ×30 Wreck Cathedral draw scale | ART | CLAIMED devin-graphics |
 | 18 | D72 | Pelican starter hull is blockout-grade | ART | CLAIMED devin-graphics |
@@ -560,7 +558,7 @@ ship stills (all REVISE — awaiting new remote candidates).
 | 32 | D5 | Opening admission finishes before first control — remote measured worst frame ~800 ms after drain-gate (−92 % GPU wait); finish the job. [Cohesion acceptance](design/program/world-depth-2026-10-02/COHESION.md#entry): New Game/Continue share an accepted generation-qualified picture/control handover; reconcile D7/CV-GLASS work with PR #194, do not fork its scheduler | BUILD | SHIPPED — the picture stays held while opening loads are unfinished; cohesion acceptance open |
 | 33 | D7 | Boot → first control ≤10 s ×3 — remote quiet runs 21–22.6 s; longest stage `loading:entering-flight` → first-playable ~8 s | BUILD | SHIPPED — the opening picture is walked on every read; no wall-clock remeasure |
 | 34 | D8 | Crucible fight budget on quiet probe — recorded 12 fps mean / 100 % frames >33 ms on the soft-GPU VM; reproduce on real hardware or prove the VM number is host noise | BUILD | SHIPPED — repeated fight setup reuses one template; the 12 fps VM number was not remeasured |
-| 35 | D3 | Same-material hull batching — gated: only if the draw census still names draw count as the pole after VM batches land | BUILD | PARKED gated on import results |
+| 35 | D3 | Same-material hull batching — gated: only if the draw census still names draw count as the pole after VM batches land | BUILD | CLOSED 2026-10-04 — census says draws are NOT the pole: crowded flight ~117 entities → 160 draws avg / 133 min / 246 peak over 54 steady samples (`probe-dod-crowded-scene` last sample 142; budget <600), below the stale 218 mark after SF-256/PB-PERF-A + FB-098 landed; ms reads host-suspect so the call rests on host-independent draw counts; PQ-052/PQ-197/PQ-202 rule reaffirmed — `_opaqueBatchEnabled` stays OFF, bloomScene/post stays the named suspect; no hull batching build warranted (probe repaired for the motionAsk first-boot gate: headless Chrome emulates no-preference now) |
 | 36 | C7 | Per-hull chase-pass imports — all 9 `*-chase` drops are REVISE vs Hitch; needs new remote candidates | BUILD | PARKED needs new vm drops |
 | 38 | HAND-FIELDS-GUARD | Fields runtime-profile guard | BUILD | DONE 2026-09-28 — `test/fields-runtime-profile.test.mjs` pins production ON / legacy47a OFF through the real manifest+registry apply path (7/7) |
 | 39 | CV-GLASS-1 | Belt-tail throughput: serial GLB admission is still seconds per body on a busy host — parallelize/budget the lane (ZERO_TO_HERO §7.3) | BUILD | SHIPPED — belt loads use the shared decode budget and yield the frame |
@@ -575,7 +573,7 @@ ship stills (all REVISE — awaiting new remote candidates).
 | 52 | CR-TEXTURE-1 | Per-sector surprise coverage — each named place gets one reachable one-off (rumor or skyline) | BUILD | DONE — 19 one-offs cover the 19 uncovered named sectors; every non-starter sector has an authored bar lead at its own station (Charon rides the Expanse lead); 6 ropeable bodies; receipt: design/program/roadmap/receipts/CR-TEXTURE-1-SECTOR-SURPRISE.md; 9/9 focused, 34/34 adjacent, review PASS |
 | 53 | OPTIC-OFFENSE | Offensive half of optic fields: enemies kite pursuers across fuses / bank shots off mirrors (defensive half landed) | BUILD | DONE 2026-09-29 — bank planner + gimbal-cone slew gate, 9/9 focused incl. swept-bolt proof, 42/42 AI-fire, 97/97 optic adjacent (`receipts/OPTIC-OFFENSE-BANK-SHOT.md`) |
 | 55 | SEAM-BASE | `combat:baseDestroyed` — dockless station-typed bases (`data.baseKind`, team-1 hostile) are real destructible bodies; combat emits the event on kill, economy + sectorSim consequences land, 358 THE PRESS CAMP fields the first one | BUILD | DONE 2026-09-28 — seam closed end-to-end, no UI needed (`receipts/SEAM-BASE-DESTRUCTIBLE-BASES.md`, 9/9 focused + 76/76 encounter batch) |
-| 56 | SEAM-UI | §1B UI-producer seams (setShipAppearance, kurtzInteract, heliosBay7Scan, endingArchiveOpen, factionPresenceService, claim:defenseIgnore) — UI halves are ORRERY's; sim-side gaps may be taken | BUILD | CLAIMED ORRERY-adjacent |
+| 56 | SEAM-UI | §1B UI-producer seams (setShipAppearance, kurtzInteract, heliosBay7Scan, endingArchiveOpen, factionPresenceService, claim:defenseIgnore) — UI halves are ORRERY's; sim-side gaps may be taken | BUILD | VERIFIED 2026-10-04 sim-side closed — all six listeners are live; five have real UI emitters (shipworks→ships, barContacts→story, pause→story, serviceQuotes→factionPresence, encounterChoicePrompt/galaxyMap→claims). `ui:heliosBay7Scan` is a dead alias (zero emitters; listener story.js:262) but the Bay 7 beat is reachable without it — `scan:completed`/`signal:scanResults` pulse + the 320 WU proximity tick + the Kessler bar rumor (helios-bay7-scan 4/4). A real UI emitter for the alias is ORRERY's call, not a sim gap |
 | 57 | PQ-129.11–.17 | Hitch deferred leaves (7): submit tighten, rigid opaque batching, canopy/plume lanes, tiny-fighter LOD, off-table AI sleep, cheaper bloom, autosave off display callback — take lowest first | BUILD | DONE 2026-10-03 — .15/.16/.17 already shipped w/ receipts (activity-scheduler 8/8 + tactical-ai cadence 5/5 green; autosave off rAF); .14 LOD mechanism live (138/286 pkgs), wasp hull LOD asset is Forge work; .11–.13 legally deferred on headed-census gate |
 
 ### E. Acceptance — implemented things awaiting their bar (queue + §25)
@@ -597,7 +595,7 @@ ship stills (all REVISE — awaiting new remote candidates).
 | 67 | L-MACHINE | Own THE MACHINE's development half — boot, hitches, admission, residency. Rows 2, 4–16, 19–34 are its counted surface. | LANE | OPEN — stale-adoptable |
 | 68 | L-HAND | Own THE HAND — flight, tether, fields, verbs, input. Rows 37–38, 42 are its counted surface. | LANE | OPEN — stale-adoptable |
 | 69 | L-FIGHTWORLD | Own THE FIGHT + THE WORLD — swarm, arenas, sectors, NPC jobs, law, consequences. Rows 1, 43–55 are its counted surface. [First-fight cohesion](design/program/world-depth-2026-10-02/COHESION.md#first-fight) extends existing PQ-140 route acceptance: expose and transfer distinct physical choices; preserve shipped tactical variety and the approved Swarm expansion. [World expansion target](design/program/world-depth-2026-10-02/README.md): complete a selected inhabited/physical slice with genuinely missing assets; Anvil Stormshift is the worked first candidate, not a second queue | LANE | OPEN — stale-adoptable |
-| 70 | L-LONGGAME | Own THE LONG GAME — progression, economy depth, story spine, persistent ship identity. No counted rows yet: the lane's first sitting decomposes its checklist into board rows. | LANE | OPEN — no writer ever |
+| 70 | L-LONGGAME | Own THE LONG GAME — progression, economy depth, story spine, persistent ship identity. Counted surface: rows 278–283 (§L). | LANE | OPEN — writer lonngame-oct4 (sitting 1) |
 | 71 | L-EAR | Own THE EAR — audio identity and feedback. Row 41 is its counted surface. | LANE | OPEN — no writer ever |
 | — | L-PICTURE | THE PICTURE — Forge backlog GFX-1, 3–14 | LANE | CLAIMED devin-graphics (live) |
 | — | L-INSTRUMENT | THE INSTRUMENT — all UI | LANE | CLAIMED ORRERY — do not take |
@@ -817,12 +815,12 @@ named in the status for the frontend lane to take alone):
 | 233 | FB-025+FB-026 | Wave intros are real windows; the scored arc stops inflating HP | PB | DONE — intro constants raised (120 arena / 90 wave), announce speaks the opener at plan time + owns the completion emit, HUD renders the line for the window; levelForWave flat, act curve moved into composeArcWave counts/bearings (+gaps via difficulty), runs exempt from the damage profile; `test/fb-wave-intro-window.test.mjs` + `test/fb-arc-difficulty-composition.test.mjs` |
 | 234 | FB-018+FB-020+FB-019 | Flak intercepts for real, the dreadnought phases on turret loss, hits confirm in three states | PB | DONE 2026-10-02 — flak weapons on data.weapons run as a real PD channel (chance/cooldown/arc/energy authored, saturation shared, pds:intercept receipt); dreadnought's 14 mounts are destructible subsystem_turret_* (dependencies: subsystem_weapon bus), phaseAtTurretsLost [4,10] drives capital_broadside stages (swarmer_vent → broadside_desperation), edge 1 vents iron_maw_screen via turretsLostAtLeast, edge 2 opens the prow surface + PROW RIB weak point and cuts RCS yaw authority; hit pips are control receipts gated on gameplay.hitPips sharing the hit-voice 40ms gap. Tests: fb-flak-interception, fb-hit-confirmation-pip, fb-dreadnought-phases (19/19); pq206-00 wing cell + pq-152-02 stay green |
 | 235 | FB-022+FB-028 | Arena props are bodies the Massline moves; the results sheet prints its stunt rows | PB | FB-022 DONE — relays + cryo props materialize as room-owned dynamic bodies (authored prop mass, station latch endpoint, shootable); law follows the body: occupancy markers + `stormGraphNodes(liveRelays)` arcs ride dragged relays, bounded re-anchor servo via the membrane (held relays untouched), cryo pockets ride thrown tanks for a bounded vent window and die with the body; `test/fb-arena-props-are-bodies.test.mjs` (6/6, seed 4242 ≥40 WU drag + arc-pattern change). FB-028 OPEN — ORRERY lane |
-| 236 | FB-001+FB-059 | The pursuit-slot assist is reachable; five heavy hulls fly distinct drives | PB | FB-059 DONE 2026-10-03 — drive_torch_xl authored in propulsionCatalog.js; Bastion and Warden fly drive_gravimetric_m, Colossus and Leviathan fly drive_torch_xl; tests: fb-heavy-ladder-drives 4/4 green |
+| 236 | FB-001+FB-059 | The pursuit-slot assist is reachable; five heavy hulls fly distinct drives | PB | DONE 2026-10-04 — FB-059 (2026-10-03): drive_torch_xl authored in propulsionCatalog.js; Bastion and Warden fly drive_gravimetric_m, Colossus and Leviathan fly drive_torch_xl; fb-heavy-ladder-drives 4/4. FB-001: pursuit-slot assist live on the default route — flightV3 `_stepPursuitSlot` gates strict on `gameplay.pursuitSlotAssist === true` (default off, gameState.js), surfaced as the "Pursuit slot assist" row in ui/screens/settings.js; the slot forms once per lock at the pilot's bearing/range and holds with bounded thrust through the impulse membrane; fb-pursuit-slot-reachable 3/3 green |
 | 237 | FB-003+FB-004+FB-005+FB-113 | The pad covers the whole hand with curves, deadzones, haptics on their own axis and hold-to-toggle | PB | SHIPPED devin-oct2-batch — LB/RB chord verbs + pad curves/deadzones + haptics axis + hold-to-toggle; 55/55 focused + 102/102 input sweep |
 | 238 | FB-002+FB-116+FB-117+FB-118+FB-136 | Every bound verb is spoken once in the player's device vocabulary; the Range teaches all five powers | PB | DONE 2026-10-03 — verb shelf dedupes each bound verb exactly once and speaks it through the device's own glyph vocabulary (Xbox/DualShock/face-neutral sets), power rail slot 0 reserved for the DRIVE lamp, prompts follow rebinding, touch hides unpressable labels, Range teaches all five powers (4cc3a1beb); tests fb-002-verb-shelf + b118-power-rungs + power-rail + teach-01 + orrery-hud-adapter suites green |
 | 240 | FB-015+FB-114+FB-093+FB-094+FB-109 | Deployables and the first-hour rail survive a save; writes are bounded and gzipped by one long-lived worker; quota keeps a recovery | PB | **SHIPPED devin-oct2-batch** — snare/charge/web save rows with durable-id remap; onboarding rail + pad bindings restore; worker-pooled bounded gzip writes; quota keeps newest recovery |
 | 241 | FB-104+FB-108+FB-115+FB-110+FB-130 | Export carries medals; a fuzzer and a migration ladder guard the envelope; the save screen says what it repaired; [research A](design/program/research-2026-10-02/ADMITTED_REPAIRS.md#a-save-outcomes-and-continue-provenance--j2-j3): save delete outcomes + title Continue provenance (J2/J3) | PB | PARTIAL 2026-10-02 devin-oct2-batch — FB-104 profile side bags (gz+plain), FB-108 5k-case fuzzer, FB-115 v1–14 ladder shipped; FB-110/FB-130 remain ORRERY lane |
-| 242 | FB-029+FB-032+FB-031+FB-128+FB-133 | Twenty-four sectors get distinct populations, physics, arrangement, a face and two more working craft | PB | FB-032 DONE 2026-10-03 — 24/24 sectors complete in sectorPhysical.js and sectorCompositions.js with frozen rows, single-ratio delta verified; tests: fb-sector-physical-complete 4/4 green |
+| 242 | FB-029+FB-032+FB-031+FB-128+FB-133 | Twenty-four sectors get distinct populations, physics, arrangement, a face and two more working craft | PB | DONE 2026-10-04 — 24/24 distinct traffic mixes (FB-029, fb-sector-traffic-identity 4/4); 24/24 sectors physical/composition complete (FB-032, fb-sector-physical-complete 4/4); 24-row way of life sheet consumed by arrival postcard (FB-031, fb-way-of-life-consumed 3/3); 24/24 named lane contacts resolve deterministically (FB-128, fb-named-face-every-sector 3/3); volatiles tanker and inspection cutter fielded with signature profiles (FB-133, fb-tanker-cutter-fielded 3/3) |
 | 243 | FB-030 | Pallas Drift closes the miner→hauler→refinery→ambush→escort loop | PB | SHIPPED — four handoffs in order inside twenty minutes, seed 4242 |
 | 244 | FB-033+FB-125+FB-038 | Six lanes, no singleton POI types, and a Ceres unique wreck | PB | SHIPPED — six lanes, the singleton place types have company, and the Ceres tender pays one branch |
 | 245 | FB-034+FB-036+FB-042+FB-045+FB-051+FB-052+FB-140 | The ticker hears the day, the chronicler, wars, price causes, claims, worksites and wreck ecology | PB | SHIPPED — the ticker cites a real change and stays quiet when nothing moved |
@@ -884,6 +882,19 @@ shipped, so their J1/J6 and P04 residuals moved to §K rows 276/277; §K rows re
 | 275 | RELEASE-TRUTH | [Research H](design/program/research-2026-10-02/ADMITTED_REPAIRS.md#h-physical-previews-describe-the-actual-release--c1-c2-c4): actual-body/relevant-field forecasts and neutral untargeted release feedback; preserve live forces and cut authority | FIX | DONE 2026-10-03 — C1 missed-window cue now requires a valid attempted solution so untargeted lawful throws/cuts stay neutral while aimed misses still speak once; C2 preview builds its body profile from production's own fieldBodyProfile/fieldEntityIsPrimed/fieldVelocityTermApplies so earned coupling/resistance/boost/hitch/primed semantics match and target selection no longer fakes 'marked'; C4 fieldsRelevantAlongCorridor covers the whole predicted corridor (payload-excluded/zero-force/disjoint fields dropped, chain closure kept) so an irrelevant field can't collapse a ~6 s ballistic contact while an ahead-field still bends the read honestly (02a846590); tests fields-predictor 14/14 + massline-release-predictor 16/16 + check-massline-release-feedback OK + adjacent massline/fields/tether sweep 565/573 (8 fails all foreign lanes: ships collider, vfx direction-lock, fieldDepletion deserialize) |
 | 276 | MAP-INTENT | [Research C](design/program/research-2026-10-02/ADMITTED_REPAIRS.md#c-current-map-intention-and-cancellation--j1-j6): current galaxy-map query selection + first-Escape cancellation (J1/J6), minimal functional UI extension | FIX | DONE 2026-10-03 — query-stamped current-visible result commits only; blank/no-match/consumed clears the list (J1); screens get first-refusal `onEscape` before generic back, the chart cancels line/hold without committing or popping (J6); locked precedence preserved (736ab7df7, devin-sweep-oct2); tests map-intent-j1-j6, map-hud-kit + input suites green |
 | 277 | CONTRACT-IDENTITY | [Research E](design/program/research-2026-10-02/ADMITTED_REPAIRS.md#e-commit-the-exact-contract-held--p04): exact Contracts completed-hold identity (P04), minimal functional UI extension | FIX | DONE 2026-10-03 — a completed hold captures mission id + stated terms at fire and the drain commits only while that exact offer stands on those terms; a detached key never falls through to the repainted dossier, selection/context change, hide and dispose retire the pending commit, an unchanged repainted offer still accepts once (e7b4e09b7, devin-sweep-oct2); tests contract-hold-identity-p04 + station suites green |
+
+### L. THE LONG GAME — first decomposition (lane L-LONGGAME sitting 1, 2026-10-04)
+
+Lane checklist: FINISH_LANES.md §8 (PQ-032/142/152/155/156/170/172/176–178/195, PQ-208 verb keys, PQ-209.02) against §17 bars M1–M6. Each row is one seam's write set with a done-when in player units. Prior owner named per row.
+
+| # | ID | Work | Kind | Status |
+|---|---|---|---|---|
+| 278 | LG-TOW-PREDICT | Fit screen predicts tow class before you pay (M2): `handlingProfileForShip().predictions` gains `towClassMassT` + named heaviest towable roster hull, read off the live tow law (`shipCapabilities.towClassMassFor`), same derived block the bars read. Prior owner: PQ-176.03 fit sentences. Done when: predicted tow class matches a live tow of that hull within 20 % on seed 4242, and the fit screen names the hull. | BUILD | OPEN |
+| 279 | LG-FORECAST-PROOF | The market forecast cone is falsifiable (M4): each cone stores its quoted band + the sim event ids that moved the price, and the market screen prints one line tracing the last move to its cause. Prior owner: economy forecast band. Done when: on seed 4242 a reader of the cone out-earns a non-reader by ≥ 30 % over a seeded hour and every ticker line names its event. | BUILD | OPEN |
+| 280 | LG-STARTER-JOBS | Three starters are three jobs (F10/PQ-156): each starter hull ships an authored opening contract chain that only its fit can run cleanly, accepted from the ordinary board on the default route. Prior owner: onboarding/new-game defaults. Done when: a stranger flies each starter's chain to payout with no flag or debug key. | BUILD | OPEN |
+| 281 | LG-SPINE-HEADLINES | Every story beat has a physical headline verb (M5/PQ-032): beats that are text-only gain a staged physical action (tow, deliver, scan, survive) wired through the live `headlineVerb` mission seam. Prior owner: story beat content. Done when: all 8 beats each name a verb a player performs, reachable by a combat-only and a builder run on seed 4242. | BUILD | OPEN |
+| 282 | LG-SHIP-PORTRAIT | The load screen reads your ship's history back (M6): scars, repairs, titles and the named grudge render as one portrait block from the living-hull + title + ace-memory owners. Prior owner: save portrait fields. Done when: a scarred, titled, grudge-holding save shows all four lines with zero invented entries. | BUILD | OPEN |
+| 283 | LG-VERB-CURVE | A new verb every hour for ten hours (B8/PQ-155): the verb-unlock curve is a data table keyed to hours 1–10 with each unlock wired to its live verb key (PQ-208), surfaced once in the fit/tech screen. Prior owner: tech/unlock catalog. Done when: a fixed-seed ten-hour reference route meets 10 distinct verbs, each usable the hour it unlocks. | BUILD | OPEN |
 
 ## 2. Product north star
 
@@ -2671,17 +2682,28 @@ writes minutes old at checkpoint; do not touch.
   `official_recovery_tug` approaches (500,-100 → 815,95) then stalls at 313 WU from the
   spindle vs the required 180. The tug's `tether_control_raider` doctrine hold-short
   equilibrium moved under the stiffer contacts. **Owned by a wave agent** — fix the tug's
-  approach behavior, never the predicate.
+  approach behavior, never the predicate. **RESOLVED `f9edb3597` (2026-10-01)** — the
+  scripted ferries were retuned to `eb1869826`'s solid-contact drift (measured 90–142 WU
+  across the resolution window; the 180/160 WU predicates untouched). `check-47a-tactics`
+  (all four tactics) + `check-47a-live-branch-predicate` green at HEAD.
 - `sling_evidence` fails on the same `actorDistance` clause family — same root suspect.
+  **RESOLVED** by the same `f9edb3597` ferry retune; green at HEAD.
 
 **Open items — each owned by a dispatched wave agent (fresh worktree writes at checkpoint):**
-- soak encounters `got 0` + `first layered sync should import fixed bodies once` (spawn path)
-- `check-pq146-stunt-proofs`: clothesline trajectory + two save-lineage fails
-- `check-shipworks-dock-composition`: pelican fallback hull clips dock interior at yaw 45/90
-  (14 raycast hits)
-- `check-phase0-slice-contract`: 4 vs 7 SG-08 cue rows
-- `check-k1`: `faction_fulfillment drive-disabled` refail
-- `check-station-tabs`: market tab pointer response absent
+- soak encounters `got 0` — **RESOLVED `493e9da95` (2026-10-04)**: two honest defects. The
+  planner's nominal-spacing pass clamped an `earlyDelayS`-pinned beat to its window hi and
+  left a <45 s pair anyway (helios d0 s47: trader_run→raid 36.4 s); the contiguous
+  unwindowed run now yields earlier, preserving order and ≥45 s gaps, and a truly impossible
+  calendar surfaces as the residual pair rather than a silently moved promise. The
+  one-voice soak's seed-23 schedule starved to 1 fire on legitimately `storyBeatMin`-gated
+  items — reseeded 23→43 (5 fired, 2 proximity-gated; floor unchanged, the fixture's
+  documented maintenance pattern). `check-encounter-director` + `check-encounter-one-voice`
+  6/6 green.
+- `first layered sync should import fixed bodies once` (spawn path) — **GREEN at HEAD**:
+  `check-sg02-dynamic-body-owner` passes; `syncStaticEntities=1` verified on owner +
+  physicsAuthority versions back to Package E `b7b499263` — the checkpoint red was the
+  in-flight Package-D/E/F working state, not a committed regression. Restore-path
+  `_staticLayerVersion` bookkeeping completed by `2402a0d13`.
 - 47-A telemetry envelope re-record: **owner action after sim-moving fixes land** — re-record
   hash + moved-field counts + a notes entry citing Package D/E/F evidence (`f70aac37f`,
   `1639c221e`, `b7b499263`, `954a0ab8c`). Do NOT pin-update without that ruling.
@@ -2752,6 +2774,8 @@ kept (`scratch/cited-devshots.txt` is the citation census). `scratch/` is 35 MB;
 envelope re-record, soak=0, save-lineage, dock clip, phase0 rows, k1, station tabs) and the
 baseline treadmill. Verified pre-existing, not merge-caused: `sim`/`sim-v3` envelope drift,
 `massline-elastic-whip-head` (43.775), `pq020-ceres-topology` structuralCostDigest.
+*Update 2026-10-04: surrender tug stall closed `f9edb3597`; soak=0 closed `493e9da95` —
+both green at HEAD.*
 
 **Machine quiesced (2026-09-29, late):** owner directed all dev processes stopped. Killed the
 baseline race loop (`scratch/budget-loop.ps1` kept as the restart recipe), its capture+server
@@ -5387,8 +5411,20 @@ fixture already passes, skip.
 
 > **Rows G1, G3, G5, G7, G8, G12, G13 and G14 (what the flight HUD and the screens show) are CLAIMED
 > 2026-09-26 by the ORRERY frontend overhaul lane** — do not take them; the lane lands them in the
-> HUD pass ([`design/frontend/ORRERY.md`](./design/frontend/ORRERY.md) + [`design/frontend/OVERHAUL_PLAN_2026-09-25.md`](./design/frontend/OVERHAUL_PLAN_2026-09-25.md)). The other G-rows (sound, impact shape, the objective key, throttle
-> audio, module numbers, bound-key prompts) stay open.
+> HUD pass ([`design/frontend/ORRERY.md`](./design/frontend/ORRERY.md) + [`design/frontend/OVERHAUL_PLAN_2026-09-25.md`](./design/frontend/OVERHAUL_PLAN_2026-09-25.md)).
+>
+> **The non-ORRERY G-rows are verified landed (2026-10-04)** — each exists in code with a green
+> fixture: G2 `tether:latchDenied` routes to the `sfx_massline_deny` voice (combatVerbCues →
+> minimalActionAudio; `wave-g2-latch-deny-cue`); G4 `offscreenShooterMarker` (`src/ui/threatHalo.js:315`)
+> drives the offscreen `sf-tell` directional chip — a screen-edge *marker*, not an arc: edge arcs are
+> rejected by the non-diegetic HUD law (`hud.js:1913`; `wave-g4-offscreen-threat`); G6 impulse impacts
+> pick cone/sheet families off the hit axis with shield-vs-hull shape ids (`vfx.js` `hitRead.shapeId`;
+> `vfx-impulse-cone`); G9 `recallObjective` is bound and live (`bindings.js:42` → `input.js:359` →
+> `hud.js:1851` → `objectiveRecall.js`; `wave-g9-objective-recall`); G10 CV-EAR-1 engine voices answer
+> throttle inside the authored windows (`throttleAnswer.js` + `audioSystem.js`; `wave-g10-throttle-answer`,
+> `cv-ear-1-elementary-voices`); G11 `fb-module-dead-fields` walks advertised card stats against live
+> consumers; G15 prompts resolve the live binding (`promptLabel` `bindings.js:141`, `shelfVerbLine`
+> `hudAttention.js:302`; `help-gamepad-rebind`). Wave G has no open non-ORRERY rows.
 
 `PQ-155.04` already owns in-flight mining skill. A clean aim pays more ore than a sloppy aim, at
 least 2× on the same rock. That gradient is yield. The starter beam still never locks. A vent

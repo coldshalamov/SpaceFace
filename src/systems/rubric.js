@@ -79,6 +79,7 @@ export function createRubric() {
       this._reset();
       const on = (name, fn) => { const off = this.bus.on(name, fn); if (typeof off === 'function') this._unsubs.push(off); };
       on('scan:pulse', p => this._scan(p));
+      on('voice:surface', p => this._surfaced(p));
       on('combat:damage', p => this._damage(p));
       on('entity:killed', p => this._killed(p));
       on('game:newGame', () => this.newGame());
@@ -97,7 +98,7 @@ export function createRubric() {
       this._fleeUntil = 0; this._hurtUntil = 0; this._reloadUntil = 0; this._lastVoice = -100; this._lastHostile = null;
       this._syncAt = 0; this._retargetAt = 0; this._nudgeAt = 0; this._nearSince = null;
       this._inside = false; this._discovered = false; this._quietSeq = 0; this._streaming = false;
-      this._queue = []; this._hullHeldAt = -100; this._hullAwayT = 0; this._hullGone = 0;
+      this._queue = []; this._pending = []; this._hullHeldAt = -100; this._hullAwayT = 0; this._hullGone = 0;
       this._announcedWork = false; this._tagged = new Set((m?.marks || []).map(x => x.k));
       this._tmp = { x: 0, z: 0 }; this._dv = { x: 0, z: 0 }; this._goal = { x: 0, z: 0 };
     },
@@ -257,10 +258,38 @@ export function createRubric() {
       const now = this.state.simTime || 0;
       if (!text || (!important && now - this._lastVoice < C.voiceCooldown)) return false;
       this._lastVoice = now;
-      if (this.helpers.voice?.say) this.helpers.voice.say({ id: `rubric:${key}`, channel: 'comms', priority: important ? 62 : 24, text, ttl: 9 });
-      else this.bus.emit('toast', { text, kind: 'info', ttl: 9 });
+      // Register the delivery record BEFORE queuing: a floor that is free surfaces the line immediately.
+      if (important) this._offer(key, text, now);
+      this._emitVoice(text, key, important);
       this.bus.emit('rubric:voice', { key, text });
       return true;
+    },
+    _emitVoice(text, key, important) {
+      if (this.helpers.voice?.say) this.helpers.voice.say({ id: `rubric:${key}`, channel: 'comms', priority: important ? 62 : 24, text, ttl: C.voiceTtl });
+      else this.bus.emit('toast', { text, kind: 'info', ttl: C.voiceTtl });
+    },
+    // ----- re-offering: a line is delivered when it takes the floor, not when it is queued ------
+    _offer(key, text, now) {
+      const row = this._pending.find(r => r.key === key);
+      if (row) { row.text = text; row.attempts = 0; row.deadline = now + C.voiceTtl + 0.5; }
+      else if (this._pending.length < 4) this._pending.push({ key, text, attempts: 0, deadline: now + C.voiceTtl + 0.5 });
+    },
+    /** The arbiter announces every line that takes the one-voice floor; that is the delivery receipt. */
+    _surfaced(p) {
+      const text = p && p.text; if (!text || !this._pending?.length) return;
+      const i = this._pending.findIndex(r => r.text === text);
+      if (i >= 0) this._pending.splice(i, 1);
+    },
+    /** A line that expired in the queue behind a longer alert is offered again (never forced past it), at most
+     * offerAttempts more times, and only while the pilot is still within earshot. */
+    _reoffer(now, player, body) {
+      for (const r of [...this._pending]) {
+        if (now < r.deadline) continue;
+        const gone = player && body && distanceXZ(player.pos, body.pos) > C.hearRadius * 2;
+        if (gone || r.attempts >= C.offerAttempts || !this._live()) { this._pending.splice(this._pending.indexOf(r), 1); continue; }
+        r.attempts++; r.deadline = now + C.voiceTtl + 0.5;
+        this._emitVoice(r.text, r.key, true);
+      }
     },
     _sayOnce(key, important = true) {
       const m = this.state.rubric;
@@ -525,6 +554,7 @@ export function createRubric() {
       if (now >= this._syncAt) { this._syncAt = now + 1; this._sync(); }
       if (!this._adventure() || !this._streaming) return;
       this._followMarks();
+      if (this._pending.length) this._reoffer(now, this._player(), this._body());
       for (let i = this._queue.length - 1; i >= 0; i--) {
         if (now >= this._queue[i].at && this._live()) { const q = this._queue.splice(i, 1)[0]; this._sayOnce(q.key, true); }
       }

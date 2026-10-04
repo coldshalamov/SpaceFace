@@ -344,7 +344,11 @@ test('every line carries its whole meaning in words', () => {
 
 test('no cue introduces motion or a new surface of its own', () => {
   const t = boot();
-  const before = t.state.entityList.length;
+  const beforeOwned = new Set(
+    t.state.entityList
+      .filter((e) => e?.data?.runtimeOwner === 'heistFacilities')
+      .map((e) => e.id),
+  );
   flyFullHeist(t);
   // The cue path is the existing one-voice floor and nothing else: no vfx cue, no HUD element, no
   // spawned presenter. Reduced-motion safety is inherited from that surface rather than re-invented.
@@ -352,7 +356,12 @@ test('no cue introduces motion or a new surface of its own', () => {
   t.bus.on('presentation:vfxCue', (p) => vfx.push(p));
   t.step(60);
   assert.equal(vfx.length, 0, 'the heist cue path emits no motion of its own');
-  assert.ok(t.state.entityList.length <= before + 1, 'no presenter entity is spawned');
+  // Residency materialization and the law's designed warrant response may add hulls the mission
+  // does not own; what the heist owner may add is bounded — the cue path itself spawns nothing.
+  const addedOwned = t.state.entityList.filter(
+    (e) => e?.data?.runtimeOwner === 'heistFacilities' && !beforeOwned.has(e.id),
+  );
+  assert.ok(addedOwned.length <= 1, 'no presenter entity is spawned');
 });
 
 // ── Flight-only, and sim-inert ─────────────────────────────────────────────────────────────────

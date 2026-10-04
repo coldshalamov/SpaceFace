@@ -27,7 +27,9 @@ export function createRubricFixture(memory, options = {}) {
       const e = state.entities.get(id);
       if (e?.alive) { e.alive = false; bus.emit('entity:destroyed', { id, type: e.type, entity: e }); }
     },
-    voice: { say(p) { events.push(['comms', p]); return true; } } };
+    // A one-voice floor: a line surfaces at once unless `floorBusy` is on (a longer alert holds the floor and the
+    // arbiter would drop the line unspoken after its ttl), which is how the live game starves a first hello.
+    voice: { say(p) { events.push(['comms', p]); if (!state.floorBusy) bus.emit('voice:surface', { id: `comms:${p.id}`, channel: p.channel, priority: p.priority, text: p.text, ttl: p.ttl }); return true; } } };
   const player = helpers.spawnEntity({ type: 'ship', team: 0, isPlayer: true, radius: 4, mass: 18, hull: 400, hullMax: 400,
     shield: 60, shieldMax: 60, maxSpeed: 250, pos: { x: options.playerAt?.x ?? O.x + 120, z: options.playerAt?.z ?? O.z + 20 },
     vel: { x: 0, z: 0 }, physicsBody: { dynamic: true, shape: 'ball', radius: 4, mass: 18, useMeasuredSkin: false,

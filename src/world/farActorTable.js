@@ -247,6 +247,13 @@ export function shouldVirtualizeFarActor(entity, state) {
   const data = entity.data || {};
   if (flags.persistent || flags.missionPinned || data.missionPinned || data.missionId) return false;
   if (data.isBoss || data.namedAceId || data.uniqueWreckId || data.uniqueWreck) return false;
+  // A hand-built story character (Solstice, Ravel, Vesper, Bracket) is owned by its system's own
+  // census, which adopts bodies by a part stamp and mints any missing one every second. The lean far
+  // row drops that stamp, so shelving a body made the owner mint a replacement beside the shell, and
+  // approaching promoted an anonymous twin: a pilot arriving from a gate saw the character vanish
+  // within two ticks. Each is one small cohort in one sector, so it stays resident (the activity
+  // tiers still put it to sleep while the pilot is far).
+  if (data.authoredCharacter) return false;
   // A marker-bound wreck's body belongs to the aftermath marker (state.aftermathWrecks), which
   // respawns the full hulk on sector entry. The lean far row drops markerId, so a shelved wreck
   // would promote as an unbindable shell duplicating the marker's own respawn (D89).

@@ -61,6 +61,16 @@ import { makeShipEntitySpec } from './ships.js';
 
 export const SCANNER_CONTACT_RANGE = CONTACT_HAIL_RANGE;
 
+const HAIL_REFUSAL_TEXT = Object.freeze({
+  unresolved_target: 'No contact to hail',
+  stale_target: 'That isn\'t the contact you\'re locked on',
+  dead_target: 'No answer — that contact is gone',
+  unsupported_target: 'That contact doesn\'t take a hail',
+  unsupported_contact: 'That contact doesn\'t take a hail',
+  out_of_reveal_range: 'Too far to hail — close in',
+  parley_expired: 'The demand has already expired',
+});
+
 /** 'out' when the sensor bank is dead, 'jammed' when a status killed the capability, else null. */
 export function playerSensorBlock(state, player) {
   const book = state && state.combat && state.combat.entities;
@@ -1485,17 +1495,26 @@ export const scanner = {
     return true;
   },
 
+  _noteHailRefusal(reason) {
+    const text = HAIL_REFUSAL_TEXT[reason];
+    if (!text || !this.bus) return;
+    this.bus.emit('toast', { text, kind: 'warn', ttl: 1.6 });
+  },
+
   _requestContactHail(payload) {
     const state = this.state;
     const availability = contactHailAvailability(state);
     if (!availability.enabled || payload.targetId != null && payload.targetId !== availability.targetId) {
       this._clearContactHail('request_invalid');
+      const reason = !availability.enabled ? availability.reason : 'stale_target';
+      this._noteHailRefusal(reason);
       return false;
     }
     if (availability.kind === 'toll') {
       const demand = pirateParleyDemandForHandoff(availability.parley);
       if (!demand || !(Number(demand.deadlineAt) > Number(state.simTime || 0))) {
         this._clearContactHail('parley_invalid');
+        this._noteHailRefusal('parley_expired');
         return false;
       }
       this._clearContactHail('parley_handoff');

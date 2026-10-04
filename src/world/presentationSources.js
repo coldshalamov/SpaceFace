@@ -24,19 +24,32 @@ import { itineraryPositionInto } from './worldCatchup.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
 
 const _farPromoteScratch = [];
-const _rockQueryScratch = [];
 const _farPromoteIds = [];
 const _meshRockScratch = [];
 const _meshFarScratch = [];
-const _meshSpatialKey = {
+// Two memoized ledger walks, one per side: far actors ride the authored decode
+// runway (multi-thousand-WU disc) while field rocks build procedurally inside
+// the collect horizon. Sharing the far disc for both paid tens of thousands of
+// asteroid cell visits for rows a 4.5 s horizon already covers — the rock key
+// tracks its own (much smaller) disc and adds a sim-time bucket so a parked
+// player still revalidates dormant drift rows' stored↔ballistic gap growth.
+const _meshRockKey = {
   state: null,
   field: null,
+  originX: NaN,
+  originZ: NaN,
+  radius: NaN,
+  collectRadius: NaN,
+  fieldVersion: -1,
+  bucket: -1,
+};
+const _meshFarKey = {
+  state: null,
   far: null,
   originX: NaN,
   originZ: NaN,
   radius: NaN,
-  needRadius: NaN,
-  fieldVersion: -1,
+  collectRadius: NaN,
   farVersion: -1,
 };
 
@@ -197,34 +210,109 @@ function ledgerPredictedPos(rec, simTime, out) {
 
 const _ledgerPredictedScratch = { x: 0, z: 0 };
 
-function meshSpatialKeyMatches(state, walkX, walkZ, walkRadius) {
+// Seconds of sim time the rock memo may hold before dormant drift rows force a
+// revalidation — the stored↔ballistic gap of a vel-carrying shelf row grows at
+// its own speed even while the player (and therefore every other key) holds still.
+const ROCK_WALK_REVISIT_SECONDS = 10;
+
+// A dormant rock row is admitted on its ballistic pose (ledgerPredictedPos) while
+// the grid walk finds it by its stored shelf pos, so the rock disc margin covers
+// the worst closing speed the per-row verdict can measure — player travel plus
+// the fastest drifting row's own speed (travel+v is the |relV| bound the verdict
+// tests against the collect horizon) — plus that row's stored↔ballistic gap
+// |vel|·(now - lastExactT) and one revisit window of further gap growth. Field
+// markers (asteroidField noteFieldRockMotion) are conservative high/low waters,
+// so a removed or slowed row only ever widens the disc.
+function rockLedgerScanMargin(field, simTime, travel) {
+  let margin = travel * TABLE_COLLECT_HORIZON_SECONDS;
+  const maxRockSpeed = field && Number.isFinite(field.maxRockSpeed) ? field.maxRockSpeed : 0;
+  if (maxRockSpeed > 0) {
+    const oldest = Number.isFinite(field.minDriftRockLastExactT)
+      ? field.minDriftRockLastExactT
+      : simTime;
+    const gapSeconds = Math.max(0, simTime - oldest) + ROCK_WALK_REVISIT_SECONDS;
+    const need = (travel + maxRockSpeed) * TABLE_COLLECT_HORIZON_SECONDS
+      + maxRockSpeed * gapSeconds;
+    if (need > margin) margin = need;
+  }
+  return margin;
+}
+
+// Marker backfill for a field object populated without the drift markers (a
+// hand-built fixture or a pre-marker runtime object). One scan per field
+// lifetime; insertAsteroidFieldRock/catchUpFieldRock keep them exact after that.
+function ensureFieldDriftMarkers(field) {
+  if (!field || field.maxRockSpeed !== undefined) return;
+  let maxV = 0;
+  let minT = null;
+  const rocks = field.rocks;
+  if (Array.isArray(rocks)) {
+    for (let i = 0; i < rocks.length; i++) {
+      const rec = rocks[i];
+      if (!rec) continue;
+      const vx = finite(rec.vel && rec.vel.x);
+      const vz = finite(rec.vel && rec.vel.z);
+      const speed = (vx !== 0 || vz !== 0) ? Math.hypot(vx, vz) : 0;
+      if (!(speed > 0)) continue;
+      if (speed > maxV) maxV = speed;
+      const t = rec.lastExactT;
+      if (Number.isFinite(t) && (!Number.isFinite(minT) || t < minT)) minT = t;
+    }
+  }
+  field.maxRockSpeed = maxV;
+  field.minDriftRockLastExactT = minT;
+}
+
+function meshRockKeyMatches(state, walkX, walkZ, radius, bucket) {
   const world = state && state.world;
   const field = world && world.asteroidField;
-  const far = world && world.farActors;
-  const key = _meshSpatialKey;
+  const key = _meshRockKey;
   return key.state === state
     && key.field === field
+    && key.originX === walkX
+    && key.originZ === walkZ
+    && key.radius === radius
+    && key.bucket === bucket
+    && key.fieldVersion === (field && Number.isFinite(field.version) ? field.version : 0);
+}
+
+function rememberMeshRockKey(state, walkX, walkZ, radius, bucket, collectRadius) {
+  const world = state && state.world;
+  const field = world && world.asteroidField;
+  _meshRockKey.state = state;
+  _meshRockKey.field = field;
+  _meshRockKey.originX = walkX;
+  _meshRockKey.originZ = walkZ;
+  _meshRockKey.radius = radius;
+  _meshRockKey.bucket = bucket;
+  _meshRockKey.collectRadius = collectRadius;
+  _meshRockKey.fieldVersion = field && Number.isFinite(field.version) ? field.version : 0;
+}
+
+function meshFarKeyMatches(state, walkX, walkZ, radius) {
+  const world = state && state.world;
+  const far = world && world.farActors;
+  const key = _meshFarKey;
+  return key.state === state
     && key.far === far
     && key.originX === walkX
     && key.originZ === walkZ
-    && key.needRadius === walkRadius
-    && key.fieldVersion === (field && Number.isFinite(field.version) ? field.version : 0)
+    && key.radius === radius
     && key.farVersion === (far && Number.isFinite(far.version) ? far.version : 0);
 }
 
-function rememberMeshSpatialKey(state, walkX, walkZ, collectRadius, needRadius) {
+function rememberMeshFarKey(state, walkX, walkZ, radius, collectRadius) {
   const world = state && state.world;
-  const field = world && world.asteroidField;
   const far = world && world.farActors;
-  _meshSpatialKey.state = state;
-  _meshSpatialKey.field = field;
-  _meshSpatialKey.far = far;
-  _meshSpatialKey.originX = walkX;
-  _meshSpatialKey.originZ = walkZ;
-  _meshSpatialKey.radius = collectRadius;
-  _meshSpatialKey.needRadius = needRadius;
-  _meshSpatialKey.fieldVersion = field && Number.isFinite(field.version) ? field.version : 0;
-  _meshSpatialKey.farVersion = far && Number.isFinite(far.version) ? far.version : 0;
+  _meshFarKey.state = state;
+  _meshFarKey.far = far;
+  _meshFarKey.originX = walkX;
+  _meshFarKey.originZ = walkZ;
+  _meshFarKey.radius = radius;
+  // The radius actually queried — the 'covered' ride's containment test measures
+  // against this, while key equality keys the needed radius above.
+  _meshFarKey.collectRadius = collectRadius;
+  _meshFarKey.farVersion = far && Number.isFinite(far.version) ? far.version : 0;
   // The collect disc the scratch set answers for. catchUpFarRecord reads it to stamp a
   // version bump when a within-cell advance moves a row across its rim — the only motion
   // class that can silently enter the memoized scratch's coverage.
@@ -282,6 +370,7 @@ function _nearbyLedgerRowsContext(state, opts = null) {
   // cell is covered by the same superset, and the per-row tests below still filter
   // against the exact origin on every call. The walk radius is bucketed the same way
   // so small speed changes do not churn the key either.
+  const simTime = Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0) / 60;
   const legSpan = Math.hypot(origin.x - playerX, origin.z - playerZ);
   const unionX = (origin.x + playerX) * 0.5;
   const unionZ = (origin.z + playerZ) * 0.5;
@@ -289,12 +378,12 @@ function _nearbyLedgerRowsContext(state, opts = null) {
   const walkZ = (Math.floor(unionZ / ASTEROID_FIELD_CELL) + 0.5) * ASTEROID_FIELD_CELL;
   const radiusPad = Math.ceil(ASTEROID_FIELD_CELL * Math.SQRT1_2);
   const walkRadius = Math.ceil((scanRadius + legSpan / 2 + radiusPad) / 500) * 500;
-  // The minted disc collects one cell-diagonal beyond the needed radius so a
-  // quantized-cell flip of the union origin — a player hovering a cell rim — stays
-  // inside the stamped coverage ('covered' rides the flip instead of paying the
-  // grid refill every beat). The needed radius stays unpadded: containment is a
-  // true superset because the collect paid for the overlap.
-  const collectRadius = walkRadius + Math.ceil(ASTEROID_FIELD_CELL * Math.SQRT2);
+  // The minted discs collect one cell-diagonal beyond the needed radius so a
+  // quantized-cell flip of the union origin — a player hovering a cell rim —
+  // stays inside the stamped coverage ('covered' rides the flip instead of
+  // paying the grid refill every beat). The needed radius stays unpadded:
+  // containment is a true superset because the collect paid for the overlap.
+  const collectOverlap = Math.ceil(ASTEROID_FIELD_CELL * Math.SQRT2);
   const toleration = opts && opts.tolerateMiss;
   const world = state && state.world;
   const field = world && world.asteroidField;
@@ -302,34 +391,64 @@ function _nearbyLedgerRowsContext(state, opts = null) {
   // A ride is only possible off a disc stamped for THIS state and its CURRENT
   // field/far objects — otherwise the scratches hold no usable rows at all and
   // tolerating a miss would starve the collect instead of debiting a refill.
-  const hasLiveDisc = _meshSpatialKey.state === state
-    && _meshSpatialKey.field === field
-    && _meshSpatialKey.far === far;
+  const hasLiveFarDisc = _meshFarKey.state === state
+    && _meshFarKey.far === far;
+  const hasLiveRockDisc = _meshRockKey.state === state
+    && _meshRockKey.field === field;
   // 'covered' is the strict form: the stamped disc must version-match AND fully
   // contain the needed walk disc — a true superset, so the stale scratch answers
   // the same rows the refill would (no subset drift). Anything weaker refills.
-  const coveredByDisc = hasLiveDisc
-    && _meshSpatialKey.fieldVersion === (field && Number.isFinite(field.version) ? field.version : 0)
-    && _meshSpatialKey.farVersion === (far && Number.isFinite(far.version) ? far.version : 0)
-    && Math.hypot(_meshSpatialKey.originX - walkX, _meshSpatialKey.originZ - walkZ)
-        + walkRadius <= _meshSpatialKey.radius;
-  const ridesDisc = hasLiveDisc
-    && (toleration === true || (toleration === 'covered' && coveredByDisc));
-  if (!meshSpatialKeyMatches(state, walkX, walkZ, walkRadius) && !ridesDisc) {
-    if (toleration === true && !hasLiveDisc) {
-      // A loose-tolerance remint with no live disc means the field/far objects were
-      // swapped (or never minted): a refill here pays the unbounded grid query inside
-      // the beat remainder, and the stale scratches describe a dead field. Serve an
-      // empty row set for this beat — the next clean-start mint refills under the
-      // strict 'covered' gate on a fresh clock.
-      _meshRockScratch.length = 0;
+  const farVersionNow = far && Number.isFinite(far.version) ? far.version : 0;
+  const farCovered = hasLiveFarDisc
+    && _meshFarKey.farVersion === farVersionNow
+    && Math.hypot(_meshFarKey.originX - walkX, _meshFarKey.originZ - walkZ)
+        + walkRadius <= (_meshFarKey.collectRadius || _meshFarKey.radius || 0);
+  const ridesFar = hasLiveFarDisc
+    && (toleration === true || (toleration === 'covered' && farCovered));
+  if (!meshFarKeyMatches(state, walkX, walkZ, walkRadius) && !ridesFar) {
+    if (toleration === true && !hasLiveFarDisc) {
+      // A loose-tolerance remint with no live disc means the far object was
+      // swapped (or never minted): a refill here pays the unbounded grid query
+      // inside the beat remainder, and the stale scratch describes a dead set.
+      // Serve an empty row set for this beat — the next clean-start mint
+      // refills under the strict 'covered' gate on a fresh clock.
       _meshFarScratch.length = 0;
     } else {
       _meshWalkOrigin.x = walkX;
       _meshWalkOrigin.z = walkZ;
-      queryAsteroidField(state, _meshWalkOrigin, collectRadius, _meshRockScratch);
-      queryFarActors(state, _meshWalkOrigin, collectRadius, _meshFarScratch);
-      rememberMeshSpatialKey(state, walkX, walkZ, collectRadius, walkRadius);
+      queryFarActors(state, _meshWalkOrigin, walkRadius + collectOverlap, _meshFarScratch);
+      rememberMeshFarKey(state, walkX, walkZ, walkRadius, walkRadius + collectOverlap);
+    }
+  }
+  // Field rocks build procedurally on the collect horizon — they never ride the
+  // authored decode runway — so their walk disc needs only the collect radius
+  // plus the closing/staleness margin, not the far scan disc. Never larger than
+  // the far disc, so worst case is exactly the old shared walk. The own time
+  // bucket revalidates drift gaps while a parked player holds every other key.
+  ensureFieldDriftMarkers(field);
+  const travel = tableTravelSpeed(state);
+  const rockScanRadius = radius + ASTEROID_FIELD_CELL
+    + rockLedgerScanMargin(field, simTime, travel);
+  const rockWalkRadius = Math.min(
+    walkRadius,
+    Math.ceil((rockScanRadius + legSpan / 2 + radiusPad) / 500) * 500,
+  );
+  const rockBucket = Math.floor(simTime / ROCK_WALK_REVISIT_SECONDS);
+  const fieldVersionNow = field && Number.isFinite(field.version) ? field.version : 0;
+  const rockCovered = hasLiveRockDisc
+    && _meshRockKey.fieldVersion === fieldVersionNow
+    && Math.hypot(_meshRockKey.originX - walkX, _meshRockKey.originZ - walkZ)
+        + rockWalkRadius <= (_meshRockKey.collectRadius || _meshRockKey.radius || 0);
+  const ridesRock = hasLiveRockDisc
+    && (toleration === true || (toleration === 'covered' && rockCovered));
+  if (!meshRockKeyMatches(state, walkX, walkZ, rockWalkRadius, rockBucket) && !ridesRock) {
+    if (toleration === true && !hasLiveRockDisc) {
+      _meshRockScratch.length = 0;
+    } else {
+      _meshWalkOrigin.x = walkX;
+      _meshWalkOrigin.z = walkZ;
+      queryAsteroidField(state, _meshWalkOrigin, rockWalkRadius + collectOverlap, _meshRockScratch);
+      rememberMeshRockKey(state, walkX, walkZ, rockWalkRadius, rockBucket, rockWalkRadius + collectOverlap);
     }
   }
   const pvx = finite(player.vel && player.vel.x);
@@ -344,7 +463,7 @@ function _nearbyLedgerRowsContext(state, opts = null) {
     playerZ,
     pvx,
     pvz,
-    simTime: Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0) / 60,
+    simTime,
     glassR: presentationGlassCorner(state),
     radius2: radius * radius,
     live: state.entities,
@@ -537,8 +656,11 @@ export function requestDecodeRunwayPromote(state, helpers) {
       admitPromotedToRunwayFrame(state, ent.id);
     }
   }
-  const rockHits = queryAsteroidField(state, origin, decodeR, _rockQueryScratch);
-  result.rocksSeen = rockHits.length;
+  // Field rocks already draw from the ledger (collectMeshPresentationEntities).
+  // A 30 Hz queryAsteroidField over the decode disc only fed rocksSeen telemetry —
+  // rocksPromoted is always 0 by design. Report field presence without the walk.
+  const field = state.world && state.world.asteroidField;
+  result.rocksSeen = (field && Array.isArray(field.rocks)) ? field.rocks.length : 0;
   return result;
 }
 

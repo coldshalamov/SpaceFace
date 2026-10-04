@@ -158,6 +158,7 @@ function emptyPinFacts() {
     aggro: new Set(),
     projectileThreat: new Set(),
     tracked: new Set(),
+    fieldDriven: new Set(),
     damagedByPlayerUntil: new Map(),
     damagedPlayerUntil: new Map(),
   };
@@ -561,6 +562,15 @@ function rebuildPinFacts(state, player, facts, simTime) {
   tetherScratch.length = 0;
   const threatScratch = facts._threatScratch || (facts._threatScratch = []);
   threatScratch.length = 0;
+  const fieldScratch = facts._fieldScratch || (facts._fieldScratch = []);
+  fieldScratch.length = 0;
+  // A body inside a live field's force radius is externally driven: fields publishes the set it
+  // queued impulses on this tick (state.fieldsRuntime.affectedIds). Shelving such a body would
+  // freeze it mid-pull and strand its queued physics commands forever.
+  const fieldAffected = state && state.fieldsRuntime && state.fieldsRuntime.affectedIds;
+  if (fieldAffected) {
+    for (const id of fieldAffected) fieldScratch.push(id);
+  }
 
   // SG-06: player-intent pins arrive only through entity-carried state (see scalar
   // block above). Scanner owns the durable tracked contact — resolve its signal record
@@ -642,6 +652,7 @@ function rebuildPinFacts(state, player, facts, simTime) {
     || !setMatchesList(facts.tracked, trackedScratch)
     || !setMatchesList(facts.tether, tetherScratch)
     || !setMatchesList(facts.projectileThreat, threatScratch)
+    || !setMatchesList(facts.fieldDriven, fieldScratch)
   );
 
   if (changed) {
@@ -653,6 +664,8 @@ function rebuildPinFacts(state, player, facts, simTime) {
     for (let i = 0; i < threatScratch.length; i++) facts.projectileThreat.add(threatScratch[i]);
     facts.tracked.clear();
     for (let i = 0; i < trackedScratch.length; i++) facts.tracked.add(trackedScratch[i]);
+    facts.fieldDriven.clear();
+    for (let i = 0; i < fieldScratch.length; i++) facts.fieldDriven.add(fieldScratch[i]);
 
     if (damageChanged) {
       facts.damagedByPlayerUntil.clear();
@@ -965,6 +978,7 @@ const PIN_REASON_BIT = Object.freeze({
   [PIN_REASON.PLAYER_SCANNED_AND_TRACKED]: 4096,
   [PIN_REASON.IMMINENT_COLLISION]: 8192,
   [PIN_REASON.VISIBLE_ON_GLASS]: 16384,
+  [PIN_REASON.FIELD_DRIVEN]: 32768,
 });
 
 function pinBitsOf(pins) {
@@ -1593,6 +1607,7 @@ function classifyWorld(state, runtime) {
     ctx.mapOrRadar = entity.type === 'ship' || entity.type === 'station' || entity.type === 'drone';
     ctx.hostileAggro = facts.aggro.has(entity.id);
     ctx.projectileThreat = facts.projectileThreat.has(entity.id);
+    ctx.fieldDriven = facts.fieldDriven.has(entity.id);
     ctx.tetherOrAttachment = facts.tether.has(entity.id)
       || !!(entity.flags && entity.flags.tethered)
       || data.tethered === true;
@@ -1622,6 +1637,7 @@ function classifyWorld(state, runtime) {
     // traffic": they keep the ordinary distance tiers (live to the physics rim, dormant past
     // it) instead of aggregating into anonymous population.
     const combatPostured = !!(ai && (ai.combatant === true || ai.engagementTrigger != null
+      || ai.huntPlayer === true || ai.forcePlayerTarget === true
       || (ai.activity && ai.activity.kind === 'attack_run')));
     const authoredActiveCombat = authoredPresence && ai && ai.passive === false
       && combatPostured;

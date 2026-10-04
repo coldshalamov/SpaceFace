@@ -93,6 +93,18 @@ export const SPEC_DETERRENCE_S = 1200;     // a repelled raid buys 20 min of hal
 export const CLAIM_RAID_ATTACKER_RANGE = Object.freeze([4, 6]);
 export const CLAIM_DEFENSE_WARNING_S = 150; // travel window before off-screen fallback
 export const CLAIM_DEFENSE_ARRIVAL_R = 720; // reach the physical claim, not merely its sector
+// A physical takeover that collapsed after the warning (aborted encounter, or a re-admission
+// refusal that can never commit) re-arms the fallback owner for this long — long enough to be
+// answered again, never long enough to strand the raid without a resolution owner.
+const CLAIM_DEFENSE_REPRIEVE_S = 45;
+// NXI-139 — re-admission refusals that can never produce a live encounter: the request is
+// malformed, the seeded plan cannot field a squad, the shape/runtime is missing, or no director
+// answers at all. Anything else (wrong sector, a spent spawn budget, a synchronous resolve) is
+// lateness, not impossibility — those keep the durable retry, because a late render/sim asset is
+// never a reason to book the raid's loss.
+const CLAIM_DEFENSE_TERMINAL_REFUSALS = new Set([
+  'invalid_request', 'missing_shape', 'missing_runtime', 'empty_plan', 'no_director',
+]);
 export const CLAIM_TRAVEL_INFRASTRUCTURE_SCHEMA = 'claim_travel_sling_v1';
 const RELAY_LOSS_BASE = 0.05;              // convoy loss floor in unlawful space…
 const RELAY_LOSS_DANGER = 0.25;            // …plus danger scaling, capped:
@@ -283,6 +295,16 @@ function sumStore(bucket) {
 
 function materialName(id) {
   return String(id || 'material').replace(/^cmdty_/, '').replace(/_/g, ' ');
+}
+
+// NXI-140 — a defense receipt names its real goods, not just a count: "10u ore iron, 2u alloys".
+function goodsDeltaLabel(goods) {
+  const parts = [];
+  for (const id of Object.keys(goods || {})) {
+    const qty = goods[id] || 0;
+    if (qty > 0) parts.push(`${qty}u ${materialName(id)}`);
+  }
+  return parts.join(', ');
 }
 
 function firstMissingModuleMaterial(mod, player) {
@@ -1629,9 +1651,27 @@ export const claims = {
         // otherwise one wrong-sector/no-budget response would strand this defense forever.
         if (!state.world || state.world.currentSectorId !== body.sectorId) continue;
         if (now < (defense.retryAt || 0)) continue;
-        if (this._requestDefenseEncounter(body, defense, { resume: true })) {
+        const verdict = this._requestDefenseEncounter(body, defense, { resume: true });
+        if (verdict && verdict.ok === true) {
           this._resumeDefenseIds.delete(defense.id);
           delete defense.retryAt;
+        } else if (!body.spec || body.spec.defense !== defense || defense.phase !== 'engaged') {
+          // A resolve/abort emitted synchronously inside the request already moved this raid —
+          // the event owns it now, and the stale retry token goes with it.
+          this._resumeDefenseIds.delete(defense.id);
+        } else if (verdict && CLAIM_DEFENSE_TERMINAL_REFUSALS.has(verdict.reason)) {
+          // NXI-139 — the physical takeover can never commit. Sitting in 'engaged' would leave
+          // the raid with neither a physical result nor a fallback owner: no resolution event
+          // can arrive for an encounter that was never admitted, and the warning deadline no
+          // longer runs. Hand the raid back to the warning fallback exactly like an aborted
+          // encounter — it re-arms, gets answered again if the player is present, and still
+          // settles 'ignored' on schedule if nobody is.
+          this._resumeDefenseIds.delete(defense.id);
+          delete defense.retryAt;
+          defense.phase = 'warning';
+          defense.requestedAt = null;
+          defense.deadlineAt = Math.max(defense.deadlineAt || 0, now + CLAIM_DEFENSE_REPRIEVE_S);
+          this._setDefenseWaypoint(body, defense);
         } else {
           defense.retryAt = now + 2;
         }
@@ -1667,12 +1707,17 @@ export const claims = {
     let result = null;
     if (director && typeof director.requestClaimDefense === 'function') result = director.requestClaimDefense(payload);
     else this.bus.emit('claim:defenseEncounterRequested', payload);
-    if (!result || result.ok === false) return false;
+    // NXI-139 — the caller needs the admission verdict, not just a yes/no: a refusal reason says
+    // whether the physical takeover can still commit (retry it) or never will (hand the raid
+    // back to the fallback owner). 'engaged' is only ever set after an accepted admission.
+    if (!result || result.ok === false) {
+      return { ok: false, reason: (result && result.reason) || 'no_director' };
+    }
     defense.phase = 'engaged';
     defense.encounterId = result.encounterId || defense.encounterId;
     defense.requestedAt = this.state.simTime || 0;
     this.bus.emit('claim:defenseStarted', { ...payload, encounterId: defense.encounterId });
-    return true;
+    return { ok: true, encounterId: defense.encounterId };
   },
 
   _onDefenseIgnore(payload) {
@@ -1700,7 +1745,7 @@ export const claims = {
     if (String(payload.outcome || '').startsWith('aborted:')) {
       body.spec.defense.phase = 'warning';
       body.spec.defense.requestedAt = null;
-      body.spec.defense.deadlineAt = Math.max(body.spec.defense.deadlineAt || 0, (this.state.simTime || 0) + 45);
+      body.spec.defense.deadlineAt = Math.max(body.spec.defense.deadlineAt || 0, (this.state.simTime || 0) + CLAIM_DEFENSE_REPRIEVE_S);
       this._setDefenseWaypoint(body, body.spec.defense);
       return;
     }
@@ -1794,12 +1839,21 @@ export const claims = {
       destroyed: { lossFrac: 0.90, rep: -5, danger: 0.08,  repairMin: 3,   cooldown: SPEC_RAID_COOLDOWN_S * 2 },
     }[outcome];
     let lostU = 0;
+    // NXI-140 — reconcile the store per good and project that same delta into the raid result:
+    // the receipt identifies what the raid actually took and what it actually saved, so a
+    // partial physical loss can never read as a full warehouse held. Nothing is added or
+    // removed to match optimistic text — the maps are the mutation's own record.
+    const goodsLost = Object.create(null);
+    const goodsSaved = Object.create(null);
     for (const bucket of [spec.store.input, spec.store.output]) {
       for (const id of Object.keys(bucket)) {
-        const lost = Math.floor((bucket[id] || 0) * settlement.lossFrac);
+        const have = bucket[id] || 0;
+        const lost = Math.floor(have * settlement.lossFrac);
+        if (have - lost > 0) goodsSaved[id] = (goodsSaved[id] || 0) + (have - lost);
         if (lost <= 0) continue;
         bucket[id] -= lost;
         lostU += lost;
+        goodsLost[id] = (goodsLost[id] || 0) + lost;
         if (bucket[id] <= 0) delete bucket[id];
       }
     }
@@ -1821,18 +1875,26 @@ export const claims = {
       this.bus.emit('faction:repDelta', { factionId: sector.factionId, delta: settlement.rep, reason: `claim_defense:${outcome}` });
     }
     this.bus.emit('sectorsim:impulse', { kind: `claim_defense_${outcome}`, sectorId: body.sectorId, danger: settlement.danger });
+    // The text mirrors the reconciled delta — 'stores intact' is only ever printed when the
+    // delta is genuinely empty; a defended-with-loss would read the real taken/held split.
+    const takenList = goodsDeltaLabel(goodsLost);
+    const heldList = goodsDeltaLabel(goodsSaved);
     const summary = outcome === 'defended'
-      ? `Claim held — ${defense.attackerName} driven off; stores intact.`
-      : `Claim defense ${outcome} — ${lostU}u lost; repair crews assigned.`;
+      ? (lostU <= 0
+        ? `Claim held — ${defense.attackerName} driven off; stores intact.`
+        : `Claim held — ${defense.attackerName} driven off, but the crew lost ${takenList || `${lostU}u`}; ${heldList || 'nothing'} held.`)
+      : `Claim defense ${outcome} — ${lostU}u lost${takenList ? ` (${takenList} taken)` : ''}${heldList ? `; ${heldList} held` : ''}; repair crews assigned.`;
     this._receipt(body, `defense_${outcome}`, summary, {
       defenseId: defense.id, encounterId: defense.encounterId, lostU,
+      goodsLost, goodsSaved,
       repDelta: settlement.rep, dangerDelta: settlement.danger,
     });
     spec.defense = null;
     this._restoreDefenseWaypoint(defense);
     this.bus.emit('claim:defenseResolved', {
       bodyId: body.id, defenseId: defense.id, encounterId: defense.encounterId,
-      sectorId: body.sectorId, outcome, lostU, repDelta: settlement.rep,
+      sectorId: body.sectorId, outcome, lostU, goodsLost, goodsSaved,
+      repDelta: settlement.rep,
       dangerDelta: settlement.danger,
       repairDebtCr: Math.round(((def && def.upkeepPerMin) || 0) * settlement.repairMin),
       text: summary,

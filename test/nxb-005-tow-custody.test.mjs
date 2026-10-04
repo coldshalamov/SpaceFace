@@ -240,6 +240,21 @@ test('NXB-005: a capture taken before the final acceptance resumes and pays once
   assert.equal(items, 4 + accepted, 'the bay holds exactly what it accepted — no duplicate pay');
 });
 
+test('NXI-020: the remainder keeps the same recovered-shipment identity after a split', () => {
+  const h = towHarness();
+  stepTether(h, { aim: h.load.pos });
+  stepTether(h, { aim: h.load.pos, latch: true });
+  stepTether(h);
+  h.bus.emit('pickup:collected', { pickupId: h.load.id, amount: 12, acceptedAmount: 5 });
+  h.load.data.salvagePool.cmdty_scrap_metal = 7;
+  assert.equal(h.load.data.name, 'Raid Spill Crate',
+    'the remainder is still named as the same recovered shipment, not an anonymous pickup');
+  assert.equal(h.load.data.stableLoadId, 'spill:4242:1',
+    'the custody identity minted at the split still names this body');
+  assert.equal(h.load.id, 2, 'the remainder is the same body, not a respawned generic');
+  assert.equal(h.state.player.targetId, h.load.id, 'the held remainder stays selected for delivery');
+});
+
 test('NXB-005: an acceptance for another body never touches this tow', () => {
   const h = towHarness();
   stepTether(h, { aim: h.load.pos });

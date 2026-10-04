@@ -38,6 +38,9 @@ export const RUBRIC = Object.freeze({
   fleeRange: 420, fleeSeconds: 14, hurtQuietSeconds: 9,
   // The Last Layer: after this many corrections the marker asks to be held still itself.
   lastAfter: 6,
+  // The one-voice arbiter queues a line against the sim clock and DROPS it unspoken if the floor stays held past its
+  // ttl (a Customs alert easily holds it for 13 s). Story lines the marker cares about are re-offered, never forced.
+  voiceTtl: 9, offerAttempts: 2,
   // Cadence.
   retargetSeconds: 2, retargetMargin: 40, nudgeSeconds: 40, quietSeconds: 55, voiceCooldown: 6,
   maxMarks: 24, maxLiveMarks: 8, markTextMax: 160,

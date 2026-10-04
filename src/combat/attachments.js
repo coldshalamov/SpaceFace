@@ -115,8 +115,11 @@ export function effectiveTetherPolicy(def, owner, features = null) {
     };
   }
   const rawReel = owner && owner.data && owner.data.derived && owner.data.derived.tetherReelRateMult;
+  // Fail-closed symmetric with the spool cap above (1..6): an unbounded reel multiplier lets a
+  // stacked/load-derived mult move the joint hundreds of WU in one tick, which reads as a teleport
+  // and destabilizes the solver. Ships max-fold reel at 1.8x today; the cap binds only corrupt data.
   const reelMult = typeof rawReel === 'number' && Number.isFinite(rawReel) && rawReel > 0
-    ? Math.max(1, rawReel)
+    ? Math.max(1, Math.min(6, rawReel))
     : 1;
   const policy = {
     break: effectiveTetherBreak(def, owner),

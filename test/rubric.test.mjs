@@ -401,6 +401,27 @@ test('ambient testimony waits for a quiet pilot, never fires at the start, and n
 
 const parts = f => f.state.entityList.filter(e => e.alive && e.data?.rubricPart).length;
 
+test('a story line that expired behind a longer alert is re-offered (never forced), stops once it surfaces, and is dropped when the pilot leaves', () => {
+  const hellos = f => comms(f).filter(p => p.text === RUBRIC_LINES.hello);
+  const f = createRubricFixture(); f.state.floorBusy = true;
+  f.scan(); f.run(1);
+  assert.equal(hellos(f).length, 1, 'queued once');
+  f.run(C.voiceTtl + 1); assert.equal(hellos(f).length, 2, 'it died unspoken behind the alert, so it is offered again');
+  f.state.floorBusy = false; f.run(C.voiceTtl + 1);
+  assert.equal(hellos(f).length, 3, 'and again when the floor is still not theirs');
+  f.run(C.voiceTtl * 3); assert.equal(hellos(f).length, 3, 'a line is offered at most offerAttempts + 1 times');
+  f.destroy();
+  const g = createRubricFixture(); g.state.floorBusy = true; g.scan(); g.run(1);
+  g.bus.emit('voice:surface', { id: 'x', text: RUBRIC_LINES.hello }); g.run(C.voiceTtl * 3);
+  assert.equal(comms(g).filter(p => p.text === RUBRIC_LINES.hello).length, 1, 'once it takes the floor it is never repeated');
+  g.destroy();
+  const h = createRubricFixture(); h.state.floorBusy = true; h.scan(); h.run(1);
+  h.player.pos.x += C.hearRadius * 2 + 300; h.run(C.voiceTtl * 3);
+  assert.equal(comms(h).filter(p => p.text === RUBRIC_LINES.hello).length, 1, 'a pilot who has flown away is not nagged');
+  h.destroy();
+});
+
+
 test('streaming: nothing is minted for a pilot outside the far-actor zone; it streams in and out with hysteresis and never flaps', () => {
   const f = createRubricFixture(); const exit = f.system._exitRadius();
   assert.ok(exit > 400);

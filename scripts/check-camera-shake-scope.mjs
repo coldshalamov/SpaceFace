@@ -86,11 +86,16 @@ check('renderer imports and applies the shared attenuation instead of re-derivin
 
 check('un-positioned shakes pass through the consumer unattenuated', () => {
   const handler = rendererSrc.slice(rendererSrc.indexOf("onBus('camera:shake'"), rendererSrc.indexOf("onBus('camera:kill'"));
-  // Two early-outs: no usable position, and no player to measure against. Both must add full trauma,
-  // otherwise the 11 player-scoped emitters would be silently weakened.
-  const passThrough = handler.match(/cam\.addTrauma\(amount\)/g) || [];
-  assert(passThrough.length >= 2,
-    `expected the handler to add unattenuated trauma on both early-outs (found ${passThrough.length})`);
+  // The contract is semantic, not shape: with no usable position (or no player to measure
+  // against) the trauma amount must reach the camera whole. The FB-072 handler expresses that
+  // as `let scaled = amount` — attenuation only ever rewrites `scaled` inside the positioned
+  // + measured branch — and then `cam.addTrauma(scaled)` (or the direction-aware impact-kick
+  // path that scales from it). Pin the default-to-full-amount wiring, not a literal arg name,
+  // so a refactor cannot silently weaken the 11 player-scoped emitters.
+  assert(/let\s+scaled\s*=\s*amount\b/.test(handler),
+    'the handler must default scaled to the full amount before any attenuation branch');
+  assert(handler.includes('cam.addTrauma(scaled)'),
+    'the handler must add trauma from scaled — the unattenuated default for un-positioned shakes');
 });
 
 // ---- 3. the emitters --------------------------------------------------------------------------
@@ -105,7 +110,14 @@ check('un-positioned shakes pass through the consumer unattenuated', () => {
 const SRC_ROOT = fileURLToPath(new URL('../src/', import.meta.url));
 // The world events: destruction bursts and the death-spiral detonation happen where the ship
 // died; the entity:killed kick happens where the kill landed.
-const WORLD_SHAKE_FILES = new Set(['render/vfx.js', 'render/shipMicroMotion.js', 'systems/combat.js']);
+const WORLD_SHAKE_FILES = new Set([
+  'render/vfx.js',
+  'render/shipMicroMotion.js',
+  'systems/combat.js',
+  // swarmJuice multi-kill/wipe dips tag the victim position — a real world location, so a far-off
+  // swarm wipe attenuates instead of kicking the camera at full force.
+  'systems/swarmJuice.js',
+]);
 
 /** Capture the balanced `{…}` literal that starts at index 0 of `src` (src must start at `{`). */
 function balancedObjectLiteral(src) {

@@ -208,7 +208,7 @@ test('canonical game shell and transition wire the shared staged loading present
     'current-sector shader admission must not begin after the first playable frame');
   assert.match(renderer, /gpu\.software[\s\S]{0,300}?bounded on-demand pipeline admission/,
     'software renderers must not pay a multi-second speculative sector compile');
-  assert.match(renderer, /gpu\.software[\s\S]{0,900}?state\.render\.dynResScale = dynFloor[\s\S]{0,120}?this\._applySize\(\)/,
+  assert.match(renderer, /state\.render\.dynResScale = softwareEmergency\.dynFloor[\s\S]{0,120}?this\._applySize\(\)/,
     'software renderers must begin at their emergency scale instead of freezing the first full-size frame');
 });
 

@@ -13,7 +13,7 @@ import {
 } from '../data/sectorCoordinates.js';
 import { isPlayerWanted } from '../systems/heat.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
-import { distance2, stableId } from './contracts.js';
+import { ObjectiveKind, distance2, stableId } from './contracts.js';
 import { resolveCapitalOpening } from '../combat/subsystems.js';
 
 const TICKS_PER_SECOND = 60;
@@ -817,13 +817,25 @@ function lawfulAwareHostileToPlayer(observer, playerTeam, state) {
   return !!(standing && standing.aggro === true);
 }
 
+// An attacker slot is a *commitment to fire*, so candidacy follows the stack's own
+// combat-ordered set (stack.js runs a doctrine for ENGAGE/FOCUS/TUG members only). A reserve
+// posture — SCREEN, HOLD, REFORM, RETREAT — carries a target the ship watches, not a lane it
+// can shoot: its doctrine is forgotten and the engagement gate already refuses it on
+// doctrine_fire_window, so counting the objective's targetId can only starve a committed
+// attacker of a slot the reserve member can never spend.
+const COMMITTED_OBJECTIVE_KINDS = new Set([ObjectiveKind.ENGAGE, ObjectiveKind.FOCUS, ObjectiveKind.TUG]);
+
 function committedTargetId(decision) {
   const doctrineTarget = decision && decision.combatDoctrine && decision.combatDoctrine.targetId;
   if (doctrineTarget != null) return doctrineTarget;
   const objective = decision && decision.directive && decision.directive.objective;
-  if (objective && objective.targetId != null) return objective.targetId;
-  const actionTarget = decision && decision.action && decision.action.targetId;
-  return actionTarget == null ? null : actionTarget;
+  if (objective && objective.targetId != null && COMMITTED_OBJECTIVE_KINDS.has(objective.kind)) {
+    return objective.targetId;
+  }
+  // A blocked or idle action selection carries the target it *wanted*, not one it is flying —
+  // only a started action is a de facto attack commitment worth an owner slot.
+  const action = decision && decision.action;
+  return action && action.actionId != null && action.targetId != null ? action.targetId : null;
 }
 
 function entityById(state, id) {

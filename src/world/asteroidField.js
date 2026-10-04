@@ -34,9 +34,34 @@ export function ensureAsteroidField(state) {
     byId: new Map(),
     dirtyPoseIds: new Set(),
     grid: new Map(),
+    // Ledger-collect walk markers (presentationSources sizes the rock query disc
+    // from these): high-water dormant-row |vel| and the lowest lastExactT among
+    // rows that ever carried drift, so a shelved rock's stored↔ballistic pos gap
+    // stays covered by the walk disc. Conservative both ways — never decrease.
+    maxRockSpeed: 0,
+    minDriftRockLastExactT: null,
   };
   world.asteroidField = field;
   return field;
+}
+
+// High-water drift markers for the ledger walk disc. Called wherever a field row
+// gains or refreshes vel (insert, ballistic catch-up). A row that slows keeps the
+// older, larger marker — that only ever widens the query disc, so it stays a safe
+// superset of the rows the collect verdict can admit.
+function noteFieldRockMotion(field, rec) {
+  if (!field || !rec) return;
+  const vx = finite(rec.vel && rec.vel.x);
+  const vz = finite(rec.vel && rec.vel.z);
+  const speed = (vx !== 0 || vz !== 0) ? Math.hypot(vx, vz) : 0;
+  if (!(speed > 0)) return;
+  if (!(Number.isFinite(field.maxRockSpeed) && field.maxRockSpeed >= speed)) {
+    field.maxRockSpeed = speed;
+  }
+  if (!Number.isFinite(field.minDriftRockLastExactT)
+    || rec.lastExactT < field.minDriftRockLastExactT) {
+    field.minDriftRockLastExactT = rec.lastExactT;
+  }
 }
 
 export function shouldKeepLiveAsteroid(options = {}) {
@@ -140,6 +165,7 @@ export function insertAsteroidFieldRock(state, spec = {}) {
   field.byId.set(id, rec);
   gridAdd(field, rec);
   field.dirtyPoseIds.add(id);
+  noteFieldRockMotion(field, rec);
   field.version++;
   return rec;
 }
@@ -159,7 +185,6 @@ export function queryAsteroidField(state, pos, radius, out = []) {
   const x = finite(pos.x);
   const z = finite(pos.z);
   const r = radius;
-  const r2 = r * r;
   const minC = Math.floor((x - r) / ASTEROID_FIELD_CELL);
   const maxC = Math.floor((x + r) / ASTEROID_FIELD_CELL);
   const minR = Math.floor((z - r) / ASTEROID_FIELD_CELL);
@@ -172,7 +197,8 @@ export function queryAsteroidField(state, pos, radius, out = []) {
       const dx = rec.pos.x - x;
       const dz = rec.pos.z - z;
       const reach = r + finite(rec.radius);
-      if (dx * dx + dz * dz <= reach * reach || dx * dx + dz * dz <= r2) out.push(rec);
+      // reach >= r always (rec.radius >= 0.5), so a second d2 <= r*r branch is dead.
+      if (dx * dx + dz * dz <= reach * reach) out.push(rec);
     }
   };
   const cellSpan = (maxC - minC + 1) * (maxR - minR + 1);
@@ -231,6 +257,7 @@ function catchUpFieldRock(field, rec, simTime) {
   const fromT = Number.isFinite(rec.lastExactT) ? rec.lastExactT : toT;
   if (!(toT > fromT)) {
     rec.lastExactT = toT;
+    noteFieldRockMotion(field, rec);
     return rec;
   }
   const advanced = advanceResourceBody({
@@ -250,6 +277,7 @@ function catchUpFieldRock(field, rec, simTime) {
   }
   rec.lastExactT = toT;
   if (field && field.dirtyPoseIds instanceof Set) field.dirtyPoseIds.add(rec.id);
+  noteFieldRockMotion(field, rec);
   if (field && Number.isFinite(field.version)) field.version++;
   return rec;
 }

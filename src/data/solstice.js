@@ -20,6 +20,13 @@ export const SOLSTICE = Object.freeze({
   focalTolerance: 26,
   wispRadius: 3.5,
   wispSpeed: 95,
+  // Streaming. The world's far-actor table shelves any drone beyond its exit radius of the player,
+  // so the encounter exists only while the player is inside it: spawn within (exit - streamInMargin)
+  // of the anchor, withdraw beyond (exit - streamOutMargin). The parts themselves stay near the
+  // anchor (the core is fixed, prisms servo to it, the wisp follows the player), so the hysteresis
+  // band is also the roam bound. farFallback stands in where there is no far-actor table (minimal
+  // harnesses).
+  streamInMargin: 350, streamOutMargin: 200, farFallback: 1300,
   discoverRadius: 420,
   scanRadius: 320,
   beamLength: 170,

@@ -294,6 +294,61 @@ test('easter eggs: speed orbit and quiet stillness trigger distinct barks', () =
   f.system.destroy();
 });
 
+const parts = f => f.state.entityList.filter(e => e.alive && e.data?.solsticePart);
+
+test('streaming: nothing is minted for a far pilot; the encounter streams in and out with hysteresis and never flaps', () => {
+  const f = createFixture(); const exit = f.system._exitRadius();
+  assert.ok(exit > 400);
+  f.player.pos.x = SOLSTICE_GLOBAL_ANCHOR.x + exit + 400; f.player.pos.z = SOLSTICE_GLOBAL_ANCHOR.z; f.advance(2);
+  assert.equal(parts(f).length, 0, 'a far pilot costs nothing: no core, prism or wisp is minted');
+  let spawned = 0; const spawn = f.helpers.spawnEntity;
+  f.helpers.spawnEntity = spec => { const e = spawn(spec); if (e?.data?.solsticePart) spawned++; return e; };
+  f.player.pos.x = SOLSTICE_GLOBAL_ANCHOR.x + exit - C.streamInMargin - 60; f.advance(2);
+  assert.equal(parts(f).length, 4, 'inside the stream-in radius the encounter appears whole');
+  const ids = () => parts(f).map(e => e.id).sort((a, b) => a - b).join();
+  const born = ids(), afterIn = spawned;
+  f.player.pos.x = SOLSTICE_GLOBAL_ANCHOR.x + exit - C.streamOutMargin - 40; f.advance(2);
+  assert.equal(parts(f).length, 4, 'inside the hysteresis band it stays');
+  f.player.pos.x = SOLSTICE_GLOBAL_ANCHOR.x + exit - C.streamInMargin + 20; f.advance(2);
+  assert.equal(parts(f).length, 4, 'between the two radii it neither appears nor vanishes');
+  assert.equal(spawned, afterIn, 'and nothing is re-minted while it stays');
+  assert.equal(ids(), born, 'the same bodies, no thrash');
+  f.player.pos.x = SOLSTICE_GLOBAL_ANCHOR.x + exit - C.streamOutMargin + 40; f.advance(2);
+  assert.equal(parts(f).length, 0, 'past the stream-out radius it is withdrawn whole');
+  f.player.pos.x = SOLSTICE_GLOBAL_ANCHOR.x + 200; f.advance(2);
+  assert.equal(parts(f).length, 4, 'and returns as core + three prisms');
+  f.system.destroy();
+});
+
+test('an anonymous shell promoted from a shelved far-actor row is removed by its owner stamp; the real parts stay singular', () => {
+  const f = createFixture(); f.advance(1);
+  const twin = f.helpers.spawnEntity({ type: 'drone', team: 2, pos: { x: SOLSTICE_GLOBAL_ANCHOR.x, z: SOLSTICE_GLOBAL_ANCHOR.z },
+    radius: 5, mass: 5, hull: 5, hullMax: 5, data: { persistenceOwner: 'solstice', homeSectorId: C.sectorId } });
+  const stranger = f.helpers.spawnEntity({ type: 'drone', team: 2, pos: { x: SOLSTICE_GLOBAL_ANCHOR.x + 9, z: SOLSTICE_GLOBAL_ANCHOR.z },
+    radius: 5, mass: 5, hull: 5, hullMax: 5, data: { persistenceOwner: 'traffic' } });
+  f.advance(2);
+  assert.equal(twin.alive, false, 'our twin is cleaned up'); assert.equal(stranger.alive, true, 'and nobody else\'s entity is touched');
+  assert.equal(parts(f).length, 4);
+  f.system.destroy();
+});
+
+test('the census adopts one cohort and removes duplicates: a second core or prism does not survive a sync', () => {
+  const f = createFixture(); f.advance(1);
+  const dupeCore = f.helpers.spawnEntity(solsticeEntitySpec('core', 0, f.state.solstice));
+  const dupePrism = f.helpers.spawnEntity(solsticeEntitySpec('prism', 1, f.state.solstice));
+  f.advance(2);
+  assert.equal(dupeCore.alive, false); assert.equal(dupePrism.alive, false);
+  assert.equal(parts(f).length, 4);
+  f.system.destroy();
+});
+
+test('every solstice body carries the owner stamp the census cleans shells by', () => {
+  const f = createFixture();
+  for (const e of parts(f)) assert.equal(e.data.persistenceOwner, 'solstice');
+  assert.equal(solsticeEntitySpec('wisp', 0).data.persistenceOwner, 'solstice');
+  f.system.destroy();
+});
+
 test('memory normalization rejects malformed data and preserves valid states', () => {
   assert.deepEqual(normalizeSolsticeMemory({ version: 99 }), freshSolsticeMemory());
 

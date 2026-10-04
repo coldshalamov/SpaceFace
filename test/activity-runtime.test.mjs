@@ -253,6 +253,42 @@ test('job-pinned far actor stays exact', () => {
   assert.equal(courier.activity.simTier, SIM_TIER.S0_EXACT);
 });
 
+test('a hull inside a live field keeps its physics body for the field duration', () => {
+  const player = ship(1, 0, { isPlayer: true, team: 0 });
+  const caught = ship(30, 2500, { team: 1 });
+  const spare = ship(31, 2501, { team: 1 });
+  const fieldsRuntime = { affectedIds: new Set([30]) };
+  const state = makeState([player, caught, spare], { fieldsRuntime });
+  const runtime = ensureActivityClassified(state);
+  assert.equal(caught.activity.simTier, SIM_TIER.S0_EXACT);
+  assert.ok(caught.activity.pins.includes('FIELD_DRIVEN'));
+  assert.ok(runtime.physicsDynamics.includes(caught));
+  assert.equal(entityNeedsPhysics(caught), true);
+  // The untouched neighbour stays aggregate — the pin is per-body, not per-field.
+  assert.equal(spare.activity.simTier, SIM_TIER.S4_AGGREGATE);
+  assert.equal(entityNeedsPhysics(spare), false);
+  // When the field lets go (fields clears the set before sampling each tick), the hull
+  // dematerializes once the demotion grace window expires instead of holding a body forever.
+  fieldsRuntime.affectedIds.clear();
+  state.tick = 400;
+  state.simTime = 40;
+  ensureActivityClassified(state);
+  state.tick = 600;
+  state.simTime = 50;
+  ensureActivityClassified(state);
+  assert.notEqual(caught.activity.simTier, SIM_TIER.S0_EXACT);
+  assert.equal(entityNeedsPhysics(caught), false);
+});
+
+test('an authored hunter keeps distance tiers instead of aggregating at spawn', () => {
+  const player = ship(1, 0, { isPlayer: true, team: 0 });
+  const hunter = ship(40, 2500, { team: 1, data: { ai: { huntPlayer: true } } });
+  const ambient = ship(41, 2500, { team: 1 });
+  ensureActivityClassified(makeState([player, hunter, ambient]));
+  assert.notEqual(hunter.activity.simTier, SIM_TIER.S4_AGGREGATE);
+  assert.equal(ambient.activity.simTier, SIM_TIER.S4_AGGREGATE);
+});
+
 test('mined rock keeps remaining ore after leaving and returning', () => {
   const player = ship(1, 0, { isPlayer: true, team: 0 });
   const ast = rock(12, 30, { oreHP: 17, oreHPMax: 80 });

@@ -2,8 +2,8 @@
 # NOW — threads changing the shared checkout
 
 ```yaml
-refreshed: 2026-10-03
-baseCommit: 0d9dc433a
+refreshed: 2026-10-04
+baseCommit: 76f4fe2527e2991510ebf704625bbf5cb439e1c7
 expiresAfterCommits: 10
 expiresAfterDays: 2
 ```
@@ -43,14 +43,10 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| Sole-agent cleanup + demo-polish sweep: tree drained, worktrees removed, PRs resolved; now bug sweep + small build-map demo rows + baseline | devin-sweep-oct3 | IN PROGRESS | `design/program/DEMO_READINESS_2026-09-20.md` §6 as rows fix, `build_map.md` open rows, whatever focused tests each fix needs | small fixes landed by pathspec; bigger defects to the ledger |
-| 20-unit packet sitting — 10 NXI inference rows (003,004,055,056,103,104,119,120,135,136) + 7 ear fable packets (FB-078/079/081/082/083/122/135) + PB-SLICE-Z + D143 adjudication + vm-drop import batch | devin-packets-oct3 | RELEASED | all landed + reviewed: NXI pins/impls `dcfbba307`…`f3dd82e49`, ear batch row 256 DONE (`1b09d8704` elem tow-mass), SLICE-Z `bc8e462d1`, vm-drop 5-import stack, D143 closed `5ac496fbb`+`c78e2ebb0`+`616ffec26` (all three heads sighted ≤12.5 s, ledger row removed) | — |
-| Mission seam closeout — rows 85/86 DONE; PR #215/#216/#218/#219 merged, #192 closed; tree drained to zero uncommitted work | devin-sweep-oct2 | RELEASED | all landed | — |
-| Board row 218 (NXB-051 hull marks) plus free-seam leaves: stunt flail D144, depot redirect haul pair, salvage-bay tip, and 24 infer-* voice leaf units | grok-oct3 | RELEASED | all landed: `20ec8233b`, `30b842ee3`, `408c2ce07` (237/237 leaf tests green) | — |
-| Bullet-time empty meter, boost cut-out, travel-burn spent, afterburner window lines | grok-oct3 | IN PROGRESS | `src/systems/bulletTime.js`, `test/infer-bullet-time-empty.test.mjs`, `src/systems/flightV3.js`, `test/infer-boost-spent-toast.test.mjs`, `test/infer-travel-burn-spent.test.mjs`, `test/infer-afterburner-window.test.mjs` | review afterburner window lines |
-| INFERENCE 10 — celebration+identity audio, landmark payoffs, rep-exclusive hardware, answerable maydays, sector trade signatures, chronicler big beats, presence, surrender verb, ending archive, kill replay | glm-infer-10b-oct3 | RELEASED | all landed (survivor pods `c277e8357`, ending archive `f1e895529`, replay tape `b3cdd5f76`, landmark payoffs `90bb99af1`, chronicler `9d67ee246`, barkeep faces `420223a34`) | — |
-| Cross-area documented polish/research pass — review sweep + small fixes + ledger rows | polish-pass-oct3 | RELEASED | `POLISH_PASS_2026-10-03.md` + look/bloom retune landed `a57a9cbed` | — |
-| 20-unit campaign — 5 seam queues run by subagent workers: massline/receiver (NXB-005/006/008/023, NXI-024/032/092), mining/drill (NXB-021/022, NXI-083/084), story/instruments (NXI-179/180/215/236), vfx/render (NXI-195/203/204, NXB-060), swarm B1/B2 | glm-campaign-oct3 | RELEASED | all landed + cross-verified: 12 NXB/C8 closures (C8 real build `22b168195`, NXB-060 pin repair `e687efbd8`, rest adjudicated already-true with suites re-run) + 12 NXI shipped (real builds 179/180/215/236 = `d7b2d0bc4`/`5ae6fc133`/`dd13bb2bb`/`f83108ab0`, review fixes `8ed4581a1`/`8d7955a58`, NXI-024 re-anchor `cb19c63b9`) + Swarm B1 `fdbe01817` / B2 `57ddfd165`; board handoff `f0911d9a5`; every worker's units adversarially reviewed by a different worker | — |
+| 40-unit packet sitting — ~30 build-map units (open defect ledger, D3 gate adjudication, adoptable board residuals) + ~10 inference rows (parent-landed WAITING + equivalents) — critic/review/fix subagents, no worktrees | devin-packets-oct4 | IN PROGRESS | `design/program/INFERENCE_IDEAS.md`, `design/program/DEMO_READINESS_2026-09-20.md`, `build_map.md`, packet-targeted src/test paths per unit | research/critic packets → implementer subagents by pathspec → reviewer subagents → status updates |
+| Sole-agent cleanup + quiet-host sweep: master-side stale checks repinned and pushed (`e15597892`); soak market-verify hardened (`127197043`); D67 closed (`b231a7f0c`); D24 resoak attempts F+G died at launch — the cook lane starves when two headed system-Chrome probes contend for the GPU (product is bounded/fail-visible, worst ~210 s; contention, not a regression — a lone probe clears in ~46 s); attempt H launched 08:01Z on a quiet host, in flight cycling | devin-sweep-oct3 | IN PROGRESS | `scripts/lib/releaseSoakProbe.mjs`, `scripts/check-gameplay-core.mjs`, `design/program/DEMO_READINESS_2026-09-20.md` §6 | D24 soak verdict → heapsnapshot diff → remove or keep row; then final sync (PRs/tree/master==origin) |
+| Bullet-time, boost, travel-burn, afterburner, and mining-beam refusal lines | grok-oct3 | IN PROGRESS | `src/systems/bulletTime.js`, `test/infer-bullet-time-empty.test.mjs`, `src/systems/flightV3.js`, `test/infer-boost-spent-toast.test.mjs`, `test/infer-travel-burn-spent.test.mjs`, `test/infer-afterburner-window.test.mjs`, `src/systems/mining.js`, `test/infer-beam-refusal.test.mjs`, `src/systems/cruise.js`, `test/infer-cruise-hit-drop.test.mjs` | cruise hit and snare lines reviewed |
+
 
 ## Remaster machine
 

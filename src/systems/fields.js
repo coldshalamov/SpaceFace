@@ -868,6 +868,14 @@ export const fields = {
   update(dt, state) {
     const rt = ensureRuntime(state);
     this._familyDt = dt;
+    // The set of entity ids a live field claims this tick, published for the activity
+    // classifier's FIELD_DRIVEN pin — a shelved hull freezes mid-pull and strands its queued
+    // impulses forever. Cleared up front so every no-force path (gate/non-flight/quiet/idle)
+    // leaves it empty; _applyForces refills it once field force runs.
+    const fieldsRuntime = state.fieldsRuntime || (state.fieldsRuntime = {});
+    const affectedIds = this._affectedIds || (this._affectedIds = new Set());
+    affectedIds.clear();
+    fieldsRuntime.affectedIds = affectedIds;
     // Golden-safety gate (layer b): strict no-op unless enabled (OFF under node).
     if (!fieldsFlag('enabled')) {
       if (this._familyPrevPins) this._familyPrevPins.clear();
@@ -1807,6 +1815,11 @@ export const fields = {
         }
       }
     }
+    // Publish the claimed set — including bodies at convergence equilibrium whose net accel is
+    // ~0 this tick. The field owns their motion until they leave the radius; the classifier pin
+    // keeps their physics body alive for exactly that window.
+    const affectedIds = this._affectedIds || (this._affectedIds = new Set());
+    for (const e of affected.keys()) affectedIds.add(e.id);
     const accel = this._accel;
     let affectedCount = 0, accelSum = 0;
     for (const e of affected.keys()) {

@@ -359,6 +359,7 @@ let fallbackPlaceGeometry = null;
 let fallbackStationCoreGeometry = null;
 let fallbackStationRingGeometry = null;
 let fallbackStationSparGeometry = null;
+let boundsProxyGeometry = null;
 
 // Runtime slots mirror assets/ships/parts/parts_manifest.json. Only list files that are actually
 // vendored; missing slots fall back procedurally instead of producing browser 404s.
@@ -5339,8 +5340,25 @@ function getFallbackStationSparGeometry() {
   return fallbackStationSparGeometry;
 }
 
+// Hidden bounds/debug proxy: identical on every composed hull, so one shared box uploads once
+// and the residency census stamps a single resident buffer for the whole fleet. Both shared
+// flags ride on it (owner-local sets check spacefaceSharedFallback, teardown traversals check
+// spacefaceSharedAsset) and dispose is a no-op — a retiring hull must never kill it.
+function getBoundsProxyGeometry() {
+  if (!boundsProxyGeometry) {
+    boundsProxyGeometry = markSharedFallbackGeometry(new THREE.BoxGeometry(1.8, 0.72, 1.18));
+    boundsProxyGeometry.userData.spacefaceSharedAsset = true;
+    boundsProxyGeometry.dispose = () => {};
+  }
+  return boundsProxyGeometry;
+}
+
+// Shared fallbacks are module-lifetime objects: owner-local sets skip them by flag and any
+// teardown path that disposes blind (flight-template finalize included) hits the no-op —
+// a retiring owner or evicted template must never take a shared buffer down with it.
 function markSharedFallbackGeometry(geometry) {
   geometry.userData = { ...(geometry.userData || {}), spacefaceSharedFallback: true };
+  geometry.dispose = () => {};
   return geometry;
 }
 
@@ -7252,6 +7270,11 @@ function admitNextUpgradeJob(state) {
     const timedOut = error && error.name === 'TimeoutError';
     const cancelled = job.admission.signal.aborted || error && error.name === 'AbortError';
     job.admission.abort(error);
+    // D48: the admission deadline firing is exactly the recurrence the defect ledger asks
+    // evidence for — stamp the in-flight prepare phase, asset/root identity, renderer
+    // generation, elapsed wall time and graphics-context state beside the verdict. Additive
+    // only: a watchdog-sealed diagnostic keeps its seal and still gains the evidence block.
+    if (timedOut) stampAdmissionTimeoutEvidence(job, diagnostic);
     // A diagnostic the watchdog already closed (stall verdict, owner-inactive settle) is a
     // sealed record — the abandoned run's late rejection must not overwrite it, the same way
     // the abortedStalled guard below keeps its boundary state off the replacement owner's.
@@ -7448,6 +7471,59 @@ function recordAdmissionSlice(startedAtMs, hitchOwner = null) {
       && typeof perf.recordRenderWork === 'function') {
     perf.recordRenderWork(hitchOwner, elapsedMs);
   }
+}
+
+// D48 evidence contract (DEMO_READINESS §6): when the authored admission deadline trips, the
+// diagnostic must retain enough to tell a rejected bounded job from a native main-thread stall —
+// the prepare phase in flight, the asset/root identity, the renderer generation, elapsed wall
+// time, and the graphics-context state at the moment the deadline fired. Additive by design so
+// it can also enrich a diagnostic the stall watchdog already sealed.
+function stampAdmissionTimeoutEvidence(job, diagnostic) {
+  if (!diagnostic || diagnostic.timeoutEvidence) return;
+  const boundary = job && job.boundary;
+  const boundaryData = boundary && boundary.userData;
+  const timings = boundaryData ? boundaryData.__admissionPhaseTimings : null;
+  // Phases stamp `${phase}Ms` on completion, serially (decode → compose → pipeline → commit);
+  // the first key without a stamp is the phase the deadline caught in flight. No timings object
+  // at all means the run never reached the decode gate (queue setup / prefetch window).
+  let preparePhase = 'pre-decode';
+  if (timings) {
+    preparePhase = 'post-commit';
+    for (const phase of ADMISSION_PHASE_KEYS) {
+      if (!Number.isFinite(Number(timings[`${phase}Ms`]))) { preparePhase = phase; break; }
+    }
+  }
+  const live = authoredRuntimeState();
+  const render = live && live.render;
+  const renderer = job && job.renderer;
+  let glContextLost = null;
+  try {
+    const gl = renderer && typeof renderer.getContext === 'function' ? renderer.getContext() : null;
+    glContextLost = gl && typeof gl.isContextLost === 'function' ? gl.isContextLost() : null;
+  } catch {
+    glContextLost = null;
+  }
+  const startedAtMs = Number.isFinite(diagnostic.startedAtMs) ? diagnostic.startedAtMs : monotonicNow();
+  diagnostic.timeoutEvidence = {
+    preparePhase,
+    authoredAssetState: boundaryData ? boundaryData.authoredAssetState || null : null,
+    phaseTimingsMs: timings ? { ...timings } : null,
+    assetUrls: [...((job && job.assetUrls) || [])],
+    root: boundary ? {
+      name: boundary.name || null,
+      uuid: boundary.uuid || null,
+      type: boundary.type || null,
+    } : null,
+    rendererGeneration: render && render.admissionRunGeneration != null
+      ? render.admissionRunGeneration : null,
+    elapsedMs: Math.round(Math.max(0, monotonicNow() - startedAtMs)),
+    graphicsContext: {
+      glContextLost,
+      renderContextLost: render ? render.contextLost === true : null,
+      contextRecoveryPending: !!(render && render.contextRecovery
+        && render.contextRecovery.pending === true),
+    },
+  };
 }
 
 function beginUpgradeDiagnostic(state, job) {
@@ -9697,8 +9773,9 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
   };
 
   yield;
+  let hullPartRoot = null;
   if (hullRecord) {
-    instantiatePart(hullRecord, hull, {
+    hullPartRoot = instantiatePart(hullRecord, hull, {
       position: [0, 0, 0], targetLength: 1.72, label: 'Hull',
     }, palette, scene, ownerBoundary, bindings, mutableMaterials, staticBatches);
     noteUsed('hull', hullRecord);
@@ -9841,7 +9918,7 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
     ownerLocalFallbackRoots.push(buildFallbackNavLights(hull, materials, bindings));
   }
   ensureStandardSockets(hull);
-  attachRetroMounts(hull, entity, palette, selected.get('engine')?.url, hullRecord);
+  attachRetroMounts(hull, entity, palette, selected.get('engine')?.url, hullRecord, hullPartRoot);
 
   // PQ-176.04 — VISIBLE BUILDS. Fitted hardware rides the authored SOCKET_* contract so a refit
   // reads on the hull: budget-heavy modules bolt on, whole-ship bodies sprout the guns actually
@@ -9945,7 +10022,7 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
   // Hidden geometry gives object-space tools/debuggers useful bounds even though opaque authored
   // surfaces are rendered by scene-level instance pools rather than as children of this root.
   const boundsProxy = new THREE.Mesh(
-    new THREE.BoxGeometry(1.8, 0.72, 1.18),
+    getBoundsProxyGeometry(),
     new THREE.MeshBasicMaterial({ visible: false })
   );
   boundsProxy.name = 'GLTFKit_BoundsProxy';
@@ -9953,7 +10030,7 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
   boundsProxy.userData.keepSeparate = true;
   hull.add(boundsProxy);
 
-  const ownerLocalGeometries = new Set([boundsProxy.geometry]);
+  const ownerLocalGeometries = new Set();
   const ownerLocalMaterials = new Set([
     ...builtFallbackMaterials,
     ...mutableMaterials.values(),
@@ -10344,17 +10421,28 @@ function createFlightTemplateRoot(sourceRoot) {
     object.userData = sanitizeFlightTemplateUserData(object.userData);
     object.userData.spacefaceFlightTemplatePath = (objectPathFromRoot(templateRoot, object) || []).join('/');
     if (object.geometry) {
-      let geometry = geometries.get(object.geometry);
-      if (!geometry) {
-        geometry = typeof object.geometry.clone === 'function' ? object.geometry.clone() : object.geometry;
-        geometry.userData = {
-          ...(geometry.userData || {}),
-          spacefaceFlightTemplateGeometry: true,
-          spacefaceSharedAsset: true,
-        };
-        geometries.set(object.geometry, geometry);
+      // Fleet-shared bakes (retro packs, bounds proxy, other spacefaceSharedAsset geometry) are
+      // immutable and disposal-proofed by construction — the template must alias them. Cloning
+      // one made every template's instances draw unique buffers, which is exactly the +29s
+      // Retro_*/BoundsProxy upload burst the D160 witness measured at wave materialization.
+      const shared = object.geometry.userData
+        && (object.geometry.userData.spacefaceSharedAsset === true
+          || object.geometry.userData.spacefaceSharedFallback === true);
+      if (shared) {
+        geometries.set(object.geometry, object.geometry);
+      } else {
+        let geometry = geometries.get(object.geometry);
+        if (!geometry) {
+          geometry = typeof object.geometry.clone === 'function' ? object.geometry.clone() : object.geometry;
+          geometry.userData = {
+            ...(geometry.userData || {}),
+            spacefaceFlightTemplateGeometry: true,
+            spacefaceSharedAsset: true,
+          };
+          geometries.set(object.geometry, geometry);
+        }
+        object.geometry = geometry;
       }
-      object.geometry = geometry;
     }
     if (object.material) object.material = cloneFlightTemplateMaterials(object.material, materials);
   });
@@ -10897,6 +10985,14 @@ export function runFlightRootTemplateCacheProbe() {
   );
   mesh.userData.spacefaceStaticBatch = true;
   hull.add(mesh);
+  // A fleet-shared bake (retro-pack geometry, bounds proxy): the template must alias it, not
+  // clone it — cloned shared geometry re-uploads per template at first draw.
+  const sharedGeometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+  sharedGeometry.userData.spacefaceSharedAsset = true;
+  sharedGeometry.dispose = () => {};
+  const sharedMesh = new THREE.Mesh(sharedGeometry, new THREE.MeshStandardMaterial({ color: 0x445566 }));
+  sharedMesh.name = 'Probe_SharedBake';
+  hull.add(sharedMesh);
   const entry = createFlightRootTemplateEntry({
     root: source,
     bindings: createBindings(),
@@ -10920,10 +11016,12 @@ export function runFlightRootTemplateCacheProbe() {
   const second = instantiateFlightRootTemplate(entry, entity, 'probe', 'probe', 1);
   const firstMesh = first && first.root.getObjectByName(mesh.name);
   const secondMesh = second && second.root.getObjectByName(mesh.name);
+  const firstShared = first && first.root.getObjectByName('Probe_SharedBake');
   const result = {
     distinctRoots: !!first && !!second && first.root !== second.root,
     sharedGeometry: !!firstMesh && !!secondMesh && firstMesh.geometry === secondMesh.geometry,
     distinctMaterials: !!firstMesh && !!secondMesh && firstMesh.material !== secondMesh.material,
+    sharedBakeAliased: !!firstShared && firstShared.geometry === sharedGeometry,
     reboundHooks: !!first && typeof first.root.userData.updateLod === 'function'
       && typeof first.root.userData.updateDamageState === 'function',
   };
