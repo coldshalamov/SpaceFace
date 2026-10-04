@@ -13,9 +13,11 @@ import { join } from 'node:path';
 import { createGameState } from '../src/core/gameState.js';
 import {
   buildLocalModel,
+  commitCoursePayload,
   reconcileMapSelection,
   resolveCourseEntityId,
   resolveCourseTarget,
+  resolveGalaxyMapPrimaryAction,
 } from '../src/ui/galaxyMap.js';
 
 const SEED = 4242;
@@ -65,7 +67,7 @@ function contactFor(model, id) {
   return model.contacts.find((c) => c.id === id) || null;
 }
 
-test('PB-285: live contacts carry a stable-identity stamp; remembered marks do not', () => {
+test('PB-285: live contacts carry a stable-identity stamp', () => {
   const state = boot();
   spawn(state, hostileMule(7));
   spawn(state, aurumDepot(3));
@@ -112,13 +114,17 @@ test('PB-285: a destroyed hull whose id was recycled closes the selection and th
 
   // The course commit still stands on the mark's position — the fail-closed place the sim
   // contracts — but it must not arm a target bind at the recycler.
-  const payload = resolveCourseTarget(selected);
+  const payload = commitCoursePayload(state, selected);
   assert.ok(payload && payload.pos, 'the waypoint survives');
-  const liveId = resolveCourseEntityId(state, selected);
-  if (liveId == null) delete payload.targetEntityId; else payload.targetEntityId = liveId;
   assert.equal(payload.targetEntityId, undefined);
   assert.equal(payload.pos.x, 60);
   assert.equal(payload.pos.z, 40);
+
+  // The inspector's primary action is gated the same way — its Set/Track commit must not arm
+  // the recycler either (a released line, a dblclick and the button share the one resolver).
+  const action = resolveGalaxyMapPrimaryAction(state, selected);
+  assert.ok(action && action.coursePayload, 'the action still offers the positional fix');
+  assert.equal(action.coursePayload.targetEntityId, undefined);
 });
 
 test('PB-285: a station selection survives an instance swap on seed 4242', () => {
@@ -142,6 +148,8 @@ test('PB-285: a station selection survives an instance swap on seed 4242', () =>
   assert.equal(rebound.x, 140);
   assert.equal(rebound.z, -60);
   assert.equal(resolveCourseEntityId(state, rebound), 9);
+  // And the gated commit follows the new instance, not the dead id.
+  assert.equal(commitCoursePayload(state, rebound).targetEntityId, 9);
 });
 
 test('PB-285: unstamped marks keep bare-id behaviour and a dead durable closes', () => {
@@ -160,18 +168,24 @@ test('PB-285: unstamped marks keep bare-id behaviour and a dead durable closes',
   assert.equal(resolveCourseEntityId(state, selected), null);
 });
 
-test('PB-285: the live route consumes the model — draw reconciles, commit re-resolves', () => {
+test('PB-285: the live route consumes the model — draw reconciles, every commit gates', () => {
   const src = readFileSync(join(ROOT, 'src/ui/galaxyMap.js'), 'utf8');
   const draw = src.slice(src.indexOf('_draw() {'));
   assert.ok(draw.includes('reconcileMapSelection('),
     'the draw path re-resolves the held selection before painting the ring/inspector');
+  // The gated resolver is the single seam every commit path goes through — dblclick, released
+  // line, and the inspector's primary action included.
   const commit = src.slice(src.indexOf('_commitCourse(target'));
-  assert.ok(commit.includes('resolveCourseEntityId('),
-    'the ONE course commit path re-resolves stamped marks');
-  assert.ok(commit.includes('delete payload.targetEntityId'),
-    'a failed bind is dropped, never handed a recycled id');
-  // Every live-entity click target carries the stamp the helpers resolve through.
+  assert.ok(commit.includes('commitCoursePayload('),
+    'the ONE course commit path resolves stamped marks');
+  const primary = src.slice(src.indexOf('export function resolveGalaxyMapPrimaryAction'));
+  assert.ok(primary.includes('commitCoursePayload(state, target)'),
+    'the inspector primary action resolves through the same gate');
+  // Waypoint/goal pins (the stalest id field — nav.waypoint persists past death) stamp or drop.
+  assert.ok(src.includes('stampWaypointTarget(state, target)'),
+    'waypoint markers re-witness their carried entityId');
   assert.ok(src.includes('stable: c.stable || null'), 'contact click targets carry the stamp');
+  assert.ok(src.includes('stable: p.stable || null'), 'system point targets carry the stamp');
   assert.ok(src.includes('stable: captureEntitySelection(e)'), 'markers stamp the live entity at build time');
   assert.ok(src.includes("from './sim/stableSelection.js'"), 'the screen consumes the sim model, not a reimplementation');
 });

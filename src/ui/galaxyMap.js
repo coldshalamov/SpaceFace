@@ -2259,6 +2259,7 @@ export function reconcileMapSelection(state, target) {
   // A marker whose display id IS the entity id follows the re-materialized instance; authored
   // marker ids (claims, readouts, sector nodes) are already durable and keep their own.
   if (target.id === target.stable.entityId) next.id = entity.id;
+  if (target.targetEntityId === target.stable.entityId) next.targetEntityId = entity.id;
   if (entity.pos) { next.x = entity.pos.x; next.z = entity.pos.z; }
   return next;
 }
@@ -2277,6 +2278,22 @@ export function resolveCourseEntityId(state, target) {
   }
   const raw = target.targetEntityId != null ? target.targetEntityId : target.entityId;
   return raw != null ? raw : null;
+}
+
+/**
+ * The ONE gated course resolution — resolveCourseTarget plus the stable-identity bind check.
+ * Every commit path (double-click, released line, the inspector's primary action) must go through
+ * here: a stamped mark whose identity is gone arms only its position, never a recycled id; a
+ * durable identity re-materialized onto a new instance rebinds to that instance.
+ */
+export function commitCoursePayload(state, target) {
+  const payload = resolveCourseTarget(target);
+  if (payload && target && target.stable) {
+    const liveId = resolveCourseEntityId(state, target);
+    if (liveId == null) delete payload.targetEntityId;
+    else payload.targetEntityId = liveId;
+  }
+  return payload;
 }
 
 /**
@@ -2303,7 +2320,7 @@ export function isOneHopNeighbor(state, targetSectorId) {
  */
 export function resolveGalaxyMapPrimaryAction(state, target) {
   if (!target) return null;
-  const coursePayload = resolveCourseTarget(target);
+  const coursePayload = commitCoursePayload(state, target);
 
   if (target.kind === 'sector') {
     const sectorId = target.sectorId || target.id;
@@ -3518,6 +3535,7 @@ function getSearchTargets(state, level, curSecId, claimsSystem = null, isHostile
         drawPos: p.drawPos,
         stationId: p.stationId,
         entityId: p.entityId || null,
+        stable: p.stable || null,
         targetSectorId: p.targetSectorId || null,
         factionId: p.factionId,
         searchText: p.searchText,
@@ -3552,7 +3570,7 @@ function getSearchTargets(state, level, curSecId, claimsSystem = null, isHostile
     const goal = activeMapGoal(state);
     const waypoint = state && state.nav && state.nav.waypoint;
     if (goal && goal.pos) {
-      targets.push({
+      const goalTarget = {
         id: goal.id,
         name: goal.label,
         kind: 'waypoint',
@@ -3563,7 +3581,9 @@ function getSearchTargets(state, level, curSecId, claimsSystem = null, isHostile
         objective: true,
         markerKind: goal.markerKind,
         detail: 'Active objective · Navigation fix',
-      });
+      };
+      stampWaypointTarget(state, goalTarget);
+      targets.push(goalTarget);
     }
     // Search results must carry the same scanner classification as the painted LOCAL layer.
     // Falling back to data.hostile here made named accepted warrants inspect as `Hostile NO`
@@ -7600,17 +7620,10 @@ _onCanvasDblClick(ev) {
    * A sector asks the world's planner for the route; everything is then armed through ui:setCourse.
    */
   _commitCourse(target, { lock = false } = {}) {
-    const payload = resolveCourseTarget(target);
+    // The ONE commit path, shared with the inspector's primary action: a stamped mark whose
+    // identity is gone arms only its position, never the body that inherited a recycled id.
+    const payload = commitCoursePayload(this._ctx && this._ctx.state, target);
     if (!payload || !this._ctx || !this._ctx.bus) return false;
-    // A stamped mark may not arm a course at a different body: when its captured stable identity
-    // no longer resolves (destroyed, the id recycled onto something else) the bind is dropped
-    // and the payload's position stands alone — the fail-closed place the sim already contracts.
-    // A durable identity re-materialized onto a new instance rebinds the course to that instance.
-    if (target.stable) {
-      const liveId = resolveCourseEntityId(this._ctx.state, target);
-      if (liveId == null) delete payload.targetEntityId;
-      else payload.targetEntityId = liveId;
-    }
     if (payload.type === 'sector' && payload.sectorId) {
       this._ctx.bus.emit('world:requestRoute', { targetSectorId: payload.sectorId, mode: 'fuel' });
     }
@@ -9300,7 +9313,7 @@ _drawSystem(g, state, w, h) {
     let wpScreen = null;
     if (wpDraw && (this._layers.route || this._layers.mission)) {
       let { x: wx, y: wy } = warp(sx(wpDraw.x), sz(wpDraw.z));
-      const target = waypointClickTarget(wp, wpPos, wx, wy);
+      const target = waypointClickTarget(wp, wpPos, wx, wy, state);
       if (!inField(wx, wy, 6)) {
         // The goal off the clear field: its tick on the field's border, pointing the way, and its
         // words beside the tick — never printed under the rails or the tape.
@@ -9627,7 +9640,7 @@ _drawLocal(g, state, w, h) {
     if (wpPos && this._layers.route) {
       let ex = sx(wpPos.x), ey = sz(wpPos.z);
       if (offView(ex, ey)) {
-        wpTick = ringPinTick(shipX, shipY, pinRadius, ex, ey, this._line ? INK.ink0 : INK.amberHot, 'waypoint', waypointClickTarget(wp, wpPos, ex, ey) || undefined);
+        wpTick = ringPinTick(shipX, shipY, pinRadius, ex, ey, this._line ? INK.ink0 : INK.amberHot, 'waypoint', waypointClickTarget(wp, wpPos, ex, ey, state) || undefined);
         ex = wpTick.x; ey = wpTick.y;
       }
       const progress = reduced ? 1 : Math.min(1, Math.max(0, (this._nowMs() - (this._routeDrawStart == null ? -1e9 : this._routeDrawStart)) / 520));
@@ -9885,12 +9898,12 @@ _drawLocal(g, state, w, h) {
       let wx = sx(wpPos.x);
       let wy = sz(wpPos.z);
       if (offView(wx, wy)) {
-        const tick = wpTick || ringPinTick(shipX, shipY, pinRadius, wx, wy, this._line ? INK.ink0 : INK.amberHot, 'waypoint', waypointClickTarget(wp, wpPos, wx, wy) || undefined);
+        const tick = wpTick || ringPinTick(shipX, shipY, pinRadius, wx, wy, this._line ? INK.ink0 : INK.amberHot, 'waypoint', waypointClickTarget(wp, wpPos, wx, wy, state) || undefined);
         edgeTicks.push(tick);
         wx = tick.x; wy = tick.y;
       } else {
         wpScreen = { x: wx, y: wy };
-        const target = waypointClickTarget(wp, wpPos, wx, wy);
+        const target = waypointClickTarget(wp, wpPos, wx, wy, state);
         if (target) this._clickTargets.push(target);
       }
       const objectiveLabel = waypointMapLabel(wp);
@@ -10936,10 +10949,29 @@ function drawWaypointPin(g, x, y, label, viewportWidth = Infinity, labelPlacemen
   if (labelPlacement) drawMapLabelBlock(g, labelPlacement);
 }
 
-function waypointClickTarget(wp, pos, sx, sy) {
+/**
+ * Give a waypoint/goal marker's carried entityId its stable-identity witness — or take the id
+ * away. `nav.waypoint.targetEntityId` persists past entity death by contract, so it is the
+ * stalest id field on the chart: a holder that no longer resolves drops the bind (the mark's
+ * position stays the destination); a live holder is stamped so the commit gate can re-verify
+ * the id was not recycled under it.
+ */
+function stampWaypointTarget(state, target) {
+  if (!target || target.targetEntityId == null) return target;
+  const holder = resolveEntityById(state, target.targetEntityId);
+  if (!holder || holder.alive === false) {
+    target.targetEntityId = null;
+    target.stable = null;
+    return target;
+  }
+  target.stable = captureEntitySelection(holder);
+  return target;
+}
+
+function waypointClickTarget(wp, pos, sx, sy, state) {
   if (!wp || !pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return null;
   const label = waypointMapLabel(wp);
-  return {
+  return stampWaypointTarget(state, {
     sx,
     sy,
     radiusPx: 22,
@@ -10960,7 +10992,7 @@ function waypointClickTarget(wp, pos, sx, sy) {
     missionId: wp.missionId || null,
     targetEntityId: wp.targetEntityId,
     stationId: wp.stationId,
-  };
+  });
 }
 
 export default galaxyMapScreen;
