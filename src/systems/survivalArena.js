@@ -109,16 +109,20 @@ import {
   planStormInstall,
   stormRelayGuide,
 } from './stormLatticeArena.js';
+import { MILL_ARENA_ID, planMillInstall } from './asteroidMillArena.js';
+import { HIVE_ARENA_ID, planHiveInstall } from './theHiveArena.js';
 import { orbitNodePose } from '../combat/orbitNodes.js';
 import { createSwarmEventDirector, swarmEventFrame, bearingPoint } from './swarmEvents.js';
 import { swarmEventFor } from '../data/swarmEvents.js';
 
-export { CINDER_ARENA_ID, CRYO_ARENA_ID, LAGRANGE_ARENA_ID, STORM_ARENA_ID };
+export { CINDER_ARENA_ID, CRYO_ARENA_ID, LAGRANGE_ARENA_ID, STORM_ARENA_ID, MILL_ARENA_ID, HIVE_ARENA_ID };
 export const LAW_ARENA_IDS = Object.freeze([
   LAGRANGE_ARENA_ID,
   CINDER_ARENA_ID,
   CRYO_ARENA_ID,
   STORM_ARENA_ID,
+  MILL_ARENA_ID,
+  HIVE_ARENA_ID,
 ]);
 
 const CINDER_CYCLE_PHASES = new Set([
@@ -240,7 +244,9 @@ function isLawArena(arenaId) {
   return arenaId === LAGRANGE_ARENA_ID
     || arenaId === CINDER_ARENA_ID
     || arenaId === CRYO_ARENA_ID
-    || arenaId === STORM_ARENA_ID;
+    || arenaId === STORM_ARENA_ID
+    || arenaId === MILL_ARENA_ID
+    || arenaId === HIVE_ARENA_ID;
 }
 
 /** Non-null so release bookkeeping can tag-check: only our own room solids ever die by tag. */
@@ -473,6 +479,16 @@ function planArenaInstallBody({
   if (arenaId === STORM_ARENA_ID) {
     return decorateBossRoom(finalizeInstall(planStormInstall({
       arenaPhase: phase, at, lane, across, spin, simTime: 0,
+    })), bossRoom);
+  }
+  if (arenaId === MILL_ARENA_ID) {
+    return decorateBossRoom(finalizeInstall(planMillInstall({
+      arenaPhase: phase, at, lane, across, lean, spin,
+    })), bossRoom);
+  }
+  if (arenaId === HIVE_ARENA_ID) {
+    return decorateBossRoom(finalizeInstall(planHiveInstall({
+      arenaPhase: phase, at, lane, across, lean, spin,
     })), bossRoom);
   }
 

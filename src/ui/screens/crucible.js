@@ -1554,6 +1554,8 @@ export const crucibleScreen = {
       cinder_sluice: ['Cinder Sluice', 'Ride hot currents and force enemies across the flow.', signatureLine('cinder_sluice')],
       cryo_drift: ['Cryo Drift', 'Slippery escape lanes and brittle targets. Set up a shattering collision.', signatureLine('cryo_drift')],
       storm_lattice: ['Storm Lattice', 'Conductive relays reward a tightly packed, electrified swarm.', signatureLine('storm_lattice')],
+      asteroid_mill: ['Asteroid Mill', 'A dense ore seam on a slow grind. Break the rocks — the room pays ore.', signatureLine('asteroid_mill')],
+      the_hive: ['The Hive', 'Living walls grow shut while sacs birth the tide. Burn the sacs or be buried.', signatureLine('the_hive')],
     };
     const arenaSentence = el('p', 'k-sentence sf-crd-arena', '');
     const syncArena = () => {

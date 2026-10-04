@@ -86,12 +86,14 @@ import {
   BROOD_SPITTER_WINDUP_S,
   BROOD_WHIP_BAT_SPEED,
   BROOD_WHIP_KILL_SPEED,
+  HIVE_POOL_TTL_S,
   SWARM_BROOD_FAMILIES,
   SWARM_BROOD_KILL_CAUSES,
   SWARM_BROOD_MAX,
   SWARM_BROOD_MIN,
   SWARM_BROOD_STATE_KEY,
   SWARM_BROOD_TENDRIL_ID,
+  SWARM_HIVE_SAC_FAMILY,
   TENDRIL_HEAD_LOOT_ID,
   TENDRIL_SEG_CONTACT_COOLDOWN_S,
   TENDRIL_SEG_CONTACT_DAMAGE,
@@ -108,6 +110,7 @@ import {
   swarmBroodBossFor,
   swarmBroodKillPay,
   swarmBroodPlan,
+  swarmBroodSacReserve,
 } from '../data/swarmBrood.js';
 
 const DT = 1 / 60;
@@ -287,8 +290,19 @@ export function createBroodEngine(deps = {}) {
   let pendingPlan = null;     // [{ id, count }] composed at prepare, spawned at wave start
   let liveWave = 0;
 
+  // --- B4: the Hive's reserve (see src/systems/theHiveArena.js) ------------------------
+  //
+  // Inside the Hive, part of the wave's own planned cohort is held back: the wave opens
+  // with (total - reserve) bodies and the room's spawn sacs release the rest on their
+  // cadence through sacRelease(). The reserve is still the SAME plan — immediate plus
+  // reserve never exceeds the population law's total; a sac killed early strands its
+  // share, which is the tide the player cut.
+  let hiveMode = false;
+  let sacBudget = 0;
+  let immediateQuota = Infinity;
+
   const view = {
-    schema: 'spaceface.swarmBrood.v3',
+    schema: 'spaceface.swarmBrood.v4',
     cap: CAP,
     aliveCount: 0,
     wave: 0,
@@ -307,6 +321,10 @@ export function createBroodEngine(deps = {}) {
     segLeadHead: SEG_LEAD_HEAD,
     segLeadFree: SEG_LEAD_FREE,
     segRadius: TENDRIL_SEG_RADIUS,
+    // B4 — the Hive's reserve. `sacBudget` is the bodies the room's sacs still hold;
+    // aliveCount + sacBudget stays inside the wave's planned population.
+    hive: false,
+    sacBudget: 0,
   };
 
   // --- family table mirror (numeric fields the hot loop reads, rebuilt on demand) ----------
@@ -368,6 +386,9 @@ export function createBroodEngine(deps = {}) {
     tendrilDone = false;
     wormSpawned = false;
     headFound = false;
+    hiveMode = false;
+    sacBudget = 0;
+    immediateQuota = Infinity;
     publish();
     void reason;
   }
@@ -382,6 +403,13 @@ export function createBroodEngine(deps = {}) {
     // The Tendril's wave arms the body: the engine waits for the champion hull to materialize
     // (a real entity, stamped by its catalog id) and trails the chain behind it.
     tendrilMode = swarmBroodBossFor(w) === SWARM_BROOD_TENDRIL_ID;
+    // B4 — the Hive holds a share of its own cohort in the sacs. The reserve is part of
+    // the SAME plan total: spawnWave delivers the rest at the wave's open.
+    let planned = 0;
+    for (const part of pendingPlan) planned += Number.isInteger(part.count) ? part.count : 0;
+    sacBudget = swarmBroodSacReserve(planned, run && run.arenaId);
+    hiveMode = sacBudget > 0;
+    immediateQuota = planned - sacBudget;
     liveWave = w;
     view.wave = liveWave;
     view.tendril = tendrilMode;
@@ -416,6 +444,9 @@ export function createBroodEngine(deps = {}) {
         const n = Math.min(clumpSize, remaining);
         remaining -= n;
         for (let i = 0; i < n; i++) {
+          // B4 — the Hive's reserve stays in the sacs: the wave's open delivers only the
+          // plan's immediate share; the sacs pay the rest out on their own clock.
+          if (spawned >= immediateQuota) { pendingPlan = null; publish(); return spawned; }
           const slot = findFreeSlot();
           if (slot < 0) { pendingPlan = null; publish(); return spawned; } // the cap is the law
           const a = rng() * Math.PI * 2;
@@ -540,8 +571,9 @@ export function createBroodEngine(deps = {}) {
     // The Tendril wave keeps stepping while the body may still exist — the champion hull can
     // materialize after the flock dies, and the chain outlives it by exactly one collapse.
     const tendrilWatching = tendrilMode && !tendrilDone;
+    // B4 — the sac reserve keeps the step alive too: the Hive's tide may still be held.
     if (aliveCount <= 0 && lobCount <= 0 && poolCount <= 0 && segAliveCount <= 0
-      && !tendrilWatching) { publish(); return false; }
+      && !tendrilWatching && sacBudget <= 0) { publish(); return false; }
 
     cachePlayer(state);
     cacheRocks(state);
@@ -1311,6 +1343,44 @@ export function createBroodEngine(deps = {}) {
     killScore.fill(0);
   }
 
+  // --- B4: the Hive's seams ------------------------------------------------------------
+
+  /**
+   * A sac births `count` bodies of the reserve family at (x, z). Draws down the wave's
+   * OWN held-back plan — never above it — so the population law is identical in the
+   * Hive and out of it. Returns how many bodies actually landed.
+   */
+  function sacRelease(x, z, count = 1) {
+    if (sacBudget <= 0) return 0;
+    const famIdx = buildFamilyIndex().get(SWARM_HIVE_SAC_FAMILY);
+    if (famIdx == null || famIdx < 0) return 0;
+    const n = Math.max(1, Math.trunc(count) || 1);
+    let born = 0;
+    for (let k = 0; k < n && sacBudget > 0; k++) {
+      const slot = findFreeSlot();
+      if (slot < 0) break; // the cap is the law — a sac never overflows the room
+      const a = rng() * Math.PI * 2;
+      const r = Math.sqrt(rng()) * 5;
+      spawnAt(slot, famIdx, finite(x) + Math.cos(a) * r, finite(z) + Math.sin(a) * r);
+      sacBudget -= 1;
+      born += 1;
+    }
+    if (born > 0) publish();
+    return born;
+  }
+
+  /** A sac's acid drip — the same pool pipeline a spitter splash leaves behind. */
+  function hivePool(x, z, ttl = HIVE_POOL_TTL_S) {
+    const slot = poolCursor % BROOD_POOL_MAX;
+    poolCursor += 1;
+    poolX[slot] = finite(x);
+    poolZ[slot] = finite(z);
+    poolAge[slot] = 0;
+    poolTtl[slot] = Math.max(0.5, Number.isFinite(ttl) ? ttl : HIVE_POOL_TTL_S);
+    if (poolCount < BROOD_POOL_MAX) poolCount += 1;
+    publish();
+  }
+
   function publish() {
     view.aliveCount = aliveCount;
     view.wave = liveWave;
@@ -1318,6 +1388,8 @@ export function createBroodEngine(deps = {}) {
     view.poolCount = poolCount;
     view.tendril = tendrilMode;
     view.segAliveCount = segAliveCount;
+    view.hive = hiveMode;
+    view.sacBudget = sacBudget;
     const state = getState();
     if (state && state[SWARM_BROOD_STATE_KEY] !== view) {
       // Assign once; the view identity is stable for the engine's whole life.
@@ -1336,9 +1408,12 @@ export function createBroodEngine(deps = {}) {
     step,
     clear,
     onExplosion,
+    // B4 — the Hive's seams: sacs spend the wave's reserve, sacs drip acid.
+    sacRelease,
+    hivePool,
     /** Live population figures, for tests and the lab overlay. */
     census() {
-      return { alive: aliveCount, cap: CAP, min: SWARM_BROOD_MIN, wave: liveWave };
+      return { alive: aliveCount, cap: CAP, min: SWARM_BROOD_MIN, wave: liveWave, sacBudget };
     },
     // Test seams: direct, read-only unless named as a seam.
     _bodies: { px, pz, vx, vz, alive, family, heading, hp, phase, timer, teleX, teleZ, teleDir, serial, seedPhase },
@@ -1348,6 +1423,9 @@ export function createBroodEngine(deps = {}) {
     _segs: { x: segX, z: segZ, vx: segVX, vz: segVZ, hp: segHp, alive: segAlive, lead: segLead, heading: segHeading },
     _tendril() {
       return { mode: tendrilMode, headSeen: tendrilHeadSeen, done: tendrilDone, spawned: wormSpawned, headFound };
+    },
+    _hive() {
+      return { mode: hiveMode, sacBudget, immediateQuota };
     },
     _setFamilyMirrorForTest: setFamilyMirror,
     _killDirectForTest(i, cause) {

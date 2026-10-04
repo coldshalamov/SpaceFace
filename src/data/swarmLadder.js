@@ -79,9 +79,11 @@ export const SWARM_ARCADE_SEEDS = Object.freeze({
   cinder_sluice: 73313,
   cryo_drift: 73314,
   storm_lattice: 73315,
+  asteroid_mill: 73316,
+  the_hive: 73317,
 });
 
-/** The star-unlock order — Foundry first, Storm last (§6.3). */
+/** The star-unlock order — Foundry first, the Hive last (§6.3 + SWARM-07 B4). */
 export const SWARM_LADDER_ARENA_ORDER = Object.freeze(
   Object.keys(SWARM_ARCADE_SEEDS),
 );
@@ -93,6 +95,8 @@ export const SWARM_ARENA_STAR_GATES = Object.freeze({
   cinder_sluice: 4,
   cryo_drift: 6,
   storm_lattice: 8,
+  asteroid_mill: 10,
+  the_hive: 12,
 });
 
 /** The arena's authored ladder seed, or null for a room with no ladder. */

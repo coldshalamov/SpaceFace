@@ -23,6 +23,7 @@
 //     hull colour recipe consumed by the instanced renderer.
 
 import { isSwarmBossWave, swarmBossFor } from './swarmMode.js';
+import { HIVE_ARENA_ID } from '../systems/theHiveArena.js';
 
 export const SWARM_BROOD_SCHEMA_VERSION = 1;
 
@@ -269,6 +270,32 @@ export function swarmBroodIssues() {
 // the kill words already speak (SWARM_KILL_WORDS): terrain / collision / explosive / direct.
 
 export const SWARM_BROOD_KILL_CAUSES = Object.freeze(['terrain', 'collision', 'explosive', 'direct']);
+
+// --- B4: THE HIVE'S RESERVE ----------------------------------------------------------
+//
+// The Hive's spawn sacs do not invent bodies — they hold back a share of the wave's own
+// planned cohort and release it on their cadence. The population law therefore reads
+// exactly the same in the Hive as anywhere else: immediate arrivals plus the sac
+// reserve can never exceed swarmBroodPopulation(wave), and a sac killed early simply
+// strands its share of the budget — the tide the player cut, not bodies refunded.
+
+/** Fraction of a Hive wave's cohort the sacs hold back to birth on their own clock. */
+export const SWARM_HIVE_SAC_FRACTION = 0.3;
+/** Sacs birth the base fodder — the hive's tide is mites, specialists ride the gates. */
+export const SWARM_HIVE_SAC_FAMILY = 'mite';
+/** A hive sac's acid drip outlives a spitter splash — the room's own hazard stays longer. */
+export const HIVE_POOL_TTL_S = 4;
+
+/**
+ * The bodies a Hive wave holds in reserve for its sacs. Pure: `total` is the planned
+ * population (immediate + reserve together). Zero outside the Hive — every other arena
+ * receives its whole cohort at the wave's open.
+ */
+export function swarmBroodSacReserve(total, arenaId) {
+  const t = Math.max(0, Math.trunc(Number(total) || 0));
+  if (arenaId !== HIVE_ARENA_ID || t <= 1) return 0;
+  return Math.min(t - 1, Math.round(t * SWARM_HIVE_SAC_FRACTION));
+}
 
 /** Per-brood pay for a cause. Pure; one credit + family score, explosion kills nothing extra. */
 export function swarmBroodKillPay(familyId) {
