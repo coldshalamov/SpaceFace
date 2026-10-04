@@ -16,6 +16,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { LOOP_FIXED_DT, startLoop } from '../src/core/loop.js';
+import { syncFocusLossHold } from '../src/core/focusLossHold.js';
 
 function createClock(start = 1000) {
   let now = start;
@@ -140,6 +141,42 @@ test('a stall clears when the renderer recovers', () => {
   // The cumulative count is history and must NOT be reset — it is how a session reports that this
   // happened at all.
   assert.ok(diag.frameErrorCount >= 30, 'cumulative frame errors are history, not state');
+
+  h.controller.stop();
+});
+
+// D111: an owner freeze report (the Nav Beacon screenshot) reads identical to an intentional
+// focus-loss pause — the stall dump must retain the evidence that tells them apart: the loop
+// diagnostics, the simulation closeCauseSite, the time-effects request ledger and the
+// graphics-context state at the frozen moment.
+test('a presentation stall retains loop, sim, time-effects and graphics-context evidence', () => {
+  const h = createHarness({
+    renderUpdate() { throw new Error('draw call exploded'); },
+  });
+  // Arm the focus-loss hold first: a scale-0 'window-focus-loss' request must be listed in the
+  // dump or a paused clock gets misread as a dead one.
+  syncFocusLossHold(h.state, true);
+
+  flushFrames(h, 40);
+  const diag = h.controller.getDiagnostics();
+  assert.equal(diag.presentationStalled, true, 'precondition: stalled');
+
+  const evidence = diag.presentationStallEvidence;
+  assert.ok(evidence && typeof evidence === 'object', 'the stall retains an evidence block');
+  assert.equal(evidence.loop && evidence.loop.presentationStalled, true,
+    'the evidence carries the loop diagnostics snapshot from the frozen moment');
+  assert.ok('closeCauseSite' in evidence,
+    'the simulation closeCauseSite is retained even while null (sim alive, picture dead)');
+  assert.equal(evidence.closeCauseSite, null,
+    'a throwing renderer is not a simulation close — the field discriminates the two');
+  assert.deepEqual(evidence.timeEffectRequests, { 'window-focus-loss': { scale: 0 } },
+    'the time-effects ledger names the focus-loss hold behind a frozen-looking screenshot');
+  assert.ok(evidence.graphicsContext && typeof evidence.graphicsContext === 'object',
+    'graphics-context state is attached');
+  assert.equal(evidence.graphicsContext.renderContextLost, false,
+    'a live render block reports not-lost rather than omitting the field');
+  assert.equal(evidence.graphicsContext.glContextLost, null,
+    'no native renderer on this harness reads as unknown, never fabricated');
 
   h.controller.stop();
 });

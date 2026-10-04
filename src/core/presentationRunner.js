@@ -15,6 +15,7 @@ import { resolveFrameCap, stepFrameCapDebtInto } from '../render/adaptiveQuality
 import { shouldSkipFullTickSystems } from './presentationFreeze.js';
 import { PRESENTATION_LISTENER_DRAIN_BUDGET, SECTOR_ENTER_DRAIN_BUDGET, SECTOR_ENTER_LISTENER_BUDGET } from './eventBus.js';
 import { syncFocusLossHold } from './focusLossHold.js';
+import { createTimeEffects } from './timeEffects.js';
 
 // Consecutive failing frames before the loop calls the picture dead. 30 is half a second at 60 Hz:
 // long enough that a single hitch, a context blip or one bad entity cannot trip it, short enough
@@ -1051,10 +1052,42 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
         && diagnostics.consecutiveFrameErrors >= PRESENTATION_STALL_FRAMES) {
         diagnostics.presentationStalled = true;
         diagnostics.presentationStallCount++;
+        // D111: a frozen-picture report is only actionable with the frozen moment's evidence
+        // attached — the loop diagnostics, the simulation closeCauseSite (null while the sim
+        // is merely unschedulable rather than dead), the time-effects request ledger (a
+        // 'window-focus-loss' scale-0 hold reads identical to a freeze on a screenshot), and
+        // the graphics-context state — so the report discriminates a stopped scheduler, a
+        // simulation exception, a native stall and an intentional pause.
+        const simDiagnostics = simulationRunner.getDiagnostics?.() || null;
+        let timeEffectRequests = null;
+        try {
+          timeEffectRequests = createTimeEffects(state).describeRequests();
+        } catch (_) { timeEffectRequests = null; }
+        let glContextLost = null;
+        try {
+          const gl = state && state.render && state.render.renderer
+            && typeof state.render.renderer.getContext === 'function'
+            ? state.render.renderer.getContext() : null;
+          glContextLost = gl && typeof gl.isContextLost === 'function' ? gl.isContextLost() : null;
+        } catch (_) { glContextLost = null; }
+        diagnostics.presentationStallEvidence = Object.freeze({
+          loop: { ...diagnostics },
+          simulation: simDiagnostics,
+          closeCauseSite: simDiagnostics && typeof simDiagnostics.closeCauseSite === 'string'
+            ? simDiagnostics.closeCauseSite : null,
+          timeEffectRequests,
+          graphicsContext: {
+            glContextLost,
+            renderContextLost: state && state.render ? state.render.contextLost === true : null,
+            contextRecoveryPending: !!(state && state.render && state.render.contextRecovery
+              && state.render.contextRecovery.pending === true),
+          },
+        });
         console.error('[loop] PRESENTATION STALLED: '
           + `${diagnostics.consecutiveFrameErrors} consecutive frame errors — the 3D canvas is `
           + 'frozen while the loop and HUD keep running. Last error: '
-          + `${diagnostics.lastFrameError}`);
+          + `${diagnostics.lastFrameError}`,
+          diagnostics.presentationStallEvidence);
       }
       notifySimulationFailure();
     } finally {
