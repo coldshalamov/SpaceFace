@@ -30,6 +30,25 @@ const DAMAGE_TYPES = new Set(['ship', 'drone', 'station']);
 // trigger and shootable-hull law. Displacement preserves the mine's owner/arm/eligibility
 // because those ride the entity's own data.
 const LOOSE_TYPES = new Set(['asteroid', 'wreck', 'pickup', 'payload', 'mine']);
+// SFQ-B035 fauna eligibility, explicit on every axis a blast touches (the target predicates
+// used to omit fauna entirely — silence, not a decision):
+//   damage  — YES. Fauna are killable world actors (hull, entity:killed -> the ecology's
+//             rupture/panic/harvest listeners). A blast that kills a station kills a grazer.
+//   statuses— NO, deliberately craft-only. Every bomb status is a craft-control verb (goo
+//             wallow, ionized subsystems, pinned massScale, tumbling helm); scheduling one on a
+//             fauna runtime the ecology drive never reads would be the silent no-op the packet
+//             forbids. Organisms take the blast, not the rider.
+//   shove   — only with a real dynamic physics body (physics species: ram, glassback). Kinematic
+//             fauna are motion-owned by the ecology drive; physicsAuthority would refuse them
+//             anyway, so the predicate says so up front.
+//   fuze    — craft only (unchanged, _findTriggerVictim): a drifting grazer must not cook the
+//             player's own bay.
+const faunaBlastEligible = (e) => e?.type === 'fauna';
+// Same two-gate shape as movable(): an authored physicsBody:false fauna has no body at all
+// (substanceFor falls through falsy authored values to the dynamic default), so the authored
+// no-body contract is the first gate and the substance's dynamic flag the second.
+const faunaShoveEligible = (e) => faunaBlastEligible(e) && e?.physicsBody !== false && isDynamicPhysicsBodyEntity(e);
+const blastShoveEligible = (e) => movable(e) || faunaShoveEligible(e);
 const EMPTY = Object.freeze([]);
 const simNow = state => Number.isFinite(state?.simTime) ? state.simTime : (state?.tick || 0) / 60;
 
@@ -104,13 +123,14 @@ function publishBombsQuiet(state, latched) {
 }
 // Typed buckets whose union is exactly the population the target predicate can accept:
 // DAMAGE_TYPES (ship/drone/station) plus LOOSE_TYPES (asteroid/wreck/pickup/payload/mine) for
-// the movable() branch. Craft is ship/drone, so no other entity type can ever pass — the union
-// cannot omit a valid target, including noncolliding movable cargo and wrecks. Buckets are
-// disjoint by entity type (one switch push per type in coreSystem.appendEntityIndex), so no
-// candidate is visited twice. The live predicate is still applied per candidate, so in-place
-// deaths (alive flip with no list change) filter exactly as the full scan did. Anything but a
-// ready index with all eight buckets falls back to the complete scan.
-const BOMB_TARGET_BUCKETS = Object.freeze(['ships', 'drones', 'stations', 'asteroids', 'wrecks', 'pickups', 'payloads', 'mines']);
+// the movable() branch, plus 'fauna' (SFQ-B035 — blast damage is explicitly fauna-eligible).
+// Craft is ship/drone, so no other entity type can ever pass — the union cannot omit a valid
+// target, including noncolliding movable cargo and wrecks. Buckets are disjoint by entity type
+// (one switch push per type in coreSystem.appendEntityIndex), so no candidate is visited twice.
+// The live predicate is still applied per candidate, so in-place deaths (alive flip with no
+// list change) filter exactly as the full scan did. Anything but a ready index with all nine
+// buckets falls back to the complete scan.
+const BOMB_TARGET_BUCKETS = Object.freeze(['ships', 'drones', 'stations', 'asteroids', 'wrecks', 'pickups', 'payloads', 'mines', 'fauna']);
 function bombTargetBuckets(index) {
   if (!index?.__spacefaceEntityIndexV1 || index.ready !== true) return null;
   const buckets = [];
@@ -122,7 +142,7 @@ function bombTargetBuckets(index) {
   return buckets;
 }
 function pushBombTarget(out, e) {
-  if (e?.alive && e.pos && (DAMAGE_TYPES.has(e.type) || movable(e))) out.push(e);
+  if (e?.alive && e.pos && (DAMAGE_TYPES.has(e.type) || movable(e) || faunaBlastEligible(e))) out.push(e);
 }
 // ---- fitted rack (PQ-205.03) ----------------------------------------------------------
 // state.bombs is the player's one bomb-bay bag, additive over the pre-rack shape:
@@ -1176,14 +1196,27 @@ export const bombs = {
         dirX = (dirX - dirZ * q) / norm; dirZ = (dirZ + x * q) / norm;
       }
       const magnitude = impulse * falloff;
-      if (magnitude > 0 && (dirX !== 0 || dirZ !== 0) && movable(ent) && this._applyImpulse(ent, dirX * magnitude, dirZ * magnitude, state, 'bomb_blast')) {
+      // SFQ-B035 — the blast-facing surface contact: where the radial load actually lands on
+      // this hull (center minus the radial direction times the hull radius). This is the real
+      // surface hit data the impulse, the supported torque cap and the signed side all read.
+      // The old route applied a center shove (`point: null`, no torque) and signed the hit from
+      // a fabricated +z offset — a screen-space fake that made hitSide read sign(world x)
+      // regardless of where the blast sat on the hull.
+      const surfaceR = Math.max(0, Number(ent.radius) || 0);
+      const hitPos = Object.freeze({ x: ent.pos.x - dirX * surfaceR, z: ent.pos.z - dirZ * surfaceR });
+      if (magnitude > 0 && (dirX !== 0 || dirZ !== 0) && blastShoveEligible(ent)
+        && this._applyImpulse(ent, dirX * magnitude, dirZ * magnitude, state, 'bomb_blast',
+          { point: hitPos, maxTorque: def.tumbleTorque })) {
         considerShove(shoves, ent.id, dirX, dirZ, magnitude);
-        this._publishHitstun(state, ent, { dirX, dirZ, magnitude, ownerId, attackerMass, payloadId: def.id, trigger });
+        this._publishHitstun(state, ent, { dirX, dirZ, magnitude, ownerId, attackerMass, payloadId: def.id, trigger, hitPos });
       }
-      if (DAMAGE_TYPES.has(ent.type) && (damage > 0 || def.statuses?.length)) {
+      if ((DAMAGE_TYPES.has(ent.type) || faunaBlastEligible(ent)) && (damage > 0 || def.statuses?.length)) {
         const packet = scalarHitToDamagePacket({
           damage: damage * falloff, damageType: def.damageType, pos,
-          penetration: def.penetration || 0, heat: def.heat || 0, statuses: def.statuses || EMPTY,
+          penetration: def.penetration || 0, heat: def.heat || 0,
+          // Bomb statuses are craft-control verbs (see the fauna eligibility note above) —
+          // organisms take the blast damage, never the status rider.
+          statuses: DAMAGE_TYPES.has(ent.type) ? (def.statuses || EMPTY) : EMPTY,
           subsystemShare: def.subsystemShare ?? null, shieldBypass: def.shieldBypass || 0,
           source: { kind: 'bomb', payloadId: def.id, bombId: originId },
         });
@@ -1218,9 +1251,9 @@ export const bombs = {
     const deltaV = input.magnitude / victimMass;
     if (!(deltaV > 0)) return;
     const hitSide = signedHitSide(victim, { x: input.dirX, z: input.dirZ }, {
-      pos: {
+      pos: input.hitPos || {
         x: Number(victim.pos && victim.pos.x) || 0,
-        z: (Number(victim.pos && victim.pos.z) || 0) + Math.max(4, (victim.radius || 8) * 0.75),
+        z: Number(victim.pos && victim.pos.z) || 0,
       },
     }, victim.id);
     const provenance = Object.freeze({
@@ -1341,9 +1374,24 @@ export const bombs = {
       if (runtime) kernel.statuses.clear(ent, runtime, 'status_goo');
     }
   },
-  _applyImpulse(ent, x, z, state, reason) {
+  // SFQ-B035: the blast hands the physics authority its surface contact point and the def's
+  // supported torque cap (`sg02DynamicBodyOwner.applyImpulse` applies the off-center arm /
+  // clamped yaw torque itself, and keeps its own player off-center exemption). A point on the
+  // impulse line — a radial blast's facing surface on a circular hull — correctly produces no
+  // direct torque; the signed spin still reads the surface hit through the hitstun law.
+  _applyImpulse(ent, x, z, state, reason, opts = {}) {
     const physics = this.helpers?.combatPhysics;
-    return !!physics?.applyImpulse && physics.applyImpulse({ entityId: ent.id, impulse: { x, z }, point: null, reason, tick: state.tick }) !== false;
+    if (!physics?.applyImpulse) return false;
+    return physics.applyImpulse({
+      entityId: ent.id,
+      impulse: { x, z },
+      point: opts.point || null,
+      // A finite cap passes through verbatim (0 = the def explicitly refuses torque — the
+      // singularity's clean collapse snap); only an absent cap leaves the authority uncapped.
+      maxTorque: Number.isFinite(opts.maxTorque) ? Math.max(0, opts.maxTorque) : undefined,
+      reason,
+      tick: state.tick,
+    }) !== false;
   },
   _routeDamage(request) {
     if (typeof this.helpers?.routeCombatDamage === 'function') return this.helpers.routeCombatDamage(request);
