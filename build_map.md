@@ -2682,11 +2682,28 @@ writes minutes old at checkpoint; do not touch.
   `official_recovery_tug` approaches (500,-100 → 815,95) then stalls at 313 WU from the
   spindle vs the required 180. The tug's `tether_control_raider` doctrine hold-short
   equilibrium moved under the stiffer contacts. **Owned by a wave agent** — fix the tug's
-  approach behavior, never the predicate.
+  approach behavior, never the predicate. **RESOLVED `f9edb3597` (2026-10-01)** — the
+  scripted ferries were retuned to `eb1869826`'s solid-contact drift (measured 90–142 WU
+  across the resolution window; the 180/160 WU predicates untouched). `check-47a-tactics`
+  (all four tactics) + `check-47a-live-branch-predicate` green at HEAD.
 - `sling_evidence` fails on the same `actorDistance` clause family — same root suspect.
+  **RESOLVED** by the same `f9edb3597` ferry retune; green at HEAD.
 
 **Open items — each owned by a dispatched wave agent (fresh worktree writes at checkpoint):**
-- soak encounters `got 0` + `first layered sync should import fixed bodies once` (spawn path)
+- soak encounters `got 0` — **RESOLVED `493e9da95` (2026-10-04)**: two honest defects. The
+  planner's nominal-spacing pass clamped an `earlyDelayS`-pinned beat to its window hi and
+  left a <45 s pair anyway (helios d0 s47: trader_run→raid 36.4 s); the contiguous
+  unwindowed run now yields earlier, preserving order and ≥45 s gaps, and a truly impossible
+  calendar surfaces as the residual pair rather than a silently moved promise. The
+  one-voice soak's seed-23 schedule starved to 1 fire on legitimately `storyBeatMin`-gated
+  items — reseeded 23→43 (5 fired, 2 proximity-gated; floor unchanged, the fixture's
+  documented maintenance pattern). `check-encounter-director` + `check-encounter-one-voice`
+  6/6 green.
+- `first layered sync should import fixed bodies once` (spawn path) — **GREEN at HEAD**:
+  `check-sg02-dynamic-body-owner` passes; `syncStaticEntities=1` verified on owner +
+  physicsAuthority versions back to Package E `b7b499263` — the checkpoint red was the
+  in-flight Package-D/E/F working state, not a committed regression. Restore-path
+  `_staticLayerVersion` bookkeeping completed by `2402a0d13`.
 - 47-A telemetry envelope re-record: **owner action after sim-moving fixes land** — re-record
   hash + moved-field counts + a notes entry citing Package D/E/F evidence (`f70aac37f`,
   `1639c221e`, `b7b499263`, `954a0ab8c`). Do NOT pin-update without that ruling.
@@ -2757,6 +2774,8 @@ kept (`scratch/cited-devshots.txt` is the citation census). `scratch/` is 35 MB;
 envelope re-record, soak=0, save-lineage, dock clip, phase0 rows, k1, station tabs) and the
 baseline treadmill. Verified pre-existing, not merge-caused: `sim`/`sim-v3` envelope drift,
 `massline-elastic-whip-head` (43.775), `pq020-ceres-topology` structuralCostDigest.
+*Update 2026-10-04: surrender tug stall closed `f9edb3597`; soak=0 closed `493e9da95` —
+both green at HEAD.*
 
 **Machine quiesced (2026-09-29, late):** owner directed all dev processes stopped. Killed the
 baseline race loop (`scratch/budget-loop.ps1` kept as the restart recipe), its capture+server
