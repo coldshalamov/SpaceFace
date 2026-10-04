@@ -81,6 +81,10 @@ const FIELD_ANCHOR_RECOVER_MAX_TICKS = 200;
 const RANGED_REPOSITION_TICKS = 45;
 const RANGED_FIRE_TICKS = 18;
 const RANGED_RESET_TICKS = 18;
+// The panic leg's clock (same bound the interceptor extend hatch uses). Its authored exit demands
+// the pursuer fully ease off — 520 WU AND press < 10 — so any sustained closing speed would hold
+// the hull in retreat forever, guns dark, and the break would never re-commit.
+const RANGED_RETREAT_MAX_TICKS = 180;
 // Panic floor for the disengager ring. Post-A5 the shared engagement envelope is ~240-280 WU and
 // faction presence standoffs sample inside it, so the press trigger must sit below the lowest
 // authored standoff band (170 WU) instead of above the doctrine's own 240 WU default orbit.
@@ -809,7 +813,14 @@ function updateRanged(record, tick, self, target, distance) {
     return;
   }
   if (record.phase === 'retreat') {
-    if (distance >= 520 && press < 10) enter(record, 'outer_standoff', tick, null);
+    // Distance-gated egress exits need a clock (see INTERCEPTOR_EXTEND_MAX): a player who keeps
+    // any closing speed on the hull would otherwise pin it in retreat forever — one volley, then
+    // a kite chase that never fights again. The hatch re-arms the cycle so a lazy chase is
+    // answered with a fresh telegraphed volley; a hard press (>55) still trips the closing
+    // interrupt each cycle and keeps the hull running.
+    if ((distance >= 520 && press < 10) || age >= RANGED_RETREAT_MAX_TICKS) {
+      enter(record, 'outer_standoff', tick, null);
+    }
     return;
   }
   // The charge floor must meet the retreat trigger exactly: between them the doctrine had no
