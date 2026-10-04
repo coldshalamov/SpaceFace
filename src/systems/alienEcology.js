@@ -1665,13 +1665,19 @@ function runClaimCrew(world, sectorId, now, dt) {
   const crew = rec.claimCrew || (rec.claimCrew = { state: null, killed: 0 });
   if (crew.state === 'driven_off') return;
   const g = world._toGlobal({ x: site.center.x, z: site.center.z }, sectorId);
+  // The work record IS the claim: no world-site record (producer cadence is 'sector_enter',
+  // so this is near-impossible on the default route) means the torches would have nothing
+  // to feed — applyWorldSiteBeamOperation would refuse 'site-missing' forever. Never arm
+  // onto a missing record.
+  const record = state.sites && state.sites.worldById
+    ? state.sites.worldById[NURSERY_CLAIM_CREW.worldSiteId] : null;
 
   if (!crew.state) {
     // Arming: a LIVING nursery only — a severed site's cyst lot no longer exists, so no
     // claim is posted on it. Ordinary approach arms the beat; nothing time-gates behind it.
     const coherent = rec.relaySevered !== true && rec.state !== 'severed';
     const pd = Math.sqrt(dist2(player.pos.x, player.pos.z, g.x, g.z));
-    if (!coherent || pd > NURSERY_CLAIM_CREW.spawnRadius) return;
+    if (!record || !coherent || pd > NURSERY_CLAIM_CREW.spawnRadius) return;
     crew.state = 'arriving';
     crew.armedAt = now + NURSERY_CLAIM_CREW.armedS;
     return;
@@ -1711,8 +1717,7 @@ function runClaimCrew(world, sectorId, now, dt) {
       }
       world.bus.emit('comms:log', { from: 'Claim crew', kind: 'ecology', text: NURSERY_CLAIM_CREW.hostileComms });
     }
-    const record = state.sites && state.sites.worldById
-      ? state.sites.worldById[NURSERY_CLAIM_CREW.worldSiteId] : null;
+    const recordGone = !record;
     if (record && record.completedOperations
       && record.completedOperations[NURSERY_CLAIM_CREW.operationId]) {
       // The cut is already complete (the player raced them, or it settled before a
@@ -1725,6 +1730,13 @@ function runClaimCrew(world, sectorId, now, dt) {
       }
       crew.leaveAt = now + NURSERY_CLAIM_CREW.leaveGraceS;
       return;
+    }
+    if (recordGone) {
+      // Arm-path hardening: the record vanished mid-beat (it is never authored to — the
+      // producer cadence is 'sector_enter'). Count it as a bad intake the same way the
+      // batch path does, so the cutters can never circle a missing claim forever.
+      lapseOnBadIntake(world, crew, now);
+      if (crew.state !== 'working') return;
     }
     const target = claimCrewTarget(state, world, sectorId, site, crew);
     if (!target) return;
@@ -1745,7 +1757,16 @@ function runClaimCrew(world, sectorId, now, dt) {
     crew.batchT = 0;
     const sitesSys = world.registry && typeof world.registry.get === 'function'
       ? world.registry.get('asteroidSites') : null;
-    if (!sitesSys || typeof sitesSys.applyWorldSiteBeamOperation !== 'function') return;
+    if (!sitesSys || typeof sitesSys.applyWorldSiteBeamOperation !== 'function') {
+      lapseOnBadIntake(world, crew, now);
+      return;
+    }
+    // Shared intake semantics: every industrial worker on this manifest — the player's
+    // mining beam and these torches alike — feeds the operation's one declared stream with
+    // requestSequence = state.tick. The kernel cursor is per-operation 'throughSequence'
+    // (worldSiteKernel.applyWorldSiteOperation): a player batch issued on the SAME tick as
+    // a crew batch is swallowed as 'request-replayed' and loses that one work unit. That is
+    // the intended cost of working one shared record — documented here, never enlarged.
     const result = sitesSys.applyWorldSiteBeamOperation({
       siteId: NURSERY_CLAIM_CREW.worldSiteId,
       componentId: NURSERY_CLAIM_CREW.componentId,
@@ -1756,6 +1777,7 @@ function runClaimCrew(world, sectorId, now, dt) {
       tick: state.tick,
     });
     if (result && result.ok && !result.duplicate) {
+      crew.badBatches = 0;
       fireClaimTorches(world, sectorId, now, target);
       if (result.receipt && result.receipt.complete) {
         // The crew's own torch finished the extraction: claim paid, sample pod released
@@ -1767,6 +1789,10 @@ function runClaimCrew(world, sectorId, now, dt) {
         }
         crew.leaveAt = now + NURSERY_CLAIM_CREW.leaveGraceS;
       }
+    } else if (!result || !result.duplicate) {
+      // A hard refusal ('site-missing' or worse) means the intake is gone: a few in a row
+      // lapses the claim instead of the cutters circling a dead record forever.
+      lapseOnBadIntake(world, crew, now);
     }
     return;
   }
@@ -1789,6 +1815,21 @@ function runClaimCrew(world, sectorId, now, dt) {
       crew.cutterIds = [];
     }
   }
+}
+
+// Arm-path hardening: a hard intake refusal repeated in a row ('site-missing', a vanished
+// record, a missing sites system) is a claim that can never be worked — lapse it after a
+// short run of failures instead of letting the cutters circle forever. Plain duplicates
+// (the normal race/settle no-ops) never count.
+function lapseOnBadIntake(world, crew, now) {
+  crew.badBatches = (crew.badBatches || 0) + 1;
+  if (crew.badBatches < 3 || crew.state !== 'working') return;
+  crew.state = 'lapsed';
+  if (!crew.lapseNotified) {
+    crew.lapseNotified = true;
+    world.bus.emit('comms:log', { from: 'Claim crew', kind: 'ecology', text: NURSERY_CLAIM_CREW.lapsedComms });
+  }
+  crew.leaveAt = now + NURSERY_CLAIM_CREW.leaveGraceS;
 }
 
 function spawnClaimCutters(world, sectorId, siteGlobal, crew) {
