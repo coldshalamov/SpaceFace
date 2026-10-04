@@ -860,6 +860,21 @@ function isLod0Primitive(primitive) {
 }
 
 function instantiatePackagedPrimitives(record, parent) {
+  // The flat-primitive mount replays the same decoded package the instance route stamps on
+  // its root — publish the same `spacefaceRenderPackage` boundary here so the opening
+  // census's productionBoundary walk does not read a mounted packaged prop as an
+  // unprovenanced blocking root (D157). A record with no render package keeps the asset
+  // identity but no verified hash, and the gate stays honest for it.
+  if (parent && parent.userData && !parent.userData.spacefaceRenderPackage) {
+    const pkg = record && record.renderPackage || null;
+    const assetId = (pkg && pkg.assetId) || (record && record.assetId) || null;
+    if (assetId) {
+      parent.userData.spacefaceRenderPackage = {
+        assetId,
+        contentHash: (pkg && pkg.contentHash) || null,
+      };
+    }
+  }
   for (const primitive of record && record.primitives || []) {
     if (!primitive || !primitive.geometry || !primitive.material) continue;
     if (!isLod0Primitive(primitive)) continue;

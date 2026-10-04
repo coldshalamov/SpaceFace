@@ -21,6 +21,7 @@ import { buildVesperVisual } from './characters/vesperModel.js';
 import { buildBracketVisual } from './characters/bracketModel.js';
 import { buildRavelVisual } from './characters/ravelModel.js';
 import { buildSolsticeVisual } from './characters/solsticeModel.js';
+import { buildRubricVisual } from './characters/rubricModel.js';
 import { modelTruthMountFractions } from '../data/modelTruth.js';
 import { mergeGeometries, mergeVertices, toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
 import { getReadyRockSurfaceTextures, rockSurfaceVariantSpec, ROCK_SURFACE_VARIANTS } from './rockSurfaceLibrary.js';
@@ -3799,6 +3800,21 @@ export function instantiatePackagedPrimitives(record, parent, options = {}) {
   // Warmth passes set includeAllLods: a dedicated lod1/lod2 file's primitives carry the
   // non-lod0 tag themselves, and filtering them would warm an empty holder.
   const includeAllLods = options && options.includeAllLods === true;
+  // The flat-primitive mount replays the same decoded package the instance route exposes,
+  // so the boundary stamp belongs here too: the opening census's productionBoundary walk
+  // finds `spacefaceRenderPackage` on descendants, and a packaged body without it reads as
+  // an unprovenanced blocking root (D157). Records decoded outside a render package keep
+  // the asset identity but no verified hash — the gate stays honest for them.
+  if (parent && parent.userData && !parent.userData.spacefaceRenderPackage) {
+    const pkg = record && record.renderPackage || null;
+    const assetId = (pkg && pkg.assetId) || (record && record.assetId) || null;
+    if (assetId) {
+      parent.userData.spacefaceRenderPackage = {
+        assetId,
+        contentHash: (pkg && pkg.contentHash) || null,
+      };
+    }
+  }
   const tmp = new THREE.Matrix4();
   for (const primitive of record && record.primitives || []) {
     if (!primitive || !primitive.geometry || !primitive.material) continue;
@@ -5664,7 +5680,17 @@ export function invalidateVisualFactoryCaches() {
 }
 
 function stampBuiltVisual(root) {
-  if (root) canonicalizeObjectSurfaceProgramKeys(root);
+  if (root) {
+    canonicalizeObjectSurfaceProgramKeys(root);
+    // Producer-owned marker: every generated visual exits through this stamp, so the opening
+    // census's ensure helper can publish the deterministic leaf recipe as this root's
+    // production boundary (D157). Procedural roots mount no authored byte package, and the
+    // census itself must never synthesize provenance from renderer counters — it only reads
+    // what the producer declared here.
+    if (root.userData && !root.userData.generatedVisualProducer) {
+      root.userData.generatedVisualProducer = 'visual-factory-procedural';
+    }
+  }
   return root;
 }
 
@@ -5676,6 +5702,8 @@ export function createVisualFactory() {
         if (e.data?.ravelPart) return stampBuiltVisual(buildRavelVisual(e));
         if (e.data?.bracketPart) return stampBuiltVisual(buildBracketVisual(e));
         if (e.data?.solsticePart) return stampBuiltVisual(buildSolsticeVisual(e));
+        // RUBRIC: the marker and its paint marks are authored; the filing hull (rubricPart 'hull') is an ordinary wreck.
+        if (e.data?.rubricPart === 'body' || e.data?.rubricPart === 'mark') return stampBuiltVisual(buildRubricVisual(e));
         switch (e.type) {
           case 'ship': return stampBuiltVisual(optimizeStaticBatches(buildShipMesh(e, resolvePalette(e))));
           case 'asteroid': return stampBuiltVisual(freezeStaticPresentation(buildAsteroid(e), { merge: false }));
