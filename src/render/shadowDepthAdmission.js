@@ -213,9 +213,27 @@ const _stagedDepthSignatures = new WeakMap();
 
 export function lightCensusSignature(lightingScene) {
   if (!lightingScene || typeof lightingScene.traverse !== 'function') return 'l0|f0';
-  let lights = 0;
-  lightingScene.traverse((object) => { if (object && object.isLight === true) lights += 1; });
-  return `l${lights}|${lightingScene.fog ? 'f1' : 'f0'}`;
+  // Key what the program key actually bakes: the RENDERED light set's per-type
+  // counts (plus castShadow and layers mask per light), and fog kind. A light
+  // under an invisible subtree never reaches projectObject — counting it would
+  // re-mint the session for no real key drift; a same-count type swap (dir→point)
+  // changes real keys while a bare l<n> count stays still — cold links in
+  // presented frames. Sorted so traverse order can't mint spurious sigs.
+  const counts = new Map();
+  lightingScene.traverse((object) => {
+    if (!object || object.isLight !== true) return;
+    for (let node = object; node; node = node.parent) {
+      if (node.visible === false) return;
+    }
+    const layersMask = object.layers && Number.isFinite(object.layers.mask)
+      ? object.layers.mask : 1;
+    const key = `${object.type || 'Light'}:${layersMask}:${object.castShadow === true ? 1 : 0}`;
+    counts.set(key, (counts.get(key) || 0) + 1);
+  });
+  const parts = [...counts.entries()].map(([k, n]) => `${k}x${n}`).sort();
+  const fog = lightingScene.fog;
+  const fogKey = fog ? (fog.isFogExp2 === true ? 'fx' : 'fs') : 'f0';
+  return `${fogKey}|${parts.join('|')}`;
 }
 
 function casterDepthSignatures(caster, lightSig) {

@@ -5927,6 +5927,11 @@ export function tickShieldShellClock(pool, state) {
 // re-pay the signature collect every presented frame until its arm lands.
 const STAGE_SELF_DIRTY_KEY = '__spacefaceDepthStageSelfDirty';
 
+// One private stage render pays the whole leg's caster count atomically — bound
+// the leg by meshes so a station-family burst can't stack ~2000 draws inside one
+// post-present task. Roots owning un-staged remainder meshes stay queued.
+const SHADOW_DEPTH_ARM_MESH_CAP = 128;
+
 // Nearest ancestor that owns a shadow-caster policy record (same userData key as
 // shadowCasterPolicy.js), else the direct scene child — the granularity the arm's
 // per-root collect/restore machinery works at.
@@ -21053,6 +21058,12 @@ export const render = {
         && (band !== 1 ? !queued : (dirtySeq > stampedSeq && dirtySeq > 0)))
       ? collectUnstagedShadowCasters(this.renderer, [root], this.scene, this._shadowCensusForFrame())
       : null;
+    // The collect evaluated this generation — stamp it even when empty so an
+    // unstageable dirty (or a post-arm band-1 root) doesn't re-pay the whole-subtree
+    // walk every frame. A later invalidate bumps past the stamp and recollects.
+    if (band === 1 && unstaged !== null && root.userData) {
+      root.userData[STAGE_SELF_DIRTY_KEY] = dirtySeq;
+    }
     let syncOpts = opts;
     let withheldMeshes = null;
     if (unstaged && unstaged.length > 0) {
@@ -21174,16 +21185,26 @@ export const render = {
         pending.delete(root);
       }
       const sliceRoots = slice.map(([root]) => root);
+      let legCapped = false;
       if (this._shadowSettingOn === true && renderer && scene && camera && this._keyLight
           && sliceRoots.length > 0) {
         try {
           // Coalesced promotions share one stage; roots whose signatures were already
           // marked (opening/admission staged them under the same light census) are
           // filtered so the ceremony only pays for genuinely unlinked depth variants.
-          // Both census walks ride the per-pass memo instead of re-traversing the scene.
-          const lightSig = this._shadowCensusForFrame();
+          // Fresh census at arm time — the arm runs between passes via
+          // armCallbackAfterPresent, so the _viewSyncSeq memo can serve a sig
+          // minted before a light add/remove landed; the session keys on it.
+          const lightSig = lightCensusSignature(scene);
           const unstaged = collectUnstagedShadowCasters(renderer, sliceRoots, scene, lightSig);
           if (unstaged.length > 0) {
+            // Cap the leg by casters, not roots: one private render pays the whole
+            // slice's caster count atomically — a fat station cohort would stack
+            // thousands of draws inside one background task. Remainder meshes stay
+            // withheld and their roots requeue below (a restore would un-withhold
+            // them before their variant links).
+            legCapped = unstaged.length > SHADOW_DEPTH_ARM_MESH_CAP;
+            const leg = legCapped ? unstaged.slice(0, SHADOW_DEPTH_ARM_MESH_CAP) : unstaged;
             // Arms within one drain share a staging session: the reparent/census/
             // lights warm is a fixed per-arm cost, so a burst of N promotions used
             // to pay it N times. The session keys on the live light census — a sig
@@ -21208,7 +21229,7 @@ export const render = {
               if (session) this._depthStageSession = session;
             }
             if (session) {
-              session.slice(unstaged);
+              session.slice(leg);
             } else {
               // Session unavailable (warm-up failed or API shape missing) — the
               // single-shot compile is the same ceremony minus the reuse.
@@ -21216,7 +21237,7 @@ export const render = {
                 renderer,
                 light: this._keyLight,
                 camera,
-                subjects: unstaged,
+                subjects: leg,
                 forceEnable: false,
                 THREE,
                 captureObjectHome,
@@ -21231,6 +21252,18 @@ export const render = {
           console.warn('[render] shadow-promote depth stage failed', error);
         }
       }
+      // A capped leg leaves un-marked casters under the slice: re-collect to find
+      // which roots still own unstaged meshes and keep them queued — restoring
+      // them now would un-withhold meshes whose depth variant never linked.
+      let leftoverRoots = null;
+      if (legCapped === true && renderer && scene && this._keyLight) {
+        const leftover = collectUnstagedShadowCasters(
+          renderer, sliceRoots, scene, lightCensusSignature(scene));
+        for (const mesh of leftover) {
+          const root = shadowPolicyRootOf(mesh, scene);
+          if (root) (leftoverRoots || (leftoverRoots = new Set())).add(root);
+        }
+      }
       // Re-apply the live cast policy on the staged slice: promotions whose cast
       // flag was withheld pending this stage restore now — staged roots enter the
       // cast band on already-linked depth programs; if the stage was skipped the
@@ -21238,7 +21271,14 @@ export const render = {
       // root permanently shadowless.
       for (const [root, { lodLevel, entity }] of slice) {
         if (!root || !root.parent) continue;
-        if (root.userData) root.userData[STAGE_SELF_DIRTY_KEY] = false;
+        if (leftoverRoots && leftoverRoots.has(root)) {
+          pending.set(root, { lodLevel, entity });
+          continue;
+        }
+        // The arm's own whole-slice collect covered every dirty to this instant —
+        // stamp the live generation so the checked sync doesn't re-collect this
+        // root every presented frame (writing false left stampedSeq=-1 forever).
+        if (root.userData) root.userData[STAGE_SELF_DIRTY_KEY] = shadowCasterPolicyDirtySeq(root);
         if (this._withheldDepthCasters) this._withheldDepthCasters.delete(root);
         try {
           syncShadowCasterPolicy(root, lodLevel, this._shadowPolicyOptions(entity, root));
@@ -21308,7 +21348,17 @@ export const render = {
         }
         invalidateShadowCasterPolicy(root);
         root.userData[STAGE_SELF_DIRTY_KEY] = shadowCasterPolicyDirtySeq(root);
-        pending.set(root, { lodLevel: null, entity: null });
+        // Resolve entity/lodLevel now — the arm's restore calls _shadowPolicyOptions
+        // with whatever's queued, and a null entity forces allowCast=true (band-1
+        // over-cast for a frame on every out-of-ortho root) plus lodLevel=null
+        // (a forced traverse at the next sync). userData.lod is the same source
+        // _shadowPolicyOptions reads for its own lodLevel.
+        const entityId = root.userData && root.userData.entityId;
+        const resolvedEntity = (entityId != null && this.state && this.state.entities)
+          ? this.state.entities.get(entityId) : null;
+        const lodLevel = (root.userData && root.userData.lod && root.userData.lod.level)
+          || 'lod0';
+        pending.set(root, { lodLevel, entity: resolvedEntity || null });
       }
       if (pending.size > 0 && this._depthStageScheduled !== true) {
         this._depthStageScheduled = true;
