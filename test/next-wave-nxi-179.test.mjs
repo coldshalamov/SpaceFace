@@ -82,6 +82,37 @@ test('a stale fix speaks once as changed circumstances, not as a lie', () => {
   assert.doesNotMatch(lines[0].text, /fabricat/i);
 });
 
+test('a capped history quotes a real prior reading and never claims "first" falsely', () => {
+  const h = bootStory();
+  // CLUE_HISTORY_CAP = 4 (scanClues.js): a fifth sighting leaves the four most recent
+  // superseded readings on the tail. The quoted name must be one of THOSE — a real prior
+  // reading — and the copy must not call it "the first", because it is not.
+  const history = [
+    { claim: 'sighting one', status: 'stale', at: 1, pos: { x: 1, z: 0 } },
+    { claim: 'sighting two', status: 'contradicted', at: 2, pos: { x: 2, z: 0 } },
+    { claim: 'sighting three', status: 'stale', at: 3, pos: { x: 3, z: 0 } },
+    { claim: 'sighting four', status: 'contradicted', at: 4, pos: { x: 4, z: 0 } },
+  ];
+  const row = revisedRow({
+    subjectId: 'manifest:9',
+    claim: 'manifest mismatch',
+    prior: history[3],
+    scannedAt: 50,
+  });
+  row.clue.history = history;
+  h.bus.emit('signal:scanResults', { sectorId: 'sector_test', scannedAt: 50, signals: [row] });
+  const lines = h.comms.filter((c) => c.id === 'clue_revision_manifest:9_50');
+  assert.equal(lines.length, 1);
+  assert.match(lines[0].text, /sighting four/, 'the quote names the genuine prior sighting');
+  for (const gone of ['sighting one', 'sighting two', 'sighting three']) {
+    assert.ok(!lines[0].text.includes(gone), `the line does not misquote a deeper row (${gone})`);
+  }
+  assert.match(lines[0].text, /Prior reading \(\"sighting four\"\) stays on file\./,
+    'the copy is truthful: a prior reading, not "the first"');
+  assert.doesNotMatch(lines[0].text, /first/i, 'with a capped tail "first" would be a false claim');
+  assert.doesNotMatch(lines[0].text, /fabricat/i);
+});
+
 test('counterexamples: first filings, duplicates and repeated pulses never stack a line', () => {
   const h = bootStory();
 

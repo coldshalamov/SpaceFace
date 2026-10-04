@@ -1768,24 +1768,27 @@ export const story = {
     }
     if (!revised) return false;
     this._ensureState();
+    // history[history.length - 1] is the immediately-PREVIOUS sighting — after the clue book's
+    // CLUE_HISTORY_CAP splice (scanClues.js) it is the oldest SURVIVOR, not the first reading.
+    // The copy must stay truthful about that: it quotes a prior reading and never claims "first".
     const prior = revised.history[revised.history.length - 1];
     const stale = prior && prior.status === 'stale';
     const claim = String(revised.claim || 'the sighting').replace(/\s+/g, ' ').trim().slice(0, 80);
-    const first = prior && prior.claim
+    const priorClaim = prior && prior.claim
       ? String(prior.claim).replace(/\s+/g, ' ').trim().slice(0, 80)
       : '';
     const commsId = `clue_revision_${revised.subjectId}_${revised.observedAt}`;
     if (s.seenComms[commsId]) return false;
     s.seenComms[commsId] = true;
-    const kept = first
-      ? ` The first reading ("${first}") stays on file.`
+    const kept = priorClaim
+      ? ` Prior reading ("${priorClaim}") stays on file.`
       : ' The earlier reading stays on file.';
     this._fireComms({
       id: commsId,
       sender: 'SIGNAL LOG',
       text: stale
-        ? `SIGNAL LOG: circumstances changed — "${claim}" reads differently this pass. The earlier fix went stale; it stays on file, not struck.${first ? '' : kept}`
-        : `SIGNAL LOG: the evidence conflicts — a later reading contradicts the first on "${claim}".${kept}`,
+        ? `SIGNAL LOG: circumstances changed — "${claim}" reads differently this pass. The earlier fix went stale; it stays on file, not struck.${priorClaim ? '' : kept}`
+        : `SIGNAL LOG: the evidence conflicts — a later reading contradicts the prior one on "${claim}".${kept}`,
       category: 'story',
       ttl: 8,
       persist: false,
