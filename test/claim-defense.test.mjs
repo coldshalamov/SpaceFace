@@ -4,10 +4,12 @@ import assert from 'node:assert/strict';
 import {
   claims as claimsBase,
   CLAIM_DEFENSE_WARNING_S,
+  CLAIM_DEFENSE_REPRIEVE_S,
 } from '../src/systems/claims.js';
 import { createSimulation } from '../src/core/sim.js';
 import { encounterDirector } from '../src/systems/encounterDirector.js';
 import { spawnBudget } from '../src/systems/spawnBudget.js';
+import { provenanceLedger } from '../src/systems/provenanceLedger.js';
 
 const FRONTIER = 'sector_io_reach';
 
@@ -328,13 +330,15 @@ test('a terminally refused re-admission hands the raid back to the fallback owne
   const restored = h2.state.claims.bodies[0];
   assert.equal(restored.spec.defense.phase, 'engaged', 'restored defense starts on the physical track');
 
-  h2.state.simTime += 1;
+  // Run the refusal after the original warning deadline is already spent — otherwise
+  // Math.max keeps the old deadline and a missing re-arm would still pass.
+  h2.state.simTime = restored.spec.defense.deadlineAt + 1;
   h2.sys.update(1, h2.state);
   assert.equal(refusals.length, 1);
   assert.equal(restored.spec.defense.phase, 'warning',
     'a terminal refusal cannot sit in engaged — no resolution event can ever arrive');
-  assert.ok(restored.spec.defense.deadlineAt > h2.state.simTime - 1,
-    'the fallback deadline is re-armed, not already spent');
+  assert.ok(restored.spec.defense.deadlineAt >= h2.state.simTime + CLAIM_DEFENSE_REPRIEVE_S,
+    'the fallback deadline is re-armed a full reprieve out, not already spent');
   assert.equal(h2.sys._resumeDefenseIds.has(restored.spec.defense.id), false,
     'the retry token is consumed — the warning owner now owns the raid');
 
@@ -391,6 +395,9 @@ test('a synchronous resolve inside the request consumes the stale retry token on
   const h = boot();
   h.sys.beginRaidDefense(h.body.id);
   h.body.spec.defense.phase = 'engaged';
+  // A stale retry marker from a transient refusal before the save — the handoff branch must
+  // clear it alongside the token, not leave it serialized on a warning-phase defense.
+  h.body.spec.defense.retryAt = h.state.simTime - 10;
   const snap = h.sys.serialize();
 
   const h2 = boot({ director: {
@@ -406,13 +413,17 @@ test('a synchronous resolve inside the request consumes the stale retry token on
   } });
   h2.sys.deserialize(snap);
   const restored = h2.state.claims.bodies[0];
-  h2.state.simTime += 1;
+  // Same discriminating pin: run the abort after the original deadline is spent so only a
+  // real re-arm can put the fallback deadline back in the future.
+  h2.state.simTime = restored.spec.defense.deadlineAt + 1;
   h2.sys.update(1, h2.state);
   assert.equal(restored.spec.defense.phase, 'warning', 'the abort event owns the handoff');
-  assert.ok(restored.spec.defense.deadlineAt > h2.state.simTime - 1,
-    'the aborted path already re-armed the fallback deadline');
+  assert.ok(restored.spec.defense.deadlineAt >= h2.state.simTime + CLAIM_DEFENSE_REPRIEVE_S,
+    'the aborted path already re-armed the fallback deadline a full reprieve out');
   assert.equal(h2.sys._resumeDefenseIds.has(restored.spec.defense.id), false,
     'the stale token is retired, not re-armed against a different owner');
+  assert.equal(restored.spec.defense.retryAt, undefined,
+    'the stale retry marker is cleared with the token');
   assert.equal(restored.spec.totals.lostU, 0, 'an aborted admission books no loss');
 });
 
@@ -461,6 +472,24 @@ test('a defense receipt names the goods actually taken and saved (NXI-140)', () 
   assert.deepEqual({ ...receipt2.data.goodsSaved }, { cmdty_ore_iron: 100 });
   assert.match(receipt2.text, /stores intact/);
   assert.equal(h2.body.spec.totals.lostU, 0, 'no goods are invented or shaved to match the text');
+});
+
+test('a settled defense records one ledger consequence, not a detailed node plus a generic twin', () => {
+  const h = boot();
+  const ledger = Object.create(provenanceLedger);
+  ledger.init({ state: h.state, bus: h.bus });
+  h.sys.beginRaidDefense(h.body.id);
+  h.body.spec.defense.phase = 'engaged';
+  h.bus.emit('encounter:resolved', {
+    encounterId: h.body.spec.defense.encounterId, shape: 'claim_threat',
+    outcome: 'timeout', sectorId: FRONTIER,
+  });
+  const chains = (h.state.provenance && h.state.provenance.chains) || [];
+  const nodes = chains.flatMap((chain) => chain.nodes || [])
+    .filter((node) => node && node.bodyId === h.body.id
+      && (node.outcome === 'raided' || node.outcome === 'repelled'));
+  assert.equal(nodes.length, 1, 'the claim:raided echo of a defense settle adds no second node');
+  assert.match(nodes[0].text, /Claim defense timeout/, 'the surviving node is the detailed one');
 });
 
 test('the live director materializes the requested claim set piece at the exact anchor with readable ROE', () => {
