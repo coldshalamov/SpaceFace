@@ -33,7 +33,7 @@ export const BROOD_QUEEN = freezeDeep({
     arena: { radius: 460, entryBearing: 0, ballastOffsets: [[-140,110],[150,-80],[40,190]],
       exitHint: 'The sac fans vent off her flanks — the nose and the crossing lane are the dodges.' },
     wings: [{ id: 'brood_screen', atAct: 1, ingressTicks: 180,
-      grammar: 'warden_screen', twist: 'the_brood_answers', formation: 'wedge',
+      grammar: 'warden_screen', twist: 'protect_the_pack', formation: 'wedge',
       formationSpacing: 55, attackDuring: 'recovery', bark: 'QUEEN: Guard the sacs. Nothing reaches the nest.',
       members: [wingMember('wasp_swarmer', 'swarm_pack', 'press'),
         wingMember('wasp_swarmer', 'swarm_pack', 'press')] }],

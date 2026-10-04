@@ -194,6 +194,47 @@ test('the queen lands as a real capital boss and her score runs the fight', () =
   assert.ok(named(h, 'capitalBoss:telegraph').length > 0, 'her beats telegraph before they land');
 });
 
+test('the queen\'s call lands real damage and act II requests her brood_screen wing', () => {
+  const h = boot(70);
+  startWave(h, 70);
+  const boss = capitalBody(h);
+  assert.ok(boss, 'the Queen hull is a real cohort body');
+  const player = h.state.entities.get(h.state.playerId);
+  // Park the pilot inside the call's band: 130 wu sits inside brood_call's 30-230 ring (and
+  // inside the engage bubble), so the first authored cast has a body inside its shape when
+  // the tell expires — the machinery is shared with the covered capitals; this pins the
+  // Queen's own packet actually reaching the damage port.
+  player.pos.x = boss.pos.x + 130;
+  player.pos.z = boss.pos.z;
+
+  // 180 intro + 150 transition, then a 126-tick tell — the call is act I's whole opening.
+  tick(h, 520);
+  const hits = named(h, 'capitalBoss:hit').filter((e) => e.payload.targetId === player.id);
+  assert.ok(hits.length > 0, 'a live cast reached active with the pilot inside the shape');
+  assert.equal(hits[0].payload.beatId, 'brood_call', 'the call is the first thing she throws');
+  const damages = named(h, 'capitalBoss:damage').filter((e) => e.payload.targetId === player.id);
+  assert.ok(damages.length > 0, 'the hit routes through the one damage port');
+  assert.equal(damages[0].payload.origin && damages[0].payload.origin.kind, 'capital_score');
+  assert.equal(damages[0].payload.attackerId, boss.id);
+  assert.equal(damages[0].payload.packet.channels.kinetic, 6, 'the authored packet pays out');
+
+  // Hurt her past the nest's 0.62 threshold — the screen request is the score's own ask,
+  // stamped through the survival port exactly like the Foreman's covered screen.
+  boss.hull = Math.floor(boss.hullMax * 0.5);
+  tick(h, 40);
+  const requests = named(h, 'capitalBoss:wingRequested');
+  const screen = requests.find((e) => e.payload.wing && e.payload.wing.id === 'brood_screen');
+  assert.ok(screen, 'act II asks for the brood_screen wing');
+  const memberIds = named(h, 'survivalWave:cohortJoined').flatMap((e) => e.payload.ids || []);
+  assert.equal(memberIds.length, 2, 'the screen fields its two authored bodies');
+  const members = memberIds.map((id) => h.state.entities.get(id)).filter(Boolean);
+  for (const member of members) {
+    assert.equal(member.data.capitalWingGrammar, 'warden_screen');
+    assert.equal(member.data.capitalWingTwist, 'protect_the_pack');
+    assert.equal(member.data.runCohort, SURVIVAL_COHORT_TAG);
+  }
+});
+
 test('the tendril lands as a real capital boss on wave 80', () => {
   const h = boot(80);
   startWave(h, 80);

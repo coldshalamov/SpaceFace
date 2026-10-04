@@ -58,7 +58,7 @@ export const TENDRIL = freezeDeep({
         counter: 'The weave commits to a bearing and cannot turn — slide off the line and feed it a rock from the field it winds through.' }),
       beat({ id: 'tail_sweep', title: 'TAIL SWEEP', cue: 'maw.crossing',
         trackTicks: 0, tellTicks: 132, activeTicks: 26, recoverTicks: 168,
-        shapes: [lane(Math.PI / 2, -150, 150, 64, 0, 'hull'), lane(-Math.PI / 2, -150, 150, 64, 0, 'hull')],
+        shapes: [lane(Math.PI / 2, 0, 150, 64, 0, 'hull'), lane(-Math.PI / 2, 0, 150, 64, 0, 'hull')],
         packet: packet({ kinetic: 14 }),
         counter: 'The body rakes a band through itself — off the axis it declared is safe, and the head is never where the tail is.' }),
       beat({ id: 'coil_wrap', title: 'COIL WRAP', cue: 'maw.stern',
