@@ -2679,7 +2679,6 @@ writes minutes old at checkpoint; do not touch.
 - `check-pq146-stunt-proofs`: clothesline trajectory + two save-lineage fails
 - `check-shipworks-dock-composition`: pelican fallback hull clips dock interior at yaw 45/90
   (14 raycast hits)
-- `check-phase0-slice-contract`: 4 vs 7 SG-08 cue rows
 - `check-station-tabs`: market tab pointer response absent
 - 47-A telemetry envelope re-record: **owner action after sim-moving fixes land** — re-record
   hash + moved-field counts + a notes entry citing Package D/E/F evidence (`f70aac37f`,
