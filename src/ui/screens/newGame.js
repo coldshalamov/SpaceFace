@@ -26,7 +26,7 @@ import { createHullRing } from '../orrery/hullRing.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 import { hullPosterUrl } from '../hullPosters.js';
 import { dpMark, injectDeckplate } from '../deckplate/index.js';
-import { capPins, platePins, panePins, channelPins, rowPins, wellPins }
+import { capPins, platePins, channelPins }
   from '../kit/computedMaterial.js';
 
 // PQ-156.00: the catalog owns the three starter hulls; Hitch stays the default pick so a
@@ -416,6 +416,12 @@ export const newGameScreen = {
     if (refs && refs.unsubStartFailed) {
       try { refs.unsubStartFailed(); } catch (e) {}
     }
+    // a remount without a dispose (screen swap, error recovery) would leave the last mount's
+    // instruments observing detached DOM — release them first, the way dispose() does (REV-D136b.3)
+    for (const key of ['_diffDial', '_starterDial', '_hullRing', 'hull']) {
+      if (this[key] && typeof this[key].dispose === 'function') { try { this[key].dispose(); } catch (e) {} }
+      this[key] = null;
+    }
     rootEl.innerHTML = '';
     rootEl.classList.add('k-screen');
     rootEl.dataset.kReady = '0';
@@ -545,12 +551,24 @@ export const newGameScreen = {
         target.focus();
       }
     });
+    // The scale stands on end, so the stations take Up/Down along their own line — the roving's
+    // Left/Right still answers too (REV-D136b.1). The edges walk out the way the dial reads: Up
+    // off the first station climbs back to the starter words, Down off the last falls to the seed.
     diffWords.addEventListener('keydown', (e) => {
-      if (e.key !== 'ArrowUp' || e.altKey || e.ctrlKey || e.metaKey) return;
-      const target = liveWordIn(starterWords);
-      if (!target) return;
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
+      if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+      const all = [...diffWords.querySelectorAll('.k-word')];
+      const i = all.indexOf(e.target);
+      if (i < 0) return;
+      const next = all[i + (e.key === 'ArrowDown' ? 1 : -1)];
       e.preventDefault();
-      target.focus();
+      if (next) { next.focus(); cue('move'); return; }
+      if (e.key === 'ArrowUp') {
+        const target = liveWordIn(starterWords);
+        if (target) target.focus();
+      } else {
+        seed.focus();
+      }
     });
     // Once focus leaves the starter row, park every word's Tab stop again — the row's roving
     // focusin marks the entered word tabbable, and the six-stop launch traversal must stay

@@ -48,7 +48,7 @@ test('rows with no group head and one-item rows never split', () => {
 test('the nine-stop cap keeps a row whole rather than mint a tenth stop', () => {
   // eight rows already seated: one spare stop. 'Media' at 500 px verbs needs its own row each
   // (4 stops from one row = three extra) -> over the cap, so it stays whole.
-  const wide = row('Media', [li(500), li(500), li(500), li(500)]); // 30+90+4*522-22=2166
+  const wide = row('Media', [li(500), li(500), li(500), li(500)]); // 30+90+4*522-22=2186
   const rows = [
     row(null, [li(80)]), row('A', [li(80)]), row('B', [li(80)]), row('C', [li(80)]),
     row('D', [li(80)]), row('E', [li(80)]), row('F', [li(80)]), wide,
@@ -58,7 +58,7 @@ test('the nine-stop cap keeps a row whole rather than mint a tenth stop', () => 
 });
 
 test('a two-way split is spent when exactly one stop is spare', () => {
-  const wide = row('Media', [li(380), li(380), li(380)]); // 30+90+3*402-22=1304 -> 2 rows of ~730
+  const wide = row('Media', [li(380), li(380), li(380)]); // 30+90+3*402-22=1304 -> 2 rows of ~782
   const rows = [
     row(null, [li(80)]), row('A', [li(80)]), row('B', [li(80)]), row('C', [li(80)]),
     row('D', [li(80)]), row('E', [li(80)]), row('F', [li(80)]), wide,

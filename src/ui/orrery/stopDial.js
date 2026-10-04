@@ -53,6 +53,9 @@ html.sf-reduce-motion .orr-stopscale__art { transition:none; }
 /* the ruler stood on end: same scale, stations down a column — a pick-one whose words cannot
    share one line (a grown locale's four names past a form column's edge) still reads (D136) */
 .orr-stopscale--y > .orr-stopscale__row > li { transform:none; text-align:left; }
+/* a word longer than its column allowance wraps mid-token before it can paint past the ruler —
+   the screens pin .k-word to nowrap, so the bound has to be important to be real (REV-D136b.4) */
+.orr-stopscale--y .k-word { white-space:normal !important; overflow-wrap:anywhere; }
 .orr-turntable--carousel > .orr-turntable__row > li, .orr-turntable--carousel > .orr-turntable__art { transition:left .55s cubic-bezier(.2,.9,.25,1), top .55s cubic-bezier(.2,.9,.25,1), opacity .35s ease, transform .55s cubic-bezier(.2,.9,.25,1); }
 .orr-turntable--carousel > .orr-turntable__art { transform:translateX(-50%) scale(.7); transform-origin:50% 100%; opacity:.55; }
 .orr-turntable--carousel > .orr-turntable__art.is-on { opacity:0; transform:translateX(-50%) scale(.7); }
