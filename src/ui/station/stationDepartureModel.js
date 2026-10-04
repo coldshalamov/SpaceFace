@@ -291,10 +291,10 @@ export function firstDockHandoffSteps(state = {}) {
         ? 'Cargo sold — hold is ready'
         : (hasCargo ? 'Sell what you hauled' : 'Open your hold'),
       text: marketDone
-        ? 'Credits banked and space free for the next run.'
+        ? 'Credits banked, hold clear for the next run.'
         : (hasCargo
-            ? 'Opens Market → Selling. Sell what is in your hold at the station price, then free capacity for new cargo.'
-            : 'Opens Hold. Nothing to sell yet — check Market prices or undock to mine.'),
+            ? 'Sell it at the Market, then refill the hold.'
+            : 'Hold is empty. Check Market prices or undock to mine.'),
       kind: marketDone ? 'ok' : 'warn',
       done: marketDone,
       targetTab: hasCargo ? 'market' : 'hold',
@@ -306,9 +306,9 @@ export function firstDockHandoffSteps(state = {}) {
       title: missionDone ? 'Job on the board' : 'Take one easy job',
       text: missionDone
         ? (activeJobs === 1
-            ? 'Opens Missions. One active job — Accept+Track already feeds nav.'
-            : 'Opens Missions. ' + activeJobs + ' jobs active; track the one you want next.')
-        : 'Opens Missions. Accept a nearby low-risk contract; Track puts the route on your nav.',
+            ? 'One job active and already on your nav.'
+            : activeJobs + ' jobs active. Track the one you want next.')
+        : 'Accept a nearby, low-risk contract. Track puts it on your nav.',
       kind: missionDone ? 'ok' : 'warn',
       done: missionDone,
       targetTab: 'missions',
@@ -318,9 +318,8 @@ export function firstDockHandoffSteps(state = {}) {
       label: 'Launch',
       title: departure.state === 'ready' ? 'Safe to undock' : 'Fix launch risks',
       text: departure.state === 'ready'
-        ? 'Opens Services / Departure. Fuel, hull, and tracked work look good — undock when ready.'
-        : 'Opens ' + stationTabLabel(firstDockDepartureTarget(departureChips))
-          + '. ' + departure.status + ' — repair, refuel, or resolve the red departure chip before undock.',
+        ? 'Fuel, hull and job all look good.'
+        : departure.status + ' — fix it in ' + stationTabLabel(firstDockDepartureTarget(departureChips)) + ' before you undock.',
       kind: departure.state === 'risk' ? 'bad' : (departure.state === 'check' ? 'warn' : 'ok'),
       done: departure.state === 'ready' && missionDone,
       targetTab: firstDockDepartureTarget(departureChips),

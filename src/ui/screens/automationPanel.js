@@ -28,10 +28,10 @@ export function automationRecordRefAttr(value, fallback = '') {
 }
 
 const PROGRAM_OPTIONS = Object.freeze([
-  { value: '', label: 'Manual (mine -> bank)', meta: 'Banks ore in the drone buffer; recall to cash out.' },
-  { value: 'mine_to_depot', label: 'Mine -> Haul -> Sell', meta: 'Loops field mining into depot sales. The board names the stage that is actually stopping work.' },
+  { value: '', label: 'Manual (mine → bank)', meta: 'Banks ore in the drone buffer; recall to cash out.' },
+  { value: 'mine_to_depot', label: 'Mine → Haul → Sell', meta: 'Loops field mining into depot sales. The board names the stage that is actually stopping work.' },
   { value: 'patrol_guard', label: 'Guard Player', meta: 'Keeps the drone close as a defensive escort.' },
-  { value: 'scout_report', label: 'Scout -> Report', meta: 'Tests beacon movement and a short overwatch loop.' },
+  { value: 'scout_report', label: 'Scout → Report', meta: 'Tests beacon movement and a short overwatch loop.' },
 ]);
 
 const TABS = [

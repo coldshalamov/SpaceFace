@@ -924,7 +924,7 @@ export const salvage = {
     if (lost > 0) {
       this.bus.emit('comms:log', {
         from: 'SALVAGE CRADLE',
-        text: `Delivery short: ${lost}u scored. That is ${repairEstimateCr}cr of core repair you are eating.`,
+        text: `Delivery short: ${lost}u scored. That is ${repairEstimateCr} cr of core repair you are eating.`,
         kind: 'salvage',
       });
     }

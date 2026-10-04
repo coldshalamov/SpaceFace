@@ -886,7 +886,7 @@ export function barContactIntelTags(contact = {}, state = {}, stationId = '') {
 
   if (role === 'merchant') {
     const route = bestTradeRoute(state, stationId);
-    if (route) add('Route', commodityName(route.cmdtyId) + ' -> ' + stationName(route.sellStationId) + ' +' + Math.round(route.spread) + '/u', 'ok');
+    if (route) add('Route', commodityName(route.cmdtyId) + ' → ' + stationName(route.sellStationId) + ' +' + Math.round(route.spread) + '/u', 'ok');
     const ev = localEconEvent(state, stationId);
     if (ev) add('Market', commodityName(ev.commodityId) + ' ' + String(ev.type || 'event'), 'warn');
   } else if (role === 'pilot') {

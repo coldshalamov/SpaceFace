@@ -5883,8 +5883,8 @@ export const world = {
     this.bus.emit('toast', {
       text: charge.ok === false
         ? `Towed to ${quote.stationName}`
-        : `Towed to ${quote.stationName} — ${Math.round(charge.chargedCr || 0)}cr`
-          + (charge.debtCr > 0 ? ` + ${Math.round(charge.debtCr)}cr on the note` : ''),
+        : `Towed to ${quote.stationName} — ${Math.round(charge.chargedCr || 0)} cr`
+          + (charge.debtCr > 0 ? ` + ${Math.round(charge.debtCr)} cr on the note` : ''),
       kind: charge.debtCr > 0 ? 'warn' : 'success',
       ttl: 4,
     });

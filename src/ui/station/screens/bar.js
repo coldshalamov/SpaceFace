@@ -682,7 +682,7 @@ export function createBarScreen(ctx) {
       const credits = Math.max(0, Math.floor(Number(ctx.state && ctx.state.player && ctx.state.player.credits) || 0));
       if (credits < offer.price) {
         saidText = `You need ${fmt(offer.price)} cr for that rumor card.`;
-        if (ctx.bus) ctx.bus.emit('toast', { text: 'Insufficient credits for rumor card', kind: 'warn', ttl: 3 });
+        if (ctx.bus) ctx.bus.emit('toast', { text: 'Not enough credits for a rumor card', kind: 'warn', ttl: 3 });
         renderStage(ctx.state || {});
         return;
       }

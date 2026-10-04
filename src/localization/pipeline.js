@@ -142,6 +142,7 @@ const PHRASES = Object.freeze({
   LEGAL: L('LEGAL', 'LÉGAL', 'LEGAL', 'LEGAL'),
   EXOTIC: L('EXÓTICO', 'EXOTIQUE', 'EXOTISCH', 'EXÓTICO'),
   BAND: L('BANDA', 'BANDE', 'BAND', 'BANDA'),
+  RADIO: L('RADIO', 'RADIO', 'FUNK', 'RÁDIO'),
   FRAGILE: L('FRÁGIL', 'FRAGILE', 'ZERBRECHLICH', 'FRÁGIL'),
   'SET COURSE': L('FIJAR RUMBO', 'CAP À SUIVRE', 'KURS SETZEN', 'DEFINIR RUMO'),
   'Emergency recovery online…': L(

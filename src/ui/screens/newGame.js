@@ -36,7 +36,7 @@ const SHIP_BY_ID = new Map(SHIPS.map((def) => [def.id, def]));
 const FITTABLE_BY_ID = new Map();
 for (const item of [...WEAPONS, ...MODULES]) FITTABLE_BY_ID.set(item.id, item);
 const DIFFICULTIES = [
-  ['casual', 'Casual', 'Much softer combat for learning and QA.'],
+  ['casual', 'Casual', 'Much softer combat. Learn the ropes.'],
   ['standard', 'Standard', 'Softer hits on you; slightly easier kills.'],
   ['veteran', 'Veteran', 'Full combat baseline. No damage padding.'],
   ['ironman', 'Ironman', 'Veteran combat. Death ends the run.'],

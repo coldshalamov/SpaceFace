@@ -3471,7 +3471,7 @@ export const npcJobsRuntime = {
         }
         if (refundedCr > 0) {
           this.bus.emit('toast', {
-            text: `Hired tow never made the run — ${refundedCr}cr back on the tab.`,
+            text: `Hired tow never made the run — ${refundedCr} cr back on the tab.`,
             kind: 'info',
             ttl: 4,
           });
@@ -5121,7 +5121,7 @@ export const npcJobsRuntime = {
       try {
         if (billed) {
           this.bus.emit('economy:chargeCredits', { amount: YARD_DISPATCH_FEE_CR, reason: 'yard_tender_callout' });
-          this.bus.emit('toast', { text: `Drive's turning over. ${YARD_DISPATCH_FEE_CR}cr on the tab.`, kind: 'good', ttl: 4 });
+          this.bus.emit('toast', { text: `Drive's turning over. ${YARD_DISPATCH_FEE_CR} cr on the tab.`, kind: 'good', ttl: 4 });
         } else {
           this.bus.emit('toast', { text: 'Already turning over — no charge.', kind: 'info', ttl: 4 });
         }

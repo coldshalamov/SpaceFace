@@ -1714,7 +1714,7 @@ export function createHud(ctx, alerts) {
   // same trick the feed above uses, and it keeps every listener those modules installed.
   const commsTape = document.createElement('div');
   commsTape.className = 'sf-commtape';
-  commsTape.innerHTML = '<span class="sf-commtape__band">BAND</span>'
+  commsTape.innerHTML = '<span class="sf-commtape__band">RADIO</span>'
     + '<span id="news-ticker" class="sf-commtape__news" hidden></span>'
     + '<span class="sf-commtape__slots"></span>';
   const newsTickerHost = commsTape.querySelector('#news-ticker');

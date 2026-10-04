@@ -679,7 +679,7 @@ export function createUiInput(ctx, screenManager) {
     if (!state.ui) state.ui = {};
     state.ui.pendingClaimBodyId = body.id;
     if (screenManager.hasScreen && !screenManager.hasScreen('base')) {
-      bus.emit('toast', { text: 'Base interface initializing — press ' + BINDINGS.claimBase.label + ' again in a moment', kind: 'info', ttl: 3 });
+      bus.emit('toast', { text: 'Base screen is still loading — press ' + BINDINGS.claimBase.label + ' again in a moment', kind: 'info', ttl: 3 });
       return true;
     }
     screenManager.pushScreen('base');

@@ -58,12 +58,12 @@ function isDisabled(button) { return button.getAttribute('aria-disabled') === 't
 function setScreenButtonReady(button, ctx, id, label) {
   if (!button) return;
   const ready = screenReady(ctx, id);
-  setDisabled(button, !ready, ready ? '' : label + ' is initializing');
+  setDisabled(button, !ready, ready ? '' : label + ' is still loading');
 }
 function pushWhenReady(ctx, id, label) {
   if (!screenReady(ctx, id)) {
     if (ctx && ctx.bus && ctx.bus.emit) {
-      ctx.bus.emit('toast', { text: label + ' is initializing - try again in a moment', kind: 'info', ttl: 2200 });
+      ctx.bus.emit('toast', { text: label + ' is still loading — try again in a moment', kind: 'info', ttl: 2200 });
     }
     return;
   }

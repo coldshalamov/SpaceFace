@@ -1337,7 +1337,7 @@ export const asteroidScreen = {
       setNodeText(siteUi.delivered, String(c.delivered));
       setNodeText(siteUi.lost, String(c.lost));
       setNodeText(siteUi.exportedU, unitText(t.exportedU));
-      setNodeText(siteUi.creditedCr, `${t.creditedCr}cr`);
+      setNodeText(siteUi.creditedCr, `${t.creditedCr} cr`);
       siteUi.flights.textContent = '';
       for (const pod of c.inFlight) {
         const li = document.createElement('li');

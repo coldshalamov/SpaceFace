@@ -673,13 +673,13 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   }
 
   const HELP = {
-    market: ['Trade scope', 'Select a commodity to inspect price, demand and station pressure. Buy or sell against your credits and hold.'],
-    shipworks: ['Shipworks bay', 'Select a ship or a physical system slot, preview compatible equipment, then install through the real fitting system.'],
-    industry: ['Production line', 'Trace raw stock into refined goods and fabricated modules. Broken paths identify the exact missing input.'],
-    contracts: ['Missions board', 'Accept jobs, track routes, and settle objectives that complete at this berth. Highlighted rows need your attention first.'],
-    factions: ['Authority network', 'Select a faction to expose its standing thresholds, relationships, recent change and immediate unlocks.'],
-    bar: ['Station contacts', 'Contacts turn rumors and local knowledge into actionable leads, survey data and missions.'],
-    ledger: ["Ship's Ledger", 'The Tessera keeps what the manifests leave out. Physically recovered evidence pages open to their forensic detail.'],
+    market: ['Market', 'Pick a commodity to see its price, demand and stock. Buy or sell against your credits and hold space.'],
+    shipworks: ['Shipworks', 'Pick a ship or a slot, preview compatible gear, then install it.'],
+    industry: ['Industry', 'Trace raw stock into refined goods and modules. A broken line names the exact input it is missing.'],
+    contracts: ['Missions', 'Accept jobs, track routes and settle objectives that finish at this berth. Highlighted rows need attention first.'],
+    factions: ['Factions', 'Pick a faction to see its standing, relationships, recent changes and what it unlocks.'],
+    bar: ['Contacts', 'Contacts turn rumors and local knowledge into leads, survey data and missions.'],
+    ledger: ["Ship's Ledger", 'The Tessera keeps what the manifests leave out. Recovered evidence opens to full detail.'],
   };
   helpEl.addEventListener('click', () => {
     // Toggle, not re-open. With the trigger now exempt from close-on-outside-click, a second press

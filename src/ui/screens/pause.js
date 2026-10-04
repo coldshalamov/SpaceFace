@@ -183,18 +183,18 @@ function missionNextStep(m) {
     case 'escort':
     case 'smuggling_run':
     case 'salvage_retrieval':
-      return 'Next: resume, follow tracked nav to ' + dest + ', then dock to resolve the handoff.';
+      return 'Next: follow tracked nav to ' + dest + ', then dock.';
     case 'bulk_trade':
-      return 'Next: buy or carry ' + missionCommodity(m) + ', then sell into the tracked destination market.';
+      return 'Next: buy or carry ' + missionCommodity(m) + ', then sell at the destination market.';
     case 'mining_quota':
-      return 'Next: mine ' + missionCommodity(m) + ', keep cargo room open, then follow the tracker for payout.';
+      return 'Next: mine ' + missionCommodity(m) + ' and keep cargo room free.';
     case 'bounty_hunt':
     case 'patrol_clear':
-      return 'Next: resume, follow tracked nav, and expect combat before the timer runs down.';
+      return 'Next: follow tracked nav. Expect a fight before the timer runs out.';
     case 'recon_scan':
-      return 'Next: resume, follow tracked nav, and scan each marked site.';
+      return 'Next: follow tracked nav and scan each marked site.';
     default:
-      return 'Next: resume and follow the tracked objective; Mission Log (' + BINDINGS.missionLog.label + ') has the details.';
+      return 'Next: follow the tracked objective. Mission Log (' + BINDINGS.missionLog.label + ') has the details.';
   }
 }
 
@@ -333,18 +333,18 @@ function saveLine(state) {
   // save system now blocks.
   const run = state && state.run;
   if (run && run.phase !== 'inactive' && (run.kind === 'survival' || run.kind === 'lab')) {
-    return 'This run is not saved. Leaving the arena ends it; your campaign save is untouched.';
+    return 'This run is not saved. Leaving the arena ends it. Your campaign save is untouched.';
   }
   const slot = state && state.save && state.save.currentSlot;
   const savedAt = state && state.meta && state.meta.lastSavedAt;
   const savedWhen = fmtSavedAt(savedAt);
   if (savedWhen) {
-    return 'Saved ' + savedWhen + (slot ? ' to ' + slotLabel(slot) : '') + '. F5 quick-saves; F9 loads quick.';
+    return 'Saved ' + savedWhen + (slot ? ' to ' + slotLabel(slot) : '') + '. F5 quick-saves, F9 quick-loads.';
   }
   if (slot) {
-    return 'Loaded ' + slotLabel(slot) + ', but no save has landed this session. Use Save or F5 before quitting.';
+    return 'Loaded ' + slotLabel(slot) + '. Nothing saved this session. Use Save or F5 before quitting.';
   }
-  return 'Unsaved run. Use Save or F5 before quitting; autosaves fire after dock, undock, sector entry, and completed jobs.';
+  return 'Unsaved run. Use Save or F5 before quitting. Autosave runs on dock, undock, jump and job completion.';
 }
 
 // The combat trace (damage.routed / physics.impulse / collision.consequence) and the hull's
@@ -477,7 +477,7 @@ export function pauseStatusLines(state) {
       objectiveMention: missionId(candidate)
         ? { ref: 'contract:' + missionId(candidate), label: missionTitle(candidate), pre: 'UNTRACKED CONTRACT · ', post: ' · ' + missionProgress(candidate) + deadlineText(state, candidate) }
         : null,
-      next: 'Next: open Mission Log (' + BINDINGS.missionLog.label + '), Track Nav on a contract, then resume with a clear marker.',
+      next: 'Next: open Mission Log (' + BINDINGS.missionLog.label + ') and Track Nav on a contract.',
       save: saveLine(state),
     };
   }
@@ -494,7 +494,7 @@ export function pauseStatusLines(state) {
   return {
     hit: pauseLastImpactLine(state),
     objective: 'NO ACTIVE CONTRACT',
-    next: 'Next: dock at a station, open Missions or the Bar, accept + track work, then undock.',
+    next: 'Next: dock at a station, accept and track a job, then undock.',
     save: saveLine(state),
   };
 }

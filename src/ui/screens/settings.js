@@ -454,7 +454,6 @@ export const settingsScreen = {
 
     const title = el('header', 'k-title');
     title.appendChild(el('h1', 'k-display k-t-title fh-title', 'Settings'));
-    title.appendChild(el('p', 'k-t-emph k-62', 'Saved with your profile.'));
     rootEl.appendChild(title);
 
     // Section keys down the left. `dom.words` owns the arrow-key roving; the list is the
@@ -842,7 +841,7 @@ export const settingsScreen = {
       }
       rowToggle('Gameplay captions', () => ac.captions !== false, (v) => this._set(ctx, 'accessibility', 'captions', v));
       rowToggle('Audio cues', () => ac.audioCues !== false, (v) => this._set(ctx, 'accessibility', 'audioCues', v));
-      const statement = build.note('Accessibility statement: contrast, reduced motion, remap, text scale, assists, and captions are listed below. Every voiced bark is captioned when Gameplay captions is on.');
+      const statement = build.note('Accessibility statement: contrast, motion, remapping, text size, assists and captions are all below. Voiced lines are captioned when Gameplay captions is on.');
       statement.id = ACCESSIBILITY_STATEMENT_ID;
       const checklist = evaluateChecklist(s);
       build.header('Accessibility checklist');
@@ -869,11 +868,11 @@ export const settingsScreen = {
       // accepted source, displayed once per deliberate switch. refresh() retexts this row in
       // place; it is not a control and carries no write path.
       const familyRow = build.shortcut('Active input', controlFamilyLabel(activeControlFamily(ctx)),
-        'The device that last took the flight controls deliberately.');
+        'Whichever device you used last.');
       refs.familyValue = (familyRow && typeof familyRow.querySelector === 'function'
         ? familyRow.querySelector('.k-t-emph')
         : null) || (familyRow && familyRow.lastElementChild) || null;
-      build.note('Press a flight key to rebind it, then press a new key. Fixed ship/system shortcuts are listed below so you do not have to leave Settings to find them.');
+      build.note('Click a key, then press its new key. Fixed shortcuts are listed below.');
       // Each section builds its own lists in order; the pane is one column.
       this._renderControlsRebind(ctx, pane);
       this._renderFixedShortcuts(pane);
@@ -939,7 +938,7 @@ export const settingsScreen = {
     // Mission Log is chosen from the Pause menu (no direct gamepad missionLog action).
     // LB is the survey/deploy chord layer, RB the combat-state layer — every row below shows
     // the live seat, including 'LB + D-Pad Up' style chords.
-    build.note('Default layout: left stick fly, right stick aim, RT fire, LT mine, RB boost, LB brake, Y shove, R3 countermeasure, D-pad right bomb, D-pad left cycle bombs, A/Cross Massline, B dock when prompted, X/Square target, D-pad up auto-target (right stick draw-to-fly), View star map, Guide or Pause for the codex, Start → Pause → Mission Log. Hold LB or RB and tap a second button for the survey/deploy and combat-state verbs (scanner ping, fields, cloak, cruise).');
+    build.note('Default layout: left stick fly, right stick aim, RT fire, LT mine, RB boost, LB brake, Y shove, R3 countermeasure, A/Cross Massline, B dock when prompted, X/Square target, D-pad up auto-target, D-pad right bomb, D-pad left cycle bombs, View star map, Start → Pause → Mission Log. Hold LB or RB and tap a second button for scanner, fields, cloak and cruise.');
 
     // PQ-164.01 pad remap: capture-on-press rows, same grammar as the flight keys above — press
     // a word, then press the pad button. Conflict detection honours the designed context shares
@@ -1022,7 +1021,7 @@ export const settingsScreen = {
     CONTROL_SHORTCUTS.forEach((shortcut) => {
       build.shortcut(shortcut.label, shortcut.key, shortcut.note);
     });
-    build.note('Flight keys above are rebindable here; these interface shortcuts follow the shared binding registry.');
+    build.note('Flight keys above can be rebound here. These interface shortcuts are for reference.');
   },
 
   // Live rebind UI for flight actions. Reads defaults from input.js + any saved overrides in

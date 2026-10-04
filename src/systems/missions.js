@@ -3577,8 +3577,8 @@ export const missions = {
       ? Number(state.player.credits) : 0;
     if (acceptCostCr > 0 && availableCredits < acceptCostCr) {
       const text = upfrontCostCr > 0
-        ? `Need ${acceptCostCr}cr for deposit and service fees`
-        : `Need ${collateralCr}cr collateral`;
+        ? `Need ${acceptCostCr} cr for deposit and service fees`
+        : `Need ${collateralCr} cr collateral`;
       this.bus.emit('toast', { text, kind: 'error', ttl: 3 });
       return false;
     }
@@ -8073,7 +8073,7 @@ export const missions = {
     this._emitMissionDebrief(m, 'completed', null, { rewardCr: displayRewardCr });
     const completionText = isZeroPayLandmarkMission(m, displayRewardCr)
       ? `Mission complete: ${m.title} — field record filed; no credits issued.`
-      : `Mission complete: ${m.title} +${displayRewardCr}cr`;
+      : `Mission complete: ${m.title} +${displayRewardCr} cr`;
     this.bus.emit('toast', { text: completionText, kind: 'success', ttl: 4 });
     this._cleanupTargets(m);
     // Keep the settled chain visible while ensureBoard refreshes the destination board. Otherwise

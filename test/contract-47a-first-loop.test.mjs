@@ -81,7 +81,7 @@ test('Contract 47-A is received, located, recovered, delivered and settled once'
   const receipt = h.state.missions.receipts.find((row) => row.missionId === mission.id);
   assert.equal(receipt.outcome, 'completed');
   assert.equal(receipt.rewardCr, 400);
-  assert.ok(h.toasts.some((row) => /Contract 47-A.*\+400cr/.test(row.text)));
+  assert.ok(h.toasts.some((row) => /Contract 47-A.*\+400 cr/.test(row.text)));
   h.bus.emit('dock:docked', { stationId: 'station_helios' });
   assert.equal(h.credits.filter((row) => row.amount === 400).length, 1, 'repeat dock cannot duplicate settlement');
 });
