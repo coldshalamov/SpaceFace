@@ -1,0 +1,128 @@
+{
+  "files": [
+    {
+      "exactTriangleAttributes": {
+        "NORMAL": true,
+        "POSITION": true,
+        "TANGENT": false,
+        "TEXCOORD_0": true
+      },
+      "referenceSHA256": "eabc33fd9e7081a71b2ffabb60bc61a75005558c7cbea4e56927914ff6805fec",
+      "outputSHA256": "2140af0e5628034df46b54a0f9413bc87dbb8ae85ddf25728ca23e44d3b0f753",
+      "byteIdentical": false,
+      "checks": {
+        "geometry": false,
+        "attributeGeometry": false,
+        "nodes": true,
+        "materials": true,
+        "images": true,
+        "triangles": true
+      },
+      "changedPrimitiveAttributes": [
+        "LOD0_AXIAL_Carapace|Material_Hull_BroodCarapace",
+        "LOD1_AXIAL_Membrane|Material_Ceramic_BroodMembrane"
+      ],
+      "outputTriangles": {
+        "COLLISION": 300,
+        "LOD0": 31264,
+        "LOD1": 19386,
+        "LOD2": 11764
+      },
+      "passed": false,
+      "file": "brood_splitter_axial_v01.glb",
+      "canonicalSourceCertificateExact": true
+    },
+    {
+      "exactTriangleAttributes": {
+        "NORMAL": true,
+        "POSITION": true,
+        "TANGENT": true,
+        "TEXCOORD_0": true
+      },
+      "referenceSHA256": "ab5993d54a4a48ea5a8ec3ee9b509d914aaae5649eefe4ac2de5d08ced2651f3",
+      "outputSHA256": "ab5993d54a4a48ea5a8ec3ee9b509d914aaae5649eefe4ac2de5d08ced2651f3",
+      "byteIdentical": true,
+      "checks": {
+        "geometry": true,
+        "attributeGeometry": true,
+        "nodes": true,
+        "materials": true,
+        "images": true,
+        "triangles": true
+      },
+      "changedPrimitiveAttributes": [],
+      "outputTriangles": {
+        "COLLISION": 168,
+        "LOD0": 11104,
+        "LOD1": 8104,
+        "LOD2": 5624
+      },
+      "passed": true,
+      "file": "brood_splitter_port_v01.glb",
+      "canonicalSourceCertificateExact": true
+    },
+    {
+      "exactTriangleAttributes": {
+        "NORMAL": true,
+        "POSITION": true,
+        "TANGENT": true,
+        "TEXCOORD_0": true
+      },
+      "referenceSHA256": "495e5095904636a2d918233a6f12145368a22ffe662fb04eda5d65738135768c",
+      "outputSHA256": "495e5095904636a2d918233a6f12145368a22ffe662fb04eda5d65738135768c",
+      "byteIdentical": true,
+      "checks": {
+        "geometry": true,
+        "attributeGeometry": true,
+        "nodes": true,
+        "materials": true,
+        "images": true,
+        "triangles": true
+      },
+      "changedPrimitiveAttributes": [],
+      "outputTriangles": {
+        "COLLISION": 180,
+        "LOD0": 11092,
+        "LOD1": 8040,
+        "LOD2": 5628
+      },
+      "passed": true,
+      "file": "brood_splitter_starboard_v01.glb",
+      "canonicalSourceCertificateExact": true
+    },
+    {
+      "exactTriangleAttributes": {
+        "NORMAL": true,
+        "POSITION": true,
+        "TANGENT": false,
+        "TEXCOORD_0": true
+      },
+      "referenceSHA256": "6bf7ef85ab3d4a13e0d73e9dfa03bcdc476efeae268807eec12c7a2b25b9d9d1",
+      "outputSHA256": "46c1ccebb9fa5167844c27a0485a03f7482843682c0e2a6ea7b61d4248ad7a64",
+      "byteIdentical": false,
+      "checks": {
+        "geometry": false,
+        "attributeGeometry": false,
+        "nodes": true,
+        "materials": true,
+        "images": true,
+        "triangles": true
+      },
+      "changedPrimitiveAttributes": [
+        "LOD0_AXIAL_Carapace|Material_Hull_BroodCarapace",
+        "LOD0_AXIAL_Membrane|Material_Ceramic_BroodMembrane",
+        "LOD1_AXIAL_Membrane|Material_Ceramic_BroodMembrane"
+      ],
+      "outputTriangles": {
+        "COLLISION": 648,
+        "LOD0": 53460,
+        "LOD1": 35530,
+        "LOD2": 23016
+      },
+      "passed": false,
+      "file": "brood_splitter_v01.glb",
+      "canonicalSourceCertificateExact": true
+    }
+  ],
+  "passed": false
+}

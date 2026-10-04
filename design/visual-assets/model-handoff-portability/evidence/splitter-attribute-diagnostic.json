@@ -1,0 +1,67 @@
+{
+  "POSITION": {
+    "countA": 9556,
+    "countB": 9556,
+    "orderedExact": true,
+    "unorderedExact": true,
+    "uniqueValuesA": 7276,
+    "uniqueValuesB": 7276,
+    "onlyA": [],
+    "onlyB": [],
+    "maxOrderedComponentDifference": 0.0
+  },
+  "NORMAL": {
+    "countA": 9556,
+    "countB": 9556,
+    "orderedExact": true,
+    "unorderedExact": true,
+    "uniqueValuesA": 7276,
+    "uniqueValuesB": 7276,
+    "onlyA": [],
+    "onlyB": [],
+    "maxOrderedComponentDifference": 0.0
+  },
+  "TEXCOORD_0": {
+    "countA": 9556,
+    "countB": 9556,
+    "orderedExact": true,
+    "unorderedExact": true,
+    "uniqueValuesA": 8903,
+    "uniqueValuesB": 8903,
+    "onlyA": [],
+    "onlyB": [],
+    "maxOrderedComponentDifference": 0.0
+  },
+  "TANGENT": {
+    "countA": 9556,
+    "countB": 9556,
+    "orderedExact": false,
+    "unorderedExact": false,
+    "uniqueValuesA": 9505,
+    "uniqueValuesB": 9505,
+    "onlyA": [
+      [
+        [
+          -0.8701000213623047,
+          0.003700000001117587,
+          0.492900013923645,
+          1.0
+        ],
+        1
+      ]
+    ],
+    "onlyB": [
+      [
+        [
+          -0.8701000213623047,
+          0.003700000001117587,
+          0.4927999973297119,
+          1.0
+        ],
+        1
+      ]
+    ],
+    "maxOrderedComponentDifference": 0.00010001659393310547
+  },
+  "indicesExact": true
+}

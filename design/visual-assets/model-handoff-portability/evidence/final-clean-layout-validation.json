@@ -1,0 +1,171 @@
+{
+  "recipeManifestSHA256": "65465d4daa45a95ba9a8a34b70df5cb954984bb5f4c6c6a581a2fd79836a5dc8",
+  "layout": "minimal declared-input-only PR-relative layout, including the recipe at design/visual-assets/model-handoff-portability; no old worktree dependencies",
+  "environment": {
+    "blender": "4.3.2",
+    "python": "3.12.14",
+    "node": "24.19.0",
+    "platform": "Linux CPU"
+  },
+  "regeneratedModels": [
+    "charger C6 (from procedural section source)",
+    "mite M7 (from frozen M6 editable source)",
+    "splitter V12 (from frozen editable tiers)"
+  ],
+  "exactContentComparison": {
+    "charger": true,
+    "mite": true,
+    "splitter": false
+  },
+  "knownFailure": "Splitter parent/axial one LOD1 axial membrane tangent component. Exact checker remains failed; original exports normative. See splitter-attribute-diagnostic.json.",
+  "allFrozenInputsStillMatch": true,
+  "inputsAfterBuild": [
+    {
+      "model": "charger",
+      "path": "design/visual-assets/brood-charger-unfinished/contracts/proposed-charger-contract.json",
+      "sha256": "485dab54319c804ff8c37e3675c9bd93a4a93be9278907e4bf5d32eea6e94fae",
+      "matchesFrozen": true
+    },
+    {
+      "model": "charger",
+      "path": "design/visual-assets/brood-charger-unfinished/candidate-c6/brood_charger_v01.glb",
+      "sha256": "f2a7d59c2e21eb38792404ef25cf4b6c70c827554997e5eba9a9eb5da0eb70cd",
+      "matchesFrozen": true
+    },
+    {
+      "model": "charger",
+      "path": "design/visual-assets/brood-charger-unfinished/candidate-c6/brood-charger.motion.json",
+      "sha256": "e9afa043cda7ebf8fa0be717c63cbc3185d728eead55734d3a15af6752e24da7",
+      "matchesFrozen": true
+    },
+    {
+      "model": "mite",
+      "path": "design/visual-assets/brood-mite-unfinished/contracts/proposed-mite-contract.json",
+      "sha256": "02dee48836ad542476276648b4bde2949d2b782d18220ffcdcfd7d175a589ce4",
+      "matchesFrozen": true
+    },
+    {
+      "model": "mite",
+      "path": "design/visual-assets/brood-mite-unfinished/candidate-m7/brood_mite_v01.glb",
+      "sha256": "07479da4dc2c95ab9c8fbd1c2e7cf91703bc3e499f02ccd0a7ab148ee7df0e28",
+      "matchesFrozen": true
+    },
+    {
+      "model": "mite",
+      "path": "design/visual-assets/brood-mite-unfinished/candidate-m7/brood-mite.motion.json",
+      "sha256": "1dce1265d79bfd29d7fd24a3c5e2d67cbef2be83391ee746c10b3767937233c6",
+      "matchesFrozen": true
+    },
+    {
+      "model": "mite",
+      "path": "design/visual-assets/brood-mite-unfinished/study-m6/mite-M6-source.blend",
+      "sha256": "c5507e3d6eb5012a4bd9b496f3bdd38d71c01c41c5cc3d4e325e3e9e29c60d9a",
+      "matchesFrozen": true
+    },
+    {
+      "model": "splitter",
+      "path": "tools/blender/forge/brood_splitter_a6.py",
+      "sha256": "38dee5f12f619c469f8769bf3646af471998084569b76b12a3900eddccc12b39",
+      "matchesFrozen": true
+    },
+    {
+      "model": "splitter",
+      "path": "tools/blender/forge/forge.py",
+      "sha256": "987500394bedd3875c916afa7eeff368c2c545e4ac7371592a9f02e3283e064d",
+      "matchesFrozen": true
+    },
+    {
+      "model": "splitter",
+      "path": "tools/blender/forge/forge_export.py",
+      "sha256": "f9964988d97fef59ce764031091993178af96989be88c8e237f63d8da6c6b946",
+      "matchesFrozen": true
+    },
+    {
+      "model": "splitter",
+      "path": "tools/blender/forge/brood_kit.py",
+      "sha256": "80f98695b94feddfd5cae9ac435dc2b01658fdc965c6278f41cffb96f344c14d",
+      "matchesFrozen": true
+    },
+    {
+      "model": "splitter",
+      "path": "tools/blender/forge/motion.py",
+      "sha256": "49ea1d5b90f6da57a427865ef6ebef74604609fc426001ca4be0e6305f8951ff",
+      "matchesFrozen": true
+    },
+    {
+      "model": "splitter",
+      "path": "tools/blender/forge/animations/motion_bank.py",
+      "sha256": "b0f0c16db14facc11bb7dcc6e4441693a756caa80300ed75fc3f6f463277bd45",
+      "matchesFrozen": true
+    },
+    {
+      "model": "splitter",
+      "path": "tools/blender/forge/source_assets/splitter_a6/body-map.json",
+      "sha256": "5ecea300388c13b524887cfb6aed837d01a7d054a0e77c0380d021577ba5e541",
+      "matchesFrozen": true
+    },
+    {
+      "model": "splitter",
+      "path": "tools/blender/forge/source_assets/splitter_a6/splitter-A6-finished-source.blend",
+      "sha256": "a9371077b518747467bfef18b7f95bb9bfc85644936451dd2d2c832989b2870e",
+      "matchesFrozen": true
+    },
+    {
+      "model": "splitter",
+      "path": "tools/blender/forge/source_assets/splitter_a6/splitter-A6-LOD0-editable.blend",
+      "sha256": "156583b7a3baf32cf24f47aad0a52fa7dcb356ea61cd0053e8e460bcf29812e5",
+      "matchesFrozen": true
+    },
+    {
+      "model": "splitter",
+      "path": "tools/blender/forge/source_assets/splitter_a6/splitter-A6-LOD1-editable.blend",
+      "sha256": "2adb694c6957a3655c023c3d634019a9ff29e02cc0bbafb8a2763b9d157621f5",
+      "matchesFrozen": true
+    },
+    {
+      "model": "splitter",
+      "path": "tools/blender/forge/source_assets/splitter_a6/splitter-A6-LOD2-editable.blend",
+      "sha256": "a7831a9a91069e6db75404b05ab00972023aa0e5eb4c64634fe6ab753a762ad7",
+      "matchesFrozen": true
+    },
+    {
+      "model": "splitter",
+      "path": "scripts/lib/broodSourceSeal.mjs",
+      "sha256": "c48809639604bea1276cc3b0ef79c9b742b3d810d99b50f1dc7097108099f226",
+      "matchesFrozen": true
+    },
+    {
+      "model": "splitter",
+      "path": "review/brood-splitter-a6-v12/source/brood_splitter_axial_v01.glb",
+      "sha256": "eabc33fd9e7081a71b2ffabb60bc61a75005558c7cbea4e56927914ff6805fec",
+      "matchesFrozen": true
+    },
+    {
+      "model": "splitter",
+      "path": "review/brood-splitter-a6-v12/source/brood_splitter_port_v01.glb",
+      "sha256": "ab5993d54a4a48ea5a8ec3ee9b509d914aaae5649eefe4ac2de5d08ced2651f3",
+      "matchesFrozen": true
+    },
+    {
+      "model": "splitter",
+      "path": "review/brood-splitter-a6-v12/source/brood_splitter_starboard_v01.glb",
+      "sha256": "495e5095904636a2d918233a6f12145368a22ffe662fb04eda5d65738135768c",
+      "matchesFrozen": true
+    },
+    {
+      "model": "splitter",
+      "path": "review/brood-splitter-a6-v12/source/brood_splitter_v01.glb",
+      "sha256": "6bf7ef85ab3d4a13e0d73e9dfa03bcdc476efeae268807eec12c7a2b25b9d9d1",
+      "matchesFrozen": true
+    }
+  ],
+  "notRun": [
+    "Other Blender/Node versions or OS platforms",
+    "GPU renders/performance",
+    "Native runtime/default-route admission",
+    "Fresh spatial pose sweeps",
+    "Full game CI aggregates",
+    "Mite procedural M6 reconstruction",
+    "Splitter procedural high-detail reconstruction"
+  ]
+}

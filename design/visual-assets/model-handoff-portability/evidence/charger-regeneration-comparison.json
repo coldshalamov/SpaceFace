@@ -1,0 +1,36 @@
+{
+  "geometry": {
+    "exactTriangleAttributes": {
+      "NORMAL": true,
+      "POSITION": true,
+      "TANGENT": true,
+      "TEXCOORD_0": true
+    },
+    "referenceSHA256": "f2a7d59c2e21eb38792404ef25cf4b6c70c827554997e5eba9a9eb5da0eb70cd",
+    "outputSHA256": "1c3c0f785d7d1f557f8b08879d5e476c2cc223c1ca889dcaecbc6466a4e934e2",
+    "byteIdentical": false,
+    "checks": {
+      "geometry": true,
+      "attributeGeometry": true,
+      "nodes": true,
+      "materials": true,
+      "images": true,
+      "triangles": true
+    },
+    "changedPrimitiveAttributes": [],
+    "outputTriangles": {
+      "LOD0": 3712,
+      "LOD1": 2308,
+      "LOD2": 1428
+    },
+    "passed": true
+  },
+  "motion": {
+    "allNamedClipsKeysBindingsExact": true,
+    "sourceSealMatchesOutput": true,
+    "historicalSourceSHA256": "f2a7d59c2e21eb38792404ef25cf4b6c70c827554997e5eba9a9eb5da0eb70cd",
+    "outputSourceSHA256": "1c3c0f785d7d1f557f8b08879d5e476c2cc223c1ca889dcaecbc6466a4e934e2",
+    "passed": true
+  },
+  "passed": true
+}

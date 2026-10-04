@@ -1,0 +1,274 @@
+{
+  "schema": "spaceface.modelRecipeDependencies.v1",
+  "tools": {
+    "blender": "4.3.2; bundled glTF importer/exporter (Linux CPU export tested)",
+    "python": "3.10+ standard library; Python 3.12.14 tested",
+    "node": "Node 24.19.0 tested; required only for Splitter canonical source seal; other Node versions not tested"
+  },
+  "textures": "Both Brood 256px maps are deterministic procedural packed images. No texture file or external Blender library required.",
+  "models": {
+    "charger": {
+      "inputRoot": "design/visual-assets/brood-charger-unfinished",
+      "contractPath": "design/visual-assets/brood-charger-unfinished/contracts/proposed-charger-contract.json",
+      "contractSHA256": "485dab54319c804ff8c37e3675c9bd93a4a93be9278907e4bf5d32eea6e94fae",
+      "historicalIdentity": {
+        "glbSHA256": "f2a7d59c2e21eb38792404ef25cf4b6c70c827554997e5eba9a9eb5da0eb70cd",
+        "motionSHA256": "e9afa043cda7ebf8fa0be717c63cbc3185d728eead55734d3a15af6752e24da7"
+      },
+      "inputs": [
+        {
+          "path": "design/visual-assets/brood-charger-unfinished/contracts/proposed-charger-contract.json",
+          "sha256": "485dab54319c804ff8c37e3675c9bd93a4a93be9278907e4bf5d32eea6e94fae",
+          "bytes": 15751
+        },
+        {
+          "path": "design/visual-assets/brood-charger-unfinished/candidate-c6/brood_charger_v01.glb",
+          "sha256": "f2a7d59c2e21eb38792404ef25cf4b6c70c827554997e5eba9a9eb5da0eb70cd",
+          "bytes": 426068
+        },
+        {
+          "path": "design/visual-assets/brood-charger-unfinished/candidate-c6/brood-charger.motion.json",
+          "sha256": "e9afa043cda7ebf8fa0be717c63cbc3185d728eead55734d3a15af6752e24da7",
+          "bytes": 76884
+        }
+      ]
+    },
+    "mite": {
+      "inputRoot": "design/visual-assets/brood-mite-unfinished",
+      "contractPath": "design/visual-assets/brood-mite-unfinished/contracts/proposed-mite-contract.json",
+      "contractSHA256": "02dee48836ad542476276648b4bde2949d2b782d18220ffcdcfd7d175a589ce4",
+      "historicalIdentity": {
+        "glbSHA256": "07479da4dc2c95ab9c8fbd1c2e7cf91703bc3e499f02ccd0a7ab148ee7df0e28",
+        "motionSHA256": "1dce1265d79bfd29d7fd24a3c5e2d67cbef2be83391ee746c10b3767937233c6"
+      },
+      "inputs": [
+        {
+          "path": "design/visual-assets/brood-mite-unfinished/contracts/proposed-mite-contract.json",
+          "sha256": "02dee48836ad542476276648b4bde2949d2b782d18220ffcdcfd7d175a589ce4",
+          "bytes": 19524
+        },
+        {
+          "path": "design/visual-assets/brood-mite-unfinished/candidate-m7/brood_mite_v01.glb",
+          "sha256": "07479da4dc2c95ab9c8fbd1c2e7cf91703bc3e499f02ccd0a7ab148ee7df0e28",
+          "bytes": 410644
+        },
+        {
+          "path": "design/visual-assets/brood-mite-unfinished/candidate-m7/brood-mite.motion.json",
+          "sha256": "1dce1265d79bfd29d7fd24a3c5e2d67cbef2be83391ee746c10b3767937233c6",
+          "bytes": 4167
+        },
+        {
+          "path": "design/visual-assets/brood-mite-unfinished/study-m6/mite-M6-source.blend",
+          "sha256": "c5507e3d6eb5012a4bd9b496f3bdd38d71c01c41c5cc3d4e325e3e9e29c60d9a",
+          "bytes": 1458410
+        }
+      ]
+    },
+    "splitter": {
+      "inputRoot": ".",
+      "contractPath": "tools/blender/forge/source_assets/splitter_a6/body-map.json",
+      "contractSHA256": "5ecea300388c13b524887cfb6aed837d01a7d054a0e77c0380d021577ba5e541",
+      "historicalIdentity": {
+        "sourceSealSHA256": "56caeb6efbf38d414ef57817b9a0cdc488ca3a2ed0b204cb6c41717644ab4b13",
+        "glbs": [
+          {
+            "path": "review/brood-splitter-a6-v12/source/brood_splitter_axial_v01.glb",
+            "sha256": "eabc33fd9e7081a71b2ffabb60bc61a75005558c7cbea4e56927914ff6805fec",
+            "bytes": 2526172
+          },
+          {
+            "path": "review/brood-splitter-a6-v12/source/brood_splitter_port_v01.glb",
+            "sha256": "ab5993d54a4a48ea5a8ec3ee9b509d914aaae5649eefe4ac2de5d08ced2651f3",
+            "bytes": 1106136
+          },
+          {
+            "path": "review/brood-splitter-a6-v12/source/brood_splitter_starboard_v01.glb",
+            "sha256": "495e5095904636a2d918233a6f12145368a22ffe662fb04eda5d65738135768c",
+            "bytes": 1109952
+          },
+          {
+            "path": "review/brood-splitter-a6-v12/source/brood_splitter_v01.glb",
+            "sha256": "6bf7ef85ab3d4a13e0d73e9dfa03bcdc476efeae268807eec12c7a2b25b9d9d1",
+            "bytes": 4613008
+          }
+        ]
+      },
+      "inputs": [
+        {
+          "path": "tools/blender/forge/brood_splitter_a6.py",
+          "stagePath": "tools/blender/forge/brood_splitter_a6.py",
+          "sha256": "38dee5f12f619c469f8769bf3646af471998084569b76b12a3900eddccc12b39",
+          "bytes": 7855
+        },
+        {
+          "path": "tools/blender/forge/forge.py",
+          "stagePath": "tools/blender/forge/forge.py",
+          "sha256": "987500394bedd3875c916afa7eeff368c2c545e4ac7371592a9f02e3283e064d",
+          "bytes": 58900
+        },
+        {
+          "path": "tools/blender/forge/forge_export.py",
+          "stagePath": "tools/blender/forge/forge_export.py",
+          "sha256": "f9964988d97fef59ce764031091993178af96989be88c8e237f63d8da6c6b946",
+          "bytes": 23607
+        },
+        {
+          "path": "tools/blender/forge/brood_kit.py",
+          "stagePath": "tools/blender/forge/brood_kit.py",
+          "sha256": "80f98695b94feddfd5cae9ac435dc2b01658fdc965c6278f41cffb96f344c14d",
+          "bytes": 28565
+        },
+        {
+          "path": "tools/blender/forge/motion.py",
+          "stagePath": "tools/blender/forge/motion.py",
+          "sha256": "49ea1d5b90f6da57a427865ef6ebef74604609fc426001ca4be0e6305f8951ff",
+          "bytes": 3973
+        },
+        {
+          "path": "tools/blender/forge/animations/motion_bank.py",
+          "stagePath": "tools/blender/forge/animations/motion_bank.py",
+          "sha256": "b0f0c16db14facc11bb7dcc6e4441693a756caa80300ed75fc3f6f463277bd45",
+          "bytes": 13295
+        },
+        {
+          "path": "tools/blender/forge/source_assets/splitter_a6/body-map.json",
+          "stagePath": "tools/blender/forge/source_assets/splitter_a6/body-map.json",
+          "sha256": "5ecea300388c13b524887cfb6aed837d01a7d054a0e77c0380d021577ba5e541",
+          "bytes": 52397
+        },
+        {
+          "path": "tools/blender/forge/source_assets/splitter_a6/splitter-A6-finished-source.blend",
+          "stagePath": "tools/blender/forge/source_assets/splitter_a6/splitter-A6-finished-source.blend",
+          "sha256": "a9371077b518747467bfef18b7f95bb9bfc85644936451dd2d2c832989b2870e",
+          "bytes": 6687486
+        },
+        {
+          "path": "tools/blender/forge/source_assets/splitter_a6/splitter-A6-LOD0-editable.blend",
+          "stagePath": "tools/blender/forge/source_assets/splitter_a6/splitter-A6-LOD0-editable.blend",
+          "sha256": "156583b7a3baf32cf24f47aad0a52fa7dcb356ea61cd0053e8e460bcf29812e5",
+          "bytes": 4960762
+        },
+        {
+          "path": "tools/blender/forge/source_assets/splitter_a6/splitter-A6-LOD1-editable.blend",
+          "stagePath": "tools/blender/forge/source_assets/splitter_a6/splitter-A6-LOD1-editable.blend",
+          "sha256": "2adb694c6957a3655c023c3d634019a9ff29e02cc0bbafb8a2763b9d157621f5",
+          "bytes": 3810450
+        },
+        {
+          "path": "tools/blender/forge/source_assets/splitter_a6/splitter-A6-LOD2-editable.blend",
+          "stagePath": "tools/blender/forge/source_assets/splitter_a6/splitter-A6-LOD2-editable.blend",
+          "sha256": "a7831a9a91069e6db75404b05ab00972023aa0e5eb4c64634fe6ab753a762ad7",
+          "bytes": 2687742
+        },
+        {
+          "path": "scripts/lib/broodSourceSeal.mjs",
+          "stagePath": "scripts/lib/broodSourceSeal.mjs",
+          "sha256": "c48809639604bea1276cc3b0ef79c9b742b3d810d99b50f1dc7097108099f226",
+          "bytes": 5246
+        },
+        {
+          "path": "review/brood-splitter-a6-v12/source/brood_splitter_axial_v01.glb",
+          "sha256": "eabc33fd9e7081a71b2ffabb60bc61a75005558c7cbea4e56927914ff6805fec",
+          "bytes": 2526172
+        },
+        {
+          "path": "review/brood-splitter-a6-v12/source/brood_splitter_port_v01.glb",
+          "sha256": "ab5993d54a4a48ea5a8ec3ee9b509d914aaae5649eefe4ac2de5d08ced2651f3",
+          "bytes": 1106136
+        },
+        {
+          "path": "review/brood-splitter-a6-v12/source/brood_splitter_starboard_v01.glb",
+          "sha256": "495e5095904636a2d918233a6f12145368a22ffe662fb04eda5d65738135768c",
+          "bytes": 1109952
+        },
+        {
+          "path": "review/brood-splitter-a6-v12/source/brood_splitter_v01.glb",
+          "sha256": "6bf7ef85ab3d4a13e0d73e9dfa03bcdc476efeae268807eec12c7a2b25b9d9d1",
+          "bytes": 4613008
+        }
+      ]
+    }
+  },
+  "recipeFiles": [
+    {
+      "path": "recipes/charger/assemble_candidate.py",
+      "sha256": "274ba192df5c322ef1de0a854b0f90f982e2e203f7f6317a017e2fa6aca5d93a",
+      "bytes": 3290
+    },
+    {
+      "path": "recipes/charger/bake_motion.py",
+      "sha256": "16d3c6d55b47debc24304c95bf50d23e2949f6521ab891461186f6394b992a90",
+      "bytes": 2634
+    },
+    {
+      "path": "recipes/charger/build_charger.py",
+      "sha256": "7646bee32da51400e0a937656b5b78dfe3adce4e8d17a43dc462026c02e2001a",
+      "bytes": 11561
+    },
+    {
+      "path": "recipes/charger/verify_source.py",
+      "sha256": "b3152c7495d675d794e2a661f3a9aef244f20d2b1652f3b758ffc87613c89a63",
+      "bytes": 1079
+    },
+    {
+      "path": "recipes/context.py",
+      "sha256": "aa21215e65bb0974b51506eba02f508754c3745d00f81057a0fdcb98ccd8420a",
+      "bytes": 390
+    },
+    {
+      "path": "recipes/mite/assemble_candidate.py",
+      "sha256": "add98666b3005b81014dbff938a2f0767e18d3d0a45788b8b8b8147d940d0806",
+      "bytes": 3599
+    },
+    {
+      "path": "recipes/mite/export_lods.py",
+      "sha256": "bd63d7e9db3296dee08534408eea83d563a8cb0d6358ba830cf0ada576f21d59",
+      "bytes": 7169
+    },
+    {
+      "path": "dependencies/forge/animations/motion_bank.py",
+      "sha256": "b0f0c16db14facc11bb7dcc6e4441693a756caa80300ed75fc3f6f463277bd45",
+      "bytes": 13295
+    },
+    {
+      "path": "dependencies/forge/brood_kit.py",
+      "sha256": "80f98695b94feddfd5cae9ac435dc2b01658fdc965c6278f41cffb96f344c14d",
+      "bytes": 28565
+    },
+    {
+      "path": "dependencies/forge/forge.py",
+      "sha256": "987500394bedd3875c916afa7eeff368c2c545e4ac7371592a9f02e3283e064d",
+      "bytes": 58900
+    },
+    {
+      "path": "dependencies/forge/forge_export.py",
+      "sha256": "f9964988d97fef59ce764031091993178af96989be88c8e237f63d8da6c6b946",
+      "bytes": 23607
+    },
+    {
+      "path": "inputs/frozen-mite-motion.json",
+      "sha256": "a3f50bf6c71d105e0cb6d9e4c48e2082e866a590d1de64907ee2550813c42053",
+      "bytes": 4129
+    },
+    {
+      "path": "regenerate.py",
+      "sha256": "11b2236ee6402f0571673463132cc48a2ad8c7d6aa767ae81e31c2f471b45f13",
+      "bytes": 5373
+    },
+    {
+      "path": "check_outputs.py",
+      "sha256": "31bcb39cd7db56c898c70479df928d0bacc0bdbabe7fa3769589d6242a19e9f8",
+      "bytes": 6349
+    },
+    {
+      "path": "inspect_blends.py",
+      "sha256": "30ad7692960a3655cca67cc64cf971e106614d70cca031c8ccbda894b4a375ec",
+      "bytes": 1030
+    },
+    {
+      "path": "tests/test_portable.py",
+      "sha256": "26f752f138bf522c03f4dc4d3d779158988df8fe202fadced15c9b64b375b5c5",
+      "bytes": 4716
+    }
+  ]
+}

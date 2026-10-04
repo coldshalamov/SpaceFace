@@ -1,0 +1,104 @@
+{
+  "schema": "spaceface.portableRejectedModelRecipe.v1",
+  "model": "charger",
+  "status": "generated-unverified",
+  "artAccepted": false,
+  "runtimeAdmitted": false,
+  "historicalModel": {
+    "glbSHA256": "f2a7d59c2e21eb38792404ef25cf4b6c70c827554997e5eba9a9eb5da0eb70cd",
+    "motionSHA256": "e9afa043cda7ebf8fa0be717c63cbc3185d728eead55734d3a15af6752e24da7"
+  },
+  "inputContractSHA256": "485dab54319c804ff8c37e3675c9bd93a4a93be9278907e4bf5d32eea6e94fae",
+  "inputs": [
+    {
+      "path": "design/visual-assets/brood-charger-unfinished/contracts/proposed-charger-contract.json",
+      "sha256": "485dab54319c804ff8c37e3675c9bd93a4a93be9278907e4bf5d32eea6e94fae",
+      "bytes": 15751
+    },
+    {
+      "path": "design/visual-assets/brood-charger-unfinished/candidate-c6/brood_charger_v01.glb",
+      "sha256": "f2a7d59c2e21eb38792404ef25cf4b6c70c827554997e5eba9a9eb5da0eb70cd",
+      "bytes": 426068
+    },
+    {
+      "path": "design/visual-assets/brood-charger-unfinished/candidate-c6/brood-charger.motion.json",
+      "sha256": "e9afa043cda7ebf8fa0be717c63cbc3185d728eead55734d3a15af6752e24da7",
+      "bytes": 76884
+    }
+  ],
+  "recipeManifestSHA256": "65465d4daa45a95ba9a8a34b70df5cb954984bb5f4c6c6a581a2fd79836a5dc8",
+  "steps": [
+    {
+      "step": "lod0",
+      "exitCode": 0,
+      "log": "logs/lod0.log"
+    },
+    {
+      "step": "lod1",
+      "exitCode": 0,
+      "log": "logs/lod1.log"
+    },
+    {
+      "step": "lod2",
+      "exitCode": 0,
+      "log": "logs/lod2.log"
+    },
+    {
+      "step": "assemble",
+      "exitCode": 0,
+      "log": "logs/assemble.log"
+    },
+    {
+      "step": "motion",
+      "exitCode": 0,
+      "log": "logs/motion.log"
+    },
+    {
+      "step": "topology",
+      "exitCode": 0,
+      "log": "logs/topology.log"
+    }
+  ],
+  "outputs": [
+    {
+      "path": "brood_charger_v01.glb",
+      "sha256": "1c3c0f785d7d1f557f8b08879d5e476c2cc223c1ca889dcaecbc6466a4e934e2",
+      "bytes": 426104
+    },
+    {
+      "path": "charger-LOD0-source.blend",
+      "sha256": "154e64a622992f449f4039b481f4156bd82395aaec547da4f37e464b67d5b853",
+      "bytes": 853294
+    },
+    {
+      "path": "charger-LOD0-source.glb",
+      "sha256": "3eb26130a46dd3cdc9d643d252298b07bc54ce7c5363e8d105297023a1b3b217",
+      "bytes": 236196
+    },
+    {
+      "path": "charger-LOD1-source.blend",
+      "sha256": "1241a75320cdfe98d1a0bab01bed102260d5c167076b9a51ef1fd92230b37092",
+      "bytes": 776626
+    },
+    {
+      "path": "charger-LOD1-source.glb",
+      "sha256": "c605744795cc2ca644342cdd8bb5657795dea7ebe1000b5849dfaf6e3e6fb7be",
+      "bytes": 178180
+    },
+    {
+      "path": "charger-LOD2-source.blend",
+      "sha256": "ffc3851c9160d3414cb6d829824f2160aab0fa4ab69933e89f3f1c890826d4f9",
+      "bytes": 728386
+    },
+    {
+      "path": "charger-LOD2-source.glb",
+      "sha256": "a1890b7f528cb5df0e4ecc06531957f2fe20e0975465b8268ae24c5f982b8592",
+      "bytes": 138120
+    },
+    {
+      "path": "charger-animated-source.blend",
+      "sha256": "c9d4ce9939e96952c43570b0c0c9e48c516f566650a6709aa70ab6860c6e25e9",
+      "bytes": 1092806
+    }
+  ]
+}
