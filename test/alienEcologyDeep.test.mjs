@@ -304,6 +304,36 @@ test('a site under several faction desks emits each authored offer once', () => 
   assert.equal(emitLog.filter((e) => e.type === 'mission:offered').length, 3, 'no repeat offers');
 });
 
+// ── berth admission: a gated desk cannot sell the fieldwork ──────────────────────────
+test('the fieldwork desk honors the berth gate — the offer retries until standing opens it', () => {
+  const site = ALIEN_SITES.harvest_deep;
+  const deskCount = ecologyMissionsForSite(site.siteId).length;
+  const state = makeState('sector_sker_haven');
+  const emitLog = [];
+  const world = makeWorld(state, [], emitLog);
+  materializeAlienEcology(world, { id: 'sector_sker_haven' }, { dressing: [], pois: [] });
+  // The REAL record's gate: Sker Bazaar repGates to Reach standing (the stub fixtures
+  // elsewhere carry no flags and admit by construction).
+  state.world.sectors.sector_sker_haven = {
+    tier: 3,
+    stations: [{ id: 'station_sker', factionId: 'faction_reach', repGated: true, services: ['missions'] }],
+  };
+  const player = fitModules(state, []);
+  player.pos = { x: -1500, z: -1600 }; // inside the close band
+  tickAlienEcology(world, 0.5);
+  assert.equal(emitLog.filter((e) => e.type === 'mission:offered').length, 0,
+    'a repGated desk cannot sell the fieldwork at rep 0');
+
+  // Reach standing opens the Bazaar — the next close-band entry retries and the desks sell.
+  state.factions = { faction_reach: { rep: 5 } };
+  player.pos = { x: 8000, z: 8000 }; // leave the band to re-arm the offer latch
+  tickAlienEcology(world, 0.5);
+  player.pos = { x: -1500, z: -1600 };
+  tickAlienEcology(world, 0.5);
+  assert.equal(emitLog.filter((e) => e.type === 'mission:offered').length, deskCount,
+    'the vouched desk sells every authored fieldwork desk');
+});
+
 // ── AE-116/118: the deep trace ───────────────────────────────────────────────────────
 test('closing on the deep writes deep-trace evidence and revelation 3', () => {
   const state = makeState('sector_sker_haven');

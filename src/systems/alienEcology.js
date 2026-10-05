@@ -47,6 +47,7 @@ import { fittedModuleDefs } from '../core/fittedModules.js';
 import { addCargo, removeCargo } from './cargo.js';
 import { commodityIsBiohazard } from '../data/commodities.js';
 import { ALIEN_ECOLOGY_SCHEMA, ensureAlienEcologyState } from '../data/alienEcologyState.js';
+import { stationBerthAdmits } from '../data/frontierRumors.js';
 
 const TWO_PI = Math.PI * 2;
 
@@ -293,13 +294,30 @@ export function materializeAlienEcology(world, sector, active) {
 // ── Mission offers (AE-067..069, AE-087..089) ─────────────────────────────────────────────
 // Site close-band fires emit a `mission:offered` row on the sector's station board — the
 // same external-offer contract salvage uses, so the board/accept path needs no new code.
+function repFor(state, factionId) {
+  const rec = factionId && state && state.factions ? state.factions[factionId] : null;
+  return rec ? (rec.rep || 0) : 0;
+}
+
+// The fieldwork contract posts at a desk the pilot must dock at to read — a first-station pick
+// can name a refinery with no contract office (Ceres, Vesta Forge) or a berth that refuses the
+// pilot outright (the repGated Ashfall cache, the Sker Bazaar). Pick a missions-capable desk
+// that admits them, fall back to any admitting desk, or leave the key unset: the emit retries
+// on the next close-band entry once standing opens the berth.
+function deskForSite(state, stations) {
+  const admits = (st) => stationBerthAdmits(st, repFor(state, st && st.factionId), state);
+  return stations.find((st) => st && st.services && st.services.includes('missions') && admits(st))
+    || stations.find((st) => st && admits(st))
+    || null;
+}
+
 function emitEcologyOffer(world, site, sector) {
   const state = world && world.state;
   const rec = siteRecord(state, site.siteId);
   const missions = ecologyMissionsForSite(site.siteId);
   if (!missions.length) return;
   const stations = (sector && sector.stations) || [];
-  const station = stations[0] || null;
+  const station = deskForSite(state, stations);
   let emitted = 0;
   // AE-130..137 — every authored faction desk at the site emits once, each under its own
   // offersEmitted key; a site carrying multiple contracts surfaces all of them. The bit is
