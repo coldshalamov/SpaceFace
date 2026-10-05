@@ -129,6 +129,7 @@ export function censusRadarContactsStillLayer({
   cache,
   updateTrailFn = null,
   maxTrailUpdates = MAX_TRAIL_UPDATES,
+  hostileOf = null,
 }) {
   const playerX = player.pos.x;
   const playerZ = player.pos.z;
@@ -196,7 +197,7 @@ export function censusRadarContactsStillLayer({
     const dx = entity.pos.x - playerX;
     const dz = entity.pos.z - playerZ;
     const distanceSq = dx * dx + dz * dz;
-    const hostile = isHostileToPlayer(entity, playerTeam, state);
+    const hostile = hostileOf ? hostileOf(entity) : isHostileToPlayer(entity, playerTeam, state);
     const station = entity.type === 'station';
     const gate = station && !!(entity.data && entity.data.isGate);
     const poiStamped = entity.data && entity.data.poiBehavior;
@@ -742,14 +743,18 @@ function entityHeading(entity) {
   return null;
 }
 
-function shipState(entity, playerTeam, state) {
-  if (isHostileToPlayer(entity, playerTeam, state)) return 'hostile';
+// hostileOf (optional): a frame-scoped `(entity) => boolean` stance resolver. The 10 Hz draw asks
+// the same entity's stance from several passes (glow, trail, glyph) — a per-draw memo keeps stance
+// live per frame while paying for one isHostileToPlayer evaluation per contact per frame.
+function shipState(entity, playerTeam, state, hostileOf) {
+  const hostile = hostileOf ? hostileOf(entity) : isHostileToPlayer(entity, playerTeam, state);
+  if (hostile) return 'hostile';
   if (entity && entity.factionId && FACTION_COLOR[entity.factionId]) return 'friendly';
   return 'neutral';
 }
 
-function contactColor(entity, playerTeam, colorblindMode, state) {
-  const semanticState = shipState(entity, playerTeam, state);
+function contactColor(entity, playerTeam, colorblindMode, state, hostileOf) {
+  const semanticState = shipState(entity, playerTeam, state, hostileOf);
   if (colorblindMode && colorblindMode !== 'none') {
     return semanticColor(semanticState, colorblindMode);
   }
@@ -758,12 +763,13 @@ function contactColor(entity, playerTeam, colorblindMode, state) {
   return TACTICAL_MAP_PALETTE.neutral;
 }
 
-function contactShape(entity, playerTeam, state) {
-  if (isHostileToPlayer(entity, playerTeam, state)) return semanticShape('hostile');
+function contactShape(entity, playerTeam, state, hostileOf) {
+  const hostile = hostileOf ? hostileOf(entity) : isHostileToPlayer(entity, playerTeam, state);
+  if (hostile) return semanticShape('hostile');
   const role = String((entity.data && (entity.data.trafficRole || entity.data.role)) || '').toLowerCase();
   if (role === 'hauler' || role === 'miner' || role === 'smuggler' || role === 'tug') return 'square';
   if (role === 'patrol' || role === 'escort' || role === 'courier' || role === 'rescue') return 'diamond';
-  return semanticShape(shipState(entity, playerTeam, state));
+  return semanticShape(shipState(entity, playerTeam, state, hostileOf));
 }
 
 function updateTrail(entity) {
@@ -841,6 +847,7 @@ function drawNeutralContact(g, entity, x, y, heading, colour, {
   named = false,
   playerTeam = null,
   state = null,
+  hostileOf = null,
 } = {}) {
   const namedScale = named ? 1.25 : 1;
   const glyphKey = contactGlyphKey(entity);
@@ -851,7 +858,7 @@ function drawNeutralContact(g, entity, x, y, heading, colour, {
       scale: GLYPH_SCALE_NEUTRAL * namedScale * (isCapitalContact(entity) ? 1.3 : 1),
     });
   } else {
-    const shape = contactShape(entity, playerTeam, state);
+    const shape = contactShape(entity, playerTeam, state, hostileOf);
     const scale = namedScale;
     g.save();
     g.translate(x, y);
@@ -1790,6 +1797,18 @@ export function createRadar(ctx) {
     const playerZ = player.pos.z;
     const targetId = state.player && state.player.targetId;
     const playerTeam = player.team;
+    // One stance verdict per contact per draw: the census and the glow/trail/glyph passes all ask
+    // isHostileToPlayer for the same entities; a frame-scoped memo keeps stance live per frame
+    // (combat lock / rep changes still repaint next draw) while paying for one evaluation each.
+    const stanceMemo = new Map();
+    const hostileOf = (entity) => {
+      let verdict = stanceMemo.get(entity);
+      if (verdict === undefined) {
+        verdict = isHostileToPlayer(entity, playerTeam, state);
+        stanceMemo.set(entity, verdict);
+      }
+      return verdict;
+    };
     const colorblindMode = (
       state.settings
       && state.settings.accessibility
@@ -1919,6 +1938,7 @@ export function createRadar(ctx) {
       cache: contactsStillCache,
       updateTrailFn: updateTrail,
       maxTrailUpdates: MAX_TRAIL_UPDATES,
+      hostileOf,
     });
     const hostileCount = contactCensus.hostileCount;
     const salientContactCount = contactCensus.salients;
@@ -1946,7 +1966,7 @@ export function createRadar(ctx) {
         if (!mark.entity) continue;
         if (mark.type === 'pickup') { drawGlow(g, mark.x, mark.y, 14, GLOW_RGB.objective, 0.6); continue; }
         if (mark.type === 'wreck') { drawGlow(g, mark.x, mark.y, 11, GLOW_RGB.wreck, 0.34); continue; }
-        const rgb = glowRgbOf(contactColor(mark.entity, playerTeam, colorblindMode, state));
+        const rgb = glowRgbOf(contactColor(mark.entity, playerTeam, colorblindMode, state, hostileOf));
         drawGlow(g, mark.x, mark.y, mark.named ? 17 : 14, rgb, 0.42 + flareOf(mark.x, mark.y) * 0.4);
       }
       const infraGlowCount = Math.min(infrastructureMarks.length, MAX_SEMANTIC_INFRASTRUCTURE);
@@ -1963,7 +1983,7 @@ export function createRadar(ctx) {
       if (!entity) continue;
       const type = entity.type;
       if ((type === 'ship' || type === 'drone') && trailMap.has(entity.id)) {
-        const colour = contactColor(entity, playerTeam, colorblindMode, state);
+        const colour = contactColor(entity, playerTeam, colorblindMode, state, hostileOf);
         drawTrail(g, entity, playerX, playerZ, radarScale, center, colour);
       }
     }
@@ -1974,7 +1994,7 @@ export function createRadar(ctx) {
       const x = mark.x;
       const y = mark.y;
       const type = mark.type;
-      const colour = contactColor(entity, playerTeam, colorblindMode, state);
+      const colour = contactColor(entity, playerTeam, colorblindMode, state, hostileOf);
       if (mark.wantsTrail || trailMap.has(entity.id)) {
         drawTrail(g, entity, playerX, playerZ, radarScale, center, colour);
       }
@@ -2025,6 +2045,7 @@ export function createRadar(ctx) {
         neutralOpts.named = mark.named;
         neutralOpts.playerTeam = playerTeam;
         neutralOpts.state = state;
+        neutralOpts.hostileOf = hostileOf;
         drawNeutralContact(g, entity, x, y, mark.heading, colour, neutralOpts);
       }
       if (mark.poiKind) drawPoiClassMark(g, x, y, mark.poiProgress);
