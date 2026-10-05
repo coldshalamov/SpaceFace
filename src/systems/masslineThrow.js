@@ -16,6 +16,7 @@
 // state.massline2.throw subtree (outside the sim-snapshot whitelist and the save schema) and cuts
 // the attachment through the same service tetherGameplay uses. The cut itself adds no free speed.
 import { massline2Flag } from '../data/featureFlags.js';
+import { resolveEntitySelection } from '../ui/sim/stableSelection.js';
 import { sampleThrowSolution, tetherPairKinematics } from '../combat/tetherFireControl.js';
 import { fieldsRelevantAlongCorridor, sampleFieldAcceleration } from '../core/fields/fieldKernel.js';
 import { fieldBodyProfile, fieldEntityIsPrimed, fieldVelocityTermApplies } from './fields.js';
@@ -460,15 +461,19 @@ export const masslineThrow = {
     }
     const waypoint = state.nav && state.nav.waypoint;
     if (!waypoint) return null;
-    if (waypoint.targetEntityId != null) {
-      const entity = state.entities.get(waypoint.targetEntityId);
-      if (entity && entity.alive !== false && entity.pos) {
-        return {
-          targetId: entity.id,
-          kind: 'waypoint',
-          target: { pos: entity.pos, vel: entity.vel || { x: 0, z: 0 }, radius: entity.radius },
-        };
-      }
+    // The stable stamp is the authority for which entity the waypoint id meant: a durable
+    // selection follows the re-materialized body across sector re-entry, and a transient one
+    // resolves closed on recycle — never redirecting the throw onto the unrelated body that
+    // now holds the slot. The bare id remains the path for waypoints that predate the stamp.
+    const waypointEntity = waypoint.stable
+      ? resolveEntitySelection(state, waypoint.stable)
+      : (waypoint.targetEntityId != null ? state.entities.get(waypoint.targetEntityId) : null);
+    if (waypointEntity && waypointEntity.alive !== false && waypointEntity.pos) {
+      return {
+        targetId: waypointEntity.id,
+        kind: 'waypoint',
+        target: { pos: waypointEntity.pos, vel: waypointEntity.vel || { x: 0, z: 0 }, radius: waypointEntity.radius },
+      };
     }
     if (!waypoint.pos || !Number.isFinite(waypoint.pos.x) || !Number.isFinite(waypoint.pos.z)) return null;
     return {

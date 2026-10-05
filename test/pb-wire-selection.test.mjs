@@ -24,6 +24,9 @@ import { scanner } from '../src/systems/scanner.js';
 import { resolveAutopilotTarget } from '../src/systems/flightV3.js';
 import { resolveWaypointPresentationPosition } from '../src/ui/navigationWaypoint.js';
 import { captureEntitySelection } from '../src/ui/sim/stableSelection.js';
+import { masslineThrow } from '../src/systems/masslineThrow.js';
+import { resolveGateApproachTarget } from '../src/render/cameraDirector.js';
+import { predictNextSector } from '../src/render/sectorPredict.js';
 
 const SEED = 4242;
 const ROOT = join(import.meta.dirname, '..');
@@ -239,6 +242,75 @@ test('PB-285: a signal record emits the body it still proves, never a stale or r
   assert.deepEqual(course.pos, { x: 60, z: 40 }, 'the recorded fix stays the honest aim');
 });
 
+test('PB-285: a re-materialized gate keeps the armed burn, the throw aim and the warm prediction', () => {
+  const state = boot();
+  state.world.currentSectorId = 'sector_a';
+  const player = state.entities.get(0);
+  const gate = spawn(state, {
+    id: 5, type: 'station', alive: true,
+    pos: { x: 200, y: 0, z: 0 }, vel: { x: 0, y: 0, z: 0 }, rot: 0,
+    data: { stationId: 'aurelia_gate', isGate: true, gateTo: 'sector_b', dockRadius: 100, name: 'Aurelia Gate' },
+  });
+  // The course owner stamps the bind at arm time (world._onSetCourse does exactly this).
+  const bind = captureEntitySelection(gate);
+  state.nav.waypoint = { pos: { x: 200, z: 0 }, targetEntityId: 5, stable: bind };
+  state.nav.autopilot = { active: true, targetEntityId: 5, stable: bind };
+
+  // Continuous residency swaps the instance: entity 5 out, entity 12 in under the same
+  // catalogue identity — the bare id now names a dead slot.
+  despawn(state, gate);
+  spawn(state, { ...gate, id: 12 });
+
+  // The throw resolver aims at the re-materialized body, not the dead slot.
+  const aim = masslineThrow._resolveSelfAim(state);
+  assert.equal(aim.kind, 'waypoint');
+  assert.equal(aim.targetId, 12);
+
+  // The camera director's approach instrument reads the same new instance.
+  const approach = resolveGateApproachTarget(state, player);
+  assert.ok(approach, 'the armed gate still resolves');
+  assert.equal(approach.gate.id, 12);
+
+  // And sector warming still predicts the armed destination through the stamp.
+  const prediction = predictNextSector(state);
+  assert.ok(prediction, 'a prediction survives the swap');
+  assert.equal(prediction.sectorId, 'sector_b');
+  assert.equal(prediction.source, 'autopilot-gate');
+});
+
+test('PB-285: a mid-burn recycle closes the throw, the approach read and the warm', () => {
+  const state = boot();
+  state.world.currentSectorId = 'sector_a';
+  const player = state.entities.get(0);
+  const pirate = spawn(state, hostileMule(7, { pos: { x: 300, y: 0, z: 0 } }));
+  const bind = captureEntitySelection(pirate);
+  state.nav.waypoint = { pos: { x: 300, z: 0 }, targetEntityId: 7, stable: bind };
+  state.nav.autopilot = { active: true, targetEntityId: 7, stable: bind };
+
+  // While the pirate lives the throw aims at it.
+  assert.equal(masslineThrow._resolveSelfAim(state).targetId, 7);
+
+  // It dies; the pool reissues id 7 onto an unrelated skiff.
+  pirate.alive = false;
+  spawn(state, {
+    id: 7, type: 'ship', alive: true,
+    pos: { x: 900, y: 0, z: 900 }, vel: { x: 0, y: 0, z: 0 }, rot: 0,
+    factionId: 'vagrant_combine',
+    data: { name: 'Unrelated skiff', role: 'hauler', kind: 'mule' },
+  });
+
+  // The stamp resolves closed: the throw falls back to the recorded fix rather than throwing
+  // the line at the body that inherited the id.
+  const aim = masslineThrow._resolveSelfAim(state);
+  assert.equal(aim.kind, 'waypoint');
+  assert.equal(aim.targetId, null);
+  assert.deepEqual({ x: aim.target.pos.x, z: aim.target.pos.z }, { x: 300, z: 0 });
+
+  // The approach read and the warm prediction close the same way — never onto the recycler.
+  assert.equal(resolveGateApproachTarget(state, player), null);
+  assert.equal(predictNextSector(state), null);
+});
+
 test('PB-285: the live route consumes the model — draw reconciles, every commit gates', () => {
   const src = readFileSync(join(ROOT, 'src/ui/galaxyMap.js'), 'utf8');
   const draw = src.slice(src.indexOf('_draw() {'));
@@ -271,6 +343,18 @@ test('PB-285: the live route consumes the model — draw reconciles, every commi
   const wpSrc = readFileSync(join(ROOT, 'src/ui/navigationWaypoint.js'), 'utf8');
   assert.ok(wpSrc.includes('waypoint.stable'),
     'HUD/radar/map instruments share the stamped bind');
+  // The bare-id readers downstream of the armed course read the stamp too — never the recycled
+  // slot a bare targetEntityId would name after a death or an instance swap.
+  const throwSrc = readFileSync(join(ROOT, 'src/systems/masslineThrow.js'), 'utf8');
+  assert.ok(throwSrc.includes('resolveEntitySelection(state, waypoint.stable)'),
+    'the self-throw resolver reads the stamped waypoint bind');
+  const camSrc = readFileSync(join(ROOT, 'src/render/cameraDirector.js'), 'utf8');
+  assert.ok(camSrc.includes('resolveEntitySelection(state, autopilot.stable)'),
+    'the gate-approach instrument reads the stamped autopilot bind');
+  const predictSrc = readFileSync(join(ROOT, 'src/render/sectorPredict.js'), 'utf8');
+  assert.ok(predictSrc.includes('resolveEntitySelection(state, autopilot.stable)') &&
+    predictSrc.includes('resolveEntitySelection(state, waypoint.stable)'),
+    'the sector warmer reads both stamped binds');
   const scanSrc = readFileSync(join(ROOT, 'src/systems/scanner.js'), 'utf8');
   assert.ok(scanSrc.includes('entityStable') && scanSrc.includes('recordEntity('),
     'signal records stamp at write and validate at emit — no stale id rides out');

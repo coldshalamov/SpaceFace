@@ -1,6 +1,7 @@
 import { globalToFrame } from '../core/coordinates.js';
 import { entityWeaponBlocked } from '../combat/runtime.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
+import { resolveEntitySelection } from '../ui/sim/stableSelection.js';
 import { readFrameOrigin } from './frameCoordinates.js';
 
 export const CAMERA_DIRECTOR_MIN_ZOOM = 58;
@@ -437,8 +438,14 @@ export function resolveGateVisualMetrics(gate) {
 
 export function resolveGateApproachTarget(state, player, activeGateId = null) {
   const autopilot = state && state.nav && state.nav.autopilot;
-  if (!autopilot || autopilot.active !== true || autopilot.targetEntityId == null || !player || !player.pos) return null;
-  const gate = entityFor(state, autopilot.targetEntityId);
+  if (!autopilot || autopilot.active !== true || !player || !player.pos) return null;
+  if (autopilot.targetEntityId == null && !autopilot.stable) return null;
+  // The stable stamp is the authority for which entity the armed target id meant — a durable
+  // selection follows a re-materialized gate across sector re-entry where the bare id would
+  // read the despawned slot (or worse, its new occupant).
+  const gate = autopilot.stable
+    ? resolveEntitySelection(state, autopilot.stable)
+    : entityFor(state, autopilot.targetEntityId);
   if (!gate || !gate.data || (!gate.data.isGate && !gate.data.isWormhole)) return null;
   const metrics = resolveGateVisualMetrics(gate);
   if (!metrics) return null;
