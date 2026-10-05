@@ -308,6 +308,44 @@ test('a non-finite solver response recovers to the prediction even without recei
   }
 });
 
+test('a receiptless solver teleport restores the prediction instead of stranding the hull', async () => {
+  const owner = await createSg02DynamicBodyOwner({ publishTelemetry: false, fixedDt: DT });
+  try {
+    // Live failure, seed 8008: the concentric narrow phase detonated twice with zero contact
+    // receipts — a customs hull to -1.27 MWU at t=4.07, the starter cutter to -0.45 MWU at
+    // t=123.98. "Not involved" priced the dv budget at Infinity, so the pose-repair branch never
+    // ran; the velocity clamps fired alone and the hull kept the fling pose, drifting home on a
+    // slow drive while its job clock held.
+    const npc = makeCraft(7, { isPlayer: false, x: 1407, z: -502, vx: 22, vz: 32 });
+    owner.syncFromEntities([npc]);
+    owner.step(DT);
+    owner.drainContactImpacts();
+
+    const before = { x: npc.pos.x, z: npc.pos.z };
+    const rec = owner.records.get(7);
+    const restoreReceipts = injectReceipts(owner, []);
+    const restoreStep = corruptNextWorldStep(owner, () => {
+      writeBody(rec, {
+        linvel: [-7549958, 408316],
+        translation: [-453996.75, 50690.34375],
+      });
+    });
+    owner.step(DT);
+    restoreStep();
+    restoreReceipts();
+    owner.drainContactImpacts();
+
+    const e = rec.expected;
+    const reach = Math.hypot(npc.pos.x - before.x, npc.pos.z - before.z);
+    assert.ok(reach <= (Math.hypot(e.vx, e.vz) + MAX_CONTACT_DV) * DT + 0.5,
+      `a receiptless teleport ${reach.toFixed(0)} WU out restores to the predicted tick`);
+    assert.ok(Number.isFinite(npc.vel.x) && Number.isFinite(npc.vel.z),
+      'published velocity stays finite after the repaired detonation');
+  } finally {
+    owner.dispose();
+  }
+});
+
 test('a queued impulse lands inside the trusted baseline and is not contact-clamped', async () => {
   const owner = await createSg02DynamicBodyOwner({ publishTelemetry: false, fixedDt: DT });
   try {
