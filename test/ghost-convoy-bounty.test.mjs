@@ -236,9 +236,11 @@ test('ghost convoy rumor mints a station-addressed lane bounty the board accepts
   world.ledger.destroy();
 });
 
-test('a gated desk cannot sell the bounty — the rumor stays addressless news until standing opens it', () => {
+test('a gated desk cannot sell the bounty — the rumor stays addressless news', () => {
   // station_sker is the only desk in its sector and repGates to Reach standing. At rep 0 the
   // rumor must not name a berth the pilot cannot dock at — the line stays news, no row posts.
+  // The lane's `fired` latch is spent either way: a gated-sector lane never re-posts, which
+  // keeps the raider-nest intel without promising a berth that stayed shut.
   const gated = makeWorld(makeState('sector_sker_haven'));
   driveLaneLosses(gated.state, gated.bus, 3, 'sector_sker_haven');
   const rumor = gated.voice.calls.find((cue) => cue.kind === 'ghostConvoy');
