@@ -46,6 +46,11 @@ export const AUTHORED_DOCK_RUMORS = Object.freeze({
   station_eunomia: 'Beside the old ledger there is a freight platform still holding a container addressed to a crew that died two contracts ago. Delivered, signed, never collected. The note stays pinned.',
   station_sedna: 'Out near the cadence there is a lane pin that points at nothing — a survey marker for a route the dark never let anyone finish. It still points the way.',
   station_dione_customs: 'Between the gate and the market there is a bulk container neither crew will carry — customs tagged it, the lane crew tagged it back, and now it has two liens and no manifest. It is ropeable. Officially, so are you.',
+  // CR-BERTH-1 — the Pitborn consignment line. The bar lead names the strip-line's real
+  // address (the breaking-apron south-east of the foundry, off the Helios inbound leg) and
+  // sells the loop: redeem claim rights at the yard desk and the wreck your paper covered
+  // parks on their line a visit later — still hull, still ropeable.
+  station_forge: 'The Pitborn rent a breaking-apron off the foundry, south-east toward the Helios inbound leg — they call it the Consignment Line. Sell them claim rights at the yard desk and the wreck your paper covered turns up parked on their strip a visit later, already under the cutters. What is parked is still hull, and the Massline never once read a receipt.',
   // Trade-signature lead (station trade personalities): heard at the dear end of the cell run.
   // The claim crews burn fuel cells by mid-shift; Ceres Refinery's crackers over-run the belt.
   // Names two real stations — buy at the glut, dock back here and sell into the shortage.

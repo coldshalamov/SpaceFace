@@ -5403,8 +5403,11 @@ function placeFileForEntity(entity) {
     // placement flags admit them — otherwise they spawn as permanently invisible markers.
     // Stations are excluded: their own type-total fallback below owns station bodies, and a
     // landmark station must never resolve as a dressing prop.
+    // CR-BERTH-1: a faction-berth piece (crib row or consigned hulk) is a deliberately authored
+    // placement the same way — admit it on its berthId stamp.
     const authoredSetPiece = entity.type !== 'station'
-      && (data.worldOneOff === true || data.landmark === true || data.poi === true);
+      && (data.worldOneOff === true || data.landmark === true || data.poi === true
+        || data.berthId != null);
     if (data.everydaySpaceKit === true || authoredSetPiece) {
       const kitFile = EVERYDAY_SPACE_KIT_PLACE_FILE_BY_ID[id];
       if (kitFile) return kitFile;

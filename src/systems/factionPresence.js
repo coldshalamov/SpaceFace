@@ -23,6 +23,7 @@ import {
   planFactionPresence,
   presenceServiceForStation,
 } from '../data/factionPresence.js';
+import { factionBerthForStation } from '../data/factionBerths.js'; // CR-BERTH-1
 import { conflictAftermathAnchor } from '../data/conflictZones.js';
 import {
   RECORD_KIND,
@@ -451,6 +452,9 @@ export const factionPresence = {
       this.bus.on('combat:subsystemEnabled', (payload) => this._onSubsystemEnabled(payload || {})),
       this.bus.on('combat:damage', (payload) => this._onCombatDamage(payload || {})),
       this.bus.on('ui:factionPresenceService', (payload) => this._onServiceAction(payload || {})),
+      // CR-BERTH-1 — a redeem_rights payout at a berth station is the desk receipt for the
+      // consigned wreck that world.js then parks on the strip-line.
+      this.bus.on('service:completed', (payload) => this._onServiceCompleted(payload || {})),
       this.bus.on('entity:spawned', (payload) => this._onEntitySpawned(payload || {})),
       this.bus.on('save:loaded', () => this._onSaveLoaded()),
       this.bus.on('conflict:flip', (payload) => this._onConflictFlip(payload || {})),
@@ -1155,6 +1159,33 @@ export const factionPresence = {
     this.bus.emit('factionPresence:serviceAction', {
       factionId: current.factionId, stationId, serviceId, targetTab, available: true,
     });
+  },
+
+  // CR-BERTH-1 — the consignment line's receipt. A redeem_rights payout at a berth station is
+  // the yard desk buying the player's claim on a wreck already in the yards' books: write the
+  // keyed serviceReceipt the berth's strip-line spawn reads, and journal it like every other
+  // faction desk receipt. The body itself materializes on the next sector pass — the yard works
+  // between visits. Repeat payouts update the same keyed row (count accumulates, t refreshes)
+  // rather than minting unstable keys.
+  _onServiceCompleted(payload) {
+    if (!payload || payload.type !== 'redeem_rights') return;
+    const stationId = typeof payload.stationId === 'string' ? payload.stationId : null;
+    const berth = stationId ? factionBerthForStation(stationId) : null;
+    if (!berth) return;
+    const own = ensureOwnState(this.state);
+    const prior = own.serviceReceipts[berth.receiptKey];
+    const rights = Math.max(1, Math.floor(Number(payload.rights) || 0));
+    const receipt = {
+      kind: 'berthConsign',
+      berthId: berth.id,
+      stationId,
+      factionId: berth.factionId,
+      count: (prior && Number.isFinite(prior.count) ? prior.count : 0) + rights,
+      lastRights: rights,
+      t: Number(this.state.simTime) || 0,
+    };
+    own.serviceReceipts[berth.receiptKey] = receipt;
+    pushReceipt(this.state, receipt);
   },
 
   _updateFulfillmentRoutes() {

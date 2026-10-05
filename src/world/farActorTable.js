@@ -264,6 +264,11 @@ export function shouldVirtualizeFarActor(entity, state) {
   // promoted shell and hides the shelved copy from the materializer's live-entity dedup —
   // every load minted a twin anchored to the same permanent record (D141).
   if (data.worldOneOff === true) return false;
+  // A berth-consign hulk belongs to _spawnFactionBerths the same way (CR-BERTH-1): it
+  // re-mints/re-decorates by recordId on every materialize, and the lean row drops
+  // berthConsign/berthId/name/masslineTetherable — shelving degrades the promoted shell and
+  // mints a twin parked on the strip-line.
+  if (data.berthConsign) return false;
   // An authored salvage wreck is bound to `state.salvage.points` by entity id — the lean far row
   // drops salvagePointId/loot/salvagePool/salvageAction, so shelving strips the point's binding
   // permanently and `_entityForPoint` can never re-resolve the promoted shell (D143).
