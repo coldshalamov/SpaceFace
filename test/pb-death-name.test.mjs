@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { createTelemetry } from '../src/systems/telemetry.js';
-import { deathCauseLabel } from '../src/ui/screens/gameOver.js';
+import { deathCauseLabel, afterActionCause } from '../src/ui/screens/gameOver.js';
 
 const SEED = 4242;
 
@@ -32,6 +32,9 @@ test('seed 4242: deathCauseLabel names the killer hull', () => {
   assert.equal(classOnly, 'Destroyed by Fighter (Raiders)');
   assert.match(classOnly, /Fighter/);
   assert.doesNotMatch(classOnly, /Marrow Kite/);
+  const receipt = { fatalSummary: 'Final hit from a fighter', cause: 'ship:fighter' };
+  assert.equal(afterActionCause(receipt, label), 'Destroyed by Marrow Kite (Raiders)');
+  assert.equal(afterActionCause(receipt, 'Environmental hazard'), 'Final hit from a fighter');
 });
 
 test('seed 4242: the death log copies the spawned hull name', () => {

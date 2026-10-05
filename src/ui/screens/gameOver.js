@@ -131,6 +131,13 @@ function telemetryHandle(ctx) {
   return globalTelemetry && typeof globalTelemetry.getSessionStats === 'function' ? globalTelemetry : null;
 }
 
+/** The glass title. A logged "Destroyed by …" line names the hull; otherwise the receipt does. */
+export function afterActionCause(receipt, deathCause) {
+  if (typeof deathCause === 'string' && /^Destroyed by /.test(deathCause)) return deathCause;
+  if (receipt && (receipt.fatalSummary || receipt.cause)) return receipt.fatalSummary || receipt.cause;
+  return deathCause || '';
+}
+
 export function deathCauseLabel(entry = null) {
   if (!entry) return 'Unknown loss';
   const cause = String(entry.cause || 'unknown');
@@ -693,7 +700,7 @@ export const gameOverScreen = {
     if (this._tape) {
       const record = sortieRecord(ctx);
       const receipt = currentDefeat(ctx);
-      const killLabel = (receipt && (receipt.fatalSummary || receipt.cause)) || lastDeathSummary(ctx).cause;
+      const killLabel = afterActionCause(receipt, lastDeathSummary(ctx).cause);
       this._sortie = record;
       this._tape.paint({ lengthS: record.lengthS, events: record.events, killLabel: /^unknown loss$/i.test(killLabel) ? 'The loss' : killLabel });
       this._onSortieScrub(record.lengthS || 0, null, true);
@@ -906,7 +913,7 @@ export const gameOverScreen = {
       ? `${fmtCr(charged)} charged · ${fmtCr(quoted)} quote · ${fmtCr(recoveryFund)} recovery fund`
       : fmtCr(charged);
     const values = {
-      cause: receipt && (receipt.fatalSummary || receipt.cause) || death.cause,
+      cause: afterActionCause(receipt, death.cause),
       lifespan: death.lifespan,
       // "aft hull, main drive · shield 0% · armour 0% · hull 0%": where it struck, then what was left
       damage: receipt ? [
