@@ -853,12 +853,18 @@ export const tetherGameplay = {
 
   _reconcileTwinBridle(attachments, state, player, now) {
     if (this._bridleSetup) {
-      const source = state.entities?.get ? state.entities.get(this._bridleSetup.sourceId) : null;
-      const sameSector = this._bridleSetup.sectorId === currentSectorId(state);
-      if (!source || source.alive === false || !sameSector) {
-        this._cancelTwinBridleSetup(state, sameSector ? 'endpoint_lost' : 'sector_changed');
-      } else if (now >= this._bridleSetup.expiresAt) {
-        this._cancelTwinBridleSetup(state, 'setup_expired');
+      const published = state.masslineBridle;
+      const publishedSource = published && published.sourceId;
+      if (publishedSource == null || publishedSource !== this._bridleSetup.sourceId) {
+        this._cancelTwinBridleSetup(state, 'endpoint_lost');
+      } else {
+        const source = state.entities?.get ? state.entities.get(this._bridleSetup.sourceId) : null;
+        const sameSector = this._bridleSetup.sectorId === currentSectorId(state);
+        if (!source || source.alive === false || !sameSector) {
+          this._cancelTwinBridleSetup(state, sameSector ? 'endpoint_lost' : 'sector_changed');
+        } else if (now >= this._bridleSetup.expiresAt) {
+          this._cancelTwinBridleSetup(state, 'setup_expired');
+        }
       }
     }
     if (!this._bridleActive) return;

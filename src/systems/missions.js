@@ -7361,9 +7361,10 @@ export const missions = {
       const m = this.state.missions.active[i];
       if (!m || m.status !== 'active' || !PHYSICAL_TYPE_SET.has(m.type)) continue;
       if (!m.targetEntityIds || !m.targetEntityIds.includes(p.id)) continue;
-      // The destroy payload carries the victim row itself; the entity map may already have
-      // dropped it by the time this listener runs.
-      const victim = this.state.entities.get(p.id) || (p && p.entity) || null;
+      // The destroy payload carries the victim row itself. If that id was already recycled,
+      // the map row is a different occupant — the loss belongs to the corpse, not the heir.
+      const mapped = this.state.entities && this.state.entities.get(p.id);
+      const victim = (p.entity && mapped !== p.entity) ? p.entity : (mapped || p.entity || null);
       const role = physicalRoleOf(victim);
       if ((m.type === 'tow_recovery' || (m.type === AUTHORED_SET_PIECE_TYPE && role === PHYSICAL_ROLE.SLAG_CORE))
         && role === PHYSICAL_ROLE.SLAG_CORE) {
