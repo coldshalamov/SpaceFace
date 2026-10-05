@@ -234,7 +234,19 @@ export function towSentence(predictions) {
   return '';
 }
 
-function handlingSentence(profile, derived, emptyDerived) {
+/** True when the heavier fit actually turns or stops worse than the lighter one. */
+function fliesWorse(heavier, lighter) {
+  if (!heavier || !lighter) return false;
+  const yawH = finite(heavier.propulsion && heavier.propulsion.yawAccel, 0);
+  const yawL = finite(lighter.propulsion && lighter.propulsion.yawAccel, 0);
+  if (yawL > 0 && (yawL - yawH) / yawL >= 0.005) return true;
+  if (liveStopDistance(heavier) - liveStopDistance(lighter) > 2) return true;
+  const turnH = liveTurnCircle(heavier);
+  const turnL = liveTurnCircle(lighter);
+  return turnH.radius > 0 && turnL.radius > 0 && (turnH.radius - turnL.radius) > 2;
+}
+
+function handlingSentence(profile, derived, emptyDerived, bareDerived) {
   if (!profile || !Array.isArray(profile.axes) || !profile.axes.length) return '';
   const agilityAxis = profile.axes.find((axis) => axis.id === 'agility');
   const brakeAxis = profile.axes.find((axis) => axis.id === 'brake');
@@ -246,8 +258,11 @@ function handlingSentence(profile, derived, emptyDerived) {
   }
   const shipDef = SHIP_BY_ID.get(profile.shipId);
   const massRatio = ratioFor(derived, shipDef);
-  if (massRatio < 0.9) clauses.push('Light on the stick.');
-  else if (massRatio > 1.15) clauses.push('Sluggish under load.');
+  // Heavier than the catalog hull is not itself a worse ship. A bumper under the
+  // drive rating keeps the same yaw, stop, and circle, and must not be called sluggish.
+  if (fliesWorse(derived, emptyDerived) || fliesWorse(derived, bareDerived)) {
+    clauses.push('Sluggish under load.');
+  } else if (massRatio < 0.9) clauses.push('Light on the stick.');
   if (brakeAxis) clauses.push(brakeAxis.bar >= 55 ? 'Stops clean.' : 'Stops badly.');
   const cargoMass = finite(derived && derived.cargoMass, 0);
   if (cargoMass > 0) {
@@ -797,7 +812,7 @@ export function handlingBandModel({ shipId, fittings = [], player = null, domain
   // reversal, the burst length, and the hull this fit can tow belong there, before the player
   // commits, not in a tooltip.
   const crestSentence = [
-    handlingSentence(profile, derived, dryDerived),
+    handlingSentence(profile, derived, dryDerived, bareDerived),
     turnSentence,
     reversalLine,
     sustainedFire.sentence,
