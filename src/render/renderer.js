@@ -20578,6 +20578,18 @@ export const render = {
     if (mesh) {
       (this._meshReleasePending || (this._meshReleasePending = new Set())).add(mesh);
     }
+    // Depth-stage rows name this root too — a parked/withheld mesh unbound
+    // here would leak its arm rows and the withheld subtree refs they pin
+    // until the next queue (which may never come).
+    if (mesh) {
+      if (this._pendingDepthStageRoots) this._pendingDepthStageRoots.delete(mesh);
+      if (this._parkedDepthStageRoots) this._parkedDepthStageRoots.delete(mesh);
+      if (this._withheldDepthCasters) this._withheldDepthCasters.delete(mesh);
+      if (mesh.userData) {
+        mesh.userData[STAGE_SELF_DIRTY_KEY] = false;
+        delete mesh.userData.sfDepthUndrawableCycles;
+      }
+    }
     // A culled-frozen root leaving the presentation world goes back to whatever owns the
     // object next (dispose, pool reuse, rebuild) in its build-time state.
     if (mesh && mesh.userData && mesh.userData.sfHiddenFrozen === true) {
@@ -20790,6 +20802,16 @@ export const render = {
         // can pin the tree through a recycled entity id.
         try { this._livingHullPresentation?.detach?.(owner); } catch (_) { /* best effort */ }
         deadOwners.add(owner);
+        // The depth-stage bookkeeping is teardown-blind — a parked/withheld
+        // owner would keep its arm rows (and the withheld mesh refs they name)
+        // pinned until an unrelated root re-queued the ceremony.
+        if (this._pendingDepthStageRoots) this._pendingDepthStageRoots.delete(owner);
+        if (this._parkedDepthStageRoots) this._parkedDepthStageRoots.delete(owner);
+        if (this._withheldDepthCasters) this._withheldDepthCasters.delete(owner);
+        if (owner.userData) {
+          owner.userData[STAGE_SELF_DIRTY_KEY] = false;
+          delete owner.userData.sfDepthUndrawableCycles;
+        }
         try {
           // A fat owner's whole-subtree teardown paces per-128-node inside this
           // stepped walk — the generator twin holds the identical teardown
@@ -20843,6 +20865,15 @@ export const render = {
     this._despawnDisposeQueue.length = 0;
     this._despawnDisposeHead = 0;
     this._despawnDisposeIter = null;
+    // Depth-stage bookkeeping is keyed on roots this teardown is about to
+    // remove — wholesale-clear it with the meshes (the per-root seam is
+    // _sweepDetachedDepthStageRoots at arm time).
+    this._pendingDepthStageRoots = null;
+    if (this._parkedDepthStageRoots) this._parkedDepthStageRoots.clear();
+    if (this._withheldDepthCasters) this._withheldDepthCasters.clear();
+    if (this._deferredDepthStageRoots) this._deferredDepthStageRoots.clear();
+    this._depthStageLedgerSkips = 0;
+    this._killDepthStageSession();
     this._meshReleaseBatchBegin?.();
     try {
       for (const [id, m] of [...this._meshes]) {
@@ -24722,6 +24753,23 @@ export const render = {
         parkedRelease = parkedReleaseOnDrift = true;
       }
     }
+    if (parkedRelease && parkedReleaseOnDrift && opts.allowCast === false) {
+      // Out-of-ortho drift has no promotable follow-on — the withheld subtree
+      // is already cold and outside the draw volume. Keep the park (and the
+      // escalation it earned) instead of deleting it and paying an exempt
+      // whole-subtree traverse; re-key the record to the live census/cell so
+      // the release doesn't re-evaluate every sync — a drift back inside the
+      // ortho releases and re-collects normally.
+      parkedEntry.seq = dirtySeq;
+      parkedEntry.lightSig = this._shadowCensusForFrame();
+      if (this._keyLight && this._keyLight.target) {
+        const cell = (this._shadowOrthoExtent || 1) / 2;
+        const target = this._keyLight.target.position;
+        parkedEntry.oqX = Math.round(target.x / cell);
+        parkedEntry.oqZ = Math.round(target.z / cell);
+      }
+      parkedRelease = parkedReleaseOnDrift = false;
+    }
     if (parkedRelease) {
       parkedMap.delete(root);
       if (this._withheldDepthCasters) this._withheldDepthCasters.delete(root);
@@ -24976,6 +25024,35 @@ export const render = {
   // Incremental staging is already legal — marks cover only observed draws — so each
   // arm slices a few roots, stages them, restores their policies, and re-arms while
   // the queue holds more. Roots a slice never reaches keep their withheld cast flag.
+  // Detached-root shedding for the depth-stage bookkeeping. Pending and
+  // parked rows are only ever reaped here and in the teardown seams — every
+  // other path that removes a root from the scene must not leave its rows
+  // (and every withheld mesh ref they name) pinned until an unrelated root
+  // re-arms the ceremony.
+  _sweepDetachedDepthStageRoots(pending) {
+    if (pending) {
+      for (const [root] of pending) {
+        if (!root || !root.parent) {
+          pending.delete(root);
+          if (root && root.userData) root.userData[STAGE_SELF_DIRTY_KEY] = false;
+          if (root && this._withheldDepthCasters) this._withheldDepthCasters.delete(root);
+        }
+      }
+    }
+    if (this._parkedDepthStageRoots) {
+      for (const [root] of this._parkedDepthStageRoots) {
+        if (!root || !root.parent) {
+          this._parkedDepthStageRoots.delete(root);
+          if (root && root.userData) {
+            root.userData[STAGE_SELF_DIRTY_KEY] = false;
+            delete root.userData.sfDepthUndrawableCycles;
+          }
+          if (root && this._withheldDepthCasters) this._withheldDepthCasters.delete(root);
+        }
+      }
+    }
+  },
+
   _armDepthStage() {
     // idleBoundMs 48 — withheld casters stay dark while the queue waits; an unbounded
     // background-priority arm could starve the whole drain for seconds under load.
@@ -24987,6 +25064,9 @@ export const render = {
       const armNow = () => (typeof performance !== 'undefined' && typeof performance.now === 'function')
         ? performance.now() : Date.now();
       const pending = this._pendingDepthStageRoots;
+      // The sweep runs before the empty-queue early return: a parked or
+      // withheld root that detaches on an idle drain has no other reaper.
+      this._sweepDetachedDepthStageRoots(pending);
       if (!pending || pending.size === 0) {
         this._pendingDepthStageRoots = null;
         this._depthStageScheduled = false;
@@ -25018,30 +25098,7 @@ export const render = {
       const pz = this._framePlayerLocalZ || 0;
       const entries = [];
       for (const [root, entry] of pending) {
-        if (root && root.parent) {
-          entries.push([root, entry]);
-        } else {
-          // Detached before staging: nothing to restore or mark — a re-mount runs the
-          // checked policy sync again and re-queues if still unstaged.
-          pending.delete(root);
-          if (root.userData) root.userData[STAGE_SELF_DIRTY_KEY] = false;
-          if (this._withheldDepthCasters) this._withheldDepthCasters.delete(root);
-        }
-      }
-      // Detached parked roots can't wake or restore — drop their records and
-      // the stale bookkeeping the pending-detach sweep already clears for its
-      // own roots (a re-mount must not inherit a 'still withheld' verdict).
-      if (this._parkedDepthStageRoots) {
-        for (const [root] of this._parkedDepthStageRoots) {
-          if (!root || !root.parent) {
-            this._parkedDepthStageRoots.delete(root);
-            if (root.userData) {
-              root.userData[STAGE_SELF_DIRTY_KEY] = false;
-              delete root.userData.sfDepthUndrawableCycles;
-            }
-            if (this._withheldDepthCasters) this._withheldDepthCasters.delete(root);
-          }
-        }
+        entries.push([root, entry]);
       }
       entries.sort((a, b) => (
         shadowCastAxisDistance(a[0].position, px, pz)
@@ -25068,10 +25125,11 @@ export const render = {
           // Coalesced promotions share one stage; roots whose signatures were already
           // marked (opening/admission staged them under the same light census) are
           // filtered so the ceremony only pays for genuinely unlinked depth variants.
-          // Fresh census at arm time — the arm runs between passes via
-          // armCallbackAfterPresent, so the _viewSyncSeq memo can serve a sig
-          // minted before a light add/remove landed; the session keys on it.
-          lightSig = lightCensusSignature(scene);
+          // Census via the {seq, scene, epoch}-keyed memo: mid-sequence light
+          // mutations bump shadowCensusEpoch, so the memo's freshness envelope
+          // is identical to a fresh mint while repeat arm fires under one census
+          // share a single scene traverse. The held session keys on the sig.
+          lightSig = this._shadowCensusForFrame();
           // Pair the epoch beside the mint: a census mutation landing between
           // here and the drive's first call must trip censusStale — minting the
           // epoch inside the drive would miss the gap and stage under a sig the
@@ -25099,6 +25157,26 @@ export const render = {
               collected += 1;
               continue;
             }
+            // A root requeued after a completed collect carries its unstaged
+            // set keyed by the root's dirtySeq and the census epoch — a same-
+            // generation re-collect only re-proves each mesh's mark (cheap)
+            // instead of re-walking the whole subtree per arm.
+            const cache = entry && entry.unstagedCache;
+            if (cache
+                && cache.seq === shadowCasterPolicyDirtySeq(sliceRoots[collected])
+                && cache.epoch === armSigEpoch) {
+              const still = [];
+              for (const mesh of cache.meshes) {
+                if (!casterDepthMarkCurrent(mesh, lightSig)) still.push(mesh);
+              }
+              cache.meshes = still;
+              if (still.length > 0) unstagedByRoot.set(sliceRoots[collected], still);
+              for (const mesh of still) unstaged.push(mesh);
+              collected += 1;
+              if (collected < sliceRoots.length && collected >= 1 && armNow() >= collectDeadline) break;
+              continue;
+            }
+            if (entry && entry.unstagedCache) entry.unstagedCache = null;
             // Per-root node budget keyed on THAT root's escalation — one shared
             // wallet spent by the prefix made a mid-slice fat root's own scale
             // apply only at head position, starving every root behind it. The
@@ -25143,7 +25221,16 @@ export const render = {
               }
               break;
             }
-            if (found.length > 0) unstagedByRoot.set(sliceRoots[collected], found);
+            if (found.length > 0) {
+              unstagedByRoot.set(sliceRoots[collected], found);
+              if (entry) {
+                entry.unstagedCache = {
+                  seq: shadowCasterPolicyDirtySeq(sliceRoots[collected]),
+                  epoch: armSigEpoch,
+                  meshes: found,
+                };
+              }
+            }
             for (const mesh of found) unstaged.push(mesh);
             collected += 1;
             if (collected < sliceRoots.length && collected >= 1 && armNow() >= collectDeadline) break;

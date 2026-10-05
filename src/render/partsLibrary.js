@@ -3336,6 +3336,10 @@ function commitAuthoredCargoCapsuleBoundary(
   detachBoundaryResolvingMarker(boundary);
   boundary.remove(fallbackRoot);
   boundary.add(authored.root);
+  // The swap mutated the tree under no park key — a withheld/parked verdict
+  // keyed on the fallback subtree stays stale until the recheck backstop
+  // (~100-1000 syncs). Same convention as the LOD-family seams below.
+  invalidateShadowCasterPolicy(boundary);
   unregisterPreparedAuthoredAdmission(authored);
   setActiveRoot(authored.root);
   carryAdmittedOnceStamp(authored.root, boundary);
@@ -4247,6 +4251,10 @@ async function commitAuthoredPlaceBoundary(
   freezeStaticTransformRootMarked(authored.root);
   boundary.remove(fallbackRoot);
   boundary.add(authored.root);
+  // The swap mutated the tree under no park key — a withheld/parked verdict
+  // keyed on the fallback subtree stays stale until the recheck backstop
+  // (~100-1000 syncs). Same convention as the LOD-family seams below.
+  invalidateShadowCasterPolicy(boundary);
   unregisterPreparedAuthoredAdmission(authored);
   setActive(authored.root);
   carryAdmittedOnceStamp(authored.root, boundary);
@@ -8959,16 +8967,19 @@ async function disposeAbandonedWholeShipLodRoot(composed) {
 // reclaim forever.
 const retainedDisposeQueue = [];
 let retainedDisposeDrainScheduled = false;
+// Persistent across fires like the despawn drain's ledger: a saturated stretch
+// ages out after 2 skips and forces a leg instead of deferring reclaim forever.
+let retainedDisposeLedgerSkips = 0;
 function scheduleRetainedDisposeDrain() {
   if (retainedDisposeDrainScheduled) return;
   retainedDisposeDrainScheduled = true;
   setTimeout(() => {
     retainedDisposeDrainScheduled = false;
     const started = monotonicNow();
-    let skips = 0;
+    let ranLeg = false;
     while (retainedDisposeQueue.length) {
-      if (pacedFrameSpend() >= PACED_FRAME_BUDGET_MS && skips < 2) {
-        skips += 1;
+      if (pacedFrameSpend() >= PACED_FRAME_BUDGET_MS && retainedDisposeLedgerSkips < 2) {
+        retainedDisposeLedgerSkips += 1;
         break;
       }
       const head = retainedDisposeQueue[0];
@@ -8981,6 +8992,7 @@ function scheduleRetainedDisposeDrain() {
         }
       }
       try {
+        ranLeg = true;
         if (head.iter.next().done) retainedDisposeQueue.shift();
       } catch (error) {
         console.info('[partsLibrary] whole-ship LOD stale root cleanup failed', error);
@@ -8989,6 +9001,7 @@ function scheduleRetainedDisposeDrain() {
       }
       if (monotonicNow() - started >= 4) break;
     }
+    if (ranLeg) retainedDisposeLedgerSkips = 0;
     notePacedFrameSpend(monotonicNow() - started);
     if (retainedDisposeQueue.length) scheduleRetainedDisposeDrain();
   }, 0);
@@ -9400,6 +9413,10 @@ async function commitAuthoredBoundary(
   // is never a live readability layer and cannot turn a box or blue-clay body into a different ship.
   boundary.remove(fallbackRoot);
   boundary.add(authored.root);
+  // The swap mutated the tree under no park key — a withheld/parked verdict
+  // keyed on the fallback subtree stays stale until the recheck backstop
+  // (~100-1000 syncs). Same convention as the LOD-family seams below.
+  invalidateShadowCasterPolicy(boundary);
   unregisterPreparedAuthoredAdmission(authored);
   setActive(authored.root);
   carryAdmittedOnceStamp(authored.root, boundary);
