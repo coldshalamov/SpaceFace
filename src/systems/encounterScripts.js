@@ -1254,31 +1254,37 @@ function isSelectedFreightCarrier(live, carrier) {
 // selected carrier's ledger stays byte-identical; the side ledger exists so the side hauler's
 // death can spill through the same writer without displacing the raid's live record.
 function sideFreightCustodyRecord(live, carrier) {
-  const key = carrier && carrier.data && carrier.data.predationIdentityKey;
+  // the stamp's own key is canonical: store and lookup read the same field, so the two can never
+  // diverge into a silent overwrite (the predation key and stamp key agree by construction, but
+  // only one of them should name the slot)
+  const key = carrier && carrier.data && carrier.data.freightCustody
+    && carrier.data.freightCustody.carrierIdentityKey;
   if (key == null || !live.data.freightSideCustody) return null;
   return live.data.freightSideCustody[key] || null;
 }
 
 function ensureFreightCargoCustody(d, live, state, carrier) {
   const sideCarrier = !isSelectedFreightCarrier(live, carrier)
-    && !!(carrier && carrier.data
-      && carrier.data.predationIdentityKey != null
-      && carrier.data.freightCustody);
+    && !!(carrier && carrier.data && carrier.data.freightCustody
+      && carrier.data.freightCustody.carrierIdentityKey != null);
   const existing = sideCarrier
     ? sideFreightCustodyRecord(live, carrier)
     : live.data.freightCargoCustody;
+  // one canonical identity per path: the slot reads the predation stamp, the side ledger reads
+  // the freight stamp it was minted under — the two agree by construction, and the store key,
+  // the lookup key and this match key can never silently diverge
+  const carrierIdentityKey = sideCarrier
+    ? carrier.data.freightCustody.carrierIdentityKey
+    : carrier.data.predationIdentityKey;
   if (existing) {
     return existing.carrierId === carrier.id
-      && existing.carrierIdentityKey === carrier.data.predationIdentityKey
+      && existing.carrierIdentityKey === carrierIdentityKey
       && existing.manifestId === carrier.data.cargoManifest?.manifestId
       ? existing
       : null;
   }
   const source = authoredManifestLine(carrier);
   if (!source) return null;
-  const carrierIdentityKey = sideCarrier
-    ? carrier.data.freightCustody.carrierIdentityKey
-    : carrier.data.predationIdentityKey;
   const custodyId = `${source.manifest.manifestId}:custody:${carrierIdentityKey}`;
   const now = d.now();
   const civilianOwner = carrier.team === 2
@@ -1342,6 +1348,9 @@ function ensureFreightCargoCustody(d, live, state, carrier) {
   if (sideCarrier) {
     // The side hauler is already dead when this record opens: there is no custody window left to
     // keep a hull present for, so no persistence claim — the spilled pods carry the freight.
+    // Side ledgers are runtime-transient: the durable open-custody channel would evict a real
+    // envelope under its cap, and a restore would promote a side record into the raid's slot.
+    record.sideCustody = true;
     const map = live.data.freightSideCustody
       || (live.data.freightSideCustody = {});
     map[carrierIdentityKey] = record;
@@ -1599,8 +1608,8 @@ function finishFreightCustody(d, live, record, outcome) {
  * pods carry their own custody provenance and survive on their authored TTL (SF-150 keeps the
  * encounter's closing sweep off persistent pickups). Nothing is released or booked here —
  * releaseFreightCustodyActors resolves the selected pair by live selection, and the side carrier
- * is already gone. Open side records from a hypothetical side disable spill stay open on purpose:
- * the death spill continues them through ensureFreightCargoCustody.
+ * is already gone. Open side records from a side drive-disable spill stay open on purpose:
+ * the later death spill continues them through ensureFreightCargoCustody and closes them here.
  */
 function finishSideFreightCustody(d, live, record) {
   if (!record || record.terminal) return false;
@@ -1636,7 +1645,9 @@ function spawnFreightCargo(d, live, state, carrier, cause) {
     ? Math.max(1, Math.floor(record.carrierQty / 2))
     : record.carrierQty;
   const chunks = splitFreightQty(requested, cause === 'drive_disabled' ? Math.min(1, available) : available);
-  const rng = d.stream(live, `freight-cargo:${cause}`);
+  // seeded per custody chain, not per cause: two haulers dying the same death scatter their own
+  // pods — a label shared across carriers would lay both spills on identical angles and radii
+  const rng = d.stream(live, `freight-cargo:${cause}:${record.custodyId}`);
   let spawnedQty = 0;
   for (const qty of chunks) {
     const podIndex = record.nextPodIndex++;
@@ -1760,10 +1771,25 @@ function settleFreightPod(d, live, state, record, pod, status, reason) {
 }
 
 function collectFreightPod(d, live, state, payload) {
-  const record = live.data.freightCargoCustody;
-  if (!record || record.terminal || !payload || payload.pickupId == null) return false;
-  const pod = record.pods.find((candidate) => candidate.entityId === payload.pickupId);
-  if (!pod || pod.status !== 'live' || payload.kind !== 'cargo'
+  if (!payload || payload.pickupId == null) return false;
+  // the pod's record lives in the raid's one slot — or, for a second custody-stamped hauler, in
+  // the side ledger that hauler's own death minted. A side record is already terminal (its ledger
+  // closed at the death spill) but its pods are live world objects: collection still settles its
+  // bookkeeping and the lawful-theft report through the same writers (PQ-047 residual).
+  let record = live.data.freightCargoCustody;
+  let pod = record && !record.terminal
+    ? record.pods.find((candidate) => candidate.entityId === payload.pickupId)
+    : null;
+  if (!pod && live.data.freightSideCustody) {
+    for (const key of Object.keys(live.data.freightSideCustody)) {
+      const side = live.data.freightSideCustody[key];
+      const found = side && side.pods
+        && side.pods.find((candidate) => candidate.entityId === payload.pickupId);
+      if (found) { record = side; pod = found; break; }
+    }
+  }
+  if (!record || !pod || (!record.sideCustody && record.terminal)) return false;
+  if (pod.status !== 'live' || payload.kind !== 'cargo'
     || payload.commodityId !== record.commodityId || Math.floor(Number(payload.amount) || 0) !== pod.qty) return false;
   if (payload.collectorId === state.playerId) {
     const accepted = Number(payload.acceptedAmount);
@@ -2639,7 +2665,21 @@ function convoyTick(d, live, state, now, isConvoy) {
 
   // Arrival: surviving cargo applies bounded supply pressure at the destination market.
   clearConvoyPredation(d, live, 'carrier_arrived');
-  const arrivingQty = custody ? custody.carrierQty : haulers.length * (live.data.perHauler | 0);
+  // a second custody-stamped hauler arrives with its own manifest: its freight presses the market
+  // like the lead's, and its stamp closes so the post-arrival sweep cannot spill a delivered
+  // manifest (PQ-047 residual — the delivery leg of the same fix).
+  let sideArrivingQty = 0;
+  for (const h of haulers) {
+    if (isSelectedFreightCarrier(live, h)) continue;
+    const stamp = h.data && h.data.freightCustody;
+    if (stamp && stamp.status === 'carrier' && stamp.carrierId === h.id) {
+      sideArrivingQty += Math.max(0, Number(h.data.cargoManifest && h.data.cargoManifest.totalQty) || 0);
+      stamp.status = 'delivered';
+    }
+  }
+  const arrivingQty = custody
+    ? custody.carrierQty + sideArrivingQty
+    : haulers.length * (live.data.perHauler | 0);
   const units = Math.min(TRADE_PRESSURE_CAP, arrivingQty);
   if (live.data.destId && units > 0) d.tradePressure(live.data.destId, live.data.cargoId, units);
   if (custody && !custody.terminal) {
@@ -2730,6 +2770,17 @@ const convoy = {
         if (record && p.targetId === record.raiderId) {
           const raider = selectedFreightRaider(live, state, true);
           respillFreightFromRaider(d, live, state, record, raider, 'raider_drive_disabled');
+        } else {
+          // a second custody-stamped hauler drive-disabled off the selected target: its manifest
+          // spills through the same writer into a side record that stays open for collection —
+          // a disabled hull sits with its freight, it does not swallow it (PQ-047 residual)
+          const carrier = state.entities.get(p.targetId);
+          const data = carrier && carrier.data;
+          const stamp = data && data.freightCustody;
+          if (stamp && stamp.status === 'carrier' && stamp.carrierId === carrier.id
+            && data.cargoManifest && Number(data.cargoManifest.totalQty) > 0) {
+            spawnFreightCargo(d, live, state, carrier, 'drive_disabled');
+          }
         }
       }
       return;

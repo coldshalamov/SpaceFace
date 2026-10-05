@@ -50,6 +50,7 @@ function boot(seed = SEED) {
   const names = [
     'freight:cargoSpilled', 'freight:custodyChanged', 'freight:manifestRemaining',
     'freight:custodyReceipt', 'loot:drop', 'pickup:collected', 'encounter:predationCleared',
+    'economy:applyTradePressure',
   ];
   const events = Object.fromEntries(names.map((name) => [name, []]));
   for (const name of names) bus.on(name, (payload) => events[name].push(structuredClone(payload)));
@@ -190,11 +191,19 @@ test('kill hauler B then A: each spills its own custody-stamped cargo and neithe
     "B's death does not end the predation relation on A");
   assert.equal(h.events['encounter:predationCleared'].length, 0,
     "spilling B must not tear down the live raid on the selected carrier");
+  assert.equal((h.state.encounterDirector.stats.openFreightCustodies || []).length, 0,
+    'a side record never enters the durable open-custody channel');
 
-  // The player can grab B's spill through the real pickup seam.
+  // The player can grab B's spill through the real pickup seam — and the grab settles the side
+  // ledger's bookkeeping through the same custody writers the raid's own pods use.
   const grabbed = grabByPlayer(h, bPods[0]);
   assert.equal(grabbed.accepted, bPods[0].data.amount, 'the pod is fully collectable');
   assert.ok(grabbed.delta > 0, 'a grabbed B pod lands in player cargo');
+  const settledB = sideRecord.pods.find((pod) => pod.entityId === bPods[0].id);
+  assert.equal(settledB.status, 'player_collected', 'the side ledger settles the grab');
+  assert.equal(sideRecord.playerCollectedQty, bPods[0].data.amount,
+    'the side ledger books the seizure like the raid slot would');
+  assertConserved(sideRecord);
 
   // Kill A — the selected target. Its own manifest spills into the raid's slot record.
   kill(h, carrierA, h.player.id);
@@ -272,4 +281,73 @@ test('kill A then B: the same writer serves both orders and B never strands A fr
   assert.equal(recordA.terminal, true);
   assert.equal(h.events['freight:custodyReceipt'].length, 2,
     'each hauler custody chain settled with exactly one terminal receipt');
+});
+
+test('a side hauler that outlives the raid arrives under its own manifest', () => {
+  const h = boot();
+  const live = fire(h, ':side-arrival');
+  const [carrierA, haulerB] = haulers(h, live);
+  const manifestBQty = haulerB.data.cargoManifest.totalQty;
+
+  // Kill A — the selected carrier. Its freight is on the field as pods; B sails on with its own.
+  kill(h, carrierA, h.player.id);
+  assert.equal(spilledFor(h, carrierA.data.cargoManifest.manifestId).length, 1);
+  assert.ok(live.data.freightCargoCustody, "A's custody occupies the raid slot");
+
+  // B reaches the destination: the convoy's own tick resolves arrival by endpoint geometry.
+  const end = live.data.end;
+  assert.ok(end && Number.isFinite(end.x) && Number.isFinite(end.z), 'the authored convoy has an end');
+  haulerB.pos.x = end.x;
+  haulerB.pos.z = end.z;
+  h.sim.runTicks(30);
+
+  const pressure = h.events['economy:applyTradePressure'];
+  assert.ok(pressure.length > 0,
+    "the surviving side hauler's manifest still presses the destination market");
+  assert.ok(pressure[pressure.length - 1].vol > 0);
+  assert.equal(haulerB.data.freightCustody.status, 'delivered',
+    'a delivered side manifest closes its stamp — the post-arrival sweep cannot spill it');
+  assert.ok(manifestBQty > 0);
+});
+
+test('a drive-disabled side hauler spills into an open side record, and its death closes it', () => {
+  const h = boot();
+  const live = fire(h, ':side-disable');
+  const [carrierA, haulerB] = haulers(h, live);
+  const manifestB = haulerB.data.cargoManifest;
+  const carrierBQty = manifestB.totalQty;
+
+  // Drive-disable B — the hauler the raid was NOT pointed at. Its manifest spills through the
+  // same writer, and its side record stays OPEN for the pods' collection bookkeeping.
+  h.bus.emit('combat:subsystemDisabled', {
+    targetId: haulerB.id, subsystemId: 'subsystem_drive',
+    pos: { x: haulerB.pos.x, z: haulerB.pos.z },
+  });
+  const spillsB = spilledFor(h, manifestB.manifestId);
+  assert.equal(spillsB.length, 1, 'a side drive-disable spills through the custody writer');
+  assert.equal(spillsB[0].cause, 'drive_disabled');
+  assert.ok(spillsB[0].qty > 0 && spillsB[0].qty < carrierBQty,
+    'a disable spills half the manifest — the disabled hull sails on with the rest');
+
+  const sideRecord = live.data.freightSideCustody[haulerB.data.freightCustody.carrierIdentityKey];
+  assert.ok(sideRecord, 'the disable minted the side record');
+  assert.equal(sideRecord.terminal, false,
+    'a disable spill keeps the side ledger open for collection bookkeeping');
+  assert.equal(live.data.predationTargetId, carrierA.id,
+    'disabling B does not end the predation relation on A');
+
+  // The spilled pods still collect through the real seam while the record is open.
+  const pods = livePods(h, live);
+  assert.ok(pods.length >= 1);
+  const grabbed = grabByPlayer(h, pods[0]);
+  assert.equal(grabbed.accepted, pods[0].data.amount);
+  assert.equal(sideRecord.playerCollectedQty, pods[0].data.amount);
+
+  // Killing the disabled hauler closes its ledger: the remaining manifest spills and terminalizes.
+  kill(h, haulerB, h.player.id);
+  assert.equal(sideRecord.terminal, true);
+  assert.equal(sideRecord.outcome, 'carrier_destroyed');
+  assertConserved(sideRecord);
+  assert.equal(spilledFor(h, manifestB.manifestId).length, 2,
+    'the death spill books only the remainder — the disabled half already left the hull');
 });
