@@ -247,6 +247,10 @@ export function arcRailGeometry(W, H, count, { span = null, pivotY = 0.56, gaps 
  * cannot fit whole stays whole (it clips, as before; a tenth stop is worse).
  * Pure: pass it the rows list and the first-pass geometry; it answers the seated list.
  */
+// the largest a head legend can draw — stacked and one-line both cap here; the width split plans
+// against it so a carried measured width can never be scaled by a stale (smaller) last-pass size
+const HEAD_MAX = 26;
+
 export function splitGroupedRowsForWidth(all, W, geo, headText, headSizeGuess = 18, headWidth = null) {
   const maxAnchorX = geo && geo.anchors && geo.anchors.length
     ? Math.max(...geo.anchors.map((a) => a.x)) : 0;
@@ -387,6 +391,10 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
   // stops of their own, so every interaction that indexes rows (hover, keys, heads, rest) must
   // read this — rows() would merge the chunks back and point the Hand one stop early (REV-D136.1)
   let seatedRows = [];
+  // the awake ink's overhang below its layout box, carried across builds — the wake can be
+  // pending (no [data-awake] node to measure) for a whole swing, and the ceiling below must not
+  // go to zero for the verb about to take the weight (REV-D169.1)
+  let lastAwakeDrop = 0;
   const ruleRest = `orr-rule-rest-${++ruleSeq}`;
   const ruleLit = `orr-rule-lit-${ruleSeq}`;
 
@@ -471,6 +479,11 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
     const W = host.clientWidth || doc.documentElement.clientWidth;
     const H = host.clientHeight || doc.documentElement.clientHeight;
     let all = rows();
+    // a re-seat inside the arrival window would replay the head/rule entrances on the new nodes —
+    // the entrance is a first-open gesture, not a relayout one. Strip the class once heads have
+    // painted: a relayout exists because the seat was wrong, so verbs snapping to the corrected
+    // seat beats heads re-fading over and over (REV)
+    if (heads.length && host.classList.contains('orr-arcrail-host--arriving')) host.classList.remove('orr-arcrail-host--arriving');
     // harvest the words the last build's heads actually render before this pass re-engraves them
     const localeTag = (doc.documentElement && doc.documentElement.getAttribute('data-locale')) || '';
     if (localeTag !== headTextLocale) { headTextByGroup.clear(); headWidthByGroup.clear(); headTextLocale = localeTag; }
@@ -492,7 +505,10 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
     // width and split the overruns into consecutive rows that share the head name — the dial
     // simply carries one more stop per split, the way a chapter continues over the page.
     if (grouped) {
-      const seated = splitGroupedRowsForWidth(all, W, geo, (g) => headTextByGroup.get(g), headSize, (g) => headWidthByGroup.get(g));
+      // plan at HEAD_MAX, not `headSize`: the size resolves later in this same pass, so the value
+      // in scope here is the LAST pass's — a grow-transition build would under-plan the head term
+      // and keep a row whole whose real head runs it past the runway (REV-D169.2)
+      const seated = splitGroupedRowsForWidth(all, W, geo, (g) => headTextByGroup.get(g), HEAD_MAX, (g) => headWidthByGroup.get(g));
       if (seated !== all) {
         all = seated;
         geo = arcRailGeometry(W, H, all.length, { span, pivotY, gaps, place });
@@ -675,6 +691,12 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
           if (tr.height > 0 && br.height > 0) awakeDrop = Math.max(0, tr.bottom - br.bottom);
         } catch (_) {}
       }
+      // a pending wake sits sleeping-weight for the whole swing — including the mount pass and
+      // every early convergence relayout — so no element carries the heavy ink to measure and the
+      // bound goes under truth for exactly the verb the overhang exists for. Carry the last
+      // measured drop: it belongs to the awake weight, not to whichever verb holds it (REV-D169.1)
+      if (awakeDrop > 0) lastAwakeDrop = awakeDrop;
+      awakeDrop = Math.max(awakeDrop, lastAwakeDrop);
       const bottomOf = (i) => {
         // measured under the STACKED seat — the only form where this row's ink bounds the head
         // below it: in that form every verb sits VERB_LIFT under its tick. A rect from the
@@ -710,9 +732,9 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
       }, Infinity);
       stacked = room >= 13;
       headSize = stacked
-        ? Math.min(26, room)
+        ? Math.min(HEAD_MAX, room)
         // one line: the head shares its row, so only the row's own height bounds it
-        : clamp(pitch * 0.52, 13, 26);
+        : clamp(pitch * 0.52, 13, HEAD_MAX);
       host.style.setProperty('--orr-head', `${headSize.toFixed(1)}px`);
       host.style.setProperty('--orr-verb', `${mid.toFixed(1)}px`);
       host.style.setProperty('--orr-verb-low', `${low.toFixed(1)}px`);
@@ -1035,7 +1057,9 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
   host.addEventListener('pointerover', onOver);
   host.addEventListener('focusin', onFocus);
   host.addEventListener('pointerleave', onLeave);
-  host.addEventListener('focusout', () => setTimeout(onLeave, 0));
+  let focusOutTimer = 0;
+  const onFocusOut = () => { focusOutTimer = setTimeout(onLeave, 0); };
+  host.addEventListener('focusout', onFocusOut);
   if (grouped && typeof layer.addEventListener === 'function') {
     // the heads hear the pointer on the layer they are drawn in, so a category is a target
     layer.addEventListener('pointerover', onHeadOver);
@@ -1086,6 +1110,7 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
     get geometry() { return geo; },
     dispose() {
       clearTimeout(arrivalTimer);
+      clearTimeout(focusOutTimer);
       handSpring.stop();
       if (ro) ro.disconnect();
       if (textObserver) textObserver.disconnect();
@@ -1102,6 +1127,10 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
       host.removeEventListener('pointerover', onOver);
       host.removeEventListener('focusin', onFocus);
       host.removeEventListener('pointerleave', onLeave);
+      host.removeEventListener('focusout', onFocusOut);
+      host.style.removeProperty('--orr-head');
+      host.style.removeProperty('--orr-verb');
+      host.style.removeProperty('--orr-verb-low');
       root.remove();
       wake(null);
       heads = [];
