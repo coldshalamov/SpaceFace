@@ -6073,6 +6073,11 @@ Rows authored this sitting from the open-ended direction, each landed with its p
   nobody could see; four authored pockets (feedstock seam, forge haul + lawful patrol, derelict
   scavenger drift, slag relay) now deliver it through the generic spawn path. DONE dd0438962 —
   `test/vesta-activity-pocket-chain.test.mjs` 5/5, helios re-counted 5/5, pocket families 25/25.
+- **Tethys Junction: the checkpoint day** — the border material existed with no pockets; four
+  authored pockets now work it (checkpoint toll queue, Io-gate lane patrol, the Quiet Cache
+  runner sliding past the checkpoint, customs-log relay) — law and outlaw sharing the same
+  water, nobody arriving hostile. DONE 502861969 — `test/tethys-activity-pocket-chain.test.mjs`
+  registry/laws/chain/runtime/bearing pins, named run 25/26 (one pre-existing foreign red).
 Do not delete the heading; the next agent needs to know it is no longer the hole.
 
 ### 23.4 Actualize the tools
