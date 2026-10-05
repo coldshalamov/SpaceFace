@@ -2520,7 +2520,10 @@ function collectPageIssues(cdp) {
       const entry = msg.params.entry;
       const item = { type: entry.level || 'log', text: entry.text || '' };
       if (entry.level === 'error') {
-        if (!isIgnorablePageIssue(item)) issues.push(item);
+        // Unmounted probe server (SPACEFACE_PLAYER_STORE_DIR: ''): the boot store probe's
+        // resource 404/abort is expected noise — keyed on entry.url so authored-asset
+        // failures elsewhere still land.
+        if (!isAbsentPlayerStoreEntry(entry) && !isIgnorablePageIssue(item)) issues.push(item);
       } else if (entry.level === 'warning') {
         warnings.push(item);
       }
@@ -2536,6 +2539,11 @@ function isIgnorablePageIssue(issue) {
   const text = String(issue && issue.text || '').trim();
   return /^(?:THREE\.)+WebGLProgram: Shader Error (?:0|1282) - VALIDATE_STATUS false/.test(text)
     && /Program Info Log:\s*$/.test(text);
+}
+
+function isAbsentPlayerStoreEntry(entry) {
+  const url = String(entry && entry.url || '').split('?')[0];
+  return url.endsWith('/__spaceface_player_store');
 }
 
 function isBootReady(cdp) {

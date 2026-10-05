@@ -153,16 +153,7 @@ try {
   await page.waitForFunction(() => window.SF.state.ui.docked === false && window.SF.state.mode === 'flight',
     null, { timeout: DOCK_TIMEOUT_MS });
 
-  // The boot store probe caps itself at 10s (sharedPlayerStore.js) so a stalled store can never pin
-  // the main menu's Continue button; under heavy load the loopback GET can exceed the cap and
-  // abort, handled by design via the local merge fallback. That handled probe timeout is not a
-  // page error; anything else — including store PUT failures — still fails this check.
-  const isHandledStoreProbeAbort = (issue) =>
-    issue.type === 'error'
-    && String(issue.text).startsWith('Request failed')
-    && String(issue.text).includes('__spaceface_player_store')
-    && String(issue.text).includes('net::ERR_ABORTED');
-  assert.deepEqual(issues.errorIssues().filter((issue) => !isHandledStoreProbeAbort(issue)), [],
+  assert.deepEqual(issues.errorIssues(), [],
     'station egress probe should not record page errors');
   console.log('Station egress OK: dock -> Esc/backdrop confirm (no strand) -> Undock -> flight restored, sim resumed');
   console.log('Dock target:', dockTarget.stationId);

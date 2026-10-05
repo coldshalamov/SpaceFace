@@ -394,7 +394,7 @@ async function startFreshServer(root) {
   const port = await freePort();
   const child = spawn(process.execPath, [join(root, 'server.js')], {
     cwd: root,
-    env: { ...process.env, PORT: String(port), SF_PORT: String(port) },
+    env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '', PORT: String(port), SF_PORT: String(port) },
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,
     detached: process.platform !== 'win32',

@@ -74,7 +74,7 @@ try {
   });
 
   const baselinePage = await browser.newPage({ viewport: VIEWPORT, deviceScaleFactor: 1 });
-  const baselineIssues = collectPageIssues(baselinePage, { ignoreProbeWarnings: true });
+  const baselineIssues = collectPageIssues(baselinePage, { playerStoreMounted: false, ignoreProbeWarnings: true });
   await baselinePage.goto(server.baseUrl, { waitUntil: 'domcontentloaded', timeout: 120_000 });
   // Boot is wall-clock work on the host (server fetch + first-frame pipeline); on a saturated
   // machine it legitimately needs several minutes. SPACEFACE_M3_BOOT_MS overrides.
@@ -170,7 +170,7 @@ try {
     process.stdout.write(`[route] server-restarted-for-travel — ${server.baseUrl}\n`);
   }
   const travelPage = await browser.newPage({ viewport: VIEWPORT, deviceScaleFactor: 1 });
-  const travelIssues = collectPageIssues(travelPage, { ignoreProbeWarnings: true });
+  const travelIssues = collectPageIssues(travelPage, { playerStoreMounted: false, ignoreProbeWarnings: true });
   await travelPage.goto(server.baseUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 });
   const travel = await runProfessionalTravelPublicRoute({
     page: travelPage,

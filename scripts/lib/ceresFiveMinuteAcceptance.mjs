@@ -6929,7 +6929,7 @@ async function launchCeresBrowserRuntime({ root, executablePath, resources }) {
   });
   resources.page = await resources.context.newPage();
   installCspSafePlaywrightPolling(resources.page);
-  resources.pageIssueTracker = collectPageIssues(resources.page, { includeWarnings: true });
+  resources.pageIssueTracker = collectPageIssues(resources.page, { playerStoreMounted: false, includeWarnings: true });
   resources.canonicalUrlTracker = createCanonicalUrlTracker(
     resources.page,
     ownedServer.baseUrl,

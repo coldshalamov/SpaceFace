@@ -85,6 +85,8 @@ export function collectPageIssues(page, options = {}) {
     }
     // Store-less test servers deliberately leave this optional backend unmounted.
     // Its client deadline falls back to localStorage; keep real-store failures visible.
+    // This suppresses ANY aborted request to the route — GET or PUT. Callers that need the
+    // GET-only excuse must check issue.method themselves (the station-tab check does).
     if (options.playerStoreMounted === false && isNavigationCancelledRequest(failure)
       && new URL(request.url()).pathname === '/__spaceface_player_store') {
       ignoredIssues.push({ ...issue, absentPlayerStore: true });
