@@ -190,7 +190,7 @@ export const SECTOR_WAY_OF_LIFE = Object.freeze([
     structures: 'Ruined Cache Station.',
     hazardGeometry: 'A moving radiation burn and a debris field.',
     landmark: 'Ruined Cache Station (station_ashcache).',
-    signatureToy: 'explicitly none',
+    signatureToy: 'ashfall_claim_scarecrow',
   }),
   row({
     id: 'sector_nyx_march',

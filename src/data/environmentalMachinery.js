@@ -168,6 +168,7 @@ const MACHINE_FIELD_REGION_BY_SECTOR = Object.freeze({
   sector_veil_nebula: 'veil',
   sector_charon_expanse: 'charon',
   sector_io_reach: 'io',
+  sector_ashfall_reach: 'ashfall',
 });
 
 function buildKillMachine({
@@ -610,6 +611,44 @@ export const IO_BELL_RINGER = buildKillMachine({
   ],
 });
 
+// ASHFALL REACH - the claim scarecrow. The Vael do not fence a claim; they keep it hollow.
+// A pole-rig inside the sector's authored debris field (the 400/300 disc) runs the one
+// repulsor in the census: every surge shoves loose mass out to the rim, where pods and
+// light rock collect in a ring a pilot can work on the calm tick. Every other machine
+// gathers toward a kill point; the scarecrow's rig IS the point being kept clear - sprint
+// for the heart on calm, or ride the surge outward, the only force in Ashfall that throws
+// you out of the Roaming Burn's path instead of into a pocket.
+// Sited on the debris disc, 1233 WU from station_ashcache, 227 WU inside f_ash_1's rim
+// (the ring it pushes salvage into), clear of f_ash_2 (1173), every gate and POI (>1500).
+export const ASHFALL_SCARECROW_SECTOR_ID = 'sector_ashfall_reach';
+
+export const ASHFALL_CLAIM_SCARECROW = buildKillMachine({
+  id: 'ashfall_claim_scarecrow',
+  hazardType: 'debris',
+  placeId: 'place_extraction_mast',
+  sectorId: ASHFALL_SCARECROW_SECTOR_ID,
+  localPos: { x: 400, z: 300 },
+  rot: 0,
+  phaseOffsetS: 20,
+  hazardRadius: 220,
+  // The rig pole itself is the anvil: the repulsor's heart is the guarded claim anchor.
+  // A body at centre still satisfies the census law (pointInsideKillMachine admits it) -
+  // inside the field, shoved away from it.
+  anvil: { radius: 20, mass: 11000, along: 0, across: 0 },
+  mouth: { name: 'Claim Scarecrow', radius: 16 },
+  fields: [{
+    // The only repulsor-kind field in the census: radial push away from the rig, so the
+    // claim stays hollow and the rim collects what the sweep throws out.
+    idSuffix: 'shove',
+    kind: 'repulsor',
+    strength: 560,
+    radius: 260,
+    falloff: 1.0,
+    along: 0,
+    across: 0,
+  }],
+});
+
 // Every machine the adapter owns, in one list: Ceres mouths, the Helios starter cracker, the Sker
 // baler, the Rift fissure cracker, and the CR-FEED machines. Per-sector slices come from
 // killMachinesForSector; this is the census the runtime uses to retire fields and anvils when a
@@ -624,6 +663,7 @@ export const ALL_KILL_MACHINES = Object.freeze([
   VEIL_COLD_DRAW,
   CHARON_TAILINGS_SWEEP,
   IO_BELL_RINGER,
+  ASHFALL_CLAIM_SCARECROW,
 ]);
 
 // The full census by stable id — Ceres trio plus the starter/baler/rift/CR-FEED machines.
@@ -643,6 +683,7 @@ export function killMachinesForSector(sectorId) {
   if (sectorId === VEIL_COLD_SECTOR_ID) return Object.freeze([VEIL_COLD_DRAW]);
   if (sectorId === CHARON_SWEEP_SECTOR_ID) return Object.freeze([CHARON_TAILINGS_SWEEP]);
   if (sectorId === IO_BELL_SECTOR_ID) return Object.freeze([IO_BELL_RINGER]);
+  if (sectorId === ASHFALL_SCARECROW_SECTOR_ID) return Object.freeze([ASHFALL_CLAIM_SCARECROW]);
   return Object.freeze([]);
 }
 

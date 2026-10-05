@@ -10,8 +10,9 @@
 //   veil_cold_draw      one off-centre well dragging across a plate - the only off-centre gather
 //   charon_tailings_sweep one sheet lying across the haul road   - the only machine that drags you along your own road
 //   io_bell_ringer      channel sheet + well on the anvil        - the only herd-then-hold
+//   ashfall_claim_scarecrow  repulsor ring keeping a claim hollow - the only machine that shoves you out
 //
-// All five run the shared law every mouth runs: warning registers the volume at strength 0,
+// All six run the shared law every mouth runs: warning registers the volume at strength 0,
 // surge is the bite, calm is the safe window. None is a damage aura.
 
 import test from 'node:test';
@@ -21,6 +22,8 @@ import { fileURLToPath } from 'node:url';
 
 import {
   ALL_KILL_MACHINES,
+  ASHFALL_CLAIM_SCARECROW,
+  ASHFALL_SCARECROW_SECTOR_ID,
   CHARON_SWEEP_SECTOR_ID,
   CHARON_TAILINGS_SWEEP,
   IO_BELL_RINGER,
@@ -52,6 +55,7 @@ const CR_FEED_MACHINES = Object.freeze([
   { machine: VEIL_COLD_DRAW, sectorId: VEIL_COLD_SECTOR_ID, kind: 'off-centre-gather' },
   { machine: CHARON_TAILINGS_SWEEP, sectorId: CHARON_SWEEP_SECTOR_ID, kind: 'road-drag' },
   { machine: IO_BELL_RINGER, sectorId: IO_BELL_SECTOR_ID, kind: 'herd-then-hold' },
+  { machine: ASHFALL_CLAIM_SCARECROW, sectorId: ASHFALL_SCARECROW_SECTOR_ID, kind: 'hollow-guard' },
 ]);
 
 function fieldAlong(machine, field) {
@@ -84,7 +88,7 @@ test('each machine serves its named sector alone and joins the census', () => {
       `${machine.id}: ${machine.placeId}.glb is packaged art, not a new body`);
     assert.ok(machine.mouth, `${machine.id} asks the adapter for its shell once per visit`);
   }
-  // Three new sectors, three new slices: the Ceres roster is untouched.
+  // One machine per new sector, each sector sliced alone: the Ceres roster is untouched.
   assert.deepEqual(killMachinesForSector(KILL_MACHINE_SECTOR_ID), KILL_MACHINES);
 });
 
@@ -103,7 +107,7 @@ test('every machine publishes its map/scanner hazard disc in its own sector', ()
   }
   // A machineless sector publishes none - no Ceres mouths bleed into other charts.
   assert.equal(killMachineHazardZones('sector_pallas_drift').length, 0);
-  assert.equal(killMachineHazardZones('sector_ashfall_reach').length, 0);
+  assert.equal(killMachineHazardZones('sector_nyx_march').length, 0);
 });
 
 test('no two of them is the same kind of object', () => {
@@ -184,7 +188,29 @@ test('no two of them is the same kind of object', () => {
   assert.equal(pointInsideMachineField(ringer, nave, feed), true, 'feed zone is inside the nave');
   assert.equal(pointInsideMachineField(ringer, clapper, feed), true, 'feed zone is inside the clapper');
 
-  // The three axes are unique across the WHOLE census, not just across the trio - which is what
+  // 6 - HOLLOW-GUARD: the only repulsor in the census - a radial shove away from the rig
+  // pole at the heart of the claim, so the centre stays empty and the rim collects what
+  // the sweep throws out. Every gather machine pulls toward a kill point; the scarecrow's
+  // anvil is the point the field keeps clear.
+  const crow = ASHFALL_CLAIM_SCARECROW;
+  assert.equal(crow.fields.length, 1, 'the scarecrow is a single field');
+  assert.equal(crow.fields[0].kind, 'repulsor', 'the shove is radial-outward');
+  assert.equal(crow.fields[0].along, 0, 'the shove centres on the rig');
+  assert.equal(crow.fields[0].across, 0, 'the shove centres on the rig');
+  // The guarded heart: the anvil is inside the field (a body parked at the rig IS in the
+  // bite) but the bite throws it outward - the shared anvil-admission law below pins entry.
+  assert.ok(crow.fields[0].radius > crow.anvil.radius,
+    'the shove reaches past the rig, not just its skin');
+  // The rim ring: a body just outside the sweep is a drifter, not inside the machine.
+  const ring = killMachineFieldCenter(crow, crow.fields[0]);
+  const outside = {
+    x: ring.x + crow.fields[0].radius + 20,
+    z: ring.z,
+  };
+  assert.equal(pointInsideKillMachine(crow, outside), false,
+    'the salvage ring lives outside the shove');
+
+  // The six axes are unique across the WHOLE census, not just across the new six - which is what
   // "non-copy" has to mean if a later sitting is going to keep the promise. The unit of comparison
   // is the machine's shape, not an individual field: the shear legitimately uses one reversed jaw
   // as half of its convergence, so "behind its face" is a whole-machine property.
@@ -201,6 +227,8 @@ test('no two of them is the same kind of object', () => {
   const herdThenHold = (m) => m.fields.some((f) => f.kind === 'sheet')
     && m.fields.some((f) => f.kind === 'well' && f.across === 0
       && Math.abs(f.along - anvilAlong(m)) < 1);
+  // The only machine whose field pushes a body OUT instead of gathering or dragging it in.
+  const hollowGuard = (m) => m.fields.some((f) => f.kind === 'repulsor');
 
   for (const machine of ALL_KILL_MACHINES) {
     if (machine !== jaws) {
@@ -218,15 +246,19 @@ test('no two of them is the same kind of object', () => {
     if (machine !== ringer) {
       assert.equal(herdThenHold(machine), false, `${machine.id} must not also herd a channel into an on-anvil grip`);
     }
+    if (machine !== crow) {
+      assert.equal(hollowGuard(machine), false, `${machine.id} must not also keep a claim hollow`);
+    }
   }
   assert.equal(isConvergingPair(jaws), true);
   assert.equal(killsBehindItsFace(clamp), true);
   assert.equal(offCentreGather(draw), true);
   assert.equal(straddlingSheet(sweep), true);
   assert.equal(herdThenHold(ringer), true);
+  assert.equal(hollowGuard(crow), true);
 });
 
-test('all five run the shared law: warning quiet, surge bites, calm is the safe window', () => {
+test('all six run the shared law: warning quiet, surge bites, calm is the safe window', () => {
   for (const { machine } of CR_FEED_MACHINES) {
     const cycle = machine.cycle;
     const at = (offsetS) => killMachinePhase(machine, machine.phaseOffsetS + offsetS);
@@ -245,7 +277,7 @@ test('all five run the shared law: warning quiet, surge bites, calm is the safe 
       assert.ok(field.strength * surge.fieldStrengthScale > 0, `${machine.id}/${field.idSuffix}`);
     }
   }
-  // Distinct phase offsets so the four never bite on the same tick.
+  // Distinct phase offsets so the six never bite on the same tick.
   const offsets = CR_FEED_MACHINES.map(({ machine }) => machine.phaseOffsetS);
   assert.equal(new Set(offsets).size, offsets.length, `distinct phase offsets: ${offsets.join(', ')}`);
 });
