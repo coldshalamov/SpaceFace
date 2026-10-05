@@ -49,7 +49,9 @@ const VERB_EMIT = Object.freeze({
   }),
   // src/core/physics.js emits physics:impact per contact -> _onCollision ->
   // resolveCollisionCue: a rock contact at/under SCRAPE_SPEED with no hullDamage is the
-  // terrain glance — the scrape is the hull-hit voice for grazing a world body.
+  // terrain glance — the scrape is the hull-contact voice for grazing a world body.
+  // Weapon-vs-ship hits never reach this recipe: _onHit owns `projectile:hit` and speaks
+  // through the combat:damage layer voices (sfx.shieldHit/armorHit/hullHit) instead.
   hit: (h) => h.bus.emit('physics:impact', {
     aId: h.player.id, bId: h.rock.id, pos: { x: 6, z: 0 },
     dp: 120, preSolveClosingSpeed: 12, tick: h.state.tick,
@@ -62,12 +64,20 @@ const VERB_EMIT = Object.freeze({
   // The breach poller (_updateHullBreach) owns the same recipe while the cabin vents —
   // pinned in the breach test below.
   hull: (h) => h.bus.emit('salvage:reactorVented', { wreckId: 'c5-wreck' }),
-  // combat:shove (onboarding.js combat shove, combat.js) -> handler plays
-  // combatVerbRecipe('shove') = the concussion shove.
-  shove: (h) => h.bus.emit('combat:shove', { pos: { x: 4, z: 0 } }),
-  // tetherGameplay.js emits tether:cut when the line is let go — the release twang. (The
-  // rated release rides the massline instrument's own sfx_massline_release by design.)
-  throwRelease: (h) => h.bus.emit('tether:cut', { targetId: 'c5-haul' }),
+  // combat:shove — the only production emitter is the onboarding rescue beat
+  // (onboarding.js, kind 'rescue-shove', payload {targetId,sourceId,kind,atS}); the
+  // concussion recipe also fires via the bombs:detonated cue in normal combat.
+  shove: (h) => h.bus.emit('combat:shove', {
+    targetId: 'c5-tow', sourceId: h.player.id, kind: 'rescue-shove', atS: h.state.simTime,
+  }),
+  // tetherGameplay.js's real release emits the trio tether:cut + tether:released +
+  // tether:releaseRated — the twang answers the cut; the rated release rides the
+  // massline instrument's own sfx_massline_release alongside.
+  throwRelease: (h) => {
+    h.bus.emit('tether:cut', { targetId: 'c5-haul' });
+    h.bus.emit('tether:released', { targetId: 'c5-haul' });
+    h.bus.emit('tether:releaseRated', { targetId: 'c5-haul' });
+  },
   // tetherGameplay.js latch -> combatVerbRecipe('tether:latched') = the latch lock.
   latch: (h) => h.bus.emit('tether:latched', { targetId: 'c5-haul' }),
   // tetherGameplay.js break -> combatVerbRecipe('tether:broke') = the crack.
@@ -77,8 +87,10 @@ const VERB_EMIT = Object.freeze({
   slam: (h) => h.bus.emit('tether:whipImpact', { pos: { x: 10, z: 0 } }),
   // combat/damage.js + combat/kernel.js emit entity:killed; a player-killed hull answers
   // with resolveKillMassVoice.confirmRecipeId = the kill confirm under the body voice.
+  // Production payloads carry type/victimClass, never a bare `mass`.
   kill: (h) => h.bus.emit('entity:killed', {
-    id: 'c5-victim', killerId: h.player.id, type: 'ship', mass: 9, pos: { x: 8, z: 0 },
+    id: 'c5-victim', killerId: h.player.id, type: 'ship', victimClass: 'pirate',
+    pos: { x: 8, z: 0 },
   }),
   // dock:docked -> _onDocked plays the clunk; dock:undocked -> _onUndocked the release.
   dock: (h) => h.bus.emit('dock:docked', { stationId: 'st_c5' }),
