@@ -6700,6 +6700,7 @@ function sanitizeNavWaypoint(waypoint) {
   for (const field of [
     'kind', 'missionId', 'missionType', 'stationId', 'sectorId', 'sectorName',
     'label', 'reason', 'mapLabel', 'markerId', 'markerKind', 'commodityId',
+    'targetSectorId',
   ]) {
     const value = navString(waypoint[field]);
     if (value) out[field] = value;
@@ -6756,6 +6757,18 @@ function navWithStableEntityIdentity(state) {
   const nav = clonePlain(state?.nav || {});
   for (const target of [nav.waypoint, nav.autopilot]) {
     if (!target || typeof target !== 'object') continue;
+    // The stamped bind is the truth — it was proven at arm time and re-proven every tick.
+    // Reading the durable id off the stamp keeps the save honest after the bound body
+    // rematerializes: targetEntityId can still name a dead slot, or worse a recycled occupant
+    // whose record would persist a wrong-body bind (review).
+    const stableKey = navString(target.stable && target.stable.key);
+    if (stableKey && stableKey.startsWith('record:')) {
+      const recordId = navString(stableKey.slice('record:'.length));
+      if (recordId) {
+        target.targetWorldRecordId = recordId;
+        continue;
+      }
+    }
     const runtimeId = navEntityId(target.targetEntityId);
     if (!runtimeId) continue;
     let entity = state?.entities?.get?.(target.targetEntityId) || null;
