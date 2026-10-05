@@ -330,6 +330,25 @@ test('the weir does not read while a patrol intercept already owns the scan, and
   assert.equal(rows[0].payload.stationId, 'station_helios');
 });
 
+test('a pod held in the weir does not feed a scan a patrol already owns (D179)', () => {
+  const center = HELIOS_CUSTOMS_WEIR.center;
+  const { state, sys, events } = harness('sector_helios_prime', { ...center });
+  const pod = contrabandPod('pod-patrol-owned', center);
+  state.entityList.push(pod);
+  // A live patrol intercept owns the case — a weir pod scan fired now would be adopted
+  // as the patrol's own result and resolve 'fined' at 0 credits.
+  state.encounterDirector = { live: { 'enc-1': { script: 'patrolScan' } } };
+  for (let i = 0; i < 5; i++) sys._updateCustomsWeir(0.9, state);
+  assert.equal(events.filter((row) => row.name === 'contraband:scanned').length, 0);
+  assert.equal(pod.data.customsScanned === true, false);
+  // When the intercept stands down the same pod dwells through and scans for itself.
+  state.encounterDirector.live['enc-1'].script = 'convoy';
+  for (let i = 0; i < 5; i++) sys._updateCustomsWeir(0.9, state);
+  const scans = events.filter((row) => row.name === 'contraband:scanned');
+  assert.equal(scans.length, 1);
+  assert.equal(scans[0].payload.source, 'customs_weir');
+});
+
 test('a save boundary or a new game clears every per-visit weir latch', () => {
   const center = HELIOS_CUSTOMS_WEIR.center;
   const { state, sys, player } = harness('sector_helios_prime', { ...center });
