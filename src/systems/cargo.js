@@ -415,6 +415,11 @@ export function addCargo(state, commodityId, qty, lotSource = null) {
   if (!def || requested <= 0) return 0;
   const volPerU = volumePerUnit(def);
   const free = cargo.capVolume - cargo.usedVolume;
+  // Fail closed when the hold caches are unknowable: a non-finite free must read as "no
+  // room" for volume-capped goods, never produce a NaN accepted count that callers would
+  // mistake for a successful add (a NaN capVolume previously made a market buy settle
+  // nothing yet report ok:true). Zero-volume items are uncapped and skip the check.
+  if (volPerU > 0 && !Number.isFinite(free)) return 0;
   // floor so a bulky item (vol>1) only takes whole units that fit; max(0) guards over-capacity/float drift.
   const accepted = volPerU === 0 ? Math.max(0, requested) : Math.max(0, Math.min(requested, Math.floor(free / volPerU)));
   if (accepted > 0) {

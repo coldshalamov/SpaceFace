@@ -125,6 +125,24 @@ test('a fractional-volume commodity fills to the cap boundary without overflow',
   sim.dispose();
 });
 
+test('a non-finite hold cache refuses the trade instead of reporting a phantom settle', () => {
+  const { sim, state, econ, events } = boot();
+  const sid = 'station_ceres'; const cid = 'cmdty_ore_iron';
+  const entry = state.economy.markets[sid][cid];
+  const stock0 = entry.stock;
+  const credits0 = state.player.credits;
+  state.player.cargo.capVolume = NaN; // corrupted cache — must fail closed, not settle NaN
+  const r = econ.execute(sid, cid, 'buy', 3);
+  assert.equal(r.ok, false, 'refused, never a phantom ok:true');
+  assert.equal(r.reason, 'cargo_full');
+  assert.deepEqual(state.player.cargo.items[cid] || 0, 0, 'nothing loaded');
+  assert.equal(state.player.credits, credits0, 'nothing charged');
+  assert.equal(entry.stock, stock0, 'market stock untouched');
+  assert.equal(events.length, 0, 'no tradeCompleted');
+  assert.ok(econ.quote(sid, cid, 'buy', 1).ok, 'the listing stays tradeable after the refusal');
+  sim.dispose();
+});
+
 test('repeated buy/sell cycles leave no usedVolume drift', () => {
   const { sim, state, econ } = boot();
   const sid = 'station_ceres'; const cid = 'cmdty_ice_water';
