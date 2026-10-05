@@ -5219,7 +5219,8 @@ export const missions = {
       if (!byPlayer) {
         const gone = (id) => {
           const e = this.state.entities && this.state.entities.get(id);
-          return !e || e.alive === false;
+          if (!e || e.alive === false) return true;
+          return !!(p.entity && id === p.entityId && e !== p.entity);
         };
         if (bountyTargetLost(m, p.entityId, gone)) this._failMission(m, i, 'target_lost');
         else if (externalTargetLoss(m, p.entityId, gone)) this._settleExternalTargetLoss(m, i, p);
@@ -5244,7 +5245,8 @@ export const missions = {
       if (missionObservesClauseEvent(m, 'entity:killed')) continue;
       const gone = (id) => {
         const e = this.state.entities && this.state.entities.get(id);
-        return !e || e.alive === false;
+        if (!e || e.alive === false) return true;
+        return !!(p.entity && id === p.id && e !== p.entity);
       };
       if (bountyTargetLost(m, p.id, gone)) {
         this._failMission(m, i, 'target_lost');

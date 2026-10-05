@@ -76,6 +76,37 @@ function timedWreckOrAsteroidDeadline(index) {
 
 const DAY_SECONDS = 600; // 10 sim-minutes per in-game "day" (faction decay/conflict cadence)
 
+export function clearRecycledEntityPointers(state, id) {
+  if (!state || id == null) return;
+  const player = state.player;
+  if (player) {
+    if (player.targetId === id) player.targetId = null;
+    if (player.miningTargetId === id) player.miningTargetId = null;
+    if (player.flybyFocus && player.flybyFocus.targetId === id) player.flybyFocus.targetId = null;
+  }
+  const nav = state.nav;
+  if (nav) {
+    if (nav.waypoint && nav.waypoint.targetEntityId === id) nav.waypoint.targetEntityId = null;
+    if (nav.autopilot && nav.autopilot.targetEntityId === id) nav.autopilot.targetEntityId = null;
+  }
+  const bridle = state.masslineBridle;
+  if (bridle && typeof bridle === 'object') {
+    if (bridle.sourceId === id) bridle.sourceId = null;
+    if (bridle.targetId === id) bridle.targetId = null;
+  }
+  const list = state.entityList;
+  if (!Array.isArray(list)) return;
+  for (let n = 0; n < list.length; n++) {
+    const other = list[n];
+    if (!other || other.id === id) continue;
+    if (other.ownerId === id) other.ownerId = null;
+    const combat = other.data && other.data.combat;
+    if (!combat) continue;
+    if (combat.targetId === id) combat.targetId = null;
+    if (combat.lockTarget === id) combat.lockTarget = null;
+  }
+}
+
 export const core = {
   name: 'core',
   init(ctx) {
@@ -366,11 +397,8 @@ export const core = {
     // Far shelving writes its row before removing the body, and dressing/field rows can hold an
     // id too. Recycling a held id let the next spawn or row take it, so two world objects shared
     // one mesh and presentation slot. The id comes back once that row promotes and the body dies.
-    if (!worldLedgerHoldsId(state.world, e.id)) {
-      // A bare targetId is a pointer: once this id is back in the pool, the next spawn to
-      // draw it silently inherits the player's lock. Ledger-held ids still resolve through
-      // the shelf (rock/dressing/far rows address them), so the lock survives a cull there.
-      if (state.player && state.player.targetId === e.id) state.player.targetId = null;
+      if (!worldLedgerHoldsId(state.world, e.id)) {
+      clearRecycledEntityPointers(state, e.id);
       state.freeIds.push(e.id);
     }
     const last = list.pop();
@@ -411,8 +439,7 @@ export const core = {
       state.entities.delete(e.id);
       // Same recycle guard as the single path: ledger-held ids come back when the row dies.
       if (!worldLedgerHoldsId(state.world, e.id)) {
-        // Same lock guard too: a recycled id must not inherit the player's target.
-        if (state.player && state.player.targetId === e.id) state.player.targetId = null;
+        clearRecycledEntityPointers(state, e.id);
         state.freeIds.push(e.id);
       }
       const last = list.pop();

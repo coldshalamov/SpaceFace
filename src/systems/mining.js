@@ -683,6 +683,9 @@ export const mining = {
     const prev = Number.isFinite(beam.heat) ? beam.heat : 0;
     let heat;
     if (working) {
+      if (this._lockTargetId != null && state.player && state.player.miningTargetId == null) {
+        this._lockTargetId = null;
+      }
       const target = this._lockTargetId != null && state.entities && state.entities.get
         ? state.entities.get(this._lockTargetId)
         : null;
