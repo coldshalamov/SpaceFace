@@ -104,10 +104,11 @@ const GENERATED_POSITIONAL_IDENTITY = /:-?\d+:-?\d+:[^:]*$/;
 
 /**
  * A tombstone the ambient bound may evict: dead, an ordinary kill outcome, and PROVABLY
- * ephemeral — its identity is a positional mint, or it carries the kill path's provenance
- * with no identity at all. Authored identities, recipe tombstones, bosses, and every
- * mission/wreck/player/named marker stay protected: eviction can never resurrect a death
- * an authored gate was counting on.
+ * ephemeral — its identity is a positional mint. Authored identities, recipe tombstones,
+ * bosses, and every mission/wreck/player/named marker stay protected: eviction can never
+ * resurrect a death an authored gate was counting on. An identity-less tombstone stays
+ * protected too — a legacy record that never carried the field is indistinguishable from
+ * an authored latch, and the kill path's 'kill' stamp alone cannot tell them apart.
  */
 export function isAmbientTombstoneWorldRecord(rec) {
   return !!(rec && rec.alive === false
@@ -115,8 +116,7 @@ export function isAmbientTombstoneWorldRecord(rec) {
     && rec.isBoss !== true
     && rec.recordSource !== 'sector_embodiment'
     && !hasPermanentMarkersBeyondOutcome(rec)
-    && (GENERATED_POSITIONAL_IDENTITY.test(String(rec.identityKey || ''))
-      || (rec.durableReason === 'kill' && !rec.identityKey)));
+    && GENERATED_POSITIONAL_IDENTITY.test(String(rec.identityKey || '')));
 }
 
 /**
@@ -755,9 +755,12 @@ export function captureEntityRecord(entity, opts = {}) {
     || typeof d.name === 'string' && d.name.trim().length > 0
     || typeof entity.name === 'string' && entity.name.trim().length > 0
     || previous && previous.named === true;
-  const identityKey = existingId
-    || opts.identityKey
+  // identityKey records the semantic spawn identity, not the stable recordId: an ambient mint
+  // (`kill:*:<qx>:<qz>`) or an authored slot key must land here even when `d.worldRecordId` is
+  // already stamped — the wr_* id stays the join key (recordId below), never the classifier.
+  const identityKey = opts.identityKey
     || d.identityKey
+    || existingId
     || [
       kind,
       d.lootTableId || d.enemyTypeId || d.defId || entity.type || 'x',

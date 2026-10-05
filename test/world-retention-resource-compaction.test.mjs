@@ -166,6 +166,76 @@ test('ambient kill tombstones bound per sector while authored and recipe deaths 
     'the bound is deterministic');
 });
 
+test('capture lands the semantic spawn key on the record even when a wr_* id is stamped', () => {
+  // REV-F1: the ambient bound reads record.identityKey — production tombstones are minted on
+  // entities that carry BOTH d.worldRecordId (wr_*) and the positional mint d.identityKey.
+  // The wr_* id must stay the join key while the mint lands as the classifier, or the bound
+  // can never engage on the population it exists to bound.
+  const mint = 'kill:npc_wasp:3:104:-80';
+  const captured = captureEntityRecord({
+    type: 'ship',
+    alive: false,
+    pos: { x: 104, z: -80 },
+    homeSectorId: 'sector_test',
+    data: {
+      worldRecordId: 'wr_npc_ambient_kill',
+      identityKey: mint,
+      durable: true,
+      outcome: 'destroyed',
+      durableReason: 'kill',
+      enemyTypeId: 'npc_wasp',
+    },
+  }, { sectorId: 'sector_test', seed: 1, tick: 10, simTime: 10, identityKey: mint });
+  assert.equal(captured.recordId, 'wr_npc_ambient_kill', 'the stamped id stays the join key');
+  assert.equal(captured.identityKey, mint, 'the positional mint lands as the classifier');
+  const bag = createEmptyRecordsBag();
+  upsertRecord(bag, captured);
+  const tombstone = { ...captured, alive: false, outcome: 'destroyed' };
+  upsertRecord(bag, tombstone);
+  assert.equal(bag.byId.wr_npc_ambient_kill.alive, false);
+
+  // The unstamped fallback shape (kind:type:qx:qz:tag) stays positional too.
+  const fallback = captureEntityRecord({
+    type: 'ship',
+    alive: true,
+    pos: { x: 104, z: -80 },
+    homeSectorId: 'sector_test',
+    data: { durable: true, enemyTypeId: 'npc_wasp' },
+  }, { sectorId: 'sector_test', seed: 1, tick: 10, simTime: 10 });
+  assert.match(fallback.identityKey, /:-?\d+:-?\d+:[^:]*$/,
+    'an unstamped durable body still derives a positional identity');
+
+  // An entity stamped with only a wr_* id and no semantic key keeps wr_* as its identity —
+  // protected, matching the conservative read for legacy shapes.
+  const wrOnly = captureEntityRecord({
+    type: 'ship',
+    alive: true,
+    pos: { x: 1, z: 2 },
+    homeSectorId: 'sector_test',
+    data: { worldRecordId: 'wr_legacy_only', durable: true, enemyTypeId: 'npc_wasp' },
+  }, { sectorId: 'sector_test', seed: 1, tick: 10, simTime: 10 });
+  assert.equal(wrOnly.identityKey, 'wr_legacy_only',
+    'a bare stamped id falls through to itself rather than a fresh positional mint');
+});
+
+test('a legacy kill-stamped tombstone with no identity stays protected', () => {
+  // REV-F2: durableReason 'kill' alone cannot tell a legacy ambient kill apart from an
+  // authored anti-respawn latch that predates the identityKey field. Identity-less
+  // tombstones are never ambient-evictable.
+  const bag = createEmptyRecordsBag();
+  for (let i = 0; i < MAX_AMBIENT_TOMBSTONE_RECORDS_PER_SECTOR + 4; i++) {
+    upsertRecord(bag, worldRecord(`ambient_${i}`, {
+      alive: false, outcome: 'destroyed',
+      identityKey: `kill:npc_wasp:${i}:104:-80`, lastSeenTick: i, lastObservedT: i,
+    }));
+  }
+  upsertRecord(bag, worldRecord('legacy_authored_latch', {
+    alive: false, outcome: 'destroyed', durableReason: 'kill', lastSeenTick: -1,
+  }));
+  assert.ok(bag.byId.legacy_authored_latch,
+    'an identity-less kill-stamped tombstone survives ambient pressure');
+});
+
 test('a restored bag over both caps retires tombstones and recents in one honest report', () => {
   const build = () => {
     const raw = {};
