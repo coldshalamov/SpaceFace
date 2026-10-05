@@ -1800,9 +1800,13 @@ function classifyWorld(state, runtime) {
     runtime._lastPruneLiveCount = list.length;
     const canMapLookup = !!(state.entities && typeof state.entities.get === 'function');
     for (const id of runtime.signaturesById.keys()) {
-      const stillLive = pruneLikeIncremental
-        ? (canMapLookup && (() => { const e = state.entities.get(id); return !!(e && e.alive !== false); })())
-        : runtime.currentEntityIds.has(id);
+      let stillLive;
+      if (pruneLikeIncremental) {
+        const e = canMapLookup ? state.entities.get(id) : null;
+        stillLive = !!(e && e.alive !== false);
+      } else {
+        stillLive = runtime.currentEntityIds.has(id);
+      }
       if (stillLive) continue;
       runtime.signaturesById.delete(id);
       runtime.reasonsById.delete(id);
