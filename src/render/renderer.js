@@ -20006,7 +20006,11 @@ export const render = {
         // A lost context already owns those buffers: detach the root but never invoke the
         // old context's disposers (the same abandon contract the rest of teardown obeys).
         if (this._contextLost === true) continue;
-        if (!disposePreparedAuthoredBoundary(root)) disposeObject(root);
+        // Whole composed warm trees pace across the despawn drain's parked
+        // per-corpse iterators instead of paying an atomic teardown inside the
+        // run:ended emit — the detach/shadow bookkeeping above stays immediate.
+        if (!this._despawnDisposeQueue) { this._despawnDisposeQueue = []; this._despawnDisposeHead = 0; }
+        this._despawnDisposeQueue.push(root);
       } catch (error) {
         console.warn('[render] survival roster prewarm release failed', reason, error);
       }
@@ -20779,9 +20783,12 @@ export const render = {
         try { this._livingHullPresentation?.detach?.(owner); } catch (_) { /* best effort */ }
         deadOwners.add(owner);
         try {
-          if (!disposePreparedAuthoredBoundary(owner)) disposeObject(owner);
+          // A fat owner's whole-subtree teardown paces per-128-node inside this
+          // stepped walk — the generator twin holds the identical teardown
+          // grammar as disposeObject, hooks included.
+          if (!disposePreparedAuthoredBoundary(owner)) yield* disposeObjectSteps(owner);
         } catch (_) {
-          try { disposeObject(owner); } catch (_) { /* best effort */ }
+          try { yield* disposeObjectSteps(owner); } catch (_) { /* best effort */ }
         }
       }
     } finally {

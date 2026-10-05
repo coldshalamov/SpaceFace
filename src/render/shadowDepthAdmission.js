@@ -804,6 +804,8 @@ export function createShadowDepthStagingSession(options = {}) {
   const drawnNames = new Set();
   const drawnKeys = new Set();
   const programCacheKeys = new Set();
+  // Draw uuids, not live Object3D refs — a held session must not pin a staged
+  // caster's JS tree for its whole lifetime when only the count is ever read.
   const drawnDepthObjects = new Set();
   let renderedMaterials = 0;
   let missingProgramBindings = 0;
@@ -863,7 +865,7 @@ export function createShadowDepthStagingSession(options = {}) {
           const depthDraw = args[1] == null;
           if (depthDraw && drawn) {
             sliceDrawn.add(drawn);
-            drawnDepthObjects.add(drawn);
+            drawnDepthObjects.add(drawn.uuid);
             if (typeof drawn.name === 'string' && drawn.name) {
               drawnNames.add(drawn.name);
               sliceNames.add(drawn.name);
@@ -900,6 +902,12 @@ export function createShadowDepthStagingSession(options = {}) {
       if (scratch && typeof renderer.setRenderTarget === 'function') renderer.setRenderTarget(scratch);
       try {
         if (sliceOpts && sliceOpts.forceEnable === true) shadowMap.enabled = true;
+        // Re-seat the staged key light per slice: the live rig re-poses per
+        // quantized follow cell and the ortho extent re-derives per sector, so a
+        // session minted arms ago would otherwise render under a frozen ortho —
+        // casters inside the live shadow volume but outside the stale one could
+        // never mark. Same clone, ~10 field copies + one projection rebuild.
+        admissionKeyLight(renderer, light, THREE);
         for (const root of casting) staging.add(root);
         if (staging.userData) staging.userData.sfShadowCastSubset = new Set(casting);
         staging.updateMatrixWorld(true);
