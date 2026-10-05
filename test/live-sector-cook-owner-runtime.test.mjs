@@ -71,6 +71,9 @@ function fixture(providers = []) {
     SECTOR_ARRIVAL_PUBLISH_HOLD_SECONDS: 2, FIRST_FLIGHT_DEFERRED_HOLD_SECONDS: 20,
     warmNearbyLedgerRows: noop, makeHoldExemptScanContext: () => ({}),
     exactSectorId: 'ceres', sector: { id: 'ceres' }, continuous: false, enterEpoch: 7,
+    // Ledger consults inside the cook's slice clocks: a never-spent wallet keeps
+    // the fixture on the private-clock path it asserts (ordering, cancellation).
+    notePacedFrameSpend: noop, pacedFrameSpend: () => 0, PACED_FRAME_BUDGET_MS: 8,
   };
   if (guardCode) values.captureLiveSectorCookStale = evaluate(guardCode, owner, values);
   const cook = evaluate(cookCode, owner, values);

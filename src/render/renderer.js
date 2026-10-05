@@ -9814,7 +9814,18 @@ export const render = {
         for (const root of liveSubjects) {
           try {
             const collected = collectUnstagedShadowCastersFlag([root], census, flagBudget);
-            if (collected !== UNSTAGED_COLLECT_OVER_COVER) {
+            const lodLevel = (root.userData && root.userData.lod && root.userData.lod.level) || 'lod0';
+            if (collected === UNSTAGED_COLLECT_OVER_COVER) {
+              // The flag walk outran its shared node budget mid-root — a partial
+              // set can't be trusted for per-mesh withhold. Withhold the whole
+              // subtree instead of leaving castShadow live while the arm's
+              // re-derivation waits queued: an unstaged caster that draws
+              // pre-stage links its depth variant inside a presented refresh.
+              // The band-0 stamp keeps later syncs on the cheap queued early-out.
+              const overOut = { receiverDelta: 0 };
+              syncShadowCasterPolicy(root, lodLevel, { allowCast: false, out: overOut });
+              noteShadowPolicyChanged(this._shadowReceiverTally, overOut);
+            } else {
               for (const mesh of collected) mesh.castShadow = false;
               if (collected.length > 0) {
                 const cache = this._withheldDepthCasters
@@ -9832,7 +9843,6 @@ export const render = {
             // re-derivation, the same contract the settings toggle runs.
             invalidateShadowCasterPolicy(root);
             if (root.userData) root.userData[STAGE_SELF_DIRTY_KEY] = shadowCasterPolicyDirtySeq(root);
-            const lodLevel = (root.userData && root.userData.lod && root.userData.lod.level) || 'lod0';
             this._queueShadowDepthStage(root, lodLevel, shadowPolicyEntityOf(root, this.state));
           } catch (error) {
             console.warn('[render] flight shadow-depth admission failed', error);
@@ -11305,7 +11315,8 @@ export const render = {
                 if (cookStale()) break;
                 const step = iterator.next();
                 if (step.done) break;
-                if (openingProviderNow() - openingSliceStart >= 8) {
+                if (openingProviderNow() - openingSliceStart >= 8
+                    || (state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) {
                   await yieldLiveSectorGpu();
                   openingSliceStart = openingProviderNow();
                 }
@@ -11335,7 +11346,8 @@ export const render = {
             }
             return cookSuperseded;
           }
-          if (openingProviderNow() - openingSliceStart >= 8) {
+          if (openingProviderNow() - openingSliceStart >= 8
+              || (state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) {
             await yieldLiveSectorGpu();
             openingSliceStart = openingProviderNow();
           }
@@ -11391,7 +11403,8 @@ export const render = {
           // mid-walk leaves a completed prefix for the live cook to re-derive.
           for (const rec of reach) {
             if (cookStale()) return cookSuperseded;
-            if (openingProviderNow() - survivalSliceStart >= 8) {
+            if (openingProviderNow() - survivalSliceStart >= 8
+                || (state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) {
               await yieldLiveSectorGpu();
               survivalSliceStart = openingProviderNow();
             }
@@ -11421,7 +11434,8 @@ export const render = {
           if (!isEntityRenderRelevant(entity, state)) continue;
           cookSeen.add(entity.id);
           firstFlightEntities.push(entity);
-          if (openingProviderNow() - survivalSliceStart >= 8) {
+          if (openingProviderNow() - survivalSliceStart >= 8
+              || (state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) {
             await yieldLiveSectorGpu();
             survivalSliceStart = openingProviderNow();
             if (cookStale()) return cookSuperseded;
@@ -11454,7 +11468,8 @@ export const render = {
           for (;;) {
             const step = collectIterator.next();
             if (step.done) break;
-            if (openingProviderNow() - widenSliceStart >= 8) {
+            if (openingProviderNow() - widenSliceStart >= 8
+                || (state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) {
               await yieldLiveSectorGpu();
               widenSliceStart = openingProviderNow();
               if (cookStale()) {
@@ -11477,7 +11492,8 @@ export const render = {
               && !entityWithinPlayerRadiusScan(entity, state, widenScan.prefetchRadius, widenScan)) continue;
           cookSeen.add(entity.id);
           firstFlightEntities.push(entity);
-          if (openingProviderNow() - widenSliceStart >= 8) {
+          if (openingProviderNow() - widenSliceStart >= 8
+              || (state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) {
             await yieldLiveSectorGpu();
             widenSliceStart = openingProviderNow();
             if (cookStale()) return cookSuperseded;
@@ -11505,7 +11521,8 @@ export const render = {
         this._meshesVersion += 1;
         noteShadowMeshRemoved(this, mesh);
         clearEntityMeshReference(entity, mesh);
-        if (openingProviderNow() - leftoverSliceStart >= 8) {
+        if (openingProviderNow() - leftoverSliceStart >= 8
+            || (state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) {
           await yieldLiveSectorGpu();
           leftoverSliceStart = openingProviderNow();
           if (cookStale()) return cookSuperseded;
@@ -12003,7 +12020,11 @@ export const render = {
               if (cookStale()) return cookSuperseded;
               warmResidency = await prepareStartupGeometryResidency(renderer, warmRoots, {
                 includeEmpty: false,
-                yieldToMain: createSlicedYield(yieldToBrowser, { sliceMs: 16 }),
+                yieldToMain: createSlicedYield(yieldToBrowser, {
+                  sliceMs: 16,
+                  shouldYield: () => state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS,
+                  debit: (ms) => { if (state.mode === 'flight') notePacedFrameSpend(ms); },
+                }),
                 onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
               });
               if (cookStale()) return cookSuperseded;
@@ -12042,7 +12063,11 @@ export const render = {
           // with the shell presenter, just without donating a frame per item.
           if (cookStale()) return cookSuperseded;
           firstFrameResidency = await prepareStartupGpuResidency(renderer, scene, {
-            yieldToMain: createSlicedYield(yieldToBrowser, { sliceMs: 16 }),
+            yieldToMain: createSlicedYield(yieldToBrowser, {
+              sliceMs: 16,
+              shouldYield: () => state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS,
+              debit: (ms) => { if (state.mode === 'flight') notePacedFrameSpend(ms); },
+            }),
             includeEmpty: true,
             onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
           });
@@ -12607,7 +12632,10 @@ export const render = {
         // (joined compiles settle only at drain) and restore the render target only after every issued
         // compile has unwound.
         const touchCompileStarted = cookNow();
-        const compileYield = yieldTouch ? createSlicedYield(yieldTouch) : null;
+        const compileYield = yieldTouch ? createSlicedYield(yieldTouch, {
+          shouldYield: () => state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS,
+          debit: (ms) => { if (state.mode === 'flight') notePacedFrameSpend(ms); },
+        }) : null;
         // The cohort compile and per-subject touch run after the cook.programs shadow arm has
         // already restored the ambient state. During loading that ambient state is shadowless
         // (no receiver census ran on this scene yet), so a lit subject compiled here keys on
@@ -13418,7 +13446,13 @@ export const render = {
         // census block — the departing-sector teardown phase rides the same clock.
         const providerNow = () => (typeof performance !== 'undefined'
           && typeof performance.now === 'function' ? performance.now() : Date.now());
+        // This cook runs while real flight frames present, so its slices ride the
+        // shared wallet too: yield early when a sibling lane already spent the
+        // frame, and post the slice's own spend on the way out.
+        const providerSliceDue = () => providerNow() - providerSliceStart >= 8
+          || (state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS);
         const providerYield = async () => {
+          if (state.mode === 'flight') notePacedFrameSpend(providerNow() - providerSliceStart);
           await yieldLiveSectorGpu();
           providerSliceStart = providerNow();
           if (cookStale()) return cookSuperseded;
@@ -13467,7 +13501,7 @@ export const render = {
                   if (cookStale()) break;
                   const step = iterator.next();
                   if (step.done) { iteratorDone = true; break; }
-                  if (providerNow() - providerSliceStart >= 8) {
+                  if (providerSliceDue()) {
                     unpinDeferredEnter();
                     let superseded = null;
                     try { superseded = await providerYield(); } finally { pinDeferredEnter(); }
@@ -13511,7 +13545,7 @@ export const render = {
             if (cookStale() || yieldedSuperseded) {
               return yieldedSuperseded || cookSuperseded;
             }
-            if (providerNow() - providerSliceStart >= 8) {
+            if (providerSliceDue()) {
               const superseded = await providerYield();
               if (superseded) return superseded;
             }
@@ -13520,7 +13554,7 @@ export const render = {
         // The entity collect and teardown ride the SAME clock as the provider drive — a
         // fresh clock would let the last provider slice + collect + the first teardown
         // slice run ~16ms+ contiguous between GPU yields.
-        if (providerNow() - providerSliceStart >= 8) {
+        if (providerSliceDue()) {
           const superseded = await providerYield();
           if (superseded) return superseded;
         }
@@ -13560,7 +13594,7 @@ export const render = {
               }
               const step = collectIterator.next();
               if (step.done) { collectDone = true; break; }
-              if (providerNow() - providerSliceStart >= 8) {
+              if (providerSliceDue()) {
                 const superseded = await providerYield();
                 if (superseded) {
 
@@ -13585,7 +13619,7 @@ export const render = {
                 && !entityWithinPlayerRadiusScan(entity, state, jumpWidenScan.prefetchRadius, jumpWidenScan)) continue;
             cookSeen.add(entity.id);
             firstFlightEntities.push(entity);
-            if (providerNow() - providerSliceStart >= 8) {
+            if (providerSliceDue()) {
               const superseded = await providerYield();
               if (superseded) return superseded;
             }
@@ -13612,7 +13646,7 @@ export const render = {
           this._meshesVersion += 1;
           noteShadowMeshRemoved(this, mesh);
           clearEntityMeshReference(entity, mesh);
-          if (providerNow() - providerSliceStart >= 8) {
+          if (providerSliceDue()) {
             const superseded = await providerYield();
             if (superseded) return superseded;
           }
@@ -16342,6 +16376,10 @@ export const render = {
     warm.swarmScoped = swarmScoped;
     const waveBase = Math.max(1,
       (swarmScoped && state && state.run && Number.isInteger(state.run.wave) ? state.run.wave : 1));
+    // The scope rides the warm so an adopt site can tell a same-ruleset staged
+    // warm minted for another wave (door-staged at wave 1, adopted by a wave-N
+    // restore) apart from one minted for this launch.
+    warm.waveBase = waveBase;
     const launchEligibility = swarmScoped ? swarmEligibleEnemyIds(waveBase) : null;
     const shipSpecs = profile === 'crucible'
       ? swarmRosterShipExemplarSpecs(`${specPrefix}ship:`, { enemyIds: launchEligibility })
@@ -16491,7 +16529,14 @@ export const render = {
           await paceIfDue();
           try {
             const ship = this.vf.build(spec);
-            if (!ship) continue;
+            if (!ship) {
+              // A build that yields no boundary dispatches no kick — its coverage
+              // mark would pin for the whole run with no settle to release it
+              // (the deferred lane skips ledger-marked ids forever). Same
+              // release the catch below pays.
+              unmarkWarmCoverage(spec && spec.data && spec.data.lootTableId);
+              continue;
+            }
             ship.visible = false;
             root.add(ship);
             // Whole-ship exemplars build a zero-draw substrate: the fallback above warms nothing
@@ -16530,6 +16575,10 @@ export const render = {
               // predates (its kicks used to release with no retry).
               (warm.retriableKicks || (warm.retriableKicks = []))
                 .push({ entry, enemyId, kick: kickShip });
+            } else {
+              // A built boundary carrying no upgrade hook dispatches no kick —
+              // same never-settles mark leak as the !ship branch above.
+              unmarkWarmCoverage(spec && spec.data && spec.data.lootTableId);
             }
           } catch (error) {
             console.warn('[render] crucible warm ship build failed', spec && spec.id, error);
@@ -16549,7 +16598,11 @@ export const render = {
           await paceIfDue();
           try {
             const hulk = this.vf.build(spec);
-            if (!hulk) continue;
+            if (!hulk) {
+              unmarkWarmCoverage(spec && spec.data
+                && spec.data.hulkVisual && spec.data.hulkVisual.lootTableId);
+              continue;
+            }
             hulk.visible = false;
             root.add(hulk);
             // Same boundary hook the live kill triggers — attachPackagedBody's admission stages
@@ -16579,6 +16632,9 @@ export const render = {
               warm.pendingAttachments.push(hulkKick);
               (warm.retriableKicks || (warm.retriableKicks = []))
                 .push({ entry: hulkEntry, enemyId: hulkEnemyId, kick: kickHulk });
+            } else {
+              unmarkWarmCoverage(spec && spec.data
+                && spec.data.hulkVisual && spec.data.hulkVisual.lootTableId);
             }
           } catch (error) {
             console.warn('[render] crucible warm hulk build failed', spec && spec.id, error);
@@ -16800,6 +16856,15 @@ export const render = {
         // (swarm, wave-1 eligibility). A scored/boss_circuit launch can field the whole roster —
         // the scoped cohort would leave its hulls cold. Restart unscoped and let the cook's own
         // begin take the whole-roster branch.
+        this._discardEarlyCrucibleWarm();
+      } else if (staged.swarmScoped === true
+          && Number.isInteger(staged.waveBase) && Number.isInteger(state.run.wave)
+          && staged.waveBase !== state.run.wave) {
+        // Same class, wave axis: a door-staged warm scoped to wave 1 adopted by a
+        // wave-N restore would mark only the wave-1 archetype — every newcomer
+        // unlocked since fields cold AND the deferred lane skips ledger-marked
+        // ids. Discard so the cook's own begin mints at the resumed wave (a
+        // wave-N→wave-1 direction only over-warms, but the same discard serves).
         this._discardEarlyCrucibleWarm();
       } else {
         this._earlyCrucibleWarmMenu = false;
@@ -17788,6 +17853,10 @@ export const render = {
               const shipEnemyId = spec.data && spec.data.lootTableId;
               pendingAttachmentEnemyIds.push(shipEnemyId);
               pendingAttachmentRetries.push(makeDeferredWarmKickRetry(ship, shipEnemyId, kickShip));
+            } else {
+              // No upgrade hook on the built boundary → no kick dispatched → the
+              // coverage mint would pin for the run with no settle to release it.
+              unmarkEnemy(spec && spec.data && spec.data.lootTableId);
             }
           }
         }
@@ -17803,7 +17872,11 @@ export const render = {
           }
           try {
             const hulk = this.vf.build(spec);
-            if (!hulk) continue;
+            if (!hulk) {
+              unmarkEnemy(spec && spec.data
+                && spec.data.hulkVisual && spec.data.hulkVisual.lootTableId);
+              continue;
+            }
             hulk.visible = false;
             root.add(hulk);
             if (typeof hulk.userData?.requestAuthoredUpgrade === 'function') {
@@ -17823,6 +17896,9 @@ export const render = {
                 && spec.data.hulkVisual && spec.data.hulkVisual.lootTableId;
               pendingAttachmentEnemyIds.push(hulkEnemyId);
               pendingAttachmentRetries.push(makeDeferredWarmKickRetry(hulk, hulkEnemyId, kickHulk));
+            } else {
+              unmarkEnemy(spec && spec.data
+                && spec.data.hulkVisual && spec.data.hulkVisual.lootTableId);
             }
           } catch (error) {
             console.warn('[render] deferred swarm warm hulk build failed', spec && spec.id, error);
@@ -22204,14 +22280,18 @@ export const render = {
       root.userData[STAGE_SELF_DIRTY_KEY] = shadowCasterPolicyDirtySeq(root);
       // Fresh unstaged meshes — a parked root's park no longer describes it.
       if (parked && this._parkedDepthStageRoots) this._parkedDepthStageRoots.delete(root);
-      this._queueShadowDepthStage(root, lodLevel, entity);
+      this._queueShadowDepthStage(root, lodLevel, entity,
+        parkedEntry && parkedEntry.depthNodeScale
+          ? { depthNodeScale: parkedEntry.depthNodeScale } : null);
     }
     if (overCovered) {
       // Join the same drain the precise withhold rides — no per-mesh set: the
       // arm's collect derives it, and the restore's castBand 0→1 change means
       // its identical-opts traverse can't early-out (no invalidate needed).
       if (parked && this._parkedDepthStageRoots) this._parkedDepthStageRoots.delete(root);
-      this._queueShadowDepthStage(root, lodLevel, entity);
+      this._queueShadowDepthStage(root, lodLevel, entity,
+        parkedEntry && parkedEntry.depthNodeScale
+          ? { depthNodeScale: parkedEntry.depthNodeScale } : null);
     }
     // Callers settling the receiver tally need the traverse's own measured delta —
     // carry it on the result instead of a boolean so truthiness checks still work.
@@ -22239,14 +22319,20 @@ export const render = {
     return sig;
   },
 
-  _queueShadowDepthStage(root, lodLevel = null, entity = null) {
+  _queueShadowDepthStage(root, lodLevel = null, entity = null, preserved = null) {
     if (!root || this._shadowSettingOn !== true) return;
     const pending = this._pendingDepthStageRoots
       || (this._pendingDepthStageRoots = new Map());
     // A re-queue while pending must keep the entry's escalation fields — a
     // fresh literal would discard depthNodeScale and re-pay the undersized
-    // collect+abort arm it already earned.
-    pending.set(root, { ...(pending.get(root) || {}), lodLevel, entity });
+    // collect+abort arm it already earned. The parked record's scale rides
+    // `preserved` for the same reason (a live pending entry's fresh fields win).
+    pending.set(root, {
+      ...(preserved || {}),
+      ...(pending.get(root) || {}),
+      lodLevel,
+      entity,
+    });
     if (this._depthStageScheduled === true) return;
     this._depthStageScheduled = true;
     this._armDepthStage();
@@ -22400,6 +22486,10 @@ export const render = {
                   lightSig: this._shadowCensusForFrame(),
                   oqX: parkedTarget ? Math.round(parkedTarget.x / parkedCell) : null,
                   oqZ: parkedTarget ? Math.round(parkedTarget.z / parkedCell) : null,
+                  // The earned node-budget scale rides the park — a permanently
+                  // over-cap root would otherwise re-pay the 1→2→4→8 escalation
+                  // ladder (four aborting collects) on every unpark cycle.
+                  depthNodeScale: entry.depthNodeScale,
                 });
                 abortedPark = abortedRoot;
               } else if (entry) {
@@ -22558,6 +22648,9 @@ export const render = {
               lightSig: this._shadowCensusForFrame(),
               oqX: parkedTarget ? Math.round(parkedTarget.x / parkedCell) : null,
               oqZ: parkedTarget ? Math.round(parkedTarget.z / parkedCell) : null,
+              // The earned node-budget scale rides the park so the re-queue
+              // skips re-paying the escalation ladder.
+              depthNodeScale: entry.depthNodeScale,
             });
             // The leftover meshes stay withheld across the park; every other
             // caster falls through to the restore below so staged siblings stop
@@ -22717,13 +22810,22 @@ export const render = {
         || (this._pendingDepthStageRoots = new Map());
       for (const child of queueOverCover) {
         if (child && !pending.has(child)) {
+          const lodLevel = (child.userData && child.userData.lod && child.userData.lod.level)
+            || 'lod0';
+          // Withhold whole-subtree at queue time — a queued root that keeps
+          // castShadow=true draws its unlinked depth variants on the first
+          // presented refresh while it waits for the arm (the checked-sync
+          // else-if chain has no branch for band-1 + self-dirty + queued +
+          // uncached). The band-0 stamp keeps later syncs on the cheap queued
+          // early-out — the same end state the over-cover branch produces.
+          const queueOut = { receiverDelta: 0 };
+          syncShadowCasterPolicy(child, lodLevel, { allowCast: false, out: queueOut });
+          noteShadowPolicyChanged(this._shadowReceiverTally, queueOut);
           // Same invalidate+stamp the withheld path pays: a queued band-1 root
           // whose dirtySeq still equals its stamp must re-collect — the census
           // drifted while shadows were OFF so its marks describe a dead light set.
           invalidateShadowCasterPolicy(child);
           child.userData[STAGE_SELF_DIRTY_KEY] = shadowCasterPolicyDirtySeq(child);
-          const lodLevel = (child.userData && child.userData.lod && child.userData.lod.level)
-            || 'lod0';
           pending.set(child, { lodLevel, entity: shadowPolicyEntityOf(child, this.state) });
         }
       }
