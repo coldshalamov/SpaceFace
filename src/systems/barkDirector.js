@@ -83,9 +83,13 @@ export function admitNpcCounterplayBark(host, payload, now) {
 // watching voice names the taking in its own house register. Before this corpus existed the
 // witness read a kill line for a scooped pod — the law's first response accused the player
 // of a murder it had just recorded as a theft. Same contract as the barks.js event corpora:
-// deterministic selector, faction_free fallback, one line per entity per situation. Kept
-// here beside the other local event-line helpers because the write set for this unit is the
-// four law owner files plus a test.
+// deterministic selector, faction_free fallback, one line per entity per situation.
+// Placement: barks.js (the kill corpus's home) is not owned by the law units, so the theft
+// sibling lives beside the law listeners that consume it. Known drift bait, accepted and
+// documented: this selector reimplements barks.js pickIndex verbatim and the sibling corpora
+// sit in two files. When a barks.js-owner session next touches that file, fold
+// WITNESS_THEFT_BARKS + witnessTheftBarkFor in beside WITNESS_CRIME_BARKS and export/reuse
+// pickIndex — behavior is identical (same numeric wrap, same fn clamp, same index-0 fallback).
 export const WITNESS_THEFT_BARKS = Object.freeze({
   faction_scn: Object.freeze([
     'Witness statement filed: cargo taken in controlled space. Ref 44-C, theft schedule.',
