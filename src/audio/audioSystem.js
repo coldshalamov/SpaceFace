@@ -1635,6 +1635,11 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   [FIRST_HOUR_AUDIO_SIGNATURES.enemyKill.semanticId]: FIRST_HOUR_AUDIO_SIGNATURES.enemyKill.recipeId,
   [FIRST_HOUR_AUDIO_SIGNATURES.shieldBreak.semanticId]: FIRST_HOUR_AUDIO_SIGNATURES.shieldBreak.recipeId,
   'presentation.subsystem.disabled': 'sfx_subsystem_disabled',
+  // Iron Maw's bow-plate tear (tacticalAI _prowWindowOpen) emits combat.* directly, not through
+  // the presentation lane — the prow takes out both RCS thrusters, so it gets the authored
+  // propulsion-wind-down voice. The generic sfx_subsystem_disabled pop stays reserved for the
+  // player's own subsystem death via the presentation lane above.
+  'combat.subsystem.disabled': 'sfx_subsystem_drive_disabled',
   'presentation.subsystem.drive_disabled': 'sfx_subsystem_drive_disabled',
   'presentation.subsystem.sensor_disabled': 'sfx_subsystem_sensor_disabled',
   'presentation.subsystem.weapon_disabled': 'sfx_subsystem_weapon_disabled',
