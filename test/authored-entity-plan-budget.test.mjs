@@ -122,6 +122,7 @@ const WHOLE_SHIP_FILE_BY_DEF = Object.freeze({
   ship_atlas: 'wholeships/atlas_production_v1.glb', ship_ranger: 'wholeships/ranger_production_v1.glb',
   ship_warden: 'wholeships/warden_production_v1.glb', ship_colossus: 'wholeships/colossus_production_v1.glb',
   ship_leviathan: 'wholeships/leviathan_production_v1.glb', ship_hawser: 'wholeships/yard_tug.glb',
+  ship_saucer: 'wholeships/saucer_production_v1.glb',
 });
 
 // resolveRequiredWholeShipRecord matches records on file AND assetId, so fixtures must carry the
@@ -158,6 +159,7 @@ const WHOLE_SHIP_ASSET_ID_BY_FILE = Object.freeze({
   'wholeships/ashline_rig_quiet.glb': 'SF_WHOLESHIP_ASHLINE_RIG_QUIET',
   'wholeships/helios_cradle_dmc.glb': 'SF_WHOLESHIP_HELIOS_CRADLE_DMC',
   'wholeships/yard_tug.glb': 'SF_WHOLESHIP_YARD_TUG',
+  'wholeships/saucer_production_v1.glb': 'SF_SAUCER_PRODUCTION_V1',
 });
 
 const PRE_CHANGE_VISUAL_FINGERPRINTS = [
