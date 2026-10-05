@@ -111,11 +111,14 @@ ${M} .sx-mkt-browser__mode { margin:0 !important; padding-right:min(46%, 230px) 
 ${M} .sx-mkt-browser__mode { ${LABEL} font-size:12px !important; letter-spacing:.22em !important; color:rgb(${BONE} / .72) !important; }
 ${M} .sx-mkt-browser__count { color:rgb(${BONE} / .5) !important; font-weight:600 !important; white-space:nowrap !important; }
 /* the families stand on a ruled scale, each a stop with its tick; the chosen stop's tick stands taller in bone (the Hand lives on the ladder) */
-${M} .sx-mkt-browser__filters { position:relative; flex-wrap:nowrap !important; overflow-x:auto; scrollbar-width:none;
-  -webkit-mask-image:linear-gradient(90deg, #000 calc(100% - 44px), transparent); mask-image:linear-gradient(90deg, #000 calc(100% - 44px), transparent);
-  gap:4px 20px !important; margin:10px 0 12px !important; padding:0 40px 18px 0 !important; background:${RULE_H} !important; }
+/* the scale wraps before it hides: a stop a stranger cannot see is a stop that does not exist
+   (D170) — so the ruled line lives on each stop itself, and a second row of stops rules a
+   second line. No scroll, no fade, every family on the board. */
+${M} .sx-mkt-browser__filters { position:relative; flex-wrap:wrap !important; overflow-x:visible; scrollbar-width:none;
+  -webkit-mask-image:none; mask-image:none;
+  gap:8px 20px !important; margin:10px 0 12px !important; padding:0 0 6px 0 !important; background:none !important; }
 ${M} .sx-mkt-browser__filters::-webkit-scrollbar { display:none; }
-${M} .sx-mkt-browser__filters li { flex:none; }
+${M} .sx-mkt-browser__filters li { flex:none; position:relative; padding-bottom:16px; background:${RULE_H} !important; }
 ${M} .sx-mkt-filter { ${PLAIN} ${LABEL} position:relative; min-height:0 !important; min-width:0 !important; height:auto !important; padding:4px 0 2px !important;
   font-size:12px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .58) !important; }
 ${M} .sx-mkt-filter::before { display:none !important; }
