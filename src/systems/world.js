@@ -317,7 +317,7 @@ function laneDangerPhrase(danger) {
 // flip: once, mid-transit.
 const MEMBERSHIP_SWITCH_FRACTION = 0.35;
 const MEMBERSHIP_MIN_PENETRATION_WU = 2500;
-const MEMBERSHIP_DWELL_S = 8;
+export const MEMBERSHIP_DWELL_S = 8;
 
 // Jump-drive tiers (design 05). Resolved from the equipped module; defaults to T1.
 const DRIVE_TIERS = {
