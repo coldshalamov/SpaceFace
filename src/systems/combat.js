@@ -1105,6 +1105,9 @@ export const combat = {
     else setVecXZ(t.prevPos, pos.x, pos.z);
     t.flags = t.flags || {};
     delete t.flags.defeated;
+    // Recovery never re-docks the ship: a revive must not resurrect a dock latch (all live kill
+    // paths are dock-guarded today, but nothing else clears flags.docked off a recovered hull).
+    delete t.flags.docked;
     t.flags.invuln = false;
     t._invulnUntil = null;
   },

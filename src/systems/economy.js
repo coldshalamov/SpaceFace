@@ -2423,9 +2423,10 @@ export const economy = {
     if (side === 'buy') {
       if (entry.stock - qty < 1) qty = Math.max(0, Math.floor(entry.stock - 1)); // can't drain below 1u
       if (qty <= 0) return { ok: false, reason: 'no_stock' };
-      // cargo volume check (volume is the ONLY hard cap §0.13)
+      // cargo volume check (volume is the ONLY hard cap §0.13). Fail closed on a non-finite
+      // hold cache: an unknowable free means "no room", never a NaN canFit that skips the clamp.
       const free = state.player.cargo.capVolume - state.player.cargo.usedVolume;
-      const canFit = Math.floor(free / (def.volPerU > 0 ? def.volPerU : 1));
+      const canFit = Number.isFinite(free) ? Math.floor(free / (def.volPerU > 0 ? def.volPerU : 1)) : 0;
       if (canFit < qty) qty = canFit;
       if (qty <= 0) return { ok: false, reason: 'cargo_full' };
       const fq = this.quote(stationId, commodityId, 'buy', qty);
@@ -2438,7 +2439,9 @@ export const economy = {
       }
       // APPLY
       const added = this.addToCargo(cargoSys, state, commodityId, qty);
-      if (added <= 0) return { ok: false, reason: 'cargo_full' };
+      // Fail closed on any non-positive or non-finite accepted count: settling past this
+      // line has already loaded goods, so a bad count must never reach the stock/charge legs.
+      if (!(added > 0)) return { ok: false, reason: 'cargo_full' };
       const realQty = added;
       const realCost = realQty === qty ? cost : round(this.quote(stationId, commodityId, 'buy', realQty).total);
       entry.stock = Math.max(1, entry.stock - realQty);
@@ -2464,7 +2467,8 @@ export const economy = {
       }
       // APPLY
       const removed = this.removeFromCargo(cargoSys, state, commodityId, qty);
-      if (removed <= 0) return { ok: false, reason: 'no_cargo' };
+      // Same fail-closed rule as the buy leg: a bad count must never reach stock/credits.
+      if (!(removed > 0)) return { ok: false, reason: 'no_cargo' };
       const realQty = removed;
       const realGross = realQty === qty ? gross : round(this.quote(stationId, commodityId, 'sell', realQty).total);
       entry.stock = entry.stock + realQty;
@@ -4046,6 +4050,11 @@ export const economy = {
     this._syntheticHistoryKeys = new Set();
     this._restoredQuoteKeys = new Set();
     this._offlineSummaryRefresh = null;
+    // Session berth latches are run-scoped: a quit-while-docked New Game must not let
+    // dockedStationId()/_stationServicesDocked() resolve the previous run's berth — trade and
+    // service gates would then fail open against a station the player is not at.
+    this._lastDockedStation = null;
+    this._stationServiceBerth = null;
     // warm the home sector's markets so prices exist before first dock
     const home = (state.world && state.world.currentSectorId) || 'sector_helios_prime';
     const sec = SECTORS.find((s) => s.id === home);

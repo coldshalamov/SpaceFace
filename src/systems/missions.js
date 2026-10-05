@@ -11475,6 +11475,8 @@ export const missions = {
     this._navRefreshT = 0;
     this._lastWaypointRouteKey = null;
     this._lastWaypointRouteAt = 0;
+    // Session latch — the dock:undocked clear never runs across a quit-while-docked New Game.
+    this._lastDockedStation = null;
     const tutorialOwnsOpening = this._tutorialOwnsOpening();
     if (!tutorialOwnsOpening) {
       this._refreshNavigation({ forceStory: true, silent: true });

@@ -235,7 +235,11 @@ export function createGameState(seed) {
     claims: { bodies: [] },
     traffic: { freighters: [] },
     ui: {
-      screenStack: [], docked: false, activeStationTab: 'market', radarRange: 4000, toasts: [], alerts: [],
+      // Dock session fields are declared here so run resets that Object.assign(fresh.ui) clear
+      // them like `docked` — a quit-while-docked New Game must not leak the last berth's id or
+      // range latch into the fresh run (capitalBossRuntime reads dockedStationId!=null as docked).
+      screenStack: [], docked: false, dockedStationId: null, dockInRange: false,
+      activeStationTab: 'market', radarRange: 4000, toasts: [], alerts: [],
       trackedMissionId: null,
       // One-shot map-authority open payload (mapAuthority.js → galaxyMap.onShow). Not gameplay-critical;
       // cleared on consume. Defaults null so saves without the field hydrate cleanly.
