@@ -296,11 +296,6 @@ function rosterStopMedian() {
   return ROSTER_STOP_MEDIAN;
 }
 
-/**
- * The brake bar and the crest word. Reverse acceleration is not the stop: one hull's
- * huge number pins everyone else at the bottom of that scale. The bar fills from how
- * the flown stop compares with the middle of the roster.
- */
 /** Half the mark when the number is the roster middle. One huge hull no longer pins the rest at the bottom. */
 function medianFill(value, median) {
   if (!(median > 0) || !(value > 0)) return 0;
@@ -312,6 +307,11 @@ function agilityFill(derived) {
   return medianFill(yaw, AGILITY_MEDIAN);
 }
 
+/**
+ * The brake bar and the crest word. Reverse acceleration is not the stop: one hull's
+ * huge number pins everyone else at the bottom of that scale. The bar fills from how
+ * the flown stop compares with the middle of the roster.
+ */
 function brakePresentation(derived) {
   const stop = Math.round(liveStopDistance(derived));
   if (!(stop > 0)) return { bar: 0, clause: '' };
