@@ -188,6 +188,14 @@ export function calculateGLocIntensity(sustainedTime) {
   return Math.min(1.0, (sustainedTime - 0.6) / 1.2);
 }
 
+// Max-rate = turning at >=75% of the hull's OWN derived yaw ceiling (the old absolute 2.2 rad/s bar
+// was ~75% of the mid fleet hull's ~2.9 rad/s ceiling); boost lowers the bar to 48% of ceiling,
+// today's 1.4/2.2 ratio. A missing/zero ceiling fails closed — an unknown hull never fakes the read.
+export function isSustainedMaxRateTurn(turnRate, turnCeiling, isBoosting = false) {
+  if (!Number.isFinite(turnRate) || !Number.isFinite(turnCeiling) || turnCeiling <= 0) return false;
+  return turnRate > turnCeiling * (isBoosting ? 0.48 : 0.75);
+}
+
 // Ship role → friendly archetype label (Phase 3 HUD class indicator).
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
 const ROLE_LABEL = {
@@ -5365,7 +5373,7 @@ export function createHud(ctx, alerts) {
         angVel = p.angularVelocity;
       }
       const turnRate = Math.abs(angVel);
-      const isMaxRateTurn = (turnRate > 2.2) || (turnRate > 1.4 && isBoosting);
+      const isMaxRateTurn = isSustainedMaxRateTurn(turnRate, p.turnRate, isBoosting);
       if (isMaxRateTurn) {
         gLocSustainedTime += frameDt;
       } else {
