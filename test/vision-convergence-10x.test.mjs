@@ -29,6 +29,7 @@ import {
 } from '../src/render/velocityLanguage.js';
 import { encounterDirector } from '../src/systems/encounterDirector.js';
 import { heat } from '../src/systems/heat.js';
+import { lawSecurity } from '../src/systems/lawSecurity.js';
 import { lootShardBasePriceEv, lootShardItemsFor, lootShards } from '../src/systems/lootShards.js';
 import { missions } from '../src/systems/missions.js';
 import {
@@ -233,7 +234,11 @@ test('U4: authorized predation relation is a real engagement carve-out', () => {
 
 // ── U5 WANTED ────────────────────────────────────────────────────────────────
 test('U5: clean generic-ship kill heat crosses WANTED threshold (headline crime)', () => {
-  const sim = createSimulation({ seed: 47, systems: [heat] });
+  // Kill pricing is law-adjudicated (ee6c1e27f): heat stays the sole writer but prices only a
+  // validated crime receipt, and a kill validates only when eyes saw it. An unwitnessed murder
+  // stays a pending case the wreck can later testify to. The harness therefore needs the
+  // adjudicator registered plus a protected civilian in sight of the kill — the witnessed path.
+  const sim = createSimulation({ seed: 47, systems: [heat, lawSecurity] });
   const { state } = sim;
   state.mode = 'flight';
   state.player = state.player || {};
@@ -250,6 +255,14 @@ test('U5: clean generic-ship kill heat crosses WANTED threshold (headline crime)
     type: 'ship', team: 2, pos: { x: 40, z: 0 }, vel: { x: 0, z: 0 },
     radius: 10, mass: 80, hull: 1, hullMax: 100,
     data: { shipClass: 'ship', factionId: 'faction_mts' },
+  });
+
+  // The eye: a second protected civilian 80 WU off the kill, inside the 450 WU kill-witness
+  // radius. Her presence is what turns a pending case into a charged unlawful_kill receipt.
+  sim.spawn({
+    type: 'ship', team: 2, pos: { x: 120, z: 0 }, vel: { x: 0, z: 0 },
+    radius: 10, mass: 80, hull: 100, hullMax: 100,
+    data: { shipClass: 'hauler', factionId: 'faction_mts', role: 'hauler' },
   });
 
   sim.bus.emit('entity:killed', {
@@ -509,7 +522,7 @@ test('portfolio composition: continuous freeflight situation exercises ≥5 unit
     const ANCHOR = { x: 6200, z: 4800 };
     const sim = createSimulation({
       seed: 47047,
-      systems: [spawnBudget, encounterDirector, heat, lootShards, missions],
+      systems: [spawnBudget, encounterDirector, heat, lawSecurity, lootShards, missions],
     });
     const { state, bus } = sim;
     state.mode = 'flight';
@@ -623,6 +636,14 @@ test('portfolio composition: continuous freeflight situation exercises ≥5 unit
       pos: { x: player.pos.x + 20, z: player.pos.z },
       vel: { x: 0, z: 0 }, hull: 1, hullMax: 100, radius: 8, mass: 50,
       data: { shipClass: 'ship', factionId: 'faction_mts' },
+    });
+    // Witness adjudication (ee6c1e27f): a kill only prices heat when eyes saw it — the second
+    // civilian hauler 60 WU off the kill is that eye, inside the 450 WU kill-witness radius.
+    sim.spawn({
+      type: 'ship', team: 2,
+      pos: { x: civilian.pos.x + 60, z: civilian.pos.z },
+      vel: { x: 0, z: 0 }, hull: 100, hullMax: 100, radius: 8, mass: 50,
+      data: { shipClass: 'hauler', factionId: 'faction_mts', role: 'hauler' },
     });
     bus.emit('entity:killed', {
       id: civilian.id,
