@@ -274,7 +274,8 @@ export function createSpeedDial() {
   const numeral = el('b', 'orr-numeral', '0');
   const foot = el('div', 'orr-cluster__speedfoot');
   const unit = el('span', 'orr-label');
-  unit.append(el('span', 'orr-speeddial__word', 'Speed · '), 'wu/s');
+  unit.appendChild(el('span', 'orr-speeddial__word', 'Speed · '));
+  unit.appendChild(el('span', null, 'wu/s')); // an element, not a bare string: the HUD test shims' append() takes nodes only
   foot.appendChild(unit);
   read.append(numeral, foot);
   root.appendChild(read);
