@@ -136,14 +136,19 @@ export function createSlicedYield(yieldFn, options = {}) {
   const now = typeof options.now === 'function' ? options.now : ledgerNow;
   const shouldYield = typeof options.shouldYield === 'function' ? options.shouldYield : null;
   const debit = typeof options.debit === 'function' ? options.debit : null;
+  // `debitGate` is sampled where `sliceStarted` is minted so a gating term that
+  // flips mid-slice can't forfeit (or double-count) the slice's posted spend.
+  const debitGate = typeof options.debitGate === 'function' ? options.debitGate : null;
+  let debitArmed = debitGate ? !!debitGate() : true;
   let sliceStarted = now();
   const sliced = async (force = false) => {
     const tick = now();
     if (force !== true && tick - sliceStarted < sliceMs && !(shouldYield && shouldYield())) return false;
     sliced.yields += 1;
-    if (debit) debit(tick - sliceStarted);
+    if (debit && debitArmed) debit(tick - sliceStarted);
     await yieldFn();
     sliceStarted = now();
+    if (debitGate) debitArmed = !!debitGate();
     return true;
   };
   sliced.yields = 0;

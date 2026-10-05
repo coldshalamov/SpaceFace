@@ -3,9 +3,9 @@
 // GameState.entityList members until promote (mine / ram / tether / decode-runway traffic).
 
 import { clearEntityRuntime } from '../core/entity.js';
-import { ASTEROID_FIELD_CELL, getAsteroidFieldRock, queryAsteroidField } from './asteroidField.js';
+import { ASTEROID_FIELD_CELL, getAsteroidFieldRock, queryAsteroidField, queryAsteroidFieldSteps } from './asteroidField.js';
 import { getDressingRow } from './dressingTable.js';
-import { getFarActor, promoteFarActor, queryFarActors } from './farActorTable.js';
+import { getFarActor, promoteFarActor, queryFarActors, queryFarActorsSteps } from './farActorTable.js';
 import {
   authoredPrefetchRadius,
   farLedgerScanRadius,
@@ -328,14 +328,15 @@ const _meshWalkOrigin = { x: 0, z: 0 };
 
 const _ledgerCollectOrigin = { x: 0, z: 0 };
 
-// Shared prefix for the sync + chunked ledger collects: player/origin/disc resolution,
-// the (possibly memoized) grid-walk refill, and every loop constant. Returns null on the
-// early-outs so both drains short-circuit identically.
+// Shared walk plan for the sync + chunked ledger collects and the stepped refill:
+// player/origin/disc resolution plus every refill verdict — which disc misses,
+// which can ride, and at what radius. Returns null on the early-outs so all
+// three drains short-circuit identically.
 // `opts.tolerateMiss` lets a caller ride the previous disc's scratch when the spatial
 // key flips — the per-row verdicts below filter against the live origin, so a stale
 // disc under-collects (a subset) but never mis-collects; the next non-tolerating
 // call refills.
-function _nearbyLedgerRowsContext(state, opts = null) {
+function _nearbyLedgerWalkPlan(state, opts = null) {
   const player = state && state.entities && typeof state.entities.get === 'function'
     ? state.entities.get(state.playerId)
     : null;
@@ -405,21 +406,6 @@ function _nearbyLedgerRowsContext(state, opts = null) {
         + walkRadius <= (_meshFarKey.collectRadius || _meshFarKey.radius || 0);
   const ridesFar = hasLiveFarDisc
     && (toleration === true || (toleration === 'covered' && farCovered));
-  if (!meshFarKeyMatches(state, walkX, walkZ, walkRadius) && !ridesFar) {
-    if (toleration === true && !hasLiveFarDisc) {
-      // A loose-tolerance remint with no live disc means the far object was
-      // swapped (or never minted): a refill here pays the unbounded grid query
-      // inside the beat remainder, and the stale scratch describes a dead set.
-      // Serve an empty row set for this beat — the next clean-start mint
-      // refills under the strict 'covered' gate on a fresh clock.
-      _meshFarScratch.length = 0;
-    } else {
-      _meshWalkOrigin.x = walkX;
-      _meshWalkOrigin.z = walkZ;
-      queryFarActors(state, _meshWalkOrigin, walkRadius + collectOverlap, _meshFarScratch);
-      rememberMeshFarKey(state, walkX, walkZ, walkRadius, walkRadius + collectOverlap);
-    }
-  }
   // Field rocks build procedurally on the collect horizon — they never ride the
   // authored decode runway — so their walk disc needs only the collect radius
   // plus the closing/staleness margin, not the far scan disc. Never larger than
@@ -441,6 +427,71 @@ function _nearbyLedgerRowsContext(state, opts = null) {
         + rockWalkRadius <= (_meshRockKey.collectRadius || _meshRockKey.radius || 0);
   const ridesRock = hasLiveRockDisc
     && (toleration === true || (toleration === 'covered' && rockCovered));
+  return {
+    player,
+    origin,
+    playerX,
+    playerZ,
+    simTime,
+    radius,
+    walkX,
+    walkZ,
+    walkRadius,
+    collectOverlap,
+    toleration,
+    field,
+    far,
+    hasLiveFarDisc,
+    hasLiveRockDisc,
+    farCovered,
+    ridesFar,
+    rockWalkRadius,
+    rockBucket,
+    rockCovered,
+    ridesRock,
+  };
+}
+
+// Executes the plan's two refill verdicts synchronously and returns the collect's
+// pinned context. Shared by the sync and chunked drains (the stepped twin below
+// walks the same verdicts behind a slice clock).
+function _nearbyLedgerRowsContext(state, opts = null) {
+  const plan = _nearbyLedgerWalkPlan(state, opts);
+  if (!plan) return null;
+  const {
+    player,
+    origin,
+    playerX,
+    playerZ,
+    simTime,
+    radius,
+    walkX,
+    walkZ,
+    walkRadius,
+    collectOverlap,
+    toleration,
+    hasLiveFarDisc,
+    hasLiveRockDisc,
+    ridesFar,
+    rockWalkRadius,
+    rockBucket,
+    ridesRock,
+  } = plan;
+  if (!meshFarKeyMatches(state, walkX, walkZ, walkRadius) && !ridesFar) {
+    if (toleration === true && !hasLiveFarDisc) {
+      // A loose-tolerance remint with no live disc means the far object was
+      // swapped (or never minted): a refill here pays the unbounded grid query
+      // inside the beat remainder, and the stale scratch describes a dead set.
+      // Serve an empty row set for this beat — the next clean-start mint
+      // refills under the strict 'covered' gate on a fresh clock.
+      _meshFarScratch.length = 0;
+    } else {
+      _meshWalkOrigin.x = walkX;
+      _meshWalkOrigin.z = walkZ;
+      queryFarActors(state, _meshWalkOrigin, walkRadius + collectOverlap, _meshFarScratch);
+      rememberMeshFarKey(state, walkX, walkZ, walkRadius, walkRadius + collectOverlap);
+    }
+  }
   if (!meshRockKeyMatches(state, walkX, walkZ, rockWalkRadius, rockBucket) && !ridesRock) {
     if (toleration === true && !hasLiveRockDisc) {
       _meshRockScratch.length = 0;
@@ -558,6 +609,54 @@ function appendNearbyLedgerRows(state, out) {
 // between slice boundaries; the generator's ctx call then serves from the memo.
 export function warmNearbyLedgerRows(state, opts = null) {
   _nearbyLedgerRowsContext(state, opts);
+}
+
+// Stepped twin: the memo-miss refills ride the same slice clock as the collect
+// that consumes the scratches — a corridor-wide grid walk no longer lands
+// inside one presented frame on a cell flip or version bump. `out` accumulates
+// per segment and each memo key commits only when its walk completes, so a
+// suspended refill never stamps a half-filled disc; a mid-refill membership
+// bump just makes the completed stamp stale, which the strict 'covered' gate
+// already re-fetches. Verdicts (`tolerateMiss`, rides, radii, buckets) are the
+// plan's — identical to the sync warm.
+export function* warmNearbyLedgerRowsSteps(state, opts = null, batchRows = 1024) {
+  const plan = _nearbyLedgerWalkPlan(state, opts);
+  if (!plan) return;
+  const {
+    walkX,
+    walkZ,
+    walkRadius,
+    collectOverlap,
+    toleration,
+    hasLiveFarDisc,
+    hasLiveRockDisc,
+    ridesFar,
+    rockWalkRadius,
+    rockBucket,
+    ridesRock,
+  } = plan;
+  if (!meshFarKeyMatches(state, walkX, walkZ, walkRadius) && !ridesFar) {
+    if (toleration === true && !hasLiveFarDisc) {
+      _meshFarScratch.length = 0;
+    } else {
+      _meshWalkOrigin.x = walkX;
+      _meshWalkOrigin.z = walkZ;
+      yield* queryFarActorsSteps(
+        state, _meshWalkOrigin, walkRadius + collectOverlap, _meshFarScratch, batchRows);
+      rememberMeshFarKey(state, walkX, walkZ, walkRadius, walkRadius + collectOverlap);
+    }
+  }
+  if (!meshRockKeyMatches(state, walkX, walkZ, rockWalkRadius, rockBucket) && !ridesRock) {
+    if (toleration === true && !hasLiveRockDisc) {
+      _meshRockScratch.length = 0;
+    } else {
+      _meshWalkOrigin.x = walkX;
+      _meshWalkOrigin.z = walkZ;
+      yield* queryAsteroidFieldSteps(
+        state, _meshWalkOrigin, rockWalkRadius + collectOverlap, _meshRockScratch, batchRows);
+      rememberMeshRockKey(state, walkX, walkZ, rockWalkRadius, rockBucket, rockWalkRadius + collectOverlap);
+    }
+  }
 }
 
 // Chunked twin: yields per row so the sector cook can drive the ledger walks across its
