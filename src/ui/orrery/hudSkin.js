@@ -96,6 +96,9 @@ ${S} #hud .sf-radar-wrap--orrery { position:relative; contain:layout style; over
 /* the dial stops clipping (its frame lives outside the rim); the canvas keeps its own circle mask */
 ${S} #hud .sf-radar-wrap--orrery .sf-radar { overflow:visible; contain:layout style; }
 ${S} #hud .sf-radar-wrap--orrery .sf-radar canvas { clip-path:circle(50%); }
+/* a pool of shade under the whole instrument, so its rim and glows stand off a bright world behind it */
+${S} #hud .sf-radar-wrap--orrery .sf-radar::before { content:""; position:absolute; left:50%; top:50%; width:158%; height:158%; transform:translate(-50%, -50%); border-radius:50%;
+  pointer-events:none; z-index:-1; background:radial-gradient(closest-side, rgb(4 6 9 / .8), rgb(4 6 9 / .62) 58%, rgb(4 6 9 / 0)); }
 /* the kit bezel, face ring and north caret are the old instrument's chrome; the frame replaces them */
 ${S} #hud .sf-radar-wrap--orrery :is(.sf-kit-radar__bezel, .sf-kit-radar__face, .sf-kit-radar__n) { display:none; }
 ${S} #hud .sf-radar-wrap--orrery .sf-radar-objective-key { margin-top:26px; font-family:var(--dp-face-label); font-stretch:112%;
