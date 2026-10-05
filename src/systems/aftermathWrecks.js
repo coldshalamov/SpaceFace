@@ -431,6 +431,15 @@ function victimLabelFor(entity, payload) {
   return data.name || data.shipName || data.callsign || data.callSign || payload && payload.label || victimClassFor(entity, payload);
 }
 
+// The killer's NAME has to be captured at record time: killerId is a bare entity id that
+// recycles, and by scan time the shooter may be dead or despawned. The body is alive here —
+// it just fired — so the same label chain the victim uses resolves while the record is made.
+function killerLabelFor(state, killerId) {
+  const entity = entityFor(state, killerId);
+  const data = entity && entity.data || {};
+  return data.name || data.shipName || data.callsign || data.callSign || null;
+}
+
 function classForVictim(victimClass) {
   const key = String(victimClass || '').toLowerCase();
   if (key.includes('patrol') || key.includes('law') || key.includes('military')) return 'military';
@@ -528,7 +537,9 @@ function aftermathLine(marker) {
   const victim = marker.victimLabel || marker.victimClass || 'ship';
   const cause = marker.cause;
   if (cause && cause.actor) return `${victim} destroyed in ${zone}; evidence links ${cause.actor} to ${cause.motiveId}.`;
-  return `${victim} destroyed in ${zone}; black box lists killer ${marker.killerId == null ? 'unknown' : marker.killerId}.`;
+  // The name was captured at record time — killerId is a bare id that may have recycled since.
+  const killer = marker.killerLabel || (marker.killerId == null ? 'unknown' : 'unidentified');
+  return `${victim} destroyed in ${zone}; black box lists killer ${killer}.`;
 }
 
 function newsLine(marker) {
@@ -645,6 +656,7 @@ function makeMarker(state, payload, entity) {
     victimLabel: victimLabelFor(entity, payload),
     victimFactionId: entity && entity.factionId || payload && payload.factionId || null,
     killerId: payload && payload.killerId != null ? payload.killerId : null,
+    killerLabel: killerLabelFor(state, payload && payload.killerId),
     tick: state.tick || 0,
     t: Number(state.simTime || 0),
     wreckClass: cls ? cls.id : 'battlefield',
@@ -700,6 +712,7 @@ function makePlayerWreckMarker(state, payload, entity) {
     victimLabel: victimLabelFor(entity, payload) || 'Your Hull',
     victimFactionId: entity && entity.factionId || payload && payload.factionId || null,
     killerId: payload && payload.killerId != null ? payload.killerId : null,
+    killerLabel: killerLabelFor(state, payload && payload.killerId),
     tick: state.tick || 0,
     t: Number(state.simTime || 0),
     wreckClass: cls ? cls.id : 'fresh',
@@ -866,6 +879,9 @@ function normalizeMarker(input) {
     victimLabel: input.victimLabel || input.victimClass || 'ship',
     victimFactionId: input.victimFactionId || null,
     killerId: input.killerId == null ? null : input.killerId,
+    // Markers written before the record carried a name restore to null — the black box
+    // then honestly reports an unidentified killer rather than guessing one.
+    killerLabel: boundedIdentityText(input.killerLabel),
     tick: Number.isFinite(input.tick) ? input.tick : 0,
     t: Number.isFinite(input.t) ? input.t : 0,
     wreckClass: input.wreckClass || 'battlefield',
@@ -1656,6 +1672,7 @@ export const aftermathWrecks = {
       victimLabel: boundedIdentityText(payload.victimLabel) || 'Recovered Assembly',
       victimFactionId: payload.victimFactionId || null,
       killerId: payload.killerId == null ? null : payload.killerId,
+      killerLabel: killerLabelFor(state, payload.killerId),
       tick: state.tick || 0,
       t: Number(state.simTime || 0),
       wreckClass: cls ? cls.id : 'fresh',
@@ -2091,6 +2108,7 @@ export const aftermathWrecks = {
           victimDefId: marker.victimDefId || null,
           victimFactionId: marker.victimFactionId,
           killerId: marker.killerId,
+          killerLabel: marker.killerLabel || null,
           tick: marker.tick,
           encounterId: marker.encounterId,
           fingerprint: marker.encounterFingerprint,

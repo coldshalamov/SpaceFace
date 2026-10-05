@@ -168,6 +168,20 @@ export function buildWreckScanReveal(entity, state, options = {}) {
     const today = Math.floor(now / daySeconds);
     reveal.daysAgo = Number.isFinite(loss.simDay) ? Math.max(0, today - loss.simDay) : null;
   }
+  // A battle-aftermath wreck carries its own record where a ledger derelict carries a loss:
+  // the victim it was, the shooter the black box named at record time (the bare killerId may
+  // have recycled since), and the kill stamp. Same identified+ disclosure tier either way —
+  // contact still sees a hulk.
+  if (!loss && provenance && provenance.victimLabel) {
+    const killer = provenance.killerLabel || 'an unidentified killer';
+    const zone = provenance.zoneName || 'open space';
+    reveal.story = `${provenance.victimLabel} destroyed in ${zone}; black box lists killer ${killer}.`;
+    const killedAt = Number.isFinite(data.killedAt) ? data.killedAt : null;
+    if (killedAt != null) {
+      const today = Math.floor(now / 600);
+      reveal.daysAgo = Math.max(0, today - Math.floor(killedAt / 600));
+    }
+  }
   if (quality === 'deep') {
     reveal.salvageHint = wreckSalvageHintForEntity(entity);
     reveal.cold = wreckPoolLots(entity).length === 0;
