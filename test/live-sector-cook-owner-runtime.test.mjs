@@ -416,6 +416,7 @@ function gpuFixture() {
     prepareStartupGpuResidency: async () => ({ ok: true }),
     collectFirstFlightLayerDrawables: () => [], collectInstancePoolCompileRoots: () => [],
     buildOpeningSubmissionPlan: () => ({ compileSubjects: [] }),
+    buildOpeningSubmissionPlanSteps: function* () { return { compileSubjects: [] }; },
     uniqueAdmissionUnits: () => ({ programSubjects: [] }),
     collectCompileSubjects: () => [],
   });

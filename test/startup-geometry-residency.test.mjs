@@ -152,7 +152,7 @@ test('opening geometry admission uses the shared startup proxy pass', () => {
   assert.doesNotMatch(openingAdmission, /result\.geometries\s*=\s*await admitOpeningUnitsAcrossSlices/,
     'OPENING cannot substitute geometry-deduped production-object touches for proxy admission');
   assert.equal(
-    (openingAdmission.match(/createOpeningSubmissionReceipt\(/g) || []).length,
+    (openingAdmission.match(/createOpeningSubmissionReceipt(?:Steps)?\(/g) || []).length,
     1,
     'the admission-time GPU baseline must not be reset after yielding toward handoff',
   );
@@ -481,7 +481,7 @@ test('unresident instanced census picks out only unstamped instanced drawables',
 // the last barrier before flight — it must run on every non-recook cook.
 test('the first-frame pool census seal is not gated on KHR or the prepare budget', () => {
   const prepareStart = RENDERER_SOURCE.indexOf('state.render.prepareLiveSectorBeforeFlight = async');
-  const receiptStart = RENDERER_SOURCE.indexOf('buildOpeningSubmissionPlan()', prepareStart);
+  const receiptStart = RENDERER_SOURCE.indexOf('buildOpeningSubmissionPlanSteps', prepareStart);
   assert.ok(prepareStart >= 0 && receiptStart > prepareStart,
     'the live-sector prepare body must exist');
   const body = RENDERER_SOURCE.slice(prepareStart, receiptStart);
@@ -585,7 +585,7 @@ test('the cook censuses the presented picture instead of reading the stored open
   const unitsIndex = RENDERER_SOURCE.indexOf('const units = uniqueAdmissionUnits([', cookStart);
   assert.ok(unitsIndex > cookStart, 'the cook admission units must exist');
   const between = RENDERER_SOURCE.slice(cookStart, unitsIndex);
-  assert.match(between, /buildOpeningSubmissionPlan\(\)/,
+  assert.match(between, /buildOpeningSubmissionPlanSteps\.call\(this\)/,
     'the cook must census the picture it is about to present');
   assert.doesNotMatch(between, /state\.render\.openingSubmissionPlan/,
     'the cook must not depend on the stored opening manifest');
