@@ -366,7 +366,13 @@ export const core = {
     // Far shelving writes its row before removing the body, and dressing/field rows can hold an
     // id too. Recycling a held id let the next spawn or row take it, so two world objects shared
     // one mesh and presentation slot. The id comes back once that row promotes and the body dies.
-    if (!worldLedgerHoldsId(state.world, e.id)) state.freeIds.push(e.id);
+    if (!worldLedgerHoldsId(state.world, e.id)) {
+      // A bare targetId is a pointer: once this id is back in the pool, the next spawn to
+      // draw it silently inherits the player's lock. Ledger-held ids still resolve through
+      // the shelf (rock/dressing/far rows address them), so the lock survives a cull there.
+      if (state.player && state.player.targetId === e.id) state.player.targetId = null;
+      state.freeIds.push(e.id);
+    }
     const last = list.pop();
     if (i < list.length) list[i] = last;
     if (opts && opts.immediate === true) markEntityIndexSourceSynced(state.entityIndex, list);
@@ -404,7 +410,11 @@ export const core = {
       this.bus.queue('entity:destroyed', destroyed);
       state.entities.delete(e.id);
       // Same recycle guard as the single path: ledger-held ids come back when the row dies.
-      if (!worldLedgerHoldsId(state.world, e.id)) state.freeIds.push(e.id);
+      if (!worldLedgerHoldsId(state.world, e.id)) {
+        // Same lock guard too: a recycled id must not inherit the player's target.
+        if (state.player && state.player.targetId === e.id) state.player.targetId = null;
+        state.freeIds.push(e.id);
+      }
       const last = list.pop();
       if (i < list.length) list[i] = last;
       corpses.push(e);
