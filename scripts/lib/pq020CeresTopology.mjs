@@ -142,8 +142,15 @@ export const PQ020_CERES_ADDITIVE_DRESSING_SCHEMA =
 // route marker mid-lane). Entity/type census, cathedral census, releaseSha256 and every
 // topology/exact-agreement assertion are unchanged. Prior digest was
 // 8404e62c8acaa5e75feca22c173c32ee3597254df16ab0f4db176d516cf77e1b.
+//
+// 2026-10-05 (7f6f048ef): the four Ceres activity-object slots (dead hulk, bait wreck, grave
+// shard, conveyor barge) repoint ambient props the pocket loop was going to draw anyway — the
+// pocket contract says a slot is free of entity, collider, and draw cost, so the slot entities
+// take the ghost branch instead of measured-skin bodies. Census moves 19→15 collidable and
+// 329→260 colliders; the remaining solids are the legit dressing targets. Prior digest was
+// 1e245a850b53c10a7de1cda7ce4caf7cf97685e39f5e1b39e30529c4b15e68a6.
 export const PQ020_EXPECTED_STRUCTURAL_COST_DIGEST =
-  '1e245a850b53c10a7de1cda7ce4caf7cf97685e39f5e1b39e30529c4b15e68a6';
+  '4c32450ba7bc770510084e0c0b15bf3534659fc91a81edd2fcab9d20fa969d8b';
 
 const EXPECTED_ADDITIVE_WORLD_SITE_IDS = Object.freeze([CINDER_SLUICE_SITE_ID]);
 // 2026-10-03 (solid-dressing lane, D161 adjudication): dressing structures the player can see
