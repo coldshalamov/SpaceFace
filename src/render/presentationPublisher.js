@@ -131,10 +131,6 @@ export function createPresentationPublisher(world, state, options = {}) {
           ? {
             retire: false,
             hiddenIds: presentationFrame.rebuildSuppressedDestroyIds || null,
-            // Suppressed-destroy ids recycle during the suspended window — the
-            // live map tells the doom loop which ids still name the dead
-            // occupant vs a respawn bound onto the row mid-window.
-            liveEntities: state && state.entities,
           }
           : undefined);
       } else {

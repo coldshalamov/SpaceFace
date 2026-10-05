@@ -11,6 +11,8 @@ import {
   createShadowDepthStagingSession,
   disposeAdmissionShadowResources,
   UNSTAGED_COLLECT_OVER_COVER,
+  isUnstagedCollectOverCover,
+  collectUnstagedShadowCastersFlag,
 } from '../src/render/shadowDepthAdmission.js';
 import { scheduleRealtimeShadowRefresh } from '../src/render/shadowPresentCadence.js';
 
@@ -661,7 +663,13 @@ test('an exhausted collect wallet returns the OVER_COVER sentinel, not an array'
   assert.equal(overCover, UNSTAGED_COLLECT_OVER_COVER);
   assert.equal(typeof overCover, 'string');
   assert.equal(Array.isArray(overCover), false);
+  assert.equal(isUnstagedCollectOverCover(overCover), true);
+  assert.equal(isUnstagedCollectOverCover([]), false);
+  const flagOverCover = collectUnstagedShadowCastersFlag([rig.scene], undefined, { remaining: 0 });
+  assert.equal(isUnstagedCollectOverCover(flagOverCover), true);
+  assert.equal(Array.isArray(flagOverCover), false);
   const budgeted = collectUnstagedShadowCasters(
     rig.renderer, [rig.scene], rig.scene, undefined, { remaining: 64 });
   assert.equal(Array.isArray(budgeted), true, 'a live wallet still returns the caster array');
+  assert.equal(isUnstagedCollectOverCover(budgeted), false);
 });

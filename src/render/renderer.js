@@ -353,7 +353,7 @@ import {
   lightCensusSignature,
   noteShadowCensusLightMutation,
   shadowCensusEpoch,
-  UNSTAGED_COLLECT_OVER_COVER,
+  isUnstagedCollectOverCover,
 } from './shadowDepthAdmission.js';
 import { preloadRockSurfaceLibrary } from './rockSurfaceLibrary.js';
 import { preloadRockFamilyLibrary } from './rockFamilyLibrary.js';
@@ -553,7 +553,9 @@ async function driveCompileShadowDepthPipelines(depthOpts, yieldStep) {
       depthOpts.lightSigOverride = lightCensusSignature(depthOpts.lightingScene);
     }
   }
-  return { skipped: true, reason: 'light-census-drifted-repeatedly', subjects: 0 };
+  // `aborted` rides the same contract as the callee-minted skip shapes: the
+  // drive never staged, so consumers must not evaluate marks that never landed.
+  return { skipped: true, reason: 'light-census-drifted-repeatedly', subjects: 0, aborted: true };
 }
 
 // classifyTableBand reads its options object synchronously, so one pooled args
@@ -10676,7 +10678,7 @@ export const render = {
           try {
             const collected = collectUnstagedShadowCastersFlag([root], census, flagBudget, this.cam && this.cam.obj);
             const lodLevel = (root.userData && root.userData.lod && root.userData.lod.level) || 'lod0';
-            if (collected === UNSTAGED_COLLECT_OVER_COVER) {
+            if (isUnstagedCollectOverCover(collected)) {
               // The flag walk outran its shared node budget mid-root — a partial
               // set can't be trusted for per-mesh withhold. Withhold the whole
               // subtree instead of leaving castShadow live while the arm's
@@ -14483,13 +14485,16 @@ export const render = {
           if (!bucket) perRootSubjects.set(holder, (bucket = []));
           bucket.push(subject);
         }
-        const cookCompileSubjects = cookCompileRoots.length > 0
-          ? cookCompileRoots.flatMap((root) => {
-            const bucket = perRootSubjects.get(root);
-            if (bucket === undefined) return collectCompileSubjects(root);
-            return bucket.length > 0 ? bucket : [root];
-          })
-          : [];
+        const cookCompileSubjects = [];
+        for (const root of cookCompileRoots) {
+          const bucket = perRootSubjects.get(root);
+          if (bucket === undefined) {
+            // Same unpaced-traverse gap as the rescan twin — the fallback
+            // collect paces per root under the cook's stretch clock.
+            await paceCookStretch();
+            cookCompileSubjects.push(...collectCompileSubjects(root));
+          } else cookCompileSubjects.push(...(bucket.length > 0 ? bucket : [root]));
+        }
         const sceneCompileSubjects = (survivalCook && !cookOverBudget())
           ? poolCensus.subjects
           : [];
@@ -15391,8 +15396,13 @@ export const render = {
         const out = [];
         for (const root of roots) {
           const bucket = perRootSubjects.get(root);
-          if (bucket === undefined) out.push(...collectCompileSubjects(root));
-          else out.push(...(bucket.length > 0 ? bucket : [root]));
+          if (bucket === undefined) {
+            // The fallback traverse IS the slice's cost — pace per root so a
+            // packed-warm rescan doesn't stack dozens of subtree walks inside
+            // one leg.
+            await postPace();
+            out.push(...collectCompileSubjects(root));
+          } else out.push(...(bucket.length > 0 ? bucket : [root]));
         }
         return out;
       };
@@ -15595,7 +15605,7 @@ export const render = {
         }
         return lastRetryResult && lastRetryResult.reason === 'session-closed-mid-drive'
           ? lastRetryResult
-          : { skipped: true, reason: 'light-census-drifted-repeatedly', subjects: 0 };
+          : { skipped: true, reason: 'light-census-drifted-repeatedly', subjects: 0, aborted: true };
       };
       const unstagedDepthSubjects = [];
       // One node wallet across the chunk loop: the paced 512-subject batches only
@@ -15606,7 +15616,7 @@ export const render = {
       for (let i = 0; i < depthSubjects.length; i += 512) {
         const unstagedPart = collectUnstagedShadowCasters(
           renderer, depthSubjects.slice(i, i + 512), scene, freshDepthLightSig(), unstagedCollectBudget);
-        if (unstagedPart === UNSTAGED_COLLECT_OVER_COVER) break;
+        if (isUnstagedCollectOverCover(unstagedPart)) break;
         if (unstagedPart.length > 0) unstagedDepthSubjects.push(...unstagedPart);
         await postPace();
       }
@@ -15682,7 +15692,7 @@ export const render = {
         for (let i = 0; i < rescanDelta.length; i += 512) {
           const unstagedPart = collectUnstagedShadowCasters(
             renderer, rescanDelta.slice(i, i + 512), scene, freshDepthLightSig(), rescanCollectBudget);
-          if (unstagedPart === UNSTAGED_COLLECT_OVER_COVER) break;
+          if (isUnstagedCollectOverCover(unstagedPart)) break;
           if (unstagedPart.length > 0) unstagedRescanDelta.push(...unstagedPart);
           await postPace();
         }
@@ -24815,6 +24825,25 @@ export const render = {
     const dirtySeq = shadowCasterPolicyDirtySeq(root);
     const parkedMap = this._parkedDepthStageRoots;
     const parkedEntry = parkedMap ? parkedMap.get(root) : undefined;
+    const parked = !!(parkedMap && parkedMap.has(root));
+    // The recheck cadence ticks before the release chain so the census compare
+    // below only runs on its ticks — a lightSig-carrying park evaluated every
+    // presented frame would otherwise re-mint a whole-scene light census walk
+    // per frame (the memo's seq key refreshes once a frame by design).
+    let parkedRecheck = false;
+    if (parked && parkedEntry) {
+      parkedEntry.recheck = (parkedEntry.recheck || 0) - 1;
+      if (parkedEntry.recheck <= 0) {
+        // Re-arm on a per-stamp counter — size%32 reads identically for every
+        // root expiring in one pass, which re-synchronized the cohort it was
+        // meant to stagger. The recheck cadence is a best-effort backstop for
+        // silent drawability flips, not a correctness deadline, so the spread
+        // is free to be arbitrary.
+        this._parkedRecheckStamp = (this._parkedRecheckStamp || 0) + 1;
+        parkedEntry.recheck = 96 + (this._parkedRecheckStamp % 32);
+        parkedRecheck = true;
+      }
+    }
     // A genuine re-dirty on a parked root (mesh attach, packaged swap, pool
     // reuse) must reach the collect — the park stored this generation for
     // exactly that compare. Parked roots stamp castBand=0 on their next sync,
@@ -24831,7 +24860,7 @@ export const render = {
     if (scopedSync) {
       // Keep the park: only a whole-root collect may release it.
     } else if (parkedEntry && dirtySeq > parkedEntry.seq) parkedRelease = true;
-    else if (parkedEntry && parkedEntry.lightSig != null
+    else if (parkedRecheck && parkedEntry.lightSig != null
         && parkedEntry.lightSig !== this._shadowCensusForFrame()) {
       parkedRelease = parkedReleaseOnDrift = true;
     } else if (parkedEntry && parkedEntry.oqX != null && this._keyLight && this._keyLight.target) {
@@ -24875,7 +24904,6 @@ export const render = {
       if (this._withheldDepthCasters) this._withheldDepthCasters.delete(root);
       if (root.userData) delete root.userData.sfDepthUndrawableCycles;
     }
-    const parked = !!(parkedMap && parkedMap.has(root));
     const queued = !!(this._pendingDepthStageRoots && this._pendingDepthStageRoots.has(root)) || parked;
     const stampedSeq = (root.userData && typeof root.userData[STAGE_SELF_DIRTY_KEY] === 'number')
       ? root.userData[STAGE_SELF_DIRTY_KEY] : -1;
@@ -24883,23 +24911,10 @@ export const render = {
     // a genuine re-dirty landing while the root waits queued bumps the generation
     // past the stamp, so the collect re-runs and the fresh meshes join the withhold.
     const selfDirty = stampedSeq >= 0 && dirtySeq === stampedSeq;
-    // A parked root also re-collects on a slow cadence: drawability flips that
-    // never invalidate the policy (visible toggle, LOD swap, drifting inside the
-    // shadow ortho) otherwise keep its withheld casters dark indefinitely.
-    let parkedRecheck = false;
-    if (parked && parkedEntry) {
-      parkedEntry.recheck = (parkedEntry.recheck || 0) - 1;
-      if (parkedEntry.recheck <= 0) {
-        // Re-arm on a per-stamp counter — size%32 reads identically for every
-        // root expiring in one pass, which re-synchronized the cohort it was
-        // meant to stagger. The recheck cadence is a best-effort backstop for
-        // silent drawability flips, not a correctness deadline, so the spread
-        // is free to be arbitrary.
-        this._parkedRecheckStamp = (this._parkedRecheckStamp || 0) + 1;
-        parkedEntry.recheck = 96 + (this._parkedRecheckStamp % 32);
-        parkedRecheck = true;
-      }
-    }
+    // A parked root also re-collects on its recheck cadence above: drawability
+    // flips that never invalidate the policy (visible toggle, LOD swap, drifting
+    // inside the shadow ortho) otherwise keep its withheld casters dark
+    // indefinitely.
     // The signature walk runs on first withhold only: a queued (or parked) band<1
     // root is already withheld whole-tree (its collect returns the identical unstaged
     // set every frame until the arm lands — pure burn), and a queued band-1 root
@@ -24946,7 +24961,7 @@ export const render = {
       const found = collectUnstagedShadowCastersFlag(
         [syncScope], this._shadowCensusForFrame(), nodeBudget, this.cam && this.cam.obj);
       if (parkedScale <= 0) this._depthCollectNodesLeft = nodeBudget.remaining;
-      if (found === UNSTAGED_COLLECT_OVER_COVER) {
+      if (isUnstagedCollectOverCover(found)) {
         // The walk outran the shared node budget mid-traverse — a partial set
         // can't be trusted, so over-cover exactly like the root-cap overflow.
         overCovered = true;
@@ -25012,12 +25027,13 @@ export const render = {
     // must keep castShadow=false and queue for the arm, or the next pass's
     // collectGate would close on the stamp and restore live flags on unlinked
     // depth variants). The root stays dirty and re-enters next pass; a pass
-    // needing no withhold simply pays its traverse a frame later. A withhold
-    // verdict is exempt: its traverse carries the subtree-wide castShadow=false
-    // the cold-link doctrine needs applied now, not whenever the cap frees —
-    // verdicts are bounded by the same collect cap so the exemption can't
-    // unbound the pass. Scoped graft syncs stay uncapped too (their walk is
-    // already narrowed to the added subtree).
+    // needing no withhold simply pays its traverse a frame later. Verdict
+    // traverses join the same cap: past it the root stays dirty and the verdict
+    // re-mints next pass — a withhold's per-mesh flags and queue marks still
+    // land below, so the deferral is fail-open (castShadow stays true on
+    // already-staged rows a pass longer) rather than a cold-link exposure.
+    // Scoped graft syncs stay uncapped (their walk is already narrowed to the
+    // added subtree).
     // A pure drift release whose collect ran skips the policy traverse: the
     // parked subtree is already withheld cold, and the collect+withhold
     // bookkeeping above re-stamps whatever the new census changes — otherwise a
@@ -25029,10 +25045,14 @@ export const render = {
     // defer gates: a parked walk frozen behind a cap that counts fresh
     // traverses would hold its half-applied flags indefinitely.
     const hadParkedWalk = !!(this._policyStepsParked && this._policyStepsParked.get(root));
+    // A caller needing a synchronous out-param (preCountRoot) can't wait out a
+    // cap: deferring it skips both lanes, and its swap seam pays the same
+    // unbounded subtree count walk the cap exists to bound — pure inversion.
+    const needsAtomicOut = !!(extra && extra.preCountRoot);
     const traverseDeferred = !scopedSync
       && !skipTraverseOnDrift
       && !hadParkedWalk
-      && syncOpts.allowCast !== false
+      && !needsAtomicOut
       && (this._shadowRootSyncPassCount | 0) >= SHADOW_ROOT_SYNC_PASS_CAP;
     if (!scopedSync && !traverseDeferred && !skipTraverseOnDrift && !hadParkedWalk) {
       this._shadowRootSyncPassCount = (this._shadowRootSyncPassCount | 0) + 1;
@@ -25040,9 +25060,6 @@ export const render = {
     const receiverOut = { receiverDelta: 0 };
     let changed = false;
     if (!traverseDeferred && !skipTraverseOnDrift) {
-      // A caller needing a synchronous out-param (preCountRoot) can't wait
-      // out a stepped walk — it rides the atomic traverse like a withhold.
-      const needsAtomicOut = !!(extra && extra.preCountRoot);
       if (!scopedSync && syncOpts.allowCast !== false && !needsAtomicOut) {
         // Whole-root castable verdicts ride the stepped lane: a fat subtree's
         // rewrite paces inside a small wall budget per call instead of one
@@ -25052,15 +25069,22 @@ export const render = {
           && typeof performance.now === 'function' ? performance.now() : Date.now());
         const policyDeadlineAt = this._policyPassDeadlineAt != null
           ? this._policyPassDeadlineAt : policyNow() + SHADOW_POLICY_PASS_MS;
-        const policyStartedAt = policyNow();
-        changed = driveShadowPolicySteps(this, root, syncScope, lodLevel, {
-          ...syncOpts,
-          ...(extra || {}),
-          out: receiverOut,
-        }, () => policyNow() >= policyDeadlineAt) === true;
-        // The arm's restore leg debits this same ledger — the presented-pass
-        // leg is unmetered otherwise and later slicers stack on a ~zero wallet.
-        notePacedFrameSpend(policyNow() - policyStartedAt);
+        if (!hadParkedWalk && policyNow() >= policyDeadlineAt) {
+          // A spent wallet parks fresh mints unpaid — the root stays dirty and
+          // re-enters under next pass's wallet instead of paying slice-1 on a
+          // dead clock. Parked resumes keep their min-1 slice below (the drive
+          // steps before it checks).
+        } else {
+          const policyStartedAt = policyNow();
+          changed = driveShadowPolicySteps(this, root, syncScope, lodLevel, {
+            ...syncOpts,
+            ...(extra || {}),
+            out: receiverOut,
+          }, () => policyNow() >= policyDeadlineAt) === true;
+          // The arm's restore leg debits this same ledger — the presented-pass
+          // leg is unmetered otherwise and later slicers stack on a ~zero wallet.
+          notePacedFrameSpend(policyNow() - policyStartedAt);
+        }
       } else {
         // A withhold verdict (or scoped graft, or a sync-out-param caller)
         // out-ranks any parked castable walk: its atomic traverse writes
@@ -25190,6 +25214,7 @@ export const render = {
           pending.delete(root);
           if (root && root.userData) root.userData[STAGE_SELF_DIRTY_KEY] = false;
           if (root && this._withheldDepthCasters) this._withheldDepthCasters.delete(root);
+          if (root && this._policyStepsParked) this._policyStepsParked.delete(root);
         }
       }
     }
@@ -25202,6 +25227,7 @@ export const render = {
             delete root.userData.sfDepthUndrawableCycles;
           }
           if (root && this._withheldDepthCasters) this._withheldDepthCasters.delete(root);
+          if (root && this._policyStepsParked) this._policyStepsParked.delete(root);
         }
       }
     }
@@ -25340,7 +25366,7 @@ export const render = {
             };
             const found = collectUnstagedShadowCasters(
               renderer, [sliceRoots[collected]], scene, lightSig, collectNodeBudget);
-            if (found === UNSTAGED_COLLECT_OVER_COVER) {
+            if (isUnstagedCollectOverCover(found)) {
               if (entry && (entry.depthNodeScale | 0) >= 8) {
                 // Still over the node cap at maximum scale: the subtree can
                 // never stage, so park it like an undrawable leftover — the
@@ -25691,7 +25717,7 @@ export const render = {
         const child = children[i];
         if (!child || child.parent !== scene) continue;
         const collected = collectUnstagedShadowCastersFlag([child], census, toggleBudget, this.cam && this.cam.obj);
-        if (collected === UNSTAGED_COLLECT_OVER_COVER) {
+        if (isUnstagedCollectOverCover(collected)) {
           // The walk outran the click budget mid-root — a partial set can't be
           // trusted for per-mesh withhold. Queue this root and every unvisited
           // sibling so the arm's deadline-bounded per-root collects re-derive
@@ -26965,8 +26991,9 @@ function drainSceneEnvRebindQueue(owner) {
       // The released env target frees only once nothing still samples it —
       // materials on unvisited nodes keep a valid texture until the walk ends.
       if (head.disposeTarget) { try { head.disposeTarget.dispose(); } catch (_) {} }
-      continue;
     }
+    // The check runs after every head — a done-head's dispose is exactly the
+    // GL-facing cost the wallet exists to bound.
     if (now() >= deadline || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
   }
   const elapsed = now() - startedAt;

@@ -365,6 +365,12 @@ export function casterDepthMarkCurrent(caster, lightSig, camera = null) {
 // out mid-walk: the caller over-covers (whole-subtree withhold) instead of
 // trusting a partial unstaged set — the arm's collect re-derives for real.
 export const UNSTAGED_COLLECT_OVER_COVER = 'sfUnstagedCollectOverCover';
+// The sentinel is a string minted where callers expect an array — a `length>0`
+// or spread-style read would misinterpret it, so the only sound test is this
+// identity predicate.
+export function isUnstagedCollectOverCover(value) {
+  return value === UNSTAGED_COLLECT_OVER_COVER;
+}
 const _walkBudgetAbort = new Error('sf-shadow-collect-node-budget');
 
 export function collectUnstagedShadowCastersFlag(roots, lightSig, nodeBudget = null, camera = null) {

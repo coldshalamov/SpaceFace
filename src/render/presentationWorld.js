@@ -890,11 +890,6 @@ export function createPresentationWorld(options = {}) {
     // prefix): not-yet-collected ids must hold their last pose, so the retire
     // sweep is suppressed by construction. Retained + new rows still apply.
     const retireSuppressed = options && options.retire === false;
-    // `options.liveEntities` (the live id→entity map) disambiguates a recycled
-    // id inside the doom sets: a respawn bound onto the destroyed occupant's
-    // row must not re-doom — its row still shows the dead body's refs until
-    // the respawn's own push replaces them.
-    const liveEntities = options && options.liveEntities;
     // Slot-indexed seen stamps instead of a Set(N): every entityId maps to the
     // one slot its id owns (byId is id-keyed), so lastSeenSeq[slot] === seq is
     // the duplicate test with zero alloc.
@@ -967,21 +962,35 @@ export function createPresentationWorld(options = {}) {
     // A respawned id arriving in a feed clears the doom at its stamp above, so
     // a doom never mints for a row this feed pushed.
     if (retireSuppressed && (options.hiddenIds || skippedIds)) {
-      for (const hiddenIds of [options.hiddenIds, skippedIds]) {
-        if (!hiddenIds) continue;
-        for (const hiddenId of hiddenIds) {
+      // Doom reads the ROW's stored occupant, not the id map: a bound respawn
+      // already refreshed entityRefs (bindMesh's refreshMetadata write), so a
+      // live resident means the row belongs to a real occupant — skip. A dead
+      // or stale resident means the row still shows the destroyed body —
+      // doom it; a later bindMesh re-admits the occupant via its doom clear.
+      if (options.hiddenIds) {
+        for (const hiddenId of options.hiddenIds) {
           const slot = byId.get(hiddenId);
           if (slot !== undefined && world.alive[slot] === 1 && lastSeenSeq[slot] !== seq
               && world.doomed[slot] !== 1) {
-            // The id recycled to a new occupant — doom only names the entity
-            // the suppressed destroy actually destroyed; a live occupant that
-            // differs from the row's stored refs is a respawn mid-window.
-            const liveOccupant = liveEntities && typeof liveEntities.get === 'function'
-              ? liveEntities.get(hiddenId) : undefined;
-            if (liveOccupant !== undefined && liveOccupant !== world.entityRefs[slot]) continue;
+            const resident = world.entityRefs[slot];
+            if (resident && resident.alive !== false) continue;
             // Only a prior-visible row ever enters hiddenSlots, so a mark minted
             // on an already-invisible slot is never consumed — it would pin both
             // query retains for the slot's whole residency.
+            const wasVisible = world.visible[slot] === 1;
+            world.doomed[slot] = 1;
+            world.visible[slot] = 0;
+            if (wasVisible) markDirtyBits(slot, PRESENTATION_DIRTY.VISIBILITY);
+          }
+        }
+      }
+      // Feed-skip tombstones name eligibility-fail occupants — they can never
+      // push or legitimately bind, so no occupant verdict applies: doom the row.
+      if (skippedIds) {
+        for (const hiddenId of skippedIds) {
+          const slot = byId.get(hiddenId);
+          if (slot !== undefined && world.alive[slot] === 1 && lastSeenSeq[slot] !== seq
+              && world.doomed[slot] !== 1) {
             const wasVisible = world.visible[slot] === 1;
             world.doomed[slot] = 1;
             world.visible[slot] = 0;
