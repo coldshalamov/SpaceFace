@@ -65,6 +65,9 @@ export function collectPageIssues(page, options = {}) {
       type: 'error',
       text: `Request failed ${request.url()}${failure && failure.errorText ? `: ${failure.errorText}` : ''}`,
       at: new Date().toISOString(),
+      // The method lets checks excuse only the boot store GET probe — a deadline abort the
+      // client handles by design — while an aborted PUT mirror stays fail-closed.
+      method: request.method(),
     };
     if (expectedNavigation && isNavigationCancelledRequest(failure)) {
       ignoredIssues.push({

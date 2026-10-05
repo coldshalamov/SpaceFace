@@ -431,6 +431,7 @@ try {
   // assertion above still fails the check if a PUT aborts or errors.
   const isHandledStoreProbeAbort = (issue) =>
     issue.type === 'error'
+    && issue.method === 'GET'
     && String(issue.text).startsWith('Request failed')
     && String(issue.text).includes('__spaceface_player_store')
     && String(issue.text).includes('net::ERR_ABORTED');
