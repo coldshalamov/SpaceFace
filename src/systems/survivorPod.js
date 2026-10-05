@@ -1351,7 +1351,12 @@ export const survivorPod = {
     const rec = own.promotedByPoint[point.id];
     if (!rec || rec.stripped) return false;
     const optionId = payload.optionId || payload.choiceId || payload.id;
-    if (optionId === 'rescue') return this._chooseRescue(point, rec);
+    if (optionId === 'rescue') {
+      // A committed rescue (its contract is already live) never re-runs the choice — the
+      // pod's second rescueSelected would price a second accept against a withdrawn offer.
+      if (rec.rescueSelected) return false;
+      return this._chooseRescue(point, rec);
+    }
     if (optionId === 'strip') return this._chooseStrip(point, rec);
     return false;
   },
@@ -1377,7 +1382,6 @@ export const survivorPod = {
       }
       return false;
     }
-    rec.rescueSelected = true;
     const ent = entityForPoint(state, point);
     const meta = mirrorMeta(state, rec, point, ent);
     if (this._bus && this._bus.emit) {
@@ -1389,7 +1393,28 @@ export const survivorPod = {
         destSectorId: rec.destSectorId || rec.sectorId,
       });
     }
-    return true;
+    // Missions accepts synchronously inside the emit above. A refused accept — standing lost
+    // at the destination desk between the berth re-resolve and this choice, or an offer row
+    // that is already gone — leaves NO contract. The latch must not hold: set it only when a
+    // live rescue mission for this pod exists, otherwise roll back and tell the card so the
+    // prompt stays for the retry instead of resolving on a choice that produced nothing
+    // (D133).
+    const active = (state.missions && state.missions.active) || [];
+    const committed = active.some((m) => m && m.status === 'active'
+      && m.params && m.params.survivorPodId === point.id);
+    if (committed) {
+      rec.rescueSelected = true;
+      return true;
+    }
+    rec.rescueSelected = false;
+    if (this._bus && this._bus.emit) {
+      this._bus.emit('survivorPod:rescueBlocked', {
+        salvagePointId: point.id,
+        entityId: point.entityId,
+        reason: 'accept_refused',
+      });
+    }
+    return false;
   },
 
   _chooseStrip(point, rec) {
