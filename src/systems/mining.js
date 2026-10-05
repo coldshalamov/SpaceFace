@@ -825,6 +825,14 @@ export const mining = {
     if (tetherTarget !== undefined) return tetherTarget;
 
     if (this._beaming && this._lockTargetId != null) {
+      // Entity ids recycle: when the locked body dies, the lifetime sweep's
+      // clearRecycledEntityPointers nulls player.miningTargetId but cannot reach this system's
+      // private _lockTargetId. If the two disagree the locked body is already gone, and
+      // entities.get would resolve the NEW occupant of the same number — one silent bite into a
+      // rock the player never locked, or a wholesale lock transfer when it resolves a different
+      // verb. A dead lock reports no-target this tick; the free aim scan may still pick the same
+      // body next tick, but as a fresh lock with its own start edge.
+      if (state.player && state.player.miningTargetId !== this._lockTargetId) return null;
       const locked = state.entities.get(this._lockTargetId);
       if (locked && this._isValidMineableTarget(locked, ship, range, state)) return locked;
       return null;
