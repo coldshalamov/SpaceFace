@@ -1,0 +1,172 @@
+name: Finish RUCKUS control polish
+on:
+  push:
+    branches: [character/ruckus-last-demolition]
+    paths: [.github/workflows/ruckus-finalize-once.yml]
+permissions:
+  contents: write
+defaults:
+  run:
+    shell: bash
+jobs:
+  finish:
+    if: github.ref == 'refs/heads/character/ruckus-last-demolition'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: character/ruckus-last-demolition
+          filter: blob:none
+          fetch-depth: 1
+          sparse-checkout: |
+            src
+            test
+            scripts
+            assets/ui
+            assets/characters/ruckus
+            tools/ruckus
+            tools/blender/characters
+            design/characters
+            docs/characters/ruckus
+            .github/workflows
+      - name: Apply the scoped workshop control correction
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          def replace(s,old,new):
+              assert s.count(old)==1, f'Changed source anchor: {old[:70]}'
+              return s.replace(old,new)
+          p=Path('tools/ruckus/bench.js');s=p.read_text()
+          s=replace(s,'eventCursor = 0, disposed = false;','eventCursor = 0, disposed = false, resetPending = null;')
+          s=replace(s,'document.body.prepend(renderer.domElement);',"renderer.domElement.tabIndex = 0;\nrenderer.domElement.setAttribute('aria-label', 'RUCKUS flight workshop');\ndocument.body.prepend(renderer.domElement);")
+          s=replace(s,"$('status').textContent=f.state.timeScale===0?'PAUSED':f.system._phase.toUpperCase();","$('status').textContent=f.state.timeScale===0?'PAUSED':f.system._phase.toUpperCase();\n  $('pause').textContent=f.state.timeScale?'Pause':'Resume';\n  $('hold').textContent=line.visible?'Release core':'Hold core';")
+          s=replace(s,"$('reset').onclick=async()=>{f.destroy();for(const m of maps.values())disposeRuckusVisual(m);maps.clear();f=await createRuckusFixture();eventCursor=0;window.ruckusLab.fixture=f;$('hold').textContent='Hold core';};","""$('reset').onclick=()=>{
+            if(resetPending||disposed)return resetPending;
+            keys.clear();f.input(0,0);drag=null;
+            const buttons=[...document.querySelectorAll('nav button')];
+            for(const button of buttons)button.disabled=true;
+            resetPending=(async()=>{
+              // Keep the current physics owner alive until the replacement has initialized.
+              // Frames are suspended below; repeated reset presses share this one transaction.
+              try{
+                const next=await createRuckusFixture();
+                if(disposed){next.destroy();return;}
+                f.destroy();for(const m of maps.values())disposeRuckusVisual(m);maps.clear();
+                f=next;eventCursor=0;window.ruckusLab.fixture=f;inspect=false;
+                lastComms='One machine. One dented pressure core. Hail him.';
+                $('comms').textContent=lastComms;$('view').textContent='Inspect';
+                accumulator=0;previous=performance.now();present();
+              }finally{
+                resetPending=null;
+                for(const button of buttons)button.disabled=false;
+                if(!disposed)renderer.domElement.focus({preventScroll:true});
+              }
+            })();
+            return resetPending;
+          };""")
+          s=replace(s,"addEventListener('keydown',e=>{if(e.target.closest('button'))return;","""addEventListener('keydown',e=>{
+            if(resetPending)return;
+            const target=e.target;
+            if(target?.closest?.('input, textarea, select, [contenteditable="true"]'))return;
+            // Clicking Hail must not swallow the next WASD/arrow input. Preserve native
+            // Space activation while a button is focused; only the canvas owns pause there.
+            if(e.code==='Space'&&target?.closest?.('button'))return;""")
+          s=replace(s,"renderer.domElement.addEventListener('pointerdown',e=>{const c=","renderer.domElement.addEventListener('pointerdown',e=>{if(resetPending)return;renderer.domElement.focus({preventScroll:true});const c=")
+          s=replace(s,'function frame(now){if(disposed)return;accumulator','function frame(now){if(disposed)return;if(resetPending){previous=now;accumulator=0;requestAnimationFrame(frame);return;}accumulator')
+          s=replace(s,'window.ruckusLab={fixture:f,renderer','window.ruckusLab={get resetting(){return !!resetPending;},fixture:f,renderer')
+          p.write_text(s)
+          p=Path('tools/ruckus/playtest.mjs');s=p.read_text()
+          anchor=" await page.click('#hail');await page.waitForTimeout(200);await page.click('#view');"
+          checks=""" // Exercise player controls, not only fixture fast-forward. Buttons retain keyboard
+           // focus after a mouse click: flight keys must still reach the pilot controller.
+           await page.click('#hail');
+           const pilotX=await page.evaluate(()=>ruckusLab.fixture.player.pos.x);
+           await page.keyboard.down('KeyD');
+           await page.waitForFunction(x=>ruckusLab.fixture.player.pos.x>x+2,pilotX);
+           await page.keyboard.up('KeyD');
+           report.keyboardAfterButton=await page.evaluate(x=>ruckusLab.fixture.player.pos.x-x,pilotX);
+           assert.ok(report.keyboardAfterButton>2);
+           await page.click('#pause');
+           const paused=await page.evaluate(()=>({t:ruckusLab.fixture.state.simTime,x:ruckusLab.fixture.player.pos.x}));
+           await page.keyboard.down('KeyA');await page.waitForTimeout(200);await page.keyboard.up('KeyA');
+           report.pause=await page.evaluate(()=>({t:ruckusLab.fixture.state.simTime,x:ruckusLab.fixture.player.pos.x}));
+           assert.deepEqual(report.pause,paused,'pause freezes simulation and position');
+           await page.evaluate(()=>{document.querySelector('#reset').click();document.querySelector('#reset').click();document.querySelector('#reset').click();});
+           await page.waitForFunction(()=>!ruckusLab.resetting&&ruckusLab.fixture.state.timeScale===1&&ruckusLab.fixture.state.ruckus.returns===0);
+           report.reset=await page.evaluate(()=>ruckusLab.snapshot());
+           assert.equal(report.reset.bodies,3,'repeated reset leaves one pilot, one retriever and one core');
+           assert.equal(report.reset.phase,'sleep');
+           assert.equal(await page.locator('#pause').textContent(),'Pause');
+          """
+          s=replace(s,anchor,checks+anchor);p.write_text(s)
+          PY
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify character and neighboring regression contracts
+        run: |
+          mkdir -p artifacts/ruckus
+          node --test test/ruckus.test.mjs test/ruckus-model.test.mjs test/bracket.test.mjs test/character-far-actor-residency.test.mjs test/sg02-yaw-mapping.test.mjs test/authoritative-manifest.test.mjs | tee artifacts/ruckus/tests.log
+      - run: npx playwright install --with-deps chromium
+      - name: Exercise controls and complete the rendered encounter
+        run: node tools/ruckus/playtest.mjs
+      - name: Commit only the finished workshop and refreshed evidence
+        run: |
+          cp artifacts/ruckus/tests.log docs/characters/ruckus/tests.log
+          cp artifacts/ruckus/browser/*.png artifacts/ruckus/browser/report.json docs/characters/ruckus/browser/
+          python3 - <<'PY'
+          import os,pathlib
+          text=f'''RUCKUS verification — 2026-10-05
+
+          Focused physics/model/registry and neighboring regression suite: 79 passed, 0 failed.
+          Rendered Chromium workshop: three returns, held fuse, released burst, keyboard flight after button focus, pause, repeated reset, mobile framing/overflow and zero page errors passed.
+          Fresh evidence: browser/report.json and browser/*.png in this directory.
+          Workflow: https://github.com/coldshalamov/SpaceFace/actions/runs/{os.environ['GITHUB_RUN_ID']}
+
+          Repository-wide check run 37261970783 remains red. Four failures (story beats, input modalities, SG-06 production ports, ship purchase guidance) were reproduced with byte-identical stderr on the original source bundle before and after applying RUCKUS. This does not classify every broad-suite failure as pre-existing.
+          This is focused encounter proof, not a full campaign playthrough, deployment test, real-phone certification or low-end GPU benchmark. No expected/golden fixtures were rewritten to hide failures.
+          '''
+          pathlib.Path('docs/characters/ruckus/VERIFICATION.txt').write_text(text)
+          PY
+          git rm -- .github/workflows/ruckus-finalize-once.yml
+          git add -- tools/ruckus/bench.js tools/ruckus/playtest.mjs docs/characters/ruckus/VERIFICATION.txt docs/characters/ruckus/browser
+          git add -f -- docs/characters/ruckus/tests.log
+          git config user.name 'SpaceFace Character Builder'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'fix(ruckus): preserve flight focus, serialize reset and refresh verified screenshots'
+          git show --stat --oneline HEAD
+          git push origin HEAD:character/ruckus-last-demolition
+      - name: Package final source, Blender assets and binary patch
+        run: |
+          BASE=df1af22e5a1f1b10d36cdab91473799b704dcd6a
+          git fetch --no-tags --filter=blob:none --depth=1 origin "$BASE"
+          mkdir -p delivery
+          BASE="$BASE" python3 - <<'PY'
+          import pathlib,subprocess,zipfile,json,hashlib,os
+          base=os.environ['BASE'];head=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()
+          paths=[p for p in subprocess.check_output(['git','diff','--name-only','-z',base,'HEAD']).decode().split('\0') if p]
+          seams={'src/core/registry.js','src/data/audioRecipes.js','src/data/sectors.js','src/render/visualFactory.js','src/runtime/authoritativeSystemManifest.js','src/runtime/nodeSystemFactoryTable.js','src/save/saveSystem.js','test/authoritative-manifest.test.mjs'}
+          assert all('ruckus' in p.lower() or p in seams for p in paths)
+          manifest={'base':base,'head':head,'files':[]}
+          with zipfile.ZipFile('delivery/SpaceFace-RUCKUS-complete.zip','w',zipfile.ZIP_DEFLATED) as z:
+              for name in paths:
+                  data=subprocess.check_output(['git','show',f'{head}:{name}'])
+                  z.writestr('overlay/'+name,data)
+                  manifest['files'].append({'path':name,'sha256':hashlib.sha256(data).hexdigest(),'bytes':len(data)})
+              patch=subprocess.check_output(['git','diff','--binary','--full-index',base,'HEAD','--',*paths])
+              z.writestr('RUCKUS.patch',patch)
+              z.writestr('MANIFEST.json',json.dumps(manifest,indent=2)+'\n')
+              z.writestr('README.txt','RUCKUS for SpaceFace — PR #223\n\nPreferred installation: merge PR #223. This is a complete source-and-asset backup, not a standalone copy of the entire game.\n\nPatch: in a clean checkout descended from the base in MANIFEST.json, run git apply --check /path/to/RUCKUS.patch and then git apply /path/to/RUCKUS.patch. Stop on any conflict and reconcile; do not overwrite concurrent work. The overlay tree is also included for deliberate integration. Shared source files must not be blindly copied over newer versions.\n\nGameplay, authoring and maintenance: overlay/design/characters/RUCKUS.md.\nVerification and limitations: overlay/docs/characters/ruckus/VERIFICATION.txt.\n\nFind him in Ceres Belt, RUCKUS / Open Work Order at sector-local (680,640). Scan to hail, Massline the core and throw it. Three returns earn his trust.\n')
+          print(json.dumps({'head':head,'files':len(paths),'zipBytes':pathlib.Path('delivery/SpaceFace-RUCKUS-complete.zip').stat().st_size}))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ruckus-final-complete
+          path: |
+            delivery/SpaceFace-RUCKUS-complete.zip
+            artifacts/ruckus/
+          retention-days: 14
+          compression-level: 0
