@@ -2941,7 +2941,8 @@ export const lawSecurity = {
     });
   },
 
-  // Helios is a corridor. Tethys is a cone. Standing in the old zone disc is not enough.
+  // Helios is a corridor. Tethys is a cone. Dione is a funnel. Standing in the old zone
+  // disc is not enough.
   _updateCustomsWeir(dt, state) {
     const step = Number(dt);
     const own = ensureState(state);

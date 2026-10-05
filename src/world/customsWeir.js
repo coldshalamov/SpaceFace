@@ -57,7 +57,7 @@ export const TETHYS_CUSTOMS_WEIR = Object.freeze({
 // The Dione lane bends at the checkpoint: the Tethys gate sits at (-3024, 1814) local,
 // Lane Customs at (-580, -980), the exchange at (920, 280). The funnel's axis is the
 // inbound bearing gate→checkpoint — the wide mouth faces arriving hulls and the arms
-// close toward the booth end. Downstream the same shape points at the exchange leg.
+// close along the lane; the toll gap is the downstream edge, 190 WU past the booth.
 const DIONE_AXIS = (() => {
   const dx = -580 - (-3024);
   const dz = -980 - 1814;
@@ -70,9 +70,9 @@ export const DIONE_CUSTOMS_WEIR = Object.freeze({
   sectorId: 'sector_dione_lane',
   shape: 'funnel',
   // A trapezoid bracketing the lane through the 720-radius checkpoint zone: the
-  // 460-wide mouth opens upstream and the arms narrow to a 140 toll gap beside the
-  // booth. Enter the funnel at all and the booth saw you; hold slow inside and the
-  // manifest reads before the gap; cross an arm fast and the transit logs unread.
+  // 460-wide mouth opens upstream and the arms narrow to a 140 toll gap on the
+  // downstream edge. Enter the funnel at all and the booth saw you; hold slow inside
+  // and the manifest reads before the gap; cross an arm fast and the transit logs unread.
   center: worldPoint('sector_dione_lane', DIONE_CHECKPOINT_LOCAL),
   axis: DIONE_AXIS,
   length: 380,

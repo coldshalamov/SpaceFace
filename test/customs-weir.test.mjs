@@ -1,5 +1,6 @@
 // CR-WEIR — customs is a gate you can fly, not the empty zone disc.
-// Helios is a corridor. Tethys is a cone. A contraband body inside is what gets seen.
+// Helios is a corridor. Tethys is a cone. Dione is a funnel. A contraband body inside
+// is what gets seen.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 

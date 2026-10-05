@@ -8928,7 +8928,8 @@ export const vfx = {
     mesh.visible = true;
   },
 
-  // Two edges, not a disc: Helios is a corridor, Tethys is a cone. Brighter while you are inside.
+  // Two edges, not a disc: Helios is a corridor, Tethys is a cone, Dione is a funnel.
+  // Brighter while you are inside.
   _updateCustomsWeirLines() {
     const live = readCustomsWeir(this.state);
     const segments = live && live.segments ? live.segments : [];
