@@ -144,13 +144,17 @@ export function dockDenyReason(station, factionMeta) {
   if (station.underConstruction === true || station.commissioned === false) return deny('under_construction');
   if (station.quarantine === true || station.quarantined === true) return deny('quarantine');
 
-  // 3. Hostility. Explicit flag, or numeric rep below the station's minimum.
+  // 3. Hostility. Explicit flag, or numeric rep below the station's resolved minimum —
+  // the same floor the entity stamp and every picker apply (explicit minRep wins,
+  // repGated means positive standing), so a repGated record without a stamped minRep
+  // is read honestly rather than admitted.
   if (station.hostile === true) return deny('hostile_rep');
   {
     let rep = null;
     if (factionMeta && typeof factionMeta === 'object' && Number.isFinite(factionMeta.rep)) rep = factionMeta.rep;
     else if (Number.isFinite(station.playerRep)) rep = station.playerRep;
-    if (rep != null && Number.isFinite(station.minRep) && rep < station.minRep) return deny('hostile_rep');
+    const floor = stationMinRepFor(station);
+    if (rep != null && Number.isFinite(floor) && rep < floor) return deny('hostile_rep');
   }
 
   // 4. Access restrictions.
