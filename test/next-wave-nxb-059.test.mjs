@@ -384,12 +384,19 @@ test('a dataless envelope still lists the live summary, and a bad checksum is no
 
 test('the write path publishes the envelope card and does not re-hash the save to do it', () => {
   const src = fs.readFileSync(new URL('../src/save/saveSystem.js', import.meta.url), 'utf8');
-  const start = src.indexOf('  _updateIndex(slot, envelope) {');
+  // The signature grew raw/recoveryMeta params for blob fingerprinting — the card still
+  // comes from the written envelope, never a re-serialization of the save.
+  const start = src.indexOf('  _updateIndex(slot, envelope');
   const body = src.slice(start, src.indexOf('  _readIndex()', start));
   assert.ok(start > 0);
   assert.match(body, /slotCardFromEnvelopeData\(slot, envelope/);
   assert.match(body, /fromFile \|\| liveSlotSummary/);
-  assert.equal(body.includes('fnv1a'), false);
+  assert.equal(body.includes('safeStringify'), false, 'no re-serialization builds the card');
+  // The fnv1a calls only fingerprint already-written bytes for the fallback-scan contract —
+  // never to compute the card's fields.
+  for (const call of body.match(/fnv1a\([^)]*\)/g) || []) {
+    assert.match(call, /fnv1a\((raw|recoveryMeta\.raw)\)/, `${call} must hash prepared bytes`);
+  }
   const scan = src.slice(src.indexOf('function slotMetaFromEnvelope'), src.indexOf('function readableMissionType'));
   assert.match(scan, /fnv1a\(safeStringify\(data\)\)/);
   assert.match(scan, /slotCardFromEnvelopeData\(slot, env, null\)/);
