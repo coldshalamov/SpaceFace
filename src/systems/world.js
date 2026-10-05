@@ -1498,14 +1498,24 @@ export const world = {
       if (!bandHull && !(source && poiMustStayLiveActor(source, slot))) continue;
       const pos = { x: row.pos.x, z: row.pos.z };
       dropDressingRow(this.state, row.id);
+      // A row stamped solid by the dressing plan carries its measured body on the row
+      // (collides + collisionProxy on data) — the promoted entity must keep it, or a
+      // landmark that collided on cold-FULL ghosts on the dominant REDUCED→FULL arrive.
+      // Activity slots stay ghosts per the PQ-020 contract even if an old row carried
+      // a pre-fix stamp.
+      const keepsSolidBody = !slot && row.collides === true;
       const ent = this.helpers.spawnEntity({
         type: 'fx',
         factionId: (source && source.factionId) || null,
         pos,
         radius: row.radius,
         mass: 0,
-        collides: !!(source && source.collides),
-        ...(bandHull ? { physicsBody: false } : {}),
+        collides: keepsSolidBody || !!(source && source.collides),
+        ...(bandHull
+          ? { physicsBody: false }
+          : (keepsSolidBody
+            ? { physicsBody: { dynamic: false, material: 'prop' }, collisionMask: Masks.STATION }
+            : {})),
         ttl: Infinity,
         data,
       });
