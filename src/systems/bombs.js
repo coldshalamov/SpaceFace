@@ -30,17 +30,23 @@ const DAMAGE_TYPES = new Set(['ship', 'drone', 'station']);
 // trigger and shootable-hull law. Displacement preserves the mine's owner/arm/eligibility
 // because those ride the entity's own data.
 const LOOSE_TYPES = new Set(['asteroid', 'wreck', 'pickup', 'payload', 'mine']);
-// SFQ-B035 fauna eligibility, explicit on every axis a blast touches (the target predicates
-// used to omit fauna entirely — silence, not a decision):
-//   damage  — YES. Fauna are killable world actors (hull, entity:killed -> the ecology's
-//             rupture/panic/harvest listeners). A blast that kills a station kills a grazer.
-//   statuses— NO, deliberately craft-only. Every bomb status is a craft-control verb (goo
-//             wallow, ionized subsystems, pinned massScale, tumbling helm); scheduling one on a
-//             fauna runtime the ecology drive never reads would be the silent no-op the packet
-//             forbids. Organisms take the blast, not the rider.
-//   shove   — only with a real dynamic physics body (physics species: ram, glassback). Kinematic
+// SFQ-B035 fauna eligibility, explicit on every axis a blast or bomb field touches (the target
+// predicates used to omit fauna entirely — silence, not a decision):
+//   damage  — YES, blast and field crush alike. Fauna are killable world actors (hull,
+//             entity:killed -> the ecology's rupture/panic/harvest listeners). A blast that
+//             kills a station kills a grazer; a well that crushes a ship crushes the fauna in it.
+//   statuses— NO, deliberately craft-only, blast riders and field re-application alike (goo
+//             wallow, ionized subsystems, pinned massScale, tumbling helm): every bomb status is
+//             a craft-control verb; scheduling one on a fauna runtime the ecology drive never
+//             reads would be the silent no-op the packet forbids. Organisms take the damage,
+//             never the rider.
+//   motion  — only with a real dynamic physics body (physics species: ram, glassback): the
+//             blast shove, the singularity pull and goo drag all ride blastShoveEligible, so a
+//             body that can be blasted can also be pulled into the well it stands in. Kinematic
 //             fauna are motion-owned by the ecology drive; physicsAuthority would refuse them
 //             anyway, so the predicate says so up front.
+//   hitstun — none. _publishHitstun's ship/drone type gate exempts EVERY fauna, dynamic body
+//             or not; the shove gate only decides who is moved. Entry spin stays craft law.
 //   fuze    — craft only (unchanged, _findTriggerVictim): a drifting grazer must not cook the
 //             player's own bay.
 const faunaBlastEligible = (e) => e?.type === 'fauna';
@@ -1128,7 +1134,7 @@ export const bombs = {
       if (def.field?.kind !== 'goo') continue;
       for (let i = 0; i < this._targets.length; i++) {
         const ent = this._targets[i];
-        if (ent.alive && movable(ent) && bombSurfaceFalloff(Math.hypot(ent.pos.x - bomb.pos.x, ent.pos.z - bomb.pos.z), ent.radius, def.radius) > 0) this._gooCoverage[i]++;
+        if (ent.alive && blastShoveEligible(ent) && bombSurfaceFalloff(Math.hypot(ent.pos.x - bomb.pos.x, ent.pos.z - bomb.pos.z), ent.radius, def.radius) > 0) this._gooCoverage[i]++;
       }
     }
     for (const bomb of this._active) {
@@ -1197,11 +1203,13 @@ export const bombs = {
       }
       const magnitude = impulse * falloff;
       // SFQ-B035 — the blast-facing surface contact: where the radial load actually lands on
-      // this hull (center minus the radial direction times the hull radius). This is the real
-      // surface hit data the impulse, the supported torque cap and the signed side all read.
-      // The old route applied a center shove (`point: null`, no torque) and signed the hit from
-      // a fabricated +z offset — a screen-space fake that made hitSide read sign(world x)
-      // regardless of where the blast sat on the hull.
+      // this hull (center minus the radial direction times the hull radius). The impulse and
+      // the supported torque cap read it as real surface data. For the SIGNED SIDE its job is
+      // replacing the fabricated +z offset the old route fed signedHitSide — that fake
+      // dominated the surface-point branch via sign(world x) whenever the shove had any x.
+      // On the blast axis the point's own cross is exactly zero (it lies on the impulse line),
+      // so the sign is decided by signedHitSide's hull-heading read, and a dead-nose hit takes
+      // the id-parity fallback as that function documents.
       const surfaceR = Math.max(0, Number(ent.radius) || 0);
       const hitPos = Object.freeze({ x: ent.pos.x - dirX * surfaceR, z: ent.pos.z - dirZ * surfaceR });
       if (magnitude > 0 && (dirX !== 0 || dirZ !== 0) && blastShoveEligible(ent)
@@ -1302,18 +1310,24 @@ export const bombs = {
       const dist = radial.dist > 0 ? radial.dist : Math.hypot(dx, dz);
       const falloff = bombSurfaceFalloff(dist, ent.radius, def.radius);
       if (!(falloff > 0)) continue;
-      if (f.kind === 'singularity' && movable(ent) && radial.dist > 0) {
+      // Field motion rides the same eligibility as the blast shove (SFQ-B035): a dynamic-body
+      // fauna is pulled into the well and slowed by tar exactly like the craft next to it;
+      // kinematic fauna stay motion-owned by the ecology drive.
+      if (f.kind === 'singularity' && blastShoveEligible(ent) && radial.dist > 0) {
         const mass = massOf(ent), couple = Math.max(FIELD_COUPLING.minShipCouple, FIELD_COUPLING.refMass / Math.max(mass, FIELD_COUPLING.refMass));
         const j = f.strength * envelope * falloff * couple * mass * dt;
         queuePhysicsImpulse(ent, { x: radial.x * j, z: radial.z * j });
-      } else if (f.kind === 'goo' && movable(ent)) {
+      } else if (f.kind === 'goo' && blastShoveEligible(ent)) {
         const coverage = this._gooCoverage[targetIndex] || 1;
         if (fillBombViscosityImpulse(this._viscosity, ent.vel, bomb.vel, effectiveMass(state, ent), dt, f.dragPerS * falloff, 1 / Math.max(1, coverage))) {
           queuePhysicsImpulse(ent, this._viscosity);
         }
       }
-      if (!applyStatusTick || !craft(ent)) continue;
+      if (!applyStatusTick) continue;
+      // Crush is damage — fauna-eligible like blast damage. The goo re-application is a craft
+      // status rider — fauna stay excluded, the same law as blast statuses.
       const crush = f.kind === 'singularity' && Math.max(0, dist - (ent.radius || 0)) <= f.crushInnerRadius;
+      if (!craft(ent) && !(crush && faunaBlastEligible(ent))) continue;
       if (f.kind !== 'goo' && !crush) continue;
       const packet = scalarHitToDamagePacket({
         damage: crush ? f.crushDamage : 0, damageType: crush ? 'plasma' : 'kinetic', pos: bomb.pos,

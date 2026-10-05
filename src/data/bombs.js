@@ -50,9 +50,10 @@ export const BOMB_DRIFT = Object.freeze({
 // (src/data/weapons.js: impulsePerHit + tumbleTorque). A radial blast loads the facing surface,
 // so the direct torque arm is only what the hull's own shape leaves off the blast axis; the cap
 // exists so the worst off-axis case (elongated colliders, off-center sampling) stays authored
-// rather than physical. 0 is a deliberate opt-out, not an omission. Kinematic (physicsBody:false)
-// fauna take blast damage but publish no hitstun event — _publishHitstun fires only inside the
-// blastShoveEligible branch — coherent because their motion is ecology-drive-owned.
+// rather than physical. 0 is a deliberate opt-out, not an omission. No fauna of any physics
+// species publishes a bomb hitstun event — _publishHitstun's ship/drone type gate binds every
+// fauna (the blastShoveEligible gate only decides who is moved) — coherent because fauna motion
+// is ecology-drive-owned.
 //
 // Economy fields (PQ-205.03) — this file is the single data source for ordnance pricing:
 //   price        — credits per unit in station outfitting (bought into hangar stock).
@@ -208,7 +209,7 @@ export const BOMB_DEFS = Object.freeze({
     triggerRadius: 46,
     radius: 72,
     impulse: 120,          // a static crackle shoves nothing; this is a nudge, not a throw
-    tumbleTorque: 8,       // the crackle cannot spin a hull — sub-bank_stream cap
+    tumbleTorque: 8,       // a small authored nudge — the crackle cannot spin a hull
     damage: 26,            // 'emp' channel: pure ion, subsystemShare does the routing
     damageType: 'emp',
     subsystemShare: 0.85,
@@ -261,7 +262,7 @@ export const BOMB_DEFS = Object.freeze({
     radius: 82,
     impulse: 520,
     tangentRatio: 0.8,     // rotate the shove vector, preserving its magnitude
-    tumbleTorque: 80,      // destabilize is the verb: the highest spin cap in the bay
+    tumbleTorque: 80,      // destabilize is the verb: the highest spin cap among damage-bearing payloads
     damage: 4,
     damageType: 'kinetic',
     statuses: [{ id: 'status_tumbling', stacks: 1 }],
