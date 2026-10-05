@@ -1127,6 +1127,233 @@ if (PALLAS_POCKET_ACTOR_SLOT_ORDER.length !== PALLAS_AUTHORED_ACTIVITY_CAPACITY)
 assertDistinctRouteTopology(PALLAS_ACTIVITY_POCKETS, PALLAS_ROUTE_TOPOLOGY, 'Pallas');
 
 // ───────────────────────────────────────────────────────────────────────────────────────────────
+// CV-DAY — Vesta Forge: the feedstock day. Two gates from the start on the default route, and its
+// zone copy already promises a working day nobody could see: "Ore haulers shuttle from these seams
+// to the foundry lines around the clock" (zone_vesta_belt); "A freighter died at the sector edge;
+// its manifest was never recovered" (zone_vesta_derelict). These pockets are that promise made
+// visible — arriving mid-shift: a seam miner cutting the Feedstock Belt while a hauler runs ore to
+// station_forge's foundry approach, scavenger cutters working the Dead Freighter Drift around
+// poi_freighter, and a slag-relay tender holding its loop past the Slag Radiation Field. The chain
+// continues whether or not you touch it, and every actor flies a job kind the runtime already owns.
+// Same band and topology laws as Ceres; no Ceres pocket id is copied. Bearings are taken from the
+// geography that exists: the miner's offload leg aims at the foundry's true bearing, the drift
+// cutter works around the dead hulk's own shard bearing, the relay's legs aim at the outlying
+// yard's service side and the dump-run edge.
+// ───────────────────────────────────────────────────────────────────────────────────────────────
+
+export const VESTA_ACTIVITY_SECTOR_ID = 'sector_vesta_forge';
+/** Four pockets × two actors: the seam, the haul, the drift, and the relay. */
+export const VESTA_AUTHORED_ACTIVITY_CAPACITY = 8;
+
+const vestaZones = requireArray(SECTOR_ZONES[VESTA_ACTIVITY_SECTOR_ID], 'Vesta sector zones');
+const vestaAnchors = requireRecord(SECTOR_ANCHORS[VESTA_ACTIVITY_SECTOR_ID], 'Vesta sector anchors');
+const vestaBeltZone = findById(vestaZones, 'zone_vesta_belt', 'Vesta feedstock belt zone');
+const vestaForgeZone = findById(vestaZones, 'zone_vesta_forge', 'Vesta foundry zone');
+const vestaDerelictZone = findById(vestaZones, 'zone_vesta_derelict', 'Vesta derelict zone');
+const stationForge = findById(vestaAnchors.stations, 'station_forge', 'Vesta foundry station anchor');
+const stationVestaYard = findById(vestaAnchors.stations, 'station_vesta_outlying_yard', 'Vesta outlying yard anchor');
+const freighterPoi = findById(vestaAnchors.pois, 'poi_freighter', 'Vesta dead freighter POI');
+const slagRelayPoi = findById(vestaAnchors.pois, 'poi_vesta_slag_relay', 'Vesta slag relay POI');
+
+// The freighter died where the drift says it did, and the foundry stands at its own zone's heart.
+assertSamePoint(freighterPoi.pos, vestaDerelictZone.center, 'poi_freighter / zone_vesta_derelict');
+assertSamePoint(stationForge.pos, vestaForgeZone.center, 'station_forge / zone_vesta_forge');
+
+const vestaSeamId = 'vesta_feedstock_seam';
+const vestaHaulId = 'vesta_forge_haul';
+const vestaDriftId = 'vesta_derelict_drift';
+const vestaRelayId = 'vesta_slag_relay';
+
+function vestaActor(id, pocketId, role, jobKind, spawn, routeId, durationS, marks, { lawful = false, receiptType = null } = {}) {
+  return actor({
+    id,
+    pocketId,
+    namespace: 'vesta',
+    presentationRole: role,
+    jobKind,
+    lawful,
+    passive: true,
+    spawnOffset: spawn,
+    route: route({ id: routeId, jobKind, durationS, receiptType, marks }),
+  });
+}
+
+const vestaSeamObjects = Object.freeze([
+  objectSlot({
+    id: 'vesta_seam_ore_clast',
+    pocketId: vestaSeamId,
+    kind: 'world_owned_asteroid_slot',
+    offset: point(-45, -54),
+    runtimeOwner: 'world',
+    targetRef: 'field:slot:vesta_seam_ore_clast',
+  }),
+]);
+
+const vestaHaulObjects = Object.freeze([
+  objectSlot({
+    id: 'vesta_forge_ore_pod',
+    pocketId: vestaHaulId,
+    kind: 'cargo_staging_pod',
+    offset: point(62, 30),
+    runtimeOwner: 'world',
+    targetRef: 'object:vesta_forge_ore_pod',
+  }),
+]);
+
+const vestaDriftObjects = Object.freeze([
+  objectSlot({
+    id: 'vesta_derelict_hulk_shard',
+    pocketId: vestaDriftId,
+    kind: 'grave_shard',
+    offset: point(-30, 44),
+    runtimeOwner: 'world',
+    targetRef: 'object:vesta_derelict_hulk_shard',
+  }),
+]);
+
+const vestaRelayObjects = Object.freeze([
+  objectSlot({
+    id: 'vesta_relay_slag_skip',
+    pocketId: vestaRelayId,
+    kind: 'cargo_staging_pod',
+    offset: point(-52, 18),
+    runtimeOwner: 'world',
+    targetRef: 'object:vesta_relay_slag_skip',
+  }),
+]);
+
+const vestaSeamActors = Object.freeze([
+  // The belt's own sentence: a miner cutting a bounded parcel while the haulers shuttle past.
+  vestaActor('vesta_seam_miner', vestaSeamId, 'miner', 'miner', point(-42, 24),
+    'vesta_seam_extraction', 24, [
+      mark('vesta_seam_ore_face', -71, -84, 'field:slot:vesta_seam_ore_clast'),
+      mark('vesta_seam_offload_pad', -85, 70, 'dest:station_forge'),
+    ], { receiptType: 'mining:npcExtraction' }),
+  vestaActor('vesta_seam_surveyor', vestaSeamId, 'surveyor', 'surveyor', point(50, 30),
+    'vesta_seam_survey', 26, [
+      mark('vesta_seam_scan_a', 108, 38, 'activity:vesta-seam-scan-a'),
+      mark('vesta_seam_scan_b', 18, 119, 'activity:vesta-seam-scan-b'),
+    ]),
+]);
+
+const vestaHaulActors = Object.freeze([
+  // The other half of the belt's sentence: ore arriving at the foundry approach, around the clock.
+  vestaActor('vesta_forge_hauler', vestaHaulId, 'hauler', 'hauler', point(-30, -20),
+    'vesta_forge_haul_run', 22, [
+      mark('vesta_haul_belt_leg', 89, -73, 'activity:vesta-foundry-run-inbound'),
+      mark('vesta_haul_berth_leg', -89, 73, 'dest:station_forge'),
+    ], { receiptType: 'freight:arrival' }),
+  // The foundry's own authored presence (zone_vesta_forge patrols) walking its home approach.
+  vestaActor('vesta_forge_patrol', vestaHaulId, 'patrol', 'patrol', point(40, -28),
+    'vesta_forge_beat', 28, [
+      mark('vesta_forge_beat_a', -105, 42, 'activity:vesta-forge-beat-a'),
+      mark('vesta_forge_beat_b', -38, -112, 'activity:vesta-forge-beat-b'),
+    ], { lawful: true }),
+]);
+
+const vestaDriftActors = Object.freeze([
+  // The derelict's sentence: scavengers working the hulk the manifest never left. Both passive
+  // cutters — the drift is Reach ground, but these pockets author work, not hostility.
+  vestaActor('vesta_drift_cutter', vestaDriftId, 'salvor', 'salvor', point(18, -26),
+    'vesta_drift_salvage_loop', 30, [
+      mark('vesta_drift_hull_face', -63, 92, 'object:vesta_derelict_hulk_shard'),
+      mark('vesta_drift_far_plate', 105, 38, 'activity:vesta-drift-far-plate'),
+    ]),
+  vestaActor('vesta_drift_prowler', vestaDriftId, 'salvor', 'salvor', point(-36, 14),
+    'vesta_drift_sweep_run', 26, [
+      mark('vesta_drift_sweep_a', -101, -55, 'activity:vesta-drift-sweep-a'),
+      mark('vesta_drift_sweep_b', 66, 98, 'activity:vesta-drift-sweep-b'),
+    ]),
+]);
+
+const vestaRelayActors = Object.freeze([
+  // The tender holds its loop past the radiation field: one leg to the outlying yard's service
+  // side, one to the dump-run edge. The `tender` hull flies the proven survey kernel — a relay
+  // check is a scan loop — so the shift is a real job, not a loiter.
+  vestaActor('vesta_relay_tender', vestaRelayId, 'tender', 'surveyor', point(24, 30),
+    'vesta_relay_service_loop', 28, [
+      mark('vesta_relay_yard_leg', 84, -74, 'station:station_vesta_outlying_yard:service-berth'),
+      mark('vesta_relay_field_edge', 29, 115, 'activity:vesta-slag-field-edge'),
+    ]),
+  // Slag runs out from the forge past the relay toward the dump field — the corner the relay marks.
+  vestaActor('vesta_slag_runner', vestaRelayId, 'hauler', 'hauler', point(-28, -34),
+    'vesta_slag_dump_run', 26, [
+      mark('vesta_slag_forge_leg', 96, 58, 'dest:station_forge'),
+      mark('vesta_slag_field_leg', 104, -49, 'activity:vesta-slag-dump-run'),
+    ], { receiptType: 'freight:arrival' }),
+]);
+
+export const VESTA_ACTIVITY_POCKETS = Object.freeze([
+  pocket({
+    id: vestaSeamId,
+    label: 'Feedstock Seam',
+    identity: Object.freeze({ zoneId: vestaBeltZone.id, fieldId: 'f_vesta_1' }),
+    anchor: canonicalAnchor({
+      kind: 'zone', id: vestaBeltZone.id, zoneId: vestaBeltZone.id,
+      placeId: null, localPos: vestaBeltZone.center,
+    }),
+    actorSlots: vestaSeamActors,
+    objectSlots: vestaSeamObjects,
+    sectorId: VESTA_ACTIVITY_SECTOR_ID,
+  }),
+  pocket({
+    id: vestaHaulId,
+    label: 'Foundry Run',
+    identity: Object.freeze({ zoneId: vestaForgeZone.id, stationId: stationForge.id }),
+    anchor: canonicalAnchor({
+      kind: 'station', id: stationForge.id, zoneId: vestaForgeZone.id,
+      placeId: stationForge.id, localPos: stationForge.pos,
+    }),
+    actorSlots: vestaHaulActors,
+    objectSlots: vestaHaulObjects,
+    sectorId: VESTA_ACTIVITY_SECTOR_ID,
+  }),
+  pocket({
+    id: vestaDriftId,
+    label: 'Dead Freighter Drift',
+    identity: Object.freeze({ zoneId: vestaDerelictZone.id, placeId: freighterPoi.id }),
+    anchor: canonicalAnchor({
+      kind: 'poi', id: freighterPoi.id, zoneId: vestaDerelictZone.id,
+      placeId: freighterPoi.id, localPos: freighterPoi.pos,
+    }),
+    actorSlots: vestaDriftActors,
+    objectSlots: vestaDriftObjects,
+    sectorId: VESTA_ACTIVITY_SECTOR_ID,
+  }),
+  pocket({
+    id: vestaRelayId,
+    label: 'Slag Relay',
+    identity: Object.freeze({ zoneId: vestaForgeZone.id, placeId: slagRelayPoi.id }),
+    anchor: canonicalAnchor({
+      kind: 'poi', id: slagRelayPoi.id, zoneId: vestaForgeZone.id,
+      placeId: slagRelayPoi.id, localPos: slagRelayPoi.pos,
+    }),
+    actorSlots: vestaRelayActors,
+    objectSlots: vestaRelayObjects,
+    sectorId: VESTA_ACTIVITY_SECTOR_ID,
+  }),
+]);
+
+export const VESTA_ACTIVITY_POCKET_ORDER = Object.freeze(VESTA_ACTIVITY_POCKETS.map((entry) => entry.id));
+export const VESTA_ACTIVITY_POCKETS_BY_ID = Object.freeze(Object.fromEntries(
+  VESTA_ACTIVITY_POCKETS.map((entry) => [entry.id, entry]),
+));
+export const VESTA_POCKET_ACTOR_SLOT_ORDER = Object.freeze(VESTA_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => slot.id),
+));
+export const VESTA_ROUTE_TOPOLOGY = Object.freeze(VESTA_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => routeTopology(slot)),
+));
+
+if (VESTA_POCKET_ACTOR_SLOT_ORDER.length !== VESTA_AUTHORED_ACTIVITY_CAPACITY) {
+  throw new Error(`Vesta authored capacity mismatch: ${VESTA_POCKET_ACTOR_SLOT_ORDER.length}`);
+}
+if (new Set(VESTA_POCKET_ACTOR_SLOT_ORDER).size !== VESTA_POCKET_ACTOR_SLOT_ORDER.length) {
+  throw new Error('Vesta authored activity slot ids must be unique');
+}
+assertDistinctRouteTopology(VESTA_ACTIVITY_POCKETS, VESTA_ROUTE_TOPOLOGY, 'Vesta');
+
+// ───────────────────────────────────────────────────────────────────────────────────────────────
 // The registry. Everything downstream reads this instead of a Ceres constant, which is the whole
 // reason a second sector can exist here at all.
 // ───────────────────────────────────────────────────────────────────────────────────────────────
@@ -1137,6 +1364,7 @@ export const ACTIVITY_POCKETS_BY_SECTOR = Object.freeze({
   [CERES_ACTIVITY_SECTOR_ID]: CERES_ACTIVITY_POCKETS,
   [HELIOS_ACTIVITY_SECTOR_ID]: HELIOS_ACTIVITY_POCKETS,
   [PALLAS_ACTIVITY_SECTOR_ID]: PALLAS_ACTIVITY_POCKETS,
+  [VESTA_ACTIVITY_SECTOR_ID]: VESTA_ACTIVITY_POCKETS,
 });
 
 export const ACTIVITY_POCKET_SECTOR_IDS = Object.freeze(Object.keys(ACTIVITY_POCKETS_BY_SECTOR));
