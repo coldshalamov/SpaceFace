@@ -289,8 +289,10 @@ ${S} > .k-foot .sf-back:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #f
 }
 @media (max-width:560px) {
   /* A 390px window: label + graduated scale + numeral must all fit the single column. The rail
-     and the Hand stay; the tracks shrink so nothing prints under the row above. */
-  ${S} { --orr-label-w:104px; --orr-scale-w:min(150px, 40vw); }
+     and the Hand stay; the tracks shrink so nothing prints under the row above. (The scale cap
+     has to actually bind: 40vw of 390 is 156px, so a 150px cap never fires — at 136px the
+     104+12+136+10+46 track lands inside the ~312px content box with air to spare.) */
+  ${S} { --orr-label-w:104px; --orr-scale-w:min(136px, 36vw); }
   ${S} #sf-settings-pane { padding-right:8px !important; }
   ${S} #sf-settings-pane .k-row { column-gap:12px !important; }
   ${S} #sf-settings-pane .k-row > div.k-words--row { grid-template-columns:var(--orr-scale-w, 150px) 46px !important; }

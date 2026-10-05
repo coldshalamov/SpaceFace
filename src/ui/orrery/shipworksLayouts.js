@@ -986,6 +986,14 @@ ${W} .sx-sw__explode .sx-sw__module-name { font-family:var(--dp-face-label, "Arc
    hero share, the readouts flow beneath it in document order, and the verb rack wraps on its own
    row. (The seatVerbs/seatSaleStats pins hand the seat back to these rules once the stage is too
    narrow to hold them — inline !important beats the sheet, so the bail lives in the JS.) */
+@media (max-width:899px) {
+  /* the stacked berth gives the panel a scrolling column and its rows size to content — but
+     the jig's every child is absolute, so the min-height:0 flex seat collapses the stage to
+     nothing and the slot callouts all pile at the origin (REV-D112: 701–899, worst at a short
+     window where the crown leaves the panel ~150px). Give the stage the same floor the
+     jig-less rules carry (orbital 380px); the panel scrolls the instrument whole. */
+  ${W}.orr-sw--jig .sx-sw__main > .sx-sw__stage { min-height:380px !important; }
+}
 @media (max-width:700px) {
   ${W}.orr-sw--jig .sx-sw__main { overflow:auto !important; }
   /* the For Sale readouts pin absolute at left:258px in EVERY jig state (jig-less included),
@@ -994,7 +1002,9 @@ ${W} .sx-sw__explode .sx-sw__module-name { font-family:var(--dp-face-label, "Arc
     transform:none !important; width:auto !important; max-width:none !important; max-height:none !important; }
   ${W}.orr-sw--jig .sx-sw-verbs, ${W}:not(.orr-sw--jig) .sx-sw-verbs { position:static !important; width:auto !important; max-width:100% !important;
     flex-wrap:wrap !important; gap:6px 16px !important; justify-content:flex-start !important; padding:6px 0 12px !important; }
-  ${W} .sx-sw__main > .sx-sw__stage { min-height:240px !important; }
+  /* at phone height the stack keeps the smaller floor — equal specificity to the ≤899 jig
+     floor above and later in the sheet, so 240px still wins here */
+  ${W}.orr-sw--jig .sx-sw__main > .sx-sw__stage, ${W} .sx-sw__main > .sx-sw__stage { min-height:240px !important; }
   /* the crest keeps its place on the hero, but the voice's full run cannot share a 240px stage
      with the slot callouts: bound it where the markers stand clear and let the rest scroll */
   ${W} .sx-sw__nameplate { padding-right:0 !important; max-width:min(64%, 300px) !important; }
