@@ -280,12 +280,14 @@ describe('SFQ-B183 impulse throw read (seed 4242)', { concurrency: false }, () =
     h.system.destroy();
   });
 
-  it('seed 4242: the seat rung sprays the thrown side and keeps the mirrored compression read', () => {
+  it('seed 4242: the seat rung sprays the thrown side; the family burst owns the structural read', () => {
     const h = makeVfxHarness();
     h.system._emitCombatContact = () => true; // the seat drew
     h.bus.emit('combat:collisionConsequence', collisionReceipt({ withThrow: true }));
 
-    assert.equal(h.composeCalls.length, 1, 'the seat composed its contact');
+    // The collision receipt's structural primitives are the ONE family burst below (arcs+shards
+    // on a tumble, nothing on a stagger). The seat composes no impact-beats sheet of its own.
+    assert.equal(h.composeCalls.length, 0, 'the seat composes no second structural sheet');
     const req = h.burstReqs[0];
     assert.ok(req, 'tumble still fills the structural request');
     assert.equal(req.hasDir, 1, 'the signed throw aims the structural read');

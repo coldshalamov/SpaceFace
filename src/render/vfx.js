@@ -4472,6 +4472,9 @@ export const vfx = {
       }
     }
     const normalLength = Math.hypot(nx, nz) || 1;
+    // A measured axis is signed; the degenerate all-zero case (no normal, no approach, no usable
+    // pos offset) is not, and normalAngle's atan2(0,0) = 0 must never aim a cone at +X.
+    const normalSigned = normalLength > 1e-6;
     nx /= normalLength;
     nz /= normalLength;
     const normalAngle = Math.atan2(nz, nx);
@@ -4544,7 +4547,9 @@ export const vfx = {
         Math.max(0.05, Math.min(0.26, 0.05 + (Number(p.amount) || 0) * 0.004)),
         'armor', Math.max(0.8, ((tgt && tgt.radius) || 6) * 0.22), _impactOpts,
       );
-      if (!armored) {
+      if (!armored && normalSigned) {
+        // The cone is the mount-unavailable fallback; with no measured axis it would aim at a
+        // fabricated +X, so a directionless armor tick refuses it (SFQ-B183).
         const count = Math.max(5, Math.min(10, Math.round(8 * (this._burst || 1))));
         this._impactParticleCone(pos.x, pos.z, normalAngle, 0.82, 24, 56, count,
           0.23, 0.82, '#f6ead2', '#514c46', 2.8);
@@ -4577,12 +4582,11 @@ export const vfx = {
         Math.max(0.28, Math.min(0.55, 0.28 + (Number(p.amount) || 0) * 0.006)),
         'hull', Math.max(1.2, ((tgt && tgt.radius) || 6) * 0.3), _impactOpts,
       );
-      if (!breached) {
-        // The impulse-axis cone only when the axis is genuinely signed; an unsigned hit falls
-        // back to the contact-normal angle (itself guarded above) instead of a fabricated +X.
-        const coneAngle = hitRead.shapeId === 'hull-cone' && hitRead.signed
-          ? impulseAngle
-          : normalAngle;
+      if (!breached && normalSigned) {
+        // An aimed cone needs a measured direction: the impulse axis when the hit carries one,
+        // else the contact axis rebuilt above from the receipt geometry. With neither, no cone
+        // draws — atan2(0,0) = 0 would aim one at a fabricated +X (SFQ-B183).
+        const coneAngle = hitRead.signed ? impulseAngle : normalAngle;
         this._impactParticleCone(pos.x, pos.z, coneAngle, 0.95, 9, 24,
           Math.max(3, Math.round(5 * (this._burst || 1))), 0.48, 0.78,
           '#ffb36a', '#3a1710', 1.2);
@@ -5353,10 +5357,11 @@ export const vfx = {
       }
     }
     }
-    // IMPACTS: the composed contact. axisSigned is FALSE — an SG-02 solver normal is an axis, and
-    // its sign is an artifact of collider ordering. The recipe therefore draws a mirrored pair.
-    // The legacy quarks spall call above is superseded by the debris layer that emitImpact
-    // composes; drop the block below once the debris lane's entry point is wired.
+    // IMPACTS: the composed contact. The receipt normal is oriented aId→bId now (SFQ-B183), but
+    // the composed contact keeps axisSigned FALSE on purpose: two bodies met, so the recipe draws
+    // a mirrored pair and neither half is "outward". The legacy quarks spall call above is
+    // superseded by the debris layer that emitImpact composes; drop the block below once the
+    // debris lane's entry point is wired.
     _impactOpts.vx = 0; _impactOpts.vy = 0; _impactOpts.vz = 0;
     _impactOpts.serial = serial;
     _impactOpts.targetId = p.aId ?? p.targetId ?? null;
@@ -10787,20 +10792,16 @@ export const vfx = {
         || 0;
       const seatSeverity = Math.max(0.06, Math.min(0.95, 0.06 + seatDp / 14000));
       this._noteHullScarFromContact(p, -seatNz, seatNx, seatSeverity);
-      _impactOpts.vx = 0; _impactOpts.vy = 0; _impactOpts.vz = 0;
-      _impactOpts.serial = this._collisionPatternSerial(p);
-      _impactOpts.targetId = p.aId ?? p.targetId ?? null;
-      _impactOpts.eventClass = collisionEventClass(seatSeverity);
-      _impactOpts.priority = 0.3 + seatSeverity * 0.4;
-      _impactOpts.hero = false;
-      this._composeImpact(
-        p.pos.x, 0.2, p.pos.z, seatNx, 0, seatNz, false, seatSeverity, 'hull', 1.6, _impactOpts,
-      );
-      // SFQ-B183 — a signed throw names which way the contact THREW the hull. The mirrored
-      // composition above stays the two-body compression read (E2: two bodies met, no outward
-      // side); this additive fan draws only the thrown side at the receipt contact point, so the
-      // shove's displacement has a visible cause before the drift begins. Unsigned receipts draw
-      // nothing here — no direction, no fan.
+      // No impact-beats composition at the seat. The collision receipt's structural answer is the
+      // ONE family burst below — arcs and shards on a tumble, nothing on a stagger (the arbiter's
+      // verdict; a stag composing a graze sheet here leaked blades the family does not own). And
+      // every consequence-bearing contact carries a physics:impact sibling whose low-contact rung
+      // already owns the graze/slam/breakup matter ladder, so a seat compose double-spawned the
+      // pools for real contacts. Matter seat, scar, light and throw spray still draw.
+      // SFQ-B183 — a signed throw names which way the contact THREW the hull: this additive fan
+      // draws only the thrown side at the receipt contact point, so the shove's displacement has
+      // a visible cause before the drift begins. Unsigned receipts draw nothing — no direction,
+      // no fan.
       const seatThrow = collisionThrowRead(p);
       if (seatThrow.signed) this._spawnCollisionThrowSpray(p, seatThrow);
       // Keep receipt admission/audio and the separate physical debris event. Geometry
@@ -10964,8 +10965,9 @@ export const vfx = {
     return true;
   },
 
-  // Deterministic paired debris from the receipt. SG-02 supplies an unoriented contact axis, so
-  // fragments leave in opposed pairs; choosing one normal half would fabricate causality.
+  // Deterministic paired debris from the receipt. The contact axis is oriented aId→bId now
+  // (SFQ-B183), but the aftermath stays deliberately bilateral: chips fly both ways off a
+  // compression, and a debris half chosen by pair order would still be causality theater.
   _onCollisionDebris(p) {
     if (!this._scene || !p || !p.pos || !this._consumeMediumCollision(p)) return false;
     const acc = resolveVfxAccessibilityProfile(this.state && this.state.settings);
