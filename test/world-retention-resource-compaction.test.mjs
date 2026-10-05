@@ -107,16 +107,20 @@ test('world retention classes normalize legacy records and fail closed on perman
 test('ambient kill tombstones bound per sector while authored and recipe deaths stay permanent', () => {
   const build = () => {
     const bag = createEmptyRecordsBag();
-    // 30 ambient kills: a plain dead NPC with no markers is memorial only and the oldest leave.
+    // 30 ambient kills: a plain dead NPC whose only identity is the spawn machinery's
+    // positional mint ('<hint>:<seq>:<qx>:<qz>') is memorial only, and the oldest leave.
     for (let i = 0; i < MAX_AMBIENT_TOMBSTONE_RECORDS_PER_SECTOR + 6; i++) {
       upsertRecord(bag, worldRecord(`ambient_dead_${i}`, {
         alive: false,
         outcome: 'destroyed',
+        identityKey: `kill:npc_wasp:${i}:104:-80`,
         lastSeenTick: i,
         lastObservedT: i,
       }));
     }
     // Authored and load-bearing tombstones are older than every ambient kill and must survive.
+    // The authored-key case carries NO protective marker at all: its slot identity is the
+    // anti-respawn latch the materialize gates consult, so eviction would resurrect the dead.
     upsertRecord(bag, worldRecord('authored_dead_named', {
       alive: false, outcome: 'destroyed', named: true, lastSeenTick: -1,
     }));
@@ -132,13 +136,21 @@ test('ambient kill tombstones bound per sector while authored and recipe deaths 
     upsertRecord(bag, worldRecord('boss_dead', {
       alive: false, outcome: 'defeated', isBoss: true, lastSeenTick: -1,
     }));
+    upsertRecord(bag, worldRecord('authored_dead_slot', {
+      alive: false, outcome: 'destroyed',
+      identityKey: 'ceres_cinder_service_hauler', lastSeenTick: -1,
+    }));
+    upsertRecord(bag, worldRecord('authored_dead_claim', {
+      alive: false, outcome: 'destroyed',
+      identityKey: 'claim-depot:asteroid_x:3', lastSeenTick: -1,
+    }));
     return bag;
   };
   const first = build();
   const second = build();
-  assert.equal(Object.keys(first.byId).length, MAX_AMBIENT_TOMBSTONE_RECORDS_PER_SECTOR + 5);
+  assert.equal(Object.keys(first.byId).length, MAX_AMBIENT_TOMBSTONE_RECORDS_PER_SECTOR + 7);
   for (const id of ['authored_dead_named', 'authored_dead_mission', 'authored_dead_wreck',
-    'recipe_dead', 'boss_dead']) {
+    'recipe_dead', 'boss_dead', 'authored_dead_slot', 'authored_dead_claim']) {
     assert.ok(first.byId[id], `${id} must survive ambient-tombstone pressure`);
   }
   for (let i = 0; i < 6; i++) assert.equal(first.byId[`ambient_dead_${i}`], undefined,
@@ -159,7 +171,8 @@ test('a restored bag over both caps retires tombstones and recents in one honest
     const raw = {};
     for (let i = 0; i < MAX_AMBIENT_TOMBSTONE_RECORDS_PER_SECTOR + 6; i++) {
       raw[`amb_${i}`] = worldRecord(`amb_${i}`, {
-        alive: false, outcome: 'destroyed', lastSeenTick: i, lastObservedT: i,
+        alive: false, outcome: 'destroyed',
+        identityKey: `kill:npc_wasp:${i}:104:-80`, lastSeenTick: i, lastObservedT: i,
       });
     }
     for (let i = 0; i < 50; i++) {

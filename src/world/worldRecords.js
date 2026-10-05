@@ -94,16 +94,29 @@ function hasPermanentWorldMarkers(rec) {
 }
 
 /**
- * A tombstone whose only durable claim is that something died: dead, no recipe identity to
- * suppress, no player-authored or named markers, not a boss. These are the records the
- * ambient-tombstone bound may evict; everything else stays protected.
+ * Positional identities minted by the spawn machinery — `_assignDurableRecordId` writes
+ * '<hint>:<seq>:<qx>:<qz>' and the capture fallback composes '<kind>:<type>:<qx>:<qz>:<tag>';
+ * both end in an int:int tail. An authored lookup identity (worldOneOff:, factionBerth:,
+ * claim-convoy:, activity slot ids, …) never does, so a tombstone carrying a positional key
+ * is provably memorial-only: no authored anti-respawn gate can re-derive its recordId.
+ */
+const GENERATED_POSITIONAL_IDENTITY = /:-?\d+:-?\d+:[^:]*$/;
+
+/**
+ * A tombstone the ambient bound may evict: dead, an ordinary kill outcome, and PROVABLY
+ * ephemeral — its identity is a positional mint, or it carries the kill path's provenance
+ * with no identity at all. Authored identities, recipe tombstones, bosses, and every
+ * mission/wreck/player/named marker stay protected: eviction can never resurrect a death
+ * an authored gate was counting on.
  */
 export function isAmbientTombstoneWorldRecord(rec) {
   return !!(rec && rec.alive === false
     && (rec.outcome === 'destroyed' || rec.outcome === 'defeated')
     && rec.isBoss !== true
     && rec.recordSource !== 'sector_embodiment'
-    && !hasPermanentMarkersBeyondOutcome(rec));
+    && !hasPermanentMarkersBeyondOutcome(rec)
+    && (GENERATED_POSITIONAL_IDENTITY.test(String(rec.identityKey || ''))
+      || (rec.durableReason === 'kill' && !rec.identityKey)));
 }
 
 /**
@@ -903,6 +916,15 @@ export function upsertRecord(bag, record) {
       playerCreated: prior.playerCreated === true || record.playerCreated === true,
       named: prior.named === true || record.named === true,
       name: record.name || prior.name,
+      // Identity provenance latches too: a normalized re-capture that never heard of the
+      // recipe/boss/authored origin cannot downgrade it into an evictable ambient tombstone.
+      recordSource: prior.recordSource || record.recordSource,
+      recipeKey: prior.recipeKey || record.recipeKey,
+      isBoss: prior.isBoss === true || record.isBoss === true,
+      bossPoiId: prior.bossPoiId || record.bossPoiId,
+      bossSectorId: prior.bossSectorId || record.bossSectorId,
+      identityKey: prior.identityKey || record.identityKey,
+      durableReason: prior.durableReason || record.durableReason,
       outcome: priorTerminal ? prior.outcome : record.outcome,
       alive: priorTerminal ? false : record.alive,
       scheduledEventIds: record.scheduledEventIds !== undefined
