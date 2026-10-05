@@ -622,9 +622,11 @@ export const IO_BELL_RINGER = buildKillMachine({
 // ride the surge outward, the only force in Ashfall that throws you out of the Roaming
 // Burn's path instead of into a pocket.
 // Sited inside the authored debris disc (136 WU off its heart, so the mouth disc stays
-// nested inside it), 1302 WU from station_ashcache, 308 WU clear of f_ash_1's rim (the
-// direction the shove throws), clear of f_ash_2's rim (1660), every gate and anchor POI
-// (nearest 807: poi_boss); the Converted Yards stand 504 WU off.
+// nested inside it), 1302 WU from station_ashcache, 308 WU clear of f_ash_1's rim in the
+// shove's path, clear of f_ash_2's rim (1660), every gate and anchor POI (nearest 807:
+// poi_boss). The rig stands on the Converted Yards' south-west footprint (504 WU off its
+// heart, inside the zone), and the disc's rim brushes the slag yard's west edge - the same
+// debris language, so the overlap reads as one field.
 export const ASHFALL_SCARECROW_SECTOR_ID = 'sector_ashfall_reach';
 
 export const ASHFALL_CLAIM_SCARECROW = buildKillMachine({

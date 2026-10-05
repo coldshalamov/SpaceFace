@@ -111,7 +111,8 @@ function makeBus() {
 function makeCtx() {
   const bus = makeBus();
   const sayCalls = [];
-  const state = { simTime: 50, ui: {} };
+  // The emitted entityId (1) is the player - production state.playerId always resolves.
+  const state = { simTime: 50, ui: {}, playerId: 1 };
   const ctx = { bus, state, helpers: { voice: { say(msg) { sayCalls.push(msg); return true; } } } };
   return { ctx, bus, state, sayCalls };
 }

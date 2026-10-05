@@ -470,7 +470,7 @@ export function createAlerts(ctx) {
         if (!Number.isFinite(r) || r <= 0) continue;
         const dx = player.pos.x - zone.center.x;
         const dz = player.pos.z - zone.center.z;
-        if (dx * dx + dz * dz < r * r) return;
+        if (dx * dx + dz * dz <= r * r) return;
       }
     }
     clear(`hazard:${type}`);
