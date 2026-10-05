@@ -44,7 +44,7 @@ test('seed 4242 departure chip names the sealed split and does not invent one', 
   const fold = projectCargoCustody(sealed).byCommodity.cmdty_ore_iron;
   assert.equal(fold.hold, 10);
   assert.equal(fold.holdSellable, 6);
-  assert.equal(sealedHoldLine(sealed), '6 of 10 ore iron yours to sell');
+  assert.equal(sealedHoldLine(sealed), '6 of 10 Iron Ore yours to sell');
   const chip = departureReadinessChips(sealed).find((row) => row.label === 'Hold');
-  assert.ok(chip.text.includes('6 of 10 ore iron yours to sell'), chip.text);
+  assert.ok(chip.text.includes('6 of 10 Iron Ore yours to sell'), chip.text);
 });

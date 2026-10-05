@@ -156,7 +156,8 @@ export function sealedHoldLine(state) {
   const parts = [];
   for (const lot of projection.lots) {
     if (!lot || lot.custody !== 'hold' || !(lot.qty > lot.sellableQty)) continue;
-    const name = String(lot.commodityId || '').replace(/^cmdty_/, '').replace(/_/g, ' ');
+    const commodity = COMMODITY_BY_ID.get(lot.commodityId);
+    const name = (commodity && commodity.name) || 'freight';
     parts.push(`${lot.sellableQty} of ${lot.qty} ${name} yours to sell`);
   }
   return parts.join('; ');
