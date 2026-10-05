@@ -233,6 +233,29 @@ export const livingPoiBehaviors = {
         row.fingerprint = aftermath.fingerprint;
         row.mapLabel = `${row.mapLabel} · ${aftermath.kind.replaceAll('_', ' ').toUpperCase()}`;
       }
+      // The yard family's contract is literally 'dock at this station' — the plan-time pick
+      // is seed-pure and cannot see standing, so a gated pick (the Mercenary Outpost for a
+      // pilot below Quiet -30) strands the job as dockable-in-name-only. Re-resolve at
+      // materialize: keep the pick when the berth admits, else the same selection over the
+      // berths that do; a fully-closed sector keeps its pick and the dock gate explains why.
+      if (row.familyId === 'lawful_station_yard' && row.stationId && row.status !== 'aftermath') {
+        const sectorStations = (sector && sector.stations) || [];
+        const admits = (st) => stationBerthAdmits(
+          st, repFor(this.state, st && st.factionId), this.state);
+        const picked = sectorStations.find((st) => st && st.id === row.stationId);
+        if (!picked || !admits(picked)) {
+          const rerouted = selectStationForFamily(
+            sectorStations.filter((st) => st && admits(st)),
+            { factionId: row.factionId, center: row.zoneLocalCenter },
+            row.familyId,
+          );
+          if (rerouted) {
+            row.stationId = rerouted.id;
+            row.beneficiaryFactionId = row.factionId || rerouted.factionId
+              || (sector && sector.factionId) || null;
+          }
+        }
+      }
       own.activeByZone[row.zoneId] = row;
       this._annotateNearestAnchor(row);
       this._emit('poi:behaviorPlanned', readoutOf(row));
