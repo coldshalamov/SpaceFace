@@ -363,7 +363,7 @@ export function createAssetResidencyRegistry(options = {}) {
     });
   }
 
-  function releaseOwner(owner, reason = 'released') {
+  function releaseOwner(owner, reason = 'released', deferBudgets = false) {
     const state = owners.get(owner);
     markOwnerReleased(owner);
     if (!state) return 0;
@@ -384,7 +384,7 @@ export function createAssetResidencyRegistry(options = {}) {
       evictIfUnowned(entry, reason);
     }
     cleanupOwnerState(state);
-    if (released > 0) enforceSoftResidencyBudgets();
+    if (released > 0 && !deferBudgets) enforceSoftResidencyBudgets();
     return released;
   }
 
@@ -408,6 +408,34 @@ export function createAssetResidencyRegistry(options = {}) {
       releaseOwner(owner, reason);
       released.push(owner);
     }
+    return Object.freeze(released);
+  }
+
+  // Stepped twin: yields per owner examined so the renderer's sweeps can drive
+  // the O(owners x ancestor-walk + claim probes) census across their slice
+  // clock. The live owners map is iterated directly — releaseOwner only deletes
+  // the current entry (safe mid-iteration) and a late-joining owner gets probed
+  // fresh, the conservative direction. Row order and verdicts identical.
+  function* releaseDetachedBoundaryOwnersSteps(options = {}, batchOwners = 64) {
+    const isDetached = typeof options.isDetached === 'function'
+      ? options.isDetached
+      : (owner) => owner && owner.parent == null;
+    const isClaimed = typeof options.isClaimed === 'function' ? options.isClaimed : null;
+    const reason = options.reason || 'detached-boundary-owner';
+    const released = [];
+    let visited = 0;
+    for (const [owner, state] of owners.entries()) {
+      if (++visited % batchOwners === 0) yield;
+      if (state.released || !owner || owner.isObject3D !== true) continue;
+      if (!isDetached(owner)) continue;
+      if (isClaimed && isClaimed(owner)) continue;
+      // Budget enforce rides once per sweep instead of per release: releases
+      // are monotonic, so a mass-detach wave pays one O(assets) census rather
+      // than owners x assets inside the batch.
+      releaseOwner(owner, reason, true);
+      released.push(owner);
+    }
+    if (released.length) enforceSoftResidencyBudgets();
     return Object.freeze(released);
   }
 
@@ -1270,6 +1298,7 @@ export function createAssetResidencyRegistry(options = {}) {
     releaseOwner,
     reviveOwner,
     releaseDetachedBoundaryOwners,
+    releaseDetachedBoundaryOwnersSteps,
     releaseUnreferencedCacheOwners,
     handoffOwnerWhenCovered,
     isOwnerReleased,

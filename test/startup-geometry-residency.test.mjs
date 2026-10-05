@@ -672,7 +672,8 @@ test('the live geometry admission queue drains nearest-deadline-first', () => {
 test('mesh build candidates drain nearest-deadline-first inside each tier', () => {
   const pollStart = RENDERER_SOURCE.indexOf('_reconcileMeshResidencySteps() {');
   assert.ok(pollStart >= 0, 'the residency poll must exist');
-  const drainIndex = RENDERER_SOURCE.indexOf('stats.built = this._drainMeshBuildQueue', pollStart);
+  const drainIndex = pollStart + RENDERER_SOURCE.slice(pollStart)
+    .search(/stats\.built = (?:typeof this\._drainMeshBuildQueueSteps === 'function'|this\._drainMeshBuildQueue)/);
   assert.ok(drainIndex > pollStart, 'the poll must drain builds after enqueueing');
   const between = RENDERER_SOURCE.slice(pollStart, drainIndex);
   assert.match(between, /tGlass\(a\) - tGlass\(b\)/,
@@ -680,7 +681,7 @@ test('mesh build candidates drain nearest-deadline-first inside each tier', () =
   const reconcileStart = RENDERER_SOURCE.search(/enqueueMissingMeshBuildsSteps\(\r?\n\s+presentationList/);
   assert.ok(reconcileStart >= 0, 'the full reconcile enqueue must exist');
   const reconcileCall = RENDERER_SOURCE.slice(reconcileStart, reconcileStart + 900);
-  assert.match(reconcileCall, /\(entity\) => tGlass\(entity\),\s*\)/,
+  assert.match(reconcileCall, /\(entity\) => tGlass\(entity\)/,
     'the full reconcile must pass the same deadline ordering');
 });
 
@@ -690,7 +691,8 @@ test('mesh build candidates drain nearest-deadline-first inside each tier', () =
 test('the poll re-hoists queued builds whose deadline moved inside the urgent window', () => {
   const pollStart = RENDERER_SOURCE.indexOf('_reconcileMeshResidencySteps() {');
   assert.ok(pollStart >= 0, 'the residency poll must exist');
-  const drainIndex = RENDERER_SOURCE.indexOf('stats.built = this._drainMeshBuildQueue', pollStart);
+  const drainIndex = pollStart + RENDERER_SOURCE.slice(pollStart)
+    .search(/stats\.built = (?:typeof this\._drainMeshBuildQueueSteps === 'function'|this\._drainMeshBuildQueue)/);
   assert.ok(drainIndex > pollStart, 'the poll must drain builds after enqueueing');
   const between = RENDERER_SOURCE.slice(pollStart, drainIndex);
   assert.match(between, /pendingBuilds\[write\+\+\]\s*=\s*urgentNow\[i\]\.entry/,

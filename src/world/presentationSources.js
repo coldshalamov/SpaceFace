@@ -276,7 +276,7 @@ function meshRockKeyMatches(state, walkX, walkZ, radius, bucket) {
     && key.fieldVersion === (field && Number.isFinite(field.version) ? field.version : 0);
 }
 
-function rememberMeshRockKey(state, walkX, walkZ, radius, bucket, collectRadius) {
+function rememberMeshRockKey(state, walkX, walkZ, radius, bucket, collectRadius, fieldVersion) {
   const world = state && state.world;
   const field = world && world.asteroidField;
   _meshRockKey.state = state;
@@ -286,7 +286,12 @@ function rememberMeshRockKey(state, walkX, walkZ, radius, bucket, collectRadius)
   _meshRockKey.radius = radius;
   _meshRockKey.bucket = bucket;
   _meshRockKey.collectRadius = collectRadius;
-  _meshRockKey.fieldVersion = field && Number.isFinite(field.version) ? field.version : 0;
+  // The walk's mint-time version, not the live one: a membership bump landing
+  // while a stepped refill was suspended must leave this stamp honestly stale
+  // so the 'covered'/key gates re-fetch instead of claiming rows never walked.
+  _meshRockKey.fieldVersion = fieldVersion != null
+    ? fieldVersion
+    : (field && Number.isFinite(field.version) ? field.version : 0);
 }
 
 function meshFarKeyMatches(state, walkX, walkZ, radius) {
@@ -301,7 +306,7 @@ function meshFarKeyMatches(state, walkX, walkZ, radius) {
     && key.farVersion === (far && Number.isFinite(far.version) ? far.version : 0);
 }
 
-function rememberMeshFarKey(state, walkX, walkZ, radius, collectRadius) {
+function rememberMeshFarKey(state, walkX, walkZ, radius, collectRadius, farVersion) {
   const world = state && state.world;
   const far = world && world.farActors;
   _meshFarKey.state = state;
@@ -312,7 +317,12 @@ function rememberMeshFarKey(state, walkX, walkZ, radius, collectRadius) {
   // The radius actually queried — the 'covered' ride's containment test measures
   // against this, while key equality keys the needed radius above.
   _meshFarKey.collectRadius = collectRadius;
-  _meshFarKey.farVersion = far && Number.isFinite(far.version) ? far.version : 0;
+  // The walk's mint-time version, not the live one: a membership bump landing
+  // while a stepped refill was suspended must leave this stamp honestly stale
+  // so the 'covered'/key gates re-fetch instead of claiming rows never walked.
+  _meshFarKey.farVersion = farVersion != null
+    ? farVersion
+    : (far && Number.isFinite(far.version) ? far.version : 0);
   // The collect disc the scratch set answers for. catchUpFarRecord reads it to stamp a
   // version bump when a within-cell advance moves a row across its rim — the only motion
   // class that can silently enter the memoized scratch's coverage.
@@ -449,6 +459,8 @@ function _nearbyLedgerWalkPlan(state, opts = null) {
     rockBucket,
     rockCovered,
     ridesRock,
+    farVersionNow,
+    fieldVersionNow,
   };
 }
 
@@ -476,6 +488,8 @@ function _nearbyLedgerRowsContext(state, opts = null) {
     rockWalkRadius,
     rockBucket,
     ridesRock,
+    farVersionNow,
+    fieldVersionNow,
   } = plan;
   if (!meshFarKeyMatches(state, walkX, walkZ, walkRadius) && !ridesFar) {
     if (toleration === true && !hasLiveFarDisc) {
@@ -489,7 +503,7 @@ function _nearbyLedgerRowsContext(state, opts = null) {
       _meshWalkOrigin.x = walkX;
       _meshWalkOrigin.z = walkZ;
       queryFarActors(state, _meshWalkOrigin, walkRadius + collectOverlap, _meshFarScratch);
-      rememberMeshFarKey(state, walkX, walkZ, walkRadius, walkRadius + collectOverlap);
+      rememberMeshFarKey(state, walkX, walkZ, walkRadius, walkRadius + collectOverlap, farVersionNow);
     }
   }
   if (!meshRockKeyMatches(state, walkX, walkZ, rockWalkRadius, rockBucket) && !ridesRock) {
@@ -499,7 +513,7 @@ function _nearbyLedgerRowsContext(state, opts = null) {
       _meshWalkOrigin.x = walkX;
       _meshWalkOrigin.z = walkZ;
       queryAsteroidField(state, _meshWalkOrigin, rockWalkRadius + collectOverlap, _meshRockScratch);
-      rememberMeshRockKey(state, walkX, walkZ, rockWalkRadius, rockBucket, rockWalkRadius + collectOverlap);
+      rememberMeshRockKey(state, walkX, walkZ, rockWalkRadius, rockBucket, rockWalkRadius + collectOverlap, fieldVersionNow);
     }
   }
   const pvx = finite(player.vel && player.vel.x);
@@ -613,12 +627,16 @@ export function warmNearbyLedgerRows(state, opts = null) {
 
 // Stepped twin: the memo-miss refills ride the same slice clock as the collect
 // that consumes the scratches — a corridor-wide grid walk no longer lands
-// inside one presented frame on a cell flip or version bump. `out` accumulates
-// per segment and each memo key commits only when its walk completes, so a
-// suspended refill never stamps a half-filled disc; a mid-refill membership
-// bump just makes the completed stamp stale, which the strict 'covered' gate
-// already re-fetches. Verdicts (`tolerateMiss`, rides, radii, buckets) are the
-// plan's — identical to the sync warm.
+// inside one presented frame on a cell flip or version bump. Each leg walks a
+// private staging array and publishes it into the shared scratch inside the
+// same step that stamps the memo key, so readers (who snapshot or iterate the
+// scratches) always see either the last committed disc or the new complete one
+// — never a partial fill, and never rows torn by a second interleaved drive
+// (a cook warm, another sweep warm, or a ctx mint's sync refill can all run
+// while this generator is parked). The stamp carries the plan-minted table
+// version, so a membership bump mid-walk leaves the key honestly stale and the
+// strict 'covered' gate re-fetches. Verdicts (`tolerateMiss`, rides, radii,
+// buckets) are the plan's — identical to the sync warm.
 export function* warmNearbyLedgerRowsSteps(state, opts = null, batchRows = 1024) {
   const plan = _nearbyLedgerWalkPlan(state, opts);
   if (!plan) return;
@@ -634,6 +652,8 @@ export function* warmNearbyLedgerRowsSteps(state, opts = null, batchRows = 1024)
     rockWalkRadius,
     rockBucket,
     ridesRock,
+    farVersionNow,
+    fieldVersionNow,
   } = plan;
   if (!meshFarKeyMatches(state, walkX, walkZ, walkRadius) && !ridesFar) {
     if (toleration === true && !hasLiveFarDisc) {
@@ -641,9 +661,12 @@ export function* warmNearbyLedgerRowsSteps(state, opts = null, batchRows = 1024)
     } else {
       _meshWalkOrigin.x = walkX;
       _meshWalkOrigin.z = walkZ;
+      const staged = [];
       yield* queryFarActorsSteps(
-        state, _meshWalkOrigin, walkRadius + collectOverlap, _meshFarScratch, batchRows);
-      rememberMeshFarKey(state, walkX, walkZ, walkRadius, walkRadius + collectOverlap);
+        state, _meshWalkOrigin, walkRadius + collectOverlap, staged, batchRows);
+      _meshFarScratch.length = 0;
+      for (const row of staged) _meshFarScratch.push(row);
+      rememberMeshFarKey(state, walkX, walkZ, walkRadius, walkRadius + collectOverlap, farVersionNow);
     }
   }
   if (!meshRockKeyMatches(state, walkX, walkZ, rockWalkRadius, rockBucket) && !ridesRock) {
@@ -652,9 +675,12 @@ export function* warmNearbyLedgerRowsSteps(state, opts = null, batchRows = 1024)
     } else {
       _meshWalkOrigin.x = walkX;
       _meshWalkOrigin.z = walkZ;
+      const staged = [];
       yield* queryAsteroidFieldSteps(
-        state, _meshWalkOrigin, rockWalkRadius + collectOverlap, _meshRockScratch, batchRows);
-      rememberMeshRockKey(state, walkX, walkZ, rockWalkRadius, rockBucket, rockWalkRadius + collectOverlap);
+        state, _meshWalkOrigin, rockWalkRadius + collectOverlap, staged, batchRows);
+      _meshRockScratch.length = 0;
+      for (const row of staged) _meshRockScratch.push(row);
+      rememberMeshRockKey(state, walkX, walkZ, rockWalkRadius, rockBucket, rockWalkRadius + collectOverlap, fieldVersionNow);
     }
   }
 }

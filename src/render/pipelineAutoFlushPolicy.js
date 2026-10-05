@@ -310,6 +310,49 @@ export function buildArrivalRoster(entities, options = {}) {
   };
 }
 
+// Stepped twin: yields per batchRows scanned rows so the sector:enter emit can
+// drive the entityList census across the paced slice clock instead of paying it
+// inside the emit tail. Row order and verdicts identical to the sync build.
+export function* buildArrivalRosterSteps(entities, options = {}, batchRows = 1024) {
+  const list = Array.isArray(entities) ? entities : [];
+  const byteCeiling = Number(options.byteCeiling) > 0 ? Number(options.byteCeiling) : Number.POSITIVE_INFINITY;
+  const maxIds = Math.max(1, Math.floor(byteCeiling / 64));
+  const ids = [];
+  const programKeys = [];
+  const seenPrograms = new Set();
+  let truncated = false;
+  for (let i = 0; i < list.length; i++) {
+    if (i > 0 && i % batchRows === 0) yield;
+    const entity = list[i];
+    if (!entity || entity.alive === false) continue;
+    if (!ARRIVAL_TYPES.has(entity.type)) continue;
+    if (ids.length >= maxIds) {
+      truncated = true;
+      break;
+    }
+    ids.push(entity.id);
+    const key = entity.programKey || entity.archetype || entity.type;
+    if (key != null && !seenPrograms.has(key)) {
+      seenPrograms.add(key);
+      programKeys.push(String(key));
+    }
+  }
+  const sampleLimit = spatialInteractionLimit(
+    Math.min(ARRIVAL_ROSTER_ID_SAMPLE, ids.length),
+    list.length,
+  );
+  return {
+    sectorId: options.sectorId == null ? null : String(options.sectorId),
+    seed: Number.isFinite(Number(options.seed)) ? Number(options.seed) : null,
+    count: ids.length,
+    ids,
+    idSample: ids.slice(0, sampleLimit),
+    programKeys,
+    presentOrigin: Number.isFinite(Number(options.presentOrigin)) ? Number(options.presentOrigin) : 0,
+    truncated,
+  };
+}
+
 export function noteArrivalRosterMiss(renderState, ids, entityId, present, origin) {
   if (!renderState) return 0;
   const current = renderState.arrivalRosterMiss | 0;

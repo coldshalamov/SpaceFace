@@ -65,23 +65,47 @@ export function collectLateAdmittedCompileRoots(meshes, openingSubjects = []) {
 
 /** Stamp the live PMREM onto standard materials so compile and first bloom share the env key. */
 export function bindEnvironmentToStandardMaterials(root, envMap) {
+  const it = bindEnvironmentToStandardMaterialsSteps(root, envMap);
+  let step = it.next();
+  while (!step.done) step = it.next();
+  return step.value;
+}
+
+/** Chunked twin of bindEnvironmentToStandardMaterials: iterative pre-order walk
+ * with the same node order as Object3D.traverse, yielding every `nodesPerSlice`
+ * visited nodes so a cook can drive the stamp walk on its own slice clock. */
+export function* bindEnvironmentToStandardMaterialsSteps(root, envMap, nodesPerSlice = 256) {
   if (!root || !envMap) return 0;
   let count = 0;
-  const visit = (object) => {
-    if (!object) return;
-    const materials = Array.isArray(object.material)
-      ? object.material
-      : (object.material ? [object.material] : []);
-    for (const material of materials) {
-      if (!material || material.isMeshStandardMaterial !== true) continue;
-      if (material.envMap === envMap) continue;
-      material.envMap = envMap;
-      material.needsUpdate = true;
-      count += 1;
+  const visited = new Set();
+  const every = Math.max(1, Math.floor(Number(nodesPerSlice) || 1));
+  const stack = [root];
+  let sinceYield = 0;
+  while (stack.length > 0) {
+    const object = stack.pop();
+    const children = object && object.children;
+    if (children) {
+      for (let i = children.length - 1; i >= 0; i -= 1) stack.push(children[i]);
     }
-  };
-  visit(root);
-  if (typeof root.traverse === 'function') root.traverse(visit);
+    if (object && !visited.has(object)) {
+      visited.add(object);
+      const materials = Array.isArray(object.material)
+        ? object.material
+        : (object.material ? [object.material] : []);
+      for (const material of materials) {
+        if (!material || material.isMeshStandardMaterial !== true) continue;
+        if (material.envMap === envMap) continue;
+        material.envMap = envMap;
+        material.needsUpdate = true;
+        count += 1;
+      }
+    }
+    sinceYield += 1;
+    if (sinceYield >= every) {
+      sinceYield = 0;
+      yield;
+    }
+  }
   return count;
 }
 

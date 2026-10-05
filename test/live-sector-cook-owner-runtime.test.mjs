@@ -60,7 +60,11 @@ function fixture(providers = []) {
     globalThis: { requestAnimationFrame: fn => frames.push(fn) },
     performance: { now: () => now += 10 }, yieldToBrowser: async () => {},
     beginOpeningCookLedger: () => ({}), bindEnvironmentToStandardMaterials: noop,
+    bindEnvironmentToStandardMaterialsSteps: function* () {},
     collectFirstFlightCookEntities: () => [], enqueueMissingMeshBuilds: noop,
+    enqueueMissingMeshBuildsSteps: function* () {},
+    collectNeverLinkedSceneRootsSteps: function* () {},
+    createSlicedYield: (fn) => fn,
     collectMeshPresentationEntitiesChunked: function* () {},
     recordOpeningCookStep: noop, resumeAuthoredUpgradeQueueForLoadingHulls: noop,
     collectUnresidentInstancedDrawables: () => [],
@@ -387,7 +391,7 @@ test('preflight same-sector cancellation returns cleanly without stale finalizer
 test('preflight prefix error keeps original error and performs current-owner cleanup once', async () => {
   const f = preflightFixture();
   const error = new Error('controlled-prefix-failure');
-  f.values.bindEnvironmentToStandardMaterials = () => { throw error; };
+  f.values.bindEnvironmentToStandardMaterialsSteps = function* () { throw error; };
   await assert.rejects(f.preflight(), actual => actual === error);
   assert.deepEqual(f.marks, ['hold', 'freeze']);
   assert.equal(f.state.render.liveSectorGpuAdmission, false);

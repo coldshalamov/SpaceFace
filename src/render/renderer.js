@@ -328,6 +328,7 @@ import {
 import { canonicalizeObjectSurfaceProgramKeys } from './illustratedSurface.js';
 import {
   bindEnvironmentToStandardMaterials,
+  bindEnvironmentToStandardMaterialsSteps,
   collectFirstFlightEffectRoots,
   collectFirstFlightLayerDrawables,
   collectInstancePoolCompileRoots,
@@ -368,6 +369,7 @@ import {
   attributePoseJump,
   beltTailDecodeConcurrency,
   buildArrivalRoster,
+  buildArrivalRosterSteps,
   consumePresentInputEdge,
   createAmbientAdmissionYield,
   createHitchRing,
@@ -975,10 +977,14 @@ export function enqueueMissingMeshBuilds(entityList, meshes, queuedIds, queue, s
  * inside one task. Pass-local buffers: a suspended instance must not hold the
  * module scratches where a second sync drain could clobber them.
  */
-export function* enqueueMissingMeshBuildsSteps(entityList, meshes, queuedIds, queue, shouldQueue = null, isUrgent = null, urgencyOf = null) {
+export function* enqueueMissingMeshBuildsSteps(entityList, meshes, queuedIds, queue, shouldQueue = null, isUrgent = null, urgencyOf = null, onRowBoundary = null) {
   // When isUrgent is supplied, urgent candidates (about to cross the glass) drain
   // ahead of ordinary ones within the same per-frame budget; ships keep their
   // lead inside each urgency tier.
+  // onRowBoundary runs on each resume after a yield — callers whose shouldQueue/
+  // urgency closures read suspended-scan environment terms re-mint them here so
+  // a multi-beat span stops serving verdicts stamped beats ago.
+  const rowBoundary = typeof onRowBoundary === 'function' ? onRowBoundary : null;
   const passes = isUrgent ? 2 : 1;
   const byUrgency = typeof urgencyOf === 'function'
     ? (a, b) => urgencyOf(a) - urgencyOf(b)
@@ -992,6 +998,7 @@ export function* enqueueMissingMeshBuildsSteps(entityList, meshes, queuedIds, qu
     passOthers.length = 0;
     for (const entity of entityList) {
       yield;
+      if (rowBoundary) rowBoundary();
       if (!entity || entity.type !== 'ship') continue;
       if (shouldQueue && !shouldQueue(entity)) continue;
       if (isUrgent && urgentPass !== isUrgent(entity)) continue;
@@ -999,6 +1006,7 @@ export function* enqueueMissingMeshBuildsSteps(entityList, meshes, queuedIds, qu
     }
     for (const entity of entityList) {
       yield;
+      if (rowBoundary) rowBoundary();
       if (!entity || entity.type === 'ship') continue;
       if (shouldQueue && !shouldQueue(entity)) continue;
       if (isUrgent && urgentPass !== isUrgent(entity)) continue;
@@ -1010,10 +1018,12 @@ export function* enqueueMissingMeshBuildsSteps(entityList, meshes, queuedIds, qu
     }
     for (const entity of passShips) {
       yield;
+      if (rowBoundary) rowBoundary();
       if (enqueueMeshBuildCandidate(entity, meshes, queuedIds, queue)) enqueued += 1;
     }
     for (const entity of passOthers) {
       yield;
+      if (rowBoundary) rowBoundary();
       if (enqueueMeshBuildCandidate(entity, meshes, queuedIds, queue)) enqueued += 1;
     }
   }
@@ -2081,6 +2091,38 @@ export function serviceRenderMeshResidency(owner, frameDt) {
         { minAgeMs: CACHE_LEASE_MAX_IDLE_MS, maxCacheOnlyBytes: CACHE_LEASE_MAX_BYTES },
       );
     } catch (_) { /* cache decay is best-effort */ }
+  }
+  // The arrival roster minted by the sector:enter emit rides the same paced
+  // slice clock — each yield is a bounded scan segment, so a few beats after
+  // the enter the roster/reserve stamps land complete instead of the whole
+  // O(entityList)+O(field.rocks) walk landing inside the emit tail.
+  if (owner._arrivalRosterIter) {
+    if (owner.state && owner.state.mode === 'flight') {
+      const rosterSliceStart = now();
+      for (;;) {
+        const iterator = owner._arrivalRosterIter;
+        if (!iterator) break;
+        let step;
+        try {
+          step = iterator.next();
+        } catch (err) {
+          owner._arrivalRosterIter = null;
+          throw err;
+        }
+        if (step.done) {
+          if (owner._arrivalRosterIter === iterator) owner._arrivalRosterIter = null;
+          break;
+        }
+        if (now() - rosterSliceStart >= 4
+            || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
+      }
+      notePacedFrameSpend(now() - rosterSliceStart);
+    } else {
+      // The roster belongs to the flight emit that minted it; a mode flip makes
+      // the stale publish useless — the transition clears the fields anyway.
+      try { owner._arrivalRosterIter.return(); } catch (_) { /* best effort */ }
+      owner._arrivalRosterIter = null;
+    }
   }
   // Both collectors ride staged generators across frames: a fat-sector walk
   // (sweep + chunked collect + classify + decode kick + ~20 warm scans) ran the
@@ -7570,6 +7612,56 @@ function collectNeverLinkedSceneRoots(scene, renderer) {
   return roots;
 }
 
+/** Chunked twin of collectNeverLinkedSceneRoots: iterative pre-order walk with
+ * the same node order as Object3D.traverse (node, then children in order),
+ * yielding every `nodesPerSlice` visited nodes so the settle loop can drive the
+ * census on its own slice clock instead of paying one atomic ~21k-node walk. */
+function* collectNeverLinkedSceneRootsSteps(scene, renderer, nodesPerSlice = 256) {
+  const props = renderer && renderer.properties;
+  const roots = [];
+  if (!scene || !props || typeof props.get !== 'function') return roots;
+  const seen = new Set();
+  const visited = new Set();
+  const every = Math.max(1, Math.floor(Number(nodesPerSlice) || 1));
+  const stack = [scene];
+  let sinceYield = 0;
+  while (stack.length > 0) {
+    const object = stack.pop();
+    const children = object && object.children;
+    if (children) {
+      for (let i = children.length - 1; i >= 0; i -= 1) stack.push(children[i]);
+    }
+    if (object && !visited.has(object)) {
+      visited.add(object);
+      if (object.isMesh || object.isSkinnedMesh || object.isInstancedMesh
+        || object.isPoints || object.isLine || object.isSprite) {
+        const materials = Array.isArray(object.material) ? object.material : [object.material];
+        let neverLinked = false;
+        for (const material of materials) {
+          if (!material) continue;
+          let rec = null;
+          try { rec = props.get(material); } catch (_) { rec = null; }
+          if (!rec || !rec.currentProgram) { neverLinked = true; break; }
+        }
+        if (neverLinked) {
+          let root = object;
+          while (root.parent && root.parent !== scene) root = root.parent;
+          if (!seen.has(root)) {
+            seen.add(root);
+            roots.push(root);
+          }
+        }
+      }
+    }
+    sinceYield += 1;
+    if (sinceYield >= every) {
+      sinceYield = 0;
+      yield;
+    }
+  }
+  return roots;
+}
+
 // Prepare the live directional-shadow camera before asteroid visibility consumes its frustum.
 // The renderer's actual shadow-map state is authoritative: a setting can remain on while zero
 // receivers intentionally disable the map for this frame.
@@ -9163,7 +9255,19 @@ export const render = {
       // New variant InstancedMeshes carry a never-linked instanced program. Route each through
       // the admission latch — the 771 ms bloomScene brick was one uncompiled SF_CommonRock
       // instanced variant linking inside the presented pass on first live draw.
-      onMeshCreated: (mesh) => { void admitSubjectPipelines(mesh, { debugBy: 'on-mesh-created' }); },
+      onMeshCreated: (mesh) => {
+        void admitSubjectPipelines(mesh, { debugBy: 'on-mesh-created' });
+        // Instanced bucket families never entered the warm census: authored-cast
+        // chunks mint withheld above, and the depth arm stages their variant then
+        // lands the authored flag — the same contract ship roots ride.
+        if (mesh && mesh.userData && mesh.userData.sfPoolCastAuthored === true) {
+          this._queueShadowDepthStage(mesh, null, null, { authoredCastShadow: true });
+        }
+      },
+      // Mirrors the arm's own feasibility gate (shadow setting on + key light live)
+      // so the mint's withhold decision and this queue's landing agree.
+      shadowStageGate: () => this._shadowSettingOn === true
+        && !!(this.renderer && this.scene && this._keyLight),
     });
     this._entityFrame = createRenderEntityFrame();
     this._cameraOccluderState = createCameraOccluderState();
@@ -11167,6 +11271,14 @@ export const render = {
           shouldYield: () => state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS,
           debit: notePacedFrameSpend, debitGate: () => state.mode === 'flight',
         });
+        // Drive ONE stepped drain per shell pass instead of minting a fresh
+        // _drainMeshBuildQueue(1) per row: the twin already yields per examined
+        // row so pacing matches, but its prologue — scan-context mint plus the
+        // O(entityList) first-flight census the shell latch runs on every drain
+        // — used to be re-paid once per dequeued build.
+        let drainIter = typeof this._drainMeshBuildQueueSteps === 'function'
+          ? this._drainMeshBuildQueueSteps(Infinity)
+          : null;
         while (this._meshBuildQueueHead < this._meshBuildQueue.length) {
           if (cookStale()) return;
           if (prepareNow() - started > cap) {
@@ -11175,7 +11287,18 @@ export const render = {
           }
           const headBefore = this._meshBuildQueueHead;
           const buildStarted = prepareNow();
-          built += Number(this._drainMeshBuildQueue(1)) || 0;
+          if (drainIter) {
+            const drainStep = drainIter.next();
+            if (drainStep.done) {
+              built += Number(drainStep.value) || 0;
+              // An early-returning drain (refused gate, exhausted slice check)
+              // closes the iterator with rows still queued — re-mint like the
+              // per-call loop did instead of spinning on a closed iterator.
+              drainIter = this._drainMeshBuildQueueSteps(Infinity);
+            }
+          } else {
+            built += Number(this._drainMeshBuildQueue(1)) || 0;
+          }
           buildMs += prepareNow() - buildStarted;
           passes += 1;
           await buildYield(this._meshBuildQueueHead === headBefore);
@@ -11191,7 +11314,18 @@ export const render = {
         });
       };
       if (!scene.environment) this._bakeEnv({ force: true });
-      if (scene.environment) bindEnvironmentToStandardMaterials(scene, scene.environment);
+      // The envMap stamp walk is a full-scene traverse — drive its chunked twin
+      // on the cook's slice clock instead of one atomic block behind the shell.
+      if (scene.environment) {
+        const envBindYield = createSlicedYield(yieldLiveSectorGpu, {
+          shouldYield: () => state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS,
+          debit: notePacedFrameSpend, debitGate: () => state.mode === 'flight',
+        });
+        for (const _ of bindEnvironmentToStandardMaterialsSteps(scene, scene.environment)) {
+          if (cookStale()) return cookSuperseded;
+          await envBindYield(false);
+        }
+      }
       const recook = this._sessionLiveSectorCookedId === sectorId && this._contextLost !== true;
       const resumed = recook
         ? resumeAuthoredUpgradeQueueForLoadingHulls(scene)
@@ -11240,12 +11374,22 @@ export const render = {
       // On-runway tow bodies pin GLASS_ACTORS at the readiness gate (partsLibrary); they must
       // enter this drain too or the gate waits on a mesh nobody schedules.
       for (const entity of indexedTypeScan(state, 'payloads')) considerOpening(entity);
-      enqueueMissingMeshBuilds(
+      // The enqueue is a generator slice on the same clock as the drains around
+      // it — the two list-wide classify passes used to run atomic between census
+      // and the shell drain.
+      const openingEnqueueYield = createSlicedYield(yieldLiveSectorGpu, {
+        shouldYield: () => state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS,
+        debit: notePacedFrameSpend, debitGate: () => state.mode === 'flight',
+      });
+      for (const _ of enqueueMissingMeshBuildsSteps(
         openingEntities,
         this._meshes,
         this._meshBuildQueuedIds,
         this._meshBuildQueue,
-      );
+      )) {
+        if (cookStale()) return cookSuperseded;
+        await openingEnqueueYield(false);
+      }
       if (cookStale()) return cookSuperseded;
       await drainMeshBuildsBehindShell();
       if (cookStale()) return cookSuperseded;
@@ -11501,12 +11645,19 @@ export const render = {
             }
           }
           if (promotedRocks.length > 0) {
-            enqueueMissingMeshBuilds(
+            const promotedEnqueueYield = createSlicedYield(yieldLiveSectorGpu, {
+              shouldYield: () => state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS,
+              debit: notePacedFrameSpend, debitGate: () => state.mode === 'flight',
+            });
+            for (const _ of enqueueMissingMeshBuildsSteps(
               promotedRocks,
               this._meshes,
               this._meshBuildQueuedIds,
               this._meshBuildQueue,
-            );
+            )) {
+              if (cookStale()) return cookSuperseded;
+              await promotedEnqueueYield(false);
+            }
             for (const entity of promotedRocks) firstFlightEntities.push(entity);
           }
         }
@@ -11650,12 +11801,19 @@ export const render = {
           if (cookStale()) return cookSuperseded;
         }
       }
-      enqueueMissingMeshBuilds(
+      const leftoverEnqueueYield = createSlicedYield(yieldLiveSectorGpu, {
+        shouldYield: () => state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS,
+        debit: notePacedFrameSpend, debitGate: () => state.mode === 'flight',
+      });
+      for (const _ of enqueueMissingMeshBuildsSteps(
         firstFlightEntities,
         this._meshes,
         this._meshBuildQueuedIds,
         this._meshBuildQueue,
-      );
+      )) {
+        if (cookStale()) return cookSuperseded;
+        await leftoverEnqueueYield(false);
+      }
       recordOpeningCookStep(state.render, 'live.rocksAndLeftoverMeshes', liveStepStarted, 'resolved', {
         firstFlightEntities: firstFlightEntities.length,
       });
@@ -11796,7 +11954,10 @@ export const render = {
               // do. A frame-plus-flush yield after each one spent 26 frames on the 14 stragglers found on
               // the owner's laptop. The jump shell keeps one item per frame.
               yieldToMain: state.mode === 'loading'
-                ? createSlicedYield(yieldAndFlushLiveSectorGpu)
+                ? createSlicedYield(yieldAndFlushLiveSectorGpu, {
+                  shouldYield: () => state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS,
+                  debit: notePacedFrameSpend, debitGate: () => state.mode === 'flight',
+                })
                 : yieldAndFlushLiveSectorGpu,
             });
             if (cookStale()) return cookSuperseded;
@@ -12251,21 +12412,6 @@ export const render = {
         // left here otherwise requests on its first live draw. Idempotent, so it runs inside
         // the wait loop: boundaries that mount or reset while the drain runs are picked up on
         // the next pass.
-        const kickMountedBoundaries = () => {
-          try {
-            for (const [, mesh] of this._meshes || []) {
-              const data = mesh && mesh.userData;
-              if (!data || typeof data.requestAuthoredUpgrade !== 'function') continue;
-              if (data.authoredAssetState !== 'awaiting-authored-admission') continue;
-              try {
-                requestAuthoredUpgrade(mesh, renderer, scene, {
-                  residencyRole: 'crucible-roster-decode-runway',
-                  sectorId: settleSectorId,
-                });
-              } catch (_) { /* a refused request leaves the live trigger armed */ }
-            }
-          } catch (_) { /* best effort — the drain below still bounds the wait */ }
-        };
         // Direct-load boundaries (attachPackagedBody: wreck/site-component/payload bodies)
         // bypass the upgrade queue entirely — queue idle says nothing about them. Their async
         // attach resolves on the boundary's own promise, so 'loading' meshes count as
@@ -12275,20 +12421,33 @@ export const render = {
         const loadsWaitDeadline = settleStarted
           + Math.min(25000, Math.max(5000, remainingMs() / 4));
         let pendingLoadNames = null;
-        const pendingBoundaryLoads = () => {
-          if (prepareNow() > loadsWaitDeadline) return 0;
-          let count = 0;
+        // One _meshes walk per settle iteration serves both jobs — kick rows still
+        // awaiting authored admission AND count pending direct loads. Two separate
+        // whole-map scans used to run back to back each iteration.
+        const sweepBoundarySettle = () => {
+          const loadsNow = prepareNow() <= loadsWaitDeadline;
+          let pending = 0;
           const names = pendingLoadNames === null ? [] : null;
           try {
             for (const [entityId, mesh] of this._meshes || []) {
               const data = mesh && mesh.userData;
-              if (data && data.authoredAssetState === 'loading') {
+              if (!data) continue;
+              if (data.authoredAssetState === 'awaiting-authored-admission'
+                  && typeof data.requestAuthoredUpgrade === 'function') {
+                try {
+                  requestAuthoredUpgrade(mesh, renderer, scene, {
+                    residencyRole: 'crucible-roster-decode-runway',
+                    sectorId: settleSectorId,
+                  });
+                } catch (_) { /* a refused request leaves the live trigger armed */ }
+              }
+              if (loadsNow && data.authoredAssetState === 'loading') {
                 // Staging-sector dressing the arena frame provably cannot show (the same glass
                 // test the survival admission defer uses) buys the first frame nothing — the
                 // settle once held 6 s on Helios trade-hub/military station fallbacks.
                 const entity = state.entities && state.entities.get(entityId);
                 if (entity && survivalDefersArenaDressingJob(entity, state)) continue;
-                count += 1;
+                pending += 1;
                 if (names && names.length < 16) {
                   const requestedAt = Number(data.authoredUpgradeRequestedAt) || 0;
                   const ageS = requestedAt > 0
@@ -12301,7 +12460,7 @@ export const render = {
             }
           } catch (_) { /* census failure must not wedge the settle */ }
           if (names && names.length > 0) pendingLoadNames = names;
-          return count;
+          return pending;
         };
         const settleDeadline = settleStarted + Math.min(120000, Math.max(60000, remainingMs()));
         let settleResult = null;
@@ -12312,7 +12471,7 @@ export const render = {
           const sliceMs = settleDeadline - prepareNow();
           if (sliceMs <= 0) { settleOutcome = 'timeout'; break; }
           if (cookStale()) return cookSuperseded;
-          kickMountedBoundaries();
+          const pendingBoundaryCount = sweepBoundarySettle();
           try {
             settleResult = await waitForAuthoredUpgradeQueueIdle(scene, {
               stale: cookStale,
@@ -12329,7 +12488,7 @@ export const render = {
           const queueIdle = settleResult && (settleResult.idle === true
               || (settleResult.pending === 0 && settleResult.inFlight === 0
                 && settleResult.compiling !== true));
-          if (queueIdle && pendingBoundaryLoads() === 0
+          if (queueIdle && pendingBoundaryCount === 0
               && (pipelineAdmissions.pendingCount | 0) === 0) {
             // Last gate before release: packaged bodies that resolved after the post-opening
             // uncompiled sweep hold materials no compile ever linked — bloom's unready-drawable
@@ -12337,7 +12496,23 @@ export const render = {
             // wr:component/* and GLTFKit_* clusters). Admit those scene roots now, behind the
             // shell. The sweep cap bounds the case where a root legitimately never links
             // (hidden fallback layers are deliberately compile-skipped).
-            const stragglers = collectNeverLinkedSceneRoots(scene, renderer);
+            // The census itself is a chunked walk on the flush yield — a ~21k-node
+            // traverse no longer runs atomic inside the settle's wait window.
+            const stragglers = [];
+            {
+              const stragglersIter = collectNeverLinkedSceneRootsSteps(scene, renderer, 256);
+              let stragglersDone = false;
+              while (!stragglersDone) {
+                if (cookStale()) return cookSuperseded;
+                const stragglersStep = stragglersIter.next();
+                if (stragglersStep.done) {
+                  stragglersDone = true;
+                  stragglers.push(...(stragglersStep.value || []));
+                } else {
+                  await yieldAndFlushLiveSectorGpu();
+                }
+              }
+            }
             if (stragglers.length === 0 || neverLinkedSweeps >= 4) break;
             neverLinkedSweeps += 1;
             lastNeverLinked = stragglers.length;
@@ -12568,12 +12743,27 @@ export const render = {
         && root.userData.asteroidInstancePool === true);
       const preparedRoots = collectPreparedAuthoredCompileRoots(scene);
       if (scene.environment) {
-        bindEnvironmentToStandardMaterials(scene, scene.environment);
+        const envBindYield = createSlicedYield(
+          typeof options.yieldToMain === 'function' ? options.yieldToMain : yieldToBrowser,
+          {
+            shouldYield: () => state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS,
+            debit: notePacedFrameSpend, debitGate: () => state.mode === 'flight',
+          });
+        for (const _ of bindEnvironmentToStandardMaterialsSteps(scene, scene.environment)) {
+          if (cookStale()) return cookSuperseded;
+          await envBindYield(false);
+        }
         for (const root of firstFlightRoots) {
-          bindEnvironmentToStandardMaterials(root, scene.environment);
+          for (const _ of bindEnvironmentToStandardMaterialsSteps(root, scene.environment)) {
+            if (cookStale()) return cookSuperseded;
+            await envBindYield(false);
+          }
         }
         for (const root of preparedRoots) {
-          bindEnvironmentToStandardMaterials(root, scene.environment);
+          for (const _ of bindEnvironmentToStandardMaterialsSteps(root, scene.environment)) {
+            if (cookStale()) return cookSuperseded;
+            await envBindYield(false);
+          }
         }
       }
       syncVisiblePointLightBudget(scene, state.settings && state.settings.video);
@@ -13537,7 +13727,16 @@ export const render = {
         // out superseded — check before the prefix pays it (pure boolean, no yield).
         if (cookStale()) return cookSuperseded;
         if (!scene.environment) this._bakeEnv({ force: true });
-        if (scene.environment) bindEnvironmentToStandardMaterials(scene, scene.environment);
+        if (scene.environment) {
+          const jumpEnvBindYield = createSlicedYield(yieldLiveSectorGpu, {
+            shouldYield: () => state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS,
+            debit: notePacedFrameSpend, debitGate: () => state.mode === 'flight',
+          });
+          for (const _ of bindEnvironmentToStandardMaterialsSteps(scene, scene.environment)) {
+            if (cookStale()) return cookSuperseded;
+            await jumpEnvBindYield(false);
+          }
+        }
         const player = state.entities && typeof state.entities.get === 'function'
           ? state.entities.get(state.playerId)
           : null;
@@ -13866,12 +14065,17 @@ export const render = {
             if (superseded) return superseded;
           }
         }
-        enqueueMissingMeshBuilds(
+        for (const _ of enqueueMissingMeshBuildsSteps(
           firstFlightEntities,
           this._meshes,
           this._meshBuildQueuedIds,
           this._meshBuildQueue,
-        );
+        )) {
+          if (providerSliceDue()) {
+            const superseded = await providerYield();
+            if (superseded) return superseded;
+          }
+        }
         const jumpBuildsStarted = typeof performance !== 'undefined' && typeof performance.now === 'function'
           ? performance.now() : Date.now();
         // The whole destination cohort's procedural builds used to drain unbounded inside this
@@ -14355,7 +14559,11 @@ export const render = {
         const residency = prepareStartupGpuResidency(renderer, plan.residencySubjects, {
           // Same sliced cadence as the end-of-cook census: per-item task hops
           // cost more than the small uploads themselves on a contended host.
-          yieldToMain: createSlicedYield(yieldToBrowser, { sliceMs: 16 }),
+          yieldToMain: createSlicedYield(yieldToBrowser, {
+            sliceMs: 16,
+            shouldYield: () => state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS,
+            debit: notePacedFrameSpend, debitGate: () => state.mode === 'flight',
+          }),
           includeEmpty: true,
           onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
           textures: plan.textureRefs,
@@ -15551,7 +15759,17 @@ export const render = {
       if (state.mode !== 'loading' && continuous !== true && exactSectorId) {
         state.render.sectorShellAdmission = true;
         state.render.sectorShellAdmissionSerial = enterEpoch != null ? enterEpoch : null;
-        this._publishArrivalRoster(exactSectorId);
+        // The roster census + reserve ride the residency service's slice clock —
+        // the publish stamps on completion a beat or two later, which is safe:
+        // readers fail open on the unset fields (miss accounting skips early).
+        if (typeof this._publishArrivalRosterSteps === 'function') {
+          if (this._arrivalRosterIter) {
+            try { this._arrivalRosterIter.return(); } catch (_) { /* best effort */ }
+          }
+          this._arrivalRosterIter = this._publishArrivalRosterSteps(exactSectorId);
+        } else {
+          this._publishArrivalRoster(exactSectorId);
+        }
       }
       } catch (error) {
         // A synchronous throw before compileSectorPipelines attaches its release would pin
@@ -15848,6 +16066,7 @@ export const render = {
           // fails open but still mis-gates first-flight upgrade decisions).
           state.render.liveSectorFirstFlightIds = null;
           this._arrivalRosterIds = null;
+          this._arrivalRosterIter = null;
           reattachResidentGpuMeshes(this);
           resumeAuthoredUpgradeQueueForLoadingHulls(this.scene);
           if (typeof state.render.resumeDeferredPipelineAdmissions === 'function') {
@@ -15870,6 +16089,7 @@ export const render = {
           state.render.sectorShellAdmissionSerial = null;
           state.render.liveSectorFirstFlightIds = null;
           this._arrivalRosterIds = null;
+          this._arrivalRosterIter = null;
           state.render.openingSubmissionFirstDrawSubmittedAt = null;
           state.render.openingSubmissionPlan = null;
           state.render.openingSubmissionReceipt = null;
@@ -18759,21 +18979,36 @@ export const render = {
   },
 
   _publishArrivalRoster(exactSectorId) {
+    const iterator = this._publishArrivalRosterSteps(exactSectorId);
+    let step = iterator.next();
+    while (!step.done) step = iterator.next();
+    return step.value;
+  },
+
+  // Stepped twin: the roster census, the 24-mesh program census, and the
+  // asteroid reserve all yield inside the same generator so the emit can mint
+  // it and the residency service can drive it across the paced slice clock —
+  // the O(entityList)+O(field.rocks) walks no longer land inside the
+  // sector:enter emit tail. Stamps land only at completion, so readers either
+  // see the previous roster or the new complete one.
+  *_publishArrivalRosterSteps(exactSectorId, batchRows = 1024) {
     const state = this.state;
     if (!state || state.mode !== 'flight' || !exactSectorId) return null;
     const entities = Array.isArray(state.entityList) ? state.entityList : [];
-    const roster = buildArrivalRoster(entities, {
+    const rosterOpts = {
       sectorId: exactSectorId,
       seed: state.seed,
       byteCeiling: GOVERNOR_RESIDENCY_BYTE_CEILING,
       presentOrigin: (state.render && state.render.presentCount) || 0,
-    });
+    };
+    const roster = yield* buildArrivalRosterSteps(entities, rosterOpts, batchRows);
     const programKeys = roster.programKeys.slice();
     const seen = new Set(programKeys);
     const meshes = this._meshes;
     let censused = 0;
     if (meshes && typeof meshes.get === 'function') {
       for (let i = 0; i < roster.ids.length && censused < 24; i++) {
+        yield;
         const mesh = meshes.get(roster.ids[i]);
         if (!mesh) continue;
         try {
@@ -18803,11 +19038,25 @@ export const render = {
       };
       if (!Number.isFinite(Number(state.render.arrivalRosterMiss))) state.render.arrivalRosterMiss = 0;
     }
-    this._reserveArrivalAsteroidCapacity(entities);
+    if (typeof this._reserveArrivalAsteroidCapacitySteps === 'function') {
+      yield* this._reserveArrivalAsteroidCapacitySteps(entities, batchRows);
+    } else {
+      this._reserveArrivalAsteroidCapacity(entities);
+    }
     return roster;
   },
 
   _reserveArrivalAsteroidCapacity(entities) {
+    const iterator = this._reserveArrivalAsteroidCapacitySteps(entities);
+    let step = iterator.next();
+    while (!step.done) step = iterator.next();
+    return step.value;
+  },
+
+  // Stepped twin: the field.rocks and entityList tallies yield per batchRows
+  // rows; the capacity reserve itself stays a single commit at the end. Same
+  // counts, same reserve call — only the walk is sliced.
+  *_reserveArrivalAsteroidCapacitySteps(entities, batchRows = 1024) {
     const pool = this._asteroidInstancePool;
     if (!pool) return;
     const requiredByVariant = [0, 0, 0, 0, 0];
@@ -18829,7 +19078,10 @@ export const render = {
       requiredByVariant[variant] += 1;
     };
     if (fieldRecords) {
-      for (let i = 0; i < fieldRecords.length; i++) countRock(fieldRecords[i]);
+      for (let i = 0; i < fieldRecords.length; i++) {
+        countRock(fieldRecords[i]);
+        if ((i + 1) % batchRows === 0) yield;
+      }
     }
     let rosterCount = 0;
     for (let i = 0; i < entities.length; i++) {
@@ -18837,6 +19089,7 @@ export const render = {
       if (!entity || entity.type !== 'asteroid' || entity.alive === false) continue;
       rosterCount += 1;
       if (!fieldRecords) countRock(entity);
+      if ((i + 1) % batchRows === 0) yield;
     }
     reserveAsteroidInstanceCapacity(pool, requiredByVariant, {
       rosterCount,
@@ -19131,10 +19384,33 @@ export const render = {
         if (regs && (regs.preparedRoots > 0 || regs.queuedLifecycle
             || regs.queuedKey || regs.inJobsArray > 0)) return true;
       }
+      // The census legs above suspend between chunks: a bind landing under an
+      // already-visited owner leaves no trace in `claimed`. Re-walk the same
+      // sources live on a set miss so a mid-census attach can't be released out
+      // from under its boundary. Only detached+unclaimed candidates pay this —
+      // and in the sync drain `claimed` is still fresh, so it always misses
+      // there anyway.
+      for (const mesh of this._meshes.values()) {
+        for (let cur = mesh; cur; cur = cur.parent) {
+          if (cur === boundary) return true;
+        }
+      }
+      if (entities) {
+        for (const entity of entities.values()) {
+          if (!entity) continue;
+          if (entity.mesh === boundary) return true;
+          if (entity.view && entity.view.root === boundary) return true;
+        }
+      }
+      if (refs) {
+        for (let i = 0; i < refs.length; i++) {
+          if (refs[i] === boundary) return true;
+        }
+      }
       return false;
     };
     yield;
-    const released = residency.releaseDetachedBoundaryOwners({
+    const releaseProbe = {
       reason: 'detached-unclaimed-boundary',
       isDetached: (owner) => {
         let root = owner;
@@ -19142,7 +19418,10 @@ export const render = {
         return root !== scene && root.isScene !== true;
       },
       isClaimed,
-    });
+    };
+    const released = typeof residency.releaseDetachedBoundaryOwnersSteps === 'function'
+      ? yield* residency.releaseDetachedBoundaryOwnersSteps(releaseProbe)
+      : residency.releaseDetachedBoundaryOwners(releaseProbe);
     for (const owner of released) {
       yield;
       // Sever the external pins that outlived the boundary before tree teardown: the living
@@ -19447,6 +19726,7 @@ export const render = {
         && isEntityRenderRelevant(entity, state, null, reconcileScanOpts),
       (entity) => tGlass(entity) <= TABLE_BUILD_URGENT_SECONDS,
       (entity) => tGlass(entity),
+      refreshOnNewerSweepBeat,
     );
     yield;
     const built = typeof this._drainMeshBuildQueueSteps === 'function'
@@ -19849,9 +20129,10 @@ export const render = {
 
   // Stepped twin: one yield per examined queue row so the outer generators'
   // slice consults fire between composite builds instead of after the whole
-  // tail — the drain's prologue (gate + newcomer census + hoist scans) lands in
-  // the first step, measured on its own. Identical row order, budgets,
-  // hoists, and verdicts to the sync drain.
+  // tail — the drain's prologue (gate + drainScan mint + newcomer census) is
+  // split into its own segments too, since the census is O(entityList) every
+  // drain while the latches arm. Identical row order, budgets, hoists, and
+  // verdicts to the sync drain.
   *_drainMeshBuildQueueSteps(buildBudget) {
     let built = 0;
     // Rows dequeued this call (builds + skips): the skip verdict is the work the
@@ -19892,10 +20173,15 @@ export const render = {
     const now = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
       ? performance.now()
       : Date.now());
-    const simNow = Number(this.state && this.state.simTime) || 0;
+    let simNow = Number(this.state && this.state.simTime) || 0;
+    let drainBeatSeen = this._residencySweepBeatStamp | 0;
     let hoistedDeadlineBuilds = false;
+    // The scan-context mint and the O(entityList) newcomer census ride their own
+    // slice segments instead of bundling into the gate's step — under the shell
+    // latches the census runs on every drain.
+    yield;
     // One scan context for the whole drain — player/look-at/env are fixed per call.
-    const drainScan = makeHoldExemptScanContext(this.state);
+    let drainScan = makeHoldExemptScanContext(this.state);
     const drainScanOpts = { scan: drainScan };
     // Mid-cook promotions (decode-runway promote, optic rocks) mint entityList members after
     // the census stamped liveSectorFirstFlightIds — under the shell latch they fail relevance,
@@ -19908,7 +20194,11 @@ export const render = {
         && (this.state.render.liveSectorGpuAdmission === true
           || this.state.render.sectorShellAdmission === true)) {
       const newcomerOpts = { bypassShellGates: true, scan: drainScan };
+      let newcomersSeen = 0;
       for (const entity of this.state.entityList || []) {
+        // `add` is order-neutral; a mid-census attach picked up by the live
+        // iteration is conservative over-inclusion, the safe direction.
+        if ((newcomersSeen++ % 1024) === 0) yield;
         if (!entity || entity.id == null || firstFlightIds.has(entity.id)) continue;
         if (entity.type === 'asteroid') continue;
         if (this._sectorBoundaryPreparations && this._sectorBoundaryPreparations.has(entity.id)) continue;
@@ -19920,6 +20210,19 @@ export const render = {
     }
     while (this._meshBuildQueueHead < this._meshBuildQueue.length) {
       yield;
+      // A multi-beat drain consumes prologue terms minted before the
+      // suspension — re-mint the cheap ones on a newer sweep beat so row
+      // verdicts stop serving beats-old player/camera/env terms. The
+      // O(entityList) newcomer census stays a prologue cost: members minted
+      // mid-drain wait for the next drain, the bounded-late direction.
+      const drainBeat = this._residencySweepBeatStamp | 0;
+      if (drainBeat !== drainBeatSeen) {
+        drainBeatSeen = drainBeat;
+        simNow = Number(this.state && this.state.simTime) || 0;
+        drainScan = makeHoldExemptScanContext(this.state);
+        drainScanOpts.scan = drainScan;
+        glassVerdictMemo.clear();
+      }
       const peek = resolveWorldPresentationEntity(
         this.state,
         this._meshBuildQueue[this._meshBuildQueueHead],
@@ -23075,7 +23378,17 @@ export const render = {
           }
         }
         if (!reforceLeftover && root.userData) delete root.userData.sfDepthUndrawableCycles;
-        try {
+        if (entry && entry.authoredCastShadow === true) {
+          // Producer-managed authored mint (instanced pool chunks): the root sits
+          // at scene origin — an ortho band grade can't grade instances spanning
+          // the sector — so the restore lands the mint's authored verdict
+          // directly instead of the policy traverse (which would also rewrite the
+          // authored receiveShadow mint and band-flip castShadow).
+          if (root.castShadow !== true) {
+            root.castShadow = true;
+            this._shadowMapDirty = true;
+          }
+        } else try {
           // The restore's own traverse measures its receiveShadow flips — feed
           // them to the incremental tally like the checked sync does, or subtree
           // churn between withhold and restore silently drifts the count (an

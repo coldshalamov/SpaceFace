@@ -58,6 +58,9 @@ export function createAsteroidInstancePool(scene, options = {}) {
     // renderer's hook routes it through the admission latch so its first live draw is not a
     // synchronous link inside a presented pass.
     onMeshCreated: typeof options.onMeshCreated === 'function' ? options.onMeshCreated : null,
+    // Whether the owner can currently run the deferred depth-stage arm that restores a
+    // withheld authored castShadow after the variant links. Read at mint time only.
+    shadowStageGate: typeof options.shadowStageGate === 'function' ? options.shadowStageGate : null,
     variants,
     // Beyond the five fixed common-rock variant buckets, every other repeated asteroid leaf
     // (non-common bodies, tinted rocks, optic cells, and stamped detail children — veins,
@@ -803,10 +806,17 @@ function ensureCapacity(pool, bucket, required, rebuild = false) {
   mesh.count = 0;
   mesh.visible = false;
   mesh.frustumCulled = false;
-  mesh.castShadow = bucket.castShadow !== false;
+  // An authored-cast family first minted mid-session may never have entered the warm
+  // census — minting the flag straight on cold-links its depth variant inside the first
+  // presented shadow refresh. Mint withheld while a live depth-stage latch can queue the
+  // variant's arm (the arm's restore lands the authored flag); pools with no latch —
+  // previews, tests — keep the immediate authored mint.
+  mesh.castShadow = bucket.castShadow !== false
+    && !(pool.shadowStageGate && pool.shadowStageGate() === true);
   mesh.receiveShadow = bucket.receiveShadow !== false;
   mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   mesh.userData.asteroidInstancePool = true;
+  if (bucket.castShadow !== false) mesh.userData.sfPoolCastAuthored = true;
   if (isVariantBucket) mesh.userData.asteroidInstanceVariant = bucket.variant;
   else mesh.userData.asteroidInstanceBucket = bucket;
   mesh.userData.borrowedGeometryMaterial = true;
