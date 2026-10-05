@@ -1354,6 +1354,249 @@ if (new Set(VESTA_POCKET_ACTOR_SLOT_ORDER).size !== VESTA_POCKET_ACTOR_SLOT_ORDE
 assertDistinctRouteTopology(VESTA_ACTIVITY_POCKETS, VESTA_ROUTE_TOPOLOGY, 'Vesta');
 
 // ───────────────────────────────────────────────────────────────────────────────────────────────
+// CV-DAY / CR-WEIR — Tethys Junction: the checkpoint day. The same registry that just gained Vesta,
+// opposite flavor: Vesta's day is foundry work at the sector's heart; Tethys's day is the border.
+// Its authored material already promised it with no pockets: "Concord scans inbound cargo here;
+// contraband is seized, smugglers are flagged" (zone_tethys_checkpoint); "Convoys run this line
+// between Helios, Ceres and Io — the arteries of the core economy" (zone_tethys_lane); "Contraband
+// changes hands off the exchange lanes, away from Meridian eyes" (zone_tethys_blackmkt); and
+// station_customs — toll, scan, refuel — whose own chart line is the day: "Everything transits;
+// nothing transits unread." These pockets are that promise made visible — arriving mid-shift at the
+// border: a toll hauler holding in the checkpoint queue at station_customs, an scn patrol walking
+// the trade lane, and a Quiet Cache runner whose route slides past the checkpoint — lawful-lane
+// work and outlaw-lane work sharing the same water, neither a hostile spawn. That is the CR-WEIR /
+// CV-DAY overlap: law you can fly, arriving mid-shift. The chain continues whether or not you touch
+// it, and every actor flies a job kind the runtime already owns. Same band and topology laws as
+// Ceres; no Ceres pocket id is copied. Bearings are taken from the geography that exists: the toll
+// hauler's hold mark sits on the true bearing of the tally queue head, the lane convoy's outbound
+// leg aims at the Io gate's own bearing, the Quiet runner's transit leg aims at the checkpoint's
+// true bearing, and the log cutter's yard leg aims at the customs station it sells to.
+// ───────────────────────────────────────────────────────────────────────────────────────────────
+
+export const TETHYS_ACTIVITY_SECTOR_ID = 'sector_tethys_junction';
+/** Four pockets × two actors: the queue, the lane, the cache, and the log. */
+export const TETHYS_AUTHORED_ACTIVITY_CAPACITY = 8;
+
+const tethysZones = requireArray(SECTOR_ZONES[TETHYS_ACTIVITY_SECTOR_ID], 'Tethys sector zones');
+const tethysAnchors = requireRecord(SECTOR_ANCHORS[TETHYS_ACTIVITY_SECTOR_ID], 'Tethys sector anchors');
+const tethysCheckpointZone = findById(tethysZones, 'zone_tethys_checkpoint', 'Tethys checkpoint zone');
+const tethysLaneZone = findById(tethysZones, 'zone_tethys_lane', 'Tethys trade lane zone');
+const tethysBlackmktZone = findById(tethysZones, 'zone_tethys_blackmkt', 'Tethys Quiet Cache zone');
+const stationCustoms = findById(tethysAnchors.stations, 'station_customs', 'Tethys customs station anchor');
+const blackmktPoi = findById(tethysAnchors.pois, 'poi_blackmkt', 'Tethys black market POI');
+const customsLogPoi = findById(tethysAnchors.pois, 'poi_tethys_customs_log', 'Tethys customs log POI');
+
+// The checkpoint is where its gate station stands, and the cache is where its buoy floats.
+assertSamePoint(stationCustoms.pos, tethysCheckpointZone.center, 'station_customs / zone_tethys_checkpoint');
+assertSamePoint(blackmktPoi.pos, tethysBlackmktZone.center, 'poi_blackmkt / zone_tethys_blackmkt');
+
+const tethysQueueId = 'tethys_checkpoint_queue';
+const tethysLaneId = 'tethys_lane_patrol';
+const tethysCacheId = 'tethys_quiet_cache';
+const tethysLogId = 'tethys_customs_log';
+
+function tethysActor(id, pocketId, role, jobKind, spawn, routeId, durationS, marks, { lawful = false, receiptType = null } = {}) {
+  return actor({
+    id,
+    pocketId,
+    namespace: 'tethys',
+    presentationRole: role,
+    jobKind,
+    lawful,
+    passive: true,
+    spawnOffset: spawn,
+    route: route({ id: routeId, jobKind, durationS, receiptType, marks }),
+  });
+}
+
+const tethysQueueObjects = Object.freeze([
+  objectSlot({
+    id: 'tethys_customs_hold_pod',
+    pocketId: tethysQueueId,
+    kind: 'cargo_staging_pod',
+    offset: point(-58, 34),
+    runtimeOwner: 'world',
+    targetRef: 'object:tethys_customs_hold_pod',
+  }),
+]);
+
+const tethysLaneObjects = Object.freeze([
+  objectSlot({
+    id: 'tethys_lane_weigh_pod',
+    pocketId: tethysLaneId,
+    kind: 'cargo_staging_pod',
+    offset: point(44, 26),
+    runtimeOwner: 'world',
+    targetRef: 'object:tethys_lane_weigh_pod',
+  }),
+]);
+
+const tethysCacheObjects = Object.freeze([
+  objectSlot({
+    id: 'tethys_quiet_cache_pod',
+    pocketId: tethysCacheId,
+    kind: 'cargo_staging_pod',
+    offset: point(-36, 20),
+    runtimeOwner: 'world',
+    targetRef: 'object:tethys_quiet_cache_pod',
+  }),
+]);
+
+const tethysLogObjects = Object.freeze([
+  objectSlot({
+    id: 'tethys_log_hull_shard',
+    pocketId: tethysLogId,
+    kind: 'grave_shard',
+    offset: point(-30, 44),
+    runtimeOwner: 'world',
+    targetRef: 'object:tethys_log_hull_shard',
+  }),
+]);
+
+const tethysQueueActors = Object.freeze([
+  // The gate's own sentence: a toll hauler holding in the queue that runs in past the tally to
+  // the Customs Gate scan face. The hold mark sits on the true bearing of the tally queue head;
+  // the cleared leg resolves to the real customs berth. Slow — a queue is a place you wait.
+  tethysActor('tethys_toll_hauler', tethysQueueId, 'hauler', 'hauler', point(-48, 22),
+    'tethys_queue_hold_run', 30, [
+      mark('tethys_queue_hold', -92.89, 36.97, 'activity:tethys-queue-hold'),
+      mark('tethys_queue_gate_leg', 82.3, 75.96, 'dest:station_customs'),
+    ], { receiptType: 'freight:arrival' }),
+  // The scn walk between the gate face and the Helios approach side — the law in the checkpoint
+  // is present and patrolling, not hunting: same passive kernel as every other actor here.
+  tethysActor('tethys_customs_patrol', tethysQueueId, 'patrol', 'patrol', point(30, -26),
+    'tethys_gate_beat', 26, [
+      mark('tethys_gate_beat_a', -104.39, -18.41, 'activity:tethys-gate-beat-a'),
+      mark('tethys_gate_beat_b', 18.41, -104.39, 'activity:tethys-gate-beat-b'),
+    ], { lawful: true }),
+]);
+
+const tethysLaneActors = Object.freeze([
+  // The lane's own sentence: convoys run this line. Inbound leg resolves to the real hub berth;
+  // the outbound leg sits on the Io gate's true bearing — the artery, end to end.
+  tethysActor('tethys_lane_convoy', tethysLaneId, 'hauler', 'hauler', point(-26, 18),
+    'tethys_lane_run', 24, [
+      mark('tethys_lane_io_leg', 80.47, 74.98, 'activity:tethys-lane-io-leg'),
+      mark('tethys_lane_hub_leg', 47.61, -96.94, 'dest:station_tethys'),
+    ], { receiptType: 'freight:arrival' }),
+  // The patrol walking the lane while the convoy runs it: a beat across the artery's quadrants,
+  // never through it — the widest read of "law you can fly" without a single hostile hull.
+  tethysActor('tethys_lane_patrol', tethysLaneId, 'patrol', 'patrol', point(24, -30),
+    'tethys_lane_beat', 28, [
+      mark('tethys_lane_beat_a', 3.66, 104.94, 'activity:tethys-lane-beat-a'),
+      mark('tethys_lane_beat_b', -76.79, -71.61, 'activity:tethys-lane-beat-b'),
+    ], { lawful: true }),
+]);
+
+const tethysCacheActors = Object.freeze([
+  // The Quiet's sentence: contraband changes hands off the exchange lanes. The runner loads at
+  // the cache and its transit leg slides out on the checkpoint's true bearing — past the law,
+  // not at it. A smuggler hull flying the proven haul kernel: outlaw-lane work, not a hostile
+  // spawn; it never arrives shooting, and the checkpoint patrol never arrives swinging.
+  tethysActor('tethys_quiet_runner', tethysCacheId, 'smuggler', 'hauler', point(-30, -24),
+    'tethys_quiet_transit_run', 26, [
+      mark('tethys_cache_hold', -83.87, 54.46, 'activity:tethys-cache-hold'),
+      mark('tethys_quiet_transit_leg', 47, -101.66, 'activity:tethys-quiet-transit'),
+    ], { receiptType: 'freight:arrival' }),
+  // The cache keeper holds the dark side of the buoy, checking stashes on the scan kernel —
+  // a relay check is a scan loop, so the cache has a working body, not a loiter.
+  tethysActor('tethys_quiet_keeper', tethysCacheId, 'tender', 'surveyor', point(26, 30),
+    'tethys_cache_stash_sweep', 30, [
+      mark('tethys_cache_stash_a', 72.13, 72.13, 'activity:tethys-cache-stash-a'),
+      mark('tethys_cache_stash_b', -51, 88.33, 'activity:tethys-cache-stash-b'),
+    ]),
+]);
+
+const tethysLogActors = Object.freeze([
+  // The log relay's own scavengers: the last log before the line sits where seized hulks were
+  // scanned and left, and a cutter picks them — unlicensed ground work, but passive, the same
+  // work-not-hostility law as Vesta's drift. The yard leg aims at the customs station the cut
+  // plate sells to.
+  tethysActor('tethys_log_salvor', tethysLogId, 'salvor', 'salvor', point(18, -22),
+    'tethys_log_salvage_run', 30, [
+      mark('tethys_log_yard_leg', 52.96, -102.13, 'dest:station_customs'),
+      mark('tethys_log_hulk_face', -52.5, 90.93, 'activity:tethys-log-hulk'),
+    ]),
+  // The count's own rig: cataloging the hulk field so the tally stays honest. The tightest
+  // wedge at Tethys — close, repetitive scan work beside one hull face.
+  tethysActor('tethys_log_surveyor', tethysLogId, 'surveyor', 'surveyor', point(-20, -18),
+    'tethys_log_scan_sweep', 28, [
+      mark('tethys_log_scan_a', -93.97, -34.2, 'activity:tethys-log-scan-a'),
+      mark('tethys_log_scan_b', -17.37, -98.48, 'activity:tethys-log-scan-b'),
+    ]),
+]);
+
+export const TETHYS_ACTIVITY_POCKETS = Object.freeze([
+  pocket({
+    id: tethysQueueId,
+    label: 'Checkpoint Queue',
+    identity: Object.freeze({ zoneId: tethysCheckpointZone.id, stationId: stationCustoms.id }),
+    anchor: canonicalAnchor({
+      kind: 'station', id: stationCustoms.id, zoneId: tethysCheckpointZone.id,
+      placeId: stationCustoms.id, localPos: stationCustoms.pos,
+    }),
+    actorSlots: tethysQueueActors,
+    objectSlots: tethysQueueObjects,
+    sectorId: TETHYS_ACTIVITY_SECTOR_ID,
+  }),
+  pocket({
+    id: tethysLaneId,
+    label: 'Junction Lane',
+    identity: Object.freeze({ zoneId: tethysLaneZone.id }),
+    anchor: canonicalAnchor({
+      kind: 'zone', id: tethysLaneZone.id, zoneId: tethysLaneZone.id,
+      placeId: null, localPos: tethysLaneZone.center,
+    }),
+    actorSlots: tethysLaneActors,
+    objectSlots: tethysLaneObjects,
+    sectorId: TETHYS_ACTIVITY_SECTOR_ID,
+  }),
+  pocket({
+    id: tethysCacheId,
+    label: 'The Quiet Cache',
+    identity: Object.freeze({ zoneId: tethysBlackmktZone.id, placeId: blackmktPoi.id }),
+    anchor: canonicalAnchor({
+      kind: 'poi', id: blackmktPoi.id, zoneId: tethysBlackmktZone.id,
+      placeId: blackmktPoi.id, localPos: blackmktPoi.pos,
+    }),
+    actorSlots: tethysCacheActors,
+    objectSlots: tethysCacheObjects,
+    sectorId: TETHYS_ACTIVITY_SECTOR_ID,
+  }),
+  pocket({
+    id: tethysLogId,
+    label: 'Customs Log Relay',
+    identity: Object.freeze({ zoneId: tethysCheckpointZone.id, placeId: customsLogPoi.id }),
+    anchor: canonicalAnchor({
+      kind: 'poi', id: customsLogPoi.id, zoneId: tethysCheckpointZone.id,
+      placeId: customsLogPoi.id, localPos: customsLogPoi.pos,
+    }),
+    actorSlots: tethysLogActors,
+    objectSlots: tethysLogObjects,
+    sectorId: TETHYS_ACTIVITY_SECTOR_ID,
+  }),
+]);
+
+export const TETHYS_ACTIVITY_POCKET_ORDER = Object.freeze(TETHYS_ACTIVITY_POCKETS.map((entry) => entry.id));
+export const TETHYS_ACTIVITY_POCKETS_BY_ID = Object.freeze(Object.fromEntries(
+  TETHYS_ACTIVITY_POCKETS.map((entry) => [entry.id, entry]),
+));
+export const TETHYS_POCKET_ACTOR_SLOT_ORDER = Object.freeze(TETHYS_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => slot.id),
+));
+export const TETHYS_ROUTE_TOPOLOGY = Object.freeze(TETHYS_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => routeTopology(slot)),
+));
+
+if (TETHYS_POCKET_ACTOR_SLOT_ORDER.length !== TETHYS_AUTHORED_ACTIVITY_CAPACITY) {
+  throw new Error(`Tethys authored capacity mismatch: ${TETHYS_POCKET_ACTOR_SLOT_ORDER.length}`);
+}
+if (new Set(TETHYS_POCKET_ACTOR_SLOT_ORDER).size !== TETHYS_POCKET_ACTOR_SLOT_ORDER.length) {
+  throw new Error('Tethys authored activity slot ids must be unique');
+}
+assertDistinctRouteTopology(TETHYS_ACTIVITY_POCKETS, TETHYS_ROUTE_TOPOLOGY, 'Tethys');
+
+// ───────────────────────────────────────────────────────────────────────────────────────────────
 // The registry. Everything downstream reads this instead of a Ceres constant, which is the whole
 // reason a second sector can exist here at all.
 // ───────────────────────────────────────────────────────────────────────────────────────────────
@@ -1365,6 +1608,7 @@ export const ACTIVITY_POCKETS_BY_SECTOR = Object.freeze({
   [HELIOS_ACTIVITY_SECTOR_ID]: HELIOS_ACTIVITY_POCKETS,
   [PALLAS_ACTIVITY_SECTOR_ID]: PALLAS_ACTIVITY_POCKETS,
   [VESTA_ACTIVITY_SECTOR_ID]: VESTA_ACTIVITY_POCKETS,
+  [TETHYS_ACTIVITY_SECTOR_ID]: TETHYS_ACTIVITY_POCKETS,
 });
 
 export const ACTIVITY_POCKET_SECTOR_IDS = Object.freeze(Object.keys(ACTIVITY_POCKETS_BY_SECTOR));

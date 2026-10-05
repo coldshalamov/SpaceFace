@@ -26,6 +26,8 @@ import {
   HELIOS_ROUTE_TOPOLOGY,
   PALLAS_ACTIVITY_POCKETS,
   PALLAS_ACTIVITY_SECTOR_ID,
+  TETHYS_ACTIVITY_POCKETS,
+  TETHYS_ACTIVITY_SECTOR_ID,
   VESTA_ACTIVITY_POCKETS,
   VESTA_ACTIVITY_SECTOR_ID,
   activityActorSlotById,
@@ -53,11 +55,12 @@ test('the activity-pocket registry is multi-sector, and Ceres is unchanged', () 
   assert.ok(ACTIVITY_POCKET_SECTOR_IDS.includes(HELIOS_ACTIVITY_SECTOR_ID));
   assert.ok(ACTIVITY_POCKET_SECTOR_IDS.includes(PALLAS_ACTIVITY_SECTOR_ID));
   assert.ok(ACTIVITY_POCKET_SECTOR_IDS.includes(VESTA_ACTIVITY_SECTOR_ID));
+  assert.ok(ACTIVITY_POCKET_SECTOR_IDS.includes(TETHYS_ACTIVITY_SECTOR_ID));
   assert.equal(ACTIVITY_POCKETS_BY_SECTOR[CERES_ACTIVITY_SECTOR_ID], CERES_ACTIVITY_POCKETS);
   assert.equal(
     ACTIVITY_POCKETS.length,
     CERES_ACTIVITY_POCKETS.length + HELIOS_ACTIVITY_POCKETS.length + PALLAS_ACTIVITY_POCKETS.length
-      + VESTA_ACTIVITY_POCKETS.length,
+      + VESTA_ACTIVITY_POCKETS.length + TETHYS_ACTIVITY_POCKETS.length,
   );
   assert.equal(activityPocketsForSector('sector_nowhere_belt').length, 0);
 
