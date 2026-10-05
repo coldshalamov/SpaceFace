@@ -1641,3 +1641,35 @@ Verify: golden `47a` **bit-identical** (`892f88c9…`); `node --check` all 8 tou
 - **popin F1 (M/S) — doom gated on row-resident liveness, legs split**: W93's `liveOccupant !== world.entityRefs[slot]` guard was inverted by `bindMesh`'s own `refreshMetadata` write — a bound respawn refreshes refs to itself, so `liveOccupant === refs` let the doom re-mint (W93-F1 symptom still live at HEAD), and the never-bound corpse case skipped doom. `hiddenIds` now dooms unless `refs[slot]` is live (`resident.alive !== false`); `skippedIds` dooms unconditionally (eligibility-fail occupants can never legitimately reclaim the row); the dead `liveEntities` plumbing is removed.
 
 Verify: golden `47a` **bit-identical** (`892f88c9…`); `node --check` all 5 touched files; focused suites green — shadow-depth-admission 42/42, shadow-caster-policy/presentation-world/journal/publisher 27/27; residual red `opening-cook-ledger` (`createSlicedYield(yieldAndFlushLiveSectorGpu)` pin miss) stash-verified identical on pre-batch HEAD — upstream drift class, not this batch; modulepreload in sync at 1450 imports.
+
+## Wave 95 (commit a04c986d2) — HEAD 332e07670 → a04c986d2
+
+All 4 lanes `saturated: false` (streak 0/3).
+
+**lod-in-frame**
+- F-1: new export `shadowCasterPolicyNeedsSync` (walker's early-out twin) — cap consumed on calls-not-traverses starved late-slot dirty roots; counter + dispatch gate on it now.
+- F-2: `withholdCoverageKnown` — a `allowCast===false` withhold verdict defers only when coverage is known (`withheldMeshes` non-null or a prior applied withhold stands); uncovered withholds pay the atomic traverse so unflagged casters never cold-link.
+- F-3: parkedMap churn came free with F-1.
+
+**popin-admission**
+- F1: journal collision abort narrowed to LIVE collected rows — a suppressed destroy for a dead-at-publish row commits normally (the publish loop skips it anyway); only destroy-then-recycle (or phantom live rows) still abort → escalate at 3.
+- F2: `world.boundEntityRefs` keyed on bind owner — the doom skip now requires `resident === boundEntityRefs[slot] && alive !== false`; a pushed-but-unbound respawn no longer shields a corpse's bound mesh.
+- F4: `disposeBoundaryObject` drives `disposeObjectSteps` paced (4 ms wall + shared ledger + yieldToNextPresent) instead of the sync whole-subtree teardown on presented frames.
+- F3/F5: same as boot F1/F4 — done there.
+- F6 (`_shadowReceiversDirty` whole-scene recount fallback): SKIPPED — L-impact/M-risk; documented residual.
+
+**boot-loading**
+- F1: cook cohort mint paces — `lateRoots` collect via `cookPoolCompileRoots()` lazy memo (serves census + buffer-roots + fallback), `cohortSubjects` chunked 1024 through `uniqueAdmissionUnits` with shared seen sets; the last atomic ~21k-node cook block.
+- F2: drift retries hoist the light-independent subject collect — `depthOpts.precollectedCasting` minted once at drive entry (both `driveCompileShadowDepthPipelines` + `driveDepthCompile`).
+- F3: supersede guards — `cookStale()` per-iteration in cook/seal bucket legs; `postPace()` now returns `passEpoch !== live enterSerial` and every rescan leg (census, subjects-for-roots, dedupe, unstaged collect, driveDepthCompile) bails to a `postSupersededResult()` tail.
+- F4: seal unbucketed fallback now `await sealPace()` per root.
+- F5: `_shadowCensusForFrame` epoch latched per `_viewSyncSeq` (no per-mid-frame re-walk).
+- F6: buffer-roots census folded into F1's memo.
+
+**in-flight-hitches**
+- F1: policy-mint starvation slot — `_policyMintStarvedSeq !== collectSeq` grants the first spent-wallet skip per pass a forced slice (bounded ≤1/pass).
+- F2(i): atomic policy leg metered via `atomicStartedAt`/`atomicElapsed`/`notePacedFrameSpend`. F2(ii) (`onAuthoredAssetSwap` scope-narrowing): deferred — riskier.
+- F3: `lightSigEpoch` epoch prefilter before the park-compare sig check; `lightSigEpoch: shadowCensusEpoch()` stamps at both park-mint literals + keep-verdict re-key.
+- F4: recheck halved at mint for ortho-interior roots (`shadowCastAxisDistance <= parkedCell` → `deferGlassAdj`/`abortedGlassAdj` 0.5×).
+
+**Verify:** golden `892f88c9` bit-identical; modulepreload in sync (35+1450); ~120 focused tests green (shadow-depth-admission 63, caster-policy 9, journal 12, runner 15, world 6, residency 8+). Residual reds verified identical on clean master `96d37229a`: `presentation-journal-owners` (spawn-boundary pin), `opening-cook-ledger` (`yieldAndFlushLiveSectorGpu` seam moved upstream — documented canon).
