@@ -65,13 +65,19 @@ function makeWreck(id, parentType, extra = {}) {
 }
 
 function makeState(wrecks = []) {
+  // INF-U7 made the reactor burst radial: victims come from indexedShipLikeScan, which
+  // reads entityIndex.shipLike and falls back to entityList — not the entities Map.
+  // Production always maintains entityList; the getter mirrors it over the Map so the
+  // minimal state exercises the same victim-scan domain the game runs.
+  const entities = new Map([[1, { id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 }, hull: 100 }]]);
   return {
     meta: { seed: 123 },
     simTime: 10,
     playerId: 1,
     player: { tether: { active: false, targetId: null } },
     ui: {},
-    entities: new Map([[1, { id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 }, hull: 100 }]]),
+    entities,
+    get entityList() { return [...entities.values()]; },
   };
 }
 
