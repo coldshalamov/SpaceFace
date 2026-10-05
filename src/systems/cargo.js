@@ -574,9 +574,22 @@ export const cargo = {
       if (!cargo || (cargo.items && cargo.items[payload.id] > 0)) return;
       addCargo(state, payload.id, 1);
     });
+    // An armed hot-dock spill receipt is run-scoped: it lives on this instance, never in save
+    // data, so a quit-while-docked New Game or a save load can never carry it across. Leaving
+    // it armed lets the fresh run's first undock announce pods that were never beside that
+    // berth. Every run boundary clears it — game:new and the legacy game:newGame alias for New
+    // Game, save:loaded for restores.
+    const clearRunScopedSpillLatch = () => {
+      this._pendingSpillAnnounce = null;
+      this._lastHotDockSpillTick = -1;
+    };
+    subscribe(binding, 'game:new', clearRunScopedSpillLatch);
+    subscribe(binding, 'game:newGame', clearRunScopedSpillLatch);
+
     // Saves made while the grant seam was dead carry the story lock but an empty hold: backfill
     // the missing persistent items on load so the manifest matches the narrative again.
     subscribe(binding, 'save:loaded', () => {
+      clearRunScopedSpillLatch();
       const locked = state.story && state.story.persistentCargo;
       if (!Array.isArray(locked)) return;
       for (const id of locked) {
