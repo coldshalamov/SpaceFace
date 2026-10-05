@@ -120,7 +120,7 @@ html.sf-reduce-motion #screens .screen.sf-menu.orr-base.orr-base.is-claimed { an
   clip-path:polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
   font-family:"Archivo", "Instrument Sans", system-ui, sans-serif;
   font-size:12px; font-weight:600; letter-spacing:.12em; text-transform:uppercase;
-  color:rgb(var(--orr-bone) / .8); white-space:nowrap;
+  color:rgb(var(--orr-bone) / .95); white-space:nowrap;
 }
 #screens .orr-base #sf-base .orr-base__esc::before, #screens .orr-base #sf-base .orr-base__key::before { display:none; }
 #screens .orr-base #sf-base .k-word.orr-base__chip:disabled {
