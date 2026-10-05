@@ -2859,7 +2859,8 @@ export const world = {
       // re-derive the body radius so the skin scale equals the drawn scale exactly
       // (solidDressing.js). An explicit `collides: false` is a no-presence contract (PQ-020
       // transit pins) and outranks the landmark default; plain markers stay ghosts.
-      const solidPlan = (poi.collides !== false && (poi.landmark || poi.collides === true))
+      const solidPlan = (!activityObjectSlotId
+          && poi.collides !== false && (poi.landmark || poi.collides === true))
         ? stampSolidDressing(poiData, {
           radius: visualRadius,
           placeTargetRadius: Number(poiData.placeTargetRadius) || 0,
