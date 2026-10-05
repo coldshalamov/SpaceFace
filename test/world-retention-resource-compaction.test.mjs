@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  MAX_AMBIENT_TOMBSTONE_RECORDS_PER_SECTOR,
   MAX_RECORDS_PER_SECTOR,
   RECORD_KIND,
   RETENTION_CLASS,
@@ -89,6 +90,7 @@ test('world retention classes normalize legacy records and fail closed on perman
     upsertRecord(bag, worldRecord(`tombstone_${i}`, {
       alive: false,
       outcome: 'destroyed',
+      named: true, // player-authored outcome: protected, never ambient
       lastSeenTick: i,
     }));
   }
@@ -100,6 +102,92 @@ test('world retention classes normalize legacy records and fail closed on perman
   const job = normalizeRecord(worldRecord('job_actor', { jobId: 'job-1' }));
   assert.equal(named.retentionClass, RETENTION_CLASS.PERMANENT);
   assert.equal(job.retentionClass, RETENTION_CLASS.PERMANENT);
+});
+
+test('ambient kill tombstones bound per sector while authored and recipe deaths stay permanent', () => {
+  const build = () => {
+    const bag = createEmptyRecordsBag();
+    // 30 ambient kills: a plain dead NPC with no markers is memorial only and the oldest leave.
+    for (let i = 0; i < MAX_AMBIENT_TOMBSTONE_RECORDS_PER_SECTOR + 6; i++) {
+      upsertRecord(bag, worldRecord(`ambient_dead_${i}`, {
+        alive: false,
+        outcome: 'destroyed',
+        lastSeenTick: i,
+        lastObservedT: i,
+      }));
+    }
+    // Authored and load-bearing tombstones are older than every ambient kill and must survive.
+    upsertRecord(bag, worldRecord('authored_dead_named', {
+      alive: false, outcome: 'destroyed', named: true, lastSeenTick: -1,
+    }));
+    upsertRecord(bag, worldRecord('authored_dead_mission', {
+      alive: false, outcome: 'destroyed', missionId: 'mission-9', lastSeenTick: -1,
+    }));
+    upsertRecord(bag, worldRecord('authored_dead_wreck', {
+      alive: false, outcome: 'destroyed', kind: RECORD_KIND.WRECK, lastSeenTick: -1,
+    }));
+    upsertRecord(bag, worldRecord('recipe_dead', {
+      alive: false, outcome: 'destroyed', recordSource: 'sector_embodiment', lastSeenTick: -1,
+    }));
+    upsertRecord(bag, worldRecord('boss_dead', {
+      alive: false, outcome: 'defeated', isBoss: true, lastSeenTick: -1,
+    }));
+    return bag;
+  };
+  const first = build();
+  const second = build();
+  assert.equal(Object.keys(first.byId).length, MAX_AMBIENT_TOMBSTONE_RECORDS_PER_SECTOR + 5);
+  for (const id of ['authored_dead_named', 'authored_dead_mission', 'authored_dead_wreck',
+    'recipe_dead', 'boss_dead']) {
+    assert.ok(first.byId[id], `${id} must survive ambient-tombstone pressure`);
+  }
+  for (let i = 0; i < 6; i++) assert.equal(first.byId[`ambient_dead_${i}`], undefined,
+    'oldest ambient tombstones retire first');
+  for (let i = 6; i < MAX_AMBIENT_TOMBSTONE_RECORDS_PER_SECTOR + 6; i++) {
+    assert.ok(first.byId[`ambient_dead_${i}`], `ambient_dead_${i} is inside the remembered window`);
+  }
+  assert.ok(first.retentionReceipts.some((receipt) => receipt.event === 'world_records_tombstone_cap'
+    && receipt.retiredRecordIds.includes('ambient_dead_0')), 'the eviction writes a bounded receipt');
+  assert.equal(first.retentionReport.sectors.sector_test.retiredTombstones, 1,
+    'the report describes the most recent cap transaction — one ambient tombstone per upsert');
+  assert.deepEqual(Object.keys(first.byId).sort(), Object.keys(second.byId).sort(),
+    'the bound is deterministic');
+});
+
+test('a restored bag over both caps retires tombstones and recents in one honest report', () => {
+  const build = () => {
+    const raw = {};
+    for (let i = 0; i < MAX_AMBIENT_TOMBSTONE_RECORDS_PER_SECTOR + 6; i++) {
+      raw[`amb_${i}`] = worldRecord(`amb_${i}`, {
+        alive: false, outcome: 'destroyed', lastSeenTick: i, lastObservedT: i,
+      });
+    }
+    for (let i = 0; i < 50; i++) {
+      raw[`live_${i}`] = worldRecord(`live_${i}`, { lastSeenTick: 100 + i, lastObservedT: 100 + i });
+    }
+    return deserializeRecordsBag({ byId: raw });
+  };
+  const first = build();
+  const second = build();
+  const retiredTombstones = MAX_AMBIENT_TOMBSTONE_RECORDS_PER_SECTOR + 6
+    - MAX_AMBIENT_TOMBSTONE_RECORDS_PER_SECTOR;
+  const retiredRecent = (MAX_AMBIENT_TOMBSTONE_RECORDS_PER_SECTOR + 50) - MAX_RECORDS_PER_SECTOR;
+  const report = first.retentionReport.sectors.sector_test;
+  assert.equal(Object.keys(first.byId).length, MAX_RECORDS_PER_SECTOR);
+  assert.equal(report.retiredTombstones, retiredTombstones,
+    'one transaction reports the tombstone lane it ran');
+  assert.equal(report.retiredRecent, retiredRecent,
+    'the same transaction reports the shared-cap lane without erasing the tombstone count');
+  assert.ok(first.retentionReceipts.some((receipt) => receipt.event === 'world_records_tombstone_cap'
+    && receipt.retiredRecordIds.includes('amb_0')), 'the tombstone receipt is bounded');
+  assert.ok(first.retentionReceipts.some((receipt) => receipt.event === 'world_records_cap'),
+    'the shared-cap receipt follows in the same normalize');
+  for (let i = 0; i < retiredTombstones; i++) assert.equal(first.byId[`amb_${i}`], undefined);
+  for (let i = retiredTombstones; i < MAX_AMBIENT_TOMBSTONE_RECORDS_PER_SECTOR + 6; i++) {
+    assert.ok(first.byId[`amb_${i}`], `amb_${i} is inside the tombstone window`);
+  }
+  assert.deepEqual(Object.keys(first.byId).sort(), Object.keys(second.byId).sort(),
+    'the combined transaction is deterministic');
 });
 
 test('recent memory cap retires deterministically while aggregate and permanent records remain', () => {
@@ -257,10 +345,11 @@ test('restore normalization enforces world/resource caps and emits honest receip
   for (let i = 0; i < 60; i++) worldPermanent[`restored_dead_${i}`] = worldRecord(`restored_dead_${i}`, {
     alive: false,
     outcome: 'destroyed',
+    named: true, // player-authored outcome: protected, never ambient
   });
   const normalizedPermanent = deserializeRecordsBag({ byId: worldPermanent });
   assert.equal(Object.keys(normalizedPermanent.byId).length, 60,
-    'restored tombstones fail closed instead of being silently evicted');
+    'restored protected tombstones fail closed instead of being silently evicted');
   assert.equal(normalizedPermanent.retentionReport.sectors.sector_test.protectedOverflow, 12);
   assert.ok(normalizedPermanent.retentionReceipts.some((receipt) => receipt.protectedOverflow === 12));
 

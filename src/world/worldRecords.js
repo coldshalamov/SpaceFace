@@ -45,6 +45,13 @@ export const MAX_RECORDS_PER_SECTOR = 48;
 // 5MB localStorage quota refused writes around cycle ~94.)
 export const MAX_ALIVE_CONVOY_RECORDS_PER_SECTOR = 24;
 
+// Ambient kill tombstones (a plain NPC/convoy hull with no player-authored markers and no
+// recipe identity) are memorial only, but each kill mints a unique recordId so the bag grows
+// without bound: every NPC-vs-NPC death in a materialized sector persisted ~1-2 KB forever.
+// The sector remembers the newest few; recipe tombstones are exempt because the embodiment
+// reconcile needs the surviving recordId to suppress a re-roll.
+export const MAX_AMBIENT_TOMBSTONE_RECORDS_PER_SECTOR = 24;
+
 /** Generic observed actors stay as recent-memory this long (simTime seconds). */
 export const RECENT_MEMORY_WINDOW_S = 180;
 
@@ -71,15 +78,32 @@ export function clearScheduledWake(options = {}) {
   };
 }
 
-function hasPermanentWorldMarkers(rec) {
-  if (!rec) return false;
+function hasPermanentMarkersBeyondOutcome(rec) {
   if (rec.kind === RECORD_KIND.MISSION_TARGET || rec.kind === RECORD_KIND.WRECK
     || rec.kind === RECORD_KIND.AFTERMATH) return true;
-  if (rec.outcome === 'defeated' || rec.outcome === 'destroyed') return true;
   if (rec.playerOwned === true || rec.playerCreated === true || rec.named === true) return true;
   if (rec.missionId || rec.missionTag || rec.jobId) return true;
   if (rec.deactivation && rec.deactivation.reason === 'player') return true;
   return false;
+}
+
+function hasPermanentWorldMarkers(rec) {
+  if (!rec) return false;
+  if (rec.outcome === 'defeated' || rec.outcome === 'destroyed') return true;
+  return hasPermanentMarkersBeyondOutcome(rec);
+}
+
+/**
+ * A tombstone whose only durable claim is that something died: dead, no recipe identity to
+ * suppress, no player-authored or named markers, not a boss. These are the records the
+ * ambient-tombstone bound may evict; everything else stays protected.
+ */
+export function isAmbientTombstoneWorldRecord(rec) {
+  return !!(rec && rec.alive === false
+    && (rec.outcome === 'destroyed' || rec.outcome === 'defeated')
+    && rec.isBoss !== true
+    && rec.recordSource !== 'sector_embodiment'
+    && !hasPermanentMarkersBeyondOutcome(rec));
 }
 
 /**
@@ -896,27 +920,64 @@ export function upsertRecord(bag, record) {
   return rec;
 }
 
+function recordAgeRank(a, b) {
+  if (a.lastSeenTick !== b.lastSeenTick) return a.lastSeenTick - b.lastSeenTick;
+  if (a.lastObservedT !== b.lastObservedT) return a.lastObservedT - b.lastObservedT;
+  return a.recordId < b.recordId ? -1 : (a.recordId > b.recordId ? 1 : 0);
+}
+
 function enforceSectorBound(bag, sectorId, opts = {}) {
   // Counting pass first: the sorted recordsForSector walk below is only needed once the sector
   // is actually over cap, which is the rare path.
   const byId = bag && bag.byId ? bag.byId : {};
   let sectorCount = 0;
+  let ambientTombstones = 0;
   for (const id of Object.keys(byId)) {
     const rec = byId[id];
-    if (rec && (rec.sectorId === sectorId || rec.homeSectorId === sectorId)) sectorCount++;
+    if (!rec || (rec.sectorId !== sectorId && rec.homeSectorId !== sectorId)) continue;
+    sectorCount++;
+    if (isAmbientTombstoneWorldRecord(rec)) ambientTombstones++;
   }
-  if (sectorCount <= MAX_RECORDS_PER_SECTOR) return;
-  const list = recordsForSector(bag, sectorId);
+  const tombstoneOverflow = ambientTombstones - MAX_AMBIENT_TOMBSTONE_RECORDS_PER_SECTOR;
+  if (sectorCount <= MAX_RECORDS_PER_SECTOR && tombstoneOverflow <= 0) return;
+  let retiredTombstones = 0;
+  let list = recordsForSector(bag, sectorId);
+  if (tombstoneOverflow > 0) {
+    const rankedTombstones = list.filter(isAmbientTombstoneWorldRecord).sort(recordAgeRank);
+    const droppedIds = rankedTombstones.slice(0, tombstoneOverflow)
+      .map((rec) => rec.recordId).sort();
+    for (const recordId of droppedIds) delete bag.byId[recordId];
+    retiredTombstones = droppedIds.length;
+    const remainingIds = recordsForSector(bag, sectorId).map((rec) => rec.recordId).sort();
+    appendRetentionReceipt(bag, {
+      receiptId: `wr-tomb:${sectorId}:${(hash32(1, 'wr-tomb', remainingIds.join(','), droppedIds.join(',')) >>> 0).toString(16)}`,
+      event: 'world_records_tombstone_cap',
+      source: opts.source || 'runtime',
+      sectorId: sectorId || null,
+      limit: MAX_AMBIENT_TOMBSTONE_RECORDS_PER_SECTOR,
+      before: ambientTombstones,
+      retiredRecordIds: droppedIds,
+      protectedOverflow: 0,
+    });
+    ensureRetentionReport(bag).sectors[String(sectorId || '')] = {
+      sectorId: sectorId || null,
+      total: remainingIds.length,
+      limit: MAX_RECORDS_PER_SECTOR,
+      reclaimable: 0,
+      retiredRecent: 0,
+      retiredTombstones,
+      protectedOverflow: 0,
+    };
+    list = recordsForSector(bag, sectorId);
+    sectorCount = list.length;
+    if (sectorCount <= MAX_RECORDS_PER_SECTOR) return;
+  }
   const reclaimable = list.filter(isReclaimableRecentWorldRecord);
   const required = Math.max(0, list.length - MAX_RECORDS_PER_SECTOR);
   // Keep the ordinary under-cap runtime shape unchanged; reports are created only when a cap
   // transaction or protected overflow actually occurs.
   if (required === 0) return;
-  const ranked = reclaimable.slice().sort((a, b) => {
-    if (a.lastSeenTick !== b.lastSeenTick) return a.lastSeenTick - b.lastSeenTick;
-    if (a.lastObservedT !== b.lastObservedT) return a.lastObservedT - b.lastObservedT;
-    return a.recordId < b.recordId ? -1 : (a.recordId > b.recordId ? 1 : 0);
-  });
+  const ranked = reclaimable.slice().sort(recordAgeRank);
   const dropCount = Math.min(required, ranked.length);
   for (let i = 0; i < dropCount; i++) {
     delete bag.byId[ranked[i].recordId];
@@ -929,6 +990,7 @@ function enforceSectorBound(bag, sectorId, opts = {}) {
     limit: MAX_RECORDS_PER_SECTOR,
     reclaimable: ranked.length - dropCount,
     retiredRecent: dropCount,
+    retiredTombstones,
     protectedOverflow,
   };
   const remainingIds = recordsForSector(bag, sectorId).map((rec) => rec.recordId).sort();
