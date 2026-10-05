@@ -754,7 +754,7 @@ export const routeFollower = {
     this.interrupt(`gate-${reason}`, { detail: reason });
   },
 
-  _onSectorEnter({ sectorId, enterEpoch, noTeleport }) {
+  _onSectorEnter({ sectorId, enterEpoch, noTeleport, continuous }) {
     const nav = this.state && this.state.nav;
     const executor = nav && nav.executor;
     if (!nav || !sectorId) return;
@@ -770,7 +770,9 @@ export const routeFollower = {
     // reachable place in the shared global_v1 frame. Only a teleporting enter — a gate jump,
     // a drive jump, a cross-sector recovery — can strand a course aimed back at the departed
     // region (review: the frame premise matters — nav coordinates are global, not local).
-    if (noTeleport !== true) this._retireArrivedGateWaypoint(sectorId);
+    // world.enterSector always stamps both flags on its emits (continuous implies noTeleport);
+    // honoring either keeps a foreign continuous producer from retiring a still-valid course.
+    if (noTeleport !== true && continuous !== true) this._retireArrivedGateWaypoint(sectorId);
 
     // The chart's adjacent-sector primary action is intentionally "Set Course & Jump": it starts
     // the public world jump before the player has engaged a route executor. `ui:setCourse` still
@@ -842,6 +844,15 @@ export const routeFollower = {
       autopilot.stable = null;
       autopilot.label = '';
       autopilot.initialDistance = null;
+      // stopAutopilot parity (flightV3): the brake latches and avoidance scratch are
+      // latent-only while readers gate on active, but a stale set is a trap for a later
+      // in-place re-arm — clear them the same way the flight owner does (review).
+      autopilot.brakeSettled = false;
+      autopilot.brakeHold = false;
+      autopilot._avoidanceSide = 0;
+      autopilot._avoidanceTargetEntityId = '';
+      autopilot._avoidanceTargetX = null;
+      autopilot._avoidanceTargetZ = null;
       if (this.state.input) {
         this.state.input.autopilot = false;
         if (this.state.input.actions) this.state.input.actions.brake = false;

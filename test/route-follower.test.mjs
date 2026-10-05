@@ -464,6 +464,41 @@ test('a foreign autopilot still burning releases; an inactive record is untouche
   assert.equal(h.state.nav.autopilot.stable, null);
 });
 
+test('the teleport retire drops the input latches and brake/avoidance scratch', () => {
+  const h = makeHarness();
+  h.state.nav.waypoint = { pos: { x: 300, z: 120 }, label: 'Ore berth' };
+  h.state.nav.autopilot = {
+    active: true,
+    target: { x: 300, z: 120 },
+    targetEntityId: null,
+    label: 'Ore berth',
+    arrivalRadius: 36,
+    status: 'cruising',
+    brakeSettled: true,
+    brakeHold: true,
+    _avoidanceSide: 1,
+    _avoidanceTargetEntityId: 'e9',
+    _avoidanceTargetX: 5,
+    _avoidanceTargetZ: -3,
+  };
+  // A held autopilot latches input.autopilot and input.actions.brake while it burns — the
+  // retire must drop both, or the next tick's flight reads a burn the nav record just killed.
+  h.state.input = { autopilot: true, actions: { brake: true } };
+
+  h.state.world.currentSectorId = CHAIN[1];
+  h.bus.emit('sector:enter', { sectorId: CHAIN[1] });
+
+  assert.equal(h.state.input.autopilot, false, 'the input latch releases with the record');
+  assert.equal(h.state.input.actions.brake, false, 'the brake action releases with it');
+  // stopAutopilot parity: latent-only fields clear too so a later in-place re-arm inherits
+  // nothing stale.
+  assert.equal(h.state.nav.autopilot.brakeSettled, false);
+  assert.equal(h.state.nav.autopilot.brakeHold, false);
+  assert.equal(h.state.nav.autopilot._avoidanceSide, 0);
+  assert.equal(h.state.nav.autopilot._avoidanceTargetEntityId, '');
+  assert.equal(h.state.nav.autopilot._avoidanceTargetX, null);
+});
+
 test('a continuous membership enter never retires the armed course', () => {
   const h = makeHarness();
   h.state.nav.waypoint = { pos: { x: 300, z: 120 }, label: 'Ore berth' };
