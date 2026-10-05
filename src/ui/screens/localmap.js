@@ -201,8 +201,8 @@ export function pickClickTarget(targets, sx, sy) {
 // The scan ping is the sweep's answer, not a decoration: the map draws it, the legend names it,
 // so a click on it must set course TO it (named, not a bare "Map fix"). Same contract the
 // scanner readouts teach ("Track the source"): the local map is where tracking is one click.
-// Marks are picked for the CURRENT sector only. The system chart sets the same named course
-// through chartPingCourseTargets. The radar still draws the "?" decoration-only.
+// Marks are picked for the CURRENT sector only. The system chart and the radar set the same
+// named course through chartPingCourseTargets and radarDialCourse.
 // Downstream the click flows through world._onSetCourse's pos-branch (src/systems/world.js:5312),
 // which takes waypointKind verbatim (:5326); no sim-side change was needed.
 export const PING_COURSE_LABEL = 'Unresolved contact';

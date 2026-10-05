@@ -37,6 +37,7 @@ import {
   sanitizeMapLabel,
   tacticalRadarMetrics,
 } from './map/tacticalMapGrammar.js';
+import { canNavigateToKnowledge, discoveryKnowledge } from './sim/discoveryKnowledge.js';
 import { installMapParityBridge } from './map/mapParityBridge.js';
 import { svg as orrSvg, circularText } from './orrery/svg.js';
 import { orbitRing, ring as orrRing, hand as orrHand } from './orrery/instruments.js';
@@ -1273,6 +1274,52 @@ function createRadarFrame(size, center, radius) {
   };
 }
 
+const PING_HIT_PX = 14;
+
+/** Unresolved scanner pings in the current sector, as named courses. No exact wreck position. */
+export function radarPingCourses(state) {
+  const sectorId = state && state.world && state.world.currentSectorId != null
+    ? String(state.world.currentSectorId)
+    : null;
+  const courses = [];
+  for (const entry of discoveryKnowledge(state).entries) {
+    if (!entry || entry.tier !== 'ping' || entry.source !== 'ping' || !entry.pos) continue;
+    if (canNavigateToKnowledge(entry)) continue;
+    if (sectorId && entry.sectorId !== sectorId) continue;
+    const prefix = `ping:${entry.sectorId}:`;
+    const pingId = entry.id.startsWith(prefix) ? entry.id.slice(prefix.length) : entry.id;
+    courses.push({
+      type: 'ping',
+      pos: { x: entry.pos.x, z: entry.pos.z },
+      label: entry.label || 'Unresolved contact',
+      reason: entry.label || 'Unresolved contact',
+      waypointKind: 'local',
+      arrivalRadius: 44,
+      autopilot: true,
+      targetEntityId: pingId,
+    });
+  }
+  return courses;
+}
+
+/** The course under a radar click, or null when the click is empty dial (expand instead). */
+export function radarDialCourse(state, playerPos, range, metrics, clickX, clickY) {
+  let best = null;
+  let bestD = PING_HIT_PX * PING_HIT_PX;
+  for (const course of radarPingCourses(state)) {
+    const projected = projectRadarPoint(playerPos, course.pos, range, metrics);
+    if (!projected || projected.offRange) continue;
+    const dx = projected.x - clickX;
+    const dy = projected.y - clickY;
+    const d2 = dx * dx + dy * dy;
+    if (d2 <= bestD) {
+      best = course;
+      bestD = d2;
+    }
+  }
+  return best;
+}
+
 export function createRadar(ctx) {
   const { state, bus } = ctx;
   const wrap = document.createElement('div');
@@ -1360,7 +1407,25 @@ export function createRadar(ctx) {
       : '';
   }
 
-  const onDialClick = () => setExpanded(!expanded);
+  const onDialClick = (ev) => {
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId)
+      : null;
+    const rect = canvas.getBoundingClientRect();
+    if (player && player.pos && rect.width > 0 && rect.height > 0 && bus) {
+      const x = ((ev.clientX - rect.left) / rect.width) * configuredSize;
+      const y = ((ev.clientY - rect.top) / rect.height) * configuredSize;
+      const baseRange = (state.ui && state.ui.radarRange) || 4000;
+      const range = expanded ? baseRange * 2 : baseRange;
+      const course = radarDialCourse(state, player.pos, range, tacticalRadarMetrics(expanded), x, y);
+      if (course) {
+        bus.emit('ui:setCourse', course);
+        bus.emit('toast', { text: 'Autopilot set: ' + course.label, kind: 'info', ttl: 3 });
+        return;
+      }
+    }
+    setExpanded(!expanded);
+  };
   dial.addEventListener('click', onDialClick);
 
   let contactList = [];
@@ -1918,10 +1983,9 @@ export function createRadar(ctx) {
       const pulse = reducedMotion ? 0.7 : 0.5 + 0.5 * Math.sin(now * 0.015);
       g.globalAlpha = 0.5 + 0.5 * pulse;
 
-      if (Array.isArray(pings)) {
-        for (const ping of pings) {
-          if (!ping || !ping.pos) continue;
-          const projected = projectRadarPoint(player.pos, ping.pos, range, metrics, projectScratch);
+      if (Array.isArray(pings) || radarPingCourses(state).length) {
+        for (const course of radarPingCourses(state)) {
+          const projected = projectRadarPoint(player.pos, course.pos, range, metrics, projectScratch);
           if (!projected || projected.offRange) continue;
           g.strokeText('?', projected.x, projected.y);
         }
