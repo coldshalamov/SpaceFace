@@ -23,6 +23,7 @@ import { hasActiveSpatialHash, queryNearbyEntities } from '../core/spatialQuery.
 import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidField.js';
 import { isDynamicPhysicsBodyEntity, queuePhysicsImpulse, queuePhysicsTorqueImpulse } from '../core/physicsAuthority.js';
 import { isHostileToPlayer } from './scanner.js';
+import { resolveEntitySelection } from '../ui/sim/stableSelection.js';
 import { combatFlag, massline2Flag } from '../data/featureFlags.js';
 import { isMassSeedTetherEligible, massSeedLatchPreview } from './massSeed.js';
 import { specialistPlanByEnemyId } from '../ai/specialistPlans.js';
@@ -3135,10 +3136,29 @@ function preciseCursorScore(entity, aim) {
 }
 
 function masslineRouteTargetId(state) {
-  const waypointId = state && state.nav && state.nav.waypoint && state.nav.waypoint.targetEntityId;
-  if (waypointId != null) return waypointId;
-  const autopilotId = state && state.nav && state.nav.autopilot && state.nav.autopilot.targetEntityId;
-  return autopilotId != null ? autopilotId : null;
+  const nav = state && state.nav;
+  const waypoint = nav && nav.waypoint;
+  if (waypoint) {
+    if (waypoint.stable) {
+      // The stamped bind is the authority for which entity the armed course meant: a durable
+      // bind follows the re-materialized body, and a closed stamp means the slot's occupant is
+      // not the course target — returning the bare id would inject (and prioritize) an
+      // unrelated body into acquisition.
+      const entity = resolveEntitySelection(state, waypoint.stable);
+      if (entity && entity.alive) return entity.id;
+    } else if (waypoint.targetEntityId != null) {
+      return waypoint.targetEntityId;
+    }
+  }
+  const autopilot = nav && nav.autopilot;
+  if (autopilot) {
+    if (autopilot.stable) {
+      const entity = resolveEntitySelection(state, autopilot.stable);
+      return entity && entity.alive ? entity.id : null;
+    }
+    return autopilot.targetEntityId != null ? autopilot.targetEntityId : null;
+  }
+  return null;
 }
 
 function latchedLoadRemaining(entity) {

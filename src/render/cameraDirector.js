@@ -446,7 +446,10 @@ export function resolveGateApproachTarget(state, player, activeGateId = null) {
   const gate = autopilot.stable
     ? resolveEntitySelection(state, autopilot.stable)
     : entityFor(state, autopilot.targetEntityId);
-  if (!gate || !gate.data || (!gate.data.isGate && !gate.data.isWormhole)) return null;
+  // The stable path proves identity but not position — a live gate still composing its body
+  // mid-rematerialize resolves yet has no pos, and the metric math below dereferences it.
+  if (!gate || !gate.pos || !Number.isFinite(gate.pos.x) || !Number.isFinite(gate.pos.z)) return null;
+  if (!gate.data || (!gate.data.isGate && !gate.data.isWormhole)) return null;
   const metrics = resolveGateVisualMetrics(gate);
   if (!metrics) return null;
   const distance = Math.hypot(gate.pos.x - player.pos.x, gate.pos.z - player.pos.z);

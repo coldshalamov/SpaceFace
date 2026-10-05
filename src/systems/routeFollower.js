@@ -628,6 +628,7 @@ export const routeFollower = {
       if (routeTarget) {
         autopilot.target = null;
         autopilot.targetEntityId = null;
+        autopilot.stable = null;
         autopilot.label = '';
         autopilot.initialDistance = null;
       }
@@ -817,6 +818,9 @@ export const routeFollower = {
       autopilot.status = 'arrived';
       autopilot.target = null;
       autopilot.targetEntityId = null;
+      // The stamped bind retires with the id — a lingering stamp is inert only while every
+      // reader gates on active, so drop it with the bind it proves (review).
+      autopilot.stable = null;
       autopilot.label = '';
       autopilot.initialDistance = null;
       this._emittingAutopilot = true;

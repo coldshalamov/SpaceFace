@@ -23,7 +23,7 @@ import { world } from '../src/systems/world.js';
 import { scanner } from '../src/systems/scanner.js';
 import { resolveAutopilotTarget } from '../src/systems/flightV3.js';
 import { resolveWaypointPresentationPosition } from '../src/ui/navigationWaypoint.js';
-import { captureEntitySelection } from '../src/ui/sim/stableSelection.js';
+import { captureEntitySelection, resolveEntitySelection } from '../src/ui/sim/stableSelection.js';
 import { masslineThrow } from '../src/systems/masslineThrow.js';
 import { resolveGateApproachTarget } from '../src/render/cameraDirector.js';
 import { predictNextSector } from '../src/render/sectorPredict.js';
@@ -311,6 +311,129 @@ test('PB-285: a mid-burn recycle closes the throw, the approach read and the war
   assert.equal(predictNextSector(state), null);
 });
 
+test('PB-285 REV: a seeded throw re-proves its stamped bind every tick, then chases the fix', () => {
+  const state = boot();
+  const player = state.entities.get(0);
+  const payload = { id: 99, type: 'payload' };
+  const gate = spawn(state, {
+    id: 5, type: 'station', alive: true,
+    pos: { x: 200, y: 0, z: 0 }, vel: { x: 0, y: 0, z: 0 }, rot: 0,
+    data: { stationId: 'aurelia_gate', isGate: true, name: 'Aurelia Gate' },
+  });
+  const bind = captureEntitySelection(gate);
+  state.nav.waypoint = { pos: { x: 200, z: 0 }, targetEntityId: 5, stable: bind, arrivalRadius: 40 };
+  // The seeded record is what the latch wrote at seed time — stamp and all.
+  const runtime = {
+    releaseTarget: { kind: 'entity', source: 'waypoint', targetId: 5, pos: null, radius: 0, stable: bind },
+  };
+
+  // While the bind lives the release aims at the holder.
+  let aim = masslineThrow._resolveThrowAim(state, player, payload, runtime);
+  assert.equal(aim.entity.id, 5);
+
+  // A post-seed rematerialize under a new id — the stamped bind follows the live body instead
+  // of stranding the seeded targetId on a dead slot.
+  despawn(state, gate);
+  const gate2 = spawn(state, { ...gate, id: 12 });
+  aim = masslineThrow._resolveThrowAim(state, player, payload, runtime);
+  assert.equal(aim.entity.id, 12, 'the release followed the re-materialized gate');
+
+  // The durable identity is gone for good — the bind closes and the throw keeps the recorded
+  // fix as a point aim rather than dropping the release or trusting the dead slot.
+  despawn(state, gate2);
+  aim = masslineThrow._resolveThrowAim(state, player, payload, runtime);
+  assert.equal(aim.entity, null);
+  assert.deepEqual({ x: aim.target.pos.x, z: aim.target.pos.z }, { x: 200, z: 0 });
+  assert.equal(runtime.releaseTarget.targetId, null, 'the record degraded to its point fix');
+});
+
+test('PB-285 REV: a recycled seeded bind falls back to the fix, never the new occupant', () => {
+  const state = boot();
+  const player = state.entities.get(0);
+  const payload = { id: 99, type: 'payload' };
+  const pirate = spawn(state, hostileMule(7, { pos: { x: 300, y: 0, z: 0 } }));
+  const bind = captureEntitySelection(pirate);
+  state.nav.waypoint = { pos: { x: 300, z: 0 }, targetEntityId: 7, stable: bind, arrivalRadius: 20 };
+  const runtime = {
+    releaseTarget: { kind: 'entity', source: 'waypoint', targetId: 7, pos: null, radius: 0, stable: bind },
+  };
+
+  assert.equal(masslineThrow._resolveThrowAim(state, player, payload, runtime).entity.id, 7);
+
+  // The pirate dies; the pool reissues id 7 onto an unrelated skiff.
+  pirate.alive = false;
+  spawn(state, {
+    id: 7, type: 'ship', alive: true,
+    pos: { x: 900, y: 0, z: 900 }, vel: { x: 0, y: 0, z: 0 }, rot: 0,
+    factionId: 'vagrant_combine',
+    data: { name: 'Unrelated skiff', role: 'hauler', kind: 'mule' },
+  });
+
+  const aim = masslineThrow._resolveThrowAim(state, player, payload, runtime);
+  assert.equal(aim.entity, null, 'the stamp resolved closed — the occupant is not the target');
+  assert.deepEqual({ x: aim.target.pos.x, z: aim.target.pos.z }, { x: 300, z: 0 });
+});
+
+test('PB-285 REV: a stable-resolved gate without a pos never reaches the approach math', () => {
+  const state = boot();
+  const player = state.entities.get(0);
+  // A live gate still composing its body mid-rematerialize: the stamp resolves, pos is absent.
+  const gate = spawn(state, {
+    id: 5, type: 'station', alive: true,
+    vel: { x: 0, y: 0, z: 0 }, rot: 0,
+    data: { stationId: 'aurelia_gate', isGate: true, gateTo: 'sector_b', name: 'Aurelia Gate' },
+  });
+  const bind = captureEntitySelection(gate);
+  state.nav.autopilot = { active: true, targetEntityId: 5, stable: bind };
+  assert.equal(resolveGateApproachTarget(state, player), null, 'a positionless gate closes the read');
+});
+
+test('PB-285 REV: a course armed at a dead payload binds nothing', () => {
+  const state = boot();
+  const system = { ...world, state, bus: { emit() {} }, computeRoute() { return null; } };
+  // The payload names id 77, which holds no live entity — the bind cannot be proven, so the
+  // course carries the fix only. A bare id here would be a bind the next occupant inherits.
+  system._onSetCourse({ pos: { x: 60, z: 40 }, targetEntityId: 77, label: 'ghost' });
+  assert.equal(state.nav.waypoint.targetEntityId, undefined, 'no unprovable id is written');
+  assert.equal(state.nav.autopilot.targetEntityId, null, 'the armed burn binds nothing either');
+  assert.equal(state.nav.waypoint.stable, undefined);
+  assert.equal(state.nav.waypoint.pos.x, 60, 'the authored fix stays the aim');
+});
+
+test('PB-285 REV: record-key resolution answers through the world-record index lane', () => {
+  const state = boot();
+  const wreck = spawn(state, {
+    id: 8, type: 'wreck', alive: true,
+    pos: { x: 1, y: 0, z: 1 }, vel: { x: 0, y: 0, z: 0 }, rot: 0,
+    data: { worldRecordId: 'wr_1', name: 'hulk' },
+  });
+  const sel = { key: 'record:wr_1', durable: true, entityId: 8, stamp: null };
+  // No index yet — the entityList walk answers.
+  assert.equal(resolveEntitySelection(state, sel), wreck);
+
+  // A healthy index row resolves the same holder without the walk.
+  state.entityIndex = {
+    byWorldRecordId: new Map([['wr_1', wreck]]),
+    byWorldRecordIdCount: new Map([['wr_1', 1]]),
+  };
+  assert.equal(resolveEntitySelection(state, sel), wreck);
+
+  // A stale row (the indexed holder is dead, still counted) fails verification and the walk
+  // answers the same closed result the index would have lied about.
+  wreck.alive = false;
+  assert.equal(resolveEntitySelection(state, sel), null);
+
+  // Ambiguity (a second carrier) refuses the fast lane entirely — the walk still finds the
+  // live holder even though the index row is the dead one.
+  const wreck2 = spawn(state, {
+    id: 9, type: 'wreck', alive: true,
+    pos: { x: 2, y: 0, z: 2 }, vel: { x: 0, y: 0, z: 0 }, rot: 0,
+    data: { worldRecordId: 'wr_1', name: 'hulk' },
+  });
+  state.entityIndex.byWorldRecordIdCount.set('wr_1', 2);
+  assert.equal(resolveEntitySelection(state, sel), wreck2);
+});
+
 test('PB-285: the live route consumes the model — draw reconciles, every commit gates', () => {
   const src = readFileSync(join(ROOT, 'src/ui/galaxyMap.js'), 'utf8');
   const draw = src.slice(src.indexOf('_draw() {'));
@@ -346,8 +469,14 @@ test('PB-285: the live route consumes the model — draw reconciles, every commi
   // The bare-id readers downstream of the armed course read the stamp too — never the recycled
   // slot a bare targetEntityId would name after a death or an instance swap.
   const throwSrc = readFileSync(join(ROOT, 'src/systems/masslineThrow.js'), 'utf8');
-  assert.ok(throwSrc.includes('resolveEntitySelection(state, waypoint.stable)'),
-    'the self-throw resolver reads the stamped waypoint bind');
+  assert.ok(throwSrc.split('resolveEntitySelection(state, waypoint.stable)').length - 1 >= 2,
+    'the self-throw resolver and the release seed both read the stamped waypoint bind');
+  assert.ok(throwSrc.includes('resolveEntitySelection(state, releaseTarget.stable)'),
+    'a seeded release re-proves its stamp every tick instead of trusting the seeded id');
+  const tetherSrc = readFileSync(join(ROOT, 'src/systems/tetherGameplay.js'), 'utf8');
+  assert.ok(tetherSrc.includes('resolveEntitySelection(state, waypoint.stable)') &&
+    tetherSrc.includes('resolveEntitySelection(state, autopilot.stable)'),
+    'the tether acquisition hint resolves the armed course through its stamps');
   const camSrc = readFileSync(join(ROOT, 'src/render/cameraDirector.js'), 'utf8');
   assert.ok(camSrc.includes('resolveEntitySelection(state, autopilot.stable)'),
     'the gate-approach instrument reads the stamped autopilot bind');
@@ -358,4 +487,16 @@ test('PB-285: the live route consumes the model — draw reconciles, every commi
   const scanSrc = readFileSync(join(ROOT, 'src/systems/scanner.js'), 'utf8');
   assert.ok(scanSrc.includes('entityStable') && scanSrc.includes('recordEntity('),
     'signal records stamp at write and validate at emit — no stale id rides out');
+  // A retired bind drops its stamp with its id: a stale stamp left on the object is inert only
+  // while every reader gates on active, so the retirement paths clear both fields together.
+  const routeSrc = readFileSync(join(ROOT, 'src/systems/routeFollower.js'), 'utf8');
+  assert.ok(routeSrc.split('autopilot.stable = null').length - 1 >= 2,
+    'route disarm and gate-arrival retire the stamp with the id');
+  assert.ok(flightSrc.includes('autopilot.stable = null'),
+    'stopAutopilot retires the stamped bind with the burn');
+  // The record lane uses the world-record index when it can give an unambiguous answer, so a
+  // per-tick resolve does not walk the whole entity list.
+  const selSrc = readFileSync(join(ROOT, 'src/ui/sim/stableSelection.js'), 'utf8');
+  assert.ok(selSrc.includes('byWorldRecordIdCount') && selSrc.includes('byWorldRecordId'),
+    'record-key resolution rides the index fast lane when the count proves one carrier');
 });

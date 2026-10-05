@@ -137,6 +137,23 @@ function findStationByStationId(state, stationId) {
   return null;
 }
 
+function findEntityByRecordId(state, recordId) {
+  const index = state && state.entityIndex;
+  const counts = index && index.byWorldRecordIdCount;
+  const row = index && index.byWorldRecordId;
+  const indexed = row instanceof Map ? row.get(recordId) : null;
+  // The index's parallel count answers "exactly one carrier" in O(1) — but its row can hold a
+  // stale instance (recycled id, pre-rebuild index), so prove it the same way byStationId does:
+  // the indexed entity must still be the live holder of its own id and still carry the record
+  // stamp. Ambiguity (0, ≥2 carriers, missing count, a stale row) keeps the entityList walk.
+  if (counts instanceof Map && counts.get(recordId) === 1
+      && indexed && liveEntityById(state, indexed.id) === indexed
+      && indexed.data && indexed.data.worldRecordId === recordId) {
+    return indexed;
+  }
+  return findLiveEntityForRecord(entityIterable(state), recordId);
+}
+
 function findEntityByKey(state, key) {
   if (typeof key !== 'string' || !key) return null;
   const cut = key.indexOf(':');
@@ -145,7 +162,7 @@ function findEntityByKey(state, key) {
   const id = key.slice(cut + 1);
   if (!id) return null;
   if (kind === 'station') return findStationByStationId(state, id);
-  if (kind === 'record') return findLiveEntityForRecord(entityIterable(state), id);
+  if (kind === 'record') return findEntityByRecordId(state, id);
   if (kind === 'entity') return liveEntityById(state, Number.isFinite(Number(id)) ? Number(id) : id);
   return null;
 }

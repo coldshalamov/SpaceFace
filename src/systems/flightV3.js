@@ -1337,6 +1337,10 @@ function stopAutopilot(host, state, reason) {
   clearAutopilotAvoidance(autopilot, true);
   autopilot.active = false;
   autopilot.status = reason || 'idle';
+  // Retire the stamped bind with the burn: it is inert only while readers gate on active, and
+  // a stale stamp on the object is a trap for any future in-place re-arm (review).
+  autopilot.targetEntityId = null;
+  autopilot.stable = null;
   if (state && state.input) {
     state.input.autopilot = false;
     if (state.input.actions) state.input.actions.brake = false;

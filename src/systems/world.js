@@ -5328,20 +5328,25 @@ export const world = {
       };
       let stableTarget = null;
       if (targetEntityId != null) {
-        this.state.nav.waypoint.targetEntityId = targetEntityId;
-        // INF-056: the course aimed at a live body, so bind the presentation id too — flight
-        // (resolveAutopilotTarget) re-resolves the entity every tick, and with the bind every
-        // instrument resolves the same moving position through the canonical resolver. Dead or
-        // despawned targets bind nothing; the authored pos stays the fail-closed place. The save
-        // whitelist drops the field, so a loaded waypoint falls back to pos the same way.
-        const presentationEntityId = presentationEntityIdForCourseTarget(this.state.entities, targetEntityId);
-        if (presentationEntityId != null) this.state.nav.waypoint.presentationEntityId = presentationEntityId;
-        // SF-244: the armed course outlives the commit instant and the core recycles entity
-        // ids — stamp what the id meant so a later holder resolves closed (autopilot falls
-        // back to the fix) instead of redirecting the burn onto an unrelated body.
+        // Dead or despawned targets bind nothing: writing the bare id without its stamp would
+        // leave an unprovable bind that a recycled occupant later inherits — the authored pos
+        // stays the fail-closed place instead. presentationEntityId already refused the same
+        // dead bind two lines above; the id write now agrees with it (review).
         const bound = liveEntityById(this.state, targetEntityId);
-        stableTarget = bound ? captureEntitySelection(bound) : null;
-        if (stableTarget) this.state.nav.waypoint.stable = stableTarget;
+        if (bound) {
+          this.state.nav.waypoint.targetEntityId = targetEntityId;
+          // INF-056: the course aimed at a live body, so bind the presentation id too — flight
+          // (resolveAutopilotTarget) re-resolves the entity every tick, and with the bind every
+          // instrument resolves the same moving position through the canonical resolver. The save
+          // whitelist drops the field, so a loaded waypoint falls back to pos the same way.
+          const presentationEntityId = presentationEntityIdForCourseTarget(this.state.entities, targetEntityId);
+          if (presentationEntityId != null) this.state.nav.waypoint.presentationEntityId = presentationEntityId;
+          // SF-244: the armed course outlives the commit instant and the core recycles entity
+          // ids — stamp what the id meant so a later holder resolves closed (autopilot falls
+          // back to the fix) instead of redirecting the burn onto an unrelated body.
+          stableTarget = captureEntitySelection(bound);
+          if (stableTarget) this.state.nav.waypoint.stable = stableTarget;
+        }
       }
       // A physical gate is a local position with an inter-sector completion condition. Preserve the
       // destination identity so navigation can retire the old-sector marker only after authoritative
@@ -5350,7 +5355,7 @@ export const world = {
       this.state.nav.autopilot = {
         active: payload.autopilot !== false,
         target: pos,
-        targetEntityId,
+        targetEntityId: stableTarget ? targetEntityId : null,
         label,
         arrivalRadius,
         status: 'armed',
