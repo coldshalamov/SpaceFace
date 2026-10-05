@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 
 import { allocateEntityId } from '../src/core/entity.js';
 import { createSimulation, SIM_DT } from '../src/core/sim.js';
+import { demoteOpticAsteroidToField } from '../src/world/asteroidField.js';
 
 function bareState(overrides = {}) {
   return {
@@ -194,6 +195,31 @@ test('a ledger-held removal keeps the lock — the shelved row still resolves', 
     assert.ok(!sim.state.freeIds.includes(npcId), 'the ledger still owns the id');
     assert.equal(sim.state.player.targetId, npcId,
       'a shelved target keeps its lock — the presentation resolver still finds the row');
+  } finally {
+    sim.dispose();
+  }
+});
+
+test('an optic-asteroid demote keeps the lock — the field row re-claims the same id', () => {
+  // demoteOpticAsteroidToField removes the body before the row can take its id (the reserved
+  // claim requires entities.get(id) gone first), so the removal path sees a recyclable id
+  // and drops the lock — the demote re-arms it on the row that still resolves.
+  const sim = createSimulation({ seed: 10, systems: [] });
+  try {
+    const rock = sim.spawn({
+      type: 'asteroid', pos: { x: 60, z: 0 }, radius: 8,
+      data: { opticMaterial: 'sf_ice' },
+    });
+    const rockId = rock.id;
+    sim.state.player.targetId = rockId;
+
+    const row = demoteOpticAsteroidToField(sim.state, rock, sim.helpers);
+    assert.ok(row && row.id === rockId, 'the field row keeps the shelved id');
+    assert.equal(sim.state.entities.get(rockId), undefined, 'the live body is gone');
+    assert.ok(sim.state.world.asteroidField.byId.has(rockId), 'the ledger holds the id');
+    assert.equal(sim.state.player.targetId, rockId,
+      'a shelved lock keeps its target — the row still resolves it');
+    assert.ok(!sim.state.freeIds.includes(rockId), 'the id never entered the pool');
   } finally {
     sim.dispose();
   }
