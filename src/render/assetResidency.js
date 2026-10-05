@@ -421,6 +421,10 @@ export function createAssetResidencyRegistry(options = {}) {
       ? options.isDetached
       : (owner) => owner && owner.parent == null;
     const isClaimed = typeof options.isClaimed === 'function' ? options.isClaimed : null;
+    // A stepped claim probe lets the caller's own multi-source fallback ride the
+    // release leg's slice clock — it runs only when the sync probe misses.
+    const isClaimedSteps = typeof options.isClaimedSteps === 'function'
+      ? options.isClaimedSteps : null;
     const reason = options.reason || 'detached-boundary-owner';
     const released = [];
     let visited = 0;
@@ -429,13 +433,14 @@ export function createAssetResidencyRegistry(options = {}) {
       if (state.released || !owner || owner.isObject3D !== true) continue;
       if (!isDetached(owner)) continue;
       if (isClaimed && isClaimed(owner)) continue;
+      if (isClaimedSteps && (yield* isClaimedSteps(owner))) continue;
       // Budget enforce rides once per sweep instead of per release: releases
       // are monotonic, so a mass-detach wave pays one O(assets) census rather
       // than owners x assets inside the batch.
       releaseOwner(owner, reason, true);
       released.push(owner);
     }
-    if (released.length) enforceSoftResidencyBudgets();
+    if (released.length) yield* enforceSoftResidencyBudgetsSteps();
     return Object.freeze(released);
   }
 
@@ -610,6 +615,43 @@ export function createAssetResidencyRegistry(options = {}) {
     const strictCandidates = [];
     const softCandidates = [];
     for (const entry of assets.values()) {
+      if (entry.state !== 'resident' || entry.owners.size === 0 || hasActiveRequestForEntry(entry)) {
+        continue;
+      }
+      if (isPackageCacheOnlyEntry(entry)) {
+        strictBytes += assetResidentBytes(entry);
+        strictCandidates.push(entry);
+      } else if (isSoftOnlyEntry(entry)) {
+        softBytes += assetResidentBytes(entry);
+        softCandidates.push(entry);
+      }
+    }
+    const strictOver = packageCacheOnlyMaxBytes != null && strictBytes > packageCacheOnlyMaxBytes;
+    const softOver = softResidentMaxBytes != null && softBytes > softResidentMaxBytes;
+    if (!strictOver && !softOver) return 0;
+    packageCacheBudgetDepth++;
+    try {
+      return evictOldestSoftEntries(strictCandidates, packageCacheOnlyMaxBytes, strictBytes,
+        isPackageCacheOnlyEntry)
+        + evictOldestSoftEntries(softCandidates, softResidentMaxBytes, softBytes,
+          (entry) => isSoftOnlyEntry(entry) && !isPackageCacheOnlyEntry(entry));
+    } finally {
+      packageCacheBudgetDepth--;
+    }
+  }
+
+  // Stepped twin: the O(assets) tally yields per entry batch so the release
+  // leg's caller clock bounds it like the walk that produced the releases.
+  // The eviction leg stays whole — it only runs on a real overage.
+  function* enforceSoftResidencyBudgetsSteps(batchEntries = 256) {
+    if (packageCacheBudgetDepth > 0) return 0;
+    let strictBytes = 0;
+    let softBytes = 0;
+    const strictCandidates = [];
+    const softCandidates = [];
+    let visited = 0;
+    for (const entry of assets.values()) {
+      if (++visited % batchEntries === 0) yield;
       if (entry.state !== 'resident' || entry.owners.size === 0 || hasActiveRequestForEntry(entry)) {
         continue;
       }

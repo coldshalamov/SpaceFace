@@ -1079,6 +1079,46 @@ export function collectFirstFlightCookEntities(state) {
   return selected;
 }
 
+/** Chunked twin of collectFirstFlightCookEntities: yields every `rowsPerSlice`
+ * scanned entities so a cook drives the census under its own slice clock. The
+ * distance sort and the capped variant admit stay whole — their input is the
+ * radius-filtered asteroid subset, bounded by FIRST_FLIGHT_ROCK_COOK_CAP. */
+export function* collectFirstFlightCookEntitiesSteps(state, rowsPerSlice = 256) {
+  const list = Array.isArray(state && state.entityList) ? state.entityList : [];
+  const selected = [];
+  const asteroids = [];
+  const rockRadius = firstFlightRockCookRadiusWu(state);
+  const rockRadiusSq = rockRadius * rockRadius;
+  const cookPlayer = resolvePlanarPlayer(state);
+  const every = Math.max(1, Math.floor(Number(rowsPerSlice) || 1));
+  let sinceYield = 0;
+  for (const entity of list) {
+    if (!entity || entity.alive === false) continue;
+    if (isFirstFlightCookEntity(entity, state)) {
+      selected.push(entity);
+      continue;
+    }
+    if (entity.type !== 'asteroid') continue;
+    const distanceSq = planarDistanceSqToPlayer(entity, cookPlayer);
+    if (distanceSq <= rockRadiusSq) asteroids.push({ entity, distanceSq });
+    sinceYield += 1;
+    if (sinceYield >= every) {
+      sinceYield = 0;
+      yield;
+    }
+  }
+  asteroids.sort((left, right) => left.distanceSq - right.distanceSq);
+  const seenKeys = new Set();
+  for (const { entity } of asteroids) {
+    if (seenKeys.size >= FIRST_FLIGHT_ROCK_COOK_CAP) break;
+    const key = asteroidFirstFlightCookKey(entity);
+    if (seenKeys.has(key)) continue;
+    seenKeys.add(key);
+    selected.push(entity);
+  }
+  return selected;
+}
+
 /** Pure per-entity residency plan. Complete authored bodies need one GLB. Modular ships predict the
  * exact deterministic records consumed by live assembly before any decode/upload begins. */
 export function authoredPreloadPlanForEntity(entity, options = {}) {

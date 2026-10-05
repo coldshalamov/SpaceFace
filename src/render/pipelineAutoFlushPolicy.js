@@ -314,7 +314,9 @@ export function buildArrivalRoster(entities, options = {}) {
 // drive the entityList census across the paced slice clock instead of paying it
 // inside the emit tail. Row order and verdicts identical to the sync build.
 export function* buildArrivalRosterSteps(entities, options = {}, batchRows = 1024) {
-  const list = Array.isArray(entities) ? entities : [];
+  // Snapshot: the caller passes the live entityList and this walk suspends —
+  // a swap-pop mid-walk would teleport an unvisited member behind the cursor.
+  const list = Array.isArray(entities) ? entities.slice() : [];
   const byteCeiling = Number(options.byteCeiling) > 0 ? Number(options.byteCeiling) : Number.POSITIVE_INFINITY;
   const maxIds = Math.max(1, Math.floor(byteCeiling / 64));
   const ids = [];

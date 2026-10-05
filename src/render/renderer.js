@@ -75,6 +75,7 @@ import {
   asteroidFirstFlightCookKey,
   authoredReadmissionStatus,
   collectFirstFlightCookEntities,
+  collectFirstFlightCookEntitiesSteps,
   describeAuthoredUpgradeQueue,
   inspectAuthoredBoundaryRegistrations,
   FIRST_FLIGHT_ROCK_COOK_CAP,
@@ -1861,10 +1862,101 @@ function drainDespawnDisposeQueue(owner, budgetMs = DESPAWN_DISPOSE_BUDGET_MS) {
   return drained;
 }
 
+// The hold-exempt drain's repartition is O(tail) x (resolve + exempt verdict) and
+// its budgeted drain is per-row work — a sync call inside the residency pump pays
+// both atomically inside the frame's beat. Drive one persistent iterator across
+// invocations: ≤4 ms (or the paced ledger, whichever trips first) per call, the
+// same bound every other pump leg already observes. A Steps-less owner keeps
+// the sync drain.
+function driveProtectedFirstFlightDrain(owner) {
+  if (!owner) return 0;
+  if (typeof owner._drainProtectedFirstFlightBuildsSteps !== 'function') {
+    return typeof owner._drainProtectedFirstFlightBuilds === 'function'
+      ? owner._drainProtectedFirstFlightBuilds() : 0;
+  }
+  if (!owner._protectedFirstFlightDrainIter) {
+    owner._protectedFirstFlightDrainIter = owner._drainProtectedFirstFlightBuildsSteps();
+  }
+  const clock = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now() : Date.now());
+  const started = clock();
+  let built = 0;
+  for (;;) {
+    let step;
+    try {
+      step = owner._protectedFirstFlightDrainIter.next();
+    } catch (err) {
+      owner._protectedFirstFlightDrainIter = null;
+      throw err;
+    }
+    if (step.done) {
+      built = step.value || 0;
+      owner._protectedFirstFlightDrainIter = null;
+      break;
+    }
+    if (clock() - started >= 4 || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
+  }
+  return built;
+}
+
+// Longest a parked rebuild hull may bridge its latched replacement. The latch
+// normally clears in a few presents; this bounds a replacement whose admission
+// never settles — same contract as RETIRING_BATCH_MAX_SYNCS in the pool.
+const REBUILD_BRIDGE_MAX_SYNCS = 300;
+
+// A parked rebuild bridge releases only when the hull's current mount is
+// actually drawable — every submit latch the emit could arm counted, not just
+// the one the rebuild knew about (the admission lanes stamp asynchronously).
+function rebuildBridgeDrawable(m) {
+  const ud = m && m.userData;
+  return !!(m && m.parent && ud
+    && ud.geometryPending !== true
+    && ud.pipelinesPending !== true
+    && ud.authoredPending !== true);
+}
+
+function releaseRebuildBridge(owner, id, slot) {
+  const mesh = slot.mesh;
+  if (mesh.parent) mesh.parent.remove(mesh);
+  owner._despawnDisposeQueue.push(mesh);
+  noteShadowMeshRemoved(owner, mesh);
+  owner._queueAssetResidencyDiagnosticsPublish();
+}
+
+// The outgoing rebuild hull keeps drawing its last committed pose until its
+// replacement clears the admission latches — the pool's retiring-batch bridge
+// for the appearanceChanged/remount path, so a mid-flight rebuild of unseen
+// geometry no longer pops the hull out and back in.
+function settleRebuildBridges(owner) {
+  const bridges = owner._rebuildBridges;
+  if (!bridges || bridges.size === 0) return;
+  const state = owner.state;
+  const epoch = state && state.world && state.world.enterSerial;
+  for (const [id, slot] of bridges) {
+    slot.frames += 1;
+    const e = state && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(id) : null;
+    const live = slot.epoch === epoch && e && e.alive !== false;
+    let release = !live || slot.frames >= REBUILD_BRIDGE_MAX_SYNCS;
+    if (!release) {
+      // Whatever is mounted for the entity now — the parked replacement, a
+      // second rebuild's mount, or the reconcile's later build — is the mesh
+      // the bridge covers. An empty slot after a failed build keeps drawing
+      // until some mount becomes drawable; a vanished replacement releases.
+      const current = owner._meshes.get(id);
+      release = current ? rebuildBridgeDrawable(current) : slot.replacement != null;
+    }
+    if (!release) continue;
+    bridges.delete(id);
+    releaseRebuildBridge(owner, id, slot);
+  }
+}
+
 export function serviceRenderMeshResidency(owner, frameDt) {
   const now = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
     ? performance.now() : Date.now());
   drainDespawnDisposeQueue(owner);
+  settleRebuildBridges(owner);
   if (owner && owner._sessionRecookKeepGpu === true && owner.state && owner.state.mode === 'loading') {
     abandonResidencyPoll(owner);
     abandonReconcile(owner);
@@ -1918,7 +2010,7 @@ export function serviceRenderMeshResidency(owner, frameDt) {
           owner._sectorHandoffEpoch);
       }
     }
-    if (typeof owner._drainProtectedFirstFlightBuilds === 'function') owner._drainProtectedFirstFlightBuilds();
+    driveProtectedFirstFlightDrain(owner);
     // Covered exempt rows still ride the count-budgeted pump — cheap dressing mounts
     // bind on 8/frame before the slice clock, so a dressing-heavy seam on a loaded
     // host finishes mounting after the blend ends and pops in over the next frames.
@@ -2052,7 +2144,7 @@ export function serviceRenderMeshResidency(owner, frameDt) {
       // Lane C's decode kick rides inside the sliced collect's completing beat —
       // it consumes the committed presentation set the partition just enqueued.
     }
-    if (typeof owner._drainProtectedFirstFlightBuilds === 'function') owner._drainProtectedFirstFlightBuilds();
+    driveProtectedFirstFlightDrain(owner);
     return 'held-first-flight';
   }
   owner._holdExemptCollectS = 0;
@@ -2589,6 +2681,7 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
     // term while real movement still refills here, debited to this beat's clock.
     if (typeof warmNearbyLedgerRowsSteps === 'function') {
       owner._holdExemptWarmIter = warmNearbyLedgerRowsSteps(state, { tolerateMiss: 'covered' });
+      owner._holdExemptTolerantStreak = 0;
       owner._holdExemptWarmToleration = 'covered';
       owner._holdExemptWarmEpoch = liveEpoch;
     } else {
@@ -2680,14 +2773,27 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
       const frame = owner._activityFrame;
       const glassIds = frame && frame.renderGlassIds;
       owner._holdExemptCommitExempt = makeHoldExemptMeshBuildEvaluator(state, glassIds);
-      const commitExempt = owner._holdExemptCommitExempt;
+      owner._holdExemptCommitBeatSeen = owner._holdExemptBeatStamp | 0;
       owner._holdExemptEnqueueIter = enqueueMissingMeshBuildsSteps(
         owner._holdExemptCommitList,
         owner._meshes,
         owner._meshBuildQueuedIds,
         owner._meshBuildQueue,
+        // The evaluator is read live off the owner so the row-boundary
+        // refresh below can re-mint it mid-commit — a suspended commit
+        // otherwise grades late rows on a frozen glass snapshot.
         (entity) => !owner._sectorBoundaryPreparations?.has(entity.id)
-          && commitExempt(entity),
+          && owner._holdExemptCommitExempt(entity),
+        null,
+        null,
+        () => {
+          const stamp = owner._holdExemptBeatStamp | 0;
+          if (stamp === owner._holdExemptCommitBeatSeen) return;
+          owner._holdExemptCommitBeatSeen = stamp;
+          const liveFrame = owner._activityFrame;
+          owner._holdExemptCommitExempt = makeHoldExemptMeshBuildEvaluator(
+            state, liveFrame && liveFrame.renderGlassIds);
+        },
       );
     }
     const commitBounded = owner._holdExemptCommitList.length > 16;
@@ -2744,20 +2850,26 @@ function enqueueHoldExemptMeshBuildsSliced(owner, sliceMs) {
     // remint tolerates a memo-miss (rides the previous disc's scratch — a coverage
     // subset the per-row live-origin filters still guard) so a quantized-cell flip
     // can't land the unbounded grid query inside this beat; when the stepped refill
-    // suspends, the collect mints on a later beat once the memo commits.
+    // suspends, the collect mints on a later beat once the memo commits. A streak of
+    // productive tolerant remints would ride the same stamped disc indefinitely while
+    // travel drifts the live union origin — every fourth remint mints 'covered' so
+    // genuine drift still pays the stepped refill.
+    const tolerantStreak = (owner._holdExemptTolerantStreak = (owner._holdExemptTolerantStreak | 0) + 1);
+    const remintToleration = tolerantStreak >= 4 ? 'covered' : true;
+    if (remintToleration === 'covered') owner._holdExemptTolerantStreak = 0;
     if (typeof warmNearbyLedgerRowsSteps === 'function') {
-      owner._holdExemptWarmIter = warmNearbyLedgerRowsSteps(state, { tolerateMiss: true });
-      owner._holdExemptWarmToleration = true;
+      owner._holdExemptWarmIter = warmNearbyLedgerRowsSteps(state, { tolerateMiss: remintToleration });
+      owner._holdExemptWarmToleration = remintToleration;
       owner._holdExemptWarmEpoch = liveEpoch;
     } else {
-      warmNearbyLedgerRows(state, { tolerateMiss: true });
+      warmNearbyLedgerRows(state, { tolerateMiss: remintToleration });
     }
     if (now() - started >= sliceMs
         || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
     if (owner._holdExemptWarmIter) continue;
     owner._holdExemptCollectOut = [];
     iterator = collectMeshPresentationEntitiesChunked(
-      state, owner._holdExemptCollectOut, { tolerateMiss: true });
+      state, owner._holdExemptCollectOut, { tolerateMiss: remintToleration });
     owner._holdExemptCollectIter = iterator;
     owner._holdExemptCollectEpoch = liveEpoch;
   }
@@ -2950,6 +3062,79 @@ export function promoteOnGlassPipelineLatch(owner, mesh) {
  * about to stop the drain with glass work still buried — the inside-that-window
  * promotion the poll cannot see yet.
  */
+// Stepped twin of hoistDeadlineGlassMeshBuilds: the O(tail) verdict scan yields
+// every `rowsPerSlice` rows so the drain's gate and budget-trip steps stay
+// bounded — a refused start used to pay the whole tail scan inside one next()
+// on every heavy frame. Same stable partition, same glassCount return.
+export function* hoistDeadlineGlassMeshBuildsSteps(owner, verdictMemo, rowsPerSlice = 256) {
+  const queue = owner && owner._meshBuildQueue;
+  if (!queue) return false;
+  const head = owner._meshBuildQueueHead | 0;
+  const tail = queue.length - head;
+  if (tail <= 0) return 0;
+  const scan = makeHoldExemptScanContext(owner.state);
+  const verdictFor = verdictMemo instanceof Map
+    ? (id) => {
+      const hit = verdictMemo.get(id);
+      if (hit !== undefined) return hit;
+      const glass = entityIsOnDeadlineGlassScan(resolveWorldPresentationEntity(owner.state, id), owner.state, scan);
+      verdictMemo.set(id, glass);
+      return glass;
+    }
+    : (id) => entityIsOnDeadlineGlassScan(resolveWorldPresentationEntity(owner.state, id), owner.state, scan);
+  const every = Math.max(1, Math.floor(Number(rowsPerSlice) || 1));
+  let glassCount = 0;
+  let reordered = false;
+  let seenNonGlass = false;
+  let firstNonGlassIdx = -1;
+  let verdicts = null;
+  let sinceYield = 0;
+  for (let i = head; i < queue.length; i++) {
+    sinceYield += 1;
+    if (sinceYield >= every) {
+      sinceYield = 0;
+      yield;
+    }
+    const glass = verdictFor(queue[i]);
+    if (verdicts) verdicts[i - head] = glass ? 1 : 0;
+    if (glass) {
+      glassCount++;
+      if (seenNonGlass && !reordered) {
+        reordered = true;
+        verdicts = new Uint8Array(tail).fill(2);
+        for (let j = 0; j < firstNonGlassIdx - head; j++) verdicts[j] = 1;
+        // (firstNonGlassIdx, i) is provably non-glass — a glass element in that range would
+        // have tripped this same branch earlier — so stamp it 0 instead of letting pass 2
+        // re-evaluate predicates it can only confirm.
+        verdicts.fill(0, firstNonGlassIdx - head, i - head);
+        verdicts[i - head] = 1;
+      }
+    } else if (!seenNonGlass) {
+      seenNonGlass = true;
+      firstNonGlassIdx = i;
+    }
+  }
+  if (reordered) {
+    const hoisted = [];
+    const remainder = [];
+    for (let i = head; i < queue.length; i++) {
+      const id = queue[i];
+      const v = verdicts[i - head];
+      if (v === 1 || (v === 2 && entityIsOnDeadlineGlassScan(resolveWorldPresentationEntity(owner.state, id), owner.state, scan))) {
+        hoisted.push(id);
+      } else {
+        remainder.push(id);
+      }
+    }
+    queue.length = head;
+    for (let i = 0; i < hoisted.length; i++) queue.push(hoisted[i]);
+    for (let i = 0; i < remainder.length; i++) queue.push(remainder[i]);
+  }
+  // Return the deadline-glass count, not the permutation flag: callers gate on whether
+  // on-glass work exists, not on whether the tail needed reordering.
+  return glassCount;
+}
+
 export function hoistDeadlineGlassMeshBuilds(owner, verdictMemo) {
   const queue = owner && owner._meshBuildQueue;
   if (!queue) return false;
@@ -3714,11 +3899,18 @@ function* kickDecodeRunwayAssetsSteps(owner, entities) {
     return v;
   };
   // A resume under a newer driver beat refreshes the runway snapshot before the next
-  // evaluate/start grades a row on mint-time terms (see the stamp comment above).
-  let kickBeatStampSeen = owner._holdExemptBeatStamp || 0;
+  // evaluate/start grades a row on mint-time terms. The kick's sweep drivers bump
+  // _residencySweepBeatStamp, the hold-exempt pump bumps _holdExemptBeatStamp —
+  // the refresh must see whichever stamp the active driver advances.
+  const kickBeatStampNow = () => Math.max(
+    owner._holdExemptBeatStamp | 0,
+    owner._residencySweepBeatStamp | 0,
+  );
+  let kickBeatStampSeen = kickBeatStampNow();
   const refreshOnNewerBeat = () => {
-    if (owner._holdExemptBeatStamp === kickBeatStampSeen) return;
-    kickBeatStampSeen = owner._holdExemptBeatStamp || 0;
+    const stamp = kickBeatStampNow();
+    if (stamp === kickBeatStampSeen) return;
+    kickBeatStampSeen = stamp;
     refreshRunwaySnapshot();
   };
   // Prefer planned wave hulls so spawn-cohort decode finishes before a rim pop, then
@@ -5204,6 +5396,17 @@ function warmPendingInterventionDecodes(owner, state, sectorId) {
 }
 
 export function updatePredictedSectorPrewarm(owner) {
+  const iterator = updatePredictedSectorPrewarmSteps(owner);
+  let step = iterator.next();
+  while (!step.done) step = iterator.next();
+  return step.value;
+}
+
+// Stepped twin: the route-deep warm, next-sector prediction, spawn-request and
+// intervention warms, and the prewarm census each ride their own step — the
+// residency poll drives this inside its slice clock, and a fat-sector census
+// or a deep predict walk used to run whole inside one next().
+export function* updatePredictedSectorPrewarmSteps(owner) {
   const state = owner && owner.state;
   if (!state || state.mode !== 'flight') return;
   const census = typeof owner._sectorPrewarmRequests === 'function' ? owner._sectorPrewarmRequests : null;
@@ -5212,16 +5415,22 @@ export function updatePredictedSectorPrewarm(owner) {
     ? residency.releaseOwner.bind(residency) : null;
   if (!census || !releaseOwner) return;
   updateRouteDeepSectorWarm(owner, state, census, releaseOwner);
+  yield;
   const recordOwns = (sectorId) => sectorPrewarmRecordOwns(owner, sectorId);
   const warm = owner._predictedSectorWarm && owner._predictedSectorWarm.active === true
     ? owner._predictedSectorWarm : null;
   const prediction = predictNextSector(state, {
     heldSectorId: warm ? warm.sectorId : null,
   });
+  yield;
   warmQueuedSpawnRequestDecodes(owner, state, prediction && prediction.sectorId);
+  yield;
   warmQueuedSpawnRequestDecodes(owner, state, predictedSecondHopSectorId(state));
+  yield;
   warmPendingInterventionDecodes(owner, state, prediction && prediction.sectorId);
+  yield;
   warmPendingInterventionDecodes(owner, state, predictedSecondHopSectorId(state));
+  yield;
   const syncCorridor = () => {
     if (typeof residency.setEvictionCorridor !== 'function') return;
     // Rank by the prediction itself, not the warm arms — bytes resident under ANY owner
@@ -11307,6 +11516,10 @@ export const render = {
           buildMs += prepareNow() - buildStarted;
           passes += 1;
           await buildYield(this._meshBuildQueueHead === headBefore);
+          // A resumed pass means presented-frame time elapsed — the suspended
+          // drain's beat-refresh keys on this stamp, so move it here or a
+          // multi-second drain grades every row on prologue-mint terms.
+          this._residencySweepBeatStamp = (this._residencySweepBeatStamp | 0) + 1;
         }
         if (cookStale()) return;
         recordOpeningCookStep(state.render, step, started, capped ? 'timeout' : 'resolved', {
@@ -11581,9 +11794,34 @@ export const render = {
       // The last provider's elapsed-yield resumes without a recheck — guard
       // before the collects below re-derive the new world under dead authority.
       if (cookStale()) return cookSuperseded;
-      const firstFlightEntities = recook
-        ? openingEntities
-        : collectFirstFlightCookEntities(state);
+      let firstFlightEntities = openingEntities;
+      if (!recook) {
+        const censusIter = typeof collectFirstFlightCookEntitiesSteps === 'function'
+          ? collectFirstFlightCookEntitiesSteps(state) : null;
+        if (censusIter) {
+          let censusSliceStart = openingProviderNow();
+          let censusSliceArmed = state.mode === 'flight';
+          for (;;) {
+            if (cookStale()) {
+              if (typeof censusIter.return === 'function') { try { censusIter.return(); } catch { /* cleanup-only */ } }
+              return cookSuperseded;
+            }
+            const censusStep = censusIter.next();
+            if (censusStep.done) { firstFlightEntities = censusStep.value; break; }
+            if (openingProviderNow() - censusSliceStart >= 8
+                || (state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) {
+              if (censusSliceArmed) {
+                notePacedFrameSpend(openingProviderNow() - censusSliceStart);
+              }
+              await yieldLiveSectorGpu();
+              censusSliceStart = openingProviderNow();
+              censusSliceArmed = state.mode === 'flight';
+            }
+          }
+        } else {
+          firstFlightEntities = collectFirstFlightCookEntities(state);
+        }
+      }
       // PQ-210.00 — a live survival run cannot pay the deferred-streaming burst that lands when
       // the first-flight residency hold releases ~20 s in: every prop, wreck and beacon inside
       // the arena would build and link inside the fight. isEntityRenderRelevant already answers
@@ -11708,6 +11946,10 @@ export const render = {
         if (typeof warmNearbyLedgerRowsSteps === 'function') {
           const warmIterator = warmNearbyLedgerRowsSteps(state);
           for (;;) {
+            if (cookStale()) {
+              if (typeof warmIterator.return === 'function') { try { warmIterator.return(); } catch { /* cleanup-only */ } }
+              return cookSuperseded;
+            }
             const warmStep = warmIterator.next();
             if (warmStep.done) break;
             if (openingProviderNow() - widenSliceStart >= 8
@@ -11718,10 +11960,6 @@ export const render = {
               await yieldLiveSectorGpu();
               widenSliceStart = openingProviderNow();
               widenSliceArmed = state.mode === 'flight';
-              if (cookStale()) {
-                if (typeof warmIterator.return === 'function') { try { warmIterator.return(); } catch { /* cleanup-only */ } }
-                return cookSuperseded;
-              }
             }
           }
         } else {
@@ -12212,7 +12450,43 @@ export const render = {
           let poolSealUnits = 0;
           let poolSealOutcome = 'resolved';
           try {
-            const latePoolRoots = collectInstancePoolCompileRoots(scene);
+            // The preamble used to pay a whole-scene traverse + a per-root DFS +
+            // an atomic dedupe ahead of the sliced admit — on a dense arena that
+            // is the seal's largest unyielded block and it runs exactly when the
+            // cohort is biggest. The fused census twin returns {roots, subjects}
+            // in one chunked walk; subjects bucket under their enclosing pool
+            // root to reproduce flatMap(collectCompileSubjects) without the
+            // second traversal, and the dedupe chunks on shared seen sets.
+            let sealSliceStart = openingProviderNow();
+            let sealSliceArmed = state.mode === 'flight';
+            const sealPace = async () => {
+              const tick = openingProviderNow();
+              if (tick - sealSliceStart <= 4 && pacedFrameSpend() < PACED_FRAME_BUDGET_MS) return;
+              if (sealSliceArmed) notePacedFrameSpend(tick - sealSliceStart);
+              await yieldLiveSectorGpu();
+              sealSliceStart = openingProviderNow();
+              sealSliceArmed = state.mode === 'flight';
+            };
+            const sealCensusIter = typeof collectInstancePoolCompileRootsAndSubjectsSteps === 'function'
+              ? collectInstancePoolCompileRootsAndSubjectsSteps(scene, 256) : null;
+            let sealCensus = null;
+            if (sealCensusIter) {
+              for (;;) {
+                if (cookStale()) {
+                  if (typeof sealCensusIter.return === 'function') { try { sealCensusIter.return(); } catch { /* cleanup-only */ } }
+                  return cookSuperseded;
+                }
+                const censusStep = sealCensusIter.next();
+                if (censusStep.done) { sealCensus = censusStep.value; break; }
+                await sealPace();
+              }
+            } else {
+              sealCensus = {
+                roots: collectInstancePoolCompileRoots(scene),
+                subjects: null,
+              };
+            }
+            const latePoolRoots = sealCensus.roots;
             poolSealRoots = latePoolRoots.length;
             if (latePoolRoots.length > 0) {
               const sealRoute = this._selectPostRoute();
@@ -12220,21 +12494,75 @@ export const render = {
                 const restoreSubject = revealSubjectForCompile(subject);
                 try { return run(); } finally { restoreSubject(); }
               };
+              const sealSubjects = [];
+              if (sealCensus.subjects) {
+                const poolRootSet = new Set(latePoolRoots.filter(Boolean));
+                const enclosingRootMemo = new Map();
+                const enclosingPoolRoot = (subject) => {
+                  const chain = [];
+                  let hit = null;
+                  let node = subject;
+                  while (node) {
+                    if (poolRootSet.has(node)) { hit = node; break; }
+                    if (enclosingRootMemo.has(node)) { hit = enclosingRootMemo.get(node); break; }
+                    chain.push(node);
+                    node = node.parent;
+                  }
+                  for (const entry of chain) enclosingRootMemo.set(entry, hit);
+                  return hit;
+                };
+                const perRootSubjects = new Map();
+                for (const subject of sealCensus.subjects) {
+                  await sealPace();
+                  const holder = enclosingPoolRoot(subject);
+                  if (!holder) continue;
+                  let bucket = perRootSubjects.get(holder);
+                  if (!bucket) perRootSubjects.set(holder, (bucket = []));
+                  bucket.push(subject);
+                }
+                for (const root of latePoolRoots) {
+                  const bucket = perRootSubjects.get(root);
+                  if (bucket === undefined) {
+                    sealSubjects.push(...collectCompileSubjects(root));
+                  } else {
+                    sealSubjects.push(...(bucket.length > 0 ? bucket : [root]));
+                  }
+                }
+              } else {
+                for (const root of latePoolRoots) {
+                  sealSubjects.push(...collectCompileSubjects(root));
+                }
+              }
               // Same admitOpeningUnitsAcrossSlices driver as cook.rockPools: the units object
               // dedupes by material/geometry so thousands of count-0 pool chunks sharing a
               // program family compile as one unit, sliced so the seal cannot monopolize a
               // frame. (Iterating the returned object itself throws — it is not a list.)
-              const sealUnits = uniqueAdmissionUnits(
-                latePoolRoots.flatMap((root) => collectCompileSubjects(root)),
-                {
-                  skipReadyMaterial: (material) => {
-                    try {
-                      return materialHasCompiledProgram(material,
-                        (entry) => renderer.properties.get(entry));
-                    } catch (_) { return false; }
-                  },
-                },
-              );
+              const skipReadySealMaterial = (material) => {
+                try {
+                  return materialHasCompiledProgram(material,
+                    (entry) => renderer.properties.get(entry));
+                } catch (_) { return false; }
+              };
+              const sealSeenMaterials = new Set();
+              const sealSeenGeometries = new Set();
+              const sealProgramSubjects = [];
+              const sealGeometrySubjects = [];
+              for (let i = 0; i < sealSubjects.length; i += 1024) {
+                const part = uniqueAdmissionUnits(sealSubjects.slice(i, i + 1024), {
+                  seenMaterials: sealSeenMaterials,
+                  seenGeometries: sealSeenGeometries,
+                  skipReadyMaterial: skipReadySealMaterial,
+                });
+                if (part.programSubjects.length > 0) sealProgramSubjects.push(...part.programSubjects);
+                if (part.geometrySubjects.length > 0) sealGeometrySubjects.push(...part.geometrySubjects);
+                await sealPace();
+              }
+              const sealUnits = {
+                programSubjects: sealProgramSubjects,
+                geometrySubjects: sealGeometrySubjects,
+                materialCount: sealSeenMaterials.size,
+                geometryCount: sealSeenGeometries.size,
+              };
               poolSealUnits = sealUnits.programSubjects.length;
               if (cookStale()) return cookSuperseded;
               await admitOpeningUnitsAcrossSlices({
@@ -12708,7 +13036,8 @@ export const render = {
       // survival run widens it to the whole arena plus promoted field rocks); resolving the
       // published set keeps buffer residency, leaf stamping and compile in sync with what
       // was actually admitted. Outside that flow the generic first-flight census applies.
-      const cookSectorEntities = (() => {
+      let cookSectorEntities = null;
+      {
         const ids = state.render && state.render.liveSectorFirstFlightIds;
         if (ids && typeof ids[Symbol.iterator] === 'function') {
           const out = [];
@@ -12716,10 +13045,36 @@ export const render = {
             const entity = resolveWorldPresentationEntity(state, id);
             if (entity) out.push(entity);
           }
-          if (out.length > 0) return out;
+          if (out.length > 0) cookSectorEntities = out;
         }
-        return collectFirstFlightCookEntities(state);
-      })();
+        if (!cookSectorEntities) {
+          const censusIter = typeof collectFirstFlightCookEntitiesSteps === 'function'
+            ? collectFirstFlightCookEntitiesSteps(state) : null;
+          if (censusIter) {
+            let censusSliceStart = cookNow();
+            let censusSliceArmed = state.mode === 'flight';
+            for (;;) {
+              if (cookOverBudget()) {
+                if (typeof censusIter.return === 'function') { try { censusIter.return(); } catch { /* cleanup-only */ } }
+                return cookSuperseded;
+              }
+              const censusStep = censusIter.next();
+              if (censusStep.done) { cookSectorEntities = censusStep.value; break; }
+              if (cookNow() - censusSliceStart >= 8
+                  || (state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) {
+                if (censusSliceArmed) {
+                  notePacedFrameSpend(cookNow() - censusSliceStart);
+                }
+                await yieldLiveSectorGpu();
+                censusSliceStart = cookNow();
+                censusSliceArmed = state.mode === 'flight';
+              }
+            }
+          } else {
+            cookSectorEntities = collectFirstFlightCookEntities(state);
+          }
+        }
+      }
       // Compile the live next sector on the bloom target AFTER the shadow map
       // exists so physical keys include numDirLightShadows. Hidden / count-0
       // drawables must be revealed — Three's compile() skips object.visible === false,
@@ -13958,7 +14313,25 @@ export const render = {
           const superseded = await providerYield();
           if (superseded) return superseded;
         }
-        const firstFlightEntities = collectFirstFlightCookEntities(state);
+        const firstFlightEntitiesIter = typeof collectFirstFlightCookEntitiesSteps === 'function'
+          ? collectFirstFlightCookEntitiesSteps(state) : null;
+        let firstFlightEntities = null;
+        if (firstFlightEntitiesIter) {
+          for (;;) {
+            if (cookStale()) {
+              if (typeof firstFlightEntitiesIter.return === 'function') { try { firstFlightEntitiesIter.return(); } catch { /* cleanup-only */ } }
+              return cookSuperseded;
+            }
+            const censusStep = firstFlightEntitiesIter.next();
+            if (censusStep.done) { firstFlightEntities = censusStep.value; break; }
+            if (providerSliceDue()) {
+              const superseded = await providerYield();
+              if (superseded) return superseded;
+            }
+          }
+        } else {
+          firstFlightEntities = collectFirstFlightCookEntities(state);
+        }
         // Same widening the opening census applies (PQ-210.02): the ledger mount paths —
         // dressing-resident rows and far-resident actors — produce visible bodies on arrival
         // that have no member in the entityList collect. Under the shell latch they aren't
@@ -14094,6 +14467,12 @@ export const render = {
         // identical either way).
         let jumpBuilt = 0;
         while (this._meshBuildQueueHead < this._meshBuildQueue.length) {
+          // Ride the provider slice clock like the legs above: a sibling-spent
+          // frame yields before this pass's drain, not after it.
+          if (providerSliceDue()) {
+            const superseded = await providerYield();
+            if (superseded) return superseded;
+          }
           jumpBuilt += this._drainMeshBuildQueue(RUNTIME_MESH_BUILD_BUDGET) || 0;
           if (this._meshBuildQueueHead >= this._meshBuildQueue.length) break;
           await yieldLiveSectorGpu();
@@ -14206,7 +14585,151 @@ export const render = {
       }
       const openingSubjects = (state.render.openingSubmissionPlan
         && state.render.openingSubmissionPlan.compileSubjects) || [];
-      const lateEntities = collectLateAdmittedCompileRoots(this._meshes, openingSubjects);
+      const postNow = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
+        ? performance.now() : Date.now());
+      let postSliceStart = postNow();
+      let postSliceArmed = state.mode === 'flight';
+      // One paced clock for the whole pass: the fused census, the bucket/dedupe
+      // legs and every rescan re-collect ride it — a joiner-armed rescan inside
+      // a presented frame must not pay the old atomic traverse set.
+      const postPace = async () => {
+        const tick = postNow();
+        if (tick - postSliceStart <= 4 && pacedFrameSpend() < PACED_FRAME_BUDGET_MS) return;
+        if (postSliceArmed) notePacedFrameSpend(tick - postSliceStart);
+        if (typeof yieldToBrowser === 'function') await yieldToBrowser();
+        postSliceStart = postNow();
+        postSliceArmed = state.mode === 'flight';
+      };
+      const opening = new Set(openingSubjects);
+      // One chunked scene walk mints the pool roots and every drawable subject:
+      // late-admitted mesh roots bucket by ancestor chain, the uncompiled sweep
+      // is the same list's not-in-opening filter, and compile subjects bucket
+      // under their enclosing compile root — ~1 traversal instead of 4-6 atomic
+      // walks plus a per-root DFS. A Steps-less host keeps the sync path.
+      const collectLateAdmissionCensus = async () => {
+        const censusIter = typeof collectInstancePoolCompileRootsAndSubjectsSteps === 'function'
+          ? collectInstancePoolCompileRootsAndSubjectsSteps(scene, 256) : null;
+        if (!censusIter) {
+          return {
+            roots: collectInstancePoolCompileRoots(scene),
+            lateEntities: collectLateAdmittedCompileRoots(this._meshes, openingSubjects),
+            uncompiled: collectUncompiledSceneDrawables(scene, openingSubjects),
+            subjects: null,
+          };
+        }
+        let census = null;
+        for (;;) {
+          const censusStep = censusIter.next();
+          if (censusStep.done) { census = censusStep.value; break; }
+          await postPace();
+        }
+        const meshRootSet = new Set();
+        for (const root of this._meshes.values()) if (root) meshRootSet.add(root);
+        const lateRootSet = new Set();
+        const enclosingMemo = new Map();
+        const enclosingMeshRoot = (subject) => {
+          const chain = [];
+          let hit = null;
+          let node = subject;
+          while (node) {
+            if (meshRootSet.has(node)) { hit = node; break; }
+            if (enclosingMemo.has(node)) { hit = enclosingMemo.get(node); break; }
+            chain.push(node);
+            node = node.parent;
+          }
+          for (const entry of chain) enclosingMemo.set(entry, hit);
+          return hit;
+        };
+        const uncompiled = [];
+        for (const subject of census.subjects) {
+          await postPace();
+          if (opening.has(subject)) continue;
+          uncompiled.push(subject);
+          const holder = enclosingMeshRoot(subject);
+          if (holder) lateRootSet.add(holder);
+        }
+        // _meshes insertion order — the same order the registry walk produced.
+        const lateEntities = [];
+        for (const root of this._meshes.values()) {
+          if (lateRootSet.has(root)) lateEntities.push(root);
+        }
+        return {
+          roots: census.roots,
+          lateEntities,
+          uncompiled,
+          subjects: census.subjects,
+        };
+      };
+      // flatMap(collectCompileSubjects) without the per-root re-traversal: bucket
+      // the census subjects under their nearest enclosing compile root (nested
+      // roots dedupe downstream anyway), with a direct collect for roots the
+      // scene walk never reached.
+      const subjectsForCompileRoots = async (roots, censusSubjects) => {
+        if (!censusSubjects) {
+          return roots.flatMap((root) => collectCompileSubjects(root));
+        }
+        const compileRootSet = new Set(roots.filter(Boolean));
+        const enclosingMemo = new Map();
+        const enclosingCompileRoot = (subject) => {
+          const chain = [];
+          let hit = null;
+          let node = subject;
+          while (node) {
+            if (compileRootSet.has(node)) { hit = node; break; }
+            if (enclosingMemo.has(node)) { hit = enclosingMemo.get(node); break; }
+            chain.push(node);
+            node = node.parent;
+          }
+          for (const entry of chain) enclosingMemo.set(entry, hit);
+          return hit;
+        };
+        const perRootSubjects = new Map();
+        for (const subject of censusSubjects) {
+          await postPace();
+          const holder = enclosingCompileRoot(subject);
+          if (!holder) continue;
+          let bucket = perRootSubjects.get(holder);
+          if (!bucket) perRootSubjects.set(holder, (bucket = []));
+          bucket.push(subject);
+        }
+        const out = [];
+        for (const root of roots) {
+          const bucket = perRootSubjects.get(root);
+          if (bucket === undefined) out.push(...collectCompileSubjects(root));
+          else out.push(...(bucket.length > 0 ? bucket : [root]));
+        }
+        return out;
+      };
+      const skipReadyLateMaterial = (material) => {
+        try {
+          return materialHasCompiledProgram(material,
+            (entry) => renderer.properties.get(entry));
+        } catch (_) { return false; }
+      };
+      // Dedupe chunks share the seen sets, so a paced run's units equal one
+      // monolithic uniqueAdmissionUnits call on the same list.
+      const dedupeLateSubjects = async (subjects) => {
+        const seenMaterials = new Set();
+        const seenGeometries = new Set();
+        const programSubjects = [];
+        const geometrySubjects = [];
+        for (let i = 0; i < subjects.length; i += 1024) {
+          const part = uniqueAdmissionUnits(subjects.slice(i, i + 1024), {
+            seenMaterials,
+            seenGeometries,
+            skipReadyMaterial: skipReadyLateMaterial,
+          });
+          if (part.programSubjects.length > 0) programSubjects.push(...part.programSubjects);
+          if (part.geometrySubjects.length > 0) geometrySubjects.push(...part.geometrySubjects);
+          await postPace();
+        }
+        return {
+          programSubjects,
+          geometrySubjects,
+          materialCount: seenMaterials.size,
+          geometryCount: seenGeometries.size,
+        };
+      };
       // Re-run the common-rock variant warm: a bucket warmed before the rock surface library
       // decoded still binds the bare leaf material, and re-skinning makes live registrations
       // mismatch it. The empty-bucket rebind lands the real chunk here, still behind the shell.
@@ -14219,7 +14742,10 @@ export const render = {
       } catch (error) {
         console.warn('[render] post-opening asteroid pool warm failed', error);
       }
-      const poolRoots = collectInstancePoolCompileRoots(scene);
+      const postCensus = await collectLateAdmissionCensus();
+      const lateEntities = postCensus.lateEntities;
+      const poolRoots = postCensus.roots;
+      const uncompiledScene = postCensus.uncompiled;
       const lateCandidates = [];
       const seenLate = new Set();
       for (const root of [...lateEntities, ...poolRoots]) {
@@ -14227,7 +14753,6 @@ export const render = {
         seenLate.add(root);
         lateCandidates.push(root);
       }
-      const uncompiledScene = collectUncompiledSceneDrawables(scene, openingSubjects);
       for (const root of uncompiledScene) {
         if (!root || seenLate.has(root)) continue;
         seenLate.add(root);
@@ -14290,16 +14815,8 @@ export const render = {
             // The cook's issue pass already linked most of this cohort — ready materials drop
             // at unit construction and the remaining cold ones issue one compile per program
             // signature, so the re-sweep only pays for genuinely late subjects.
-            units: uniqueAdmissionUnits(
-              lateCompileRoots.flatMap((root) => collectCompileSubjects(root)),
-              {
-                skipReadyMaterial: (material) => {
-                  try {
-                    return materialHasCompiledProgram(material,
-                      (entry) => renderer.properties.get(entry));
-                  } catch (_) { return false; }
-                },
-              },
+            units: await dedupeLateSubjects(
+              await subjectsForCompileRoots(lateCompileRoots, postCensus.subjects),
             ),
             issueKeyFor: openingCompileIssueKey,
             renderer,
@@ -14325,9 +14842,18 @@ export const render = {
       }
       // Same signature gate as the rescan leg: a post-opening re-arm whose casters
       // were all staged in an earlier pass skips the whole-set staging ceremony
-      // (each join re-arm used to re-pay it regardless of coverage).
+      // (each join re-arm used to re-pay it regardless of coverage). The collect
+      // chunks per subject group under one light signature — per-caster verdicts
+      // are independent, so the union equals the atomic call's.
       const depthSubjects = [...openingSubjects, ...lateCandidates];
-      const unstagedDepthSubjects = collectUnstagedShadowCasters(renderer, depthSubjects, scene);
+      const depthLightSig = lightCensusSignature(scene);
+      const unstagedDepthSubjects = [];
+      for (let i = 0; i < depthSubjects.length; i += 512) {
+        const unstagedPart = collectUnstagedShadowCasters(
+          renderer, depthSubjects.slice(i, i + 512), scene, depthLightSig);
+        if (unstagedPart.length > 0) unstagedDepthSubjects.push(...unstagedPart);
+        await postPace();
+      }
       const depth = unstagedDepthSubjects.length > 0
         ? compileShadowDepthPipelines({
           renderer,
@@ -14357,14 +14883,14 @@ export const render = {
             ? state.world.enterSerial : null)) {
         rescanPasses += 1;
         this._postOpeningRescanRequested = false;
-        // The re-collect walks the mesh registry and traverses the scene synchronously —
-        // yield once so a join landing during the awaits doesn't pay the whole re-derive
-        // inside the frame that armed it.
-        if (typeof yieldToBrowser === 'function') await yieldToBrowser();
+        // The re-collect rides the same fused census + paced clock as the first
+        // pass — a flight-mode joiner's rescan legs used to pay the whole
+        // traverse set atomically inside a presented frame.
+        const rescanCensus = await collectLateAdmissionCensus();
         const rescanRoots = [
-          ...collectLateAdmittedCompileRoots(this._meshes, openingSubjects),
-          ...collectInstancePoolCompileRoots(scene),
-          ...collectUncompiledSceneDrawables(scene, openingSubjects),
+          ...rescanCensus.lateEntities,
+          ...rescanCensus.roots,
+          ...rescanCensus.uncompiled,
           ...(this._rosterPrewarmRoots || []),
         ];
         if (this._rosterPartCatalogRoot) rescanRoots.push(this._rosterPartCatalogRoot);
@@ -14378,19 +14904,13 @@ export const render = {
         if (rescanDelta.length === 0) continue;
         // Compute the not-ready set once: a delta whose units are all compiled
         // makes the admit slice loop + readiness batch pure overhead, so skip the
-        // leg outright rather than driving it to an empty conclusion.
-        const rescanUnits = uniqueAdmissionUnits(
-          rescanDelta.flatMap((root) => collectCompileSubjects(root)),
-          {
-            skipReadyMaterial: (material) => {
-              try {
-                return materialHasCompiledProgram(material,
-                  (entry) => renderer.properties.get(entry));
-              } catch (_) { return false; }
-            },
-          },
+        // leg outright rather than driving it to an empty conclusion. The check
+        // reads programSubjects — the units object carries no .length, so a
+        // `.length` gate never admitted anything.
+        const rescanUnits = await dedupeLateSubjects(
+          await subjectsForCompileRoots(rescanDelta, rescanCensus.subjects),
         );
-        if (rescanUnits.length > 0) try {
+        if (rescanUnits.programSubjects.length > 0) try {
           const rescanRoute = this._selectPostRoute();
           await admitOpeningUnitsAcrossSlices({
             units: rescanUnits,
@@ -14412,7 +14932,13 @@ export const render = {
         // delta — a join trickle then re-linked the same material set per pass. Only
         // casters whose depth-variant signature was never staged under the live light
         // census still need the ceremony; a repeat pass over the same set skips it.
-        const unstagedRescanDelta = collectUnstagedShadowCasters(renderer, rescanDelta, scene);
+        const unstagedRescanDelta = [];
+        for (let i = 0; i < rescanDelta.length; i += 512) {
+          const unstagedPart = collectUnstagedShadowCasters(
+            renderer, rescanDelta.slice(i, i + 512), scene, depthLightSig);
+          if (unstagedPart.length > 0) unstagedRescanDelta.push(...unstagedPart);
+          await postPace();
+        }
         if (unstagedRescanDelta.length > 0) {
           compileShadowDepthPipelines({
             renderer,
@@ -19267,7 +19793,9 @@ export const render = {
   // meshes, journal/ledger rows, player) so live records — including event-created
   // records for not-yet-meshed entities — are never dropped.
   _pruneMotionTrackerRecords(presentationList) {
-    const iterator = this._pruneMotionTrackerRecordsSteps(presentationList);
+    const steps = typeof this._pruneMotionTrackerRecordsSteps === 'function'
+      ? this._pruneMotionTrackerRecordsSteps : render._pruneMotionTrackerRecordsSteps;
+    const iterator = steps.call(this, presentationList);
     let step = iterator.next();
     while (!step.done) step = iterator.next();
     return step.value;
@@ -19320,7 +19848,8 @@ export const render = {
     if (typeof this._releaseDetachedBoundaryOwnersSteps === 'function') {
       yield* this._releaseDetachedBoundaryOwnersSteps();
     } else {
-      this._releaseDetachedBoundaryOwners();
+      (typeof this._releaseDetachedBoundaryOwners === 'function'
+        ? this._releaseDetachedBoundaryOwners : render._releaseDetachedBoundaryOwners).call(this);
     }
   },
 
@@ -19332,7 +19861,9 @@ export const render = {
   // pointers, presentation slots, sector preparations, or prepared/queued authored lifecycle.
   // Parked-but-claimed boundaries (docked player hull, staged admissions) stay untouched.
   _releaseDetachedBoundaryOwners() {
-    const iterator = this._releaseDetachedBoundaryOwnersSteps();
+    const steps = typeof this._releaseDetachedBoundaryOwnersSteps === 'function'
+      ? this._releaseDetachedBoundaryOwnersSteps : render._releaseDetachedBoundaryOwnersSteps;
+    const iterator = steps.call(this);
     let step = iterator.next();
     while (!step.done) step = iterator.next();
     return step.value;
@@ -19414,6 +19945,33 @@ export const render = {
       }
       return false;
     };
+    // Stepped twin of the live fallback above: the release leg yield*s it on a
+    // sync-probe miss so a boundary that misses `claimed` doesn't re-walk
+    // meshes+entities+refs inside one step under a mass-detach wave.
+    const isClaimedSteps = function* (boundary) {
+      for (const mesh of this._meshes.values()) {
+        for (let cur = mesh; cur; cur = cur.parent) {
+          if (cur === boundary) return true;
+        }
+        yield;
+      }
+      if (entities) {
+        let visited = 0;
+        for (const entity of entities.values()) {
+          if (++visited % 256 === 0) yield;
+          if (!entity) continue;
+          if (entity.mesh === boundary) return true;
+          if (entity.view && entity.view.root === boundary) return true;
+        }
+      }
+      if (refs) {
+        for (let i = 0; i < refs.length; i++) {
+          if (i % 512 === 0) yield;
+          if (refs[i] === boundary) return true;
+        }
+      }
+      return false;
+    };
     yield;
     const releaseProbe = {
       reason: 'detached-unclaimed-boundary',
@@ -19423,6 +19981,7 @@ export const render = {
         return root !== scene && root.isScene !== true;
       },
       isClaimed,
+      isClaimedSteps: isClaimedSteps.bind(this),
     };
     const released = typeof residency.releaseDetachedBoundaryOwnersSteps === 'function'
       ? yield* residency.releaseDetachedBoundaryOwnersSteps(releaseProbe)
@@ -19917,7 +20476,8 @@ export const render = {
       }
     }
     for (const _ of kickDecodeRunwayAssetsSteps(this, presentationList)) yield;
-    updatePredictedSectorPrewarm(this);
+    updatePredictedSectorPrewarmSteps
+      && (yield* updatePredictedSectorPrewarmSteps(this));
     yield;
     warmEncounterPendingDecode(this);
     warmPendingReinforcementsDecode(this);
@@ -20033,7 +20593,9 @@ export const render = {
         || (this._meshResidencyRehoistRest = []);
       urgentNow.length = 0;
       restNow.length = 0;
+      let rehoistVisited = 0;
       for (let index = this._meshBuildQueueHead; index < pendingBuilds.length; index++) {
+        if (++rehoistVisited % 256 === 0) yield;
         const entity = resolveWorldPresentationEntity(state, pendingBuilds[index]);
         const seconds = entity ? entityTimeToGlassSeconds(entity, env, state) : Infinity;
         if (seconds <= TABLE_BUILD_URGENT_SECONDS) {
@@ -20078,6 +20640,16 @@ export const render = {
    * non-exempt slips through the hold.
    */
   _drainProtectedFirstFlightBuilds() {
+    const iterator = this._drainProtectedFirstFlightBuildsSteps();
+    let step = iterator.next();
+    while (!step.done) step = iterator.next();
+    return step.value;
+  },
+
+  // Stepped twin: the repartition eval yields per 256 tail rows and the budgeted
+  // drain yield*s the same per-row stepped drain the poll drives — the residency
+  // pump's persistent driver bounds each invocation at its slice clock.
+  *_drainProtectedFirstFlightBuildsSteps() {
     const queue = this._meshBuildQueue;
     const head = this._meshBuildQueueHead | 0;
     if (!queue || head >= queue.length) return 0;
@@ -20100,6 +20672,7 @@ export const render = {
       const hoisted = [];
       const remainder = [];
       for (let i = 0; i < tail.length; i++) {
+        if (i % 256 === 0) yield;
         const id = tail[i];
         (exempt(resolveWorldPresentationEntity(this.state, id))
           && !(this._holdExemptPersistentSkips && this._holdExemptPersistentSkips.has(id))
@@ -20117,7 +20690,9 @@ export const render = {
     // crucible). Exempt ids stay hoisted at the head, so the next hold frames finish the
     // rest without letting non-exempt work slip through.
     const headBefore = this._meshBuildQueueHead;
-    const built = this._drainMeshBuildQueue(Math.min(hoistedLeft, RUNTIME_MESH_BUILD_BUDGET));
+    const built = typeof this._drainMeshBuildQueueSteps === 'function'
+      ? yield* this._drainMeshBuildQueueSteps(Math.min(hoistedLeft, RUNTIME_MESH_BUILD_BUDGET))
+      : this._drainMeshBuildQueue(Math.min(hoistedLeft, RUNTIME_MESH_BUILD_BUDGET));
     this._holdExemptRemaining = Math.max(
       0,
       hoistedLeft - (this._meshBuildQueueHead - headBefore),
@@ -20126,7 +20701,11 @@ export const render = {
   },
 
   _drainMeshBuildQueue(buildBudget) {
-    const iterator = this._drainMeshBuildQueueSteps(buildBudget);
+    // A bare/fixture owner can carry this driver without the Steps twin — the
+    // twin body only touches this.* state, so run it off the module literal.
+    const steps = typeof this._drainMeshBuildQueueSteps === 'function'
+      ? this._drainMeshBuildQueueSteps : render._drainMeshBuildQueueSteps;
+    const iterator = steps.call(this, buildBudget);
     let step = iterator.next();
     while (!step.done) step = iterator.next();
     return step.value;
@@ -20168,7 +20747,7 @@ export const render = {
       );
       this._meshBuildLateSkips = gate.skippedCount;
       if (!gate.start) {
-        if (!hoistDeadlineGlassMeshBuilds(this, glassVerdictMemo)) return 0;
+        if (!(yield* hoistDeadlineGlassMeshBuildsSteps(this, glassVerdictMemo))) return 0;
         deadlineGlassOnly = true;
       }
     }
@@ -20178,13 +20757,21 @@ export const render = {
     const now = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
       ? performance.now()
       : Date.now());
+    // Segment-accurate debiting: a suspended drain parks across presented frames,
+    // so the epilogue can only charge the live segment — suspension gaps and spans
+    // the enclosing drivers already debited must not lump into the completion
+    // frame's wallet. Each segment's spend posts where it ran; under the
+    // inline-drained sync path the segments sum to the same total.
+    let segStartedAtMs = startedAtMs;
     let simNow = Number(this.state && this.state.simTime) || 0;
     let drainBeatSeen = this._residencySweepBeatStamp | 0;
     let hoistedDeadlineBuilds = false;
     // The scan-context mint and the O(entityList) newcomer census ride their own
     // slice segments instead of bundling into the gate's step — under the shell
     // latches the census runs on every drain.
+    notePacedFrameSpend(now() - segStartedAtMs);
     yield;
+    segStartedAtMs = now();
     // One scan context for the whole drain — player/look-at/env are fixed per call.
     let drainScan = makeHoldExemptScanContext(this.state);
     const drainScanOpts = { scan: drainScan };
@@ -20200,21 +20787,46 @@ export const render = {
           || this.state.render.sectorShellAdmission === true)) {
       const newcomerOpts = { bypassShellGates: true, scan: drainScan };
       let newcomersSeen = 0;
-      for (const entity of this.state.entityList || []) {
-        // `add` is order-neutral; a mid-census attach picked up by the live
-        // iteration is conservative over-inclusion, the safe direction.
-        if ((newcomersSeen++ % 1024) === 0) yield;
-        if (!entity || entity.id == null || firstFlightIds.has(entity.id)) continue;
-        if (entity.type === 'asteroid') continue;
-        if (this._sectorBoundaryPreparations && this._sectorBoundaryPreparations.has(entity.id)) continue;
+      const newcomerList = this.state.entityList || [];
+      // Iterate a snapshot: a despawn swap-pop mid-census lands a never-visited
+      // tail member at an already-scanned index — live iteration misses it,
+      // the snapshot still visits it at its own slot.
+      const newcomerSnapshot = newcomerList.slice();
+      const newcomerBaseLen = newcomerList.length;
+      const admitNewcomer = (entity) => {
+        if (!entity || entity.id == null || firstFlightIds.has(entity.id)) return;
+        if (entity.type === 'asteroid') return;
+        if (this._sectorBoundaryPreparations && this._sectorBoundaryPreparations.has(entity.id)) return;
         if (!isEntityRenderRelevant(entity, this.state, null, newcomerOpts)
             && !entityWithinPlayerRadius(entity, this.state,
-              renderResidencyRadius(this.state, 'prefetch', entity))) continue;
+              renderResidencyRadius(this.state, 'prefetch', entity))) return;
         firstFlightIds.add(entity.id);
+      };
+      for (const entity of newcomerSnapshot) {
+        if ((newcomersSeen++ % 1024) === 0) {
+          notePacedFrameSpend(now() - segStartedAtMs);
+          yield;
+          segStartedAtMs = now();
+        }
+        admitNewcomer(entity);
+      }
+      // Mid-walk appends past the snapshot's span are the only remaining miss —
+      // rescan the live tail with the same union predicate (`add` is idempotent).
+      if (newcomerList.length > newcomerBaseLen) {
+        for (let i = newcomerBaseLen; i < newcomerList.length; i++) {
+          if ((newcomersSeen++ % 1024) === 0) {
+            notePacedFrameSpend(now() - segStartedAtMs);
+            yield;
+            segStartedAtMs = now();
+          }
+          admitNewcomer(newcomerList[i]);
+        }
       }
     }
     while (this._meshBuildQueueHead < this._meshBuildQueue.length) {
+      notePacedFrameSpend(now() - segStartedAtMs);
       yield;
+      segStartedAtMs = now();
       // A multi-beat drain consumes prologue terms minted before the
       // suspension — re-mint the cheap ones on a newer sweep beat so row
       // verdicts stop serving beats-old player/camera/env terms. The
@@ -20248,7 +20860,7 @@ export const render = {
         // off-glass backlog — hoist it to the head once per drain so the
         // on-glass overflow arm above can finish it inside this slice instead
         // of leaving a hole for the rest of the window.
-        if (hoistedDeadlineBuilds || !hoistDeadlineGlassMeshBuilds(this, glassVerdictMemo)) break;
+        if (hoistedDeadlineBuilds || !(yield* hoistDeadlineGlassMeshBuildsSteps(this, glassVerdictMemo))) break;
         hoistedDeadlineBuilds = true;
         continue;
       }
@@ -20267,7 +20879,7 @@ export const render = {
         // builds through this same slice check.
         if (!hoistedDeadlineBuilds) {
           hoistedDeadlineBuilds = true;
-          hoistDeadlineGlassMeshBuilds(this, glassVerdictMemo);
+          yield* hoistDeadlineGlassMeshBuildsSteps(this, glassVerdictMemo);
         }
         break;
       }
@@ -20462,8 +21074,8 @@ export const render = {
       this._meshBuildQueue = this._meshBuildQueue.slice(this._meshBuildQueueHead);
       this._meshBuildQueueHead = 0;
     }
-    if (built > 0 || now() - startedAtMs > 0) {
-      notePacedFrameSpend(now() - startedAtMs);
+    if (built > 0 || now() - segStartedAtMs > 0) {
+      notePacedFrameSpend(now() - segStartedAtMs);
     }
     return built;
   },
@@ -20482,18 +21094,42 @@ export const render = {
     const e = this.state.entities.get(id);
     if (!e || e.alive === false) return;
     const old = this._meshes.get(id);
+    const m = this.vf.build(e);
     if (old) {
       this._unbindPresentationMesh(id, old);
-      this.scene.remove(old);
-      // Same traverse+dispose class as a despawn corpse — ride the bounded per-frame
-      // drain instead of paying the GL tail inside the appearanceChanged emit.
-      this._despawnDisposeQueue.push(old);
       this._meshes.delete(id);
       this._meshesVersion += 1;
-      noteShadowMeshRemoved(this, old);
-      this._queueAssetResidencyDiagnosticsPublish();
+      // Keep the outgoing hull drawing its last committed pose while the
+      // replacement sits behind an admission latch (unseen geometry, authored
+      // upgrade) — the retiring-pool bridge for the remount path; without it
+      // the hull pops out for the whole window and back in on resolution.
+      // Protected roots submit before the latches, so a bridge would only
+      // double-draw — they keep the immediate teardown. settleRebuildBridges
+      // releases the parked mesh on drawable/cap/epoch-death.
+      const parkable = old.visible === true
+        && old.parent === this.scene
+        && !isFirstFlightProtectedEntity(e)
+        && (!m || hasUnresidentGeometry(m)
+          || canRequestAuthoredUpgrade(e, this.state, this._authoredSectorPrewarmPendingId));
+      if (parkable) {
+        if (!this._rebuildBridges) this._rebuildBridges = new Map();
+        const predecessor = this._rebuildBridges.get(id);
+        if (predecessor) releaseRebuildBridge(this, id, predecessor);
+        this._rebuildBridges.set(id, {
+          mesh: old,
+          replacement: m || null,
+          frames: 0,
+          epoch: this.state.world && this.state.world.enterSerial,
+        });
+      } else {
+        this.scene.remove(old);
+        // Same traverse+dispose class as a despawn corpse — ride the bounded per-frame
+        // drain instead of paying the GL tail inside the appearanceChanged emit.
+        this._despawnDisposeQueue.push(old);
+        noteShadowMeshRemoved(this, old);
+        this._queueAssetResidencyDiagnosticsPublish();
+      }
     }
-    const m = this.vf.build(e);
     if (!m) return;
     const local = this._frameMembrane.toLocal(e.pos, _meshLocalXZ);
     m.position.set(local.x, 0, local.z);
@@ -22963,7 +23599,15 @@ export const render = {
     }
     const receiverOut = { receiverDelta: 0 };
     const changed = syncShadowCasterPolicy(
-      root, lodLevel, { ...syncOpts, ...(extra || {}), out: receiverOut });
+      root, lodLevel, {
+        ...syncOpts,
+        ...(extra || {}),
+        // A withhold verdict lands in syncOpts.allowCast=false — reapply it
+        // after the extra spread so a caller's extras can never re-open the
+        // cold depth-link seam this gate exists to keep closed.
+        ...(syncOpts.allowCast === false ? { allowCast: false } : {}),
+        out: receiverOut,
+      });
     if (withheldMeshes && withheldMeshes.length > 0) {
       for (const mesh of withheldMeshes) {
         if (mesh) mesh.castShadow = false;

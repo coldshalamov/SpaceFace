@@ -512,6 +512,17 @@ function settleRetiringBucketMesh(pool, bucket) {
   const nextPending = !!(next && next.userData && next.userData.pipelinesPending === true);
   retiring.frames += 1;
   if (nextPending && retiring.frames < RETIRING_BATCH_MAX_SYNCS) return true;
+  // Cap hit with the replacement still latched: releasing blind lands the
+  // family-wide blink exactly when the admission lane is wedged — the defect
+  // this bridge exists to prevent. Re-kick the admission once (the lane
+  // dedupes a live request) and run one more window; a lane that truly never
+  // settles still releases at the second cap.
+  if (nextPending && retiring.rekick !== true && typeof pool.onMeshCreated === 'function') {
+    retiring.rekick = true;
+    retiring.frames = 0;
+    try { pool.onMeshCreated(next); } catch (_) { /* admission must never break the sync pass */ }
+    return true;
+  }
   bucket.retiring = null;
   disposeOwnedInstanceMesh(retiring.mesh, retiring.owner, pool.scene);
   return false;

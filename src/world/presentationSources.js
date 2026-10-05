@@ -389,12 +389,15 @@ function _nearbyLedgerWalkPlan(state, opts = null) {
   const walkZ = (Math.floor(unionZ / ASTEROID_FIELD_CELL) + 0.5) * ASTEROID_FIELD_CELL;
   const radiusPad = Math.ceil(ASTEROID_FIELD_CELL * Math.SQRT1_2);
   const walkRadius = Math.ceil((scanRadius + legSpan / 2 + radiusPad) / 500) * 500;
-  // The minted discs collect one cell-diagonal beyond the needed radius so a
-  // quantized-cell flip of the union origin — a player hovering a cell rim —
-  // stays inside the stamped coverage ('covered' rides the flip instead of
-  // paying the grid refill every beat). The needed radius stays unpadded:
-  // containment is a true superset because the collect paid for the overlap.
-  const collectOverlap = Math.ceil(ASTEROID_FIELD_CELL * Math.SQRT2);
+  // The minted discs collect past the needed radius so a quantized-cell flip of
+  // the union origin stays inside the stamped coverage ('covered' rides the flip
+  // instead of paying the grid refill). Two cell-diagonals: a stepped refill
+  // suspended across beats arrives at a fresh plan whose origin may already be
+  // a hop past the mint's — the second diagonal keeps the committed disc
+  // containable for a completing collect's containment gate without another
+  // refill leg. The needed radius stays unpadded: containment is a true
+  // superset because the collect paid for the overlap.
+  const collectOverlap = Math.ceil(ASTEROID_FIELD_CELL * Math.SQRT2 * 2);
   const toleration = opts && opts.tolerateMiss;
   const world = state && state.world;
   const field = world && world.asteroidField;
@@ -521,6 +524,79 @@ function _nearbyLedgerRowsContext(state, opts = null) {
   // Snapshot every scalar the row loops read: a chunked drain resumes across yields,
   // and a frame beat's own collect could rewrite the module scratches (`_ledgerCollectOrigin`,
   // `_ledgerPredictedScratch` stays per-call) mid-walk — the context pins the verdict inputs.
+  return {
+    originX: origin.x,
+    originZ: origin.z,
+    playerX,
+    playerZ,
+    pvx,
+    pvz,
+    simTime,
+    glassR: presentationGlassCorner(state),
+    radius2: radius * radius,
+    live: state.entities,
+  };
+}
+
+// Stepped twin of _nearbyLedgerRowsContext: the refill verdicts yield* the
+// stepped grid queries instead of paying the unbounded corridor walk inside
+// one step — a memo key that went stale mid-warm (a membership version bump
+// inside the warm's own suspended walk) would otherwise re-run the whole disc
+// query inside the first next() of a presented-frame collect. Each leg stages
+// privately and publishes + stamps in the same step, so a suspended refill
+// never leaves a half-filled disc observable through the shared scratches.
+function* _nearbyLedgerRowsContextSteps(state, opts = null) {
+  const plan = _nearbyLedgerWalkPlan(state, opts);
+  if (!plan) return null;
+  const {
+    player,
+    origin,
+    playerX,
+    playerZ,
+    simTime,
+    radius,
+    walkX,
+    walkZ,
+    walkRadius,
+    collectOverlap,
+    toleration,
+    hasLiveFarDisc,
+    hasLiveRockDisc,
+    ridesFar,
+    rockWalkRadius,
+    rockBucket,
+    ridesRock,
+    farVersionNow,
+    fieldVersionNow,
+  } = plan;
+  if (!meshFarKeyMatches(state, walkX, walkZ, walkRadius) && !ridesFar) {
+    if (toleration === true && !hasLiveFarDisc) {
+      _meshFarScratch.length = 0;
+    } else {
+      _meshWalkOrigin.x = walkX;
+      _meshWalkOrigin.z = walkZ;
+      const staged = [];
+      yield* queryFarActorsSteps(state, _meshWalkOrigin, walkRadius + collectOverlap, staged);
+      _meshFarScratch.length = 0;
+      for (const rec of staged) _meshFarScratch.push(rec);
+      rememberMeshFarKey(state, walkX, walkZ, walkRadius, walkRadius + collectOverlap, farVersionNow);
+    }
+  }
+  if (!meshRockKeyMatches(state, walkX, walkZ, rockWalkRadius, rockBucket) && !ridesRock) {
+    if (toleration === true && !hasLiveRockDisc) {
+      _meshRockScratch.length = 0;
+    } else {
+      _meshWalkOrigin.x = walkX;
+      _meshWalkOrigin.z = walkZ;
+      const staged = [];
+      yield* queryAsteroidFieldSteps(state, _meshWalkOrigin, rockWalkRadius + collectOverlap, staged);
+      _meshRockScratch.length = 0;
+      for (const rec of staged) _meshRockScratch.push(rec);
+      rememberMeshRockKey(state, walkX, walkZ, rockWalkRadius, rockBucket, rockWalkRadius + collectOverlap, fieldVersionNow);
+    }
+  }
+  const pvx = finite(player.vel && player.vel.x);
+  const pvz = finite(player.vel && player.vel.z);
   return {
     originX: origin.x,
     originZ: origin.z,
@@ -703,7 +779,7 @@ function* _appendLedgerRowsWithCtx(ctx, rocks, fars, out) {
 }
 
 export function* appendNearbyLedgerRowsChunked(state, out) {
-  const ctx = _nearbyLedgerRowsContext(state);
+  const ctx = yield* _nearbyLedgerRowsContextSteps(state);
   if (!ctx) return;
   yield* _appendLedgerRowsWithCtx(ctx, _meshRockScratch.slice(), _meshFarScratch.slice(), out);
 }
@@ -721,7 +797,7 @@ export function* collectMeshPresentationEntitiesChunked(state, out = [], opts = 
   // walk can span several slices, and a quantized-cell crossing mid-walk would
   // otherwise land the memo-miss refill — the unbounded grid query the warm
   // exists to hoist — inside a next() step.
-  const ctx = _nearbyLedgerRowsContext(state, opts);
+  const ctx = yield* _nearbyLedgerRowsContextSteps(state, opts);
   const rocks = ctx ? _meshRockScratch.slice() : null;
   const fars = ctx ? _meshFarScratch.slice() : null;
   yield* collectJournalPresentationEntitiesChunked(state, out);
