@@ -1994,7 +1994,34 @@ export const CAPITAL_BOSS_ALA = Object.freeze({
 });
 
 export const CAPITAL_BOSSES = Object.freeze([CAPITAL_BOSS, CAPITAL_BOSS_TOLLMAN, CAPITAL_BOSS_ALA]);
-const CAPITAL_BOSS_BY_ID = new Map(CAPITAL_BOSSES.map((row) => [row.id, row]));
+
+// Normal-route capital hunts: real mid-game encounters that never join the endgame pull list
+// (the catalog validator's exact-three invariant stays untouched — hunts are not pulls).
+export const LATTICE_WARDEN_HUNT = Object.freeze({
+  id: 'capital_boss_lattice_warden',
+  title: 'Throw the Lattice Warden down',
+  brief: 'A rogue survey machine is re-staking the Pallas salvage lanes. Break its lattice stakes or put mass through the hull. No immunity.',
+  physicalVerb: 'throw',
+  startStationId: 'station_drift',
+  destStationId: 'station_drift',
+  destSectorId: 'sector_pallas_drift',
+  factionId: 'faction_mts',
+  riskTier: 2,
+  rewardCr: 4600,
+  collateralCr: 520,
+  durationS: 1800,
+  distance: 900,
+  twistClauseId: 'throw_it',
+  encounterId: 'capital_boss_lattice_warden',
+  methods: Object.freeze(['throw_the_capital', 'outgun_the_capital']),
+  primaryRole: 'capital_hull',
+  endgame: false,
+  subsystemRoles: CAPITAL_BOSS.subsystemRoles,
+  methodHooks: CAPITAL_BOSS.methodHooks,
+});
+export const CAPITAL_HUNTS = Object.freeze([LATTICE_WARDEN_HUNT]);
+
+const CAPITAL_BOSS_BY_ID = new Map([...CAPITAL_BOSSES, ...CAPITAL_HUNTS].map((row) => [row.id, row]));
 
 export function capitalBossById(id) {
   return CAPITAL_BOSS_BY_ID.get(id) || null;

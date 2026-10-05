@@ -1173,6 +1173,7 @@ const REQUIRED_WHOLE_SHIP_TRAFFIC_ROLES = Object.freeze(new Set([
 ]));
 const REQUIRED_WHOLE_SHIP_ASSET_REFS = Object.freeze(new Set([
   'asset.slice.meridian_recovery_tug',
+  'asset.slice.lattice_warden',
 ]));
 
 /** Keep sector preparation on the same complete-body selector as the installed visual factory.
@@ -1695,12 +1696,15 @@ const WHOLE_SHIP_FILE_BY_ASSET_REF = Object.freeze({
   enemy_reaver_skirmisher: 'wholeships/ashline_rig.glb',
   enemy_reaver_tug: 'wholeships/ashline_rig.glb',
   'asset.slice.meridian_recovery_tug': 'wholeships/yard_tug.glb',
+  // The Lattice Warden's forge tri-vane hull — authored boss body, fail-closed like the rest.
+  'asset.slice.lattice_warden': 'wholeships/lattice_warden.glb',
 });
 const WHOLE_SHIP_ASSET_ID_BY_ASSET_REF = Object.freeze({
   enemy_reaver_interceptor: 'SF_WHOLESHIP_ASHLINE_RIG',
   enemy_reaver_skirmisher: 'SF_WHOLESHIP_ASHLINE_RIG',
   enemy_reaver_tug: 'SF_WHOLESHIP_ASHLINE_RIG',
   'asset.slice.meridian_recovery_tug': 'SF_WHOLESHIP_YARD_TUG',
+  'asset.slice.lattice_warden': 'SF_WHOLESHIP_LATTICE_WARDEN',
 });
 // Ambient civilian traffic owns a durable presentation role independent of ship-def gameplay
 // stats. This keeps role silhouettes stable across rematerialization and prevents courier traffic

@@ -25,6 +25,7 @@ export const CombatDoctrineId = Object.freeze({
   CAPITAL_BROADSIDE: 'capital_broadside',
   CAPITAL_BROADSIDE_TOLLMAN: 'capital_broadside_tollman',
   CAPITAL_BROADSIDE_ALA: 'capital_broadside_ala',
+  CAPITAL_BROADSIDE_LATTICE_WARDEN: 'capital_broadside_lattice_warden',
   ESCORT_SCREEN: 'escort_screen',
   SWARM_PACK: 'swarm_pack',
   PACK_PURSUIT: 'pack_pursuit',
@@ -170,6 +171,7 @@ const IDENTITY_OWNED_RANGE_DOCTRINES = new Set([
   CombatDoctrineId.CAPITAL_BROADSIDE,
   CombatDoctrineId.CAPITAL_BROADSIDE_TOLLMAN,
   CombatDoctrineId.CAPITAL_BROADSIDE_ALA,
+  CombatDoctrineId.CAPITAL_BROADSIDE_LATTICE_WARDEN,
 ]);
 // Escort screen: the warden's job is the WARD, not the kill. It holds a point between its nearest
 // friendly and the pressed threat, and darts only when the threat actually breaches the ward.
@@ -343,7 +345,8 @@ export class CombatDoctrineRuntime {
       updateFieldAnchor(record, tick, self, target, distance);
     } else if (doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE
       || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_TOLLMAN
-      || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_ALA) {
+      || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_ALA
+      || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_LATTICE_WARDEN) {
       updateCapitalBroadside(record, tick, self, distance);
     } else if (doctrineId === CombatDoctrineId.ESCORT_SCREEN) {
       updateEscort(record, tick, perception, self, target, distance);
@@ -775,7 +778,8 @@ function egressPhaseFor(record) {
   // parking on a stale flightPoint in a phase updateCapitalBroadside never advances.
   if (doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE
     || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_TOLLMAN
-    || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_ALA) return 'broadside_shift';
+    || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_ALA
+    || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_LATTICE_WARDEN) return 'broadside_shift';
   return 'retreat';
 }
 
@@ -1183,7 +1187,8 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
   const doctrineId = record.doctrineId;
   if (doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE
     || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_TOLLMAN
-    || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_ALA) {
+    || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_ALA
+    || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_LATTICE_WARDEN) {
     const opening = resolveCapitalOpening(self);
     const cue = capitalOpeningAnnouncement(record.openingTransitionId || null, opening);
     record.openingOpen = opening.open;
@@ -1353,7 +1358,8 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
     }
   } else if (doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE
     || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_TOLLMAN
-    || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_ALA) {
+    || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_ALA
+    || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_LATTICE_WARDEN) {
     maneuverKind = ManeuverKind.ORBIT;
     // B3b: the broadside ring fits inside the composed frame, tightened act by act — the boss
     // stage table owns the number, the composed-frame floor owns the minimum.
@@ -1615,7 +1621,8 @@ function initialPhase(doctrineId) {
   if (doctrineId === CombatDoctrineId.FIELD_ANCHOR_CONTROLLER) return 'approach';
   if (doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE
     || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_TOLLMAN
-    || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_ALA) return 'broadside_approach';
+    || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_ALA
+    || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_LATTICE_WARDEN) return 'broadside_approach';
   if (doctrineId === CombatDoctrineId.ESCORT_SCREEN) return 'screen_approach';
   if (doctrineId === CombatDoctrineId.MINE_LAYER_WAKE) return 'flank';
   if (doctrineId === CombatDoctrineId.SHIELD_BREAKER) return 'close';
@@ -1626,7 +1633,8 @@ function flightProfileFor(doctrineId, self) {
   if (doctrineId === CombatDoctrineId.BRAWLER_COMMIT) return 'brawler_commit';
   if (doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE
     || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_TOLLMAN
-    || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_ALA) return 'capital_broadside';
+    || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_ALA
+    || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_LATTICE_WARDEN) return 'capital_broadside';
   if (doctrineId === CombatDoctrineId.ESCORT_SCREEN) return 'escort_screen';
   if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY &&
     (self && (self.operationalMassBand === 'heavy' || self.operationalMassBand === 'capital'))) {

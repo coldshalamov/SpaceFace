@@ -110,6 +110,9 @@ export const COMMODITIES = [
   { id: 'cmdty_scrap_metal',        name: 'Scrap Metal',           category: 'salvage',   basePrice: 10,   volatility: 0.18, elasticity: 0.344535, legality: 'legal',      volPerU: 1.0, massPerU: 0.9, fineMult: 0,   marketTier: 0, producedBy: ['mining'],                         consumedBy: ['refinery','fab'] },
   { id: 'cmdty_salvage_electronics',name: 'Salvage Electronics',   category: 'salvage',   basePrice: 36,  volatility: 0.205, elasticity: 0.394033, legality: 'legal',      volPerU: 0.6, massPerU: 0.4, fineMult: 0,   marketTier: 1, producedBy: ['mining'],                         consumedBy: ['fab','military'] },
   { id: 'cmdty_classified_salvage', name: 'Classified Salvage',    category: 'salvage',   basePrice: 136,  volatility: 0.23, elasticity: 0.442497, legality: 'restricted', volPerU: 0.6, massPerU: 0.4, fineMult: 0.8, marketTier: 2, producedBy: ['blackmarket'],                    consumedBy: ['military','blackmarket','fab'] },
+  // Lattice Warden trophy: one intact tether stake pulled out of a collapsed survey cell.
+  // Salvage-only (no market seeding, no producers) — it exists to be carried, not traded.
+  { id: 'cmdty_warden_stake_core',  name: 'Warden Stake Core',      category: 'salvage',   basePrice: 620,  volatility: 0.0,  elasticity: 0.0,      legality: 'legal',      volPerU: 0.7, massPerU: 0.9, fineMult: 0,   marketTier: 4, producedBy: [],                              consumedBy: ['research','military'], noMarketSeed: true },
 
   // --- CONTRABAND ---
   { id: 'cmdty_narcotics',          name: 'Narcotics',             category: 'contraband',basePrice: 576, volatility: 0.255, elasticity: 0.489971, legality: 'contraband', volPerU: 0.6, massPerU: 0.2, fineMult: 1.2, marketTier: 2, producedBy: ['blackmarket'],                    consumedBy: ['blackmarket'] },

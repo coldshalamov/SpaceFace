@@ -213,6 +213,11 @@ export const COMMODITY_FLAVOR = {
     desc: 'Restricted wreck evidence packed in sealed chain-of-custody crates.',
     lore: 'Concord tags these crates before military review. Vael brokers pay quietly when blackmarket docks unlock the file.',
   },
+  cmdty_warden_stake_core: {
+    displayName: 'Warden Stake Core, Cold Survey Alloy',
+    desc: 'An intact tether stake from a collapsed lane cell, still humming.',
+    lore: 'MTS survey crews seeded these across the outer lanes. Meridian buyers call a live stake core a survey machine\'s conscience.',
+  },
   cmdty_narcotics: {
     displayName: 'Lane Dust, Vael Locker Trade',
     desc: 'Vacuum-sealed pouches of refined stimulant resin.',

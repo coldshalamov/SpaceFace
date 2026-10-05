@@ -37,6 +37,7 @@ assert.deepEqual(Object.values(CombatDoctrineId).sort(), [
   'brawler_commit',
   'capital_broadside',
   'capital_broadside_ala',
+  'capital_broadside_lattice_warden',
   'capital_broadside_tollman',
   'detonator_run',
   'escort_screen',

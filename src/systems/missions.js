@@ -55,6 +55,7 @@ import {
   CAPITAL_BOSS_SOURCE,
   CAPITAL_BOSS,
   CAPITAL_BOSSES,
+  CAPITAL_HUNTS,
   capitalBossById,
   buildCapitalBossOffer,
   MEGA_HEIST_SOURCE,
@@ -2428,7 +2429,7 @@ export const missions = {
     if (!info || !board || !Array.isArray(board.slots)) return false;
     const unlocked = endgamePullsUnlocked(this.state);
     let changed = false;
-    for (const definition of CAPITAL_BOSSES) {
+    for (const definition of [...CAPITAL_BOSSES, ...CAPITAL_HUNTS]) {
       if (!definition || definition.startStationId !== info.id) continue;
       if (definition.endgame && !unlocked) continue;
       if (definition.endgame && completedEndgamePull(this.state, definition.id)) continue;

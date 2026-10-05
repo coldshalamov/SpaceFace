@@ -1,5 +1,7 @@
 import { requireCapitalBossEncounter } from '../data/encounters/capital-boss.js';
 import { resolveBossShapes, bodyIntersectsBossShapes } from './capitalBossGeometry.js';
+import { createLatticeState, latticeDeployPlan, latticeIntact, targetInsideLattice,
+  bindLatticeNodes, markLatticeNodeKilled, latticeSpent } from './latticeWarden.js';
 
 const copy = value => JSON.parse(JSON.stringify(value));
 const key = id => `${typeof id}:${String(id)}`;
@@ -22,6 +24,8 @@ export function createCapitalBossFight({ encounterId, fightId, bossId, targetId,
     lastTick:tick-1,clock:0,started:false,suspended:false,terminal:null,actIndex:-1,
     phase:'intro',actStartedAt:0,nextAt:0,sequence:0,castOrdinal:0,cast:null,
     wings:{},lastVoiceAt:-1000000,lastOrderSignature:null,lastWingGate:null,
+    // Lattice Warden rides INSIDE the fight record: serializable JSON, save/restore free.
+    lattice:null,
     telemetry:{casts:0,cancelled:0,hits:0,actsSeen:[],actsSkipped:[],suspensions:0} };
 }
 export function restoreCapitalBossFight(saved) {
@@ -51,6 +55,25 @@ export function rebindCapitalBossFight(r, { bossId,targetId,wingIds={} }) {
   if(r.cast) r.cast.hitKeys=r.cast.hitKeys.filter(k=>!mapping.has(k)||mapping.get(k)!=null).map(k=>mapping.has(k)?key(mapping.get(k)):k);
   r.lastOrderSignature=null;r.lastWingGate=null;
 }
+
+/** Rebind the lattice's mission-owned node bodies after rematerialization (same rules as wings). */
+export function rebindCapitalBossLattice(r, nodeIds) {
+  if(!r.lattice) return;
+  if(!Array.isArray(nodeIds)||nodeIds.length!==3) throw new TypeError('Lattice rebind keeps three slots');
+  r.lattice.nodeIds=[...nodeIds];
+  r.lattice.deployed=r.lattice.nodeIds.some(id=>id!=null);
+  r.lattice.intact=r.lattice.deployed&&r.lattice.nodeIds.every(id=>id!=null);
+}
+/** Spawn receipt for a latticeDeploy command: mission-owned ids only, ordered as the plan. */
+export function bindCapitalBossLattice(r, entityIds, keys=[]) {
+  if(!r.lattice) throw new TypeError('Lattice bind reached a non-lattice fight');
+  bindLatticeNodes(r.lattice, entityIds, keys);
+}
+/** entity:killed fact routed from the system: a dead stake voids the survey. */
+export function capitalBossLatticeNodeKilled(r, entityId) {
+  if(!r.lattice) return -1;
+  return markLatticeNodeKilled(r.lattice, entityId, r.clock);
+}
 export function bindCapitalBossWing(r, wingId, entityIds) {
   const w=r.wings[wingId],definition=requireCapitalBossEncounter(r.encounterId).score.wings.find(x=>x.id===wingId);
   if(!w || !definition) throw new RangeError(`Unrequested wing: ${wingId}`);
@@ -70,6 +93,9 @@ export function stepCapitalBossFight(r,o) {
     throw new RangeError('Missing fixed ticks: suspend before unloading; never catch up attacks');
   r.lastTick=o.tick;
   const e=requireCapitalBossEncounter(r.encounterId),s=e.score,out=[];
+  // Lattice Warden: the cell state lives in the fight record. Encounters without a lattice
+  // block never pay for the branch.
+  if(s.lattice && !r.lattice) r.lattice=createLatticeState();
   const emit=(type,payload={})=>out.push({type,fightId:r.fightId,encounterId:r.encounterId,tick:o.tick,simTime:o.simTime,...payload});
   const voice=(text,priority='chatter',force=false)=>{
     if(!text||(!force && r.clock-r.lastVoiceAt<s.voiceGapTicks)) return;
@@ -119,7 +145,10 @@ export function stepCapitalBossFight(r,o) {
     ? 'subsystem_disabled'
     : b.requires.some(x=>(REQUIRED_ACTION_TAGS[x]||[]).some(tag=>blockedTags.has(tag)))
       ? 'action_family_blocked' : null;
-  const usable=b=>blockReason(b)===null;
+  // A deploy beat is only usable while the Warden still holds unbroken stakes to throw.
+  const usable=b=>blockReason(b)===null
+    && !(s.lattice && b.lattice==='deploy'
+      && (latticeIntact(r.lattice) || (r.lattice?.deploys||0)>=s.lattice.maxDeploys));
   if(!r.started) {
     r.started=true;r.phase='intro';r.nextAt=r.clock+s.introTicks;
     emit('started',{bossId:r.bossId,targetId:r.targetId,name:s.name,lesson:s.lesson});voice(s.intro,'objective',true);order('intro');wingGate(false);
@@ -160,7 +189,18 @@ export function stepCapitalBossFight(r,o) {
   }
   if(r.cast) {
     const c=r.cast,b=getBeat(s,c.beatId),age=r.clock-c.startedAt;
-    if(age < b.tellTicks) {
+    if(b.lattice==='lance' && s.lattice && c.latticeArmed && !latticeIntact(r.lattice)) {
+      // The counter, honoured: a stake broken before the tell ends cancels the collapse
+      // outright and staggers the machine through the normal recovery/exposure channel.
+      const castId=c.id;
+      cancel('lattice_broken');r.phase='recovery';r.nextAt=r.clock+s.lattice.staggerTicks;
+      emit('countered',{reason:'lattice_broken',castId});
+      voice('LATTICE WARDEN: Stake lost. Survey void.','objective',true);
+      emit('damage',{attackerId:boss.id,targetId:boss.id,
+        packet:{channels:{},statuses:[{id:s.lattice.staggerStatus,stacks:1,durationTicks:s.lattice.staggerTicks}],flags:{}},
+        origin:{kind:'capital_exposure',id:castId}});
+      order('recovery');wingGate(true);
+    } else if(age < b.tellTicks) {
       r.phase='tell';
       if(age<=b.trackTicks) c.shapes=resolveBossShapes(b,boss,target,r.mirror);
       if(!c.locked && age>=b.trackTicks) {
@@ -170,7 +210,17 @@ export function stepCapitalBossFight(r,o) {
       order('tell',null,c.heading);wingGate(false);
     } else if(age < b.tellTicks+b.activeTicks) {
       r.phase='active';
-      if(!c.fired) {c.fired=true;emit('attack',{...telegraph(r,c,b),locked:true});}
+      if(!c.fired) {c.fired=true;emit('attack',{...telegraph(r,c,b),locked:true});
+        // The lattice collapse: still inside an intact cell when the lance lands costs the
+        // heavy packet. The lane shape itself still punishes the straight-line escape.
+        if(b.lattice==='lance' && s.lattice && targetInsideLattice(r.lattice,target.pos)) {
+          r.lattice.collapsed++;
+          emit('damage',{attackerId:boss.id,targetId:target.id,
+            packet:copy(s.lattice.collapsePacket),origin:{kind:'capital_lattice_collapse',id:`${c.id}:collapse`}});
+          emit('latticeCollapse',{castId:c.id,beatId:b.id,targetId:target.id,
+            nodeIds:[...r.lattice.nodeIds],nodePos:copy(r.lattice.nodePos)});
+        }
+      }
       order('active',b,c.heading);wingGate(false);
       const targets=(o.targets||[target]).filter(x=>x&&x.alive!==false&&x.id!==boss.id).sort((a,b)=>compareIds(a.id,b.id)).slice(0,8);
       for(const body of targets) {
@@ -190,7 +240,8 @@ export function stepCapitalBossFight(r,o) {
         origin:{kind:'capital_exposure',id:c.id}});
       emit('recovery',{beatId:b.id,durationTicks:b.recoverTicks,exposure:b.expose});order('recovery');wingGate(true);
     }
-  } else if(r.actIndex>=0 && r.clock>=r.nextAt) {
+  } else if(r.actIndex>=0 && r.clock>=r.nextAt
+    && !(s.lattice && r.lattice && targetInsideLattice(r.lattice,target.pos))) {
     const act=s.acts[r.actIndex];let selected=null;
     // Answer range camping with a visible, committed authored attack, never an offscreen tax.
     // Keep the low-cost opening lesson first. Destroying this attack's hardware still defeats it.
@@ -208,8 +259,28 @@ export function stepCapitalBossFight(r,o) {
       const b=selected;r.castOrdinal++;r.telemetry.casts++;r.phase='tell';
       r.cast={id:`${r.fightId}:${r.castOrdinal}`,beatId:b.id,startedAt:r.clock,locked:b.trackTicks===0,
         fired:false,hitKeys:[],heading:lockedHeading(boss,target,b,disabled,r.mirror),shapes:resolveBossShapes(b,boss,target,r.mirror)};
+      // Lattice joins the cast: a deploy asks the mission owner for three breakable stakes
+      // AROUND THE TARGET; a lance remembers whether the cell was intact when it armed.
+      if(b.lattice==='deploy' && s.lattice) {
+        const plan=latticeDeployPlan(target.pos, s.lattice.deployRadius, r.castOrdinal);
+        r.lattice.pendingPlan=plan;r.lattice.deploys++;
+        emit('latticeDeploy',{castId:r.cast.id,deployIndex:r.lattice.deploys,
+          plan:copy(plan),nodeKeys:plan.map((_,i)=>`${r.fightId}/lattice_node/${r.lattice.deploys}/${i}`),
+          node:{hull:s.lattice.nodeHull,radius:s.lattice.nodeRadius,mass:s.lattice.nodeMass}});
+      }
+      if(b.lattice==='lance') r.cast.latticeArmed=latticeIntact(r.lattice);
       emit('telegraph',telegraph(r,r.cast,b));order('tell',null,r.cast.heading);wingGate(false);
     } else {r.phase='disabled';r.nextAt=r.clock+30;order('disabled');wingGate(false);}
+  } else if(r.actIndex>=0) {
+    // The survey: while the cell is intact and the target sits inside it, the Warden holds
+    // fire and holds position. Geometry does the work. Leaving the cell (or breaking it)
+    // hands the pattern back after a short reset.
+    if(s.lattice && r.lattice && targetInsideLattice(r.lattice,target.pos)) {
+      r.phase='hold';order('hold');wingGate(false);
+    } else {
+      if(r.phase==='hold') {r.phase='recovery';r.nextAt=Math.max(r.nextAt,r.clock+30);}
+      order(r.phase);wingGate(r.phase==='recovery');
+    }
   } else {order(r.phase);wingGate(r.phase==='recovery');}
   r.clock++;return out;
 }

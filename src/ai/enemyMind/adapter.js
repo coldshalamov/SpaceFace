@@ -1,7 +1,7 @@
 // Pure SG-06 bridge. No imports from the game: tested independently and through the packet stack.
 export const SPECIALIST_DOCTRINES = new Set([
   'tether_control_raider', 'field_anchor_controller', 'capital_broadside',
-  'capital_broadside_tollman', 'capital_broadside_ala', 'escort_screen', 'mine_layer_wake', 'shield_breaker',
+  'capital_broadside_tollman', 'capital_broadside_ala', 'capital_broadside_lattice_warden', 'escort_screen', 'mine_layer_wake', 'shield_breaker',
   // The dart's run IS its authored verb — a fuse-lit hull must never be rerouted into a flank job.
   'detonator_run',
 ]);

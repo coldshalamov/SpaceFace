@@ -655,4 +655,44 @@ export const ENEMY_TYPES = [
     bountyCr: 0, shipClass: 'gunship',
     loot: null,
   },
+  // THE LATTICE WARDEN. Mid-game capital hunt (src/data/missions.js CAPITAL_HUNTS): a rogue
+  // lane-marking automaton that re-stakes salvage lanes with a breakable tether-lattice. Its
+  // three node stakes are mission-owned actors, not this row's hardware — the authored score
+  // (src/data/encounters/capital-boss/lattice-warden.js) drives the fight. The forge body
+  // arrives through data.assetRef (decorateCapitalBossSpawnSpec), so shipId stays a stat donor.
+  {
+    id: 'lattice_warden', name: 'Lattice Warden', shipId: 'ship_bastion',
+    silhouette: 'bruiser_armor', factionId: 'faction_mts',
+    aiArchetype: 'miniboss_capital', levelRange: [4, 7],
+    combatDoctrineId: 'capital_broadside_lattice_warden',
+    hull: 560, armor: 0, armorFlat: 1, shield: 0, shieldRegen: 0,
+    cap: 320, capRegen: 30,
+    maxSpeed: 52, accel: 40, turnRate: 0.8, collisionRadius: 26, mass: 340,
+    weapons: [
+      { id: 'wpn_autocannon_m', turret: true },
+      { id: 'wpn_autocannon_m', turret: true },
+      { id: 'wpn_railgun_m' },
+    ],
+    aiDoctrine: { defaultActivity: 'reposition', roe: 'weapons_free', preferredRange: 280, leashRadius: 2600 },
+    physicalClass: 'specialist',
+    // Presentation-only dressing for the render lane (src/render/latticeWardenTethers.js):
+    // the stake-collar ring and projector vanes already read on the forge body; the dressing
+    // draws the tether beams, node glow and lance charge. Combat numbers stay untouched.
+    bossDressing: { kind: 'lattice_warden' },
+    telegraph: {
+      bark: 'warn', cue: 'weapon_charge',
+      line: 'A survey automaton is staking the lane. Three stakes make a cell — break one.',
+    },
+    counterHint: 'Break any one lattice stake before the tell ends — the collapse cancels and the Warden winds down open.',
+    behavior: 'patient trap architect: stakes a triangle around you, holds fire inside the cell, collapses it with a phase lance; one dead stake staggers it',
+    bountyCr: 4200, shipClass: 'capital',
+    loot: {
+      creditsRange: [600, 1400],
+      guaranteed: [{ id: 'cmdty_warden_stake_core', qtyRange: [1, 1] }],
+      drops: [
+        { id: 'cmdty_electronics', chance: 0.7, qtyRange: [1, 3] },
+        { id: 'cmdty_alloys', chance: 0.5, qtyRange: [2, 4] },
+      ],
+    },
+  },
 ];

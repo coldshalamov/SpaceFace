@@ -47,7 +47,9 @@ const VOCABULARY = Object.freeze({
 
 test('every shipped capital score satisfies the authored telegraph contract', () => {
   const rows = Object.values(CAPITAL_BOSS_ENCOUNTERS);
-  assert.equal(rows.length, 7, 'the catalog still carries its seven capitals');
+  // The Lattice Warden hunt (normal-route, CAPITAL_HUNTS) joined the same executed catalog —
+  // the pin now tracks eight shipped scores, and every row still satisfies the contract.
+  assert.equal(rows.length, 8, 'the catalog still carries its eight capitals');
   const failures = [];
   for (const encounter of rows) {
     try {

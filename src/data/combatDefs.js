@@ -590,6 +590,7 @@ export const MISSION_TAG_BOSS_DOCTRINE = Object.freeze({
   capital_boss: 'capital_broadside',
   capital_boss_tollman: 'capital_broadside_tollman',
   capital_boss_ala: 'capital_broadside_ala',
+  capital_boss_lattice_warden: 'capital_broadside_lattice_warden',
 });
 
 // Boss choreography stages, keyed by the boss doctrine id. Stage 0 is the opening act; each
@@ -624,6 +625,16 @@ export const CAPITAL_BOSS_CHOREOGRAPHY = Object.freeze({
       Object.freeze({ hullAtMost: 1.01, fireTicks: 72, shiftTicks: 84, preferredRange: 260, cue: 'broadside_charge' }),
       Object.freeze({ hullAtMost: 0.66, fireTicks: 72, shiftTicks: 84, preferredRange: 240, cue: 'grave_pull' }),
       Object.freeze({ hullAtMost: 0.33, fireTicks: 108, shiftTicks: 36, preferredRange: 190, cue: 'ashfall_enrage' }),
+    ]),
+  }),
+  capital_broadside_lattice_warden: Object.freeze({
+    boss: 'LATTICE WARDEN',
+    // The score's survey/collapse acts pace the fight; the underlying cadence stays a patient
+    // standoff broadside so ordering drift can never silently open fire.
+    stages: Object.freeze([
+      Object.freeze({ hullAtMost: 1.01, fireTicks: 78, shiftTicks: 90, preferredRange: 280, cue: 'broadside_charge' }),
+      Object.freeze({ hullAtMost: 0.66, fireTicks: 84, shiftTicks: 66, preferredRange: 260, cue: 'lattice_restake' }),
+      Object.freeze({ hullAtMost: 0.33, fireTicks: 96, shiftTicks: 48, preferredRange: 230, cue: 'lattice_collapse' }),
     ]),
   }),
 });
