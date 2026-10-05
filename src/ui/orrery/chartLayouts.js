@@ -38,6 +38,13 @@ const TICK = (w = 12, a = 0.5, h = 2) => `content:"" !important; display:block !
   box-shadow:none !important; transform:none !important; translate:none !important; scale:none !important; rotate:none !important; clip-path:none !important; opacity:1 !important; mask:none !important; -webkit-mask:none !important;`;
 
 const CSS = `
+/* The canvas is the map's whole interaction surface (hover, click, drag to pan, wheel, lay the line).
+   It sits at a negative z-index inside the screen root, so the root's own box was hit ABOVE it and a real
+   pointer never reached it (the stage column was also pointer-events:none, which the canvas inherited).
+   The root now lets pointers through to the canvas; the chrome (header words, rail, inspector, foot, the
+   interaction layer) opts back in on its own. */
+${C} { pointer-events:none; }
+${C} .gm-viewport, ${C} .gm-viewport canvas { pointer-events:auto; }
 /* ============================ THE HEADER ============================================ */
 ${C} .gm-title { text-shadow:0 2px 28px rgb(5 7 10 / .7); }
 ${C} .gm-stamp { ${LABEL} font-size:12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .7) !important; }

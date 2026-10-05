@@ -270,7 +270,7 @@ function paintTerritory(c, w, h, charted, colours, frontOf = null) {
             let br = Math.min(255, (r + bt[0]) / 2 + 60);
             let bg = Math.min(255, (gg + bt[1]) / 2 + 60);
             let bb = Math.min(255, (b + bt[2]) / 2 + 60);
-            if (front === 'war') { br = DANGER[0]; bg = DANGER[1]; bb = DANGER[2]; aB = Math.min(0.8, aB * 1.45); }
+            if (front === 'war') { br = DANGER[0]; bg = DANGER[1]; bb = DANGER[2]; aB = Math.min(0.72, aB * 1.3 * smooth(0.32, 0.8, c1)); }
             else if (front === 'tense') { br = 250; bg = 244; bb = 230; aB = Math.min(0.7, aB * 1.2); }
             const out = 1 - (1 - aFill) * (1 - aB);
             r = (r * aFill * (1 - aB) + br * aB) / out;

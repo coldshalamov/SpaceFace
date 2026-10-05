@@ -11,7 +11,8 @@ import {
   sectorTokenUrl, factionCrestUrl, drawLabelLeader, trimPolylineSegments,
 } from './orrery/chartInstruments.js';
 import { placeChartLabels, placeChartCallout } from './orrery/chartLabels.js';
-import { planChartGround, drawDominionLane, drawTokenAura, releaseChartWorld } from './orrery/chartWorld.js';
+import { planChartGround, drawDominionLane, drawTokenAura, releaseChartWorld, dominionRgb } from './orrery/chartWorld.js';
+import { mountChartHub } from './orrery/chartHub.js';
 import { dressLampKey } from './orrery/lampKey.js';
 // src/ui/galaxyMap.js — ONE zoomable navigation map (GDD pillar 2).
 //
@@ -2865,7 +2866,9 @@ const HINT_ROWS = Object.freeze([
   ['Lay the line (preview, release to set)', 'Drag from you'],
   ['Cycle overlays', 'Tab'],
   ['Inspector tabs', '← →'],
-  ['Search the chart', '/'],
+  ['Search · palette', '/ · Ctrl K'],
+  ['Menu for a mark', 'Right-click'],
+  ['Zoom · fit', '+ · − · 0'],
   ['Close the chart', 'Esc'],
 ]);
 
@@ -3308,6 +3311,12 @@ function mapPressureLabel(value) {
   return n > 0 ? 'Scarcity' : 'Surplus';
 }
 
+function esc1(value) { return escapeMapHtml(value); }
+/** The one word a double-click does for this mark (the card's hint). */
+function shortVerb(action) {
+  if (!action) return 'go';
+  return action.kind === 'jump' ? 'jump' : action.kind === 'route' ? 'plot' : action.kind === 'waypoint' ? 'track' : 'go';
+}
 function escapeMapHtml(value) {
   return String(value == null ? '' : value)
     .replace(/&/g, '&amp;')
@@ -4593,6 +4602,12 @@ export const galaxyMapScreen = {
     this._canvas.addEventListener('wheel', (ev) => this._onWheel(ev), { passive: false });
     this._canvas.addEventListener('click', (ev) => this._onCanvasClick(ev));
     this._canvas.addEventListener('dblclick', (ev) => this._onCanvasDblClick(ev));
+    this._canvas.addEventListener('contextmenu', (ev) => this._onContextMenu(ev));
+
+    // The interaction layer (src/ui/orrery/chartHub.js): hover card, context menu, palette, toolbar and
+    // the wire. It asks this screen through the adapter and never forks a verb.
+    if (this._hub && typeof this._hub.dispose === 'function') this._hub.dispose();
+    this._hub = mountChartHub(rootEl, this._hubAdapter(), { searchInput, searchResults: resultsContainer });
 
     if (typeof ResizeObserver !== 'undefined') {
       this._ro = new ResizeObserver(() => this._resize());
@@ -4704,6 +4719,7 @@ export const galaxyMapScreen = {
     this._domRefreshPending = true;
     this._syncPublicIdentity();
     this._syncScaleButtons();
+    if (this._hub) this._hub.refresh();
     this._wake();
   },
 
@@ -4718,6 +4734,7 @@ export const galaxyMapScreen = {
     this._animFrame = null;
     this._unsubscribeKills();
     this._rememberScreenState();
+    if (this._hub) this._hub.closeAll();
     releaseChartWorld();
     this._localLiveContacts = 0;
     this._localModelDirty = true;
@@ -5183,6 +5200,24 @@ _stepAnimation(now) {
       return true;
     }
 
+    // The open context menu owns the arrows and Enter.
+    if (this._hub && this._hub.key(event)) {
+      if (event && typeof event.preventDefault === 'function') event.preventDefault();
+      return true;
+    }
+    // Ctrl/Cmd K opens the palette (the search, opened).
+    if ((event.ctrlKey || event.metaKey) && key === 'k') {
+      event.preventDefault();
+      if (this._hub) this._hub.focusPalette();
+      return true;
+    }
+    // The view keys: + and - zoom, 0 frames you and your destination.
+    if (!event.ctrlKey && !event.metaKey && !event.altKey && (key === '+' || key === '=' || key === '-' || key === '_' || key === '0')) {
+      event.preventDefault();
+      this._hubTool(key === '0' ? 'fit' : (key === '+' || key === '=') ? 'zoomIn' : 'zoomOut');
+      return true;
+    }
+
     // Focus search
     if (key === '/') {
       const input = this._root.querySelector('.gm-search-input');
@@ -5234,6 +5269,11 @@ _stepAnimation(now) {
    * chart. Every other moment declines so the router's ordinary close stays untouched.
    */
   onEscape(event) {
+    // the topmost thing the hub has open lets go first (menu, wire, palette, card); the chart stays
+    if (this._hub && this._hub.escape()) {
+      if (event && typeof event.preventDefault === 'function') event.preventDefault();
+      return true;
+    }
     return this._cancelChartGesture(event);
   },
 
@@ -6534,6 +6574,7 @@ _stepAnimation(now) {
     this._updateRailSections(state);
     this._updateHeaderWeather(state);
     this._updateCargoDeck(state);
+    if (this._hub) this._hub.refresh();
     this._domRefreshPending = false;
   },
 
@@ -7059,6 +7100,219 @@ _stepAnimation(now) {
     return true;
   },
 
+  // ───────────────────────────── the interaction layer's verbs (chartHub.js) ─────────────────────────────
+
+  /** What the hub may ask of this screen. Every verb is one this screen already owns. */
+  _hubAdapter() {
+    const screen = this;
+    return {
+      field: () => {
+        const w = screen._canvas ? screen._canvas.width / (screen._dpr || 1) : 0;
+        const h = screen._canvas ? screen._canvas.height / (screen._dpr || 1) : 0;
+        return screen._clearField(w, h);
+      },
+      describe: (t) => screen._describeTarget(t),
+      menuFor: (t) => screen._menuFor(t),
+      tool: (id) => screen._hubTool(id),
+      toolState: () => {
+        const a = screen._lastFramingActions;
+        return { fit: !!(a && a.frameShipAndDestination && a.frameShipAndDestination.available), ship: !!(a && a.returnToShip && a.returnToShip.available) };
+      },
+      situations: () => screen._situations(),
+      focusSector: (id) => screen._focusSectorById(id),
+      palette: () => screen._paletteItems(),
+      // what the chart has drawn (names and marks): a hover card keeps off it
+      obstacles: () => {
+        const out = [];
+        for (const lb of screen._lastLabelLayout || []) if (lb && lb.visible) out.push({ x: lb.x, y: lb.y, width: lb.width, height: lb.height });
+        for (const t of screen._clickTargets || []) {
+          if (!t || t.kind === 'zone' || !Number.isFinite(t.sx)) continue;
+          const r = Math.min(60, t.radiusPx || 12);
+          out.push({ x: t.sx - r, y: t.sy - r, width: r * 2, height: r * 2 });
+        }
+        return out;
+      },
+    };
+  },
+
+  /** The card a dwell opens: the quiet answer to "what is this?" before a click commits to anything. */
+  _describeTarget(t) {
+    const state = this._ctx && this._ctx.state;
+    if (!state || !t) return null;
+    const action = resolveGalaxyMapPrimaryAction(state, t);
+    const verb = action && action.label && action.kind !== 'closed' ? action.label : null;
+    if (t.kind === 'sector') {
+      const id = t.sectorId || t.id;
+      const sig = sectorSignalFor(state, id);
+      const conflict = sectorConflictSignal(state, id);
+      const rec = sectorRecordById(state, id);
+      const owner = (state.world && state.world.sectors && state.world.sectors[id] && state.world.sectors[id].owner) || t.factionId || null;
+      const sec = Number.isFinite(t.security) ? t.security : (rec && Number.isFinite(rec.security) ? rec.security : null);
+      const danger = sig && Number.isFinite(sig.danger) ? sig.danger : (sec != null ? 1 - sec : 0);
+      const rows = [];
+      if (owner) rows.push({ k: 'Holder', v: factionNameOf(owner), swatch: true });
+      if (sec != null) rows.push({ k: 'Security', v: `${sec.toFixed(2)} · ${sec >= 0.7 ? 'policed' : sec >= 0.34 ? 'ordinary' : sec >= 0.1 ? 'thin' : 'lawless'}`, hot: sec < 0.1 });
+      rows.push({ k: 'Danger', v: danger >= 0.66 ? 'High' : danger >= 0.33 ? 'Moderate' : 'Low', meter: danger, hot: danger >= 0.66 });
+      if (rec && Number.isFinite(rec.trafficPerMin)) rows.push({ k: 'Traffic', v: `${Math.round(rec.trafficPerMin)} / min` });
+      if (conflict.wars > 0) rows.push({ k: 'Front', v: 'At war', hot: true });
+      else if (conflict.tense > 0) rows.push({ k: 'Front', v: 'Tense', warm: true });
+      if (!t.current) {
+        const plan = this._previewPathTo(id);
+        const cost = plan ? formatRoutePlanCost(plan.route, plan.ids) : null;
+        if (cost) rows.push({ k: 'Route', v: cost.replace(/\s*\(.*\)$/, '').toLowerCase().replace(/^./, (c) => c.toUpperCase()) + (cost.includes('Fuel:') ? ` · ${cost.match(/Fuel: (\d+)/)[1]} fuel` : '') });
+      }
+      return {
+        eyebrow: `Sector${t.current ? ' · you are here' : ''}`,
+        title: t.name || id,
+        rows,
+        hue: dominionRgb(owner, owner ? factionColorOf(owner) : null).join(' '),
+        hint: verb ? `<b>Click</b> inspect · <b>2×</b> ${esc1(shortVerb(action))}` : '<b>Click</b> inspect',
+      };
+    }
+    const KIND = { station: 'Station', gate: 'Gate', poi: 'Point of interest', ship: 'Contact', asteroid: 'Rock', claim: 'Holding', zone: 'Zone', waypoint: 'Waypoint', bearing: 'Bearing' };
+    return {
+      eyebrow: KIND[t.kind] || String(t.kind || 'Mark'),
+      title: t.name || 'Unnamed',
+      rows: [],
+      sub: t.detail && t.detail !== t.name ? String(t.detail).slice(0, 140) : '',
+      hue: '236 230 216',
+      hint: verb ? `<b>Click</b> inspect · <b>2×</b> ${esc1(shortVerb(action))}` : '<b>Click</b> inspect',
+    };
+  },
+
+  _onContextMenu(ev) {
+    if (!ev || !this._canvas) return;
+    ev.preventDefault();
+    if (!this._hub) return;
+    const rect = this._canvas.getBoundingClientRect();
+    const best = pickMapTargetAt(this._clickTargets, ev.clientX - rect.left, ev.clientY - rect.top);
+    this._hub.contextMenu(ev, best);
+  },
+
+  /** The verbs for a mark (or, with none, for the empty chart). */
+  _menuFor(t) {
+    const state = this._ctx && this._ctx.state;
+    if (!state) return null;
+    const items = [];
+    const frames = this._lastFramingActions || resolveMapFramingActions(this._navContext(state));
+    if (t) {
+      const action = resolveGalaxyMapPrimaryAction(state, t);
+      items.push({ glyph: 'inspect', label: 'Inspect', key: 'Click', run: () => { this._selectedTarget = t; this.refresh(); } });
+      if (action && action.kind === 'closed') items.push({ glyph: 'route', label: action.label, disabled: true, reason: action.reason });
+      else if (action) items.push({ glyph: 'route', label: action.label, key: 'Dbl-click', run: () => this._commitCourse(t) });
+      items.push({ glyph: 'frame', label: 'Select and frame', run: () => this._selectSearchTarget(t) });
+      items.push({ glyph: 'flag', label: 'Bookmark this view', sepBefore: true, run: () => this._addBookmark() });
+      return { title: t.name || 'Mark', items };
+    }
+    const level = this._activeLevel();
+    items.push({ glyph: 'fit', label: 'Frame ship + destination', key: '0', disabled: !(frames.frameShipAndDestination && frames.frameShipAndDestination.available), reason: frames.frameShipAndDestination && frames.frameShipAndDestination.reason, run: () => this._activateFraming('frame-both') });
+    items.push({ glyph: 'ship', label: 'Return to ship', disabled: !(frames.returnToShip && frames.returnToShip.available), reason: frames.returnToShip && frames.returnToShip.reason, run: () => this._activateFraming('return-to-ship') });
+    for (const [focus, label] of [['galaxy', 'Galaxy'], ['system', 'System'], ['local', 'Local']]) {
+      if (level !== focus) items.push({ glyph: 'scale', label: `View · ${label}`, sepBefore: items.length === 2, run: () => this._setScaleFocus(focus) });
+    }
+    items.push({ glyph: 'flag', label: 'Bookmark this view', sepBefore: true, run: () => this._addBookmark() });
+    return { title: 'Chart', items };
+  },
+
+  _zoomStep(factor) {
+    if (!this._canvas || !this._canvas.getBoundingClientRect) return;
+    const rect = this._canvas.getBoundingClientRect();
+    const w = rect.width, h = rect.height;
+    const field = this._clearField(w, h);
+    const ev = { preventDefault() {}, clientX: rect.left + field.x + field.width / 2, clientY: rect.top + field.y + field.height / 2, deltaY: factor > 1 ? -1 : 1 };
+    // two wheel notches ~ one step (1.15 squared), through the one zoom path
+    this._onWheel(ev);
+    this._onWheel(ev);
+  },
+
+  _hubTool(id) {
+    if (id === 'zoomIn') this._zoomStep(1.3);
+    else if (id === 'zoomOut') this._zoomStep(1 / 1.3);
+    else if (id === 'ship') this._activateFraming('return-to-ship');
+    else if (id === 'fit') {
+      const a = this._lastFramingActions;
+      if (a && a.frameShipAndDestination && a.frameShipAndDestination.available) this._activateFraming('frame-both');
+      else this._setScaleFocus('galaxy');
+    }
+  },
+
+  /** Select a sector by id and frame it with your own, as a search result does. */
+  _focusSectorById(sectorId) {
+    const state = this._ctx && this._ctx.state;
+    if (!state || !sectorId) return;
+    const node = buildGalaxyModel(state).nodes.find((n) => n.id === sectorId);
+    if (!node) return;
+    this._selectSearchTarget({
+      id: node.id, name: node.name, kind: 'sector', sectorId: node.id, x: node.x, y: node.y,
+      factionId: node.factionId, security: node.security, presence: node.presence, searchText: node.searchText,
+      detail: `Sector · ${factionNameOf(node.factionId)} · Sec: ${node.security ? node.security.toFixed(2) : '0.00'}`,
+    });
+  },
+
+  /** What is happening across charted space, from state only: fronts at war or tense, dangerous sectors, your own heat. */
+  _situations() {
+    const state = this._ctx && this._ctx.state;
+    if (!state) return [];
+    const out = [];
+    const seen = new Set();
+    for (const [pairKey, sectorId] of Object.entries(CONTESTED_SECTOR_BY_PAIR)) {
+      const rec = state.conflicts && state.conflicts[pairKey];
+      const tension = Number(rec && rec.tension) || 0;
+      const stance = String(rec && rec.state || 'cold').toLowerCase();
+      const tone = (stance === 'war' || tension >= 75) ? 'war' : (stance === 'tense' || tension >= 40) ? 'tense' : null;
+      if (!tone) continue;
+      const [a, b] = pairKey.split(':');
+      out.push({ tone, label: tone === 'war' ? 'War' : 'Tense', title: `${factionNameOf(a)} vs ${factionNameOf(b)}`, sub: `${sectorNameOf(state, sectorId)} · tension ${Math.round(tension)}`, sectorId, rank: tone === 'war' ? 0 : 2 });
+      seen.add(sectorId);
+    }
+    try {
+      if (isPlayerWanted(state)) {
+        const here = currentSectorId(state);
+        out.push({ tone: 'danger', label: 'Wanted', title: 'You are wanted', sub: `Heat is up in ${sectorNameOf(state, here)}`, sectorId: here, rank: 0.5 });
+      }
+    } catch (_) { /* heat unavailable */ }
+    const hot = [];
+    for (const n of buildGalaxyModel(state).nodes) {
+      if (!n.charted || seen.has(n.id)) continue;
+      const sig = sectorSignalFor(state, n.id);
+      const danger = sig && Number.isFinite(sig.danger) ? sig.danger : 0;
+      if (danger >= 0.72) hot.push({ tone: 'danger', label: 'Danger', title: n.name, sub: `Danger ${Math.round(danger * 100)}% · ${factionNameOf(n.ownerId || n.factionId)} space`, sectorId: n.id, rank: 1 - danger * 0.1 });
+    }
+    hot.sort((x, y) => x.rank - y.rank);
+    out.push(...hot.slice(0, 4));
+    out.sort((x, y) => x.rank - y.rank);
+    return out;
+  },
+
+  /** The palette's suggestions: where to go, how to look, what to remember. */
+  _paletteItems() {
+    const state = this._ctx && this._ctx.state;
+    if (!state) return [];
+    const items = [];
+    const frames = this._lastFramingActions || resolveMapFramingActions(this._navContext(state));
+    const goal = activeMapGoal(state);
+    if (goal && goal.sectorId) items.push({ group: 'Go to', label: `Goal · ${goal.label || 'Objective'}`, sub: sectorNameOf(state, goal.sectorId), run: () => this._focusSectorById(goal.sectorId) });
+    const here = currentSectorId(state);
+    if (here) items.push({ group: 'Go to', label: 'Your sector', sub: sectorNameOf(state, here), run: () => this._focusSectorById(here) });
+    if (frames.frameShipAndDestination && frames.frameShipAndDestination.available) items.push({ group: 'Go to', label: 'Frame ship + destination', key: '0', run: () => this._activateFraming('frame-both') });
+    if (frames.returnToShip && frames.returnToShip.available) items.push({ group: 'Go to', label: 'Return to ship', run: () => this._activateFraming('return-to-ship') });
+    const level = this._activeLevel();
+    for (const [focus, label] of [['galaxy', 'Galaxy'], ['system', 'System'], ['local', 'Local']]) {
+      if (level !== focus) items.push({ group: 'View', label: `${label} scale`, run: () => this._setScaleFocus(focus) });
+    }
+    for (const id of ['faction', 'events', 'security', 'market']) {
+      const def = LAYER_DEFS.find((l) => l.id === id);
+      if (!def) continue;
+      items.push({ group: 'Lenses', label: `${def.name} lens`, sub: this._layers[id] ? 'On' : 'Off', run: () => {
+        const btn = this._root && this._root.querySelector(`.gm-layer-btn[data-layer="${id}"]`);
+        if (btn && typeof btn.click === 'function') btn.click();
+      } });
+    }
+    (this._bookmarks || []).slice(-4).reverse().forEach((b) => items.push({ group: 'Bookmarks', label: b.label, run: () => this._setCameraFraming(b) }));
+    items.push({ group: 'Remember', label: 'Bookmark this view', run: () => this._addBookmark() });
+    return items;
+  },
+
   _activateSelectedCourse() {
     if (!this._ctx || !this._ctx.bus) return;
     const action = resolveGalaxyMapPrimaryAction(this._ctx.state, this._selectedTarget);
@@ -7372,6 +7626,7 @@ _onMouseDown(ev) {
    */
   _onPointerDown(ev) {
     if (!ev || ev.button !== 0) return;
+    if (this._hub) this._hub.closeAll();
     const rect = this._canvas.getBoundingClientRect();
     const x = ev.clientX - rect.left;
     const y = ev.clientY - rect.top;
@@ -7492,6 +7747,7 @@ _onMouseMove(ev) {
     }
     // A still press becomes a line; a press that moves is a pan.
     if (this._hold && Math.hypot(mx - this._hold.x, my - this._hold.y) > 5) this._hold = null;
+    if (this._dragging && this._hub) this._hub.cancelHover();
 
     if (this._dragging && this._dragStart) {
       const dx = ev.clientX - this._dragStart.mx;
@@ -7529,6 +7785,8 @@ _onMouseMove(ev) {
     this._drawPending = true;
     this._wake();
     this._canvas.style.cursor = best ? 'pointer' : (this._isYouAt(mx, my) ? 'grab' : 'crosshair');
+    // a dwell on a mark opens its card (a still, a hold or a drag never does)
+    if (this._hub) this._hub.hover(this._hold ? null : best, { x: mx, y: my });
   },
 
   _onMouseUp() {
@@ -7538,6 +7796,7 @@ _onMouseMove(ev) {
 
 _onMouseLeave() {
     if (this._line) return; // a captured line keeps its pointer until it is released
+    if (this._hub) this._hub.cancelHover();
     this._dragging = false;
     this._dragStart = null;
     this._hold = null;
@@ -7549,6 +7808,7 @@ _onMouseLeave() {
 
   _onWheel(ev) {
     ev.preventDefault();
+    if (this._hub) this._hub.cancelHover();
     const rect = this._canvas.getBoundingClientRect();
     const mx = ev.clientX - rect.left;
     const my = ev.clientY - rect.top;
