@@ -107,7 +107,6 @@ import {
 } from '../data/sectorActivityPockets.js';
 import {
   ASHFALL_BURN_SURGE_PERIOD_S,
-  KILL_MACHINE_SECTOR_ID,
   METRONOME_SECTOR_ID,
   PALLAS_REEF_SECTOR_ID,
   apertureHazardZones,
@@ -3607,7 +3606,7 @@ export const world = {
     if (!sector) return;
     const existing = new Set((active.hazards || []).map((row) => row && row.id).filter(Boolean));
     const extra = [];
-    if (sector.id === KILL_MACHINE_SECTOR_ID) extra.push(...killMachineHazardZones());
+    extra.push(...killMachineHazardZones(sector.id));
     if (sector.id === PALLAS_REEF_SECTOR_ID) extra.push(pallasReefHazardZone());
     extra.push(...weatherHazardZones(sector.id));
     extra.push(...apertureHazardZones(sector.id));

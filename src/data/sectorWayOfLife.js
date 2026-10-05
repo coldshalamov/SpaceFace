@@ -148,7 +148,7 @@ export const SECTOR_WAY_OF_LIFE = Object.freeze([
     structures: 'Reach Station and the black-market berth beside it.',
     hazardGeometry: 'Dense rock and nebula on the approach. The mail flies the gap.',
     landmark: 'Reach Station.',
-    signatureToy: 'explicitly none',
+    signatureToy: 'io_bell_ringer',
   }),
   row({
     id: 'sector_charon_expanse',
@@ -162,7 +162,7 @@ export const SECTOR_WAY_OF_LIFE = Object.freeze([
     structures: 'Expanse Refinery and the hunter exchange.',
     hazardGeometry: 'Radiation and dense rock. The intake sits in the glow.',
     landmark: 'Expanse Refinery (station_expanse).',
-    signatureToy: 'explicitly none',
+    signatureToy: 'charon_tailings_sweep',
   }),
   row({
     id: 'sector_veil_nebula',

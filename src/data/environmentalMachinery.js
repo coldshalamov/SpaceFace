@@ -533,9 +533,11 @@ export const CHARON_TAILINGS_SWEEP = buildKillMachine({
   hazardType: 'debris',
   placeId: 'place_conveyor_truss',
   sectorId: CHARON_SWEEP_SECTOR_ID,
-  // Mid-lane on the Expanse Refinery -> colony haul road, clear of the refinery (1146 WU),
-  // all three Charon fields (822+ WU off the nearest cluster rim), both hazard discs
-  // (811/992 WU), the colony apron (1401 WU), the nursery, and every gate (2500+ WU).
+  // Mid-lane on the Expanse Refinery -> colony haul road, clear of the refinery (1147 WU),
+  // all three Charon fields (401 WU past f_charon_1's rim), both hazard discs (183/292 WU
+  // off their rims), the colony apron (1401 WU), the nursery, and every gate (3587+ WU).
+  // (Routine haulers never fly this road - one station, no station-to-station convoys; the
+  // lane is real for colony-claim sling traffic and the player's own mining runs.)
   localPos: { x: 205, z: 287 },
   // The sweep axis is perpendicular to the road bearing (~126 deg), so the sheet's
   // squeeze runs along the road - toward the berm the dead dragline parked on it.
@@ -562,9 +564,9 @@ export const CHARON_TAILINGS_SWEEP = buildKillMachine({
 // IO REACH - the bell ringer. Scavengers nesting in the Concord Vigilant's engine bells rigged
 // the largest drive bell as a collection throat (poi_cruiser, "the Wreck Cathedral"). Two stages
 // nobody else runs: a channel sheet down the stern corridor squeezes drifting salvage into single
-// file, and a clapper well ON the anvil in the bell mouth grips whatever the line delivers - every
-// other gather either IS the kill point or feeds a bar beside it; only the ringer separates the
-// herding field from the holding field, and only its well sits exactly on the anvil.
+// file, and a clapper well ON the anvil in the bell mouth grips whatever the line delivers. The
+// Sker baler's well is also on-anvil - the ringer's claim is the separation: the only machine
+// that herds with one field and holds with another, so the kill point answers to the grip alone.
 // Sited aft of the hulk, clear of station_reach (1937 WU), station_io_merc (3103 WU), both Io
 // field clusters (f_io_2 rim +198, f_io_1 2025), every gate and POI (>40).
 export const IO_BELL_SECTOR_ID = 'sector_io_reach';
@@ -721,8 +723,8 @@ export function pointInsideKillMachine(machine, point) {
   return false;
 }
 
-export function killMachineHazardZones() {
-  return KILL_MACHINES.map((machine) => Object.freeze({
+export function killMachineHazardZones(sectorId = KILL_MACHINE_SECTOR_ID) {
+  return killMachinesForSector(sectorId).map((machine) => Object.freeze({
     id: machine.id,
     type: machine.hazardType,
     center: machine.localPos,

@@ -35,6 +35,7 @@ import {
   VESTA_SHEAR_SECTOR_ID,
   killMachineFieldCenter,
   killMachineFieldDir,
+  killMachineHazardZones,
   killMachinePhase,
   killMachinesForSector,
   pointInsideKillMachine,
@@ -87,10 +88,28 @@ test('each machine serves its named sector alone and joins the census', () => {
   assert.deepEqual(killMachinesForSector(KILL_MACHINE_SECTOR_ID), KILL_MACHINES);
 });
 
+test('every machine publishes its map/scanner hazard disc in its own sector', () => {
+  // killMachineHazardZones(sectorId) feeds world.js's active.hazards — the map marker and the
+  // hazard:enter/exit language. A machine with no disc in its home sector is invisible on the
+  // chart the whole time it can kill you.
+  for (const { machine, sectorId } of CR_FEED_MACHINES) {
+    const zones = killMachineHazardZones(sectorId);
+    const zone = zones.find((z) => z.id === machine.id);
+    assert.ok(zone, `${machine.id} publishes no hazard zone in ${sectorId}`);
+    assert.equal(zone.type, machine.hazardType);
+    assert.equal(zone.center, machine.localPos, `${machine.id} zone rides the machine centre`);
+    assert.equal(zone.radius, machine.hazardRadius);
+    assert.equal(zones.length, 1, `${sectorId} publishes exactly its own machine`);
+  }
+  // A machineless sector publishes none - no Ceres mouths bleed into other charts.
+  assert.equal(killMachineHazardZones('sector_pallas_drift').length, 0);
+  assert.equal(killMachineHazardZones('sector_ashfall_reach').length, 0);
+});
+
 test('no two of them is the same kind of object', () => {
   // 1 - CONVERGING: two sheets whose force directions point at each other and meet on one bar.
   const jaws = VESTA_SHEAR_JAWS;
-  assert.equal(jaws.fields.length, 2, 'the shear is the only multi-field machine in the census');
+  assert.equal(jaws.fields.length, 2, 'the shear is a two-field machine');
   assert.ok(jaws.fields.every((f) => f.kind === 'sheet'), 'both jaws are sheets');
   const jawForces = jaws.fields.map((f) => forceAlong(jaws, f));
   assert.ok(jawForces.some((s) => s > 0) && jawForces.some((s) => s < 0),
@@ -121,6 +140,22 @@ test('no two of them is the same kind of object', () => {
     'the drain mouth sits clear of the pressure plate');
   assert.equal(draw.hazardType, 'nebula', 'the only nebula machine: gas, not debris');
 
+  // 4 - ROAD-DRAG: one sheet lying across the haul road; the squeeze runs along the road,
+  // dragging lane traffic to the berm parked mid-lane. The slab STRADDLES the berm
+  // (along < 0) — the only sheet in the census centred on the kill point rather than
+  // starting at it (excavator_jaws' ribbon begins at the origin and feeds forward).
+  const sweep = CHARON_TAILINGS_SWEEP;
+  assert.equal(sweep.fields.length, 1);
+  assert.equal(sweep.fields[0].kind, 'sheet');
+  assert.equal(sweep.fields[0].dirAlong, 1, 'no reversed force - the drag is geometric');
+  assert.ok(sweep.fields[0].along < 0
+    && sweep.fields[0].along + sweep.fields[0].radius > 0,
+    'the slab must straddle the berm, not start at it');
+  // The sheet's slab actually covers the berm: anvil on the centreline inside the span.
+  assert.equal(pointInsideMachineField(sweep, sweep.fields[0], { x: sweep.anvil.pos.x, z: sweep.anvil.pos.z }), true,
+    'the berm sits inside the sweep band');
+  assert.ok(Math.abs(anvilAlong(sweep)) < 1, 'the berm parks on the road at the crossing');
+
   // 5 - HERD-THEN-HOLD: the only mixed pair in the census - a channel sheet herding a corridor
   // onto its centreline, plus a well centred exactly on the anvil that grips what the line
   // delivers. Every other machine is one stage: one gather that IS the kill point, or same-kind
@@ -148,22 +183,6 @@ test('no two of them is the same kind of object', () => {
   };
   assert.equal(pointInsideMachineField(ringer, nave, feed), true, 'feed zone is inside the nave');
   assert.equal(pointInsideMachineField(ringer, clapper, feed), true, 'feed zone is inside the clapper');
-
-  // 4 - ROAD-DRAG: one sheet lying across the haul road; the squeeze runs along the road,
-  // dragging lane traffic to the berm parked mid-lane. The slab STRADDLES the berm
-  // (along < 0) — the only sheet in the census centred on the kill point rather than
-  // starting at it (excavator_jaws' ribbon begins at the origin and feeds forward).
-  const sweep = CHARON_TAILINGS_SWEEP;
-  assert.equal(sweep.fields.length, 1);
-  assert.equal(sweep.fields[0].kind, 'sheet');
-  assert.equal(sweep.fields[0].dirAlong, 1, 'no reversed force - the drag is geometric');
-  assert.ok(sweep.fields[0].along < 0
-    && sweep.fields[0].along + sweep.fields[0].radius > 0,
-    'the slab must straddle the berm, not start at it');
-  // The sheet's slab actually covers the berm: anvil on the centreline inside the span.
-  assert.equal(pointInsideMachineField(sweep, sweep.fields[0], { x: sweep.anvil.pos.x, z: sweep.anvil.pos.z }), true,
-    'the berm sits inside the sweep band');
-  assert.ok(Math.abs(anvilAlong(sweep)) < 1, 'the berm parks on the road at the crossing');
 
   // The three axes are unique across the WHOLE census, not just across the trio - which is what
   // "non-copy" has to mean if a later sitting is going to keep the promise. The unit of comparison
