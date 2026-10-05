@@ -221,6 +221,7 @@ ${W} .sx-sw-hero .k-hero__n { font-family:var(--dp-face-display, "Archivo") !imp
   text-transform:none !important; text-shadow:none !important; }
 ${W} .sx-sw-hero .k-hero__w { ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .62) !important; margin-top:6px; }
 ${W} .sx-sw-hero[data-band='condition'] { display:none !important; }
+${W} .sx-sw-bar.sx-sw-bar--topSpeed { display:none !important; }
 ${W} .sx-sw-ghost { color:var(--dp-ice, #8fcbff) !important; }
 ${W} .sx-sw-hero:is(:hover, :focus-visible) .k-hero__n { color:var(--dp-hand-hot, #ffd98c) !important; }
 ${W} .sx-sw-hero:is(:hover, :focus-visible) { outline:none !important; }
