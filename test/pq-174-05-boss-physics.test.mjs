@@ -39,7 +39,13 @@ test('boss roles reuse the catalog dreadnought hull: no extra HP, no immunity th
   assert.equal(combatant.flags.invuln, false);
   for (const recipe of SURVIVAL_WAVES.filter((row) => row.wave === 10)) {
     assert.equal(waveHealthOverrideIssues(recipe).length, 0, recipe.id);
-    assert.equal(recipe.packages[0].enemyId, 'dreadnought_boss');
+    // PQ-133.04 R5 disposition: Foundry alone fields mirrorjaw_foreman in the wave-ten elite
+    // slot; the six other arenas keep dreadnought_boss (survivalWaves.js header note).
+    assert.equal(
+      recipe.packages[0].enemyId,
+      recipe.arenaId === 'helios_core' ? 'mirrorjaw_foreman' : 'dreadnought_boss',
+      recipe.id,
+    );
   }
 });
 
