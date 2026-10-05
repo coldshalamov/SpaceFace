@@ -93,7 +93,7 @@ test('seed 4242: a 1.5 s tow of the named hull lands within 20% of 60 WU/s', () 
       : (model.profile.predictions.towCoversRoster ? 'Can tow anything on the roster.' : '');
     assert.equal(model.towSentence, expectedSentence, ship.id);
     if (expectedSentence) {
-      assert.ok(model.crestSentence.includes(expectedSentence), model.crestSentence);
+      assert.ok(model.crestSentence.startsWith(expectedSentence), model.crestSentence);
     }
     const verbs = shipCapabilityVerbs({ derived });
     if (name) {

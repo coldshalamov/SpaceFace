@@ -943,15 +943,14 @@ export function handlingBandModel({ shipId, fittings = [], player = null, domain
   const reversalLine = reversalSentence({ reversalTimeS: liveReversalSeconds(derived) });
   const sustainedFire = sustainedFireForFit(shipId, fittings, player);
   const towLine = towSentence(profile.predictions);
-  // The crest is the sentence the fit screen already prints under the hull name. Turn radius,
-  // reversal, the burst length, and the hull this fit can tow belong there, before the player
-  // commits, not in a tooltip.
+  // The crest is the sentence the fit screen prints under the hull name. The hull this
+  // fit can tow leads, so a short nameplate still names it. Turn, stop, and the burst follow.
   const crestSentence = [
+    towLine,
     handlingSentence(profile, derived, dryDerived, bareDerived),
     turnSentence,
     reversalLine,
     sustainedFire.sentence,
-    towLine,
   ].filter(Boolean).join(' ');
   return {
     shipId,
