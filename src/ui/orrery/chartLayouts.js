@@ -255,6 +255,60 @@ ${C} .gm-navfoot.is-locking::after { content:""; position:absolute; left:0; top:
 @keyframes orr-chart-lock { from { transform:translateX(-20%); opacity:.2; } 70% { opacity:1; } to { transform:translateX(455%); opacity:0; } }
 html.sf-reduce-motion ${C} .gm-navfoot.is-locking::after { animation:none; display:none; }
 
+/* ============================ THE WIDE CHART (owner 2026-10-04: the map takes the screen) ========= */
+/* The map is the hero. Above 820 px the page margin tightens, the header folds to two rows, and the
+   lens rail becomes a DOCK: its lenses are icon beads at rest, and it opens over the map (never
+   pushing it) while the pointer or the focus is in it. The clear field the chart fits itself to grows
+   by about half, and nothing moves when the dock opens. */
+@media (min-height: 820px) {
+  ${C} { --k-margin: clamp(28px, 2.4vw, 48px); row-gap:10px !important; }
+  ${C} .gm-head { grid-template-columns:minmax(0, 1fr) auto auto auto !important; grid-template-rows:auto auto !important; row-gap:6px !important; }
+  ${C} .gm-title-lockup { grid-column:1 !important; grid-row:1 !important; flex-direction:row !important; align-items:baseline !important; gap:0 26px !important; flex-wrap:wrap; }
+  ${C} .gm-title { font-size:clamp(36px, 2.9vw, 58px) !important; }
+  ${C} .gm-rail { grid-column:1 !important; grid-row:2 !important; align-self:end; }
+  ${C} .gm-search-container { grid-column:2 !important; grid-row:1 !important; width:clamp(220px, 19vw, 360px) !important; }
+  ${C} .gm-hint-btn { grid-column:3 !important; grid-row:1 !important; }
+  ${C} .gm-close { grid-column:4 !important; grid-row:1 !important; }
+  ${C} .gm-weather { grid-column:2 / span 3 !important; grid-row:2 !important; align-self:end; }
+  ${C} .gm-weather-bar { display:none !important; }
+  ${C} .gm-navfoot { padding-top:20px !important; }
+  ${C} .gm-navfoot .gm-nav-row::before { top:-16px; }
+  ${C} .gm-navfoot .gm-nav-row[data-tone="tracked"]::before { top:-17px; }
+  ${C} .gm-navfoot .gm-nav-row[data-tone="tracked"]:not(:first-child)::after { top:-13px; }
+}
+/* the dock: one spine of icon beads; the words open over the map on pointer or focus */
+@media (min-height: 820px) {
+  ${C}[data-layout="wide"] { --gm-rail-w:52px; }
+  ${C}[data-layout="wide"] .gm-left-rail { position:relative; z-index:6; width:var(--gm-rail-w); overflow:hidden; transition:width .3s var(--dp-ease-out, cubic-bezier(.2, .8, .2, 1)); }
+  ${C}[data-layout="wide"] .gm-left-rail:is(:hover, :focus-within) { width:252px; overflow:hidden auto;
+    background:linear-gradient(90deg, rgb(4 5 7 / .9), rgb(4 5 7 / .84) 70%, rgb(4 5 7 / 0)), ${SPINE}; background-attachment:local; }
+  /* at rest: only the lenses, only their icons */
+  ${C}[data-layout="wide"] .gm-left-rail:not(:hover):not(:focus-within) { background:none !important; padding-right:0 !important; }
+  ${C}[data-layout="wide"] .gm-left-rail:not(:hover):not(:focus-within) :is(.gm-rail-sec:not([data-rail-sec="lenses"]), .gm-rail-sum, .gm-layer-bank-title, .gm-rail-commodity) { display:none !important; }
+  ${C}[data-layout="wide"] .gm-left-rail:not(:hover):not(:focus-within) .gm-rail-sec[data-rail-sec="lenses"] { padding:0 !important; }
+  ${C}[data-layout="wide"] .gm-left-rail:not(:hover):not(:focus-within) .gm-rail-body { padding:0 !important; }
+  ${C}[data-layout="wide"] .gm-left-rail:not(:hover):not(:focus-within) .gm-layer-buttons { gap:14px !important; align-items:center; position:relative; padding:6px 0; }
+  /* the spine behind the beads */
+  ${C}[data-layout="wide"] .gm-left-rail:not(:hover):not(:focus-within) .gm-layer-buttons::before { content:""; position:absolute; left:calc(50% - 3px); top:0; bottom:0; width:6px; z-index:0; pointer-events:none;
+    background:linear-gradient(90deg, transparent 2px, rgb(${BONE} / .6) 2px 4px, transparent 4px), linear-gradient(90deg, rgb(${BONE} / .3) 0 6px); }
+  ${C}[data-layout="wide"] .gm-left-rail:not(:hover):not(:focus-within) .gm-layer-bank { gap:2px !important; align-items:center; position:relative; z-index:1; }
+  ${C}[data-layout="wide"] .gm-left-rail:not(:hover):not(:focus-within) .gm-layer-btn.k-word { ${PLAIN} width:44px !important; min-height:32px !important; padding:0 !important; justify-content:center !important;
+    margin:0 4px !important; position:relative; }
+  /* the bead's own ground: a pool of shade so the spine never prints through the glyph */
+  ${C}[data-layout="wide"] .gm-left-rail:not(:hover):not(:focus-within) .gm-layer-btn.k-word::after { content:"" !important; display:block !important; position:absolute !important; inset:-4px 3px !important; z-index:-1;
+    background:radial-gradient(closest-side, rgb(5 7 10 / 1), rgb(5 7 10 / .96) 62%, rgb(5 7 10 / 0)) !important; border:0 !important; box-shadow:none !important; }
+  ${C}[data-layout="wide"] .gm-left-rail:not(:hover):not(:focus-within) .gm-layer-btn.k-word:focus-visible { outline:none !important; ${SEG(1, '-1px')} }
+  ${C}[data-layout="wide"] .gm-left-rail:not(:hover):not(:focus-within) .gm-layer-btn.k-word::before { display:none !important; }
+  ${C}[data-layout="wide"] .gm-left-rail:not(:hover):not(:focus-within) .gm-layer-state { display:none !important; }
+  ${C}[data-layout="wide"] .gm-left-rail:not(:hover):not(:focus-within) .gm-layer-name { ${SR} }
+  ${C}[data-layout="wide"] .gm-left-rail:not(:hover):not(:focus-within) .gm-layer-ico { display:inline-flex !important; width:24px; height:24px; color:rgb(${BONE} / .42); }
+  ${C}[data-layout="wide"] .gm-left-rail:not(:hover):not(:focus-within) .gm-layer-ico svg { width:24px; height:24px; }
+  /* the glyphs carry an amber accent in the Deckplate set; the Hand is the only amber, so it reads in bone here */
+  ${C}[data-layout="wide"] .gm-left-rail .gm-layer-ico .dp-icon .accent { fill:currentColor !important; }
+  ${C}[data-layout="wide"] .gm-left-rail:not(:hover):not(:focus-within) .gm-layer-btn.k-word:is([aria-pressed="true"], .active) .gm-layer-ico { color:rgb(252 249 240); filter:none; }
+  ${C}[data-layout="wide"] .gm-left-rail:not(:hover):not(:focus-within) .gm-layer-btn.k-word:is([aria-pressed="true"], .active) .gm-layer-ico { filter:drop-shadow(0 0 5px rgb(255 240 214 / .55)); }
+}
+
 /* ============================ SHORT SCREENS (below 820 px) ============================ */
 /* The map is the hero: the heading and the foot fold to one short line each, and the chart takes
    the height (the clear field runs under the fading chrome). */

@@ -11,6 +11,7 @@ import {
   sectorTokenUrl, factionCrestUrl, drawLabelLeader, trimPolylineSegments,
 } from './orrery/chartInstruments.js';
 import { placeChartLabels, placeChartCallout } from './orrery/chartLabels.js';
+import { planChartGround, drawDominionLane, drawTokenAura, releaseChartWorld } from './orrery/chartWorld.js';
 import { dressLampKey } from './orrery/lampKey.js';
 // src/ui/galaxyMap.js — ONE zoomable navigation map (GDD pillar 2).
 //
@@ -75,7 +76,7 @@ import { sectorExplorationProgress } from '../world/explorationJournal.js';
 import { mapFactionPresenceNodes } from '../data/factionPresence.js';
 import { sectorSignalFor, forecastTransitFor } from '../systems/sectorSim.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
-import { conflictPairsForSector } from '../data/conflictZones.js';
+import { conflictPairsForSector, CONTESTED_SECTOR_BY_PAIR } from '../data/conflictZones.js';
 import { isPlayerWanted, heatLevelFor, heatClearSecondsForLevel } from '../systems/heat.js';
 import { regionalEcologyReadout } from '../systems/regionalEcology.js';
 import { REGIONAL_ECONOMY_PROFILES } from '../data/regionalEconomyProfiles.js';
@@ -4717,6 +4718,7 @@ export const galaxyMapScreen = {
     this._animFrame = null;
     this._unsubscribeKills();
     this._rememberScreenState();
+    releaseChartWorld();
     this._localLiveContacts = 0;
     this._localModelDirty = true;
     this._inspectorPending = false;
@@ -7961,7 +7963,15 @@ _draw() {
     const lever = rectOf('.gm-rail');
     // No chrome laid out (a headless fixture, or the frame before layout): the whole canvas.
     if (!rail && !insp && !lever) return fallback;
-    if (rail && rail.width < w * 0.5 && rail.left < w * 0.3) left = Math.max(left, rail.right + 18);
+    // The wide chart's lens rail is a dock that opens OVER the map: the field is fitted to its grid
+    // cell (its resting width), never its hover-opened box, so nothing moves when the dock opens.
+    let railRight = rail ? rail.right : 0;
+    if (rail && this._root.dataset && this._root.dataset.layout === 'wide' && typeof getComputedStyle === 'function') {
+      const stage = typeof this._root.querySelector === 'function' ? this._root.querySelector('.gm-body-container') : null;
+      const cell = stage ? parseFloat(String(getComputedStyle(stage).gridTemplateColumns || '').split(/\s+/)[0]) : NaN;
+      if (Number.isFinite(cell) && cell > 0) railRight = Math.min(rail.right, rail.left + cell);
+    }
+    if (rail && rail.width < w * 0.5 && rail.left < w * 0.3) left = Math.max(left, railRight + 18);
     if (insp && insp.width < w * 0.5 && insp.left > w * 0.5) right = Math.min(right, insp.left - 18);
     if (lever && lever.bottom < h * 0.5) top = Math.max(top, lever.bottom + 12);
     if (apron && apron.top > h * 0.5) bottom = Math.min(bottom, apron.top - (h < 820 ? 16 : 30));
@@ -8264,10 +8274,6 @@ _drawGalaxy(g, state, w, h) {
     const fieldPad = 14;
     const inGalaxyField = (x, y) => x >= field.x - fieldPad && x <= field.x + field.width + fieldPad
       && y >= field.y - fieldPad && y <= field.y + field.height + fieldPad;
-    g.save();
-    g.beginPath();
-    g.rect(field.x - fieldPad, field.y - fieldPad, field.width + fieldPad * 2, field.height + fieldPad * 2);
-    g.clip();
 
     // The token's rest size follows the chart's scale: about half the shortest charted lane, so the
     // produced art reads (≈64-80 px at the default framing) and neighbours never touch.
@@ -8276,7 +8282,7 @@ _drawGalaxy(g, state, w, h) {
       if (!e.charted) continue;
       shortest = Math.min(shortest, Math.hypot((e.bx - e.ax) * graphScale, (e.by - e.ay) * graphScale));
     }
-    const tokenCap = Math.max(84, Math.min(w, h) * 0.08);
+    const tokenCap = Math.max(84, Math.min(w, h) * 0.094);
     const tokenSize = Math.max(36, Math.min(tokenCap, Number.isFinite(shortest) ? shortest * 0.44 : 68));
     const tokenR = tokenSize / 2;
     this._galaxyTokenR = tokenR;
@@ -8284,12 +8290,54 @@ _drawGalaxy(g, state, w, h) {
     for (const n of model.nodes) screenOf.set(n.id, { x: sx(n.x), y: sy(n.y) });
     this._galaxyScreen = screenOf;
 
+    // THE GROUND (src/ui/orrery/chartWorld.js): who holds the space, where holders meet, where it is
+    // dangerous, where the shooting is — painted across the WHOLE canvas, under the clip, so the world
+    // runs to every edge of the screen while the marks and their names keep to the clear field.
+    let ground = null;
+    try {
+      const groundNodes = model.nodes.map((n) => {
+        const at = screenOf.get(n.id);
+        const sig = n.charted ? sectorSignalFor(state, n.id) : null;
+        const conflict = n.charted ? sectorConflictSignal(state, n.id) : null;
+        return {
+          id: n.id, x: at.x, y: at.y, charted: n.charted, ownerId: n.ownerId, color: n.color,
+          danger: sig && Number.isFinite(sig.danger) ? sig.danger : (n.security != null ? 1 - n.security : 0),
+          wars: conflict ? conflict.wars : 0, tense: conflict ? conflict.tense : 0, current: !!n.current,
+        };
+      });
+      // The fronts: each holder pair the factions system has at war or at tension (read, never written).
+      const fronts = new Map();
+      for (const pairKey of Object.keys(CONTESTED_SECTOR_BY_PAIR)) {
+        const rec = state.conflicts && state.conflicts[pairKey];
+        const tension = Number(rec && rec.tension) || 0;
+        const stance = String(rec && rec.state || 'cold').toLowerCase();
+        if (stance === 'war' || tension >= 75) fronts.set(pairKey, 'war');
+        else if (stance === 'tense' || tension >= 40) fronts.set(pairKey, 'tense');
+      }
+      ground = planChartGround(w, h, {
+        nodes: groundNodes, edges: model.edges, layers: this._layers, tokenR, field, dpr, reduced, animT, nameOf: factionNameOf, fronts,
+      });
+      if (ground) ground.nodeById = new Map(groundNodes.map((n) => [n.id, n]));
+    } catch (_) { ground = null; }
+
+    g.save();
+    g.beginPath();
+    g.rect(field.x - fieldPad, field.y - fieldPad, field.width + fieldPad * 2, field.height + fieldPad * 2);
+    g.clip();
+
     // Lanes. A charted lane is a band of light with body under a crisp edge; a lane into unknown
     // space is only a stub of light leaving what you know, fading into rumour.
     for (const e of model.edges) {
       const ax = sx(e.ax), ay = sy(e.ay), bx = sx(e.bx), by = sy(e.by);
       if (e.charted) {
-        drawBand(g, (c) => { c.moveTo(ax, ay); c.lineTo(bx, by); }, { band: 8, bandA: 0.27, edge: 1.7, edgeA: 0.62, halo: 20, haloA: 0.04 });
+        const ga = ground && ground.nodeById.get(e.from);
+        const gb = ground && ground.nodeById.get(e.to);
+        if (ga && gb && this._layers.faction) {
+          // each lane runs from one holder's hue to the other's; a lane between holders at war runs hot
+          drawDominionLane(g, ga, gb, ground.colours, { war: !!this._layers.events && ground.frontOf(ga.ownerId, gb.ownerId) === 'war' });
+        } else {
+          drawBand(g, (c) => { c.moveTo(ax, ay); c.lineTo(bx, by); }, { band: 8, bandA: 0.27, edge: 1.7, edgeA: 0.62, halo: 20, haloA: 0.04 });
+        }
         continue;
       }
       if (!this._layers.discovery) continue;
@@ -8437,6 +8485,7 @@ _drawGalaxy(g, state, w, h) {
 
       // The token: the sector's produced art (or its bone fallback), lifted under the pointer.
       const lift = (n.id === hoverId || n.id === snapId) ? this._liftAmount(now) : 0;
+      if (ground && this._layers.faction && n.ownerId) drawTokenAura(g, x, y, r, ground.colours, n.ownerId, { a: stale ? 0.5 : 1 });
       const drawnR = drawSectorToken(g, n.id, x, y, tokenSize, {
         dpr, lift, stale, berths: sectorBerthCount(state, n.id), onReady: this._tokenReadyHandler(),
       });
@@ -8625,6 +8674,14 @@ _drawGalaxy(g, state, w, h) {
       g.restore();
     }
     g.restore();
+    // The ground goes down LAST, behind everything drawn so far: the field-edge fade above would
+    // otherwise erase it inside the clip and leave a crisp step. Labels (below) land on top of it.
+    if (ground && ground.paint) {
+      g.save();
+      g.globalCompositeOperation = 'destination-over';
+      try { ground.paint(g); } catch (_) { /* the chart reads without its ground */ }
+      g.restore();
+    }
 
     // Resolve every sector block against the others before any of them paints. The goal plate is
     // reserved first (below) so a node label can never be placed under it.
