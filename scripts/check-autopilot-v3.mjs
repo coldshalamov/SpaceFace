@@ -1589,9 +1589,9 @@ console.log('Check 5 PASSED: autopilot works in assisted, drift, and newtonian m
     arrivalRadius: 50,
     autopilot: true,
   });
-  assert.equal(deadIdArmed.targetEntityId, null,
+  assert.strictEqual(deadIdArmed.targetEntityId, null,
     'an unresolvable click target must not keep a bare recyclable entity id');
-  assert.equal(state.nav.waypoint.targetEntityId, undefined,
+  assert.strictEqual(state.nav.waypoint.targetEntityId, undefined,
     'an unresolvable click target must not write a bare id onto the waypoint');
   assert.deepEqual(deadIdArmed.target, { x: 10, z: 20 },
     'the fail-closed course still lands on the clicked fix');
