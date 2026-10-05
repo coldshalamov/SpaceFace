@@ -6064,6 +6064,11 @@ Rows authored this sitting from the open-ended direction, each landed with its p
   2.2/1.4 rad/s that a hauler could never reach and a scout cleared at cruise. Second instance
   of the e8d94e38e reader-orphaned-by-absolute-yaw class. DONE 7f0eaed08 —
   `test/hud-g-lag.test.mjs` 16/16 with live-route frame() pins both ways.
+- **The off-screen objective arrow contract, pinned** — the seam had zero test references and
+  already burned once (the D135 north-up regression). DONE 44bd5799f —
+  `test/objective-edge-arrow.test.mjs` 4/4 through the real createHud/frame() path: diamond
+  in-camera, correct-edge seat with the tracker's own label, the D135 south-flight regression,
+  and a 72-bearing boundary sweep.
 Do not delete the heading; the next agent needs to know it is no longer the hole.
 
 ### 23.4 Actualize the tools
