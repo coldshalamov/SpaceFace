@@ -11,7 +11,7 @@ import {
   sectorTokenUrl, factionCrestUrl, drawLabelLeader, trimPolylineSegments,
 } from './orrery/chartInstruments.js';
 import { placeChartLabels, placeChartCallout } from './orrery/chartLabels.js';
-import { planChartGround, drawDominionLane, drawTokenAura, releaseChartWorld, dominionRgb } from './orrery/chartWorld.js';
+import { planChartGround, drawDominionLane, drawTokenAura, releaseChartWorld, dominionRgb, drawSystemGround, drawGlow, CLASS_RGB } from './orrery/chartWorld.js';
 import { mountChartHub, enhanceInspectorSections } from './orrery/chartHub.js';
 import { dressLampKey } from './orrery/lampKey.js';
 // src/ui/galaxyMap.js — ONE zoomable navigation map (GDD pillar 2).
@@ -9025,7 +9025,7 @@ _drawGalaxy(g, state, w, h) {
       for (const r of galaxyReserved) obstacles.push(r);
       g.save();
       g.globalCompositeOperation = 'destination-over';
-      try { ground.paint(g, { obstacles }); } catch (_) { /* the chart reads without its ground */ }
+      try { ground.paint(g, { obstacles, requestRedraw: () => { galaxyMapScreen._drawPending = true; galaxyMapScreen._wake(); } }); } catch (_) { /* the chart reads without its ground */ }
       g.restore();
     }
     for (const placement of galaxyLabelLayout) {
@@ -9296,12 +9296,14 @@ _drawSystem(g, state, w, h) {
     if (dial) { g.beginPath(); g.arc(dial.x, dial.y, Math.max(8, dial.r - 6), 0, Math.PI * 2); g.clip(); }
     g.save();
     g.globalCompositeOperation = 'lighten';
+    const poolOwner = (state.world && state.world.sectors && state.world.sectors[model.sectorId] && state.world.sectors[model.sectorId].owner) || (SECTOR_BY_ID.get(model.sectorId) || {}).factionId || null;
+    const poolTint = this._layers.faction ? dominionRgb(poolOwner, factionColorOf(poolOwner)).join(',') : '236,230,216';
     for (const pool of pools) {
       const grad = g.createRadialGradient ? g.createRadialGradient(pool.x, pool.y, 0, pool.x, pool.y, pool.r) : null;
       if (grad) {
-        grad.addColorStop(0, CHART_INK.bone(this._layers.faction ? 0.2 : 0.18));
-        grad.addColorStop(0.7, CHART_INK.bone(0.08));
-        grad.addColorStop(1, CHART_INK.bone(0.03));
+        grad.addColorStop(0, `rgba(${poolTint},0.3)`);
+        grad.addColorStop(0.7, `rgba(${poolTint},0.12)`);
+        grad.addColorStop(1, `rgba(${poolTint},0.04)`);
       }
       g.fillStyle = grad || CHART_INK.bone(0.06);
       g.beginPath(); g.arc(pool.x, pool.y, pool.r, 0, Math.PI * 2); g.fill();
@@ -9316,7 +9318,7 @@ _drawSystem(g, state, w, h) {
         g.arc(other.x, other.y, Math.max(1, other.r - 1), 0, Math.PI * 2, true);
         g.clip('evenodd');
       }
-      drawBandRing(g, pool.x, pool.y, pool.r, { band: 6, bandA: 0.34, edge: 1.5, edgeA: 0.72 });
+      drawBandRing(g, pool.x, pool.y, pool.r, { rgb: poolTint, band: 7, bandA: 0.34, edge: 1.6, edgeA: 0.8 });
       g.restore();
     }
     g.restore();
@@ -9393,18 +9395,18 @@ _drawSystem(g, state, w, h) {
         const glyph = asteroidScanGlyph(f.type);
         const fieldName = `${FIELD_NAME_BY_TYPE[f.type] || 'Ore'} field`;
         g.save();
-        g.fillStyle = CHART_INK.bone(0.05);
+        g.fillStyle = `rgba(${CLASS_RGB.ore},0.1)`;
         g.beginPath(); g.arc(fx, fy, fr, 0, Math.PI * 2); g.fill();
         const grains = Math.max(10, Math.min(40, Math.round(fr * 0.9)));
         for (let i = 0; i < grains; i += 1) {
           const a = i * 2.39996 + cosmeticHash01(String(f.id) + i) * 0.6;
           const rr = Math.sqrt((i + 0.5) / grains) * fr * 0.92;
           const s = 1.2 + cosmeticHash01(String(f.id) + ':s' + i) * 1.6;
-          g.fillStyle = CHART_INK.bone(0.34 + cosmeticHash01(String(f.id) + ':a' + i) * 0.3);
+          g.fillStyle = `rgba(${CLASS_RGB.ore},${0.46 + cosmeticHash01(String(f.id) + ':a' + i) * 0.34})`;
           g.beginPath(); g.arc(fx + Math.cos(a) * rr, fy + Math.sin(a) * rr * 0.86, s, 0, Math.PI * 2); g.fill();
         }
         g.restore();
-        drawBandRing(g, fx, fy, fr, { band: 5, bandA: 0.26, edge: 1.3, edgeA: 0.5 });
+        drawBandRing(g, fx, fy, fr, { rgb: CLASS_RGB.ore, band: 6, bandA: 0.2, edge: 1.4, edgeA: 0.6 });
         // What it is and the ore it carries, named at the field's crown through the label solver.
         labelCandidates.push(makeMapLabelCandidate(g, {
           id: `field:${f.id || glyph}`,
@@ -9796,6 +9798,15 @@ _drawSystem(g, state, w, h) {
         this._clickTargets.push({ ...tick.target, sx: tick.x, sy: tick.y, radiusPx: 14, edgeTick: true });
       }
     }
+    // THE GROUND: the holder's hue washes the canvas around the gate ring and lights its rim, behind
+    // everything drawn (src/ui/orrery/chartWorld.js).
+    if (dial && this._layers.faction) {
+      const owner = (state.world && state.world.sectors && state.world.sectors[model.sectorId] && state.world.sectors[model.sectorId].owner) || (SECTOR_BY_ID.get(model.sectorId) || {}).factionId || null;
+      g.save();
+      g.globalCompositeOperation = 'destination-over';
+      try { drawSystemGround(g, w, h, { x: dial.x, y: dial.y, r: dial.r, ownerId: owner, fallbackHex: factionColorOf(owner) }); } catch (_) { /* the chart reads without its ground */ }
+      g.restore();
+    }
   },
 
   // --- LOCAL DRAW ---
@@ -9894,8 +9905,11 @@ _drawLocal(g, state, w, h) {
     // Range rings: bands of light round the ship, each reading its radius on its crown.
     const shipX = sx(px), shipY = sz(pz);
     const ringBase = Math.min(field.width, field.height) * 0.46;
+    const localOwner = (state.world && state.world.sectors && state.world.sectors[model.sectorId] && state.world.sectors[model.sectorId].owner) || (SECTOR_BY_ID.get(model.sectorId) || {}).factionId || null;
+    const localTint = this._layers.faction ? dominionRgb(localOwner, factionColorOf(localOwner)) : [236, 230, 216];
+    const localTintStr = `${Math.round(localTint[0] * 0.55 + 236 * 0.45)},${Math.round(localTint[1] * 0.55 + 230 * 0.45)},${Math.round(localTint[2] * 0.55 + 216 * 0.45)}`;
     for (const rr of [0.33, 0.66, 1.0]) {
-      drawBandRing(g, shipX, shipY, ringBase * rr, { band: 7, bandA: rr === 1 ? 0.34 : 0.3, edge: 1.5, edgeA: rr === 1 ? 0.6 : 0.5 });
+      drawBandRing(g, shipX, shipY, ringBase * rr, { rgb: localTintStr, band: 8, bandA: rr === 1 ? 0.4 : 0.32, edge: 1.7, edgeA: rr === 1 ? 0.78 : 0.62 });
     }
     // Minor graduations on the outer ring: an instrument, not a circle.
     g.save();
@@ -10342,6 +10356,13 @@ _drawLocal(g, state, w, h) {
         });
       }
     }
+    // THE GROUND: the holder's hue washes the scope and lights its outer ring, behind everything.
+    if (this._layers.faction) {
+      g.save();
+      g.globalCompositeOperation = 'destination-over';
+      try { drawSystemGround(g, w, h, { x: shipX, y: shipY, r: ringBase, ownerId: localOwner, fallbackHex: factionColorOf(localOwner), dashed: false }); } catch (_) { /* the chart reads without its ground */ }
+      g.restore();
+    }
   },
 };
 
@@ -10406,9 +10427,10 @@ function drawStationMark(g, x, y) {
   // A station is a place you dock: a lit hub inside a berth ring of light, four mooring arms on the
   // diagonals (clear of the label, which always sits on an axis).
   const r = 8.5;
-  drawBandRing(g, x, y, r, { band: 6, bandA: 0.24, edge: 1.7, edgeA: 0.9 });
+  drawGlow(g, x, y, 26, CLASS_RGB.station, 0.6);
+  drawBandRing(g, x, y, r, { rgb: CLASS_RGB.station, band: 7, bandA: 0.3, edge: 1.9, edgeA: 0.98 });
   g.save();
-  g.strokeStyle = CHART_INK.bone(0.82);
+  g.strokeStyle = `rgba(${CLASS_RGB.station},0.95)`;
   g.lineWidth = 2;
   g.lineCap = 'butt';
   for (let i = 0; i < 4; i += 1) {
@@ -10436,12 +10458,13 @@ function drawGateMark(g, g_x, g_y, angle = 0) {
   // tongue leaving the mouth the way the lane goes.
   const x = g_x, y = g_y, r = 7.5;
   const gap = 0.62;
-  const style = { band: 6, bandA: 0.24, edge: 2, edgeA: 0.92 };
+  drawGlow(g, x, y, 24, CLASS_RGB.gate, 0.55);
+  const style = { rgb: CLASS_RGB.gate, band: 7, bandA: 0.3, edge: 2.1, edgeA: 0.98 };
   drawBand(g, (c) => c.arc(x, y, r, angle + gap, angle + Math.PI - gap), style);
   drawBand(g, (c) => c.arc(x, y, r, angle + Math.PI + gap, angle + Math.PI * 2 - gap), style);
   const ca = Math.cos(angle), sa = Math.sin(angle);
   drawBand(g, (c) => { c.moveTo(x + ca * 2, y + sa * 2); c.lineTo(x + ca * (r + 6), y + sa * (r + 6)); },
-    { band: 5, bandA: 0.22, edge: 2, edgeA: 0.95 });
+    { rgb: CLASS_RGB.gate, band: 5, bandA: 0.26, edge: 2, edgeA: 0.98 });
   drawBead(g, x + ca * (r + 6), y + sa * (r + 6), 2.2, { bloom: 2.4, bloomA: 0.3 });
 }
 
@@ -10454,10 +10477,11 @@ function drawGateMark(g, g_x, g_y, angle = 0) {
  */
 function drawPoiMark(g, x, y) {
   // A point of interest: a small lit diamond in its own soft light.
+  drawGlow(g, x, y, 20, '236,230,216', 0.34);
   g.save();
   g.fillStyle = CHART_INK.bone(0.14);
   g.beginPath(); g.arc(x, y, 8, 0, Math.PI * 2); g.fill();
-  g.fillStyle = CHART_INK.lit(0.9);
+  g.fillStyle = CHART_INK.lit(0.95);
   const s = 4.2;
   g.beginPath();
   g.moveTo(x, y - s); g.lineTo(x + s, y); g.lineTo(x, y + s); g.lineTo(x - s, y);
@@ -10526,12 +10550,16 @@ function drawManufacturedTravelRoute(g, route, sx, sz, useDrawFrame, warp = null
 
 /** Neutral ship: a heading chevron in quiet ink. */
 function drawShipChevron(g, x, y, rot, color) {
+  // a contact wears its class hue (traffic: the radar's blue-grey) with a soft halo, so the local scope
+  // reads at a glance the way the radar does
+  if (!color) drawGlow(g, x, y, 17, CLASS_RGB.neutral, 0.42);
   g.save();
-  g.fillStyle = CHART_INK.bone(0.12);
+  g.fillStyle = color ? CHART_INK.bone(0.12) : `rgba(${CLASS_RGB.neutral},0.16)`;
   g.beginPath(); g.arc(x, y, 8.5, 0, Math.PI * 2); g.fill();
   g.translate(x, y);
   g.rotate(Math.PI + (rot || 0));
-  g.fillStyle = color || CHART_INK.lit(0.92);
+  if (!color) g.scale(1.3, 1.3);
+  g.fillStyle = color || `rgba(${CLASS_RGB.neutral},0.98)`;
   g.beginPath();
   g.moveTo(6.5, 0); g.lineTo(-5, -4.2); g.lineTo(-2.8, 0); g.lineTo(-5, 4.2);
   g.closePath(); g.fill();
@@ -10607,11 +10635,13 @@ function drawPlayerFixMark(g, x, y, rot, options = {}) {
 
 /** Hostile: a red open diamond, rotated to heading — threat reads before color-blind shape. */
 function drawHostileMark(g, x, y, rot) {
+  drawGlow(g, x, y, 24, CLASS_RGB.hostile, 0.7);
   g.save();
-  g.fillStyle = CHART_INK.danger(0.16);
+  g.fillStyle = CHART_INK.danger(0.2);
   g.beginPath(); g.arc(x, y, 10, 0, Math.PI * 2); g.fill();
   g.translate(x, y);
   g.rotate(Math.PI + (rot || 0));
+  g.scale(1.3, 1.3);
   g.fillStyle = CHART_INK.danger(0.92);
   g.beginPath();
   g.moveTo(6.5, 0); g.lineTo(0, -4.6); g.lineTo(-6.5, 0); g.lineTo(0, 4.6);
@@ -10676,9 +10706,9 @@ function asteroidGlyphPath(seedId) {
 export function drawAsteroidMark(g, x, y, seedId) {
   const path = asteroidGlyphPath(seedId);
   g.save();
-  g.fillStyle = INK.ink2;
-  g.strokeStyle = INK.ink1;
-  g.lineWidth = 0.8;
+  g.fillStyle = `rgba(${CLASS_RGB.ore},0.5)`;
+  g.strokeStyle = `rgba(${CLASS_RGB.ore},0.85)`;
+  g.lineWidth = 0.9;
   if (path && typeof g.translate === 'function'
     && typeof g.fill === 'function' && typeof g.stroke === 'function') {
     g.translate(x, y);

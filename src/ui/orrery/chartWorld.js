@@ -28,6 +28,7 @@
 // is already scaled by devicePixelRatio) and restores the context it borrowed.
 
 import { chartFont, setTracking } from './chartInstruments.js';
+import { TACTICAL_MAP_PALETTE } from '../map/tacticalMapGrammar.js';
 
 const BONE = [236, 230, 216];
 const smooth = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
@@ -86,10 +87,74 @@ function holderColours(factionId, fallbackHex) {
   return { tint, lane: mixRgb(tint, BONE, 0.34), ink: mixRgb(tint, [255, 255, 255], 0.3) };
 }
 
+// ─── One key for the chart and the radar ──────────────────────────────────────────────────────────────
+// A contact class wears the same hue on the chart as on the radar (TACTICAL_MAP_PALETTE is the one
+// key): a station is cyan, a gate violet, a hostile red, a wreck rust, an ally green, traffic blue-grey,
+// the objective amber. Shape still carries the class; hue is the fast second channel.
+
+const triplet = (hex) => { const c = hexToRgb(hex); return c ? `${c[0]},${c[1]},${c[2]}` : '154,168,188'; };
+
+export const CLASS_RGB = Object.freeze({
+  station: triplet(TACTICAL_MAP_PALETTE.station),
+  gate: triplet(TACTICAL_MAP_PALETTE.gate),
+  hostile: triplet(TACTICAL_MAP_PALETTE.hostile),
+  friendly: triplet(TACTICAL_MAP_PALETTE.friendly),
+  neutral: triplet(TACTICAL_MAP_PALETTE.neutral),
+  wreck: triplet(TACTICAL_MAP_PALETTE.wreck),
+  objective: triplet(TACTICAL_MAP_PALETTE.objective),
+  ore: '196,150,104',
+});
+
+const glowSprites = new Map();
+function glowSprite(rgb, radius) {
+  const dpr = Math.min((typeof window !== 'undefined' && window.devicePixelRatio) || 1, 2);
+  const key = `${rgb}|${radius}|${dpr}`;
+  let sprite = glowSprites.get(key);
+  if (sprite !== undefined) return sprite;
+  sprite = null;
+  try {
+    if (typeof document !== 'undefined') {
+      const px = Math.max(4, Math.ceil(radius * 2 * dpr));
+      const c = document.createElement('canvas');
+      c.width = px; c.height = px;
+      const sg = c.getContext('2d');
+      if (sg && typeof sg.createRadialGradient === 'function') {
+        const grad = sg.createRadialGradient(px / 2, px / 2, 0, px / 2, px / 2, px / 2);
+        if (grad && typeof grad.addColorStop === 'function') {
+          grad.addColorStop(0, `rgba(${rgb},0.9)`);
+          grad.addColorStop(0.22, `rgba(${rgb},0.46)`);
+          grad.addColorStop(0.55, `rgba(${rgb},0.13)`);
+          grad.addColorStop(1, `rgba(${rgb},0)`);
+          sg.fillStyle = grad;
+          sg.fillRect(0, 0, px, px);
+          sprite = c;
+        }
+      }
+    }
+  } catch (_) { sprite = null; }
+  glowSprites.set(key, sprite);
+  return sprite;
+}
+
+/** A soft halo under a mark, additive, from a pre-rendered sprite (no shadow, no filter). */
+export function drawGlow(g, x, y, radius, rgb, alpha = 0.5) {
+  if (!(alpha > 0.02) || !g || typeof g.drawImage !== 'function') return;
+  const sprite = glowSprite(rgb, radius);
+  if (!sprite) return;
+  g.save();
+  g.globalCompositeOperation = 'lighter';
+  g.globalAlpha = Math.min(1, alpha);
+  g.drawImage(sprite, x - radius, y - radius, radius * 2, radius * 2);
+  g.restore();
+}
+
 // ─── The cache ────────────────────────────────────────────────────────────────────────────────────
 
 let cacheCanvas = null;
 let cacheKey = '';
+let lastFullKey = '';
+let lastBuildMs = -1e9;
+let redrawTimer = null;
 
 function offscreen(pxW, pxH) {
   if (typeof document === 'undefined' || typeof document.createElement !== 'function') return null;
@@ -105,6 +170,8 @@ function offscreen(pxW, pxH) {
 export function releaseChartWorld() {
   cacheCanvas = null;
   cacheKey = '';
+  lastFullKey = '';
+  if (redrawTimer) { clearTimeout(redrawTimer); redrawTimer = null; }
 }
 
 // ─── Geometry ─────────────────────────────────────────────────────────────────────────────────────
@@ -198,6 +265,7 @@ function placeNamePass(owner, groups, textW, charted, tokenR, field, segments, t
 // ─── The territory field ──────────────────────────────────────────────────────────────────────────
 
 const TERRITORY_CELL = 6;
+const TERRITORY_CELL_DRAFT = 12;
 let fieldCanvas = null;
 
 
@@ -207,12 +275,12 @@ let fieldCanvas = null;
  * a cell near the line between two holders takes the border: bright, in both hues. Returns false
  * where the canvas cannot do pixel work (a headless stub), so the caller falls back to radial washes.
  */
-function paintTerritory(c, w, h, charted, colours, frontOf = null) {
+function paintTerritory(c, w, h, charted, colours, frontOf = null, cellPx = TERRITORY_CELL) {
   if (typeof document === 'undefined' || typeof c.createImageData !== 'function') return false;
   const holders = charted.filter((n) => n.ownerId);
   if (!holders.length) return true;
-  const lw = Math.max(2, Math.ceil(w / TERRITORY_CELL));
-  const lh = Math.max(2, Math.ceil(h / TERRITORY_CELL));
+  const lw = Math.max(2, Math.ceil(w / cellPx));
+  const lh = Math.max(2, Math.ceil(h / cellPx));
   try {
     if (!fieldCanvas) fieldCanvas = document.createElement('canvas');
     if (fieldCanvas.width !== lw) fieldCanvas.width = lw;
@@ -225,10 +293,11 @@ function paintTerritory(c, w, h, charted, colours, frontOf = null) {
     const hx = new Float32Array(count);
     const hy = new Float32Array(count);
     const hr = new Float32Array(count);
+    const hr2 = new Float32Array(count);
     const ho = new Array(count);
     const ht = new Array(count);
     for (let i = 0; i < count; i += 1) {
-      hx[i] = holders[i].x; hy[i] = holders[i].y; hr[i] = holders[i].wash || 240;
+      hx[i] = holders[i].x; hy[i] = holders[i].y; hr[i] = holders[i].wash || 240; hr2[i] = hr[i] * hr[i];
       ho[i] = holders[i].ownerId;
       ht[i] = colours.get(holders[i].ownerId).tint;
     }
@@ -240,17 +309,21 @@ function paintTerritory(c, w, h, charted, colours, frontOf = null) {
     const ownerId = (q) => owners[q];
     const pull = new Float32Array(owners.length);
     for (let j = 0; j < lh; j += 1) {
-      const py = (j + 0.5) * TERRITORY_CELL;
+      const py = (j + 0.5) * cellPx;
       for (let i = 0; i < lw; i += 1) {
-        const px = (i + 0.5) * TERRITORY_CELL;
+        const px = (i + 0.5) * cellPx;
         pull.fill(0);
+        let any = false;
         for (let k = 0; k < count; k += 1) {
+          const dx = px - hx[k];
+          const dy = py - hy[k];
+          const d2 = dx * dx + dy * dy;
+          if (d2 >= hr2[k]) continue;
           const R = hr[k];
-          const d = Math.hypot(px - hx[k], py - hy[k]);
-          if (d >= R) continue;
-          const f = 1 - smooth(R * 0.3, R, d);
-          if (f > pull[oi[k]]) pull[oi[k]] = f;
+          const f = 1 - smooth(R * 0.3, R, Math.sqrt(d2));
+          if (f > pull[oi[k]]) { pull[oi[k]] = f; any = true; }
         }
+        if (!any) continue;
         let c1 = 0; let o1 = -1; let c2 = 0; let o2 = -1;
         for (let q = 0; q < pull.length; q += 1) {
           const v = pull[q];
@@ -286,8 +359,8 @@ function paintTerritory(c, w, h, charted, colours, frontOf = null) {
     fc.putImageData(img, 0, 0);
     c.save();
     c.imageSmoothingEnabled = true;
-    c.imageSmoothingQuality = 'high';
-    c.drawImage(fieldCanvas, 0, 0, lw * TERRITORY_CELL, lh * TERRITORY_CELL);
+    c.imageSmoothingQuality = 'low';
+    c.drawImage(fieldCanvas, 0, 0, lw * cellPx, lh * cellPx);
     c.restore();
     return true;
   } catch (_) {
@@ -337,6 +410,9 @@ export function planChartGround(w, h, {
   const securityOn = layers.security !== false;
 
   // ── the static ground: washes, haze, names — one cached canvas ──
+  // while the camera is moving the territory is built at half resolution, and one full-quality rebuild
+  // follows once it settles (the chart is asked to repaint)
+  const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
   const baseKey = [
     Math.round(w), Math.round(h), dpr, factionOn ? 1 : 0, securityOn ? 1 : 0, Math.round(tokenR),
     charted.map((n) => `${n.id}:${Math.round(n.x)},${Math.round(n.y)}:${n.ownerId || ''}:${Math.round((n.danger || 0) * 20)}`).join('|'),
@@ -347,11 +423,12 @@ export function planChartGround(w, h, {
   const pxH = Math.max(2, Math.round(h * dpr));
   const off = offscreen(pxW, pxH);
   let obstacles = [];
+  let cellPx = TERRITORY_CELL;
   const paintStatic = (c) => {
     // territory: every pixel belongs to its nearest holder, glowing in that holder's hue and fading
     // with distance; where two holders meet, a bright border stands exactly on the line between them
     if (factionOn) {
-      if (!paintTerritory(c, w, h, charted, colours, eventsOn ? frontOf : null)) {
+      if (!paintTerritory(c, w, h, charted, colours, eventsOn ? frontOf : null, cellPx)) {
         for (const n of charted) {
           if (!n.ownerId) continue;
           const col = colours.get(n.ownerId);
@@ -409,12 +486,13 @@ export function planChartGround(w, h, {
         if (!seat) continue;
         taken.push({ x: seat.x, y: seat.y, w: textW });
         const col = colours.get(ownerId);
-        c.shadowColor = rgba(col.tint, 0.85);
-        c.shadowBlur = 16;
-        c.fillStyle = rgba(col.ink, 0.5);
-        c.fillText(label, seat.x, seat.y);
-        c.shadowBlur = 0;
-        c.fillStyle = rgba(col.ink, 0.62);
+        // the glow is geometry (two wide faint strokes under the fill), not a blur
+        c.lineJoin = 'round';
+        c.strokeStyle = rgba(col.tint, 0.1); c.lineWidth = 12;
+        c.strokeText(label, seat.x, seat.y);
+        c.strokeStyle = rgba(col.tint, 0.16); c.lineWidth = 6;
+        c.strokeText(label, seat.x, seat.y);
+        c.fillStyle = rgba(col.ink, 0.66);
         c.fillText(label, seat.x, seat.y);
       }
       setTracking(c, 0, size);
@@ -423,7 +501,16 @@ export function planChartGround(w, h, {
   };
   const paint = (g, opts = {}) => {
   obstacles = Array.isArray(opts.obstacles) ? opts.obstacles : [];
-  const key = `${baseKey}#${obstacles.map((o) => `${Math.round(o.x)},${Math.round(o.y)},${Math.round(o.width)},${Math.round(o.height)}`).join(';')}`;
+  const labelKey = obstacles.map((o) => `${Math.round(o.x)},${Math.round(o.y)},${Math.round(o.width)},${Math.round(o.height)}`).join(';');
+  const fullKey = `${baseKey}#${labelKey}`;
+  // a key that changed within the last 180 ms is a camera in motion
+  const moving = fullKey !== lastFullKey && nowMs - lastBuildMs < 180;
+  if (fullKey !== lastFullKey) { lastFullKey = fullKey; lastBuildMs = nowMs; }
+  cellPx = moving ? TERRITORY_CELL_DRAFT : TERRITORY_CELL;
+  const key = `${fullKey}#${moving ? 'draft' : 'full'}`;
+  if (moving && typeof opts.requestRedraw === 'function' && !redrawTimer) {
+    redrawTimer = setTimeout(() => { redrawTimer = null; try { opts.requestRedraw(); } catch (_) { /* gone */ } }, 220);
+  }
   g.save();
   if (off && typeof off.getContext === 'function') {
     const oc = off.getContext('2d');
@@ -530,6 +617,46 @@ function drawSeam(g, seam, colours, { reduced, animT }) {
     g.lineWidth = 2;
     g.beginPath(); g.arc(mx, my, 8 + phase * 26, 0, Math.PI * 2); g.stroke();
   }
+  g.restore();
+}
+
+// ─── The system's ground ──────────────────────────────────────────────────────────────────────────
+
+/**
+ * The ground under a sector's own orrery (the SYSTEM scale, the chart's default): the holder's hue
+ * washes the whole canvas around the gate ring, the ring wears a lit rim in that hue, and a faint
+ * tinted half-ring and cross read the dial. Paint with `destination-over` (behind everything).
+ */
+export function drawSystemGround(g, w, h, { x, y, r, ownerId = null, fallbackHex = null, dashed = true } = {}) {
+  if (!g || !(r > 0)) return;
+  const tint = dominionRgb(ownerId, fallbackHex);
+  const reach = Math.max(w, h) * 0.62;
+  g.save();
+  const wash = g.createRadialGradient ? g.createRadialGradient(x, y, r * 0.35, x, y, Math.max(reach, r * 1.9)) : null;
+  if (wash) {
+    wash.addColorStop(0, rgba(tint, 0.2));
+    wash.addColorStop(0.45, rgba(tint, 0.11));
+    wash.addColorStop(1, rgba(tint, 0));
+    g.fillStyle = wash;
+    g.fillRect(0, 0, w, h);
+  }
+  // the rim: a lit band in the holder's hue, with a wide halo and a crisp core
+  g.lineCap = 'round';
+  g.strokeStyle = rgba(tint, 0.07); g.lineWidth = 44;
+  g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.stroke();
+  g.strokeStyle = rgba(tint, 0.2); g.lineWidth = 12;
+  g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.stroke();
+  g.strokeStyle = rgba(mixRgb(tint, [255, 255, 255], 0.35), 0.7); g.lineWidth = 1.6;
+  g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.stroke();
+  // the three-quarter ring and the cross
+  g.strokeStyle = rgba(tint, 0.2); g.lineWidth = 1.2;
+  if (dashed) {
+    g.setLineDash([2, 6]);
+    g.beginPath(); g.arc(x, y, r * 0.75, 0, Math.PI * 2); g.stroke();
+    g.setLineDash([]);
+  }
+  g.strokeStyle = rgba(tint, 0.1);
+  g.beginPath(); g.moveTo(x - r, y); g.lineTo(x + r, y); g.moveTo(x, y - r); g.lineTo(x, y + r); g.stroke();
   g.restore();
 }
 
