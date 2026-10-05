@@ -352,6 +352,82 @@ function heldBrakeStopMetres(derived) {
   return dist;
 }
 
+const REVERSAL_CACHE = new WeakMap();
+const REVERSAL_CAP_TICKS = 60 * 40;
+
+/**
+ * Seconds a held reverse thrust takes to go from fight speed ahead to the same
+ * speed astern. 2v/a is the constant-accel guess: a lit torch and a field sail
+ * are not that guess, and a sail whose reverseAccel is unpublished still reverses.
+ */
+function liveReversalSeconds(derived) {
+  const key = derived && derived.propulsion;
+  if (key && typeof key === 'object') {
+    const hit = REVERSAL_CACHE.get(key);
+    if (hit != null) return hit;
+  }
+  const seconds = heldReversalSeconds(derived);
+  if (key && typeof key === 'object') REVERSAL_CACHE.set(key, seconds);
+  return seconds;
+}
+
+function heldReversalSeconds(derived) {
+  const self = finite(derived && derived.operationalMass, finite(derived && derived.mass, 0));
+  if (!(self > 0)) return 0;
+  const entity = { id: 'reversal-predict', isPlayer: true, mass: self, data: { derived } };
+  const profile = resolvePropulsionProfile(entity, { playerId: 'reversal-predict', seed: 4242 });
+  if (!profile) return 0;
+  const speed0 = finite(profile.combatSpeed, finite(profile.maxSpeed, 0));
+  if (!(speed0 > 0)) return 0;
+  let runtime = createPropulsionRuntime(profile);
+  const body = {
+    pos: { x: 0, z: 0 },
+    vel: { x: 0, z: 0 },
+    rot: 0,
+    angVel: 0,
+    mass: self,
+    inertia: Math.max(1, self),
+    radius: 14,
+  };
+  if (profile.family === 'torch') {
+    let speed = 0;
+    for (let i = 0; i < 60 * 4; i += 1) {
+      body.vel.x = Math.min(speed, speed0);
+      body.vel.z = 0;
+      const step = stepPropulsion({
+        dt: BRAKE_SAMPLE_DT,
+        body,
+        input: { throttle: 1, assistMode: 'assisted' },
+        profile,
+        runtime,
+      });
+      runtime = step.runtime;
+      speed += (finite(step.force && step.force.x, 0) / self) * BRAKE_SAMPLE_DT;
+      if (speed < 0) speed = 0;
+      const spool = step.telemetry && step.telemetry.spool;
+      if (spool >= 0.98) break;
+    }
+  }
+  let speed = speed0;
+  let ticks = 0;
+  while (speed > -speed0 && ticks < REVERSAL_CAP_TICKS) {
+    body.vel.x = speed;
+    body.vel.z = 0;
+    const step = stepPropulsion({
+      dt: BRAKE_SAMPLE_DT,
+      body,
+      input: { throttle: -1, assistMode: 'assisted' },
+      profile,
+      runtime,
+    });
+    runtime = step.runtime;
+    speed += (finite(step.force && step.force.x, 0) / self) * BRAKE_SAMPLE_DT;
+    ticks += 1;
+  }
+  if (!(speed <= -speed0)) return 0;
+  return ticks * BRAKE_SAMPLE_DT;
+}
+
 function agilityWhy({ shipDef, derived, dryDerived, bareDerived }) {
   const cargoMass = finite(derived && derived.cargoMass, 0);
   const moduleMass = Math.max(0, finite(derived && derived.dryMass, finite(shipDef && shipDef.mass, 0)) - finite(shipDef && shipDef.mass, 0));
@@ -494,7 +570,7 @@ export function handlingBandModel({ shipId, fittings = [], player = null, domain
     });
   }
   const turnSentence = turnRadiusSentence(profile.predictions);
-  const reversalLine = reversalSentence(profile.predictions);
+  const reversalLine = reversalSentence({ reversalTimeS: liveReversalSeconds(derived) });
   const sustainedFire = sustainedFireForFit(shipId, fittings, player);
   const towLine = towSentence(profile.predictions);
   // The crest is the sentence the fit screen already prints under the hull name. Turn radius,
