@@ -24,6 +24,14 @@ const EXPECTATION_TTL_S = 10;
 
 const CMDTY_NAME = new Map(COMMODITIES.map((c) => [c.id, c.name]));
 
+function sealedResidueClause(outcome, name) {
+  const residue = outcome && outcome.residue;
+  const held = residue ? residue.holdQty : 0;
+  const yours = residue ? residue.holdSellableQty : 0;
+  if (!(held > yours)) return '';
+  return ` · ${yours} of ${held} ${name} yours to sell`;
+}
+
 function titleCaseWords(v) {
   return String(v || '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
@@ -82,20 +90,20 @@ export function tradeClearedReceipt(state, p = {}) {
         return {
           title: 'TRADE CLEARED',
           line: `${verb} ${fmtCr(outcome.executedQty)} OF THE ${fmtCr(outcome.requestedQty)} CONFIRMED`,
-          detail: `${name} · ${sign}${fmtCr(p.total)} cr`,
+          detail: `${name} · ${sign}${fmtCr(p.total)} cr` + sealedResidueClause(outcome, name),
         };
       }
       if (outcome.totalAgrees === false) {
         return {
           title: 'TRADE CLEARED',
           line: `${verb} ${fmtCr(outcome.executedQty)}u ${name}`,
-          detail: `${sign}${fmtCr(p.total)} cr — the ledger reads ${fmtCr(outcome.receipt.total)} cr, not the stated ${fmtCr(expectation.total)}`,
+          detail: `${sign}${fmtCr(p.total)} cr — the ledger reads ${fmtCr(outcome.receipt.total)} cr, not the stated ${fmtCr(expectation.total)}` + sealedResidueClause(outcome, name),
         };
       }
       return {
         title: 'TRADE CLEARED',
         line: `${verb} ${fmtCr(outcome.executedQty)}u ${name}`,
-        detail: `${sign}${fmtCr(p.total)} cr · settled as confirmed`,
+        detail: `${sign}${fmtCr(p.total)} cr · settled as confirmed` + sealedResidueClause(outcome, name),
       };
     }
   }
