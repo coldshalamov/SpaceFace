@@ -6069,6 +6069,10 @@ Rows authored this sitting from the open-ended direction, each landed with its p
   `test/objective-edge-arrow.test.mjs` 4/4 through the real createHud/frame() path: diamond
   in-camera, correct-edge seat with the tracker's own label, the D135 south-flight regression,
   and a 72-bearing boundary sweep.
+- **Vesta Forge: the feedstock day** — sector_vesta_forge's zone copy promised a working day
+  nobody could see; four authored pockets (feedstock seam, forge haul + lawful patrol, derelict
+  scavenger drift, slag relay) now deliver it through the generic spawn path. DONE dd0438962 —
+  `test/vesta-activity-pocket-chain.test.mjs` 5/5, helios re-counted 5/5, pocket families 25/25.
 Do not delete the heading; the next agent needs to know it is no longer the hole.
 
 ### 23.4 Actualize the tools
