@@ -115,7 +115,7 @@ function emptyAggregates() {
     // stays uniform; non-demo sessions simply never reach a step.
     demoFunnel: Object.fromEntries(DEMO_FUNNEL_STEPS.map((step) => [step, -1])),
 
-    deathLog: [],   // [{ atMs, simTime, cause, killerId, killerType, killerFaction, pos:{x,z}, lifespanMs }]
+    deathLog: [],   // [{ atMs, simTime, cause, killerId, killerType, killerFaction, killerName, pos:{x,z}, lifespanMs }]
   };
 }
 
@@ -247,21 +247,36 @@ export function createTelemetry(bus, state, options) {
   // death-cause derivation — `player:death` only carries {pos, killerId}; there is NO native cause
   // field. The killer entity outlives the victim, so we read it from state at handler time.
   // ----------------------------------------------------------------------------------------------
+  // Named hulls write data.name (lane contacts, scripted ships, ace bosses) and often
+  // data.callsign on the same body. The owned player hull writes data.shipName. makeEntity
+  // also copies a top-level spec name when a spawn sets one.
+  function killerHullName(killer) {
+    const data = killer && killer.data && typeof killer.data === 'object' ? killer.data : null;
+    const raw = (killer && killer.name)
+      || (data && data.name)
+      || (data && data.callsign)
+      || (data && data.shipName)
+      || '';
+    if (typeof raw !== 'string') return null;
+    const name = raw.trim();
+    return name || null;
+  }
+
   function deriveDeathCause(killerId) {
-    if (killerId == null) return { cause: 'environmental', type: null, faction: null };
+    if (killerId == null) return { cause: 'environmental', type: null, faction: null, name: null };
     if (state && state.playerId != null && killerId === state.playerId) {
-      return { cause: 'self', type: 'ship', faction: null };
+      return { cause: 'self', type: 'ship', faction: null, name: null };
     }
     const killer = state && state.entities && typeof state.entities.get === 'function'
       ? state.entities.get(killerId) : null;
-    if (!killer) return { cause: 'unknown', type: null, faction: null };
+    if (!killer) return { cause: 'unknown', type: null, faction: null, name: null };
     const data = killer.data || {};
     const klass = data.shipClass || killer.type || 'unknown';
     const cause = killer.type === 'ship' ? ('ship:' + (data.shipClass || 'generic'))
       : killer.type === 'asteroid' ? 'collision:asteroid'
       : killer.type === 'station' ? 'collision:station'
       : killer.type || 'unknown';
-    return { cause, type: klass, faction: killer.factionId || null };
+    return { cause, type: klass, faction: killer.factionId || null, name: killerHullName(killer) };
   }
 
   // ----------------------------------------------------------------------------------------------
@@ -593,7 +608,7 @@ export function createTelemetry(bus, state, options) {
     const entry = {
       atMs, simTime: simNow(), cause: c.cause,
       killerId: p.killerId == null ? null : p.killerId,
-      killerType: c.type, killerFaction: c.faction,
+      killerType: c.type, killerFaction: c.faction, killerName: c.name,
       telegraphed: !!telegraph,
       telegraphKind: telegraph ? telegraph.kind : null,
       telegraphLeadTicks: telegraph ? telegraph.leadTicks : null,

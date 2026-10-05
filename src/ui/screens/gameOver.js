@@ -138,7 +138,8 @@ export function deathCauseLabel(entry = null) {
   if (cause === 'self') return 'Self-inflicted damage';
   if (cause.startsWith('collision:')) return 'Collision with ' + prettyLabel(cause.slice('collision:'.length));
   if (cause.startsWith('ship:')) {
-    const killer = prettyLabel(entry.killerType || cause.slice('ship:'.length));
+    const named = typeof entry.killerName === 'string' ? entry.killerName.trim() : '';
+    const killer = named || prettyLabel(entry.killerType || cause.slice('ship:'.length));
     const faction = entry.killerFaction ? ' (' + prettyLabel(entry.killerFaction) + ')' : '';
     return 'Destroyed by ' + killer + faction;
   }
