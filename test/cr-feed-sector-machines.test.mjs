@@ -46,6 +46,7 @@ import {
 } from '../src/data/environmentalMachinery.js';
 import { SECTOR_ANCHORS } from '../src/data/sectorAnchors.js';
 import { SECTORS } from '../src/data/sectors.js';
+import { world } from '../src/systems/world.js';
 
 const PLACES_DIR = fileURLToPath(new URL('../assets/ships/release/parts/places/', import.meta.url));
 
@@ -108,6 +109,37 @@ test('every machine publishes its map/scanner hazard disc in its own sector', ()
   // A machineless sector publishes none - no Ceres mouths bleed into other charts.
   assert.equal(killMachineHazardZones('sector_pallas_drift').length, 0);
   assert.equal(killMachineHazardZones('sector_nyx_march').length, 0);
+});
+
+test('world.js actually injects each machine disc into active.hazards', () => {
+  // The data function is not the seam - world._spawnHazards is. A regression that re-gated
+  // on the Ceres id would pass the pure-function test above while the map stayed blind.
+  const prevState = world.state;
+  world.state = { world: { discovery: {} } };
+  const machineIds = new Set(ALL_KILL_MACHINES.map((m) => m.id));
+  try {
+    for (const { machine, sectorId } of CR_FEED_MACHINES) {
+      const active = { hazards: [] };
+      world._spawnHazards({ id: sectorId, hazards: [] }, active);
+      const zone = active.hazards.find((h) => h.id === machine.id);
+      assert.ok(zone, `${machine.id} must land in active.hazards via _spawnHazards`);
+      // active.hazards rows are world-space: the pushed centre is global, not localPos.
+      assert.deepEqual(zone.center, { x: machine.globalPos.x, z: machine.globalPos.z },
+        `${machine.id} disc centre must be the global position`);
+      assert.equal(zone.radius, machine.hazardRadius);
+      assert.equal(zone.type, machine.hazardType);
+    }
+    // Pallas pushes its reef row but never a census machine; a bare frontier sector stays empty.
+    const pallas = { hazards: [] };
+    world._spawnHazards({ id: 'sector_pallas_drift', hazards: [] }, pallas);
+    assert.ok(pallas.hazards.every((h) => !machineIds.has(h.id)),
+      'Pallas reef row is not a census machine');
+    const empty = { hazards: [] };
+    world._spawnHazards({ id: 'sector_nyx_march', hazards: [] }, empty);
+    assert.deepEqual(empty.hazards, [], 'a machineless sector injects nothing');
+  } finally {
+    world.state = prevState;
+  }
 });
 
 test('no two of them is the same kind of object', () => {

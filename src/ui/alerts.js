@@ -455,7 +455,25 @@ export function createAlerts(ctx) {
   });
   bus.on('hazard:exit', (p) => {
     if (!p || p.entityId !== (ctx.state && ctx.state.playerId)) return;
-    if (typeof p.zoneType === 'string' && p.zoneType) clear(`hazard:${p.zoneType}`);
+    const type = typeof p.zoneType === 'string' ? p.zoneType : '';
+    if (!type) return;
+    // Disc-in-disc: leaving one zone may leave another same-type zone still holding the
+    // player (a machine disc inside a sector-wide authored field). Clear the pill only
+    // when no same-type zone still contains them.
+    const state = ctx.state;
+    const player = state && state.entities && state.entities.get(state.playerId);
+    const zones = state && state.world && state.world.activeSector && state.world.activeSector.hazards;
+    if (player && player.pos && Array.isArray(zones)) {
+      for (const zone of zones) {
+        if (!zone || zone.type !== type || !zone.center) continue;
+        const r = Number(zone.radius);
+        if (!Number.isFinite(r) || r <= 0) continue;
+        const dx = player.pos.x - zone.center.x;
+        const dz = player.pos.z - zone.center.z;
+        if (dx * dx + dz * dz < r * r) return;
+      }
+    }
+    clear(`hazard:${type}`);
   });
 
   // incoming fire on the player — transient one-shots → the one-voice floor ONLY (no parallel pill

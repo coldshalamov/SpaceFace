@@ -506,7 +506,9 @@ export const VEIL_COLD_DRAW = buildKillMachine({
   localPos: { x: -900, z: -2200 },
   rot: 1.15,
   phaseOffsetS: 14,
-  hazardRadius: 130,
+  // The disc must cover the off-centre well's real reach: across 56 + radius 128 = 184 WU
+  // from the machine origin - a hull inside gather force must be inside the warning disc.
+  hazardRadius: 190,
   anvil: { radius: 22, mass: 9000, along: 0, across: 0 },
   mouth: { name: 'Cold Draw', radius: 20 },
   fields: [{
@@ -764,7 +766,8 @@ export function pointInsideKillMachine(machine, point) {
   return false;
 }
 
-export function killMachineHazardZones(sectorId = KILL_MACHINE_SECTOR_ID) {
+export function killMachineHazardZones(sectorId) {
+  // No default: a missing/unknown id must fail closed to [], never silently serve Ceres.
   return killMachinesForSector(sectorId).map((machine) => Object.freeze({
     id: machine.id,
     type: machine.hazardType,
