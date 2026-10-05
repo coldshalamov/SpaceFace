@@ -228,6 +228,13 @@ function ensureRuntime(state) {
       classifySeenScratch: new Set(),
       requestedReclassifyIds: new Set(),
       lastLiveCount: 0,
+      // Prune-sweep bookkeeping (D130): the signaturesById prune walks every historical id on
+      // every classify. Nothing can have become prunable unless sanctioned membership moved —
+      // spawn/remove both bump the entity index version — so a steady membership skips the
+      // sweep outright. `pruneSweeps` counts actual sweeps for the focused fixture.
+      pruneSweeps: 0,
+      _lastPruneMembership: undefined,
+      _lastPruneLiveCount: -1,
       pinResolveScratch: [],
       pinNormalizeScratch: { out: [], seen: new Set() },
     };
@@ -1772,17 +1779,32 @@ function classifyWorld(state, runtime) {
     || runtime.classifyMode === 'frame-retain'
     || runtime.classifyMode === 'early-quiet-latch'
     || runtime.classifyMode === 'flying-frame-retain';
-  for (const id of runtime.signaturesById.keys()) {
-    const stillLive = pruneLikeIncremental
-      ? !!(state.entities && typeof state.entities.get === 'function'
-        && state.entities.get(id) && state.entities.get(id).alive !== false)
-      : runtime.currentEntityIds.has(id);
-    if (stillLive) continue;
-    runtime.signaturesById.delete(id);
-    runtime.reasonsById.delete(id);
-    runtime.pinBuffersById.delete(id);
-    runtime.signatureCacheById.delete(id);
-    runtime.seenEntityIds.delete(id);
+  // Sweep only when something could have died or spawned since the last sweep: any sanctioned
+  // membership move bumps the entity index version (and raw list edits still change length).
+  // A steady membership means every mapped id is exactly as live as last sweep — re-walking the
+  // keyspace would delete nothing. Without an index there is no change signal, so it sweeps
+  // every pass; non-incremental modes also always sweep (their visit set IS the truth).
+  const pruneMembership = entityIndexVersion(state);
+  const sweepDue = !pruneLikeIncremental
+    || pruneMembership == null
+    || pruneMembership !== runtime._lastPruneMembership
+    || runtime._lastPruneLiveCount !== list.length;
+  if (sweepDue) {
+    runtime.pruneSweeps++;
+    runtime._lastPruneMembership = pruneMembership;
+    runtime._lastPruneLiveCount = list.length;
+    const canMapLookup = !!(state.entities && typeof state.entities.get === 'function');
+    for (const id of runtime.signaturesById.keys()) {
+      const stillLive = pruneLikeIncremental
+        ? (canMapLookup && (() => { const e = state.entities.get(id); return !!(e && e.alive !== false); })())
+        : runtime.currentEntityIds.has(id);
+      if (stillLive) continue;
+      runtime.signaturesById.delete(id);
+      runtime.reasonsById.delete(id);
+      runtime.pinBuffersById.delete(id);
+      runtime.signatureCacheById.delete(id);
+      runtime.seenEntityIds.delete(id);
+    }
   }
   counts.physics = statics.length + dynamics.length;
   runtime.lastLiveCount = (state.entityList || []).length;
@@ -1886,6 +1908,10 @@ export function resetActivityRuntimeForRestore(state) {
   runtime.classifiedStaticAuthority = null;
   runtime._staticMembershipDirty = true;
   if (runtime._dynamicEntities) runtime._dynamicEntities.length = 0;
+  // A restore can keep the index version unchanged while the id set moved — force the next
+  // classify pass to run the prune sweep rather than trusting the carried membership stamp.
+  runtime._lastPruneMembership = undefined;
+  runtime._lastPruneLiveCount = -1;
   return true;
 }
 
