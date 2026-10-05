@@ -106,7 +106,16 @@ export function createPresentationPublisher(world, state, options = {}) {
       const sharedCollect = Array.isArray(presentationFrame?.rebuildCollectedEntities)
         ? presentationFrame.rebuildCollectedEntities
         : null;
-      world.rebuildFromEntities(sharedCollect || aliveEntities(state));
+      const sample = sharedCollect || aliveEntities(state);
+      // Diff-apply while a stepped rebuild is suspended: clear+realloc used to
+      // retire every slot and drop every mesh binding on each tick-advanced
+      // present. Rows absent from the collect retire, new ids allocate, and
+      // retained rows pay only the changed-row dirty marks.
+      if (typeof world.updateFromEntities === 'function') {
+        world.updateFromEntities(sample);
+      } else {
+        world.rebuildFromEntities(sample);
+      }
       lastFallbackLifecycleGeneration = lifecycleGeneration;
       diagnostics.fallbackRebuilds++;
       result.rebuilt = true;

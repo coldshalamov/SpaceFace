@@ -42,7 +42,7 @@ import { opticCellGeometry, opticCellBodyMaterial, opticCellKindOf, dressOpticCe
 import { buildPlanetSiteVisual } from './planetSiteVisual.js'; // PQ-013 colossal planet-site body
 import { buildFaunaMesh } from './faunaVisuals.js'; // Alien Ecology program — organic fauna bodies
 import { buildMachineMesh } from './machineVisuals.js'; // Verge-Layer machines — pale procedural bodies
-import { freezeStaticChildMatrices, freezeStaticChildMatricesSteps, freezeStaticTransformRoot, updateMatrixWorldSteps } from './staticChildMatrices.js';
+import { freezeStaticChildMatrices, freezeStaticChildMatricesSteps, freezeStaticTransformRootMarked, updateMatrixWorldSteps } from './staticChildMatrices.js';
 import {
   makeNoiseTexture, makeGreebleTexture, makeGradientTexture, makeHullPanelTexture,
   makeHullNormalMap, makeGreebleDetailTexture, makeDecalSheet,
@@ -65,7 +65,7 @@ import * as kit from './ships/shipKit.js';
 import { applyProjectedDetailLod, attachStationHlod, isFarDetailSurface } from './hlod.js';
 import { attachLodState } from './lod.js';
 import { loadAuthoredPart } from './assetLoader.js';
-import { attachAuthoredMotionDriver, bindInstanceMotion } from './authoredMotion.js';
+import { attachAuthoredMotionDriver, bindInstanceMotionSteps } from './authoredMotion.js';
 import {
   admissionOwnerInactive,
   authoredAdmissionRetriableStatus,
@@ -407,7 +407,7 @@ function freezeStaticPresentation(root, options = {}) {
   freezeStaticChildMatrices(root);
   // The root itself only transforms at mount/seat/repose — those writers call updateMatrix()
   // through the matrixAutoUpdate === false dirty hook (PERF-59).
-  freezeStaticTransformRoot(root);
+  freezeStaticTransformRootMarked(root);
   return root;
 }
 
@@ -4308,16 +4308,14 @@ function attachPackagedBody(root, relativeFile, entity) {
           }
           packaged.add(packageRoot);
           packaged.userData.renderPackageInstance = instance;
-          // bindInstanceMotion's name-map collect is a second O(subtree) walk — pace
-          // it behind its own orphan check rather than paying both walks back to back.
+          // bindInstanceMotion's name-map collect is a second O(subtree) walk — the
+          // stepped twin paces it under driveLeg rather than paying it atomically.
           notePacedFrameSpend(legNow() - legStarted);
-          await yieldToBrowser();
-          legStarted = legNow();
-          if (packagedCommitOrphaned()) {
+          const controller = await driveLeg(bindInstanceMotionSteps(packageRoot, record.motionBank));
+          if (controller === COMMIT_ORPHANED) {
             disposeDetachedPackagedGroup(packaged);
             return { status: 'orphaned-before-swap' };
           }
-          const controller = bindInstanceMotion(packageRoot, record.motionBank);
           if (controller) motionControllers.push(controller);
         } else if (instance && typeof instance.dispose === 'function') {
           instance.dispose();
@@ -4392,6 +4390,9 @@ function attachPackagedBody(root, relativeFile, entity) {
         await prepareAuthoredVisualPipelines(packaged, mintedAdmissionOptions);
       } catch (error) {
         releaseBoundaryResidency(renderer, root, 'packaged-body-pipeline-failed', mintedAdmissionOptions.admissionEpoch);
+        // The freeze/canonicalize/pipeline-prepared subtree is still detached here —
+        // every other exit disposes it; a verdict return would leak its GPU payload.
+        try { disposeDetachedPackagedGroup(packaged); } catch (_) { /* teardown */ }
         if (staleAuthoredRunVerdict(root, mintedAdmissionOptions)) return false;
         // Same lifecycle abort partsLibrary classifies: an owner that dies mid-admission has no
         // visual to publish — a breadcrumb, not a composition defect.

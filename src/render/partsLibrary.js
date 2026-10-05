@@ -53,7 +53,7 @@ import { RENDER_PACKAGE_PILOTS } from './renderPackageManifest.js';
 import * as kit from './ships/shipKit.js';
 import { attachRetroMounts } from './thruster/retroMounts.js';
 import { attachPlaceHlod, attachStationHlod } from './hlod.js';
-import { freezeStaticChildMatrices, freezeStaticChildMatricesSteps, freezeStaticTransformRoot } from './staticChildMatrices.js';
+import { freezeStaticChildMatrices, freezeStaticChildMatricesSteps, freezeStaticTransformRootMarked } from './staticChildMatrices.js';
 import { optimizeStaticBatchesForRoot } from './visualFactory.js';
 import { attachLodState } from './lod.js';
 import {
@@ -3741,7 +3741,7 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
   freezeStaticChildMatrices(stationed);
   // The boundary root's own pose arrives only via mount/seat/snapshot writers, which recompose
   // it through the matrixAutoUpdate === false dirty hook (PERF-59).
-  freezeStaticTransformRoot(stationed);
+  freezeStaticTransformRootMarked(stationed);
   return stationed;
 }
 
@@ -3903,7 +3903,7 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
   const placed = attachPlaceHlod(boundary, entity);
   optimizeStaticBatchesForRoot(placed);
   freezeStaticChildMatrices(placed);
-  freezeStaticTransformRoot(placed);
+  freezeStaticTransformRootMarked(placed);
   return placed;
 }
 
@@ -4243,7 +4243,7 @@ async function commitAuthoredPlaceBoundary(
     notePacedFrameSpend(monotonicNow() - commitLegStarted);
     commitLegStarted = monotonicNow();
   }
-  freezeStaticTransformRoot(authored.root);
+  freezeStaticTransformRootMarked(authored.root);
   boundary.remove(fallbackRoot);
   boundary.add(authored.root);
   unregisterPreparedAuthoredAdmission(authored);
@@ -4283,17 +4283,28 @@ async function commitAuthoredPlaceBoundary(
   // The graft + publish tail above is the atomic mount span — debit it before the
   // dispose's deferred yield so the ledger prices this present correctly.
   notePacedFrameSpend(monotonicNow() - commitLegStarted);
-  commitLegStarted = monotonicNow();
   // Same seam as the ship commit: the fallback teardown walks the whole subtree —
   // defer it past a presented frame when the flight-mode stage gate is on. The graft
   // already detached the fallback, so the dispose must run even when the yield
-  // rejects (admission abort) — nothing else owns the detached subtree.
+  // rejects (admission abort) — nothing else owns the detached subtree. The
+  // ledger stamp moves inside the finally so the wait itself isn't charged —
+  // only the dispose's real cost belongs to the resume frame.
   try {
     if (options.yieldBetweenGpuStages === true && typeof options.yieldToNextPresent === 'function') {
       await waitForAuthoredAdmission(options.yieldToNextPresent(), options);
     }
   } finally {
-    try { disposeDetachedPlaceFallback(fallbackRoot); }
+    commitLegStarted = monotonicNow();
+    try {
+      const disposeIter = disposeDetachedPlaceFallbackSteps(fallbackRoot);
+      for (;;) {
+        const disposeStep = disposeIter.next();
+        if (disposeStep.done) break;
+        if (options.yieldBetweenGpuStages === true && typeof options.yieldToNextPresent === 'function') {
+          await waitForAuthoredAdmission(options.yieldToNextPresent(), options).catch(() => {});
+        }
+      }
+    }
     catch (error) { console.warn('[partsLibrary] place fallback cleanup failed after authored swap', error); }
     notePacedFrameSpend(monotonicNow() - commitLegStarted);
   }
@@ -9354,18 +9365,29 @@ async function commitAuthoredBoundary(
     publish();
   }
   notePacedFrameSpend(monotonicNow() - commitLegStarted);
-  commitLegStarted = monotonicNow();
   // The publish touch drew the authored subtree on the exact target and the fallback's
   // subtree dispose is a second GPU stage — when the caller paces stage joins (flight),
   // the dispose waits one present so the pair can't land inside one presented frame.
   // The graft already detached the fallback, so the dispose must run even when the
-  // yield rejects — nothing else owns the detached subtree.
+  // yield rejects — nothing else owns the detached subtree. The ledger stamp moves
+  // inside the finally so the wait itself isn't charged — only the dispose's real
+  // cost belongs to the resume frame.
   try {
     if (options.yieldBetweenGpuStages === true && typeof options.yieldToNextPresent === 'function') {
       await waitForAuthoredAdmission(options.yieldToNextPresent(), options);
     }
   } finally {
-    try { disposeDetachedObject(fallbackRoot); }
+    commitLegStarted = monotonicNow();
+    try {
+      const disposeIter = disposeDetachedObjectSteps(fallbackRoot);
+      for (;;) {
+        const disposeStep = disposeIter.next();
+        if (disposeStep.done) break;
+        if (options.yieldBetweenGpuStages === true && typeof options.yieldToNextPresent === 'function') {
+          await waitForAuthoredAdmission(options.yieldToNextPresent(), options).catch(() => {});
+        }
+      }
+    }
     catch (error) { console.warn('[partsLibrary] fallback cleanup failed after a successful authored swap', error); }
     notePacedFrameSpend(monotonicNow() - commitLegStarted);
   }
@@ -15714,6 +15736,33 @@ export function disposeDetachedObject(root) {
   });
 }
 
+// Stepped twin — identical DFS order (pre-order, root first), yields at stride
+// boundaries so the teardown paces inside a deferred commit tail. Shared-asset
+// guards are identical; a suspended walk still owns the whole detached subtree.
+export function* disposeDetachedObjectSteps(root) {
+  const releaseStandIn = root && root.userData && root.userData.admissionStandInRelease;
+  if (typeof releaseStandIn === 'function') releaseStandIn();
+  const disposePresentation = root && root.userData && root.userData.disposeWorldSitePresentation;
+  if (typeof disposePresentation === 'function') disposePresentation();
+  const stack = [root];
+  let visited = 0;
+  while (stack.length) {
+    const object = stack.pop();
+    if (!object) continue;
+    if ((++visited % 128) === 0) yield;
+    if (object.geometry && typeof object.geometry.dispose === 'function'
+      && !(object.geometry.userData && object.geometry.userData.spacefaceSharedAsset)) {
+      object.geometry.dispose();
+    }
+    const materials = object.material ? (Array.isArray(object.material) ? object.material : [object.material]) : [];
+    for (const material of materials) {
+      if (material && material.userData && material.userData.spacefaceSharedAsset) continue;
+      if (material && typeof material.dispose === 'function') material.dispose();
+    }
+    for (const child of object.children || []) stack.push(child);
+  }
+}
+
 function disposeDetachedPlaceFallback(root) {
   const disposePresentation = root && root.userData && root.userData.disposeWorldSitePresentation;
   if (typeof disposePresentation === 'function') disposePresentation();
@@ -15729,6 +15778,37 @@ function disposeDetachedPlaceFallback(root) {
     if (typeof geometry.dispose === 'function') geometry.dispose();
   }
   for (const material of materials) {
+    if (material.userData && material.userData.spacefaceSharedAsset) continue;
+    if (typeof material.dispose === 'function') material.dispose();
+  }
+}
+
+// Stepped twin — collect and dispose phases each yield at stride boundaries;
+// the dedup sets live in generator scope so a suspended walk keeps them.
+function* disposeDetachedPlaceFallbackSteps(root) {
+  const disposePresentation = root && root.userData && root.userData.disposeWorldSitePresentation;
+  if (typeof disposePresentation === 'function') disposePresentation();
+  const geometries = new Set();
+  const materials = new Set();
+  const stack = [root];
+  let visited = 0;
+  while (stack.length) {
+    const object = stack.pop();
+    if (!object) continue;
+    if ((++visited % 128) === 0) yield;
+    if (object.geometry) geometries.add(object.geometry);
+    const list = object.material ? (Array.isArray(object.material) ? object.material : [object.material]) : [];
+    for (const material of list) if (material) materials.add(material);
+    for (const child of object.children || []) stack.push(child);
+  }
+  let disposed = 0;
+  for (const geometry of geometries) {
+    if ((++disposed % 128) === 0) yield;
+    if (geometry.userData && geometry.userData.spacefaceSharedFallback) continue;
+    if (typeof geometry.dispose === 'function') geometry.dispose();
+  }
+  for (const material of materials) {
+    if ((++disposed % 128) === 0) yield;
     if (material.userData && material.userData.spacefaceSharedAsset) continue;
     if (typeof material.dispose === 'function') material.dispose();
   }

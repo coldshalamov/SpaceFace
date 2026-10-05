@@ -173,13 +173,18 @@ function crownSpecFor(entity) {
   return dressing;
 }
 
-function detachCrown(rec) {
-  if (rec.group && rec.group.parent) rec.group.parent.remove(rec.group);
-  rec.boundMesh = null;
-}
-
 export function createForgeCrownTracker() {
   const records = new Map();
+  // Mesh → record side index: boundMesh is already the boundary root identity,
+  // so releases probe the index instead of scanning every record per batch.
+  const boundIndex = new Map();
+
+  function detachCrown(rec) {
+    if (!rec) return;
+    if (rec.group && rec.group.parent) rec.group.parent.remove(rec.group);
+    if (rec.boundMesh) boundIndex.delete(rec.boundMesh);
+    rec.boundMesh = null;
+  }
 
   function updateForgeCrown(entity, mesh, simTime, frameDt, options) {
     if (!entity || entity.id == null || !mesh) return;
@@ -212,6 +217,7 @@ export function createForgeCrownTracker() {
       // pattern as lawArenaDressing).
       recordMountedRootForUnreadyScan(rec.group);
       rec.boundMesh = mesh;
+      boundIndex.set(mesh, rec);
     }
 
     const reduced = !!(options && options.motionReduce);
@@ -279,16 +285,14 @@ export function createForgeCrownTracker() {
 
   function releaseMesh(mesh) {
     if (!mesh) return;
-    for (const rec of records.values()) {
-      if (rec.boundMesh === mesh) detachCrown(rec);
-    }
+    detachCrown(boundIndex.get(mesh));
   }
 
-  // Batched twin for mass-despawn sweeps: one registry pass per batch.
+  // Batched twin for mass-despawn sweeps: O(pending.size) via the index.
   function releaseMeshSet(meshes) {
     if (!meshes || meshes.size === 0) return;
-    for (const rec of records.values()) {
-      if (rec.boundMesh && meshes.has(rec.boundMesh)) detachCrown(rec);
+    for (const mesh of meshes) {
+      detachCrown(boundIndex.get(mesh));
     }
   }
 

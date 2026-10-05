@@ -821,6 +821,54 @@ export function createPresentationWorld(options = {}) {
     return true;
   }
 
+  // Diff-apply twin of rebuildFromEntities: the clear+realloc per call used to
+  // retire every slot, re-mark every row DIRTY.ALL, and drop every mesh
+  // binding — during a suspended stepped journal rebuild that whole-set churn
+  // re-ran on every tick-advanced present. Retained ids keep their slot,
+  // binding, and visible state and pay only compare-then-write (dirty marks
+  // land where pose/metadata actually moved); absent ids retire; new ids
+  // allocate. Bookkeeping stamps exactly what a fresh alloc would mint.
+  function updateFromEntities(entities, generationForEntity = null) {
+    ensureAlive();
+    if (!Array.isArray(entities)) throw new TypeError('PresentationWorld update requires an entity array');
+    const seen = new Set();
+    for (const entity of entities) {
+      if (!entity || entity.alive === false) continue;
+      const entityId = sourceEntityId(entity);
+      if (entityId === 0) continue;
+      if (seen.has(entityId)) {
+        diagnostics.duplicateIdRejects++;
+        continue;
+      }
+      seen.add(entityId);
+      const generation = typeof generationForEntity === 'function'
+        ? generationForEntity(entity)
+        : 0;
+      const slot = byId.get(entityId);
+      if (slot === undefined || world.alive[slot] !== 1) {
+        allocateEntity(entity, generation);
+        continue;
+      }
+      const previousVisual = world.visualRevisions[slot];
+      refreshVisibleEntity(slot, entity);
+      world.sourceGenerations[slot] = generation >>> 0;
+      world.revisions[slot] = 0;
+      const nextVisual = Number.isSafeInteger(entity.presentationVisualRevision)
+        ? entity.presentationVisualRevision >>> 0 : 0;
+      world.visualRevisions[slot] = nextVisual;
+      if (nextVisual !== previousVisual) {
+        markDirtyBits(slot, PRESENTATION_DIRTY.VISUAL);
+      }
+    }
+    // Rows absent from the collect retire — snapshot the id list since retire
+    // mutates byId mid-iteration.
+    for (const entityId of [...byId.keys()]) {
+      if (!seen.has(entityId)) retire(entityId);
+    }
+    diagnostics.rebuilds++;
+    return true;
+  }
+
   function collectColumnBounds(column, minCellZ, maxCellZ, target) {
     const span = maxCellZ - minCellZ + 1;
     if (span > column.size * 2) {
@@ -953,6 +1001,7 @@ export function createPresentationWorld(options = {}) {
     isType,
     consumeAsteroidDirty,
     rebuildFromEntities,
+    updateFromEntities,
     clear,
     dispose,
     getTypeName: (slot) => typeNames[world.typeCodes[slot]] || '',

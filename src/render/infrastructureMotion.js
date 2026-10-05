@@ -163,6 +163,9 @@ export function resolveStationArmPose(articulation, ageS, durationS, bearingLoca
 
 export function createInfrastructureMotionTracker() {
   const infrastructureStates = new Map();
+  // Boundary root → record side index (keyed by boundaryRoot stamps) — batched
+  // releases probe it instead of rescanning every record's dish/arm refs.
+  const boundaryIndex = new Map();
   let busSubscribers = [];
   let lastSimTime = 0;
   // Latest berthing pulse. dock:docked carries { stationId }; dock:undocked carries {} so the
@@ -258,16 +261,42 @@ export function createInfrastructureMotionTracker() {
         dishScanned: false,
         armNodes: null,    // lazy [{ node, baseY, baseZ, basePX }] — articulating work hardware
         armScanned: false,
+        boundaryRoot: null, // boundary root the scanned refs live under — the release index key
       };
       infrastructureStates.set(entityId, rec);
     }
     return rec;
   }
 
+  function noteBoundaryRoot(rec, mesh) {
+    if (rec.boundaryRoot !== mesh) {
+      if (rec.boundaryRoot) boundaryIndex.delete(rec.boundaryRoot);
+      rec.boundaryRoot = mesh;
+      boundaryIndex.set(mesh, rec);
+    }
+  }
+
+  function dropBoundaryIndex(rec) {
+    if (rec && rec.boundaryRoot) {
+      boundaryIndex.delete(rec.boundaryRoot);
+      rec.boundaryRoot = null;
+    }
+  }
+
+  function releaseInfrastructureRefs(rec) {
+    if (!rec) return;
+    dropBoundaryIndex(rec);
+    rec.dishNodes = null;
+    rec.dishScanned = false;
+    rec.armNodes = null;
+    rec.armScanned = false;
+  }
+
   function updateGateMotion(entity, mesh, simTime, frameDt, playerEntity, options = {}) {
     if (!entity || !mesh) return;
     const dt = Math.min(0.05, Math.max(0.001, frameDt));
     const rec = getState(entity.id);
+    noteBoundaryRoot(rec, mesh);
     const reducedMotion = options.motionReduce === true;
     lastSimTime = simTime;
 
@@ -338,6 +367,7 @@ export function createInfrastructureMotionTracker() {
     if (!entity || !mesh) return;
     const dt = Math.min(0.05, Math.max(0.001, frameDt));
     const rec = getState(entity.id);
+    noteBoundaryRoot(rec, mesh);
     const reducedMotion = options.motionReduce === true;
     lastSimTime = simTime;
 
@@ -487,6 +517,7 @@ export function createInfrastructureMotionTracker() {
     if (!entity || !mesh) return;
     const dt = Math.min(0.05, Math.max(0.001, frameDt));
     const rec = getState(entity.id);
+    noteBoundaryRoot(rec, mesh);
     const reducedMotion = options.motionReduce === true;
     lastSimTime = simTime;
 
@@ -527,13 +558,6 @@ export function createInfrastructureMotionTracker() {
     }
   }
 
-  function nodeInsideTree(node, root) {
-    for (let cur = node; cur; cur = cur.parent) {
-      if (cur === root) return true;
-    }
-    return false;
-  }
-
   /** FB-076 — the live articulation record for a station, or null when no work is armed. */
   function stationArmRecord(stationId) {
     return stationId == null ? null : (armWork.get(String(stationId)) || null);
@@ -542,62 +566,24 @@ export function createInfrastructureMotionTracker() {
   // Same teardown contract as the other motion trackers: the entity outlives its mesh, so
   // the record drops Object3D references (scanned dish/arm nodes) while keeping motion state.
   function releaseEntityMesh(entityId) {
-    const rec = infrastructureStates.get(entityId);
-    if (!rec) return;
-    rec.dishNodes = null;
-    rec.dishScanned = false;
-    rec.armNodes = null;
-    rec.armScanned = false;
+    releaseInfrastructureRefs(infrastructureStates.get(entityId));
   }
 
   // Ids recycle across save restore; a record keyed by a reused id can keep dish/arm node
-  // references into a retired station mesh — release by mesh identity too.
+  // references into a retired station mesh — release by mesh identity too. The boundary-root
+  // side index keys each record on the root its scanned refs hang under; a missed entry pins
+  // the record's refs until the periodic prune — the same outcome an unbatched release gave.
   function releaseMesh(mesh) {
     if (!mesh) return;
-    for (const rec of infrastructureStates.values()) {
-      if (rec.dishNodes) {
-        const hit = rec.dishNodes.some((entry) => entry && entry.node && nodeInsideTree(entry.node, mesh));
-        if (hit) {
-          rec.dishNodes = null;
-          rec.dishScanned = false;
-        }
-      }
-      if (rec.armNodes) {
-        const hit = rec.armNodes.some((entry) => entry && entry.node && nodeInsideTree(entry.node, mesh));
-        if (hit) {
-          rec.armNodes = null;
-          rec.armScanned = false;
-        }
-      }
-    }
+    releaseInfrastructureRefs(boundaryIndex.get(mesh));
   }
 
-  function nodeInsideAnyOf(node, roots) {
-    for (let cur = node; cur; cur = cur.parent) {
-      if (roots.has(cur)) return true;
-    }
-    return false;
-  }
-
-  // Batched twin of releaseMesh for mass-despawn sweeps: one registry pass per
-  // batch; each node probes the whole dead set with one ancestor walk.
+  // Batched twin of releaseMesh for mass-despawn sweeps: O(pending.size) via
+  // the boundary-root index instead of one registry pass per evicted root.
   function releaseMeshSet(meshes) {
     if (!meshes || meshes.size === 0) return;
-    for (const rec of infrastructureStates.values()) {
-      if (rec.dishNodes) {
-        const hit = rec.dishNodes.some((entry) => entry && entry.node && nodeInsideAnyOf(entry.node, meshes));
-        if (hit) {
-          rec.dishNodes = null;
-          rec.dishScanned = false;
-        }
-      }
-      if (rec.armNodes) {
-        const hit = rec.armNodes.some((entry) => entry && entry.node && nodeInsideAnyOf(entry.node, meshes));
-        if (hit) {
-          rec.armNodes = null;
-          rec.armScanned = false;
-        }
-      }
+    for (const mesh of meshes) {
+      releaseInfrastructureRefs(boundaryIndex.get(mesh));
     }
   }
 
@@ -605,6 +591,7 @@ export function createInfrastructureMotionTracker() {
     if (!activeEntityIds || typeof activeEntityIds.has !== 'function') return;
     for (const id of infrastructureStates.keys()) {
       if (!activeEntityIds.has(id)) {
+        dropBoundaryIndex(infrastructureStates.get(id));
         infrastructureStates.delete(id);
       }
     }

@@ -345,7 +345,6 @@ import {
   collectUnstagedShadowCastersFlag,
   compileShadowDepthPipelines,
   compileShadowDepthPipelinesSteps,
-  createShadowDepthStagingSession,
   disposeAdmissionShadowResources,
   lightCensusSignature,
   noteShadowCensusLightMutation,
@@ -1784,6 +1783,21 @@ export function reattachResidentGpuMeshes(owner) {
   for (;;) { const step = it.next(); if (step.done) return step.value; }
 }
 
+// Arm the stepped sweep for the paced pump instead of exhausting it inline —
+// the keep-GPU event callers used to pay the whole _meshes scan + census + rekey
+// inside a shell-visible task. An in-flight sweep is closed and re-minted: the
+// event means "a sweep completes", and the feed-moved clause in
+// serviceRenderMeshResidency re-mints only once none is pending, so replacing
+// keeps the guarantee while the freshest feeds win. The reconcile mint waits on
+// `!_residentReattachIter`, so dead-id meshes are still never released first.
+function mintResidentReattachSweep(owner) {
+  const iterator = owner && owner._residentReattachIter;
+  if (iterator && typeof iterator.return === 'function') {
+    try { iterator.return(); } catch { /* re-mint proceeds regardless */ }
+  }
+  owner._residentReattachIter = reattachResidentGpuMeshesSteps(owner);
+}
+
 // Stepped twin of the reattach sweep — the mesh scan yields at strides and the
 // lazy stable-index census rides the chunked collect, so a restore under the
 // loading shell paces across service ticks instead of paying the whole census
@@ -2014,7 +2028,13 @@ function settleRebuildBridges(owner) {
   if (!bridges || bridges.size === 0) return;
   const state = owner.state;
   const epoch = state && state.world && state.world.enterSerial;
+  // Cap rows processed per frame — REBUILD_BRIDGE_MAX_SYNCS bounds a slot's
+  // lifetime, not the per-frame scan, so a rebuild burst keeps its leftover rows
+  // for the next pass instead of stacking inside one presented frame.
+  const cap = 32;
+  let processed = 0;
   for (const [id, slot] of bridges) {
+    if (++processed > cap) break;
     slot.frames += 1;
     const e = state && state.entities && typeof state.entities.get === 'function'
       ? state.entities.get(id) : null;
@@ -2028,7 +2048,14 @@ function settleRebuildBridges(owner) {
       const current = owner._meshes.get(id);
       release = current ? rebuildBridgeDrawable(current) : slot.replacement != null;
     }
-    if (!release) continue;
+    if (!release) {
+      // Rotate the unreleased row to the map's tail so a permanently-parked
+      // front can't starve rows behind it — every slot is seen within
+      // ceil(size/cap) frames regardless of order.
+      bridges.delete(id);
+      bridges.set(id, slot);
+      continue;
+    }
     bridges.delete(id);
     releaseRebuildBridge(owner, id, slot);
   }
@@ -2053,12 +2080,25 @@ export function serviceRenderMeshResidency(owner, frameDt) {
     // consumes moved (mesh set, entity tables, restore remap, sector serial),
     // plus a slow catch-all frame for key-heals the counters don't cover.
     const st = owner.state;
+    const entityIndex = st.entityIndex;
+    const field = st.world && st.world.asteroidField;
+    const dressing = st.world && st.world.dressing;
+    const farActors = st.world && st.world.farActors;
+    // Content mutation serials where the tables carry them — a swap that
+    // preserves .size mints no stamp on the count fields, so the sweep used
+    // to miss membership churn until the catch-all. version bumps cover
+    // insert/remove/mark; asteroidField membership joins the feed too.
     const reattachFeed = [
       owner._meshesVersion | 0,
-      st.entities && typeof st.entities.size === 'number' ? st.entities.size : 0,
+      entityIndex && entityIndex.__spacefaceEntityIndexV1 && Number.isFinite(entityIndex.version)
+        ? entityIndex.version
+        : (st.entities && typeof st.entities.size === 'number' ? st.entities.size : 0),
       Array.isArray(st.entityList) ? st.entityList.length : 0,
-      st.world && st.world.dressing && st.world.dressing.byId ? st.world.dressing.byId.size : 0,
-      st.world && st.world.farActors && st.world.farActors.byId ? st.world.farActors.byId.size : 0,
+      field && Number.isFinite(field.version) ? field.version : 0,
+      dressing && Number.isFinite(dressing.version) ? dressing.version
+        : (dressing && dressing.byId ? dressing.byId.size : 0),
+      farActors && Number.isFinite(farActors.version) ? farActors.version
+        : (farActors && farActors.byId ? farActors.byId.size : 0),
       st.sessionEntityIdRemap instanceof Map ? st.sessionEntityIdRemap.size : 0,
       st.world && st.world.enterSerial != null ? st.world.enterSerial : 0,
     ];
@@ -6606,6 +6646,13 @@ const SHADOW_DEPTH_PASS_COLLECT_CAP = 8;
 // subtree, so all collects in a pass share this node budget; a subtree that
 // outruns it aborts and over-covers the same way.
 const SHADOW_DEPTH_PASS_NODE_CAP = 4096;
+// Whole-root flag traverses stack per dirty root in the view pass: a
+// packaged-swap burst (split debris, mount chains, rebuild bridges) leaves K
+// roots dirty after their scoped graft syncs, and every one re-paid the whole
+// traverse in the same presented frame. Past the cap the sync defers a pass —
+// the root stays dirty and re-enters; only unscoped syncs count since a scoped
+// graft traverse is already narrowed to the added subtree.
+const SHADOW_ROOT_SYNC_PASS_CAP = 8;
 
 // Swarm warm coverage stays claimed only on a terminal outcome: the kick
 // demonstrably produced the warmed family ('authored*', a semantic fallback, a
@@ -11742,7 +11789,7 @@ export const render = {
         // Same-sector F9: GPU programs and opening meshes are already resident.
         // Dumping them and rebuilding made the next flight present compile 37
         // extra programs (~4s stall / TDR, headed skip-cook run65).
-        reattachResidentGpuMeshes(this);
+        mintResidentReattachSweep(this);
         this._sessionLiveSectorCookedId = recookSectorId;
         state.render.sessionLiveSectorCookedId = recookSectorId;
         recordOpeningCookStep(state.render, 'live.sessionRecook', NaN, 'skipped');
@@ -16810,7 +16857,7 @@ export const render = {
         // (headed reattach run68 TDR / CONTEXT_LOST ~0.5s after instant enter).
         if (cam.snapToPlayer) cam.snapToPlayer();
         this._pendingPostOpeningSector = null;
-        reattachResidentGpuMeshes(this);
+        mintResidentReattachSweep(this);
         // Keep the reconcile armed: restore reissues entity ids, so the kept set may not cover
         // every live entity — serviceRenderMeshResidency builds the gaps during loading.
         this._meshReconcileDirty = true;
@@ -17117,7 +17164,7 @@ export const render = {
             // Chunked across browser yields — the post-preparation upgrade mint
             // used to walk every kept mesh inside the sector-preparation .finally,
             // paying O(meshes) in one microtask under the loading shell.
-            (async () => {
+            const upgradeMintPass = (async () => {
               let visited = 0;
               for (const [id, mesh] of this._meshes) {
                 if (!rendererGenerationIsActive()) return;
@@ -17129,6 +17176,10 @@ export const render = {
                 if ((++visited % 32) === 0) await yieldToBrowser();
               }
             })();
+            // The chunked walk is fire-and-forget — .finally never awaits the
+            // callback's floating async work, so a throw must swallow here or
+            // it lands as an unhandled rejection the old sync loop never raised.
+            upgradeMintPass.catch(() => {});
           }
         }
         this._publishAssetResidencyDiagnostics();
@@ -17182,7 +17233,7 @@ export const render = {
           state.render.liveSectorFirstFlightIds = null;
           this._arrivalRosterIds = null;
           this._arrivalRosterIter = null;
-          reattachResidentGpuMeshes(this);
+          mintResidentReattachSweep(this);
           resumeAuthoredUpgradeQueueForLoadingHulls(this.scene);
           if (typeof state.render.resumeDeferredPipelineAdmissions === 'function') {
             state.render.resumeDeferredPipelineAdmissions({ hullsOnly: true });
@@ -17255,7 +17306,7 @@ export const render = {
     onBus('save:loaded', () => {
       clearRendererMeshLatches(this.state);
       if (this._sessionRecookKeepGpu === true) {
-        reattachResidentGpuMeshes(this);
+        mintResidentReattachSweep(this);
         // Same as the sector:enter keep-GPU path: reattach only covers entities whose ids
         // survived the restore, so leave the reconcile armed for the loading-mode gap pass.
         this._meshReconcileDirty = true;
@@ -24593,6 +24644,7 @@ export const render = {
       this._depthCollectPassSeq = collectSeq;
       this._depthCollectPassCount = 0;
       this._depthCollectNodesLeft = SHADOW_DEPTH_PASS_NODE_CAP;
+      this._shadowRootSyncPassCount = 0;
     }
     let overCovered = collectGate
       && ((this._depthCollectPassCount | 0) >= SHADOW_DEPTH_PASS_COLLECT_CAP
@@ -24674,8 +24726,20 @@ export const render = {
       // here would draw unlinked depth variants inside the presented refresh.
       syncOpts = { ...opts, allowCast: false };
     }
+    // Over the whole-root traverse cap for this pass: skip only the traverse —
+    // the withhold bookkeeping below still lands (deferred unstaged casters
+    // must keep castShadow=false and queue for the arm, or the next pass's
+    // collectGate would close on the stamp and restore live flags on unlinked
+    // depth variants). The root stays dirty and re-enters next pass; a pass
+    // needing no withhold simply pays its traverse a frame later. Scoped graft
+    // syncs stay uncapped (their walk is already narrowed to the added subtree).
+    const traverseDeferred = !scopedSync
+      && (this._shadowRootSyncPassCount | 0) >= SHADOW_ROOT_SYNC_PASS_CAP;
+    if (!scopedSync && !traverseDeferred) {
+      this._shadowRootSyncPassCount = (this._shadowRootSyncPassCount | 0) + 1;
+    }
     const receiverOut = { receiverDelta: 0 };
-    const changed = syncShadowCasterPolicy(
+    const changed = traverseDeferred ? false : syncShadowCasterPolicy(
       syncScope, lodLevel, {
         ...syncOpts,
         ...(extra || {}),
@@ -24960,68 +25024,43 @@ export const render = {
             legCapped = unstaged.length > SHADOW_DEPTH_ARM_MESH_CAP;
             const leg = legCapped ? unstaged.slice(0, SHADOW_DEPTH_ARM_MESH_CAP) : unstaged;
             legSet = new Set(leg);
-            // Arms within one drain share a staging session: the reparent/census/
-            // lights warm is a fixed per-arm cost, so a burst of N promotions used
-            // to pay it N times. The session keys on the live light census — a sig
-            // drift or shadow disable tears it down and the next arm re-mints.
-            let session = this._depthStageSession;
-            if (session && session.lightSig !== lightSig) {
-              this._killDepthStageSession();
-              session = null;
+            // The leg always rides the stepped twin: session.slice's reparent +
+            // private census render + shadow render + link has no internal yield,
+            // so a cap-sized leg still landed atomically inside one
+            // armCallbackAfterPresent task. driveCompileShadowDepthPipelines paces
+            // the same ceremony across presents; marks land a few presents later,
+            // the leftover audit below requeues (never parks) a deferred leg, and
+            // its meshes stay withheld until the marks commit — the cold-link
+            // contract is unchanged.
+            legDeferred = true;
+            const deferredMark = this._deferredDepthStageRoots
+              || (this._deferredDepthStageRoots = new Set());
+            for (const [deferRoot, deferMeshes] of unstagedByRoot) {
+              for (const mesh of deferMeshes) {
+                if (legSet.has(mesh)) { deferredMark.add(deferRoot); break; }
+              }
             }
-            if (!session) {
-              session = createShadowDepthStagingSession({
-                renderer,
-                light: this._keyLight,
-                camera,
-                THREE,
-                captureObjectHome,
-                restoreObjectHome,
-                lightingScene: scene,
-                lightSig,
-                stagingName: 'SF_ShadowPromoteDepthAdmission',
-              });
-              if (session) this._depthStageSession = session;
-            }
-            if (session) {
-              session.slice(leg);
-            } else {
-              // Session unavailable (warm-up failed or API shape missing) — drive
-              // the stepped twin as a deferred task so the census+reparent+render
-              // legs pace across presents instead of one atomic span in this arm.
-              // Marks land a few presents later; the leftover audit below requeues
-              // (never parks) a deferred leg and its meshes stay withheld until
-              // the marks commit — the cold-link contract is unchanged.
-              legDeferred = true;
-              const deferredMark = this._deferredDepthStageRoots
-                || (this._deferredDepthStageRoots = new Set());
-              for (const [deferRoot, deferMeshes] of unstagedByRoot) {
-                for (const mesh of deferMeshes) {
-                  if (legSet.has(mesh)) { deferredMark.add(deferRoot); break; }
+            driveCompileShadowDepthPipelines({
+              renderer,
+              light: this._keyLight,
+              camera,
+              subjects: leg,
+              forceEnable: false,
+              THREE,
+              captureObjectHome,
+              restoreObjectHome,
+              lightingScene: scene,
+              lightSigOverride: lightSig,
+              stagingName: 'SF_ShadowPromoteDepthAdmission',
+            }, yieldToBrowser).catch((error) => {
+              console.warn('[render] shadow-promote depth stage fallback failed', error);
+            }).finally(() => {
+              if (this._deferredDepthStageRoots) {
+                for (const [deferRoot] of unstagedByRoot) {
+                  this._deferredDepthStageRoots.delete(deferRoot);
                 }
               }
-              driveCompileShadowDepthPipelines({
-                renderer,
-                light: this._keyLight,
-                camera,
-                subjects: leg,
-                forceEnable: false,
-                THREE,
-                captureObjectHome,
-                restoreObjectHome,
-                lightingScene: scene,
-                lightSigOverride: lightSig,
-                stagingName: 'SF_ShadowPromoteDepthAdmission',
-              }, yieldToBrowser).catch((error) => {
-                console.warn('[render] shadow-promote depth stage fallback failed', error);
-              }).finally(() => {
-                if (this._deferredDepthStageRoots) {
-                  for (const [deferRoot] of unstagedByRoot) {
-                    this._deferredDepthStageRoots.delete(deferRoot);
-                  }
-                }
-              });
-            }
+            });
           }
         } catch (error) {
           console.warn('[render] shadow-promote depth stage failed', error);

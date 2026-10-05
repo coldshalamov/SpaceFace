@@ -123,6 +123,27 @@ export function freezeStaticTransformRoot(root) {
   remarkStaticMatrixAncestors(root);
 }
 
+// Same output as freezeStaticTransformRoot for callers that just ran a
+// freezeStaticChildMatrices pass on this root: every descendant's sfMatrixFrozen
+// stamp is already current, so the root's own mark resolves from its children's
+// flags — O(degree) instead of a second whole-subtree post-order walk.
+export function freezeStaticTransformRootMarked(root) {
+  if (!root) return;
+  root.matrixAutoUpdate = false;
+  if (typeof root.updateMatrix === 'function') root.updateMatrix();
+  const children = root.children || [];
+  let frozen = root.matrixAutoUpdate === false;
+  for (let i = 0; i < children.length; i++) {
+    const ud = children[i].userData;
+    if (!(ud && ud.sfMatrixFrozen === true)) { frozen = false; break; }
+  }
+  if (root.userData) {
+    if (frozen) root.userData.sfMatrixFrozen = true;
+    else if (root.userData.sfMatrixFrozen) root.userData.sfMatrixFrozen = false;
+  }
+  remarkStaticMatrixAncestors(root);
+}
+
 // Explicit dirty() for the rare move of a node inside a frozen subtree: recompose its local
 // matrix and refresh it plus every descendant's world matrix immediately — the per-frame walk
 // will skip the subtree again once all needsUpdate flags are consumed.

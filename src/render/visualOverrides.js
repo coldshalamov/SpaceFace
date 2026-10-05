@@ -10,7 +10,7 @@ import { buildDriftBarge } from './ships/driftBarge.js';
 import { buildQuietRaider } from './ships/quietRaider.js';
 import { buildVaelSniper } from './ships/vaelSniper.js';
 import { loadAuthoredPart } from './assetLoader.js';
-import { freezeStaticChildMatricesSteps, freezeStaticTransformRoot, updateMatrixWorldSteps } from './staticChildMatrices.js';
+import { freezeStaticChildMatricesSteps, freezeStaticTransformRootMarked, updateMatrixWorldSteps } from './staticChildMatrices.js';
 import { build47aScenarioProp } from './scenarioProps47a.js';
 import {
   batchPackagedPropOpaqueMeshesSteps,
@@ -1110,6 +1110,9 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
     // waits on the opening-graph release. Adding the group straight to the live scene left its
     // materials to link inside the first bloomScene draw (the wrk_glass_shattered / lnb_* brick);
     // routing through the queue instead delayed mounts into measured flight windows.
+    // Hoisted like attachPackagedBody: the .catch runs outside the .then closure, so the
+    // detached group must live in this scope for the thrown-leg dispose to reach it.
+    let detachedCommitGroup = null;
     const completion = loadPart(url, {
       renderer,
       slot: spec.slot || slotForPackagedFile(spec.file),
@@ -1125,6 +1128,7 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
         return false;
       }
       const packaged = new THREE.Group();
+      detachedCommitGroup = packaged;
       packaged.name = `${root.userData.kind || entity.type || 'prop'}_PackagedBody`;
       packaged.userData.scenarioPackagedBody = true;
       // Same yield+orphan spine as attachPackagedBody: the build legs below are
@@ -1159,6 +1163,7 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
         return false;
       }
       if (!packaged.children.length) {
+        disposeDetachedPackagedGroup(packaged);
         if (staleAuthoredRunVerdict(root, mintedAdmissionOptions)) return false;
         root.userData.authoredAssetState = 'unavailable';
         return false;
@@ -1179,7 +1184,7 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
         disposeDetachedPackagedGroup(packaged);
         return false;
       }
-      freezeStaticTransformRoot(packaged);
+      freezeStaticTransformRootMarked(packaged);
       notePacedFrameSpend(legNow() - legStarted);
       await yieldToBrowser();
       legStarted = legNow();
@@ -1192,6 +1197,7 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
         await prepareAuthoredVisualPipelines(packaged, mintedAdmissionOptions);
       } catch (error) {
         releaseBoundaryResidency(renderer, root, 'packaged-prop-pipeline-failed', mintedAdmissionOptions.admissionEpoch);
+        disposeDetachedPackagedGroup(packaged);
         if (staleAuthoredRunVerdict(root, mintedAdmissionOptions)) return false;
         // Same lifecycle abort partsLibrary classifies: an owner that shelves mid-admission
         // has no visual to publish — a breadcrumb, not a composition defect.
@@ -1215,6 +1221,7 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
       }
       if (!root.parent) {
         releaseBoundaryResidency(renderer, root, 'packaged-prop-orphaned-after-compile', mintedAdmissionOptions.admissionEpoch);
+        disposeDetachedPackagedGroup(packaged);
         root.userData.authoredAssetState = 'orphaned-before-swap';
         return false;
       }
@@ -1225,6 +1232,7 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
       if (publicationWait) await publicationWait;
       if (!root.parent) {
         releaseBoundaryResidency(renderer, root, 'packaged-prop-orphaned-before-publication', mintedAdmissionOptions.admissionEpoch);
+        disposeDetachedPackagedGroup(packaged);
         root.userData.authoredAssetState = 'orphaned-before-swap';
         return false;
       }
@@ -1277,6 +1285,10 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
       notePacedFrameSpend(legNow() - legStarted);
       return true;
     }).catch((error) => {
+      if (detachedCommitGroup && !detachedCommitGroup.parent) {
+        try { disposeDetachedPackagedGroup(detachedCommitGroup); } catch (_) { /* teardown */ }
+      }
+      detachedCommitGroup = null;
       if (staleAuthoredRunVerdict(root, mintedAdmissionOptions)) return false;
       if (root.parent && admissionOwnerInactive(null, entity, error)) {
         markAuthoredBoundaryForReadmission(root, 'packaged-prop-owner-inactive');

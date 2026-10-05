@@ -837,6 +837,9 @@ function easeOutCubic(t) {
 
 export function createLawArenaDressing() {
   const bossRecords = new Map();
+  // Mesh → record side index: boundMesh is already the boundary root identity,
+  // so releases probe the index instead of scanning every record per batch.
+  const boundIndex = new Map();
   const room = {
     root: null, parts: [], clones: [], installedAtSim: 0, arenaId: null,
     relayWires: [], pylonPositions: [],
@@ -1008,7 +1011,9 @@ export function createLawArenaDressing() {
   // ---- boss dressing (entity-driven, crown-style lifecycle) ----
 
   function detachBoss(rec) {
+    if (!rec) return;
     if (rec.group && rec.group.parent) rec.group.parent.remove(rec.group);
+    if (rec.boundMesh) boundIndex.delete(rec.boundMesh);
     rec.boundMesh = null;
   }
 
@@ -1050,6 +1055,7 @@ export function createLawArenaDressing() {
       parent.add(rec.group);
       recordMountedRootForUnreadyScan(rec.group);
       rec.boundMesh = mesh_;
+      boundIndex.set(mesh_, rec);
     }
 
     const reduced = !!(options && options.motionReduce);
@@ -1104,16 +1110,14 @@ export function createLawArenaDressing() {
 
   function releaseMesh(mesh_) {
     if (!mesh_) return;
-    for (const rec of bossRecords.values()) {
-      if (rec.boundMesh === mesh_) detachBoss(rec);
-    }
+    detachBoss(boundIndex.get(mesh_));
   }
 
-  // Batched twin for mass-despawn sweeps: one registry pass per batch.
+  // Batched twin for mass-despawn sweeps: O(pending.size) via the index.
   function releaseMeshSet(meshes) {
     if (!meshes || meshes.size === 0) return;
-    for (const rec of bossRecords.values()) {
-      if (rec.boundMesh && meshes.has(rec.boundMesh)) detachBoss(rec);
+    for (const mesh_ of meshes) {
+      detachBoss(boundIndex.get(mesh_));
     }
   }
 

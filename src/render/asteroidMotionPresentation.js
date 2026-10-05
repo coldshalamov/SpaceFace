@@ -274,6 +274,11 @@ const veinScratchForRig = {
 
 export function createAsteroidMotionTracker() {
   const asteroidStates = new Map();
+  // Boundary root → record side index: releases match interior refs by ancestor
+  // walk, so the index keys on the root the refs hang under instead of the refs
+  // themselves. A missed entry pins the record's refs until the periodic prune
+  // — the same outcome an unbatched release produced.
+  const boundaryIndex = new Map();
   let busSubscribers = [];
   let currentMinedTargetId = null;
   let lastSimTime = 0;
@@ -324,6 +329,7 @@ export function createAsteroidMotionTracker() {
         baseScaleY: 1,
         baseScaleZ: 1,
         veinRig: null,
+        boundaryRoot: null,
         lastTime: 0,
       };
       asteroidStates.set(asteroidId, rec);
@@ -468,10 +474,22 @@ export function createAsteroidMotionTracker() {
     currentMinedTargetId = null;
   }
 
+  function dropBoundaryIndex(rec) {
+    if (rec && rec.boundaryRoot) {
+      boundaryIndex.delete(rec.boundaryRoot);
+      rec.boundaryRoot = null;
+    }
+  }
+
   function updateAsteroidMotion(entity, mesh, simTime, frameDt, options = {}) {
     if (!entity || !mesh) return;
     const dt = Math.min(0.05, Math.max(0.001, frameDt));
     const rec = getState(entity.id);
+    if (rec.boundaryRoot !== mesh) {
+      dropBoundaryIndex(rec);
+      rec.boundaryRoot = mesh;
+      boundaryIndex.set(mesh, rec);
+    }
     const reducedMotion = options.motionReduce === true;
     lastSimTime = simTime;
 
@@ -662,18 +680,12 @@ export function createAsteroidMotionTracker() {
     }
   }
 
-  function nodeInsideTree(node, root) {
-    for (let cur = node; cur; cur = cur.parent) {
-      if (cur === root) return true;
-    }
-    return false;
-  }
-
   // The asteroid survives its boundary: keep the tumble/motion state but release the
   // Object3D references (body + vein rig) so an evicted or disposed mesh tree can retire.
   function releaseEntityMesh(asteroidId) {
     const rec = asteroidStates.get(asteroidId);
     if (!rec) return;
+    dropBoundaryIndex(rec);
     rec.veinRig = null;
     rec.scaleBodyRef = null;
   }
@@ -682,33 +694,22 @@ export function createAsteroidMotionTracker() {
   // rig references still point into a dead mesh tree — release by mesh identity as well.
   function releaseMesh(mesh) {
     if (!mesh) return;
-    for (const rec of asteroidStates.values()) {
-      const rigHit = rec.veinRig && nodeInsideTree(rec.veinRig, mesh);
-      const bodyHit = rec.scaleBodyRef && nodeInsideTree(rec.scaleBodyRef, mesh);
-      if (rigHit || bodyHit) {
-        rec.veinRig = null;
-        rec.scaleBodyRef = null;
-      }
+    const rec = boundaryIndex.get(mesh);
+    if (rec) {
+      dropBoundaryIndex(rec);
+      rec.veinRig = null;
+      rec.scaleBodyRef = null;
     }
   }
 
-  function nodeInsideAnyOf(node, roots) {
-    for (let cur = node; cur; cur = cur.parent) {
-      if (roots.has(cur)) return true;
-    }
-    return false;
-  }
-
-  // Batched twin of releaseMesh for mass-despawn sweeps: one registry pass per
-  // batch instead of one per evicted mesh. A ref inside ANY dead subtree reads
-  // identically to the per-mesh union — the ancestor walk probes the dead set
-  // instead of a single root.
+  // Batched twin of releaseMesh for mass-despawn sweeps: O(pending.size) via
+  // the boundary-root index instead of one registry pass per evicted root.
   function releaseMeshSet(meshes) {
     if (!meshes || meshes.size === 0) return;
-    for (const rec of asteroidStates.values()) {
-      const rigHit = rec.veinRig && nodeInsideAnyOf(rec.veinRig, meshes);
-      const bodyHit = rec.scaleBodyRef && nodeInsideAnyOf(rec.scaleBodyRef, meshes);
-      if (rigHit || bodyHit) {
+    for (const mesh of meshes) {
+      const rec = boundaryIndex.get(mesh);
+      if (rec) {
+        dropBoundaryIndex(rec);
         rec.veinRig = null;
         rec.scaleBodyRef = null;
       }
@@ -719,6 +720,7 @@ export function createAsteroidMotionTracker() {
     if (!activeEntityIds || typeof activeEntityIds.has !== 'function') return;
     for (const id of asteroidStates.keys()) {
       if (!activeEntityIds.has(id)) {
+        dropBoundaryIndex(asteroidStates.get(id));
         asteroidStates.delete(id);
       }
     }
