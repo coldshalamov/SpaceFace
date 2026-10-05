@@ -288,11 +288,21 @@ export function surveyedLossCodexLine(state) {
   return count + ' losses identified';
 }
 
-/** Discoveries survey sentence. Identified losses are a count, never a place. */
+/** Discoveries survey sentence. Counts only — never a place. */
+export function confirmedRumorCodexLine(state) {
+  let count = 0;
+  for (const entry of discoveryKnowledge(state).entries) {
+    if (entry && entry.tier === 'resolved' && entry.source === 'frontierRumor') count += 1;
+  }
+  if (count <= 0) return '';
+  if (count === 1) return 'One rumor confirmed';
+  return count + ' rumors confirmed';
+}
+
 export function surveyStatusBody(state) {
   const base = 'Fly close to unresolved signals and triangulate them to chart the frontier.';
-  const surveyed = surveyedLossCodexLine(state);
-  return surveyed ? base + ' ' + surveyed + '.' : base;
+  const extra = [surveyedLossCodexLine(state), confirmedRumorCodexLine(state)].filter(Boolean);
+  return extra.length ? base + ' ' + extra.join('. ') + '.' : base;
 }
 
 export function codexProgressSummary(story = {}, state = null) {
@@ -322,8 +332,10 @@ export function codexProgressSummary(story = {}, state = null) {
   if (state) {
     const gal = galaxyExplorationSummary(state);
     const surveyed = surveyedLossCodexLine(state);
+    const confirmed = confirmedRumorCodexLine(state);
     const surveyValue = gal.overallPercent + '% (' + gal.foundPois + '/' + gal.totalPois + ' sites)'
-      + (surveyed ? ' · ' + surveyed : '');
+      + (surveyed ? ' · ' + surveyed : '')
+      + (confirmed ? ' · ' + confirmed : '');
     items.push({ key: 'Survey', value: surveyValue });
   }
   return {
