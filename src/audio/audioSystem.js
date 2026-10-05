@@ -2477,6 +2477,16 @@ export const audio = {
     bus.on('ai:telegraph', (p) => this._onDoctrineTelegraphAudio(p));
     bus.on('encounter:telegraph', (p) => this._onEncounterTelegraphAudio(p));
     bus.on('encounter:resolved', (p) => this._onEncounterResolvedAudio(p));
+    // Lattice Warden field voices (capital hunt): the score's lattice commands already carry
+    // the readable beats — deploy spool, lance charge, collapse blowout, stake snap.
+    bus.on('capitalBoss:latticeDeploy', () => this.play('sfx_lattice_deploy', { gain: 0.6 }));
+    bus.on('capitalBoss:latticeCollapse', () => this.play('sfx_lattice_collapse', { gain: 0.65 }));
+    bus.on('capitalBoss:telegraph', (p) => {
+      if (p && /lance/.test(String(p.beatId || ''))) this.play('sfx_lattice_charge', { gain: 0.55 });
+    });
+    bus.on('capitalBoss:countered', (p) => {
+      if (p && p.reason === 'lattice_broken') this.play('sfx_lattice_stake_break', { gain: 0.6 });
+    });
     // Jump/cruise one-shots are owned by the normalized presentation lane below. Do not subscribe
     // to their raw events here: doing so stacks a direct voice with the semantic journey voice.
     // INST-17 arms a flag only. The arrival chord plays sfx_jump_arrive once underneath;

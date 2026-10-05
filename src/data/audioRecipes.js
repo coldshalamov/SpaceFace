@@ -3267,6 +3267,13 @@ export const SAMPLE_BINDINGS = {
   sfx_doctrine_withdraw: { id: 'doctrine_spool', share: 0.4, rate: 0.8 },
   sfx_encounter_escalation: { id: 'escalation_sub', share: 0.6 },
 
+  // Lattice Warden field voices: the deploy hum is the winch spool, the lance tell is the
+  // charge, the collapse is the shield-blowout family, a snapped stake is a tether break.
+  sfx_lattice_deploy: { id: 'doctrine_spool', share: 0.6 },
+  sfx_lattice_charge: { id: 'doctrine_charge', share: 0.65 },
+  sfx_lattice_collapse: { id: 'shield_blowout', share: 0.6 },
+  sfx_lattice_stake_break: { id: 'tether_snap', share: 0.62 },
+
   // impacts (the mass ladder feeds PQ-158.01's 3x3 grid)
   'sfx.hullHit': { id: 'impact_hull', share: 0.62 },
   'sfx.armorHit': { id: 'impact_armor', share: 0.62 },

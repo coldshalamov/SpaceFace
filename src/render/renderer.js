@@ -259,6 +259,7 @@ import { updateShipPitchPresentation } from './shipPitchPresentation.js';
 import { globalShipMicroMotion } from './shipMicroMotion.js';
 import { installAuthoredMotionBus, createAuthoredClock } from './authoredMotion.js';
 import { globalForgeCrown } from './forgeRegentCrown.js';
+import { globalLatticeWardenFx } from './latticeWardenTethers.js';
 import { globalLawArenaDressing } from './lawArenaDressing.js';
 import { createFlightOverheadPresentation } from './flightOverheadPresentation.js';
 import { writeSlipstreamState } from '../presentation/flightOverheadMath.js';
@@ -558,6 +559,7 @@ const _craftMicroMotionOptions = {
   tetherLoad: 0,
   tetherPhase: '',
   flashReduce: false,
+  state: null,
 };
 // syncEntityViews per-entity option scratches. Every callee reads the fields synchronously and
 // none retains the object — same contract as _craftMicroMotionOptions. All fields a callee can
@@ -17870,6 +17872,7 @@ export const render = {
       globalInfrastructureMotion.releaseEntityMesh(entityId);
       globalForgeCrown.releaseEntityMesh(entityId);
       globalLawArenaDressing.releaseEntityMesh(entityId);
+      globalLatticeWardenFx.releaseEntityMesh(entityId);
     }
     // A save restore reissues ids, so the record pinning this exact mesh can live under a
     // recycled key the entity-id release above cannot reach — release by identity too.
@@ -17879,6 +17882,7 @@ export const render = {
       globalInfrastructureMotion.releaseMesh(mesh);
       globalForgeCrown.releaseMesh(mesh);
       globalLawArenaDressing.releaseMesh(mesh);
+      globalLatticeWardenFx.releaseMesh(mesh);
     }
     // A culled-frozen root leaving the presentation world goes back to whatever owns the
     // object next (dispose, pool reuse, rebuild) in its build-time state.
@@ -17925,6 +17929,7 @@ export const render = {
     globalInfrastructureMotion.prune(active);
     globalForgeCrown.prune(active);
     globalLawArenaDressing.prune(active);
+    globalLatticeWardenFx.prune(active);
     this._releaseDetachedBoundaryOwners();
   },
 
@@ -19600,6 +19605,7 @@ export const render = {
             _craftMicroMotionOptions.playerId = this.state && this.state.playerId;
             _craftMicroMotionOptions.playerTargetId = this.state && this.state.player && this.state.player.targetId;
             _craftMicroMotionOptions.entities = this.state && this.state.entities;
+            _craftMicroMotionOptions.state = this.state;
             const tetherView = this.state && this.state.player && this.state.player.tether;
             _craftMicroMotionOptions.tetherActive = !!(tetherView && tetherView.active);
             _craftMicroMotionOptions.tetherTargetId = tetherView ? tetherView.targetId : null;
@@ -19609,6 +19615,7 @@ export const render = {
             globalShipMicroMotion.updateCraftMicroMotion(entity, mesh, simTime, frameDt, _craftMicroMotionOptions);
             globalForgeCrown.updateForgeCrown(entity, mesh, simTime, frameDt, _craftMicroMotionOptions);
             globalLawArenaDressing.updateBossDressing(entity, mesh, simTime, frameDt, _craftMicroMotionOptions);
+            globalLatticeWardenFx.updateLatticeWarden(entity, mesh, simTime, frameDt, _craftMicroMotionOptions);
           }
           if (isPlayer && this.scene) {
             slipstreamSeen = true;
