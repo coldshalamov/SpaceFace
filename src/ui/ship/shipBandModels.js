@@ -631,19 +631,17 @@ function liveTurnSentence(derived) {
 function agilityWhy({ shipDef, derived, dryDerived, bareDerived }) {
   const cargoMass = finite(derived && derived.cargoMass, 0);
   const moduleMass = Math.max(0, finite(derived && derived.dryMass, finite(shipDef && shipDef.mass, 0)) - finite(shipDef && shipDef.mass, 0));
-  const loadedRatio = ratioFor(derived, shipDef);
   const dryRatio = ratioFor(dryDerived, shipDef);
   const bareRatio = ratioFor(bareDerived, shipDef);
-  const cargoPenalty = cargoMass > 0
-    ? percentDelta(turnMassForRatio(loadedRatio), turnMassForRatio(dryRatio))
-    : 0;
   const modulePenalty = moduleMass > 0
     ? percentDelta(turnMassForRatio(dryRatio), turnMassForRatio(bareRatio))
     : 0;
-  // The bar's own number. The legacy flight-model angular acceleration is a different
-  // unit, and dividing it by this median called a median hull hundreds of percent fast.
+  // The bar's own number. Cargo uses that same yaw acceleration, empty versus loaded.
+  // Comparing the loaded number with the roster median blamed the hold on the frame.
   const yawAccel = finite(derived && derived.propulsion && derived.propulsion.yawAccel, 0);
-  const hullShift = percentDelta(yawAccel, AGILITY_MEDIAN);
+  const dryYaw = finite(dryDerived && dryDerived.propulsion && dryDerived.propulsion.yawAccel, yawAccel);
+  const hullShift = percentDelta(dryYaw, AGILITY_MEDIAN);
+  const cargoPenalty = cargoMass > 0 ? percentDelta(yawAccel, dryYaw) : 0;
   const rows = [];
   if (cargoMass > 0) {
     rows.push({
