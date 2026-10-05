@@ -19,7 +19,6 @@ import {
   moduleSentencesForFittings,
   reversalSentence,
   sustainedFireForFit,
-  turnRadiusSentence,
 } from './fitReadout.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((shipDef) => [shipDef.id, shipDef]));
@@ -514,6 +513,125 @@ function heldCoastSeconds(derived) {
   return 0;
 }
 
+const TURN_CACHE = new WeakMap();
+const TURN_HOLD_TICKS = 60 * 12;
+const TURN_WINDOW = 60 * 2;
+const TURN_STEADY = 0.15;
+
+/**
+ * The circle a held turn actually flies, with the default velocity-vectoring
+ * assist on. Fight speed divided by the yaw ceiling is the nose rate, and the
+ * assist does not let the nose run away from the path. A sail that keeps going
+ * straight, or a plate that never holds one circle, gets no number.
+ */
+function liveTurnCircle(derived) {
+  const key = derived && derived.propulsion;
+  if (key && typeof key === 'object') {
+    const hit = TURN_CACHE.get(key);
+    if (hit) return hit;
+  }
+  const circle = heldTurnCircle(derived);
+  if (key && typeof key === 'object') TURN_CACHE.set(key, circle);
+  return circle;
+}
+
+function heldTurnCircle(derived) {
+  const none = { radius: 0, atFightSpeed: false };
+  const self = finite(derived && derived.operationalMass, finite(derived && derived.mass, 0));
+  if (!(self > 0)) return none;
+  const entity = { id: 'turn-predict', isPlayer: true, mass: self, data: { derived } };
+  const profile = resolvePropulsionProfile(entity, { playerId: 'turn-predict', seed: 4242 });
+  if (!profile) return none;
+  const speed0 = finite(profile.combatSpeed, finite(profile.maxSpeed, 0));
+  if (!(speed0 > 0)) return none;
+  let runtime = createPropulsionRuntime(profile);
+  const body = {
+    pos: { x: 0, z: 0 },
+    vel: { x: 0, z: 0 },
+    rot: 0,
+    angVel: 0,
+    mass: self,
+    inertia: Math.max(1, self),
+    radius: 14,
+  };
+  const advance = (step) => {
+    body.vel.x += (finite(step.force && step.force.x, 0) / self) * BRAKE_SAMPLE_DT;
+    body.vel.z += (finite(step.force && step.force.z, 0) / self) * BRAKE_SAMPLE_DT;
+    if (step.impulse) {
+      body.vel.x += finite(step.impulse.x, 0) / self;
+      body.vel.z += finite(step.impulse.z, 0) / self;
+    }
+    body.angVel += finite(step.telemetry && step.telemetry.angularAcceleration, 0) * BRAKE_SAMPLE_DT;
+    body.rot += body.angVel * BRAKE_SAMPLE_DT;
+  };
+  if (profile.family === 'torch') {
+    let speed = 0;
+    for (let i = 0; i < 60 * 4; i += 1) {
+      body.vel.x = Math.min(speed, speed0);
+      body.vel.z = 0;
+      const step = stepPropulsion({
+        dt: BRAKE_SAMPLE_DT,
+        body,
+        input: { throttle: 1, assistMode: 'assisted', velocityVectoring: true },
+        profile,
+        runtime,
+      });
+      runtime = step.runtime;
+      speed += (finite(step.force && step.force.x, 0) / self) * BRAKE_SAMPLE_DT;
+      if (speed < 0) speed = 0;
+      const spool = step.telemetry && step.telemetry.spool;
+      if (spool >= 0.98) break;
+    }
+  }
+  body.vel.x = speed0;
+  body.vel.z = 0;
+  body.rot = 0;
+  body.angVel = 0;
+  const radii = [];
+  const speeds = [];
+  let heading = 0;
+  for (let i = 0; i < TURN_HOLD_TICKS; i += 1) {
+    const step = stepPropulsion({
+      dt: BRAKE_SAMPLE_DT,
+      body,
+      input: { throttle: 1, turn: 1, assistMode: 'assisted', velocityVectoring: true },
+      profile,
+      runtime,
+    });
+    runtime = step.runtime;
+    advance(step);
+    const nextHeading = Math.atan2(body.vel.z, body.vel.x);
+    let dHead = nextHeading - heading;
+    while (dHead > Math.PI) dHead -= Math.PI * 2;
+    while (dHead < -Math.PI) dHead += Math.PI * 2;
+    heading = nextHeading;
+    if (i < TURN_HOLD_TICKS - TURN_WINDOW) continue;
+    const speed = Math.hypot(body.vel.x, body.vel.z);
+    const pathRate = dHead / BRAKE_SAMPLE_DT;
+    speeds.push(speed);
+    if (Math.abs(pathRate) > 1e-6) radii.push(speed / Math.abs(pathRate));
+  }
+  if (radii.length < TURN_WINDOW / 2) return none;
+  const mean = radii.reduce((sum, n) => sum + n, 0) / radii.length;
+  const variance = radii.reduce((sum, n) => sum + (n - mean) ** 2, 0) / radii.length;
+  if (!(mean > 0) || Math.sqrt(variance) / mean > TURN_STEADY) return none;
+  const meanSpeed = speeds.reduce((sum, n) => sum + n, 0) / speeds.length;
+  return {
+    radius: mean,
+    atFightSpeed: Math.abs(meanSpeed - speed0) / speed0 <= TURN_STEADY,
+  };
+}
+
+function liveTurnSentence(derived) {
+  const flown = liveTurnCircle(derived);
+  if (!(flown.radius > 0)) return '';
+  const metres = Math.round(flown.radius);
+  if (!(metres > 0)) return '';
+  return flown.atFightSpeed
+    ? `At fight speed the turn radius is ${metres} m.`
+    : `Holding the turn, the turn radius is ${metres} m.`;
+}
+
 function agilityWhy({ shipDef, derived, dryDerived, bareDerived }) {
   const cargoMass = finite(derived && derived.cargoMass, 0);
   const moduleMass = Math.max(0, finite(derived && derived.dryMass, finite(shipDef && shipDef.mass, 0)) - finite(shipDef && shipDef.mass, 0));
@@ -660,7 +778,7 @@ export function handlingBandModel({ shipId, fittings = [], player = null, domain
       why,
     });
   }
-  const turnSentence = turnRadiusSentence(profile.predictions);
+  const turnSentence = liveTurnSentence(derived);
   const reversalLine = reversalSentence({ reversalTimeS: liveReversalSeconds(derived) });
   const sustainedFire = sustainedFireForFit(shipId, fittings, player);
   const towLine = towSentence(profile.predictions);
