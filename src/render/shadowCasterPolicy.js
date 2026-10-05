@@ -156,6 +156,22 @@ export function invalidateShadowCasterPolicy(root) {
   return true;
 }
 
+/**
+ * Call-site twin of the walker's early-out: true when a policy sync would
+ * actually traverse (a fresh policy record, a set dirty latch, a LOD change,
+ * or a cast-band change under the resolved options). A false return means
+ * syncShadowCasterPolicy would early-out without visiting a single node —
+ * callers can skip the call entirely with an identical outcome.
+ */
+export function shadowCasterPolicyNeedsSync(root, lodLevel = null, options = null) {
+  if (!root || typeof root.traverse !== 'function') return false;
+  const state = policyState(root);
+  const nextLodLevel = normalizeLodLevel(lodLevel);
+  const allowCast = !options || options.allowCast !== false;
+  const nextCastBand = allowCast ? 1 : 0;
+  return !!(state.dirty || state.lodLevel !== nextLodLevel || state.castBand !== nextCastBand);
+}
+
 /** Monotonic invalidation generation — 0 when the root has never been dirtied. */
 export function shadowCasterPolicyDirtySeq(root) {
   const state = root && root.userData ? root.userData[POLICY_STATE] : null;

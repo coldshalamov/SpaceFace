@@ -601,8 +601,11 @@ export function* compileShadowDepthPipelinesSteps(options = {}) {
     return { skipped: true, reason: 'directional shadows inactive', subjects: 0, aborted: true };
   }
   // The caster census walks every subject's subtree — run it only after the cheap
-  // flag checks above have ruled the pass out entirely.
-  const casting = yield* collectPotentialShadowCastSubjectsSteps(subjects);
+  // flag checks above have ruled the pass out entirely. A driver minting retries
+  // can hoist the light-independent collect to drive entry via precollectedCasting
+  // so drift retries re-pay only the light census + session mint.
+  const casting = options.precollectedCasting
+    || (yield* collectPotentialShadowCastSubjectsSteps(subjects));
   // Zero casters means zero depth programs to link — the staging ceremony (whole-scene
   // light traverse, reparenting, census render) is net-zero work then, even under
   // forceEnable whose enabled flag restores in finally anyway.

@@ -220,6 +220,7 @@ export function createPresentationWorld(options = {}) {
     cellPrev: new Int32Array(0),
     cellNext: new Int32Array(0),
     entityRefs: [],
+    boundEntityRefs: [],
     meshRefs: [],
     diagnostics,
     cellSize,
@@ -278,6 +279,7 @@ export function createPresentationWorld(options = {}) {
     world.cellPrev = growTyped(world.cellPrev, Int32Array, capacity, INVALID_INDEX);
     world.cellNext = growTyped(world.cellNext, Int32Array, capacity, INVALID_INDEX);
     world.entityRefs = growRefs(world.entityRefs, capacity);
+    world.boundEntityRefs = growRefs(world.boundEntityRefs, capacity);
     world.meshRefs = growRefs(world.meshRefs, capacity);
     world.capacity = capacity;
     diagnostics.capacity = capacity;
@@ -633,6 +635,7 @@ export function createPresentationWorld(options = {}) {
     writeDirtyMask(slot, PRESENTATION_DIRTY.ALL);
     world.radii[slot] = 0;
     world.entityRefs[slot] = entity;
+    world.boundEntityRefs[slot] = null;
     world.meshRefs[slot] = null;
     world.cellX[slot] = INVALID_CELL;
     world.cellZ[slot] = INVALID_CELL;
@@ -706,6 +709,7 @@ export function createPresentationWorld(options = {}) {
     world.packDirty[slot] = 0;
     writeDirtyMask(slot, PRESENTATION_DIRTY.NONE);
     world.entityRefs[slot] = null;
+    world.boundEntityRefs[slot] = null;
     world.meshRefs[slot] = null;
     byId.delete(entityId);
     world.freeSlots[freeCount++] = slot;
@@ -769,6 +773,10 @@ export function createPresentationWorld(options = {}) {
     if (world.meshRefs[slot] !== mesh) {
       if (!world.meshRefs[slot]) boundCount++;
       world.meshRefs[slot] = mesh;
+      // The row's bound owner is what the bound mesh was bound for — a pushed
+      // resident that differs means the row still wears the previous owner's
+      // corpse, and doom verdicts key on this, not the last pushed ref.
+      world.boundEntityRefs[slot] = entity || world.entityRefs[slot] || null;
       markDirtyBits(slot, PRESENTATION_DIRTY.BINDING | PRESENTATION_DIRTY.TRANSFORM
         | PRESENTATION_DIRTY.VISIBILITY);
       diagnostics.bound = boundCount;
@@ -790,6 +798,7 @@ export function createPresentationWorld(options = {}) {
     if (slot === undefined || slot < 0 || !world.meshRefs[slot]
       || mesh && world.meshRefs[slot] !== mesh) return false;
     world.meshRefs[slot] = null;
+    world.boundEntityRefs[slot] = null;
     world.visible[slot] = 0;
     world.doomed[slot] = 0;
     markDirtyBits(slot, PRESENTATION_DIRTY.BINDING | PRESENTATION_DIRTY.VISIBILITY);
@@ -973,7 +982,8 @@ export function createPresentationWorld(options = {}) {
           if (slot !== undefined && world.alive[slot] === 1 && lastSeenSeq[slot] !== seq
               && world.doomed[slot] !== 1) {
             const resident = world.entityRefs[slot];
-            if (resident && resident.alive !== false) continue;
+            if (resident && resident === world.boundEntityRefs[slot]
+                && resident.alive !== false) continue;
             // Only a prior-visible row ever enters hiddenSlots, so a mark minted
             // on an already-invisible slot is never consumed — it would pin both
             // query retains for the slot's whole residency.

@@ -247,6 +247,7 @@ import {
   allowRealtimeShadowCast,
   invalidateShadowCasterPolicy,
   shadowCasterPolicyDirty,
+  shadowCasterPolicyNeedsSync,
   shadowCasterPolicyDirtySeq,
   noteRealtimeShadowCasterPose,
   shouldNoteRealtimeShadowCasterPose,
@@ -345,6 +346,7 @@ import {
   casterDepthMarkCurrent,
   closeShadowDepthStagingSession,
   collectPotentialShadowCastSubjects,
+  collectPotentialShadowCastSubjectsSteps,
   collectUnstagedShadowCasters,
   collectUnstagedShadowCastersFlag,
   compileShadowDepthPipelines,
@@ -534,6 +536,18 @@ async function driveCompileShadowDepthPipelines(depthOpts, yieldStep) {
   const pace = typeof yieldStep === 'function' ? yieldStep : async () => {};
   if (!Number.isFinite(depthOpts.lightSigEpoch)) {
     depthOpts.lightSigEpoch = shadowCensusEpoch();
+  }
+  // The subject census is light-independent — collect it once so drift retries
+  // re-pay only the light census + session mint, not the whole subtree walk.
+  if (!depthOpts.precollectedCasting && depthOpts.subjects) {
+    const collectIter = collectPotentialShadowCastSubjectsSteps(depthOpts.subjects);
+    let precollected = null;
+    for (;;) {
+      const collectStep = collectIter.next();
+      if (collectStep.done) { precollected = collectStep.value; break; }
+      await pace();
+    }
+    if (precollected) depthOpts.precollectedCasting = precollected;
   }
   for (let attempt = 0; attempt < 4; attempt += 1) {
     const iterator = compileShadowDepthPipelinesSteps(depthOpts);
@@ -10398,12 +10412,30 @@ export const render = {
               && recordContextGeneration === currentContextGeneration()
               ? disposePreparedAuthoredBoundary(boundary) : false
           ),
-          disposeBoundaryObject: (boundary) => {
+          disposeBoundaryObject: async (boundary) => {
             // A renderer destroy after context loss must abandon old-context resources; the generic
             // Object3D walk is reserved for a live-context teardown.
             if (!rendererGenerationIsActive() || this._contextLost === true
                 || recordContextGeneration !== currentContextGeneration()) return false;
-            return disposeObject(boundary);
+            if (typeof disposeObjectSteps !== 'function' || state.mode !== 'flight') {
+              return disposeObject(boundary);
+            }
+            // A fat packaged boundary's whole-subtree teardown used to land atomically
+            // inside the presented frame that retired it — drive the Steps twin at the
+            // same wall/paced bound every other in-flight drain observes.
+            const disposeIter = disposeObjectSteps(boundary);
+            const disposeNow = () => (typeof performance !== 'undefined'
+              && typeof performance.now === 'function' ? performance.now() : Date.now());
+            let disposeSliceStart = disposeNow();
+            for (;;) {
+              if (disposeIter.next().done === true) return true;
+              const disposeTick = disposeNow();
+              if (disposeTick - disposeSliceStart > 4 || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) {
+                notePacedFrameSpend(disposeTick - disposeSliceStart);
+                if (typeof yieldToNextPresent === 'function') await yieldToNextPresent();
+                disposeSliceStart = disposeNow();
+              }
+            }
           },
           markShadowReceiversDirty: () => {
             if (rendererGenerationIsActive()) this._markShadowReceiversDirty();
@@ -13113,8 +13145,10 @@ export const render = {
                   bucket.push(subject);
                 }
                 for (const root of latePoolRoots) {
+                  if (cookStale()) return cookSuperseded;
                   const bucket = perRootSubjects.get(root);
                   if (bucket === undefined) {
+                    await sealPace();
                     sealSubjects.push(...collectCompileSubjects(root));
                   } else {
                     sealSubjects.push(...(bucket.length > 0 ? bucket : [root]));
@@ -13122,6 +13156,8 @@ export const render = {
                 }
               } else {
                 for (const root of latePoolRoots) {
+                  if (cookStale()) return cookSuperseded;
+                  await sealPace();
                   sealSubjects.push(...collectCompileSubjects(root));
                 }
               }
@@ -13832,6 +13868,30 @@ export const render = {
         programs.skipped === true ? 'skipped' : (programs.error ? 'error' : 'resolved'), {
           method: programs.method || programs.reason || undefined,
         });
+      const yieldBufferFrame = typeof options.yieldToMain === 'function'
+        ? options.yieldToMain
+        : yieldToBrowser;
+      // The shared stretch clock covers every paced stretch of this cook — the
+      // cohort mint, the pool census, the subject buckets — so a fat leg
+      // debits the same ledger the slices debit.
+      const cookStretchStarted = cookNow();
+      let cookStretchSliceAt = cookStretchStarted;
+      let cookStretchDebitAt = cookStretchStarted;
+      const paceCookStretch = async () => {
+        const tick = cookNow();
+        if (tick - cookStretchSliceAt <= 4 && pacedFrameSpend() < PACED_FRAME_BUDGET_MS) return;
+        notePacedFrameSpend(tick - cookStretchDebitAt);
+        await yieldBufferFrame();
+        cookStretchSliceAt = cookNow();
+        cookStretchDebitAt = cookStretchSliceAt;
+      };
+      // One pool census memo serves the cohort tails and the buffer-roots sweep
+      // — three whole-scene walks minted the same root set before.
+      let cookPoolRootsMemo = null;
+      const cookPoolCompileRoots = () => {
+        if (!cookPoolRootsMemo) cookPoolRootsMemo = collectInstancePoolCompileRoots(scene);
+        return cookPoolRootsMemo;
+      };
       // Draw one material at a time on the bloom target. A whole-scene bloom.render
       // while every drawable is revealed formed a framebuffer/texture feedback loop
       // and lost the Intel/ANGLE context.
@@ -13883,14 +13943,14 @@ export const render = {
             ? [
               ...openingRoots,
               ...firstFlightRoots,
-              ...collectInstancePoolCompileRoots(scene).filter(isAsteroidInstancePoolRoot),
+              ...cookPoolCompileRoots().filter(isAsteroidInstancePoolRoot),
             ]
             : [
               ...openingRoots,
               ...firstFlightRoots,
               ...preparedRoots,
               ...collectLateAdmittedCompileRoots(this._meshes, openingSubjects),
-              ...collectInstancePoolCompileRoots(scene),
+              ...cookPoolCompileRoots(),
             ];
         // holdLeftoverFx keeps leftover FX out of the cohort because their menu-linked programs
         // stay resident — but a lit material's menu variant is shadowless (numDirLightShadows=0)
@@ -13898,17 +13958,19 @@ export const render = {
         // program, 11-14 s on this box). The derived pools are count-0/invisible at every earlier
         // census, so their buffers have never uploaded either. Admit just those subjects under the
         // armed shadow state below so the first draw finds them already resident.
-        const shadowSensitiveLeftovers = options.skipCompile !== true
-          && options.holdLeftoverFx === true && !warmFirstFlightFx
-          ? firstFlightRoots
-            .flatMap((root) => collectCompileSubjects(root))
-            .filter((subject) => {
+        const shadowSensitiveLeftovers = [];
+        if (options.skipCompile !== true
+            && options.holdLeftoverFx === true && !warmFirstFlightFx) {
+          for (const root of firstFlightRoots) {
+            await paceCookStretch();
+            for (const subject of collectCompileSubjects(root)) {
               const materials = Array.isArray(subject && subject.material)
                 ? subject.material
                 : [subject && subject.material];
-              return materials.some(materialNeedsShadowVariant);
-            })
-          : [];
+              if (materials.some(materialNeedsShadowVariant)) shadowSensitiveLeftovers.push(subject);
+            }
+          }
+        }
         const neverDrawnPools = options.skipCompile !== true
           ? [
             this._contactShadowPool && this._contactShadowPool.mesh,
@@ -13916,11 +13978,34 @@ export const render = {
             this._shipAuxPool && this._shipAuxPool.nav && this._shipAuxPool.nav.mesh,
           ].filter(Boolean)
           : [];
-        const units = uniqueAdmissionUnits([
-          ...lateRoots.flatMap((root) => collectCompileSubjects(root)),
-          ...shadowSensitiveLeftovers,
-          ...neverDrawnPools,
-        ]);
+        // The cohort mint is the cook's last atomic block — pace the per-root
+        // collects under the stretch clock and chunk the dedupe at 1024 like
+        // the five sibling mints.
+        const lateSubjects = [];
+        for (const root of lateRoots) {
+          await paceCookStretch();
+          lateSubjects.push(...collectCompileSubjects(root));
+        }
+        const cohortSubjects = [...lateSubjects, ...shadowSensitiveLeftovers, ...neverDrawnPools];
+        const unitSeenMaterials = new Set();
+        const unitSeenGeometries = new Set();
+        const cohortProgramSubjects = [];
+        const cohortGeometrySubjects = [];
+        for (let i = 0; i < cohortSubjects.length; i += 1024) {
+          const part = uniqueAdmissionUnits(cohortSubjects.slice(i, i + 1024), {
+            seenMaterials: unitSeenMaterials,
+            seenGeometries: unitSeenGeometries,
+          });
+          if (part.programSubjects.length > 0) cohortProgramSubjects.push(...part.programSubjects);
+          if (part.geometrySubjects.length > 0) cohortGeometrySubjects.push(...part.geometrySubjects);
+          await paceCookStretch();
+        }
+        const units = {
+          programSubjects: cohortProgramSubjects,
+          geometrySubjects: cohortGeometrySubjects,
+          materialCount: unitSeenMaterials.size,
+          geometryCount: unitSeenGeometries.size,
+        };
         // Compile and touch both consume this list front-to-back under one shared budget. Order it
         // by the opening submission plan so the exact first-picture leaves (player, background,
         // visible entities, pools) warm before any beyond-runway subject — a timed-out pass then
@@ -14120,9 +14205,6 @@ export const render = {
       // skipBuffers means "do not re-upload the whole opening scene". First-flight
       // rocks and the 47-A spindle still need a 1x1 residency pass: compile()
       // does not upload vertex buffers, and first bloom then bricks on Intel.
-      const yieldBufferFrame = typeof options.yieldToMain === 'function'
-        ? options.yieldToMain
-        : yieldToBrowser;
       // Loading shell: texture and geometry uploads share a frame until ~8 ms of upload work
       // (laneB-fixA: 123 opening textures, one whole frame each). The jump shell keeps its cadence.
       const yieldBuffers = state.mode === 'loading'
@@ -14160,7 +14242,7 @@ export const render = {
       const bufferFirstFlightFx = options.skipCompile !== true
         && (options.holdLeftoverFx !== true || warmFirstFlightFx);
       if (bufferFirstFlightFx) {
-        for (const root of collectInstancePoolCompileRoots(scene)) {
+        for (const root of cookPoolCompileRoots()) {
           if (isAsteroidInstancePoolRoot(root)) {
             addFirstFlightBufferRoot(root);
           }
@@ -14423,17 +14505,6 @@ export const render = {
         // union clock now: >4 ms since the last slice or a spent paced-ledger
         // frame debits and yields, so the stretch no longer runs as one atomic
         // block ahead of the sliced admit.
-        const cookStretchStarted = cookNow();
-        let cookStretchSliceAt = cookStretchStarted;
-        let cookStretchDebitAt = cookStretchStarted;
-        const paceCookStretch = async () => {
-          const tick = cookNow();
-          if (tick - cookStretchSliceAt <= 4 && pacedFrameSpend() < PACED_FRAME_BUDGET_MS) return;
-          notePacedFrameSpend(tick - cookStretchDebitAt);
-          await yieldBufferFrame();
-          cookStretchSliceAt = cookNow();
-          cookStretchDebitAt = cookStretchSliceAt;
-        };
         const poolCensusIter = collectInstancePoolCompileRootsAndSubjectsSteps(scene, 256);
         let poolCensus;
         for (;;) {
@@ -14478,6 +14549,7 @@ export const render = {
         };
         const perRootSubjects = new Map();
         for (const subject of poolCensus.subjects) {
+          if (cookStale()) return cookSuperseded;
           await paceCookStretch();
           const holder = enclosingCompileRoot(subject);
           if (!holder) continue;
@@ -14487,6 +14559,7 @@ export const render = {
         }
         const cookCompileSubjects = [];
         for (const root of cookCompileRoots) {
+          if (cookStale()) return cookSuperseded;
           const bucket = perRootSubjects.get(root);
           if (bucket === undefined) {
             // Same unpaced-traverse gap as the rescan twin — the fallback
@@ -15288,13 +15361,27 @@ export const render = {
       // One paced clock for the whole pass: the fused census, the bucket/dedupe
       // legs and every rescan re-collect ride it — a joiner-armed rescan inside
       // a presented frame must not pay the old atomic traverse set.
+      // A superseded epoch stops the pass's spend — legs bail to the tail,
+      // whose released stamp is already epoch-gated (the next epoch's pass
+      // re-collects whatever this one skipped).
+      const postSuperseded = () => passEpoch !== (state.world && state.world.enterSerial != null
+        ? state.world.enterSerial : null);
+      const postSupersededResult = () => ({
+        skipped: true,
+        superseded: true,
+        queued,
+        sector: sectorResult,
+        lateRoots: 0,
+        depth: { skipped: true, reason: 'epoch-superseded' },
+      });
       const postPace = async () => {
         const tick = postNow();
-        if (tick - postSliceStart <= 4 && pacedFrameSpend() < PACED_FRAME_BUDGET_MS) return;
+        if (tick - postSliceStart <= 4 && pacedFrameSpend() < PACED_FRAME_BUDGET_MS) return postSuperseded();
         if (postSliceArmed) notePacedFrameSpend(tick - postSliceStart);
         if (typeof yieldToBrowser === 'function') await yieldToBrowser();
         postSliceStart = postNow();
         postSliceArmed = state.mode === 'flight';
+        return postSuperseded();
       };
       const opening = new Set(openingSubjects);
       // One chunked scene walk mints the pool roots and every drawable subject:
@@ -15317,13 +15404,15 @@ export const render = {
         for (;;) {
           const censusStep = censusIter.next();
           if (censusStep.done) { census = censusStep.value; break; }
-          await postPace();
+          if (await postPace()) return { superseded: true, roots: [], lateEntities: [], uncompiled: [], subjects: null };
         }
         let meshWalkVisited = 0;
         const meshRootSet = new Set();
         for (const root of this._meshes.values()) {
           if (root) meshRootSet.add(root);
-          if (++meshWalkVisited % 256 === 0) await postPace();
+          if (++meshWalkVisited % 256 === 0 && await postPace()) {
+            return { superseded: true, roots: [], lateEntities: [], uncompiled: [], subjects: null };
+          }
         }
         const lateRootSet = new Set();
         const enclosingMemo = new Map();
@@ -15342,7 +15431,9 @@ export const render = {
         };
         const uncompiled = [];
         for (const subject of census.subjects) {
-          await postPace();
+          if (await postPace()) {
+            return { superseded: true, roots: [], lateEntities: [], uncompiled: [], subjects: null };
+          }
           if (opening.has(subject)) continue;
           uncompiled.push(subject);
           const holder = enclosingMeshRoot(subject);
@@ -15351,7 +15442,9 @@ export const render = {
         // _meshes insertion order — the same order the registry walk produced.
         const lateEntities = [];
         for (const root of this._meshes.values()) {
-          if (++meshWalkVisited % 256 === 0) await postPace();
+          if (++meshWalkVisited % 256 === 0 && await postPace()) {
+            return { superseded: true, roots: [], lateEntities: [], uncompiled: [], subjects: null };
+          }
           if (lateRootSet.has(root)) lateEntities.push(root);
         }
         return {
@@ -15367,7 +15460,12 @@ export const render = {
       // scene walk never reached.
       const subjectsForCompileRoots = async (roots, censusSubjects) => {
         if (!censusSubjects) {
-          return roots.flatMap((root) => collectCompileSubjects(root));
+          const fallbackOut = [];
+          for (const root of roots) {
+            if (await postPace()) return { superseded: true, subjects: [] };
+            fallbackOut.push(...collectCompileSubjects(root));
+          }
+          return { subjects: fallbackOut };
         }
         const compileRootSet = new Set(roots.filter(Boolean));
         const enclosingMemo = new Map();
@@ -15386,7 +15484,7 @@ export const render = {
         };
         const perRootSubjects = new Map();
         for (const subject of censusSubjects) {
-          await postPace();
+          if (await postPace()) return { superseded: true, subjects: [] };
           const holder = enclosingCompileRoot(subject);
           if (!holder) continue;
           let bucket = perRootSubjects.get(holder);
@@ -15400,11 +15498,11 @@ export const render = {
             // The fallback traverse IS the slice's cost — pace per root so a
             // packed-warm rescan doesn't stack dozens of subtree walks inside
             // one leg.
-            await postPace();
+            if (await postPace()) return { superseded: true, subjects: [] };
             out.push(...collectCompileSubjects(root));
           } else out.push(...(bucket.length > 0 ? bucket : [root]));
         }
-        return out;
+        return { subjects: out };
       };
       const skipReadyLateMaterial = (material) => {
         try {
@@ -15427,7 +15525,9 @@ export const render = {
           });
           if (part.programSubjects.length > 0) programSubjects.push(...part.programSubjects);
           if (part.geometrySubjects.length > 0) geometrySubjects.push(...part.geometrySubjects);
-          await postPace();
+          if (await postPace()) {
+            return { superseded: true, programSubjects: [], geometrySubjects: [], materialCount: 0, geometryCount: 0 };
+          }
         }
         return {
           programSubjects,
@@ -15449,6 +15549,7 @@ export const render = {
         console.warn('[render] post-opening asteroid pool warm failed', error);
       }
       const postCensus = await collectLateAdmissionCensus();
+      if (postCensus.superseded === true) return postSupersededResult();
       const lateEntities = postCensus.lateEntities;
       const poolRoots = postCensus.roots;
       const uncompiledScene = postCensus.uncompiled;
@@ -15515,15 +15616,15 @@ export const render = {
         }
       };
       if (lateCompileRoots.length > 0) {
+        const lateSubjectSet = await subjectsForCompileRoots(lateCompileRoots, postCensus.subjects);
+        if (lateSubjectSet.superseded === true) return postSupersededResult();
         try {
           const route = this._selectPostRoute();
           lateColor = await admitOpeningUnitsAcrossSlices({
             // The cook's issue pass already linked most of this cohort — ready materials drop
             // at unit construction and the remaining cold ones issue one compile per program
             // signature, so the re-sweep only pays for genuinely late subjects.
-            units: await dedupeLateSubjects(
-              await subjectsForCompileRoots(lateCompileRoots, postCensus.subjects),
-            ),
+            units: await dedupeLateSubjects(lateSubjectSet.subjects),
             issueKeyFor: openingCompileIssueKey,
             renderer,
             beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
@@ -15588,6 +15689,20 @@ export const render = {
         // way rather than spilling the whole cohort onto per-root arm legs
         // (a persistent thrash defers to the next caller either way).
         let lastRetryResult = null;
+        // The subject census is light-independent — collect it once so drift
+        // retries re-pay only the light census + session mint per attempt.
+        if (!depthOpts.precollectedCasting && depthOpts.subjects) {
+          const collectIter = collectPotentialShadowCastSubjectsSteps(depthOpts.subjects);
+          let precollected = null;
+          for (;;) {
+            const collectStep = collectIter.next();
+            if (collectStep.done) { precollected = collectStep.value; break; }
+            if (await postPace()) {
+              return { skipped: true, reason: 'epoch-superseded', subjects: 0, aborted: true };
+            }
+          }
+          if (precollected) depthOpts.precollectedCasting = precollected;
+        }
         for (let attempt = 0; attempt < 4; attempt += 1) {
           const depthIter = compileShadowDepthPipelinesSteps(depthOpts);
           for (;;) {
@@ -15598,7 +15713,9 @@ export const render = {
                 || lastRetryResult.reason === 'session-closed-mid-drive')) break;
               return lastRetryResult;
             }
-            await postPace();
+            if (await postPace()) {
+              return { skipped: true, reason: 'epoch-superseded', subjects: 0, aborted: true };
+            }
           }
           depthOpts.lightSigOverride = freshDepthLightSig();
           depthOpts.lightSigEpoch = shadowCensusEpoch();
@@ -15618,7 +15735,7 @@ export const render = {
           renderer, depthSubjects.slice(i, i + 512), scene, freshDepthLightSig(), unstagedCollectBudget);
         if (isUnstagedCollectOverCover(unstagedPart)) break;
         if (unstagedPart.length > 0) unstagedDepthSubjects.push(...unstagedPart);
-        await postPace();
+        if (await postPace()) return postSupersededResult();
       }
       const depth = unstagedDepthSubjects.length > 0
         ? await driveDepthCompile(unstagedDepthSubjects, 'SF_PostOpeningShadowDepthAdmission')
@@ -15642,6 +15759,7 @@ export const render = {
         // pass — a flight-mode joiner's rescan legs used to pay the whole
         // traverse set atomically inside a presented frame.
         const rescanCensus = await collectLateAdmissionCensus();
+        if (rescanCensus.superseded === true) return postSupersededResult();
         const rescanRoots = [
           ...rescanCensus.lateEntities,
           ...rescanCensus.roots,
@@ -15662,9 +15780,9 @@ export const render = {
         // leg outright rather than driving it to an empty conclusion. The check
         // reads programSubjects — the units object carries no .length, so a
         // `.length` gate never admitted anything.
-        const rescanUnits = await dedupeLateSubjects(
-          await subjectsForCompileRoots(rescanDelta, rescanCensus.subjects),
-        );
+        const rescanSubjectSet = await subjectsForCompileRoots(rescanDelta, rescanCensus.subjects);
+        if (rescanSubjectSet.superseded === true) return postSupersededResult();
+        const rescanUnits = await dedupeLateSubjects(rescanSubjectSet.subjects);
         if (rescanUnits.programSubjects.length > 0) try {
           const rescanRoute = this._selectPostRoute();
           await admitOpeningUnitsAcrossSlices({
@@ -15694,7 +15812,7 @@ export const render = {
             renderer, rescanDelta.slice(i, i + 512), scene, freshDepthLightSig(), rescanCollectBudget);
           if (isUnstagedCollectOverCover(unstagedPart)) break;
           if (unstagedPart.length > 0) unstagedRescanDelta.push(...unstagedPart);
-          await postPace();
+          if (await postPace()) return postSupersededResult();
         }
         if (unstagedRescanDelta.length > 0) {
           await driveDepthCompile(unstagedRescanDelta, 'SF_PostOpeningRescanShadowDepth');
@@ -24860,8 +24978,13 @@ export const render = {
     if (scopedSync) {
       // Keep the park: only a whole-root collect may release it.
     } else if (parkedEntry && dirtySeq > parkedEntry.seq) parkedRelease = true;
-    else if (parkedRecheck && parkedEntry.lightSig != null
+    else if (parkedEntry && parkedEntry.lightSig != null
+        && parkedEntry.lightSigEpoch !== shadowCensusEpoch()
         && parkedEntry.lightSig !== this._shadowCensusForFrame()) {
+      // The census epoch prefilter is O(1) — only a noted light mutation bumps
+      // it, so quiet frames never compare the sig string. On a bump the
+      // memoized sig compare decides cosmetic-vs-real drift and the release
+      // fires on the very next eval instead of waiting out the recheck tick.
       parkedRelease = parkedReleaseOnDrift = true;
     } else if (parkedEntry && parkedEntry.oqX != null && this._keyLight && this._keyLight.target) {
       const cell = (this._shadowOrthoExtent || 1) / 2;
@@ -24888,6 +25011,7 @@ export const render = {
       // ortho releases and re-collects normally.
       parkedEntry.seq = dirtySeq;
       parkedEntry.lightSig = this._shadowCensusForFrame();
+      parkedEntry.lightSigEpoch = shadowCensusEpoch();
       if (this._keyLight && this._keyLight.target) {
         const cell = (this._shadowOrthoExtent || 1) / 2;
         const target = this._keyLight.target.position;
@@ -25049,17 +25173,34 @@ export const render = {
     // cap: deferring it skips both lanes, and its swap seam pays the same
     // unbounded subtree count walk the cap exists to bound — pure inversion.
     const needsAtomicOut = !!(extra && extra.preCountRoot);
-    const traverseDeferred = !scopedSync
+    // The walker's early-out makes a nothing-to-write call a no-op traverse —
+    // it must not bill the cap (clean callers in slot order would otherwise
+    // starve every late-slot dirty root) and it skips the stepped mint below
+    // wholesale. needsAtomicOut stays forced: its caller needs the out-param
+    // bookkeeping even when no flags change.
+    const traverseWouldSync = needsAtomicOut
+      || shadowCasterPolicyNeedsSync(root, lodLevel, syncOpts);
+    // A withhold verdict may defer only when its unstaged casters already
+    // carry flags — a deferred uncovered withhold leaves them casting through
+    // the presented shadow refresh. withheldMeshes non-null means the subset
+    // collect completed (flags land synchronously below); the withheld cache
+    // proves a prior applied withhold's flags stand.
+    const withholdCoverageKnown = syncOpts.allowCast !== false
+      || withheldMeshes != null
+      || !!(this._withheldDepthCasters && this._withheldDepthCasters.has(root));
+    const traverseDeferred = traverseWouldSync
+      && !scopedSync
       && !skipTraverseOnDrift
       && !hadParkedWalk
       && !needsAtomicOut
+      && withholdCoverageKnown
       && (this._shadowRootSyncPassCount | 0) >= SHADOW_ROOT_SYNC_PASS_CAP;
-    if (!scopedSync && !traverseDeferred && !skipTraverseOnDrift && !hadParkedWalk) {
+    if (!scopedSync && !traverseDeferred && !skipTraverseOnDrift && !hadParkedWalk && traverseWouldSync) {
       this._shadowRootSyncPassCount = (this._shadowRootSyncPassCount | 0) + 1;
     }
     const receiverOut = { receiverDelta: 0 };
     let changed = false;
-    if (!traverseDeferred && !skipTraverseOnDrift) {
+    if (!traverseDeferred && !skipTraverseOnDrift && traverseWouldSync) {
       if (!scopedSync && syncOpts.allowCast !== false && !needsAtomicOut) {
         // Whole-root castable verdicts ride the stepped lane: a fat subtree's
         // rewrite paces inside a small wall budget per call instead of one
@@ -25069,7 +25210,17 @@ export const render = {
           && typeof performance.now === 'function' ? performance.now() : Date.now());
         const policyDeadlineAt = this._policyPassDeadlineAt != null
           ? this._policyPassDeadlineAt : policyNow() + SHADOW_POLICY_PASS_MS;
-        if (!hadParkedWalk && policyNow() >= policyDeadlineAt) {
+        // The mint gate's aging floor: one starvation slot per pass — the
+        // first spent-wallet skip mints anyway, so sustained churn ahead in id
+        // order can't defer a root indefinitely (a skipped root does zero work
+        // per pass otherwise). Bounded at ≤1 forced slice per pass.
+        const walletSpent = policyNow() >= policyDeadlineAt;
+        let starvationSlot = false;
+        if (walletSpent && !hadParkedWalk && this._policyMintStarvedSeq !== collectSeq) {
+          this._policyMintStarvedSeq = collectSeq;
+          starvationSlot = true;
+        }
+        if (!hadParkedWalk && walletSpent && !starvationSlot) {
           // A spent wallet parks fresh mints unpaid — the root stays dirty and
           // re-enters under next pass's wallet instead of paying slice-1 on a
           // dead clock. Parked resumes keep their min-1 slice below (the drive
@@ -25100,6 +25251,11 @@ export const render = {
           }
           this._policyStepsParked.delete(root);
         }
+        // The atomic lane debits the same ledger the stepped lane does — an
+        // unmetered verdict/graft burst would read ~zero spend to the sibling
+        // slicers and stack behind a false wallet.
+        const atomicStartedAt = (typeof performance !== 'undefined'
+          && typeof performance.now === 'function' ? performance.now() : Date.now());
         changed = syncShadowCasterPolicy(
           syncScope, lodLevel, {
             ...syncOpts,
@@ -25110,6 +25266,9 @@ export const render = {
             ...(syncOpts.allowCast === false ? { allowCast: false } : {}),
             out: receiverOut,
           });
+        const atomicElapsed = (typeof performance !== 'undefined'
+          && typeof performance.now === 'function' ? performance.now() : Date.now()) - atomicStartedAt;
+        if (atomicElapsed > 0) notePacedFrameSpend(atomicElapsed);
         if (carriedDelta !== 0) receiverOut.receiverDelta += carriedDelta;
       }
     }
@@ -25168,7 +25327,18 @@ export const render = {
     const memo = this._shadowCensusMemo;
     const seq = this._viewSyncSeq || 0;
     const scene = this.scene;
-    const epoch = shadowCensusEpoch();
+    // The epoch latches once per presented pass — a mid-frame light mutation
+    // invalidates the NEXT pass's memo instead of re-walking the whole scene
+    // for every call site after it (mounts churn fastest exactly when the
+    // sig is consulted most). The raw epoch still gates session reuse.
+    let epoch;
+    if (this._shadowCensusEpochSeq === seq) {
+      epoch = this._shadowCensusEpochMemo;
+    } else {
+      epoch = shadowCensusEpoch();
+      this._shadowCensusEpochSeq = seq;
+      this._shadowCensusEpochMemo = epoch;
+    }
     if (memo && memo.seq === seq && memo.scene === scene && memo.epoch === epoch) {
       return memo.sig;
     }
@@ -25382,12 +25552,19 @@ export const render = {
                 const parkedTarget = this._keyLight && this._keyLight.target
                   ? this._keyLight.target.position : null;
                 const parkedCell = (this._shadowOrthoExtent || 1) / 2;
+                // A root inside the ortho earns a faster recheck cadence — its
+                // withheld casters are the ones the player can see.
+                const abortedGlassAdj = abortedRoot.position
+                  && shadowCastAxisDistance(abortedRoot.position,
+                    this._framePlayerLocalX || 0, this._framePlayerLocalZ || 0) <= parkedCell;
                 parkedMap.set(abortedRoot, {
                   lodLevel: entry.lodLevel,
                   entity: entry.entity,
                   seq: shadowCasterPolicyDirtySeq(abortedRoot),
-                  recheck: (96 + (this._parkedRecheckStamp % 32)) * Math.min(8, 1 << (cycles - 1)),
+                  recheck: Math.ceil((96 + (this._parkedRecheckStamp % 32))
+                    * Math.min(8, 1 << (cycles - 1)) * (abortedGlassAdj ? 0.5 : 1)),
                   lightSig: this._shadowCensusForFrame(),
+                  lightSigEpoch: shadowCensusEpoch(),
                   oqX: parkedTarget ? Math.round(parkedTarget.x / parkedCell) : null,
                   oqZ: parkedTarget ? Math.round(parkedTarget.z / parkedCell) : null,
                   // The earned node-budget scale rides the park — a permanently
@@ -25504,12 +25681,17 @@ export const render = {
                   const parkedTarget = this._keyLight && this._keyLight.target
                     ? this._keyLight.target.position : null;
                   const parkedCell = (this._shadowOrthoExtent || 1) / 2;
+                  const deferGlassAdj = deferRoot.position
+                    && shadowCastAxisDistance(deferRoot.position,
+                      this._framePlayerLocalX || 0, this._framePlayerLocalZ || 0) <= parkedCell;
                   parkedMap.set(deferRoot, {
                     lodLevel: entry.lodLevel,
                     entity: entry.entity,
                     seq: shadowCasterPolicyDirtySeq(deferRoot),
-                    recheck: (96 + (this._parkedRecheckStamp % 32)) * Math.min(8, 1 << (cycles - 1)),
+                    recheck: Math.ceil((96 + (this._parkedRecheckStamp % 32))
+                      * Math.min(8, 1 << (cycles - 1)) * (deferGlassAdj ? 0.5 : 1)),
                     lightSig: this._shadowCensusForFrame(),
+                    lightSigEpoch: shadowCensusEpoch(),
                     oqX: parkedTarget ? Math.round(parkedTarget.x / parkedCell) : null,
                     oqZ: parkedTarget ? Math.round(parkedTarget.z / parkedCell) : null,
                     // The earned node-budget scale rides the park so the

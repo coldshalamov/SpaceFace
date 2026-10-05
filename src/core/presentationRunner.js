@@ -780,16 +780,21 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
         // naming a collected id would commit a zombie spawn that never re-writes.
         // Doom on exactly that class instead of any suppression, or every busy
         // collect falls through to the atomic escalation the stepped twin replaced.
+        // Only a LIVE collected row collides: the publish loop skips rows whose
+        // alive flag flipped before its turn, so a destroy-without-recycle costs
+        // the journal nothing — its id simply drops out of the committed set.
         const suppressedDestroys = presentationJournal.getSuppressedDestroyIds?.();
         if (suppressedDestroys && suppressedDestroys.size > 0) {
           const entities = step.value || [];
-          const collectedIds = new Set();
+          const collectedLiveIds = new Set();
           for (const entity of entities) {
-            if (entity && Number.isSafeInteger(entity.id)) collectedIds.add(entity.id);
+            if (entity && Number.isSafeInteger(entity.id) && entity.alive !== false) {
+              collectedLiveIds.add(entity.id);
+            }
           }
           let doomed = false;
           for (const entityId of suppressedDestroys) {
-            if (collectedIds.has(entityId)) { doomed = true; break; }
+            if (collectedLiveIds.has(entityId)) { doomed = true; break; }
           }
           if (doomed) {
             const tick = job.tick;
