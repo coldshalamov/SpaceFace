@@ -301,6 +301,17 @@ function rosterStopMedian() {
  * huge number pins everyone else at the bottom of that scale. The bar fills from how
  * the flown stop compares with the middle of the roster.
  */
+/** Half the mark when the number is the roster middle. One huge hull no longer pins the rest at the bottom. */
+function medianFill(value, median) {
+  if (!(median > 0) || !(value > 0)) return 0;
+  return clamp(Math.round((50 * value) / median), 0, 100);
+}
+
+function agilityFill(derived) {
+  const yaw = finite(derived && derived.propulsion && derived.propulsion.yawAccel, 0);
+  return medianFill(yaw, AGILITY_MEDIAN);
+}
+
 function brakePresentation(derived) {
   const stop = Math.round(liveStopDistance(derived));
   if (!(stop > 0)) return { bar: 0, clause: '' };
@@ -853,7 +864,10 @@ export function handlingBandModel({ shipId, fittings = [], player = null, domain
   for (const axis of profile.axes) {
     let why = '';
     let bar = clamp(Math.round(finite(axis.bar, 0)), 0, 100);
-    if (axis.id === 'agility') why = agilityWhy({ shipDef, derived, dryDerived, bareDerived });
+    if (axis.id === 'agility') {
+      why = agilityWhy({ shipDef, derived, dryDerived, bareDerived });
+      bar = agilityFill(derived);
+    }
     else if (axis.id === 'inertia') why = inertiaWhy(derived);
     else if (axis.id === 'topSpeed') why = topSpeedWhy(profile, derived, dryDerived);
     else if (axis.id === 'brake') {
