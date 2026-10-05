@@ -9,8 +9,9 @@
 //   tethys_weigh_clamp  one reversed cone feeding a plate behind   - the only one that kills behind its face
 //   veil_cold_draw      one off-centre well dragging across a plate - the only off-centre gather
 //   charon_tailings_sweep one sheet lying across the haul road   - the only machine that drags you along your own road
+//   io_bell_ringer      channel sheet + well on the anvil        - the only herd-then-hold
 //
-// All four run the shared law every mouth runs: warning registers the volume at strength 0,
+// All five run the shared law every mouth runs: warning registers the volume at strength 0,
 // surge is the bite, calm is the safe window. None is a damage aura.
 
 import test from 'node:test';
@@ -22,6 +23,8 @@ import {
   ALL_KILL_MACHINES,
   CHARON_SWEEP_SECTOR_ID,
   CHARON_TAILINGS_SWEEP,
+  IO_BELL_RINGER,
+  IO_BELL_SECTOR_ID,
   KILL_MACHINES,
   KILL_MACHINE_SECTOR_ID,
   TETHYS_WEIGH_CLAMP,
@@ -47,6 +50,7 @@ const CR_FEED_MACHINES = Object.freeze([
   { machine: TETHYS_WEIGH_CLAMP, sectorId: TETHYS_WEIGH_SECTOR_ID, kind: 'behind-its-face' },
   { machine: VEIL_COLD_DRAW, sectorId: VEIL_COLD_SECTOR_ID, kind: 'off-centre-gather' },
   { machine: CHARON_TAILINGS_SWEEP, sectorId: CHARON_SWEEP_SECTOR_ID, kind: 'road-drag' },
+  { machine: IO_BELL_RINGER, sectorId: IO_BELL_SECTOR_ID, kind: 'herd-then-hold' },
 ]);
 
 function fieldAlong(machine, field) {
@@ -117,6 +121,34 @@ test('no two of them is the same kind of object', () => {
     'the drain mouth sits clear of the pressure plate');
   assert.equal(draw.hazardType, 'nebula', 'the only nebula machine: gas, not debris');
 
+  // 5 - HERD-THEN-HOLD: the only mixed pair in the census - a channel sheet herding a corridor
+  // onto its centreline, plus a well centred exactly on the anvil that grips what the line
+  // delivers. Every other machine is one stage: one gather that IS the kill point, or same-kind
+  // jaws converging on a bar. Sker and Veil wells are lone gathers; the ringer's well alone owns
+  // the kill point because the sheet stops short of it.
+  const ringer = IO_BELL_RINGER;
+  assert.equal(ringer.fields.length, 2, 'the ringer is two stages');
+  assert.equal(ringer.fields[0].kind, 'sheet', 'the nave herds');
+  assert.equal(ringer.fields[1].kind, 'well', 'the clapper holds');
+  const nave = ringer.fields[0];
+  const clapper = ringer.fields[1];
+  // The clapper sits ON the anvil - the pull point is the kill point.
+  assert.equal(clapper.across, 0, 'the clapper is on-axis, not an off-centre drain');
+  assert.ok(Math.abs(clapper.along - anvilAlong(ringer)) < 1, 'the clapper centres on the anvil');
+  assert.equal(pointInsideMachineField(ringer, clapper, { x: ringer.anvil.pos.x, z: ringer.anvil.pos.z }),
+    true, 'the anvil is inside the clapper');
+  // And the kill point is the well's alone: the nave stops short of it.
+  assert.equal(pointInsideMachineField(ringer, nave, { x: ringer.anvil.pos.x, z: ringer.anvil.pos.z }),
+    false, 'the nave must stop short of the kill point - herding is not holding');
+  // The feed zone: the nave's tail overlaps the clapper's catch so a lined-up body slides
+  // off the centreline into the grip (sheet along 90-120 < nave end, inside well radius).
+  const feed = {
+    x: ringer.globalPos.x + ringer.dir.x * 105,
+    z: ringer.globalPos.z + ringer.dir.z * 105,
+  };
+  assert.equal(pointInsideMachineField(ringer, nave, feed), true, 'feed zone is inside the nave');
+  assert.equal(pointInsideMachineField(ringer, clapper, feed), true, 'feed zone is inside the clapper');
+
   // 4 - ROAD-DRAG: one sheet lying across the haul road; the squeeze runs along the road,
   // dragging lane traffic to the berm parked mid-lane. The slab STRADDLES the berm
   // (along < 0) — the only sheet in the census centred on the kill point rather than
@@ -146,6 +178,10 @@ test('no two of them is the same kind of object', () => {
   // A sweep band centred on the kill point, not a ribbon feeding forward from it.
   const straddlingSheet = (m) => m.fields.length === 1 && m.fields[0].kind === 'sheet'
     && m.fields[0].along < 0;
+  // A herding field feeding a well that sits exactly on the anvil - the two-stage machine.
+  const herdThenHold = (m) => m.fields.some((f) => f.kind === 'sheet')
+    && m.fields.some((f) => f.kind === 'well' && f.across === 0
+      && Math.abs(f.along - anvilAlong(m)) < 1);
 
   for (const machine of ALL_KILL_MACHINES) {
     if (machine !== jaws) {
@@ -160,14 +196,18 @@ test('no two of them is the same kind of object', () => {
     if (machine !== sweep) {
       assert.equal(straddlingSheet(machine), false, `${machine.id} must not also straddle a sheet on its kill point`);
     }
+    if (machine !== ringer) {
+      assert.equal(herdThenHold(machine), false, `${machine.id} must not also herd a channel into an on-anvil grip`);
+    }
   }
   assert.equal(isConvergingPair(jaws), true);
   assert.equal(killsBehindItsFace(clamp), true);
   assert.equal(offCentreGather(draw), true);
   assert.equal(straddlingSheet(sweep), true);
+  assert.equal(herdThenHold(ringer), true);
 });
 
-test('all four run the shared law: warning quiet, surge bites, calm is the safe window', () => {
+test('all five run the shared law: warning quiet, surge bites, calm is the safe window', () => {
   for (const { machine } of CR_FEED_MACHINES) {
     const cycle = machine.cycle;
     const at = (offsetS) => killMachinePhase(machine, machine.phaseOffsetS + offsetS);

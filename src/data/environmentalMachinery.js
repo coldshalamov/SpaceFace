@@ -167,6 +167,7 @@ const MACHINE_FIELD_REGION_BY_SECTOR = Object.freeze({
   sector_tethys_junction: 'tethys',
   sector_veil_nebula: 'veil',
   sector_charon_expanse: 'charon',
+  sector_io_reach: 'io',
 });
 
 function buildKillMachine({
@@ -558,6 +559,55 @@ export const CHARON_TAILINGS_SWEEP = buildKillMachine({
   }],
 });
 
+// IO REACH - the bell ringer. Scavengers nesting in the Concord Vigilant's engine bells rigged
+// the largest drive bell as a collection throat (poi_cruiser, "the Wreck Cathedral"). Two stages
+// nobody else runs: a channel sheet down the stern corridor squeezes drifting salvage into single
+// file, and a clapper well ON the anvil in the bell mouth grips whatever the line delivers - every
+// other gather either IS the kill point or feeds a bar beside it; only the ringer separates the
+// herding field from the holding field, and only its well sits exactly on the anvil.
+// Sited aft of the hulk, clear of station_reach (1937 WU), station_io_merc (3103 WU), both Io
+// field clusters (f_io_2 rim +198, f_io_1 2025), every gate and POI (>40).
+export const IO_BELL_SECTOR_ID = 'sector_io_reach';
+
+export const IO_BELL_RINGER = buildKillMachine({
+  id: 'io_bell_ringer',
+  hazardType: 'debris',
+  placeId: 'place_aftermath_deb_ore_freighter_drive_bell',
+  sectorId: IO_BELL_SECTOR_ID,
+  localPos: { x: -1450, z: -854 },
+  rot: -1.96,
+  phaseOffsetS: 18,
+  hazardRadius: 185,
+  anvil: { radius: 22, mass: 12000, along: 135, across: 0 },
+  mouth: { name: 'Bell Ringer', radius: 18 },
+  fields: [
+    {
+      // The nave: a channel sheet down the corridor axis. Its lateral squeeze herds drifting
+      // salvage onto the centreline - the salvage line a pilot reads as the ringer's telegraph.
+      idSuffix: 'nave',
+      kind: 'sheet',
+      strength: 380,
+      radius: 120,
+      halfWidth: 55,
+      falloff: 1.0,
+      along: 0,
+      across: 0,
+      dirAlong: 1,
+    },
+    {
+      // The clapper: a well centred ON the anvil inside the bell mouth, overlapping the nave's
+      // tail (along 90-120) so a lined-up body slides off the centreline into the grip.
+      idSuffix: 'clapper',
+      kind: 'well',
+      strength: 640,
+      radius: 45,
+      falloff: 0.6,
+      along: 135,
+      across: 0,
+    },
+  ],
+});
+
 // Every machine the adapter owns, in one list: Ceres mouths, the Helios starter cracker, the Sker
 // baler, the Rift fissure cracker, and the CR-FEED machines. Per-sector slices come from
 // killMachinesForSector; this is the census the runtime uses to retire fields and anvils when a
@@ -571,6 +621,7 @@ export const ALL_KILL_MACHINES = Object.freeze([
   TETHYS_WEIGH_CLAMP,
   VEIL_COLD_DRAW,
   CHARON_TAILINGS_SWEEP,
+  IO_BELL_RINGER,
 ]);
 
 // The full census by stable id — Ceres trio plus the starter/baler/rift/CR-FEED machines.
@@ -589,6 +640,7 @@ export function killMachinesForSector(sectorId) {
   if (sectorId === TETHYS_WEIGH_SECTOR_ID) return Object.freeze([TETHYS_WEIGH_CLAMP]);
   if (sectorId === VEIL_COLD_SECTOR_ID) return Object.freeze([VEIL_COLD_DRAW]);
   if (sectorId === CHARON_SWEEP_SECTOR_ID) return Object.freeze([CHARON_TAILINGS_SWEEP]);
+  if (sectorId === IO_BELL_SECTOR_ID) return Object.freeze([IO_BELL_RINGER]);
   return Object.freeze([]);
 }
 
