@@ -1,0 +1,54 @@
+{
+  "schema": "spaceface.character.ruckus.v1",
+  "units": "world units",
+  "authoringAxes": "+X nose, +Y port, +Z up",
+  "runtimeAxes": "+X nose, +Y up, -Z port",
+  "rigs": [
+    "RU7_Body",
+    "RU7_JawL",
+    "RU7_JawR",
+    "RU7_Drum",
+    "RU7_Tail"
+  ],
+  "collision": {
+    "body": {
+      "shape": "ball",
+      "radius": 17,
+      "mass": 160
+    },
+    "core": {
+      "shape": "ball",
+      "radius": 5.5,
+      "mass": 18
+    }
+  },
+  "textureImages": 0,
+  "lodDistances": [
+    0,
+    240,
+    650
+  ],
+  "files": {
+    "ruckus-lod0.glb": {
+      "bytes": 1351752,
+      "triangles": 25280,
+      "drawCalls": 31
+    },
+    "ruckus-lod1.glb": {
+      "bytes": 577752,
+      "triangles": 10096,
+      "drawCalls": 31
+    },
+    "ruckus-lod2.glb": {
+      "bytes": 284764,
+      "triangles": 4535,
+      "drawCalls": 31
+    },
+    "pressure-core.glb": {
+      "bytes": 350032,
+      "triangles": 6568,
+      "drawCalls": 5
+    }
+  },
+  "runtime": "Synchronous generated GLB accessors; identical geometry, rigid nodes and materials"
+}

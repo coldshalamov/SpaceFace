@@ -22,6 +22,7 @@ import { buildBracketVisual } from './characters/bracketModel.js';
 import { buildRavelVisual } from './characters/ravelModel.js';
 import { buildSolsticeVisual } from './characters/solsticeModel.js';
 import { buildRubricVisual } from './characters/rubricModel.js';
+import { buildRuckusVisual } from './characters/ruckusModel.js';
 import { modelTruthMountFractions } from '../data/modelTruth.js';
 import { mergeGeometries, mergeVertices, toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
 import { getReadyRockSurfaceTextures, rockSurfaceVariantSpec, ROCK_SURFACE_VARIANTS } from './rockSurfaceLibrary.js';
@@ -5936,6 +5937,7 @@ export function createVisualFactory() {
     build(e) {
       try {
         if (!e) return null;
+        if (e.data?.ruckusPart) return stampBuiltVisual(buildRuckusVisual(e));
         if (e.data?.ravelPart) return stampBuiltVisual(buildRavelVisual(e));
         if (e.data?.bracketPart) return stampBuiltVisual(buildBracketVisual(e));
         if (e.data?.solsticePart) return stampBuiltVisual(buildSolsticeVisual(e));
