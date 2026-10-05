@@ -124,6 +124,9 @@ test('the baked skies stay under the action-over-sky luminance bound', () => {
   // this is the art half of the row's "below the muzzle and the engine" law.
   for (const sky of SKIES) {
     const image = decodePng(readFileSync(resolve(ROOT, SET_DIR, sky.file)));
+    // Decoded dims, not the registry's: the sha256 pins bytes, this pins what they decode to.
+    assert.equal(image.width, 2048, `${sky.plate} decoded width`);
+    assert.equal(image.height, 1024, `${sky.plate} decoded height`);
     const stats = measurePlate(image.rgb8, image.width, image.height);
     assert.ok(
       stats.mean < 0.05,

@@ -115,8 +115,9 @@ export function deepSkyPlate(id) {
 }
 
 /**
- * Worst-case residency the runtime can reach: the two largest plates, which is what a transition
- * between the two biggest regions costs for the moment both are held.
+ * Worst-case residency one channel can reach: the two largest plates, which is what a transition
+ * between the two biggest regions costs for the moment both are held. The runtime owns two
+ * channels (accent + sector base), so total peak is twice this.
  */
 export function deepSkyPeakResidentBytes() {
   const sizes = Object.values(DEEP_SKY_PLATES).map((p) => p.residentBytes).sort((a, b) => b - a);

@@ -407,15 +407,15 @@ const LAYER_COMPOSITE_FRAG = /* glsl */`
     float nebulaAlpha = clamp(l1.a * uNebulaOpacity * 1.35, 0.0, 1.0);
     float wispsAlpha = clamp(l2.a * uNebulaOpacity * 0.55, 0.0, 1.0);
     vec3 color = l0.rgb;
-    // §22.5 C6 — the sector's baked sky image stands in for the procedural base: nebula/wisp
-    // structure, the paintedSky accent plate, and the live star/body draws still composite over it.
+    color = mix(color, l1.rgb * uTintA * 1.15, nebulaAlpha);
+    color += l2.rgb * uTintB * wispsAlpha;
+    // §22.5 C6 — same law as DEEP_FIELD_FRAGMENT: the baked sector sky substitutes the whole
+    // procedural composite, under the paintedSky accent plate and the live star/body draws.
     if (uSkyBaseStrength > 0.0) {
       vec2 baseUv = (vSkyClip.xy / vSkyClip.w) * 0.5 + 0.5;
       baseUv = (baseUv - 0.5) * uSkyBaseScale + 0.5 + uSkyBaseOffset;
       color = mix(color, texture2D(uSkyBase, baseUv).rgb, uSkyBaseStrength);
     }
-    color = mix(color, l1.rgb * uTintA * 1.15, nebulaAlpha);
-    color += l2.rgb * uTintB * wispsAlpha;
     // Authored wide composition behind the independent star/planet layers. A single sample in
     // the existing opaque sky pass; travel offsets the art slowly, independently of near stars.
     if (uPaintedSkyStrength > 0.0) {
@@ -3574,6 +3574,7 @@ export class SpaceBackground {
       skyBaseIncoming: baseStats ? baseStats.incomingPlate : null,
       skyBaseResidentPlates: baseStats ? baseStats.residentPlates : 0,
       skyBaseUploads: baseStats ? baseStats.uploads : 0,
+      skyBaseLastUploadMs: baseStats ? baseStats.lastUploadMs : 0,
       nebulaDeferred: this._nebulaBakePending
         ? [this._nebulaBakePending.L1 ? 'L1' : null, this._nebulaBakePending.L2 ? 'L2' : null].filter(Boolean)
         : [],
