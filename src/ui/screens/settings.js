@@ -238,8 +238,9 @@ const DEFAULT_BINDINGS = INPUT_DEFAULTS.BINDINGS;
 export const REBINDABLE = ['forward', 'reverse', 'yawLeft', 'yawRight', 'strafeLeft', 'strafeRight', 'boost', 'autoFire',
   'brake', 'siteBeam', 'tether', 'chargeThrow', 'chargeDetonate', 'scanPulse', 'cruise', 'reelIn', 'reelOut',
   'dropBomb', 'cycleBomb', 'bulletTime', 'cloak', 'travelBurn', 'deployMassSeed', 'deployWell', 'deployRepulsor', 'toggleClearingCone',
-  // The rest of the live bound verbs: rebindable in data (input.js VERB_BINDINGS) but until now
-  // with no row here — "rebindable in data but no row is not rebindable to a player" (below).
+  // The rest of the live bound verbs: rebindable in data (input.js VERB_BINDINGS; countermeasure
+  // sits in the scheme tables) but until now with no row here — "rebindable in data but no row
+  // is not rebindable to a player" (below).
   'countermeasure', 'toggleSkimCollector', 'deployBeacon', 'jettisonLot'];
 export const REBIND_LABELS = {
   forward: 'Throttle up',
