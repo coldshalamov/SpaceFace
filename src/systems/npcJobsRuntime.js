@@ -4043,10 +4043,13 @@ export const npcJobsRuntime = {
         && Math.hypot(entity.pos.x - starterRock.pos.x, entity.pos.z - starterRock.pos.z)
           > BEAM_MK1.range + (starterRock.radius || 0);
       const physicalTarget = !claimedBeforeAdvance && this._livingAdventureWorkTarget(entry, entity);
+      // The settle test is relative to the target: a hull riding a drifting rock at matching
+      // velocity IS arrived, even though its world-frame speed stays at belt drift.
       const holdingForArrival = physicalTarget
         && ![NPC_JOB_PHASE.TRANSIT, NPC_JOB_PHASE.RETURN].includes(entry.job.phase)
         && (Math.hypot(entity.pos.x - physicalTarget.pos.x, entity.pos.z - physicalTarget.pos.z) > physicalTarget.reach
-          || Math.hypot(entity.vel?.x || 0, entity.vel?.z || 0) > 8);
+          || Math.hypot((entity.vel?.x || 0) - (physicalTarget.vel?.x || 0),
+            (entity.vel?.z || 0) - (physicalTarget.vel?.z || 0)) > 8);
       // SF-080: a queued berth wait is the same class of bounded physical hold — the hull waits
       // out the line at a real position, so the kernel clock waits with it (no work at distance).
       // Leased hulls keep their clock: their owner drives, we never gate a controller's route.
@@ -4508,13 +4511,25 @@ export const npcJobsRuntime = {
       return;
     }
     const decel = Math.max(1, profile.reverseAccel || 0, (profile.mainAccel || 0) * 0.72);
-    const closing = Math.max(0, ((entity.vel?.x || 0) * dx + (entity.vel?.z || 0) * dz) / Math.max(1, distance));
-    const brake = close || Math.cos(aim - (entity.rot || 0)) < 0.85
-      || closing * closing / (2 * decel) >= distance - target.reach;
-    const speed = Math.min(planningSpeed, Math.sqrt(2 * decel * Math.max(0, distance - target.reach)));
+    // Desired velocity = target drift + a closing term for the remaining gap. Aiming straight at
+    // a moving target's current position spirals into a co-moving orbit: the cutter chased a
+    // drifting belt rock at a constant offset for the rest of the shift without ever arriving.
+    const ux = distance > 0.01 ? dx / distance : 0;
+    const uz = distance > 0.01 ? dz / distance : 0;
+    const tvx = target.vel?.x || 0, tvz = target.vel?.z || 0;
+    const closing = Math.min(planningSpeed, Math.sqrt(2 * decel * Math.max(0, distance - target.reach)));
+    const dvx = tvx + ux * closing;
+    const dvz = tvz + uz * closing;
+    const dSpeed = Math.hypot(dvx, dvz);
+    const chaseAim = dSpeed > 0.01 ? Math.atan2(dvz, dvx) : entity.rot || 0;
+    const approach = ((entity.vel?.x || 0) - tvx) * ux + ((entity.vel?.z || 0) - tvz) * uz;
+    const targetStill = tvx * tvx + tvz * tvz <= 0.25;
+    const brake = Math.cos(chaseAim - (entity.rot || 0)) < 0.85
+      || (close ? targetStill
+        : approach > 0 && approach * approach >= 2 * decel * (distance - target.reach));
     const throttle = Math.max((profile.assist?.deadInput || 0.025) + 0.001,
-      speed / Math.max(1, profile.combatSpeed || entity.maxSpeed || 100));
-    this._writeIntent(entity, 0, brake ? 0 : Math.min(1, throttle), false, aim, brake);
+      dSpeed / Math.max(1, profile.combatSpeed || entity.maxSpeed || 100));
+    this._writeIntent(entity, 0, brake ? 0 : Math.min(1, throttle), false, chaseAim, brake);
   },
 
   _drive(entry, entity) {
