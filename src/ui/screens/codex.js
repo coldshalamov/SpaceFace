@@ -20,6 +20,7 @@ import { TETHYS_BLACK_MARKET_DISCOVERY } from '../../data/frontierRumors.js';
 import { CANONICAL_PORTRAITS, PORTRAIT_ASSET_ROOT } from '../../data/portraits.js';
 import { hullPosterUrl } from '../hullPosters.js';
 import { explorationDiscoveryPlates, galaxyExplorationSummary } from '../../world/explorationJournal.js';
+import { discoveryKnowledge } from '../sim/discoveryKnowledge.js';
 import { decorateEntityNode } from '../entityResolver.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
 import { createShipLedgerPanel } from '../shipLedgerPanel.js';
@@ -277,6 +278,23 @@ function countEncounteredGraffiti(story = {}) {
   return count;
 }
 
+export function surveyedLossCodexLine(state) {
+  let count = 0;
+  for (const entry of discoveryKnowledge(state).entries) {
+    if (entry && entry.tier === 'survey') count += 1;
+  }
+  if (count <= 0) return '';
+  if (count === 1) return 'One loss identified';
+  return count + ' losses identified';
+}
+
+/** Discoveries survey sentence. Identified losses are a count, never a place. */
+export function surveyStatusBody(state) {
+  const base = 'Fly close to unresolved signals and triangulate them to chart the frontier.';
+  const surveyed = surveyedLossCodexLine(state);
+  return surveyed ? base + ' ' + surveyed + '.' : base;
+}
+
 export function codexProgressSummary(story = {}, state = null) {
   const beat = storyBeatIndex(story);
   let commsTotal = COLD_START.length;
@@ -303,7 +321,10 @@ export function codexProgressSummary(story = {}, state = null) {
   ];
   if (state) {
     const gal = galaxyExplorationSummary(state);
-    items.push({ key: 'Survey', value: gal.overallPercent + '% (' + gal.foundPois + '/' + gal.totalPois + ' sites)' });
+    const surveyed = surveyedLossCodexLine(state);
+    const surveyValue = gal.overallPercent + '% (' + gal.foundPois + '/' + gal.totalPois + ' sites)'
+      + (surveyed ? ' · ' + surveyed : '');
+    items.push({ key: 'Survey', value: surveyValue });
   }
   return {
     beat,
@@ -1382,7 +1403,7 @@ export const codexScreen = {
       sub: gal.overallPercent + '% · ' + gal.foundPois + '/' + gal.totalPois + ' sites',
       title: 'Galaxy Cartography & Survey Status',
       meta: 'Survey',
-      body: 'Fly close to unresolved signals and triangulate them to chart the frontier.',
+      body: surveyStatusBody(state),
     });
     survey.article.setAttribute('aria-label', 'Survey and cartography summary');
     const heroes = el('div', 'k-words k-words--row');
