@@ -32,6 +32,7 @@ import { clearEntityRuntime } from '../core/entity.js';
 import { SECTORS } from '../data/sectors.js';
 import { SHIPS } from '../data/ships.js';
 import { wreckMissionById } from '../data/wreckMissions.js';
+import { stationBerthAdmits } from '../data/frontierRumors.js';
 import { protectedStationAt } from '../ai/engagementAuthority.js';
 import { rememberMoralDebt } from './moralMemory.js';
 import { playerWreckMarker } from './aftermathWrecks.js';
@@ -120,14 +121,26 @@ function choosePoint(seed, sectorId, candidates) {
   return ordered[idx] || ordered[0];
 }
 
-function rescueStationForSector(sectorId) {
+function repFor(state, factionId) {
+  const rec = factionId && state && state.factions ? state.factions[factionId] : null;
+  return rec ? (rec.rep || 0) : 0;
+}
+
+// The handoff berth is where the pod's passenger_transport offer settles — a pick the
+// pilot cannot dock at writes a rescue that can never pay out (the accept gate refuses
+// it outright). The same preference ladder holds, just over berths that admit: concord
+// house first, then a real desk, then any open local berth, then the same ladder wide.
+function rescueStationForSector(sectorId, state) {
   const sec = SECTOR_BY_ID.get(sectorId);
   const local = (sec && sec.stations) || [];
-  return local.find((s) => s.factionId === CONCORD_FACTION_ID)
-    || local.find((s) => s.services && s.services.includes('missions'))
-    || local[0]
-    || ALL_STATIONS.find((s) => s.factionId === CONCORD_FACTION_ID)
-    || ALL_STATIONS[0]
+  const admits = (s) => stationBerthAdmits(s, repFor(state, s && s.factionId), state);
+  const hasDesk = (s) => s && s.services && s.services.includes('missions');
+  return local.find((s) => s.factionId === CONCORD_FACTION_ID && admits(s))
+    || local.find((s) => hasDesk(s) && admits(s))
+    || local.find((s) => admits(s))
+    || ALL_STATIONS.find((s) => s.factionId === CONCORD_FACTION_ID && admits(s))
+    || ALL_STATIONS.find((s) => hasDesk(s) && admits(s))
+    || ALL_STATIONS.find((s) => admits(s))
     || null;
 }
 
@@ -1172,7 +1185,7 @@ export const survivorPod = {
     const point = choosePoint(state.meta && state.meta.seed, sectorId, preferred.length ? preferred : eligible);
     if (!point) return null;
 
-    const dest = rescueStationForSector(sectorId);
+    const dest = rescueStationForSector(sectorId, state);
     const startedAt = deferredEnterNow(state) || 0;
     const rec = {
       salvagePointId: point.id,
