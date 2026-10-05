@@ -290,6 +290,10 @@ for (const sec of SECTORS) {
       // declares nothing keeps legacy behavior (fixture/stub stations roll normally).
       desklessOutpost: Array.isArray(st.services) && st.services.length > 0
         && !hasContractsDesk(st.services) && !sectorHasRefuel,
+      // Destination pickers read the real gates: a 'scan' service is a customs sweep (smuggling
+      // can't route there), and repGated means positive standing docks, not "not hostile".
+      services: Array.isArray(st.services) ? st.services.slice() : [],
+      repGated: st.repGated === true,
     });
   }
 }
@@ -312,6 +316,8 @@ function stationInfoFor(state, stationId) {
             desklessOutpost: Array.isArray(st.services) && st.services.length > 0
               && !hasContractsDesk(st.services)
               && !(sec.stations || []).some((s) => Array.isArray(s.services) && s.services.includes('refuel')),
+            services: Array.isArray(st.services) ? st.services.slice() : [],
+            repGated: st.repGated === true,
           };
         }
       }
@@ -3307,8 +3313,12 @@ export const missions = {
     // A race posts on its own course — the board's sector IS the destination.
     if (typeId === 'mining_quota' || typeId === 'race') return info;
     // Prefer a discovered/known station; fall back to any in the catalog within a few hops.
+    // Two real gates ride the station record: 'scan' is a customs sweep (a smuggling run can't
+    // target it), and a repGated berth refuses a pilot below positive standing — routing either
+    // of those contracts to it writes a contract the world cannot settle.
     const candidates = ALL_STATIONS.filter((s) => s.id !== info.id
-      && !(typeId === 'smuggling_run' && Array.isArray(s.services) && s.services.includes('scan')));
+      && !(typeId === 'smuggling_run' && Array.isArray(s.services) && s.services.includes('scan'))
+      && !(s.repGated && this._repOf(s.factionId) < 1));
     if (!candidates.length) return info;
     // Bias toward same-or-adjacent sectors for fair timers (fairness note: nearer for slow ships).
     const sec = SECTOR_BY_ID.get(info.sectorId);
@@ -3319,7 +3329,8 @@ export const missions = {
   },
 
   _pickBulkHaulDestination(info, rng) {
-    const refineries = ALL_STATIONS.filter((s) => s.type === 'refinery' || s.services && s.services.includes('refine'));
+    const refineries = ALL_STATIONS.filter((s) => (s.type === 'refinery' || s.services && s.services.includes('refine'))
+      && !(s.repGated && this._repOf(s.factionId) < 1));
     if (!refineries.length) return info;
     const same = refineries.filter((s) => s.sectorId === info.sectorId);
     if (same.length) return same[Math.floor(rng() * same.length)];
