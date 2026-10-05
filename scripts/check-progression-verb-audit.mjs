@@ -64,7 +64,7 @@ const VERB_MOD_KEYS = Object.freeze({
   repulsionTrap: ['drop-a-trap radial shove', 'systems/impulseCharges.js', { file: 'src/systems/impulseCharges.js', symbol: 'repulsionTrap' }],
   droneBay: ['launch drones from a bay', 'ships.js droneBayCountForFittings', { file: 'src/systems/ships.js', symbol: 'droneBay' }],
   jumpDriveTier: ['jump verb', 'ships.js derived fold (jumpDriveTier)', { file: 'src/systems/ships.js', symbol: 'jumpDriveTier' }],
-  tractorWholeWrecks: ['whole-wreck latch (implemented by module id, not by reading this key)', 'unique_tideline_tractor latch in systems/uniqueLootAbilities.js', { file: 'src/systems/uniqueLootAbilities.js', symbol: 'unique_tideline_tractor' }],
+  tractorWholeWrecks: ['whole-wreck tractor lift — any fitted module declaring this flag lifts whole wrecks (FB-054 fitted-flag law)', 'systems/uniqueLootAbilities.js fittedWholeWreckTractor flag read', { file: 'src/systems/uniqueLootAbilities.js', symbol: 'tractorWholeWrecks' }],
   repairDockedDrones: ['repair docked drones (test-pinned contract; no live systems consumer reads this key yet)', 'pinned by test/depth-program-authored-salvage.test.mjs', { file: 'test/depth-program-authored-salvage.test.mjs', symbol: 'repairDockedDrones' }],
   microJumpBlink: ['micro-jump blink (usesPerEncounter)', 'systems/uniqueLootAbilities.js fittedVerbSpec', { file: 'src/systems/uniqueLootAbilities.js', symbol: 'microJumpBlink' }],
   reactiveMissileKnockback: ['reactive missile knockback (usesPerEncounter)', 'systems/uniqueLootAbilities.js fittedVerbSpec', { file: 'src/systems/uniqueLootAbilities.js', symbol: 'reactiveMissileKnockback' }],

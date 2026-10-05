@@ -110,6 +110,7 @@ export function fittedUniqueEnergyPremium(state) {
  * FB-054 — the whole-wreck tractor verb belongs to the fitted `tractorWholeWrecks` flag, not to
  * the Tideline's item id: any module declaring the flag in its mods lifts whole wrecks. The
  * Tideline unique still carries the flag, so its own behaviour is unchanged.
+ * (PQ-208.00: scripts/check-progression-verb-audit.mjs pins this flag name as consumer evidence.)
  */
 export function fittedWholeWreckTractor(state) {
   for (const definition of fittedModuleDefs(state)) {
