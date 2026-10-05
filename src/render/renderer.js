@@ -9400,13 +9400,18 @@ export const render = {
           units: uniqueAdmissionUnits([...leaves, ...extraVfx]),
           renderer,
           beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
-          compileOne: async (subject) => {
+          compileOne: (subject) => {
             if (!lifecycle.isActive()) throw new Error('renderer lifecycle destroyed during opening admission');
             const restore = revealSubjectForCompile(subject);
             try {
-              return await Promise.resolve(this._compilePostRoute(route, subject, cam.obj, scene));
-            } finally {
+              // The cohort may yield before awaiting this compile. Observe the cleanup child
+              // immediately too; observing only the parent's promise leaves this one exposed.
+              return observePipelineAdmission(
+                Promise.resolve(this._compilePostRoute(route, subject, cam.obj, scene)).finally(restore),
+              );
+            } catch (error) {
               restore();
+              throw error;
             }
           },
           touchOne: (subject) => {
@@ -10063,7 +10068,7 @@ export const render = {
                     compileSubjectColorAndDepth(entry.subject, route, compileOptions),
                   ));
                 } catch (error) {
-                  issued.push(Promise.reject(error));
+                  issued.push(observePipelineAdmission(Promise.reject(error)));
                 }
                 // Serial-route queues (no KHR_parallel_shader_compile) keep each forced
                 // GL drain bounded to one unit — same pacing the opening cohort runs.
@@ -24150,7 +24155,10 @@ export const render = {
           && this.state.render.admissionRunGeneration === capturedGeneration))
       && (typeof isActive !== 'function' || isActive(subject) === true)
     );
-    if (!ownerActive()) return Promise.reject(abortError());
+    // Cohort owners issue compiles across presentation yields and only await after draining.
+    // Retirement during that gap is expected cancellation, never a global unhandled rejection;
+    // observation retains the original rejection for the eventual awaiting owner.
+    if (!ownerActive()) return observePipelineAdmission(Promise.reject(abortError()));
     const work = route === POST_PROCESS_ROUTE.GRAPH && capturedPass
       ? compileScenePipelinesForRenderTarget(
         this.renderer, capturedPass.sceneTarget, subject, camera, lightingScene, options,
@@ -24160,10 +24168,10 @@ export const render = {
         : compileScenePipelinesForRenderTarget(
           this.renderer, null, subject, camera, lightingScene, options,
         );
-    return Promise.resolve(work).then((value) => {
+    return observePipelineAdmission(Promise.resolve(work).then((value) => {
       if (!ownerActive()) throw abortError();
       return value;
-    });
+    }));
   },
 
   _warmPostProcess(scene, camera) {
