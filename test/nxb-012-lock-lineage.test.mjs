@@ -217,13 +217,20 @@ test('an empty-sky deploy is refused as no_lock, distinct from a cooldown', () =
   assert.equal(cmState.cooldownT || 0, 0, 'a refused deploy does not start the cooldown');
   assert.ok(!cmState.effect, 'a refused deploy spawns no cloud');
 
-  // Control: the same refusal vocabulary still distinguishes a real cooldown.
+  // Control: the same refusal vocabulary still distinguishes a real cooldown. A real threat is
+  // a live seeker in the air — a bare building lock now refuses as no_lock (nothing would be
+  // answered), so the control flies one before pressing.
   denied.length = 0;
   const lockers = ship(40);
   lockers.data.combat.lockTarget = 1; lockers.data.combat.lockProgress = 1.0;
-  track(state, lockers);
+  const seeker = {
+    id: 20, type: 'projectile', alive: true,
+    pos: { x: -120, z: 0 }, vel: { x: 90, z: 0 }, rot: 0, radius: 1,
+    data: { kind: 'missile', ownerId: 40, targetId: 1, targetGeneration: 5, turnRate: 2.8, projSpeed: 90 },
+  };
+  track(state, lockers, seeker);
   state.input.deployCountermeasure = true;
-  cm.update(DT, state); // succeeds — real threat
+  cm.update(DT, state); // succeeds — live round in the air
   state.input.deployCountermeasure = true;
   cm.update(DT, state); // refused — now on cooldown
   assert.equal(denied[0] && denied[0].reason, 'cooldown',

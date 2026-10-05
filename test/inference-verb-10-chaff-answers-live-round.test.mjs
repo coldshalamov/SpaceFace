@@ -17,7 +17,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { hash32, mulberry32 } from '../src/core/rng.js';
+import { mulberry32 } from '../src/core/rng.js';
 import { countermeasures } from '../src/systems/countermeasures.js';
 
 const DT = 1 / 60;
@@ -221,4 +221,26 @@ test('seed 4242: with a live lock the deploy still claims the break it makes', (
 
   t.cm.update(DT, t.state);
   assert.equal(t.rounds.m2.data.diverted, true);
+});
+
+test('seed 4242: a bare building lock with nothing in the air refuses as no_lock and spends nothing', () => {
+  const t = boot({
+    // Over the old lock-only accept bar (progress 0.7 > 0.5) but no seeker has been flown.
+    ships: [
+      { factory: () => ship(2, 400, [], {
+        combat: { lockTarget: 1, lockProgress: 0.7, lockGeneration: 4 },
+      }) },
+    ],
+    missiles: [],
+  });
+
+  assert.equal(t.cm._missileThreat(t.player, t.state), false,
+    'a bare building lock is not a live-seeker threat');
+  assert.equal(t.cm._tryDeploy(t.player), false);
+  const denied = t.bus.events.filter((e) => e.name === 'countermeasure:denied').map((e) => e.payload);
+  assert.deepEqual(denied.map((d) => d.reason), ['no_lock']);
+  assert.equal(t.player.data.cm.cooldownT, 0, 'the refusal spends no cooldown');
+  assert.equal(t.player.data.cm.effect, null, 'the refusal spawns no answering effect');
+  assert.equal(t.bus.events.some((e) => e.name === 'countermeasure:deployed'), false,
+    'no success cue for a deploy that would answer nothing');
 });
