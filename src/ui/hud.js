@@ -23,7 +23,7 @@ import { buildReducedMotionContactCue } from './reducedMotionInformation.js';
 import { createHudMeta, HUD_META_CSS } from './hudMeta.js';
 import { icon } from './station/icons.js';
 import { glyphSvg, hasGlyph } from './glyphs.js';
-import { wantedReasonText } from './wantedReason.js';
+import { wantedAlertText, wantedReasonText } from './wantedReason.js';
 import { formatCount } from './numberFormat.js';
 import { SHIPS } from '../data/ships.js';
 import { swarmStakeFor } from '../data/swarmStakes.js';
@@ -4241,14 +4241,13 @@ export function createHud(ctx, alerts) {
     ctx.bus.on('heat:changed', (p) => {
       const v = p && typeof p.value === 'number' ? p.value : (state.player && state.player.heat) || 0;
       const wanted = v >= 0.15;
-      const tier = v >= 0.6 ? 'HIGH' : v >= 0.35 ? 'MODERATE' : 'LOW';
       const reason = wantedReasonText(p, state.player);
       if (wanted && !wantedActive) {
-        alerts.raise({ key: 'wanted', sev: 'danger', text: 'WANTED · LAW ENFORCEMENT ACTIVE' + reason, ttl: Infinity });
+        alerts.raise({ key: 'wanted', sev: 'danger', text: wantedAlertText(v, reason, false), ttl: Infinity });
         wantedActive = true;
       } else if (wanted && wantedActive) {
         // refresh the text to show the new tier (raise dedups by key but updates text/sev)
-        alerts.raise({ key: 'wanted', sev: 'danger', text: 'WANTED (' + tier + ') · HUNTERS INBOUND' + reason, ttl: Infinity });
+        alerts.raise({ key: 'wanted', sev: 'danger', text: wantedAlertText(v, reason, true), ttl: Infinity });
       } else if (!wanted && wantedActive) {
         alerts.clear('wanted');
         wantedActive = false;
