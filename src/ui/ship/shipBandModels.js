@@ -246,10 +246,43 @@ function fliesWorse(heavier, lighter) {
   return turnH.radius > 0 && turnL.radius > 0 && (turnH.radius - turnL.radius) > 2;
 }
 
+let ROSTER_STOP_MEDIAN = null;
+
+/** Middle flown stop on the bare roster, in metres. A ship that does not stop is left out. */
+function rosterStopMedian() {
+  if (ROSTER_STOP_MEDIAN != null) return ROSTER_STOP_MEDIAN;
+  const stops = [];
+  for (const ship of SHIPS) {
+    const metres = Math.round(liveStopDistance(getDerivedStats(ship.id, [], null)));
+    if (metres > 0) stops.push(metres);
+  }
+  stops.sort((a, b) => a - b);
+  if (!stops.length) {
+    ROSTER_STOP_MEDIAN = 0;
+    return 0;
+  }
+  const mid = Math.floor(stops.length / 2);
+  ROSTER_STOP_MEDIAN = stops.length % 2 ? stops[mid] : (stops[mid - 1] + stops[mid]) / 2;
+  return ROSTER_STOP_MEDIAN;
+}
+
+/**
+ * The brake bar and the crest word. Reverse acceleration is not the stop: one hull's
+ * huge number pins everyone else at the bottom of that scale. The bar fills from how
+ * the flown stop compares with the middle of the roster.
+ */
+function brakePresentation(derived) {
+  const stop = Math.round(liveStopDistance(derived));
+  if (!(stop > 0)) return { bar: 0, clause: '' };
+  const median = rosterStopMedian();
+  if (!(median > 0)) return { bar: 0, clause: '' };
+  const bar = clamp(Math.round((100 * median) / stop), 0, 100);
+  return { bar, clause: bar >= 55 ? 'Stops clean.' : 'Stops badly.' };
+}
+
 function handlingSentence(profile, derived, emptyDerived, bareDerived) {
   if (!profile || !Array.isArray(profile.axes) || !profile.axes.length) return '';
   const agilityAxis = profile.axes.find((axis) => axis.id === 'agility');
-  const brakeAxis = profile.axes.find((axis) => axis.id === 'brake');
   const clauses = [];
   if (agilityAxis) {
     if (agilityAxis.bar >= 67) clauses.push('Turns hard.');
@@ -263,7 +296,8 @@ function handlingSentence(profile, derived, emptyDerived, bareDerived) {
   if (fliesWorse(derived, emptyDerived) || fliesWorse(derived, bareDerived)) {
     clauses.push('Sluggish under load.');
   } else if (massRatio < 0.9) clauses.push('Light on the stick.');
-  if (brakeAxis) clauses.push(brakeAxis.bar >= 55 ? 'Stops clean.' : 'Stops badly.');
+  const stopClause = brakePresentation(derived).clause;
+  if (stopClause) clauses.push(stopClause);
   const cargoMass = finite(derived && derived.cargoMass, 0);
   if (cargoMass > 0) {
     const extra = Math.max(0, Math.round(liveStopDistance(derived) - liveStopDistance(emptyDerived)));
@@ -792,15 +826,19 @@ export function handlingBandModel({ shipId, fittings = [], player = null, domain
   const bars = [];
   for (const axis of profile.axes) {
     let why = '';
+    let bar = clamp(Math.round(finite(axis.bar, 0)), 0, 100);
     if (axis.id === 'agility') why = agilityWhy({ shipDef, derived, dryDerived, bareDerived });
     else if (axis.id === 'inertia') why = inertiaWhy(derived);
     else if (axis.id === 'topSpeed') why = topSpeedWhy(profile, derived, dryDerived);
-    else if (axis.id === 'brake') why = brakeWhy(derived);
+    else if (axis.id === 'brake') {
+      why = brakeWhy(derived);
+      bar = brakePresentation(derived).bar;
+    }
     bars.push({
       id: axis.id,
       label: axis.label,
       raw: finite(axis.raw, 0),
-      bar: clamp(Math.round(finite(axis.bar, 0)), 0, 100),
+      bar,
       why,
     });
   }
