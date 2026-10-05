@@ -279,8 +279,21 @@ ${S} > .k-foot .sf-back:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #f
   ${S} #sf-settings-pane .k-row { min-height:40px !important; padding-top:3px !important; padding-bottom:3px !important; }
 }
 @media (max-width:900px) {
-  ${S} { grid-template-columns:minmax(0, 1fr) !important; grid-template-areas:"title" "hang" "stage" "foot" !important; }
+  /* Row tracks must follow the areas: hang is auto (the ladder keeps its height), stage takes
+     the 1fr (the pane scrolls inside). The base auto/1fr/auto track list put the squeeze on the
+     hang row instead — at 390px the 208px tab list overflowed a ~30px track and painted over the
+     settings rows (D112). */
+  ${S} { grid-template-columns:minmax(0, 1fr) !important; grid-template-areas:"title" "hang" "stage" "foot" !important;
+    grid-template-rows:auto auto minmax(0, 1fr) auto !important; }
   ${S} > .orr-set-preview { display:none !important; }
+}
+@media (max-width:560px) {
+  /* A 390px window: label + graduated scale + numeral must all fit the single column. The rail
+     and the Hand stay; the tracks shrink so nothing prints under the row above. */
+  ${S} { --orr-label-w:104px; --orr-scale-w:min(150px, 40vw); }
+  ${S} #sf-settings-pane { padding-right:8px !important; }
+  ${S} #sf-settings-pane .k-row { column-gap:12px !important; }
+  ${S} #sf-settings-pane .k-row > div.k-words--row { grid-template-columns:var(--orr-scale-w, 150px) 46px !important; }
 }
 html.sf-reduce-motion ${S} #sf-settings-pane .sf-bind-btn { animation:none !important; }
 @media (forced-colors: active) {

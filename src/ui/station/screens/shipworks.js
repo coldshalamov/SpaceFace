@@ -2729,6 +2729,9 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const sr = stageEl.getBoundingClientRect();
     // a short stage gives the readouts the whole gutter left of the dial (the pair row needs 170px of it)
     const tight = ringShort();
+    // a stage too narrow for the pinned column has no gutter left of the dial at all — let the
+    // readouts fall back to the sheet's static seat under the stage (D112)
+    if (g.hx - g.R - (tight ? 18 : 28) < 170) { for (const k of props) stats.style.removeProperty(k); return; }
     const w = Math.max(170, Math.min(250, g.hx - g.R - (tight ? 18 : 28)));
     const k = stageScale();
     stats.style.setProperty('position', 'fixed', 'important');
@@ -2750,6 +2753,15 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     if (!g) { rack.style.cssText = ''; return; }
     const sr = stageEl.getBoundingClientRect();
     const k = stageScale();
+    // a stage narrower than the rack cannot host the pinned row: centred on the dial it would sit
+    // half off the glass (a 390px berth seats it at x<0 reaching ~130px past the frame — D112).
+    // Fall back to the CSS seat — in flow, wrapped, and on the glass. Measure the NATURAL width,
+    // not the seated one: the CSS fallback box reads ~250px while the unpinned nowrap rack is ~490,
+    // and it is the rack's own words that have to fit the stage.
+    const gap = parseFloat(getComputedStyle(rack).columnGap) || 0;
+    const w0 = [...rack.children].reduce((s, li) => s + (li.offsetWidth || 0), 0)
+      + Math.max(0, rack.children.length - 1) * gap;
+    if (w0 * k > sr.width - 12) { rack.style.cssText = ''; return; }
     rack.style.cssText = 'position:fixed !important; left:0px !important; top:0px !important; margin:0 !important; z-index:4;';
     const w = rack.offsetWidth || 300;
     const rh = rack.offsetHeight || 29;
