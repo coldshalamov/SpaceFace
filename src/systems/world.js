@@ -1861,9 +1861,8 @@ export const world = {
   /**
    * Reconcile the latest bounded sector recipe snapshot into durable records.
    * Existing records are never overwritten (preserves damage/destroyed outcomes). Stale active
-   * generated recipes retire once their live body is gone; destroyed recipe tombstones are
-   * exempt from the ambient-tombstone bound (recordSource 'sector_embodiment'), so an old
-   * outcome cannot be re-rolled.
+   * generated recipes retire once their live body is gone; destroyed tombstones stay under the
+   * existing MAX_RECORDS_PER_SECTOR bound so an old outcome cannot be re-rolled.
    * The intent/stale/insert phases yield at the same 8-row cadence the records loop uses, so a
    * deferred FULL neighbor no longer pays an unyielded O(intents + records) pass inside a
    * generator that exists to be chunked; the sync wrapper drains inline with identical output.
@@ -3056,12 +3055,16 @@ export const world = {
         if (durable && (durable.outcome === 'destroyed' || durable.alive === false)) continue;
         ent = findLiveRecordEntity(this.state, recordId);
         if (ent) {
-          // Pre-D176 materializations parked the body at local-as-global coords. A body
-          // still on exactly that spot was never moved by a player - re-seat it at the
-          // anchor; the physics owner resyncs its body from the pos write (noInterp).
-          if ((localPos.x !== pos.x || localPos.z !== pos.z) && ent.pos) {
+          // Pre-D176 materializations parked the body at local-as-global coords — only
+          // possible where the sector's galactic origin is non-zero. A body still parked in
+          // the buggy spot's neighbourhood was never moved by the player (drift bumps count
+          // as stranded too — the 20 WU window covers knock-loose jitter without yanking
+          // back a wreck somebody actually hauled off); re-seat it at the anchor. The
+          // physics owner resyncs its body from the pos write (noInterp).
+          const sectorOrigin = this._sectorOrigin(sector.id);
+          if (sectorOrigin && (sectorOrigin.x !== 0 || sectorOrigin.z !== 0) && ent.pos) {
             const bdx = ent.pos.x - localPos.x, bdz = ent.pos.z - localPos.z;
-            if (bdx * bdx + bdz * bdz < 4) {
+            if (bdx * bdx + bdz * bdz < 400) {
               ent.pos.x = pos.x;
               ent.pos.z = pos.z;
               if (ent.prevPos && typeof ent.prevPos.copy === 'function') ent.prevPos.copy(ent.pos);

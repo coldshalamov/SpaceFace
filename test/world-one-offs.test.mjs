@@ -15,6 +15,7 @@ import { NAMED_LANE_CONTACTS } from '../src/data/laneContacts.js';
 import { SECTORS } from '../src/data/sectors.js';
 import { sectorLocalToGlobalForSector, sectorGlobalOrigin } from '../src/data/sectorCoordinates.js';
 import { world } from '../src/systems/world.js';
+import { stableRecordId, RECORD_KIND } from '../src/world/worldRecords.js';
 import { TRAFFIC_ROLES } from '../src/systems/traffic.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
@@ -171,6 +172,7 @@ function bootOneOffHarness() {
   const spawned = [];
   let nextId = 9001;
   const entities = new Map();
+  const entityList = [];
   const system = Object.create(world);
   system.helpers = {
     spawnEntity(spec) {
@@ -188,10 +190,11 @@ function bootOneOffHarness() {
       };
       spawned.push(ent);
       entities.set(ent.id, ent);
+      entityList.push(ent);
       return ent;
     },
   };
-  system.state = { entities, meta: { seed: 47 } };
+  system.state = { entities, entityList, meta: { seed: 47 } };
   // One-off props are dressing rows (insertDressingRow → state.world.dressing), not live
   // spawnEntity actors — the assertions read the table the props actually land in.
   const dressingRows = () => (system.state.world && system.state.world.dressing
@@ -291,6 +294,52 @@ test('D176: a non-origin sector spawns its one-off in its own space, not beside 
     const localD = Math.hypot(row.pos.x - origin.x, row.pos.z - origin.z);
     assert.ok(localD <= vesta.worldRadius,
       `${row.data && row.data.name}: dressing row must sit inside Vesta's radius, not at origin ${Math.hypot(row.pos.x, row.pos.z).toFixed(0)}`);
+  }
+});
+
+test('D176: a body stranded at the pre-fix spot re-seats; a hauled wreck keeps its pose', () => {
+  const vesta = SECTOR_BY_ID.get('sector_vesta_forge');
+  const ladleOff = WORLD_ONE_OFFS.find((o) => o.id === 'oneoff_runaway_ladle');
+  const anchor = vesta.stations.find((s) => s.id === 'station_forge');
+  const buggyLocal = { x: anchor.pos.x + ladleOff.offsetLocal.x, z: anchor.pos.z + ladleOff.offsetLocal.z };
+  const trueGlobal = sectorLocalToGlobalForSector(buggyLocal, vesta.id);
+  const recordId = stableRecordId(47, vesta.id, RECORD_KIND.WRECK, `worldOneOff:${ladleOff.id}`);
+
+  // The stranded case: a live record-carrier parked exactly at the pre-D176 local-as-global
+  // coordinates was never player-moved — re-materialize re-seats it beside its anchor.
+  {
+    const { system, entities } = bootOneOffHarness();
+    const stranded = {
+      id: 42, type: 'wreck', alive: true,
+      pos: { x: buggyLocal.x, z: buggyLocal.z },
+      vel: { x: 0, z: 0 },
+      data: { worldRecordId: recordId, placeId: ladleOff.placeId },
+    };
+    entities.set(stranded.id, stranded);
+    system.state.entityList.push(stranded);
+    system._spawnWorldOneOffs(vesta, { pois: [], stations: [], gates: [], dressing: [] });
+    assert.equal(stranded.pos.x, trueGlobal.x, 'the stranded ladle re-seats in Vesta space');
+    assert.equal(stranded.pos.z, trueGlobal.z);
+    assert.equal(stranded.flags.noInterp, true, 'the re-seat skips render interpolation');
+    assert.equal(stranded.vel.x, 0, 'a re-seated body carries no leftover drift');
+  }
+
+  // The hauled case: a record-carrier a real tow moved 500 WU off the buggy spot keeps its
+  // player-made pose — the window covers stranded drift, not deliberate hauls.
+  {
+    const { system, entities } = bootOneOffHarness();
+    const hauled = {
+      id: 43, type: 'wreck', alive: true,
+      pos: { x: buggyLocal.x + 500, z: buggyLocal.z },
+      vel: { x: 0, z: 0 },
+      data: { worldRecordId: recordId, placeId: ladleOff.placeId },
+    };
+    entities.set(hauled.id, hauled);
+    system.state.entityList.push(hauled);
+    system._spawnWorldOneOffs(vesta, { pois: [], stations: [], gates: [], dressing: [] });
+    assert.equal(hauled.pos.x, buggyLocal.x + 500,
+      'a wreck the player hauled off the buggy spot is not yanked back');
+    assert.equal(hauled.pos.z, buggyLocal.z);
   }
 });
 
