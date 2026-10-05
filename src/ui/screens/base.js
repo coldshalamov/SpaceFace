@@ -106,7 +106,12 @@ html.sf-reduce-motion #screens .screen.sf-menu.orr-base.orr-base.is-claimed { an
   font-size:14px; line-height:1.45; color:var(--orr-ink); margin:0; padding:0;
 }
 #screens .orr-base #sf-base .base-sub + .base-sub { color:var(--orr-dim); }
-#screens .orr-base #sf-base .base-foot { display:flex; align-items:center; gap:20px; justify-content:flex-end; margin:24px 0 0; padding:0; }
+/* The foot (chart key, Close, Dispatch) stands at the plate's bottom edge whenever the plate scrolls, on a
+   fade in the glass tone: the way out is never scrolled away, and the fade says there is more above it.
+   The offsets mirror #sf-base's own padding (52px 56px 48px; 28px 40px 24px on short screens). */
+#screens .orr-base #sf-base .base-foot { display:flex; align-items:center; gap:20px; justify-content:flex-end;
+  margin:24px -56px -48px; padding:28px 56px 48px; position:sticky; bottom:-48px; z-index:3;
+  background:linear-gradient(to top, rgb(26 35 48 / .995) 0, rgb(26 35 48 / .995) 90%, rgb(26 35 48 / 0) 100%); }
 #screens .orr-base #sf-base .base-foot .orr-base__chartkey { margin-right:auto; }
 #screens .orr-base #sf-base .orr-base__esc, #screens .orr-base #sf-base .orr-base__key {
   display:inline-flex; align-items:center; justify-content:center;
@@ -472,7 +477,7 @@ html.sf-reduce-motion #screens .orr-base #sf-base .orr-base__cand::after { trans
   #screens .orr-base #sf-base .base-ledger-heronum { font-size:64px; }
   #screens .orr-base #sf-base .base-ledger-grid { gap:8px 16px; }
   #screens .orr-base #sf-base .base-ledger-v { font-size:14px; margin:2px 0 0; }
-  #screens .orr-base #sf-base .base-foot { margin:12px 0 0; }
+  #screens .orr-base #sf-base .base-foot { margin:12px -40px -24px; padding:22px 40px 24px; bottom:-24px; }
   #screens .orr-base #sf-base .orr-base__moon { width:min(240px, 34%); top:10px; right:12px; }
 }
   `;
