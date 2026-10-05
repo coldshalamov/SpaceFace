@@ -174,7 +174,7 @@ function departureFuelChip(state) {
   return {
     kind,
     label: 'Fuel',
-    text: fmtPercent(frac),
+    text: fmtPercent(frac) + ' · ' + fmtDepartUnits(current) + ' of ' + fmtDepartUnits(max),
     targetTab: 'services',
     actionLabel: kind === 'ok' ? 'Open Services to review launch supplies' : 'Open Services to refuel',
   };
@@ -202,7 +202,7 @@ function departureHullChip(state) {
   return {
     kind,
     label: 'Hull',
-    text: fmtPercent(frac),
+    text: fmtPercent(frac) + ' · ' + fmtDepartUnits(ship.hull || 0) + ' of ' + fmtDepartUnits(ship.hullMax),
     targetTab: 'services',
     actionLabel: kind === 'ok' ? 'Open Services to review ship readiness' : 'Open Services to repair hull',
   };
