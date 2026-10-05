@@ -17,11 +17,11 @@ const SOURCE_SECTOR_ID = 'sector_helios_prime';
 const SOURCE_STATION_ID = 'station_helios';
 const SOURCE_FACTION_ID = 'faction_scn';
 
-function makeAftermath(index = 0, familyId = 'derelict_salvage') {
+function makeAftermath(index = 0, familyId = 'derelict_salvage', sectorId = SOURCE_SECTOR_ID) {
   return {
-    behaviorId: `poib:${SOURCE_SECTOR_ID}:${familyId}:zone-${index}`,
+    behaviorId: `poib:${sectorId}:${familyId}:zone-${index}`,
     familyId,
-    sectorId: SOURCE_SECTOR_ID,
+    sectorId,
     zoneId: `zone-${index}`,
     kind: familyId === 'anomaly_research' ? 'stabilized_signal' : 'picked_clean',
     outcome: familyId === 'anomaly_research' ? 'triangulated' : 'records_recovered',
@@ -149,6 +149,61 @@ function resolvePoiLead(h, familyId = 'derelict_salvage') {
   assert.ok(offer, 'resolving the physical POI boards one causal contract');
   return offer;
 }
+
+// Resolve a real row through living._resolve and return the mission:offered rows it emits —
+// the desk the plan named may reroute or drop, so the offers themselves are the evidence.
+function resolvePoiLeadIn(h, { sectorId, stationId, factionId, familyId = 'derelict_salvage' }) {
+  const aftermath = makeAftermath(0, familyId, sectorId);
+  const row = {
+    behaviorId: aftermath.behaviorId,
+    familyId,
+    sectorId,
+    zoneId: aftermath.zoneId,
+    zoneName: 'Ledger Wreck',
+    stationId,
+    beneficiaryFactionId: factionId,
+    status: 'engaged',
+    mapLabel: 'CAUSAL SITE',
+    radarKind: 'derelict',
+    contract: { cause: aftermath.cause },
+    fingerprint: aftermath.fingerprint,
+  };
+  assert.equal(h.living._resolve(row, aftermath.outcome, {}), true);
+  return h.log.filter((r) => r.event === 'mission:offered').map((r) => r.payload);
+}
+
+test('a causal lead posts at a desk the pilot can dock at — reroute, then drop', () => {
+  // station_io_merc is missions-capable but minRep -30 against Quiet — at -50 it refuses, so
+  // the same lead boards at station_reach, the open sibling desk in the same sector.
+  const cold = boot();
+  cold.state.factions.faction_quiet = { rep: -50 };
+  const ioOffers = resolvePoiLeadIn(cold, {
+    sectorId: 'sector_io_reach', stationId: 'station_io_merc', factionId: 'faction_quiet',
+  });
+  assert.equal(ioOffers.length, 1, 'the resolved site still sells one causal lead');
+  assert.equal(ioOffers[0].stationId, 'station_reach', 'the lead reroutes to the admitting desk');
+  assert.equal(cold.state.missions.boards.station_io_merc, undefined, 'the gated desk carries no row');
+
+  // Sker Haven's only desk repGates to Reach — at rep 0 there is nowhere to post, and the
+  // resolution keeps its aftermath without minting an unreachable row.
+  const gated = boot();
+  const skerOffers = resolvePoiLeadIn(gated, {
+    sectorId: 'sector_sker_haven', stationId: 'station_sker', factionId: 'faction_reach',
+  });
+  assert.equal(skerOffers.length, 0, 'no desk admits — no offer posts');
+  assert.equal(gated.state.missions.boards.station_sker, undefined);
+  assert.equal(Object.keys(gated.state.livingPoiBehaviors.aftermath).length, 1,
+    'the resolution aftermath still records');
+
+  // Reach standing opens the Bazaar: the same lead then boards through the real desk.
+  const warm = boot();
+  warm.state.factions.faction_reach = { rep: 5 };
+  const warmOffers = resolvePoiLeadIn(warm, {
+    sectorId: 'sector_sker_haven', stationId: 'station_sker', factionId: 'faction_reach',
+  });
+  assert.equal(warmOffers.length, 1);
+  assert.equal(warmOffers[0].stationId, 'station_sker', 'standing reopens the authored desk');
+});
 
 test('pure builder is stable by save seed plus aftermath fingerprint and selects one connected destination', () => {
   const first = buildOffer(0, 'derelict_salvage', 4701);

@@ -11,6 +11,7 @@ import { globalToSectorLocalForSector, sectorLocalToGlobalForSector } from '../d
 import { SECTORS } from '../data/sectors.js';
 import { POI_BEHAVIOR_FAMILIES, POI_FAMILY_IDS, authoredPlacePlansForSector } from '../data/poiBehaviorFamilies.js';
 import { buildPoiCausalOffer } from '../missions/poiCausalOffers.js';
+import { stationBerthAdmits } from '../data/frontierRumors.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((sector) => [sector.id, sector]));
 const DAY_SECONDS = 600;
@@ -494,10 +495,19 @@ export const livingPoiBehaviors = {
     // binds the offer to the durable aftermath fingerprint; missions still validates, boards,
     // accepts, spawns, settles, and receipts the work through its ordinary authority path.
     const aftermath = ensureState(this.state).aftermath[row.behaviorId];
+    // The plan-time desk pick is seed-pure and cannot see standing — resolve admission here,
+    // at offer time: keep the planned desk when it admits the pilot, reroute to an admitting
+    // desk in the same sector, or drop the lead when nowhere in-sector will have them.
+    const sectorStations = (SECTOR_BY_ID.get(aftermath && aftermath.sectorId) || {}).stations || [];
+    const admits = (st) => stationBerthAdmits(st, repFor(this.state, st && st.factionId), this.state);
+    const deskId = sectorStations.some((st) => st && st.id === row.stationId && admits(st))
+      ? row.stationId
+      : (sectorStations.find((st) => st && admits(st)) || {}).id || null;
+    if (!deskId) return false;
     const offer = buildPoiCausalOffer({
       seed: this.state.meta && this.state.meta.seed || 1,
       aftermath,
-      stationId: row.stationId,
+      stationId: deskId,
       factionId: row.beneficiaryFactionId,
       zoneName: row.zoneName,
     });
@@ -718,6 +728,11 @@ function sectorOf(state, sectorId) {
   return state.world && state.world.sectors && state.world.sectors[sectorId]
     || SECTOR_BY_ID.get(sectorId)
     || null;
+}
+
+function repFor(state, factionId) {
+  const rec = factionId && state && state.factions ? state.factions[factionId] : null;
+  return rec ? (rec.rep || 0) : 0;
 }
 
 function selectStationForFamily(stations, zone, familyId) {
