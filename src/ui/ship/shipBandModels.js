@@ -154,10 +154,6 @@ function turnMassForRatio(ratio) {
   return 1.4 / (0.4 + Math.max(0.001, finite(ratio, 1)));
 }
 
-function speedMassForRatio(ratio) {
-  return 2 / (1 + Math.max(0.001, finite(ratio, 1)));
-}
-
 function percentDelta(after, before) {
   const b = finite(before, 0);
   if (Math.abs(b) < 1e-6) return 0;
@@ -719,12 +715,23 @@ function inertiaWhy(derived) {
   return coastLine ? `${head} ${coastLine}` : head;
 }
 
-function topSpeedWhy(profile, derived, dryDerived, shipDef) {
-  const loadedRatio = ratioFor(derived, shipDef);
-  const dryRatio = ratioFor(dryDerived, shipDef);
-  const loadedFactor = speedMassForRatio(loadedRatio);
-  const dryFactor = speedMassForRatio(dryRatio);
-  const massLoss = (1 - (loadedFactor / Math.max(0.001, dryFactor))) * 100;
+function publishedSpeed(propulsion, key) {
+  const block = propulsion || {};
+  if (key === 'fight') {
+    return finite(block.combatSpeed != null ? block.combatSpeed : block.maxSpeed, 0);
+  }
+  return finite(block.travelCeiling, 0);
+}
+
+/** How many percent the published ceiling fell. A rise, or a missing dry number, is zero. */
+function ceilingFellPct(loaded, dry) {
+  const base = finite(dry, 0);
+  if (!(base > 0)) return 0;
+  const drop = (1 - finite(loaded, 0) / base) * 100;
+  return drop > 0 ? drop : 0;
+}
+
+function topSpeedWhy(profile, derived, dryDerived) {
   // PQ-176.01: a fitted drive buys speed ABOVE the fight cap, never at it (FEEL_CONTRACT B3 is
   // measured at the cap). So the sentence has to name the burn, not the fight: saying "holds you
   // at 84 in a fight, 86 % over this hull's own motor" was a straight lie once the cap stopped
@@ -733,15 +740,24 @@ function topSpeedWhy(profile, derived, dryDerived, shipDef) {
   if (driveSpeed !== 1) {
     const travelMult = finite(derived.propulsion.driveTravelMult, driveSpeed);
     const shift = Math.round((travelMult - 1) * 100);
-    const governed = Math.round(finite(
-      derived.propulsion.combatSpeed != null ? derived.propulsion.combatSpeed : derived.propulsion.maxSpeed,
-      0,
-    ));
-    const burn = Math.round(finite(derived.propulsion.travelCeiling, 0));
+    const governed = Math.round(publishedSpeed(derived.propulsion, 'fight'));
+    const burn = Math.round(publishedSpeed(derived.propulsion, 'travel'));
     return `You still fight at ${governed}. The drive you fitted buys the run: ${burn} on the burn, `
       + `${signedPercent(shift)} ${shift >= 0 ? 'over' : 'under'} this hull's own motor.`;
   }
-  if (massLoss > 1) return `Mass costs you ${Math.round(massLoss)}% of your ceiling.`;
+  // Cargo loads the drive's push. It does not move the travel ceiling or the fight cap.
+  // The old line invented a percent from a mass ratio the kernel never applies to speed.
+  const cargoMass = finite(derived && derived.cargoMass, 0);
+  if (cargoMass > 0) {
+    const loadedProp = derived && derived.propulsion;
+    const dryProp = dryDerived && dryDerived.propulsion;
+    const fell = Math.max(
+      ceilingFellPct(publishedSpeed(loadedProp, 'travel'), publishedSpeed(dryProp, 'travel')),
+      ceilingFellPct(publishedSpeed(loadedProp, 'fight'), publishedSpeed(dryProp, 'fight')),
+    );
+    if (fell > 1) return `Mass costs you ${Math.round(fell)}% of your ceiling.`;
+    return 'The ceiling holds with this load.';
+  }
   if (profile && profile.driveLabel) return `The ${profile.driveLabel} sets your ceiling.`;
   return '';
 }
@@ -772,7 +788,7 @@ export function handlingBandModel({ shipId, fittings = [], player = null, domain
     let why = '';
     if (axis.id === 'agility') why = agilityWhy({ shipDef, derived, dryDerived, bareDerived });
     else if (axis.id === 'inertia') why = inertiaWhy(derived);
-    else if (axis.id === 'topSpeed') why = topSpeedWhy(profile, derived, dryDerived, shipDef);
+    else if (axis.id === 'topSpeed') why = topSpeedWhy(profile, derived, dryDerived);
     else if (axis.id === 'brake') why = brakeWhy(derived);
     bars.push({
       id: axis.id,
