@@ -275,8 +275,10 @@ export function uniqueAdmissionUnits(subjects, options = {}) {
     if (!object) continue;
     let addedProgram = false;
     for (const material of materialList(object)) {
-      if (skipReady && skipReady(material)) continue;
+      // Dedupe before the readiness probe: a material shared across subjects
+      // would pay the properties.get + currentProgram walk once per owner.
       if (seenMaterials.has(material)) continue;
+      if (skipReady && skipReady(material)) continue;
       seenMaterials.add(material);
       if (!addedProgram) {
         programSubjects.push(object);

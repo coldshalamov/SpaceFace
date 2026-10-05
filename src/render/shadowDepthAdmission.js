@@ -240,7 +240,6 @@ function writeDepthMark(caster, lightSig) {
   if (!caster.userData) caster.userData = {};
   caster.userData[DEPTH_MARK_KEY] = {
     l: lightSig,
-    g: geometry,
     ma: geometry && geometry.morphAttributes ? geometry.morphAttributes : null,
     mn: geometry && geometry.morphAttributes ? Object.keys(geometry.morphAttributes).length : 0,
     c: caster.customDepthMaterial || null,
@@ -253,16 +252,18 @@ function writeDepthMark(caster, lightSig) {
 /**
  * The mesh's depth-staged certificate still describes its live discriminant set: every
  * field mismatch is a re-minted signature, i.e. genuinely unstaged. Mirrors
- * casterDepthSignatures' inputs — a material mutation (in-place or swap), geometry or
- * morph census change, custom depth material swap, layer mask flip, or a light-census
+ * casterDepthSignatures' inputs — a material mutation (in-place or swap), morph
+ * census change, custom depth material swap, layer mask flip, or a light-census
  * drift all re-collect the caster. uuid strings compare by value; variant strings are
- * interned per material so a repeat lookup is a reference hit.
+ * interned per material so a repeat lookup is a reference hit. Geometry identity is
+ * deliberately absent: the depth program key bakes no geometry term, so an in-place
+ * swap that keeps the morph census re-links nothing — the ma/mn terms cover the
+ * program-relevant change.
  */
 export function casterDepthMarkCurrent(caster, lightSig) {
   const mark = caster && caster.userData ? caster.userData[DEPTH_MARK_KEY] : null;
   if (!mark || mark.l !== lightSig) return false;
   const geometry = caster.geometry || null;
-  if (mark.g !== geometry) return false;
   if (mark.ma !== (geometry && geometry.morphAttributes ? geometry.morphAttributes : null)) return false;
   if (mark.c !== (caster.customDepthMaterial || null)) return false;
   const layerMask = caster.layers && Number.isFinite(caster.layers.mask) ? caster.layers.mask : 1;
@@ -376,7 +377,8 @@ function casterDepthVariant(material) {
     material.vertexColors === true ? 1 : 0,
   ];
   const cached = _depthVariantCache.get(material);
-  if (cached && cached.bits.every((bit, i) => bit === bits[i])) return cached.variant;
+  if (cached && cached.bits.length === bits.length
+      && cached.bits.every((bit, i) => bit === bits[i])) return cached.variant;
   const variant = `a${bits[0]}`
     + `m${bits[1]}`
     + `x${bits[2]}`

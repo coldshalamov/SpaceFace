@@ -50,17 +50,28 @@ export async function compileSubjectsAcrossPresents(subjects, compileOne, yieldF
     : () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
       ? performance.now()
       : Date.now());
+  // The shared paced-ledger contract: shouldYield consults the frame's wallet so a
+  // spent frame never gets this lane's whole private window on top, and debit posts
+  // the spend so sibling slicers in the same frame see it. Post-item check, so
+  // min-1 progress is preserved verbatim.
+  const shouldYield = typeof options.shouldYield === 'function' ? options.shouldYield : null;
+  const debit = typeof options.debit === 'function' ? options.debit : null;
   const results = [];
   let sliceStarted = now();
+  let lastDebitAt = sliceStarted;
   for (let i = 0; i < list.length; i++) {
     if (!list[i]) continue;
     results.push(await compileOne(list[i]));
     const spent = now() - sliceStarted;
-    if (i < list.length - 1 && typeof yieldFn === 'function' && spent >= budgetMs) {
+    if (i < list.length - 1 && typeof yieldFn === 'function'
+        && (spent >= budgetMs || (shouldYield && shouldYield()))) {
+      if (debit) debit(now() - lastDebitAt);
       await yieldFn();
       sliceStarted = now();
+      lastDebitAt = sliceStarted;
     }
   }
+  if (debit) debit(now() - lastDebitAt);
   return results;
 }
 

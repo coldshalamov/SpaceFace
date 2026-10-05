@@ -364,7 +364,7 @@ test('late admission uploads count-0 instanced pool buffers before activation', 
 test('every residency admission lane admits dormant instanced pools', () => {
   const trackerStart = RENDERER_SOURCE.indexOf('createGpuResidencyAdmissionTracker(');
   assert.ok(trackerStart >= 0, 'the late-admission tracker must exist');
-  const tracker = RENDERER_SOURCE.slice(trackerStart, trackerStart + 2200);
+  const tracker = RENDERER_SOURCE.slice(trackerStart, trackerStart + 2400);
   assert.match(tracker, /includeEmpty:\s*true/,
     'the late-admission lane must upload count-0 pool buffers behind the pending latch');
 
@@ -600,8 +600,8 @@ test('flight GPU residency admission slices yields instead of yielding per item'
   const tracker = RENDERER_SOURCE.slice(trackerStart, trackerStart + 2600);
   assert.match(tracker, /createSlicedYield\(/,
     'the residency lane must share one frame gap across several small uploads');
-  assert.match(tracker, /sliceMs:\s*ADMISSION_SLICE_TARGET_MS/,
-    'the slice window must stay at the admission slice target, not a per-item present');
+  assert.match(tracker, /sliceMs:\s*unSliced\s*\?\s*Number\.POSITIVE_INFINITY\s*:\s*ADMISSION_SLICE_TARGET_MS/,
+    'the slice window stays at the admission slice target; the on-glass burst yields on ledger spend, not a per-item present');
 });
 
 // The end-of-cook seal walks the whole scene — hundreds of textures plus geometry batches —

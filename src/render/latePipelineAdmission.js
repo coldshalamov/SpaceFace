@@ -183,3 +183,29 @@ export function collectInstancePoolCompileRoots(scene) {
   if (typeof scene.traverse === 'function') scene.traverse(visit);
   return roots;
 }
+
+/** Instance-pool roots + every compile subject in ONE scene walk — the cook
+ * used to pay two full traverses (pool scan + subject collect) back to back. */
+export function collectInstancePoolCompileRootsAndSubjects(scene) {
+  const roots = [];
+  const subjects = [];
+  const seen = new Set();
+  if (!scene) return { roots, subjects };
+  const visit = (object) => {
+    if (!object || seen.has(object)) return;
+    seen.add(object);
+    if (object.userData && (
+      object.userData.spacefaceInstancePool === true
+      || object.userData.asteroidInstancePool === true
+    )) {
+      roots.push(object);
+    }
+    if (object.isMesh || object.isSkinnedMesh || object.isInstancedMesh
+      || object.isPoints || object.isLine || object.isSprite) {
+      subjects.push(object);
+    }
+  };
+  visit(scene);
+  if (typeof scene.traverse === 'function') scene.traverse(visit);
+  return { roots, subjects };
+}
