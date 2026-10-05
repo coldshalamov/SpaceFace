@@ -5076,7 +5076,22 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       closeChooser(); setTimeout(refresh, 70); return;
     }
     const uf = ev.target.closest('[data-unfit]');
-    if (uf && !uf.disabled && shipworksActionAvailability(ctx.state).outfitEnabled) { if (ctx.bus) { ctx.bus.emit('ui:unfitModule', { shipIndex: viewIdx, slotIndex: Number(uf.getAttribute('data-unfit')) }); ctx.bus.emit('audio:cue', { id: UI_SWITCH_DETENT_CUE }); } closeChooser(); setTimeout(refresh, 70); }
+    if (uf && !uf.disabled && shipworksActionAvailability(ctx.state).outfitEnabled) {
+      // Research G / P08 residual — the unfit intent settles through the same refused-fit
+      // listener as its fit twin: a refusal (e.g. cargo capacity changed between render and
+      // intent) names its reason through the owner's outcome, keeps the chooser open on the
+      // attempted slot, and plays no success detent; only an accepted unfit closes, once.
+      if (ctx.bus) {
+        const accepted = emitFitIntent('ui:unfitModule', { shipIndex: viewIdx, slotIndex: Number(uf.getAttribute('data-unfit')) });
+        if (!accepted) {
+          ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+          if (typeof uf.focus === 'function') uf.focus({ preventScroll: true });
+          return;
+        }
+        ctx.bus.emit('audio:cue', { id: UI_SWITCH_DETENT_CUE });
+      }
+      closeChooser(); setTimeout(refresh, 70); return;
+    }
   });
 
   // Hover/focus: ghost afterFittings geometry + derived stats; leave restores current loadout.

@@ -2473,11 +2473,25 @@ export const ships = {
   },
 
   unfitModule({ shipIndex, slotIndex }) {
+    // Research G / P08 residual — a refused unfit travels the SAME authoritative outcome channel
+    // as a refused fit: module:fitRefused names the reason, and the chooser's synchronous
+    // listener keeps the attempted slot mounted instead of playing the success detent over an
+    // intent the owner rejected (e.g. cargo capacity changed between render and intent).
+    const refuse = (reason, refusedDefId = null, refusedInstanceId = null) => {
+      this.bus.emit('module:fitRefused', {
+        shipIndex,
+        slotIndex,
+        defId: refusedDefId,
+        instanceId: refusedInstanceId,
+        reason,
+      });
+      return false;
+    };
     const p = this.state.player;
     const owned = this.ownedShip(shipIndex);
-    if (!owned) return false;
+    if (!owned) return refuse('missing_ship');
     const defId = owned.fittings[slotIndex];
-    if (!defId) return false;
+    if (!defId) return refuse('empty_slot');
 
     const inst = this._takeFittedInstance(owned, slotIndex);
     owned.fittings[slotIndex] = null;
@@ -2488,7 +2502,7 @@ export const ships = {
         owned.fittedInstances[slotIndex] = inst;
       }
       this.bus.emit('toast', { text: 'Cargo would overflow — jettison first', kind: 'error', ttl: 3 });
-      return false;
+      return refuse('cargo_overflow', defId, inst ? inst.instanceId : null);
     }
     p.moduleInventory.push(inst ? { ...inst } : { instanceId: this.nextInstanceId(), defId });
     this.bus.emit('module:unequipped', { shipId: this.shipIdFor(shipIndex), slotIndex, defId });
