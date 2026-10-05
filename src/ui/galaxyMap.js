@@ -8799,6 +8799,10 @@ _drawSystem(g, state, w, h) {
       const point = bearing.drawFixedPos || bearing.drawCenter;
       if (point) pts.push({ x: point.x, z: point.z, r: bearing.drawFixedPos ? 0 : bearing.radius });
     }
+    for (const ping of chartPingCourseTargets(state, model.sectorId)) {
+      const local = globalToSectorLocalForSector({ x: ping.x, z: ping.z }, model.sectorId);
+      if (local) pts.push({ x: local.x, z: local.z, r: 0 });
+    }
     // The waypoint's resolved presentation position is GLOBAL. It reaches the span independently
     // of the model, so an armed waypoint reproduced the blowout on its own.
     const wpDraw = wpPos
@@ -9153,6 +9157,23 @@ _drawSystem(g, state, w, h) {
           selected,
           named: true,
         }));
+      }
+
+      // Scanner pings: same named course as the local map. Draw the sector-local point;
+      // the click keeps the global x/z so the course arms in the nav frame.
+      for (const ping of chartPingCourseTargets(state, model.sectorId)) {
+        const local = globalToSectorLocalForSector({ x: ping.x, z: ping.z }, model.sectorId);
+        if (!local) continue;
+        const pw = warp(sx(local.x), sz(local.z));
+        g.save();
+        g.fillStyle = CHART_INK.ice(0.16);
+        g.beginPath(); g.arc(pw.x, pw.y, 9, 0, Math.PI * 2); g.fill();
+        g.fillStyle = CHART_INK.ice(0.9);
+        g.beginPath();
+        g.moveTo(pw.x, pw.y - 5); g.lineTo(pw.x + 5, pw.y); g.lineTo(pw.x, pw.y + 5); g.lineTo(pw.x - 5, pw.y);
+        g.closePath(); g.fill();
+        g.restore();
+        this._clickTargets.push({ ...ping, sx: pw.x, sy: pw.y, radiusPx: 16 });
       }
     }
 
