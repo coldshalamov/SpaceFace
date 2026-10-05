@@ -22,6 +22,7 @@ import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 import { createMorphLabel } from './effects/morphLabel.js';
 import { factionIcon, icon as stationIcon } from './station/icons.js';
 import { dpIcon } from './deckplate/icons.js';
+import { injectCommsLayouts } from './orrery/commsLayouts.js';
 import { FACTION_META } from '../data/factions.js';
 import { tierFor, factionStandingGuidance } from './factionStanding.js';
 import { resolveEntity } from './entityResolver.js';
@@ -270,8 +271,14 @@ function layoutSelectorArc(host, buttons) {
   rail.setAttribute('height', String(total));
   rail.setAttribute('viewBox', `0 0 ${bow + 24} ${total}`);
   const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-  path.setAttribute('d', `M${bow + 11} 0Q${11 - bow} ${half} ${bow + 11} ${total}`);
+  const railD = `M${bow + 11} 0Q${11 - bow} ${half} ${bow + 11} ${total}`;
+  path.setAttribute('d', railD);
   rail.appendChild(path);
+  // the spine is a band (the path) under a crisp edge (this twin), as every structure in the interface is
+  const edge = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  edge.setAttribute('class', 'sf-commsfan__edge');
+  edge.setAttribute('d', railD);
+  rail.appendChild(edge);
   host.insertBefore(rail, host.firstChild);
 }
 
@@ -339,6 +346,7 @@ export function createCommsRadial(ctx) {
   const root = typeof document !== 'undefined' ? document.getElementById('ui-root') : null;
   if (!root) return { tick() {}, destroy() {} };
 
+  injectCommsLayouts();
   const fan = document.createElement('div');
   fan.id = 'sf-commsfan';
   fan.className = 'sf-commsfan';
@@ -354,6 +362,7 @@ export function createCommsRadial(ctx) {
         <span class="sf-commsfan__class" data-k="classword">HOLD ALT</span>
         <span class="sf-commsfan__freq" data-k="freq"></span>
         <svg class="sf-commsfan__ribbon" viewBox="0 0 152 24" aria-hidden="true" focusable="false">
+          <path class="sf-commsfan__bloom" data-k="ribbon-bloom"></path>
           <path data-k="ribbon"></path>
         </svg>
       </button>
@@ -411,6 +420,7 @@ export function createCommsRadial(ctx) {
   const classEl = fan.querySelector('[data-k="classword"]');
   const wedgeHost = fan.querySelector('[data-k="wedgehost"]');
   const ribbonPath = fan.querySelector('[data-k="ribbon"]');
+  const ribbonBloom = fan.querySelector('[data-k="ribbon-bloom"]');
   const freqHost = fan.querySelector('[data-k="freq"]');
   const freqMorph = createMorphLabel(freqHost, { text: 'FREQ IDLE' });
 
@@ -469,6 +479,7 @@ export function createCommsRadial(ctx) {
     const amplitude = payload ? clamp01((Number(payload.expiresAt) - now) / Math.max(1, ttl)) : 0.22;
     const d = buildHailRibbonPath(visual.seed, amplitude, visual.density);
     ribbonPath.setAttribute('d', d);
+    if (ribbonBloom) ribbonBloom.setAttribute('d', d);
     const freq = hailFrequencyText(amplitude, visual.density);
     const dir = previousFreq && freq > previousFreq ? 'up' : previousFreq && freq < previousFreq ? 'down' : 'flat';
     freqMorph.set(freq, { dir });
