@@ -1936,16 +1936,20 @@ export const missions = {
     // Wreck-communicator contracts are discovery progress, not an epoch reroll: the player found
     // the signal, so the row survives refresh until it is accepted. Stable point-derived ids
     // keep the ingest dedupe honest; settle receipts still block a completed offer's replay.
+    // No slice cap: salvage._offerFromPoint is one-shot (point.offered), so a dropped row can
+    // never re-emit — capping retention deletes authored discovery work for the save.
     const retainedSalvageOffers = previousSlots.filter((offer) => (
       offer && offer.source === 'salvage'
       && (!Number.isFinite(offer.expiresAtEpoch) || offer.expiresAtEpoch > epoch)
-    )).slice(0, 4);
-    // Ecology site offers are one-shot per visit — keep them through epoch refresh so the
-    // contract the site emitted survives the trip back to dock.
+    ));
+    // Ecology site offers are emitted once and then offersEmitted stays set forever — they
+    // cannot re-emit, so retention is the only place the contract lives. No slice cap: a
+    // multi-desk site (Ashfall Reach carries nine authored rows, Charon seven) posts them all
+    // to one station, and any cap silently deletes the excess authored work (D132).
     const retainedEcologyOffers = previousSlots.filter((offer) => (
       offer && offer.source === 'ecology'
       && (!Number.isFinite(offer.expiresAtEpoch) || offer.expiresAtEpoch > epoch)
-    )).slice(0, 4);
+    ));
     // B7 follow-ons are the contract the set piece just became. A refresh must not
     // eat them before the player can take the salvage, the escape, or the tow.
     const retainedSetPieceFollowOns = previousSlots.filter((offer) => (
