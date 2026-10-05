@@ -9,6 +9,7 @@ import {
   createPresentationJournalRecord,
   PRESENTATION_JOURNAL_KINDS,
 } from '../src/core/presentationJournal.js';
+import { DIRTY, markDirty } from '../src/core/dirtyJournal.js';
 import { LOOP_FIXED_DT } from '../src/core/simulationRunner.js';
 
 function recordAt(journal, sequence) {
@@ -34,8 +35,11 @@ test('core publishes presentation identity, visual, transform, destroy, and run 
     assert.equal(presentationJournal.getWriteSequence(), 1);
 
     core.preStep(LOOP_FIXED_DT, state);
+    // Pose writers mark DIRTY.POSE (or carry velocity so preStep marks it) — the quiet-clock
+    // sweep no longer re-diffs every movable, so a bare pos write is invisible by design.
     ship.pos.x = 14;
     ship.rot = 0.5;
+    markDirty(state, ship.id, DIRTY.POSE);
     bus.emit('ship:appearanceChanged', { id: ship.id });
     core.lifetimeSweep(LOOP_FIXED_DT, state);
 
