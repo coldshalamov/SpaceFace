@@ -34,6 +34,12 @@ const RECOUNT_NODES_PER_SLICE = 512;
 // supersessions so a measured-but-stale count settles after this many discards
 // instead of serving an arbitrarily old count forever.
 const RECOUNT_SUPERSEDE_CAP = 4;
+// A capped settle leaves dirty set; without a quiet window the next resolve
+// would immediately re-mint a whole-scene walk (~5 walks per stale stamp
+// forever). Every consumer reads count as a boolean, so re-mint at most once
+// per this many resolves while the storm persists — the self-heal is
+// unchanged: a pause in the storm lets the next mint stamp cleanly.
+const RECOUNT_STORM_QUIET_RESOLVES = 8;
 
 /** Iterative pre-order twin of the recount traverse — same receiver test, yields
  * every `nodesPerSlice` visited nodes so resolve() can pace the fallback walk
@@ -63,6 +69,7 @@ export function createShadowReceiverTally() {
   let dirtySeq = 0;
   let pendingRecount = null;
   let supersededRecounts = 0;
+  let recountCooldown = 0;
 
   return {
     get count() { return count; },
@@ -72,11 +79,16 @@ export function createShadowReceiverTally() {
       dirty = true;
       dirtySeq += 1;
     },
+    // A note landing mid-walk is a mutation the stepped recount may or may not
+    // have visited yet — the walk's measurement is torn either way, so bump
+    // the seq and let the supersede path re-mint on the post-note state.
     noteAdded(root) {
+      if (pendingRecount) dirtySeq += 1;
       count += countShadowReceivers(root);
       if (count < 0) count = 0;
     },
     noteRemoved(root) {
+      if (pendingRecount) dirtySeq += 1;
       count -= countShadowReceivers(root);
       if (count < 0) count = 0;
     },
@@ -84,12 +96,14 @@ export function createShadowReceiverTally() {
     // keeps count current without the dirty fallback's whole-scene recount.
     noteDelta(delta) {
       if (!Number.isFinite(delta) || delta === 0) return;
+      if (pendingRecount) dirtySeq += 1;
       count += delta;
       if (count < 0) count = 0;
     },
     recount(scene) {
       pendingRecount = null;
       supersededRecounts = 0;
+      recountCooldown = 0;
       const it = recountShadowReceiversSteps(scene);
       for (;;) {
         const step = it.next();
@@ -108,8 +122,17 @@ export function createShadowReceiverTally() {
       // keep serving the last count until a clean walk settles.
       const start = tallyNow();
       while (dirty) {
+        // Supersede at first detection, not just at completion — a dirty bump
+        // mid-walk makes the remaining slices guaranteed-stale work.
+        if (pendingRecount && pendingRecount.seq !== dirtySeq
+          && supersededRecounts < RECOUNT_SUPERSEDE_CAP) {
+          supersededRecounts += 1;
+          try { pendingRecount.iter.return(); } catch (_) { /* discard proceeds */ }
+          pendingRecount = null;
+        }
         if (!pendingRecount) {
           if (!scene || typeof scene.traverse !== 'function') return count;
+          if (recountCooldown > 0) { recountCooldown -= 1; return count; }
           pendingRecount = { iter: recountShadowReceiversSteps(scene), seq: dirtySeq };
         }
         const step = pendingRecount.iter.next();
@@ -123,7 +146,8 @@ export function createShadowReceiverTally() {
             count = Math.max(0, step.value | 0);
             pendingRecount = null;
             supersededRecounts = 0;
-            dirty = seqMatched ? false : dirty;
+            if (seqMatched) dirty = false;
+            else recountCooldown = RECOUNT_STORM_QUIET_RESOLVES;
             return count;
           }
           // Mutations landed mid-walk — re-mint on the fresh seq while the

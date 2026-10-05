@@ -526,6 +526,30 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
     return visited;
   }
 
+  // Stepped twin — same walk, throws, and return, yielding every sliceEvery
+  // applied records so a dense retained range paces across presents instead
+  // of paying one atomic apply pass per consume.
+  function* visitRangeSteps(startExclusive, endInclusive, target, visitor, sliceEvery = 256) {
+    assertOpen();
+    if (typeof visitor !== 'function') {
+      throw new TypeError('PresentationJournal visitRange requires a visitor');
+    }
+    if (!hasRange(startExclusive, endInclusive)) {
+      throw new Error(`PresentationJournal range is not retained (${startExclusive}, ${endInclusive}]`);
+    }
+    const every = Math.max(1, Math.floor(Number(sliceEvery) || 1));
+    let visited = 0;
+    for (let sequence = startExclusive + 1; sequence <= endInclusive; sequence++) {
+      if (!copySequence(sequence, target)) {
+        throw new Error(`PresentationJournal record ${sequence} is not retained`);
+      }
+      visitor(target);
+      visited++;
+      if ((visited % every) === 0) yield;
+    }
+    return visited;
+  }
+
   function discardThrough(sequence) {
     assertOpen();
     if (!Number.isSafeInteger(sequence) || sequence < 0) return 0;
@@ -692,6 +716,7 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
     copySequence,
     hasRange,
     visitRange,
+    visitRangeSteps,
     discardThrough,
     requestRebuild,
     rebuildFrom,

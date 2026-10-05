@@ -876,6 +876,36 @@ export function createPresentationWorld(options = {}) {
     return true;
   }
 
+  // Stepped twin — identical teardown, paced across presents. The retire
+  // visits by captured entity-id (not live slot index): a destroy apply or a
+  // slot reuse landing mid-suspension can only add rows the snapshot never
+  // covered, so neither can kill a resident minted after the walk started.
+  function* clearSteps(sliceEvery = 256) {
+    ensureAlive();
+    const pendingIds = new Array(activeCount);
+    for (let index = 0; index < activeCount; index++) {
+      pendingIds[index] = world.entityIds[world.activeSlots[index]];
+    }
+    const every = Math.max(1, Math.floor(Number(sliceEvery) || 1));
+    maxRadius = 0;
+    for (let index = 0; index < pendingIds.length; index++) {
+      const slot = byId.get(pendingIds[index]);
+      if (slot !== undefined) retireSlot(slot);
+      if (((index + 1) % every) === 0) yield;
+    }
+    gridColumns.clear();
+    specialCount = 0;
+    boundCount = 0;
+    maxRadius = 0;
+    maxRadiusDirty = false;
+    asteroidDirty = true;
+    diagnostics.active = 0;
+    diagnostics.bound = 0;
+    diagnostics.free = freeCount;
+    diagnostics.maxRadius = 0;
+    return true;
+  }
+
   function rebuildFromEntities(entities, generationForEntity = null) {
     ensureAlive();
     if (!Array.isArray(entities)) throw new TypeError('PresentationWorld rebuild requires an entity array');
@@ -922,6 +952,24 @@ export function createPresentationWorld(options = {}) {
     const lastSeenSeq = world.lastSeenSeq;
     let retainedHits = 0;
     let skippedIds = null;
+    if (retireSuppressed && options.hiddenIds) {
+      // Eager doom at apply-mint — twin of the stepped apply's head pass:
+      // hiddenIds are suppressed-destroy ids never pushed by the live sample,
+      // so the defer-to-completion semantics just delayed the hide.
+      for (const hiddenId of options.hiddenIds) {
+        const slot = byId.get(hiddenId);
+        if (slot !== undefined && world.alive[slot] === 1 && lastSeenSeq[slot] !== seq
+            && world.doomed[slot] !== 1) {
+          const resident = world.entityRefs[slot];
+          if (resident && resident === world.boundEntityRefs[slot]
+              && resident.alive !== false) continue;
+          const wasVisible = world.visible[slot] === 1;
+          world.doomed[slot] = 1;
+          world.visible[slot] = 0;
+          if (wasVisible) markDirtyBits(slot, PRESENTATION_DIRTY.VISIBILITY);
+        }
+      }
+    }
     for (const entity of entities) {
       if (!entity || entity.alive === false) continue;
       const entityId = sourceEntityId(entity);
@@ -953,14 +1001,23 @@ export function createPresentationWorld(options = {}) {
         slot = byId.get(entityId);
         if (slot !== undefined) {
           lastSeenSeq[slot] = seq;
-          world.doomed[slot] = 0;
+          if (world.doomed[slot] === 1) {
+            world.doomed[slot] = 0;
+            if (world.visible[slot] === 0) markDirtyBits(slot, PRESENTATION_DIRTY.VISIBILITY);
+          }
         }
         continue;
       }
       lastSeenSeq[slot] = seq;
       // A respawn pushed by this feed clears its doom atomically — the row
       // re-enters the visible set through the ordinary path, zero frames hidden.
-      world.doomed[slot] = 0;
+      // The VISIBILITY re-stamp is what re-admits it: the doom's visible=0
+      // stamp was already consumed by the hide sweep, and a clean static slot
+      // is never re-examined by the TRANSFORM-only retain paths.
+      if (world.doomed[slot] === 1) {
+        world.doomed[slot] = 0;
+        if (world.visible[slot] === 0) markDirtyBits(slot, PRESENTATION_DIRTY.VISIBILITY);
+      }
       retainedHits += 1;
       const previousVisual = world.visualRevisions[slot];
       refreshVisibleEntity(slot, entity);
@@ -1099,6 +1156,27 @@ export function createPresentationWorld(options = {}) {
     let sinceYield = 0;
     let retainedHits = 0;
     let skippedIds = null;
+    if (retireSuppressed && options.hiddenIds) {
+      // Eager doom at apply-mint: a parked apply used to leave a suppressed
+      // destroy's target alive+visible for the apply's WHOLE suspension span
+      // ("pops out of existence late"). hiddenIds are suppressed-destroy ids —
+      // never pushed by the live sample — and lastSeenSeq predates seq here,
+      // so the guard admits every resident row; a push in this feed still
+      // re-clears the doom via the retained-hit re-stamp.
+      for (const hiddenId of options.hiddenIds) {
+        const slot = byId.get(hiddenId);
+        if (slot !== undefined && world.alive[slot] === 1 && lastSeenSeq[slot] !== seq
+            && world.doomed[slot] !== 1) {
+          const resident = world.entityRefs[slot];
+          if (resident && resident === world.boundEntityRefs[slot]
+              && resident.alive !== false) continue;
+          const wasVisible = world.visible[slot] === 1;
+          world.doomed[slot] = 1;
+          world.visible[slot] = 0;
+          if (wasVisible) markDirtyBits(slot, PRESENTATION_DIRTY.VISIBILITY);
+        }
+      }
+    }
     for (const entity of entities) {
       if ((++sinceYield % every) === 0) yield;
       if (!entity || entity.alive === false) continue;
@@ -1124,12 +1202,21 @@ export function createPresentationWorld(options = {}) {
         slot = byId.get(entityId);
         if (slot !== undefined) {
           lastSeenSeq[slot] = seq;
-          world.doomed[slot] = 0;
+          if (world.doomed[slot] === 1) {
+            world.doomed[slot] = 0;
+            // The doom's visible=0 stamp was consumed by the hide sweep — only
+            // a non-TRANSFORM dirty bit re-opens both retain fast paths, so an
+            // un-doomed static row would strand hidden without the re-stamp.
+            if (world.visible[slot] === 0) markDirtyBits(slot, PRESENTATION_DIRTY.VISIBILITY);
+          }
         }
         continue;
       }
       lastSeenSeq[slot] = seq;
-      world.doomed[slot] = 0;
+      if (world.doomed[slot] === 1) {
+        world.doomed[slot] = 0;
+        if (world.visible[slot] === 0) markDirtyBits(slot, PRESENTATION_DIRTY.VISIBILITY);
+      }
       retainedHits += 1;
       const previousVisual = world.visualRevisions[slot];
       refreshVisibleEntity(slot, entity);
@@ -1351,6 +1438,7 @@ export function createPresentationWorld(options = {}) {
     updateFromEntities,
     updateFromEntitiesSteps,
     clear,
+    clearSteps,
     dispose,
     getTypeName: (slot) => typeNames[world.typeCodes[slot]] || '',
     getDiagnostics: () => diagnostics,

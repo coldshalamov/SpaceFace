@@ -384,6 +384,81 @@ export function packPresentationWorldToFence(world, fence, simTime = 0, poseEpoc
   return packed;
 }
 
+/**
+ * Stepped twin — identical pack contents, commit, and return. The atomic pack
+ * pays O(activeCount) inside most presents; drivers pace this across a 4ms
+ * wall bound, parking mid-walk like the other stepped passes. Rows pack
+ * atomically each, so a suspended pack's mix is bounded to row granularity —
+ * the same staleness the suspended journal collect already produces.
+ */
+export function* packPresentationWorldToFenceSteps(world, fence, simTime = 0, poseEpoch = 0, sliceEvery = 256) {
+  if (!world || !fence) return 0;
+  const diagnostics = typeof world.getDiagnostics === 'function' ? world.getDiagnostics() : null;
+  const active = diagnostics && Number.isInteger(diagnostics.active) ? diagnostics.active : 0;
+  const snapshot = fence.beginPack(Math.max(1, active), simTime, poseEpoch);
+  const previous = typeof fence.latestSnapshot === 'function' ? fence.latestSnapshot() : null;
+  const previousIndex = previous && previous.poseEpoch === poseEpoch
+    ? (previous.indexByEntityId || null) : null;
+  const every = Math.max(1, Math.floor(Number(sliceEvery) || 1));
+  let packed = 0;
+  for (let index = 0; index < active; index++) {
+    if ((index % every) === 0 && index > 0) yield;
+    const slot = world.activeSlots[index];
+    if (world.alive[slot] !== 1) continue;
+    const entityId = world.entityIds[slot] >>> 0;
+    if (previousIndex && world.packDirty && world.packDirty[slot] === 0) {
+      const previousRow = previousIndex.get(entityId);
+      const previousGenerations = previous.columns && previous.columns.generation;
+      if (previousRow !== undefined && previousRow >= 0
+          && (!previousGenerations || !world.slotGenerations
+            || previousGenerations[previousRow] === (world.slotGenerations[slot] >>> 0))) {
+        snapshot.copyRow(previous, previousRow);
+        world.packDirty[slot] = 0;
+        packed++;
+        continue;
+      }
+    }
+    let qy;
+    let qw;
+    if (world.yawSin && world.yawCos) {
+      qy = world.yawSin[slot];
+      qw = world.yawCos[slot];
+    } else {
+      const rot = world.rot ? Number(world.rot[slot]) || 0 : 0;
+      const half = rot * 0.5;
+      qy = Math.sin(half);
+      qw = Math.cos(half);
+    }
+    const packedIndex = snapshot.write(
+      entityId,
+      world.typeCodes ? world.typeCodes[slot] : 0,
+      world.x[slot],
+      world.y[slot],
+      world.z[slot],
+      0, qy, 0, qw,
+      1, 1, 1,
+      world.flags[slot] >>> 0,
+    );
+    if (typeof snapshot.setLean === 'function') {
+      snapshot.setLean(
+        packedIndex,
+        world.bank ? Number(world.bank[slot]) || 0 : 0,
+        world.pitch ? Number(world.pitch[slot]) || 0 : 0,
+      );
+    }
+    if (typeof snapshot.setGeneration === 'function') {
+      snapshot.setGeneration(
+        packedIndex,
+        world.slotGenerations ? world.slotGenerations[slot] : 0,
+      );
+    }
+    if (world.packDirty) world.packDirty[slot] = 0;
+    packed++;
+  }
+  fence.commit();
+  return packed;
+}
+
 export function packEntityIntoSnapshot(snapshot, entity, options = {}) {
   if (!snapshot || !entity || entity.alive === false) return -1;
   const pos = entity.pos || {};

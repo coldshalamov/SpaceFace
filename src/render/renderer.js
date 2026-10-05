@@ -197,6 +197,7 @@ import {
   applySnapshotPoseToMesh,
   createSnapshotFence,
   packPresentationWorldToFence,
+  packPresentationWorldToFenceSteps,
   poseSpanAlpha,
   snapshotIndexOf,
 } from './snapshotFence.js';
@@ -327,6 +328,7 @@ import {
   collectUniqueCompileSubjects,
   compileSubjectsAcrossPresents,
   revealSubjectForCompile,
+  revealSubjectForCompileSteps,
   revealSubjectWithAncestors,
   shouldSliceFlightAdmission,
   yieldAfterPresent,
@@ -408,6 +410,7 @@ import {
 import { shouldAwaitOpeningGpuCook } from './renderCapabilityProfile.js';
 import {
   collectStartupTextures,
+  collectStartupTexturesSteps,
   collectUnresidentInstancedDrawables,
   hasUnresidentGeometry,
   prepareStartupGeometryResidency,
@@ -10711,8 +10714,24 @@ export const render = {
     // residency pass re-detaches whatever this restored.
     const detachedSubjectUploadsPending = (subjects) => collectStartupTextures(subjects)
       .filter((texture) => detachedTextureUploadPending(texture, renderer.properties));
+    // Async twin for the cohort path: the collect's traverse over a subject
+    // array pays O(roots×nodes) inside the admission task — pace it through
+    // the Steps twin under the admission yield contract.
+    const detachedSubjectUploadsPendingAsync = async (subjects) => {
+      if (typeof collectStartupTexturesSteps !== 'function') {
+        return detachedSubjectUploadsPending(subjects);
+      }
+      const it = collectStartupTexturesSteps(subjects);
+      for (;;) {
+        const step = it.next();
+        if (step.done) {
+          return step.value.filter((texture) => detachedTextureUploadPending(texture, renderer.properties));
+        }
+        await admissionPaceYield();
+      }
+    };
     const reattachDetachedSubjectTextures = async (subjects) => {
-      const pending = detachedSubjectUploadsPending(subjects);
+      const pending = await detachedSubjectUploadsPendingAsync(subjects);
       if (pending.length === 0) return null;
       return rehydrateDetachedTextures(pending, { yieldToMain: admissionPaceYield });
     };
@@ -13912,9 +13931,38 @@ export const render = {
       } else {
         syncVisiblePointLightBudget(scene, state.settings && state.settings.video);
       }
-      const restoreReveal = options.skipCompile === true || options.holdLeftoverFx === true
-        ? () => {}
-        : revealSubjectForCompile(scene);
+      // The whole-scene reveal pays O(scene) twice (mint + restore) — paced
+      // through the Steps twin under the cook's yield contract so the reveal
+      // stops being the largest unyielded loading span. A stale cook mid-mint
+      // throws into the generator: its catch restores the revealed prefix.
+      let restoreReveal = () => {};
+      let restoreRevealSteps = null;
+      if (options.skipCompile !== true && options.holdLeftoverFx !== true) {
+        if (typeof revealSubjectForCompileSteps === 'function') {
+          const revealMint = revealSubjectForCompileSteps(scene);
+          for (;;) {
+            let mintStep;
+            try {
+              mintStep = revealMint.next();
+            } catch (err) {
+              if (String(err && err.message) === 'cook-superseded') return cookSuperseded;
+              throw err;
+            }
+            if (mintStep.done) {
+              restoreReveal = mintStep.value.restore;
+              restoreRevealSteps = mintStep.value.restoreSteps;
+              break;
+            }
+            if (cookStale()) {
+              try { revealMint.throw(new Error('cook-superseded')); } catch (_) { /* prefix restored */ }
+              return cookSuperseded;
+            }
+            await yieldToBrowser();
+          }
+        } else {
+          restoreReveal = revealSubjectForCompile(scene);
+        }
+      }
       const restoreShadows = armAdmissionShadows({
         renderer,
         light: this._keyLight,
@@ -13952,7 +14000,15 @@ export const render = {
         };
       } finally {
         restoreShadows();
-        restoreReveal();
+        if (restoreRevealSteps) {
+          for (;;) {
+            const step = restoreRevealSteps.next();
+            if (step.done) break;
+            await yieldToBrowser();
+          }
+        } else {
+          restoreReveal();
+        }
       }
       if (cookStale()) return cookSuperseded;
       recordOpeningCookStep(state.render, 'cook.programs', programsStarted,
@@ -20947,6 +21003,13 @@ export const render = {
       if (this._withheldDepthCasters) this._withheldDepthCasters.delete(mesh);
       if (this._deferredDepthStageRoots) this._deferredDepthStageRoots.delete(mesh);
       if (this._policyStepsParked) this._policyStepsParked.delete(mesh);
+      const covParkedMesh = this._coverageCollectParked && this._coverageCollectParked.get(mesh);
+      if (covParkedMesh) {
+        if (covParkedMesh.iter && typeof covParkedMesh.iter.return === 'function') {
+          try { covParkedMesh.iter.return(); } catch (_) { /* sweep proceeds */ }
+        }
+        this._coverageCollectParked.delete(mesh);
+      }
       if (mesh.userData) {
         mesh.userData[STAGE_SELF_DIRTY_KEY] = false;
         delete mesh.userData.sfDepthUndrawableCycles;
@@ -21172,6 +21235,13 @@ export const render = {
         if (this._withheldDepthCasters) this._withheldDepthCasters.delete(owner);
         if (this._deferredDepthStageRoots) this._deferredDepthStageRoots.delete(owner);
         if (this._policyStepsParked) this._policyStepsParked.delete(owner);
+        const covParkedOwner = this._coverageCollectParked && this._coverageCollectParked.get(owner);
+        if (covParkedOwner) {
+          if (covParkedOwner.iter && typeof covParkedOwner.iter.return === 'function') {
+            try { covParkedOwner.iter.return(); } catch (_) { /* sweep proceeds */ }
+          }
+          this._coverageCollectParked.delete(owner);
+        }
         if (owner.userData) {
           owner.userData[STAGE_SELF_DIRTY_KEY] = false;
           delete owner.userData.sfDepthUndrawableCycles;
@@ -21209,10 +21279,17 @@ export const render = {
     // On-screen rows first: a clear-rebuild unbinds every row, and a suspended
     // walk parks the tail — an unvisited mesh keeps its last visibility bit, so
     // a visible row parks drawing a frozen pose while an invisible one parks
-    // harmlessly. Rebind the visible pass inside the first slices.
+    // harmlessly. Rebind the visible pass inside the first slices. Pass two
+    // covers every row pass one did not VISIT (not every row still invisible —
+    // a row flipping invisible→visible mid-walk would otherwise be skipped by
+    // both passes and stay unbound).
+    const visitedMeshes = new Set();
     for (const visiblePass of [true, false]) {
       for (const [id, mesh] of this._meshes) {
-        if ((mesh && mesh.visible === true) !== visiblePass) continue;
+        if (visiblePass === true) {
+          if (!(mesh && mesh.visible === true)) continue;
+          visitedMeshes.add(mesh);
+        } else if (visitedMeshes.has(mesh)) continue;
         if ((++visited % 256) === 0) yield;
         const entity = resolveWorldPresentationEntity(this.state, id);
         // Same eligibility predicates the push loop applies — a parked walk
@@ -21230,20 +21307,26 @@ export const render = {
   },
 
   _bindPublishedPresentationMeshes(publication) {
-    const it = this._bindPublishedPresentationMeshesSteps(publication);
+    const it = this._bindPublishedPresentationMeshesSteps(
+      publication && publication.spawnedSlots
+        ? publication.spawnedSlots.slice(0, publication.spawnedCount)
+        : null);
     for (;;) { const step = it.next(); if (step.done) return step.value; }
   },
 
   // Chunked twin — a spawn burst's spawned-range bind pays O(spawnedCount) inside
   // the presented tail; yields every 256 rows so the parked drain paces it like
-  // the rebind walk.
-  *_bindPublishedPresentationMeshesSteps(publication) {
-    if (!publication || publication.spawnedCount <= 0) return;
+  // the rebind walk. Takes a SNAPSHOT of the spawned range (slice at the call
+  // site): the publisher's result object is shared and every next consume()
+  // resets spawnedSlots — a parked leg resuming across presents would read a
+  // zeroed range and bind nothing (mass-unbind on journalFullRebuild).
+  *_bindPublishedPresentationMeshesSteps(spawnedSlots) {
+    if (!spawnedSlots || spawnedSlots.length <= 0) return;
     const world = this._presentationWorld;
     let visited = 0;
-    for (let index = 0; index < publication.spawnedCount; index++) {
+    for (let index = 0; index < spawnedSlots.length; index++) {
       if ((++visited % 256) === 0) yield;
-      const slot = publication.spawnedSlots[index];
+      const slot = spawnedSlots[index];
       if (world.alive[slot] !== 1) continue;
       const entityId = world.entityIds[slot];
       const entity = resolveWorldPresentationEntity(this.state, entityId);
@@ -21275,6 +21358,14 @@ export const render = {
     if (this._withheldDepthCasters) this._withheldDepthCasters.clear();
     if (this._deferredDepthStageRoots) this._deferredDepthStageRoots.clear();
     if (this._policyStepsParked) this._policyStepsParked.clear();
+    if (this._coverageCollectParked) {
+      for (const cov of this._coverageCollectParked.values()) {
+        if (cov && cov.iter && typeof cov.iter.return === 'function') {
+          try { cov.iter.return(); } catch (_) { /* teardown proceeds */ }
+        }
+      }
+      this._coverageCollectParked.clear();
+    }
     this._depthStageLedgerSkips = 0;
     this._killDepthStageSession();
     this._meshReleaseBatchBegin?.();
@@ -23677,15 +23768,30 @@ export const render = {
       ? this._presentationPublisher.consume()
       : null;
     if (publication && publication.rebuilt) yield* this._rebindPresentationMeshesSteps();
-    else if (publication) yield* this._bindPublishedPresentationMeshesSteps(publication);
+    else if (publication) {
+      yield* this._bindPublishedPresentationMeshesSteps(
+        publication.spawnedSlots
+          ? publication.spawnedSlots.slice(0, publication.spawnedCount)
+          : null);
+    }
 
     if (this._snapshotFence && this._presentationWorld) {
-      const packed = packPresentationWorldToFence(
-        this._presentationWorld,
-        this._snapshotFence,
-        state && state.simTime,
-        this._advancePosePackEpoch(publication),
-      );
+      let packed;
+      if (typeof packPresentationWorldToFenceSteps === 'function') {
+        packed = yield* packPresentationWorldToFenceSteps(
+          this._presentationWorld,
+          this._snapshotFence,
+          state && state.simTime,
+          this._advancePosePackEpoch(publication),
+        );
+      } else {
+        packed = packPresentationWorldToFence(
+          this._presentationWorld,
+          this._snapshotFence,
+          state && state.simTime,
+          this._advancePosePackEpoch(publication),
+        );
+      }
       this._snapshotSourceTick = state && Number.isInteger(state.tick) ? state.tick : 0;
       this._publishSnapshotFenceStats(packed);
     }
@@ -23733,8 +23839,13 @@ export const render = {
           || this._shadowReceiversDirty === true);
       this._shadowRefreshScheduled = scheduleRealtimeShadowRefresh(
         this.renderer, this._keyLight, shadowMapActive);
+      // The dirty-window count can read a stale 0 — feed the gate's own
+      // conservative-on verdict so asteroid submissions don't skip while a
+      // paced recount is in flight (a skipped submission sets no map-dirty,
+      // so a rock-less map could persist frames).
       this._activeShadowCamera = shadowMapActive
-        ? prepareActiveShadowCamera(this.renderer, this._keyLight, this._shadowReceiverCount)
+        ? prepareActiveShadowCamera(this.renderer, this._keyLight,
+            Math.max(1, this._shadowReceiverCount))
         : null;
     }
     this._syncAsteroidInstanceSubmission(this._activeShadowCamera);
@@ -24024,12 +24135,18 @@ export const render = {
     // the range after renderUpdate succeeds, so the dense mirror must not miss that same range merely
     // because the GPU is temporarily unavailable.
     const publication = this._presentationPublisher.consume(presentationFrame);
-    if (publication.rebuilt && publication.appliedDelta !== 0) {
-      // A rebuild supersedes any parked rebind — close it and mint fresh (the
-      // whole-_meshes walk covers whatever the abandoned tail left unbound).
-      // A zero-delta rebuilt feed (rows refreshed, none alloc'd or retired)
-      // skips the re-mint: the parked walk's tail stays valid and re-minting
-      // every ticking present would starve it at the head forever.
+    if (publication.remapped === true
+      || (publication.rebuilt && publication.appliedDelta !== 0)) {
+      // A REMAP (world.clear() or rebuildFromEntities) drops every mesh
+      // binding by construction — the whole-_meshes rebind must mint — and a
+      // fallback diff-apply with real alloc/retire churn needs it too (those
+      // rows never feed spawnedSlots). The old `rebuilt && appliedDelta !== 0`
+      // gate alone missed the remap: appliedDelta is never reset by the
+      // publisher's resetResult, so a journalFullRebuild landing after a quiet/
+      // in-flight fallback read a stale 0 and the whole post-clear respawn
+      // bound through ONE spawned leg that parked and died on the next consume.
+      // A zero-delta rebuilt feed still skips the re-mint: the parked walk's
+      // tail stays valid and re-minting every ticking present would starve it.
       const priorRebind = this._presentationRebindIter;
       if (priorRebind && typeof priorRebind.return === 'function') {
         try { priorRebind.return(); } catch (_) { /* fresh walk supersedes */ }
@@ -24037,10 +24154,17 @@ export const render = {
       this._presentationRebindIter = this._rebindPresentationMeshesSteps();
     } else if (publication && publication.spawnedCount > 0) {
       // A parked walk still owns unbound tail rows the new publication does not
-      // cover — chain it ahead of the spawned range instead of dropping them.
-      const spawnedIter = this._bindPublishedPresentationMeshesSteps(publication);
+      // cover — chain it behind the spawned range instead of dropping them.
+      // Spawned rows bind FIRST: during a suspended rebuild the parked tail
+      // can stretch across presents, and fresh spawns near the player would
+      // pop in late waiting behind it. Per-row lazy checks make the tail
+      // order non-load-bearing and re-binding is idempotent.
+      const spawnedIter = this._bindPublishedPresentationMeshesSteps(
+        publication.spawnedSlots
+          ? publication.spawnedSlots.slice(0, publication.spawnedCount)
+          : null);
       this._presentationRebindIter = this._presentationRebindIter
-        ? this._chainPresentationBindIters(this._presentationRebindIter, spawnedIter)
+        ? this._chainPresentationBindIters(spawnedIter, this._presentationRebindIter)
         : spawnedIter;
     }
     if (this._presentationRebindIter) {
@@ -24078,20 +24202,66 @@ export const render = {
       : (completedPublication && Number.isInteger(completedPublication.tick)
         ? completedPublication.tick
         : (this.state && Number.isInteger(this.state.tick) ? this.state.tick : 0));
+    const packEpoch = this._snapshotFence && this._presentationWorld
+      ? this._advancePosePackEpoch(publication) : 0;
     const snapshotNeedsPack = this._snapshotFence && this._presentationWorld
       && (this._snapshotSourceTick !== completedTick
         || this._snapshotFence.packCount === 0
         || (publication.rebuilt === true && publication.appliedDelta !== 0)
         || publication.applied > 0);
-    if (snapshotNeedsPack) {
-      const packed = packPresentationWorldToFence(
-        this._presentationWorld,
-        this._snapshotFence,
-        this.state && this.state.simTime,
-        this._advancePosePackEpoch(publication),
-      );
-      this._snapshotSourceTick = completedTick;
-      this._publishSnapshotFenceStats(packed);
+    {
+      // The pack pays O(activeCount) inside most presents — parked stepped
+      // iterator under the shared 4ms wall bound. A pose-epoch change
+      // mid-park supersedes the in-flight pack (its copy-path references the
+      // dead pose stream); same-epoch resumes complete it.
+      let pendingPack = this._fencePackPending;
+      if (pendingPack && pendingPack.poseEpoch !== packEpoch) {
+        if (pendingPack.iter && typeof pendingPack.iter.return === 'function') {
+          try { pendingPack.iter.return(); } catch (_) { /* superseded */ }
+        }
+        pendingPack = this._fencePackPending = null;
+      }
+      if ((snapshotNeedsPack || pendingPack) && this._snapshotFence && this._presentationWorld) {
+        if (!pendingPack) {
+          pendingPack = this._fencePackPending = {
+            iter: typeof packPresentationWorldToFenceSteps === 'function'
+              ? packPresentationWorldToFenceSteps(
+                this._presentationWorld,
+                this._snapshotFence,
+                this.state && this.state.simTime,
+                packEpoch)
+              : null,
+            poseEpoch: packEpoch,
+            sourceTick: completedTick,
+          };
+        }
+        if (pendingPack.iter) {
+          const packStart = typeof performance !== 'undefined' && typeof performance.now === 'function'
+            ? performance.now() : Date.now();
+          for (;;) {
+            const step = pendingPack.iter.next();
+            if (step.done) {
+              this._snapshotSourceTick = pendingPack.sourceTick;
+              this._publishSnapshotFenceStats(step.value);
+              this._fencePackPending = null;
+              break;
+            }
+            const packNow = typeof performance !== 'undefined' && typeof performance.now === 'function'
+              ? performance.now() : Date.now();
+            if (packNow - packStart >= 4) break;
+          }
+        } else {
+          const packed = packPresentationWorldToFence(
+            this._presentationWorld,
+            this._snapshotFence,
+            this.state && this.state.simTime,
+            packEpoch,
+          );
+          this._snapshotSourceTick = completedTick;
+          this._publishSnapshotFenceStats(packed);
+          this._fencePackPending = null;
+        }
+      }
     }
     // While the GL context is lost, the renderer can't draw — skip all remaining per-frame work until
     // webglcontextrestored rebuilds GPU resources. The derived publication mirror remains current.
@@ -24232,7 +24402,7 @@ export const render = {
     // an offset from its target; we move both together. No-op unless the shadow map will render.
     if (this._shadowRefreshScheduled) {
       this._activeShadowCamera = prepareActiveShadowCamera(
-        this.renderer, this._keyLight, this._shadowReceiverCount,
+        this.renderer, this._keyLight, Math.max(1, this._shadowReceiverCount),
       );
     }
     const shadowCamera = this._activeShadowCamera || null;
@@ -25251,6 +25421,11 @@ export const render = {
     // casters must re-collect now — restoring live cast flags on unlinked depth
     // variants would link them inside the next presented shadow refresh.
     let parkedReleaseOnDrift = false;
+    // The verdict-release classes (drift, band flip) carry the park's earned
+    // depthNodeScale into the re-collect — a bare re-dirt does not: a mass
+    // dirtySeq release would otherwise mint a private ≤32768-node wallet per
+    // root and stack 8×32k atomic visits inside one pass.
+    let parkedReleaseScaled = false;
     if (scopedSync) {
       // Keep the park: only a whole-root collect may release it.
     } else if (parkedEntry && dirtySeq > parkedEntry.seq) parkedRelease = true;
@@ -25261,13 +25436,13 @@ export const render = {
       // it, so quiet frames never compare the sig string. On a bump the
       // memoized sig compare decides cosmetic-vs-real drift and the release
       // fires on the very next eval instead of waiting out the recheck tick.
-      parkedRelease = parkedReleaseOnDrift = true;
+      parkedRelease = parkedReleaseOnDrift = parkedReleaseScaled = true;
     } else if (parkedEntry && parkedEntry.oqX != null && this._keyLight && this._keyLight.target) {
       const cell = (this._shadowOrthoExtent || 1) / 2;
       const t = this._keyLight.target.position;
       if (Math.round(t.x / cell) !== parkedEntry.oqX
           || Math.round(t.z / cell) !== parkedEntry.oqZ) {
-        parkedRelease = parkedReleaseOnDrift = true;
+        parkedRelease = parkedReleaseOnDrift = parkedReleaseScaled = true;
       }
     } else if (parkedEntry && parkedEntry.denied === true && opts.allowCast === true
         && parkedEntry.deniedAllowCast !== true) {
@@ -25288,7 +25463,7 @@ export const render = {
       // a root parked under one band would keep serving that verdict under
       // the other until the recheck backstop. Plain release: the collect
       // re-verifies under the live band and re-parks if it stands.
-      parkedRelease = true;
+      parkedRelease = parkedReleaseScaled = true;
     }
     if (parkedRelease && parkedReleaseOnDrift && opts.allowCast === false) {
       // Out-of-ortho drift has no promotable follow-on — the withheld subtree
@@ -25324,11 +25499,11 @@ export const render = {
       // allowCast === false, so the clause sees a genuine flip next eval.
       // Only a mint-time denial earns this — an over-cap park re-keyed here
       // would otherwise acquire a release trigger it never earned.
-      if (parkedEntry.parkKind === 'denied' || parkedEntry.denied === true) {
+      if (parkedEntry.parkKind === 'denied') {
         parkedEntry.denied = true;
         parkedEntry.deniedAllowCast = false;
       }
-      parkedRelease = parkedReleaseOnDrift = false;
+      parkedRelease = parkedReleaseOnDrift = parkedReleaseScaled = false;
     }
     if (parkedRelease) {
       parkedMap.delete(root);
@@ -25390,7 +25565,7 @@ export const render = {
       // scaled root, which re-queues and burns the abort cycle it just paid.
       // parkedEntry still references the released entry after the map delete,
       // so its scale carries into this eval's collect.
-      const parkedScale = (parkedRecheck || parkedRelease) && parkedEntry
+      const parkedScale = (parkedRecheck || (parkedRelease && parkedReleaseScaled)) && parkedEntry
         && (parkedEntry.depthNodeScale | 0) > 1
         ? parkedEntry.depthNodeScale : 0;
       const nodeBudget = {
@@ -25515,18 +25690,30 @@ export const render = {
         || (this._coverageCollectParked = new Map());
       let cov = parkedCov.get(root);
       const covSeq = shadowCasterPolicyDirtySeq(root);
-      const covEpoch = shadowCensusEpoch();
-      if (cov && (cov.seq !== covSeq || cov.epoch !== covEpoch)) {
-        if (typeof cov.iter.return === 'function') { try { cov.iter.return(); } catch (_) { /* discard */ } }
-        parkedCov.delete(root);
-        cov = undefined;
+      if (cov && cov.seq !== covSeq) {
+        // Supersede-capped: a dirtySeq storm would livelock the walk (every
+        // re-mint discards progress and coverageWalkInFlight pins forever —
+        // the withhold would never land on a first-touch root). Past the cap
+        // the walk re-keys and keeps its progress; the measured-but-stale
+        // set still applies below and the deferred-gate recheck re-verifies
+        // under the live seq. (The census epoch is deliberately NOT a key:
+        // the candidate set is light-independent, so a bump only discards
+        // progress.)
+        if ((cov.superseded | 0) < 4) {
+          cov.superseded = (cov.superseded | 0) + 1;
+          if (typeof cov.iter.return === 'function') { try { cov.iter.return(); } catch (_) { /* discard */ } }
+          parkedCov.delete(root);
+          cov = undefined;
+        } else {
+          cov.seq = covSeq;
+        }
       }
       if (!cov) {
         cov = {
           iter: collectPotentialShadowCastSubjectsSteps([syncScope],
             { remaining: SHADOW_DEPTH_PASS_NODE_CAP * 8 }),
           seq: covSeq,
-          epoch: covEpoch,
+          superseded: 0,
         };
         parkedCov.set(root, cov);
       }
@@ -25747,7 +25934,7 @@ export const render = {
       if (memo && memo.pendingIter && typeof memo.pendingIter.return === 'function') {
         try { memo.pendingIter.return(); } catch (_) { /* discard */ }
       }
-      memo = this._shadowCensusMemo = { scene, sig: null, epoch, pendingIter: null, pendingEpoch: -1 };
+      memo = this._shadowCensusMemo = { scene, sig: null, epoch, pendingIter: null, pendingEpoch: -1, superseded: 0, stormEpoch: -1 };
     }
     // The re-mint pays its whole-scene walk in small slices across caller
     // invocations (every site above reads this several times a presented pass)
@@ -25755,14 +25942,25 @@ export const render = {
     // conservative direction: a stale sig reads identical-or-older, never
     // ahead. A mid-walk light mutation bumps the epoch, so the pending walk
     // abandons and re-mints rather than stamping a signature mixed across the
-    // mutation.
+    // mutation. A sustained mutation storm would livelock that re-mint
+    // (unbounded mint+discard per call): past the supersede cap the memo pins
+    // the storming epoch and serves the last signature — already the
+    // conservative direction — until a fresh bump re-arms the mint.
     if (!memo.pendingIter || memo.pendingEpoch !== epoch) {
       if (memo.pendingIter && typeof memo.pendingIter.return === 'function') {
         try { memo.pendingIter.return(); } catch (_) { /* discard */ }
+        memo.pendingIter = null;
+        memo.superseded = (memo.superseded | 0) + 1;
       }
-      memo.pendingIter = typeof lightCensusSignatureSteps === 'function'
-        ? lightCensusSignatureSteps(scene) : null;
-      memo.pendingEpoch = epoch;
+      if (memo.stormEpoch !== epoch) {
+        if ((memo.superseded | 0) >= 4) {
+          memo.stormEpoch = epoch;
+        } else {
+          memo.pendingIter = typeof lightCensusSignatureSteps === 'function'
+            ? lightCensusSignatureSteps(scene) : null;
+          memo.pendingEpoch = epoch;
+        }
+      }
     }
     if (memo.pendingIter) {
       const startedAt = typeof performance !== 'undefined' && typeof performance.now === 'function'
@@ -25782,6 +25980,10 @@ export const render = {
         if (shadowCensusEpoch() === memo.pendingEpoch) {
           memo.sig = step.value;
           memo.epoch = memo.pendingEpoch;
+          memo.superseded = 0;
+          memo.stormEpoch = -1;
+        } else {
+          memo.superseded = (memo.superseded | 0) + 1;
         }
       }
     }

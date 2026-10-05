@@ -6,6 +6,7 @@ import {
 } from '../core/presentationJournal.js';
 import {
   collectJournalPresentationEntities,
+  collectJournalPresentationEntitiesChunked,
   resolveWorldPresentationEntity,
 } from '../world/presentationSources.js';
 
@@ -74,6 +75,19 @@ export function createPresentationPublisher(world, state, options = {}) {
   // appliedDelta counts the apply's whole span, not just the completing slice.
   let pendingApplyIter = null;
   let pendingApplyDeltaBase = 0;
+  // Parked journalFullRebuild legs: the world clear paces first (it retires
+  // by captured entity-id, so a destroy apply or slot reuse mid-suspension
+  // can't kill a resident minted after the walk started), then the retained
+  // journal range applies behind it — both bounded per consume instead of
+  // two atomic passes inside the rebuild present.
+  let pendingClearIter = null;
+  let pendingVisit = null;
+  // Parked entity collect feeding a fallback apply — a dense live world used
+  // to pay the whole inline scan inside the fallback consume. A completion
+  // landing on a gate-reuse frame holds here until the next apply.
+  let pendingCollectIter = null;
+  let pendingCollectOut = null;
+  let pendingCollectSample = null;
 
   function resetResult(start, end) {
     result.applied = 0;
@@ -110,6 +124,27 @@ export function createPresentationPublisher(world, state, options = {}) {
     const lifecycleGeneration = presentationFrame
       && Number.isSafeInteger(presentationFrame.lifecycleGeneration)
       ? presentationFrame.lifecycleGeneration : -1;
+    // A parked collect resumes every consume — gate hits that reuse the
+    // existing mirror must not strand it (a live walk frozen behind a
+    // completed tick-count gate would hold the fallback sample hostage
+    // indefinitely). A completion on a reuse frame holds the sample for the
+    // next apply present — same staleness envelope as the minted walk.
+    if (pendingCollectIter) {
+      const collectStart = typeof performance !== 'undefined'
+        && typeof performance.now === 'function' ? performance.now() : Date.now();
+      let collectStep = null;
+      for (;;) {
+        collectStep = pendingCollectIter.next();
+        if (collectStep.done) break;
+        if ((typeof performance !== 'undefined' && typeof performance.now === 'function'
+          ? performance.now() : Date.now()) - collectStart >= 4) break;
+      }
+      if (collectStep && collectStep.done === true) {
+        pendingCollectIter = null;
+        pendingCollectSample = pendingCollectOut;
+        pendingCollectOut = null;
+      }
+    }
     if (!initialized || !presentationFrame || completedTickCount > 0
       || lifecycleGeneration !== lastFallbackLifecycleGeneration) {
       // A stepped journal rebuild mid-publish shares its completed collect on the
@@ -123,7 +158,45 @@ export function createPresentationPublisher(world, state, options = {}) {
       const collectPrefix = sharedCollect ? null
         : (Array.isArray(presentationFrame?.rebuildCollectPrefix)
           ? presentationFrame.rebuildCollectPrefix : null);
-      const sample = sharedCollect || collectPrefix || aliveEntities(state);
+      let sample = sharedCollect || collectPrefix || null;
+      if (!sample) {
+        if (!pendingCollectIter && typeof collectJournalPresentationEntitiesChunked === 'function') {
+          pendingCollectOut = [];
+          pendingCollectIter = collectJournalPresentationEntitiesChunked(state, pendingCollectOut);
+        }
+        if (pendingCollectIter) {
+          const collectStart = typeof performance !== 'undefined'
+            && typeof performance.now === 'function' ? performance.now() : Date.now();
+          let collectStep = null;
+          for (;;) {
+            collectStep = pendingCollectIter.next();
+            if (collectStep.done) break;
+            if ((typeof performance !== 'undefined' && typeof performance.now === 'function'
+              ? performance.now() : Date.now()) - collectStart >= 4) break;
+          }
+          if (collectStep && collectStep.done === true) {
+            pendingCollectIter = null;
+            pendingCollectSample = pendingCollectOut;
+            pendingCollectOut = null;
+          } else {
+            // The collect is still pacing: same in-flight semantics as the
+            // parked diff-apply below — the world keeps its last mirror this
+            // consume rather than paying the atomic scan.
+            lastAppliedSequence = Number.isSafeInteger(end) && end >= 0 ? end : lastAppliedSequence;
+            diagnostics.lastAppliedSequence = lastAppliedSequence;
+            diagnostics.lastError = reason;
+            result.fallback = true;
+            result.valid = false;
+            result.error = reason;
+            spawnedSlots.length = 0;
+            result.spawnedCount = 0;
+            initialized = true;
+            return result;
+          }
+        }
+      }
+      if (!sample) sample = pendingCollectSample || aliveEntities(state);
+      pendingCollectSample = null;
       // Diff-apply while a stepped rebuild is suspended: clear+realloc used to
       // retire every slot and drop every mesh binding on each tick-advanced
       // present. Rows absent from the collect retire, new ids allocate, and
@@ -275,13 +348,19 @@ export function createPresentationPublisher(world, state, options = {}) {
       ? presentationFrame.journalRebuildGeneration >>> 0
       : rebuildGeneration;
     if (fullRebuild && nextRebuildGeneration !== rebuildGeneration) {
-      world.clear();
-      // A clear supersedes any parked diff-apply — resuming it would re-alloc
-      // the stale feed's rows into the fresh world.
+      pendingClearIter = typeof world.clearSteps === 'function'
+        ? world.clearSteps() : null;
+      if (!pendingClearIter) world.clear();
+      // A clear supersedes any parked diff-apply or apply-range — resuming
+      // either would re-alloc the stale feed's rows into the fresh world.
       if (pendingApplyIter && typeof pendingApplyIter.return === 'function') {
         try { pendingApplyIter.return(); } catch (_) { /* discard */ }
       }
       pendingApplyIter = null;
+      if (pendingVisit && pendingVisit.iter && typeof pendingVisit.iter.return === 'function') {
+        try { pendingVisit.iter.return(); } catch (_) { /* discard */ }
+      }
+      pendingVisit = null;
       lastAppliedSequence = frameStart;
       rebuildGeneration = nextRebuildGeneration;
       diagnostics.rebuildGeneration = rebuildGeneration;
@@ -289,6 +368,59 @@ export function createPresentationPublisher(world, state, options = {}) {
       result.rebuilt = true;
       result.remapped = true;
       initialized = true;
+    }
+
+    const pendingNow = () => (typeof performance !== 'undefined'
+      && typeof performance.now === 'function' ? performance.now() : Date.now());
+    if (pendingClearIter) {
+      const clearStart = pendingNow();
+      let clearStep = null;
+      try {
+        for (;;) {
+          clearStep = pendingClearIter.next();
+          if (clearStep.done || pendingNow() - clearStart >= 4) break;
+        }
+      } catch (_) {
+        pendingClearIter = null;
+        return fallbackFromState(journal, 'presentation-clear-failed', frameEnd, presentationFrame);
+      }
+      if (clearStep && clearStep.done === true) {
+        pendingClearIter = null;
+      } else {
+        initialized = true;
+        return result;
+      }
+    }
+    if (pendingVisit) {
+      const visitStart = pendingNow();
+      let visitStep = null;
+      try {
+        for (;;) {
+          visitStep = pendingVisit.iter.next();
+          if (visitStep.done || pendingNow() - visitStart >= 4) break;
+        }
+      } catch (error) {
+        pendingVisit = null;
+        diagnostics.applyFailures++;
+        const message = error && error.message ? error.message : String(error);
+        return fallbackFromState(journal, `presentation-apply-failed:${message}`, frameEnd, presentationFrame);
+      }
+      const visitDelta = pendingVisit.applied - pendingVisit.reported;
+      pendingVisit.reported = pendingVisit.applied;
+      result.applied += visitDelta;
+      diagnostics.appliedRecords += visitDelta;
+      if (visitStep && visitStep.done === true) {
+        lastAppliedSequence = pendingVisit.end;
+        diagnostics.lastAppliedSequence = lastAppliedSequence;
+        diagnostics.lastError = null;
+        pendingVisit = null;
+      } else {
+        lastAppliedSequence = pendingVisit.lastSeq;
+        diagnostics.lastAppliedSequence = lastAppliedSequence;
+        result.spawnedCount = spawnedSlots.length;
+        initialized = true;
+        return result;
+      }
     }
 
     if (frameEnd <= lastAppliedSequence) {
@@ -309,11 +441,48 @@ export function createPresentationPublisher(world, state, options = {}) {
     }
 
     try {
-      result.applied = journal.visitRange(start, frameEnd, scratch, applyRecord);
-      lastAppliedSequence = frameEnd;
-      diagnostics.lastAppliedSequence = lastAppliedSequence;
-      diagnostics.appliedRecords += result.applied;
-      diagnostics.lastError = null;
+      if (typeof journal.visitRangeSteps === 'function') {
+        let visitApplied = 0;
+        let visitLastSeq = lastAppliedSequence;
+        pendingVisit = {
+          end: frameEnd,
+          reported: 0,
+          get applied() { return visitApplied; },
+          get lastSeq() { return visitLastSeq; },
+          iter: journal.visitRangeSteps(start, frameEnd, scratch, (record) => {
+            applyRecord(record);
+            visitApplied++;
+            visitLastSeq = record.sequence;
+          }),
+        };
+        const visitStart = pendingNow();
+        let visitStep = null;
+        for (;;) {
+          visitStep = pendingVisit.iter.next();
+          if (visitStep.done || pendingNow() - visitStart >= 4) break;
+        }
+        result.applied += pendingVisit.applied;
+        pendingVisit.reported = pendingVisit.applied;
+        diagnostics.appliedRecords += pendingVisit.applied;
+        if (visitStep && visitStep.done === true) {
+          lastAppliedSequence = frameEnd;
+          diagnostics.lastAppliedSequence = lastAppliedSequence;
+          diagnostics.lastError = null;
+          pendingVisit = null;
+        } else {
+          lastAppliedSequence = pendingVisit.lastSeq;
+          diagnostics.lastAppliedSequence = lastAppliedSequence;
+          result.spawnedCount = spawnedSlots.length;
+          initialized = true;
+          return result;
+        }
+      } else {
+        result.applied = journal.visitRange(start, frameEnd, scratch, applyRecord);
+        lastAppliedSequence = frameEnd;
+        diagnostics.lastAppliedSequence = lastAppliedSequence;
+        diagnostics.appliedRecords += result.applied;
+        diagnostics.lastError = null;
+      }
       result.spawnedCount = spawnedSlots.length;
       initialized = true;
       return result;

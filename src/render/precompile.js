@@ -229,10 +229,13 @@ export function* syncVisiblePointLightBudgetSteps(scene, video, nodesPerSlice = 
         staging = object;
         continue;
       }
-      if (ancestorVisible && object.isPointLight === true) visible += 1;
+      // traverseVisible parity: visibility inherits under `!== false` (an
+      // undefined `.visible` reads visible), not `=== true`. The old strict
+      // compare diverged both the count and the descent on the node's own bit.
+      const nodeVisible = ancestorVisible && object.visible !== false;
+      if (nodeVisible && object.isPointLight === true) visible += 1;
       const children = object.children;
-      const childVisible = ancestorVisible && object.visible === true;
-      if (children) for (let i = children.length - 1; i >= 0; i -= 1) stack.push([children[i], childVisible]);
+      if (children) for (let i = children.length - 1; i >= 0; i -= 1) stack.push([children[i], nodeVisible]);
     }
   }
   if (staging) {

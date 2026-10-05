@@ -177,9 +177,7 @@ export function revealSubjectForCompile(subject) {
     if ('frustumCulled' in object) object.frustumCulled = false;
     if (object.isInstancedMesh === true && !(Number(object.count) > 0)) object.count = 1;
   };
-  visit(subject);
-  if (typeof subject.traverse === 'function') subject.traverse(visit);
-  return () => {
+  const restore = () => {
     for (const entry of objectState) {
       entry.object.visible = entry.visible;
       if ('frustumCulled' in entry.object) entry.object.frustumCulled = entry.frustumCulled;
@@ -190,6 +188,101 @@ export function revealSubjectForCompile(subject) {
       }
     }
   };
+  try {
+    visit(subject);
+    if (typeof subject.traverse === 'function') subject.traverse(visit);
+  } catch (err) {
+    // A mid-mint throw (a hostile getter under traverse) must not leak the
+    // revealed prefix — the caller never receives a restore closure on throw.
+    try { restore(); } catch (_) { /* rethrow below */ }
+    throw err;
+  }
+  return restore;
+}
+
+/**
+ * Stepped twin of revealSubjectForCompile for the whole-scene mint — the boot
+ * cook's reveal+restore pays ~2×O(scene) and was the largest unyielded
+ * loading span. Identical pre-order (explicit stack; THREE's traverse is the
+ * same order, and `seen` dedupes the double-visit the sync version tolerates),
+ * identical visit semantics, identical restore contents. Returns
+ * { restore, restoreSteps }: `restore` is the same sync closure the sync twin
+ * returns; `restoreSteps` paces the restore in the same slices when the caller
+ * can drive a generator.
+ */
+export function* revealSubjectForCompileSteps(subject, sliceEvery = 256) {
+  if (!subject) return { restore: () => {}, restoreSteps: null };
+  const objectState = [];
+  const seen = new Set();
+  const drawRangeGeometries = new Set();
+  const every = Math.max(1, Math.floor(Number(sliceEvery) || 1));
+  const visit = (object) => {
+    if (!object || seen.has(object)) return;
+    seen.add(object);
+    if (object.userData && object.userData.authoredReadableFallbackLayer === true) return;
+    const requiresGeometry = object.isMesh === true || object.isSkinnedMesh === true
+      || object.isInstancedMesh === true || object.isPoints === true
+      || object.isLine === true || object.isSprite === true;
+    if (requiresGeometry && 'geometry' in object && object.geometry == null) {
+      objectState.push({ object, visible: object.visible, frustumCulled: object.frustumCulled });
+      object.visible = false;
+      return;
+    }
+    const entry = {
+      object,
+      visible: object.visible,
+      frustumCulled: object.frustumCulled,
+    };
+    if (object.isInstancedMesh === true) entry.count = object.count;
+    const geometry = object.geometry;
+    if (geometry && geometry.drawRange && !drawRangeGeometries.has(geometry)) {
+      drawRangeGeometries.add(geometry);
+      entry.drawRange = geometry.drawRange;
+      entry.drawRangeStart = geometry.drawRange.start;
+      entry.drawRangeCount = geometry.drawRange.count;
+      if (!(Number(geometry.drawRange.count) > 0)) {
+        geometry.drawRange.start = 0;
+        geometry.drawRange.count = drawableRangeCount(geometry);
+      }
+    }
+    objectState.push(entry);
+    object.visible = true;
+    if ('frustumCulled' in object) object.frustumCulled = false;
+    if (object.isInstancedMesh === true && !(Number(object.count) > 0)) object.count = 1;
+  };
+  const applyRestore = function* () {
+    for (let i = 0; i < objectState.length; i++) {
+      if ((i % every) === 0 && i > 0) yield;
+      const entry = objectState[i];
+      entry.object.visible = entry.visible;
+      if ('frustumCulled' in entry.object) entry.object.frustumCulled = entry.frustumCulled;
+      if (entry.count !== undefined) entry.object.count = entry.count;
+      if (entry.drawRange) {
+        entry.drawRange.start = entry.drawRangeStart;
+        entry.drawRange.count = entry.drawRangeCount;
+      }
+    }
+  };
+  const restore = () => {
+    const it = applyRestore();
+    let step = it.next();
+    while (!step.done) step = it.next();
+  };
+  let visited = 0;
+  const stack = [subject];
+  try {
+    while (stack.length > 0) {
+      const object = stack.pop();
+      if ((++visited % every) === 0) yield;
+      visit(object);
+      const children = object && object.children;
+      if (children) for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
+    }
+  } catch (err) {
+    try { restore(); } catch (_) { /* rethrow below */ }
+    throw err;
+  }
+  return { restore, restoreSteps: applyRestore() };
 }
 
 /**

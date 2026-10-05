@@ -125,6 +125,38 @@ export function collectStartupTextures(subjects) {
   return [...textures];
 }
 
+/**
+ * Stepped twin — identical traversal (explicit stack, same pre-order as
+ * traverse) and identical texture-set contents; yields every `sliceEvery`
+ * visited objects so an async admission driver paces a cohort's collect
+ * instead of paying the whole traverse inside one task.
+ */
+export function* collectStartupTexturesSteps(subjects, sliceEvery = 256) {
+  const textures = new Set();
+  const every = Math.max(1, Math.floor(Number(sliceEvery) || 1));
+  let visited = 0;
+  for (const root of subjectRoots(subjects)) {
+    if (root && root.isTexture === true) {
+      textures.add(root);
+      continue;
+    }
+    if (!root || typeof root.traverse !== 'function') continue;
+    const stack = [root];
+    while (stack.length > 0) {
+      const object = stack.pop();
+      if (!object) continue;
+      if ((++visited % every) === 0) yield;
+      const materials = Array.isArray(object.material)
+        ? object.material
+        : object.material ? [object.material] : [];
+      for (const material of materials) materialTextures(material, textures);
+      const children = object.children;
+      if (children) for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
+    }
+  }
+  return [...textures];
+}
+
 function drawableHasWork(object, options = {}) {
   if (!object || !object.geometry) return false;
   if (!(object.isMesh || object.isPoints || object.isLine || object.isSprite)) return false;
