@@ -534,8 +534,10 @@ function rebuildPinFacts(state, player, facts, simTime) {
   let nextMiningId = null;
   let nextDockId = null;
   let nextHailId = null;
-  if (player && player.data && player.data.miningTargetId != null) {
-    nextMiningId = player.data.miningTargetId;
+  // The mining beam's lock lives on the player RECORD (state.player.miningTargetId —
+  // written by mining.js _setLockTargetId), not on the player entity's .data.
+  if (state.player && state.player.miningTargetId != null) {
+    nextMiningId = state.player.miningTargetId;
   }
   const playerCombat = player && player.data && player.data.combat;
   if (playerCombat && playerCombat.targetId != null) nextTargetId = playerCombat.targetId;
@@ -1034,7 +1036,9 @@ function tryEarlyQuietClassifyLatch(state, runtime, player, origin) {
   // Cheap pin-intent smoke: mining/dock/hail/target flips must wake without waiting for rescan.
   const data = player.data || {};
   const combat = data.combat || {};
-  if (latch.miningId !== (data.miningTargetId ?? null)) return false;
+  const miningId = state.player && state.player.miningTargetId != null
+    ? state.player.miningTargetId : null;
+  if (latch.miningId !== miningId) return false;
   if (latch.dockId !== (data.dockTargetId ?? null)) return false;
   if (latch.hailId !== (data.hailTargetId ?? null)) return false;
   if (latch.targetId !== (combat.targetId ?? data.targetId ?? null)) return false;
@@ -1098,7 +1102,8 @@ function armEarlyQuietClassifyLatch(state, runtime, player, origin) {
     membership: entityIndexVersion(state),
     staticAuthority: entityIndexPhysicsStaticVersion(state),
     maxSpeed: Math.max(TABLE_REFERENCE_SPEED_WU, finite(player && player.maxSpeed)),
-    miningId: data.miningTargetId ?? null,
+    miningId: (state.player && state.player.miningTargetId != null)
+      ? state.player.miningTargetId : null,
     dockId: data.dockTargetId ?? null,
     hailId: data.hailTargetId ?? null,
     targetId: combat.targetId ?? data.targetId ?? null,

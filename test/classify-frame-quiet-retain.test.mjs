@@ -117,7 +117,8 @@ test('frame quiet retain wakes on mining pinFacts', () => {
   step(state);
   step(state);
   step(state);
-  state.player.data.miningTargetId = state.rocks[0].id;
+  // The real writer is mining.js _setLockTargetId → state.player.miningTargetId (D173).
+  state.player.miningTargetId = state.rocks[0].id;
   const rt = step(state);
   assert.notEqual(rt.classifyMode, 'frame-retain');
 });

@@ -111,7 +111,23 @@ test('mining pin intent wakes early quiet latch', () => {
   const state = makeWorld();
   warmQuiet(state);
   assert.equal(step(state).classifyMode, 'early-quiet-latch');
+  // mining.js _setLockTargetId writes the player RECORD (state.player.miningTargetId), never
+  // the entity's .data — the pin must wake on the record write (D173).
+  state.player.miningTargetId = state.rocks[0].id;
+  const woke = step(state);
+  assert.notEqual(woke.classifyMode, 'early-quiet-latch');
+});
+
+test('an entity-data mining write is a dead location and does not wake the latch', () => {
+  const state = makeWorld();
+  warmQuiet(state);
+  assert.equal(step(state).classifyMode, 'early-quiet-latch');
+  // D173: production never writes entity.data.miningTargetId — a write there must not
+  // pretend to arm the pin (it used to pass while the real record write slept).
   state.player.data.miningTargetId = state.rocks[0].id;
+  const held = step(state);
+  assert.equal(held.classifyMode, 'early-quiet-latch');
+  state.player.miningTargetId = state.player.data.miningTargetId;
   const woke = step(state);
   assert.notEqual(woke.classifyMode, 'early-quiet-latch');
 });

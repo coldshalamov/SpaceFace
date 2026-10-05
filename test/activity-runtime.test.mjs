@@ -369,8 +369,8 @@ test('mining lock and authored activity slots stay exact off the table', () => {
   const player = ship(1, 0, { isPlayer: true, team: 0 });
   const locked = rock(12, 4000);
   const clast = rock(13, 4500, { data: { activityObjectSlotId: 'ceres_seam_ore_clast', fieldId: 'f_ceres_1' } });
-  player.data = { ...(player.data || {}), miningTargetId: 12 };
-  const state = makeState([player, locked, clast]);
+  // mining.js writes the lock on the player record, not the entity's data (D173).
+  const state = makeState([player, locked, clast], { player: { miningTargetId: 12 } });
   ensureActivityClassified(state);
   assert.equal(locked.activity.simTier, SIM_TIER.S0_EXACT);
   assert.equal(clast.activity.simTier, SIM_TIER.S0_EXACT);
