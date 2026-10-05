@@ -58,6 +58,7 @@ import {
   refreshEntitySelection,
   resolveEntitySelection,
 } from './sim/stableSelection.js';
+import { canNavigateToKnowledge, discoveryKnowledge } from './sim/discoveryKnowledge.js';
 import {
   careersTabAvailability, careersTabHtml, careersOverviewLineHtml,
 } from './map/careersReadout.js';
@@ -2170,6 +2171,35 @@ export function buildMapModel(state, zoom, opts) {
 // ---------------------------------------------------------------------------------------------
 // CLICK -> ui:setCourse payload resolution (pure; the screen just emits what this returns).
 // ---------------------------------------------------------------------------------------------
+
+/**
+ * System-chart click records for unresolved scanner pings in one sector.
+ * The marks come from discoveryKnowledge (tier ping only), so a rumored wreck's
+ * exact position never becomes this course. Same name and arrival the local map uses.
+ */
+export function chartPingCourseTargets(state, sectorId) {
+  const wanted = sectorId == null ? null : String(sectorId);
+  const targets = [];
+  for (const entry of discoveryKnowledge(state).entries) {
+    if (!entry || entry.tier !== 'ping' || entry.source !== 'ping' || !entry.pos) continue;
+    if (canNavigateToKnowledge(entry)) continue;
+    if (wanted && entry.sectorId !== wanted) continue;
+    const prefix = `ping:${entry.sectorId}:`;
+    const pingId = entry.id.startsWith(prefix) ? entry.id.slice(prefix.length) : entry.id;
+    targets.push({
+      id: entry.id,
+      kind: 'ping',
+      name: entry.label || 'Unresolved contact',
+      courseLabel: entry.label || 'Unresolved contact',
+      x: entry.pos.x,
+      z: entry.pos.z,
+      targetEntityId: pingId,
+      courseArrivalRadius: 44,
+      sectorId: entry.sectorId,
+    });
+  }
+  return targets;
+}
 
 /**
  * Resolve a clicked map target into the exact payload for the EXISTING "ui:setCourse" event.
@@ -9597,22 +9627,19 @@ _drawLocal(g, state, w, h) {
         }));
       }
 
-      // Scanner pings: where the sweep found something unclassified — ice, data in motion.
-      const pings = state.world && state.world.scanPings && state.world.scanPings[model.sectorId];
-      if (Array.isArray(pings)) {
-        for (const ping of pings) {
-          if (!ping || !ping.pos) continue;
-          const x = sx(ping.pos.x), y = sz(ping.pos.z);
-          if (offView(x, y)) continue;
-          g.save();
-          g.fillStyle = CHART_INK.ice(0.16);
-          g.beginPath(); g.arc(x, y, 9, 0, Math.PI * 2); g.fill();
-          g.fillStyle = CHART_INK.ice(0.9);
-          g.beginPath();
-          g.moveTo(x, y - 5); g.lineTo(x + 5, y); g.lineTo(x, y + 5); g.lineTo(x - 5, y);
-          g.closePath(); g.fill();
-          g.restore();
-        }
+      // Scanner pings: the sweep's unclassified mark is a named course, same as the local map.
+      for (const ping of chartPingCourseTargets(state, model.sectorId)) {
+        const x = sx(ping.x), y = sz(ping.z);
+        if (offView(x, y)) continue;
+        g.save();
+        g.fillStyle = CHART_INK.ice(0.16);
+        g.beginPath(); g.arc(x, y, 9, 0, Math.PI * 2); g.fill();
+        g.fillStyle = CHART_INK.ice(0.9);
+        g.beginPath();
+        g.moveTo(x, y - 5); g.lineTo(x + 5, y); g.lineTo(x, y + 5); g.lineTo(x - 5, y);
+        g.closePath(); g.fill();
+        g.restore();
+        this._clickTargets.push({ ...ping, sx: x, sy: y, radiusPx: 16 });
       }
     }
 
