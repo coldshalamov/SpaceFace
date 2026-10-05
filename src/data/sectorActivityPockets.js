@@ -1660,7 +1660,8 @@ const sednaRoundsObjects = Object.freeze([
 
 const sednaRimObjects = Object.freeze([
   // The plate the cutter is working: a sheared fragment of the arc, close in on the post side —
-  // the wreck nobody is hurrying. A real authored body the route marks can name.
+  // the wreck nobody is hurrying. Descriptor-only, like every non-Ceres object slot: the
+  // targetRef gives the route marks a name to point at, not a materialized body.
   objectSlot({
     id: 'sedna_arc_sheared_plate',
     pocketId: sednaRimId,
@@ -1705,8 +1706,9 @@ const sednaRimActors = Object.freeze([
     ]),
   // The wreck nobody is hurrying: a cutter working the arc's sheared plate on a long, slow
   // quarter around the curve — 118.9 deg / 200.0 WU — the widest sweep that still goes around
-  // the hulk instead of through it. The face mark resolves to the authored plate; the far leg
-  // is the arc's far curve, the same site one corner on.
+  // the hulk instead of through it. The face mark's targetRef names the plate (descriptor-only,
+  // so the cut is presentation work — no custody); the far leg is the arc's far curve, the same
+  // site one corner on.
   sednaActor('sedna_arc_salvor', sednaRimId, 'salvor', 'salvor', point(30, 40),
     'sedna_arc_salvage_loop', 40, [
       mark('sedna_arc_cut_face', 100, 60, 'object:sedna_arc_sheared_plate'),
