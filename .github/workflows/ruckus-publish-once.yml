@@ -6,6 +6,9 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
+defaults:
+  run:
+    shell: bash
 concurrency:
   group: ruckus-character-publish
   cancel-in-progress: false
@@ -67,14 +70,14 @@ jobs:
           node-version: '22'
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Install offline asset authoring tool
-        run: sudo apt-get update -qq && sudo apt-get install -y blender
+        run: sudo apt-get update -qq && sudo apt-get install -y blender python3-numpy
       - name: Build editable source, three LODs, core, and rendered previews
         run: |
           mkdir -p artifacts/ruckus
           blender --version | tee artifacts/ruckus/blender-version.txt
-          blender -b --threads 4 --python tools/blender/characters/ruckus.py -- --render 2>&1 | tee artifacts/ruckus/blender.log
-          node tools/ruckus/pack-model.mjs | tee artifacts/ruckus/model-pack.log
-          node tools/ruckus/integrate.mjs | tee artifacts/ruckus/integration.log
+          blender -b --threads 4 --python-exit-code 1 --python tools/blender/characters/ruckus.py -- --render 2>&1 | tee artifacts/ruckus/blender.log
+          node tools/ruckus/pack-model.mjs 2>&1 | tee artifacts/ruckus/model-pack.log
+          node tools/ruckus/integrate.mjs 2>&1 | tee artifacts/ruckus/integration.log
       - name: Verify real physics, models, neighboring regressions, registry parity
         run: node --test test/ruckus.test.mjs test/ruckus-model.test.mjs test/bracket.test.mjs test/character-far-actor-residency.test.mjs test/sg02-yaw-mapping.test.mjs test/authoritative-manifest.test.mjs 2>&1 | tee artifacts/ruckus/tests.log
       - name: Install browser
