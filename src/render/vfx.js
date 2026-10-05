@@ -2430,8 +2430,10 @@ export const vfx = {
       this._pCol[dst3] = old._cr0[src] + (old._cr1[src] - old._cr0[src]) * t;
       this._pCol[dst3 + 1] = old._cg0[src] + (old._cg1[src] - old._cg0[src]) * t;
       this._pCol[dst3 + 2] = old._cb0[src] + (old._cb1[src] - old._cb0[src]) * t;
-      this._pSize[dst] = old._size0[src] + (old._size1[src] - old._size0[src]) * t;
-      this._pAlpha[dst] = 1 - t;
+      this._pSize[dst] = particleLifeSize(old._size0[src], old._size1[src], t);
+      let mSeed = (old._particleAdmissionSerial[src] * 0.618033988749895) % 1;
+      if (mSeed < 0) mSeed += 1;
+      this._pAlpha[dst] = particleLifeAlpha(t, mSeed);
       this._pTrailAxis[dst] = old._particleTrailAxis[src];
       this._pTrailStretch[dst] = old._particleTrailStretch[src];
       this._alive[dst] = 1;
@@ -16062,6 +16064,7 @@ export const vfx = {
     const pos = this._pPos, col = this._pCol, size = this._pSize, alpha = this._pAlpha;
     const active = this._activeParticles;
     const packedSlots = this._pPackedParticleSlots;
+    const admissionSerials = this._particleAdmissionSerial;
     let cursor = 0;
     while (cursor < this._liveCount) {
       const i = active[cursor];
@@ -16089,8 +16092,10 @@ export const vfx = {
       col[i3] = this._cr0[i] + (this._cr1[i] - this._cr0[i]) * t;
       col[i3 + 1] = this._cg0[i] + (this._cg1[i] - this._cg0[i]) * t;
       col[i3 + 2] = this._cb0[i] + (this._cb1[i] - this._cb0[i]) * t;
-      size[cursor] = this._size0[i] + (this._size1[i] - this._size0[i]) * t;
-      alpha[cursor] = 1 - t;
+      let seed = admissionSerials ? (admissionSerials[i] * 0.618033988749895) % 1 : 0.5;
+      if (seed < 0) seed += 1;
+      size[cursor] = particleLifeSize(this._size0[i], this._size1[i], t);
+      alpha[cursor] = particleLifeAlpha(t, seed);
       if (!packedSlots || packedSlots[cursor] !== i) {
         this._pTrailAxis[cursor] = this._particleTrailAxis[i];
         this._pTrailStretch[cursor] = this._particleTrailStretch[i];
@@ -16137,7 +16142,10 @@ export const vfx = {
       s.x += s.vx * dt;
       s.z += s.vz * dt;
       const scale = s.size0 + (s.size1 - s.size0) * t;
-      const op = s.op0 * (1 - t * 0.85);
+      // Hold the authored streak brightness, then erode the final stretch to nothing:
+      // the streak runs out of material instead of popping out while still 15% visible.
+      const erode = t < 0.55 ? 1 : 1 - smoothstep01((t - 0.55) / 0.45);
+      const op = s.op0 * (1 - t * 0.85) * erode;
       this._writeTrailStreakInstance(i, cursor, scale, op);
       cursor++;
     }
@@ -16169,9 +16177,13 @@ export const vfx = {
       if (t >= 1) { this._retireSprite(i); continue; }
       let scale, op;
       if (s.kind === SPR_RING) {
-        const e = easeOutCubic(t);
+        // A shock front arrives early, then cools in place: it reaches its radius while
+        // radiance is still falling, instead of expanding at full brightness to a uniform
+        // fade that dies exactly at maximum extent. Per-seed timing desynchronizes
+        // simultaneous rings so they never share one terminal beat.
+        const e = easeOutCubic(Math.min(1, t * (1.25 + 0.5 * s.seed)));
         scale = s.size0 + (s.size1 - s.size0) * e;
-        op = s.op0 * (1 - t);
+        op = s.op0 * Math.pow(1 - t, 1.15 + 0.5 * s.seed);
       } else if (s.kind === SPR_FRESNEL) {
         // shield ripple: snap out to full radius fast (rim feel), then a short bright pulse fade
         const e = easeOutCubic(Math.min(1, t * 2.2));
@@ -16180,7 +16192,9 @@ export const vfx = {
         op = s.op0 * (1 - t) * (0.6 + 0.4 * Math.cos(t * Math.PI * 3));
         if (op < 0) op = 0;
       } else if (s.kind === SPR_PUFF) {
-        scale = s.size0 + (s.size1 - s.size0) * t;
+        // Billow then settle: dust reaches most of its dilution early and hangs as a
+        // residual volume, instead of expanding at constant rate until the frame it dies.
+        scale = s.size0 + (s.size1 - s.size0) * spritePuffGrowth(t, s.seed);
         op = s.op0 + (s.op1 - s.op0) * t;
         s.x += s.vx * dt; s.z += s.vz * dt;
       } else if (s.kind === SPR_COMBUSTION) {
@@ -16255,7 +16269,7 @@ export const vfx = {
     for (let orderIndex = 0; orderIndex < smokeCount; orderIndex++) {
       const s = st[smokeOrder[orderIndex]];
       const t = s.age / s.life;
-      const scale = s.size0 + (s.size1 - s.size0) * t;
+      const scale = s.size0 + (s.size1 - s.size0) * spritePuffGrowth(t, s.seed);
       writeInstancedSpriteFields(
         this._spriteBatches,
         'smoke',
@@ -16918,6 +16932,40 @@ function disposeVfxRoot(root, state) {
 
 function dirOf(rot) { return { x: Math.cos(rot), z: Math.sin(rot) }; }
 function easeOutCubic(x) { return 1 - Math.pow(1 - x, 3); }
+function smoothstep01(x) {
+  const t = x < 0 ? 0 : x > 1 ? 1 : x;
+  return t * t * (3 - 2 * t);
+}
+
+// Pooled-particle lifecycle: ignition is instant (a hit has no spool-up), radiance holds
+// while the fragment is compact and hot, then material erodes to nothing exactly at the
+// retirement plane. The stable per-element seed staggers hold and cooling rate, so a burst
+// thins out as fragments run out at different moments instead of blinking off together.
+function particleLifeAlpha(t, seed) {
+  const hold = 0.08 + 0.14 * seed;
+  if (t <= hold) return 1;
+  const u = (t - hold) / (1 - hold);
+  return u >= 1 ? 0 : Math.pow(1 - u, 1.5 + 1.4 * seed);
+}
+
+// Matter rhythm follows what the fragment is: dispersing matter (smoke, dust) billows out
+// fast then settles into its residual volume; a cooling fragment holds its size while hot,
+// then collapses late. Authored size0->size1 direction selects the curve.
+function particleLifeSize(size0, size1, t) {
+  if (size1 > size0) {
+    const g = 1 - (1 - t) * (1 - t);
+    return size0 + (size1 - size0) * g;
+  }
+  if (size1 < size0) {
+    const s = Math.pow(1 - t, 1.8);
+    return size1 + (size0 - size1) * s;
+  }
+  return size0;
+}
+
+// Smoke/dust billow shared by both sprite publish passes: fast early dilation, settling
+// tail, with per-seed rate so simultaneous puffs never dilate in lockstep.
+function spritePuffGrowth(t, seed) { return 1 - Math.pow(1 - t, 1.6 + seed); }
 
 function budgetInt(value) {
   const n = Number(value);
