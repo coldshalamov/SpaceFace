@@ -1600,6 +1600,169 @@ if (new Set(TETHYS_POCKET_ACTOR_SLOT_ORDER).size !== TETHYS_POCKET_ACTOR_SLOT_OR
 assertDistinctRouteTopology(TETHYS_ACTIVITY_POCKETS, TETHYS_ROUTE_TOPOLOGY, 'Tethys');
 
 // ───────────────────────────────────────────────────────────────────────────────────────────────
+// CR-HOLLOW — Sedna Dark: the occupied-quiet day. The last frontier sector runs trafficPerMin 0 —
+// authored silence — yet its own material already promised a watch nobody could see: the Sedna
+// Survey Post is Helix's sensor desk at the dark rim, charted "Sensors and hull patches at the
+// dark rim; no fuel, no rescue, few questions" (station_sedna), and past every authored zone the
+// Ringworld Arc waits — "a colossal arc segment of an ancient orbital megastructure orbiting the
+// frozen dark" (poi_sedna_ringworld). These pockets are that promise made visible — not density:
+// two pockets, four bodies. A repair tender and a survey rig make the survey rounds out of the
+// post toward the arc, and at the rim a drift-watcher holds the post's bearing while a salvage
+// cutter works a sheared plate off the dead megastructure — a wreck nobody is hurrying. The
+// hush is authored: nothing here is lawful (Helix is paper; its presence is the audit desk, not
+// a hull), nothing arrives shooting, and the watcher's crawl is deliberately the slowest route
+// in the module — parked is a speed, not a missing route. Same band and topology laws as Ceres;
+// no earlier pocket id is copied. Bearings are taken from the geography that exists: the tender's
+// arc leg aims from station_sedna at the Ringworld Arc's true bearing, and the watcher's post-line
+// mark aims back down the same line at the post's true bearing — the rounds are one string.
+// ───────────────────────────────────────────────────────────────────────────────────────────────
+
+export const SEDNA_ACTIVITY_SECTOR_ID = 'sector_sedna_dark';
+/** Two pockets × two actors: the rounds at the post, the watch at the rim. Quiet by count. */
+export const SEDNA_AUTHORED_ACTIVITY_CAPACITY = 4;
+
+const sednaZones = requireArray(SECTOR_ZONES[SEDNA_ACTIVITY_SECTOR_ID], 'Sedna sector zones');
+const sednaAnchors = requireRecord(SECTOR_ANCHORS[SEDNA_ACTIVITY_SECTOR_ID], 'Sedna sector anchors');
+const sednaSurveyZone = findById(sednaZones, 'zone_sedna_survey', 'Sedna survey zone');
+const stationSedna = findById(sednaAnchors.stations, 'station_sedna', 'Sedna survey post anchor');
+const ringworldPoi = findById(sednaAnchors.pois, 'poi_sedna_ringworld', 'Sedna Ringworld Arc POI');
+
+// The post stands at its zone's heart; the arc stands past every zone — the rim is the point.
+assertSamePoint(stationSedna.pos, sednaSurveyZone.center, 'station_sedna / zone_sedna_survey');
+
+const sednaRoundsId = 'sedna_survey_rounds';
+const sednaRimId = 'sedna_rim_watch';
+
+function sednaActor(id, pocketId, role, jobKind, spawn, routeId, durationS, marks, { lawful = false, receiptType = null } = {}) {
+  return actor({
+    id,
+    pocketId,
+    namespace: 'sedna',
+    presentationRole: role,
+    jobKind,
+    lawful,
+    passive: true,
+    spawnOffset: spawn,
+    route: route({ id: routeId, jobKind, durationS, receiptType, marks }),
+  });
+}
+
+const sednaRoundsObjects = Object.freeze([
+  objectSlot({
+    id: 'sedna_post_supply_pod',
+    pocketId: sednaRoundsId,
+    kind: 'cargo_staging_pod',
+    offset: point(55, -40),
+    runtimeOwner: 'world',
+    targetRef: 'object:sedna_post_supply_pod',
+  }),
+]);
+
+const sednaRimObjects = Object.freeze([
+  // The plate the cutter is working: a sheared fragment of the arc, close in on the post side —
+  // the wreck nobody is hurrying. A real authored body the route marks can name.
+  objectSlot({
+    id: 'sedna_arc_sheared_plate',
+    pocketId: sednaRimId,
+    kind: 'grave_shard',
+    offset: point(-48, 30),
+    runtimeOwner: 'world',
+    targetRef: 'object:sedna_arc_sheared_plate',
+  }),
+]);
+
+const sednaRoundsActors = Object.freeze([
+  // The post's own sentence: a survey tender making the rounds between the post and the arc.
+  // Transit lane, 179.6 deg / 224.9 WU — the one route at Sedna that still runs straight through
+  // its anchor, because the round between two fixed points IS a lane. The arc leg sits on the
+  // Ringworld Arc's true bearing from the post (12.9 deg vs the arc's own 13.0); the post leg
+  // resolves to the service berth the chart note sells — sensors and hull patches.
+  sednaActor('sedna_rounds_tender', sednaRoundsId, 'tender', 'surveyor', point(40, -30),
+    'sedna_rounds_tender_run', 34, [
+      mark('sedna_tender_arc_leg', 109, 25, 'activity:sedna-arc-run'),
+      mark('sedna_tender_post_leg', -110, -26, 'station:station_sedna:service-berth'),
+    ]),
+  // The dishes half: "Sensors" is the post's first service, and a sensor post earns it by walking
+  // a scan wedge across the quiet quadrant the tender's lane does not cross. Tight wedge,
+  // 71.3 deg / 132.0 WU — close, repetitive scan work beside one hull of air.
+  sednaActor('sedna_rounds_dish', sednaRoundsId, 'surveyor', 'surveyor', point(-35, 45),
+    'sedna_dish_sweep_loop', 30, [
+      mark('sedna_dish_sweep_a', 66, 92, 'activity:sedna-dish-sweep-a'),
+      mark('sedna_dish_sweep_b', -66, 92, 'activity:sedna-dish-sweep-b'),
+    ]),
+]);
+
+const sednaRimActors = Object.freeze([
+  // The rim's own sentence: a drift-watcher parked at the arc, holding the post's line. Tightest
+  // wedge and shortest span in the sector, 42.7 deg / 81.6 WU over 44 s — under 2 WU/s, because a
+  // parked watch is work at walking pace, not a loiter. The post-line mark sits on station_sedna's
+  // true bearing back from the arc (-166.7 deg vs the post's own -167.0); the dark leg turns a
+  // corner toward the empty rim the cadence pin still points into.
+  sednaActor('sedna_drift_watcher', sednaRimId, 'surveyor', 'surveyor', point(-30, 20),
+    'sedna_rim_watch_loop', 44, [
+      mark('sedna_watch_post_line', -110, -26, 'activity:sedna-watch-post-line'),
+      mark('sedna_watch_dark_leg', -62, -92, 'activity:sedna-watch-dark'),
+    ]),
+  // The wreck nobody is hurrying: a cutter working the arc's sheared plate on a long, slow
+  // quarter around the curve — 118.9 deg / 200.0 WU — the widest sweep that still goes around
+  // the hulk instead of through it. The face mark resolves to the authored plate; the far leg
+  // is the arc's far curve, the same site one corner on.
+  sednaActor('sedna_arc_salvor', sednaRimId, 'salvor', 'salvor', point(30, 40),
+    'sedna_arc_salvage_loop', 40, [
+      mark('sedna_arc_cut_face', 100, 60, 'object:sedna_arc_sheared_plate'),
+      mark('sedna_arc_far_face', -100, 58, 'activity:sedna-arc-far-face'),
+    ]),
+]);
+
+export const SEDNA_ACTIVITY_POCKETS = Object.freeze([
+  pocket({
+    id: sednaRoundsId,
+    label: 'Survey Rounds',
+    identity: Object.freeze({ zoneId: sednaSurveyZone.id, stationId: stationSedna.id }),
+    anchor: canonicalAnchor({
+      kind: 'station', id: stationSedna.id, zoneId: sednaSurveyZone.id,
+      placeId: stationSedna.id, localPos: stationSedna.pos,
+    }),
+    actorSlots: sednaRoundsActors,
+    objectSlots: sednaRoundsObjects,
+    sectorId: SEDNA_ACTIVITY_SECTOR_ID,
+  }),
+  pocket({
+    id: sednaRimId,
+    label: 'Rim Watch',
+    // The arc is past every authored zone — the rim is why the pocket exists, so the anchor
+    // claims the landmark POI itself and no zone it does not sit in.
+    identity: Object.freeze({ placeId: ringworldPoi.id }),
+    anchor: canonicalAnchor({
+      kind: 'poi', id: ringworldPoi.id, zoneId: null,
+      placeId: ringworldPoi.id, localPos: ringworldPoi.pos,
+    }),
+    actorSlots: sednaRimActors,
+    objectSlots: sednaRimObjects,
+    sectorId: SEDNA_ACTIVITY_SECTOR_ID,
+  }),
+]);
+
+export const SEDNA_ACTIVITY_POCKET_ORDER = Object.freeze(SEDNA_ACTIVITY_POCKETS.map((entry) => entry.id));
+export const SEDNA_ACTIVITY_POCKETS_BY_ID = Object.freeze(Object.fromEntries(
+  SEDNA_ACTIVITY_POCKETS.map((entry) => [entry.id, entry]),
+));
+export const SEDNA_POCKET_ACTOR_SLOT_ORDER = Object.freeze(SEDNA_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => slot.id),
+));
+export const SEDNA_ROUTE_TOPOLOGY = Object.freeze(SEDNA_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => routeTopology(slot)),
+));
+
+if (SEDNA_POCKET_ACTOR_SLOT_ORDER.length !== SEDNA_AUTHORED_ACTIVITY_CAPACITY) {
+  throw new Error(`Sedna authored capacity mismatch: ${SEDNA_POCKET_ACTOR_SLOT_ORDER.length}`);
+}
+if (new Set(SEDNA_POCKET_ACTOR_SLOT_ORDER).size !== SEDNA_POCKET_ACTOR_SLOT_ORDER.length) {
+  throw new Error('Sedna authored activity slot ids must be unique');
+}
+assertDistinctRouteTopology(SEDNA_ACTIVITY_POCKETS, SEDNA_ROUTE_TOPOLOGY, 'Sedna');
+
+// ───────────────────────────────────────────────────────────────────────────────────────────────
 // The registry. Everything downstream reads this instead of a Ceres constant, which is the whole
 // reason a second sector can exist here at all.
 // ───────────────────────────────────────────────────────────────────────────────────────────────
@@ -1612,6 +1775,7 @@ export const ACTIVITY_POCKETS_BY_SECTOR = Object.freeze({
   [PALLAS_ACTIVITY_SECTOR_ID]: PALLAS_ACTIVITY_POCKETS,
   [VESTA_ACTIVITY_SECTOR_ID]: VESTA_ACTIVITY_POCKETS,
   [TETHYS_ACTIVITY_SECTOR_ID]: TETHYS_ACTIVITY_POCKETS,
+  [SEDNA_ACTIVITY_SECTOR_ID]: SEDNA_ACTIVITY_POCKETS,
 });
 
 export const ACTIVITY_POCKET_SECTOR_IDS = Object.freeze(Object.keys(ACTIVITY_POCKETS_BY_SECTOR));

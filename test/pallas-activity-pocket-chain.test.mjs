@@ -35,6 +35,7 @@ import {
   PALLAS_AUTHORED_ACTIVITY_CAPACITY,
   PALLAS_POCKET_ACTOR_SLOT_ORDER,
   PALLAS_ROUTE_TOPOLOGY,
+  SEDNA_ACTIVITY_POCKETS,
   TETHYS_ACTIVITY_POCKETS,
   TETHYS_ACTIVITY_SECTOR_ID,
   VESTA_ACTIVITY_POCKETS,
@@ -72,7 +73,8 @@ test('the activity-pocket registry includes Pallas Drift, and the older sectors 
       + HELIOS_ACTIVITY_POCKETS.length
       + PALLAS_ACTIVITY_POCKETS.length
       + VESTA_ACTIVITY_POCKETS.length
-      + TETHYS_ACTIVITY_POCKETS.length,
+      + TETHYS_ACTIVITY_POCKETS.length
+      + SEDNA_ACTIVITY_POCKETS.length,
   );
   assert.equal(activityPocketsForSector('sector_pallas_drift').length, 4);
   assert.equal(activityPocketsForSector('sector_nowhere_belt').length, 0);

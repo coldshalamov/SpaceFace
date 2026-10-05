@@ -31,6 +31,7 @@ import {
   PALLAS_ACTIVITY_POCKETS,
   PALLAS_ACTIVITY_SECTOR_ID,
   PALLAS_POCKET_ACTOR_SLOT_ORDER,
+  SEDNA_ACTIVITY_POCKETS,
   TETHYS_ACTIVITY_POCKETS,
   TETHYS_ACTIVITY_POCKETS_BY_ID,
   TETHYS_ACTIVITY_POCKET_ORDER,
@@ -72,7 +73,8 @@ test('the activity-pocket registry includes Tethys Junction, and the older secto
       + HELIOS_ACTIVITY_POCKETS.length
       + PALLAS_ACTIVITY_POCKETS.length
       + VESTA_ACTIVITY_POCKETS.length
-      + TETHYS_ACTIVITY_POCKETS.length,
+      + TETHYS_ACTIVITY_POCKETS.length
+      + SEDNA_ACTIVITY_POCKETS.length,
   );
   assert.equal(activityPocketsForSector('sector_tethys_junction').length, 4);
   assert.equal(activityPocketsForSector('sector_nowhere_belt').length, 0);
