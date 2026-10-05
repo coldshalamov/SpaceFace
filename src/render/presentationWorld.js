@@ -150,6 +150,11 @@ export function createPresentationWorld(options = {}) {
   let freeCount = 0;
   let specialCount = 0;
   let maxRadius = 0;
+  // Deferred recompute: a retire burst that kills the max-holder repeatedly used to
+  // pay one O(activeCount) rescan per retire; the flag collapses a burst into one
+  // scan at the next read. Stale reads between mark and read only over-estimate
+  // (the marked max is an upper bound), so queries stay conservative in the gap.
+  let maxRadiusDirty = false;
   let asteroidDirty = true;
   let disposed = false;
   // O(1) count of slots with any PRESENTATION_DIRTY bit. The zero-dirty query
@@ -227,7 +232,10 @@ export function createPresentationWorld(options = {}) {
     get activeCount() { return activeCount; },
     get boundCount() { return boundCount; },
     get freeCount() { return freeCount; },
-    get maxRadius() { return maxRadius; },
+    get maxRadius() {
+      if (maxRadiusDirty) recomputeMaxRadius();
+      return maxRadius;
+    },
     get disposed() { return disposed; },
   };
 
@@ -322,6 +330,7 @@ export function createPresentationWorld(options = {}) {
       nextMaxRadius = Math.max(nextMaxRadius, world.radii[world.activeSlots[index]]);
     }
     maxRadius = nextMaxRadius;
+    maxRadiusDirty = false;
     diagnostics.maxRadius = maxRadius;
     diagnostics.maxRadiusRecomputes++;
   }
@@ -536,9 +545,10 @@ export function createPresentationWorld(options = {}) {
       world.radii[slot] = nextRadius;
       if (nextRadius >= maxRadius) {
         maxRadius = nextRadius;
+        maxRadiusDirty = false;
         diagnostics.maxRadius = maxRadius;
       } else if (previousRadius === maxRadius) {
-        recomputeMaxRadius();
+        maxRadiusDirty = true;
       }
       changed = true;
     }
@@ -701,7 +711,7 @@ export function createPresentationWorld(options = {}) {
     removeFromGrid(slot);
     setSpecialMembership(slot, false);
     removeActive(slot);
-    if (maxRadius > 0 && retiredRadius === maxRadius) recomputeMaxRadius();
+    if (maxRadius > 0 && retiredRadius === maxRadius) maxRadiusDirty = true;
     if (world.meshRefs[slot]) boundCount = Math.max(0, boundCount - 1);
     world.alive[slot] = 0;
     world.visible[slot] = 0;
@@ -857,6 +867,7 @@ export function createPresentationWorld(options = {}) {
     specialCount = 0;
     boundCount = 0;
     maxRadius = 0;
+    maxRadiusDirty = false;
     asteroidDirty = true;
     diagnostics.active = 0;
     diagnostics.bound = 0;
@@ -1017,11 +1028,21 @@ export function createPresentationWorld(options = {}) {
       const refs = world.entityRefs;
       const doomed = world.doomed;
       const actives = world.activeSlots;
+      const deadResidents = [];
       for (let s = 0; s < activeCount; s++) {
         const slot = actives[s];
-        if (lastSeenSeq[slot] === seq || doomed[slot] === 1) continue;
+        if (lastSeenSeq[slot] === seq) continue;
         const resident = refs[slot];
-        if (!resident || resident.alive === false) continue;
+        if (!resident) continue;
+        if (resident.alive === false) {
+          // A suppressed destroy mints no record, so no later replay retires
+          // the dead occupant's row — free the slot here instead of leaking
+          // it until the next full rebuild. The byId owner check keeps the
+          // verdict slot-exact if its id recycled into a fresh row.
+          if (byId.get(world.entityIds[slot]) === slot) deadResidents.push(slot);
+          continue;
+        }
+        if (doomed[slot] === 1) continue;
         if (resident._noMesh === true
             || (resident.type === 'projectile' && projectileSkipsVisualFactoryMesh(resident))) {
           const wasVisible = world.visible[slot] === 1;
@@ -1030,6 +1051,7 @@ export function createPresentationWorld(options = {}) {
           if (wasVisible) markDirtyBits(slot, PRESENTATION_DIRTY.VISIBILITY);
         }
       }
+      for (const slot of deadResidents) retireSlot(slot);
     }
     // Rows absent from the collect retire — snapshot the id list since retire
     // mutates byId mid-iteration. All-retained is the hot case: nothing can be

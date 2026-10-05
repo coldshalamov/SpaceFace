@@ -34,7 +34,12 @@ export class WeaponLightPool {
       });
     }
     this._live = 0;
-    if (scene) scene.add(this.group);
+    if (scene) {
+      scene.add(this.group);
+      // Light-set mutation — a mounted pool group changes the rendered light
+      // census; the shadow memo must not serve the pre-mount signature.
+      noteShadowCensusLightMutation();
+    }
   }
 
   spawn({ x, y, z, color, intensity, distance, life, priority }) {

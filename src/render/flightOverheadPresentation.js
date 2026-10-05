@@ -25,7 +25,12 @@ export function createFlightOverheadPresentation(scene) {
   // flashes via intensity only — it must also exist before the opening compile, so the renderer
   // mounts this module eagerly rather than on first slipstream activity.
   light.visible = true;
-  if (scene && typeof scene.add === 'function') scene.add(light);
+  if (scene && typeof scene.add === 'function') {
+    scene.add(light);
+    // Light-set mutation — the mount changes the rendered light census, so the
+    // shadow memo must not serve the pre-mount signature.
+    noteShadowCensusLightMutation();
+  }
 
   return {
     sync(entity, mesh, _dt, state, a11y) {

@@ -17,6 +17,30 @@ export function collectCompileSubjects(root) {
   return subjects.length ? subjects : [root];
 }
 
+// Stepped twin — identical pre-order (children pushed reversed) and predicate.
+// Drivers pace between roots already; a station-scale subtree paid its whole
+// traverse inside one leg, so this yields every 256 visited nodes and the
+// caller awaits its pace fn per yield. The returned subjects are identical.
+export function* collectCompileSubjectsSteps(root, sliceEvery = 256) {
+  if (!root) return [];
+  if (typeof root.traverse !== 'function') return [root];
+  const subjects = [];
+  const stack = [root];
+  let visited = 0;
+  while (stack.length) {
+    const object = stack.pop();
+    if (!object) continue;
+    if ((++visited % sliceEvery) === 0) yield;
+    if (object.isMesh || object.isSkinnedMesh || object.isInstancedMesh
+      || object.isPoints || object.isLine || object.isSprite) {
+      subjects.push(object);
+    }
+    const children = object.children || [];
+    for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
+  }
+  return subjects.length ? subjects : [root];
+}
+
 export function collectUniqueCompileSubjects(root, keyFor) {
   const subjects = collectCompileSubjects(root);
   if (typeof keyFor !== 'function') return subjects;

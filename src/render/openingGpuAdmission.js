@@ -410,7 +410,12 @@ export function uniqueAdmissionUnits(subjects, options = {}) {
     ? options.skipReadyMaterial
     : null;
   const list = Array.isArray(subjects) ? subjects : [subjects];
-  for (const object of list) {
+  // Sliced drivers pass a window instead of a sliced copy — one fresh array
+  // per chunk per pace tick was pure allocation churn mid-cook.
+  const listStart = Number.isInteger(options.start) ? Math.max(0, options.start) : 0;
+  const listEnd = Number.isInteger(options.end) ? Math.min(list.length, options.end) : list.length;
+  for (let listIndex = listStart; listIndex < listEnd; listIndex++) {
+    const object = list[listIndex];
     if (!object) continue;
     let addedProgram = false;
     for (const material of materialList(object)) {
