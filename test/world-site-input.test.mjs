@@ -87,7 +87,9 @@ test('selected site precedence is explicit and aimed mining still follows the cu
   assert.equal(host._acquireTarget(player, 500, state), site,
     'explicit contextual site action selects the site');
   host._beaming = true;
-  host._lockTargetId = asteroid.id;
+  // Two-field lock contract: _setLockTargetId mirrors _lockTargetId onto
+  // player.miningTargetId; a disagreement reads as the locked body already gone.
+  host._setLockTargetId(asteroid.id);
   assert.equal(host._acquireTarget(player, 500, state), asteroid);
   host._beaming = false;
   state.player.tether = { active: true, targetId: asteroid.id };

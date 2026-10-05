@@ -160,7 +160,9 @@ test('player can mine the exact clast for one real bonus and pays the hot-cut he
   openOpportunity(state);
 
   const beam = { heat: 0, heatMax: 100, heatRate: 10, coolRate: 20, overheated: false };
-  mining._lockTargetId = asteroid.id;
+  // The lock lives in two places by contract — _setLockTargetId mirrors _lockTargetId onto
+  // player.miningTargetId, and the seam/heat readers resolve through the mirrored record.
+  mining._setLockTargetId(asteroid.id);
   mining._updateBeamHeat(beam, true, 1, state);
   assert.equal(beam.heat, 10 * RICH_SEAM_HEAT_MULT);
 
