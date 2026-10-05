@@ -283,7 +283,6 @@ const CORE_SECTORS = [
       { id: 'station_forge',  name: 'Forge Foundry', type: 'fab',    factionId: 'faction_dmc',   size: 'M', services: ['trade','shipyard','repair','refine','module_craft'],
         chartNote: 'Plate and fittings out the door. Bring alloy, leave with modules.' },
       { id: 'station_vesta_outlying_yard', name: 'Forge Outlying Yard', type: 'fab', factionId: 'faction_dmc', size: 'S', services: ['repair','refine'],
-        pos: { x: -820, z: 280 },
         chartNote: 'The foundry’s outer jig. Plate comes off the line and waits here for a hull.' },
       { id: 'station_depot3', name: 'Refuel Depot',  type: 'mining', factionId: 'faction_choir', size: 'S', services: ['refuel', 'missions'],
         chartNote: 'Pumps for the slag crews, and a posted board. The Choir posts shift work in verses.' },
