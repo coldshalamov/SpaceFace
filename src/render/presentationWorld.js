@@ -158,6 +158,9 @@ export function createPresentationWorld(options = {}) {
   let dirtyCount = 0;
   let dirtySlots = new Uint32Array(0);
   let dirtyPositions = new Int32Array(0);
+  // Monotonic stamp the diff-apply uses to mark rows seen this call — replaces
+  // a per-call Set alloc on the journal-fallback hot path.
+  let updateSeq = 0;
 
   const world = {
     capacity: 0,
@@ -167,6 +170,10 @@ export function createPresentationWorld(options = {}) {
     sourceGenerations: new Uint32Array(0),
     revisions: new Uint32Array(0),
     visualRevisions: new Uint32Array(0),
+    // Per-slot seen stamps for updateFromEntities' dedupe — slot-indexed so a
+    // whole-call Set alloc is never needed. Zero-initialized; updateSeq starts
+    // at 1 and wraps by re-zeroing.
+    lastSeenSeq: new Uint32Array(0),
     entityIds: new Float64Array(0),
     typeCodes: new Uint16Array(0),
     flags: new Uint8Array(0),
@@ -222,6 +229,7 @@ export function createPresentationWorld(options = {}) {
     world.sourceGenerations = growTyped(world.sourceGenerations, Uint32Array, capacity);
     world.revisions = growTyped(world.revisions, Uint32Array, capacity);
     world.visualRevisions = growTyped(world.visualRevisions, Uint32Array, capacity);
+    world.lastSeenSeq = growTyped(world.lastSeenSeq, Uint32Array, capacity);
     world.entityIds = growTyped(world.entityIds, Float64Array, capacity);
     world.typeCodes = growTyped(world.typeCodes, Uint16Array, capacity);
     world.flags = growTyped(world.flags, Uint8Array, capacity);
@@ -828,27 +836,44 @@ export function createPresentationWorld(options = {}) {
   // binding, and visible state and pay only compare-then-write (dirty marks
   // land where pose/metadata actually moved); absent ids retire; new ids
   // allocate. Bookkeeping stamps exactly what a fresh alloc would mint.
-  function updateFromEntities(entities, generationForEntity = null) {
+  function updateFromEntities(entities, generationForEntity = null, options = null) {
     ensureAlive();
     if (!Array.isArray(entities)) throw new TypeError('PresentationWorld update requires an entity array');
-    const seen = new Set();
+    // `options.retire === false` marks a partial sample (an in-flight collect's
+    // prefix): not-yet-collected ids must hold their last pose, so the retire
+    // sweep is suppressed by construction. Retained + new rows still apply.
+    const retireSuppressed = options && options.retire === false;
+    // Slot-indexed seen stamps instead of a Set(N): every entityId maps to the
+    // one slot its id owns (byId is id-keyed), so lastSeenSeq[slot] === seq is
+    // the duplicate test with zero alloc.
+    updateSeq = (updateSeq + 1) >>> 0;
+    if (updateSeq === 0) {
+      updateSeq = 1;
+      world.lastSeenSeq.fill(0);
+    }
+    const seq = updateSeq;
+    const lastSeenSeq = world.lastSeenSeq;
+    let retainedHits = 0;
     for (const entity of entities) {
       if (!entity || entity.alive === false) continue;
       const entityId = sourceEntityId(entity);
       if (entityId === 0) continue;
-      if (seen.has(entityId)) {
-        diagnostics.duplicateIdRejects++;
-        continue;
-      }
-      seen.add(entityId);
       const generation = typeof generationForEntity === 'function'
         ? generationForEntity(entity)
         : 0;
-      const slot = byId.get(entityId);
-      if (slot === undefined || world.alive[slot] !== 1) {
-        allocateEntity(entity, generation);
+      let slot = byId.get(entityId);
+      if (slot !== undefined && lastSeenSeq[slot] === seq) {
+        diagnostics.duplicateIdRejects++;
         continue;
       }
+      if (slot === undefined || world.alive[slot] !== 1) {
+        allocateEntity(entity, generation);
+        slot = byId.get(entityId);
+        if (slot !== undefined) lastSeenSeq[slot] = seq;
+        continue;
+      }
+      lastSeenSeq[slot] = seq;
+      retainedHits += 1;
       const previousVisual = world.visualRevisions[slot];
       refreshVisibleEntity(slot, entity);
       world.sourceGenerations[slot] = generation >>> 0;
@@ -861,9 +886,14 @@ export function createPresentationWorld(options = {}) {
       }
     }
     // Rows absent from the collect retire — snapshot the id list since retire
-    // mutates byId mid-iteration.
-    for (const entityId of [...byId.keys()]) {
-      if (!seen.has(entityId)) retire(entityId);
+    // mutates byId mid-iteration. All-retained is the hot case: nothing can be
+    // absent, so the id-array alloc and second walk are skipped. A partial
+    // sample suppresses the sweep outright.
+    if (!retireSuppressed && retainedHits !== byId.size) {
+      for (const entityId of [...byId.keys()]) {
+        const slot = byId.get(entityId);
+        if (slot === undefined || lastSeenSeq[slot] !== seq) retire(entityId);
+      }
     }
     diagnostics.rebuilds++;
     return true;

@@ -4234,9 +4234,10 @@ async function commitAuthoredPlaceBoundary(
     for (;;) {
       const freezeStep = freezeIter.next();
       notePacedFrameSpend(monotonicNow() - commitLegStarted);
-      commitLegStarted = monotonicNow();
       if (freezeStep.done) break;
       await waitForAuthoredAdmission(options.yieldToNextPresent(), options);
+      // Restamp after the wait — an inter-present pause is not ledger spend.
+      commitLegStarted = monotonicNow();
     }
   } else {
     freezeStaticChildMatrices(authored.root);
@@ -4299,9 +4300,14 @@ async function commitAuthoredPlaceBoundary(
       const disposeIter = disposeDetachedPlaceFallbackSteps(fallbackRoot);
       for (;;) {
         const disposeStep = disposeIter.next();
+        // Per-slice debit with the restamp after the wait — a multi-present
+        // dispose charges its real work, not the spans between presents.
+        notePacedFrameSpend(monotonicNow() - commitLegStarted);
+        commitLegStarted = monotonicNow();
         if (disposeStep.done) break;
         if (options.yieldBetweenGpuStages === true && typeof options.yieldToNextPresent === 'function') {
           await waitForAuthoredAdmission(options.yieldToNextPresent(), options).catch(() => {});
+          commitLegStarted = monotonicNow();
         }
       }
     }
@@ -8979,6 +8985,15 @@ export function installWholeShipLodFamilyController(boundary, entity, setActive,
       .then(() => disposePreparedAuthoredShip(composed))
       .catch((error) => console.info('[partsLibrary] whole-ship LOD retained-level cleanup failed', error));
   };
+  // Non-composed stale roots ride the same deferred lane — a re-commit tears
+  // down each retained level's subtree and inline sync disposes stack inside
+  // one continuation. The root is detached before this runs, so the traversal
+  // only touches already-orphaned state.
+  const releaseRetainedRoot = (root) => {
+    void Promise.resolve()
+      .then(() => disposeDetachedObject(root))
+      .catch((error) => console.info('[partsLibrary] whole-ship LOD stale root cleanup failed', error));
+  };
 
   // Demoted-level roots stay retained-but-detached for instant swap-back; the teardown traversal
   // only reaches attached children, so each stale retained root re-attaches into the dying tree
@@ -9022,8 +9037,7 @@ export function installWholeShipLodFamilyController(boundary, entity, setActive,
       if (composed) {
         releaseComposedRetained(composed);
       } else {
-        try { disposeDetachedObject(root); }
-        catch (error) { console.warn('[partsLibrary] whole-ship LOD stale root cleanup failed', error); }
+        releaseRetainedRoot(root);
       }
     }
     const fresh = findActiveRoot();
@@ -9382,9 +9396,14 @@ async function commitAuthoredBoundary(
       const disposeIter = disposeDetachedObjectSteps(fallbackRoot);
       for (;;) {
         const disposeStep = disposeIter.next();
+        // Per-slice debit with the restamp after the wait — a multi-present
+        // dispose charges its real work, not the spans between presents.
+        notePacedFrameSpend(monotonicNow() - commitLegStarted);
+        commitLegStarted = monotonicNow();
         if (disposeStep.done) break;
         if (options.yieldBetweenGpuStages === true && typeof options.yieldToNextPresent === 'function') {
           await waitForAuthoredAdmission(options.yieldToNextPresent(), options).catch(() => {});
+          commitLegStarted = monotonicNow();
         }
       }
     }

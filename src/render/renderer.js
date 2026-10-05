@@ -143,6 +143,7 @@ import {
   releaseAsteroidInstancesForEntity,
   reserveAsteroidInstanceCapacity,
   resolveAsteroidInstanceEntityId,
+  translateAsteroidInstancePool,
   syncAsteroidInstancePool,
   warmAsteroidInstanceKeys,
   warmAsteroidInstanceVariants,
@@ -189,7 +190,7 @@ import {
 import { NEMESIS_KITS } from '../data/nemesisRival.js';
 import { BREAKAWAY_THIRD_SHIFT_VARIANT_ID, heistLaunchVariant } from '../data/heistFacilities.js';
 import { BREAKAWAY_PRESSURE } from '../data/heistMission.js';
-import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidField.js';
+import { promoteAsteroidFieldRock, queryAsteroidField, queryAsteroidFieldSteps } from '../world/asteroidField.js';
 import { entityIndexVersion, indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { itineraryPositionInto, itineraryVelocityInto } from '../world/worldCatchup.js';
 import {
@@ -542,6 +543,12 @@ async function driveCompileShadowDepthPipelines(depthOpts, yieldStep) {
       await pace();
     }
     depthOpts.lightSigEpoch = shadowCensusEpoch();
+    // A stale abort means the light set drifted — the retry collects the live
+    // set but a minted-once override would keep stamping marks under the old
+    // signature, so every leg caster re-collects as unstaged on the next arm.
+    if (typeof lightCensusSignature === 'function' && depthOpts.lightingScene) {
+      depthOpts.lightSigOverride = lightCensusSignature(depthOpts.lightingScene);
+    }
   }
   return { skipped: true, reason: 'light-census-drifted-repeatedly', subjects: 0 };
 }
@@ -1795,7 +1802,15 @@ function mintResidentReattachSweep(owner) {
   if (iterator && typeof iterator.return === 'function') {
     try { iterator.return(); } catch { /* re-mint proceeds regardless */ }
   }
-  owner._residentReattachIter = reattachResidentGpuMeshesSteps(owner);
+  const fresh = reattachResidentGpuMeshesSteps(owner);
+  // Identity-stamp the id map this sweep rekeys against — a restore can
+  // replace sessionEntityIdRemap without mode ever leaving 'loading', and the
+  // pump abandons a sweep whose stamp no longer names the live map.
+  const state = owner && owner.state;
+  fresh._remap = state && state.mode === 'loading' && state.sessionEntityIdRemap instanceof Map
+    ? state.sessionEntityIdRemap
+    : null;
+  owner._residentReattachIter = fresh;
 }
 
 // Stepped twin of the reattach sweep — the mesh scan yields at strides and the
@@ -1941,19 +1956,41 @@ function drainDespawnDisposeQueue(owner, budgetMs = DESPAWN_DISPOSE_BUDGET_MS) {
     Math.ceil((queue.length - owner._despawnDisposeHead) / 4),
   );
   let drained = 0;
+  // One fat corpse (a packaged hull's ~1-3k nodes) used to drain atomically
+  // inside a presented beat — the deadline was only consulted between corpses.
+  // Each corpse now gets a parked Steps iterator that suspends mid-corpse on
+  // the same deadline and resumes next drain; a remounted corpse abandons it.
   while (owner._despawnDisposeHead < queue.length) {
     const m = queue[owner._despawnDisposeHead];
-    owner._despawnDisposeHead += 1;
     // The corpse must still be detached: a boundary re-mounted between the destroyed event and
     // this drain belongs to a new owner — disposing its tree would strip live prepared work.
-    if (m && m.parent == null) disposeObject(m);
-    drained += 1;
+    if (m && m.parent != null) {
+      owner._despawnDisposeIter = null;
+      owner._despawnDisposeHead += 1;
+      drained += 1;
+      if (drained >= limit || now() > deadline) break;
+      continue;
+    }
+    let iter = owner._despawnDisposeIter;
+    if (!iter && m) iter = owner._despawnDisposeIter = disposeObjectSteps(m);
+    if (!iter) {
+      owner._despawnDisposeHead += 1;
+      drained += 1;
+      if (drained >= limit || now() > deadline) break;
+      continue;
+    }
+    if (iter.next().done) {
+      owner._despawnDisposeIter = null;
+      owner._despawnDisposeHead += 1;
+      drained += 1;
+    }
     if (drained >= limit || now() > deadline) break;
   }
   if (drained > 0) notePacedFrameSpend(now() - startedAt);
   if (owner._despawnDisposeHead >= queue.length) {
     queue.length = 0;
     owner._despawnDisposeHead = 0;
+    owner._despawnDisposeIter = null;
   }
   return drained;
 }
@@ -2032,9 +2069,13 @@ function settleRebuildBridges(owner) {
   // lifetime, not the per-frame scan, so a rebuild burst keeps its leftover rows
   // for the next pass instead of stacking inside one presented frame.
   const cap = 32;
+  // Rotated rows append to the map tail, so the iterator reaches them again in
+  // this same pass — bound visits by the pre-pass size, not just the cap, or an
+  // all-parked map burns the cap re-checking rows it already parked.
+  const visitBound = Math.min(cap, bridges.size);
   let processed = 0;
   for (const [id, slot] of bridges) {
-    if (++processed > cap) break;
+    if (++processed > visitBound) break;
     slot.frames += 1;
     const e = state && state.entities && typeof state.entities.get === 'function'
       ? state.entities.get(id) : null;
@@ -2113,10 +2154,20 @@ export function serviceRenderMeshResidency(owner, frameDt) {
     if (feedMoved || owner._residentReattachFrame === 0 || pacedFrameSpend() < 2) {
       owner._residentReattachStamp = reattachFeed;
       if (!owner._residentReattachIter) {
-        owner._residentReattachIter = reattachResidentGpuMeshesSteps(owner);
+        mintResidentReattachSweep(owner);
       }
     }
     if (owner._residentReattachIter) {
+      // A second restore that swapped sessionEntityIdRemap while mode stayed
+      // 'loading' never emits mode:changed — the pending sweep would keep
+      // rekeying stamped==null meshes through the superseded map for the whole
+      // restore window. Close + re-mint under the live map instead.
+      const liveReattachRemap = st.mode === 'loading' && st.sessionEntityIdRemap instanceof Map
+        ? st.sessionEntityIdRemap
+        : null;
+      if (owner._residentReattachIter._remap !== liveReattachRemap) {
+        mintResidentReattachSweep(owner);
+      }
       const sweepStart = now();
       for (;;) {
         const iterator = owner._residentReattachIter;
@@ -12157,7 +12208,15 @@ export const render = {
         ? state.entities.get(state.playerId)
         : null;
       if (player && player.pos && !recook) {
-        const rockHits = queryAsteroidField(state, player.pos, firstFlightRockCookRadiusWu(state));
+        const rockHits = [];
+        const rockQueryIter = queryAsteroidFieldSteps(state, player.pos,
+          firstFlightRockCookRadiusWu(state), rockHits);
+        for (;;) {
+          const rockStep = rockQueryIter.next();
+          if (rockStep.done) break;
+          if (cookStale()) return cookSuperseded;
+          await yieldLiveSectorGpu();
+        }
         const px = Number(player.pos.x) || 0;
         const pz = Number(player.pos.z) || 0;
         rockHits.sort((left, right) => {
@@ -12168,11 +12227,19 @@ export const render = {
           return (dlx * dlx + dlz * dlz) - (drx * drx + drz * drz);
         });
         const seenRockKeys = new Set();
+        let rockPromotesSinceYield = 0;
         for (const rec of rockHits) {
+          if (seenRockKeys.size >= FIRST_FLIGHT_ROCK_COOK_CAP) break;
           const key = asteroidFirstFlightCookKey(rec);
-          if (seenRockKeys.has(key) || seenRockKeys.size >= FIRST_FLIGHT_ROCK_COOK_CAP) continue;
+          if (seenRockKeys.has(key)) continue;
           if (!promoteAsteroidFieldRock(state, rec.id, this._simHelpers, 'first-flight-cook')) continue;
           seenRockKeys.add(key);
+          // A promote fans a synchronous entity:spawned emit to ~24 listeners —
+          // pace the burst or the cook's slice clock parks for the whole tail.
+          if ((++rockPromotesSinceYield % 4) === 0) {
+            if (cookStale()) return cookSuperseded;
+            await yieldLiveSectorGpu();
+          }
         }
       }
       // Same deterministic arm as the jump census: registered sector:enter spawners fire
@@ -14661,7 +14728,15 @@ export const render = {
           ? state.entities.get(state.playerId)
           : null;
         if (player && player.pos) {
-          const rockHits = queryAsteroidField(state, player.pos, firstFlightRockCookRadiusWu(state));
+          const rockHits = [];
+          const rockQueryIter = queryAsteroidFieldSteps(state, player.pos,
+            firstFlightRockCookRadiusWu(state), rockHits);
+          for (;;) {
+            const rockStep = rockQueryIter.next();
+            if (rockStep.done) break;
+            if (cookStale()) return cookSuperseded;
+            await yieldLiveSectorGpu();
+          }
           const px = Number(player.pos.x) || 0;
           const pz = Number(player.pos.z) || 0;
           rockHits.sort((left, right) => {
@@ -14672,12 +14747,19 @@ export const render = {
             return (dlx * dlx + dlz * dlz) - (drx * drx + drz * drz);
           });
           const seenRockKeys = new Set();
+          let rockPromotesSinceYield = 0;
           for (const rec of rockHits) {
             if (seenRockKeys.size >= FIRST_FLIGHT_ROCK_COOK_CAP) break;
             const key = asteroidFirstFlightCookKey(rec);
             if (seenRockKeys.has(key)) continue;
             if (!promoteAsteroidFieldRock(state, rec.id, this._simHelpers, 'first-flight-cook')) continue;
             seenRockKeys.add(key);
+            // A promote fans a synchronous entity:spawned emit to ~24 listeners —
+            // pace the burst or the cook's slice clock parks for the whole tail.
+            if ((++rockPromotesSinceYield % 4) === 0) {
+              if (cookStale()) return cookSuperseded;
+              await yieldLiveSectorGpu();
+            }
           }
         }
         // Deterministic population arm: systems that materialize bodies on sector:enter
@@ -17165,6 +17247,10 @@ export const render = {
             // used to walk every kept mesh inside the sector-preparation .finally,
             // paying O(meshes) in one microtask under the loading shell.
             const upgradeMintPass = (async () => {
+              const legNow = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
+                ? performance.now() : Date.now());
+              let legStarted = legNow();
+              let ledgerSkips = 0;
               let visited = 0;
               for (const [id, mesh] of this._meshes) {
                 if (!rendererGenerationIsActive()) return;
@@ -17173,8 +17259,22 @@ export const render = {
                   requestAuthoredUpgrade(mesh, renderer, scene,
                     entityIsOnReadableGlass(entity, state) ? { admissionVisible: true } : undefined);
                 }
-                if ((++visited % 32) === 0) await yieldToBrowser();
+                if ((++visited % 32) === 0) {
+                  notePacedFrameSpend(legNow() - legStarted);
+                  // Ride the paced wallet: a beat the paced lanes already spent
+                  // parks the walk instead of yield-stacking on it; the aging
+                  // bound (same shape as the despawn drain's) keeps a
+                  // permanently-busy stretch from starving the pass outright.
+                  while (pacedFrameSpend() >= PACED_FRAME_BUDGET_MS && ledgerSkips < 2) {
+                    ledgerSkips += 1;
+                    await yieldToBrowser();
+                  }
+                  ledgerSkips = 0;
+                  await yieldToBrowser();
+                  legStarted = legNow();
+                }
               }
+              notePacedFrameSpend(legNow() - legStarted);
             })();
             // The chunked walk is fire-and-forget — .finally never awaits the
             // callback's floating async work, so a throw must swallow here or
@@ -20330,6 +20430,10 @@ export const render = {
   _bindPresentationMesh(entity, mesh) {
     const world = this._presentationWorld;
     if (!entity || !mesh) return false;
+    // A mesh rebound inside the release window must not drain against its old
+    // owner's pending release — the registries resolve the pending entry
+    // through the side index and would clear the NEW owner's record.
+    if (this._meshReleasePending) this._meshReleasePending.delete(mesh);
     if (entity.id === this.state.playerId && this._livingHullPresentation) {
       this._livingHullPresentation.attach(mesh);
       this._livingHullPresentation.sync(
@@ -22067,11 +22171,16 @@ export const render = {
         obj.position.z += dz;
       }
     }
-    // Contact-shadow instance records cache local XZ; force refresh next sync.
+    // Contact-shadow records cache frame-local XZ — shift them with the origin
+    // so the next sync's compare sees identical bytes instead of re-composing
+    // and re-uploading every slot.
     if (this._contactShadowPool && this._contactShadowPool.records) {
-      this._contactShadowPool.records.clear();
+      for (const rec of this._contactShadowPool.records.values()) {
+        rec.x += dx;
+        rec.z += dz;
+      }
     }
-    invalidateAsteroidInstancePool(this._asteroidInstancePool);
+    translateAsteroidInstancePool(this._asteroidInstancePool, dx, dz);
     if (this.cam && typeof this.cam.reprojectFrame === 'function') {
       this.cam.reprojectFrame(dx, dz);
     } else if (this.state && this.state.camera && this.state.camera.focus) {
@@ -24731,9 +24840,14 @@ export const render = {
     // must keep castShadow=false and queue for the arm, or the next pass's
     // collectGate would close on the stamp and restore live flags on unlinked
     // depth variants). The root stays dirty and re-enters next pass; a pass
-    // needing no withhold simply pays its traverse a frame later. Scoped graft
-    // syncs stay uncapped (their walk is already narrowed to the added subtree).
+    // needing no withhold simply pays its traverse a frame later. A withhold
+    // verdict is exempt: its traverse carries the subtree-wide castShadow=false
+    // the cold-link doctrine needs applied now, not whenever the cap frees —
+    // verdicts are bounded by the same collect cap so the exemption can't
+    // unbound the pass. Scoped graft syncs stay uncapped too (their walk is
+    // already narrowed to the added subtree).
     const traverseDeferred = !scopedSync
+      && syncOpts.allowCast !== false
       && (this._shadowRootSyncPassCount | 0) >= SHADOW_ROOT_SYNC_PASS_CAP;
     if (!scopedSync && !traverseDeferred) {
       this._shadowRootSyncPassCount = (this._shadowRootSyncPassCount | 0) + 1;
@@ -25327,15 +25441,14 @@ export const render = {
         if (child && !pending.has(child)) {
           const lodLevel = (child.userData && child.userData.lod && child.userData.lod.level)
             || 'lod0';
-          // Withhold whole-subtree at queue time — a queued root that keeps
-          // castShadow=true draws its unlinked depth variants on the first
-          // presented refresh while it waits for the arm (the checked-sync
-          // else-if chain has no branch for band-1 + self-dirty + queued +
-          // uncached). The band-0 stamp keeps later syncs on the cheap queued
-          // early-out — the same end state the over-cover branch produces.
-          const queueOut = { receiverDelta: 0 };
-          syncShadowCasterPolicy(child, lodLevel, { allowCast: false, out: queueOut });
-          noteShadowPolicyChanged(this._shadowReceiverTally, queueOut);
+          // No inline whole-subtree withhold here: one settings flip on a busy
+          // sector queues most of the scene's children and this traverse cost
+          // O(scene) inside the click task. The queue + stamp below route the
+          // root into the checked-sync queued withhold branches — the very next
+          // presented sync applies castShadow=false (cap-exempt) before the
+          // shadow refresh draws, so withhold-before-present ordering holds.
+          // The band-0 stamp keeps later syncs on the cheap queued early-out —
+          // the same end state the over-cover branch produces.
           // Same invalidate+stamp the withheld path pays: a queued band-1 root
           // whose dirtySeq still equals its stamp must re-collect — the census
           // drifted while shadows were OFF so its marks describe a dead light set.
@@ -26509,6 +26622,55 @@ function replaceSceneEnvMap(scene, previousEnvMap, nextEnvMap) {
   }
 }
 
+function disposeObjectNode(c) {
+  if (!c) return false;
+  const heldLight = c.isLight === true;
+  // Release the vendored maintained shadow-caster registry entry: a flagged-but-torn-down
+  // object would stay pinned by the registry Set otherwise.
+  c.castShadow = false;
+  // A boundary torn down while its publication-deferred authored payload is still parked
+  // owns the preparedAuthoredRoots registration for that detached tree. Firing the installed
+  // disposer here unregisters those roots; skipping it leaves every context root — composed
+  // root, planNodes, renderPackageInstances — pinned by the scene for the session.
+  const disposePrepared = c.userData && c.userData.__disposePreparedAuthoredBoundary;
+  if (typeof disposePrepared === 'function') disposePrepared();
+  const disposePresentation = c.userData && c.userData.disposeWorldSitePresentation;
+  if (typeof disposePresentation === 'function') disposePresentation();
+  const releaseResidency = c.userData && c.userData.releaseAuthoredAssetResidency;
+  if (typeof releaseResidency === 'function') releaseResidency('render-boundary-disposed');
+  // Whole-ship LOD boundaries retain demoted-level roots detached for instant swap-back, so
+  // this traversal never reaches them. The boundary's hook re-attaches each stale retained
+  // root into the dying tree; the children loop then applies the identical teardown grammar.
+  const disposeLodRetained = c.userData && c.userData.disposeWholeShipLodRetained;
+  if (typeof disposeLodRetained === 'function') disposeLodRetained();
+  // Authored-motion controllers register per entity id; releasing them here keeps a torn-down
+  // boundary from holding pivots (and events) for a ship that no longer exists.
+  const detachMotion = c.userData && c.userData.detachAuthoredMotion;
+  if (typeof detachMotion === 'function') detachMotion();
+  // Instance-pool slots hold `slot.owner -> c`; THREE's `removed` event only reaches the
+  // outermost detached root, so owner nodes nested under this tree never drain their pool
+  // slots from the listener. Draining here releases the slot and lets the chunk retire.
+  releaseOwnerInstances(c);
+  if ((c.isBatchedMesh || c.isInstancedMesh) && typeof c.dispose === 'function'
+      && !isBorrowedAsteroidInstanceResource(c)) c.dispose();
+  const shared = !!(c.userData && (c.userData.sharedContactShadow || c.userData.sharedShieldGeo
+    || c.userData.spacefaceSharedAsset || c.userData.borrowedGeometryMaterial))
+    || isBorrowedAsteroidInstanceResource(c);
+  if (!c.isBatchedMesh && c.geometry && !shared) {
+    const geoShared = c.geometry.userData && c.geometry.userData.spacefaceSharedAsset;
+    if (!geoShared && typeof c.geometry.dispose === 'function') c.geometry.dispose();
+  }
+  if (c.material && !shared) {
+    const mm = Array.isArray(c.material) ? c.material : [c.material];
+    for (const material of mm) {
+      if (!material || typeof material.dispose !== 'function') continue;
+      if (material.userData && material.userData.spacefaceSharedAsset) continue;
+      material.dispose();
+    }
+  }
+  return heldLight;
+}
+
 function disposeObject(obj) {
   if (!obj || typeof obj.traverse !== 'function') return;
   // Strip the stashed lost-generation dispose listeners from the whole tree BEFORE any disposal
@@ -26520,53 +26682,31 @@ function disposeObject(obj) {
   detachStashedStaleWebGlDisposeListeners([obj]);
   let heldLight = false;
   obj.traverse((c) => {
-    if (!c) return;
-    if (c.isLight === true) heldLight = true;
-    // Release the vendored maintained shadow-caster registry entry: a flagged-but-torn-down
-    // object would stay pinned by the registry Set otherwise.
-    c.castShadow = false;
-    // A boundary torn down while its publication-deferred authored payload is still parked
-    // owns the preparedAuthoredRoots registration for that detached tree. Firing the installed
-    // disposer here unregisters those roots; skipping it leaves every context root — composed
-    // root, planNodes, renderPackageInstances — pinned by the scene for the session.
-    const disposePrepared = c.userData && c.userData.__disposePreparedAuthoredBoundary;
-    if (typeof disposePrepared === 'function') disposePrepared();
-    const disposePresentation = c.userData && c.userData.disposeWorldSitePresentation;
-    if (typeof disposePresentation === 'function') disposePresentation();
-    const releaseResidency = c.userData && c.userData.releaseAuthoredAssetResidency;
-    if (typeof releaseResidency === 'function') releaseResidency('render-boundary-disposed');
-    // Whole-ship LOD boundaries retain demoted-level roots detached for instant swap-back, so
-    // this traversal never reaches them. The boundary's hook re-attaches each stale retained
-    // root into the dying tree; the children loop then applies the identical teardown grammar.
-    const disposeLodRetained = c.userData && c.userData.disposeWholeShipLodRetained;
-    if (typeof disposeLodRetained === 'function') disposeLodRetained();
-    // Authored-motion controllers register per entity id; releasing them here keeps a torn-down
-    // boundary from holding pivots (and events) for a ship that no longer exists.
-    const detachMotion = c.userData && c.userData.detachAuthoredMotion;
-    if (typeof detachMotion === 'function') detachMotion();
-    // Instance-pool slots hold `slot.owner -> c`; THREE's `removed` event only reaches the
-    // outermost detached root, so owner nodes nested under this tree never drain their pool
-    // slots from the listener. Draining here releases the slot and lets the chunk retire.
-    releaseOwnerInstances(c);
-    if ((c.isBatchedMesh || c.isInstancedMesh) && typeof c.dispose === 'function'
-        && !isBorrowedAsteroidInstanceResource(c)) c.dispose();
-    const shared = !!(c.userData && (c.userData.sharedContactShadow || c.userData.sharedShieldGeo
-      || c.userData.spacefaceSharedAsset || c.userData.borrowedGeometryMaterial))
-      || isBorrowedAsteroidInstanceResource(c);
-    if (!c.isBatchedMesh && c.geometry && !shared) {
-      const geoShared = c.geometry.userData && c.geometry.userData.spacefaceSharedAsset;
-      if (!geoShared && typeof c.geometry.dispose === 'function') c.geometry.dispose();
-    }
-    if (c.material && !shared) {
-      const mm = Array.isArray(c.material) ? c.material : [c.material];
-      for (const material of mm) {
-        if (!material || typeof material.dispose !== 'function') continue;
-        if (material.userData && material.userData.spacefaceSharedAsset) continue;
-        material.dispose();
-      }
-    }
+    if (disposeObjectNode(c)) heldLight = true;
   });
   // A torn-down subtree that carried a light changed the rendered light set —
   // same-seq census memos minted before this teardown would serve the stale sig.
+  if (heldLight) noteShadowCensusLightMutation();
+}
+
+// Stepped twin — identical pre-order (children pushed reversed), the same
+// per-node teardown grammar as disposeObject; yields per 128 visited so one
+// fat corpse's teardown paces across drains instead of landing atomically.
+// Re-attached LOD-retained roots still get visited: the hook mutates children
+// mid-callback and the stack reads them at push time, same as traverse.
+function* disposeObjectSteps(root) {
+  if (!root) return;
+  detachStashedStaleWebGlDisposeListeners([root]);
+  let heldLight = false;
+  const stack = [root];
+  let visited = 0;
+  while (stack.length) {
+    const object = stack.pop();
+    if (!object) continue;
+    if ((++visited % 128) === 0) yield;
+    if (disposeObjectNode(object)) heldLight = true;
+    const children = object.children || [];
+    for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
+  }
   if (heldLight) noteShadowCensusLightMutation();
 }

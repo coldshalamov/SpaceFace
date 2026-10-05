@@ -333,6 +333,31 @@ export function invalidateAsteroidInstancePool(pool) {
   if (pool && !pool.disposed) pool.dirty = true;
 }
 
+// Origin rebase companion: every stored instanceMatrix is frame-local, so a
+// quantum crossing shifts each stored translation by (dx,dz) — elements 12/14
+// of each column-major 4x4. Translating the stored bytes plus one upload per
+// bucket replaces the full updateWorldMatrix re-eval + per-record compare the
+// invalidate path pays on the next sync; subsequent syncs then compare equal
+// and write nothing.
+export function translateAsteroidInstancePool(pool, dx, dz) {
+  if (!pool || pool.disposed || (!dx && !dz)) return;
+  const shiftBucket = (bucket) => {
+    if (!bucket || !bucket.mesh || !bucket.mesh.instanceMatrix) return;
+    const array = bucket.mesh.instanceMatrix.array;
+    for (let offset = 0; offset + 15 < array.length; offset += 16) {
+      array[offset + 12] += dx;
+      array[offset + 14] += dz;
+    }
+    if (bucket.dynamicBufferOwner) {
+      markDynamicBufferItems(bucket.dynamicBufferOwner, 0, 0, array.length / 16);
+    } else {
+      bucket.mesh.instanceMatrix.needsUpdate = true;
+    }
+  };
+  for (const bucket of pool.variants) shiftBucket(bucket);
+  for (const bucket of pool.keyed.values()) shiftBucket(bucket);
+}
+
 /**
  * Pre-size variant buckets so later registrations never trigger a capacity rebuild — a rebuild
  * allocates a fresh instanceMatrix buffer (a bufferData a fight would otherwise pay mid-round).

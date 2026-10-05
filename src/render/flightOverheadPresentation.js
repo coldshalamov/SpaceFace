@@ -12,6 +12,7 @@
 
 import * as THREE from 'three';
 import { globalShipMicroMotion } from './shipMicroMotion.js';
+import { noteShadowCensusLightMutation } from './shadowDepthAdmission.js';
 import { sampleBellThermal, writeSlipstreamState } from '../presentation/flightOverheadMath.js';
 
 export function createFlightOverheadPresentation(scene) {
@@ -56,6 +57,8 @@ export function createFlightOverheadPresentation(scene) {
     },
 
     dispose() {
+      // Light-set mutation — keep the shadow census memo honest on teardown.
+      noteShadowCensusLightMutation();
       if (light.parent) light.parent.remove(light);
     },
   };

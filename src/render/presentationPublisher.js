@@ -100,19 +100,24 @@ export function createPresentationPublisher(world, state, options = {}) {
     if (!initialized || !presentationFrame || completedTickCount > 0
       || lifecycleGeneration !== lastFallbackLifecycleGeneration) {
       // A stepped journal rebuild mid-publish shares its completed collect on the
-      // frame — the same live-GameState sample, collected once. Only a completed
-      // collect is ever handed over; a still-walking one falls back to the sync
-      // collect (a partial world would read as dropped entities).
+      // frame — the same live-GameState sample, collected once. While the collect
+      // leg is still pacing its accumulating prefix mirrors instead: retained
+      // rows refresh and not-yet-collected ids hold their last pose, strictly
+      // fresher than the whole-set sync collect it replaces.
       const sharedCollect = Array.isArray(presentationFrame?.rebuildCollectedEntities)
         ? presentationFrame.rebuildCollectedEntities
         : null;
-      const sample = sharedCollect || aliveEntities(state);
+      const collectPrefix = sharedCollect ? null
+        : (Array.isArray(presentationFrame?.rebuildCollectPrefix)
+          ? presentationFrame.rebuildCollectPrefix : null);
+      const sample = sharedCollect || collectPrefix || aliveEntities(state);
       // Diff-apply while a stepped rebuild is suspended: clear+realloc used to
       // retire every slot and drop every mesh binding on each tick-advanced
       // present. Rows absent from the collect retire, new ids allocate, and
-      // retained rows pay only the changed-row dirty marks.
+      // retained rows pay only the changed-row dirty marks. A prefix sample
+      // suppresses the retire sweep — partial by construction.
       if (typeof world.updateFromEntities === 'function') {
-        world.updateFromEntities(sample);
+        world.updateFromEntities(sample, null, collectPrefix ? { retire: false } : undefined);
       } else {
         world.rebuildFromEntities(sample);
       }

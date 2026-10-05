@@ -1013,7 +1013,9 @@ export function createLawArenaDressing() {
   function detachBoss(rec) {
     if (!rec) return;
     if (rec.group && rec.group.parent) rec.group.parent.remove(rec.group);
-    if (rec.boundMesh) boundIndex.delete(rec.boundMesh);
+    // Ownership-checked: a displaced entry now names a different rec — its
+    // live mapping must survive this detach.
+    if (rec.boundMesh && boundIndex.get(rec.boundMesh) === rec) boundIndex.delete(rec.boundMesh);
     rec.boundMesh = null;
   }
 
@@ -1055,6 +1057,10 @@ export function createLawArenaDressing() {
       parent.add(rec.group);
       recordMountedRootForUnreadyScan(rec.group);
       rec.boundMesh = mesh_;
+      const displaced = boundIndex.get(mesh_);
+      // A mesh re-seat steals the index entry — clear the displaced owner's
+      // bound field so its later detach can't delete our live mapping.
+      if (displaced && displaced !== rec) displaced.boundMesh = null;
       boundIndex.set(mesh_, rec);
     }
 

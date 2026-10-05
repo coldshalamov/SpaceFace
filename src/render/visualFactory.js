@@ -4422,6 +4422,11 @@ function attachPackagedBody(root, relativeFile, entity) {
         entity: boundaryLiveEntity(root, entity) || entity,
       });
       if (publicationWait) await publicationWait;
+      // The compile + publication gate can span several presents — the tail
+      // debit below must cover the mount tail alone, or the wallet reads a
+      // whole multi-present wait as CPU spent this frame. Same restamp the
+      // scenario-prop twin keeps after its own publication wait.
+      legStarted = legNow();
       if (packagedCommitOrphaned('packaged-body-orphaned-before-publication')) {
         disposeDetachedPackagedGroup(packaged);
         return { status: 'orphaned-before-swap' };

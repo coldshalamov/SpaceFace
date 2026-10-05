@@ -760,8 +760,10 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       if (!steppedJournalRebuild) {
         diagnostics.journalRebuildAttemptCount++;
         presentationJournal.clearSuppressedDestroyIds?.();
+        const collectOut = [];
         steppedJournalRebuild = {
-          collectIter: collectJournalPresentationEntitiesChunked(state, []),
+          collectIter: collectJournalPresentationEntitiesChunked(state, collectOut),
+          collectOut,
           tick: Number.isSafeInteger(state.tick) && state.tick >= 0 ? state.tick : 0,
           publishIter: null,
         };
@@ -871,6 +873,14 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
         && steppedJournalRebuild.publishIter
         && Array.isArray(steppedJournalRebuild.entities)
       ? steppedJournalRebuild.entities : null;
+    // While the collect leg is still pacing, its accumulating prefix is a
+    // strictly-fresher live sample than the fallback's whole-set sync collect.
+    // The publisher applies it with retire suppressed — the retire sweep is
+    // what makes a partial sample dangerous, and the flag kills it.
+    presentationFrame.rebuildCollectPrefix = steppedJournalRebuild
+        && !steppedJournalRebuild.publishIter
+        && Array.isArray(steppedJournalRebuild.collectOut)
+      ? steppedJournalRebuild.collectOut : null;
   }
 
   function acknowledgePresentedJournal() {

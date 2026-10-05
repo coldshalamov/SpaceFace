@@ -270,15 +270,23 @@ export function createInfrastructureMotionTracker() {
 
   function noteBoundaryRoot(rec, mesh) {
     if (rec.boundaryRoot !== mesh) {
-      if (rec.boundaryRoot) boundaryIndex.delete(rec.boundaryRoot);
+      if (rec.boundaryRoot && boundaryIndex.get(rec.boundaryRoot) === rec) {
+        boundaryIndex.delete(rec.boundaryRoot);
+      }
       rec.boundaryRoot = mesh;
+      const displaced = boundaryIndex.get(mesh);
+      // A mesh re-seat steals the index entry — clear the displaced owner's
+      // root field so its later drop can't delete our live mapping.
+      if (displaced && displaced !== rec) displaced.boundaryRoot = null;
       boundaryIndex.set(mesh, rec);
     }
   }
 
   function dropBoundaryIndex(rec) {
     if (rec && rec.boundaryRoot) {
-      boundaryIndex.delete(rec.boundaryRoot);
+      // Ownership-checked: a displaced entry now names a different rec — its
+      // live mapping must survive this drop.
+      if (boundaryIndex.get(rec.boundaryRoot) === rec) boundaryIndex.delete(rec.boundaryRoot);
       rec.boundaryRoot = null;
     }
   }

@@ -1132,7 +1132,11 @@ export function createShipMicroMotionTracker() {
 
   function scanMountPivots(rec, mesh, hull) {
     if (rec.mountMesh !== mesh) {
-      if (rec.mountMesh) mountIndex.delete(rec.mountMesh);
+      if (rec.mountMesh && mountIndex.get(rec.mountMesh) === rec) mountIndex.delete(rec.mountMesh);
+      const displaced = mountIndex.get(mesh);
+      // A mesh re-seat displaces its old owner's index entry — clear that
+      // owner's root field so its own later drop can't delete our live entry.
+      if (displaced && displaced !== rec) displaced.mountMesh = null;
       mountIndex.set(mesh, rec);
     }
     rec.mountMesh = mesh;
@@ -2272,7 +2276,9 @@ export function createShipMicroMotionTracker() {
 
   function clearRecordMeshRefs(rec) {
     if (!rec) return;
-    if (rec.mountMesh) mountIndex.delete(rec.mountMesh);
+    // Ownership-checked delete — a displaced entry now names a different rec
+    // and must survive this drop.
+    if (rec.mountMesh && mountIndex.get(rec.mountMesh) === rec) mountIndex.delete(rec.mountMesh);
     rec.mountMesh = null;
     rec.mountHull = null;
     rec.bellCount = 0;
@@ -2311,7 +2317,7 @@ export function createShipMicroMotionTracker() {
     for (const id of craftMotion.keys()) {
       if (!activeEntityIds.has(id)) {
         const rec = craftMotion.get(id);
-        if (rec && rec.mountMesh) mountIndex.delete(rec.mountMesh);
+        if (rec && rec.mountMesh && mountIndex.get(rec.mountMesh) === rec) mountIndex.delete(rec.mountMesh);
         craftMotion.delete(id);
       }
     }
