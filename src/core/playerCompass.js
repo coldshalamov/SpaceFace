@@ -2,7 +2,7 @@
 //
 // The chase camera sits on −z and looks toward +z, so world +z is screen up
 // (src/ui/hud.js objectiveBearingGlyph, measured 2026-09-19). The radar draws the
-// same way: y = center − dz, and the N mark sits above the dial. North is −z.
+// same way: y = center − dz, and the N mark sits above the dial. North is +z.
 // East is +x (screen left on that same camera). South is −z. West is −x.
 //
 // Cryo quadrant keys put nw/ne on +z, which is north here.
@@ -12,10 +12,10 @@ const HYPHEN = Object.freeze([
 ]);
 const LETTERS = Object.freeze(['E', 'NE', 'N', 'NW', 'W', 'SW', 'S', 'SE']);
 
-/** Index 0 is east, matching atan2(-dz, dx). −1 when the offset is not a finite vector. */
+/** Index 0 is east, matching atan2(dz, dx). −1 when the offset is not a finite vector. */
 export function playerBearingIndex(dx, dz) {
   if (!Number.isFinite(dx) || !Number.isFinite(dz)) return -1;
-  return (Math.round(Math.atan2(-dz, dx) / (Math.PI / 4)) + 8) % 8;
+  return (Math.round(Math.atan2(dz, dx) / (Math.PI / 4)) + 8) % 8;
 }
 
 /** 'north', 'northeast', 'east', … Empty when the offset is not finite. */
