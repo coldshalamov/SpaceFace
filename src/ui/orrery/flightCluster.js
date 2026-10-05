@@ -55,8 +55,8 @@ const CSS = `
 .orr-cluster__keytag, .orr-cluster__speedfoot, .orr-cluster__read, .orr-cluster__legend, .orr-cluster__payload, .orr-cluster__count {
   text-shadow:0 0 1px rgb(3 4 7 / .95), 0 0 3px rgb(3 4 7 / .85), 0 0 9px rgb(3 4 7 / .6); }
 /* small type gets its own pool of shadow, sized to the words, not the block — hugging the text */
-.orr-cluster__keytag::before { content:""; position:absolute; inset:-4px -8px; z-index:-1; pointer-events:none;
-  background:radial-gradient(closest-side, rgb(3 4 7 / .75), rgb(3 4 7 / .45) 60%, transparent); }
+.orr-cluster__keytag::before { content:""; position:absolute; inset:-7px -18px; z-index:-1; pointer-events:none;
+  background:radial-gradient(closest-side, rgb(3 4 7 / .88), rgb(3 4 7 / .74) 58%, transparent); }
 .orr-cluster .orr-soft::before { content:""; position:absolute; inset:-18px -26px; z-index:-1; pointer-events:none;
   background:radial-gradient(closest-side, rgb(3 4 7 / .72), rgb(3 4 7 / .38) 55%, transparent); }
 .orr-cluster__legend { position:absolute; left:${P.x - 62}px; top:${P.y + 68}px; width:124px; display:grid; grid-template-columns:16px auto 1fr; column-gap:7px; row-gap:4px; align-items:center; }
@@ -93,7 +93,7 @@ const CSS = `
 .orr-cluster__key:not(.is-node) .orr-cluster__keytag { left:${24 + KEY_R + 10}px; color:rgb(232 226 212 / .88); }
 .orr-cluster__key.is-node .orr-cluster__keytag { left:${24 + NODE_R + 9}px; color:rgb(232 226 212 / .92); }
 .orr-cluster__keytag b { font-weight:700; color:var(--dp-ink, #e8e2d4); margin-left:6px; letter-spacing:.08em; }
-.orr-cluster__key.is-node .orr-cluster__keytag b { font-weight:500; color:rgb(232 226 212 / .70); }
+.orr-cluster__key.is-node .orr-cluster__keytag b { font-weight:500; color:rgb(232 226 212 / .88); }
 .orr-cluster__key.is-armed .orr-cluster__keytag { color:var(--dp-hand, #f2b950); font-weight:600; }
 .orr-cluster__key.is-armed .orr-cluster__keytag b { color:var(--dp-hand-hot, #ffd98c); font-weight:700; }
 .orr-cluster__key.is-locked .orr-cluster__keytag, .orr-cluster__key.is-empty .orr-cluster__keytag { opacity:.55; }
