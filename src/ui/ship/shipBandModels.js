@@ -150,10 +150,6 @@ function ratioFor(derived, shipDef) {
   return feelMass / base;
 }
 
-function turnMassForRatio(ratio) {
-  return 1.4 / (0.4 + Math.max(0.001, finite(ratio, 1)));
-}
-
 function percentDelta(after, before) {
   const b = finite(before, 0);
   if (Math.abs(b) < 1e-6) return 0;
@@ -631,17 +627,14 @@ function liveTurnSentence(derived) {
 function agilityWhy({ shipDef, derived, dryDerived, bareDerived }) {
   const cargoMass = finite(derived && derived.cargoMass, 0);
   const moduleMass = Math.max(0, finite(derived && derived.dryMass, finite(shipDef && shipDef.mass, 0)) - finite(shipDef && shipDef.mass, 0));
-  const dryRatio = ratioFor(dryDerived, shipDef);
-  const bareRatio = ratioFor(bareDerived, shipDef);
-  const modulePenalty = moduleMass > 0
-    ? percentDelta(turnMassForRatio(dryRatio), turnMassForRatio(bareRatio))
-    : 0;
-  // The bar's own number. Cargo uses that same yaw acceleration, empty versus loaded.
-  // Comparing the loaded number with the roster median blamed the hold on the frame.
+  // The bar's own number. Cargo and fitted mass use that same yaw acceleration.
+  // A mass curve blamed a bumper for a turn loss the yaw number never took.
   const yawAccel = finite(derived && derived.propulsion && derived.propulsion.yawAccel, 0);
   const dryYaw = finite(dryDerived && dryDerived.propulsion && dryDerived.propulsion.yawAccel, yawAccel);
+  const bareYaw = finite(bareDerived && bareDerived.propulsion && bareDerived.propulsion.yawAccel, dryYaw);
   const hullShift = percentDelta(dryYaw, AGILITY_MEDIAN);
   const cargoPenalty = cargoMass > 0 ? percentDelta(yawAccel, dryYaw) : 0;
+  const modulePenalty = moduleMass > 0 ? percentDelta(dryYaw, bareYaw) : 0;
   const rows = [];
   if (cargoMass > 0) {
     rows.push({
@@ -650,7 +643,7 @@ function agilityWhy({ shipDef, derived, dryDerived, bareDerived }) {
       why: `${formatMass(cargoMass)} of cargo. That is why you turn ${signedPercent(cargoPenalty)} slower than empty.`,
     });
   }
-  if (moduleMass > 0) {
+  if (moduleMass > 0 && Math.abs(modulePenalty) >= 0.5) {
     rows.push({
       key: 'modules',
       magnitude: Math.abs(modulePenalty),
