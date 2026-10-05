@@ -73,7 +73,7 @@ ${C} .gmh-item[aria-disabled="true"] { color:rgb(${BONE} / .42); cursor:default;
 ${C} .gmh-item[aria-disabled="true"]:hover { color:rgb(${BONE} / .42); background:none; }
 
 /* ===== the toolbar: one horizontal spine, four glyphs, a tooltip each ===== */
-${C} .gmh-tools { position:absolute; left:calc(var(--k-margin, 40px) + 72px); bottom:calc(var(--gm-foot, 150px) + 16px); display:flex; flex-direction:row; align-items:center; gap:2px; padding:0 6px; pointer-events:auto; }
+${C} .gmh-tools { position:absolute; left:calc(var(--gm-stage-x, var(--k-margin, 40px)) + 72px); bottom:calc(var(--gm-foot, 150px) + 16px); display:flex; flex-direction:row; align-items:center; gap:2px; padding:0 6px; pointer-events:auto; }
 ${C} .gmh-tools::before { content:""; position:absolute; left:0; right:0; top:50%; height:6px; margin-top:-3px; z-index:0; pointer-events:none;
   background:linear-gradient(180deg, transparent 2px, rgb(${BONE} / .6) 2px 4px, transparent 4px), linear-gradient(180deg, rgb(${BONE} / .26) 0 6px); }
 ${C} .gmh-tool { position:relative; z-index:1; display:grid; place-items:center; width:44px; height:40px; color:rgb(${BONE} / .94); }
@@ -254,7 +254,7 @@ export function enhanceInspectorSections(details, { tab = 'overview' } = {}) {
 }
 
 const noop = Object.freeze({
-  hover() {}, cancelHover() {}, contextMenu() { return false; }, closeAll() {}, escape() { return false; }, key() { return false; }, refresh() {}, dispose() {},
+  hover() {}, cancelHover() {}, pin() {}, contextMenu() { return false; }, closeAll() {}, escape() { return false; }, key() { return false; }, refresh() {}, dispose() {},
   focusPalette() {}, isOpen() { return false; },
 });
 
@@ -550,6 +550,32 @@ export function mountChartHub(root, adapter, { searchInput = null, searchResults
     });
   }
 
+  // ── the lens dock opens on hover INTENT ──
+  // The dock is icon beads at rest and words when open; the words sit at different heights from the
+  // icons, so opening it the instant the pointer arrives moves the thing the pilot is about to click.
+  // A 200 ms dwell opens it (a quick click lands on the icon where it stands), a press cancels the
+  // opening, and focus opens it at once for the keyboard and the pad.
+  const rail = root.querySelector ? root.querySelector('.gm-left-rail') : null;
+  if (rail && rail.classList) {
+    let openTimer = null;
+    let closeTimer = null;
+    const openRail = () => { clearTimeout(closeTimer); rail.classList.add('is-open'); };
+    // Focus that did not follow a pointer press (a key, the pad, a script) opens the dock and holds it; a
+    // mouse press that merely focused a button does not (it would move the icon under the click).
+    let pointerAt = 0;
+    on(doc, 'pointerdown', () => { pointerAt = Date.now(); }, true);
+    on(doc, 'keydown', () => { pointerAt = 0; }, true);
+    const pointerRecent = () => Date.now() - pointerAt < 700;
+    const keyFocused = () => { const a = doc.activeElement; return !!(a && rail.contains(a) && !pointerRecent()); };
+    const closeRail = () => { if (keyFocused()) return; rail.classList.remove('is-open'); };
+    on(rail, 'pointerenter', () => { clearTimeout(closeTimer); clearTimeout(openTimer); openTimer = setTimeout(openRail, 200); });
+    on(rail, 'pointerleave', () => { clearTimeout(openTimer); closeTimer = setTimeout(closeRail, 140); });
+    on(rail, 'pointerdown', () => { clearTimeout(openTimer); });
+    on(rail, 'focusin', () => { if (!pointerRecent()) openRail(); });
+    on(rail, 'focusout', () => { setTimeout(closeRail, 0); });
+    cleanups.push(() => { clearTimeout(openTimer); clearTimeout(closeTimer); rail.classList.remove('is-open'); });
+  }
+
   // ── the hub ──
   return {
     /** The pointer is over `target` (or nothing) at canvas point `pt`. A dwell opens the card. */
@@ -564,15 +590,18 @@ export function mountChartHub(root, adapter, { searchInput = null, searchResults
       hoverTimer = setTimeout(() => { hoverTimer = null; if (hoverId === id) showCard(target, { x: target.sx != null ? target.sx : pt.x, y: target.sy != null ? target.sy : pt.y }); }, wasShown ? 60 : 320);
     },
     cancelHover() { hideCard(); },
-    /** Right-click: a mark's verbs, or the empty chart's. */
+    /** Right-click: a mark's verbs, or the empty chart's. (The keyboard passes a seat in client pixels.) */
     contextMenu(ev, target) { return openMenu(ev.clientX, ev.clientY, target); },
+    /** Show the card for a mark right now (a selection made by search or by key has no pointer to dwell). */
+    pin(target, pt) { hideCard(); if (target && pt) showCard(target, pt); },
     closeAll() { hideCard(); closeMenu(); setWire(false); closePalette(); },
     /** First refusal on Escape: the topmost thing open lets go (the chart itself stays). */
     escape() {
       if (closeMenu()) return true;
       if (wireOpen) { setWire(false); return true; }
       if (closePalette()) { if (searchInput && typeof searchInput.blur === 'function') searchInput.blur(); return true; }
-      if (cardShown) { hideCard(); return true; }
+      // the hover card is passive (the pointer is just resting): Escape hides it and goes on to close the chart
+      if (cardShown) hideCard();
       return false;
     },
     /** Keys the open menu owns. */
@@ -591,6 +620,9 @@ export function mountChartHub(root, adapter, { searchInput = null, searchResults
       // foot, wherever the foot's height has settled
       try {
         const rr = root.getBoundingClientRect();
+        // the toolbar follows the stage's left edge (the shell clamps the stage on an ultrawide)
+        const stage = root.querySelector('.gm-body-container');
+        if (stage) layer.style.setProperty('--gm-stage-x', `${Math.round(stage.getBoundingClientRect().left - rr.left)}px`);
         const lever = root.querySelector('.gm-rail');
         const words = root.querySelector('.gm-scale-buttons');
         if (lever && words) {

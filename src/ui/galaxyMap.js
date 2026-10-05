@@ -5200,6 +5200,13 @@ _stepAnimation(now) {
       return true;
     }
 
+    // The keyboard's way to the context menu: the ContextMenu key or Shift+F10 opens the verbs for the
+    // selected mark (or, with nothing selected, the empty chart's), seated at the mark.
+    if (key === 'contextmenu' || (event.shiftKey && key === 'f10')) {
+      event.preventDefault();
+      this._openMenuAtSelection();
+      return true;
+    }
     // The open context menu owns the arrows and Enter.
     if (this._hub && this._hub.key(event)) {
       if (event && typeof event.preventDefault === 'function') event.preventDefault();
@@ -7184,6 +7191,18 @@ _stepAnimation(now) {
     };
   },
 
+  /** Open the context menu for the selected mark from the keyboard, seated on the mark. */
+  _openMenuAtSelection() {
+    if (!this._hub || !this._canvas || typeof this._canvas.getBoundingClientRect !== 'function') return;
+    const rect = this._canvas.getBoundingClientRect();
+    const sel = this._selectedTarget;
+    const live = sel && this._clickTargets.find((t) => t && t.id === sel.id && Number.isFinite(t.sx));
+    const field = this._clearField(rect.width, rect.height);
+    const x = rect.left + (live ? live.sx : field.x + field.width / 2);
+    const y = rect.top + (live ? live.sy : field.y + field.height / 2);
+    this._hub.contextMenu({ clientX: x, clientY: y }, live || null);
+  },
+
   _onContextMenu(ev) {
     if (!ev || !this._canvas) return;
     ev.preventDefault();
@@ -7537,6 +7556,7 @@ _stepAnimation(now) {
     if (!state) return;
 
     this._selectedTarget = target;
+    this._pinCardSoon = true;
 
     // Selecting a search result frames the result. The camera is driven in the GLOBAL frame in every
     // branch — which is what makes "search, then zoom out, then zoom back in" land on the same
@@ -8051,6 +8071,15 @@ _draw() {
 
     // SLICE C: the ribbon rides the shared draw path so it cannot stop tracking the executor at one scale.
     this._updateRibbon(state);
+
+    // A selection made by search or by a key has no pointer to dwell on: show its card once, now that
+    // this frame has placed its mark.
+    if (this._pinCardSoon && this._hub) {
+      this._pinCardSoon = false;
+      const sel = this._selectedTarget;
+      const live = sel && this._clickTargets.find((t) => t && t.id === sel.id && Number.isFinite(t.sx) && !t.edgeTick);
+      if (live) this._hub.pin(live, { x: live.sx, y: live.sy });
+    }
 
     // Hover: a lens of light under a mark the pointer rests on (tokens and marks lift themselves; this
     // is the quieter ring for everything else). Resolved against THIS frame's click targets.
@@ -11364,12 +11393,20 @@ function drawWaypointPin(g, x, y, label, viewportWidth = Infinity, labelPlacemen
  */
 function stampWaypointTarget(state, target) {
   if (!target || target.targetEntityId == null) return target;
-  const holder = resolveEntityById(state, target.targetEntityId);
+  // The armed course's own stamp is the authority for which entity the waypoint meant — the
+  // bare id alone can have recycled onto an unrelated body, and stamping THAT occupant would
+  // send the chart marker's clicks to it.
+  const holder = target.stable
+    ? resolveEntitySelection(state, target.stable)
+    : resolveEntityById(state, target.targetEntityId);
   if (!holder || holder.alive === false) {
     target.targetEntityId = null;
     target.stable = null;
     return target;
   }
+  // A durable stamp can resolve to a rematerialized instance under a NEW id — the marker points
+  // at the live holder, so both the id and the stamp agree on it.
+  target.targetEntityId = holder.id;
   target.stable = captureEntitySelection(holder);
   return target;
 }
@@ -11397,6 +11434,7 @@ function waypointClickTarget(wp, pos, sx, sy, state) {
     detail: wp.reason || wp.label || wp.mapLabel || 'Active navigation waypoint',
     missionId: wp.missionId || null,
     targetEntityId: wp.targetEntityId,
+    stable: wp.stable || null,
     stationId: wp.stationId,
   });
 }
