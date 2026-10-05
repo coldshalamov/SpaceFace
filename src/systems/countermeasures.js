@@ -697,12 +697,8 @@ function breakOneLockLineage(state, deployer, breakPct) {
     if (!other || other.id !== lineage.shooterId) continue;
     const oc = other.data && other.data.combat;
     if (!other.alive || !oc || oc.lockTarget !== deployer.id) return { lineage, brokeLock: false };
-    oc.lockBroken = {
-      shooterId: other.id,
-      targetId: deployer.id,
-      generation: lineage.generation,
-      targetGeneration: lineage.targetGeneration,
-    };
+    // (The old `oc.lockBroken` receipt write lived here — repo-wide grep found no reader, so
+    // the break is carried entirely by the progress/suppression/perception mutations below.)
     oc.lockTargetGeneration = lineage.targetGeneration;
     const nextProgress = Math.max(0, (oc.lockProgress || 0) * (1 - breakPct));
     if (nextProgress <= 0) {
