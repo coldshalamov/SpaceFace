@@ -167,6 +167,19 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
   // write for one of them re-derives on that entity's next write, so only writes for
   // entities outside the set (and destroys, which never re-write) must invalidate.
   let rebuildSourceIds = null;
+  // …except a member whose spawn row the publish already minted: its suppressed write
+  // would never replay. The commit tail re-emits live transform+visual for every id
+  // collected here (publish progress is tracked in rebuildPublishedIds; sources in
+  // rebuildSourceEntities).
+  let rebuildSourceEntities = null;
+  let rebuildPublishedIds = null;
+  let rebuildStalePublishedIds = null;
+  // Suppressed destroys recorded while rebuildRequired holds — the only
+  // suppression class that can corrupt a collect set: a member that dies after
+  // its row was collected still gets a published spawn and never writes again.
+  // Transform/spawn suppression self-heals (publish re-reads live pose, or the
+  // next write trips *-without-spawn), so the runner only dooms on this set.
+  const suppressedDestroyIds = new Set();
   let rebuildReason = null;
   let rebuildGeneration = 0;
   let lastRebuildStart = 0;
@@ -188,6 +201,7 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
   let rebuildRequestCount = 0;
   let rebuildCount = 0;
   let rebuildFailureCount = 0;
+  let rebuildStaleReplayCount = 0;
   let closed = false;
   let closeCount = 0;
   let pendingAtClose = 0;
@@ -253,6 +267,7 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
   function prepareRecord(tick, entityId = 0, kind = null) {
     if (rebuildRequired) {
       suppressedCount++;
+      if (kind === 'destroy' && entityId > 0) suppressedDestroyIds.add(entityId);
       if (rebuildInProgress
           && (kind === 'destroy' || entityId === 0
             || !rebuildSourceIds || !rebuildSourceIds.has(entityId))) {
@@ -392,9 +407,12 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
     if (rebuildRequired) {
       suppressedCount++;
       const entityId = ensureEntityId(entity);
-      if (rebuildInProgress
-          && (entityId === 0 || !rebuildSourceIds || !rebuildSourceIds.has(entityId))) {
-        rebuildInvalidatedDuringSteps = true;
+      if (rebuildInProgress) {
+        if (entityId === 0 || !rebuildSourceIds || !rebuildSourceIds.has(entityId)) {
+          rebuildInvalidatedDuringSteps = true;
+        } else if (rebuildPublishedIds && rebuildPublishedIds.has(entityId)) {
+          rebuildStalePublishedIds.add(entityId);
+        }
       }
       return 0;
     }
@@ -538,10 +556,12 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
     let aliveCount = 0;
     let maxEntityId = 0;
     const sourceIds = new Set();
+    const sourceEntities = new Map();
     for (const entity of entities) {
       if (!entity || entity.alive === false) continue;
       const entityId = sourceEntityId(entity);
       sourceIds.add(entityId);
+      sourceEntities.set(entityId, entity);
       if (entityId === 0) {
         rebuildFailureCount++;
         identityErrorCount++;
@@ -566,6 +586,9 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
     rebuildInProgress = true;
     rebuildInvalidatedDuringSteps = false;
     rebuildSourceIds = sourceIds;
+    rebuildSourceEntities = sourceEntities;
+    rebuildPublishedIds = new Set();
+    rebuildStalePublishedIds = new Set();
     lastRebuildStart = writeSequence;
     lastRebuildRecordCount = 0;
 
@@ -577,6 +600,7 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
           requestRebuild('rebuild-publication-failed');
           return false;
         }
+        rebuildPublishedIds.add(sourceEntityId(entity));
         if (++lastRebuildRecordCount % 64 === 0) {
           // A flagged attempt is doomed — bail at the slice boundary rather than
           // finishing a publish that can never commit.
@@ -584,9 +608,38 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
           yield;
         }
       }
+      // A coalescible write suppressed after its entity's spawn already minted was
+      // dropped without invalidating the attempt — re-emit the live transform and
+      // visual here so a write-silent entity can't present publish-stale pose/flags.
+      if (!rebuildInvalidatedDuringSteps && rebuildStalePublishedIds.size > 0) {
+        if (count + rebuildStalePublishedIds.size * 2 > size) {
+          rebuildInvalidatedDuringSteps = true;
+          requestRebuild('rebuild-replay-capacity');
+        } else {
+          for (const staleId of rebuildStalePublishedIds) {
+            const source = rebuildSourceEntities.get(staleId);
+            const generation = source ? activeGenerations[staleId] : 0;
+            if (generation === 0) continue;
+            let revision = nextCounter(revisions[staleId]);
+            revisions[staleId] = revision;
+            lastTransformSequence[staleId] = append(
+              PRESENTATION_JOURNAL_KINDS.TRANSFORM, tick, staleId, generation, revision, source);
+            revision = nextCounter(revisions[staleId]);
+            revisions[staleId] = revision;
+            lastVisualSequence[staleId] = append(
+              PRESENTATION_JOURNAL_KINDS.VISUAL, tick, staleId, generation, revision, source);
+            transformCount++;
+            visualCount++;
+            rebuildStaleReplayCount++;
+          }
+        }
+      }
     } finally {
       rebuildInProgress = false;
       rebuildSourceIds = null;
+      rebuildSourceEntities = null;
+      rebuildPublishedIds = null;
+      rebuildStalePublishedIds = null;
     }
 
     if (rebuildInvalidatedDuringSteps) {
@@ -654,6 +707,8 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
     getLastRebuildEnd: () => lastRebuildEnd,
     getLastRebuildRecordCount: () => lastRebuildRecordCount,
     getSuppressedCount: () => suppressedCount,
+    getSuppressedDestroyIds: () => suppressedDestroyIds,
+    clearSuppressedDestroyIds: () => suppressedDestroyIds.clear(),
     getDiagnostics() {
       return {
         closed,
@@ -689,6 +744,7 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
         lastRebuildStart,
         lastRebuildEnd,
         lastRebuildRecordCount,
+        rebuildStaleReplayCount,
       };
     },
   };

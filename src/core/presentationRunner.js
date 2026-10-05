@@ -760,12 +760,12 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     try {
       if (!steppedJournalRebuild) {
         diagnostics.journalRebuildAttemptCount++;
+        presentationJournal.clearSuppressedDestroyIds?.();
         steppedJournalRebuild = {
           collectIter: collectJournalPresentationEntitiesChunked(state, []),
           tick: Number.isSafeInteger(state.tick) && state.tick >= 0 ? state.tick : 0,
           publishIter: null,
           publishRows: 0,
-          suppressedAtStart: presentationJournal.getSuppressedCount?.() || 0,
         };
       }
       const job = steppedJournalRebuild;
@@ -774,18 +774,33 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
         let step = job.collectIter.next();
         while (!step.done && nowMs() < collectDeadline) step = job.collectIter.next();
         if (!step.done) return false;
-        // Collect-phase writes are suppressed without flagging the attempt, and one can
-        // slip both the snapshot and the newcomer tail sweep — any suppression while the
-        // collect ran dooms the set, so re-collect rather than publish it.
-        const suppressedNow = presentationJournal.getSuppressedCount?.() || 0;
-        if (suppressedNow > job.suppressedAtStart) {
-          const tick = job.tick;
-          steppedJournalRebuild = null;
-          if (++journalRebuildInvalidations >= JOURNAL_REBUILD_INVALIDATED_MAX) {
-            return syncJournalRebuildEscalation(tick);
+        // Collect-phase writes are suppressed without flagging the attempt — most
+        // classes self-heal (the publish re-reads live pose for members; a write for
+        // a non-member trips *-without-spawn after commit), but a suppressed destroy
+        // naming a collected id would commit a zombie spawn that never re-writes.
+        // Doom on exactly that class instead of any suppression, or every busy
+        // collect falls through to the atomic escalation the stepped twin replaced.
+        const suppressedDestroys = presentationJournal.getSuppressedDestroyIds?.();
+        if (suppressedDestroys && suppressedDestroys.size > 0) {
+          const entities = step.value || [];
+          const collectedIds = new Set();
+          for (const entity of entities) {
+            if (entity && Number.isSafeInteger(entity.id)) collectedIds.add(entity.id);
           }
-          return false;
+          let doomed = false;
+          for (const entityId of suppressedDestroys) {
+            if (collectedIds.has(entityId)) { doomed = true; break; }
+          }
+          if (doomed) {
+            const tick = job.tick;
+            steppedJournalRebuild = null;
+            if (++journalRebuildInvalidations >= JOURNAL_REBUILD_INVALIDATED_MAX) {
+              return syncJournalRebuildEscalation(tick);
+            }
+            return false;
+          }
         }
+        presentationJournal.clearSuppressedDestroyIds?.();
         const entities = step.value || [];
         if (typeof presentationJournal.rebuildFromSteps !== 'function') {
           if (presentationJournal.rebuildFrom(entities, job.tick) !== true) {

@@ -2032,7 +2032,28 @@ export function serviceRenderMeshResidency(owner, frameDt) {
   if (owner && owner._sessionRecookKeepGpu === true && owner.state && owner.state.mode === 'loading') {
     abandonResidencyPoll(owner);
     abandonReconcile(owner);
-    reattachResidentGpuMeshes(owner);
+    // The reattach sweep is idempotent — re-running it while nothing it reads
+    // changed is a whole-mesh-set walk with zero work. Run only when a feed it
+    // consumes moved (mesh set, entity tables, restore remap, sector serial),
+    // plus a slow catch-all frame for key-heals the counters don't cover.
+    const st = owner.state;
+    const reattachFeed = [
+      owner._meshesVersion | 0,
+      st.entities && typeof st.entities.size === 'number' ? st.entities.size : 0,
+      Array.isArray(st.entityList) ? st.entityList.length : 0,
+      st.world && st.world.dressing && st.world.dressing.byId ? st.world.dressing.byId.size : 0,
+      st.world && st.world.farActors && st.world.farActors.byId ? st.world.farActors.byId.size : 0,
+      st.sessionEntityIdRemap instanceof Map ? st.sessionEntityIdRemap.size : 0,
+      st.world && st.world.enterSerial != null ? st.world.enterSerial : 0,
+    ];
+    const prevStamp = owner._residentReattachStamp;
+    const feedMoved = !prevStamp || prevStamp.length !== reattachFeed.length
+      || prevStamp.some((value, index) => value !== reattachFeed[index]);
+    owner._residentReattachFrame = ((owner._residentReattachFrame | 0) + 1) % 240;
+    if (feedMoved || owner._residentReattachFrame === 0) {
+      owner._residentReattachStamp = reattachFeed;
+      reattachResidentGpuMeshes(owner);
+    }
     // Restore reissues entity ids (spawnEntity ignores saved ids) and a mesh can also be missing
     // because its build was still queued at save time, so the kept set can leave live entities
     // mesh-less. The authored-visuals gate blocks on required boundaries that would otherwise
@@ -17090,6 +17111,7 @@ export const render = {
           state.render.openingSubmissionValidation = null;
           this._openingFirstDrawIdentityIter = null;
           this._openingFirstDrawIdentityResult = undefined;
+          this._openingFirstDrawDiagnosticsDeferred = false;
           state.render.openingSubmissionReady = null;
           state.render.firstPlayableContentHashes = null;
           state.render.firstPlayableContentHashesVerified = false;
@@ -23903,6 +23925,14 @@ export const render = {
         // from genuinely unrecorded first-draw resources — persist it on state so a deferred
         // validation frame still sees the baseline.
         const persistAndFinish = (identityBefore) => {
+          // A recook that superseded this census's plan while the closure sat in
+          // timer gaps must not stamp the pre-recook identity map — mirrors the
+          // generator's own armed-plan bail and leaves the deferred flag clear so
+          // the new plan can arm its own diagnostics.
+          if (this.state.render.openingSubmissionPlan !== armedPlan) {
+            this._openingFirstDrawDiagnosticsDeferred = false;
+            return;
+          }
           this.state.render.openingFirstDrawIdentityCensus = identityBefore;
           // The delta attribution and post-submit receipt validation are diagnostic-only
           // passes (another whole-scene traverse plus per-material program reads). They

@@ -4269,7 +4269,11 @@ async function commitAuthoredPlaceBoundary(
   } else {
     publish();
   }
-
+  // Same seam as the ship commit: the fallback teardown walks the whole subtree —
+  // defer it past a presented frame when the flight-mode stage gate is on.
+  if (options.yieldBetweenGpuStages === true && typeof options.yieldToNextPresent === 'function') {
+    await waitForAuthoredAdmission(options.yieldToNextPresent(), options);
+  }
   try { disposeDetachedPlaceFallback(fallbackRoot); }
   catch (error) { console.warn('[partsLibrary] place fallback cleanup failed after authored swap', error); }
   return true;
@@ -8375,12 +8379,25 @@ export async function prepareAuthoredVisualPipelines(root, options = {}) {
   // detached-root compile changes the program key and leaves the first draw to link synchronously.
   assertAuthoredVisualPreparationActive(options, 'before-material-policy');
   const policiesStartedAtMs = monotonicNow();
-  configureRealtimeCanopyMaterials(root);
-  configureTransparentSinglePassSurfaces(root);
-  canonicalizeAuthoredProgramState(root);
+  // Each policy walk is an independent whole-subtree traverse of the detached
+  // root — under the stage gate they pace with a ledger debit + present yield
+  // between them instead of landing as one contiguous prefix inside the commit.
+  const pacePolicyWalk = async (walk) => {
+    const legStarted = monotonicNow();
+    const result = walk();
+    if (options.yieldBetweenGpuStages === true && typeof options.yieldToNextPresent === 'function') {
+      notePacedFrameSpend(monotonicNow() - legStarted);
+      await waitForAuthoredAdmission(options.yieldToNextPresent(), options);
+      assertAuthoredVisualPreparationActive(options, 'material-policy-yield');
+    }
+    return result;
+  };
+  await pacePolicyWalk(() => configureRealtimeCanopyMaterials(root));
+  await pacePolicyWalk(() => configureTransparentSinglePassSurfaces(root));
+  await pacePolicyWalk(() => canonicalizeAuthoredProgramState(root));
   // Retained program specimens ride this admission's own compile (cache-hit binds, no extra
   // links) and keep each covered program key alive after the boundary's materials release.
-  const programSpecimenMount = mountCanonicalProgramSpecimens(root);
+  const programSpecimenMount = await pacePolicyWalk(() => mountCanonicalProgramSpecimens(root));
   const policiesMs = Math.max(0, monotonicNow() - policiesStartedAtMs);
   const tier1 = tier1CausalCounters();
   if (tier1) {

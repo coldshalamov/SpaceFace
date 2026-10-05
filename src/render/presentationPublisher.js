@@ -52,6 +52,7 @@ export function createPresentationPublisher(world, state, options = {}) {
     idempotentFrames: 0,
     fullRebuilds: 0,
     fallbackRebuilds: 0,
+    fallbackReusedFrames: 0,
     rangeFailures: 0,
     applyFailures: 0,
     lastError: null,
@@ -59,6 +60,7 @@ export function createPresentationPublisher(world, state, options = {}) {
 
   let lastAppliedSequence = 0;
   let rebuildGeneration = 0;
+  let lastFallbackLifecycleGeneration = -2;
   let initialized = false;
 
   function resetResult(start, end) {
@@ -78,14 +80,31 @@ export function createPresentationPublisher(world, state, options = {}) {
     try { journal?.requestRebuild?.(reason); } catch (_) { /* derived channel only */ }
   }
 
-  function fallbackFromState(journal, reason, end) {
+  function fallbackFromState(journal, reason, end, presentationFrame = null) {
     requestRebuild(journal, reason);
-    world.rebuildFromEntities(aliveEntities(state));
+    // The stepped journal rebuild holds needsRebuild across several presents, and
+    // the world the fallback mirrors only moves on a completed sim tick or a
+    // lifecycle transition (restore/restart). An unchanged-tick present re-packs
+    // the existing world instead of clear + re-allocating every slot — identical
+    // contents minus the per-frame whole-set drain inside the suspension window.
+    const completedTickCount = presentationFrame
+      && Number.isSafeInteger(presentationFrame.completedTickCount)
+      ? presentationFrame.completedTickCount : 0;
+    const lifecycleGeneration = presentationFrame
+      && Number.isSafeInteger(presentationFrame.lifecycleGeneration)
+      ? presentationFrame.lifecycleGeneration : -1;
+    if (!initialized || !presentationFrame || completedTickCount > 0
+      || lifecycleGeneration !== lastFallbackLifecycleGeneration) {
+      world.rebuildFromEntities(aliveEntities(state));
+      lastFallbackLifecycleGeneration = lifecycleGeneration;
+      diagnostics.fallbackRebuilds++;
+      result.rebuilt = true;
+    } else {
+      diagnostics.fallbackReusedFrames++;
+    }
     lastAppliedSequence = Number.isSafeInteger(end) && end >= 0 ? end : lastAppliedSequence;
     diagnostics.lastAppliedSequence = lastAppliedSequence;
-    diagnostics.fallbackRebuilds++;
     diagnostics.lastError = reason;
-    result.rebuilt = true;
     result.fallback = true;
     result.valid = false;
     result.error = reason;
@@ -149,13 +168,13 @@ export function createPresentationPublisher(world, state, options = {}) {
     }
 
     if (journal.needsRebuild?.() === true || presentationFrame && presentationFrame.journalValid === false) {
-      return fallbackFromState(journal, 'presentation-journal-invalid', frameEnd);
+      return fallbackFromState(journal, 'presentation-journal-invalid', frameEnd, presentationFrame);
     }
 
     if (!Number.isSafeInteger(frameStart) || !Number.isSafeInteger(frameEnd)
       || frameStart < 0 || frameEnd < frameStart) {
       diagnostics.rangeFailures++;
-      return fallbackFromState(journal, 'presentation-range-invalid', frameEnd);
+      return fallbackFromState(journal, 'presentation-range-invalid', frameEnd, presentationFrame);
     }
 
     const fullRebuild = !!(presentationFrame && presentationFrame.journalFullRebuild);
@@ -179,14 +198,14 @@ export function createPresentationPublisher(world, state, options = {}) {
 
     if (frameStart > lastAppliedSequence) {
       diagnostics.rangeFailures++;
-      return fallbackFromState(journal, 'presentation-range-gap', frameEnd);
+      return fallbackFromState(journal, 'presentation-range-gap', frameEnd, presentationFrame);
     }
 
     const start = Math.max(frameStart, lastAppliedSequence);
     result.start = start;
     if (typeof journal.hasRange === 'function' && !journal.hasRange(start, frameEnd)) {
       diagnostics.rangeFailures++;
-      return fallbackFromState(journal, 'presentation-range-not-retained', frameEnd);
+      return fallbackFromState(journal, 'presentation-range-not-retained', frameEnd, presentationFrame);
     }
 
     try {
@@ -201,7 +220,7 @@ export function createPresentationPublisher(world, state, options = {}) {
     } catch (error) {
       diagnostics.applyFailures++;
       const message = error && error.message ? error.message : String(error);
-      return fallbackFromState(journal, `presentation-apply-failed:${message}`, frameEnd);
+      return fallbackFromState(journal, `presentation-apply-failed:${message}`, frameEnd, presentationFrame);
     }
   }
 

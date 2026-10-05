@@ -168,6 +168,11 @@ export function* updateMatrixWorldSteps(root, force) {
     for (let i = children.length - 1; i >= 0; i -= 1) {
       const child = children[i];
       if (!child || typeof child.updateMatrixWorld !== 'function') continue;
+      // Vendored frozen-subtree elision: under !childForce a clean sfMatrixFrozen
+      // subtree's world matrices are already final, so the descent is skippable
+      // (the vendored override documents identical output either way).
+      if (!childForce && child.matrixWorldNeedsUpdate === false
+          && child.userData && child.userData.sfMatrixFrozen === true) continue;
       if (child.updateMatrixWorld !== base) child.updateMatrixWorld(childForce);
       else stack.push([child, childForce]);
     }

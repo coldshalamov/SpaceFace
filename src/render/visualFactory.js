@@ -37,7 +37,7 @@ import {
 } from './objectSpaceGeology.js';
 import { configurePlanarAdditiveMaterial } from './planarAdditivePolicy.js';
 import { SHARED_MATERIAL_ROLE, stampSharedMaterialRole } from './sharedMaterialRoles.js';
-import { canonicalizeObjectSurfaceProgramKeys, installIllustratedSurface } from './illustratedSurface.js';
+import { canonicalizeObjectSurfaceProgramKeys, canonicalizeObjectSurfaceProgramKeysSteps, installIllustratedSurface } from './illustratedSurface.js';
 import { opticCellGeometry, opticCellBodyMaterial, opticCellKindOf, dressOpticCell, opticCellPoolResources } from './opticCellPresentation.js';
 import { buildPlanetSiteVisual } from './planetSiteVisual.js'; // PQ-013 colossal planet-site body
 import { buildFaunaMesh } from './faunaVisuals.js'; // Alien Ecology program — organic fauna bodies
@@ -4245,17 +4245,35 @@ function attachPackagedBody(root, relativeFile, entity) {
         if (ruptureRefired && entity && entity.data) entity.data.fractureRuptureFired = false;
         return true;
       };
+      // Drives a Steps twin across its own yields — each internal slice debits the
+      // shared paced ledger, and an orphan detected mid-leg aborts the walk at the
+      // next stride (the commit exits through the same orphaned-before-swap path).
+      const COMMIT_ORPHANED = Symbol('packaged-commit-orphaned');
+      const driveLeg = async (iter) => {
+        for (;;) {
+          const legStep = iter.next();
+          if (legStep.done) return legStep.value;
+          notePacedFrameSpend(legNow() - legStarted);
+          await yieldToBrowser();
+          legStarted = legNow();
+          if (packagedCommitOrphaned()) return COMMIT_ORPHANED;
+        }
+      };
       // Banked packages (mining drone, fracture fragments) mount through the node graph so the
       // MOTION_* pivots the motion bank drives actually exist in the scene — the flat-primitive
       // path bakes every transform into world-space meshes and leaves the rig no nodes.
       const motionControllers = [];
       if (record.motionBank && record.renderPackage
-          && typeof record.renderPackage.createInstance === 'function') {
-        const instance = record.renderPackage.createInstance({
+          && typeof record.renderPackage.createInstanceSteps === 'function') {
+        const instance = await driveLeg(record.renderPackage.createInstanceSteps({
           name: `RenderPackage_PackagedBody_${record.assetId || record.url}`,
           residencyOwner: liveEntity,
           residencyRole: 'live-boundary',
-        });
+        }));
+        if (instance === COMMIT_ORPHANED) {
+          disposeDetachedPackagedGroup(packaged);
+          return { status: 'orphaned-before-swap' };
+        }
         const packageRoot = instance && instance.root;
         if (packageRoot && packageRoot.isObject3D) {
           packageRoot.userData = {
@@ -4312,20 +4330,6 @@ function attachPackagedBody(root, relativeFile, entity) {
           controller.handleEvent?.('wreck:rupture', { pieceId: entity.id }, now);
         }
       }
-      // Drives a Steps twin across its own yields — each internal slice debits the
-      // shared paced ledger, and an orphan detected mid-leg aborts the walk at the
-      // next stride (the commit exits through the same orphaned-before-swap path).
-      const COMMIT_ORPHANED = Symbol('packaged-commit-orphaned');
-      const driveLeg = async (iter) => {
-        for (;;) {
-          const legStep = iter.next();
-          if (legStep.done) return legStep.value;
-          notePacedFrameSpend(legNow() - legStarted);
-          await yieldToBrowser();
-          legStarted = legNow();
-          if (packagedCommitOrphaned()) return COMMIT_ORPHANED;
-        }
-      };
       if (deadHulk) {
         const emberMats = await driveLeg(deadenPackagedHulkSteps(packaged, {
           residualLife: !!(entity && entity.data && entity.data.fracturePiece),
@@ -4352,11 +4356,7 @@ function attachPackagedBody(root, relativeFile, entity) {
       }
       // Canonicalization only mutates the packaged subtree's materials and reads no
       // parentage, so it can run pre-graft instead of inside the atomic mount tail.
-      canonicalizeObjectSurfaceProgramKeys(packaged);
-      notePacedFrameSpend(legNow() - legStarted);
-      await yieldToBrowser();
-      legStarted = legNow();
-      if (packagedCommitOrphaned()) {
+      if ((await driveLeg(canonicalizeObjectSurfaceProgramKeysSteps(packaged))) === COMMIT_ORPHANED) {
         disposeDetachedPackagedGroup(packaged);
         return { status: 'orphaned-before-swap' };
       }
