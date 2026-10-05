@@ -24,7 +24,8 @@ try {
     try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (error) {}
   });
   await page.goto(`${probe.baseUrl}/?locale=qps-ploc`, { waitUntil: 'domcontentloaded', timeout: 90000 });
-  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.ctx, null, { timeout: 20000 });
+  // the shared host can starve the boot long past 20s — a readiness wait, not a behavior bound
+  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.ctx, null, { timeout: 180000 });
   await waitForScreen('mainMenu');
   await page.waitForFunction(() => document.documentElement.dataset.locale === 'qps-ploc');
 
