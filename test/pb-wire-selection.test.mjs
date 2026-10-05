@@ -478,6 +478,43 @@ test('PB-285 REV: a durable bind survives save/restore — the stable stamp re-m
   assert.equal(resolveEntitySelection(state, state.nav.waypoint.stable), null);
 });
 
+test('PB-285 REV-2: a recycled bind id cannot poison the serialized record', () => {
+  const state = boot();
+  // Arm at the convoy, then kill it and hand its entity id to an unrelated raider. The
+  // serialize path must persist the stamp's record — the bare id now belongs to a different
+  // world record, and trusting it would rebind the course onto the wrong body at load.
+  const convoy = spawn(state, {
+    id: 21, type: 'ship', alive: true,
+    pos: { x: 400, y: 0, z: -120 }, vel: { x: 0, y: 0, z: 0 }, rot: 0,
+    data: { worldRecordId: 'wr_convoy_7', name: 'Pallas runner', kind: 'hauler' },
+  });
+  const system = { ...world, state, bus: { emit() {} }, computeRoute() { return null; } };
+  system._onSetCourse({ pos: { x: 400, z: -120 }, targetEntityId: 21, label: 'Pallas runner' });
+  assert.equal(state.nav.waypoint.stable.key, 'record:wr_convoy_7');
+
+  convoy.alive = false;
+  spawn(state, {
+    id: 21, type: 'ship', alive: true,
+    pos: { x: 9, y: 0, z: 9 }, vel: { x: 0, y: 0, z: 0 }, rot: 0,
+    data: { worldRecordId: 'wr_raider_2', name: 'salvage thief', kind: 'raider' },
+  });
+
+  const saveSys = { ...save, state, bus: { emit() {} } };
+  const restoredNav = JSON.parse(JSON.stringify(saveSys._serializeNav()));
+  assert.equal(restoredNav.waypoint.targetWorldRecordId, 'wr_convoy_7',
+    'the stamp outranks the recycled id — the raider\'s record must not persist');
+  assert.equal(restoredNav.autopilot.targetWorldRecordId, 'wr_convoy_7',
+    'the paired burn serializes the same record');
+
+  state.nav = { route: null, autoTravel: false, waypoint: null, autopilot: null };
+  saveSys._restoreNav(restoredNav);
+  assert.equal(state.nav.waypoint.stable.key, 'record:wr_convoy_7');
+  // And the restored bind resolves closed — the raider carrying id 21 is a different record,
+  // so nothing rebinds onto it.
+  assert.equal(resolveEntitySelection(state, state.nav.waypoint.stable), null,
+    'the raider\'s recycled id is not the bound record');
+});
+
 test('PB-285: the live route consumes the model — draw reconciles, every commit gates', () => {
   const src = readFileSync(join(ROOT, 'src/ui/galaxyMap.js'), 'utf8');
   const draw = src.slice(src.indexOf('_draw() {'));
