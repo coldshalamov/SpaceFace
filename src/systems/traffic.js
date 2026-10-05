@@ -1225,19 +1225,52 @@ function applySectorPopulationFlags(weights, sector) {
   return out;
 }
 
-function ensureServiceCraftRoles(roles, weights) {
+// A sector with authored rock is a sector somebody cuts. Field records exist in three shapes: the
+// authored def (`count`), the embodied runtime record (`asteroidIds`), and the live view (`rocks`).
+function sectorHasAuthoredRock(sec) {
+  return Array.isArray(sec && sec.fields) && sec.fields.some((f) => f && (
+    (f.count | 0) > 0
+    || (Array.isArray(f.asteroidIds) && f.asteroidIds.length > 0)
+    || (Array.isArray(f.rocks) && f.rocks.length > 0)
+  ));
+}
+
+function ensureServiceCraftRoles(roles, weights, sector = null) {
   if (!Array.isArray(roles) || !roles.length || !weights) return roles;
   const out = roles.slice();
-  const place = (role) => {
+  const placed = new Set();
+  const place = (role, force = false) => {
     if (!(weights[role] > 0) || out.includes(role)) return;
     for (let i = out.length - 1; i >= 0; i--) {
-      if (out[i] === 'patrol' || out[i] === 'escort') continue;
+      if (placed.has(i) || out[i] === 'patrol' || out[i] === 'escort' || out[i] === 'courier') continue;
       out[i] = role;
+      placed.add(i);
+      return;
+    }
+    // A packed draw leaves no civilian slot: a lawful hull beyond the first yields instead of
+    // growing the roster past the ambient cap. The pair outranks a third patrol in a sector
+    // whose economy is cutting rock; the lawful presence floor itself is never touched.
+    if (!force) return;
+    const lawfulFree = out.filter((r, i) => !placed.has(i) && (r === 'patrol' || r === 'escort')).length;
+    if (lawfulFree <= 1) return;
+    for (let i = out.length - 1; i >= 0; i--) {
+      if (placed.has(i) || (out[i] !== 'patrol' && out[i] !== 'escort')) continue;
+      out[i] = role;
+      placed.add(i);
       return;
     }
   };
   place('tanker');
   place('customs');
+  // A sector with declared extraction work also needs its extraction pair: the weighted draw can
+  // roll zero miners/ore_carriers (Helios did once the authored pocket cast consumed the mix),
+  // which silences the whole ore chain — nobody cuts, nobody collects. Same guarantee idiom as
+  // the service craft above, gated on the same condition that boosts their weights below.
+  const sec = sector || {};
+  if ((sec.industries && (sec.industries.mining || sec.industries.refinery)) || sectorHasAuthoredRock(sec)) {
+    place('miner', true);
+    place('ore_carrier', true);
+  }
   return out;
 }
 
@@ -1269,7 +1302,7 @@ export function trafficRoleMixForSector(sector, state = null) {
   //
   // Deliberately weaker than the explicit flag (x1.7 vs x2.5) and NOT applied on top of it: a
   // declared mining economy should still out-mine a core sector that merely happens to have rocks.
-  else if (Array.isArray(sec.fields) && sec.fields.some((f) => f && (f.count | 0) > 0)) {
+  else if (sectorHasAuthoredRock(sec)) {
     out.miner *= 1.7;
   }
   // Hostile/danger sectors: more suspicious raiders, fewer civilians.
@@ -1877,9 +1910,13 @@ export const traffic = {
     const roleWeights = trafficRoleMixForSector(sector, this.state);
     const roles = [];
     for (let i = 0; i < need; i++) roles.push(pickRole(roleWeights, () => this._rng()));
-    const pocketRoles = ensureServiceCraftRoles(ensurePocketRoleMix(roles, sector), roleWeights);
+    // Courier reservation runs on the drawn roles before service guarantees: an appended service
+    // hull is not a civilian slot the courier may rewrite, and service placement leaves the
+    // reserved courier alone.
+    const pocketRolesBase = ensurePocketRoleMix(roles, sector);
     const priorityService = priorityCourierServiceForSector(sectorId);
-    const priorityCourierSlot = reservePriorityCourierRole(pocketRoles, sectorId);
+    const priorityCourierSlot = reservePriorityCourierRole(pocketRolesBase, sectorId);
+    const pocketRoles = ensureServiceCraftRoles(pocketRolesBase, roleWeights, sector);
 
     // Pocket anchor: cluster the first freighters near the busiest station so sensor-range
     // density holds for the first-hour Helios play space (not scattered to far yards only).
@@ -1890,9 +1927,12 @@ export const traffic = {
       const role = pocketRoles[i] || 'hauler';
       const def = TRAFFIC_ROLES[role] || TRAFFIC_ROLES.hauler;
       const priorityCourier = !!priorityService && i === priorityCourierSlot;
+      // Slots a service guarantee rewrote anchor to the same pocket as the first wave — a far
+      // random berth leaves the ore barge a sector-length flight from the work it exists for.
+      const clustered = i < Math.min(4, need) || pocketRoles[i] !== pocketRolesBase[i];
       let station = priorityCourier
         ? (this._stationForPriorityCourier(stations, priorityService.stops[0]) || stations[0])
-        : (i < Math.min(4, need) && pocketStation)
+        : (clustered && pocketStation)
         ? pocketStation
         : (stations[Math.floor(this._rng() * stations.length)] || stations[0]);
       if (!this._leftoverStationOpenForTopUp(station, leftoverDisrupted)) {
@@ -1901,7 +1941,7 @@ export const traffic = {
       }
       // spawn near the station but offset so they don't overlap it
       const ang = this._rng() * Math.PI * 2;
-      const r = (i < Math.min(4, need))
+      const r = clustered
         ? (90 + this._rng() * (POCKET_CLUSTER_R * 0.45))
         : (140 + this._rng() * 120);
       const pos = { x: station.pos.x + Math.cos(ang) * r, z: station.pos.z + Math.sin(ang) * r };
@@ -2603,7 +2643,12 @@ export const traffic = {
           && !(entity.data && (entity.data.jobId
             || entity.data.namedLaneContactId
             || entity.data.worldSiteTrafficHookId
-            || entity.data.claimTravelTrafficHookId)))
+            || entity.data.claimTravelTrafficHookId
+            // An authored activity slot (pocket cast, starter shift) already owns its hull —
+            // same exclusion convention as industryHaulerEligible.
+            || entity.data.activityActorSlotId
+            || entity.data.ceresActivityCast === true
+            || entity.data.authoredActivityCast === true)))
         .sort((a, b) => stableTrafficKey(a.entity).localeCompare(stableTrafficKey(b.entity)));
       // World-record rematerialization preserves the durable entity tag but rebuilds the transient
       // traffic record. Rebind that same ambient slot before looking for a new one; otherwise the
@@ -2729,7 +2774,10 @@ export const traffic = {
           && !(entity.data && (entity.data.jobId
             || entity.data.namedLaneContactId
             || entity.data.worldSiteTrafficHookId
-            || entity.data.claimTravelTrafficHookId)))
+            || entity.data.claimTravelTrafficHookId
+            || entity.data.activityActorSlotId
+            || entity.data.ceresActivityCast === true
+            || entity.data.authoredActivityCast === true)))
         .sort((a, b) => stableTrafficKey(a.entity).localeCompare(stableTrafficKey(b.entity)));
       const marked = this.state.traffic.freighters
         .map((rec) => ({ rec, entity: liveEntity(this.state, rec && rec.id) }))
@@ -4710,6 +4758,19 @@ export const traffic = {
       ent.data.activityActorSlotId = 'helios_starter_ore_carrier';
       syncEntityActivitySlotMembership(this.state && this.state.entityIndex, ent);
       requestActivityReclassify(this.state, ent);
+      // The collected lot must survive Continue, same custody precedent as a towed payload.
+      ent.flags = Object.assign({}, ent.flags, { persistent: true });
+    }
+    // The starter cutter's slot id normally lands when npcJobs commissions it — a World Site or
+    // claim-travel hook runs first and would steal the shift's only hull. Reserve the slot here;
+    // the adoption path stamps the same id and isHeliosCuttingMiner already accepts the carrier.
+    if (sectorId === 'sector_helios_prime' && role === 'miner'
+      && !(this.state.entityList || []).some((other) => other !== ent && other.alive !== false
+        && other.data && other.data.activityActorSlotId === 'helios_starter_cutter')) {
+      ent.data = ent.data || {};
+      ent.data.activityActorSlotId = 'helios_starter_cutter';
+      syncEntityActivitySlotMembership(this.state && this.state.entityIndex, ent);
+      requestActivityReclassify(this.state, ent);
     }
     if (!ent.data) ent.data = {};
     ent.data.trafficRole = role;
@@ -4805,6 +4866,7 @@ export const traffic = {
         d.activityActorSlotId = 'helios_starter_ore_carrier';
         syncEntityActivitySlotMembership(this.state && this.state.entityIndex, e);
         requestActivityReclassify(this.state, e);
+        e.flags = Object.assign({}, e.flags, { persistent: true });
       }
       // Ensure durable stamps survive even if rematerialize omitted a field.
       if (!e.homeSectorId && !d.homeSectorId) {
