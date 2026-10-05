@@ -307,6 +307,30 @@ function agilityFill(derived) {
   return medianFill(yaw, AGILITY_MEDIAN);
 }
 
+let ROSTER_CEILING_MEDIAN = null;
+
+function rosterCeilingMedian() {
+  if (ROSTER_CEILING_MEDIAN != null) return ROSTER_CEILING_MEDIAN;
+  const ceilings = [];
+  for (const ship of SHIPS) {
+    const stats = getDerivedStats(ship.id, [], null);
+    const ceiling = Math.round(publishedSpeed(stats && stats.propulsion, 'travel'));
+    if (ceiling > 0) ceilings.push(ceiling);
+  }
+  ceilings.sort((a, b) => a - b);
+  if (!ceilings.length) {
+    ROSTER_CEILING_MEDIAN = 0;
+    return 0;
+  }
+  const mid = Math.floor(ceilings.length / 2);
+  ROSTER_CEILING_MEDIAN = ceilings.length % 2 ? ceilings[mid] : (ceilings[mid - 1] + ceilings[mid]) / 2;
+  return ROSTER_CEILING_MEDIAN;
+}
+
+function ceilingFill(derived) {
+  return medianFill(publishedSpeed(derived && derived.propulsion, 'travel'), rosterCeilingMedian());
+}
+
 /**
  * The brake bar and the crest word. Reverse acceleration is not the stop: one hull's
  * huge number pins everyone else at the bottom of that scale. The bar fills from how
@@ -869,7 +893,10 @@ export function handlingBandModel({ shipId, fittings = [], player = null, domain
       bar = agilityFill(derived);
     }
     else if (axis.id === 'inertia') why = inertiaWhy(derived);
-    else if (axis.id === 'topSpeed') why = topSpeedWhy(profile, derived, dryDerived);
+    else if (axis.id === 'topSpeed') {
+      why = topSpeedWhy(profile, derived, dryDerived);
+      bar = ceilingFill(derived);
+    }
     else if (axis.id === 'brake') {
       why = brakeWhy(derived);
       bar = brakePresentation(derived).bar;
