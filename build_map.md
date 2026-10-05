@@ -6078,6 +6078,10 @@ Rows authored this sitting from the open-ended direction, each landed with its p
   runner sliding past the checkpoint, customs-log relay) — law and outlaw sharing the same
   water, nobody arriving hostile. DONE 502861969 — `test/tethys-activity-pocket-chain.test.mjs`
   registry/laws/chain/runtime/bearing pins, named run 25/26 (one pre-existing foreign red).
+- **Pallas Drift: the drift day, pinned — and its hub tender given work** — the pin found the
+  hub tender authored outside the runtime's job-kind gate, materializing as a named hull with no
+  work; re-authored on the Vesta relay pattern and the pin asserts all eight actors fly real
+  jobs. DONE 4f86339ff — `test/pallas-activity-pocket-chain.test.mjs` 5/5.
 Do not delete the heading; the next agent needs to know it is no longer the hole.
 
 ### 23.4 Actualize the tools
