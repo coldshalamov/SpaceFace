@@ -1866,7 +1866,7 @@ export const masslineHud = {
     // Fail closed on the break clause: automaticBreakAllowed is the authority's canonical answer
     // (tetherGameplay mirror — absent/false means load telemetry is informational, never a break
     // alarm), so an endpoint that can never auto-break gets the load-only wording.
-    const breakAlarm = tether.automaticBreakAllowed === true;
+    const breakAlarm = !!(tether && tether.automaticBreakAllowed === true);
     const share = resolveTetherShareHud(state && state.player && state.player.remoteMassline);
     const showStrain = (active && shown > 0.02) || !!share;
     setStyle(dom.strainPill, 'display', showStrain ? 'flex' : 'none');
