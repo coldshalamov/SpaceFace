@@ -25,6 +25,7 @@ import { hasActiveSpatialHash, queryNearbyEntities } from '../core/spatialQuery.
 import { queryCombatTableEntities, combatTableRowDistance, COMBAT_TABLE_FLAGS } from '../core/combatTable.js';
 import { collectDirtyIds, markDirty, DIRTY } from '../core/dirtyJournal.js';
 import { queuePhysicsImpulse, isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
+import { occupantGenerationOf } from '../core/entity.js';
 import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidField.js';
 import { bumpCollidesFlipEpoch } from '../world/livingWorldViews.js';
 import { syncEntityCollisionIndexMembership } from '../core/coreSystem.js';
@@ -3198,12 +3199,19 @@ export function isMasslineLatchedPickup(state, player, entity) {
   if (d && d.tetherPayload && !salvagePoolHasCargo(d)) return true;
   if (entity.masslineLatched || entity.latched || entity.tethered) return true;
 
-  // 2. state.player.tether mirror or player.tether entity field
+  // 2. state.player.tether mirror or player.tether entity field. The mirror's only live id is
+  //    targetId — tetherGameplay mirrors it from the attachment record; attachedId and
+  //    targetEntityId have no writers. A recycled id can still name the stale occupant until
+  //    the authority sweeps, so validate against the tether's own record when it stamps one.
+  const attachments = state && state.combat && state.combat.attachments && state.combat.attachments.byId;
+  const entityGen = occupantGenerationOf(entity);
   const tether = (state && state.player && state.player.tether) || (player && player.tether);
   if (tether && tether.active !== false) {
-    if (tether.targetId != null && (tether.targetId === id || String(tether.targetId) === idStr)) return true;
-    if (tether.attachedId != null && (tether.attachedId === id || String(tether.attachedId) === idStr)) return true;
-    if (tether.targetEntityId != null && (tether.targetEntityId === id || String(tether.targetEntityId) === idStr)) return true;
+    if (tether.targetId != null && (tether.targetId === id || String(tether.targetId) === idStr)) {
+      const rec = attachments && tether.attachmentId != null ? attachments[tether.attachmentId] : null;
+      const recGen = rec && rec.targetGeneration;
+      if (recGen == null || recGen === entityGen) return true;
+    }
   }
 
   // 3. state.player.masslineTelemetry
@@ -3212,9 +3220,12 @@ export function isMasslineLatchedPickup(state, player, entity) {
     return true;
   }
 
-  // 4. Combat attachments authority (SG-02 / SG-03)
+  // 4. Combat attachments authority (SG-02 / SG-03). Only att.targetId is a live field —
+  //    attachedId/bodyBId/targetEntityId have no writers. Generation-proof the read the same
+  //    way the authority's occupantMismatch does: a recorded generation that no longer matches
+  //    the live occupant means the id was recycled; legacy records without a stamp keep the
+  //    bare read.
   const playerId = (player && player.id != null) ? player.id : (state && state.playerId);
-  const attachments = state && state.combat && state.combat.attachments && state.combat.attachments.byId;
   if (attachments && typeof attachments === 'object') {
     const pStr = playerId != null ? String(playerId) : null;
     for (const att of Object.values(attachments)) {
@@ -3225,10 +3236,8 @@ export function isMasslineLatchedPickup(state, player, entity) {
         (att.bodyAId != null && String(att.bodyAId) === pStr)
       );
       if (isPlayerAttachment) {
-        if (att.targetId != null && (att.targetId === id || String(att.targetId) === idStr)) return true;
-        if (att.attachedId != null && (att.attachedId === id || String(att.attachedId) === idStr)) return true;
-        if (att.bodyBId != null && (att.bodyBId === id || String(att.bodyBId) === idStr)) return true;
-        if (att.targetEntityId != null && (att.targetEntityId === id || String(att.targetEntityId) === idStr)) return true;
+        if (att.targetId != null && (att.targetId === id || String(att.targetId) === idStr)
+          && (att.targetGeneration == null || att.targetGeneration === entityGen)) return true;
       }
     }
   }
