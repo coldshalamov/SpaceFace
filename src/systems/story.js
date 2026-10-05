@@ -127,6 +127,9 @@ const AMBIENT_MAX_S_P3 = 240;
 // Character interrupts (SFQ-B068) poll at this cadence; conds are steady-state observable facts,
 // so a poll that holds off simply catches the same fact on a later tick (eligibility survives).
 const CHARACTER_INTERRUPT_POLL_S = 5;
+// The exact ids whose voice:surface receipt spends the once-per-save (review hardening: a future
+// system must not inherit the spend by reusing the `char_` prefix).
+const CHARACTER_INTERRUPT_IDS = new Set(CHARACTER_INTERRUPTS.map((def) => def.id));
 
 export const story = {
   name: 'story',
@@ -508,7 +511,7 @@ export const story = {
   // The arbiter surfaced a spoken line. A character interrupt that reached the floor has been
   // heard: spend its once-per-save now (covers surfaces that arrive after the pending window too).
   _onCharInterruptSurfaced({ id } = {}) {
-    if (!id || typeof id !== 'string' || !id.startsWith('char_')) return;
+    if (!id || !CHARACTER_INTERRUPT_IDS.has(id)) return;
     const s = this.state && this.state.story;
     if (!s) return;
     if (this._pendingCharInterrupts) this._pendingCharInterrupts.delete(id);
@@ -1917,6 +1920,11 @@ export const story = {
   // =========================================================================================
   _onNewGame(payload = {}) {
     this._ensureState(true);
+    // A same-session new game rewinds state.simTime (src/main.js) into these SAME system
+    // instances — drop the session clocks so the lazy init re-arms at simTime+5 (the traps'
+    // deserialize heal), instead of a stale deadline from the dead session gating every poll.
+    this._charNextAtS = null;
+    this._pendingCharInterrupts = null;
     const legacy = storyNewGamePlusRecord(payload.newGamePlus, this.state.meta && this.state.meta.seed);
     if (legacy) {
       // Declared receipt only. The overlay's player, cargo, claims, and entity ids never land.
@@ -2147,6 +2155,10 @@ export const story = {
 
   _onLoaded() {
     this._ensureState();
+    // A load restores an arbitrary (possibly earlier) simTime into these SAME instances
+    // (src/save/saveSystem.js) — re-arm the session clocks exactly like a new game.
+    this._charNextAtS = null;
+    this._pendingCharInterrupts = null;
     // Migrate at the load boundary only. Old resolved saves receive no fabricated retrospective
     // life, no replayed payout, and no reset to the beginning of a transmitted finale.
     this.state.story.writtenFinale = this._validatedWrittenFinale(this.state.story.writtenFinale);

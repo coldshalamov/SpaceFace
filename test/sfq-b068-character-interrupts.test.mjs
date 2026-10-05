@@ -107,6 +107,33 @@ test('while a higher-priority voice holds the channel the interrupt is suppresse
   assert.equal(s.seenComms.char_kessler_sample_aboard, true, 'only a surfaced line is spent as heard');
 });
 
+test('a same-session new game or load re-arms the poll clock — a stale deadline never dead-drops the feature', () => {
+  const { state, bus, comms, s } = harness();
+  // Prior session: the line is heard early, then the session runs long — the instance poll
+  // clock ends up ~190s ahead of a simTime that is about to be reset/restored.
+  giveSample(state);
+  tick(state, 1);
+  assert.equal(heard(comms, 'char_kessler_sample_aboard').length, 1);
+  tick(state, 55);
+  // Same-session NEW GAME: simTime rewinds to 0 (src/main.js:1346) into the SAME instances.
+  bus.emit('game:started', {});
+  state.simTime = 0;
+  tick(state, 6); // the re-armed clock polls at +5s; the still-true fact earns the line again
+  assert.equal(heard(comms, 'char_kessler_sample_aboard').length, 2,
+    'new game re-arms the poll — no dead window equal to the prior session');
+  // Same-session LOAD to an earlier save: simTime restored backward into the SAME instances.
+  // game:started cleared seenComms, so catalog order governs the re-armed polls: Kessler again
+  // at +5s, then Orrin (a different character's fact, never heard) at +10s — one voice per poll.
+  state.factions.faction_scn = { rep: -150 };
+  bus.emit('save:loaded', {});
+  state.simTime = 0;
+  tick(state, 11);
+  assert.equal(heard(comms, 'char_kessler_sample_aboard').length, 3,
+    'load re-arms the poll the same way — the fresh run hears its character again');
+  assert.equal(heard(comms, 'char_orrin_notoriety').length, 1,
+    'the second re-armed poll reaches the next eligible character');
+});
+
 test('an interrupt stale-dropped unheard behind a long danger is re-armed and heard once, later', () => {
   const { state, comms, surfaced, helpers, s } = harness();
   giveSample(state);
