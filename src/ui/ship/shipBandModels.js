@@ -247,6 +247,36 @@ function fliesWorse(heavier, lighter) {
 }
 
 let ROSTER_STOP_MEDIAN = null;
+let ROSTER_TURN_MEDIAN = null;
+
+/** Middle flown turn radius on the bare roster, in metres. An unsteady circle is left out. */
+function rosterTurnMedian() {
+  if (ROSTER_TURN_MEDIAN != null) return ROSTER_TURN_MEDIAN;
+  const radii = [];
+  for (const ship of SHIPS) {
+    const metres = Math.round(liveTurnCircle(getDerivedStats(ship.id, [], null)).radius);
+    if (metres > 0) radii.push(metres);
+  }
+  radii.sort((a, b) => a - b);
+  if (!radii.length) {
+    ROSTER_TURN_MEDIAN = 0;
+    return 0;
+  }
+  const mid = Math.floor(radii.length / 2);
+  ROSTER_TURN_MEDIAN = radii.length % 2 ? radii[mid] : (radii[mid - 1] + radii[mid]) / 2;
+  return ROSTER_TURN_MEDIAN;
+}
+
+/** Crest turn word from the circle, not the yaw bar one fast hull pins. */
+function turnClause(derived) {
+  const metres = Math.round(liveTurnCircle(derived).radius);
+  if (!(metres > 0)) return '';
+  const median = rosterTurnMedian();
+  if (!(median > 0)) return '';
+  if (metres < median * 0.5) return 'Turns hard.';
+  if (metres > median * 1.2) return 'Turns wide.';
+  return 'Turns steadily.';
+}
 
 /** Middle flown stop on the bare roster, in metres. A ship that does not stop is left out. */
 function rosterStopMedian() {
@@ -282,13 +312,9 @@ function brakePresentation(derived) {
 
 function handlingSentence(profile, derived, emptyDerived, bareDerived) {
   if (!profile || !Array.isArray(profile.axes) || !profile.axes.length) return '';
-  const agilityAxis = profile.axes.find((axis) => axis.id === 'agility');
   const clauses = [];
-  if (agilityAxis) {
-    if (agilityAxis.bar >= 67) clauses.push('Turns hard.');
-    else if (agilityAxis.bar >= 34) clauses.push('Turns steadily.');
-    else clauses.push('Turns wide.');
-  }
+  const turnWord = turnClause(derived);
+  if (turnWord) clauses.push(turnWord);
   const shipDef = SHIP_BY_ID.get(profile.shipId);
   const massRatio = ratioFor(derived, shipDef);
   // Heavier than the catalog hull is not itself a worse ship. A bumper under the
