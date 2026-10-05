@@ -1338,6 +1338,7 @@ export class Sg02DynamicBodyOwner {
   _readPostStepKinematics(rec) {
     rec._postStepReadTick = this.tick;
     const post = rec.postStep || (rec.postStep = {
+      p: { x: 0, y: 0, z: 0 },
       v: { x: 0, y: 0, z: 0 },
       w: { x: 0, y: 0, z: 0 },
       q: { x: 0, y: 0, z: 0, w: 1 },
@@ -1346,6 +1347,11 @@ export class Sg02DynamicBodyOwner {
       wDirty: false,
       qDirty: false,
     });
+    const p = rec.body.translation();
+    const pp = post.p || (post.p = { x: 0, y: 0, z: 0 });
+    pp.x = p.x;
+    pp.y = p.y;
+    pp.z = p.z;
     const v = rec.body.linvel();
     const w = rec.body.angvel();
     post.v.x = v.x;
@@ -1653,9 +1659,15 @@ export class Sg02DynamicBodyOwner {
   // teleported by the degenerate narrow phase kept the fling pose while its velocity was
   // clamped — stranding it megameters out on a slow drive home. The repair restores the pose
   // only; the ordinary dv clamps below still bound whatever velocity the detonation left.
+  // Endpoints of a live ImpulseJoint are exempt: a legacy rope's joint corrects inside
+  // world.step — real in-step work the prediction never claimed — and rewinding it every tick
+  // would hold a stretched pair in place while its velocity stays.
   _repairSolverPoseJump(rec, e) {
     if (!rec.body || typeof rec.body.translation !== 'function') return;
-    const pose = rec.body.translation();
+    if (this.attachments && this.attachments.size > 0 && this._endpointOfStepJoint(rec)) return;
+    const post = rec.postStep;
+    const pose = (post && post.p && rec._postStepReadTick === this.tick)
+      ? post.p : rec.body.translation();
     const px = Number(pose && pose.x);
     const pz = Number(pose && pose.z);
     if (!Number.isFinite(e.x) || !Number.isFinite(e.z)) return;
@@ -1668,6 +1680,17 @@ export class Sg02DynamicBodyOwner {
     rec.body.setTranslation(_vecWriteScratch, true);
     rec._bodyPoseX = Math.fround(e.x);
     rec._bodyPoseZ = Math.fround(e.z);
+  }
+
+  // True when a live impulse joint solves this record inside world.step — the one motion source
+  // the pre-step expected capture cannot own. Manual springs and frame couplers land before the
+  // capture; a legacy rope's ImpulseJoint is the only in-step solver the game runs.
+  _endpointOfStepJoint(rec) {
+    for (const attachment of this.attachments.values()) {
+      if (!attachment.contactJoint) continue;
+      if (attachment.owner === rec || attachment.target === rec) return true;
+    }
+    return false;
   }
 
   _applyStructuralGive(rec) {
