@@ -132,6 +132,67 @@ test('an entity-data mining write is a dead location and does not wake the latch
   assert.notEqual(woke.classifyMode, 'early-quiet-latch');
 });
 
+test('dock pin wakes on state.ui.dockedStationId, never on the dead entity-data locations', () => {
+  const state = makeWorld();
+  warmQuiet(state);
+  assert.equal(step(state).classifyMode, 'early-quiet-latch');
+  // D174: production never writes player.data.dockTargetId / player.data.dockStationId /
+  // player.flags.dockStationId — writes there must not pretend to arm the pin.
+  state.player.data.dockTargetId = 77;
+  state.player.flags.dockStationId = 'station_dead';
+  assert.equal(step(state).classifyMode, 'early-quiet-latch');
+  // The live record: uiRoot writes state.ui.dockedStationId on dock.
+  state.ui = { docked: true, dockedStationId: 'station_ceres' };
+  const woke = step(state);
+  assert.notEqual(woke.classifyMode, 'early-quiet-latch');
+});
+
+test('dock pin names the resolved station entity through entityIndex.byStationId', () => {
+  const state = makeWorld();
+  const berth = {
+    id: 900, type: 'station', alive: true,
+    pos: { x: 200, z: 0 }, vel: { x: 0, z: 0 }, radius: 40,
+    data: { stationId: 'station_berth' }, flags: {},
+  };
+  state.entities.set(berth.id, berth);
+  state.entityList.push(berth);
+  state.entityIndex.byStationId = new Map([['station_berth', berth]]);
+  state.ui = { docked: true, dockedStationId: 'station_berth' };
+  const mode = warmQuiet(state);
+  assert.equal(mode, 'early-quiet-latch');
+  // Rematerialize under a new id — the pin follows the live record, not a stale entity id.
+  berth.alive = false;
+  state.entities.delete(berth.id);
+  const berth2 = { ...berth, id: 901 };
+  state.entities.set(berth2.id, berth2);
+  state.entityIndex.byStationId.set('station_berth', berth2);
+  // No membership bump: the wake must come from the dock pin following the new carrier.
+  const woke = step(state);
+  assert.notEqual(woke.classifyMode, 'early-quiet-latch');
+});
+
+test('customs hail pin wakes on state.ui.customsPrompt.patrolId', () => {
+  const state = makeWorld();
+  warmQuiet(state);
+  assert.equal(step(state).classifyMode, 'early-quiet-latch');
+  // D174: state.comms.hailTargetId / state.ui.hailTargetId have no writers — the live hail
+  // record is the customs scan prompt's patrol entity (lawSecurity emits patrol.id).
+  state.ui = { customsPrompt: { factionId: 'ceres_authority', patrolId: 42, t: 1, signalTick: 1 } };
+  const woke = step(state);
+  assert.notEqual(woke.classifyMode, 'early-quiet-latch');
+});
+
+test('missile-lock pin wakes on combat.lockTarget', () => {
+  const state = makeWorld();
+  warmQuiet(state);
+  assert.equal(step(state).classifyMode, 'early-quiet-latch');
+  // D174: weapons.js writes player.data.combat.lockTarget on lock acquisition — the latch
+  // previously read combat.targetId ?? data.targetId and slept through it.
+  state.player.data.combat.lockTarget = state.rocks[0].id;
+  const woke = step(state);
+  assert.notEqual(woke.classifyMode, 'early-quiet-latch');
+});
+
 test('bench toggle disables early quiet latch', () => {
   const state = makeWorld();
   setClassifyFrameQuietRetainForBench(true);

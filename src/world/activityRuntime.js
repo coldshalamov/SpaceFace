@@ -514,6 +514,36 @@ function setMatchesList(set, list) {
   return true;
 }
 
+// Player-intent pins the classify key and the early-quiet latch both watch. Every derivation
+// reads a live record: the legacy player.data *.dockTargetId/*.hailTargetId locations and the
+// state.comms.* family have no writers anywhere (D174).
+//   dockId — uiRoot writes state.ui.dockedStationId; resolved through entityIndex.byStationId so
+//     the pin names the station entity when materialized (a 'station:<id>' sentinel otherwise —
+//     still flips on the dock/undock transition). flags.docked without a station pins `true`.
+//   hailId — a customs scan prompt names the patrol entity in conversation
+//     (state.ui.customsPrompt.patrolId — lawSecurity emits patrol.id/scanner.id). No comms
+//     target record exists; nothing else is a durable hail record.
+//   targetId — the player combat record (weapons.js writes combat.lockTarget on missile lock).
+function playerIntentPins(state, player) {
+  const ui = state && state.ui;
+  let dockId = null;
+  const dockedStationId = ui && ui.dockedStationId != null ? ui.dockedStationId : null;
+  if (dockedStationId != null) {
+    const index = state && state.entityIndex;
+    const stationEntity = index && index.byStationId ? index.byStationId.get(dockedStationId) : null;
+    dockId = stationEntity && stationEntity.id != null ? stationEntity.id : `station:${dockedStationId}`;
+  } else if ((ui && ui.docked === true) || (player && player.flags && player.flags.docked === true)) {
+    dockId = true;
+  }
+  const customs = ui && ui.customsPrompt;
+  const hailId = customs && customs.patrolId != null ? customs.patrolId : null;
+  const combat = player && player.data && player.data.combat;
+  const targetId = combat && (combat.targetId ?? combat.lockTarget) != null
+    ? (combat.targetId ?? combat.lockTarget)
+    : null;
+  return { dockId, hailId, targetId };
+}
+
 function rebuildPinFacts(state, player, facts, simTime) {
   const playerId = player && player.id;
   const cache = facts._cache || (facts._cache = {
@@ -539,17 +569,10 @@ function rebuildPinFacts(state, player, facts, simTime) {
   if (state.player && state.player.miningTargetId != null) {
     nextMiningId = state.player.miningTargetId;
   }
-  const playerCombat = player && player.data && player.data.combat;
-  if (playerCombat && playerCombat.targetId != null) nextTargetId = playerCombat.targetId;
-  else if (playerCombat && playerCombat.lockTarget != null) nextTargetId = playerCombat.lockTarget;
-  const dockId = player && (
-    (player.data && (player.data.dockStationId || player.data.dockTargetId))
-    || (player.flags && player.flags.dockStationId)
-  );
-  if (dockId != null) nextDockId = dockId;
-  const hail = state && (state.comms && (state.comms.hailTargetId || state.comms.targetId)
-    || state.ui && state.ui.hailTargetId);
-  if (hail != null) nextHailId = hail;
+  const intentPins = playerIntentPins(state, player);
+  nextTargetId = intentPins.targetId;
+  nextDockId = intentPins.dockId;
+  nextHailId = intentPins.hailId;
   const signalState = state && state.signalInvestigation;
   const trackedSignal = signalState && signalState.trackedId;
   const attachments = state && state.combat && state.combat.attachments && state.combat.attachments.byId;
@@ -1034,14 +1057,13 @@ function tryEarlyQuietClassifyLatch(state, runtime, player, origin) {
   const maxSpeed = Math.max(TABLE_REFERENCE_SPEED_WU, finite(player.maxSpeed));
   if (latch.maxSpeed !== maxSpeed) return false;
   // Cheap pin-intent smoke: mining/dock/hail/target flips must wake without waiting for rescan.
-  const data = player.data || {};
-  const combat = data.combat || {};
   const miningId = state.player && state.player.miningTargetId != null
     ? state.player.miningTargetId : null;
   if (latch.miningId !== miningId) return false;
-  if (latch.dockId !== (data.dockTargetId ?? null)) return false;
-  if (latch.hailId !== (data.hailTargetId ?? null)) return false;
-  if (latch.targetId !== (combat.targetId ?? data.targetId ?? null)) return false;
+  const intentPins = playerIntentPins(state, player);
+  if (latch.dockId !== intentPins.dockId) return false;
+  if (latch.hailId !== intentPins.hailId) return false;
+  if (latch.targetId !== intentPins.targetId) return false;
   // Durable scheduled wake due: cannot stay asleep when an actor's timer expires.
   const simTime = Number.isFinite(state.simTime) ? state.simTime : (tick / 60);
   const bag = state && state.world && state.world.records && state.world.records.byId;
@@ -1089,8 +1111,7 @@ function armEarlyQuietClassifyLatch(state, runtime, player, origin) {
     return;
   }
   const cam = simCamera(state);
-  const data = player && player.data || {};
-  const combat = data.combat || {};
+  const intentPins = playerIntentPins(state, player);
   runtime._earlyQuietLatch = {
     armed: true,
     armedTick: state.tick | 0,
@@ -1104,9 +1125,9 @@ function armEarlyQuietClassifyLatch(state, runtime, player, origin) {
     maxSpeed: Math.max(TABLE_REFERENCE_SPEED_WU, finite(player && player.maxSpeed)),
     miningId: (state.player && state.player.miningTargetId != null)
       ? state.player.miningTargetId : null,
-    dockId: data.dockTargetId ?? null,
-    hailId: data.hailTargetId ?? null,
-    targetId: combat.targetId ?? data.targetId ?? null,
+    dockId: intentPins.dockId,
+    hailId: intentPins.hailId,
+    targetId: intentPins.targetId,
   };
 }
 
