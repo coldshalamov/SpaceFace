@@ -53,9 +53,9 @@ export const EAST_ORIGINS = Object.freeze({
 /** Palette blocks mirrored from SECTOR_PALETTE_CLASSES (no shared import). */
 const PALETTE_FRINGE = Object.freeze({
   key: 0xffb07a,
-  rim: 0xff3f2d,
-  fill: 0xffaa66,
-  ambient: 0x584343,
+  rim: 0x9875ce,
+  fill: 0xbc91a6,
+  ambient: 0x51435d,
   fog: 0x090504,
   fogDensity: 0.00003,
   nebulaTint: 0x8a1e1e,
