@@ -1109,6 +1109,14 @@ export function createLawArenaDressing() {
     }
   }
 
+  // Batched twin for mass-despawn sweeps: one registry pass per batch.
+  function releaseMeshSet(meshes) {
+    if (!meshes || meshes.size === 0) return;
+    for (const rec of bossRecords.values()) {
+      if (rec.boundMesh && meshes.has(rec.boundMesh)) detachBoss(rec);
+    }
+  }
+
   function prune(activeEntityIds) {
     if (!activeEntityIds || typeof activeEntityIds.has !== 'function') return;
     for (const id of bossRecords.keys()) {
@@ -1132,7 +1140,7 @@ export function createLawArenaDressing() {
 
   return {
     handleInstall, handleReleased, updateRoom,
-    updateBossDressing, releaseEntityMesh, releaseMesh, prune,
+    updateBossDressing, releaseEntityMesh, releaseMesh, releaseMeshSet, prune,
     peekRoom, peekBoss,
   };
 }

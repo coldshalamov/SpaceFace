@@ -2288,6 +2288,14 @@ export function createShipMicroMotionTracker() {
     }
   }
 
+  // Batched twin for mass-despawn sweeps: one registry pass per batch.
+  function releaseMeshSet(meshes) {
+    if (!meshes || meshes.size === 0) return;
+    for (const rec of craftMotion.values()) {
+      if (rec.mountMesh && meshes.has(rec.mountMesh)) clearRecordMeshRefs(rec);
+    }
+  }
+
   function prune(activeEntityIds) {
     if (!activeEntityIds || typeof activeEntityIds.has !== 'function') return;
     for (const id of craftMotion.keys()) {
@@ -2334,6 +2342,7 @@ export function createShipMicroMotionTracker() {
     prune,
     releaseEntityMesh,
     releaseMesh,
+    releaseMeshSet,
     getRecord,
     peekRecord,
   };

@@ -572,6 +572,35 @@ export function createInfrastructureMotionTracker() {
     }
   }
 
+  function nodeInsideAnyOf(node, roots) {
+    for (let cur = node; cur; cur = cur.parent) {
+      if (roots.has(cur)) return true;
+    }
+    return false;
+  }
+
+  // Batched twin of releaseMesh for mass-despawn sweeps: one registry pass per
+  // batch; each node probes the whole dead set with one ancestor walk.
+  function releaseMeshSet(meshes) {
+    if (!meshes || meshes.size === 0) return;
+    for (const rec of infrastructureStates.values()) {
+      if (rec.dishNodes) {
+        const hit = rec.dishNodes.some((entry) => entry && entry.node && nodeInsideAnyOf(entry.node, meshes));
+        if (hit) {
+          rec.dishNodes = null;
+          rec.dishScanned = false;
+        }
+      }
+      if (rec.armNodes) {
+        const hit = rec.armNodes.some((entry) => entry && entry.node && nodeInsideAnyOf(entry.node, meshes));
+        if (hit) {
+          rec.armNodes = null;
+          rec.armScanned = false;
+        }
+      }
+    }
+  }
+
   function prune(activeEntityIds) {
     if (!activeEntityIds || typeof activeEntityIds.has !== 'function') return;
     for (const id of infrastructureStates.keys()) {
@@ -590,6 +619,7 @@ export function createInfrastructureMotionTracker() {
     prune,
     releaseEntityMesh,
     releaseMesh,
+    releaseMeshSet,
     stationArmRecord,
   };
 }

@@ -866,10 +866,20 @@ export async function waitForCurrentRenderPipelines(state, timeoutMs = 20000) {
         // The capture is a chain of whole-scene censuses; pace its stepped legs
         // under the boot yield instead of donating one atomic window.
         const steps = captureSteps();
+        // A world flip inside the drive must abandon the capture entirely —
+        // resuming it commits rows minted under the departed world's census.
+        const driveWorld = state.world;
+        const driveRender = state.render;
+        const driveSerial = driveWorld && driveWorld.enterSerial;
         for (;;) {
           const step = steps.next();
           if (step.done) {
             submissionPlan = step.value;
+            break;
+          }
+          if (state.world !== driveWorld || state.render !== driveRender
+              || !driveWorld || driveWorld.enterSerial !== driveSerial) {
+            submissionPlan = null;
             break;
           }
           await yieldToBrowser();

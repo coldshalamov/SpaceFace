@@ -695,8 +695,10 @@ test('the poll re-hoists queued builds whose deadline moved inside the urgent wi
     .search(/stats\.built = (?:typeof this\._drainMeshBuildQueueSteps === 'function'|this\._drainMeshBuildQueue)/);
   assert.ok(drainIndex > pollStart, 'the poll must drain builds after enqueueing');
   const between = RENDERER_SOURCE.slice(pollStart, drainIndex);
-  assert.match(between, /pendingBuilds\[write\+\+\]\s*=\s*urgentNow\[i\]\.entry/,
+  assert.match(between, /liveQueue\.length = liveHead/,
     'the already-queued tail must be repartitioned, not just newly enqueued candidates');
+  assert.match(between, /liveQueue\.push\(id\)/,
+    'the repartitioned tail must write classified survivors back at the live queue head');
   assert.match(between, /seconds <= TABLE_BUILD_URGENT_SECONDS/,
     'the hoist must re-grade on fresh verdicts at the same urgent deadline as the enqueue tiers');
   assert.match(between, /urgentNow\.sort\(\(a, b\) => a\.seconds - b\.seconds\)/,

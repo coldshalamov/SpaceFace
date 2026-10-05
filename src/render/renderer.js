@@ -344,6 +344,7 @@ import {
   collectUnstagedShadowCasters,
   collectUnstagedShadowCastersFlag,
   compileShadowDepthPipelines,
+  compileShadowDepthPipelinesSteps,
   createShadowDepthStagingSession,
   disposeAdmissionShadowResources,
   lightCensusSignature,
@@ -415,6 +416,7 @@ import {
 import { sharedImageSourceUsers } from './imageSourceDedupe.js';
 import {
   collectOpeningSubmissionLeaves,
+  collectOpeningSubmissionLeavesSteps,
   combineOpeningProducerCensuses,
   createOpeningProducerCensus,
   createOpeningSubmissionPlan,
@@ -1793,24 +1795,29 @@ export function reattachResidentGpuMeshes(owner) {
     if (target && !owner._meshes.has(target.id)) rekeys.push([id, mesh, target]);
     // Anything still unmatched stays keyed by its dead id; reconcileMeshes releases it.
   }
-  for (const [oldId, mesh, entity] of rekeys) {
-    if (owner._meshes.get(oldId) !== mesh || owner._meshes.has(entity.id)) continue;
-    if (typeof owner._unbindPresentationMesh === 'function') owner._unbindPresentationMesh(oldId, mesh);
-    owner._meshes.delete(oldId);
-    owner._meshes.set(entity.id, mesh);
-    owner._meshesVersion = (owner._meshesVersion | 0) + 1;
-    // The instance pool keys its adopted-leaf records by entity id too; carry the record onto
-    // the restored id or it strands under the dead key — unreleasable, pinning the kept tree,
-    // and missing the classified dirty check every frame.
-    rekeyAsteroidInstanceEntity(owner._asteroidInstancePool, oldId, entity.id);
-    entity.mesh = mesh;
-    if (entity.view) entity.view.root = mesh;
-    else entity.view = { root: mesh };
-    if (typeof owner._bindPresentationMesh === 'function') {
-      owner._bindPresentationMesh(entity, mesh);
+  owner._meshReleaseBatchBegin?.();
+  try {
+    for (const [oldId, mesh, entity] of rekeys) {
+      if (owner._meshes.get(oldId) !== mesh || owner._meshes.has(entity.id)) continue;
+      if (typeof owner._unbindPresentationMesh === 'function') owner._unbindPresentationMesh(oldId, mesh);
+      owner._meshes.delete(oldId);
+      owner._meshes.set(entity.id, mesh);
+      owner._meshesVersion = (owner._meshesVersion | 0) + 1;
+      // The instance pool keys its adopted-leaf records by entity id too; carry the record onto
+      // the restored id or it strands under the dead key — unreleasable, pinning the kept tree,
+      // and missing the classified dirty check every frame.
+      rekeyAsteroidInstanceEntity(owner._asteroidInstancePool, oldId, entity.id);
+      entity.mesh = mesh;
+      if (entity.view) entity.view.root = mesh;
+      else entity.view = { root: mesh };
+      if (typeof owner._bindPresentationMesh === 'function') {
+        owner._bindPresentationMesh(entity, mesh);
+      }
+      reattachAuthoredReadmission(owner, entity, mesh, state);
+      attached += 1;
     }
-    reattachAuthoredReadmission(owner, entity, mesh, state);
-    attached += 1;
+  } finally {
+    owner._meshReleaseBatchEnd?.();
   }
   return attached;
 }
@@ -2199,6 +2206,14 @@ export function serviceRenderMeshResidency(owner, frameDt) {
     pollDue = true;
   }
   owner._cacheLeaseSweepS = (owner._cacheLeaseSweepS || 0) - dt;
+  if (owner._cacheLeaseIter
+      && owner._cacheLeaseEpoch !== (owner.state && owner.state.world
+        ? owner.state.world.enterSerial : null)) {
+    // A parked sweep answers the departed world like the sibling iterators —
+    // drop it and let the cadence mint a fresh one for the live sector.
+    try { owner._cacheLeaseIter.return?.(); } catch (_) { /* best effort */ }
+    owner._cacheLeaseIter = null;
+  }
   if (owner._cacheLeaseSweepS <= 0 && !owner._cacheLeaseIter) {
     owner._cacheLeaseSweepS = CACHE_LEASE_SWEEP_SECONDS;
     try {
@@ -2208,6 +2223,9 @@ export function serviceRenderMeshResidency(owner, frameDt) {
           'in-sector-cache-decay',
           { minAgeMs: CACHE_LEASE_MAX_IDLE_MS, maxCacheOnlyBytes: CACHE_LEASE_MAX_BYTES },
         )
+        : null;
+      owner._cacheLeaseEpoch = owner._cacheLeaseIter
+        ? (owner.state && owner.state.world ? owner.state.world.enterSerial : null)
         : null;
     } catch (_) {
       owner._cacheLeaseIter = null;
@@ -3177,6 +3195,10 @@ export function* hoistDeadlineGlassMeshBuildsSteps(owner, verdictMemo, rowsPerSl
     }
   }
   if (reordered) {
+    // The drain's epilogue compaction can swap the queue array while the scan was
+    // parked — writing the partition into the detached array loses it silently.
+    // Ordering is advisory: the live queue keeps every pending id, so skip it.
+    if (owner._meshBuildQueue !== queue) return glassCount;
     // Re-anchor on the live head: while the scan was suspended the drain consumed
     // rows and enqueues appended. Truncating at the mint head would drop appended
     // rows (still stamped, never re-queued) and push the partition below the live
@@ -3959,9 +3981,12 @@ function* kickDecodeRunwayAssetsSteps(owner, entities) {
       lookOriginX: ctxLookOrigin.x,
       lookOriginZ: ctxLookOrigin.z,
     };
+    // Wave membership is minted with the snapshot like the other verdict memos —
+    // a resumed pick must not grade rows on pre-suspension wave plans.
+    waveMemo = new Map();
   };
+  let waveMemo;
   refreshRunwaySnapshot();
-  const waveMemo = new Map();
   const waveFor = (entity) => {
     const id = entity && entity.id;
     if (id != null && waveMemo.has(id)) return waveMemo.get(id);
@@ -8277,18 +8302,23 @@ function disposeRendererMeshRoots(owner, scene, disposeGpu) {
   const meshes = owner && owner._meshes;
   if (!meshes || typeof meshes[Symbol.iterator] !== 'function') return;
   const state = owner.state;
-  for (const [id, mesh] of [...meshes]) {
-    if (!mesh) {
+  owner._meshReleaseBatchBegin?.();
+  try {
+    for (const [id, mesh] of [...meshes]) {
+      if (!mesh) {
+        meshes.delete?.(id);
+        continue;
+      }
+      try { owner._unbindPresentationMesh?.(id, mesh); } catch (_) { /* best effort */ }
+      try { releaseAsteroidInstancesForEntity(owner._asteroidInstancePool, id); } catch (_) { /* best effort */ }
+      removeRendererRoot(scene, mesh);
+      if (disposeGpu) disposeRendererObject(mesh, `entity mesh ${id}`);
+      const entity = state?.entities?.get?.(id);
+      clearEntityMeshReference(entity, mesh);
       meshes.delete?.(id);
-      continue;
     }
-    try { owner._unbindPresentationMesh?.(id, mesh); } catch (_) { /* best effort */ }
-    try { releaseAsteroidInstancesForEntity(owner._asteroidInstancePool, id); } catch (_) { /* best effort */ }
-    removeRendererRoot(scene, mesh);
-    if (disposeGpu) disposeRendererObject(mesh, `entity mesh ${id}`);
-    const entity = state?.entities?.get?.(id);
-    clearEntityMeshReference(entity, mesh);
-    meshes.delete?.(id);
+  } finally {
+    owner._meshReleaseBatchEnd?.();
   }
   meshes.clear?.();
 }
@@ -9375,6 +9405,8 @@ export const render = {
     this.rockFamilyLibraryReady = preloadRockFamilyLibrary(renderer);
     // Alien fauna tissue and Verge-Layer machine nacre decode alongside (never fatal; flat colours on failure).
     this.creatureSkinLibraryReady = preloadCreatureSkinLibrary(renderer);
+    // Terrain / cloud relief tiles for the colossal planet-site bodies (never fatal; plain baked surface on failure).
+    this.planetDetailLibraryReady = preloadPlanetDetailLibrary(renderer);
     // The opening only waits 4 s for these maps (prepareOpeningGpuResources races them against a
     // timeout), and the onboarding rescue rock spawns the moment flight starts. On a slow decode
     // that rock used to publish the bare white material and keep it for the session. When the
@@ -9384,23 +9416,40 @@ export const render = {
       this.rockSurfaceLibraryReady.then(async () => {
         // A torn-down renderer has no mesh map and a different scene; do nothing then.
         if (!this._meshes || this.scene !== liveScene) return;
+        // Re-checked at each leg boundary: a dispose mid-continuation would
+        // otherwise keep paying censuses and compiles against the dead scene.
+        const stillLive = () => !!(this._meshes && this.scene === liveScene);
         let count = 0;
         // The reskin + compile work below used to run inside one microtask — a
         // decode resolving mid-flight paid every walk and per-root compile in a
         // single frame. Each leg now yields to the browser on the same cadence
         // the paced drains use, so its cost lands across a few frames instead.
         let reskinVisited = 0;
-        for (const mesh of this._meshes.values()) {
-          count += upgradeBareRockMaterials(mesh);
-          if (++reskinVisited % 32 === 0) await yieldToBrowser();
-        }
-        // Prewarm roots (asteroid exemplars + the leaf-variant blanket) are scene-mounted but
-        // not in _meshes: they must re-skin too or the warmed program stays the bare variant
-        // while live rocks draw the PBR one.
+        // Prewarm roots first: the interned PBR materials they swap to are the
+        // same set the live reskin below assigns — linking them before any live
+        // mesh holds them means no presented frame inside this continuation
+        // draws a rock whose material never compiled.
         for (const root of this._rosterPrewarmRoots || []) {
           count += upgradeBareRockMaterials(root);
           if (++reskinVisited % 32 === 0) await yieldToBrowser();
         }
+        if (!stillLive()) return;
+        if (count > 0
+            && state && state.render && typeof state.render.compileObjectPipelines === 'function') {
+          for (const root of this._rosterPrewarmRoots || []) {
+            try { state.render.compileObjectPipelines(root, { explicit: true }); } catch (_) { /* best effort */ }
+            await yieldToBrowser();
+          }
+        }
+        if (!stillLive()) return;
+        const reskinnedLive = [];
+        for (const mesh of this._meshes.values()) {
+          const swapped = upgradeBareRockMaterials(mesh);
+          count += swapped;
+          if (swapped > 0) reskinnedLive.push(mesh);
+          if (++reskinVisited % 32 === 0) await yieldToBrowser();
+        }
+        if (!stillLive()) return;
         parallaxLayers.seatReadyRockSurfaceTextures();
         if (state && state.render && typeof state.render.compileObjectPipelines === 'function') {
           for (const group of parallaxLayers.activeGroups()) {
@@ -9408,6 +9457,7 @@ export const render = {
             await yieldToBrowser();
           }
         }
+        if (!stillLive()) return;
         // Pool chunks warmed while leaves were bare bind the bare material; empty buckets may
         // rebind to the real leaf pair so the first registration matches.
         try {
@@ -9416,12 +9466,14 @@ export const render = {
         } catch (_) { /* pool warm is best-effort */ }
         // Re-skin swapped material objects — the new PBR materials have never compiled. Behind
         // the shell this is a batch compile; in flight it is the same admission a cold draw
-    // Terrain / cloud relief tiles for the colossal planet-site bodies (never fatal; plain baked surface on failure).
-    this.planetDetailLibraryReady = preloadPlanetDetailLibrary(renderer);
         // would have paid, just earlier and deduped.
         if (count > 0
             && state && state.render && typeof state.render.compileObjectPipelines === 'function') {
-          for (const root of this._rosterPrewarmRoots || []) {
+          if (!stillLive()) return;
+          // Prewarm-only reskins compile above; live roots that swapped under
+          // this continuation still hold the interned materials — link them too
+          // so the compile gate covers the whole swapped set.
+          for (const root of reskinnedLive) {
             try { state.render.compileObjectPipelines(root, { explicit: true }); } catch (_) { /* best effort */ }
             await yieldToBrowser();
           }
@@ -9443,6 +9495,7 @@ export const render = {
                   poolCompileRoots = censusStep.value ? censusStep.value.roots : [];
                   break;
                 }
+                if (!stillLive()) return;
                 await yieldToBrowser();
               }
             } else {
@@ -9459,6 +9512,7 @@ export const render = {
           // linked, and the first live shadow draw pays it (the Asteroid_313 mapUv NOVEL). One
           // batched pass over the prewarm + pool roots links those variants in any mode.
           try {
+            if (!stillLive()) return;
             // Parked (detached) roots included: compileShadowDepthPipelines handles
             // off-graph subjects through captureObjectHome/restoreObjectHome, and a
             // reskin landing post-park would otherwise leave their PBR depth variants
@@ -9696,7 +9750,15 @@ export const render = {
           await yieldToBrowser();
         }
         if (paceBootQueue) await paceBootQueue();
-        const leaves = collectOpeningSubmissionLeaves(scene, { includeOffscreen: true });
+        // The whole-scene leaf walk is the last atomic census in the admission
+        // block — drive the stepped twin under the block's own yield cadence.
+        let leaves = null;
+        const leavesIter = collectOpeningSubmissionLeavesSteps(scene, { includeOffscreen: true });
+        for (;;) {
+          const leafStep = leavesIter.next();
+          if (leafStep.done) { leaves = leafStep.value; break; }
+          await yieldToBrowser();
+        }
         const extraVfx = [];
         const extraVfxSet = new Set();
         const addExtraVfx = (root) => {
@@ -11035,16 +11097,10 @@ export const render = {
       }
       return out;
     };
-    const buildOpeningSubmissionPlan = () => {
-      const iterator = buildOpeningSubmissionPlanSteps.call(this);
-      let step = iterator.next();
-      while (!step.done) step = iterator.next();
-      return step.value;
-    };
     // Stepped twin: the plan is a chain of whole-scene censuses — yields split the
     // legs so async drives pace it under their slice clocks instead of paying one
-    // atomic ~multi-tens-of-ms window (and 3-4 times per boot). The sync driver
-    // above exhausts it inline for identical output on sync call sites.
+    // atomic ~multi-tens-of-ms window (and 3-4 times per boot). Sync callers drive
+    // the generator inline for identical output.
     const buildOpeningSubmissionPlanSteps = function* () {
       // prepareFrame() selects the final entity poses without rendering while the loading shell is
       // visible. Refresh world matrices once so frustum/layer admission observes those exact poses,
@@ -11334,7 +11390,12 @@ export const render = {
       };
     };
     state.render.captureOpeningSubmissionPlanSteps = () => (function* () {
+      // The census legs span browser yields — a world flip inside the window
+      // would otherwise commit rows minted under two epochs into the new
+      // world's plan + cohort (entity:${id} identities collide across worlds).
+      const captureStale = captureLiveSectorCookStale();
       const plan = yield* buildOpeningSubmissionPlanSteps.call(this);
+      if (captureStale()) return null;
       state.render.openingSubmissionPlan = plan;
       const identities = (plan.compileSubjects || []).map((subject) => openingSubjectIdentity(subject))
         .filter(Boolean);
@@ -12151,27 +12212,32 @@ export const render = {
       // Intel during gpu-resources. Jump already dumps them before cook.
       let leftoverSliceStart = openingProviderNow();
       let leftoverSliceArmed = state.mode === 'flight';
-      for (const [id, mesh] of this._meshes) {
-        const entity = resolveWorldPresentationEntity(state, id);
-        if (entity && isEntityRenderRelevant(entity, state)) continue;
-        this._unbindPresentationMesh(id, mesh);
-        releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
-        this.scene.remove(mesh);
-        disposeObject(mesh);
-        this._meshes.delete(id);
-        this._meshesVersion += 1;
-        noteShadowMeshRemoved(this, mesh);
-        clearEntityMeshReference(entity, mesh);
-        if (openingProviderNow() - leftoverSliceStart >= 8
-            || (state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) {
-          if (leftoverSliceArmed) {
-            notePacedFrameSpend(openingProviderNow() - leftoverSliceStart);
+      this._meshReleaseBatchBegin?.();
+      try {
+        for (const [id, mesh] of this._meshes) {
+          const entity = resolveWorldPresentationEntity(state, id);
+          if (entity && isEntityRenderRelevant(entity, state)) continue;
+          this._unbindPresentationMesh(id, mesh);
+          releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
+          this.scene.remove(mesh);
+          disposeObject(mesh);
+          this._meshes.delete(id);
+          this._meshesVersion += 1;
+          noteShadowMeshRemoved(this, mesh);
+          clearEntityMeshReference(entity, mesh);
+          if (openingProviderNow() - leftoverSliceStart >= 8
+              || (state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS)) {
+            if (leftoverSliceArmed) {
+              notePacedFrameSpend(openingProviderNow() - leftoverSliceStart);
+            }
+            await yieldLiveSectorGpu();
+            leftoverSliceStart = openingProviderNow();
+            leftoverSliceArmed = state.mode === 'flight';
+            if (cookStale()) return cookSuperseded;
           }
-          await yieldLiveSectorGpu();
-          leftoverSliceStart = openingProviderNow();
-          leftoverSliceArmed = state.mode === 'flight';
-          if (cookStale()) return cookSuperseded;
         }
+      } finally {
+        this._meshReleaseBatchEnd?.();
       }
       const leftoverEnqueueYield = createSlicedYield(yieldLiveSectorGpu, {
         shouldYield: () => state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS,
@@ -14643,21 +14709,26 @@ export const render = {
         );
         // Departing a dense sector sweeps hundreds of mounted meshes through GL dispose —
         // the same brick class the build drain below slices, so it rides the same clock.
-        for (const [id, mesh] of this._meshes) {
-          const entity = resolveWorldPresentationEntity(state, id);
-          if (entity && isEntityRenderRelevant(entity, state)) continue;
-          this._unbindPresentationMesh(id, mesh);
-          releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
-          this.scene.remove(mesh);
-          disposeObject(mesh);
-          this._meshes.delete(id);
-          this._meshesVersion += 1;
-          noteShadowMeshRemoved(this, mesh);
-          clearEntityMeshReference(entity, mesh);
-          if (providerSliceDue()) {
-            const superseded = await providerYield();
-            if (superseded) return superseded;
+        this._meshReleaseBatchBegin?.();
+        try {
+          for (const [id, mesh] of this._meshes) {
+            const entity = resolveWorldPresentationEntity(state, id);
+            if (entity && isEntityRenderRelevant(entity, state)) continue;
+            this._unbindPresentationMesh(id, mesh);
+            releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
+            this.scene.remove(mesh);
+            disposeObject(mesh);
+            this._meshes.delete(id);
+            this._meshesVersion += 1;
+            noteShadowMeshRemoved(this, mesh);
+            clearEntityMeshReference(entity, mesh);
+            if (providerSliceDue()) {
+              const superseded = await providerYield();
+              if (superseded) return superseded;
+            }
           }
+        } finally {
+          this._meshReleaseBatchEnd?.();
         }
         for (const _ of enqueueMissingMeshBuildsSteps(
           firstFlightEntities,
@@ -14839,8 +14910,12 @@ export const render = {
           if (censusStep.done) { census = censusStep.value; break; }
           await postPace();
         }
+        let meshWalkVisited = 0;
         const meshRootSet = new Set();
-        for (const root of this._meshes.values()) if (root) meshRootSet.add(root);
+        for (const root of this._meshes.values()) {
+          if (root) meshRootSet.add(root);
+          if (++meshWalkVisited % 256 === 0) await postPace();
+        }
         const lateRootSet = new Set();
         const enclosingMemo = new Map();
         const enclosingMeshRoot = (subject) => {
@@ -14867,6 +14942,7 @@ export const render = {
         // _meshes insertion order — the same order the registry walk produced.
         const lateEntities = [];
         for (const root of this._meshes.values()) {
+          if (++meshWalkVisited % 256 === 0) await postPace();
           if (lateRootSet.has(root)) lateEntities.push(root);
         }
         return {
@@ -15063,6 +15139,40 @@ export const render = {
       // are independent, so the union equals the atomic call's.
       const depthSubjects = [...openingSubjects, ...lateCandidates];
       const depthLightSig = lightCensusSignature(scene);
+      const depthLightSigEpoch = shadowCensusEpoch();
+      // The mark signature describes the light set the ceremony actually stages —
+      // if the rendered light set mutated since the mint, re-sign instead of
+      // marking casters under a census the stage never ran.
+      const freshDepthLightSig = () => (shadowCensusEpoch() === depthLightSigEpoch
+        ? depthLightSig : lightCensusSignature(scene));
+      // The ceremony's censuses ride the stepped twin under the shared paced
+      // clock — the reparent/render/restore window stays atomic inside one
+      // next(), so a presented frame only ever pays the two bounded GL submits
+      // plus the row loops.
+      const driveDepthCompile = async (compileSubjects, stagingName) => {
+        const depthOpts = {
+          renderer,
+          light: this._keyLight,
+          camera: cam.obj,
+          subjects: compileSubjects,
+          forceEnable: this._shadowSettingOn === true,
+          THREE,
+          captureObjectHome,
+          restoreObjectHome,
+          lightingScene: scene,
+          lightSigOverride: freshDepthLightSig(),
+          stagingName,
+        };
+        if (typeof compileShadowDepthPipelinesSteps !== 'function') {
+          return compileShadowDepthPipelines(depthOpts);
+        }
+        const depthIter = compileShadowDepthPipelinesSteps(depthOpts);
+        for (;;) {
+          const depthStep = depthIter.next();
+          if (depthStep.done) return depthStep.value;
+          await postPace();
+        }
+      };
       const unstagedDepthSubjects = [];
       for (let i = 0; i < depthSubjects.length; i += 512) {
         const unstagedPart = collectUnstagedShadowCasters(
@@ -15071,18 +15181,7 @@ export const render = {
         await postPace();
       }
       const depth = unstagedDepthSubjects.length > 0
-        ? compileShadowDepthPipelines({
-          renderer,
-          light: this._keyLight,
-          camera: cam.obj,
-          subjects: unstagedDepthSubjects,
-          forceEnable: this._shadowSettingOn === true,
-          THREE,
-          captureObjectHome,
-          restoreObjectHome,
-          lightingScene: scene,
-          stagingName: 'SF_PostOpeningShadowDepthAdmission',
-        })
+        ? await driveDepthCompile(unstagedDepthSubjects, 'SF_PostOpeningShadowDepthAdmission')
         : { skipped: true, reason: 'no unstaged shadow casters', subjects: 0 };
       // Unlatch-into-join: a caller that joined this pass in flight needed a cohort
       // the first collection minted too early (attach jobs, decoded exemplar subtrees,
@@ -15156,18 +15255,7 @@ export const render = {
           await postPace();
         }
         if (unstagedRescanDelta.length > 0) {
-          compileShadowDepthPipelines({
-            renderer,
-            light: this._keyLight,
-            camera: cam.obj,
-            subjects: unstagedRescanDelta,
-            forceEnable: this._shadowSettingOn === true,
-            THREE,
-            captureObjectHome,
-            restoreObjectHome,
-            lightingScene: scene,
-            stagingName: 'SF_PostOpeningRescanShadowDepth',
-          });
+          await driveDepthCompile(unstagedRescanDelta, 'SF_PostOpeningRescanShadowDepth');
         }
       }
       // A rescan request still armed at the pass cap means a joiner's cohort was
@@ -15213,6 +15301,7 @@ export const render = {
       // Flight admission waits behind the loading presenter, so every subsequently streamed common
       // rock receives its final PBR maps on its first and only visual publication. The opening plan
       // requires bound PBR maps so parallax layers and rock instances capture matching pipeline keys.
+      const openingStale = captureLiveSectorCookStale();
       const rockWaitStarted = performance.now();
       let rockTimedOut = false;
       if (this.rockSurfaceLibraryReady) {
@@ -15436,7 +15525,11 @@ export const render = {
         for (;;) {
           const receiptStep = receiptIter.next();
           if (receiptStep.done) {
-            state.render.openingSubmissionReceipt = receiptStep.value;
+            // A prepare superseded mid-receipt must not stamp the dead scene's
+            // census over the live baseline the first-draw gate validates.
+            if (!openingStale()) {
+              state.render.openingSubmissionReceipt = receiptStep.value;
+            }
             break;
           }
           await yieldToBrowser();
@@ -18314,7 +18407,20 @@ export const render = {
       releaseClaim(false);
       return null;
     }
-    reKickResult.then((result) => {
+    // A kick whose promise never settles would pin the minted covered+claim pair
+    // for the rest of the run, filtering the archetype out of every later warm —
+    // a guaranteed in-frame decode at its next live spawn. Bound the wait at the
+    // warm's settle deadline: the timeout outcome is unclaimed, so the release
+    // still lands (errs toward a re-warm, the safe direction).
+    const reKickDeadlineMs = Number.isFinite(warm.settleDeadlineAt)
+      ? Math.max(0, warm.settleDeadlineAt - Date.now())
+      : WARM_BUILDING_SETTLE_DEADLINE_MS;
+    const boundedReKick = Promise.race([
+      reKickResult,
+      new Promise((resolve) => setTimeout(
+        () => resolve({ status: 'warm-kick-timeout' }), reKickDeadlineMs)),
+    ]);
+    boundedReKick.then((result) => {
       entry.result = result;
       const settled = result && typeof result === 'object' ? result.status : result;
       // Coverage only survives while the warm lives — a re-kick settling
@@ -19954,6 +20060,28 @@ export const render = {
     return true;
   },
 
+  // Mass-despawn sweeps call _unbindPresentationMesh per evicted row; the
+  // by-identity releases below would each pay a full registry walk per row.
+  // Inside a batch scope they accumulate dead roots instead and the outermost
+  // end releases every registry once — verdict-identical to N per-mesh calls.
+  _meshReleaseBatchBegin() {
+    this._meshReleaseBatchDepth = (this._meshReleaseBatchDepth | 0) + 1;
+  },
+
+  _meshReleaseBatchEnd() {
+    if ((this._meshReleaseBatchDepth | 0) <= 0) return;
+    this._meshReleaseBatchDepth -= 1;
+    if (this._meshReleaseBatchDepth > 0) return;
+    const pending = this._meshReleasePending;
+    this._meshReleasePending = null;
+    if (!pending || pending.size === 0) return;
+    globalShipMicroMotion.releaseMeshSet(pending);
+    globalAsteroidMotion.releaseMeshSet(pending);
+    globalInfrastructureMotion.releaseMeshSet(pending);
+    globalForgeCrown.releaseMeshSet(pending);
+    globalLawArenaDressing.releaseMeshSet(pending);
+  },
+
   _unbindPresentationMesh(entityId, mesh = null) {
     if (mesh) {
       // The caller-match gate covers the release too: a stale caller id that
@@ -19999,11 +20127,15 @@ export const render = {
     // A save restore reissues ids, so the record pinning this exact mesh can live under a
     // recycled key the entity-id release above cannot reach — release by identity too.
     if (mesh) {
-      globalShipMicroMotion.releaseMesh(mesh);
-      globalAsteroidMotion.releaseMesh(mesh);
-      globalInfrastructureMotion.releaseMesh(mesh);
-      globalForgeCrown.releaseMesh(mesh);
-      globalLawArenaDressing.releaseMesh(mesh);
+      if ((this._meshReleaseBatchDepth | 0) > 0) {
+        (this._meshReleasePending || (this._meshReleasePending = new Set())).add(mesh);
+      } else {
+        globalShipMicroMotion.releaseMesh(mesh);
+        globalAsteroidMotion.releaseMesh(mesh);
+        globalInfrastructureMotion.releaseMesh(mesh);
+        globalForgeCrown.releaseMesh(mesh);
+        globalLawArenaDressing.releaseMesh(mesh);
+      }
     }
     // A culled-frozen root leaving the presentation world goes back to whatever owns the
     // object next (dispose, pool reuse, rebuild) in its build-time state.
@@ -20201,24 +20333,33 @@ export const render = {
     const released = typeof residency.releaseDetachedBoundaryOwnersSteps === 'function'
       ? yield* residency.releaseDetachedBoundaryOwnersSteps(releaseProbe)
       : residency.releaseDetachedBoundaryOwners(releaseProbe);
-    for (const owner of released) {
-      yield;
-      // A boundary re-attached between its census visit and this teardown turn
-      // is live again — disposing it would pop a mounted subtree out. The
-      // detached-generation residency release stays released (its bookkeeping
-      // is stale regardless); a remount re-registers through normal admission.
-      if (releaseProbe.isDetached(owner) !== true) continue;
-      // Sever the external pins that outlived the boundary before tree teardown: the living
-      // hull overlay stays parented to whatever hull it last attached to, and motion records
-      // can pin the tree through a recycled entity id.
-      try { this._livingHullPresentation?.detach?.(owner); } catch (_) { /* best effort */ }
-      globalShipMicroMotion.releaseMesh(owner);
-      globalAsteroidMotion.releaseMesh(owner);
-      globalInfrastructureMotion.releaseMesh(owner);
-      try {
-        if (!disposePreparedAuthoredBoundary(owner)) disposeObject(owner);
-      } catch (_) {
-        try { disposeObject(owner); } catch (_) { /* best effort */ }
+    // Dead-root registry releases ride one batched pass per registry — the
+    // identity-vs-subtree verdicts are unchanged by flushing the set at the end.
+    const deadOwners = new Set();
+    try {
+      for (const owner of released) {
+        yield;
+        // A boundary re-attached between its census visit and this teardown turn
+        // is live again — disposing it would pop a mounted subtree out. The
+        // detached-generation residency release stays released (its bookkeeping
+        // is stale regardless); a remount re-registers through normal admission.
+        if (releaseProbe.isDetached(owner) !== true) continue;
+        // Sever the external pins that outlived the boundary before tree teardown: the living
+        // hull overlay stays parented to whatever hull it last attached to, and motion records
+        // can pin the tree through a recycled entity id.
+        try { this._livingHullPresentation?.detach?.(owner); } catch (_) { /* best effort */ }
+        deadOwners.add(owner);
+        try {
+          if (!disposePreparedAuthoredBoundary(owner)) disposeObject(owner);
+        } catch (_) {
+          try { disposeObject(owner); } catch (_) { /* best effort */ }
+        }
+      }
+    } finally {
+      if (deadOwners.size > 0) {
+        globalShipMicroMotion.releaseMeshSet(deadOwners);
+        globalAsteroidMotion.releaseMeshSet(deadOwners);
+        globalInfrastructureMotion.releaseMeshSet(deadOwners);
       }
     }
     if (released.length) {
@@ -20257,11 +20398,16 @@ export const render = {
     }
     this._despawnDisposeQueue.length = 0;
     this._despawnDisposeHead = 0;
-    for (const [id, m] of [...this._meshes]) {
-      if (keepPlayer && id === this.state.playerId) continue;
-      this._unbindPresentationMesh(id, m);
-      releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
-      this.scene.remove(m); disposeObject(m); this._meshes.delete(id);
+    this._meshReleaseBatchBegin?.();
+    try {
+      for (const [id, m] of [...this._meshes]) {
+        if (keepPlayer && id === this.state.playerId) continue;
+        this._unbindPresentationMesh(id, m);
+        releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
+        this.scene.remove(m); disposeObject(m); this._meshes.delete(id);
+      }
+    } finally {
+      this._meshReleaseBatchEnd?.();
     }
     this._meshesVersion += 1;
     this._presentationQueries?.reset?.();
@@ -20454,37 +20600,42 @@ export const render = {
     const liveShellLatched = () => !!(state && state.render && (
       state.render.liveSectorGpuAdmission === true
       || state.render.sectorShellAdmission === true));
-    for (const [id, m] of this._meshes) {
-      yield;
-      refreshOnNewerSweepBeat();
-      const e = resolveWorldPresentationEntity(state, id);
-      // A recycled numeric id can resolve to a different logical entity after a save restore;
-      // the mesh's stamped stable key disproves that pairing so the stale mesh is released
-      // instead of drawn on the wrong boundary.
-      const stampedKey = m && m.userData ? m.userData.sfStableEntityKey : undefined;
-      const mismatched = !!(e && e.alive !== false && stampedKey != null && stableMeshKeyForEntity(e) !== stampedKey);
-      // Residency eviction of an on-glass entity is the visible "pop out of
-      // existence" defect — count it so probes can prove the class stays at 0.
-      const residencyEvict = !liveShellLatched()
-        && !!(e && e.alive !== false && !mismatched)
-        && !keepResidentSet
-        && !isEntityRenderRelevant(e, state,
-          e.type === 'ship' || e.type === 'wreck' ? reconcileEvictShipWreck : reconcileEvictBase,
-          reconcileScanOpts);
-      if (!e || e.alive === false || mismatched || residencyEvict) {
-        if (residencyEvict) noteOnGlassResidencyEviction(state, e);
-        this._unbindPresentationMesh(id, m);
-        releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
-        // GL disposal rides the bounded despawn queue (drained ~2 ms/frame by the residency
-        // service): a different-sector restore would otherwise pay the whole kept working
-        // set's dispose in one synchronous pass under the loading veil.
-        this.scene.remove(m);
-        if (!this._despawnDisposeQueue) { this._despawnDisposeQueue = []; this._despawnDisposeHead = 0; }
-        this._despawnDisposeQueue.push(m);
-        this._meshes.delete(id); this._meshesVersion += 1;
-        noteShadowMeshRemoved(this, m);
-        clearEntityMeshReference(e, m);
+    this._meshReleaseBatchBegin?.();
+    try {
+      for (const [id, m] of this._meshes) {
+        yield;
+        refreshOnNewerSweepBeat();
+        const e = resolveWorldPresentationEntity(state, id);
+        // A recycled numeric id can resolve to a different logical entity after a save restore;
+        // the mesh's stamped stable key disproves that pairing so the stale mesh is released
+        // instead of drawn on the wrong boundary.
+        const stampedKey = m && m.userData ? m.userData.sfStableEntityKey : undefined;
+        const mismatched = !!(e && e.alive !== false && stampedKey != null && stableMeshKeyForEntity(e) !== stampedKey);
+        // Residency eviction of an on-glass entity is the visible "pop out of
+        // existence" defect — count it so probes can prove the class stays at 0.
+        const residencyEvict = !liveShellLatched()
+          && !!(e && e.alive !== false && !mismatched)
+          && !keepResidentSet
+          && !isEntityRenderRelevant(e, state,
+            e.type === 'ship' || e.type === 'wreck' ? reconcileEvictShipWreck : reconcileEvictBase,
+            reconcileScanOpts);
+        if (!e || e.alive === false || mismatched || residencyEvict) {
+          if (residencyEvict) noteOnGlassResidencyEviction(state, e);
+          this._unbindPresentationMesh(id, m);
+          releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
+          // GL disposal rides the bounded despawn queue (drained ~2 ms/frame by the residency
+          // service): a different-sector restore would otherwise pay the whole kept working
+          // set's dispose in one synchronous pass under the loading veil.
+          this.scene.remove(m);
+          if (!this._despawnDisposeQueue) { this._despawnDisposeQueue = []; this._despawnDisposeHead = 0; }
+          this._despawnDisposeQueue.push(m);
+          this._meshes.delete(id); this._meshesVersion += 1;
+          noteShadowMeshRemoved(this, m);
+          clearEntityMeshReference(e, m);
+        }
       }
+    } finally {
+      this._meshReleaseBatchEnd?.();
     }
     // Queue relevant ships first, then relevant world geometry. Distant reduced-sector entities
     // continue to exist in state and are admitted automatically as the player approaches.
@@ -20629,46 +20780,51 @@ export const render = {
     const liveShellLatched = () => !!(state && state.render && (
       state.render.liveSectorGpuAdmission === true
       || state.render.sectorShellAdmission === true));
-    for (const [id, mesh] of this._meshes) {
-      yield;
-      refreshOnNewerSweepBeat();
-      stats.meshVisits++;
-      const entity = resolveWorldPresentationEntity(state, id);
-      const evictRadius = entity && (entity.type === 'ship' || entity.type === 'wreck')
-        ? evictRadiusShipWreck
-        : evictRadiusBase;
-      const residencyEvict = !liveShellLatched()
-        && !!(entity && entity.alive !== false)
-        && !isEntityRenderRelevant(entity, state, evictRadius, residencyScanOpts);
-      if (!entity || entity.alive === false || residencyEvict) {
-        if (residencyEvict) noteOnGlassResidencyEviction(state, entity);
-        this._unbindPresentationMesh(id, mesh);
-        releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
-        this.scene.remove(mesh);
-        // Dead-class evicts are deliberately not gated by the shell latch — ghost meshes
-        // must leave the picture — but only bookkeeping needs to land inline. The
-        // traverse + GL-free tail rides the bounded despawn-dispose drain like the
-        // kill-burst path, so a mass-depart sweep stops paying its dispose storm inside
-        // the presented transition frame.
-        if (!this._despawnDisposeQueue) { this._despawnDisposeQueue = []; this._despawnDisposeHead = 0; }
-        this._despawnDisposeQueue.push(mesh);
-        this._meshes.delete(id);
-        this._meshesVersion += 1;
-        noteShadowMeshRemoved(this, mesh);
-        clearEntityMeshReference(entity, mesh);
-        stats.evicted++;
-        continue;
+    this._meshReleaseBatchBegin?.();
+    try {
+      for (const [id, mesh] of this._meshes) {
+        yield;
+        refreshOnNewerSweepBeat();
+        stats.meshVisits++;
+        const entity = resolveWorldPresentationEntity(state, id);
+        const evictRadius = entity && (entity.type === 'ship' || entity.type === 'wreck')
+          ? evictRadiusShipWreck
+          : evictRadiusBase;
+        const residencyEvict = !liveShellLatched()
+          && !!(entity && entity.alive !== false)
+          && !isEntityRenderRelevant(entity, state, evictRadius, residencyScanOpts);
+        if (!entity || entity.alive === false || residencyEvict) {
+          if (residencyEvict) noteOnGlassResidencyEviction(state, entity);
+          this._unbindPresentationMesh(id, mesh);
+          releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
+          this.scene.remove(mesh);
+          // Dead-class evicts are deliberately not gated by the shell latch — ghost meshes
+          // must leave the picture — but only bookkeeping needs to land inline. The
+          // traverse + GL-free tail rides the bounded despawn-dispose drain like the
+          // kill-burst path, so a mass-depart sweep stops paying its dispose storm inside
+          // the presented transition frame.
+          if (!this._despawnDisposeQueue) { this._despawnDisposeQueue = []; this._despawnDisposeHead = 0; }
+          this._despawnDisposeQueue.push(mesh);
+          this._meshes.delete(id);
+          this._meshesVersion += 1;
+          noteShadowMeshRemoved(this, mesh);
+          clearEntityMeshReference(entity, mesh);
+          stats.evicted++;
+          continue;
+        }
+        // While the shell latch is set, rows whose home sector already departed are the
+        // cook's teardown sweep's business — running authored-upgrade classification on
+        // them every latched poll pays camera trig + retry scans on entities that cannot
+        // admit anyway. Skip by the cheap home-sector compare; the first unlatched poll
+        // classifies them normally.
+        if (liveShellLatched()) {
+          const homeSectorId = entity.homeSectorId || (entity.data && entity.data.homeSectorId);
+          if (homeSectorId && homeSectorId !== (state.world && state.world.currentSectorId)) continue;
+        }
+        queueOrRequestAuthoredUpgrade(this, entity, mesh, state, residencyScan);
       }
-      // While the shell latch is set, rows whose home sector already departed are the
-      // cook's teardown sweep's business — running authored-upgrade classification on
-      // them every latched poll pays camera trig + retry scans on entities that cannot
-      // admit anyway. Skip by the cheap home-sector compare; the first unlatched poll
-      // classifies them normally.
-      if (liveShellLatched()) {
-        const homeSectorId = entity.homeSectorId || (entity.data && entity.data.homeSectorId);
-        if (homeSectorId && homeSectorId !== (state.world && state.world.currentSectorId)) continue;
-      }
-      queueOrRequestAuthoredUpgrade(this, entity, mesh, state, residencyScan);
+    } finally {
+      this._meshReleaseBatchEnd?.();
     }
 
     // LOCAL array (same suspended-walk rule as the cook collect sites): a buffer
@@ -20836,9 +20992,40 @@ export const render = {
         // Within the urgent prefix the nearest deadline drains first — enqueue FIFO order
         // can strand a hull crossing now behind one crossing in seconds on a burst admit.
         urgentNow.sort((a, b) => a.seconds - b.seconds);
-        let write = this._meshBuildQueueHead;
-        for (let i = 0; i < urgentNow.length; i++) pendingBuilds[write++] = urgentNow[i].entry;
-        for (let i = 0; i < restNow.length; i++) pendingBuilds[write++] = restNow[i];
+        const liveQueue = this._meshBuildQueue;
+        const liveHead = this._meshBuildQueueHead | 0;
+        // A compaction mid-scan detached the scanned array — ordering is advisory,
+        // so skip the write-back rather than mutate the dead one. Otherwise rebuild
+        // the live tail: classified survivors first (urgent-sorted), rows appended
+        // past the scan window untouched behind them. Stamp re-checks at write
+        // time drop rows consumed since their classify; the seen-set collapses a
+        // consumed-then-re-added id to one entry.
+        if (liveQueue === pendingBuilds) {
+          const queued = this._meshBuildQueuedIds;
+          const classifiedIds = new Set();
+          for (let i = 0; i < urgentNow.length; i++) classifiedIds.add(urgentNow[i].entry);
+          for (let i = 0; i < restNow.length; i++) classifiedIds.add(restNow[i]);
+          const appended = [];
+          for (let i = liveHead; i < liveQueue.length; i++) {
+            const liveId = liveQueue[i];
+            if (!classifiedIds.has(liveId)) appended.push(liveId);
+          }
+          const seen = new Set();
+          liveQueue.length = liveHead;
+          for (let i = 0; i < urgentNow.length; i++) {
+            const id = urgentNow[i].entry;
+            if (seen.has(id) || (queued && !queued.has(id))) continue;
+            seen.add(id);
+            liveQueue.push(id);
+          }
+          for (let i = 0; i < restNow.length; i++) {
+            const id = restNow[i];
+            if (seen.has(id) || (queued && !queued.has(id))) continue;
+            seen.add(id);
+            liveQueue.push(id);
+          }
+          for (let i = 0; i < appended.length; i++) liveQueue.push(appended[i]);
+        }
       }
       urgentNow.length = 0;
       restNow.length = 0;
@@ -20919,12 +21106,42 @@ export const render = {
       }
       notePacedFrameSpend(now() - segStartedAtMs);
       segStartedAtMs = now();
-      queue.length = head;
-      for (let i = 0; i < hoisted.length; i++) queue.push(hoisted[i]);
-      for (let i = 0; i < remainder.length; i++) queue.push(remainder[i]);
-      this._holdExemptRemaining = hoisted.length;
+      const liveQueue = this._meshBuildQueue;
+      const liveHead = this._meshBuildQueueHead | 0;
+      // Re-anchor on the live tail like the hoist twin: truncating at the mint
+      // head would bury rows appended while the repartition was parked (their
+      // queuedIds stamps survive, so nothing re-queues them — terminal for the
+      // exempt cohort this partition exists to serve). Consumed rows drop via
+      // the stamp re-check; rows appended past the snapshot pass through at the
+      // tail; a compaction that detached the array skips the advisory write.
+      if (liveQueue === queue) {
+        const queued = this._meshBuildQueuedIds;
+        const snapshotIds = new Set(tail);
+        const appended = [];
+        const seen = new Set();
+        for (let i = liveHead; i < liveQueue.length; i++) {
+          const liveId = liveQueue[i];
+          seen.add(liveId);
+          if (!snapshotIds.has(liveId)) appended.push(liveId);
+        }
+        const keep = (id) => seen.has(id) && (!queued || queued.has(id));
+        let exemptWritten = 0;
+        liveQueue.length = liveHead;
+        for (let i = 0; i < hoisted.length; i++) {
+          if (!keep(hoisted[i])) continue;
+          liveQueue.push(hoisted[i]);
+          exemptWritten += 1;
+        }
+        for (let i = 0; i < remainder.length; i++) {
+          if (!keep(remainder[i])) continue;
+          liveQueue.push(remainder[i]);
+        }
+        for (let i = 0; i < appended.length; i++) liveQueue.push(appended[i]);
+        this._holdExemptRemaining = exemptWritten;
+      }
     }
-    const hoistedLeft = Math.min(Number(this._holdExemptRemaining) || 0, queue.length - head);
+    const hoistedLeft = Math.min(Number(this._holdExemptRemaining) || 0,
+      this._meshBuildQueue.length - (this._meshBuildQueueHead | 0));
     if (hoistedLeft <= 0) return 0;
     // Cap to the ordinary runtime budget. Draining unbounded turned every on-glass /
     // approach rock cohort into a single-frame dump (+11 s / +20 s clusters on soft-GPU
@@ -21000,7 +21217,11 @@ export const render = {
       const iterator = hoistDeadlineGlassMeshBuildsSteps(owner, glassVerdictMemo);
       for (;;) {
         const hoistStep = iterator.next();
-        if (hoistStep.done) return hoistStep.value;
+        if (hoistStep.done) {
+          notePacedFrameSpend(now() - segStartedAtMs);
+          segStartedAtMs = now();
+          return hoistStep.value;
+        }
         notePacedFrameSpend(now() - segStartedAtMs);
         yield;
         segStartedAtMs = now();
@@ -21048,7 +21269,7 @@ export const render = {
       const newcomerSnapshot = newcomerList.slice();
       const newcomerBaseLen = newcomerList.length;
       const admitNewcomer = (entity) => {
-        if (!entity || entity.id == null || firstFlightIds.has(entity.id)) return;
+        if (!entity || entity.id == null || entity.alive === false || firstFlightIds.has(entity.id)) return;
         if (entity.type === 'asteroid') return;
         if (this._sectorBoundaryPreparations && this._sectorBoundaryPreparations.has(entity.id)) return;
         if (!isEntityRenderRelevant(entity, this.state, null, newcomerOpts)
@@ -21098,6 +21319,18 @@ export const render = {
         // mint-time wall clock and abandons the tail on its first post-resume
         // consult instead of finishing the remainder under this resume's slice.
         startedAtMs = now();
+        // The refused-start verdict minted at drain entry goes stale across a
+        // suspension the same way: a resume under a recovered frame must stop
+        // refusing ambient rows, and a resume under a now-late frame must stop
+        // building them.
+        if (buildBudget !== Infinity && this._initialMeshReconcileComplete && !loadingDrain) {
+          const resumedGate = shouldStartHeavyAdmissionEventually(
+            this.state && this.state.render && this.state.render.lastPresentDtMs,
+            this._meshBuildLateSkips,
+          );
+          this._meshBuildLateSkips = resumedGate.skippedCount;
+          deadlineGlassOnly = !resumedGate.start;
+        }
       }
       const peek = resolveWorldPresentationEntity(
         this.state,
@@ -22572,11 +22805,21 @@ export const render = {
   },
 
   _openingFirstPictureUpgradePromises() {
+    const iterator = this._openingFirstPictureUpgradePromisesSteps();
+    let step = iterator.next();
+    while (!step.done) step = iterator.next();
+    return step.value;
+  },
+
+  // Stepped twin: the shadow-candidate census delegates its yields through and
+  // the _meshes wait-set walk yields per 64 rows, so the boundary-settle loop
+  // paces each pass instead of paying the two censuses atomically per pass.
+  *_openingFirstPictureUpgradePromisesSteps() {
     const state = this.state;
     const camera = openingSubmissionCamera(this.cam && this.cam.obj);
     if (!camera || !this.scene || !this._meshes) return null;
     const entities = state && state.entities;
-    const shadowRoots = new Set(collectOpeningShadowCasterRootCandidates(
+    const shadowRoots = new Set((yield* collectOpeningShadowCasterRootCandidatesSteps(
       this._meshes,
       entities,
       {
@@ -22586,9 +22829,11 @@ export const render = {
           ? openingSubmissionCamera(this._activeShadowCamera)
           : null,
       },
-    ).map((candidate) => candidate.root));
+    )).map((candidate) => candidate.root));
     const pending = new Set();
+    let upgradeVisited = 0;
     for (const [id, root] of this._meshes) {
+      if (++upgradeVisited % 64 === 0) yield;
       const entity = entities && typeof entities.get === 'function' ? entities.get(id) : null;
       if (!entity || entity.alive === false || entity._noMesh) continue;
       if (!openingEntityRootIntersectsCamera(root, entity, camera, this.scene)
@@ -22672,7 +22917,18 @@ export const render = {
         if (!this._publishOpeningFirstPicture()) {
           throw new Error('opening first-picture render publication unavailable');
         }
-        const pending = this._openingFirstPictureUpgradePromises();
+        // Each settle pass pays a shadow-candidate census + the _meshes wait-set
+        // walk — drive the stepped twin so a big scene does not freeze the last
+        // loading stretch between presenter beats.
+        const driveUpgradePromises = async () => {
+          const iter = this._openingFirstPictureUpgradePromisesSteps();
+          for (;;) {
+            const driveStep = iter.next();
+            if (driveStep.done) return driveStep.value;
+            await yieldToBrowser();
+          }
+        };
+        const pending = await driveUpgradePromises();
         if (pending === null) throw new Error('opening first-picture camera unavailable');
         if (pending.length === 0) {
           // Re-publish once after the final boundary settles so the exact census sees the committed
@@ -22680,7 +22936,7 @@ export const render = {
           if (!this._publishOpeningFirstPicture()) {
             throw new Error('opening first-picture final publication unavailable');
           }
-          const late = this._openingFirstPictureUpgradePromises();
+          const late = await driveUpgradePromises();
           if (late === null) throw new Error('opening first-picture camera unavailable');
           if (late.length === 0) {
             if (!preparedHandoffCohort) {
@@ -23721,14 +23977,22 @@ export const render = {
     // so without this early unpark the band!==1 collect gate can never open
     // and a re-dirtied parked root would wedge withheld forever.
     let parkedRelease = false;
+    // Drift releases (light census re-sign, ortho cell move) differ from the
+    // dirtySeq release: under a new census every mark is stale, so the park's
+    // casters must re-collect now — restoring live cast flags on unlinked depth
+    // variants would link them inside the next presented shadow refresh.
+    let parkedReleaseOnDrift = false;
     if (parkedEntry && dirtySeq > parkedEntry.seq) parkedRelease = true;
     else if (parkedEntry && parkedEntry.lightSig != null
-        && parkedEntry.lightSig !== this._shadowCensusForFrame()) parkedRelease = true;
-    else if (parkedEntry && parkedEntry.oqX != null && this._keyLight && this._keyLight.target) {
+        && parkedEntry.lightSig !== this._shadowCensusForFrame()) {
+      parkedRelease = parkedReleaseOnDrift = true;
+    } else if (parkedEntry && parkedEntry.oqX != null && this._keyLight && this._keyLight.target) {
       const cell = (this._shadowOrthoExtent || 1) / 2;
       const t = this._keyLight.target.position;
       if (Math.round(t.x / cell) !== parkedEntry.oqX
-          || Math.round(t.z / cell) !== parkedEntry.oqZ) parkedRelease = true;
+          || Math.round(t.z / cell) !== parkedEntry.oqZ) {
+        parkedRelease = parkedReleaseOnDrift = true;
+      }
     }
     if (parkedRelease) {
       parkedMap.delete(root);
@@ -23768,7 +24032,8 @@ export const render = {
     // staged-vs-unstaged with zero signature mints inside the presented frame.
     const collectGate = (opts.allowCast === true && this._shadowSettingOn === true
         && this.renderer && this.scene && this._keyLight
-        && (parkedRecheck || (band !== 1 ? !queued : (dirtySeq > stampedSeq && dirtySeq > 0))));
+        && (parkedRecheck || parkedReleaseOnDrift
+          || (band !== 1 ? !queued : (dirtySeq > stampedSeq && dirtySeq > 0))));
     // Bound the collects one pass pays: a mass ortho-entry or packaged burst can
     // re-dirty tens of roots in one presented frame and each collect is a subtree
     // walk. Past the cap the root over-covers below instead of paying the walk.

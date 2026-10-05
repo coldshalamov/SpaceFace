@@ -72,6 +72,9 @@ export function createAsteroidInstancePool(scene, options = {}) {
     // Detail records are 1:N per entity (`entityId#d<index>`); they stay out of byEntity so the
     // classified-record dirty check keeps comparing presentation rows to body records 1:1.
     byDetail: new Map(),
+    // entityId -> Set<detailKey> index: a mass-depart evict burst used to scan the
+    // whole byDetail map per released row.
+    byDetailOwner: new Map(),
     stats: {
       registered: 0,
       registeredDetails: 0,
@@ -183,6 +186,9 @@ function adoptPoolLeaf(pool, entity, ownerRoot, leaf, detail) {
     if (info.poolLeafVisible === undefined) info.poolLeafVisible = leaf.visible !== false;
     record.detailKey = `${entity.id}#${leaf.uuid}`;
     pool.byDetail.set(record.detailKey, { bucket, record });
+    let ownerKeys = pool.byDetailOwner.get(entity.id);
+    if (!ownerKeys) pool.byDetailOwner.set(entity.id, ownerKeys = new Set());
+    ownerKeys.add(record.detailKey);
   } else {
     pool.byEntity.set(entity.id, { bucket, record });
   }
@@ -254,12 +260,16 @@ export function releaseAsteroidInstancesForEntity(pool, entityId) {
     pool.byEntity.delete(entityId);
     released = true;
   }
-  const prefix = `${entityId}#`;
-  for (const [key, ownedDetail] of pool.byDetail) {
-    if (!key.startsWith(prefix)) continue;
-    releasePoolRecord(pool, ownedDetail.bucket, ownedDetail.record);
-    pool.byDetail.delete(key);
-    released = true;
+  const ownedKeys = pool.byDetailOwner.get(entityId);
+  if (ownedKeys) {
+    pool.byDetailOwner.delete(entityId);
+    for (const key of ownedKeys) {
+      const ownedDetail = pool.byDetail.get(key);
+      if (!ownedDetail) continue;
+      releasePoolRecord(pool, ownedDetail.bucket, ownedDetail.record);
+      pool.byDetail.delete(key);
+      released = true;
+    }
   }
   return released;
 }
@@ -288,22 +298,32 @@ export function rekeyAsteroidInstanceEntity(pool, oldId, newId) {
   owned.record.entityId = newId;
   pool.byEntity.set(newId, owned);
   // Detail records ride the same entity id under their `oldId#leaf` composite keys.
-  const prefix = `${oldId}#`;
-  for (const [key, ownedDetail] of pool.byDetail) {
-    if (!key.startsWith(prefix)) continue;
-    pool.byDetail.delete(key);
-    ownedDetail.record.entityId = newId;
-    ownedDetail.record.detailKey = `${newId}#${ownedDetail.record.leaf && ownedDetail.record.leaf.uuid}`;
-    pool.byDetail.set(ownedDetail.record.detailKey, ownedDetail);
+  const ownedKeys = pool.byDetailOwner.get(oldId);
+  if (ownedKeys) {
+    pool.byDetailOwner.delete(oldId);
+    let newKeys = pool.byDetailOwner.get(newId);
+    if (!newKeys) pool.byDetailOwner.set(newId, newKeys = new Set());
+    for (const key of ownedKeys) {
+      const ownedDetail = pool.byDetail.get(key);
+      if (!ownedDetail) continue;
+      pool.byDetail.delete(key);
+      ownedDetail.record.entityId = newId;
+      ownedDetail.record.detailKey = `${newId}#${ownedDetail.record.leaf && ownedDetail.record.leaf.uuid}`;
+      pool.byDetail.set(ownedDetail.record.detailKey, ownedDetail);
+      newKeys.add(ownedDetail.record.detailKey);
+    }
   }
   pool.dirty = true;
   return true;
 }
 
 function releaseEntityDetailRecords(pool, entityId) {
-  const prefix = `${entityId}#`;
-  for (const [key, ownedDetail] of pool.byDetail) {
-    if (!key.startsWith(prefix)) continue;
+  const ownedKeys = pool.byDetailOwner.get(entityId);
+  if (!ownedKeys) return;
+  pool.byDetailOwner.delete(entityId);
+  for (const key of ownedKeys) {
+    const ownedDetail = pool.byDetail.get(key);
+    if (!ownedDetail) continue;
     releasePoolRecord(pool, ownedDetail.bucket, ownedDetail.record);
     pool.byDetail.delete(key);
   }
@@ -694,6 +714,7 @@ export function clearAsteroidInstancePool(pool) {
   }
   pool.byEntity.clear();
   pool.byDetail.clear();
+  pool.byDetailOwner.clear();
   pool.dirty = true;
 }
 
@@ -716,6 +737,7 @@ export function disposeAsteroidInstancePool(pool) {
   pool.keyed.clear();
   pool.byEntity.clear();
   pool.byDetail.clear();
+  pool.byDetailOwner.clear();
   pool.stats.registered = 0;
   pool.stats.registeredDetails = 0;
   pool.stats.submitted = 0;

@@ -692,6 +692,29 @@ export function createAsteroidMotionTracker() {
     }
   }
 
+  function nodeInsideAnyOf(node, roots) {
+    for (let cur = node; cur; cur = cur.parent) {
+      if (roots.has(cur)) return true;
+    }
+    return false;
+  }
+
+  // Batched twin of releaseMesh for mass-despawn sweeps: one registry pass per
+  // batch instead of one per evicted mesh. A ref inside ANY dead subtree reads
+  // identically to the per-mesh union — the ancestor walk probes the dead set
+  // instead of a single root.
+  function releaseMeshSet(meshes) {
+    if (!meshes || meshes.size === 0) return;
+    for (const rec of asteroidStates.values()) {
+      const rigHit = rec.veinRig && nodeInsideAnyOf(rec.veinRig, meshes);
+      const bodyHit = rec.scaleBodyRef && nodeInsideAnyOf(rec.scaleBodyRef, meshes);
+      if (rigHit || bodyHit) {
+        rec.veinRig = null;
+        rec.scaleBodyRef = null;
+      }
+    }
+  }
+
   function prune(activeEntityIds) {
     if (!activeEntityIds || typeof activeEntityIds.has !== 'function') return;
     for (const id of asteroidStates.keys()) {
@@ -716,6 +739,7 @@ export function createAsteroidMotionTracker() {
     prune,
     releaseEntityMesh,
     releaseMesh,
+    releaseMeshSet,
   };
 }
 

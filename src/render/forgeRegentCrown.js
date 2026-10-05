@@ -284,6 +284,14 @@ export function createForgeCrownTracker() {
     }
   }
 
+  // Batched twin for mass-despawn sweeps: one registry pass per batch.
+  function releaseMeshSet(meshes) {
+    if (!meshes || meshes.size === 0) return;
+    for (const rec of records.values()) {
+      if (rec.boundMesh && meshes.has(rec.boundMesh)) detachCrown(rec);
+    }
+  }
+
   function prune(activeEntityIds) {
     if (!activeEntityIds || typeof activeEntityIds.has !== 'function') return;
     for (const id of records.keys()) {
@@ -299,7 +307,7 @@ export function createForgeCrownTracker() {
     return records.get(entityId) || null;
   }
 
-  return { updateForgeCrown, releaseEntityMesh, releaseMesh, prune, peekRecord };
+  return { updateForgeCrown, releaseEntityMesh, releaseMesh, releaseMeshSet, prune, peekRecord };
 }
 
 export const globalForgeCrown = createForgeCrownTracker();

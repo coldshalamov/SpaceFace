@@ -210,6 +210,50 @@ export function collectPotentialShadowCastSubjects(roots, nodeBudget = null) {
   return casting;
 }
 
+// Stepped twin of the visit() predicate above: an explicit-stack DFS in the same
+// pre-order traverse() order (children pushed reversed so the leftmost pops
+// next), identical drawable/geometry/userData/material verdicts and nodeBudget
+// debit — the boot cook's depth ceremony drives this instead of paying one
+// atomic subtree census per pass.
+export function* collectPotentialShadowCastSubjectsSteps(roots, nodeBudget = null, yieldEvery = 512) {
+  const list = Array.isArray(roots) ? roots : [roots];
+  const casting = [];
+  const seen = new Set();
+  const every = Math.max(1, Math.floor(Number(yieldEvery) || 1));
+  let visited = 0;
+  for (const root of list) {
+    if (!root) continue;
+    const stack = [root];
+    while (stack.length > 0) {
+      const object = stack.pop();
+      if (nodeBudget && (nodeBudget.remaining -= 1) < 0) throw _walkBudgetAbort;
+      if (object && !seen.has(object)) {
+        const drawable = object.isMesh === true
+          || object.isSkinnedMesh === true
+          || object.isInstancedMesh === true;
+        if (drawable) {
+          seen.add(object);
+          if (!('geometry' in object && object.geometry == null)) {
+            const ud = object.userData || {};
+            if (!(ud.spacefaceNoShadow === true
+              || ud.sharedContactShadow === true
+              || ud.authoredReadableFallbackLayer === true)) {
+              const materials = Array.isArray(object.material) ? object.material : [object.material];
+              if (materials.some(materialCanCastShadow)) casting.push(object);
+            }
+          }
+        }
+      }
+      const children = object && object.children;
+      if (children) {
+        for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
+      }
+      if (++visited % every === 0) yield;
+    }
+  }
+  return casting;
+}
+
 // Depth-variant readiness: signatures of casters this ceremony already staged, per
 // renderer. A caster whose signature is recorded already links the exact depth program
 // the stage would mint (same material params + object kind, same light census + fog
@@ -475,6 +519,19 @@ function markCastersDepthStaged(renderer, casting, lightingScene, drawnDepthObje
 }
 
 export function compileShadowDepthPipelines(options = {}) {
+  const iterator = compileShadowDepthPipelinesSteps(options);
+  let step = iterator.next();
+  while (!step.done) step = iterator.next();
+  return step.value;
+}
+
+// Stepped twin: the caster census, the staged-lights census and the mark
+// signature census (one fused whole-scene walk) yield per 512 visited nodes,
+// so async drives pace the ceremony under their slice clocks. Everything from
+// the reparent captures to the finally restore stays inside one synchronous
+// window — a suspended generator must never leave live lights parked in
+// staging or castShadow flags forced on the live scene.
+export function* compileShadowDepthPipelinesSteps(options = {}) {
   const renderer = options.renderer;
   const light = options.light;
   const camera = options.camera;
@@ -495,7 +552,7 @@ export function compileShadowDepthPipelines(options = {}) {
   }
   // The caster census walks every subject's subtree — run it only after the cheap
   // flag checks above have ruled the pass out entirely.
-  const casting = collectPotentialShadowCastSubjects(subjects);
+  const casting = yield* collectPotentialShadowCastSubjectsSteps(subjects);
   // Zero casters means zero depth programs to link — the staging ceremony (whole-scene
   // light traverse, reparenting, census render) is net-zero work then, even under
   // forceEnable whose enabled flag restores in finally anyway.
@@ -509,17 +566,49 @@ export function compileShadowDepthPipelines(options = {}) {
   // scene's full light set + fog so the linked keys are identical to live.
   const lightingScene = options.lightingScene || null;
   const stagedLights = [];
+  // One stepped walk mints the staged-light set and — when no lightSigOverride
+  // was supplied — the rendered-set signature terms the mark takes. It replaces
+  // the two whole-scene traverses the sync caller paid (stagedLights +
+  // lightCensusSignature) with one census of identical verdicts.
+  const sigCounts = typeof options.lightSigOverride === 'string' ? null : new Map();
   if (lightingScene && typeof lightingScene.traverse === 'function') {
-    lightingScene.traverse((object) => {
-      if (object && object.isLight === true && object !== light) stagedLights.push(object);
-    });
+    const stack = [lightingScene];
+    let censusVisited = 0;
+    while (stack.length > 0) {
+      const object = stack.pop();
+      if (object && object.isLight === true) {
+        if (object !== light) stagedLights.push(object);
+        if (sigCounts) {
+          let rendered = true;
+          for (let node = object; node; node = node.parent) {
+            if (node.visible === false) { rendered = false; break; }
+          }
+          if (rendered) {
+            const layersMask = object.layers && Number.isFinite(object.layers.mask)
+              ? object.layers.mask : 1;
+            const key = `${object.type || 'Light'}:${layersMask}:${object.castShadow === true ? 1 : 0}`;
+            sigCounts.set(key, (sigCounts.get(key) || 0) + 1);
+          }
+        }
+      }
+      const children = object && object.children;
+      if (children) {
+        for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
+      }
+      if (++censusVisited % 512 === 0) yield;
+    }
   }
   // Query-side unstaged checks read the light census off the LIVE scene. The mark must
   // take the same census here — before the reparent loop strips every non-key light into
   // staging — or staged.has() can never hit and every later pass re-runs the ceremony.
   const markLightSig = typeof options.lightSigOverride === 'string'
     ? options.lightSigOverride
-    : (lightingScene ? lightCensusSignature(lightingScene) : '');
+    : (lightingScene
+      ? (typeof lightingScene.traverse === 'function'
+        ? `${lightingScene.fog ? (lightingScene.fog.isFogExp2 === true ? 'fx' : 'fs') : 'f0'}|${
+          [...sigCounts.entries()].map(([k, n]) => `${k}x${n}`).sort().join('|')}`
+        : 'l0|f0')
+      : '');
   if (typeof renderer.render !== 'function' || !camera
       || typeof captureObjectHome !== 'function' || typeof restoreObjectHome !== 'function') {
     return { skipped: true, reason: 'shadow depth compiler unavailable', subjects: 0 };
