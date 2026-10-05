@@ -445,6 +445,12 @@ const LM_LEGEND_MARKS = {
   ping: glyphSvg('unknown', 14, 'lm-mark lm-mark--goal'),
 };
 
+// The legend names the ping the same way a click does (PING_COURSE_LABEL). The sentence is
+// static markup, so mount interpolates it once into the lm-legend div.
+export function localMapLegendText() {
+  return `${LM_LEGEND_MARKS.station} STATION · ${LM_LEGEND_MARKS.gate} GATE · ${LM_LEGEND_MARKS.hostile} HOSTILE · ${LM_LEGEND_MARKS.friendly} FRIENDLY · ${LM_LEGEND_MARKS.asteroid} ASTEROID · ${LM_LEGEND_MARKS.ping} ${PING_COURSE_LABEL} · Zoom: [Scroll Wheel]`;
+}
+
 export const localmapScreen = {
   id: 'localmap',
   _ctx: null,
@@ -496,7 +502,7 @@ export const localmapScreen = {
       '<div class="lm-body sf-stage"><canvas></canvas>' +
       '<div class="lm-objective" id="sf-localmap-objective" hidden></div>' +
       '<div class="lm-legend">' +
-        `${LM_LEGEND_MARKS.station} STATION · ${LM_LEGEND_MARKS.gate} GATE · ${LM_LEGEND_MARKS.hostile} HOSTILE · ${LM_LEGEND_MARKS.friendly} FRIENDLY · ${LM_LEGEND_MARKS.asteroid} ASTEROID · ${LM_LEGEND_MARKS.ping} SCAN PING · Zoom: [Scroll Wheel]` +
+        localMapLegendText() +
       '</div>' +
       '<div class="lm-routes sf-apron" id="sf-localmap-routes"><h4>Trade Routes</h4><div class="lm-routes-empty">Scan markets at stations to rank routes</div></div>' +
       '</div>';
