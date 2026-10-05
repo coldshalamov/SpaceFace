@@ -1,0 +1,485 @@
+TAP version 13
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: production init + update order lengths match the live browser baseline
+ok 1 - production init + update order lengths match the live browser baseline
+  ---
+  duration_ms: 1.545312
+  type: 'test'
+  ...
+# Subtest: J6: production update order is a subset of init order
+ok 2 - J6: production update order is a subset of init order
+  ---
+  duration_ms: 0.8781
+  type: 'test'
+  ...
+# Subtest: createRegistry materializes the production manifest system IDs and order
+ok 3 - createRegistry materializes the production manifest system IDs and order
+  ---
+  duration_ms: 16.210498
+  type: 'test'
+  ...
+# Subtest: Node production resolve (nodeSafeOnly) shares feature values and authoritative ID order with browser path
+ok 4 - Node production resolve (nodeSafeOnly) shares feature values and authoritative ID order with browser path
+  ---
+  duration_ms: 52.105202
+  type: 'test'
+  ...
+# Subtest: createRegistry (browser path) and resolveRuntimeManifest (Node path) agree on production identity
+ok 5 - createRegistry (browser path) and resolveRuntimeManifest (Node path) agree on production identity
+  ---
+  duration_ms: 9.664491
+  type: 'test'
+  ...
+# Subtest: manifest and profile fingerprints are stable
+ok 6 - manifest and profile fingerprints are stable
+  ---
+  duration_ms: 6.120347
+  type: 'test'
+  ...
+# Subtest: browser production system set is unchanged vs production manifest constants
+ok 7 - browser production system set is unchanged vs production manifest constants
+  ---
+  duration_ms: 3.138927
+  type: 'test'
+  ...
+# Subtest: focused explicit systems report exclusions and may not claim production-manifest evidence
+ok 8 - focused explicit systems report exclusions and may not claim production-manifest evidence
+  ---
+  duration_ms: 7.163764
+  type: 'test'
+  ...
+# Subtest: legacy47a system set matches curated 47-A list (+ core)
+ok 9 - legacy47a system set matches curated 47-A list (+ core)
+  ---
+  duration_ms: 0.480632
+  type: 'test'
+  ...
+# Subtest: authoritativeIdentityEqual detects profile and order drift
+ok 10 - authoritativeIdentityEqual detects profile and order drift
+  ---
+  duration_ms: 4.128653
+  type: 'test'
+  ...
+# Subtest: every production update-order system has exactly one declared clock
+ok 11 - every production update-order system has exactly one declared clock
+  ---
+  duration_ms: 0.625771
+  type: 'test'
+  ...
+# Subtest: production browser and node factories are wired once before physics
+ok 12 - production browser and node factories are wired once before physics
+  ---
+  duration_ms: 8.362646
+  type: 'test'
+  ...
+# Subtest: one keeper and four static court parts; real solid ball with authored mass
+ok 13 - one keeper and four static court parts; real solid ball with authored mass
+  ---
+  duration_ms: 8.208113
+  type: 'test'
+  ...
+# Subtest: no spawn in another sector, Crucible, or isolated scenarios
+ok 14 - no spawn in another sector, Crucible, or isolated scenarios
+  ---
+  duration_ms: 1.893385
+  type: 'test'
+  ...
+# Subtest: scanner provenance and duplicate sequence are checked, second genuine scan cancels
+ok 15 - scanner provenance and duplicate sequence are checked, second genuine scan cancels
+  ---
+  duration_ms: 0.622285
+  type: 'test'
+  ...
+# Subtest: forged, distant, docked, paused, zero-radius and malformed scans do not start games
+ok 16 - forged, distant, docked, paused, zero-radius and malformed scans do not start games
+  ---
+  duration_ms: 1.369477
+  type: 'test'
+  ...
+# Subtest: swept whole-ball crossing scores; side entry, backwards crossing, teleport and pole overlap do not
+ok 17 - swept whole-ball crossing scores; side entry, backwards crossing, teleport and pole overlap do not
+  ---
+  duration_ms: 0.234302
+  type: 'test'
+  ...
+# Subtest: legal shots need recent physical player authorship and actual travel
+ok 18 - legal shots need recent physical player authorship and actual travel
+  ---
+  duration_ms: 2.008097
+  type: 'test'
+  ...
+# Subtest: goal settles once and never writes credits, cargo or player physics
+ok 19 - goal settles once and never writes credits, cargo or player physics
+  ---
+  duration_ms: 3.91965
+  type: 'test'
+  ...
+# Subtest: keeper reads trajectory at a bounded cadence and commits through tell and dash
+ok 20 - keeper reads trajectory at a bounded cadence and commits through tell and dash
+  ---
+  duration_ms: 2.943794
+  type: 'test'
+  ...
+# Subtest: station keeping crosses physics membrane without writing transforms
+ok 21 - station keeping crosses physics membrane without writing transforms
+  ---
+  duration_ms: 0.878229
+  type: 'test'
+  ...
+# Subtest: five shots form a completed match, persist score, and raise difficulty only after wins
+ok 22 - five shots form a completed match, persist score, and raise difficulty only after wins
+  ---
+  duration_ms: 15.312999
+  type: 'test'
+  ...
+# Subtest: canceled match cannot carry bank credit into another match
+ok 23 - canceled match cannot carry bank credit into another match
+  ---
+  duration_ms: 2.062028
+  type: 'test'
+  ...
+# Subtest: timeout serves a fresh object; old tether cannot claim the new ball
+ok 24 - timeout serves a fresh object; old tether cannot claim the new ball
+  ---
+  duration_ms: 20.890439
+  type: 'test'
+  ...
+# Subtest: pause preserves the attempt and queues no force; docking, death or leaving cancel
+ok 25 - pause preserves the attempt and queues no force; docking, death or leaving cancel
+  ---
+  duration_ms: 2.53541
+  type: 'test'
+  ...
+# Subtest: zero damage ignored; real fire folds hands and enforces timeout
+ok 26 - zero damage ignored; real fire folds hands and enforces timeout
+  ---
+  duration_ms: 13.641267
+  type: 'test'
+  ...
+# Subtest: death persists through load; new game revives once, sector cleanup handles splicing lists
+ok 27 - death persists through load; new game revives once, sector cleanup handles splicing lists
+  ---
+  duration_ms: 2.458584
+  type: 'test'
+  ...
+# Subtest: load cancels transient match, preserves memory and does not duplicate court
+ok 28 - load cancels transient match, preserves memory and does not duplicate court
+  ---
+  duration_ms: 1.861057
+  type: 'test'
+  ...
+# Subtest: quiet Easter eggs are one-time memory, not repeated ambient chatter
+ok 29 - quiet Easter eggs are one-time memory, not repeated ambient chatter
+  ---
+  duration_ms: 38.54715
+  type: 'test'
+  ...
+# Subtest: memory is finite, bounded, versioned and rejects runtime fields
+ok 30 - memory is finite, bounded, versioned and rejects runtime fields
+  ---
+  duration_ms: 0.269985
+  type: 'test'
+  ...
+# Subtest: bounded and direct save capture include BRACKET, restored before world hydration
+ok 31 - bounded and direct save capture include BRACKET, restored before world hydration
+  ---
+  duration_ms: 13.648848
+  type: 'test'
+  ...
+# Subtest: authored sounds are distinct, spatial and registered in live recipe bank
+ok 32 - authored sounds are distinct, spatial and registered in live recipe bank
+  ---
+  duration_ms: 1.927747
+  type: 'test'
+  ...
+# Subtest: deterministic transcript repeats with ambient RNG forbidden
+ok 33 - deterministic transcript repeats with ambient RNG forbidden
+  ---
+  duration_ms: 13.671813
+  type: 'test'
+  ...
+# Subtest: real Rapier: player contact launches ball and produces authored-contact receipt
+ok 34 - real Rapier: player contact launches ball and produces authored-contact receipt
+  ---
+  duration_ms: 131.790546
+  type: 'test'
+  ...
+# Subtest: real Rapier: bumper rebounds ball, keeper moves by force, scene remains finite
+ok 35 - real Rapier: bumper rebounds ball, keeper moves by force, scene remains finite
+  ---
+  duration_ms: 43.574694
+  type: 'test'
+  ...
+# Subtest: solstice: a pilot arriving from far away mints nothing; the cohort streams in whole and withdraws whole
+ok 36 - solstice: a pilot arriving from far away mints nothing; the cohort streams in whole and withdraws whole
+  ---
+  duration_ms: 36.41731
+  type: 'test'
+  ...
+# Subtest: solstice: every body carries the authored-character stamp the far-actor table honours
+ok 37 - solstice: every body carries the authored-character stamp the far-actor table honours
+  ---
+  duration_ms: 1.092101
+  type: 'test'
+  ...
+# Subtest: ravel: a pilot arriving from far away mints nothing; the cohort streams in whole and withdraws whole
+ok 38 - ravel: a pilot arriving from far away mints nothing; the cohort streams in whole and withdraws whole
+  ---
+  duration_ms: 9.235527
+  type: 'test'
+  ...
+# Subtest: ravel: every body carries the authored-character stamp the far-actor table honours
+ok 39 - ravel: every body carries the authored-character stamp the far-actor table honours
+  ---
+  duration_ms: 0.687953
+  type: 'test'
+  ...
+# Subtest: vesper: a pilot arriving from far away finds its bodies resident, never shelved or re-minted
+ok 40 - vesper: a pilot arriving from far away finds its bodies resident, never shelved or re-minted
+  ---
+  duration_ms: 14.410633
+  type: 'test'
+  ...
+# Subtest: vesper: every body carries the authored-character stamp the far-actor table honours
+ok 41 - vesper: every body carries the authored-character stamp the far-actor table honours
+  ---
+  duration_ms: 1.20523
+  type: 'test'
+  ...
+# Subtest: bracket: a pilot arriving from far away finds its bodies resident, never shelved or re-minted
+ok 42 - bracket: a pilot arriving from far away finds its bodies resident, never shelved or re-minted
+  ---
+  duration_ms: 8.005348
+  type: 'test'
+  ...
+# Subtest: bracket: every body carries the authored-character stamp the far-actor table honours
+ok 43 - bracket: every body carries the authored-character stamp the far-actor table honours
+  ---
+  duration_ms: 1.112131
+  type: 'test'
+  ...
+# Subtest: the stamp is narrow: an ordinary far drone is still shelved
+ok 44 - the stamp is narrow: an ordinary far drone is still shelved
+  ---
+  duration_ms: 1.18454
+  type: 'test'
+  ...
+# Subtest: synchronous production visual contains all rigid joints, three LODs, no fetch or placeholder
+ok 45 - synchronous production visual contains all rigid joints, three LODs, no fetch or placeholder
+  ---
+  duration_ms: 102.036517
+  type: 'test'
+  ...
+# Subtest: runtime geometry matches Blender GLB bounds, not an approximation of the authoring model
+ok 46 - runtime geometry matches Blender GLB bounds, not an approximation of the authoring model
+  ---
+  duration_ms: 53.814851
+  type: 'test'
+  ...
+# Subtest: presentation uses simulation time, honors reduced motion, and never mutates the entity
+ok 47 - presentation uses simulation time, honors reduced motion, and never mutates the entity
+  ---
+  duration_ms: 9.649069
+  type: 'test'
+  ...
+# Subtest: shared immutable geometry survives instance disposal; materials remain per instance
+ok 48 - shared immutable geometry survives instance disposal; materials remain per instance
+  ---
+  duration_ms: 14.560198
+  type: 'test'
+  ...
+# Subtest: core warning and pulse are bounded volume meshes, with non-flashing accessibility mode
+ok 49 - core warning and pulse are bounded volume meshes, with non-flashing accessibility mode
+  ---
+  duration_ms: 73.594606
+  type: 'test'
+  ...
+# Subtest: memory is finite, bounded, versioned and strips transient physics/charge state
+ok 50 - memory is finite, bounded, versioned and strips transient physics/charge state
+  ---
+  duration_ms: 2.334288
+  type: 'test'
+  ...
+# Subtest: one production clock; browser, node, map, audio and every save path are connected
+ok 51 - one production clock; browser, node, map, audio and every save path are connected
+  ---
+  duration_ms: 13.800206
+  type: 'test'
+  ...
+# Subtest: actual pressure core is a neutral, dynamic, Massline-attachable solid; memorial is not
+ok 52 - actual pressure core is a neutral, dynamic, Massline-attachable solid; memorial is not
+  ---
+  duration_ms: 168.595608
+  type: 'test'
+  ...
+# Subtest: scanner requires actual nearby player pulse and monotonically increasing sequence
+ok 53 - scanner requires actual nearby player pulse and monotonically increasing sequence
+  ---
+  duration_ms: 1.711061
+  type: 'test'
+  ...
+# Subtest: no automatic invitation/reward without a legal player throw
+ok 54 - no automatic invitation/reward without a legal player throw
+  ---
+  duration_ms: 141.543454
+  type: 'test'
+  ...
+# Subtest: real Rapier: throw, chase, spring-carry and slow drop complete with no body teleport
+ok 55 - real Rapier: throw, chase, spring-carry and slow drop complete with no body teleport
+  ---
+  duration_ms: 163.316696
+  type: 'test'
+  ...
+# Subtest: real Rapier: three successful throws bond; gift pauses while tethered then actually moves loose bodies
+ok 56 - real Rapier: three successful throws bond; gift pauses while tethered then actually moves loose bodies
+  ---
+  duration_ms: 245.08532
+  type: 'test'
+  ...
+# Subtest: pause stops animation time and force writes; taking the core interrupts RUCKUS without fighting the line
+ok 57 - pause stops animation time and force writes; taking the core interrupts RUCKUS without fighting the line
+  ---
+  duration_ms: 5.704341
+  type: 'test'
+  ...
+# Subtest: forged or recycled attachment generation does not authorize retrieval
+ok 58 - forged or recycled attachment generation does not authorize retrieval
+  ---
+  duration_ms: 0.648565
+  type: 'test'
+  ...
+# Subtest: damage disarms and retreats; death survives restore; new game gives one fresh cohort
+ok 59 - damage disarms and retreats; death survives restore; new game gives one fresh cohort
+  ---
+  duration_ms: 3.871537
+  type: 'test'
+  ...
+# Subtest: restore clears transient charge and duplicate bodies while preserving friendship
+ok 60 - restore clears transient charge and duplicate bodies while preserving friendship
+  ---
+  duration_ms: 6.452696
+  type: 'test'
+  ...
+# Subtest: bounded yard, far residency, dock and run isolation cleanly remove or disarm owned work
+ok 61 - bounded yard, far residency, dock and run isolation cleanly remove or disarm owned work
+  ---
+  duration_ms: 0.687654
+  type: 'test'
+  ...
+# Subtest: pressure math excludes static, massive and docked bodies and is finite at coincident center
+ok 62 - pressure math excludes static, massive and docked bodies and is finite at coincident center
+  ---
+  duration_ms: 0.396906
+  type: 'test'
+  ...
+# Subtest: encounter logic never consumes ambient RNG and repeats deterministically
+ok 63 - encounter logic never consumes ambient RNG and repeats deterministically
+  ---
+  duration_ms: 7.454912
+  type: 'test'
+  ...
+# Subtest: restored Massline-stunt core is adopted instead of creating an anonymous duplicate
+ok 64 - restored Massline-stunt core is adopted instead of creating an anonymous duplicate
+  ---
+  duration_ms: 0.542725
+  type: 'test'
+  ...
+# Subtest: recycled body id is not mistaken for RUCKUS; foreign occupant remains untouched
+ok 65 - recycled body id is not mistaken for RUCKUS; foreign occupant remains untouched
+  ---
+  duration_ms: 0.609596
+  type: 'test'
+  ...
+# Subtest: asymmetric capsule collider faces the simulation heading at rot 0.7853981633974483
+ok 66 - asymmetric capsule collider faces the simulation heading at rot 0.7853981633974483
+  ---
+  duration_ms: 88.430583
+  type: 'test'
+  ...
+# Subtest: asymmetric capsule collider faces the simulation heading at rot -0.7853981633974483
+ok 67 - asymmetric capsule collider faces the simulation heading at rot -0.7853981633974483
+  ---
+  duration_ms: 1.048495
+  type: 'test'
+  ...
+# Subtest: asymmetric capsule collider faces the simulation heading at rot 1.5707963267948966
+ok 68 - asymmetric capsule collider faces the simulation heading at rot 1.5707963267948966
+  ---
+  duration_ms: 0.861624
+  type: 'test'
+  ...
+# Subtest: asymmetric capsule collider faces the simulation heading at rot -1.5707963267948966
+ok 69 - asymmetric capsule collider faces the simulation heading at rot -1.5707963267948966
+  ---
+  duration_ms: 0.768414
+  type: 'test'
+  ...
+# Subtest: compound gate proxy colliders land on rotated manifest offsets at rot 0.7853981633974483
+ok 70 - compound gate proxy colliders land on rotated manifest offsets at rot 0.7853981633974483
+  ---
+  duration_ms: 2.32305
+  type: 'test'
+  ...
+# Subtest: compound gate proxy colliders land on rotated manifest offsets at rot -0.7853981633974483
+ok 71 - compound gate proxy colliders land on rotated manifest offsets at rot -0.7853981633974483
+  ---
+  duration_ms: 2.198553
+  type: 'test'
+  ...
+# Subtest: compound gate proxy colliders land on rotated manifest offsets at rot 1.5707963267948966
+ok 72 - compound gate proxy colliders land on rotated manifest offsets at rot 1.5707963267948966
+  ---
+  duration_ms: 1.640946
+  type: 'test'
+  ...
+# Subtest: compound gate proxy colliders land on rotated manifest offsets at rot -1.5707963267948966
+ok 73 - compound gate proxy colliders land on rotated manifest offsets at rot -1.5707963267948966
+  ---
+  duration_ms: 1.061174
+  type: 'test'
+  ...
+# Subtest: a positive simulation torque turns the hull and its physical nose positive
+ok 74 - a positive simulation torque turns the hull and its physical nose positive
+  ---
+  duration_ms: 25.763311
+  type: 'test'
+  ...
+# Subtest: a positive queued torque impulse turns the hull and its physical nose positive
+ok 75 - a positive queued torque impulse turns the hull and its physical nose positive
+  ---
+  duration_ms: 10.118784
+  type: 'test'
+  ...
+# Subtest: an off-centre impulse on an NPC spins the hull with the simulation sign
+ok 76 - an off-centre impulse on an NPC spins the hull with the simulation sign
+  ---
+  duration_ms: 1.833635
+  type: 'test'
+  ...
+# Subtest: moving-surface velocity matches the derivative of a rotating point
+ok 77 - moving-surface velocity matches the derivative of a rotating point
+  ---
+  duration_ms: 1.489288
+  type: 'test'
+  ...
+# Subtest: rope local anchors compose with the simulation rotation convention
+ok 78 - rope local anchors compose with the simulation rotation convention
+  ---
+  duration_ms: 8.673533
+  type: 'test'
+  ...
+# Subtest: save/reload rebuild reproduces the same rotated collider pose
+ok 79 - save/reload rebuild reproduces the same rotated collider pose
+  ---
+  duration_ms: 1.386043
+  type: 'test'
+  ...
+1..79
+# tests 79
+# suites 0
+# pass 79
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2847.575698

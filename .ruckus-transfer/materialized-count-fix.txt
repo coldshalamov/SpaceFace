@@ -1,6 +1,0 @@
-// The browser materialization test has its own literal count as well.
-const materialized=/assert\.equal\(registry\.systems\.length, (\d+)\);/;
-const match=contract.match(materialized),expected=before.PRODUCTION_INIT_ORDER.length+increment;
-if(!match)throw Error('Missing browser materialized count assertion');
-if(Number(match[1])!==before.PRODUCTION_INIT_ORDER.length&&Number(match[1])!==expected&&!(increment===0&&Number(match[1])===expected-1))throw Error('Existing browser materialized baseline mismatch');
-contract=contract.replace(materialized,`assert.equal(registry.systems.length, ${expected});`);

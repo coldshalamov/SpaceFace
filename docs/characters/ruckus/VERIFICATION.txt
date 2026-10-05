@@ -1,0 +1,5 @@
+RUCKUS build proof
+
+Real-physics and model test suite: passed.
+Rendered workshop: success.
+This is focused encounter proof, not a full campaign playthrough.

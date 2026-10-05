@@ -1,0 +1,45 @@
+{
+  "game": {
+    "phase": "present",
+    "memory": {
+      "version": 1,
+      "met": true,
+      "destroyed": false,
+      "hull": 900,
+      "returns": 3,
+      "visits": 1,
+      "pulses": 0,
+      "longestThrow": 240.00524516731858,
+      "quietHeard": false
+    },
+    "bodies": 3,
+    "drawCalls": 29,
+    "triangles": 27780,
+    "comms": "RUCKUS: Pressure core charged. Present for crew. Three seconds after release. Keep clear."
+  },
+  "hold": {
+    "before": 3.2,
+    "after": 3.2,
+    "pulses": 0
+  },
+  "release": {
+    "phase": "present",
+    "memory": {
+      "version": 1,
+      "met": true,
+      "destroyed": false,
+      "hull": 900,
+      "returns": 3,
+      "visits": 1,
+      "pulses": 1,
+      "longestThrow": 240.00524516731858,
+      "quietHeard": false
+    },
+    "bodies": 4,
+    "drawCalls": 50,
+    "triangles": 36344,
+    "comms": "RUCKUS: Pressure released. Crew still present. Acceptable."
+  },
+  "mobileOverflow": false,
+  "errors": []
+}

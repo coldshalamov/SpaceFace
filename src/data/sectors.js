@@ -185,6 +185,12 @@ const CORE_SECTORS = [
         anchor: CERES_WRECK_CATHEDRAL_LOCAL_POS,
         runtimeOwner: 'asteroidSites',
       },
+      // RU-7's empty work yard: actual encounter owns its two physical bodies.
+      { id: 'poi_ruckus_work_yard', type: 'anomaly', name: 'RUCKUS · Open Work Order',
+        pos: { x: 680, z: 640 }, runtimeOwner: 'ruckus', scannerSignalKind: 'anomaly', dressingExclusionRadius: 480,
+        chartNote: 'An old demolition retriever is keeping one pressure core. Scan to hail. Massline the core and throw it.',
+        discoveryPlate: { title: 'RU-7 / Open Work Order',
+          body: 'The crew clocks stopped. The retrieval service did not. Scan to wake RUCKUS; throw his caged core with the Massline. Three returns earn a pressure present. A held line pauses its countdown. Keep clear of the amber ring.' } },
       // The Kettle Line drift trail (src/data/kettleLine.js): three authored convoy pieces
       // strung along a drift line off the Helios-gate approach. Plain POI rows; the scan tells
       // and the payoff pod live in that module and its owners.
