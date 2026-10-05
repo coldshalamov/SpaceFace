@@ -1,13 +1,15 @@
 // SF-DEST-TRUTH — a contract destination must be a place the contract can settle. The picker
 // read `services`/`repGated` off records that never carried them: a 'scan' customs post could
 // be a smuggling destination, a rep-gated berth could be a delivery for a pilot it refuses,
-// and a 'refine' service on a non-refinery hull was invisible to bulk hauls.
+// and a 'refine' service on a non-refinery hull was invisible to bulk hauls. (Review F1: an
+// explicit `minRep` binds the same dock contract — it is not only repGated berths that vet.)
 //
 // Contract (deterministic, seed 4242, real missions owner):
 //   1. no rolled destination is a repGated station the pilot can't dock;
 //   2. standing restores the gated berth — rep ≥1 makes the fence a destination again;
 //   3. smuggling never routes to a 'scan' customs sweep;
-//   4. the refine-service fallback reaches the fab yards, not just type-'refinery' hulls.
+//   4. the refine-service fallback reaches the fab yards, not just type-'refinery' hulls;
+//   5. an explicit minRep berth binds at its own number, not the repGated proxy.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -88,4 +90,23 @@ test('a refine service on a fab hull is a bulk-haul destination', () => {
   }
   assert.ok(seen.has('station_vesta_outlying_yard'),
     `the yard refines — it must be a bulk destination (seen: ${[...seen].join(', ')})`);
+});
+
+test('an explicit minRep berth binds at its own number', () => {
+  // Mercenary Outpost vets Quiet standing at rep >= -30 — below it the dock gate refuses and the
+  // picker must too; between -30 and 0 the berth opens even though the faction reads hostile.
+  const merc = byId.get('station_io_merc');
+  assert.ok(merc && Number.isFinite(merc.minRep), 'the galaxy has an explicit-minRep berth');
+  const reach = { id: 'station_reach', sectorId: 'sector_io_reach', factionId: 'faction_free' };
+  const roll = (rep) => {
+    const { missions } = boot({ faction_quiet: { rep } });
+    const seen = new Set();
+    for (let k = 0; k < 200; k++) {
+      seen.add(missions._pickDestination('cargo_delivery', reach, mulberry32(k + 1)).id);
+    }
+    return seen;
+  };
+  assert.ok(!roll(-50).has('station_io_merc'), 'rep -50 is below its -30 contract');
+  assert.ok(roll(-20).has('station_io_merc'),
+    'rep -20 satisfies the -30 contract — a hostile-named faction still docks');
 });

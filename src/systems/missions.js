@@ -291,9 +291,11 @@ for (const sec of SECTORS) {
       desklessOutpost: Array.isArray(st.services) && st.services.length > 0
         && !hasContractsDesk(st.services) && !sectorHasRefuel,
       // Destination pickers read the real gates: a 'scan' service is a customs sweep (smuggling
-      // can't route there), and repGated means positive standing docks, not "not hostile".
+      // can't route there), repGated means positive standing docks, and an explicit minRep
+      // binds the same way the dock gate resolves it (world.js station record).
       services: Array.isArray(st.services) ? st.services.slice() : [],
       repGated: st.repGated === true,
+      minRep: Number.isFinite(st.minRep) ? st.minRep : (st.repGated ? 1 : -Infinity),
     });
   }
 }
@@ -318,6 +320,7 @@ function stationInfoFor(state, stationId) {
               && !(sec.stations || []).some((s) => Array.isArray(s.services) && s.services.includes('refuel')),
             services: Array.isArray(st.services) ? st.services.slice() : [],
             repGated: st.repGated === true,
+            minRep: Number.isFinite(st.minRep) ? st.minRep : (st.repGated ? 1 : -Infinity),
           };
         }
       }
@@ -3318,7 +3321,7 @@ export const missions = {
     // of those contracts to it writes a contract the world cannot settle.
     const candidates = ALL_STATIONS.filter((s) => s.id !== info.id
       && !(typeId === 'smuggling_run' && Array.isArray(s.services) && s.services.includes('scan'))
-      && !(s.repGated && this._repOf(s.factionId) < 1));
+      && !(this._repOf(s.factionId) < s.minRep));
     if (!candidates.length) return info;
     // Bias toward same-or-adjacent sectors for fair timers (fairness note: nearer for slow ships).
     const sec = SECTOR_BY_ID.get(info.sectorId);
@@ -3330,7 +3333,7 @@ export const missions = {
 
   _pickBulkHaulDestination(info, rng) {
     const refineries = ALL_STATIONS.filter((s) => (s.type === 'refinery' || s.services && s.services.includes('refine'))
-      && !(s.repGated && this._repOf(s.factionId) < 1));
+      && !(this._repOf(s.factionId) < s.minRep));
     if (!refineries.length) return info;
     const same = refineries.filter((s) => s.sectorId === info.sectorId);
     if (same.length) return same[Math.floor(rng() * same.length)];
