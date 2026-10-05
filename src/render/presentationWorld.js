@@ -773,6 +773,13 @@ export function createPresentationWorld(options = {}) {
         | PRESENTATION_DIRTY.VISIBILITY);
       diagnostics.bound = boundCount;
     }
+    if (world.doomed && world.doomed[slot] === 1) {
+      // A bound mesh is the freshest liveness evidence on a live row — bind
+      // clears the tombstone the way the feed stamps do, and the VISIBILITY
+      // mark re-admits the row on the next query.
+      world.doomed[slot] = 0;
+      markDirtyBits(slot, PRESENTATION_DIRTY.VISIBILITY);
+    }
     refreshMetadata(slot, entity, visualRadius);
     return true;
   }
@@ -968,20 +975,44 @@ export function createPresentationWorld(options = {}) {
         }
       }
     }
+    if (retireSuppressed) {
+      // Tombstones minted before the collect never enter a feed to name their id
+      // (pushAlive excludes them from collectOut), so skippedIds can't cover them:
+      // sweep resident rows this partial feed didn't push and doom the ones the
+      // push predicate already fails — the mirror is verbatim or live rows flicker.
+      const refs = world.entityRefs;
+      const doomed = world.doomed;
+      const actives = world.activeSlots;
+      for (let s = 0; s < activeCount; s++) {
+        const slot = actives[s];
+        if (lastSeenSeq[slot] === seq || doomed[slot] === 1) continue;
+        const resident = refs[slot];
+        if (!resident || resident.alive === false) continue;
+        if (resident._noMesh === true
+            || (resident.type === 'projectile' && projectileSkipsVisualFactoryMesh(resident))) {
+          doomed[slot] = 1;
+          world.visible[slot] = 0;
+          markDirtyBits(slot, PRESENTATION_DIRTY.VISIBILITY);
+        }
+      }
+    }
     // Rows absent from the collect retire — snapshot the id list since retire
     // mutates byId mid-iteration. All-retained is the hot case: nothing can be
     // absent, so the id-array alloc and second walk are skipped. A partial
     // sample suppresses the sweep outright.
     if (!retireSuppressed && retainedHits !== byId.size) {
-      // Dense-column scan instead of a byId key spread: absents are the
-      // minority during churn, and retire mutates byId mid-walk so the ids
-      // collect first. The byId.get guard keeps the verdict slot-exact.
+      // Dense active list instead of a byId key spread or a capacity walk: absents are
+      // the minority during churn, retire mutates byId mid-walk so the ids collect
+      // first, and capacity grows but never shrinks — activeCount tracks the live set.
+      // The byId.get guard keeps the verdict slot-exact.
       const aliveCols = world.alive;
       const idCols = world.entityIds;
+      const actives = world.activeSlots;
       const absent = [];
-      for (let s = 0; s < idCols.length; s++) {
-        if (aliveCols[s] === 1 && lastSeenSeq[s] !== seq
-            && byId.get(idCols[s]) === s) absent.push(idCols[s]);
+      for (let s = 0; s < activeCount; s++) {
+        const slot = actives[s];
+        if (aliveCols[slot] === 1 && lastSeenSeq[slot] !== seq
+            && byId.get(idCols[slot]) === slot) absent.push(idCols[slot]);
       }
       for (const entityId of absent) retire(entityId);
     }

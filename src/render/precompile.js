@@ -871,9 +871,13 @@ function beginDirectionalShadowWarm(renderer, scene) {
   const previousCastShadow = keyLight.castShadow;
   shadowMap.enabled = true;
   keyLight.castShadow = true;
+  // castShadow is a light-census signature term — the flip and the restore both
+  // mint distinct live sets, so each write bumps the census epoch.
+  noteShadowCensusLightMutation();
   return () => {
     shadowMap.enabled = previousEnabled;
     keyLight.castShadow = previousCastShadow;
+    noteShadowCensusLightMutation();
   };
 }
 
@@ -904,12 +908,14 @@ async function prepareDirectionalShadowPipelineVariant(
   try {
     shadowMap.enabled = true;
     keyLight.castShadow = true;
+    noteShadowCensusLightMutation();
     subject.updateMatrixWorld(true);
     await preparePipelines(subject);
     return { skipped: false };
   } finally {
     shadowMap.enabled = previousEnabled;
     keyLight.castShadow = previousCastShadow;
+    noteShadowCensusLightMutation();
   }
 }
 

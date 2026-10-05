@@ -256,6 +256,7 @@ import {
   shadowCasterBand,
   shadowTexelWorldSize,
   syncShadowCasterPolicy,
+  syncShadowCasterPolicySteps,
 } from './shadowCasterPolicy.js';
 import { updateShipPitchPresentation } from './shipPitchPresentation.js';
 import { globalShipMicroMotion } from './shipMicroMotion.js';
@@ -2140,6 +2141,7 @@ export function serviceRenderMeshResidency(owner, frameDt) {
   const now = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
     ? performance.now() : Date.now());
   drainDespawnDisposeQueue(owner);
+  drainSceneEnvRebindQueue(owner);
   // Deferred identity releases from unbatched unbinds (entity:destroyed storms):
   // one union walk per registry per frame instead of five walks per corpse.
   owner?._flushMeshReleasePending?.();
@@ -15585,9 +15587,15 @@ export const render = {
         return { skipped: true, reason: 'light-census-drifted-repeatedly', subjects: 0 };
       };
       const unstagedDepthSubjects = [];
+      // One node wallet across the chunk loop: the paced 512-subject batches only
+      // bounded the number of roots per await — each root's subtree census was
+      // unbounded inside its chunk. Over-cover subtrees never mint marks, so they
+      // re-collect as unstaged on the next admission like any deferred leg.
+      const unstagedCollectBudget = { remaining: SHADOW_DEPTH_PASS_NODE_CAP };
       for (let i = 0; i < depthSubjects.length; i += 512) {
         const unstagedPart = collectUnstagedShadowCasters(
-          renderer, depthSubjects.slice(i, i + 512), scene, freshDepthLightSig());
+          renderer, depthSubjects.slice(i, i + 512), scene, freshDepthLightSig(), unstagedCollectBudget);
+        if (unstagedPart === UNSTAGED_COLLECT_OVER_COVER) break;
         if (unstagedPart.length > 0) unstagedDepthSubjects.push(...unstagedPart);
         await postPace();
       }
@@ -20614,6 +20622,8 @@ export const render = {
       if (this._pendingDepthStageRoots) this._pendingDepthStageRoots.delete(mesh);
       if (this._parkedDepthStageRoots) this._parkedDepthStageRoots.delete(mesh);
       if (this._withheldDepthCasters) this._withheldDepthCasters.delete(mesh);
+      if (this._deferredDepthStageRoots) this._deferredDepthStageRoots.delete(mesh);
+      if (this._policyStepsParked) this._policyStepsParked.delete(mesh);
       if (mesh.userData) {
         mesh.userData[STAGE_SELF_DIRTY_KEY] = false;
         delete mesh.userData.sfDepthUndrawableCycles;
@@ -20837,6 +20847,8 @@ export const render = {
         if (this._pendingDepthStageRoots) this._pendingDepthStageRoots.delete(owner);
         if (this._parkedDepthStageRoots) this._parkedDepthStageRoots.delete(owner);
         if (this._withheldDepthCasters) this._withheldDepthCasters.delete(owner);
+        if (this._deferredDepthStageRoots) this._deferredDepthStageRoots.delete(owner);
+        if (this._policyStepsParked) this._policyStepsParked.delete(owner);
         if (owner.userData) {
           owner.userData[STAGE_SELF_DIRTY_KEY] = false;
           delete owner.userData.sfDepthUndrawableCycles;
@@ -20901,6 +20913,7 @@ export const render = {
     if (this._parkedDepthStageRoots) this._parkedDepthStageRoots.clear();
     if (this._withheldDepthCasters) this._withheldDepthCasters.clear();
     if (this._deferredDepthStageRoots) this._deferredDepthStageRoots.clear();
+    if (this._policyStepsParked) this._policyStepsParked.clear();
     this._depthStageLedgerSkips = 0;
     this._killDepthStageSession();
     this._meshReleaseBatchBegin?.();
@@ -21002,12 +21015,16 @@ export const render = {
       // The PMREM output is a render-target texture: Texture.dispose() reaches no listener for
       // those (initTexture never runs on isRenderTargetTexture), so only disposing the owning
       // WebGLRenderTarget releases its GL texture, framebuffer, and depth buffer.
+      // The released env target frees only once the paced rebind finishes —
+      // queueing the dispose with the walk keeps unvisited materials sampling
+      // a valid texture instead of a disposed render target for the window.
+      let deferredEnvDispose = null;
       if (disposePrevious) {
         const previousTarget = this._envMapTarget;
         if (previousTarget && previousTarget !== envTarget) {
-          try { previousTarget.dispose(); } catch (_) {}
+          deferredEnvDispose = previousTarget;
         } else if (previousEnvMap && previousEnvMap !== envMap) {
-          try { previousEnvMap.dispose(); } catch (_) {}
+          deferredEnvDispose = previousEnvMap;
         }
       }
       this._envMapTarget = envTarget;
@@ -21015,7 +21032,11 @@ export const render = {
       state.render.envMap = envMap;
       setEnvMapForShips(envMap);   // hand it to the visual factory for chrome/authority hulls
       if (scene.environment === null || scene.environment === previousEnvMap) scene.environment = envMap;
-      if (previousEnvMap && previousEnvMap !== envMap) replaceSceneEnvMap(scene, previousEnvMap, envMap);
+      if (previousEnvMap && previousEnvMap !== envMap) {
+        queueSceneEnvMapRebind(this, scene, previousEnvMap, envMap, deferredEnvDispose);
+      } else if (deferredEnvDispose) {
+        try { deferredEnvDispose.dispose(); } catch (_) {}
+      }
     } catch (_) { /* env-map optional — chrome falls back to high-metalness matte */ }
   },
 
@@ -22446,6 +22467,28 @@ export const render = {
       const entityId = world.entityIds[slot];
       const packedFlags = world.flags[slot];
       const entity = world.entityRefs[slot];
+      if (world.doomed && world.doomed[slot] === 1) {
+        // Doomed rows are already quarantined out of exactVisible; the hide must not
+        // route through shouldSubmitEntityMesh — its protected-root bypass would keep
+        // a player/forceRender/neverCull doom drawing. The pose write, cull refresh,
+        // and options fill are dead work here: the mesh is hidden this same iteration
+        // and a revived row re-poses through the visible loop on re-entry.
+        syncResolvingMarker(mesh);
+        const doomedChanged = applyEntityMeshVisibility(mesh, false);
+        if (doomedChanged) this._persistentSubmitLanes.markDirty(entityId, 'visibility');
+        if (mesh.userData && mesh.userData.asteroidInstanceBody) {
+          mesh.userData.asteroidInstanceViewCulled = true;
+        }
+        world.clearDirty(slot);
+        const doomedCullData = mesh.userData || (mesh.userData = {});
+        if (mesh.matrixAutoUpdate === true) {
+          mesh.matrixAutoUpdate = false;
+          mesh.updateMatrix();
+          doomedCullData.sfHiddenFrozen = true;
+        }
+        transformed++;
+        continue;
+      }
       if (entity && entity.alive !== false) {
         world.refreshVisibleEntity(slot, entity, entityVisualCullRadius(entity, mesh));
       }
@@ -24785,6 +24828,14 @@ export const render = {
           || Math.round(t.z / cell) !== parkedEntry.oqZ) {
         parkedRelease = parkedReleaseOnDrift = true;
       }
+    } else if (parkedEntry && parkedEntry.denied === true && opts.allowCast === true) {
+      // A denied root that turned castable — entity motion inside the cast
+      // radius, a plain-LOD level flip, a drawability repair on a withheld
+      // member — changes no release term the park stores, so it would wait
+      // out the recheck backstop. Plain release (not onDrift): the collect
+      // re-verifies drawability under the live census and simply re-parks
+      // with cycles+1 if the verdict stands.
+      parkedRelease = true;
     }
     if (parkedRelease && parkedReleaseOnDrift && opts.allowCast === false) {
       // Out-of-ortho drift has no promotable follow-on — the withheld subtree
@@ -24801,6 +24852,9 @@ export const render = {
         parkedEntry.oqX = Math.round(target.x / cell);
         parkedEntry.oqZ = Math.round(target.z / cell);
       }
+      // The keep verdict is the same denial the mint stamped — preserve the
+      // release trigger for the next castable flip.
+      parkedEntry.denied = true;
       parkedRelease = parkedReleaseOnDrift = false;
     }
     if (parkedRelease) {
@@ -24950,24 +25004,52 @@ export const render = {
     // single census re-sign or ortho cell crossing pays N exempt whole-subtree
     // syncs inside one presented pass.
     const skipTraverseOnDrift = !scopedSync && parkedReleaseOnDrift === true && collectGate;
+    // A suspended stepped walk owns this root until it finishes — resumes pass
+    // the traverse cap (the minting pass already spent a slot on it) and the
+    // defer gates: a parked walk frozen behind a cap that counts fresh
+    // traverses would hold its half-applied flags indefinitely.
+    const hadParkedWalk = !!(this._policyStepsParked && this._policyStepsParked.get(root));
     const traverseDeferred = !scopedSync
       && !skipTraverseOnDrift
+      && !hadParkedWalk
       && syncOpts.allowCast !== false
       && (this._shadowRootSyncPassCount | 0) >= SHADOW_ROOT_SYNC_PASS_CAP;
-    if (!scopedSync && !traverseDeferred && !skipTraverseOnDrift) {
+    if (!scopedSync && !traverseDeferred && !skipTraverseOnDrift && !hadParkedWalk) {
       this._shadowRootSyncPassCount = (this._shadowRootSyncPassCount | 0) + 1;
     }
     const receiverOut = { receiverDelta: 0 };
-    const changed = (traverseDeferred || skipTraverseOnDrift) ? false : syncShadowCasterPolicy(
-      syncScope, lodLevel, {
-        ...syncOpts,
-        ...(extra || {}),
-        // A withhold verdict lands in syncOpts.allowCast=false — reapply it
-        // after the extra spread so a caller's extras can never re-open the
-        // cold depth-link seam this gate exists to keep closed.
-        ...(syncOpts.allowCast === false ? { allowCast: false } : {}),
-        out: receiverOut,
-      });
+    let changed = false;
+    if (!traverseDeferred && !skipTraverseOnDrift) {
+      if (!scopedSync && syncOpts.allowCast !== false) {
+        // Whole-root castable verdicts ride the stepped lane: a fat subtree's
+        // rewrite paces inside a small wall budget per call instead of one
+        // atomic leg. A mid-walk return (null→false here) leaves the policy
+        // dirty latch set — the root re-enters and resumes next sync.
+        const policyNow = () => (typeof performance !== 'undefined'
+          && typeof performance.now === 'function' ? performance.now() : Date.now());
+        const policyDeadlineAt = policyNow() + 4;
+        changed = driveShadowPolicySteps(this, root, syncScope, lodLevel, {
+          ...syncOpts,
+          ...(extra || {}),
+          out: receiverOut,
+        }, () => policyNow() >= policyDeadlineAt) === true;
+      } else {
+        // A withhold verdict (or scoped graft) out-ranks any parked castable
+        // walk: its atomic traverse writes castShadow=false the resumed walk
+        // would later stomp, so the parked iterator dies here.
+        if (this._policyStepsParked) this._policyStepsParked.delete(root);
+        changed = syncShadowCasterPolicy(
+          syncScope, lodLevel, {
+            ...syncOpts,
+            ...(extra || {}),
+            // A withhold verdict lands in syncOpts.allowCast=false — reapply it
+            // after the extra spread so a caller's extras can never re-open the
+            // cold depth-link seam this gate exists to keep closed.
+            ...(syncOpts.allowCast === false ? { allowCast: false } : {}),
+            out: receiverOut,
+          });
+      }
+    }
     if (withheldMeshes && withheldMeshes.length > 0) {
       for (const mesh of withheldMeshes) {
         if (mesh) mesh.castShadow = false;
@@ -25302,6 +25384,7 @@ export const render = {
                 if (legSet.has(mesh)) { deferredMark.add(deferRoot); break; }
               }
             }
+            let legResult = null;
             driveCompileShadowDepthPipelines({
               renderer,
               light: this._keyLight,
@@ -25315,7 +25398,9 @@ export const render = {
               lightSigOverride: lightSig,
               lightSigEpoch: armSigEpoch,
               stagingName: 'SF_ShadowPromoteDepthAdmission',
-            }, yieldToBrowser).catch((error) => {
+            }, yieldToBrowser).then((value) => {
+              legResult = value;
+            }).catch((error) => {
               legDriveFailed = true;
               console.warn('[render] shadow-promote depth stage fallback failed', error);
             }).finally(() => {
@@ -25329,8 +25414,11 @@ export const render = {
               // unmarked can never stage (geometry-less, unreadable layer,
               // material-invisible). Park it on the backed-off recheck cadence
               // instead of letting it spin collect→offer→requeue forever; a
-              // failed drive leaves its roots queued for the normal retry.
-              if (legDriveFailed !== true && legSet) {
+              // failed or aborted drive (closed session, shadows disabled —
+              // no marks could land) leaves its roots queued for the normal
+              // retry rather than parking on a verdict it never evaluated.
+              const legAborted = !!(legResult && legResult.aborted === true);
+              if (legDriveFailed !== true && legAborted !== true && legSet) {
                 const entryByRoot = new Map(slice);
                 for (const [deferRoot, deferMeshes] of unstagedByRoot) {
                   let allUnmarked = deferMeshes.length > 0;
@@ -25362,6 +25450,11 @@ export const render = {
                     // The earned node-budget scale rides the park so the
                     // re-queue skips re-paying the escalation ladder.
                     depthNodeScale: entry.depthNodeScale,
+                    // Denied parks (unlike over-cap parks) earn a live allowCast
+                    // release trigger: a root that turns castable while census,
+                    // cell, and dirtySeq stand still must not wait out the
+                    // escalated recheck — up to ~16 s — for its shadow.
+                    denied: true,
                   });
                   // Only the proven-unmarkable set stays withheld — staged
                   // siblings' casts restore on the next sync.
@@ -25415,6 +25508,7 @@ export const render = {
             delete root.userData.sfDepthUndrawableCycles;
           }
           if (root && this._withheldDepthCasters) this._withheldDepthCasters.delete(root);
+          if (root && this._policyStepsParked) this._policyStepsParked.delete(root);
           continue;
         }
         const { lodLevel, entity } = entry;
@@ -25458,10 +25552,17 @@ export const render = {
           // under-count reaching 0 freezes the shadow refresh until an unrelated
           // dirty triggers a recount).
           const restoreOut = { receiverDelta: 0 };
-          const restoreChanged = syncShadowCasterPolicy(root, lodLevel, {
+          const restoreChanged = driveShadowPolicySteps(this, root, root, lodLevel, {
             ...this._shadowPolicyOptions(entity, root),
             out: restoreOut,
-          });
+          }, () => armNow() >= restoreDeadline);
+          if (restoreChanged === null) {
+            // Mid-walk: flags half-applied — the root stays withheld (its
+            // casters never linked past the staged marks) and resumes the
+            // restore on the next arm pass via the parked iterator.
+            pending.set(root, entry);
+            continue;
+          }
           if (restoreChanged) {
             this._shadowMapDirty = true;
             if (!noteShadowPolicyChanged(this._shadowReceiverTally, {
@@ -26724,7 +26825,13 @@ function lerp(a, b, t) {
   return a + (b - a) * t;
 }
 
-function replaceSceneEnvMap(scene, previousEnvMap, nextEnvMap) {
+// The env rebind visits every material-bearing node in the scene plus parked
+// authored roots and retained LOD levels — ~16k nodes of material fan-out on a
+// mid-flight re-bake. It is per-node idempotent and order-free, so the stepped
+// twin slices the walk under the residency service's paced window while queued
+// entries keep their own previous→next predicate (a second bake chains
+// envA→envB behind an in-flight prev→envA without stranding stale bindings).
+function* replaceSceneEnvMapSteps(scene, previousEnvMap, nextEnvMap) {
   if (!scene || !previousEnvMap || !nextEnvMap) return;
   const rebind = (node) => {
     const materials = Array.isArray(node && node.material) ? node.material : [node && node.material];
@@ -26737,12 +26844,27 @@ function replaceSceneEnvMap(scene, previousEnvMap, nextEnvMap) {
       // in one frame for zero semantic difference.
     }
   };
-  scene.traverse(rebind);
+  let visited = 0;
+  const rebindTree = function* (root) {
+    if (!root || typeof root.traverse !== 'function') return;
+    const stack = [root];
+    while (stack.length > 0) {
+      const node = stack.pop();
+      rebind(node);
+      const children = node && node.children;
+      if (children && children.length > 0) {
+        for (let i = 0; i < children.length; i++) stack.push(children[i]);
+      }
+      visited += 1;
+      if (visited >= 256) { visited = 0; yield; }
+    }
+  };
+  yield* rebindTree(scene);
   // Detached prepared authored roots park off the scene graph (deferred publication) and mount
   // later — the envMap they captured at admission must re-point with the re-bake too or the
   // parked body publishes dead reflections.
   for (const root of collectPreparedAuthoredCompileRoots(scene)) {
-    if (root && typeof root.traverse === 'function') root.traverse(rebind);
+    yield* rebindTree(root);
   }
   // Whole-ship LOD demote keeps demoted-level roots retained-but-detached for instant
   // swap-back — the same dead-reflection trap as parked authored roots. Walk every live
@@ -26752,8 +26874,74 @@ function replaceSceneEnvMap(scene, previousEnvMap, nextEnvMap) {
     if (!lodRoots) continue;
     for (const level in lodRoots) {
       const root = lodRoots[level];
-      if (root && root !== boundary && typeof root.traverse === 'function') root.traverse(rebind);
+      if (root && root !== boundary) yield* rebindTree(root);
     }
+  }
+}
+
+function queueSceneEnvMapRebind(owner, scene, previousEnvMap, nextEnvMap, disposeTarget = null) {
+  if (!scene || !previousEnvMap || !nextEnvMap) return;
+  const queue = owner._envRebindQueue || (owner._envRebindQueue = []);
+  queue.push({
+    iter: replaceSceneEnvMapSteps(scene, previousEnvMap, nextEnvMap),
+    disposeTarget,
+  });
+}
+
+function drainSceneEnvRebindQueue(owner) {
+  const queue = owner && owner._envRebindQueue;
+  if (!queue || queue.length === 0) return;
+  const now = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now() : Date.now());
+  const deadline = now() + 4;
+  while (queue.length > 0) {
+    const head = queue[0];
+    const step = head.iter.next();
+    if (step.done) {
+      queue.shift();
+      // The released env target frees only once nothing still samples it —
+      // materials on unvisited nodes keep a valid texture until the walk ends.
+      if (head.disposeTarget) { try { head.disposeTarget.dispose(); } catch (_) {} }
+      continue;
+    }
+    if (now() >= deadline || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
+  }
+}
+
+// Stepped policy-sync lane: a parked iterator per root lets a fat subtree's
+// flag rewrite pace across presented beats instead of landing as one atomic
+// leg (the apply is already per-node atomic, so a mid-walk suspend is safe —
+// the policy state's dirty latch holds until the walk's own finish). Options
+// bake at mint; a call under different options abandons the parked walk and
+// re-collects, matching the sync path's always-fresh traverse. Returns
+// true/false like the sync twin, or null while the walk stays parked.
+function driveShadowPolicySteps(owner, root, walkRoot, lodLevel, opts, deadlineFn) {
+  const parkedMap = owner._policyStepsParked || (owner._policyStepsParked = new Map());
+  let slot = parkedMap.get(root);
+  const sig = `${opts && opts.allowCast === false ? 0 : 1}|${lodLevel || ''}|${walkRoot === root ? 1 : 0}`;
+  if (slot && slot.sig !== sig) { parkedMap.delete(root); slot = null; }
+  if (!slot) {
+    const out = { receiverDelta: 0 };
+    slot = {
+      iter: syncShadowCasterPolicySteps(walkRoot, lodLevel, { ...opts, out }),
+      out,
+      sig,
+    };
+    parkedMap.set(root, slot);
+  }
+  for (;;) {
+    const step = slot.iter.next();
+    if (step.done) {
+      parkedMap.delete(root);
+      if (opts.out && typeof opts.out === 'object') {
+        opts.out.receiverDelta = slot.out.receiverDelta;
+        if (slot.out.preReceiverCount !== undefined) {
+          opts.out.preReceiverCount = slot.out.preReceiverCount;
+        }
+      }
+      return step.value === true;
+    }
+    if (typeof deadlineFn === 'function' && deadlineFn() === true) return null;
   }
 }
 

@@ -587,12 +587,12 @@ export function* compileShadowDepthPipelinesSteps(options = {}) {
   const shadowMap = renderer && renderer.shadowMap;
   const forceEnable = options.forceEnable === true;
   if (!shadowMap || !light) {
-    return { skipped: true, reason: 'shadow depth compiler unavailable', subjects: 0 };
+    return { skipped: true, reason: 'shadow depth compiler unavailable', subjects: 0, aborted: true };
   }
   const previousEnabled = shadowMap.enabled;
   const previousCastShadow = light.castShadow;
   if (!forceEnable && (previousEnabled !== true || previousCastShadow !== true)) {
-    return { skipped: true, reason: 'directional shadows inactive', subjects: 0 };
+    return { skipped: true, reason: 'directional shadows inactive', subjects: 0, aborted: true };
   }
   // The caster census walks every subject's subtree — run it only after the cheap
   // flag checks above have ruled the pass out entirely.
@@ -601,7 +601,7 @@ export function* compileShadowDepthPipelinesSteps(options = {}) {
   // light traverse, reparenting, census render) is net-zero work then, even under
   // forceEnable whose enabled flag restores in finally anyway.
   if (casting.length === 0) {
-    return { skipped: true, reason: 'no shadow-casting subjects', subjects: 0 };
+    return { skipped: true, reason: 'no shadow-casting subjects', subjects: 0, aborted: true };
   }
   // lightSigEpoch stamps the census epoch the caller's signature was minted under. A
   // light mutation landing inside any yield window below leaves stagedLights and the
@@ -725,7 +725,7 @@ export function* compileShadowDepthPipelinesSteps(options = {}) {
       collectDiagnostics: options.collectDiagnostics === true,
     });
     if (!session) {
-      return { skipped: true, reason: 'shadow depth staging unavailable', subjects: 0 };
+      return { skipped: true, reason: 'shadow depth staging unavailable', subjects: 0, aborted: true };
     }
     heldSession = { session, sig: markLightSig, epoch: shadowCensusEpoch(), light };
     _depthStageSessions.set(renderer, heldSession);
@@ -745,6 +745,7 @@ export function* compileShadowDepthPipelinesSteps(options = {}) {
       reason: sliced.reason || 'shadow depth staging slice skipped',
       subjects: 0,
       ...(sliced.stale === true ? { stale: true } : {}),
+      ...(sliced.aborted === true ? { aborted: true } : {}),
     };
   }
   return {
@@ -880,8 +881,18 @@ export function createShadowDepthStagingSession(options = {}) {
   let closed = false;
   /** Stage one root slice: reparent casters, render, mark observed draws, restore. */
   const runSlice = (casting, sliceOpts = null) => {
-      if (closed || !Array.isArray(casting) || casting.length === 0) {
-        return { skipped: closed, subjects: 0 };
+      if (closed) {
+        return { skipped: true, reason: 'session-closed-mid-drive', subjects: 0, aborted: true };
+      }
+      if (!Array.isArray(casting) || casting.length === 0) {
+        return { skipped: false, subjects: 0 };
+      }
+      // Without forceEnable the render runs under the live shadowMap.enabled —
+      // disabled draws nothing, so zero marks land: the drive must not turn an
+      // un-run leg into an undrawable verdict.
+      if ((!sliceOpts || sliceOpts.forceEnable !== true)
+          && (!shadowMap || shadowMap.enabled !== true)) {
+        return { skipped: true, reason: 'shadow-map-disabled', subjects: 0, aborted: true };
       }
       const homes = casting.map((root) => captureObjectHome(root));
       const restoreCasters = casting.map((root) => revealSubjectForCompile(root));
@@ -1000,8 +1011,13 @@ export function createShadowDepthStagingSession(options = {}) {
      * light set that no longer exists.
      */
     *sliceSteps(casting, sliceOpts = null) {
-      if (closed || !Array.isArray(casting) || casting.length === 0) {
-        return { skipped: closed, subjects: 0 };
+      // A closed session can't land marks — `aborted` keeps the driver from
+      // rendering the undrawable verdict on a leg that never ran.
+      if (closed) {
+        return { skipped: true, reason: 'session-closed-mid-drive', subjects: 0, aborted: true };
+      }
+      if (!Array.isArray(casting) || casting.length === 0) {
+        return { skipped: false, subjects: 0 };
       }
       const keys = new Set();
       const names = new Set();

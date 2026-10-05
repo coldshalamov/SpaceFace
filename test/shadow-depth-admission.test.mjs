@@ -605,3 +605,47 @@ test('staging session pays the census warm once and slices stage without re-cere
   assert.equal(renderer.shadowMap.needsUpdate, false);
   assert.deepEqual(restored, ['hullA', 'hullB']);
 });
+
+test('a closed mid-drive stepped slice aborts instead of parking casters unmarked', () => {
+  const casting = [];
+  for (let i = 0; i < 40; i++) {
+    const hull = { isMesh: true, castShadow: true, name: `hull${i}`, parent: { children: [] } };
+    hull.parent.children.push(hull);
+    casting.push(hull);
+  }
+  const renderer = {
+    shadowMap: {
+      enabled: true,
+      needsUpdate: false,
+      render() {},
+    },
+    render(staging) {
+      if (renderer.shadowMap.enabled === false) return;
+      renderer.shadowMap.render(
+        staging.children.filter((c) => c.castShadow === true), staging, null);
+    },
+    getRenderTarget() { return null; },
+    setRenderTarget() {},
+    properties: { get: (material) => material && material.properties || {} },
+    renderBufferDirect() {},
+  };
+  const light = { name: 'key', castShadow: true, shadow: { needsUpdate: false } };
+  const liveScene = { fog: null, traverse(fn) { fn(light); } };
+  const session = createShadowDepthStagingSession({
+    renderer, light, camera: { name: 'chase' },
+    lightingScene: liveScene, THREE: mockThree(),
+    captureObjectHome: (object) => ({ object }),
+    restoreObjectHome() {},
+    lightSig: 'l1|f0',
+  });
+  const iter = session.sliceSteps(casting);
+  const first = iter.next();
+  assert.equal(first.done, false, '40 casters exceed one 32-caster sub-pass');
+  session.close();
+  const second = iter.next();
+  assert.equal(second.done, true);
+  const result = second.value;
+  assert.equal(result.aborted, true, 'a mid-drive close reports the abort marker');
+  assert.equal(result.reason, 'session-closed-mid-drive');
+  assert.equal(result.subjects, 0, 'the aborted leg reports no staged subjects');
+});
