@@ -1826,6 +1826,14 @@ export function stableMeshKeyForEntity(entity) {
  * key is what prevents a recycled numeric id from binding a mesh to the wrong entity.
  */
 export function reattachResidentGpuMeshes(owner) {
+  // Renderer instances route through the paced sweep instead of exhausting the
+  // whole mesh scan inline — the live call sites sit inside keep-GPU paths where
+  // an atomic reattach lands inside a presented beat. Bare owners (tests, tools)
+  // keep the synchronous return contract.
+  if (owner && owner._residentReattachStepped === true) {
+    mintResidentReattachSweep(owner);
+    return 0;
+  }
   const it = reattachResidentGpuMeshesSteps(owner);
   for (;;) { const step = it.next(); if (step.done) return step.value; }
 }
@@ -10194,6 +10202,9 @@ export const render = {
     // Bumped on every _meshes set/delete so cameraClearanceFloorAt can rebuild its structural
     // sublist only when the map actually mutates instead of scanning it every frame.
     this._meshesVersion = 0;
+    // This instance's reattach sweeps mint paced iterators drained by
+    // serviceRenderMeshResidency — see reattachResidentGpuMeshes.
+    this._residentReattachStepped = true;
     // Despawn GL-teardown tail: corpse meshes whose bookkeeping already settled, waiting for
     // the bounded per-frame drain in serviceRenderMeshResidency.
     this._despawnDisposeQueue = [];
@@ -11973,7 +11984,7 @@ export const render = {
         // Same-sector F9: GPU programs and opening meshes are already resident.
         // Dumping them and rebuilding made the next flight present compile 37
         // extra programs (~4s stall / TDR, headed skip-cook run65).
-        mintResidentReattachSweep(this);
+        reattachResidentGpuMeshes(this);
         this._sessionLiveSectorCookedId = recookSectorId;
         state.render.sessionLiveSectorCookedId = recookSectorId;
         recordOpeningCookStep(state.render, 'live.sessionRecook', NaN, 'skipped');
@@ -17257,7 +17268,7 @@ export const render = {
         // (headed reattach run68 TDR / CONTEXT_LOST ~0.5s after instant enter).
         if (cam.snapToPlayer) cam.snapToPlayer();
         this._pendingPostOpeningSector = null;
-        mintResidentReattachSweep(this);
+        reattachResidentGpuMeshes(this);
         // Keep the reconcile armed: restore reissues entity ids, so the kept set may not cover
         // every live entity — serviceRenderMeshResidency builds the gaps during loading.
         this._meshReconcileDirty = true;
