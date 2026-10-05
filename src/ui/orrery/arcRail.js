@@ -259,8 +259,10 @@ export function splitGroupedRowsForWidth(all, W, geo, headText, headSizeGuess = 
   // headText answers the word the legend will draw (a carried localization); the English key
   // is the fallback, so a first pass still plans against something real.
   const headW = (g) => {
-    const measured = typeof headWidth === 'function' ? headWidth(g) : null;
-    if (measured > 0) return measured;
+    // a carried measurement arrives per-em (the legend's own caps, whatever locale wrote them);
+    // scale it by the size this pass is planning, else a stacked flip plans with a stale px
+    const measuredEm = typeof headWidth === 'function' ? headWidth(g) : null;
+    if (measuredEm > 0) return measuredEm * Math.max(18, headSizeGuess);
     return String((typeof headText === 'function' && headText(g)) || g).length * Math.max(18, headSizeGuess);
   };
   const lineW = (g, items) => 30 + headW(g) + items.reduce((s, li) => s + (li && li.offsetWidth || 120) + 22, -22);
@@ -475,7 +477,10 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
     if (grouped) for (const h of heads) {
       const t = h && h.node && typeof h.node.querySelector === 'function' ? h.node.querySelector('.orr-arcrail__legend') : null;
       if (t && h.group != null) headTextByGroup.set(h.group, t.textContent);
-      if (h.group != null && h.w > 0) headWidthByGroup.set(h.group, h.w);
+      // per-em, not px: a carried width measured at last pass's head size would under- or
+      // over-plan the split whenever stacked flips the size (REV: store the em ratio, the
+      // split re-scales it by the size it is planning)
+      if (h.group != null && h.w > 0) headWidthByGroup.set(h.group, h.w / (h.size > 0 ? h.size : 1));
     }
     // clustered: every verb its own tick, a wider gap where its group changes, the group's name
     // engraved on the rim beside its cluster
@@ -657,12 +662,12 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
       // stacked head's cap climb into the row above (D169). The painted rect only exists once a
       // pass has seated the list, so the estimate carries the first build; the rebuilds converge.
       const hostRect = host.getBoundingClientRect();
-      const inkRange = doc.createRange();
+      const inkRange = typeof doc.createRange === 'function' ? doc.createRange() : null;
       // the overhang the AWAKE verb carries below its box — any verb can take the wake next, so a
       // ceiling plans every sleeping verb as if it were already the awake one
       let awakeDrop = 0;
       const awakeEl = list.querySelector('[data-awake]');
-      if (awakeEl) {
+      if (awakeEl && inkRange) {
         try {
           inkRange.selectNodeContents(awakeEl);
           const tr = inkRange.getBoundingClientRect();
@@ -670,24 +675,29 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
           if (tr.height > 0 && br.height > 0) awakeDrop = Math.max(0, tr.bottom - br.bottom);
         } catch (_) {}
       }
-      const bottomOf = (i, lift) => {
-        let bottom = geo.anchors[i].y + lift + boxOf(all[i]) / 2;
+      const bottomOf = (i) => {
+        // measured under the STACKED seat — the only form where this row's ink bounds the head
+        // below it: in that form every verb sits VERB_LIFT under its tick. A rect from the
+        // previous pass is paint at that pass's seat; the element moves rigidly, so its ink
+        // rides the same delta its top is about to take, and the bound stays exact for the
+        // seat this pass is deciding (REV: cancel the stale anchor, don't re-read it).
+        let bottom = geo.anchors[i].y + VERB_LIFT + boxOf(all[i]) / 2;
         for (const li of all[i].items) {
           if (!li.style.top) continue;
           const b = li.querySelector('button') || li;
           const br = b.getBoundingClientRect();
           if (!(br.height > 0)) continue;
+          const drift = geo.anchors[i].y + VERB_LIFT - (b.offsetHeight || 0) / 2 - parseFloat(li.style.top);
           let painted = br.bottom - hostRect.top;
-          if (b.hasAttribute('data-awake')) {
+          if (inkRange) {
             try {
               inkRange.selectNodeContents(b);
               const tr = inkRange.getBoundingClientRect();
               if (tr.height > 0) painted = Math.max(painted, tr.bottom - hostRect.top);
             } catch (_) {}
-          } else {
-            painted += awakeDrop;
           }
-          bottom = Math.max(bottom, painted);
+          if (!b.hasAttribute('data-awake')) painted += awakeDrop;
+          bottom = Math.max(bottom, painted + drift);
         }
         return bottom;
       };
@@ -695,7 +705,7 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
       // sits 7 px above its own tick
       const room = all.reduce((m, row, k) => {
         if (k === 0 || !row.group) return m;
-        const above = bottomOf(k - 1, all[k - 1].group ? VERB_LIFT : 0);
+        const above = bottomOf(k - 1);
         return Math.min(m, (geo.anchors[k].y - 7 - above - HEAD_AIR) / CAP);
       }, Infinity);
       stacked = room >= 13;
@@ -730,7 +740,7 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
         layer.appendChild(head);
         try { headW = legend.getComputedTextLength() || 0; } catch (_) { headW = 0; }
         if (!(headW > 0)) headW = String(legend.textContent).length * headSize * 0.86;
-        record = { node: head, row: i, group: row.group, w: headW, rest: `${ruleRest}-${i}`, lit: `${ruleLit}-${i}` };
+        record = { node: head, row: i, group: row.group, w: headW, size: headSize, rest: `${ruleRest}-${i}`, lit: `${ruleLit}-${i}` };
         // stacked: the verbs are listed one step IN, on their own line under the head. one line: they
         // follow the head along the row, the rule's short bridge between.
         cursor = stacked ? x + 20 : x + 30 + headW;
@@ -796,10 +806,14 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
     paintHand(handSpring.value);
     lightTick(handIndex);
     // a width split re-indexes the rows beneath the Hand: re-stop it on the awake verb's own row,
-    // not the degree it last swung to (REV-D136b.7)
-    if (grouped && awakeButton) {
-      const ai = indexOf(awakeButton);
-      if (ai >= 0 && ai !== handIndex) pointAt(ai, { instant: true });
+    // not the degree it last swung to (REV-D136b.7). The re-deal can keep the same index while
+    // moving its angle, so the same-index guard would leave the needle on a stale degree — with
+    // instant:true pointAt re-sets regardless (REV: it moves the ANGLE, not only the index).
+    // A mid-swing build has no awake verb yet; its pending target owns the aim instead.
+    const reStop = awakeButton || pendingWake;
+    if (grouped && reStop) {
+      const ai = indexOf(reStop);
+      if (ai >= 0) pointAt(ai, { instant: true });
     }
   }
 
@@ -1059,6 +1073,9 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
     // the heads, their rules and the verbs' rise are a first-open arrival: they must never replay
     // when the rail re-seats itself on a resize or a late font
     host.classList.remove('orr-arcrail-host--arriving');
+    // every build so far measured painted bounds through the arrival's translateY — one clean
+    // pass now that the rise has settled, or a head stays under-sized for the whole session
+    if (root.isConnected) relayout();
   }, 1500);
 
   return {
