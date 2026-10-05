@@ -91,6 +91,10 @@ export function createSnapshotFence(options = {}) {
         if (state.sealed) throw new Error('Presentation snapshot fence buffer is sealed');
         return snapshot.setLean(...args);
       },
+      setGeneration(...args) {
+        if (state.sealed) throw new Error('Presentation snapshot fence buffer is sealed');
+        return snapshot.setGeneration(...args);
+      },
       record(...args) {
         if (state.sealed) throw new Error('Presentation snapshot fence buffer is sealed');
         return snapshot.record(...args);
@@ -207,6 +211,19 @@ export function snapshotIndexOf(snapshot, entityId) {
   return -1;
 }
 
+// A recycled entityId inside one pose epoch names a different body — the
+// previous pack's row may only feed a blend (or the fence pack's copy path)
+// when its generation matches the current row's. Snapshots lacking the
+// generation column (test doubles, pre-column packs) keep index-only lookup.
+function snapshotSameGenerationRow(previous, snapshot, entityId, index) {
+  const prev = snapshotIndexOf(previous, entityId);
+  if (prev < 0) return -1;
+  const prevGens = previous.columns && previous.columns.generation;
+  const curGens = snapshot.columns && snapshot.columns.generation;
+  if (prevGens && curGens && prevGens[prev] !== curGens[index]) return -1;
+  return prev;
+}
+
 /**
  * Pose blend parameter for the previous→latest pack span, normalized by that span's real length.
  *
@@ -248,7 +265,7 @@ export function applySnapshotPoseToMesh(mesh, snapshot, entityId, origin, previo
   let qw = snapshot.columns.quaternion[q + 3];
   const t = Number.isFinite(alpha) ? alpha : 1;
   if (previous && t < 1) {
-    const prev = snapshotIndexOf(previous, entityId);
+    const prev = snapshotSameGenerationRow(previous, snapshot, entityId, index);
     if (prev >= 0) {
       const pp = prev * 3;
       const pq = prev * 4;
@@ -273,7 +290,7 @@ export function applySnapshotPoseToMesh(mesh, snapshot, entityId, origin, previo
     let bank = snapshot.columns.bank[index] || 0;
     let pitch = snapshot.columns.pitch[index] || 0;
     if (previous && t < 1 && previous.columns.bank && previous.columns.pitch) {
-      const prev = snapshotIndexOf(previous, entityId);
+      const prev = snapshotSameGenerationRow(previous, snapshot, entityId, index);
       if (prev >= 0) {
         bank = previous.columns.bank[prev] + (bank - previous.columns.bank[prev]) * t;
         pitch = previous.columns.pitch[prev] + (pitch - previous.columns.pitch[prev]) * t;
@@ -307,10 +324,19 @@ export function packPresentationWorldToFence(world, fence, simTime = 0, poseEpoc
     const slot = world.activeSlots[index];
     if (world.alive[slot] !== 1) continue;
     const entityId = world.entityIds[slot] >>> 0;
-    if (previousIndex && world.dirtyMasks && world.dirtyMasks[slot] === 0) {
+    // The pack owns its dirty bit: only writers that can change packed bytes
+    // set it, so never-visited slots (allocated ALL for life) and byte-identical
+    // BINDING/VISIBILITY/VISUAL marks copy verbatim instead of paying the scalar
+    // write per presented frame. The generation term keeps a recycled id from
+    // copying the prior body's row inside a shared epoch.
+    if (previousIndex && world.packDirty && world.packDirty[slot] === 0) {
       const previousRow = previousIndex.get(entityId);
-      if (previousRow !== undefined && previousRow >= 0) {
+      const previousGenerations = previous.columns && previous.columns.generation;
+      if (previousRow !== undefined && previousRow >= 0
+          && (!previousGenerations || !world.slotGenerations
+            || previousGenerations[previousRow] === (world.slotGenerations[slot] >>> 0))) {
         snapshot.copyRow(previous, previousRow);
+        world.packDirty[slot] = 0;
         packed++;
         continue;
       }
@@ -345,6 +371,13 @@ export function packPresentationWorldToFence(world, fence, simTime = 0, poseEpoc
         world.pitch ? Number(world.pitch[slot]) || 0 : 0,
       );
     }
+    if (typeof snapshot.setGeneration === 'function') {
+      snapshot.setGeneration(
+        packedIndex,
+        world.slotGenerations ? world.slotGenerations[slot] : 0,
+      );
+    }
+    if (world.packDirty) world.packDirty[slot] = 0;
     packed++;
   }
   fence.commit();

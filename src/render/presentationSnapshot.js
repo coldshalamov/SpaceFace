@@ -31,6 +31,10 @@ export const SNAPSHOT_COLUMNS = Object.freeze({
   entityId: { stride: 1, kind: 'u32' },
   archetype: { stride: 1, kind: 'u32' },
   flags: { stride: 1, kind: 'u32' },
+  // The world's slot generation at pack time — a recycled entityId inside one
+  // pose epoch names a different body, so copy/blend paths compare it before
+  // reusing a prior pack's row.
+  generation: { stride: 1, kind: 'u32' },
 });
 
 const SNAPSHOT_COLUMN_SPECS = Object.entries(SNAPSHOT_COLUMNS);
@@ -133,6 +137,7 @@ export function createPresentationSnapshot(options = {}) {
       columns.entityId[index] = entityId >>> 0;
       columns.archetype[index] = archetype >>> 0;
       columns.flags[index] = flags >>> 0;
+      columns.generation[index] = 0;
       columns.bank[index] = 0;
       columns.pitch[index] = 0;
       return index;
@@ -150,7 +155,10 @@ export function createPresentationSnapshot(options = {}) {
       if (index >= capacity) allocate(capacity * GROWTH_FACTOR);
       for (const [name, spec] of SNAPSHOT_COLUMN_SPECS) {
         const s = sourceIndex * spec.stride;
-        columns[name].set(sourceColumns[name].subarray(s, s + spec.stride), index * spec.stride);
+        const src = sourceColumns[name];
+        // Columns the source lacks (test doubles, older snapshots) copy as zero.
+        if (src) columns[name].set(src.subarray(s, s + spec.stride), index * spec.stride);
+        else columns[name].fill(0, index * spec.stride, index * spec.stride + spec.stride);
       }
       return index;
     },
@@ -164,6 +172,11 @@ export function createPresentationSnapshot(options = {}) {
       if (index < 0 || index >= count) return;
       columns.bank[index] = Number(bank) || 0;
       columns.pitch[index] = Number(pitch) || 0;
+    },
+
+    setGeneration(index, generationValue) {
+      if (index < 0 || index >= count) return;
+      columns.generation[index] = generationValue >>> 0;
     },
 
     /** Record an ordered event. Overflow is counted, never silently dropped. */

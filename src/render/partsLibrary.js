@@ -3386,13 +3386,31 @@ function commitAuthoredCargoCapsuleBoundary(
   return true;
 }
 
+// Shared by the two authored-commit dispose loops (place + ship): each used to
+// mint a private ledger, so K concurrent commits could each skip up to 2× —
+// N commits stacking N×2 stale skips inside one saturated stretch. One counter
+// ages all legs together; every productive slice resets it, same contract the
+// paced drains carry.
+let authoredDisposeLedgerSkips = 0;
+
+// Place-fallback teardown + detach in one stepped unit: the drain drives the
+// dispose slice first, then clears the children links — clearing first would
+// leave the orphaned subtree unvisited and leak its owner-local GPU records.
+function* detachedFallbackTeardownThenClearSteps(root) {
+  yield* disposeDetachedPlaceFallbackSteps(root);
+  try { root.clear(); } catch (_) { /* best effort — drain continues */ }
+}
+
 function disposeDetachedAuthoredCargoCapsule(root) {
   if (!root) return;
   // The authored-motion driver registers controllers under the entity id; a parked/admission-
   // failed tree must release them the same way the boundary teardown path does.
   if (typeof root.userData?.detachAuthoredMotion === 'function') root.userData.detachAuthoredMotion();
   // Authored compositions use cloned batch geometry plus materials marked by the shared-resource
-  // policy. Reuse the established detached-place disposer so only owner-local GPU resources retire.
+  // policy. Reuse the established detached-place disposer so only owner-local GPU resources
+  // retire — paced on the shared queue so an abandon inside a presented beat no longer pays
+  // the whole traverse+dispose atomically.
+  if (queuePacedDetachedTeardown(root, detachedFallbackTeardownThenClearSteps(root))) return;
   disposeDetachedPlaceFallback(root);
   root.clear();
 }
@@ -4063,8 +4081,13 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
   const disposePreparedPlace = () => {
     if (authoredDisposed) return false;
     try {
-      disposeDetachedPlaceFallback(authored.root);
-      authored.root.clear();
+      // Paced — the pipeline-fail/orphan abort legs used to tear the prepared
+      // tree down atomically inside the commit continuation (the same class the
+      // commit disposes already pace). Registry release stays synchronous.
+      queuePacedDetachedTeardown(
+        authored.root,
+        detachedFallbackTeardownThenClearSteps(authored.root),
+      );
       authoredDisposed = true;
     } finally {
       // A disposal throw must not strand the registry entry — it pins the boundary and the
@@ -4306,20 +4329,21 @@ async function commitAuthoredPlaceBoundary(
     commitLegStarted = monotonicNow();
     try {
       const disposeIter = disposeDetachedPlaceFallbackSteps(fallbackRoot);
-      let disposeLedgerSkips = 0;
+
       for (;;) {
         // Consult the wallet before minting the next slice — K concurrent
         // commit disposes otherwise stack their first slices inside the same
         // presented beat. The drain's aging bound keeps a saturated stretch
         // from starving reclaim outright.
-        if (disposeLedgerSkips < 2 && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS
+        if (authoredDisposeLedgerSkips < 2 && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS
             && options.yieldBetweenGpuStages === true && typeof options.yieldToNextPresent === 'function') {
-          disposeLedgerSkips += 1;
+          authoredDisposeLedgerSkips += 1;
           await waitForAuthoredAdmission(options.yieldToNextPresent(), options).catch(() => {});
           commitLegStarted = monotonicNow();
           continue;
         }
         const disposeStep = disposeIter.next();
+        authoredDisposeLedgerSkips = 0;
         // Per-slice debit with the restamp after the wait — a multi-present
         // dispose charges its real work, not the spans between presents.
         notePacedFrameSpend(monotonicNow() - commitLegStarted);
@@ -9007,6 +9031,18 @@ function scheduleRetainedDisposeDrain() {
   }, 0);
 }
 
+// Any detached subtree whose teardown would hitch a presented beat may ride the
+// same paced queue — prepared-abandon roots (pipeline-error/orphan legs) used to
+// pay the whole traverse+dispose atomically inside the continuation that
+// abandoned them. `iter` is the caller's own stepped teardown; the drain only
+// drives it, so queue order and the 4 ms leg bound hold for every lane.
+export function queuePacedDetachedTeardown(root, iter) {
+  if (!root || !iter) return false;
+  retainedDisposeQueue.push({ root, iter });
+  scheduleRetainedDisposeDrain();
+  return true;
+}
+
 export function installWholeShipLodFamilyController(boundary, entity, setActive, options = {}) {  if (!boundary || !entity || entity.isPlayer === true) return false;
   const selection = wholeShipVisualForEntity(entity, { ...options, requiredWholeShip: true });
   const family = selection && selection.lodFamily;
@@ -9478,16 +9514,17 @@ async function commitAuthoredBoundary(
     commitLegStarted = monotonicNow();
     try {
       const disposeIter = disposeDetachedObjectSteps(fallbackRoot);
-      let disposeLedgerSkips = 0;
+
       for (;;) {
-        if (disposeLedgerSkips < 2 && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS
+        if (authoredDisposeLedgerSkips < 2 && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS
             && options.yieldBetweenGpuStages === true && typeof options.yieldToNextPresent === 'function') {
-          disposeLedgerSkips += 1;
+          authoredDisposeLedgerSkips += 1;
           await waitForAuthoredAdmission(options.yieldToNextPresent(), options).catch(() => {});
           commitLegStarted = monotonicNow();
           continue;
         }
         const disposeStep = disposeIter.next();
+        authoredDisposeLedgerSkips = 0;
         // Per-slice debit with the restamp after the wait — a multi-present
         // dispose charges its real work, not the spans between presents.
         notePacedFrameSpend(monotonicNow() - commitLegStarted);

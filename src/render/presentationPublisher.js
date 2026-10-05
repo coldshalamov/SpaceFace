@@ -34,6 +34,12 @@ export function createPresentationPublisher(world, state, options = {}) {
     start: 0,
     end: 0,
     rebuilt: false,
+    // Slot-remap marker: true only when the world was actually cleared
+    // (journalFullRebuild, rebuildFromEntities, clear) — poses teleport and the
+    // pose-pack epoch must bump. A diff-apply fallback (updateFromEntities)
+    // preserves id-keyed slot identity, so it stays a non-remap even though it
+    // is also `rebuilt` — its rows remain copy/blend-safe.
+    remapped: false,
     fallback: false,
     valid: true,
     error: null,
@@ -68,6 +74,7 @@ export function createPresentationPublisher(world, state, options = {}) {
     result.start = start;
     result.end = end;
     result.rebuilt = false;
+    result.remapped = false;
     result.fallback = false;
     result.valid = true;
     result.error = null;
@@ -116,6 +123,9 @@ export function createPresentationPublisher(world, state, options = {}) {
       // present. Rows absent from the collect retire, new ids allocate, and
       // retained rows pay only the changed-row dirty marks. A prefix sample
       // suppresses the retire sweep — partial by construction.
+      // A diff-apply is NOT a remap — slot identities survive, so the pose
+      // epoch holds and the pack's copy/interp paths keep working across the
+      // suspension window.
       if (typeof world.updateFromEntities === 'function') {
         world.updateFromEntities(sample, null, collectPrefix
           ? {
@@ -125,6 +135,7 @@ export function createPresentationPublisher(world, state, options = {}) {
           : undefined);
       } else {
         world.rebuildFromEntities(sample);
+        result.remapped = true;
       }
       lastFallbackLifecycleGeneration = lifecycleGeneration;
       diagnostics.fallbackRebuilds++;
@@ -189,6 +200,7 @@ export function createPresentationPublisher(world, state, options = {}) {
         world.rebuildFromEntities(aliveEntities(state));
         initialized = true;
         result.rebuilt = true;
+        result.remapped = true;
         result.fallback = true;
         diagnostics.fallbackRebuilds++;
       } else {
@@ -218,6 +230,7 @@ export function createPresentationPublisher(world, state, options = {}) {
       diagnostics.rebuildGeneration = rebuildGeneration;
       diagnostics.fullRebuilds++;
       result.rebuilt = true;
+      result.remapped = true;
       initialized = true;
     }
 

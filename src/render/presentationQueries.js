@@ -126,6 +126,11 @@ export function createPresentationQueries(world) {
   }
 
   function exactVisible(slot, bounds, origin, playerId) {
+    // Doomed rows (suppressed mid-collect destroys, feed-skip tombstones) fail
+    // before every bypass — player/FORCE_RENDER/NEVER_CULL included — so the
+    // slot evicts into hiddenSlots and gets a real mesh hide. The flag lives
+    // separate from world.visible (the query's own admission bookkeeping).
+    if (world.doomed && world.doomed[slot] === 1) return false;
     if (world.alive[slot] !== 1 || !world.meshRefs[slot]) return false;
     if (world.entityIds[slot] === playerId) return true;
     const flags = world.flags[slot];

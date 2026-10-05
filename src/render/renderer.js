@@ -1936,6 +1936,13 @@ function drainDespawnDisposeQueue(owner, budgetMs = DESPAWN_DISPOSE_BUDGET_MS) {
   if (!queue || owner._despawnDisposeHead >= queue.length) return 0;
   const now = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
     ? performance.now() : Date.now());
+  // Backlog-aware escalation: push rate is O(1) per corpse while per-frame
+  // drain cost stays bounded, so under a sustained despawn storm the queue
+  // (and the GL memory it retains) grows linearly. Double the per-frame budget
+  // while the backlog is deep — a 2ms→4ms escalator caps retention stretch
+  // without minting an unbounded drain.
+  const backlog = queue.length - owner._despawnDisposeHead;
+  if (backlog > 32) budgetMs *= 2;
   // A spent paced window skips this drain entirely — the corpses keep one more
   // frame rather than stacking a fresh slice on a frame that's already over.
   // The aging cap mirrors the other paced lanes' so a permanently-busy stretch
@@ -1978,8 +1985,20 @@ function drainDespawnDisposeQueue(owner, budgetMs = DESPAWN_DISPOSE_BUDGET_MS) {
     // remaining walk against a new corpse — re-mint on identity mismatch.
     if (iter && m && iter._corpse !== m) iter = owner._despawnDisposeIter = null;
     if (!iter && m) {
-      iter = owner._despawnDisposeIter = disposeObjectSteps(m);
-      iter._corpse = m;
+      try {
+        iter = owner._despawnDisposeIter = disposeObjectSteps(m);
+        iter._corpse = m;
+      } catch (error) {
+        // A torn-dispose corpse is the accepted failure mode of every paced
+        // lane — log bounded, advance, don't take the frame's whole residency
+        // service (release flush, rebuild bridges, reconcile) down with it.
+        console.info('[render] despawn dispose iterator mint failed', error);
+        owner._despawnDisposeIter = null;
+        owner._despawnDisposeHead += 1;
+        drained += 1;
+        if (drained >= limit || now() > deadline) break;
+        continue;
+      }
     }
     if (!iter) {
       owner._despawnDisposeHead += 1;
@@ -1987,7 +2006,14 @@ function drainDespawnDisposeQueue(owner, budgetMs = DESPAWN_DISPOSE_BUDGET_MS) {
       if (drained >= limit || now() > deadline) break;
       continue;
     }
-    if (iter.next().done) {
+    let iterDone = false;
+    try {
+      iterDone = iter.next().done === true;
+    } catch (error) {
+      console.info('[render] despawn dispose iterator step failed', error);
+      iterDone = true;
+    }
+    if (iterDone) {
       owner._despawnDisposeIter = null;
       owner._despawnDisposeHead += 1;
       drained += 1;
@@ -10641,7 +10667,7 @@ export const render = {
         const flagBudget = { remaining: SHADOW_DEPTH_PASS_NODE_CAP };
         for (const root of liveSubjects) {
           try {
-            const collected = collectUnstagedShadowCastersFlag([root], census, flagBudget);
+            const collected = collectUnstagedShadowCastersFlag([root], census, flagBudget, this.cam && this.cam.obj);
             const lodLevel = (root.userData && root.userData.lod && root.userData.lod.level) || 'lod0';
             if (collected === UNSTAGED_COLLECT_OVER_COVER) {
               // The flag walk outran its shared node budget mid-root — a partial
@@ -13512,6 +13538,9 @@ export const render = {
               restoreObjectHome,
               lightingScene: scene,
               stagingName: 'SF_SurvivalPostSettleShadowDepth',
+              // This sweep exists to feed the probe's named-staged/key diff
+              // surface — keep its diagnostic sets collecting.
+              collectDiagnostics: true,
             }, yieldToBrowser);
             depthSweepSubjects = sweepResult && sweepResult.subjects || 0;
             if (sweepResult && sweepResult.skipped === true) depthSweepOutcome = 'skipped';
@@ -22254,7 +22283,11 @@ export const render = {
    */
   _advancePosePackEpoch(publication) {
     const sectorId = String((this.state && this.state.world && this.state.world.currentSectorId) || '');
-    if (publication && publication.rebuilt === true) {
+    // Only a real slot remap (world.clear/full rebuild) teleports every row —
+    // a diff-apply fallback during a suspended stepped rebuild preserves
+    // id-keyed slots, so it must not bump the epoch (each bump would kill the
+    // pack's copy path AND previous→latest interpolation for the whole window).
+    if (publication && publication.remapped === true) {
       this._posePackEpoch = (this._posePackEpoch | 0) + 1;
     } else if (this._posePackSectorId !== sectorId) {
       this._posePackEpoch = (this._posePackEpoch | 0) + 1;
@@ -24837,7 +24870,7 @@ export const render = {
           : (this._depthCollectNodesLeft | 0),
       };
       const found = collectUnstagedShadowCastersFlag(
-        [syncScope], this._shadowCensusForFrame(), nodeBudget);
+        [syncScope], this._shadowCensusForFrame(), nodeBudget, this.cam && this.cam.obj);
       if (parkedScale <= 0) this._depthCollectNodesLeft = nodeBudget.remaining;
       if (found === UNSTAGED_COLLECT_OVER_COVER) {
         // The walk outran the shared node budget mid-traverse — a partial set
@@ -25167,7 +25200,7 @@ export const render = {
                 && cache.epoch === armSigEpoch) {
               const still = [];
               for (const mesh of cache.meshes) {
-                if (!casterDepthMarkCurrent(mesh, lightSig)) still.push(mesh);
+                if (!casterDepthMarkCurrent(mesh, lightSig, camera)) still.push(mesh);
               }
               cache.meshes = still;
               if (still.length > 0) unstagedByRoot.set(sliceRoots[collected], still);
@@ -25302,7 +25335,7 @@ export const render = {
                 for (const [deferRoot, deferMeshes] of unstagedByRoot) {
                   let allUnmarked = deferMeshes.length > 0;
                   for (const mesh of deferMeshes) {
-                    if (!legSet.has(mesh) || casterDepthMarkCurrent(mesh, lightSig)) {
+                    if (!legSet.has(mesh) || casterDepthMarkCurrent(mesh, lightSig, camera)) {
                       allUnmarked = false;
                       break;
                     }
@@ -25357,7 +25390,7 @@ export const render = {
         for (const [root, meshes] of unstagedByRoot) {
           let set = null;
           for (const mesh of meshes) {
-            if (casterDepthMarkCurrent(mesh, lightSig)) continue;
+            if (casterDepthMarkCurrent(mesh, lightSig, camera)) continue;
             (set || (set = [])).push(mesh);
           }
           if (set) (leftoverByRoot || (leftoverByRoot = new Map())).set(root, set);
@@ -25517,7 +25550,7 @@ export const render = {
       for (let i = 0; i < children.length; i += 1) {
         const child = children[i];
         if (!child || child.parent !== scene) continue;
-        const collected = collectUnstagedShadowCastersFlag([child], census, toggleBudget);
+        const collected = collectUnstagedShadowCastersFlag([child], census, toggleBudget, this.cam && this.cam.obj);
         if (collected === UNSTAGED_COLLECT_OVER_COVER) {
           // The walk outran the click budget mid-root — a partial set can't be
           // trusted for per-mesh withhold. Queue this root and every unvisited

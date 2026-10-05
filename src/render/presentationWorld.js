@@ -180,6 +180,20 @@ export function createPresentationWorld(options = {}) {
     typeCodes: new Uint16Array(0),
     flags: new Uint8Array(0),
     dirtyMasks: new Uint8Array(0),
+    // Doomed rows (suppressed mid-collect destroys, feed-skip tombstones) fail
+    // exactVisible before every bypass, so the slot leaves the visible set and
+    // lands in hiddenSlots → a real mesh hide + dirty consume — instead of
+    // drawing at its last pose for the whole suspension window while its
+    // unconsumed VISIBILITY mark defeats both retain paths. `world.visible` is
+    // deliberately NOT this bit: it is the query's own admission bookkeeping.
+    doomed: new Uint8Array(0),
+    // Pack-owned dirty bit: only writers that can alter a snapshot's packed
+    // bytes (pose scalars, flags/typeCodes, fresh alloc) set it; the fence pack
+    // consults it instead of the sync-owned PRESENTATION_DIRTY mask so
+    // never-visited slots (allocated ALL for life) and byte-identical
+    // BINDING/VISIBILITY/VISUAL marks stop paying the full scalar write per
+    // presented frame.
+    packDirty: new Uint8Array(0),
     radii: new Float64Array(0),
     prevX: new Float64Array(0),
     prevY: new Float64Array(0),
@@ -236,6 +250,8 @@ export function createPresentationWorld(options = {}) {
     world.typeCodes = growTyped(world.typeCodes, Uint16Array, capacity);
     world.flags = growTyped(world.flags, Uint8Array, capacity);
     world.dirtyMasks = growTyped(world.dirtyMasks, Uint8Array, capacity);
+    world.doomed = growTyped(world.doomed, Uint8Array, capacity);
+    world.packDirty = growTyped(world.packDirty, Uint8Array, capacity);
     dirtyPositions = growTyped(dirtyPositions, Int32Array, capacity, INVALID_INDEX);
     world.radii = growTyped(world.radii, Float64Array, capacity);
     world.prevX = growTyped(world.prevX, Float64Array, capacity);
@@ -390,6 +406,12 @@ export function createPresentationWorld(options = {}) {
       || world.bank[slot] !== nextBank || world.pitch[slot] !== nextPitch
       || world.prevRot[slot] !== nextPrevRot || world.prevBank[slot] !== nextPrevBank
       || world.prevPitch[slot] !== nextPrevPitch;
+    // The prev* columns are unpacked — a prev-only rebase produces a
+    // byte-identical packed row, so it must not claim the fence pack's dirty
+    // bit.
+    const packedChanged = world.x[slot] !== nextX || world.y[slot] !== nextY
+      || world.z[slot] !== nextZ || world.rot[slot] !== nextRot
+      || world.bank[slot] !== nextBank || world.pitch[slot] !== nextPitch;
     // When the skip path is on, identical pose scalars skip re-assigns (and
     // refreshVisibleEntity may have already returned). Toggle off restores the
     // prior always-write behavior for A/B microbench.
@@ -415,6 +437,7 @@ export function createPresentationWorld(options = {}) {
     world.rot[slot] = nextRot;
     world.bank[slot] = nextBank;
     world.pitch[slot] = nextPitch;
+    if (packedChanged) markPackedDirty(slot);
     if (gridChanged && world.alive[slot]) insertIntoGrid(slot);
     return true;
   }
@@ -482,6 +505,9 @@ export function createPresentationWorld(options = {}) {
   function refreshMetadata(slot, entity, visualRadius = null) {
     if (!entity || typeof entity !== 'object') return false;
     let changed = false;
+    // Only flags/typeCodes feed the packed row — radius and entityRef churn is
+    // byte-identical for the fence pack.
+    let packedChanged = false;
     world.entityRefs[slot] = entity;
     const nextType = typeCode(entity.type);
     if (world.typeCodes[slot] !== nextType) {
@@ -490,12 +516,14 @@ export function createPresentationWorld(options = {}) {
       }
       world.typeCodes[slot] = nextType;
       changed = true;
+      packedChanged = true;
     }
     const nextFlags = presentationFlags(entity);
     if (world.flags[slot] !== nextFlags) {
       world.flags[slot] = nextFlags;
       setSpecialMembership(slot, isSpecial(nextFlags));
       changed = true;
+      packedChanged = true;
     }
     const candidateRadius = Number.isFinite(visualRadius)
       ? visualRadius
@@ -512,8 +540,13 @@ export function createPresentationWorld(options = {}) {
       }
       changed = true;
     }
+    if (packedChanged) markPackedDirty(slot);
     if (changed) markDirtyBits(slot, PRESENTATION_DIRTY.VISUAL);
     return changed;
+  }
+
+  function markPackedDirty(slot) {
+    if (world.packDirty) world.packDirty[slot] = 1;
   }
 
   function ensureDirtySlotsCapacity(needed) {
@@ -595,6 +628,8 @@ export function createPresentationWorld(options = {}) {
     world.entityIds[slot] = entityId;
     world.typeCodes[slot] = typeCode(record && record.entityType || entity && entity.type);
     world.flags[slot] = PRESENTATION_FLAGS.NONE;
+    world.doomed[slot] = 0;
+    markPackedDirty(slot);
     writeDirtyMask(slot, PRESENTATION_DIRTY.ALL);
     world.radii[slot] = 0;
     world.entityRefs[slot] = entity;
@@ -667,6 +702,8 @@ export function createPresentationWorld(options = {}) {
     if (world.meshRefs[slot]) boundCount = Math.max(0, boundCount - 1);
     world.alive[slot] = 0;
     world.visible[slot] = 0;
+    world.doomed[slot] = 0;
+    world.packDirty[slot] = 0;
     writeDirtyMask(slot, PRESENTATION_DIRTY.NONE);
     world.entityRefs[slot] = null;
     world.meshRefs[slot] = null;
@@ -747,6 +784,7 @@ export function createPresentationWorld(options = {}) {
       || mesh && world.meshRefs[slot] !== mesh) return false;
     world.meshRefs[slot] = null;
     world.visible[slot] = 0;
+    world.doomed[slot] = 0;
     markDirtyBits(slot, PRESENTATION_DIRTY.BINDING | PRESENTATION_DIRTY.VISIBILITY);
     boundCount = Math.max(0, boundCount - 1);
     diagnostics.bound = boundCount;
@@ -856,16 +894,25 @@ export function createPresentationWorld(options = {}) {
     const seq = updateSeq;
     const lastSeenSeq = world.lastSeenSeq;
     let retainedHits = 0;
+    let skippedIds = null;
     for (const entity of entities) {
       if (!entity || entity.alive === false) continue;
+      const entityId = sourceEntityId(entity);
+      if (entityId === 0) continue;
       // The push-time eligibility predicates aren't spawn-static — _noMesh
       // tombstones post-push after repeated build failures — so the apply
       // recheck mirrors the journal/push halves or a dead-eligible row keeps
       // minting rows on every prefix/completed feed until the next collect.
-      if (entity._noMesh === true) continue;
-      if (entity.type === 'projectile' && projectileSkipsVisualFactoryMesh(entity)) continue;
-      const entityId = sourceEntityId(entity);
-      if (entityId === 0) continue;
+      // A skipped entity that still owns a row draws its last pose through
+      // the suspension window (the dense retire sweep is suppressed for
+      // partial feeds) — doom it through the same channel as hiddenIds.
+      if (entity._noMesh === true
+          || (entity.type === 'projectile' && projectileSkipsVisualFactoryMesh(entity))) {
+        if (retireSuppressed && byId.get(entityId) !== undefined) {
+          (skippedIds || (skippedIds = [])).push(entityId);
+        }
+        continue;
+      }
       const generation = typeof generationForEntity === 'function'
         ? generationForEntity(entity)
         : 0;
@@ -877,10 +924,16 @@ export function createPresentationWorld(options = {}) {
       if (slot === undefined || world.alive[slot] !== 1) {
         allocateEntity(entity, generation);
         slot = byId.get(entityId);
-        if (slot !== undefined) lastSeenSeq[slot] = seq;
+        if (slot !== undefined) {
+          lastSeenSeq[slot] = seq;
+          world.doomed[slot] = 0;
+        }
         continue;
       }
       lastSeenSeq[slot] = seq;
+      // A respawn pushed by this feed clears its doom atomically — the row
+      // re-enters the visible set through the ordinary path, zero frames hidden.
+      world.doomed[slot] = 0;
       retainedHits += 1;
       const previousVisual = world.visualRevisions[slot];
       refreshVisibleEntity(slot, entity);
@@ -893,17 +946,25 @@ export function createPresentationWorld(options = {}) {
         markDirtyBits(slot, PRESENTATION_DIRTY.VISUAL);
       }
     }
-    // Suppressed mid-collect destroys name ids this partial sample never
-    // pushed — their stale rows would keep drawing until the publish retire.
-    // Hide them for the window; a respawned id arriving in a feed refreshes
-    // its row through the normal path, so the hide never mints.
-    if (retireSuppressed && options.hiddenIds) {
-      for (const hiddenId of options.hiddenIds) {
-        const slot = byId.get(hiddenId);
-        if (slot !== undefined && world.alive[slot] === 1 && lastSeenSeq[slot] !== seq
-            && world.visible[slot] !== 0) {
-          world.visible[slot] = 0;
-          markDirtyBits(slot, PRESENTATION_DIRTY.VISIBILITY);
+    // Suppressed mid-collect destroys and feed-skip tombstones name ids this
+    // partial sample never pushed — their stale rows would keep drawing until
+    // the publish retire. Doom them for the window: the doomed flag fails
+    // exactVisible before every bypass, so the slot evicts into hiddenSlots →
+    // a real applyEntityMeshVisibility(mesh, false) → the hidden loop's
+    // clearDirty consumes the VISIBILITY mark and both retain paths restore.
+    // A respawned id arriving in a feed clears the doom at its stamp above, so
+    // a doom never mints for a row this feed pushed.
+    if (retireSuppressed && (options.hiddenIds || skippedIds)) {
+      for (const hiddenIds of [options.hiddenIds, skippedIds]) {
+        if (!hiddenIds) continue;
+        for (const hiddenId of hiddenIds) {
+          const slot = byId.get(hiddenId);
+          if (slot !== undefined && world.alive[slot] === 1 && lastSeenSeq[slot] !== seq
+              && world.doomed[slot] !== 1) {
+            world.doomed[slot] = 1;
+            world.visible[slot] = 0;
+            markDirtyBits(slot, PRESENTATION_DIRTY.VISIBILITY);
+          }
         }
       }
     }
