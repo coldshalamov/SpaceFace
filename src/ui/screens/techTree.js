@@ -629,9 +629,11 @@ export const techTreeScreen = {
     if (!n) return;
     cue('confirm');
     // ships handles ui:unlockTech (charges credits/RP, sets researchedNodes, emits tech:researched).
+    // Research P07 residual: that owner is synchronous and toasts the one terminal line itself —
+    // "Researched X" on success, the blocker-naming error on refusal — so this screen adds no
+    // toast of its own. An optimistic "Researching…" here landed AFTER the owner's line on both
+    // outcomes: on a refusal the player read the real error plus a false promise of work.
     this._ctx.bus.emit('ui:unlockTech', { nodeId: n.id });
-    this._ctx.bus.emit('toast', { text: `Researching ${n.name}…`, kind: 'info', ttl: 3000 });
-    // optimistic-free: refresh on next event-driven cycle; refresh now in case ships is synchronous
     this.refresh(this._ctx);
   },
 
