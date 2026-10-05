@@ -978,7 +978,12 @@ test('§13 nothing in src/ imports this kernel', () => {
       if (!/\.(m?js)$/.test(entry)) continue;
       if (full.endsWith('siteThermalModel.js')) continue;
       const text = readFileSync(full, 'utf8');
-      if (text.includes('siteThermalModel')) offenders.push(full);
+      // A real edge, not a mention: comments and generated localization provenance strings
+      // (en-US.generated.js keys carry source paths) may name the module without importing it.
+      if (/import\s*\(?\s*[^'";]*['"][^'"]*siteThermalModel[^'"]*['"]/.test(text)
+        || /require\(\s*['"][^'"]*siteThermalModel[^'"]*['"]\s*\)/.test(text)) {
+        offenders.push(full);
+      }
     }
   };
   walk(srcRoot);
