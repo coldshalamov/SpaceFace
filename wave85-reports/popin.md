@@ -1,0 +1,77 @@
+# Wave 85 audit — lane popin-admission
+
+- Audited: `devin/1791064509-perf-w60` @ `2162d361e` (PR #220; waves 1-69 merged at `9431f548f`).
+- Method: read-only source audit. No code changes, no PRs, no app run. Golden-hash / zero-degradation constraints respected in every fix sketch.
+- `saturated: false` — two H-impact defect classes found (journal-rebuild livelock; whole-ship exact-target touch inside a presented frame), plus several bounded residuals.
+
+## Findings (ranked)
+
+### F1 — Journal rebuild retries are unbounded: sustained writes starve presentation indefinitely
+- Evidence: `src/core/presentationRunner.js:758-764` (on `'invalidated'`, `steppedJournalRebuild=null` and the job re-mints on the next present — no attempt bound), `src/core/presentationJournal.js:247-250,381-384,568-571` (every write while `rebuildRequired && rebuildInProgress` flags `rebuildInvalidatedDuringSteps`; at publish end the attempt returns `'invalidated'` and re-requests).
+- Mechanism: `rebuildInProgress` is true while `rebuildFromSteps` is suspended between runner calls — for a world with >512 journaled rows (`JOURNAL_REBUILD_SLICE_ROWS`, runner:721) the publish phase spans multiple presented frames. Any journal write in that window — including suppressed transform/visual writes for entities already in the collected set — invalidates the whole attempt. In a live sector the sim emits journal writes every tick, so each attempt's failure probability approaches 1 per suspended frame; `rebuildRequired` never clears → `populateJournalFrame` keeps `journalValid=false` → presentation runs off the last acknowledged journal and new spawns/pop-ins freeze exactly when the sector is busiest. `journalRebuildAttemptCount` counts but nothing bounds.
+- Fix sketch: bound the invalidation loop — e.g. after N consecutive `'invalidated'` results, escalate once to the sync `rebuildFrom` (one bounded frame cost vs. indefinite stall); and/or narrow the flag to writes whose entity is absent from the collected snapshot (transform/visual writes for collected rows are re-derivable at next write and need not invalidate). Keep `rebuildRequired` semantics otherwise — no behavior change for clean rebuilds.
+- Effort: M. Magic-frame impact: H. Risk: M (touches rebuild admission policy; sync-escalation only changes when, not what, gets committed).
+
+### F2 — Ship commit publishes a whole-ship exact-target touch contiguously inside a presented frame
+- Evidence: `src/render/partsLibrary.js:9272-9300` — `commitAuthoredBoundary`'s `publish()` runs `options.touchAuthoredExactTarget(authored.root)` (exact-target compile/key-resolve/upload over the entire composed ship subtree) plus `disposeDetachedObject(fallbackRoot)` (whole procedural-tree dispose) in one synchronous leg of the admission continuation; on the non-deferred path (live/urgent upgrades, `commitAuthoredBoundary` called at :3281/:4127/:8576 without `deferBoundaryPublication`) this lands wherever the microtask drains — inside presented frames.
+- Mechanism: the pre-W84 contiguous-commit pattern persists in the publish tail; composition itself is paced (`buildComposedShipAsync` at :10352+ yields on `COMPOSE_FRAME_MS*`/`pacedFrameSpend`), but the mounted publish leg is not sliced and does not debit the paced ledger.
+- Fix sketch: route the touch + dispose through the same yield/orphan-check spine W84 added to `attachPackagedBody` (visualFactory:4154-4263), or run `touchAuthoredExactTarget` as a stepped traverse that debits `pacedFrameSpend` per slice. Behavior-preserving: same work, spread across frames.
+- Effort: M. Magic-frame impact: H (largest single remaining commit leg; whole-ship subtree). Risk: M.
+
+### F3 — `_ensureKeyLightShadows` writes `castShadow` outside the epoch gate
+- Evidence: `src/render/renderer.js:25219-25222` writes `key.castShadow = false` unconditionally when `!_shadowSettingOn`, and the shadows setting handler calls it *before* `_syncShadowMapEnabled` (`:15907-15912`). On a shadows:true→false flip the real castShadow transition lands in the ungated write; `_syncShadowMapEnabled` then observes `castShadow===false` already and never bumps (`:25135-25138`).
+- Mechanism: `castShadow` is a `lightCensusSignature` term (`shadowDepthAdmission.js:369-395`); a suspended `compileShadowDepthPipelinesSteps` census can't observe the flip via `shadowCensusEpoch` → the attempt commits a census torn across the flip → marks mint under a sig the live set never had → withheld at next collect (self-healing churn, bounded).
+- Fix sketch: in `_ensureKeyLightShadows`, gate the write like `_syncShadowMapEnabled` (`if (key.castShadow === true) { key.castShadow = false; noteShadowCensusLightMutation(); }`), or reorder the handler so `_syncShadowMapEnabled` owns the flip first.
+- Effort: S. Magic-frame impact: L-M (requires a settings flip mid-census; bounded churn). Risk: trivial.
+
+### F4 — Collect-phase suppressed writes are unflagged; the newcomer sweep has a behind-cursor escape
+- Evidence: `presentationJournal.js:247-250` suppresses writes while `rebuildRequired` but only flags invalidation `if (rebuildInProgress)` — which is false during the multi-present collect (`rebuildInProgress` set at :549, inside `rebuildFromSteps`). Recovery rests entirely on the tail sweep `presentationSources.js:137-160`, which scans each live array once. A row minted after the snapshot (:122/:127) and swap-moved behind the scan cursor (spawn mid-collect + a destroy swap-pop), or appended behind the sweep's own cursor (it yields per 64), is never committed and never flagged.
+- Mechanism: the missed entity's spawn is dropped permanently; it self-heals only when that entity next writes (`recordCoalescible` :393-397 → `transform-without-spawn` rebuild). Actors recover on their next move tick; inert rows (dressing/static props that never write again) stay invisible until an unrelated rebuild trigger.
+- Fix sketch: journal-side — arm the suspension flag for the whole job (runner calls a journal method when minting `steppedJournalRebuild`), or flag suppressed writes unconditionally while `rebuildRequired`; alternatively extend the sweep to a loop-until-clean pass. Pair with F1 so extra invalidations don't feed the livelock.
+- Effort: S-M. Magic-frame impact: M (pop-in latency for the escape class). Risk: M.
+- Verified consistent (no defect): transient rows minted+destroyed inside one window are unobservable post-fact and consistent; rows collected alive but dead before publish are re-filtered at both `rebuildFromSteps` passes (`:526`, `:556`) — no zombie spawn; writes during the publish phase are flagged and fully re-derived by the retry's fresh collect.
+
+### F5 — Place / scenario-prop / cargo commit tails still run contiguous; scenario path has no yields or stale checks
+- Evidence: `commitAuthoredPlaceBoundary` (`partsLibrary.js:4215-4264`): `freezeStaticChildMatrices` + `freezeStaticTransformRoot` + `publish()` touch + `disposeDetachedPlaceFallback` contiguous. `attachPackagedScenarioProp` (`visualOverrides.js:1074-1083`): `instantiatePackagedPrimitives` + `fitPackagedGroup` + `batchPackagedPropOpaqueMeshes` + both freezes contiguous with **no yields and no mid-leg orphan/stale checks** (pre-W84 pattern; parent re-checked only at :1066, :1110, :1120). `commitAuthoredCargoCapsuleBoundary` (`partsLibrary.js:3326-3380` + inline `buildAuthoredCargoCapsuleRoot` at :3200): same shape, smallest subtree.
+- Fix sketch: apply the W84 yield+orphan-check spine to the scenario-prop continuation and, where subtree size justifies it, to the place commit; cargo likely fine as-is.
+- Effort: S-M. Magic-frame impact: M (place/scenario props are medium subtrees; frequent mounts during sector play). Risk: L-M.
+- Ranked subtree sizes: ship (F2) ≫ place > scenario-packaged > cargo capsule > packaged-hulk legs (F6).
+
+### F6 — W84 packaged-commit resume legs don't debit `pacedFrameSpend`
+- Evidence: `visualFactory.js:4154-4204` — each `await yieldToBrowser()` resumes a contiguous leg (`deadenPackagedHulk`, `fitPackagedGroup`, `freezeStaticChildMatrices`) whose cost is never reported via `notePacedFrameSpend`; other paced slicers can't see it (ledger blindness — bounded legs, not a brick).
+- Fix sketch: wrap each leg with slice timing + `notePacedFrameSpend(ms)` like `buildComposedShipAsync` does (`partsLibrary.js:10360-10378`).
+- Effort: S. Magic-frame impact: L. Risk: trivial.
+
+### F7 — Packaged-commit late orphan exits leak the graft
+- Evidence: `visualFactory.js:4235-4239` (post-compile) and `:4244-4248` (post-`publicationWait`) release residency but never call `disposeDetachedPackagedGroup` — unlike the earlier exits at :4155/:4193/:4199/:4205 and the stale-run path :4256 which do dispose. The detached packaged group (geometry/material instances + `renderPackageInstance`) is never disposed on these two exits.
+- Fix sketch: add `disposeDetachedPackagedGroup(packaged)` to both exits (same as sibling paths).
+- Effort: S. Magic-frame impact: L (resource leak, not a frame defect). Risk: trivial.
+
+### F8 — First-draw diagnostics: counts-then-fail ordering loses or skews attribution
+- Evidence: `_finishOpeningFirstDrawDiagnostics` writes `openingFirstVisibleGpuCounts` at `renderer.js:24054` *before* the validation block (`:24064-24140`), and `finally` clears `_openingFirstDrawDiagnosticsDeferred` at `:24142`. `_openingFirstDrawIdentityIter`/`_openingFirstDrawIdentityResult` are never cleared after the drain (`:23533-23540`, `:23878-23896`).
+- Mechanism, both orderings: (a) exception before :24054 → deferred cleared, counts unset → next frame re-arms → done-iterator `next()` returns `{done:true, value:undefined}` → `identityResult` wiped → falls back to sync `captureOpeningAdmissionIdentity` (`:23886`) whose census is minted *post-first-submit* → `lateAdmissions` names late admits as expected → `firstVisibleAdmissionDelta` under-attributes (a real first-draw brick can validate clean). (b) exception inside :24064-24140 → counts already persisted → gate `!openingFirstVisibleGpuCounts` permanently fails → `openingSubmissionValidation`/`openingSubmissionFirstDrawSubmittedAt` never written → silent permanent diagnostic gap.
+- Fix sketch: clear `_openingFirstDrawIdentityIter`/`Result` when the drain completes; write counts and validation atomically (or re-arm on throw).
+- Effort: S. Magic-frame impact: L (diagnostic-only — nothing consumes these fields outside renderer.js). Risk: trivial.
+
+### F9 — Remaining synchronous whole-list drains reachable inside presented frames (hunt e, ranked by worst-case rows)
+1. `_syncWorldPresentationTableMeshes` full walk — `renderer.js:22832` (`field.rocks`, up to thousands) and `:22852` (`dressing.rows`), called per presented frame at `:22902`. Gated by staleness, and the dirty-PoseIds journal takes the incremental path — but an `originSeq` rebase or a table without the journal forces the full contiguous walk (per-row `toLocal` + mesh pose write + `updateMatrix`). Impact M on rebase frames; Effort M (slice the walk or cover rebase with the dirty journal).
+2. Newcomer census prologue — `renderer.js:21443-21486`: `.slice()` of `entityList` + per-newcomer `isEntityRenderRelevant` predicate under the shell latch; once per drain. Impact M; Effort S (slice it like the collect twin).
+3. `rosterPoolWitnessFilePalettes` ship-file census — `renderer.js:18727` O(entityList) unsliced inside the warm/cook segment; trivial per-row. Impact L.
+4. Survival-cook key censuses — `renderer.js:12175` (`coveredKeys`) and `:14107` (`countRock`) O(entityList) unsliced inside an otherwise paced cook. Impact L.
+5. `censusTableBands` — `renderer.js:22613` O(entityList) but probe-gated (`hitchAttributionEnabled`/`renderWorkEnabled`). Impact L (dev-only).
+6. Bounded/early-exit scans — station-patrol `entities.find` (:4847) and player `.find` (:4046): worst-case O(entityList) but early-exit and event-gated. Impact L.
+- Adjacent (not entityList, but same class): sync whole-scene `captureOpeningAdmissionIdentity` fallback at `renderer.js:23886` (see F8); `_syncAuthoredInstanceSubmission` → `syncAuthoredInstancePools` every presented frame (`:23378`, `partsLibrary.js:389`) walks pools×chunks — bounded by pool count, not entityList.
+
+## W84 regression verification
+
+1. **Packaged-commit pacing — PASS.** Yield+re-check pairs at `visualFactory.js:4154/4192/4198/4204` all re-verify `root.parent` and release residency; mount tail :4261-4275 is yield-free; stale-run guard :4252-4258 intact; `packagedCommitOrphaned` marks `orphaned-before-swap` consistently. Residual: F6 (ledger) + F7 (leak).
+2. **Stepped journal rebuild — PASS.** `collectJournalPresentationEntitiesChunked` snapshots both arrays at mint and sweeps disturbed tail positions (presentationSources.js:116-163); runner commits only on `step.done===true && result===true` (runner:767-777); `populateJournalFrame`/`acknowledgePresentedJournal` gate on `!needsRebuild()` (:787-805); `rebuildRequired` clears only on success (journal:576). All write paths suppress under `rebuildRequired` (prepareRecord:247, publishSpawn:316, recordCoalescible:381, recordDestroy via prepareRecord). Gaps: F1 (unbounded retry) + F4 (collect-phase escape).
+3. **Opening identity census + deferred diagnostics — PASS.** Census is always pre-submit (refused frames advance the iter at :23540, proceed drains at :23881, persists :23896); `_openingFirstDrawDiagnosticsDeferred` latch blocks re-arm while pending; `afterBrowserPaint` is a one-shot rAF→timer→rAF chain (:25980-25991); Steps twin is identical pre-order DFS (:156-188) matching the sync traverse (:128-155). Caveat: F8.
+4. **Deferred identity release — PASS.** EntityId-keyed `releaseEntityMesh`×5 stays inline (:20303-20307); only the by-identity `releaseMeshSet` defers ≤1 frame via `_meshReleasePending` (:20256-20265 read-and-null, flushed per frame at :2065); stragglers self-heal via the mountMesh-mismatch rescan (shipMicroMotion:1727); `clearRecordMeshRefs` idempotent (:2264-2272).
+5. **`updateMatrixWorldSteps` — PASS.** Reversed-children stack DFS identical to the sync vendor semantics; overridden children delegated atomically (:555); sibling order irrelevant (parent `matrixWorld` already final); the `sfMatrixFrozen` skip is moot — the only call site passes `force:true` (:11212, :539).
+6. **`driveCompileShadowDepthPipelines` retry — PASS.** Epoch minted per attempt (:571-573), `censusStale()` checked at :569/:610/:648 including the last bail before the atomic mutate window; ≤4 attempts; exhaustion returns `{skipped:true,...}` not a throw (:586). No caller passes `lightSigOverride`, so the mark sig mints fresh inside each attempt — no stale-override path; the `driveDepthCompile` local driver re-mints both epoch and override on retry (:15333). Direct `compileShadowDepthPipelines` call sites (:15316, :24742) are guarded fallbacks, not hot paths.
+7. **`_syncShadowMapEnabled` epoch gating — PARTIAL FAIL → F3.** Inside the function itself the gating is correct (no-op castShadow writes never bump; real flips bump once, :25135-25138/:25169-25172), but `_ensureKeyLightShadows` lands the OFF-flip ungated first in the settings handler (:15907-15912 + :25219-25222), so a shadows:disable during a suspended depth census escapes the epoch. All other castShadow writes are per-mesh (not the key light) or pre-census init (:25203).
+
+## Streak
+
+- Wave 85 lane popin-admission: `saturated: false` — campaign streak remains **0/3** toward the stop criterion.
