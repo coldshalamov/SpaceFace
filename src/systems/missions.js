@@ -80,7 +80,7 @@ import {
 } from '../data/sandboxSetPieceFollowOns.js';
 import { settleContractClauses, unsatisfiedRequiredConditions } from '../data/contractClauses.js';
 import { stationMinRepFor } from '../data/dockDeny.js';
-import { stationBerthAdmits } from '../data/frontierRumors.js';
+import { stationBerthAdmits, stationBerthRefusal } from '../data/frontierRumors.js';
 import {
   SPLIT_MANIFEST_TYPE,
   QUIET_BERTH_TYPE,
@@ -298,6 +298,9 @@ for (const sec of SECTORS) {
       services: Array.isArray(st.services) ? st.services.slice() : [],
       repGated: st.repGated === true,
       minRep: stationMinRepFor(st),
+      // The unfiltered record for the berth oracles — dockDenyReason reads flags
+      // (quarantine, private, military, abandoned) this view deliberately does not copy.
+      record: st,
     });
   }
 }
@@ -323,6 +326,7 @@ function stationInfoFor(state, stationId) {
             services: Array.isArray(st.services) ? st.services.slice() : [],
             repGated: st.repGated === true,
             minRep: stationMinRepFor(st),
+            record: st,
           };
         }
       }
@@ -3965,12 +3969,16 @@ export const missions = {
     // can never settle — refuse at the board, in words.
     if (offer && offer.destStationId && DOCK_SETTLED_TYPES.has(offer.type)) {
       const destInfo = stationInfoFor(this.state, offer.destStationId);
-      if (destInfo && !stationBerthAdmits(destInfo, this._repOf(destInfo.factionId), this.state)) {
+      const refusal = destInfo
+        && stationBerthRefusal(destInfo.record || destInfo, this._repOf(destInfo.factionId), this.state);
+      if (refusal) {
         return {
           ok: false,
-          reason: Number.isFinite(destInfo.minRep)
-            ? `${destInfo.name} refuses this berth — ${factionShortName(destInfo.factionId)} standing ${signedRep(destInfo.minRep)} required`
-            : `${destInfo.name} does not take this freight yet`,
+          reason: refusal.kind === 'standing'
+            ? `${destInfo.name} refuses this berth — ${factionShortName(destInfo.factionId)} standing ${signedRep(refusal.floor)} required`
+            : refusal.kind === 'structural'
+              ? `${destInfo.name} refuses this berth — ${refusal.text}`
+              : `${destInfo.name} does not take this freight yet`,
         };
       }
     }

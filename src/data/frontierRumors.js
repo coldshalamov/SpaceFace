@@ -7,7 +7,7 @@
 import { playerBearingLetter } from '../core/playerCompass.js';
 import { hash32 } from '../core/rng.js';
 import { sectorLocalToGlobalForSector } from './sectorCoordinates.js';
-import { DOCK_DENY_REASONS, stationMinRepFor } from './dockDeny.js';
+import { DOCK_DENY_REASONS, dockDenyReason, stationMinRepFor } from './dockDeny.js';
 import { SECTORS } from './sectors.js';
 
 export const FRONTIER_RUMOR_DAY_SECONDS = 600;
@@ -111,6 +111,28 @@ export function stationBerthAdmits(st, rep, state) {
     && st.private !== true && st.public !== false
     && !(st.id === TETHYS_BLACK_MARKET_RUN.stationId && !hasTethysBlackMarketAccess(state))
     && !(rep < stationMinRepFor(st));
+}
+
+/**
+ * WHY a berth refuses, structured for the surfaces that must answer in words (the accept
+ * gate's toast, the dossier's blocker): `standing` carries the resolved floor so the caller
+ * can name the number; `structural` carries the authored denial voice `dockDenyReason`
+ * already speaks at the dock — a quarantined hold says quarantine, a military berth says
+ * uniforms, not "does not take this freight"; `closed` is the record-clean refusal the
+ * reason oracle cannot see (the Den's entrance-run door). Returns null when the berth
+ * admits — the same predicate, so a caller cannot show a refusal the world would not issue.
+ *
+ * @param {object} st    station record or station-info record
+ * @param {number} rep   pilot standing with the station's resolved faction
+ * @param {object} state live game state (may be null; treats access as unearned)
+ * @returns {{kind:'standing', floor:number}|{kind:'structural', reason:string, text:string}|{kind:'closed'}|null}
+ */
+export function stationBerthRefusal(st, rep, state) {
+  if (stationBerthAdmits(st, rep, state)) return null;
+  const deny = dockDenyReason(st, { rep });
+  const floor = stationMinRepFor(st);
+  if (deny && deny.reason === 'hostile_rep' && rep < floor) return { kind: 'standing', floor };
+  return deny ? { kind: 'structural', reason: deny.reason, text: deny.text } : { kind: 'closed' };
 }
 
 function normalizeEntranceRun(value) {

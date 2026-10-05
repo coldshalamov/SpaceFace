@@ -11,8 +11,7 @@ import {
   STORY_BRANCH_INTRO_TAG,
 } from '../data/missions.js';
 import { SECTORS } from '../data/sectors.js';
-import { stationBerthAdmits } from '../data/frontierRumors.js';
-import { stationMinRepFor } from '../data/dockDeny.js';
+import { stationBerthRefusal } from '../data/frontierRumors.js';
 import { forecastTransitFor, sectorSignalFor } from '../systems/sectorSim.js';
 import {
   smugglingPreflightCopy,
@@ -174,13 +173,15 @@ export function missionDestinationBerth(m, state) {
   if (!m || !m.destStationId || !DOCK_SETTLED_TYPES.has(m.type)) return null;
   const st = STATION_BY_ID.get(m.destStationId);
   if (!st) return null;
-  if (stationBerthAdmits(st, stateRepFor(state, st.factionId), state)) return null;
+  const refusal = stationBerthRefusal(st, stateRepFor(state, st.factionId), state);
+  if (!refusal) return null;
   const name = st.name || m.destStationId;
-  const floor = stationMinRepFor(st);
   return {
-    blocker: Number.isFinite(floor)
-      ? `${name} refuses this berth — ${factionShortName(st.factionId)} standing ${signedRep(floor)} required`
-      : `${name} does not take this freight yet`,
+    blocker: refusal.kind === 'standing'
+      ? `${name} refuses this berth — ${factionShortName(st.factionId)} standing ${signedRep(refusal.floor)} required`
+      : refusal.kind === 'structural'
+        ? `${name} refuses this berth — ${refusal.text}`
+        : `${name} does not take this freight yet`,
     chip: { kind: 'bad', text: 'destination berth closed' },
   };
 }

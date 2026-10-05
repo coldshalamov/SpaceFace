@@ -174,3 +174,30 @@ test('an authored offer to a refused berth is refused at the board, in words', (
   const bulk = rep0.missions._acceptPreflight({ ...offer('station_smuggler'), type: 'bulk_trade' });
   assert.equal(bulk.ok, false, 'a bulk trade sells at the named buyer — the berth is the door');
 });
+
+test('a structurally denied berth names its real refusal, not the freight line', () => {
+  // A quarantine is not "freight the station does not take yet" — it is a sealed hold.
+  // The refusal must speak the same reason the dock gate would (dockDenyReason's voice),
+  // read off the unfiltered record the runtime registry carries.
+  const { state, missions } = boot();
+  state.content = {
+    sectors: {
+      sector_quarantine_test: {
+        id: 'sector_quarantine_test',
+        stations: [{
+          id: 'station_sealed_hold', name: 'Sealed Hold', type: 'trade', factionId: 'faction_mts',
+          quarantine: true, services: ['missions'],
+        }],
+      },
+    },
+  };
+  const offer = {
+    id: 't_sealed', type: 'cargo_delivery', factionId: 'faction_scn', minRep: -149,
+    stationId: 'station_helios', destStationId: 'station_sealed_hold', params: {},
+  };
+  const refused = missions._acceptPreflight(offer);
+  assert.equal(refused.ok, false, 'a sealed hold cannot settle a delivery');
+  assert.match(refused.reason, /Sealed her up|sealed/i, 'the refusal names the quarantine, not generic freight');
+  assert.doesNotMatch(refused.reason, /does not take this freight yet/,
+    'a structural denial must not read as a standing door');
+});
