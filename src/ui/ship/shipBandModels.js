@@ -644,8 +644,10 @@ function agilityWhy({ shipDef, derived, dryDerived, bareDerived }) {
   const modulePenalty = moduleMass > 0
     ? percentDelta(turnMassForRatio(dryRatio), turnMassForRatio(bareRatio))
     : 0;
-  const agilityRaw = finite(derived && derived.flightModel && derived.flightModel.angularAccel, 0);
-  const hullShift = percentDelta(agilityRaw, AGILITY_MEDIAN);
+  // The bar's own number. The legacy flight-model angular acceleration is a different
+  // unit, and dividing it by this median called a median hull hundreds of percent fast.
+  const yawAccel = finite(derived && derived.propulsion && derived.propulsion.yawAccel, 0);
+  const hullShift = percentDelta(yawAccel, AGILITY_MEDIAN);
   const rows = [];
   if (cargoMass > 0) {
     rows.push({
@@ -664,7 +666,9 @@ function agilityWhy({ shipDef, derived, dryDerived, bareDerived }) {
   rows.push({
     key: 'hull',
     magnitude: Math.abs(hullShift),
-    why: `This frame turns ${signedPercent(hullShift)} ${hullShift >= 0 ? 'faster' : 'slower'} than the roster median.`,
+    why: Math.abs(hullShift) < 0.5
+      ? 'This frame turns with the middle of the roster.'
+      : `This frame turns ${signedPercent(hullShift)} ${hullShift >= 0 ? 'faster' : 'slower'} than the roster median.`,
   });
   // PQ-176.01: the manoeuvring bay owns turning, so when it is refitted it is the loudest reason
   // this hull turns the way it does — louder than the hull, the modules or the hold.
