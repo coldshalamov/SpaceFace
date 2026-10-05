@@ -330,7 +330,7 @@ import {
   collectFirstFlightEffectRoots,
   collectFirstFlightLayerDrawables,
   collectInstancePoolCompileRoots,
-  collectInstancePoolCompileRootsAndSubjects,
+  collectInstancePoolCompileRootsAndSubjectsSteps,
   collectLateAdmittedCompileRoots,
   collectUncompiledSceneDrawables,
 } from './latePipelineAdmission.js';
@@ -424,6 +424,7 @@ import {
   captureOpeningAdmissionIdentity,
   describeOpeningAdmissionIdentityDelta,
   materialHasCompiledProgram,
+  materialList,
   touchSubjectOnExactTarget,
   uniqueAdmissionUnits,
 } from './openingGpuAdmission.js';
@@ -9843,7 +9844,15 @@ export const render = {
             // re-derivation, the same contract the settings toggle runs.
             invalidateShadowCasterPolicy(root);
             if (root.userData) root.userData[STAGE_SELF_DIRTY_KEY] = shadowCasterPolicyDirtySeq(root);
-            this._queueShadowDepthStage(root, lodLevel, shadowPolicyEntityOf(root, this.state));
+            // Same parked-record carry the checked-sync feeders run — an
+            // over-cover queue of a previously parked root otherwise re-pays
+            // the undersized collect+abort arm the park already earned.
+            const parkedEntry = this._parkedDepthStageRoots
+              && this._parkedDepthStageRoots.get(root);
+            if (parkedEntry) this._parkedDepthStageRoots.delete(root);
+            this._queueShadowDepthStage(root, lodLevel, shadowPolicyEntityOf(root, this.state),
+              parkedEntry && parkedEntry.depthNodeScale
+                ? { depthNodeScale: parkedEntry.depthNodeScale } : null);
           } catch (error) {
             console.warn('[render] flight shadow-depth admission failed', error);
           }
@@ -12705,7 +12714,12 @@ export const render = {
           // Loading shell: several touches share a frame until ~8 ms of touch work, then yield
           // (laneB-fixA: 89 touches drew for 1261 ms and spent ~1.3 s more yielding a whole frame after
           // every one). The jump shell keeps one touch per frame.
-          const touchYield = yieldTouch && state.mode === 'loading' ? createSlicedYield(yieldTouch) : yieldTouch;
+          const touchYield = yieldTouch && state.mode === 'loading'
+            ? createSlicedYield(yieldTouch, {
+              shouldYield: () => pacedFrameSpend() >= PACED_FRAME_BUDGET_MS,
+              debit: notePacedFrameSpend,
+            })
+            : yieldTouch;
           const touchStarted = cookNow();
           // Names of subjects that still had no compiled program at touch time — they are the
           // programs the first presented frame will link synchronously. Counts alone never said
@@ -12775,7 +12789,12 @@ export const render = {
         : yieldToBrowser;
       // Loading shell: texture and geometry uploads share a frame until ~8 ms of upload work
       // (laneB-fixA: 123 opening textures, one whole frame each). The jump shell keeps its cadence.
-      const yieldBuffers = state.mode === 'loading' ? createSlicedYield(yieldBufferFrame) : yieldBufferFrame;
+      const yieldBuffers = state.mode === 'loading'
+        ? createSlicedYield(yieldBufferFrame, {
+          shouldYield: () => pacedFrameSpend() >= PACED_FRAME_BUDGET_MS,
+          debit: notePacedFrameSpend,
+        })
+        : yieldBufferFrame;
       const firstFlightBufferRoots = [];
       const seenBufferRoots = new Set();
       const addFirstFlightBufferRoot = (root) => {
@@ -13063,8 +13082,30 @@ export const render = {
         // (GLTFKit_InstancePool_*) — not just the rock pools: authored chunks created during
         // the cook's compose passes carry the same cold instanced program into flight.
         // One scene walk collects pool roots AND the survival-compile subject list
-        // — the two passes used to traverse ~21k nodes back to back.
-        const poolCensus = collectInstancePoolCompileRootsAndSubjects(scene);
+        // — the two passes used to traverse ~21k nodes back to back. The census,
+        // ancestor-chain bucketing and unit dedupe all pace under the cook's own
+        // union clock now: >4 ms since the last slice or a spent paced-ledger
+        // frame debits and yields, so the stretch no longer runs as one atomic
+        // block ahead of the sliced admit.
+        const cookStretchStarted = cookNow();
+        let cookStretchSliceAt = cookStretchStarted;
+        let cookStretchDebitAt = cookStretchStarted;
+        const paceCookStretch = async () => {
+          const tick = cookNow();
+          if (tick - cookStretchSliceAt <= 4 && pacedFrameSpend() < PACED_FRAME_BUDGET_MS) return;
+          notePacedFrameSpend(tick - cookStretchDebitAt);
+          await yieldBufferFrame();
+          cookStretchSliceAt = cookNow();
+          cookStretchDebitAt = cookStretchSliceAt;
+        };
+        const poolCensusIter = collectInstancePoolCompileRootsAndSubjectsSteps(scene, 256);
+        let poolCensus;
+        for (;;) {
+          if (cookStale()) return cookSuperseded;
+          const censusStep = poolCensusIter.next();
+          if (censusStep.done) { poolCensus = censusStep.value; break; }
+          await paceCookStretch();
+        }
         const poolRoots = poolCensus.roots;
         // Held-build owner roots whose leaf programs never compiled (see the stamp loop above),
         // plus the leaf-variant blanket: its meshes share the exact cached geometry/material a
@@ -13101,6 +13142,7 @@ export const render = {
         };
         const perRootSubjects = new Map();
         for (const subject of poolCensus.subjects) {
+          await paceCookStretch();
           const holder = enclosingCompileRoot(subject);
           if (!holder) continue;
           let bucket = perRootSubjects.get(holder);
@@ -13117,17 +13159,39 @@ export const render = {
         const sceneCompileSubjects = (survivalCook && !cookOverBudget())
           ? poolCensus.subjects
           : [];
-        // A same-sector recook re-collects subjects whose programs already linked — drop those
-        // materials at unit construction so their subjects owe only the geometry-buffer touch.
+        // A same-sector recook re-collects subjects whose programs already linked. The
+        // readiness probe no longer runs at unit construction — it re-checks inside
+        // compileOne at issue time, so a material that linked in between still skips
+        // the compile while one that lost its program (properties purge/dispose)
+        // still issues instead of linking inside the first live draw.
         const materialAlreadyLinked = (material) => {
           try {
             return materialHasCompiledProgram(material, (entry) => renderer.properties.get(entry));
           } catch (_) { return false; }
         };
-        const cookUnits = uniqueAdmissionUnits(
-          cookCompileSubjects.concat(sceneCompileSubjects),
-          { skipReadyMaterial: materialAlreadyLinked },
-        );
+        // Dedupe paces on the same union clock in subject-run chunks — the shared
+        // seen sets carry cross-chunk state, so the merged result is one monolithic
+        // call's output.
+        const unitSubjects = cookCompileSubjects.concat(sceneCompileSubjects);
+        const unitSeenMaterials = new Set();
+        const unitSeenGeometries = new Set();
+        const programSubjects = [];
+        const geometrySubjects = [];
+        for (let i = 0; i < unitSubjects.length; i += 1024) {
+          const part = uniqueAdmissionUnits(unitSubjects.slice(i, i + 1024), {
+            seenMaterials: unitSeenMaterials,
+            seenGeometries: unitSeenGeometries,
+          });
+          if (part.programSubjects.length > 0) programSubjects.push(...part.programSubjects);
+          if (part.geometrySubjects.length > 0) geometrySubjects.push(...part.geometrySubjects);
+          await paceCookStretch();
+        }
+        const cookUnits = {
+          programSubjects,
+          geometrySubjects,
+          materialCount: unitSeenMaterials.size,
+          geometryCount: unitSeenGeometries.size,
+        };
         const rockPoolsStarted = cookNow();
         if (cookCompileRoots.length > 0 || sceneCompileSubjects.length > 0) {
           const whileRevealed = (subject, run) => {
@@ -13154,7 +13218,11 @@ export const render = {
           // per-unit cadence, exactly as cook.touch and cook.buffers do above.
           const rockPoolYieldBase = typeof options.yieldToMain === 'function' ? options.yieldToMain : yieldToBrowser;
           const rockPoolYield = state.mode === 'loading'
-            ? createSlicedYield(rockPoolYieldBase, { sliceMs: 16 })
+            ? createSlicedYield(rockPoolYieldBase, {
+              sliceMs: 16,
+              shouldYield: () => pacedFrameSpend() >= PACED_FRAME_BUDGET_MS,
+              debit: notePacedFrameSpend,
+            })
             : rockPoolYieldBase;
           try {
             rockPools = await admitOpeningUnitsAcrossSlices({
@@ -13169,7 +13237,18 @@ export const render = {
               // (drain itself is bounded by the readiness batch's own timeout).
               deadlineMs: cookDeadlineMs - (cookNow() - cookStarted),
               beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
-              compileOne: (subject) => whileRevealed(subject, () => compileSubjectColorAndDepth(subject, route)),
+              compileOne: (subject) => {
+                // Fresh readiness re-probe at issue time (the units carry every
+                // material through now): a subject whose materials all still have
+                // linked programs skips the issue entirely, and one that lost a
+                // program since the census compiles here behind the shell.
+                for (const material of materialList(subject)) {
+                  if (!materialAlreadyLinked(material)) {
+                    return whileRevealed(subject, () => compileSubjectColorAndDepth(subject, route));
+                  }
+                }
+                return Promise.resolve({ skipped: true, reason: 'programs-ready' });
+              },
               touchOne: (subject) => {
                 if (!touchCanDraw(subject)) {
                   touchesSkippedHidden += 1;
@@ -16389,10 +16468,18 @@ export const render = {
       // the same rows instead of replacing them, so a still-live earlier warm keeps its
       // claim and a failed begin unmarks only what it stamped on top.
       const covered = this._swarmWarmCoveredEnemyIds || (this._swarmWarmCoveredEnemyIds = new Map());
-      for (const enemyId of launchEligibility) covered.set(enemyId, (covered.get(enemyId) || 0) + 1);
+      // Mark post-resolution like the deferred lane: only ids that produced a
+      // ship spec earn a row — an eligible id with no resolvable spec would
+      // mint a permanent claim with no kick and no settle to release it.
+      const markedIds = new Set();
+      for (const spec of shipSpecs) {
+        const enemyId = spec && spec.data && spec.data.lootTableId;
+        if (enemyId != null && launchEligibility.has(enemyId)) markedIds.add(enemyId);
+      }
+      for (const enemyId of markedIds) covered.set(enemyId, (covered.get(enemyId) || 0) + 1);
       // Keep the stamped list on the warm so a throwing begin can unmark exactly
       // the rows it counted — the deferred lane skips whatever the ledger names.
-      warm.coveredEnemyIds = launchEligibility;
+      warm.coveredEnemyIds = markedIds;
       // The marks landed on THIS Map instance — late async settles decrement it,
       // not whatever map a later run mints (the deferred lane carries the same
       // captured-map contract).
@@ -16440,7 +16527,10 @@ export const render = {
     // leases stay pinned live for the run. The ledger ref-counts coverage rows
     // (id -> owner count), so only drop a row this warm held the last claim on.
     const unmarkBeginCoverage = () => {
-      if (warm.coveredEnemyIds && this._swarmWarmCoveredEnemyIds) {
+      // The mints landed on THIS run's captured map — decrement it, never the
+      // live ledger a superseding run may have minted afresh.
+      const coveredNow = warm.coveredMap;
+      if (warm.coveredEnemyIds && coveredNow) {
         const failedMarks = warm.failedCoverageMarks;
         // coveredEnemyIds is a Set (swarmEligibleEnemyIds) — iterate it directly.
         for (const enemyId of warm.coveredEnemyIds) {
@@ -16448,9 +16538,9 @@ export const render = {
           // here keeps a co-claiming warm's row intact instead of decrementing
           // twice into its claim.
           if (failedMarks && failedMarks.has(enemyId)) continue;
-          const count = this._swarmWarmCoveredEnemyIds.get(enemyId) || 0;
-          if (count > 1) this._swarmWarmCoveredEnemyIds.set(enemyId, count - 1);
-          else this._swarmWarmCoveredEnemyIds.delete(enemyId);
+          const count = coveredNow.get(enemyId) || 0;
+          if (count > 1) coveredNow.set(enemyId, count - 1);
+          else coveredNow.delete(enemyId);
         }
       }
     };
@@ -16858,13 +16948,14 @@ export const render = {
         // begin take the whole-roster branch.
         this._discardEarlyCrucibleWarm();
       } else if (staged.swarmScoped === true
-          && Number.isInteger(staged.waveBase) && Number.isInteger(state.run.wave)
-          && staged.waveBase !== state.run.wave) {
-        // Same class, wave axis: a door-staged warm scoped to wave 1 adopted by a
-        // wave-N restore would mark only the wave-1 archetype — every newcomer
-        // unlocked since fields cold AND the deferred lane skips ledger-marked
-        // ids. Discard so the cook's own begin mints at the resumed wave (a
-        // wave-N→wave-1 direction only over-warms, but the same discard serves).
+          && !(Number.isInteger(staged.waveBase) && Number.isInteger(state.run.wave)
+            && staged.waveBase === state.run.wave)) {
+        // Same class, wave axis — now fail-closed: a swarm-scoped staged warm
+        // only serves the run whose wave it was minted for. A wave-N adopt of a
+        // wave-1 cohort leaves newcomers cold AND the deferred lane skips
+        // ledger-marked ids; a non-integer field (a restore racing
+        // scenePrepared, or a future mint path) discards the same way rather
+        // than adopting unverifiable coverage.
         this._discardEarlyCrucibleWarm();
       } else {
         this._earlyCrucibleWarmMenu = false;
@@ -16994,13 +17085,13 @@ export const render = {
     // A discarded warm's coverage claims die with it: decrement the rows its specs
     // stamped so a retried begin (or the deferred lane) can re-warm those archetypes
     // instead of skipping them for the rest of the run.
-    if (warm.coveredEnemyIds && this._swarmWarmCoveredEnemyIds instanceof Map) {
+    if (warm.coveredEnemyIds && warm.coveredMap instanceof Map) {
       const failedMarks = warm.failedCoverageMarks;
       for (const enemyId of warm.coveredEnemyIds) {
         if (failedMarks && failedMarks.has(enemyId)) continue;
-        const count = this._swarmWarmCoveredEnemyIds.get(enemyId) || 0;
-        if (count > 1) this._swarmWarmCoveredEnemyIds.set(enemyId, count - 1);
-        else this._swarmWarmCoveredEnemyIds.delete(enemyId);
+        const count = warm.coveredMap.get(enemyId) || 0;
+        if (count > 1) warm.coveredMap.set(enemyId, count - 1);
+        else warm.coveredMap.delete(enemyId);
       }
     }
     const root = warm.root;
@@ -17104,7 +17195,10 @@ export const render = {
     reKickResult.then((result) => {
       entry.result = result;
       const settled = result && typeof result === 'object' ? result.status : result;
-      releaseClaim(swarmWarmOutcomeClaims(settled));
+      // Coverage only survives while the warm lives — a re-kick settling
+      // 'completed' after the warm's discard would orphan covered=1 with no
+      // claim outstanding and pin the archetype's deferred warm forever.
+      releaseClaim(swarmWarmOutcomeClaims(settled) && warm.building === true);
     });
     if (Array.isArray(warm.pendingAttachments)) warm.pendingAttachments.push(reKickResult);
     return reKickResult;
@@ -17849,10 +17943,22 @@ export const render = {
                 kicked.then((value) => { pendingAttachmentResults.set(kicked, value); });
                 return kicked;
               };
-              warm.pendingAttachments.push(kickShip(0));
               const shipEnemyId = spec.data && spec.data.lootTableId;
-              pendingAttachmentEnemyIds.push(shipEnemyId);
-              pendingAttachmentRetries.push(makeDeferredWarmKickRetry(ship, shipEnemyId, kickShip));
+              // A synchronous dispatch throw must not escalate to the warm-level
+              // catch — it forfeits the cohort. Same per-spec containment the
+              // hulk lane runs: unmark this archetype and move on.
+              let kickedShip = null;
+              try {
+                kickedShip = kickShip(0);
+              } catch (error) {
+                console.warn('[render] deferred swarm warm ship kick failed', spec && spec.id, error);
+                unmarkEnemy(shipEnemyId);
+              }
+              if (kickedShip) {
+                warm.pendingAttachments.push(kickedShip);
+                pendingAttachmentEnemyIds.push(shipEnemyId);
+                pendingAttachmentRetries.push(makeDeferredWarmKickRetry(ship, shipEnemyId, kickShip));
+              }
             } else {
               // No upgrade hook on the built boundary → no kick dispatched → the
               // coverage mint would pin for the run with no settle to release it.
@@ -22200,10 +22306,19 @@ export const render = {
     let unstaged = null;
     if (collectGate && !overCovered) {
       this._depthCollectPassCount = (this._depthCollectPassCount | 0) + 1;
-      const nodeBudget = { remaining: this._depthCollectNodesLeft | 0 };
+      // A parked root's recheck earns the node budget its park already earned —
+      // the shared base budget guarantees over-cover on every scaled root,
+      // which re-queues and burns the abort cycle it just paid.
+      const parkedScale = parkedRecheck && parkedEntry && parkedEntry.depthNodeScale > 1
+        ? parkedEntry.depthNodeScale : 0;
+      const nodeBudget = {
+        remaining: parkedScale > 0
+          ? SHADOW_DEPTH_PASS_NODE_CAP * parkedScale
+          : (this._depthCollectNodesLeft | 0),
+      };
       const found = collectUnstagedShadowCastersFlag(
         [root], this._shadowCensusForFrame(), nodeBudget);
-      this._depthCollectNodesLeft = nodeBudget.remaining;
+      if (parkedScale <= 0) this._depthCollectNodesLeft = nodeBudget.remaining;
       if (found === UNSTAGED_COLLECT_OVER_COVER) {
         // The walk outran the shared node budget mid-traverse — a partial set
         // can't be trusted, so over-cover exactly like the root-cap overflow.
@@ -22253,6 +22368,15 @@ export const render = {
         }
         return false;
       }
+      // The cache was consumed (a park release stripped it) or never minted — a
+      // queued band-1 root's casters are by definition still unstaged, so it must
+      // never reach the live sync below. Withhold again; the arm re-derives.
+      syncOpts = { ...opts, allowCast: false };
+    } else if (queued) {
+      // Catch-all: a queued root with no withhold state still counts — queued
+      // alone means its depth signatures were never marked, so a live restore
+      // here would draw unlinked depth variants inside the presented refresh.
+      syncOpts = { ...opts, allowCast: false };
     }
     const receiverOut = { receiverDelta: 0 };
     const changed = syncShadowCasterPolicy(
@@ -22826,7 +22950,18 @@ export const render = {
           // drifted while shadows were OFF so its marks describe a dead light set.
           invalidateShadowCasterPolicy(child);
           child.userData[STAGE_SELF_DIRTY_KEY] = shadowCasterPolicyDirtySeq(child);
-          pending.set(child, { lodLevel, entity: shadowPolicyEntityOf(child, this.state) });
+          // Same parked-scale carry the checked-sync feeders run — a queued root
+          // whose park earned an oversized node-scale keeps it instead of
+          // re-paying the collect+abort arm.
+          const parkedEntry = this._parkedDepthStageRoots
+            && this._parkedDepthStageRoots.get(child);
+          if (parkedEntry) this._parkedDepthStageRoots.delete(child);
+          pending.set(child, {
+            ...(parkedEntry && parkedEntry.depthNodeScale
+              ? { depthNodeScale: parkedEntry.depthNodeScale } : {}),
+            lodLevel,
+            entity: shadowPolicyEntityOf(child, this.state),
+          });
         }
       }
       // Withhold like the promotion path — a queued caster that keeps castShadow=true
@@ -22862,7 +22997,22 @@ export const render = {
         // _shadowPolicyOptions reads for its own lodLevel.
         const lodLevel = (root.userData && root.userData.lod && root.userData.lod.level)
           || 'lod0';
-        pending.set(root, { lodLevel, entity: shadowPolicyEntityOf(root, this.state) });
+        // pending∧parked coexistence is the hole the checked-sync chain can't
+        // recover: a parked band-1 root queued here without deleting its park
+        // record makes parkedRelease strip the cache this loop just minted, and
+        // the chain then falls through to a live allowCast restore on still-
+        // unstaged meshes. Delete the park and merge any live pending entry so
+        // earned fields (depthNodeScale) survive the re-queue.
+        const parkedEntry = this._parkedDepthStageRoots
+          && this._parkedDepthStageRoots.get(root);
+        if (parkedEntry) this._parkedDepthStageRoots.delete(root);
+        pending.set(root, {
+          ...(parkedEntry && parkedEntry.depthNodeScale
+            ? { depthNodeScale: parkedEntry.depthNodeScale } : {}),
+          ...(pending.get(root) || {}),
+          lodLevel,
+          entity: shadowPolicyEntityOf(root, this.state),
+        });
       }
       if (pending.size > 0 && this._depthStageScheduled !== true) {
         this._depthStageScheduled = true;

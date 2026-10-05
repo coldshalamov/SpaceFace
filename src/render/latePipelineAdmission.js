@@ -209,3 +209,44 @@ export function collectInstancePoolCompileRootsAndSubjects(scene) {
   if (typeof scene.traverse === 'function') scene.traverse(visit);
   return { roots, subjects };
 }
+
+/** Chunked twin of collectInstancePoolCompileRootsAndSubjects: an iterative
+ * pre-order walk whose node order matches Object3D.traverse exactly (node, then
+ * children in order), yielding every `nodesPerSlice` visited nodes so the cook
+ * can drive the walk under its own slice clock instead of paying the whole
+ * ~21k-node traverse in one atomic block. Returns the same {roots, subjects}. */
+export function* collectInstancePoolCompileRootsAndSubjectsSteps(scene, nodesPerSlice = 256) {
+  const roots = [];
+  const subjects = [];
+  const seen = new Set();
+  if (!scene) return { roots, subjects };
+  const every = Math.max(1, Math.floor(Number(nodesPerSlice) || 1));
+  const stack = [scene];
+  let sinceYield = 0;
+  while (stack.length > 0) {
+    const object = stack.pop();
+    if (object && !seen.has(object)) {
+      seen.add(object);
+      if (object.userData && (
+        object.userData.spacefaceInstancePool === true
+        || object.userData.asteroidInstancePool === true
+      )) {
+        roots.push(object);
+      }
+      if (object.isMesh || object.isSkinnedMesh || object.isInstancedMesh
+        || object.isPoints || object.isLine || object.isSprite) {
+        subjects.push(object);
+      }
+    }
+    const children = object && object.children;
+    if (children) {
+      for (let i = children.length - 1; i >= 0; i -= 1) stack.push(children[i]);
+    }
+    sinceYield += 1;
+    if (sinceYield >= every) {
+      sinceYield = 0;
+      yield;
+    }
+  }
+  return { roots, subjects };
+}

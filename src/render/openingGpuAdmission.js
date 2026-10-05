@@ -59,7 +59,7 @@ function isDrawable(object) {
   ));
 }
 
-function materialList(object) {
+export function materialList(object) {
   return Array.isArray(object && object.material)
     ? object.material.filter(Boolean)
     : object && object.material ? [object.material] : [];
@@ -265,8 +265,11 @@ export function materialHasCompiledProgram(material, getProperties) {
 export function uniqueAdmissionUnits(subjects, options = {}) {
   const programSubjects = [];
   const geometrySubjects = [];
-  const seenMaterials = new Set();
-  const seenGeometries = new Set();
+  // Callers driving the unit construction in slices pass their own dedupe sets —
+  // the sets carry the cross-chunk seen state, so chunked accumulation produces
+  // the same dedupe as one monolithic call.
+  const seenMaterials = options.seenMaterials instanceof Set ? options.seenMaterials : new Set();
+  const seenGeometries = options.seenGeometries instanceof Set ? options.seenGeometries : new Set();
   const skipReady = typeof options.skipReadyMaterial === 'function'
     ? options.skipReadyMaterial
     : null;
