@@ -949,6 +949,27 @@
       "sceneRoot": true
     },
     {
+      "key": "lattice-warden",
+      "assetId": "sf.render.lattice-warden",
+      "runtimeAssetId": "SF_WHOLESHIP_LATTICE_WARDEN",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_lattice_warden",
+      "sourceUrl": "assets/ships/release/parts/wholeships/lattice_warden.glb",
+      "releaseSha256": "2b8925638f2375d1f0c107074637adbc289364ab8fc3648e2fc6a3400f36d832",
+      "releaseBytes": 878736,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
+      "outputDir": "assets/ships/release/render-packages/lattice-warden",
+      "metadataUrl": "assets/ships/release/render-packages/lattice-warden/render-package.json",
+      "sceneRoot": true
+    },
+    {
       "key": "helios-rock-a",
       "assetId": "sf.render.helios-rock-a",
       "runtimeAssetId": "SF_PLACE_HELIOS_ROCK_A",

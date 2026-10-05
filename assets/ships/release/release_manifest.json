@@ -4778,6 +4778,20 @@
       "ktx2Textures": 6,
       "meshoptBufferViews": 494,
       "contractNodeCount": 155
+    },
+    {
+      "id": "wholeship_lattice_warden",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/lattice_warden.glb",
+      "release": "assets/ships/release/parts/wholeships/lattice_warden.glb",
+      "sourceSha256": "6b22e4e80492bc670e2302bd1d7538cd06182a343e1fe1c95fd3f6e9c6a8c464",
+      "releaseSha256": "2b8925638f2375d1f0c107074637adbc289364ab8fc3648e2fc6a3400f36d832",
+      "sourceBytes": 2189876,
+      "releaseBytes": 878736,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 109,
+      "contractNodeCount": 41
     }
   ]
 }

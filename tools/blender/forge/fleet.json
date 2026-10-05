@@ -842,6 +842,14 @@
       "asset_id": "SF_WASP_FRAG_AFT",
       "part_id": "wasp_frag_aft",
       "note": "ANI-08 wasp rupture aft fragment: aft fuselage+nacelles+wings+tail sheared at x=1.2, torn collar/ribs/ember edge, residual torn flap + mast whip."
+    },
+    "lattice_warden": {
+      "layout": "npc",
+      "file": "lattice_warden",
+      "asset_id": "SF_WHOLESHIP_LATTICE_WARDEN",
+      "part_id": "wholeship_lattice_warden",
+      "npc_root": "SF_M4_LATTICE_WARDEN_ROOT",
+      "note": "Lattice Warden (tools/blender/forge/ships/lattice_warden.py): cold surveyor capital hunter — slate spindle hull, tri-vane teal lattice projector claw at the bow, stake collar ring, three stern drives."
     }
   }
 }
