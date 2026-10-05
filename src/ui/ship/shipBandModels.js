@@ -428,6 +428,92 @@ function heldReversalSeconds(derived) {
   return ticks * BRAKE_SAMPLE_DT;
 }
 
+const COAST_CACHE = new WeakMap();
+const COAST_CAP_TICKS = 60 * 180;
+const COAST_CRAWL = 1;
+const COAST_STALL_DROP = 1e-4;
+
+/**
+ * Seconds a hands-off assisted ship keeps moving after fight speed.
+ * 1/linearDrag is the legacy flight model. The live assist eases you down,
+ * and a sail that never slows does not get a made-up time. A pulse plate
+ * that sticks in a crawl counts as still once the crawl stops falling.
+ */
+function liveCoastSeconds(derived) {
+  const key = derived && derived.propulsion;
+  if (key && typeof key === 'object') {
+    const hit = COAST_CACHE.get(key);
+    if (hit != null) return hit;
+  }
+  const seconds = heldCoastSeconds(derived);
+  if (key && typeof key === 'object') COAST_CACHE.set(key, seconds);
+  return seconds;
+}
+
+function heldCoastSeconds(derived) {
+  const self = finite(derived && derived.operationalMass, finite(derived && derived.mass, 0));
+  if (!(self > 0)) return 0;
+  const entity = { id: 'coast-predict', isPlayer: true, mass: self, data: { derived } };
+  const profile = resolvePropulsionProfile(entity, { playerId: 'coast-predict', seed: 4242 });
+  if (!profile) return 0;
+  const speed0 = finite(profile.combatSpeed, finite(profile.maxSpeed, 0));
+  if (!(speed0 > 0)) return 0;
+  const dead = finite(profile.assist && profile.assist.deadSpeed, 0.18);
+  let runtime = createPropulsionRuntime(profile);
+  const body = {
+    pos: { x: 0, z: 0 },
+    vel: { x: 0, z: 0 },
+    rot: 0,
+    angVel: 0,
+    mass: self,
+    inertia: Math.max(1, self),
+    radius: 14,
+  };
+  const advance = (speed, step) => {
+    let next = speed + (finite(step.force && step.force.x, 0) / self) * BRAKE_SAMPLE_DT;
+    if (step.impulse) next += finite(step.impulse.x, 0) / self;
+    return next < 0 ? 0 : next;
+  };
+  if (profile.family === 'torch') {
+    let speed = 0;
+    for (let i = 0; i < 60 * 4; i += 1) {
+      body.vel.x = Math.min(speed, speed0);
+      body.vel.z = 0;
+      const step = stepPropulsion({
+        dt: BRAKE_SAMPLE_DT,
+        body,
+        input: { throttle: 1, assistMode: 'assisted' },
+        profile,
+        runtime,
+      });
+      runtime = step.runtime;
+      speed = advance(speed, step);
+      const spool = step.telemetry && step.telemetry.spool;
+      if (spool >= 0.98) break;
+    }
+  }
+  let speed = speed0;
+  let ticks = 0;
+  while (ticks < COAST_CAP_TICKS) {
+    const prev = speed;
+    body.vel.x = speed;
+    body.vel.z = 0;
+    const step = stepPropulsion({
+      dt: BRAKE_SAMPLE_DT,
+      body,
+      input: { throttle: 0, assistMode: 'assisted' },
+      profile,
+      runtime,
+    });
+    runtime = step.runtime;
+    speed = advance(speed, step);
+    ticks += 1;
+    if (speed <= dead) return ticks * BRAKE_SAMPLE_DT;
+    if (speed <= COAST_CRAWL && speed > prev - COAST_STALL_DROP) return ticks * BRAKE_SAMPLE_DT;
+  }
+  return 0;
+}
+
 function agilityWhy({ shipDef, derived, dryDerived, bareDerived }) {
   const cargoMass = finite(derived && derived.cargoMass, 0);
   const moduleMass = Math.max(0, finite(derived && derived.dryMass, finite(shipDef && shipDef.mass, 0)) - finite(shipDef && shipDef.mass, 0));
@@ -492,18 +578,23 @@ function bayFor(derived) {
 
 function inertiaWhy(derived) {
   const mass = finite(derived && (derived.operationalMass != null ? derived.operationalMass : derived.mass), 0);
-  const linearDrag = Math.max(0.001, finite(derived && derived.flightModel && derived.flightModel.linearDrag, 0));
-  const settleSeconds = 1 / linearDrag;
+  const coast = liveCoastSeconds(derived);
+  const coastLine = coast > 0
+    ? `Let go and you are still moving for ${round1(coast)} s.`
+    : '';
   // PQ-176.00: over the hull's drive rating, mass is the law and the screen has to say so in
-  // tonnes and in what it costs, not as a hidden coefficient.
+  // tonnes and in what it costs, not as a hidden coefficient. The coast is the hands-off
+  // settle, not a cost of the overload: loading the Hitch does not change that time.
   const load = finite(derived && derived.massLoadFactor, 1);
   const design = finite(derived && derived.designMass, 0);
   if (load < 0.995 && design > 0) {
     const lost = Math.round((1 - load) * 100);
-    return `${formatMass(mass)} moving on a drive rated for ${formatMass(design)}. `
-      + `That overload costs you ${lost}% of your push, and ${round1(settleSeconds)}s to change your mind.`;
+    const head = `${formatMass(mass)} moving on a drive rated for ${formatMass(design)}. `
+      + `That overload costs you ${lost}% of your push.`;
+    return coastLine ? `${head} ${coastLine}` : head;
   }
-  return `${formatMass(mass)} moving. It takes ${round1(settleSeconds)}s to change your mind.`;
+  const head = `${formatMass(mass)} moving.`;
+  return coastLine ? `${head} ${coastLine}` : head;
 }
 
 function topSpeedWhy(profile, derived, dryDerived, shipDef) {
