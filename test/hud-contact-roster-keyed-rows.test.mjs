@@ -513,7 +513,12 @@ class HudElement {
     this.children.length = 0;
     children.forEach((child) => this.appendChild(child));
   }
-  append(...children) { children.forEach((child) => this.appendChild(child)); }
+  // Real append() stringifies non-node children into text nodes — the Speed Dial mixes
+  // (element, 'wu/s') and the bare shim used to die on the string.
+  append(...children) {
+    children.forEach((child) => this.appendChild(
+      typeof child === 'object' && child !== null ? child : new HudText(String(child))));
+  }
   prepend(child) { child.parentNode = this; this.children.unshift(child); return child; }
   removeChild(child) {
     const i = this.children.indexOf(child);
