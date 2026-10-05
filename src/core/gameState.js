@@ -130,6 +130,9 @@ function defaultPlayer() {
     insurance: { rate: 0.6, deductibleCr: 500, insuredModules: false, lastStationId: null },
     magnetRange: 250,
     miningBeam: { tierId: 'beam_mk1', range: 220, dps: 18, directToCargo: true },
+    // The beam's locked rock — written by mining.js _setLockTargetId on THIS record (never
+    // the player entity's .data); the classify latch reads it here (D173).
+    miningTargetId: null,
     stats: { lifetimeProfit: 0, tradesCount: 0, biggestSingleProfit: 0, smuggledValue: 0, kills: 0, missionsDone: 0, totalPassiveEarnedLifetime: 0, creditsEarned: 0 },
     // Contextual first-time hints (onboarding.js). Each flag starts false and flips to true once
     // the hint has been shown; persisted across saves so returning players aren't re-taught.
