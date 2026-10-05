@@ -276,10 +276,11 @@ export function uniqueAdmissionUnits(subjects, options = {}) {
     let addedProgram = false;
     for (const material of materialList(object)) {
       // Dedupe before the readiness probe: a material shared across subjects
-      // would pay the properties.get + currentProgram walk once per owner.
+      // would pay the properties.get + currentProgram walk once per owner, and
+      // the probe is a pure read so a shared ready material can join the set too.
       if (seenMaterials.has(material)) continue;
-      if (skipReady && skipReady(material)) continue;
       seenMaterials.add(material);
+      if (skipReady && skipReady(material)) continue;
       if (!addedProgram) {
         programSubjects.push(object);
         addedProgram = true;

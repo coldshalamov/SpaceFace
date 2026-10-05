@@ -13051,8 +13051,40 @@ export const render = {
         // geometry object, so widening the batch to every mounted mesh costs one compile+touch
         // per distinct family, not per mesh — the leaf's whole point is paying that here,
         // behind the shell, instead of inside the round.
+        // Bucket the fused census's subjects by their enclosing compile root — DFS order
+        // is preserved per bucket, so concatenating in cookCompileRoots order reproduces the
+        // flatMap(collectCompileSubjects) list without a second traversal of those subtrees.
+        // A root the scene walk never reached (a detached holder) falls back to a direct
+        // collect, which also supplies the drawable-less -> [root] shape verbatim.
+        const compileRootSet = new Set(cookCompileRoots.filter(Boolean));
+        const enclosingRootMemo = new Map();
+        const enclosingCompileRoot = (subject) => {
+          const chain = [];
+          let hit = null;
+          let node = subject;
+          while (node) {
+            if (compileRootSet.has(node)) { hit = node; break; }
+            if (enclosingRootMemo.has(node)) { hit = enclosingRootMemo.get(node); break; }
+            chain.push(node);
+            node = node.parent;
+          }
+          for (const entry of chain) enclosingRootMemo.set(entry, hit);
+          return hit;
+        };
+        const perRootSubjects = new Map();
+        for (const subject of poolCensus.subjects) {
+          const holder = enclosingCompileRoot(subject);
+          if (!holder) continue;
+          let bucket = perRootSubjects.get(holder);
+          if (!bucket) perRootSubjects.set(holder, (bucket = []));
+          bucket.push(subject);
+        }
         const cookCompileSubjects = cookCompileRoots.length > 0
-          ? cookCompileRoots.flatMap((root) => collectCompileSubjects(root))
+          ? cookCompileRoots.flatMap((root) => {
+            const bucket = perRootSubjects.get(root);
+            if (bucket === undefined) return collectCompileSubjects(root);
+            return bucket.length > 0 ? bucket : [root];
+          })
           : [];
         const sceneCompileSubjects = (survivalCook && !cookOverBudget())
           ? poolCensus.subjects
