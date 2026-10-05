@@ -49,11 +49,13 @@ test('Tethys remains a trade hub while declaring junction dispatch identity', ()
   // The generated mirror must carry every authored column — a dropped column reads as
   // "authored-only" (weight 0) while STATION_WORK still rolls the type. Race is the column
   // the generator once dropped: the junction board runs a lane-endpoint course at share 2.
-  const liveMix = offerMixForTier('contracts_hub', 0);
-  for (const typeId of [...POSITIONAL_OFFER_TYPES,
-    'tow_recovery', 'demolition', 'rescue_under_fire', 'race']) {
-    assert.equal(offerMixWeight(mix, typeId), offerMixWeight(liveMix, typeId),
-      `${typeId}: the mirror must match the table the picker reads`);
+  for (const profile of Object.keys(OFFER_MIX)) {
+    const liveMix = offerMixForTier(profile, 0);
+    for (const typeId of [...POSITIONAL_OFFER_TYPES,
+      'tow_recovery', 'demolition', 'rescue_under_fire', 'race']) {
+      assert.equal(offerMixWeight(OFFER_MIX[profile], typeId), offerMixWeight(liveMix, typeId),
+        `${profile}.${typeId}: the mirror must match the table the picker reads`);
+    }
   }
 });
 
