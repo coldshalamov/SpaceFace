@@ -20,6 +20,7 @@ import { TETHYS_BLACK_MARKET_DISCOVERY } from '../../data/frontierRumors.js';
 import { CANONICAL_PORTRAITS, PORTRAIT_ASSET_ROOT } from '../../data/portraits.js';
 import { hullPosterUrl } from '../hullPosters.js';
 import { explorationDiscoveryPlates, galaxyExplorationSummary } from '../../world/explorationJournal.js';
+import { lossesFor } from '../../systems/lossLedger.js';
 import { discoveryKnowledge } from '../sim/discoveryKnowledge.js';
 import { decorateEntityNode } from '../entityResolver.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
@@ -278,14 +279,48 @@ function countEncounteredGraffiti(story = {}) {
   return count;
 }
 
+function surveyedLossId(entry) {
+  const id = entry && typeof entry.id === 'string' ? entry.id : '';
+  return id.startsWith('survey:') ? id.slice('survey:'.length) : '';
+}
+
+/** The name the ledger filed for this hull. A coordinate is not a name. */
+function ledgerDisplayTitle(loss) {
+  if (!loss || typeof loss !== 'object') return '';
+  for (const value of [loss.victimCallsign, loss.victimName, loss.title]) {
+    if (typeof value !== 'string') continue;
+    const clean = value.replace(/\s+/g, ' ').trim();
+    if (clean) return clean;
+  }
+  return '';
+}
+
+function titleForSurveyedLoss(state, entry) {
+  const lossId = surveyedLossId(entry);
+  if (!lossId) return '';
+  const inSector = entry && entry.sectorId ? lossesFor(state, entry.sectorId) : [];
+  let loss = inSector.find((row) => row && row.lossId === lossId) || null;
+  if (!loss) {
+    const all = state && state.lossLedger && Array.isArray(state.lossLedger.entries)
+      ? state.lossLedger.entries : [];
+    loss = all.find((row) => row && row.lossId === lossId) || null;
+  }
+  return ledgerDisplayTitle(loss);
+}
+
 export function surveyedLossCodexLine(state) {
+  const titles = [];
   let count = 0;
   for (const entry of discoveryKnowledge(state).entries) {
-    if (entry && entry.tier === 'survey') count += 1;
+    if (!entry || entry.tier !== 'survey') continue;
+    count += 1;
+    const title = titleForSurveyedLoss(state, entry);
+    if (title) titles.push(title);
   }
   if (count <= 0) return '';
-  if (count === 1) return 'One loss identified';
-  return count + ' losses identified';
+  const named = titles.length ? ': ' + titles.join(', ') : '';
+  if (count === 1) return 'One loss identified' + named;
+  return count + ' losses identified' + named;
 }
 
 /** Discoveries survey sentence. Counts only — never a place. */
