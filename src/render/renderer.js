@@ -355,6 +355,7 @@ import {
   compileShadowDepthPipelinesSteps,
   disposeAdmissionShadowResources,
   lightCensusSignature,
+  lightCensusSignatureSteps,
   noteShadowCensusLightMutation,
   shadowCensusEpoch,
   isUnstagedCollectOverCover,
@@ -13165,6 +13166,19 @@ export const render = {
                 const restoreSubject = revealSubjectForCompile(subject);
                 try { return run(); } finally { restoreSubject(); }
               };
+              // Same grouped-touch primitive the cook/rescan admits use: drawable
+              // members share one render instead of each unit paying its own
+              // whole-scene hide/render/restore. touchCanDraw mirrors the cook's —
+              // a subject parked under an invisible ancestor draws nothing, so its
+              // touch was pure traverse burn (its programs still issue via
+              // compileOne).
+              const sealTouchCanDraw = (subject) => {
+                for (let node = subject && subject.parent; node; node = node.parent) {
+                  if (node.visible === false) return false;
+                  if (node === scene) return true;
+                }
+                return false;
+              };
               const sealSubjects = [];
               if (sealCensus.subjects) {
                 const poolRootSet = new Set(latePoolRoots.filter(Boolean));
@@ -13184,6 +13198,7 @@ export const render = {
                 };
                 const perRootSubjects = new Map();
                 for (const subject of sealCensus.subjects) {
+                  if (cookStale()) return cookSuperseded;
                   await sealPace();
                   const holder = enclosingPoolRoot(subject);
                   if (!holder) continue;
@@ -13231,6 +13246,7 @@ export const render = {
                 });
                 if (part.programSubjects.length > 0) sealProgramSubjects.push(...part.programSubjects);
                 if (part.geometrySubjects.length > 0) sealGeometrySubjects.push(...part.geometrySubjects);
+                if (cookStale()) return cookSuperseded;
                 await sealPace();
               }
               const sealUnits = {
@@ -13249,6 +13265,24 @@ export const render = {
                 compileOne: (subject) => whileRevealed(subject,
                   () => compileSubjectColorAndDepth(subject, sealRoute)),
                 touchOne: (subject) => whileRevealed(subject, () => touchExactTargetSubject(subject)),
+                // Loading shell only: grouped touches share one render across a
+                // ≤24-subject batch (replicates the cook admit's touchMany —
+                // this site was never armed, so every seal unit paid its own
+                // whole-scene hide/render/restore).
+                touchMany: state.mode === 'loading'
+                  ? (subjects) => {
+                    const drawable = subjects.filter(sealTouchCanDraw);
+                    if (drawable.length === 0) return { skipped: true, reason: 'hidden-ancestor' };
+                    const restores = [];
+                    try {
+                      for (const subject of drawable) restores.push(revealSubjectForCompile(subject));
+                      return touchExactTargetSubjects(drawable);
+                    } finally {
+                      for (let i = restores.length - 1; i >= 0; i--) restores[i]();
+                    }
+                  }
+                  : null,
+                touchBatchSize: 24,
                 yieldToMain: yieldToBrowser,
               });
               if (cookStale()) return cookSuperseded;
@@ -14732,6 +14766,7 @@ export const render = {
           });
           if (part.programSubjects.length > 0) programSubjects.push(...part.programSubjects);
           if (part.geometrySubjects.length > 0) geometrySubjects.push(...part.geometrySubjects);
+          if (cookStale()) return cookSuperseded;
           await paceCookStretch();
         }
         const cookUnits = {
@@ -21162,11 +21197,6 @@ export const render = {
     }
   },
 
-  _rebindPresentationMeshes() {
-    const it = this._rebindPresentationMeshesSteps();
-    for (;;) { const step = it.next(); if (step.done) return step.value; }
-  },
-
   // Chunked twin — a journal rebuild pays one O(live _meshes) rebind inside the
   // presented leg. Rows re-attach identity-only (_bindPresentationMesh is the
   // same call the sync path makes); yields every 256 rows so the presented
@@ -21176,21 +21206,43 @@ export const render = {
     this._presentationQueries?.reset?.();
     let visited = 0;
     let bound = 0;
-    for (const [id, mesh] of this._meshes) {
-      if ((++visited % 256) === 0) yield;
-      const entity = resolveWorldPresentationEntity(this.state, id);
-      if (entity && entity.alive !== false) {
-        this._bindPresentationMesh(entity, mesh);
-        bound += 1;
+    // On-screen rows first: a clear-rebuild unbinds every row, and a suspended
+    // walk parks the tail — an unvisited mesh keeps its last visibility bit, so
+    // a visible row parks drawing a frozen pose while an invisible one parks
+    // harmlessly. Rebind the visible pass inside the first slices.
+    for (const visiblePass of [true, false]) {
+      for (const [id, mesh] of this._meshes) {
+        if ((mesh && mesh.visible === true) !== visiblePass) continue;
+        if ((++visited % 256) === 0) yield;
+        const entity = resolveWorldPresentationEntity(this.state, id);
+        // Same eligibility predicates the push loop applies — a parked walk
+        // must never bind a row the feed's skip verdict rejected (a doomed
+        // _noMesh/projectile-skipped row whose mesh survived would be silently
+        // re-admitted, and bindMesh clears the doom).
+        if (entity && entity.alive !== false && entity._noMesh !== true
+          && !(entity.type === 'projectile' && projectileSkipsVisualFactoryMesh(entity))) {
+          this._bindPresentationMesh(entity, mesh);
+          bound += 1;
+        }
       }
     }
     return bound;
   },
 
   _bindPublishedPresentationMeshes(publication) {
+    const it = this._bindPublishedPresentationMeshesSteps(publication);
+    for (;;) { const step = it.next(); if (step.done) return step.value; }
+  },
+
+  // Chunked twin — a spawn burst's spawned-range bind pays O(spawnedCount) inside
+  // the presented tail; yields every 256 rows so the parked drain paces it like
+  // the rebind walk.
+  *_bindPublishedPresentationMeshesSteps(publication) {
     if (!publication || publication.spawnedCount <= 0) return;
     const world = this._presentationWorld;
+    let visited = 0;
     for (let index = 0; index < publication.spawnedCount; index++) {
+      if ((++visited % 256) === 0) yield;
       const slot = publication.spawnedSlots[index];
       if (world.alive[slot] !== 1) continue;
       const entityId = world.entityIds[slot];
@@ -21198,6 +21250,11 @@ export const render = {
       const mesh = this._meshes.get(entityId);
       if (entity && entity.alive !== false && mesh) this._bindPresentationMesh(entity, mesh);
     }
+  },
+
+  *_chainPresentationBindIters(first, second) {
+    yield* first;
+    return yield* second;
   },
 
   clearAllMeshes(keepPlayer) {
@@ -23620,7 +23677,7 @@ export const render = {
       ? this._presentationPublisher.consume()
       : null;
     if (publication && publication.rebuilt) yield* this._rebindPresentationMeshesSteps();
-    else if (publication) this._bindPublishedPresentationMeshes(publication);
+    else if (publication) yield* this._bindPublishedPresentationMeshesSteps(publication);
 
     if (this._snapshotFence && this._presentationWorld) {
       const packed = packPresentationWorldToFence(
@@ -23671,7 +23728,9 @@ export const render = {
       // enabled/castShadow are pinned while the setting is on (stable program keys); the
       // resolved receiver tally is the remaining depth-pass/culling-camera work gate.
       const shadowMapActive = this._shadowSettingOn === true
-        && this._shadowReceiverCount > 0;
+        && (this._shadowReceiverCount > 0
+          || this._shadowReceiverTally?.dirty === true
+          || this._shadowReceiversDirty === true);
       this._shadowRefreshScheduled = scheduleRealtimeShadowRefresh(
         this.renderer, this._keyLight, shadowMapActive);
       this._activeShadowCamera = shadowMapActive
@@ -23965,15 +24024,24 @@ export const render = {
     // the range after renderUpdate succeeds, so the dense mirror must not miss that same range merely
     // because the GPU is temporarily unavailable.
     const publication = this._presentationPublisher.consume(presentationFrame);
-    if (publication.rebuilt) {
-      // A rebuild supersedes any parked rebind — close it and mint fresh.
+    if (publication.rebuilt && publication.appliedDelta !== 0) {
+      // A rebuild supersedes any parked rebind — close it and mint fresh (the
+      // whole-_meshes walk covers whatever the abandoned tail left unbound).
+      // A zero-delta rebuilt feed (rows refreshed, none alloc'd or retired)
+      // skips the re-mint: the parked walk's tail stays valid and re-minting
+      // every ticking present would starve it at the head forever.
       const priorRebind = this._presentationRebindIter;
       if (priorRebind && typeof priorRebind.return === 'function') {
         try { priorRebind.return(); } catch (_) { /* fresh walk supersedes */ }
       }
       this._presentationRebindIter = this._rebindPresentationMeshesSteps();
-    } else {
-      this._bindPublishedPresentationMeshes(publication);
+    } else if (publication && publication.spawnedCount > 0) {
+      // A parked walk still owns unbound tail rows the new publication does not
+      // cover — chain it ahead of the spawned range instead of dropping them.
+      const spawnedIter = this._bindPublishedPresentationMeshesSteps(publication);
+      this._presentationRebindIter = this._presentationRebindIter
+        ? this._chainPresentationBindIters(this._presentationRebindIter, spawnedIter)
+        : spawnedIter;
     }
     if (this._presentationRebindIter) {
       // Bounded drain: the sweep usually completes in one leg; a rebuild over a
@@ -24013,7 +24081,7 @@ export const render = {
     const snapshotNeedsPack = this._snapshotFence && this._presentationWorld
       && (this._snapshotSourceTick !== completedTick
         || this._snapshotFence.packCount === 0
-        || publication.rebuilt === true
+        || (publication.rebuilt === true && publication.appliedDelta !== 0)
         || publication.applied > 0);
     if (snapshotNeedsPack) {
       const packed = packPresentationWorldToFence(
@@ -24137,7 +24205,9 @@ export const render = {
       const refreshWasPending = this._shadowRefreshScheduled === true;
       // Same pinned-keys contract as the opening path: the tally, not the map flags, gates work.
       const shadowMapActive = this._shadowSettingOn === true
-        && this._shadowReceiverCount > 0;
+        && (this._shadowReceiverCount > 0
+          || this._shadowReceiverTally?.dirty === true
+          || this._shadowReceiversDirty === true);
       const dirty = shadowMapActive && (
         this._shadowMapDirty !== false
         || shadowFollowChanged
@@ -25252,16 +25322,26 @@ export const render = {
       // The keep verdict is the same denial the mint stamped — preserve the
       // release trigger for the next castable flip. Re-claimed under
       // allowCast === false, so the clause sees a genuine flip next eval.
-      parkedEntry.denied = true;
-      parkedEntry.deniedAllowCast = false;
+      // Only a mint-time denial earns this — an over-cap park re-keyed here
+      // would otherwise acquire a release trigger it never earned.
+      if (parkedEntry.parkKind === 'denied' || parkedEntry.denied === true) {
+        parkedEntry.denied = true;
+        parkedEntry.deniedAllowCast = false;
+      }
       parkedRelease = parkedReleaseOnDrift = false;
     }
     if (parkedRelease) {
       parkedMap.delete(root);
       if (this._withheldDepthCasters) this._withheldDepthCasters.delete(root);
-      if (root.userData) delete root.userData.sfDepthUndrawableCycles;
+      // sfDepthUndrawableCycles survives the release — it is the denial memory
+      // the recheck escalation escalates on re-park. Only a re-collect that
+      // proves the root drawable/empty (below) clears it.
     }
-    const queued = !!(this._pendingDepthStageRoots && this._pendingDepthStageRoots.has(root)) || parked;
+    // A released root no longer counts as queued-by-park: reading the stale
+    // `parked` flag here keeps the band<1 collect gate closed on the very eval
+    // the release fired, deferring the promised re-verify a full pass.
+    const queued = !!(this._pendingDepthStageRoots && this._pendingDepthStageRoots.has(root))
+      || (parked && !parkedRelease);
     const stampedSeq = (root.userData && typeof root.userData[STAGE_SELF_DIRTY_KEY] === 'number')
       ? root.userData[STAGE_SELF_DIRTY_KEY] : -1;
     // The stamp records the invalidation generation our own bookkeeping produced —
@@ -25280,7 +25360,7 @@ export const render = {
     // staged-vs-unstaged with zero signature mints inside the presented frame.
     const collectGate = (opts.allowCast === true && this._shadowSettingOn === true
         && this.renderer && this.scene && this._keyLight
-        && (parkedRecheck || parkedReleaseOnDrift
+        && (parkedRecheck || parkedReleaseOnDrift || parkedRelease
           || (band !== 1 ? !queued : (dirtySeq > stampedSeq && dirtySeq > 0))));
     // Bound the collects one pass pays: a mass ortho-entry or packaged burst can
     // re-dirty tens of roots in one presented frame and each collect is a subtree
@@ -25305,10 +25385,13 @@ export const render = {
     let unstaged = null;
     if (collectGate && !overCovered) {
       this._depthCollectPassCount = (this._depthCollectPassCount | 0) + 1;
-      // A parked root's recheck earns the node budget its park already earned —
-      // the shared base budget guarantees over-cover on every scaled root,
-      // which re-queues and burns the abort cycle it just paid.
-      const parkedScale = parkedRecheck && parkedEntry && parkedEntry.depthNodeScale > 1
+      // A parked root's recheck (or release) earns the node budget its park
+      // already earned — the shared base budget guarantees over-cover on every
+      // scaled root, which re-queues and burns the abort cycle it just paid.
+      // parkedEntry still references the released entry after the map delete,
+      // so its scale carries into this eval's collect.
+      const parkedScale = (parkedRecheck || parkedRelease) && parkedEntry
+        && (parkedEntry.depthNodeScale | 0) > 1
         ? parkedEntry.depthNodeScale : 0;
       const nodeBudget = {
         remaining: parkedScale > 0
@@ -25421,6 +25504,75 @@ export const render = {
     const withholdCoverageKnown = syncOpts.allowCast !== false
       || withheldMeshes != null
       || !!(this._withheldDepthCasters && this._withheldDepthCasters.has(root));
+    // An uncovered withhold used to pay the atomic whole-subtree verdict inside
+    // this presented pass. A parked stepped collect derives the same
+    // potential-caster set across beats instead; while it parks the flags hold
+    // their last-known state (suppressed or previously-linked — both the safe
+    // direction), so skipping the traverse is fail-closed, never fail-open.
+    let coverageWalkInFlight = false;
+    if (!scopedSync && !withholdCoverageKnown && syncOpts.allowCast === false) {
+      const parkedCov = this._coverageCollectParked
+        || (this._coverageCollectParked = new Map());
+      let cov = parkedCov.get(root);
+      const covSeq = shadowCasterPolicyDirtySeq(root);
+      const covEpoch = shadowCensusEpoch();
+      if (cov && (cov.seq !== covSeq || cov.epoch !== covEpoch)) {
+        if (typeof cov.iter.return === 'function') { try { cov.iter.return(); } catch (_) { /* discard */ } }
+        parkedCov.delete(root);
+        cov = undefined;
+      }
+      if (!cov) {
+        cov = {
+          iter: collectPotentialShadowCastSubjectsSteps([syncScope],
+            { remaining: SHADOW_DEPTH_PASS_NODE_CAP * 8 }),
+          seq: covSeq,
+          epoch: covEpoch,
+        };
+        parkedCov.set(root, cov);
+      }
+      const covNow = () => (typeof performance !== 'undefined'
+        && typeof performance.now === 'function' ? performance.now() : Date.now());
+      const covDeadline = this._policyPassDeadlineAt != null
+        ? this._policyPassDeadlineAt : covNow() + SHADOW_POLICY_PASS_MS;
+      let covStep = null;
+      let covAborted = false;
+      while (covNow() < covDeadline) {
+        try {
+          covStep = cov.iter.next();
+        } catch (_) {
+          covAborted = true;
+          break;
+        }
+        if (!covStep || covStep.done) break;
+      }
+      if (covAborted) {
+        // Budget abort: the parked walk is dead — fall through to the atomic
+        // lane this eval exactly like the pre-stepped behavior, and re-mint
+        // fresh next eval rather than resuming a thrown generator.
+        parkedCov.delete(root);
+      } else if (covStep && covStep.done === true) {
+        parkedCov.delete(root);
+        // Same unstaged filter collectUnstagedShadowCastersFlag applies: a
+        // caster that can't mint a signature can't draw; a mark-current caster
+        // isn't pending.
+        const covCasting = Array.isArray(covStep.value) ? covStep.value : [];
+        const covSig = this._shadowCensusForFrame();
+        const covCam = this.cam && this.cam.obj;
+        const covUnstaged = [];
+        for (const caster of covCasting) {
+          const covMaterials = Array.isArray(caster.material) ? caster.material : [caster.material];
+          let covCapable = false;
+          for (const material of covMaterials) {
+            if (material && material.uuid && material.visible !== false) { covCapable = true; break; }
+          }
+          if (!covCapable) continue;
+          if (!casterDepthMarkCurrent(caster, covSig, covCam)) covUnstaged.push(caster);
+        }
+        if (covUnstaged.length > 0) withheldMeshes = covUnstaged;
+      } else {
+        coverageWalkInFlight = true;
+      }
+    }
     const traverseDeferred = traverseWouldSync
       && !scopedSync
       && !skipTraverseOnDrift
@@ -25428,12 +25580,12 @@ export const render = {
       && !needsAtomicOut
       && withholdCoverageKnown
       && (this._shadowRootSyncPassCount | 0) >= SHADOW_ROOT_SYNC_PASS_CAP;
-    if (!scopedSync && !traverseDeferred && !skipTraverseOnDrift && !hadParkedWalk && traverseWouldSync) {
+    if (!scopedSync && !traverseDeferred && !coverageWalkInFlight && !skipTraverseOnDrift && !hadParkedWalk && traverseWouldSync) {
       this._shadowRootSyncPassCount = (this._shadowRootSyncPassCount | 0) + 1;
     }
     const receiverOut = { receiverDelta: 0 };
     let changed = false;
-    if (!traverseDeferred && !skipTraverseOnDrift && traverseWouldSync) {
+    if (!traverseDeferred && !coverageWalkInFlight && !skipTraverseOnDrift && traverseWouldSync) {
       if (!scopedSync && syncOpts.allowCast !== false && !needsAtomicOut) {
         // Whole-root castable verdicts ride the stepped lane: a fat subtree's
         // rewrite paces inside a small wall budget per call instead of one
@@ -25585,15 +25737,60 @@ export const render = {
   // because any drift re-keys every lit program — so an unchanged epoch means
   // the rendered set is identical and the traverse only re-runs on real drift.
   _shadowCensusForFrame() {
-    const memo = this._shadowCensusMemo;
+    let memo = this._shadowCensusMemo;
     const scene = this.scene;
     const epoch = shadowCensusEpoch();
-    if (memo && memo.scene === scene && memo.epoch === epoch) {
+    if (memo && memo.scene === scene && memo.epoch === epoch && !memo.pendingIter) {
       return memo.sig;
     }
-    const sig = lightCensusSignature(scene);
-    this._shadowCensusMemo = { scene, sig, epoch };
-    return sig;
+    if (!memo || memo.scene !== scene) {
+      if (memo && memo.pendingIter && typeof memo.pendingIter.return === 'function') {
+        try { memo.pendingIter.return(); } catch (_) { /* discard */ }
+      }
+      memo = this._shadowCensusMemo = { scene, sig: null, epoch, pendingIter: null, pendingEpoch: -1 };
+    }
+    // The re-mint pays its whole-scene walk in small slices across caller
+    // invocations (every site above reads this several times a presented pass)
+    // while serving the last signature in flight — the epoch compare is
+    // conservative direction: a stale sig reads identical-or-older, never
+    // ahead. A mid-walk light mutation bumps the epoch, so the pending walk
+    // abandons and re-mints rather than stamping a signature mixed across the
+    // mutation.
+    if (!memo.pendingIter || memo.pendingEpoch !== epoch) {
+      if (memo.pendingIter && typeof memo.pendingIter.return === 'function') {
+        try { memo.pendingIter.return(); } catch (_) { /* discard */ }
+      }
+      memo.pendingIter = typeof lightCensusSignatureSteps === 'function'
+        ? lightCensusSignatureSteps(scene) : null;
+      memo.pendingEpoch = epoch;
+    }
+    if (memo.pendingIter) {
+      const startedAt = typeof performance !== 'undefined' && typeof performance.now === 'function'
+        ? performance.now() : Date.now();
+      const deadline = memo.sig == null ? Number.POSITIVE_INFINITY : startedAt + 4;
+      let step = null;
+      // No prior signature to serve (first-ever mint): the call drains
+      // synchronously — same atomic cost as the pre-stepped code, paid once.
+      while (memo.sig == null
+        || ((typeof performance !== 'undefined' && typeof performance.now === 'function'
+          ? performance.now() : Date.now()) < deadline)) {
+        step = memo.pendingIter.next();
+        if (step.done) break;
+      }
+      if (step && step.done === true) {
+        memo.pendingIter = null;
+        if (shadowCensusEpoch() === memo.pendingEpoch) {
+          memo.sig = step.value;
+          memo.epoch = memo.pendingEpoch;
+        }
+      }
+    }
+    if (memo.sig == null) {
+      // Eval-harness envs lack the Steps twin — the sync walk is the fallback.
+      memo.sig = lightCensusSignature(scene);
+      memo.epoch = shadowCensusEpoch();
+    }
+    return memo.sig;
   },
 
   _queueShadowDepthStage(root, lodLevel = null, entity = null, preserved = null) {
@@ -25821,6 +26018,10 @@ export const render = {
                   // over-cap root would otherwise re-pay the 1→2→4→8 escalation
                   // ladder (four aborting collects) on every unpark cycle.
                   depthNodeScale: entry.depthNodeScale,
+                  // Over-cap provenance: this park waits out recheck/dirty/drift
+                  // terms — a denied-style release trigger would re-pay the
+                  // escalation ladder on every boundary oscillation.
+                  parkKind: 'overcap',
                 });
                 abortedPark = abortedRoot;
               } else if (entry) {
@@ -25958,6 +26159,7 @@ export const render = {
                     // root — it was castable at mint. The stamp keeps the
                     // allowCast release clause from firing on every eval.
                     deniedAllowCast: true,
+                    parkKind: 'denied',
                   });
                   // Only the proven-unmarkable set stays withheld — staged
                   // siblings' casts restore on the next sync.
@@ -26311,10 +26513,14 @@ export const render = {
       return;
     }
     if (this._shadowReceiverTally) {
-      if (this._shadowReceiversDirty || this._shadowReceiverTally.dirty) {
-        this._shadowReceiverCount = this._shadowReceiverTally.resolve(this.scene, {
-          force: this._shadowReceiversDirty === true,
-        });
+      // Every dirty signal routes through the tally so resolve can pace the
+      // recount inside its bounded slice — an atomic traverse here lands on the
+      // same churn frames the tally exists to protect.
+      if (this._shadowReceiversDirty && !this._shadowReceiverTally.dirty) {
+        this._shadowReceiverTally.markDirty();
+      }
+      if (this._shadowReceiverTally.dirty) {
+        this._shadowReceiverCount = this._shadowReceiverTally.resolve(this.scene);
         this._shadowReceiversDirty = false;
       } else {
         this._shadowReceiverCount = this._shadowReceiverTally.count;

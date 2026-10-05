@@ -211,22 +211,28 @@ export function* syncVisiblePointLightBudgetSteps(scene, video, nodesPerSlice = 
   let staging = null;
   let visible = 0;
   if (scene) {
-    const stack = [scene];
+    // Stack entries carry ancestor visibility: the name search descends
+    // everywhere (getObjectByName parity — a staging group re-parented under an
+    // invisible holder still releases), while the light count keeps
+    // traverseVisible semantics (invisible subtrees don't count lights).
+    const stack = [[scene, true]];
     let sinceYield = 0;
     while (stack.length > 0) {
-      const object = stack.pop();
+      const entry = stack.pop();
+      const object = entry && entry[0];
+      const ancestorVisible = entry[1];
       if (!object) continue;
       if ((++sinceYield % every) === 0) yield;
-      if (object.visible !== true) continue;
       if (object.name === POINT_LIGHT_BUDGET_STAGING_NAME) {
         // Found the stale group — it releases below; its stand-ins must not
         // count toward the live census (release-before-count semantics).
         staging = object;
         continue;
       }
-      if (object.isPointLight === true) visible += 1;
+      if (ancestorVisible && object.isPointLight === true) visible += 1;
       const children = object.children;
-      if (children) for (let i = children.length - 1; i >= 0; i -= 1) stack.push(children[i]);
+      const childVisible = ancestorVisible && object.visible === true;
+      if (children) for (let i = children.length - 1; i >= 0; i -= 1) stack.push([children[i], childVisible]);
     }
   }
   if (staging) {

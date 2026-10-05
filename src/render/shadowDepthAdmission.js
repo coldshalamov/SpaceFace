@@ -423,6 +423,42 @@ export function lightCensusSignature(lightingScene) {
   return `${fogKey}|${parts.join('|')}`;
 }
 
+// Stepped twin of lightCensusSignature: explicit-stack DFS emitting an
+// identical signature — the count map is order-insensitive (sorted at mint), so
+// any traversal order yields the same string. Ancestor visibility rides the
+// stack entries (a light under an invisible subtree doesn't reach
+// projectObject, same as the sync ancestor walk). The epoch-memoized reader
+// drives this across presented beats instead of paying the atomic scene
+// traverse inside whichever leg asked first.
+export function* lightCensusSignatureSteps(lightingScene, yieldEvery = 512) {
+  const counts = new Map();
+  const every = Math.max(1, Math.floor(Number(yieldEvery) || 1));
+  let visited = 0;
+  const stack = [[lightingScene, true]];
+  while (stack.length > 0) {
+    const entry = stack.pop();
+    const object = entry && entry[0];
+    const ancestorVisible = entry[1];
+    if (!object) continue;
+    const nodeVisible = ancestorVisible && object.visible !== false;
+    if (object.isLight === true && nodeVisible) {
+      const layersMask = object.layers && Number.isFinite(object.layers.mask)
+        ? object.layers.mask : 1;
+      const key = `${object.type || 'Light'}:${layersMask}:${object.castShadow === true ? 1 : 0}`;
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+    const children = object.children;
+    if (children) {
+      for (let i = children.length - 1; i >= 0; i -= 1) stack.push([children[i], nodeVisible]);
+    }
+    if (++visited % every === 0) yield;
+  }
+  const parts = [...counts.entries()].map(([k, n]) => `${k}x${n}`).sort();
+  const fog = lightingScene && lightingScene.fog;
+  const fogKey = fog ? (fog.isFogExp2 === true ? 'fx' : 'fs') : 'f0';
+  return `${fogKey}|${parts.join('|')}`;
+}
+
 // Seq-memoized census readers (renderer._shadowCensusForFrame) fold this into
 // their validity: any mid-seq mutation of the rendered light set — precompile
 // stand-in mounts/removals, a torn-down subtree that carried a light — bumps it

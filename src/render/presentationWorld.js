@@ -1077,6 +1077,145 @@ export function createPresentationWorld(options = {}) {
     return true;
   }
 
+  // Stepped twin of updateFromEntities — identical per-row apply, hiddenIds /
+  // skippedIds doom passes, resident and absent sweeps, all indexed so a
+  // presented-frame driver can park the walk between yields and resume it next
+  // present. Per-row writes are atomic (each row completes before the next
+  // yield), so a parked apply leaves a consistent row-wise-partial world — the
+  // verbatim mirror holds per row. The whole-set sweeps stay deferred to apply
+  // completion exactly like the sync path's tail.
+  function* updateFromEntitiesSteps(entities, generationForEntity = null, options = null, yieldEvery = 256) {
+    ensureAlive();
+    if (!Array.isArray(entities)) throw new TypeError('PresentationWorld update requires an entity array');
+    const retireSuppressed = options && options.retire === false;
+    updateSeq = (updateSeq + 1) >>> 0;
+    if (updateSeq === 0) {
+      updateSeq = 1;
+      world.lastSeenSeq.fill(0);
+    }
+    const seq = updateSeq;
+    const lastSeenSeq = world.lastSeenSeq;
+    const every = Math.max(1, Math.floor(Number(yieldEvery) || 1));
+    let sinceYield = 0;
+    let retainedHits = 0;
+    let skippedIds = null;
+    for (const entity of entities) {
+      if ((++sinceYield % every) === 0) yield;
+      if (!entity || entity.alive === false) continue;
+      const entityId = sourceEntityId(entity);
+      if (entityId === 0) continue;
+      if (entity._noMesh === true
+          || (entity.type === 'projectile' && projectileSkipsVisualFactoryMesh(entity))) {
+        if (retireSuppressed && byId.get(entityId) !== undefined) {
+          (skippedIds || (skippedIds = [])).push(entityId);
+        }
+        continue;
+      }
+      const generation = typeof generationForEntity === 'function'
+        ? generationForEntity(entity)
+        : 0;
+      let slot = byId.get(entityId);
+      if (slot !== undefined && lastSeenSeq[slot] === seq) {
+        diagnostics.duplicateIdRejects++;
+        continue;
+      }
+      if (slot === undefined || world.alive[slot] !== 1) {
+        allocateEntity(entity, generation);
+        slot = byId.get(entityId);
+        if (slot !== undefined) {
+          lastSeenSeq[slot] = seq;
+          world.doomed[slot] = 0;
+        }
+        continue;
+      }
+      lastSeenSeq[slot] = seq;
+      world.doomed[slot] = 0;
+      retainedHits += 1;
+      const previousVisual = world.visualRevisions[slot];
+      refreshVisibleEntity(slot, entity);
+      world.sourceGenerations[slot] = generation >>> 0;
+      world.revisions[slot] = 0;
+      const nextVisual = Number.isSafeInteger(entity.presentationVisualRevision)
+        ? entity.presentationVisualRevision >>> 0 : 0;
+      world.visualRevisions[slot] = nextVisual;
+      if (nextVisual !== previousVisual) {
+        markDirtyBits(slot, PRESENTATION_DIRTY.VISUAL);
+      }
+    }
+    if (retireSuppressed && (options.hiddenIds || skippedIds)) {
+      if (options.hiddenIds) {
+        for (const hiddenId of options.hiddenIds) {
+          if ((++sinceYield % every) === 0) yield;
+          const slot = byId.get(hiddenId);
+          if (slot !== undefined && world.alive[slot] === 1 && lastSeenSeq[slot] !== seq
+              && world.doomed[slot] !== 1) {
+            const resident = world.entityRefs[slot];
+            if (resident && resident === world.boundEntityRefs[slot]
+                && resident.alive !== false) continue;
+            const wasVisible = world.visible[slot] === 1;
+            world.doomed[slot] = 1;
+            world.visible[slot] = 0;
+            if (wasVisible) markDirtyBits(slot, PRESENTATION_DIRTY.VISIBILITY);
+          }
+        }
+      }
+      if (skippedIds) {
+        for (const hiddenId of skippedIds) {
+          if ((++sinceYield % every) === 0) yield;
+          const slot = byId.get(hiddenId);
+          if (slot !== undefined && world.alive[slot] === 1 && lastSeenSeq[slot] !== seq
+              && world.doomed[slot] !== 1) {
+            const wasVisible = world.visible[slot] === 1;
+            world.doomed[slot] = 1;
+            world.visible[slot] = 0;
+            if (wasVisible) markDirtyBits(slot, PRESENTATION_DIRTY.VISIBILITY);
+          }
+        }
+      }
+    }
+    if (retireSuppressed) {
+      const refs = world.entityRefs;
+      const doomed = world.doomed;
+      const actives = world.activeSlots;
+      const deadResidents = [];
+      for (let s = 0; s < activeCount; s++) {
+        if ((++sinceYield % every) === 0) yield;
+        const slot = actives[s];
+        if (lastSeenSeq[slot] === seq) continue;
+        const resident = refs[slot];
+        if (!resident) continue;
+        if (doomed[slot] === 1) continue;
+        if (resident.alive === false) {
+          if (byId.get(world.entityIds[slot]) === slot) deadResidents.push(slot);
+          continue;
+        }
+        if (resident._noMesh === true
+            || (resident.type === 'projectile' && projectileSkipsVisualFactoryMesh(resident))) {
+          const wasVisible = world.visible[slot] === 1;
+          doomed[slot] = 1;
+          world.visible[slot] = 0;
+          if (wasVisible) markDirtyBits(slot, PRESENTATION_DIRTY.VISIBILITY);
+        }
+      }
+      for (const slot of deadResidents) retireSlot(slot);
+    }
+    if (!retireSuppressed && retainedHits !== byId.size) {
+      const aliveCols = world.alive;
+      const idCols = world.entityIds;
+      const actives = world.activeSlots;
+      const absent = [];
+      for (let s = 0; s < activeCount; s++) {
+        if ((++sinceYield % every) === 0) yield;
+        const slot = actives[s];
+        if (aliveCols[slot] === 1 && lastSeenSeq[slot] !== seq
+            && byId.get(idCols[slot]) === slot) absent.push(idCols[slot]);
+      }
+      for (const entityId of absent) retire(entityId);
+    }
+    diagnostics.rebuilds++;
+    return true;
+  }
+
   function collectColumnBounds(column, minCellZ, maxCellZ, target) {
     const span = maxCellZ - minCellZ + 1;
     if (span > column.size * 2) {
@@ -1210,6 +1349,7 @@ export function createPresentationWorld(options = {}) {
     consumeAsteroidDirty,
     rebuildFromEntities,
     updateFromEntities,
+    updateFromEntitiesSteps,
     clear,
     dispose,
     getTypeName: (slot) => typeNames[world.typeCodes[slot]] || '',

@@ -68,6 +68,12 @@ export function createPresentationPublisher(world, state, options = {}) {
   let rebuildGeneration = 0;
   let lastFallbackLifecycleGeneration = -2;
   let initialized = false;
+  // Parked diff-apply: updateFromEntitiesSteps paces a fallback apply across
+  // presents — each consume resumes the walk under its wall bound instead of
+  // paying the whole atomic pass once. The delta base is captured at mint so
+  // appliedDelta counts the apply's whole span, not just the completing slice.
+  let pendingApplyIter = null;
+  let pendingApplyDeltaBase = 0;
 
   function resetResult(start, end) {
     result.applied = 0;
@@ -126,16 +132,61 @@ export function createPresentationPublisher(world, state, options = {}) {
       // A diff-apply is NOT a remap — slot identities survive, so the pose
       // epoch holds and the pack's copy/interp paths keep working across the
       // suspension window.
-      if (typeof world.updateFromEntities === 'function') {
+      if (typeof world.updateFromEntitiesSteps === 'function') {
+        let applyIter = pendingApplyIter;
+        if (!applyIter) {
+          const worldDiag = world.diagnostics;
+          pendingApplyDeltaBase = worldDiag
+            ? (worldDiag.allocations | 0) + (worldDiag.retirements | 0) : 0;
+          applyIter = world.updateFromEntitiesSteps(sample, null, collectPrefix
+            ? {
+              retire: false,
+              hiddenIds: presentationFrame.rebuildSuppressedDestroyIds || null,
+            }
+            : undefined);
+        }
+        const applyStart = typeof performance !== 'undefined' && typeof performance.now === 'function'
+          ? performance.now() : Date.now();
+        let applyStep = null;
+        for (;;) {
+          applyStep = applyIter.next();
+          if (applyStep.done) break;
+          if ((typeof performance !== 'undefined' && typeof performance.now === 'function'
+            ? performance.now() : Date.now()) - applyStart >= 4) break;
+        }
+        if (applyStep && applyStep.done === true) {
+          pendingApplyIter = null;
+          const worldDiag = world.diagnostics;
+          result.appliedDelta = worldDiag
+            ? Math.max(0, (worldDiag.allocations | 0) + (worldDiag.retirements | 0) - pendingApplyDeltaBase)
+            : 1;
+        } else {
+          pendingApplyIter = applyIter;
+          // In-flight: no slot-set verdict yet — skip the rebind mint and the
+          // same-tick repack this present (tick-advanced presents still repack
+          // via the source-tick clause).
+          result.appliedDelta = 0;
+        }
+      } else if (typeof world.updateFromEntities === 'function') {
+        // appliedDelta counts slot-level mutations (allocations + retirements)
+        // so the consumer can tell a refreshed-rows apply from a real set
+        // change — a zero-delta rebuilt feeds no rebind mint or fence repack.
+        const worldDiag = world.diagnostics;
+        const appliedBefore = worldDiag
+          ? (worldDiag.allocations | 0) + (worldDiag.retirements | 0) : 0;
         world.updateFromEntities(sample, null, collectPrefix
           ? {
             retire: false,
             hiddenIds: presentationFrame.rebuildSuppressedDestroyIds || null,
           }
           : undefined);
+        result.appliedDelta = worldDiag
+          ? Math.max(0, (worldDiag.allocations | 0) + (worldDiag.retirements | 0) - appliedBefore)
+          : 1;
       } else {
         world.rebuildFromEntities(sample);
         result.remapped = true;
+        result.appliedDelta = 1;
       }
       lastFallbackLifecycleGeneration = lifecycleGeneration;
       diagnostics.fallbackRebuilds++;
@@ -225,6 +276,12 @@ export function createPresentationPublisher(world, state, options = {}) {
       : rebuildGeneration;
     if (fullRebuild && nextRebuildGeneration !== rebuildGeneration) {
       world.clear();
+      // A clear supersedes any parked diff-apply — resuming it would re-alloc
+      // the stale feed's rows into the fresh world.
+      if (pendingApplyIter && typeof pendingApplyIter.return === 'function') {
+        try { pendingApplyIter.return(); } catch (_) { /* discard */ }
+      }
+      pendingApplyIter = null;
       lastAppliedSequence = frameStart;
       rebuildGeneration = nextRebuildGeneration;
       diagnostics.rebuildGeneration = rebuildGeneration;

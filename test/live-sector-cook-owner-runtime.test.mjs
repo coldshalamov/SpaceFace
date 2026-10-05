@@ -411,6 +411,11 @@ function gpuFixture() {
     cam: { obj: {} }, collectFirstFlightEffectRoots: () => [],
     collectFirstFlightEffectRootsSteps: function* () { return []; },
     collectPreparedAuthoredCompileRoots: () => [], syncVisiblePointLightBudget() {},
+    // Steps-name stubs must be function-valued generators or the typeof guards
+    // route every drive site to its sync fallback and the paced bodies (the code
+    // that actually runs in production) stay dead under the harness.
+    syncVisiblePointLightBudgetSteps: function* () { yield; },
+    collectInstancePoolCompileRootsAndSubjectsSteps: function* () { yield; return { roots: [], subjects: [] }; },
     armAdmissionShadows: () => () => f.marks.push('restore-shadows'),
     revealSubjectForCompile: () => () => f.marks.push('restore-reveal'),
     survivalRunHoldsArena: () => false, createSlicedYield: fn => fn,

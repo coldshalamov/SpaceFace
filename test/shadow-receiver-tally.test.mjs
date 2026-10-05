@@ -56,10 +56,10 @@ test('owner dirty forces a recount even when the incremental dirty bit is clear'
   assert.equal(tally.count, 0);
 });
 
-test('live shadow-map gate forces a recount when the owner dirty flag is set', async () => {
+test('live shadow-map gate routes owner dirty through the tally paced recount', async () => {
   const { readFile } = await import('node:fs/promises');
   const source = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
-  assert.match(source, /force:\s*this\._shadowReceiversDirty === true/);
+  assert.match(source, /if \(this\._shadowReceiversDirty && !this\._shadowReceiverTally\.dirty\)/);
 });
 
 test('LOD receiveShadow churn without a dirty signal can walk the tally to zero', () => {

@@ -451,14 +451,18 @@ export function materializeBoundaryResolvingMarker(boundary) {
   // materials instead of the abstract octahedron — strictly closer to the committed body.
   let marker = null;
   const standInTarget = boundaryStandInTarget(data, entity);
+  let record = null;
   if (standInFile && boundaryStandInResolver) {
-    let record = null;
     try { record = boundaryStandInResolver(entity, standInFile) || null; } catch { record = null; }
     if (record) marker = lodStandInFor(entity, record, standInTarget);
   }
   if (!marker) {
     marker = resolvingMarkerFor(entity, boundaryStandInDrawnX(data, standInTarget));
-    if (standInFile && boundaryStandInResolver) {
+    if (record) {
+      // A resident record that cannot build a stand-in (no primitives/bounds) never
+      // becomes usable — the ship-substrate path stamps the same terminal reason.
+      data.resolvingMarkerFallbackReason = 'stand-in-record-unusable';
+    } else if (standInFile && boundaryStandInResolver) {
       // Built before the record went resident: keep the same pending retry the ship substrate
       // uses so a mid-admission warm decode still converges on the real body.
       data.admissionStandInPending = true;
@@ -668,7 +672,16 @@ export function upgradeAdmissionStandIn(boundary, resolveRecord) {
   const standIn = record
     ? lodStandInFor(entity, record, isBoundarySeat ? boundaryStandInTarget(boundaryData, entity) : null)
     : null;
-  if (!standIn) return false; // still nothing resident — keep waiting while pending
+  if (!standIn) {
+    if (record) {
+      // The record resolved but cannot build a stand-in — it never becomes usable,
+      // so the periodic re-resolve scan has nothing left to converge on.
+      boundaryData.resolvingMarkerFallbackReason = 'stand-in-record-unusable';
+      boundaryData.admissionStandInPending = false;
+      if (substrate && substrate.userData) substrate.userData.admissionStandInPending = false;
+    }
+    return false; // still nothing resident — keep waiting while pending
+  }
   substrate.remove(marker);
   substrate.add(standIn);
   substrate.userData.resolvingMarker = standIn;

@@ -30,6 +30,10 @@ const tallyNow = () => (
 );
 const RECOUNT_SLICE_MS = 4;
 const RECOUNT_NODES_PER_SLICE = 512;
+// Under a perpetual markDirty storm a re-minted walk can never stamp — cap the
+// supersessions so a measured-but-stale count settles after this many discards
+// instead of serving an arbitrarily old count forever.
+const RECOUNT_SUPERSEDE_CAP = 4;
 
 /** Iterative pre-order twin of the recount traverse — same receiver test, yields
  * every `nodesPerSlice` visited nodes so resolve() can pace the fallback walk
@@ -58,10 +62,12 @@ export function createShadowReceiverTally() {
   // discards its walk instead of stamping a count measured across a mutation.
   let dirtySeq = 0;
   let pendingRecount = null;
+  let supersededRecounts = 0;
 
   return {
     get count() { return count; },
     get dirty() { return dirty; },
+    get pending() { return pendingRecount !== null; },
     markDirty() {
       dirty = true;
       dirtySeq += 1;
@@ -83,6 +89,7 @@ export function createShadowReceiverTally() {
     },
     recount(scene) {
       pendingRecount = null;
+      supersededRecounts = 0;
       const it = recountShadowReceiversSteps(scene);
       for (;;) {
         const step = it.next();
@@ -107,14 +114,21 @@ export function createShadowReceiverTally() {
         }
         const step = pendingRecount.iter.next();
         if (step.done) {
-          if (pendingRecount.seq === dirtySeq) {
+          const seqMatched = pendingRecount.seq === dirtySeq;
+          if (seqMatched || supersededRecounts >= RECOUNT_SUPERSEDE_CAP) {
+            // Seq-matched, or the dirty storm has superseded enough walks that a
+            // measured-but-stale count is the better serve. A capped stale
+            // settle keeps dirty set so the next resolve beat re-mints and the
+            // count self-heals once the storm pauses.
             count = Math.max(0, step.value | 0);
             pendingRecount = null;
-            dirty = false;
+            supersededRecounts = 0;
+            dirty = seqMatched ? false : dirty;
             return count;
           }
           // Mutations landed mid-walk — re-mint on the fresh seq while the
           // slice has budget left; otherwise park for the next resolve beat.
+          supersededRecounts += 1;
           pendingRecount = null;
           if (tallyNow() - start >= RECOUNT_SLICE_MS) return count;
           continue;
