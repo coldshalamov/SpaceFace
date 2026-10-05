@@ -144,8 +144,12 @@ const chargeIn = () => perception([shipContact(1, { x: 180, vx: -90, mobilityBan
 }
 
 {
-  // E — hard press stays the counterplay: at press 90 the hatch fires, but the next tick's
-  // closing interrupt keeps re-entering the panic leg. Bounded legs, guns dark, no volley.
+  // E — hard press stays the counterplay, by preemption rather than by the clock: the closing
+  // interrupt's early return (distance < 140 || press > 55) exits before the retreat branch is
+  // ever reached, so under a CONSTANT press 90 the hatch never fires and the hull simply stays
+  // in the panic leg — zero transitions, guns dark. The clock only matters for presses the
+  // interrupt tolerates (press <= 55 at range >= 140); because it keeps growing through the
+  // leg, the re-arm lands the moment a hard press eases (pinned in scenario G).
   const runtime = new CombatDoctrineRuntime({ seed: SEED });
   update(runtime, 0, standoff);
   update(runtime, 45, standoff);
@@ -182,4 +186,36 @@ const chargeIn = () => perception([shipContact(1, { x: 180, vx: -90, mobilityBan
     assert.equal(result.fireWindow, false, 'no volley from inside the panic floor');
     assert.equal(result.telegraph, null, 'no telegraph from inside the panic floor');
   }
+}
+
+{
+  // G — the re-arm releases a stale egress point: a disabled-target break (a destroyTarget:false
+  // profile spared its prey) pins this leg via beginEgress with a flightPoint 960 WU out. When
+  // the spared hull repairs, the interrupt tolerates the frame and the grown clock re-arms the
+  // cycle at once — and the stale point must be released, because a set flightPoint outranks
+  // every maneuver in the planner (src/ai/maneuver.js desiredForIntent): without the release
+  // the re-committed volley steers for the stale point mid-telegraph.
+  const runtime = new CombatDoctrineRuntime({ seed: SEED });
+  const updateDisabled = (tick) => runtime.update({
+    tick, entityId: 'sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
+    perception: standoff(), directive, disabledNonlethalTargetId: 1,
+  });
+  let result = updateDisabled(0);
+  assert.equal(result.phase, 'retreat', 'a disabled-target break pins the panic leg');
+  assert.ok(result.flightPoint != null && Number.isFinite(result.flightPoint.x),
+    'the pin carries a 960-WU egress flightPoint');
+  for (let tick = 1; tick <= 312; tick++) updateDisabled(tick);
+  // The spared hull repairs: press 30 at 400 WU is tolerated, and the clock grown through the
+  // disable re-arms the cycle on the first post-repair tick.
+  result = update(runtime, 313, lazyChase);
+  assert.equal(result.phase, 'outer_standoff', 'the hatch re-arms the cycle after repair');
+  assert.equal(result.flightPoint, null, 'the stale egress point is released at the re-arm');
+  result = update(runtime, 358, lazyChase);
+  assert.equal(result.phase, 'charge_cue');
+  assert.equal(result.telegraphStarted, true, 'the re-committed volley announces itself');
+  assert.equal(result.flightPoint, null, 'the telegraph steers on its own maneuver');
+  result = update(runtime, 388, lazyChase);
+  assert.equal(result.phase, 'fire_window');
+  assert.equal(result.allowedActionId, 'action_burst');
+  assert.equal(result.flightPoint, null, 'the volley flies on its own maneuver');
 }

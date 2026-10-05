@@ -814,13 +814,23 @@ function updateRanged(record, tick, self, target, distance) {
   }
   if (record.phase === 'retreat') {
     // Distance-gated egress exits need a clock (see INTERCEPTOR_EXTEND_MAX): a player who keeps
-    // any closing speed on the hull would otherwise pin it in retreat forever — one volley, then
-    // a kite chase that never fights again. The hatch re-arms the cycle so a lazy chase is
-    // answered with a fresh telegraphed volley; a hard press (>55) still trips the closing
-    // interrupt each cycle and keeps the hull running. Authored floor, unchanged: inside
-    // RANGED_PRESS_FLOOR_WU the interrupt fires regardless of press, so a point-blank chase
-    // (distance < 140) still pins the panic leg — outside this doctrine's volley envelope by design.
+    // any MODERATE closing speed on the hull would otherwise pin it in retreat forever — one
+    // volley, then a kite chase that never fights again. The hatch re-arms the cycle so a lazy
+    // chase is answered with a fresh telegraphed volley. A constant hard press (>55) never
+    // reaches this branch: the closing interrupt's early return preempts the whole leg, so the
+    // hull simply stays running until the press eases — and because the clock keeps growing
+    // through the leg, the re-arm lands on the first tolerated tick. Authored floor, unchanged:
+    // inside RANGED_PRESS_FLOOR_WU the interrupt fires regardless of press, so a point-blank
+    // chase (distance < 140) still pins the panic leg — outside this doctrine's volley envelope
+    // by design.
     if ((distance >= 520 && press < 10) || age >= RANGED_RETREAT_MAX_TICKS) {
+      // Release a stale egress point before re-arming: a disabled-target break pins this leg
+      // with a flightPoint 960 WU out (beginEgress -> egressPoint), and a set flightPoint
+      // outranks every maneuver in the planner — without the release the re-armed cycle
+      // charges its volley while steering for the stale point. Same release beginReform and
+      // advanceCycle make, and the same failure class the capital shift path fixes before
+      // re-entering broadside_charge.
+      record.flightPoint = null;
       enter(record, 'outer_standoff', tick, null);
     }
     return;
