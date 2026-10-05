@@ -164,6 +164,35 @@ function makeLossId(seed, sectorId, kind, simTime, assetId) {
   return 'loss_' + hash32(seed, sectorId, kind, simTime, assetId).toString(36);
 }
 
+// The ledger row this wreck's own death recorded — matched on the kill stamp (marker.t and
+// loss.t are written from the same entity:killed dispatch), the victim's hull def when both
+// sides carry one, and the victim's name when the ledger filed a real one. For the player's
+// own hull the loss carries assetId === playerId, which is stronger than any label check —
+// 'Your Hull' is a generated name and would never equal the filed victimName. Anything looser
+// could pin a stranger's loss onto this hull in a fought-over sector.
+function ownLossForWreck(entity, state, sectorId) {
+  const data = entity && entity.data || {};
+  const provenance = data.provenance && typeof data.provenance === 'object' ? data.provenance : {};
+  const killedAt = Number.isFinite(data.killedAt) && data.killedAt > 0 ? data.killedAt
+    : (data.aftermath && Number.isFinite(data.aftermath.t) && data.aftermath.t > 0 ? data.aftermath.t : null);
+  if (killedAt == null) return null;
+  const isPlayerHull = data.playerWreck === true;
+  const victimDefId = provenance.victimDefId || (data.aftermath && data.aftermath.victimDefId) || null;
+  const victimLabel = provenance.victimLabel || (data.aftermath && data.aftermath.victimLabel) || null;
+  for (const loss of lossesFor(state, sectorId)) {
+    if (!loss || !Number.isFinite(loss.t) || Math.abs(loss.t - killedAt) > 0.001) continue;
+    if (isPlayerHull) {
+      if (loss.assetId !== state.playerId) continue;
+      return loss;
+    }
+    if (victimDefId && loss.shipDefId && loss.shipDefId !== victimDefId) continue;
+    if (loss.victimName && victimLabel && loss.victimName !== victimLabel
+      && loss.victimCallsign !== victimLabel) continue;
+    return loss;
+  }
+  return null;
+}
+
 function clamp(v, lo, hi) {
   return v < lo ? lo : v > hi ? hi : v;
 }
@@ -562,6 +591,20 @@ export const lossLedger = {
     if (!sectorId) return;
     const loss = latestLossFor(state, sectorId);
     if (!loss) return; // no recorded loss ⇒ generic wreck (unchanged) — golden-sim safe
+    // A marker-owned wreck already carries its authoritative aftermath provenance (victimLabel,
+    // killerLabel, markerId — the binding isBoundWreck matches on). Replacing it would sever the
+    // marker binding, drop the victim's name, and aim the ledger's lossId at whichever loss the
+    // sector recorded last — a different victim's story. The player's own hull still takes its
+    // OWN recorded loss (the defeat receipt names it) — matched by kill stamp, hull def and
+    // label so a foreign loss in a fought-over sector can never attach.
+    const existing = e.data.provenance;
+    if (existing && typeof existing === 'object' && existing.markerId != null) {
+      if (e.data.playerWreck === true && existing.lossId == null) {
+        const own = ownLossForWreck(e, state, sectorId);
+        if (own) existing.lossId = own.lossId;
+      }
+      return;
+    }
     // Don't clobber a communicator's mission-bearing label — only enrich non-communicator wrecks.
     const isComms = e.data.isCommunicator || e.data.parentType === 'communicator';
     const classId = pickWreckClass({ seed: ensureState(state).seed, lossId: loss.lossId, sectorId });
