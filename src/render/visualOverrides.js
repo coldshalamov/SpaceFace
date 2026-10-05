@@ -614,18 +614,17 @@ export function detachBoundaryResolvingMarker(boundary) {
     detached = true;
   }
   // Publish-time invariant: no authoredResolvingMarker node may survive an authored commit.
-  // The tracked field covers the normal case — this walk purges a tagged straggler whose
+  // The tracked field covers the normal case — this pass purges a tagged straggler whose
   // link to `data.resolvingMarker` was lost (e.g. marker reparented under another root).
-  if (typeof boundary.traverse === 'function') {
-    const orphans = [];
-    boundary.traverse((node) => {
-      if (node !== boundary && node.userData && node.userData.authoredResolvingMarker === true) {
-        orphans.push(node);
+  // Markers only ever mount via boundary.add above — direct children — so a boundary
+  // that never minted one has nothing to purge, and a reparented straggler beyond the
+  // child list is a broken-marker scenario the commit's own replacement covers.
+  if (data.authoredResolvingMarker === true && Array.isArray(boundary.children)) {
+    for (const node of boundary.children) {
+      if (node.userData && node.userData.authoredResolvingMarker === true) {
+        if (node.parent) node.parent.remove(node);
+        detached = true;
       }
-    });
-    for (const node of orphans) {
-      if (node.parent) node.parent.remove(node);
-      detached = true;
     }
   }
   return detached;

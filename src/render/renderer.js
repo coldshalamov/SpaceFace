@@ -341,6 +341,7 @@ import {
 import {
   armAdmissionShadows,
   casterDepthMarkCurrent,
+  closeShadowDepthStagingSession,
   collectPotentialShadowCastSubjects,
   collectUnstagedShadowCasters,
   collectUnstagedShadowCastersFlag,
@@ -24846,14 +24847,21 @@ export const render = {
     // verdicts are bounded by the same collect cap so the exemption can't
     // unbound the pass. Scoped graft syncs stay uncapped too (their walk is
     // already narrowed to the added subtree).
+    // A pure drift release whose collect ran skips the policy traverse: the
+    // parked subtree is already withheld cold, and the collect+withhold
+    // bookkeeping above re-stamps whatever the new census changes — otherwise a
+    // single census re-sign or ortho cell crossing pays N exempt whole-subtree
+    // syncs inside one presented pass.
+    const skipTraverseOnDrift = !scopedSync && parkedReleaseOnDrift === true && collectGate;
     const traverseDeferred = !scopedSync
+      && !skipTraverseOnDrift
       && syncOpts.allowCast !== false
       && (this._shadowRootSyncPassCount | 0) >= SHADOW_ROOT_SYNC_PASS_CAP;
-    if (!scopedSync && !traverseDeferred) {
+    if (!scopedSync && !traverseDeferred && !skipTraverseOnDrift) {
       this._shadowRootSyncPassCount = (this._shadowRootSyncPassCount | 0) + 1;
     }
     const receiverOut = { receiverDelta: 0 };
-    const changed = traverseDeferred ? false : syncShadowCasterPolicy(
+    const changed = (traverseDeferred || skipTraverseOnDrift) ? false : syncShadowCasterPolicy(
       syncScope, lodLevel, {
         ...syncOpts,
         ...(extra || {}),
@@ -25035,7 +25043,7 @@ export const render = {
       const sliceRoots = slice.map(([root]) => root);
       let legCapped = false;
       let legSet = null;
-      let legDeferred = false;
+      let legDriveFailed = false;
       let lightSig = '';
       let unstagedByRoot = null;
       if (this._shadowSettingOn === true && renderer && scene && camera && this._keyLight
@@ -25048,6 +25056,11 @@ export const render = {
           // armCallbackAfterPresent, so the _viewSyncSeq memo can serve a sig
           // minted before a light add/remove landed; the session keys on it.
           lightSig = lightCensusSignature(scene);
+          // Pair the epoch beside the mint: a census mutation landing between
+          // here and the drive's first call must trip censusStale — minting the
+          // epoch inside the drive would miss the gap and stage under a sig the
+          // live census can never reproduce.
+          const armSigEpoch = shadowCensusEpoch();
           // Per-root collect under a wall-clock deadline AND a shared node budget:
           // one fat subtree's traverse + signature mints is atomic inside the arm,
           // so an unbounded root used to push the whole arm's task past budget. A
@@ -25146,7 +25159,6 @@ export const render = {
             // the leftover audit below requeues (never parks) a deferred leg, and
             // its meshes stay withheld until the marks commit — the cold-link
             // contract is unchanged.
-            legDeferred = true;
             const deferredMark = this._deferredDepthStageRoots
               || (this._deferredDepthStageRoots = new Set());
             for (const [deferRoot, deferMeshes] of unstagedByRoot) {
@@ -25165,13 +25177,61 @@ export const render = {
               restoreObjectHome,
               lightingScene: scene,
               lightSigOverride: lightSig,
+              lightSigEpoch: armSigEpoch,
               stagingName: 'SF_ShadowPromoteDepthAdmission',
             }, yieldToBrowser).catch((error) => {
+              legDriveFailed = true;
               console.warn('[render] shadow-promote depth stage fallback failed', error);
             }).finally(() => {
               if (this._deferredDepthStageRoots) {
                 for (const [deferRoot] of unstagedByRoot) {
                   this._deferredDepthStageRoots.delete(deferRoot);
+                }
+              }
+              // The undrawable verdict belongs here: the deferred leg's marks
+              // have landed by now, so a root whose whole offered set is still
+              // unmarked can never stage (geometry-less, unreadable layer,
+              // material-invisible). Park it on the backed-off recheck cadence
+              // instead of letting it spin collect→offer→requeue forever; a
+              // failed drive leaves its roots queued for the normal retry.
+              if (legDriveFailed !== true && legSet) {
+                const entryByRoot = new Map(slice);
+                for (const [deferRoot, deferMeshes] of unstagedByRoot) {
+                  let allUnmarked = deferMeshes.length > 0;
+                  for (const mesh of deferMeshes) {
+                    if (!legSet.has(mesh) || casterDepthMarkCurrent(mesh, lightSig)) {
+                      allUnmarked = false;
+                      break;
+                    }
+                  }
+                  if (!allUnmarked || !deferRoot || !deferRoot.parent) continue;
+                  const entry = entryByRoot.get(deferRoot) || {};
+                  pending.delete(deferRoot);
+                  const parkedMap = this._parkedDepthStageRoots
+                    || (this._parkedDepthStageRoots = new Map());
+                  this._parkedRecheckStamp = (this._parkedRecheckStamp | 0) + 1;
+                  const cycles = ((deferRoot.userData && deferRoot.userData.sfDepthUndrawableCycles) | 0) + 1;
+                  if (deferRoot.userData) deferRoot.userData.sfDepthUndrawableCycles = cycles;
+                  const parkedTarget = this._keyLight && this._keyLight.target
+                    ? this._keyLight.target.position : null;
+                  const parkedCell = (this._shadowOrthoExtent || 1) / 2;
+                  parkedMap.set(deferRoot, {
+                    lodLevel: entry.lodLevel,
+                    entity: entry.entity,
+                    seq: shadowCasterPolicyDirtySeq(deferRoot),
+                    recheck: (96 + (this._parkedRecheckStamp % 32)) * Math.min(8, 1 << (cycles - 1)),
+                    lightSig: this._shadowCensusForFrame(),
+                    oqX: parkedTarget ? Math.round(parkedTarget.x / parkedCell) : null,
+                    oqZ: parkedTarget ? Math.round(parkedTarget.z / parkedCell) : null,
+                    // The earned node-budget scale rides the park so the
+                    // re-queue skips re-paying the escalation ladder.
+                    depthNodeScale: entry.depthNodeScale,
+                  });
+                  // Only the proven-unmarkable set stays withheld — staged
+                  // siblings' casts restore on the next sync.
+                  if (this._withheldDepthCasters) {
+                    this._withheldDepthCasters.set(deferRoot, new Set(deferMeshes));
+                  }
                 }
               }
             });
@@ -25230,71 +25290,21 @@ export const render = {
           continue;
         }
         const leftover = leftoverByRoot && leftoverByRoot.get(root);
-        let reforceLeftover = null;
         if (leftover) {
-          // Every still-unmarked mesh was offered to this arm's leg and came back
-          // unmarked — the stage can't draw it (undrawable-forever: geometry-less,
-          // unreadable layer, material-invisible). Parking stops the
-          // collect→slice→draw-nothing→recollect spin; flags stay withheld so the
-          // cold-link contract holds, and a dirtySeq bump unparks via the checked
-          // sync's normal collect path.
-          let allOffered = legSet !== null;
-          for (const mesh of leftover) {
-            if (!legSet.has(mesh)) { allOffered = false; break; }
-          }
-          if (allOffered && !legDeferred) {
-            const parkedMap = this._parkedDepthStageRoots
-              || (this._parkedDepthStageRoots = new Map());
-            this._parkedRecheckStamp = (this._parkedRecheckStamp || 0) + 1;
-            // Consecutive undrawable re-parks back the recheck cadence off
-            // geometrically — a forever-unmarkable leftover still gets re-offered
-            // on each recheck (a mesh drifting inside the key-light ortho
-            // self-heals), it just stops burning a collect+offer every ~100
-            // syncs in the meantime.
-            const cycles = ((root.userData && root.userData.sfDepthUndrawableCycles) || 0) + 1;
-            if (root.userData) root.userData.sfDepthUndrawableCycles = cycles;
-            const parkedTarget = this._keyLight && this._keyLight.target
-              ? this._keyLight.target.position : null;
-            const parkedCell = (this._shadowOrthoExtent || 1) / 2;
-            parkedMap.set(root, {
-              // The +stamp%32 staggers same-arm cohorts: identical cadences used
-              // to expire in one pass and stack every parked collect there.
-              lodLevel, entity, seq: shadowCasterPolicyDirtySeq(root),
-              recheck: (96 + (this._parkedRecheckStamp % 32)) * Math.min(8, 1 << (cycles - 1)),
-              // The park verdict is census- and ortho-local: a light re-signing or
-              // the shadow box drifting over the root can flip drawability without
-              // ever bumping dirtySeq — both unpark below.
-              lightSig: this._shadowCensusForFrame(),
-              oqX: parkedTarget ? Math.round(parkedTarget.x / parkedCell) : null,
-              oqZ: parkedTarget ? Math.round(parkedTarget.z / parkedCell) : null,
-              // The earned node-budget scale rides the park so the re-queue
-              // skips re-paying the escalation ladder.
-              depthNodeScale: entry.depthNodeScale,
-            });
-            // The leftover meshes stay withheld across the park; every other
-            // caster falls through to the restore below so staged siblings stop
-            // sitting dark for the park's whole lifetime.
-            reforceLeftover = leftover;
-          } else {
-            pending.set(root, entry);
-            continue;
-          }
+          // Still-unmarked casters requeue — a deferred leg's marks settle
+          // presents later, so the undrawable-forever verdict is rendered in the
+          // drive's .finally where the marks have actually landed.
+          pending.set(root, entry);
+          continue;
         }
         // The arm's own whole-slice collect covered every dirty to this instant —
         // stamp the live generation so the checked sync doesn't re-collect this
         // root every presented frame (writing false left stampedSeq=-1 forever).
         if (root.userData) root.userData[STAGE_SELF_DIRTY_KEY] = shadowCasterPolicyDirtySeq(root);
         if (this._withheldDepthCasters) {
-          if (reforceLeftover) {
-            // The cached re-stamp must keep only the unmarkable set — re-forcing
-            // the whole withheld cohort would undo the restore for the staged
-            // siblings this park now frees.
-            this._withheldDepthCasters.set(root, new Set(reforceLeftover));
-          } else {
-            this._withheldDepthCasters.delete(root);
-          }
+          this._withheldDepthCasters.delete(root);
         }
-        if (!reforceLeftover && root.userData) delete root.userData.sfDepthUndrawableCycles;
+        if (root.userData) delete root.userData.sfDepthUndrawableCycles;
         if (entry && entry.authoredCastShadow === true) {
           // Producer-managed authored mint (instanced pool chunks): the root sits
           // at scene origin — an ortho band grade can't grade instances spanning
@@ -25326,13 +25336,6 @@ export const render = {
             }
           }
         } catch (_) { /* restore is best-effort */ }
-        if (reforceLeftover) {
-          // Only the meshes this arm proved undrawable stay dark — restoring
-          // them would link their depth variant inside a presented refresh.
-          for (const mesh of reforceLeftover) {
-            if (mesh) mesh.castShadow = false;
-          }
-        }
         restored += 1;
         // Restores requeue under the same deadline rule as the collect: staged
         // roots left over stay withheld one more arm — never a cold link.
@@ -25376,14 +25379,10 @@ export const render = {
     }, { idleBoundMs: 48 });
   },
 
-  // Session teardown: the staging scene parks cloned lights + a renderBufferDirect
-  // capture — always close() so the wrapper comes off the renderer.
+  // Session teardown: the held staging session parks cloned lights — close it
+  // once the drain empties; the next arm remints under the live census.
   _killDepthStageSession() {
-    const session = this._depthStageSession;
-    this._depthStageSession = null;
-    if (session) {
-      try { session.close(); } catch (_) { /* best effort */ }
-    }
+    closeShadowDepthStagingSession(this.renderer);
   },
 
   _stageShadowDepthOnSettingEnable() {

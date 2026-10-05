@@ -537,6 +537,15 @@ export function compileShadowDepthPipelines(options = {}) {
 // signature or census-epoch drift.
 const _depthStageSessions = new WeakMap();
 
+// The arm closes the held session once its drain empties; the next arm remints
+// under the live census rather than staging under a stale light set.
+export function closeShadowDepthStagingSession(renderer) {
+  const held = _depthStageSessions.get(renderer);
+  if (!held) return;
+  _depthStageSessions.delete(renderer);
+  try { held.session.close(); } catch (_) { /* best effort */ }
+}
+
 // Stepped twin: the caster census, the staged-lights census and the mark
 // signature census (one fused whole-scene walk) yield per 512 visited nodes,
 // so async drives pace the ceremony under their slice clocks. Everything from
