@@ -27,7 +27,7 @@ import { VESTA_SHEAR_JAWS } from '../src/data/environmentalMachinery.js';
 import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
 import { world } from '../src/systems/world.js';
 import { factionPresence } from '../src/systems/factionPresence.js';
-import { stableRecordId, RECORD_KIND } from '../src/world/worldRecords.js';
+import { stableRecordId, RECORD_KIND, ensureWorldRecords } from '../src/world/worldRecords.js';
 
 const PLACES_DIR = fileURLToPath(new URL('../assets/ships/release/parts/places/', import.meta.url));
 
@@ -205,6 +205,37 @@ test('CR-BERTH-1: the crib always stands; the hulk only appears on the receipt',
     'a second materialize finds the live body instead of parking a twin');
 });
 
+test('CR-BERTH-1: tombstone and far-actor guards never re-mint the hulk', () => {
+  const recordId = stableRecordId(47, VESTA.id, RECORD_KIND.WRECK, `factionBerth:${BERTH.id}`);
+
+  // Destroyed tombstone: the receipt exists but the record says the hulk is gone — the
+  // berth's memory is the tombstone, not a fresh copy on every visit.
+  {
+    const { system, spawned } = bootBerthHarness();
+    system._spawnWorldOneOffs(VESTA, { pois: [], stations: [], gates: [], dressing: [] });
+    ensureWorldRecords(system.state.world).byId[recordId] = {
+      recordId, kind: RECORD_KIND.WRECK, sectorId: VESTA.id,
+      pos: { x: 0, z: 0 }, type: 'wreck',
+      outcome: 'destroyed', alive: false,
+    };
+    system.state.factionPresence.serviceReceipts[BERTH.receiptKey] = { count: 1, t: 10 };
+    system._spawnWorldOneOffs(VESTA, { pois: [], stations: [], gates: [], dressing: [] });
+    assert.equal(spawned.filter((e) => e.data && e.data.berthConsign).length, 0,
+      'a destroyed tombstone must not re-mint the consigned hulk');
+  }
+
+  // Far-actor custody: the hulk rode off with a far actor — the row, not a twin, owns it.
+  {
+    const { system, spawned } = bootBerthHarness();
+    system._spawnWorldOneOffs(VESTA, { pois: [], stations: [], gates: [], dressing: [] });
+    system.state.world.farActors = { rows: [{ alive: true, data: { worldRecordId: recordId } }] };
+    system.state.factionPresence.serviceReceipts[BERTH.receiptKey] = { count: 1, t: 10 };
+    system._spawnWorldOneOffs(VESTA, { pois: [], stations: [], gates: [], dressing: [] });
+    assert.equal(spawned.filter((e) => e.data && e.data.berthConsign).length, 0,
+      'a far actor holding the record must not mint a local twin');
+  }
+});
+
 test('CR-BERTH-1: the desk writes the keyed receipt off service:completed', () => {
   const handlers = [];
   const bus = {
@@ -240,6 +271,19 @@ test('CR-BERTH-1: the desk writes the keyed receipt off service:completed', () =
   onCompleted[0]({ type: 'redeem_rights', stationId: 'station_ceres', rights: 4, atT: 101 });
   assert.equal(Object.keys(state.factionPresence.serviceReceipts)
     .filter((k) => k.startsWith('berthConsign:')).length, 1, 'foreign payouts mint no rows');
+
+  // The receipt is durable memory: it survives the serialize → save-envelope → deserialize
+  // hop a Continue takes, so the parked hulk still materializes after a reload.
+  const saved = JSON.parse(JSON.stringify(presence.serialize()));
+  const restoredState = { simTime: 0, factions: {} };
+  const restored = Object.create(factionPresence);
+  restored.state = restoredState;
+  restored._unsub = [];
+  restored.deserialize(saved);
+  const restoredReceipt = restoredState.factionPresence.serviceReceipts[BERTH.receiptKey];
+  assert.ok(restoredReceipt, 'the berth receipt survives the save round-trip');
+  assert.equal(restoredReceipt.count, 5, 'the accumulated count round-trips intact');
+  assert.equal(restoredReceipt.kind, 'berthConsign');
 });
 
 test('CR-BERTH-1: the Forge desk offers yard + fence, and negative rep closes it', () => {
