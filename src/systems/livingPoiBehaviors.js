@@ -21,6 +21,15 @@ const DAY_SECONDS = 600;
 const PLAN_BUDGET = 13;
 const RECEIPT_CAP = 48;
 const HIGH_SECURITY = 0.85;
+
+// Families whose resolution sells a causal mission lead at a sector desk. One summary per
+// family — shared by the resolve-time emit and the aftermath re-entry retry (a lead dropped
+// to a closed berth re-offers once standing opens a desk while the aftermath still lives).
+const LEAD_FAMILY_SUMMARIES = Object.freeze({
+  derelict_salvage: 'Recovered records point to another registered loss.',
+  anomaly_research: 'Stable bearings expose a second research signal.',
+  gravity_well_sounding: 'Charted soundings expose a second orbital signal.',
+});
 const SAVE_SCHEMA_VERSION = 2;
 
 export function poiBehaviorFingerprint(row) {
@@ -245,6 +254,13 @@ export const livingPoiBehaviors = {
     if (row.status === 'aftermath') {
       this._emit('poi:behaviorReadout', readoutOf(row));
       const aftermath = own.aftermath[row.behaviorId] || null;
+      // A lead dropped to a closed berth is owed one more chance: while the aftermath still
+      // lives, re-walking the site retries the emit — earned standing opens the desk it
+      // could not sell through before. The flag settles it once any emit actually fired.
+      if (aftermath && LEAD_FAMILY_SUMMARIES[row.familyId] && aftermath.leadEmitted !== true
+          && aftermath.expiresDay > Math.floor((this.state.simTime || 0) / DAY_SECONDS)) {
+        this._emitMissionLead(row, LEAD_FAMILY_SUMMARIES[row.familyId]);
+      }
       if (!this._deferAutomaticGuidance(row, 'aftermath')) {
         this._deferredAutomaticGuidance.delete(row.behaviorId);
         this._publishGuidance(row, 'aftermath', aftermath);
@@ -413,7 +429,13 @@ export const livingPoiBehaviors = {
     let text;
     let kind = 'info';
     if (phase === 'outcome') {
-      text = `${label} · ${prettyToken(payload.aftermathKind)} · ${family.rewardLabel}`;
+      // A dropped lead (no admitting desk) earned the mark, not the desk sale — say the
+      // aftermath without naming a lead that never posted.
+      const leadSold = !LEAD_FAMILY_SUMMARIES[row.familyId]
+        || (durable && durable.leadEmitted === true);
+      text = leadSold
+        ? `${label} · ${prettyToken(payload.aftermathKind)} · ${family.rewardLabel}`
+        : `${label} · ${prettyToken(payload.aftermathKind)}`;
       kind = 'good';
     } else if (phase === 'aftermath') {
       const remaining = Math.max(1, (durable && durable.expiresDay || 0)
@@ -463,13 +485,9 @@ export const livingPoiBehaviors = {
         });
         break;
       case 'derelict_salvage':
-        this._emitMissionLead(row, 'Recovered records point to another registered loss.');
-        break;
       case 'anomaly_research':
-        this._emitMissionLead(row, 'Stable bearings expose a second research signal.');
-        break;
       case 'gravity_well_sounding':
-        this._emitMissionLead(row, 'Charted soundings expose a second orbital signal.');
+        this._emitMissionLead(row, LEAD_FAMILY_SUMMARIES[row.familyId]);
         break;
       case 'convoy_industrial_route':
         if (row.stationId) this._emit('economy:applyTradePressure', {
@@ -502,7 +520,9 @@ export const livingPoiBehaviors = {
     const admits = (st) => stationBerthAdmits(st, repFor(this.state, st && st.factionId), this.state);
     const deskId = sectorStations.some((st) => st && st.id === row.stationId && admits(st))
       ? row.stationId
-      : (sectorStations.find((st) => st && admits(st)) || {}).id || null;
+      : ((sectorStations.find((st) => st && st.services && st.services.includes('missions') && admits(st))
+          || sectorStations.find((st) => st && admits(st))
+          || {}).id || null);
     if (!deskId) return false;
     const offer = buildPoiCausalOffer({
       seed: this.state.meta && this.state.meta.seed || 1,
@@ -516,6 +536,10 @@ export const livingPoiBehaviors = {
     // causal destination/investigation instruction.
     if (summary) offer.summary = `${summary} ${offer.summary}`;
     this._emit('mission:offered', offer);
+    // The emit fired: mark the aftermath so zone re-entry does not re-post (the board
+    // dedupes on the fingerprint regardless). A dropped desk leaves the flag unset —
+    // earning the vouch later re-offers the lead the next time the pilot walks the site.
+    if (aftermath) aftermath.leadEmitted = true;
     return true;
   },
 

@@ -205,6 +205,47 @@ test('a causal lead posts at a desk the pilot can dock at — reroute, then drop
   assert.equal(warmOffers[0].stationId, 'station_sker', 'standing reopens the authored desk');
 });
 
+test('a dropped lead re-offers when standing opens a desk before the aftermath expires', () => {
+  // Fresh saves start Reach at -50 — every Sker causal lead drops at resolve. The aftermath
+  // carries the lead unpaid until it expires: re-walking the site with the vouch earned
+  // sells it through the now-open desk, once.
+  const h = boot();
+  const aftermath = makeAftermath(0, 'derelict_salvage', 'sector_sker_haven');
+  const row = {
+    behaviorId: aftermath.behaviorId,
+    familyId: 'derelict_salvage',
+    sectorId: 'sector_sker_haven',
+    zoneId: aftermath.zoneId,
+    zoneName: 'Ledger Wreck',
+    stationId: 'station_sker',
+    beneficiaryFactionId: 'faction_reach',
+    status: 'engaged',
+    mapLabel: 'CAUSAL SITE',
+    radarKind: 'derelict',
+    contract: { cause: aftermath.cause },
+    fingerprint: aftermath.fingerprint,
+  };
+  assert.equal(h.living._resolve(row, aftermath.outcome, {}), true);
+  assert.equal(h.log.filter((r) => r.event === 'mission:offered').length, 0, 'rep 0 drops the lead');
+  assert.equal(h.state.livingPoiBehaviors.aftermath[row.behaviorId].leadEmitted, undefined,
+    'a dropped lead leaves the aftermath unpaid');
+
+  // Standing earned, site re-walked: the live aftermath re-offers through the open desk.
+  h.state.factions.faction_reach = { rep: 5 };
+  const own = h.state.livingPoiBehaviors;
+  row.status = 'aftermath';
+  own.activeByZone[row.zoneId] = row;
+  h.living._onZoneEntered({ zoneId: row.zoneId });
+  const posted = h.log.filter((r) => r.event === 'mission:offered').map((r) => r.payload);
+  assert.equal(posted.length, 1, 'the earned vouch re-posts the dropped lead');
+  assert.equal(posted[0].stationId, 'station_sker');
+  assert.equal(own.aftermath[row.behaviorId].leadEmitted, true, 'the aftermath is now paid');
+
+  // One sale only — a further re-entry reads the flag and stays silent.
+  h.living._onZoneEntered({ zoneId: row.zoneId });
+  assert.equal(h.log.filter((r) => r.event === 'mission:offered').length, 1, 'no double-post');
+});
+
 test('pure builder is stable by save seed plus aftermath fingerprint and selects one connected destination', () => {
   const first = buildOffer(0, 'derelict_salvage', 4701);
   const repeat = buildOffer(0, 'derelict_salvage', 4701);
