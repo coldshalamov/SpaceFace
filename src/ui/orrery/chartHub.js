@@ -72,20 +72,20 @@ ${C} .gmh-item:is(:hover, :focus-visible, .is-active) svg { opacity:1; }
 ${C} .gmh-item[aria-disabled="true"] { color:rgb(${BONE} / .42); cursor:default; background:none; }
 ${C} .gmh-item[aria-disabled="true"]:hover { color:rgb(${BONE} / .42); background:none; }
 
-/* ===== the toolbar: one spine, four glyphs, a tooltip each ===== */
-${C} .gmh-tools { position:absolute; right:var(--k-margin, 40px); bottom:calc(var(--gm-foot, 150px) + 18px); display:flex; flex-direction:column; align-items:center; gap:2px; padding:6px 0; pointer-events:auto; }
-${C} .gmh-tools::before { content:""; position:absolute; top:0; bottom:0; left:50%; width:6px; margin-left:-3px; z-index:0; pointer-events:none;
-  background:linear-gradient(90deg, transparent 2px, rgb(${BONE} / .6) 2px 4px, transparent 4px), linear-gradient(90deg, rgb(${BONE} / .26) 0 6px); }
+/* ===== the toolbar: one horizontal spine, four glyphs, a tooltip each ===== */
+${C} .gmh-tools { position:absolute; left:calc(var(--k-margin, 40px) + 72px); bottom:calc(var(--gm-foot, 150px) + 16px); display:flex; flex-direction:row; align-items:center; gap:2px; padding:0 6px; pointer-events:auto; }
+${C} .gmh-tools::before { content:""; position:absolute; left:0; right:0; top:50%; height:6px; margin-top:-3px; z-index:0; pointer-events:none;
+  background:linear-gradient(180deg, transparent 2px, rgb(${BONE} / .6) 2px 4px, transparent 4px), linear-gradient(180deg, rgb(${BONE} / .26) 0 6px); }
 ${C} .gmh-tool { position:relative; z-index:1; display:grid; place-items:center; width:44px; height:40px; color:rgb(${BONE} / .94); }
-${C} .gmh-tool::before { content:""; position:absolute; inset:-1px 6px; z-index:-1; background:radial-gradient(closest-side, rgb(5 7 10), rgb(5 7 10 / .96) 62%, rgb(5 7 10 / 0)); }
+${C} .gmh-tool::before { content:""; position:absolute; inset:2px -1px; z-index:-1; background:radial-gradient(closest-side, rgb(5 7 10), rgb(5 7 10 / .96) 62%, rgb(5 7 10 / 0)); }
 ${C} .gmh-tool svg { width:24px; height:24px; stroke:currentColor; fill:none; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; }
 ${C} .gmh-tool:is(:hover, :focus-visible) { color:rgb(255 252 244); }
 ${C} .gmh-tool:is(:hover, :focus-visible) svg { filter:drop-shadow(0 0 5px rgb(255 240 214 / .55)); }
 ${C} .gmh-tool[aria-disabled="true"] { color:rgb(${BONE} / .34); cursor:default; }
-${C} .gmh-tool[data-tip]::after { content:attr(data-tip); position:absolute; right:calc(100% + 10px); top:50%; transform:translate(6px, -50%); white-space:nowrap; padding:6px 12px; pointer-events:none; opacity:0;
+${C} .gmh-tool[data-tip]::after { content:attr(data-tip); position:absolute; left:50%; bottom:calc(100% + 10px); transform:translate(-50%, 6px); white-space:nowrap; padding:6px 12px; pointer-events:none; opacity:0;
   ${LABEL} font-size:12px; letter-spacing:.12em; color:rgb(248 244 234); background:rgb(6 8 12 / .96); ${FEATHER(8)}
   transition:opacity .12s linear .35s, transform .18s var(--dp-ease-out, cubic-bezier(.2, .8, .2, 1)) .35s; }
-${C} .gmh-tool[data-tip]:is(:hover, :focus-visible)::after { opacity:1; transform:translate(0, -50%); }
+${C} .gmh-tool[data-tip]:is(:hover, :focus-visible)::after { opacity:1; transform:translate(-50%, 0); }
 
 /* ===== the wire: what is happening ===== */
 ${C} .gmh-wire { position:absolute; left:50%; top:calc(var(--k-margin, 40px) + 2px); transform:translateX(-50%); width:min(440px, 34vw); pointer-events:auto; z-index:2; }
@@ -121,6 +121,23 @@ ${C} .gm-search-results .gm-search-item-name { flex:0 0 auto; max-width:60%; min
 ${C} .gm-search-results .gm-search-item-detail { flex:0 1 55%; min-width:0; font-family:var(--dp-face-read, "Instrument Sans"); font-size:12px; text-align:right; color:rgb(${BONE} / .62); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 ${C} .gm-search-results .gmh-pal-key { flex:none; ${LABEL} font-size:12px; letter-spacing:.1em; color:rgb(${BONE} / .56); }
 
+
+/* ===== the inspector as an accordion: a titled section is a row that opens in place ===== */
+${C} .gm-ins-section.gmh-acc { padding-top:0 !important; padding-bottom:2px !important; }
+${C} .gm-ins-section.gmh-acc > .gmh-acc-head { display:flex !important; align-items:center; gap:12px; width:100%; min-height:32px; padding:4px 0 4px 14px; margin:0; cursor:pointer; position:relative; color:rgb(${BONE} / .8); }
+${C} .gm-ins-section.gmh-acc > .gmh-acc-head:is(:hover, :focus-visible) { color:rgb(255 252 244); ${SEG()} }
+${C} .gm-ins-section.gmh-acc > .gmh-acc-head:focus-visible { outline:none; }
+${C} .gmh-acc-title { flex:0 0 auto; white-space:nowrap; }
+${C} .gmh-acc-sum { flex:1 1 0; min-width:0; text-align:right; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:var(--dp-face-read, "Instrument Sans"); font-size:13px; letter-spacing:0; text-transform:none; font-weight:500; color:var(--dp-phos, #dfeeff); transition:opacity .15s linear; }
+${C} .gm-ins-section.gmh-acc:not(.is-collapsed) .gmh-acc-sum { opacity:0; }
+${C} .gmh-acc-chev { flex:none; width:12px; height:12px; stroke:currentColor; fill:none; stroke-width:1.7; stroke-linecap:round; transition:transform .2s var(--dp-ease-out, ease); }
+${C} .gm-ins-section.gmh-acc.is-collapsed .gmh-acc-chev { transform:rotate(-90deg); }
+${C} .gm-ins-section.gmh-acc.is-collapsed > :not(.gmh-acc-head) { display:none !important; }
+${C} .gm-ins-section.gmh-acc.is-opening > :not(.gmh-acc-head) { animation:gmh-rise .24s var(--dp-ease-out, cubic-bezier(.2, .8, .2, 1)) both; }
+@keyframes gmh-rise { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:none; } }
+html.sf-reduce-motion ${C} .gm-ins-section.gmh-acc.is-opening > :not(.gmh-acc-head) { animation:none; }
+html.sf-reduce-motion ${C} .gmh-acc-chev { transition:none; }
+
 html.sf-reduce-motion ${C} :is(.gmh-card, .gmh-menu, .gmh-tool[data-tip]::after, .gmh-wire__chev) { transition:none; }
 @media (max-width:1180px) { ${C} .gmh-wire { display:none; } }
 @media (forced-colors:active) { ${C} :is(.gmh-card, .gmh-menu, .gmh-wire__bar, .gmh-wire__list) { background:Canvas; mask:none; -webkit-mask:none; border:1px solid CanvasText; } }
@@ -152,6 +169,89 @@ const GLYPH = Object.freeze({
 });
 const svgOf = (key, size = 16) => `<svg viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true"><path d="${GLYPH[key] || GLYPH.step}"/></svg>`;
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+// ─── The inspector as an accordion ─────────────────────────────────────────────────────────────────
+const accOpen = new Map();
+
+/** The one-line reading a collapsed section carries: its first reading's value, or the start of its note. */
+function accSummary(section, head) {
+  const phrase = (el) => {
+    // a reading's words (its label and its value) as one phrase; innerText keeps the line breaks the eye sees
+    const raw = typeof el.innerText === 'string' && el.innerText ? el.innerText : (el.textContent || '');
+    return raw.replace(/[●○◆◇▮▯]+/g, ' ').split(/\n+/).map((t) => t.trim()).filter(Boolean).join(' · ').replace(/\s+/g, ' ').replace(/[·\s]+$/, '').trim();
+  };
+  let text = '';
+  const row = section.querySelector('.gm-ins-row');
+  if (row) text = phrase(row);
+  if (!text) {
+    for (const el of section.children) {
+      if (el === head) continue;
+      text = phrase(el);
+      if (text) break;
+    }
+  }
+  return text.length > 46 ? `${text.slice(0, 45).trim()}…` : text;
+}
+
+/** A section's short name on its row: the part before a dot, without its qualifiers. */
+function accTitle(title) {
+  return String(title || '').split(' · ')[0].replace(/\s*&\s*jurisdiction/i, '').replace(/^Trade lanes.*/i, 'Trade lanes').trim();
+}
+
+/**
+ * Turn the inspector's titled sections into an accordion: a row with the section's title and a
+ * one-line summary of its first reading, opening in place. The identity block (no title) stays open.
+ * Open choices are remembered per tab and section title, so a pilot who always wants THREAT open
+ * finds it open on the next sector. A tab with fewer than four sections is left fully open.
+ */
+export function enhanceInspectorSections(details, { tab = 'overview' } = {}) {
+  try {
+    if (!details || typeof details.querySelectorAll !== 'function') return;
+    const doc = details.ownerDocument;
+    const sections = [...details.querySelectorAll('.gm-ins-section')].filter((sec) => {
+      const first = sec.firstElementChild;
+      return first && first.matches && first.matches('.gm-ins-title, .gm-ins-kind') && !sec.classList.contains('gmh-acc');
+    });
+    if (sections.length < 4) return;
+    // the planning answer comes first: the cost of getting there sits right under the identity block
+    const cost = sections.find((sec) => /navigation cost/i.test(sec.firstElementChild.textContent || ''));
+    if (cost && cost !== sections[0] && typeof details.insertBefore === 'function') {
+      try { details.insertBefore(cost, sections[0]); sections.splice(sections.indexOf(cost), 1); sections.unshift(cost); } catch (_) { /* order stays as authored */ }
+    }
+    sections.forEach((sec, index) => {
+      const head = sec.firstElementChild;
+      const title = (head.textContent || '').trim();
+      const key = `${tab}:${title}`;
+      const defaultOpen = /navigation cost|threat assessment|trade lanes|best known|survey record/i.test(title);
+      const open = accOpen.has(key) ? accOpen.get(key) : defaultOpen;
+      const summary = accSummary(sec, head);
+      head.classList.add('gmh-acc-head');
+      head.setAttribute('role', 'button');
+      head.setAttribute('tabindex', '0');
+      head.innerHTML = `<span class="gmh-acc-title">${esc(accTitle(title))}</span><span class="gmh-acc-sum">${esc(summary)}</span><svg class="gmh-acc-chev" viewBox="0 0 20 20" aria-hidden="true"><path d="${GLYPH.chev}"/></svg>`;
+      sec.classList.add('gmh-acc');
+      const apply = (isOpen) => {
+        sec.classList.toggle('is-collapsed', !isOpen);
+        head.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      };
+      apply(open);
+      const toggle = () => {
+        const next = sec.classList.contains('is-collapsed');
+        accOpen.set(key, next);
+        apply(next);
+        if (next) {
+          sec.classList.add('is-opening');
+          setTimeout(() => sec.classList.remove('is-opening'), 300);
+        }
+      };
+      head.addEventListener('click', toggle);
+      head.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); ev.stopPropagation(); toggle(); }
+      });
+    });
+    void doc;
+  } catch (_) { /* a headless fixture's inspector stays a list */ }
+}
 
 const noop = Object.freeze({
   hover() {}, cancelHover() {}, contextMenu() { return false; }, closeAll() {}, escape() { return false; }, key() { return false; }, refresh() {}, dispose() {},

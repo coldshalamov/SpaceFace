@@ -12,7 +12,7 @@ import {
 } from './orrery/chartInstruments.js';
 import { placeChartLabels, placeChartCallout } from './orrery/chartLabels.js';
 import { planChartGround, drawDominionLane, drawTokenAura, releaseChartWorld, dominionRgb } from './orrery/chartWorld.js';
-import { mountChartHub } from './orrery/chartHub.js';
+import { mountChartHub, enhanceInspectorSections } from './orrery/chartHub.js';
 import { dressLampKey } from './orrery/lampKey.js';
 // src/ui/galaxyMap.js — ONE zoomable navigation map (GDD pillar 2).
 //
@@ -5493,7 +5493,7 @@ _stepAnimation(now) {
           <div class="gm-ins-plate">
             <div class="gm-ins-plate__art" aria-hidden="true"><img src="${escapeMapHtml(sectorTokenUrl(t.id))}" alt="" loading="eager" onerror="this.remove()"></div>
             <div>
-              <div class="gm-ins-kind">Sector record · [${Math.round(t.x || 0)}, ${Math.round(t.y || 0)}]</div>
+              <div class="gm-ins-kind">Sector · ${escapeMapHtml(factionNameOf(t.factionId))}</div>
               <div class="gm-ins-target-name">${escapeMapHtml(t.name)}</div>
             </div>
           </div>
@@ -5806,6 +5806,8 @@ _stepAnimation(now) {
     if (this._inspectorDetailsHtml !== tabbed) {
       detailsEl.innerHTML = tabbed;
       this._inspectorDetailsHtml = tabbed;
+      // a long tab (a sector's overview is nine sections) reads as an accordion
+      enhanceInspectorSections(detailsEl, { tab: this._activeTab });
     }
     if (btn.textContent !== buttonLabel) btn.textContent = buttonLabel;
     if (primary && primary.coursePayload) {

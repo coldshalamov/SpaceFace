@@ -202,13 +202,13 @@ ${C} .gm-ins-section { background-image:linear-gradient(90deg, rgb(${BONE} / .34
 ${C} .gm-ins-section:first-child { background-image:none !important; }
 ${C} .gm-ins-row-val { color:var(--dp-phos, #dfeeff) !important; }
 /* the chosen sector's own render heads its record, slowly turning toward the pointer (a tilt plate) */
-${C} .gm-ins-plate { position:relative; display:grid; grid-template-columns:auto minmax(0, 1fr); align-items:center; gap:14px; margin:0 0 6px; padding:8px 0 12px 8px; overflow:visible; }
+${C} .gm-ins-plate { position:relative; display:grid; grid-template-columns:auto minmax(0, 1fr); align-items:center; gap:12px; margin:0 0 6px; padding:8px 0 12px 8px; overflow:visible; --gm-plate:108px; }
 ${C} .gm-ins-plate__art { position:relative; width:var(--gm-plate, 128px); height:var(--gm-plate, 128px); border-radius:50%;
   background:radial-gradient(closest-side, rgb(5 7 10 / .95), rgb(5 7 10 / .9) 82%, rgb(5 7 10 / 0));
   box-shadow:0 0 0 1.5px rgb(${BONE} / .52), 0 0 0 6px rgb(${BONE} / .12); transform:perspective(600px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)); transition:transform .3s var(--dp-ease-out); }
 ${C} .gm-ins-plate__art img { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
 ${C} .gm-ins-plate__crest { width:26px; height:26px; object-fit:contain; opacity:.9; }
-${C} .gm-ins-plate .gm-ins-target-name { margin:0; }
+${C} .gm-ins-plate .gm-ins-target-name { margin:0; font-size:clamp(18px, 1.15vw, 23px) !important; overflow-wrap:normal !important; word-break:normal !important; hyphens:none; }
 ${C} .gm-ins-plate .gm-ins-kind { white-space:nowrap; }
 html.sf-reduce-motion ${C} .gm-ins-plate__art { transition:none; transform:none; }
 
@@ -346,6 +346,16 @@ ${C} .gm-apron { width:min(100%, var(--sf-stage-max)); margin-inline:auto; }
   ${C} .gm-navfoot .gm-nav-row-v { white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; flex:0 1 auto !important; min-width:0 !important; }
   ${C} .gm-tab.k-word { padding:2px 0 10px !important; }
   ${C} .gm-ins-plate { --gm-plate:72px; padding:4px 0 8px 6px; }
+  /* the inspector's pinned verbs share the column with the sector's readings: on a short screen the
+     explanatory sentences stand down to the screen reader and the framing words share one row, so the
+     readings (the accordion) keep some of the column */
+  ${C} :is(.gm-frame-reason, .gm-plot-reason, .gm-engage-reason) { ${SR} }
+  ${C} .gm-frame-group { flex-wrap:nowrap !important; gap:0 18px !important; }
+  ${C} .gm-frame-group .gm-frame-btn { min-height:26px !important; }
+  ${C} .gm-inspector-actions { gap:2px !important; }
+  ${C} :is(#gm-set-course-btn, .gm-plot-btn) { font-size:14px !important; padding:2px 0 4px 12px !important; }
+  ${C} #gm-engage-route-btn.orr-lampkey { margin-top:2px !important; }
+  ${C} .gm-place-actions { gap:0 14px !important; }
 }
 
 @media (forced-colors:active) {
