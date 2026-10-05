@@ -41,12 +41,22 @@ function present(){
   const b=f.body();if(b){
     const bx=b.pos.x-HOME.x,bz=b.pos.z-HOME.z;
     const aspectFit=Math.max(1,1/camera.aspect);
-    if(inspect){look.set(bx,0,bz);camera.position.set(bx+45*aspectFit,67*aspectFit,bz+60*aspectFit);camera.lookAt(look);}
+    if(inspect){camera.clearViewOffset();look.set(bx,0,bz);camera.position.set(bx+45*aspectFit,67*aspectFit,bz+60*aspectFit);camera.lookAt(look);}
     else{
       const cx=core?core.pos.x-HOME.x:bx,cz=core?core.pos.z-HOME.z:bz;
       look.set((Math.min(bx,cx,pilot.position.x)+Math.max(bx,cx,pilot.position.x))/2,0,(Math.min(bz,cz,pilot.position.z)+Math.max(bz,cz,pilot.position.z))/2);
-      target.lerp(look,.08);const span=Math.max(180,Math.hypot(bx-pilot.position.x,bz-pilot.position.z),Math.hypot(cx-pilot.position.x,cz-pilot.position.z));
-      camera.position.set(target.x,target.y+span*.92*aspectFit,target.z+span*.64*aspectFit);camera.lookAt(target);
+      // Frame the physical actors inside the unoccluded playfield, including after
+      // test fast-forward/reset. A lerp from the old centre could strand the dog offscreen.
+      target.copy(look);
+      const radius=Math.max(65,Math.hypot(bx-target.x,bz-target.z)+C.visualRadius,
+        Math.hypot(cx-target.x,cz-target.z)+C.toyRadius,
+        Math.hypot(pilot.position.x-target.x,pilot.position.z-target.z)+12);
+      const narrow=innerWidth<650,top=narrow?180:145,bottom=narrow?300:240;
+      const available=Math.max(140,innerHeight-top-bottom),halfFov=THREE.MathUtils.degToRad(camera.fov*.5);
+      const halfAngle=Math.min(Math.atan(Math.tan(halfFov)*available/innerHeight),Math.atan(Math.tan(halfFov)*camera.aspect*.86));
+      const distance=radius/Math.sin(halfAngle)*1.06;
+      camera.setViewOffset(innerWidth,innerHeight,0,(bottom-top)/2,innerWidth,innerHeight);
+      camera.position.set(target.x,target.y+distance*.88,target.z+distance*.475);camera.lookAt(target);
     }
   }
   renderer.render(scene,camera);
@@ -71,6 +81,6 @@ function frame(now){if(disposed)return;accumulator+=Math.min(.08,(now-previous)/
   f.input((keys.has('KeyD')||keys.has('ArrowRight')?1:0)-(keys.has('KeyA')||keys.has('ArrowLeft')?1:0),(keys.has('KeyS')||keys.has('ArrowDown')?1:0)-(keys.has('KeyW')||keys.has('ArrowUp')?1:0));
   while(accumulator>=1/60){f.step();accumulator-=1/60;}present();requestAnimationFrame(frame);
 }
-window.ruckusLab={fixture:f,renderer,scene,maps,a11y,present,inspect:()=>{$('view').click();},snapshot:()=>({phase:f.system._phase,memory:f.system.serialize(),bodies:f.state.entityList.length,drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles,comms:lastComms})};
+window.ruckusLab={fixture:f,renderer,camera,scene,maps,a11y,present,inspect:()=>{$('view').click();},snapshot:()=>({phase:f.system._phase,memory:f.system.serialize(),bodies:f.state.entityList.length,drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles,comms:lastComms})};
 $('boot').hidden=true;requestAnimationFrame(frame);
 addEventListener('pagehide',()=>{disposed=true;f.destroy();for(const m of maps.values())disposeRuckusVisual(m);audio?.close();renderer.dispose();});
