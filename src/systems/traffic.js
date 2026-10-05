@@ -2469,6 +2469,12 @@ export const traffic = {
   _materializeAuthoredActivityCast(sector, pockets) {
     if (!sector || !Array.isArray(pockets) || pockets.length === 0) return 0;
     if (!this.helpers || !this.helpers.spawnEntity) return 0;
+    // The authored shift is durable world content: every slot mints a stable worldRecordId and is
+    // custodied by the registry's world/jobs owners across sector residency. A detached fork has
+    // no composed runtime to custody it — minting the shift there would additive-spawn a second
+    // full roster over the ambient records the fork is testing, and durable hulls no owner could
+    // capture. Ambient fill owns the enter in that context.
+    if (!this._registry) return 0;
     this._ensureState();
     const sectorId = sector.id;
     const seed = (this.state.meta && this.state.meta.seed) || 1;
