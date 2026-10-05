@@ -807,6 +807,11 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
             return false;
           }
         } else {
+          // The completed collect doubles as the consume() fallback's world sample
+          // while the publish leg is still in flight — populateJournalFrame hands
+          // it to the publisher so a tick-consuming present doesn't re-pay the
+          // whole-set sync collect against the same GameState.
+          job.entities = entities;
           job.publishIter = presentationJournal.rebuildFromSteps(entities, job.tick);
         }
       }
@@ -859,6 +864,13 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     presentationFrame.journalFullRebuild = pendingJournalFullRebuild;
     presentationFrame.journalRebuildGeneration = pendingJournalRebuildGeneration;
     presentationFrame.journalValid = valid;
+    // While a stepped rebuild is mid-publish its completed collect is the
+    // canonical live-GameState sample — the publisher's fallback mirrors it
+    // instead of re-collecting the whole set inside the presented frame.
+    presentationFrame.rebuildCollectedEntities = steppedJournalRebuild
+        && steppedJournalRebuild.publishIter
+        && Array.isArray(steppedJournalRebuild.entities)
+      ? steppedJournalRebuild.entities : null;
   }
 
   function acknowledgePresentedJournal() {

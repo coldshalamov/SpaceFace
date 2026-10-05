@@ -171,7 +171,6 @@ import { createPresentationPublisher } from './presentationPublisher.js';
 import { createPresentationQueries } from './presentationQueries.js';
 import {
   clearWaveHullRunwayKeys,
-  collectMeshPresentationEntities,
   collectMeshPresentationEntitiesChunked,
   warmNearbyLedgerRows,
   warmNearbyLedgerRowsSteps,
@@ -1781,27 +1780,26 @@ export function stableMeshKeyForEntity(entity) {
  * key is what prevents a recycled numeric id from binding a mesh to the wrong entity.
  */
 export function reattachResidentGpuMeshes(owner) {
+  const it = reattachResidentGpuMeshesSteps(owner);
+  for (;;) { const step = it.next(); if (step.done) return step.value; }
+}
+
+// Stepped twin of the reattach sweep — the mesh scan yields at strides and the
+// lazy stable-index census rides the chunked collect, so a restore under the
+// loading shell paces across service ticks instead of paying the whole census
+// + walk inside one. Two phases keep ordering identical: the id-miss list is
+// collected first, then the census runs once for all of them.
+export function* reattachResidentGpuMeshesSteps(owner) {
   if (!owner || !owner._meshes) return 0;
   const state = owner.state;
   const remap = state && state.mode === 'loading' && state.sessionEntityIdRemap instanceof Map
     ? state.sessionEntityIdRemap
     : null;
   let attached = 0;
-  let stableIndex = null;
-  const stableEntityFor = (key) => {
-    if (key == null) return null;
-    if (!stableIndex) {
-      stableIndex = new Map();
-      for (const e of collectMeshPresentationEntities(state, [])) {
-        if (!e || e.alive === false) continue;
-        const k = stableMeshKeyForEntity(e);
-        if (k != null && !stableIndex.has(k)) stableIndex.set(k, e);
-      }
-    }
-    return stableIndex.get(key) || null;
-  };
-  const rekeys = [];
+  const deferred = [];
+  let scanned = 0;
   for (const [id, mesh] of owner._meshes) {
+    if ((++scanned % 64) === 0) yield;
     if (!mesh) continue;
     const stamped = mesh.userData ? mesh.userData.sfStableEntityKey : undefined;
     const entity = resolveWorldPresentationEntity(state, id);
@@ -1821,7 +1819,23 @@ export function reattachResidentGpuMeshes(owner) {
       }
       // The id survived but names a different logical entity now — fall through to re-key.
     }
-    let target = stamped != null ? stableEntityFor(stamped) : null;
+    deferred.push([id, mesh, stamped]);
+    // Anything still unmatched stays keyed by its dead id; reconcileMeshes releases it.
+  }
+  if (!deferred.length) return attached;
+  // The stable-index census is only paid when a stamped key misses — same lazy
+  // shape as before, chunked instead of atomic.
+  const collected = [];
+  yield* collectMeshPresentationEntitiesChunked(state, collected);
+  const stableIndex = new Map();
+  for (const e of collected) {
+    if (!e || e.alive === false) continue;
+    const k = stableMeshKeyForEntity(e);
+    if (k != null && !stableIndex.has(k)) stableIndex.set(k, e);
+  }
+  const rekeys = [];
+  for (const [id, mesh, stamped] of deferred) {
+    let target = stamped != null ? stableIndex.get(stamped) || null : null;
     if (!target && remap) {
       const mapped = remap.get(String(id));
       const candidate = mapped != null ? resolveWorldPresentationEntity(state, mapped) : null;
@@ -1831,7 +1845,6 @@ export function reattachResidentGpuMeshes(owner) {
       }
     }
     if (target && !owner._meshes.has(target.id)) rekeys.push([id, mesh, target]);
-    // Anything still unmatched stays keyed by its dead id; reconcileMeshes releases it.
   }
   owner._meshReleaseBatchBegin?.();
   try {
@@ -2031,7 +2044,10 @@ export function serviceRenderMeshResidency(owner, frameDt) {
   settleRebuildBridges(owner);
   if (owner && owner._sessionRecookKeepGpu === true && owner.state && owner.state.mode === 'loading') {
     abandonResidencyPoll(owner);
-    abandonReconcile(owner);
+    // A suspended pass minted outside this keep-gpu window predates the restore and
+    // its row grades answer the departed world — abandon it. A pass minted here
+    // (keepGpu-tagged) resumes under the same paced clock instead.
+    if (owner._reconcileIter && owner._reconcileKeepGpu !== true) abandonReconcile(owner);
     // The reattach sweep is idempotent — re-running it while nothing it reads
     // changed is a whole-mesh-set walk with zero work. Run only when a feed it
     // consumes moved (mesh set, entity tables, restore remap, sector serial),
@@ -2050,16 +2066,89 @@ export function serviceRenderMeshResidency(owner, frameDt) {
     const feedMoved = !prevStamp || prevStamp.length !== reattachFeed.length
       || prevStamp.some((value, index) => value !== reattachFeed[index]);
     owner._residentReattachFrame = ((owner._residentReattachFrame | 0) + 1) % 240;
-    if (feedMoved || owner._residentReattachFrame === 0) {
+    // Membership churn that keeps the feeds' sizes flat (a swap, or an in-place
+    // field-table edit) stamps nothing — the sweep still re-runs every service
+    // tick while the frame has paced headroom, and the paced sweep below keeps
+    // each invocation's real cost bounded.
+    if (feedMoved || owner._residentReattachFrame === 0 || pacedFrameSpend() < 2) {
       owner._residentReattachStamp = reattachFeed;
-      reattachResidentGpuMeshes(owner);
+      if (!owner._residentReattachIter) {
+        owner._residentReattachIter = reattachResidentGpuMeshesSteps(owner);
+      }
+    }
+    if (owner._residentReattachIter) {
+      const sweepStart = now();
+      for (;;) {
+        const iterator = owner._residentReattachIter;
+        if (!iterator) break;
+        let step;
+        try {
+          step = iterator.next();
+        } catch (err) {
+          owner._residentReattachIter = null;
+          throw err;
+        }
+        if (step.done) {
+          if (owner._residentReattachIter === iterator) owner._residentReattachIter = null;
+          break;
+        }
+        if (now() - sweepStart >= 4
+            || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
+      }
+      notePacedFrameSpend(now() - sweepStart);
     }
     // Restore reissues entity ids (spawnEntity ignores saved ids) and a mesh can also be missing
     // because its build was still queued at save time, so the kept set can leave live entities
     // mesh-less. The authored-visuals gate blocks on required boundaries that would otherwise
     // stay 'missing' until the 180 s load timeout — reconcile the gaps under the loading shell.
     // keepResidentSet releases only meshes whose id no longer resolves; the cooked set stays.
-    if (owner._meshReconcileDirty) owner.reconcileMeshes({ keepResidentSet: true });
+    // The whole pass rides the same stepped generator the flight pump drives — under the
+    // loading shell it slices across shell ticks instead of paying the whole reconcile
+    // (census + grading + keepResidentSet release) inside one DOM-stalling task. It mints
+    // only after the reattach sweep ran to completion, so dead-id meshes the
+    // sweep could still move are never released by the first reconcile leg.
+    if (owner._meshReconcileDirty && !owner._reconcileIter && !owner._residentReattachIter) {
+      if (typeof owner._reconcileMeshesSteps === 'function') {
+        owner._reconcileIter = owner._reconcileMeshesSteps({ keepResidentSet: true });
+        owner._reconcileKeepGpu = true;
+        owner._reconcileEpoch = st.world && st.world.enterSerial != null ? st.world.enterSerial : null;
+      } else {
+        // Fixture/custom owners without the staged twin keep the atomic call.
+        owner.reconcileMeshes({ keepResidentSet: true });
+      }
+    }
+    if (owner._reconcileIter) {
+      const liveEpoch = st.world && st.world.enterSerial != null ? st.world.enterSerial : null;
+      if (owner._reconcileEpoch !== liveEpoch) {
+        abandonReconcile(owner);
+        owner._meshReconcileDirty = true;
+      } else {
+        owner._residencySweepBeatStamp = (owner._residencySweepBeatStamp || 0) + 1;
+        const reconcileSliceStart = now();
+        for (;;) {
+          const iterator = owner._reconcileIter;
+          if (!iterator) break;
+          let step;
+          try {
+            step = iterator.next();
+          } catch (err) {
+            abandonReconcile(owner);
+            throw err;
+          }
+          if (step.done) {
+            if (owner._reconcileIter === iterator) {
+              owner._reconcileIter = null;
+              owner._reconcileEpoch = null;
+              owner._reconcileKeepGpu = null;
+            }
+            break;
+          }
+          if (now() - reconcileSliceStart >= 4
+              || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
+        }
+        notePacedFrameSpend(now() - reconcileSliceStart);
+      }
+    }
     if (owner._meshBuildQueueHead < owner._meshBuildQueue.length) owner._drainPendingMeshBuilds();
     return 'session-recook-keep-gpu';
   }
@@ -2406,6 +2495,7 @@ export function serviceRenderMeshResidency(owner, frameDt) {
           if (owner._reconcileIter === iterator) {
             owner._reconcileIter = null;
             owner._reconcileEpoch = null;
+            owner._reconcileKeepGpu = null;
           }
           break;
         }
@@ -2755,6 +2845,7 @@ function abandonReconcile(owner) {
   }
   owner._reconcileIter = null;
   owner._reconcileEpoch = null;
+  owner._reconcileKeepGpu = null;
 }
 
 // The tracker-record prune + detached-owner release is one atomic multi-ms sweep
@@ -11042,8 +11133,14 @@ export const render = {
       // commit path.
       invalidateShadowCasterPolicy(root);
       const lodLevel = root.userData && root.userData.lod ? root.userData.lod.level : null;
+      // The flag traverse + unstaged collect cover only the grafted subtree —
+      // the rest of the root carries flags its own mount already minted — while
+      // the dirtySeq/park/withheld bookkeeping stays keyed by the entity root.
+      // The root's own dirty flag keeps its next ordinary sync on the full walk.
       const packagedPolicy = this._syncShadowCasterPolicyChecked(
-        root, lodLevel, entity, addedSubtree ? { preCountRoot: addedSubtree } : null);
+        root, lodLevel, entity, addedSubtree
+          ? { preCountRoot: addedSubtree, syncScope: addedSubtree }
+          : null);
       if (addedSubtree) {
         this._noteShadowMeshAdded?.(
           addedSubtree, packagedPolicy ? packagedPolicy.preReceiverCount : null);
@@ -17017,13 +17114,21 @@ export const render = {
           this._authoredSectorPrewarmPending = null;
           this._meshReconcileDirty = true;
           if (!holdFirstFlightStreaming(state)) {
-            for (const [id, mesh] of this._meshes) {
-              const entity = state.entities.get(id);
-              if (canRequestAuthoredUpgrade(entity, state, null)) {
-                requestAuthoredUpgrade(mesh, renderer, scene,
-                  entityIsOnReadableGlass(entity, state) ? { admissionVisible: true } : undefined);
+            // Chunked across browser yields — the post-preparation upgrade mint
+            // used to walk every kept mesh inside the sector-preparation .finally,
+            // paying O(meshes) in one microtask under the loading shell.
+            (async () => {
+              let visited = 0;
+              for (const [id, mesh] of this._meshes) {
+                if (!rendererGenerationIsActive()) return;
+                const entity = state.entities.get(id);
+                if (canRequestAuthoredUpgrade(entity, state, null)) {
+                  requestAuthoredUpgrade(mesh, renderer, scene,
+                    entityIsOnReadableGlass(entity, state) ? { admissionVisible: true } : undefined);
+                }
+                if ((++visited % 32) === 0) await yieldToBrowser();
               }
-            }
+            })();
           }
         }
         this._publishAssetResidencyDiagnostics();
@@ -17122,9 +17227,10 @@ export const render = {
           state.render.deferNoncriticalMeshStreaming = false;
           // Drop the previous flight's leftover meshes before authored-visuals
           // and the live-sector cook. F9 reuses IDs; dirty-only reconcile was
-          // too late and the second whole-scene 1x1 TDR'd Intel.
+          // too late and the second whole-scene 1x1 TDR'd Intel. The stepped
+          // pass drains it across the shell's own ticks — running it inline here
+          // paid the whole reconcile inside the mode-change task.
           this._meshReconcileDirty = true;
-          this.reconcileMeshes();
           resumeAuthoredUpgradeQueueForLoadingHulls(this.scene);
           if (typeof state.render.resumeDeferredPipelineAdmissions === 'function') {
             state.render.resumeDeferredPipelineAdmissions({ hullsOnly: true });
@@ -22815,9 +22921,10 @@ export const render = {
     };
     if (fieldStale) {
       const fieldDirty = field.dirtyPoseIds;
-      if (this._worldFieldPoseOriginSeq !== originSeq || !(fieldDirty instanceof Set)) {
-        // Origin rebase touches every row's local pose; a table without the dirty journal
-        // (pre-journal schema) can't prove which rows moved — full walk either way.
+      if (!(fieldDirty instanceof Set)) {
+        // A table without the dirty journal (pre-journal schema) can't prove which rows
+        // moved — full walk. Origin rebases no longer widen it: _applyFrameOriginRebase
+        // already adds the same (dx,dz) to every mounted mesh earlier in this frame.
         for (let i = 0; i < field.rocks.length; i++) {
           if (poseRow(field.rocks[i])) posedField++;
         }
@@ -22837,7 +22944,7 @@ export const render = {
     }
     if (dressingStale) {
       const dressingDirty = dressing.dirtyPoseIds;
-      if (this._worldDressingPoseOriginSeq !== originSeq || !(dressingDirty instanceof Set)) {
+      if (!(dressingDirty instanceof Set)) {
         for (let i = 0; i < dressing.rows.length; i++) poseRow(dressing.rows[i]);
       } else {
         for (const id of dressingDirty) {
@@ -24237,6 +24344,24 @@ export const render = {
             ? performance.now()
             : Date.now();
         }
+      } else if (this.state.render.openingSubmissionReceipt
+          && !this.state.render.openingSubmissionValidation) {
+        // The deferred compute ran outside a flight frame (a keep-gpu recook
+        // landed mid-deferral): its delta window predates the restore, so a
+        // later in-place validation would attribute reattach-era admissions to
+        // the first draw and stamp the kept slot. Close it with a skipped
+        // verdict — when no receipt exists yet the slot stays open for the
+        // in-place path to validate whenever it arrives.
+        this.state.render.openingSubmissionValidation = {
+          ok: true,
+          validationState: 'deferred-skipped',
+          firstVisibleGpuCounts,
+        };
+        if (!Number.isFinite(this.state.render.openingSubmissionFirstDrawSubmittedAt)) {
+          this.state.render.openingSubmissionFirstDrawSubmittedAt = typeof performance !== 'undefined'
+            ? performance.now()
+            : Date.now();
+        }
       }
     } finally {
       this._openingFirstDrawDiagnosticsDeferred = false;
@@ -24382,6 +24507,13 @@ export const render = {
    */
   _syncShadowCasterPolicyChecked(root, lodLevel, entity, extra = null) {
     const opts = this._shadowPolicyOptions(entity, root);
+    // A packaged mount passes syncScope=addedSubtree: the flag traverse and the
+    // unstaged collect cover only the new subtree (the rest of the root carries
+    // flags its own mount already minted), while every bookkeeping structure —
+    // parked/queued/withheld sets, dirtySeq stamps — stays keyed by the entity
+    // root so the arm's restores and the ordinary sync cadence still converge.
+    const syncScope = extra && extra.syncScope ? extra.syncScope : root;
+    const scopedSync = syncScope !== root;
     const band = shadowCasterBand(root);
     const dirtySeq = shadowCasterPolicyDirtySeq(root);
     const parkedMap = this._parkedDepthStageRoots;
@@ -24391,13 +24523,17 @@ export const render = {
     // exactly that compare. Parked roots stamp castBand=0 on their next sync,
     // so without this early unpark the band!==1 collect gate can never open
     // and a re-dirtied parked root would wedge withheld forever.
+    // A narrowed collect only covers syncScope — releasing the park here would
+    // restore cast flags on withheld meshes the walk never visited.
     let parkedRelease = false;
     // Drift releases (light census re-sign, ortho cell move) differ from the
     // dirtySeq release: under a new census every mark is stale, so the park's
     // casters must re-collect now — restoring live cast flags on unlinked depth
     // variants would link them inside the next presented shadow refresh.
     let parkedReleaseOnDrift = false;
-    if (parkedEntry && dirtySeq > parkedEntry.seq) parkedRelease = true;
+    if (scopedSync) {
+      // Keep the park: only a whole-root collect may release it.
+    } else if (parkedEntry && dirtySeq > parkedEntry.seq) parkedRelease = true;
     else if (parkedEntry && parkedEntry.lightSig != null
         && parkedEntry.lightSig !== this._shadowCensusForFrame()) {
       parkedRelease = parkedReleaseOnDrift = true;
@@ -24475,7 +24611,7 @@ export const render = {
           : (this._depthCollectNodesLeft | 0),
       };
       const found = collectUnstagedShadowCastersFlag(
-        [root], this._shadowCensusForFrame(), nodeBudget);
+        [syncScope], this._shadowCensusForFrame(), nodeBudget);
       if (parkedScale <= 0) this._depthCollectNodesLeft = nodeBudget.remaining;
       if (found === UNSTAGED_COLLECT_OVER_COVER) {
         // The walk outran the shared node budget mid-traverse — a partial set
@@ -24488,7 +24624,9 @@ export const render = {
     // The collect evaluated this generation — stamp it even when empty so an
     // unstageable dirty (or a post-arm band-1 root) doesn't re-pay the whole-subtree
     // walk every frame. A later invalidate bumps past the stamp and recollects.
-    if (band === 1 && unstaged !== null && root.userData) {
+    // A narrowed collect only proved the scope: stamping the root's seq here
+    // would claim a whole-root evaluation the walk never ran.
+    if (!scopedSync && band === 1 && unstaged !== null && root.userData) {
       root.userData[STAGE_SELF_DIRTY_KEY] = dirtySeq;
     }
     let syncOpts = opts;
@@ -24497,7 +24635,7 @@ export const render = {
       // Promotions and in-band adds share the per-mesh withhold — only the genuinely
       // unstaged casters wait for the arm; staged siblings and the band stamp stay live.
       withheldMeshes = unstaged;
-    } else if (parked && unstaged !== null && unstaged.length === 0) {
+    } else if (!scopedSync && parked && unstaged !== null && unstaged.length === 0) {
       // A parked root's fresh re-collect came back empty — every caster is marked
       // (or gone), so the withheld set is stale. Release the park; the normal sync
       // below restores live cast flags under current policy.
@@ -24538,7 +24676,7 @@ export const render = {
     }
     const receiverOut = { receiverDelta: 0 };
     const changed = syncShadowCasterPolicy(
-      root, lodLevel, {
+      syncScope, lodLevel, {
         ...syncOpts,
         ...(extra || {}),
         // A withhold verdict lands in syncOpts.allowCast=false — reapply it
@@ -24565,9 +24703,11 @@ export const render = {
       }
       // The arm's restore re-runs identical opts — re-dirty so its traverse can't
       // early-out on the state this sync just stamped, and stamp the generation so
-      // only a *subsequent* invalidation re-collects.
+      // only a *subsequent* invalidation re-collects. Under a narrowed scope the
+      // rest of the root was never evaluated — skip the stamp so the next
+      // whole-root sync still collects it.
       invalidateShadowCasterPolicy(root);
-      root.userData[STAGE_SELF_DIRTY_KEY] = shadowCasterPolicyDirtySeq(root);
+      if (!scopedSync) root.userData[STAGE_SELF_DIRTY_KEY] = shadowCasterPolicyDirtySeq(root);
       // Fresh unstaged meshes — a parked root's park no longer describes it.
       if (parked && this._parkedDepthStageRoots) this._parkedDepthStageRoots.delete(root);
       this._queueShadowDepthStage(root, lodLevel, entity,

@@ -13,7 +13,7 @@ import { loadAuthoredPart } from './assetLoader.js';
 import { freezeStaticChildMatricesSteps, freezeStaticTransformRoot, updateMatrixWorldSteps } from './staticChildMatrices.js';
 import { build47aScenarioProp } from './scenarioProps47a.js';
 import {
-  batchPackagedPropOpaqueMeshes,
+  batchPackagedPropOpaqueMeshesSteps,
   batchScenarioPropOpaqueMeshes,
 } from './scenarioPropBatching.js';
 import {
@@ -863,6 +863,14 @@ function isLod0Primitive(primitive) {
 }
 
 function instantiatePackagedPrimitives(record, parent) {
+  const it = instantiatePackagedPrimitivesSteps(record, parent);
+  for (;;) { const step = it.next(); if (step.done) return step.value; }
+}
+
+// Stepped twin of the mint above — a hulk-scale record's primitive rows pace at
+// strides inside the commit's driveLeg spine instead of minting atomically. The
+// stamp leg runs first so a suspended walk keeps the boundary provenance visible.
+function* instantiatePackagedPrimitivesSteps(record, parent) {
   // The flat-primitive mount replays the same decoded package the instance route stamps on
   // its root — publish the same `spacefaceRenderPackage` boundary here so the opening
   // census's productionBoundary walk does not read a mounted packaged prop as an
@@ -878,7 +886,10 @@ function instantiatePackagedPrimitives(record, parent) {
       };
     }
   }
-  for (const primitive of record && record.primitives || []) {
+  const primitives = (record && record.primitives) || [];
+  for (let i = 0; i < primitives.length; i++) {
+    if (i > 0 && (i % 128) === 0) yield;
+    const primitive = primitives[i];
     if (!primitive || !primitive.geometry || !primitive.material) continue;
     if (!isLod0Primitive(primitive)) continue;
     const mesh = new THREE.Mesh(primitive.geometry, primitive.material);
@@ -1116,12 +1127,6 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
       const packaged = new THREE.Group();
       packaged.name = `${root.userData.kind || entity.type || 'prop'}_PackagedBody`;
       packaged.userData.scenarioPackagedBody = true;
-      instantiatePackagedPrimitives(record, packaged);
-      if (!packaged.children.length) {
-        if (staleAuthoredRunVerdict(root, mintedAdmissionOptions)) return false;
-        root.userData.authoredAssetState = 'unavailable';
-        return false;
-      }
       // Same yield+orphan spine as attachPackagedBody: the build legs below are
       // contiguous work in this continuation, so pace them and re-verify the
       // mount owner between legs — the packaged root stays detached (hidden)
@@ -1149,14 +1154,23 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
           if (scenarioCommitOrphaned()) return COMMIT_ORPHANED;
         }
       };
+      if ((await driveLeg(instantiatePackagedPrimitivesSteps(record, packaged))) === COMMIT_ORPHANED) {
+        disposeDetachedPackagedGroup(packaged);
+        return false;
+      }
+      if (!packaged.children.length) {
+        if (staleAuthoredRunVerdict(root, mintedAdmissionOptions)) return false;
+        root.userData.authoredAssetState = 'unavailable';
+        return false;
+      }
       if ((await driveLeg(fitPackagedGroupSteps(packaged, packagedFitRadius(entity, spec)))) === COMMIT_ORPHANED) {
         disposeDetachedPackagedGroup(packaged);
         return false;
       }
-      batchPackagedPropOpaqueMeshes(packaged);
-      notePacedFrameSpend(legNow() - legStarted);
-      await yieldToBrowser();
-      legStarted = legNow();
+      if ((await driveLeg(batchPackagedPropOpaqueMeshesSteps(packaged))) === COMMIT_ORPHANED) {
+        disposeDetachedPackagedGroup(packaged);
+        return false;
+      }
       if (scenarioCommitOrphaned()) {
         disposeDetachedPackagedGroup(packaged);
         return false;
@@ -1224,6 +1238,9 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
         disposeDetachedPackagedGroup(packaged);
         return false;
       }
+      // The mount tail below is one contiguous span (hide → graft → touch → shadow
+      // sync → settle) — debit the paced ledger for its real cost.
+      legStarted = legNow();
       detachBoundaryResolvingMarker(root);
       hideProceduralPropDrawables(root);
       root.add(packaged);
@@ -1257,6 +1274,7 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
         entity,
         boundary: root,
       }, options);
+      notePacedFrameSpend(legNow() - legStarted);
       return true;
     }).catch((error) => {
       if (staleAuthoredRunVerdict(root, mintedAdmissionOptions)) return false;

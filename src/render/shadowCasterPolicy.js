@@ -1,5 +1,8 @@
 import * as THREE from 'three';
-import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
+import {
+  isCanopyMaterial,
+  applyRealtimeCanopyPolicy,
+} from './canopyMaterialPolicy.js';
 
 const POLICY_STATE = '__spacefaceShadowCasterPolicyV1';
 
@@ -266,7 +269,12 @@ export function syncShadowCasterPolicy(root, lodLevel = null, options = null) {
   // letting them re-traverse. Counts non-mesh objects like countShadowReceivers.
   const preCountRoot = options && options.preCountRoot;
   let preReceiverCount = 0;
-  configureRealtimeCanopyMaterials(root);
+  // The canopy pass folds into this traverse: applying it per-mesh before that
+  // mesh's receiver math preserves the old two-pass order (its material writes
+  // — transmission→0, transparent, depthWrite false — feed the opaqueReceiver
+  // check below) while paying one walk instead of two. Materials dedupe through
+  // the same changed-set the standalone pass uses.
+  const canopyChanged = new Set();
   root.traverse((object) => {
     if (preCountRoot && object && object.receiveShadow === true) {
       for (let p = object; p; p = p.parent) {
@@ -275,6 +283,13 @@ export function syncShadowCasterPolicy(root, lodLevel = null, options = null) {
       }
     }
     if (!object.isMesh) return;
+    const canopyTags = object.userData && object.userData.spacefaceTags || {};
+    const canopyMaterials = Array.isArray(object.material) ? object.material : [object.material];
+    for (const material of canopyMaterials) {
+      if (!isCanopyMaterial(material, canopyTags) || canopyChanged.has(material)) continue;
+      canopyChanged.add(material);
+      applyRealtimeCanopyPolicy(material);
+    }
     if (!object.visible) {
       object.castShadow = false;
       noteReceiver(object, false);

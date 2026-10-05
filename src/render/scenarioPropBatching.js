@@ -109,15 +109,31 @@ export function batchScenarioPropOpaqueMeshes(root) {
  * the authored record — never dispose it.
  */
 export function batchPackagedPropOpaqueMeshes(root) {
+  const it = batchPackagedPropOpaqueMeshesSteps(root);
+  for (;;) { const step = it.next(); if (step.done) return step.value; }
+}
+
+// Stepped twin: the group collect walks pre-order DFS (children pushed reversed so
+// pops visit in child order — identical visit sequence to traverse()) and each
+// material group's merge is one slice. A suspended run still merges groups in the
+// same order; the applied flag only sets after the last merge.
+export function* batchPackagedPropOpaqueMeshesSteps(root) {
   if (!root || root.userData && root.userData.scenarioPackagedOpaqueBatchesApplied) return root;
   const groups = new Map();
-  root.traverse((object) => {
-    if (!isOpaqueStaticMesh(object, null)) return;
-    const material = object.material;
-    const list = groups.get(material);
-    if (list) list.push(object);
-    else groups.set(material, [object]);
-  });
+  const stack = [root];
+  let visited = 0;
+  while (stack.length > 0) {
+    const object = stack.pop();
+    if ((++visited % 512) === 0) yield;
+    if (isOpaqueStaticMesh(object, null)) {
+      const material = object.material;
+      const list = groups.get(material);
+      if (list) list.push(object);
+      else groups.set(material, [object]);
+    }
+    const children = object.children;
+    if (children) for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
+  }
   let index = 0;
   for (const meshes of groups.values()) {
     if (meshes.length < 2) continue;
@@ -125,6 +141,7 @@ export function batchPackagedPropOpaqueMeshes(root) {
       ? `${meshes[0].material.name}_Packaged_Batch`
       : `Packaged_Opaque_Batch_${index}`;
     mergeOpaqueMeshes(root, meshes, name, { disposeSourceGeometry: false });
+    yield;
     index += 1;
   }
   root.userData.scenarioPackagedOpaqueBatchesApplied = true;

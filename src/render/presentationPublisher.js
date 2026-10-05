@@ -99,7 +99,14 @@ export function createPresentationPublisher(world, state, options = {}) {
       ? presentationFrame.lifecycleGeneration : -1;
     if (!initialized || !presentationFrame || completedTickCount > 0
       || lifecycleGeneration !== lastFallbackLifecycleGeneration) {
-      world.rebuildFromEntities(aliveEntities(state));
+      // A stepped journal rebuild mid-publish shares its completed collect on the
+      // frame — the same live-GameState sample, collected once. Only a completed
+      // collect is ever handed over; a still-walking one falls back to the sync
+      // collect (a partial world would read as dropped entities).
+      const sharedCollect = Array.isArray(presentationFrame?.rebuildCollectedEntities)
+        ? presentationFrame.rebuildCollectedEntities
+        : null;
+      world.rebuildFromEntities(sharedCollect || aliveEntities(state));
       lastFallbackLifecycleGeneration = lifecycleGeneration;
       diagnostics.fallbackRebuilds++;
       result.rebuilt = true;

@@ -3799,14 +3799,21 @@ function isLod0Primitive(primitive) {
 }
 
 export function instantiatePackagedPrimitives(record, parent, options = {}) {
-  // Warmth passes set includeAllLods: a dedicated lod1/lod2 file's primitives carry the
-  // non-lod0 tag themselves, and filtering them would warm an empty holder.
+  const it = instantiatePackagedPrimitivesSteps(record, parent, options);
+  for (;;) { const step = it.next(); if (step.done) return step.value; }
+}
+
+// Stepped twin of the flat-primitive mint above: a hulk record's hundreds of
+// primitives pace at strides inside a commit leg instead of minting atomically.
+// Warmth passes set includeAllLods: a dedicated lod1/lod2 file's primitives carry
+// the non-lod0 tag themselves, and filtering them would warm an empty holder.
+// The flat-primitive mount replays the same decoded package the instance route
+// exposes, so the boundary stamp belongs here too: the opening census's
+// productionBoundary walk finds `spacefaceRenderPackage` on descendants (D157) —
+// it runs first so a suspended walk still leaves the provenance visible to any
+// intervening census.
+export function* instantiatePackagedPrimitivesSteps(record, parent, options = {}, tmp = new THREE.Matrix4()) {
   const includeAllLods = options && options.includeAllLods === true;
-  // The flat-primitive mount replays the same decoded package the instance route exposes,
-  // so the boundary stamp belongs here too: the opening census's productionBoundary walk
-  // finds `spacefaceRenderPackage` on descendants, and a packaged body without it reads as
-  // an unprovenanced blocking root (D157). Records decoded outside a render package keep
-  // the asset identity but no verified hash — the gate stays honest for them.
   if (parent && parent.userData && !parent.userData.spacefaceRenderPackage) {
     const pkg = record && record.renderPackage || null;
     const assetId = (pkg && pkg.assetId) || (record && record.assetId) || null;
@@ -3817,8 +3824,10 @@ export function instantiatePackagedPrimitives(record, parent, options = {}) {
       };
     }
   }
-  const tmp = new THREE.Matrix4();
-  for (const primitive of record && record.primitives || []) {
+  const primitives = (record && record.primitives) || [];
+  for (let i = 0; i < primitives.length; i++) {
+    if (i > 0 && (i % 128) === 0) yield;
+    const primitive = primitives[i];
     if (!primitive || !primitive.geometry || !primitive.material) continue;
     if (!includeAllLods && !isLod0Primitive(primitive)) continue;
     const mesh = new THREE.Mesh(primitive.geometry, primitive.material);
@@ -4200,6 +4209,9 @@ function attachPackagedBody(root, relativeFile, entity) {
     // opening-graph release. Attaching straight to the live root linked the packaged materials
     // inside the first bloomScene draw — a hitch at the exact kill moment — and left the
     // pending wreck drawing nothing while 'awaiting-authored-admission'.
+    // Hoisted for the catch: a generator/driver throw mid-commit must still dispose the
+    // detached partial group — nothing else owns it once the run aborts.
+    let detachedCommitGroup = null;
     const completion = loadPart(url, {
       renderer,
       slot: 'place',
@@ -4218,6 +4230,7 @@ function attachPackagedBody(root, relativeFile, entity) {
         return { status: record ? 'orphaned-before-swap' : 'unavailable' };
       }
       const packaged = new THREE.Group();
+      detachedCommitGroup = packaged;
       packaged.name = `${root.userData.kind || 'entity'}_PackagedBody`;
       packaged.userData.packagedAuthoredBody = true;
       // The publish stretch used to be one contiguous main-thread turn
@@ -4295,6 +4308,15 @@ function attachPackagedBody(root, relativeFile, entity) {
           }
           packaged.add(packageRoot);
           packaged.userData.renderPackageInstance = instance;
+          // bindInstanceMotion's name-map collect is a second O(subtree) walk — pace
+          // it behind its own orphan check rather than paying both walks back to back.
+          notePacedFrameSpend(legNow() - legStarted);
+          await yieldToBrowser();
+          legStarted = legNow();
+          if (packagedCommitOrphaned()) {
+            disposeDetachedPackagedGroup(packaged);
+            return { status: 'orphaned-before-swap' };
+          }
           const controller = bindInstanceMotion(packageRoot, record.motionBank);
           if (controller) motionControllers.push(controller);
         } else if (instance && typeof instance.dispose === 'function') {
@@ -4308,7 +4330,12 @@ function attachPackagedBody(root, relativeFile, entity) {
         disposeDetachedPackagedGroup(packaged);
         return { status: 'orphaned-before-swap' };
       }
-      if (!packaged.children.length) instantiatePackagedPrimitives(record, packaged);
+      if (!packaged.children.length) {
+        if ((await driveLeg(instantiatePackagedPrimitivesSteps(record, packaged))) === COMMIT_ORPHANED) {
+          disposeDetachedPackagedGroup(packaged);
+          return { status: 'orphaned-before-swap' };
+        }
+      }
       if (!packaged.children.length) {
         if (staleAuthoredRunVerdict(root, mintedAdmissionOptions)) {
           return { status: 'stale-verdict-superseded' };
@@ -4427,6 +4454,10 @@ function attachPackagedBody(root, relativeFile, entity) {
       root.userData.authoredVisualRoot = record.assetId || url;
       return true;
     }).catch((error) => {
+      if (detachedCommitGroup && !detachedCommitGroup.parent) {
+        try { disposeDetachedPackagedGroup(detachedCommitGroup); } catch (_) { /* teardown */ }
+      }
+      detachedCommitGroup = null;
       if (staleAuthoredRunVerdict(root, mintedAdmissionOptions)) {
         return { status: 'stale-verdict-superseded' };
       }

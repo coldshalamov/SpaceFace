@@ -3331,6 +3331,8 @@ function commitAuthoredCargoCapsuleBoundary(
   setActiveRoot,
   options = {},
 ) {
+  // The whole commit is one atomic span — debit the paced ledger for its real cost.
+  const commitLegStarted = monotonicNow();
   detachBoundaryResolvingMarker(boundary);
   boundary.remove(fallbackRoot);
   boundary.add(authored.root);
@@ -3376,6 +3378,7 @@ function commitAuthoredCargoCapsuleBoundary(
   } else {
     publish();
   }
+  notePacedFrameSpend(monotonicNow() - commitLegStarted);
   return true;
 }
 
@@ -4218,6 +4221,10 @@ async function commitAuthoredPlaceBoundary(
   // A validated place record is the sole presentation authority. The hidden substrate never appears
   // in play, so there is no placeholder frame or blue-clay-to-authored identity swap.
   detachBoundaryResolvingMarker(boundary);
+  // Each contiguous leg debits the shared paced ledger — the freeze stretch, the atomic
+  // graft+publish tail and the deferred dispose all land in inter-present windows other
+  // slicers budget against.
+  let commitLegStarted = monotonicNow();
   // buildAuthoredPlaceRoot already batches the authored meshes before binding their LODs and
   // specialized materials. Re-batching here replaces those meshes and leaves stale LOD bindings.
   // The freeze legs run pre-graft so a large place record paces across presents instead
@@ -4226,11 +4233,15 @@ async function commitAuthoredPlaceBoundary(
     const freezeIter = freezeStaticChildMatricesSteps(authored.root);
     for (;;) {
       const freezeStep = freezeIter.next();
+      notePacedFrameSpend(monotonicNow() - commitLegStarted);
+      commitLegStarted = monotonicNow();
       if (freezeStep.done) break;
       await waitForAuthoredAdmission(options.yieldToNextPresent(), options);
     }
   } else {
     freezeStaticChildMatrices(authored.root);
+    notePacedFrameSpend(monotonicNow() - commitLegStarted);
+    commitLegStarted = monotonicNow();
   }
   freezeStaticTransformRoot(authored.root);
   boundary.remove(fallbackRoot);
@@ -4269,13 +4280,23 @@ async function commitAuthoredPlaceBoundary(
   } else {
     publish();
   }
+  // The graft + publish tail above is the atomic mount span — debit it before the
+  // dispose's deferred yield so the ledger prices this present correctly.
+  notePacedFrameSpend(monotonicNow() - commitLegStarted);
+  commitLegStarted = monotonicNow();
   // Same seam as the ship commit: the fallback teardown walks the whole subtree —
-  // defer it past a presented frame when the flight-mode stage gate is on.
-  if (options.yieldBetweenGpuStages === true && typeof options.yieldToNextPresent === 'function') {
-    await waitForAuthoredAdmission(options.yieldToNextPresent(), options);
+  // defer it past a presented frame when the flight-mode stage gate is on. The graft
+  // already detached the fallback, so the dispose must run even when the yield
+  // rejects (admission abort) — nothing else owns the detached subtree.
+  try {
+    if (options.yieldBetweenGpuStages === true && typeof options.yieldToNextPresent === 'function') {
+      await waitForAuthoredAdmission(options.yieldToNextPresent(), options);
+    }
+  } finally {
+    try { disposeDetachedPlaceFallback(fallbackRoot); }
+    catch (error) { console.warn('[partsLibrary] place fallback cleanup failed after authored swap', error); }
+    notePacedFrameSpend(monotonicNow() - commitLegStarted);
   }
-  try { disposeDetachedPlaceFallback(fallbackRoot); }
-  catch (error) { console.warn('[partsLibrary] place fallback cleanup failed after authored swap', error); }
   return true;
 }
 
@@ -7455,7 +7476,12 @@ function admitNextUpgradeJob(state) {
       // must not stomp the fresh 'awaiting-authored-admission' state its replacement rides on.
       // Releasing residency here would mark the boundary a dead owner forever (the released-
       // owner set has no un-release), killing the replacement job's requests mid-decode.
-    } else if (job.options.isAdmissionBoundaryCurrent()) {
+    } else if (job.options.isAdmissionBoundaryCurrent()
+        && job.boundary?.userData?.authoredAssetState !== 'authored'
+        && job.boundary?.userData?.authoredAssetState !== 'authored-prepared') {
+      // Post-commit aborts (e.g. the deferred dispose-yield rejecting after publish
+      // ran) land here too — releasing residency or re-marking readmission on an
+      // already-committed boundary only churns the mounted authored root.
       releaseBoundaryResidency(job.renderer, job.boundary, 'queued-upgrade-failed');
       if (timedOut) {
         job.boundary.userData.authoredAssetState = 'unavailable';
@@ -9269,6 +9295,10 @@ async function commitAuthoredBoundary(
     return false;
   }
 
+  // The graft + publish span below is the atomic mount tail — the largest authored
+  // subtree class in the game. Debit the paced ledger so the inter-present budget
+  // sees its real cost before the dispose's deferred yield.
+  let commitLegStarted = monotonicNow();
   const oldHull = fallbackRoot.userData && fallbackRoot.userData.hull;
   const newHull = authored.root.userData && authored.root.userData.hull;
   if (oldHull && newHull) newHull.rotation.x = oldHull.rotation.x;
@@ -9323,15 +9353,22 @@ async function commitAuthoredBoundary(
   } else {
     publish();
   }
+  notePacedFrameSpend(monotonicNow() - commitLegStarted);
+  commitLegStarted = monotonicNow();
   // The publish touch drew the authored subtree on the exact target and the fallback's
   // subtree dispose is a second GPU stage — when the caller paces stage joins (flight),
   // the dispose waits one present so the pair can't land inside one presented frame.
-  if (options.yieldBetweenGpuStages === true && typeof options.yieldToNextPresent === 'function') {
-    await waitForAuthoredAdmission(options.yieldToNextPresent(), options);
+  // The graft already detached the fallback, so the dispose must run even when the
+  // yield rejects — nothing else owns the detached subtree.
+  try {
+    if (options.yieldBetweenGpuStages === true && typeof options.yieldToNextPresent === 'function') {
+      await waitForAuthoredAdmission(options.yieldToNextPresent(), options);
+    }
+  } finally {
+    try { disposeDetachedObject(fallbackRoot); }
+    catch (error) { console.warn('[partsLibrary] fallback cleanup failed after a successful authored swap', error); }
+    notePacedFrameSpend(monotonicNow() - commitLegStarted);
   }
-
-  try { disposeDetachedObject(fallbackRoot); }
-  catch (error) { console.warn('[partsLibrary] fallback cleanup failed after a successful authored swap', error); }
   return true;
 }
 
