@@ -216,13 +216,13 @@ export function createLatticeWardenFx() {
       rec.flash = 1;
     }
     rec.flash = Math.max(0, rec.flash - dt / FLASH_S);
+    const charge = charging && !reduced
+      ? CHARGE_AMP * (0.5 + 0.5 * Math.sin(simNow * CHARGE_RATE)) : 0;
 
     if (rec.phase === 'build' || rec.phase === 'spin') {
       const buildT = Math.min(1, rec.clock / BUILD_S);
       rec.group.scale.setScalar(Math.max(0.0001, 0.4 + 0.6 * buildT));
       const idle = reduced ? 0 : IDLE_PULSE_AMP * Math.sin(simNow * IDLE_PULSE_RATE);
-      const charge = charging && !reduced
-        ? CHARGE_AMP * (0.5 + 0.5 * Math.sin(simNow * CHARGE_RATE)) : 0;
       rec.collar.material.emissiveIntensity = calmFlash
         ? 0.7
         : 0.45 + buildT * 0.4 + idle + charge + rec.flash * 1.6;
