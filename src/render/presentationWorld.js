@@ -1034,6 +1034,7 @@ export function createPresentationWorld(options = {}) {
         if (lastSeenSeq[slot] === seq) continue;
         const resident = refs[slot];
         if (!resident) continue;
+        if (doomed[slot] === 1) continue;
         if (resident.alive === false) {
           // A suppressed destroy mints no record, so no later replay retires
           // the dead occupant's row — free the slot here instead of leaking
@@ -1042,7 +1043,6 @@ export function createPresentationWorld(options = {}) {
           if (byId.get(world.entityIds[slot]) === slot) deadResidents.push(slot);
           continue;
         }
-        if (doomed[slot] === 1) continue;
         if (resident._noMesh === true
             || (resident.type === 'projectile' && projectileSkipsVisualFactoryMesh(resident))) {
           const wasVisible = world.visible[slot] === 1;

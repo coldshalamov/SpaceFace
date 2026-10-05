@@ -226,6 +226,7 @@ import {
   invalidatePrecompileState,
   ensureOpeningGeneratedScenarioPropPackage,
   syncVisiblePointLightBudget,
+  syncVisiblePointLightBudgetSteps,
 } from './precompile.js';
 import {
   detectGpu,
@@ -8218,43 +8219,7 @@ function cruciblePlayerShipExemplarSpec(state) {
   };
 }
 
-/**
- * PQ-210.00 — scene-level roots containing a drawable whose material was never compiled.
- * Bloom's unready-drawable pass applies this exact test in flight (no currentProgram on the
- * material record), hides the drawable, and queues its scene-level root through the pipeline
- * admission lane — the mid-round GLTFKit and wr:component link clusters. Running the same
- * scan behind the shell catches subtrees that attached after the last scene-wide compile
- * (packaged-body resolves that landed between post-opening and the boundary settle).
- */
-function collectNeverLinkedSceneRoots(scene, renderer) {
-  const props = renderer && renderer.properties;
-  const roots = [];
-  if (!scene || typeof scene.traverse !== 'function' || !props || typeof props.get !== 'function') {
-    return roots;
-  }
-  const seen = new Set();
-  scene.traverse((object) => {
-    if (!object || !(object.isMesh || object.isSkinnedMesh || object.isInstancedMesh
-        || object.isPoints || object.isLine || object.isSprite)) return;
-    const materials = Array.isArray(object.material) ? object.material : [object.material];
-    let neverLinked = false;
-    for (const material of materials) {
-      if (!material) continue;
-      let rec = null;
-      try { rec = props.get(material); } catch (_) { rec = null; }
-      if (!rec || !rec.currentProgram) { neverLinked = true; break; }
-    }
-    if (!neverLinked) return;
-    let root = object;
-    while (root.parent && root.parent !== scene) root = root.parent;
-    if (seen.has(root)) return;
-    seen.add(root);
-    roots.push(root);
-  });
-  return roots;
-}
-
-/** Chunked twin of collectNeverLinkedSceneRoots: iterative pre-order walk with
+/** Chunked scene census of PQ-210.00 never-linked roots: iterative pre-order walk with
  * the same node order as Object3D.traverse (node, then children in order),
  * yielding every `nodesPerSlice` visited nodes so the settle loop can drive the
  * census on its own slice clock instead of paying one atomic ~21k-node walk. */
@@ -10078,7 +10043,14 @@ export const render = {
             }) !== this._envMapSource)) this._bakeEnv();
         if (paceBootQueue) await paceBootQueue();
         if (!lifecycle.isActive()) return;
-        syncVisiblePointLightBudget(scene, state.settings && state.settings.video);
+        if (typeof syncVisiblePointLightBudgetSteps === 'function') {
+          for (const _ of syncVisiblePointLightBudgetSteps(scene, state.settings && state.settings.video)) {
+            if (!lifecycle.isActive()) return;
+            if (paceBootQueue) await paceBootQueue();
+          }
+        } else {
+          syncVisiblePointLightBudget(scene, state.settings && state.settings.video);
+        }
         // VFX init() runs after renderer.init() returns. A 140 ms wait can finish
         // first and leave count-0 combat pools for the first menu bloom.
         const vfxWaitStarted = typeof performance !== 'undefined' && typeof performance.now === 'function'
@@ -11752,7 +11724,13 @@ export const render = {
       }
       // Env/light/shadow cardinality is part of the driver key. Bake before capture, not here:
       // replacing scene.environment after the opening plan is frozen fails the first-draw gate.
-      syncVisiblePointLightBudget(scene, state.settings && state.settings.video);
+      if (typeof syncVisiblePointLightBudgetSteps === 'function') {
+        for (const _ of syncVisiblePointLightBudgetSteps(scene, state.settings && state.settings.video)) {
+          if (typeof yieldToBrowser === 'function') await yieldToBrowser();
+        }
+      } else {
+        syncVisiblePointLightBudget(scene, state.settings && state.settings.video);
+      }
       const admissionStale = captureLiveSectorCookStale();
       // The content-hash-bound set drives the global deletion: A-B is deferred, while the exact
       // opening key set (including the measured opening-only misses) is compiled once for this
@@ -13892,7 +13870,14 @@ export const render = {
           }
         }
       }
-      syncVisiblePointLightBudget(scene, state.settings && state.settings.video);
+      if (typeof syncVisiblePointLightBudgetSteps === 'function') {
+        for (const _ of syncVisiblePointLightBudgetSteps(scene, state.settings && state.settings.video)) {
+          if (cookStale()) return cookSuperseded;
+          await envBindYield(false);
+        }
+      } else {
+        syncVisiblePointLightBudget(scene, state.settings && state.settings.video);
+      }
       const restoreReveal = options.skipCompile === true || options.holdLeftoverFx === true
         ? () => {}
         : revealSubjectForCompile(scene);
@@ -14037,6 +14022,7 @@ export const render = {
             if (root) meshRootSet.add(root);
           }
           const lateRootSet = new Set();
+          const censusHolderSet = new Set();
           const enclosingMemo = new Map();
           const enclosingMeshRoot = (subject) => {
             const chain = [];
@@ -14057,9 +14043,18 @@ export const render = {
               if (cookStale()) return cookSuperseded;
               await paceCookStretch();
             }
-            if (openingSet.has(subject)) continue;
             const holder = enclosingMeshRoot(subject);
+            if (holder) censusHolderSet.add(holder);
+            if (openingSet.has(subject)) continue;
             if (holder) lateRootSet.add(holder);
+          }
+          // A _meshes root registered between the census mint and this literal
+          // has no census subjects, so no holder resolve ever ran for it — it
+          // is census-uncovered, not opening-covered. Join the cohort here (its
+          // per-root collect supplies subjects live) instead of leaving its
+          // programs to the post-opening rescan one sweep late.
+          for (const root of meshRootSet) {
+            if (!censusHolderSet.has(root)) lateRootSet.add(root);
           }
           // _meshes insertion order — the same order the registry walk produced.
           cookLateAdmittedRoots = [];
@@ -14098,6 +14093,7 @@ export const render = {
         if (options.skipCompile !== true
             && options.holdLeftoverFx === true && !warmFirstFlightFx) {
           for (const root of firstFlightRoots) {
+            if (cookStale()) return cookSuperseded;
             await paceCookStretch();
             for (const subject of (await collectCompileSubjectsPaced(root, paceCookStretch))) {
               const materials = Array.isArray(subject && subject.material)
@@ -14119,6 +14115,7 @@ export const render = {
         // the five sibling mints.
         const lateSubjects = [];
         for (const root of lateRoots) {
+          if (cookStale()) return cookSuperseded;
           await paceCookStretch();
           lateSubjects.push(...(await collectCompileSubjectsPaced(root, paceCookStretch)));
         }
@@ -14128,6 +14125,7 @@ export const render = {
         const cohortProgramSubjects = [];
         const cohortGeometrySubjects = [];
         for (let i = 0; i < cohortSubjects.length; i += 1024) {
+          if (cookStale()) return cookSuperseded;
           const part = uniqueAdmissionUnits(cohortSubjects, {
             start: i, end: i + 1024,
             seenMaterials: unitSeenMaterials,
@@ -15466,7 +15464,6 @@ export const render = {
       // Exact first-picture leaves are already compiled. Predicted sector probes stay color-only
       // with a hard budget. Do not release admission-await until after this drain, or overlapping
       // authored compiles keep the pending set non-empty and the startup gate times out.
-      syncVisiblePointLightBudget(scene, state.settings && state.settings.video);
       const sector = this._pendingPostOpeningSector;
       this._pendingPostOpeningSector = null;
       // Predicted ship/effect catalogs stay dead. The late live-root compile below plus
@@ -15527,6 +15524,13 @@ export const render = {
         postSliceArmed = state.mode === 'flight';
         return postSuperseded();
       };
+      if (typeof syncVisiblePointLightBudgetSteps === 'function') {
+        for (const _ of syncVisiblePointLightBudgetSteps(scene, state.settings && state.settings.video)) {
+          if (await postPace()) return postSupersededResult();
+        }
+      } else {
+        syncVisiblePointLightBudget(scene, state.settings && state.settings.video);
+      }
       const opening = new Set(openingSubjects);
       // One chunked scene walk mints the pool roots and every drawable subject:
       // late-admitted mesh roots bucket by ancestor chain, the uncompiled sweep
@@ -21159,12 +21163,28 @@ export const render = {
   },
 
   _rebindPresentationMeshes() {
-    if (!this._presentationWorld || !this._meshes) return;
+    const it = this._rebindPresentationMeshesSteps();
+    for (;;) { const step = it.next(); if (step.done) return step.value; }
+  },
+
+  // Chunked twin — a journal rebuild pays one O(live _meshes) rebind inside the
+  // presented leg. Rows re-attach identity-only (_bindPresentationMesh is the
+  // same call the sync path makes); yields every 256 rows so the presented
+  // driver can park the walk under its 4 ms ledger and resume next present.
+  *_rebindPresentationMeshesSteps() {
+    if (!this._presentationWorld || !this._meshes) return 0;
     this._presentationQueries?.reset?.();
+    let visited = 0;
+    let bound = 0;
     for (const [id, mesh] of this._meshes) {
+      if ((++visited % 256) === 0) yield;
       const entity = resolveWorldPresentationEntity(this.state, id);
-      if (entity && entity.alive !== false) this._bindPresentationMesh(entity, mesh);
+      if (entity && entity.alive !== false) {
+        this._bindPresentationMesh(entity, mesh);
+        bound += 1;
+      }
     }
+    return bound;
   },
 
   _bindPublishedPresentationMeshes(publication) {
@@ -23599,7 +23619,7 @@ export const render = {
     const publication = this._presentationPublisher && typeof this._presentationPublisher.consume === 'function'
       ? this._presentationPublisher.consume()
       : null;
-    if (publication && publication.rebuilt) this._rebindPresentationMeshes();
+    if (publication && publication.rebuilt) yield* this._rebindPresentationMeshesSteps();
     else if (publication) this._bindPublishedPresentationMeshes(publication);
 
     if (this._snapshotFence && this._presentationWorld) {
@@ -23945,8 +23965,42 @@ export const render = {
     // the range after renderUpdate succeeds, so the dense mirror must not miss that same range merely
     // because the GPU is temporarily unavailable.
     const publication = this._presentationPublisher.consume(presentationFrame);
-    if (publication.rebuilt) this._rebindPresentationMeshes();
-    else this._bindPublishedPresentationMeshes(publication);
+    if (publication.rebuilt) {
+      // A rebuild supersedes any parked rebind — close it and mint fresh.
+      const priorRebind = this._presentationRebindIter;
+      if (priorRebind && typeof priorRebind.return === 'function') {
+        try { priorRebind.return(); } catch (_) { /* fresh walk supersedes */ }
+      }
+      this._presentationRebindIter = this._rebindPresentationMeshesSteps();
+    } else {
+      this._bindPublishedPresentationMeshes(publication);
+    }
+    if (this._presentationRebindIter) {
+      // Bounded drain: the sweep usually completes in one leg; a rebuild over a
+      // fat _meshes census parks mid-walk and resumes next present instead of
+      // stacking the whole O(N) rebind on the documented update tail.
+      const rebindStart = typeof performance !== 'undefined' && typeof performance.now === 'function'
+        ? performance.now()
+        : Date.now();
+      for (;;) {
+        const iter = this._presentationRebindIter;
+        let step;
+        try {
+          step = iter.next();
+        } catch (err) {
+          this._presentationRebindIter = null;
+          throw err;
+        }
+        if (step.done) {
+          if (this._presentationRebindIter === iter) this._presentationRebindIter = null;
+          break;
+        }
+        const rebindNow = typeof performance !== 'undefined' && typeof performance.now === 'function'
+          ? performance.now()
+          : Date.now();
+        if (rebindNow - rebindStart >= 4) break;
+      }
+    }
     // PresentationRunner publishes a caller-owned completed-tick record, not the tick number
     // itself. Its sequence is the immutable simulation publication boundary; falling back to the
     // live state tick is only for the legacy/no-runner path.
@@ -25145,13 +25199,18 @@ export const render = {
           || Math.round(t.z / cell) !== parkedEntry.oqZ) {
         parkedRelease = parkedReleaseOnDrift = true;
       }
-    } else if (parkedEntry && parkedEntry.denied === true && opts.allowCast === true) {
+    } else if (parkedEntry && parkedEntry.denied === true && opts.allowCast === true
+        && parkedEntry.deniedAllowCast !== true) {
       // A denied root that turned castable — entity motion inside the cast
       // radius, a plain-LOD level flip, a drawability repair on a withheld
       // member — changes no release term the park stores, so it would wait
       // out the recheck backstop. Plain release (not onDrift): the collect
       // re-verifies drawability under the live census and simply re-parks
-      // with cycles+1 if the verdict stands.
+      // with cycles+1 if the verdict stands. The deniedAllowCast stamp keeps
+      // mint-time-castable parks out of this clause — they were already
+      // castable when denied, so every eval would fire it tautologically and
+      // pay an uncapped atomic withhold traverse per drain cycle; they exit
+      // via the arm's empty re-collect release or the recheck instead.
       parkedRelease = true;
     } else if (parkedEntry && parkedEntry.castBand != null
         && shadowCasterBand(root) !== parkedEntry.castBand) {
@@ -25191,8 +25250,10 @@ export const render = {
       parkedEntry.recheck = Math.ceil((96 + (this._parkedRecheckStamp % 32))
         * Math.min(8, 1 << (rekeyCycles - 1)) * (rekeyGlassAdj ? 0.5 : 1));
       // The keep verdict is the same denial the mint stamped — preserve the
-      // release trigger for the next castable flip.
+      // release trigger for the next castable flip. Re-claimed under
+      // allowCast === false, so the clause sees a genuine flip next eval.
       parkedEntry.denied = true;
+      parkedEntry.deniedAllowCast = false;
       parkedRelease = parkedReleaseOnDrift = false;
     }
     if (parkedRelease) {
@@ -25893,6 +25954,10 @@ export const render = {
                     // cell, and dirtySeq stand still must not wait out the
                     // escalated recheck — up to ~16 s — for its shadow.
                     denied: true,
+                    // Reaching the deny mint means the arm staged-offered this
+                    // root — it was castable at mint. The stamp keeps the
+                    // allowCast release clause from firing on every eval.
+                    deniedAllowCast: true,
                   });
                   // Only the proven-unmarkable set stays withheld — staged
                   // siblings' casts restore on the next sync.

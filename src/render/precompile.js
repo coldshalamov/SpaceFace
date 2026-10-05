@@ -198,6 +198,56 @@ export function syncVisiblePointLightBudget(scene, video) {
   noteShadowCensusLightMutation();
   return lightStaging;
 }
+
+/**
+ * Chunked twin of syncVisiblePointLightBudget: the staging-group search and the
+ * visible-light count share ONE iterative visible-subtree walk (the budget
+ * staging group is skipped for counting, matching release-then-count), yielding
+ * every `nodesPerSlice` visited nodes so a paced leg can drive the census on
+ * its own slice clock instead of paying two atomic O(scene) traverses.
+ */
+export function* syncVisiblePointLightBudgetSteps(scene, video, nodesPerSlice = 512) {
+  const every = Math.max(1, Math.floor(Number(nodesPerSlice) || 1));
+  let staging = null;
+  let visible = 0;
+  if (scene) {
+    const stack = [scene];
+    let sinceYield = 0;
+    while (stack.length > 0) {
+      const object = stack.pop();
+      if (!object) continue;
+      if ((++sinceYield % every) === 0) yield;
+      if (object.visible !== true) continue;
+      if (object.name === POINT_LIGHT_BUDGET_STAGING_NAME) {
+        // Found the stale group — it releases below; its stand-ins must not
+        // count toward the live census (release-before-count semantics).
+        staging = object;
+        continue;
+      }
+      if (object.isPointLight === true) visible += 1;
+      const children = object.children;
+      if (children) for (let i = children.length - 1; i >= 0; i -= 1) stack.push(children[i]);
+    }
+  }
+  if (staging) {
+    staging.removeFromParent();
+    if (typeof staging.clear === 'function') staging.clear();
+    noteShadowCensusLightMutation();
+  }
+  const target = visiblePointLightBudget(video);
+  if (!scene || visible >= target) return null;
+  const lightStaging = new THREE.Group();
+  lightStaging.name = POINT_LIGHT_BUDGET_STAGING_NAME;
+  scene.add(lightStaging);
+  for (let i = visible; i < target; i++) {
+    const standIn = new THREE.PointLight(0xffffff, 0, 400, 2.0);
+    standIn.name = `SF_Precompile_EventLight_${i}`;
+    standIn.position.set(i * 24, 10, 0);
+    lightStaging.add(standIn);
+  }
+  noteShadowCensusLightMutation();
+  return lightStaging;
+}
 /**
  * Warm the linear working-space program variants alongside the screen-target compile above.
  * Three keys every program on the active target's output color space: a null target compiles

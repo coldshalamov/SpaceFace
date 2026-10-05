@@ -23,15 +23,48 @@ export function countShadowReceivers(root, out = null) {
   return receivers;
 }
 
+const tallyNow = () => (
+  typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now()
+    : Date.now()
+);
+const RECOUNT_SLICE_MS = 4;
+const RECOUNT_NODES_PER_SLICE = 512;
+
+/** Iterative pre-order twin of the recount traverse — same receiver test, yields
+ * every `nodesPerSlice` visited nodes so resolve() can pace the fallback walk
+ * across presented beats instead of paying one atomic O(scene) pass. */
+function* recountShadowReceiversSteps(scene, nodesPerSlice = RECOUNT_NODES_PER_SLICE) {
+  let receivers = 0;
+  if (!scene) return receivers;
+  const every = Math.max(1, Math.floor(Number(nodesPerSlice) || 1));
+  const stack = [scene];
+  let sinceYield = 0;
+  while (stack.length > 0) {
+    const object = stack.pop();
+    if (!object) continue;
+    if ((++sinceYield % every) === 0) yield;
+    if (object.receiveShadow === true) receivers += 1;
+    const children = object.children;
+    if (children) for (let i = children.length - 1; i >= 0; i -= 1) stack.push(children[i]);
+  }
+  return receivers;
+}
+
 export function createShadowReceiverTally() {
   let count = 0;
   let dirty = true;
+  // A dirty mark bumps the sequence: a stepped recount minted on an older seq
+  // discards its walk instead of stamping a count measured across a mutation.
+  let dirtySeq = 0;
+  let pendingRecount = null;
 
   return {
     get count() { return count; },
     get dirty() { return dirty; },
     markDirty() {
       dirty = true;
+      dirtySeq += 1;
     },
     noteAdded(root) {
       count += countShadowReceivers(root);
@@ -49,17 +82,45 @@ export function createShadowReceiverTally() {
       if (count < 0) count = 0;
     },
     recount(scene) {
-      count = 0;
-      if (scene && typeof scene.traverse === 'function') {
-        scene.traverse((object) => {
-          if (object && object.receiveShadow === true) count += 1;
-        });
+      pendingRecount = null;
+      const it = recountShadowReceiversSteps(scene);
+      for (;;) {
+        const step = it.next();
+        if (step.done) {
+          count = Math.max(0, step.value | 0);
+          break;
+        }
       }
       dirty = false;
       return count;
     },
     resolve(scene, options = {}) {
-      if (dirty || options.force === true) return this.recount(scene);
+      if (options.force === true) return this.recount(scene);
+      if (!dirty) return count;
+      // Dirty: pace the stepped recount inside this call's bounded slice and
+      // keep serving the last count until a clean walk settles.
+      const start = tallyNow();
+      while (dirty) {
+        if (!pendingRecount) {
+          if (!scene || typeof scene.traverse !== 'function') return count;
+          pendingRecount = { iter: recountShadowReceiversSteps(scene), seq: dirtySeq };
+        }
+        const step = pendingRecount.iter.next();
+        if (step.done) {
+          if (pendingRecount.seq === dirtySeq) {
+            count = Math.max(0, step.value | 0);
+            pendingRecount = null;
+            dirty = false;
+            return count;
+          }
+          // Mutations landed mid-walk — re-mint on the fresh seq while the
+          // slice has budget left; otherwise park for the next resolve beat.
+          pendingRecount = null;
+          if (tallyNow() - start >= RECOUNT_SLICE_MS) return count;
+          continue;
+        }
+        if (tallyNow() - start >= RECOUNT_SLICE_MS) return count;
+      }
       return count;
     },
   };
