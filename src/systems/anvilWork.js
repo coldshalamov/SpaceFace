@@ -35,14 +35,42 @@ function validManifest(e, capacity) {
 }
 function actor(owner, role) {
   const id = anvilWorkerRecordId(owner.state, role);
-  const e = indexedWorldRecordEntity(owner.state, id)
-    || owner.state.entityList?.find(e => e?.data?.worldRecordId === id && e.alive !== false);
+  // indexedWorldRecordEntity already falls back to the same population (entities map, then
+  // entityList) with the identical predicate, so a second find here only duplicated the walk.
+  const e = indexedWorldRecordEntity(owner.state, id);
   if (!live(owner.state, e) || itinerary(e)?.kind !== KIND || itinerary(e)?.role !== role) return null;
   // Reject superseded objects and ambiguous same-record incarnations, rather than harvesting
   // into whichever duplicate happened to win the entity index.
-  if (owner.state.entityList?.some(other => other !== e && other?.alive !== false
-    && other?.data?.worldRecordId === id)) return null;
+  if (secondLiveWorldRecordCarrier(owner.state, id, e)) return null;
   return e;
+}
+
+/**
+ * True when another LIVE entity besides `except` carries the same worldRecordId — the
+ * ambiguity verdict actor() rejects on. The entity index's `byWorldRecordIdCount`
+ * (coreSystem append/remove bookkeeping) answers "no second carrier" in O(1): every
+ * stamp site registers, so count <= 1 proves uniqueness the same way mining's
+ * claim-jump resolution reads it. Count > 1 still walks the full list — the walk is
+ * live-only and a soft-dead carrier (alive=false before index removal) keeps its
+ * count slot, so the old verdict must stay exact exactly when the count is stale.
+ * No ready index/count map: the walk is the authority, as before.
+ */
+export function secondLiveWorldRecordCarrier(state, worldRecordId, exceptEntity) {
+  if (worldRecordId == null) return false;
+  const list = state && state.entityList;
+  if (!Array.isArray(list)) return false;
+  const index = state.entityIndex;
+  const counted = index && index.__spacefaceEntityIndexV1 === true && index.ready === true
+    && index.byWorldRecordIdCount instanceof Map
+    ? (index.byWorldRecordIdCount.get(worldRecordId) || 0)
+    : null;
+  if (counted != null && counted <= 1) return false;
+  for (let i = 0; i < list.length; i++) {
+    const other = list[i];
+    if (other === exceptEntity || other?.alive === false) continue;
+    if (other?.data?.worldRecordId === worldRecordId) return true;
+  }
+  return false;
 }
 function bindCollectorCollision(e) {
   if (e.physicsBody?.collisionProxyManifest?.id === STORMSHIFT_COLLECTOR_COLLISION.id) return;
