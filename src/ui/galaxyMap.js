@@ -8674,14 +8674,6 @@ _drawGalaxy(g, state, w, h) {
       g.restore();
     }
     g.restore();
-    // The ground goes down LAST, behind everything drawn so far: the field-edge fade above would
-    // otherwise erase it inside the clip and leave a crisp step. Labels (below) land on top of it.
-    if (ground && ground.paint) {
-      g.save();
-      g.globalCompositeOperation = 'destination-over';
-      try { ground.paint(g); } catch (_) { /* the chart reads without its ground */ }
-      g.restore();
-    }
 
     // Resolve every sector block against the others before any of them paints. The goal plate is
     // reserved first (below) so a node label can never be placed under it.
@@ -8762,6 +8754,18 @@ _drawGalaxy(g, state, w, h) {
       reserved: galaxyReserved, discs: wellDiscs, segments: laneSegs,
     });
     this._lastLabelLayout = galaxyLabelLayout;
+    // The ground goes down once the labels are solved (its holder names keep off them), behind
+    // everything drawn so far: the field-edge fade above would otherwise erase it inside the clip and
+    // leave a crisp step. The labels, drawn next, land on top of it.
+    if (ground && ground.paint) {
+      const obstacles = [];
+      for (const lb of galaxyLabelLayout) if (lb && lb.visible) obstacles.push({ x: lb.x, y: lb.y, width: lb.width, height: lb.height });
+      for (const r of galaxyReserved) obstacles.push(r);
+      g.save();
+      g.globalCompositeOperation = 'destination-over';
+      try { ground.paint(g, { obstacles }); } catch (_) { /* the chart reads without its ground */ }
+      g.restore();
+    }
     for (const placement of galaxyLabelLayout) {
       if (placement.visible) drawMapLabelBlock(g, placement);
     }

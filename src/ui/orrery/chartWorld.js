@@ -138,7 +138,14 @@ function holderPull(group, x, y) {
  * strongest and no one else's is, clear of every token and the name that will hang beside it, off
  * every lane, and off the names already placed.
  */
-function placeName(owner, groups, textW, charted, tokenR, field, segments, taken, size) {
+function placeName(owner, groups, textW, charted, tokenR, field, segments, taken, size, obstacles = []) {
+  // two passes: first only seats that are strictly clear of every label's footprint, then (if a holder
+  // has none) seats that rest a little inside a label's halo
+  return placeNamePass(owner, groups, textW, charted, tokenR, field, segments, taken, size, 6, obstacles)
+    || placeNamePass(owner, groups, textW, charted, tokenR, field, segments, taken, size, -60, obstacles);
+}
+
+function placeNamePass(owner, groups, textW, charted, tokenR, field, segments, taken, size, minClear, obstacles) {
   const mine = groups.get(owner);
   const rivals = [...groups.entries()].filter(([o]) => o !== owner).map(([, list]) => list);
   const left0 = field.x + 24;
@@ -161,10 +168,16 @@ function placeName(owner, groups, textW, charted, tokenR, field, segments, taken
         const gapY = Math.max(Math.abs(ty - n.y) - (tokenR + 26), 0);
         clear = Math.min(clear, Math.hypot(gapX, gapY) - (gapX === 0 && gapY === 0 ? 40 : 0));
       }
-      if (clear < 0) continue;
+      if (clear < minClear) continue;
+      // off every label the chart has actually placed (the solver has run by now)
+      if (obstacles.some((o) => left - 10 < o.x + o.width && right + 10 > o.x && ty - size * 0.8 < o.y + o.height && ty + size * 0.8 > o.y)) continue;
       // off every lane: a lane through a name reads as a strike-through
       let onLane = false;
       for (const sg of segments) {
+        // a lane's midpoint carries a border post or a leg label: keep a wider berth there
+        const mx = (sg.x1 + sg.x2) / 2;
+        const my = (sg.y1 + sg.y2) / 2;
+        if (mx > left - 80 && mx < right + 80 && Math.abs(my - ty) < 26) { onLane = true; break; }
         for (let q = 0; q <= 20; q += 1) {
           const px = sg.x1 + (sg.x2 - sg.x1) * (q / 20);
           const py = sg.y1 + (sg.y2 - sg.y1) * (q / 20);
@@ -324,7 +337,7 @@ export function planChartGround(w, h, {
   const securityOn = layers.security !== false;
 
   // ── the static ground: washes, haze, names — one cached canvas ──
-  const key = [
+  const baseKey = [
     Math.round(w), Math.round(h), dpr, factionOn ? 1 : 0, securityOn ? 1 : 0, Math.round(tokenR),
     charted.map((n) => `${n.id}:${Math.round(n.x)},${Math.round(n.y)}:${n.ownerId || ''}:${Math.round((n.danger || 0) * 20)}`).join('|'),
     clearField ? `${Math.round(clearField.x)},${Math.round(clearField.y)},${Math.round(clearField.width)},${Math.round(clearField.height)}` : '',
@@ -333,6 +346,7 @@ export function planChartGround(w, h, {
   const pxW = Math.max(2, Math.round(w * dpr));
   const pxH = Math.max(2, Math.round(h * dpr));
   const off = offscreen(pxW, pxH);
+  let obstacles = [];
   const paintStatic = (c) => {
     // territory: every pixel belongs to its nearest holder, glowing in that holder's hue and fading
     // with distance; where two holders meet, a bright border stands exactly on the line between them
@@ -391,7 +405,7 @@ export function planChartGround(w, h, {
         const label = String(nameOf(ownerId) || '').toUpperCase();
         if (!label) continue;
         const textW = c.measureText(label).width;
-        const seat = placeName(ownerId, groups, textW, charted, tokenR, clearField, laneSegments, taken, size);
+        const seat = placeName(ownerId, groups, textW, charted, tokenR, clearField, laneSegments, taken, size, obstacles);
         if (!seat) continue;
         taken.push({ x: seat.x, y: seat.y, w: textW });
         const col = colours.get(ownerId);
@@ -407,7 +421,9 @@ export function planChartGround(w, h, {
       c.restore();
     }
   };
-  const paint = (g) => {
+  const paint = (g, opts = {}) => {
+  obstacles = Array.isArray(opts.obstacles) ? opts.obstacles : [];
+  const key = `${baseKey}#${obstacles.map((o) => `${Math.round(o.x)},${Math.round(o.y)},${Math.round(o.width)},${Math.round(o.height)}`).join(';')}`;
   g.save();
   if (off && typeof off.getContext === 'function') {
     const oc = off.getContext('2d');

@@ -172,6 +172,9 @@ export function drawHandBeam(g, pts, {
   };
   // `lock` (0..1) is the moment a laid line becomes the course: the core swells and burns hot.
   const k = Math.max(0, Math.min(1, lock));
+  // a casing of shade under the light, so the course stands off a coloured ground (the territory
+  // washes) instead of melting into it
+  pass('5,7,10', 0.5, 15 + 6 * k);
   pass(BODY, 0.13 + 0.12 * k, 16 + 10 * k);
   pass(BODY, 0.30 + 0.2 * k, 7 + 3 * k);
   pass(BODY, 0.95, 3 + 1.5 * k);

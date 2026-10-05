@@ -276,8 +276,10 @@ html.sf-reduce-motion ${C} .gm-navfoot.is-locking::after { animation:none; displ
   ${C} .gm-navfoot .gm-nav-row[data-tone="tracked"]::before { top:-17px; }
   ${C} .gm-navfoot .gm-nav-row[data-tone="tracked"]:not(:first-child)::after { top:-13px; }
 }
+/* the foot keeps the stage's width on an ultrawide, like the header and the stage above it */
+${C} .gm-apron { width:min(100%, var(--sf-stage-max)); margin-inline:auto; }
 /* the dock: one spine of icon beads; the words open over the map on pointer or focus */
-@media (min-height: 820px) {
+@media (min-height: 1px) {
   ${C}[data-layout="wide"] { --gm-rail-w:52px; }
   ${C}[data-layout="wide"] .gm-left-rail { position:relative; z-index:6; width:var(--gm-rail-w); overflow:hidden; transition:width .3s var(--dp-ease-out, cubic-bezier(.2, .8, .2, 1)); }
   ${C}[data-layout="wide"] .gm-left-rail:is(:hover, :focus-within) { width:252px; overflow:hidden auto;
