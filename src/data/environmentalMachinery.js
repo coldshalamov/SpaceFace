@@ -615,13 +615,16 @@ export const IO_BELL_RINGER = buildKillMachine({
 
 // ASHFALL REACH - the claim scarecrow. The Vael do not fence a claim; they keep it hollow.
 // A pole-rig inside the sector's authored debris field (the 400/300 disc) runs the one
-// repulsor in the census: every surge shoves loose mass out to the rim, where pods and
-// light rock collect in a ring a pilot can work on the calm tick. Every other machine
-// gathers toward a kill point; the scarecrow's rig IS the point being kept clear - sprint
-// for the heart on calm, or ride the surge outward, the only force in Ashfall that throws
-// you out of the Roaming Burn's path instead of into a pocket.
-// Sited on the debris disc, 1233 WU from station_ashcache, 227 WU inside f_ash_1's rim
-// (the ring it pushes salvage into), clear of f_ash_2 (1173), every gate and POI (>1500).
+// repulsor in the census: every surge throws loose mass outward, and what the push carries
+// past the rim coasts out of the field's reach - a working scatter of pods and light rock
+// a pilot can pick over on the calm tick. Every other machine gathers toward a kill point;
+// the scarecrow's rig IS the point being kept clear - sprint for the heart on calm, or
+// ride the surge outward, the only force in Ashfall that throws you out of the Roaming
+// Burn's path instead of into a pocket.
+// Sited inside the authored debris disc (136 WU off its heart, so the mouth disc stays
+// nested inside it), 1302 WU from station_ashcache, 308 WU clear of f_ash_1's rim (the
+// direction the shove throws), clear of f_ash_2's rim (1660), every gate and anchor POI
+// (nearest 807: poi_boss); the Converted Yards stand 504 WU off.
 export const ASHFALL_SCARECROW_SECTOR_ID = 'sector_ashfall_reach';
 
 export const ASHFALL_CLAIM_SCARECROW = buildKillMachine({
@@ -629,10 +632,12 @@ export const ASHFALL_CLAIM_SCARECROW = buildKillMachine({
   hazardType: 'debris',
   placeId: 'place_extraction_mast',
   sectorId: ASHFALL_SCARECROW_SECTOR_ID,
-  localPos: { x: 400, z: 300 },
+  localPos: { x: 480, z: 410 },
   rot: 0,
   phaseOffsetS: 20,
-  hazardRadius: 220,
+  // The mouth disc covers the whole field reach (radius below) - the map never understates
+  // where the shove can bite.
+  hazardRadius: 260,
   // The rig pole itself is the anvil: the repulsor's heart is the guarded claim anchor.
   // A body at centre still satisfies the census law (pointInsideKillMachine admits it) -
   // inside the field, shoved away from it.

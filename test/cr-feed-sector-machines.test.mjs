@@ -241,6 +241,10 @@ test('no two of them is the same kind of object', () => {
   };
   assert.equal(pointInsideKillMachine(crow, outside), false,
     'the salvage ring lives outside the shove');
+  // The map/scanner disc covers the whole field reach - a radial field understates itself
+  // on the chart if the mouth disc is smaller than the shove.
+  assert.ok(crow.hazardRadius >= crow.fields[0].radius,
+    `the mouth disc (${crow.hazardRadius}) covers the shove's reach (${crow.fields[0].radius})`);
 
   // The six axes are unique across the WHOLE census, not just across the new six - which is what
   // "non-copy" has to mean if a later sitting is going to keep the promise. The unit of comparison
