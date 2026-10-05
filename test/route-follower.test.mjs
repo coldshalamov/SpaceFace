@@ -441,7 +441,7 @@ test('a local waypoint cannot survive a sector transition it did not ask for', (
     'the stamped bind retires with the fix it proved');
 });
 
-test('a foreign autopilot not paired to the stale fix is left alone', () => {
+test('a foreign autopilot still burning releases; an inactive record is untouched', () => {
   const h = makeHarness();
   h.state.nav.waypoint = { pos: { x: 300, z: 120 }, label: 'Ore berth' };
   h.state.nav.autopilot = {
@@ -457,8 +457,32 @@ test('a foreign autopilot not paired to the stale fix is left alone', () => {
   h.bus.emit('sector:enter', { sectorId: CHAIN[1] });
 
   assert.equal(h.state.nav.waypoint, null, 'the stale fix still retires');
-  assert.equal(h.state.nav.autopilot.active, true,
-    'an autopilot aimed elsewhere is not released by this waypoint');
+  // Missions can overwrite nav.waypoint mid-burn and orphan the autopilot — after a teleport
+  // an active burn aimed anywhere but the arrival sector is the same stale course: released.
+  assert.equal(h.state.nav.autopilot.active, false);
+  assert.equal(h.state.nav.autopilot.status, 'lost-target');
+  assert.equal(h.state.nav.autopilot.stable, null);
+});
+
+test('a continuous membership enter never retires the armed course', () => {
+  const h = makeHarness();
+  h.state.nav.waypoint = { pos: { x: 300, z: 120 }, label: 'Ore berth' };
+  h.state.nav.autopilot = {
+    active: true,
+    target: { x: 300, z: 120 },
+    targetEntityId: null,
+    label: 'Ore berth',
+    arrivalRadius: 36,
+    status: 'cruising',
+  };
+
+  // Free-flight Voronoi flips carry noTeleport — bookkeeping, not a teleport. The ship kept
+  // its global pose; the fix still names the same reachable place and the burn continues.
+  h.state.world.currentSectorId = CHAIN[1];
+  h.bus.emit('sector:enter', { sectorId: CHAIN[1], continuous: true, noTeleport: true });
+
+  assert.ok(h.state.nav.waypoint, 'a continuous flip is not a transition the fix failed to earn');
+  assert.equal(h.state.nav.autopilot.active, true, 'the burn survives bookkeeping');
   assert.equal(h.state.nav.autopilot.status, 'cruising');
 });
 
