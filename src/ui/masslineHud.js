@@ -547,9 +547,13 @@ export function meetingDiamondHidden(throwState, state) {
 export function resolveThrowMarkWorldPoint(throwState, state) {
   if (!throwState || !state || !state.entities || typeof state.entities.get !== 'function') return null;
   const releaseTarget = throwState.releaseTarget;
-  const targetId = releaseTarget && releaseTarget.targetId != null
-    ? releaseTarget.targetId
-    : throwState.aimTargetId;
+  // aimTargetId is the per-tick resolved holder; releaseTarget.targetId is the seed-time id and
+  // only trustworthy while the bind carries no stable stamp — a stamped-but-unresolved bind means
+  // the slot recycled, and its new occupant must not inherit the meeting diamond (the file's own
+  // throwCollateralSpots already prefers the resolved id).
+  const targetId = throwState.aimTargetId != null
+    ? throwState.aimTargetId
+    : (releaseTarget && !releaseTarget.stable ? releaseTarget.targetId : null);
   if (targetId != null) {
     const entity = state.entities.get(targetId);
     if (entity && entity.alive !== false && entity.pos

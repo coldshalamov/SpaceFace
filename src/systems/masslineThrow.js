@@ -16,7 +16,7 @@
 // state.massline2.throw subtree (outside the sim-snapshot whitelist and the save schema) and cuts
 // the attachment through the same service tetherGameplay uses. The cut itself adds no free speed.
 import { massline2Flag } from '../data/featureFlags.js';
-import { resolveEntitySelection } from '../ui/sim/stableSelection.js';
+import { captureEntitySelection, resolveEntitySelection } from '../ui/sim/stableSelection.js';
 import { sampleThrowSolution, tetherPairKinematics } from '../combat/tetherFireControl.js';
 import { fieldsRelevantAlongCorridor, sampleFieldAcceleration } from '../core/fields/fieldKernel.js';
 import { fieldBodyProfile, fieldEntityIsPrimed, fieldVelocityTermApplies } from './fields.js';
@@ -795,7 +795,12 @@ function seedReleaseTarget(state, player, payload) {
   if (selectedId != null && selectedId !== payload.id && selectedId !== player.id) {
     const selected = state.entities && state.entities.get ? state.entities.get(selectedId) : null;
     if (validReleaseEntity(selected, player.id, payload.id)) {
-      return entityReleaseTarget(selected.id, 'selection');
+      const target = entityReleaseTarget(selected.id, 'selection');
+      // The scrubber never walks this record — stamp the bind at seed so _resolveThrowAim
+      // re-proves it and a despawn+recycle mid-swing cannot redirect the release (review).
+      const stable = captureEntitySelection(selected);
+      if (stable) target.stable = stable;
+      return target;
     }
   }
 

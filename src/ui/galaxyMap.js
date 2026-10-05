@@ -523,8 +523,12 @@ export function mapSearchTargetPriority(state, target) {
   if (!target) return -1;
   const waypoint = state && state.nav && state.nav.waypoint;
   const targetEntityId = target.entityId ?? target.targetEntityId ?? target.id;
-  if (waypoint && waypoint.targetEntityId != null
-    && String(targetEntityId) === String(waypoint.targetEntityId)) return 1_000;
+  // Promote the body the course actually armed: the stamped bind resolves the live holder, so a
+  // recycled slot's new occupant cannot inherit the boost meant for the old one.
+  const boundId = waypoint && waypoint.stable
+    ? ((resolveEntitySelection(state, waypoint.stable) || {}).id ?? null)
+    : (waypoint && waypoint.targetEntityId != null ? waypoint.targetEntityId : null);
+  if (boundId != null && String(targetEntityId) === String(boundId)) return 1_000;
   const trackedMissionId = state && state.ui && state.ui.trackedMissionId;
   const trackedMission = trackedMissionId && state.missions && Array.isArray(state.missions.active)
     ? state.missions.active.find((mission) => mission && mission.status === 'active' && mission.id === trackedMissionId)
@@ -3620,6 +3624,9 @@ function getSearchTargets(state, level, curSecId, claimsSystem = null, isHostile
         x: goal.pos.x,
         z: goal.pos.z,
         targetEntityId: waypoint && waypoint.targetEntityId != null ? waypoint.targetEntityId : null,
+        // Carry the proven bind — stampWaypointTarget resolving the bare id alone would bless
+        // whatever body currently holds a recycled slot instead of the body the course armed.
+        stable: waypoint && waypoint.stable ? waypoint.stable : null,
         missionId: goal.missionId,
         objective: true,
         markerKind: goal.markerKind,
@@ -11392,7 +11399,9 @@ function drawWaypointPin(g, x, y, label, viewportWidth = Infinity, labelPlacemen
  * the id was not recycled under it.
  */
 function stampWaypointTarget(state, target) {
-  if (!target || target.targetEntityId == null) return target;
+  // A null id with a surviving durable stamp is not a dead marker — the holder may simply have
+  // rematerialized under a new runtime id; resolve the stamp before giving up.
+  if (!target || (target.targetEntityId == null && !target.stable)) return target;
   // The armed course's own stamp is the authority for which entity the waypoint meant — the
   // bare id alone can have recycled onto an unrelated body, and stamping THAT occupant would
   // send the chart marker's clicks to it.

@@ -319,6 +319,10 @@ function clearWorldSiteEntityReference(reference, { retainStableNavIdentity = fa
   if (reference.kind === 'autopilot') {
     reference.holder.active = false;
     reference.holder.status = 'lost-target';
+    // The cleared burn's stamp drops with it — un-gated stable readers (the tether
+    // route-target read is not gated on active) would resurrect a deliberately cleared
+    // course the next time the record holder rematerializes.
+    reference.holder.stable = null;
   }
 }
 

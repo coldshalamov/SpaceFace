@@ -9132,9 +9132,13 @@ export const vfx = {
       input.liveTarget = arc.postTarget.targetId != null ? this._ent(arc.postTarget.targetId) : null;
     } else if (preActive) {
       input.releaseTarget = throwState.releaseTarget;
-      input.liveTarget = throwState.releaseTarget.targetId != null
-        ? this._ent(throwState.releaseTarget.targetId)
-        : null;
+      // The annulus rides the per-tick resolved holder — the seeded targetId names a slot that
+      // can recycle mid-swing; only an unstamped bind still trusts its seed id.
+      const liveId = throwState.aimTargetId != null
+        ? throwState.aimTargetId
+        : (throwState.releaseTarget && !throwState.releaseTarget.stable
+          ? throwState.releaseTarget.targetId : null);
+      input.liveTarget = liveId != null ? this._ent(liveId) : null;
     } else {
       input.releaseTarget = null;
       input.liveTarget = null;
@@ -10413,8 +10417,14 @@ export const vfx = {
         && this.state.massline2.throw.releaseTarget;
       const postTarget = arc.postTarget;
       clearMasslineReleaseTarget(postTarget);
-      const capturedEntity = captured && captured.targetId != null
-        ? this._ent(captured.targetId)
+      // The captured frame anchors to the resolved holder at release — the seeded targetId can
+      // name a recycled slot by then; only an unstamped bind still trusts its seed id.
+      const throwRuntime = this.state.massline2 && this.state.massline2.throw;
+      const liveId = throwRuntime && throwRuntime.aimTargetId != null
+        ? throwRuntime.aimTargetId
+        : (captured && !captured.stable ? captured.targetId : null);
+      const capturedEntity = liveId != null
+        ? this._ent(liveId)
         : null;
       if (capturedEntity && capturedEntity.alive !== false && capturedEntity.pos
         && Number.isFinite(capturedEntity.pos.x) && Number.isFinite(capturedEntity.pos.z)) {

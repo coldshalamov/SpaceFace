@@ -130,6 +130,7 @@ import { SUBSYSTEM_DEFS } from '../data/combatDefs.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { attachClauses, attachConditions } from './contractClauses.js';
 import { isFragileCommodity } from './fragileCargo.js';
+import { captureEntitySelection, liveEntityById } from '../ui/sim/stableSelection.js';
 import { attachTrap, seedHeliosOfferTrap } from './moralTrap.js';
 // A1 "passengers are people": the passenger corpora (names, why-lines, riding beats) are data;
 // this system mints the per-offer identity and speaks the beats on the existing comms seams.
@@ -4321,6 +4322,15 @@ export const missions = {
 
   _setNavWaypoint(waypoint) {
     this.state.nav = this.state.nav || {};
+    // Stamp the durable bind at the single write seam: every mission waypoint literal above
+    // carries a bare targetEntityId, and a recycled slot would redirect throw aim, tether
+    // acquisition, and chart commits onto the new occupant. Writers that already stamped
+    // their bind keep it.
+    if (waypoint && waypoint.targetEntityId != null && !waypoint.stable) {
+      const entity = liveEntityById(this.state, waypoint.targetEntityId);
+      const stable = entity ? captureEntitySelection(entity) : null;
+      if (stable) waypoint = { ...waypoint, stable };
+    }
     const same = sameNavWaypoint(this.state.nav.waypoint, waypoint);
     if (!same) {
       this.state.nav.waypoint = waypoint || null;

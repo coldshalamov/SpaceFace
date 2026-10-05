@@ -1373,7 +1373,8 @@ export function resolveAutopilotTarget(state, autopilot) {
       if (Number.isFinite(numeric)) entity = state.entities.get(numeric);
     }
   }
-  if (entity && entity.alive !== false && entity.pos) {
+  if (entity && entity.alive !== false && entity.pos
+      && Number.isFinite(entity.pos.x) && Number.isFinite(entity.pos.z)) {
     // PQ-008 stations with truthful collision geometry dock at an authored berth, not at the
     // legacy center-radius ring. A station waypoint still identifies the live entity, but default
     // flight resolves its terminal point into the manifest-owned corridor. Its terminal radius is
