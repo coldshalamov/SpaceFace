@@ -13873,7 +13873,7 @@ export const render = {
       if (typeof syncVisiblePointLightBudgetSteps === 'function') {
         for (const _ of syncVisiblePointLightBudgetSteps(scene, state.settings && state.settings.video)) {
           if (cookStale()) return cookSuperseded;
-          await envBindYield(false);
+          await yieldToBrowser();
         }
       } else {
         syncVisiblePointLightBudget(scene, state.settings && state.settings.video);
