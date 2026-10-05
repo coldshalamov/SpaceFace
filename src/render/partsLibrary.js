@@ -1092,15 +1092,33 @@ export function* collectFirstFlightCookEntitiesSteps(state, rowsPerSlice = 256) 
   const cookPlayer = resolvePlanarPlayer(state);
   const every = Math.max(1, Math.floor(Number(rowsPerSlice) || 1));
   let sinceYield = 0;
-  for (const entity of list) {
-    if (!entity || entity.alive === false) continue;
+  // Walk a snapshot: a despawn splice across a suspension shifts unvisited rows
+  // under a live for..of cursor (swap-pop lands a never-visited tail member at an
+  // already-scanned index), while the snapshot still visits every member once.
+  const snapshot = list.slice();
+  const visit = (entity) => {
+    if (!entity || entity.alive === false) return;
     if (isFirstFlightCookEntity(entity, state)) {
       selected.push(entity);
-      continue;
+      return;
     }
-    if (entity.type !== 'asteroid') continue;
+    if (entity.type !== 'asteroid') return;
     const distanceSq = planarDistanceSqToPlayer(entity, cookPlayer);
     if (distanceSq <= rockRadiusSq) asteroids.push({ entity, distanceSq });
+  };
+  for (const entity of snapshot) {
+    visit(entity);
+    sinceYield += 1;
+    if (sinceYield >= every) {
+      sinceYield = 0;
+      yield;
+    }
+  }
+  // Rows appended past the snapshot's span mid-walk are the remaining miss —
+  // rescan the live tail; a member re-pushed after removal double-admits once,
+  // which the cook's own enqueue dedupe absorbs.
+  for (let index = snapshot.length; index < list.length; index++) {
+    visit(list[index]);
     sinceYield += 1;
     if (sinceYield >= every) {
       sinceYield = 0;

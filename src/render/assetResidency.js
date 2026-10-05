@@ -642,7 +642,8 @@ export function createAssetResidencyRegistry(options = {}) {
 
   // Stepped twin: the O(assets) tally yields per entry batch so the release
   // leg's caller clock bounds it like the walk that produced the releases.
-  // The eviction leg stays whole — it only runs on a real overage.
+  // The eviction leg yields on the same cadence inside the depth guard — it
+  // only runs on a real overage.
   function* enforceSoftResidencyBudgetsSteps(batchEntries = 256) {
     if (packageCacheBudgetDepth > 0) return 0;
     let strictBytes = 0;
@@ -668,10 +669,12 @@ export function createAssetResidencyRegistry(options = {}) {
     if (!strictOver && !softOver) return 0;
     packageCacheBudgetDepth++;
     try {
-      return evictOldestSoftEntries(strictCandidates, packageCacheOnlyMaxBytes, strictBytes,
-        isPackageCacheOnlyEntry)
-        + evictOldestSoftEntries(softCandidates, softResidentMaxBytes, softBytes,
-          (entry) => isSoftOnlyEntry(entry) && !isPackageCacheOnlyEntry(entry));
+      const strictEvicted = yield* evictOldestSoftEntriesSteps(strictCandidates,
+        packageCacheOnlyMaxBytes, strictBytes, isPackageCacheOnlyEntry);
+      const softEvicted = yield* evictOldestSoftEntriesSteps(softCandidates,
+        softResidentMaxBytes, softBytes,
+        (entry) => isSoftOnlyEntry(entry) && !isPackageCacheOnlyEntry(entry));
+      return strictEvicted + softEvicted;
     } finally {
       packageCacheBudgetDepth--;
     }
@@ -783,6 +786,31 @@ export function createAssetResidencyRegistry(options = {}) {
     return evicted;
   }
 
+  // Stepped twin: same eviction order and verdicts — the sort stays atomic (it
+  // defines that order); the release/dispose tail yields per visited batch so a
+  // genuine overage stops paying every eviction inside one step.
+  function* evictOldestSoftEntriesSteps(candidates, maxBytes, totalBytes, matches, batchEntries = 64) {
+    const ceiling = residencyEvictionCeiling(maxBytes);
+    sortSoftEvictionCandidates(candidates);
+    let evicted = 0;
+    let visited = 0;
+    for (const entry of candidates) {
+      if (++visited % batchEntries === 0) yield;
+      if (totalBytes <= ceiling) break;
+      if (!assets.has(entry.key) || !matches(entry) || hasActiveRequestForEntry(entry)) continue;
+      if (visibilityHeld(entry) || entryHasPinnedRole(entry)) continue;
+      const entryBytes = assetResidentBytes(entry);
+      for (const owner of [...entry.owners.keys()]) {
+        release(entry.key, owner, 'soft-residency-budget');
+      }
+      if (!assets.has(entry.key)) {
+        evicted++;
+        totalBytes -= entryBytes;
+      }
+    }
+    return evicted;
+  }
+
   /**
    * Release decoded cache owners (render packages and source-route blueprint leases) that no
    * longer have a presentation owner.
@@ -818,7 +846,28 @@ export function createAssetResidencyRegistry(options = {}) {
     }
   }
 
+  // Stepped twin: identical walk, release order, and result shape — the sweep
+  // yields per asset batch and inside the budget-evict leg so the 10 s
+  // in-sector decay stops paying the whole pass inside one presented frame.
+  function* releaseUnreferencedCacheOwnersSteps(reason = 'cache-only-residency-cleanup', options = {}) {
+    cacheSweepCount++;
+    diagnosticsEpoch++;
+    packageCacheBudgetDepth++;
+    try {
+      return yield* releaseUnreferencedCacheOwnersPassSteps(reason, options);
+    } finally {
+      packageCacheBudgetDepth--;
+    }
+  }
+
   function releaseUnreferencedCacheOwnersPass(reason, options) {
+    const iterator = releaseUnreferencedCacheOwnersPassSteps(reason, options);
+    let step = iterator.next();
+    while (!step.done) step = iterator.next();
+    return step.value;
+  }
+
+  function* releaseUnreferencedCacheOwnersPassSteps(reason, options) {
     const minAgeMs = Number.isFinite(Number(options.minAgeMs)) ? Math.max(0, Number(options.minAgeMs)) : 0;
     const maxCacheOnlyBytes = Number.isFinite(Number(options.maxCacheOnlyBytes))
       ? Math.max(0, Number(options.maxCacheOnlyBytes))
@@ -832,7 +881,9 @@ export function createAssetResidencyRegistry(options = {}) {
     let releasedOwners = 0;
     const budgetCandidates = [];
 
+    let visited = 0;
     for (const entry of [...assets.values()]) {
+      if (++visited % 256 === 0) yield;
       if (entry.state !== 'resident' || hasActiveRequestForEntry(entry)) continue;
       const ownerRecords = [...entry.owners.entries()];
       const cacheOwners = ownerRecords.filter(([, metadata]) => isRenderPackageCacheOwner(metadata));
@@ -868,7 +919,9 @@ export function createAssetResidencyRegistry(options = {}) {
       for (const entry of budgetCandidates) softBytes += assetResidentBytes(entry);
       if (softBytes > maxCacheOnlyBytes) {
         sortSoftEvictionCandidates(budgetCandidates);
+        let evictVisited = 0;
         for (const entry of budgetCandidates) {
+          if (++evictVisited % 64 === 0) yield;
           if (softBytes <= maxCacheOnlyBytes) break;
           if (entry.state !== 'resident' || !assets.has(entry.key)) continue;
           const ownerRecords = [...entry.owners.entries()];
@@ -1342,6 +1395,7 @@ export function createAssetResidencyRegistry(options = {}) {
     releaseDetachedBoundaryOwners,
     releaseDetachedBoundaryOwnersSteps,
     releaseUnreferencedCacheOwners,
+    releaseUnreferencedCacheOwnersSteps,
     handoffOwnerWhenCovered,
     isOwnerReleased,
     rotateSector,

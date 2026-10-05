@@ -3,6 +3,7 @@ import { reportBootWork } from '../core/bootWork.js';
 import { armCallbackAfterPresent } from './compilePresentSlice.js';
 import { cookLiveSceneGpu } from './liveSceneCook.js';
 import { settleOpeningCompositionTail } from './precompile.js';
+import { yieldToBrowser } from './startupGpuResidency.js';
 
 function gpuContextIsLost(state) {
   const render = state && state.render;
@@ -860,7 +861,22 @@ export async function waitForCurrentRenderPipelines(state, timeoutMs = 20000) {
     }
     let submissionPlan = null;
     try {
-      submissionPlan = captureSubmission();
+      const captureSteps = render.captureOpeningSubmissionPlanSteps;
+      if (typeof captureSteps === 'function') {
+        // The capture is a chain of whole-scene censuses; pace its stepped legs
+        // under the boot yield instead of donating one atomic window.
+        const steps = captureSteps();
+        for (;;) {
+          const step = steps.next();
+          if (step.done) {
+            submissionPlan = step.value;
+            break;
+          }
+          await yieldToBrowser();
+        }
+      } else {
+        submissionPlan = captureSubmission();
+      }
       if (!submissionPlan || submissionPlan.complete !== true
         || !submissionPlan.firstPlayablePipelineSet
         || submissionPlan.firstPlayablePipelineSet.complete !== true) return false;
