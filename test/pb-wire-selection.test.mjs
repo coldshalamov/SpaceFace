@@ -27,6 +27,7 @@ import { captureEntitySelection, resolveEntitySelection } from '../src/ui/sim/st
 import { masslineThrow } from '../src/systems/masslineThrow.js';
 import { resolveGateApproachTarget } from '../src/render/cameraDirector.js';
 import { predictNextSector } from '../src/render/sectorPredict.js';
+import { save } from '../src/save/saveSystem.js';
 
 const SEED = 4242;
 const ROOT = join(import.meta.dirname, '..');
@@ -432,6 +433,49 @@ test('PB-285 REV: record-key resolution answers through the world-record index l
   });
   state.entityIndex.byWorldRecordIdCount.set('wr_1', 2);
   assert.equal(resolveEntitySelection(state, sel), wreck2);
+});
+
+test('PB-285 REV: a durable bind survives save/restore — the stable stamp re-materializes', () => {
+  const state = boot();
+  // A convoy host carries a durable world-record identity — the class of body a course can be
+  // armed at whose pos is stale the moment it is written.
+  const convoy = spawn(state, {
+    id: 21, type: 'ship', alive: true,
+    pos: { x: 400, y: 0, z: -120 }, vel: { x: 0, y: 0, z: 0 }, rot: 0,
+    data: { worldRecordId: 'wr_convoy_7', name: 'Pallas runner', kind: 'hauler' },
+  });
+  const system = { ...world, state, bus: { emit() {} }, computeRoute() { return null; } };
+  system._onSetCourse({ pos: { x: 400, z: -120 }, targetEntityId: 21, label: 'Pallas runner' });
+  assert.equal(state.nav.waypoint.stable.key, 'record:wr_convoy_7', 'the armed bind is durable');
+
+  // Serialize + restore through the real save path.
+  const saveSys = { ...save, state, bus: { emit() {} } };
+  const restoredNav = JSON.parse(JSON.stringify(saveSys._serializeNav()));
+  assert.equal(restoredNav.waypoint.targetWorldRecordId, 'wr_convoy_7',
+    'the save carried the durable identity');
+  assert.equal(restoredNav.waypoint.targetEntityId, undefined,
+    'the runtime id never persists');
+  assert.equal(restoredNav.waypoint.stable, undefined,
+    'the runtime stamp itself never persists — it is re-derived on load');
+
+  state.nav = { route: null, autoTravel: false, waypoint: null, autopilot: null };
+  saveSys._restoreNav(restoredNav);
+  assert.equal(state.nav.waypoint.stable.key, 'record:wr_convoy_7',
+    'the restored waypoint re-materializes the durable stamp');
+  assert.equal(state.nav.autopilot.stable.key, 'record:wr_convoy_7',
+    'the restored burn re-materializes the same stamp');
+  assert.equal(state.nav.waypoint.targetEntityId, undefined);
+
+  // The convoy moved during the save: the re-materialized bind resolves the live body, not the
+  // frozen fix — the whole point of the durable contract.
+  convoy.pos.x = 900;
+  convoy.pos.z = 40;
+  const resolved = resolveEntitySelection(state, state.nav.waypoint.stable);
+  assert.equal(resolved, convoy, 'the restored bind resolves the live record holder');
+
+  // A record that no longer exists resolves closed — same fail-safe as any stable bind.
+  convoy.alive = false;
+  assert.equal(resolveEntitySelection(state, state.nav.waypoint.stable), null);
 });
 
 test('PB-285: the live route consumes the model — draw reconciles, every commit gates', () => {
