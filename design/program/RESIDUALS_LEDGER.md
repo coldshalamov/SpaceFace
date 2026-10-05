@@ -151,7 +151,6 @@ only an unrun headed capture or a refused percentage are in §F.
 | `roadmap/receipts/PQ-137-07-REPORT.md` §What this does not do | Straight radial pull (tug of war) regime not integrable at 60 Hz | physics/feel follow-up |
 | `roadmap/receipts/PQ-137-10-smoke-REPORT.md` §What this does not claim | B2/B3/B4/B5/B6-damage/B8/B11 still OPEN in the contract | massline contract lane |
 | `roadmap/receipts/PQ-150.01-REPORT.md` §gaps 2–4 | Double speaker, unmeasured berth cost, no headed/playtest | `PQ-207.00`–`.03` |
-| `roadmap/receipts/PQ-178.01-REPORT.md` §Follow-up | `47a-bigger-boat.beat.json` five `sling_in` clauses + `BEAT-STANDARD.md:78` stale | docs/worldbuilding fix — narrow, unowned |
 | `roadmap/receipts/PQ-180-00-REPORT.md` §What this does not claim | Nine UI surfaces never open under the probe | UI reachability lane (`PQ-180 .00`) |
 | `roadmap/receipts/PQ-195.01-REPORT.md` §Residuals | Legacy custom backend `maskOf(fx)=0` broadphase-invisible; arrestor overlap | physics follow-up, contract holds on default route |
 | `roadmap/receipts/CHECK-ALL-REPAIR-ROUND2-2026-09-18.md` §Residuals | `check:all:smoke` 22/27; 5 reds are foreign defects/host load | filed here; owners fix in their lanes |
@@ -164,7 +163,7 @@ lost. Rows whose terminal action was "pathspec commit" or "receipt written" are 
 
 | `NOW.md` row | Named next action |
 |---|---|
-| Onboarding vertical: thesis-first first hour | fix far-field body sleep for scripted input, then re-run fixed-seed metrics twice |
+| Onboarding vertical: thesis-first first hour | seed-to-seed replay stability of the swing/raid tow outcome (the far-field-demotion theory was disproven, d313b4db4): identical code+seed must give identical swing/release outcomes across sessions before the 3/3 × 2 stranger metric is claimable; repro fixture in flight this sitting |
 | PQ-033.02 min-spec floors and soak | Electron host evidence; median-frame/hitch floors remain host-load-limited |
 | PQ-194 packet refit + S2 embark | S2 frame composition + twelve prototypes (P03/P04/P16) |
 | Finish-game fleet / next-20 dispatch pipeline | Chromium walks timed out (GPU); headed stills residual |
