@@ -6,6 +6,7 @@ import {
   MAX_RECORDS_PER_SECTOR,
   RECORD_KIND,
   RETENTION_CLASS,
+  bindEntityToRecord,
   captureEntityRecord,
   createEmptyRecordsBag,
   deserializeRecordsBag,
@@ -507,4 +508,23 @@ test('retention protection is monotonic across downgrade attempts', () => {
   for (const id of ['latched_tether', 'latched_displaced', 'latched_depleted', 'latched_destroyed']) {
     assert.equal(isReclaimableResourceBody(resources.byId[id]), false);
   }
+});
+
+
+test('bindEntityToRecord restores the semantic spawn identity on rematerialized hosts', () => {
+  // A record rebound onto a fresh entity must carry identityKey forward — otherwise a
+  // later kill falls back to the stable wr_* id and mints an over-protected tombstone.
+  const entity = { id: 7, type: 'ship', data: {} };
+  bindEntityToRecord(entity, {
+    recordId: 'wr_rebound',
+    identityKey: 'kill:npc_wasp:3:104:-80',
+    homeSectorId: 'sector_test',
+    kind: RECORD_KIND.NPC,
+  });
+  assert.equal(entity.data.worldRecordId, 'wr_rebound');
+  assert.equal(entity.data.identityKey, 'kill:npc_wasp:3:104:-80');
+  // Records without a semantic identity leave the field unset rather than fabricate one.
+  const legacy = { id: 8, type: 'ship', data: {} };
+  bindEntityToRecord(legacy, { recordId: 'wr_legacy', kind: RECORD_KIND.NPC });
+  assert.equal(legacy.data.identityKey, undefined);
 });

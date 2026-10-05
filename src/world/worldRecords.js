@@ -1209,6 +1209,9 @@ export function bindEntityToRecord(entity, record) {
   if (!entity.data) entity.data = {};
   entity.data.worldRecordId = record.recordId;
   entity.data.durable = true;
+  // Rematerialized hosts keep the semantic spawn identity — a later kill re-captures
+  // with the positional mint key instead of falling back to the stable wr_* id.
+  if (record.identityKey) entity.data.identityKey = record.identityKey;
   if (record.homeSectorId) {
     entity.homeSectorId = record.homeSectorId;
     entity.data.homeSectorId = record.homeSectorId;
