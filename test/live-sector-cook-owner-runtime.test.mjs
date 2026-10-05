@@ -66,7 +66,7 @@ function fixture(providers = []) {
     collectNeverLinkedSceneRootsSteps: function* () {},
     createSlicedYield: (fn) => fn,
     collectMeshPresentationEntitiesChunked: function* () {},
-    recordOpeningCookStep: noop, resumeAuthoredUpgradeQueueForLoadingHulls: noop,
+    recordOpeningCookStep: noop, stampProducerReceipt: noop, resumeAuthoredUpgradeQueueForLoadingHulls: noop,
     collectUnresidentInstancedDrawables: () => [],
     holdAuthoredUpgradeQueueForFirstFlight: () => marks.push('hold'),
     freezeOpeningGraphPublication: () => marks.push('freeze'),
@@ -409,6 +409,7 @@ function gpuFixture() {
   f.state.render.restLiveFlightEffectsAfterCook = () => f.marks.push('rest-effects');
   Object.assign(f.values, {
     cam: { obj: {} }, collectFirstFlightEffectRoots: () => [],
+    collectFirstFlightEffectRootsSteps: function* () { return []; },
     collectPreparedAuthoredCompileRoots: () => [], syncVisiblePointLightBudget() {},
     armAdmissionShadows: () => () => f.marks.push('restore-shadows'),
     revealSubjectForCompile: () => () => f.marks.push('restore-reveal'),

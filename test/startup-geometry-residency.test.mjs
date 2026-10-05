@@ -179,7 +179,7 @@ test('opening geometry admission uses the shared startup proxy pass', () => {
     'the first-visible failure payload must name owning roots, objects, materials, and program families');
   assert.match(
     firstDraw,
-    /first-visible-pass-residency geometries=\$\{openingFirstDrawCountsBefore\.geometries\}->\$\{after\.geometries\} programs=\$\{openingFirstDrawCountsBefore\.programs\}->\$\{after\.programs\} geometry-only-brick=\$\{geometryOnlyBrick\}/,
+    /first-visible-pass-residency geometries=\$\{countsBefore\.geometries\}->\$\{after\.geometries\} programs=\$\{countsBefore\.programs\}->\$\{after\.programs\} geometry-only-brick=\$\{geometryOnlyBrick\}/,
     'the first visible pass must always name geometry-only bricks from cheap renderer counts',
   );
 });
