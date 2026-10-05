@@ -520,23 +520,35 @@ function setMatchesList(set, list) {
 //   dockId — uiRoot writes state.ui.dockedStationId; resolved through entityIndex.byStationId so
 //     the pin names the station entity when materialized (a 'station:<id>' sentinel otherwise —
 //     still flips on the dock/undock transition). flags.docked without a station pins `true`.
-//   hailId — a customs scan prompt names the patrol entity in conversation
-//     (state.ui.customsPrompt.patrolId — lawSecurity emits patrol.id/scanner.id). No comms
-//     target record exists; nothing else is a durable hail record.
+//   hailId — two live hail records: the customs scan prompt names the patrol entity directly
+//     (state.ui.customsPrompt.patrolId — lawSecurity emits patrol.id/scanner.id); a lawful
+//     inspection case carries the patrol's world record (player.lawfulInspection.active
+//     .patrolWorldRecordId, resolved through entityIndex.byWorldRecordId). No comms target
+//     record exists.
 //   targetId — the player combat record (weapons.js writes combat.lockTarget on missile lock).
 function playerIntentPins(state, player) {
   const ui = state && state.ui;
+  const index = state && state.entityIndex;
   let dockId = null;
   const dockedStationId = ui && ui.dockedStationId != null ? ui.dockedStationId : null;
   if (dockedStationId != null) {
-    const index = state && state.entityIndex;
     const stationEntity = index && index.byStationId ? index.byStationId.get(dockedStationId) : null;
-    dockId = stationEntity && stationEntity.id != null ? stationEntity.id : `station:${dockedStationId}`;
+    dockId = stationEntity && stationEntity.alive !== false && stationEntity.id != null
+      ? stationEntity.id : `station:${dockedStationId}`;
   } else if ((ui && ui.docked === true) || (player && player.flags && player.flags.docked === true)) {
     dockId = true;
   }
+  // Two durable hail records: the customs scan prompt names the patrol entity directly;
+  // a lawful-inspection case carries the patrol's world record (lawSecurity activeCase).
   const customs = ui && ui.customsPrompt;
-  const hailId = customs && customs.patrolId != null ? customs.patrolId : null;
+  let hailId = customs && customs.patrolId != null ? customs.patrolId : null;
+  if (hailId == null) {
+    const inspection = player && player.lawfulInspection && player.lawfulInspection.active;
+    const recordId = inspection && inspection.patrolWorldRecordId;
+    const patrol = recordId != null && index && index.byWorldRecordId
+      ? index.byWorldRecordId.get(recordId) : null;
+    if (patrol && patrol.alive !== false && patrol.id != null) hailId = patrol.id;
+  }
   const combat = player && player.data && player.data.combat;
   const targetId = combat && (combat.targetId ?? combat.lockTarget) != null
     ? (combat.targetId ?? combat.lockTarget)
@@ -604,9 +616,10 @@ function rebuildPinFacts(state, player, facts, simTime) {
     for (const id of fieldAffected) fieldScratch.push(id);
   }
 
-  // SG-06: player-intent pins arrive only through entity-carried state (see scalar
-  // block above). Scanner owns the durable tracked contact — resolve its signal record
-  // without asking the HUD to decide residency.
+  // SG-06: player-intent pins read the live state records (playerIntentPins above —
+  // entity data for combat, state.ui/state.player for dock/hail). Scanner owns the
+  // durable tracked contact — resolve its signal record without asking the HUD to
+  // decide residency.
   const trackedId = trackedSignal;
   const trackedRecord = trackedId && signalState && signalState.records && signalState.records[trackedId];
   if (trackedRecord) {

@@ -193,6 +193,65 @@ test('missile-lock pin wakes on combat.lockTarget', () => {
   assert.notEqual(woke.classifyMode, 'early-quiet-latch');
 });
 
+test('pin clear wakes too — a customs hail ending while latched', () => {
+  const state = makeWorld();
+  state.ui = { customsPrompt: { factionId: 'ceres_authority', patrolId: 42, t: 1, signalTick: 1 } };
+  warmQuiet(state);
+  assert.equal(step(state).classifyMode, 'early-quiet-latch');
+  delete state.ui.customsPrompt;
+  const woke = step(state);
+  assert.notEqual(woke.classifyMode, 'early-quiet-latch');
+});
+
+test('dock pin falls to the true sentinel when docked with no station id', () => {
+  const state = makeWorld();
+  warmQuiet(state);
+  assert.equal(step(state).classifyMode, 'early-quiet-latch');
+  // combat.js sets flags.docked on the revive berth before ui.dockedStationId exists —
+  // the transition must still flip the pin.
+  state.player.flags.docked = true;
+  const woke = step(state);
+  assert.notEqual(woke.classifyMode, 'early-quiet-latch');
+});
+
+test('lawful-inspection hail pin resolves the patrol through byWorldRecordId', () => {
+  const state = makeWorld();
+  const patrol = {
+    id: 950, type: 'ship', alive: true,
+    pos: { x: 300, z: 0 }, vel: { x: 0, z: 0 }, radius: 8,
+    data: { worldRecordId: 'wr_patrol_1' }, flags: {},
+  };
+  state.entities.set(patrol.id, patrol);
+  state.entityList.push(patrol);
+  state.entityIndex.byWorldRecordId = new Map([['wr_patrol_1', patrol]]);
+  state.player.lawfulInspection = {
+    active: { id: 'lawful-inspection:wr_patrol_1:1', patrolWorldRecordId: 'wr_patrol_1', phase: 'offered' },
+  };
+  const mode = warmQuiet(state);
+  assert.equal(mode, 'early-quiet-latch');
+  // The case resolves — the patrol's conversation ends and the pin must clear.
+  state.player.lawfulInspection.active = null;
+  const woke = step(state);
+  assert.notEqual(woke.classifyMode, 'early-quiet-latch');
+});
+
+test('a dead byStationId row falls to the sentinel, not the dead entity id', () => {
+  const state = makeWorld();
+  const corpse = {
+    id: 910, type: 'station', alive: false,
+    pos: { x: 200, z: 0 }, vel: { x: 0, z: 0 }, radius: 40,
+    data: { stationId: 'station_dead' }, flags: {},
+  };
+  state.entityIndex.byStationId = new Map([['station_dead', corpse]]);
+  state.ui = { docked: true, dockedStationId: 'station_dead' };
+  warmQuiet(state);
+  assert.equal(step(state).classifyMode, 'early-quiet-latch');
+  // The corpse leaves the index — the sentinel keeps the same pin, so no spurious wake.
+  state.entityIndex.byStationId.delete('station_dead');
+  const held = step(state);
+  assert.equal(held.classifyMode, 'early-quiet-latch');
+});
+
 test('bench toggle disables early quiet latch', () => {
   const state = makeWorld();
   setClassifyFrameQuietRetainForBench(true);
