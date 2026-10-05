@@ -1,4 +1,27 @@
 {
+  "keyboardAfterButton": 2.224609375,
+  "pause": {
+    "t": 0.7166666666666672,
+    "x": -11580.1796875
+  },
+  "reset": {
+    "phase": "sleep",
+    "memory": {
+      "version": 1,
+      "met": false,
+      "destroyed": false,
+      "hull": 900,
+      "returns": 0,
+      "visits": 0,
+      "pulses": 0,
+      "longestThrow": 0,
+      "quietHeard": false
+    },
+    "bodies": 3,
+    "drawCalls": 49,
+    "triangles": 17856,
+    "comms": "RU-7 / RUCKUS — demolition retriever. One machine. One dented pressure core. Scan to hail."
+  },
   "game": {
     "phase": "present",
     "memory": {
@@ -9,12 +32,12 @@
       "returns": 3,
       "visits": 1,
       "pulses": 0,
-      "longestThrow": 240.00524516731858,
+      "longestThrow": 229.03364923786927,
       "quietHeard": false
     },
     "bodies": 3,
-    "drawCalls": 29,
-    "triangles": 27780,
+    "drawCalls": 54,
+    "triangles": 20416,
     "comms": "RUCKUS: Pressure core charged. Present for crew. Three seconds after release. Keep clear."
   },
   "hold": {
@@ -32,14 +55,20 @@
       "returns": 3,
       "visits": 1,
       "pulses": 1,
-      "longestThrow": 240.00524516731858,
+      "longestThrow": 229.03364923786927,
       "quietHeard": false
     },
     "bodies": 4,
-    "drawCalls": 50,
-    "triangles": 36344,
+    "drawCalls": 52,
+    "triangles": 19776,
     "comms": "RUCKUS: Pressure released. Crew still present. Acceptable."
   },
   "mobileOverflow": false,
+  "mobileLayout": {
+    "bodyScreenX": 98.91148414265777,
+    "bodyScreenY": 408.1230657215389,
+    "headerBottom": 103,
+    "tagTop": 128
+  },
   "errors": []
 }

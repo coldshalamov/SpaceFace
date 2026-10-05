@@ -17,6 +17,26 @@ try{
  browser=await chromium.launch({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
  const page=await browser.newPage({viewport:{width:1440,height:1000}});page.on('pageerror',e=>errors.push(e.message));
  await page.goto(url,{waitUntil:'networkidle'});await page.waitForFunction(()=>window.ruckusLab&&document.querySelector('#boot').hidden);
+ // Exercise player controls, not only fixture fast-forward. Buttons retain keyboard
+ // focus after a mouse click: flight keys must still reach the pilot controller.
+ await page.click('#hail');
+ const pilotX=await page.evaluate(()=>ruckusLab.fixture.player.pos.x);
+ await page.keyboard.down('KeyD');
+ await page.waitForFunction(x=>ruckusLab.fixture.player.pos.x>x+2,pilotX);
+ await page.keyboard.up('KeyD');
+ report.keyboardAfterButton=await page.evaluate(x=>ruckusLab.fixture.player.pos.x-x,pilotX);
+ assert.ok(report.keyboardAfterButton>2);
+ await page.click('#pause');
+ const paused=await page.evaluate(()=>({t:ruckusLab.fixture.state.simTime,x:ruckusLab.fixture.player.pos.x}));
+ await page.keyboard.down('KeyA');await page.waitForTimeout(200);await page.keyboard.up('KeyA');
+ report.pause=await page.evaluate(()=>({t:ruckusLab.fixture.state.simTime,x:ruckusLab.fixture.player.pos.x}));
+ assert.deepEqual(report.pause,paused,'pause freezes simulation and position');
+ await page.evaluate(()=>{document.querySelector('#reset').click();document.querySelector('#reset').click();document.querySelector('#reset').click();});
+ await page.waitForFunction(()=>!ruckusLab.resetting&&ruckusLab.fixture.state.timeScale===1&&ruckusLab.fixture.state.ruckus.returns===0);
+ report.reset=await page.evaluate(()=>ruckusLab.snapshot());
+ assert.equal(report.reset.bodies,3,'repeated reset leaves one pilot, one retriever and one core');
+ assert.equal(report.reset.phase,'sleep');
+ assert.equal(await page.locator('#pause').textContent(),'Pause');
  await page.click('#hail');await page.waitForTimeout(200);await page.click('#view');await page.screenshot({path:resolve(out,'inspect.png')});
  await page.click('#view');await page.click('#throw');await page.waitForTimeout(1100);await page.screenshot({path:resolve(out,'chase.png')});
  report.game=await page.evaluate(()=>{const f=ruckusLab.fixture;

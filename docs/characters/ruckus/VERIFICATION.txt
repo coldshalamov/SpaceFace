@@ -1,5 +1,9 @@
-RUCKUS build proof
+RUCKUS verification — 2026-10-05
 
-Real-physics and model test suite: passed.
-Rendered workshop: success.
-This is focused encounter proof, not a full campaign playthrough.
+Focused physics/model/registry and neighboring regression suite: 79 passed, 0 failed.
+Rendered Chromium workshop: three returns, held fuse, released burst, keyboard flight after button focus, pause, repeated reset, mobile framing/overflow and zero page errors passed.
+Fresh evidence: browser/report.json and browser/*.png in this directory.
+Workflow: https://github.com/coldshalamov/SpaceFace/actions/runs/37321577604
+
+Repository-wide check run 37261970783 remains red. Four failures (story beats, input modalities, SG-06 production ports, ship purchase guidance) were reproduced with byte-identical stderr on the original source bundle before and after applying RUCKUS. This does not classify every broad-suite failure as pre-existing.
+This is focused encounter proof, not a full campaign playthrough, deployment test, real-phone certification or low-end GPU benchmark. No expected/golden fixtures were rewritten to hide failures.

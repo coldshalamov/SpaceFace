@@ -5,10 +5,12 @@ import { RUCKUS as C, RUCKUS_AUDIO_RECIPES } from '../../src/data/ruckus.js';
 import { RUCKUS_GLOBAL_ANCHOR as HOME } from '../../src/systems/ruckus.js';
 import { playRecipe } from '../../src/audio/synth.js';
 const $ = id => document.getElementById(id);
-let f = await createRuckusFixture(), inspect = false, sound = false, audio = null, eventCursor = 0, disposed = false;
+let f = await createRuckusFixture(), inspect = false, sound = false, audio = null, eventCursor = 0, disposed = false, resetPending = null;
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 1.7)); renderer.setSize(innerWidth, innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.25;
+renderer.domElement.tabIndex = 0;
+renderer.domElement.setAttribute('aria-label', 'RUCKUS flight workshop');
 document.body.prepend(renderer.domElement);
 const scene = new THREE.Scene(); scene.background = new THREE.Color(0x09111b);
 const camera = new THREE.PerspectiveCamera(48, innerWidth / innerHeight, .1, 3000);
@@ -37,6 +39,8 @@ function present(){
   }
   while(activeVoices.length>24){activeVoices.shift()?.stop?.();}
   $('status').textContent=f.state.timeScale===0?'PAUSED':f.system._phase.toUpperCase();
+  $('pause').textContent=f.state.timeScale?'Pause':'Resume';
+  $('hold').textContent=line.visible?'Release core':'Hold core';
   $('bond').textContent=`CREW: ${f.state.ruckus.returns>=3?2:1} / RETURNS: ${f.state.ruckus.returns}`;
   const b=f.body();if(b){
     const bx=b.pos.x-HOME.x,bz=b.pos.z-HOME.z;
@@ -67,20 +71,49 @@ $('throw').onclick=()=>{const c=f.core();if(c){const angle=f.state.ruckus.return
 $('hold').onclick=()=>{if(f.state.combat.attachments.byId.workshop){f.release({x:1,z:0},0);$('hold').textContent='Hold core';}else{f.hold();$('hold').textContent='Release core';}};
 $('view').onclick=()=>{inspect=!inspect;$('view').textContent=inspect?'Flight view':'Inspect';};
 $('sound').onclick=async()=>{audio ||= new AudioContext();await audio.resume();sound=!sound;$('sound').textContent=sound?'Sound on':'Sound off';};
-$('reset').onclick=async()=>{f.destroy();for(const m of maps.values())disposeRuckusVisual(m);maps.clear();f=await createRuckusFixture();eventCursor=0;window.ruckusLab.fixture=f;$('hold').textContent='Hold core';};
-addEventListener('keydown',e=>{if(e.target.closest('button'))return;if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();if(!e.repeat){if(e.code==='KeyH')f.scan();if(e.code==='Space')halt();if(e.code==='KeyV')$('view').click();}keys.add(e.code);});
+$('reset').onclick=()=>{
+  if(resetPending||disposed)return resetPending;
+  keys.clear();f.input(0,0);drag=null;
+  const buttons=[...document.querySelectorAll('nav button')];
+  for(const button of buttons)button.disabled=true;
+  resetPending=(async()=>{
+    // Keep the current physics owner alive until the replacement has initialized.
+    // Frames are suspended below; repeated reset presses share this one transaction.
+    try{
+      const next=await createRuckusFixture();
+      if(disposed){next.destroy();return;}
+      f.destroy();for(const m of maps.values())disposeRuckusVisual(m);maps.clear();
+      f=next;eventCursor=0;window.ruckusLab.fixture=f;inspect=false;
+      lastComms='One machine. One dented pressure core. Hail him.';
+      $('comms').textContent=lastComms;$('view').textContent='Inspect';
+      accumulator=0;previous=performance.now();present();
+    }finally{
+      resetPending=null;
+      for(const button of buttons)button.disabled=false;
+      if(!disposed)renderer.domElement.focus({preventScroll:true});
+    }
+  })();
+  return resetPending;
+};
+addEventListener('keydown',e=>{
+  if(resetPending)return;
+  const target=e.target;
+  if(target?.closest?.('input, textarea, select, [contenteditable="true"]'))return;
+  // Clicking Hail must not swallow the next WASD/arrow input. Preserve native
+  // Space activation while a button is focused; only the canvas owns pause there.
+  if(e.code==='Space'&&target?.closest?.('button'))return;if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();if(!e.repeat){if(e.code==='KeyH')f.scan();if(e.code==='Space')halt();if(e.code==='KeyV')$('view').click();}keys.add(e.code);});
 addEventListener('keyup',e=>keys.delete(e.code));addEventListener('blur',()=>{keys.clear();f.input(0,0);});
 function worldPoint(event){mouse.set(event.clientX/innerWidth*2-1,1-event.clientY/innerHeight*2);ray.setFromCamera(mouse,camera);return ray.ray.intersectPlane(plane,point);}
 let drag=null;
-renderer.domElement.addEventListener('pointerdown',e=>{const c=f.core(),w=worldPoint(e);if(c&&w&&Math.hypot(w.x-(c.pos.x-HOME.x),w.z-(c.pos.z-HOME.z))<25){f.hold();drag={x:w.x,z:w.z,id:e.pointerId};renderer.domElement.setPointerCapture(e.pointerId);}});
+renderer.domElement.addEventListener('pointerdown',e=>{if(resetPending)return;renderer.domElement.focus({preventScroll:true});const c=f.core(),w=worldPoint(e);if(c&&w&&Math.hypot(w.x-(c.pos.x-HOME.x),w.z-(c.pos.z-HOME.z))<25){f.hold();drag={x:w.x,z:w.z,id:e.pointerId};renderer.domElement.setPointerCapture(e.pointerId);}});
 renderer.domElement.addEventListener('pointerup',e=>{if(!drag||e.pointerId!==drag.id)return;const w=worldPoint(e);if(w)f.release({x:w.x-drag.x,z:w.z-drag.z},Math.min(70,Math.hypot(w.x-drag.x,w.z-drag.z)*.7));else f.release({x:1,z:0},0);drag=null;});
 renderer.domElement.addEventListener('pointercancel',()=>{if(drag)f.release({x:1,z:0},0);drag=null;});
 addEventListener('resize',()=>{renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();});
 let previous=performance.now(),accumulator=0;
-function frame(now){if(disposed)return;accumulator+=Math.min(.08,(now-previous)/1000);previous=now;
+function frame(now){if(disposed)return;if(resetPending){previous=now;accumulator=0;requestAnimationFrame(frame);return;}accumulator+=Math.min(.08,(now-previous)/1000);previous=now;
   f.input((keys.has('KeyD')||keys.has('ArrowRight')?1:0)-(keys.has('KeyA')||keys.has('ArrowLeft')?1:0),(keys.has('KeyS')||keys.has('ArrowDown')?1:0)-(keys.has('KeyW')||keys.has('ArrowUp')?1:0));
   while(accumulator>=1/60){f.step();accumulator-=1/60;}present();requestAnimationFrame(frame);
 }
-window.ruckusLab={fixture:f,renderer,camera,scene,maps,a11y,present,inspect:()=>{$('view').click();},snapshot:()=>({phase:f.system._phase,memory:f.system.serialize(),bodies:f.state.entityList.length,drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles,comms:lastComms})};
+window.ruckusLab={get resetting(){return !!resetPending;},fixture:f,renderer,camera,scene,maps,a11y,present,inspect:()=>{$('view').click();},snapshot:()=>({phase:f.system._phase,memory:f.system.serialize(),bodies:f.state.entityList.length,drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles,comms:lastComms})};
 $('boot').hidden=true;requestAnimationFrame(frame);
 addEventListener('pagehide',()=>{disposed=true;f.destroy();for(const m of maps.values())disposeRuckusVisual(m);audio?.close();renderer.dispose();});
