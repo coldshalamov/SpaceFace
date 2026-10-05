@@ -54,6 +54,7 @@ import { MISSION_TUNING } from '../data/missions.js';
 import { wreckMissionById } from '../data/wreckMissions.js';
 import { pickWreckClass, wreckClassById } from '../data/wreckClasses.js';
 import { effectiveDangerTierFor, sectorSignalFor } from './sectorSim.js';
+import { stationBerthAdmits } from '../data/frontierRumors.js';
 
 const MAX_PER_SECTOR = 8;           // ring-buffer cap — bounded growth (failureMode guard)
 const MAX_TOTAL = 64;               // global backstop across all sectors (rare; trims oldest)
@@ -167,9 +168,21 @@ function laneKeyFor(entry) {
   return `${entry.sectorId}:${entry.factionId || 'unknown'}`;
 }
 
-function stationForSector(sectorId) {
+function repFor(state, factionId) {
+  const rec = factionId && state && state.factions ? state.factions[factionId] : null;
+  return rec ? (rec.rep || 0) : 0;
+}
+
+// The rumor names a desk the pilot must dock at to read the board — a berth that refuses
+// the pilot (repGated fence, the closed Den) would make the line a lie, so the pick honors
+// the same admission contract the pickers and the accept gate apply. No admits → no desk:
+// the rumor still runs as news, it just cannot sell a bounty.
+function stationForSector(sectorId, state) {
   const stations = STATION_BY_SECTOR.get(sectorId) || [];
-  return stations.find((s) => s.services && s.services.includes('missions')) || stations[0] || null;
+  const admits = (s) => stationBerthAdmits(s, repFor(state, s && s.factionId), state);
+  return stations.find((s) => s.services && s.services.includes('missions') && admits(s))
+    || stations.find(admits)
+    || null;
 }
 
 /**
@@ -195,7 +208,7 @@ function nestAnchorIdFor(state, laneKey, sectorId) {
 function ghostConvoyLine(state, entry, count) {
   const sName = sectorName(state, entry.sectorId);
   // The line names WHERE the bounty sits; without it the rumor has no address and dies as news.
-  const station = stationForSector(entry.sectorId);
+  const station = stationForSector(entry.sectorId, state);
   const posted = station && station.name ? ` ${station.name} posted a bounty.` : '';
   return `Ghost convoy rumor: ${count} losses on the ${sName} lane point to a Reach raider nest.${posted}`;
 }
@@ -203,7 +216,7 @@ function ghostConvoyLine(state, entry, count) {
 function buildGhostConvoyOffer(state, entry, sameLane, signal) {
   const template = wreckMissionById(GHOST_CONVOY_MISSION_ID);
   const sectorId = entry.sectorId;
-  const station = stationForSector(sectorId);
+  const station = stationForSector(sectorId, state);
   const laneKey = laneKeyFor(entry);
   const dangerTier = clamp(
     Math.max(effectiveDangerTierFor(state, sectorId), Math.round(((signal && signal.danger) || 0) * 4)),
@@ -315,7 +328,9 @@ function maybeEmitGhostConvoyRumor(state, bus, helpers, entry) {
   };
   if (bus && bus.emit) {
     bus.emit('rumor:ghostConvoy', payload);
-    bus.emit('mission:offered', offer);
+    // No admitting desk → no row: _onExternalBoardOffer drops a null-station offer anyway,
+    // and the rumor's news line already said there is nowhere to collect it.
+    if (offer.stationId) bus.emit('mission:offered', offer);
   }
   if (helpers && helpers.voice && typeof helpers.voice.say === 'function') {
     const said = helpers.voice.say({ channel: 'news', text: line, kind: 'ghostConvoy' });
