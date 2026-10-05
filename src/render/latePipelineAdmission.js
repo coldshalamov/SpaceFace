@@ -160,6 +160,34 @@ export function collectFirstFlightEffectRoots(scene) {
   return roots;
 }
 
+// Stepped twin: explicit-stack pre-order DFS identical to scene.traverse (children
+// pushed reversed so pops run in document order). Drivers pace a scene-wide pass
+// instead of paying it inside one leg.
+export function* collectFirstFlightEffectRootsSteps(scene, options = {}) {
+  const roots = [];
+  const seen = new Set();
+  if (!scene || typeof scene.traverse !== 'function') return roots;
+  const stride = Number.isFinite(options.yieldStride) && options.yieldStride > 0
+    ? Math.floor(options.yieldStride)
+    : 1024;
+  const stack = [scene];
+  let visited = 0;
+  while (stack.length > 0) {
+    const object = stack.pop();
+    if ((++visited % stride) === 0) yield;
+    if (!object || seen.has(object)) continue;
+    if (isLiveFirstFlightEffect(object)) {
+      seen.add(object);
+      roots.push(object);
+    }
+    const children = object.children;
+    if (Array.isArray(children)) {
+      for (let i = children.length - 1; i >= 0; i -= 1) stack.push(children[i]);
+    }
+  }
+  return roots;
+}
+
 function isLayerDrawable(object) {
   return !!(object && object.geometry && (
     object.isMesh === true

@@ -331,6 +331,7 @@ import {
   bindEnvironmentToStandardMaterials,
   bindEnvironmentToStandardMaterialsSteps,
   collectFirstFlightEffectRoots,
+  collectFirstFlightEffectRootsSteps,
   collectFirstFlightLayerDrawables,
   collectInstancePoolCompileRoots,
   collectInstancePoolCompileRootsAndSubjectsSteps,
@@ -429,6 +430,7 @@ import {
 import {
   admitOpeningUnitsAcrossSlices,
   captureOpeningAdmissionIdentity,
+  captureOpeningAdmissionIdentitySteps,
   describeOpeningAdmissionIdentityDelta,
   materialHasCompiledProgram,
   materialList,
@@ -513,6 +515,76 @@ import { ENCOUNTERS } from '../data/encounters/index.generated.js';
 // M2 floating-origin scratch for mesh pose projection (no per-entity allocation).
 const _meshLocalXZ = { x: 0, z: 0 };
 const _residencyLookDelta = { x: 0, z: 0 };
+
+// Stepped twin of Object3D#updateMatrixWorld: identical per-node semantics — auto
+// matrix compose, needsUpdate-or-force world recompute with flag clear, force
+// propagation — walked iteratively so a forced whole-scene refresh yields at
+// stride boundaries instead of landing atomically inside the boot census.
+// Subclass overrides (SkinnedMesh bind, Camera inverse) own their subtree
+// atomically; sibling world updates are order-independent, so delegating them at
+// push time preserves the result.
+function* updateMatrixWorldSteps(root, force) {
+  if (!root) return;
+  const base = THREE && THREE.Object3D && THREE.Object3D.prototype
+    ? THREE.Object3D.prototype.updateMatrixWorld
+    : null;
+  if (typeof root.updateMatrixWorld !== 'function' || !base || root.updateMatrixWorld !== base) {
+    root.updateMatrixWorld(force);
+    return;
+  }
+  const stack = [[root, force === true]];
+  let visited = 0;
+  while (stack.length > 0) {
+    const [object, entryForce] = stack.pop();
+    if ((++visited % 2048) === 0) yield;
+    if (object.matrixAutoUpdate) object.updateMatrix();
+    let childForce = entryForce;
+    if (object.matrixWorldNeedsUpdate || entryForce) {
+      if (object.matrixWorldAutoUpdate === true) {
+        if (!object.parent) object.matrixWorld.copy(object.matrix);
+        else object.matrixWorld.multiplyMatrices(object.parent.matrixWorld, object.matrix);
+      }
+      object.matrixWorldNeedsUpdate = false;
+      childForce = true;
+    }
+    const children = object.children;
+    if (!Array.isArray(children)) continue;
+    for (let i = children.length - 1; i >= 0; i -= 1) {
+      const child = children[i];
+      if (!child || typeof child.updateMatrixWorld !== 'function') continue;
+      if (child.updateMatrixWorld !== base) child.updateMatrixWorld(childForce);
+      else stack.push([child, childForce]);
+    }
+  }
+}
+
+// Drive the stepped depth-ceremony twin across a leg's own yield primitive so its
+// censuses pace instead of draining atomically inside a shell/presented frame — the
+// reparent/render/mark window stays atomic inside one next() either way. Epoch drift
+// mid-census aborts with `stale`; re-mint the signature epoch and retry under the
+// live census (bounded — a churning light set defers to the next caller).
+async function driveCompileShadowDepthPipelines(depthOpts, yieldStep) {
+  if (typeof compileShadowDepthPipelinesSteps !== 'function') {
+    return compileShadowDepthPipelines(depthOpts);
+  }
+  const pace = typeof yieldStep === 'function' ? yieldStep : async () => {};
+  if (!Number.isFinite(depthOpts.lightSigEpoch)) {
+    depthOpts.lightSigEpoch = shadowCensusEpoch();
+  }
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const iterator = compileShadowDepthPipelinesSteps(depthOpts);
+    for (;;) {
+      const step = iterator.next();
+      if (step.done) {
+        if (step.value && step.value.stale === true) break;
+        return step.value;
+      }
+      await pace();
+    }
+    depthOpts.lightSigEpoch = shadowCensusEpoch();
+  }
+  return { skipped: true, reason: 'light-census-drifted-repeatedly', subjects: 0 };
+}
 
 // classifyTableBand reads its options object synchronously, so one pooled args
 // struct serves every band call — the glass/runway predicates fire per entity
@@ -959,7 +1031,8 @@ function openingEntityRootIntersectsCamera(root, entity, camera, scene) {
 }
 
 function enqueueMeshBuildCandidate(entity, meshes, queuedIds, queue) {
-  if (!entity || entity._noMesh || meshes.has(entity.id) || queuedIds.has(entity.id)) return false;
+  if (!entity || entity.alive === false || entity._noMesh || meshes.has(entity.id)
+      || queuedIds.has(entity.id)) return false;
   if (entity.type === 'projectile' && projectileSkipsVisualFactoryMesh(entity)) return false;
   queue.push(entity.id);
   queuedIds.add(entity.id);
@@ -1026,7 +1099,7 @@ export function* enqueueMissingMeshBuildsSteps(entityList, meshes, queuedIds, qu
     for (const entity of entityList) {
       yield;
       if (rowBoundary) rowBoundary();
-      if (!entity || entity.type !== 'ship') continue;
+      if (!entity || entity.alive === false || entity.type !== 'ship') continue;
       if (shouldQueue && !shouldQueue(entity)) continue;
       if (isUrgent && urgentPass !== isUrgent(entity)) continue;
       passShips.push(entity);
@@ -1034,7 +1107,7 @@ export function* enqueueMissingMeshBuildsSteps(entityList, meshes, queuedIds, qu
     for (const entity of entityList) {
       yield;
       if (rowBoundary) rowBoundary();
-      if (!entity || entity.type === 'ship') continue;
+      if (!entity || entity.alive === false || entity.type === 'ship') continue;
       if (shouldQueue && !shouldQueue(entity)) continue;
       if (isUrgent && urgentPass !== isUrgent(entity)) continue;
       passOthers.push(entity);
@@ -1987,6 +2060,9 @@ export function serviceRenderMeshResidency(owner, frameDt) {
   const now = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
     ? performance.now() : Date.now());
   drainDespawnDisposeQueue(owner);
+  // Deferred identity releases from unbatched unbinds (entity:destroyed storms):
+  // one union walk per registry per frame instead of five walks per corpse.
+  owner?._flushMeshReleasePending?.();
   settleRebuildBridges(owner);
   if (owner && owner._sessionRecookKeepGpu === true && owner.state && owner.state.mode === 'loading') {
     abandonResidencyPoll(owner);
@@ -8293,6 +8369,7 @@ function abandonAsteroidInstancePool(pool, scene) {
   }
   pool.byEntity?.clear?.();
   pool.byDetail?.clear?.();
+  pool.byDetailOwner?.clear?.();
   pool.keyed?.clear?.();
   pool.scene = null;
   return true;
@@ -9264,7 +9341,7 @@ export const render = {
             try {
               // Prime the shadow map and the casters' depth programs first: the color program key
               // carries numDirLightShadows, which stays 0 until the light owns a map again.
-              compileShadowDepthPipelines({
+              await driveCompileShadowDepthPipelines({
                 renderer,
                 light: this._keyLight,
                 camera: cam.obj,
@@ -9275,7 +9352,7 @@ export const render = {
                 restoreObjectHome,
                 lightingScene: scene,
                 stagingName: 'SF_ContextRestoreShadowDepth',
-              });
+              }, yieldToBrowser);
               await this._compilePostRoute(restoredPostRoute, scene, cam.obj, scene);
               await yieldToBrowser();
               // compile() only STARTS the KHR links. One forced scene render onto the exact post
@@ -9521,7 +9598,7 @@ export const render = {
               .concat(poolCompileRoots || collectInstancePoolCompileRoots(liveScene))
               .filter((root) => root);
             if (depthSubjects.length > 0) {
-              compileShadowDepthPipelines({
+              await driveCompileShadowDepthPipelines({
                 renderer,
                 light: this._keyLight,
                 camera: this.cam && this.cam.obj,
@@ -9532,7 +9609,7 @@ export const render = {
                 restoreObjectHome,
                 lightingScene: this.scene,
                 stagingName: 'SF_RockReskinShadowDepth',
-              });
+              }, yieldToBrowser);
             }
           } catch (_) { /* depth recompile is best-effort */ }
         }
@@ -9766,11 +9843,38 @@ export const render = {
           extraVfxSet.add(root);
           extraVfx.push(root);
         };
-        for (const root of collectFirstFlightEffectRoots(scene)) addExtraVfx(root);
+        const firstFlightRootsIter = collectFirstFlightEffectRootsSteps(scene);
+        for (;;) {
+          const rootStep = firstFlightRootsIter.next();
+          if (rootStep.done) {
+            for (const root of rootStep.value) addExtraVfx(root);
+            break;
+          }
+          await yieldToBrowser();
+        }
         const route = this._selectPostRoute();
+        const admitSubjects = leaves.concat(extraVfx);
+        const admitSeenMaterials = new Set();
+        const admitSeenGeometries = new Set();
+        const admitProgramSubjects = [];
+        const admitGeometrySubjects = [];
+        for (let i = 0; i < admitSubjects.length; i += 1024) {
+          const part = uniqueAdmissionUnits(admitSubjects.slice(i, i + 1024), {
+            seenMaterials: admitSeenMaterials,
+            seenGeometries: admitSeenGeometries,
+          });
+          if (part.programSubjects.length > 0) admitProgramSubjects.push(...part.programSubjects);
+          if (part.geometrySubjects.length > 0) admitGeometrySubjects.push(...part.geometrySubjects);
+          await yieldToBrowser();
+        }
         await admitOpeningUnitsAcrossSlices({
           deadlineMs: 8000,
-          units: uniqueAdmissionUnits([...leaves, ...extraVfx]),
+          units: {
+            programSubjects: admitProgramSubjects,
+            geometrySubjects: admitGeometrySubjects,
+            materialCount: admitSeenMaterials.size,
+            geometryCount: admitSeenGeometries.size,
+          },
           renderer,
           beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
           compileOne: (subject) => {
@@ -11105,7 +11209,7 @@ export const render = {
       // prepareFrame() selects the final entity poses without rendering while the loading shell is
       // visible. Refresh world matrices once so frustum/layer admission observes those exact poses,
       // not the transform cache from the previous scene attachment.
-      scene.updateMatrixWorld(true);
+      yield* updateMatrixWorldSteps(scene, true);
       const submissionCamera = openingSubmissionCamera(cam.obj);
       const candidates = [];
       const seenRoots = new Set();
@@ -11231,11 +11335,13 @@ export const render = {
       const pooledResourceSubjects = collectFirstFlightLayerDrawables([
         ...derivedPoolRoots,
         ...vfxRoots,
-        ...collectFirstFlightEffectRoots(scene),
+        ...(yield* collectFirstFlightEffectRootsSteps(scene)),
       ]);
       yield;
       const openingRoute = this._selectPostRoute();
+      let propPackageVisited = 0;
       for (const candidate of candidates) {
+        if ((++propPackageVisited % 8) === 0) yield;
         ensureOpeningGeneratedScenarioPropPackage(candidate.root);
       }
       // The producer census is a per-root subtree leaf+material walk — the most
@@ -11260,11 +11366,8 @@ export const render = {
       const producerCensus = combineOpeningProducerCensuses(producerCensuses);
       // These fields are intentionally producer receipts, not renderer counts. They remain useful
       // to the loading witness and make the exact admission inputs inspectable at the frame latch.
-      state.render.firstPlayableContentHashes = producerCensus.requiredContentHashes;
-      state.render.firstPlayableContentHashesVerified = producerCensus.contentHashesVerified === true;
-      state.render.firstPlayableGlobalProgramKeys = producerCensus.globalProgramKeys;
-      state.render.firstPlayableOpeningProgramKeys = producerCensus.openingProgramKeys;
-      state.render.firstPlayableResourceIdentitySets = producerCensus.resourceIdentitySets;
+      // They stamp only when a driver commits this plan (see stampProducerReceipt) — a superseded
+      // generator must not overwrite the live world's receipt fields.
       const readiness = authoredCriticalVisualReadiness(state);
       return createOpeningSubmissionPlan({
         candidates,
@@ -11278,23 +11381,34 @@ export const render = {
         // These are supplied only by a content-hash-bound producer.  An absent census is a hard
         // startup failure; deriving one from whatever happened to be in renderer.info would turn
         // the exact admission contract back into metadata-only bookkeeping.
-        globalProgramKeys: state.render.firstPlayableGlobalProgramKeys
+        globalProgramKeys: producerCensus.globalProgramKeys
           || state.render.globalProgramKeys
           || null,
-        openingProgramKeys: state.render.firstPlayableOpeningProgramKeys
+        openingProgramKeys: producerCensus.openingProgramKeys
           || state.render.openingProgramKeys
           || null,
-        requiredContentHashes: state.render.firstPlayableContentHashes || undefined,
-        contentHashVerified: state.render.firstPlayableContentHashesVerified === true,
+        requiredContentHashes: producerCensus.requiredContentHashes || undefined,
+        contentHashVerified: producerCensus.contentHashesVerified === true,
         producerCensus,
-        producerResourceIdentitySets: state.render.firstPlayableResourceIdentitySets || undefined,
+        producerResourceIdentitySets: producerCensus.resourceIdentitySets || undefined,
         pooledResourceSubjects,
       });
+    };
+    // Producer receipts commit with the plan: a superseded plan's census fields never reach
+    // state.render, so a torn build cannot overwrite the live world's receipt.
+    const stampProducerReceipt = (plan) => {
+      const producerCensus = plan && plan.producerCensus;
+      if (!producerCensus) return;
+      state.render.firstPlayableContentHashes = producerCensus.requiredContentHashes;
+      state.render.firstPlayableContentHashesVerified = producerCensus.contentHashesVerified === true;
+      state.render.firstPlayableGlobalProgramKeys = producerCensus.globalProgramKeys;
+      state.render.firstPlayableOpeningProgramKeys = producerCensus.openingProgramKeys;
+      state.render.firstPlayableResourceIdentitySets = producerCensus.resourceIdentitySets;
     };
     state.render.prepareOpeningFirstPicture = (timeoutMs) => (
       this.prepareOpeningFirstPicture(timeoutMs)
     );
-    const warmOpeningShadowPipelines = (subjects) => compileShadowDepthPipelines({
+    const warmOpeningShadowPipelines = (subjects) => driveCompileShadowDepthPipelines({
       renderer,
       light: this._keyLight,
       camera: cam.obj,
@@ -11305,7 +11419,7 @@ export const render = {
       restoreObjectHome,
       lightingScene: scene,
       stagingName: 'SF_OpeningShadowPipelineAdmission',
-    });
+    }, yieldToBrowser);
     const compileOpeningSubmissionPlan = async (plan) => {
       if (!plan || plan.complete !== true
         || !plan.firstPlayablePipelineSet
@@ -11315,6 +11429,7 @@ export const render = {
       // Env/light/shadow cardinality is part of the driver key. Bake before capture, not here:
       // replacing scene.environment after the opening plan is frozen fails the first-draw gate.
       syncVisiblePointLightBudget(scene, state.settings && state.settings.video);
+      const admissionStale = captureLiveSectorCookStale();
       // The content-hash-bound set drives the global deletion: A-B is deferred, while the exact
       // opening key set (including the measured opening-only misses) is compiled once for this
       // first picture. No broad authored root is admitted a second time.
@@ -11362,7 +11477,27 @@ export const render = {
         ? plan.pooledResourceSubjects.filter((subject) => subject && !leafSubjectSet.has(subject))
         : [];
       const allSubjects = subjects.concat(pooledSubjects);
-      const units = uniqueAdmissionUnits(allSubjects);
+      // Chunked like the seal/rockPool legs — the full opening draw set is the largest
+      // subject list in the run; a monolithic dedupe lands inside the veil-lift frame.
+      const unitSeenMaterials = new Set();
+      const unitSeenGeometries = new Set();
+      const unitProgramSubjects = [];
+      const unitGeometrySubjects = [];
+      for (let i = 0; i < allSubjects.length; i += 1024) {
+        const part = uniqueAdmissionUnits(allSubjects.slice(i, i + 1024), {
+          seenMaterials: unitSeenMaterials,
+          seenGeometries: unitSeenGeometries,
+        });
+        if (part.programSubjects.length > 0) unitProgramSubjects.push(...part.programSubjects);
+        if (part.geometrySubjects.length > 0) unitGeometrySubjects.push(...part.geometrySubjects);
+        await yieldToBrowser();
+      }
+      const units = {
+        programSubjects: unitProgramSubjects,
+        geometrySubjects: unitGeometrySubjects,
+        materialCount: unitSeenMaterials.size,
+        geometryCount: unitSeenGeometries.size,
+      };
       const whileRevealed = (subject, run) => {
         const restoreSubject = revealSubjectForCompile(subject);
         try { return run(); } finally { restoreSubject(); }
@@ -11377,8 +11512,10 @@ export const render = {
           yieldToMain: yieldToBrowser,
         })
         : { skipped: true, reason: 'empty opening draw set' };
-      const shadowResult = warmOpeningShadowPipelines(allSubjects);
-      this._openingShadowAdmission = shadowResult;
+      const shadowResult = await warmOpeningShadowPipelines(allSubjects);
+      // A superseded drain resolving last must not clobber the live ceremony's
+      // admission keys — same guard the capture/receipt stamps carry.
+      if (!admissionStale()) this._openingShadowAdmission = shadowResult;
       this._firstPresentGpuReady = true;
       return {
         schema: plan.schema,
@@ -11396,6 +11533,7 @@ export const render = {
       const captureStale = captureLiveSectorCookStale();
       const plan = yield* buildOpeningSubmissionPlanSteps.call(this);
       if (captureStale()) return null;
+      stampProducerReceipt(plan);
       state.render.openingSubmissionPlan = plan;
       const identities = (plan.compileSubjects || []).map((subject) => openingSubjectIdentity(subject))
         .filter(Boolean);
@@ -12790,7 +12928,7 @@ export const render = {
                 yieldToMain: yieldToBrowser,
               });
               if (cookStale()) return cookSuperseded;
-              compileShadowDepthPipelines({
+              await driveCompileShadowDepthPipelines({
                 renderer,
                 light: this._keyLight,
                 camera: this.cam && this.cam.obj,
@@ -12801,7 +12939,8 @@ export const render = {
                 restoreObjectHome,
                 lightingScene: scene,
                 stagingName: 'SF_SurvivalPoolSealShadowDepth',
-              });
+              }, sealPace);
+              if (cookStale()) return cookSuperseded;
             } else {
               poolSealOutcome = 'skipped';
             }
@@ -13157,7 +13296,7 @@ export const render = {
             if (livingHullRoot) sweepSubjects.push(livingHullRoot);
             const sweepResult = sweepSubjects.length === 0
               ? { skipped: true, reason: 'settle-window-closed', subjects: 0 }
-              : compileShadowDepthPipelines({
+              : await driveCompileShadowDepthPipelines({
               renderer,
               light: this._keyLight,
               camera: this.cam && this.cam.obj,
@@ -13168,7 +13307,7 @@ export const render = {
               restoreObjectHome,
               lightingScene: scene,
               stagingName: 'SF_SurvivalPostSettleShadowDepth',
-            });
+            }, yieldToBrowser);
             depthSweepSubjects = sweepResult && sweepResult.subjects || 0;
             if (sweepResult && sweepResult.skipped === true) depthSweepOutcome = 'skipped';
             depthSweepNames = sweepResult && sweepResult.stagedNames || null;
@@ -13223,6 +13362,7 @@ export const render = {
           }
         }
         if (settledPlan && settledPlan.complete === true) {
+          stampProducerReceipt(settledPlan);
           state.render.openingSubmissionPlan = settledPlan;
           const settledRoute = this._selectPostRoute();
           const settledPostMaterials = settledRoute === POST_PROCESS_ROUTE.BLOOM
@@ -13366,7 +13506,14 @@ export const render = {
           && typeof state.render.warmupLiveFlightEffects === 'function') {
         state.render.warmupLiveFlightEffects();
       }
-      const firstFlightRoots = collectFirstFlightEffectRoots(scene);
+      const firstFlightRootsIter = collectFirstFlightEffectRootsSteps(scene);
+      let firstFlightRoots = null;
+      for (;;) {
+        const rootsStep = firstFlightRootsIter.next();
+        if (rootsStep.done) { firstFlightRoots = rootsStep.value; break; }
+        if (cookStale()) return cookSuperseded;
+        await yieldToBrowser();
+      }
       const isAsteroidInstancePoolRoot = (root) => !!(root && root.userData
         && root.userData.asteroidInstancePool === true);
       const preparedRoots = collectPreparedAuthoredCompileRoots(scene);
@@ -13471,6 +13618,7 @@ export const render = {
             await yieldToBrowser();
           }
         }
+        if (cookPicturePlan && !cookStale()) stampProducerReceipt(cookPicturePlan);
         const openingSubjects = (cookPicturePlan && cookPicturePlan.compileSubjects) || [];
         const openingRoots = [];
         const seenOpening = new Set();
@@ -14229,15 +14377,15 @@ export const render = {
             // post-opening shadow pass already released before these chunks existed (leaf
             // registration happens in the stamp loop above). Prime depth on the same subjects
             // or the fight's first shadow refresh links it inside a measured frame.
-            const depthResult = compileShadowDepthPipelines({
+            const depthResult = await driveCompileShadowDepthPipelines({
               renderer,
               light: this._keyLight,
               camera: cam.obj,
               // Scene-wide on the survival cook: the reveal pass clears frustumCulled, so
               // mounted far-field casters (stations, props) draw their depth variant in the
               // one staging render instead of linking it when the fight drifts into range.
-              // It's a single synchronous render — skip it entirely rather than start it
-              // once the cook window has already closed.
+              // Skip it entirely rather than start it once the cook window has already
+              // closed.
               subjects: (survivalCook && !cookOverBudget())
                 ? cookCompileRoots.concat([scene])
                 : cookCompileRoots,
@@ -14247,7 +14395,7 @@ export const render = {
               restoreObjectHome,
               lightingScene: scene,
               stagingName: 'SF_CookRockPoolShadowDepth',
-            });
+            }, rockPoolYield);
             if (rockPools && typeof rockPools === 'object') rockPools.depth = depthResult;
           } catch (error) {
             rockPools = { skipped: false, error: String(error && error.message || error) };
@@ -15161,22 +15309,36 @@ export const render = {
           restoreObjectHome,
           lightingScene: scene,
           lightSigOverride: freshDepthLightSig(),
+          lightSigEpoch: shadowCensusEpoch(),
           stagingName,
         };
         if (typeof compileShadowDepthPipelinesSteps !== 'function') {
           return compileShadowDepthPipelines(depthOpts);
         }
-        const depthIter = compileShadowDepthPipelinesSteps(depthOpts);
-        for (;;) {
-          const depthStep = depthIter.next();
-          if (depthStep.done) return depthStep.value;
-          await postPace();
+        // A light mutation landing inside a census yield aborts the drive with
+        // `stale` — re-mint the signature against the live scene and retry under
+        // the new epoch (bounded: a churning light set defers to the next caller
+        // rather than livelock the pass).
+        for (let attempt = 0; attempt < 4; attempt += 1) {
+          const depthIter = compileShadowDepthPipelinesSteps(depthOpts);
+          for (;;) {
+            const depthStep = depthIter.next();
+            if (depthStep.done) {
+              const depthResult = depthStep.value;
+              if (depthResult && depthResult.stale === true) break;
+              return depthResult;
+            }
+            await postPace();
+          }
+          depthOpts.lightSigOverride = freshDepthLightSig();
+          depthOpts.lightSigEpoch = shadowCensusEpoch();
         }
+        return { skipped: true, reason: 'light-census-drifted-repeatedly', subjects: 0 };
       };
       const unstagedDepthSubjects = [];
       for (let i = 0; i < depthSubjects.length; i += 512) {
         const unstagedPart = collectUnstagedShadowCasters(
-          renderer, depthSubjects.slice(i, i + 512), scene, depthLightSig);
+          renderer, depthSubjects.slice(i, i + 512), scene, freshDepthLightSig());
         if (unstagedPart.length > 0) unstagedDepthSubjects.push(...unstagedPart);
         await postPace();
       }
@@ -15250,7 +15412,7 @@ export const render = {
         const unstagedRescanDelta = [];
         for (let i = 0; i < rescanDelta.length; i += 512) {
           const unstagedPart = collectUnstagedShadowCasters(
-            renderer, rescanDelta.slice(i, i + 512), scene, depthLightSig);
+            renderer, rescanDelta.slice(i, i + 512), scene, freshDepthLightSig());
           if (unstagedPart.length > 0) unstagedRescanDelta.push(...unstagedPart);
           await postPace();
         }
@@ -15368,6 +15530,7 @@ export const render = {
             }
             await yieldToBrowser();
           }
+          stampProducerReceipt(plan);
         }
         if (!plan || plan.complete !== true
           || !plan.firstPlayablePipelineSet
@@ -15535,7 +15698,9 @@ export const render = {
           await yieldToBrowser();
         }
         recordOpeningCookStep(state.render, 'opening.receipt', openingStepStarted, 'resolved');
-        state.render.startupGpuResidency = result;
+        if (!openingStale()) {
+          state.render.startupGpuResidency = result;
+        }
         return result;
       } finally {
         if (typeof restoreLivingHullWarmup === 'function') restoreLivingHullWarmup();
@@ -19079,8 +19244,21 @@ export const render = {
           || (this._swarmWarmReKickClaims = new Map());
         kickClaims.set(enemyId, (kickClaims.get(enemyId) || 0) + 1);
       }
+      // Same bound the launch lane's re-kick carries: a retry whose promise
+      // never settles would pin its kickClaims + coverage row for the run and
+      // re-warm the archetype at every later dwell. Shares the chain's settle
+      // deadline (resolved at retry call time); the timeout outcome is
+      // unclaimed, so the release errs toward a re-warm.
+      const reKickDeadlineMs = Number.isFinite(settleDeadlineAt)
+        ? Math.max(0, settleDeadlineAt - Date.now())
+        : WARM_BUILDING_SETTLE_DEADLINE_MS;
+      const boundedReKick = Promise.race([
+        reKick,
+        new Promise((resolve) => setTimeout(
+          () => resolve({ status: 'warm-kick-timeout' }), reKickDeadlineMs)),
+      ]);
       let settled = false;
-      reKick.then((result) => {
+      boundedReKick.then((result) => {
         const status = result && typeof result === 'object' ? result.status : result;
         if (settled) return;
         settled = true;
@@ -20072,6 +20250,10 @@ export const render = {
     if ((this._meshReleaseBatchDepth | 0) <= 0) return;
     this._meshReleaseBatchDepth -= 1;
     if (this._meshReleaseBatchDepth > 0) return;
+    this._flushMeshReleasePending();
+  },
+
+  _flushMeshReleasePending() {
     const pending = this._meshReleasePending;
     this._meshReleasePending = null;
     if (!pending || pending.size === 0) return;
@@ -20126,16 +20308,12 @@ export const render = {
     }
     // A save restore reissues ids, so the record pinning this exact mesh can live under a
     // recycled key the entity-id release above cannot reach — release by identity too.
+    // The identity pass is the straggler class: unbatched callers (entity:destroyed storms)
+    // defer it to the frame's flush in serviceRenderMeshResidency — one union walk per
+    // registry instead of five per corpse. Straggler keys name dead entities no live
+    // driver can address, so the ≤1-frame pin is unobservable.
     if (mesh) {
-      if ((this._meshReleaseBatchDepth | 0) > 0) {
-        (this._meshReleasePending || (this._meshReleasePending = new Set())).add(mesh);
-      } else {
-        globalShipMicroMotion.releaseMesh(mesh);
-        globalAsteroidMotion.releaseMesh(mesh);
-        globalInfrastructureMotion.releaseMesh(mesh);
-        globalForgeCrown.releaseMesh(mesh);
-        globalLawArenaDressing.releaseMesh(mesh);
-      }
+      (this._meshReleasePending || (this._meshReleasePending = new Set())).add(mesh);
     }
     // A culled-frozen root leaving the presentation world goes back to whatever owns the
     // object next (dispose, pool reuse, rebuild) in its build-time state.
@@ -21462,6 +21640,10 @@ export const render = {
       this._meshes.set(e.id, m);
       this._meshesVersion += 1;
       this.scene.add(m);
+      // A mount landing while the post-opening pass is mid-sweep predates its
+      // census mint — flag one bounded rescan so the newcomer joins the delta
+      // instead of first-linking inside a presented frame.
+      if (this._postOpeningPipelinesInFlight) this._postOpeningRescanRequested = true;
       this._bindPresentationMesh(e, m);
       const holdFirstFlightBuffers = (e.type === 'asteroid' || e.type === 'payload')
         && !(m.userData && m.userData.spacefaceGeometryResident === true)
@@ -21640,6 +21822,7 @@ export const render = {
     this._meshes.set(id, m);
     this._meshesVersion += 1;
     this.scene.add(m);
+    if (this._postOpeningPipelinesInFlight) this._postOpeningRescanRequested = true;
     this._bindPresentationMesh(e, m);
     if (this.state.mode === 'flight'
         && !isFirstFlightProtectedEntity(e)
@@ -22798,8 +22981,12 @@ export const render = {
         : null;
     }
     this._syncAsteroidInstanceSubmission(this._activeShadowCamera);
+    // The second compose only needs to settle what the middle band dirtied —
+    // pool/table poses, the key light + its shadow camera — all of which carry
+    // matrixWorldNeedsUpdate. An unforced walk recomputes exactly those
+    // subtrees; a forced recompose would re-walk the whole scene again.
     if (this.scene && typeof this.scene.updateMatrixWorld === 'function') {
-      this.scene.updateMatrixWorld(true);
+      this.scene.updateMatrixWorld();
     }
     return true;
   },
@@ -23333,10 +23520,25 @@ export const render = {
       // have prevented those variants.
       openingFirstDraw = this.state.mode === 'flight'
         && !this.state.render.openingFirstVisibleGpuCounts
+        && !this._openingFirstDrawDiagnosticsDeferred
         && !Number.isFinite(
           this.state.render && this.state.render.openingSubmissionFirstDrawSubmittedAt,
         );
       if (openingFirstDraw) {
+        // The pre-submit identity baseline is a whole-scene pass that used to land
+        // inside the presented first draw. Slice it across the arm's evaluations:
+        // each refused frame advances one batch, and the draw path below drains
+        // whatever remains (usually zero after any hold).
+        if (!this._openingFirstDrawIdentityIter) {
+          this._openingFirstDrawIdentityIter = captureOpeningAdmissionIdentitySteps(
+            this.renderer,
+            this.scene,
+            this.state.render.openingSubmissionPlan,
+          );
+          this._openingFirstDrawIdentityResult = undefined;
+        }
+        const censusStep = this._openingFirstDrawIdentityIter.next();
+        if (censusStep.done) this._openingFirstDrawIdentityResult = censusStep.value;
         // Non-KHR/software runners fire-and-forget the pipeline-readiness stages, so the first
         // presented frame can race ahead of the recorded admission handles and link or upload
         // inside the visible pass — every such row lands as an unexplained late admission (and a
@@ -23671,15 +23873,42 @@ export const render = {
           programs: Array.isArray(info.programs) ? info.programs.length : Number(info.programs) || 0,
           geometries: Number(memory.geometries) || 0,
         };
-        openingFirstDrawIdentityBefore = captureOpeningAdmissionIdentity(
-          this.renderer,
-          this.scene,
-          this.state.render.openingSubmissionPlan,
-        );
+        // The stepped baseline minted at arm time: refused frames already walked
+        // most of it — drain whatever remains so the census still precedes the submit.
+        openingFirstDrawIdentityBefore = this._openingFirstDrawIdentityResult;
+        if (openingFirstDrawIdentityBefore === undefined) {
+          if (this._openingFirstDrawIdentityIter) {
+            let censusStep = this._openingFirstDrawIdentityIter.next();
+            while (!censusStep.done) censusStep = this._openingFirstDrawIdentityIter.next();
+            openingFirstDrawIdentityBefore = censusStep.value;
+          }
+          if (!openingFirstDrawIdentityBefore) {
+            openingFirstDrawIdentityBefore = captureOpeningAdmissionIdentity(
+              this.renderer,
+              this.scene,
+              this.state.render.openingSubmissionPlan,
+            );
+          }
+        }
         // D25: the post-submit receipt check consumes this census to tell queued admissions
         // from genuinely unrecorded first-draw resources — persist it on state so a deferred
         // validation frame still sees the baseline.
         this.state.render.openingFirstDrawIdentityCensus = openingFirstDrawIdentityBefore;
+        // The delta attribution and post-submit receipt validation are diagnostic-only
+        // passes (another whole-scene traverse plus per-material program reads). They
+        // used to ride inside this presented frame — the persisted-census design
+        // already anticipates the deferral, so finish them after the paint.
+        this._openingFirstDrawDiagnosticsDeferred = true;
+        const countsBefore = openingFirstDrawCountsBefore;
+        const identityBefore = openingFirstDrawIdentityBefore;
+        const lifecycle = this._rendererLifecycle;
+        const finishDiagnostics = lifecycle
+          ? lifecycle.guard(() => this._finishOpeningFirstDrawDiagnostics(countsBefore, identityBefore))
+          : () => this._finishOpeningFirstDrawDiagnostics(countsBefore, identityBefore);
+        const schedule = lifecycle
+          ? (callback) => lifecycle.setTimeout(callback, 0)
+          : null;
+        afterBrowserPaint(finishDiagnostics, schedule);
       }
       try {
         this._renderPostRoute(postRoute, this.scene, this.cam.obj, this._bgTime || 0);
@@ -23689,36 +23918,6 @@ export const render = {
         }
       } finally {
         if (gpuQueryBegan) gpu.end();
-        if (openingFirstDraw && openingFirstDrawCountsBefore) {
-          const info = this.renderer && this.renderer.info || {};
-          const memory = info.memory || {};
-          const after = {
-            programs: Array.isArray(info.programs) ? info.programs.length : Number(info.programs) || 0,
-            geometries: Number(memory.geometries) || 0,
-          };
-          const delta = {
-            programs: after.programs - openingFirstDrawCountsBefore.programs,
-            geometries: after.geometries - openingFirstDrawCountsBefore.geometries,
-          };
-          const geometryOnlyBrick = delta.programs === 0 && delta.geometries !== 0;
-          const lateAdmissions = describeOpeningAdmissionIdentityDelta(
-            openingFirstDrawIdentityBefore,
-            this.renderer,
-            this.scene,
-            this.state.render.openingSubmissionPlan,
-            { exemptions: OPENING_LATE_ADMISSION_EXEMPTIONS },
-          );
-          this.state.render.openingFirstVisibleGpuCounts = {
-            before: openingFirstDrawCountsBefore,
-            after,
-            delta,
-            geometryOnlyBrick,
-            lateAdmissions,
-          };
-          console.info(
-            `[render] first-visible-pass-residency geometries=${openingFirstDrawCountsBefore.geometries}->${after.geometries} programs=${openingFirstDrawCountsBefore.programs}->${after.programs} geometry-only-brick=${geometryOnlyBrick} lateAdmissions=${JSON.stringify(lateAdmissions)}`,
-          );
-        }
       }
     } finally {
       endAuthoredInstanceMeshDisposeRegistrationProbe(disposeRegistrationProbe);
@@ -23728,6 +23927,7 @@ export const render = {
     }
     if (this.state.mode === 'flight'
         && !this.state.render.openingSubmissionValidation
+        && !this._openingFirstDrawDiagnosticsDeferred
         && this.state.render.openingSubmissionReceipt) {
       const receiptValidation = validateOpeningSubmissionReceipt(
         this.state.render.openingSubmissionReceipt,
@@ -23826,6 +24026,121 @@ export const render = {
       afterBrowserPaint(release, schedule);
     }
     return true;
+  },
+
+  // Post-paint tail of the first presented draw: attributes the submit's renderer.info
+  // delta back to production objects, then runs the receipt validation. Both are
+  // diagnostic-only whole-scene passes the opening arm defers past the paint (D25).
+  _finishOpeningFirstDrawDiagnostics(countsBefore, identityBefore) {
+    try {
+      const info = this.renderer && this.renderer.info || {};
+      const memory = info.memory || {};
+      const after = {
+        programs: Array.isArray(info.programs) ? info.programs.length : Number(info.programs) || 0,
+        geometries: Number(memory.geometries) || 0,
+      };
+      const delta = {
+        programs: after.programs - countsBefore.programs,
+        geometries: after.geometries - countsBefore.geometries,
+      };
+      const geometryOnlyBrick = delta.programs === 0 && delta.geometries !== 0;
+      const lateAdmissions = describeOpeningAdmissionIdentityDelta(
+        identityBefore,
+        this.renderer,
+        this.scene,
+        this.state.render.openingSubmissionPlan,
+        { exemptions: OPENING_LATE_ADMISSION_EXEMPTIONS },
+      );
+      this.state.render.openingFirstVisibleGpuCounts = {
+        before: countsBefore,
+        after,
+        delta,
+        geometryOnlyBrick,
+        lateAdmissions,
+      };
+      console.info(
+        `[render] first-visible-pass-residency geometries=${countsBefore.geometries}->${after.geometries} programs=${countsBefore.programs}->${after.programs} geometry-only-brick=${geometryOnlyBrick} lateAdmissions=${JSON.stringify(lateAdmissions)}`,
+      );
+      if (this.state.mode === 'flight'
+          && !this.state.render.openingSubmissionValidation
+          && this.state.render.openingSubmissionReceipt) {
+        const receiptValidation = validateOpeningSubmissionReceipt(
+          this.state.render.openingSubmissionReceipt,
+          this.renderer,
+          this.state.render.openingFirstDrawIdentityCensus,
+        );
+        const firstVisibleGpuCounts = this.state.render.openingFirstVisibleGpuCounts;
+        const firstVisibleAdmissionDelta = firstVisibleGpuCounts && (
+          firstVisibleGpuCounts.delta.geometries !== 0
+          || firstVisibleGpuCounts.delta.programs !== 0
+        );
+        const lateAdmissionIdentity = firstVisibleGpuCounts
+          && firstVisibleGpuCounts.lateAdmissions;
+        const namedGeometryAdmission = lateAdmissionIdentity
+          && lateAdmissionIdentity.lateAdmissions.some((row) => row.geometryAdmitted === true);
+        const namedProgramAdmission = lateAdmissionIdentity
+          && lateAdmissionIdentity.newProgramKeys.length > 0;
+        const unexplainedFirstVisibleAdmission = firstVisibleAdmissionDelta && (
+          !lateAdmissionIdentity
+          || lateAdmissionIdentity.unexplained === true
+          || (firstVisibleGpuCounts.delta.geometries !== 0 && !namedGeometryAdmission)
+          || (firstVisibleGpuCounts.delta.programs !== 0 && !namedProgramAdmission)
+        );
+        const firstVisibleAdmissionFailure = firstVisibleGpuCounts
+          && firstVisibleGpuCounts.delta.geometries !== 0
+          ? { reason: 'first-visible-geometry-delta' }
+          : { reason: 'first-visible-program-delta' };
+        const validation = unexplainedFirstVisibleAdmission
+          ? {
+            ...receiptValidation,
+            ...firstVisibleAdmissionFailure,
+            ok: false,
+            firstVisibleGpuCounts,
+          }
+          : receiptValidation;
+        this.state.render.openingSubmissionValidation = validation;
+        if (!validation.ok) {
+          console.info(
+            `[render] opening submission post-submit validation failed ${JSON.stringify({
+              reason: validation.reason || null,
+              uncaptured: validation.uncaptured || [],
+              uncapturedProgramKeys: (validation.uncapturedProgramKeys || [])
+                .map((key) => String(key).slice(0, 60)),
+              uncapturedGeometryBufferIds: (validation.uncapturedGeometryBufferIds || [])
+                .map((id) => String(id).slice(0, 60)),
+              uncapturedTextureIds: (validation.uncapturedTextureIds || [])
+                .map((id) => String(id).slice(0, 60)),
+              uncapturedShadowResourceIds: (validation.uncapturedShadowResourceIds || [])
+                .map((id) => String(id).slice(0, 60)),
+              missingProgramKeys: (validation.missingProgramKeys || []).length,
+              missingProgramBindings: validation.missingProgramBindings || [],
+              missingGeometryBufferIds: (validation.missingGeometryBufferIds || [])
+                .map((id) => String(id).slice(0, 60)),
+              delta: validation.delta || null,
+              firstVisibleDelta: validation.firstVisibleGpuCounts
+                && validation.firstVisibleGpuCounts.delta || null,
+              firstVisibleNewPrograms: validation.firstVisibleGpuCounts
+                && validation.firstVisibleGpuCounts.lateAdmissions
+                && validation.firstVisibleGpuCounts.lateAdmissions.newProgramFamilyKeys || null,
+              lateAdmissions: validation.firstVisibleGpuCounts
+                && validation.firstVisibleGpuCounts.lateAdmissions
+                && validation.firstVisibleGpuCounts.lateAdmissions.lateAdmissions || null,
+            })}`,
+            validation,
+          );
+          this.state.render.openingSubmissionLateInstancedPbr = describeOpeningInstancedPbrLeaves(
+            this.scene,
+            this.state.render.openingSubmissionPlan,
+          );
+        } else if (!Number.isFinite(this.state.render.openingSubmissionFirstDrawSubmittedAt)) {
+          this.state.render.openingSubmissionFirstDrawSubmittedAt = typeof performance !== 'undefined'
+            ? performance.now()
+            : Date.now();
+        }
+      }
+    } finally {
+      this._openingFirstDrawDiagnosticsDeferred = false;
+    }
   },
 
   renderFrame(alpha, frameDt, presentationFrame = null) {
@@ -24815,7 +25130,12 @@ export const render = {
     if (!this._keyLight || !this.renderer.shadowMap) return;
     if (!this._shadowSettingOn) {
       this.renderer.shadowMap.enabled = false;
-      this._keyLight.castShadow = false;
+      // castShadow is a census-signature term — a real flip must bump the epoch or a
+      // suspended depth census would mark casters under a sig the staged set never had.
+      if (this._keyLight.castShadow === true) {
+        this._keyLight.castShadow = false;
+        noteShadowCensusLightMutation();
+      }
       // The light set just changed mid-seq — any memoized census is stale.
       this._shadowCensusMemo = null;
       // A live staging session is useless while the map is off and would otherwise
@@ -24846,7 +25166,10 @@ export const render = {
     // actual depth pass through shadowMapActive/shadow.needsUpdate, so zero receivers cost no
     // map work and non-receivers never sample the map (receiveShadow is a per-object uniform).
     this.renderer.shadowMap.enabled = true;
-    this._keyLight.castShadow = true;
+    if (this._keyLight.castShadow === false) {
+      this._keyLight.castShadow = true;
+      noteShadowCensusLightMutation();
+    }
     this._shadowCensusMemo = null;
   },
 

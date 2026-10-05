@@ -559,6 +559,15 @@ export function* compileShadowDepthPipelinesSteps(options = {}) {
   if (casting.length === 0) {
     return { skipped: true, reason: 'no shadow-casting subjects', subjects: 0 };
   }
+  // lightSigEpoch stamps the census epoch the caller's signature was minted under. A
+  // light mutation landing inside any yield window below leaves stagedLights and the
+  // claimed signature describing different scenes — the driver aborts and re-mints
+  // rather than mark casters under a census the staged set doesn't satisfy.
+  const lightSigEpoch = Number.isFinite(options.lightSigEpoch) ? options.lightSigEpoch : null;
+  const censusStale = () => lightSigEpoch !== null && shadowCensusEpoch() !== lightSigEpoch;
+  if (censusStale()) {
+    return { skipped: true, reason: 'light-census-drifted-mid-pass', subjects: 0, stale: true };
+  }
   // three bakes the rendered scene's light counts (numDirLights/numPointLights/…) and fog flags
   // into EVERY program key — including depth variants. The live scene runs 3 directional + 8
   // pooled point lights under FogExp2; a staging scene holding only the key light produces keys
@@ -595,7 +604,12 @@ export function* compileShadowDepthPipelinesSteps(options = {}) {
       if (children) {
         for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
       }
-      if (++censusVisited % 512 === 0) yield;
+      if (++censusVisited % 512 === 0) {
+        yield;
+        if (censusStale()) {
+          return { skipped: true, reason: 'light-census-drifted-mid-pass', subjects: 0, stale: true };
+        }
+      }
     }
   }
   // Query-side unstaged checks read the light census off the LIVE scene. The mark must
@@ -608,7 +622,9 @@ export function* compileShadowDepthPipelinesSteps(options = {}) {
         ? `${lightingScene.fog ? (lightingScene.fog.isFogExp2 === true ? 'fx' : 'fs') : 'f0'}|${
           [...sigCounts.entries()].map(([k, n]) => `${k}x${n}`).sort().join('|')}`
         : 'l0|f0')
-      : '');
+      // lightCensusSignature(null) mints 'l0|f0' — a null-scene mark that minted ''
+      // would miss every staged entry at query time and churn withholds forever.
+      : 'l0|f0');
   if (typeof renderer.render !== 'function' || !camera
       || typeof captureObjectHome !== 'function' || typeof restoreObjectHome !== 'function') {
     return { skipped: true, reason: 'shadow depth compiler unavailable', subjects: 0 };
@@ -626,6 +642,11 @@ export function* compileShadowDepthPipelinesSteps(options = {}) {
   staging.name = options.stagingName || 'SF_AdmissionShadowDepthPipelines';
   const colorOverride = admissionOverrideMaterial(THREE);
   if (colorOverride) staging.overrideMaterial = colorOverride;
+  // Last bail before the mutate window — the reparent/render/mark span below is
+  // yield-free, so a drift detected here is the final chance to stay uncommitted.
+  if (censusStale()) {
+    return { skipped: true, reason: 'light-census-drifted-mid-pass', subjects: 0, stale: true };
+  }
   const homes = casting.map((root) => captureObjectHome(root));
   // Reparent the real scene's lights (and directional/spot targets) into staging so the
   // render-state light counts baked into program keys match a live frame exactly.

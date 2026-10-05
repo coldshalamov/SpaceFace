@@ -58,6 +58,7 @@ import { buildPickupGeometry, pickupShapeForCommodity } from './pickupShapes.js'
 import { PICKUP_ROLE, buildPickupRoleGeometry, pickupRoleForEntity } from './vfx/fragmentFamilies.js';
 import { FACTION_META } from '../data/factions.js';
 import { configureMaterialLibrary } from './materialLibrary.js';
+import { yieldToBrowser } from './startupGpuResidency.js';
 import { createEnergyMaterial } from './energy/energyMaterials.js';
 import * as kit from './ships/shipKit.js';
 import { applyProjectedDetailLod, attachStationHlod, isFarDetailSurface } from './hlod.js';
@@ -4098,6 +4099,20 @@ function attachPackagedBody(root, relativeFile, entity) {
       const packaged = new THREE.Group();
       packaged.name = `${root.userData.kind || 'entity'}_PackagedBody`;
       packaged.userData.packagedAuthoredBody = true;
+      // The publish stretch used to be one contiguous main-thread turn
+      // (createInstance → fit → freeze → mount) landing wherever the microtask
+      // drained — including inside the gap before a presented frame. Yield at
+      // leg boundaries; the body stays admission-hidden until publish so the
+      // spread changes nothing visible. The mount tail (hide → add → canonicalize
+      // → shadow-policy sync) stays atomic so no presented frame sees the graft
+      // with minted default shadow flags.
+      const packagedCommitOrphaned = () => {
+        if (root.parent) return false;
+        releaseBoundaryResidency(renderer, root,
+          'packaged-body-orphaned-mid-commit', mintedAdmissionOptions.admissionEpoch);
+        root.userData.authoredAssetState = 'orphaned-before-swap';
+        return true;
+      };
       // Banked packages (mining drone, fracture fragments) mount through the node graph so the
       // MOTION_* pivots the motion bank drives actually exist in the scene — the flat-primitive
       // path bakes every transform into world-space meshes and leaves the rig no nodes.
@@ -4136,6 +4151,11 @@ function attachPackagedBody(root, relativeFile, entity) {
           instance.dispose();
         }
       }
+      await yieldToBrowser();
+      if (packagedCommitOrphaned()) {
+        disposeDetachedPackagedGroup(packaged);
+        return { status: 'orphaned-before-swap' };
+      }
       if (!packaged.children.length) instantiatePackagedPrimitives(record, packaged);
       if (!packaged.children.length) {
         if (staleAuthoredRunVerdict(root, mintedAdmissionOptions)) {
@@ -4169,8 +4189,23 @@ function attachPackagedBody(root, relativeFile, entity) {
           };
         }
       }
+      await yieldToBrowser();
+      if (packagedCommitOrphaned()) {
+        disposeDetachedPackagedGroup(packaged);
+        return { status: 'orphaned-before-swap' };
+      }
       fitPackagedGroup(packaged, fractureFragmentFitRadius(entity) || (entity && entity.radius));
+      await yieldToBrowser();
+      if (packagedCommitOrphaned()) {
+        disposeDetachedPackagedGroup(packaged);
+        return { status: 'orphaned-before-swap' };
+      }
       freezeStaticChildMatrices(packaged);
+      await yieldToBrowser();
+      if (packagedCommitOrphaned()) {
+        disposeDetachedPackagedGroup(packaged);
+        return { status: 'orphaned-before-swap' };
+      }
       root.userData.authoredAssetState = 'compiling-pipelines';
       try {
         await prepareAuthoredVisualPipelines(packaged, mintedAdmissionOptions);

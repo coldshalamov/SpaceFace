@@ -150,6 +150,43 @@ export function captureOpeningAdmissionIdentity(renderer, scene, plan = null) {
   };
 }
 
+// Stepped twin: same census, iterative document-order DFS with a yield per batch of
+// visited nodes so the driver can spread the baseline across refused first-draw
+// frames and drain only the remainder inside the presented one.
+export function* captureOpeningAdmissionIdentitySteps(renderer, scene, plan = null) {
+  const planned = new Set(Array.isArray(plan && plan.compileSubjects)
+    ? plan.compileSubjects.filter(Boolean) : []);
+  const objects = new Map();
+  if (scene) {
+    const stack = [scene];
+    let visited = 0;
+    while (stack.length) {
+      const object = stack.pop();
+      if (object && isDrawable(object)) {
+        const materials = new Map();
+        for (const material of materialList(object)) {
+          materials.set(material, materialProgramKeys(renderer, material));
+        }
+        objects.set(object, {
+          geometry: object.geometry || null,
+          geometryDisposeListeners: geometryDisposeListenerCount(object.geometry),
+          materials,
+          planned: planned.has(object),
+        });
+      }
+      const children = object && object.children;
+      if (children && children.length) {
+        for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
+      }
+      if (++visited % 512 === 0) yield;
+    }
+  }
+  return {
+    programKeys: rendererProgramKeys(renderer),
+    objects,
+  };
+}
+
 function exemptionFor(row, exemptions) {
   for (const exemption of exemptions || []) {
     const reason = String(exemption && exemption.reason || '').trim();
