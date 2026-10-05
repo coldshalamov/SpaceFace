@@ -341,7 +341,7 @@ test('U7: curtain-convoy freeflight incident materializes and opens predation te
   assert.equal(live.shapeId, 'curtain_convoy');
   const haulers = live.ids.filter((id) => live.roles[id] === 'hauler').map((id) => state.entities.get(id));
   const raiders = live.ids.filter((id) => live.roles[id] === 'raider').map((id) => state.entities.get(id));
-  assert.equal(haulers.filter(Boolean).length, 1, 'manifest carrier materializes');
+  assert.equal(haulers.filter(Boolean).length, 2, 'both authored manifest carriers materialize');
   assert.ok(raiders.filter(Boolean).length >= 2, 'raider squad materializes');
   assert.equal(telegraphs.length, 1, 'predation telegraph fires for player-interruptible response');
   assert.equal(telegraphs[0].motive, 'cargo_raid');

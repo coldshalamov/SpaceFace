@@ -4391,7 +4391,16 @@ function encounterScriptFor(liveOrShape) {
 
 function encounterAdmissionMinimum(item, shape) {
   if (item && item.data && item.data.ceresActivityAmbush === true) return 0;
-  if (item && item.predation && item.predation.enabled === true) return 3;
+  if (item && item.predation && item.predation.enabled === true) {
+    // The premise floor is compositional (PQ-047 residual): every authored manifest carrier plus
+    // the readable PD curtain anchor and one offensive raider must fit, or the fired plan spawns
+    // without an offensive raider and fails predation composition on the spot. The historical
+    // single-carrier floor of 3 is the lower bound.
+    const ships = Array.isArray(item.ships) ? item.ships : [];
+    const carrierRole = String(item.predation.carrierRole || 'hauler');
+    const carriers = ships.filter((ship) => ship && ship.role === carrierRole).length;
+    return Math.max(3, Math.min(ships.length, carriers + 2));
+  }
   if (item && item.variantKind === 'distress_genuine') return 2;
   if (item && Array.isArray(item.ships) && item.ships.length > 0) return 1;
   // Named hunters assemble their roster inside the script from durable captain state.

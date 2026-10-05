@@ -1241,8 +1241,32 @@ function authoredManifestLine(carrier) {
   return { manifest, commodityId: lines[0].commodityId, qty };
 }
 
+// PQ-047 residual — the raid's selected carrier. Identity stamps on the entity can be wiped by a
+// predation clear, but live.data.predationTargetId survives it; the squadKill routing uses the same
+// live field, so selection is judged by exactly that field.
+function isSelectedFreightCarrier(live, carrier) {
+  return !!(live && live.data && carrier
+    && live.data.predationTargetId === carrier.id);
+}
+
+// PQ-047 residual — a second custody-stamped hauler (an authored multi-hauler predation convoy)
+// keeps its custody record beside, never in, the single slot the whole custody stack reads. The
+// selected carrier's ledger stays byte-identical; the side ledger exists so the side hauler's
+// death can spill through the same writer without displacing the raid's live record.
+function sideFreightCustodyRecord(live, carrier) {
+  const key = carrier && carrier.data && carrier.data.predationIdentityKey;
+  if (key == null || !live.data.freightSideCustody) return null;
+  return live.data.freightSideCustody[key] || null;
+}
+
 function ensureFreightCargoCustody(d, live, state, carrier) {
-  const existing = live.data.freightCargoCustody;
+  const sideCarrier = !isSelectedFreightCarrier(live, carrier)
+    && !!(carrier && carrier.data
+      && carrier.data.predationIdentityKey != null
+      && carrier.data.freightCustody);
+  const existing = sideCarrier
+    ? sideFreightCustodyRecord(live, carrier)
+    : live.data.freightCargoCustody;
   if (existing) {
     return existing.carrierId === carrier.id
       && existing.carrierIdentityKey === carrier.data.predationIdentityKey
@@ -1252,7 +1276,9 @@ function ensureFreightCargoCustody(d, live, state, carrier) {
   }
   const source = authoredManifestLine(carrier);
   if (!source) return null;
-  const carrierIdentityKey = carrier.data.predationIdentityKey;
+  const carrierIdentityKey = sideCarrier
+    ? carrier.data.freightCustody.carrierIdentityKey
+    : carrier.data.predationIdentityKey;
   const custodyId = `${source.manifest.manifestId}:custody:${carrierIdentityKey}`;
   const now = d.now();
   const civilianOwner = carrier.team === 2
@@ -1313,8 +1339,16 @@ function ensureFreightCargoCustody(d, live, state, carrier) {
     escapeTarget: null,
     transitionSeq: 0,
   };
-  record.carrierPersistenceOwned = claimFreightCustodyPersistence(carrier, record, 'carrier');
-  live.data.freightCargoCustody = record;
+  if (sideCarrier) {
+    // The side hauler is already dead when this record opens: there is no custody window left to
+    // keep a hull present for, so no persistence claim — the spilled pods carry the freight.
+    const map = live.data.freightSideCustody
+      || (live.data.freightSideCustody = {});
+    map[carrierIdentityKey] = record;
+  } else {
+    record.carrierPersistenceOwned = claimFreightCustodyPersistence(carrier, record, 'carrier');
+    live.data.freightCargoCustody = record;
+  }
   return record;
 }
 
@@ -1560,6 +1594,28 @@ function finishFreightCustody(d, live, record, outcome) {
   return true;
 }
 
+/**
+ * PQ-047 residual — a non-selected custody-stamped hauler's ledger ends at its death spill: its
+ * pods carry their own custody provenance and survive on their authored TTL (SF-150 keeps the
+ * encounter's closing sweep off persistent pickups). Nothing is released or booked here —
+ * releaseFreightCustodyActors resolves the selected pair by live selection, and the side carrier
+ * is already gone. Open side records from a hypothetical side disable spill stay open on purpose:
+ * the death spill continues them through ensureFreightCargoCustody.
+ */
+function finishSideFreightCustody(d, live, record) {
+  if (!record || record.terminal) return false;
+  record.terminal = true;
+  record.outcome = 'carrier_destroyed';
+  record.resolvedAt = d.now();
+  if (typeof d.clearOpenFreightCustody === 'function') d.clearOpenFreightCustody(record.custodyId);
+  const snapshot = publishFreightCustody(d, live, record, record.outcome);
+  if (!record.receiptEmitted) {
+    record.receiptEmitted = true;
+    d.emit('freight:custodyReceipt', { ...snapshot, outcome: record.outcome });
+  }
+  return true;
+}
+
 function spawnFreightCargo(d, live, state, carrier, cause) {
   if (!live.plan.predation || live.plan.predation.enabled !== true) return false;
   const record = ensureFreightCargoCustody(d, live, state, carrier);
@@ -1634,7 +1690,12 @@ function spawnFreightCargo(d, live, state, carrier, cause) {
   if (spawnedQty <= 0) return false;
   record.carrierQty -= spawnedQty;
   updateCarrierManifest(record, carrier);
-  clearConvoyPredation(d, live, cause === 'carrier_destroyed' ? 'target_destroyed' : 'target_disabled');
+  // PQ-047 residual — only the selected target's loss ends the predation relation; a second
+  // custody-stamped hauler spills its own cargo while the raid on the selected carrier runs on.
+  const sideSpill = !isSelectedFreightCarrier(live, carrier);
+  if (!sideSpill) {
+    clearConvoyPredation(d, live, cause === 'carrier_destroyed' ? 'target_destroyed' : 'target_disabled');
+  }
   publishFreightCustody(d, live, record, cause, carrier);
   d.emit('freight:cargoSpilled', {
     encounterId: live.id,
@@ -1646,6 +1707,7 @@ function spawnFreightCargo(d, live, state, carrier, cause) {
     podCount: record.pods.length,
     t: d.now(),
   });
+  if (sideSpill && cause === 'carrier_destroyed') finishSideFreightCustody(d, live, record);
   return true;
 }
 
@@ -2772,6 +2834,18 @@ const convoy = {
             spawnFreightCargo(d, live, state, carrier, 'carrier_destroyed');
             const record = live.data.freightCargoCustody;
             if (record) record.carrierDestructionPending = false;
+          }
+        } else {
+          // PQ-047 residual — a second custody-stamped hauler owns its own manifest: its death
+          // spills ITS cargo through the same writer instead of deleting it with the hull the
+          // raid was not pointed at. Gate on the hauler's own stamp and manifest (both survive a
+          // predation clear) so un-stamped convoys and duplicate kill events never spill.
+          const carrier = state.entities.get(p.id);
+          const data = carrier && carrier.data;
+          const stamp = data && data.freightCustody;
+          if (stamp && stamp.status === 'carrier' && stamp.carrierId === carrier.id
+            && data.cargoManifest && Number(data.cargoManifest.totalQty) > 0) {
+            spawnFreightCargo(d, live, state, carrier, 'carrier_destroyed');
           }
         }
         if (p.id === live.data.predationTargetId) clearConvoyPredation(d, live, 'target_destroyed');
