@@ -3701,7 +3701,10 @@ export const world = {
     // What the player sees is what the ship hits: census-backed places at or above the
     // craft-scale floor take a fixed measured-skin body (solidDressing.js). The skin's world
     // scale tracks the same radius the renderer draws at, so collider == visible model.
-    const solidPlan = stampSolidDressing(data, { radius });
+    // An activity object slot is the exception: it re-points an ambient prop the dressing
+    // loop was going to draw anyway, and the PQ-020 contract holds it free of collider
+    // cost — the same placeId spawned unclaimed keeps its measured body.
+    const solidPlan = activityObjectSlotId ? null : stampSolidDressing(data, { radius });
     const spec = {
       pos,
       rot: propRot,
