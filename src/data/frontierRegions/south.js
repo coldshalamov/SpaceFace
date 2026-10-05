@@ -196,9 +196,10 @@ export const SOUTH_SECTORS = Object.freeze([
         factionId: 'faction_helix',
         size: 'S',
         services: Object.freeze(['scan_tech', 'repair']),
-        // No 'missions' desk: the post files the Ringworld reading through its board without
-        // advertising contracts — a desk in a fuel-less sector is the exact trap the chart
-        // note warns about, and a salvage/pod/loss-filing route pointed here strands a pilot.
+        // No 'missions' desk: the hub no longer advertises "contracts here", the board rolls
+        // no procedural work (missions.js desklessOutpost), and remote salvage reroutes can
+        // no longer point at a station that cannot fuel the trip. The Ringworld reading still
+        // files through the board — a filed record is not desk work.
         chartNote: 'Sensors and hull patches at the dark rim; no fuel, no rescue, few questions.',
       }),
     ]),

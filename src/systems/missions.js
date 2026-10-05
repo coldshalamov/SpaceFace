@@ -265,10 +265,19 @@ const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
 
 // station id → mission-board identity resolved from the SECTORS graph. Physical `type` remains
 // the economy/render contract; optional missionProfile/boardAnchorType only shape posted work.
+// A contracts desk is the advertised board: the missions counter or a black-market counter —
+// exactly the services the hub labels "contracts here". Procedural board rolls only exist
+// where one is advertised; earned/authored rows post regardless (see ensureBoard).
+const DESK_SERVICES = new Set(['missions', 'black_market']);
+const hasContractsDesk = (services) => Array.isArray(services)
+  && services.some((s) => DESK_SERVICES.has(s));
+
 const STATION_INFO = new Map();
 const SECTOR_BY_ID = new Map();
 for (const sec of SECTORS) {
   SECTOR_BY_ID.set(sec.id, sec);
+  const sectorHasRefuel = (sec.stations || [])
+    .some((s) => Array.isArray(s.services) && s.services.includes('refuel'));
   for (const st of sec.stations || []) {
     STATION_INFO.set(st.id, {
       id: st.id, name: st.name, type: st.type, size: st.size || 'M',
@@ -276,6 +285,11 @@ for (const sec of SECTORS) {
       boardAnchorType: st.boardAnchorType || null,
       factionId: st.factionId || sec.factionId, sectorId: sec.id,
       sectorTier: sec.tier, security: sec.security,
+      // A station that DECLARES services with no contracts desk, in a sector with no pump,
+      // rolls no procedural work — the authored fuel-less outpost fiction. A station that
+      // declares nothing keeps legacy behavior (fixture/stub stations roll normally).
+      desklessOutpost: Array.isArray(st.services) && st.services.length > 0
+        && !hasContractsDesk(st.services) && !sectorHasRefuel,
     });
   }
 }
@@ -295,6 +309,9 @@ function stationInfoFor(state, stationId) {
             boardAnchorType: st.boardAnchorType || null,
             factionId: st.factionId || sec.factionId, sectorId: sec.id,
             sectorTier: sec.tier, security: sec.security,
+            desklessOutpost: Array.isArray(st.services) && st.services.length > 0
+              && !hasContractsDesk(st.services)
+              && !(sec.stations || []).some((s) => Array.isArray(s.services) && s.services.includes('refuel')),
           };
         }
       }
@@ -1964,7 +1981,10 @@ export const missions = {
         ...retainedSetPieceOffers,
         ...retainedPoiOffers,
         ...retainedLandmarkOffers,
-        ...this._generateOffers(info, epoch),
+        // A deskless outpost in a fuel-less sector rolls no procedural work — "few questions"
+        // is the fiction and a generated desk you cannot leave is the trap the fuel contract
+        // names. Earned and authored rows still post: a filed reading is not desk work.
+        ...(info.desklessOutpost ? [] : this._generateOffers(info, epoch)),
         // Retained at the very END, after generation, for the same reason `_syncHeistOffer` appends.
         // `_generateOffers` puts the B4 branch-intro contract at the head of what it returns, and
         // check:mission-standing-ladder asserts a branch station leads with that tagged intro both
@@ -1984,7 +2004,7 @@ export const missions = {
         ...retainedSetPieceFollowOns,
       ],
     };
-    this._guaranteeRecoveryOffer(info, board, epoch);
+    if (!info.desklessOutpost) this._guaranteeRecoveryOffer(info, board, epoch);
     state.missions.boards[stationId] = board;
     this._syncEmbodiedStoryOffer(info, board, epoch);
     this._syncSetPieceOpeningOffers(info, board, epoch);
