@@ -6082,6 +6082,14 @@ Rows authored this sitting from the open-ended direction, each landed with its p
   hub tender authored outside the runtime's job-kind gate, materializing as a named hull with no
   work; re-authored on the Vesta relay pattern and the pin asserts all eight actors fly real
   jobs. DONE 4f86339ff — `test/pallas-activity-pocket-chain.test.mjs` 5/5.
+- **Dione Lane: the toll funnel** — the CR-WEIR named corridor that was still an empty
+  disc. `zone_dione_customs` (720-radius Lane Customs with a patrol wedge, Concord reads
+  inbound cargo per its own reason text) had no weir. Third silhouette: a trapezoid
+  funnel bracketing the gate→checkpoint bearing — 460-wide mouth, 140 toll gap at the
+  booth — riding the generic weir contract (seen/read/bolt/pod-bust all work through
+  `pointInsideCustomsWeir` + `customsWeirSegments`; smuggling lanes into Dione now name
+  the weir in the risk note for free). DONE a23c85be5 —
+  `test/customs-weir.test.mjs` 17/17, law/customs surface 67/67.
 Do not delete the heading; the next agent needs to know it is no longer the hole.
 
 ### 23.4 Actualize the tools
