@@ -63,6 +63,8 @@ jobs:
           insertion=(folder/'materialized-count-fix.txt').read_text()
           anchor="if(contract!==await readFile(new URL('test/authoritative-manifest.test.mjs',root),'utf8'))"
           assert anchor in text;p.write_text(text.replace(anchor,insertion+anchor))
+          p=root/'tools/blender/characters/ruckus.py'
+          p.write_text(p.read_text().replace('scene.cycles.use_denoising=True;',"scene.cycles.use_denoising=getattr(bpy.app.build_options,'openimagedenoise',False);"))
           print('Verified and installed',len(data),'authored files')
           PY
       - uses: actions/setup-node@v4
