@@ -172,6 +172,63 @@ export function ioBoltholeCells() {
   return [...map.values()].sort((a, b) => (a.ix - b.ix) || (a.iz - b.iz));
 }
 
+export const PALLAS_AMBUSH_KNOT_ID = 'optic_pallas_ambush_knot';
+// Southeast shoulder of the drifting wreck in zone_pallas_ambush — the camp's
+// own kill sits at the zone core; the knot lies across the Sker-run bend.
+export const PALLAS_AMBUSH_KNOT_ORIGIN = Object.freeze({ x: 1750, z: 1080 });
+
+/**
+ * Sker-Run Ambush, Pallas Drift — the knot: a forked fuse, not a pocket. Five
+ * diamonds run the wreck-side bend; at the third cell a one-wide branch breaks
+ * off the junction and walks three cells into the drift interior (the wick's
+ * rail at (2,-1) is knocked out so the branch can grow). A bolt in the mouth
+ * lights both arms: the spine carries to the open muzzle at (4,0) — the trap's
+ * one free shot back down the lane — while the branch spits its own fan and
+ * dies on the cap wall. The muzzle's flank cells (5,±1) are empty on purpose:
+ * the tip's diagonal splinters skip past them and bank off the mirrors at
+ * (6,±2), scattering the return volley across the approach. Heading 135° lays
+ * the spine on the run's bend — the mouth looks up-lane toward the Ceres
+ * gate, the muzzle fires down-lane toward Sker Haven.
+ */
+export function pallasAmbushKnotCells() {
+  const map = new Map();
+  wickCells(map, 5, 0, 0);
+  map.delete(cellKey(2, -1));
+  murderFieldCells(map, 2, -3, 1, 3); // the branch — a one-wide field off the junction
+  stoneRingCells(map, 1, 3, -3, -2); // branch flanks; the diamond cells refuse stone
+  stoneRingCells(map, 1, 3, -4, -4); // branch tip cap — its forward fan dies in stone
+  putCell(map, 6, -2, 'metal'); // muzzle banks on the tip's forward diagonals
+  putCell(map, 6, 2, 'metal');
+  return [...map.values()].sort((a, b) => (a.ix - b.ix) || (a.iz - b.iz));
+}
+
+export const ASHFALL_PICKET_REDOUBT_ID = 'optic_ashfall_picket_redoubt';
+// Gateward shoulder of zone_ashfall_approach, off the arena signal on the
+// inbound leg from the Charon gate — the Iron Maw's picket works the lane.
+export const ASHFALL_PICKET_REDOUBT_ORIGIN = Object.freeze({ x: 20, z: 680 });
+
+/**
+ * Iron Maw Approach, Ashfall Reach — the picket's bank mouth. A 2×2 kill block
+ * walled on three sides, its whole -iz face open: not a door, a mouth. The
+ * Vael light the block from behind the parapet and the face spits four
+ * splinters across the approach, while the two corner rays bank off the jaw
+ * mirrors at (-2,-2) and (3,-2) — the same mirrors eat a bolt that tries the
+ * mouth's outer diagonal, so the only clean line into the block runs down the
+ * open face. Heading -45° turns the mouth up-lane onto the Charon inbound
+ * bearing. The counterpoint of the Vesta pocket: that field hides behind one
+ * door; this one stands open and answers everything it sees.
+ */
+export function ashfallPicketRedoubtCells() {
+  const map = new Map();
+  murderFieldCells(map, 0, 0, 2, 2);
+  stonePocketCells(map, -1, 2, -1, 2, [
+    { ix: -1, iz: -1 }, { ix: 0, iz: -1 }, { ix: 1, iz: -1 }, { ix: 2, iz: -1 },
+  ]);
+  putCell(map, -2, -2, 'metal'); // jaw mirrors on the mouth's outer diagonals
+  putCell(map, 3, -2, 'metal');
+  return [...map.values()].sort((a, b) => (a.ix - b.ix) || (a.iz - b.iz));
+}
+
 export function compileOpticCells(cells, spacing = OPTIC_LATTICE_SPACING, heading = 0) {
   const list = Array.isArray(cells) ? cells : [];
   const cos = Math.cos(heading);
@@ -259,6 +316,22 @@ export const OPTIC_STRUCTURES = Object.freeze([
     origin: IO_BOLTHOLE_ORIGIN,
     heading: 0,
     cells: ioBoltholeCells,
+  }),
+  Object.freeze({
+    id: PALLAS_AMBUSH_KNOT_ID,
+    sectorId: 'sector_pallas_drift',
+    zoneId: 'zone_pallas_ambush',
+    origin: PALLAS_AMBUSH_KNOT_ORIGIN,
+    heading: (3 * Math.PI) / 4,
+    cells: pallasAmbushKnotCells,
+  }),
+  Object.freeze({
+    id: ASHFALL_PICKET_REDOUBT_ID,
+    sectorId: 'sector_ashfall_reach',
+    zoneId: 'zone_ashfall_approach',
+    origin: ASHFALL_PICKET_REDOUBT_ORIGIN,
+    heading: -Math.PI / 4,
+    cells: ashfallPicketRedoubtCells,
   }),
 ]);
 
