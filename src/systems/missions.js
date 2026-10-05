@@ -357,6 +357,19 @@ const BULK_HAUL_TYPE = 'bulk_haul';
 const BULK_HAUL_MIN_MASS_U = 25;
 const BULK_HAUL_PAY_MULT = 0.8;
 const BULK_HAUL_FEE = 0.06;
+// Mission types whose ONLY settlement is `dock:docked` at `destStationId` (the cargo family
+// consumes the load there; escort and the rescue pod drop both wait for that dock). The
+// berth-admission contract in _acceptPreflight applies only to these — physical ops
+// (tow_recovery, authored_set_piece, demolition, ...) complete on latch/release/throw
+// physics anywhere near the site, so their destination berth is scenery, not a door.
+const DOCK_SETTLED_TYPES = new Set([
+  'cargo_delivery',
+  'passenger_transport',
+  'salvage_retrieval',
+  'smuggling_run',
+  'escort',
+  'rescue_under_fire',
+]);
 const PHYSICAL_TYPE_SET = new Set([
   ...PHYSICAL_MISSION_TYPES,
   AUTHORED_SET_PIECE_TYPE,
@@ -3954,6 +3967,21 @@ export const missions = {
         return {
           ok: false,
           reason: `${factionShortName(offer.factionId)} standing ${signedRep(minRep)} required`,
+        };
+      }
+    }
+    // The board gate checks the issuer's standing; the berth gate checks the destination's.
+    // An authored offer can name a berth the world refuses (a repGated fence, the closed Den):
+    // when the contract can only settle by docking there, accepting it writes a contract that
+    // can never settle — refuse at the board, in words.
+    if (offer && offer.destStationId && DOCK_SETTLED_TYPES.has(offer.type)) {
+      const destInfo = stationInfoFor(this.state, offer.destStationId);
+      if (destInfo && !stationBerthAdmits(destInfo, this._repOf(destInfo.factionId), this.state)) {
+        return {
+          ok: false,
+          reason: Number.isFinite(destInfo.minRep)
+            ? `${destInfo.name} refuses this berth — ${factionShortName(destInfo.factionId)} standing ${signedRep(destInfo.minRep)} required`
+            : `${destInfo.name} does not take this freight yet`,
         };
       }
     }

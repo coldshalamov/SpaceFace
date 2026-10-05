@@ -140,3 +140,28 @@ test('the Den stays closed until the entrance parcel lands', () => {
   assert.ok(seen.has('station_smuggler'),
     `delivered access restores the Den as a destination (seen: ${[...seen].join(', ')})`);
 });
+
+test('an authored offer to a refused berth is refused at the board, in words', () => {
+  // The pickers keep rolled destinations clean, but authored offers name their own berths —
+  // a career stage to the Nyx Fence, a filing at the Den. The accept boundary is the last
+  // honest gate: refuse the contract instead of writing one the world cannot settle.
+  const offer = (destStationId) => ({
+    id: `t_${destStationId}`, type: 'escort', factionId: 'faction_scn', minRep: -149,
+    stationId: 'station_helios', destStationId, params: {},
+  });
+  const rep0 = boot();
+  const refused = rep0.missions._acceptPreflight(offer('station_nyx_march'));
+  assert.equal(refused.ok, false, 'the Nyx fence denies a rep-0 pilot its berth');
+  assert.match(refused.reason, /refuses this berth|standing/i, 'the refusal names the gate');
+
+  const admitted = boot({ faction_quiet: { rep: 5 } });
+  assert.equal(admitted.missions._acceptPreflight(offer('station_nyx_march')).ok, true,
+    'Quiet standing opens the fence for the same row');
+
+  const denRefused = rep0.missions._acceptPreflight(offer('station_smuggler'));
+  assert.equal(denRefused.ok, false, 'the Den refuses freight before the entrance run');
+  assert.match(denRefused.reason, /does not take this freight yet/);
+
+  const openDest = rep0.missions._acceptPreflight(offer('station_ceres'));
+  assert.equal(openDest.ok, true, 'an open berth accepts as before');
+});
