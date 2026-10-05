@@ -248,7 +248,7 @@ async function main() {
   // Shared issue ledger: it already knows the optional unmounted player-store 404, generic
   // resource-load console twins of HTTP responses, and expected-navigation aborts — CLEAN reads
   // errorIssues() below rather than a raw pageerror/console bag.
-  const pageIssues = collectPageIssues(page);
+  const pageIssues = collectPageIssues(page, { playerStoreMounted: false });
   let loggedErrors = 0;
   page.on('console', (msg) => {
     if (msg.type() !== 'error') return;

@@ -36,7 +36,7 @@ function freePort() {
 async function startServer() {
   const port = await freePort();
   const child = spawn(process.execPath, ['server.js'], {
-    cwd: ROOT, env: { ...process.env, PORT: String(port) }, stdio: 'ignore',
+    cwd: ROOT, env: { SPACEFACE_PLAYER_STORE_DIR: '', ...process.env, PORT: String(port) }, stdio: 'ignore',
   });
   const baseUrl = `http://127.0.0.1:${port}/`;
   for (let i = 0; i < 60; i++) {

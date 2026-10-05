@@ -74,7 +74,7 @@ try {
   browser = await chromium.launch({ headless: !process.argv.includes('--headed') });
   page = await browser.newPage({ viewport: { width: WIDTH, height: HEIGHT }, deviceScaleFactor: 1 });
   // This acceptance is intentionally strict: a warning is evidence of a dirty player route.
-  pageIssues = collectPageIssues(page, {
+  pageIssues = collectPageIssues(page, { playerStoreMounted: false,
     includeWarnings: true,
     // The focused route takes a screenshot, so Chrome may publish the same ReadPixels/unsupported
     // extension diagnostics already classified by the clean-flight probe. App warnings stay fatal.
@@ -1327,7 +1327,7 @@ async function startFreshServer() {
   const port = await freePort();
   const child = spawn(process.execPath, ['server.js'], {
     cwd: ROOT,
-    env: { ...process.env, PORT: String(port), SF_PORT: String(port) },
+    env: { SPACEFACE_PLAYER_STORE_DIR: '', ...process.env, PORT: String(port), SF_PORT: String(port) },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let stderr = '';

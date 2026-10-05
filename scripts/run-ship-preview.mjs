@@ -22,7 +22,7 @@ const authored = process.argv.includes('authored') || process.env.SF_AUTHORED ==
 const previewUrl = `http://localhost:${PORT}/?dev=shippreview${authored ? '&authored=1' : ''}`;
 const driver = spawn(process.execPath, [electronBin, 'electron/shipPreview.cjs'], {
   stdio: 'inherit',
-  env: { ...process.env, SF_PREVIEW_URL: previewUrl },
+  env: { SPACEFACE_PLAYER_STORE_DIR: '', ...process.env, SF_PREVIEW_URL: previewUrl },
 });
 
 driver.on('exit', (code) => {

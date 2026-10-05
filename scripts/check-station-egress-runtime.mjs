@@ -35,7 +35,7 @@ try {
   // Playwright's default rAF polling never runs — waits time out while their own predicates are
   // already true. The CSP-safe timer polling is the established fix (check-electron-new-game-launch).
   installCspSafePlaywrightPolling(page);
-  issues = collectPageIssues(page, { includeWarnings: true });
+  issues = collectPageIssues(page, { playerStoreMounted: false, includeWarnings: true });
   await page.addInitScript(() => { try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {} });
 
   await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded' });
@@ -216,7 +216,7 @@ async function startFreshServer() {
 }
 
 function spawnProbeServer(port) {
-  const child = spawn(process.execPath, ['server.js', String(port)], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
+  const child = spawn(process.execPath, ['server.js', String(port)], { env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '' }, cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
   let output = '';
   const capture = (chunk) => { output = (output + String(chunk)).slice(-4000); };
   child.stdout.on('data', capture);

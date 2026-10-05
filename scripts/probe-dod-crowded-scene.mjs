@@ -32,7 +32,7 @@ const evidence = { schema: 'spaceface.dodCrowdedSceneBudget.v1', scenarios: {} }
 
 try {
   const port = await findFreePort(8331);
-  serverChild = spawn(process.execPath, ['server.js', String(port)], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
+  serverChild = spawn(process.execPath, ['server.js', String(port)], {env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '' },  cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
   serverChild.stdout.on('data', () => {}); serverChild.stderr.on('data', () => {});
   await waitReachable(`http://127.0.0.1:${port}/`);
   const fs = await import('node:fs');

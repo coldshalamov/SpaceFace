@@ -44,7 +44,7 @@ try {
   server = await startFreshServer();
   browser = await launchProbeBrowser();
   const page = await browser.newPage({ viewport: { width: WIDTH, height: HEIGHT }, deviceScaleFactor: 1 });
-  const issues = collectPageIssues(page);
+  const issues = collectPageIssues(page, { playerStoreMounted: false });
 
   await page.addInitScript(() => {
     try {
@@ -916,7 +916,7 @@ async function startFreshServer() {
 }
 
 function spawnProbeServer(port) {
-  const child = spawn(process.execPath, ['server.js', String(port)], {
+  const child = spawn(process.execPath, ['server.js', String(port)], { env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '' },
     cwd: ROOT,
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,

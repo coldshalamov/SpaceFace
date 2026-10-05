@@ -53,7 +53,7 @@ async function ensureLocalServer() {
     return null;
   }
   console.log(`[probe-overdraw] Starting local server on port ${PORT}...`);
-  const srv = spawn('node', ['server.js', String(PORT)], { cwd: ROOT, stdio: 'ignore' });
+  const srv = spawn('node', ['server.js', String(PORT)], { env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '' }, cwd: ROOT, stdio: 'ignore' });
   for (let i = 0; i < 20; i++) {
     await new Promise((r) => setTimeout(r, 500));
     if (await isServerRunning(PORT)) return srv;

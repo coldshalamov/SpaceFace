@@ -48,7 +48,7 @@ try {
   browser = await chromium.launch({ headless: true });
   page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
   page.setDefaultTimeout(EVAL_TIMEOUT_MS);
-  const issues = collectPageIssues(page);
+  const issues = collectPageIssues(page, { playerStoreMounted: false });
 
   await page.exposeFunction('wave15Capture', async (leadBox) => {
     await page.screenshot({ path: hudShot, fullPage: false });
@@ -315,7 +315,7 @@ async function clickButton(page, label) {
 async function startFreshServer() {
   const port = await findFreePort(8140);
   const url = `http://127.0.0.1:${port}/`;
-  const child = spawn(process.execPath, ['server.js', String(port)], {
+  const child = spawn(process.execPath, ['server.js', String(port)], { env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '' },
     cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true,
   });
   await waitForReachable(url, child);

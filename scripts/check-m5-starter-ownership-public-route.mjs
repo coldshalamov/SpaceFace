@@ -36,7 +36,7 @@ try {
   const { chromium } = await loadPlaywright();
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
-  const issues = collectPageIssues(page, { ignoreProbeWarnings: true });
+  const issues = collectPageIssues(page, { playerStoreMounted: false, ignoreProbeWarnings: true });
 
   await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 });
   assert.equal(new URL(page.url()).search, '', 'primary M5 route must use the canonical root URL');
@@ -282,7 +282,7 @@ function relativePath(path) {
 async function startServer() {
   for (let port = 8840; port < 8910; port++) {
     if (!(await isPortFree(port))) continue;
-    const child = spawn(process.execPath, ['server.js', String(port)], {
+    const child = spawn(process.execPath, ['server.js', String(port)], { env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '' },
       cwd: ROOT,
       stdio: ['ignore', 'pipe', 'pipe'],
       windowsHide: true,

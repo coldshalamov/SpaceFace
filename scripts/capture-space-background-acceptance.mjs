@@ -47,7 +47,7 @@ async function waitForServer() {
 }
 
 await mkdir(OUT, { recursive: true });
-const server = spawn(process.execPath, ['server.js', String(PORT)], {
+const server = spawn(process.execPath, ['server.js', String(PORT)], {env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '' }, 
   cwd: ROOT,
   stdio: ['ignore', 'pipe', 'pipe'],
   windowsHide: true,

@@ -7,7 +7,7 @@ import { pathToFileURL, fileURLToPath } from 'node:url';
 const modulePath=process.env.VESPER_PLAYWRIGHT_MODULE;
 const { chromium }=await import(modulePath?pathToFileURL(modulePath).href:'playwright');
 const out=new URL('../../.devshots/vesper/',import.meta.url),root=new URL('../../',import.meta.url);
-await mkdir(out,{recursive:true});const port=18273,server=spawn(process.execPath,['server.js',String(port)],{cwd:root,stdio:'ignore'});
+await mkdir(out,{recursive:true});const port=18273,server=spawn(process.execPath,['server.js',String(port)],{env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '' }, cwd:root,stdio:'ignore'});
 let browser;const errors=[],report={route:'scripts/characters/vesper-bench.html',scope:'component WebGL and physics bench; not full-game acceptance',checks:[],errors};
 try {
  for(let i=0;i<100;i++){try{if((await fetch(`http://127.0.0.1:${port}/scripts/characters/vesper-bench.html`)).ok)break;}catch{}await new Promise(r=>setTimeout(r,100));}
