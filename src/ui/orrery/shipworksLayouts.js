@@ -221,7 +221,6 @@ ${W} .sx-sw-hero .k-hero__n { font-family:var(--dp-face-display, "Archivo") !imp
   text-transform:none !important; text-shadow:none !important; }
 ${W} .sx-sw-hero .k-hero__w { ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .62) !important; margin-top:6px; }
 ${W} .sx-sw-hero[data-band='condition'] { display:none !important; }
-${W} .sx-sw-bar.sx-sw-bar--topSpeed { display:none !important; }
 ${W} .sx-sw-ghost { color:var(--dp-ice, #8fcbff) !important; }
 ${W} .sx-sw-hero:is(:hover, :focus-visible) .k-hero__n { color:var(--dp-hand-hot, #ffd98c) !important; }
 ${W} .sx-sw-hero:is(:hover, :focus-visible) { outline:none !important; }
@@ -989,8 +988,10 @@ ${W} .sx-sw__explode .sx-sw__module-name { font-family:var(--dp-face-label, "Arc
    narrow to hold them — inline !important beats the sheet, so the bail lives in the JS.) */
 @media (max-width:700px) {
   ${W}.orr-sw--jig .sx-sw__main { overflow:auto !important; }
-  ${W}.orr-sw--jig .sx-sw__stats { position:static !important; left:auto !important; top:auto !important; right:auto !important; bottom:auto !important;
-    width:auto !important; max-width:none !important; max-height:none !important; }
+  /* the For Sale readouts pin absolute at left:258px in EVERY jig state (jig-less included),
+     so the buying column joins the stack at phone widths whatever the hull mode */
+  ${W}.orr-sw--jig .sx-sw__stats, ${W}.sx-sw--buying .sx-sw__stats { position:static !important; left:auto !important; top:auto !important; right:auto !important; bottom:auto !important;
+    transform:none !important; width:auto !important; max-width:none !important; max-height:none !important; }
   ${W}.orr-sw--jig .sx-sw-verbs, ${W}:not(.orr-sw--jig) .sx-sw-verbs { position:static !important; width:auto !important; max-width:100% !important;
     flex-wrap:wrap !important; gap:6px 16px !important; justify-content:flex-start !important; padding:6px 0 12px !important; }
   ${W} .sx-sw__main > .sx-sw__stage { min-height:240px !important; }
@@ -1000,6 +1001,18 @@ ${W} .sx-sw__explode .sx-sw__module-name { font-family:var(--dp-face-label, "Arc
   ${W} .sx-sw__nameplate .sx-sw__blurb { max-height:72px !important; overflow:hidden auto !important; pointer-events:auto !important;
     font-size:12px !important; line-height:1.45 !important; }
 }
+
+/* the seat bail's own fallback — NOT media-gated. seatVerbs/seatSaleStats measure the STAGE and
+   bail whenever it cannot host the pinned composition, which happens at any window width (a
+   mid-width berth's rail + side plate can starve the stage below the phone stack's trigger).
+   When they hand the seat back these rules do what the ≤700 block does: readouts in flow
+   under the stage, verbs wrapped on their own row (REV-D112). */
+${W} .sx-sw__stats.sx-sw__stats--unseated { position:static !important; left:auto !important; top:auto !important; right:auto !important; bottom:auto !important;
+  transform:none !important; width:auto !important; max-width:none !important; max-height:none !important; }
+${W} .sx-sw-verbs.sx-sw-verbs--unseated { position:static !important; width:auto !important; max-width:100% !important;
+  flex-wrap:wrap !important; gap:6px 16px !important; justify-content:flex-start !important; padding:6px 0 12px !important; }
+${W}:is(.orr-sw--jig, .sx-sw--buying) .sx-sw__main:has(.sx-sw__stats--unseated),
+${W}:is(.orr-sw--jig, .sx-sw--buying) .sx-sw__main:has(.sx-sw-verbs--unseated) { overflow:auto !important; }
 
 `;
 

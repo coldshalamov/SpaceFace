@@ -7,7 +7,21 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { SHIPS } from '../src/data/ships.js';
+import { injectOrreryShipworks } from '../src/ui/orrery/shipworksLayouts.js';
 import { handlingBandModel } from '../src/ui/ship/shipBandModels.js';
+
+function fitSheet() {
+  const nodes = [];
+  const doc = {
+    head: { appendChild(node) { nodes.push(node); } },
+    createElement() { return { id: '', textContent: '' }; },
+    getElementById() { return null; },
+  };
+  injectOrreryShipworks(doc);
+  const sheet = nodes.find((node) => node.id === 'sf-orrery-shipworks');
+  assert.ok(sheet && sheet.textContent, 'the fit screen injects its sheet');
+  return sheet.textContent;
+}
 
 function model(name) {
   const ship = SHIPS.find((row) => row.name === name);
@@ -35,4 +49,12 @@ test('seed 4242 the top-speed mark matches the middle ceiling', () => {
   const rangerAxis = rangerBuilt.profile.axes.find((row) => row.id === 'topSpeed');
   assert.ok(rangerAxis.raw > 0 && rangerAxis.raw < axis.raw, `ranger ceiling ${rangerAxis.raw} hitch ${axis.raw}`);
   assert.ok(ranger.bar < shown.bar, `ranger ${ranger.bar} hitch ${shown.bar}`);
+
+  const css = fitSheet();
+  assert.match(css, /\.sx-sw-bar--topSpeed|\.sx-sw-bar/);
+  assert.doesNotMatch(
+    css,
+    /\.sx-sw-bar--topSpeed[^{]*\{[^}]*display\s*:\s*none/i,
+    'the fit sheet still hides the top-speed mark',
+  );
 });
