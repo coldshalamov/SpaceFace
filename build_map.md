@@ -6054,6 +6054,16 @@ definition of beauty. A cheaper hull on the live glass. Content as the cure for 
 
 When a campaign's feeling is ordinary on the default route, say so in the §1.4 report and
 leave the heading here with one line: the feeling, and the commit that made it ordinary.
+
+#### 23.3.1 Authored-units annex — BATCH-20 rung-4 rows (2026-10-05)
+
+Rows authored this sitting from the open-ended direction, each landed with its pin:
+
+- **G-LOC answers the hull you fly** — the sustained-turn vignette reads the hull's own derived
+  yaw ceiling (0.75 of ceiling; 0.48 boosting; unknown ceiling fails closed) instead of absolute
+  2.2/1.4 rad/s that a hauler could never reach and a scout cleared at cruise. Second instance
+  of the e8d94e38e reader-orphaned-by-absolute-yaw class. DONE 7f0eaed08 —
+  `test/hud-g-lag.test.mjs` 16/16 with live-route frame() pins both ways.
 Do not delete the heading; the next agent needs to know it is no longer the hole.
 
 ### 23.4 Actualize the tools
