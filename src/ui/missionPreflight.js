@@ -3,6 +3,7 @@ import { FACTION_META } from '../data/factions.js';
 import {
   MISSION_TUNING,
   ONE_LOAD_CARGO_TYPES,
+  DOCK_SETTLED_TYPES,
   missionMinRepForRisk,
   missionStandingGateForMinRep,
   STORY_BRANCH_INTROS,
@@ -10,6 +11,8 @@ import {
   STORY_BRANCH_INTRO_TAG,
 } from '../data/missions.js';
 import { SECTORS } from '../data/sectors.js';
+import { stationBerthAdmits } from '../data/frontierRumors.js';
+import { stationMinRepFor } from '../data/dockDeny.js';
 import { forecastTransitFor, sectorSignalFor } from '../systems/sectorSim.js';
 import {
   smugglingPreflightCopy,
@@ -21,8 +24,12 @@ const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 const STATION_SECTOR_BY_ID = new Map();
+const STATION_BY_ID = new Map();
 for (const sector of SECTORS) {
-  for (const station of sector.stations || []) STATION_SECTOR_BY_ID.set(station.id, sector.id);
+  for (const station of sector.stations || []) {
+    STATION_SECTOR_BY_ID.set(station.id, sector.id);
+    STATION_BY_ID.set(station.id, station);
+  }
 }
 const MARKET_STAGED_CARGO_MISSIONS = new Set(['cargo_delivery', 'bulk_trade', 'smuggling_run']);
 const ECONOMY_ROUTE_MISSIONS = new Set(['cargo_delivery', 'bulk_trade', 'smuggling_run', 'passenger_transport']);
@@ -157,6 +164,24 @@ export function missionStandingRequirement(m, state) {
         : signedRep(minRep) + ' ' + faction + ' standing required',
     },
     blocker: ok ? null : 'Need ' + signedRep(minRep) + ' standing with ' + faction,
+  };
+}
+
+// Mirror of _acceptPreflight's destination-berth refusal: a dock-settled contract to a berth
+// the world refuses (repGated fence, closed Den) can never settle — surface it as a blocker
+// here so the dossier cannot present an accept the sim refuses.
+export function missionDestinationBerth(m, state) {
+  if (!m || !m.destStationId || !DOCK_SETTLED_TYPES.has(m.type)) return null;
+  const st = STATION_BY_ID.get(m.destStationId);
+  if (!st) return null;
+  if (stationBerthAdmits(st, stateRepFor(state, st.factionId), state)) return null;
+  const name = st.name || m.destStationId;
+  const floor = stationMinRepFor(st);
+  return {
+    blocker: Number.isFinite(floor)
+      ? `${name} refuses this berth — ${factionShortName(st.factionId)} standing ${signedRep(floor)} required`
+      : `${name} does not take this freight yet`,
+    chip: { kind: 'bad', text: 'destination berth closed' },
   };
 }
 
@@ -711,6 +736,11 @@ export function missionPreflight(m, state) {
   if (standing) {
     if (!standing.ok) blockers.push(standing.blocker);
     chips.push(standing.chip);
+  }
+  const destBerth = missionDestinationBerth(m, state);
+  if (destBerth) {
+    blockers.push(destBerth.blocker);
+    chips.push(destBerth.chip);
   }
 
   const route = missionRouteScope(m, state);

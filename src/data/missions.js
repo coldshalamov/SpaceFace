@@ -58,6 +58,24 @@ export const ONE_LOAD_CARGO_TYPES = new Set([
   'smuggling_run',
 ]);
 
+// Mission families whose ONLY settlement is a dock at `destStationId` (the cargo family
+// consumes the load there; escort waits for that dock; bulk trades sell at the named
+// buyer; bulk hauls deliver at the named refinery). The sim's berth-admission accept
+// gate and the dossier preflight import this same set. Physical ops
+// (tow_recovery, authored_set_piece, demolition, ...) complete on latch/release/throw
+// physics anywhere near the site, so their destination berth is scenery, not a door —
+// and rescue_under_fire stays out: its corridor_pull path reels a pod home without
+// ever docking at the destination berth.
+export const DOCK_SETTLED_TYPES = new Set([
+  'cargo_delivery',
+  'passenger_transport',
+  'salvage_retrieval',
+  'smuggling_run',
+  'escort',
+  'bulk_trade',
+  'bulk_haul',
+]);
+
 export const MISSION_STANDING_LADDER = [
   {
     minRep: -149,

@@ -75,6 +75,9 @@ test('ordinary readiness warnings remain actionable when the live accept gate pa
   const previousState = missions.state;
   try {
     const state = makeState({ capVolume: 12, usedVolume: 0 });
+    // station_sker is repGated to Reach standing — the berth admits once the fixture
+    // grants the vouch the real arc earns before naming the Bazaar.
+    state.factions = { faction_reach: { rep: 1 } };
     const offer = makeOffer('cargo_delivery', {
       id: 'parity_route_warning',
       destStationId: 'station_sker',

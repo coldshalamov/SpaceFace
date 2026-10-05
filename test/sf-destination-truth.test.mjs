@@ -164,4 +164,13 @@ test('an authored offer to a refused berth is refused at the board, in words', (
 
   const openDest = rep0.missions._acceptPreflight(offer('station_ceres'));
   assert.equal(openDest.ok, true, 'an open berth accepts as before');
+
+  // The gate is scoped to dock-settled types only — a physical op or a corridor-pull
+  // rescue settles without that berth, so the same refused station stays acceptable.
+  const physical = rep0.missions._acceptPreflight({ ...offer('station_smuggler'), type: 'tow_recovery' });
+  assert.equal(physical.ok, true, 'a tow at the Den site completes on the tether, not the dock');
+  const corridorPull = rep0.missions._acceptPreflight({ ...offer('station_smuggler'), type: 'rescue_under_fire' });
+  assert.equal(corridorPull.ok, true, 'a corridor-pull rescue never needs the Den berth');
+  const bulk = rep0.missions._acceptPreflight({ ...offer('station_smuggler'), type: 'bulk_trade' });
+  assert.equal(bulk.ok, false, 'a bulk trade sells at the named buyer — the berth is the door');
 });

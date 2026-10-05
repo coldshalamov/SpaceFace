@@ -42,7 +42,7 @@
 //
 // DETERMINISM (§0.5): board offers + spawn rolls use mulberry32(hash32(seed, …)); never Math.random.
 import {
-  MISSION_TYPES, STORY_BEATS, OFFER_MIX, MISSION_TUNING, ONE_LOAD_CARGO_TYPES,
+  MISSION_TYPES, STORY_BEATS, OFFER_MIX, MISSION_TUNING, ONE_LOAD_CARGO_TYPES, DOCK_SETTLED_TYPES,
   PHYSICAL_MISSION_TYPES,
   PHYSICAL_MISSION_VARIANTS,
   physicalMissionVariantFor,
@@ -357,19 +357,8 @@ const BULK_HAUL_TYPE = 'bulk_haul';
 const BULK_HAUL_MIN_MASS_U = 25;
 const BULK_HAUL_PAY_MULT = 0.8;
 const BULK_HAUL_FEE = 0.06;
-// Mission types whose ONLY settlement is `dock:docked` at `destStationId` (the cargo family
-// consumes the load there; escort and the rescue pod drop both wait for that dock). The
-// berth-admission contract in _acceptPreflight applies only to these — physical ops
-// (tow_recovery, authored_set_piece, demolition, ...) complete on latch/release/throw
-// physics anywhere near the site, so their destination berth is scenery, not a door.
-const DOCK_SETTLED_TYPES = new Set([
-  'cargo_delivery',
-  'passenger_transport',
-  'salvage_retrieval',
-  'smuggling_run',
-  'escort',
-  'rescue_under_fire',
-]);
+// DOCK_SETTLED_TYPES lives in data/missions.js — the type taxonomy shared by this
+// accept gate and the dossier preflight.
 const PHYSICAL_TYPE_SET = new Set([
   ...PHYSICAL_MISSION_TYPES,
   AUTHORED_SET_PIECE_TYPE,
