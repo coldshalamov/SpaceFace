@@ -10,6 +10,7 @@ import { FACTION_PALETTES, TEAM_FALLBACK_PALETTES } from '../data/palettes.js';
 import { paletteWithShipAppearance, shipAppearanceSignature } from '../core/shipAppearance.js';
 import { SHIPS } from '../data/ships.js';
 import { modelTruthMountFractions, modelTruthRow, modelTruthRowForEntity } from '../data/modelTruth.js';
+import { factionBerthById } from '../data/factionBerths.js';
 import { placeDrawScaleFromRow } from '../data/modelTruthMounts.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
 import { SWARM_ROSTER, SWARM_BOSS_ROTATION, bossPackagesFor } from '../data/swarmMode.js';
@@ -5404,10 +5405,11 @@ function placeFileForEntity(entity) {
     // Stations are excluded: their own type-total fallback below owns station bodies, and a
     // landmark station must never resolve as a dressing prop.
     // CR-BERTH-1: a faction-berth piece (crib row or consigned hulk) is a deliberately authored
-    // placement the same way — admit it on its berthId stamp.
+    // placement the same way — admit it on a berthId that resolves to a real authored berth row,
+    // not a bare truthy key (job payloads stamp unrelated berth ids on their own data).
     const authoredSetPiece = entity.type !== 'station'
       && (data.worldOneOff === true || data.landmark === true || data.poi === true
-        || data.berthId != null);
+        || (data.berthId != null && !!factionBerthById(data.berthId)));
     if (data.everydaySpaceKit === true || authoredSetPiece) {
       const kitFile = EVERYDAY_SPACE_KIT_PLACE_FILE_BY_ID[id];
       if (kitFile) return kitFile;
