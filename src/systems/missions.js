@@ -79,6 +79,7 @@ import {
   setPieceFollowOnOffer,
 } from '../data/sandboxSetPieceFollowOns.js';
 import { settleContractClauses, unsatisfiedRequiredConditions } from '../data/contractClauses.js';
+import { stationMinRepFor } from '../data/dockDeny.js';
 import {
   SPLIT_MANIFEST_TYPE,
   QUIET_BERTH_TYPE,
@@ -295,7 +296,7 @@ for (const sec of SECTORS) {
       // binds the same way the dock gate resolves it (world.js station record).
       services: Array.isArray(st.services) ? st.services.slice() : [],
       repGated: st.repGated === true,
-      minRep: Number.isFinite(st.minRep) ? st.minRep : (st.repGated ? 1 : -Infinity),
+      minRep: stationMinRepFor(st),
     });
   }
 }
@@ -320,7 +321,7 @@ function stationInfoFor(state, stationId) {
               && !(sec.stations || []).some((s) => Array.isArray(s.services) && s.services.includes('refuel')),
             services: Array.isArray(st.services) ? st.services.slice() : [],
             repGated: st.repGated === true,
-            minRep: Number.isFinite(st.minRep) ? st.minRep : (st.repGated ? 1 : -Infinity),
+            minRep: stationMinRepFor(st),
           };
         }
       }

@@ -25,6 +25,7 @@
 import { playerBearingLetter } from '../core/playerCompass.js';
 import { SECTORS, SECTOR_PALETTE_CLASSES, dangerIndex, surveyDataPrice } from '../data/sectors.js';
 import { FACTION_META } from '../data/factions.js';
+import { stationMinRepFor } from '../data/dockDeny.js';
 import { separateSkinOverlaps } from '../data/modelTruth.js';
 import { createSectorArranger } from '../world/arranger.js';
 import { ARRANGEMENT_VERSION, readArrangementVersion } from '../data/sectorCompositions.js';
@@ -2423,9 +2424,7 @@ export const world = {
           contested: !!st.contested, repGated: !!st.repGated,
           // The authored repGated flag means positive standing, not merely "not attack-on-sight".
           // An explicit minRep remains available for stations with a stricter local contract.
-          ...(Number.isFinite(st.minRep)
-            ? { minRep: st.minRep }
-            : (st.repGated ? { minRep: 1 } : {})),
+          ...(Number.isFinite(stationMinRepFor(st)) ? { minRep: stationMinRepFor(st) } : {}),
           sectorId: sector.id,
           homeSectorId: sector.id,
           archetypeGlb: st.archetypeGlb || null,

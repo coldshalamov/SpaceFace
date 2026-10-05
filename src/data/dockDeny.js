@@ -161,4 +161,19 @@ export function dockDenyReason(station, factionMeta) {
   return null;
 }
 
-export default { DOCK_DENY_REASONS, dockDenyReason };
+/**
+ * The standing floor a raw station RECORD imposes — the same contract the live entity
+ * carries in `data.minRep`. An explicit `minRep` wins (a berth that vets below zero,
+ * e.g. the Mercenary Outpost's -30); otherwise `repGated` means positive standing (1);
+ * otherwise there is no floor (-Infinity — every pilot docks). Any picker that names a
+ * dock before the entity exists (contract destinations, filing desks, rescue handoffs)
+ * filters with this instead of reading the flag pair by hand.
+ *
+ * @param {object} st  station record from SECTORS (may be sparse)
+ * @returns {number}   minimum faction standing that still docks; -Infinity when ungated
+ */
+export function stationMinRepFor(st) {
+  return Number.isFinite(st && st.minRep) ? st.minRep : (st && st.repGated ? 1 : -Infinity);
+}
+
+export default { DOCK_DENY_REASONS, dockDenyReason, stationMinRepFor };

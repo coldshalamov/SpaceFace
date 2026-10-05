@@ -21,6 +21,7 @@ import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 import { zonesForSector, VESTA_DERELICT_SALVAGE_SOURCE } from '../data/sectorZones.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { SECTORS } from '../data/sectors.js';
+import { stationMinRepFor } from '../data/dockDeny.js';
 import { pickWreckMission, wreckMissionById } from '../data/wreckMissions.js';
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 import { COMMODITIES } from '../data/commodities.js';
@@ -1088,15 +1089,25 @@ export const salvage = {
     return wreckMissionByIdSafe(id);
   },
 
+  _repOf(factionId) {
+    const rec = factionId && this.state && this.state.factions ? this.state.factions[factionId] : null;
+    return rec ? (rec.rep || 0) : 0;
+  },
+
   // Deterministic origin/destination station for the wreck contract: the sector's own
   // mission-capable dock (a communicator offer is a local recovery job, not a courier leg).
   // hash32(point.id) picks the slot so re-entering the sector re-issues the same board row.
   _wreckStation(point) {
     const sec = SECTOR_BY_ID.get(point && point.sectorId);
     if (!sec) return null;                    // an uncharted sector id can host no board at all
+    // The filing desk must be a berth this pilot can reach: the dock gate's own floor —
+    // explicit minRep first, repGated meaning positive standing — not just the flag. A
+    // rep-5 pilot files at Sker locally; a Quiet -50 pilot cannot file at the Outpost.
+    const dockable = (s, sectorFactionId) => !!s
+      && !(this._repOf(s.factionId || sectorFactionId) < stationMinRepFor(s));
     const stations = sec.stations || [];
-    const capable = stations.filter((s) => s && s.services && s.services.includes('missions') && !s.repGated);
-    const pool = capable.length ? capable : stations.filter((s) => s && !s.repGated);
+    const capable = stations.filter((s) => s.services && s.services.includes('missions') && dockable(s, sec.factionId));
+    const pool = capable.length ? capable : stations.filter((s) => dockable(s, sec.factionId));
     if (pool.length) {
       const idx = fallbackHash32(point.id, 'salvage-station') % pool.length;
       return pool[idx] || pool[0] || null;
@@ -1108,7 +1119,7 @@ export const salvage = {
     const remote = [];
     for (const sector of SECTORS) {
       for (const s of (sector && sector.stations) || []) {
-        if (s && !s.repGated && s.services && s.services.includes('missions')) remote.push(s);
+        if (dockable(s, sector.factionId) && s.services && s.services.includes('missions')) remote.push(s);
       }
     }
     if (!remote.length) return null;

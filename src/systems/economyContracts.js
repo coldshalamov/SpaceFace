@@ -28,6 +28,7 @@ import { SECTORS } from '../data/sectors.js';
 import { ECONOMY_BALANCE as BALANCE } from '../data/economyDerived.js';
 import { quoteMissionEconomics, affordableContractQuantity, economicRiskTier } from '../economy/economyMissionTerms.js';
 import { COMMODITIES } from '../data/commodities.js';
+import { stationMinRepFor } from '../data/dockDeny.js';
 import { FACTION_META } from '../data/factions.js';
 import { MISSION_TYPES, MISSION_TUNING } from '../data/missions.js';
 import { hash32, mulberry32 } from '../core/rng.js';
@@ -59,11 +60,6 @@ for (const sec of SECTORS) {
 const LEGAL_TRADE_CMDTYS = COMMODITIES.filter((c) => c.legality === 'legal').map((c) => c.id);
 const SALVAGE_CMDTYS = ['cmdty_scrap_metal', 'cmdty_salvage_electronics']; // mirrors missions.js salvage_retrieval pool
 const FUEL_CMDTY = 'cmdty_fuel_cells';
-
-/** The same minimum the dock gate resolves: an explicit minRep, else repGated means positive. */
-const stationMinRepFor = (st) => (Number.isFinite(st && st.minRep)
-  ? st.minRep
-  : (st && st.repGated ? 1 : -Infinity));
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 const round = Math.round;
