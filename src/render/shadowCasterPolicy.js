@@ -162,6 +162,12 @@ export function shadowCasterPolicyDirtySeq(root) {
   return (state && state.dirtySeq) || 0;
 }
 
+/** Re-stamp the LOD a completed policy walk recorded — a stepped walk can finish under a newer level than it minted. */
+export function stampShadowCasterPolicyLodLevel(root, lodLevel) {
+  const state = root && root.userData ? root.userData[POLICY_STATE] : null;
+  if (state) state.lodLevel = normalizeLodLevel(lodLevel);
+}
+
 function writeCasterPose(target, root) {
   const position = root.position;
   const quaternion = root.quaternion;
@@ -263,6 +269,11 @@ function makeShadowPolicyWalker(root, lodLevel, options) {
   let receiverDelta = 0;
   const noteReceiver = (object, next) => {
     if ((object.receiveShadow === true) !== next) receiverDelta += next ? 1 : -1;
+    // The out-sink stays live mid-walk: a suspended walk's applied prefix is
+    // already on the meshes, so its delta must be readable before finish.
+    if (options && options.out && typeof options.out === 'object') {
+      options.out.receiverDelta = receiverDelta;
+    }
     object.receiveShadow = next;
   };
   // Callers at an attach seam need the subtree's minted-flag count as mounted

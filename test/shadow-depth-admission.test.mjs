@@ -10,6 +10,7 @@ import {
   compileShadowDepthPipelines,
   createShadowDepthStagingSession,
   disposeAdmissionShadowResources,
+  UNSTAGED_COLLECT_OVER_COVER,
 } from '../src/render/shadowDepthAdmission.js';
 import { scheduleRealtimeShadowRefresh } from '../src/render/shadowPresentCadence.js';
 
@@ -648,4 +649,19 @@ test('a closed mid-drive stepped slice aborts instead of parking casters unmarke
   assert.equal(result.aborted, true, 'a mid-drive close reports the abort marker');
   assert.equal(result.reason, 'session-closed-mid-drive');
   assert.equal(result.subjects, 0, 'the aborted leg reports no staged subjects');
+});
+
+test('an exhausted collect wallet returns the OVER_COVER sentinel, not an array', () => {
+  const rig = stagedShadowRig();
+  // The sentinel is a string returned where callers expect an array: a consumer
+  // testing only `.length > 0` would spread its characters as bogus subjects, so
+  // the `=== UNSTAGED_COLLECT_OVER_COVER` guard is the contract this pins.
+  const overCover = collectUnstagedShadowCasters(
+    rig.renderer, [rig.scene], rig.scene, undefined, { remaining: 0 });
+  assert.equal(overCover, UNSTAGED_COLLECT_OVER_COVER);
+  assert.equal(typeof overCover, 'string');
+  assert.equal(Array.isArray(overCover), false);
+  const budgeted = collectUnstagedShadowCasters(
+    rig.renderer, [rig.scene], rig.scene, undefined, { remaining: 64 });
+  assert.equal(Array.isArray(budgeted), true, 'a live wallet still returns the caster array');
 });

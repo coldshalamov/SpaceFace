@@ -255,6 +255,7 @@ import {
   shadowCastAxisDistance,
   shadowCasterBand,
   shadowTexelWorldSize,
+  stampShadowCasterPolicyLodLevel,
   syncShadowCasterPolicy,
   syncShadowCasterPolicySteps,
 } from './shadowCasterPolicy.js';
@@ -15568,23 +15569,29 @@ export const render = {
         }
         // A light mutation landing inside a census yield aborts the drive with
         // `stale` — re-mint the signature against the live scene and retry under
-        // the new epoch (bounded: a churning light set defers to the next caller
-        // rather than livelock the pass).
+        // the new epoch. A concurrent producer closing the held staging session
+        // mid-drive yields `session-closed-mid-drive` — retry the same bounded
+        // way rather than spilling the whole cohort onto per-root arm legs
+        // (a persistent thrash defers to the next caller either way).
+        let lastRetryResult = null;
         for (let attempt = 0; attempt < 4; attempt += 1) {
           const depthIter = compileShadowDepthPipelinesSteps(depthOpts);
           for (;;) {
             const depthStep = depthIter.next();
             if (depthStep.done) {
-              const depthResult = depthStep.value;
-              if (depthResult && depthResult.stale === true) break;
-              return depthResult;
+              lastRetryResult = depthStep.value;
+              if (lastRetryResult && (lastRetryResult.stale === true
+                || lastRetryResult.reason === 'session-closed-mid-drive')) break;
+              return lastRetryResult;
             }
             await postPace();
           }
           depthOpts.lightSigOverride = freshDepthLightSig();
           depthOpts.lightSigEpoch = shadowCensusEpoch();
         }
-        return { skipped: true, reason: 'light-census-drifted-repeatedly', subjects: 0 };
+        return lastRetryResult && lastRetryResult.reason === 'session-closed-mid-drive'
+          ? lastRetryResult
+          : { skipped: true, reason: 'light-census-drifted-repeatedly', subjects: 0 };
       };
       const unstagedDepthSubjects = [];
       // One node wallet across the chunk loop: the paced 512-subject batches only
@@ -15667,9 +15674,11 @@ export const render = {
         // casters whose depth-variant signature was never staged under the live light
         // census still need the ceremony; a repeat pass over the same set skips it.
         const unstagedRescanDelta = [];
+        const rescanCollectBudget = { remaining: SHADOW_DEPTH_PASS_NODE_CAP };
         for (let i = 0; i < rescanDelta.length; i += 512) {
           const unstagedPart = collectUnstagedShadowCasters(
-            renderer, rescanDelta.slice(i, i + 512), scene, freshDepthLightSig());
+            renderer, rescanDelta.slice(i, i + 512), scene, freshDepthLightSig(), rescanCollectBudget);
+          if (unstagedPart === UNSTAGED_COLLECT_OVER_COVER) break;
           if (unstagedPart.length > 0) unstagedRescanDelta.push(...unstagedPart);
           await postPace();
         }
@@ -25020,7 +25029,10 @@ export const render = {
     const receiverOut = { receiverDelta: 0 };
     let changed = false;
     if (!traverseDeferred && !skipTraverseOnDrift) {
-      if (!scopedSync && syncOpts.allowCast !== false) {
+      // A caller needing a synchronous out-param (preCountRoot) can't wait
+      // out a stepped walk — it rides the atomic traverse like a withhold.
+      const needsAtomicOut = !!(extra && extra.preCountRoot);
+      if (!scopedSync && syncOpts.allowCast !== false && !needsAtomicOut) {
         // Whole-root castable verdicts ride the stepped lane: a fat subtree's
         // rewrite paces inside a small wall budget per call instead of one
         // atomic leg. A mid-walk return (null→false here) leaves the policy
@@ -25028,16 +25040,30 @@ export const render = {
         const policyNow = () => (typeof performance !== 'undefined'
           && typeof performance.now === 'function' ? performance.now() : Date.now());
         const policyDeadlineAt = policyNow() + 4;
+        const policyStartedAt = policyNow();
         changed = driveShadowPolicySteps(this, root, syncScope, lodLevel, {
           ...syncOpts,
           ...(extra || {}),
           out: receiverOut,
         }, () => policyNow() >= policyDeadlineAt) === true;
+        // The arm's restore leg debits this same ledger — the presented-pass
+        // leg is unmetered otherwise and later slicers stack on a ~zero wallet.
+        notePacedFrameSpend(policyNow() - policyStartedAt);
       } else {
-        // A withhold verdict (or scoped graft) out-ranks any parked castable
-        // walk: its atomic traverse writes castShadow=false the resumed walk
-        // would later stomp, so the parked iterator dies here.
-        if (this._policyStepsParked) this._policyStepsParked.delete(root);
+        // A withhold verdict (or scoped graft, or a sync-out-param caller)
+        // out-ranks any parked castable walk: its atomic traverse writes
+        // castShadow=false the resumed walk would later stomp, so the parked
+        // iterator dies here. Its applied prefix's flips still count — the
+        // atomic walk won't re-flip them — so carry its delta forward.
+        let carriedDelta = 0;
+        if (this._policyStepsParked) {
+          const parked = this._policyStepsParked.get(root);
+          if (parked) {
+            carriedDelta = (parked.carriedDelta | 0)
+              + (parked.out ? (parked.out.receiverDelta | 0) : 0);
+          }
+          this._policyStepsParked.delete(root);
+        }
         changed = syncShadowCasterPolicy(
           syncScope, lodLevel, {
             ...syncOpts,
@@ -25048,6 +25074,7 @@ export const render = {
             ...(syncOpts.allowCast === false ? { allowCast: false } : {}),
             out: receiverOut,
           });
+        if (carriedDelta !== 0) receiverOut.receiverDelta += carriedDelta;
       }
     }
     if (withheldMeshes && withheldMeshes.length > 0) {
@@ -26918,14 +26945,26 @@ function drainSceneEnvRebindQueue(owner) {
 function driveShadowPolicySteps(owner, root, walkRoot, lodLevel, opts, deadlineFn) {
   const parkedMap = owner._policyStepsParked || (owner._policyStepsParked = new Map());
   let slot = parkedMap.get(root);
-  const sig = `${opts && opts.allowCast === false ? 0 : 1}|${lodLevel || ''}|${walkRoot === root ? 1 : 0}`;
-  if (slot && slot.sig !== sig) { parkedMap.delete(root); slot = null; }
+  // The sig names only verdict-changing terms: lodLevel feeds no per-node
+  // verdict (the walker's visit never reads it), so a mid-walk LOD flip
+  // resumes identical work instead of abandoning it.
+  const sig = `${opts && opts.allowCast === false ? 0 : 1}|${walkRoot === root ? 1 : 0}`;
+  let carriedDelta = 0;
+  if (slot && slot.sig !== sig) {
+    // An abandoned walk's applied prefix stays on the meshes — its receiver
+    // flips never reach a finish, so carry the delta onto the reminted walk.
+    carriedDelta = (slot.carriedDelta | 0)
+      + (slot.out ? (slot.out.receiverDelta | 0) : 0);
+    parkedMap.delete(root);
+    slot = null;
+  }
   if (!slot) {
     const out = { receiverDelta: 0 };
     slot = {
       iter: syncShadowCasterPolicySteps(walkRoot, lodLevel, { ...opts, out }),
       out,
       sig,
+      carriedDelta,
     };
     parkedMap.set(root, slot);
   }
@@ -26933,8 +26972,11 @@ function driveShadowPolicySteps(owner, root, walkRoot, lodLevel, opts, deadlineF
     const step = slot.iter.next();
     if (step.done) {
       parkedMap.delete(root);
+      // A completed walk records the drive's live LOD — the level minted with
+      // the iterator may be stale after mid-walk LOD churn.
+      stampShadowCasterPolicyLodLevel(root, lodLevel);
       if (opts.out && typeof opts.out === 'object') {
-        opts.out.receiverDelta = slot.out.receiverDelta;
+        opts.out.receiverDelta = slot.out.receiverDelta + (slot.carriedDelta | 0);
         if (slot.out.preReceiverCount !== undefined) {
           opts.out.preReceiverCount = slot.out.preReceiverCount;
         }
