@@ -55,6 +55,6 @@ test('seed 4242 the top-speed mark matches the middle ceiling', () => {
   assert.doesNotMatch(
     css,
     /\.sx-sw-bar--topSpeed[^{]*\{[^}]*display\s*:\s*none/i,
-    'the fit sheet still hides the top-speed mark',
+    'the fit sheet hides the halfway top-speed mark',
   );
 });
