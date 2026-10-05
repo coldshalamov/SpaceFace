@@ -110,3 +110,33 @@ test('an explicit minRep berth binds at its own number', () => {
   assert.ok(roll(-20).has('station_io_merc'),
     'rep -20 satisfies the -30 contract — a hostile-named faction still docks');
 });
+
+test('the Den stays closed until the entrance parcel lands', () => {
+  // station_smuggler is a real berth on the chart — but the world stamps dockDeny 'private'
+  // on it until the Tethys entrance run is delivered. A picker that names it for a pilot
+  // who never ran the parcel writes a contract the world cannot settle.
+  const pallas = byId.get('station_smuggler');
+  assert.ok(pallas, 'the Den is a real charted berth');
+  const drift = { id: 'station_drift', sectorId: 'sector_pallas_drift', factionId: 'faction_mts' };
+  const closed = boot();
+  for (let k = 0; k < 200; k++) {
+    const dest = closed.missions._pickDestination('cargo_delivery', drift, mulberry32(k + 1));
+    assert.notEqual(dest.id, 'station_smuggler', 'no entrance run → the Den is not a destination');
+  }
+  // With the run delivered the berth rejoins the pool like every other open dock.
+  const open = boot();
+  open.state.world.frontierRumors = {
+    byId: {
+      'frontier-rumor:station_tethys:tethys-black-market': {
+        phase: 'contacted', contactId: 'quiet:tethys-black-market',
+        entranceRun: { runId: 'tethys:pallas-entrance:1', phase: 'delivered' },
+      },
+    },
+  };
+  const seen = new Set();
+  for (let k = 0; k < 400; k++) {
+    seen.add(open.missions._pickDestination('cargo_delivery', drift, mulberry32(k + 1)).id);
+  }
+  assert.ok(seen.has('station_smuggler'),
+    `delivered access restores the Den as a destination (seen: ${[...seen].join(', ')})`);
+});

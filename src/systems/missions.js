@@ -80,6 +80,7 @@ import {
 } from '../data/sandboxSetPieceFollowOns.js';
 import { settleContractClauses, unsatisfiedRequiredConditions } from '../data/contractClauses.js';
 import { stationMinRepFor } from '../data/dockDeny.js';
+import { stationBerthAdmits } from '../data/frontierRumors.js';
 import {
   SPLIT_MANIFEST_TYPE,
   QUIET_BERTH_TYPE,
@@ -3322,7 +3323,7 @@ export const missions = {
     // of those contracts to it writes a contract the world cannot settle.
     const candidates = ALL_STATIONS.filter((s) => s.id !== info.id
       && !(typeId === 'smuggling_run' && Array.isArray(s.services) && s.services.includes('scan'))
-      && !(this._repOf(s.factionId) < s.minRep));
+      && stationBerthAdmits(s, this._repOf(s.factionId), this.state));
     if (!candidates.length) return info;
     // Bias toward same-or-adjacent sectors for fair timers (fairness note: nearer for slow ships).
     const sec = SECTOR_BY_ID.get(info.sectorId);
@@ -3334,7 +3335,7 @@ export const missions = {
 
   _pickBulkHaulDestination(info, rng) {
     const refineries = ALL_STATIONS.filter((s) => (s.type === 'refinery' || s.services && s.services.includes('refine'))
-      && !(this._repOf(s.factionId) < s.minRep));
+      && stationBerthAdmits(s, this._repOf(s.factionId), this.state));
     if (!refineries.length) return info;
     const same = refineries.filter((s) => s.sectorId === info.sectorId);
     if (same.length) return same[Math.floor(rng() * same.length)];

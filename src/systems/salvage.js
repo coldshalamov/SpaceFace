@@ -21,7 +21,7 @@ import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 import { zonesForSector, VESTA_DERELICT_SALVAGE_SOURCE } from '../data/sectorZones.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { SECTORS } from '../data/sectors.js';
-import { stationMinRepFor } from '../data/dockDeny.js';
+import { stationBerthAdmits } from '../data/frontierRumors.js';
 import { pickWreckMission, wreckMissionById } from '../data/wreckMissions.js';
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 import { COMMODITIES } from '../data/commodities.js';
@@ -1101,10 +1101,11 @@ export const salvage = {
     const sec = SECTOR_BY_ID.get(point && point.sectorId);
     if (!sec) return null;                    // an uncharted sector id can host no board at all
     // The filing desk must be a berth this pilot can reach: the dock gate's own floor —
-    // explicit minRep first, repGated meaning positive standing — not just the flag. A
-    // rep-5 pilot files at Sker locally; a Quiet -50 pilot cannot file at the Outpost.
+    // explicit minRep first, repGated meaning positive standing — plus the dynamic
+    // access rules (the Den's entrance run). A rep-5 pilot files at Sker locally; a
+    // Quiet -50 pilot cannot file at the Outpost.
     const dockable = (s, sectorFactionId) => !!s
-      && !(this._repOf(s.factionId || sectorFactionId) < stationMinRepFor(s));
+      && stationBerthAdmits(s, this._repOf(s.factionId || sectorFactionId), this.state);
     const stations = sec.stations || [];
     const capable = stations.filter((s) => s.services && s.services.includes('missions') && dockable(s, sec.factionId));
     const pool = capable.length ? capable : stations.filter((s) => dockable(s, sec.factionId));

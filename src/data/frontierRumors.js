@@ -7,6 +7,7 @@
 import { playerBearingLetter } from '../core/playerCompass.js';
 import { hash32 } from '../core/rng.js';
 import { sectorLocalToGlobalForSector } from './sectorCoordinates.js';
+import { stationMinRepFor } from './dockDeny.js';
 import { SECTORS } from './sectors.js';
 
 export const FRONTIER_RUMOR_DAY_SECONDS = 600;
@@ -82,6 +83,24 @@ export function tethysBlackMarketRun(state) {
 export function hasTethysBlackMarketAccess(state) {
   const run = tethysBlackMarketRun(state);
   return run?.runId === TETHYS_BLACK_MARKET_RUN.runId && run.phase === 'delivered';
+}
+
+/**
+ * The full berth-admission contract for a station RECORD (or a derived info record —
+ * either carries id + the resolved floor): standing must clear the dock gate's own
+ * minimum AND every dynamic access rule must hold. Today the only dynamic rule is the
+ * Smuggler's Den entrance run — world.js stamps `dockDeny: 'private'` on that berth
+ * until the parcel lands, so any picker that names a dock from catalog data must make
+ * the same read or it writes a contract the world cannot settle.
+ *
+ * @param {object} st    station record or station-info record
+ * @param {number} rep   pilot standing with the station's resolved faction
+ * @param {object} state live game state (may be null; treats access as unearned)
+ */
+export function stationBerthAdmits(st, rep, state) {
+  return !!st
+    && !(st.id === TETHYS_BLACK_MARKET_RUN.stationId && !hasTethysBlackMarketAccess(state))
+    && !(rep < stationMinRepFor(st));
 }
 
 function normalizeEntranceRun(value) {

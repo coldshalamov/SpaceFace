@@ -28,7 +28,7 @@ import { SECTORS } from '../data/sectors.js';
 import { ECONOMY_BALANCE as BALANCE } from '../data/economyDerived.js';
 import { quoteMissionEconomics, affordableContractQuantity, economicRiskTier } from '../economy/economyMissionTerms.js';
 import { COMMODITIES } from '../data/commodities.js';
-import { stationMinRepFor } from '../data/dockDeny.js';
+import { stationBerthAdmits } from '../data/frontierRumors.js';
 import { FACTION_META } from '../data/factions.js';
 import { MISSION_TYPES, MISSION_TUNING } from '../data/missions.js';
 import { hash32, mulberry32 } from '../core/rng.js';
@@ -239,7 +239,7 @@ export const economyContracts = {
       identical to the pre-gate stream — the gating is the only behavioral delta. */
   _dockableStations(sec) {
     return (sec && sec.stations || [])
-      .filter((st) => !(this._repOf(st.factionId || sec.factionId) < stationMinRepFor(st)));
+      .filter((st) => stationBerthAdmits(st, this._repOf(st.factionId || sec.factionId), this.state));
   },
 
   /**
@@ -531,7 +531,7 @@ export const economyContracts = {
         seen.add(st.id);
         // A yard whose berth refuses the pilot can't take the freight — its
         // shortage is real but the contract could never settle there.
-        if (this._repOf(st.factionId || sec.factionId) < stationMinRepFor(st)) continue;
+        if (!stationBerthAdmits(st, this._repOf(st.factionId || sec.factionId), this.state)) continue;
         const need = starvedIndustryNeedFor(st.type, sec.tier || 0, markets[st.id]);
         if (need) out.push({ need, stationId: st.id, sectorId: sec.id });
       }

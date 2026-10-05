@@ -578,6 +578,23 @@ test('a berth below its own minimum stops taking wreck filings', () => {
   salvageSys.destroy && salvageSys.destroy();
 });
 
+test('the Den cannot file a wreck claim until the entrance parcel lands', () => {
+  const state = baseState();
+  const bus = new Bus();
+  const salvageSys = { ...salvage };
+  salvageSys.init({ state, bus, helpers: { hash32, mulberry32 }, registry: { get: () => null } });
+  // Pallas's Den is a missions desk behind dockDeny 'private' — closed until the Tethys
+  // entrance run is delivered. The point id's hash picks it out of the ungated pair
+  // (zone_pallas_field:sal1 → slot 1): a flag-only filter files where the pilot is refused.
+  const desk = salvageSys._wreckStation({
+    id: 'zone_pallas_field:sal1', sectorId: 'sector_pallas_drift', zoneId: 'zone_pallas_field',
+    pos: { x: 0, z: 0 },
+  });
+  assert.equal(desk && desk.id, 'station_drift',
+    'no entrance run → the claim files at the open Drift desk, never the Den');
+  salvageSys.destroy && salvageSys.destroy();
+});
+
 test('a stripped pod stamps the loss site — the recovery pocket spawns where the pod died', () => {
   const state = baseState();
   const bus = new Bus();

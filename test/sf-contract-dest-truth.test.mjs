@@ -166,3 +166,47 @@ test('below its own minRep the berth stops taking freight', () => {
     ['station_reach'],
   );
 });
+
+test('the Den can never take surplus freight until the parcel lands', () => {
+  // Pallas's second berth is the Smuggler's Den — dockDeny 'private' until the Tethys
+  // entrance run is delivered. From Ceres a surplus run toward Pallas must land on the
+  // Drift Exchange, never the door that refuses the pilot.
+  const CERES = SECTORS.find((s) => s.id === 'sector_ceres_belt');
+  const INFO_CERES = {
+    id: 'station_ceres', name: 'Ceres Refinery', type: 'refinery',
+    tier: CERES.tier || 0, size: 'M', factionId: 'faction_dmc', sectorId: CERES.id,
+  };
+  const nodes = {
+    sector_ceres_belt: fieldNode({ pressure: -0.4, pressureTag: 'route_surplus' }),
+    sector_pallas_drift: fieldNode({ pressure: 0.9 }),
+  };
+  const s = sys(makeState({ nodes }));
+  const pallas = SECTORS.find((sec) => sec.id === 'sector_pallas_drift');
+  assert.deepEqual(s._dockableStations(pallas).map((st) => st.id), ['station_drift'],
+    'the Den is absent from the dockable pool without the entrance run');
+  const offer = s.planOffer(INFO_CERES, 0);
+  assert.ok(offer);
+  assert.equal(offer.destSectorId, 'sector_pallas_drift');
+  assert.equal(offer.destStationId, 'station_drift',
+    'surplus freight lands on the open berth, not the closed door');
+});
+
+test('delivered access reopens the Den for freight', () => {
+  const state = makeState({ nodes: {
+    sector_ceres_belt: fieldNode({ pressure: -0.4, pressureTag: 'route_surplus' }),
+    sector_pallas_drift: fieldNode({ pressure: 0.9 }),
+  } });
+  state.world.frontierRumors = {
+    byId: {
+      'frontier-rumor:station_tethys:tethys-black-market': {
+        phase: 'contacted', contactId: 'quiet:tethys-black-market',
+        entranceRun: { runId: 'tethys:pallas-entrance:1', phase: 'delivered' },
+      },
+    },
+  };
+  const s = sys(state);
+  const pallas = SECTORS.find((sec) => sec.id === 'sector_pallas_drift');
+  assert.deepEqual(s._dockableStations(pallas).map((st) => st.id),
+    ['station_drift', 'station_smuggler'],
+    'the entrance run restores the Den to the dockable pool');
+});
