@@ -998,7 +998,10 @@ ${W} .sx-sw__explode .sx-sw__module-name { font-family:var(--dp-face-label, "Arc
   ${W}.orr-sw--jig .sx-sw__main { overflow:auto !important; }
   /* the For Sale readouts pin absolute at left:258px in EVERY jig state (jig-less included),
      so the buying column joins the stack at phone widths whatever the hull mode */
-  ${W}.orr-sw--jig .sx-sw__stats, ${W}.sx-sw--buying .sx-sw__stats { position:static !important; left:auto !important; top:auto !important; right:auto !important; bottom:auto !important;
+  /* static would work for the stack, but the stats' ::before shade pool resolves its containing
+     block against the nearest positioned ancestor — relative keeps the pool stats-sized instead
+     of splashing a whole-tab glow (review). */
+  ${W}.orr-sw--jig .sx-sw__stats, ${W}.sx-sw--buying .sx-sw__stats { position:relative !important; left:auto !important; top:auto !important; right:auto !important; bottom:auto !important;
     transform:none !important; width:auto !important; max-width:none !important; max-height:none !important; }
   ${W}.orr-sw--jig .sx-sw-verbs, ${W}:not(.orr-sw--jig) .sx-sw-verbs { position:static !important; width:auto !important; max-width:100% !important;
     flex-wrap:wrap !important; gap:6px 16px !important; justify-content:flex-start !important; padding:6px 0 12px !important; }
@@ -1017,7 +1020,9 @@ ${W} .sx-sw__explode .sx-sw__module-name { font-family:var(--dp-face-label, "Arc
    mid-width berth's rail + side plate can starve the stage below the phone stack's trigger).
    When they hand the seat back these rules do what the ≤700 block does: readouts in flow
    under the stage, verbs wrapped on their own row (REV-D112). */
-${W} .sx-sw__stats.sx-sw__stats--unseated { position:static !important; left:auto !important; top:auto !important; right:auto !important; bottom:auto !important;
+/* relative, not static, for the same reason as the ≤700 reset: in-flow AND keeps the ::before
+   shade pool's containing block stats-sized (review). */
+${W} .sx-sw__stats.sx-sw__stats--unseated { position:relative !important; left:auto !important; top:auto !important; right:auto !important; bottom:auto !important;
   transform:none !important; width:auto !important; max-width:none !important; max-height:none !important; }
 ${W} .sx-sw-verbs.sx-sw-verbs--unseated { position:static !important; width:auto !important; max-width:100% !important;
   flex-wrap:wrap !important; gap:6px 16px !important; justify-content:flex-start !important; padding:6px 0 12px !important; }
