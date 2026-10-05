@@ -3035,10 +3035,14 @@ export const world = {
       if (oneOff.sectorId !== sector.id) continue;
       const anchorPos = this._oneOffAnchorPos(sector, oneOff.anchor);
       if (!anchorPos) continue;
-      const pos = {
+      // Anchor rows are sector-local; entities and dressing rows live galactic-global
+      // (D176: without the hop every non-origin sector's one-offs spawned local-as-global,
+      // stranded beside the Helios origin instead of beside their named anchor).
+      const localPos = {
         x: anchorPos.x + oneOff.offsetLocal.x,
         z: anchorPos.z + oneOff.offsetLocal.z,
       };
+      const pos = this._toGlobal(localPos, sector.id);
       let ent = null;
       if (oneOff.physicalBody) {
         const identityKey = `worldOneOff:${oneOff.id}`;
@@ -3051,6 +3055,19 @@ export const world = {
         if (durable && (durable.outcome === 'destroyed' || durable.alive === false)) continue;
         ent = findLiveRecordEntity(this.state, recordId);
         if (ent) {
+          // Pre-D176 materializations parked the body at local-as-global coords. A body
+          // still on exactly that spot was never moved by a player - re-seat it at the
+          // anchor; the physics owner resyncs its body from the pos write (noInterp).
+          if ((localPos.x !== pos.x || localPos.z !== pos.z) && ent.pos) {
+            const bdx = ent.pos.x - localPos.x, bdz = ent.pos.z - localPos.z;
+            if (bdx * bdx + bdz * bdz < 4) {
+              ent.pos.x = pos.x;
+              ent.pos.z = pos.z;
+              if (ent.prevPos && typeof ent.prevPos.copy === 'function') ent.prevPos.copy(ent.pos);
+              if (ent.vel) { ent.vel.x = 0; ent.vel.y = 0; ent.vel.z = 0; }
+              ent.flags = Object.assign({}, ent.flags, { noInterp: true });
+            }
+          }
           this._decoratePhysicalOneOff(ent, oneOff, sector, recordId, identityKey);
         } else if (farActorHoldsWorldRecord(this.state, recordId)) {
           // A shelved far row already owns this record's body. Minting a second copy here

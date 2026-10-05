@@ -13,6 +13,7 @@ import { WORLD_ONE_OFFS } from '../src/data/worldOneOffs.js';
 import { AUTHORED_DOCK_RUMORS } from '../src/data/frontierRumors.js';
 import { NAMED_LANE_CONTACTS } from '../src/data/laneContacts.js';
 import { SECTORS } from '../src/data/sectors.js';
+import { sectorLocalToGlobalForSector, sectorGlobalOrigin } from '../src/data/sectorCoordinates.js';
 import { world } from '../src/systems/world.js';
 import { TRAFFIC_ROLES } from '../src/systems/traffic.js';
 
@@ -216,13 +217,17 @@ test('the world spawns the one-offs verbatim on sector activation, and spins the
   assert.equal(tug.collides, true);
   assert.equal(tug.data.masslineTetherable, true);
   const station = ceres.stations.find((s) => s.id === 'station_ceres');
-  assert.equal(tug.pos.x, station.pos.x - 260, 'the tug sits exactly where the data says, no rng');
-  assert.equal(tug.pos.z, station.pos.z + 240);
+  // Entities and dressing rows live in galactic-global space; the authored anchor pos is
+  // sector-local (Ceres sits at a non-zero galactic origin), so the pin composes the same
+  // hop the spawn pass must make.
+  const stationGlobal = sectorLocalToGlobalForSector(station.pos, ceres.id);
+  assert.equal(tug.pos.x, stationGlobal.x - 260, 'the tug sits exactly where the data says, no rng');
+  assert.equal(tug.pos.z, stationGlobal.z + 240);
   assert.equal(tug.rot, 2.1);
   const shrine = dressingRows().find((e) => e.data.name === 'The Strut Shrine');
   assert.ok(shrine, 'the strut shrine spawns');
-  assert.equal(shrine.pos.x, station.pos.x + 980, 'the shrine hangs across the refinery approach');
-  assert.equal(shrine.pos.z, station.pos.z + 1140);
+  assert.equal(shrine.pos.x, stationGlobal.x + 980, 'the shrine hangs across the refinery approach');
+  assert.equal(shrine.pos.z, stationGlobal.z + 1140);
 
   // The tug's authored spin is angular velocity owned by physics; it is no longer a render-only
   // mutation in the dressing spin list.
@@ -261,6 +266,32 @@ test('the world spawns the one-offs verbatim on sector activation, and spins the
   assert.ok(spunNames.some((n) => n.includes('Settling')), 'the joke tumbles slowly');
   const keg = [...entities.values()].find((e) => e.data && e.data.oneOffId === 'oneoff_spare_keg');
   assert.ok(keg && keg.angVel === 0.12, 'the spare keg tumbles as its own physical body');
+});
+
+test('D176: a non-origin sector spawns its one-off in its own space, not beside Helios', () => {
+  // The defect signature: anchor + offset composed local-as-global put Vesta's Runaway
+  // Ladle at (-720,380) galactic - inside Helios space - instead of Vesta's (0,16384) slab.
+  const { system, entities } = bootOneOffHarness();
+  const vesta = SECTOR_BY_ID.get('sector_vesta_forge');
+  const origin = sectorGlobalOrigin(vesta.id);
+  assert.ok(Math.abs(origin.x) + Math.abs(origin.z) > 1000,
+    'Vesta is a non-origin sector - this pin cannot pass on a 0,0 origin');
+  const active = { pois: [], stations: [], gates: [], dressing: [] };
+  system._spawnWorldOneOffs(vesta, active);
+  const ladle = [...entities.values()].find((e) => e.data && e.data.oneOffId === 'oneoff_runaway_ladle');
+  assert.ok(ladle, 'the Runaway Ladle spawns as a live body');
+  const anchor = vesta.stations.find((s) => s.id === 'station_forge');
+  const anchorGlobal = sectorLocalToGlobalForSector(anchor.pos, vesta.id);
+  assert.equal(ladle.pos.x, anchorGlobal.x - 720, 'the ladle berths beside Forge Foundry in Vesta space');
+  assert.equal(ladle.pos.z, anchorGlobal.z + 380);
+  // And the dressing rows the map/renderer read carry the same global frame.
+  const rows = (system.state.world && system.state.world.dressing
+    ? system.state.world.dressing.rows : []);
+  for (const row of rows) {
+    const localD = Math.hypot(row.pos.x - origin.x, row.pos.z - origin.z);
+    assert.ok(localD <= vesta.worldRadius,
+      `${row.data && row.data.name}: dressing row must sit inside Vesta's radius, not at origin ${Math.hypot(row.pos.x, row.pos.z).toFixed(0)}`);
+  }
 });
 
 test('world.js owns the pass end to end: spawn on dressing, tick in update, reset on strip', () => {
