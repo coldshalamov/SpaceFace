@@ -7,7 +7,7 @@
 import { playerBearingLetter } from '../core/playerCompass.js';
 import { hash32 } from '../core/rng.js';
 import { sectorLocalToGlobalForSector } from './sectorCoordinates.js';
-import { stationMinRepFor } from './dockDeny.js';
+import { DOCK_DENY_REASONS, stationMinRepFor } from './dockDeny.js';
 import { SECTORS } from './sectors.js';
 
 export const FRONTIER_RUMOR_DAY_SECONDS = 600;
@@ -87,11 +87,14 @@ export function hasTethysBlackMarketAccess(state) {
 
 /**
  * The full berth-admission contract for a station RECORD (or a derived info record —
- * either carries id + the resolved floor): standing must clear the dock gate's own
- * minimum AND every dynamic access rule must hold. Today the only dynamic rule is the
+ * either carries id + the resolved floor): every structural refusal `dockDenyReason`
+ * reads on a record must hold false, standing must clear the dock gate's own minimum,
+ * AND every dynamic access rule must hold. Today the only dynamic rule is the
  * Smuggler's Den entrance run — world.js stamps `dockDeny: 'private'` on that berth
  * until the parcel lands, so any picker that names a dock from catalog data must make
- * the same read or it writes a contract the world cannot settle.
+ * the same read or it writes a contract the world cannot settle. The record-level
+ * flags mirror the live gate's so a future authored `private`/`quarantine` record is
+ * refused here before the entity ever spawns.
  *
  * @param {object} st    station record or station-info record
  * @param {number} rep   pilot standing with the station's resolved faction
@@ -99,6 +102,13 @@ export function hasTethysBlackMarketAccess(state) {
  */
 export function stationBerthAdmits(st, rep, state) {
   return !!st
+    && !(typeof st.dockDeny === 'string' && DOCK_DENY_REASONS.includes(st.dockDeny))
+    && st.abandoned !== true
+    && st.underConstruction !== true && st.commissioned !== false
+    && st.quarantine !== true && st.quarantined !== true
+    && st.hostile !== true
+    && st.militaryOnly !== true
+    && st.private !== true && st.public !== false
     && !(st.id === TETHYS_BLACK_MARKET_RUN.stationId && !hasTethysBlackMarketAccess(state))
     && !(rep < stationMinRepFor(st));
 }
