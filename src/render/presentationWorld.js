@@ -968,9 +968,13 @@ export function createPresentationWorld(options = {}) {
           const slot = byId.get(hiddenId);
           if (slot !== undefined && world.alive[slot] === 1 && lastSeenSeq[slot] !== seq
               && world.doomed[slot] !== 1) {
+            // Only a prior-visible row ever enters hiddenSlots, so a mark minted
+            // on an already-invisible slot is never consumed — it would pin both
+            // query retains for the slot's whole residency.
+            const wasVisible = world.visible[slot] === 1;
             world.doomed[slot] = 1;
             world.visible[slot] = 0;
-            markDirtyBits(slot, PRESENTATION_DIRTY.VISIBILITY);
+            if (wasVisible) markDirtyBits(slot, PRESENTATION_DIRTY.VISIBILITY);
           }
         }
       }
@@ -990,9 +994,10 @@ export function createPresentationWorld(options = {}) {
         if (!resident || resident.alive === false) continue;
         if (resident._noMesh === true
             || (resident.type === 'projectile' && projectileSkipsVisualFactoryMesh(resident))) {
+          const wasVisible = world.visible[slot] === 1;
           doomed[slot] = 1;
           world.visible[slot] = 0;
-          markDirtyBits(slot, PRESENTATION_DIRTY.VISIBILITY);
+          if (wasVisible) markDirtyBits(slot, PRESENTATION_DIRTY.VISIBILITY);
         }
       }
     }

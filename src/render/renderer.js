@@ -6741,6 +6741,10 @@ const SHADOW_DEPTH_PASS_NODE_CAP = 4096;
 // the root stays dirty and re-enters; only unscoped syncs count since a scoped
 // graft traverse is already narrowed to the added subtree.
 const SHADOW_ROOT_SYNC_PASS_CAP = 8;
+// Pass-level wall budget shared by every stepped policy sync in one presented
+// pass (resumes included) — roots beyond the budget stay dirty and resume
+// under the next pass's wallet.
+const SHADOW_POLICY_PASS_MS = 4;
 
 // Swarm warm coverage stays claimed only on a terminal outcome: the kick
 // demonstrably produced the warmed family ('authored*', a semantic fallback, a
@@ -24915,6 +24919,13 @@ export const render = {
       this._depthCollectPassCount = 0;
       this._depthCollectNodesLeft = SHADOW_DEPTH_PASS_NODE_CAP;
       this._shadowRootSyncPassCount = 0;
+      // One wall budget for the pass's whole policy lane: a fresh 4ms per root
+      // would let mints plus parked resumes stack unbounded on one presented
+      // frame. Spent roots stay parked — each call still makes ≥1 slice of
+      // progress — and resume order is park order (the Map is insertion-ordered).
+      this._policyPassDeadlineAt = (typeof performance !== 'undefined'
+        && typeof performance.now === 'function' ? performance.now() : Date.now())
+        + SHADOW_POLICY_PASS_MS;
     }
     let overCovered = collectGate
       && ((this._depthCollectPassCount | 0) >= SHADOW_DEPTH_PASS_COLLECT_CAP
@@ -25039,7 +25050,8 @@ export const render = {
         // dirty latch set — the root re-enters and resumes next sync.
         const policyNow = () => (typeof performance !== 'undefined'
           && typeof performance.now === 'function' ? performance.now() : Date.now());
-        const policyDeadlineAt = policyNow() + 4;
+        const policyDeadlineAt = this._policyPassDeadlineAt != null
+          ? this._policyPassDeadlineAt : policyNow() + SHADOW_POLICY_PASS_MS;
         const policyStartedAt = policyNow();
         changed = driveShadowPolicySteps(this, root, syncScope, lodLevel, {
           ...syncOpts,
@@ -26915,12 +26927,24 @@ function queueSceneEnvMapRebind(owner, scene, previousEnvMap, nextEnvMap, dispos
   });
 }
 
+// The rebind drain rides the shared paced wallet like its despawn sibling
+// ahead of it in the residency pass — skipped on a full ledger, with the same
+// aging floor so a permanently-busy stretch can't starve rebinds (and their
+// deferred dispose targets) for the session's lifetime.
+const ENV_REBIND_LEDGER_MAX_SKIPS = 2;
 function drainSceneEnvRebindQueue(owner) {
   const queue = owner && owner._envRebindQueue;
   if (!queue || queue.length === 0) return;
   const now = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
     ? performance.now() : Date.now());
-  const deadline = now() + 4;
+  if (pacedFrameSpend() >= PACED_FRAME_BUDGET_MS
+      && (owner._envRebindLedgerSkips | 0) < ENV_REBIND_LEDGER_MAX_SKIPS) {
+    owner._envRebindLedgerSkips = (owner._envRebindLedgerSkips | 0) + 1;
+    return;
+  }
+  owner._envRebindLedgerSkips = 0;
+  const startedAt = now();
+  const deadline = startedAt + 4;
   while (queue.length > 0) {
     const head = queue[0];
     const step = head.iter.next();
@@ -26933,6 +26957,8 @@ function drainSceneEnvRebindQueue(owner) {
     }
     if (now() >= deadline || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
   }
+  const elapsed = now() - startedAt;
+  if (elapsed > 0) notePacedFrameSpend(elapsed);
 }
 
 // Stepped policy-sync lane: a parked iterator per root lets a fat subtree's
