@@ -16,6 +16,7 @@ import { SHIPS } from '../../data/ships.js';
 import { THUNDERCHILD, THUNDERCHILD_TITLE_ID, TITLES } from '../../data/titles.js';
 import { SAVE_IMPORT_MAX_BYTES, saveImportByteLength, selectLatestOccupiedSlot } from '../../save/saveSystem.js';
 import { WANTED_TIER, wantedTierInfo } from '../../systems/heat.js';
+import { wantedClearClause } from '../wantedReason.js';
 import { confirm } from '../confirm.js';
 import { el, rows, words, hero, settle, cue } from '../kit/index.js';
 import { decorateEntityNode } from '../entityResolver.js';
@@ -630,7 +631,11 @@ function buildRapSheetField(player, meta) {
   const bounty = Number(player && player.bounty);
   const info = wantedTierInfo(Number.isFinite(heat) ? heat : 0);
   const parts = [];
-  if (info && info.id && info.id !== WANTED_TIER.NONE) parts.push(info.label);
+  if (info && info.id && info.id !== WANTED_TIER.NONE) {
+    parts.push(info.label);
+    const clock = wantedClearClause(Number.isFinite(heat) ? heat : 0).replace(/^ · /, '');
+    if (clock) parts.push(clock);
+  }
   if (Number.isFinite(bounty) && bounty > 0) parts.push(fmtCredits(bounty) + ' bounty');
   if (parts.length) return { tier: info.id, heat: Number.isFinite(heat) ? heat : 0, bounty: bounty || 0, line: parts.join(' · ') };
   return {
