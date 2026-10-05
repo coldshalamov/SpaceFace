@@ -11,9 +11,11 @@ const vfx = readFileSync(resolve(ROOT, 'src/render/vfx.js'), 'utf8');
 const physics = readFileSync(resolve(ROOT, 'src/core/physics.js'), 'utf8');
 const damage = readFileSync(resolve(ROOT, 'src/combat/damage.js'), 'utf8');
 const beams = readFileSync(resolve(ROOT, 'src/render/combat/persistentBeams.js'), 'utf8');
-const projectileBlock = vfx.slice(vfx.indexOf('  _onProjectileHit(p)'), vfx.indexOf('  _onDamage(p)'));
-const muzzleBlock = vfx.slice(vfx.indexOf('  _spawnMuzzleBallistic('), vfx.indexOf('  _onProjectileHit(p)'));
-const damageBlock = vfx.slice(vfx.indexOf('  _onDamage(p)'), vfx.indexOf('  _onPresentationCue(p)'));
+const stripLineComments = (src) => src.replace(/\/\/[^\n]*/g, '');
+const projectileBlock = stripLineComments(vfx.slice(vfx.indexOf('  _onProjectileHit(p)'), vfx.indexOf('  _onDamage(p)')));
+const muzzleBlock = stripLineComments(vfx.slice(vfx.indexOf('  _spawnMuzzleBallistic('), vfx.indexOf('  _onProjectileHit(p)')));
+const damageBlock = stripLineComments(vfx.slice(vfx.indexOf('  _onDamage(p)'), vfx.indexOf('  _onPresentationCue(p)')));
+const combatSystem = readFileSync(resolve(ROOT, 'src/systems/combat.js'), 'utf8');
 const failures = [];
 const check = (name, condition, evidence) => {
   const ok = !!condition;
@@ -43,12 +45,17 @@ const validation = [
   check('contacts consume approach and normal', projectileBlock.includes('p.approach') && projectileBlock.includes('p.normal'), 'directional event receipt'),
   check('contacts use pooled directional streaks', projectileBlock.includes('_spawnProjectileTrailStreak'), 'instanced streak pool'),
   check('physics publishes contact direction', physics.includes('approach,') && physics.includes('normal,'), 'projectileHitPayload'),
-  check('damage routing preserves contact direction', damage.includes('approach: packet.hit') && damage.includes('normal: packet.hit'), 'combat:damage receipt'),
+  check('damage routing preserves contact direction', damage.includes('dp.approach = packet.hit && packet.hit.approach') && damage.includes('dp.normal = packet.hit && packet.hit.normal'), 'combat:damage receipt'),
   check('beam body is persistent and bounded', beams.includes('class PersistentCombatBeamPool') && beams.includes('InstancedMesh'), 'two instanced meshes'),
   check('beam contact retargets and throttles', damageBlock.includes('_combatBeams.retarget') && damageBlock.includes('_beamDamageCueNext'), 'sustained contact path'),
   check('shield break uses attached tears without an annulus', shieldBreak.includes('_spawnProjectileTrailStreak') && !shieldBreak.includes('SPR_RING') && !shieldBreak.includes('SPR_FRESNEL'), 'fixed tangent tears'),
   check('armor and hull material layers remain distinct', damageBlock.includes('p.armorHit') && damageBlock.includes('p.hullHit') && damageBlock.includes('SPR_PUFF'), 'metal ejecta versus cooling residue'),
-  check('player damage camera response retained', damageBlock.includes("camera:shake"), 'camera response'),
+  // The player-damage shake is emitted by the combat system's hit path (camera feedback is a
+  // combat consequence, not a renderer concern) — pin the emit plus its player gate there.
+  check('player damage camera response retained',
+    combatSystem.includes("targetId === this.state.playerId")
+      && /emit\('camera:shake'[\s\S]{0,120}shieldBroke/.test(combatSystem),
+    'camera response'),
 ];
 
 mkdirSync(OUT, { recursive: true });
