@@ -805,17 +805,21 @@ export const routeFollower = {
   _retireArrivedGateWaypoint(sectorId) {
     const nav = this.state && this.state.nav;
     const waypoint = nav && nav.waypoint;
-    if (!waypoint || waypoint.targetSectorId !== sectorId) return false;
+    if (!waypoint) return false;
 
-    // Only the autopilot paired with this exact gate fix is ours to release. A foreign/local target
-    // that replaced it between jump request and arrival remains untouched.
+    // A waypoint that did not ask for this sector holds a fix in a frame that no longer exists:
+    // its pos — and any paired autopilot target — are the departed sector's local coordinates.
+    // Whether the ship arrived on the waypoint's own gate or left some other way (a drive jump,
+    // a cross-sector recovery), the stale fix retires; the paired burn reports 'lost-target',
+    // not an arrival it never earned.
+    const ownsArrival = waypoint.targetSectorId === sectorId;
     const autopilot = nav.autopilot;
     const ownsAutopilot = !!(autopilot && sameXZ(autopilot.target, waypoint.pos));
     nav.waypoint = null;
     this._emit('nav:waypoint', null);
     if (ownsAutopilot) {
       autopilot.active = false;
-      autopilot.status = 'arrived';
+      autopilot.status = ownsArrival ? 'arrived' : 'lost-target';
       autopilot.target = null;
       autopilot.targetEntityId = null;
       // The stamped bind retires with the id — a lingering stamp is inert only while every

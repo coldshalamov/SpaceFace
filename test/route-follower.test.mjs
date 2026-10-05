@@ -405,6 +405,63 @@ test('an arrived physical-gate waypoint retires through the real ui:setCourse sh
   assert.equal(h.state.nav.autopilot.status, 'arrived');
 });
 
+test('a local waypoint cannot survive a sector transition it did not ask for', () => {
+  const h = makeHarness();
+  const worldSystem = Object.create(world);
+  worldSystem.state = h.state;
+  worldSystem.bus = h.bus;
+
+  // A point fix armed in the origin sector — the shape world leaves for a station/ore berth
+  // with no provable live entity (targetEntityId is gated on the stamped bind now).
+  worldSystem._onSetCourse({
+    type: 'station',
+    pos: { x: 300, z: 120 },
+    label: 'Ore berth',
+    waypointKind: 'nav',
+    arrivalRadius: 36,
+    autopilot: true,
+  });
+  assert.ok(h.state.nav.waypoint, 'a local course arms a waypoint');
+  assert.equal(h.state.nav.waypoint.targetSectorId, undefined,
+    'a local fix names no destination sector');
+  assert.equal(h.state.nav.autopilot.active, true, 'the paired burn is live');
+
+  // Leaving by any other door — a manual gate hop, a drive jump, a cross-sector recovery —
+  // strands the fix: pos/x:300,z:120 only ever meant coordinates in the departed frame.
+  h.state.world.currentSectorId = CHAIN[1];
+  h.bus.emit('sector:enter', { sectorId: CHAIN[1] });
+
+  assert.equal(h.state.nav.waypoint, null,
+    'a fix in the departed frame cannot keep steering the ship from foreign coordinates');
+  assert.equal(h.state.nav.autopilot.active, false,
+    'the paired burn cannot keep thrusting toward meaningless coordinates');
+  assert.equal(h.state.nav.autopilot.status, 'lost-target',
+    'leaving the sector is a lost course, never an arrival the ship earned');
+  assert.equal(h.state.nav.autopilot.stable, null,
+    'the stamped bind retires with the fix it proved');
+});
+
+test('a foreign autopilot not paired to the stale fix is left alone', () => {
+  const h = makeHarness();
+  h.state.nav.waypoint = { pos: { x: 300, z: 120 }, label: 'Ore berth' };
+  h.state.nav.autopilot = {
+    active: true,
+    target: { x: -800, z: 400 },
+    targetEntityId: null,
+    label: 'Some other fix',
+    arrivalRadius: 36,
+    status: 'cruising',
+  };
+
+  h.state.world.currentSectorId = CHAIN[1];
+  h.bus.emit('sector:enter', { sectorId: CHAIN[1] });
+
+  assert.equal(h.state.nav.waypoint, null, 'the stale fix still retires');
+  assert.equal(h.state.nav.autopilot.active, true,
+    'an autopilot aimed elsewhere is not released by this waypoint');
+  assert.equal(h.state.nav.autopilot.status, 'cruising');
+});
+
 test('an unengaged multi-hop plot advances when the player manually completes a leg', () => {
   const route = routeFromChain(CHAIN);
   const h = makeHarness({ route, autoTravel: true });
