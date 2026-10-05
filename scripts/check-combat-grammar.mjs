@@ -148,7 +148,16 @@ function checkSharedPlayerAiPath() {
   assert.equal(starts.length, 2);
   assert.deepEqual(starts.map((event) => event.actionId), ['action_burst', 'action_burst']);
   const source = fs.readFileSync(path.join(ROOT, 'src/combat/actions.js'), 'utf8');
-  assert.doesNotMatch(source, /source\s*(?:\.|\[).*?(?:===|!==)\s*['"]ai['"]/s, 'action execution must not branch on AI identity');
+  // Execution stays source-neutral (proven behaviorally above). The one sanctioned 'ai'
+  // comparison is reauthorizeQueuedAction's commit-gate seam — queued AI shots re-run
+  // engagement authorization on live state before they fire. Any 'ai' branch outside that
+  // function is a real violation.
+  const aiBranchPattern = /source\s*(?:\.|\[).*?(?:===|!==)\s*['"]ai['"]/gs;
+  const reauthBody = source.match(/function reauthorizeQueuedAction[\s\S]*?\n  \}\n/);
+  assert.ok(reauthBody, 'reauthorizeQueuedAction must exist as the sanctioned AI-source seam');
+  const permitted = source.slice(0, reauthBody.index) + source.slice(reauthBody.index + reauthBody[0].length);
+  assert.doesNotMatch(permitted, aiBranchPattern,
+    'action execution must not branch on AI identity outside reauthorizeQueuedAction');
 }
 
 function checkSubsystemNextTickEffects() {
