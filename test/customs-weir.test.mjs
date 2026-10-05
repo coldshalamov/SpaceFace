@@ -12,6 +12,9 @@ import { lawSecurity } from '../src/systems/lawSecurity.js';
 import {
   HELIOS_CUSTOMS_WEIR,
   TETHYS_CUSTOMS_WEIR,
+  DIONE_CUSTOMS_WEIR,
+  customsWeirForSector,
+  customsWeirSegments,
   pointInsideCustomsWeir,
 } from '../src/world/customsWeir.js';
 
@@ -419,4 +422,72 @@ test('the Tethys cone reads a nearly-stopped hull under its own numbers', () => 
   sys._updateCustomsWeir(0.6, state); // 1.2s >= 1.1s readDwellS
   assert.equal(scanCalls.length, 1);
   assert.equal(scanCalls[0].stationId, 'station_customs');
+});
+
+test('the Dione weir is a funnel — the wide mouth narrows to the toll gap', () => {
+  const w = DIONE_CUSTOMS_WEIR;
+  assert.equal(w.shape, 'funnel');
+  assert.equal(customsWeirForSector('sector_dione_lane'), w);
+  // Mid-depth centerline is inside — the funnel's own geometry, not the 720 zone disc.
+  assert.equal(pointInsideCustomsWeir(w, w.center), true);
+  // The mouth's full width admits a hull that the gap's width would turn away: a point
+  // hugging the mouth wall is inside at s=0 but outside at the same |across| near the gap.
+  const px = -w.axis.z;
+  const pz = w.axis.x;
+  const mouth = { x: w.center.x - w.axis.x * w.length / 2, z: w.center.z - w.axis.z * w.length / 2 };
+  const gap = { x: w.center.x + w.axis.x * w.length / 2, z: w.center.z + w.axis.z * w.length / 2 };
+  const mouthEdge = { x: mouth.x + px * (w.mouthHalf - 6), z: mouth.z + pz * (w.mouthHalf - 6) };
+  const gapEdgeSameAcross = { x: gap.x + px * (w.mouthHalf - 6), z: gap.z + pz * (w.mouthHalf - 6) };
+  assert.equal(pointInsideCustomsWeir(w, mouthEdge), true);
+  assert.equal(pointInsideCustomsWeir(w, gapEdgeSameAcross), false, 'the taper bites');
+  assert.equal(pointInsideCustomsWeir(w, { x: gap.x + px * (w.gapHalf - 4), z: gap.z + pz * (w.gapHalf - 4) }), true);
+  // Off the ends: beyond the mouth and past the gap are outside.
+  assert.equal(pointInsideCustomsWeir(w, { x: mouth.x - w.axis.x * 20, z: mouth.z - w.axis.z * 20 }), false);
+  assert.equal(pointInsideCustomsWeir(w, { x: gap.x + w.axis.x * 20, z: gap.z + w.axis.z * 20 }), false);
+  // The wall segments the renderer draws are the two funnel arms, mouth corner → gap corner.
+  const segs = customsWeirSegments(w);
+  assert.equal(segs.length, 2);
+  const wallLen = Math.hypot(segs[0].x1 - segs[0].x0, segs[0].z1 - segs[0].z0);
+  assert.ok(wallLen > w.length, 'arms are longer than the axis run — they slope inward');
+});
+
+test('the funnel reads a held hull and flags a fast transit — on the lane side, not the disc', () => {
+  const w = DIONE_CUSTOMS_WEIR;
+  const { state, sys, player, events, scanCalls } = harness('sector_dione_lane', { ...w.center });
+  sys._updateCustomsWeir(0.2, state);
+  assert.equal(readCustomsWeir(state).seen, true);
+  assert.equal(readCustomsWeir(state).shape, 'funnel');
+  // Hold under the beam: 1.3s of slow presence completes the read at the real booth.
+  sys._updateCustomsWeir(0.7, state);
+  sys._updateCustomsWeir(0.7, state);
+  assert.equal(scanCalls.length, 1);
+  assert.equal(scanCalls[0].stationId, 'station_dione_customs');
+  assert.equal(scanCalls[0].factionId, 'faction_scn');
+  const voices = events.filter((row) => row.name === 'law:voice');
+  assert.equal(voices.length, 1);
+  assert.match(voices[0].payload.text, /LANE CUSTOMS/);
+});
+
+test('a hull that outruns the funnel bolts unread, and the disc outside the funnel sees nobody', () => {
+  const w = DIONE_CUSTOMS_WEIR;
+  // Fast transit: inside the funnel but over the 30 WU/s read ceiling, then gone.
+  const { state, sys, player, events, scanCalls } = harness('sector_dione_lane', { ...w.center });
+  player.vel.x = 200;
+  sys._updateCustomsWeir(0.5, state);
+  assert.equal(readCustomsWeir(state).seen, true);
+  // Out the far side while fast — the booth flags an unread transit.
+  player.pos.x = w.center.x + w.axis.x * w.length; // past the gap
+  player.pos.z = w.center.z + w.axis.z * w.length;
+  sys._updateCustomsWeir(0.5, state);
+  const bolts = events.filter((row) => row.name === 'customs:weirBolt');
+  assert.equal(bolts.length, 1);
+  assert.equal(bolts[0].payload.weirId, 'dione_customs_weir');
+  assert.equal(bolts[0].payload.kind, 'speed_run');
+  assert.equal(scanCalls.length, 0);
+  // A hull in the zone disc but outside the funnel arms is not seen at all.
+  const inDiscOnly = { x: w.center.x - w.axis.z * 400, z: w.center.z + w.axis.x * 400 };
+  assert.ok(Math.hypot(400, 0) < w.zoneRadius);
+  const other = harness('sector_dione_lane', inDiscOnly);
+  other.sys._updateCustomsWeir(0.5, other.state);
+  assert.equal(readCustomsWeir(other.state).seen, false);
 });
