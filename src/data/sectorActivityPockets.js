@@ -1044,7 +1044,10 @@ export const PALLAS_ACTIVITY_POCKETS = Object.freeze([
           mark('pallas_haul_a', 115, 0),
           mark('pallas_haul_b', -115, 0),
         ]),
-      pallasActor('pallas_hub_tender', pallasHubId, 'tender', 'tender', point(-20, 28),
+      // The tender flies the proven survey kernel (a hub check is a scan loop — the Vesta relay
+      // pattern): 'tender' as the runtime jobKind is outside CERES_ACTIVITY_JOB_KINDS, so the
+      // slot materialized jobless — a named hull parked with no work.
+      pallasActor('pallas_hub_tender', pallasHubId, 'tender', 'surveyor', point(-20, 28),
         'pallas_hub_tender_loop', 22, [
           mark('pallas_tender_a', 86.6, 50),
           mark('pallas_tender_b', -60, 103.9),
