@@ -4783,12 +4783,22 @@ export const traffic = {
       // NXI-165: a durable rebind restores data.ai (the captured ai record) but never the live
       // namedLaneContactId stamp — heal it from the record so the SAME worker keeps her name and
       // the "already have a live named contact" checks see her instead of re-picking the
-      // identity onto a second hull. A stale id with no authored contact is dropped.
+      // identity onto a second hull. A stale id with no authored contact is dropped. The heal
+      // also loses to a live holder: when the enter race twins her (a shelved row plus the
+      // fixture's re-mint both promote in one pass), the first stamp wins and the runner-up
+      // keeps only her durable ai id — never two live hulls wearing one contact's face.
       if (!d.namedLaneContactId && d.ai && typeof d.ai.namedLaneContactId === 'string'
         && d.ai.namedLaneContactId) {
         const contact = NAMED_LANE_CONTACTS.find((c) => c && c.id === d.ai.namedLaneContactId);
-        if (contact) this._stampNamedLaneContact(e, contact);
-        else delete d.ai.namedLaneContactId;
+        if (!contact) delete d.ai.namedLaneContactId;
+        else {
+          let held = false;
+          for (const other of this.state.entityList) {
+            if (!other || other === e || other.alive === false || other.type !== 'ship') continue;
+            if (other.data && other.data.namedLaneContactId === contact.id) { held = true; break; }
+          }
+          if (!held) this._stampNamedLaneContact(e, contact);
+        }
       }
       if (tracked.has(e.id)) return;
       if (sectorId === 'sector_helios_prime' && d.trafficRole === 'ore_carrier') {
@@ -5007,8 +5017,17 @@ export const traffic = {
       ? d.ai.namedLaneContactId : null;
     if (!contactId) return;
     const contact = NAMED_LANE_CONTACTS.find((c) => c && c.id === contactId);
-    if (contact) this._stampNamedLaneContact(ent, contact);
-    else delete d.ai.namedLaneContactId;
+    if (!contact) { delete d.ai.namedLaneContactId; return; }
+    // Only one live hull may wear a contact's face — the fixture's own guard. The enter race
+    // can twin her: a shelved row persists across a sector round trip, the fixture re-mints a
+    // fresh courier pocket-side, and both rows promote in one approach pass. The first
+    // re-stamp wins; the second stays anonymous (her durable ai id kept for a later heal when
+    // the holder dies) instead of doubling the named presence on one lane.
+    for (const other of this.state.entityList) {
+      if (!other || other === ent || other.alive === false || other.type !== 'ship') continue;
+      if (other.data && other.data.namedLaneContactId === contactId) return;
+    }
+    this._stampNamedLaneContact(ent, contact);
   },
 
   _pruneDead() {

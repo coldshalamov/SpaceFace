@@ -128,3 +128,48 @@ test('Cinder Run Courier: fixture mints her named, the boot shelves her, promote
   assert.ok(flown > 10 || speed > 3,
     `a re-tracked courier must fly her route again (flown=${flown.toFixed(1)}wu v=${speed.toFixed(1)})`);
 });
+
+test('Cinder Run Courier: a shelved row and a re-minted fixture promote into ONE named courier', async () => {
+  const h = boot();
+  await h.sim.registry.get('physics').prepareBackend(h.state);
+
+  // Boot race: she shelves pocket-side while the pilot sits at the entry point.
+  step(h, 2);
+  assert.ok(!liveExpress(h), 'pre-condition: the first courier shelved at boot');
+
+  // Leave WITHOUT approaching the pocket — the far row persists (resetFarActors is a
+  // fresh-run-reset seam only), so she crosses the switch as a shelved identity.
+  h.sim.registry.get('world').enterSector('sector_ceres_belt');
+  step(h, 1);
+  h.sim.registry.get('world').enterSector(HELIOS);
+  step(h, 2);
+  const table = h.state.world.farActors;
+  const expressRows = table && Array.isArray(table.rows)
+    ? table.rows.filter((r) => r && r.alive !== false && r.trafficRole === 'express') : [];
+  assert.ok(!liveExpress(h) && !expressContactEntity(h),
+    'pre-condition: re-enter re-mints her pocket-side and the boot geometry shelves her again');
+  assert.ok(expressRows.length >= 2,
+    `the round trip must leave two shelved express rows (got ${expressRows.length})`);
+
+  // Approach the pocket — both rows promote in the same pass.
+  h.player.pos.x = 1280; h.player.pos.z = -420;
+  for (let s = 0; s < Math.ceil(10 / SIM_DT); s += 1) {
+    h.sim.step();
+    const live = h.state.entityList.filter((e) => e && e.alive && e.type === 'ship' && !e.isPlayer
+      && e.data && e.data.trafficRole === 'express');
+    if (live.length >= 2) break;
+  }
+  const promotedExpress = h.state.entityList.filter((e) => e && e.alive && e.type === 'ship'
+    && !e.isPlayer && e.data && e.data.trafficRole === 'express');
+  assert.ok(promotedExpress.length >= 2,
+    `both shelved rows must promote on approach (got ${promotedExpress.length})`);
+
+  // The pin: exactly one live hull wears the contact's face.
+  const holders = h.state.entityList.filter((e) => e && e.alive && e.type === 'ship' && !e.isPlayer
+    && e.data && e.data.namedLaneContactId === COURIER_CONTACT_ID);
+  assert.equal(holders.length, 1,
+    `exactly one live courier may hold ${COURIER_CONTACT_ID} (got ${holders.length})`);
+  assert.equal(holders[0].data.name, 'The Cinder Run Courier');
+  assert.ok(h.state.traffic.freighters.some((r) => r && promotedExpress.some((e) => e.id === r.id)),
+    'every promoted courier is re-tracked with a live roster record');
+});
