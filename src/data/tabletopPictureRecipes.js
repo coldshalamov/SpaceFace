@@ -16,6 +16,7 @@ import {
   estimatePhenomenonCoverage,
   resolveBackgroundComposition,
   resolveBackgroundPaintedSky,
+  resolveBackgroundSky,
   resolveBackgroundStructure,
   resolveSectorVisualProfile,
   skyPlateLuminance,
@@ -232,6 +233,7 @@ export function convoyWorkingGroups(entities, options = {}) {
 export function sectorSkyIdentityRecipe(sector) {
   const profile = resolveSectorVisualProfile(sector);
   const paint = resolveBackgroundPaintedSky(profile);
+  const sky = resolveBackgroundSky(profile);
   const structure = resolveBackgroundStructure(profile);
   const composition = resolveBackgroundComposition(profile);
   const farKind = paint ? 'painted_plate' : (profile.galaxyPlate === true ? 'galaxy' : 'void');
@@ -243,6 +245,9 @@ export function sectorSkyIdentityRecipe(sector) {
       plate: paint ? paint.plate : null,
       strength: paint ? paint.strength : 0,
       luminance: skyPlateLuminance(profile),
+      // The baked sector backdrop (vm-drop/sector-skies) under the accent plate — the layer is
+      // named separately so `kind` keeps classifying the accent/galaxy identity, not the base.
+      sky: sky ? sky.plate : null,
     },
     mid: {
       structureKind: structure.structureKind,
