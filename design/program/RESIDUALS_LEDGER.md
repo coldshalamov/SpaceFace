@@ -163,7 +163,7 @@ lost. Rows whose terminal action was "pathspec commit" or "receipt written" are 
 
 | `NOW.md` row | Named next action |
 |---|---|
-| Onboarding vertical: thesis-first first hour | seed-to-seed replay stability of the swing/raid tow outcome (the far-field-demotion theory was disproven, d313b4db4): identical code+seed must give identical swing/release outcomes across sessions before the 3/3 × 2 stranger metric is claimable; repro fixture in flight this sitting |
+| Onboarding vertical: thesis-first first hour | cross-session (separate process) replay stability of the swing/raid tow outcome: in-process determinism is now pinned green (`test/onboarding-stranger-replay-stability.test.mjs`, 2c3f22391 — identical code+seed gives identical victims/times/phases in-process); the receipt's cross-session claim is the open half |
 | PQ-033.02 min-spec floors and soak | Electron host evidence; median-frame/hitch floors remain host-load-limited |
 | PQ-194 packet refit + S2 embark | S2 frame composition + twelve prototypes (P03/P04/P16) |
 | Finish-game fleet / next-20 dispatch pipeline | Chromium walks timed out (GPU); headed stills residual |
