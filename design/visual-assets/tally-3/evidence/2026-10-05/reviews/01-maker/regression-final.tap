@@ -1,0 +1,47 @@
+✔ cargo init is idempotent for one state and bus (5.71652ms)
+✔ cargo destroy removes listeners and reinit restores one handler (0.534894ms)
+✔ isolated cargo states emit only on their own buses (0.513451ms)
+✔ reinitializing one cargo system detaches its previous state binding (0.468114ms)
+✔ D130: salvage-point lookup answers from the wrecks bucket (7.156432ms)
+✔ D130: sort-pocket payload lookup still resolves by point id (2.156691ms)
+✔ D130: salvage-point miss does not walk the whole map (3.325987ms)
+✔ ECON-04: an applied intake raises one receipt line naming value and yard (2.88809ms)
+✔ ECON-04: failed and malformed intakes stay silent (0.461703ms)
+✔ ECON-04: the economy emit carries the nominal lot value (10.531713ms)
+✔ direct-feed mining spills ordinary ore as pickups when the hold is full (2.054516ms)
+✔ direct-feed mining keeps what fits and spills only the rejected remainder (0.280441ms)
+✔ default Vesta source cuts to one Forge lot, manifests truthfully, and intake retries once (48.510936ms)
+✔ player beam dispute drains the same source and leaves the claimed cutter empty (43.45421ms)
+✔ loaded cutter loss drops one persistent manifest payload without respawning the source (7.393579ms)
+✔ cutter loss before WORK releases the durable source claim without changing its pool (2.663592ms)
+✔ Continue restores one source wreck by stable point, rebinds its cutter, and retains one intake (53.004408ms)
+✔ hard Vesta exit preserves the source-bound cutter, partial pool, loaded manifest, and one intake (15.021199ms)
+✔ the registered Delete binding emits voice:dismiss and the pill clears once (2.815411ms)
+✔ a critical squelch line is not dismissable (0.250847ms)
+✔ the binding is registered and resolvable for prompts (0.101823ms)
+✔ stripping a staked wreck protests and reports the theft (2.879016ms)
+✔ an unstaked wreck strips silently (0.243686ms)
+✔ one protest per window; the report id stays stable across re-protests (0.374342ms)
+✔ a denied report still protests, without claiming the law came (0.294513ms)
+✔ a stake with no live crew still counts — the flag is the claim (0.282384ms)
+✔ the jumped stake lands in the ledger as a raid (0.990308ms)
+✔ coming back to the same stake gets recognized (0.39908ms)
+✔ authored staked sources protest through the ledger path too (0.574554ms)
+✔ the player's own stake is never theft (0.340261ms)
+✔ one pulse resolves contact, identified, and deep tiers by range (3.734791ms)
+✔ generic debris never borrows a story, but its manifest still reads (0.806842ms)
+✔ provenance pointing at no ledger entry reads class-only (0.364087ms)
+✔ a deep reveal investigates once and the memory sticks (0.815726ms)
+✔ an investigated wreck is recognized at contact range on later pulses (0.47923ms)
+✔ surveying three wrecks in a sector toasts the milestone exactly once (0.657538ms)
+✔ a picked-clean wreck reads cold at deep range (0.322664ms)
+✔ intervention wrecks carry their cause into the deep reveal (0.353991ms)
+✔ ship reveals still work unchanged alongside the wreck pass (0.929517ms)
+ℹ tests 39
+ℹ suites 0
+ℹ pass 39
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1276.816898

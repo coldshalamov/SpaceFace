@@ -1,0 +1,15 @@
+{
+  "checks": {
+    "sourceHashMatchesBank": true,
+    "oneRoot": true,
+    "noGltfAnimations": true,
+    "oneNonRenderCollision": true,
+    "motionBindingNodesExist": true,
+    "receiptOnlyStamp": true,
+    "stampMotionOnlyReceipt": true,
+    "allForgeFinishes": true
+  },
+  "glbBytes": 1883244,
+  "glbSha256": "85ae67b12d490606224052c9e2b60f9f352b3d05984e5bec4a28b85674de7f77",
+  "notes": "Node/byte/source contract checks only; not gameplay, GPU, package or normal-route acceptance."
+}

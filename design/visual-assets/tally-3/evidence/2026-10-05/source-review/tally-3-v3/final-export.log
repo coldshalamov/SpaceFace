@@ -1,0 +1,92 @@
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender').
+Warning: No mesh data to join
+Warning: No mesh data to join
+Warning: No mesh data to join
+ERROR Draco mesh compression is not available because library could not be found at /usr/bin/4.3/python/lib/python3.13/site-packages/libextern_draco.so
+22:17:37 | INFO: Starting glTF 2.0 export
+22:17:37 | INFO: Extracting primitive: COLLISION_HULL
+22:17:37 | INFO: Primitives created: 1
+22:17:37 | INFO: Extracting primitive: LOD0_HOOK_DRIVE_CORE
+22:17:37 | INFO: Primitives created: 1
+22:17:37 | INFO: Extracting primitive: LOD0_HOOK_NAV_PORT
+22:17:37 | INFO: Primitives created: 1
+22:17:37 | INFO: Extracting primitive: LOD0_HOOK_NAV_STARBOARD
+22:17:37 | INFO: Primitives created: 1
+22:17:37 | INFO: Extracting primitive: LOD0_Hull
+22:17:37 | WARNING: More than one shader node tex image used for a texture. The resulting glTF sampler will behave like the first shader node tex image.
+22:17:37 | INFO: Primitives created: 1
+22:17:37 | INFO: Extracting primitive: LOD0_Livery
+22:17:37 | WARNING: More than one shader node tex image used for a texture. The resulting glTF sampler will behave like the first shader node tex image.
+22:17:37 | INFO: Primitives created: 1
+22:17:37 | INFO: Extracting primitive: LOD0_Mechanical
+22:17:37 | WARNING: More than one shader node tex image used for a texture. The resulting glTF sampler will behave like the first shader node tex image.
+22:17:37 | INFO: Primitives created: 1
+22:17:37 | INFO: Extracting primitive: LOD0_MechanicalDark
+22:17:37 | WARNING: More than one shader node tex image used for a texture. The resulting glTF sampler will behave like the first shader node tex image.
+22:17:37 | INFO: Primitives created: 1
+22:17:37 | INFO: Extracting primitive: LOD1_HOOK_DRIVE_CORE
+22:17:37 | INFO: Primitives created: 1
+22:17:37 | INFO: Extracting primitive: LOD1_HOOK_NAV_PORT
+22:17:37 | INFO: Primitives created: 1
+22:17:37 | INFO: Extracting primitive: LOD1_HOOK_NAV_STARBOARD
+22:17:37 | INFO: Primitives created: 1
+22:17:37 | INFO: Extracting primitive: LOD1_Hull
+22:17:37 | INFO: Primitives created: 1
+22:17:37 | INFO: Extracting primitive: LOD1_Livery
+22:17:37 | INFO: Primitives created: 1
+22:17:37 | INFO: Extracting primitive: LOD1_Mechanical
+22:17:37 | INFO: Primitives created: 1
+22:17:37 | INFO: Extracting primitive: LOD1_MechanicalDark
+22:17:37 | INFO: Primitives created: 1
+22:17:37 | INFO: Extracting primitive: LOD2_HOOK_DRIVE_CORE
+22:17:37 | INFO: Primitives created: 1
+22:17:37 | WARNING: Mesh LOD2_HOOK_NAV_PORT is not valid, and may be exported wrongly
+22:17:37 | INFO: Extracting primitive: LOD2_HOOK_NAV_PORT
+22:17:37 | INFO: Primitives created: 1
+22:17:37 | WARNING: Mesh LOD2_HOOK_NAV_STARBOARD is not valid, and may be exported wrongly
+22:17:37 | INFO: Extracting primitive: LOD2_HOOK_NAV_STARBOARD
+22:17:37 | INFO: Primitives created: 1
+22:17:37 | INFO: Extracting primitive: LOD2_Hull
+22:17:37 | INFO: Primitives created: 1
+22:17:37 | INFO: Extracting primitive: LOD2_Livery
+22:17:37 | INFO: Primitives created: 1
+22:17:37 | INFO: Extracting primitive: LOD2_Mechanical
+22:17:37 | INFO: Primitives created: 1
+22:17:37 | INFO: Extracting primitive: LOD2_MechanicalDark
+22:17:37 | INFO: Primitives created: 1
+22:17:37 | INFO: Extracting primitive: LOD0_MOTION_TALLY_ARM_LEFT_Mechanical
+22:17:37 | INFO: Primitives created: 1
+22:17:37 | INFO: Extracting primitive: LOD1_MOTION_TALLY_ARM_LEFT_Mechanical
+22:17:37 | INFO: Primitives created: 1
+22:17:37 | WARNING: Mesh LOD2_MOTION_TALLY_ARM_LEFT_Mechanical is not valid, and may be exported wrongly
+22:17:37 | INFO: Extracting primitive: LOD2_MOTION_TALLY_ARM_LEFT_Mechanical
+22:17:37 | INFO: Primitives created: 1
+22:17:37 | INFO: Extracting primitive: LOD0_MOTION_TALLY_ARM_RIGHT_Mechanical
+22:17:37 | INFO: Primitives created: 1
+22:17:37 | INFO: Extracting primitive: LOD1_MOTION_TALLY_ARM_RIGHT_Mechanical
+22:17:37 | INFO: Primitives created: 1
+22:17:37 | WARNING: Mesh LOD2_MOTION_TALLY_ARM_RIGHT_Mechanical is not valid, and may be exported wrongly
+22:17:37 | INFO: Extracting primitive: LOD2_MOTION_TALLY_ARM_RIGHT_Mechanical
+22:17:37 | INFO: Primitives created: 1
+22:17:37 | INFO: Extracting primitive: LOD0_MOTION_TALLY_SCAN_Lights_Cyan
+22:17:37 | INFO: Primitives created: 1
+22:17:37 | INFO: Extracting primitive: LOD1_MOTION_TALLY_SCAN_Lights_Cyan
+22:17:37 | INFO: Primitives created: 1
+22:17:37 | INFO: Extracting primitive: LOD2_MOTION_TALLY_SCAN_Lights_Cyan
+22:17:37 | INFO: Primitives created: 1
+22:17:37 | INFO: Extracting primitive: LOD0_MOTION_TALLY_STAMP_Livery
+22:17:37 | INFO: Primitives created: 1
+22:17:37 | INFO: Extracting primitive: LOD1_MOTION_TALLY_STAMP_Livery
+22:17:37 | INFO: Primitives created: 1
+22:17:37 | INFO: Extracting primitive: LOD2_MOTION_TALLY_STAMP_Livery
+22:17:37 | INFO: Primitives created: 1
+22:17:37 | INFO: Finished glTF 2.0 export in 0.15758681297302246 s
+
+Info: Packed 6 file(s)
+Info: Saved "tally_3.blend"
+TALLY_EXPORT_STATS {"0": {"triangles": 16242, "drawPrimitives": 11}, "1": {"triangles": 6492, "drawPrimitives": 11}, "2": {"triangles": 2156, "drawPrimitives": 11}}
+TALLY_BOUNDS {"folded": {"min": [-10.681609153747559, -5.117123126983643, -1.409999966621399], "max": [11.175683975219727, 5.6300554275512695, 4.211710453033447], "size": [21.857293128967285, 10.747178554534912, 5.621710419654846], "maxRootDistanceMetres": 11.412673614383662}, "deployed": {"min": [-10.681609153747559, -8.551218032836914, -1.409999966621399], "max": [11.175683975219727, 10.00014877319336, 4.211710453033447], "size": [21.857293128967285, 18.551366806030273, 5.621710419654846], "maxRootDistanceMetres": 11.412673614383662}, "disputed": {"min": [-10.681609153747559, -7.952997207641602, -1.409999966621399], "max": [11.175683975219727, 10.165203094482422, 4.211710453033447], "size": [21.857293128967285, 18.118200302124023, 5.621710419654846], "maxRootDistanceMetres": 11.412673614383662}}
+TALLY_3_COMPLETE /workspace/scratch/d2415e46e35b/tally-maker-v1/candidate/assets/ships/parts/places/place_tally_3.glb
+Blender 4.3.2
+
+Blender quit

@@ -1,0 +1,709 @@
+{
+  "schema": "spaceface.tally3ProductionConsumerCpu.v1",
+  "status": "passed",
+  "startedAt": "2026-10-05T03:30:32.106Z",
+  "repoRoot": "/workspace/scratch/d2415e46e35b/spaceface-recovery-pr221-git/.worktrees/spaceface-integration",
+  "limits": "CPU production-consumer evidence only. Real verified metadata/render GLB, stock GLTFLoader and Meshopt geometry decode, production source resolver/runtime-table binding/partsLibrary composition/motion/lifecycle. KTX2 images are Texture placeholders; canvas and GPU pipeline/exact-target callbacks are instrumented CPU ports. No texture-pixel, GPU image, frame-time, performance, native whole-world Continue, production-world census or visual acceptance claim.",
+  "checks": [
+    {
+      "name": "reviewed source → release → generated resolver → actual package and motion lineage"
+    },
+    {
+      "name": "default verified GLB decoder + production package admission + precompiled runtime-table binding",
+      "primitives": 33,
+      "texturePlaceholders": 6,
+      "sourceFallback": false
+    },
+    {
+      "name": "actual public partsLibrary selection, authored swap, source marker and motion registration"
+    },
+    {
+      "name": "all three actual package LODs retain four motion bindings and switch exclusive visible meshes",
+      "lod0": {
+        "visibleMeshCandidates": 8,
+        "triangles": 16242
+      },
+      "lod1": {
+        "visibleMeshCandidates": 8,
+        "triangles": 6492
+      },
+      "lod2": {
+        "visibleMeshCandidates": 8,
+        "triangles": 2133
+      }
+    },
+    {
+      "name": "all three actual package LODs evaluate assessment through the production three-argument motion driver"
+    },
+    {
+      "name": "actual package stamp rejects forged pose and follows the public accepted settlement"
+    },
+    {
+      "name": "public Save/adoption revokes old exact actor, admits fresh package instance and preserves successor on late disposal"
+    },
+    {
+      "name": "runtime retirement + idempotent motion/boundary disposal + package eviction revoke stale mounts"
+    }
+  ],
+  "runnerSha256": "83a58d82d1709d416fb72b0fb0122606beed401c99d6c2ffc97a8dc3a213540c",
+  "adapter": "partsLibrary buildAuthoredPlaceProp/requestAuthoredUpgrade/public queue → injected load port → generated renderPackagePilotForSourceUrl → exported loadAuthoredRenderPackagePilot → default createRenderPackageLoader decoder. The browser runtime-constructor singleton and GPU implementation are outside this CPU gate.",
+  "namedPrimitiveCounts": {
+    "source": [
+      {
+        "node": "LOD0_HOOK_DRIVE_CORE",
+        "index": 0,
+        "mode": 4,
+        "triangles": 22
+      },
+      {
+        "node": "LOD0_HOOK_NAV_PORT",
+        "index": 0,
+        "mode": 4,
+        "triangles": 12
+      },
+      {
+        "node": "LOD0_HOOK_NAV_STARBOARD",
+        "index": 0,
+        "mode": 4,
+        "triangles": 12
+      },
+      {
+        "node": "LOD0_Hull",
+        "index": 0,
+        "mode": 4,
+        "triangles": 938
+      },
+      {
+        "node": "LOD0_Livery",
+        "index": 0,
+        "mode": 4,
+        "triangles": 494
+      },
+      {
+        "node": "LOD0_Mechanical",
+        "index": 0,
+        "mode": 4,
+        "triangles": 5671
+      },
+      {
+        "node": "LOD0_MechanicalDark",
+        "index": 0,
+        "mode": 4,
+        "triangles": 4603
+      },
+      {
+        "node": "LOD0_MOTION_TALLY_ARM_LEFT_Mechanical",
+        "index": 0,
+        "mode": 4,
+        "triangles": 1464
+      },
+      {
+        "node": "LOD0_MOTION_TALLY_ARM_RIGHT_Mechanical",
+        "index": 0,
+        "mode": 4,
+        "triangles": 1416
+      },
+      {
+        "node": "LOD0_MOTION_TALLY_SCAN_Lights_Cyan",
+        "index": 0,
+        "mode": 4,
+        "triangles": 92
+      },
+      {
+        "node": "LOD0_MOTION_TALLY_STAMP_Livery",
+        "index": 0,
+        "mode": 4,
+        "triangles": 1518
+      },
+      {
+        "node": "LOD1_HOOK_DRIVE_CORE",
+        "index": 0,
+        "mode": 4,
+        "triangles": 22
+      },
+      {
+        "node": "LOD1_HOOK_NAV_PORT",
+        "index": 0,
+        "mode": 4,
+        "triangles": 12
+      },
+      {
+        "node": "LOD1_HOOK_NAV_STARBOARD",
+        "index": 0,
+        "mode": 4,
+        "triangles": 12
+      },
+      {
+        "node": "LOD1_Hull",
+        "index": 0,
+        "mode": 4,
+        "triangles": 481
+      },
+      {
+        "node": "LOD1_Livery",
+        "index": 0,
+        "mode": 4,
+        "triangles": 225
+      },
+      {
+        "node": "LOD1_Mechanical",
+        "index": 0,
+        "mode": 4,
+        "triangles": 2473
+      },
+      {
+        "node": "LOD1_MechanicalDark",
+        "index": 0,
+        "mode": 4,
+        "triangles": 1475
+      },
+      {
+        "node": "LOD1_MOTION_TALLY_ARM_LEFT_Mechanical",
+        "index": 0,
+        "mode": 4,
+        "triangles": 584
+      },
+      {
+        "node": "LOD1_MOTION_TALLY_ARM_RIGHT_Mechanical",
+        "index": 0,
+        "mode": 4,
+        "triangles": 566
+      },
+      {
+        "node": "LOD1_MOTION_TALLY_SCAN_Lights_Cyan",
+        "index": 0,
+        "mode": 4,
+        "triangles": 36
+      },
+      {
+        "node": "LOD1_MOTION_TALLY_STAMP_Livery",
+        "index": 0,
+        "mode": 4,
+        "triangles": 606
+      },
+      {
+        "node": "LOD2_HOOK_DRIVE_CORE",
+        "index": 0,
+        "mode": 4,
+        "triangles": 7
+      },
+      {
+        "node": "LOD2_HOOK_NAV_PORT",
+        "index": 0,
+        "mode": 4,
+        "triangles": 1
+      },
+      {
+        "node": "LOD2_HOOK_NAV_STARBOARD",
+        "index": 0,
+        "mode": 4,
+        "triangles": 1
+      },
+      {
+        "node": "LOD2_Hull",
+        "index": 0,
+        "mode": 4,
+        "triangles": 170
+      },
+      {
+        "node": "LOD2_Livery",
+        "index": 0,
+        "mode": 4,
+        "triangles": 59
+      },
+      {
+        "node": "LOD2_Mechanical",
+        "index": 0,
+        "mode": 4,
+        "triangles": 718
+      },
+      {
+        "node": "LOD2_MechanicalDark",
+        "index": 0,
+        "mode": 4,
+        "triangles": 394
+      },
+      {
+        "node": "LOD2_MOTION_TALLY_ARM_LEFT_Mechanical",
+        "index": 0,
+        "mode": 4,
+        "triangles": 252
+      },
+      {
+        "node": "LOD2_MOTION_TALLY_ARM_RIGHT_Mechanical",
+        "index": 0,
+        "mode": 4,
+        "triangles": 243
+      },
+      {
+        "node": "LOD2_MOTION_TALLY_SCAN_Lights_Cyan",
+        "index": 0,
+        "mode": 4,
+        "triangles": 16
+      },
+      {
+        "node": "LOD2_MOTION_TALLY_STAMP_Livery",
+        "index": 0,
+        "mode": 4,
+        "triangles": 272
+      }
+    ],
+    "release": [
+      {
+        "node": "LOD0_HOOK_DRIVE_CORE",
+        "index": 0,
+        "mode": 4,
+        "triangles": 22
+      },
+      {
+        "node": "LOD0_HOOK_NAV_PORT",
+        "index": 0,
+        "mode": 4,
+        "triangles": 12
+      },
+      {
+        "node": "LOD0_HOOK_NAV_STARBOARD",
+        "index": 0,
+        "mode": 4,
+        "triangles": 12
+      },
+      {
+        "node": "LOD0_Hull",
+        "index": 0,
+        "mode": 4,
+        "triangles": 938
+      },
+      {
+        "node": "LOD0_Livery",
+        "index": 0,
+        "mode": 4,
+        "triangles": 494
+      },
+      {
+        "node": "LOD0_Mechanical",
+        "index": 0,
+        "mode": 4,
+        "triangles": 5671
+      },
+      {
+        "node": "LOD0_MechanicalDark",
+        "index": 0,
+        "mode": 4,
+        "triangles": 4603
+      },
+      {
+        "node": "LOD0_MOTION_TALLY_ARM_LEFT_Mechanical",
+        "index": 0,
+        "mode": 4,
+        "triangles": 1464
+      },
+      {
+        "node": "LOD0_MOTION_TALLY_ARM_RIGHT_Mechanical",
+        "index": 0,
+        "mode": 4,
+        "triangles": 1416
+      },
+      {
+        "node": "LOD0_MOTION_TALLY_SCAN_Lights_Cyan",
+        "index": 0,
+        "mode": 4,
+        "triangles": 92
+      },
+      {
+        "node": "LOD0_MOTION_TALLY_STAMP_Livery",
+        "index": 0,
+        "mode": 4,
+        "triangles": 1518
+      },
+      {
+        "node": "LOD1_HOOK_DRIVE_CORE",
+        "index": 0,
+        "mode": 4,
+        "triangles": 22
+      },
+      {
+        "node": "LOD1_HOOK_NAV_PORT",
+        "index": 0,
+        "mode": 4,
+        "triangles": 12
+      },
+      {
+        "node": "LOD1_HOOK_NAV_STARBOARD",
+        "index": 0,
+        "mode": 4,
+        "triangles": 12
+      },
+      {
+        "node": "LOD1_Hull",
+        "index": 0,
+        "mode": 4,
+        "triangles": 481
+      },
+      {
+        "node": "LOD1_Livery",
+        "index": 0,
+        "mode": 4,
+        "triangles": 225
+      },
+      {
+        "node": "LOD1_Mechanical",
+        "index": 0,
+        "mode": 4,
+        "triangles": 2473
+      },
+      {
+        "node": "LOD1_MechanicalDark",
+        "index": 0,
+        "mode": 4,
+        "triangles": 1475
+      },
+      {
+        "node": "LOD1_MOTION_TALLY_ARM_LEFT_Mechanical",
+        "index": 0,
+        "mode": 4,
+        "triangles": 584
+      },
+      {
+        "node": "LOD1_MOTION_TALLY_ARM_RIGHT_Mechanical",
+        "index": 0,
+        "mode": 4,
+        "triangles": 566
+      },
+      {
+        "node": "LOD1_MOTION_TALLY_SCAN_Lights_Cyan",
+        "index": 0,
+        "mode": 4,
+        "triangles": 36
+      },
+      {
+        "node": "LOD1_MOTION_TALLY_STAMP_Livery",
+        "index": 0,
+        "mode": 4,
+        "triangles": 606
+      },
+      {
+        "node": "LOD2_HOOK_DRIVE_CORE",
+        "index": 0,
+        "mode": 4,
+        "triangles": 7
+      },
+      {
+        "node": "LOD2_HOOK_NAV_PORT",
+        "index": 0,
+        "mode": 4,
+        "triangles": 1
+      },
+      {
+        "node": "LOD2_HOOK_NAV_STARBOARD",
+        "index": 0,
+        "mode": 4,
+        "triangles": 1
+      },
+      {
+        "node": "LOD2_Hull",
+        "index": 0,
+        "mode": 4,
+        "triangles": 170
+      },
+      {
+        "node": "LOD2_Livery",
+        "index": 0,
+        "mode": 4,
+        "triangles": 59
+      },
+      {
+        "node": "LOD2_Mechanical",
+        "index": 0,
+        "mode": 4,
+        "triangles": 718
+      },
+      {
+        "node": "LOD2_MechanicalDark",
+        "index": 0,
+        "mode": 4,
+        "triangles": 394
+      },
+      {
+        "node": "LOD2_MOTION_TALLY_ARM_LEFT_Mechanical",
+        "index": 0,
+        "mode": 4,
+        "triangles": 252
+      },
+      {
+        "node": "LOD2_MOTION_TALLY_ARM_RIGHT_Mechanical",
+        "index": 0,
+        "mode": 4,
+        "triangles": 243
+      },
+      {
+        "node": "LOD2_MOTION_TALLY_SCAN_Lights_Cyan",
+        "index": 0,
+        "mode": 4,
+        "triangles": 16
+      },
+      {
+        "node": "LOD2_MOTION_TALLY_STAMP_Livery",
+        "index": 0,
+        "mode": 4,
+        "triangles": 272
+      }
+    ],
+    "render": [
+      {
+        "node": "LOD0_HOOK_DRIVE_CORE",
+        "index": 0,
+        "mode": 4,
+        "triangles": 22
+      },
+      {
+        "node": "LOD0_HOOK_NAV_PORT",
+        "index": 0,
+        "mode": 4,
+        "triangles": 12
+      },
+      {
+        "node": "LOD0_HOOK_NAV_STARBOARD",
+        "index": 0,
+        "mode": 4,
+        "triangles": 12
+      },
+      {
+        "node": "LOD0_Hull",
+        "index": 0,
+        "mode": 4,
+        "triangles": 938
+      },
+      {
+        "node": "LOD0_Livery",
+        "index": 0,
+        "mode": 4,
+        "triangles": 494
+      },
+      {
+        "node": "LOD0_Mechanical",
+        "index": 0,
+        "mode": 4,
+        "triangles": 5671
+      },
+      {
+        "node": "LOD0_MechanicalDark",
+        "index": 0,
+        "mode": 4,
+        "triangles": 4603
+      },
+      {
+        "node": "LOD0_MOTION_TALLY_ARM_LEFT_Mechanical",
+        "index": 0,
+        "mode": 4,
+        "triangles": 1464
+      },
+      {
+        "node": "LOD0_MOTION_TALLY_ARM_RIGHT_Mechanical",
+        "index": 0,
+        "mode": 4,
+        "triangles": 1416
+      },
+      {
+        "node": "LOD0_MOTION_TALLY_SCAN_Lights_Cyan",
+        "index": 0,
+        "mode": 4,
+        "triangles": 92
+      },
+      {
+        "node": "LOD0_MOTION_TALLY_STAMP_Livery",
+        "index": 0,
+        "mode": 4,
+        "triangles": 1518
+      },
+      {
+        "node": "LOD1_HOOK_DRIVE_CORE",
+        "index": 0,
+        "mode": 4,
+        "triangles": 22
+      },
+      {
+        "node": "LOD1_HOOK_NAV_PORT",
+        "index": 0,
+        "mode": 4,
+        "triangles": 12
+      },
+      {
+        "node": "LOD1_HOOK_NAV_STARBOARD",
+        "index": 0,
+        "mode": 4,
+        "triangles": 12
+      },
+      {
+        "node": "LOD1_Hull",
+        "index": 0,
+        "mode": 4,
+        "triangles": 481
+      },
+      {
+        "node": "LOD1_Livery",
+        "index": 0,
+        "mode": 4,
+        "triangles": 225
+      },
+      {
+        "node": "LOD1_Mechanical",
+        "index": 0,
+        "mode": 4,
+        "triangles": 2473
+      },
+      {
+        "node": "LOD1_MechanicalDark",
+        "index": 0,
+        "mode": 4,
+        "triangles": 1475
+      },
+      {
+        "node": "LOD1_MOTION_TALLY_ARM_LEFT_Mechanical",
+        "index": 0,
+        "mode": 4,
+        "triangles": 584
+      },
+      {
+        "node": "LOD1_MOTION_TALLY_ARM_RIGHT_Mechanical",
+        "index": 0,
+        "mode": 4,
+        "triangles": 566
+      },
+      {
+        "node": "LOD1_MOTION_TALLY_SCAN_Lights_Cyan",
+        "index": 0,
+        "mode": 4,
+        "triangles": 36
+      },
+      {
+        "node": "LOD1_MOTION_TALLY_STAMP_Livery",
+        "index": 0,
+        "mode": 4,
+        "triangles": 606
+      },
+      {
+        "node": "LOD2_HOOK_DRIVE_CORE",
+        "index": 0,
+        "mode": 4,
+        "triangles": 7
+      },
+      {
+        "node": "LOD2_HOOK_NAV_PORT",
+        "index": 0,
+        "mode": 4,
+        "triangles": 1
+      },
+      {
+        "node": "LOD2_HOOK_NAV_STARBOARD",
+        "index": 0,
+        "mode": 4,
+        "triangles": 1
+      },
+      {
+        "node": "LOD2_Hull",
+        "index": 0,
+        "mode": 4,
+        "triangles": 170
+      },
+      {
+        "node": "LOD2_Livery",
+        "index": 0,
+        "mode": 4,
+        "triangles": 59
+      },
+      {
+        "node": "LOD2_Mechanical",
+        "index": 0,
+        "mode": 4,
+        "triangles": 718
+      },
+      {
+        "node": "LOD2_MechanicalDark",
+        "index": 0,
+        "mode": 4,
+        "triangles": 394
+      },
+      {
+        "node": "LOD2_MOTION_TALLY_ARM_LEFT_Mechanical",
+        "index": 0,
+        "mode": 4,
+        "triangles": 252
+      },
+      {
+        "node": "LOD2_MOTION_TALLY_ARM_RIGHT_Mechanical",
+        "index": 0,
+        "mode": 4,
+        "triangles": 243
+      },
+      {
+        "node": "LOD2_MOTION_TALLY_SCAN_Lights_Cyan",
+        "index": 0,
+        "mode": 4,
+        "triangles": 16
+      },
+      {
+        "node": "LOD2_MOTION_TALLY_STAMP_Livery",
+        "index": 0,
+        "mode": 4,
+        "triangles": 272
+      }
+    ]
+  },
+  "sourceLodTriangles": {
+    "lod0": 16242,
+    "lod1": 6492,
+    "lod2": 2133
+  },
+  "lineage": {
+    "sourceSha256": "85ae67b12d490606224052c9e2b60f9f352b3d05984e5bec4a28b85674de7f77",
+    "releaseSha256": "10fbb5b67f22774484463812b20c3b2e6d07d7cc90517beedf2a6f88a87e2db1",
+    "contentHash": "4bcd93ffb31750aaee068075769eadd1b57f8e8d14a920886330452f01a06a31",
+    "runtimeHash": "79c1b100bb962654372c60482fa83bfde3618394e5187806cd12ce32df973cf5",
+    "renderSha256": "90a73cb4b15daab23b813c7bb9b9323e6e7f5879de1e3e30d8caf7e58b51196f",
+    "motionSha256": "51ad42be1f93c55ce183d959616bc81f7f1518427e0225de448ed3fc1ae58926",
+    "metadataUrl": "assets/ships/release/render-packages/tally-3/render-package.json"
+  },
+  "lods": {
+    "lod0": {
+      "visibleMeshCandidates": 8,
+      "triangles": 16242
+    },
+    "lod1": {
+      "visibleMeshCandidates": 8,
+      "triangles": 6492
+    },
+    "lod2": {
+      "visibleMeshCandidates": 8,
+      "triangles": 2133
+    }
+  },
+  "cpuPorts": {
+    "pipelineCalls": 2,
+    "exactTargetCalls": 2,
+    "texturePlaceholders": 6,
+    "preparationCalls": 1,
+    "decodeCalls": 1
+  },
+  "loads": [
+    {
+      "url": "assets/ships/release/parts/places/place_tally_3.glb",
+      "slot": "place"
+    },
+    {
+      "url": "assets/ships/release/parts/places/place_tally_3.glb",
+      "slot": "place"
+    },
+    {
+      "url": "assets/ships/release/parts/places/place_tally_3.glb",
+      "slot": "place"
+    }
+  ],
+  "finishedAt": "2026-10-05T03:30:33.378Z",
+  "fetched": [
+    "assets/ships/release/render-packages/tally-3/render-package.json",
+    "file:///workspace/scratch/d2415e46e35b/spaceface-recovery-pr221-git/.worktrees/spaceface-integration/assets/ships/release/render-packages/tally-3/render.glb",
+    "assets/ships/motions/tally-3.motion.json"
+  ],
+  "inputFiles": 1699,
+  "inputCohortSha256": "69b165bef84aa36ef4de5990e8a03226a32475794e81b457fd850df90ca2dae6"
+}

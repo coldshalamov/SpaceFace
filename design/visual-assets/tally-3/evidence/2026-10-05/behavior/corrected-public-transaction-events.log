@@ -1,0 +1,16 @@
+✔ Save/reentry at cargo:changed preserves exact original law fact and applies heat once (8.387548ms)
+✔ Save/reentry at law:incidentReceipt preserves exact original law fact and applies heat once (1.169196ms)
+✔ Save/reentry at law:reportIncidentReceipt preserves exact original law fact and applies heat once (1.034283ms)
+✔ narrow cargo callback failure preserves accepted quantity and ordinary addCargo behavior (0.970287ms)
+✔ law callback failure cannot duplicate cargo or invent an accepted incident (0.475043ms)
+✔ public Save/loadEnvelope from cargo:changed retains witnessed theft once (51.177677ms)
+✔ public Save/loadEnvelope from law:incidentReceipt retains witnessed theft once (16.800854ms)
+✔ public Save/loadEnvelope from law:reportIncidentReceipt retains witnessed theft once (15.048642ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 954.64416

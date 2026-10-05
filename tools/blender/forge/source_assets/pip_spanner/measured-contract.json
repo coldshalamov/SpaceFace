@@ -1,0 +1,145 @@
+{
+  "assetId": "sf20_19_pip_spanner",
+  "lods": {
+    "0": {
+      "file": "pip_spanner.glb",
+      "triangles": 16920,
+      "drawPrimitives": 25,
+      "meshes": 25,
+      "materials": 7,
+      "images": 6,
+      "bytes": 1140560,
+      "sha256": "32b9d623fd8f9166109b5b4690ccf7712d90d5d3dde25a14a61329daa0d7c2cd"
+    },
+    "1": {
+      "file": "pip_spanner_lod1.glb",
+      "triangles": 6766,
+      "drawPrimitives": 25,
+      "meshes": 25,
+      "materials": 7,
+      "images": 6,
+      "bytes": 664924,
+      "sha256": "6a72437db665c5e5cff66e669186d7551b1b6a24169164c473a55214ce2e6d2b"
+    },
+    "2": {
+      "file": "pip_spanner_lod2.glb",
+      "triangles": 3042,
+      "drawPrimitives": 25,
+      "meshes": 25,
+      "materials": 7,
+      "images": 6,
+      "bytes": 498572,
+      "sha256": "b8c3fb3fbd8f1b67f0a77055eb242934a9f4c740c87f4c3dc2b4ea60dfb05646"
+    }
+  },
+  "pivots": {
+    "SPANNER_ROOT": {
+      "blenderWorldPivot": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "gltfWorldPivot": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "parent": "SF20_19_PREVIEW_ROOT"
+    },
+    "CLAW_L": {
+      "blenderWorldPivot": [
+        1.6200000047683716,
+        3.5999999046325684,
+        0.30000001192092896
+      ],
+      "gltfWorldPivot": [
+        1.6200000047683716,
+        0.30000001192092896,
+        -3.5999999046325684
+      ],
+      "parent": "SPANNER_ROOT"
+    },
+    "CLAW_R": {
+      "blenderWorldPivot": [
+        1.6200000047683716,
+        -3.5999999046325684,
+        0.30000001192092896
+      ],
+      "gltfWorldPivot": [
+        1.6200000047683716,
+        0.30000001192092896,
+        3.5999999046325684
+      ],
+      "parent": "SPANNER_ROOT"
+    },
+    "ITEM_CRADLE": {
+      "blenderWorldPivot": [
+        1.25,
+        0.0,
+        0.800000011920929
+      ],
+      "gltfWorldPivot": [
+        1.25,
+        0.800000011920929,
+        -0.0
+      ],
+      "parent": "SPANNER_ROOT"
+    },
+    "PIP_ROOT": {
+      "blenderWorldPivot": [
+        -8.399999618530273,
+        4.400000095367432,
+        1.899999976158142
+      ],
+      "gltfWorldPivot": [
+        -8.399999618530273,
+        1.899999976158142,
+        -4.400000095367432
+      ],
+      "parent": "SF20_19_PREVIEW_ROOT"
+    },
+    "PIP_POINTER": {
+      "blenderWorldPivot": [
+        -7.899999618530273,
+        3.6100001335144043,
+        1.7799999713897705
+      ],
+      "gltfWorldPivot": [
+        -7.899999618530273,
+        1.7799999713897705,
+        -3.6100001335144043
+      ],
+      "parent": "PIP_ROOT"
+    }
+  },
+  "sourceBoundsMetres": {
+    "x": [
+      -10.885000228881836,
+      7.0965094566345215
+    ],
+    "y": [
+      -4.510000228881836,
+      5.695106506347656
+    ],
+    "z": [
+      -0.699999988079071,
+      3.2939066886901855
+    ]
+  },
+  "sourcePartCount": 58,
+  "forgeSharedTextureFiles": 6,
+  "uniqueTextureFiles": 0,
+  "cameraPreviewOnly": true,
+  "gameMeasurements": "PENDING actual armory consumer; primitive counts above are exported cost, not observed frame cost",
+  "sourceContractCorrection": {
+    "version": 2,
+    "change": "Metadata only: identical full canonical contract at asset, scene and SF20_19_PREVIEW_ROOT; explicit single-tier source declaration for each separate file.",
+    "exportedLods": [
+      "lod0"
+    ],
+    "deliverableRole": "production_single_lod_preview",
+    "numericSourceTierPreserved": true,
+    "geometryMaterialsBuffersTransformsUnchanged": true,
+    "proof": "evidence/glb-metadata-parity.json"
+  }
+}

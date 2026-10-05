@@ -1,0 +1,41 @@
+{
+  "top": {
+    "sourcePixels": [
+      1440,
+      1080
+    ],
+    "silhouetteBox": [
+      170,
+      56,
+      1295,
+      1009
+    ],
+    "sha256": "333cfb39cc7e7d8b8acbefc0f0371fff77b31fc4b5597443198ef27300707d9c"
+  },
+  "chase": {
+    "sourcePixels": [
+      1440,
+      1080
+    ],
+    "silhouetteBox": [
+      187,
+      217,
+      1263,
+      922
+    ],
+    "sha256": "c224a9c29b8075d7c6e5955eee60915eac1ed1a8448af3187f9be75f47de568a"
+  },
+  "working": {
+    "sourcePixels": [
+      1440,
+      1080
+    ],
+    "silhouetteBox": [
+      189,
+      211,
+      1260,
+      905
+    ],
+    "sha256": "1fe07be0a452aeecac6a902d2685c84e86e4dd83fe97943fb2e6550cbe5adb2f"
+  }
+}

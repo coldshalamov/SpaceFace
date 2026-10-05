@@ -1,0 +1,711 @@
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender').
+Warning: No mesh data to join
+Warning: No mesh data to join
+Warning: No mesh data to join
+ERROR Draco mesh compression is not available because library could not be found at /usr/bin/4.3/python/lib/python3.13/site-packages/libextern_draco.so
+22:13:59 | INFO: Starting glTF 2.0 export
+22:13:59 | INFO: Extracting primitive: COLLISION_HULL
+22:13:59 | INFO: Primitives created: 1
+22:13:59 | INFO: Extracting primitive: LOD0_HOOK_DRIVE_CORE
+22:13:59 | INFO: Primitives created: 1
+22:13:59 | INFO: Extracting primitive: LOD0_HOOK_NAV_PORT
+22:13:59 | INFO: Primitives created: 1
+22:13:59 | INFO: Extracting primitive: LOD0_HOOK_NAV_STARBOARD
+22:13:59 | INFO: Primitives created: 1
+22:13:59 | INFO: Extracting primitive: LOD0_Hull
+22:13:59 | WARNING: More than one shader node tex image used for a texture. The resulting glTF sampler will behave like the first shader node tex image.
+22:13:59 | INFO: Primitives created: 1
+22:13:59 | INFO: Extracting primitive: LOD0_Livery
+22:13:59 | WARNING: More than one shader node tex image used for a texture. The resulting glTF sampler will behave like the first shader node tex image.
+22:13:59 | INFO: Primitives created: 1
+22:13:59 | INFO: Extracting primitive: LOD0_Mechanical
+22:13:59 | WARNING: More than one shader node tex image used for a texture. The resulting glTF sampler will behave like the first shader node tex image.
+22:13:59 | INFO: Primitives created: 1
+22:13:59 | INFO: Extracting primitive: LOD0_MechanicalDark
+22:13:59 | WARNING: More than one shader node tex image used for a texture. The resulting glTF sampler will behave like the first shader node tex image.
+22:13:59 | INFO: Primitives created: 1
+22:13:59 | INFO: Extracting primitive: LOD1_HOOK_DRIVE_CORE
+22:13:59 | INFO: Primitives created: 1
+22:13:59 | INFO: Extracting primitive: LOD1_HOOK_NAV_PORT
+22:13:59 | INFO: Primitives created: 1
+22:13:59 | INFO: Extracting primitive: LOD1_HOOK_NAV_STARBOARD
+22:13:59 | INFO: Primitives created: 1
+22:13:59 | INFO: Extracting primitive: LOD1_Hull
+22:13:59 | INFO: Primitives created: 1
+22:13:59 | INFO: Extracting primitive: LOD1_Livery
+22:13:59 | INFO: Primitives created: 1
+22:13:59 | INFO: Extracting primitive: LOD1_Mechanical
+22:13:59 | INFO: Primitives created: 1
+22:13:59 | INFO: Extracting primitive: LOD1_MechanicalDark
+22:13:59 | INFO: Primitives created: 1
+22:13:59 | INFO: Extracting primitive: LOD2_HOOK_DRIVE_CORE
+22:13:59 | INFO: Primitives created: 1
+22:13:59 | WARNING: Mesh LOD2_HOOK_NAV_PORT is not valid, and may be exported wrongly
+22:13:59 | INFO: Extracting primitive: LOD2_HOOK_NAV_PORT
+22:13:59 | INFO: Primitives created: 1
+22:13:59 | WARNING: Mesh LOD2_HOOK_NAV_STARBOARD is not valid, and may be exported wrongly
+22:13:59 | INFO: Extracting primitive: LOD2_HOOK_NAV_STARBOARD
+22:13:59 | INFO: Primitives created: 1
+22:13:59 | INFO: Extracting primitive: LOD2_Hull
+22:13:59 | INFO: Primitives created: 1
+22:13:59 | INFO: Extracting primitive: LOD2_Livery
+22:13:59 | INFO: Primitives created: 1
+22:13:59 | INFO: Extracting primitive: LOD2_Mechanical
+22:13:59 | INFO: Primitives created: 1
+22:13:59 | INFO: Extracting primitive: LOD2_MechanicalDark
+22:13:59 | INFO: Primitives created: 1
+22:13:59 | INFO: Extracting primitive: LOD0_MOTION_TALLY_ARM_LEFT_Mechanical
+22:13:59 | INFO: Primitives created: 1
+22:13:59 | INFO: Extracting primitive: LOD1_MOTION_TALLY_ARM_LEFT_Mechanical
+22:13:59 | INFO: Primitives created: 1
+22:13:59 | WARNING: Mesh LOD2_MOTION_TALLY_ARM_LEFT_Mechanical is not valid, and may be exported wrongly
+22:13:59 | INFO: Extracting primitive: LOD2_MOTION_TALLY_ARM_LEFT_Mechanical
+22:13:59 | INFO: Primitives created: 1
+22:13:59 | INFO: Extracting primitive: LOD0_MOTION_TALLY_ARM_RIGHT_Mechanical
+22:13:59 | INFO: Primitives created: 1
+22:13:59 | INFO: Extracting primitive: LOD1_MOTION_TALLY_ARM_RIGHT_Mechanical
+22:13:59 | INFO: Primitives created: 1
+22:13:59 | WARNING: Mesh LOD2_MOTION_TALLY_ARM_RIGHT_Mechanical is not valid, and may be exported wrongly
+22:13:59 | INFO: Extracting primitive: LOD2_MOTION_TALLY_ARM_RIGHT_Mechanical
+22:13:59 | INFO: Primitives created: 1
+22:13:59 | INFO: Extracting primitive: LOD0_MOTION_TALLY_SCAN_Lights_Cyan
+22:13:59 | INFO: Primitives created: 1
+22:13:59 | INFO: Extracting primitive: LOD1_MOTION_TALLY_SCAN_Lights_Cyan
+22:13:59 | INFO: Primitives created: 1
+22:13:59 | INFO: Extracting primitive: LOD2_MOTION_TALLY_SCAN_Lights_Cyan
+22:13:59 | INFO: Primitives created: 1
+22:13:59 | INFO: Extracting primitive: LOD0_MOTION_TALLY_STAMP_Livery
+22:13:59 | INFO: Primitives created: 1
+22:13:59 | INFO: Extracting primitive: LOD1_MOTION_TALLY_STAMP_Livery
+22:13:59 | INFO: Primitives created: 1
+22:13:59 | INFO: Extracting primitive: LOD2_MOTION_TALLY_STAMP_Livery
+22:13:59 | INFO: Primitives created: 1
+22:13:59 | INFO: Finished glTF 2.0 export in 0.14586591720581055 s
+Blender 4.3.2
+Fra:1 Mem:41.02M (Peak 41.02M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ROOT_TALLY__CollisionSpine
+Fra:1 Mem:41.02M (Peak 41.02M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortRaisedShoulder1
+Fra:1 Mem:43.05M (Peak 43.05M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardNavigation
+Fra:1 Mem:43.16M (Peak 43.16M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortNavigation
+Fra:1 Mem:43.21M (Peak 43.21M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ScanOpticSlit
+Fra:1 Mem:43.21M (Peak 43.21M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ScanOpticCarrier
+Fra:1 Mem:43.23M (Peak 43.23M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortRaisedShoulder2
+Fra:1 Mem:43.25M (Peak 43.25M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortRaisedShoulder3
+Fra:1 Mem:43.29M (Peak 43.29M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ScanProtectiveBrow
+Fra:1 Mem:43.32M (Peak 43.32M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortForeCheek
+Fra:1 Mem:43.31M (Peak 43.32M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortLongitudinalRail
+Fra:1 Mem:43.32M (Peak 43.32M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SCAN_SOCKET__RecessedAperture
+Fra:1 Mem:43.30M (Peak 43.32M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortHingeFoundation
+Fra:1 Mem:43.32M (Peak 43.32M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortFixedHingeAxle
+Fra:1 Mem:43.33M (Peak 43.33M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardCradleMountPin
+Fra:1 Mem:43.33M (Peak 43.33M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortBearingLowerRace
+Fra:1 Mem:43.36M (Peak 43.36M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortBearingUpperRace
+Fra:1 Mem:43.39M (Peak 43.39M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardCradleInnerBumper
+Fra:1 Mem:43.39M (Peak 43.39M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortBearingCap
+Fra:1 Mem:43.43M (Peak 43.43M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardRaisedShoulder0
+Fra:1 Mem:43.47M (Peak 43.47M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardRaisedShoulder1
+Fra:1 Mem:43.48M (Peak 43.48M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardRaisedShoulder2
+Fra:1 Mem:43.50M (Peak 43.50M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardGoldTriangularPad
+Fra:1 Mem:43.54M (Peak 43.54M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardRaisedShoulder3
+Fra:1 Mem:43.56M (Peak 43.56M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardForeCheek
+Fra:1 Mem:43.55M (Peak 43.56M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardLongitudinalRail
+Fra:1 Mem:43.55M (Peak 43.56M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardCradleRoot
+Fra:1 Mem:43.62M (Peak 43.62M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardHingeFoundation
+Fra:1 Mem:43.62M (Peak 43.62M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardFixedHingeAxle
+Fra:1 Mem:43.60M (Peak 43.62M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardBearingLowerRace
+Fra:1 Mem:43.62M (Peak 43.62M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortCradleMountPin
+Fra:1 Mem:43.67M (Peak 43.67M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardBearingUpperRace
+Fra:1 Mem:43.70M (Peak 43.70M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardBearingCap
+Fra:1 Mem:43.70M (Peak 43.70M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortCradleInnerBumper
+Fra:1 Mem:43.73M (Peak 43.73M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | DorsalLedgerCover
+Fra:1 Mem:43.77M (Peak 43.77M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ChannelCrossRibs
+Fra:1 Mem:43.78M (Peak 43.78M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ShoulderFasteners
+Fra:1 Mem:43.79M (Peak 43.79M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortGoldTriangularPad
+Fra:1 Mem:44.02M (Peak 44.02M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortCradleRoot
+Fra:1 Mem:44.09M (Peak 44.09M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SeatedCoolingLouvers-1-8.0
+Fra:1 Mem:44.19M (Peak 44.19M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | rightCalibrationCollar
+Fra:1 Mem:44.26M (Peak 44.26M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | rightLargeScanGrilles
+Fra:1 Mem:44.33M (Peak 44.33M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SeatedCoolingLouvers-1-4.2
+Fra:1 Mem:44.35M (Peak 44.35M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | rightScanHeadOchreBezel
+Fra:1 Mem:44.35M (Peak 44.35M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SeatedCoolingLouvers-12.2
+Fra:1 Mem:44.68M (Peak 44.68M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | rightScanHead
+Fra:1 Mem:44.67M (Peak 44.68M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SeatedCoolingLouvers1-8.0
+Fra:1 Mem:44.67M (Peak 44.68M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | rightHeadNeck
+Fra:1 Mem:44.68M (Peak 44.68M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SeatedCoolingLouvers1-4.2
+Fra:1 Mem:44.76M (Peak 44.76M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | rightMovingHub
+Fra:1 Mem:44.89M (Peak 44.89M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | rightArmRootClevis
+Fra:1 Mem:44.74M (Peak 44.89M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SeatedCoolingLouvers12.2
+Fra:1 Mem:44.69M (Peak 44.89M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ARM_RIGHT__OpenCage
+Fra:1 Mem:44.68M (Peak 44.89M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | DriveCrosshead
+Fra:1 Mem:44.70M (Peak 44.89M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SupportedMainNozzle-0.9
+Fra:1 Mem:44.74M (Peak 44.89M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SupportedMainNozzle0.9
+Fra:1 Mem:44.82M (Peak 44.89M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | leftCalibrationCollar
+Fra:1 Mem:44.82M (Peak 44.89M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampFoot-1
+Fra:1 Mem:44.84M (Peak 44.89M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampUpright-1
+Fra:1 Mem:44.91M (Peak 44.91M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | leftLargeScanGrilles
+Fra:1 Mem:44.91M (Peak 44.91M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampGuide-1
+Fra:1 Mem:44.94M (Peak 44.94M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampFoot1
+Fra:1 Mem:44.96M (Peak 44.96M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampUpright1
+Fra:1 Mem:44.94M (Peak 44.96M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampGuide1
+Fra:1 Mem:44.96M (Peak 44.96M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SolidUYokeCrossbar
+Fra:1 Mem:44.94M (Peak 44.96M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | leftScanHeadOchreBezel
+Fra:1 Mem:44.98M (Peak 44.98M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampRamHousing
+Fra:1 Mem:45.00M (Peak 45.00M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampRamCollar
+Fra:1 Mem:45.03M (Peak 45.03M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampFixedGuideRim
+Fra:1 Mem:45.13M (Peak 45.13M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | STAMP__OchrePressRing
+Fra:1 Mem:45.16M (Peak 45.16M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampThreeRaisedBars
+Fra:1 Mem:45.32M (Peak 45.32M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | leftScanHead
+Fra:1 Mem:45.44M (Peak 45.44M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | leftHeadNeck
+Fra:1 Mem:45.45M (Peak 45.45M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampBridgeArms
+Fra:1 Mem:45.55M (Peak 45.55M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | leftMovingHub
+Fra:1 Mem:45.57M (Peak 45.57M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampMovingSpindle
+Fra:1 Mem:45.61M (Peak 45.61M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | leftArmRootClevis
+Fra:1 Mem:45.60M (Peak 45.61M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampGuideSleeve-1
+Fra:1 Mem:45.62M (Peak 45.62M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampGuideSleeve1
+Fra:1 Mem:45.65M (Peak 45.65M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ARM_LEFT__OpenCage
+Fra:1 Mem:45.59M (Peak 45.65M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Initializing
+Fra:1 Mem:45.31M (Peak 45.65M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Images | Loading forge_machinery_orm.png
+Fra:1 Mem:45.31M (Peak 45.65M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Images | Loading forge_panel_normal.png
+Fra:1 Mem:58.32M (Peak 59.31M) | Time:00:00.01 | Mem:1.00M, Peak:1.00M | Scene, ViewLayer | Updating Images | Loading forge_panel_albedo.png
+Fra:1 Mem:65.32M (Peak 66.32M) | Time:00:00.01 | Mem:2.00M, Peak:2.00M | Scene, ViewLayer | Updating Images | Loading forge_panel_orm.png
+Fra:1 Mem:57.32M (Peak 73.32M) | Time:00:00.02 | Mem:15.00M, Peak:15.00M | Scene, ViewLayer | Waiting for render to start
+Fra:1 Mem:57.32M (Peak 73.32M) | Time:00:00.02 | Mem:15.00M, Peak:15.00M | Scene, ViewLayer | Loading render kernels (may take a few minutes the first time)
+Fra:1 Mem:57.32M (Peak 73.32M) | Time:00:00.02 | Mem:15.00M, Peak:15.00M | Scene, ViewLayer | Updating Scene
+Fra:1 Mem:57.32M (Peak 73.32M) | Time:00:00.02 | Mem:15.00M, Peak:15.00M | Scene, ViewLayer | Updating Shaders
+Fra:1 Mem:57.41M (Peak 73.32M) | Time:00:00.02 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Procedurals
+Fra:1 Mem:57.41M (Peak 73.32M) | Time:00:00.02 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Background
+Fra:1 Mem:57.41M (Peak 73.32M) | Time:00:00.02 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Camera
+Fra:1 Mem:57.41M (Peak 73.32M) | Time:00:00.02 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Meshes Flags
+Fra:1 Mem:57.41M (Peak 73.32M) | Time:00:00.02 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Objects
+Fra:1 Mem:57.41M (Peak 73.32M) | Time:00:00.02 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Objects | Copying Transformations to device
+Fra:1 Mem:57.43M (Peak 73.32M) | Time:00:00.02 | Mem:15.03M, Peak:15.03M | Scene, ViewLayer | Updating Objects | Applying Static Transformations
+Fra:1 Mem:57.43M (Peak 73.32M) | Time:00:00.02 | Mem:15.03M, Peak:15.03M | Scene, ViewLayer | Updating Particle Systems
+Fra:1 Mem:57.43M (Peak 73.32M) | Time:00:00.02 | Mem:15.03M, Peak:15.03M | Scene, ViewLayer | Updating Particle Systems | Copying Particles to device
+Fra:1 Mem:57.43M (Peak 73.32M) | Time:00:00.02 | Mem:15.03M, Peak:15.03M | Scene, ViewLayer | Updating Meshes
+Fra:1 Mem:57.68M (Peak 73.32M) | Time:00:00.02 | Mem:15.03M, Peak:15.03M | Scene, ViewLayer | Updating Mesh | Computing attributes
+Fra:1 Mem:58.94M (Peak 73.32M) | Time:00:00.02 | Mem:15.04M, Peak:15.04M | Scene, ViewLayer | Updating Mesh | Copying Attributes to device
+Fra:1 Mem:58.91M (Peak 73.32M) | Time:00:00.02 | Mem:16.26M, Peak:16.26M | Scene, ViewLayer | Updating Scene BVH | Building
+Fra:1 Mem:58.91M (Peak 73.32M) | Time:00:00.02 | Mem:16.26M, Peak:16.26M | Scene, ViewLayer | Updating Scene BVH | Building BVH
+Fra:1 Mem:58.91M (Peak 73.32M) | Time:00:00.02 | Mem:16.76M, Peak:16.76M | Scene, ViewLayer | Updating Scene BVH | Building BVH 0%
+Fra:1 Mem:58.91M (Peak 73.32M) | Time:00:00.03 | Mem:17.35M, Peak:17.85M | Scene, ViewLayer | Updating Scene BVH | Copying BVH to device
+Fra:1 Mem:58.91M (Peak 73.32M) | Time:00:00.03 | Mem:17.35M, Peak:17.85M | Scene, ViewLayer | Updating Mesh | Computing normals
+Fra:1 Mem:59.53M (Peak 73.32M) | Time:00:00.03 | Mem:17.35M, Peak:17.85M | Scene, ViewLayer | Updating Mesh | Copying Mesh to device
+Fra:1 Mem:59.53M (Peak 73.32M) | Time:00:00.03 | Mem:17.97M, Peak:17.97M | Scene, ViewLayer | Updating Objects Flags
+Fra:1 Mem:59.53M (Peak 73.32M) | Time:00:00.03 | Mem:17.97M, Peak:17.97M | Scene, ViewLayer | Updating Primitive Offsets
+Fra:1 Mem:59.53M (Peak 73.32M) | Time:00:00.03 | Mem:17.97M, Peak:17.97M | Scene, ViewLayer | Updating Images
+Fra:1 Mem:59.53M (Peak 73.32M) | Time:00:00.03 | Mem:17.97M, Peak:17.97M | Scene, ViewLayer | Updating Camera Volume
+Fra:1 Mem:59.53M (Peak 73.32M) | Time:00:00.03 | Mem:17.97M, Peak:17.97M | Scene, ViewLayer | Updating Lookup Tables
+Fra:1 Mem:59.53M (Peak 73.32M) | Time:00:00.03 | Mem:18.05M, Peak:18.05M | Scene, ViewLayer | Updating Lights
+Fra:1 Mem:59.53M (Peak 73.32M) | Time:00:00.03 | Mem:18.05M, Peak:18.05M | Scene, ViewLayer | Updating Lights | Computing tree
+Fra:1 Mem:59.56M (Peak 73.32M) | Time:00:00.03 | Mem:18.08M, Peak:18.08M | Scene, ViewLayer | Updating Integrator
+Fra:1 Mem:59.56M (Peak 73.32M) | Time:00:00.03 | Mem:18.08M, Peak:18.08M | Scene, ViewLayer | Updating Film
+Fra:1 Mem:59.57M (Peak 73.32M) | Time:00:00.03 | Mem:18.00M, Peak:18.08M | Scene, ViewLayer | Updating Lookup Tables
+Fra:1 Mem:59.57M (Peak 73.32M) | Time:00:00.03 | Mem:18.09M, Peak:18.09M | Scene, ViewLayer | Updating Baking
+Fra:1 Mem:59.57M (Peak 73.32M) | Time:00:00.03 | Mem:18.09M, Peak:18.09M | Scene, ViewLayer | Updating Device | Writing constant memory
+Fra:1 Mem:59.57M (Peak 73.32M) | Time:00:00.03 | Mem:18.09M, Peak:18.09M | Scene, ViewLayer | Sample 0/32
+Fra:1 Mem:112.98M (Peak 112.98M) | Time:00:00.44 | Remaining:00:12.71 | Mem:71.49M, Peak:71.49M | Scene, ViewLayer | Sample 1/32
+Fra:1 Mem:136.71M (Peak 184.17M) | Time:00:08.09 | Mem:71.49M, Peak:71.49M | Scene, ViewLayer | Sample 32/32
+Fra:1 Mem:136.71M (Peak 184.17M) | Time:00:08.09 | Mem:71.49M, Peak:71.49M | Scene, ViewLayer | Finished
+Saved: '/workspace/scratch/d2415e46e35b/tally-maker-v1/source-renders/tally-3-v3/top.png'
+Time: 00:08.37 (Saving: 00:00.27)
+
+Fra:1 Mem:43.56M (Peak 43.56M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ROOT_TALLY__CollisionSpine
+Fra:1 Mem:43.65M (Peak 43.65M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortRaisedShoulder1
+Fra:1 Mem:43.77M (Peak 43.77M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardNavigation
+Fra:1 Mem:43.72M (Peak 43.77M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortRaisedShoulder2
+Fra:1 Mem:43.73M (Peak 43.77M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortNavigation
+Fra:1 Mem:43.73M (Peak 43.77M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortRaisedShoulder3
+Fra:1 Mem:43.72M (Peak 43.77M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ScanOpticSlit
+Fra:1 Mem:43.74M (Peak 43.77M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortForeCheek
+Fra:1 Mem:43.76M (Peak 43.77M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ScanOpticCarrier
+Fra:1 Mem:43.77M (Peak 43.77M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortLongitudinalRail
+Fra:1 Mem:43.80M (Peak 43.80M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortHingeFoundation
+Fra:1 Mem:43.80M (Peak 43.80M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortFixedHingeAxle
+Fra:1 Mem:43.82M (Peak 43.82M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ScanProtectiveBrow
+Fra:1 Mem:43.81M (Peak 43.82M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortBearingLowerRace
+Fra:1 Mem:43.83M (Peak 43.83M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortBearingUpperRace
+Fra:1 Mem:43.86M (Peak 43.86M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortBearingCap
+Fra:1 Mem:43.87M (Peak 43.87M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardRaisedShoulder0
+Fra:1 Mem:43.87M (Peak 43.87M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SCAN_SOCKET__RecessedAperture
+Fra:1 Mem:43.88M (Peak 43.88M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardRaisedShoulder1
+Fra:1 Mem:43.91M (Peak 43.91M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardRaisedShoulder2
+Fra:1 Mem:43.95M (Peak 43.95M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardRaisedShoulder3
+Fra:1 Mem:43.96M (Peak 43.96M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardCradleMountPin
+Fra:1 Mem:43.97M (Peak 43.97M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardForeCheek
+Fra:1 Mem:44.00M (Peak 44.00M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardLongitudinalRail
+Fra:1 Mem:43.99M (Peak 44.00M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardHingeFoundation
+Fra:1 Mem:43.99M (Peak 44.00M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardCradleInnerBumper
+Fra:1 Mem:43.99M (Peak 44.00M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardFixedHingeAxle
+Fra:1 Mem:44.05M (Peak 44.05M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardBearingLowerRace
+Fra:1 Mem:44.04M (Peak 44.05M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardBearingUpperRace
+Fra:1 Mem:44.05M (Peak 44.05M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardGoldTriangularPad
+Fra:1 Mem:44.08M (Peak 44.08M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | DorsalLedgerCover
+Fra:1 Mem:44.09M (Peak 44.09M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ChannelCrossRibs
+Fra:1 Mem:44.16M (Peak 44.16M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ShoulderFasteners
+Fra:1 Mem:44.31M (Peak 44.31M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardCradleRoot
+Fra:1 Mem:44.34M (Peak 44.34M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SeatedCoolingLouvers-1-8.0
+Fra:1 Mem:44.48M (Peak 44.48M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortCradleMountPin
+Fra:1 Mem:44.56M (Peak 44.56M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortCradleInnerBumper
+Fra:1 Mem:44.53M (Peak 44.56M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortGoldTriangularPad
+Fra:1 Mem:44.51M (Peak 44.56M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SeatedCoolingLouvers-1-4.2
+Fra:1 Mem:44.49M (Peak 44.56M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SeatedCoolingLouvers-12.2
+Fra:1 Mem:44.67M (Peak 44.67M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortCradleRoot
+Fra:1 Mem:44.77M (Peak 44.77M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | rightCalibrationCollar
+Fra:1 Mem:44.81M (Peak 44.81M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SeatedCoolingLouvers1-8.0
+Fra:1 Mem:44.80M (Peak 44.81M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SeatedCoolingLouvers1-4.2
+Fra:1 Mem:44.87M (Peak 44.87M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | rightLargeScanGrilles
+Fra:1 Mem:45.04M (Peak 45.04M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | rightScanHeadOchreBezel
+Fra:1 Mem:44.94M (Peak 45.04M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SeatedCoolingLouvers12.2
+Fra:1 Mem:44.98M (Peak 45.04M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | DriveCrosshead
+Fra:1 Mem:45.04M (Peak 45.04M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SupportedMainNozzle-0.9
+Fra:1 Mem:45.13M (Peak 45.13M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SupportedMainNozzle0.9
+Fra:1 Mem:45.12M (Peak 45.13M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | rightScanHead
+Fra:1 Mem:44.96M (Peak 45.13M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampFoot-1
+Fra:1 Mem:44.95M (Peak 45.13M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampUpright-1
+Fra:1 Mem:44.96M (Peak 45.13M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | rightHeadNeck
+Fra:1 Mem:44.97M (Peak 45.13M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampGuide-1
+Fra:1 Mem:45.01M (Peak 45.13M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampFoot1
+Fra:1 Mem:44.99M (Peak 45.13M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampUpright1
+Fra:1 Mem:44.99M (Peak 45.13M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampGuide1
+Fra:1 Mem:45.03M (Peak 45.13M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SolidUYokeCrossbar
+Fra:1 Mem:45.05M (Peak 45.13M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampRamHousing
+Fra:1 Mem:45.09M (Peak 45.13M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | rightArmRootClevis
+Fra:1 Mem:45.09M (Peak 45.13M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampRamCollar
+Fra:1 Mem:45.10M (Peak 45.13M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampFixedGuideRim
+Fra:1 Mem:45.17M (Peak 45.17M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | STAMP__OchrePressRing
+Fra:1 Mem:45.17M (Peak 45.17M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ARM_RIGHT__OpenCage
+Fra:1 Mem:45.42M (Peak 45.42M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampBridgeArms
+Fra:1 Mem:45.44M (Peak 45.44M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | leftCalibrationCollar
+Fra:1 Mem:45.48M (Peak 45.48M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampMovingSpindle
+Fra:1 Mem:45.49M (Peak 45.49M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampGuideSleeve-1
+Fra:1 Mem:45.51M (Peak 45.51M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampGuideSleeve1
+Fra:1 Mem:45.51M (Peak 45.51M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | leftLargeScanGrilles
+Fra:1 Mem:45.52M (Peak 45.52M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ARM_LEFT__OpenCage
+Fra:1 Mem:45.61M (Peak 45.61M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | leftArmRootClevis
+Fra:1 Mem:45.59M (Peak 45.61M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | leftScanHeadOchreBezel
+Fra:1 Mem:45.59M (Peak 45.61M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | leftHeadNeck
+Fra:1 Mem:45.68M (Peak 45.68M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | leftScanHead
+Fra:1 Mem:45.59M (Peak 45.68M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Initializing
+Fra:1 Mem:45.31M (Peak 45.68M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Images | Loading forge_machinery_orm.png
+Fra:1 Mem:45.31M (Peak 45.68M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Images | Loading forge_machinery_albedo.png
+Fra:1 Mem:58.32M (Peak 58.32M) | Time:00:00.01 | Mem:1.00M, Peak:1.00M | Scene, ViewLayer | Updating Images | Loading forge_panel_albedo.png
+Fra:1 Mem:65.32M (Peak 66.32M) | Time:00:00.01 | Mem:2.00M, Peak:2.00M | Scene, ViewLayer | Updating Images | Loading forge_panel_orm.png
+Fra:1 Mem:57.32M (Peak 73.32M) | Time:00:00.01 | Mem:15.00M, Peak:15.00M | Scene, ViewLayer | Waiting for render to start
+Fra:1 Mem:57.32M (Peak 73.32M) | Time:00:00.01 | Mem:15.00M, Peak:15.00M | Scene, ViewLayer | Loading render kernels (may take a few minutes the first time)
+Fra:1 Mem:57.32M (Peak 73.32M) | Time:00:00.01 | Mem:15.00M, Peak:15.00M | Scene, ViewLayer | Updating Scene
+Fra:1 Mem:57.32M (Peak 73.32M) | Time:00:00.01 | Mem:15.00M, Peak:15.00M | Scene, ViewLayer | Updating Shaders
+Fra:1 Mem:57.41M (Peak 73.32M) | Time:00:00.01 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Procedurals
+Fra:1 Mem:57.41M (Peak 73.32M) | Time:00:00.01 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Background
+Fra:1 Mem:57.41M (Peak 73.32M) | Time:00:00.01 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Camera
+Fra:1 Mem:57.41M (Peak 73.32M) | Time:00:00.01 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Meshes Flags
+Fra:1 Mem:57.41M (Peak 73.32M) | Time:00:00.01 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Objects
+Fra:1 Mem:57.41M (Peak 73.32M) | Time:00:00.01 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Objects | Copying Transformations to device
+Fra:1 Mem:57.43M (Peak 73.32M) | Time:00:00.01 | Mem:15.03M, Peak:15.03M | Scene, ViewLayer | Updating Objects | Applying Static Transformations
+Fra:1 Mem:57.43M (Peak 73.32M) | Time:00:00.01 | Mem:15.03M, Peak:15.03M | Scene, ViewLayer | Updating Particle Systems
+Fra:1 Mem:57.43M (Peak 73.32M) | Time:00:00.01 | Mem:15.03M, Peak:15.03M | Scene, ViewLayer | Updating Particle Systems | Copying Particles to device
+Fra:1 Mem:57.43M (Peak 73.32M) | Time:00:00.01 | Mem:15.03M, Peak:15.03M | Scene, ViewLayer | Updating Meshes
+Fra:1 Mem:57.68M (Peak 73.32M) | Time:00:00.02 | Mem:15.03M, Peak:15.03M | Scene, ViewLayer | Updating Mesh | Computing attributes
+Fra:1 Mem:58.94M (Peak 73.32M) | Time:00:00.02 | Mem:15.04M, Peak:15.04M | Scene, ViewLayer | Updating Mesh | Copying Attributes to device
+Fra:1 Mem:58.91M (Peak 73.32M) | Time:00:00.02 | Mem:16.26M, Peak:16.26M | Scene, ViewLayer | Updating Scene BVH | Building
+Fra:1 Mem:58.91M (Peak 73.32M) | Time:00:00.02 | Mem:16.26M, Peak:16.26M | Scene, ViewLayer | Updating Scene BVH | Building BVH
+Fra:1 Mem:58.91M (Peak 73.32M) | Time:00:00.02 | Mem:16.76M, Peak:16.76M | Scene, ViewLayer | Updating Scene BVH | Building BVH 0%
+Fra:1 Mem:58.91M (Peak 73.32M) | Time:00:00.02 | Mem:17.35M, Peak:17.85M | Scene, ViewLayer | Updating Scene BVH | Copying BVH to device
+Fra:1 Mem:58.91M (Peak 73.32M) | Time:00:00.02 | Mem:17.35M, Peak:17.85M | Scene, ViewLayer | Updating Mesh | Computing normals
+Fra:1 Mem:59.53M (Peak 73.32M) | Time:00:00.02 | Mem:17.35M, Peak:17.85M | Scene, ViewLayer | Updating Mesh | Copying Mesh to device
+Fra:1 Mem:59.53M (Peak 73.32M) | Time:00:00.02 | Mem:17.97M, Peak:17.97M | Scene, ViewLayer | Updating Objects Flags
+Fra:1 Mem:59.53M (Peak 73.32M) | Time:00:00.02 | Mem:17.97M, Peak:17.97M | Scene, ViewLayer | Updating Primitive Offsets
+Fra:1 Mem:59.53M (Peak 73.32M) | Time:00:00.02 | Mem:17.97M, Peak:17.97M | Scene, ViewLayer | Updating Images
+Fra:1 Mem:59.53M (Peak 73.32M) | Time:00:00.02 | Mem:17.97M, Peak:17.97M | Scene, ViewLayer | Updating Camera Volume
+Fra:1 Mem:59.53M (Peak 73.32M) | Time:00:00.02 | Mem:17.97M, Peak:17.97M | Scene, ViewLayer | Updating Lookup Tables
+Fra:1 Mem:59.53M (Peak 73.32M) | Time:00:00.02 | Mem:18.05M, Peak:18.05M | Scene, ViewLayer | Updating Lights
+Fra:1 Mem:59.53M (Peak 73.32M) | Time:00:00.02 | Mem:18.05M, Peak:18.05M | Scene, ViewLayer | Updating Lights | Computing tree
+Fra:1 Mem:59.56M (Peak 73.32M) | Time:00:00.02 | Mem:18.08M, Peak:18.08M | Scene, ViewLayer | Updating Integrator
+Fra:1 Mem:59.56M (Peak 73.32M) | Time:00:00.02 | Mem:18.08M, Peak:18.08M | Scene, ViewLayer | Updating Film
+Fra:1 Mem:59.57M (Peak 73.32M) | Time:00:00.02 | Mem:18.00M, Peak:18.08M | Scene, ViewLayer | Updating Lookup Tables
+Fra:1 Mem:59.57M (Peak 73.32M) | Time:00:00.02 | Mem:18.09M, Peak:18.09M | Scene, ViewLayer | Updating Baking
+Fra:1 Mem:59.57M (Peak 73.32M) | Time:00:00.02 | Mem:18.09M, Peak:18.09M | Scene, ViewLayer | Updating Device | Writing constant memory
+Fra:1 Mem:59.57M (Peak 73.32M) | Time:00:00.02 | Mem:18.09M, Peak:18.09M | Scene, ViewLayer | Sample 0/32
+Fra:1 Mem:112.98M (Peak 112.98M) | Time:00:00.39 | Remaining:00:11.25 | Mem:71.49M, Peak:71.49M | Scene, ViewLayer | Sample 1/32
+Fra:1 Mem:136.71M (Peak 184.17M) | Time:00:08.40 | Mem:71.49M, Peak:71.49M | Scene, ViewLayer | Sample 32/32
+Fra:1 Mem:136.71M (Peak 184.17M) | Time:00:08.40 | Mem:71.49M, Peak:71.49M | Scene, ViewLayer | Finished
+Saved: '/workspace/scratch/d2415e46e35b/tally-maker-v1/source-renders/tally-3-v3/chase.png'
+Time: 00:08.57 (Saving: 00:00.16)
+
+Fra:1 Mem:43.56M (Peak 43.56M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ROOT_TALLY__CollisionSpine
+Fra:1 Mem:43.56M (Peak 43.56M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortRaisedShoulder1
+Fra:1 Mem:43.66M (Peak 43.66M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortRaisedShoulder2
+Fra:1 Mem:43.73M (Peak 43.73M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortRaisedShoulder3
+Fra:1 Mem:43.75M (Peak 43.75M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardNavigation
+Fra:1 Mem:43.77M (Peak 43.77M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortNavigation
+Fra:1 Mem:43.75M (Peak 43.77M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ScanOpticSlit
+Fra:1 Mem:43.76M (Peak 43.77M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortForeCheek
+Fra:1 Mem:43.75M (Peak 43.77M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ScanOpticCarrier
+Fra:1 Mem:43.74M (Peak 43.77M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortLongitudinalRail
+Fra:1 Mem:43.74M (Peak 43.77M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortHingeFoundation
+Fra:1 Mem:43.77M (Peak 43.77M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ScanProtectiveBrow
+Fra:1 Mem:43.77M (Peak 43.77M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortFixedHingeAxle
+Fra:1 Mem:43.79M (Peak 43.79M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortBearingLowerRace
+Fra:1 Mem:43.82M (Peak 43.82M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortBearingUpperRace
+Fra:1 Mem:43.83M (Peak 43.83M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SCAN_SOCKET__RecessedAperture
+Fra:1 Mem:43.82M (Peak 43.83M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortBearingCap
+Fra:1 Mem:43.84M (Peak 43.84M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardRaisedShoulder0
+Fra:1 Mem:43.88M (Peak 43.88M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardRaisedShoulder1
+Fra:1 Mem:43.89M (Peak 43.89M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardCradleMountPin
+Fra:1 Mem:43.91M (Peak 43.91M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardRaisedShoulder2
+Fra:1 Mem:43.93M (Peak 43.93M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardCradleInnerBumper
+Fra:1 Mem:43.93M (Peak 43.93M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardRaisedShoulder3
+Fra:1 Mem:43.95M (Peak 43.95M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardForeCheek
+Fra:1 Mem:43.98M (Peak 43.98M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardGoldTriangularPad
+Fra:1 Mem:44.00M (Peak 44.00M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardLongitudinalRail
+Fra:1 Mem:44.00M (Peak 44.00M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardHingeFoundation
+Fra:1 Mem:44.06M (Peak 44.06M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardCradleRoot
+Fra:1 Mem:44.04M (Peak 44.06M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardFixedHingeAxle
+Fra:1 Mem:44.02M (Peak 44.06M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardBearingUpperRace
+Fra:1 Mem:44.10M (Peak 44.10M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardBearingCap
+Fra:1 Mem:44.09M (Peak 44.10M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortCradleMountPin
+Fra:1 Mem:44.10M (Peak 44.10M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | DorsalLedgerCover
+Fra:1 Mem:44.11M (Peak 44.11M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ChannelCrossRibs
+Fra:1 Mem:44.21M (Peak 44.21M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortCradleInnerBumper
+Fra:1 Mem:44.24M (Peak 44.24M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ShoulderFasteners
+Fra:1 Mem:44.28M (Peak 44.28M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortGoldTriangularPad
+Fra:1 Mem:44.46M (Peak 44.46M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortCradleRoot
+Fra:1 Mem:44.49M (Peak 44.49M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | rightCalibrationCollar
+Fra:1 Mem:44.46M (Peak 44.49M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SeatedCoolingLouvers-1-8.0
+Fra:1 Mem:44.54M (Peak 44.54M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | rightLargeScanGrilles
+Fra:1 Mem:44.58M (Peak 44.58M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SeatedCoolingLouvers-1-4.2
+Fra:1 Mem:44.83M (Peak 44.83M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | rightScanHeadOchreBezel
+Fra:1 Mem:44.80M (Peak 44.83M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SeatedCoolingLouvers-12.2
+Fra:1 Mem:44.80M (Peak 44.83M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SeatedCoolingLouvers1-8.0
+Fra:1 Mem:44.89M (Peak 44.89M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | rightScanHead
+Fra:1 Mem:44.79M (Peak 44.89M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | rightHeadNeck
+Fra:1 Mem:44.81M (Peak 44.89M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SeatedCoolingLouvers1-4.2
+Fra:1 Mem:44.94M (Peak 44.94M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | rightMovingHub
+Fra:1 Mem:44.92M (Peak 44.94M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SeatedCoolingLouvers12.2
+Fra:1 Mem:44.98M (Peak 44.98M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | rightArmRootClevis
+Fra:1 Mem:44.99M (Peak 44.99M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | DriveCrosshead
+Fra:1 Mem:44.94M (Peak 44.99M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SupportedMainNozzle-0.9
+Fra:1 Mem:44.96M (Peak 44.99M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ARM_RIGHT__OpenCage
+Fra:1 Mem:45.04M (Peak 45.04M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SupportedMainNozzle0.9
+Fra:1 Mem:45.11M (Peak 45.11M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampFoot-1
+Fra:1 Mem:45.14M (Peak 45.14M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampUpright-1
+Fra:1 Mem:45.09M (Peak 45.14M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | leftCalibrationCollar
+Fra:1 Mem:45.10M (Peak 45.14M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampGuide-1
+Fra:1 Mem:45.13M (Peak 45.14M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampFoot1
+Fra:1 Mem:45.13M (Peak 45.14M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampUpright1
+Fra:1 Mem:45.14M (Peak 45.14M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | leftLargeScanGrilles
+Fra:1 Mem:45.17M (Peak 45.17M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampGuide1
+Fra:1 Mem:45.20M (Peak 45.20M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SolidUYokeCrossbar
+Fra:1 Mem:45.22M (Peak 45.22M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampRamHousing
+Fra:1 Mem:45.23M (Peak 45.23M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampRamCollar
+Fra:1 Mem:45.23M (Peak 45.23M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | leftScanHeadOchreBezel
+Fra:1 Mem:45.26M (Peak 45.26M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampFixedGuideRim
+Fra:1 Mem:45.26M (Peak 45.26M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | STAMP__OchrePressRing
+Fra:1 Mem:45.45M (Peak 45.45M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | leftScanHead
+Fra:1 Mem:45.50M (Peak 45.50M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampThreeRaisedBars
+Fra:1 Mem:45.54M (Peak 45.54M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | leftHeadNeck
+Fra:1 Mem:45.64M (Peak 45.64M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | leftMovingHub
+Fra:1 Mem:45.62M (Peak 45.64M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampBridgeArms
+Fra:1 Mem:45.64M (Peak 45.64M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | leftArmRootClevis
+Fra:1 Mem:45.67M (Peak 45.67M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampMovingSpindle
+Fra:1 Mem:45.67M (Peak 45.67M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ARM_LEFT__OpenCage
+Fra:1 Mem:45.65M (Peak 45.67M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampGuideSleeve-1
+Fra:1 Mem:45.62M (Peak 45.67M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampGuideSleeve1
+Fra:1 Mem:45.59M (Peak 45.67M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Initializing
+Fra:1 Mem:45.31M (Peak 45.67M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Images | Loading forge_panel_normal.png
+Fra:1 Mem:45.31M (Peak 45.67M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Images | Loading forge_machinery_normal.png
+Fra:1 Mem:58.32M (Peak 59.31M) | Time:00:00.01 | Mem:1.00M, Peak:1.00M | Scene, ViewLayer | Updating Images | Loading forge_panel_albedo.png
+Fra:1 Mem:65.32M (Peak 66.32M) | Time:00:00.01 | Mem:2.00M, Peak:2.00M | Scene, ViewLayer | Updating Images | Loading forge_panel_orm.png
+Fra:1 Mem:57.32M (Peak 73.32M) | Time:00:00.02 | Mem:15.00M, Peak:15.00M | Scene, ViewLayer | Waiting for render to start
+Fra:1 Mem:57.32M (Peak 73.32M) | Time:00:00.02 | Mem:15.00M, Peak:15.00M | Scene, ViewLayer | Loading render kernels (may take a few minutes the first time)
+Fra:1 Mem:57.32M (Peak 73.32M) | Time:00:00.02 | Mem:15.00M, Peak:15.00M | Scene, ViewLayer | Updating Scene
+Fra:1 Mem:57.32M (Peak 73.32M) | Time:00:00.02 | Mem:15.00M, Peak:15.00M | Scene, ViewLayer | Updating Shaders
+Fra:1 Mem:57.41M (Peak 73.32M) | Time:00:00.02 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Procedurals
+Fra:1 Mem:57.41M (Peak 73.32M) | Time:00:00.02 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Background
+Fra:1 Mem:57.41M (Peak 73.32M) | Time:00:00.02 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Camera
+Fra:1 Mem:57.41M (Peak 73.32M) | Time:00:00.02 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Meshes Flags
+Fra:1 Mem:57.41M (Peak 73.32M) | Time:00:00.02 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Objects
+Fra:1 Mem:57.41M (Peak 73.32M) | Time:00:00.02 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Objects | Copying Transformations to device
+Fra:1 Mem:57.43M (Peak 73.32M) | Time:00:00.02 | Mem:15.03M, Peak:15.03M | Scene, ViewLayer | Updating Objects | Applying Static Transformations
+Fra:1 Mem:57.43M (Peak 73.32M) | Time:00:00.02 | Mem:15.03M, Peak:15.03M | Scene, ViewLayer | Updating Particle Systems
+Fra:1 Mem:57.43M (Peak 73.32M) | Time:00:00.02 | Mem:15.03M, Peak:15.03M | Scene, ViewLayer | Updating Particle Systems | Copying Particles to device
+Fra:1 Mem:57.43M (Peak 73.32M) | Time:00:00.02 | Mem:15.03M, Peak:15.03M | Scene, ViewLayer | Updating Meshes
+Fra:1 Mem:57.68M (Peak 73.32M) | Time:00:00.02 | Mem:15.03M, Peak:15.03M | Scene, ViewLayer | Updating Mesh | Computing attributes
+Fra:1 Mem:58.94M (Peak 73.32M) | Time:00:00.02 | Mem:15.04M, Peak:15.04M | Scene, ViewLayer | Updating Mesh | Copying Attributes to device
+Fra:1 Mem:58.91M (Peak 73.32M) | Time:00:00.02 | Mem:16.26M, Peak:16.26M | Scene, ViewLayer | Updating Scene BVH | Building
+Fra:1 Mem:58.91M (Peak 73.32M) | Time:00:00.02 | Mem:16.26M, Peak:16.26M | Scene, ViewLayer | Updating Scene BVH | Building BVH
+Fra:1 Mem:58.91M (Peak 73.32M) | Time:00:00.02 | Mem:16.76M, Peak:16.76M | Scene, ViewLayer | Updating Scene BVH | Building BVH 0%
+Fra:1 Mem:58.91M (Peak 73.32M) | Time:00:00.02 | Mem:17.35M, Peak:17.85M | Scene, ViewLayer | Updating Scene BVH | Copying BVH to device
+Fra:1 Mem:58.91M (Peak 73.32M) | Time:00:00.02 | Mem:17.35M, Peak:17.85M | Scene, ViewLayer | Updating Mesh | Computing normals
+Fra:1 Mem:59.53M (Peak 73.32M) | Time:00:00.02 | Mem:17.35M, Peak:17.85M | Scene, ViewLayer | Updating Mesh | Copying Mesh to device
+Fra:1 Mem:59.53M (Peak 73.32M) | Time:00:00.02 | Mem:17.97M, Peak:17.97M | Scene, ViewLayer | Updating Objects Flags
+Fra:1 Mem:59.53M (Peak 73.32M) | Time:00:00.02 | Mem:17.97M, Peak:17.97M | Scene, ViewLayer | Updating Primitive Offsets
+Fra:1 Mem:59.53M (Peak 73.32M) | Time:00:00.02 | Mem:17.97M, Peak:17.97M | Scene, ViewLayer | Updating Images
+Fra:1 Mem:59.53M (Peak 73.32M) | Time:00:00.02 | Mem:17.97M, Peak:17.97M | Scene, ViewLayer | Updating Camera Volume
+Fra:1 Mem:59.53M (Peak 73.32M) | Time:00:00.02 | Mem:17.97M, Peak:17.97M | Scene, ViewLayer | Updating Lookup Tables
+Fra:1 Mem:59.53M (Peak 73.32M) | Time:00:00.02 | Mem:18.05M, Peak:18.05M | Scene, ViewLayer | Updating Lights
+Fra:1 Mem:59.53M (Peak 73.32M) | Time:00:00.02 | Mem:18.05M, Peak:18.05M | Scene, ViewLayer | Updating Lights | Computing tree
+Fra:1 Mem:59.56M (Peak 73.32M) | Time:00:00.02 | Mem:18.08M, Peak:18.08M | Scene, ViewLayer | Updating Integrator
+Fra:1 Mem:59.56M (Peak 73.32M) | Time:00:00.02 | Mem:18.08M, Peak:18.08M | Scene, ViewLayer | Updating Film
+Fra:1 Mem:59.57M (Peak 73.32M) | Time:00:00.02 | Mem:18.00M, Peak:18.08M | Scene, ViewLayer | Updating Lookup Tables
+Fra:1 Mem:59.57M (Peak 73.32M) | Time:00:00.02 | Mem:18.09M, Peak:18.09M | Scene, ViewLayer | Updating Baking
+Fra:1 Mem:59.57M (Peak 73.32M) | Time:00:00.02 | Mem:18.09M, Peak:18.09M | Scene, ViewLayer | Updating Device | Writing constant memory
+Fra:1 Mem:59.57M (Peak 73.32M) | Time:00:00.02 | Mem:18.09M, Peak:18.09M | Scene, ViewLayer | Sample 0/32
+Fra:1 Mem:112.98M (Peak 112.98M) | Time:00:00.54 | Remaining:00:15.87 | Mem:71.49M, Peak:71.49M | Scene, ViewLayer | Sample 1/32
+Fra:1 Mem:136.71M (Peak 184.17M) | Time:00:15.33 | Mem:71.49M, Peak:71.49M | Scene, ViewLayer | Sample 32/32
+Fra:1 Mem:136.71M (Peak 184.17M) | Time:00:15.33 | Mem:71.49M, Peak:71.49M | Scene, ViewLayer | Finished
+Saved: '/workspace/scratch/d2415e46e35b/tally-maker-v1/source-renders/tally-3-v3/close.png'
+Time: 00:15.53 (Saving: 00:00.19)
+
+Fra:1 Mem:43.56M (Peak 43.56M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ROOT_TALLY__CollisionSpine
+Fra:1 Mem:43.56M (Peak 43.56M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortRaisedShoulder1
+Fra:1 Mem:43.75M (Peak 43.75M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortRaisedShoulder2
+Fra:1 Mem:43.74M (Peak 43.75M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortRaisedShoulder3
+Fra:1 Mem:43.79M (Peak 43.79M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortForeCheek
+Fra:1 Mem:43.80M (Peak 43.80M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardNavigation
+Fra:1 Mem:43.73M (Peak 43.80M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortLongitudinalRail
+Fra:1 Mem:43.73M (Peak 43.80M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortHingeFoundation
+Fra:1 Mem:43.77M (Peak 43.80M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ScanOpticSlit
+Fra:1 Mem:43.77M (Peak 43.80M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortFixedHingeAxle
+Fra:1 Mem:43.81M (Peak 43.81M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ScanOpticCarrier
+Fra:1 Mem:43.80M (Peak 43.81M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortBearingLowerRace
+Fra:1 Mem:43.79M (Peak 43.81M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortBearingCap
+Fra:1 Mem:43.86M (Peak 43.86M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardRaisedShoulder0
+Fra:1 Mem:43.88M (Peak 43.88M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardRaisedShoulder1
+Fra:1 Mem:43.88M (Peak 43.88M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ScanProtectiveBrow
+Fra:1 Mem:43.89M (Peak 43.89M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardRaisedShoulder2
+Fra:1 Mem:43.94M (Peak 43.94M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardRaisedShoulder3
+Fra:1 Mem:43.93M (Peak 43.94M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SCAN_SOCKET__RecessedAperture
+Fra:1 Mem:43.95M (Peak 43.95M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardForeCheek
+Fra:1 Mem:43.97M (Peak 43.97M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardLongitudinalRail
+Fra:1 Mem:43.98M (Peak 43.98M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardHingeFoundation
+Fra:1 Mem:43.98M (Peak 43.98M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardCradleMountPin
+Fra:1 Mem:44.00M (Peak 44.00M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardFixedHingeAxle
+Fra:1 Mem:44.01M (Peak 44.01M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardBearingLowerRace
+Fra:1 Mem:44.02M (Peak 44.02M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardBearingUpperRace
+Fra:1 Mem:44.04M (Peak 44.04M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardBearingCap
+Fra:1 Mem:44.06M (Peak 44.06M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardCradleInnerBumper
+Fra:1 Mem:44.06M (Peak 44.06M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | DorsalLedgerCover
+Fra:1 Mem:44.07M (Peak 44.07M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ChannelCrossRibs
+Fra:1 Mem:44.13M (Peak 44.13M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ShoulderFasteners
+Fra:1 Mem:44.28M (Peak 44.28M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardGoldTriangularPad
+Fra:1 Mem:44.35M (Peak 44.35M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SeatedCoolingLouvers-1-8.0
+Fra:1 Mem:44.45M (Peak 44.45M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardCradleRoot
+Fra:1 Mem:44.55M (Peak 44.55M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortCradleMountPin
+Fra:1 Mem:44.50M (Peak 44.55M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SeatedCoolingLouvers-1-4.2
+Fra:1 Mem:44.57M (Peak 44.57M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortCradleInnerBumper
+Fra:1 Mem:44.70M (Peak 44.70M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortGoldTriangularPad
+Fra:1 Mem:44.66M (Peak 44.70M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SeatedCoolingLouvers-12.2
+Fra:1 Mem:44.67M (Peak 44.70M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SeatedCoolingLouvers1-8.0
+Fra:1 Mem:44.65M (Peak 44.70M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortCradleRoot
+Fra:1 Mem:44.88M (Peak 44.88M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | rightCalibrationCollar
+Fra:1 Mem:44.96M (Peak 44.96M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | rightLargeScanGrilles
+Fra:1 Mem:44.92M (Peak 44.96M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SeatedCoolingLouvers1-4.2
+Fra:1 Mem:44.88M (Peak 44.96M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SeatedCoolingLouvers12.2
+Fra:1 Mem:45.09M (Peak 45.09M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | rightScanHeadOchreBezel
+Fra:1 Mem:45.02M (Peak 45.09M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | DriveCrosshead
+Fra:1 Mem:44.88M (Peak 45.09M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SupportedMainNozzle-0.9
+Fra:1 Mem:44.88M (Peak 45.09M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SupportedMainNozzle0.9
+Fra:1 Mem:44.93M (Peak 45.09M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | rightScanHead
+Fra:1 Mem:44.96M (Peak 45.09M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampFoot-1
+Fra:1 Mem:44.99M (Peak 45.09M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | rightHeadNeck
+Fra:1 Mem:44.97M (Peak 45.09M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampUpright-1
+Fra:1 Mem:44.96M (Peak 45.09M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampGuide-1
+Fra:1 Mem:44.97M (Peak 45.09M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampFoot1
+Fra:1 Mem:45.01M (Peak 45.09M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampUpright1
+Fra:1 Mem:45.02M (Peak 45.09M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | rightMovingHub
+Fra:1 Mem:45.03M (Peak 45.09M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampGuide1
+Fra:1 Mem:45.03M (Peak 45.09M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SolidUYokeCrossbar
+Fra:1 Mem:45.06M (Peak 45.09M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | rightArmRootClevis
+Fra:1 Mem:45.06M (Peak 45.09M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampRamHousing
+Fra:1 Mem:45.07M (Peak 45.09M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampRamCollar
+Fra:1 Mem:45.09M (Peak 45.09M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampFixedGuideRim
+Fra:1 Mem:45.09M (Peak 45.09M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | STAMP__OchrePressRing
+Fra:1 Mem:45.14M (Peak 45.14M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampThreeRaisedBars
+Fra:1 Mem:45.41M (Peak 45.41M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampBridgeArms
+Fra:1 Mem:45.39M (Peak 45.41M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | leftCalibrationCollar
+Fra:1 Mem:45.49M (Peak 45.49M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampMovingSpindle
+Fra:1 Mem:45.51M (Peak 45.51M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | leftLargeScanGrilles
+Fra:1 Mem:45.51M (Peak 45.51M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampGuideSleeve-1
+Fra:1 Mem:45.51M (Peak 45.51M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampGuideSleeve1
+Fra:1 Mem:45.56M (Peak 45.56M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ARM_LEFT__OpenCage
+Fra:1 Mem:45.59M (Peak 45.59M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | leftArmRootClevis
+Fra:1 Mem:45.59M (Peak 45.59M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | leftScanHeadOchreBezel
+Fra:1 Mem:45.58M (Peak 45.59M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | leftMovingHub
+Fra:1 Mem:45.59M (Peak 45.59M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | leftHeadNeck
+Fra:1 Mem:45.58M (Peak 45.59M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | leftScanHead
+Fra:1 Mem:45.59M (Peak 45.59M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Initializing
+Fra:1 Mem:45.31M (Peak 45.59M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Images | Loading forge_panel_normal.png
+Fra:1 Mem:45.31M (Peak 45.59M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Images | Loading forge_machinery_orm.png
+Fra:1 Mem:46.31M (Peak 46.31M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Images | Loading forge_machinery_normal.png
+Fra:1 Mem:58.32M (Peak 58.32M) | Time:00:00.01 | Mem:1.00M, Peak:1.00M | Scene, ViewLayer | Updating Images | Loading forge_panel_albedo.png
+Fra:1 Mem:65.32M (Peak 66.32M) | Time:00:00.01 | Mem:2.00M, Peak:2.00M | Scene, ViewLayer | Updating Images | Loading forge_panel_orm.png
+Fra:1 Mem:57.32M (Peak 73.32M) | Time:00:00.02 | Mem:15.00M, Peak:15.00M | Scene, ViewLayer | Waiting for render to start
+Fra:1 Mem:57.32M (Peak 73.32M) | Time:00:00.02 | Mem:15.00M, Peak:15.00M | Scene, ViewLayer | Loading render kernels (may take a few minutes the first time)
+Fra:1 Mem:57.32M (Peak 73.32M) | Time:00:00.02 | Mem:15.00M, Peak:15.00M | Scene, ViewLayer | Updating Scene
+Fra:1 Mem:57.32M (Peak 73.32M) | Time:00:00.02 | Mem:15.00M, Peak:15.00M | Scene, ViewLayer | Updating Shaders
+Fra:1 Mem:57.41M (Peak 73.32M) | Time:00:00.02 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Procedurals
+Fra:1 Mem:57.41M (Peak 73.32M) | Time:00:00.02 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Background
+Fra:1 Mem:57.41M (Peak 73.32M) | Time:00:00.02 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Camera
+Fra:1 Mem:57.41M (Peak 73.32M) | Time:00:00.02 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Meshes Flags
+Fra:1 Mem:57.41M (Peak 73.32M) | Time:00:00.02 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Objects
+Fra:1 Mem:57.41M (Peak 73.32M) | Time:00:00.02 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Objects | Copying Transformations to device
+Fra:1 Mem:57.43M (Peak 73.32M) | Time:00:00.02 | Mem:15.03M, Peak:15.03M | Scene, ViewLayer | Updating Objects | Applying Static Transformations
+Fra:1 Mem:57.43M (Peak 73.32M) | Time:00:00.02 | Mem:15.03M, Peak:15.03M | Scene, ViewLayer | Updating Particle Systems
+Fra:1 Mem:57.43M (Peak 73.32M) | Time:00:00.02 | Mem:15.03M, Peak:15.03M | Scene, ViewLayer | Updating Particle Systems | Copying Particles to device
+Fra:1 Mem:57.43M (Peak 73.32M) | Time:00:00.02 | Mem:15.03M, Peak:15.03M | Scene, ViewLayer | Updating Meshes
+Fra:1 Mem:57.68M (Peak 73.32M) | Time:00:00.02 | Mem:15.03M, Peak:15.03M | Scene, ViewLayer | Updating Mesh | Computing attributes
+Fra:1 Mem:58.94M (Peak 73.32M) | Time:00:00.02 | Mem:15.04M, Peak:15.04M | Scene, ViewLayer | Updating Mesh | Copying Attributes to device
+Fra:1 Mem:58.91M (Peak 73.32M) | Time:00:00.02 | Mem:16.26M, Peak:16.26M | Scene, ViewLayer | Updating Scene BVH | Building
+Fra:1 Mem:58.91M (Peak 73.32M) | Time:00:00.02 | Mem:16.26M, Peak:16.26M | Scene, ViewLayer | Updating Scene BVH | Building BVH
+Fra:1 Mem:58.91M (Peak 73.32M) | Time:00:00.02 | Mem:16.76M, Peak:16.76M | Scene, ViewLayer | Updating Scene BVH | Building BVH 0%
+Fra:1 Mem:58.91M (Peak 73.32M) | Time:00:00.02 | Mem:17.35M, Peak:17.85M | Scene, ViewLayer | Updating Scene BVH | Copying BVH to device
+Fra:1 Mem:58.91M (Peak 73.32M) | Time:00:00.02 | Mem:17.35M, Peak:17.85M | Scene, ViewLayer | Updating Mesh | Computing normals
+Fra:1 Mem:59.53M (Peak 73.32M) | Time:00:00.02 | Mem:17.35M, Peak:17.85M | Scene, ViewLayer | Updating Mesh | Copying Mesh to device
+Fra:1 Mem:59.53M (Peak 73.32M) | Time:00:00.02 | Mem:17.97M, Peak:17.97M | Scene, ViewLayer | Updating Objects Flags
+Fra:1 Mem:59.53M (Peak 73.32M) | Time:00:00.02 | Mem:17.97M, Peak:17.97M | Scene, ViewLayer | Updating Primitive Offsets
+Fra:1 Mem:59.53M (Peak 73.32M) | Time:00:00.02 | Mem:17.97M, Peak:17.97M | Scene, ViewLayer | Updating Images
+Fra:1 Mem:59.53M (Peak 73.32M) | Time:00:00.02 | Mem:17.97M, Peak:17.97M | Scene, ViewLayer | Updating Camera Volume
+Fra:1 Mem:59.53M (Peak 73.32M) | Time:00:00.02 | Mem:17.97M, Peak:17.97M | Scene, ViewLayer | Updating Lookup Tables
+Fra:1 Mem:59.53M (Peak 73.32M) | Time:00:00.02 | Mem:18.05M, Peak:18.05M | Scene, ViewLayer | Updating Lights
+Fra:1 Mem:59.53M (Peak 73.32M) | Time:00:00.02 | Mem:18.05M, Peak:18.05M | Scene, ViewLayer | Updating Lights | Computing tree
+Fra:1 Mem:59.56M (Peak 73.32M) | Time:00:00.02 | Mem:18.08M, Peak:18.08M | Scene, ViewLayer | Updating Integrator
+Fra:1 Mem:59.56M (Peak 73.32M) | Time:00:00.02 | Mem:18.08M, Peak:18.08M | Scene, ViewLayer | Updating Film
+Fra:1 Mem:59.57M (Peak 73.32M) | Time:00:00.02 | Mem:18.00M, Peak:18.08M | Scene, ViewLayer | Updating Lookup Tables
+Fra:1 Mem:59.57M (Peak 73.32M) | Time:00:00.02 | Mem:18.09M, Peak:18.09M | Scene, ViewLayer | Updating Baking
+Fra:1 Mem:59.57M (Peak 73.32M) | Time:00:00.02 | Mem:18.09M, Peak:18.09M | Scene, ViewLayer | Updating Device | Writing constant memory
+Fra:1 Mem:59.57M (Peak 73.32M) | Time:00:00.02 | Mem:18.09M, Peak:18.09M | Scene, ViewLayer | Sample 0/32
+Fra:1 Mem:112.98M (Peak 112.98M) | Time:00:00.39 | Remaining:00:11.30 | Mem:71.49M, Peak:71.49M | Scene, ViewLayer | Sample 1/32
+Fra:1 Mem:136.71M (Peak 184.17M) | Time:00:08.60 | Mem:71.49M, Peak:71.49M | Scene, ViewLayer | Sample 32/32
+Fra:1 Mem:136.71M (Peak 184.17M) | Time:00:08.60 | Mem:71.49M, Peak:71.49M | Scene, ViewLayer | Finished
+Saved: '/workspace/scratch/d2415e46e35b/tally-maker-v1/source-renders/tally-3-v3/working.png'
+Time: 00:08.77 (Saving: 00:00.16)
+
+Fra:1 Mem:43.56M (Peak 43.56M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ROOT_TALLY__CollisionSpine
+Fra:1 Mem:43.57M (Peak 43.57M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortRaisedShoulder1
+Fra:1 Mem:43.78M (Peak 43.78M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardNavigation
+Fra:1 Mem:43.74M (Peak 43.78M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortRaisedShoulder3
+Fra:1 Mem:43.74M (Peak 43.78M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortNavigation
+Fra:1 Mem:43.77M (Peak 43.78M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ScanOpticSlit
+Fra:1 Mem:43.74M (Peak 43.78M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortForeCheek
+Fra:1 Mem:43.75M (Peak 43.78M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ScanOpticCarrier
+Fra:1 Mem:43.80M (Peak 43.80M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortLongitudinalRail
+Fra:1 Mem:43.76M (Peak 43.80M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ScanProtectiveBrow
+Fra:1 Mem:43.76M (Peak 43.80M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortFixedHingeAxle
+Fra:1 Mem:43.82M (Peak 43.82M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortBearingLowerRace
+Fra:1 Mem:43.82M (Peak 43.82M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SCAN_SOCKET__RecessedAperture
+Fra:1 Mem:43.85M (Peak 43.85M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortBearingUpperRace
+Fra:1 Mem:43.87M (Peak 43.87M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortBearingCap
+Fra:1 Mem:43.87M (Peak 43.87M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardRaisedShoulder0
+Fra:1 Mem:43.89M (Peak 43.89M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardCradleMountPin
+Fra:1 Mem:43.91M (Peak 43.91M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardRaisedShoulder1
+Fra:1 Mem:43.93M (Peak 43.93M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardRaisedShoulder2
+Fra:1 Mem:43.95M (Peak 43.95M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardCradleInnerBumper
+Fra:1 Mem:43.95M (Peak 43.95M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardRaisedShoulder3
+Fra:1 Mem:44.01M (Peak 44.01M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardGoldTriangularPad
+Fra:1 Mem:43.97M (Peak 44.01M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardForeCheek
+Fra:1 Mem:43.99M (Peak 44.01M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardHingeFoundation
+Fra:1 Mem:44.01M (Peak 44.01M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardCradleRoot
+Fra:1 Mem:44.05M (Peak 44.05M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardFixedHingeAxle
+Fra:1 Mem:44.05M (Peak 44.05M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardBearingLowerRace
+Fra:1 Mem:44.07M (Peak 44.07M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardBearingUpperRace
+Fra:1 Mem:44.08M (Peak 44.08M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardBearingCap
+Fra:1 Mem:44.11M (Peak 44.11M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | DorsalLedgerCover
+Fra:1 Mem:44.13M (Peak 44.13M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ChannelCrossRibs
+Fra:1 Mem:44.18M (Peak 44.18M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ShoulderFasteners
+Fra:1 Mem:44.16M (Peak 44.18M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortCradleMountPin
+Fra:1 Mem:44.35M (Peak 44.35M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortCradleInnerBumper
+Fra:1 Mem:44.39M (Peak 44.39M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortGoldTriangularPad
+Fra:1 Mem:44.45M (Peak 44.45M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SeatedCoolingLouvers-1-8.0
+Fra:1 Mem:44.51M (Peak 44.51M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortCradleRoot
+Fra:1 Mem:44.49M (Peak 44.51M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SeatedCoolingLouvers-1-4.2
+Fra:1 Mem:44.48M (Peak 44.51M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | rightCalibrationCollar
+Fra:1 Mem:44.59M (Peak 44.59M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | rightLargeScanGrilles
+Fra:1 Mem:44.76M (Peak 44.76M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | rightScanHeadOchreBezel
+Fra:1 Mem:44.75M (Peak 44.76M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SeatedCoolingLouvers-12.2
+Fra:1 Mem:44.73M (Peak 44.76M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SeatedCoolingLouvers1-8.0
+Fra:1 Mem:44.92M (Peak 44.92M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | rightScanHead
+Fra:1 Mem:45.01M (Peak 45.01M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | rightHeadNeck
+Fra:1 Mem:45.00M (Peak 45.01M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SeatedCoolingLouvers1-4.2
+Fra:1 Mem:45.00M (Peak 45.01M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | rightMovingHub
+Fra:1 Mem:45.07M (Peak 45.07M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | rightArmRootClevis
+Fra:1 Mem:45.11M (Peak 45.11M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ARM_RIGHT__OpenCage
+Fra:1 Mem:45.12M (Peak 45.12M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SeatedCoolingLouvers12.2
+Fra:1 Mem:45.17M (Peak 45.17M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | DriveCrosshead
+Fra:1 Mem:45.15M (Peak 45.17M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | leftCalibrationCollar
+Fra:1 Mem:45.19M (Peak 45.19M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SupportedMainNozzle-0.9
+Fra:1 Mem:45.19M (Peak 45.19M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | leftLargeScanGrilles
+Fra:1 Mem:45.09M (Peak 45.19M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SupportedMainNozzle0.9
+Fra:1 Mem:45.11M (Peak 45.19M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | leftScanHeadOchreBezel
+Fra:1 Mem:45.11M (Peak 45.19M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampFoot-1
+Fra:1 Mem:45.09M (Peak 45.19M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampUpright-1
+Fra:1 Mem:45.15M (Peak 45.19M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampGuide-1
+Fra:1 Mem:45.17M (Peak 45.19M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | leftScanHead
+Fra:1 Mem:45.19M (Peak 45.19M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampFoot1
+Fra:1 Mem:45.17M (Peak 45.19M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampUpright1
+Fra:1 Mem:45.16M (Peak 45.19M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampGuide1
+Fra:1 Mem:45.19M (Peak 45.19M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | leftHeadNeck
+Fra:1 Mem:45.22M (Peak 45.22M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SolidUYokeCrossbar
+Fra:1 Mem:45.24M (Peak 45.24M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampRamHousing
+Fra:1 Mem:45.23M (Peak 45.24M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | leftMovingHub
+Fra:1 Mem:45.26M (Peak 45.26M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampRamCollar
+Fra:1 Mem:45.27M (Peak 45.27M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | leftArmRootClevis
+Fra:1 Mem:45.26M (Peak 45.27M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | STAMP__OchrePressRing
+Fra:1 Mem:45.41M (Peak 45.41M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampThreeRaisedBars
+Fra:1 Mem:45.42M (Peak 45.42M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ARM_LEFT__OpenCage
+Fra:1 Mem:45.67M (Peak 45.67M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampGuideSleeve1
+Fra:1 Mem:45.64M (Peak 45.67M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampBridgeArms
+Fra:1 Mem:45.67M (Peak 45.67M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampGuideSleeve-1
+Fra:1 Mem:45.67M (Peak 45.67M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampMovingSpindle
+Fra:1 Mem:45.59M (Peak 45.67M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Initializing
+Fra:1 Mem:45.31M (Peak 45.67M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Images | Loading forge_machinery_albedo.png
+Fra:1 Mem:45.31M (Peak 45.67M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Images | Loading forge_machinery_orm.png
+Fra:1 Mem:58.32M (Peak 59.31M) | Time:00:00.01 | Mem:1.00M, Peak:1.00M | Scene, ViewLayer | Updating Images | Loading forge_panel_albedo.png
+Fra:1 Mem:65.32M (Peak 66.32M) | Time:00:00.01 | Mem:2.00M, Peak:2.00M | Scene, ViewLayer | Updating Images | Loading forge_panel_orm.png
+Fra:1 Mem:57.32M (Peak 73.32M) | Time:00:00.02 | Mem:15.00M, Peak:15.00M | Scene, ViewLayer | Waiting for render to start
+Fra:1 Mem:57.32M (Peak 73.32M) | Time:00:00.02 | Mem:15.00M, Peak:15.00M | Scene, ViewLayer | Loading render kernels (may take a few minutes the first time)
+Fra:1 Mem:57.32M (Peak 73.32M) | Time:00:00.02 | Mem:15.00M, Peak:15.00M | Scene, ViewLayer | Updating Scene
+Fra:1 Mem:57.32M (Peak 73.32M) | Time:00:00.02 | Mem:15.00M, Peak:15.00M | Scene, ViewLayer | Updating Shaders
+Fra:1 Mem:57.41M (Peak 73.32M) | Time:00:00.02 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Procedurals
+Fra:1 Mem:57.41M (Peak 73.32M) | Time:00:00.02 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Background
+Fra:1 Mem:57.41M (Peak 73.32M) | Time:00:00.02 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Camera
+Fra:1 Mem:57.41M (Peak 73.32M) | Time:00:00.02 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Meshes Flags
+Fra:1 Mem:57.41M (Peak 73.32M) | Time:00:00.02 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Objects
+Fra:1 Mem:57.41M (Peak 73.32M) | Time:00:00.02 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Updating Objects | Copying Transformations to device
+Fra:1 Mem:57.43M (Peak 73.32M) | Time:00:00.02 | Mem:15.03M, Peak:15.03M | Scene, ViewLayer | Updating Objects | Applying Static Transformations
+Fra:1 Mem:57.43M (Peak 73.32M) | Time:00:00.02 | Mem:15.03M, Peak:15.03M | Scene, ViewLayer | Updating Particle Systems
+Fra:1 Mem:57.43M (Peak 73.32M) | Time:00:00.02 | Mem:15.03M, Peak:15.03M | Scene, ViewLayer | Updating Particle Systems | Copying Particles to device
+Fra:1 Mem:57.43M (Peak 73.32M) | Time:00:00.02 | Mem:15.03M, Peak:15.03M | Scene, ViewLayer | Updating Meshes
+Fra:1 Mem:57.68M (Peak 73.32M) | Time:00:00.02 | Mem:15.03M, Peak:15.03M | Scene, ViewLayer | Updating Mesh | Computing attributes
+Fra:1 Mem:58.94M (Peak 73.32M) | Time:00:00.02 | Mem:15.04M, Peak:15.04M | Scene, ViewLayer | Updating Mesh | Copying Attributes to device
+Fra:1 Mem:58.91M (Peak 73.32M) | Time:00:00.02 | Mem:16.26M, Peak:16.26M | Scene, ViewLayer | Updating Scene BVH | Building
+Fra:1 Mem:58.91M (Peak 73.32M) | Time:00:00.02 | Mem:16.26M, Peak:16.26M | Scene, ViewLayer | Updating Scene BVH | Building BVH
+Fra:1 Mem:58.91M (Peak 73.32M) | Time:00:00.02 | Mem:16.76M, Peak:16.76M | Scene, ViewLayer | Updating Scene BVH | Building BVH 0%
+Fra:1 Mem:58.91M (Peak 73.32M) | Time:00:00.02 | Mem:17.35M, Peak:17.85M | Scene, ViewLayer | Updating Scene BVH | Copying BVH to device
+Fra:1 Mem:58.91M (Peak 73.32M) | Time:00:00.02 | Mem:17.35M, Peak:17.85M | Scene, ViewLayer | Updating Mesh | Computing normals
+Fra:1 Mem:59.53M (Peak 73.32M) | Time:00:00.02 | Mem:17.35M, Peak:17.85M | Scene, ViewLayer | Updating Mesh | Copying Mesh to device
+Fra:1 Mem:59.53M (Peak 73.32M) | Time:00:00.02 | Mem:17.97M, Peak:17.97M | Scene, ViewLayer | Updating Objects Flags
+Fra:1 Mem:59.53M (Peak 73.32M) | Time:00:00.02 | Mem:17.97M, Peak:17.97M | Scene, ViewLayer | Updating Primitive Offsets
+Fra:1 Mem:59.53M (Peak 73.32M) | Time:00:00.02 | Mem:17.97M, Peak:17.97M | Scene, ViewLayer | Updating Images
+Fra:1 Mem:59.53M (Peak 73.32M) | Time:00:00.02 | Mem:17.97M, Peak:17.97M | Scene, ViewLayer | Updating Camera Volume
+Fra:1 Mem:59.53M (Peak 73.32M) | Time:00:00.02 | Mem:17.97M, Peak:17.97M | Scene, ViewLayer | Updating Lookup Tables
+Fra:1 Mem:59.53M (Peak 73.32M) | Time:00:00.02 | Mem:18.05M, Peak:18.05M | Scene, ViewLayer | Updating Lights
+Fra:1 Mem:59.53M (Peak 73.32M) | Time:00:00.02 | Mem:18.05M, Peak:18.05M | Scene, ViewLayer | Updating Lights | Computing tree
+Fra:1 Mem:59.56M (Peak 73.32M) | Time:00:00.02 | Mem:18.08M, Peak:18.08M | Scene, ViewLayer | Updating Integrator
+Fra:1 Mem:59.56M (Peak 73.32M) | Time:00:00.02 | Mem:18.08M, Peak:18.08M | Scene, ViewLayer | Updating Film
+Fra:1 Mem:59.57M (Peak 73.32M) | Time:00:00.02 | Mem:18.00M, Peak:18.08M | Scene, ViewLayer | Updating Lookup Tables
+Fra:1 Mem:59.57M (Peak 73.32M) | Time:00:00.02 | Mem:18.09M, Peak:18.09M | Scene, ViewLayer | Updating Baking
+Fra:1 Mem:59.57M (Peak 73.32M) | Time:00:00.02 | Mem:18.09M, Peak:18.09M | Scene, ViewLayer | Updating Device | Writing constant memory
+Fra:1 Mem:59.57M (Peak 73.32M) | Time:00:00.02 | Mem:18.09M, Peak:18.09M | Scene, ViewLayer | Sample 0/32
+Fra:1 Mem:112.98M (Peak 112.98M) | Time:00:00.38 | Remaining:00:11.12 | Mem:71.49M, Peak:71.49M | Scene, ViewLayer | Sample 1/32
+Fra:1 Mem:136.71M (Peak 184.17M) | Time:00:08.35 | Mem:71.49M, Peak:71.49M | Scene, ViewLayer | Sample 32/32
+Fra:1 Mem:136.71M (Peak 184.17M) | Time:00:08.35 | Mem:71.49M, Peak:71.49M | Scene, ViewLayer | Finished
+Saved: '/workspace/scratch/d2415e46e35b/tally-maker-v1/source-renders/tally-3-v3/folded.png'
+Time: 00:08.52 (Saving: 00:00.16)
+
+
+Info: Packed 6 file(s)
+Info: Saved "tally_3.blend"
+TALLY_EXPORT_STATS {"0": {"triangles": 16242, "drawPrimitives": 11}, "1": {"triangles": 6492, "drawPrimitives": 11}, "2": {"triangles": 2156, "drawPrimitives": 11}}
+TALLY_BOUNDS {"folded": {"min": [-10.681609153747559, -5.117123126983643, -1.409999966621399], "max": [11.175395965576172, 5.6300554275512695, 4.211710453033447], "size": [21.85700511932373, 10.747178554534912, 5.621710419654846], "maxRootDistanceMetres": 11.412446046936193}, "deployed": {"min": [-10.681609153747559, -8.551218032836914, -1.409999966621399], "max": [11.175395965576172, 10.00014877319336, 4.211710453033447], "size": [21.85700511932373, 18.551366806030273, 5.621710419654846], "maxRootDistanceMetres": 11.412446046936193}, "disputed": {"min": [-10.681609153747559, -7.952997207641602, -1.409999966621399], "max": [11.175395965576172, 10.165203094482422, 4.211710453033447], "size": [21.85700511932373, 18.118200302124023, 5.621710419654846], "maxRootDistanceMetres": 11.412446046936193}}
+TALLY_3_COMPLETE /workspace/scratch/d2415e46e35b/tally-maker-v1/candidate/assets/ships/parts/places/place_tally_3.glb
+
+Blender quit

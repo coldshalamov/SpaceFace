@@ -1,0 +1,85 @@
+{
+  "joins": {
+    "status": "Independent bounded review passed; ready for serialized root apply. Generated release/package/census outputs excluded.",
+    "files": [
+      {
+        "path": "src/render/authoredMotion.js",
+        "kind": "modify",
+        "preSha256": "dea93312340d51b473615e26f30a8238b4a269f43f91b4cc3e60aa47b937df11",
+        "postSha256": "110f6dbf3a5eae49abfbdcab8fbceddf4befb0eb8b28af488ab5c280cc4ac477"
+      },
+      {
+        "path": "tools/blender/forge/fleet.json",
+        "kind": "modify",
+        "preSha256": "b07a7a8c329ef327aad844aed4088af5436c652686bd85c3a73548206759f90e",
+        "postSha256": "253c659de2e7462981b2de5b9136b18e02097365d4a80dd4c0f46911c5fcf4af"
+      },
+      {
+        "path": "scripts/model-truth-census.mjs",
+        "kind": "modify",
+        "preSha256": "5864db308fdeaa21444a8aac044250cc3c0a4cbeac4ddebbafc88506dcf5fa39",
+        "postSha256": "e04ba391af80c70222926879eb5dedccbb914c4e72c4c4fdf7eb16d93de4a3a4"
+      },
+      {
+        "path": "tools/blender/forge/publish.mjs",
+        "kind": "modify",
+        "preSha256": "732bc0f0d43ed8b39f14da1b1a1e6c020e9c77172d06466255d3faadbb9a6b83",
+        "postSha256": "caf579c56c8b4fb70e3b7020fd55cf46bbcec7bd49d4aee5c2f8365f291a1fd7"
+      },
+      {
+        "path": "tools/blender/forge/publicationPolicy.mjs",
+        "kind": "add",
+        "postSha256": "0e6e86c05ce70770e45c8872e63ef273762a468cf74529bc493973ca45651b6a"
+      },
+      {
+        "path": "test/forge-publication-dynamic-groups.test.mjs",
+        "kind": "add",
+        "postSha256": "0c6a3b916af15c87ec7205c53bcc65abca298d34fc96539d7bb9ce5bb0da1c75"
+      },
+      {
+        "path": "test/tally3-census-dispatch.test.mjs",
+        "kind": "add",
+        "postSha256": "490b4b97f77fb64221ff7e4d2e2f91f48ba531e62917a3c32171fdf60faaa23b"
+      },
+      {
+        "path": "test/tally3-authored-motion-join.test.mjs",
+        "kind": "add",
+        "postSha256": "cd45c10eb2ee439859677171bf754cb15e0bd31bf1f978080034c89d7877a446"
+      }
+    ],
+    "patchSha256": "ef10894e78fc6c3e3b1800092a4691ff24591adbcde75215b7a76f932c96973f",
+    "review": "joins-v1/independent-review/REVIEW.md",
+    "verification": {
+      "independentJoinAssertions": {
+        "passed": 6,
+        "total": 6
+      },
+      "neighborTests": {
+        "passed": 43,
+        "total": 43
+      },
+      "shippingPortTests": {
+        "passed": 5,
+        "total": 5
+      },
+      "censusEvidence": "joins-v1/evidence/tally3-source-only-census.json"
+    }
+  },
+  "metadata": {
+    "scope": "Metadata only. GLB, motion bank, recipe, collision and editable source bytes remain unchanged. Corrections supersede these2metadata hashes in original40path maker seal.",
+    "files": [
+      {
+        "path": "design/visual-assets/tally-3/asset-contract.json",
+        "preSha256": "adc8ae3cebf59cdd808bef4af71ca4f40fcc08c98bd81b89313df2a7aa44058f",
+        "postSha256": "4965a7cd69585f6090cc27bbe165cd7287f2b96e30cbcd7257ba49d26b6f3f11"
+      },
+      {
+        "path": "design/visual-assets/tally-3/authoring-notes.md",
+        "preSha256": "fdeaf7e6494d05a568820b2ec2fcd647c0e04029f714828c524d1cf8aff062c3",
+        "postSha256": "2dba7d15afe44bd9bb658f570b636204dc09b3706b1ae870bf7ef2e4f680c50a"
+      }
+    ],
+    "evidence": "Production consumer independently decoded identical source/release/render primitive index counts.",
+    "patchSha256": "123ca2bc9d990419c43da354e4708b3e197d52465f51dae2bd61601c7e733b2d"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "status": "passed",
+  "checkedAt": "2026-10-05T03:26:49.635Z",
+  "scope": "Independent metadata-only correction review against sealed source, release and render primitive counts",
+  "artContractSha256": "4965a7cd69585f6090cc27bbe165cd7287f2b96e30cbcd7257ba49d26b6f3f11",
+  "authoringNotesSha256": "2dba7d15afe44bd9bb658f570b636204dc09b3706b1ae870bf7ef2e4f680c50a",
+  "patchSha256": "123ca2bc9d990419c43da354e4708b3e197d52465f51dae2bd61601c7e733b2d",
+  "lodTriangles": {
+    "lod0": 16242,
+    "lod1": 6492,
+    "lod2": 2133
+  },
+  "preExportMeshTriangleCounts": {
+    "0": 16242,
+    "1": 6492,
+    "2": 2156
+  },
+  "sourceSha256": "85ae67b12d490606224052c9e2b60f9f352b3d05984e5bec4a28b85674de7f77",
+  "motionSha256": "51ad42be1f93c55ce183d959616bc81f7f1518427e0225de448ed3fc1ae58926",
+  "recipeSha256": "dc30ff8ad1dee7bffee8132bf5714fef1b88df0f72b66c275dcfa6ef8f1e1d2f",
+  "findings": []
+}

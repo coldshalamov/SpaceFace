@@ -1,0 +1,15 @@
+{
+  "schema": "spaceface.forgeSource.v1",
+  "recipe": "tools/blender/forge/ships/tally_3.py",
+  "recipeSha256": "dc30ff8ad1dee7bffee8132bf5714fef1b88df0f72b66c275dcfa6ef8f1e1d2f",
+  "blend": "tally_3.blend",
+  "blendSha256": "303e0918df515497f94105ea4056f87fb712082e32350ea2a099e7c9c91cf94c",
+  "sharedForge": {
+    "forge.py": "987500394bedd3875c916afa7eeff368c2c545e4ac7371592a9f02e3283e064d",
+    "forge_export.py": "633016fb1fb2561ce2840cd295c6100983273264e2e2c6373b9fee620e9ecf46",
+    "motion.py": "49ea1d5b90f6da57a427865ef6ebef74604609fc426001ca4be0e6305f8951ff"
+  },
+  "reference": "original SF20-03 concept and blueprint inspected; production geometry rebuilt, not copied blockout",
+  "noExternalArt": true,
+  "alternatives": "Versioned source renders and script/blend archives in source-renders; no rejected attempt overwritten"
+}

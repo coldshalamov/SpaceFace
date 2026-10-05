@@ -1,0 +1,11 @@
+
+check:baseline
+  PASS    1412ms  ui-screen-imports
+  PASS     886ms  ui-control-labels
+  PASS     874ms  save-schema
+  PASS    2718ms  sim-v3-compare
+  PASS    2497ms  sim-compare
+
+  5/5 green in 8387ms wall (parallel:1+0x0), budget 90000ms, headroom 81613ms
+  concurrency allowance 1 from --jobs — split, not multiplied (see the header)
+

@@ -1,0 +1,70 @@
+{
+  "schema": "spaceface.tally3ProductionConsumerCpu.v1",
+  "status": "failed",
+  "startedAt": "2026-10-05T03:23:21.016Z",
+  "repoRoot": "/workspace/scratch/d2415e46e35b/spaceface-recovery-pr221-git/.worktrees/spaceface-integration",
+  "limits": "CPU production-consumer evidence only. Real verified metadata/render GLB, stock GLTFLoader and Meshopt geometry decode, production source resolver/runtime-table binding/partsLibrary composition/motion/lifecycle. KTX2 images are Texture placeholders; canvas and GPU pipeline/exact-target callbacks are instrumented CPU ports. No texture-pixel, GPU image, frame-time, performance, native whole-world Continue, production-world census or visual acceptance claim.",
+  "checks": [
+    {
+      "name": "reviewed source → release → generated resolver → actual package and motion lineage"
+    },
+    {
+      "name": "default verified GLB decoder + production package admission + precompiled runtime-table binding",
+      "primitives": 33,
+      "texturePlaceholders": 6,
+      "sourceFallback": false
+    },
+    {
+      "name": "actual public partsLibrary selection, authored swap, source marker and motion registration"
+    },
+    {
+      "name": "all three actual package LODs retain four motion bindings and switch exclusive visible meshes",
+      "lod0": {
+        "visibleMeshCandidates": 8,
+        "triangles": 16242
+      },
+      "lod1": {
+        "visibleMeshCandidates": 8,
+        "triangles": 6492
+      },
+      "lod2": {
+        "visibleMeshCandidates": 8,
+        "triangles": 2133
+      }
+    }
+  ],
+  "runnerSha256": "526b6759a8aa4052c6b051cd0a8d3eac273b7e22c62b6c99bfda2d01b74a4569",
+  "adapter": "partsLibrary upgradeAuthoredPlaceBoundaryForProbe → injected load port → generated renderPackagePilotForSourceUrl → exported loadAuthoredRenderPackagePilot → default createRenderPackageLoader decoder. The browser runtime-constructor singleton and GPU implementation are outside this CPU gate.",
+  "lineage": {
+    "sourceSha256": "85ae67b12d490606224052c9e2b60f9f352b3d05984e5bec4a28b85674de7f77",
+    "releaseSha256": "10fbb5b67f22774484463812b20c3b2e6d07d7cc90517beedf2a6f88a87e2db1",
+    "contentHash": "4bcd93ffb31750aaee068075769eadd1b57f8e8d14a920886330452f01a06a31",
+    "runtimeHash": "79c1b100bb962654372c60482fa83bfde3618394e5187806cd12ce32df973cf5",
+    "renderSha256": "90a73cb4b15daab23b813c7bb9b9323e6e7f5879de1e3e30d8caf7e58b51196f",
+    "motionSha256": "51ad42be1f93c55ce183d959616bc81f7f1518427e0225de448ed3fc1ae58926",
+    "metadataUrl": "assets/ships/release/render-packages/tally-3/render-package.json"
+  },
+  "lods": {
+    "lod0": {
+      "visibleMeshCandidates": 8,
+      "triangles": 16242
+    },
+    "lod1": {
+      "visibleMeshCandidates": 8,
+      "triangles": 6492
+    },
+    "lod2": {
+      "visibleMeshCandidates": 8,
+      "triangles": 2133
+    }
+  },
+  "error": "AssertionError [ERR_ASSERTION]: lod0: public three-argument motion update did not drive assessment\n    at run (file:///workspace/scratch/d2415e46e35b/tally-maker-v1/candidate/scripts/check-tally3-production-consumer.mjs:317:14)\n    at async file:///workspace/scratch/d2415e46e35b/tally-maker-v1/candidate/scripts/check-tally3-production-consumer.mjs:415:28",
+  "finishedAt": "2026-10-05T03:23:22.297Z",
+  "fetched": [
+    "assets/ships/release/render-packages/tally-3/render-package.json",
+    "file:///workspace/scratch/d2415e46e35b/spaceface-recovery-pr221-git/.worktrees/spaceface-integration/assets/ships/release/render-packages/tally-3/render.glb",
+    "assets/ships/motions/tally-3.motion.json"
+  ],
+  "inputFiles": 1698,
+  "inputCohortSha256": "2f10d1a7a83ee594874b97691b4cb0172501edb49012b9f033a6fcdb8fdbbf3d"
+}

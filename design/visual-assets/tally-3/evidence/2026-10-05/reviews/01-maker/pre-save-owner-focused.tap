@@ -1,0 +1,90 @@
+✔ Save/reentry at cargo:changed preserves exact original law fact and applies heat once (9.482631ms)
+✔ Save/reentry at law:incidentReceipt preserves exact original law fact and applies heat once (1.425941ms)
+✔ Save/reentry at law:reportIncidentReceipt preserves exact original law fact and applies heat once (1.325611ms)
+✔ narrow cargo callback failure preserves accepted quantity and ordinary addCargo behavior (1.077278ms)
+✔ law callback failure cannot duplicate cargo or invent an accepted incident (0.590888ms)
+✔ public Save/loadEnvelope from cargo:changed retains witnessed theft once (54.280225ms)
+✖ public Save/loadEnvelope from law:incidentReceipt retains witnessed theft once (14.92891ms)
+✔ public Save/loadEnvelope from law:reportIncidentReceipt retains witnessed theft once (14.985544ms)
+✔ construction is lazy; malformed source is visibly invalid, never unclaimed (3.454768ms)
+✔ approach, inspection, scanning and towing never sell or lock the physical lot (0.788835ms)
+✔ real release evidence requires source-bound selected scan and correct revision (0.727813ms)
+✔ release cannot wipe an unrelated newer claimant (2.204756ms)
+✔ claimant, evidence, target, expiry and replacement body invalidate pending offer (3.531594ms)
+✔ physical body must fit live receiver volume at strictly under 8 WU/s (0.758309ms)
+✔ assessor death rejects its offer and allows explicitly offered station fallback (0.471047ms)
+✔ corrected lot honors zero/partial cargo acceptance and leaves the same physical remainder (0.996687ms)
+✔ knowing theft uses real law entry, preserves denial, pays nothing, reevaluates each explicit partial take (0.477297ms)
+✔ actual lawSecurity may deny jurisdiction without fabricated witnesses or heat (1.025821ms)
+✔ cargo-event save journal recovers actual accepted rich-lot quantity exactly once (0.529525ms)
+✔ destroyed or lost crate closes finite source permanently; malformed evidence is blocked (0.269604ms)
+✔ ordinary collection, beam extraction, source drain and market cannot mint unaccepted crate content (7.289306ms)
+✔ ordinary scrap collection remains low-friction through actual mining and cargo owners (0.471298ms)
+✔ missing physical release stamp and explicit integrity error both fail closed (0.227191ms)
+✔ receiver sensor velocity includes angular motion and stationary station can omit velocity (0.425198ms)
+✔ restored partial theft never invents historical witnesses (0.420431ms)
+✔ repeat terminal inspection reads final title after body removal without reopening any transaction (1.929778ms)
+✔ open, corrected and partially collected title inspection still requires its exact live crate (0.51891ms)
+✔ repeated site entry and hard departure keep one exact finite body and one bounded assessor (18.34551ms)
+✔ a caller-labelled duplicate cannot claim transition preservation or a second offer (3.636641ms)
+✔ dead/consumed crate never respawns; New Game resets the finite encounter (4.428029ms)
+✔ selection changes, stale deck callbacks and actor death cancel their old decisions (8.127816ms)
+✔ actual public Save/Continue restores the source-bound crate pose once and keeps receiver (33.984035ms)
+✔ actual native Save/Continue preserves one tethered title body and physical receiver (138.074013ms)
+✔ unprompted scan gesture withdraws on death (3.049109ms)
+✔ unprompted scan gesture withdraws on range (2.002447ms)
+✔ unprompted scan gesture withdraws on mode (1.924319ms)
+✔ selected crate → real Hail → physical delivery → explicit deck confirm pays once (24.30497ms)
+✔ real scanner pulse discovers the physical crate release; correction enables ordinary accepted salvage (9.729501ms)
+✔ assessor death keeps the same selected crate and actual refinery fallback (3.840548ms)
+✔ repeat hails and Continue show the closed receipt without recreating the paid body (44.093462ms)
+✔ owned voice cancellation removes only its queued lifetime; stale same-id handles cannot cancel successor (3.452806ms)
+✔ active owned voice cancellation preserves pending other speakers and cannot consume later reused ID (1.066362ms)
+✔ words/icons and warning survive muted, grayscale and reduced-motion presentation (0.707362ms)
+✔ real authored motion bank follows assessment and rejects unaccepted stamp/old actor lifetimes (7.226002ms)
+✔ reduced motion damps authored assessment while claim words remain unchanged (8.113996ms)
+✔ ten delivery confirmations produce one permanent receipt and one wallet payment (5.621152ms)
+✔ credits notification re-entry/save sees source, body, permanent receipt and wallet committed together (1.94421ms)
+✔ local 32-receipt ring eviction cannot erase permanent settlement dedupe (0.744998ms)
+✔ mismatched receipt and missing terminal source fail closed (0.4528ms)
+✔ malformed permanent receipt is blocked, and missing receipt never repays a terminal source (1.05901ms)
+✔ credit cap rejects before consuming source or body and new game clears economy receipt (9.435089ms)
+✔ source-bound spine projection matches actual body manifest, not visible instrument outline (1.807424ms)
+✔ wrong aliases, fit, source scale, radius and solid ownership fail closed (0.38652ms)
+✔ changed GLB bytes and relabelled source contracts cannot receive the source seal (25.662208ms)
+✔ shrunk, inflated and cosmetic fork-tip native hulls all fail source parity (39.20776ms)
+✔ real SG-02 collider is one source-spine convex prism; receiver/V is not a filled collider (45.163073ms)
+✔ native crate coasts through V at multiple yaws and near-tolerance offsets, then explicitly delivers (99.375927ms)
+✔ outside .25 containment tolerance denies delivery despite a physically clear opening (1.054453ms)
+✔ positive control: continuing into the solid spine produces real collision and momentum transfer (4.63492ms)
+ℹ tests 59
+ℹ suites 0
+ℹ pass 58
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1200.633923
+
+✖ failing tests:
+
+test at test/tally3-atomic-cargo.test.mjs:39:88
+✖ public Save/loadEnvelope from law:incidentReceipt retains witnessed theft once (14.92891ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 0.22
+  
+      at TestContext.<anonymous> (file:///workspace/scratch/d2415e46e35b/tally-maker-v1/candidate/test/tally3-atomic-cargo.test.mjs:48:80)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 0.22,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
