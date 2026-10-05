@@ -205,6 +205,12 @@ export function pallasAmbushKnotCells() {
 export const ASHFALL_PICKET_REDOUBT_ID = 'optic_ashfall_picket_redoubt';
 // Gateward shoulder of zone_ashfall_approach, off the arena signal on the
 // inbound leg from the Charon gate — the Iron Maw's picket works the lane.
+// At 863 WU from station_ashcache the stamp sits inside the 1100 WU ambient
+// spawn-suppression bubble (STATION_SAFE_RADIUS): fresh hostiles never
+// materialize AT the redoubt — the lane fight arrives via the zone-core squad
+// (zone center is 1270 WU out, outside the bubble) patrolling in. The stamp
+// also overlaps the ISC Lighthouse wreck annulus [520,1420]; a rare seed
+// materializes the hull inside the lattice — the survivor script tolerates it.
 export const ASHFALL_PICKET_REDOUBT_ORIGIN = Object.freeze({ x: 20, z: 680 });
 
 /**

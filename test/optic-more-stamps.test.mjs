@@ -405,10 +405,17 @@ test('world.js stamps both new lattices as field-resident bodies in their own se
   }
 
   // Neither new sector sprouts the Ceres reference layout — and Pallas/Ashfall
-  // carry no scatter lattices now that they are authored.
+  // carry no scatter lattices now that they are authored (scatter ids are
+  // `scatter:<sectorId>:<n>` — authored sectors are excluded from the draw).
   const allOpticRocks = (state.world.asteroidField && state.world.asteroidField.rocks) || [];
   assert.equal(
     allOpticRocks.filter((e) => e.data && e.data.opticStructureId === CERES_PRISM_GALLERY_ID).length,
     0,
+  );
+  assert.equal(
+    allOpticRocks.filter((e) => e.data && typeof e.data.opticStructureId === 'string'
+      && e.data.opticStructureId.startsWith('scatter:')).length,
+    0,
+    'an authored sector must not also grow a seeded scatter lattice',
   );
 });
