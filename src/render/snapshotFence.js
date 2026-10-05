@@ -77,6 +77,12 @@ export function createSnapshotFence(options = {}) {
         state.indexByEntityId.set(args[0] >>> 0, index);
         return index;
       },
+      copyRow(previousSnapshot, sourceIndex) {
+        if (state.sealed) throw new Error('Presentation snapshot fence buffer is sealed');
+        const index = snapshot.copyRow(previousSnapshot.columns, sourceIndex);
+        state.indexByEntityId.set(previousSnapshot.columns.entityId[sourceIndex] >>> 0, index);
+        return index;
+      },
       setTint(...args) {
         if (state.sealed) throw new Error('Presentation snapshot fence buffer is sealed');
         return snapshot.setTint(...args);
@@ -284,10 +290,31 @@ export function packPresentationWorldToFence(world, fence, simTime = 0, poseEpoc
   const diagnostics = typeof world.getDiagnostics === 'function' ? world.getDiagnostics() : null;
   const active = diagnostics && Number.isInteger(diagnostics.active) ? diagnostics.active : 0;
   const snapshot = fence.beginPack(Math.max(1, active), simTime, poseEpoch);
+  // Dirty-column pack: the mask still holds every pose/visual write since the
+  // last frame's consume when this runs (the pack precedes the sync pass), so a
+  // clean slot's packed bytes are identical to the LATEST committed pack's row —
+  // copy them verbatim instead of re-reading a dozen columns + re-deriving the
+  // yaw pair + re-stamping lean. The latest pack must share this pack's pose
+  // epoch: a slot remap (sector jump, mirror rebuild) teleports every row and
+  // always falls back to the full write. (latestSnapshot is the pack minted
+  // last frame — previousSnapshot is two packs back and would reintroduce
+  // poses dirtied since.)
+  const previous = typeof fence.latestSnapshot === 'function' ? fence.latestSnapshot() : null;
+  const previousIndex = previous && previous.poseEpoch === poseEpoch
+    ? (previous.indexByEntityId || null) : null;
   let packed = 0;
   for (let index = 0; index < active; index++) {
     const slot = world.activeSlots[index];
     if (world.alive[slot] !== 1) continue;
+    const entityId = world.entityIds[slot] >>> 0;
+    if (previousIndex && world.dirtyMasks && world.dirtyMasks[slot] === 0) {
+      const previousRow = previousIndex.get(entityId);
+      if (previousRow !== undefined && previousRow >= 0) {
+        snapshot.copyRow(previous, previousRow);
+        packed++;
+        continue;
+      }
+    }
     // Prefer presentation-world half-yaw cache (filled on rot write). Fall back to sin/cos
     // for worlds that predate the cache columns or omit them in tests.
     let qy;
@@ -302,7 +329,7 @@ export function packPresentationWorldToFence(world, fence, simTime = 0, poseEpoc
       qw = Math.cos(half);
     }
     const packedIndex = snapshot.write(
-      world.entityIds[slot] >>> 0,
+      entityId,
       world.typeCodes ? world.typeCodes[slot] : 0,
       world.x[slot],
       world.y[slot],

@@ -1973,7 +1973,14 @@ function drainDespawnDisposeQueue(owner, budgetMs = DESPAWN_DISPOSE_BUDGET_MS) {
       continue;
     }
     let iter = owner._despawnDisposeIter;
-    if (!iter && m) iter = owner._despawnDisposeIter = disposeObjectSteps(m);
+    // A parked iterator that survives a queue reset (destroy/clearAllMeshes
+    // flush the tail synchronously but own no iter) must never drive its
+    // remaining walk against a new corpse — re-mint on identity mismatch.
+    if (iter && m && iter._corpse !== m) iter = owner._despawnDisposeIter = null;
+    if (!iter && m) {
+      iter = owner._despawnDisposeIter = disposeObjectSteps(m);
+      iter._corpse = m;
+    }
     if (!iter) {
       owner._despawnDisposeHead += 1;
       drained += 1;
@@ -17441,6 +17448,7 @@ export const render = {
       }
       this._despawnDisposeQueue.length = 0;
       this._despawnDisposeHead = 0;
+      this._despawnDisposeIter = null;
     }
     disposeRendererOwnedResources(this, { contextLost: this._contextLost === true });
     globalShipMicroMotion.unbindEvents();
@@ -20834,6 +20842,7 @@ export const render = {
     }
     this._despawnDisposeQueue.length = 0;
     this._despawnDisposeHead = 0;
+    this._despawnDisposeIter = null;
     this._meshReleaseBatchBegin?.();
     try {
       for (const [id, m] of [...this._meshes]) {

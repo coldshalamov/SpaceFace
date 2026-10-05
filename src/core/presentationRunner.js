@@ -881,6 +881,13 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
         && !steppedJournalRebuild.publishIter
         && Array.isArray(steppedJournalRebuild.collectOut)
       ? steppedJournalRebuild.collectOut : null;
+    // Destroyed-but-uncollected ids hold stale rows through the collect window
+    // — the publisher hides them on the prefix feed until the publish retire
+    // frees their slots. The journal returns the live set; it clears only on
+    // collect completion, when the publish feed stops consulting it anyway.
+    presentationFrame.rebuildSuppressedDestroyIds = steppedJournalRebuild
+        && !steppedJournalRebuild.publishIter
+      ? presentationJournal.getSuppressedDestroyIds?.() : null;
   }
 
   function acknowledgePresentedJournal() {

@@ -117,7 +117,12 @@ export function createPresentationPublisher(world, state, options = {}) {
       // retained rows pay only the changed-row dirty marks. A prefix sample
       // suppresses the retire sweep — partial by construction.
       if (typeof world.updateFromEntities === 'function') {
-        world.updateFromEntities(sample, null, collectPrefix ? { retire: false } : undefined);
+        world.updateFromEntities(sample, null, collectPrefix
+          ? {
+            retire: false,
+            hiddenIds: presentationFrame.rebuildSuppressedDestroyIds || null,
+          }
+          : undefined);
       } else {
         world.rebuildFromEntities(sample);
       }

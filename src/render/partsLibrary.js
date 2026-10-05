@@ -4298,7 +4298,19 @@ async function commitAuthoredPlaceBoundary(
     commitLegStarted = monotonicNow();
     try {
       const disposeIter = disposeDetachedPlaceFallbackSteps(fallbackRoot);
+      let disposeLedgerSkips = 0;
       for (;;) {
+        // Consult the wallet before minting the next slice — K concurrent
+        // commit disposes otherwise stack their first slices inside the same
+        // presented beat. The drain's aging bound keeps a saturated stretch
+        // from starving reclaim outright.
+        if (disposeLedgerSkips < 2 && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS
+            && options.yieldBetweenGpuStages === true && typeof options.yieldToNextPresent === 'function') {
+          disposeLedgerSkips += 1;
+          await waitForAuthoredAdmission(options.yieldToNextPresent(), options).catch(() => {});
+          commitLegStarted = monotonicNow();
+          continue;
+        }
         const disposeStep = disposeIter.next();
         // Per-slice debit with the restamp after the wait — a multi-present
         // dispose charges its real work, not the spans between presents.
@@ -8783,8 +8795,17 @@ async function disposePreparedAuthoredShip(authored) {
   const completed = authored.preparedCleanupCompleted || new Set();
   authored.preparedCleanupCompleted = completed;
   const cleanupErrors = [];
+  // Per-item teardown used to stack inside one microtask drain, un-paced and
+  // un-debited — pace each item's real cost onto the ledger and hand spent
+  // stretches to a timer gap.
+  let cleanupLegStarted = monotonicNow();
   const attempt = async (key, cleanup) => {
     if (completed.has(key)) return;
+    if (monotonicNow() - cleanupLegStarted >= 4 || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) {
+      notePacedFrameSpend(monotonicNow() - cleanupLegStarted);
+      await new Promise((resolve) => { setTimeout(resolve, 0); });
+      cleanupLegStarted = monotonicNow();
+    }
     try {
       await cleanup();
       completed.add(key);
@@ -8807,6 +8828,7 @@ async function disposePreparedAuthoredShip(authored) {
     await attempt(authored.releaseFlightTemplate, () => authored.releaseFlightTemplate('authored-ship-preparation-failed'));
   }
   await attempt(root, () => root.clear());
+  notePacedFrameSpend(monotonicNow() - cleanupLegStarted);
   // Registry detachment cannot wait on disposal success: a thrown cleanup error must not leave
   // the boundary and its prepared roots pinned in sceneState.preparedAuthoredRoots forever.
   unregisterPreparedAuthoredAdmission(authored);
@@ -8930,6 +8952,48 @@ async function disposeAbandonedWholeShipLodRoot(composed) {
   }
 }
 
+// Detached retained-LOD roots pace their teardown across timer gaps instead of
+// stacking K whole-subtree traversals inside one microtask drain — each drive
+// runs one stepped slice per queue head under its own 4 ms clock + the shared
+// wallet, aging like the despawn drain so a saturated stretch can't starve
+// reclaim forever.
+const retainedDisposeQueue = [];
+let retainedDisposeDrainScheduled = false;
+function scheduleRetainedDisposeDrain() {
+  if (retainedDisposeDrainScheduled) return;
+  retainedDisposeDrainScheduled = true;
+  setTimeout(() => {
+    retainedDisposeDrainScheduled = false;
+    const started = monotonicNow();
+    let skips = 0;
+    while (retainedDisposeQueue.length) {
+      if (pacedFrameSpend() >= PACED_FRAME_BUDGET_MS && skips < 2) {
+        skips += 1;
+        break;
+      }
+      const head = retainedDisposeQueue[0];
+      if (!head.iter) {
+        try { head.iter = disposeDetachedObjectSteps(head.root); }
+        catch (error) {
+          console.info('[partsLibrary] whole-ship LOD stale root cleanup failed', error);
+          retainedDisposeQueue.shift();
+          continue;
+        }
+      }
+      try {
+        if (head.iter.next().done) retainedDisposeQueue.shift();
+      } catch (error) {
+        console.info('[partsLibrary] whole-ship LOD stale root cleanup failed', error);
+        retainedDisposeQueue.shift();
+        continue;
+      }
+      if (monotonicNow() - started >= 4) break;
+    }
+    notePacedFrameSpend(monotonicNow() - started);
+    if (retainedDisposeQueue.length) scheduleRetainedDisposeDrain();
+  }, 0);
+}
+
 export function installWholeShipLodFamilyController(boundary, entity, setActive, options = {}) {  if (!boundary || !entity || entity.isPlayer === true) return false;
   const selection = wholeShipVisualForEntity(entity, { ...options, requiredWholeShip: true });
   const family = selection && selection.lodFamily;
@@ -8985,15 +9049,18 @@ export function installWholeShipLodFamilyController(boundary, entity, setActive,
       .then(() => disposePreparedAuthoredShip(composed))
       .catch((error) => console.info('[partsLibrary] whole-ship LOD retained-level cleanup failed', error));
   };
-  // Non-composed stale roots ride the same deferred lane — a re-commit tears
-  // down each retained level's subtree and inline sync disposes stack inside
-  // one continuation. The root is detached before this runs, so the traversal
-  // only touches already-orphaned state.
+  // Non-composed stale roots ride a paced queue — a re-commit tears down each
+  // retained level's subtree, and bare-microtask disposes stacked K whole
+  // traversals inside one continuation. The queue drives one stepped slice per
+  // head under its own slice clock + the shared wallet, aging like the despawn
+  // drain so a saturated stretch can't starve reclaim. The root is detached
+  // before this runs, so the traversal only touches already-orphaned state.
   const releaseRetainedRoot = (root) => {
-    void Promise.resolve()
-      .then(() => disposeDetachedObject(root))
-      .catch((error) => console.info('[partsLibrary] whole-ship LOD stale root cleanup failed', error));
+    if (!root) return;
+    retainedDisposeQueue.push({ root, iter: null });
+    scheduleRetainedDisposeDrain();
   };
+
 
   // Demoted-level roots stay retained-but-detached for instant swap-back; the teardown traversal
   // only reaches attached children, so each stale retained root re-attaches into the dying tree
@@ -9394,7 +9461,15 @@ async function commitAuthoredBoundary(
     commitLegStarted = monotonicNow();
     try {
       const disposeIter = disposeDetachedObjectSteps(fallbackRoot);
+      let disposeLedgerSkips = 0;
       for (;;) {
+        if (disposeLedgerSkips < 2 && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS
+            && options.yieldBetweenGpuStages === true && typeof options.yieldToNextPresent === 'function') {
+          disposeLedgerSkips += 1;
+          await waitForAuthoredAdmission(options.yieldToNextPresent(), options).catch(() => {});
+          commitLegStarted = monotonicNow();
+          continue;
+        }
         const disposeStep = disposeIter.next();
         // Per-slice debit with the restamp after the wait — a multi-present
         // dispose charges its real work, not the spans between presents.
@@ -15778,7 +15853,8 @@ export function* disposeDetachedObjectSteps(root) {
       if (material && material.userData && material.userData.spacefaceSharedAsset) continue;
       if (material && typeof material.dispose === 'function') material.dispose();
     }
-    for (const child of object.children || []) stack.push(child);
+    const children = object.children || [];
+    for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
   }
 }
 
@@ -15818,7 +15894,8 @@ function* disposeDetachedPlaceFallbackSteps(root) {
     if (object.geometry) geometries.add(object.geometry);
     const list = object.material ? (Array.isArray(object.material) ? object.material : [object.material]) : [];
     for (const material of list) if (material) materials.add(material);
-    for (const child of object.children || []) stack.push(child);
+    const kids = object.children || [];
+    for (let i = kids.length - 1; i >= 0; i--) stack.push(kids[i]);
   }
   let disposed = 0;
   for (const geometry of geometries) {

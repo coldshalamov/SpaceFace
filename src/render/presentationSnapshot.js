@@ -33,6 +33,8 @@ export const SNAPSHOT_COLUMNS = Object.freeze({
   flags: { stride: 1, kind: 'u32' },
 });
 
+const SNAPSHOT_COLUMN_SPECS = Object.entries(SNAPSHOT_COLUMNS);
+
 export const SNAPSHOT_FLAG = Object.freeze({
   VISIBLE: 1 << 0,
   CASTS_SHADOW: 1 << 1,
@@ -133,6 +135,23 @@ export function createPresentationSnapshot(options = {}) {
       columns.flags[index] = flags >>> 0;
       columns.bank[index] = 0;
       columns.pitch[index] = 0;
+      return index;
+    },
+
+    /**
+     * Append one entity's packed row verbatim from a source snapshot's columns.
+     * Used by the dirty-column pack: a slot with no pose/visual dirties since the
+     * previous pack carries identical bytes — copying the typed-array strides
+     * skips the per-field fanout + lean re-write of the scalar path. The caller
+     * owns the indexByEntityId insert (same contract as write()).
+     */
+    copyRow(sourceColumns, sourceIndex) {
+      const index = count++;
+      if (index >= capacity) allocate(capacity * GROWTH_FACTOR);
+      for (const [name, spec] of SNAPSHOT_COLUMN_SPECS) {
+        const s = sourceIndex * spec.stride;
+        columns[name].set(sourceColumns[name].subarray(s, s + spec.stride), index * spec.stride);
+      }
       return index;
     },
 

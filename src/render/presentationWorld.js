@@ -1,6 +1,8 @@
 // Dense, disposable render-side mirror of authoritative GameState entities.
 // Simulation never reads this object. Journal publication and renderer bindings are the only writers.
 
+import { projectileSkipsVisualFactoryMesh } from './weapons/recipes.js';
+
 export const PRESENTATION_DIRTY = Object.freeze({
   NONE: 0,
   TRANSFORM: 1 << 0,
@@ -856,6 +858,12 @@ export function createPresentationWorld(options = {}) {
     let retainedHits = 0;
     for (const entity of entities) {
       if (!entity || entity.alive === false) continue;
+      // The push-time eligibility predicates aren't spawn-static — _noMesh
+      // tombstones post-push after repeated build failures — so the apply
+      // recheck mirrors the journal/push halves or a dead-eligible row keeps
+      // minting rows on every prefix/completed feed until the next collect.
+      if (entity._noMesh === true) continue;
+      if (entity.type === 'projectile' && projectileSkipsVisualFactoryMesh(entity)) continue;
       const entityId = sourceEntityId(entity);
       if (entityId === 0) continue;
       const generation = typeof generationForEntity === 'function'
@@ -885,15 +893,36 @@ export function createPresentationWorld(options = {}) {
         markDirtyBits(slot, PRESENTATION_DIRTY.VISUAL);
       }
     }
+    // Suppressed mid-collect destroys name ids this partial sample never
+    // pushed — their stale rows would keep drawing until the publish retire.
+    // Hide them for the window; a respawned id arriving in a feed refreshes
+    // its row through the normal path, so the hide never mints.
+    if (retireSuppressed && options.hiddenIds) {
+      for (const hiddenId of options.hiddenIds) {
+        const slot = byId.get(hiddenId);
+        if (slot !== undefined && world.alive[slot] === 1 && lastSeenSeq[slot] !== seq
+            && world.visible[slot] !== 0) {
+          world.visible[slot] = 0;
+          markDirtyBits(slot, PRESENTATION_DIRTY.VISIBILITY);
+        }
+      }
+    }
     // Rows absent from the collect retire — snapshot the id list since retire
     // mutates byId mid-iteration. All-retained is the hot case: nothing can be
     // absent, so the id-array alloc and second walk are skipped. A partial
     // sample suppresses the sweep outright.
     if (!retireSuppressed && retainedHits !== byId.size) {
-      for (const entityId of [...byId.keys()]) {
-        const slot = byId.get(entityId);
-        if (slot === undefined || lastSeenSeq[slot] !== seq) retire(entityId);
+      // Dense-column scan instead of a byId key spread: absents are the
+      // minority during churn, and retire mutates byId mid-walk so the ids
+      // collect first. The byId.get guard keeps the verdict slot-exact.
+      const aliveCols = world.alive;
+      const idCols = world.entityIds;
+      const absent = [];
+      for (let s = 0; s < idCols.length; s++) {
+        if (aliveCols[s] === 1 && lastSeenSeq[s] !== seq
+            && byId.get(idCols[s]) === s) absent.push(idCols[s]);
       }
+      for (const entityId of absent) retire(entityId);
     }
     diagnostics.rebuilds++;
     return true;
