@@ -984,6 +984,8 @@ shipped, so their J1/J6 and P04 residuals moved to §K rows 276/277; §K rows re
 
 Lane checklist: FINISH_LANES.md §8 (PQ-032/142/152/155/156/170/172/176–178/195, PQ-208 verb keys, PQ-209.02) against §17 bars M1–M6. Each row is one seam's write set with a done-when in player units. Prior owner named per row. The first six rows are landed; the table is empty until the next decomposition.
 
+| 278 | LG-TOW-PREDICT | Fit screen predicts tow class before you pay (M2): `handlingProfileForShip().predictions` gains `towClassMassT` + named heaviest towable roster hull, read off the live tow law (`shipCapabilities.towClassMassFor`), same derived block the bars read. Prior owner: PQ-176.03 fit sentences. Done when: predicted tow class matches a live tow of that hull within 20 % on seed 4242, and the fit screen names the hull. | BUILD | OPEN |
+
 ## 2. Product north star
 
 SpaceFace is an open-source systemic space game with the legible economic and navigational base of games such as Endless Sky, but its distinctive play is physical. Gravity, inertia, collision, Massline attachment, boost, payload mass, fields, recoil, orbital geometry, and improvised physical tricks should produce tactics that are visible, learnable, and surprising.
