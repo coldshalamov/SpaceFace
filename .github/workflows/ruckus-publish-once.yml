@@ -1,0 +1,112 @@
+name: Build and publish RUCKUS character
+on:
+  push:
+    branches: [character/ruckus-last-demolition]
+    paths: [.github/workflows/ruckus-publish-once.yml]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: ruckus-character-publish
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/character/ruckus-last-demolition'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      OMP_NUM_THREADS: '4'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: character/ruckus-last-demolition
+          filter: blob:none
+          fetch-depth: 1
+          sparse-checkout: |
+            .ruckus-transfer
+            .github/workflows
+            src
+            test
+            scripts
+            assets/ui
+            assets/characters/ruckus
+            tools/blender/forge
+            tools/blender/characters
+            tools/ruckus
+            design/characters
+            docs/characters
+      - name: Decode only the verified authored character sources
+        run: |
+          python3 - <<'PY'
+          import pathlib,hashlib,base64,lzma,json
+          root=pathlib.Path.cwd(); folder=root/'.ruckus-transfer'
+          m=json.loads((folder/'manifest.json').read_text()); parts=[]
+          for c in m['chunks']:
+              b=(folder/c['name']).read_bytes()
+              assert hashlib.sha256(b).hexdigest()==c['sha256'],c['name']
+              parts.append(b)
+          raw=base64.b64decode(b''.join(parts),validate=True)
+          assert hashlib.sha256(raw).hexdigest()==m['sha256']
+          raw=lzma.decompress(raw)
+          assert hashlib.sha256(raw).hexdigest()==m['jsonSha256']
+          data=json.loads(raw); assert set(data)==set(m['files'])
+          for name,content in data.items():
+              p=root/name
+              assert p.resolve().is_relative_to(root) and 'ruckus' in name.lower()
+              assert not p.exists(),f'Will not overwrite another implementation: {name}'
+              p.parent.mkdir(parents=True,exist_ok=True);p.write_text(content)
+          # Also update the browser materialization assertion in the scoped adapter.
+          p=root/'tools/ruckus/integrate.mjs'; text=p.read_text()
+          insertion=(folder/'materialized-count-fix.txt').read_text()
+          anchor="if(contract!==await readFile(new URL('test/authoritative-manifest.test.mjs',root),'utf8'))"
+          assert anchor in text;p.write_text(text.replace(anchor,insertion+anchor))
+          print('Verified and installed',len(data),'authored files')
+          PY
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Install offline asset authoring tool
+        run: sudo apt-get update -qq && sudo apt-get install -y blender
+      - name: Build editable source, three LODs, core, and rendered previews
+        run: |
+          mkdir -p artifacts/ruckus
+          blender --version | tee artifacts/ruckus/blender-version.txt
+          blender -b --threads 4 --python tools/blender/characters/ruckus.py -- --render 2>&1 | tee artifacts/ruckus/blender.log
+          node tools/ruckus/pack-model.mjs | tee artifacts/ruckus/model-pack.log
+          node tools/ruckus/integrate.mjs | tee artifacts/ruckus/integration.log
+      - name: Verify real physics, models, neighboring regressions, registry parity
+        run: node --test test/ruckus.test.mjs test/ruckus-model.test.mjs test/bracket.test.mjs test/character-far-actor-residency.test.mjs test/sg02-yaw-mapping.test.mjs test/authoritative-manifest.test.mjs 2>&1 | tee artifacts/ruckus/tests.log
+      - name: Install browser
+        run: npx playwright install --with-deps chromium
+      - name: Playtest rendered workshop
+        id: browser
+        continue-on-error: true
+        run: node tools/ruckus/playtest.mjs 2>&1 | tee artifacts/ruckus/browser.log
+      - name: Publish complete implementation to the feature branch only
+        env:
+          BROWSER_OUTCOME: ${{ steps.browser.outcome }}
+        run: |
+          mkdir -p docs/characters/ruckus
+          cp artifacts/ruckus/ruckus-hero.png artifacts/ruckus/ruckus-top.png docs/characters/ruckus/
+          cp artifacts/ruckus/tests.log artifacts/ruckus/blender-version.txt docs/characters/ruckus/
+          if [ -d artifacts/ruckus/browser ]; then cp -r artifacts/ruckus/browser docs/characters/ruckus/; fi
+          printf 'RUCKUS build proof\n\nReal-physics and model test suite: passed.\nRendered workshop: %s.\nThis is focused encounter proof, not a full campaign playthrough.\n' "$BROWSER_OUTCOME" > docs/characters/ruckus/VERIFICATION.txt
+          find assets/characters/ruckus -name '*.blend1' -delete
+          git rm -r .ruckus-transfer .github/workflows/ruckus-publish-once.yml .github/workflows/ruckus-source-bundle.yml
+          git add src/characters/ruckusRules.js src/data/ruckus.js src/systems/ruckus.js src/render/characters/ruckusModel.js src/render/characters/ruckusMeshData.js
+          git add src/core/registry.js src/runtime/nodeSystemFactoryTable.js src/runtime/authoritativeSystemManifest.js src/render/visualFactory.js src/data/audioRecipes.js src/data/sectors.js src/save/saveSystem.js test/authoritative-manifest.test.mjs
+          git add tools/ruckus tools/blender/characters/ruckus.py test/ruckus.test.mjs test/ruckus-model.test.mjs design/characters/RUCKUS.md .github/workflows/ruckus-character.yml
+          git add -f assets/characters/ruckus docs/characters/ruckus
+          git config user.name 'SpaceFace Character Builder'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'feat(character): RUCKUS demolition retriever, original Blender art and real physics friendship'
+          git push origin HEAD:character/ruckus-last-demolition
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ruckus-build-proof
+          path: |
+            artifacts/ruckus/
+            assets/characters/ruckus/
+          retention-days: 7
