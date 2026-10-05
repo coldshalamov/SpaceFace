@@ -391,7 +391,7 @@ export function mountChartHub(root, adapter, { searchInput = null, searchResults
     if (!spec || !spec.items || !spec.items.length) return false;
     hideCard();
     menuItems = spec.items;
-    menu.innerHTML = `${spec.title ? `<div class="gmh-eyebrow">${esc(spec.title)}</div>` : ''}${menuItems.map((it, i) => `${it.sepBefore ? '<div class="gmh-sep"></div>' : ''}<button type="button" class="gmh-item" role="menuitem" data-i="${i}"${it.disabled ? ' aria-disabled="true"' : ''}${it.reason ? ` title="${esc(it.reason)}"` : ''}>${svgOf(it.glyph || 'step')}<span>${esc(it.label)}</span>${it.key ? `<span class="gmh-key">${esc(it.key)}</span>` : ''}</button>`).join('')}`;
+    menu.innerHTML = `${spec.title ? `<div class="gmh-eyebrow">${esc(spec.title)}</div>` : ''}${menuItems.map((it, i) => `${it.sepBefore ? '<div class="gmh-sep"></div>' : ''}<button type="button" class="gmh-item" role="menuitem" data-i="${i}"${it.disabled ? ' aria-disabled="true"' : ''}${it.reason ? ` aria-description="${esc(it.reason)}"` : ''}>${svgOf(it.glyph || 'step')}<span>${esc(it.label)}</span>${it.key ? `<span class="gmh-key">${esc(it.key)}</span>` : ''}</button>`).join('')}`;
     menu.hidden = false;
     const rect = typeof root.getBoundingClientRect === 'function' ? root.getBoundingClientRect() : { left: 0, top: 0 };
     const box = rootBox();
