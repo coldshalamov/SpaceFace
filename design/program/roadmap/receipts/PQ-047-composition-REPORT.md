@@ -42,6 +42,13 @@ across the five unit suites at 1b6478e5; baseline 11/11.
    3/3; custody/predation cluster 155/155.
 2. `carrierDestructionPending` is write-only (no reachable trigger; give it a consumer or remove
    it when next touched).
+3. **Open residual (adversarial review of a509e1d6b, 2026-10-04, LOW):** after a predation clear,
+   a side hauler's custody record mints `legalOwnerKind:'other'`, `legalOwnerStableId:null`, pods
+   `custodySourceKind:'other_carrier'` — `clearPredationBindingOnEntity` deletes `predationRole`
+   while the stamp survives, so the same hauler's freight loses its lawful-owner provenance
+   depending on spill timing vs the clear. `civilianOwner` still reads `predationRole`; it should
+   read the stamp's persisted owner. (The review's two medium findings — side-pod grabs unbooked
+   and the side-envelope save-cap eviction — were fixed by the custody follow-up lane in-tree.)
 
 ## Residuals
 
