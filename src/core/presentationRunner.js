@@ -721,7 +721,6 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   // generator actually finishes — a mid-suspension journal write invalidates the
   // attempt and the next call re-collects. Consecutive invalidated attempts escalate
   // to one synchronous drain, which no foreign write can interleave mid-flight.
-  const JOURNAL_REBUILD_SLICE_ROWS = 512;
   const JOURNAL_REBUILD_COLLECT_MS = 4;
   const JOURNAL_REBUILD_INVALIDATED_MAX = 3;
   let steppedJournalRebuild = null;
@@ -765,7 +764,6 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
           collectIter: collectJournalPresentationEntitiesChunked(state, []),
           tick: Number.isSafeInteger(state.tick) && state.tick >= 0 ? state.tick : 0,
           publishIter: null,
-          publishRows: 0,
         };
       }
       const job = steppedJournalRebuild;
@@ -813,17 +811,11 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
         }
       }
       if (job.publishIter) {
-        let budget = JOURNAL_REBUILD_SLICE_ROWS;
+        // publishSpawn is a cheap ring append — debit the same wall-clock window the
+        // collect leg uses so most rebuilds commit inside a single present.
+        const publishDeadline = nowMs() + JOURNAL_REBUILD_COLLECT_MS;
         let step = job.publishIter.next();
-        while (!step.done) {
-          // The generator yields per 64 rows — debit the published-row delta so a
-          // max-capacity rebuild can't drain its whole publish leg in one present.
-          const published = presentationJournal.getLastRebuildRecordCount?.() || 0;
-          budget -= Math.max(1, published - job.publishRows);
-          job.publishRows = published;
-          if (budget <= 0) break;
-          step = job.publishIter.next();
-        }
+        while (!step.done && nowMs() < publishDeadline) step = job.publishIter.next();
         if (!step.done) return false;
         const result = step.value;
         const tick = job.tick;

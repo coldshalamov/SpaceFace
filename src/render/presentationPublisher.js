@@ -81,7 +81,11 @@ export function createPresentationPublisher(world, state, options = {}) {
   }
 
   function fallbackFromState(journal, reason, end, presentationFrame = null) {
-    requestRebuild(journal, reason);
+    // A stepped rebuild holds needsRebuild across its suspension — re-requesting it
+    // here would clearRetained() under the publish the journal still has in flight
+    // and doom every attempt that spans presents. Only re-request when no stepped
+    // publish is in progress; foreign invalidations still arrive via record writes.
+    if (journal.getRebuildInProgress?.() !== true) requestRebuild(journal, reason);
     // The stepped journal rebuild holds needsRebuild across several presents, and
     // the world the fallback mirrors only moves on a completed sim tick or a
     // lifecycle transition (restore/restart). An unchanged-tick present re-packs

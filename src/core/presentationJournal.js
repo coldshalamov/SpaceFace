@@ -699,6 +699,7 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
     close,
     isClosed: () => closed,
     needsRebuild: () => rebuildRequired,
+    getRebuildInProgress: () => rebuildInProgress,
     getWriteSequence: () => writeSequence,
     getOldestSequence: () => count > 0 ? records[read].sequence : 0,
     getPendingCount: () => count,
