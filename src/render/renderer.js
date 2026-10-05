@@ -26901,9 +26901,21 @@ function* replaceSceneEnvMapSteps(scene, previousEnvMap, nextEnvMap) {
   yield* rebindTree(scene);
   // Detached prepared authored roots park off the scene graph (deferred publication) and mount
   // later — the envMap they captured at admission must re-point with the re-bake too or the
-  // parked body publishes dead reflections.
-  for (const root of collectPreparedAuthoredCompileRoots(scene)) {
-    yield* rebindTree(root);
+  // parked body publishes dead reflections. A suspended walk can't see roots that register
+  // mid-drain (async admission prep settling under a chained entry), so re-collect until a
+  // pass walks nothing new; `walked` dedups and the envMap predicate makes a stray
+  // re-visit free.
+  const walkedPreparedRoots = new Set();
+  for (;;) {
+    const roots = collectPreparedAuthoredCompileRoots(scene);
+    let pending = false;
+    for (const root of roots) {
+      if (walkedPreparedRoots.has(root)) continue;
+      walkedPreparedRoots.add(root);
+      pending = true;
+      yield* rebindTree(root);
+    }
+    if (!pending) break;
   }
   // Whole-ship LOD demote keeps demoted-level roots retained-but-detached for instant
   // swap-back — the same dead-reflection trap as parked authored roots. Walk every live

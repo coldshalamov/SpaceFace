@@ -890,6 +890,11 @@ export function createPresentationWorld(options = {}) {
     // prefix): not-yet-collected ids must hold their last pose, so the retire
     // sweep is suppressed by construction. Retained + new rows still apply.
     const retireSuppressed = options && options.retire === false;
+    // `options.liveEntities` (the live id→entity map) disambiguates a recycled
+    // id inside the doom sets: a respawn bound onto the destroyed occupant's
+    // row must not re-doom — its row still shows the dead body's refs until
+    // the respawn's own push replaces them.
+    const liveEntities = options && options.liveEntities;
     // Slot-indexed seen stamps instead of a Set(N): every entityId maps to the
     // one slot its id owns (byId is id-keyed), so lastSeenSeq[slot] === seq is
     // the duplicate test with zero alloc.
@@ -968,6 +973,12 @@ export function createPresentationWorld(options = {}) {
           const slot = byId.get(hiddenId);
           if (slot !== undefined && world.alive[slot] === 1 && lastSeenSeq[slot] !== seq
               && world.doomed[slot] !== 1) {
+            // The id recycled to a new occupant — doom only names the entity
+            // the suppressed destroy actually destroyed; a live occupant that
+            // differs from the row's stored refs is a respawn mid-window.
+            const liveOccupant = liveEntities && typeof liveEntities.get === 'function'
+              ? liveEntities.get(hiddenId) : undefined;
+            if (liveOccupant !== undefined && liveOccupant !== world.entityRefs[slot]) continue;
             // Only a prior-visible row ever enters hiddenSlots, so a mark minted
             // on an already-invisible slot is never consumed — it would pin both
             // query retains for the slot's whole residency.
