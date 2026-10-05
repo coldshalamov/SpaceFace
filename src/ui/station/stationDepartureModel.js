@@ -4,6 +4,7 @@
 // Getting Started handoff. Live consumers import this module directly.
 import { COMMODITIES } from '../../data/commodities.js';
 import { projectCargoCustody } from '../sim/custodyProjection.js';
+import { heatClearSecondsForLevel, heatLevelFor, isPlayerWanted } from '../../systems/heat.js';
 import { prettyType } from './stationHubFormatters.js';
 import { stationTabLabel } from './stationHubModel.js';
 import { activeMissionCount } from './stationMissionModel.js';
@@ -179,6 +180,20 @@ function departureFuelChip(state) {
   };
 }
 
+function departureHeatChip(state) {
+  const heat = Number(state && state.player && state.player.heat);
+  if (!isPlayerWanted({ player: { heat } })) return null;
+  const clearS = heatClearSecondsForLevel(heatLevelFor(heat));
+  const clock = clearS > 0 ? ` · clears in ${Math.ceil(clearS)}s` : '';
+  return {
+    kind: 'bad',
+    label: 'Heat',
+    text: 'WANTED' + clock,
+    targetTab: 'services',
+    actionLabel: 'Open Services before you undock wanted',
+  };
+}
+
 function departureHullChip(state) {
   const ship = playerEntity(state);
   if (!ship || !(ship.hullMax > 0)) return { kind: 'warn', label: 'Hull', text: 'Unknown' };
@@ -221,6 +236,7 @@ export function departureReadinessChips(state) {
     departureMissionChip(state),
     departureCargoChip(state),
     departureFuelChip(state),
+    departureHeatChip(state),
     departureHullChip(state),
     departureYardChip(state),
   ].filter(Boolean);
