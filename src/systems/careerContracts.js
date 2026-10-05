@@ -463,8 +463,8 @@ export const careerContracts = {
       return;
     }
     // The catalog's recovery copy usually names the re-post place in its own words ("the tow leg
-    // re-posts at Reach Station"); appending the board again right after that reads as a stutter.
-    // The mechanical pointer joins only when the authored sentence does not already name it.
+    // re-posts at Tethys Trade Hub"); appending the board again right after that reads as a
+    // stutter. The mechanical pointer joins only when the authored sentence does not already name it.
     const board = stationNameFor(settledStage.boardStationId);
     const rePost = board && !String(settledStage.recoveryText).includes(board)
       ? ` The failed leg re-posts at ${board}.`

@@ -24,6 +24,7 @@ import assert from 'node:assert/strict';
 import {
   REPEATABLE_CAREER_CONTRACTS,
 } from '../src/data/careerContracts.js';
+import { SECTORS } from '../src/data/sectors.js';
 import {
   careerContracts,
   ensureCareerContractState,
@@ -223,6 +224,45 @@ test('seed 4242: closing the chain speaks the authored sector consequence once a
   assert.equal(run.status, 'completed');
   sys.destroy();
 }));
+
+test('catalog copy: a leg whose recovery copy names a re-post place names its own board station (review 2026-10-04)', () => {
+  // The reviewer drove the live settle path and caught the tow leg's authored line sending the
+  // player to Reach Station — its delivery dest — when a failed leg only re-offers at its board
+  // (systems `stage.boardStationId !== stationId → skip`). The settlement voice would broadcast
+  // the contradiction in one breath. The exact-substring dedupe cannot catch it, so the copy law
+  // itself is pinned here: every "re-posts at X" names the stage's own board station.
+  const stationNames = new Map();
+  for (const sector of SECTORS) {
+    for (const station of sector.stations || []) stationNames.set(station.id, station.name);
+  }
+  let checked = 0;
+  for (const def of REPEATABLE_CAREER_CONTRACTS) {
+    for (const stage of def.stages) {
+      const boardName = stationNames.get(stage.boardStationId) || null;
+      assert.ok(boardName, `${def.id}/${stage.id}: board station resolves to an authored name`);
+      const place = String(stage.recoveryText).match(/re-posts?\s+at\s+([A-Za-z'’ -]+?)\s*[.,]/);
+      if (place) {
+        checked += 1;
+        assert.equal(place[1], boardName,
+          `${def.id}/${stage.id}: recovery copy names the real re-post board, not a delivery dest`);
+      }
+    }
+  }
+  assert.ok(checked >= 2, 'the fixture holds: the catalog carries re-post sentences to pin');
+  // The reviewer's two near-match stutters: the copy now carries the board's full name, so the
+  // exact-substring dedupe renders the authored line verbatim with no appended double-say.
+  for (const [contractId, stageId] of [
+    ['hauler_wreck_reclamation', 'tow_the_dead_freighter'],
+    ['hauler_shadow_manifest', 'move_the_clerk'],
+    ['hunter_convoy_screen', 'pull_the_route_witness'],
+  ]) {
+    const def = REPEATABLE_CAREER_CONTRACTS.find((entry) => entry.id === contractId);
+    const stage = def.stages.find((entry) => entry.id === stageId);
+    const boardName = stationNames.get(stage.boardStationId);
+    assert.ok(stage.recoveryText.includes(boardName),
+      `${contractId}/${stageId}: recovery copy carries the full board name (${boardName})`);
+  }
+});
 
 function eventCount(bus, name) {
   return bus.log.filter((entry) => entry.name === name).length;
