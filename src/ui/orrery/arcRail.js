@@ -247,17 +247,22 @@ export function arcRailGeometry(W, H, count, { span = null, pivotY = 0.56, gaps 
  * cannot fit whole stays whole (it clips, as before; a tenth stop is worse).
  * Pure: pass it the rows list and the first-pass geometry; it answers the seated list.
  */
-export function splitGroupedRowsForWidth(all, W, geo, headText, headSizeGuess = 18) {
+export function splitGroupedRowsForWidth(all, W, geo, headText, headSizeGuess = 18, headWidth = null) {
   const maxAnchorX = geo && geo.anchors && geo.anchors.length
     ? Math.max(...geo.anchors.map((a) => a.x)) : 0;
   const runway = W - maxAnchorX - 24;
   if (!(runway > 0)) return all;
   // head legend estimate before it is mounted: the seat pass measures getComputedTextLength at
-  // the resolved head size (~.95 em per cap with the legend's letter-spacing); guess at the last
-  // pass's size — it converges on the next build and the 24px runway margin covers the first.
+  // the resolved head size (~1.0 em per cap once the .28 em tracking is counted), and a prior
+  // build carries that measured width back in — the estimate is the first pass's fallback, so a
+  // head of wide caps can never be under-planned into a clip it was judged to clear (REV-D136b.2).
   // headText answers the word the legend will draw (a carried localization); the English key
   // is the fallback, so a first pass still plans against something real.
-  const headW = (g) => String((typeof headText === 'function' && headText(g)) || g).length * Math.max(18, headSizeGuess * 0.95);
+  const headW = (g) => {
+    const measured = typeof headWidth === 'function' ? headWidth(g) : null;
+    if (measured > 0) return measured;
+    return String((typeof headText === 'function' && headText(g)) || g).length * Math.max(18, headSizeGuess);
+  };
   const lineW = (g, items) => 30 + headW(g) + items.reduce((s, li) => s + (li && li.offsetWidth || 120) + 22, -22);
   const spareStops = Math.max(0, 9 - all.length);
   let spent = 0;
@@ -371,6 +376,10 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
   // Keyed by the locale tag so a mid-session locale switch falls back to the source instead of
   // pinning the last locale's word.
   const headTextByGroup = new Map();
+  // …and the legend's measured width beside it: the tracked capitals' advance (~1.0 em at .28 em
+  // spacing) is what the split plans against — a char-count estimate alone under-plans an all-wide
+  // head past the runway margin (REV-D136b.2)
+  const headWidthByGroup = new Map();
   let headTextLocale = '';
   // the list the last build actually seated: after a width split a group's continuation rows are
   // stops of their own, so every interaction that indexes rows (hover, keys, heads, rest) must
@@ -462,10 +471,11 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
     let all = rows();
     // harvest the words the last build's heads actually render before this pass re-engraves them
     const localeTag = (doc.documentElement && doc.documentElement.getAttribute('data-locale')) || '';
-    if (localeTag !== headTextLocale) { headTextByGroup.clear(); headTextLocale = localeTag; }
+    if (localeTag !== headTextLocale) { headTextByGroup.clear(); headWidthByGroup.clear(); headTextLocale = localeTag; }
     if (grouped) for (const h of heads) {
       const t = h && h.node && typeof h.node.querySelector === 'function' ? h.node.querySelector('.orr-arcrail__legend') : null;
       if (t && h.group != null) headTextByGroup.set(h.group, t.textContent);
+      if (h.group != null && h.w > 0) headWidthByGroup.set(h.group, h.w);
     }
     // clustered: every verb its own tick, a wider gap where its group changes, the group's name
     // engraved on the rim beside its cluster
@@ -477,7 +487,7 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
     // width and split the overruns into consecutive rows that share the head name — the dial
     // simply carries one more stop per split, the way a chapter continues over the page.
     if (grouped) {
-      const seated = splitGroupedRowsForWidth(all, W, geo, (g) => headTextByGroup.get(g), headSize);
+      const seated = splitGroupedRowsForWidth(all, W, geo, (g) => headTextByGroup.get(g), headSize, (g) => headWidthByGroup.get(g));
       if (seated !== all) {
         all = seated;
         geo = arcRailGeometry(W, H, all.length, { span, pivotY, gaps, place });
@@ -641,8 +651,46 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
         const b = li.querySelector('button') || li;
         return Math.max(m, b.offsetHeight || 40);
       }, 0);
-      // where a row's own paint ends, if it is seated with a lift: anchor + lift + half its box
-      const bottomOf = (i, lift) => geo.anchors[i].y + lift + boxOf(all[i]) / 2;
+      // where a row's own paint ends, if it is seated with a lift: anchor + lift + half its box,
+      // plus whatever ink the layout box cannot see — the lamp key's heavier primary glyphs and
+      // the awake weight reach below offsetHeight, and a ceiling measured off the box alone let a
+      // stacked head's cap climb into the row above (D169). The painted rect only exists once a
+      // pass has seated the list, so the estimate carries the first build; the rebuilds converge.
+      const hostRect = host.getBoundingClientRect();
+      const inkRange = doc.createRange();
+      // the overhang the AWAKE verb carries below its box — any verb can take the wake next, so a
+      // ceiling plans every sleeping verb as if it were already the awake one
+      let awakeDrop = 0;
+      const awakeEl = list.querySelector('[data-awake]');
+      if (awakeEl) {
+        try {
+          inkRange.selectNodeContents(awakeEl);
+          const tr = inkRange.getBoundingClientRect();
+          const br = awakeEl.getBoundingClientRect();
+          if (tr.height > 0 && br.height > 0) awakeDrop = Math.max(0, tr.bottom - br.bottom);
+        } catch (_) {}
+      }
+      const bottomOf = (i, lift) => {
+        let bottom = geo.anchors[i].y + lift + boxOf(all[i]) / 2;
+        for (const li of all[i].items) {
+          if (!li.style.top) continue;
+          const b = li.querySelector('button') || li;
+          const br = b.getBoundingClientRect();
+          if (!(br.height > 0)) continue;
+          let painted = br.bottom - hostRect.top;
+          if (b.hasAttribute('data-awake')) {
+            try {
+              inkRange.selectNodeContents(b);
+              const tr = inkRange.getBoundingClientRect();
+              if (tr.height > 0) painted = Math.max(painted, tr.bottom - hostRect.top);
+            } catch (_) {}
+          } else {
+            painted += awakeDrop;
+          }
+          bottom = Math.max(bottom, painted);
+        }
+        return bottom;
+      };
       // the tallest head every row can carry: its cap must clear the row above, and its baseline
       // sits 7 px above its own tick
       const room = all.reduce((m, row, k) => {
@@ -682,7 +730,7 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
         layer.appendChild(head);
         try { headW = legend.getComputedTextLength() || 0; } catch (_) { headW = 0; }
         if (!(headW > 0)) headW = String(legend.textContent).length * headSize * 0.86;
-        record = { node: head, row: i, group: row.group, rest: `${ruleRest}-${i}`, lit: `${ruleLit}-${i}` };
+        record = { node: head, row: i, group: row.group, w: headW, rest: `${ruleRest}-${i}`, lit: `${ruleLit}-${i}` };
         // stacked: the verbs are listed one step IN, on their own line under the head. one line: they
         // follow the head along the row, the rule's short bridge between.
         cursor = stacked ? x + 20 : x + 30 + headW;
@@ -747,6 +795,12 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
     }
     paintHand(handSpring.value);
     lightTick(handIndex);
+    // a width split re-indexes the rows beneath the Hand: re-stop it on the awake verb's own row,
+    // not the degree it last swung to (REV-D136b.7)
+    if (grouped && awakeButton) {
+      const ai = indexOf(awakeButton);
+      if (ai >= 0 && ai !== handIndex) pointAt(ai, { instant: true });
+    }
   }
 
   function lightTick(index) {
