@@ -1861,8 +1861,9 @@ export const world = {
   /**
    * Reconcile the latest bounded sector recipe snapshot into durable records.
    * Existing records are never overwritten (preserves damage/destroyed outcomes). Stale active
-   * generated recipes retire once their live body is gone; destroyed tombstones stay under the
-   * existing MAX_RECORDS_PER_SECTOR bound so an old outcome cannot be re-rolled.
+   * generated recipes retire once their live body is gone; destroyed recipe tombstones are
+   * exempt from the ambient-tombstone bound (recordSource 'sector_embodiment'), so an old
+   * outcome cannot be re-rolled.
    * The intent/stale/insert phases yield at the same 8-row cadence the records loop uses, so a
    * deferred FULL neighbor no longer pays an unyielded O(intents + records) pass inside a
    * generator that exists to be chunked; the sync wrapper drains inline with identical output.
