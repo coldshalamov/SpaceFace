@@ -48,6 +48,7 @@ import { addCargo, removeCargo } from './cargo.js';
 import { commodityIsBiohazard } from '../data/commodities.js';
 import { ALIEN_ECOLOGY_SCHEMA, ensureAlienEcologyState } from '../data/alienEcologyState.js';
 import { stationBerthAdmits } from '../data/frontierRumors.js';
+import { hasContractsDesk } from '../data/missions.js';
 
 const TWO_PI = Math.PI * 2;
 
@@ -304,9 +305,10 @@ function repFor(state, factionId) {
 // pilot outright (the repGated Ashfall cache, the Sker Bazaar). Pick a missions-capable desk
 // that admits them, fall back to any admitting desk, or leave the key unset: the emit retries
 // on the next close-band entry once standing opens the berth.
-function deskForSite(state, stations) {
-  const admits = (st) => stationBerthAdmits(st, repFor(state, st && st.factionId), state);
-  return stations.find((st) => st && st.services && st.services.includes('missions') && admits(st))
+function deskForSite(state, stations, sector) {
+  const admits = (st) => stationBerthAdmits(
+    st, repFor(state, st && (st.factionId || (sector && sector.factionId))), state);
+  return stations.find((st) => st && hasContractsDesk(st.services) && admits(st))
     || stations.find((st) => st && admits(st))
     || null;
 }
@@ -317,7 +319,7 @@ function emitEcologyOffer(world, site, sector) {
   const missions = ecologyMissionsForSite(site.siteId);
   if (!missions.length) return;
   const stations = (sector && sector.stations) || [];
-  const station = deskForSite(state, stations);
+  const station = deskForSite(state, stations, sector);
   let emitted = 0;
   // AE-130..137 — every authored faction desk at the site emits once, each under its own
   // offersEmitted key; a site carrying multiple contracts surfaces all of them. The bit is

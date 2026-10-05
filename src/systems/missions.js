@@ -43,6 +43,7 @@
 // DETERMINISM (§0.5): board offers + spawn rolls use mulberry32(hash32(seed, …)); never Math.random.
 import {
   MISSION_TYPES, STORY_BEATS, OFFER_MIX, MISSION_TUNING, ONE_LOAD_CARGO_TYPES, DOCK_SETTLED_TYPES,
+  CONTRACT_DESK_SERVICES, hasContractsDesk,
   PHYSICAL_MISSION_TYPES,
   PHYSICAL_MISSION_VARIANTS,
   physicalMissionVariantFor,
@@ -270,9 +271,7 @@ const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
 // A contracts desk is the advertised board: the missions counter or a black-market counter —
 // exactly the services the hub labels "contracts here". Procedural board rolls only exist
 // where one is advertised; earned/authored rows post regardless (see ensureBoard).
-const DESK_SERVICES = new Set(['missions', 'black_market']);
-const hasContractsDesk = (services) => Array.isArray(services)
-  && services.some((s) => DESK_SERVICES.has(s));
+const DESK_SERVICES = CONTRACT_DESK_SERVICES;
 
 const STATION_INFO = new Map();
 const SECTOR_BY_ID = new Map();
@@ -3329,7 +3328,7 @@ export const missions = {
     // of those contracts to it writes a contract the world cannot settle.
     const candidates = ALL_STATIONS.filter((s) => s.id !== info.id
       && !(typeId === 'smuggling_run' && Array.isArray(s.services) && s.services.includes('scan'))
-      && stationBerthAdmits(s, this._repOf(s.factionId), this.state));
+      && stationBerthAdmits(s.record || s, this._repOf(s.factionId), this.state));
     if (!candidates.length) return info;
     // Bias toward same-or-adjacent sectors for fair timers (fairness note: nearer for slow ships).
     const sec = SECTOR_BY_ID.get(info.sectorId);
@@ -3341,7 +3340,7 @@ export const missions = {
 
   _pickBulkHaulDestination(info, rng) {
     const refineries = ALL_STATIONS.filter((s) => (s.type === 'refinery' || s.services && s.services.includes('refine'))
-      && stationBerthAdmits(s, this._repOf(s.factionId), this.state));
+      && stationBerthAdmits(s.record || s, this._repOf(s.factionId), this.state));
     if (!refineries.length) return info;
     const same = refineries.filter((s) => s.sectorId === info.sectorId);
     if (same.length) return same[Math.floor(rng() * same.length)];

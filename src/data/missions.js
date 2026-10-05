@@ -65,7 +65,9 @@ export const ONE_LOAD_CARGO_TYPES = new Set([
 // (tow_recovery, authored_set_piece, demolition, ...) complete on latch/release/throw
 // physics anywhere near the site, so their destination berth is scenery, not a door —
 // and rescue_under_fire stays out: its corridor_pull path reels a pod home without
-// ever docking at the destination berth.
+// ever docking at the destination berth. Membership asserts the contract can ONLY
+// settle at the named berth: a type that carries destStationId as flavor while
+// settling physically must not join this set (the accept gate would falsely refuse it).
 export const DOCK_SETTLED_TYPES = new Set([
   'cargo_delivery',
   'passenger_transport',
@@ -75,6 +77,14 @@ export const DOCK_SETTLED_TYPES = new Set([
   'bulk_trade',
   'bulk_haul',
 ]);
+
+// Services that mean "this station hosts a contract desk" — the board the pilot reads and
+// the desk a posted offer pretends to sit on. A fieldwork/bounty/lead emit picking
+// `services.includes('missions')` alone would skip a black-market-only desk and post the
+// row at a berth with no office; share this predicate anywhere a desk is being chosen.
+export const CONTRACT_DESK_SERVICES = new Set(['missions', 'black_market']);
+export const hasContractsDesk = (services) => Array.isArray(services)
+  && services.some((s) => CONTRACT_DESK_SERVICES.has(s));
 
 export const MISSION_STANDING_LADDER = [
   {

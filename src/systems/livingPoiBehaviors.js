@@ -12,6 +12,7 @@ import { SECTORS } from '../data/sectors.js';
 import { POI_BEHAVIOR_FAMILIES, POI_FAMILY_IDS, authoredPlacePlansForSector } from '../data/poiBehaviorFamilies.js';
 import { buildPoiCausalOffer } from '../missions/poiCausalOffers.js';
 import { stationBerthAdmits } from '../data/frontierRumors.js';
+import { hasContractsDesk } from '../data/missions.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((sector) => [sector.id, sector]));
 const DAY_SECONDS = 600;
@@ -241,7 +242,7 @@ export const livingPoiBehaviors = {
       if (row.familyId === 'lawful_station_yard' && row.stationId && row.status !== 'aftermath') {
         const sectorStations = (sector && sector.stations) || [];
         const admits = (st) => stationBerthAdmits(
-          st, repFor(this.state, st && st.factionId), this.state);
+          st, repFor(this.state, st && (st.factionId || (sector && sector.factionId))), this.state);
         const picked = sectorStations.find((st) => st && st.id === row.stationId);
         if (!picked || !admits(picked)) {
           const rerouted = selectStationForFamily(
@@ -539,11 +540,12 @@ export const livingPoiBehaviors = {
     // The plan-time desk pick is seed-pure and cannot see standing — resolve admission here,
     // at offer time: keep the planned desk when it admits the pilot, reroute to an admitting
     // desk in the same sector, or drop the lead when nowhere in-sector will have them.
-    const sectorStations = (SECTOR_BY_ID.get(aftermath && aftermath.sectorId) || {}).stations || [];
-    const admits = (st) => stationBerthAdmits(st, repFor(this.state, st && st.factionId), this.state);
+    const leadSector = SECTOR_BY_ID.get(aftermath && aftermath.sectorId) || null;
+    const sectorStations = (leadSector && leadSector.stations) || [];
+    const admits = (st) => stationBerthAdmits(st, repFor(this.state, st && (st.factionId || (leadSector && leadSector.factionId))), this.state);
     const deskId = sectorStations.some((st) => st && st.id === row.stationId && admits(st))
       ? row.stationId
-      : ((sectorStations.find((st) => st && st.services && st.services.includes('missions') && admits(st))
+      : ((sectorStations.find((st) => st && hasContractsDesk(st.services) && admits(st))
           || sectorStations.find((st) => st && admits(st))
           || {}).id || null);
     if (!deskId) return false;

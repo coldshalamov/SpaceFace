@@ -92,7 +92,9 @@ function factionShortName(id) {
 function stateRepFor(state, factionId) {
   const rec = factionId && state && state.factions ? state.factions[factionId] : null;
   const rep = Number(rec && rec.rep);
-  return Number.isFinite(rep) ? Math.round(rep) : 0;
+  // Raw rep, matching missions._repOf and the live dock gate — rounding here made the
+  // dossier admit a 0.5-standing pilot the accept gate then refused.
+  return Number.isFinite(rep) ? rep : 0;
 }
 
 function storyBranchIntroMinRep(m, state) {

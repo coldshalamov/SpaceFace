@@ -197,7 +197,9 @@ test('a structurally denied berth names its real refusal, not the freight line',
   };
   const refused = missions._acceptPreflight(offer);
   assert.equal(refused.ok, false, 'a sealed hold cannot settle a delivery');
-  assert.match(refused.reason, /Sealed her up|sealed/i, 'the refusal names the quarantine, not generic freight');
+  // The authored voice is the faction's own quarantine line ("FACILITY CLOSED FOR LOSS
+  // MITIGATION...") — anchor to the denial text, not the station's name.
+  assert.match(refused.reason, /LOSS MITIGATION|QUARANTINE|CLOSED/i, 'the refusal names the quarantine, not generic freight');
   assert.doesNotMatch(refused.reason, /does not take this freight yet/,
     'a structural denial must not read as a standing door');
 });

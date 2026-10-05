@@ -110,7 +110,7 @@ export function stationBerthAdmits(st, rep, state) {
     && st.militaryOnly !== true
     && st.private !== true && st.public !== false
     && !(st.id === TETHYS_BLACK_MARKET_RUN.stationId && !hasTethysBlackMarketAccess(state))
-    && !(rep < stationMinRepFor(st));
+    && !(Number.isFinite(rep) && rep < stationMinRepFor(st));
 }
 
 /**
@@ -131,7 +131,7 @@ export function stationBerthRefusal(st, rep, state) {
   if (stationBerthAdmits(st, rep, state)) return null;
   const deny = dockDenyReason(st, { rep });
   const floor = stationMinRepFor(st);
-  if (deny && deny.reason === 'hostile_rep' && rep < floor) return { kind: 'standing', floor };
+  if (deny && deny.reason === 'hostile_rep' && Number.isFinite(rep) && rep < floor) return { kind: 'standing', floor };
   return deny ? { kind: 'structural', reason: deny.reason, text: deny.text } : { kind: 'closed' };
 }
 

@@ -57,11 +57,12 @@ test('earned standing keeps the authored local desk', () => {
     'the vouched Bazaar is the rescue desk the promotion intended');
 });
 
-test('an open concord house still outranks a desk-only berth', () => {
-  const { state, sys } = boot({ sectorId: 'sector_io_reach' });
-  const rec = sys._promoteSector('sector_io_reach');
-  const dest = STATION_BY_ID.get(rec.destStationId);
-  assert.ok(dest && stationBerthAdmits(dest,
-    state.factions[dest.factionId] ? state.factions[dest.factionId].rep : 0, state),
-    `io_reach handoff admits (got ${rec.destStationId})`);
+test('an open concord house still outranks a desk berth', () => {
+  // Tethys Junction: station_tethys carries the contract desk but station_customs is the
+  // concord house — rung 1 must beat rung 2 when both berths admit.
+  const { sys } = boot({ sectorId: 'sector_tethys_junction' });
+  const rec = sys._promoteSector('sector_tethys_junction');
+  assert.equal(rec.destStationId, 'station_customs',
+    'the concord house outranks the desk when both admit');
+  assert.equal(rec.destSectorId, 'sector_tethys_junction');
 });

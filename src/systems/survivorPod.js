@@ -33,6 +33,7 @@ import { SECTORS } from '../data/sectors.js';
 import { SHIPS } from '../data/ships.js';
 import { wreckMissionById } from '../data/wreckMissions.js';
 import { stationBerthAdmits } from '../data/frontierRumors.js';
+import { hasContractsDesk } from '../data/missions.js';
 import { protectedStationAt } from '../ai/engagementAuthority.js';
 import { rememberMoralDebt } from './moralMemory.js';
 import { playerWreckMarker } from './aftermathWrecks.js';
@@ -71,9 +72,12 @@ const CAUSAL_RECEIPT_CAP = 24;
 
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 const ALL_STATIONS = [];
+const STATION_BY_ID = new Map();
 for (const sec of SECTORS) {
   for (const st of (sec.stations || [])) {
-    ALL_STATIONS.push({ ...st, sectorId: sec.id });
+    const row = { ...st, sectorId: sec.id };
+    ALL_STATIONS.push(row);
+    STATION_BY_ID.set(row.id, row);
   }
 }
 
@@ -133,8 +137,17 @@ function repFor(state, factionId) {
 function rescueStationForSector(sectorId, state) {
   const sec = SECTOR_BY_ID.get(sectorId);
   const local = (sec && sec.stations) || [];
-  const admits = (s) => stationBerthAdmits(s, repFor(state, s && s.factionId), state);
-  const hasDesk = (s) => s && s.services && s.services.includes('missions');
+  const admits = (s) => {
+    if (!s) return false;
+    // Station faction first, sector faction as the world-stamp fallback — a record that
+    // carried no factionId of its own reads the sector's standing, same as the dock gate.
+    const factionId = s.factionId || (SECTOR_BY_ID.get(s.sectorId || sectorId) || {}).factionId;
+    return stationBerthAdmits(s, repFor(state, factionId), state);
+  };
+  const hasDesk = (s) => hasContractsDesk(s && s.services);
+  // The global desk rung is defensive ordering: every concord house admits unconditionally
+  // today, so the first global concord find always lands — a future gated house needs the
+  // ladder past it already written.
   return local.find((s) => s.factionId === CONCORD_FACTION_ID && admits(s))
     || local.find((s) => hasDesk(s) && admits(s))
     || local.find((s) => admits(s))
@@ -1195,7 +1208,8 @@ export const survivorPod = {
       wreckMissionId: MISSION_ID,
       factionId: CONCORD_FACTION_ID,
       destStationId: dest ? dest.id : null,
-      destSectorId: dest ? dest.sectorId : sectorId,
+      // Local picks come back as raw catalog records (no sectorId); global picks carry it.
+      destSectorId: dest ? (dest.sectorId || sectorId) : sectorId,
       oxygenStartedAt: startedAt,
       oxygenDueAt: startedAt + OXYGEN_WINDOW_S,
       oxygenDecayWindow_s: OXYGEN_DECAY_WINDOW_S,
@@ -1274,6 +1288,23 @@ export const survivorPod = {
     offer.choice = clone(template.choice);
     offer.tag = template.tag || 'wreck_salvage';
     offer.factionId = CONCORD_FACTION_ID;
+    // The bound handoff was picked at promotion; a stale save (or standing lost since)
+    // can leave it a berth the pilot cannot use. Re-resolve at offer time — an admitting
+    // reroute heals the record for the board and the tethered path alike; a still-closed
+    // sector keeps the named berth so the accept gate's refusal can say why.
+    const bound = rec.destStationId ? STATION_BY_ID.get(rec.destStationId) : null;
+    if (bound && !stationBerthAdmits(
+      bound,
+      repFor(state, bound.factionId || (SECTOR_BY_ID.get(bound.sectorId) || {}).factionId),
+      state,
+    )) {
+      const reroute = rescueStationForSector(rec.sectorId, state);
+      if (reroute) {
+        rec.destStationId = reroute.id;
+        // Local rows are raw catalog records without sectorId — keep the pod's sector.
+        rec.destSectorId = reroute.sectorId || rec.sectorId;
+      }
+    }
     // salvage._buildOffer already bound a board station; the rescue desk is the fallback.
     offer.stationId = offer.stationId || rec.destStationId || null;
     offer.destStationId = rec.destStationId;

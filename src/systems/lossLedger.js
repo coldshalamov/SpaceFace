@@ -50,7 +50,7 @@ import { hash32 } from '../core/rng.js';
 import { SECTORS } from '../data/sectors.js';
 import { SECTOR_ANCHORS } from '../data/sectorAnchors.js';
 import { SHIPS } from '../data/ships.js';
-import { MISSION_TUNING } from '../data/missions.js';
+import { MISSION_TUNING, hasContractsDesk } from '../data/missions.js';
 import { wreckMissionById } from '../data/wreckMissions.js';
 import { pickWreckClass, wreckClassById } from '../data/wreckClasses.js';
 import { effectiveDangerTierFor, sectorSignalFor } from './sectorSim.js';
@@ -62,8 +62,12 @@ const GHOST_CONVOY_THRESHOLD = 3;
 const GHOST_CONVOY_DRIVER = 'reach_pressure';
 const GHOST_CONVOY_MISSION_ID = 'wm_reach_bounty';
 const AUTOMATION_LOSS_SOURCES = new Set(['automation:assetLost', 'automation:outpostRaided']);
+const SECTOR_BY_ID = new Map();
 const STATION_BY_SECTOR = new Map();
-for (const sector of SECTORS) STATION_BY_SECTOR.set(sector.id, sector.stations || []);
+for (const sector of SECTORS) {
+  SECTOR_BY_ID.set(sector.id, sector);
+  STATION_BY_SECTOR.set(sector.id, sector.stations || []);
+}
 const SHIP_IDS = new Set(SHIPS.map((ship) => ship.id));
 const KIND_NORMALIZE = {
   trader: 'trader',
@@ -179,8 +183,9 @@ function repFor(state, factionId) {
 // the rumor still runs as news, it just cannot sell a bounty.
 function stationForSector(sectorId, state) {
   const stations = STATION_BY_SECTOR.get(sectorId) || [];
-  const admits = (s) => stationBerthAdmits(s, repFor(state, s && s.factionId), state);
-  return stations.find((s) => s.services && s.services.includes('missions') && admits(s))
+  const sec = SECTOR_BY_ID.get(sectorId) || null;
+  const admits = (s) => stationBerthAdmits(s, repFor(state, s && (s.factionId || (sec && sec.factionId))), state);
+  return stations.find((s) => hasContractsDesk(s && s.services) && admits(s))
     || stations.find(admits)
     || null;
 }
