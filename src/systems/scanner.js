@@ -1171,6 +1171,15 @@ export const scanner = {
         data.manifest = buildWreckManifest(entity);
         if (!data.weakPoint) data.weakPoint = weakPointFor(entity);
         if (firstResolve) {
+          // The resolve names the hull it was: an aftermath wreck's provenance carries the
+          // victim's own callsign, so the hulk reads "Hulk of MERIDIA SPOKE" on every scanLabel
+          // surface (lock, comms, roster) instead of the salvage-kit tag (CV-SO).
+          const provenance = data.provenance && typeof data.provenance === 'object' ? data.provenance : null;
+          const victim = provenance && provenance.victimLabel;
+          if (victim && victim !== provenance.victimClass && data.playerWreck !== true) {
+            const named = `Hulk of ${victim}`;
+            if (data.scanLabel !== named) data.scanLabel = named;
+          }
           // A targeted per-hull resolution — the law's wreck-provenance loop keys on markerId,
           // so a generic sector pulse can never mass-report every wreck it merely pinged.
           this.bus.emit('scan:wreckResolved', {

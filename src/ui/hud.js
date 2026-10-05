@@ -4805,7 +4805,7 @@ export function createHud(ctx, alerts) {
     const scannedWreck = c.isWreck && wreckScanned(e);
     const data = e.data || {};
     const name = data.callsign || data.name || data.trafficRole || data.role || e.role
-      || (c.isWreck ? 'Derelict' : 'Ship');
+      || (c.isWreck ? ((scannedWreck && data.scanLabel) || 'Derelict') : 'Ship');
 
     // Derelict manifest line: unscanned shows only a ghost outline; a scan resolves the manifest
     // + weak-point callout (GDD 2.0 §7.4).
