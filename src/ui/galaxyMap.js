@@ -60,7 +60,7 @@ import {
   refreshEntitySelection,
   resolveEntitySelection,
 } from './sim/stableSelection.js';
-import { canNavigateToKnowledge, discoveryKnowledge } from './sim/discoveryKnowledge.js';
+import { canNavigateToKnowledge, discoveryKnowledge, selectionKnowledgeLine } from './sim/discoveryKnowledge.js';
 import {
   careersTabAvailability, careersTabHtml, careersOverviewLineHtml,
 } from './map/careersReadout.js';
@@ -6167,6 +6167,7 @@ _stepAnimation(now) {
         <span class="gm-ins-note">${escapeMapHtml(cache.detail)}</span>
         <span class="gm-ins-note">${escapeMapHtml(cache.objective)}</span>
       </button>`).join('');
+    const knownLine = selectionKnowledgeLine(state, t && t.id);
     return `
       <div class="gm-ins-section">
         <div class="gm-ins-kind">Survey record</div>
@@ -6175,6 +6176,7 @@ _stepAnimation(now) {
         <div class="gm-ins-row"><span>Confidence</span><span class="gm-ins-row-val">${pct == null ? 'Unknown' : `${pct}%`}${confidence && confidence.band ? ` · ${escapeMapHtml(String(confidence.band))}` : ''}</span></div>
         <div class="gm-ins-row"><span>Scanned</span><span class="gm-ins-row-val">${disc && disc.scanned ? 'Yes' : 'No'}</span></div>
         <div class="gm-ins-row"><span>Exploration</span><span class="gm-ins-row-val">${exploration.percent == null ? 'No authored sites' : `${exploration.percent}% · ${exploration.found}/${exploration.total} sites`}</span></div>
+        ${knownLine ? `<div class="gm-ins-note">${escapeMapHtml(knownLine)}</div>` : ''}
       </div>
       <div class="gm-ins-section">
         <div class="gm-ins-note">Confidence fades with time since survey. Re-scan a sector to refresh it.</div>

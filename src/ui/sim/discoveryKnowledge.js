@@ -199,3 +199,14 @@ export function knowledgeById(state, id) {
   if (typeof id !== 'string' || !id) return null;
   return discoveryKnowledge(state).entries.find((entry) => entry.id === id) || null;
 }
+
+/** The selection panel's next step for one discovery. Never a coordinate. */
+export function selectionKnowledgeLine(state, targetId) {
+  const id = targetId == null ? '' : String(targetId);
+  if (!id) return '';
+  const entry = knowledgeById(state, id)
+    || knowledgeById(state, `rumor:${id}`)
+    || knowledgeById(state, `uniqueWreck:${id}`);
+  if (!entry || typeof entry.nextAction !== 'string' || !entry.nextAction) return '';
+  return entry.nextAction;
+}
