@@ -238,12 +238,12 @@ export const economyContracts = {
     return rec ? (rec.rep || 0) : 0;
   },
 
-  /** Sector stations sorted by id, minus any berth the pilot's standing can't dock at. */
+  /** Sector stations in authored order, minus any berth the pilot's standing can't dock at.
+      Authored order keeps [0] the sector's primary berth and keeps the ungated surplus draw
+      identical to the pre-gate stream — the gating is the only behavioral delta. */
   _dockableStations(sec) {
     return (sec && sec.stations || [])
-      .filter((st) => !(this._repOf(st.factionId || sec.factionId) < stationMinRepFor(st)))
-      .slice()
-      .sort((a, b) => a.id.localeCompare(b.id));
+      .filter((st) => !(this._repOf(st.factionId || sec.factionId) < stationMinRepFor(st)));
   },
 
   /**

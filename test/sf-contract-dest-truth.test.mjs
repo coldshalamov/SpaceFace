@@ -83,7 +83,7 @@ test('a gated-only neighbor can never be a relief destination', () => {
 test('standing opens the gated relief berth', () => {
   const state = makeState({
     nodes: { sector_sker_haven: SKER_DISTRESS() },
-    repByFaction: { faction_reach: { rep: 5 } },
+    repByFaction: { faction_reach: 5 },
   });
   const offer = sys(state).planOffer(INFO, 0);
   assert.ok(offer, 'standing lets the relief run post');
@@ -145,16 +145,24 @@ test('below its own minRep the berth stops taking freight', () => {
   // Same fixture, but Quiet standing of -50 is below the Outpost's -30 contract. Io Reach
   // keeps a second open berth — the freight must land on Reach Station, never the gate.
   const state = makeState({
-    repByFaction: { faction_quiet: { rep: -50 } },
+    repByFaction: { faction_quiet: -50 },
     nodes: {
       sector_pallas_drift: fieldNode({ pressure: -0.4, pressureTag: 'route_surplus' }),
       sector_io_reach: fieldNode({ pressure: 0.6 }),
       sector_ceres_belt: fieldNode({ pressure: 0.5 }),
     },
   });
-  const offer = sys(state).planOffer(INFO, 0);
+  const s = sys(state);
+  const offer = s.planOffer(INFO, 0);
   assert.ok(offer);
   assert.equal(offer.destSectorId, 'sector_io_reach');
   assert.equal(offer.destStationId, 'station_reach',
     'the open berth takes the freight its gated sibling cannot');
+  // Pin the pool, not the draw: below -30 the Outpost must be absent outright —
+  // a pick that merely lands on Reach by rng would vacuously pass the offer asserts.
+  const io = SECTORS.find((sec) => sec.id === 'sector_io_reach');
+  assert.deepEqual(
+    s._dockableStations(io).map((st) => st.id),
+    ['station_reach'],
+  );
 });
