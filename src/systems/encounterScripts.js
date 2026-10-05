@@ -2667,12 +2667,16 @@ function convoyTick(d, live, state, now, isConvoy) {
   clearConvoyPredation(d, live, 'carrier_arrived');
   // a second custody-stamped hauler arrives with its own manifest: its freight presses the market
   // like the lead's, and its stamp closes so the post-arrival sweep cannot spill a delivered
-  // manifest (PQ-047 residual — the delivery leg of the same fix).
+  // manifest (PQ-047 residual — the delivery leg of the same fix). The gate is the same endpoint
+  // geometry the lead just proved — a side hauler still holding station back at the spill site or
+  // disabled mid-route keeps its 'carrier' stamp and its manifest resolves through the custody
+  // loss path, never as arrival pressure it did not earn.
   let sideArrivingQty = 0;
   for (const h of haulers) {
     if (isSelectedFreightCarrier(live, h)) continue;
     const stamp = h.data && h.data.freightCustody;
-    if (stamp && stamp.status === 'carrier' && stamp.carrierId === h.id) {
+    if (stamp && stamp.status === 'carrier' && stamp.carrierId === h.id
+        && h.pos && dist2(h.pos.x, h.pos.z, end.x, end.z) <= CONVOY_ARRIVE_R * CONVOY_ARRIVE_R) {
       sideArrivingQty += Math.max(0, Number(h.data.cargoManifest && h.data.cargoManifest.totalQty) || 0);
       stamp.status = 'delivered';
     }
