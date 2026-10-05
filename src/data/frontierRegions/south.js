@@ -195,7 +195,10 @@ export const SOUTH_SECTORS = Object.freeze([
         type: 'research',
         factionId: 'faction_helix',
         size: 'S',
-        services: Object.freeze(['scan_tech', 'missions', 'repair']),
+        services: Object.freeze(['scan_tech', 'repair']),
+        // No 'missions' desk: the post files the Ringworld reading through its board without
+        // advertising contracts — a desk in a fuel-less sector is the exact trap the chart
+        // note warns about, and a salvage/pod/loss-filing route pointed here strands a pilot.
         chartNote: 'Sensors and hull patches at the dark rim; no fuel, no rescue, few questions.',
       }),
     ]),
