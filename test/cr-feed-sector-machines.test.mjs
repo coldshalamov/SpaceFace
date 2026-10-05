@@ -8,8 +8,9 @@
 //   vesta_shear_jaws    two opposed sheets converging on one bar   - the only converging machine
 //   tethys_weigh_clamp  one reversed cone feeding a plate behind   - the only one that kills behind its face
 //   veil_cold_draw      one off-centre well dragging across a plate - the only off-centre gather
+//   charon_tailings_sweep one sheet lying across the haul road   - the only machine that drags you along your own road
 //
-// All three run the shared law every mouth runs: warning registers the volume at strength 0,
+// All four run the shared law every mouth runs: warning registers the volume at strength 0,
 // surge is the bite, calm is the safe window. None is a damage aura.
 
 import test from 'node:test';
@@ -19,6 +20,8 @@ import { fileURLToPath } from 'node:url';
 
 import {
   ALL_KILL_MACHINES,
+  CHARON_SWEEP_SECTOR_ID,
+  CHARON_TAILINGS_SWEEP,
   KILL_MACHINES,
   KILL_MACHINE_SECTOR_ID,
   TETHYS_WEIGH_CLAMP,
@@ -39,10 +42,11 @@ import { SECTORS } from '../src/data/sectors.js';
 
 const PLACES_DIR = fileURLToPath(new URL('../assets/ships/release/parts/places/', import.meta.url));
 
-const TRIO = Object.freeze([
+const CR_FEED_MACHINES = Object.freeze([
   { machine: VESTA_SHEAR_JAWS, sectorId: VESTA_SHEAR_SECTOR_ID, kind: 'converging' },
   { machine: TETHYS_WEIGH_CLAMP, sectorId: TETHYS_WEIGH_SECTOR_ID, kind: 'behind-its-face' },
   { machine: VEIL_COLD_DRAW, sectorId: VEIL_COLD_SECTOR_ID, kind: 'off-centre-gather' },
+  { machine: CHARON_TAILINGS_SWEEP, sectorId: CHARON_SWEEP_SECTOR_ID, kind: 'road-drag' },
 ]);
 
 function fieldAlong(machine, field) {
@@ -62,7 +66,7 @@ function anvilAlong(machine) {
 }
 
 test('each machine serves its named sector alone and joins the census', () => {
-  for (const { machine, sectorId } of TRIO) {
+  for (const { machine, sectorId } of CR_FEED_MACHINES) {
     const slice = killMachinesForSector(sectorId);
     assert.deepEqual(slice, [machine], `${machine.id} is the only machine in ${sectorId}`);
     assert.ok(ALL_KILL_MACHINES.includes(machine), `${machine.id} is in ALL_KILL_MACHINES`);
@@ -113,6 +117,22 @@ test('no two of them is the same kind of object', () => {
     'the drain mouth sits clear of the pressure plate');
   assert.equal(draw.hazardType, 'nebula', 'the only nebula machine: gas, not debris');
 
+  // 4 - ROAD-DRAG: one sheet lying across the haul road; the squeeze runs along the road,
+  // dragging lane traffic to the berm parked mid-lane. The slab STRADDLES the berm
+  // (along < 0) — the only sheet in the census centred on the kill point rather than
+  // starting at it (excavator_jaws' ribbon begins at the origin and feeds forward).
+  const sweep = CHARON_TAILINGS_SWEEP;
+  assert.equal(sweep.fields.length, 1);
+  assert.equal(sweep.fields[0].kind, 'sheet');
+  assert.equal(sweep.fields[0].dirAlong, 1, 'no reversed force - the drag is geometric');
+  assert.ok(sweep.fields[0].along < 0
+    && sweep.fields[0].along + sweep.fields[0].radius > 0,
+    'the slab must straddle the berm, not start at it');
+  // The sheet's slab actually covers the berm: anvil on the centreline inside the span.
+  assert.equal(pointInsideMachineField(sweep, sweep.fields[0], { x: sweep.anvil.pos.x, z: sweep.anvil.pos.z }), true,
+    'the berm sits inside the sweep band');
+  assert.ok(Math.abs(anvilAlong(sweep)) < 1, 'the berm parks on the road at the crossing');
+
   // The three axes are unique across the WHOLE census, not just across the trio - which is what
   // "non-copy" has to mean if a later sitting is going to keep the promise. The unit of comparison
   // is the machine's shape, not an individual field: the shear legitimately uses one reversed jaw
@@ -123,6 +143,9 @@ test('no two of them is the same kind of object', () => {
     && Math.abs(anvilAlong(m)) < 1;
   const killsBehindItsFace = (m) => m.fields.every((f) => f.dirAlong === -1) && anvilAlong(m) < 0;
   const offCentreGather = (m) => m.fields.some((f) => f.kind === 'well' && f.across !== 0);
+  // A sweep band centred on the kill point, not a ribbon feeding forward from it.
+  const straddlingSheet = (m) => m.fields.length === 1 && m.fields[0].kind === 'sheet'
+    && m.fields[0].along < 0;
 
   for (const machine of ALL_KILL_MACHINES) {
     if (machine !== jaws) {
@@ -134,14 +157,18 @@ test('no two of them is the same kind of object', () => {
     if (machine !== draw) {
       assert.equal(offCentreGather(machine), false, `${machine.id} must not also run an off-centre gather`);
     }
+    if (machine !== sweep) {
+      assert.equal(straddlingSheet(machine), false, `${machine.id} must not also straddle a sheet on its kill point`);
+    }
   }
   assert.equal(isConvergingPair(jaws), true);
   assert.equal(killsBehindItsFace(clamp), true);
   assert.equal(offCentreGather(draw), true);
+  assert.equal(straddlingSheet(sweep), true);
 });
 
-test('all three run the shared law: warning quiet, surge bites, calm is the safe window', () => {
-  for (const { machine } of TRIO) {
+test('all four run the shared law: warning quiet, surge bites, calm is the safe window', () => {
+  for (const { machine } of CR_FEED_MACHINES) {
     const cycle = machine.cycle;
     const at = (offsetS) => killMachinePhase(machine, machine.phaseOffsetS + offsetS);
     const warning = at(0.5);
@@ -159,13 +186,13 @@ test('all three run the shared law: warning quiet, surge bites, calm is the safe
       assert.ok(field.strength * surge.fieldStrengthScale > 0, `${machine.id}/${field.idSuffix}`);
     }
   }
-  // Distinct phase offsets so the three never bite on the same tick.
-  const offsets = TRIO.map(({ machine }) => machine.phaseOffsetS);
+  // Distinct phase offsets so the four never bite on the same tick.
+  const offsets = CR_FEED_MACHINES.map(({ machine }) => machine.phaseOffsetS);
   assert.equal(new Set(offsets).size, offsets.length, `distinct phase offsets: ${offsets.join(', ')}`);
 });
 
 test('every mouth stands clear of its own sector anchors by its hazard radius', () => {
-  for (const { machine, sectorId } of TRIO) {
+  for (const { machine, sectorId } of CR_FEED_MACHINES) {
     const anchors = SECTOR_ANCHORS[sectorId];
     assert.ok(anchors, `${sectorId} has authored anchors`);
     const clear = (label, x, z, padding = 0) => {
@@ -189,7 +216,7 @@ test('every mouth stands clear of its own sector anchors by its hazard radius', 
 });
 
 test('a hull at the bar/plate is inside the bite volume, and one outside is not', () => {
-  for (const { machine, kind } of TRIO) {
+  for (const { machine, kind } of CR_FEED_MACHINES) {
     assert.equal(pointInsideKillMachine(machine, { x: machine.anvil.pos.x, z: machine.anvil.pos.z }), true,
       `${machine.id} (${kind}) admits at the anvil`);
     const far = { x: machine.anvil.pos.x + 4000, z: machine.anvil.pos.z + 4000 };

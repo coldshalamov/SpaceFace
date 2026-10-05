@@ -166,6 +166,7 @@ const MACHINE_FIELD_REGION_BY_SECTOR = Object.freeze({
   sector_vesta_forge: 'vesta',
   sector_tethys_junction: 'tethys',
   sector_veil_nebula: 'veil',
+  sector_charon_expanse: 'charon',
 });
 
 function buildKillMachine({
@@ -403,6 +404,7 @@ export const RIFT_FISSURE_CRACKER = buildKillMachine({
 //   vesta_shear_jaws   two opposed sheets converging on one bar  (the only converging machine)
 //   tethys_weigh_clamp one reversed cone feeding a plate behind  (the only machine that kills behind its face)
 //   veil_cold_draw     one off-centre well dragging across a plate (the only off-centre gather, and the only nebula)
+//   charon_tailings_sweep one sheet lying ACROSS the haul road  (the only machine that drags you along your own road)
 //
 // Same shared law as every other mouth: warning registers the volume at strength 0, surge is the
 // bite, calm is the safe window. None of these is a damage aura.
@@ -518,8 +520,46 @@ export const VEIL_COLD_DRAW = buildKillMachine({
   }],
 });
 
+// CHARON EXPANSE - the tailings sweep. The Abandoned Mining Colony ran a dragline that
+// swept spoil off the working apron into a tailings berm parked on the haul road itself,
+// and the drive still cycles on the dead colony's clock. The sheet lies ACROSS the road:
+// a body holding the lane inside the sweep band is dragged along its own course into the
+// berm - no mouth to fly into, no jaws closing in - the only machine in the census whose
+// pull runs parallel to the direction you were already travelling.
+export const CHARON_SWEEP_SECTOR_ID = 'sector_charon_expanse';
+export const CHARON_TAILINGS_SWEEP = buildKillMachine({
+  id: 'charon_tailings_sweep',
+  hazardType: 'debris',
+  placeId: 'place_conveyor_truss',
+  sectorId: CHARON_SWEEP_SECTOR_ID,
+  // Mid-lane on the Expanse Refinery -> colony haul road, clear of the refinery (1146 WU),
+  // all three Charon fields (822+ WU off the nearest cluster rim), both hazard discs
+  // (811/992 WU), the colony apron (1401 WU), the nursery, and every gate (2500+ WU).
+  localPos: { x: 205, z: 287 },
+  // The sweep axis is perpendicular to the road bearing (~126 deg), so the sheet's
+  // squeeze runs along the road - toward the berm the dead dragline parked on it.
+  rot: 0.63,
+  phaseOffsetS: 16,
+  hazardRadius: 130,
+  anvil: { radius: 24, mass: 13000, along: 0, across: 0 },
+  mouth: { name: 'Tailings Dragline', radius: 20 },
+  fields: [{
+    // One sheet spanning the road (170 WU across, centred on the berm) covering 110 WU of
+    // road length - the sweep band. Surge drags lane traffic to the centreline, onto the berm.
+    idSuffix: 'sweep',
+    kind: 'sheet',
+    strength: 720,
+    radius: 170,
+    halfWidth: 55,
+    falloff: 1.0,
+    along: -85,
+    across: 0,
+    dirAlong: 1,
+  }],
+});
+
 // Every machine the adapter owns, in one list: Ceres mouths, the Helios starter cracker, the Sker
-// baler, the Rift fissure cracker, and the CR-FEED trio. Per-sector slices come from
+// baler, the Rift fissure cracker, and the CR-FEED machines. Per-sector slices come from
 // killMachinesForSector; this is the census the runtime uses to retire fields and anvils when a
 // sector deactivates or a machine is absent.
 export const ALL_KILL_MACHINES = Object.freeze([
@@ -530,6 +570,7 @@ export const ALL_KILL_MACHINES = Object.freeze([
   VESTA_SHEAR_JAWS,
   TETHYS_WEIGH_CLAMP,
   VEIL_COLD_DRAW,
+  CHARON_TAILINGS_SWEEP,
 ]);
 
 // The full census by stable id — Ceres trio plus the starter/baler/rift/CR-FEED machines.
@@ -547,6 +588,7 @@ export function killMachinesForSector(sectorId) {
   if (sectorId === VESTA_SHEAR_SECTOR_ID) return Object.freeze([VESTA_SHEAR_JAWS]);
   if (sectorId === TETHYS_WEIGH_SECTOR_ID) return Object.freeze([TETHYS_WEIGH_CLAMP]);
   if (sectorId === VEIL_COLD_SECTOR_ID) return Object.freeze([VEIL_COLD_DRAW]);
+  if (sectorId === CHARON_SWEEP_SECTOR_ID) return Object.freeze([CHARON_TAILINGS_SWEEP]);
   return Object.freeze([]);
 }
 
