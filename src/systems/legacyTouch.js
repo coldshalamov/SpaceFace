@@ -18,6 +18,7 @@
 // unchanged. input.js gives touch priority when a touch is active (analogous to how kbm-vs-gamepad
 // recency already works).
 
+import { perfNow } from '../core/perfRuntime.js';
 import { recordDrawFlightGesture } from './drawFlightInput.js';
 
 const STYLE_ID = 'sf-touch-style';
@@ -111,8 +112,7 @@ const AUTO_MIN_PX = 480;
 
 /** Diagnostic wall stamp only — never used for aim/helm arbitration (F4). */
 function nowMs() {
-  if (typeof performance !== 'undefined' && performance.now) return performance.now();
-  return Date.now();
+  return perfNow();
 }
 
 function isMenuAction(action) {

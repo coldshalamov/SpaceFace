@@ -60,9 +60,9 @@ import {
 } from '../../systems/touch.js';
 
 const TOUCH_LAYOUT_LABELS = Object.freeze({
-  standard: 'Standard — sticks at both bottom corners',
-  lefty: 'Left-handed — mirrored for a left thumb',
-  compact: 'Compact — pads pulled in for short thumbs',
+  standard: 'Right hand — gun and tether on the right; the stick appears where you touch',
+  lefty: 'Left hand — gun, tether, and powers mirrored',
+  compact: 'Compact — smaller pads, pulled in from the edges',
 });
 
 const SETTINGS_SHEET_ID = 'of-settings-css';
@@ -1001,8 +1001,8 @@ export const settingsScreen = {
       TOUCH_LAYOUTS.map((id) => [id, TOUCH_LAYOUT_LABELS[id]]),
       () => readTouchOverlayConfig(s).layout,
       (mode) => commitTouchOverlay({ layout: normalizeTouchLayout(mode) }));
-    // Touch overlay exposes dedicated Dock/Map/Log/Star/Pause buttons (not only flight sticks).
-    build.note('Virtual sticks: left = fly, right = aim; buttons = fire, mine, boost, dock, Map, Log (Mission Log), Star, Pause. Auto-enabled on touch devices.');
+    // The phone deck is a floating stick plus gun, tether, and the powers wheel.
+    build.note('Touch empty space and drag to fly. Gun and tether sit under one thumb; swipe the powers handle for the rest. Auto-enabled on touch devices.');
     // PQ-164.02: one Deck/trackpad row. Gestures write the existing Massline key seams
     // (Space latch, W/S reel, Y throw, G-stroke) — they do not add a second grammar.
     const deckHeader = build.header(STEAM_DECK_HEADER);

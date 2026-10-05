@@ -8,7 +8,7 @@ export const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 const finite = (n, fallback = 0) => Number.isFinite(n) ? n : fallback;
 export const wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
 export function stickRadius(width, height, scale = 1) {
-  return clamp(Math.min(width, height) * 0.19, 54, 86) * clamp(finite(scale, 1), 0.75, 1.35);
+  return clamp(Math.min(width, height) * 0.19, 54, 86) * clamp(finite(scale, 1), 0.75, 1.6);
 }
 export function shapeStick(dx, dy, radius, wasBoosting = false) {
   const distance = Math.hypot(finite(dx), finite(dy));
@@ -121,11 +121,19 @@ export function steerToward(direction, rot, magnitude) {
     // Turn without driving the wrong way. No instantaneous rotation or velocity writes.
     thrust: magnitude * (0.18 + 0.82 * Math.max(0, Math.cos(error))) };
 }
-/** Right-edge semicircle: top -> left -> bottom. A neutral core cancels selection. */
-export function wheelSlot(x, y, cx, cy, radius, count = 6, previous = -1) {
+/** Distance from a point to a rectangle. 0 when the point is inside. */
+export function distanceToRect(x, y, rect) {
+  if (!rect || ![rect.left, rect.top, rect.right, rect.bottom].every(Number.isFinite)) return Infinity;
+  const dx = Math.max(rect.left - x, 0, x - rect.right);
+  const dy = Math.max(rect.top - y, 0, y - rect.bottom);
+  return Math.hypot(dx, dy);
+}
+/** Semicircle opening inward from an edge. `side` 'left' mirrors it for a left-handed rail. */
+export function wheelSlot(x, y, cx, cy, radius, count = 6, previous = -1, side = 'right') {
   const dx = x - cx, dy = y - cy, d = Math.hypot(dx, dy);
-  if (dx > 12 || d < radius * 0.30 || d > radius * 1.30) return -1;
-  const angle = Math.atan2(-dx, -dy);
+  const outward = side === 'left' ? -dx : dx;
+  if (outward > 12 || d < radius * 0.30 || d > radius * 1.30) return -1;
+  const angle = Math.atan2(side === 'left' ? dx : -dx, -dy);
   if (angle < 0 || angle > Math.PI) return -1;
   const sector = Math.PI / count;
   if (previous >= 0 && Math.abs(angle - (previous + 0.5) * sector) < sector * 0.62) return previous;

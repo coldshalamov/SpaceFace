@@ -91,6 +91,7 @@ export function enhanceMobileTouch(touch, ctx = {}, {
       view.destroy(); view = null; this._overlay = null;
       delete doc.documentElement.dataset.sfMobile;
       delete doc.documentElement.dataset.sfMobileFlight;
+      delete doc.documentElement.dataset.sfMobileWheel;
     }
     const changed = this.active !== (enable && !!view);
     this.active = enable && !!view;
