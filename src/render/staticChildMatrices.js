@@ -1,3 +1,5 @@
+import * as THREE from 'three';
+
 // Freeze local matrices on static children.
 //
 // The root still poses every frame (position/rotation writes + matrixAutoUpdate). Interior plates,
@@ -68,6 +70,47 @@ export function freezeStaticChildMatrices(root) {
   return frozen;
 }
 
+// Stepped twin: same pre-order freeze pass + post-order mark, driven iteratively
+// so a packaged-size subtree yields at stride boundaries inside a paced commit
+// leg instead of landing both walks atomically. Sync callers keep the frozen
+// traverse above (identical output).
+export function* freezeStaticChildMatricesSteps(root) {
+  if (!root || typeof root.traverse !== 'function') return 0;
+  let frozen = 0;
+  const order = [];
+  const stack = [root];
+  while (stack.length > 0) {
+    const object = stack.pop();
+    order.push(object);
+    if (shouldFreezeStaticChild(object, root)) {
+      object.matrixAutoUpdate = false;
+      if (typeof object.updateMatrix === 'function') object.updateMatrix();
+      frozen += 1;
+    }
+    const children = object.children || [];
+    for (let i = children.length - 1; i >= 0; i -= 1) stack.push(children[i]);
+    if ((order.length % 1024) === 0) yield;
+  }
+  // Reverse of the pre-order list is a valid post-order for the mark pass: every
+  // descendant is evaluated before its ancestors, same as the recursive version.
+  for (let i = order.length - 1; i >= 0; i -= 1) {
+    const node = order[i];
+    let frozenSubtree = node.matrixAutoUpdate === false;
+    const children = node.children || [];
+    for (let j = 0; j < children.length; j++) {
+      const ud = children[j].userData;
+      if (!(ud && ud.sfMatrixFrozen === true)) { frozenSubtree = false; break; }
+    }
+    if (node.userData) {
+      if (frozenSubtree) node.userData.sfMatrixFrozen = true;
+      else if (node.userData.sfMatrixFrozen) node.userData.sfMatrixFrozen = false;
+    }
+    if ((i % 1024) === 0) yield;
+  }
+  remarkStaticMatrixAncestors(root);
+  return frozen;
+}
+
 // For entity roots whose local transform is written only at mount/seat/repose (stations, wrecks,
 // asteroids, planet sites, place boundaries): stop the per-frame compose as well so the subtree
 // below can actually prune out of the walk. Every transform writer on such a root must call
@@ -87,4 +130,46 @@ export function refreshStaticTransform(node) {
   if (!node) return;
   if (typeof node.updateMatrix === 'function') node.updateMatrix();
   if (typeof node.updateWorldMatrix === 'function') node.updateWorldMatrix(false, true);
+}
+
+// Stepped twin of Object3D#updateMatrixWorld: identical per-node semantics — auto
+// matrix compose, needsUpdate-or-force world recompute with flag clear, force
+// propagation — walked iteratively so a forced whole-scene refresh yields at
+// stride boundaries instead of landing atomically inside the boot census.
+// Subclass overrides (SkinnedMesh bind, Camera inverse) own their subtree
+// atomically; sibling world updates are order-independent, so delegating them at
+// push time preserves the result.
+export function* updateMatrixWorldSteps(root, force) {
+  if (!root) return;
+  const base = THREE && THREE.Object3D && THREE.Object3D.prototype
+    ? THREE.Object3D.prototype.updateMatrixWorld
+    : null;
+  if (typeof root.updateMatrixWorld !== 'function' || !base || root.updateMatrixWorld !== base) {
+    root.updateMatrixWorld(force);
+    return;
+  }
+  const stack = [[root, force === true]];
+  let visited = 0;
+  while (stack.length > 0) {
+    const [object, entryForce] = stack.pop();
+    if ((++visited % 2048) === 0) yield;
+    if (object.matrixAutoUpdate) object.updateMatrix();
+    let childForce = entryForce;
+    if (object.matrixWorldNeedsUpdate || entryForce) {
+      if (object.matrixWorldAutoUpdate === true) {
+        if (!object.parent) object.matrixWorld.copy(object.matrix);
+        else object.matrixWorld.multiplyMatrices(object.parent.matrixWorld, object.matrix);
+      }
+      object.matrixWorldNeedsUpdate = false;
+      childForce = true;
+    }
+    const children = object.children;
+    if (!Array.isArray(children)) continue;
+    for (let i = children.length - 1; i >= 0; i -= 1) {
+      const child = children[i];
+      if (!child || typeof child.updateMatrixWorld !== 'function') continue;
+      if (child.updateMatrixWorld !== base) child.updateMatrixWorld(childForce);
+      else stack.push([child, childForce]);
+    }
+  }
 }

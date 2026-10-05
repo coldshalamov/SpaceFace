@@ -432,6 +432,7 @@ import {
   captureOpeningAdmissionIdentity,
   captureOpeningAdmissionIdentitySteps,
   describeOpeningAdmissionIdentityDelta,
+  describeOpeningAdmissionIdentityDeltaSteps,
   materialHasCompiledProgram,
   materialList,
   touchSubjectOnExactTarget,
@@ -466,6 +467,7 @@ import {
   willEntityEnterAuthoredUpgradeRunway,
 } from './authoredAdmissionPolicy.js';
 import { predictNextSector } from './sectorPredict.js';
+import { updateMatrixWorldSteps } from './staticChildMatrices.js';
 import {
   admissionAnchorPos,
   approachDistanceWu,
@@ -516,47 +518,7 @@ import { ENCOUNTERS } from '../data/encounters/index.generated.js';
 const _meshLocalXZ = { x: 0, z: 0 };
 const _residencyLookDelta = { x: 0, z: 0 };
 
-// Stepped twin of Object3D#updateMatrixWorld: identical per-node semantics — auto
-// matrix compose, needsUpdate-or-force world recompute with flag clear, force
-// propagation — walked iteratively so a forced whole-scene refresh yields at
-// stride boundaries instead of landing atomically inside the boot census.
-// Subclass overrides (SkinnedMesh bind, Camera inverse) own their subtree
-// atomically; sibling world updates are order-independent, so delegating them at
-// push time preserves the result.
-function* updateMatrixWorldSteps(root, force) {
-  if (!root) return;
-  const base = THREE && THREE.Object3D && THREE.Object3D.prototype
-    ? THREE.Object3D.prototype.updateMatrixWorld
-    : null;
-  if (typeof root.updateMatrixWorld !== 'function' || !base || root.updateMatrixWorld !== base) {
-    root.updateMatrixWorld(force);
-    return;
-  }
-  const stack = [[root, force === true]];
-  let visited = 0;
-  while (stack.length > 0) {
-    const [object, entryForce] = stack.pop();
-    if ((++visited % 2048) === 0) yield;
-    if (object.matrixAutoUpdate) object.updateMatrix();
-    let childForce = entryForce;
-    if (object.matrixWorldNeedsUpdate || entryForce) {
-      if (object.matrixWorldAutoUpdate === true) {
-        if (!object.parent) object.matrixWorld.copy(object.matrix);
-        else object.matrixWorld.multiplyMatrices(object.parent.matrixWorld, object.matrix);
-      }
-      object.matrixWorldNeedsUpdate = false;
-      childForce = true;
-    }
-    const children = object.children;
-    if (!Array.isArray(children)) continue;
-    for (let i = children.length - 1; i >= 0; i -= 1) {
-      const child = children[i];
-      if (!child || typeof child.updateMatrixWorld !== 'function') continue;
-      if (child.updateMatrixWorld !== base) child.updateMatrixWorld(childForce);
-      else stack.push([child, childForce]);
-    }
-  }
-}
+
 
 // Drive the stepped depth-ceremony twin across a leg's own yield primitive so its
 // censuses pace instead of draining atomically inside a shell/presented frame — the
@@ -847,6 +809,9 @@ const CACHE_LEASE_MAX_BYTES = 128 * 1024 * 1024;
 // The opening first-picture hold is a startup latch measured in frames, not seconds. If the paint
 // latch has not ended it after this long, the paint callback is never coming; resume streaming.
 const OPENING_PICTURE_HOLD_FAILSAFE_MS = 15000;
+// Per-slice bound for draining the opening identity census — both the residual
+// in-frame drain at submit and each timer-gap tick of the deferred continuation.
+const OPENING_FIRST_DRAW_CENSUS_DRAIN_MS = 4;
 // An armed first-playable paint release is expected to land within two frames (~33 ms). If the
 // stamp is still missing after this much longer, treat the armed afterBrowserPaint chain as lost
 // and let shouldScheduleFirstPlayablePaintRelease re-arm it (the release is idempotent).
@@ -17123,6 +17088,8 @@ export const render = {
           state.render.openingFirstDrawIdentityCensus = null;
           state.render.openingSubmissionPreSubmitValidation = null;
           state.render.openingSubmissionValidation = null;
+          this._openingFirstDrawIdentityIter = null;
+          this._openingFirstDrawIdentityResult = undefined;
           state.render.openingSubmissionReady = null;
           state.render.firstPlayableContentHashes = null;
           state.render.firstPlayableContentHashesVerified = false;
@@ -22919,6 +22886,18 @@ export const render = {
    * the final activity/visibility decision, and refreshes matrices for exact camera admission.
    */
   _publishOpeningFirstPicture() {
+    const iter = this._publishOpeningFirstPictureSteps();
+    let step = iter.next();
+    while (!step.done) step = iter.next();
+    return step.value;
+  },
+
+  // Stepped twin: each settle pass (≤8 + final) pays the same leg chain — entity
+  // sync, forced whole-scene compose, pool/shadow band, second compose — as one
+  // atomic span. Yields split the legs so the async drives below pace them
+  // between browser beats (the loading bar keeps ticking on dense scenes);
+  // the sync driver above exhausts inline for identical output.
+  *_publishOpeningFirstPictureSteps() {
     const state = this.state;
     const publication = this._presentationPublisher && typeof this._presentationPublisher.consume === 'function'
       ? this._presentationPublisher.consume()
@@ -22956,9 +22935,11 @@ export const render = {
     if (state && state.render && typeof state.render.prepareOpeningVfxFrame === 'function') {
       state.render.prepareOpeningVfxFrame();
     }
+    yield;
     if (this.scene && typeof this.scene.updateMatrixWorld === 'function') {
-      this.scene.updateMatrixWorld(true);
+      yield* updateMatrixWorldSteps(this.scene, true);
     }
+    yield;
     syncContactShadowPool(this._contactShadowPool, this._entityFrame);
     ensureShipAuxPoolCapacityForFrame(this._shipAuxPool, this._entityFrame, this._meshes);
     tickShieldShellClock(this._shipAuxPool, this.state);
@@ -22981,12 +22962,13 @@ export const render = {
         : null;
     }
     this._syncAsteroidInstanceSubmission(this._activeShadowCamera);
+    yield;
     // The second compose only needs to settle what the middle band dirtied —
     // pool/table poses, the key light + its shadow camera — all of which carry
     // matrixWorldNeedsUpdate. An unforced walk recomputes exactly those
     // subtrees; a forced recompose would re-walk the whole scene again.
     if (this.scene && typeof this.scene.updateMatrixWorld === 'function') {
-      this.scene.updateMatrixWorld();
+      yield* updateMatrixWorldSteps(this.scene);
     }
     return true;
   },
@@ -23100,8 +23082,19 @@ export const render = {
       } finally {
         if (auxGrowthTimeout !== null) clearTimeout(auxGrowthTimeout);
       }
+      // Each settle pass's leg chain (entity sync, forced compose, pool/shadow
+      // band, second compose) runs one atomic span — drive the stepped twin so
+      // the legs pace between browser beats like the upgrade-promises walk.
+      const drivePublishFirstPicture = async () => {
+        const iter = this._publishOpeningFirstPictureSteps();
+        for (;;) {
+          const publishStep = iter.next();
+          if (publishStep.done) return publishStep.value;
+          await yieldToBrowser();
+        }
+      };
       for (let pass = 0; pass < 8; pass++) {
-        if (!this._publishOpeningFirstPicture()) {
+        if (!(await drivePublishFirstPicture())) {
           throw new Error('opening first-picture render publication unavailable');
         }
         // Each settle pass pays a shadow-candidate census + the _meshes wait-set
@@ -23120,7 +23113,7 @@ export const render = {
         if (pending.length === 0) {
           // Re-publish once after the final boundary settles so the exact census sees the committed
           // authored leaves rather than the pre-swap fallback children.
-          if (!this._publishOpeningFirstPicture()) {
+          if (!(await drivePublishFirstPicture())) {
             throw new Error('opening first-picture final publication unavailable');
           }
           const late = await driveUpgradePromises();
@@ -23538,7 +23531,10 @@ export const render = {
           this._openingFirstDrawIdentityResult = undefined;
         }
         const censusStep = this._openingFirstDrawIdentityIter.next();
-        if (censusStep.done) this._openingFirstDrawIdentityResult = censusStep.value;
+        if (censusStep.done) {
+          this._openingFirstDrawIdentityResult = censusStep.value;
+          this._openingFirstDrawIdentityIter = null;
+        }
         // Non-KHR/software runners fire-and-forget the pipeline-readiness stages, so the first
         // presented frame can race ahead of the recorded admission handles and link or upload
         // inside the visible pass — every such row lands as an unexplained late admission (and a
@@ -23874,41 +23870,94 @@ export const render = {
           geometries: Number(memory.geometries) || 0,
         };
         // The stepped baseline minted at arm time: refused frames already walked
-        // most of it — drain whatever remains so the census still precedes the submit.
+        // most of it — drain what remains under a bounded slice, not the whole
+        // census inside this presented frame. A zero-refusal runner's tail
+        // continues in timer gaps via the deferred continuation below.
         openingFirstDrawIdentityBefore = this._openingFirstDrawIdentityResult;
-        if (openingFirstDrawIdentityBefore === undefined) {
-          if (this._openingFirstDrawIdentityIter) {
-            let censusStep = this._openingFirstDrawIdentityIter.next();
-            while (!censusStep.done) censusStep = this._openingFirstDrawIdentityIter.next();
-            openingFirstDrawIdentityBefore = censusStep.value;
+        const gapNow = () => (
+          typeof performance !== 'undefined' && typeof performance.now === 'function'
+            ? performance.now() : Date.now()
+        );
+        if (openingFirstDrawIdentityBefore === undefined && this._openingFirstDrawIdentityIter) {
+          const drainDeadline = gapNow() + OPENING_FIRST_DRAW_CENSUS_DRAIN_MS;
+          let censusStep = this._openingFirstDrawIdentityIter.next();
+          while (!censusStep.done && gapNow() < drainDeadline) {
+            censusStep = this._openingFirstDrawIdentityIter.next();
           }
-          if (!openingFirstDrawIdentityBefore) {
-            openingFirstDrawIdentityBefore = captureOpeningAdmissionIdentity(
-              this.renderer,
-              this.scene,
-              this.state.render.openingSubmissionPlan,
-            );
-          }
+          if (censusStep.done) openingFirstDrawIdentityBefore = censusStep.value;
         }
-        // D25: the post-submit receipt check consumes this census to tell queued admissions
-        // from genuinely unrecorded first-draw resources — persist it on state so a deferred
-        // validation frame still sees the baseline.
-        this.state.render.openingFirstDrawIdentityCensus = openingFirstDrawIdentityBefore;
-        // The delta attribution and post-submit receipt validation are diagnostic-only
-        // passes (another whole-scene traverse plus per-material program reads). They
-        // used to ride inside this presented frame — the persisted-census design
-        // already anticipates the deferral, so finish them after the paint.
-        this._openingFirstDrawDiagnosticsDeferred = true;
+        if (openingFirstDrawIdentityBefore === undefined && !this._openingFirstDrawIdentityIter) {
+          openingFirstDrawIdentityBefore = captureOpeningAdmissionIdentity(
+            this.renderer,
+            this.scene,
+            this.state.render.openingSubmissionPlan,
+          );
+        }
         const countsBefore = openingFirstDrawCountsBefore;
-        const identityBefore = openingFirstDrawIdentityBefore;
+        const armedPlan = this.state.render.openingSubmissionPlan;
         const lifecycle = this._rendererLifecycle;
-        const finishDiagnostics = lifecycle
-          ? lifecycle.guard(() => this._finishOpeningFirstDrawDiagnostics(countsBefore, identityBefore))
-          : () => this._finishOpeningFirstDrawDiagnostics(countsBefore, identityBefore);
         const schedule = lifecycle
           ? (callback) => lifecycle.setTimeout(callback, 0)
           : null;
-        afterBrowserPaint(finishDiagnostics, schedule);
+        // D25: the post-submit receipt check consumes this census to tell queued admissions
+        // from genuinely unrecorded first-draw resources — persist it on state so a deferred
+        // validation frame still sees the baseline.
+        const persistAndFinish = (identityBefore) => {
+          this.state.render.openingFirstDrawIdentityCensus = identityBefore;
+          // The delta attribution and post-submit receipt validation are diagnostic-only
+          // passes (another whole-scene traverse plus per-material program reads). They
+          // used to ride inside this presented frame — the persisted-census design
+          // already anticipates the deferral, so finish them after the paint, sliced
+          // across timer gaps so frame N+2 doesn't eat them whole either.
+          this._openingFirstDrawDiagnosticsDeferred = true;
+          const diagIter = this._finishOpeningFirstDrawDiagnosticsSteps(countsBefore, identityBefore, armedPlan);
+          const scheduleGap = schedule || ((next) => setTimeout(next, 0));
+          const driveDiagnostics = () => {
+            let step = null;
+            try { step = diagIter.next(); }
+            catch (_) { step = { done: true, value: undefined }; }
+            if (!step.done) scheduleGap(guardedDrive);
+          };
+          const guardedDrive = lifecycle ? lifecycle.guard(driveDiagnostics) : driveDiagnostics;
+          afterBrowserPaint(() => scheduleGap(guardedDrive), schedule);
+        };
+        if (openingFirstDrawIdentityBefore !== undefined) {
+          this._openingFirstDrawIdentityIter = null;
+          this._openingFirstDrawIdentityResult = undefined;
+          persistAndFinish(openingFirstDrawIdentityBefore);
+        } else {
+          // A zero-refusal runner submits mid-census: keep the rest of the walk
+          // off presented frames — the iterator drains ≤ the same slice per
+          // timer gap, then runs the same deferred diagnostics. The baseline
+          // closes a few ticks post-submit; that only shifts delta attribution
+          // (first-draw links may count as baseline) — diagnostics-only.
+          this._openingFirstDrawDiagnosticsDeferred = true;
+          const censusIter = this._openingFirstDrawIdentityIter;
+          const scheduleGap = schedule || ((next) => setTimeout(next, 0));
+          const drainCensus = () => {
+            const gapDeadline = gapNow() + OPENING_FIRST_DRAW_CENSUS_DRAIN_MS;
+            let step = null;
+            try {
+              step = censusIter.next();
+              while (!step.done && gapNow() < gapDeadline) step = censusIter.next();
+            } catch (_) {
+              step = { done: true, value: undefined };
+            }
+            if (!step.done) { scheduleGap(guardedDrain); return; }
+            this._openingFirstDrawIdentityIter = null;
+            this._openingFirstDrawIdentityResult = undefined;
+            const identityBefore = step.value !== undefined && step.value !== null
+              ? step.value
+              : captureOpeningAdmissionIdentity(
+                this.renderer,
+                this.scene,
+                this.state.render.openingSubmissionPlan,
+              );
+            persistAndFinish(identityBefore);
+          };
+          const guardedDrain = lifecycle ? lifecycle.guard(drainCensus) : drainCensus;
+          scheduleGap(guardedDrain);
+        }
       }
       try {
         this._renderPostRoute(postRoute, this.scene, this.cam.obj, this._bgTime || 0);
@@ -24031,8 +24080,14 @@ export const render = {
   // Post-paint tail of the first presented draw: attributes the submit's renderer.info
   // delta back to production objects, then runs the receipt validation. Both are
   // diagnostic-only whole-scene passes the opening arm defers past the paint (D25).
-  _finishOpeningFirstDrawDiagnostics(countsBefore, identityBefore) {
+  // Steps twin: the deferred driver slices it across timer gaps so frame N+2
+  // doesn't pay the O(scene)+O(drawables) cluster in one callback.
+  *_finishOpeningFirstDrawDiagnosticsSteps(countsBefore, identityBefore, armedPlan) {
     try {
+      // A recook since the arm reset the slate and cleared the plan — writing the
+      // stale census/validation into it would occupy the fresh sector's slot and
+      // suppress its real receipt validation.
+      if (this.state.render.openingSubmissionPlan !== armedPlan) return;
       const info = this.renderer && this.renderer.info || {};
       const memory = info.memory || {};
       const after = {
@@ -24044,14 +24099,18 @@ export const render = {
         geometries: after.geometries - countsBefore.geometries,
       };
       const geometryOnlyBrick = delta.programs === 0 && delta.geometries !== 0;
-      const lateAdmissions = describeOpeningAdmissionIdentityDelta(
+      const lateAdmissions = yield* describeOpeningAdmissionIdentityDeltaSteps(
         identityBefore,
         this.renderer,
         this.scene,
         this.state.render.openingSubmissionPlan,
         { exemptions: OPENING_LATE_ADMISSION_EXEMPTIONS },
       );
-      this.state.render.openingFirstVisibleGpuCounts = {
+      yield;
+      // Computed into a local and persisted beside the validation write below — a throw
+      // between the two writes used to leave counts set with validation unwritten, which
+      // permanently locked the arm gate (it requires !openingFirstVisibleGpuCounts).
+      const firstVisibleGpuCounts = {
         before: countsBefore,
         after,
         delta,
@@ -24061,6 +24120,7 @@ export const render = {
       console.info(
         `[render] first-visible-pass-residency geometries=${countsBefore.geometries}->${after.geometries} programs=${countsBefore.programs}->${after.programs} geometry-only-brick=${geometryOnlyBrick} lateAdmissions=${JSON.stringify(lateAdmissions)}`,
       );
+      let pendingValidation;
       if (this.state.mode === 'flight'
           && !this.state.render.openingSubmissionValidation
           && this.state.render.openingSubmissionReceipt) {
@@ -24069,7 +24129,6 @@ export const render = {
           this.renderer,
           this.state.render.openingFirstDrawIdentityCensus,
         );
-        const firstVisibleGpuCounts = this.state.render.openingFirstVisibleGpuCounts;
         const firstVisibleAdmissionDelta = firstVisibleGpuCounts && (
           firstVisibleGpuCounts.delta.geometries !== 0
           || firstVisibleGpuCounts.delta.programs !== 0
@@ -24090,7 +24149,7 @@ export const render = {
           && firstVisibleGpuCounts.delta.geometries !== 0
           ? { reason: 'first-visible-geometry-delta' }
           : { reason: 'first-visible-program-delta' };
-        const validation = unexplainedFirstVisibleAdmission
+        pendingValidation = unexplainedFirstVisibleAdmission
           ? {
             ...receiptValidation,
             ...firstVisibleAdmissionFailure,
@@ -24098,7 +24157,18 @@ export const render = {
             firstVisibleGpuCounts,
           }
           : receiptValidation;
-        this.state.render.openingSubmissionValidation = validation;
+      }
+      // The slices above span timer gaps — a recook that landed mid-drive has
+      // already reset the slate under a new plan; bailing here keeps the stale
+      // verdict out of the fresh sector's slot just like the entry check.
+      if (this.state.render.openingSubmissionPlan !== armedPlan) return;
+      // Persist counts + validation together: a throw in the computation above leaves
+      // neither written, so the next frame's re-arm retries both instead of wedging the
+      // counts-gated arm or silently dropping the receipt verdict.
+      this.state.render.openingFirstVisibleGpuCounts = firstVisibleGpuCounts;
+      if (pendingValidation !== undefined) {
+        this.state.render.openingSubmissionValidation = pendingValidation;
+        const validation = pendingValidation;
         if (!validation.ok) {
           console.info(
             `[render] opening submission post-submit validation failed ${JSON.stringify({
@@ -24617,6 +24687,7 @@ export const render = {
       const sliceRoots = slice.map(([root]) => root);
       let legCapped = false;
       let legSet = null;
+      let legDeferred = false;
       let lightSig = '';
       let unstagedByRoot = null;
       if (this._shadowSettingOn === true && renderer && scene && camera && this._keyLight
@@ -24641,8 +24712,16 @@ export const render = {
           unstagedByRoot = new Map();
           let collected = 0;
           let abortedPark = null;
+          const deferredRoots = this._deferredDepthStageRoots;
           while (collected < sliceRoots.length) {
             const entry = slice[collected] && slice[collected][1];
+            // A deferred stepped compile already owns this root's casters — offering
+            // them to a second ceremony would duplicate it; the marks settle, the set
+            // clears, and the next arm re-collects normally.
+            if (deferredRoots && deferredRoots.has(sliceRoots[collected])) {
+              collected += 1;
+              continue;
+            }
             // Per-root node budget keyed on THAT root's escalation — one shared
             // wallet spent by the prefix made a mid-slice fat root's own scale
             // apply only at head position, starving every root behind it. The
@@ -24690,7 +24769,7 @@ export const render = {
             if (found.length > 0) unstagedByRoot.set(sliceRoots[collected], found);
             for (const mesh of found) unstaged.push(mesh);
             collected += 1;
-            if (collected < sliceRoots.length && collected >= 2 && armNow() >= collectDeadline) break;
+            if (collected < sliceRoots.length && collected >= 1 && armNow() >= collectDeadline) break;
           }
           if (collected < sliceRoots.length) {
             const skipped = slice.splice(collected);
@@ -24737,9 +24816,21 @@ export const render = {
             if (session) {
               session.slice(leg);
             } else {
-              // Session unavailable (warm-up failed or API shape missing) — the
-              // single-shot compile is the same ceremony minus the reuse.
-              compileShadowDepthPipelines({
+              // Session unavailable (warm-up failed or API shape missing) — drive
+              // the stepped twin as a deferred task so the census+reparent+render
+              // legs pace across presents instead of one atomic span in this arm.
+              // Marks land a few presents later; the leftover audit below requeues
+              // (never parks) a deferred leg and its meshes stay withheld until
+              // the marks commit — the cold-link contract is unchanged.
+              legDeferred = true;
+              const deferredMark = this._deferredDepthStageRoots
+                || (this._deferredDepthStageRoots = new Set());
+              for (const [deferRoot, deferMeshes] of unstagedByRoot) {
+                for (const mesh of deferMeshes) {
+                  if (legSet.has(mesh)) { deferredMark.add(deferRoot); break; }
+                }
+              }
+              driveCompileShadowDepthPipelines({
                 renderer,
                 light: this._keyLight,
                 camera,
@@ -24751,6 +24842,14 @@ export const render = {
                 lightingScene: scene,
                 lightSigOverride: lightSig,
                 stagingName: 'SF_ShadowPromoteDepthAdmission',
+              }, yieldToBrowser).catch((error) => {
+                console.warn('[render] shadow-promote depth stage fallback failed', error);
+              }).finally(() => {
+                if (this._deferredDepthStageRoots) {
+                  for (const [deferRoot] of unstagedByRoot) {
+                    this._deferredDepthStageRoots.delete(deferRoot);
+                  }
+                }
               });
             }
           }
@@ -24800,6 +24899,13 @@ export const render = {
           continue;
         }
         const { lodLevel, entity } = entry;
+        // Marks for this root are still landing inside a deferred compile — keep it
+        // queued with flags withheld; restoring now would un-withhold casters whose
+        // depth variant has not linked.
+        if (this._deferredDepthStageRoots && this._deferredDepthStageRoots.has(root)) {
+          pending.set(root, entry);
+          continue;
+        }
         const leftover = leftoverByRoot && leftoverByRoot.get(root);
         let reforceLeftover = null;
         if (leftover) {
@@ -24813,7 +24919,7 @@ export const render = {
           for (const mesh of leftover) {
             if (!legSet.has(mesh)) { allOffered = false; break; }
           }
-          if (allOffered) {
+          if (allOffered && !legDeferred) {
             const parkedMap = this._parkedDepthStageRoots
               || (this._parkedDepthStageRoots = new Map());
             this._parkedRecheckStamp = (this._parkedRecheckStamp || 0) + 1;
@@ -25218,7 +25324,13 @@ export const render = {
     }
     if (!this._shadowSettingOn) {
       renderer.shadowMap.enabled = false;
-      key.castShadow = false;
+      // Change-gated like _syncShadowMapEnabled — this write can land the real
+      // true→false flip first, and a census-mutation epoch bump is what lets a
+      // suspended depth census observe it.
+      if (key.castShadow === true) {
+        key.castShadow = false;
+        noteShadowCensusLightMutation();
+      }
     }
     return true;
   },

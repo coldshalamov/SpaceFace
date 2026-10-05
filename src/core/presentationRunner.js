@@ -713,13 +713,46 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   }
 
   // A journal rebuild used to collect + republish every journal row inside one
-  // presented frame. Both legs now advance a bounded slice per call: the collect
-  // walks the chunked twin, and rebuildFromSteps yields per 64 published rows.
-  // needsRebuild stays set across the suspension, so the commit below only lands
-  // when the stepped generator actually finishes — a mid-suspension journal write
-  // invalidates the attempt and the next call re-collects.
+  // presented frame. Both legs advance bounded work per call: the collect walks the
+  // chunked twin on a wall-clock deadline (per-row steps are ~sub-µs, so a fixed row
+  // cap would drag the O(entities) consume() fallback across many presents), and
+  // rebuildFromSteps publishes rows against the same per-present budget. needsRebuild
+  // stays set across the suspension, so the commit below only lands when the stepped
+  // generator actually finishes — a mid-suspension journal write invalidates the
+  // attempt and the next call re-collects. Consecutive invalidated attempts escalate
+  // to one synchronous drain, which no foreign write can interleave mid-flight.
   const JOURNAL_REBUILD_SLICE_ROWS = 512;
+  const JOURNAL_REBUILD_COLLECT_MS = 4;
+  const JOURNAL_REBUILD_INVALIDATED_MAX = 3;
   let steppedJournalRebuild = null;
+  let journalRebuildInvalidations = 0;
+
+  function commitJournalRebuild() {
+    const start = presentationJournal.getLastRebuildStart?.() || 0;
+    const end = presentationJournal.getLastRebuildEnd?.() || start;
+    simulationRunner.alignJournalCursor?.(end);
+    pendingJournalStart = start;
+    pendingJournalEnd = end;
+    pendingJournalFullRebuild = true;
+    pendingJournalRebuildGeneration = presentationJournal.getRebuildGeneration?.() || 0;
+    hasPendingJournal = true;
+    diagnostics.journalRebuildCount++;
+    journalRebuildInvalidations = 0;
+    return true;
+  }
+
+  function syncJournalRebuildEscalation(tick) {
+    const rebuildTick = Number.isSafeInteger(tick) && tick >= 0
+      ? tick
+      : (Number.isSafeInteger(state.tick) && state.tick >= 0 ? state.tick : 0);
+    const entities = collectJournalPresentationEntities(state);
+    if (typeof presentationJournal.rebuildFrom !== 'function'
+        || presentationJournal.rebuildFrom(entities, rebuildTick) !== true) {
+      diagnostics.journalRebuildFailureCount++;
+      return false;
+    }
+    return commitJournalRebuild();
+  }
 
   function rebuildJournalIfNeeded() {
     if (!presentationJournal || typeof presentationJournal.needsRebuild !== 'function') return false;
@@ -731,14 +764,28 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
           collectIter: collectJournalPresentationEntitiesChunked(state, []),
           tick: Number.isSafeInteger(state.tick) && state.tick >= 0 ? state.tick : 0,
           publishIter: null,
+          publishRows: 0,
+          suppressedAtStart: presentationJournal.getSuppressedCount?.() || 0,
         };
       }
       const job = steppedJournalRebuild;
-      let budget = JOURNAL_REBUILD_SLICE_ROWS;
       if (!job.publishIter) {
+        const collectDeadline = nowMs() + JOURNAL_REBUILD_COLLECT_MS;
         let step = job.collectIter.next();
-        while (!step.done && budget-- > 0) step = job.collectIter.next();
+        while (!step.done && nowMs() < collectDeadline) step = job.collectIter.next();
         if (!step.done) return false;
+        // Collect-phase writes are suppressed without flagging the attempt, and one can
+        // slip both the snapshot and the newcomer tail sweep — any suppression while the
+        // collect ran dooms the set, so re-collect rather than publish it.
+        const suppressedNow = presentationJournal.getSuppressedCount?.() || 0;
+        if (suppressedNow > job.suppressedAtStart) {
+          const tick = job.tick;
+          steppedJournalRebuild = null;
+          if (++journalRebuildInvalidations >= JOURNAL_REBUILD_INVALIDATED_MAX) {
+            return syncJournalRebuildEscalation(tick);
+          }
+          return false;
+        }
         const entities = step.value || [];
         if (typeof presentationJournal.rebuildFromSteps !== 'function') {
           if (presentationJournal.rebuildFrom(entities, job.tick) !== true) {
@@ -751,30 +798,37 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
         }
       }
       if (job.publishIter) {
+        let budget = JOURNAL_REBUILD_SLICE_ROWS;
         let step = job.publishIter.next();
-        while (!step.done && budget-- > 0) step = job.publishIter.next();
+        while (!step.done) {
+          // The generator yields per 64 rows — debit the published-row delta so a
+          // max-capacity rebuild can't drain its whole publish leg in one present.
+          const published = presentationJournal.getLastRebuildRecordCount?.() || 0;
+          budget -= Math.max(1, published - job.publishRows);
+          job.publishRows = published;
+          if (budget <= 0) break;
+          step = job.publishIter.next();
+        }
         if (!step.done) return false;
         const result = step.value;
+        const tick = job.tick;
         steppedJournalRebuild = null;
         if (result !== true) {
           // 'invalidated' already re-requested the rebuild — needsRebuild still set, so the
           // next present starts a fresh collect. Anything else is a genuine failure the
           // journal also reported via its own requestRebuild.
-          if (result !== 'invalidated') diagnostics.journalRebuildFailureCount++;
+          if (result === 'invalidated') {
+            if (++journalRebuildInvalidations >= JOURNAL_REBUILD_INVALIDATED_MAX) {
+              return syncJournalRebuildEscalation(tick);
+            }
+          } else {
+            diagnostics.journalRebuildFailureCount++;
+          }
           return false;
         }
       }
-      const start = presentationJournal.getLastRebuildStart?.() || 0;
-      const end = presentationJournal.getLastRebuildEnd?.() || start;
-      simulationRunner.alignJournalCursor?.(end);
-      pendingJournalStart = start;
-      pendingJournalEnd = end;
-      pendingJournalFullRebuild = true;
-      pendingJournalRebuildGeneration = presentationJournal.getRebuildGeneration?.() || 0;
-      hasPendingJournal = true;
-      diagnostics.journalRebuildCount++;
       steppedJournalRebuild = null;
-      return true;
+      return commitJournalRebuild();
     } catch (_) {
       steppedJournalRebuild = null;
       diagnostics.journalRebuildFailureCount++;

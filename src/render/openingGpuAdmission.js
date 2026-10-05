@@ -289,6 +289,105 @@ export function describeOpeningAdmissionIdentityDelta(
   };
 }
 
+// Stepped twin of describeOpeningAdmissionIdentityDelta — the deferred diagnostics
+// drive it in ≤4ms timer-gap slices so the O(scene)+per-material pass never lands
+// whole inside one early-flight frame. Every output row/set is sorted or filtered
+// before returning, so the explicit-stack visit order produces identical output.
+export function* describeOpeningAdmissionIdentityDeltaSteps(
+  before, renderer, scene, plan = null, options = {},
+) {
+  const baseline = before || { programKeys: new Set(), objects: new Map() };
+  const afterProgramKeys = rendererProgramKeys(renderer);
+  const newProgramKeys = [...afterProgramKeys]
+    .filter((key) => !baseline.programKeys.has(key))
+    .sort();
+  const newProgramSet = new Set(newProgramKeys);
+  const newProgramFamilyKeys = [...new Set(newProgramKeys.map(openingProgramFamilyKey))].sort();
+  const planned = new Set(Array.isArray(plan && plan.compileSubjects)
+    ? plan.compileSubjects.filter(Boolean) : []);
+  const lateAdmissions = [];
+  const attributedProgramKeys = new Set();
+
+  if (scene && typeof scene.traverse === 'function') {
+    const stack = [scene];
+    let visited = 0;
+    while (stack.length > 0) {
+      const object = stack.pop();
+      if ((++visited % 512) === 0) yield;
+      const children = object.children;
+      if (Array.isArray(children)) {
+        for (let i = children.length - 1; i >= 0; i -= 1) stack.push(children[i]);
+      }
+      if (!isDrawable(object)) continue;
+      const prior = baseline.objects.get(object);
+      const geometryAdmitted = !!object.geometry && (
+        !prior
+        || prior.geometry !== object.geometry
+        || geometryDisposeListenerCount(object.geometry) > prior.geometryDisposeListeners
+      );
+      const materials = materialList(object);
+      const rows = materials.length > 0 ? materials : [null];
+      for (const material of rows) {
+        const priorKeys = prior && prior.materials.get(material) || new Set();
+        const programKeys = [...materialProgramKeys(renderer, material)]
+          .filter((key) => newProgramSet.has(key) && !priorKeys.has(key))
+          .sort();
+        if (!geometryAdmitted && programKeys.length === 0) continue;
+        for (const key of programKeys) attributedProgramKeys.add(key);
+        const root = admissionRoot(object, scene);
+        const row = {
+          root: objectLabel(root),
+          object: objectLabel(object),
+          material: materialLabel(material),
+          materialType: String(material && material.type || 'Material'),
+          geometryAdmitted,
+          programFamilyKeys: [...new Set(programKeys.map(openingProgramFamilyKey))].sort(),
+          programKeys,
+          planned: planned.has(object) || !!(prior && prior.planned),
+          exempted: false,
+          exemptionReason: null,
+        };
+        const reason = exemptionFor(row, options.exemptions);
+        if (reason) {
+          row.exempted = true;
+          row.exemptionReason = reason;
+        }
+        lateAdmissions.push(row);
+      }
+    }
+  }
+
+  lateAdmissions.sort((a, b) => (
+    a.root.localeCompare(b.root)
+    || a.object.localeCompare(b.object)
+    || a.material.localeCompare(b.material)
+  ));
+  const unattributedProgramKeys = newProgramKeys
+    .filter((key) => !attributedProgramKeys.has(key));
+  const unattributedProgramFamilyKeys = [...new Set(
+    unattributedProgramKeys.map(openingProgramFamilyKey),
+  )].sort();
+  const exemptedProgramFamilyKeys = [];
+  const unexplainedProgramFamilies = [];
+  for (const family of unattributedProgramFamilyKeys) {
+    const exemption = exemptionFor({
+      root: '', object: '', material: '', programFamilyKeys: [family],
+    }, options.exemptions);
+    if (exemption) exemptedProgramFamilyKeys.push({ family, reason: exemption });
+    else unexplainedProgramFamilies.push(family);
+  }
+  return {
+    newProgramKeys,
+    newProgramFamilyKeys,
+    lateAdmissions,
+    unattributedProgramKeys,
+    unattributedProgramFamilyKeys: unexplainedProgramFamilies,
+    exemptedProgramFamilyKeys,
+    unexplained: lateAdmissions.some((row) => row.exempted !== true)
+      || unexplainedProgramFamilies.length > 0,
+  };
+}
+
 export function materialHasCompiledProgram(material, getProperties) {
   if (!material || typeof getProperties !== 'function') return false;
   try {

@@ -53,7 +53,7 @@ import { RENDER_PACKAGE_PILOTS } from './renderPackageManifest.js';
 import * as kit from './ships/shipKit.js';
 import { attachRetroMounts } from './thruster/retroMounts.js';
 import { attachPlaceHlod, attachStationHlod } from './hlod.js';
-import { freezeStaticChildMatrices, freezeStaticTransformRoot } from './staticChildMatrices.js';
+import { freezeStaticChildMatrices, freezeStaticChildMatricesSteps, freezeStaticTransformRoot } from './staticChildMatrices.js';
 import { optimizeStaticBatchesForRoot } from './visualFactory.js';
 import { attachLodState } from './lod.js';
 import {
@@ -4212,18 +4212,29 @@ function failAuthoredPlaceAdmission(
   return false;
 }
 
-function commitAuthoredPlaceBoundary(
+async function commitAuthoredPlaceBoundary(
   boundary, fallbackRoot, authored, setActive, admissionEntity, options = {},
 ) {
   // A validated place record is the sole presentation authority. The hidden substrate never appears
   // in play, so there is no placeholder frame or blue-clay-to-authored identity swap.
   detachBoundaryResolvingMarker(boundary);
-  boundary.remove(fallbackRoot);
-  boundary.add(authored.root);
   // buildAuthoredPlaceRoot already batches the authored meshes before binding their LODs and
   // specialized materials. Re-batching here replaces those meshes and leaves stale LOD bindings.
-  freezeStaticChildMatrices(authored.root);
+  // The freeze legs run pre-graft so a large place record paces across presents instead
+  // of landing inside the commit frame; the graft + publish tail stays atomic.
+  if (options.yieldBetweenGpuStages === true && typeof options.yieldToNextPresent === 'function') {
+    const freezeIter = freezeStaticChildMatricesSteps(authored.root);
+    for (;;) {
+      const freezeStep = freezeIter.next();
+      if (freezeStep.done) break;
+      await waitForAuthoredAdmission(options.yieldToNextPresent(), options);
+    }
+  } else {
+    freezeStaticChildMatrices(authored.root);
+  }
   freezeStaticTransformRoot(authored.root);
+  boundary.remove(fallbackRoot);
+  boundary.add(authored.root);
   unregisterPreparedAuthoredAdmission(authored);
   setActive(authored.root);
   carryAdmittedOnceStamp(authored.root, boundary);
@@ -9294,6 +9305,12 @@ async function commitAuthoredBoundary(
     installPreparedBoundaryPublisher(boundary, publish);
   } else {
     publish();
+  }
+  // The publish touch drew the authored subtree on the exact target and the fallback's
+  // subtree dispose is a second GPU stage — when the caller paces stage joins (flight),
+  // the dispose waits one present so the pair can't land inside one presented frame.
+  if (options.yieldBetweenGpuStages === true && typeof options.yieldToNextPresent === 'function') {
+    await waitForAuthoredAdmission(options.yieldToNextPresent(), options);
   }
 
   try { disposeDetachedObject(fallbackRoot); }

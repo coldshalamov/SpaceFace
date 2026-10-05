@@ -163,6 +163,10 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
   // committing a set that predates the dropped write.
   let rebuildInProgress = false;
   let rebuildInvalidatedDuringSteps = false;
+  // Entity ids the suspended stepped rebuild collected — a suppressed transform/visual
+  // write for one of them re-derives on that entity's next write, so only writes for
+  // entities outside the set (and destroys, which never re-write) must invalidate.
+  let rebuildSourceIds = null;
   let rebuildReason = null;
   let rebuildGeneration = 0;
   let lastRebuildStart = 0;
@@ -238,15 +242,22 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
     rebuildRequestCount++;
     rebuildRequired = true;
     rebuildReason = typeof reason === 'string' && reason ? reason : 'requested';
+    // A suspended stepped publish is filling the ring this call just wiped — flag it
+    // so the attempt re-collects instead of committing a truncated range.
+    if (rebuildInProgress) rebuildInvalidatedDuringSteps = true;
     clearRetained();
     lastRecordTick = -1;
     return true;
   }
 
-  function prepareRecord(tick) {
+  function prepareRecord(tick, entityId = 0, kind = null) {
     if (rebuildRequired) {
       suppressedCount++;
-      if (rebuildInProgress) rebuildInvalidatedDuringSteps = true;
+      if (rebuildInProgress
+          && (kind === 'destroy' || entityId === 0
+            || !rebuildSourceIds || !rebuildSourceIds.has(entityId))) {
+        rebuildInvalidatedDuringSteps = true;
+      }
       return false;
     }
     if (!Number.isSafeInteger(tick) || tick < 0) {
@@ -311,8 +322,8 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
   }
 
   function publishSpawn(tick, entity, rebuilding = false) {
-    if (!rebuilding && !prepareRecord(tick)) return 0;
     const entityId = ensureEntityId(entity);
+    if (!rebuilding && !prepareRecord(tick, entityId, 'spawn')) return 0;
     if (entityId === 0 || rebuildRequired && !rebuilding) {
       if (rebuildInProgress) rebuildInvalidatedDuringSteps = true;
       return 0;
@@ -350,8 +361,8 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
   function recordDestroy(tick, source) {
     assertOpen();
     if (!isEntityJournaled(source) && !journaledEntities.has(source)) return 0;
-    if (!prepareRecord(tick)) return 0;
     const entityId = ensureEntityId(source);
+    if (!prepareRecord(tick, entityId, 'destroy')) return 0;
     if (entityId === 0 || rebuildRequired) return 0;
     const generation = activeGenerations[entityId];
     if (generation === 0) {
@@ -380,7 +391,11 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
     if (!isEntityJournaled(entity)) return 0;
     if (rebuildRequired) {
       suppressedCount++;
-      if (rebuildInProgress) rebuildInvalidatedDuringSteps = true;
+      const entityId = ensureEntityId(entity);
+      if (rebuildInProgress
+          && (entityId === 0 || !rebuildSourceIds || !rebuildSourceIds.has(entityId))) {
+        rebuildInvalidatedDuringSteps = true;
+      }
       return 0;
     }
     if (!Number.isSafeInteger(tick) || tick < 0 || lastRecordTick > tick) {
@@ -522,9 +537,11 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
 
     let aliveCount = 0;
     let maxEntityId = 0;
+    const sourceIds = new Set();
     for (const entity of entities) {
       if (!entity || entity.alive === false) continue;
       const entityId = sourceEntityId(entity);
+      sourceIds.add(entityId);
       if (entityId === 0) {
         rebuildFailureCount++;
         identityErrorCount++;
@@ -548,6 +565,7 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
     rebuildGeneration = nextCounter(rebuildGeneration);
     rebuildInProgress = true;
     rebuildInvalidatedDuringSteps = false;
+    rebuildSourceIds = sourceIds;
     lastRebuildStart = writeSequence;
     lastRebuildRecordCount = 0;
 
@@ -559,10 +577,16 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
           requestRebuild('rebuild-publication-failed');
           return false;
         }
-        if (++lastRebuildRecordCount % 64 === 0) yield;
+        if (++lastRebuildRecordCount % 64 === 0) {
+          // A flagged attempt is doomed — bail at the slice boundary rather than
+          // finishing a publish that can never commit.
+          if (rebuildInvalidatedDuringSteps) break;
+          yield;
+        }
       }
     } finally {
       rebuildInProgress = false;
+      rebuildSourceIds = null;
     }
 
     if (rebuildInvalidatedDuringSteps) {
@@ -628,6 +652,8 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
     getRebuildGeneration: () => rebuildGeneration,
     getLastRebuildStart: () => lastRebuildStart,
     getLastRebuildEnd: () => lastRebuildEnd,
+    getLastRebuildRecordCount: () => lastRebuildRecordCount,
+    getSuppressedCount: () => suppressedCount,
     getDiagnostics() {
       return {
         closed,

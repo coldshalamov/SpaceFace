@@ -10,7 +10,7 @@ import { buildDriftBarge } from './ships/driftBarge.js';
 import { buildQuietRaider } from './ships/quietRaider.js';
 import { buildVaelSniper } from './ships/vaelSniper.js';
 import { loadAuthoredPart } from './assetLoader.js';
-import { freezeStaticChildMatrices, freezeStaticTransformRoot } from './staticChildMatrices.js';
+import { freezeStaticChildMatricesSteps, freezeStaticTransformRoot, updateMatrixWorldSteps } from './staticChildMatrices.js';
 import { build47aScenarioProp } from './scenarioProps47a.js';
 import {
   batchPackagedPropOpaqueMeshes,
@@ -53,6 +53,8 @@ import {
   PRESENTATION_ADMISSION,
   setPresentationAdmission,
 } from '../core/presentationAdmission.js';
+import { yieldToBrowser } from './startupGpuResidency.js';
+import { notePacedFrameSpend } from './decodeTaskBudget.js';
 
 const KESTREL_HERO_ASSET_ID = 'SF_K0_KESTREL_BORROWED_TIME';
 
@@ -799,6 +801,7 @@ const RELEASE_PART_ROOT = 'assets/ships/release/parts/';
 const PACKAGED_PRIMITIVE_MATRIX = new THREE.Matrix4();
 const PACKAGED_FIT_CENTER = new THREE.Vector3();
 const PACKAGED_FIT_SIZE = new THREE.Vector3();
+const PACKAGED_FIT_SCRATCH = new THREE.Box3();
 const SCENARIO_PROP_KEEP_VISIBLE = new Set(['HandoffBeacon_Zone_Disc']);
 
 function packagedPartUrl(relativeFile) {
@@ -905,6 +908,48 @@ function fitPackagedGroup(group, targetRadius) {
   // The recenter must compose with the scale: a child at authored point v lands at
   // position + s·v, so the measured center reaches origin only at position = -s·c.
   // Subtracting the unscaled center seats the body (s-1)·c off its collision/nav seat.
+  group.position.set(
+    -PACKAGED_FIT_CENTER.x * fitScale,
+    -PACKAGED_FIT_CENTER.y * fitScale,
+    -PACKAGED_FIT_CENTER.z * fitScale,
+  );
+}
+
+// Stepped twin of the sync fit above — the forced compose yields at strides and
+// the bounds union walks Box3.expandByObject(precise=false) iteratively, so a
+// packaged subtree paces inside the commit leg instead of two atomic walks.
+function* fitPackagedGroupSteps(group, targetRadius) {
+  if (!group) return;
+  yield* updateMatrixWorldSteps(group, true);
+  const box = new THREE.Box3();
+  const stack = [group];
+  let visited = 0;
+  while (stack.length > 0) {
+    const node = stack.pop();
+    if ((++visited % 1024) === 0) yield;
+    node.updateWorldMatrix(false, false);
+    const geometry = node.geometry;
+    if (geometry !== undefined) {
+      if (node.boundingBox !== undefined) {
+        if (node.boundingBox === null) node.computeBoundingBox();
+        PACKAGED_FIT_SCRATCH.copy(node.boundingBox);
+      } else {
+        if (geometry.boundingBox === null) geometry.computeBoundingBox();
+        PACKAGED_FIT_SCRATCH.copy(geometry.boundingBox);
+      }
+      PACKAGED_FIT_SCRATCH.applyMatrix4(node.matrixWorld);
+      box.union(PACKAGED_FIT_SCRATCH);
+    }
+    const children = node.children;
+    for (let i = children.length - 1; i >= 0; i -= 1) stack.push(children[i]);
+  }
+  if (box.isEmpty()) return;
+  box.getCenter(PACKAGED_FIT_CENTER);
+  box.getSize(PACKAGED_FIT_SIZE);
+  const envelope = Math.max(PACKAGED_FIT_SIZE.x, PACKAGED_FIT_SIZE.y, PACKAGED_FIT_SIZE.z, 1e-6);
+  const radius = Number(targetRadius);
+  const fitScale = Number.isFinite(radius) && radius > 0 ? (radius * 2) / envelope : 1;
+  group.scale.setScalar(fitScale);
   group.position.set(
     -PACKAGED_FIT_CENTER.x * fitScale,
     -PACKAGED_FIT_CENTER.y * fitScale,
@@ -1077,10 +1122,57 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
         root.userData.authoredAssetState = 'unavailable';
         return false;
       }
-      fitPackagedGroup(packaged, packagedFitRadius(entity, spec));
+      // Same yield+orphan spine as attachPackagedBody: the build legs below are
+      // contiguous work in this continuation, so pace them and re-verify the
+      // mount owner between legs — the packaged root stays detached (hidden)
+      // until the mount tail, so the spread changes nothing visible.
+      const legNow = () => (
+        typeof performance !== 'undefined' && typeof performance.now === 'function'
+          ? performance.now() : Date.now()
+      );
+      let legStarted = legNow();
+      const scenarioCommitOrphaned = () => {
+        if (root.parent) return false;
+        releaseBoundaryResidency(renderer, root,
+          'packaged-prop-orphaned-mid-commit', mintedAdmissionOptions.admissionEpoch);
+        root.userData.authoredAssetState = 'orphaned-before-swap';
+        return true;
+      };
+      const COMMIT_ORPHANED = Symbol('packaged-prop-commit-orphaned');
+      const driveLeg = async (iter) => {
+        for (;;) {
+          const legStep = iter.next();
+          if (legStep.done) return legStep.value;
+          notePacedFrameSpend(legNow() - legStarted);
+          await yieldToBrowser();
+          legStarted = legNow();
+          if (scenarioCommitOrphaned()) return COMMIT_ORPHANED;
+        }
+      };
+      if ((await driveLeg(fitPackagedGroupSteps(packaged, packagedFitRadius(entity, spec)))) === COMMIT_ORPHANED) {
+        disposeDetachedPackagedGroup(packaged);
+        return false;
+      }
       batchPackagedPropOpaqueMeshes(packaged);
-      freezeStaticChildMatrices(packaged);
+      notePacedFrameSpend(legNow() - legStarted);
+      await yieldToBrowser();
+      legStarted = legNow();
+      if (scenarioCommitOrphaned()) {
+        disposeDetachedPackagedGroup(packaged);
+        return false;
+      }
+      if ((await driveLeg(freezeStaticChildMatricesSteps(packaged))) === COMMIT_ORPHANED) {
+        disposeDetachedPackagedGroup(packaged);
+        return false;
+      }
       freezeStaticTransformRoot(packaged);
+      notePacedFrameSpend(legNow() - legStarted);
+      await yieldToBrowser();
+      legStarted = legNow();
+      if (scenarioCommitOrphaned()) {
+        disposeDetachedPackagedGroup(packaged);
+        return false;
+      }
       root.userData.authoredAssetState = 'compiling-pipelines';
       try {
         await prepareAuthoredVisualPipelines(packaged, mintedAdmissionOptions);

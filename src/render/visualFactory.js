@@ -42,7 +42,7 @@ import { opticCellGeometry, opticCellBodyMaterial, opticCellKindOf, dressOpticCe
 import { buildPlanetSiteVisual } from './planetSiteVisual.js'; // PQ-013 colossal planet-site body
 import { buildFaunaMesh } from './faunaVisuals.js'; // Alien Ecology program — organic fauna bodies
 import { buildMachineMesh } from './machineVisuals.js'; // Verge-Layer machines — pale procedural bodies
-import { freezeStaticChildMatrices, freezeStaticTransformRoot } from './staticChildMatrices.js';
+import { freezeStaticChildMatrices, freezeStaticChildMatricesSteps, freezeStaticTransformRoot, updateMatrixWorldSteps } from './staticChildMatrices.js';
 import {
   makeNoiseTexture, makeGreebleTexture, makeGradientTexture, makeHullPanelTexture,
   makeHullNormalMap, makeGreebleDetailTexture, makeDecalSheet,
@@ -59,6 +59,7 @@ import { PICKUP_ROLE, buildPickupRoleGeometry, pickupRoleForEntity } from './vfx
 import { FACTION_META } from '../data/factions.js';
 import { configureMaterialLibrary } from './materialLibrary.js';
 import { yieldToBrowser } from './startupGpuResidency.js';
+import { notePacedFrameSpend } from './decodeTaskBudget.js';
 import { createEnergyMaterial } from './energy/energyMaterials.js';
 import * as kit from './ships/shipKit.js';
 import { applyProjectedDetailLod, attachStationHlod, isFarDetailSurface } from './hlod.js';
@@ -3848,6 +3849,46 @@ export function fitPackagedGroup(group, targetRadius) {
   group.position.set(-center.x * fitScale, -center.y * fitScale, -center.z * fitScale);
 }
 
+// Stepped twin: the forced compose yields at strides and the bounds union walks
+// Box3.expandByObject(object, precise=false) iteratively — same pre-order DFS,
+// same object-else-geometry box per node — so a hulk-scale subtree paces inside
+// a commit leg instead of paying two whole-subtree walks atomically.
+export function* fitPackagedGroupSteps(group, targetRadius) {
+  if (!group) return;
+  yield* updateMatrixWorldSteps(group, true);
+  const box = new THREE.Box3();
+  const scratch = new THREE.Box3();
+  const stack = [group];
+  let visited = 0;
+  while (stack.length > 0) {
+    const node = stack.pop();
+    if ((++visited % 1024) === 0) yield;
+    node.updateWorldMatrix(false, false);
+    const geometry = node.geometry;
+    if (geometry !== undefined) {
+      if (node.boundingBox !== undefined) {
+        if (node.boundingBox === null) node.computeBoundingBox();
+        scratch.copy(node.boundingBox);
+      } else {
+        if (geometry.boundingBox === null) geometry.computeBoundingBox();
+        scratch.copy(geometry.boundingBox);
+      }
+      scratch.applyMatrix4(node.matrixWorld);
+      box.union(scratch);
+    }
+    const children = node.children;
+    for (let i = children.length - 1; i >= 0; i -= 1) stack.push(children[i]);
+  }
+  if (box.isEmpty()) return;
+  const center = box.getCenter(new THREE.Vector3());
+  const size = box.getSize(new THREE.Vector3());
+  const envelope = Math.max(size.x, size.y, size.z, 1e-6);
+  const radius = Number(targetRadius);
+  const fitScale = Number.isFinite(radius) && radius > 0 ? (radius * 2) / envelope : 1;
+  group.scale.setScalar(fitScale);
+  group.position.set(-center.x * fitScale, -center.y * fitScale, -center.z * fitScale);
+}
+
 function hideProceduralChildren(root) {
   for (const child of root.children) {
     // An earlier admitted packaged body stays mounted across re-admissions — only the
@@ -3990,6 +4031,86 @@ export function deadenPackagedHulk(group, options = {}) {
   return [...clones.values()];
 }
 
+// Stepped twin of deadenPackagedHulk: collect the subtree's meshes in one DFS
+// then run the same per-node deaden body at slice strides — the clone work and
+// the walk pace inside a commit leg instead of one atomic span at hulk scale.
+export function* deadenPackagedHulkSteps(group, options = {}) {
+  const residualLife = options && options.residualLife === true;
+  const clones = new Map();
+  if (group && typeof group.traverse === 'function') {
+    const meshes = [];
+    const stack = [group];
+    let visited = 0;
+    while (stack.length > 0) {
+      const node = stack.pop();
+      if ((++visited % 1024) === 0) yield;
+      if (node && node.isMesh) meshes.push(node);
+      const children = node && node.children;
+      if (children) for (let i = children.length - 1; i >= 0; i -= 1) stack.push(children[i]);
+    }
+    for (let i = 0; i < meshes.length; i++) {
+      const node = meshes[i];
+      const mats = Array.isArray(node.material) ? node.material : [node.material];
+      if (mats.every((m) => m && m.blending === THREE.AdditiveBlending)) {
+        if (residualLife) {
+          node.material = Array.isArray(node.material)
+            ? mats.map((m) => { const c = m.clone(); c.opacity = (m.opacity ?? 1) * 0.35; c.needsUpdate = true; return c; })
+            : (() => { const c = node.material.clone(); c.opacity = (node.material.opacity ?? 1) * 0.35; c.needsUpdate = true; return c; })();
+        } else {
+          node.visible = false;
+        }
+      } else {
+        const dead = mats.map((m) => {
+          if (!m) return m;
+          let clone = clones.get(m);
+          if (!clone) {
+            clone = m.clone();
+            // Material.clone() drops own-property shader patches — without these the dead
+            // material keys a fresh program and links it at the kill moment (the +4
+            // wreck_PackagedBody links). The dead state only moves uniforms, so the clone
+            // should share the live hull's already-linked program.
+            clone.onBeforeCompile = m.onBeforeCompile;
+            clone.customProgramCacheKey = m.customProgramCacheKey;
+            if (clone.color && typeof clone.color.multiplyScalar === 'function') {
+              clone.color.multiplyScalar(HULK_COLOR_SCALE);
+            }
+            // Ember hue at zero intensity: dark now, hot later only through emissiveIntensity.
+            if (clone.emissive && typeof clone.emissive.setHex === 'function') {
+              clone.emissive.setHex(HULK_EMBER_COLOR);
+            }
+            clone.emissiveIntensity = 0;
+            // Heat remains in authored drive/thermal hardware. Heating every hull panel equally
+            // erases the ship's material detail into a solid orange silhouette during the blast.
+            // Uniform-only weights retain the live program identity and add no kill-time shader.
+            const heatName = String(m.name || '').toLowerCase();
+            const baseGain = /drivecore|drive_core|reactor/.test(heatName) ? 1
+              : /engine|radiator|heat|coolant/.test(heatName) ? 0.55
+              : /mechanical/.test(heatName) ? 0.18
+              : /glass|rubber|decal|marking|nav|sensor/.test(heatName) ? 0 : 0.025;
+            clone.userData.hulkEmberGain = residualLife && /emissive|glow|light|strobe|beacon|strip|nav/.test(heatName)
+              ? Math.max(baseGain, 0.2)
+              : baseGain;
+            if ('envMapIntensity' in clone) {
+              clone.envMapIntensity = (Number.isFinite(clone.envMapIntensity) ? clone.envMapIntensity : 1) * HULK_ENVMAP_SCALE;
+            }
+            if ('roughness' in clone && Number.isFinite(clone.roughness)) {
+              clone.roughness = Math.max(clone.roughness, HULK_MIN_ROUGHNESS);
+            }
+            clone.needsUpdate = true;
+            clones.set(m, clone);
+          }
+          return clone;
+        });
+        node.material = Array.isArray(node.material) ? dead : dead[0];
+        node.userData.hulkDeadBody = true;
+      }
+      if ((i % 256) === 255) yield;
+    }
+    group.userData.hulkDeadBody = true;
+  }
+  return [...clones.values()];
+}
+
 // A detached packaged group the admission run still owns: its primitives were minted fresh for
 // this mount, so geometry and material instances die with it. Shared-asset geometries keep
 // their pool pin; texture maps ride the packaged cache and are left alone.
@@ -4106,11 +4227,22 @@ function attachPackagedBody(root, relativeFile, entity) {
       // spread changes nothing visible. The mount tail (hide → add → canonicalize
       // → shadow-policy sync) stays atomic so no presented frame sees the graft
       // with minted default shadow flags.
-      const packagedCommitOrphaned = () => {
+      let ruptureRefired = false;
+      // Each resume leg below is contiguous — debit the shared paced ledger so other
+      // frame slicers see its cost instead of stacking their own budget on top.
+      const legNow = () => (
+        typeof performance !== 'undefined' && typeof performance.now === 'function'
+          ? performance.now() : Date.now()
+      );
+      let legStarted = legNow();
+      const packagedCommitOrphaned = (releaseReason = 'packaged-body-orphaned-mid-commit') => {
         if (root.parent) return false;
         releaseBoundaryResidency(renderer, root,
-          'packaged-body-orphaned-mid-commit', mintedAdmissionOptions.admissionEpoch);
+          releaseReason, mintedAdmissionOptions.admissionEpoch);
         root.userData.authoredAssetState = 'orphaned-before-swap';
+        // A rupture re-fired on this commit dies with the disposed subtree — restore the
+        // flag so a later re-admission of the same entity fires its kick again.
+        if (ruptureRefired && entity && entity.data) entity.data.fractureRuptureFired = false;
         return true;
       };
       // Banked packages (mining drone, fracture fragments) mount through the node graph so the
@@ -4151,7 +4283,9 @@ function attachPackagedBody(root, relativeFile, entity) {
           instance.dispose();
         }
       }
+      notePacedFrameSpend(legNow() - legStarted);
       await yieldToBrowser();
+      legStarted = legNow();
       if (packagedCommitOrphaned()) {
         disposeDetachedPackagedGroup(packaged);
         return { status: 'orphaned-before-swap' };
@@ -4172,15 +4306,34 @@ function attachPackagedBody(root, relativeFile, entity) {
       if (motionControllers.length && entity && entity.data && entity.data.fracturePiece
           && entity.data.fractureRuptureFired !== true) {
         entity.data.fractureRuptureFired = true;
+        ruptureRefired = true;
         const now = factoryPresentationNow() ?? 0;
         for (const controller of motionControllers) {
           controller.handleEvent?.('wreck:rupture', { pieceId: entity.id }, now);
         }
       }
+      // Drives a Steps twin across its own yields — each internal slice debits the
+      // shared paced ledger, and an orphan detected mid-leg aborts the walk at the
+      // next stride (the commit exits through the same orphaned-before-swap path).
+      const COMMIT_ORPHANED = Symbol('packaged-commit-orphaned');
+      const driveLeg = async (iter) => {
+        for (;;) {
+          const legStep = iter.next();
+          if (legStep.done) return legStep.value;
+          notePacedFrameSpend(legNow() - legStarted);
+          await yieldToBrowser();
+          legStarted = legNow();
+          if (packagedCommitOrphaned()) return COMMIT_ORPHANED;
+        }
+      };
       if (deadHulk) {
-        const emberMats = deadenPackagedHulk(packaged, {
+        const emberMats = await driveLeg(deadenPackagedHulkSteps(packaged, {
           residualLife: !!(entity && entity.data && entity.data.fracturePiece),
-        });
+        }));
+        if (emberMats === COMMIT_ORPHANED) {
+          disposeDetachedPackagedGroup(packaged);
+          return { status: 'orphaned-before-swap' };
+        }
         packaged.userData.hulkOfDefId = entity && entity.data && entity.data.hulkOfDefId || null;
         if (emberMats.length) {
           root.userData.hulkEmber = {
@@ -4189,19 +4342,20 @@ function attachPackagedBody(root, relativeFile, entity) {
           };
         }
       }
-      await yieldToBrowser();
-      if (packagedCommitOrphaned()) {
+      if ((await driveLeg(fitPackagedGroupSteps(packaged, fractureFragmentFitRadius(entity) || (entity && entity.radius)))) === COMMIT_ORPHANED) {
         disposeDetachedPackagedGroup(packaged);
         return { status: 'orphaned-before-swap' };
       }
-      fitPackagedGroup(packaged, fractureFragmentFitRadius(entity) || (entity && entity.radius));
-      await yieldToBrowser();
-      if (packagedCommitOrphaned()) {
+      if ((await driveLeg(freezeStaticChildMatricesSteps(packaged))) === COMMIT_ORPHANED) {
         disposeDetachedPackagedGroup(packaged);
         return { status: 'orphaned-before-swap' };
       }
-      freezeStaticChildMatrices(packaged);
+      // Canonicalization only mutates the packaged subtree's materials and reads no
+      // parentage, so it can run pre-graft instead of inside the atomic mount tail.
+      canonicalizeObjectSurfaceProgramKeys(packaged);
+      notePacedFrameSpend(legNow() - legStarted);
       await yieldToBrowser();
+      legStarted = legNow();
       if (packagedCommitOrphaned()) {
         disposeDetachedPackagedGroup(packaged);
         return { status: 'orphaned-before-swap' };
@@ -4232,18 +4386,16 @@ function attachPackagedBody(root, relativeFile, entity) {
         console.warn('[visualFactory] packaged body pipeline admission failed', error);
         return { status: 'fallback-after-error' };
       }
-      if (!root.parent) {
-        releaseBoundaryResidency(renderer, root, 'packaged-body-orphaned-after-compile', mintedAdmissionOptions.admissionEpoch);
-        root.userData.authoredAssetState = 'orphaned-before-swap';
+      if (packagedCommitOrphaned('packaged-body-orphaned-after-compile')) {
+        disposeDetachedPackagedGroup(packaged);
         return { status: 'orphaned-before-swap' };
       }
       const publicationWait = waitForOpeningGraphPublicationRelease({
         entity: boundaryLiveEntity(root, entity) || entity,
       });
       if (publicationWait) await publicationWait;
-      if (!root.parent) {
-        releaseBoundaryResidency(renderer, root, 'packaged-body-orphaned-before-publication', mintedAdmissionOptions.admissionEpoch);
-        root.userData.authoredAssetState = 'orphaned-before-swap';
+      if (packagedCommitOrphaned('packaged-body-orphaned-before-publication')) {
+        disposeDetachedPackagedGroup(packaged);
         return { status: 'orphaned-before-swap' };
       }
       // Same stale-run guard the cargo/place/ship commits carry: a run parked at the
@@ -4261,7 +4413,6 @@ function attachPackagedBody(root, relativeFile, entity) {
       hideProceduralChildren(root);
       root.add(packaged);
       carryAdmittedOnceStamp(packaged, root);
-      canonicalizeObjectSurfaceProgramKeys(packaged);
       // The committed subtree's meshes carry three.js castShadow=false until a policy
       // traverse covers them; re-syncing here applies the live caster policy in this
       // continuation instead of at the next unrelated band flip.
@@ -4269,6 +4420,7 @@ function attachPackagedBody(root, relativeFile, entity) {
       if (typeof packagedShadowSync === 'function') {
         try { packagedShadowSync(root, liveEntity || entity, packaged); } catch (_) { /* best effort */ }
       }
+      notePacedFrameSpend(legNow() - legStarted);
       root.userData.hull = packaged;
       root.userData.authoredReadableFallbackRetained = false;
       root.userData.authoredAssetState = 'authored';

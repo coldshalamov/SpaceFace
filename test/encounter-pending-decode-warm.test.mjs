@@ -30,8 +30,8 @@ test('encounter pending squads warm through the roster decode lane inside the de
 
 test('the pending-squad warm runs on the residency poll beside sector prewarm', () => {
   assert.match(rendererSrc,
-    /updatePredictedSectorPrewarm\(this\);\s*\r?\n\s*(?:yield;\s*\r?\n\s*)?warmEncounterPendingDecode\(this\);/,
-    'warmEncounterPendingDecode must be wired beside updatePredictedSectorPrewarm');
+    /updatePredictedSectorPrewarmSteps\s*&&\s*\(yield\*\s*updatePredictedSectorPrewarmSteps\(this\)\);\s*\r?\n\s*yield;\s*\r?\n\s*warmEncounterPendingDecode\(this\);/,
+    'warmEncounterPendingDecode must be wired beside updatePredictedSectorPrewarmSteps');
 });
 
 test('non-wave ship runway polls carry a warm residency role so the decode survives byte pressure', () => {
