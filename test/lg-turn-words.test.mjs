@@ -19,8 +19,10 @@ function model(name) {
 
 test('seed 4242 the turn words follow the circle you fly', () => {
   const bastion = model('Bastion');
-  const bastionAgility = bastion.bars.find((row) => row.id === 'agility');
-  assert.ok(bastionAgility.bar < 34, `yaw bar ${bastionAgility.bar} is no longer the wide band`);
+  // The displayed agility mark later moved to the roster middle. The old wide
+  // band is the profile scale the crest used to read.
+  const bastionAgility = bastion.profile.axes.find((row) => row.id === 'agility');
+  assert.ok(bastionAgility.bar < 34, `old yaw scale ${bastionAgility.bar} is no longer the wide band`);
   assert.match(bastion.crestSentence, /Turns hard/);
   assert.doesNotMatch(bastion.crestSentence, /Turns wide/);
 
