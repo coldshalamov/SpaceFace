@@ -63,6 +63,7 @@ assertImpulseLegCounts();
 assertMissingThresholdLegsDegradeToZero();
 assertReleasedLineReadsEmptyAgain();
 assertDefBreakDegradeWithoutPolicyAccessor();
+assertLoadResetColdStartsTheEstimate();
 assertHudPillDisplaysEstimate();
 
 console.log('Massline tension-estimate checks OK');
@@ -238,6 +239,35 @@ function assertDefBreakDegradeWithoutPolicyAccessor() {
     `estimate pins to the def-break yank ratio (0.8); got ${h.state.player.tether.tensionEstimate}`);
 }
 
+// A save:loaded mid-line must cold-start the display smoother: resetAfterLoad zeroes the estimate
+// so a re-adopted live line and a cold reload agree on tether.tensionEstimate from the first tick.
+function assertLoadResetColdStartsTheEstimate() {
+  const h = harness();
+  primeActiveTether(h, {
+    restLength: 90, lastTension: 0.9 * POLICY.maxTension, lastImpulse: 0, lastYank: 0, pastCapture: true,
+  });
+  for (let i = 0; i < 120; i++) stepOnce(h);
+  assert.ok(h.state.player.tether.tensionEstimate > 0.8, 'the line reads loaded before the reset');
+  h.bus.emit('save:loaded');
+  assert.equal(h.tether._tensionEstimate, 0, 'resetAfterLoad zeroes the per-run smoother');
+  stepOnce(h);
+  assert.equal(h.state.player.tether.tensionEstimate, 0,
+    'the reset mirror (no active line yet) reads exactly 0');
+  // Re-adopt the live line (what _adoptExisting does after the reset): the FIRST loaded tick must
+  // cold-start the attack from 0 (~0.15 toward raw 0.9), not warm-continue near 0.9 — that warm
+  // value is exactly the uninterrupted-vs-reload divergence the reset exists to prevent.
+  primeActiveTether(h, {
+    restLength: 90, lastTension: 0.9 * POLICY.maxTension, lastImpulse: 0, lastYank: 0, pastCapture: true,
+  });
+  stepOnce(h);
+  const firstTick = h.state.player.tether.tensionEstimate;
+  assert.ok(firstTick > 0.1 && firstTick < 0.2,
+    `a re-adopted line cold-starts its estimate (expected ~0.15); got ${firstTick}`);
+  // Symmetric for a fresh game.
+  h.bus.emit('game:new');
+  assert.equal(h.tether._tensionEstimate, 0, 'resetForNewGame zeroes the smoother too');
+}
+
 // ---- HUD pill: the estimate is what the pilot reads -----------------------
 
 function assertHudPillDisplaysEstimate() {
@@ -263,14 +293,51 @@ function assertHudPillDisplaysEstimate() {
     simTime: 2.0,
     massline2: {},
     player: {
-      tether: { active: true, targetId: TARGET_ID, strain: 0.001, tensionEstimate: 0.84, phase: 'loaded' },
+      tether: {
+        active: true, targetId: TARGET_ID, strain: 0.001, tensionEstimate: 0.84, phase: 'loaded',
+        automaticBreakAllowed: true,
+      },
       masslineTelemetry: { strain: 0.001, tensionEstimate: 0.84 },
       remoteMassline: null,
     },
   };
   masslineHud._updateMeters(dom, {}, hot);
-  assert.match(String(dom.strainPill.getAttribute('aria-label')), /ease the turn/,
+  const hotLabel = String(dom.strainPill.getAttribute('aria-label'));
+  assert.match(hotLabel, /ease the turn/,
     'an approaching break announces the actionable read');
+  assert.match(hotLabel, /before it breaks/,
+    'a break-capable endpoint may claim the break');
+  // Fail closed on the break clause: an endpoint that can never auto-break gets the load-only
+  // wording — absent/false automaticBreakAllowed both take the honest variant.
+  const hotManual = {
+    simTime: 2.05,
+    massline2: {},
+    player: {
+      tether: {
+        active: true, targetId: TARGET_ID, strain: 0.001, tensionEstimate: 0.84, phase: 'loaded',
+        automaticBreakAllowed: false,
+      },
+      masslineTelemetry: { strain: 0.001, tensionEstimate: 0.84 },
+      remoteMassline: null,
+    },
+  };
+  masslineHud._updateMeters(dom, {}, hotManual);
+  const manualLabel = String(dom.strainPill.getAttribute('aria-label'));
+  assert.match(manualLabel, /ease the turn/, 'the load warning still speaks the counterplay');
+  assert.doesNotMatch(manualLabel, /before it breaks/,
+    'a manual-cut-only endpoint never claims a break');
+  const hotUnflagged = {
+    simTime: 2.1,
+    massline2: {},
+    player: {
+      tether: { active: true, targetId: TARGET_ID, strain: 0.001, tensionEstimate: 0.84, phase: 'loaded' },
+      masslineTelemetry: { strain: 0.001, tensionEstimate: 0.84 },
+      remoteMassline: null,
+    },
+  };
+  masslineHud._updateMeters(dom, {}, hotUnflagged);
+  assert.doesNotMatch(String(dom.strainPill.getAttribute('aria-label')), /before it breaks/,
+    'an absent flag fails closed to the load-only wording');
   // Degrade: a save/fixture without the field falls back to the physical strain read.
   const legacy = {
     simTime: 1.0,
@@ -333,7 +400,7 @@ function harness({ defBreak = null } = {}) {
   const telemetry = Object.create(masslineTelemetry);
   telemetry.init(ctx);
 
-  return { state, tether, telemetry, attachments };
+  return { state, tether, telemetry, attachments, bus: ctx.bus };
 }
 
 function makeFakeAttachments() {

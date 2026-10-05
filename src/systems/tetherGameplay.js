@@ -232,6 +232,10 @@ export const tetherGameplay = {
       this._pendingCut = null;
       this._ignoreReleaseCutUntilReelIdle = false;
       this._lastStrainT = -Infinity;
+      // SFQ-B026: the display smoother is per-run state, never persisted. A re-adopted live line
+      // must warm-start its estimate from 0 exactly like a cold-restarted load, or the uninterrupted
+      // run and the reload disagree on tether.tensionEstimate for ~1 s (the release tau).
+      this._tensionEstimate = 0;
       this._npcBridleCutTicks.clear();
       this._monofilamentCutIds.clear();
       this._monofilamentKickIds.clear();
@@ -251,6 +255,7 @@ export const tetherGameplay = {
       this._monofilamentKickIds.clear();
       this._hostileSweepCutIds.clear();
       this._monofilamentLatchId = null;
+      this._tensionEstimate = 0;
       this._resetAcquisitionRuntime(this.state);
       this._resetTwinBridleRuntime(this.state, 'new_game', false);
       this._releaseSnagLatch(this.state, this._snag, 'ended');
