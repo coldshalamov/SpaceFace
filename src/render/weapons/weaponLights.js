@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { noteShadowCensusLightMutation } from '../shadowDepthAdmission.js';
 
 // P1: pool sized to measured p90 occupancy — 6 event + 2 weapon = 8 visible point lights total,
 // so NUM_POINT_LIGHTS stops burning a 22-wide unrolled loop on every lit fragment. The constant
@@ -33,7 +34,12 @@ export class WeaponLightPool {
       });
     }
     this._live = 0;
-    if (scene) scene.add(this.group);
+    if (scene) {
+      scene.add(this.group);
+      // Light-set mutation — a mounted pool group changes the rendered light
+      // census; the shadow memo must not serve the pre-mount signature.
+      noteShadowCensusLightMutation();
+    }
   }
 
   spawn({ x, y, z, color, intensity, distance, life, priority }) {
@@ -102,6 +108,9 @@ export class WeaponLightPool {
   }
 
   dispose() {
+    // Light-set mutation — the shadow census memo must not serve the live-set
+    // signature after pooled lights leave the scene.
+    noteShadowCensusLightMutation();
     for (const slot of this.slots) {
       if (slot.light.parent) slot.light.parent.remove(slot.light);
       slot.light.dispose?.();

@@ -413,6 +413,11 @@ export function lineHaulPose(stretch, lean, pullFwd, pullLat, out) {
 export function createShipMicroMotionTracker() {
   // Pool of active micro-motion records keyed by entity ID
   const craftMotion = new Map();
+  // Mesh → record side index: release-by-mesh used to linear-scan every record
+  // per release; the index makes batched despawn flushes O(pending.size). A
+  // missed entry just pins the record's mesh refs until clearRecordMeshRefs or
+  // the periodic prune — the same outcome an unbatched release produced.
+  const mountIndex = new Map();
   let busSubscribers = [];
   let busRef = null;
   let lastSimTime = 0;
@@ -1126,6 +1131,14 @@ export function createShipMicroMotionTracker() {
   }
 
   function scanMountPivots(rec, mesh, hull) {
+    if (rec.mountMesh !== mesh) {
+      if (rec.mountMesh && mountIndex.get(rec.mountMesh) === rec) mountIndex.delete(rec.mountMesh);
+      const displaced = mountIndex.get(mesh);
+      // A mesh re-seat displaces its old owner's index entry — clear that
+      // owner's root field so its own later drop can't delete our live entry.
+      if (displaced && displaced !== rec) displaced.mountMesh = null;
+      mountIndex.set(mesh, rec);
+    }
     rec.mountMesh = mesh;
     rec.mountHull = hull;
     rec.bellCount = 0;
@@ -2263,6 +2276,9 @@ export function createShipMicroMotionTracker() {
 
   function clearRecordMeshRefs(rec) {
     if (!rec) return;
+    // Ownership-checked delete — a displaced entry now names a different rec
+    // and must survive this drop.
+    if (rec.mountMesh && mountIndex.get(rec.mountMesh) === rec) mountIndex.delete(rec.mountMesh);
     rec.mountMesh = null;
     rec.mountHull = null;
     rec.bellCount = 0;
@@ -2283,8 +2299,16 @@ export function createShipMicroMotionTracker() {
   // Releasing by mesh identity covers every record regardless of key churn.
   function releaseMesh(mesh) {
     if (!mesh) return;
-    for (const rec of craftMotion.values()) {
-      if (rec.mountMesh === mesh) clearRecordMeshRefs(rec);
+    const rec = mountIndex.get(mesh);
+    if (rec) clearRecordMeshRefs(rec);
+  }
+
+  // Batched twin for mass-despawn sweeps: O(pending.size) via the side index.
+  function releaseMeshSet(meshes) {
+    if (!meshes || meshes.size === 0) return;
+    for (const mesh of meshes) {
+      const rec = mountIndex.get(mesh);
+      if (rec) clearRecordMeshRefs(rec);
     }
   }
 
@@ -2292,6 +2316,8 @@ export function createShipMicroMotionTracker() {
     if (!activeEntityIds || typeof activeEntityIds.has !== 'function') return;
     for (const id of craftMotion.keys()) {
       if (!activeEntityIds.has(id)) {
+        const rec = craftMotion.get(id);
+        if (rec && rec.mountMesh && mountIndex.get(rec.mountMesh) === rec) mountIndex.delete(rec.mountMesh);
         craftMotion.delete(id);
       }
     }
@@ -2334,6 +2360,7 @@ export function createShipMicroMotionTracker() {
     prune,
     releaseEntityMesh,
     releaseMesh,
+    releaseMeshSet,
     getRecord,
     peekRecord,
   };

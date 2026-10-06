@@ -78,6 +78,7 @@ import { createRenderFrameMembrane } from './frameCoordinates.js';
 import { createBroodPresentation } from './broodPresentation.js';
 import { presentedAnchorRot, presentedAnchorXZ } from './presentedAnchor.js';
 import { readOwnedExceptionalSpeed } from './velocityLanguage.js';
+import { noteShadowCensusLightMutation } from './shadowDepthAdmission.js';
 import {
   lootMagnetFocusDelta,
   shouldDrawLootMagnetTrail,
@@ -14969,6 +14970,10 @@ export const vfx = {
     this._freeLightCount = this._LIGHT_NPOOL;
     // Retained as an inspectable last-grab cursor; free allocation is stack-backed.
     this._lightCur = 0;
+    // The pool mounts are a real light-census mutation (the deferred _initPools
+    // path can land after lit programs linked) — bump the epoch so the census
+    // memo and parked-lightSig compares re-verify instead of riding stale sigs.
+    noteShadowCensusLightMutation();
   },
 
   _findSustainedEventLight(key) {

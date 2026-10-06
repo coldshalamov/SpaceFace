@@ -125,21 +125,72 @@ export function createPresentationQueries(world) {
     return visibilityEpoch;
   }
 
+  // exactVisible is a pure function of the slot columns it reads plus the
+  // per-call bounds/origin/playerId — memoize on those exact inputs (identity
+  // for entityRefs). A slot queried twice in one window (dirty re-check plus
+  // the candidate walk, or back-to-back queries on a quiet tick) pays one
+  // entry compare instead of the entity deref + bounds arithmetic.
+  const visCache = [];
+
   function exactVisible(slot, bounds, origin, playerId) {
-    if (world.alive[slot] !== 1 || !world.meshRefs[slot]) return false;
-    if (world.entityIds[slot] === playerId) return true;
-    const flags = world.flags[slot];
-    if ((flags & (PRESENTATION_FLAGS.FORCE_RENDER | PRESENTATION_FLAGS.NEVER_CULL)) !== 0) {
+    const doomedNow = world.doomed ? world.doomed[slot] : 0;
+    const aliveNow = world.alive[slot];
+    const boundNow = world.meshRefs[slot] ? 1 : 0;
+    const entityIdNow = world.entityIds[slot];
+    const flagsNow = world.flags[slot];
+    const entityNow = world.entityRefs[slot];
+    const posNow = entityNow && entityNow.pos;
+    // The verdict only consumes the finiteness conjunction — a raw pos value
+    // never reaches the result, so the NaN-vs-NaN detail can't poison the key.
+    const posBadNow = posNow
+      && (!Number.isFinite(posNow.x) || !Number.isFinite(posNow.z)) ? 1 : 0;
+    const xNow = world.x[slot];
+    const zNow = world.z[slot];
+    const radiusNow = world.radii[slot];
+    const entry = visCache[slot];
+    if (entry
+        && entry.doomed === doomedNow && entry.alive === aliveNow
+        && entry.bound === boundNow && entry.entityId === entityIdNow
+        && entry.flags === flagsNow && entry.entity === entityNow
+        && entry.posBad === posBadNow
+        && entry.x === xNow && entry.z === zNow && entry.radius === radiusNow
+        && entry.boundsX === bounds.x && entry.boundsZ === bounds.z
+        && entry.halfX === bounds.halfX && entry.halfZ === bounds.halfZ
+        && entry.originX === origin.x && entry.originZ === origin.z
+        && entry.playerId === playerId) {
+      return entry.result;
+    }
+    const result = exactVisibleCompute(slot, bounds, origin, playerId,
+      doomedNow, aliveNow, boundNow, entityIdNow, flagsNow, entityNow, posNow,
+      posBadNow, xNow, zNow, radiusNow);
+    visCache[slot] = {
+      doomed: doomedNow, alive: aliveNow, bound: boundNow, entityId: entityIdNow,
+      flags: flagsNow, entity: entityNow, posBad: posBadNow,
+      x: xNow, z: zNow, radius: radiusNow,
+      boundsX: bounds.x, boundsZ: bounds.z, halfX: bounds.halfX, halfZ: bounds.halfZ,
+      originX: origin.x, originZ: origin.z, playerId, result,
+    };
+    return result;
+  }
+
+  function exactVisibleCompute(slot, bounds, origin, playerId,
+    doomedNow, aliveNow, boundNow, entityIdNow, flagsNow, entityNow, posNow,
+    posBadNow, xNow, zNow, radiusNow) {
+    // Doomed rows (suppressed mid-collect destroys, feed-skip tombstones) fail
+    // before every bypass — player/FORCE_RENDER/NEVER_CULL included — so the
+    // slot evicts into hiddenSlots and gets a real mesh hide. The flag lives
+    // separate from world.visible (the query's own admission bookkeeping).
+    if (doomedNow === 1) return false;
+    if (aliveNow !== 1 || !boundNow) return false;
+    if (entityIdNow === playerId) return true;
+    if ((flagsNow & (PRESENTATION_FLAGS.FORCE_RENDER | PRESENTATION_FLAGS.NEVER_CULL)) !== 0) {
       return true;
     }
-    const entity = world.entityRefs[slot];
-    const pos = entity && entity.pos;
-    if (pos && (!Number.isFinite(pos.x) || !Number.isFinite(pos.z))) return true;
-    const localX = world.x[slot] - origin.x;
-    const localZ = world.z[slot] - origin.z;
-    const radius = world.radii[slot];
-    return Math.abs(localX - bounds.x) <= bounds.halfX + radius
-      && Math.abs(localZ - bounds.z) <= bounds.halfZ + radius;
+    if (posBadNow) return true;
+    const localX = xNow - origin.x;
+    const localZ = zNow - origin.z;
+    return Math.abs(localX - bounds.x) <= bounds.halfX + radiusNow
+      && Math.abs(localZ - bounds.z) <= bounds.halfZ + radiusNow;
   }
 
   const retainCache = {

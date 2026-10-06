@@ -77,6 +77,12 @@ export function createSnapshotFence(options = {}) {
         state.indexByEntityId.set(args[0] >>> 0, index);
         return index;
       },
+      copyRow(previousSnapshot, sourceIndex) {
+        if (state.sealed) throw new Error('Presentation snapshot fence buffer is sealed');
+        const index = snapshot.copyRow(previousSnapshot.columns, sourceIndex);
+        state.indexByEntityId.set(previousSnapshot.columns.entityId[sourceIndex] >>> 0, index);
+        return index;
+      },
       setTint(...args) {
         if (state.sealed) throw new Error('Presentation snapshot fence buffer is sealed');
         return snapshot.setTint(...args);
@@ -84,6 +90,10 @@ export function createSnapshotFence(options = {}) {
       setLean(...args) {
         if (state.sealed) throw new Error('Presentation snapshot fence buffer is sealed');
         return snapshot.setLean(...args);
+      },
+      setGeneration(...args) {
+        if (state.sealed) throw new Error('Presentation snapshot fence buffer is sealed');
+        return snapshot.setGeneration(...args);
       },
       record(...args) {
         if (state.sealed) throw new Error('Presentation snapshot fence buffer is sealed');
@@ -201,6 +211,19 @@ export function snapshotIndexOf(snapshot, entityId) {
   return -1;
 }
 
+// A recycled entityId inside one pose epoch names a different body — the
+// previous pack's row may only feed a blend (or the fence pack's copy path)
+// when its generation matches the current row's. Snapshots lacking the
+// generation column (test doubles, pre-column packs) keep index-only lookup.
+function snapshotSameGenerationRow(previous, snapshot, entityId, index) {
+  const prev = snapshotIndexOf(previous, entityId);
+  if (prev < 0) return -1;
+  const prevGens = previous.columns && previous.columns.generation;
+  const curGens = snapshot.columns && snapshot.columns.generation;
+  if (prevGens && curGens && prevGens[prev] !== curGens[index]) return -1;
+  return prev;
+}
+
 /**
  * Pose blend parameter for the previous→latest pack span, normalized by that span's real length.
  *
@@ -242,7 +265,7 @@ export function applySnapshotPoseToMesh(mesh, snapshot, entityId, origin, previo
   let qw = snapshot.columns.quaternion[q + 3];
   const t = Number.isFinite(alpha) ? alpha : 1;
   if (previous && t < 1) {
-    const prev = snapshotIndexOf(previous, entityId);
+    const prev = snapshotSameGenerationRow(previous, snapshot, entityId, index);
     if (prev >= 0) {
       const pp = prev * 3;
       const pq = prev * 4;
@@ -267,7 +290,7 @@ export function applySnapshotPoseToMesh(mesh, snapshot, entityId, origin, previo
     let bank = snapshot.columns.bank[index] || 0;
     let pitch = snapshot.columns.pitch[index] || 0;
     if (previous && t < 1 && previous.columns.bank && previous.columns.pitch) {
-      const prev = snapshotIndexOf(previous, entityId);
+      const prev = snapshotSameGenerationRow(previous, snapshot, entityId, index);
       if (prev >= 0) {
         bank = previous.columns.bank[prev] + (bank - previous.columns.bank[prev]) * t;
         pitch = previous.columns.pitch[prev] + (pitch - previous.columns.pitch[prev]) * t;
@@ -284,10 +307,40 @@ export function packPresentationWorldToFence(world, fence, simTime = 0, poseEpoc
   const diagnostics = typeof world.getDiagnostics === 'function' ? world.getDiagnostics() : null;
   const active = diagnostics && Number.isInteger(diagnostics.active) ? diagnostics.active : 0;
   const snapshot = fence.beginPack(Math.max(1, active), simTime, poseEpoch);
+  // Dirty-column pack: the mask still holds every pose/visual write since the
+  // last frame's consume when this runs (the pack precedes the sync pass), so a
+  // clean slot's packed bytes are identical to the LATEST committed pack's row —
+  // copy them verbatim instead of re-reading a dozen columns + re-deriving the
+  // yaw pair + re-stamping lean. The latest pack must share this pack's pose
+  // epoch: a slot remap (sector jump, mirror rebuild) teleports every row and
+  // always falls back to the full write. (latestSnapshot is the pack minted
+  // last frame — previousSnapshot is two packs back and would reintroduce
+  // poses dirtied since.)
+  const previous = typeof fence.latestSnapshot === 'function' ? fence.latestSnapshot() : null;
+  const previousIndex = previous && previous.poseEpoch === poseEpoch
+    ? (previous.indexByEntityId || null) : null;
   let packed = 0;
   for (let index = 0; index < active; index++) {
     const slot = world.activeSlots[index];
     if (world.alive[slot] !== 1) continue;
+    const entityId = world.entityIds[slot] >>> 0;
+    // The pack owns its dirty bit: only writers that can change packed bytes
+    // set it, so never-visited slots (allocated ALL for life) and byte-identical
+    // BINDING/VISIBILITY/VISUAL marks copy verbatim instead of paying the scalar
+    // write per presented frame. The generation term keeps a recycled id from
+    // copying the prior body's row inside a shared epoch.
+    if (previousIndex && world.packDirty && world.packDirty[slot] === 0) {
+      const previousRow = previousIndex.get(entityId);
+      const previousGenerations = previous.columns && previous.columns.generation;
+      if (previousRow !== undefined && previousRow >= 0
+          && (!previousGenerations || !world.slotGenerations
+            || previousGenerations[previousRow] === (world.slotGenerations[slot] >>> 0))) {
+        snapshot.copyRow(previous, previousRow);
+        world.packDirty[slot] = 0;
+        packed++;
+        continue;
+      }
+    }
     // Prefer presentation-world half-yaw cache (filled on rot write). Fall back to sin/cos
     // for worlds that predate the cache columns or omit them in tests.
     let qy;
@@ -302,7 +355,7 @@ export function packPresentationWorldToFence(world, fence, simTime = 0, poseEpoc
       qw = Math.cos(half);
     }
     const packedIndex = snapshot.write(
-      world.entityIds[slot] >>> 0,
+      entityId,
       world.typeCodes ? world.typeCodes[slot] : 0,
       world.x[slot],
       world.y[slot],
@@ -318,7 +371,106 @@ export function packPresentationWorldToFence(world, fence, simTime = 0, poseEpoc
         world.pitch ? Number(world.pitch[slot]) || 0 : 0,
       );
     }
+    if (typeof snapshot.setGeneration === 'function') {
+      snapshot.setGeneration(
+        packedIndex,
+        world.slotGenerations ? world.slotGenerations[slot] : 0,
+      );
+    }
+    if (world.packDirty) world.packDirty[slot] = 0;
     packed++;
+  }
+  fence.commit();
+  return packed;
+}
+
+/**
+ * Stepped twin — identical pack contents, commit, and return. The atomic pack
+ * pays O(activeCount) inside most presents; drivers pace this across a 4ms
+ * wall bound, parking mid-walk like the other stepped passes. Rows pack
+ * atomically each, so a suspended pack's mix is bounded to row granularity —
+ * the same staleness the suspended journal collect already produces.
+ */
+export function* packPresentationWorldToFenceSteps(world, fence, simTime = 0, poseEpoch = 0, sliceEvery = 256) {
+  if (!world || !fence) return 0;
+  const diagnostics = typeof world.getDiagnostics === 'function' ? world.getDiagnostics() : null;
+  const active = diagnostics && Number.isInteger(diagnostics.active) ? diagnostics.active : 0;
+  const snapshot = fence.beginPack(Math.max(1, active), simTime, poseEpoch);
+  const previous = typeof fence.latestSnapshot === 'function' ? fence.latestSnapshot() : null;
+  const previousIndex = previous && previous.poseEpoch === poseEpoch
+    ? (previous.indexByEntityId || null) : null;
+  const every = Math.max(1, Math.floor(Number(sliceEvery) || 1));
+  let packed = 0;
+  const packRow = (slot) => {
+    if (world.alive[slot] !== 1) return;
+    const entityId = world.entityIds[slot] >>> 0;
+    if (previousIndex && world.packDirty && world.packDirty[slot] === 0) {
+      const previousRow = previousIndex.get(entityId);
+      const previousGenerations = previous.columns && previous.columns.generation;
+      if (previousRow !== undefined && previousRow >= 0
+          && (!previousGenerations || !world.slotGenerations
+            || previousGenerations[previousRow] === (world.slotGenerations[slot] >>> 0))) {
+        snapshot.copyRow(previous, previousRow);
+        world.packDirty[slot] = 0;
+        packed++;
+        return;
+      }
+    }
+    let qy;
+    let qw;
+    if (world.yawSin && world.yawCos) {
+      qy = world.yawSin[slot];
+      qw = world.yawCos[slot];
+    } else {
+      const rot = world.rot ? Number(world.rot[slot]) || 0 : 0;
+      const half = rot * 0.5;
+      qy = Math.sin(half);
+      qw = Math.cos(half);
+    }
+    const packedIndex = snapshot.write(
+      entityId,
+      world.typeCodes ? world.typeCodes[slot] : 0,
+      world.x[slot],
+      world.y[slot],
+      world.z[slot],
+      0, qy, 0, qw,
+      1, 1, 1,
+      world.flags[slot] >>> 0,
+    );
+    if (typeof snapshot.setLean === 'function') {
+      snapshot.setLean(
+        packedIndex,
+        world.bank ? Number(world.bank[slot]) || 0 : 0,
+        world.pitch ? Number(world.pitch[slot]) || 0 : 0,
+      );
+    }
+    if (typeof snapshot.setGeneration === 'function') {
+      snapshot.setGeneration(
+        packedIndex,
+        world.slotGenerations ? world.slotGenerations[slot] : 0,
+      );
+    }
+    if (world.packDirty) world.packDirty[slot] = 0;
+    packed++;
+  };
+  // Freeze the slot list at mint: activeSlots is live while this pack parks —
+  // a retireSlot swap-moves an unvisited tail row into the visited prefix, and
+  // the row is then absent from the committed snapshot entirely (a 1+ frame
+  // pop-out). Frozen slots are packed by identity, not position.
+  const mintedSlots = active > 0 ? world.activeSlots.slice(0, active) : [];
+  for (let index = 0; index < mintedSlots.length; index++) {
+    if ((index % every) === 0 && index > 0) yield;
+    packRow(mintedSlots[index]);
+  }
+  // Rows allocated while the pack was parked sit past the frozen bound — sweep
+  // them into this commit or spawn admission waits a whole pack round. Rows
+  // only move toward lower indices under swap-remove, so the appended region
+  // can never duplicate a frozen-prefix slot.
+  const appendedSlots = world.activeSlots
+    ? world.activeSlots.slice(active, (world.getDiagnostics().active | 0)) : [];
+  for (let index = 0; index < appendedSlots.length; index++) {
+    if (((index + active) % every) === 0 && (index + active) > 0) yield;
+    packRow(appendedSlots[index]);
   }
   fence.commit();
   return packed;

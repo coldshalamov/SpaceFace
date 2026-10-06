@@ -111,6 +111,11 @@ function admissionKeyLight(renderer, source, THREE) {
 }
 
 export function disposeAdmissionShadowResources(renderer, options = {}) {
+  const held = _depthStageSessions.get(renderer);
+  if (held) {
+    held.session.close();
+    _depthStageSessions.delete(renderer);
+  }
   const disposeGpu = options.disposeGpu !== false;
   const perRenderer = renderer ? _admissionKeyLights.get(renderer) : null;
   if (perRenderer) {
@@ -210,6 +215,50 @@ export function collectPotentialShadowCastSubjects(roots, nodeBudget = null) {
   return casting;
 }
 
+// Stepped twin of the visit() predicate above: an explicit-stack DFS in the same
+// pre-order traverse() order (children pushed reversed so the leftmost pops
+// next), identical drawable/geometry/userData/material verdicts and nodeBudget
+// debit — the boot cook's depth ceremony drives this instead of paying one
+// atomic subtree census per pass.
+export function* collectPotentialShadowCastSubjectsSteps(roots, nodeBudget = null, yieldEvery = 512) {
+  const list = Array.isArray(roots) ? roots : [roots];
+  const casting = [];
+  const seen = new Set();
+  const every = Math.max(1, Math.floor(Number(yieldEvery) || 1));
+  let visited = 0;
+  for (const root of list) {
+    if (!root) continue;
+    const stack = [root];
+    while (stack.length > 0) {
+      const object = stack.pop();
+      if (nodeBudget && (nodeBudget.remaining -= 1) < 0) throw _walkBudgetAbort;
+      if (object && !seen.has(object)) {
+        const drawable = object.isMesh === true
+          || object.isSkinnedMesh === true
+          || object.isInstancedMesh === true;
+        if (drawable) {
+          seen.add(object);
+          if (!('geometry' in object && object.geometry == null)) {
+            const ud = object.userData || {};
+            if (!(ud.spacefaceNoShadow === true
+              || ud.sharedContactShadow === true
+              || ud.authoredReadableFallbackLayer === true)) {
+              const materials = Array.isArray(object.material) ? object.material : [object.material];
+              if (materials.some(materialCanCastShadow)) casting.push(object);
+            }
+          }
+        }
+      }
+      const children = object && object.children;
+      if (children) {
+        for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
+      }
+      if (++visited % every === 0) yield;
+    }
+  }
+  return casting;
+}
+
 // Depth-variant readiness: signatures of casters this ceremony already staged, per
 // renderer. A caster whose signature is recorded already links the exact depth program
 // the stage would mint (same material params + object kind, same light census + fog
@@ -218,6 +267,17 @@ export function collectPotentialShadowCastSubjects(roots, nodeBudget = null) {
 // census change mints a different signature and re-stages rather than trusting a stale
 // read; a material-less stub records nothing (there is no program to link).
 const _stagedDepthSignatures = new WeakMap();
+// Re-signs accumulate dead strings for the renderer's lifetime otherwise — the
+// set has only ever had .add called on it. FIFO-evict the oldest entry once the
+// map hits the cap; an evicted-but-live signature just re-stages once.
+const STAGED_DEPTH_SIGNATURE_CAP = 65536;
+
+function stagedDepthSignatureAdd(staged, signature) {
+  if (staged.size >= STAGED_DEPTH_SIGNATURE_CAP) {
+    staged.delete(staged.values().next().value);
+  }
+  staged.add(signature);
+}
 
 // Per-mesh staged certificate, written at mark time next to the signature entries.
 // The presented-frame policy collect reads this tuple instead of re-minting signature
@@ -227,7 +287,12 @@ const _stagedDepthSignatures = new WeakMap();
 // staged-vs-unstaged with zero per-caster allocs.
 const DEPTH_MARK_KEY = 'sfDepthMark';
 
-function writeDepthMark(caster, lightSig) {
+function cameraLayersMask(camera) {
+  return camera && camera.layers && Number.isFinite(camera.layers.mask)
+    ? camera.layers.mask : null;
+}
+
+function writeDepthMark(caster, lightSig, camera = null) {
   const kind = caster.isSkinnedMesh === true ? 'sk'
     : (caster.isInstancedMesh === true ? 'in' : 'me');
   const geometry = caster.geometry || null;
@@ -240,11 +305,14 @@ function writeDepthMark(caster, lightSig) {
   if (!caster.userData) caster.userData = {};
   caster.userData[DEPTH_MARK_KEY] = {
     l: lightSig,
-    g: geometry,
     ma: geometry && geometry.morphAttributes ? geometry.morphAttributes : null,
     mn: geometry && geometry.morphAttributes ? Object.keys(geometry.morphAttributes).length : 0,
     c: caster.customDepthMaterial || null,
     ly: caster.layers && Number.isFinite(caster.layers.mask) ? caster.layers.mask : 1,
+    // The staged pass draws through this camera — an undrawn layerMiss mark is
+    // only valid while the render camera's mask is unchanged; a camera-side
+    // mask flip would otherwise leave a never-linked caster certified staged.
+    cl: cameraLayersMask(camera),
     k: kind,
     a: mats,
   };
@@ -253,20 +321,23 @@ function writeDepthMark(caster, lightSig) {
 /**
  * The mesh's depth-staged certificate still describes its live discriminant set: every
  * field mismatch is a re-minted signature, i.e. genuinely unstaged. Mirrors
- * casterDepthSignatures' inputs — a material mutation (in-place or swap), geometry or
- * morph census change, custom depth material swap, layer mask flip, or a light-census
+ * casterDepthSignatures' inputs — a material mutation (in-place or swap), morph
+ * census change, custom depth material swap, layer mask flip, or a light-census
  * drift all re-collect the caster. uuid strings compare by value; variant strings are
- * interned per material so a repeat lookup is a reference hit.
+ * interned per material so a repeat lookup is a reference hit. Geometry identity is
+ * deliberately absent: the depth program key bakes no geometry term, so an in-place
+ * swap that keeps the morph census re-links nothing — the ma/mn terms cover the
+ * program-relevant change.
  */
-export function casterDepthMarkCurrent(caster, lightSig) {
+export function casterDepthMarkCurrent(caster, lightSig, camera = null) {
   const mark = caster && caster.userData ? caster.userData[DEPTH_MARK_KEY] : null;
   if (!mark || mark.l !== lightSig) return false;
   const geometry = caster.geometry || null;
-  if (mark.g !== geometry) return false;
   if (mark.ma !== (geometry && geometry.morphAttributes ? geometry.morphAttributes : null)) return false;
   if (mark.c !== (caster.customDepthMaterial || null)) return false;
   const layerMask = caster.layers && Number.isFinite(caster.layers.mask) ? caster.layers.mask : 1;
   if (mark.ly !== layerMask) return false;
+  if (mark.cl !== cameraLayersMask(camera)) return false;
   const kind = caster.isSkinnedMesh === true ? 'sk'
     : (caster.isInstancedMesh === true ? 'in' : 'me');
   if (mark.k !== kind) return false;
@@ -294,9 +365,15 @@ export function casterDepthMarkCurrent(caster, lightSig) {
 // out mid-walk: the caller over-covers (whole-subtree withhold) instead of
 // trusting a partial unstaged set — the arm's collect re-derives for real.
 export const UNSTAGED_COLLECT_OVER_COVER = 'sfUnstagedCollectOverCover';
+// The sentinel is a string minted where callers expect an array — a `length>0`
+// or spread-style read would misinterpret it, so the only sound test is this
+// identity predicate.
+export function isUnstagedCollectOverCover(value) {
+  return value === UNSTAGED_COLLECT_OVER_COVER;
+}
 const _walkBudgetAbort = new Error('sf-shadow-collect-node-budget');
 
-export function collectUnstagedShadowCastersFlag(roots, lightSig, nodeBudget = null) {
+export function collectUnstagedShadowCastersFlag(roots, lightSig, nodeBudget = null, camera = null) {
   let casting;
   try {
     casting = collectPotentialShadowCastSubjects(roots, nodeBudget);
@@ -316,7 +393,7 @@ export function collectUnstagedShadowCastersFlag(roots, lightSig, nodeBudget = n
       if (material && material.uuid && material.visible !== false) { capable = true; break; }
     }
     if (!capable) continue;
-    if (!casterDepthMarkCurrent(caster, lightSig)) unstaged.push(caster);
+    if (!casterDepthMarkCurrent(caster, lightSig, camera)) unstaged.push(caster);
   }
   return unstaged;
 }
@@ -346,6 +423,54 @@ export function lightCensusSignature(lightingScene) {
   return `${fogKey}|${parts.join('|')}`;
 }
 
+// Stepped twin of lightCensusSignature: explicit-stack DFS emitting an
+// identical signature — the count map is order-insensitive (sorted at mint), so
+// any traversal order yields the same string. Ancestor visibility rides the
+// stack entries (a light under an invisible subtree doesn't reach
+// projectObject, same as the sync ancestor walk). The epoch-memoized reader
+// drives this across presented beats instead of paying the atomic scene
+// traverse inside whichever leg asked first.
+export function* lightCensusSignatureSteps(lightingScene, yieldEvery = 512) {
+  const counts = new Map();
+  const every = Math.max(1, Math.floor(Number(yieldEvery) || 1));
+  let visited = 0;
+  const stack = [[lightingScene, true]];
+  while (stack.length > 0) {
+    const entry = stack.pop();
+    const object = entry && entry[0];
+    const ancestorVisible = entry[1];
+    if (!object) continue;
+    const nodeVisible = ancestorVisible && object.visible !== false;
+    if (object.isLight === true && nodeVisible) {
+      const layersMask = object.layers && Number.isFinite(object.layers.mask)
+        ? object.layers.mask : 1;
+      const key = `${object.type || 'Light'}:${layersMask}:${object.castShadow === true ? 1 : 0}`;
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+    const children = object.children;
+    if (children) {
+      for (let i = children.length - 1; i >= 0; i -= 1) stack.push([children[i], nodeVisible]);
+    }
+    if (++visited % every === 0) yield;
+  }
+  const parts = [...counts.entries()].map(([k, n]) => `${k}x${n}`).sort();
+  const fog = lightingScene && lightingScene.fog;
+  const fogKey = fog ? (fog.isFogExp2 === true ? 'fx' : 'fs') : 'f0';
+  return `${fogKey}|${parts.join('|')}`;
+}
+
+// Seq-memoized census readers (renderer._shadowCensusForFrame) fold this into
+// their validity: any mid-seq mutation of the rendered light set — precompile
+// stand-in mounts/removals, a torn-down subtree that carried a light — bumps it
+// once so a same-seq memo can't serve the pre-mutation signature.
+let shadowCensusMutationEpoch = 0;
+export function noteShadowCensusLightMutation() {
+  shadowCensusMutationEpoch += 1;
+}
+export function shadowCensusEpoch() {
+  return shadowCensusMutationEpoch;
+}
+
 // The variant substring's inputs are ~9 primitive reads — intern it per material
 // so repeat collects on the same casters don't re-alloc the discriminant string
 // every slice. A mutation that changes any input re-mints under the new bits.
@@ -360,9 +485,12 @@ function casterDepthVariant(material) {
     material.clipShadows === true ? 1 : 0,
     material.side == null ? 0 : material.side,
     material.shadowSide == null ? 0 : material.shadowSide,
+    material.alphaHash === true ? 1 : 0,
+    material.vertexColors === true ? 1 : 0,
   ];
   const cached = _depthVariantCache.get(material);
-  if (cached && cached.bits.every((bit, i) => bit === bits[i])) return cached.variant;
+  if (cached && cached.bits.length === bits.length
+      && cached.bits.every((bit, i) => bit === bits[i])) return cached.variant;
   const variant = `a${bits[0]}`
     + `m${bits[1]}`
     + `x${bits[2]}`
@@ -370,7 +498,9 @@ function casterDepthVariant(material) {
     + `c${bits[4]}`
     + `p${bits[5]}`
     + `s${bits[6]}`
-    + `h${bits[7]}`;
+    + `h${bits[7]}`
+    + `z${bits[8]}`
+    + `v${bits[9]}`;
   _depthVariantCache.set(material, { bits, variant });
   return variant;
 }
@@ -408,8 +538,15 @@ function casterDepthSignatures(caster, lightSig) {
  * uuid, so a mesh re-minted with a different material (attach job, skin swap) reports
  * unstaged again — a false 'ready' is the in-round depth-link brick, never trusted.
  */
-export function collectUnstagedShadowCasters(renderer, subjects, lightingScene, lightSigOverride = undefined) {
-  const casting = collectPotentialShadowCastSubjects(subjects);
+export function collectUnstagedShadowCasters(renderer, subjects, lightingScene, lightSigOverride = undefined, nodeBudget = null) {
+  let casting;
+  try {
+    casting = collectPotentialShadowCastSubjects(subjects, nodeBudget);
+  } catch (error) {
+    if (error === _walkBudgetAbort) return UNSTAGED_COLLECT_OVER_COVER;
+    throw error;
+  }
+  if (casting === UNSTAGED_COLLECT_OVER_COVER) return UNSTAGED_COLLECT_OVER_COVER;
   if (casting.length === 0) return [];
   const staged = _stagedDepthSignatures.get(renderer);
   if (!staged || staged.size === 0) return casting;
@@ -444,12 +581,45 @@ function markCastersDepthStaged(renderer, casting, lightingScene, drawnDepthObje
         && !caster.layers.test(camera.layers);
       if (!layerMiss) continue;
     }
-    for (const signature of casterDepthSignatures(caster, lightSig)) staged.add(signature);
-    writeDepthMark(caster, lightSig);
+    for (const signature of casterDepthSignatures(caster, lightSig)) {
+      stagedDepthSignatureAdd(staged, signature);
+    }
+    writeDepthMark(caster, lightSig, camera);
   }
 }
 
 export function compileShadowDepthPipelines(options = {}) {
+  // syncDrive: a synchronous caller gains nothing from sub-batched slices — run
+  // one atomic reparent→render→restore pass like before (yields unwind inline).
+  const iterator = compileShadowDepthPipelinesSteps({ ...options, syncDrive: true });
+  let step = iterator.next();
+  while (!step.done) step = iterator.next();
+  return step.value;
+}
+
+// lightSig-keyed staging sessions: consecutive drives under an unchanged
+// census share one staging scene + cloned light set + warmed render state
+// instead of re-paying mint/census-render/restore per leg. WeakMap-keyed on
+// renderer so a dead renderer releases the session with it; entries close on
+// signature or census-epoch drift.
+const _depthStageSessions = new WeakMap();
+
+// The arm closes the held session once its drain empties; the next arm remints
+// under the live census rather than staging under a stale light set.
+export function closeShadowDepthStagingSession(renderer) {
+  const held = _depthStageSessions.get(renderer);
+  if (!held) return;
+  _depthStageSessions.delete(renderer);
+  try { held.session.close(); } catch (_) { /* best effort */ }
+}
+
+// Stepped twin: the caster census, the staged-lights census and the mark
+// signature census (one fused whole-scene walk) yield per 512 visited nodes,
+// so async drives pace the ceremony under their slice clocks. Everything from
+// the reparent captures to the finally restore stays inside one synchronous
+// window — a suspended generator must never leave live lights parked in
+// staging or castShadow flags forced on the live scene.
+export function* compileShadowDepthPipelinesSteps(options = {}) {
   const renderer = options.renderer;
   const light = options.light;
   const camera = options.camera;
@@ -459,23 +629,33 @@ export function compileShadowDepthPipelines(options = {}) {
   const shadowMap = renderer && renderer.shadowMap;
   const forceEnable = options.forceEnable === true;
   if (!shadowMap || !light) {
-    return { skipped: true, reason: 'shadow depth compiler unavailable', subjects: 0 };
+    return { skipped: true, reason: 'shadow depth compiler unavailable', subjects: 0, aborted: true };
   }
   const previousEnabled = shadowMap.enabled;
-  const previousNeedsUpdate = shadowMap.needsUpdate;
-  const previousAutoUpdate = shadowMap.autoUpdate;
   const previousCastShadow = light.castShadow;
   if (!forceEnable && (previousEnabled !== true || previousCastShadow !== true)) {
-    return { skipped: true, reason: 'directional shadows inactive', subjects: 0 };
+    return { skipped: true, reason: 'directional shadows inactive', subjects: 0, aborted: true };
   }
   // The caster census walks every subject's subtree — run it only after the cheap
-  // flag checks above have ruled the pass out entirely.
-  const casting = collectPotentialShadowCastSubjects(subjects);
+  // flag checks above have ruled the pass out entirely. A driver minting retries
+  // can hoist the light-independent collect to drive entry via precollectedCasting
+  // so drift retries re-pay only the light census + session mint.
+  const casting = options.precollectedCasting
+    || (yield* collectPotentialShadowCastSubjectsSteps(subjects));
   // Zero casters means zero depth programs to link — the staging ceremony (whole-scene
   // light traverse, reparenting, census render) is net-zero work then, even under
   // forceEnable whose enabled flag restores in finally anyway.
   if (casting.length === 0) {
-    return { skipped: true, reason: 'no shadow-casting subjects', subjects: 0 };
+    return { skipped: true, reason: 'no shadow-casting subjects', subjects: 0, aborted: true };
+  }
+  // lightSigEpoch stamps the census epoch the caller's signature was minted under. A
+  // light mutation landing inside any yield window below leaves stagedLights and the
+  // claimed signature describing different scenes — the driver aborts and re-mints
+  // rather than mark casters under a census the staged set doesn't satisfy.
+  const lightSigEpoch = Number.isFinite(options.lightSigEpoch) ? options.lightSigEpoch : null;
+  const censusStale = () => lightSigEpoch !== null && shadowCensusEpoch() !== lightSigEpoch;
+  if (censusStale()) {
+    return { skipped: true, reason: 'light-census-drifted-mid-pass', subjects: 0, stale: true };
   }
   // three bakes the rendered scene's light counts (numDirLights/numPointLights/…) and fog flags
   // into EVERY program key — including depth variants. The live scene runs 3 directional + 8
@@ -483,18 +663,66 @@ export function compileShadowDepthPipelines(options = {}) {
   // no live draw can ever hit (the +21s LivingHull/StaticGroup/pool NOVELs). Stage the real
   // scene's full light set + fog so the linked keys are identical to live.
   const lightingScene = options.lightingScene || null;
+  const lightSigOverride = typeof options.lightSigOverride === 'string' ? options.lightSigOverride : null;
   const stagedLights = [];
-  if (lightingScene && typeof lightingScene.traverse === 'function') {
-    lightingScene.traverse((object) => {
-      if (object && object.isLight === true && object !== light) stagedLights.push(object);
-    });
+  // A live session under a caller-minted signature already carries the cloned
+  // light set + warmed render state — the whole-scene census below only feeds
+  // a fresh mint, so a reusable session skips the traverse entirely. The minted
+  // key light is part of the session key: a drive for a different light under
+  // an identical signature would otherwise stage the wrong key light.
+  let heldSession = _depthStageSessions.get(renderer);
+  const reusableSession = !!(heldSession && lightSigOverride !== null
+    && heldSession.sig === lightSigOverride && heldSession.epoch === shadowCensusEpoch()
+    && heldSession.light === light);
+  // One stepped walk mints the staged-light set and — when no lightSigOverride
+  // was supplied — the rendered-set signature terms the mark takes. It replaces
+  // the two whole-scene traverses the sync caller paid (stagedLights +
+  // lightCensusSignature) with one census of identical verdicts.
+  const sigCounts = lightSigOverride === null ? new Map() : null;
+  if (!reusableSession && lightingScene && typeof lightingScene.traverse === 'function') {
+    const stack = [lightingScene];
+    let censusVisited = 0;
+    while (stack.length > 0) {
+      const object = stack.pop();
+      if (object && object.isLight === true) {
+        if (object !== light) stagedLights.push(object);
+        if (sigCounts) {
+          let rendered = true;
+          for (let node = object; node; node = node.parent) {
+            if (node.visible === false) { rendered = false; break; }
+          }
+          if (rendered) {
+            const layersMask = object.layers && Number.isFinite(object.layers.mask)
+              ? object.layers.mask : 1;
+            const key = `${object.type || 'Light'}:${layersMask}:${object.castShadow === true ? 1 : 0}`;
+            sigCounts.set(key, (sigCounts.get(key) || 0) + 1);
+          }
+        }
+      }
+      const children = object && object.children;
+      if (children) {
+        for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
+      }
+      if (++censusVisited % 512 === 0) {
+        yield;
+        if (censusStale()) {
+          return { skipped: true, reason: 'light-census-drifted-mid-pass', subjects: 0, stale: true };
+        }
+      }
+    }
   }
   // Query-side unstaged checks read the light census off the LIVE scene. The mark must
   // take the same census here — before the reparent loop strips every non-key light into
   // staging — or staged.has() can never hit and every later pass re-runs the ceremony.
-  const markLightSig = typeof options.lightSigOverride === 'string'
-    ? options.lightSigOverride
-    : (lightingScene ? lightCensusSignature(lightingScene) : '');
+  const markLightSig = lightSigOverride !== null ? lightSigOverride
+    : (lightingScene
+      ? (typeof lightingScene.traverse === 'function'
+        ? `${lightingScene.fog ? (lightingScene.fog.isFogExp2 === true ? 'fx' : 'fs') : 'f0'}|${
+          [...sigCounts.entries()].map(([k, n]) => `${k}x${n}`).sort().join('|')}`
+        : 'l0|f0')
+      // lightCensusSignature(null) mints 'l0|f0' — a null-scene mark that minted ''
+      // would miss every staged entry at query time and churn withholds forever.
+      : 'l0|f0');
   if (typeof renderer.render !== 'function' || !camera
       || typeof captureObjectHome !== 'function' || typeof restoreObjectHome !== 'function') {
     return { skipped: true, reason: 'shadow depth compiler unavailable', subjects: 0 };
@@ -504,154 +732,77 @@ export function compileShadowDepthPipelines(options = {}) {
   if (!THREE || typeof THREE.Scene !== 'function') {
     return { skipped: true, reason: 'THREE.Scene unavailable for depth staging', subjects: 0 };
   }
-  const stagedKeyLight = admissionKeyLight(renderer, light, THREE);
-  if (!stagedKeyLight) {
-    return { skipped: true, reason: 'directional shadow clone unavailable', subjects: 0 };
+  // Last bail before the atomic slice — reparent/render/mark inside
+  // session.slice() is yield-free, so a drift detected here is the final
+  // chance to stay uncommitted. A stale abort also retires any held session:
+  // its census is the same drifted one.
+  if (censusStale()) {
+    if (heldSession) {
+      heldSession.session.close();
+      _depthStageSessions.delete(renderer);
+      heldSession = null;
+    }
+    return { skipped: true, reason: 'light-census-drifted-mid-pass', subjects: 0, stale: true };
   }
-  const staging = new THREE.Scene();
-  staging.name = options.stagingName || 'SF_AdmissionShadowDepthPipelines';
-  const colorOverride = admissionOverrideMaterial(THREE);
-  if (colorOverride) staging.overrideMaterial = colorOverride;
-  const homes = casting.map((root) => captureObjectHome(root));
-  // Reparent the real scene's lights (and directional/spot targets) into staging so the
-  // render-state light counts baked into program keys match a live frame exactly.
-  const stagedLightHomes = [];
-  for (const sceneLight of stagedLights) {
-    stagedLightHomes.push(captureObjectHome(sceneLight));
-    if (sceneLight.target && sceneLight.target.isObject3D === true) {
-      stagedLightHomes.push(captureObjectHome(sceneLight.target));
-    }
+  // Session amortization: consecutive drives under an unchanged census share
+  // the staging scene + cloned light set + warmed render state — each leg
+  // slices its casters instead of re-paying mint + census render + restore per
+  // drive. Signature or census-epoch drift closes and re-mints.
+  if (heldSession && (heldSession.sig !== markLightSig
+      || heldSession.epoch !== shadowCensusEpoch()
+      || heldSession.light !== light)) {
+    heldSession.session.close();
+    _depthStageSessions.delete(renderer);
+    heldSession = null;
   }
-  if (lightingScene && lightingScene.fog) staging.fog = lightingScene.fog;
-  const previousTarget = typeof renderer.getRenderTarget === 'function'
-    ? renderer.getRenderTarget()
-    : null;
-  const restoreVisibility = revealSubjectForCompile(staging);
-  const restoreCasters = casting.map((root) => revealSubjectForCompile(root));
-  // Potential casters are staged with castShadow forced on so their depth variants compile now;
-  // the live policy enables the flag later when the entity enters the shadow ortho.
-  const castShadowRestore = [];
-  for (const object of casting) {
-    if (object.castShadow !== true) {
-      castShadowRestore.push(object);
-      object.castShadow = true;
+  if (!heldSession) {
+    const session = createShadowDepthStagingSession({
+      renderer,
+      light,
+      camera,
+      lightingScene,
+      THREE,
+      captureObjectHome,
+      restoreObjectHome,
+      stagingName: options.stagingName,
+      lightSig: markLightSig,
+      stagedLights,
+      collectDiagnostics: options.collectDiagnostics === true,
+    });
+    if (!session) {
+      return { skipped: true, reason: 'shadow depth staging unavailable', subjects: 0, aborted: true };
     }
+    heldSession = { session, sig: markLightSig, epoch: shadowCensusEpoch(), light };
+    _depthStageSessions.set(renderer, heldSession);
   }
-  const programCacheKeys = new Set();
-  const drawnNames = new Set();
-  const drawnKeys = new Set();
-  const drawnDepthObjects = new Set();
-  let renderedMaterials = 0;
-  let missingProgramBindings = 0;
-  const originalRenderBufferDirect = typeof renderer.renderBufferDirect === 'function'
-    ? renderer.renderBufferDirect
-    : null;
-  if (originalRenderBufferDirect) {
-    renderer.renderBufferDirect = function captureShadowProgramBinding(...args) {
-      const result = originalRenderBufferDirect.apply(this, args);
-      renderedMaterials += 1;
-      const drawn = args[4];
-      // Shadow-pass draws call renderBufferDirect with scene=null (WebGLShadowMap.renderObject);
-      // the color pass passes the staging scene. Count only depth draws for staging proof.
-      const depthDraw = args[1] == null;
-      if (depthDraw && drawn) {
-        drawnDepthObjects.add(drawn);
-        if (typeof drawn.name === 'string' && drawn.name) drawnNames.add(drawn.name);
-      }
-      const material = args[3];
-      let program = null;
-      try {
-        program = renderer.properties && typeof renderer.properties.get === 'function'
-          ? renderer.properties.get(material)?.currentProgram
-          : null;
-      } catch (_) { /* The real shadow draw succeeded; report its missing binding fail-closed. */ }
-      const key = program && (program.cacheKey || (program.id != null ? `id:${program.id}` : ''));
-      if (key) {
-        programCacheKeys.add(String(key));
-        if (depthDraw && drawn && /CommonRockInstances|LivingHull|Wreck_Batch/.test(drawn.name || '')) {
-          const source = drawn.material;
-          drawnKeys.add(`${drawn.name}|key:${String(key)}|side:${source && source.side}|shadowSide:${source && source.shadowSide}|map:${!!(source && source.map)}|depthType:${material && material.type}`);
-        }
-      }
-      else missingProgramBindings += 1;
-      return result;
-    };
+  let sliced;
+  if (options.syncDrive === true || typeof heldSession.session.sliceSteps !== 'function') {
+    sliced = heldSession.session.slice(casting, { forceEnable });
+  } else {
+    // Sub-batched slices: each ≤32-caster pass restores live state before the
+    // yield, so a suspended drive never holds reparented casters or forced
+    // castShadow flags — and a census drift between passes aborts cleanly.
+    sliced = yield* heldSession.session.sliceSteps(casting, { forceEnable, stale: censusStale });
   }
-  try {
-    if (forceEnable) {
-      shadowMap.enabled = true;
-    }
-    // A standalone WebGLShadowMap.render has no live render state — WebGLProgram.setProgram
-    // dereferences currentRenderState.state.lights and throws — and any variant it does
-    // link folds a stale lights/shadow state into the program key, so the real frame still
-    // compiles its own variant on first draw. The depth admission must run inside a real
-    // renderer.render: staging carries the admitted casters plus the key light, the
-    // one-shot needsUpdate flags force the shadow pass while autoUpdate stays off, and
-    // the color side draws into a tiny scratch target so nothing reaches the screen.
-    if (typeof staging.add === 'function') staging.add(stagedKeyLight);
-    if (stagedKeyLight.target && stagedKeyLight.target.isObject3D === true) {
-      staging.add(stagedKeyLight.target);
-    }
-    for (const sceneLight of stagedLights) {
-      staging.add(sceneLight);
-      if (sceneLight.target && sceneLight.target.isObject3D === true) staging.add(sceneLight.target);
-    }
-    if (typeof staging.updateMatrixWorld === 'function') staging.updateMatrixWorld(true);
-    const scratch = admissionScratchTarget(THREE);
-    if (scratch && typeof renderer.setRenderTarget === 'function') renderer.setRenderTarget(scratch);
-    // three runs WebGLShadowMap.render() BEFORE currentRenderState.setupLights() — a fresh
-    // staging scene's first shadow pass reads an EMPTY lights.state and bakes
-    // numDirLights=0/numPointLights=0/numDirLightShadows=0 into every depth program key,
-    // while live frames read the census the previous render left behind (3 dir + 8 pooled
-    // points + 1 dir shadow). Render the lights-only staging scene once with the shadow
-    // pass disabled so setupLights() populates this scene's persistent render state —
-    // render states are WeakMap-cached per scene — then the real pass links keys that
-    // match live draws exactly. The warm render draws nothing (lights aren't renderable).
-    const censusRenderEnabled = shadowMap.enabled;
-    shadowMap.enabled = false;
-    renderer.render(staging, camera);
-    shadowMap.enabled = censusRenderEnabled;
-    for (const root of casting) {
-      if (typeof staging.add === 'function') staging.add(root);
-    }
-    // The shadow pass iterates this subset instead of scanning the global caster
-    // registry with an ancestor-membership walk per entry.
-    if (staging.userData) staging.userData.sfShadowCastSubset = new Set(casting);
-    if (typeof staging.updateMatrixWorld === 'function') staging.updateMatrixWorld(true);
-    shadowMap.needsUpdate = true;
-    if (stagedKeyLight.shadow) stagedKeyLight.shadow.needsUpdate = true;
-    renderer.render(staging, camera);
-    markCastersDepthStaged(renderer, casting, lightingScene, drawnDepthObjects, camera, markLightSig);
-    const programBindingFailures = [];
-    if (casting.length > 0 && !originalRenderBufferDirect) {
-      programBindingFailures.push(`shadow-depth:${casting.length}:render-buffer-direct-unavailable`);
-    } else if (missingProgramBindings > 0) {
-      programBindingFailures.push(`shadow-depth:${missingProgramBindings}/${renderedMaterials}:unprepared-program-binding`);
-    }
+  if (sliced.skipped === true) {
     return {
-      skipped: false,
-      subjects: casting.length,
-      programCacheKeys: [...programCacheKeys].sort(),
-      programBindingFailures,
-      // Diagnostic: which named instanced families actually drew in the staged pass — a NOVEL
-      // link on a listed name proves the program key drifted, an absent name proves it never drew.
-      stagedNames: [...drawnNames]
-        .filter((name) => /CommonRockInstances|LivingHull|InstancePool|Wreck_Batch/.test(name)),
-      stagedKeys: [...drawnKeys],
+      skipped: true,
+      reason: sliced.reason || 'shadow depth staging slice skipped',
+      subjects: 0,
+      ...(sliced.stale === true ? { stale: true } : {}),
+      ...(sliced.aborted === true ? { aborted: true } : {}),
     };
-  } finally {
-    if (originalRenderBufferDirect) renderer.renderBufferDirect = originalRenderBufferDirect;
-    for (const object of castShadowRestore) object.castShadow = false;
-    shadowMap.enabled = previousEnabled;
-    shadowMap.needsUpdate = previousNeedsUpdate;
-    shadowMap.autoUpdate = previousAutoUpdate;
-    for (const restore of restoreCasters) restore();
-    restoreVisibility();
-    for (const home of stagedLightHomes) restoreObjectHome(home);
-    for (const home of homes) restoreObjectHome(home);
-    if (typeof staging.clear === 'function') staging.clear();
-    if (typeof renderer.setRenderTarget === 'function') renderer.setRenderTarget(previousTarget || null);
   }
+  return {
+    skipped: false,
+    subjects: casting.length,
+    programCacheKeys: sliced.programCacheKeys || [],
+    programBindingFailures: sliced.programBindingFailures || [],
+    // Diagnostic: which named instanced families actually drew in the staged pass — a NOVEL
+    // link on a listed name proves the program key drifted, an absent name proves it never drew.
+    stagedNames: sliced.stagedNames || [],
+    stagedKeys: sliced.stagedKeys || [],
+  };
 }
 
 export function armAdmissionShadows(options = {}) {
@@ -689,23 +840,33 @@ export function createShadowDepthStagingSession(options = {}) {
   const captureObjectHome = options.captureObjectHome;
   const restoreObjectHome = options.restoreObjectHome;
   if (!renderer || !camera || !THREE || typeof THREE.Scene !== 'function'
-      || typeof renderer.render !== 'function' || !lightingScene
-      || typeof lightingScene.traverse !== 'function'
-      || typeof captureObjectHome !== 'function' || typeof restoreObjectHome !== 'function') {
+      || typeof renderer.render !== 'function'
+      || typeof captureObjectHome !== 'function' || typeof restoreObjectHome !== 'function'
+      || (lightingScene ? typeof lightingScene.traverse !== 'function'
+        : !Array.isArray(options.stagedLights))) {
     return null;
   }
   const shadowMap = renderer.shadowMap;
   const stagedKeyLight = admissionKeyLight(renderer, light, THREE);
   if (!stagedKeyLight) return null;
   const stagedLights = [];
-  lightingScene.traverse((object) => {
-    if (object && object.isLight === true && object !== light) stagedLights.push(object);
-  });
+  // A caller that already walked the light census (the stepped drive's own
+  // yieldable traverse) hands its set in — the mint then never re-walks the
+  // scene.
+  if (Array.isArray(options.stagedLights)) {
+    for (const sceneLight of options.stagedLights) {
+      if (sceneLight && sceneLight.isLight === true && sceneLight !== light) stagedLights.push(sceneLight);
+    }
+  } else {
+    lightingScene.traverse((object) => {
+      if (object && object.isLight === true && object !== light) stagedLights.push(object);
+    });
+  }
   const staging = new THREE.Scene();
   staging.name = options.stagingName || 'SF_ShadowDepthStagingSession';
   const colorOverride = admissionOverrideMaterial(THREE);
   if (colorOverride) staging.overrideMaterial = colorOverride;
-  if (lightingScene.fog) staging.fog = lightingScene.fog;
+  if (lightingScene && lightingScene.fog) staging.fog = lightingScene.fog;
   const restoreVisibility = revealSubjectForCompile(staging);
   staging.add(stagedKeyLight);
   if (stagedKeyLight.target && stagedKeyLight.target.isObject3D === true) {
@@ -727,47 +888,20 @@ export function createShadowDepthStagingSession(options = {}) {
   const previousTarget = typeof renderer.getRenderTarget === 'function' ? renderer.getRenderTarget() : null;
   const scratch = admissionScratchTarget(THREE);
   if (scratch && typeof renderer.setRenderTarget === 'function') renderer.setRenderTarget(scratch);
-  // Per-slice capture state — the wrapper records drawn objects for the slice
-  // currently rendering; close() reports the union for diagnostics.
-  let currentSliceDrawn = null;
-  const drawnNames = new Set();
-  const drawnKeys = new Set();
+  // Draw-capture is installed only inside slice() — a session held across
+  // drives must never tax live draws with the binding hook. The name/key sets
+  // are diagnostics-only: without collectDiagnostics a session just counts
+  // draws (and keeps the programCacheKeys contract callers read).
+  const collectDiagnostics = options.collectDiagnostics === true;
+  const drawnNames = collectDiagnostics ? new Set() : null;
+  const drawnKeys = collectDiagnostics ? new Set() : null;
   const programCacheKeys = new Set();
-  const drawnDepthObjects = new Set();
+  // Draw uuids, not live Object3D refs — a held session must not pin a staged
+  // caster's JS tree for its whole lifetime when only the count is ever read.
+  const drawnDepthObjects = collectDiagnostics ? new Set() : null;
+  let drawnDepthCount = 0;
   let renderedMaterials = 0;
   let missingProgramBindings = 0;
-  const originalRenderBufferDirect = typeof renderer.renderBufferDirect === 'function'
-    ? renderer.renderBufferDirect
-    : null;
-  if (originalRenderBufferDirect) {
-    renderer.renderBufferDirect = function captureShadowProgramBinding(...args) {
-      const result = originalRenderBufferDirect.apply(this, args);
-      renderedMaterials += 1;
-      const drawn = args[4];
-      const depthDraw = args[1] == null;
-      if (depthDraw && drawn) {
-        if (currentSliceDrawn) currentSliceDrawn.add(drawn);
-        drawnDepthObjects.add(drawn);
-        if (typeof drawn.name === 'string' && drawn.name) drawnNames.add(drawn.name);
-      }
-      const material = args[3];
-      let program = null;
-      try {
-        program = renderer.properties && typeof renderer.properties.get === 'function'
-          ? renderer.properties.get(material)?.currentProgram
-          : null;
-      } catch (_) { /* The real shadow draw succeeded; report its missing binding fail-closed. */ }
-      const key = program && (program.cacheKey || (program.id != null ? `id:${program.id}` : ''));
-      if (key) {
-        programCacheKeys.add(String(key));
-        if (depthDraw && drawn && /CommonRockInstances|LivingHull|Wreck_Batch/.test(drawn.name || '')) {
-          const source = drawn.material;
-          drawnKeys.add(`${drawn.name}|key:${String(key)}|side:${source && source.side}|shadowSide:${source && source.shadowSide}|map:${!!(source && source.map)}|depthType:${material && material.type}`);
-        }
-      } else missingProgramBindings += 1;
-      return result;
-    };
-  }
   try {
     staging.updateMatrixWorld(true);
     // Same census trick as the single-shot compile: WebGLShadowMap runs before
@@ -778,21 +912,32 @@ export function createShadowDepthStagingSession(options = {}) {
     shadowMap.enabled = false;
     renderer.render(staging, camera);
     shadowMap.enabled = censusRenderEnabled;
+    // The main render path re-binds its own target each presented frame; the
+    // session re-binds scratch inside every slice instead of holding it.
+    if (typeof renderer.setRenderTarget === 'function') renderer.setRenderTarget(previousTarget || null);
   } catch (error) {
-    if (originalRenderBufferDirect) renderer.renderBufferDirect = originalRenderBufferDirect;
     restoreVisibility();
     if (typeof staging.clear === 'function') staging.clear();
     if (typeof renderer.setRenderTarget === 'function') renderer.setRenderTarget(previousTarget || null);
-    console.warn('[render] shadow depth staging session warm-up failed', error);
-    return null;
+    // The staged draw's failure propagates like the single-shot compile's — a
+    // caller must see the render fault, not a silent deferral.
+    throw error;
   }
   let closed = false;
-  return {
-    get lightSig() { return options.lightSig || ''; },
-    /** Stage one root slice: reparent casters, render, mark observed draws, restore. */
-    slice(casting) {
-      if (closed || !Array.isArray(casting) || casting.length === 0) {
-        return { skipped: closed, subjects: 0 };
+  /** Stage one root slice: reparent casters, render, mark observed draws, restore. */
+  const runSlice = (casting, sliceOpts = null) => {
+      if (closed) {
+        return { skipped: true, reason: 'session-closed-mid-drive', subjects: 0, aborted: true };
+      }
+      if (!Array.isArray(casting) || casting.length === 0) {
+        return { skipped: false, subjects: 0 };
+      }
+      // Without forceEnable the render runs under the live shadowMap.enabled —
+      // disabled draws nothing, so zero marks land: the drive must not turn an
+      // un-run leg into an undrawable verdict.
+      if ((!sliceOpts || sliceOpts.forceEnable !== true)
+          && (!shadowMap || shadowMap.enabled !== true)) {
+        return { skipped: true, reason: 'shadow-map-disabled', subjects: 0, aborted: true };
       }
       const homes = casting.map((root) => captureObjectHome(root));
       const restoreCasters = casting.map((root) => revealSubjectForCompile(root));
@@ -804,9 +949,67 @@ export function createShadowDepthStagingSession(options = {}) {
         }
       }
       const sliceDrawn = new Set();
-      currentSliceDrawn = sliceDrawn;
+      const sliceNames = new Set();
+      const sliceKeys = new Set();
+      const slicePrograms = new Set();
+      let sliceRendered = 0;
+      let sliceMissing = 0;
+      const originalRenderBufferDirect = typeof renderer.renderBufferDirect === 'function'
+        ? renderer.renderBufferDirect
+        : null;
+      if (originalRenderBufferDirect) {
+        renderer.renderBufferDirect = function captureShadowProgramBinding(...args) {
+          const result = originalRenderBufferDirect.apply(this, args);
+          renderedMaterials += 1;
+          sliceRendered += 1;
+          const drawn = args[4];
+          const depthDraw = args[1] == null;
+          if (depthDraw && drawn) {
+            sliceDrawn.add(drawn);
+            drawnDepthCount += 1;
+            if (drawnDepthObjects) drawnDepthObjects.add(drawn.uuid);
+            if (typeof drawn.name === 'string' && drawn.name) {
+              if (drawnNames) drawnNames.add(drawn.name);
+              sliceNames.add(drawn.name);
+            }
+          }
+          const material = args[3];
+          let program = null;
+          try {
+            program = renderer.properties && typeof renderer.properties.get === 'function'
+              ? renderer.properties.get(material)?.currentProgram
+              : null;
+          } catch (_) { /* The real shadow draw succeeded; report its missing binding fail-closed. */ }
+          const key = program && (program.cacheKey || (program.id != null ? `id:${program.id}` : ''));
+          if (key) {
+            programCacheKeys.add(String(key));
+            slicePrograms.add(String(key));
+            if (depthDraw && drawn && drawnKeys && /CommonRockInstances|LivingHull|Wreck_Batch/.test(drawn.name || '')) {
+              const source = drawn.material;
+              const k = `${drawn.name}|key:${String(key)}|side:${source && source.side}|shadowSide:${source && source.shadowSide}|map:${!!(source && source.map)}|depthType:${material && material.type}`;
+              drawnKeys.add(k);
+              sliceKeys.add(k);
+            }
+          } else {
+            missingProgramBindings += 1;
+            sliceMissing += 1;
+          }
+          return result;
+        };
+      }
       const previousNeedsUpdate = shadowMap.needsUpdate;
+      const previousEnabled = shadowMap.enabled;
+      const slicePrevTarget = typeof renderer.getRenderTarget === 'function'
+        ? renderer.getRenderTarget() : null;
+      if (scratch && typeof renderer.setRenderTarget === 'function') renderer.setRenderTarget(scratch);
       try {
+        if (sliceOpts && sliceOpts.forceEnable === true) shadowMap.enabled = true;
+        // Re-seat the staged key light per slice: the live rig re-poses per
+        // quantized follow cell and the ortho extent re-derives per sector, so a
+        // session minted arms ago would otherwise render under a frozen ortho —
+        // casters inside the live shadow volume but outside the stale one could
+        // never mark. Same clone, ~10 field copies + one projection rebuild.
+        admissionKeyLight(renderer, light, THREE);
         for (const root of casting) staging.add(root);
         if (staging.userData) staging.userData.sfShadowCastSubset = new Set(casting);
         staging.updateMatrixWorld(true);
@@ -814,10 +1017,26 @@ export function createShadowDepthStagingSession(options = {}) {
         if (stagedKeyLight.shadow) stagedKeyLight.shadow.needsUpdate = true;
         renderer.render(staging, camera);
         markCastersDepthStaged(renderer, casting, lightingScene, sliceDrawn, camera, options.lightSig);
-        return { skipped: false, subjects: casting.length };
+        const failures = [];
+        if (casting.length > 0 && !originalRenderBufferDirect) {
+          failures.push(`shadow-depth:${casting.length}:render-buffer-direct-unavailable`);
+        } else if (sliceMissing > 0) {
+          failures.push(`shadow-depth:${sliceMissing}/${sliceRendered}:unprepared-program-binding`);
+        }
+        return {
+          skipped: false,
+          subjects: casting.length,
+          programCacheKeys: [...slicePrograms].sort(),
+          programBindingFailures: failures,
+          stagedNames: [...sliceNames]
+            .filter((name) => /CommonRockInstances|LivingHull|InstancePool|Wreck_Batch/.test(name)),
+          stagedKeys: [...sliceKeys],
+        };
       } finally {
+        if (originalRenderBufferDirect) renderer.renderBufferDirect = originalRenderBufferDirect;
+        shadowMap.enabled = previousEnabled;
         shadowMap.needsUpdate = previousNeedsUpdate;
-        currentSliceDrawn = null;
+        if (typeof renderer.setRenderTarget === 'function') renderer.setRenderTarget(slicePrevTarget || null);
         for (const root of casting) {
           if (root && root.parent === staging) staging.remove(root);
         }
@@ -825,23 +1044,68 @@ export function createShadowDepthStagingSession(options = {}) {
         for (const restore of restoreCasters) restore();
         for (const home of homes) restoreObjectHome(home);
       }
+  };
+  return {
+    get lightSig() { return options.lightSig || ''; },
+    slice: runSlice,
+    /**
+     * Stepped twin of slice(): ≤32 casters per sub-pass, each running the full
+     * reparent→render→mark→restore cycle before the yield — a suspended drive
+     * never holds reparented casters or forced castShadow flags across the gap,
+     * and a census drift between passes aborts instead of staging under a
+     * light set that no longer exists.
+     */
+    *sliceSteps(casting, sliceOpts = null) {
+      // A closed session can't land marks — `aborted` keeps the driver from
+      // rendering the undrawable verdict on a leg that never ran.
+      if (closed) {
+        return { skipped: true, reason: 'session-closed-mid-drive', subjects: 0, aborted: true };
+      }
+      if (!Array.isArray(casting) || casting.length === 0) {
+        return { skipped: false, subjects: 0 };
+      }
+      const keys = new Set();
+      const names = new Set();
+      const sKeys = new Set();
+      const failures = [];
+      let subjects = 0;
+      for (let i = 0; i < casting.length; i += 32) {
+        if (sliceOpts && typeof sliceOpts.stale === 'function' && sliceOpts.stale()) {
+          return { skipped: true, reason: 'light-census-drifted-mid-slice', subjects: 0, stale: true };
+        }
+        const r = runSlice(casting.slice(i, i + 32), sliceOpts);
+        if (!r || r.skipped === true) return r || { skipped: true, subjects: 0 };
+        subjects += r.subjects || 0;
+        for (const k of r.programCacheKeys || []) keys.add(k);
+        for (const n of r.stagedNames || []) names.add(n);
+        for (const k of r.stagedKeys || []) sKeys.add(k);
+        if (Array.isArray(r.programBindingFailures)) failures.push(...r.programBindingFailures);
+        if (i + 32 < casting.length) yield;
+      }
+      return {
+        skipped: false,
+        subjects,
+        programCacheKeys: [...keys].sort(),
+        programBindingFailures: failures,
+        stagedNames: [...names],
+        stagedKeys: [...sKeys],
+      };
     },
     close() {
       if (closed) return;
       closed = true;
-      if (originalRenderBufferDirect) renderer.renderBufferDirect = originalRenderBufferDirect;
       restoreVisibility();
       if (typeof staging.clear === 'function') staging.clear();
       if (typeof renderer.setRenderTarget === 'function') renderer.setRenderTarget(previousTarget || null);
       return {
-        subjects: drawnDepthObjects.size,
+        subjects: drawnDepthObjects ? drawnDepthObjects.size : drawnDepthCount,
         programCacheKeys: [...programCacheKeys].sort(),
         programBindingFailures: missingProgramBindings > 0
           ? [`shadow-depth-session:${missingProgramBindings}/${renderedMaterials}:unprepared-program-binding`]
           : [],
-        stagedNames: [...drawnNames]
-          .filter((name) => /CommonRockInstances|LivingHull|InstancePool|Wreck_Batch/.test(name)),
-        stagedKeys: [...drawnKeys],
+        stagedNames: drawnNames ? [...drawnNames]
+          .filter((name) => /CommonRockInstances|LivingHull|InstancePool|Wreck_Batch/.test(name)) : [],
+        stagedKeys: drawnKeys ? [...drawnKeys] : [],
       };
     },
   };

@@ -586,7 +586,13 @@ function pushFarInRadius(out, rec, x, z, r2) {
   if (dx * dx + dz * dz <= r2) out.push(rec);
 }
 
-export function queryFarActors(state, pos, radius, out = []) {
+// Chunked twin: yields per grid column (cell path) or per `batchRows` rows
+// (linear-scan path) so a corridor-wide disc refill can ride a slice clock
+// across presented frames. `out` accumulates across suspensions — the caller
+// commits the memo key only when the walk completes, so a suspended refill
+// never serves a half-filled scratch as a stamped disc. Row order (therefore
+// `out` contents) is identical to the sync drain.
+export function* queryFarActorsSteps(state, pos, radius, out = [], batchRows = 1024) {
   out.length = 0;
   const table = state && state.world && state.world.farActors;
   if (!table || !pos || !Number.isFinite(radius) || !(radius > 0)) return out;
@@ -605,11 +611,15 @@ export function queryFarActors(state, pos, radius, out = []) {
   const safeRange = Number.isSafeInteger(minC) && Number.isSafeInteger(maxC)
     && Number.isSafeInteger(minR) && Number.isSafeInteger(maxR)
     && Number.isFinite(cellSpan);
+  const batch = Number.isFinite(batchRows) ? Math.max(1, batchRows | 0) : Infinity;
   // Prefetch / enter discs are often thousands of WU while the far table stays ≤ FAR_ROW_BUDGET.
   // Walking empty grid cells then dominates; a linear row scan is correct and cheaper whenever
   // the disc covers more cells than live rows (typical quiet Ceres + decode runway).
   if (!safeRange || cellSpan > rows.length) {
-    for (let i = 0; i < rows.length; i++) pushFarInRadius(out, rows[i], x, z, r2);
+    for (let i = 0; i < rows.length; i++) {
+      pushFarInRadius(out, rows[i], x, z, r2);
+      if ((i + 1) % batch === 0) yield;
+    }
     return out;
   }
   for (let cx = minC; cx <= maxC; cx++) {
@@ -619,6 +629,15 @@ export function queryFarActors(state, pos, radius, out = []) {
       if (!bucket) continue;
       for (let i = 0; i < bucket.length; i++) pushFarInRadius(out, bucket[i], x, z, r2);
     }
+    yield;
+  }
+  return out;
+}
+
+export function queryFarActors(state, pos, radius, out = []) {
+  const iterator = queryFarActorsSteps(state, pos, radius, out, Infinity);
+  for (;;) {
+    if (iterator.next().done) break;
   }
   return out;
 }

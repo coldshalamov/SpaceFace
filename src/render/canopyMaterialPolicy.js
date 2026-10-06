@@ -79,7 +79,7 @@ function textureSamplingMetadata(texture) {
   };
 }
 
-function isCanopyMaterial(material, tags) {
+export function isCanopyMaterial(material, tags) {
   if (!material || !(Number(material.transmission) > 0)) return false;
   if (tags && tags.canopy) return true;
   return /canopy|cockpit.?glass/i.test(String(material.name || ''));

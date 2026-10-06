@@ -10,9 +10,94 @@ import { cloneMaterialPreservingShaderHooks } from './materialClone.js';
 
 export const CRUCIBLE_GHOST_OPACITY = 0.32;
 
+// Object3D.clone JSON round-trips every node's userData — on a depth-staged,
+// packaged, LOD-bound hull that serializes sfDepthMark geometry+material refs,
+// the quadratic renderPackageInstance subtree, entity-identity stamps (which
+// would resolve the ghost to the live entity), and every function disposer
+// into dead {} records, all inside a presented frame. Clone under a plain-data
+// projection of each node's userData instead, then restore the source's.
+const GHOST_CLONE_USERDATA_DROP = new Set([
+  '__spacefaceShadowCasterPolicyV1',
+  '__spacefaceDepthStageSelfDirty',
+  'sfDepthUndrawableCycles',
+  'sfDepthMark',
+  'shadowMeshNotes',
+  'renderPackageInstance',
+  'presentationEntityId',
+  'sfBoundEntityId',
+  'sfStableEntityKey',
+  'sfHiddenFrozen',
+  'lod',
+  // Subsystem marks whose owners never see the ghost: a frozen-matrix stamp on a
+  // descendant under a forced matrixAutoUpdate root, admission/resolving-window
+  // state, and gameplay attachments that mean nothing to a pose tape.
+  'sfMatrixFrozen',
+  'animated',
+  'hlod',
+  'spacefaceSocket',
+  'spacefaceSharedAsset',
+  'keepSeparate',
+  'admissionStandInPending',
+  'authoredAdmissionSubstrate',
+  'resolvingMarker',
+  'weapons',
+  'turretHead',
+  'shieldBubble',
+]);
+
+// A mint landing while the source hull is inside the admission hidden-but-resolving
+// window freezes that transient visible=false into the clone forever — defer the
+// clone while pending, bounded so the ghost always appears.
+const GHOST_MINT_DEFER_MAX = 60;
+
+function plainUserDataValue(value, depth) {
+  if (value == null) return value;
+  const type = typeof value;
+  if (type !== 'object') {
+    return type === 'function' || type === 'symbol' ? undefined : value;
+  }
+  if (depth > 4) return undefined;
+  if (!Array.isArray(value)) {
+    const proto = Object.getPrototypeOf(value);
+    if (proto !== Object.prototype && proto !== null) return undefined;
+    const out = {};
+    for (const key of Object.keys(value)) {
+      const entry = plainUserDataValue(value[key], depth + 1);
+      if (entry !== undefined) out[key] = entry;
+    }
+    return out;
+  }
+  const out = [];
+  for (const item of value) {
+    const entry = plainUserDataValue(item, depth + 1);
+    if (entry !== undefined) out.push(entry);
+  }
+  return out;
+}
+
+function ghostUserDataProjection(data) {
+  const out = {};
+  for (const key of Object.keys(data)) {
+    if (GHOST_CLONE_USERDATA_DROP.has(key)) continue;
+    const entry = plainUserDataValue(data[key], 0);
+    if (entry !== undefined) out[key] = entry;
+  }
+  return out;
+}
+
 function applyGhostMaterial(material) {
   if (!material || typeof material.clone !== 'function') return material;
-  const next = cloneMaterialPreservingShaderHooks(material);
+  // Material.copy JSON round-trips material.userData the same way node userData
+  // does — clone under the same plain-data projection so a non-serializable
+  // receipt can't mangle silently on the ghost's variant.
+  const originalData = material.userData;
+  if (originalData) material.userData = ghostUserDataProjection(originalData);
+  let next;
+  try {
+    next = cloneMaterialPreservingShaderHooks(material);
+  } finally {
+    if (originalData) material.userData = originalData;
+  }
   next.transparent = true;
   next.opacity = Math.min(CRUCIBLE_GHOST_OPACITY, Number.isFinite(next.opacity) ? next.opacity * CRUCIBLE_GHOST_OPACITY : CRUCIBLE_GHOST_OPACITY);
   next.depthWrite = false;
@@ -24,8 +109,10 @@ export function createCrucibleGhostPresentation() {
   let scene = null;
   let root = null;
   let clonedFrom = null;
+  let clonedChildren = null;
   let clonedMaterials = [];
   let warmPending = false;
+  let mintDefers = 0;
 
   function hide() {
     if (root) root.visible = false;
@@ -42,15 +129,48 @@ export function createCrucibleGhostPresentation() {
     clonedMaterials = [];
     root = null;
     clonedFrom = null;
+    clonedChildren = null;
     warmPending = false;
   }
 
   function ensureClone(playerMesh) {
     if (!playerMesh || typeof playerMesh.clone !== 'function') return;
     if (playerMesh.userData && playerMesh.userData.crucibleGhost) return;
-    if (root && clonedFrom === playerMesh) return;
+    if (root && clonedFrom === playerMesh) {
+      // In-place subtree swaps (authored commits, LOD family swaps) keep the same
+      // root identity: every top-level add/remove under it changes the direct-child
+      // set — drift there means the clone shows the superseded generation.
+      const kids = playerMesh.children || [];
+      if (clonedChildren && kids.length === clonedChildren.size
+          && kids.every((kid) => clonedChildren.has(kid))) return;
+    } else if (root) {
+      // Identity changed entirely — handled by the re-mint below.
+    }
+    if (mintDefers < GHOST_MINT_DEFER_MAX) {
+      let pending = 0;
+      playerMesh.traverse((obj) => {
+        const data = obj && obj.userData;
+        if (!data) return;
+        if (data.admissionStandInPending === true
+            || (data.authoredResolvingMarker === true && obj.visible === false)) pending += 1;
+      });
+      if (pending > 0) { mintDefers += 1; return; }
+    }
     disposeRoot();
-    root = playerMesh.clone(true);
+    const originals = [];
+    playerMesh.traverse((obj) => {
+      if (!obj || !obj.userData) return;
+      originals.push([obj, obj.userData]);
+      obj.userData = ghostUserDataProjection(obj.userData);
+    });
+    try {
+      root = playerMesh.clone(true);
+    } finally {
+      for (const [obj, data] of originals) obj.userData = data;
+    }
+    // A source frozen while hidden mints an unposeable ghost — the tape drives
+    // this transform from sync(), never the live writers.
+    root.matrixAutoUpdate = true;
     clonedMaterials = [];
     root.traverse((obj) => {
       if (!obj) return;
@@ -72,6 +192,8 @@ export function createCrucibleGhostPresentation() {
     if (!root.userData) root.userData = {};
     root.userData.crucibleGhost = true;
     clonedFrom = playerMesh;
+    clonedChildren = new Set(playerMesh.children || []);
+    mintDefers = 0;
     warmPending = true;
     if (scene && typeof scene.add === 'function') scene.add(root);
   }

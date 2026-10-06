@@ -349,6 +349,10 @@ function createBatch(material, lane, scene) {
   mesh.userData.spacefaceOpaqueMaterialBatch = true;
   mesh.userData.spacefaceOpaqueBatchLane = lane;
   scene.add(mesh);
+  // The batch mesh mounts for the session's remainder with receiveShadow minted —
+  // its tally must ride the notes seam like every other scene-level attach.
+  const notes = scene.userData && scene.userData.shadowMeshNotes;
+  if (notes && typeof notes.added === 'function') notes.added(mesh);
   return {
     mesh,
     lane,

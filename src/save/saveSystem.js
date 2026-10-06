@@ -5073,8 +5073,10 @@ export const save = {
       // worth of work has run — cheap tails still finish without a single extra frame, heavy
       // ones paint between batches (the driver's own 16ms gate dedupes any extra yield).
       let saveLoadedDrainSince = nowMs();
+      let saveLoadedDrainGuard = 0;
       while (typeof this.bus.pendingEmitSliceCount === 'function'
-          && this.bus.pendingEmitSliceCount() > 0) {
+          && this.bus.pendingEmitSliceCount() > 0
+          && saveLoadedDrainGuard++ <= 64) { // a listener re-arming sliced emits can't wedge the restore
         // Count AND wall-clock budget: one heavyweight listener would otherwise stretch a
         // count-only slice past the paint deadline — stop the batch after it instead.
         this.bus.drainEmitSlice(4, RESTORE_YIELD_SLICE_MS);

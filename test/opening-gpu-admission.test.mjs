@@ -643,7 +643,7 @@ test('opening compile primes shadows, bakes env cardinality, and slices exact-ta
   const post = renderer.slice(postStart, postEnd);
   assert.match(renderer, /this\._bakeEnv\(\);\s*this\._openingEnvFrozen = true/);
   assert.match(compile, /syncVisiblePointLightBudget/);
-  assert.match(compile, /SF_OpeningShadowMapPrime/);
+  assert.match(compile, /warmOpeningShadowPipelines/);
   assert.match(compile, /admitOpeningUnitsAcrossSlices/);
   assert.match(compile, /touchExactTargetSubject/);
   assert.doesNotMatch(post, /now - started >= 0/);

@@ -3,6 +3,7 @@ import { reportBootWork } from '../core/bootWork.js';
 import { armCallbackAfterPresent } from './compilePresentSlice.js';
 import { cookLiveSceneGpu } from './liveSceneCook.js';
 import { settleOpeningCompositionTail } from './precompile.js';
+import { yieldToBrowser } from './startupGpuResidency.js';
 
 function gpuContextIsLost(state) {
   const render = state && state.render;
@@ -134,12 +135,21 @@ export function createSlicedYield(yieldFn, options = {}) {
   if (typeof yieldFn !== 'function') throw new TypeError('createSlicedYield requires a yield function');
   const sliceMs = Number.isFinite(Number(options.sliceMs)) ? Math.max(0, Number(options.sliceMs)) : 8;
   const now = typeof options.now === 'function' ? options.now : ledgerNow;
+  const shouldYield = typeof options.shouldYield === 'function' ? options.shouldYield : null;
+  const debit = typeof options.debit === 'function' ? options.debit : null;
+  // `debitGate` is sampled where `sliceStarted` is minted so a gating term that
+  // flips mid-slice can't forfeit (or double-count) the slice's posted spend.
+  const debitGate = typeof options.debitGate === 'function' ? options.debitGate : null;
+  let debitArmed = debitGate ? !!debitGate() : true;
   let sliceStarted = now();
   const sliced = async (force = false) => {
-    if (force !== true && now() - sliceStarted < sliceMs) return false;
+    const tick = now();
+    if (force !== true && tick - sliceStarted < sliceMs && !(shouldYield && shouldYield())) return false;
     sliced.yields += 1;
+    if (debit && debitArmed) debit(tick - sliceStarted);
     await yieldFn();
     sliceStarted = now();
+    if (debitGate) debitArmed = !!debitGate();
     return true;
   };
   sliced.yields = 0;
@@ -851,7 +861,32 @@ export async function waitForCurrentRenderPipelines(state, timeoutMs = 20000) {
     }
     let submissionPlan = null;
     try {
-      submissionPlan = captureSubmission();
+      const captureSteps = render.captureOpeningSubmissionPlanSteps;
+      if (typeof captureSteps === 'function') {
+        // The capture is a chain of whole-scene censuses; pace its stepped legs
+        // under the boot yield instead of donating one atomic window.
+        const steps = captureSteps();
+        // A world flip inside the drive must abandon the capture entirely —
+        // resuming it commits rows minted under the departed world's census.
+        const driveWorld = state.world;
+        const driveRender = state.render;
+        const driveSerial = driveWorld && driveWorld.enterSerial;
+        for (;;) {
+          const step = steps.next();
+          if (step.done) {
+            submissionPlan = step.value;
+            break;
+          }
+          if (state.world !== driveWorld || state.render !== driveRender
+              || !driveWorld || driveWorld.enterSerial !== driveSerial) {
+            submissionPlan = null;
+            break;
+          }
+          await yieldToBrowser();
+        }
+      } else {
+        submissionPlan = captureSubmission();
+      }
       if (!submissionPlan || submissionPlan.complete !== true
         || !submissionPlan.firstPlayablePipelineSet
         || submissionPlan.firstPlayablePipelineSet.complete !== true) return false;

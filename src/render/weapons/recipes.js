@@ -752,12 +752,24 @@ export function resolveWeaponRecipe(weaponId, weaponData = null) {
   return RECIPES_BY_VARIANT[presentation.variant] || AUTOCANNON;
 }
 
+const projectileMeshSkipVerdicts = new WeakMap();
+
 export function projectileSkipsVisualFactoryMesh(entityOrWeaponId, weaponData = null) {
   if (entityOrWeaponId && typeof entityOrWeaponId === 'object') {
     if (entityOrWeaponId.type && entityOrWeaponId.type !== 'projectile') return false;
     const data = entityOrWeaponId.data || weaponData || null;
-    const recipe = resolveWeaponRecipe(data && data.weaponId, data);
-    return recipe.flight.mode === FLIGHT_MODE.ENERGY_CARD;
+    // The verdict is spawn-static: key the memo on the mutable-scope record so a
+    // repointed data recomputes while per-feed calls on the same body reuse it.
+    const key = data || entityOrWeaponId;
+    if (key && typeof key === 'object') {
+      const hit = projectileMeshSkipVerdicts.get(key);
+      if (hit !== undefined) return hit;
+      const recipe = resolveWeaponRecipe(data && data.weaponId, data);
+      const verdict = recipe.flight.mode === FLIGHT_MODE.ENERGY_CARD;
+      projectileMeshSkipVerdicts.set(key, verdict);
+      return verdict;
+    }
+    return resolveWeaponRecipe(data && data.weaponId, data).flight.mode === FLIGHT_MODE.ENERGY_CARD;
   }
   return resolveWeaponRecipe(entityOrWeaponId, weaponData).flight.mode === FLIGHT_MODE.ENERGY_CARD;
 }

@@ -12,7 +12,7 @@
 // the instance (one per mounted LOD file) and parks invisible subtrees at rest, so a level swap
 // is just a visibility flip on an already-bound node.
 
-import { bindAuthoredMotion } from '../contracts/motionBank.js';
+import { bindAuthoredMotion, bindAuthoredMotionSteps } from '../contracts/motionBank.js';
 
 const ACCEPTED_SCAN_SOURCE = 'player-scanner';
 
@@ -1013,4 +1013,11 @@ export async function loadMotionBank(ref, fetchImpl) {
 export function bindInstanceMotion(root, motionBank, options = {}) {
   if (!motionBank || !motionBank.bank) return null;
   return bindAuthoredMotion(root, motionBank.bank, options);
+}
+
+// Stepped twin for paced commit legs — the name-map collect yields per 512
+// scanned nodes; the controller resolves only after the collect completes.
+export function* bindInstanceMotionSteps(root, motionBank, options = {}) {
+  if (!motionBank || !motionBank.bank) return null;
+  return yield* bindAuthoredMotionSteps(root, motionBank.bank, options);
 }

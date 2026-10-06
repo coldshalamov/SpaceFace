@@ -37,5 +37,5 @@ test('soft-GPU opening residency budget is tighter than hardware', () => {
 test('self-build still follows a soft planWait miss', () => {
   const idx = rendererSrc.indexOf("recordOpeningCookStep(state.render, 'opening.planWait'");
   const after = rendererSrc.slice(idx, idx + 1400);
-  assert.match(after, /buildOpeningSubmissionPlan\s*\(/);
+  assert.match(after, /buildOpeningSubmissionPlanSteps\.call\(this\)/);
 });

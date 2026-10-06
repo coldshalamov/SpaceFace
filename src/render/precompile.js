@@ -27,6 +27,7 @@ import { waitForRockSurfaceLibraryReady } from './rockSurfaceLibrary.js';
 import { createDynamicBufferCoordinator } from './dynamicBufferRanges.js';
 import { compileScenePipelinesSafely } from './compilePipelinesSafely.js';
 import { compileScenePipelinesForRenderTarget } from './bloom.js';
+import { noteShadowCensusLightMutation } from './shadowDepthAdmission.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
 const WEAPON_BY_ID = new Map(WEAPONS.map((weapon) => [weapon.id, weapon]));
@@ -176,6 +177,7 @@ export function releaseVisiblePointLightBudget(scene) {
   if (!staging) return null;
   staging.removeFromParent();
   if (typeof staging.clear === 'function') staging.clear();
+  noteShadowCensusLightMutation();
   return staging;
 }
 
@@ -193,6 +195,66 @@ export function syncVisiblePointLightBudget(scene, video) {
     standIn.position.set(i * 24, 10, 0);
     lightStaging.add(standIn);
   }
+  noteShadowCensusLightMutation();
+  return lightStaging;
+}
+
+/**
+ * Chunked twin of syncVisiblePointLightBudget: the staging-group search and the
+ * visible-light count share ONE iterative visible-subtree walk (the budget
+ * staging group is skipped for counting, matching release-then-count), yielding
+ * every `nodesPerSlice` visited nodes so a paced leg can drive the census on
+ * its own slice clock instead of paying two atomic O(scene) traverses.
+ */
+export function* syncVisiblePointLightBudgetSteps(scene, video, nodesPerSlice = 512) {
+  const every = Math.max(1, Math.floor(Number(nodesPerSlice) || 1));
+  let staging = null;
+  let visible = 0;
+  if (scene) {
+    // Stack entries carry ancestor visibility: the name search descends
+    // everywhere (getObjectByName parity — a staging group re-parented under an
+    // invisible holder still releases), while the light count keeps
+    // traverseVisible semantics (invisible subtrees don't count lights).
+    const stack = [[scene, true]];
+    let sinceYield = 0;
+    while (stack.length > 0) {
+      const entry = stack.pop();
+      const object = entry && entry[0];
+      const ancestorVisible = entry[1];
+      if (!object) continue;
+      if ((++sinceYield % every) === 0) yield;
+      if (object.name === POINT_LIGHT_BUDGET_STAGING_NAME) {
+        // Found the stale group — it releases below; its stand-ins must not
+        // count toward the live census (release-before-count semantics).
+        staging = object;
+        continue;
+      }
+      // traverseVisible parity: visibility inherits under `!== false` (an
+      // undefined `.visible` reads visible), not `=== true`. The old strict
+      // compare diverged both the count and the descent on the node's own bit.
+      const nodeVisible = ancestorVisible && object.visible !== false;
+      if (nodeVisible && object.isPointLight === true) visible += 1;
+      const children = object.children;
+      if (children) for (let i = children.length - 1; i >= 0; i -= 1) stack.push([children[i], nodeVisible]);
+    }
+  }
+  if (staging) {
+    staging.removeFromParent();
+    if (typeof staging.clear === 'function') staging.clear();
+    noteShadowCensusLightMutation();
+  }
+  const target = visiblePointLightBudget(video);
+  if (!scene || visible >= target) return null;
+  const lightStaging = new THREE.Group();
+  lightStaging.name = POINT_LIGHT_BUDGET_STAGING_NAME;
+  scene.add(lightStaging);
+  for (let i = visible; i < target; i++) {
+    const standIn = new THREE.PointLight(0xffffff, 0, 400, 2.0);
+    standIn.name = `SF_Precompile_EventLight_${i}`;
+    standIn.position.set(i * 24, 10, 0);
+    lightStaging.add(standIn);
+  }
+  noteShadowCensusLightMutation();
   return lightStaging;
 }
 /**
@@ -868,9 +930,13 @@ function beginDirectionalShadowWarm(renderer, scene) {
   const previousCastShadow = keyLight.castShadow;
   shadowMap.enabled = true;
   keyLight.castShadow = true;
+  // castShadow is a light-census signature term — the flip and the restore both
+  // mint distinct live sets, so each write bumps the census epoch.
+  noteShadowCensusLightMutation();
   return () => {
     shadowMap.enabled = previousEnabled;
     keyLight.castShadow = previousCastShadow;
+    noteShadowCensusLightMutation();
   };
 }
 
@@ -901,12 +967,14 @@ async function prepareDirectionalShadowPipelineVariant(
   try {
     shadowMap.enabled = true;
     keyLight.castShadow = true;
+    noteShadowCensusLightMutation();
     subject.updateMatrixWorld(true);
     await preparePipelines(subject);
     return { skipped: false };
   } finally {
     shadowMap.enabled = previousEnabled;
     keyLight.castShadow = previousCastShadow;
+    noteShadowCensusLightMutation();
   }
 }
 

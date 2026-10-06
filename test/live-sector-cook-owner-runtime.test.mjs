@@ -60,9 +60,13 @@ function fixture(providers = []) {
     globalThis: { requestAnimationFrame: fn => frames.push(fn) },
     performance: { now: () => now += 10 }, yieldToBrowser: async () => {},
     beginOpeningCookLedger: () => ({}), bindEnvironmentToStandardMaterials: noop,
+    bindEnvironmentToStandardMaterialsSteps: function* () {},
     collectFirstFlightCookEntities: () => [], enqueueMissingMeshBuilds: noop,
+    enqueueMissingMeshBuildsSteps: function* () {},
+    collectNeverLinkedSceneRootsSteps: function* () {},
+    createSlicedYield: (fn) => fn,
     collectMeshPresentationEntitiesChunked: function* () {},
-    recordOpeningCookStep: noop, resumeAuthoredUpgradeQueueForLoadingHulls: noop,
+    recordOpeningCookStep: noop, stampProducerReceipt: noop, resumeAuthoredUpgradeQueueForLoadingHulls: noop,
     collectUnresidentInstancedDrawables: () => [],
     holdAuthoredUpgradeQueueForFirstFlight: () => marks.push('hold'),
     freezeOpeningGraphPublication: () => marks.push('freeze'),
@@ -71,6 +75,9 @@ function fixture(providers = []) {
     SECTOR_ARRIVAL_PUBLISH_HOLD_SECONDS: 2, FIRST_FLIGHT_DEFERRED_HOLD_SECONDS: 20,
     warmNearbyLedgerRows: noop, makeHoldExemptScanContext: () => ({}),
     exactSectorId: 'ceres', sector: { id: 'ceres' }, continuous: false, enterEpoch: 7,
+    // Ledger consults inside the cook's slice clocks: a never-spent wallet keeps
+    // the fixture on the private-clock path it asserts (ordering, cancellation).
+    notePacedFrameSpend: noop, pacedFrameSpend: () => 0, PACED_FRAME_BUDGET_MS: 8,
   };
   if (guardCode) values.captureLiveSectorCookStale = evaluate(guardCode, owner, values);
   const cook = evaluate(cookCode, owner, values);
@@ -384,7 +391,7 @@ test('preflight same-sector cancellation returns cleanly without stale finalizer
 test('preflight prefix error keeps original error and performs current-owner cleanup once', async () => {
   const f = preflightFixture();
   const error = new Error('controlled-prefix-failure');
-  f.values.bindEnvironmentToStandardMaterials = () => { throw error; };
+  f.values.bindEnvironmentToStandardMaterialsSteps = function* () { throw error; };
   await assert.rejects(f.preflight(), actual => actual === error);
   assert.deepEqual(f.marks, ['hold', 'freeze']);
   assert.equal(f.state.render.liveSectorGpuAdmission, false);
@@ -402,13 +409,20 @@ function gpuFixture() {
   f.state.render.restLiveFlightEffectsAfterCook = () => f.marks.push('rest-effects');
   Object.assign(f.values, {
     cam: { obj: {} }, collectFirstFlightEffectRoots: () => [],
+    collectFirstFlightEffectRootsSteps: function* () { return []; },
     collectPreparedAuthoredCompileRoots: () => [], syncVisiblePointLightBudget() {},
+    // Steps-name stubs must be function-valued generators or the typeof guards
+    // route every drive site to its sync fallback and the paced bodies (the code
+    // that actually runs in production) stay dead under the harness.
+    syncVisiblePointLightBudgetSteps: function* () { yield; },
+    collectInstancePoolCompileRootsAndSubjectsSteps: function* () { yield; return { roots: [], subjects: [] }; },
     armAdmissionShadows: () => () => f.marks.push('restore-shadows'),
     revealSubjectForCompile: () => () => f.marks.push('restore-reveal'),
     survivalRunHoldsArena: () => false, createSlicedYield: fn => fn,
     prepareStartupGpuResidency: async () => ({ ok: true }),
     collectFirstFlightLayerDrawables: () => [], collectInstancePoolCompileRoots: () => [],
     buildOpeningSubmissionPlan: () => ({ compileSubjects: [] }),
+    buildOpeningSubmissionPlanSteps: function* () { return { compileSubjects: [] }; },
     uniqueAdmissionUnits: () => ({ programSubjects: [] }),
     collectCompileSubjects: () => [],
   });

@@ -128,7 +128,8 @@ test('the loading-shell mesh-build drain bypasses the late-present gate', async 
   const renderer = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
   const drainDef = renderer.indexOf('_drainMeshBuildQueue(buildBudget) {');
   assert.ok(drainDef > 0, 'the method definition, not a call site');
-  const block = renderer.slice(drainDef, drainDef + 2600);
+  const drainEnd = renderer.indexOf('_drainPendingMeshBuilds', drainDef);
+  const block = renderer.slice(drainDef, drainEnd > drainDef ? drainEnd : drainDef + 6000);
   assert.match(block, /mode\) === 'loading'/,
     'the gate checks for loading mode');
   assert.match(block, /!loadingDrain/,

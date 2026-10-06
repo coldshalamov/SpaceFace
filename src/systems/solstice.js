@@ -119,7 +119,7 @@ export function createSolstice() {
         if (!deferSectorEnterMaterialization(this.state, p, this._cookProvider)) this._sync();
       });
 
-      this._cookProvider = () => this._sync();
+      this._cookProvider = () => this._syncSteps();
       (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = [])).push(this._cookProvider);
       this._sync();
     },
@@ -189,6 +189,14 @@ export function createSolstice() {
     },
 
     _sync() {
+      for (const _ of this._syncSteps()) { /* sync drain — byte-identical order */ }
+    },
+
+    // Chunked twin: the deferred-enter FIFO drives this generator under its
+    // slice clock; the sync lane drains it inline so both paths mint the same
+    // bodies in the same order. The scan yields per 32 visited rows; the
+    // spawn/cull legs run in the original tail order.
+    *_syncSteps() {
       if (this._restoring) return;
       const m = this.state.solstice;
       if (!this._adventure() || m.destroyed) {
@@ -206,7 +214,9 @@ export function createSolstice() {
       const prisms = [null, null, null];
       let wisp = null;
 
+      let visited = 0;
       for (const e of (this.state.entityList || []).slice()) {
+        if ((++visited & 31) === 0) yield;
         if (!e?.alive) continue;
         const part = e.data?.solsticePart;
         // A shell the far-actor table promoted from a shelved row keeps our owner stamp but not our part.

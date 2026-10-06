@@ -10,10 +10,10 @@ import { buildDriftBarge } from './ships/driftBarge.js';
 import { buildQuietRaider } from './ships/quietRaider.js';
 import { buildVaelSniper } from './ships/vaelSniper.js';
 import { loadAuthoredPart } from './assetLoader.js';
-import { freezeStaticChildMatrices, freezeStaticTransformRoot } from './staticChildMatrices.js';
+import { freezeStaticChildMatricesSteps, freezeStaticTransformRootMarked, updateMatrixWorldSteps } from './staticChildMatrices.js';
 import { build47aScenarioProp } from './scenarioProps47a.js';
 import {
-  batchPackagedPropOpaqueMeshes,
+  batchPackagedPropOpaqueMeshesSteps,
   batchScenarioPropOpaqueMeshes,
 } from './scenarioPropBatching.js';
 import {
@@ -39,6 +39,7 @@ import {
   residencyRegistryForStandInRecord,
   waitForOpeningGraphPublicationRelease,
   wrapShipWithAuthoredParts,
+  queuePacedDetachedTeardown,
 } from './partsLibrary.js';
 import { isReleaseAssetMode } from './releaseMode.js';
 import { canonicalizeInstalledSurfaceProgramKey } from './illustratedSurface.js';
@@ -53,6 +54,8 @@ import {
   PRESENTATION_ADMISSION,
   setPresentationAdmission,
 } from '../core/presentationAdmission.js';
+import { yieldToBrowser } from './startupGpuResidency.js';
+import { notePacedFrameSpend } from './decodeTaskBudget.js';
 
 const KESTREL_HERO_ASSET_ID = 'SF_K0_KESTREL_BORROWED_TIME';
 
@@ -448,14 +451,18 @@ export function materializeBoundaryResolvingMarker(boundary) {
   // materials instead of the abstract octahedron — strictly closer to the committed body.
   let marker = null;
   const standInTarget = boundaryStandInTarget(data, entity);
+  let record = null;
   if (standInFile && boundaryStandInResolver) {
-    let record = null;
     try { record = boundaryStandInResolver(entity, standInFile) || null; } catch { record = null; }
     if (record) marker = lodStandInFor(entity, record, standInTarget);
   }
   if (!marker) {
     marker = resolvingMarkerFor(entity, boundaryStandInDrawnX(data, standInTarget));
-    if (standInFile && boundaryStandInResolver) {
+    if (record) {
+      // A resident record that cannot build a stand-in (no primitives/bounds) never
+      // becomes usable — the ship-substrate path stamps the same terminal reason.
+      data.resolvingMarkerFallbackReason = 'stand-in-record-unusable';
+    } else if (standInFile && boundaryStandInResolver) {
       // Built before the record went resident: keep the same pending retry the ship substrate
       // uses so a mid-admission warm decode still converges on the real body.
       data.admissionStandInPending = true;
@@ -612,18 +619,17 @@ export function detachBoundaryResolvingMarker(boundary) {
     detached = true;
   }
   // Publish-time invariant: no authoredResolvingMarker node may survive an authored commit.
-  // The tracked field covers the normal case — this walk purges a tagged straggler whose
+  // The tracked field covers the normal case — this pass purges a tagged straggler whose
   // link to `data.resolvingMarker` was lost (e.g. marker reparented under another root).
-  if (typeof boundary.traverse === 'function') {
-    const orphans = [];
-    boundary.traverse((node) => {
-      if (node !== boundary && node.userData && node.userData.authoredResolvingMarker === true) {
-        orphans.push(node);
+  // Markers only ever mount via boundary.add above — direct children — so a boundary
+  // that never minted one has nothing to purge, and a reparented straggler beyond the
+  // child list is a broken-marker scenario the commit's own replacement covers.
+  if (data.authoredResolvingMarker === true && Array.isArray(boundary.children)) {
+    for (const node of boundary.children) {
+      if (node.userData && node.userData.authoredResolvingMarker === true) {
+        if (node.parent) node.parent.remove(node);
+        detached = true;
       }
-    });
-    for (const node of orphans) {
-      if (node.parent) node.parent.remove(node);
-      detached = true;
     }
   }
   return detached;
@@ -666,7 +672,16 @@ export function upgradeAdmissionStandIn(boundary, resolveRecord) {
   const standIn = record
     ? lodStandInFor(entity, record, isBoundarySeat ? boundaryStandInTarget(boundaryData, entity) : null)
     : null;
-  if (!standIn) return false; // still nothing resident — keep waiting while pending
+  if (!standIn) {
+    if (record) {
+      // The record resolved but cannot build a stand-in — it never becomes usable,
+      // so the periodic re-resolve scan has nothing left to converge on.
+      boundaryData.resolvingMarkerFallbackReason = 'stand-in-record-unusable';
+      boundaryData.admissionStandInPending = false;
+      if (substrate && substrate.userData) substrate.userData.admissionStandInPending = false;
+    }
+    return false; // still nothing resident — keep waiting while pending
+  }
   substrate.remove(marker);
   substrate.add(standIn);
   substrate.userData.resolvingMarker = standIn;
@@ -799,6 +814,7 @@ const RELEASE_PART_ROOT = 'assets/ships/release/parts/';
 const PACKAGED_PRIMITIVE_MATRIX = new THREE.Matrix4();
 const PACKAGED_FIT_CENTER = new THREE.Vector3();
 const PACKAGED_FIT_SIZE = new THREE.Vector3();
+const PACKAGED_FIT_SCRATCH = new THREE.Box3();
 const SCENARIO_PROP_KEEP_VISIBLE = new Set(['HandoffBeacon_Zone_Disc']);
 
 function packagedPartUrl(relativeFile) {
@@ -860,6 +876,14 @@ function isLod0Primitive(primitive) {
 }
 
 function instantiatePackagedPrimitives(record, parent) {
+  const it = instantiatePackagedPrimitivesSteps(record, parent);
+  for (;;) { const step = it.next(); if (step.done) return step.value; }
+}
+
+// Stepped twin of the mint above — a hulk-scale record's primitive rows pace at
+// strides inside the commit's driveLeg spine instead of minting atomically. The
+// stamp leg runs first so a suspended walk keeps the boundary provenance visible.
+function* instantiatePackagedPrimitivesSteps(record, parent) {
   // The flat-primitive mount replays the same decoded package the instance route stamps on
   // its root — publish the same `spacefaceRenderPackage` boundary here so the opening
   // census's productionBoundary walk does not read a mounted packaged prop as an
@@ -875,7 +899,10 @@ function instantiatePackagedPrimitives(record, parent) {
       };
     }
   }
-  for (const primitive of record && record.primitives || []) {
+  const primitives = (record && record.primitives) || [];
+  for (let i = 0; i < primitives.length; i++) {
+    if (i > 0 && (i % 128) === 0) yield;
+    const primitive = primitives[i];
     if (!primitive || !primitive.geometry || !primitive.material) continue;
     if (!isLod0Primitive(primitive)) continue;
     const mesh = new THREE.Mesh(primitive.geometry, primitive.material);
@@ -912,6 +939,48 @@ function fitPackagedGroup(group, targetRadius) {
   );
 }
 
+// Stepped twin of the sync fit above — the forced compose yields at strides and
+// the bounds union walks Box3.expandByObject(precise=false) iteratively, so a
+// packaged subtree paces inside the commit leg instead of two atomic walks.
+function* fitPackagedGroupSteps(group, targetRadius) {
+  if (!group) return;
+  yield* updateMatrixWorldSteps(group, true);
+  const box = new THREE.Box3();
+  const stack = [group];
+  let visited = 0;
+  while (stack.length > 0) {
+    const node = stack.pop();
+    if ((++visited % 1024) === 0) yield;
+    node.updateWorldMatrix(false, false);
+    const geometry = node.geometry;
+    if (geometry !== undefined) {
+      if (node.boundingBox !== undefined) {
+        if (node.boundingBox === null) node.computeBoundingBox();
+        PACKAGED_FIT_SCRATCH.copy(node.boundingBox);
+      } else {
+        if (geometry.boundingBox === null) geometry.computeBoundingBox();
+        PACKAGED_FIT_SCRATCH.copy(geometry.boundingBox);
+      }
+      PACKAGED_FIT_SCRATCH.applyMatrix4(node.matrixWorld);
+      box.union(PACKAGED_FIT_SCRATCH);
+    }
+    const children = node.children;
+    for (let i = children.length - 1; i >= 0; i -= 1) stack.push(children[i]);
+  }
+  if (box.isEmpty()) return;
+  box.getCenter(PACKAGED_FIT_CENTER);
+  box.getSize(PACKAGED_FIT_SIZE);
+  const envelope = Math.max(PACKAGED_FIT_SIZE.x, PACKAGED_FIT_SIZE.y, PACKAGED_FIT_SIZE.z, 1e-6);
+  const radius = Number(targetRadius);
+  const fitScale = Number.isFinite(radius) && radius > 0 ? (radius * 2) / envelope : 1;
+  group.scale.setScalar(fitScale);
+  group.position.set(
+    -PACKAGED_FIT_CENTER.x * fitScale,
+    -PACKAGED_FIT_CENTER.y * fitScale,
+    -PACKAGED_FIT_CENTER.z * fitScale,
+  );
+}
+
 function isPackagedBodyDescendant(object, root) {
   let current = object;
   while (current && current !== root) {
@@ -924,8 +993,34 @@ function isPackagedBodyDescendant(object, root) {
 // A detached packaged group the admission run still owns: its primitives were minted fresh for
 // this mount, so geometry and material instances die with it. Shared-asset geometries keep
 // their pool pin; texture maps ride the packaged cache and are left alone.
+function* disposeDetachedPackagedGroupSteps(group) {
+  const stack = [group];
+  let visited = 0;
+  while (stack.length) {
+    const object = stack.pop();
+    if (!object) continue;
+    if ((++visited % 128) === 0) yield;
+    if (object.geometry && typeof object.geometry.dispose === 'function'
+      && !(object.geometry.userData && object.geometry.userData.spacefaceSharedAsset)) {
+      object.geometry.dispose();
+    }
+    const materials = Array.isArray(object.material)
+      ? object.material
+      : object.material ? [object.material] : [];
+    for (const material of materials) {
+      if (material && typeof material.dispose === 'function') material.dispose();
+    }
+    const children = object.children || [];
+    for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
+  }
+}
+
 function disposeDetachedPackagedGroup(group) {
   if (!group || typeof group.traverse !== 'function') return;
+  // The mid-prepare abort legs (orphan/pipeline-fail/stale-run) used to tear the
+  // packaged subtree down atomically inside the commit continuation — the same
+  // presented-beat class the place/commit disposes already pace on the shared queue.
+  if (queuePacedDetachedTeardown(group, disposeDetachedPackagedGroupSteps(group))) return;
   group.traverse((object) => {
     if (!object) return;
     if (object.geometry && typeof object.geometry.dispose === 'function'
@@ -1054,6 +1149,9 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
     // waits on the opening-graph release. Adding the group straight to the live scene left its
     // materials to link inside the first bloomScene draw (the wrk_glass_shattered / lnb_* brick);
     // routing through the queue instead delayed mounts into measured flight windows.
+    // Hoisted like attachPackagedBody: the .catch runs outside the .then closure, so the
+    // detached group must live in this scope for the thrown-leg dispose to reach it.
+    let detachedCommitGroup = null;
     const completion = loadPart(url, {
       renderer,
       slot: spec.slot || slotForPackagedFile(spec.file),
@@ -1069,23 +1167,76 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
         return false;
       }
       const packaged = new THREE.Group();
+      detachedCommitGroup = packaged;
       packaged.name = `${root.userData.kind || entity.type || 'prop'}_PackagedBody`;
       packaged.userData.scenarioPackagedBody = true;
-      instantiatePackagedPrimitives(record, packaged);
+      // Same yield+orphan spine as attachPackagedBody: the build legs below are
+      // contiguous work in this continuation, so pace them and re-verify the
+      // mount owner between legs — the packaged root stays detached (hidden)
+      // until the mount tail, so the spread changes nothing visible.
+      const legNow = () => (
+        typeof performance !== 'undefined' && typeof performance.now === 'function'
+          ? performance.now() : Date.now()
+      );
+      let legStarted = legNow();
+      const scenarioCommitOrphaned = () => {
+        if (root.parent) return false;
+        releaseBoundaryResidency(renderer, root,
+          'packaged-prop-orphaned-mid-commit', mintedAdmissionOptions.admissionEpoch);
+        root.userData.authoredAssetState = 'orphaned-before-swap';
+        return true;
+      };
+      const COMMIT_ORPHANED = Symbol('packaged-prop-commit-orphaned');
+      const driveLeg = async (iter) => {
+        for (;;) {
+          const legStep = iter.next();
+          if (legStep.done) return legStep.value;
+          notePacedFrameSpend(legNow() - legStarted);
+          await yieldToBrowser();
+          legStarted = legNow();
+          if (scenarioCommitOrphaned()) return COMMIT_ORPHANED;
+        }
+      };
+      if ((await driveLeg(instantiatePackagedPrimitivesSteps(record, packaged))) === COMMIT_ORPHANED) {
+        disposeDetachedPackagedGroup(packaged);
+        return false;
+      }
       if (!packaged.children.length) {
+        disposeDetachedPackagedGroup(packaged);
         if (staleAuthoredRunVerdict(root, mintedAdmissionOptions)) return false;
         root.userData.authoredAssetState = 'unavailable';
         return false;
       }
-      fitPackagedGroup(packaged, packagedFitRadius(entity, spec));
-      batchPackagedPropOpaqueMeshes(packaged);
-      freezeStaticChildMatrices(packaged);
-      freezeStaticTransformRoot(packaged);
+      if ((await driveLeg(fitPackagedGroupSteps(packaged, packagedFitRadius(entity, spec)))) === COMMIT_ORPHANED) {
+        disposeDetachedPackagedGroup(packaged);
+        return false;
+      }
+      if ((await driveLeg(batchPackagedPropOpaqueMeshesSteps(packaged))) === COMMIT_ORPHANED) {
+        disposeDetachedPackagedGroup(packaged);
+        return false;
+      }
+      if (scenarioCommitOrphaned()) {
+        disposeDetachedPackagedGroup(packaged);
+        return false;
+      }
+      if ((await driveLeg(freezeStaticChildMatricesSteps(packaged))) === COMMIT_ORPHANED) {
+        disposeDetachedPackagedGroup(packaged);
+        return false;
+      }
+      freezeStaticTransformRootMarked(packaged);
+      notePacedFrameSpend(legNow() - legStarted);
+      await yieldToBrowser();
+      legStarted = legNow();
+      if (scenarioCommitOrphaned()) {
+        disposeDetachedPackagedGroup(packaged);
+        return false;
+      }
       root.userData.authoredAssetState = 'compiling-pipelines';
       try {
         await prepareAuthoredVisualPipelines(packaged, mintedAdmissionOptions);
       } catch (error) {
         releaseBoundaryResidency(renderer, root, 'packaged-prop-pipeline-failed', mintedAdmissionOptions.admissionEpoch);
+        disposeDetachedPackagedGroup(packaged);
         if (staleAuthoredRunVerdict(root, mintedAdmissionOptions)) return false;
         // Same lifecycle abort partsLibrary classifies: an owner that shelves mid-admission
         // has no visual to publish — a breadcrumb, not a composition defect.
@@ -1109,6 +1260,7 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
       }
       if (!root.parent) {
         releaseBoundaryResidency(renderer, root, 'packaged-prop-orphaned-after-compile', mintedAdmissionOptions.admissionEpoch);
+        disposeDetachedPackagedGroup(packaged);
         root.userData.authoredAssetState = 'orphaned-before-swap';
         return false;
       }
@@ -1119,6 +1271,7 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
       if (publicationWait) await publicationWait;
       if (!root.parent) {
         releaseBoundaryResidency(renderer, root, 'packaged-prop-orphaned-before-publication', mintedAdmissionOptions.admissionEpoch);
+        disposeDetachedPackagedGroup(packaged);
         root.userData.authoredAssetState = 'orphaned-before-swap';
         return false;
       }
@@ -1132,6 +1285,9 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
         disposeDetachedPackagedGroup(packaged);
         return false;
       }
+      // The mount tail below is one contiguous span (hide → graft → touch → shadow
+      // sync → settle) — debit the paced ledger for its real cost.
+      legStarted = legNow();
       detachBoundaryResolvingMarker(root);
       hideProceduralPropDrawables(root);
       root.add(packaged);
@@ -1165,8 +1321,13 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
         entity,
         boundary: root,
       }, options);
+      notePacedFrameSpend(legNow() - legStarted);
       return true;
     }).catch((error) => {
+      if (detachedCommitGroup && !detachedCommitGroup.parent) {
+        try { disposeDetachedPackagedGroup(detachedCommitGroup); } catch (_) { /* teardown */ }
+      }
+      detachedCommitGroup = null;
       if (staleAuthoredRunVerdict(root, mintedAdmissionOptions)) return false;
       if (root.parent && admissionOwnerInactive(null, entity, error)) {
         markAuthoredBoundaryForReadmission(root, 'packaged-prop-owner-inactive');

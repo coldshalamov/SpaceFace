@@ -764,6 +764,16 @@ class LoadedRenderPackage {
   }
 
   createInstance(instanceOptions = {}) {
+    const iter = this.createInstanceSteps(instanceOptions);
+    let step = iter.next();
+    while (!step.done) step = iter.next();
+    return step.value;
+  }
+
+  // Stepped twin: identical instantiation body, yielding per 512 plan nodes so an
+  // async driver can pace the clone loop across browser beats. Sync callers
+  // exhaust it inline for the same result; failure paths release identically.
+  *createInstanceSteps(instanceOptions = {}) {
     if (this.released || this.evicted || !this.#lifecycle.entry.packageOwner) {
       throw new Error(`Render package ${this.assetId} must be retained before creating an instance.`);
     }
@@ -799,6 +809,9 @@ class LoadedRenderPackage {
       // the record->node resolution now happened once, at load, in buildInstancePlan.
       const objects = new Array(count);
       for (let i = 0; i < count; i++) {
+        // objects[] is index-addressed so a stride boundary costs nothing; the
+        // partial instance is unreachable outside this leg until it returns.
+        if (i > 0 && (i % 512) === 0) yield;
         const entry = entries[i];
         const created = createNode ? createNode({
           source: entry.source,
