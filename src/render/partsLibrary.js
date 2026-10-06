@@ -53,7 +53,7 @@ import { RENDER_PACKAGE_PILOTS } from './renderPackageManifest.js';
 import * as kit from './ships/shipKit.js';
 import { attachRetroMounts } from './thruster/retroMounts.js';
 import { attachPlaceHlod, attachStationHlod } from './hlod.js';
-import { freezeStaticChildMatrices, freezeStaticTransformRoot } from './staticChildMatrices.js';
+import { freezeStaticChildMatrices, freezeStaticChildMatricesSteps, freezeStaticTransformRootMarked } from './staticChildMatrices.js';
 import { optimizeStaticBatchesForRoot } from './visualFactory.js';
 import { attachLodState } from './lod.js';
 import {
@@ -1066,6 +1066,64 @@ export function collectFirstFlightCookEntities(state) {
     // playerPlanarDistanceSq call re-does entities.get(playerId) O(A·logA) times
     // inside the cook's unyielded collect window.
     if (distanceSq <= rockRadiusSq) asteroids.push({ entity, distanceSq });
+  }
+  asteroids.sort((left, right) => left.distanceSq - right.distanceSq);
+  const seenKeys = new Set();
+  for (const { entity } of asteroids) {
+    if (seenKeys.size >= FIRST_FLIGHT_ROCK_COOK_CAP) break;
+    const key = asteroidFirstFlightCookKey(entity);
+    if (seenKeys.has(key)) continue;
+    seenKeys.add(key);
+    selected.push(entity);
+  }
+  return selected;
+}
+
+/** Chunked twin of collectFirstFlightCookEntities: yields every `rowsPerSlice`
+ * scanned entities so a cook drives the census under its own slice clock. The
+ * distance sort and the capped variant admit stay whole — their input is the
+ * radius-filtered asteroid subset, bounded by FIRST_FLIGHT_ROCK_COOK_CAP. */
+export function* collectFirstFlightCookEntitiesSteps(state, rowsPerSlice = 256) {
+  const list = Array.isArray(state && state.entityList) ? state.entityList : [];
+  const selected = [];
+  const asteroids = [];
+  const rockRadius = firstFlightRockCookRadiusWu(state);
+  const rockRadiusSq = rockRadius * rockRadius;
+  const cookPlayer = resolvePlanarPlayer(state);
+  const every = Math.max(1, Math.floor(Number(rowsPerSlice) || 1));
+  let sinceYield = 0;
+  // Walk a snapshot: a despawn splice across a suspension shifts unvisited rows
+  // under a live for..of cursor (swap-pop lands a never-visited tail member at an
+  // already-scanned index), while the snapshot still visits every member once.
+  const snapshot = list.slice();
+  const visit = (entity) => {
+    if (!entity || entity.alive === false) return;
+    if (isFirstFlightCookEntity(entity, state)) {
+      selected.push(entity);
+      return;
+    }
+    if (entity.type !== 'asteroid') return;
+    const distanceSq = planarDistanceSqToPlayer(entity, cookPlayer);
+    if (distanceSq <= rockRadiusSq) asteroids.push({ entity, distanceSq });
+  };
+  for (const entity of snapshot) {
+    visit(entity);
+    sinceYield += 1;
+    if (sinceYield >= every) {
+      sinceYield = 0;
+      yield;
+    }
+  }
+  // Rows appended past the snapshot's span mid-walk are the remaining miss —
+  // rescan the live tail; a member re-pushed after removal double-admits once,
+  // which the cook's own enqueue dedupe absorbs.
+  for (let index = snapshot.length; index < list.length; index++) {
+    visit(list[index]);
+    sinceYield += 1;
+    if (sinceYield >= every) {
+      sinceYield = 0;
+      yield;
+    }
   }
   asteroids.sort((left, right) => left.distanceSq - right.distanceSq);
   const seenKeys = new Set();
@@ -2585,6 +2643,10 @@ const REFUSAL_TRIGGER_REARM_DELAY_MS = 1000;
 const REFUSAL_TRIGGER_PACED_STATUSES = new Set([
   'deferred-arena-dressing',
   'invalid-upgrade-request',
+  // A sustained marginal graze reposts guaranteed-refused enqueues every rendered
+  // frame: the repost never lands in the domain the repost cap counts, so this
+  // pace is the only break on the ping-pong.
+  'regrade-evict-cooloff',
 ]);
 function scheduleRefusalTriggerRearm(status, arm) {
   if (!REFUSAL_TRIGGER_PACED_STATUSES.has(status)) { arm(); return; }
@@ -2767,6 +2829,13 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
   // Preserve the public inspection surface used by diagnostics/checks while making lifecycle hooks
   // indirect through `active`, so the renderer never needs to know that a payload was replaced.
   Object.assign(boundary.userData, fallbackRoot.userData || {});
+  // Per-root shadow bookkeeping is scoped to the subtree it was minted on —
+  // copying it onto the boundary would let the wrong root answer the checked
+  // sync's dirty/stamp/park reads and double-count the tally notes seam.
+  delete boundary.userData.__spacefaceShadowCasterPolicyV1;
+  delete boundary.userData.__spacefaceDepthStageSelfDirty;
+  delete boundary.userData.sfDepthUndrawableCycles;
+  delete boundary.userData.shadowMeshNotes;
   boundary.userData.kind = 'ship';
   boundary.userData.authoredAssetState = 'awaiting-authored-admission';
   boundary.userData.authoredAssetMode = releaseMode ? 'release' : 'dev';
@@ -3262,9 +3331,15 @@ function commitAuthoredCargoCapsuleBoundary(
   setActiveRoot,
   options = {},
 ) {
+  // The whole commit is one atomic span — debit the paced ledger for its real cost.
+  const commitLegStarted = monotonicNow();
   detachBoundaryResolvingMarker(boundary);
   boundary.remove(fallbackRoot);
   boundary.add(authored.root);
+  // The swap mutated the tree under no park key — a withheld/parked verdict
+  // keyed on the fallback subtree stays stale until the recheck backstop
+  // (~100-1000 syncs). Same convention as the LOD-family seams below.
+  invalidateShadowCasterPolicy(boundary);
   unregisterPreparedAuthoredAdmission(authored);
   setActiveRoot(authored.root);
   carryAdmittedOnceStamp(authored.root, boundary);
@@ -3307,7 +3382,23 @@ function commitAuthoredCargoCapsuleBoundary(
   } else {
     publish();
   }
+  notePacedFrameSpend(monotonicNow() - commitLegStarted);
   return true;
+}
+
+// Shared by the two authored-commit dispose loops (place + ship): each used to
+// mint a private ledger, so K concurrent commits could each skip up to 2× —
+// N commits stacking N×2 stale skips inside one saturated stretch. One counter
+// ages all legs together; every productive slice resets it, same contract the
+// paced drains carry.
+let authoredDisposeLedgerSkips = 0;
+
+// Place-fallback teardown + detach in one stepped unit: the drain drives the
+// dispose slice first, then clears the children links — clearing first would
+// leave the orphaned subtree unvisited and leak its owner-local GPU records.
+function* detachedFallbackTeardownThenClearSteps(root) {
+  yield* disposeDetachedPlaceFallbackSteps(root);
+  try { root.clear(); } catch (_) { /* best effort — drain continues */ }
 }
 
 function disposeDetachedAuthoredCargoCapsule(root) {
@@ -3316,7 +3407,10 @@ function disposeDetachedAuthoredCargoCapsule(root) {
   // failed tree must release them the same way the boundary teardown path does.
   if (typeof root.userData?.detachAuthoredMotion === 'function') root.userData.detachAuthoredMotion();
   // Authored compositions use cloned batch geometry plus materials marked by the shared-resource
-  // policy. Reuse the established detached-place disposer so only owner-local GPU resources retire.
+  // policy. Reuse the established detached-place disposer so only owner-local GPU resources
+  // retire — paced on the shared queue so an abandon inside a presented beat no longer pays
+  // the whole traverse+dispose atomically.
+  if (queuePacedDetachedTeardown(root, detachedFallbackTeardownThenClearSteps(root))) return;
   disposeDetachedPlaceFallback(root);
   root.clear();
 }
@@ -3540,6 +3634,11 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
   fallbackRoot.visible = false;
   boundary.add(fallbackRoot);
   Object.assign(boundary.userData, fallbackRoot.userData || {});
+  // Same per-root shadow bookkeeping strip as the ship boundary above.
+  delete boundary.userData.__spacefaceShadowCasterPolicyV1;
+  delete boundary.userData.__spacefaceDepthStageSelfDirty;
+  delete boundary.userData.sfDepthUndrawableCycles;
+  delete boundary.userData.shadowMeshNotes;
   boundary.userData.kind = 'station';
   boundary.userData.placeId = placeId;
   boundary.userData.archetypeGlb = entity.data && entity.data.archetypeGlb || placeId;
@@ -3664,7 +3763,7 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
   freezeStaticChildMatrices(stationed);
   // The boundary root's own pose arrives only via mount/seat/snapshot writers, which recompose
   // it through the matrixAutoUpdate === false dirty hook (PERF-59).
-  freezeStaticTransformRoot(stationed);
+  freezeStaticTransformRootMarked(stationed);
   return stationed;
 }
 
@@ -3691,6 +3790,13 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
   if (fallbackHasBody || geologySkin) boundary.userData.authoredPendingFallbackDrawn = true;
   boundary.add(fallbackRoot);
   Object.assign(boundary.userData, fallbackRoot.userData || {});
+  // Per-root shadow bookkeeping is scoped to the subtree it was minted on —
+  // copying it onto the boundary would let the wrong root answer the checked
+  // sync's dirty/stamp/park reads and double-count the tally notes seam.
+  delete boundary.userData.__spacefaceShadowCasterPolicyV1;
+  delete boundary.userData.__spacefaceDepthStageSelfDirty;
+  delete boundary.userData.sfDepthUndrawableCycles;
+  delete boundary.userData.shadowMeshNotes;
   // The matching procedural geology body stays local to the boundary as the visible stand-in
   // during admission and the emergency fallback afterwards. Never expose its common-rock leaf
   // through the stable boundary: the renderer's asteroid InstancedMesh pool would otherwise
@@ -3819,7 +3925,7 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
   const placed = attachPlaceHlod(boundary, entity);
   optimizeStaticBatchesForRoot(placed);
   freezeStaticChildMatrices(placed);
-  freezeStaticTransformRoot(placed);
+  freezeStaticTransformRootMarked(placed);
   return placed;
 }
 
@@ -3975,8 +4081,13 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
   const disposePreparedPlace = () => {
     if (authoredDisposed) return false;
     try {
-      disposeDetachedPlaceFallback(authored.root);
-      authored.root.clear();
+      // Paced — the pipeline-fail/orphan abort legs used to tear the prepared
+      // tree down atomically inside the commit continuation (the same class the
+      // commit disposes already pace). Registry release stays synchronous.
+      queuePacedDetachedTeardown(
+        authored.root,
+        detachedFallbackTeardownThenClearSteps(authored.root),
+      );
       authoredDisposed = true;
     } finally {
       // A disposal throw must not strand the registry entry — it pins the boundary and the
@@ -4131,18 +4242,42 @@ function failAuthoredPlaceAdmission(
   return false;
 }
 
-function commitAuthoredPlaceBoundary(
+async function commitAuthoredPlaceBoundary(
   boundary, fallbackRoot, authored, setActive, admissionEntity, options = {},
 ) {
   // A validated place record is the sole presentation authority. The hidden substrate never appears
   // in play, so there is no placeholder frame or blue-clay-to-authored identity swap.
   detachBoundaryResolvingMarker(boundary);
-  boundary.remove(fallbackRoot);
-  boundary.add(authored.root);
+  // Each contiguous leg debits the shared paced ledger — the freeze stretch, the atomic
+  // graft+publish tail and the deferred dispose all land in inter-present windows other
+  // slicers budget against.
+  let commitLegStarted = monotonicNow();
   // buildAuthoredPlaceRoot already batches the authored meshes before binding their LODs and
   // specialized materials. Re-batching here replaces those meshes and leaves stale LOD bindings.
-  freezeStaticChildMatrices(authored.root);
-  freezeStaticTransformRoot(authored.root);
+  // The freeze legs run pre-graft so a large place record paces across presents instead
+  // of landing inside the commit frame; the graft + publish tail stays atomic.
+  if (options.yieldBetweenGpuStages === true && typeof options.yieldToNextPresent === 'function') {
+    const freezeIter = freezeStaticChildMatricesSteps(authored.root);
+    for (;;) {
+      const freezeStep = freezeIter.next();
+      notePacedFrameSpend(monotonicNow() - commitLegStarted);
+      if (freezeStep.done) break;
+      await waitForAuthoredAdmission(options.yieldToNextPresent(), options);
+      // Restamp after the wait — an inter-present pause is not ledger spend.
+      commitLegStarted = monotonicNow();
+    }
+  } else {
+    freezeStaticChildMatrices(authored.root);
+    notePacedFrameSpend(monotonicNow() - commitLegStarted);
+    commitLegStarted = monotonicNow();
+  }
+  freezeStaticTransformRootMarked(authored.root);
+  boundary.remove(fallbackRoot);
+  boundary.add(authored.root);
+  // The swap mutated the tree under no park key — a withheld/parked verdict
+  // keyed on the fallback subtree stays stale until the recheck backstop
+  // (~100-1000 syncs). Same convention as the LOD-family seams below.
+  invalidateShadowCasterPolicy(boundary);
   unregisterPreparedAuthoredAdmission(authored);
   setActive(authored.root);
   carryAdmittedOnceStamp(authored.root, boundary);
@@ -4177,9 +4312,52 @@ function commitAuthoredPlaceBoundary(
   } else {
     publish();
   }
+  // The graft + publish tail above is the atomic mount span — debit it before the
+  // dispose's deferred yield so the ledger prices this present correctly.
+  notePacedFrameSpend(monotonicNow() - commitLegStarted);
+  // Same seam as the ship commit: the fallback teardown walks the whole subtree —
+  // defer it past a presented frame when the flight-mode stage gate is on. The graft
+  // already detached the fallback, so the dispose must run even when the yield
+  // rejects (admission abort) — nothing else owns the detached subtree. The
+  // ledger stamp moves inside the finally so the wait itself isn't charged —
+  // only the dispose's real cost belongs to the resume frame.
+  try {
+    if (options.yieldBetweenGpuStages === true && typeof options.yieldToNextPresent === 'function') {
+      await waitForAuthoredAdmission(options.yieldToNextPresent(), options);
+    }
+  } finally {
+    commitLegStarted = monotonicNow();
+    try {
+      const disposeIter = disposeDetachedPlaceFallbackSteps(fallbackRoot);
 
-  try { disposeDetachedPlaceFallback(fallbackRoot); }
-  catch (error) { console.warn('[partsLibrary] place fallback cleanup failed after authored swap', error); }
+      for (;;) {
+        // Consult the wallet before minting the next slice — K concurrent
+        // commit disposes otherwise stack their first slices inside the same
+        // presented beat. The drain's aging bound keeps a saturated stretch
+        // from starving reclaim outright.
+        if (authoredDisposeLedgerSkips < 2 && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS
+            && options.yieldBetweenGpuStages === true && typeof options.yieldToNextPresent === 'function') {
+          authoredDisposeLedgerSkips += 1;
+          await waitForAuthoredAdmission(options.yieldToNextPresent(), options).catch(() => {});
+          commitLegStarted = monotonicNow();
+          continue;
+        }
+        const disposeStep = disposeIter.next();
+        authoredDisposeLedgerSkips = 0;
+        // Per-slice debit with the restamp after the wait — a multi-present
+        // dispose charges its real work, not the spans between presents.
+        notePacedFrameSpend(monotonicNow() - commitLegStarted);
+        commitLegStarted = monotonicNow();
+        if (disposeStep.done) break;
+        if (options.yieldBetweenGpuStages === true && typeof options.yieldToNextPresent === 'function') {
+          await waitForAuthoredAdmission(options.yieldToNextPresent(), options).catch(() => {});
+          commitLegStarted = monotonicNow();
+        }
+      }
+    }
+    catch (error) { console.warn('[partsLibrary] place fallback cleanup failed after authored swap', error); }
+    notePacedFrameSpend(monotonicNow() - commitLegStarted);
+  }
   return true;
 }
 
@@ -6662,7 +6840,7 @@ export function residencyOptionsForBoundary(entity, boundary, renderer) {
       ? (root) => touch.call(root)
       : null,
     syncPackagedBodyShadowPolicy: packagedShadowSync
-      ? (root, entity) => packagedShadowSync.call(root, entity)
+      ? (root, entity, addedSubtree) => packagedShadowSync.call(root, entity, addedSubtree)
       : null,
     prepareAuthoredGpuResidency: residency
       ? async (root, admissionOptions = {}) => {
@@ -7359,7 +7537,12 @@ function admitNextUpgradeJob(state) {
       // must not stomp the fresh 'awaiting-authored-admission' state its replacement rides on.
       // Releasing residency here would mark the boundary a dead owner forever (the released-
       // owner set has no un-release), killing the replacement job's requests mid-decode.
-    } else if (job.options.isAdmissionBoundaryCurrent()) {
+    } else if (job.options.isAdmissionBoundaryCurrent()
+        && job.boundary?.userData?.authoredAssetState !== 'authored'
+        && job.boundary?.userData?.authoredAssetState !== 'authored-prepared') {
+      // Post-commit aborts (e.g. the deferred dispose-yield rejecting after publish
+      // ran) land here too — releasing residency or re-marking readmission on an
+      // already-committed boundary only churns the mounted authored root.
       releaseBoundaryResidency(job.renderer, job.boundary, 'queued-upgrade-failed');
       if (timedOut) {
         job.boundary.userData.authoredAssetState = 'unavailable';
@@ -8283,12 +8466,25 @@ export async function prepareAuthoredVisualPipelines(root, options = {}) {
   // detached-root compile changes the program key and leaves the first draw to link synchronously.
   assertAuthoredVisualPreparationActive(options, 'before-material-policy');
   const policiesStartedAtMs = monotonicNow();
-  configureRealtimeCanopyMaterials(root);
-  configureTransparentSinglePassSurfaces(root);
-  canonicalizeAuthoredProgramState(root);
+  // Each policy walk is an independent whole-subtree traverse of the detached
+  // root — under the stage gate they pace with a ledger debit + present yield
+  // between them instead of landing as one contiguous prefix inside the commit.
+  const pacePolicyWalk = async (walk) => {
+    const legStarted = monotonicNow();
+    const result = walk();
+    if (options.yieldBetweenGpuStages === true && typeof options.yieldToNextPresent === 'function') {
+      notePacedFrameSpend(monotonicNow() - legStarted);
+      await waitForAuthoredAdmission(options.yieldToNextPresent(), options);
+      assertAuthoredVisualPreparationActive(options, 'material-policy-yield');
+    }
+    return result;
+  };
+  await pacePolicyWalk(() => configureRealtimeCanopyMaterials(root));
+  await pacePolicyWalk(() => configureTransparentSinglePassSurfaces(root));
+  await pacePolicyWalk(() => canonicalizeAuthoredProgramState(root));
   // Retained program specimens ride this admission's own compile (cache-hit binds, no extra
   // links) and keep each covered program key alive after the boundary's materials release.
-  const programSpecimenMount = mountCanonicalProgramSpecimens(root);
+  const programSpecimenMount = await pacePolicyWalk(() => mountCanonicalProgramSpecimens(root));
   const policiesMs = Math.max(0, monotonicNow() - policiesStartedAtMs);
   const tier1 = tier1CausalCounters();
   if (tier1) {
@@ -8631,8 +8827,17 @@ async function disposePreparedAuthoredShip(authored) {
   const completed = authored.preparedCleanupCompleted || new Set();
   authored.preparedCleanupCompleted = completed;
   const cleanupErrors = [];
+  // Per-item teardown used to stack inside one microtask drain, un-paced and
+  // un-debited — pace each item's real cost onto the ledger and hand spent
+  // stretches to a timer gap.
+  let cleanupLegStarted = monotonicNow();
   const attempt = async (key, cleanup) => {
     if (completed.has(key)) return;
+    if (monotonicNow() - cleanupLegStarted >= 4 || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) {
+      notePacedFrameSpend(monotonicNow() - cleanupLegStarted);
+      await new Promise((resolve) => { setTimeout(resolve, 0); });
+      cleanupLegStarted = monotonicNow();
+    }
     try {
       await cleanup();
       completed.add(key);
@@ -8655,6 +8860,7 @@ async function disposePreparedAuthoredShip(authored) {
     await attempt(authored.releaseFlightTemplate, () => authored.releaseFlightTemplate('authored-ship-preparation-failed'));
   }
   await attempt(root, () => root.clear());
+  notePacedFrameSpend(monotonicNow() - cleanupLegStarted);
   // Registry detachment cannot wait on disposal success: a thrown cleanup error must not leave
   // the boundary and its prepared roots pinned in sceneState.preparedAuthoredRoots forever.
   unregisterPreparedAuthoredAdmission(authored);
@@ -8778,6 +8984,65 @@ async function disposeAbandonedWholeShipLodRoot(composed) {
   }
 }
 
+// Detached retained-LOD roots pace their teardown across timer gaps instead of
+// stacking K whole-subtree traversals inside one microtask drain — each drive
+// runs one stepped slice per queue head under its own 4 ms clock + the shared
+// wallet, aging like the despawn drain so a saturated stretch can't starve
+// reclaim forever.
+const retainedDisposeQueue = [];
+let retainedDisposeDrainScheduled = false;
+// Persistent across fires like the despawn drain's ledger: a saturated stretch
+// ages out after 2 skips and forces a leg instead of deferring reclaim forever.
+let retainedDisposeLedgerSkips = 0;
+function scheduleRetainedDisposeDrain() {
+  if (retainedDisposeDrainScheduled) return;
+  retainedDisposeDrainScheduled = true;
+  setTimeout(() => {
+    retainedDisposeDrainScheduled = false;
+    const started = monotonicNow();
+    let ranLeg = false;
+    while (retainedDisposeQueue.length) {
+      if (pacedFrameSpend() >= PACED_FRAME_BUDGET_MS && retainedDisposeLedgerSkips < 2) {
+        retainedDisposeLedgerSkips += 1;
+        break;
+      }
+      const head = retainedDisposeQueue[0];
+      if (!head.iter) {
+        try { head.iter = disposeDetachedObjectSteps(head.root); }
+        catch (error) {
+          console.info('[partsLibrary] whole-ship LOD stale root cleanup failed', error);
+          retainedDisposeQueue.shift();
+          continue;
+        }
+      }
+      try {
+        ranLeg = true;
+        if (head.iter.next().done) retainedDisposeQueue.shift();
+      } catch (error) {
+        console.info('[partsLibrary] whole-ship LOD stale root cleanup failed', error);
+        retainedDisposeQueue.shift();
+        continue;
+      }
+      if (monotonicNow() - started >= 4) break;
+    }
+    if (ranLeg) retainedDisposeLedgerSkips = 0;
+    notePacedFrameSpend(monotonicNow() - started);
+    if (retainedDisposeQueue.length) scheduleRetainedDisposeDrain();
+  }, 0);
+}
+
+// Any detached subtree whose teardown would hitch a presented beat may ride the
+// same paced queue — prepared-abandon roots (pipeline-error/orphan legs) used to
+// pay the whole traverse+dispose atomically inside the continuation that
+// abandoned them. `iter` is the caller's own stepped teardown; the drain only
+// drives it, so queue order and the 4 ms leg bound hold for every lane.
+export function queuePacedDetachedTeardown(root, iter) {
+  if (!root || !iter) return false;
+  retainedDisposeQueue.push({ root, iter });
+  scheduleRetainedDisposeDrain();
+  return true;
+}
+
 export function installWholeShipLodFamilyController(boundary, entity, setActive, options = {}) {  if (!boundary || !entity || entity.isPlayer === true) return false;
   const selection = wholeShipVisualForEntity(entity, { ...options, requiredWholeShip: true });
   const family = selection && selection.lodFamily;
@@ -8833,6 +9098,18 @@ export function installWholeShipLodFamilyController(boundary, entity, setActive,
       .then(() => disposePreparedAuthoredShip(composed))
       .catch((error) => console.info('[partsLibrary] whole-ship LOD retained-level cleanup failed', error));
   };
+  // Non-composed stale roots ride a paced queue — a re-commit tears down each
+  // retained level's subtree, and bare-microtask disposes stacked K whole
+  // traversals inside one continuation. The queue drives one stepped slice per
+  // head under its own slice clock + the shared wallet, aging like the despawn
+  // drain so a saturated stretch can't starve reclaim. The root is detached
+  // before this runs, so the traversal only touches already-orphaned state.
+  const releaseRetainedRoot = (root) => {
+    if (!root) return;
+    retainedDisposeQueue.push({ root, iter: null });
+    scheduleRetainedDisposeDrain();
+  };
+
 
   // Demoted-level roots stay retained-but-detached for instant swap-back; the teardown traversal
   // only reaches attached children, so each stale retained root re-attaches into the dying tree
@@ -8860,24 +9137,36 @@ export function installWholeShipLodFamilyController(boundary, entity, setActive,
     pendingLevel = null;
     transitionPromise = null;
     boundary.userData.wholeShipLodTransitionPromise = null;
+    const shadowNotes = boundary.userData && boundary.userData.shadowMeshNotes;
+    let detachedAny = false;
     for (const level of Object.keys(roots)) {
       const root = roots[level];
       const composed = retainedComposed.get(level) || null;
       delete roots[level];
       retainedComposed.delete(level);
       if (!root) continue;
-      if (root.parent === boundary) boundary.remove(root);
+      if (root.parent === boundary) {
+        boundary.remove(root);
+        if (shadowNotes && typeof shadowNotes.removed === 'function') shadowNotes.removed(root);
+        detachedAny = true;
+      }
       if (composed) {
         releaseComposedRetained(composed);
       } else {
-        try { disposeDetachedObject(root); }
-        catch (error) { console.warn('[partsLibrary] whole-ship LOD stale root cleanup failed', error); }
+        releaseRetainedRoot(root);
       }
     }
     const fresh = findActiveRoot();
     roots.lod0 = fresh;
     if (committedAuthored && committedAuthored.root === fresh) {
       retainedComposed.set('lod0', committedAuthored);
+    }
+    if (detachedAny) {
+      // Stale retained roots carried withheld depth-stage bookkeeping keyed on a
+      // subtree that just left — the dirtySeq bump forces the next collect to
+      // re-derive the withheld set against the live hierarchy instead of
+      // re-forcing flags on meshes that no longer exist.
+      invalidateShadowCasterPolicy(boundary);
     }
     activeLevel = 'lod0';
     boundary.userData.wholeShipLodActiveLevel = 'lod0';
@@ -8889,12 +9178,21 @@ export function installWholeShipLodFamilyController(boundary, entity, setActive,
     if (!next) return false;
     const prev = roots[activeLevel];
     let shadowTreeChanged = false;
+    const shadowNotes = boundary.userData && boundary.userData.shadowMeshNotes;
     if (prev && prev !== next) {
       prev.visible = false;
-      if (prev.parent === boundary) { boundary.remove(prev); shadowTreeChanged = true; }
+      if (prev.parent === boundary) {
+        boundary.remove(prev);
+        if (shadowNotes && typeof shadowNotes.removed === 'function') shadowNotes.removed(prev);
+        shadowTreeChanged = true;
+      }
     }
     next.visible = true;
-    if (next.parent !== boundary) { boundary.add(next); shadowTreeChanged = true; }
+    if (next.parent !== boundary) {
+      boundary.add(next);
+      if (shadowNotes && typeof shadowNotes.added === 'function') shadowNotes.added(next);
+      shadowTreeChanged = true;
+    }
     if (shadowTreeChanged) {
       // A retained-root swap is the one live subtree attach that bypasses every
       // other invalidate seam — a band-1 root queued for depth staging would
@@ -9138,6 +9436,10 @@ async function commitAuthoredBoundary(
     return false;
   }
 
+  // The graft + publish span below is the atomic mount tail — the largest authored
+  // subtree class in the game. Debit the paced ledger so the inter-present budget
+  // sees its real cost before the dispose's deferred yield.
+  let commitLegStarted = monotonicNow();
   const oldHull = fallbackRoot.userData && fallbackRoot.userData.hull;
   const newHull = authored.root.userData && authored.root.userData.hull;
   if (oldHull && newHull) newHull.rotation.x = oldHull.rotation.x;
@@ -9147,6 +9449,10 @@ async function commitAuthoredBoundary(
   // is never a live readability layer and cannot turn a box or blue-clay body into a different ship.
   boundary.remove(fallbackRoot);
   boundary.add(authored.root);
+  // The swap mutated the tree under no park key — a withheld/parked verdict
+  // keyed on the fallback subtree stays stale until the recheck backstop
+  // (~100-1000 syncs). Same convention as the LOD-family seams below.
+  invalidateShadowCasterPolicy(boundary);
   unregisterPreparedAuthoredAdmission(authored);
   setActive(authored.root);
   carryAdmittedOnceStamp(authored.root, boundary);
@@ -9192,9 +9498,47 @@ async function commitAuthoredBoundary(
   } else {
     publish();
   }
+  notePacedFrameSpend(monotonicNow() - commitLegStarted);
+  // The publish touch drew the authored subtree on the exact target and the fallback's
+  // subtree dispose is a second GPU stage — when the caller paces stage joins (flight),
+  // the dispose waits one present so the pair can't land inside one presented frame.
+  // The graft already detached the fallback, so the dispose must run even when the
+  // yield rejects — nothing else owns the detached subtree. The ledger stamp moves
+  // inside the finally so the wait itself isn't charged — only the dispose's real
+  // cost belongs to the resume frame.
+  try {
+    if (options.yieldBetweenGpuStages === true && typeof options.yieldToNextPresent === 'function') {
+      await waitForAuthoredAdmission(options.yieldToNextPresent(), options);
+    }
+  } finally {
+    commitLegStarted = monotonicNow();
+    try {
+      const disposeIter = disposeDetachedObjectSteps(fallbackRoot);
 
-  try { disposeDetachedObject(fallbackRoot); }
-  catch (error) { console.warn('[partsLibrary] fallback cleanup failed after a successful authored swap', error); }
+      for (;;) {
+        if (authoredDisposeLedgerSkips < 2 && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS
+            && options.yieldBetweenGpuStages === true && typeof options.yieldToNextPresent === 'function') {
+          authoredDisposeLedgerSkips += 1;
+          await waitForAuthoredAdmission(options.yieldToNextPresent(), options).catch(() => {});
+          commitLegStarted = monotonicNow();
+          continue;
+        }
+        const disposeStep = disposeIter.next();
+        authoredDisposeLedgerSkips = 0;
+        // Per-slice debit with the restamp after the wait — a multi-present
+        // dispose charges its real work, not the spans between presents.
+        notePacedFrameSpend(monotonicNow() - commitLegStarted);
+        commitLegStarted = monotonicNow();
+        if (disposeStep.done) break;
+        if (options.yieldBetweenGpuStages === true && typeof options.yieldToNextPresent === 'function') {
+          await waitForAuthoredAdmission(options.yieldToNextPresent(), options).catch(() => {});
+          commitLegStarted = monotonicNow();
+        }
+      }
+    }
+    catch (error) { console.warn('[partsLibrary] fallback cleanup failed after a successful authored swap', error); }
+    notePacedFrameSpend(monotonicNow() - commitLegStarted);
+  }
   return true;
 }
 
@@ -10269,7 +10613,7 @@ async function buildComposedShipAsync(entity, library, scene, ownerBoundary, opt
   let step = steps.next();
   while (!step.done) {
     const sliceMs = now() - sliceStarted;
-    if (sliceMs >= frameBudgetMs()) {
+    if (sliceMs >= frameBudgetMs() || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) {
       // Report the slice's cost before yielding: other frame-paced slicers (the compile drain)
       // read the ledger later this frame and stand down instead of stacking their own budget.
       notePacedFrameSpend(sliceMs);
@@ -10715,6 +11059,20 @@ function dropFlightTemplateDynamicUserData(data) {
   delete data.hull;
   delete data.shieldBubble;
   delete data.openingSubmissionPackage;
+  // Per-root shadow + depth bookkeeping describes the SOURCE subtree — a clone
+  // carrying its stamps reads certified-current on casts the source's arm
+  // proved, so its genuinely-unstaged variants link inside presented frames.
+  delete data.__spacefaceShadowCasterPolicyV1;
+  delete data.__spacefaceDepthStageSelfDirty;
+  delete data.sfDepthUndrawableCycles;
+  delete data.sfDepthMark;
+  delete data.shadowMeshNotes;
+  // The source entity's identity stamps ride the clone until bind re-stamps
+  // them — deadline-glass and pooled-identity reads would attribute the
+  // instance to the template's owner in the gap.
+  delete data.presentationEntityId;
+  delete data.sfBoundEntityId;
+  delete data.sfStableEntityKey;
   return data;
 }
 
@@ -13309,12 +13667,18 @@ function activatePackageSlotsTransaction(chunk, slots, options = {}) {
     }
     if (options.publishTarget === true && !chunk.mesh.parent) {
       chunk.scene.add(chunk.mesh);
+      const notes = chunk.scene.userData && chunk.scene.userData.shadowMeshNotes;
+      if (notes && typeof notes.added === 'function') notes.added(chunk.mesh);
       published = true;
     }
     for (const slot of liveSlots) slot.activateProxy = null;
     return true;
   } catch (error) {
-    if (published || chunk.mesh.parent === chunk.scene) chunk.mesh.removeFromParent();
+    if (published || chunk.mesh.parent === chunk.scene) {
+      chunk.mesh.removeFromParent();
+      const notes = chunk.scene.userData && chunk.scene.userData.shadowMeshNotes;
+      if (notes && typeof notes.removed === 'function') notes.removed(chunk.mesh);
+    }
     for (let index = proxySnapshots.length - 1; index >= 0; index--) {
       const snapshot = proxySnapshots[index];
       snapshot.object.isMesh = snapshot.isMesh;
@@ -13730,6 +14094,8 @@ function createInstanceChunk(scene, pool, ordinal, options = {}) {
     mesh.userData.spacefacePackageAdmissionPending = true;
   } else {
     scene.add(mesh);
+    const notes = scene.userData && scene.userData.shadowMeshNotes;
+    if (notes && typeof notes.added === 'function') notes.added(mesh);
   }
   return chunk;
 }
@@ -13839,7 +14205,10 @@ function finalizeRetiredInstanceChunk(state, pool, chunk, admission) {
   }
   if (chunk.meshRemoved !== true) {
     attempt(() => {
+      const wasMounted = chunk.mesh.parent != null;
       chunk.mesh.removeFromParent();
+      const notes = chunk.scene.userData && chunk.scene.userData.shadowMeshNotes;
+      if (wasMounted && notes && typeof notes.removed === 'function') notes.removed(chunk.mesh);
       chunk.meshRemoved = true;
     });
   }
@@ -15515,6 +15884,34 @@ export function disposeDetachedObject(root) {
   });
 }
 
+// Stepped twin — identical DFS order (pre-order, root first), yields at stride
+// boundaries so the teardown paces inside a deferred commit tail. Shared-asset
+// guards are identical; a suspended walk still owns the whole detached subtree.
+export function* disposeDetachedObjectSteps(root) {
+  const releaseStandIn = root && root.userData && root.userData.admissionStandInRelease;
+  if (typeof releaseStandIn === 'function') releaseStandIn();
+  const disposePresentation = root && root.userData && root.userData.disposeWorldSitePresentation;
+  if (typeof disposePresentation === 'function') disposePresentation();
+  const stack = [root];
+  let visited = 0;
+  while (stack.length) {
+    const object = stack.pop();
+    if (!object) continue;
+    if ((++visited % 128) === 0) yield;
+    if (object.geometry && typeof object.geometry.dispose === 'function'
+      && !(object.geometry.userData && object.geometry.userData.spacefaceSharedAsset)) {
+      object.geometry.dispose();
+    }
+    const materials = object.material ? (Array.isArray(object.material) ? object.material : [object.material]) : [];
+    for (const material of materials) {
+      if (material && material.userData && material.userData.spacefaceSharedAsset) continue;
+      if (material && typeof material.dispose === 'function') material.dispose();
+    }
+    const children = object.children || [];
+    for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
+  }
+}
+
 function disposeDetachedPlaceFallback(root) {
   const disposePresentation = root && root.userData && root.userData.disposeWorldSitePresentation;
   if (typeof disposePresentation === 'function') disposePresentation();
@@ -15530,6 +15927,38 @@ function disposeDetachedPlaceFallback(root) {
     if (typeof geometry.dispose === 'function') geometry.dispose();
   }
   for (const material of materials) {
+    if (material.userData && material.userData.spacefaceSharedAsset) continue;
+    if (typeof material.dispose === 'function') material.dispose();
+  }
+}
+
+// Stepped twin — collect and dispose phases each yield at stride boundaries;
+// the dedup sets live in generator scope so a suspended walk keeps them.
+function* disposeDetachedPlaceFallbackSteps(root) {
+  const disposePresentation = root && root.userData && root.userData.disposeWorldSitePresentation;
+  if (typeof disposePresentation === 'function') disposePresentation();
+  const geometries = new Set();
+  const materials = new Set();
+  const stack = [root];
+  let visited = 0;
+  while (stack.length) {
+    const object = stack.pop();
+    if (!object) continue;
+    if ((++visited % 128) === 0) yield;
+    if (object.geometry) geometries.add(object.geometry);
+    const list = object.material ? (Array.isArray(object.material) ? object.material : [object.material]) : [];
+    for (const material of list) if (material) materials.add(material);
+    const kids = object.children || [];
+    for (let i = kids.length - 1; i >= 0; i--) stack.push(kids[i]);
+  }
+  let disposed = 0;
+  for (const geometry of geometries) {
+    if ((++disposed % 128) === 0) yield;
+    if (geometry.userData && geometry.userData.spacefaceSharedFallback) continue;
+    if (typeof geometry.dispose === 'function') geometry.dispose();
+  }
+  for (const material of materials) {
+    if ((++disposed % 128) === 0) yield;
     if (material.userData && material.userData.spacefaceSharedAsset) continue;
     if (typeof material.dispose === 'function') material.dispose();
   }

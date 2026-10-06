@@ -173,13 +173,20 @@ function crownSpecFor(entity) {
   return dressing;
 }
 
-function detachCrown(rec) {
-  if (rec.group && rec.group.parent) rec.group.parent.remove(rec.group);
-  rec.boundMesh = null;
-}
-
 export function createForgeCrownTracker() {
   const records = new Map();
+  // Mesh → record side index: boundMesh is already the boundary root identity,
+  // so releases probe the index instead of scanning every record per batch.
+  const boundIndex = new Map();
+
+  function detachCrown(rec) {
+    if (!rec) return;
+    if (rec.group && rec.group.parent) rec.group.parent.remove(rec.group);
+    // Ownership-checked: a displaced entry now names a different rec — its
+    // live mapping must survive this detach.
+    if (rec.boundMesh && boundIndex.get(rec.boundMesh) === rec) boundIndex.delete(rec.boundMesh);
+    rec.boundMesh = null;
+  }
 
   function updateForgeCrown(entity, mesh, simTime, frameDt, options) {
     if (!entity || entity.id == null || !mesh) return;
@@ -212,6 +219,11 @@ export function createForgeCrownTracker() {
       // pattern as lawArenaDressing).
       recordMountedRootForUnreadyScan(rec.group);
       rec.boundMesh = mesh;
+      const displaced = boundIndex.get(mesh);
+      // A mesh re-seat steals the index entry — clear the displaced owner's
+      // bound field so its later detach can't delete our live mapping.
+      if (displaced && displaced !== rec) displaced.boundMesh = null;
+      boundIndex.set(mesh, rec);
     }
 
     const reduced = !!(options && options.motionReduce);
@@ -279,8 +291,14 @@ export function createForgeCrownTracker() {
 
   function releaseMesh(mesh) {
     if (!mesh) return;
-    for (const rec of records.values()) {
-      if (rec.boundMesh === mesh) detachCrown(rec);
+    detachCrown(boundIndex.get(mesh));
+  }
+
+  // Batched twin for mass-despawn sweeps: O(pending.size) via the index.
+  function releaseMeshSet(meshes) {
+    if (!meshes || meshes.size === 0) return;
+    for (const mesh of meshes) {
+      detachCrown(boundIndex.get(mesh));
     }
   }
 
@@ -299,7 +317,7 @@ export function createForgeCrownTracker() {
     return records.get(entityId) || null;
   }
 
-  return { updateForgeCrown, releaseEntityMesh, releaseMesh, prune, peekRecord };
+  return { updateForgeCrown, releaseEntityMesh, releaseMesh, releaseMeshSet, prune, peekRecord };
 }
 
 export const globalForgeCrown = createForgeCrownTracker();

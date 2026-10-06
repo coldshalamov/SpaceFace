@@ -59,7 +59,7 @@ function isDrawable(object) {
   ));
 }
 
-function materialList(object) {
+export function materialList(object) {
   return Array.isArray(object && object.material)
     ? object.material.filter(Boolean)
     : object && object.material ? [object.material] : [];
@@ -143,6 +143,43 @@ export function captureOpeningAdmissionIdentity(renderer, scene, plan = null) {
         planned: planned.has(object),
       });
     });
+  }
+  return {
+    programKeys: rendererProgramKeys(renderer),
+    objects,
+  };
+}
+
+// Stepped twin: same census, iterative document-order DFS with a yield per batch of
+// visited nodes so the driver can spread the baseline across refused first-draw
+// frames and drain only the remainder inside the presented one.
+export function* captureOpeningAdmissionIdentitySteps(renderer, scene, plan = null) {
+  const planned = new Set(Array.isArray(plan && plan.compileSubjects)
+    ? plan.compileSubjects.filter(Boolean) : []);
+  const objects = new Map();
+  if (scene) {
+    const stack = [scene];
+    let visited = 0;
+    while (stack.length) {
+      const object = stack.pop();
+      if (object && isDrawable(object)) {
+        const materials = new Map();
+        for (const material of materialList(object)) {
+          materials.set(material, materialProgramKeys(renderer, material));
+        }
+        objects.set(object, {
+          geometry: object.geometry || null,
+          geometryDisposeListeners: geometryDisposeListenerCount(object.geometry),
+          materials,
+          planned: planned.has(object),
+        });
+      }
+      const children = object && object.children;
+      if (children && children.length) {
+        for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
+      }
+      if (++visited % 512 === 0) yield;
+    }
   }
   return {
     programKeys: rendererProgramKeys(renderer),
@@ -252,6 +289,105 @@ export function describeOpeningAdmissionIdentityDelta(
   };
 }
 
+// Stepped twin of describeOpeningAdmissionIdentityDelta — the deferred diagnostics
+// drive it in ≤4ms timer-gap slices so the O(scene)+per-material pass never lands
+// whole inside one early-flight frame. Every output row/set is sorted or filtered
+// before returning, so the explicit-stack visit order produces identical output.
+export function* describeOpeningAdmissionIdentityDeltaSteps(
+  before, renderer, scene, plan = null, options = {},
+) {
+  const baseline = before || { programKeys: new Set(), objects: new Map() };
+  const afterProgramKeys = rendererProgramKeys(renderer);
+  const newProgramKeys = [...afterProgramKeys]
+    .filter((key) => !baseline.programKeys.has(key))
+    .sort();
+  const newProgramSet = new Set(newProgramKeys);
+  const newProgramFamilyKeys = [...new Set(newProgramKeys.map(openingProgramFamilyKey))].sort();
+  const planned = new Set(Array.isArray(plan && plan.compileSubjects)
+    ? plan.compileSubjects.filter(Boolean) : []);
+  const lateAdmissions = [];
+  const attributedProgramKeys = new Set();
+
+  if (scene && typeof scene.traverse === 'function') {
+    const stack = [scene];
+    let visited = 0;
+    while (stack.length > 0) {
+      const object = stack.pop();
+      if ((++visited % 512) === 0) yield;
+      const children = object.children;
+      if (Array.isArray(children)) {
+        for (let i = children.length - 1; i >= 0; i -= 1) stack.push(children[i]);
+      }
+      if (!isDrawable(object)) continue;
+      const prior = baseline.objects.get(object);
+      const geometryAdmitted = !!object.geometry && (
+        !prior
+        || prior.geometry !== object.geometry
+        || geometryDisposeListenerCount(object.geometry) > prior.geometryDisposeListeners
+      );
+      const materials = materialList(object);
+      const rows = materials.length > 0 ? materials : [null];
+      for (const material of rows) {
+        const priorKeys = prior && prior.materials.get(material) || new Set();
+        const programKeys = [...materialProgramKeys(renderer, material)]
+          .filter((key) => newProgramSet.has(key) && !priorKeys.has(key))
+          .sort();
+        if (!geometryAdmitted && programKeys.length === 0) continue;
+        for (const key of programKeys) attributedProgramKeys.add(key);
+        const root = admissionRoot(object, scene);
+        const row = {
+          root: objectLabel(root),
+          object: objectLabel(object),
+          material: materialLabel(material),
+          materialType: String(material && material.type || 'Material'),
+          geometryAdmitted,
+          programFamilyKeys: [...new Set(programKeys.map(openingProgramFamilyKey))].sort(),
+          programKeys,
+          planned: planned.has(object) || !!(prior && prior.planned),
+          exempted: false,
+          exemptionReason: null,
+        };
+        const reason = exemptionFor(row, options.exemptions);
+        if (reason) {
+          row.exempted = true;
+          row.exemptionReason = reason;
+        }
+        lateAdmissions.push(row);
+      }
+    }
+  }
+
+  lateAdmissions.sort((a, b) => (
+    a.root.localeCompare(b.root)
+    || a.object.localeCompare(b.object)
+    || a.material.localeCompare(b.material)
+  ));
+  const unattributedProgramKeys = newProgramKeys
+    .filter((key) => !attributedProgramKeys.has(key));
+  const unattributedProgramFamilyKeys = [...new Set(
+    unattributedProgramKeys.map(openingProgramFamilyKey),
+  )].sort();
+  const exemptedProgramFamilyKeys = [];
+  const unexplainedProgramFamilies = [];
+  for (const family of unattributedProgramFamilyKeys) {
+    const exemption = exemptionFor({
+      root: '', object: '', material: '', programFamilyKeys: [family],
+    }, options.exemptions);
+    if (exemption) exemptedProgramFamilyKeys.push({ family, reason: exemption });
+    else unexplainedProgramFamilies.push(family);
+  }
+  return {
+    newProgramKeys,
+    newProgramFamilyKeys,
+    lateAdmissions,
+    unattributedProgramKeys,
+    unattributedProgramFamilyKeys: unexplainedProgramFamilies,
+    exemptedProgramFamilyKeys,
+    unexplained: lateAdmissions.some((row) => row.exempted !== true)
+      || unexplainedProgramFamilies.length > 0,
+  };
+}
+
 export function materialHasCompiledProgram(material, getProperties) {
   if (!material || typeof getProperties !== 'function') return false;
   try {
@@ -265,19 +401,30 @@ export function materialHasCompiledProgram(material, getProperties) {
 export function uniqueAdmissionUnits(subjects, options = {}) {
   const programSubjects = [];
   const geometrySubjects = [];
-  const seenMaterials = new Set();
-  const seenGeometries = new Set();
+  // Callers driving the unit construction in slices pass their own dedupe sets —
+  // the sets carry the cross-chunk seen state, so chunked accumulation produces
+  // the same dedupe as one monolithic call.
+  const seenMaterials = options.seenMaterials instanceof Set ? options.seenMaterials : new Set();
+  const seenGeometries = options.seenGeometries instanceof Set ? options.seenGeometries : new Set();
   const skipReady = typeof options.skipReadyMaterial === 'function'
     ? options.skipReadyMaterial
     : null;
   const list = Array.isArray(subjects) ? subjects : [subjects];
-  for (const object of list) {
+  // Sliced drivers pass a window instead of a sliced copy — one fresh array
+  // per chunk per pace tick was pure allocation churn mid-cook.
+  const listStart = Number.isInteger(options.start) ? Math.max(0, options.start) : 0;
+  const listEnd = Number.isInteger(options.end) ? Math.min(list.length, options.end) : list.length;
+  for (let listIndex = listStart; listIndex < listEnd; listIndex++) {
+    const object = list[listIndex];
     if (!object) continue;
     let addedProgram = false;
     for (const material of materialList(object)) {
-      if (skipReady && skipReady(material)) continue;
+      // Dedupe before the readiness probe: a material shared across subjects
+      // would pay the properties.get + currentProgram walk once per owner, and
+      // the probe is a pure read so a shared ready material can join the set too.
       if (seenMaterials.has(material)) continue;
       seenMaterials.add(material);
+      if (skipReady && skipReady(material)) continue;
       if (!addedProgram) {
         programSubjects.push(object);
         addedProgram = true;
@@ -296,17 +443,47 @@ export function uniqueAdmissionUnits(subjects, options = {}) {
   };
 }
 
-export function withOnlySubjectsDrawable(scene, subjects, fn) {
-  const keep = new Set((Array.isArray(subjects) ? subjects : [subjects]).filter(Boolean));
+/**
+ * Reusable drawable-hide session for a batched touch loop. The scene's drawable
+ * enumeration is O(scene) — mint it once per cohort instead of once per batch.
+ * `keep` accumulates across uses: batch subjects share ancestors, so a later
+ * batch's keep mint skips walks a prior batch already unioned in. Under-hiding
+ * is safe by contract — a drawable the session under-covers just draws inside
+ * the absorbed touch pass (which exists to absorb links), never inside a
+ * presented frame; stale entries for detached nodes hide+restore harmlessly.
+ */
+export function drawableHideSession(scene) {
+  const drawables = [];
+  if (scene && typeof scene.traverse === 'function') {
+    scene.traverse((object) => {
+      if (isDrawable(object)) drawables.push(object);
+    });
+  }
+  return { scene, drawables, keep: new Set() };
+}
+
+export function withOnlySubjectsDrawable(scene, subjects, fn, session) {
+  const keep = session ? session.keep
+    : new Set((Array.isArray(subjects) ? subjects : [subjects]).filter(Boolean));
   // A drawable ancestor must stay un-hidden: render() skips a hidden object's whole subtree, so
   // hiding one would make the subject's "draw" a silent no-op and leave its program cold. The
   // same holds for descendants — a Group subject whose mesh children are hidden draws nothing.
-  for (const subject of [...keep]) {
-    for (let p = subject.parent; p; p = p.parent) keep.add(p);
+  const fresh = session
+    ? (Array.isArray(subjects) ? subjects : [subjects]).filter((s) => s && !keep.has(s))
+    : [...keep];
+  for (const subject of fresh) {
+    if (session) keep.add(subject);
+    for (let p = subject.parent; p && !keep.has(p); p = p.parent) keep.add(p);
     if (typeof subject.traverse === 'function') subject.traverse((node) => keep.add(node));
   }
   const saved = [];
-  if (scene && typeof scene.traverse === 'function') {
+  if (session) {
+    for (const object of session.drawables) {
+      if (keep.has(object)) continue;
+      saved.push({ object, visible: object.visible });
+      object.visible = false;
+    }
+  } else if (scene && typeof scene.traverse === 'function') {
     scene.traverse((object) => {
       if (!isDrawable(object) || keep.has(object)) return;
       saved.push({ object, visible: object.visible });
@@ -329,7 +506,7 @@ export function withOnlySubjectsDrawable(scene, subjects, fn) {
  * gets exactly the draw it would get alone (same program, same buffers, same target, same
  * lights); only the whole-scene hide/restore walk and the render call's fixed cost are shared.
  */
-export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camera, lightingScene) {
+export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camera, lightingScene, options = {}) {
   const subjects = (Array.isArray(subject) ? subject : [subject]).filter(Boolean);
   if (!renderer || typeof renderer.render !== 'function' || subjects.length === 0 || !lightingScene) {
     return { skipped: true, reason: 'touch unavailable' };
@@ -479,7 +656,7 @@ export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camer
           if (typeof item.updateMatrixWorld === 'function') item.updateMatrixWorld(true);
         }
         renderer.render(lightingScene, camera);
-      });
+      }, options.drawableSession);
       drawn.push(...drawableSubjects.map((item) => objectLabel(item)));
     }
     return {

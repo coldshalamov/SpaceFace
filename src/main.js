@@ -352,6 +352,10 @@ async function boot() {
 
     loopController = startLoop(state, registry, {
       presentationJournal,
+      // Gates that pay a paint boundary only need one when nothing has drawn
+      // recently — the runner's accepted presents are exactly that evidence,
+      // while its suspended/restoring window correctly stops stamping.
+      onPresented() { lastPaintAt = nowMs(); },
       onSimulationFailure(failure) {
         const receipt = closeRuntime();
         if (receipt.errorCount > 0) {

@@ -152,7 +152,7 @@ test('opening geometry admission uses the shared startup proxy pass', () => {
   assert.doesNotMatch(openingAdmission, /result\.geometries\s*=\s*await admitOpeningUnitsAcrossSlices/,
     'OPENING cannot substitute geometry-deduped production-object touches for proxy admission');
   assert.equal(
-    (openingAdmission.match(/createOpeningSubmissionReceipt\(/g) || []).length,
+    (openingAdmission.match(/createOpeningSubmissionReceipt(?:Steps)?\(/g) || []).length,
     1,
     'the admission-time GPU baseline must not be reset after yielding toward handoff',
   );
@@ -179,7 +179,7 @@ test('opening geometry admission uses the shared startup proxy pass', () => {
     'the first-visible failure payload must name owning roots, objects, materials, and program families');
   assert.match(
     firstDraw,
-    /first-visible-pass-residency geometries=\$\{openingFirstDrawCountsBefore\.geometries\}->\$\{after\.geometries\} programs=\$\{openingFirstDrawCountsBefore\.programs\}->\$\{after\.programs\} geometry-only-brick=\$\{geometryOnlyBrick\}/,
+    /first-visible-pass-residency geometries=\$\{countsBefore\.geometries\}->\$\{after\.geometries\} programs=\$\{countsBefore\.programs\}->\$\{after\.programs\} geometry-only-brick=\$\{geometryOnlyBrick\}/,
     'the first visible pass must always name geometry-only bricks from cheap renderer counts',
   );
 });
@@ -364,7 +364,7 @@ test('late admission uploads count-0 instanced pool buffers before activation', 
 test('every residency admission lane admits dormant instanced pools', () => {
   const trackerStart = RENDERER_SOURCE.indexOf('createGpuResidencyAdmissionTracker(');
   assert.ok(trackerStart >= 0, 'the late-admission tracker must exist');
-  const tracker = RENDERER_SOURCE.slice(trackerStart, trackerStart + 2200);
+  const tracker = RENDERER_SOURCE.slice(trackerStart, trackerStart + 2400);
   assert.match(tracker, /includeEmpty:\s*true/,
     'the late-admission lane must upload count-0 pool buffers behind the pending latch');
 
@@ -481,7 +481,7 @@ test('unresident instanced census picks out only unstamped instanced drawables',
 // the last barrier before flight — it must run on every non-recook cook.
 test('the first-frame pool census seal is not gated on KHR or the prepare budget', () => {
   const prepareStart = RENDERER_SOURCE.indexOf('state.render.prepareLiveSectorBeforeFlight = async');
-  const receiptStart = RENDERER_SOURCE.indexOf('buildOpeningSubmissionPlan()', prepareStart);
+  const receiptStart = RENDERER_SOURCE.indexOf('buildOpeningSubmissionPlanSteps', prepareStart);
   assert.ok(prepareStart >= 0 && receiptStart > prepareStart,
     'the live-sector prepare body must exist');
   const body = RENDERER_SOURCE.slice(prepareStart, receiptStart);
@@ -523,7 +523,9 @@ test('the jump cook seals unstamped instance pools inside its admission window',
 // residuals after the 772 ms link brick closed). Order the list by the opening submission plan
 // so a capped pass warms exactly the leaves the first frames will draw.
 test('the cook warms first-picture subjects before beyond-runway subjects', () => {
-  const unitsIndex = RENDERER_SOURCE.indexOf('const units = uniqueAdmissionUnits([');
+  const cookStart = RENDERER_SOURCE.indexOf('state.render.cookLiveSceneGpu = async');
+  assert.ok(cookStart >= 0, 'the live cook must exist');
+  const unitsIndex = RENDERER_SOURCE.indexOf('const units = {', cookStart);
   assert.ok(unitsIndex >= 0, 'the cook admission units must exist');
   const compileLoopIndex = RENDERER_SOURCE.indexOf('for (const subject of units.programSubjects)', unitsIndex);
   assert.ok(compileLoopIndex > unitsIndex, 'the compile cohort loop must exist');
@@ -582,10 +584,10 @@ test('live mesh builds hold unready geometry behind the residency latch', () => 
 test('the cook censuses the presented picture instead of reading the stored opening plan', () => {
   const cookStart = RENDERER_SOURCE.indexOf('state.render.cookLiveSceneGpu = async');
   assert.ok(cookStart >= 0, 'the live cook must exist');
-  const unitsIndex = RENDERER_SOURCE.indexOf('const units = uniqueAdmissionUnits([', cookStart);
+  const unitsIndex = RENDERER_SOURCE.indexOf('const units = {', cookStart);
   assert.ok(unitsIndex > cookStart, 'the cook admission units must exist');
   const between = RENDERER_SOURCE.slice(cookStart, unitsIndex);
-  assert.match(between, /buildOpeningSubmissionPlan\(\)/,
+  assert.match(between, /buildOpeningSubmissionPlanSteps\.call\(this\)/,
     'the cook must census the picture it is about to present');
   assert.doesNotMatch(between, /state\.render\.openingSubmissionPlan/,
     'the cook must not depend on the stored opening manifest');
@@ -600,8 +602,8 @@ test('flight GPU residency admission slices yields instead of yielding per item'
   const tracker = RENDERER_SOURCE.slice(trackerStart, trackerStart + 2600);
   assert.match(tracker, /createSlicedYield\(/,
     'the residency lane must share one frame gap across several small uploads');
-  assert.match(tracker, /sliceMs:\s*ADMISSION_SLICE_TARGET_MS/,
-    'the slice window must stay at the admission slice target, not a per-item present');
+  assert.match(tracker, /sliceMs:\s*unSliced\s*\?\s*Number\.POSITIVE_INFINITY\s*:\s*ADMISSION_SLICE_TARGET_MS/,
+    'the slice window stays at the admission slice target; the on-glass burst yields on ledger spend, not a per-item present');
 });
 
 // The end-of-cook seal walks the whole scene — hundreds of textures plus geometry batches —
@@ -672,7 +674,8 @@ test('the live geometry admission queue drains nearest-deadline-first', () => {
 test('mesh build candidates drain nearest-deadline-first inside each tier', () => {
   const pollStart = RENDERER_SOURCE.indexOf('_reconcileMeshResidencySteps() {');
   assert.ok(pollStart >= 0, 'the residency poll must exist');
-  const drainIndex = RENDERER_SOURCE.indexOf('stats.built = this._drainMeshBuildQueue', pollStart);
+  const drainIndex = pollStart + RENDERER_SOURCE.slice(pollStart)
+    .search(/stats\.built = (?:typeof this\._drainMeshBuildQueueSteps === 'function'|this\._drainMeshBuildQueue)/);
   assert.ok(drainIndex > pollStart, 'the poll must drain builds after enqueueing');
   const between = RENDERER_SOURCE.slice(pollStart, drainIndex);
   assert.match(between, /tGlass\(a\) - tGlass\(b\)/,
@@ -680,7 +683,7 @@ test('mesh build candidates drain nearest-deadline-first inside each tier', () =
   const reconcileStart = RENDERER_SOURCE.search(/enqueueMissingMeshBuildsSteps\(\r?\n\s+presentationList/);
   assert.ok(reconcileStart >= 0, 'the full reconcile enqueue must exist');
   const reconcileCall = RENDERER_SOURCE.slice(reconcileStart, reconcileStart + 900);
-  assert.match(reconcileCall, /\(entity\) => tGlass\(entity\),\s*\)/,
+  assert.match(reconcileCall, /\(entity\) => tGlass\(entity\)/,
     'the full reconcile must pass the same deadline ordering');
 });
 
@@ -690,11 +693,14 @@ test('mesh build candidates drain nearest-deadline-first inside each tier', () =
 test('the poll re-hoists queued builds whose deadline moved inside the urgent window', () => {
   const pollStart = RENDERER_SOURCE.indexOf('_reconcileMeshResidencySteps() {');
   assert.ok(pollStart >= 0, 'the residency poll must exist');
-  const drainIndex = RENDERER_SOURCE.indexOf('stats.built = this._drainMeshBuildQueue', pollStart);
+  const drainIndex = pollStart + RENDERER_SOURCE.slice(pollStart)
+    .search(/stats\.built = (?:typeof this\._drainMeshBuildQueueSteps === 'function'|this\._drainMeshBuildQueue)/);
   assert.ok(drainIndex > pollStart, 'the poll must drain builds after enqueueing');
   const between = RENDERER_SOURCE.slice(pollStart, drainIndex);
-  assert.match(between, /pendingBuilds\[write\+\+\]\s*=\s*urgentNow\[i\]\.entry/,
+  assert.match(between, /liveQueue\.length = liveHead/,
     'the already-queued tail must be repartitioned, not just newly enqueued candidates');
+  assert.match(between, /liveQueue\.push\(id\)/,
+    'the repartitioned tail must write classified survivors back at the live queue head');
   assert.match(between, /seconds <= TABLE_BUILD_URGENT_SECONDS/,
     'the hoist must re-grade on fresh verdicts at the same urgent deadline as the enqueue tiers');
   assert.match(between, /urgentNow\.sort\(\(a, b\) => a\.seconds - b\.seconds\)/,

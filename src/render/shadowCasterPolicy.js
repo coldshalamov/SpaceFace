@@ -1,5 +1,8 @@
 import * as THREE from 'three';
-import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
+import {
+  isCanopyMaterial,
+  applyRealtimeCanopyPolicy,
+} from './canopyMaterialPolicy.js';
 
 const POLICY_STATE = '__spacefaceShadowCasterPolicyV1';
 
@@ -153,10 +156,32 @@ export function invalidateShadowCasterPolicy(root) {
   return true;
 }
 
+/**
+ * Call-site twin of the walker's early-out: true when a policy sync would
+ * actually traverse (a fresh policy record, a set dirty latch, a LOD change,
+ * or a cast-band change under the resolved options). A false return means
+ * syncShadowCasterPolicy would early-out without visiting a single node —
+ * callers can skip the call entirely with an identical outcome.
+ */
+export function shadowCasterPolicyNeedsSync(root, lodLevel = null, options = null) {
+  if (!root || typeof root.traverse !== 'function') return false;
+  const state = policyState(root);
+  const nextLodLevel = normalizeLodLevel(lodLevel);
+  const allowCast = !options || options.allowCast !== false;
+  const nextCastBand = allowCast ? 1 : 0;
+  return !!(state.dirty || state.lodLevel !== nextLodLevel || state.castBand !== nextCastBand);
+}
+
 /** Monotonic invalidation generation — 0 when the root has never been dirtied. */
 export function shadowCasterPolicyDirtySeq(root) {
   const state = root && root.userData ? root.userData[POLICY_STATE] : null;
   return (state && state.dirtySeq) || 0;
+}
+
+/** Re-stamp the LOD a completed policy walk recorded — a stepped walk can finish under a newer level than it minted. */
+export function stampShadowCasterPolicyLodLevel(root, lodLevel) {
+  const state = root && root.userData ? root.userData[POLICY_STATE] : null;
+  if (state) state.lodLevel = normalizeLodLevel(lodLevel);
 }
 
 function writeCasterPose(target, root) {
@@ -234,23 +259,24 @@ export function noteRealtimeShadowCasterPose(root, options = {}) {
   return true;
 }
 
-/**
- * Apply the realtime canopy and shadow policy only when the visible LOD, cast band, or hierarchy
- * changed. Returns true when the scene graph was traversed.
- *
- * @param {object} root
- * @param {string|null} lodLevel
- * @param {{ allowCast?: boolean }} [options] allowCast defaults true (legacy mount behavior).
- */
-export function syncShadowCasterPolicy(root, lodLevel = null, options = null) {
-  if (!root || typeof root.traverse !== 'function') return false;
+// The per-node verdict is shared verbatim by the sync traverse and the stepped
+// twin: mint the walker once, then feed nodes through `visit` in preorder
+// DFS (root, then children in order — the same order root.traverse produces).
+// `finish` runs the out-sink + policy-state commit exactly once, at walk end —
+// a suspended stepped walk leaves state.dirty set so the next sync re-enters.
+function makeShadowPolicyWalker(root, lodLevel, options) {
   const state = policyState(root);
   const nextLodLevel = normalizeLodLevel(lodLevel);
   const allowCast = !options || options.allowCast !== false;
   const nextCastBand = allowCast ? 1 : 0;
   if (!state.dirty && state.lodLevel === nextLodLevel && state.castBand === nextCastBand) {
-    return false;
+    return null;
   }
+  // A foreign invalidate mid-walk must survive the finish — the stepped twin's
+  // suspended stack never saw the meshes the invalidate announced, so clearing
+  // the dirty latch here would strand them. Sync walks can't drift under
+  // themselves (the visit never invalidates), so the compare is free there.
+  const seqAtMint = shadowCasterPolicyDirtySeq(root);
 
   // Sum the receiveShadow flips this traverse writes so callers can debit an
   // incremental receiver tally instead of paying a whole-scene recount for what
@@ -259,11 +285,39 @@ export function syncShadowCasterPolicy(root, lodLevel = null, options = null) {
   let receiverDelta = 0;
   const noteReceiver = (object, next) => {
     if ((object.receiveShadow === true) !== next) receiverDelta += next ? 1 : -1;
+    // The out-sink stays live mid-walk: a suspended walk's applied prefix is
+    // already on the meshes, so its delta must be readable before finish.
+    if (options && options.out && typeof options.out === 'object') {
+      options.out.receiverDelta = receiverDelta;
+    }
     object.receiveShadow = next;
   };
-  configureRealtimeCanopyMaterials(root);
-  root.traverse((object) => {
+  // Callers at an attach seam need the subtree's minted-flag count as mounted
+  // (before this traverse's rewrites) — measure it inside this walk instead of
+  // letting them re-traverse. Counts non-mesh objects like countShadowReceivers.
+  const preCountRoot = options && options.preCountRoot;
+  let preReceiverCount = 0;
+  // The canopy pass folds into this traverse: applying it per-mesh before that
+  // mesh's receiver math preserves the old two-pass order (its material writes
+  // — transmission→0, transparent, depthWrite false — feed the opaqueReceiver
+  // check below) while paying one walk instead of two. Materials dedupe through
+  // the same changed-set the standalone pass uses.
+  const canopyChanged = new Set();
+  const visit = (object) => {
+    if (preCountRoot && object && object.receiveShadow === true) {
+      for (let p = object; p; p = p.parent) {
+        if (p === preCountRoot) { preReceiverCount += 1; break; }
+        if (p === root) break;
+      }
+    }
     if (!object.isMesh) return;
+    const canopyTags = object.userData && object.userData.spacefaceTags || {};
+    const canopyMaterials = Array.isArray(object.material) ? object.material : [object.material];
+    for (const material of canopyMaterials) {
+      if (!isCanopyMaterial(material, canopyTags) || canopyChanged.has(material)) continue;
+      canopyChanged.add(material);
+      applyRealtimeCanopyPolicy(material);
+    }
     if (!object.visible) {
       object.castShadow = false;
       noteReceiver(object, false);
@@ -298,14 +352,59 @@ export function syncShadowCasterPolicy(root, lodLevel = null, options = null) {
     // but they do not enter the directional shadow-map caster set.
     object.castShadow = allowCast && opaqueReceiver;
     noteReceiver(object, opaqueReceiver);
-  });
+  };
+  const finish = (finishOptions) => {
+    if (finishOptions && finishOptions.out && typeof finishOptions.out === 'object') {
+      finishOptions.out.receiverDelta = receiverDelta;
+      if (preCountRoot) finishOptions.out.preReceiverCount = preReceiverCount;
+    }
+    if (state.castBand !== nextCastBand) state.pose = null;
+    state.dirty = shadowCasterPolicyDirtySeq(root) > seqAtMint;
+    state.lodLevel = nextLodLevel;
+    state.castBand = nextCastBand;
+    return true;
+  };
+  return { visit, finish };
+}
 
-  if (options && options.out && typeof options.out === 'object') {
-    options.out.receiverDelta = receiverDelta;
+/**
+ * Apply the realtime canopy and shadow policy only when the visible LOD, cast band, or hierarchy
+ * changed. Returns true when the scene graph was traversed.
+ *
+ * @param {object} root
+ * @param {string|null} lodLevel
+ * @param {{ allowCast?: boolean }} [options] allowCast defaults true (legacy mount behavior).
+ */
+export function syncShadowCasterPolicy(root, lodLevel = null, options = null) {
+  if (!root || typeof root.traverse !== 'function') return false;
+  const walker = makeShadowPolicyWalker(root, lodLevel, options);
+  if (!walker) return false;
+  root.traverse(walker.visit);
+  return walker.finish(options);
+}
+
+/**
+ * Stepped twin: identical verdicts and visit order, yielded per 256 visited
+ * nodes so paced drivers bound the whole-subtree flag rewrite inside one
+ * presented beat. A mid-walk detach is benign — the stack holds the node's
+ * ref, its writes land on a tree no longer submitted, and a remount re-syncs
+ * through the ordinary dirty path.
+ */
+export function* syncShadowCasterPolicySteps(root, lodLevel = null, options = null) {
+  if (!root || typeof root.traverse !== 'function') return false;
+  const walker = makeShadowPolicyWalker(root, lodLevel, options);
+  if (!walker) return false;
+  const stack = [root];
+  let visited = 0;
+  while (stack.length > 0) {
+    const object = stack.pop();
+    walker.visit(object);
+    const children = object && object.children;
+    if (children && children.length > 0) {
+      for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
+    }
+    visited += 1;
+    if (visited >= 256) { visited = 0; yield; }
   }
-  if (state.castBand !== nextCastBand) state.pose = null;
-  state.dirty = false;
-  state.lodLevel = nextLodLevel;
-  state.castBand = nextCastBand;
-  return true;
+  return walker.finish(options);
 }

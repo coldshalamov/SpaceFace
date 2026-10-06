@@ -1163,6 +1163,23 @@ export function peekSettledAuthoredRecords(renderer) {
   return out;
 }
 
+/**
+ * The settledOnly census of listDecodedAuthoredParts without the awaits — same rows
+ * ({cacheKey, record} for every task whose sfSettledRecord is readable) in the same Map
+ * order, taken synchronously so a flight-adjacent caller doesn't mint a promise pair per
+ * live registry entry inside one task.
+ */
+export function peekSettledAuthoredEntries(renderer) {
+  const runtime = renderer && resolvedRuntimeByRenderer.get(renderer);
+  if (!runtime || runtime.retiring) return EMPTY_RECORDS;
+  const out = [];
+  for (const [cacheKey, task] of runtime.assets) {
+    const record = task && task.sfSettledRecord;
+    if (record) out.push({ cacheKey, record });
+  }
+  return out;
+}
+
 /** Tier-1 causal counter sink explicitly owned by this renderer, or null when counting is off. */
 function tier1CountersForRenderer(renderer) {
   const tier1 = boundPerfCountersForRenderer(renderer);

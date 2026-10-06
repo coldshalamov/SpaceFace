@@ -18,8 +18,10 @@ test('encounter pending squads warm through the roster decode lane inside the de
     'the poll reads the director pending list');
   assert.match(body, /item\.dueAt\s*-\s*now\s*>\s*TABLE_DECODE_RUNWAY_SECONDS/,
     'items warm only once inside the decode-runway lead window');
-  assert.match(body, /ship\s*&&\s*ship\.archetype/,
+  assert.match(body, /ship\.archetype/,
     'the roster comes from item.ships[].archetype');
+  assert.match(body, /ship\.entitySpec/,
+    'entitySpec escape-hatch records are collected alongside archetype rows');
   assert.match(body, /'encounter-pending-decode-runway'/,
     'the warm posts a deadline-class runway role, not the visible class');
   assert.match(body, /WeakMap\(\)/,
@@ -28,8 +30,8 @@ test('encounter pending squads warm through the roster decode lane inside the de
 
 test('the pending-squad warm runs on the residency poll beside sector prewarm', () => {
   assert.match(rendererSrc,
-    /updatePredictedSectorPrewarm\(this\);\s*\r?\n\s*(?:yield;\s*\r?\n\s*)?warmEncounterPendingDecode\(this\);/,
-    'warmEncounterPendingDecode must be wired beside updatePredictedSectorPrewarm');
+    /updatePredictedSectorPrewarmSteps\s*&&\s*\(yield\*\s*updatePredictedSectorPrewarmSteps\(this\)\);\s*\r?\n\s*yield;\s*\r?\n\s*warmEncounterPendingDecode\(this\);/,
+    'warmEncounterPendingDecode must be wired beside updatePredictedSectorPrewarmSteps');
 });
 
 test('non-wave ship runway polls carry a warm residency role so the decode survives byte pressure', () => {

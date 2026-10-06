@@ -10,7 +10,7 @@ import {
   frameSimStepCap,
 } from './simulationRunner.js';
 import { mustRescheduleAfterFrame } from './frameLiveness.js';
-import { collectJournalPresentationEntities } from '../world/presentationSources.js';
+import { collectJournalPresentationEntities, collectJournalPresentationEntitiesChunked } from '../world/presentationSources.js';
 import { resolveFrameCap, stepFrameCapDebtInto } from '../render/adaptiveQuality.js';
 import { shouldSkipFullTickSystems } from './presentationFreeze.js';
 import { PRESENTATION_LISTENER_DRAIN_BUDGET, SECTOR_ENTER_DRAIN_BUDGET, SECTOR_ENTER_LISTENER_BUDGET } from './eventBus.js';
@@ -712,29 +712,144 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     return true;
   }
 
+  // A journal rebuild used to collect + republish every journal row inside one
+  // presented frame. Both legs advance bounded work per call: the collect walks the
+  // chunked twin on a wall-clock deadline (per-row steps are ~sub-µs, so a fixed row
+  // cap would drag the O(entities) consume() fallback across many presents), and
+  // rebuildFromSteps publishes rows against the same per-present budget. needsRebuild
+  // stays set across the suspension, so the commit below only lands when the stepped
+  // generator actually finishes — a mid-suspension journal write invalidates the
+  // attempt and the next call re-collects. Consecutive invalidated attempts escalate
+  // to one synchronous drain, which no foreign write can interleave mid-flight.
+  const JOURNAL_REBUILD_COLLECT_MS = 4;
+  const JOURNAL_REBUILD_INVALIDATED_MAX = 3;
+  let steppedJournalRebuild = null;
+  let journalRebuildInvalidations = 0;
+
+  function commitJournalRebuild() {
+    const start = presentationJournal.getLastRebuildStart?.() || 0;
+    const end = presentationJournal.getLastRebuildEnd?.() || start;
+    simulationRunner.alignJournalCursor?.(end);
+    pendingJournalStart = start;
+    pendingJournalEnd = end;
+    pendingJournalFullRebuild = true;
+    pendingJournalRebuildGeneration = presentationJournal.getRebuildGeneration?.() || 0;
+    hasPendingJournal = true;
+    diagnostics.journalRebuildCount++;
+    journalRebuildInvalidations = 0;
+    return true;
+  }
+
+  function syncJournalRebuildEscalation(tick) {
+    const rebuildTick = Number.isSafeInteger(tick) && tick >= 0
+      ? tick
+      : (Number.isSafeInteger(state.tick) && state.tick >= 0 ? state.tick : 0);
+    const entities = collectJournalPresentationEntities(state);
+    if (typeof presentationJournal.rebuildFrom !== 'function'
+        || presentationJournal.rebuildFrom(entities, rebuildTick) !== true) {
+      diagnostics.journalRebuildFailureCount++;
+      return false;
+    }
+    return commitJournalRebuild();
+  }
+
   function rebuildJournalIfNeeded() {
-    if (!presentationJournal || typeof presentationJournal.needsRebuild !== 'function'
-      || !presentationJournal.needsRebuild()) return false;
-    diagnostics.journalRebuildAttemptCount++;
+    if (!presentationJournal || typeof presentationJournal.needsRebuild !== 'function') return false;
+    if (!steppedJournalRebuild && !presentationJournal.needsRebuild()) return false;
     try {
-      const entities = collectJournalPresentationEntities(state);
-      const tick = Number.isSafeInteger(state.tick) && state.tick >= 0 ? state.tick : 0;
-      if (typeof presentationJournal.rebuildFrom !== 'function'
-        || presentationJournal.rebuildFrom(entities, tick) !== true) {
-        diagnostics.journalRebuildFailureCount++;
-        return false;
+      if (!steppedJournalRebuild) {
+        diagnostics.journalRebuildAttemptCount++;
+        presentationJournal.clearSuppressedDestroyIds?.();
+        const collectOut = [];
+        steppedJournalRebuild = {
+          collectIter: collectJournalPresentationEntitiesChunked(state, collectOut),
+          collectOut,
+          tick: Number.isSafeInteger(state.tick) && state.tick >= 0 ? state.tick : 0,
+          publishIter: null,
+        };
       }
-      const start = presentationJournal.getLastRebuildStart?.() || 0;
-      const end = presentationJournal.getLastRebuildEnd?.() || start;
-      simulationRunner.alignJournalCursor?.(end);
-      pendingJournalStart = start;
-      pendingJournalEnd = end;
-      pendingJournalFullRebuild = true;
-      pendingJournalRebuildGeneration = presentationJournal.getRebuildGeneration?.() || 0;
-      hasPendingJournal = true;
-      diagnostics.journalRebuildCount++;
-      return true;
+      const job = steppedJournalRebuild;
+      if (!job.publishIter) {
+        const collectDeadline = nowMs() + JOURNAL_REBUILD_COLLECT_MS;
+        let step = job.collectIter.next();
+        while (!step.done && nowMs() < collectDeadline) step = job.collectIter.next();
+        if (!step.done) return false;
+        // Collect-phase writes are suppressed without flagging the attempt — most
+        // classes self-heal (the publish re-reads live pose for members; a write for
+        // a non-member trips *-without-spawn after commit), but a suppressed destroy
+        // naming a collected id would commit a zombie spawn that never re-writes.
+        // Doom on exactly that class instead of any suppression, or every busy
+        // collect falls through to the atomic escalation the stepped twin replaced.
+        // Only a LIVE collected row collides: the publish loop skips rows whose
+        // alive flag flipped before its turn, so a destroy-without-recycle costs
+        // the journal nothing — its id simply drops out of the committed set.
+        const suppressedDestroys = presentationJournal.getSuppressedDestroyIds?.();
+        if (suppressedDestroys && suppressedDestroys.size > 0) {
+          const entities = step.value || [];
+          const collectedLiveIds = new Set();
+          for (const entity of entities) {
+            if (entity && Number.isSafeInteger(entity.id) && entity.alive !== false) {
+              collectedLiveIds.add(entity.id);
+            }
+          }
+          let doomed = false;
+          for (const entityId of suppressedDestroys) {
+            if (collectedLiveIds.has(entityId)) { doomed = true; break; }
+          }
+          if (doomed) {
+            const tick = job.tick;
+            steppedJournalRebuild = null;
+            if (++journalRebuildInvalidations >= JOURNAL_REBUILD_INVALIDATED_MAX) {
+              return syncJournalRebuildEscalation(tick);
+            }
+            return false;
+          }
+        }
+        presentationJournal.clearSuppressedDestroyIds?.();
+        const entities = step.value || [];
+        if (typeof presentationJournal.rebuildFromSteps !== 'function') {
+          if (presentationJournal.rebuildFrom(entities, job.tick) !== true) {
+            steppedJournalRebuild = null;
+            diagnostics.journalRebuildFailureCount++;
+            return false;
+          }
+        } else {
+          // The completed collect doubles as the consume() fallback's world sample
+          // while the publish leg is still in flight — populateJournalFrame hands
+          // it to the publisher so a tick-consuming present doesn't re-pay the
+          // whole-set sync collect against the same GameState.
+          job.entities = entities;
+          job.publishIter = presentationJournal.rebuildFromSteps(entities, job.tick);
+        }
+      }
+      if (job.publishIter) {
+        // publishSpawn is a cheap ring append — debit the same wall-clock window the
+        // collect leg uses so most rebuilds commit inside a single present.
+        const publishDeadline = nowMs() + JOURNAL_REBUILD_COLLECT_MS;
+        let step = job.publishIter.next();
+        while (!step.done && nowMs() < publishDeadline) step = job.publishIter.next();
+        if (!step.done) return false;
+        const result = step.value;
+        const tick = job.tick;
+        steppedJournalRebuild = null;
+        if (result !== true) {
+          // 'invalidated' already re-requested the rebuild — needsRebuild still set, so the
+          // next present starts a fresh collect. Anything else is a genuine failure the
+          // journal also reported via its own requestRebuild.
+          if (result === 'invalidated') {
+            if (++journalRebuildInvalidations >= JOURNAL_REBUILD_INVALIDATED_MAX) {
+              return syncJournalRebuildEscalation(tick);
+            }
+          } else {
+            diagnostics.journalRebuildFailureCount++;
+          }
+          return false;
+        }
+      }
+      steppedJournalRebuild = null;
+      return commitJournalRebuild();
     } catch (_) {
+      steppedJournalRebuild = null;
       diagnostics.journalRebuildFailureCount++;
       requestJournalRebuild('presentation-rebuild-error');
       return false;
@@ -756,6 +871,28 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     presentationFrame.journalFullRebuild = pendingJournalFullRebuild;
     presentationFrame.journalRebuildGeneration = pendingJournalRebuildGeneration;
     presentationFrame.journalValid = valid;
+    // While a stepped rebuild is mid-publish its completed collect is the
+    // canonical live-GameState sample — the publisher's fallback mirrors it
+    // instead of re-collecting the whole set inside the presented frame.
+    presentationFrame.rebuildCollectedEntities = steppedJournalRebuild
+        && steppedJournalRebuild.publishIter
+        && Array.isArray(steppedJournalRebuild.entities)
+      ? steppedJournalRebuild.entities : null;
+    // While the collect leg is still pacing, its accumulating prefix is a
+    // strictly-fresher live sample than the fallback's whole-set sync collect.
+    // The publisher applies it with retire suppressed — the retire sweep is
+    // what makes a partial sample dangerous, and the flag kills it.
+    presentationFrame.rebuildCollectPrefix = steppedJournalRebuild
+        && !steppedJournalRebuild.publishIter
+        && Array.isArray(steppedJournalRebuild.collectOut)
+      ? steppedJournalRebuild.collectOut : null;
+    // Destroyed-but-uncollected ids hold stale rows through the collect window
+    // — the publisher hides them on the prefix feed until the publish retire
+    // frees their slots. The journal returns the live set; it clears only on
+    // collect completion, when the publish feed stops consulting it anyway.
+    presentationFrame.rebuildSuppressedDestroyIds = steppedJournalRebuild
+        && !steppedJournalRebuild.publishIter
+      ? presentationJournal.getSuppressedDestroyIds?.() : null;
   }
 
   function acknowledgePresentedJournal() {
@@ -809,6 +946,9 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       presentationMs = measureNow() - presentationStart;
       diagnostics.lastPresentMs = presentationMs;
       perf.recordPresentationFrame?.(presentationMs);
+    }
+    if (presentationAccepted && typeof deps.onPresented === 'function') {
+      try { deps.onPresented(); } catch { /* the paint-freshness hook is best-effort */ }
     }
     // P7: the first presented frame whose completed tick consumed a newer input command is that
     // command's photon. The stamp arrived wall-timed at the input boundary; the subtraction is

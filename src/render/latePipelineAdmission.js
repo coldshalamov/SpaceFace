@@ -43,6 +43,30 @@ export function collectUncompiledSceneDrawables(scene, openingSubjects = []) {
   return late;
 }
 
+/** Chunked twin — same pre-order walk via an explicit stack, yielding per slice. */
+export function* collectUncompiledSceneDrawablesSteps(scene, openingSubjects = [], nodesPerSlice = 256) {
+  const opening = openingSetFor(openingSubjects);
+  const late = [];
+  if (!scene || typeof scene.traverse !== 'function') return late;
+  const every = Math.max(1, Math.floor(Number(nodesPerSlice) || 1));
+  const stack = [scene];
+  let sinceYield = 0;
+  while (stack.length > 0) {
+    const object = stack.pop();
+    const children = object && object.children;
+    if (children) {
+      for (let i = children.length - 1; i >= 0; i -= 1) stack.push(children[i]);
+    }
+    if (object && isDrawable(object) && !opening.has(object)) late.push(object);
+    sinceYield += 1;
+    if (sinceYield >= every) {
+      sinceYield = 0;
+      yield;
+    }
+  }
+  return late;
+}
+
 export function collectLateAdmittedCompileRoots(meshes, openingSubjects = []) {
   const opening = openingSetFor(openingSubjects);
   const late = [];
@@ -63,25 +87,83 @@ export function collectLateAdmittedCompileRoots(meshes, openingSubjects = []) {
   return late;
 }
 
+/** Chunked twin — same verdict set; per-root subtree walks run on explicit
+ * stacks and yield per slice so a cook paces the O(meshes×subtree) collect. */
+export function* collectLateAdmittedCompileRootsSteps(meshes, openingSubjects = [], nodesPerSlice = 256) {
+  const opening = openingSetFor(openingSubjects);
+  const late = [];
+  if (!meshes || typeof meshes.values !== 'function') return late;
+  const every = Math.max(1, Math.floor(Number(nodesPerSlice) || 1));
+  let sinceYield = 0;
+  for (const root of meshes.values()) {
+    if (!root) continue;
+    let hasDrawable = false;
+    let hasUncompiled = false;
+    const stack = [root];
+    while (stack.length > 0) {
+      const object = stack.pop();
+      const children = object && object.children;
+      if (children) {
+        for (let i = children.length - 1; i >= 0; i -= 1) stack.push(children[i]);
+      }
+      if (object && isDrawable(object)) {
+        hasDrawable = true;
+        if (!opening.has(object)) hasUncompiled = true;
+      }
+      sinceYield += 1;
+      if (sinceYield >= every) {
+        sinceYield = 0;
+        yield;
+      }
+    }
+    if (hasDrawable && hasUncompiled) late.push(root);
+  }
+  return late;
+}
+
 /** Stamp the live PMREM onto standard materials so compile and first bloom share the env key. */
 export function bindEnvironmentToStandardMaterials(root, envMap) {
+  const it = bindEnvironmentToStandardMaterialsSteps(root, envMap);
+  let step = it.next();
+  while (!step.done) step = it.next();
+  return step.value;
+}
+
+/** Chunked twin of bindEnvironmentToStandardMaterials: iterative pre-order walk
+ * with the same node order as Object3D.traverse, yielding every `nodesPerSlice`
+ * visited nodes so a cook can drive the stamp walk on its own slice clock. */
+export function* bindEnvironmentToStandardMaterialsSteps(root, envMap, nodesPerSlice = 256) {
   if (!root || !envMap) return 0;
   let count = 0;
-  const visit = (object) => {
-    if (!object) return;
-    const materials = Array.isArray(object.material)
-      ? object.material
-      : (object.material ? [object.material] : []);
-    for (const material of materials) {
-      if (!material || material.isMeshStandardMaterial !== true) continue;
-      if (material.envMap === envMap) continue;
-      material.envMap = envMap;
-      material.needsUpdate = true;
-      count += 1;
+  const visited = new Set();
+  const every = Math.max(1, Math.floor(Number(nodesPerSlice) || 1));
+  const stack = [root];
+  let sinceYield = 0;
+  while (stack.length > 0) {
+    const object = stack.pop();
+    const children = object && object.children;
+    if (children) {
+      for (let i = children.length - 1; i >= 0; i -= 1) stack.push(children[i]);
     }
-  };
-  visit(root);
-  if (typeof root.traverse === 'function') root.traverse(visit);
+    if (object && !visited.has(object)) {
+      visited.add(object);
+      const materials = Array.isArray(object.material)
+        ? object.material
+        : (object.material ? [object.material] : []);
+      for (const material of materials) {
+        if (!material || material.isMeshStandardMaterial !== true) continue;
+        if (material.envMap === envMap) continue;
+        material.envMap = envMap;
+        material.needsUpdate = true;
+        count += 1;
+      }
+    }
+    sinceYield += 1;
+    if (sinceYield >= every) {
+      sinceYield = 0;
+      yield;
+    }
+  }
   return count;
 }
 
@@ -136,6 +218,34 @@ export function collectFirstFlightEffectRoots(scene) {
   return roots;
 }
 
+// Stepped twin: explicit-stack pre-order DFS identical to scene.traverse (children
+// pushed reversed so pops run in document order). Drivers pace a scene-wide pass
+// instead of paying it inside one leg.
+export function* collectFirstFlightEffectRootsSteps(scene, options = {}) {
+  const roots = [];
+  const seen = new Set();
+  if (!scene || typeof scene.traverse !== 'function') return roots;
+  const stride = Number.isFinite(options.yieldStride) && options.yieldStride > 0
+    ? Math.floor(options.yieldStride)
+    : 1024;
+  const stack = [scene];
+  let visited = 0;
+  while (stack.length > 0) {
+    const object = stack.pop();
+    if ((++visited % stride) === 0) yield;
+    if (!object || seen.has(object)) continue;
+    if (isLiveFirstFlightEffect(object)) {
+      seen.add(object);
+      roots.push(object);
+    }
+    const children = object.children;
+    if (Array.isArray(children)) {
+      for (let i = children.length - 1; i >= 0; i -= 1) stack.push(children[i]);
+    }
+  }
+  return roots;
+}
+
 function isLayerDrawable(object) {
   return !!(object && object.geometry && (
     object.isMesh === true
@@ -182,4 +292,103 @@ export function collectInstancePoolCompileRoots(scene) {
   visit(scene);
   if (typeof scene.traverse === 'function') scene.traverse(visit);
   return roots;
+}
+
+/** Chunked twin — same pool-root set via an explicit stack, yielding per slice. */
+export function* collectInstancePoolCompileRootsSteps(scene, nodesPerSlice = 256) {
+  const roots = [];
+  const seen = new Set();
+  if (!scene) return roots;
+  const every = Math.max(1, Math.floor(Number(nodesPerSlice) || 1));
+  const stack = [scene];
+  let sinceYield = 0;
+  while (stack.length > 0) {
+    const object = stack.pop();
+    if (object && !seen.has(object)) {
+      seen.add(object);
+      if (object.userData && (
+        object.userData.spacefaceInstancePool === true
+        || object.userData.asteroidInstancePool === true
+      )) {
+        roots.push(object);
+      }
+    }
+    const children = object && object.children;
+    if (children) {
+      for (let i = children.length - 1; i >= 0; i -= 1) stack.push(children[i]);
+    }
+    sinceYield += 1;
+    if (sinceYield >= every) {
+      sinceYield = 0;
+      yield;
+    }
+  }
+  return roots;
+}
+
+/** Instance-pool roots + every compile subject in ONE scene walk — the cook
+ * used to pay two full traverses (pool scan + subject collect) back to back. */
+export function collectInstancePoolCompileRootsAndSubjects(scene) {
+  const roots = [];
+  const subjects = [];
+  const seen = new Set();
+  if (!scene) return { roots, subjects };
+  const visit = (object) => {
+    if (!object || seen.has(object)) return;
+    seen.add(object);
+    if (object.userData && (
+      object.userData.spacefaceInstancePool === true
+      || object.userData.asteroidInstancePool === true
+    )) {
+      roots.push(object);
+    }
+    if (object.isMesh || object.isSkinnedMesh || object.isInstancedMesh
+      || object.isPoints || object.isLine || object.isSprite) {
+      subjects.push(object);
+    }
+  };
+  visit(scene);
+  if (typeof scene.traverse === 'function') scene.traverse(visit);
+  return { roots, subjects };
+}
+
+/** Chunked twin of collectInstancePoolCompileRootsAndSubjects: an iterative
+ * pre-order walk whose node order matches Object3D.traverse exactly (node, then
+ * children in order), yielding every `nodesPerSlice` visited nodes so the cook
+ * can drive the walk under its own slice clock instead of paying the whole
+ * ~21k-node traverse in one atomic block. Returns the same {roots, subjects}. */
+export function* collectInstancePoolCompileRootsAndSubjectsSteps(scene, nodesPerSlice = 256) {
+  const roots = [];
+  const subjects = [];
+  const seen = new Set();
+  if (!scene) return { roots, subjects };
+  const every = Math.max(1, Math.floor(Number(nodesPerSlice) || 1));
+  const stack = [scene];
+  let sinceYield = 0;
+  while (stack.length > 0) {
+    const object = stack.pop();
+    if (object && !seen.has(object)) {
+      seen.add(object);
+      if (object.userData && (
+        object.userData.spacefaceInstancePool === true
+        || object.userData.asteroidInstancePool === true
+      )) {
+        roots.push(object);
+      }
+      if (object.isMesh || object.isSkinnedMesh || object.isInstancedMesh
+        || object.isPoints || object.isLine || object.isSprite) {
+        subjects.push(object);
+      }
+    }
+    const children = object && object.children;
+    if (children) {
+      for (let i = children.length - 1; i >= 0; i -= 1) stack.push(children[i]);
+    }
+    sinceYield += 1;
+    if (sinceYield >= every) {
+      sinceYield = 0;
+      yield;
+    }
+  }
+  return { roots, subjects };
 }
