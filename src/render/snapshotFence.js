@@ -401,6 +401,10 @@ export function* packPresentationWorldToFenceSteps(world, fence, simTime = 0, po
     ? (previous.indexByEntityId || null) : null;
   const every = Math.max(1, Math.floor(Number(sliceEvery) || 1));
   let packed = 0;
+  // Identity coverage of the two sweeps: a mid-park allocation swap-moved into
+  // the frozen prefix escapes both lists, and only this set can prove the row
+  // was actually packed (positions lie once swap-remove runs mid-park).
+  const packedSlots = new Set();
   const packRow = (slot) => {
     if (world.alive[slot] !== 1) return;
     const entityId = world.entityIds[slot] >>> 0;
@@ -412,6 +416,7 @@ export function* packPresentationWorldToFenceSteps(world, fence, simTime = 0, po
             || previousGenerations[previousRow] === (world.slotGenerations[slot] >>> 0))) {
         snapshot.copyRow(previous, previousRow);
         world.packDirty[slot] = 0;
+        packedSlots.add(slot);
         packed++;
         return;
       }
@@ -451,6 +456,7 @@ export function* packPresentationWorldToFenceSteps(world, fence, simTime = 0, po
       );
     }
     if (world.packDirty) world.packDirty[slot] = 0;
+    packedSlots.add(slot);
     packed++;
   };
   // Freeze the slot list at mint: activeSlots is live while this pack parks —
@@ -471,6 +477,20 @@ export function* packPresentationWorldToFenceSteps(world, fence, simTime = 0, po
   for (let index = 0; index < appendedSlots.length; index++) {
     if (((index + active) % every) === 0 && (index + active) > 0) yield;
     packRow(appendedSlots[index]);
+  }
+  // A row minted into the appended region can be swap-moved into the frozen
+  // prefix before the appended slice is taken — it then escapes both sweeps and
+  // the committed snapshot lacks a live row for a frame. Membership, not
+  // position, is exact: one bounded scan catches whatever the sweeps missed
+  // (packRow is a no-op for a retired row).
+  if (world.activeSlots) {
+    const activeNow = world.getDiagnostics().active | 0;
+    for (let index = 0; index < activeNow; index++) {
+      const slot = world.activeSlots[index];
+      if (packedSlots.has(slot)) continue;
+      if ((index % every) === 0 && index > 0) yield;
+      packRow(slot);
+    }
   }
   fence.commit();
   return packed;

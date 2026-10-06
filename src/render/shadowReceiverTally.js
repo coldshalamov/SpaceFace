@@ -53,6 +53,16 @@ function* recountShadowReceiversSteps(scene, nodesPerSlice = RECOUNT_NODES_PER_S
   while (stack.length > 0) {
     const object = stack.pop();
     if (!object) continue;
+    // A subtree detached after being pushed is dead: it must not count toward
+    // the fresh measurement — its removal note settles the served count.
+    if (notedWalk && notedWalk.detached && notedWalk.detached.size > 0) {
+      let live = false;
+      for (let p = object; p; p = p.parent) {
+        if (notedWalk.detached.has(p)) break;
+        if (p === scene) { live = true; break; }
+      }
+      if (!live) continue;
+    }
     if ((++sinceYield % every) === 0) yield;
     if (object.receiveShadow === true) receivers += 1;
     // Notes recorded while this walk was mid-flight get a per-root visit stamp:
@@ -85,7 +95,7 @@ export function createShadowReceiverTally() {
   // attribute a root to) — over-counting errs conservative-on, matching the
   // tally's boolean consumers. This converges `dirty` in ONE walk under
   // sustained note storms instead of discarding bounded slices forever.
-  const notedWalk = { notes: new Map(), visits: new Map(), loose: 0, seq: 0 };
+  const notedWalk = { notes: new Map(), visits: new Map(), loose: 0, seq: 0, detached: new Set() };
   const resetNotedWalk = () => {
     notedWalk.seq = 0;
     notedWalk.visits.clear();
@@ -93,15 +103,18 @@ export function createShadowReceiverTally() {
     // an earlier walk are now absorbed iff the fresh walk visits the root at
     // all (visit seqs start at 1, so a demoted seq-0 note is unabsorbed only
     // when the root stays unreachable). Loose deltas are dropped for the same
-    // reason — a whole fresh walk subsumes them.
+    // reason — a whole fresh walk subsumes them. Detached stamps reset too: a
+    // re-minted walk re-stacks from scene, so a ghost can never be pushed.
     for (const note of notedWalk.notes.values()) note.seq = 0;
     notedWalk.loose = 0;
+    notedWalk.detached.clear();
   };
   const clearNotedWalk = () => {
     notedWalk.seq = 0;
     notedWalk.visits.clear();
     notedWalk.notes.clear();
     notedWalk.loose = 0;
+    notedWalk.detached.clear();
   };
 
   return {
@@ -125,9 +138,25 @@ export function createShadowReceiverTally() {
     },
     noteRemoved(root, measured) {
       const delta = Number.isFinite(measured) ? measured : countShadowReceivers(root);
-      // A removed root is unreachable: the pending walk can never measure it,
-      // so the removal is absorbed by construction — nothing to record; the
-      // note still settles the served count.
+      // A root removed mid-walk can still sit on the explicit stack: the walk
+      // would fold it in whole and the unabsorbed +add note would then double
+      // on top of the served count. Record the removal as a negative-delta note
+      // and mark the root detached so the pop-time check skips the ghost — the
+      // stamp nets the add+remove pair to zero.
+      if (pendingRecount && root) {
+        notedWalk.detached.add(root);
+        const note = notedWalk.notes.get(root);
+        if (note && notedWalk.visits.get(root) === undefined) {
+          // The add note was never visited: it survives only for the stamp.
+          // Removing it now drops both sides of the pair.
+          notedWalk.notes.delete(root);
+        } else if (note) {
+          note.delta = note.delta - delta;
+          note.seq = notedWalk.seq;
+        } else {
+          notedWalk.notes.set(root, { delta: -delta, seq: notedWalk.seq });
+        }
+      }
       count -= delta;
       if (count < 0) count = 0;
     },

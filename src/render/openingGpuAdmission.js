@@ -871,7 +871,7 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
       let touched = null;
       let touchError = null;
       try {
-        touched = touchMany(group);
+        touched = await touchMany(group);
       } catch (error) {
         touchError = error;
       }

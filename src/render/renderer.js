@@ -10723,7 +10723,7 @@ export const render = {
       if (list.length === 0) return { skipped: true, reason: 'empty touch group' };
       for (const subject of list) await stampSubjectEnvAsync(subject);
       if (this.bloom && typeof this.bloom.touchScenePipelines === 'function') {
-        return this.bloom.touchScenePipelines(list, cam.obj, scene);
+        return this.bloom.touchScenePipelines(list, cam.obj, scene, { drawableSession });
       }
       return touchSubjectOnExactTarget(renderer, null, list, cam.obj, scene, { drawableSession });
     };
@@ -11854,7 +11854,7 @@ export const render = {
           units,
           renderer,
           beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
-          compileOne: (subject) => whileRevealed(subject, () => compileSubjectColorAndDepth(subject, route)),
+          compileOne: (subject) => compileSubjectColorAndDepth(subject, route),
           touchOne: (subject) => whileRevealed(subject, () => touchExactTargetSubject(subject)),
           yieldToMain: yieldToBrowser,
         })
@@ -13317,22 +13317,25 @@ export const render = {
                 issueKeyFor: openingCompileIssueKey,
                 renderer,
                 beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
-                compileOne: (subject) => whileRevealed(subject,
-                  () => compileSubjectColorAndDepth(subject, sealRoute)),
+                compileOne: (subject) => compileSubjectColorAndDepth(subject, sealRoute),
                 touchOne: (subject) => whileRevealed(subject, () => touchExactTargetSubject(subject)),
                 // Loading shell only: grouped touches share one render across a
                 // ≤24-subject batch (replicates the cook admit's touchMany —
                 // this site was never armed, so every seal unit paid its own
                 // whole-scene hide/render/restore).
                 touchMany: state.mode === 'loading'
-                  ? (subjects) => {
+                  ? async (subjects) => {
                     const drawable = subjects.filter(sealTouchCanDraw);
                     if (drawable.length === 0) return { skipped: true, reason: 'hidden-ancestor' };
+                    // The reveal must stay held until the async touch settles:
+                    // the pacing driver resumes a suspended touch while the
+                    // live scene keeps presenting, so an early restore re-hides
+                    // the subjects mid-draw and the whole batch no-ops.
                     const restores = [];
                     try {
                       for (const subject of drawable) restores.push(revealSubjectForCompile(subject));
                       poolSealTouchSession = poolSealTouchSession || drawableHideSession(scene);
-                      return touchExactTargetSubjects(drawable, poolSealTouchSession);
+                      return await touchExactTargetSubjects(drawable, poolSealTouchSession);
                     } finally {
                       for (let i = restores.length - 1; i >= 0; i--) restores[i]();
                     }
@@ -14940,7 +14943,7 @@ export const render = {
                 // program since the census compiles here behind the shell.
                 for (const material of materialList(subject)) {
                   if (!materialAlreadyLinked(material)) {
-                    return whileRevealed(subject, () => compileSubjectColorAndDepth(subject, route));
+                    return compileSubjectColorAndDepth(subject, route);
                   }
                 }
                 return Promise.resolve({ skipped: true, reason: 'programs-ready' });
@@ -14955,7 +14958,7 @@ export const render = {
               // Loading shell: the drawable members of each group share one render (see
               // touchSubjectOnExactTarget); restore is last-in-first-out for nested subjects.
               touchMany: state.mode === 'loading'
-                ? (subjects) => {
+                ? async (subjects) => {
                   const drawable = subjects.filter(touchCanDraw);
                   touchesSkippedHidden += subjects.length - drawable.length;
                   if (drawable.length === 0) return { skipped: true, reason: 'hidden-ancestor' };
@@ -14963,7 +14966,7 @@ export const render = {
                   try {
                     for (const subject of drawable) restores.push(revealSubjectForCompile(subject));
                     rockTouchSession = rockTouchSession || drawableHideSession(scene);
-                    return touchExactTargetSubjects(drawable, rockTouchSession);
+                    return await touchExactTargetSubjects(drawable, rockTouchSession);
                   } finally {
                     for (let i = restores.length - 1; i >= 0; i--) restores[i]();
                   }
@@ -15941,7 +15944,7 @@ export const render = {
       // Group form of whileRevealed: reveal every subject (and its hidden ancestors) of a
       // touch group, run once, restore last-in-first-out so shared ancestors and nested
       // subjects return exactly to where they started.
-      const whileRevealedGroup = (subjects, run) => {
+      const whileRevealedGroup = async (subjects, run) => {
         const restores = [];
         try {
           for (const subject of subjects) {
@@ -15955,7 +15958,10 @@ export const render = {
               restoreSubject();
             });
           }
-          return run();
+          // Await inside the try: the pacing driver resumes a suspended touch
+          // while the live scene keeps presenting — restoring at first suspend
+          // re-hides the subjects and the rest of the touch no-ops.
+          return await run();
         } finally {
           for (let i = restores.length - 1; i >= 0; i--) restores[i]();
         }
@@ -15974,7 +15980,7 @@ export const render = {
             issueKeyFor: openingCompileIssueKey,
             renderer,
             beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
-            compileOne: (subject) => whileRevealed(subject, () => compileSubjectColorAndDepth(subject, route)),
+            compileOne: (subject) => compileSubjectColorAndDepth(subject, route),
             touchOne: (subject) => whileRevealed(subject, () => touchExactTargetSubject(subject)),
             // Thousands of units on a Crucible cook (the bounded roster warm's palette subjects):
             // one touch each was ~6 ms of whole-scene hide/render/restore — ~20 s of the launch.
@@ -16138,7 +16144,7 @@ export const render = {
             issueKeyFor: openingCompileIssueKey,
             renderer,
             beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
-            compileOne: (subject) => whileRevealed(subject, () => compileSubjectColorAndDepth(subject, rescanRoute)),
+            compileOne: (subject) => compileSubjectColorAndDepth(subject, rescanRoute),
             touchOne: (subject) => whileRevealed(subject, () => touchExactTargetSubject(subject)),
             touchMany: state.mode === 'loading'
               ? (subjects) => whileRevealedGroup(subjects, () => {

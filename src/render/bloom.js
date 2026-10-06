@@ -1274,13 +1274,20 @@ export function createUnreadyDrawableGuard(renderer) {
     unreadyMountedRoots.length = 0;
     const pendingOnlyWindow = unreadyProgramsPending !== true
       && pendingSubjects && pendingSubjects.size > 0;
-    if (unreadyProgramsPending || (sceneSetChanged && drainRoots === null)
-        || (!pendingOnlyWindow && !drainRoots)) {
-      // Program-level trigger or the uninstrumented-mutation failsafe: any existing
-      // drawable could hold the unready program — full traverse.
+    // The pending-PROGRAM latch shares the pending-subject window's scoped
+    // contract: per-frame work stays O(pendingSubjects ∪ instrumented mounts)
+    // and the 30-frame full sweep remains the failsafe for binds no mount path
+    // instrumented (a material swap on a live mounted mesh waits at most one
+    // sweep window — the draw-time renderBufferDirect guard already refuses
+    // on-glass links for stamped materials in the meantime).
+    const scopedPendingWindow = pendingOnlyWindow || unreadyProgramsPending === true;
+    if ((sceneSetChanged && drainRoots === null)
+        || (!scopedPendingWindow && !drainRoots)) {
+      // Uninstrumented growth with nothing queued, or no pending latch at all:
+      // any existing drawable could hold the unready program — full traverse.
       unreadyPendingSweep = 0;
       scanPresentedDrawables(scene);
-    } else if (pendingOnlyWindow) {
+    } else if (scopedPendingWindow) {
       // The pending latch already hides those roots; the scoped scan still catches
       // interior mounts inside them and inside the instrumented drain, and the
       // periodic sweep below keeps the uninstrumented-mount failsafe bounded.
@@ -1288,9 +1295,11 @@ export function createUnreadyDrawableGuard(renderer) {
       if (unreadyPendingSweep === 0) {
         scanPresentedDrawables(scene);
       } else {
-        for (const subject of pendingSubjects) {
-          if (subject && typeof subject.traverse === 'function') {
-            scanPresentedDrawables(subject);
+        if (pendingSubjects) {
+          for (const subject of pendingSubjects) {
+            if (subject && typeof subject.traverse === 'function') {
+              scanPresentedDrawables(subject);
+            }
           }
         }
         if (drainRoots) {
@@ -2191,8 +2200,8 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     );
   }
 
-  function touchScenePipelines(subject, camera, lightingScene = subject) {
-    return touchSubjectOnExactTarget(renderer, rtScene, subject, camera, lightingScene);
+  function touchScenePipelines(subject, camera, lightingScene = subject, options) {
+    return touchSubjectOnExactTarget(renderer, rtScene, subject, camera, lightingScene, options);
   }
 
   async function prepareResources(yieldToMain = () => Promise.resolve()) {
