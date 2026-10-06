@@ -23,6 +23,8 @@ import { SECTORS } from '../src/data/sectors.js';
 import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
 import { world } from '../src/systems/world.js';
 import { factionPresence } from '../src/systems/factionPresence.js';
+import { lossLedger } from '../src/systems/lossLedger.js';
+import { wreckClassById } from '../src/data/wreckClasses.js';
 import { stableRecordId, RECORD_KIND, ensureWorldRecords } from '../src/world/worldRecords.js';
 
 const PLACES_DIR = fileURLToPath(new URL('../assets/ships/release/parts/places/', import.meta.url));
@@ -32,12 +34,14 @@ const EXPANSE = CHARON.stations.find((s) => s.id === 'station_expanse');
 const BERTH = factionBerthForStation('station_expanse');
 
 // The procedural organic kit admits these placeIds by prefix — assert only modules the
-// growth builder actually authors so a typo can't spawn an empty group on the pad.
+// growth builder actually authors. (The builder's default branch renders generic blades
+// for unknown ids rather than an empty group, so a typo is wrong geometry, not invisible —
+// this list is the pin that keeps authored names honest.)
 const KNOWN_GROWTH_MODULES = new Set([
   'filament_sheet', 'membrane_patch', 'node_bulb_small', 'node_bulb_large', 'cyst_cluster',
   'calcified_collar', 'tendril_cluster', 'nerve_bundle', 'vent_lung', 'lung_bladder',
   'spore_chimney', 'nerve_lace', 'false_cable', 'red_core', 'memory_knot',
-  'mirror_membrane', 'dead_crown',
+  'mirror_membrane', 'dead_crown', 'silt_root', 'sensory_fan', 'mineral_root',
 ]);
 
 function dist(a, b) {
@@ -267,12 +271,33 @@ test('CR-BERTH-2: the wreck-buyer desk writes the feed order off a proved hull',
   assert.equal(feed.factionId, 'faction_understory');
   assert.equal(feed.lastLossId, 'loss_abc');
   assert.equal(feed.count, 1);
+  assert.deepEqual(feed.fedLossIds, ['loss_abc'], 'the slip remembers which hulls it ate');
 
-  // A second proved appraisal accumulates on the same key.
+  // Re-appraising the same recorded loss is one feed, not two — count tracks distinct
+  // hulls, not desk clicks.
   state.simTime = 90;
   onAction[0]({ stationId: 'station_expanse', serviceId: 'understory_wreck_buy' });
-  assert.equal(state.factionPresence.serviceReceipts[BERTH.receiptKey].count, 2,
-    'feeds accumulate on the keyed row like the consignment count');
+  assert.equal(state.factionPresence.serviceReceipts[BERTH.receiptKey].count, 1,
+    'a second click on the same loss does not mint a second feed');
+
+  // A second, distinct proved hull does advance the count.
+  state.lossLedger.bySector.sector_charon_expanse.unshift(
+    { lossId: 'loss_def', shipDefId: 'ship_kestrel', t: 91 });
+  onAction[0]({ stationId: 'station_expanse', serviceId: 'understory_wreck_buy' });
+  const fed2 = state.factionPresence.serviceReceipts[BERTH.receiptKey];
+  assert.equal(fed2.count, 2, 'a distinct hull is a second feed');
+  assert.equal(fed2.lastLossId, 'loss_def', 'the receipt names the newest fed hull');
+  assert.deepEqual(fed2.fedLossIds, ['loss_abc', 'loss_def']);
+
+  // A ledger entry with a lossId but no named hull (outpost raid, unrecognized def) is
+  // the desk's own denial case — it must not feed the slip while the popup says so.
+  state.lossLedger.bySector.sector_charon_expanse.unshift(
+    { lossId: 'loss_raid', shipDefId: null, t: 92 });
+  onAction[0]({ stationId: 'station_expanse', serviceId: 'understory_wreck_buy' });
+  const fed3 = state.factionPresence.serviceReceipts[BERTH.receiptKey];
+  assert.equal(fed3.count, 2, 'a hull-less ledger entry feeds nothing');
+  assert.equal(fed3.lastLossId, 'loss_def', 'and never rewrites which hull the slip ate');
+  assert.deepEqual(fed3.fedLossIds, ['loss_abc', 'loss_def']);
 
   // An empty-ledger appraisal ("bring back a loss") buys nothing physical.
   state.lossLedger.bySector.sector_charon_expanse = [];
@@ -314,6 +339,61 @@ test('CR-BERTH-2: the wreck-buyer desk writes the feed order off a proved hull',
   assert.ok(restoredFeed, 'the feed order survives the save envelope');
   assert.equal(restoredFeed.count, 2);
   assert.equal(restoredFeed.kind, 'berthFeed');
+});
+
+test('CR-BERTH-2: a berth hulk keeps its authored wreck class through the tagger', () => {
+  // The generic tagger re-rolls class for wrecks in a sector with a recorded loss; a
+  // berth-consigned hulk is an authored placement and its data must win. This also makes
+  // the consignment line's authored 'consigned_hulk' live (it resolves as a real class).
+  assert.ok(wreckClassById('consigned_hulk'), 'the consignment class resolves as a real class');
+  assert.ok(wreckClassById('fresh'), 'the slip’s fed-hull class resolves');
+
+  const ledger = Object.create(lossLedger);
+  ledger._state = {
+    simTime: 50,
+    world: { currentSectorId: 'sector_charon_expanse' },
+    lossLedger: {
+      seed: 47,
+      bySector: {
+        sector_charon_expanse: [{ lossId: 'loss_abc', shipDefId: 'ship_mule', kind: 'hull', t: 12 }],
+      },
+      entries: [],
+    },
+  };
+
+  const fed = {
+    type: 'wreck',
+    data: {
+      sectorId: 'sector_charon_expanse',
+      berthConsign: { berthId: BERTH.id, stationId: 'station_expanse' },
+      wreckClass: 'fresh',
+    },
+  };
+  ledger._tagWreck({ id: 1, type: 'wreck', entity: fed });
+  assert.equal(fed.data.wreckClass, 'fresh', 'the authored class survives the tagger');
+  assert.equal(fed.data.scanLabel, wreckClassById('fresh').scanLabel,
+    'labels come from the authored class, not the roll');
+  assert.equal(fed.data.provenance.lossId, 'loss_abc',
+    'provenance still names the sector’s recorded loss');
+
+  // A consigned hulk on the Pitborn pattern keeps its authored class too.
+  const consigned = {
+    type: 'wreck',
+    data: {
+      sectorId: 'sector_charon_expanse',
+      berthConsign: { berthId: 'berth_pitborn_consignment_line', stationId: 'station_forge' },
+      wreckClass: 'consigned_hulk',
+    },
+  };
+  ledger._tagWreck({ id: 2, type: 'wreck', entity: consigned });
+  assert.equal(consigned.data.wreckClass, 'consigned_hulk');
+  assert.equal(consigned.data.scanLabel, wreckClassById('consigned_hulk').scanLabel);
+
+  // An ordinary wreck in the same sector still takes the seeded roll.
+  const plain = { type: 'wreck', data: { sectorId: 'sector_charon_expanse' } };
+  ledger._tagWreck({ id: 3, type: 'wreck', entity: plain });
+  assert.ok(['fresh', 'battlefield', 'military', 'ancient'].includes(plain.data.wreckClass),
+    'an unclaimed wreck keeps the provenance roll');
 });
 
 test('CR-BERTH-2: the Expanse desk still offers wreck_buy unconditionally', () => {

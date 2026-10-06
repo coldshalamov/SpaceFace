@@ -621,14 +621,20 @@ export const lossLedger = {
     // its own wreck class. What it takes from this seam is the provenance, which now names its
     // own recorded loss instead of whatever hull the sector ring happened to lose last.
     if (e.data.playerWreck === true) return;
-    e.data.wreckClass = classId;
+    // A berth-consigned hulk carries its class by authorship — the berth data picked the body
+    // ('consigned_hulk', 'fresh') on purpose, and a seeded roll over it would silently void the
+    // authored value. Provenance still names the real recorded loss; only the class and its
+    // scan labels come from the authored field.
+    const authoredClass = e.data.berthConsign ? wreckClassById(e.data.wreckClass) : null;
+    const labelClass = authoredClass || cls;
+    e.data.wreckClass = authoredClass ? authoredClass.id : classId;
     if (!isComms) {
-      e.data.scanLabel = cls.scanLabel;
-      e.data.wreckClassLabel = cls.label;
-      e.data.wreckClassBlurb = cls.blurb;
+      e.data.scanLabel = labelClass.scanLabel;
+      e.data.wreckClassLabel = labelClass.label;
+      e.data.wreckClassBlurb = labelClass.blurb;
     } else {
       // Communicator: keep the mission label, but record the class for the mission log to read.
-      e.data.wreckClassLabel = cls.label;
+      e.data.wreckClassLabel = labelClass.label;
     }
   },
 

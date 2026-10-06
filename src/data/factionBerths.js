@@ -81,7 +81,7 @@ export const FACTION_BERTHS = Object.freeze([
     // hull, inside the same authored radiation disc the station sits in — the deep-belt intake
     // was built in that weather and the Understory feed their hulls in its shadow. Verified
     // clearances (sector-local WU, apron centre unless noted): 424 off the refinery hull,
-    // ~150 off the Lung Marker beacon (480, -1100) at the nearest crib piece, 854 off the
+    // ~135 off the Lung Marker beacon (480, -1100) at the nearest crib piece, 854 off the
     // f_charon_2 field rim (1120, 280, r480), >1200 off f_charon_1/f_charon_3 rims, outside the
     // dense_asteroid disc at (-600, 500) r650, >2900 off all three gates, ~1211 off the Cinder
     // Nursery site and >1900 off every hull-garden / lattice anomaly. Inside the 4800 radius.
@@ -95,7 +95,9 @@ export const FACTION_BERTHS = Object.freeze([
     // a membrane sheet keeping the growth to the pad, and the pieces that prove the process —
     // a calcified collar from a hull long finished and the memory knot the slip kept. All are
     // alien_growth_* modules (procedural organic kit, no GLB — partsLibrary's place branch
-    // admits them by prefix); radii match the industrial crib's scale.
+    // admits them by prefix); radii match the industrial crib's scale. Unlike the Pitborn
+    // line's census-backed furniture these are non-census procedural ids — soft growth you
+    // fly through, not furniture you hit; the slip's only collider is the hulk itself.
     crib: Object.freeze([
       Object.freeze({ placeId: 'alien_growth_tendril_cluster', dx: -45, dz: -20, rot: 0.4, radius: 20 }),
       Object.freeze({ placeId: 'alien_growth_tendril_cluster', dx: 50, dz: -28, rot: 2.9, radius: 20 }),

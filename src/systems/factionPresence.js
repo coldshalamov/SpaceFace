@@ -1135,20 +1135,29 @@ export const factionPresence = {
         pushReceipt(this.state, receipt);
       }
       // CR-BERTH-2 — a fed appraisal is also the feed order: the hull the ledger proved goes
-      // to the slip off the refinery. Only a real lossId feeds it — an empty-ledger appraisal
-      // ("no recorded hull is attached") buys nothing physical. The keyed row accumulates
-      // feeds like the Pitborn consignment row; world.js reads its existence as the hulk gate.
+      // to the slip off the refinery. Only a hull loss feeds it — the desk's own denial text
+      // keys on shipDefId, so an entry with a lossId but no named hull (outpost raid,
+      // unrecognized def) buys nothing physical. count tracks distinct hulls fed, not clicks:
+      // re-appraising the same loss is one feed. world.js reads the row's existence as the
+      // hulk gate.
       const berth = factionBerthForStation(stationId);
-      if (berth && loss && loss.lossId) {
+      if (berth && loss && loss.lossId && loss.shipDefId) {
         const prior = own.serviceReceipts[berth.receiptKey];
+        const fedLossIds = new Set(Array.isArray(prior && prior.fedLossIds) ? prior.fedLossIds : []);
+        const alreadyFed = fedLossIds.has(loss.lossId);
+        fedLossIds.add(loss.lossId);
         const feed = {
           kind: 'berthFeed',
           berthId: berth.id,
           stationId,
           factionId: berth.factionId,
-          count: (prior && Number.isFinite(prior.count) ? prior.count : 0) + 1,
+          // count is distinct hulls the slip has eaten, not desk clicks — a second appraisal
+          // of the same recorded loss is one feed. fedLossIds is the dedupe memory (the desk
+          // always appraises the newest loss, so a bounded tail is the whole reachable set).
+          count: (Number.isFinite(prior && prior.count) ? prior.count : 0) + (alreadyFed ? 0 : 1),
+          fedLossIds: [...fedLossIds].slice(-24),
           lastLossId: loss.lossId,
-          lastShipDefId: loss.shipDefId || null,
+          lastShipDefId: loss.shipDefId,
           t: this.state.simTime || 0,
         };
         own.serviceReceipts[berth.receiptKey] = feed;

@@ -68,6 +68,17 @@ export const WRECK_CLASSES = Object.freeze({
     poolLean: 'trace',
     restricted: false,
   }),
+  // CR-BERTH: berth-consigned hulls are authored placements, not ledger rolls — the berth
+  // data names the class and the tagger must not re-roll it (PROVENANCE_CLASSES excludes
+  // this id, so the seeded draw can never mint it on a generic wreck).
+  consigned_hulk: Object.freeze({
+    id: 'consigned_hulk',
+    label: 'Consigned Hulk',
+    scanLabel: 'Consigned Hull',
+    blurb: 'A hull parked by its faction berth — consigned, fed, or digested on purpose. Whatever it remembers, the berth keeps it.',
+    poolLean: 'intact',
+    restricted: false,
+  }),
 });
 
 export const WRECK_CLASS_IDS = Object.freeze(Object.keys(WRECK_CLASSES));
