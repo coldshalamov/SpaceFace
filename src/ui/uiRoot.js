@@ -945,7 +945,7 @@ export const ui = {
           <div class="cine-title" id="cinematic-title">SPACEFACE</div>
           <div class="cine-rule"></div>
           <div class="cine-contract" id="cinematic-summary">Contract 47-A — Open / Payment Pending</div>
-          <div class="cine-begin">Click or press any key to begin</div>
+          <div class="cine-begin">${window.matchMedia?.('(pointer: coarse)').matches ? 'Tap to begin' : 'Click or press any key to begin'}</div>
         </div>
         <div class="cine-signal" id="cinematic-signal">
           <div class="cine-signal__k">Inbound signal</div>

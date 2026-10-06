@@ -26,6 +26,7 @@ import { CREDITS } from '../../data/credits.js';
 import { leftoverVersionLabel, leftoverVersionDisplay, paintLeftoverVersion } from './mainMenu.js';
 import { el, words, settle, cue } from '../kit/index.js';
 import { createArcRail } from '../orrery/arcRail.js';
+import { isPhoneLayout } from '../../systems/mobile/model.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 import { openReplay, forceCloseReplay, REPLAY_LABEL } from './replay.js';
 import { openClips, forceCloseClips, CLIPS_LABEL } from './clips.js';
@@ -1022,15 +1023,19 @@ export const pauseScreen = {
     // name engraved over its row) with Resume leading as the one lit verb; the brief, which the dial
     // would cover, becomes a reading on the right. Same list, same roving focus, same buttons.
     injectOrreryScreens();
-    rootEl.classList.add('orr-pause');
+    // A phone has no room for the dial: the verbs stay the plain banked Deckplate column and the brief stays
+    // above them in it, like the title's phone composition.
+    const phone = isPhoneLayout();
+    // add/remove, not toggle: the headless shims the pause tests mount on carry no classList.toggle
+    rootEl.classList.add(phone ? 'orr-pause--phone' : 'orr-pause');
     const brief = briefKicker.parentElement;
-    if (brief) { brief.classList.add('orr-brief'); rootEl.appendChild(brief); }
-    if (pauseRail) pauseRail.dispose();
+    if (brief && !phone) { brief.classList.add('orr-brief'); rootEl.appendChild(brief); }
+    if (pauseRail) { pauseRail.dispose(); pauseRail = null; }
     // One stop per group (ORRERY 3.2: an arc carries at most nine): Resume leads, then each group is one
     // tick with its name as the row's legend and its verbs on one line after it. The Hand swings to the row;
     // within it only the awake verb lights. Up/down steps between rows, left/right along one.
     // a smaller dial, higher: its lowest tick clears the key strip at every height
-    pauseRail = createArcRail({ host: stage, list, frame: rootEl, grouped: true, dense: true, span: 56,
+    pauseRail = phone ? null : createArcRail({ host: stage, list, frame: rootEl, grouped: true, dense: true, span: 56,
       place: (W, H) => ({ pivot: { x: Math.min(112, Math.max(56, Math.round(W * 0.056))), y: Math.round(H * 0.55) }, re: Math.round(H * 0.3), centerDeg: 90 }) });
 
     // The column ends in a legend strip, not an air gap: the keys that are live while this modal

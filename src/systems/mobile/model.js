@@ -114,6 +114,22 @@ export function screenDirection(x, y, helpers, player, width, height) {
   const dx = q.x - cx, dz = q.z - cz, d = Math.hypot(dx, dz);
   return d > 1e-8 ? { x: dx / d, z: dz / d } : null;
 }
+const _nose0 = { x: 0, y: 0, z: 0 }, _nose1 = { x: 0, y: 0, z: 0 };
+/**
+ * Where the hull stands on screen (CSS px) and where its nose points there, as a dial angle (0 = up,
+ * clockwise). The joystick draws this beside the stick's own direction so a pilot sees the hull catch up.
+ * Null when there is no camera or the projection is degenerate. Reuses scratch points: no per-tick allocation.
+ */
+export function shipOnScreen(helpers, player) {
+  if (!helpers?.worldToScreen || !player?.pos || !Number.isFinite(player.rot)) return null;
+  _nose0.x = player.pos.x; _nose0.z = player.pos.z;
+  _nose1.x = _nose0.x + Math.cos(player.rot) * 60; _nose1.z = _nose0.z + Math.sin(player.rot) * 60;
+  const a = helpers.worldToScreen(_nose0), b = helpers.worldToScreen(_nose1);
+  if (![a?.x, a?.y, b?.x, b?.y].every(Number.isFinite)) return null;
+  const dx = b.x - a.x, dy = b.y - a.y;
+  if (Math.hypot(dx, dy) < 1e-3) return null;
+  return { x: a.x, y: a.y, headingDeg: Math.atan2(dx, -dy) * 180 / Math.PI };
+}
 export function steerToward(direction, rot, magnitude) {
   if (!direction) return { turn: 0, thrust: 0 };
   const error = wrap(Math.atan2(direction.z, direction.x) - finite(rot));
@@ -145,6 +161,14 @@ export function canFly(state, documentLike) {
     && !documentLike?.hidden
     && !documentLike?.body?.classList?.contains('ui-modal-open')
     && !documentLike?.body?.classList?.contains('ui-live-screen');
+}
+/**
+ * A phone-shaped screen: the touch deck is on and the short side is under tablet width. Screens that have a
+ * desktop-scale composition (the title's dial) ask this to choose their phone composition instead.
+ */
+export function isPhoneLayout(documentLike = globalThis.document, win = globalThis.window) {
+  const on = documentLike?.documentElement?.dataset?.sfMobile === '1';
+  return on && Math.min(win?.innerWidth || 0, win?.innerHeight || 0) <= 600;
 }
 export function shouldEnable(config, width, height, coarse, touchPoints) {
   if (config?.enabled != null) return config.enabled === true;

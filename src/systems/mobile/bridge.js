@@ -1,4 +1,4 @@
-import { MobileGestures, canFly, shouldEnable, screenDirection, steerToward } from './model.js';
+import { MobileGestures, canFly, shouldEnable, screenDirection, shipOnScreen, steerToward } from './model.js';
 import { mountMobileView } from './view.js';
 import { ALL_POWERS } from './catalog.js';
 
@@ -16,7 +16,7 @@ export function enhanceMobileTouch(touch, ctx = {}, {
   const state = ctx.state;
   const model = new MobileGestures();
   const legacyTick = touch.tick.bind(touch), legacyClear = touch._clearTouchState.bind(touch);
-  let view = null, host = null, detach = null, frame = NEUTRAL();
+  let view = null, host = null, detach = null, frame = NEUTRAL(), unsubDock = null;
   let lastContext = '', lastTick = -1, allowedLastTick = false, previousHolds = {};
   const cfg = () => state?.settings?.controls?.touch || {};
   const setConfig = (key, value) => {
@@ -83,15 +83,21 @@ export function enhanceMobileTouch(touch, ctx = {}, {
   touch.setEnabled = function(on) {
     const enable = on === true && !!doc?.body;
     if (enable && !view) {
-      doc.documentElement.dataset.sfMobile = '1';
+      if (doc.documentElement?.dataset) doc.documentElement.dataset.sfMobile = '1';
       view = mountView({ state, model, activate, reset:neutralize, config:cfg,
         saveConfig:setConfig, win, doc });
       this._overlay = view.root;
+      // The station prompt is a real key on the phone, lit only while a berth is in range.
+      const dock = ctx.bus?.on?.('dock:range', (payload) => view?.setDockReady?.(!!payload?.inRange));
+      unsubDock = typeof dock === 'function' ? dock : null;
     } else if (!enable && view) {
+      unsubDock?.(); unsubDock = null;
       view.destroy(); view = null; this._overlay = null;
-      delete doc.documentElement.dataset.sfMobile;
-      delete doc.documentElement.dataset.sfMobileFlight;
-      delete doc.documentElement.dataset.sfMobileWheel;
+      if (doc.documentElement?.dataset) {
+        delete doc.documentElement.dataset.sfMobile;
+        delete doc.documentElement.dataset.sfMobileFlight;
+        delete doc.documentElement.dataset.sfMobileWheel;
+      }
     }
     const changed = this.active !== (enable && !!view);
     this.active = enable && !!view;
@@ -143,6 +149,9 @@ export function enhanceMobileTouch(touch, ctx = {}, {
       aim = { x:Math.cos(p?.rot || 0), z:Math.sin(p?.rot || 0) };
     }
     if (aim) { this.axes.rightX = aim.x; this.axes.rightY = -aim.z; }
+    // What only the view needs to draw: the hull's place and nose on screen, while a thumb is flying or aiming.
+    const ship = (frame.flight.active || frame.aim) ? shipOnScreen(ctx.helpers, p) : null;
+    frame.shipScreen = ship; frame.heading = ship ? ship.headingDeg : null;
     // Gesture holds never inherit desktop accessibility latches after the thumb lifts.
     const holds = { boost:frame.flight.boost, brake:frame.actions.brake, massline:frame.actions.tether,
       bulletTime:frame.actions.bulletTime, reelIn:frame.actions.reelIn, reelOut:frame.actions.reelOut };
