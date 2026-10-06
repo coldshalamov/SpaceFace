@@ -11,7 +11,9 @@ import { hash32 } from '../core/rng.js';
 import { deferSectorEnterMaterialization, deferredEnterNow } from '../core/sectorEnterDefer.js';
 import { validateRunState } from '../core/runState.js';
 import { salvagePoolFromManifest, spawnJettisonedCargoPod } from './lootShards.js';
-import { peekPendingSlam } from './hullFracture.js';
+import { peekPendingSlam, IMPACT_TEAROFF_LAW, spawnCollisionTearOff } from './hullFracture.js';
+import { combatFlag } from '../data/featureFlags.js';
+import { isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
 import { SURVIVAL_COHORT_TAG } from './waveMaterialization.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
 import { zoneAt, zoneThreat } from '../data/sectorZones.js';
@@ -984,12 +986,14 @@ export const aftermathWrecks = {
       this._spawnForSector(this.state && this.state.world && this.state.world.currentSectorId);
     };
     this._onSaveError = () => { this._saveRestoring = false; };
+    this._onLooseImpact = (payload) => this._shedImpactChips(payload || {});
 
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('entity:killed', this._onKilled);
       this.bus.on('player:death', this._onPlayerDeath);
       this.bus.on('entity:destroyed', this._onDestroyed);
       this.bus.on('wreckField:source', this._onFieldSource);
+      this.bus.on('physics:impact', this._onLooseImpact);
       // Live GPU + flight + hard enter: defer into the cook's FIFO — the census
       // drains the same _onSectorEnter under its slice clock in listener order.
       this.bus.on('sector:enter', (p) => {
@@ -1041,6 +1045,58 @@ export const aftermathWrecks = {
     if (!sectorId || this._saveRestoring) return;
     this._syncEcologyForSector(sectorId);
     this._driveScavengers(state, sectorId);
+  },
+
+  // Impact tear-off for loose bodies (hullFracture.IMPACT_TEAROFF_LAW): a wreck meeting
+  // rock/station/craft at tumble-class closing speed sheds bounded chips — the
+  // break-apart beat of the hull-burst overhaul (`combat.tumbleFling`), for the debris a
+  // blast already sent flying. Admission here (cooldown, per-wreck lifetime cap, mass
+  // floor, real dynamic body only); the chip bodies are hullFracture's own tear-off spec.
+  // Ships keep the collisionConsequences path — this is the loose-body sibling, not a
+  // second ship rule.
+  _shedImpactChips(payload) {
+    if (!combatFlag('tumbleFling')) return;
+    const state = this.state;
+    if (!state || !payload) return;
+    const dp = Math.abs(Number(payload.dp) || Number(payload.impulse) || 0);
+    if (!(dp > 0)) return;
+    const a = payload.aId != null ? state.entities.get(payload.aId) : null;
+    const b = payload.bId != null ? state.entities.get(payload.bId) : null;
+    const wreck = a && a.type === 'wreck' ? a : (b && b.type === 'wreck' ? b : null);
+    if (!wreck || wreck.alive === false || !wreck.data) return;
+    if (!isDynamicPhysicsBodyEntity(wreck)) return;
+    const data = wreck.data;
+    const count = Number(data.impactChipCount) || 0;
+    if (count >= IMPACT_TEAROFF_LAW.maxPerVictim) return;
+    const mass = Math.max(0.1, Number(wreck.physicsBody && wreck.physicsBody.mass) || Number(wreck.mass) || 1);
+    if (mass < IMPACT_TEAROFF_LAW.minVictimMass) return;
+    const now = Number.isFinite(state.simTime) ? state.simTime : (state.tick || 0) / 60;
+    const lastAt = Number(data.lastImpactChipAt);
+    if (Number.isFinite(lastAt) && now - lastAt < IMPACT_TEAROFF_LAW.cooldownS) return;
+    const deltaV = dp / mass;
+    if (!(deltaV >= IMPACT_TEAROFF_LAW.deltaV)) return;
+    // The chips seed from the struck side: flip the solver's A→B axis so it points away
+    // from the wreck's flank of the contact (spawnCollisionTearOff randomizes which side
+    // of that line the chips leave on anyway; the note's normal only orients the line).
+    const wreckIsA = wreck === a;
+    const nx = Number(payload.normal && payload.normal.x) || 0;
+    const nz = Number(payload.normal && payload.normal.z) || 0;
+    const spawned = spawnCollisionTearOff({ state, helpers: this.helpers, bus: this.bus }, {
+      victimId: wreck.id,
+      pos: { x: wreck.pos.x, z: wreck.pos.z },
+      vel: { x: wreck.vel ? wreck.vel.x : 0, z: wreck.vel ? wreck.vel.z : 0 },
+      normal: { x: wreckIsA ? nx : -nx, z: wreckIsA ? nz : -nz },
+      closingSpeed: deltaV,
+      count: deltaV >= IMPACT_TEAROFF_LAW.heavyDeltaV ? 2 : 1,
+      tick: state.tick | 0,
+      mass,
+      radius: Math.max(1, Number(wreck.radius) || 7),
+      momentum: dp,
+      sectorId: (state.world && state.world.currentSectorId) || null,
+    });
+    if (!spawned) return;
+    data.impactChipCount = count + spawned.length;
+    data.lastImpactChipAt = now;
   },
 
   // Per-tick scavenger behavior. Bounded: one slot per field, fields are few, and slots that are
@@ -2716,6 +2772,7 @@ export const aftermathWrecks = {
       if (this._onPlayerDeath) this.bus.off('player:death', this._onPlayerDeath);
       if (this._onDestroyed) this.bus.off('entity:destroyed', this._onDestroyed);
       if (this._onFieldSource) this.bus.off('wreckField:source', this._onFieldSource);
+      if (this._onLooseImpact) this.bus.off('physics:impact', this._onLooseImpact);
       if (this._onSectorEnter) this.bus.off('sector:enter', this._onSectorEnter);
       if (this._onSectorExit) this.bus.off('sector:exit', this._onSectorExit);
       if (this._onSalvageCompleted) this.bus.off('salvage:completed', this._onSalvageCompleted);

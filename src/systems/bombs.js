@@ -9,6 +9,11 @@ import { BOMB_DEFS, BOMB_DRIFT, BOMB_RACK, BOMB_STARTER_KIT, bombDef } from '../
 import { shipworksStationAccess } from './ships.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { publishHitstunImpulse, recordImpulseProvenance, signedHitSide } from '../combat/impulseKernel.js';
+import {
+  SHOCKWAVE_PASS_EVENT, SHOCKWAVE_SWEEP_LAW,
+  advanceSweepFront, createShockwaveSweep, resolveSweepPass,
+} from '../combat/shockwaveSweep.js';
+import { combatFlag } from '../data/featureFlags.js';
 import { queuePhysicsImpulse, isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
 import { Masks } from '../core/entity.js';
 import { FIELD_COUPLING } from '../data/fields.js';
@@ -149,6 +154,11 @@ function bombTargetBuckets(index) {
 }
 function pushBombTarget(out, e) {
   if (e?.alive && e.pos && (DAMAGE_TYPES.has(e.type) || movable(e) || faunaBlastEligible(e))) out.push(e);
+}
+// Shockwave-sweep eligibility: the loose matter a wave pushes (craft keep their tuned
+// instant-shove economy) plus dynamic-body fauna, mirroring blastShoveEligible minus craft.
+function pushSweepBody(out, e) {
+  if (e?.alive && e.pos && !craft(e) && (LOOSE_TYPES.has(e?.type) || faunaShoveEligible(e))) out.push(e);
 }
 // ---- fitted rack (PQ-205.03) ----------------------------------------------------------
 // state.bombs is the player's one bomb-bay bag, additive over the pre-rack shape:
@@ -579,6 +589,7 @@ export const bombs = {
     this.destroy();
     Object.assign(this, { state: ctx.state, bus: ctx.bus, helpers: ctx.helpers, registry: ctx.registry });
     this._active = [];
+    this._sweeps = [];
     this._targets = [];
     this._gooCoverage = [];
     this._motion = {};
@@ -630,6 +641,7 @@ export const bombs = {
   },
   destroy() {
     this.releaseAll('destroy');
+    this._sweeps = [];
     for (const off of this._unsubs || EMPTY) if (typeof off === 'function') off();
     this._unsubs = [];
     this._ownerCooldowns?.clear();
@@ -660,7 +672,7 @@ export const bombs = {
           publishBombsQuiet(state, true);
           return;
         }
-        if (!anyLiveBomb(state)) {
+        if (!anyLiveBomb(state) && !this._sweeps.length) {
           this._bombsQuiet = { membership, armedTick: tick };
           publishBombsQuiet(state, true);
           return;
@@ -691,6 +703,7 @@ export const bombs = {
       }
     }
     this._tickBombs(dt, state);
+    this._tickSweeps(dt, state);
     if (dropEdge) {
       actions.dropBomb = false;
       if (!blocked(state, player)) {
@@ -1162,6 +1175,7 @@ export const bombs = {
     d.triggered = true; d.detonatedTick = state.tick;
     const result = def.field?.kind === 'singularity' ? null
       : this._blastVictims(state, { pos, def, ownerId: d.ownerId, originId: bomb.id, trigger });
+    this._spawnSweep(bomb, def, pos, state);
     if (def.field) {
       d.phase = 'field'; d.fieldStartedAt = simNow(state); d.fieldEndsAt = d.fieldStartedAt + def.field.durationS;
       d.nextFieldTick = state.tick + def.field.tickEveryTicks;
@@ -1182,6 +1196,85 @@ export const bombs = {
       id: cueId, position: pos, gain: 0.65,
       bombId: bomb.id, payloadId: def.id, trigger, trackId: bomb.id,
     });
+  },
+
+  // The traveling half of every blast (hull-burst overhaul family, `combat.tumbleFling`).
+  // The instant impulse shoves; this front re-pushes loose bodies as it overtakes them,
+  // nearest first, so a detonation reads as a wave sweeping the field instead of one
+  // simultaneous teleport. Ships and drones are excluded — their shove/hitstun economy is
+  // tuned end to end (SHOVE_BEAT_LAW, HITSTUN_LAW); the wave's added push is for the loose
+  // world, where the tumble threshold (SHOCKWAVE_SWEEP_LAW.tumbleDeltaV) decides whether an
+  // object visibly tumbles, shudders, or barely stirs. Gated like every slice-A rule: OFF
+  // in legacy47a keeps the frozen goldens byte-identical.
+  _spawnSweep(bomb, def, pos, state) {
+    if (!combatFlag('tumbleFling')) return;
+    if (this._sweeps.length >= SHOCKWAVE_SWEEP_LAW.maxLiveSweeps) this._sweeps.shift();
+    const sweep = createShockwaveSweep({
+      bombId: bomb.id,
+      ownerId: bomb.data && bomb.data.ownerId,
+      weaponId: def.id,
+      x: pos.x, z: pos.z, blastRadius: def.radius,
+      existing: this._sweeps.find((s) => s.bombId === bomb.id),
+    });
+    if (sweep && !this._sweeps.includes(sweep)) this._sweeps.push(sweep);
+    this._bombsQuiet = null;
+    if (this.bus) {
+      // The wave's own tell: an outward-racing ring, distinct from the payload's material
+      // release (BombDetonationVfx) and the vector mine's punch-flash.
+      this.bus.emit('presentation:vfxCue', {
+        id: 'combat.shockwaveSweep', lane: 'combat', particles: 24, lights: 1,
+        magnitude: Math.max(0.6, def.radius / 150), position: { x: pos.x, z: pos.z },
+        material: 'impulse', sourceId: bomb.data && bomb.data.ownerId, targetId: null,
+        flashReduced: false,
+      });
+    }
+  },
+
+  _tickSweeps(dt, state) {
+    if (!this._sweeps.length || !(dt > 0)) return;
+    const physics = this.helpers && this.helpers.combatPhysics;
+    let passBudget = SHOCKWAVE_SWEEP_LAW.maxPassesPerTick;
+    for (let i = this._sweeps.length - 1; i >= 0; i--) {
+      const sweep = this._sweeps[i];
+      const front = advanceSweepFront(sweep, dt);
+      if (!front.alive) { this._sweeps.splice(i, 1); continue; }
+      for (const ent of this._sweepCandidates(state)) {
+        if (passBudget <= 0) break;
+        const pass = resolveSweepPass(sweep, ent, front.radius);
+        if (!pass) continue;
+        passBudget--;
+        if (isDynamicPhysicsBodyEntity(ent) && physics && typeof physics.applyImpulse === 'function') {
+          const mag = pass.deltaV * massOf(ent);
+          const provenance = {
+            actorId: sweep.ownerId == null ? null : sweep.ownerId,
+            weaponId: sweep.weaponId,
+            tag: 'bomb_shockwave',
+            appliedTick: state.tick | 0,
+          };
+          const accepted = physics.applyImpulse({
+            entityId: ent.id, impulse: { x: pass.dirX * mag, z: pass.dirZ * mag }, point: null,
+            reason: 'shockwave_sweep', tick: state.tick, provenance,
+          });
+          if (accepted !== false) recordImpulseProvenance(ent, { ...provenance, magnitude: mag });
+        }
+        if (this.bus) this.bus.emit(SHOCKWAVE_PASS_EVENT, pass);
+      }
+    }
+  },
+
+  // Loose matter the wave can touch: the movable family minus craft, plus dynamic-body
+  // fauna — the same eligibility the blast shove grants, read from the same typed index
+  // _collect uses (a spatial hash alone would silently drop noncolliding loose bodies).
+  _sweepCandidates(state) {
+    const out = this._sweepScratch || (this._sweepScratch = []);
+    out.length = 0;
+    const buckets = bombTargetBuckets(state && state.entityIndex);
+    if (buckets) {
+      for (const list of buckets) for (const e of list) pushSweepBody(out, e);
+    } else {
+      for (const e of (state && state.entityList) || EMPTY) pushSweepBody(out, e);
+    }
+    return out;
   },
 
   _blastVictims(state, { pos, def, ownerId, originId, trigger, impulseOverride = null, damageOverride = null }) {
@@ -1347,6 +1440,7 @@ export const bombs = {
     if (reason === 'expired' && def.field?.kind === 'singularity') {
       const result = this._blastVictims(state, { pos, def, ownerId: d.ownerId, originId: bomb.id, trigger: 'collapse',
         impulseOverride: def.field.collapseImpulse, damageOverride: def.field.collapseDamage });
+      this._spawnSweep(bomb, def, pos, state);
       this._emitDetonated(bomb, d, def, state, pos, 'collapse', result);
     }
     this.bus?.emit('bombs:fieldEnded', {
@@ -1477,6 +1571,7 @@ export const bombs = {
   },
   _resetRuntime(reason) {
     this.releaseAll(reason);
+    this._sweeps = [];
     this._prepQuotes = new WeakMap();
     this._preparationInFlight = false;
     if (!this.state) return;

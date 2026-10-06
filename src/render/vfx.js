@@ -2610,6 +2610,9 @@ export const vfx = {
     add('bombs:detonated', (p) => this._onBombDetonated(p));
     add('bombs:fieldEnded', (p) => this._onBombFieldEnded(p));
     add('bombs:destroyed', (p) => this._onBombDestroyed(p));
+    // Hull-burst shockwave sweep: each body the sim front overtakes answers with one
+    // small surface read — the wave becomes a sequence of responses, nearest first.
+    add('combat:shockwavePass', (p) => this._onShockwavePass(p));
     add('ai:telegraph', (p) => this._onAiTelegraph(p));
     add('ai:flee', (p) => this._onAiFlee(p));
     add('ai:formationBroken', (p) => this._onAiFormationBroken(p));
@@ -5052,6 +5055,16 @@ export const vfx = {
     // and distinct from the impulse charge's rings and the red tumble puff.
     if (id === 'combat.vectorMine.detonate') {
       return presentationStyle('#e6f2ff', '#5aa0ff', SPR_FLASH, { radial: true, lightPeak: 3.2, lightDistance: 170, speed0: 52, speedJitter: 40, life0: 0.32, size0: 1.8, size1: 0.2, drag: 1.1 });
+    }
+    // Hull-burst shockwave sweep — the wave the blast shove belongs to. A broad, slow,
+    // cool-white ring racing the sim front outward (echoRing repeats it), so the eye reads
+    // one expanding pressure front rather than a fireball; objects flash as the ring
+    // overtakes them via combat:shockwavePass.
+    if (id === 'combat.shockwaveSweep') {
+      return presentationStyle('#eef6ff', '#8fb6ff', SPR_RING, {
+        radial: true, echoRing: true, lightPeak: 2.2, lightDistance: 190,
+        speed0: 64, speedJitter: 46, life0: 0.5, size0: 2.2, size1: 0.3, drag: 0.9,
+      });
     }
     // SF-10 RCS-disruptor tell — small, fast ion-blue sparks skittering off the hull (attitude
     // drift), a punch-flash spark spray distinct from both the tumble puff and the mine shove.
@@ -10732,6 +10745,34 @@ export const vfx = {
   _onBombDetonated(p) {
     if (p && p.pos && Number.isFinite(p.pos.x) && Number.isFinite(p.pos.z)) this._bombFlashDropped(p);
     return this._emitBombMaterial('bombs:detonated', p);
+  },
+
+  // One surface read per body the shockwave front overtakes: a small ring + directional
+  // shimmer along the push, the visual counterpart of the sweep's graded shove. The sim
+  // already moved the body; this is the wave's arrival mark, kept deliberately cheap
+  // (two sprites, table draw distance, reduced-motion drops the particles).
+  _onShockwavePass(p) {
+    if (!this._scene || !p || p.level == null || this.state?.render?.openingVfxFrozen === true) return;
+    const body = this._ent(p.targetId);
+    const pos = body && body.pos;
+    if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return;
+    const player = this._ent(this.state?.playerId);
+    if (player && player.pos) {
+      const look = tableLookAtDelta(this.state, player.pos, pos, _tableLookAtScratch);
+      if (!shouldDrawTableVfx(look.x, look.z, this._tableVfxDrawWu || tableVfxDrawWuFromState(this.state))) return;
+    }
+    const reduced = this._isReduced();
+    const tumble = p.level === 'tumble';
+    const dirX = Number(p.dirX) || 0;
+    const dirZ = Number(p.dirZ) || 0;
+    const size = Math.max(2.4, (Number(body.radius) || 6) * 2.1);
+    this._spawnSprite(SPR_RING, pos.x, 0.12, pos.z,
+      reduced ? 0.16 : 0.26, size * 0.35, size, tumble ? 0.4 : 0.26, 0, '#b8d8ff', dirX * 10, dirZ * 10, 1, null, 0.72);
+    if (!reduced && (dirX || dirZ)) {
+      this._spawnSprite(SPR_PUFF, pos.x + dirX * (Number(body.radius) || 6) * 0.5, 0.1,
+        pos.z + dirZ * (Number(body.radius) || 6) * 0.5,
+        0.2, size * 0.22, 0.06, tumble ? 0.34 : 0.2, 0, '#e8f2ff', dirX * 26, dirZ * 26, 1, null, 0.66);
+    }
   },
   _onBombFieldEnded(p) { return this._emitBombMaterial('bombs:fieldEnded', p); },
   _onBombDestroyed(p) { return this._emitBombMaterial('bombs:destroyed', p); },
