@@ -366,6 +366,10 @@ function newSession(domOpts = {}) {
     state,
     bus,
     helpers: { raycastToPlane: (ndc) => ({ x: ndc.x * 100, z: -ndc.y * 100 }) },
+    // The phone deck replaced the dual-stick overlay on the live route (pinned by
+    // test/mobile-flight.test.mjs and scripts/probe-mobile-flight.mjs). This check keeps the legacy
+    // overlay's verbs honest through the facade's `legacy` seam.
+    mobileSeams: { legacy: true },
   };
   input.init(ctx);
   return {

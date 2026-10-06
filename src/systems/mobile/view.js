@@ -132,12 +132,15 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
     const { w, h } = size(), bounds = edge.getBoundingClientRect();
     const short = h < 500;
     // Portrait: the bank tabs and the readout stand above the rail, the key cluster below it, so the rail's
-    // radius is whatever the gap between them allows. Landscape: they sit beside it and the rail is compact.
-    const topClear = short ? 68 : 250;
-    const bottomClear = short ? 112 : 184;
-    const maxR = short ? Math.min(96, (h - topClear - bottomClear - 48) / 1.6) : 198;
-    const radius = clamp(short ? 96 : (h - topClear - bottomClear) / 2, short ? 88 : 96, Math.min(maxR, w - 56));
-    const cy = clamp(pointer?.oy ?? h * 0.56, topClear + radius, Math.max(topClear + radius, h - bottomClear - radius));
+    // radius is whatever the gap between them allows. Landscape: they sit beside it, and the rail takes the
+    // screen's height (nodes need ~62px of arc each, which a small rail cannot give them).
+    const topClear = 236, bottomClear = h < 650 ? 100 : 184;
+    const radius = short
+      ? clamp((h - 24) / 2, 92, Math.min(150, w * 0.4))
+      : clamp((h - topClear - bottomClear) / 2, 96, Math.min(198, w - 56));
+    const cy = short
+      ? clamp(pointer?.oy ?? h * 0.5, radius + 12, h - radius - 12)
+      : clamp(pointer?.oy ?? h * 0.56, topClear + radius, Math.max(topClear + radius, h - bottomClear - radius));
     const side = hand();
     const cx = side === 'left' ? bounds.left + 4 : bounds.right - 4;
     wheelGeometry = { cx, cy, radius }; selected = -1;
@@ -198,7 +201,11 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
     // keep the numeric readout on screen when the thumb lands near a side edge
     const half = 92, centre = clamp(p.ox, half + 6, w - half - 6);
     stickUI.root.style.setProperty('--mf-shift', `${centre - p.ox}px`);
-    stickUI.root.dataset.side = p.oy > h * 0.62 ? 'above' : 'below';
+    // the numeric readout goes where there is room: under the ring unless that would run off the bottom
+    const keys = q('.mf-buttons')?.getBoundingClientRect?.();
+    const under = { l: p.ox - 90, r: p.ox + 90, t: p.oy + p.radius * 1.62, b: p.oy + p.radius * 1.62 + 58 };
+    const hitsKeys = !!keys && under.r > keys.left && under.l < keys.right && under.b > keys.top && under.t < keys.bottom;
+    stickUI.root.dataset.side = under.b > h || hitsKeys ? 'above' : 'below';
   }
   function pointerDown(e) {
     if (e.pointerType !== 'touch' && e.pointerType !== 'pen') return;

@@ -130,7 +130,9 @@ try {
     const rects = items.map((b) => { const r = b.getBoundingClientRect(); return { t: (b.textContent || '').trim().slice(0, 14), top: r.top, bottom: r.bottom, left: r.left, right: r.right }; });
     return { logoBottom: logo.bottom, rects, vw: innerWidth, vh: innerHeight };
   });
-  check('title verbs sit below the logotype and inside the screen', menu.rects.length >= 4 && menu.rects.every((r) => r.top >= menu.logoBottom - 2 && r.left >= 0 && r.right <= menu.vw && r.bottom <= menu.vh), JSON.stringify(menu.rects.map((r) => r.t)));
+  // landscape stands the verbs in their own scrolling column beside the name; the first three must be on screen
+  const shown = LAND ? menu.rects.slice(0, 3) : menu.rects;
+  check('title verbs sit inside the screen' + (LAND ? ' (first three; the column scrolls)' : ' below the logotype'), menu.rects.length >= 4 && shown.every((r) => (LAND || r.top >= menu.logoBottom - 2) && r.left >= 0 && r.right <= menu.vw && r.bottom <= menu.vh), JSON.stringify(menu.rects.map((r) => r.t)));
   const small = menu.rects.filter((r) => r.bottom - r.top < 44).map((r) => r.t);
   check('title verbs are thumb-sized (>= 44px)', small.length === 0, small.join(','));
   const newGame = await page.evaluate(() => { const b = [...document.querySelectorAll('button')].find((x) => /^new game$/i.test((x.textContent || '').trim()) && x.getBoundingClientRect().width > 4); if (!b) return null; const r = b.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
@@ -328,6 +330,43 @@ try {
   await sleep(1500);
   s = await snap();
   check('Resume returns to flight with the deck up', s.mode === 'flight' && !s.screens.length && (await page.evaluate(() => !document.querySelector('.mf-flight').hidden)), JSON.stringify(s.screens));
+
+  // dock and undock by thumb (--dock): fly to a berth, tap the DOCK key, use the station page, tap Undock
+  if (argv.dock) {
+    const near = await page.evaluate(() => {
+      const st = window.SF.state, p = st.entities.get(st.playerId);
+      const station = st.entityList.find((e) => e.type === 'station' && e.alive !== false);
+      if (!station || !p) return null;
+      p.pos.x = station.pos.x + (station.radius || 60) + 30; p.pos.z = station.pos.z; p.vel.x = 0; p.vel.z = 0;
+      return { id: station.id, name: station.name || station.data?.name || null };
+    });
+    check('a station stands in the opening sector', !!near, JSON.stringify(near));
+    if (near) {
+      await page.waitForFunction(() => { const d = document.querySelector('.mf-dock'); return d && !d.hidden; }, null, { timeout: 30000 }).catch(() => {});
+      s = await snap();
+      check('the DOCK key lights beside a berth', s.dockShown);
+      await shot('40-dock-key');
+      const dk = await rect('.mf-dock');
+      if (dk) await finger.tap(dk.x, dk.y);
+      await page.waitForFunction(() => window.SF.state.ui.docked === true, null, { timeout: 60000 }).catch(() => {});
+      await sleep(2500);
+      const docked = await page.evaluate(() => ({ docked: window.SF.state.ui.docked === true, screens: [...window.SF.state.ui.screenStack] }));
+      check('tapping DOCK docks the ship and opens the station', docked.docked, JSON.stringify(docked));
+      await shot('41-station');
+      const st = await page.evaluate(() => {
+        const root = document.querySelector('.sx-berth'); const seat = document.querySelector('.sxb-launch-seat button, .sxb-launch-seat');
+        const r = seat && seat.getBoundingClientRect(); const rail = document.querySelector('.of-facility-rail').getBoundingClientRect();
+        return { scrolls: root && root.scrollHeight > root.clientHeight, undock: r && { l: r.left, r: r.right, t: r.top, b: r.bottom }, rail: { l: rail.left, r: rail.right }, vw: innerWidth, vh: innerHeight };
+      });
+      check('Undock is on screen and the tab rail fits the width', st.undock && st.undock.b <= st.vh && st.undock.r <= st.vw && st.rail.r <= st.vw + 1, JSON.stringify(st));
+      const undock = await rect('.sxb-launch-seat button, .sxb-launch-seat');
+      if (undock) await finger.tap(undock.x, undock.y, 120);
+      await page.waitForFunction(() => window.SF.state.ui.docked === false && window.SF.state.mode === 'flight', null, { timeout: 60000 }).catch(() => {});
+      await sleep(1500);
+      s = await snap();
+      check('Undock returns to flight with the deck up', s.mode === 'flight' && !s.screens.length && (await page.evaluate(() => !document.querySelector('.mf-flight').hidden)), JSON.stringify({ mode: s.mode, screens: s.screens }));
+    }
+  }
 
   // left hand
   if (argv.lefty) {

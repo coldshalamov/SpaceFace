@@ -357,8 +357,8 @@
 @media (max-width: 520px) {
   .cine-lockup { padding: 0 14px; }
   .cine-title { font-size: clamp(32px, 10vw, 52px); letter-spacing: .03em; text-indent: .2em; }
-  .cine-eyebrow, .cine-contract { font-size: 11px; letter-spacing: .04em; text-indent: 0; }
-  .cine-tag { max-width: 64vw; font-size: 10px; }
+  .cine-eyebrow, .cine-contract { font-size: 12px; letter-spacing: .03em; text-indent: 0; }
+  .cine-tag { max-width: 64vw; font-size: 12px; }
   .cine-begin { font-size: 13px; }
 }
 
