@@ -3082,7 +3082,10 @@ export const lawSecurity = {
     // A live inspection case or a live patrol intercept already owns the scan — same
     // guard as _dwellWeirPlayer. Without it a dwelled pod's `customs_weir` emit can be
     // adopted as the patrol's own result and resolve the case 'fined' at 0 credits (D179).
-    if (activeLawfulInspection(state) || hasLivePatrolScan(state)) return;
+    // The gate pauses accumulation, but housekeeping (exit-delete, non-contraband-clear,
+    // despawn prune) still runs underneath it — a pod that leaves mid-case must not keep
+    // stale dwell credit toward a scan on re-entry.
+    const gated = activeLawfulInspection(state) || hasLivePatrolScan(state);
     const dwell = this._weirPodDwell || (this._weirPodDwell = new Map());
     // Same payload-bucket proof as the cone census: no payloads → the walk sees no pods, `seen`
     // stays empty, and the prune below would drop every dwell row anyway.
@@ -3112,6 +3115,7 @@ export const lawSecurity = {
         dwell.delete(key);
         continue;
       }
+      if (gated) continue;
       const next = (Number(dwell.get(key)) || 0) + step;
       dwell.set(key, next);
       if (next < weir.dwellS) continue;
