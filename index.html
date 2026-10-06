@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <!-- Browser chrome (tab strip / mobile bar) tints to the game background instead of default white. -->
   <meta name="theme-color" content="#101516" />
+  <!-- Added to a phone's home screen the game opens full-screen, with no browser bars (iOS and Android). -->
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="SpaceFace" />
   <title>SpaceFace</title>
   <link rel="icon" type="image/svg+xml" href="assets/ui/kit/marks/logotype/spaceface-monogram.svg" />
   <link rel="stylesheet" href="./styles/ui.css" />
@@ -192,7 +197,7 @@
   <link rel="modulepreload" href="./src/render/pipelineReadiness.js" />
   <link rel="modulepreload" href="./src/render/renderCapabilityProfile.js" />
   <link rel="modulepreload" href="./src/render/uiStage.js" />
-                                                          <!-- modulepreload:registry:begin -->
+                                                            <!-- modulepreload:registry:begin -->
   <link rel="modulepreload" href="./node_modules/@floating-ui/core/dist/floating-ui.core.browser.mjs" />
   <link rel="modulepreload" href="./node_modules/@floating-ui/dom/dist/floating-ui.dom.browser.mjs" />
   <link rel="modulepreload" href="./node_modules/quarks.core/dist/quarks.core.esm.js" />
@@ -1206,9 +1211,11 @@
   <link rel="modulepreload" href="./src/systems/missions.js" />
   <link rel="modulepreload" href="./src/systems/mobile/bridge.js" />
   <link rel="modulepreload" href="./src/systems/mobile/catalog.js" />
+  <link rel="modulepreload" href="./src/systems/mobile/instrument.js" />
   <link rel="modulepreload" href="./src/systems/mobile/model.js" />
   <link rel="modulepreload" href="./src/systems/mobile/styles.js" />
   <link rel="modulepreload" href="./src/systems/mobile/view.js" />
+  <link rel="modulepreload" href="./src/systems/mobile/wheel.js" />
   <link rel="modulepreload" href="./src/systems/moralMemory.js" />
   <link rel="modulepreload" href="./src/systems/moralTrap.js" />
   <link rel="modulepreload" href="./src/systems/morrow.js" />

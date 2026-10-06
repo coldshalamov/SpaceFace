@@ -147,18 +147,21 @@ test('a phone layout is the deck on a short side under tablet width', () => {
   assert.equal(isPhoneLayout(doc(false), { innerWidth: 390, innerHeight: 844 }), false);
 });
 
-test('the DOCK key follows dock:range and lets go of the bus when touch is turned off', () => {
+test('the DOCK key follows dock:range, Pause > Help opens the guide, and both let go of the bus when touch is turned off', () => {
   const handlers = {}; let unsubscribed = 0; const seen = [];
   const bus = { emit() {}, on(type, fn) { handlers[type] = fn; return () => { unsubscribed += 1; }; } };
   const state = { tick: 1, mode: 'flight', playerId: 1, player: { alive: true }, settings: { controls: { touch: {} } }, input: {}, ui: { screenStack: [] }, entities: new Map() };
   const doc = { body: { classList: { contains: () => false } }, documentElement: { dataset: {} } };
   const win = { innerWidth: 390, innerHeight: 844, navigator: { maxTouchPoints: 5 }, matchMedia: () => ({ matches: true }) };
   const touch = { active: false, axes: {}, actions: {}, _btnHeld: {}, _btnPulse: {}, _clearTouchState() {}, tick() {}, isConnected() { return this.active; } };
-  enhanceMobileTouch(touch, { state, bus }, { win, doc, mountView: () => ({ root: {}, render() {}, applyConfig() {}, cancelAll() {}, destroy() {}, setDockReady: v => seen.push(v) }) });
+  enhanceMobileTouch(touch, { state, bus }, { win, doc, mountView: () => ({ root: {}, render() {}, applyConfig() {}, cancelAll() {}, destroy() {}, setDockReady: v => seen.push(v), openGuide: () => seen.push('guide') }) });
   touch.autoDetect();
   assert.equal(typeof handlers['dock:range'], 'function');
   handlers['dock:range']({ inRange: true }); handlers['dock:range']({ inRange: false }); handlers['dock:range']({});
   assert.deepEqual(seen, [true, false, false]);
+  assert.equal(typeof handlers['touch:guide'], 'function');
+  handlers['touch:guide']();
+  assert.deepEqual(seen.slice(-1), ['guide']);
   touch.setEnabled(false);
-  assert.equal(unsubscribed, 1);
+  assert.equal(unsubscribed, 2);
 });

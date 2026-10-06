@@ -166,7 +166,12 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
     const layout = cfg.layout === 'lefty' || cfg.layout === 'compact' ? cfg.layout : 'standard';
     root.dataset.layout = layout;
     root.dataset.lefty = layout === 'lefty' ? '1' : '0';
-    root.style.setProperty('--mf-scale', clamp(Number(cfg.scale) || 1, 0.8, 1.6));
+    const scale = clamp(Number(cfg.scale) || 1, 0.8, 1.6);
+    root.style.setProperty('--mf-scale', scale);
+    // the page's own receipts line keeps clear of the key cluster: it needs the cluster's side and width
+    const html = doc.documentElement;
+    html.dataset.sfMobileLefty = layout === 'lefty' ? '1' : '0';
+    html.style.setProperty('--mf-cluster-w', `${Math.round(196 * scale)}px`);
   }
 
   // ---- pointer ownership -------------------------------------------------------------------------------
@@ -360,10 +365,11 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
     if (clock() - lastNumbers > STATUS_MS) { lastNumbers = clock(); paintStatus(player); }
   }
   applyConfig(); render();
-  return { root, render, applyConfig, cancelAll, showMessage,
+  return { root, render, applyConfig, cancelAll, showMessage, openGuide,
     setDockReady(ready) { dockReady = !!ready; schedule(); },
     destroy() {
-      destroyed = true; cancelAll(); delete doc.documentElement.dataset.sfMobileWheel; cleanup.forEach(fn => fn());
+      destroyed = true; cancelAll(); delete doc.documentElement.dataset.sfMobileWheel; delete doc.documentElement.dataset.sfMobileLefty;
+      doc.documentElement.style.removeProperty('--mf-cluster-w'); cleanup.forEach(fn => fn());
       if (raf) win.cancelAnimationFrame(raf); wheel.destroy(); root.remove(); guide.remove();
     } };
 }

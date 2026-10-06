@@ -276,18 +276,38 @@ const SCREEN_CSS = `
  :root[data-sf-mobile="1"] #screens .orr-newgame .orr-turntable > .orr-turntable__row { position:static!important; display:flex!important; gap:6px; justify-content:space-between; inset:auto!important; }
  :root[data-sf-mobile="1"] #screens .orr-newgame .orr-turntable > .orr-turntable__row > li { position:static!important; transform:none!important; left:auto!important; top:auto!important; flex:1 1 0; min-width:0; text-align:center; opacity:1!important; }
  :root[data-sf-mobile="1"] #screens .orr-newgame .orr-turntable .k-word[aria-pressed="true"] { color:var(--dp-hand-hot,#ffd98c)!important; }
+ /* The station: its desktop frame is header | tab content | foot in one viewport, which leaves the tab content 32px on a phone.
+    Here the berth is one scrolling page (hub overview, then the tab), with the tab rail, Comms and Undock pinned to the
+    foot. Two ids and html:root outrank the layout sheets, which pin these with !important. */
+ html:root[data-sf-mobile="1"] body #screens#screens > .sx-berth.orr-station { display:flex!important; flex-direction:column; overflow-x:hidden!important; overflow-y:auto!important; grid-template-rows:none!important; }
+ html:root[data-sf-mobile="1"] body #screens#screens > .sx-berth.orr-station header.sxb-berth { flex:none!important; height:auto!important; max-height:none!important; }
+ html:root[data-sf-mobile="1"] body #screens#screens > .sx-berth.orr-station .dp-frame__body--station { flex:1 0 auto!important; min-height:60vh; height:auto!important; overflow:visible!important; }
+ html:root[data-sf-mobile="1"] body #screens#screens > .sx-berth.orr-station .sx-screen__body { overflow:visible!important; max-height:none!important; height:auto!important; }
+ html:root[data-sf-mobile="1"] body #screens#screens > .sx-berth.orr-station footer.sxb-ops { flex:none!important; position:sticky!important; bottom:0; z-index:6; display:flex!important; flex-wrap:wrap!important; align-items:center!important; gap:4px 10px!important; padding:6px 14px calc(10px + env(safe-area-inset-bottom,0px))!important; height:auto!important; background:linear-gradient(0deg,rgb(7 8 10 / .97) 82%,rgb(7 8 10 / 0)); }
+ html:root[data-sf-mobile="1"] body #screens#screens > .sx-berth.orr-station .of-facility-rail { order:1; width:100%!important; flex:0 0 100%!important; max-width:100%!important; min-width:0!important; overflow-x:auto!important; overflow-y:hidden; scrollbar-width:none; height:auto!important; }
+ html:root[data-sf-mobile="1"] body #screens#screens > .sx-berth.orr-station .of-facility-rail .sxb-ops__dock { display:block!important; width:max-content!important; min-width:100%; }
+ html:root[data-sf-mobile="1"] body #screens#screens > .sx-berth.orr-station .of-facility-rail .sx-dock { width:max-content!important; flex-wrap:nowrap!important; position:relative!important; }
+ html:root[data-sf-mobile="1"] body #screens#screens > .sx-berth.orr-station .sx-comms { order:2; margin-left:0!important; }
+ html:root[data-sf-mobile="1"] body #screens#screens > .sx-berth.orr-station .sxb-launch-seat { order:3; margin-left:auto; }
  /* keyboard legends mean nothing under a thumb */
  :root[data-sf-mobile="1"] .screen :is(.dp-kbd,.sf-pause-foot__keys,.sf-pause-key,.sf-pause-key-verb) { display:none!important; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #gl-canvas { touch-action:none; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] :is(.sf-prail,.sf-leftstack,.orr-hud-cluster,.sf-overview,.sf-target) { display:none!important; }
  /* the deck has its own DOCK key, so the keyboard-worded prompt goes; alerts and the travel tape clear the status strip */
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .sf-alert--dock { display:none!important; }
- :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud #alerts { transform:translateY(calc(124px + var(--sf-safe-top,0px))); }
+ /* the objective and comms stack stands under the status strip and the alerts, left-aligned; the radar band readout sits
+    under the pause key and the deck has no band to switch, so it goes; hail and comms are real buttons and get thumb size */
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-leftcontext { top:calc(176px + var(--sf-safe-top,0px))!important; left:calc(14px + var(--sf-safe-left,0px))!important; max-width:min(250px,64vw); }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #sf-band-hud { display:none!important; }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts { right:auto!important; left:calc(14px + var(--sf-safe-left,0px))!important; width:max(120px, calc(100vw - var(--mf-cluster-w,196px) - 56px))!important; max-width:none!important; }
+ :root[data-sf-mobile="1"][data-sf-mobile-lefty="1"][data-sf-mobile-flight="1"] #toasts { left:auto!important; right:calc(14px + var(--sf-safe-right,0px))!important; }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud :is(.sf-contact-hail__button,.sf-comm-backlog-btn) { min-height:40px; min-width:60px; pointer-events:auto; }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #alerts { transform:translateY(calc(124px + var(--sf-safe-top,0px))); }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-vtape { left:14px!important; bottom:auto!important; top:calc(128px + var(--sf-safe-top,0px))!important; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap { position:fixed!important; top:64px!important; right:12px!important; bottom:auto!important; left:auto!important; transform:scale(.5)!important; transform-origin:top right!important; pointer-events:auto!important; }
 }
  :root[data-sf-mobile-wheel="1"] #hud .sf-radar-wrap { display:none!important; }
- :root[data-sf-mobile-wheel="1"] #hud :is(.sf-vtape,#alerts) { opacity:0!important; }
+ :root[data-sf-mobile-wheel="1"] :is(#hud .sf-vtape,#alerts) { opacity:0!important; }
 @media (max-width:600px) {
  :root[data-sf-mobile="1"] :is(.of-title,.of-pause) { grid-template-columns:1fr!important; grid-template-rows:auto 1fr!important; gap:18px; }
  :root[data-sf-mobile="1"] .dp-frame__head { flex:none; }

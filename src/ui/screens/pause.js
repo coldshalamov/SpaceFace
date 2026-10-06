@@ -937,7 +937,8 @@ export const pauseScreen = {
     mk(coreText('operations'), () => nav(ctx, 'pushScreen', 'automation'), { group: 'Ship', bank: true, icon: 'industry' });
     const mapAction = pauseMapAction(ctx && ctx.state);
     if (mapAction) mk(mapAction.label, () => openPauseMapReview(ctx, mapAction), { group: 'Ship', bank: true, icon: 'route', keycap: true });
-    mk(coreText('helpControls'), () => nav(ctx, 'pushScreen', 'help'), { group: 'Reference', bank: true, icon: 'help' });
+    // On a phone the keyboard reference means nothing: Help opens the touch guide the deck carries instead.
+    mk(coreText('helpControls'), () => { if (isPhoneLayout() && ctx.bus && ctx.bus.emit) ctx.bus.emit('touch:guide', {}); else nav(ctx, 'pushScreen', 'help'); }, { group: 'Reference', bank: true, icon: 'help' });
     mk(coreText('codex'), () => nav(ctx, 'pushScreen', 'codex'), { group: 'Reference', bank: true, icon: 'info' });
     // Achievements (PQ-033.03): the local ledger — the same screen the title's fine line opens.
     mk(ACHIEVEMENTS_LABEL, () => nav(ctx, 'pushScreen', 'achievements'), { group: 'Reference', bank: true, icon: 'ready' });

@@ -16,7 +16,7 @@ export function enhanceMobileTouch(touch, ctx = {}, {
   const state = ctx.state;
   const model = new MobileGestures();
   const legacyTick = touch.tick.bind(touch), legacyClear = touch._clearTouchState.bind(touch);
-  let view = null, host = null, detach = null, frame = NEUTRAL(), unsubDock = null;
+  let view = null, host = null, detach = null, frame = NEUTRAL(), unsubDock = null, unsubGuide = null;
   let lastContext = '', lastTick = -1, allowedLastTick = false, previousHolds = {};
   const cfg = () => state?.settings?.controls?.touch || {};
   const setConfig = (key, value) => {
@@ -90,8 +90,11 @@ export function enhanceMobileTouch(touch, ctx = {}, {
       // The station prompt is a real key on the phone, lit only while a berth is in range.
       const dock = ctx.bus?.on?.('dock:range', (payload) => view?.setDockReady?.(!!payload?.inRange));
       unsubDock = typeof dock === 'function' ? dock : null;
+      // Pause > Help on a phone opens the touch guide rather than the keyboard reference.
+      const guide = ctx.bus?.on?.('touch:guide', () => view?.openGuide?.());
+      unsubGuide = typeof guide === 'function' ? guide : null;
     } else if (!enable && view) {
-      unsubDock?.(); unsubDock = null;
+      unsubDock?.(); unsubDock = null; unsubGuide?.(); unsubGuide = null;
       view.destroy(); view = null; this._overlay = null;
       if (doc.documentElement?.dataset) {
         delete doc.documentElement.dataset.sfMobile;
