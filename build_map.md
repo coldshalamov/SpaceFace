@@ -6105,8 +6105,11 @@ Rows authored this sitting from the open-ended direction, each landed with its p
   organic crib drawn from the procedural `alien_growth_*` kit — no GLB ask. An
   empty-ledger appraisal feeds nothing; the redeem_rights consignment writer is pinned
   to its own `berthConsign:` key contract so a foreign payout cannot mint the slip's
-  hulk. DONE 38162edf9 — `test/understory-afterwake-slip.test.mjs` 6/6,
-  berth+desk+world+save blast radius 35/35.
+  hulk. DONE 38162edf9 + review resolution 15b0e90d2 (feed gate keys on `shipDefId`,
+  count = distinct fed hulls, authored `wreckClass` honored on berth bodies —
+  `consigned_hulk` is now a real class row) —
+  `test/understory-afterwake-slip.test.mjs` 7/7, berth/desk/world/save/weir surface
+  54/54, wreck-provenance surface 59/59.
 Do not delete the heading; the next agent needs to know it is no longer the hole.
 
 ### 23.4 Actualize the tools
