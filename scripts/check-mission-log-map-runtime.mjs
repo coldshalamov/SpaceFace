@@ -14,6 +14,10 @@ import { loadPlaywright } from './lib/load-playwright.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const SHOT = '.devshots/perf/mission-log-map-handoff.jpg';
+// Same starvation allowance class as check-bar-mission-readiness: the loaded headless host
+// brick-walls frames for hundreds of ms and serial shader compiles stall the module graph, so
+// navigation/boot waits budget wall-clock, not gameplay behavior.
+const HEAVY_TIMEOUT_MS = 90000;
 const { chromium } = await loadPlaywright();
 
 let server = null;
@@ -28,7 +32,7 @@ try {
   await page.addInitScript(() => {
     try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}
   });
-  await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded' });
+  await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded', timeout: HEAVY_TIMEOUT_MS });
   // Headless boot is roughly TWICE as slow as a real GPU here, and not because the game is slow:
   // SwiftShader does not expose KHR_parallel_shader_compile, so THREE compiles every program
   // serially on the main thread. Measured on this machine: window.SF.ctx ready at 11,977 ms
@@ -36,14 +40,14 @@ try {
   // it did, intermittently, across five checks. A real GPU HAS the extension (verified), so
   // this is an environment allowance, not a behavioural assertion being loosened. Everything
   // these checks actually assert happens after boot and is untouched.
-  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.ctx, null, { timeout: 30000 });
+  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.ctx, null, { timeout: HEAVY_TIMEOUT_MS, polling: 250 });
   await page.evaluate(() => window.SF.bus.emit('game:new', { name: 'Mission Log Map Runtime', seed: 47 }));
   await page.waitForFunction(() => {
     const sf = window.SF;
     const state = sf && sf.state;
     const player = state && state.entities && state.entities.get(state.playerId);
     return !!(state && state.mode === 'flight' && player && player.alive);
-  }, null, { timeout: 45000 });
+  }, null, { timeout: HEAVY_TIMEOUT_MS, polling: 250 });
 
   const report = await page.evaluate(async () => {
     const sf = window.SF;
@@ -162,7 +166,10 @@ try {
     const localTop = sm.top && sm.top();
     const localDef = sm.getActiveScreenDef && sm.getActiveScreenDef();
     const localLevel = localDef && typeof localDef._activeLevel === 'function' ? localDef._activeLevel() : null;
+    // Capture the map's geometry eagerly here — the Path-B block below re-pushes missionLog,
+    // which hides the map again before the report object is assembled.
     const galaxyMap = document.getElementById('sf-galaxymap');
+    const galaxyMapWidth = galaxyMap ? galaxyMap.getBoundingClientRect().width : 0;
     const galaxyMapText = (galaxyMap?.textContent || '').replace(/\s+/g, ' ').trim();
 
     // Path-B pin: a non-tracked recommendation (the trade route) still renders the full rec
@@ -202,7 +209,7 @@ try {
       localText,
       localTop,
       localLevel,
-      galaxyMapVisible: !!(galaxyMap && galaxyMap.getBoundingClientRect().width > 400),
+      galaxyMapVisible: galaxyMapWidth > 400,
       galaxyMapText,
     };
   });

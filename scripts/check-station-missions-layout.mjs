@@ -26,11 +26,32 @@ try {
   await page.addInitScript(() => {
     try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch { /* optional */ }
   });
-  await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => window.SF?.state && window.SF?.bus, null, { timeout: 30_000 });
-  await page.getByRole('button', { name: 'New Game', exact: true }).click();
-  await page.waitForSelector('[data-screen="newGame"] .sf-ng-route', { state: 'visible', timeout: 10_000 });
-  await page.getByRole('button', { name: 'Launch', exact: true }).click();
+  // The navigation itself gets the same heavy allowance the flight wait below uses: on a
+  // contended host the module-graph fetch that domcontentloaded waits on can exceed Playwright's
+  // 30 s default even though nothing is wrong with the route.
+  await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded', timeout: 90_000 });
+  await page.waitForFunction(() => window.SF?.state && window.SF?.bus, null, { timeout: 90_000, polling: 250 });
+  // The main menu mounts a beat behind the SF ctx signal on a starved host — wait for the
+  // container's computed visibility (Playwright's per-element visible check starves here)
+  // before the in-page click, which carries no auto-wait.
+  await page.waitForFunction(() => {
+    const el = document.querySelector('[data-screen="mainMenu"]');
+    if (!el) return false;
+    const cs = getComputedStyle(el);
+    const r = el.getBoundingClientRect();
+    return cs.display !== 'none' && cs.visibility !== 'hidden' && r.width > 20 && r.height > 10;
+  }, null, { timeout: 90_000, polling: 250 });
+  await page.evaluate(() => {
+    const button = [...document.querySelectorAll('button')].find((b) => (b.textContent || '').trim() === 'New Game');
+    if (!button) throw new Error('New Game button not found');
+    button.click();
+  });
+  await page.waitForSelector('[data-screen="newGame"] .sf-ng-route', { state: 'visible', timeout: 30_000 });
+  await page.evaluate(() => {
+    const button = [...document.querySelectorAll('button')].find((b) => (b.textContent || '').trim() === 'Launch');
+    if (!button) throw new Error('Launch button not found');
+    button.click();
+  });
   await page.waitForFunction(() => {
     const state = window.SF?.state;
     const player = state?.entities?.get?.(state.playerId);
@@ -54,7 +75,13 @@ try {
     state.ui.trackedMissionId = 'layout_active_probe';
     window.SF.bus.emit('mission:updated', { missionId: 'layout_active_probe' });
   });
-  await page.click('[data-nav="contracts"]');
+  // In-page click: Playwright's actionability pipeline stalls for tens of seconds on this
+  // starved host even after the element reports visible/stable.
+  await page.evaluate(() => {
+    const tab = document.querySelector('[data-screen="station"] [data-nav="contracts"]');
+    if (!tab) throw new Error('contracts nav tab not found');
+    tab.click();
+  });
   await page.waitForSelector('.sx-ct-row', { state: 'visible', timeout: 10_000 });
 
   const layout = await page.evaluate(() => {
@@ -98,8 +125,16 @@ try {
     assert.equal(overlaps(layout.handoff, layout.active), false, 'First Dock Handoff must not cover Active Missions');
   }
 
-  const job = page.locator('.sx-job[data-active-mid="layout_active_probe"]');
-  await job.hover();
+  // Raw mouse move over the row's center — locator.hover() runs Playwright's actionability
+  // pipeline, which stalls for tens of seconds on this starved host after reporting stable.
+  const jobBox = await page.evaluate(() => {
+    const el = document.querySelector('.sx-job[data-active-mid="layout_active_probe"]');
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  });
+  assert.ok(jobBox, 'the probed active mission row should be mounted for the hover pass');
+  await page.mouse.move(jobBox.x, jobBox.y);
   const missionHover = await page.evaluate(async () => {
     const initial = document.querySelector('.sx-job[data-active-mid="layout_active_probe"]');
     const samples = [];
@@ -113,20 +148,45 @@ try {
   });
   assert.ok(missionHover.every((sample) => sample.sameNode), 'station refresh must not replace a hovered active mission');
 
-  await page.click('[data-nav="shipworks"]');
+  await page.evaluate(() => {
+    const tab = document.querySelector('[data-screen="station"] [data-nav="shipworks"]');
+    if (!tab) throw new Error('shipworks nav tab not found');
+    tab.click();
+  });
   // The dock host stands the hull on its jig (src/ui/orrery/hullSchematic.js): the hardpoints are
   // then its nodes and labels, and the old spatial pins stay mounted but hidden. Either surface counts.
   const HARDPOINT = '.orr-sw-jig.orr-hull--on .orr-sw-node[data-slot], .sx-hardpoint[data-spatial-slot]';
-  await page.waitForSelector(HARDPOINT, { state: 'visible', timeout: 30_000 });
-  const hardpoint = page.locator(HARDPOINT).first();
-  await hardpoint.hover();
-  const shipworks = await page.evaluate(async (selector) => {
+  // waitForSelector parks on the FIRST union match, which is one of the deliberately-hidden
+  // legacy pins — poll computed style across the union so the jig's visible nodes count.
+  await page.waitForFunction((sel) => {
+    for (const el of document.querySelectorAll(sel)) {
+      const cs = getComputedStyle(el);
+      const r = el.getBoundingClientRect();
+      if (cs.display !== 'none' && cs.visibility !== 'hidden' && r.width > 4 && r.height > 4) return true;
+    }
+    return false;
+  }, HARDPOINT, { timeout: 30_000, polling: 250 });
+  // Raw mouse move over the first VISIBLE union match (the jig node) — locator().first() lands
+  // on a deliberately-hidden legacy pin and locator.hover() runs the stalling actionability pass.
+  const hpBox = await page.evaluate((sel) => {
+    for (const el of document.querySelectorAll(sel)) {
+      const cs = getComputedStyle(el);
+      const r = el.getBoundingClientRect();
+      if (cs.display !== 'none' && cs.visibility !== 'hidden' && r.width > 4 && r.height > 4) {
+        return { x: r.left + r.width / 2, y: r.top + r.height / 2, index: [...document.querySelectorAll(sel)].indexOf(el) };
+      }
+    }
+    return null;
+  }, HARDPOINT);
+  assert.ok(hpBox, 'a visible Shipworks hardpoint should mount for the hover pass');
+  await page.mouse.move(hpBox.x, hpBox.y);
+  const shipworks = await page.evaluate(async ({ selector, hoveredIndex }) => {
     const stage = document.querySelector('.sx-sw__stage')?.getBoundingClientRect();
-    const initial = document.querySelector(selector);
+    const initial = document.querySelectorAll(selector)[hoveredIndex];
     const stable = [];
     for (let i = 0; i < 80; i++) {
       await new Promise((resolve) => requestAnimationFrame(resolve));
-      stable.push(document.querySelector(selector) === initial);
+      stable.push(document.querySelectorAll(selector)[hoveredIndex] === initial);
     }
     const clipped = [...document.querySelectorAll('.sx-hardpoint__copy, .orr-sw-jig.orr-hull--on .orr-sw-node')].filter((node) => {
       const box = node.getBoundingClientRect();
@@ -135,7 +195,7 @@ try {
         || box.right > stage.right + 1 || box.bottom > stage.bottom + 1;
     }).map((node) => node.textContent.trim());
     return { stable, clipped };
-  }, HARDPOINT);
+  }, { selector: HARDPOINT, hoveredIndex: hpBox.index });
   assert.ok(shipworks.stable.every(Boolean), 'station refresh must not replace hovered Shipworks hardpoints');
   assert.deepEqual(shipworks.clipped, [], `Shipworks callouts must stay inside the preview (${shipworks.clipped.join(', ')})`);
   await page.screenshot({ path: join(OUT, 'shipworks.png') });

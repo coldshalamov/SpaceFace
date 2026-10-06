@@ -207,7 +207,15 @@ try {
   });
   const bountyButton = page.getByRole('button', { name: 'Any bounties worth chasing?' });
   assert.equal(await bountyButton.count(), 1, 'Rook bounty choice should be reachable in the Bar');
-  await bountyButton.click();
+  // In-page click like every other interaction in this probe: Playwright's actionability +
+  // input pipeline stalls for tens of seconds on this starved host even after the element is
+  // reported visible/stable — the click dispatch never lands.
+  await page.evaluate(() => {
+    const button = [...document.querySelectorAll('[data-screen="station"] .sx-talk [data-choice]')]
+      .find((el) => /bounties worth chasing/i.test(el.textContent || ''));
+    if (!button) throw new Error('bounty choice button vanished before click');
+    button.click();
+  });
   await page.waitForFunction(() => !!document.querySelector('.sx-bar-offer .sx-bar-offer__chip'), null, {
     timeout: UI_TIMEOUT_MS,
     polling: 250,
@@ -297,7 +305,12 @@ try {
     };
     sf.bus.emit('mission:updated', { missionId: null });
   });
-  await bountyButton.click();
+  await page.evaluate(() => {
+    const button = [...document.querySelectorAll('[data-screen="station"] .sx-talk [data-choice]')]
+      .find((el) => /bounties worth chasing/i.test(el.textContent || ''));
+    if (!button) throw new Error('bounty choice button vanished before re-click');
+    button.click();
+  });
   await page.waitForFunction(() => {
     const button = document.querySelector('.sx-bar-offer [data-accept-mission="bar_probe_ready_bounty"]');
     return !!(button && !button.disabled);
@@ -424,14 +437,17 @@ try {
       top: window.SF.ctx.screenManager.top(),
       trackedTitle: tracked && tracked.title,
       text: normalize(screen && screen.textContent),
-      trackedCard: normalize(screen && screen.querySelector('.sf-mlog-card.tracked') && screen.querySelector('.sf-mlog-card.tracked').textContent),
+      // Mission Log r3: the tracked contract carries `.tracked` on its active-list row (with an
+      // aria-description of "Tracked"); the stage card shows the *focused* contract instead.
+      trackedRow: normalize(screen && screen.querySelector('.sf-mlog-row.tracked') && screen.querySelector('.sf-mlog-row.tracked').textContent),
+      trackedRowAria: screen && screen.querySelector('.sf-mlog-row.tracked') && screen.querySelector('.sf-mlog-row.tracked').getAttribute('aria-description'),
     };
   });
   assert.equal(logReport.top, 'missionLog', 'Bar handoff button should push Mission Log: ' + JSON.stringify(logReport));
   assert(logReport.text.includes('Ready Bar Bounty'),
     'Mission Log should show the Bar-accepted mission: ' + JSON.stringify(logReport));
-  assert(/tracked|tracking/i.test(logReport.trackedCard),
-    'Mission Log should show the Bar-accepted mission as tracked: ' + JSON.stringify(logReport));
+  assert(logReport.trackedRow.includes('Ready Bar Bounty') && /tracked/i.test(logReport.trackedRowAria || ''),
+    'Mission Log should mark the Bar-accepted mission as the tracked row: ' + JSON.stringify(logReport));
   assert.deepEqual(issues.errorIssues(), [], 'bar live smoke should not record page errors');
 
   console.log('Bar mission readiness live OK: Bar offer chips, blocker, Accept + Track, and Mission Log handoff render on the default route.');
