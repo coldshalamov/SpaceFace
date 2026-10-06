@@ -6098,6 +6098,15 @@ Rows authored this sitting from the open-ended direction, each landed with its p
   `pointInsideCustomsWeir` + `customsWeirSegments`; smuggling lanes into Dione now name
   the weir in the risk note for free). DONE a23c85be5 —
   `test/customs-weir.test.mjs` 17/17, law/customs surface 67/67.
+- **Charon Expanse: the Afterwake Slip** — second faction berth, a different memory. Where
+  the Pitborn line cuts what you sell, the Understory slip off Expanse Refinery digests
+  it: a proved wreck_buy appraisal (one the loss ledger names) writes the keyed
+  `berthFeed:` receipt, and the generic berth spawn lays a real ropeable wreck into an
+  organic crib drawn from the procedural `alien_growth_*` kit — no GLB ask. An
+  empty-ledger appraisal feeds nothing; the redeem_rights consignment writer is pinned
+  to its own `berthConsign:` key contract so a foreign payout cannot mint the slip's
+  hulk. DONE 38162edf9 — `test/understory-afterwake-slip.test.mjs` 6/6,
+  berth+desk+world+save blast radius 35/35.
 Do not delete the heading; the next agent needs to know it is no longer the hole.
 
 ### 23.4 Actualize the tools
