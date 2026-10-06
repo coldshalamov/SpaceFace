@@ -191,6 +191,12 @@ export function unfreezeHiddenSubtreeMatrices(root) {
     const userData = node.userData;
     if (userData && userData.sfMatrixFrozen === true) userData.sfMatrixFrozen = false;
   }
+  // Interior marks went stale the moment any descendant restored: a mount-frozen
+  // node (no sfCullFrozen stamp, skipped above) can hold sfMatrixFrozen over
+  // now-live children, and the vendored walk would prune the whole branch. The
+  // re-mark is self-healing both ways — still-frozen interior subtrees re-mark,
+  // everything else clears.
+  markStaticMatrixSubtrees(root);
   root.matrixWorldNeedsUpdate = true;
   return restored;
 }

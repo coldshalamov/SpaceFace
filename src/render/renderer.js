@@ -25198,10 +25198,20 @@ export const render = {
           })}`,
           validation,
         );
-        this.state.render.openingSubmissionLateInstancedPbr = describeOpeningInstancedPbrLeaves(
-          this.scene,
-          this.state.render.openingSubmissionPlan,
-        );
+        // O(scene) traverseVisible census — failure-path diagnostic state only,
+        // so land it in a timer gap like the rest of the deferred first-draw
+        // diagnostics instead of inside this presented beat.
+        const armedPlanForPbr = this.state.render.openingSubmissionPlan;
+        const stampLatePbr = () => {
+          if (this.state.render.openingSubmissionPlan !== armedPlanForPbr) return;
+          this.state.render.openingSubmissionLateInstancedPbr = describeOpeningInstancedPbrLeaves(
+            this.scene,
+            armedPlanForPbr,
+          );
+        };
+        if (this._rendererLifecycle) {
+          this._rendererLifecycle.setTimeout(this._rendererLifecycle.guard(stampLatePbr), 0);
+        } else setTimeout(stampLatePbr, 0);
       } else if (!Number.isFinite(this.state.render.openingSubmissionFirstDrawSubmittedAt)) {
         this.state.render.openingSubmissionFirstDrawSubmittedAt = typeof performance !== 'undefined'
           ? performance.now()
@@ -25347,10 +25357,17 @@ export const render = {
             })}`,
             validation,
           );
-          this.state.render.openingSubmissionLateInstancedPbr = describeOpeningInstancedPbrLeaves(
-            this.scene,
-            this.state.render.openingSubmissionPlan,
-          );
+          const armedPlanForPbr = this.state.render.openingSubmissionPlan;
+          const stampLatePbr = () => {
+            if (this.state.render.openingSubmissionPlan !== armedPlanForPbr) return;
+            this.state.render.openingSubmissionLateInstancedPbr = describeOpeningInstancedPbrLeaves(
+              this.scene,
+              armedPlanForPbr,
+            );
+          };
+          if (this._rendererLifecycle) {
+            this._rendererLifecycle.setTimeout(this._rendererLifecycle.guard(stampLatePbr), 0);
+          } else setTimeout(stampLatePbr, 0);
         } else if (!Number.isFinite(this.state.render.openingSubmissionFirstDrawSubmittedAt)) {
           this.state.render.openingSubmissionFirstDrawSubmittedAt = typeof performance !== 'undefined'
             ? performance.now()
