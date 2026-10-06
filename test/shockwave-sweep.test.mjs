@@ -6,6 +6,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { bombScenario } from './helpers/bombScenario.mjs';
 import { COMBAT_FLAGS } from '../src/data/featureFlags.js';
+import { readRecentImpulseProvenance } from '../src/combat/impulseKernel.js';
 import {
   SHOCKWAVE_SWEEP_LAW,
   advanceSweepFront,
@@ -70,7 +71,7 @@ test('sweep creation is degenerate-safe and a replacement front resets in place'
 });
 
 test('the tumble threshold grades the wave shove: tumble, wobble, silence', () => {
-  const sweep = createShockwaveSweep({ bombId: 9, x: 0, z: 0, blastRadius: 130 });
+  const sweep = createShockwaveSweep({ bombId: 9, x: 0, z: 0, blastRadius: 130, passImpulseWu: 300 });
   // One front position per read, like the sim's per-tick pass.
   const front = 34; // just past the light and heavy bodies (30/25 WU + radius)
   // Light body: life = 1 - 34/145.6, so 300 * life / 16 ≈ 14.4 WU/s — a tumble kick.
@@ -78,11 +79,11 @@ test('the tumble threshold grades the wave shove: tumble, wobble, silence', () =
   const kick = resolveSweepPass(sweep, light, front);
   assert.ok(kick, 'light body inside the front is passed');
   assert.equal(kick.level, 'tumble');
-  near(kick.deltaV, SHOCKWAVE_SWEEP_LAW.passImpulseWu * (1 - front / sweep.maxRadius) / 16);
+  near(kick.deltaV, 300 * Math.pow(1 - 30 / sweep.maxRadius, SHOCKWAVE_SWEEP_LAW.lifeCurve) / 16);
   assert.equal(kick.dirX, 1, 'push reads outward along the radial');
   near(kick.dirZ, 0);
   near(kick.contact.x, 30 - 8, 1e-9);
-  // Spin obeys ω = spinPerDeltaV·ΔV·2·lever/R, clamped, and the parity bias signs it.
+  // Spin obeys ω = spinPerDeltaV·ΔV·2·lever/R, clamped, and the parity biases sign it.
   const expectedSpin = Math.max(-SHOCKWAVE_SWEEP_LAW.maxSpinRadPerS, Math.min(
     SHOCKWAVE_SWEEP_LAW.maxSpinRadPerS,
     SHOCKWAVE_SWEEP_LAW.spinPerDeltaV * kick.deltaV * 2 * kick.lever / 8,
@@ -103,12 +104,38 @@ test('the tumble threshold grades the wave shove: tumble, wobble, silence', () =
 
   // A body the front has not reached yet is untouched and unmarked.
   const far = body(107, { pos: { x: 400, z: 0 } });
-  assert.equal(resolveSweepPass(createShockwaveSweep({ bombId: 10, x: 0, z: 0, blastRadius: 130 }), far, 20), null);
+  assert.equal(resolveSweepPass(createShockwaveSweep({ bombId: 10, x: 0, z: 0, blastRadius: 130, passImpulseWu: 300 }), far, 20), null);
+});
+
+test('the wave inherits the payload impulse: zero-impulse payloads birth no wave, the shove saturates', () => {
+  // A "does not blast on arrival" payload carries no momentum budget: every body is
+  // silently passed, no matter how light.
+  const quiet = createShockwaveSweep({ bombId: 21, x: 0, z: 0, blastRadius: 130, passImpulseWu: 0 });
+  const rock = body(109, { pos: { x: 10, z: 0 }, mass: 2 });
+  assert.equal(resolveSweepPass(quiet, rock, 20), null);
+  assert.equal(resolveSweepPass(quiet, rock, 20), null, 'marked passed even with no wave');
+  // A paper-mass chip cannot be flung past cruise: the graded shove saturates and the
+  // denominator has a floor, but a saturating hit on light debris is still tumble-class.
+  const chip = body(111, { pos: { x: 6, z: 0 }, mass: 0.3, radius: 2 });
+  const sweep = createShockwaveSweep({ bombId: 22, x: 0, z: 0, blastRadius: 130, passImpulseWu: 300 });
+  const shove = resolveSweepPass(sweep, chip, 10);
+  assert.equal(shove.level, 'tumble');
+  assert.equal(shove.deltaV, SHOCKWAVE_SWEEP_LAW.maxPassDeltaV, 'the shove saturates at the law cap');
+});
+
+test('the lever bias takes both signs across the id space (a volley tumbles both ways)', () => {
+  const seen = new Set();
+  for (let id = 1; id <= 40; id++) {
+    const sweep = createShockwaveSweep({ bombId: 1000 + id, x: 0, z: 0, blastRadius: 130, passImpulseWu: 600 });
+    const kick = resolveSweepPass(sweep, body(id, { pos: { x: 12, z: 0 }, mass: 16 }), 12);
+    if (kick && kick.level === 'tumble') seen.add(kick.lever);
+  }
+  assert.ok(seen.has(1) && seen.has(-1), `both spin flanks occur, saw: ${[...seen].join(',')}`);
 });
 
 test('pass receipts are deterministic and renderer-safe (frozen, complete)', () => {
   const make = () => {
-    const sweep = createShockwaveSweep({ bombId: 11, ownerId: 5, weaponId: 'bomb_concussion', x: 0, z: 0, blastRadius: 130 });
+    const sweep = createShockwaveSweep({ bombId: 11, ownerId: 5, weaponId: 'bomb_concussion', x: 0, z: 0, blastRadius: 130, passImpulseWu: 300 });
     return resolveSweepPass(sweep, body(77, { pos: { x: 20, z: 12 } }), 34);
   };
   const a = make();
@@ -175,6 +202,41 @@ test('with tumbleFling off (the frozen 47-A profile) no wave exists at all', () 
       t.tick(40);
       assert.equal(passes.length, 0);
       assert.equal(t.impulses.filter((r) => r.reason === 'shockwave_sweep').length, 0);
+    } finally { t.close(); }
+  });
+});
+
+test('a sector transition or save load retires live fronts (stale coordinates never push)', () => {
+  withTumbleFling(true, () => {
+    const t = bombScenario();
+    try {
+      t.spawn({ type: 'asteroid', mass: 16, radius: 8, pos: { x: -40, z: 0 } });
+      t.drop('bomb_concussion');
+      t.tick(31);
+      t.system.commandDetonate(t.player.id);
+      t.tick(3); // warning resolves; a front is live
+      t.bus.emit('save:loaded');
+      const before = t.impulses.filter((r) => r.reason === 'shockwave_sweep').length;
+      t.tick(60);
+      assert.equal(t.impulses.filter((r) => r.reason === 'shockwave_sweep').length, before,
+        'no body is pushed by a front that outlived its world');
+    } finally { t.close(); }
+  });
+});
+
+test('a refused sweep impulse still reaches physics authority but writes no provenance', () => {
+  withTumbleFling(true, () => {
+    const t = bombScenario({ acceptImpulse: false });
+    try {
+      const rock = t.spawn({ type: 'asteroid', mass: 16, radius: 8, pos: { x: -40, z: 0 } });
+      t.drop('bomb_concussion');
+      t.tick(31);
+      t.system.commandDetonate(t.player.id);
+      t.tick(30);
+      const hits = t.impulses.filter((r) => r.entityId === rock.id && r.reason === 'shockwave_sweep');
+      assert.ok(hits.length >= 1, 'the pass attempt reached physics authority');
+      assert.equal(readRecentImpulseProvenance(rock, t.state.tick), null,
+        'a refused push leaves no kill-credit record on the body');
     } finally { t.close(); }
   });
 });

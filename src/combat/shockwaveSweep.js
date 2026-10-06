@@ -25,10 +25,11 @@ export const SHOCKWAVE_SWEEP_LAW = Object.freeze({
   // The wave spends itself on the space it crosses: the front dies here (the blast's own
   // surface falloff reaches zero at blastRadius + bodyRadius, so 1.12 covers the edge).
   maxRadiusFrac: 1.12,
-  // Momentum the front delivers to one body at the source edge, linearly decaying to zero
-  // at maxRadius. A real blast wave's impulse ~ pressure × area, NOT mass-scaled: light
-  // debris flies, heavies sway. deltaV = passImpulse × life / mass.
-  passImpulseWu: 300,
+  // The wave is a FRACTION of the payload's own impulse budget, fixed at detonation
+  // (bombs.js passes def.impulse * passImpulseFrac, the collapse its collapseImpulse):
+  // a zero-impulse payload ("does not blast on arrival") legitimately births no wave.
+  // 1/6 of the concussion drum's 1800 is the reference tuning: 300 momentum per pass.
+  passImpulseFrac: 1 / 6,
   // TUMBLE_KICK threshold — the amount of physical force (deltaV the front delivers)
   // that triggers a visible tumbling animation on a blasted object.
   tumbleDeltaV: 10,
@@ -38,6 +39,17 @@ export const SHOCKWAVE_SWEEP_LAW = Object.freeze({
   spinPerDeltaV: 0.34,
   // Max spin the law will ask for — a small rock hit hard spins fast but never strobes.
   maxSpinRadPerS: 6,
+  // The graded shove saturates here: a sub-mass chip (the tear-off debris this same
+  // overhaul spawns) must not be flung past cruise by a paper-thin denominator. The
+  // mass floor matches IMPACT_TEAROFF_LAW.minVictimMass — matter lighter than that is
+  // dust the wave passes through.
+  maxPassDeltaV: 60,
+  minSweptMass: 2,
+  // Spatial profile of the wave's strength, sampled at the body's own distance (the
+  // wave element passing IT), never at the tick's front edge: no tick-timing dead zone
+  // at the end of the sweep, and a concave curve holds the shove readable through the
+  // middle distance before the wave genuinely spends itself at maxRadius.
+  lifeCurve: 0.7,
   maxLiveSweeps: 4,
   // Perf bound: body passes resolved per tick across all live fronts (rare: fronts live
   // ~0.5 s and only near a detonation).
@@ -61,6 +73,8 @@ export function createShockwaveSweep(input = {}) {
     bombId: input.bombId,
     ownerId: input.ownerId == null ? null : input.ownerId,
     weaponId: input.weaponId == null ? null : String(input.weaponId),
+    // The wave's whole momentum budget, fixed at birth from the payload's own impulse.
+    passImpulseWu: positive(input.passImpulseWu, 0),
     x: finite(input.x),
     z: finite(input.z),
     blastRadius,
@@ -70,6 +84,7 @@ export function createShockwaveSweep(input = {}) {
   };
   if (sweep) {
     // Replacement front re-runs from the source: the collapse is a new wave, not a resume.
+    sweep.passImpulseWu = positive(input.passImpulseWu, 0);
     sweep.x = finite(input.x);
     sweep.z = finite(input.z);
     sweep.blastRadius = blastRadius;
@@ -112,9 +127,18 @@ export function resolveSweepPass(sweep, entity, frontRadius) {
   const bodyRadius = Math.max(0, finite(entity.radius, 0));
   if (dist > frontRadius + bodyRadius) return null;
   sweep.passed.add(entity.id);
-  // Wave strength decays with the space already crossed.
-  const life = clamp01(1 - frontRadius / Math.max(1, sweep.maxRadius));
-  const deltaV = SHOCKWAVE_SWEEP_LAW.passImpulseWu * life / Math.max(0.1, positive(entity.physicsBody && entity.physicsBody.mass, positive(entity.mass, 1)));
+  // Strength is the wave's profile at the body's own radius: a real wave's pressure
+  // where YOU are, not where its leading edge happens to be this tick. The concave
+  // curve (lifeCurve) keeps the shove readable through the middle distance; at the
+  // outermost edge the wave has genuinely spent itself.
+  const life = Math.pow(
+    clamp01(1 - dist / Math.max(1, sweep.maxRadius)),
+    SHOCKWAVE_SWEEP_LAW.lifeCurve,
+  );
+  const deltaV = Math.min(
+    SHOCKWAVE_SWEEP_LAW.maxPassDeltaV,
+    (sweep.passImpulseWu || 0) * life / Math.max(SHOCKWAVE_SWEEP_LAW.minSweptMass, positive(entity.physicsBody && entity.physicsBody.mass, positive(entity.mass, 1))),
+  );
   if (!(deltaV >= SHOCKWAVE_SWEEP_LAW.nudgeDeltaV)) return null;
   let dirX = 0;
   let dirZ = 0;
@@ -124,10 +148,12 @@ export function resolveSweepPass(sweep, entity, frontRadius) {
   }
   const level = deltaV >= SHOCKWAVE_SWEEP_LAW.tumbleDeltaV ? 'tumble' : 'wobble';
   const radius = Math.max(1, bodyRadius);
-  // ω = 2·ΔV·lever/R — the off-center angular-impulse law. The parity bias (±1, or 0 for
-  // a clean radial read on odd ids) is the deterministic stand-in for a ragged front's
-  // oblique arrival; the renderer folds it into the same lever-arm math a solver impact uses.
-  const lever = numericParity(entity.id) === 0 ? 0 : (numericParity(entity.id + 1) ? 1 : -1);
+  // ω = 2·ΔV·lever/R — the off-center angular-impulse law. The parity biases (id's own
+  // bit signs the kick, the id/2 bit picks the flank) are the deterministic stand-in for a
+  // ragged front's oblique arrival; both signs occur across the id space, so a volley of
+  // blasts tumbles its wreckage both ways. The renderer folds the bias into the same
+  // lever-arm math a solver impact uses.
+  const lever = numericParity(entity.id) === 0 ? 0 : (numericParity(Math.trunc(entity.id / 2)) ? 1 : -1);
   const spinYaw = Math.max(
     -SHOCKWAVE_SWEEP_LAW.maxSpinRadPerS,
     Math.min(

@@ -1062,7 +1062,15 @@ export const aftermathWrecks = {
     if (!(dp > 0)) return;
     const a = payload.aId != null ? state.entities.get(payload.aId) : null;
     const b = payload.bId != null ? state.entities.get(payload.bId) : null;
-    const wreck = a && a.type === 'wreck' ? a : (b && b.type === 'wreck' ? b : null);
+    // Both flanks of a wreck-vs-wreck contact shed independently: each is bounded by its
+    // own cooldown, lifetime cap and mass floor, so a mutual slam costs two sprays only
+    // when both hulls are heavy enough to earn one. The flank flag is positional, not
+    // derived from the payload ids (aId/bId name entities; these are the entities).
+    if (a && a.type === 'wreck') this._shedChipsFromWreck(a, true, payload, dp, state);
+    if (b && b.type === 'wreck' && b !== a) this._shedChipsFromWreck(b, false, payload, dp, state);
+  },
+
+  _shedChipsFromWreck(wreck, wreckIsA, payload, dp, state) {
     if (!wreck || wreck.alive === false || !wreck.data) return;
     if (!isDynamicPhysicsBodyEntity(wreck)) return;
     const data = wreck.data;
@@ -1078,7 +1086,6 @@ export const aftermathWrecks = {
     // The chips seed from the struck side: flip the solver's A→B axis so it points away
     // from the wreck's flank of the contact (spawnCollisionTearOff randomizes which side
     // of that line the chips leave on anyway; the note's normal only orients the line).
-    const wreckIsA = wreck === a;
     const nx = Number(payload.normal && payload.normal.x) || 0;
     const nz = Number(payload.normal && payload.normal.z) || 0;
     const spawned = spawnCollisionTearOff({ state, helpers: this.helpers, bus: this.bus }, {

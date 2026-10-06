@@ -55,6 +55,14 @@ const LOOSE_TYPES = new Set(['asteroid', 'wreck', 'pickup', 'payload', 'mine']);
 //   fuze    — craft only (unchanged, _findTriggerVictim): a drifting grazer must not cook the
 //             player's own bay.
 const faunaBlastEligible = (e) => e?.type === 'fauna';
+// Same rule hullBurst applies to its tells: either accessibility flag drops the wave's
+// own cue to the reduced variant downstream.
+function flashReduced(state) {
+  const settings = state && state.settings;
+  const v = settings && settings.video;
+  const a = settings && settings.accessibility;
+  return !!((v && (v.motionReduce || v.flashReduce)) || (a && a.flashReduce));
+}
 // Same two-gate shape as movable(): an authored physicsBody:false fauna has no body at all
 // (substanceFor falls through falsy authored values to the dynamic default), so the authored
 // no-body contract is the first gate and the substance's dynamic flag the second.
@@ -1206,13 +1214,21 @@ export const bombs = {
   // world, where the tumble threshold (SHOCKWAVE_SWEEP_LAW.tumbleDeltaV) decides whether an
   // object visibly tumbles, shudders, or barely stirs. Gated like every slice-A rule: OFF
   // in legacy47a keeps the frozen goldens byte-identical.
-  _spawnSweep(bomb, def, pos, state) {
+  _spawnSweep(bomb, def, pos, state, impulseOverride = null) {
     if (!combatFlag('tumbleFling')) return;
+    // The wave carries a fixed fraction of the payload's OWN impulse budget: a
+    // zero-impulse payload (the singularity's opening, goo) births no wave at all —
+    // "does not blast on arrival" must not grow a shove, evict a live front's slot,
+    // or play the ring. The collapse passes its authored collapseImpulse instead.
+    const impulseBudget = Math.max(0, Number(impulseOverride != null ? impulseOverride : def.impulse) || 0)
+      * SHOCKWAVE_SWEEP_LAW.passImpulseFrac;
+    if (!(impulseBudget > 0)) return;
     if (this._sweeps.length >= SHOCKWAVE_SWEEP_LAW.maxLiveSweeps) this._sweeps.shift();
     const sweep = createShockwaveSweep({
       bombId: bomb.id,
       ownerId: bomb.data && bomb.data.ownerId,
       weaponId: def.id,
+      passImpulseWu: impulseBudget,
       x: pos.x, z: pos.z, blastRadius: def.radius,
       existing: this._sweeps.find((s) => s.bombId === bomb.id),
     });
@@ -1225,7 +1241,7 @@ export const bombs = {
         id: 'combat.shockwaveSweep', lane: 'combat', particles: 24, lights: 1,
         magnitude: Math.max(0.6, def.radius / 150), position: { x: pos.x, z: pos.z },
         material: 'impulse', sourceId: bomb.data && bomb.data.ownerId, targetId: null,
-        flashReduced: false,
+        flashReduced: flashReduced(state),
       });
     }
   },
@@ -1233,12 +1249,16 @@ export const bombs = {
   _tickSweeps(dt, state) {
     if (!this._sweeps.length || !(dt > 0)) return;
     const physics = this.helpers && this.helpers.combatPhysics;
+    // The candidate field does not depend on the sweep: enumerate once per tick.
+    const candidates = this._sweepCandidates(state);
     let passBudget = SHOCKWAVE_SWEEP_LAW.maxPassesPerTick;
     for (let i = this._sweeps.length - 1; i >= 0; i--) {
+      if (passBudget <= 0) break;
       const sweep = this._sweeps[i];
       const front = advanceSweepFront(sweep, dt);
-      if (!front.alive) { this._sweeps.splice(i, 1); continue; }
-      for (const ent of this._sweepCandidates(state)) {
+      // Resolve the final annulus BEFORE retiring: the last tick's 5.7 WU band plus body
+      // radii is a real pass the outermost bodies are owed.
+      for (const ent of candidates) {
         if (passBudget <= 0) break;
         const pass = resolveSweepPass(sweep, ent, front.radius);
         if (!pass) continue;
@@ -1259,6 +1279,7 @@ export const bombs = {
         }
         if (this.bus) this.bus.emit(SHOCKWAVE_PASS_EVENT, pass);
       }
+      if (!front.alive) this._sweeps.splice(i, 1);
     }
   },
 
@@ -1440,7 +1461,7 @@ export const bombs = {
     if (reason === 'expired' && def.field?.kind === 'singularity') {
       const result = this._blastVictims(state, { pos, def, ownerId: d.ownerId, originId: bomb.id, trigger: 'collapse',
         impulseOverride: def.field.collapseImpulse, damageOverride: def.field.collapseDamage });
-      this._spawnSweep(bomb, def, pos, state);
+      this._spawnSweep(bomb, def, pos, state, def.field.collapseImpulse);
       this._emitDetonated(bomb, d, def, state, pos, 'collapse', result);
     }
     this.bus?.emit('bombs:fieldEnded', {
@@ -1564,6 +1585,9 @@ export const bombs = {
       count++;
     }
     this._ownerCooldowns?.clear();
+    // A sector transition or a load must not leave a front expanding from stale
+    // detonation coordinates into the wrong world.
+    this._sweeps = [];
     this._bombsQuiet = null;
     if (this.state) publishBombsQuiet(this.state, false);
     if (count) this.bus?.emit('bombs:released', { count, reason });

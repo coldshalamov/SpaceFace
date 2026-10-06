@@ -461,7 +461,13 @@ export function createAsteroidMotionTracker() {
     rec.shoveVelX += pushX * kick;
     rec.shoveVelZ += pushZ * kick;
     const lever = Number(payload.lever) || 0;
-    rec.spinY += Number(payload.spinYaw) || 0;
+    // spinYaw already carries the sim's ω ∝ 1/R inertia law, and the tumble advance
+    // multiplies every spin axis by the size factor again (big rocks carry spin slowly)
+    // — pre-divide the yaw or a large rock under-answers the same wave ~5x vs a solver
+    // hit. The lever axes are flat dv terms with no inertia law of their own: they keep
+    // the size scaling so a big rock's pitch/roll stays heavy.
+    const sizeFactor = resolveAsteroidSizeFactor(rec.radius) || 1;
+    rec.spinY += (Number(payload.spinYaw) || 0) / sizeFactor;
     rec.spinX += lever * dv * 0.012;
     rec.spinZ -= lever * dv * 0.012;
   }
