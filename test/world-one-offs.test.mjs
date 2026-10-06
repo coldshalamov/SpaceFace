@@ -368,6 +368,18 @@ test('every placed set piece resolves an authored body — a named prop can neve
   }
   assert.ok(dressingRows().length >= 12, 'all one-off rows spawn across the sectors');
   for (const prop of dressingRows()) {
+    const pid = String(prop.data.placeId || '');
+    // CR-BERTH-2: the Afterwake slip's crib rows are procedural kit — `alien_growth_*` and
+    // `machine_*` placeIds author geometry in buildFallbackPlaceProp, not a GLB file. The
+    // census' no-invisible-prop law holds through the same prefix the renderer resolves on.
+    if (pid.startsWith('alien_growth_') || pid.startsWith('machine_')) {
+      assert.ok(
+        prop.data.berthId != null || prop.data.worldOneOff === true || prop.data.poi === true
+          || prop.data.landmark === true || prop.data.activityObjectSlotId != null,
+        `${prop.data.name || pid} (${pid}) is a procedural prop — it must arrive on an authored claim`,
+      );
+      continue;
+    }
     assert.ok(
       resolvePlaceFileForEntity({ type: 'fx', data: prop.data }),
       `${prop.data.name || prop.data.placeId} (${prop.data.placeId}) must resolve a place file`,

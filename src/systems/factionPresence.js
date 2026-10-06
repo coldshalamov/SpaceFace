@@ -1134,6 +1134,26 @@ export const factionPresence = {
         own.serviceReceipts[appraisalId] = receipt;
         pushReceipt(this.state, receipt);
       }
+      // CR-BERTH-2 — a fed appraisal is also the feed order: the hull the ledger proved goes
+      // to the slip off the refinery. Only a real lossId feeds it — an empty-ledger appraisal
+      // ("no recorded hull is attached") buys nothing physical. The keyed row accumulates
+      // feeds like the Pitborn consignment row; world.js reads its existence as the hulk gate.
+      const berth = factionBerthForStation(stationId);
+      if (berth && loss && loss.lossId) {
+        const prior = own.serviceReceipts[berth.receiptKey];
+        const feed = {
+          kind: 'berthFeed',
+          berthId: berth.id,
+          stationId,
+          factionId: berth.factionId,
+          count: (prior && Number.isFinite(prior.count) ? prior.count : 0) + 1,
+          lastLossId: loss.lossId,
+          lastShipDefId: loss.shipDefId || null,
+          t: this.state.simTime || 0,
+        };
+        own.serviceReceipts[berth.receiptKey] = feed;
+        pushReceipt(this.state, feed);
+      }
       this.bus.emit('comms:popup', {
         id: appraisalId, sender: 'Understory Wreck Buyer', text, category: 'salvage', persist: true,
       });
@@ -1171,7 +1191,10 @@ export const factionPresence = {
     if (!payload || payload.type !== 'redeem_rights') return;
     const stationId = typeof payload.stationId === 'string' ? payload.stationId : null;
     const berth = stationId ? factionBerthForStation(stationId) : null;
-    if (!berth) return;
+    // The redeem_rights payout feeds consignment berths only — a berth keyed to a different
+    // receipt contract (the slip's berthFeed: feed order, written by the appraisal desk)
+    // must not let a foreign payout mint a hulk on the wrong memory.
+    if (!berth || !String(berth.receiptKey).startsWith('berthConsign:')) return;
     const own = ensureOwnState(this.state);
     const prior = own.serviceReceipts[berth.receiptKey];
     const rights = Math.max(1, Math.floor(Number(payload.rights) || 0));

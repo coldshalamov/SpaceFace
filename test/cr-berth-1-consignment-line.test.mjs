@@ -88,7 +88,7 @@ function bootBerthHarness() {
 }
 
 test('CR-BERTH-1: the berth record is one frozen row pinned to Forge Foundry', () => {
-  assert.equal(FACTION_BERTHS.length, 1, 'exactly one faction berth is authored');
+  assert.equal(FACTION_BERTHS.length, 2, 'two faction berths are authored — the line and the slip');
   assert.ok(Object.isFrozen(FACTION_BERTHS), 'the berth list is frozen');
   const berth = FACTION_BERTHS[0];
   assert.ok(Object.isFrozen(berth));
