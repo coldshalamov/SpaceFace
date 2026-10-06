@@ -401,10 +401,8 @@ export function* packPresentationWorldToFenceSteps(world, fence, simTime = 0, po
     ? (previous.indexByEntityId || null) : null;
   const every = Math.max(1, Math.floor(Number(sliceEvery) || 1));
   let packed = 0;
-  for (let index = 0; index < active; index++) {
-    if ((index % every) === 0 && index > 0) yield;
-    const slot = world.activeSlots[index];
-    if (world.alive[slot] !== 1) continue;
+  const packRow = (slot) => {
+    if (world.alive[slot] !== 1) return;
     const entityId = world.entityIds[slot] >>> 0;
     if (previousIndex && world.packDirty && world.packDirty[slot] === 0) {
       const previousRow = previousIndex.get(entityId);
@@ -415,7 +413,7 @@ export function* packPresentationWorldToFenceSteps(world, fence, simTime = 0, po
         snapshot.copyRow(previous, previousRow);
         world.packDirty[slot] = 0;
         packed++;
-        continue;
+        return;
       }
     }
     let qy;
@@ -454,6 +452,25 @@ export function* packPresentationWorldToFenceSteps(world, fence, simTime = 0, po
     }
     if (world.packDirty) world.packDirty[slot] = 0;
     packed++;
+  };
+  // Freeze the slot list at mint: activeSlots is live while this pack parks —
+  // a retireSlot swap-moves an unvisited tail row into the visited prefix, and
+  // the row is then absent from the committed snapshot entirely (a 1+ frame
+  // pop-out). Frozen slots are packed by identity, not position.
+  const mintedSlots = active > 0 ? world.activeSlots.slice(0, active) : [];
+  for (let index = 0; index < mintedSlots.length; index++) {
+    if ((index % every) === 0 && index > 0) yield;
+    packRow(mintedSlots[index]);
+  }
+  // Rows allocated while the pack was parked sit past the frozen bound — sweep
+  // them into this commit or spawn admission waits a whole pack round. Rows
+  // only move toward lower indices under swap-remove, so the appended region
+  // can never duplicate a frozen-prefix slot.
+  const appendedSlots = world.activeSlots
+    ? world.activeSlots.slice(active, (world.getDiagnostics().active | 0)) : [];
+  for (let index = 0; index < appendedSlots.length; index++) {
+    if (((index + active) % every) === 0 && (index + active) > 0) yield;
+    packRow(appendedSlots[index]);
   }
   fence.commit();
   return packed;

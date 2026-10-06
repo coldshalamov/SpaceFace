@@ -43,6 +43,30 @@ export function collectUncompiledSceneDrawables(scene, openingSubjects = []) {
   return late;
 }
 
+/** Chunked twin — same pre-order walk via an explicit stack, yielding per slice. */
+export function* collectUncompiledSceneDrawablesSteps(scene, openingSubjects = [], nodesPerSlice = 256) {
+  const opening = openingSetFor(openingSubjects);
+  const late = [];
+  if (!scene || typeof scene.traverse !== 'function') return late;
+  const every = Math.max(1, Math.floor(Number(nodesPerSlice) || 1));
+  const stack = [scene];
+  let sinceYield = 0;
+  while (stack.length > 0) {
+    const object = stack.pop();
+    const children = object && object.children;
+    if (children) {
+      for (let i = children.length - 1; i >= 0; i -= 1) stack.push(children[i]);
+    }
+    if (object && isDrawable(object) && !opening.has(object)) late.push(object);
+    sinceYield += 1;
+    if (sinceYield >= every) {
+      sinceYield = 0;
+      yield;
+    }
+  }
+  return late;
+}
+
 export function collectLateAdmittedCompileRoots(meshes, openingSubjects = []) {
   const opening = openingSetFor(openingSubjects);
   const late = [];
@@ -58,6 +82,40 @@ export function collectLateAdmittedCompileRoots(meshes, openingSubjects = []) {
     };
     visit(root);
     if (typeof root.traverse === 'function') root.traverse(visit);
+    if (hasDrawable && hasUncompiled) late.push(root);
+  }
+  return late;
+}
+
+/** Chunked twin — same verdict set; per-root subtree walks run on explicit
+ * stacks and yield per slice so a cook paces the O(meshes×subtree) collect. */
+export function* collectLateAdmittedCompileRootsSteps(meshes, openingSubjects = [], nodesPerSlice = 256) {
+  const opening = openingSetFor(openingSubjects);
+  const late = [];
+  if (!meshes || typeof meshes.values !== 'function') return late;
+  const every = Math.max(1, Math.floor(Number(nodesPerSlice) || 1));
+  let sinceYield = 0;
+  for (const root of meshes.values()) {
+    if (!root) continue;
+    let hasDrawable = false;
+    let hasUncompiled = false;
+    const stack = [root];
+    while (stack.length > 0) {
+      const object = stack.pop();
+      const children = object && object.children;
+      if (children) {
+        for (let i = children.length - 1; i >= 0; i -= 1) stack.push(children[i]);
+      }
+      if (object && isDrawable(object)) {
+        hasDrawable = true;
+        if (!opening.has(object)) hasUncompiled = true;
+      }
+      sinceYield += 1;
+      if (sinceYield >= every) {
+        sinceYield = 0;
+        yield;
+      }
+    }
     if (hasDrawable && hasUncompiled) late.push(root);
   }
   return late;
@@ -233,6 +291,38 @@ export function collectInstancePoolCompileRoots(scene) {
   };
   visit(scene);
   if (typeof scene.traverse === 'function') scene.traverse(visit);
+  return roots;
+}
+
+/** Chunked twin — same pool-root set via an explicit stack, yielding per slice. */
+export function* collectInstancePoolCompileRootsSteps(scene, nodesPerSlice = 256) {
+  const roots = [];
+  const seen = new Set();
+  if (!scene) return roots;
+  const every = Math.max(1, Math.floor(Number(nodesPerSlice) || 1));
+  const stack = [scene];
+  let sinceYield = 0;
+  while (stack.length > 0) {
+    const object = stack.pop();
+    if (object && !seen.has(object)) {
+      seen.add(object);
+      if (object.userData && (
+        object.userData.spacefaceInstancePool === true
+        || object.userData.asteroidInstancePool === true
+      )) {
+        roots.push(object);
+      }
+    }
+    const children = object && object.children;
+    if (children) {
+      for (let i = children.length - 1; i >= 0; i -= 1) stack.push(children[i]);
+    }
+    sinceYield += 1;
+    if (sinceYield >= every) {
+      sinceYield = 0;
+      yield;
+    }
+  }
   return roots;
 }
 

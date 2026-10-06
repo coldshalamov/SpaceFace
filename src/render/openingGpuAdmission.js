@@ -443,17 +443,47 @@ export function uniqueAdmissionUnits(subjects, options = {}) {
   };
 }
 
-export function withOnlySubjectsDrawable(scene, subjects, fn) {
-  const keep = new Set((Array.isArray(subjects) ? subjects : [subjects]).filter(Boolean));
+/**
+ * Reusable drawable-hide session for a batched touch loop. The scene's drawable
+ * enumeration is O(scene) — mint it once per cohort instead of once per batch.
+ * `keep` accumulates across uses: batch subjects share ancestors, so a later
+ * batch's keep mint skips walks a prior batch already unioned in. Under-hiding
+ * is safe by contract — a drawable the session under-covers just draws inside
+ * the absorbed touch pass (which exists to absorb links), never inside a
+ * presented frame; stale entries for detached nodes hide+restore harmlessly.
+ */
+export function drawableHideSession(scene) {
+  const drawables = [];
+  if (scene && typeof scene.traverse === 'function') {
+    scene.traverse((object) => {
+      if (isDrawable(object)) drawables.push(object);
+    });
+  }
+  return { scene, drawables, keep: new Set() };
+}
+
+export function withOnlySubjectsDrawable(scene, subjects, fn, session) {
+  const keep = session ? session.keep
+    : new Set((Array.isArray(subjects) ? subjects : [subjects]).filter(Boolean));
   // A drawable ancestor must stay un-hidden: render() skips a hidden object's whole subtree, so
   // hiding one would make the subject's "draw" a silent no-op and leave its program cold. The
   // same holds for descendants — a Group subject whose mesh children are hidden draws nothing.
-  for (const subject of [...keep]) {
-    for (let p = subject.parent; p; p = p.parent) keep.add(p);
+  const fresh = session
+    ? (Array.isArray(subjects) ? subjects : [subjects]).filter((s) => s && !keep.has(s))
+    : [...keep];
+  for (const subject of fresh) {
+    if (session) keep.add(subject);
+    for (let p = subject.parent; p && !keep.has(p); p = p.parent) keep.add(p);
     if (typeof subject.traverse === 'function') subject.traverse((node) => keep.add(node));
   }
   const saved = [];
-  if (scene && typeof scene.traverse === 'function') {
+  if (session) {
+    for (const object of session.drawables) {
+      if (keep.has(object)) continue;
+      saved.push({ object, visible: object.visible });
+      object.visible = false;
+    }
+  } else if (scene && typeof scene.traverse === 'function') {
     scene.traverse((object) => {
       if (!isDrawable(object) || keep.has(object)) return;
       saved.push({ object, visible: object.visible });
@@ -476,7 +506,7 @@ export function withOnlySubjectsDrawable(scene, subjects, fn) {
  * gets exactly the draw it would get alone (same program, same buffers, same target, same
  * lights); only the whole-scene hide/restore walk and the render call's fixed cost are shared.
  */
-export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camera, lightingScene) {
+export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camera, lightingScene, options = {}) {
   const subjects = (Array.isArray(subject) ? subject : [subject]).filter(Boolean);
   if (!renderer || typeof renderer.render !== 'function' || subjects.length === 0 || !lightingScene) {
     return { skipped: true, reason: 'touch unavailable' };
@@ -626,7 +656,7 @@ export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camer
           if (typeof item.updateMatrixWorld === 'function') item.updateMatrixWorld(true);
         }
         renderer.render(lightingScene, camera);
-      });
+      }, options.drawableSession);
       drawn.push(...drawableSubjects.map((item) => objectLabel(item)));
     }
     return {

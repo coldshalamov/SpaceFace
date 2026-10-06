@@ -207,6 +207,49 @@ export function collectStartupGeometryDrawables(subjects, options = {}) {
 }
 
 /**
+ * Stepped twin — identical drawable set via an explicit stack (same pre-order as traverse),
+ * yielding every `sliceEvery` visited objects so an async residency leg paces the cohort
+ * collect instead of paying the whole traverse inside one task.
+ */
+export function* collectStartupGeometryDrawablesSteps(subjects, options = {}, sliceEvery = 256) {
+  const drawables = [];
+  const seen = new Set();
+  const every = Math.max(1, Math.floor(Number(sliceEvery) || 1));
+  let visited = 0;
+  const visit = (object) => {
+    if (!drawableHasWork(object, options) || seen.has(object)) return;
+    seen.add(object);
+    drawables.push(object);
+    const tiers = object.userData && object.userData.spacefaceQualityTierGeometries;
+    if (Array.isArray(tiers)) {
+      for (const tierGeo of tiers) {
+        if (!tierGeo || tierGeo === object.geometry) continue;
+        const facade = Object.create(object);
+        facade.geometry = tierGeo;
+        drawables.push(facade);
+      }
+    }
+  };
+  for (const root of subjectRoots(subjects)) {
+    if (!root) continue;
+    if (typeof root.traverse !== 'function') {
+      visit(root);
+      continue;
+    }
+    const stack = [root];
+    while (stack.length > 0) {
+      const object = stack.pop();
+      if (!object) continue;
+      if ((++visited % every) === 0) yield;
+      visit(object);
+      const children = object.children;
+      if (children) for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
+    }
+  }
+  return drawables;
+}
+
+/**
  * Instanced drawables whose backing geometry never passed a residency prepare. Scene-level
  * instance pools (authored package pools, asteroid batches) have no per-subject admission
  * owner: the only stamp they ever get comes from a whole-scene seal, so a cook that skips or
@@ -225,6 +268,36 @@ export function collectUnresidentInstancedDrawables(subjects) {
     };
     if (typeof root.traverse === 'function') root.traverse(visit);
     else visit(root);
+  }
+  return drawables;
+}
+
+/** Stepped twin — same unstamped-instanced set via an explicit stack, yielding per slice. */
+export function* collectUnresidentInstancedDrawablesSteps(subjects, sliceEvery = 256) {
+  const drawables = [];
+  const every = Math.max(1, Math.floor(Number(sliceEvery) || 1));
+  let visited = 0;
+  const visit = (object) => {
+    if (!object || object.isInstancedMesh !== true || !object.geometry) return;
+    const data = object.geometry.userData;
+    if (data && data.spacefaceGpuResident === true) return;
+    drawables.push(object);
+  };
+  for (const root of subjectRoots(subjects)) {
+    if (!root) continue;
+    if (typeof root.traverse !== 'function') {
+      visit(root);
+      continue;
+    }
+    const stack = [root];
+    while (stack.length > 0) {
+      const object = stack.pop();
+      if (!object) continue;
+      if ((++visited % every) === 0) yield;
+      visit(object);
+      const children = object.children;
+      if (children) for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
+    }
   }
   return drawables;
 }
@@ -448,7 +521,20 @@ function restoreRendererState(renderer, state) {
  * attaching them to the visible scene or changing their production materials.
  */
 export async function prepareStartupGeometryResidency(renderer, subjects, options = {}) {
-  const drawables = collectStartupGeometryDrawables(subjects, options);
+  const collectYield = typeof options.yieldToMain === 'function'
+    ? options.yieldToMain
+    : yieldToBrowser;
+  let drawables;
+  if (typeof collectStartupGeometryDrawablesSteps === 'function') {
+    const collectIt = collectStartupGeometryDrawablesSteps(subjects, options);
+    for (;;) {
+      const collectStep = collectIt.next();
+      if (collectStep.done) { drawables = collectStep.value; break; }
+      await collectYield();
+    }
+  } else {
+    drawables = collectStartupGeometryDrawables(subjects, options);
+  }
   const { work, uniqueGeometries } = createGeometryWorkItems(drawables, options);
   if (!renderer || typeof renderer.render !== 'function'
       || typeof renderer.setRenderTarget !== 'function'
@@ -593,7 +679,17 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
   const paceQueue = typeof options.paceQueue === 'function'
     ? options.paceQueue
     : makeGpuQueuePacer(renderer);
-  const textures = collectStartupTextures(subjects);
+  let textures;
+  if (typeof collectStartupTexturesSteps === 'function') {
+    const collectIt = collectStartupTexturesSteps(subjects);
+    for (;;) {
+      const collectStep = collectIt.next();
+      if (collectStep.done) { textures = collectStep.value; break; }
+      await yieldToMain();
+    }
+  } else {
+    textures = collectStartupTextures(subjects);
+  }
   for (const texture of Array.isArray(options.textures) ? options.textures : []) {
     if (texture && texture.isTexture === true && !textures.includes(texture)) textures.push(texture);
   }

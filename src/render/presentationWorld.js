@@ -536,21 +536,24 @@ export function createPresentationWorld(options = {}) {
       changed = true;
       packedChanged = true;
     }
-    const candidateRadius = Number.isFinite(visualRadius)
-      ? visualRadius
-      : Number(entity.radius);
-    const nextRadius = Math.max(0, Number.isFinite(candidateRadius) ? candidateRadius : 0);
-    const previousRadius = world.radii[slot];
-    if (previousRadius !== nextRadius) {
-      world.radii[slot] = nextRadius;
-      if (nextRadius >= maxRadius) {
-        maxRadius = nextRadius;
-        maxRadiusDirty = false;
-        diagnostics.maxRadius = maxRadius;
-      } else if (previousRadius === maxRadius) {
-        maxRadiusDirty = true;
+    // Only a caller that minted a cull radius may write radii — the apply/record
+    // paths pass none, and stomping the bind-stamped visual radius back to
+    // entity.radius leaves culled rows under-testing exactVisible (edge pop-in)
+    // and churns a VISUAL mark on every apply.
+    if (Number.isFinite(visualRadius)) {
+      const nextRadius = Math.max(0, visualRadius);
+      const previousRadius = world.radii[slot];
+      if (previousRadius !== nextRadius) {
+        world.radii[slot] = nextRadius;
+        if (nextRadius >= maxRadius) {
+          maxRadius = nextRadius;
+          maxRadiusDirty = false;
+          diagnostics.maxRadius = maxRadius;
+        } else if (previousRadius === maxRadius) {
+          maxRadiusDirty = true;
+        }
+        changed = true;
       }
-      changed = true;
     }
     if (packedChanged) markPackedDirty(slot);
     if (changed) markDirtyBits(slot, PRESENTATION_DIRTY.VISUAL);
@@ -643,7 +646,19 @@ export function createPresentationWorld(options = {}) {
     world.doomed[slot] = 0;
     markPackedDirty(slot);
     writeDirtyMask(slot, PRESENTATION_DIRTY.ALL);
-    world.radii[slot] = 0;
+    // refreshMetadata only writes radii for a caller-minted visual radius now, so the
+    // alloc path seeds entity.radius directly — with the same maxRadius bookkeeping
+    // the minted-write path performs (a new row can only raise the bound).
+    const allocRadius = Math.max(0, Number(entity && entity.radius) || 0);
+    const allocPrevRadius = world.radii[slot];
+    world.radii[slot] = allocRadius;
+    if (allocRadius >= maxRadius) {
+      maxRadius = allocRadius;
+      maxRadiusDirty = false;
+      diagnostics.maxRadius = maxRadius;
+    } else if (allocPrevRadius === maxRadius) {
+      maxRadiusDirty = true;
+    }
     world.entityRefs[slot] = entity;
     world.boundEntityRefs[slot] = null;
     world.meshRefs[slot] = null;
@@ -837,8 +852,7 @@ export function createPresentationWorld(options = {}) {
       const nextPrevPitch = Number.isFinite(value.prevPitch) ? value.prevPitch : nextPitch;
       const nextType = typeCode(entity.type);
       const nextFlags = presentationFlags(entity);
-      const candidateRadius = Number.isFinite(visualRadius) ? visualRadius : Number(entity.radius);
-      const nextRadius = Math.max(0, Number.isFinite(candidateRadius) ? candidateRadius : 0);
+      const nextRadius = Number.isFinite(visualRadius) ? Math.max(0, visualRadius) : world.radii[slot];
       if (world.x[slot] === nextX && world.y[slot] === nextY && world.z[slot] === nextZ
         && world.prevX[slot] === nextPrevX && world.prevY[slot] === nextPrevY
         && world.prevZ[slot] === nextPrevZ && world.rot[slot] === nextRot
@@ -1091,15 +1105,17 @@ export function createPresentationWorld(options = {}) {
         if (lastSeenSeq[slot] === seq) continue;
         const resident = refs[slot];
         if (!resident) continue;
-        if (doomed[slot] === 1) continue;
         if (resident.alive === false) {
           // A suppressed destroy mints no record, so no later replay retires
           // the dead occupant's row — free the slot here instead of leaking
           // it until the next full rebuild. The byId owner check keeps the
-          // verdict slot-exact if its id recycled into a fresh row.
+          // verdict slot-exact if its id recycled into a fresh row. Retire
+          // precedes the doom skip: a tombstone minted by the eager passes
+          // must not shield the dead resident's slot from being freed.
           if (byId.get(world.entityIds[slot]) === slot) deadResidents.push(slot);
           continue;
         }
+        if (doomed[slot] === 1) continue;
         if (resident._noMesh === true
             || (resident.type === 'projectile' && projectileSkipsVisualFactoryMesh(resident))) {
           const wasVisible = world.visible[slot] === 1;
@@ -1172,6 +1188,29 @@ export function createPresentationWorld(options = {}) {
               && resident.alive !== false) continue;
           const wasVisible = world.visible[slot] === 1;
           world.doomed[slot] = 1;
+          world.visible[slot] = 0;
+          if (wasVisible) markDirtyBits(slot, PRESENTATION_DIRTY.VISIBILITY);
+        }
+      }
+    }
+    if (retireSuppressed) {
+      // Extend the mint-time doom to the classes the deferred sweeps would doom
+      // anyway: a parked apply otherwise leaves dead residents and
+      // _noMesh/projectile-ineligible rows drawing at their last pose for the
+      // whole suspension span. Dead residents still retire in the deferred
+      // sweep — only the tombstone lands eagerly.
+      const refs = world.entityRefs;
+      const doomed = world.doomed;
+      const actives = world.activeSlots;
+      for (let s = 0; s < activeCount; s++) {
+        const slot = actives[s];
+        const resident = refs[slot];
+        if (!resident || doomed[slot] === 1) continue;
+        if (resident.alive === false
+            || resident._noMesh === true
+            || (resident.type === 'projectile' && projectileSkipsVisualFactoryMesh(resident))) {
+          const wasVisible = world.visible[slot] === 1;
+          doomed[slot] = 1;
           world.visible[slot] = 0;
           if (wasVisible) markDirtyBits(slot, PRESENTATION_DIRTY.VISIBILITY);
         }
@@ -1271,11 +1310,13 @@ export function createPresentationWorld(options = {}) {
         if (lastSeenSeq[slot] === seq) continue;
         const resident = refs[slot];
         if (!resident) continue;
-        if (doomed[slot] === 1) continue;
         if (resident.alive === false) {
+          // Retire precedes the doom skip — an eagerly-minted tombstone must not
+          // shield the dead resident's slot from being freed.
           if (byId.get(world.entityIds[slot]) === slot) deadResidents.push(slot);
           continue;
         }
+        if (doomed[slot] === 1) continue;
         if (resident._noMesh === true
             || (resident.type === 'projectile' && projectileSkipsVisualFactoryMesh(resident))) {
           const wasVisible = world.visible[slot] === 1;

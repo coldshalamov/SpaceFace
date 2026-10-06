@@ -44,7 +44,7 @@ const RECOUNT_STORM_QUIET_RESOLVES = 8;
 /** Iterative pre-order twin of the recount traverse — same receiver test, yields
  * every `nodesPerSlice` visited nodes so resolve() can pace the fallback walk
  * across presented beats instead of paying one atomic O(scene) pass. */
-function* recountShadowReceiversSteps(scene, nodesPerSlice = RECOUNT_NODES_PER_SLICE) {
+function* recountShadowReceiversSteps(scene, nodesPerSlice = RECOUNT_NODES_PER_SLICE, notedWalk = null) {
   let receivers = 0;
   if (!scene) return receivers;
   const every = Math.max(1, Math.floor(Number(nodesPerSlice) || 1));
@@ -55,6 +55,13 @@ function* recountShadowReceiversSteps(scene, nodesPerSlice = RECOUNT_NODES_PER_S
     if (!object) continue;
     if ((++sinceYield % every) === 0) yield;
     if (object.receiveShadow === true) receivers += 1;
+    // Notes recorded while this walk was mid-flight get a per-root visit stamp:
+    // a noted root measured post-note is already folded into `receivers`, so the
+    // stamp only re-adds deltas of roots the walk never visited post-note.
+    if (notedWalk) {
+      notedWalk.seq += 1;
+      if (notedWalk.notes.has(object)) notedWalk.visits.set(object, notedWalk.seq);
+    }
     const children = object.children;
     if (children) for (let i = children.length - 1; i >= 0; i -= 1) stack.push(children[i]);
   }
@@ -70,6 +77,32 @@ export function createShadowReceiverTally() {
   let pendingRecount = null;
   let supersededRecounts = 0;
   let recountCooldown = 0;
+  // While a stepped recount is mid-walk, root-scoped notes record {delta, seq}
+  // here instead of superseding the walk: the stamp re-adds a noted root's
+  // delta only when the walk never visited that root post-note (a visited root
+  // is already folded into the walk's own measurement). `loose` accumulates
+  // positive scene-scoped deltas (receiver gains on nodes the walk can't
+  // attribute a root to) — over-counting errs conservative-on, matching the
+  // tally's boolean consumers. This converges `dirty` in ONE walk under
+  // sustained note storms instead of discarding bounded slices forever.
+  const notedWalk = { notes: new Map(), visits: new Map(), loose: 0, seq: 0 };
+  const resetNotedWalk = () => {
+    notedWalk.seq = 0;
+    notedWalk.visits.clear();
+    // A re-minted walk re-measures every node post-mutation: notes pending from
+    // an earlier walk are now absorbed iff the fresh walk visits the root at
+    // all (visit seqs start at 1, so a demoted seq-0 note is unabsorbed only
+    // when the root stays unreachable). Loose deltas are dropped for the same
+    // reason — a whole fresh walk subsumes them.
+    for (const note of notedWalk.notes.values()) note.seq = 0;
+    notedWalk.loose = 0;
+  };
+  const clearNotedWalk = () => {
+    notedWalk.seq = 0;
+    notedWalk.visits.clear();
+    notedWalk.notes.clear();
+    notedWalk.loose = 0;
+  };
 
   return {
     get count() { return count; },
@@ -79,24 +112,35 @@ export function createShadowReceiverTally() {
       dirty = true;
       dirtySeq += 1;
     },
-    // A note landing mid-walk is a mutation the stepped recount may or may not
-    // have visited yet — the walk's measurement is torn either way, so bump
-    // the seq and let the supersede path re-mint on the post-note state.
-    noteAdded(root) {
-      if (pendingRecount) dirtySeq += 1;
-      count += countShadowReceivers(root);
+    // A root-scoped note landing mid-walk records {delta, seq} instead of
+    // superseding: the walk stamps whether it measured that root post-note.
+    noteAdded(root, measured) {
+      const delta = Number.isFinite(measured) ? measured : countShadowReceivers(root);
+      if (pendingRecount && root) {
+        const prev = notedWalk.notes.get(root);
+        notedWalk.notes.set(root, { delta: (prev ? prev.delta : 0) + delta, seq: notedWalk.seq });
+      }
+      count += delta;
       if (count < 0) count = 0;
     },
-    noteRemoved(root) {
-      if (pendingRecount) dirtySeq += 1;
-      count -= countShadowReceivers(root);
+    noteRemoved(root, measured) {
+      const delta = Number.isFinite(measured) ? measured : countShadowReceivers(root);
+      // A removed root is unreachable: the pending walk can never measure it,
+      // so the removal is absorbed by construction — nothing to record; the
+      // note still settles the served count.
+      count -= delta;
       if (count < 0) count = 0;
     },
     // Exact net receiver change a single policy traverse already measured —
     // keeps count current without the dirty fallback's whole-scene recount.
     noteDelta(delta) {
       if (!Number.isFinite(delta) || delta === 0) return;
-      if (pendingRecount) dirtySeq += 1;
+      if (pendingRecount) {
+        // Positive scene-scoped deltas fold into the stamp conservatively; a
+        // negative one's absorption is unknowable, so it keeps the supersede.
+        if (delta > 0) notedWalk.loose += delta;
+        else dirtySeq += 1;
+      }
       count += delta;
       if (count < 0) count = 0;
     },
@@ -104,6 +148,7 @@ export function createShadowReceiverTally() {
       pendingRecount = null;
       supersededRecounts = 0;
       recountCooldown = 0;
+      clearNotedWalk();
       const it = recountShadowReceiversSteps(scene);
       for (;;) {
         const step = it.next();
@@ -133,7 +178,8 @@ export function createShadowReceiverTally() {
         if (!pendingRecount) {
           if (!scene || typeof scene.traverse !== 'function') return count;
           if (recountCooldown > 0) { recountCooldown -= 1; return count; }
-          pendingRecount = { iter: recountShadowReceiversSteps(scene), seq: dirtySeq };
+          resetNotedWalk();
+          pendingRecount = { iter: recountShadowReceiversSteps(scene, RECOUNT_NODES_PER_SLICE, notedWalk), seq: dirtySeq };
         }
         const step = pendingRecount.iter.next();
         if (step.done) {
@@ -143,7 +189,14 @@ export function createShadowReceiverTally() {
             // measured-but-stale count is the better serve. A capped stale
             // settle keeps dirty set so the next resolve beat re-mints and the
             // count self-heals once the storm pauses.
-            count = Math.max(0, step.value | 0);
+            let stamped = Math.max(0, step.value | 0);
+            for (const [root, note] of notedWalk.notes) {
+              const visitSeq = notedWalk.visits.get(root);
+              if (visitSeq === undefined || visitSeq <= note.seq) stamped += note.delta;
+            }
+            stamped += notedWalk.loose;
+            count = Math.max(0, stamped | 0);
+            clearNotedWalk();
             pendingRecount = null;
             supersededRecounts = 0;
             if (seqMatched) dirty = false;

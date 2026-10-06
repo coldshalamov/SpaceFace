@@ -342,8 +342,11 @@ import {
   collectFirstFlightLayerDrawables,
   collectInstancePoolCompileRoots,
   collectInstancePoolCompileRootsAndSubjectsSteps,
+  collectInstancePoolCompileRootsSteps,
   collectLateAdmittedCompileRoots,
+  collectLateAdmittedCompileRootsSteps,
   collectUncompiledSceneDrawables,
+  collectUncompiledSceneDrawablesSteps,
 } from './latePipelineAdmission.js';
 import {
   armAdmissionShadows,
@@ -412,6 +415,7 @@ import {
   collectStartupTextures,
   collectStartupTexturesSteps,
   collectUnresidentInstancedDrawables,
+  collectUnresidentInstancedDrawablesSteps,
   hasUnresidentGeometry,
   prepareStartupGeometryResidency,
   prepareStartupGpuResidency,
@@ -443,6 +447,7 @@ import {
   captureOpeningAdmissionIdentitySteps,
   describeOpeningAdmissionIdentityDelta,
   describeOpeningAdmissionIdentityDeltaSteps,
+  drawableHideSession,
   materialHasCompiledProgram,
   materialList,
   touchSubjectOnExactTarget,
@@ -477,7 +482,11 @@ import {
   willEntityEnterAuthoredUpgradeRunway,
 } from './authoredAdmissionPolicy.js';
 import { predictNextSector } from './sectorPredict.js';
-import { updateMatrixWorldSteps } from './staticChildMatrices.js';
+import {
+  freezeHiddenSubtreeMatrices,
+  unfreezeHiddenSubtreeMatrices,
+  updateMatrixWorldSteps,
+} from './staticChildMatrices.js';
 import {
   admissionAnchorPos,
   approachDistanceWu,
@@ -10678,13 +10687,28 @@ export const render = {
       const envMap = this._envMap;
       if (envMap && subject) bindEnvironmentToStandardMaterials(subject, envMap);
     };
-    const compileSubjectColorAndDepth = (subject, route, compileOptions = null) => {
+    // Paced form: the stamp walks the subject subtree, so per-unit cohort calls
+    // pay O(subtree) atomically each — drive the Steps twin under the admission
+    // yield. Reveal-ordered touch callers keep the sync form: their draw must be
+    // issued inside the same task as the reveal/restore dance.
+    const stampSubjectEnvAsync = async (subject) => {
+      const envMap = this._envMap;
+      if (!envMap || !subject) return;
+      if (typeof bindEnvironmentToStandardMaterialsSteps === 'function') {
+        for (const _ of bindEnvironmentToStandardMaterialsSteps(subject, envMap)) {
+          await admissionPaceYield();
+        }
+      } else {
+        bindEnvironmentToStandardMaterials(subject, envMap);
+      }
+    };
+    const compileSubjectColorAndDepth = async (subject, route, compileOptions = null) => {
       // Color only. Per-root shadowMap.render during sliced flight compiles threw
       // (WebGLProgram.setProgram on a null material state) and split ~460 ms depth
       // links across presents, which raised hitch count. Opening and post-opening
       // each run one batched compileShadowDepthPipelines behind the loading shell.
-      stampSubjectEnv(subject);
-      return Promise.resolve(this._compilePostRoute(route, subject, cam.obj, scene, compileOptions));
+      await stampSubjectEnvAsync(subject);
+      return this._compilePostRoute(route, subject, cam.obj, scene, compileOptions);
     };
     const touchExactTargetSubject = (subject) => {
       stampSubjectEnv(subject);
@@ -10694,14 +10718,14 @@ export const render = {
       return touchSubjectOnExactTarget(renderer, null, subject, cam.obj, scene);
     };
     // Loading-shell form of the touch above: one render draws the whole group on the same target.
-    const touchExactTargetSubjects = (subjects) => {
+    const touchExactTargetSubjects = async (subjects, drawableSession = null) => {
       const list = (Array.isArray(subjects) ? subjects : [subjects]).filter(Boolean);
       if (list.length === 0) return { skipped: true, reason: 'empty touch group' };
-      for (const subject of list) stampSubjectEnv(subject);
+      for (const subject of list) await stampSubjectEnvAsync(subject);
       if (this.bloom && typeof this.bloom.touchScenePipelines === 'function') {
         return this.bloom.touchScenePipelines(list, cam.obj, scene);
       }
-      return touchSubjectOnExactTarget(renderer, null, list, cam.obj, scene);
+      return touchSubjectOnExactTarget(renderer, null, list, cam.obj, scene, { drawableSession });
     };
     const admissionPaceYield = () => yieldToNextPresent({ boundMs: FLIGHT_ADMISSION_PRESENT_BOUND_MS });
     // A package texture whose CPU mirror was released after its proven upload still reaches
@@ -13171,6 +13195,17 @@ export const render = {
                 if (censusStep.done) { sealCensus = censusStep.value; break; }
                 await sealPace();
               }
+            } else if (typeof collectInstancePoolCompileRootsSteps === 'function') {
+              const poolRootsIt = collectInstancePoolCompileRootsSteps(scene);
+              for (;;) {
+                if (cookStale()) {
+                  if (typeof poolRootsIt.return === 'function') { try { poolRootsIt.return(); } catch { /* cleanup-only */ } }
+                  return cookSuperseded;
+                }
+                const poolRootsStep = poolRootsIt.next();
+                if (poolRootsStep.done) { sealCensus = { roots: poolRootsStep.value, subjects: null }; break; }
+                await sealPace();
+              }
             } else {
               sealCensus = {
                 roots: collectInstancePoolCompileRoots(scene),
@@ -13276,6 +13311,7 @@ export const render = {
               };
               poolSealUnits = sealUnits.programSubjects.length;
               if (cookStale()) return cookSuperseded;
+              let poolSealTouchSession = null;
               await admitOpeningUnitsAcrossSlices({
                 units: sealUnits,
                 issueKeyFor: openingCompileIssueKey,
@@ -13295,7 +13331,8 @@ export const render = {
                     const restores = [];
                     try {
                       for (const subject of drawable) restores.push(revealSubjectForCompile(subject));
-                      return touchExactTargetSubjects(drawable);
+                      poolSealTouchSession = poolSealTouchSession || drawableHideSession(scene);
+                      return touchExactTargetSubjects(drawable, poolSealTouchSession);
                     } finally {
                       for (let i = restores.length - 1; i >= 0; i--) restores[i]();
                     }
@@ -14157,6 +14194,26 @@ export const render = {
         // Opening hulls first so a time-capped cook still admits the player ship
         // before leftover FX. bloomScene was 3.9s/program on this box; touching
         // instance pools first left New Game stuck at gpu-resources 0.9.
+        // The late-admitted mesh-root collect walks each registered subtree; pace it
+        // under the cook stretch when the chunked census never minted the roster.
+        const needLateCohort = options.skipCompile !== true
+          && !(options.holdLeftoverFx === true && !warmFirstFlightFx)
+          && warmFirstFlightFx !== true
+          && !cookLateAdmittedRoots;
+        let lateAdmittedCohort = null;
+        if (needLateCohort) {
+          if (typeof collectLateAdmittedCompileRootsSteps === 'function') {
+            const lateIt = collectLateAdmittedCompileRootsSteps(this._meshes, openingSubjects);
+            for (;;) {
+              if (cookStale()) return cookSuperseded;
+              const lateStep = lateIt.next();
+              if (lateStep.done) { lateAdmittedCohort = lateStep.value; break; }
+              await paceCookStretch();
+            }
+          } else {
+            lateAdmittedCohort = collectLateAdmittedCompileRoots(this._meshes, openingSubjects);
+          }
+        }
         const lateRoots = options.skipCompile === true || (options.holdLeftoverFx === true && !warmFirstFlightFx)
           ? openingRoots
           : warmFirstFlightFx
@@ -14169,8 +14226,7 @@ export const render = {
               ...openingRoots,
               ...firstFlightRoots,
               ...preparedRoots,
-              ...(cookLateAdmittedRoots
-                || collectLateAdmittedCompileRoots(this._meshes, openingSubjects)),
+              ...(cookLateAdmittedRoots || lateAdmittedCohort || []),
               ...cookPoolCompileRoots(),
             ];
         // holdLeftoverFx keeps leftover FX out of the cohort because their menu-linked programs
@@ -14864,6 +14920,7 @@ export const render = {
             })
             : rockPoolYieldBase;
           try {
+            let rockTouchSession = null;
             rockPools = await admitOpeningUnitsAcrossSlices({
               units: cookUnits,
               renderer,
@@ -14905,7 +14962,8 @@ export const render = {
                   const restores = [];
                   try {
                     for (const subject of drawable) restores.push(revealSubjectForCompile(subject));
-                    return touchExactTargetSubjects(drawable);
+                    rockTouchSession = rockTouchSession || drawableHideSession(scene);
+                    return touchExactTargetSubjects(drawable, rockTouchSession);
                   } finally {
                     for (let i = restores.length - 1; i >= 0; i--) restores[i]();
                   }
@@ -15504,7 +15562,18 @@ export const render = {
           ? performance.now() : Date.now();
         let poolSeal = null;
         try {
-          const unresidentPools = collectUnresidentInstancedDrawables(scene);
+          let unresidentPools;
+          if (typeof collectUnresidentInstancedDrawablesSteps === 'function') {
+            const poolIt = collectUnresidentInstancedDrawablesSteps(scene);
+            for (;;) {
+              const poolStep = poolIt.next();
+              if (poolStep.done) { unresidentPools = poolStep.value; break; }
+              await yieldLiveSectorGpu();
+              if (cookStale()) return cookSuperseded;
+            }
+          } else {
+            unresidentPools = collectUnresidentInstancedDrawables(scene);
+          }
           poolSeal = unresidentPools.length > 0
             ? await prepareStartupGpuResidency(renderer, unresidentPools, {
               yieldToMain: yieldLiveSectorGpu,
@@ -15632,10 +15701,46 @@ export const render = {
         const censusIter = typeof collectInstancePoolCompileRootsAndSubjectsSteps === 'function'
           ? collectInstancePoolCompileRootsAndSubjectsSteps(scene, 256) : null;
         if (!censusIter) {
+          // Steps-less host fallback — still paced: each collector's own Steps
+          // twin exists in latePipelineAdmission, so this path survives only
+          // where those are unavailable too (then the sync collectors run).
+          let fallbackRoots = [];
+          let fallbackLateEntities = [];
+          let fallbackUncompiled = [];
+          if (typeof collectInstancePoolCompileRootsSteps === 'function') {
+            const rootsIt = collectInstancePoolCompileRootsSteps(scene);
+            for (;;) {
+              const rootsStep = rootsIt.next();
+              if (rootsStep.done) { fallbackRoots = rootsStep.value; break; }
+              if (await postPace()) return { superseded: true, roots: [], lateEntities: [], uncompiled: [], subjects: null };
+            }
+          } else {
+            fallbackRoots = collectInstancePoolCompileRoots(scene);
+          }
+          if (typeof collectLateAdmittedCompileRootsSteps === 'function') {
+            const lateIt = collectLateAdmittedCompileRootsSteps(this._meshes, openingSubjects);
+            for (;;) {
+              const lateStep = lateIt.next();
+              if (lateStep.done) { fallbackLateEntities = lateStep.value; break; }
+              if (await postPace()) return { superseded: true, roots: [], lateEntities: [], uncompiled: [], subjects: null };
+            }
+          } else {
+            fallbackLateEntities = collectLateAdmittedCompileRoots(this._meshes, openingSubjects);
+          }
+          if (typeof collectUncompiledSceneDrawablesSteps === 'function') {
+            const uncompiledIt = collectUncompiledSceneDrawablesSteps(scene, openingSubjects);
+            for (;;) {
+              const uncompiledStep = uncompiledIt.next();
+              if (uncompiledStep.done) { fallbackUncompiled = uncompiledStep.value; break; }
+              if (await postPace()) return { superseded: true, roots: [], lateEntities: [], uncompiled: [], subjects: null };
+            }
+          } else {
+            fallbackUncompiled = collectUncompiledSceneDrawables(scene, openingSubjects);
+          }
           return {
-            roots: collectInstancePoolCompileRoots(scene),
-            lateEntities: collectLateAdmittedCompileRoots(this._meshes, openingSubjects),
-            uncompiled: collectUncompiledSceneDrawables(scene, openingSubjects),
+            roots: fallbackRoots,
+            lateEntities: fallbackLateEntities,
+            uncompiled: fallbackUncompiled,
             subjects: null,
           };
         }
@@ -15860,6 +15965,7 @@ export const render = {
         if (lateSubjectSet.superseded === true) return postSupersededResult();
         try {
           const route = this._selectPostRoute();
+          let lateTouchSession = null;
           lateColor = await admitOpeningUnitsAcrossSlices({
             // The cook's issue pass already linked most of this cohort — ready materials drop
             // at unit construction and the remaining cold ones issue one compile per program
@@ -15874,7 +15980,10 @@ export const render = {
             // one touch each was ~6 ms of whole-scene hide/render/restore — ~20 s of the launch.
             // Loading only; the same shell-less path keeps one subject per touch.
             touchMany: state.mode === 'loading'
-              ? (subjects) => whileRevealedGroup(subjects, () => touchExactTargetSubjects(subjects))
+              ? (subjects) => whileRevealedGroup(subjects, () => {
+                lateTouchSession = lateTouchSession || drawableHideSession(scene);
+                return touchExactTargetSubjects(subjects, lateTouchSession);
+              })
               : null,
             touchBatchSize: 24,
             yieldToMain: yieldToBrowser,
@@ -16023,6 +16132,7 @@ export const render = {
         const rescanUnits = await dedupeLateSubjects(rescanSubjectSet.subjects);
         if (rescanUnits.programSubjects.length > 0) try {
           const rescanRoute = this._selectPostRoute();
+          let rescanTouchSession = null;
           await admitOpeningUnitsAcrossSlices({
             units: rescanUnits,
             issueKeyFor: openingCompileIssueKey,
@@ -16031,7 +16141,10 @@ export const render = {
             compileOne: (subject) => whileRevealed(subject, () => compileSubjectColorAndDepth(subject, rescanRoute)),
             touchOne: (subject) => whileRevealed(subject, () => touchExactTargetSubject(subject)),
             touchMany: state.mode === 'loading'
-              ? (subjects) => whileRevealedGroup(subjects, () => touchExactTargetSubjects(subjects))
+              ? (subjects) => whileRevealedGroup(subjects, () => {
+                rescanTouchSession = rescanTouchSession || drawableHideSession(scene);
+                return touchExactTargetSubjects(subjects, rescanTouchSession);
+              })
               : null,
             touchBatchSize: 24,
             yieldToMain: yieldToBrowser,
@@ -20902,6 +21015,10 @@ export const render = {
       mesh.matrixAutoUpdate = false;
       mesh.updateMatrix();
       mesh.userData.sfHiddenFrozen = true;
+      // Without the subtree freeze the per-frame walk still descends this culled
+      // root's whole subtree recomposing local matrices nobody writes until
+      // re-entry — stamp-boundary freeze + sfMatrixFrozen marks prune it out.
+      freezeHiddenSubtreeMatrices(mesh);
     }
     const lanes = this._persistentSubmitLanes;
     const lane = mesh.material && (mesh.material.transparent || mesh.material.transmission > 0)
@@ -21020,6 +21137,7 @@ export const render = {
     if (mesh && mesh.userData && mesh.userData.sfHiddenFrozen === true) {
       mesh.userData.sfHiddenFrozen = false;
       mesh.matrixAutoUpdate = true;
+      unfreezeHiddenSubtreeMatrices(mesh);
     }
     // The submit-lane reservation is keyed by entity id, not by the world handle: it must
     // release even when the handle (or the world) is already gone, or the slot strands.
@@ -21327,11 +21445,17 @@ export const render = {
     for (let index = 0; index < spawnedSlots.length; index++) {
       if ((++visited % 256) === 0) yield;
       const slot = spawnedSlots[index];
-      if (world.alive[slot] !== 1) continue;
+      // Same eligibility conjunction the rebind leg applies — a resumed leg must
+      // never bind a row the feed's skip verdict rejected (bindMesh clears the
+      // doom bit, so a doomed slot would pop visible until the resident sweep
+      // re-dooms it frames later).
+      if (world.alive[slot] !== 1 || world.doomed?.[slot] === 1) continue;
       const entityId = world.entityIds[slot];
       const entity = resolveWorldPresentationEntity(this.state, entityId);
       const mesh = this._meshes.get(entityId);
-      if (entity && entity.alive !== false && mesh) this._bindPresentationMesh(entity, mesh);
+      if (entity && entity.alive !== false && entity._noMesh !== true
+        && !(entity.type === 'projectile' && projectileSkipsVisualFactoryMesh(entity))
+        && mesh) this._bindPresentationMesh(entity, mesh);
     }
   },
 
@@ -22937,6 +23061,7 @@ export const render = {
           mesh.matrixAutoUpdate = false;
           mesh.updateMatrix();
           doomedCullData.sfHiddenFrozen = true;
+          freezeHiddenSubtreeMatrices(mesh);
         }
         transformed++;
         continue;
@@ -22995,6 +23120,7 @@ export const render = {
         mesh.matrixAutoUpdate = false;
         mesh.updateMatrix();
         cullData.sfHiddenFrozen = true;
+        freezeHiddenSubtreeMatrices(mesh);
       }
       transformed++;
     }
@@ -23034,6 +23160,7 @@ export const render = {
       if (userData.sfHiddenFrozen === true) {
         userData.sfHiddenFrozen = false;
         mesh.matrixAutoUpdate = true;
+        unfreezeHiddenSubtreeMatrices(mesh);
       }
       // A fresh kill's hulk cools on sim time — uniform emissive fade on its own clones only.
       if (userData.hulkEmber) updateHulkEmber(userData.hulkEmber, this.state.simTime);
@@ -25545,6 +25672,7 @@ export const render = {
       this._depthCollectPassSeq = collectSeq;
       this._depthCollectPassCount = 0;
       this._depthCollectNodesLeft = SHADOW_DEPTH_PASS_NODE_CAP;
+      this._depthCollectScaledPassCount = 0;
       this._shadowRootSyncPassCount = 0;
       // One wall budget for the pass's whole policy lane: a fresh 4ms per root
       // would let mints plus parked resumes stack unbounded on one presented
@@ -25568,20 +25696,32 @@ export const render = {
       const parkedScale = (parkedRecheck || (parkedRelease && parkedReleaseScaled)) && parkedEntry
         && (parkedEntry.depthNodeScale | 0) > 1
         ? parkedEntry.depthNodeScale : 0;
-      const nodeBudget = {
-        remaining: parkedScale > 0
-          ? SHADOW_DEPTH_PASS_NODE_CAP * parkedScale
-          : (this._depthCollectNodesLeft | 0),
-      };
-      const found = collectUnstagedShadowCastersFlag(
-        [syncScope], this._shadowCensusForFrame(), nodeBudget, this.cam && this.cam.obj);
-      if (parkedScale <= 0) this._depthCollectNodesLeft = nodeBudget.remaining;
-      if (isUnstagedCollectOverCover(found)) {
-        // The walk outran the shared node budget mid-traverse — a partial set
-        // can't be trusted, so over-cover exactly like the root-cap overflow.
+      // One scaled collect per pass: each parked scale mints a private wallet of
+      // CAP×scale that never debits the shared ledger, so N lightSig/oq-keyed
+      // releases in one pass would stack N private budgets atomically — the exact
+      // storm the shared cap exists to prevent. Extras defer to the arm's paced
+      // drain (the requeue carries the earned scale) as an ordinary over-cover.
+      if (parkedScale > 0 && (this._depthCollectScaledPassCount | 0) >= 1) {
         overCovered = true;
       } else {
-        unstaged = found;
+        if (parkedScale > 0) {
+          this._depthCollectScaledPassCount = (this._depthCollectScaledPassCount | 0) + 1;
+        }
+        const nodeBudget = {
+          remaining: parkedScale > 0
+            ? SHADOW_DEPTH_PASS_NODE_CAP * parkedScale
+            : (this._depthCollectNodesLeft | 0),
+        };
+        const found = collectUnstagedShadowCastersFlag(
+          [syncScope], this._shadowCensusForFrame(), nodeBudget, this.cam && this.cam.obj);
+        if (parkedScale <= 0) this._depthCollectNodesLeft = nodeBudget.remaining;
+        if (isUnstagedCollectOverCover(found)) {
+          // The walk outran the shared node budget mid-traverse — a partial set
+          // can't be trusted, so over-cover exactly like the root-cap overflow.
+          overCovered = true;
+        } else {
+          unstaged = found;
+        }
       }
     }
     // The collect evaluated this generation — stamp it even when empty so an
@@ -25708,6 +25848,7 @@ export const render = {
           cov.seq = covSeq;
         }
       }
+      const covResuming = cov != null;
       if (!cov) {
         cov = {
           iter: collectPotentialShadowCastSubjectsSteps([syncScope],
@@ -25721,15 +25862,47 @@ export const render = {
         && typeof performance.now === 'function' ? performance.now() : Date.now());
       const covDeadline = this._policyPassDeadlineAt != null
         ? this._policyPassDeadlineAt : covNow() + SHADOW_POLICY_PASS_MS;
+      // A parked resume on a spent wallet must still step: zero-slice evals would
+      // pin coverageWalkInFlight forever under sustained saturation and hold an
+      // uncovered withhold's flags stale (unstaged first-touch casters keep
+      // castShadow=true → depth variants link inside the next presented refresh).
+      // Bounded to ≤1 forced slice per pass via the mint starvation rotation
+      // (class 'v') so a burst of parked collects can't stack slices.
+      let covForceStep = false;
+      if (covResuming && covNow() >= covDeadline) {
+        if (this._policyMintStarvedSeq !== collectSeq || !this._policyMintStarvedClasses) {
+          this._policyMintStarvedSeq = collectSeq;
+          this._policyMintStarvedClasses = new Set();
+        }
+        const covFair = this._policyMintStarveFair
+          || (this._policyMintStarveFair = new Map());
+        let covClassFair = covFair.get('v');
+        if (!covClassFair) {
+          covClassFair = { winner: null, blocked: false };
+          covFair.set('v', covClassFair);
+        }
+        if (!this._policyMintStarvedClasses.has('v')) {
+          if (covClassFair.winner === root && covClassFair.blocked !== true) {
+            covClassFair.blocked = true;
+          } else {
+            this._policyMintStarvedClasses.add('v');
+            covForceStep = true;
+            covClassFair.winner = root;
+            covClassFair.blocked = false;
+          }
+        }
+      }
       let covStep = null;
       let covAborted = false;
-      while (covNow() < covDeadline) {
+      let covSlices = 0;
+      while (covNow() < covDeadline || (covForceStep && covSlices === 0)) {
         try {
           covStep = cov.iter.next();
         } catch (_) {
           covAborted = true;
           break;
         }
+        covSlices += 1;
         if (!covStep || covStep.done) break;
       }
       if (covAborted) {
@@ -25773,11 +25946,19 @@ export const render = {
     const receiverOut = { receiverDelta: 0 };
     let changed = false;
     if (!traverseDeferred && !coverageWalkInFlight && !skipTraverseOnDrift && traverseWouldSync) {
-      if (!scopedSync && syncOpts.allowCast !== false && !needsAtomicOut) {
-        // Whole-root castable verdicts ride the stepped lane: a fat subtree's
-        // rewrite paces inside a small wall budget per call instead of one
-        // atomic leg. A mid-walk return (null→false here) leaves the policy
-        // dirty latch set — the root re-enters and resumes next sync.
+      if (!scopedSync && !needsAtomicOut) {
+        // Whole-root verdicts ride the stepped lane — castable flips AND covered
+        // withholds: a withhold reaching this gate has already suppressed its
+        // unstaged subset synchronously via withheldMeshes (uncovered withholds
+        // park under coverageWalkInFlight upstream and never arrive), so the
+        // walk's remaining writes are band-0 stamps on mark-current rows —
+        // deferral-safe across a suspend. The drive's sig keys allowCast, so a
+        // pending castable walk on this root dies on the sig mismatch and folds
+        // its applied prefix forward as carriedDelta — the stomp the atomic
+        // bypass existed to prevent. A fat subtree's rewrite thus paces inside a
+        // small wall budget per call instead of one atomic leg. A mid-walk
+        // return (null→false here) leaves the policy dirty latch set — the root
+        // re-enters and resumes next sync.
         const policyNow = () => (typeof performance !== 'undefined'
           && typeof performance.now === 'function' ? performance.now() : Date.now());
         const policyDeadlineAt = this._policyPassDeadlineAt != null
@@ -25828,6 +26009,9 @@ export const render = {
           changed = driveShadowPolicySteps(this, root, syncScope, lodLevel, {
             ...syncOpts,
             ...(extra || {}),
+            // Same re-apply as the atomic lane — a caller's extras can never
+            // re-open the cold depth-link seam a withhold verdict closes.
+            ...(syncOpts.allowCast === false ? { allowCast: false } : {}),
             out: receiverOut,
           }, () => policyNow() >= policyDeadlineAt) === true;
           // The arm's restore leg debits this same ledger — the presented-pass
@@ -25874,17 +26058,20 @@ export const render = {
       for (const mesh of withheldMeshes) {
         if (mesh) mesh.castShadow = false;
       }
-      if (unstaged && unstaged.length > 0) {
-        const cache = this._withheldDepthCasters
-          || (this._withheldDepthCasters = new Map());
-        // A genuine re-collect inside the queue window unions with the withheld set —
-        // the first withhold's meshes still wait for the same arm.
-        const existing = cache.get(root);
-        if (existing) {
-          for (const mesh of withheldMeshes) existing.add(mesh);
-        } else {
-          cache.set(root, new Set(withheldMeshes));
-        }
+      const cache = this._withheldDepthCasters
+        || (this._withheldDepthCasters = new Map());
+      // withheldMeshes is always a freshly-verified unstaged set here — from the
+      // whole-root collect or the coverage-path covUnstaged filter — so record
+      // regardless of which collect minted it. Without the coverage-path write,
+      // a queued coverage withhold re-mints a fresh parked collect every eval
+      // (the arm's collect can never reuse the withheld set). A genuine
+      // re-collect inside the queue window unions — the first withhold's meshes
+      // still wait for the same arm.
+      const withheldSet = cache.get(root);
+      if (withheldSet) {
+        for (const mesh of withheldMeshes) withheldSet.add(mesh);
+      } else {
+        cache.set(root, new Set(withheldMeshes));
       }
       // The arm's restore re-runs identical opts — re-dirty so its traverse can't
       // early-out on the state this sync just stamped, and stamp the generation so
@@ -26677,8 +26864,10 @@ export const render = {
   // refreshes until an unrelated recount heals it.
   _noteShadowMeshAdded(root, measuredReceivers = null) {
     if (this._shadowReceiverTally) {
-      if (Number.isFinite(measuredReceivers)) this._shadowReceiverTally.noteDelta(measuredReceivers);
-      else this._shadowReceiverTally.noteAdded(root);
+      // Root-scoped either way: a pending stepped recount records the delta under
+      // the root's visit stamp instead of superseding — note storms converge in
+      // one walk. A caller-measured delta skips the tally's own subtree count.
+      this._shadowReceiverTally.noteAdded(root, measuredReceivers);
     } else this._shadowReceiversDirty = true;
   },
 
@@ -26686,8 +26875,7 @@ export const render = {
     if (this._shadowReceiverTally) {
       // A caller that already walked the subtree settles exactly — paying the
       // tally's second countShadowReceivers traverse just re-measures the same set.
-      if (Number.isFinite(measuredReceivers)) this._shadowReceiverTally.noteDelta(-measuredReceivers);
-      else this._shadowReceiverTally.noteRemoved(root);
+      this._shadowReceiverTally.noteRemoved(root, measuredReceivers);
     } else this._shadowReceiversDirty = true;
   },
 
@@ -26707,8 +26895,6 @@ export const render = {
         this._keyLight.castShadow = false;
         noteShadowCensusLightMutation();
       }
-      // The light set just changed mid-seq — any memoized census is stale.
-      this._shadowCensusMemo = null;
       // A live staging session is useless while the map is off and would otherwise
       // keep cloned lights + the buffer capture parked until the next drain.
       this._killDepthStageSession?.();
@@ -26745,7 +26931,6 @@ export const render = {
       this._keyLight.castShadow = true;
       noteShadowCensusLightMutation();
     }
-    this._shadowCensusMemo = null;
   },
 
   _syncKeyLightShadowFrustum(radius) {

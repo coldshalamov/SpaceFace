@@ -144,6 +144,57 @@ export function freezeStaticTransformRootMarked(root) {
   remarkStaticMatrixAncestors(root);
 }
 
+// Cull-time twin of freezeStaticChildMatrices for sfHiddenFrozen mints: the hidden root's
+// subtree keeps matrixAutoUpdate === true on every descendant otherwise, so the per-frame
+// scene.updateMatrixWorld walks a culled hull's whole ~50-200-node subtree recomposing local
+// matrices nobody writes until re-entry. Freezable descendants get the sfCullFrozen restore
+// stamp — mount-frozen nodes (already matrixAutoUpdate === false) carry no stamp, so un-hide
+// restores exactly what this pass froze. Sockets/lights/animated/updater-tagged nodes stay
+// live via shouldFreezeStaticChild and defeat their ancestors' mark — the walk still reaches
+// them while skipping the frozen branches.
+export function freezeHiddenSubtreeMatrices(root) {
+  if (!root || typeof root.traverse !== 'function') return 0;
+  let frozen = 0;
+  root.traverse((object) => {
+    if (!shouldFreezeStaticChild(object, root)) return;
+    if (object.matrixAutoUpdate === false) return;
+    object.matrixAutoUpdate = false;
+    if (typeof object.updateMatrix === 'function') object.updateMatrix();
+    const userData = object.userData || (object.userData = {});
+    userData.sfCullFrozen = true;
+    frozen += 1;
+  });
+  markStaticMatrixSubtrees(root);
+  remarkStaticMatrixAncestors(root);
+  return frozen;
+}
+
+// Un-hide twin: restores every descendant the cull freeze stamped, clears the sfMatrixFrozen
+// marks its subtree minted, and walks the ancestor chain so a shared parent can't keep a
+// stale prune over the now-live branch (same clear-and-remark-later contract the vendored
+// add()/attach() hooks run). matrixWorldNeedsUpdate on the root forces the world-matrix
+// refresh through the subtree on the next walk — restored matrices can't serve stale poses.
+export function unfreezeHiddenSubtreeMatrices(root) {
+  if (!root) return 0;
+  let restored = 0;
+  if (typeof root.traverse === 'function') {
+    root.traverse((object) => {
+      const userData = object.userData;
+      if (!(userData && userData.sfCullFrozen === true)) return;
+      object.matrixAutoUpdate = true;
+      delete userData.sfCullFrozen;
+      if (userData.sfMatrixFrozen) userData.sfMatrixFrozen = false;
+      restored += 1;
+    });
+  }
+  for (let node = root.parent; node; node = node.parent) {
+    const userData = node.userData;
+    if (userData && userData.sfMatrixFrozen === true) userData.sfMatrixFrozen = false;
+  }
+  root.matrixWorldNeedsUpdate = true;
+  return restored;
+}
+
 // Explicit dirty() for the rare move of a node inside a frozen subtree: recompose its local
 // matrix and refresh it plus every descendant's world matrix immediately — the per-frame walk
 // will skip the subtree again once all needsUpdate flags are consumed.

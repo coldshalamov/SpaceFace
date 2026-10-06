@@ -523,7 +523,9 @@ test('the jump cook seals unstamped instance pools inside its admission window',
 // residuals after the 772 ms link brick closed). Order the list by the opening submission plan
 // so a capped pass warms exactly the leaves the first frames will draw.
 test('the cook warms first-picture subjects before beyond-runway subjects', () => {
-  const unitsIndex = RENDERER_SOURCE.indexOf('const units = uniqueAdmissionUnits([');
+  const cookStart = RENDERER_SOURCE.indexOf('state.render.cookLiveSceneGpu = async');
+  assert.ok(cookStart >= 0, 'the live cook must exist');
+  const unitsIndex = RENDERER_SOURCE.indexOf('const units = {', cookStart);
   assert.ok(unitsIndex >= 0, 'the cook admission units must exist');
   const compileLoopIndex = RENDERER_SOURCE.indexOf('for (const subject of units.programSubjects)', unitsIndex);
   assert.ok(compileLoopIndex > unitsIndex, 'the compile cohort loop must exist');
@@ -582,7 +584,7 @@ test('live mesh builds hold unready geometry behind the residency latch', () => 
 test('the cook censuses the presented picture instead of reading the stored opening plan', () => {
   const cookStart = RENDERER_SOURCE.indexOf('state.render.cookLiveSceneGpu = async');
   assert.ok(cookStart >= 0, 'the live cook must exist');
-  const unitsIndex = RENDERER_SOURCE.indexOf('const units = uniqueAdmissionUnits([', cookStart);
+  const unitsIndex = RENDERER_SOURCE.indexOf('const units = {', cookStart);
   assert.ok(unitsIndex > cookStart, 'the cook admission units must exist');
   const between = RENDERER_SOURCE.slice(cookStart, unitsIndex);
   assert.match(between, /buildOpeningSubmissionPlanSteps\.call\(this\)/,
