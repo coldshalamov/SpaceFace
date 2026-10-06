@@ -1325,7 +1325,14 @@ export function createPresentationWorld(options = {}) {
           if (wasVisible) markDirtyBits(slot, PRESENTATION_DIRTY.VISIBILITY);
         }
       }
-      for (const slot of deadResidents) retireSlot(slot);
+      // The collect swept under pacing; the retire burst it built must not run
+      // atomic — hundreds of retireSlots inside one presented frame is the
+      // hitch this generator exists to amortize. retireSlot is row-atomic, so
+      // a mid-burst park leaves a consistent world.
+      for (const slot of deadResidents) {
+        if ((++sinceYield % every) === 0) yield;
+        retireSlot(slot);
+      }
     }
     if (!retireSuppressed && retainedHits !== byId.size) {
       const aliveCols = world.alive;
@@ -1338,7 +1345,12 @@ export function createPresentationWorld(options = {}) {
         if (aliveCols[slot] === 1 && lastSeenSeq[slot] !== seq
             && byId.get(idCols[slot]) === slot) absent.push(idCols[slot]);
       }
-      for (const entityId of absent) retire(entityId);
+      // Same pacing the dead-resident burst got: a large absent set retires
+      // rows one-by-one, so the burst must not run atomic at generator end.
+      for (const entityId of absent) {
+        if ((++sinceYield % every) === 0) yield;
+        retire(entityId);
+      }
     }
     diagnostics.rebuilds++;
     return true;

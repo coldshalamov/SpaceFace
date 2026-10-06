@@ -403,10 +403,16 @@ export function* packPresentationWorldToFenceSteps(world, fence, simTime = 0, po
   let packed = 0;
   // Identity coverage of the two sweeps: a mid-park allocation swap-moved into
   // the frozen prefix escapes both lists, and only this set can prove the row
-  // was actually packed (positions lie once swap-remove runs mid-park).
-  const packedSlots = new Set();
+  // was actually packed (positions lie once swap-remove runs mid-park). The key
+  // is slot+generation, not slot alone — a retire+realloc mid-park reuses the
+  // slot number for a new entity, and that row must still pack.
+  const packedSlotGens = new Map();
   const packRow = (slot) => {
     if (world.alive[slot] !== 1) return;
+    const slotIdentity = world.slotGenerations
+      ? world.slotGenerations[slot] >>> 0
+      : world.entityIds[slot] >>> 0;
+    if (packedSlotGens.get(slot) === slotIdentity) return;
     const entityId = world.entityIds[slot] >>> 0;
     if (previousIndex && world.packDirty && world.packDirty[slot] === 0) {
       const previousRow = previousIndex.get(entityId);
@@ -416,7 +422,7 @@ export function* packPresentationWorldToFenceSteps(world, fence, simTime = 0, po
             || previousGenerations[previousRow] === (world.slotGenerations[slot] >>> 0))) {
         snapshot.copyRow(previous, previousRow);
         world.packDirty[slot] = 0;
-        packedSlots.add(slot);
+        packedSlotGens.set(slot, slotIdentity);
         packed++;
         return;
       }
@@ -456,7 +462,7 @@ export function* packPresentationWorldToFenceSteps(world, fence, simTime = 0, po
       );
     }
     if (world.packDirty) world.packDirty[slot] = 0;
-    packedSlots.add(slot);
+    packedSlotGens.set(slot, slotIdentity);
     packed++;
   };
   // Freeze the slot list at mint: activeSlots is live while this pack parks —
@@ -487,7 +493,6 @@ export function* packPresentationWorldToFenceSteps(world, fence, simTime = 0, po
     const activeNow = world.getDiagnostics().active | 0;
     for (let index = 0; index < activeNow; index++) {
       const slot = world.activeSlots[index];
-      if (packedSlots.has(slot)) continue;
       if ((index % every) === 0 && index > 0) yield;
       packRow(slot);
     }

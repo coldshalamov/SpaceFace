@@ -11854,7 +11854,13 @@ export const render = {
           units,
           renderer,
           beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
-          compileOne: (subject) => compileSubjectColorAndDepth(subject, route),
+          compileOne: async (subject) => {
+            // The env stamp is visibility-independent — pace it outside the
+            // reveal; compile's light census walks traverseVisible, so the
+            // reveal covers the synchronous compile call itself.
+            await stampSubjectEnvAsync(subject);
+            return whileRevealed(subject, () => this._compilePostRoute(route, subject, cam.obj, scene));
+          },
           touchOne: (subject) => whileRevealed(subject, () => touchExactTargetSubject(subject)),
           yieldToMain: yieldToBrowser,
         })
@@ -12890,10 +12896,11 @@ export const render = {
               units: uniqueAdmissionUnits(staleSubjects),
               renderer,
               beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
-              compileOne: (subject) => {
+              compileOne: async (subject) => {
+                await stampSubjectEnvAsync(subject);
                 const restore = revealSubjectWithAncestors(subject);
                 try {
-                  return compileSubjectColorAndDepth(subject, this._selectPostRoute());
+                  return this._compilePostRoute(this._selectPostRoute(), subject, cam.obj, scene);
                 } finally {
                   restore();
                 }
@@ -13317,7 +13324,10 @@ export const render = {
                 issueKeyFor: openingCompileIssueKey,
                 renderer,
                 beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
-                compileOne: (subject) => compileSubjectColorAndDepth(subject, sealRoute),
+                compileOne: async (subject) => {
+                  await stampSubjectEnvAsync(subject);
+                  return whileRevealed(subject, () => this._compilePostRoute(sealRoute, subject, cam.obj, scene));
+                },
                 touchOne: (subject) => whileRevealed(subject, () => touchExactTargetSubject(subject)),
                 // Loading shell only: grouped touches share one render across a
                 // ≤24-subject batch (replicates the cook admit's touchMany —
@@ -14936,14 +14946,15 @@ export const render = {
               // (drain itself is bounded by the readiness batch's own timeout).
               deadlineMs: cookDeadlineMs - (cookNow() - cookStarted),
               beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
-              compileOne: (subject) => {
+              compileOne: async (subject) => {
                 // Fresh readiness re-probe at issue time (the units carry every
                 // material through now): a subject whose materials all still have
                 // linked programs skips the issue entirely, and one that lost a
                 // program since the census compiles here behind the shell.
                 for (const material of materialList(subject)) {
                   if (!materialAlreadyLinked(material)) {
-                    return compileSubjectColorAndDepth(subject, route);
+                    await stampSubjectEnvAsync(subject);
+                    return whileRevealed(subject, () => this._compilePostRoute(route, subject, cam.obj, scene));
                   }
                 }
                 return Promise.resolve({ skipped: true, reason: 'programs-ready' });
@@ -15980,7 +15991,10 @@ export const render = {
             issueKeyFor: openingCompileIssueKey,
             renderer,
             beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
-            compileOne: (subject) => compileSubjectColorAndDepth(subject, route),
+            compileOne: async (subject) => {
+              await stampSubjectEnvAsync(subject);
+              return whileRevealed(subject, () => this._compilePostRoute(route, subject, cam.obj, scene));
+            },
             touchOne: (subject) => whileRevealed(subject, () => touchExactTargetSubject(subject)),
             // Thousands of units on a Crucible cook (the bounded roster warm's palette subjects):
             // one touch each was ~6 ms of whole-scene hide/render/restore — ~20 s of the launch.
@@ -16144,7 +16158,10 @@ export const render = {
             issueKeyFor: openingCompileIssueKey,
             renderer,
             beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
-            compileOne: (subject) => compileSubjectColorAndDepth(subject, rescanRoute),
+            compileOne: async (subject) => {
+              await stampSubjectEnvAsync(subject);
+              return whileRevealed(subject, () => this._compilePostRoute(rescanRoute, subject, cam.obj, scene));
+            },
             touchOne: (subject) => whileRevealed(subject, () => touchExactTargetSubject(subject)),
             touchMany: state.mode === 'loading'
               ? (subjects) => whileRevealedGroup(subjects, () => {
