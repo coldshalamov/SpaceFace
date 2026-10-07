@@ -481,11 +481,11 @@ Prediction error p50 at meet: CV 3.59 wu, accel 5.02, intent 4.91. CV wins, so n
 
 ## 10. Phase 2b (2026-10-06/07)
 
-**Status (restart from here, 2026-10-07 01:03 ET):** #8 target lock SHIPPED as PR #233 (`lab2b/target-lock`,
-not merged; see 10.6): the auto-lock takes the hostile under the mouse cursor (range weight 0.25) and waits 0.15 s
-after a lost lock; intended-pick 18–52% -> 100%, 0 flicker. #6 shipped as PR #232 (10.5). Earlier: #3 PR #231,
-#5 PR #230, #4 PR #229. Next: #7 collision/ram, then #9, #10. Focused tests only, per-file timeout
-(`/tmp/p7/runfiles.sh`-style xargs + `timeout 120`); never the whole suite.
+**Status (restart from here, 2026-10-07 01:43 ET):** #9 docking SHIPPED as PR #234 (`lab2b/dock-orbit`, see 10.8):
+far-side autopilot approaches round the station (circle 1.3 x mouth, 60° carrot); docked 60/72 -> 72/72, station
+contacts 82,772 -> 0. #7 collision PROVEN against its contracts, no PR (10.7; self-crash cap candidate patch saved).
+#8 PR #233, #6 PR #232, #3 PR #231, #5 PR #230, #4 PR #229. Next: #10 mining. Focused tests only, per-file
+`timeout 120` (8-way xargs); never the whole suite.
 
 ### 10.1 #4 NPC evasion + engagement spacing
 
@@ -901,4 +901,31 @@ shipped; kept as `results/collision-2b/selfcrash-candidate.patch` (+ test) for R
 self-piloted crashes (patch ready, k 0.35); (2) damage saturates at ~56 wu/s, so a 300 wu/s ram reads the same as a
 60 wu/s bump — a wider crumple ramp would make speed matter; (3) the player stops dead on rock (no bounce/spin) — the
 scraping material + give rule is deliberate, but the intent line asks for "bounce, spin".
+
+### 10.8 #9 docking corridor / autopilot approach: shipped as PR #234 (`lab2b/dock-orbit`)
+
+**Bench.** `node scripts/lab/run.mjs dock` (`scripts/lab/benches/dock.mjs`; labWorld `extraSystems: ['dockingCorridor']`).
+Procedural M ring hub (station_ring_hub, dockRadius 72, corridor bearing 0) at the origin; player at 600/1500 wu,
+bearing 0/45/90/135/180° off the corridor axis, at rest / 60 inbound / 60 crossing; Hitch, plus Drifter and Bastion at
+1500. `state.nav.autopilot = { active, targetEntityId: station }`, no pilot input, 120 s cap. Metrics: dock prompt
+(first `dock:range` inRange), autopilot status, station contacts + worst closing speed, corridor entry speed,
+overshoot past the berth toward the core, path / straight. Table `results/dock-2b/docktab.mjs <dir> [variant]`.
+
+**Finding.** The docking autopilot excludes its target station from its obstacle list, and the corridor-mouth stage
+aims straight at the mouth. From behind (180°, no crossing velocity) that line runs through the station: every hull
+ground against the proxy for the full 120 s (~7000 contacts at 112–158 wu/s), never docked (12/72 runs). From 135°
+it docked but cut the corner: corridor entry 49–54 wu/s (capture gate 26), coasting 12–28 wu past the berth.
+
+**Probe** (seam `setAutopilotDockLab({ dockOrbit: { radiusMult, stepDeg } })`): radius 1.0/1.3/1.6 x mouth, carrot
+45/60/75°: all nine 72/72 docked, 0 contacts, entry <= 23 wu/s, 0 overshoot; mean dock 12.2–14.1 s (master 11.5 s on
+its 60 docked runs). Picked 1.3 x 60 (ring margin, +0.7 s vs 1.0).
+
+**Shipped / verify** (production checkout, master vs PR): docked 60/72 -> 72/72; contacts 82,772 -> 0; worst hit 158
+-> none; max entry 54 -> 23 wu/s; overshoot 27.7 -> 0; mean dock 11.5 -> 13.0 s (90°: +1.4 s, 135°: +5 s, 0–45°:
+bit-identical). Tests: `test/autopilot-dock-far-side.test.mjs` 4 (import-fails on master); 136 focused files with a
+120 s per-file timeout: the same 16 files fail identically on master. Results `results/dock-2b/{sweep,verify-prod}`.
+
+**Candidates (not changed):** the station is still excluded from the autopilot's obstacle avoidance in the berth
+stage (by design: lane lock); only the M ring hub was benched (other proxies share the manifest path, scaled by
+dockRadius); docking from a hot tumble/fling was not benched.
 
