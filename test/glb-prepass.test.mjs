@@ -112,10 +112,10 @@ test('prepass passthrough: no Worker returns the input buffer untouched', async 
   assert.equal(result.sourceBytes, null);
 });
 
-test('prepass worker error reply hands the GLB back for the stock parse', async () => {
+test('prepass worker error reply hands the GLB back for the stock parse', async (t) => {
   class FailingWorker {
     constructor() { this.handlers = { message: [], error: [] }; }
-    addEventListener(type, fn) { this.handlers[type].push(fn); }
+    addEventListener(type, fn) { (this.handlers[type] ||= []).push(fn); }
     postMessage(data) {
       // Browser semantics: the transfer list detaches the buffer; a clean error reply returns it.
       const back = data.glb.slice(0);
@@ -124,6 +124,7 @@ test('prepass worker error reply hands the GLB back for the stock parse', async 
     terminate() {}
   }
   const prepasser = createGlbPrepasser({ WorkerImpl: FailingWorker, workerUrl: 'x', cores: 8 });
+  t.after(() => prepasser.dispose());
   const glb = readAb(PACKAGE);
   const result = await prepasser.prepass(glb);
   assert.ok(result, 'error replies must still resolve a result');

@@ -1,4 +1,6 @@
 name: mobile-deployment
+# Explicit post-deployment acceptance. Never test unmerged production automatically
+# as though it were the PR candidate; mobile-readiness tests the candidate bundle.
 on:
   workflow_dispatch:
     inputs:
@@ -6,11 +8,6 @@ on:
         description: Public deployment URL (no authentication bypass)
         default: https://spaceface-play-demo.vercel.app/
         required: true
-  push:
-    branches: [fix/mobile-readiness-20261006]
-    paths:
-      - scripts/probe-deployed-mobile.mjs
-      - .github/workflows/mobile-deployment.yml
 permissions:
   contents: read
 concurrency:
@@ -46,7 +43,7 @@ jobs:
         run: node scripts/probe-deployed-mobile.mjs
         env:
           MOBILE_PROBE_ENGINE: ${{ matrix.engine }}
-          MOBILE_PROBE_URL: ${{ inputs.url || 'https://spaceface-play-demo.vercel.app/' }}
+          MOBILE_PROBE_URL: ${{ inputs.url }}
       - name: Preserve network evidence and screenshots, including failures
         if: always()
         uses: actions/upload-artifact@v4
