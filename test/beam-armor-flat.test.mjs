@@ -13,7 +13,7 @@ import { PRODUCTION_FEATURES } from '../src/runtime/runtimeProfiles.js';
 
 // SF-2b #6: flat armor is deducted once per damage packet. A continuous beam emits one packet per
 // tick (60 dps -> 1-damage packets at 60 Hz), so before this fix a target's armorFlat was paid 60
-// times a second and flat 1-3 erased the beam (Beam Laser M: 1.9 dps on a Bruiser, 8 of 16 enemy
+// times a second and flat 1-3 erased the beam (Beam Laser M: 1.9 dps on a Bruiser, 7 of 16 enemy
 // types unkillable in 60 s). The beam now pays the flat once per BEAM_ARMOR_PACKET_S.
 
 function bootWorld(seed = 9032, { production = false } = {}) {

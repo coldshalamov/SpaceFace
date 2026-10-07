@@ -131,7 +131,7 @@ const WEAPON_VENT_DUMP = 1.6 * WEAPON_RECHARGE_MULT;
 // SF-2b #6: a continuous beam pays the target's flat armor once per BEAM_ARMOR_PACKET_S, not once
 // per tick. The damage router deducts armorFlat once per packet and a beam emits one packet per
 // tick, so at 60 Hz a 60-dps beam lands 1-damage packets and flat 1 erased nearly all of them (Beam
-// Laser M did 1.9 dps to a Bruiser and could not kill 8 of 16 enemy types in 60 s). 0.25 s = the
+// Laser M did 1.9 dps to a Bruiser and could not kill 7 of 16 enemy types in 60 s). 0.25 s = the
 // beam reads to armor like a 4-rps gun: flat 3 still costs it 12 of its 60 dps.
 export const BEAM_ARMOR_PACKET_S = 0.25;
 
