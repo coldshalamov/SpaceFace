@@ -45,6 +45,11 @@ export const VELOCITY_VECTORING_DEFAULTS = Object.freeze({
  * boost-cap value, so the radius widens with speed instead of pulling unbounded g. A drive below
  * its nominal authority (a spooling torch, a scaled forward channel) vectors proportionally less.
  * Coast (no main drive) is untouched: the throttle gate below is upstream of all of this.
+ * FLOOR (legacyFloor, default true): no hull turns slower than it did before #3. The rate is never
+ * below the pre-#3 schedule (1.6 -> 0.9 rad/s by speed / governed cap, bounded by the drive's forward
+ * authority). Only slow-yaw hulls hit it (the torch hulls Hawser / Colossus / Leviathan, max yaw
+ * 0.48-0.76, were already turning the path at ~their full max yaw); set legacyFloor false to apply
+ * the fractions strictly to every hull.
  * A packet may still pass absolute `rateLowRadS` / `rateCapRadS`: that selects the pre-#3 schedule
  * (rate lerped by speed / governed cap, bounded by the drive's forward authority) for A/B variants.
  */
@@ -52,6 +57,7 @@ export const VELOCITY_VECTORING_DEFAULTS = Object.freeze({
   restYawFrac: 0.60,
   cruiseYawFrac: 0.57,
   boostYawFrac: 0.375,
+  legacyFloor: true,
   rateLowRadS: null,
   rateCapRadS: null,
   fadeStartRad: Math.PI / 2,
@@ -108,7 +114,7 @@ rep("""  const rate = lerp(tuning.rateLowRadS, tuning.rateCapRadS, clamp(speed /
 """  const legacy = tuning.rateLowRadS != null || tuning.rateCapRadS != null;
   const rate = (legacy
     ? lerp(nonNegative(tuning.rateLowRadS, 0), nonNegative(tuning.rateCapRadS, 0), clamp(speed / cap, 0, 1))
-    : vectoringYawFracRate(speed, profile, tuning, limits, nominalForward)) * alignScale;
+    : vectoringYawFracRate(speed, profile, tuning, limits, nominalForward, cap, dt)) * alignScale;
   if (!(rate > 0)) return vectoringIdle('faded');
   const requested = Math.min(absError, rate * dt);
   const authority = positive(limits && limits.forward, 0);
@@ -121,7 +127,7 @@ rep("""function vectoringIdle(reason) {""",
  * the combat cap -> boost at the boost cap), constant lateral acceleration above the boost cap,
  * scaled by the drive's share of its nominal forward authority.
  */
-function vectoringYawFracRate(speed, profile, tuning, limits, nominalForward) {
+function vectoringYawFracRate(speed, profile, tuning, limits, nominalForward, cap, dt) {
   const maxYaw = positive(profile.maxYawRate, 2.5);
   const combat = positive(profile.combatSpeed, 0);
   const boostCap = combat * Math.max(1, positive(profile.boostSpeedMult, 1.55));
@@ -133,7 +139,14 @@ function vectoringYawFracRate(speed, profile, tuning, limits, nominalForward) {
   else if (speed <= boostCap) frac = lerp(cruise, boost, clamp((speed - combat) / (boostCap - combat), 0, 1));
   else frac = boost * boostCap / speed;
   const drive = nominalForward > 0 ? clamp(positive(limits && limits.forward, 0) / nominalForward, 0, 1) : 1;
-  return maxYaw * frac * drive;
+  const rate = maxYaw * frac * drive;
+  if (tuning.legacyFloor === false) return rate;
+  // The pre-#3 rate this hull had, so the fractions only ever raise a turn (see legacyFloor).
+  const authority = positive(limits && limits.forward, 0);
+  const legacy = Math.min(
+    lerp(LEGACY_VECTORING_RATE_LOW_RAD_S, LEGACY_VECTORING_RATE_CAP_RAD_S, clamp(speed / cap, 0, 1)),
+    2 * Math.asin(clamp(authority * dt / (2 * speed), 0, 1)) / dt);
+  return Math.max(rate, legacy);
 }
 
 function vectoringIdle(reason) {""")
@@ -159,11 +172,12 @@ rep("""  o.rateLowRadS = nonNegative(raw.rateLowRadS, d.rateLowRadS);
 """  o.restYawFrac = nonNegative(raw.restYawFrac, d.restYawFrac);
   o.cruiseYawFrac = nonNegative(raw.cruiseYawFrac, d.cruiseYawFrac);
   o.boostYawFrac = nonNegative(raw.boostYawFrac, d.boostYawFrac);
+  o.legacyFloor = raw.legacyFloor === undefined ? d.legacyFloor : raw.legacyFloor !== false;
   o.rateLowRadS = nonNegative(raw.rateLowRadS, d.rateLowRadS);
   o.rateCapRadS = nonNegative(raw.rateCapRadS, d.rateCapRadS);""")
 rep("""const _packetVelocityVectoring = { rateLowRadS: 0, rateCapRadS: 0, fadeStartRad: 0, fadeEndRad: 0 };""",
 """const _packetVelocityVectoring = {
-  restYawFrac: 0, cruiseYawFrac: 0, boostYawFrac: 0, rateLowRadS: null, rateCapRadS: null, fadeStartRad: 0, fadeEndRad: 0,
+  restYawFrac: 0, cruiseYawFrac: 0, boostYawFrac: 0, legacyFloor: true, rateLowRadS: null, rateCapRadS: null, fadeStartRad: 0, fadeEndRad: 0,
 };""")
 
 # 7. computeYawControl uses boundSlip
@@ -181,7 +195,10 @@ rep("""      bound = turnBound.slip > 0 ? Math.min(targetYawRate, eased) : Math.
 
 rep("""const VECTORING_EXCESS_SLIP_GAIN = 4;""",
 """const VECTORING_EXCESS_SLIP_GAIN = 4;
-const COMMAND_SLIP_BOUND = true;""")
+const COMMAND_SLIP_BOUND = true;
+// Pre-#3 absolute vectoring schedule (rad/s at rest / at the governed cap); kept as the legacyFloor.
+const LEGACY_VECTORING_RATE_LOW_RAD_S = 1.6;
+const LEGACY_VECTORING_RATE_CAP_RAD_S = 0.9;""")
 
 if variant == 'lab':
     # Lab seam: empty = master behaviour (legacy absolute schedule, hull-slip bound).
@@ -189,12 +206,14 @@ if variant == 'lab':
   restYawFrac: 0.60,
   cruiseYawFrac: 0.57,
   boostYawFrac: 0.375,
+  legacyFloor: true,
   rateLowRadS: null,
   rateCapRadS: null,""",
 """export const VELOCITY_VECTORING_DEFAULTS = Object.freeze({
   restYawFrac: 0.60,
   cruiseYawFrac: 0.57,
   boostYawFrac: 0.375,
+  legacyFloor: true,
   rateLowRadS: 1.6,
   rateCapRadS: 0.9,""")
     rep("""const COMMAND_SLIP_BOUND = true;""",
@@ -208,7 +227,7 @@ function labTurnTuning(t) {
   if (!t || !FLIGHT_TURN_LAB.yawFrac) return t;
   return { ...t, rateLowRadS: null, rateCapRadS: null,
     restYawFrac: FLIGHT_TURN_LAB.restYawFrac ?? 0.60, cruiseYawFrac: FLIGHT_TURN_LAB.cruiseYawFrac ?? 0.57,
-    boostYawFrac: FLIGHT_TURN_LAB.boostYawFrac ?? 0.375 };
+    boostYawFrac: FLIGHT_TURN_LAB.boostYawFrac ?? 0.375, legacyFloor: FLIGHT_TURN_LAB.legacyFloor ?? true };
 }""")
     rep("""function velocityVectoringAcceleration(body, input, profile, limits, governor, dt, nominalForward = 0) {
   const tuning = input.velocityVectoring;""",
