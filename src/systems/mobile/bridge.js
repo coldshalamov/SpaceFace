@@ -18,6 +18,7 @@ export function enhanceMobileTouch(touch, ctx = {}, {
   const legacyTick = touch.tick.bind(touch), legacyClear = touch._clearTouchState.bind(touch);
   let view = null, host = null, detach = null, frame = NEUTRAL(), unsubDock = null, unsubGuide = null;
   let lastContext = '', lastTick = -1, allowedLastTick = false, previousHolds = {};
+  let observedTouch = false, stopDiscovery = null;
   const cfg = () => state?.settings?.controls?.touch || {};
   const setConfig = (key, value) => {
     if (!state?.settings) return;
@@ -81,6 +82,7 @@ export function enhanceMobileTouch(touch, ctx = {}, {
   touch.mobile.activate = activate;
   touch._clearTouchState = () => { model.reset(); neutralize(); };
   touch.setEnabled = function(on) {
+    stopDiscovery?.(); stopDiscovery = null;
     const enable = on === true && !!doc?.body;
     if (enable && !view) {
       if (doc.documentElement?.dataset) doc.documentElement.dataset.sfMobile = '1';
@@ -111,11 +113,32 @@ export function enhanceMobileTouch(touch, ctx = {}, {
     if (changed) ctx.bus?.emit?.(this.active ? 'touch:enabled' : 'touch:disabled', {});
   };
   touch.autoDetect = function() {
-    const coarse = !!win?.matchMedia?.('(pointer: coarse)').matches;
+    const coarse = !!win?.matchMedia?.('(pointer: coarse)')?.matches;
+    // Some WebKit hosts expose Touch Events but report zero maxTouchPoints. Keep
+    // the coarse-pointer gate: a narrow desktop window is not itself a phone.
+    const touchPoints = win?.navigator?.maxTouchPoints
+      || (coarse && win && 'ontouchstart' in win ? 1 : 0);
     const enable = shouldEnable(cfg(), win?.innerWidth || 0, win?.innerHeight || 0,
-      coarse, win?.navigator?.maxTouchPoints || 0);
+      coarse || observedTouch, touchPoints || (observedTouch ? 1 : 0));
     this._enabledByAuto = cfg().enabled == null && enable;
     this.setEnabled(enable);
+    if (!enable && cfg().enabled == null && win?.addEventListener) {
+      // Actual touch outranks incomplete capability hints (including hybrid
+      // devices). The first menu tap can discover the deck without a settings
+      // detour. These listeners are passive and never consume the user's tap.
+      const discover = event => {
+        if (event.pointerType !== 'touch' && !(event.type === 'touchstart' && event.touches?.length)) return;
+        observedTouch = true;
+        this.autoDetect();
+      };
+      const options = { capture: true, passive: true };
+      win.addEventListener('pointerdown', discover, options);
+      win.addEventListener('touchstart', discover, options);
+      stopDiscovery = () => {
+        win.removeEventListener('pointerdown', discover, options);
+        win.removeEventListener('touchstart', discover, options);
+      };
+    }
   };
   touch.applyOverlayConfig = function() { view?.applyConfig(); return cfg(); };
   touch.persistEnabled = function(on) {

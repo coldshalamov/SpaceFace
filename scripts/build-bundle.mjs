@@ -24,6 +24,7 @@ import {
   writeReleaseBuildReceipt,
 } from './lib/releasePackaging.mjs';
 import { retailBundleAliases } from './lib/retailBundleAliases.mjs';
+import { buildRetailRuntimeWorkers, RETAIL_BROWSER_TARGETS } from './lib/retailRuntimeWorkers.mjs';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const SRC = join(ROOT, 'src');
@@ -94,7 +95,7 @@ async function build() {
     treeShaking: true,
     dropLabels: ['SF_DEBUG_ONLY'], // raw source keeps dev tools; production removes the statements
     sourcemap: false,         // ship without sourcemaps (smaller; dev uses raw modules)
-    target: ['chrome110'],    // Electron 31 = Chromium 126; chrome110 is a safe floor
+    target: [...RETAIL_BROWSER_TARGETS], // Include Safari rather than assuming Chromium syntax
     platform: 'browser',
     // Resolve bare specifiers to the npm packages (three/rapier ship ESM in node_modules).
     // The vendor/ copies are otherwise only for the zero-build dev path; the bundle uses node_modules...
@@ -123,6 +124,10 @@ async function build() {
   await runNodeGate('scripts/check-render-package-instance-plan.mjs', [
     '--package-dir', join(OUT, 'assets', 'ships', 'release', 'render-packages'),
   ]);
+
+  // URL-created workers are separate programs, not dependencies of the main bundle.
+  // Emit them before sealing the receipt so they receive the same hash/parity checks.
+  await buildRetailRuntimeWorkers({ esbuild, root: ROOT, outdir: OUT });
 
   // Write a bundled index.html (no importmap — the bundle resolves everything).
   const bundledHtml = await buildBundledHtml();

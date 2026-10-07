@@ -1,0 +1,54 @@
+name: mobile-deployment
+# Explicit post-deployment acceptance. Never test unmerged production automatically
+# as though it were the PR candidate; mobile-readiness tests the candidate bundle.
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: Public deployment URL (no authentication bypass)
+        default: https://spaceface-play-demo.vercel.app/
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: mobile-deployment-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  public-launch:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [webkit, chromium]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          filter: blob:none
+          sparse-checkout: |
+            scripts/probe-deployed-mobile.mjs
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install isolated probe dependency (no game or Electron install)
+        run: |
+          npm install --prefix "$RUNNER_TEMP/mobile-probe" --no-audit --no-fund playwright@1.61.1
+          ln -s "$RUNNER_TEMP/mobile-probe/node_modules" node_modules
+          node "$RUNNER_TEMP/mobile-probe/node_modules/playwright/cli.js" install --with-deps "${MOBILE_PROBE_ENGINE}"
+        env:
+          MOBILE_PROBE_ENGINE: ${{ matrix.engine }}
+      - name: Menu to New Game to flight to touch pause
+        run: node scripts/probe-deployed-mobile.mjs
+        env:
+          MOBILE_PROBE_ENGINE: ${{ matrix.engine }}
+          MOBILE_PROBE_URL: ${{ inputs.url }}
+      - name: Preserve network evidence and screenshots, including failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-deployment-${{ matrix.engine }}
+          path: .devshots/mobile-deployment/
+          retention-days: 7
+          if-no-files-found: warn

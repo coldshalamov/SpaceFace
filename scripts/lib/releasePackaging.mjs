@@ -33,6 +33,9 @@ export const RELEASE_COPY_MAPPINGS = Object.freeze([
     destination: 'assets/ships/release',
     projection: RENDER_PACKAGE_SOURCE_PROJECTION,
   }),
+  // Sealed runtime.motionBank URIs are fetched during package preparation, not just
+  // during authoring. Omitting this small JSON subtree rejects otherwise valid GLBs.
+  Object.freeze({ source: 'assets/ships/motions', destination: 'assets/ships/motions' }),
   Object.freeze({ source: 'assets/portraits', destination: 'assets/portraits' }),
   // The entire authored audio tree ships: SAMPLE_MANIFEST sfx, generated bark voice lines, and
   // music beds are all fetched from assets/audio/** at runtime (sampleLibrary.js, barkVoice.js).
