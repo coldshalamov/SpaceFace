@@ -13,6 +13,7 @@ const BENCHES = {
   aim: () => import('./benches/autoAim.mjs'),
   npc: () => import('./benches/npcEvasion.mjs'),
   sling: () => import('./benches/slingThrow.mjs'),
+  flight: () => import('./benches/flightTurn.mjs'),
 };
 
 function parseArgs(argv) {

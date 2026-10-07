@@ -102,10 +102,11 @@ export const OVERCAP_ASSIST_BLEND_WU_S = 15;
  * docs/TUNING_JOBS.md job 1). While the pilot commands the main drive, the assisted flight
  * computer applies a lateral (perpendicular-to-velocity) force that ROTATES the velocity vector
  * toward the commanded direction — the nose, offset by any strafe — so the path bends the moment
- * the pilot twitches instead of the ship sliding on its old line. The rate falls from
- * `rateLowRadS` at rest to `rateCapRadS` at the governed cap and holds there above it. The force
- * is a pure rotation: speed is preserved to floating-point precision, which is what lets
- * "turn NOW when I twitch" and "keep earned speed" coexist.
+ * the pilot twitches instead of the ship sliding on its old line. The path turn rate is authored
+ * as fractions of the hull's own max yaw (SF-2b #3, see the keys below) and follows speed from
+ * rest through the combat cap to the boost cap. The force is a pure rotation: speed is preserved
+ * to floating-point precision, which is what lets "turn NOW when I twitch" and "keep earned
+ * speed" coexist.
  *
  * Unlike the counter-thrust, lateral kill and commanded-axis damper, this assist CANNOT spend
  * earned speed — a rotation has no along-track component — so it does not release across
@@ -121,8 +122,25 @@ export const OVERCAP_ASSIST_BLEND_WU_S = 15;
  * byte-identical to the previous kernel. A nose ~180° from the velocity is a flip, not a turn:
  * the assist is full within `fadeStartRad` of the command and fades smoothly to zero at
  * `fadeEndRad`, which leaves the flip-and-burn reversal exactly as it was.
+ *
+ * TURN FEEL DIALS (SF-2b #3). W+turn path rate as a fraction of the hull's max yaw
+ * (profile.maxYawRate after the feel envelope), so every hull scales with its own yaw identity:
+ *   restYawFrac   at low speed (lerps to cruise by speed / combat cap)
+ *   cruiseYawFrac at the combat cap.  Kestrel: 0.57 x 2.646 = 1.51 rad/s, radius ~130 wu at 195 wu/s
+ *   boostYawFrac  at the boost cap, held for as long as boost is held.
+ *                 Kestrel: 0.375 x 2.646 = 0.99 rad/s, radius ~305 wu at 302 wu/s
+ * Between the anchors the rate follows speed, so pressing or releasing boost mid-turn never steps
+ * the arc. Above the boost cap (a sling, a travel burn) the lateral acceleration is held at its
+ * boost-cap value, so the radius widens with speed instead of pulling unbounded g. A drive below
+ * its nominal authority (a spooling torch, a scaled forward channel) vectors proportionally less.
+ * Coast (no main drive) is untouched: the throttle gate below is upstream of all of this.
+ * A packet may still pass absolute `rateLowRadS` / `rateCapRadS`: that selects the pre-#3 schedule
+ * (rate lerped by speed / governed cap, bounded by the drive's forward authority) for A/B variants.
  */
 export const VELOCITY_VECTORING_DEFAULTS = Object.freeze({
+  restYawFrac: 0.60,
+  cruiseYawFrac: 0.57,
+  boostYawFrac: 0.375,
   rateLowRadS: 1.6,
   rateCapRadS: 0.9,
   fadeStartRad: Math.PI / 2,
@@ -132,15 +150,30 @@ export const VELOCITY_VECTORING_DEFAULTS = Object.freeze({
 /**
  * Coordinated-turn lead bound, rad (~7 deg). While the vectoring assist is live the nose may lead
  * the velocity vector by at most this much; as the lead is approached, yaw eases onto the rate the
- * drive is actually bending the path — see assistedTurnBound. The angle is the hull against the
- * trail, not the strafe-offset command the assist steers toward. A 16 deg park left the straight
- * nozzle jet kinked against the arc, and measuring the command let a strafe hide a ~45 deg crab
- * while telemetry read aligned. Twitch at zero slip stays full yaw, turning back toward the path
- * is never clamped, a zero turn is left alone, and the bound releases inside the flip band.
+ * drive is actually bending the path — see assistedTurnBound. Without Q/E the angle is the hull
+ * against the trail (a 16 deg park left the straight nozzle jet kinked against the arc). With Q/E
+ * held the bound measures the strafe-offset command against the trail instead (SF-2b #3): the
+ * pilot asked for that crab, and measuring the bare hull read the requested 45 deg crab as excess
+ * lead on the far side, so W+E+A had the excess-lead correction drive the nose the opposite way to
+ * the A key at ~1.3 rad/s. Telemetry still reports the hull-vs-trail slip. Twitch at zero slip
+ * stays full yaw, turning back toward the path is never clamped, a zero turn is left alone, and
+ * the bound releases inside the flip band.
  */
 export const VECTORING_SLIP_LEAD_RAD = 0.12;
 
 const VECTORING_EXCESS_SLIP_GAIN = 4;
+// TUNING LAB seam (SF-2b #3). Empty = master: legacy absolute rate schedule + hull-slip bound.
+// { yawFrac: true, restYawFrac, cruiseYawFrac, boostYawFrac, commandSlip: true }
+export const FLIGHT_TURN_LAB = {};
+export function setFlightTurnLab(cfg) { for (const k of Object.keys(FLIGHT_TURN_LAB)) delete FLIGHT_TURN_LAB[k]; Object.assign(FLIGHT_TURN_LAB, cfg || {}); }
+let COMMAND_SLIP_BOUND = false;
+function labTurnTuning(t) {
+  COMMAND_SLIP_BOUND = FLIGHT_TURN_LAB.commandSlip === true;
+  if (!t || !FLIGHT_TURN_LAB.yawFrac) return t;
+  return { ...t, rateLowRadS: null, rateCapRadS: null,
+    restYawFrac: FLIGHT_TURN_LAB.restYawFrac ?? 0.60, cruiseYawFrac: FLIGHT_TURN_LAB.cruiseYawFrac ?? 0.57,
+    boostYawFrac: FLIGHT_TURN_LAB.boostYawFrac ?? 0.375 };
+}
 
 const EPS = 1e-9;
 const TAU = Math.PI * 2;
@@ -425,7 +458,8 @@ function stepReaction(body, input, profile, runtime, environment, dt) {
   // vectoring assist below redirects that thrust rather than burning more, so it adds no cost.
   const demand = resourceDemand(profile, accel, input.boost, dt);
   const nextRuntime = coolRuntime(runtime, profile, demand, dt);
-  const vectoring = velocityVectoringAcceleration(body, input, profile, limits, governor, dt);
+  const vectoring = velocityVectoringAcceleration(body, input, profile, limits, governor, dt,
+    reactionLimitsUnscaled(profile, boostMult).forward);
   if (vectoring && vectoring.active) {
     accel.x += vectoring.ax;
     accel.z += vectoring.az;
@@ -845,7 +879,8 @@ function stepTorch(body, input, profile, runtime, environment, dt) {
   const nextRuntime = coolRuntime(runtime, profile, demand, dt, { spool });
   // Same opt-in vectoring as the reaction drive; `limits.forward` carries the spool, so a cold
   // torch vectors as little as it pushes.
-  const vectoring = velocityVectoringAcceleration(body, input, effective, limits, governor, dt);
+  const vectoring = velocityVectoringAcceleration(body, input, effective, limits, governor, dt,
+    reactionLimitsUnscaled(profile, effective.boostAccelMult).forward);
   if (vectoring && vectoring.active) {
     accel.x += vectoring.ax;
     accel.z += vectoring.az;
@@ -1009,12 +1044,14 @@ function reactionAssistAcceleration(body, axes, input, profile, forceBrake) {
  * not opt in (no telemetry key, byte-identical results), otherwise a record that is `active` when
  * the assist holds authority this tick. The force is the exact acceleration that rotates the
  * current velocity by `deltaRad` over `dt`: a pure rotation, so speed is untouched and the physics
- * owner's thrust-only cap never has to trim it. |R(δ)v − v| / dt = 2·v·sin(δ/2) / dt is bounded by
- * the drive's forward authority (`limits.forward`), so a weak or cold drive vectors as little as
- * it pushes and hull identity survives the assist.
+ * owner's thrust-only cap never has to trim it. The rate is the hull's max yaw times the speed-
+ * scheduled fraction (VELOCITY_VECTORING_DEFAULTS), scaled by how much of its nominal forward
+ * authority the drive has this tick (`limits.forward / nominalForward`), so hull identity comes
+ * from the hull's yaw and a cold or degraded drive still vectors as little as it pushes. The
+ * legacy absolute-rate variant keeps the old bound, |R(δ)v − v| / dt <= limits.forward.
  */
-function velocityVectoringAcceleration(body, input, profile, limits, governor, dt) {
-  const tuning = input.velocityVectoring;
+function velocityVectoringAcceleration(body, input, profile, limits, governor, dt, nominalForward = 0) {
+  const tuning = labTurnTuning(input.velocityVectoring);
   if (!tuning) return null;
   const settings = profile.assist || {};
   const deadInput = positive(settings.deadInput, 0.025);
@@ -1041,11 +1078,14 @@ function velocityVectoringAcceleration(body, input, profile, limits, governor, d
   const error = wrapAngle(commandHeading - Math.atan2(body.vel.z, body.vel.x));
   const absError = Math.abs(error);
   const alignScale = 1 - smoothstep(tuning.fadeStartRad, tuning.fadeEndRad, absError);
-  const rate = lerp(tuning.rateLowRadS, tuning.rateCapRadS, clamp(speed / cap, 0, 1)) * alignScale;
+  const legacy = tuning.rateLowRadS != null || tuning.rateCapRadS != null;
+  const rate = (legacy
+    ? lerp(nonNegative(tuning.rateLowRadS, 0), nonNegative(tuning.rateCapRadS, 0), clamp(speed / cap, 0, 1))
+    : vectoringYawFracRate(speed, profile, tuning, limits, nominalForward)) * alignScale;
   if (!(rate > 0)) return vectoringIdle('faded');
   const requested = Math.min(absError, rate * dt);
   const authority = positive(limits && limits.forward, 0);
-  const maxDelta = 2 * Math.asin(clamp(authority * dt / (2 * speed), 0, 1));
+  const maxDelta = legacy ? 2 * Math.asin(clamp(authority * dt / (2 * speed), 0, 1)) : requested;
   const delta = Math.min(requested, maxDelta);
   const signed = error < 0 ? -delta : delta;
   const c = Math.cos(signed);
@@ -1065,6 +1105,26 @@ function velocityVectoringAcceleration(body, input, profile, limits, governor, d
     ax,
     az,
   };
+}
+
+/**
+ * SF-2b (#3) path turn rate, rad/s: hull max yaw x the speed-scheduled fraction (rest -> cruise at
+ * the combat cap -> boost at the boost cap), constant lateral acceleration above the boost cap,
+ * scaled by the drive's share of its nominal forward authority.
+ */
+function vectoringYawFracRate(speed, profile, tuning, limits, nominalForward) {
+  const maxYaw = positive(profile.maxYawRate, 2.5);
+  const combat = positive(profile.combatSpeed, 0);
+  const boostCap = combat * Math.max(1, positive(profile.boostSpeedMult, 1.55));
+  const rest = nonNegative(tuning.restYawFrac, VELOCITY_VECTORING_DEFAULTS.restYawFrac);
+  const cruise = nonNegative(tuning.cruiseYawFrac, VELOCITY_VECTORING_DEFAULTS.cruiseYawFrac);
+  const boost = nonNegative(tuning.boostYawFrac, VELOCITY_VECTORING_DEFAULTS.boostYawFrac);
+  let frac;
+  if (speed <= combat) frac = lerp(rest, cruise, clamp(speed / combat, 0, 1));
+  else if (speed <= boostCap) frac = lerp(cruise, boost, clamp((speed - combat) / (boostCap - combat), 0, 1));
+  else frac = boost * boostCap / speed;
+  const drive = nominalForward > 0 ? clamp(positive(limits && limits.forward, 0) / nominalForward, 0, 1) : 1;
+  return maxYaw * frac * drive;
 }
 
 function vectoringIdle(reason) {
@@ -1114,7 +1174,12 @@ function assistedTurnBound(body, input, profile, accel, dt) {
   }
   const pathHeading = Math.atan2(body.vel.z, body.vel.x);
   const slip = wrapAngle(body.rot - pathHeading);
-  if (Math.abs(slip) >= Math.PI / 2) return null;
+  // SF-2b (#3): with the vectoring assist on, the bound measures the command the assist steers
+  // toward (nose + the Q/E strafe offset) against the trail. Without Q/E that is the hull itself.
+  const boundSlip = tuning && COMMAND_SLIP_BOUND && input.strafe
+    ? wrapAngle(body.rot + Math.atan2(input.strafe, input.throttle) - pathHeading)
+    : slip;
+  if (Math.abs(boundSlip) >= Math.PI / 2) return null;
   // pathFollowRate = this tick's achievable velocity rotation: the signed rate the combined
   // applied acceleration (thrust, assists, drag, vectoring) already bends the velocity vector.
   // Measuring the real applied accel — not an authority estimate — keeps the bound honest at
@@ -1124,7 +1189,7 @@ function assistedTurnBound(body, input, profile, accel, dt) {
     ? wrapAngle(Math.atan2(body.vel.z + finite(accel && accel.z, 0) * dt, body.vel.x + finite(accel && accel.x, 0) * dt)
       - pathHeading) / dt
     : 0;
-  return { slip, pathFollowRate, leadRad: tuning ? VECTORING_SLIP_LEAD_RAD : Math.PI / 2 };
+  return { slip, boundSlip, pathFollowRate, leadRad: tuning ? VECTORING_SLIP_LEAD_RAD : Math.PI / 2 };
 }
 
 /** `true` selects the band defaults without allocating; an object overrides individual keys. */
@@ -1133,6 +1198,9 @@ function normalizeVelocityVectoring(raw, out = null) {
   if (raw === true || typeof raw !== 'object') return VELOCITY_VECTORING_DEFAULTS;
   const d = VELOCITY_VECTORING_DEFAULTS;
   const o = out || {};
+  o.restYawFrac = nonNegative(raw.restYawFrac, d.restYawFrac);
+  o.cruiseYawFrac = nonNegative(raw.cruiseYawFrac, d.cruiseYawFrac);
+  o.boostYawFrac = nonNegative(raw.boostYawFrac, d.boostYawFrac);
   o.rateLowRadS = nonNegative(raw.rateLowRadS, d.rateLowRadS);
   o.rateCapRadS = nonNegative(raw.rateCapRadS, d.rateCapRadS);
   o.fadeStartRad = clamp(finite(raw.fadeStartRad, d.fadeStartRad), 0, Math.PI);
@@ -1165,19 +1233,20 @@ function computeYawControl(body, input, profile, dt, turnBound = null) {
   // Nose-vs-path lead. Same-sign yaw eases from full rate at zero slip onto the rate the path
   // is actually turning, and caps there. Excess lead is pulled back. Opposite-sign yaw (turning
   // back onto the trail) is never clamped, and a zero turn adds nothing — helm aim stays put.
-  if (turnBound && targetYawRate !== 0 && Math.sign(targetYawRate) === Math.sign(turnBound.slip)) {
-    const absSlip = Math.abs(turnBound.slip);
+  const boundSlip = turnBound ? (turnBound.boundSlip != null ? turnBound.boundSlip : turnBound.slip) : 0;
+  if (turnBound && targetYawRate !== 0 && Math.sign(targetYawRate) === Math.sign(boundSlip)) {
+    const absSlip = Math.abs(boundSlip);
     const leadRad = turnBound.leadRad;
     let bound = targetYawRate;
     if (absSlip >= leadRad) {
       const correction = VECTORING_EXCESS_SLIP_GAIN * (absSlip - leadRad);
-      bound = turnBound.slip > 0
+      bound = boundSlip > 0
         ? Math.min(targetYawRate, turnBound.pathFollowRate - correction)
         : Math.max(targetYawRate, turnBound.pathFollowRate + correction);
     } else {
       const blend = smoothstep(0, leadRad, absSlip);
       const eased = targetYawRate + (turnBound.pathFollowRate - targetYawRate) * blend;
-      bound = turnBound.slip > 0 ? Math.min(targetYawRate, eased) : Math.max(targetYawRate, eased);
+      bound = boundSlip > 0 ? Math.min(targetYawRate, eased) : Math.max(targetYawRate, eased);
     }
     if (bound !== targetYawRate) {
       targetYawRate = clamp(bound, -Math.abs(maxYaw), Math.abs(maxYaw));
@@ -1445,7 +1514,9 @@ const _packetBodyPos = { x: 0, z: 0 };
 const _packetBodyVel = { x: 0, z: 0 };
 const _packetBody = { pos: _packetBodyPos, vel: _packetBodyVel, rot: 0, angVel: 0, mass: 1, inertia: 1 };
 const _packetTravelDrive = { state: 'off', cap: 0, ceiling: 0, rampRate: 0, rampMult: 1, disrupted: false };
-const _packetVelocityVectoring = { rateLowRadS: 0, rateCapRadS: 0, fadeStartRad: 0, fadeEndRad: 0 };
+const _packetVelocityVectoring = {
+  restYawFrac: 0, cruiseYawFrac: 0, boostYawFrac: 0, rateLowRadS: null, rateCapRadS: null, fadeStartRad: 0, fadeEndRad: 0,
+};
 const _packetInputSubs = { travelDrive: _packetTravelDrive, velocityVectoring: _packetVelocityVectoring };
 const _packetInput = {
   drawFlight: null, throttle: 0, strafe: 0, turn: 0, boost: false, brake: false,

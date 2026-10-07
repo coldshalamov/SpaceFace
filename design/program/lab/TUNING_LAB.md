@@ -481,7 +481,7 @@ Prediction error p50 at meet: CV 3.59 wu, accel 5.02, intent 4.91. CV wins, so n
 
 ## 10. Phase 2b (2026-10-06/07)
 
-**Status (restart from here, 2026-10-07 00:10 ET):** #5 sling throw SHIPPED as PR #230
+**Status (restart from here, 2026-10-06 23:50 ET):** #5 sling throw SHIPPED as PR #230
 (`lab2b/sling-release`, not merged; see 10.3). Accepted (queued) throw presses that missed went from 14/101
 to 3/101, and the hit window from 135.1 to 147.1 ms per revolution. The 90 ms window dial is unchanged.
 #4 shipped earlier as PR #229 (10.2). Next: #3 flight-assist turn authority (bench `flight` and the kernel
@@ -680,4 +680,61 @@ Wider windows are Robin's feel call and are listed in the PR.
 
 **Tests.** The deadline test pins entry+1. A new test (a window that opens one tick late still releases
 on solution) fails on master. Massline suites pass 430/430.
+
+### 10.4 #3 flight-assist turn authority: in progress (draft bench, seam and first numbers)
+
+**Bench.** `flight` (`scripts/lab/benches/flightTurn.mjs`). Player-only world, pilot scheme (A/D yaw, Q/E
+strafe), 15 hulls. Scenarios:
+- cruise-turn: W to cruise, then W+D for 8 s.
+- boost-turn: W+Shift to the boost cap, then W+Shift+D for 12 s. Early (1–3 s) vs late (9–12 s) gives the
+  decay.
+- coast-turn: release W, hold D.
+- uturn-cruise / uturn-boost.
+- strafe-yaw: W+E+A, W+Q+D and W+E+D, for the nose-snap report.
+
+Every rate is also given as a fraction of the hull's max yaw (`profile.maxYawRate` after the feel envelope).
+
+**Seam.** `FLIGHT_TURN_LAB` in `propulsionKernel.js`. Empty = master; with the seam empty the bench matches
+master byte-for-byte on Kestrel. Keys:
+- `yawFrac:true` selects the yaw-fraction schedule:
+  - `restYawFrac` / `cruiseYawFrac` / `boostYawFrac` are anchored at rest, the combat cap and the boost cap,
+    with the rate following speed between them.
+  - Above the boost cap, lateral acceleration is held constant.
+  - The rate is scaled by the drive's share of its nominal forward authority, and the old forward-authority
+    clamp is dropped.
+- `commandSlip:true` makes the lead bound measure nose + strafe offset against the trail.
+
+**Root causes (Kestrel).**
+- Cruise W+turn is authority-limited: the vectoring force is clamped to `limits.forward` (168 wu/s²), which
+  gives 0.88 rad/s = 0.33 of max yaw at 195 wu/s, saturated 100% of the time.
+- Boost at the cap is the same: 0.556 rad/s = 0.21 of max yaw. On a long hold at the cap it is steady
+  (decay 1.00). The "decay" seen earlier is the rate falling as speed builds.
+- Nose snap: with Q/E held, the hull-vs-trail slip reads the requested ~45° crab as excess lead. Under W+E+A
+  the excess-lead correction then drives the nose the *opposite* way to A at about 1.27 rad/s for the whole
+  hold.
+
+**Draft numbers (seed 1):**
+
+| hull | cruise frac (r wu), master → candidate | boost frac (r wu), master → candidate | U-turn cruise / boost s, master → candidate | W+E+A nose |
+|---|---|---|---|---|
+| kestrel | 0.33 (222) → 0.58 (128) | 0.21 (543) → 0.375 (305) | 3.62/5.68 → 2.12/3.22 | wrong way → follows A |
+| wasp | 0.27 (220) → 0.58 (100) | 0.23 (412) → 0.38 (249) | 3.33/3.88 → 1.55/2.37 | wrong way → follows A |
+
+The candidate is 0.60/0.57/0.375 with commandSlip.
+
+Speed kept through a U-turn: 1.00. Coast is unchanged (1.19 × max yaw nose, no path turn). Full table:
+`results/flight-2b/draft-table.txt`.
+
+**Open issues before the PR:**
+- The torch hulls (hawser, colossus, leviathan, max yaw 0.48–0.76) are nose-limited on master at about
+  0.99 of max yaw. Strict fractions would make them turn about 40% slower (colossus can no longer finish the
+  cruise U-turn in 8 s). Plan: floor the new rate at master's rate, so no hull turns slower than it does
+  today, and flag this in the PR as a dial for Robin.
+- Gravimetric, pulse-plate, field-sail and inertialess hulls (hornet, bastion, warden, ironback, ranger,
+  saucer) do not use the vectoring path, so this change leaves them untouched. ironback and ranger show
+  almost no W+turn path turn (ranger 0): note this, but it is out of scope.
+- Still to do: the tests that pin the old schedule (`velocity-vectoring`, `vectoring-lead-correction`), and
+  re-checking tether (#227) and aim (#228/#229) under the new rates.
+
+Production patch generator: `results/flight-2b/patch_pk.py` (`python3 patch_pk.py <master propulsionKernel.js> <out> prod|lab`); helper scripts probe/quick/tab.mjs are alongside it.
 
