@@ -10357,6 +10357,10 @@ export const render = {
     // Diagnostics: what each pending bounded-warm promise is, so a settle that times out can
     // name what it was still waiting on instead of only counting it.
     this._rosterPrewarmPendingLabels = new WeakMap();
+    // Drain-attempt flags: the paced cohort marks each one-time leg (leaf
+    // blanket, part catalog) attempted so a re-emit queues no repeat work.
+    this._rosterPrewarmLeafWarmed = false;
+    this._rosterPrewarmCatalogAttempted = false;
     // Hidden root holding one instantiated copy of every mountable accessory record — the
     // fitSeed picks mounts per entity id, so only the whole catalog covers every live spawn.
     this._rosterPartCatalogRoot = null;
@@ -10759,15 +10763,29 @@ export const render = {
     // under the admission yield contract so a mid-cook mint slices across
     // presents instead of landing atomic inside the touch leg.
     const mintTouchDrawableSession = async (targetScene) => {
-      if (typeof drawableHideSessionSteps === 'function') {
-        const it = drawableHideSessionSteps(targetScene);
-        for (;;) {
-          const step = it.next();
-          if (step.done) return step.value;
-          await admissionPaceYield();
+      // One O(scene) drawable census per cook, shared across the cook's legs —
+      // the session contract already tolerates a stale snapshot (a drawable
+      // minted after the census is simply never hidden: it draws inside the
+      // absorbed pass, never inside a presented frame). `keep` stays per-leg
+      // session state (F2 scopes it per call below the session anyway).
+      const cookGeneration = this._liveSectorCookGeneration || 0;
+      let census = this._touchDrawableCensus;
+      if (!census || census.scene !== targetScene || census.generation !== cookGeneration) {
+        let drawables;
+        if (typeof drawableHideSessionSteps === 'function') {
+          const it = drawableHideSessionSteps(targetScene);
+          for (;;) {
+            const step = it.next();
+            if (step.done) { drawables = step.value.drawables; break; }
+            await admissionPaceYield();
+          }
+        } else {
+          drawables = drawableHideSession(targetScene).drawables;
         }
+        census = { scene: targetScene, generation: cookGeneration, drawables };
+        this._touchDrawableCensus = census;
       }
-      return drawableHideSession(targetScene);
+      return { scene: targetScene, drawables: census.drawables, keep: new Set() };
     };
     // A package texture whose CPU mirror was released after its proven upload still reaches
     // three's uploader when the next bind re-enters it — a moved version, a different
@@ -18247,6 +18265,66 @@ export const render = {
       // type warms the leaf + detail material family the promotion can ever draw.
       asteroidVisualExemplarSpecs(),
     );
+    // A re-emit with nothing new must queue zero census-hold work — the same
+    // dedupe the per-spec ledger gives inside the drain, applied at mint time:
+    // every exemplar/weapon already ledgered and the leaf + catalog legs already
+    // attempted means there is genuinely nothing for a drain to do.
+    let needsWork = !this._rosterPrewarmLeafWarmed || !this._rosterPrewarmCatalogAttempted;
+    if (!needsWork) {
+      for (const spec of exemplarSpecs) {
+        if (!spec || spec.id == null || spec.type === 'fx' || spec.type === 'projectile') continue;
+        if (!this._rosterPrewarmIds.has(spec.id)
+            && !(this._meshes && this._meshes.has(spec.id))) { needsWork = true; break; }
+      }
+    }
+    if (!needsWork) {
+      for (const spec of specs) {
+        const weapons = spec && spec.data && spec.data.weapons;
+        if (!Array.isArray(weapons)) continue;
+        for (const w of weapons) {
+          const weaponId = w && (w.defId || w.id);
+          if (typeof weaponId === 'string' && weaponId.length > 0
+              && !(this._rosterPrewarmWeaponIds && this._rosterPrewarmWeaponIds.has(weaponId))) {
+            needsWork = true;
+            break;
+          }
+        }
+        if (needsWork) break;
+      }
+    }
+    if (!needsWork) return;
+    // The cohort used to mount inside one emit task — ~40-60 whole-boundary
+    // vf.build+scene.add runs plus a synchronous countShadowReceivers per mount
+    // froze the loading shell's rAF. It now drives as a paced drain that yields
+    // between ~8ms slices, with the drain itself in _rosterPrewarmPending so the
+    // cook's shell hold still covers the full cohort.
+    const drain = this._drainRosterPrewarmCohort(exemplarSpecs, specs, compilePipelines)
+      .catch((error) => {
+        console.warn('[render] survival roster prewarm drain failed', error);
+      });
+    if (this._rosterPrewarmPending) {
+      this._rosterPrewarmPending.add(drain);
+      observePipelineAdmission(drain.finally(() => {
+        if (this._rosterPrewarmPending) this._rosterPrewarmPending.delete(drain);
+      }));
+    }
+  },
+
+  async _drainRosterPrewarmCohort(exemplarSpecs, specs, compilePipelines) {
+    // Yield the browser only once a slice of cohort work actually cost ~8ms —
+    // big rosters pace across gaps while a small emit (or a CLI driver) still
+    // mints the whole cohort inside its own task.
+    const cohortNow = () => (typeof performance !== 'undefined'
+      && typeof performance.now === 'function' ? performance.now() : Date.now());
+    let cohortLap = cohortNow();
+    // Sync check: `await` on a resolved promise still suspends to a microtask —
+    // callers gate the await itself so an under-budget slice never leaves the
+    // current task.
+    const cohortOwed = () => {
+      if (cohortNow() - cohortLap < 8) return false;
+      cohortLap = cohortNow();
+      return true;
+    };
     for (const spec of exemplarSpecs) {
       if (!spec || spec.id == null || spec.type === 'fx' || spec.type === 'projectile') continue;
       if (this._rosterPrewarmIds.has(spec.id)
@@ -18275,7 +18353,10 @@ export const render = {
         boundary.userData = boundary.userData || {};
         boundary.userData.rosterPrewarm = spec.id;
         this.scene.add(boundary);
-        this._noteShadowMeshAdded?.(boundary);
+        // Cohort-batched tally: one dirty mark per mount instead of a
+        // synchronous countShadowReceivers walk per exemplar — the paced
+        // recount absorbs the whole cohort in one walk.
+        this._markShadowReceiversDirty?.();
         this._rosterPrewarmRoots.push(boundary);
         try {
           const admitted = requestAuthoredUpgrade(boundary, this.renderer, this.scene, {
@@ -18295,7 +18376,7 @@ export const render = {
             // fitSeed/palette = the exact chunk keys the second witness must promote.
             upgradeJobKey: witness > 0 ? `rosterPrewarm:${spec.id}:w${witness}` : undefined,
             residencyRole: 'survival-roster-prewarm',
-            sectorId: (state && state.world && state.world.currentSectorId) || null,
+            sectorId: (this.state && this.state.world && this.state.world.currentSectorId) || null,
             isResidencyOwnerActive: () => this._rosterPrewarmIds.has(spec.id)
               && boundary.parent === this.scene,
           });
@@ -18325,7 +18406,9 @@ export const render = {
         } catch (error) {
           console.warn('[render] survival roster prewarm admission failed', spec.id, error);
         }
+        if (cohortOwed()) await yieldToBrowser();
       }
+      if (cohortOwed()) await yieldToBrowser();
     }
     // Projectile exemplars: every weapon id the roster fields gets one hidden bolt through the
     // same compile lane, so the first shot of a new gun is as warm as the hull firing it. The
@@ -18365,7 +18448,7 @@ export const render = {
         mesh.visible = false;
         mesh.position.set(0, 0, 0);
         this.scene.add(mesh);
-        this._noteShadowMeshAdded?.(mesh);
+        this._markShadowReceiversDirty?.();
         this._rosterPrewarmRoots.push(mesh);
         const settled = compilePipelines(mesh).catch((error) => {
           console.warn('[render] survival roster projectile warm failed', weaponId, error);
@@ -18379,16 +18462,18 @@ export const render = {
       } catch (error) {
         console.warn('[render] survival roster projectile warm failed', weaponId, error);
       }
+      if (cohortOwed()) await yieldToBrowser();
     }
     // Leaf-variant blanket: each type's exemplar only touches its hashId-picked displacement
     // variant, but a mid-round promotion can draw any of the five siblings. One hidden leaf mesh
     // per (type, variant) puts every shared geometry buffer + non-instanced program on the GPU
     // before flight — a late build then costs object creation only.
+    this._rosterPrewarmLeafWarmed = true;
     try {
       const leafWarm = buildAsteroidLeafWarmGroup();
       leafWarm.visible = false;
       this.scene.add(leafWarm);
-      this._noteShadowMeshAdded?.(leafWarm);
+      this._markShadowReceiversDirty?.();
       this._rosterPrewarmRoots.push(leafWarm);
       const leafSettled = compilePipelines(leafWarm).catch((error) => {
         console.warn('[render] asteroid leaf-variant warm failed', error);
@@ -18402,6 +18487,17 @@ export const render = {
     } catch (error) {
       console.warn('[render] asteroid leaf-variant warm failed', error);
     }
+    // Roots mounted after the reskin continuation's bare→PBR sweep ran never
+    // got its upgrade — re-run it idempotently so no exemplar stays bare. A
+    // sweep that lands later upgrades the same set again (no-op).
+    try {
+      let upgraded = 0;
+      for (const root of this._rosterPrewarmRoots || []) {
+        upgraded += upgradeBareRockMaterials(root);
+        if (cohortOwed()) await yieldToBrowser();
+      }
+    } catch (_) { /* upgrade pass is best-effort */ }
+    this._rosterPrewarmCatalogAttempted = true;
     this._admitRosterPartCatalog(compilePipelines, specs);
   },
 
@@ -24865,7 +24961,15 @@ export const render = {
           );
           this._openingFirstDrawIdentityResult = undefined;
         }
-        const censusStep = this._openingFirstDrawIdentityIter.next();
+        // A traverse/material read inside the census must not abort the
+        // presented frame — drop the iterator and let the declared sync
+        // fallback or the timer-gap drain pick the baseline up.
+        let censusStep;
+        try {
+          censusStep = this._openingFirstDrawIdentityIter.next();
+        } catch (_) {
+          censusStep = { done: true, value: undefined };
+        }
         if (censusStep.done) {
           this._openingFirstDrawIdentityResult = censusStep.value;
           this._openingFirstDrawIdentityIter = null;
@@ -25215,9 +25319,14 @@ export const render = {
         );
         if (openingFirstDrawIdentityBefore === undefined && this._openingFirstDrawIdentityIter) {
           const drainDeadline = gapNow() + OPENING_FIRST_DRAW_CENSUS_DRAIN_MS;
-          let censusStep = this._openingFirstDrawIdentityIter.next();
-          while (!censusStep.done && gapNow() < drainDeadline) {
+          let censusStep;
+          try {
             censusStep = this._openingFirstDrawIdentityIter.next();
+            while (!censusStep.done && gapNow() < drainDeadline) {
+              censusStep = this._openingFirstDrawIdentityIter.next();
+            }
+          } catch (_) {
+            censusStep = { done: true, value: undefined };
           }
           if (censusStep.done) openingFirstDrawIdentityBefore = censusStep.value;
         }

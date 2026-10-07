@@ -91,6 +91,7 @@ function warmHarness(vf) {
     // set carries every real member the cook's hold would wait on (its GLB loads fail fast
     // and gracefully in node — `.catch(() => null)` per file).
     _admitRosterPartCatalog(...args) { return render._admitRosterPartCatalog.apply(this, args); },
+    _drainRosterPrewarmCohort(...args) { return render._drainRosterPrewarmCohort.apply(this, args); },
   };
   return { owner, scene, compiled };
 }

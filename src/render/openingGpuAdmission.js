@@ -458,12 +458,13 @@ export function uniqueAdmissionUnits(subjects, options = {}) {
 
 /**
  * Reusable drawable-hide session for a batched touch loop. The scene's drawable
- * enumeration is O(scene) — mint it once per cohort instead of once per batch.
- * `keep` accumulates across uses: batch subjects share ancestors, so a later
- * batch's keep mint skips walks a prior batch already unioned in. Under-hiding
- * is safe by contract — a drawable the session under-covers just draws inside
- * the absorbed touch pass (which exists to absorb links), never inside a
- * presented frame; stale entries for detached nodes hide+restore harmlessly.
+ * enumeration is O(scene) — mint it once per cook and share `drawables` across
+ * the cook's legs. `keep` is per-CALL state (withOnlySubjectsDrawable mints it
+ * per batch): session-accumulated keep re-drew every prior batch's subjects in
+ * each later absorbed pass. Under-hiding is safe by contract — a drawable the
+ * session under-covers just draws inside the absorbed touch pass (which exists
+ * to absorb links), never inside a presented frame; stale entries for detached
+ * nodes hide+restore harmlessly.
  */
 export function drawableHideSession(scene) {
   const drawables = [];
@@ -497,16 +498,18 @@ export function* drawableHideSessionSteps(scene, sliceEvery = 4096) {
 }
 
 export function withOnlySubjectsDrawable(scene, subjects, fn, session) {
-  const keep = session ? session.keep
-    : new Set((Array.isArray(subjects) ? subjects : [subjects]).filter(Boolean));
+  // `keep` scopes to THIS call's subjects: whileRevealedGroup now holds reveals
+  // across suspension, so a session-accumulated keep re-draws every prior
+  // batch's subjects inside each later absorbed pass (≈N²/48 subject-draws per
+  // cook). Prior-batch members are hidden by the scan below — their programs
+  // already linked in their own batch — and restore in `finally`.
+  const keep = new Set();
   // A drawable ancestor must stay un-hidden: render() skips a hidden object's whole subtree, so
   // hiding one would make the subject's "draw" a silent no-op and leave its program cold. The
   // same holds for descendants — a Group subject whose mesh children are hidden draws nothing.
-  const fresh = session
-    ? (Array.isArray(subjects) ? subjects : [subjects]).filter((s) => s && !keep.has(s))
-    : [...keep];
-  for (const subject of fresh) {
-    if (session) keep.add(subject);
+  for (const subject of (Array.isArray(subjects) ? subjects : [subjects])) {
+    if (!subject || keep.has(subject)) continue;
+    keep.add(subject);
     for (let p = subject.parent; p && !keep.has(p); p = p.parent) keep.add(p);
     if (typeof subject.traverse === 'function') subject.traverse((node) => keep.add(node));
   }
