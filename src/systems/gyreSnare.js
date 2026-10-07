@@ -88,6 +88,8 @@ function freshRuntime() {
     launchDir: { x: 1, z: 0 },
     launchedId: null,      // the ball in flight (TTL/telemetry only — it is a free body)
     ballId: null,          // survives LAUNCH→OFF until the thrown clump despawns (mirror track)
+    ballIds: [],           // bounded watch list of every live launched id — second launches and
+                           // boundary reloads can't orphan a gyreLaunched mark + weapon scale
     ballMass: 0,           // t — clump mass frozen at launch so the ball's HUD/VFX keeps it
     ballMembers: null,     // frozen member ledger — the glass lumps ride the thrown ball to its grave
     ballClumpRadius: 0,    // wu — clump radius frozen at launch (same deal as ballMass)
@@ -164,6 +166,7 @@ export const gyreSnare = {
     // The drop-side ledger dies with the clump too — a fresh beam must not publish the last
     // ball's absorb count (or reuse its orbit phase) while it searches for a new core.
     rt.totalAbsorbed = 0;
+    rt.basinCount = 0;
     rt.orbitSeed = 0;
     // A boundary drop also forgets the flying ball — its entity is about to vanish with the
     // sector anyway, and stale ballPos would leak a dead clump overlay into the next scene.
@@ -215,6 +218,22 @@ export const gyreSnare = {
     }
   },
 
+  // Adoption hand-back: another system cleared the ball's despawnAt to keep it — strip
+  // the lash's marks. gyreLaunched pins permanent pull/snag/suck immunity; a left-behind
+  // impactDamageScale (up to 8×) leaves a weapon-grade sleeper collider; the stashed
+  // authored scale comes back rather than vanishing with the mark.
+  _handBack(ball) {
+    delete ball.data.gyreLaunched;
+    if (ball.physicsBody && ball.physicsBody !== false) {
+      if (ball.data.gyrePrevImpactScale !== undefined) ball.physicsBody.impactDamageScale = ball.data.gyrePrevImpactScale;
+      else delete ball.physicsBody.impactDamageScale;
+      const rev = Number(ball.physicsBody.revision);
+      ball.physicsBody.revision = (Number.isFinite(rev) ? Math.max(0, Math.trunc(rev)) : 0) + 1;
+    }
+    delete ball.data.gyrePrevImpactScale;
+    if (this.helpers.markEntityVisualChanged) this.helpers.markEntityVisualChanged(ball);
+  },
+
   _sweepBoundaryResidue() {
     const ents = this.state && this.state.entities;
     if (!ents || typeof ents.forEach !== 'function') return;
@@ -228,6 +247,16 @@ export const gyreSnare = {
         delete e.data.gyrePrevDespawnAt;
         delete e.data.gyrePrevTtl;
         if (mark) mark(e);
+      }
+      // A serialized mid-flight ball keeps gyreLaunched + its own deadline — still a
+      // launched body, so keep it watched: if an adopting system later strips the
+      // deadline, the retire pass hands it back instead of orphaning the mark.
+      if (e && e.data && e.data.gyreLaunched) {
+        const rt2 = this._rt;
+        if (rt2 && !rt2.ballIds.includes(e.id)) {
+          rt2.ballIds.push(e.id);
+          while (rt2.ballIds.length > 8) rt2.ballIds.shift();
+        }
       }
     });
   },
@@ -629,12 +658,15 @@ export const gyreSnare = {
     // rebuilds the ball with the new spec). A one-tick writePhysicsBodyResponse would revert
     // on the next pass; this is the real katamari — the rapier body genuinely gains mass and
     // a bigger collider, which also keeps the skin-touch absorb threshold honest.
-    syncDerivedPhysicsMass(
-      core,
-      rt.clumpMass,
-      Math.max(8, Math.round(rt.clumpMass * rt.clumpRadius * rt.clumpRadius * 0.4)),
-      rt.clumpRadius,
-    );
+    // `=== false` is an authored opt-out — the same guard _launch carries.
+    if (core.physicsBody !== false) {
+      syncDerivedPhysicsMass(
+        core,
+        rt.clumpMass,
+        Math.max(8, Math.round(rt.clumpMass * rt.clumpRadius * rt.clumpRadius * 0.4)),
+        rt.clumpRadius,
+      );
+    }
     // The clump's HEART visibly grows too: entity.radius is what the motion presenters scale
     // the core's mesh off — keep it in step with the physics record so growth is visceral.
     if (!finite(core.radius) || core.radius < rt.clumpRadius) {
@@ -690,6 +722,10 @@ export const gyreSnare = {
     // clump overlay + pub.coreId ride the payload until _finishLaunch clears it.
     rt.launchedId = core.id;
     rt.ballId = core.id; // outlives LAUNCH so render/HUD can track the bowling ball to its grave
+    // Watch every launched id, not just the newest: a second launch or a save-load that
+    // keeps the entity alive would otherwise orphan gyreLaunched + weapon scale forever.
+    if (!rt.ballIds.includes(core.id)) rt.ballIds.push(core.id);
+    while (rt.ballIds.length > 8) rt.ballIds.shift();
     rt.ballMass = rt.clumpMass;
     // The katamari lumps are part of the thrown payload — freeze the ledger so the glass
     // clump overlay keeps riding the ball through its whole flight instead of shedding at OFF.
@@ -706,6 +742,9 @@ export const gyreSnare = {
       // physicsBody===false is an authored opt-out — materializing a record here
       // would make shouldSyncPhysicsBodyEntity spawn a body the entity declined.
       core.physicsBody = core.physicsBody || {};
+      // Stash any authored scale so the adoption hand-back restores it rather than
+      // leaving the entity un-damped (or keeping the weapon scale) forever.
+      core.data.gyrePrevImpactScale = core.physicsBody.impactDamageScale;
       core.physicsBody.impactDamageScale = scale;
       // Bump the body revision — RESOLVED_BODY_CACHE keys on (body, revision), so the
       // authored-spec write must invalidate or the resolved spec reads stale.
@@ -793,6 +832,22 @@ export const gyreSnare = {
       basinCount: 0, ballClumpRadius: 0,
     });
     pub.phase = rt.phase;
+    // Retire pass over EVERY watched launched id — not just the HUD's primary ball:
+    // a second launch or a boundary reload can orphan an older marked body, and an
+    // adopted orphan (deadline stripped by encounterScripts/egress/lootShards) must not
+    // keep gyreLaunched immunity + weapon scale forever.
+    if (rt.ballIds.length && state && state.entities) {
+      for (let i = rt.ballIds.length - 1; i >= 0; i--) {
+        const e = state.entities.get(rt.ballIds[i]);
+        if (!e || e.alive === false || !e.data || !e.data.gyreLaunched || !e.pos
+          || e.data.despawnAt == null) {
+          if (e && e.alive !== false && e.data && e.data.gyreLaunched && e.data.despawnAt == null) {
+            this._handBack(e);
+          }
+          rt.ballIds.splice(i, 1);
+        }
+      }
+    }
     // Track a live bowling ball even in OFF: launchedId stays published until the entity is
     // gone (despawnAt/impact), so the glass-clump overlay retires with the ball, not the burst.
     if (rt.ballId != null && state && state.entities) {
@@ -810,17 +865,10 @@ export const gyreSnare = {
           && this.bus) {
           this.bus.emit('audio:cue', { id: 'gyre_snare_ball_death', gain: 0.6, position: { x: pub.ballPos.x, z: pub.ballPos.z } });
         }
-        // Hand-back: a live adopted body keeps nothing of ours. Leaving gyreLaunched
-        // pins permanent pull/snag/suck immunity on it, and impactDamageScale (up to
-        // 8×) leaves a weapon-grade sleeper collider in the world — strip both.
+        // Hand-back: a live adopted body keeps nothing of ours — the shared helper
+        // strips gyreLaunched and restores the stashed authored impactDamageScale.
         if (ball && ball.alive !== false && ball.data && ball.data.gyreLaunched) {
-          delete ball.data.gyreLaunched;
-          if (ball.physicsBody) {
-            delete ball.physicsBody.impactDamageScale;
-            const rev = Number(ball.physicsBody.revision);
-            ball.physicsBody.revision = (Number.isFinite(rev) ? Math.max(0, Math.trunc(rev)) : 0) + 1;
-          }
-          if (this.helpers.markEntityVisualChanged) this.helpers.markEntityVisualChanged(ball);
+          this._handBack(ball);
         }
         rt.ballId = null;
         rt.ballMass = 0;

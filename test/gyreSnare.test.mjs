@@ -1058,3 +1058,33 @@ test('a dropped core resumes its authored lifetime; a launched one keeps the bal
   assert.ok(core.ttl > 8887 && core.ttl <= 8888, `the sibling deadline is restored (got ${core.ttl})`);
   t.cleanup();
 });
+
+test('an orphaned second-launched ball hands back its marks when adopted', async () => {
+  const t = await bootPhysics();
+  const a = rock(t.sim, T.mawDist, 0, 40, 6);
+  a.physicsBody = a.physicsBody || {};
+  a.physicsBody.impactDamageScale = 0.2; // authored damping the launch overwrites
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.coreId, a.id, 'A cored');
+  release(t);
+  for (let i = 0; i < 8; i++) { t.state.input.actions.gyreSnare = false; t.sim.step(); }
+  assert.equal(t.sys._rt.ballId, a.id, 'A is the flying ball');
+  assert.ok(a.physicsBody.impactDamageScale > 1, 'launch wrote the weapon scale');
+  // Bowl a second clump while A still flies — A is now orphaned off the single track.
+  const b = rock(t.sim, T.mawDist, 0, 40, 6);
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.coreId, b.id, 'B cored');
+  release(t);
+  for (let i = 0; i < 8; i++) { t.state.input.actions.gyreSnare = false; t.sim.step(); }
+  assert.equal(t.sys._rt.ballId, b.id, 'B is the tracked ball');
+  assert.equal(a.data.gyreLaunched, true, 'A still carries the mark mid-flight');
+  // Adoption: another system claims A by stripping its deadline.
+  delete a.data.despawnAt;
+  t.sim.step();
+  assert.equal(a.data.gyreLaunched, undefined, 'the orphan is unmarked');
+  assert.equal(a.physicsBody.impactDamageScale, 0.2, 'the authored scale is restored');
+  assert.equal(b.data.gyreLaunched, true, 'B keeps flying as the ball');
+  t.cleanup();
+});
