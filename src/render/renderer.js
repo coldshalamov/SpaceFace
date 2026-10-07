@@ -2241,14 +2241,23 @@ function drainDisposeQueueLane(owner, queueField, headField, iterField, ledgerFi
 // invocations: ≤4 ms (or the paced ledger, whichever trips first) per call, the
 // same bound every other pump leg already observes. A Steps-less owner keeps
 // the sync drain.
+// Fault-park epochs compose the enter serial with the context-restore counter:
+// a restore rebuilds every GPU object the parked lanes repair, so the parked
+// lane must re-arm there too — enterSerial alone would stay parked through the
+// post-restore rebuild window.
+function serviceFaultEpoch(state) {
+  const st = state || {};
+  const enter = st.world && st.world.enterSerial != null ? st.world.enterSerial : null;
+  return `${enter == null ? 'x' : enter}|${Number(st.contextRestoreSeq) || 0}`;
+}
+
 function driveProtectedFirstFlightDrain(owner) {
   if (!owner) return 0;
   if (typeof owner._drainProtectedFirstFlightBuildsSteps !== 'function') {
     return typeof owner._drainProtectedFirstFlightBuilds === 'function'
       ? owner._drainProtectedFirstFlightBuilds() : 0;
   }
-  const drainEpoch = owner.state && owner.state.world
-    && owner.state.world.enterSerial != null ? owner.state.world.enterSerial : null;
+  const drainEpoch = serviceFaultEpoch(owner.state);
   if (!owner._protectedFirstFlightDrainIter
       && owner._protectedFirstFlightFaultEpoch !== drainEpoch) {
     owner._protectedFirstFlightDrainIter = owner._drainProtectedFirstFlightBuildsSteps();
@@ -2357,6 +2366,9 @@ function settleRebuildBridges(owner) {
       console.warn('[render] rebuild bridge settle failed for one row', bridgeError);
       bridges.delete(id);
       if (slot.faults < 2) bridges.set(id, slot);
+      // A dropped row still owns its bridge cover — a parked replacement would
+      // stay presented past its window without the release pass.
+      else { try { releaseRebuildBridge(owner, id, slot); } catch (_) { /* already torn */ } }
     }
   }
 }
@@ -2420,7 +2432,7 @@ export function serviceRenderMeshResidency(owner, frameDt) {
     // each invocation's real cost bounded.
     if (feedMoved || owner._residentReattachFrame === 0 || pacedFrameSpend() < 2) {
       owner._residentReattachStamp = reattachFeed;
-      const reattachEpoch = st.world && st.world.enterSerial != null ? st.world.enterSerial : null;
+      const reattachEpoch = serviceFaultEpoch(st);
       if (!owner._residentReattachIter
           && owner._residentReattachFaultEpoch !== reattachEpoch) {
         mintResidentReattachSweep(owner);
@@ -2448,8 +2460,7 @@ export function serviceRenderMeshResidency(owner, frameDt) {
           // Park the lane for this enter rather than rethrowing through the
           // service tail — the mint gate above re-arms on the next serial.
           owner._residentReattachIter = null;
-          owner._residentReattachFaultEpoch = st.world
-            && st.world.enterSerial != null ? st.world.enterSerial : null;
+          owner._residentReattachFaultEpoch = serviceFaultEpoch(st);
           console.warn('[render] resident reattach sweep faulted; parked until the next enter', err);
           break;
         }
@@ -2473,8 +2484,7 @@ export function serviceRenderMeshResidency(owner, frameDt) {
     // only after the reattach sweep ran to completion, so dead-id meshes the
     // sweep could still move are never released by the first reconcile leg.
     if (owner._meshReconcileDirty && !owner._reconcileIter && !owner._residentReattachIter
-        && owner._reconcileFaultEpoch
-          !== (st.world && st.world.enterSerial != null ? st.world.enterSerial : null)) {
+        && owner._reconcileFaultEpoch !== serviceFaultEpoch(st)) {
       if (typeof owner._reconcileMeshesSteps === 'function') {
         owner._reconcileIter = owner._reconcileMeshesSteps({ keepResidentSet: true });
         owner._reconcileKeepGpu = true;
@@ -2504,7 +2514,7 @@ export function serviceRenderMeshResidency(owner, frameDt) {
             // into every service tick of the keep-gpu window.
             abandonReconcile(owner);
             owner._meshReconcileDirty = true;
-            owner._reconcileFaultEpoch = liveEpoch;
+            owner._reconcileFaultEpoch = serviceFaultEpoch(st);
             console.warn('[render] mesh reconcile drive failed; parked until the next enter', err);
             break;
           }
@@ -2836,7 +2846,7 @@ export function serviceRenderMeshResidency(owner, frameDt) {
       owner._meshReconcileDirty = true;
     }
     if (owner._meshReconcileDirty && !owner._reconcileIter
-        && owner._reconcileFaultEpoch !== liveEpoch) {
+        && owner._reconcileFaultEpoch !== serviceFaultEpoch(owner.state)) {
       // The full pass is the poll's superset — close any suspended poll rather
       // than commit its departed-window verdicts after the reconcile lands.
       abandonResidencyPoll(owner);
@@ -2866,7 +2876,7 @@ export function serviceRenderMeshResidency(owner, frameDt) {
           // parks it for this one instead of rethrowing into every frame.
           abandonReconcile(owner);
           owner._meshReconcileDirty = true;
-          owner._reconcileFaultEpoch = liveEpoch;
+          owner._reconcileFaultEpoch = serviceFaultEpoch(owner.state);
           console.warn('[render] mesh reconcile drive failed; parked until the next enter', err);
           break;
         }
@@ -2902,7 +2912,7 @@ export function serviceRenderMeshResidency(owner, frameDt) {
       abandonResidencyPoll(owner);
     }
     if (pollDue && !owner._residencyPollIter
-        && owner._residencyPollFaultEpoch !== liveEpoch) {
+        && owner._residencyPollFaultEpoch !== serviceFaultEpoch(owner.state)) {
       if (typeof owner._reconcileMeshResidencySteps === 'function') {
         owner._residencyPollIter = owner._reconcileMeshResidencySteps();
         owner._residencyPollEpoch = liveEpoch;
@@ -2923,7 +2933,7 @@ export function serviceRenderMeshResidency(owner, frameDt) {
           // Parked for this enter the same way the reconcile lane is — the
           // next poll cadence after a fresh serial re-mints.
           abandonResidencyPoll(owner);
-          owner._residencyPollFaultEpoch = liveEpoch;
+          owner._residencyPollFaultEpoch = serviceFaultEpoch(owner.state);
           console.warn('[render] residency poll drive failed; parked until the next enter', err);
           break;
         }
@@ -4002,10 +4012,11 @@ function cameraClearanceBoxForMesh(mesh) {
   const assetState = data.authoredAssetState || '';
   const compositionId = data.authoredCompositionId || '';
   const posX = Math.round(mesh.position.x);
+  const posY = Math.round(mesh.position.y);
   const posZ = Math.round(mesh.position.z);
   const cached = data.cameraClearanceBox;
   if (cached && cached.assetState === assetState && cached.compositionId === compositionId
-      && cached.posX === posX && cached.posZ === posZ) {
+      && cached.posX === posX && cached.posY === posY && cached.posZ === posZ) {
     return cached;
   }
   // Position-only re-key (same authored content, crossed a 1-WU cell): a world
@@ -4014,11 +4025,13 @@ function cameraClearanceBoxForMesh(mesh) {
   // staleness is already the memo's accepted contract.
   if (cached && cached.assetState === assetState && cached.compositionId === compositionId
       && cached.box
-      && (cached.posX !== posX || cached.posZ !== posZ)) {
+      && (cached.posX !== posX || cached.posY !== posY || cached.posZ !== posZ)) {
     const dx = mesh.position.x - (Number(cached.rawX) || 0);
+    const dy = mesh.position.y - (Number(cached.rawY) || 0);
     const dz = mesh.position.z - (Number(cached.rawZ) || 0);
-    if (dx !== 0 || dz !== 0) {
+    if (dx !== 0 || dy !== 0 || dz !== 0) {
       cached.box.minX += dx; cached.box.maxX += dx;
+      cached.box.minY += dy; cached.box.maxY += dy;
       cached.box.minZ += dz; cached.box.maxZ += dz;
       cached.layout = cached.bvhQuery ? clearanceLayoutFromBox(cached.box) : null;
       cached.grid = null;
@@ -4027,8 +4040,10 @@ function cameraClearanceBoxForMesh(mesh) {
       _clearanceBoxEpoch = (_clearanceBoxEpoch + 1) | 0;
     }
     cached.posX = posX;
+    cached.posY = posY;
     cached.posZ = posZ;
     cached.rawX = mesh.position.x;
+    cached.rawY = mesh.position.y;
     cached.rawZ = mesh.position.z;
     return cached;
   }
@@ -4043,8 +4058,10 @@ function cameraClearanceBoxForMesh(mesh) {
       rec.assetState = assetState;
       rec.compositionId = compositionId;
       rec.posX = posX;
+      rec.posY = posY;
       rec.posZ = posZ;
       rec.rawX = mesh.position.x;
+      rec.rawY = mesh.position.y;
       rec.rawZ = mesh.position.z;
       rec.box = null;
       rec.grid = null;
@@ -4069,8 +4086,10 @@ function cameraClearanceBoxForMesh(mesh) {
       rec.assetState = assetState;
       rec.compositionId = compositionId;
       rec.posX = posX;
+      rec.posY = posY;
       rec.posZ = posZ;
       rec.rawX = mesh.position.x;
+      rec.rawY = mesh.position.y;
       rec.rawZ = mesh.position.z;
       rec.grid = null;
       rec.bvhQuery = false;
@@ -4107,8 +4126,10 @@ function cameraClearanceBoxForMesh(mesh) {
   rec.assetState = assetState;
   rec.compositionId = compositionId;
   rec.posX = posX;
+  rec.posY = posY;
   rec.posZ = posZ;
   rec.rawX = mesh.position.x;
+  rec.rawY = mesh.position.y;
   rec.rawZ = mesh.position.z;
   rec.box = box;
   rec.grid = null;
@@ -9663,6 +9684,7 @@ export const render = {
         // application-owned resources against the settled renderer context.
         this._contextRestoreReceipt = deferWebGlContextRestore(lifecycle.guard(() => {
           if (typeof console !== 'undefined') console.warn('[render] WebGL context restored — rebuilding GPU resources');
+          if (state) state.contextRestoreSeq = (Number(state.contextRestoreSeq) || 0) + 1;
           this._contextRecovery.retryCount = 0;
           this._contextRecovery.forceNewContext = () => {
             if (!lifecycle.isActive()) return;
@@ -23804,7 +23826,7 @@ export const render = {
     const steps = typeof this._drainMeshBuildQueueSteps === 'function'
       ? this._drainMeshBuildQueueSteps : render._drainMeshBuildQueueSteps;
     const iterator = steps.call(this, buildBudget);
-    const headBefore = this._meshBuildQueueHead | 0;
+    this._drainBuildSeen = 0;
     try {
       let step = iterator.next();
       while (!step.done) step = iterator.next();
@@ -23816,7 +23838,7 @@ export const render = {
       // queue stays non-empty. Report the rows it provably drained instead.
       try { iterator.return?.(); } catch (_) { /* already torn */ }
       console.warn('[render] mesh build queue drain faulted mid-walk', drainError);
-      return Math.max(0, (this._meshBuildQueueHead | 0) - headBefore);
+      return Math.max(0, this._drainBuildSeen | 0);
     }
   },
 
@@ -24213,6 +24235,9 @@ export const render = {
       }
       noteShadowMeshAdded(this, m);
       built++;
+      // The sync driver reads this on a skeleton fault — its own return has to
+      // report rows provably built, not the dequeue delta (skips count too).
+      this._drainBuildSeen = built;
     }
     if (this._meshBuildQueueHead >= this._meshBuildQueue.length) {
       this._meshBuildQueue.length = 0;

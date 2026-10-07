@@ -109,7 +109,10 @@ export function resetDrawnCullPassBudget() {
     // Rows whose mesh parked (unparented) or had the queue stamp cleared drop —
     // they are not being culled this pass and re-queue on their next consult.
     if (!mesh || mesh.isObject3D !== true || !mesh.parent || !data
-        || data.drawnCullForceQueued !== true) continue;
+        || data.drawnCullForceQueued !== true) {
+      if (data) data.drawnCullForceQueued = false;
+      continue;
+    }
     data.drawnCullForceQueued = false;
     _drawnCullBox.setFromObject(mesh);
     let radius = 0;
