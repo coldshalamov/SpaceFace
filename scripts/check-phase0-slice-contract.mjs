@@ -242,7 +242,9 @@ assert.equal(envelope.phase0ObservedTraceCounts['economy:tick'], 2, 'expected te
 // 2026-09-30: post-D83 solid-contact re-record moves cue 4 -> 8 (see envelope notes); the same-day
 // LEGACY_47A_MASSLINE_BREAK re-derivation restores the tether.near_break warning (t234), cue 8 -> 9.
 // 2026-10-07: the same master-merge re-record as the hits above moves cue/cueApplied 9 -> 7.
-assert.equal(envelope.phase0ObservedTraceCounts['presentation:cue'], 7, 'expected telemetry should pin SG-08 presentation cue count');
+// 2026-10-07 (later): the LEGACY_47A_MASSLINE_BREAK re-derivation to the current physics peaks
+// restores tether.near_break again (t233), cue/cueApplied 7 -> 8.
+assert.equal(envelope.phase0ObservedTraceCounts['presentation:cue'], 8, 'expected telemetry should pin SG-08 presentation cue count');
 assert.equal(envelope.phase0ObservedTraceCounts['scenario:loaded'], 1, 'expected telemetry should pin scenario load count');
 assert.equal(envelope.phase0ObservedTraceCounts['scenario:factsInitialized'], 1, 'expected telemetry should pin scenario fact initialization count');
 assert.equal(envelope.phase0ObservedTraceCounts['scenario:actorBindings'], 1, 'expected telemetry should pin scenario actor-binding audit count');
