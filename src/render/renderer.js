@@ -2281,14 +2281,19 @@ function driveProtectedFirstFlightDrain(owner) {
       ? owner._drainProtectedFirstFlightBuilds() : 0;
   }
   const drainEpoch = serviceFaultEpoch(owner.state);
-  if (!owner._protectedFirstFlightDrainIter
-      && owner._protectedFirstFlightFaultEpoch !== drainEpoch) {
+  const drainClockNow = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now() : Date.now());
+  // Bounded in-epoch retry, same contract as the flight reconcile/poll lanes:
+  // a transient fault heals in ~1 s instead of leaving exempt repartitions
+  // parked for the whole enter; a persistent fault still parks.
+  const drainParked = owner._protectedFirstFlightFaultEpoch === drainEpoch
+    && ((owner._protectedFirstFlightFaultRetries | 0) >= 3
+      || drainClockNow() < (owner._protectedFirstFlightRetryAt || 0));
+  if (!owner._protectedFirstFlightDrainIter && !drainParked) {
     owner._protectedFirstFlightDrainIter = owner._drainProtectedFirstFlightBuildsSteps();
   }
   if (!owner._protectedFirstFlightDrainIter) return 0;
-  const clock = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
-    ? performance.now() : Date.now());
-  const started = clock();
+  const started = drainClockNow();
   let built = 0;
   for (;;) {
     let step;
@@ -2299,7 +2304,12 @@ function driveProtectedFirstFlightDrain(owner) {
       // exception for the rest of the hold — park the lane for this enter
       // instead; a fresh enter serial re-arms the mint.
       owner._protectedFirstFlightDrainIter = null;
+      if (owner._protectedFirstFlightFaultEpoch !== drainEpoch) {
+        owner._protectedFirstFlightFaultRetries = 0;
+      }
       owner._protectedFirstFlightFaultEpoch = drainEpoch;
+      owner._protectedFirstFlightFaultRetries = (owner._protectedFirstFlightFaultRetries | 0) + 1;
+      owner._protectedFirstFlightRetryAt = drainClockNow() + 1000;
       console.warn('[render] protected first-flight drain faulted; parked until the next enter', err);
       break;
     }
@@ -2308,7 +2318,7 @@ function driveProtectedFirstFlightDrain(owner) {
       owner._protectedFirstFlightDrainIter = null;
       break;
     }
-    if (clock() - started >= 4 || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
+    if (drainClockNow() - started >= 4 || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
   }
   return built;
 }
@@ -2495,6 +2505,22 @@ export function serviceRenderMeshResidency(owner, frameDt) {
             || pacedFrameSpend() >= PACED_FRAME_BUDGET_MS) break;
       }
       notePacedFrameSpend(now() - sweepStart);
+    }
+    // A sweep that faulted this epoch reads "done" (iter === null) to the
+    // reconcile mint gate below — reconcile would release every dead-id mesh
+    // the sweep never re-keyed, turning keepGpu into release-all + rebuild.
+    // Run the sweep's sync twin ONCE per epoch (idempotent by design) so the
+    // gate's !iter precondition means what it says again.
+    if (!owner._residentReattachIter
+        && owner._residentReattachFaultEpoch === serviceFaultEpoch(st)
+        && owner._keepGpuReattachEpoch !== owner._residentReattachFaultEpoch) {
+      owner._keepGpuReattachEpoch = owner._residentReattachFaultEpoch;
+      runCookSyncTwin('resident reattach', () => {
+        const it = reattachResidentGpuMeshesSteps(owner);
+        it._remap = st.mode === 'loading' && st.sessionEntityIdRemap instanceof Map
+          ? st.sessionEntityIdRemap : null;
+        for (;;) { if (it.next().done) break; }
+      });
     }
     // Restore reissues entity ids (spawnEntity ignores saved ids) and a mesh can also be missing
     // because its build was still queued at save time, so the kept set can leave live entities
@@ -2883,15 +2909,32 @@ export function serviceRenderMeshResidency(owner, frameDt) {
   // entities + field rocks directly — the roster result is telemetry, not an
   // input — so it drives standalone under the same slice cadence, then parks
   // for the enter on a second fault.
+  const arrivalLiveEpoch = owner.state && owner.state.world && owner.state.world.enterSerial != null
+    ? owner.state.world.enterSerial : null;
+  // The reserve iter rides the roster's enter-scoped snapshot — a parked iter
+  // surviving a serial flip would stamp the departed world's tallies.
+  if (owner._arrivalReserveIter && owner._arrivalReserveEpoch !== arrivalLiveEpoch) {
+    closeCookStepsIter(owner._arrivalReserveIter);
+    owner._arrivalReserveIter = null;
+    owner._arrivalReservePending = true;
+  }
   if (owner._arrivalReservePending) {
-    owner._arrivalReservePending = false;
-    const reserveEntities = Array.isArray(owner.state && owner.state.entityList)
-      ? owner.state.entityList : [];
-    if (typeof owner._reserveArrivalAsteroidCapacitySteps === 'function') {
-      owner._arrivalReserveIter = owner._reserveArrivalAsteroidCapacitySteps(reserveEntities);
-    } else {
-      runCookSyncTwin('arrival-asteroid-reserve',
-        () => owner._reserveArrivalAsteroidCapacity(reserveEntities));
+    // Bounded re-arm, same contract as the reconcile/poll lanes: a transient
+    // fault retries in ~1 s; a persistent one parks for the epoch.
+    const reserveParked = owner._arrivalReserveFaultEpoch === arrivalLiveEpoch
+      && ((owner._arrivalReserveFaultRetries | 0) >= 3
+        || now() < (owner._arrivalReserveRetryAt || 0));
+    if (!reserveParked) {
+      owner._arrivalReservePending = false;
+      const reserveEntities = Array.isArray(owner.state && owner.state.entityList)
+        ? owner.state.entityList : [];
+      if (typeof owner._reserveArrivalAsteroidCapacitySteps === 'function') {
+        owner._arrivalReserveIter = owner._reserveArrivalAsteroidCapacitySteps(reserveEntities);
+        owner._arrivalReserveEpoch = arrivalLiveEpoch;
+      } else {
+        runCookSyncTwin('arrival-asteroid-reserve',
+          () => owner._reserveArrivalAsteroidCapacity(reserveEntities));
+      }
     }
   }
   if (owner._arrivalReserveIter) {
@@ -2904,7 +2947,14 @@ export function serviceRenderMeshResidency(owner, frameDt) {
         step = iterator.next();
       } catch (err) {
         owner._arrivalReserveIter = null;
-        console.warn('[render] arrival capacity reserve failed; parked for this enter', err);
+        if (owner._arrivalReserveFaultEpoch !== arrivalLiveEpoch) {
+          owner._arrivalReserveFaultRetries = 0;
+        }
+        owner._arrivalReserveFaultEpoch = arrivalLiveEpoch;
+        owner._arrivalReserveFaultRetries = (owner._arrivalReserveFaultRetries | 0) + 1;
+        owner._arrivalReserveRetryAt = now() + 1000;
+        owner._arrivalReservePending = true;
+        console.warn('[render] arrival capacity reserve failed; retrying under cooldown', err);
         break;
       }
       if (step.done) {
@@ -2932,8 +2982,12 @@ export function serviceRenderMeshResidency(owner, frameDt) {
       owner._meshReconcileDirty = true;
     }
     let reconcileWorked = false;
-    if (owner._meshReconcileDirty && !owner._reconcileIter
-        && owner._reconcileFaultEpoch !== serviceFaultEpoch(owner.state)) {
+    // Epoch-park now carries a bounded in-epoch retry: a transient fault heals
+    // in ~1 s instead of dead-id meshes drifting for the whole sector, while a
+    // persistent fault still parks (3 drives per epoch, >=1 s between mints).
+    const reconcileParked = owner._reconcileFaultEpoch === serviceFaultEpoch(owner.state)
+      && ((owner._reconcileFaultRetries | 0) >= 3 || now() < (owner._reconcileRetryAt || 0));
+    if (owner._meshReconcileDirty && !owner._reconcileIter && !reconcileParked) {
       // The full pass is the poll's superset — close any suspended poll rather
       // than commit its departed-window verdicts after the reconcile lands.
       abandonResidencyPoll(owner);
@@ -2965,7 +3019,11 @@ export function serviceRenderMeshResidency(owner, frameDt) {
           // parks it for this one instead of rethrowing into every frame.
           abandonReconcile(owner);
           owner._meshReconcileDirty = true;
-          owner._reconcileFaultEpoch = serviceFaultEpoch(owner.state);
+          const reconcileFaultEpoch = serviceFaultEpoch(owner.state);
+          if (owner._reconcileFaultEpoch !== reconcileFaultEpoch) owner._reconcileFaultRetries = 0;
+          owner._reconcileFaultEpoch = reconcileFaultEpoch;
+          owner._reconcileFaultRetries = (owner._reconcileFaultRetries | 0) + 1;
+          owner._reconcileRetryAt = now() + 1000;
           console.warn('[render] mesh reconcile drive failed; parked until the next enter', err);
           break;
         }
@@ -3003,8 +3061,10 @@ export function serviceRenderMeshResidency(owner, frameDt) {
     if (owner._residencyPollIter && owner._residencyPollEpoch !== liveEpoch) {
       abandonResidencyPoll(owner);
     }
-    if (pollDue && !owner._residencyPollIter
-        && owner._residencyPollFaultEpoch !== serviceFaultEpoch(owner.state)) {
+    // Same bounded in-epoch retry as the reconcile lane.
+    const pollParked = owner._residencyPollFaultEpoch === serviceFaultEpoch(owner.state)
+      && ((owner._residencyPollFaultRetries | 0) >= 3 || now() < (owner._residencyPollRetryAt || 0));
+    if (pollDue && !owner._residencyPollIter && !pollParked) {
       if (typeof owner._reconcileMeshResidencySteps === 'function') {
         owner._residencyPollIter = owner._reconcileMeshResidencySteps();
         owner._residencyPollEpoch = liveEpoch;
@@ -3025,7 +3085,11 @@ export function serviceRenderMeshResidency(owner, frameDt) {
           // Parked for this enter the same way the reconcile lane is — the
           // next poll cadence after a fresh serial re-mints.
           abandonResidencyPoll(owner);
-          owner._residencyPollFaultEpoch = serviceFaultEpoch(owner.state);
+          const pollFaultEpoch = serviceFaultEpoch(owner.state);
+          if (owner._residencyPollFaultEpoch !== pollFaultEpoch) owner._residencyPollFaultRetries = 0;
+          owner._residencyPollFaultEpoch = pollFaultEpoch;
+          owner._residencyPollFaultRetries = (owner._residencyPollFaultRetries | 0) + 1;
+          owner._residencyPollRetryAt = now() + 1000;
           console.warn('[render] residency poll drive failed; parked until the next enter', err);
           break;
         }
@@ -22638,29 +22702,46 @@ export const render = {
       return;
     }
     this._meshReleaseLedgerSkips = 0;
-    this._meshReleasePending = null;
-    const flushStartedAt = (typeof performance !== 'undefined'
+    const flushNow = () => (typeof performance !== 'undefined'
       && typeof performance.now === 'function') ? performance.now() : Date.now();
+    const flushStartedAt = flushNow();
     const registries = [globalShipMicroMotion, globalAsteroidMotion,
       globalInfrastructureMotion, globalForgeCrown, globalLawArenaDressing];
+    // The flush used to run all 5 O(pending) registries in one atomic span.
+    // Pace at registry granularity: past the 4 ms wall a resume cursor carries
+    // the remaining registries to the next call — the SAME Set stays pending,
+    // so rows added mid-flush are never dropped (and releases are idempotent,
+    // so a re-driven registry tolerates rows it already saw).
+    const flushStartSize = pending.size;
     let rePend = false;
-    for (const registry of registries) {
+    let i = this._meshReleaseRegistryIndex | 0;
+    for (; i < registries.length; i++) {
       try {
-        registry.releaseMeshSet(pending);
+        registries[i].releaseMeshSet(pending);
       } catch (releaseError) {
         // A throwing registry loses only its own rows for this pass — re-pend
         // the set so the next flush retries them instead of pinning dead
         // meshes in that registry's motion records for the session's life.
-        // Releases are idempotent, so the registries that already ran
-        // tolerate the re-drive.
         rePend = true;
         console.warn('[render] mesh-release registry flush failed; rows re-pended', releaseError);
       }
+      if (i + 1 < registries.length && flushNow() - flushStartedAt >= 4) {
+        this._meshReleaseRegistryIndex = i + 1;
+        this._meshReleasePending = pending;
+        notePacedFrameSpend(flushNow() - flushStartedAt);
+        return;
+      }
     }
-    if (rePend) this._meshReleasePending = pending;
-    notePacedFrameSpend(
-      ((typeof performance !== 'undefined' && typeof performance.now === 'function')
-        ? performance.now() : Date.now()) - flushStartedAt);
+    this._meshReleaseRegistryIndex = 0;
+    // Rows added while this flush was suspended only ever saw the registries
+    // that hadn't run yet — a grown set re-drives whole next pass instead of
+    // leaking those rows' releases on the already-run prefix.
+    if (rePend || pending.size > flushStartSize) {
+      this._meshReleasePending = pending;
+    } else {
+      this._meshReleasePending = null;
+    }
+    notePacedFrameSpend(flushNow() - flushStartedAt);
   },
 
   _unbindPresentationMesh(entityId, mesh = null, disposeBound = false) {
@@ -26025,8 +26106,11 @@ export const render = {
     // because the GPU is temporarily unavailable.
     const publication = this._presentationPublisher.consume(presentationFrame);
     // A rebind drive that faulted parks on the service epoch like the residency
-    // lanes — mints suppress until the next enter/context-restore instead of
-    // rethrowing out of prepareFrame every frame under publication churn.
+    // lanes — the heavy O(_meshes) re-mint suppresses until the next
+    // enter/context-restore instead of rethrowing out of prepareFrame every
+    // frame under publication churn. The cheap spawned-slot leg is NOT parked:
+    // it is independent, per-row idempotent, and is the only bind path for rows
+    // announced while their sweep bind hasn't run.
     const rebindFaulted = this._rebindFaultEpoch === serviceFaultEpoch(this.state);
     if (!rebindFaulted && (publication.remapped === true
       || (publication.rebuilt && publication.appliedDelta !== 0))) {
@@ -26045,7 +26129,7 @@ export const render = {
         try { priorRebind.return(); } catch (_) { /* fresh walk supersedes */ }
       }
       this._presentationRebindIter = this._rebindPresentationMeshesSteps();
-    } else if (!rebindFaulted && publication && publication.spawnedCount > 0) {
+    } else if (publication && publication.spawnedCount > 0) {
       // A parked walk still owns unbound tail rows the new publication does not
       // cover — chain it behind the spawned range instead of dropping them.
       // Spawned rows bind FIRST: during a suspended rebuild the parked tail
@@ -26152,8 +26236,13 @@ export const render = {
               if (this._fencePackFaultEpoch !== packEpoch) {
                 this._fencePackFaultEpoch = packEpoch;
                 this._fencePackFaults = 0;
+                this._fencePackFaultSince = 0;
               }
               this._fencePackFaults = (this._fencePackFaults | 0) + 1;
+              if (this._fencePackFaults >= 3 && !this._fencePackFaultSince) {
+                this._fencePackFaultSince = typeof performance !== 'undefined' && typeof performance.now === 'function'
+                  ? performance.now() : Date.now();
+              }
               console.warn('[render] presentation fence pack drive failed; re-minting next frame', packError);
               break;
             }
@@ -26177,6 +26266,26 @@ export const render = {
           this._snapshotSourceTick = completedTick;
           this._publishSnapshotFenceStats(packed);
           this._fencePackPending = null;
+        }
+      } else if (packFaulted && snapshotNeedsPack && this._snapshotFence
+          && this._presentationWorld && this._fencePackDegradedEpoch !== packEpoch) {
+        // A pose epoch whose pack is permanently faulted freezes every
+        // interpolated pose world-wide — strictly worse than one atomic pack.
+        // After ~1 s parked, run the sync twin ONCE per epoch, latched like
+        // the keepGpu degrade.
+        const degradeNow = typeof performance !== 'undefined' && typeof performance.now === 'function'
+          ? performance.now() : Date.now();
+        if (degradeNow - (this._fencePackFaultSince || 0) >= 1000) {
+          this._fencePackDegradedEpoch = packEpoch;
+          runCookSyncTwin('presentation fence pack', () => {
+            const packed = packPresentationWorldToFence(
+              this._presentationWorld,
+              this._snapshotFence,
+              this.state && this.state.simTime,
+              packEpoch);
+            this._snapshotSourceTick = completedTick;
+            this._publishSnapshotFenceStats(packed);
+          });
         }
       }
     }
@@ -28020,14 +28129,25 @@ export const render = {
     }
     if (memo.sig == null) {
       // Eval-harness envs lack the Steps twin — the sync walk is the fallback.
-      try {
-        memo.sig = lightCensusSignature(scene);
-      } catch (sigError) {
-        // A double fault serves null (every caller treats an unsigned frame
-        // conservatively) rather than aborting the presented call.
-        console.warn('[render] shadow light-census signature walk faulted', sigError);
+      // A persistent sync-side fault would otherwise retry the whole O(scene)
+      // walk on EVERY census call of the epoch (several per presented pass):
+      // park after 3 tries, keyed to the epoch so a fresh census re-arms it.
+      const sigEpochNow = shadowCensusEpoch();
+      const sigParked = memo.sigFaultEpoch === sigEpochNow && (memo.sigFaults | 0) >= 3;
+      if (!sigParked) {
+        try {
+          memo.sig = lightCensusSignature(scene);
+          memo.sigFaults = 0;
+        } catch (sigError) {
+          if (memo.sigFaultEpoch !== sigEpochNow) memo.sigFaults = 0;
+          memo.sigFaultEpoch = sigEpochNow;
+          memo.sigFaults = (memo.sigFaults | 0) + 1;
+          // A double fault serves null (every caller treats an unsigned frame
+          // conservatively) rather than aborting the presented call.
+          console.warn('[render] shadow light-census signature walk faulted', sigError);
+        }
       }
-      memo.epoch = shadowCensusEpoch();
+      memo.epoch = sigEpochNow;
     }
     return memo.sig;
   },
