@@ -98,8 +98,10 @@ export const gyreHud = {
     // but a second bowl mid-flight shouldn't make the first one's grave invisible.
     const bttl = g.ballTtlS || 0;
     const extraBalls = Math.max(0, (g.liveBalls || 0) - 1);
+    // ceil would flash the gate value itself (3.05 → "4s") — clamp to warnS-1 so the
+    // countdown never claims more than the window it warns inside.
     let ballTxt = bttl > 0 && bttl < GYRE_SNARE.ballTtlWarnS
-      ? ` · ball ${Math.max(1, Math.ceil(bttl))}s` : '';
+      ? ` · ball ${Math.max(1, Math.min(GYRE_SNARE.ballTtlWarnS - 1, Math.ceil(bttl)))}s` : '';
     // Other live balls still flying read even when the primary's countdown isn't
     // running — a second bowl mid-flight shouldn't make the first one's grave silent.
     if (extraBalls > 0) {
@@ -108,7 +110,8 @@ export const gyreHud = {
     // Fuse speaks during BEAM too — a lashing <8 s from dry shouldn't announce itself
     // only through the after-the-fact dry toast.
     const fuseS = g.fuseS || 0;
-    const fuseTxt = fuseS > 0 && fuseS < GYRE_SNARE.fuseWarnVisS ? ` · ${Math.max(1, Math.ceil(fuseS))}s` : '';
+    const fuseTxt = fuseS > 0 && fuseS < GYRE_SNARE.fuseWarnVisS
+      ? ` · ${Math.max(1, Math.min(GYRE_SNARE.fuseWarnVisS - 1, Math.ceil(fuseS)))}s` : '';
     if (!g.phase || g.phase === 'off') {
       // A thrown clump still on the map deserves a quiet "it's yours" dot for its short flight.
       if (g && g.launchedId != null) {
@@ -124,7 +127,8 @@ export const gyreHud = {
         // The thrown ball's 9 s flight is otherwise silent — the same ·Ns countdown
         // the fuse uses telegraphs the quiet-TTL grave before the ribbon just dims.
         const ttlS = g.ballTtlS || 0;
-        const ttlTxt = ttlS > 0 && ttlS < GYRE_SNARE.ballTtlWarnS ? ` · ${Math.max(1, Math.ceil(ttlS))}s` : '';
+        const ttlTxt = ttlS > 0 && ttlS < GYRE_SNARE.ballTtlWarnS
+          ? ` · ball ${Math.max(1, Math.min(GYRE_SNARE.ballTtlWarnS - 1, Math.ceil(ttlS)))}s` : '';
         const label = mass > 0 ? (count != null ? `GYRE — BALL AWAY ×${count} · ${mass}t` : `GYRE — BALL AWAY · ${mass}t`) : 'GYRE — BALL AWAY';
         return { text: label + ttlTxt, cls: 'gyre-ball' };
       }

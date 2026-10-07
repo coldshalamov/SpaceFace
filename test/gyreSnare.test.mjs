@@ -736,6 +736,7 @@ test('a projectile in the basin gets pulled toward the maw but can never core', 
   const sx0 = speed(shot);
   for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
   assert.equal(t.sys._rt.phase, 'beaming', 'a shot can never be cored');
+  assert.equal(t.state.gyreSnare.towCount, 0, 'a streaking bullet never counts as towed loot');
   assert.equal(shot.alive, true, 'a shot can never be absorbed');
   assert.ok(shot.vel.x > -35 || Math.abs(speed(shot) - sx0) > 3,
     'the basin visibly tugs the shot (vx -40 -> ' + shot.vel.x.toFixed(1) + ')');
@@ -1133,6 +1134,27 @@ test('a same-state destroy→init reload re-seeds the ball watch list', async ()
   assert.ok(Number.isFinite(a.ttl) && a.ttl > 0 && a.ttl <= 8888,
     `the handed-back ball resumes its authored countdown (got ${a.ttl})`);
   assert.equal(a.data.gyrePrevTtl, undefined, 'the ttl stash is consumed on restore');
+  t.cleanup();
+});
+
+test('a hand-back honors an owner-set ttl — the pre-snag stash never clobbers', async () => {
+  const t = await bootPhysics();
+  const a = rock(t.sim, T.mawDist, 0, 40, 6);
+  a.ttl = 8888;
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  release(t);
+  for (let i = 0; i < 8; i++) { t.state.input.actions.gyreSnare = false; t.sim.step(); }
+  assert.equal(t.sys._rt.ballId, a.id, 'A is the flying ball');
+  // The new owner keeps the body: strips the data deadline AND assigns its own finite
+  // ttl — restoring the pre-snag stash over it would clobber the owner's deadline.
+  delete a.data.despawnAt;
+  a.ttl = 500;
+  t.sim.step();
+  assert.equal(a.data.gyreLaunched, undefined, 'the adopted ball is unmarked');
+  assert.ok(a.ttl > 499 && a.ttl <= 500,
+    `owner-set ttl wins over the stash — ~500 ticks on, never the ~8888 stash (got ${a.ttl})`);
+  assert.equal(a.data.gyrePrevTtl, undefined, 'the stash is still consumed');
   t.cleanup();
 });
 

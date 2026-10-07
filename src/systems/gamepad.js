@@ -436,6 +436,7 @@ export const HAPTIC_VERB_PULSES = Object.freeze({
   'gyre:beamOn':            { strong: 0.25, weak: 0.35, ms: 60 },
   'gyre:snagged':           { strong: 0.70, weak: 0.50, ms: 110 },
   'gyre:launched':          { strong: 0.30, weak: 0.25, ms: 60 },  // coil engages — the sling tautens
+  'gyre:windup':            { strong: 0.15, weak: 0.50, ms: 140 }, // the draw — a low rumble under the coil
   'gyre:thrown':            { strong: 0.90, weak: 0.70, ms: 160 }, // the throw — biggest beat in the pad vocabulary
   'gyre:absorbTick':        { strong: 0.30, weak: 0.20, ms: 50 },
   'gyre:dropped':           { strong: 0.45, weak: 0.30, ms: 80 },
@@ -836,6 +837,7 @@ export function createGamepad(ctx) {
     bus.on('gyre:beamOn', () => startPulse(HAPTIC_VERB_PULSES['gyre:beamOn'], 'gyre:beamOn'));
     bus.on('gyre:snagged', () => startPulse(HAPTIC_VERB_PULSES['gyre:snagged'], 'gyre:snagged'));
     bus.on('gyre:launched', () => startPulse(HAPTIC_VERB_PULSES['gyre:launched'], 'gyre:launched'));
+    bus.on('gyre:windup', () => startPulse(HAPTIC_VERB_PULSES['gyre:windup'], 'gyre:windup'));
     bus.on('gyre:thrown', () => startPulse(HAPTIC_VERB_PULSES['gyre:thrown'], 'gyre:thrown'));
     bus.on('gyre:full', () => startPulse(HAPTIC_VERB_PULSES['gyre:full'], 'gyre:full'));
     bus.on('gyre:fuseLow', () => startPulse(HAPTIC_VERB_PULSES['gyre:fuseLow'], 'gyre:fuseLow'));
@@ -852,7 +854,7 @@ export function createGamepad(ctx) {
       // A save/sector boundary drop is a context reset, not a player verb — stay silent like the
       // audio cue does instead of buzzing through a transition. A clump slipping the lash is the
       // full thud; an empty beam closing is a soft flick — audio already splits those voices.
-      if (payload && payload.boundary) return;
+      if (payload && (payload.boundary || payload.quiet)) return;
       let spec = payload && payload.coreId != null ? 'gyre:dropped' : 'gyre:droppedEmpty';
       // A clump torn off the lash is the loss beat — heavier than a released drop,
       // short of the throw crack: the tear lands in the hands like it does on screen.

@@ -162,6 +162,9 @@ export const GYRE_EVENTS = Object.freeze({
   // release EDGE keep gyre:launched; feel carriers (pad pulse) ride gyre:thrown so the
   // biggest beat lands as the sling lets go, not while it pulls back.
   thrown: 'gyre:thrown',
+  // First wind-up tick — the coil engaging. The pad rides a low sustained rumble
+  // through the ~100 ms draw so the sling's pull-back is felt, not just seen.
+  windup: 'gyre:windup',
   dropped: 'gyre:dropped',
   strained: 'gyre:strained',
   // The lash's ~3 s countdown — latched once per hold so the forced bowl lands

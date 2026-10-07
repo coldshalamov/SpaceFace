@@ -220,11 +220,19 @@ export const gyreSnare = {
       // the real story is "launch burst truncated" — pad/audio consumers take the
       // quieter empty-drop channel for it.
       const emitId = droppedPhase === PHASE.LAUNCH ? null : coreId;
-      this.bus.emit(GYRE_EVENTS.dropped, { coreId: emitId, reason: String(reason || 'dropped'), boundary, tick: this.state && this.state.tick });
+      // Docking, mode flips, and player loss are context resets too — the verb ends
+      // without a player choice, so they stay silent like boundaries (they do NOT join
+      // `boundary` itself: the residue sweep + ball-mirror wipe belong to map swaps
+      // only — a ball flying while you dock keeps flying).
+      const quiet = boundary || reason === 'player_docked' || reason === 'not_flight' || reason === 'player_lost';
+      this.bus.emit(GYRE_EVENTS.dropped, {
+        coreId: emitId, reason: String(reason || 'dropped'), boundary, quiet,
+        tick: this.state && this.state.tick,
+      });
       // A live lash ending without a launch gets the descending release voice — quiet for
       // an empty-beam release, fuller when a clump slipped the beam. Boundaries stay silent
       // (a save/sector swap shouldn't talk).
-      if (!boundary) {
+      if (!quiet) {
         this.bus.emit('audio:cue', {
           id: emitId != null ? 'gyre_snare_drop' : 'gyre_snare_off',
           gain: emitId != null ? 0.9 : 0.5,
@@ -265,7 +273,12 @@ export const gyreSnare = {
       // an adopter keeping the body strips deadlines itself, and a released hand-back
       // must not leave immortal debris. A non-positive stash restores nothing.
       if (futureOnly) {
-        if (Number.isFinite(e.data.gyrePrevTtl) && e.data.gyrePrevTtl > 0) e.ttl = e.data.gyrePrevTtl;
+        // Same current-owner guard as the despawnAt branch: a foreign owner that
+        // assigns its own finite ttl keeps it — the snag only planted Infinity, so a
+        // finite e.ttl here is owner-set and wins. Infinity still restores authored.
+        if (!Number.isFinite(e.ttl) && Number.isFinite(e.data.gyrePrevTtl) && e.data.gyrePrevTtl > 0) {
+          e.ttl = e.data.gyrePrevTtl;
+        }
         delete e.data.gyrePrevTtl;
       } else { e.ttl = e.data.gyrePrevTtl; delete e.data.gyrePrevTtl; }
     }
@@ -369,6 +382,9 @@ export const gyreSnare = {
         if (rt && e.alive !== false && e.pos && score > adoptScore) {
           adoptScore = score;
           rt.ballId = e.id;
+          // launchedId is nominally the LAUNCH-burst lookup field — stamped here too so
+          // the HUD's 'ball live' marker survives the boundary in OFF, where launchedId
+          // is read as the flying-ball flag rather than a burst cursor.
           rt.launchedId = e.id;
           rt.ballMass = entityMass(e);
           // The thrown clump may have outgrown its core's collider — the launch-time
@@ -1429,6 +1445,11 @@ export const gyreSnare = {
         // Wind-up beat: a ~100 ms coil that drags the clump slightly aft of the maw
         // before the burst — the release reads as a slingshot, not an instant shove.
         rt.launchWindup -= 1;
+        if (this.bus && rt.launchWindup === D.launchWindupTicks - 1) {
+          // First coil tick: the pad rides a low rumble through the draw — the
+          // slingshot pull-back is the feel-rich part, and silence undersold it.
+          this.bus.emit(GYRE_EVENTS.windup, { tick: state.tick });
+        }
         const wx = maw.x - rt.launchDir.x * D.launchWindupPullWu;
         const wz = maw.z - rt.launchDir.z * D.launchWindupPullWu;
         const shipVx = finite(player.vel && player.vel.x);

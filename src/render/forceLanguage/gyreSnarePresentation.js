@@ -569,7 +569,7 @@ export class GyreSnarePresentation {
       this._coneMat.uniforms.uAlpha.value = (holding ? 0.62 : 0.42) * flashCalm * wakeEase * fuseDim;
       // The normal-blend skin sits under the additive glass at a whisper — just enough
       // for the cone to occlude background glow and read as a surface, not a hologram.
-      this._bodyMat.opacity = 0.1 * flashCalm * wakeEase * (holding ? 1.2 : 0.8);
+      this._bodyMat.opacity = 0.1 * flashCalm * wakeEase * fuseDim * (holding ? 1.2 : 0.8);
       // Per-second decay like _discKick — a per-frame *0.9 halves the flash on 144 Hz
       // panels vs 60 Hz ones, so the snag/launch flash length must ride dt, not frames.
       this._coneMat.uniforms.uPulse.value = Math.max(
@@ -593,13 +593,16 @@ export class GyreSnarePresentation {
       this._discKick *= Math.exp(-sdt * 4.2);
       this._clumpKick *= Math.exp(-sdt * 6);
       this._moteKick *= Math.exp(-sdt * 5);
-      this._mawMat.opacity = Math.min(1, (0.4 + (holding ? 0.25 : 0) + strain * 0.3 + this._discKick * 0.35) * flashCalm);
+      // The mouth rides the same ignition ramp + dying-cap dim as the glass — a ring
+      // that pops at full alpha a frame early or stays bright under a dying fuse
+      // contradicts the telegraph the cone is making.
+      this._mawMat.opacity = Math.min(1, (0.4 + (holding ? 0.25 : 0) + strain * 0.3 + this._discKick * 0.35) * flashCalm * fuseDim * wakeEase);
       // Net anticipation: absorbables already inside the cone make the mouth glow
       // brighter before the catch — "×N IN NET" through the glass itself.
       const net = Math.min(3, finite(mirror.basinCount, 0));
       this._discMat.uniforms.uTime.value = this.time;
       this._discMat.uniforms.uCalm.value = calm;
-      this._discMat.uniforms.uAlpha.value = Math.min(1.2, (holding ? 0.9 : 0.55 + net * 0.12) + this._discKick * 0.5) * flashCalm;
+      this._discMat.uniforms.uAlpha.value = Math.min(1.2, (holding ? 0.9 : 0.55 + net * 0.12) + this._discKick * 0.5) * flashCalm * fuseDim * wakeEase;
       // Reduced-motion keeps a STATIC mote scatter instead of hiding the funnel
       // outright — the frozen motes still read "matter is being pulled" where
       // visible=false left the cone with no suction signifier at all.
@@ -777,7 +780,12 @@ export class GyreSnarePresentation {
       // breathes faintly with strain, so the ball's heart reads as lash material.
       const veilR = Math.max(2.5, this._clumpRadius * 1.22);
       this._veil.scale.setScalar(veilR);
-      this._veilMat.opacity = (0.085 + clamp01(finite(mirror.strain01)) * 0.05 + this._clumpKick * 0.05) * flashCalm;
+      // Saturated payload: at cap the suck halo deliberately fades out, so the ball
+      // itself carries the FULL read — the veil hot-pulses and the rubble's emissive
+      // climbs, landing the cap on the thing the player is watching, not just the pill.
+      const fullGlow = holding && finite(mirror.clumpMass) >= Math.max(1, finite(mirror.maxClumpMass, 1))
+        ? 0.05 + 0.02 * Math.sin(this.time * 3.4) * calm : 0;
+      this._veilMat.opacity = (0.085 + clamp01(finite(mirror.strain01)) * 0.05 + this._clumpKick * 0.05 + fullGlow) * flashCalm;
       this._veil.visible = this._veilMat.opacity > 0.004;
       // Strain tremble: under load the held rubble visibly quivers — the core mesh
       // stays physics-true while its swarm shakes, which is exactly "about to slip".
@@ -848,6 +856,10 @@ export class GyreSnarePresentation {
         this._halo.visible = false;
       }
 
+      // The shared lump materials glow hotter at cap — same saturated-payload tell
+      // as the veil pulse above, carried by every merged chunk.
+      const lumpGlow = fullGlow > 0 ? 0.4 + 0.12 * Math.sin(this.time * 3.4) * calm : 0.22;
+      for (const k in this._lumpMats) this._lumpMats[k].emissiveIntensity = lumpGlow;
       const members = mirror.members;
       const want = Array.isArray(members) ? Math.min(members.length, MAX_LUMPS) : 0;
       let have = 0;
