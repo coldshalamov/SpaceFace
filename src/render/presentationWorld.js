@@ -1313,7 +1313,9 @@ export function createPresentationWorld(options = {}) {
         if (resident.alive === false) {
           // Retire precedes the doom skip — an eagerly-minted tombstone must not
           // shield the dead resident's slot from being freed.
-          if (byId.get(world.entityIds[slot]) === slot) deadResidents.push(slot);
+          if (byId.get(world.entityIds[slot]) === slot) {
+            deadResidents.push({ slot, gen: world.slotGenerations[slot], resident });
+          }
           continue;
         }
         if (doomed[slot] === 1) continue;
@@ -1329,8 +1331,13 @@ export function createPresentationWorld(options = {}) {
       // atomic — hundreds of retireSlots inside one presented frame is the
       // hitch this generator exists to amortize. retireSlot is row-atomic, so
       // a mid-burst park leaves a consistent world.
-      for (const slot of deadResidents) {
+      for (const { slot, gen, resident } of deadResidents) {
         if ((++sinceYield % every) === 0) yield;
+        // The burst is a suspension-window snapshot: a destroy+spawn pair may
+        // have recycled the slot while this generator parked. Re-validate the
+        // row is still the dead resident that was minted before retiring it.
+        if (world.alive[slot] !== 1 || world.slotGenerations[slot] !== gen
+            || world.entityRefs[slot] !== resident || resident.alive !== false) continue;
         retireSlot(slot);
       }
     }
@@ -1343,13 +1350,17 @@ export function createPresentationWorld(options = {}) {
         if ((++sinceYield % every) === 0) yield;
         const slot = actives[s];
         if (aliveCols[slot] === 1 && lastSeenSeq[slot] !== seq
-            && byId.get(idCols[slot]) === slot) absent.push(idCols[slot]);
+            && byId.get(idCols[slot]) === slot) {
+          absent.push({ id: idCols[slot], gen: world.sourceGenerations[slot] });
+        }
       }
       // Same pacing the dead-resident burst got: a large absent set retires
       // rows one-by-one, so the burst must not run atomic at generator end.
-      for (const entityId of absent) {
+      for (const { id, gen } of absent) {
         if ((++sinceYield % every) === 0) yield;
-        retire(entityId);
+        // Same generation contract the journal DESTROY path uses: a same-id
+        // resurrection minted while this burst parked must not be retired.
+        retire(id, gen);
       }
     }
     diagnostics.rebuilds++;

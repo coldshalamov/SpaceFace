@@ -132,6 +132,10 @@ export function createShadowReceiverTally() {
       if (pendingRecount && root) {
         const prev = notedWalk.notes.get(root);
         notedWalk.notes.set(root, { delta: (prev ? prev.delta : 0) + delta, seq: notedWalk.seq });
+        // A re-add after noteRemoved must leave the ghost set: the pop-time
+        // check walks live parentage, so re-attaching under a dead ancestor
+        // still skips correctly while a re-add under live content counts again.
+        notedWalk.detached.delete(root);
       }
       count += delta;
       if (count < 0) count = 0;
@@ -156,7 +160,10 @@ export function createShadowReceiverTally() {
           // receivers the walk measured, not net against the absorbed add.
           note.delta = -delta;
           note.seq = notedWalk.seq;
-        } else {
+        } else if (notedWalk.visits.get(root) !== undefined) {
+          // Only retract a root the walk already measured — an unvisited root
+          // is excluded from `walked` by the detached-skip alone, and stamping
+          // a -δ note here would under-count below the true total.
           notedWalk.notes.set(root, { delta: -delta, seq: notedWalk.seq });
         }
       }
